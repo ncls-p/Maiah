@@ -64,6 +64,20 @@ interface Model {
 	enabled: boolean;
 }
 
+interface BuiltInTool {
+	id: string;
+	name: string;
+	displayName: string;
+	description: string;
+	riskLevel: string;
+	requiresApprovalByDefault: boolean;
+}
+
+interface ToolBinding {
+	toolId: string;
+	requireApproval: boolean;
+}
+
 function getBrowserWorkspaceId() {
 	if (typeof window === "undefined") return null;
 	return window.sessionStorage.getItem("active_workspace_id");
@@ -80,6 +94,8 @@ export default function AgentBuilderPage() {
 	const [versions, setVersions] = useState<AgentVersion[]>([]);
 	const [providers, setProviders] = useState<Provider[]>([]);
 	const [models, setModels] = useState<Model[]>([]);
+	const [availableTools, setAvailableTools] = useState<BuiltInTool[]>([]);
+	const [selectedToolIds, setSelectedToolIds] = useState<string[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [saving, setSaving] = useState(false);
 	const [form, setForm] = useState({
@@ -132,7 +148,7 @@ export default function AgentBuilderPage() {
 
 		async function loadAgentBuilder() {
 			try {
-				const [agentRes, versionRes, providerRes] = await Promise.all([
+				const [agentRes, versionRes, providerRes, toolRes] = await Promise.all([
 					fetch(`/api/workspace/agents/${agentId}?workspaceId=${workspaceId}`, {
 						signal: controller.signal,
 					}),
@@ -145,24 +161,40 @@ export default function AgentBuilderPage() {
 					fetch(`/api/workspace/providers?workspaceId=${workspaceId}`, {
 						signal: controller.signal,
 					}),
+					fetch(`/api/workspace/tools?workspaceId=${workspaceId}`, {
+						signal: controller.signal,
+					}),
 				]);
 
 				if (!agentRes.ok) throw new Error("Failed to load agent");
 				if (!versionRes.ok) throw new Error("Failed to load versions");
 				if (!providerRes.ok) throw new Error("Failed to load providers");
+				if (!toolRes.ok) throw new Error("Failed to load tools");
 
 				const loadedAgent = (await agentRes.json()) as Agent;
 				const loadedVersions = (await versionRes.json()) as AgentVersion[];
 				const loadedProviders = (await providerRes.json()) as Provider[];
+				const loadedTools = (await toolRes.json()) as BuiltInTool[];
 				const loadedActiveVersion =
 					loadedVersions.find((version) => version.isActive) ??
 					loadedVersions[0] ??
 					null;
 
+				let loadedBindings: ToolBinding[] = [];
+				if (loadedActiveVersion) {
+					const bindingRes = await fetch(
+						`/api/workspace/agents/${agentId}/tools?workspaceId=${workspaceId}&versionId=${loadedActiveVersion.id}`,
+						{ signal: controller.signal },
+					);
+					if (bindingRes.ok) loadedBindings = (await bindingRes.json()) as ToolBinding[];
+				}
+
 				if (cancelled) return;
 				setAgent(loadedAgent);
 				setVersions(loadedVersions);
 				setProviders(loadedProviders);
+				setAvailableTools(loadedTools);
+				setSelectedToolIds(loadedBindings.map((binding) => binding.toolId));
 				setForm({
 					name: loadedAgent.name,
 					slug: loadedAgent.slug,
@@ -244,6 +276,13 @@ export default function AgentBuilderPage() {
 					maxOutputTokens: form.maxOutputTokens
 						? Number.parseInt(form.maxOutputTokens, 10)
 						: undefined,
+					toolBindings: selectedToolIds.map((toolId) => ({
+						toolSource: "builtin",
+						toolId,
+						requireApproval:
+							availableTools.find((tool) => tool.id === toolId)
+								?.requiresApprovalByDefault ?? false,
+					})),
 				}),
 			});
 
@@ -395,6 +434,49 @@ export default function AgentBuilderPage() {
 							placeholder="You are a helpful assistant..."
 							className="min-h-64 w-full resize-y rounded-xl border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
 						/>
+					</CardContent>
+				</Card>
+
+				<Card>
+					<CardHeader>
+						<CardTitle>Tools</CardTitle>
+						<CardDescription>
+							Bind built-in tools to this agent version. High-risk tools pause
+							for approval and are logged securely.
+						</CardDescription>
+					</CardHeader>
+					<CardContent className="grid gap-3 sm:grid-cols-2">
+						{availableTools.map((tool) => {
+							const checked = selectedToolIds.includes(tool.id);
+							return (
+								<label
+									key={tool.id}
+									className="flex cursor-pointer items-start gap-3 rounded-xl border border-border/70 p-3 text-sm"
+								>
+									<input
+										type="checkbox"
+										checked={checked}
+										onChange={(event) => {
+											setSelectedToolIds((current) =>
+												event.target.checked
+													? [...current, tool.id]
+													: current.filter((id) => id !== tool.id),
+											);
+										}}
+										className="mt-1"
+									/>
+									<span className="flex flex-col gap-1">
+										<span className="flex items-center gap-2 font-medium">
+											{tool.displayName}
+											<Badge variant={tool.riskLevel === "low" ? "secondary" : "outline"}>
+												{tool.riskLevel}
+											</Badge>
+										</span>
+										<span className="text-muted-foreground">{tool.description}</span>
+									</span>
+								</label>
+							);
+						})}
 					</CardContent>
 				</Card>
 

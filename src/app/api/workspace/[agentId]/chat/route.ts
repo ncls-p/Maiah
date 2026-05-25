@@ -10,6 +10,12 @@ import {
 	recordUsageEvent,
 	resolveProviderForVersion,
 } from "@/modules/agent/use-cases";
+import { getBuiltInTool, requiresApproval } from "@/modules/tool/builtin-tools";
+import {
+	canExecuteRestrictedTool,
+	getToolBindingsForVersion,
+	logToolInvocation,
+} from "@/modules/tool/use-cases";
 import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
 import {
@@ -19,12 +25,119 @@ import {
 	messages,
 } from "@/server/infrastructure/db/schema";
 import { getAdapter } from "@/server/infrastructure/providers";
-import { streamText, type ModelMessage } from "ai";
+import { stepCountIs, streamText, type ModelMessage, type ToolSet } from "ai";
 
 const chatRequestSchema = z.object({
 	content: z.string().trim().min(1).max(32_000),
 	conversationId: z.uuid().optional(),
 });
+
+async function buildBoundTools(input: {
+	agentVersionId: string;
+	workspaceId: string;
+	conversationId: string;
+	messageId: string;
+	userId: string;
+}) {
+	const bindings = await getToolBindingsForVersion(input.agentVersionId);
+	const tools: ToolSet = {};
+
+	for (const binding of bindings) {
+		if (binding.toolSource !== "builtin") continue;
+		const definition = getBuiltInTool(binding.toolId);
+		if (!definition) continue;
+
+		tools[definition.name] = {
+			description: `${definition.description} Risk level: ${definition.riskLevel}.`,
+			inputSchema: definition.inputSchema,
+			execute: async (toolInput: unknown) => {
+				const startedAt = Date.now();
+				const restricted = requiresApproval(definition.riskLevel);
+
+				if (restricted) {
+					const canExecute = await canExecuteRestrictedTool(
+						input.userId,
+						input.workspaceId,
+					);
+					if (!canExecute) {
+						await logToolInvocation({
+							workspaceId: input.workspaceId,
+							conversationId: input.conversationId,
+							messageId: input.messageId,
+							toolSource: "builtin",
+							toolId: definition.id,
+							toolName: definition.name,
+							riskLevel: definition.riskLevel,
+							input: toolInput,
+							status: "denied",
+							latencyMs: Date.now() - startedAt,
+							errorMessage: "Missing permission: tools.executeRestricted",
+						});
+						return {
+							denied: true,
+							message: "You do not have permission to execute this restricted tool.",
+						};
+					}
+				}
+
+				if (binding.requireApproval) {
+					const invocation = await logToolInvocation({
+						workspaceId: input.workspaceId,
+						conversationId: input.conversationId,
+						messageId: input.messageId,
+						toolSource: "builtin",
+						toolId: definition.id,
+						toolName: definition.name,
+						riskLevel: definition.riskLevel,
+						input: toolInput,
+						status: "awaiting_approval",
+						latencyMs: Date.now() - startedAt,
+					});
+					return {
+						approvalRequired: true,
+						invocationId: invocation.id,
+						message: "This tool is awaiting human approval before execution.",
+					};
+				}
+
+				try {
+					const output = await definition.execute(toolInput as never);
+					await logToolInvocation({
+						workspaceId: input.workspaceId,
+						conversationId: input.conversationId,
+						messageId: input.messageId,
+						toolSource: "builtin",
+						toolId: definition.id,
+						toolName: definition.name,
+						riskLevel: definition.riskLevel,
+						input: toolInput,
+						output,
+						status: "success",
+						latencyMs: Date.now() - startedAt,
+					});
+					return output;
+				} catch (error) {
+					await logToolInvocation({
+						workspaceId: input.workspaceId,
+						conversationId: input.conversationId,
+						messageId: input.messageId,
+						toolSource: "builtin",
+						toolId: definition.id,
+						toolName: definition.name,
+						riskLevel: definition.riskLevel,
+						input: toolInput,
+						status: "failed",
+						latencyMs: Date.now() - startedAt,
+						errorMessage: error instanceof Error ? error.message : String(error),
+					});
+					throw error;
+				}
+			},
+		};
+	}
+
+	return tools;
+}
 
 async function loadConversationHistory(
 	conversationId: string,
@@ -223,6 +336,13 @@ export async function POST(
 			providerConfig.modelId,
 		);
 		const history = await loadConversationHistory(conversation.id);
+		const tools = await buildBoundTools({
+			agentVersionId: version.id,
+			workspaceId: agent.workspaceId,
+			conversationId: conversation.id,
+			messageId: assistantMessage.id,
+			userId: session.user.id,
+		});
 		const startedAt = Date.now();
 		let assistantText = "";
 
@@ -235,9 +355,32 @@ export async function POST(
 				: undefined,
 			topP: version.topP ? Number.parseFloat(version.topP) : undefined,
 			maxOutputTokens: version.maxOutputTokens ?? undefined,
+			tools,
+			stopWhen: Object.keys(tools).length > 0 ? stepCountIs(3) : undefined,
 			onChunk({ chunk }) {
 				if (chunk.type === "text-delta") {
 					assistantText += chunk.text;
+				}
+			},
+			async onStepFinish({ toolCalls, toolResults }) {
+				const partsToInsert = [
+					...toolCalls.map((toolCall, index) => ({
+						messageId: assistantMessage.id,
+						type: "tool-call" as const,
+						contentEncrypted: null,
+						metadataJson: toolCall,
+						sortOrder: 100 + index,
+					})),
+					...toolResults.map((toolResult, index) => ({
+						messageId: assistantMessage.id,
+						type: "tool-result" as const,
+						contentEncrypted: null,
+						metadataJson: toolResult,
+						sortOrder: 200 + index,
+					})),
+				];
+				if (partsToInsert.length > 0) {
+					await db.insert(messageParts).values(partsToInsert);
 				}
 			},
 			async onFinish({ totalUsage }) {

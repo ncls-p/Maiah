@@ -73,6 +73,21 @@ function textFromMessage(message: ChatMessage) {
 		.join("\n");
 }
 
+function toolPartsFromMessage(message: ChatMessage) {
+	return message.parts.filter(
+		(part) => part.type === "tool-call" || part.type === "tool-result",
+	);
+}
+
+function summarizeToolPart(content: string) {
+	try {
+		const parsed = JSON.parse(content) as { toolName?: string; output?: unknown };
+		return parsed.toolName ?? JSON.stringify(parsed.output ?? parsed).slice(0, 120);
+	} catch {
+		return content.slice(0, 120);
+	}
+}
+
 function createLocalMessage(
 	role: "user" | "assistant",
 	content: string,
@@ -547,18 +562,31 @@ export default function ChatPage() {
 											)}
 										>
 											{isAssistant ? (
-												<Streamdown
-													plugins={{ code }}
-													caret="block"
-													isAnimating={
-														sending &&
-														index === messages.length - 1 &&
-														message.status === "streaming"
-													}
-													className="text-sm"
-												>
-													{content || "Thinking..."}
-												</Streamdown>
+												<div className="flex flex-col gap-2">
+													{toolPartsFromMessage(message).map((part, partIndex) => (
+														<div
+															key={`${message.id}-${part.type}-${partIndex}`}
+															className="rounded-lg border border-border/70 bg-background/70 px-3 py-2 text-xs text-muted-foreground"
+														>
+															<span className="font-medium text-foreground">
+																{part.type === "tool-call" ? "Tool call" : "Tool result"}
+															</span>{" "}
+															{summarizeToolPart(part.content)}
+														</div>
+													))}
+													<Streamdown
+														plugins={{ code }}
+														caret="block"
+														isAnimating={
+															sending &&
+															index === messages.length - 1 &&
+															message.status === "streaming"
+														}
+														className="text-sm"
+													>
+														{content || "Thinking..."}
+													</Streamdown>
+												</div>
 											) : (
 												content
 											)}
