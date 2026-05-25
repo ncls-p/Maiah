@@ -11,6 +11,7 @@ import {
 	PlugZapIcon,
 	SettingsIcon,
 	UsersIcon,
+	WrenchIcon,
 } from "lucide-react";
 
 import { DeodisLogo } from "@/components/deodis-logo";
@@ -33,6 +34,7 @@ interface AppShellProps {
 const navItems = [
 	{ href: "/chat", label: "Chat", icon: MessageSquareIcon },
 	{ href: "/agents", label: "Agents", icon: BotIcon },
+	{ href: "/tools", label: "Tools", icon: WrenchIcon },
 	{ href: "/providers", label: "Providers", icon: PlugZapIcon },
 	{ href: "/members", label: "Members", icon: UsersIcon },
 	{ href: "/settings", label: "Settings", icon: SettingsIcon },

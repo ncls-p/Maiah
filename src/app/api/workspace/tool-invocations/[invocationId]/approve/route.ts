@@ -5,6 +5,7 @@ import { decryptValue, encryptValue } from "@/lib/crypto";
 import { logger } from "@/lib/logger";
 import { getSession } from "@/modules/auth/session";
 import { getBuiltInTool } from "@/modules/tool/builtin-tools";
+import { audit } from "@/server/domain/services/audit";
 import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
 import { toolInvocations } from "@/server/infrastructure/db/schema";
@@ -89,18 +90,50 @@ export async function POST(
 				})
 				.where(eq(toolInvocations.id, invocation.id));
 
+			await audit.emit({
+				workspaceId: invocation.workspaceId,
+				actorPrincipalType: "user",
+				actorPrincipalId: session.user.id,
+				action: "toolInvocation.approved",
+				resourceType: "tool_invocation",
+				resourceId: invocation.id,
+				outcome: "success",
+				metadata: {
+					toolName: invocation.toolName,
+					toolSource: invocation.toolSource,
+					riskLevel: invocation.riskLevel,
+				},
+			});
+
 			return NextResponse.json({ ok: true, output });
 		} catch (error) {
+			const errorMessage =
+				error instanceof Error ? error.message : String(error);
 			await db
 				.update(toolInvocations)
 				.set({
 					status: "failed",
 					latencyMs: Date.now() - startedAt,
 					approvedByUserId: session.user.id,
-					errorMessage: error instanceof Error ? error.message : String(error),
+					errorMessage,
 					completedAt: new Date(),
 				})
 				.where(eq(toolInvocations.id, invocation.id));
+
+			await audit.emit({
+				workspaceId: invocation.workspaceId,
+				actorPrincipalType: "user",
+				actorPrincipalId: session.user.id,
+				action: "toolInvocation.approved",
+				resourceType: "tool_invocation",
+				resourceId: invocation.id,
+				outcome: "failed",
+				metadata: {
+					toolName: invocation.toolName,
+					toolSource: invocation.toolSource,
+					error: errorMessage,
+				},
+			});
 			throw error;
 		}
 	} catch (error) {

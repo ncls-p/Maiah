@@ -16,6 +16,7 @@ import {
 	getToolBindingsForVersion,
 	logToolInvocation,
 } from "@/modules/tool/use-cases";
+import { waitForApproval } from "@/modules/tool/invocation-state";
 import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
 import {
@@ -94,10 +95,20 @@ async function buildBoundTools(input: {
 						status: "awaiting_approval",
 						latencyMs: Date.now() - startedAt,
 					});
+
+					// Block until approval is granted or denied
+					const approvalResult = await waitForApproval(invocation.id);
+
+					if (approvalResult.status === "success") {
+						return approvalResult.output;
+					}
+
+					// Rejected or failed
 					return {
-						approvalRequired: true,
+						denied: true,
 						invocationId: invocation.id,
-						message: "This tool is awaiting human approval before execution.",
+						message:
+							approvalResult.error ?? "Tool invocation was not approved.",
 					};
 				}
 
