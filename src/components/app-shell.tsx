@@ -3,13 +3,18 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+	BarChart3Icon,
+	BookOpenIcon,
 	BotIcon,
+	ClipboardListIcon,
 	LogInIcon,
 	MenuIcon,
 	MessageSquareIcon,
 	MessageSquarePlusIcon,
+	NetworkIcon,
 	PlugZapIcon,
 	SettingsIcon,
+	StoreIcon,
 	UsersIcon,
 	WrenchIcon,
 } from "lucide-react";
@@ -34,9 +39,14 @@ interface AppShellProps {
 const navItems = [
 	{ href: "/chat", label: "Chat", icon: MessageSquareIcon },
 	{ href: "/agents", label: "Agents", icon: BotIcon },
+	{ href: "/marketplace", label: "Marketplace", icon: StoreIcon },
 	{ href: "/tools", label: "Tools", icon: WrenchIcon },
+	{ href: "/mcp", label: "MCP Servers", icon: NetworkIcon },
+	{ href: "/knowledge", label: "Knowledge", icon: BookOpenIcon },
 	{ href: "/providers", label: "Providers", icon: PlugZapIcon },
 	{ href: "/members", label: "Members", icon: UsersIcon },
+	{ href: "/usage", label: "Usage", icon: BarChart3Icon },
+	{ href: "/audit", label: "Audit", icon: ClipboardListIcon },
 	{ href: "/settings", label: "Settings", icon: SettingsIcon },
 ] as const;
 

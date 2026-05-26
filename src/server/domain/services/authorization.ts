@@ -45,7 +45,12 @@ export function matchesPermission(
     const { domain: requiredDomain, action: requiredAction } =
         parsePermission(requiredPermission);
 
-    if (grantedDomain !== requiredDomain) return false;
+    const domainMatches =
+        grantedDomain === requiredDomain ||
+        (grantedDomain === "marketplace" &&
+            requiredDomain.startsWith("marketplace"));
+
+    if (!domainMatches) return false;
     if (grantedAction === "*" || grantedAction === "manage") return true;
     return grantedAction === requiredAction;
 }

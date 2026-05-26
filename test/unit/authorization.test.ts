@@ -42,13 +42,17 @@ describe("permission matching", () => {
 	});
 
 	it("does not match different domains", () => {
-		expect(matchesPermission("agents.create", "providers.create")).toBe(
-			false,
-		);
+		expect(matchesPermission("agents.create", "providers.create")).toBe(false);
 	});
 
 	it("does not match specific to specific when different", () => {
 		expect(matchesPermission("agents.create", "agents.delete")).toBe(false);
+	});
+
+	it("lets marketplace wildcard cover marketplace item actions", () => {
+		expect(matchesPermission("marketplace.*", "marketplaceItems.install")).toBe(
+			true,
+		);
 	});
 
 	it("handles granted permissions without an action as domain wildcards", () => {
