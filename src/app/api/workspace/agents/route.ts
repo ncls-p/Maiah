@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/modules/auth/session";
 import { createAgent, listAgents } from "@/modules/agent/use-cases";
+import { isAdminRole } from "@/modules/admin/use-cases";
 import { db } from "@/server/infrastructure/db";
 import { workspaces } from "@/server/infrastructure/db/schema";
 import { authorization } from "@/server/domain/services/authorization";
@@ -25,6 +26,15 @@ const createAgentSchema = z.object({
 	temperature: z.string().optional(),
 	topP: z.string().optional(),
 	maxOutputTokens: z.number().int().positive().optional(),
+	sharingMode: z
+		.enum(["personal", "marketplace", "specific_user"])
+		.default("personal"),
+	shareTargetEmail: z.email().optional(),
+	isGlobal: z.boolean().optional(),
+	isRecommended: z.boolean().optional(),
+	curationLabel: z
+		.enum(["none", "recommended", "organization_created"])
+		.optional(),
 	toolBindings: z
 		.array(
 			z.object({
@@ -98,6 +108,7 @@ export async function POST(req: NextRequest) {
 		const result = await createAgent({
 			workspaceId,
 			userId: session.user.id,
+			canAdminCurate: isAdminRole(session.user.role),
 			...input,
 		});
 
@@ -116,6 +127,8 @@ export async function POST(req: NextRequest) {
 				"Model not found",
 				"Model requires a provider",
 				"Tool not found",
+				"Share target user not found",
+				"Share target user is required",
 			].includes(error.message)
 		) {
 			return NextResponse.json({ error: error.message }, { status: 400 });
@@ -164,9 +177,16 @@ export async function GET(req: NextRequest) {
 			);
 		}
 
-		const list = await listAgents(workspaceId);
+		const list = await listAgents(
+			workspaceId,
+			session.user.id,
+			isAdminRole(session.user.role),
+		);
 
-		return NextResponse.json(list);
+		return NextResponse.json({
+			agents: list,
+			canAdminCurate: isAdminRole(session.user.role),
+		});
 	} catch (error) {
 		logger.error("Failed to list agents", {}, error as Error);
 		return NextResponse.json(

@@ -3,20 +3,15 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-	BarChart3Icon,
 	BookOpenIcon,
 	BotIcon,
-	ClipboardListIcon,
 	LogInIcon,
 	MenuIcon,
 	MessageSquareIcon,
 	MessageSquarePlusIcon,
-	NetworkIcon,
 	PlugZapIcon,
 	SettingsIcon,
-	StoreIcon,
 	UsersIcon,
-	WrenchIcon,
 } from "lucide-react";
 
 import { DeodisLogo } from "@/components/deodis-logo";
@@ -35,20 +30,19 @@ import { cn } from "@/lib/utils";
 interface AppShellProps {
 	children: React.ReactNode;
 	displayName?: string;
+	isAdmin?: boolean;
 }
 
-const navItems = [
+const mainNavItems = [
 	{ href: "/chat", label: "Chat", icon: MessageSquareIcon },
 	{ href: "/agents", label: "Agents", icon: BotIcon },
-	{ href: "/marketplace", label: "Marketplace", icon: StoreIcon },
-	{ href: "/tools", label: "Tools", icon: WrenchIcon },
-	{ href: "/mcp", label: "MCP Servers", icon: NetworkIcon },
 	{ href: "/knowledge", label: "Knowledge", icon: BookOpenIcon },
 	{ href: "/providers", label: "Providers", icon: PlugZapIcon },
-	{ href: "/members", label: "Members", icon: UsersIcon },
-	{ href: "/usage", label: "Usage", icon: BarChart3Icon },
-	{ href: "/audit", label: "Audit", icon: ClipboardListIcon },
-	{ href: "/settings", label: "Settings", icon: SettingsIcon },
+] as const;
+
+const adminNavItems = [
+	{ href: "/members", label: "Team", icon: UsersIcon },
+	{ href: "/settings", label: "Admin", icon: SettingsIcon },
 ] as const;
 
 function NavLink({
@@ -79,7 +73,13 @@ function NavLink({
 	);
 }
 
-function SidebarContent({ displayName }: { displayName?: string }) {
+function SidebarContent({
+	displayName,
+	isAdmin,
+}: {
+	displayName?: string;
+	isAdmin?: boolean;
+}) {
 	return (
 		<div className="flex h-full flex-col gap-3 p-3">
 			<div className="flex items-center justify-between gap-2 px-1 py-1">
@@ -98,19 +98,15 @@ function SidebarContent({ displayName }: { displayName?: string }) {
 			</Button>
 
 			<nav className="flex flex-col gap-1" aria-label="Main navigation">
-				{navItems.map((item) => (
+				{mainNavItems.map((item) => (
 					<NavLink key={item.href} {...item} />
 				))}
+				{isAdmin
+					? adminNavItems.map((item) => <NavLink key={item.href} {...item} />)
+					: null}
 			</nav>
 
-			<div className="mt-2 flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
-				<p className="px-3 text-xs font-medium tracking-[0.16em] text-muted-foreground uppercase">
-					Recents
-				</p>
-				<div className="rounded-xl border border-dashed border-border/80 bg-background/55 p-3 text-sm leading-5 text-muted-foreground">
-					Your conversations will appear here.
-				</div>
-			</div>
+			<div className="min-h-0 flex-1" />
 
 			<div className="flex flex-col gap-2 border-t border-border/70 pt-3">
 				<ThemeToggleButton />
@@ -137,14 +133,14 @@ function SidebarContent({ displayName }: { displayName?: string }) {
 	);
 }
 
-export function AppShell({ children, displayName }: AppShellProps) {
+export function AppShell({ children, displayName, isAdmin }: AppShellProps) {
 	return (
 		<div
 			data-page="app-shell"
 			className="flex h-svh min-h-svh bg-background text-foreground"
 		>
-			<aside className="hidden w-64 shrink-0 border-r border-border/70 bg-card/45 backdrop-blur-xl lg:block">
-				<SidebarContent displayName={displayName} />
+			<aside className="hidden w-56 shrink-0 border-r border-border/70 bg-card/45 backdrop-blur-xl lg:block">
+				<SidebarContent displayName={displayName} isAdmin={isAdmin} />
 			</aside>
 
 			<div className="flex min-w-0 flex-1 flex-col">
@@ -159,7 +155,7 @@ export function AppShell({ children, displayName }: AppShellProps) {
 							<SheetHeader className="sr-only">
 								<SheetTitle>Navigation</SheetTitle>
 							</SheetHeader>
-							<SidebarContent displayName={displayName} />
+							<SidebarContent displayName={displayName} isAdmin={isAdmin} />
 						</SheetContent>
 					</Sheet>
 					<Link href="/chat" className="text-sm font-semibold">

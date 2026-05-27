@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getSession } from "@/modules/auth/session";
 import {
-	getAgentById,
+	getVisibleAgentById,
 	updateAgent,
 	archiveAgent,
 } from "@/modules/agent/use-cases";
+import { isAdminRole } from "@/modules/admin/use-cases";
 import { authorization } from "@/server/domain/services/authorization";
 import { logger } from "@/lib/logger";
 
@@ -29,6 +30,13 @@ const updateAgentSchema = z.object({
 	temperature: z.string().optional(),
 	topP: z.string().optional(),
 	maxOutputTokens: z.number().int().positive().optional(),
+	sharingMode: z.enum(["personal", "marketplace", "specific_user"]).optional(),
+	shareTargetEmail: z.email().optional().or(z.literal("")),
+	isGlobal: z.boolean().optional(),
+	isRecommended: z.boolean().optional(),
+	curationLabel: z
+		.enum(["none", "recommended", "organization_created"])
+		.optional(),
 	toolBindings: z
 		.array(
 			z.object({
@@ -86,12 +94,18 @@ export async function GET(
 			);
 		}
 
-		const agent = await getAgentById(agentId, workspaceId);
+		const canAdminCurate = isAdminRole(session.user.role);
+		const agent = await getVisibleAgentById(
+			agentId,
+			workspaceId,
+			session.user.id,
+			canAdminCurate,
+		);
 		if (!agent) {
 			return NextResponse.json({ error: "Agent not found" }, { status: 404 });
 		}
 
-		return NextResponse.json(agent);
+		return NextResponse.json({ ...agent, canAdminCurate });
 	} catch (error) {
 		logger.error("Failed to get agent", {}, error as Error);
 		return NextResponse.json(
@@ -127,6 +141,7 @@ export async function PATCH(
 
 		const { agentId } = parsedParams.data;
 		const { workspaceId, ...input } = parsedBody.data;
+		const canAdminCurate = isAdminRole(session.user.role);
 
 		const permission = await authorization.requirePermission(
 			{ principalType: "user", principalId: session.user.id },
@@ -146,7 +161,9 @@ export async function PATCH(
 			agentId,
 			workspaceId,
 			userId: session.user.id,
+			canAdminCurate,
 			...input,
+			shareTargetEmail: input.shareTargetEmail || undefined,
 		});
 
 		return NextResponse.json({ agent, version });
@@ -167,6 +184,9 @@ export async function PATCH(
 				"Model not found",
 				"Model requires a provider",
 				"Tool not found",
+				"Share target user not found",
+				"Share target user is required",
+				"Only the creator or an admin can update this agent",
 			].includes(error.message)
 		) {
 			return NextResponse.json({ error: error.message }, { status: 400 });
@@ -217,11 +237,21 @@ export async function DELETE(
 			);
 		}
 
-		await archiveAgent(agentId, workspaceId, session.user.id);
+		await archiveAgent(
+			agentId,
+			workspaceId,
+			session.user.id,
+			isAdminRole(session.user.role),
+		);
 		return NextResponse.json({ ok: true });
 	} catch (error) {
 		if ((error as Error).message === "Agent not found") {
 			return NextResponse.json({ error: "Agent not found" }, { status: 404 });
+		}
+		if (
+			(error as Error).message === "Only the creator or an admin can delete this agent"
+		) {
+			return NextResponse.json({ error: (error as Error).message }, { status: 403 });
 		}
 
 		logger.error("Failed to archive agent", {}, error as Error);

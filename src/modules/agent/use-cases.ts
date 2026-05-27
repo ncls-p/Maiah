@@ -1,4 +1,4 @@
-import { and, eq, isNull, sql, max } from "drizzle-orm";
+import { and, eq, isNull, sql, max, or } from "drizzle-orm";
 import { db } from "@/server/infrastructure/db";
 import {
 	agents,
@@ -9,6 +9,7 @@ import {
 	messages,
 	messageParts,
 	usageEvents,
+	users,
 } from "@/server/infrastructure/db/schema";
 import { decryptValue } from "@/lib/crypto";
 import type {
@@ -27,6 +28,11 @@ import {
 
 export type AgentRow = typeof agents.$inferSelect;
 export type AgentVersionRow = typeof agentVersions.$inferSelect;
+export type AgentSharingMode = "personal" | "marketplace" | "specific_user";
+export type AgentCurationLabel =
+	| "recommended"
+	| "organization_created"
+	| "none";
 
 export interface CreateAgentInput {
 	workspaceId: string;
@@ -41,6 +47,12 @@ export interface CreateAgentInput {
 	topP?: string;
 	maxOutputTokens?: number;
 	toolBindings?: ToolBindingInput[];
+	sharingMode?: AgentSharingMode;
+	shareTargetEmail?: string;
+	isGlobal?: boolean;
+	isRecommended?: boolean;
+	curationLabel?: AgentCurationLabel;
+	canAdminCurate?: boolean;
 }
 
 export interface UpdateAgentInput {
@@ -57,6 +69,42 @@ export interface UpdateAgentInput {
 	topP?: string;
 	maxOutputTokens?: number;
 	toolBindings?: ToolBindingInput[];
+	sharingMode?: AgentSharingMode;
+	shareTargetEmail?: string | null;
+	isGlobal?: boolean;
+	isRecommended?: boolean;
+	curationLabel?: AgentCurationLabel;
+	canAdminCurate?: boolean;
+}
+
+async function resolveShareTargetUserId(
+	email: string | null | undefined,
+): Promise<string | null> {
+	if (!email) return null;
+
+	const [target] = await db
+		.select({ id: users.id })
+		.from(users)
+		.where(eq(users.email, email.trim().toLowerCase()))
+		.limit(1);
+
+	if (!target) throw new Error("Share target user not found");
+	return target.id;
+}
+
+async function requireShareTargetUserId(email: string | null | undefined) {
+	if (!email?.trim()) throw new Error("Share target user is required");
+	return resolveShareTargetUserId(email);
+}
+
+function normalizeCurationLabel(
+	label: AgentCurationLabel | undefined,
+	isRecommended?: boolean,
+) {
+	if (label === "none") return null;
+	if (label === "organization_created") return label;
+	if (isRecommended || label === "recommended") return "recommended";
+	return null;
 }
 
 // ─── Agent CRUD ────────────────────────────────────────────────────────
@@ -75,6 +123,12 @@ export async function createAgent(input: CreateAgentInput) {
 		topP,
 		maxOutputTokens,
 		toolBindings,
+		sharingMode = "personal",
+		shareTargetEmail,
+		isGlobal,
+		isRecommended,
+		curationLabel,
+		canAdminCurate,
 	} = input;
 
 	if (providerId) {
@@ -108,6 +162,23 @@ export async function createAgent(input: CreateAgentInput) {
 		if (!model) throw new Error("Model not found");
 	}
 
+	const shareTargetUserId =
+		sharingMode === "specific_user"
+			? await requireShareTargetUserId(shareTargetEmail)
+			: null;
+
+	const curated = canAdminCurate
+		? {
+				isGlobal: Boolean(isGlobal),
+				isRecommended: Boolean(isRecommended),
+				curationLabel: normalizeCurationLabel(curationLabel, isRecommended),
+			}
+		: {
+				isGlobal: false,
+				isRecommended: false,
+				curationLabel: null,
+			};
+
 	const { agent, version } = await db.transaction(async (tx) => {
 		const [agent] = await tx
 			.insert(agents)
@@ -117,8 +188,11 @@ export async function createAgent(input: CreateAgentInput) {
 				slug,
 				description: description || null,
 				createdById: userId,
-				visibility: "private",
+				visibility: sharingMode === "marketplace" ? "public" : "private",
 				sourceType: "custom",
+				sharingMode,
+				shareTargetUserId,
+				...curated,
 			})
 			.returning();
 
@@ -154,7 +228,7 @@ export async function createAgent(input: CreateAgentInput) {
 		resourceType: "agent",
 		resourceId: agent.id,
 		outcome: "success",
-		metadata: { name, slug },
+		metadata: { name, slug, sharingMode },
 	});
 
 	await insertToolBindingsForVersion(version.id, toolBindings ?? []);
@@ -182,12 +256,56 @@ export async function getAgentById(
 	return agent || null;
 }
 
-export async function listAgents(workspaceId: string) {
+export async function getVisibleAgentById(
+	agentId: string,
+	workspaceId: string,
+	userId: string,
+	canAdminCurate: boolean,
+) {
+	const agent = await getAgentById(agentId, workspaceId);
+	if (!agent) return null;
+	if (canAdminCurate || canUseAgent(agent, userId)) return agent;
+	return null;
+}
+
+export async function listAgents(
+	workspaceId: string,
+	userId: string,
+	canAdminCurate: boolean,
+) {
+	const visibilityFilter = canAdminCurate
+		? undefined
+		: or(
+				eq(agents.createdById, userId),
+				eq(agents.isGlobal, true),
+				eq(agents.sharingMode, "marketplace"),
+				and(
+					eq(agents.sharingMode, "specific_user"),
+					eq(agents.shareTargetUserId, userId),
+				),
+			);
+
 	return db
 		.select()
 		.from(agents)
-		.where(and(eq(agents.workspaceId, workspaceId), isNull(agents.archivedAt)))
+		.where(
+			and(
+				eq(agents.workspaceId, workspaceId),
+				isNull(agents.archivedAt),
+				visibilityFilter,
+			),
+		)
 		.orderBy(sql`${agents.updatedAt} DESC`);
+}
+
+export function canUseAgent(agent: AgentRow, userId: string) {
+	return (
+		agent.createdById === userId ||
+		agent.isGlobal ||
+		agent.sharingMode === "marketplace" ||
+		(agent.sharingMode === "specific_user" &&
+			agent.shareTargetUserId === userId)
+	);
 }
 
 async function getActiveVersionConfig(
@@ -218,6 +336,12 @@ export async function updateAgent(input: UpdateAgentInput) {
 		topP,
 		maxOutputTokens,
 		toolBindings,
+		sharingMode,
+		shareTargetEmail,
+		isGlobal,
+		isRecommended,
+		curationLabel,
+		canAdminCurate,
 	} = input;
 
 	const [existing] = await db
@@ -230,11 +354,40 @@ export async function updateAgent(input: UpdateAgentInput) {
 		throw new Error("Agent not found");
 	}
 
+	if (existing.createdById !== userId && !canAdminCurate) {
+		throw new Error("Only the creator or an admin can update this agent");
+	}
+
+	const nextShareTargetUserId =
+		sharingMode === "specific_user"
+			? await requireShareTargetUserId(shareTargetEmail)
+			: sharingMode
+				? null
+				: existing.shareTargetUserId;
+
 	const { agent, version } = await db.transaction(async (tx) => {
 		const agentUpdates: Record<string, unknown> = { updatedAt: new Date() };
 		if (name !== undefined) agentUpdates.name = name;
 		if (slug !== undefined) agentUpdates.slug = slug;
 		if (description !== undefined) agentUpdates.description = description;
+		if (sharingMode !== undefined) {
+			agentUpdates.sharingMode = sharingMode;
+			agentUpdates.shareTargetUserId = nextShareTargetUserId;
+			agentUpdates.visibility =
+				sharingMode === "marketplace" ? "public" : "private";
+		}
+		if (canAdminCurate) {
+			if (isGlobal !== undefined) agentUpdates.isGlobal = isGlobal;
+			if (isRecommended !== undefined) {
+				agentUpdates.isRecommended = isRecommended;
+			}
+			if (curationLabel !== undefined || isRecommended !== undefined) {
+				agentUpdates.curationLabel = normalizeCurationLabel(
+					curationLabel,
+					isRecommended ?? existing.isRecommended,
+				);
+			}
+		}
 
 		if (Object.keys(agentUpdates).length > 1) {
 			await tx.update(agents).set(agentUpdates).where(eq(agents.id, agentId));
@@ -343,7 +496,10 @@ export async function updateAgent(input: UpdateAgentInput) {
 		resourceType: "agent",
 		resourceId: agentId,
 		outcome: "success",
-		metadata: { versionNumber: version.versionNumber },
+		metadata: {
+			versionNumber: version.versionNumber,
+			sharingMode: sharingMode ?? existing.sharingMode,
+		},
 	});
 
 	if (toolBindings) {
@@ -364,6 +520,7 @@ export async function archiveAgent(
 	agentId: string,
 	workspaceId: string,
 	userId: string,
+	canAdminCurate = false,
 ) {
 	const [existing] = await db
 		.select()
@@ -373,6 +530,10 @@ export async function archiveAgent(
 
 	if (!existing) {
 		throw new Error("Agent not found");
+	}
+
+	if (existing.createdById !== userId && !canAdminCurate) {
+		throw new Error("Only the creator or an admin can delete this agent");
 	}
 
 	await db
@@ -555,7 +716,10 @@ export async function getConversationMessages(conversationId: string) {
 
 		const decryptedParts: Array<{ type: string; content: string }> = [];
 		for (const part of parts) {
-			if (part.type === "text" && part.contentEncrypted) {
+			if (
+				(part.type === "text" || part.type === "reasoning") &&
+				part.contentEncrypted
+			) {
 				try {
 					const content = await decryptValue(part.contentEncrypted);
 					decryptedParts.push({ type: part.type, content });

@@ -4,9 +4,11 @@ import { logger } from "@/lib/logger";
 import { getSession } from "@/modules/auth/session";
 import {
 	getAgentById,
+	getVisibleAgentById,
 	getActiveVersion,
 	updateAgent,
 } from "@/modules/agent/use-cases";
+import { isAdminRole } from "@/modules/admin/use-cases";
 import {
 	getToolBindingsForVersion,
 	toolBindingInputSchema,
@@ -55,7 +57,12 @@ export async function GET(
 			);
 		}
 
-		const agent = await getAgentById(agentId, workspaceId);
+		const agent = await getVisibleAgentById(
+			agentId,
+			workspaceId,
+			session.user.id,
+			isAdminRole(session.user.role),
+		);
 		if (!agent) {
 			return NextResponse.json({ error: "Agent not found" }, { status: 404 });
 		}
@@ -140,6 +147,7 @@ export async function PUT(
 			agentId,
 			workspaceId,
 			userId: session.user.id,
+			canAdminCurate: isAdminRole(session.user.role),
 			toolBindings: parsedBody.data.bindings,
 		});
 

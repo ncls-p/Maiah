@@ -80,7 +80,10 @@ export default function MarketplacePage() {
 		]);
 		if (!itemRes.ok) throw new Error("Failed to load marketplace");
 		setItems(await itemRes.json());
-		if (agentRes && agentRes.ok) setAgents(await agentRes.json());
+		if (agentRes && agentRes.ok) {
+			const agentData = await agentRes.json();
+			setAgents(Array.isArray(agentData) ? agentData : agentData.agents);
+		}
 	}, [workspaceId]);
 
 	useEffect(() => {

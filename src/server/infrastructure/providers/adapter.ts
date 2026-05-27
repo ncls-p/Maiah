@@ -24,6 +24,8 @@ export interface ModelCapability {
 export interface ModelDescriptor {
 	modelId: string;
 	displayName?: string;
+	description?: string;
+	hostedBy?: string;
 	capabilities: ModelCapability;
 	contextWindow?: number;
 	maxOutputTokens?: number;

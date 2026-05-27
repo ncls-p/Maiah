@@ -1,6 +1,6 @@
 "use client";
 
-import { type SyntheticEvent, useState } from "react";
+import { type SyntheticEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { UserPlusIcon } from "lucide-react";
@@ -31,9 +31,28 @@ export default function SignUpPage() {
 	const [password, setPassword] = useState("");
 	const [error, setError] = useState("");
 	const [loading, setLoading] = useState(false);
+	const [registrationClosed, setRegistrationClosed] = useState(false);
+
+	useEffect(() => {
+		let cancelled = false;
+		queueMicrotask(() => {
+			void fetch("/api/admin/settings")
+				.then((res) => res.json())
+				.then((data) => {
+					if (!cancelled) setRegistrationClosed(data.canPublicSignUp === false);
+				})
+				.catch(() => {
+					if (!cancelled) setRegistrationClosed(false);
+				});
+		});
+		return () => {
+			cancelled = true;
+		};
+	}, []);
 
 	async function handleSubmit(event: SyntheticEvent<HTMLFormElement>) {
 		event.preventDefault();
+		if (registrationClosed) return;
 		setError("");
 		setLoading(true);
 
@@ -73,89 +92,98 @@ export default function SignUpPage() {
 						<CardHeader className="gap-2 px-5 pt-5">
 							<div className="section-kicker">Account</div>
 							<CardTitle className="text-2xl">
-								Create your AI Hub account
+								{registrationClosed
+									? "Registration is closed"
+									: "Create your AI Hub account"}
 							</CardTitle>
 							<CardDescription>
-								It only takes a minute. Use your work email to prepare for team
-								collaboration.
+								{registrationClosed
+									? "Ask an admin to create an account for you."
+									: "Create an account to start your workspace."}
 							</CardDescription>
 						</CardHeader>
 						<CardContent className="px-5 pb-5">
-							<form onSubmit={handleSubmit}>
-								<FieldGroup className="gap-4">
-									{error ? (
-										<Alert variant="destructive" aria-live="polite">
-											<AlertTitle>
-												We couldn&apos;t create your account
-											</AlertTitle>
-											<AlertDescription>{error}</AlertDescription>
-										</Alert>
-									) : null}
+							{registrationClosed ? (
+								<Button asChild className="w-full" size="lg">
+									<Link href="/auth/signin">Go to sign in</Link>
+								</Button>
+							) : (
+								<form onSubmit={handleSubmit}>
+									<FieldGroup className="gap-4">
+										{error ? (
+											<Alert variant="destructive" aria-live="polite">
+												<AlertTitle>
+													We couldn&apos;t create your account
+												</AlertTitle>
+												<AlertDescription>{error}</AlertDescription>
+											</Alert>
+										) : null}
 
-									<Field>
-										<FieldLabel htmlFor="name">Full name</FieldLabel>
-										<FieldContent>
-											<Input
-												id="name"
-												type="text"
-												autoComplete="name"
-												required
-												value={name}
-												onChange={(event) => setName(event.target.value)}
-												placeholder="Example: Avery Chen"
-											/>
-										</FieldContent>
-									</Field>
+										<Field>
+											<FieldLabel htmlFor="name">Full name</FieldLabel>
+											<FieldContent>
+												<Input
+													id="name"
+													type="text"
+													autoComplete="name"
+													required
+													value={name}
+													onChange={(event) => setName(event.target.value)}
+													placeholder="Example: Avery Chen"
+												/>
+											</FieldContent>
+										</Field>
 
-									<Field>
-										<FieldLabel htmlFor="email">Email</FieldLabel>
-										<FieldContent>
-											<Input
-												id="email"
-												type="email"
-												autoComplete="email"
-												required
-												value={email}
-												onChange={(event) => setEmail(event.target.value)}
-												placeholder="you@company.com"
-											/>
-										</FieldContent>
-									</Field>
+										<Field>
+											<FieldLabel htmlFor="email">Email</FieldLabel>
+											<FieldContent>
+												<Input
+													id="email"
+													type="email"
+													autoComplete="email"
+													required
+													value={email}
+													onChange={(event) => setEmail(event.target.value)}
+													placeholder="you@company.com"
+												/>
+											</FieldContent>
+										</Field>
 
-									<Field>
-										<FieldLabel htmlFor="password">Password</FieldLabel>
-										<FieldContent>
-											<Input
-												id="password"
-												type="password"
-												autoComplete="new-password"
-												required
-												minLength={8}
-												value={password}
-												onChange={(event) => setPassword(event.target.value)}
-												placeholder="Pick a password (at least 8 characters)"
-											/>
-										</FieldContent>
-									</Field>
+										<Field>
+											<FieldLabel htmlFor="password">Password</FieldLabel>
+											<FieldContent>
+												<Input
+													id="password"
+													type="password"
+													autoComplete="new-password"
+													required
+													minLength={8}
+													value={password}
+													onChange={(event) => setPassword(event.target.value)}
+													placeholder="Pick a password (at least 8 characters)"
+												/>
+											</FieldContent>
+										</Field>
 
-									<Button
-										type="submit"
-										size="lg"
-										className="w-full"
-										disabled={loading}
-									>
-										{loading ? (
-											<Spinner data-icon="inline-start" />
-										) : (
-											<UserPlusIcon
-												data-icon="inline-start"
-												aria-hidden="true"
-											/>
-										)}
-										Create account
-									</Button>
-								</FieldGroup>
-							</form>
+										<Button
+											type="submit"
+											size="lg"
+											className="w-full"
+											disabled={loading}
+										>
+											{loading ? (
+												<Spinner data-icon="inline-start" />
+											) : (
+												<UserPlusIcon
+													data-icon="inline-start"
+													aria-hidden="true"
+												/>
+											)}
+											Create account
+										</Button>
+									</FieldGroup>
+								</form>
+							)}
 						</CardContent>
 					</Card>
 				</div>

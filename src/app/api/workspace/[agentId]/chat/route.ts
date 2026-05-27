@@ -5,11 +5,13 @@ import { decryptValue, encryptValue } from "@/lib/crypto";
 import { logger } from "@/lib/logger";
 import { getSession } from "@/modules/auth/session";
 import {
+	canUseAgent,
 	getActiveVersion,
 	getAgentVersionById,
 	recordUsageEvent,
 	resolveProviderForVersion,
 } from "@/modules/agent/use-cases";
+import { isAdminRole } from "@/modules/admin/use-cases";
 import { getBuiltInTool, requiresApproval } from "@/modules/tool/builtin-tools";
 import {
 	canExecuteRestrictedTool,
@@ -26,7 +28,14 @@ import {
 	messages,
 } from "@/server/infrastructure/db/schema";
 import { getAdapter } from "@/server/infrastructure/providers";
-import { stepCountIs, streamText, type ModelMessage, type ToolSet } from "ai";
+import {
+	extractReasoningMiddleware,
+	stepCountIs,
+	streamText,
+	wrapLanguageModel,
+	type ModelMessage,
+	type ToolSet,
+} from "ai";
 
 const chatRequestSchema = z.object({
 	content: z.string().trim().min(1).max(32_000),
@@ -237,6 +246,12 @@ export async function POST(
 		if (!agent) {
 			return NextResponse.json({ error: "Agent not found" }, { status: 404 });
 		}
+		if (
+			!isAdminRole(session.user.role) &&
+			!canUseAgent(agent, session.user.id)
+		) {
+			return NextResponse.json({ error: "Agent not found" }, { status: 404 });
+		}
 
 		const permission = await authorization.requirePermission(
 			{ principalType: "user", principalId: session.user.id },
@@ -344,10 +359,13 @@ export async function POST(
 		assistantMessageId = assistantMessage.id;
 
 		const adapter = getAdapter(providerConfig.providerKind);
-		const model = adapter.createChatModel(
-			providerConfig.runtimeConfig,
-			providerConfig.modelId,
-		);
+		const model = wrapLanguageModel({
+			model: adapter.createChatModel(
+				providerConfig.runtimeConfig,
+				providerConfig.modelId,
+			),
+			middleware: extractReasoningMiddleware({ tagName: "think" }),
+		});
 		const history = await loadConversationHistory(conversation.id);
 		const tools = await buildBoundTools({
 			agentVersionId: version.id,
@@ -358,6 +376,7 @@ export async function POST(
 		});
 		const startedAt = Date.now();
 		let assistantText = "";
+		let reasoningText = "";
 
 		const result = streamText({
 			model,
@@ -373,6 +392,9 @@ export async function POST(
 			onChunk({ chunk }) {
 				if (chunk.type === "text-delta") {
 					assistantText += chunk.text;
+				}
+				if (chunk.type === "reasoning-delta") {
+					reasoningText += chunk.text;
 				}
 			},
 			async onStepFinish({ toolCalls, toolResults }) {
@@ -397,13 +419,22 @@ export async function POST(
 				}
 			},
 			async onFinish({ totalUsage }) {
-				const encryptedAssistantContent = await encryptValue(assistantText);
-				await db.insert(messageParts).values({
+				const partsToInsert = [];
+				if (reasoningText.trim()) {
+					partsToInsert.push({
+						messageId: assistantMessage.id,
+						type: "reasoning" as const,
+						contentEncrypted: await encryptValue(reasoningText),
+						sortOrder: -10,
+					});
+				}
+				partsToInsert.push({
 					messageId: assistantMessage.id,
-					type: "text",
-					contentEncrypted: encryptedAssistantContent,
+					type: "text" as const,
+					contentEncrypted: await encryptValue(assistantText),
 					sortOrder: 0,
 				});
+				await db.insert(messageParts).values(partsToInsert);
 
 				await db
 					.update(messages)
@@ -455,8 +486,50 @@ export async function POST(
 			},
 		});
 
-		return result.toTextStreamResponse({
+		const encoder = new TextEncoder();
+		const stream = new ReadableStream({
+			async start(controller) {
+				function enqueue(event: Record<string, unknown>) {
+					controller.enqueue(
+						encoder.encode(`data: ${JSON.stringify(event)}\n\n`),
+					);
+				}
+
+				try {
+					for await (const part of result.fullStream) {
+						if (part.type === "text-delta") {
+							enqueue({ type: "text", delta: part.text });
+						}
+						if (part.type === "reasoning-delta") {
+							enqueue({ type: "reasoning", delta: part.text });
+						}
+						if (part.type === "error") {
+							enqueue({
+								type: "error",
+								error:
+									part.error instanceof Error
+										? part.error.message
+										: String(part.error),
+							});
+						}
+					}
+				} catch (error) {
+					enqueue({
+						type: "error",
+						error: error instanceof Error ? error.message : String(error),
+					});
+				} finally {
+					controller.close();
+				}
+			},
+		});
+
+		return new Response(stream, {
 			headers: {
+				"Content-Type": "text/event-stream; charset=utf-8",
+				"Cache-Control": "no-cache, no-transform",
+				Connection: "keep-alive",
+				"X-Accel-Buffering": "no",
 				"X-Conversation-Id": conversation.id,
 				"X-Message-Id": assistantMessage.id,
 			},

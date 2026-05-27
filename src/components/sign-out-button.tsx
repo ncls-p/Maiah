@@ -18,6 +18,8 @@ export function SignOutButton() {
 		try {
 			const response = await fetch("/api/auth/sign-out", {
 				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({}),
 			});
 
 			if (!response.ok) throw new Error("Sign out failed");

@@ -73,6 +73,13 @@ function textFromMessage(message: ChatMessage) {
 		.join("\n");
 }
 
+function reasoningFromMessage(message: ChatMessage) {
+	return message.parts
+		.filter((part) => part.type === "reasoning")
+		.map((part) => part.content)
+		.join("\n");
+}
+
 function toolPartsFromMessage(message: ChatMessage) {
 	return message.parts.filter(
 		(part) => part.type === "tool-call" || part.type === "tool-result",
@@ -98,11 +105,50 @@ function createLocalMessage(
 	content: string,
 ): ChatMessage {
 	return {
-		id: typeof crypto !== "undefined" ? crypto.randomUUID() : `${Date.now()}`,
+		id:
+			typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+				? crypto.randomUUID()
+				: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
 		role,
 		status: role === "assistant" ? "streaming" : "completed",
 		parts: [{ type: "text", content }],
 	};
+}
+
+type ChatStreamEvent =
+	| { type: "text" | "reasoning"; delta: string }
+	| { type: "error"; error: string };
+
+function appendMessagePart(
+	parts: ChatMessage["parts"],
+	type: "text" | "reasoning",
+	delta: string,
+) {
+	const nextParts = [...parts];
+	const existingIndex = nextParts.findIndex((part) => part.type === type);
+
+	if (existingIndex === -1) {
+		return [...nextParts, { type, content: delta }];
+	}
+
+	nextParts[existingIndex] = {
+		...nextParts[existingIndex],
+		content: `${nextParts[existingIndex].content}${delta}`,
+	};
+	return nextParts;
+}
+
+function isChatStreamEvent(value: unknown): value is ChatStreamEvent {
+	if (typeof value !== "object" || value === null || !("type" in value)) {
+		return false;
+	}
+
+	const event = value as { type?: unknown; delta?: unknown; error?: unknown };
+	return (
+		((event.type === "text" || event.type === "reasoning") &&
+			typeof event.delta === "string") ||
+		(event.type === "error" && typeof event.error === "string")
+	);
 }
 
 export default function ChatPage() {
@@ -168,7 +214,10 @@ export default function ChatPage() {
 					},
 				);
 				if (!res.ok) throw new Error("Failed to load agents");
-				const data = (await res.json()) as Agent[];
+				const response = await res.json();
+				const data = (
+					Array.isArray(response) ? response : response.agents
+				) as Agent[];
 				if (cancelled) return;
 
 				setAgents(data);
@@ -304,6 +353,8 @@ export default function ChatPage() {
 		setInput("");
 		setSending(true);
 
+		let newConversationId: string | null = null;
+
 		try {
 			const res = await fetch(`/api/workspace/${selectedAgentId}/chat`, {
 				method: "POST",
@@ -321,43 +372,73 @@ export default function ChatPage() {
 
 			const conversationId = res.headers.get("X-Conversation-Id");
 			if (conversationId && !activeConversationId) {
-				setActiveConversationId(conversationId);
+				newConversationId = conversationId;
 			}
 
 			const reader = res.body.getReader();
 			const decoder = new TextDecoder();
-			let assistantText = "";
+			let buffer = "";
 
-			while (true) {
-				const { done, value } = await reader.read();
-				if (done) break;
-				assistantText += decoder.decode(value, { stream: true });
+			function handleStreamEvent(eventText: string) {
+				if (!eventText.trim()) return;
+
+				const data = eventText
+					.split("\n")
+					.map((line) => line.trimEnd())
+					.filter((line) => line.startsWith("data:"))
+					.map((line) => line.slice("data:".length).trimStart())
+					.join("\n");
+				const payload = data || eventText.trim();
+				const parsed = JSON.parse(payload) as unknown;
+				if (!isChatStreamEvent(parsed)) return;
+
+				if (parsed.type === "error") {
+					throw new Error(parsed.error);
+				}
+
 				setMessages((current) =>
 					current.map((message) =>
 						message.id === assistantMessage.id
 							? {
 									...message,
-									parts: [{ type: "text", content: assistantText }],
+									parts: appendMessagePart(
+										message.parts,
+										parsed.type,
+										parsed.delta,
+									),
 								}
 							: message,
 					),
 				);
 			}
 
-			assistantText += decoder.decode();
+			while (true) {
+				const { done, value } = await reader.read();
+				if (done) break;
+
+				buffer += decoder.decode(value, { stream: true });
+				const events = buffer.split("\n\n");
+				buffer = events.pop() ?? "";
+				for (const streamEvent of events) {
+					handleStreamEvent(streamEvent);
+				}
+			}
+
+			buffer += decoder.decode();
+			if (buffer.trim()) handleStreamEvent(buffer);
+
 			setMessages((current) =>
 				current.map((message) =>
 					message.id === assistantMessage.id
-						? {
-								...message,
-								status: "completed",
-								parts: [{ type: "text", content: assistantText }],
-							}
+						? { ...message, status: "completed" }
 						: message,
 				),
 			);
 
 			await refreshConversations(selectedAgentId);
+			if (newConversationId) {
+				setActiveConversationId(newConversationId);
+			}
 		} catch (err) {
 			toast.error(err instanceof Error ? err.message : "Chat request failed");
 			setMessages((current) =>
@@ -549,6 +630,7 @@ export default function ChatPage() {
 						) : (
 							messages.map((message, index) => {
 								const content = textFromMessage(message);
+								const reasoning = reasoningFromMessage(message);
 								const isAssistant = message.role === "assistant";
 								return (
 									<article
@@ -568,6 +650,19 @@ export default function ChatPage() {
 										>
 											{isAssistant ? (
 												<div className="flex flex-col gap-2">
+													{reasoning ? (
+														<div className="rounded-lg border border-border/70 bg-muted/35 px-3 py-2 text-xs">
+															<div className="font-medium text-muted-foreground">
+																Thinking
+															</div>
+															<Streamdown
+																plugins={{ code }}
+																className="mt-2 text-xs leading-5 text-muted-foreground"
+															>
+																{reasoning}
+															</Streamdown>
+														</div>
+													) : null}
 													{toolPartsFromMessage(message).map(
 														(part, partIndex) => (
 															<div
@@ -583,18 +678,20 @@ export default function ChatPage() {
 															</div>
 														),
 													)}
-													<Streamdown
-														plugins={{ code }}
-														caret="block"
-														isAnimating={
-															sending &&
-															index === messages.length - 1 &&
-															message.status === "streaming"
-														}
-														className="text-sm"
-													>
-														{content || "Thinking..."}
-													</Streamdown>
+													{content || !reasoning ? (
+														<Streamdown
+															plugins={{ code }}
+															caret="block"
+															isAnimating={
+																sending &&
+																index === messages.length - 1 &&
+																message.status === "streaming"
+															}
+															className="text-sm"
+														>
+															{content || "Thinking..."}
+														</Streamdown>
+													) : null}
 												</div>
 											) : (
 												content

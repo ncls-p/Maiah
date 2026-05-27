@@ -1,11 +1,9 @@
-import { PlusIcon, PlugZapIcon } from "lucide-react";
+import { PlugZapIcon } from "lucide-react";
 
 import { ProviderManager } from "@/components/providers/provider-manager";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
 	Empty,
-	EmptyContent,
 	EmptyDescription,
 	EmptyHeader,
 	EmptyMedia,
@@ -59,16 +57,10 @@ export default async function ProvidersPage() {
 						<EmptyDescription>
 							Create a workspace before configuring providers.
 						</EmptyDescription>
-					</EmptyHeader>
-					<EmptyContent>
-						<Button type="button" disabled>
-							<PlusIcon data-icon="inline-start" aria-hidden="true" />
-							Workspace setup coming next
-						</Button>
-					</EmptyContent>
-				</Empty>
-			</div>
-		);
+				</EmptyHeader>
+			</Empty>
+		</div>
+	);
 	}
 
 	const providers = await listProviders(workspace.id);

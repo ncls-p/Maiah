@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getSession } from "@/modules/auth/session";
 import {
-	getAgentById,
+	getVisibleAgentById,
 	getAgentVersions,
 	getAgentVersionById,
 } from "@/modules/agent/use-cases";
+import { isAdminRole } from "@/modules/admin/use-cases";
 import { authorization } from "@/server/domain/services/authorization";
 import { logger } from "@/lib/logger";
 
@@ -49,7 +50,12 @@ export async function GET(
 			);
 		}
 
-		const agent = await getAgentById(agentId, workspaceId);
+		const agent = await getVisibleAgentById(
+			agentId,
+			workspaceId,
+			session.user.id,
+			isAdminRole(session.user.role),
+		);
 		if (!agent) {
 			return NextResponse.json({ error: "Agent not found" }, { status: 404 });
 		}

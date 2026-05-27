@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { AppShell } from "@/components/app-shell";
+import { ensureBootstrapAdmin, isAdminRole } from "@/modules/admin/use-cases";
 import { getSession } from "@/modules/auth/session";
 import {
 	createWorkspace,
@@ -58,8 +59,15 @@ export default async function WorkspaceLayout({
 	const session = await getSession();
 	if (!session) redirect("/auth/signin");
 
+	const bootstrappedAdminId = await ensureBootstrapAdmin();
 	await ensureDefaultWorkspace(session.user);
 	const displayName = session.user.name || session.user.email;
+	const isAdmin =
+		isAdminRole(session.user.role) || bootstrappedAdminId === session.user.id;
 
-	return <AppShell displayName={displayName}>{children}</AppShell>;
+	return (
+		<AppShell displayName={displayName} isAdmin={isAdmin}>
+			{children}
+		</AppShell>
+	);
 }

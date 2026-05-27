@@ -63,7 +63,7 @@ export async function GET(
 		const permission = await requirePermission(
 			session.user.id,
 			workspaceId,
-			action === "discover" ? "providerModels.sync" : "models.view",
+			action === "discover" ? "models.sync" : "models.view",
 		);
 		if (!permission.granted) {
 			return NextResponse.json(

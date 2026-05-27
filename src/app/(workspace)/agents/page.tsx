@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
 	Card,
 	CardContent,
@@ -36,6 +37,10 @@ interface Agent {
 	slug: string;
 	description: string | null;
 	activeVersionId: string | null;
+	sharingMode: "personal" | "marketplace" | "specific_user";
+	isGlobal: boolean;
+	isRecommended: boolean;
+	curationLabel: string | null;
 	createdAt: string;
 	updatedAt: string;
 }
@@ -69,25 +74,24 @@ function useWorkspaceId() {
 	return workspaceId;
 }
 
-async function fetchAgents(
-	workspaceId: string,
-	signal?: AbortSignal,
-): Promise<Agent[]> {
-	const res = await fetch(`/api/workspace/agents?workspaceId=${workspaceId}`, {
-		signal,
-	});
-	if (!res.ok) throw new Error("Failed to fetch agents");
-	return res.json();
-}
-
 export default function AgentsPage() {
 	const router = useRouter();
 	const workspaceId = useWorkspaceId();
 	const [agents, setAgents] = useState<Agent[]>([]);
 	const [loading, setLoading] = useState(true);
+	const [canAdminCurate, setCanAdminCurate] = useState(false);
 	const [showCreateDialog, setShowCreateDialog] = useState(false);
 	const [creating, setCreating] = useState(false);
-	const [form, setForm] = useState({ name: "", slug: "", description: "" });
+	const [form, setForm] = useState({
+		name: "",
+		slug: "",
+		description: "",
+		sharingMode: "personal" as Agent["sharingMode"],
+		shareTargetEmail: "",
+		isGlobal: false,
+		isRecommended: false,
+		curationLabel: "none",
+	});
 	const abortRef = useRef<AbortController | null>(null);
 
 	const refreshAgents = async () => {
@@ -95,8 +99,13 @@ export default function AgentsPage() {
 		abortRef.current?.abort();
 		abortRef.current = new AbortController();
 		try {
-			const data = await fetchAgents(workspaceId, abortRef.current.signal);
-			setAgents(data);
+			const res = await fetch(`/api/workspace/agents?workspaceId=${workspaceId}`, {
+				signal: abortRef.current.signal,
+			});
+			if (!res.ok) throw new Error("Failed to fetch agents");
+			const data = await res.json();
+			setAgents(Array.isArray(data) ? data : data.agents);
+			setCanAdminCurate(Boolean(data.canAdminCurate));
 		} catch (err) {
 			if (err instanceof Error && err.name !== "AbortError") {
 				console.error("Failed to load agents", err);
@@ -114,8 +123,16 @@ export default function AgentsPage() {
 
 		async function loadInitialAgents() {
 			try {
-				const data = await fetchAgents(currentWorkspaceId, controller.signal);
-				if (!cancelled) setAgents(data);
+				const res = await fetch(
+					`/api/workspace/agents?workspaceId=${currentWorkspaceId}`,
+					{ signal: controller.signal },
+				);
+				if (!res.ok) throw new Error("Failed to load agents");
+				const data = await res.json();
+				if (!cancelled) {
+					setAgents(Array.isArray(data) ? data : data.agents);
+					setCanAdminCurate(Boolean(data.canAdminCurate));
+				}
 			} catch (err) {
 				if (err instanceof Error && err.name !== "AbortError") {
 					console.error("Failed to load agents", err);
@@ -147,6 +164,14 @@ export default function AgentsPage() {
 						.replace(/[^a-z0-9-]/g, "-"),
 					description: form.description.trim() || undefined,
 					workspaceId,
+					sharingMode: form.sharingMode,
+					shareTargetEmail:
+						form.sharingMode === "specific_user"
+							? form.shareTargetEmail.trim()
+							: undefined,
+					isGlobal: canAdminCurate ? form.isGlobal : undefined,
+					isRecommended: canAdminCurate ? form.isRecommended : undefined,
+					curationLabel: canAdminCurate ? form.curationLabel : undefined,
 				}),
 			});
 
@@ -157,7 +182,16 @@ export default function AgentsPage() {
 
 			toast.success("Agent created");
 			setShowCreateDialog(false);
-			setForm({ name: "", slug: "", description: "" });
+			setForm({
+				name: "",
+				slug: "",
+				description: "",
+				sharingMode: "personal",
+				shareTargetEmail: "",
+				isGlobal: false,
+				isRecommended: false,
+				curationLabel: "none",
+			});
 			await refreshAgents();
 		} catch (err) {
 			toast.error(
@@ -275,6 +309,79 @@ export default function AgentsPage() {
 									}
 								/>
 							</div>
+							<div className="flex flex-col gap-2">
+								<Label htmlFor="agent-sharing">Access</Label>
+								<select
+									id="agent-sharing"
+									className="h-11 rounded-xl border border-input bg-background px-3 text-sm"
+									value={form.sharingMode}
+									onChange={(e) =>
+										setForm({
+											...form,
+											sharingMode: e.target.value as Agent["sharingMode"],
+										})
+									}
+								>
+									<option value="personal">Personal</option>
+									<option value="marketplace">Marketplace</option>
+									<option value="specific_user">Specific user</option>
+								</select>
+							</div>
+							{form.sharingMode === "specific_user" ? (
+								<div className="flex flex-col gap-2">
+									<Label htmlFor="agent-share-email">User email</Label>
+									<Input
+										id="agent-share-email"
+										type="email"
+										value={form.shareTargetEmail}
+										onChange={(e) =>
+											setForm({ ...form, shareTargetEmail: e.target.value })
+										}
+									/>
+								</div>
+							) : null}
+							{canAdminCurate ? (
+								<div className="rounded-xl border border-border/70 p-3">
+									<div className="flex flex-col gap-2 text-sm">
+										<label className="flex items-center gap-2">
+											<input
+												type="checkbox"
+												checked={form.isGlobal}
+												onChange={(e) =>
+													setForm({ ...form, isGlobal: e.target.checked })
+												}
+											/>
+											Global
+										</label>
+										<label className="flex items-center gap-2">
+											<input
+												type="checkbox"
+												checked={form.isRecommended}
+												onChange={(e) =>
+													setForm({
+														...form,
+														isRecommended: e.target.checked,
+													})
+												}
+											/>
+											Recommended
+										</label>
+										<select
+											className="h-10 rounded-xl border border-input bg-background px-3"
+											value={form.curationLabel}
+											onChange={(e) =>
+												setForm({ ...form, curationLabel: e.target.value })
+											}
+										>
+											<option value="none">No label</option>
+											<option value="recommended">Recommended</option>
+											<option value="organization_created">
+												Organization created
+											</option>
+										</select>
+									</div>
+								</div>
+							) : null}
 							<div className="flex justify-end gap-2 pt-2">
 								<Button
 									variant="outline"
@@ -284,7 +391,13 @@ export default function AgentsPage() {
 								</Button>
 								<Button
 									onClick={handleCreate}
-									disabled={creating || !form.name.trim() || !form.slug.trim()}
+									disabled={
+										creating ||
+										!form.name.trim() ||
+										!form.slug.trim() ||
+										(form.sharingMode === "specific_user" &&
+											!form.shareTargetEmail.trim())
+									}
 								>
 									{creating ? (
 										<>
@@ -360,6 +473,22 @@ export default function AgentsPage() {
 										{agent.description}
 									</CardDescription>
 								)}
+								<div className="mt-3 flex flex-wrap gap-2">
+									<Badge variant="outline">
+										{agent.sharingMode === "specific_user"
+											? "Shared"
+											: agent.sharingMode === "marketplace"
+												? "Marketplace"
+												: "Personal"}
+									</Badge>
+									{agent.isGlobal ? <Badge variant="secondary">Global</Badge> : null}
+									{agent.isRecommended ? (
+										<Badge variant="secondary">Recommended</Badge>
+									) : null}
+									{agent.curationLabel === "organization_created" ? (
+										<Badge variant="secondary">Organization created</Badge>
+									) : null}
+								</div>
 							</CardHeader>
 							<CardContent>
 								<div className="flex items-center justify-between text-xs text-muted-foreground">
