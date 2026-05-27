@@ -378,6 +378,12 @@ export function AppShell({ children, displayName, isAdmin }: AppShellProps) {
 				data-page="app-shell"
 				className="flex h-svh min-h-svh flex-col bg-muted/20 text-foreground"
 			>
+				<a
+					href="#workspace-main"
+					className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-full focus:border focus:border-border/70 focus:bg-background focus:px-3 focus:py-2 focus:text-sm focus:shadow-lg"
+				>
+					Skip to content
+				</a>
 				{!isChatRoute ? (
 					<header className="flex h-16 shrink-0 items-center justify-between border-b border-border/60 bg-background/85 px-4 shadow-sm shadow-foreground/5 backdrop-blur-xl">
 						<div className="flex min-w-0 items-center gap-3">
@@ -413,6 +419,8 @@ export function AppShell({ children, displayName, isAdmin }: AppShellProps) {
 					</header>
 				) : null}
 				<main
+					id="workspace-main"
+					tabIndex={-1}
 					className={cn(
 						"min-h-0 flex-1 overflow-y-auto",
 						isChatRoute && "overflow-hidden",

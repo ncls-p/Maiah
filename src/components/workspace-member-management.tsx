@@ -178,7 +178,7 @@ export function WorkspaceMemberManagement({
 			<CardHeader>
 				<CardTitle className="flex items-center gap-2">
 					<UsersIcon className="size-4" aria-hidden="true" />
-					Workspace members
+					Workspace Members
 				</CardTitle>
 				<CardDescription>
 					Invite existing accounts to this workspace. They will see the same
@@ -187,7 +187,7 @@ export function WorkspaceMemberManagement({
 			</CardHeader>
 			<CardContent className="flex flex-col gap-6">
 				<form
-					className="grid gap-3 sm:grid-cols-[1fr_auto_auto]"
+					className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_12rem_auto]"
 					onSubmit={(event) => void inviteMember(event)}
 				>
 					<div className="flex flex-col gap-2">
@@ -195,21 +195,22 @@ export function WorkspaceMemberManagement({
 						<Input
 							id="invite-email"
 							type="email"
-							placeholder="colleague@company.com"
+							autoComplete="email"
+							placeholder="colleague@company.com…"
 							value={email}
 							onChange={(event) => setEmail(event.target.value)}
 							required
 						/>
 					</div>
 					<div className="flex flex-col gap-2">
-						<Label>Role</Label>
+						<Label htmlFor="invite-role">Role</Label>
 						<Select
 							value={roleName}
 							onValueChange={(value) =>
 								setRoleName(value as typeof roleName)
 							}
 						>
-							<SelectTrigger>
+							<SelectTrigger id="invite-role">
 								<SelectValue />
 							</SelectTrigger>
 							<SelectContent>
@@ -222,11 +223,11 @@ export function WorkspaceMemberManagement({
 					<div className="flex items-end">
 						<Button type="submit" disabled={inviting}>
 							{inviting ? (
-								<Loader2 className="animate-spin" />
+								<Loader2 className="animate-spin" aria-hidden="true" />
 							) : (
 								<>
 									<UserPlusIcon data-icon="inline-start" aria-hidden="true" />
-									Invite
+									Invite Member
 								</>
 							)}
 						</Button>
@@ -254,6 +255,7 @@ export function WorkspaceMemberManagement({
 								</div>
 								<div className="flex shrink-0 items-center gap-2">
 									<Select
+										aria-label={`Role for ${member.name}`}
 										value={member.roleName}
 										onValueChange={(value) =>
 											void updateMemberRole(
@@ -282,9 +284,9 @@ export function WorkspaceMemberManagement({
 											aria-label={`Remove ${member.name}`}
 										>
 											{busyUserId === member.userId ? (
-												<Loader2 className="size-4 animate-spin" />
+												<Loader2 className="size-4 animate-spin" aria-hidden="true" />
 											) : (
-												<UserMinusIcon className="size-4" />
+												<UserMinusIcon aria-hidden="true" />
 											)}
 										</Button>
 									) : null}

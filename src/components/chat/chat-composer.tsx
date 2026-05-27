@@ -29,9 +29,11 @@ export function ChatComposer({
 			}}
 			className="shrink-0 border-t border-border/40 bg-background/80 p-3 shadow-[0_-16px_50px_-38px_color-mix(in_oklch,var(--foreground)_36%,transparent)] backdrop-blur-xl sm:p-4"
 		>
-			<div className="mx-auto flex w-full max-w-4xl items-end gap-2 rounded-2xl border border-border/70 bg-card/95 p-2 shadow-2xl shadow-foreground/10 transition-all focus-within:border-ring/70 focus-within:ring-4 focus-within:ring-ring/10">
+			<div className="mx-auto flex w-full max-w-4xl items-end gap-2 rounded-2xl border border-border/70 bg-card/95 p-2 shadow-2xl shadow-foreground/10 transition-[background-color,border-color,box-shadow] focus-within:border-ring/70 focus-within:ring-4 focus-within:ring-ring/10">
 				<Textarea
 					aria-label="Message"
+					name="message"
+					autoComplete="off"
 					value={input}
 					onChange={(event) => onInputChange(event.target.value)}
 					onKeyDown={(event) => {
@@ -41,7 +43,7 @@ export function ChatComposer({
 						}
 					}}
 					placeholder={
-						canChat ? "Message your assistant" : "Finish setup before chatting"
+						canChat ? "Message your assistant…" : "Finish setup before chatting…"
 					}
 					disabled={sending || !canChat}
 					rows={1}

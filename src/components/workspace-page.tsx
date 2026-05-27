@@ -31,25 +31,28 @@ export function WorkspacePage({
 	return (
 		<div
 			className={cn(
-				"mx-auto flex min-h-full w-full flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8",
+				"mx-auto flex min-h-full w-full flex-col gap-5 px-4 py-5 sm:gap-6 sm:px-6 sm:py-7",
 				widthClass[width],
 				className,
 			)}
 		>
-			<header className="flex flex-col justify-between gap-4 border-b border-border/60 pb-5 sm:flex-row sm:items-end">
+			<header className="grid gap-4 border-b border-border/60 pb-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
 				<div className="flex min-w-0 flex-col gap-2">
 					{kicker ? <div className="section-kicker">{kicker}</div> : null}
-					<h1 className="text-2xl font-semibold tracking-tight">
+					<h1 className="text-pretty text-2xl font-semibold tracking-tight">
 						{title}
 					</h1>
 					{description ? (
-						<p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+						<p className="max-w-2xl text-pretty text-sm leading-6 text-muted-foreground">
 							{description}
 						</p>
 					) : null}
 				</div>
 				{actions ? (
-					<div className="flex shrink-0 flex-wrap items-center gap-2">
+					<div
+						data-slot="workspace-page-actions"
+						className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:justify-end [&>[data-slot=button]]:w-full sm:[&>[data-slot=button]]:w-auto"
+					>
 						{actions}
 					</div>
 				) : null}

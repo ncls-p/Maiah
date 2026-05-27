@@ -26,8 +26,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
+	CardAction,
 	CardContent,
 	CardDescription,
+	CardFooter,
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
@@ -104,6 +106,7 @@ export function McpServerManager() {
 	);
 	const [loading, setLoading] = useState(true);
 	const [busy, setBusy] = useState(false);
+	const [showCreateForm, setShowCreateForm] = useState(false);
 	const [form, setForm] = useState(emptyForm);
 	const [editServer, setEditServer] = useState<McpServer | null>(null);
 	const [editForm, setEditForm] = useState(emptyForm);
@@ -165,6 +168,7 @@ export function McpServerManager() {
 			});
 			if (!res.ok) throw new Error((await res.json()).error || "Failed");
 			setForm(emptyForm);
+			setShowCreateForm(false);
 			toast.success("MCP server added");
 			await load();
 		} catch (error) {
@@ -312,104 +316,162 @@ export function McpServerManager() {
 
 	return (
 		<div className="flex flex-col gap-6">
-			<Card>
+			<Card size={showCreateForm ? "default" : "sm"}>
 				<CardHeader>
-					<CardTitle>Add MCP server</CardTitle>
+					<CardTitle>MCP servers</CardTitle>
 					<CardDescription>
-						Connect MCP servers with URL, API key headers, or stdio command.
+						Connect servers once, then sync tools and enable only what agents can use.
 					</CardDescription>
+					<CardAction>
+						<Button
+							type="button"
+							variant={showCreateForm ? "outline" : "default"}
+							size="sm"
+							onClick={() => setShowCreateForm((value) => !value)}
+						>
+							{showCreateForm ? (
+								"Cancel"
+							) : (
+								<>
+									<PlusIcon data-icon="inline-start" aria-hidden="true" />
+									Add Server
+								</>
+							)}
+						</Button>
+					</CardAction>
 				</CardHeader>
-				<CardContent className="grid gap-4">
-					<div className="grid gap-4 sm:grid-cols-2">
-						<div className="grid gap-2">
-							<Label>Name</Label>
-							<Input
-								value={form.name}
-								onChange={(e) => setForm({ ...form, name: e.target.value })}
-								placeholder="Company tools"
-							/>
-						</div>
-						<div className="grid gap-2">
-							<Label>Transport</Label>
-							<Select
-								value={form.transport}
-								onValueChange={(value) =>
-									setForm({ ...form, transport: value })
-								}
-							>
-								<SelectTrigger>
-									<SelectValue />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem value="streamable-http">Streamable HTTP</SelectItem>
-									<SelectItem value="sse">SSE</SelectItem>
-									<SelectItem value="stdio">stdio</SelectItem>
-								</SelectContent>
-							</Select>
-						</div>
-					</div>
-					{form.transport === "stdio" ? (
-						<>
-							<div className="grid gap-2">
-								<Label>Command</Label>
-								<Input
-									value={form.command}
-									onChange={(e) =>
-										setForm({ ...form, command: e.target.value })
-									}
-									placeholder="npx"
-								/>
+				{showCreateForm ? (
+					<>
+						<CardContent className="grid gap-4">
+							<div className="grid gap-4 sm:grid-cols-2">
+								<div className="grid gap-2">
+									<Label htmlFor="mcp-name">Name</Label>
+									<Input
+										id="mcp-name"
+										autoComplete="off"
+										value={form.name}
+										onChange={(e) => setForm({ ...form, name: e.target.value })}
+										placeholder="Company tools…"
+									/>
+								</div>
+								<div className="grid gap-2">
+									<Label htmlFor="mcp-transport">Transport</Label>
+									<Select
+										value={form.transport}
+										onValueChange={(value) =>
+											setForm({ ...form, transport: value })
+										}
+									>
+										<SelectTrigger id="mcp-transport">
+											<SelectValue />
+										</SelectTrigger>
+										<SelectContent>
+											<SelectItem value="streamable-http">
+												Streamable HTTP
+											</SelectItem>
+											<SelectItem value="sse">SSE</SelectItem>
+											<SelectItem value="stdio">stdio</SelectItem>
+										</SelectContent>
+									</Select>
+								</div>
 							</div>
+							{form.transport === "stdio" ? (
+								<>
+									<div className="grid gap-2">
+										<Label htmlFor="mcp-command">Command</Label>
+										<Input
+											id="mcp-command"
+											autoComplete="off"
+											value={form.command}
+											onChange={(e) =>
+												setForm({ ...form, command: e.target.value })
+											}
+											placeholder="npx…"
+										/>
+									</div>
+									<div className="grid gap-2">
+										<Label htmlFor="mcp-args">Args (one per line)</Label>
+										<Textarea
+											id="mcp-args"
+											autoComplete="off"
+											value={form.args}
+											onChange={(e) =>
+												setForm({ ...form, args: e.target.value })
+											}
+											placeholder={
+												"-y\n@modelcontextprotocol/server-filesystem…"
+											}
+										/>
+									</div>
+								</>
+							) : (
+								<div className="grid gap-2">
+									<Label htmlFor="mcp-url">Server URL</Label>
+									<Input
+										id="mcp-url"
+										type="url"
+										autoComplete="off"
+										value={form.url}
+										onChange={(e) => setForm({ ...form, url: e.target.value })}
+										placeholder="https://mcp.example.com…"
+									/>
+								</div>
+							)}
 							<div className="grid gap-2">
-								<Label>Args (one per line)</Label>
+								<Label htmlFor="mcp-headers">Headers (API keys)</Label>
 								<Textarea
-									value={form.args}
-									onChange={(e) => setForm({ ...form, args: e.target.value })}
-									placeholder="-y&#10;@modelcontextprotocol/server-filesystem"
+									id="mcp-headers"
+									autoComplete="off"
+									value={form.headers}
+									onChange={(e) =>
+										setForm({ ...form, headers: e.target.value })
+									}
+									placeholder="Authorization=Bearer sk-…"
+								/>
+								<p className="text-xs text-muted-foreground">
+									One header per line as <code>Key=Value</code>. For Meta MCP use
+									SSE transport and your bearer token here.
+								</p>
+							</div>
+							<div className="grid gap-2">
+								<Label htmlFor="mcp-env">Environment variables</Label>
+								<Textarea
+									id="mcp-env"
+									autoComplete="off"
+									value={form.env}
+									onChange={(e) => setForm({ ...form, env: e.target.value })}
+									placeholder="API_KEY=…"
 								/>
 							</div>
-						</>
-					) : (
-						<div className="grid gap-2">
-							<Label>Server URL</Label>
-							<Input
-								value={form.url}
-								onChange={(e) => setForm({ ...form, url: e.target.value })}
-								placeholder="https://mcp.example.com"
-							/>
-						</div>
-					)}
-					<div className="grid gap-2">
-						<Label>Headers (API keys)</Label>
-						<Textarea
-							value={form.headers}
-							onChange={(e) => setForm({ ...form, headers: e.target.value })}
-							placeholder="Authorization=Bearer sk-..."
-						/>
-						<p className="text-xs text-muted-foreground">
-							One header per line as <code>Key=Value</code>. For Meta MCP use
-							SSE transport and your bearer token here.
-						</p>
-					</div>
-					<div className="grid gap-2">
-						<Label>Environment variables</Label>
-						<Textarea
-							value={form.env}
-							onChange={(e) => setForm({ ...form, env: e.target.value })}
-							placeholder="API_KEY=..."
-						/>
-					</div>
-					<Button disabled={busy || !form.name.trim()} onClick={() => void createServer()}>
-						{busy ? <Loader2 className="animate-spin" /> : <PlusIcon data-icon="inline-start" />}
-						Add MCP server
-					</Button>
-				</CardContent>
+						</CardContent>
+						<CardFooter className="justify-end">
+							<Button
+								disabled={busy || !form.name.trim()}
+								onClick={() => void createServer()}
+							>
+								{busy ? (
+									<Loader2 className="animate-spin" aria-hidden="true" />
+								) : (
+									<PlusIcon data-icon="inline-start" aria-hidden="true" />
+								)}
+								Add MCP Server
+							</Button>
+						</CardFooter>
+					</>
+				) : null}
 			</Card>
 
 			{loading ? (
 				<div className="flex justify-center py-12">
-					<Loader2 className="animate-spin" />
+					<Loader2 className="animate-spin" aria-hidden="true" />
 				</div>
+			) : servers.length === 0 ? (
+				<Card size="sm">
+					<CardContent className="p-8 text-center text-sm text-muted-foreground">
+						No MCP servers yet. Add a server when an assistant needs external
+						tools.
+					</CardContent>
+				</Card>
 			) : (
 				<div className="grid gap-4">
 					{servers.map((server) => (
@@ -418,17 +480,18 @@ export function McpServerManager() {
 								<div className="flex flex-wrap items-start justify-between gap-3">
 									<div>
 										<CardTitle className="flex items-center gap-2">
-											<NetworkIcon className="size-5" />
+											<NetworkIcon className="size-5" aria-hidden="true" />
 											{server.name}
 										</CardTitle>
 										<CardDescription>
 											{server.url || server.command || server.transport}
 										</CardDescription>
 									</div>
-									<div className="flex flex-wrap items-center gap-2">
+									<div className="flex flex-wrap items-center justify-end gap-2">
 										<div className="flex items-center gap-2 text-sm">
 											<span>Enabled</span>
 											<Switch
+												aria-label={`Enable ${server.name}`}
 												checked={server.enabled}
 												onCheckedChange={(checked) =>
 													void toggleEnabled(server, checked)
@@ -441,17 +504,29 @@ export function McpServerManager() {
 										{server.hasHeaders ? (
 											<Badge variant="secondary">API key</Badge>
 										) : null}
-										<Button size="sm" variant="outline" onClick={() => void test(server.id)}>
-											<ZapIcon data-icon="inline-start" />
+										<Button
+											size="sm"
+											variant="outline"
+											onClick={() => void test(server.id)}
+										>
+											<ZapIcon data-icon="inline-start" aria-hidden="true" />
 											Test
-										</Button>
-										<Button size="sm" variant="outline" onClick={() => void sync(server.id)}>
-											<RefreshCwIcon data-icon="inline-start" />
-											Sync
 										</Button>
 										<Button
 											size="sm"
 											variant="outline"
+											onClick={() => void sync(server.id)}
+										>
+											<RefreshCwIcon
+												data-icon="inline-start"
+												aria-hidden="true"
+											/>
+											Sync
+										</Button>
+										<Button
+											size="icon-sm"
+											variant="ghost"
+											aria-label={`Edit ${server.name}`}
 											onClick={() => {
 												setEditServer(server);
 												setEditForm({
@@ -465,14 +540,15 @@ export function McpServerManager() {
 												});
 											}}
 										>
-											<PencilIcon className="size-4" />
+											<PencilIcon aria-hidden="true" />
 										</Button>
 										<Button
-											size="sm"
+											size="icon-sm"
 											variant="ghost"
+											aria-label={`Remove ${server.name}`}
 											onClick={() => setDeleteId(server.id)}
 										>
-											<Trash2Icon className="size-4" />
+											<Trash2Icon aria-hidden="true" />
 										</Button>
 									</div>
 								</div>
@@ -486,17 +562,18 @@ export function McpServerManager() {
 									toolsByServer[server.id].map((tool) => (
 										<div
 											key={tool.id}
-											className="flex items-center justify-between rounded-lg border p-3"
+											className="flex items-center justify-between gap-3 rounded-lg border p-3"
 										>
-											<div>
-												<p className="font-medium">{tool.name}</p>
+											<div className="min-w-0">
+												<p className="truncate font-medium">{tool.name}</p>
 												{tool.description ? (
-													<p className="text-sm text-muted-foreground">
+													<p className="line-clamp-2 text-sm text-muted-foreground">
 														{tool.description}
 													</p>
 												) : null}
 											</div>
 											<Switch
+												aria-label={`Enable ${tool.name}`}
 												checked={tool.enabled}
 												onCheckedChange={(checked) =>
 													void toggleTool(server.id, tool.id, checked)
@@ -518,8 +595,10 @@ export function McpServerManager() {
 					</DialogHeader>
 					<div className="grid gap-3">
 						<div className="grid gap-2">
-							<Label>Name</Label>
+							<Label htmlFor="mcp-edit-name">Name</Label>
 							<Input
+								id="mcp-edit-name"
+								autoComplete="off"
 								value={editForm.name}
 								onChange={(e) =>
 									setEditForm({ ...editForm, name: e.target.value })
@@ -527,8 +606,11 @@ export function McpServerManager() {
 							/>
 						</div>
 						<div className="grid gap-2">
-							<Label>URL</Label>
+							<Label htmlFor="mcp-edit-url">URL</Label>
 							<Input
+								id="mcp-edit-url"
+								type="url"
+								autoComplete="off"
 								value={editForm.url}
 								onChange={(e) =>
 									setEditForm({ ...editForm, url: e.target.value })
@@ -536,13 +618,15 @@ export function McpServerManager() {
 							/>
 						</div>
 						<div className="grid gap-2">
-							<Label>Headers (replaces existing)</Label>
+							<Label htmlFor="mcp-edit-headers">Headers (replaces existing)</Label>
 							<Textarea
+								id="mcp-edit-headers"
+								autoComplete="off"
 								value={editForm.headers}
 								onChange={(e) =>
 									setEditForm({ ...editForm, headers: e.target.value })
 								}
-								placeholder="Authorization=Bearer ..."
+								placeholder="Authorization=Bearer …"
 							/>
 						</div>
 					</div>

@@ -17,6 +17,7 @@ import {
 	Card,
 	CardContent,
 	CardDescription,
+	CardFooter,
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
@@ -309,22 +310,11 @@ export default function KnowledgePage() {
 			</Dialog>
 			<div className="grid gap-6 lg:grid-cols-[20rem_1fr]">
 			<section className="flex flex-col gap-4">
-				<div className="flex items-center justify-between">
-					<div>
-						<h2 className="text-sm font-semibold">Bases</h2>
-						<p className="text-xs text-muted-foreground">
-							Choose the source set to manage.
-						</p>
-					</div>
-					<Button
-						type="button"
-						size="icon-sm"
-						variant="outline"
-						aria-label="Create knowledge base"
-						onClick={() => setShowCreateDialog(true)}
-					>
-						<PlusIcon aria-hidden="true" />
-					</Button>
+				<div>
+					<h2 className="text-sm font-semibold">Bases</h2>
+					<p className="text-xs text-muted-foreground">
+						Choose the source set to manage.
+					</p>
 				</div>
 				{loading ? (
 					<Loader2 className="animate-spin" />
@@ -407,101 +397,121 @@ export default function KnowledgePage() {
 					</Card>
 				) : (
 					<>
-				<Card>
-					<CardHeader>
-						<CardTitle className="flex items-center gap-2">
-							<BookOpenIcon className="size-5" />
-							Documents
-						</CardTitle>
-						<CardDescription>
-							Paste text to index. Processing documents refresh automatically.
-						</CardDescription>
-					</CardHeader>
-					<CardContent className="grid gap-3">
-						<div
-							className={`rounded-xl border border-dashed p-6 text-center text-sm transition-colors ${
-								dragActive
-									? "border-primary bg-primary/5"
-									: "border-border text-muted-foreground"
-							}`}
-							onDragOver={(event) => {
-								event.preventDefault();
-								setDragActive(true);
-							}}
-							onDragLeave={() => setDragActive(false)}
-							onDrop={handleFileDrop}
-						>
-							Drag and drop a text file here to ingest
+						<Card>
+							<CardHeader>
+								<CardTitle className="flex items-center gap-2">
+									<BookOpenIcon className="size-5" aria-hidden="true" />
+									Documents
+								</CardTitle>
+								<CardDescription>
+									Paste text to index. Processing documents refresh automatically.
+								</CardDescription>
+							</CardHeader>
+							<CardContent className="grid gap-3">
+								<div
+									className={cn(
+										"rounded-xl border border-dashed p-6 text-center text-sm transition-colors",
+										dragActive
+											? "border-primary bg-primary/5"
+											: "border-border text-muted-foreground",
+									)}
+									onDragOver={(event) => {
+										event.preventDefault();
+										setDragActive(true);
+									}}
+									onDragLeave={() => setDragActive(false)}
+									onDrop={handleFileDrop}
+								>
+									Drag and drop a text file here to ingest
+								</div>
+								<Input
+									aria-label="Document title"
+									name="document-title"
+									autoComplete="off"
+									placeholder="Document title…"
+									value={docForm.title}
+									onChange={(e) =>
+										setDocForm({ ...docForm, title: e.target.value })
+									}
+								/>
+								<Textarea
+									aria-label="Document content"
+									name="document-content"
+									autoComplete="off"
+									className="min-h-40"
+									placeholder="Document content…"
+									value={docForm.content}
+									onChange={(e) =>
+										setDocForm({ ...docForm, content: e.target.value })
+									}
+								/>
+							</CardContent>
+							<CardFooter className="justify-end">
+								<Button
+									onClick={() => void ingestDocument()}
+									disabled={!selectedId}
+								>
+									Ingest Document
+								</Button>
+							</CardFooter>
+						</Card>
+						<div className="grid gap-2">
+							{documents.map((doc) => (
+								<Card key={doc.id} size="sm">
+									<CardContent className="flex items-center justify-between gap-2 p-4">
+										<span className="min-w-0 truncate font-medium">
+											{doc.title}
+										</span>
+										<div className="flex shrink-0 items-center gap-2">
+											<Badge variant={statusVariant(doc.status)}>
+												{doc.status}
+											</Badge>
+											<Button
+												type="button"
+												size="icon-sm"
+												variant="ghost"
+												aria-label={`Delete ${doc.title}`}
+												onClick={() => void deleteDocument(doc.id)}
+											>
+												<Trash2Icon aria-hidden="true" />
+											</Button>
+										</div>
+									</CardContent>
+								</Card>
+							))}
 						</div>
-						<Input
-							placeholder="Document title"
-							value={docForm.title}
-							onChange={(e) =>
-								setDocForm({ ...docForm, title: e.target.value })
-							}
-						/>
-						<Textarea
-							className="min-h-40"
-							placeholder="Document content"
-							value={docForm.content}
-							onChange={(e) =>
-								setDocForm({ ...docForm, content: e.target.value })
-							}
-						/>
-						<Button onClick={() => void ingestDocument()} disabled={!selectedId}>
-							Ingest document
-						</Button>
-					</CardContent>
-				</Card>
-				<div className="grid gap-2">
-					{documents.map((doc) => (
-						<Card key={doc.id}>
-							<CardContent className="flex items-center justify-between gap-2 p-4">
-								<span className="font-medium">{doc.title}</span>
-								<div className="flex items-center gap-2">
-									<Badge variant={statusVariant(doc.status)}>{doc.status}</Badge>
-									<Button
-										type="button"
-										size="icon-sm"
-										variant="ghost"
-										onClick={() => void deleteDocument(doc.id)}
-									>
-										<Trash2Icon className="size-4" />
+						<Card>
+							<CardHeader>
+								<CardTitle>Search</CardTitle>
+							</CardHeader>
+							<CardContent className="grid gap-3">
+								<div className="flex flex-col gap-2 sm:flex-row">
+									<Input
+										aria-label="Search indexed text"
+										name="knowledge-search"
+										autoComplete="off"
+										value={query}
+										onChange={(e) => setQuery(e.target.value)}
+										placeholder="Search indexed text…"
+									/>
+									<Button onClick={() => void search()}>
+										<SearchIcon data-icon="inline-start" aria-hidden="true" />
+										Search
 									</Button>
 								</div>
+								{results.map((result) => (
+									<div
+										key={result.chunkId}
+										className="rounded-xl border p-3 text-sm"
+									>
+										<p className="font-medium">{result.documentTitle}</p>
+										<p className="mt-1 line-clamp-4 text-muted-foreground">
+											{result.content}
+										</p>
+									</div>
+								))}
 							</CardContent>
 						</Card>
-					))}
-				</div>
-				<Card>
-					<CardHeader>
-						<CardTitle>Search</CardTitle>
-					</CardHeader>
-					<CardContent className="grid gap-3">
-						<div className="flex gap-2">
-							<Input
-								value={query}
-								onChange={(e) => setQuery(e.target.value)}
-								placeholder="Search indexed text"
-							/>
-							<Button onClick={() => void search()}>
-								<SearchIcon data-icon="inline-start" />
-								Search
-							</Button>
-						</div>
-						{results.map((result) => (
-							<div
-								key={result.chunkId}
-								className="rounded-xl border p-3 text-sm"
-							>
-								<p className="font-medium">{result.documentTitle}</p>
-								<p className="mt-1 line-clamp-4 text-muted-foreground">
-									{result.content}
-								</p>
-							</div>
-						))}
-					</CardContent>
-				</Card>
 					</>
 				)}
 			</section>

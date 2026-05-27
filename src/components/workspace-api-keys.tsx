@@ -98,7 +98,7 @@ export function WorkspaceApiKeys() {
 			<CardHeader>
 				<CardTitle className="flex items-center gap-2">
 					<KeyRoundIcon className="size-4" aria-hidden="true" />
-					API keys
+					API Keys
 				</CardTitle>
 				<CardDescription>
 					Create keys for programmatic access. Use{" "}
@@ -107,23 +107,24 @@ export function WorkspaceApiKeys() {
 				</CardDescription>
 			</CardHeader>
 			<CardContent className="flex flex-col gap-4">
-				<div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+				<div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
 					<div className="grid flex-1 gap-2">
 						<Label htmlFor="api-key-name">Key name</Label>
 						<Input
 							id="api-key-name"
-							placeholder="CI pipeline"
+							autoComplete="off"
+							placeholder="CI pipeline…"
 							value={name}
 							onChange={(event) => setName(event.target.value)}
 						/>
 					</div>
 					<Button disabled={creating || !name.trim()} onClick={() => void createKey()}>
 						{creating ? (
-							<Loader2 className="animate-spin" />
+							<Loader2 className="animate-spin" aria-hidden="true" />
 						) : (
 							<>
 								<PlusIcon data-icon="inline-start" aria-hidden="true" />
-								Create key
+								Create Key
 							</>
 						)}
 					</Button>
@@ -139,12 +140,13 @@ export function WorkspaceApiKeys() {
 							<Button
 								size="sm"
 								variant="outline"
+								aria-label="Copy new API key"
 								onClick={() => {
 									void navigator.clipboard.writeText(revealedKey);
 									toast.success("Copied");
 								}}
 							>
-								<CopyIcon className="size-4" />
+								<CopyIcon aria-hidden="true" />
 							</Button>
 						</div>
 					</div>
@@ -178,7 +180,7 @@ export function WorkspaceApiKeys() {
 										onClick={() => void revokeKey(key.id)}
 										aria-label={`Revoke ${key.name}`}
 									>
-										<Trash2Icon className="size-4" />
+										<Trash2Icon aria-hidden="true" />
 									</Button>
 								</div>
 							</li>

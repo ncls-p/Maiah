@@ -21,6 +21,7 @@ import {
 	Card,
 	CardContent,
 	CardDescription,
+	CardFooter,
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
@@ -558,8 +559,8 @@ export default function AgentConfigurePage() {
 								Name, description, and sharing settings.
 							</CardDescription>
 						</CardHeader>
-						<CardContent>
-							<form onSubmit={saveGeneralModel}>
+						<form onSubmit={saveGeneralModel}>
+							<CardContent>
 								<FieldGroup>
 									<Field>
 										<FieldLabel htmlFor="agent-name">Name</FieldLabel>
@@ -635,17 +636,19 @@ export default function AgentConfigurePage() {
 											</FieldContent>
 										</Field>
 									) : null}
-									<Button type="submit" disabled={saving}>
-										{saving ? (
-											<Spinner data-icon="inline-start" />
-										) : (
-											<SaveIcon data-icon="inline-start" />
-										)}
-										Save general
-									</Button>
 								</FieldGroup>
-							</form>
-						</CardContent>
+							</CardContent>
+							<CardFooter className="justify-end">
+								<Button type="submit" disabled={saving}>
+									{saving ? (
+										<Spinner data-icon="inline-start" />
+									) : (
+										<SaveIcon data-icon="inline-start" aria-hidden="true" />
+									)}
+									Save General
+								</Button>
+							</CardFooter>
+						</form>
 					</Card>
 				</TabsContent>
 
@@ -657,8 +660,8 @@ export default function AgentConfigurePage() {
 								Provider, model, and generation parameters.
 							</CardDescription>
 						</CardHeader>
-						<CardContent>
-							<form onSubmit={saveGeneralModel}>
+						<form onSubmit={saveGeneralModel}>
+							<CardContent>
 								<FieldGroup>
 									<Field>
 										<FieldLabel htmlFor="agent-provider">Provider</FieldLabel>
@@ -782,17 +785,19 @@ export default function AgentConfigurePage() {
 											</FieldContent>
 										</Field>
 									</div>
-									<Button type="submit" disabled={saving}>
-										{saving ? (
-											<Spinner data-icon="inline-start" />
-										) : (
-											<SaveIcon data-icon="inline-start" />
-										)}
-										Save model
-									</Button>
 								</FieldGroup>
-							</form>
-						</CardContent>
+							</CardContent>
+							<CardFooter className="justify-end">
+								<Button type="submit" disabled={saving}>
+									{saving ? (
+										<Spinner data-icon="inline-start" />
+									) : (
+										<SaveIcon data-icon="inline-start" aria-hidden="true" />
+									)}
+									Save Model
+								</Button>
+							</CardFooter>
+						</form>
 					</Card>
 				</TabsContent>
 
@@ -800,7 +805,7 @@ export default function AgentConfigurePage() {
 					<Card>
 						<CardHeader>
 							<CardTitle className="flex items-center gap-2">
-								<WrenchIcon className="size-5" />
+								<WrenchIcon className="size-5" aria-hidden="true" />
 								Tools
 							</CardTitle>
 							<CardDescription>
@@ -1022,11 +1027,13 @@ export default function AgentConfigurePage() {
 									})
 								)}
 							</div>
+						</CardContent>
+						<CardFooter className="justify-end">
 							<Button onClick={() => void saveToolBindings()} disabled={saving}>
 								{saving ? <Spinner data-icon="inline-start" /> : null}
-								Save tools
+								Save Tools
 							</Button>
-						</CardContent>
+						</CardFooter>
 					</Card>
 				</TabsContent>
 
@@ -1034,8 +1041,8 @@ export default function AgentConfigurePage() {
 					<Card>
 						<CardHeader>
 							<CardTitle className="flex items-center gap-2">
-								<BookOpenIcon className="size-5" />
-								Knowledge bases
+								<BookOpenIcon className="size-5" aria-hidden="true" />
+								Knowledge Bases
 							</CardTitle>
 							<CardDescription>
 								Bound bases are searched during chat for citations.
@@ -1070,14 +1077,16 @@ export default function AgentConfigurePage() {
 									</label>
 								))
 							)}
+						</CardContent>
+						<CardFooter className="justify-end">
 							<Button
 								onClick={() => void saveKnowledgeBindings()}
 								disabled={saving}
 							>
 								{saving ? <Spinner data-icon="inline-start" /> : null}
-								Save knowledge
+								Save Knowledge
 							</Button>
-						</CardContent>
+						</CardFooter>
 					</Card>
 				</TabsContent>
 

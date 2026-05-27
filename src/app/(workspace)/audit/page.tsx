@@ -121,60 +121,69 @@ export default function AuditPage() {
 			description="Security-sensitive actions are recorded with actor, resource, outcome, and timestamp."
 			width="default"
 		>
-			<Card>
-				<CardContent className="flex flex-wrap items-end gap-3 p-4">
-					<div className="grid min-w-[12rem] flex-1 gap-2">
-						<Label htmlFor="audit-action-filter">Action contains</Label>
-						<Input
-							id="audit-action-filter"
-							placeholder="agent.created"
-							value={actionFilter}
-							onChange={(e) => setActionFilter(e.target.value)}
-						/>
+			<Card size="sm">
+				<CardContent className="flex flex-col gap-4 p-4">
+					<div className="grid gap-3 md:grid-cols-[minmax(12rem,1fr)_10rem_10rem_10rem]">
+						<div className="grid gap-2">
+							<Label htmlFor="audit-action-filter">Action contains</Label>
+							<Input
+								id="audit-action-filter"
+								autoComplete="off"
+								placeholder="agent.created…"
+								value={actionFilter}
+								onChange={(e) => setActionFilter(e.target.value)}
+							/>
+						</div>
+						<div className="grid gap-2">
+							<Label htmlFor="audit-outcome">Outcome</Label>
+							<Select value={outcomeFilter} onValueChange={setOutcomeFilter}>
+								<SelectTrigger id="audit-outcome">
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="all">All</SelectItem>
+									<SelectItem value="success">Success</SelectItem>
+									<SelectItem value="failed">Failed</SelectItem>
+									<SelectItem value="denied">Denied</SelectItem>
+								</SelectContent>
+							</Select>
+						</div>
+						<div className="grid gap-2">
+							<Label htmlFor="audit-from">From</Label>
+							<Input
+								id="audit-from"
+								type="date"
+								value={fromDate}
+								onChange={(e) => setFromDate(e.target.value)}
+							/>
+						</div>
+						<div className="grid gap-2">
+							<Label htmlFor="audit-to">To</Label>
+							<Input
+								id="audit-to"
+								type="date"
+								value={toDate}
+								onChange={(e) => setToDate(e.target.value)}
+							/>
+						</div>
 					</div>
-					<div className="grid min-w-[10rem] gap-2">
-						<Label>Outcome</Label>
-						<Select value={outcomeFilter} onValueChange={setOutcomeFilter}>
-							<SelectTrigger>
-								<SelectValue />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="all">All</SelectItem>
-								<SelectItem value="success">Success</SelectItem>
-								<SelectItem value="failed">Failed</SelectItem>
-								<SelectItem value="denied">Denied</SelectItem>
-							</SelectContent>
-						</Select>
+					<div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+						<Button
+							variant="outline"
+							onClick={exportCsv}
+							disabled={events.length === 0}
+						>
+							Export CSV
+						</Button>
+						<Button onClick={() => void loadEvents()}>Apply Filters</Button>
 					</div>
-					<div className="grid min-w-[10rem] gap-2">
-						<Label htmlFor="audit-from">From</Label>
-						<Input
-							id="audit-from"
-							type="date"
-							value={fromDate}
-							onChange={(e) => setFromDate(e.target.value)}
-						/>
-					</div>
-					<div className="grid min-w-[10rem] gap-2">
-						<Label htmlFor="audit-to">To</Label>
-						<Input
-							id="audit-to"
-							type="date"
-							value={toDate}
-							onChange={(e) => setToDate(e.target.value)}
-						/>
-					</div>
-					<Button onClick={() => void loadEvents()}>Apply filters</Button>
-					<Button variant="outline" onClick={exportCsv} disabled={events.length === 0}>
-						Export CSV
-					</Button>
 				</CardContent>
 			</Card>
 
 			<Card>
 				<CardHeader>
 					<CardTitle className="flex items-center gap-2">
-						<ClipboardListIcon className="size-5" />
+						<ClipboardListIcon className="size-5" aria-hidden="true" />
 						Recent events
 					</CardTitle>
 					<CardDescription>Filtered workspace audit events.</CardDescription>

@@ -334,7 +334,7 @@ export default function AgentsPage() {
 							<Label htmlFor="agent-name">Name</Label>
 							<Input
 								id="agent-name"
-								placeholder="My Assistant"
+								placeholder="My Assistant…"
 								value={form.name}
 								onChange={(e) =>
 									setForm({
@@ -350,7 +350,7 @@ export default function AgentsPage() {
 							<Label htmlFor="agent-description">Description (optional)</Label>
 							<Textarea
 								id="agent-description"
-								placeholder="A helpful assistant for..."
+								placeholder="A helpful assistant for…"
 								value={form.description}
 								onChange={(e) =>
 									setForm({
@@ -486,8 +486,8 @@ export default function AgentsPage() {
 						>
 							{creating ? (
 								<>
-									<Loader2 className="size-4 animate-spin" />
-									Creating...
+									<Loader2 className="size-4 animate-spin" aria-hidden="true" />
+									Creating…
 								</>
 							) : (
 								"Create agent"
@@ -518,7 +518,7 @@ export default function AgentsPage() {
 							disabled={deleting}
 							onClick={() => void handleDelete()}
 						>
-							{deleting ? "Deleting..." : "Delete agent"}
+							{deleting ? "Deleting…" : "Delete agent"}
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>

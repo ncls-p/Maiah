@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/dialog";
 import {
 	Card,
+	CardAction,
 	CardContent,
 	CardDescription,
 	CardHeader,
@@ -551,24 +552,27 @@ export function ProviderManager({
 			<div className="flex flex-col gap-4">
 				<Card>
 					<CardHeader className="border-b border-border/70 pb-4">
-						<div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
-							<div>
-								<CardTitle>Provider registry</CardTitle>
-								<CardDescription>
-									Secure keys, base URLs, health, and provider model mappings.
-								</CardDescription>
-							</div>
-							<div className="flex gap-2">
-								<Badge variant="secondary">{providers.length} configured</Badge>
-								<Button
-									size="sm"
-									onClick={() => setShowProviderForm((v) => !v)}
-								>
+						<CardTitle>Provider Registry</CardTitle>
+						<CardDescription>
+							Secure keys, base URLs, health, and provider model mappings.
+						</CardDescription>
+						<CardAction>
+							<Badge variant="secondary">{providers.length} configured</Badge>
+							<Button
+								size="sm"
+								variant={showProviderForm ? "outline" : "default"}
+								onClick={() => setShowProviderForm((v) => !v)}
+							>
+								{showProviderForm ? (
+									"Cancel"
+								) : (
+									<>
 									<PlusIcon data-icon="inline-start" aria-hidden="true" />
-									Add provider
-								</Button>
-							</div>
-						</div>
+									Add Provider
+									</>
+								)}
+							</Button>
+						</CardAction>
 					</CardHeader>
 					<CardContent className="flex flex-col gap-4 pt-5">
 						{showProviderForm ? (
@@ -588,18 +592,21 @@ export function ProviderManager({
 									<Label htmlFor="provider-name">Name</Label>
 									<Input
 										id="provider-name"
+										autoComplete="off"
 										value={name}
 										onChange={(e) => setName(e.target.value)}
-										placeholder="Production OpenAI"
+										placeholder="Production OpenAI…"
 									/>
 								</div>
 								<div className="grid gap-2">
 									<Label htmlFor="provider-base-url">Service URL</Label>
 									<Input
 										id="provider-base-url"
+										type="url"
+										autoComplete="off"
 										value={baseUrl}
 										onChange={(e) => setBaseUrl(e.target.value)}
-										placeholder="https://api.openai.com/v1"
+										placeholder="https://api.openai.com/v1…"
 									/>
 								</div>
 								<div className="grid gap-2">
@@ -607,6 +614,7 @@ export function ProviderManager({
 									<Input
 										id="provider-api-key"
 										type="password"
+										autoComplete="off"
 										value={apiKey}
 										onChange={(e) => setApiKey(e.target.value)}
 									/>
@@ -669,9 +677,10 @@ export function ProviderManager({
 												<Label htmlFor="provider-headers">Custom headers</Label>
 												<Textarea
 													id="provider-headers"
+													autoComplete="off"
 													value={customHeaders}
 													onChange={(e) => setCustomHeaders(e.target.value)}
-													placeholder="X-Team=ai-platform"
+													placeholder="X-Team=ai-platform…"
 													className="min-h-20"
 												/>
 											</div>
@@ -679,9 +688,10 @@ export function ProviderManager({
 												<Label htmlFor="provider-query">Query params</Label>
 												<Textarea
 													id="provider-query"
+													autoComplete="off"
 													value={queryParams}
 													onChange={(e) => setQueryParams(e.target.value)}
-													placeholder="api-version=2024-10-21"
+													placeholder="api-version=2024-10-21…"
 													className="min-h-20"
 												/>
 											</div>
@@ -697,11 +707,11 @@ export function ProviderManager({
 									</Button>
 									<Button disabled={busy || !name} onClick={createNewProvider}>
 										{busy ? (
-											<Loader2Icon className="animate-spin" />
+											<Loader2Icon className="animate-spin" aria-hidden="true" />
 										) : (
-											<PlusIcon />
+											<PlusIcon data-icon="inline-start" aria-hidden="true" />
 										)}
-										Save provider
+										Save Provider
 									</Button>
 								</div>
 							</div>
@@ -730,8 +740,8 @@ export function ProviderManager({
 										size="sm"
 										onClick={() => setShowProviderForm(true)}
 									>
-										<PlusIcon data-icon="inline-start" aria-hidden="true" /> Add
-										provider
+										<PlusIcon data-icon="inline-start" aria-hidden="true" />
+										Add Provider
 									</Button>
 								</EmptyContent>
 							</Empty>
@@ -823,23 +833,22 @@ export function ProviderManager({
 				{selectedProvider ? (
 					<Card>
 						<CardHeader>
-							<div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
-								<div>
-									<CardTitle>Model registry</CardTitle>
-									<CardDescription>
-										Add model IDs manually or discover supported models from{" "}
-										{selectedProvider.name}.
-									</CardDescription>
-								</div>
+							<CardTitle>Model Registry</CardTitle>
+							<CardDescription>
+								Add model IDs manually or discover supported models from{" "}
+								{selectedProvider.name}.
+							</CardDescription>
+							<CardAction>
 								<Button
 									size="sm"
 									variant="outline"
 									disabled={busy}
 									onClick={discoverProviderModels}
 								>
-									<RefreshCwIcon data-icon="inline-start" /> Discover
+									<RefreshCwIcon data-icon="inline-start" aria-hidden="true" />
+									Discover
 								</Button>
-							</div>
+							</CardAction>
 						</CardHeader>
 						<CardContent className="flex flex-col gap-4">
 							<div className="grid gap-3 rounded-2xl border border-border/70 bg-background/70 p-4 sm:grid-cols-[1fr_1fr_auto]">
@@ -847,18 +856,20 @@ export function ProviderManager({
 									<Label htmlFor="model-id">Model ID</Label>
 									<Input
 										id="model-id"
+										autoComplete="off"
 										value={manualModelId}
 										onChange={(e) => setManualModelId(e.target.value)}
-										placeholder="gpt-4o-mini"
+										placeholder="gpt-4o-mini…"
 									/>
 								</div>
 								<div className="grid gap-2">
 									<Label htmlFor="model-name">Display name</Label>
 									<Input
 										id="model-name"
+										autoComplete="off"
 										value={manualModelName}
 										onChange={(e) => setManualModelName(e.target.value)}
-										placeholder="GPT-4o mini"
+										placeholder="GPT-4o mini…"
 									/>
 								</div>
 								<div className="flex items-end">
@@ -866,7 +877,8 @@ export function ProviderManager({
 										disabled={busy || !manualModelId}
 										onClick={() => createManualModel()}
 									>
-										<PlusIcon /> Add
+										<PlusIcon data-icon="inline-start" aria-hidden="true" />
+										Add Model
 									</Button>
 								</div>
 							</div>
@@ -959,7 +971,7 @@ export function ProviderManager({
 												aria-label="Remove model"
 												onClick={() => setDeleteModelId(model.id)}
 											>
-												<Trash2Icon />
+												<Trash2Icon aria-hidden="true" />
 											</Button>
 										</div>
 									))}

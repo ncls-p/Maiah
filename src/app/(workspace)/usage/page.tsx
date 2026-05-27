@@ -127,36 +127,41 @@ export default function UsagePage() {
 				</Card>
 			) : null}
 
-			<Card>
-				<CardContent className="flex flex-wrap items-end gap-3 p-4">
-					<div className="grid flex-1 gap-2">
-						<Label htmlFor="usage-operation-filter">Operation filter</Label>
-						<Input
-							id="usage-operation-filter"
-							placeholder="e.g. chat"
-							value={operationFilter}
-							onChange={(e) => setOperationFilter(e.target.value)}
-						/>
+			<Card size="sm">
+				<CardContent className="flex flex-col gap-4 p-4">
+					<div className="grid gap-3 md:grid-cols-[minmax(12rem,1fr)_10rem_10rem]">
+						<div className="grid gap-2">
+							<Label htmlFor="usage-operation-filter">Operation filter</Label>
+							<Input
+								id="usage-operation-filter"
+								autoComplete="off"
+								placeholder="chat…"
+								value={operationFilter}
+								onChange={(e) => setOperationFilter(e.target.value)}
+							/>
+						</div>
+						<div className="grid gap-2">
+							<Label htmlFor="usage-from">From</Label>
+							<Input
+								id="usage-from"
+								type="date"
+								value={fromDate}
+								onChange={(e) => setFromDate(e.target.value)}
+							/>
+						</div>
+						<div className="grid gap-2">
+							<Label htmlFor="usage-to">To</Label>
+							<Input
+								id="usage-to"
+								type="date"
+								value={toDate}
+								onChange={(e) => setToDate(e.target.value)}
+							/>
+						</div>
 					</div>
-					<div className="grid min-w-[10rem] gap-2">
-						<Label htmlFor="usage-from">From</Label>
-						<Input
-							id="usage-from"
-							type="date"
-							value={fromDate}
-							onChange={(e) => setFromDate(e.target.value)}
-						/>
+					<div className="flex justify-end">
+						<Button onClick={() => void loadUsage()}>Apply Filter</Button>
 					</div>
-					<div className="grid min-w-[10rem] gap-2">
-						<Label htmlFor="usage-to">To</Label>
-						<Input
-							id="usage-to"
-							type="date"
-							value={toDate}
-							onChange={(e) => setToDate(e.target.value)}
-						/>
-					</div>
-					<Button onClick={() => void loadUsage()}>Apply filter</Button>
 				</CardContent>
 			</Card>
 
@@ -225,7 +230,7 @@ export default function UsagePage() {
 					<Card>
 						<CardHeader>
 							<CardTitle className="flex items-center gap-2">
-								<BarChart3Icon className="size-5" />
+								<BarChart3Icon className="size-5" aria-hidden="true" />
 								Recent usage
 							</CardTitle>
 							<CardDescription>

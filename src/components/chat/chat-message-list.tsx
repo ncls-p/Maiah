@@ -244,7 +244,7 @@ const MessageContent = memo(function MessageContent({
 					isAnimating={isAnimating}
 					className="text-sm"
 				>
-					{content || "Thinking..."}
+					{content || "Thinking…"}
 				</Streamdown>
 			)}
 		</div>

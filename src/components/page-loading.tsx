@@ -10,6 +10,8 @@ export function PageLoading({
 	className?: string;
 	label?: string;
 }) {
+	const displayLabel = label.endsWith("…") ? label : `${label}…`;
+
 	return (
 		<div
 			className={cn(
@@ -20,7 +22,7 @@ export function PageLoading({
 			aria-busy="true"
 		>
 			<Loader2 className="size-5 animate-spin text-muted-foreground" />
-			<p className="text-sm text-muted-foreground">{label}</p>
+			<p className="text-sm text-muted-foreground">{displayLabel}</p>
 		</div>
 	);
 }
