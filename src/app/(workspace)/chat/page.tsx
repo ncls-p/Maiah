@@ -7,7 +7,6 @@ import {
 	ChevronDownIcon,
 	Loader2,
 	PlusIcon,
-	ShieldAlertIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -15,7 +14,6 @@ import { ChatComposer } from "@/components/chat/chat-composer";
 import { ChatLayout } from "@/components/chat/chat-layout";
 import { ChatMessageList } from "@/components/chat/chat-message-list";
 import { QuotaBanner } from "@/components/chat/quota-banner";
-import { ToolApprovalBanner } from "@/components/chat/tool-approval-banner";
 import { textFromMessage } from "@/components/chat/chat-types";
 import type {
 	AgentVersion,
@@ -38,7 +36,6 @@ import {
 	EmptyMedia,
 	EmptyTitle,
 } from "@/components/ui/empty";
-import { Separator } from "@/components/ui/separator";
 import { useChatStream } from "@/hooks/use-chat-stream";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { fetchJson } from "@/lib/api-client";
@@ -46,21 +43,15 @@ import { cn } from "@/lib/utils";
 
 function ChatContextBar({
 	quota,
-	pendingApproval,
-	onApprove,
-	onReject,
 }: {
 	quota: { used: number; limit: number } | null;
-	pendingApproval: ReturnType<typeof useChatStream>["pendingApproval"];
-	onApprove: () => void;
-	onReject: () => void;
 }) {
 	const [open, setOpen] = useState(false);
 	const quotaPercent = quota
 		? Math.min(100, Math.round((quota.used / quota.limit) * 100))
 		: 0;
 	const showQuota = Boolean(quota && quotaPercent >= 80);
-	const hasItems = Boolean(pendingApproval || showQuota);
+	const hasItems = showQuota;
 
 	useEffect(() => {
 		const stored = window.localStorage.getItem("chat-context-open-v2");
@@ -85,12 +76,6 @@ function ChatContextBar({
 			<div className="mx-auto flex min-h-11 w-full max-w-3xl items-center justify-between gap-3 px-4 py-2">
 				<div className="flex min-w-0 flex-wrap items-center gap-2">
 					<span className="truncate text-sm font-medium">Chat status</span>
-					{pendingApproval ? (
-						<Badge variant="outline">
-							<ShieldAlertIcon data-icon="inline-start" aria-hidden="true" />
-							Approval
-						</Badge>
-					) : null}
 					{showQuota ? (
 						<Badge variant={quotaPercent >= 100 ? "destructive" : "outline"}>
 							Usage {quotaPercent}%
@@ -117,16 +102,6 @@ function ChatContextBar({
 				<div className="flex flex-col gap-0">
 					{showQuota && quota ? (
 						<QuotaBanner used={quota.used} limit={quota.limit} />
-					) : null}
-					{showQuota && pendingApproval ? <Separator /> : null}
-					{pendingApproval ? (
-						<div className="px-4 py-3">
-							<ToolApprovalBanner
-								approval={pendingApproval}
-								onApprove={onApprove}
-								onReject={onReject}
-							/>
-						</div>
 					) : null}
 				</div>
 			</CollapsibleContent>
@@ -173,12 +148,13 @@ export default function ChatPage() {
 		messages,
 		setMessages,
 		sending,
-		pendingApproval,
+		pendingApprovals,
 		handleSubmit,
 		resolveApproval,
 	} = useChatStream({
 		agentId: selectedAgentId,
 		conversationId: activeConversationId,
+		workspaceId,
 		canChat,
 		onConversationCreated: (conversationId) => {
 			skipNextMessageLoadRef.current = true;
@@ -366,7 +342,7 @@ export default function ChatPage() {
 
 	useEffect(() => {
 		bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-	}, [messages, pendingApproval]);
+	}, [messages, pendingApprovals]);
 
 	function selectAgent(agentId: string) {
 		setSelectedAgentId(agentId);
@@ -575,9 +551,6 @@ export default function ChatPage() {
 		>
 			<ChatContextBar
 				quota={quota}
-				pendingApproval={pendingApproval}
-				onApprove={() => void resolveApproval("approve")}
-				onReject={() => void resolveApproval("reject")}
 			/>
 			<section className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-3 py-4 sm:px-4 sm:py-8">
 				{!loadingMessages && messages.length === 0 ? (
@@ -634,6 +607,13 @@ export default function ChatPage() {
 					onEditMessage={editMessage}
 					onDeleteMessage={deleteMessage}
 					onResendMessage={resendMessage}
+					pendingApprovals={pendingApprovals}
+					onApproveTool={(approval) =>
+						void resolveApproval("approve", approval.invocationId)
+					}
+					onRejectTool={(approval) =>
+						void resolveApproval("reject", approval.invocationId)
+					}
 				/>
 			</section>
 			<ChatComposer

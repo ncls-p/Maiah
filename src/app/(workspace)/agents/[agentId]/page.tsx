@@ -76,13 +76,14 @@ type BuiltinTool = {
 	description: string;
 	riskLevel: string;
 };
-type McpServer = { id: string; name: string };
+type McpServer = { id: string; name: string; requireApproval: boolean };
 type McpTool = {
 	id: string;
 	name: string;
 	description: string | null;
 	mcpServerId: string;
 	enabled: boolean;
+	requireApproval: boolean;
 };
 type KnowledgeBase = { id: string; name: string };
 type ToolBinding = {
@@ -381,7 +382,9 @@ export default function AgentConfigurePage() {
 						toolSource: "mcp" as const,
 						toolId: tool.id,
 						mcpServerId: tool.mcpServerId,
-						requireApproval: mcpBindings[tool.id]?.requireApproval,
+						requireApproval:
+							isMcpToolApprovalForced(tool) ||
+							mcpBindings[tool.id]?.requireApproval,
 					})),
 			];
 			const res = await fetch(
@@ -447,6 +450,15 @@ export default function AgentConfigurePage() {
 		return getServerTools(serverId).filter((tool) => tool.enabled);
 	}
 
+	function getMcpServer(serverId: string) {
+		return mcpServers.find((server) => server.id === serverId);
+	}
+
+	function isMcpToolApprovalForced(tool: McpTool) {
+		return Boolean(getMcpServer(tool.mcpServerId)?.requireApproval) ||
+			tool.requireApproval;
+	}
+
 	function setMcpServerToolsEnabled(serverId: string, enabled: boolean) {
 		const serverTools = getServerTools(serverId);
 		setMcpBindings((current) => {
@@ -455,7 +467,9 @@ export default function AgentConfigurePage() {
 				const currentBinding = current[tool.id];
 				next[tool.id] = {
 					enabled: enabled && tool.enabled,
-					requireApproval: currentBinding?.requireApproval ?? false,
+					requireApproval:
+						isMcpToolApprovalForced(tool) ||
+						(currentBinding?.requireApproval ?? false),
 				};
 			}
 			return next;
@@ -469,9 +483,10 @@ export default function AgentConfigurePage() {
 			for (const tool of serverTools) {
 				const currentBinding = current[tool.id];
 				if (!currentBinding?.enabled) continue;
+				const forcedApproval = isMcpToolApprovalForced(tool);
 				next[tool.id] = {
 					enabled: true,
-					requireApproval,
+					requireApproval: forcedApproval || requireApproval,
 				};
 			}
 			return next;
@@ -483,7 +498,9 @@ export default function AgentConfigurePage() {
 			...current,
 			[tool.id]: {
 				enabled: enabled && tool.enabled,
-				requireApproval: current[tool.id]?.requireApproval ?? false,
+				requireApproval:
+					isMcpToolApprovalForced(tool) ||
+					(current[tool.id]?.requireApproval ?? false),
 			},
 		}));
 	}
@@ -493,7 +510,9 @@ export default function AgentConfigurePage() {
 			...current,
 			[tool.id]: {
 				enabled: current[tool.id]?.enabled ?? false,
-				requireApproval: tool.enabled ? requireApproval : false,
+				requireApproval: tool.enabled
+					? isMcpToolApprovalForced(tool) || requireApproval
+					: false,
 			},
 		}));
 	}
@@ -505,13 +524,17 @@ export default function AgentConfigurePage() {
 			(tool) => mcpBindings[tool.id]?.enabled,
 		);
 		const selectedApprovalTools = selectedTools.filter(
-			(tool) => mcpBindings[tool.id]?.requireApproval,
+			(tool) =>
+				isMcpToolApprovalForced(tool) || mcpBindings[tool.id]?.requireApproval,
 		);
+		const forcedApprovalCount = selectedTools.filter(isMcpToolApprovalForced)
+			.length;
 
 		return {
 			allTools,
 			bindableTools,
 			selectedCount: selectedTools.length,
+			forcedApprovalCount,
 			allSelected:
 				bindableTools.length > 0 && selectedTools.length === bindableTools.length,
 			someSelected:
@@ -931,11 +954,16 @@ export default function AgentConfigurePage() {
 																{serverState.someApproval ? (
 																	<Badge variant="outline">Mixed approval</Badge>
 																) : null}
+																{serverState.forcedApprovalCount > 0 ? (
+																	<Badge variant="secondary">
+																		{serverState.forcedApprovalCount} forced
+																	</Badge>
+																) : null}
 															</div>
 															<p className="mt-1 text-xs text-muted-foreground">
 																Select every enabled tool from this MCP server, then
-																set approval at MCP scope or override individual
-																tools.
+																set extra approval here. MCP-forced approval cannot be
+																disabled from an agent.
 															</p>
 														</div>
 													</div>
@@ -951,10 +979,14 @@ export default function AgentConfigurePage() {
 															/>
 														</label>
 														<label className="flex items-center gap-2">
-															Approval for selected
+															Extra approval
 															<Switch
 																checked={serverState.allApproval}
-																disabled={serverState.selectedCount === 0}
+																disabled={
+																	serverState.selectedCount === 0 ||
+																	serverState.selectedCount ===
+																		serverState.forcedApprovalCount
+																}
 																onCheckedChange={(checked) =>
 																	setMcpServerApproval(server.id, checked)
 																}
@@ -973,6 +1005,8 @@ export default function AgentConfigurePage() {
 																const binding = mcpBindings[tool.id];
 																const toolSelected =
 																	tool.enabled && Boolean(binding?.enabled);
+																const approvalForced =
+																	isMcpToolApprovalForced(tool);
 																return (
 																	<ListRow
 																		key={tool.id}
@@ -984,6 +1018,11 @@ export default function AgentConfigurePage() {
 																				{!tool.enabled ? (
 																					<Badge variant="outline">
 																						Disabled in MCP
+																					</Badge>
+																				) : null}
+																				{approvalForced ? (
+																					<Badge variant="secondary">
+																						Approval forced
 																					</Badge>
 																				) : null}
 																			</div>
@@ -999,9 +1038,10 @@ export default function AgentConfigurePage() {
 																				<Switch
 																					checked={
 																						tool.enabled &&
-																						Boolean(binding?.requireApproval)
+																						(approvalForced ||
+																							Boolean(binding?.requireApproval))
 																					}
-																					disabled={!toolSelected}
+																					disabled={!toolSelected || approvalForced}
 																					onCheckedChange={(checked) =>
 																						setMcpToolApproval(tool, checked)
 																					}

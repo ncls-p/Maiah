@@ -1,6 +1,7 @@
 import { and, desc, eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { decryptValue } from "@/lib/crypto";
 import { logger } from "@/lib/logger";
 import { getSession } from "@/modules/auth/session";
 import { authorization } from "@/server/domain/services/authorization";
@@ -21,6 +22,7 @@ const querySchema = z.object({
 		])
 		.optional(),
 	limit: z.coerce.number().min(1).max(100).default(50),
+	conversationId: z.uuid().optional(),
 });
 
 export async function GET(req: NextRequest) {
@@ -35,6 +37,7 @@ export async function GET(req: NextRequest) {
 			workspaceId: searchParams.get("workspaceId"),
 			status: searchParams.get("status") ?? undefined,
 			limit: searchParams.get("limit") ?? 50,
+			conversationId: searchParams.get("conversationId") ?? undefined,
 		});
 		if (!parsed.success) {
 			return NextResponse.json({ error: "Invalid request" }, { status: 400 });
@@ -56,6 +59,9 @@ export async function GET(req: NextRequest) {
 		const statusFilter = parsed.data.status
 			? eq(toolInvocations.status, parsed.data.status)
 			: undefined;
+		const conversationFilter = parsed.data.conversationId
+			? eq(toolInvocations.conversationId, parsed.data.conversationId)
+			: undefined;
 		const invocations = await db
 			.select({
 				id: toolInvocations.id,
@@ -66,6 +72,7 @@ export async function GET(req: NextRequest) {
 				toolId: toolInvocations.toolId,
 				toolName: toolInvocations.toolName,
 				riskLevel: toolInvocations.riskLevel,
+				inputJsonEncrypted: toolInvocations.inputJsonEncrypted,
 				status: toolInvocations.status,
 				latencyMs: toolInvocations.latencyMs,
 				errorMessage: toolInvocations.errorMessage,
@@ -78,12 +85,27 @@ export async function GET(req: NextRequest) {
 				and(
 					eq(toolInvocations.workspaceId, parsed.data.workspaceId),
 					statusFilter,
+					conversationFilter,
 				),
 			)
 			.orderBy(desc(toolInvocations.createdAt))
 			.limit(parsed.data.limit);
 
-		return NextResponse.json(invocations);
+		const response = await Promise.all(
+			invocations.map(async ({ inputJsonEncrypted, ...invocation }) => {
+				let input: unknown = null;
+				if (inputJsonEncrypted) {
+					try {
+						input = JSON.parse(await decryptValue(inputJsonEncrypted));
+					} catch {
+						input = null;
+					}
+				}
+				return { ...invocation, input };
+			}),
+		);
+
+		return NextResponse.json(response);
 	} catch (error) {
 		logger.error("Failed to list tool invocations", {}, error as Error);
 		return NextResponse.json(

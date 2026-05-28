@@ -6,6 +6,7 @@ import { db } from "@/server/infrastructure/db";
 import {
 	agentToolBindings,
 	agentVersions,
+	mcpServers,
 	mcpTools,
 	toolInvocations,
 } from "@/server/infrastructure/db/schema";
@@ -77,7 +78,7 @@ export async function insertToolBindingsForVersion(
 					agentVersionId,
 					toolSource: "mcp" as const,
 					toolId: binding.toolId,
-					requireApproval: binding.requireApproval ?? false,
+					requireApproval: binding.requireApproval ?? tool.requireApproval,
 					riskLevel: "medium",
 				};
 			}
@@ -158,7 +159,15 @@ export async function getMcpBindingContext(
 		.where(eq(mcpTools.id, toolId))
 		.limit(1);
 
-	return tool ? { binding, tool } : null;
+	if (!tool) return null;
+
+	const [server] = await db
+		.select()
+		.from(mcpServers)
+		.where(eq(mcpServers.id, tool.mcpServerId))
+		.limit(1);
+
+	return server ? { binding, tool, server } : null;
 }
 
 export async function logToolInvocation(input: {

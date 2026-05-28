@@ -8,9 +8,12 @@ import {
 	Loader2,
 	MessageSquareIcon,
 	PlugZapIcon,
+	PlusIcon,
+	RefreshCwIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -57,6 +60,24 @@ type ProviderModel = {
 	id: string;
 	modelId: string;
 	displayName: string | null;
+	capabilitiesJson?: Record<string, boolean> | null;
+	contextWindow?: number | null;
+	maxOutputTokens?: number | null;
+	inputTokenCost?: string | null;
+	outputTokenCost?: string | null;
+	enabled?: boolean;
+};
+
+type DiscoveredModel = {
+	modelId: string;
+	displayName?: string;
+	description?: string;
+	hostedBy?: string;
+	capabilities?: Record<string, boolean>;
+	contextWindow?: number;
+	maxOutputTokens?: number;
+	inputTokenCost?: string;
+	outputTokenCost?: string;
 };
 
 function slugify(value: string) {
@@ -74,6 +95,72 @@ function defaultAuthType(kind: ProviderKind): ProviderAuthType {
 	if (kind === "dragonfly") return "x-api-key";
 	if (kind === "vercel-ai-gateway") return "gateway";
 	return "bearer";
+}
+
+function formatModelNumber(value: number | null | undefined) {
+	return typeof value === "number" && value > 0
+		? new Intl.NumberFormat().format(value)
+		: null;
+}
+
+function ModelMetadata({
+	capabilities,
+	contextWindow,
+	maxOutputTokens,
+	inputTokenCost,
+	outputTokenCost,
+	hostedBy,
+	enabled,
+}: {
+	capabilities?: Record<string, boolean> | null;
+	contextWindow?: number | null;
+	maxOutputTokens?: number | null;
+	inputTokenCost?: string | null;
+	outputTokenCost?: string | null;
+	hostedBy?: string | null;
+	enabled?: boolean;
+}) {
+	const enabledCapabilities = Object.entries(capabilities ?? {})
+		.filter(([, value]) => value)
+		.map(([key]) => key);
+	const contextWindowLabel = formatModelNumber(contextWindow);
+	const maxOutputTokensLabel = formatModelNumber(maxOutputTokens);
+
+	if (
+		enabled !== false &&
+		!hostedBy &&
+		!contextWindowLabel &&
+		!maxOutputTokensLabel &&
+		!inputTokenCost &&
+		!outputTokenCost &&
+		enabledCapabilities.length === 0
+	) {
+		return null;
+	}
+
+	return (
+		<div className="mt-2 flex flex-wrap gap-1.5">
+			{enabled === false ? <Badge variant="outline">Disabled</Badge> : null}
+			{hostedBy ? <Badge variant="outline">{hostedBy}</Badge> : null}
+			{contextWindowLabel ? (
+				<Badge variant="outline">Context {contextWindowLabel}</Badge>
+			) : null}
+			{maxOutputTokensLabel ? (
+				<Badge variant="outline">Max output {maxOutputTokensLabel}</Badge>
+			) : null}
+			{inputTokenCost ? (
+				<Badge variant="outline">Input {inputTokenCost}</Badge>
+			) : null}
+			{outputTokenCost ? (
+				<Badge variant="outline">Output {outputTokenCost}</Badge>
+			) : null}
+			{enabledCapabilities.map((capability) => (
+				<Badge key={capability} variant="secondary" className="capitalize">
+					{capability}
+				</Badge>
+			))}
+		</div>
+	);
 }
 
 export type SetupWizardProps = {
@@ -98,7 +185,9 @@ export function SetupWizard({
 	const [busy, setBusy] = useState(false);
 	const [loadingProviders, setLoadingProviders] = useState(true);
 	const [loadingModels, setLoadingModels] = useState(false);
+	const [discoveringModels, setDiscoveringModels] = useState(false);
 	const [models, setModels] = useState<ProviderModel[]>([]);
+	const [discoveredModels, setDiscoveredModels] = useState<DiscoveredModel[]>([]);
 	const [providerForm, setProviderForm] = useState<{
 		name: string;
 		kind: ProviderKind;
@@ -156,6 +245,7 @@ export function SetupWizard({
 				);
 				if (cancelled) return;
 				setModels(rows);
+				setDiscoveredModels([]);
 				setModelDbId((current) =>
 					current && rows.some((model) => model.id === current)
 						? current
@@ -164,6 +254,7 @@ export function SetupWizard({
 			} catch {
 				if (!cancelled) {
 					setModels([]);
+					setDiscoveredModels([]);
 					setModelDbId(null);
 				}
 			} finally {
@@ -176,6 +267,28 @@ export function SetupWizard({
 			cancelled = true;
 		};
 	}, [workspaceId, providerId]);
+
+	async function discoverProviderModels() {
+		if (!workspaceId || !providerId) return;
+		setDiscoveringModels(true);
+		try {
+			const rows = await fetchJson<DiscoveredModel[]>(
+				`/api/workspace/providers/${providerId}/models?workspaceId=${workspaceId}&action=discover`,
+			);
+			setDiscoveredModels(rows);
+			if (rows.length === 0) {
+				toast.info("No models returned by this provider");
+			} else {
+				toast.success(`Discovered ${rows.length} models`);
+			}
+		} catch (error) {
+			toast.error(
+				error instanceof Error ? error.message : "Failed to discover models",
+			);
+		} finally {
+			setDiscoveringModels(false);
+		}
+	}
 
 	async function createProvider() {
 		if (!workspaceId) return;
@@ -232,8 +345,11 @@ export function SetupWizard({
 		}
 	}
 
-	async function registerModel() {
-		if (!workspaceId || !providerId || !manualModelId.trim()) return;
+	async function addAndSelectModel(discoveredModel?: DiscoveredModel) {
+		const modelId = discoveredModel?.modelId ?? manualModelId.trim();
+		const displayName =
+			discoveredModel?.displayName ?? discoveredModel?.modelId ?? modelId;
+		if (!workspaceId || !providerId || !modelId) return;
 		setBusy(true);
 		try {
 			const model = await fetchJson<ProviderModel>(
@@ -243,15 +359,20 @@ export function SetupWizard({
 					headers: { "Content-Type": "application/json" },
 					body: JSON.stringify({
 						workspaceId,
-						modelId: manualModelId.trim(),
-						displayName: manualModelId.trim(),
+						modelId,
+						displayName,
+						capabilitiesJson: discoveredModel?.capabilities,
+						contextWindow: discoveredModel?.contextWindow,
+						maxOutputTokens: discoveredModel?.maxOutputTokens,
+						inputTokenCost: discoveredModel?.inputTokenCost,
+						outputTokenCost: discoveredModel?.outputTokenCost,
 					}),
 				},
 			);
 			setModels((current) => [...current, model]);
 			setModelDbId(model.id);
 			setManualModelId("");
-			toast.success("Model added");
+			toast.success("Model selected for this assistant");
 		} catch (error) {
 			toast.error(
 				error instanceof Error ? error.message : "Failed to add model",
@@ -319,6 +440,7 @@ export function SetupWizard({
 
 	const stepIndex = steps.findIndex((item) => item.id === step);
 	const selectedProvider = providers.find((provider) => provider.id === providerId);
+	const selectedModel = models.find((model) => model.id === modelDbId);
 
 	return (
 		<div className={mode === "page" ? "flex flex-col gap-6" : "flex flex-col gap-4"}>
@@ -356,7 +478,7 @@ export function SetupWizard({
 						{step === "provider" &&
 							"Add one connection. Advanced routing and extra providers can wait."}
 						{step === "model" &&
-							"Use an existing model or add the model ID your provider supports."}
+							"Select the single model this assistant will use. You can keep several provider models registered."}
 						{step === "agent" &&
 							"Name the assistant. You can add tools and knowledge later."}
 					</CardDescription>
@@ -518,6 +640,19 @@ export function SetupWizard({
 								</Button>
 								<Button
 									type="button"
+									variant="outline"
+									onClick={() => void discoverProviderModels()}
+									disabled={discoveringModels || !providerId}
+								>
+									{discoveringModels ? (
+										<Loader2 className="animate-spin" aria-hidden="true" />
+									) : (
+										<RefreshCwIcon data-icon="inline-start" aria-hidden="true" />
+									)}
+									Discover models
+								</Button>
+								<Button
+									type="button"
 									variant="ghost"
 									onClick={() => setStep("provider")}
 								>
@@ -526,7 +661,9 @@ export function SetupWizard({
 							</div>
 							{models.length > 0 ? (
 								<Field>
-									<FieldLabel htmlFor="setup-model">Model</FieldLabel>
+									<FieldLabel htmlFor="setup-model">
+										Model used by this assistant
+									</FieldLabel>
 									<FieldContent>
 										<Select
 											value={modelDbId ?? undefined}
@@ -544,13 +681,111 @@ export function SetupWizard({
 												))}
 											</SelectContent>
 										</Select>
+										{selectedModel ? (
+											<ModelMetadata
+												capabilities={selectedModel.capabilitiesJson}
+												contextWindow={selectedModel.contextWindow}
+												maxOutputTokens={selectedModel.maxOutputTokens}
+												inputTokenCost={selectedModel.inputTokenCost}
+												outputTokenCost={selectedModel.outputTokenCost}
+												enabled={selectedModel.enabled}
+											/>
+										) : null}
 									</FieldContent>
 								</Field>
 							) : (
 								<FieldDescription>
-									No saved models yet. Add a model ID below.
+									No saved models yet. Discover supported models or add a model
+									ID below.
 								</FieldDescription>
 							)}
+							{discoveredModels.length > 0 ? (
+								<div className="rounded-lg border border-border/70 p-3">
+									<div className="mb-3 flex items-center justify-between gap-3">
+										<p className="text-sm font-medium">
+											Choose from provider suggestions ({discoveredModels.length})
+										</p>
+										<FieldDescription>
+											Selecting one here sets the assistant model.
+										</FieldDescription>
+									</div>
+									<div className="grid max-h-72 gap-2 overflow-y-auto pr-1">
+										{discoveredModels.map((model) => {
+											const savedModel = models.find(
+												(savedModel) => savedModel.modelId === model.modelId,
+											);
+											const isSelected = savedModel?.id === modelDbId;
+											return (
+												<div
+													key={model.modelId}
+													className={`flex items-start justify-between gap-3 rounded-md border px-3 py-2 ${
+														isSelected
+															? "border-primary/50 bg-primary/5"
+															: "border-transparent bg-muted/40"
+													}`}
+												>
+													<div className="min-w-0">
+														<div className="flex flex-wrap items-center gap-2">
+															<p className="truncate text-sm font-medium">
+																{model.displayName || model.modelId}
+															</p>
+															{isSelected ? (
+																<Badge variant="secondary">Selected</Badge>
+															) : null}
+														</div>
+														<p className="truncate text-xs text-muted-foreground">
+															{model.modelId}
+														</p>
+														{model.description ? (
+															<p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+																{model.description}
+															</p>
+														) : null}
+														<ModelMetadata
+															capabilities={model.capabilities}
+															contextWindow={model.contextWindow}
+															maxOutputTokens={model.maxOutputTokens}
+															inputTokenCost={model.inputTokenCost}
+															outputTokenCost={model.outputTokenCost}
+															hostedBy={model.hostedBy}
+														/>
+													</div>
+													<Button
+														type="button"
+														size="sm"
+														variant={isSelected ? "secondary" : "outline"}
+														disabled={busy || isSelected}
+														onClick={() => {
+															if (savedModel) {
+																setModelDbId(savedModel.id);
+																toast.success(
+																	"Model selected for this assistant",
+																);
+																return;
+															}
+															void addAndSelectModel(model);
+														}}
+													>
+														{isSelected ? (
+															"Selected"
+														) : savedModel ? (
+															"Use"
+														) : (
+															<>
+																<PlusIcon
+																	data-icon="inline-start"
+																	aria-hidden="true"
+																/>
+																Use
+															</>
+														)}
+													</Button>
+												</div>
+											);
+										})}
+									</div>
+								</div>
+							) : null}
 							<Field>
 								<FieldLabel htmlFor="manual-model">Add model ID</FieldLabel>
 								<FieldContent>
@@ -565,9 +800,9 @@ export function SetupWizard({
 											type="button"
 											variant="outline"
 											disabled={busy || !providerId || !manualModelId.trim()}
-											onClick={() => void registerModel()}
+											onClick={() => void addAndSelectModel()}
 										>
-											Add
+											Add and use
 										</Button>
 									</div>
 								</FieldContent>
@@ -577,7 +812,7 @@ export function SetupWizard({
 								onClick={() => setStep("agent")}
 								disabled={!modelDbId}
 							>
-								Continue
+								Continue with selected model
 							</Button>
 						</FieldGroup>
 					) : null}

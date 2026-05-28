@@ -36,6 +36,13 @@
       "when": 1780000000001,
       "tag": "0004_agent_max_tool_calls",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1780000000002,
+      "tag": "0005_mcp_forced_approval",
+      "breakpoints": true
     }
   ]
 }

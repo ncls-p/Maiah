@@ -18,6 +18,7 @@ const updateSchema = z.object({
 	command: z.string().max(2048).optional(),
 	args: z.array(z.string().max(512)).optional(),
 	enabled: z.boolean().optional(),
+	requireApproval: z.boolean().optional(),
 	headers: z.record(z.string(), z.string()).optional(),
 	env: z.record(z.string(), z.string()).optional(),
 });

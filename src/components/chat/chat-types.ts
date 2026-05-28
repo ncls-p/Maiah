@@ -50,6 +50,7 @@ export interface ChatCitation {
 
 export type ChatStreamEvent =
 	| { type: "text" | "reasoning"; delta: string }
+	| { type: "done" }
 	| { type: "error"; error: string }
 	| {
 			type: "tool_approval_required";
@@ -193,6 +194,9 @@ export function isChatStreamEvent(value: unknown): value is ChatStreamEvent {
 		return true;
 	}
 	if (event.type === "error" && typeof event.error === "string") {
+		return true;
+	}
+	if (event.type === "done") {
 		return true;
 	}
 	if (

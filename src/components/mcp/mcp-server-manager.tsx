@@ -68,6 +68,7 @@ interface McpServer {
 	command: string | null;
 	healthStatus: string | null;
 	enabled: boolean;
+	requireApproval: boolean;
 	hasHeaders: boolean;
 	hasEnv: boolean;
 }
@@ -76,7 +77,10 @@ interface McpTool {
 	name: string;
 	description: string | null;
 	enabled: boolean;
+	requireApproval: boolean;
 }
+
+type SimpleAuthMode = "none" | "bearer" | "api-key" | "env";
 
 const emptyForm = {
 	name: "",
@@ -84,6 +88,13 @@ const emptyForm = {
 	url: "",
 	command: "",
 	args: "",
+	authMode: "none" as SimpleAuthMode,
+	bearerToken: "",
+	apiKeyHeader: "X-API-Key",
+	apiKeyValue: "",
+	envKeyName: "API_KEY",
+	envKeyValue: "",
+	requireApproval: false,
 	headers: "",
 	env: "",
 };
@@ -105,6 +116,52 @@ function parsePairs(input: string) {
 	return Object.keys(result).length > 0 ? result : undefined;
 }
 
+function mergeRecords(
+	...records: Array<Record<string, string> | undefined>
+): Record<string, string> | undefined {
+	const merged: Record<string, string> = {};
+	for (const record of records) {
+		if (!record) continue;
+		Object.assign(merged, record);
+	}
+	return Object.keys(merged).length > 0 ? merged : undefined;
+}
+
+function buildSimpleAuthHeaders(form: typeof emptyForm) {
+	if (form.transport === "stdio") return undefined;
+	if (form.authMode === "bearer" && form.bearerToken.trim()) {
+		return { Authorization: `Bearer ${form.bearerToken.trim()}` };
+	}
+	if (
+		form.authMode === "api-key" &&
+		form.apiKeyHeader.trim() &&
+		form.apiKeyValue.trim()
+	) {
+		return { [form.apiKeyHeader.trim()]: form.apiKeyValue.trim() };
+	}
+	return undefined;
+}
+
+function buildSimpleAuthEnv(form: typeof emptyForm) {
+	if (
+		form.transport === "stdio" &&
+		form.authMode === "env" &&
+		form.envKeyName.trim() &&
+		form.envKeyValue.trim()
+	) {
+		return { [form.envKeyName.trim()]: form.envKeyValue.trim() };
+	}
+	return undefined;
+}
+
+function buildHeaders(form: typeof emptyForm) {
+	return mergeRecords(buildSimpleAuthHeaders(form), parsePairs(form.headers));
+}
+
+function buildEnv(form: typeof emptyForm) {
+	return mergeRecords(buildSimpleAuthEnv(form), parsePairs(form.env));
+}
+
 export function McpServerManager() {
 	const { workspaceId } = useWorkspace();
 	const [servers, setServers] = useState<McpServer[]>([]);
@@ -114,6 +171,8 @@ export function McpServerManager() {
 	const [loading, setLoading] = useState(true);
 	const [busy, setBusy] = useState(false);
 	const [showCreateForm, setShowCreateForm] = useState(false);
+	const [showAdvancedCreate, setShowAdvancedCreate] = useState(false);
+	const [showAdvancedEdit, setShowAdvancedEdit] = useState(false);
 	const [form, setForm] = useState(emptyForm);
 	const [editServer, setEditServer] = useState<McpServer | null>(null);
 	const [editForm, setEditForm] = useState(emptyForm);
@@ -172,13 +231,15 @@ export function McpServerManager() {
 						.split("\n")
 						.map((line) => line.trim())
 						.filter(Boolean),
-					headers: parsePairs(form.headers),
-					env: parsePairs(form.env),
+					requireApproval: form.requireApproval,
+					headers: buildHeaders(form),
+					env: buildEnv(form),
 				}),
 			});
 			if (!res.ok) throw new Error((await res.json()).error || "Failed");
 			setForm(emptyForm);
 			setShowCreateForm(false);
+			setShowAdvancedCreate(false);
 			toast.success("MCP server added");
 			await load();
 		} catch (error) {
@@ -209,13 +270,15 @@ export function McpServerManager() {
 							.map((line) => line.trim())
 							.filter(Boolean),
 						enabled: editServer.enabled,
-						headers: parsePairs(editForm.headers),
-						env: parsePairs(editForm.env),
+						requireApproval: editForm.requireApproval,
+						headers: buildHeaders(editForm),
+						env: buildEnv(editForm),
 					}),
 				},
 			);
 			if (!res.ok) throw new Error((await res.json()).error || "Failed");
 			setEditServer(null);
+			setShowAdvancedEdit(false);
 			toast.success("MCP server updated");
 			await load();
 		} catch (error) {
@@ -324,6 +387,41 @@ export function McpServerManager() {
 		await load();
 	}
 
+	async function toggleServerApproval(server: McpServer, requireApproval: boolean) {
+		if (!workspaceId) return;
+		const res = await fetch(`/api/workspace/mcp-servers/${server.id}`, {
+			method: "PATCH",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ workspaceId, requireApproval }),
+		});
+		if (!res.ok) {
+			toast.error("Unable to update approval policy");
+			return;
+		}
+		await load();
+	}
+
+	async function toggleToolApproval(
+		serverId: string,
+		toolId: string,
+		requireApproval: boolean,
+	) {
+		if (!workspaceId) return;
+		const res = await fetch(
+			`/api/workspace/mcp-servers/${serverId}/tools/${toolId}`,
+			{
+				method: "PATCH",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ workspaceId, requireApproval }),
+			},
+		);
+		if (!res.ok) {
+			toast.error("Unable to update approval policy");
+			return;
+		}
+		await load();
+	}
+
 	return (
 		<div className="flex flex-col gap-6">
 			<Card size={showCreateForm ? "default" : "sm"}>
@@ -337,7 +435,10 @@ export function McpServerManager() {
 							type="button"
 							variant={showCreateForm ? "outline" : "default"}
 							size="sm"
-							onClick={() => setShowCreateForm((value) => !value)}
+							onClick={() => {
+								setShowCreateForm(!showCreateForm);
+								setShowAdvancedCreate(false);
+							}}
 						>
 							{showCreateForm ? (
 								"Cancel"
@@ -369,7 +470,11 @@ export function McpServerManager() {
 									<Select
 										value={form.transport}
 										onValueChange={(value) =>
-											setForm({ ...form, transport: value })
+											setForm({
+												...form,
+												transport: value,
+												authMode: "none",
+											})
 										}
 									>
 										<SelectTrigger id="mcp-transport">
@@ -427,32 +532,179 @@ export function McpServerManager() {
 									/>
 								</div>
 							)}
-							<div className="grid gap-2">
-								<Label htmlFor="mcp-headers">Headers (API keys)</Label>
-								<Textarea
-									id="mcp-headers"
-									autoComplete="off"
-									value={form.headers}
-									onChange={(e) =>
-										setForm({ ...form, headers: e.target.value })
+							<div className="grid gap-3 rounded-lg border border-border/70 bg-background/70 p-3">
+								<div className="grid gap-2">
+									<Label htmlFor="mcp-auth-mode">Authentication</Label>
+									<Select
+										value={form.authMode}
+										onValueChange={(value) =>
+											setForm({
+												...form,
+												authMode: value as SimpleAuthMode,
+											})
+										}
+									>
+										<SelectTrigger id="mcp-auth-mode" className="w-full">
+											<SelectValue />
+										</SelectTrigger>
+										<SelectContent>
+											<SelectItem value="none">No auth</SelectItem>
+											{form.transport === "stdio" ? (
+												<SelectItem value="env">API key / token</SelectItem>
+											) : (
+												<>
+													<SelectItem value="bearer">Bearer token</SelectItem>
+													<SelectItem value="api-key">API key header</SelectItem>
+												</>
+											)}
+										</SelectContent>
+									</Select>
+								</div>
+								{form.transport === "stdio" && form.authMode === "env" ? (
+									<div className="grid gap-3 sm:grid-cols-[minmax(0,0.7fr)_minmax(0,1fr)]">
+										<div className="grid gap-2">
+											<Label htmlFor="mcp-env-key-name">Variable name</Label>
+											<Input
+												id="mcp-env-key-name"
+												autoComplete="off"
+												value={form.envKeyName}
+												onChange={(e) =>
+													setForm({ ...form, envKeyName: e.target.value })
+												}
+												placeholder="API_KEY"
+											/>
+										</div>
+										<div className="grid gap-2">
+											<Label htmlFor="mcp-env-key-value">Secret value</Label>
+											<Input
+												id="mcp-env-key-value"
+												type="password"
+												autoComplete="off"
+												value={form.envKeyValue}
+												onChange={(e) =>
+													setForm({ ...form, envKeyValue: e.target.value })
+												}
+												placeholder="Paste token…"
+											/>
+										</div>
+									</div>
+								) : null}
+								{form.transport !== "stdio" && form.authMode === "bearer" ? (
+									<div className="grid gap-2">
+										<Label htmlFor="mcp-bearer-token">Bearer token</Label>
+										<Input
+											id="mcp-bearer-token"
+											type="password"
+											autoComplete="off"
+											value={form.bearerToken}
+											onChange={(e) =>
+												setForm({ ...form, bearerToken: e.target.value })
+											}
+											placeholder="Paste token…"
+										/>
+									</div>
+								) : null}
+								{form.transport !== "stdio" && form.authMode === "api-key" ? (
+									<div className="grid gap-3 sm:grid-cols-[minmax(0,0.7fr)_minmax(0,1fr)]">
+										<div className="grid gap-2">
+											<Label htmlFor="mcp-api-key-header">Header name</Label>
+											<Input
+												id="mcp-api-key-header"
+												autoComplete="off"
+												value={form.apiKeyHeader}
+												onChange={(e) =>
+													setForm({ ...form, apiKeyHeader: e.target.value })
+												}
+												placeholder="X-API-Key"
+											/>
+										</div>
+										<div className="grid gap-2">
+											<Label htmlFor="mcp-api-key-value">API key</Label>
+											<Input
+												id="mcp-api-key-value"
+												type="password"
+												autoComplete="off"
+												value={form.apiKeyValue}
+												onChange={(e) =>
+													setForm({ ...form, apiKeyValue: e.target.value })
+												}
+												placeholder="Paste key…"
+											/>
+										</div>
+									</div>
+								) : null}
+							</div>
+							<div className="flex flex-col gap-3 rounded-lg border border-border/70 bg-background/70 p-3 sm:flex-row sm:items-center sm:justify-between">
+								<div>
+									<p className="text-sm font-medium">Require approval</p>
+									<p className="text-xs text-muted-foreground">
+										Force approval before any tool from this MCP server runs.
+									</p>
+								</div>
+								<Switch
+									aria-label="Require approval for all MCP tools"
+									checked={form.requireApproval}
+									onCheckedChange={(checked) =>
+										setForm({ ...form, requireApproval: checked })
 									}
-									placeholder="Authorization=Bearer sk-…"
-								/>
-								<p className="text-xs text-muted-foreground">
-									One header per line as <code>Key=Value</code>. For Meta MCP use
-									SSE transport and your bearer token here.
-								</p>
-							</div>
-							<div className="grid gap-2">
-								<Label htmlFor="mcp-env">Environment variables</Label>
-								<Textarea
-									id="mcp-env"
-									autoComplete="off"
-									value={form.env}
-									onChange={(e) => setForm({ ...form, env: e.target.value })}
-									placeholder="API_KEY=…"
 								/>
 							</div>
+							<Collapsible
+								open={showAdvancedCreate}
+								onOpenChange={setShowAdvancedCreate}
+								className="rounded-lg border border-border/70 bg-muted/20"
+							>
+								<CollapsibleTrigger asChild>
+									<Button
+										type="button"
+										variant="ghost"
+										className="flex w-full justify-between px-3 py-2 text-sm"
+									>
+										<span>Advanced options</span>
+										<ChevronDownIcon
+											className={cn(
+												"size-4 transition-transform",
+												showAdvancedCreate && "rotate-180",
+											)}
+											aria-hidden="true"
+										/>
+									</Button>
+								</CollapsibleTrigger>
+								<CollapsibleContent className="grid gap-4 border-t border-border/60 p-3">
+									<p className="text-sm text-muted-foreground">
+										Use these only when the server documentation requires
+										multiple headers or custom environment variables.
+									</p>
+									<div className="grid gap-2">
+										<Label htmlFor="mcp-headers">HTTP headers</Label>
+										<Textarea
+											id="mcp-headers"
+											autoComplete="off"
+											value={form.headers}
+											onChange={(e) =>
+												setForm({ ...form, headers: e.target.value })
+											}
+											placeholder="Authorization=Bearer sk-…"
+										/>
+										<p className="text-xs text-muted-foreground">
+											One header per line as <code>Key=Value</code>.
+										</p>
+									</div>
+									<div className="grid gap-2">
+										<Label htmlFor="mcp-env">Environment variables</Label>
+										<Textarea
+											id="mcp-env"
+											autoComplete="off"
+											value={form.env}
+											onChange={(e) => setForm({ ...form, env: e.target.value })}
+											placeholder="API_KEY=…"
+										/>
+										<p className="text-xs text-muted-foreground">
+											One variable per line as <code>KEY=VALUE</code>.
+										</p>
+									</div>
+								</CollapsibleContent>
+							</Collapsible>
 						</CardContent>
 						<CardFooter className="justify-end">
 							<Button
@@ -550,9 +802,22 @@ export function McpServerManager() {
 														}
 													/>
 												</div>
+												<div className="flex items-center gap-2 text-sm">
+													<span className="hidden sm:inline">Approval</span>
+													<Switch
+														aria-label={`Require approval for ${server.name}`}
+														checked={server.requireApproval}
+														onCheckedChange={(checked) =>
+															void toggleServerApproval(server, checked)
+														}
+													/>
+												</div>
 												<Badge variant="outline">
 													{server.healthStatus || "unknown"}
 												</Badge>
+												{server.requireApproval ? (
+													<Badge variant="secondary">Approval forced</Badge>
+												) : null}
 												{server.hasHeaders ? (
 													<Badge variant="secondary">API key</Badge>
 												) : null}
@@ -587,9 +852,17 @@ export function McpServerManager() {
 															url: server.url ?? "",
 															command: server.command ?? "",
 															args: "",
+															authMode: "none",
+															bearerToken: "",
+															apiKeyHeader: "X-API-Key",
+															apiKeyValue: "",
+															envKeyName: "API_KEY",
+															envKeyValue: "",
+															requireApproval: server.requireApproval,
 															headers: "",
 															env: "",
 														});
+														setShowAdvancedEdit(false);
 													}}
 												>
 													<PencilIcon aria-hidden="true" />
@@ -625,13 +898,35 @@ export function McpServerManager() {
 																</p>
 															) : null}
 														</div>
-														<Switch
-															aria-label={`Enable ${tool.name}`}
-															checked={tool.enabled}
-															onCheckedChange={(checked) =>
-																void toggleTool(server.id, tool.id, checked)
-															}
-														/>
+														<div className="flex shrink-0 flex-wrap items-center gap-4 text-sm">
+															<label className="flex items-center gap-2">
+																Approval
+																<Switch
+																	aria-label={`Require approval for ${tool.name}`}
+																	checked={
+																		server.requireApproval || tool.requireApproval
+																	}
+																	disabled={server.requireApproval}
+																	onCheckedChange={(checked) =>
+																		void toggleToolApproval(
+																			server.id,
+																			tool.id,
+																			checked,
+																		)
+																	}
+																/>
+															</label>
+															<label className="flex items-center gap-2">
+																Enabled
+																<Switch
+																	aria-label={`Enable ${tool.name}`}
+																	checked={tool.enabled}
+																	onCheckedChange={(checked) =>
+																		void toggleTool(server.id, tool.id, checked)
+																	}
+																/>
+															</label>
+														</div>
 													</div>
 												))
 											)}
@@ -644,7 +939,15 @@ export function McpServerManager() {
 				</div>
 			)}
 
-			<Dialog open={Boolean(editServer)} onOpenChange={() => setEditServer(null)}>
+			<Dialog
+				open={Boolean(editServer)}
+				onOpenChange={(open) => {
+					if (!open) {
+						setEditServer(null);
+						setShowAdvancedEdit(false);
+					}
+				}}
+			>
 				<DialogContent className="max-w-lg">
 					<DialogHeader>
 						<DialogTitle>Edit MCP server</DialogTitle>
@@ -673,21 +976,208 @@ export function McpServerManager() {
 								}
 							/>
 						</div>
-						<div className="grid gap-2">
-							<Label htmlFor="mcp-edit-headers">Headers (replaces existing)</Label>
-							<Textarea
-								id="mcp-edit-headers"
-								autoComplete="off"
-								value={editForm.headers}
-								onChange={(e) =>
-									setEditForm({ ...editForm, headers: e.target.value })
+						<div className="flex flex-col gap-3 rounded-lg border border-border/70 bg-background/70 p-3 sm:flex-row sm:items-center sm:justify-between">
+							<div>
+								<p className="text-sm font-medium">Require approval</p>
+								<p className="text-xs text-muted-foreground">
+									Force approval before any tool from this MCP server runs.
+								</p>
+							</div>
+							<Switch
+								aria-label="Require approval for all MCP tools"
+								checked={editForm.requireApproval}
+								onCheckedChange={(checked) =>
+									setEditForm({ ...editForm, requireApproval: checked })
 								}
-								placeholder="Authorization=Bearer …"
 							/>
 						</div>
+						<div className="grid gap-3 rounded-lg border border-border/70 bg-background/70 p-3">
+							<div className="grid gap-2">
+								<Label htmlFor="mcp-edit-auth-mode">Authentication</Label>
+								<Select
+									value={editForm.authMode}
+									onValueChange={(value) =>
+										setEditForm({
+											...editForm,
+											authMode: value as SimpleAuthMode,
+										})
+									}
+								>
+									<SelectTrigger id="mcp-edit-auth-mode" className="w-full">
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="none">Keep current auth</SelectItem>
+										{editServer?.transport === "stdio" ? (
+											<SelectItem value="env">Replace API key / token</SelectItem>
+										) : (
+											<>
+												<SelectItem value="bearer">Replace with bearer token</SelectItem>
+												<SelectItem value="api-key">
+													Replace with API key header
+												</SelectItem>
+											</>
+										)}
+									</SelectContent>
+								</Select>
+							</div>
+							{editServer?.transport === "stdio" && editForm.authMode === "env" ? (
+								<div className="grid gap-3 sm:grid-cols-[minmax(0,0.7fr)_minmax(0,1fr)]">
+									<div className="grid gap-2">
+										<Label htmlFor="mcp-edit-env-key-name">Variable name</Label>
+										<Input
+											id="mcp-edit-env-key-name"
+											autoComplete="off"
+											value={editForm.envKeyName}
+											onChange={(e) =>
+												setEditForm({
+													...editForm,
+													envKeyName: e.target.value,
+												})
+											}
+											placeholder="API_KEY"
+										/>
+									</div>
+									<div className="grid gap-2">
+										<Label htmlFor="mcp-edit-env-key-value">Secret value</Label>
+										<Input
+											id="mcp-edit-env-key-value"
+											type="password"
+											autoComplete="off"
+											value={editForm.envKeyValue}
+											onChange={(e) =>
+												setEditForm({
+													...editForm,
+													envKeyValue: e.target.value,
+												})
+											}
+											placeholder="Paste token…"
+										/>
+									</div>
+								</div>
+							) : null}
+							{editServer &&
+							editServer.transport !== "stdio" &&
+							editForm.authMode === "bearer" ? (
+								<div className="grid gap-2">
+									<Label htmlFor="mcp-edit-bearer-token">Bearer token</Label>
+									<Input
+										id="mcp-edit-bearer-token"
+										type="password"
+										autoComplete="off"
+										value={editForm.bearerToken}
+										onChange={(e) =>
+											setEditForm({
+												...editForm,
+												bearerToken: e.target.value,
+											})
+										}
+										placeholder="Paste token…"
+									/>
+								</div>
+							) : null}
+							{editServer &&
+							editServer.transport !== "stdio" &&
+							editForm.authMode === "api-key" ? (
+								<div className="grid gap-3 sm:grid-cols-[minmax(0,0.7fr)_minmax(0,1fr)]">
+									<div className="grid gap-2">
+										<Label htmlFor="mcp-edit-api-key-header">Header name</Label>
+										<Input
+											id="mcp-edit-api-key-header"
+											autoComplete="off"
+											value={editForm.apiKeyHeader}
+											onChange={(e) =>
+												setEditForm({
+													...editForm,
+													apiKeyHeader: e.target.value,
+												})
+											}
+											placeholder="X-API-Key"
+										/>
+									</div>
+									<div className="grid gap-2">
+										<Label htmlFor="mcp-edit-api-key-value">API key</Label>
+										<Input
+											id="mcp-edit-api-key-value"
+											type="password"
+											autoComplete="off"
+											value={editForm.apiKeyValue}
+											onChange={(e) =>
+												setEditForm({
+													...editForm,
+													apiKeyValue: e.target.value,
+												})
+											}
+											placeholder="Paste key…"
+										/>
+									</div>
+								</div>
+							) : null}
+						</div>
+						<Collapsible
+							open={showAdvancedEdit}
+							onOpenChange={setShowAdvancedEdit}
+							className="rounded-lg border border-border/70 bg-muted/20"
+						>
+							<CollapsibleTrigger asChild>
+								<Button
+									type="button"
+									variant="ghost"
+									className="flex w-full justify-between px-3 py-2 text-sm"
+								>
+									<span>Advanced options</span>
+									<ChevronDownIcon
+										className={cn(
+											"size-4 transition-transform",
+											showAdvancedEdit && "rotate-180",
+										)}
+										aria-hidden="true"
+									/>
+								</Button>
+							</CollapsibleTrigger>
+							<CollapsibleContent className="grid gap-4 border-t border-border/60 p-3">
+								<p className="text-sm text-muted-foreground">
+									Leave these empty to keep the existing secret configuration.
+								</p>
+								<div className="grid gap-2">
+									<Label htmlFor="mcp-edit-headers">
+										HTTP headers (replaces existing)
+									</Label>
+									<Textarea
+										id="mcp-edit-headers"
+										autoComplete="off"
+										value={editForm.headers}
+										onChange={(e) =>
+											setEditForm({ ...editForm, headers: e.target.value })
+										}
+										placeholder="Authorization=Bearer …"
+									/>
+								</div>
+								<div className="grid gap-2">
+									<Label htmlFor="mcp-edit-env">
+										Environment variables (replaces existing)
+									</Label>
+									<Textarea
+										id="mcp-edit-env"
+										autoComplete="off"
+										value={editForm.env}
+										onChange={(e) =>
+											setEditForm({ ...editForm, env: e.target.value })
+										}
+										placeholder="API_KEY=…"
+									/>
+								</div>
+							</CollapsibleContent>
+						</Collapsible>
 					</div>
 					<DialogFooter>
-						<Button variant="outline" onClick={() => setEditServer(null)}>
+						<Button
+							variant="outline"
+							onClick={() => {
+								setEditServer(null);
+								setShowAdvancedEdit(false);
+							}}
+						>
 							Cancel
 						</Button>
 						<Button disabled={busy} onClick={() => void saveEdit()}>

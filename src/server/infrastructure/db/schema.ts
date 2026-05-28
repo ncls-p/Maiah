@@ -641,6 +641,7 @@ export const mcpServers = pgTable(
 		encryptedHeadersJson: jsonb("encrypted_headers_json"),
 		encryptedEnvJson: jsonb("encrypted_env_json"),
 		enabled: boolean("enabled").notNull().default(true),
+		requireApproval: boolean("require_approval").notNull().default(false),
 		healthStatus: varchar("health_status", { length: 16 }),
 		lastCheckedAt: timestamp("last_checked_at", { withTimezone: true }),
 		createdById: uuid("created_by_user_id")
@@ -674,6 +675,7 @@ export const mcpTools = pgTable(
 			.notNull()
 			.defaultNow(),
 		enabled: boolean("enabled").notNull().default(true),
+		requireApproval: boolean("require_approval").notNull().default(false),
 	},
 	(t) => ({
 		server: index("mcp_tools_server").on(t.mcpServerId),

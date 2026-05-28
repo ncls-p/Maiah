@@ -16,6 +16,7 @@ export interface CreateMcpServerInput {
 	command?: string;
 	args?: string[];
 	url?: string;
+	requireApproval?: boolean;
 	headers?: Record<string, string>;
 	env?: Record<string, string>;
 }
@@ -30,6 +31,7 @@ export function toSafeMcpServer(server: typeof mcpServers.$inferSelect) {
 		argsJson: server.argsJson,
 		url: server.url,
 		enabled: server.enabled,
+		requireApproval: server.requireApproval,
 		healthStatus: server.healthStatus,
 		lastCheckedAt: server.lastCheckedAt,
 		createdAt: server.createdAt,
@@ -61,6 +63,7 @@ export async function createMcpServer(input: CreateMcpServerInput) {
 			encryptedHeadersJson: await encryptRecord(input.headers),
 			encryptedEnvJson: await encryptRecord(input.env),
 			enabled: true,
+			requireApproval: input.requireApproval ?? false,
 			healthStatus: "unknown",
 			createdById: input.userId,
 		})
@@ -122,6 +125,7 @@ export async function updateMcpServer(input: {
 	command?: string;
 	args?: string[];
 	enabled?: boolean;
+	requireApproval?: boolean;
 	headers?: Record<string, string>;
 	env?: Record<string, string>;
 }) {
@@ -134,6 +138,8 @@ export async function updateMcpServer(input: {
 	if (input.command !== undefined) updates.command = input.command || null;
 	if (input.args !== undefined) updates.argsJson = input.args;
 	if (input.enabled !== undefined) updates.enabled = input.enabled;
+	if (input.requireApproval !== undefined)
+		updates.requireApproval = input.requireApproval;
 	if (input.headers !== undefined)
 		updates.encryptedHeadersJson = await encryptRecord(input.headers);
 	if (input.env !== undefined)
@@ -212,10 +218,21 @@ export async function syncMcpTools(
 		description: string | null;
 		inputSchemaJson: Record<string, unknown> | null;
 		outputSchemaJson: Record<string, unknown> | null;
+		requireApproval: boolean;
 	}> = [];
 	let healthStatus = "healthy";
 
 	try {
+		const existingTools = await db
+			.select({
+				name: mcpTools.name,
+				requireApproval: mcpTools.requireApproval,
+			})
+			.from(mcpTools)
+			.where(eq(mcpTools.mcpServerId, serverId));
+		const approvalByName = new Map(
+			existingTools.map((tool) => [tool.name, tool.requireApproval]),
+		);
 		const remoteTools = await listRemoteMcpTools(server);
 		discovered = remoteTools.map((tool) => ({
 			name: tool.name,
@@ -225,6 +242,7 @@ export async function syncMcpTools(
 				(tool.inputSchema as Record<string, unknown> | undefined) ?? null,
 			outputSchemaJson:
 				(tool.outputSchema as Record<string, unknown> | undefined) ?? null,
+			requireApproval: approvalByName.get(tool.name) ?? false,
 		}));
 	} catch (error) {
 		healthStatus = "unhealthy";
@@ -245,6 +263,7 @@ export async function syncMcpTools(
 					inputSchemaJson: tool.inputSchemaJson,
 					outputSchemaJson: tool.outputSchemaJson,
 					enabled: true,
+					requireApproval: tool.requireApproval,
 				})),
 			);
 		}
@@ -333,12 +352,15 @@ export async function updateMcpTool(input: {
 	workspaceId: string;
 	userId: string;
 	enabled?: boolean;
+	requireApproval?: boolean;
 }) {
 	const server = await getMcpServer(input.serverId, input.workspaceId);
 	if (!server) throw new Error("MCP server not found");
 
 	const updates: Record<string, unknown> = {};
 	if (input.enabled !== undefined) updates.enabled = input.enabled;
+	if (input.requireApproval !== undefined)
+		updates.requireApproval = input.requireApproval;
 	if (Object.keys(updates).length === 0) {
 		throw new Error("No updates provided");
 	}
@@ -364,7 +386,11 @@ export async function updateMcpTool(input: {
 		resourceType: "mcp_server",
 		resourceId: input.serverId,
 		outcome: "success",
-		metadata: { toolId: input.toolId, enabled: input.enabled },
+		metadata: {
+			toolId: input.toolId,
+			enabled: input.enabled,
+			requireApproval: input.requireApproval,
+		},
 	});
 
 	return tool;

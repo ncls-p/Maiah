@@ -8,6 +8,7 @@ import { authorization } from "@/server/domain/services/authorization";
 const updateSchema = z.object({
 	workspaceId: z.uuid(),
 	enabled: z.boolean().optional(),
+	requireApproval: z.boolean().optional(),
 });
 
 export async function PATCH(
@@ -45,6 +46,7 @@ export async function PATCH(
 			workspaceId: parsed.data.workspaceId,
 			userId: session.user.id,
 			enabled: parsed.data.enabled,
+			requireApproval: parsed.data.requireApproval,
 		});
 		return NextResponse.json(tool);
 	} catch (error) {

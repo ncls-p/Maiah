@@ -8,6 +8,7 @@ import {
 	useContext,
 	useMemo,
 	useState,
+	useSyncExternalStore,
 	type ReactNode,
 } from "react";
 import {
@@ -53,9 +54,18 @@ import {
 import { cn } from "@/lib/utils";
 
 const STORAGE_KEY = "workspace-sidebar-collapsed";
+const STORAGE_EVENT = "workspace-sidebar-collapsed-change";
 
-function readInitialCollapsed(defaultCollapsed: boolean): boolean {
-	if (typeof window === "undefined") return defaultCollapsed;
+function subscribeCollapsed(callback: () => void) {
+	window.addEventListener("storage", callback);
+	window.addEventListener(STORAGE_EVENT, callback);
+	return () => {
+		window.removeEventListener("storage", callback);
+		window.removeEventListener(STORAGE_EVENT, callback);
+	};
+}
+
+function getStoredCollapsed(defaultCollapsed: boolean): boolean {
 	const stored = window.localStorage.getItem(STORAGE_KEY);
 	if (stored !== null) return stored === "true";
 	return defaultCollapsed;
@@ -88,14 +98,16 @@ export function WorkspaceSidebarProvider({
 	defaultCollapsed?: boolean;
 }) {
 	const isMobile = useIsMobile();
-	const [collapsed, setCollapsedState] = useState(() =>
-		readInitialCollapsed(defaultCollapsed),
+	const collapsed = useSyncExternalStore(
+		subscribeCollapsed,
+		() => getStoredCollapsed(defaultCollapsed),
+		() => defaultCollapsed,
 	);
 	const [mobileOpen, setMobileOpen] = useState(false);
 
 	const setCollapsed = useCallback((value: boolean) => {
-		setCollapsedState(value);
 		window.localStorage.setItem(STORAGE_KEY, String(value));
+		window.dispatchEvent(new Event(STORAGE_EVENT));
 	}, []);
 
 	const toggleCollapsed = useCallback(() => {

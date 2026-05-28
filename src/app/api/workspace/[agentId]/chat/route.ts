@@ -11,6 +11,11 @@ import {
 	resolveProviderForVersion,
 } from "@/modules/agent/use-cases";
 import { isAdminRole } from "@/modules/admin/use-cases";
+import {
+	completeChatStream,
+	createChatStreamResponse,
+	publishChatStreamEvent,
+} from "@/modules/chat/stream-bus";
 import { searchBoundKnowledgeBases } from "@/modules/knowledge/use-cases";
 import { executeMcpTool } from "@/modules/mcp/executor";
 import { assertWorkspaceWithinTokenQuota } from "@/modules/usage/quota";
@@ -90,6 +95,10 @@ async function buildBoundTools(input: {
 			);
 			if (!mcpContext) continue;
 			const mcpTool = mcpContext.tool;
+			const requiresMcpApproval =
+				mcpContext.server.requireApproval ||
+				mcpTool.requireApproval ||
+				binding.requireApproval;
 
 			const sanitizedName = mcpTool.name
 				.replace(/[^a-zA-Z0-9_]/g, "_")
@@ -124,7 +133,7 @@ async function buildBoundTools(input: {
 						});
 						return toolLimitReachedResult();
 					}
-					if (binding.requireApproval) {
+					if (requiresMcpApproval) {
 						const invocation = await logToolInvocation({
 							workspaceId: input.workspaceId,
 							conversationId: input.conversationId,
@@ -594,24 +603,8 @@ export async function POST(
 		});
 		const history = await loadConversationHistory(conversation.id);
 
-		const encoder = new TextEncoder();
-		let streamController: ReadableStreamDefaultController<Uint8Array> | null =
-			null;
-		const eventBuffer: Array<Record<string, unknown>> = [];
-
-		const emitSse = (event: Record<string, unknown>) => {
-			const chunk = encoder.encode(`data: ${JSON.stringify(event)}\n\n`);
-			if (streamController) {
-				try {
-					streamController.enqueue(chunk);
-					return;
-				} catch {
-					// fall through to buffering on closed/erroring streams
-				}
-			}
-			eventBuffer.push(event);
-		};
-		const enqueueEvent = (event: Record<string, unknown>) => emitSse(event);
+		const enqueueEvent = (event: Record<string, unknown>) =>
+			publishChatStreamEvent(assistantMessage.id, event);
 
 		const ragHits = await searchBoundKnowledgeBases({
 			agentVersionId: version.id,
@@ -694,20 +687,54 @@ export async function POST(
 			"Tool call limit reached. Do not call another tool. Answer the user now using the available conversation context, knowledge excerpts, and tool results. If the available information is incomplete, clearly say what is known and what is uncertain.";
 		const startedAt = Date.now();
 		type StreamedAssistantPart =
-			| { type: "text" | "reasoning"; content: string }
-			| { type: "tool-call" | "tool-result"; metadata: unknown };
+			| { id: string; type: "text" | "reasoning"; content: string }
+			| { id: string; type: "tool-call" | "tool-result"; metadata: unknown };
 		const streamedParts: StreamedAssistantPart[] = [];
+		let nextSortOrder = 0;
 
-		function appendStreamedTextPart(
+		async function appendStreamedTextPart(
 			type: "text" | "reasoning",
 			content: string,
 		) {
 			const lastPart = streamedParts.at(-1);
 			if (lastPart?.type === type) {
 				lastPart.content += content;
+				await db
+					.update(messageParts)
+					.set({ contentEncrypted: await encryptValue(lastPart.content) })
+					.where(eq(messageParts.id, lastPart.id));
 				return;
 			}
-			streamedParts.push({ type, content });
+			const [inserted] = await db
+				.insert(messageParts)
+				.values({
+					messageId: assistantMessage.id,
+					type,
+					contentEncrypted: await encryptValue(content),
+					metadataJson: null,
+					sortOrder: nextSortOrder,
+				})
+				.returning({ id: messageParts.id });
+			nextSortOrder += 1;
+			streamedParts.push({ id: inserted.id, type, content });
+		}
+
+		async function appendStreamedMetadataPart(
+			type: "tool-call" | "tool-result",
+			metadata: unknown,
+		) {
+			const [inserted] = await db
+				.insert(messageParts)
+				.values({
+					messageId: assistantMessage.id,
+					type,
+					contentEncrypted: null,
+					metadataJson: metadata,
+					sortOrder: nextSortOrder,
+				})
+				.returning({ id: messageParts.id });
+			nextSortOrder += 1;
+			streamedParts.push({ id: inserted.id, type, metadata });
 		}
 
 		const result = streamText({
@@ -759,132 +786,95 @@ export async function POST(
 			},
 		});
 
-		const stream = new ReadableStream<Uint8Array>({
-			async start(controller) {
-				streamController = controller;
-				for (const buffered of eventBuffer.splice(0)) emitSse(buffered);
-
-				try {
-					for await (const part of result.fullStream) {
-						if (part.type === "text-delta") {
-							appendStreamedTextPart("text", part.text);
-							emitSse({ type: "text", delta: part.text });
-						} else if (part.type === "reasoning-delta") {
-							appendStreamedTextPart("reasoning", part.text);
-							emitSse({ type: "reasoning", delta: part.text });
-						} else if (part.type === "tool-call") {
-							streamedParts.push({ type: "tool-call", metadata: part });
-							emitSse({
-								type: "tool_call",
-								toolCallId: part.toolCallId,
-								toolName: part.toolName,
-								input: part.input,
-							});
-						} else if (part.type === "tool-result") {
-							streamedParts.push({ type: "tool-result", metadata: part });
-							emitSse({
-								type: "tool_result",
-								toolCallId: part.toolCallId,
-								toolName: part.toolName,
-								output: part.output,
-							});
-						} else if (part.type === "error") {
-							const error =
-								part.error instanceof Error
-									? part.error
-									: new Error(String(part.error));
-							emitSse({
-								type: "error",
-								error: error.message,
-							});
-							throw error;
-						}
+		void (async () => {
+			try {
+				for await (const part of result.fullStream) {
+					if (part.type === "text-delta") {
+						await appendStreamedTextPart("text", part.text);
+						enqueueEvent({ type: "text", delta: part.text });
+					} else if (part.type === "reasoning-delta") {
+						await appendStreamedTextPart("reasoning", part.text);
+						enqueueEvent({ type: "reasoning", delta: part.text });
+					} else if (part.type === "tool-call") {
+						await appendStreamedMetadataPart("tool-call", part);
+						enqueueEvent({
+							type: "tool_call",
+							toolCallId: part.toolCallId,
+							toolName: part.toolName,
+							input: part.input,
+						});
+					} else if (part.type === "tool-result") {
+						await appendStreamedMetadataPart("tool-result", part);
+						enqueueEvent({
+							type: "tool_result",
+							toolCallId: part.toolCallId,
+							toolName: part.toolName,
+							output: part.output,
+						});
+					} else if (part.type === "error") {
+						const error =
+							part.error instanceof Error
+								? part.error
+								: new Error(String(part.error));
+						enqueueEvent({
+							type: "error",
+							error: error.message,
+						});
+						throw error;
 					}
-
-					const partsToInsert = await Promise.all(
-						streamedParts
-							.filter((part) => part.type !== "text" || part.content.trim())
-							.filter(
-								(part) => part.type !== "reasoning" || part.content.trim(),
-							)
-							.map(async (part, index) => {
-								if (part.type === "text" || part.type === "reasoning") {
-									return {
-										messageId: assistantMessage.id,
-										type: part.type,
-										contentEncrypted: await encryptValue(part.content),
-										metadataJson: null,
-										sortOrder: index,
-									};
-								}
-								return {
-									messageId: assistantMessage.id,
-									type: part.type,
-									contentEncrypted: null,
-									metadataJson: "metadata" in part ? part.metadata : null,
-									sortOrder: index,
-								};
-							}),
-					);
-
-					if (partsToInsert.length > 0) {
-						await db.insert(messageParts).values(partsToInsert);
-					}
-
-					const totalUsage = await result.totalUsage;
-					await db
-						.update(messages)
-						.set({
-							status: "completed",
-							tokenInput: totalUsage.inputTokens,
-							tokenOutput: totalUsage.outputTokens,
-							completedAt: new Date(),
-						})
-						.where(eq(messages.id, assistantMessage.id));
-
-					await db
-						.update(conversations)
-						.set({
-							agentId,
-							agentVersionId: version.id,
-							updatedAt: new Date(),
-						})
-						.where(eq(conversations.id, conversation.id));
-
-					await recordUsageEvent({
-						workspaceId: agent.workspaceId,
-						userId: actorUserId,
-						providerId: providerConfig.providerId,
-						modelId: providerConfig.modelRecordId,
-						agentId,
-						conversationId: conversation.id,
-						operation: "chat",
-						inputTokens: totalUsage.inputTokens,
-						outputTokens: totalUsage.outputTokens,
-						latencyMs: Date.now() - startedAt,
-						status: "success",
-					});
-				} catch (error) {
-					emitSse({
-						type: "error",
-						error: error instanceof Error ? error.message : String(error),
-					});
-				} finally {
-					streamController = null;
-					controller.close();
 				}
-			},
-		});
 
-		return new Response(stream, {
-			headers: {
-				"Content-Type": "text/event-stream; charset=utf-8",
-				"Cache-Control": "no-cache, no-transform",
-				Connection: "keep-alive",
-				"X-Accel-Buffering": "no",
-				"X-Conversation-Id": conversation.id,
-				"X-Message-Id": assistantMessage.id,
-			},
+				const totalUsage = await result.totalUsage;
+				await db
+					.update(messages)
+					.set({
+						status: "completed",
+						tokenInput: totalUsage.inputTokens,
+						tokenOutput: totalUsage.outputTokens,
+						completedAt: new Date(),
+					})
+					.where(eq(messages.id, assistantMessage.id));
+
+				await db
+					.update(conversations)
+					.set({
+						agentId,
+						agentVersionId: version.id,
+						updatedAt: new Date(),
+					})
+					.where(eq(conversations.id, conversation.id));
+
+				await recordUsageEvent({
+					workspaceId: agent.workspaceId,
+					userId: actorUserId,
+					providerId: providerConfig.providerId,
+					modelId: providerConfig.modelRecordId,
+					agentId,
+					conversationId: conversation.id,
+					operation: "chat",
+					inputTokens: totalUsage.inputTokens,
+					outputTokens: totalUsage.outputTokens,
+					latencyMs: Date.now() - startedAt,
+					status: "success",
+				});
+				enqueueEvent({ type: "done" });
+			} catch (error) {
+				await db
+					.update(messages)
+					.set({ status: "failed", completedAt: new Date() })
+					.where(eq(messages.id, assistantMessage.id));
+				enqueueEvent({
+					type: "error",
+					error: error instanceof Error ? error.message : String(error),
+				});
+			} finally {
+				completeChatStream(assistantMessage.id);
+			}
+		})();
+
+		return createChatStreamResponse(assistantMessage.id, {
+			"X-Conversation-Id": conversation.id,
+			"X-Message-Id": assistantMessage.id,
 		});
 	} catch (error) {
 		logger.error("Chat request failed", {}, error as Error);
