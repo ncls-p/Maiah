@@ -16,7 +16,7 @@ import {
 	XCircleIcon,
 	XIcon,
 } from "lucide-react";
-import { Streamdown } from "streamdown";
+import { Streamdown, type AnimateOptions } from "streamdown";
 import { code } from "@streamdown/code";
 
 import { CitationBlock } from "@/components/chat/citation-block";
@@ -48,6 +48,14 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+
+const STREAMING_TEXT_ANIMATION = {
+	animation: "tokenFadeIn",
+	duration: 340,
+	easing: "cubic-bezier(0.16, 1, 0.3, 1)",
+	sep: "char",
+	stagger: 3,
+} satisfies AnimateOptions;
 
 function stringifyForMatch(value: unknown) {
 	try {
@@ -513,9 +521,9 @@ const MessageContent = memo(function MessageContent({
 						<Streamdown
 							key={`${message.id}-${part.type}-${partIndex}`}
 							plugins={{ code }}
-							caret="block"
 							isAnimating={isAnimating}
-							className="text-sm"
+							animated={isAnimating ? STREAMING_TEXT_ANIMATION : false}
+							className="streaming-markdown text-sm"
 						>
 							{part.content}
 						</Streamdown>
@@ -524,9 +532,9 @@ const MessageContent = memo(function MessageContent({
 			) : standaloneApprovals.length === 0 ? (
 				<Streamdown
 					plugins={{ code }}
-					caret="block"
 					isAnimating={isAnimating}
-					className="text-sm"
+					animated={isAnimating ? STREAMING_TEXT_ANIMATION : false}
+					className="streaming-markdown text-sm"
 				>
 					{content || "Thinking…"}
 				</Streamdown>

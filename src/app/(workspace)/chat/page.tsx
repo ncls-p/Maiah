@@ -1,7 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import {
 	BotIcon,
 	ChevronDownIcon,
@@ -133,6 +140,10 @@ export default function ChatPage() {
 		null,
 	);
 	const bottomRef = useRef<HTMLDivElement | null>(null);
+	const scrollContainerRef = useRef<HTMLElement | null>(null);
+	const autoFollowRef = useRef(true);
+	const programmaticScrollRef = useRef(false);
+	const scrollAnimationRef = useRef<number | null>(null);
 	const skipNextMessageLoadRef = useRef(false);
 
 	const selectedAgent = useMemo(
@@ -346,9 +357,120 @@ export default function ChatPage() {
 		};
 	}, [activeConversationId, setMessages]);
 
+	const cancelScrollAnimation = useCallback(() => {
+		if (scrollAnimationRef.current === null) return;
+		window.cancelAnimationFrame(scrollAnimationRef.current);
+		scrollAnimationRef.current = null;
+	}, []);
+
+	const scrollToConversationBottom = useCallback(() => {
+		const container = scrollContainerRef.current;
+		if (!container || !autoFollowRef.current) return;
+
+		const reduceMotion = window.matchMedia(
+			"(prefers-reduced-motion: reduce)",
+		).matches;
+
+		programmaticScrollRef.current = true;
+
+		if (reduceMotion) {
+			container.scrollTop = container.scrollHeight;
+			requestAnimationFrame(() => {
+				programmaticScrollRef.current = false;
+			});
+			return;
+		}
+
+		if (scrollAnimationRef.current !== null) return;
+
+		function followBottom() {
+			const activeContainer = scrollContainerRef.current;
+			if (!activeContainer || !autoFollowRef.current) {
+				programmaticScrollRef.current = false;
+				scrollAnimationRef.current = null;
+				return;
+			}
+
+			const target = Math.max(
+				0,
+				activeContainer.scrollHeight - activeContainer.clientHeight,
+			);
+			const distance = target - activeContainer.scrollTop;
+
+			if (Math.abs(distance) < 0.6) {
+				activeContainer.scrollTop = target;
+				scrollAnimationRef.current = null;
+				requestAnimationFrame(() => {
+					programmaticScrollRef.current = false;
+				});
+				return;
+			}
+
+			activeContainer.scrollTop += distance * 0.46;
+			scrollAnimationRef.current = window.requestAnimationFrame(followBottom);
+		}
+
+		scrollAnimationRef.current = window.requestAnimationFrame(followBottom);
+	}, [cancelScrollAnimation]);
+
 	useEffect(() => {
-		bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-	}, [messages, pendingApprovals]);
+		const container = scrollContainerRef.current;
+		if (!container) return;
+
+		function updateAutoFollow() {
+			if (programmaticScrollRef.current) return;
+			const activeContainer = scrollContainerRef.current;
+			if (!activeContainer) return;
+			const distanceFromBottom =
+				activeContainer.scrollHeight -
+				activeContainer.scrollTop -
+				activeContainer.clientHeight;
+			autoFollowRef.current = distanceFromBottom < 180;
+		}
+
+		function handleUserScrollIntent() {
+			programmaticScrollRef.current = false;
+			cancelScrollAnimation();
+			updateAutoFollow();
+		}
+
+		updateAutoFollow();
+		container.addEventListener("scroll", updateAutoFollow, { passive: true });
+		container.addEventListener("wheel", handleUserScrollIntent, {
+			passive: true,
+		});
+		container.addEventListener("touchmove", handleUserScrollIntent, {
+			passive: true,
+		});
+		return () => {
+			container.removeEventListener("scroll", updateAutoFollow);
+			container.removeEventListener("wheel", handleUserScrollIntent);
+			container.removeEventListener("touchmove", handleUserScrollIntent);
+		};
+	}, [cancelScrollAnimation]);
+
+	useLayoutEffect(() => {
+		scrollToConversationBottom();
+	}, [messages, pendingApprovals, scrollToConversationBottom]);
+
+	useEffect(() => {
+		const container = scrollContainerRef.current;
+		if (!container) return;
+
+		const observer = new ResizeObserver(() => {
+			if (autoFollowRef.current) scrollToConversationBottom();
+		});
+		observer.observe(container);
+		return () => {
+			observer.disconnect();
+		};
+	}, [scrollToConversationBottom]);
+
+	useEffect(() => {
+		return () => {
+			cancelScrollAnimation();
+		};
+	}, [cancelScrollAnimation]);
 
 	function selectAgent(agentId: string) {
 		setSelectedAgentId(agentId);
@@ -578,7 +700,10 @@ export default function ChatPage() {
 			onSetupComplete={() => void reloadAgentContext()}
 		>
 			<ChatContextBar quota={quota} />
-			<section className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-3 py-4 sm:px-4 sm:py-8">
+			<section
+				ref={scrollContainerRef}
+				className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-3 py-4 sm:px-4 sm:py-8"
+			>
 				{!loadingMessages && messages.length === 0 ? (
 					<div className="mx-auto flex h-full w-full max-w-3xl flex-col items-center justify-center px-4 py-12 sm:py-16 animate-in-fade">
 						{/* Decorative orbs */}

@@ -565,6 +565,59 @@
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   }
 
+  /* ── Streamdown token animation ── */
+  [data-sd-animate="true"] {
+    display: inline-block;
+    animation: var(--sd-animation) var(--sd-duration, 420ms)
+      var(--sd-easing, cubic-bezier(0.16, 1, 0.3, 1)) both;
+    animation-delay: var(--sd-delay, 0ms);
+    transform-origin: 50% 70%;
+    will-change: opacity, transform;
+  }
+
+  .streaming-markdown > :not(:last-child) [data-sd-animate="true"] {
+    animation: none !important;
+    opacity: 1 !important;
+    filter: none !important;
+    transform: none !important;
+  }
+
+  @keyframes sd-fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes sd-tokenFadeIn {
+    from {
+      opacity: 0.08;
+      transform: translate3d(-0.12em, 0.06em, 0);
+    }
+    45% {
+      opacity: 0.72;
+    }
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  @keyframes sd-blurIn {
+    from {
+      opacity: 0.12;
+      filter: blur(1px);
+      transform: translate3d(-0.1em, 0.06em, 0);
+    }
+    to {
+      opacity: 1;
+      filter: blur(0);
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
   /* ── Message bubble polish ── */
   .msg-bubble--user {
     @apply rounded-2xl px-4 py-3 text-sm leading-6;
