@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { cn } from "@/lib/utils";
 
 export function SignOutButton({
 	iconOnly = false,
@@ -45,7 +46,10 @@ export function SignOutButton({
 			type="button"
 			variant="ghost"
 			size={iconOnly ? "icon" : "sm"}
-			className={className ?? "justify-start rounded-xl"}
+			className={cn(
+				"group justify-start rounded-xl transition-all duration-200 hover:bg-destructive/10 hover:text-destructive",
+				className,
+			)}
 			onClick={signOut}
 			disabled={pending}
 			aria-label="Sign out"
@@ -56,6 +60,7 @@ export function SignOutButton({
 				<LogOutIcon
 					data-icon={iconOnly ? undefined : "inline-start"}
 					aria-hidden="true"
+					className="transition-transform duration-200 group-hover:translate-x-0.5"
 				/>
 			)}
 			{iconOnly ? <span className="sr-only">Sign out</span> : "Sign out"}

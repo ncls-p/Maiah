@@ -82,7 +82,7 @@ export default async function WorkspaceLayout({
 		<WorkspaceProvider>
 			<OnboardingRedirect />
 			<AppShell displayName={displayName} isAdmin={isAdmin}>
-				{children}
+				<div className="page-content h-full">{children}</div>
 			</AppShell>
 		</WorkspaceProvider>
 	);

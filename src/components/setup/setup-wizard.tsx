@@ -3,48 +3,48 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
-	BotIcon,
-	CheckCircle2Icon,
-	Loader2,
-	MessageSquareIcon,
-	PlugZapIcon,
-	PlusIcon,
-	RefreshCwIcon,
+  BotIcon,
+  CheckCircle2Icon,
+  Loader2,
+  MessageSquareIcon,
+  PlugZapIcon,
+  PlusIcon,
+  RefreshCwIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
 } from "@/components/ui/card";
 import {
-	Field,
-	FieldContent,
-	FieldDescription,
-	FieldGroup,
-	FieldLabel,
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { fetchJson } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 
 const steps = [
-	{ id: "provider", label: "Connect AI", icon: PlugZapIcon },
-	{ id: "model", label: "Pick Model", icon: CheckCircle2Icon },
-	{ id: "agent", label: "Start Chatting", icon: BotIcon },
+  { id: "provider", label: "Connect AI", icon: PlugZapIcon },
+  { id: "model", label: "Pick Model", icon: CheckCircle2Icon },
+  { id: "agent", label: "Start Chatting", icon: BotIcon },
 ] as const;
 
 type StepId = (typeof steps)[number]["id"];
@@ -52,953 +52,958 @@ type ProviderKind = "openai-compatible" | "dragonfly" | "vercel-ai-gateway";
 type ProviderAuthType = "bearer" | "x-api-key" | "gateway";
 
 type ProviderSummary = {
-	id: string;
-	name: string;
-	kind: ProviderKind;
+  id: string;
+  name: string;
+  kind: ProviderKind;
 };
 
 type ProviderModel = {
-	id: string;
-	modelId: string;
-	displayName: string | null;
-	capabilitiesJson?: Record<string, boolean> | null;
-	contextWindow?: number | null;
-	maxOutputTokens?: number | null;
-	inputTokenCost?: string | null;
-	outputTokenCost?: string | null;
-	enabled?: boolean;
+  id: string;
+  modelId: string;
+  displayName: string | null;
+  capabilitiesJson?: Record<string, boolean> | null;
+  contextWindow?: number | null;
+  maxOutputTokens?: number | null;
+  inputTokenCost?: string | null;
+  outputTokenCost?: string | null;
+  enabled?: boolean;
 };
 
 type DiscoveredModel = {
-	modelId: string;
-	displayName?: string;
-	description?: string;
-	hostedBy?: string;
-	capabilities?: Record<string, boolean>;
-	contextWindow?: number;
-	maxOutputTokens?: number;
-	inputTokenCost?: string;
-	outputTokenCost?: string;
+  modelId: string;
+  displayName?: string;
+  description?: string;
+  hostedBy?: string;
+  capabilities?: Record<string, boolean>;
+  contextWindow?: number;
+  maxOutputTokens?: number;
+  inputTokenCost?: string;
+  outputTokenCost?: string;
 };
 
 function slugify(value: string) {
-	return (
-		value
-			.toLowerCase()
-			.trim()
-			.replace(/[^a-z0-9]+/g, "-")
-			.replace(/^-+|-+$/g, "")
-			.slice(0, 64) || "assistant"
-	);
+  return (
+    value
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 64) || "assistant"
+  );
 }
 
 function defaultAuthType(kind: ProviderKind): ProviderAuthType {
-	if (kind === "dragonfly") return "x-api-key";
-	if (kind === "vercel-ai-gateway") return "gateway";
-	return "bearer";
+  if (kind === "dragonfly") return "x-api-key";
+  if (kind === "vercel-ai-gateway") return "gateway";
+  return "bearer";
 }
 
 function formatModelNumber(value: number | null | undefined) {
-	return typeof value === "number" && value > 0
-		? new Intl.NumberFormat().format(value)
-		: null;
+  return typeof value === "number" && value > 0
+    ? new Intl.NumberFormat().format(value)
+    : null;
 }
 
 function ModelMetadata({
-	capabilities,
-	contextWindow,
-	maxOutputTokens,
-	inputTokenCost,
-	outputTokenCost,
-	hostedBy,
-	enabled,
+  capabilities,
+  contextWindow,
+  maxOutputTokens,
+  inputTokenCost,
+  outputTokenCost,
+  hostedBy,
+  enabled,
 }: {
-	capabilities?: Record<string, boolean> | null;
-	contextWindow?: number | null;
-	maxOutputTokens?: number | null;
-	inputTokenCost?: string | null;
-	outputTokenCost?: string | null;
-	hostedBy?: string | null;
-	enabled?: boolean;
+  capabilities?: Record<string, boolean> | null;
+  contextWindow?: number | null;
+  maxOutputTokens?: number | null;
+  inputTokenCost?: string | null;
+  outputTokenCost?: string | null;
+  hostedBy?: string | null;
+  enabled?: boolean;
 }) {
-	const enabledCapabilities = Object.entries(capabilities ?? {})
-		.filter(([, value]) => value)
-		.map(([key]) => key);
-	const contextWindowLabel = formatModelNumber(contextWindow);
-	const maxOutputTokensLabel = formatModelNumber(maxOutputTokens);
+  const enabledCapabilities = Object.entries(capabilities ?? {})
+    .filter(([, value]) => value)
+    .map(([key]) => key);
+  const contextWindowLabel = formatModelNumber(contextWindow);
+  const maxOutputTokensLabel = formatModelNumber(maxOutputTokens);
 
-	if (
-		enabled !== false &&
-		!hostedBy &&
-		!contextWindowLabel &&
-		!maxOutputTokensLabel &&
-		!inputTokenCost &&
-		!outputTokenCost &&
-		enabledCapabilities.length === 0
-	) {
-		return null;
-	}
+  if (
+    enabled !== false &&
+    !hostedBy &&
+    !contextWindowLabel &&
+    !maxOutputTokensLabel &&
+    !inputTokenCost &&
+    !outputTokenCost &&
+    enabledCapabilities.length === 0
+  ) {
+    return null;
+  }
 
-	return (
-		<div className="mt-2 flex flex-wrap gap-1.5">
-			{enabled === false ? <Badge variant="outline">Disabled</Badge> : null}
-			{hostedBy ? <Badge variant="outline">{hostedBy}</Badge> : null}
-			{contextWindowLabel ? (
-				<Badge variant="outline">Context {contextWindowLabel}</Badge>
-			) : null}
-			{maxOutputTokensLabel ? (
-				<Badge variant="outline">Max output {maxOutputTokensLabel}</Badge>
-			) : null}
-			{inputTokenCost ? (
-				<Badge variant="outline">Input {inputTokenCost}</Badge>
-			) : null}
-			{outputTokenCost ? (
-				<Badge variant="outline">Output {outputTokenCost}</Badge>
-			) : null}
-			{enabledCapabilities.map((capability) => (
-				<Badge key={capability} variant="secondary" className="capitalize">
-					{capability}
-				</Badge>
-			))}
-		</div>
-	);
+  return (
+    <div className="mt-2 flex flex-wrap gap-1.5">
+      {enabled === false ? <Badge variant="outline">Disabled</Badge> : null}
+      {hostedBy ? <Badge variant="outline">{hostedBy}</Badge> : null}
+      {contextWindowLabel ? (
+        <Badge variant="outline">Context {contextWindowLabel}</Badge>
+      ) : null}
+      {maxOutputTokensLabel ? (
+        <Badge variant="outline">Max output {maxOutputTokensLabel}</Badge>
+      ) : null}
+      {inputTokenCost ? (
+        <Badge variant="outline">Input {inputTokenCost}</Badge>
+      ) : null}
+      {outputTokenCost ? (
+        <Badge variant="outline">Output {outputTokenCost}</Badge>
+      ) : null}
+      {enabledCapabilities.map((capability) => (
+        <Badge key={capability} variant="secondary" className="capitalize">
+          {capability}
+        </Badge>
+      ))}
+    </div>
+  );
 }
 
 /* ── Stepper ── */
 
 function SetupStepper({ currentStep }: { currentStep: StepId }) {
-	const stepIndex = steps.findIndex((s) => s.id === currentStep);
+  const stepIndex = steps.findIndex((s) => s.id === currentStep);
 
-	return (
-		<div className="-mx-1 overflow-x-auto px-1 pb-1">
-			<div className="flex min-w-max items-center gap-0">
-				{steps.map((item, i) => {
-					const isActive = i === stepIndex;
-					const isComplete = i < stepIndex;
+  return (
+    <div className="-mx-1 overflow-x-auto px-1 pb-1">
+      <div className="flex min-w-max items-center gap-0">
+        {steps.map((item, i) => {
+          const isActive = i === stepIndex;
+          const isComplete = i < stepIndex;
 
-					return (
-						<div key={item.id} className="flex items-center gap-0">
-							<div
-								className={cn(
-									"flex items-center gap-2.5 rounded-full border px-4 py-2 text-sm transition-all duration-200",
-									isComplete
-										? "border-primary/30 bg-primary/8 text-primary"
-										: isActive
-											? "border-primary bg-primary/6 text-primary shadow-sm shadow-primary/10"
-											: "border-border/60 text-muted-foreground",
-								)}
-							>
-								<div
-									className={cn(
-										"flex size-5 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-colors",
-										isComplete
-											? "bg-primary text-primary-foreground"
-											: isActive
-												? "bg-primary/20 text-primary"
-												: "bg-muted text-muted-foreground",
-									)}
-								>
-									{isComplete ? (
-										<CheckCircle2Icon className="size-3.5" aria-hidden="true" />
-									) : (
-										i + 1
-									)}
-								</div>
-								<span
-									className={cn(
-										"font-medium",
-										!isActive && !isComplete && "text-muted-foreground",
-									)}
-								>
-									{item.label}
-								</span>
-							</div>
-							{i < steps.length - 1 ? (
-								<div
-									className={cn(
-										"mx-2 h-px w-8 sm:w-16 transition-colors",
-										i < stepIndex ? "bg-primary/40" : "bg-border/60",
-									)}
-								/>
-							) : null}
-						</div>
-					);
-				})}
-			</div>
-		</div>
-	);
+          return (
+            <div key={item.id} className="flex items-center gap-0">
+              <div
+                className={cn(
+                  "flex items-center gap-2.5 rounded-full border px-4 py-2 text-sm transition-all duration-200",
+                  isComplete
+                    ? "border-primary/30 bg-primary/8 text-primary"
+                    : isActive
+                      ? "border-primary bg-primary/6 text-primary shadow-sm shadow-primary/10"
+                      : "border-border/60 text-muted-foreground",
+                )}
+              >
+                <div
+                  className={cn(
+                    "flex size-5 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-colors",
+                    isComplete
+                      ? "bg-primary text-primary-foreground"
+                      : isActive
+                        ? "bg-primary/20 text-primary"
+                        : "bg-muted text-muted-foreground",
+                  )}
+                >
+                  {isComplete ? (
+                    <CheckCircle2Icon className="size-3.5" aria-hidden="true" />
+                  ) : (
+                    i + 1
+                  )}
+                </div>
+                <span
+                  className={cn(
+                    "font-medium",
+                    !isActive && !isComplete && "text-muted-foreground",
+                  )}
+                >
+                  {item.label}
+                </span>
+              </div>
+              {i < steps.length - 1 ? (
+                <div
+                  className={cn(
+                    "mx-2 h-px w-8 sm:w-16 transition-colors",
+                    i < stepIndex ? "bg-primary/40" : "bg-border/60",
+                  )}
+                />
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 /* ── Wizard ── */
 
 export type SetupWizardProps = {
-	mode?: "page" | "dialog";
-	initialAgentId?: string | null;
-	onComplete?: (agentId: string) => void;
-	onCancel?: () => void;
+  mode?: "page" | "dialog";
+  initialAgentId?: string | null;
+  onComplete?: (agentId: string) => void;
+  onCancel?: () => void;
 };
 
 export function SetupWizard({
-	mode = "page",
-	initialAgentId = null,
-	onComplete,
-	onCancel,
+  mode = "page",
+  initialAgentId = null,
+  onComplete,
+  onCancel,
 }: SetupWizardProps) {
-	const { workspaceId } = useWorkspace();
-	const [step, setStep] = useState<StepId>("provider");
-	const [providers, setProviders] = useState<ProviderSummary[]>([]);
-	const [providerId, setProviderId] = useState<string | null>(null);
-	const [modelDbId, setModelDbId] = useState<string | null>(null);
-	const [agentId, setAgentId] = useState<string | null>(initialAgentId);
-	const [busy, setBusy] = useState(false);
-	const [loadingProviders, setLoadingProviders] = useState(true);
-	const [loadingModels, setLoadingModels] = useState(false);
-	const [discoveringModels, setDiscoveringModels] = useState(false);
-	const [models, setModels] = useState<ProviderModel[]>([]);
-	const [discoveredModels, setDiscoveredModels] = useState<DiscoveredModel[]>(
-		[],
-	);
-	const [providerForm, setProviderForm] = useState<{
-		name: string;
-		kind: ProviderKind;
-		baseUrl: string;
-		apiKey: string;
-	}>({
-		name: "My AI Provider",
-		kind: "openai-compatible",
-		baseUrl: "",
-		apiKey: "",
-	});
-	const [manualModelId, setManualModelId] = useState("");
-	const [agentForm, setAgentForm] = useState({
-		name: "My Assistant",
-	});
+  const { workspaceId } = useWorkspace();
+  const [step, setStep] = useState<StepId>("provider");
+  const [providers, setProviders] = useState<ProviderSummary[]>([]);
+  const [providerId, setProviderId] = useState<string | null>(null);
+  const [modelDbId, setModelDbId] = useState<string | null>(null);
+  const [agentId, setAgentId] = useState<string | null>(initialAgentId);
+  const [busy, setBusy] = useState(false);
+  const [loadingProviders, setLoadingProviders] = useState(true);
+  const [loadingModels, setLoadingModels] = useState(false);
+  const [discoveringModels, setDiscoveringModels] = useState(false);
+  const [models, setModels] = useState<ProviderModel[]>([]);
+  const [discoveredModels, setDiscoveredModels] = useState<DiscoveredModel[]>(
+    [],
+  );
+  const [providerForm, setProviderForm] = useState<{
+    name: string;
+    kind: ProviderKind;
+    baseUrl: string;
+    apiKey: string;
+  }>({
+    name: "My AI Provider",
+    kind: "openai-compatible",
+    baseUrl: "",
+    apiKey: "",
+  });
+  const [manualModelId, setManualModelId] = useState("");
+  const [agentForm, setAgentForm] = useState({
+    name: "My Assistant",
+  });
 
-	useEffect(() => {
-		if (!workspaceId) return;
-		let cancelled = false;
+  useEffect(() => {
+    if (!workspaceId) return;
+    let cancelled = false;
 
-		async function loadProviders() {
-			setLoadingProviders(true);
-			try {
-				const rows = await fetchJson<ProviderSummary[]>(
-					`/api/workspace/providers?workspaceId=${workspaceId}`,
-				);
-				if (cancelled) return;
-				setProviders(rows);
-				if (rows[0]) {
-					setProviderId(rows[0].id);
-					setStep("model");
-				}
-			} catch {
-				if (!cancelled) setProviders([]);
-			} finally {
-				if (!cancelled) setLoadingProviders(false);
-			}
-		}
+    async function loadProviders() {
+      setLoadingProviders(true);
+      try {
+        const rows = await fetchJson<ProviderSummary[]>(
+          `/api/workspace/providers?workspaceId=${workspaceId}`,
+        );
+        if (cancelled) return;
+        setProviders(rows);
+        if (rows[0]) {
+          setProviderId(rows[0].id);
+          setStep("model");
+        }
+      } catch {
+        if (!cancelled) setProviders([]);
+      } finally {
+        if (!cancelled) setLoadingProviders(false);
+      }
+    }
 
-		void loadProviders();
-		return () => {
-			cancelled = true;
-		};
-	}, [workspaceId]);
+    void loadProviders();
+    return () => {
+      cancelled = true;
+    };
+  }, [workspaceId]);
 
-	useEffect(() => {
-		if (!workspaceId || !providerId) return;
-		let cancelled = false;
+  useEffect(() => {
+    if (!workspaceId || !providerId) return;
+    let cancelled = false;
 
-		async function loadModels() {
-			setLoadingModels(true);
-			try {
-				const rows = await fetchJson<ProviderModel[]>(
-					`/api/workspace/providers/${providerId}/models?workspaceId=${workspaceId}`,
-				);
-				if (cancelled) return;
-				setModels(rows);
-				setDiscoveredModels([]);
-				setModelDbId((current) =>
-					current && rows.some((model) => model.id === current)
-						? current
-						: (rows[0]?.id ?? null),
-				);
-			} catch {
-				if (!cancelled) {
-					setModels([]);
-					setDiscoveredModels([]);
-					setModelDbId(null);
-				}
-			} finally {
-				if (!cancelled) setLoadingModels(false);
-			}
-		}
+    async function loadModels() {
+      setLoadingModels(true);
+      try {
+        const rows = await fetchJson<ProviderModel[]>(
+          `/api/workspace/providers/${providerId}/models?workspaceId=${workspaceId}`,
+        );
+        if (cancelled) return;
+        setModels(rows);
+        setDiscoveredModels([]);
+        setModelDbId((current) =>
+          current && rows.some((model) => model.id === current)
+            ? current
+            : (rows[0]?.id ?? null),
+        );
+      } catch {
+        if (!cancelled) {
+          setModels([]);
+          setDiscoveredModels([]);
+          setModelDbId(null);
+        }
+      } finally {
+        if (!cancelled) setLoadingModels(false);
+      }
+    }
 
-		void loadModels();
-		return () => {
-			cancelled = true;
-		};
-	}, [workspaceId, providerId]);
+    void loadModels();
+    return () => {
+      cancelled = true;
+    };
+  }, [workspaceId, providerId]);
 
-	async function discoverProviderModels() {
-		if (!workspaceId || !providerId) return;
-		setDiscoveringModels(true);
-		try {
-			const rows = await fetchJson<DiscoveredModel[]>(
-				`/api/workspace/providers/${providerId}/models?workspaceId=${workspaceId}&action=discover`,
-			);
-			setDiscoveredModels(rows);
-			if (rows.length === 0) {
-				toast.info("No models returned by this provider");
-			} else {
-				toast.success(`Discovered ${rows.length} models`);
-			}
-		} catch (error) {
-			toast.error(
-				error instanceof Error ? error.message : "Failed to discover models",
-			);
-		} finally {
-			setDiscoveringModels(false);
-		}
-	}
+  async function discoverProviderModels() {
+    if (!workspaceId || !providerId) return;
+    setDiscoveringModels(true);
+    try {
+      const rows = await fetchJson<DiscoveredModel[]>(
+        `/api/workspace/providers/${providerId}/models?workspaceId=${workspaceId}&action=discover`,
+      );
+      setDiscoveredModels(rows);
+      if (rows.length === 0) {
+        toast.info("No models returned by this provider");
+      } else {
+        toast.success(`Discovered ${rows.length} models`);
+      }
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to discover models",
+      );
+    } finally {
+      setDiscoveringModels(false);
+    }
+  }
 
-	async function createProvider() {
-		if (!workspaceId) return;
-		setBusy(true);
-		try {
-			const provider = await fetchJson<ProviderSummary>(
-				"/api/workspace/providers",
-				{
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({
-						workspaceId,
-						name: providerForm.name,
-						kind: providerForm.kind,
-						authType: defaultAuthType(providerForm.kind),
-						baseUrl: providerForm.baseUrl || undefined,
-						apiKey: providerForm.apiKey || undefined,
-					}),
-				},
-			);
-			setProviders((current) => [provider, ...current]);
-			setProviderId(provider.id);
-			setStep("model");
-			toast.success("Connection saved");
-		} catch (error) {
-			toast.error(
-				error instanceof Error ? error.message : "Failed to create connection",
-			);
-		} finally {
-			setBusy(false);
-		}
-	}
+  async function createProvider() {
+    if (!workspaceId) return;
+    setBusy(true);
+    try {
+      const provider = await fetchJson<ProviderSummary>(
+        "/api/workspace/providers",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            workspaceId,
+            name: providerForm.name,
+            kind: providerForm.kind,
+            authType: defaultAuthType(providerForm.kind),
+            baseUrl: providerForm.baseUrl || undefined,
+            apiKey: providerForm.apiKey || undefined,
+          }),
+        },
+      );
+      setProviders((current) => [provider, ...current]);
+      setProviderId(provider.id);
+      setStep("model");
+      toast.success("Connection saved");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to create connection",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
 
-	async function testProvider() {
-		if (!workspaceId || !providerId) return;
-		setBusy(true);
-		try {
-			const data = await fetchJson<{ status?: string; message?: string }>(
-				`/api/workspace/providers/${providerId}/test`,
-				{
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ workspaceId }),
-				},
-			);
-			if (data.status === "healthy") {
-				toast.success(data.message || "Connection verified");
-			} else {
-				toast.error(data.message || "Connection test returned an issue");
-			}
-		} catch (error) {
-			toast.error(
-				error instanceof Error ? error.message : "Connection test failed",
-			);
-		} finally {
-			setBusy(false);
-		}
-	}
+  async function testProvider() {
+    if (!workspaceId || !providerId) return;
+    setBusy(true);
+    try {
+      const data = await fetchJson<{ status?: string; message?: string }>(
+        `/api/workspace/providers/${providerId}/test`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ workspaceId }),
+        },
+      );
+      if (data.status === "healthy") {
+        toast.success(data.message || "Connection verified");
+      } else {
+        toast.error(data.message || "Connection test returned an issue");
+      }
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Connection test failed",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
 
-	async function addAndSelectModel(discoveredModel?: DiscoveredModel) {
-		const modelId = discoveredModel?.modelId ?? manualModelId.trim();
-		const displayName =
-			discoveredModel?.displayName ?? discoveredModel?.modelId ?? modelId;
-		if (!workspaceId || !providerId || !modelId) return;
-		setBusy(true);
-		try {
-			const model = await fetchJson<ProviderModel>(
-				`/api/workspace/providers/${providerId}/models`,
-				{
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({
-						workspaceId,
-						modelId,
-						displayName,
-						capabilitiesJson: discoveredModel?.capabilities,
-						contextWindow: discoveredModel?.contextWindow,
-						maxOutputTokens: discoveredModel?.maxOutputTokens,
-						inputTokenCost: discoveredModel?.inputTokenCost,
-						outputTokenCost: discoveredModel?.outputTokenCost,
-					}),
-				},
-			);
-			setModels((current) => [...current, model]);
-			setModelDbId(model.id);
-			setManualModelId("");
-			toast.success("Model selected");
-		} catch (error) {
-			toast.error(
-				error instanceof Error ? error.message : "Failed to add model",
-			);
-		} finally {
-			setBusy(false);
-		}
-	}
+  async function addAndSelectModel(discoveredModel?: DiscoveredModel) {
+    const modelId = discoveredModel?.modelId ?? manualModelId.trim();
+    const displayName =
+      discoveredModel?.displayName ?? discoveredModel?.modelId ?? modelId;
+    if (!workspaceId || !providerId || !modelId) return;
+    setBusy(true);
+    try {
+      const model = await fetchJson<ProviderModel>(
+        `/api/workspace/providers/${providerId}/models`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            workspaceId,
+            modelId,
+            displayName,
+            capabilitiesJson: discoveredModel?.capabilities,
+            contextWindow: discoveredModel?.contextWindow,
+            maxOutputTokens: discoveredModel?.maxOutputTokens,
+            inputTokenCost: discoveredModel?.inputTokenCost,
+            outputTokenCost: discoveredModel?.outputTokenCost,
+          }),
+        },
+      );
+      setModels((current) => [...current, model]);
+      setModelDbId(model.id);
+      setManualModelId("");
+      toast.success("Model selected");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to add model",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
 
-	async function finishSetup() {
-		if (!workspaceId || !providerId || !modelDbId) return;
-		setBusy(true);
-		try {
-			let completedAgentId = agentId;
+  async function finishSetup() {
+    if (!workspaceId || !providerId || !modelDbId) return;
+    setBusy(true);
+    try {
+      let completedAgentId = agentId;
 
-			if (completedAgentId) {
-				await fetchJson(`/api/workspace/agents/${completedAgentId}`, {
-					method: "PATCH",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({
-						workspaceId,
-						providerId,
-						modelId: modelDbId,
-					}),
-				});
-			} else {
-				const data = await fetchJson<{ agent: { id: string } }>(
-					"/api/workspace/agents",
-					{
-						method: "POST",
-						headers: { "Content-Type": "application/json" },
-						body: JSON.stringify({
-							workspaceId,
-							name: agentForm.name,
-							slug: slugify(agentForm.name),
-							systemPrompt: "You are a helpful assistant.",
-							providerId,
-							modelId: modelDbId,
-						}),
-					},
-				);
-				completedAgentId = data.agent.id;
-				setAgentId(completedAgentId);
-			}
+      if (completedAgentId) {
+        await fetchJson(`/api/workspace/agents/${completedAgentId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            workspaceId,
+            providerId,
+            modelId: modelDbId,
+          }),
+        });
+      } else {
+        const data = await fetchJson<{ agent: { id: string } }>(
+          "/api/workspace/agents",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              workspaceId,
+              name: agentForm.name,
+              slug: slugify(agentForm.name),
+              systemPrompt: "You are a helpful assistant.",
+              providerId,
+              modelId: modelDbId,
+            }),
+          },
+        );
+        completedAgentId = data.agent.id;
+        setAgentId(completedAgentId);
+      }
 
-			await fetch("/api/onboarding", { method: "POST" });
-			toast.success("Assistant is ready");
-			if (completedAgentId) onComplete?.(completedAgentId);
-		} catch (error) {
-			toast.error(
-				error instanceof Error ? error.message : "Failed to finish setup",
-			);
-		} finally {
-			setBusy(false);
-		}
-	}
+      await fetch("/api/onboarding", { method: "POST" });
+      toast.success("Assistant is ready");
+      if (completedAgentId) onComplete?.(completedAgentId);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to finish setup",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
 
-	if (!workspaceId) {
-		return (
-			<div className="flex items-center justify-center py-16">
-				<Loader2 className="size-6 animate-spin text-muted-foreground" />
-			</div>
-		);
-	}
+  if (!workspaceId) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <Loader2 className="size-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
-	const selectedProvider = providers.find(
-		(provider) => provider.id === providerId,
-	);
-	const selectedModel = models.find((model) => model.id === modelDbId);
+  const selectedProvider = providers.find(
+    (provider) => provider.id === providerId,
+  );
+  const selectedModel = models.find((model) => model.id === modelDbId);
 
-	return (
-		<div className="flex flex-col gap-6">
-			<SetupStepper currentStep={step} />
+  return (
+    <div className="flex flex-col gap-6">
+      <SetupStepper currentStep={step} />
 
-			{/* ── Step: Provider ── */}
-			{step === "provider" && (
-				<Card>
-					<CardHeader>
-						<CardTitle className="flex items-center gap-2.5">
-							<PlugZapIcon className="size-5 text-primary" aria-hidden="true" />
-							Connect your AI provider
-						</CardTitle>
-						<CardDescription>
-							Enter the details below. You can always add more providers later.
-						</CardDescription>
-					</CardHeader>
-					<CardContent>
-						<FieldGroup>
-							<Field>
-								<FieldLabel htmlFor="provider-name">Connection name</FieldLabel>
-								<FieldContent>
-									<Input
-										id="provider-name"
-										placeholder="e.g. OpenAI Production"
-										value={providerForm.name}
-										onChange={(event) =>
-											setProviderForm({
-												...providerForm,
-												name: event.target.value,
-											})
-										}
-									/>
-								</FieldContent>
-							</Field>
+      {/* ── Step: Provider ── */}
+      {step === "provider" && (
+        <Card className="animate-in-up">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2.5">
+              <PlugZapIcon className="size-5 text-primary" aria-hidden="true" />
+              Connect your AI provider
+            </CardTitle>
+            <CardDescription>
+              Enter the details below. You can always add more providers later.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <FieldGroup>
+              <Field>
+                <FieldLabel htmlFor="provider-name">Connection name</FieldLabel>
+                <FieldContent>
+                  <Input
+                    id="provider-name"
+                    placeholder="e.g. OpenAI Production"
+                    value={providerForm.name}
+                    onChange={(event) =>
+                      setProviderForm({
+                        ...providerForm,
+                        name: event.target.value,
+                      })
+                    }
+                  />
+                </FieldContent>
+              </Field>
 
-							<Field>
-								<FieldLabel htmlFor="provider-kind">Provider type</FieldLabel>
-								<FieldContent>
-									<Select
-										value={providerForm.kind}
-										onValueChange={(value) =>
-											setProviderForm({
-												...providerForm,
-												kind: value as ProviderKind,
-											})
-										}
-									>
-										<SelectTrigger id="provider-kind" className="w-full">
-											<SelectValue />
-										</SelectTrigger>
-										<SelectContent>
-											<SelectItem value="openai-compatible">
-												OpenAI-compatible
-											</SelectItem>
-											<SelectItem value="vercel-ai-gateway">
-												Vercel AI Gateway
-											</SelectItem>
-											<SelectItem value="dragonfly">Dragonfly</SelectItem>
-										</SelectContent>
-									</Select>
-								</FieldContent>
-							</Field>
+              <Field>
+                <FieldLabel htmlFor="provider-kind">Provider type</FieldLabel>
+                <FieldContent>
+                  <Select
+                    value={providerForm.kind}
+                    onValueChange={(value) =>
+                      setProviderForm({
+                        ...providerForm,
+                        kind: value as ProviderKind,
+                      })
+                    }
+                  >
+                    <SelectTrigger id="provider-kind" className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="openai-compatible">
+                        OpenAI-compatible
+                      </SelectItem>
+                      <SelectItem value="vercel-ai-gateway">
+                        Vercel AI Gateway
+                      </SelectItem>
+                      <SelectItem value="dragonfly">Dragonfly</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </FieldContent>
+              </Field>
 
-							<Field>
-								<FieldLabel htmlFor="base-url">Service URL</FieldLabel>
-								<FieldContent>
-									<Input
-										id="base-url"
-										placeholder="https://api.openai.com/v1"
-										value={providerForm.baseUrl}
-										onChange={(event) =>
-											setProviderForm({
-												...providerForm,
-												baseUrl: event.target.value,
-											})
-										}
-									/>
-									<FieldDescription>
-										Leave blank if your provider uses a default endpoint.
-									</FieldDescription>
-								</FieldContent>
-							</Field>
+              <Field>
+                <FieldLabel htmlFor="base-url">Service URL</FieldLabel>
+                <FieldContent>
+                  <Input
+                    id="base-url"
+                    placeholder="https://api.openai.com/v1"
+                    value={providerForm.baseUrl}
+                    onChange={(event) =>
+                      setProviderForm({
+                        ...providerForm,
+                        baseUrl: event.target.value,
+                      })
+                    }
+                  />
+                  <FieldDescription>
+                    Leave blank if your provider uses a default endpoint.
+                  </FieldDescription>
+                </FieldContent>
+              </Field>
 
-							<Field>
-								<FieldLabel htmlFor="api-key">API key</FieldLabel>
-								<FieldContent>
-									<Input
-										id="api-key"
-										type="password"
-										placeholder="sk-…"
-										value={providerForm.apiKey}
-										onChange={(event) =>
-											setProviderForm({
-												...providerForm,
-												apiKey: event.target.value,
-											})
-										}
-									/>
-								</FieldContent>
-							</Field>
+              <Field>
+                <FieldLabel htmlFor="api-key">API key</FieldLabel>
+                <FieldContent>
+                  <Input
+                    id="api-key"
+                    type="password"
+                    placeholder="sk-…"
+                    value={providerForm.apiKey}
+                    onChange={(event) =>
+                      setProviderForm({
+                        ...providerForm,
+                        apiKey: event.target.value,
+                      })
+                    }
+                  />
+                </FieldContent>
+              </Field>
 
-							<div className="flex flex-wrap gap-2 pt-2">
-								<Button
-									type="button"
-									onClick={() => void createProvider()}
-									disabled={busy || !providerForm.name.trim()}
-								>
-									{busy ? (
-										<Loader2 className="animate-spin" aria-hidden="true" />
-									) : (
-										<PlugZapIcon data-icon="inline-start" aria-hidden="true" />
-									)}
-									Save & continue
-								</Button>
-								{providers.length > 0 ? (
-									<Button
-										type="button"
-										variant="outline"
-										disabled={loadingProviders}
-										onClick={() => setStep("model")}
-									>
-										Skip — use existing
-									</Button>
-								) : null}
-							</div>
-						</FieldGroup>
-					</CardContent>
-				</Card>
-			)}
+              <div className="flex flex-wrap gap-2 pt-2">
+                <Button
+                  type="button"
+                  onClick={() => void createProvider()}
+                  disabled={busy || !providerForm.name.trim()}
+                  className="transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
+                >
+                  {busy ? (
+                    <Loader2 className="animate-spin" aria-hidden="true" />
+                  ) : (
+                    <PlugZapIcon data-icon="inline-start" aria-hidden="true" />
+                  )}
+                  Save & continue
+                </Button>
+                {providers.length > 0 ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={loadingProviders}
+                    onClick={() => setStep("model")}
+                    className="transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0"
+                  >
+                    Skip — use existing
+                  </Button>
+                ) : null}
+              </div>
+            </FieldGroup>
+          </CardContent>
+        </Card>
+      )}
 
-			{/* ── Step: Model ── */}
-			{step === "model" && (
-				<Card>
-					<CardHeader>
-						<CardTitle className="flex items-center gap-2.5">
-							<CheckCircle2Icon
-								className="size-5 text-primary"
-								aria-hidden="true"
-							/>
-							Pick a model
-						</CardTitle>
-						<CardDescription>
-							Choose which model this assistant will use.
-						</CardDescription>
-					</CardHeader>
-					<CardContent>
-						<FieldGroup>
-							{providers.length > 0 ? (
-								<Field>
-									<FieldLabel htmlFor="setup-provider">Connection</FieldLabel>
-									<FieldContent>
-										<Select
-											value={providerId ?? undefined}
-											onValueChange={(value) => {
-												setProviderId(value);
-												setModelDbId(null);
-											}}
-										>
-											<SelectTrigger id="setup-provider" className="w-full">
-												<SelectValue placeholder="Select connection" />
-											</SelectTrigger>
-											<SelectContent>
-												{providers.map((provider) => (
-													<SelectItem key={provider.id} value={provider.id}>
-														{provider.name}
-													</SelectItem>
-												))}
-											</SelectContent>
-										</Select>
-									</FieldContent>
-								</Field>
-							) : null}
+      {/* ── Step: Model ── */}
+      {step === "model" && (
+        <Card className="animate-in-up">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2.5">
+              <CheckCircle2Icon
+                className="size-5 text-primary"
+                aria-hidden="true"
+              />
+              Pick a model
+            </CardTitle>
+            <CardDescription>
+              Choose which model this assistant will use.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <FieldGroup>
+              {providers.length > 0 ? (
+                <Field>
+                  <FieldLabel htmlFor="setup-provider">Connection</FieldLabel>
+                  <FieldContent>
+                    <Select
+                      value={providerId ?? undefined}
+                      onValueChange={(value) => {
+                        setProviderId(value);
+                        setModelDbId(null);
+                      }}
+                    >
+                      <SelectTrigger id="setup-provider" className="w-full">
+                        <SelectValue placeholder="Select connection" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {providers.map((provider) => (
+                          <SelectItem key={provider.id} value={provider.id}>
+                            {provider.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </FieldContent>
+                </Field>
+              ) : null}
 
-							<div className="flex flex-wrap gap-2">
-								<Button
-									type="button"
-									variant="outline"
-									onClick={() => void testProvider()}
-									disabled={busy || !providerId}
-								>
-									{busy ? (
-										<Loader2 className="animate-spin" aria-hidden="true" />
-									) : (
-										<CheckCircle2Icon
-											data-icon="inline-start"
-											aria-hidden="true"
-										/>
-									)}
-									Test
-								</Button>
-								<Button
-									type="button"
-									variant="outline"
-									onClick={() => void discoverProviderModels()}
-									disabled={discoveringModels || !providerId}
-								>
-									{discoveringModels ? (
-										<Loader2 className="animate-spin" aria-hidden="true" />
-									) : (
-										<RefreshCwIcon
-											data-icon="inline-start"
-											aria-hidden="true"
-										/>
-									)}
-									Discover
-								</Button>
-								<Button
-									type="button"
-									variant="ghost"
-									onClick={() => setStep("provider")}
-								>
-									Change connection
-								</Button>
-							</div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => void testProvider()}
+                  disabled={busy || !providerId}
+                >
+                  {busy ? (
+                    <Loader2 className="animate-spin" aria-hidden="true" />
+                  ) : (
+                    <CheckCircle2Icon
+                      data-icon="inline-start"
+                      aria-hidden="true"
+                    />
+                  )}
+                  Test
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => void discoverProviderModels()}
+                  disabled={discoveringModels || !providerId}
+                >
+                  {discoveringModels ? (
+                    <Loader2 className="animate-spin" aria-hidden="true" />
+                  ) : (
+                    <RefreshCwIcon
+                      data-icon="inline-start"
+                      aria-hidden="true"
+                    />
+                  )}
+                  Discover
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setStep("provider")}
+                >
+                  Change connection
+                </Button>
+              </div>
 
-							{/* Discovered models */}
-							{discoveredModels.length > 0 && (
-								<div className="rounded-xl border border-border/70 overflow-hidden">
-									<div className="border-b border-border/60 bg-muted/30 px-4 py-3">
-										<p className="text-sm font-medium">
-											Available models ({discoveredModels.length})
-										</p>
-										<FieldDescription>
-											Click &quot;Use&quot; to register and select a model.
-										</FieldDescription>
-									</div>
-									<div className="max-h-72 overflow-y-auto divide-y divide-border/40">
-										{discoveredModels.map((model) => {
-											const savedModel = models.find(
-												(m) => m.modelId === model.modelId,
-											);
-											const isSelected = savedModel?.id === modelDbId;
-											return (
-												<div
-													key={model.modelId}
-													className={cn(
-														"flex items-start justify-between gap-3 px-4 py-3 transition-colors",
-														isSelected && "bg-primary/5",
-													)}
-												>
-													<div className="min-w-0">
-														<div className="flex flex-wrap items-center gap-2">
-															<p className="text-sm font-medium">
-																{model.displayName || model.modelId}
-															</p>
-															{isSelected && (
-																<Badge
-																	variant="secondary"
-																	className="bg-primary/10 text-primary"
-																>
-																	Selected
-																</Badge>
-															)}
-														</div>
-														<p className="truncate text-xs text-muted-foreground">
-															{model.modelId}
-														</p>
-														{model.description && (
-															<p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
-																{model.description}
-															</p>
-														)}
-														<ModelMetadata
-															capabilities={model.capabilities}
-															contextWindow={model.contextWindow}
-															maxOutputTokens={model.maxOutputTokens}
-															inputTokenCost={model.inputTokenCost}
-															outputTokenCost={model.outputTokenCost}
-															hostedBy={model.hostedBy}
-														/>
-													</div>
-													<Button
-														type="button"
-														size="sm"
-														variant={isSelected ? "secondary" : "outline"}
-														disabled={busy || isSelected}
-														onClick={() => {
-															if (savedModel) {
-																setModelDbId(savedModel.id);
-																toast.success("Model selected");
-																return;
-															}
-															void addAndSelectModel(model);
-														}}
-													>
-														{isSelected ? (
-															"Selected"
-														) : savedModel ? (
-															"Use"
-														) : (
-															<>
-																<PlusIcon
-																	data-icon="inline-start"
-																	aria-hidden="true"
-																/>
-																Use
-															</>
-														)}
-													</Button>
-												</div>
-											);
-										})}
-									</div>
-								</div>
-							)}
+              {/* Discovered models */}
+              {discoveredModels.length > 0 && (
+                <div className="rounded-xl border border-border/70 overflow-hidden">
+                  <div className="border-b border-border/60 bg-muted/30 px-4 py-3">
+                    <p className="text-sm font-medium">
+                      Available models ({discoveredModels.length})
+                    </p>
+                    <FieldDescription>
+                      Click &quot;Use&quot; to register and select a model.
+                    </FieldDescription>
+                  </div>
+                  <div className="max-h-72 overflow-y-auto divide-y divide-border/40">
+                    {discoveredModels.map((model) => {
+                      const savedModel = models.find(
+                        (m) => m.modelId === model.modelId,
+                      );
+                      const isSelected = savedModel?.id === modelDbId;
+                      return (
+                        <div
+                          key={model.modelId}
+                          className={cn(
+                            "flex items-start justify-between gap-3 px-4 py-3 transition-all duration-200 hover:bg-muted/30",
+                            isSelected && "bg-primary/5",
+                          )}
+                        >
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="text-sm font-medium">
+                                {model.displayName || model.modelId}
+                              </p>
+                              {isSelected && (
+                                <Badge
+                                  variant="secondary"
+                                  className="bg-primary/10 text-primary"
+                                >
+                                  Selected
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="truncate text-xs text-muted-foreground">
+                              {model.modelId}
+                            </p>
+                            {model.description && (
+                              <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+                                {model.description}
+                              </p>
+                            )}
+                            <ModelMetadata
+                              capabilities={model.capabilities}
+                              contextWindow={model.contextWindow}
+                              maxOutputTokens={model.maxOutputTokens}
+                              inputTokenCost={model.inputTokenCost}
+                              outputTokenCost={model.outputTokenCost}
+                              hostedBy={model.hostedBy}
+                            />
+                          </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant={isSelected ? "secondary" : "outline"}
+                            disabled={busy || isSelected}
+                            onClick={() => {
+                              if (savedModel) {
+                                setModelDbId(savedModel.id);
+                                toast.success("Model selected");
+                                return;
+                              }
+                              void addAndSelectModel(model);
+                            }}
+                            className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm active:translate-y-0"
+                          >
+                            {isSelected ? (
+                              "Selected"
+                            ) : savedModel ? (
+                              "Use"
+                            ) : (
+                              <>
+                                <PlusIcon
+                                  data-icon="inline-start"
+                                  aria-hidden="true"
+                                />
+                                Use
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
-							{/* Saved models selector */}
-							{models.length > 0 && (
-								<Field>
-									<FieldLabel htmlFor="setup-model">
-										Model for this assistant
-									</FieldLabel>
-									<FieldContent>
-										<Select
-											value={modelDbId ?? undefined}
-											onValueChange={setModelDbId}
-											disabled={loadingModels}
-										>
-											<SelectTrigger id="setup-model" className="w-full">
-												<SelectValue placeholder="Select model" />
-											</SelectTrigger>
-											<SelectContent>
-												{models.map((model) => (
-													<SelectItem key={model.id} value={model.id}>
-														{model.displayName ?? model.modelId}
-													</SelectItem>
-												))}
-											</SelectContent>
-										</Select>
-										{selectedModel && (
-											<ModelMetadata
-												capabilities={selectedModel.capabilitiesJson}
-												contextWindow={selectedModel.contextWindow}
-												maxOutputTokens={selectedModel.maxOutputTokens}
-												inputTokenCost={selectedModel.inputTokenCost}
-												outputTokenCost={selectedModel.outputTokenCost}
-												enabled={selectedModel.enabled}
-											/>
-										)}
-									</FieldContent>
-								</Field>
-							)}
+              {/* Saved models selector */}
+              {models.length > 0 && (
+                <Field>
+                  <FieldLabel htmlFor="setup-model">
+                    Model for this assistant
+                  </FieldLabel>
+                  <FieldContent>
+                    <Select
+                      value={modelDbId ?? undefined}
+                      onValueChange={setModelDbId}
+                      disabled={loadingModels}
+                    >
+                      <SelectTrigger id="setup-model" className="w-full">
+                        <SelectValue placeholder="Select model" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {models.map((model) => (
+                          <SelectItem key={model.id} value={model.id}>
+                            {model.displayName ?? model.modelId}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {selectedModel && (
+                      <ModelMetadata
+                        capabilities={selectedModel.capabilitiesJson}
+                        contextWindow={selectedModel.contextWindow}
+                        maxOutputTokens={selectedModel.maxOutputTokens}
+                        inputTokenCost={selectedModel.inputTokenCost}
+                        outputTokenCost={selectedModel.outputTokenCost}
+                        enabled={selectedModel.enabled}
+                      />
+                    )}
+                  </FieldContent>
+                </Field>
+              )}
 
-							{/* Manual model ID */}
-							<Field>
-								<FieldLabel htmlFor="manual-model">
-									Or enter a model ID
-								</FieldLabel>
-								<FieldContent>
-									<div className="flex gap-2">
-										<Input
-											id="manual-model"
-											placeholder="gpt-4o-mini"
-											value={manualModelId}
-											onChange={(event) => setManualModelId(event.target.value)}
-										/>
-										<Button
-											type="button"
-											variant="outline"
-											disabled={busy || !providerId || !manualModelId.trim()}
-											onClick={() => void addAndSelectModel()}
-										>
-											Add
-										</Button>
-									</div>
-								</FieldContent>
-							</Field>
+              {/* Manual model ID */}
+              <Field>
+                <FieldLabel htmlFor="manual-model">
+                  Or enter a model ID
+                </FieldLabel>
+                <FieldContent>
+                  <div className="flex gap-2">
+                    <Input
+                      id="manual-model"
+                      placeholder="gpt-4o-mini"
+                      value={manualModelId}
+                      onChange={(event) => setManualModelId(event.target.value)}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={busy || !providerId || !manualModelId.trim()}
+                      onClick={() => void addAndSelectModel()}
+                    >
+                      Add
+                    </Button>
+                  </div>
+                </FieldContent>
+              </Field>
 
-							{models.length === 0 && (
-								<FieldDescription>
-									No models registered yet — discover them above or enter a
-									model ID manually.
-								</FieldDescription>
-							)}
+              {models.length === 0 && (
+                <FieldDescription>
+                  No models registered yet — discover them above or enter a
+                  model ID manually.
+                </FieldDescription>
+              )}
 
-							<Button
-								type="button"
-								className="mt-2"
-								onClick={() => setStep("agent")}
-								disabled={!modelDbId}
-							>
-								Continue
-							</Button>
-						</FieldGroup>
-					</CardContent>
-				</Card>
-			)}
+              <Button
+                type="button"
+                className="mt-2 transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
+                onClick={() => setStep("agent")}
+                disabled={!modelDbId}
+              >
+                Continue
+              </Button>
+            </FieldGroup>
+          </CardContent>
+        </Card>
+      )}
 
-			{/* ── Step: Agent ── */}
-			{step === "agent" && (
-				<Card>
-					<CardHeader>
-						<CardTitle className="flex items-center gap-2.5">
-							<BotIcon className="size-5 text-primary" aria-hidden="true" />
-							Almost there
-						</CardTitle>
-						<CardDescription>
-							Give your assistant a name and you&apos;re ready to chat.
-						</CardDescription>
-					</CardHeader>
-					<CardContent>
-						<FieldGroup>
-							{/* Summary */}
-							<div className="rounded-xl border border-border/70 bg-muted/30 p-4">
-								<div className="flex flex-col gap-2 text-sm">
-									<div className="flex items-center justify-between">
-										<span className="text-muted-foreground">Connection</span>
-										<span className="font-medium">
-											{selectedProvider?.name}
-										</span>
-									</div>
-									<div className="flex items-center justify-between">
-										<span className="text-muted-foreground">Model</span>
-										<span className="font-medium">
-											{selectedModel?.displayName ?? selectedModel?.modelId}
-										</span>
-									</div>
-								</div>
-							</div>
+      {/* ── Step: Agent ── */}
+      {step === "agent" && (
+        <Card className="animate-in-up">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2.5">
+              <BotIcon className="size-5 text-primary" aria-hidden="true" />
+              Almost there
+            </CardTitle>
+            <CardDescription>
+              Give your assistant a name and you&apos;re ready to chat.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <FieldGroup>
+              {/* Summary */}
+              <div className="rounded-xl border border-border/70 bg-muted/30 p-4">
+                <div className="flex flex-col gap-2 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Connection</span>
+                    <span className="font-medium">
+                      {selectedProvider?.name}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Model</span>
+                    <span className="font-medium">
+                      {selectedModel?.displayName ?? selectedModel?.modelId}
+                    </span>
+                  </div>
+                </div>
+              </div>
 
-							{agentId ? (
-								<FieldDescription>
-									This will attach the selected model to your current assistant.
-								</FieldDescription>
-							) : (
-								<Field>
-									<FieldLabel htmlFor="agent-name">Assistant name</FieldLabel>
-									<FieldContent>
-										<Input
-											id="agent-name"
-											placeholder="e.g. My AI Assistant"
-											value={agentForm.name}
-											onChange={(event) =>
-												setAgentForm({ name: event.target.value })
-											}
-										/>
-									</FieldContent>
-								</Field>
-							)}
+              {agentId ? (
+                <FieldDescription>
+                  This will attach the selected model to your current assistant.
+                </FieldDescription>
+              ) : (
+                <Field>
+                  <FieldLabel htmlFor="agent-name">Assistant name</FieldLabel>
+                  <FieldContent>
+                    <Input
+                      id="agent-name"
+                      placeholder="e.g. My AI Assistant"
+                      value={agentForm.name}
+                      onChange={(event) =>
+                        setAgentForm({ name: event.target.value })
+                      }
+                    />
+                  </FieldContent>
+                </Field>
+              )}
 
-							<div className="flex flex-wrap gap-2 pt-2">
-								<Button
-									type="button"
-									onClick={() => void finishSetup()}
-									disabled={
-										busy || !modelDbId || (!agentId && !agentForm.name.trim())
-									}
-								>
-									{busy ? (
-										<Loader2 className="animate-spin" aria-hidden="true" />
-									) : (
-										<MessageSquareIcon
-											data-icon="inline-start"
-											aria-hidden="true"
-										/>
-									)}
-									Start chatting
-								</Button>
-								<Button
-									type="button"
-									variant="outline"
-									onClick={() => setStep("model")}
-								>
-									Back
-								</Button>
-								{mode === "page" && (
-									<Button variant="ghost" asChild>
-										<Link href={agentId ? `/chat?agentId=${agentId}` : "/chat"}>
-											Skip for now
-										</Link>
-									</Button>
-								)}
-							</div>
-						</FieldGroup>
-					</CardContent>
-				</Card>
-			)}
+              <div className="flex flex-wrap gap-2 pt-2">
+                <Button
+                  type="button"
+                  onClick={() => void finishSetup()}
+                  disabled={
+                    busy || !modelDbId || (!agentId && !agentForm.name.trim())
+                  }
+                  className="transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
+                >
+                  {busy ? (
+                    <Loader2 className="animate-spin" aria-hidden="true" />
+                  ) : (
+                    <MessageSquareIcon
+                      data-icon="inline-start"
+                      aria-hidden="true"
+                    />
+                  )}
+                  Start chatting
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setStep("model")}
+                  className="transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0"
+                >
+                  Back
+                </Button>
+                {mode === "page" && (
+                  <Button variant="ghost" asChild>
+                    <Link href={agentId ? `/chat?agentId=${agentId}` : "/chat"}>
+                      Skip for now
+                    </Link>
+                  </Button>
+                )}
+              </div>
+            </FieldGroup>
+          </CardContent>
+        </Card>
+      )}
 
-			{onCancel && (
-				<Button type="button" variant="ghost" onClick={onCancel}>
-					Cancel
-				</Button>
-			)}
-		</div>
-	);
+      {onCancel && (
+        <Button type="button" variant="ghost" onClick={onCancel}>
+          Cancel
+        </Button>
+      )}
+    </div>
+  );
 }
