@@ -667,6 +667,7 @@ export function useChatStream({
 
 			const headerConversationId = res.headers.get("X-Conversation-Id");
 			const headerAssistantMessageId = res.headers.get("X-Message-Id");
+			const headerUserMessageId = res.headers.get("X-User-Message-Id");
 			if (headerConversationId) {
 				activeConversationId = headerConversationId;
 			}
@@ -679,6 +680,15 @@ export function useChatStream({
 					),
 				);
 				persistDraft();
+			}
+			if (headerUserMessageId) {
+				setMessages((current) =>
+					current.map((message) =>
+						message.id === userMessage.id
+							? { ...message, id: headerUserMessageId! }
+							: message,
+					),
+				);
 			}
 			if (headerConversationId && !conversationId) {
 				onConversationCreated(headerConversationId);

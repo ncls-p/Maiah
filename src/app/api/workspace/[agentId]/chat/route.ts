@@ -1,9 +1,12 @@
-import { and, eq, gt } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, ne } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { decryptValue, encryptValue } from "@/lib/crypto";
 import { logger } from "@/lib/logger";
-import { getActorUserId, resolveAuthContext } from "@/modules/auth/resolve-auth";
+import {
+	getActorUserId,
+	resolveAuthContext,
+} from "@/modules/auth/resolve-auth";
 import {
 	canUseAgent,
 	getActiveVersion,
@@ -34,6 +37,7 @@ import {
 	conversations,
 	messageParts,
 	messages,
+	toolInvocations,
 } from "@/server/infrastructure/db/schema";
 import { getAdapter } from "@/server/infrastructure/providers";
 import {
@@ -47,8 +51,8 @@ import {
 
 const chatRequestSchema = z.object({
 	content: z.string().trim().min(1).max(32_000),
-	conversationId: z.uuid().optional(),
-	resendFromMessageId: z.uuid().optional(),
+	conversationId: z.uuid().nullable().optional(),
+	resendFromMessageId: z.uuid().nullable().optional(),
 });
 
 const defaultMaxToolCalls = 6;
@@ -104,11 +108,13 @@ async function buildBoundTools(input: {
 				.replace(/[^a-zA-Z0-9_]/g, "_")
 				.replace(/^_+|_+$/g, "");
 			const toolKey = `mcp_${mcpTool.id.replace(/-/g, "_")}_${sanitizedName || "tool"}`;
-			const schema =
-				(mcpTool.inputSchemaJson as Record<string, unknown> | null) ?? {
-					type: "object",
-					properties: {},
-				};
+			const schema = (mcpTool.inputSchemaJson as Record<
+				string,
+				unknown
+			> | null) ?? {
+				type: "object",
+				properties: {},
+			};
 
 			tools[toolKey] = {
 				description:
@@ -337,6 +343,65 @@ async function buildBoundTools(input: {
 	return tools;
 }
 
+async function findUserMessageForResend(input: {
+	conversationId: string;
+	messageId: string;
+	content: string;
+}) {
+	const [exactMatch] = await db
+		.select()
+		.from(messages)
+		.where(
+			and(
+				eq(messages.id, input.messageId),
+				eq(messages.conversationId, input.conversationId),
+				eq(messages.role, "user"),
+			),
+		)
+		.limit(1);
+
+	if (exactMatch) return exactMatch;
+
+	// Backward compatibility for messages created before the client synced
+	// server-side user message IDs. Those client-side UUIDs are valid UUIDs
+	// but do not exist in the database, so find the intended user message by
+	// exact text content within this conversation.
+	const userMessages = await db
+		.select()
+		.from(messages)
+		.where(
+			and(
+				eq(messages.conversationId, input.conversationId),
+				eq(messages.role, "user"),
+			),
+		)
+		.orderBy(desc(messages.createdAt));
+
+	for (const message of userMessages) {
+		const parts = await db
+			.select({
+				type: messageParts.type,
+				contentEncrypted: messageParts.contentEncrypted,
+			})
+			.from(messageParts)
+			.where(eq(messageParts.messageId, message.id));
+		const textParts: string[] = [];
+		for (const part of parts) {
+			if (part.type !== "text" || !part.contentEncrypted) continue;
+			try {
+				textParts.push(await decryptValue(part.contentEncrypted));
+			} catch {
+				// skip undecryptable legacy parts
+			}
+		}
+		if (textParts.join("\n").trim() === input.content.trim()) {
+			return message;
+		}
+	}
+
+	return null;
+}
+
 async function loadConversationHistory(
 	conversationId: string,
 ): Promise<ModelMessage[]> {
@@ -454,7 +519,12 @@ export async function POST(
 		const quota = await assertWorkspaceWithinTokenQuota(agent.workspaceId);
 		if (!quota.allowed) {
 			return NextResponse.json(
-				{ error: quota.message, code: "quota_exceeded", used: quota.used, limit: quota.limit },
+				{
+					error: quota.message,
+					code: "quota_exceeded",
+					used: quota.used,
+					limit: quota.limit,
+				},
 				{ status: 429 },
 			);
 		}
@@ -474,6 +544,20 @@ export async function POST(
 				)
 				.limit(1);
 			conversation = existing ?? null;
+
+			if (!conversation && resendFromMessageId) {
+				return NextResponse.json(
+					{ error: "Conversation not found" },
+					{ status: 404 },
+				);
+			}
+		}
+
+		if (!conversation && resendFromMessageId) {
+			return NextResponse.json(
+				{ error: "Cannot resend without an existing conversation" },
+				{ status: 400 },
+			);
 		}
 
 		const version = await getActiveVersion(agentId);
@@ -494,12 +578,6 @@ export async function POST(
 		}
 
 		if (!conversation) {
-			if (resendFromMessageId) {
-				return NextResponse.json(
-					{ error: "Cannot resend without an existing conversation" },
-					{ status: 400 },
-				);
-			}
 			const [newConversation] = await db
 				.insert(conversations)
 				.values({
@@ -524,17 +602,11 @@ export async function POST(
 
 		let userMessage: typeof messages.$inferSelect;
 		if (resendFromMessageId) {
-			const [existingUserMessage] = await db
-				.select()
-				.from(messages)
-				.where(
-					and(
-						eq(messages.id, resendFromMessageId),
-						eq(messages.conversationId, conversation.id),
-						eq(messages.role, "user"),
-					),
-				)
-				.limit(1);
+			const existingUserMessage = await findUserMessageForResend({
+				conversationId: conversation.id,
+				messageId: resendFromMessageId,
+				content,
+			});
 
 			if (!existingUserMessage) {
 				return NextResponse.json(
@@ -543,20 +615,38 @@ export async function POST(
 				);
 			}
 
-			await db
-				.delete(messages)
-				.where(
-					and(
-						eq(messages.conversationId, conversation.id),
-						gt(messages.createdAt, existingUserMessage.createdAt),
-					),
+			const encryptedContent = await encryptValue(content);
+			await db.transaction(async (tx) => {
+				const messagesToReplace = await tx
+					.select({ id: messages.id })
+					.from(messages)
+					.where(
+						and(
+							eq(messages.conversationId, conversation.id),
+							ne(messages.id, existingUserMessage.id),
+							gt(messages.createdAt, existingUserMessage.createdAt),
+						),
+					);
+				const messageIdsToReplace = messagesToReplace.map(
+					(message) => message.id,
 				);
-			await db.delete(messageParts).where(eq(messageParts.messageId, existingUserMessage.id));
-			await db.insert(messageParts).values({
-				messageId: existingUserMessage.id,
-				type: "text",
-				contentEncrypted: await encryptValue(content),
-				sortOrder: 0,
+				if (messageIdsToReplace.length > 0) {
+					await tx
+						.delete(toolInvocations)
+						.where(inArray(toolInvocations.messageId, messageIdsToReplace));
+					await tx
+						.delete(messages)
+						.where(inArray(messages.id, messageIdsToReplace));
+				}
+				await tx
+					.delete(messageParts)
+					.where(eq(messageParts.messageId, existingUserMessage.id));
+				await tx.insert(messageParts).values({
+					messageId: existingUserMessage.id,
+					type: "text",
+					contentEncrypted: encryptedContent,
+					sortOrder: 0,
+				});
 			});
 			userMessage = existingUserMessage;
 		} else {
@@ -875,6 +965,7 @@ export async function POST(
 		return createChatStreamResponse(assistantMessage.id, {
 			"X-Conversation-Id": conversation.id,
 			"X-Message-Id": assistantMessage.id,
+			"X-User-Message-Id": userMessage.id,
 		});
 	} catch (error) {
 		logger.error("Chat request failed", {}, error as Error);
@@ -893,7 +984,12 @@ export async function POST(
 		}
 
 		return NextResponse.json(
-			{ error: "Internal server error" },
+			{
+				error: "Internal server error",
+				...(process.env.NODE_ENV !== "production" && error instanceof Error
+					? { detail: error.message }
+					: {}),
+			},
 			{ status: 500 },
 		);
 	}
