@@ -3,11 +3,15 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+	Activity,
 	CheckCircle2,
 	Clock,
 	Loader2,
+	MessageSquare,
+	Shield,
 	ShieldAlert,
 	XCircle,
+	Zap,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -16,13 +20,6 @@ import { WorkspacePage } from "@/components/workspace-page";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
-import {
 	Empty,
 	EmptyDescription,
 	EmptyHeader,
@@ -30,7 +27,10 @@ import {
 	EmptyTitle,
 } from "@/components/ui/empty";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 import { useWorkspace } from "@/hooks/use-workspace";
+
+// ── Types ──
 
 interface ToolInvocation {
 	id: string;
@@ -50,14 +50,18 @@ interface ToolInvocation {
 
 type ToolAction = "approve" | "reject";
 
+// ── Constants ──
+
 const TOOL_STATUS_FILTERS = [
-	{ value: "all", label: "All" },
-	{ value: "awaiting_approval", label: "Pending" },
-	{ value: "success", label: "Success" },
-	{ value: "failed", label: "Failed" },
-	{ value: "rejected", label: "Rejected" },
-	{ value: "denied", label: "Denied" },
+	{ value: "all", label: "All", icon: Activity },
+	{ value: "awaiting_approval", label: "Pending", icon: Clock },
+	{ value: "success", label: "Success", icon: CheckCircle2 },
+	{ value: "failed", label: "Failed", icon: XCircle },
+	{ value: "rejected", label: "Rejected", icon: ShieldAlert },
+	{ value: "denied", label: "Denied", icon: Shield },
 ] as const;
+
+// ── Helpers ──
 
 function isPendingApproval(invocation: ToolInvocation) {
 	return (
@@ -70,42 +74,156 @@ function getStatusLabel(status: string) {
 	return status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function getStatusBadgeVariant(status: string) {
-	if (status === "success") return "secondary" as const;
-	if (status === "awaiting_approval" || status === "pending_approval") {
-		return "outline" as const;
-	}
-	return "destructive" as const;
-}
-
-function StatusIcon({ status }: { status: string }) {
-	const className = "size-4 shrink-0";
+function getStatusColor(status: string) {
 	switch (status) {
 		case "success":
-			return <CheckCircle2 className={`${className} text-success`} />;
+			return "text-success";
 		case "awaiting_approval":
 		case "pending_approval":
-			return <Clock className={`${className} text-warning`} />;
+			return "text-warning";
 		case "failed":
 		case "rejected":
-			return <XCircle className={`${className} text-destructive`} />;
 		case "denied":
-			return <ShieldAlert className={`${className} text-destructive`} />;
+			return "text-destructive";
 		default:
-			return <Clock className={`${className} text-muted-foreground`} />;
+			return "text-muted-foreground";
 	}
 }
+
+function getStatusBg(status: string) {
+	switch (status) {
+		case "success":
+			return "bg-success/10";
+		case "awaiting_approval":
+		case "pending_approval":
+			return "bg-warning/10";
+		case "failed":
+		case "rejected":
+		case "denied":
+			return "bg-destructive/10";
+		default:
+			return "bg-muted";
+	}
+}
+
+function getStatusRing(status: string) {
+	switch (status) {
+		case "success":
+			return "ring-success/20";
+		case "awaiting_approval":
+		case "pending_approval":
+			return "ring-warning/20";
+		case "failed":
+		case "rejected":
+		case "denied":
+			return "ring-destructive/20";
+		default:
+			return "ring-border";
+	}
+}
+
+// ── Stat Card ──
+
+function StatCard({
+	label,
+	value,
+	icon: Icon,
+	color,
+	accent,
+}: {
+	label: string;
+	value: string | number;
+	icon: React.ElementType;
+	color: string;
+	accent: string;
+}) {
+	return (
+		<div
+			className={cn(
+				"group relative overflow-hidden rounded-2xl border border-border/60 bg-background/80 p-4 transition-all duration-300 hover:border-border/80 hover:bg-background hover:shadow-lg",
+			)}
+		>
+			{/* Accent bar */}
+			<div
+				className={cn(
+					"absolute left-0 top-0 h-full w-1 opacity-60 transition-opacity duration-300 group-hover:opacity-100",
+					accent,
+				)}
+			/>
+
+			<div className="flex items-start justify-between gap-3">
+				<div className="flex flex-col gap-1">
+					<span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+						{label}
+					</span>
+					<span className="text-2xl font-bold tracking-tight text-foreground">
+						{value}
+					</span>
+				</div>
+				<div
+					className={cn(
+						"flex size-10 shrink-0 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-110",
+						color,
+					)}
+				>
+					<Icon className="size-5" aria-hidden="true" />
+				</div>
+			</div>
+		</div>
+	);
+}
+
+// ── Status Dot ──
+
+function StatusDot({ status, animate }: { status: string; animate?: boolean }) {
+	const isPending =
+		status === "awaiting_approval" || status === "pending_approval";
+	return (
+		<span className="relative flex size-3">
+			{isPending && animate && (
+				<span
+					className={cn(
+						"absolute inset-0 rounded-full animate-ping opacity-40",
+						getStatusColor(status),
+					)}
+					style={{
+						backgroundColor: "currentColor",
+					}}
+				/>
+			)}
+			<span
+				className={cn(
+					"relative size-3 rounded-full ring-2",
+					getStatusColor(status),
+					getStatusRing(status),
+					getStatusBg(status),
+				)}
+			/>
+		</span>
+	);
+}
+
+// ── Risk Badge ──
 
 function RiskBadge({ riskLevel }: { riskLevel: string | null }) {
 	if (!riskLevel) return null;
-	const variant =
+	const config =
 		riskLevel === "high" || riskLevel === "critical"
-			? "destructive"
+			? {
+					variant: "destructive" as const,
+					label: riskLevel === "critical" ? "⚠ Critical" : "↑ High",
+				}
 			: riskLevel === "medium"
-				? "outline"
-				: "secondary";
-	return <Badge variant={variant}>{riskLevel}</Badge>;
+				? {
+						variant: "outline" as const,
+						label: "→ Medium",
+					}
+				: { variant: "secondary" as const, label: "↓ Low" };
+
+	return <Badge variant={config.variant}>{config.label}</Badge>;
 }
+
+// ── Invocation Actions ──
 
 function InvocationActions({
 	invocationId,
@@ -118,6 +236,8 @@ function InvocationActions({
 	onApprove: (invocationId: string) => void;
 	onReject: (invocationId: string) => void;
 }) {
+	const isBusy = busyAction !== null;
+
 	return (
 		<div className="flex items-center gap-2">
 			<Button
@@ -125,7 +245,8 @@ function InvocationActions({
 				size="sm"
 				variant="outline"
 				onClick={() => onReject(invocationId)}
-				disabled={busyAction !== null}
+				disabled={isBusy}
+				className="min-w-[80px] transition-all duration-200 hover:bg-destructive/8 hover:text-destructive hover:border-destructive/30"
 			>
 				{busyAction === "reject" ? (
 					<Loader2 className="animate-spin" aria-hidden="true" />
@@ -138,7 +259,8 @@ function InvocationActions({
 				type="button"
 				size="sm"
 				onClick={() => onApprove(invocationId)}
-				disabled={busyAction !== null}
+				disabled={isBusy}
+				className="min-w-[88px] transition-all duration-200 hover:shadow-lg hover:shadow-primary/10"
 			>
 				{busyAction === "approve" ? (
 					<Loader2 className="animate-spin" aria-hidden="true" />
@@ -151,47 +273,133 @@ function InvocationActions({
 	);
 }
 
-function InvocationSummary({ invocation }: { invocation: ToolInvocation }) {
+// ── Invocation Row ──
+
+function InvocationRow({
+	invocation,
+	showActions,
+	busyAction,
+	onApprove,
+	onReject,
+	index,
+}: {
+	invocation: ToolInvocation;
+	showActions: boolean;
+	busyAction: ToolAction | null;
+	onApprove: (id: string) => void;
+	onReject: (id: string) => void;
+	index: number;
+}) {
 	return (
-		<div className="flex flex-col gap-1">
-			<div className="flex flex-wrap items-center gap-2">
-				<StatusIcon status={invocation.status} />
-				<span className="font-medium">{invocation.toolName}</span>
-				<RiskBadge riskLevel={invocation.riskLevel} />
-				<Badge variant="outline">{invocation.toolSource}</Badge>
-				<Badge variant={getStatusBadgeVariant(invocation.status)}>
-					{getStatusLabel(invocation.status)}
-				</Badge>
-			</div>
-			<div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-				<span>{new Date(invocation.createdAt).toLocaleString()}</span>
-				{invocation.latencyMs !== null && (
-					<>
-						<span>·</span>
-						<span>{invocation.latencyMs}ms</span>
-					</>
-				)}
-				{invocation.conversationId ? (
-					<>
-						<span>·</span>
-						<Link
-							href={`/chat?conversationId=${invocation.conversationId}`}
-							className="text-primary hover:underline"
+		<div
+			className={cn(
+				"group relative flex flex-col gap-3 rounded-2xl border border-border/60 bg-background/60 p-4 transition-all duration-200 hover:border-border/80 hover:bg-background sm:flex-row sm:items-center sm:justify-between",
+				invocation.status === "awaiting_approval" ||
+					invocation.status === "pending_approval"
+					? "border-warning/25 bg-warning/[0.03]"
+					: "",
+			)}
+			style={{ animationDelay: `${index * 40}ms` }}
+		>
+			{/* Left: info */}
+			<div className="flex min-w-0 flex-1 items-start gap-3">
+				{/* Status indicator */}
+				<div className="mt-1 hidden sm:block">
+					<StatusDot
+						status={invocation.status}
+						animate={isPendingApproval(invocation)}
+					/>
+				</div>
+
+				<div className="min-w-0 flex-1">
+					{/* Primary line: tool name + badges */}
+					<div className="flex flex-wrap items-center gap-2">
+						<span className="font-semibold text-foreground">
+							{invocation.toolName}
+						</span>
+
+						{/* Source badge */}
+						<span className="inline-flex items-center gap-1 rounded-md bg-muted/80 px-2 py-0.5 text-[0.7rem] font-medium uppercase tracking-wider text-muted-foreground">
+							<Zap className="size-3" aria-hidden="true" />
+							{invocation.toolSource}
+						</span>
+
+						<RiskBadge riskLevel={invocation.riskLevel} />
+
+						{/* Status pill */}
+						<span
+							className={cn(
+								"inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[0.7rem] font-semibold uppercase tracking-wider ring-1",
+								getStatusColor(invocation.status),
+								getStatusBg(invocation.status),
+								getStatusRing(invocation.status),
+							)}
 						>
-							View conversation
-						</Link>
-					</>
-				) : null}
-				{invocation.errorMessage && (
-					<>
-						<span>·</span>
-						<span className="text-destructive">{invocation.errorMessage}</span>
-					</>
-				)}
+							<StatusDot
+								status={invocation.status}
+								animate={isPendingApproval(invocation)}
+							/>
+							{getStatusLabel(invocation.status)}
+						</span>
+					</div>
+
+					{/* Secondary line: metadata */}
+					<div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+						<time dateTime={invocation.createdAt}>
+							{new Date(invocation.createdAt).toLocaleString()}
+						</time>
+
+						{invocation.latencyMs !== null && (
+							<>
+								<span className="text-muted/60">·</span>
+								<span className="inline-flex items-center gap-1">
+									<Activity className="size-3" aria-hidden="true" />
+									{invocation.latencyMs}ms
+								</span>
+							</>
+						)}
+
+						{invocation.conversationId && (
+							<>
+								<span className="text-muted/60">·</span>
+								<Link
+									href={`/chat?conversationId=${invocation.conversationId}`}
+									className="inline-flex items-center gap-1 text-primary transition-colors hover:underline"
+								>
+									<MessageSquare className="size-3" aria-hidden="true" />
+									Conversation
+								</Link>
+							</>
+						)}
+
+						{invocation.errorMessage && (
+							<>
+								<span className="text-muted/60">·</span>
+								<span className="max-w-xs truncate font-medium text-destructive">
+									{invocation.errorMessage}
+								</span>
+							</>
+						)}
+					</div>
+				</div>
 			</div>
+
+			{/* Right: actions */}
+			{showActions && (
+				<div className="shrink-0">
+					<InvocationActions
+						invocationId={invocation.id}
+						busyAction={busyAction}
+						onApprove={onApprove}
+						onReject={onReject}
+					/>
+				</div>
+			)}
 		</div>
 	);
 }
+
+// ── Pending Approvals Panel ──
 
 function PendingApprovalsPanel({
 	invocations,
@@ -207,68 +415,78 @@ function PendingApprovalsPanel({
 	if (invocations.length === 0) return null;
 
 	return (
-		<Card className="border-warning/40 bg-warning/8">
-			<CardHeader className="pb-3">
-				<div className="flex items-center gap-3">
-					<div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-warning/15">
-						<Clock className="size-5 text-warning" aria-hidden="true" />
-					</div>
-					<div>
-						<CardTitle className="text-foreground">
-							{invocations.length} pending approval
-							{invocations.length !== 1 ? "s" : ""}
-						</CardTitle>
-						<CardDescription>
-							These tool invocations need your permission before running.
-						</CardDescription>
-					</div>
+		<div className="animate-in-up stagger-1">
+			{/* Header */}
+			<div className="mb-4 flex items-center gap-3">
+				<div className="relative flex size-11 shrink-0 items-center justify-center rounded-xl bg-warning/10 ring-1 ring-warning/20">
+					<Clock
+						className="size-5 text-warning animate-pulse"
+						aria-hidden="true"
+					/>
+					<span className="absolute -right-1.5 -top-1.5 flex size-5 items-center justify-center rounded-full bg-warning text-[0.6rem] font-bold text-warning-foreground shadow-sm">
+						{invocations.length}
+					</span>
 				</div>
-			</CardHeader>
-			<CardContent className="flex flex-col gap-3">
-				{invocations.map((invocation) => (
-					<div
+				<div>
+					<h2 className="text-lg font-semibold tracking-tight text-foreground">
+						Pending Approvals
+					</h2>
+					<p className="text-sm text-muted-foreground">
+						{invocations.length} tool invocation
+						{invocations.length !== 1 ? "s" : ""} awaiting your permission
+					</p>
+				</div>
+			</div>
+
+			{/* Items */}
+			<div className="flex flex-col gap-3">
+				{invocations.map((invocation, i) => (
+					<InvocationRow
 						key={invocation.id}
-						className="flex flex-col gap-3 rounded-xl border border-warning/25 bg-background/60 p-4 sm:flex-row sm:items-center sm:justify-between"
-					>
-						<InvocationSummary invocation={invocation} />
-						<InvocationActions
-							invocationId={invocation.id}
-							busyAction={
-								busyInvocation?.id === invocation.id
-									? busyInvocation.action
-									: null
-							}
-							onApprove={onApprove}
-							onReject={onReject}
-						/>
-					</div>
+						invocation={invocation}
+						showActions
+						busyAction={
+							busyInvocation?.id === invocation.id
+								? busyInvocation.action
+								: null
+						}
+						onApprove={onApprove}
+						onReject={onReject}
+						index={i}
+					/>
 				))}
-			</CardContent>
-		</Card>
+			</div>
+		</div>
 	);
 }
 
+// ── Invocation List ──
+
 function InvocationList({
 	invocations,
+	filterStatus,
 	busyInvocation,
 	onApprove,
 	onReject,
 }: {
 	invocations: ToolInvocation[];
+	filterStatus: string;
 	busyInvocation: { id: string; action: ToolAction } | null;
 	onApprove: (invocationId: string) => void;
 	onReject: (invocationId: string) => void;
 }) {
 	if (invocations.length === 0) {
 		return (
-			<Empty className="mt-8 border border-border/70 bg-background/55">
+			<Empty className="mt-4">
 				<EmptyHeader>
 					<EmptyMedia variant="icon">
-						<ShieldAlert aria-hidden="true" />
+						<Shield aria-hidden="true" />
 					</EmptyMedia>
-					<EmptyTitle>No tool invocations</EmptyTitle>
+					<EmptyTitle>No tool invocations found</EmptyTitle>
 					<EmptyDescription>
-						Tool invocations will appear here when agents execute tools.
+						{filterStatus !== "all"
+							? `No invocations with status "${getStatusLabel(filterStatus)}".`
+							: "Tool invocations will appear here when agents execute tools."}
 					</EmptyDescription>
 				</EmptyHeader>
 			</Empty>
@@ -276,29 +494,33 @@ function InvocationList({
 	}
 
 	return (
-		<div className="mt-4 flex flex-col gap-3">
-			{invocations.map((invocation) => (
-				<Card key={invocation.id}>
-					<CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-						<InvocationSummary invocation={invocation} />
-						{isPendingApproval(invocation) && (
-							<InvocationActions
-								invocationId={invocation.id}
-								busyAction={
-									busyInvocation?.id === invocation.id
-										? busyInvocation.action
-										: null
-								}
-								onApprove={onApprove}
-								onReject={onReject}
-							/>
-						)}
-					</CardContent>
-				</Card>
+		<div className="mt-4 flex flex-col gap-2">
+			{/* Column header */}
+			<div className="flex items-center justify-between px-1 pb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+				<span>Invocations</span>
+				<span>
+					{invocations.length} result{invocations.length !== 1 ? "s" : ""}
+				</span>
+			</div>
+
+			{invocations.map((invocation, i) => (
+				<InvocationRow
+					key={invocation.id}
+					invocation={invocation}
+					showActions={isPendingApproval(invocation)}
+					busyAction={
+						busyInvocation?.id === invocation.id ? busyInvocation.action : null
+					}
+					onApprove={onApprove}
+					onReject={onReject}
+					index={i}
+				/>
 			))}
 		</div>
 	);
 }
+
+// ── Page ──
 
 export default function ToolInvocationsPage() {
 	const { workspaceId, isLoading: workspaceLoading } = useWorkspace();
@@ -314,6 +536,30 @@ export default function ToolInvocationsPage() {
 		() => invocations.filter(isPendingApproval),
 		[invocations],
 	);
+
+	// Stats
+	const stats = useMemo(() => {
+		const total = invocations.length;
+		const pending = pendingInvocations.length;
+		const success = invocations.filter((i) => i.status === "success").length;
+		const failed = invocations.filter(
+			(i) =>
+				i.status === "failed" ||
+				i.status === "rejected" ||
+				i.status === "denied",
+		).length;
+		const latencies = invocations
+			.map((i) => i.latencyMs)
+			.filter((v): v is number => v !== null);
+		const avgLatency =
+			latencies.length > 0
+				? Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length)
+				: 0;
+		const successRate =
+			total > 0 ? Math.round(((success / total) * 100) | 0) : 0;
+
+		return { total, pending, success, failed, avgLatency, successRate };
+	}, [invocations, pendingInvocations]);
 
 	const fetchInvocations = useCallback(
 		async (signal?: AbortSignal) => {
@@ -416,9 +662,42 @@ export default function ToolInvocationsPage() {
 	return (
 		<WorkspacePage
 			title="Tools"
-			description="Monitor tool invocations and approve actions that require your permission. MCP servers are managed separately."
+			description="Monitor tool invocations, track execution metrics, and approve actions that require your permission."
 			width="wide"
 		>
+			{/* Stats Row */}
+			<div className="grid grid-cols-2 gap-3 sm:grid-cols-4 animate-in-up stagger-1">
+				<StatCard
+					label="Total"
+					value={stats.total}
+					icon={Activity}
+					color="bg-primary/10 text-primary"
+					accent="bg-primary"
+				/>
+				<StatCard
+					label="Pending"
+					value={stats.pending}
+					icon={Clock}
+					color="bg-warning/10 text-warning"
+					accent="bg-warning"
+				/>
+				<StatCard
+					label="Success Rate"
+					value={`${stats.successRate}%`}
+					icon={CheckCircle2}
+					color="bg-success/10 text-success"
+					accent="bg-success"
+				/>
+				<StatCard
+					label="Avg Latency"
+					value={`${stats.avgLatency}ms`}
+					icon={Zap}
+					color="bg-info/10 text-info"
+					accent="bg-info"
+				/>
+			</div>
+
+			{/* Pending Approvals */}
 			<PendingApprovalsPanel
 				invocations={pendingInvocations}
 				busyInvocation={busyInvocation}
@@ -426,24 +705,37 @@ export default function ToolInvocationsPage() {
 				onReject={(id) => void runInvocationAction(id, "reject")}
 			/>
 
-			<Tabs value={filterStatus} onValueChange={setFilterStatus}>
-				<TabsList>
-					{TOOL_STATUS_FILTERS.map((filter) => (
-						<TabsTrigger key={filter.value} value={filter.value}>
-							{filter.label}
-						</TabsTrigger>
-					))}
-				</TabsList>
+			{/* Filter Tabs + List */}
+			<div className="animate-in-up stagger-2">
+				<Tabs value={filterStatus} onValueChange={setFilterStatus}>
+					<TabsList className="w-full overflow-x-auto sm:w-auto sm:overflow-visible">
+						{TOOL_STATUS_FILTERS.map((filter) => (
+							<TabsTrigger
+								key={filter.value}
+								value={filter.value}
+								className="flex items-center gap-1.5"
+							>
+								<filter.icon className="size-3.5" aria-hidden="true" />
+								{filter.label}
+							</TabsTrigger>
+						))}
+					</TabsList>
 
-				<TabsContent value={filterStatus}>
-					<InvocationList
-						invocations={invocations}
-						busyInvocation={busyInvocation}
-						onApprove={(id) => void runInvocationAction(id, "approve")}
-						onReject={(id) => void runInvocationAction(id, "reject")}
-					/>
-				</TabsContent>
-			</Tabs>
+					<TabsContent value={filterStatus}>
+						<InvocationList
+							invocations={
+								filterStatus === "all"
+									? invocations
+									: invocations.filter((i) => i.status === filterStatus)
+							}
+							filterStatus={filterStatus}
+							busyInvocation={busyInvocation}
+							onApprove={(id) => void runInvocationAction(id, "approve")}
+							onReject={(id) => void runInvocationAction(id, "reject")}
+						/>
+					</TabsContent>
+				</Tabs>
+			</div>
 		</WorkspacePage>
 	);
 }

@@ -588,6 +588,14 @@
     border-bottom-left-radius: 0.375rem;
   }
 
+  .dark .msg-bubble--assistant {
+    background: color-mix(in oklch, var(--card) 92%, white 8%);
+    border: 1px solid color-mix(in oklch, var(--border) 88%, white 12%);
+    box-shadow:
+      0 1px 3px color-mix(in oklch, var(--foreground) 8%, transparent),
+      0 8px 24px -8px color-mix(in oklch, var(--foreground) 12%, transparent);
+  }
+
   /* ── Composer polish ── */
   .composer-box {
     @apply relative;

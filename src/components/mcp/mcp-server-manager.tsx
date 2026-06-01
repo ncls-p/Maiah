@@ -8,7 +8,9 @@ import {
 	PencilIcon,
 	PlusIcon,
 	RefreshCwIcon,
+	ShieldAlert,
 	Trash2Icon,
+	Wrench,
 	ZapIcon,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -177,9 +179,9 @@ export function McpServerManager() {
 	const [editServer, setEditServer] = useState<McpServer | null>(null);
 	const [editForm, setEditForm] = useState(emptyForm);
 	const [deleteId, setDeleteId] = useState<string | null>(null);
-	const [expandedServers, setExpandedServers] = useState<Record<string, boolean>>(
-		{},
-	);
+	const [expandedServers, setExpandedServers] = useState<
+		Record<string, boolean>
+	>({});
 
 	const load = useCallback(async () => {
 		if (!workspaceId) return;
@@ -255,27 +257,24 @@ export function McpServerManager() {
 		if (!workspaceId || !editServer) return;
 		setBusy(true);
 		try {
-			const res = await fetch(
-				`/api/workspace/mcp-servers/${editServer.id}`,
-				{
-					method: "PATCH",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({
-						workspaceId,
-						name: editForm.name.trim(),
-						url: editForm.url.trim() || "",
-						command: editForm.command.trim() || undefined,
-						args: editForm.args
-							.split("\n")
-							.map((line) => line.trim())
-							.filter(Boolean),
-						enabled: editServer.enabled,
-						requireApproval: editForm.requireApproval,
-						headers: buildHeaders(editForm),
-						env: buildEnv(editForm),
-					}),
-				},
-			);
+			const res = await fetch(`/api/workspace/mcp-servers/${editServer.id}`, {
+				method: "PATCH",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					workspaceId,
+					name: editForm.name.trim(),
+					url: editForm.url.trim() || "",
+					command: editForm.command.trim() || undefined,
+					args: editForm.args
+						.split("\n")
+						.map((line) => line.trim())
+						.filter(Boolean),
+					enabled: editServer.enabled,
+					requireApproval: editForm.requireApproval,
+					headers: buildHeaders(editForm),
+					env: buildEnv(editForm),
+				}),
+			});
 			if (!res.ok) throw new Error((await res.json()).error || "Failed");
 			setEditServer(null);
 			setShowAdvancedEdit(false);
@@ -387,7 +386,10 @@ export function McpServerManager() {
 		await load();
 	}
 
-	async function toggleServerApproval(server: McpServer, requireApproval: boolean) {
+	async function toggleServerApproval(
+		server: McpServer,
+		requireApproval: boolean,
+	) {
 		if (!workspaceId) return;
 		const res = await fetch(`/api/workspace/mcp-servers/${server.id}`, {
 			method: "PATCH",
@@ -428,7 +430,8 @@ export function McpServerManager() {
 				<CardHeader>
 					<CardTitle>MCP servers</CardTitle>
 					<CardDescription>
-						Connect servers once, then sync tools and enable only what agents can use.
+						Connect servers once, then sync tools and enable only what agents
+						can use.
 					</CardDescription>
 					<CardAction>
 						<Button
@@ -554,7 +557,9 @@ export function McpServerManager() {
 											) : (
 												<>
 													<SelectItem value="bearer">Bearer token</SelectItem>
-													<SelectItem value="api-key">API key header</SelectItem>
+													<SelectItem value="api-key">
+														API key header
+													</SelectItem>
 												</>
 											)}
 										</SelectContent>
@@ -696,7 +701,9 @@ export function McpServerManager() {
 											id="mcp-env"
 											autoComplete="off"
 											value={form.env}
-											onChange={(e) => setForm({ ...form, env: e.target.value })}
+											onChange={(e) =>
+												setForm({ ...form, env: e.target.value })
+											}
 											placeholder="API_KEY=…"
 										/>
 										<p className="text-xs text-muted-foreground">
@@ -778,11 +785,15 @@ export function McpServerManager() {
 												</CollapsibleTrigger>
 												<div className="min-w-0">
 													<CardTitle className="flex flex-wrap items-center gap-2">
-														<NetworkIcon className="size-5 shrink-0" aria-hidden="true" />
+														<NetworkIcon
+															className="size-5 shrink-0"
+															aria-hidden="true"
+														/>
 														<span className="truncate">{server.name}</span>
 														{tools.length > 0 ? (
 															<Badge variant="secondary">
-																{tools.length} tool{tools.length === 1 ? "" : "s"}
+																{tools.length} tool
+																{tools.length === 1 ? "" : "s"}
 															</Badge>
 														) : null}
 													</CardTitle>
@@ -826,7 +837,10 @@ export function McpServerManager() {
 													variant="outline"
 													onClick={() => void test(server.id)}
 												>
-													<ZapIcon data-icon="inline-start" aria-hidden="true" />
+													<ZapIcon
+														data-icon="inline-start"
+														aria-hidden="true"
+													/>
 													Test
 												</Button>
 												<Button
@@ -882,53 +896,118 @@ export function McpServerManager() {
 										<CardContent className="grid max-h-96 gap-2 overflow-y-auto border-t border-border/60 pt-4">
 											{tools.length === 0 ? (
 												<p className="text-sm text-muted-foreground">
-													No tools discovered. Run sync after configuring credentials.
+													No tools discovered. Run sync after configuring
+													credentials.
 												</p>
 											) : (
-												tools.map((tool) => (
-													<div
-														key={tool.id}
-														className="ui-list-row flex items-center justify-between gap-3 p-3"
-													>
-														<div className="min-w-0">
-															<p className="truncate font-medium">{tool.name}</p>
-															{tool.description ? (
-																<p className="line-clamp-2 text-sm text-muted-foreground">
-																	{tool.description}
-																</p>
-															) : null}
+												tools.map((tool) => {
+													const isApprovalForced =
+														server.requireApproval || tool.requireApproval;
+
+													return (
+														<div
+															key={tool.id}
+															className={cn(
+																"group flex items-center gap-3 rounded-xl border border-transparent px-3 py-2.5 transition-all duration-200 hover:border-border/60 hover:bg-muted/30",
+																!tool.enabled && "opacity-50",
+															)}
+														>
+															{/* Tool icon */}
+															<div
+																className={cn(
+																	"flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors",
+																	tool.enabled
+																		? "bg-primary/10 text-primary"
+																		: "bg-muted text-muted-foreground",
+																)}
+															>
+																<Wrench className="size-4" aria-hidden="true" />
+															</div>
+
+															{/* Info */}
+															<div className="min-w-0 flex-1">
+																<div className="flex items-center gap-2">
+																	<span className="truncate font-medium text-sm">
+																		{tool.name}
+																	</span>
+																	{/* Status dot */}
+																	<span
+																		className={cn(
+																			"flex size-2 shrink-0",
+																			tool.enabled
+																				? "bg-success"
+																				: "bg-muted-foreground",
+																		)}
+																	/>
+																</div>
+																{tool.description ? (
+																	<p className="line-clamp-1 text-xs text-muted-foreground">
+																		{tool.description}
+																	</p>
+																) : null}
+															</div>
+
+															{/* Badges */}
+															<div className="flex shrink-0 items-center gap-1.5">
+																{isApprovalForced && (
+																	<span
+																		className={cn(
+																			"inline-flex items-center gap-1 rounded-md bg-warning/10 px-2 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wider text-warning ring-1 ring-warning/20",
+																		)}
+																	>
+																		<ShieldAlert
+																			className="size-3"
+																			aria-hidden="true"
+																		/>
+																		{server.requireApproval
+																			? "Forced"
+																			: "Approval"}
+																	</span>
+																)}
+															</div>
+
+															{/* Toggles */}
+															<div className="flex shrink-0 items-center gap-3">
+																{/* Approval toggle */}
+																<div className="flex items-center gap-1.5">
+																	<span className="hidden text-xs text-muted-foreground sm:inline">
+																		Approval
+																	</span>
+																	<Switch
+																		aria-label={`Require approval for ${tool.name}`}
+																		checked={isApprovalForced}
+																		disabled={server.requireApproval}
+																		onCheckedChange={(checked) =>
+																			void toggleToolApproval(
+																				server.id,
+																				tool.id,
+																				checked,
+																			)
+																		}
+																	/>
+																</div>
+
+																{/* Enabled toggle */}
+																<div className="flex items-center gap-1.5">
+																	<span className="hidden text-xs text-muted-foreground sm:inline">
+																		Enabled
+																	</span>
+																	<Switch
+																		aria-label={`Enable ${tool.name}`}
+																		checked={tool.enabled}
+																		onCheckedChange={(checked) =>
+																			void toggleTool(
+																				server.id,
+																				tool.id,
+																				checked,
+																			)
+																		}
+																	/>
+																</div>
+															</div>
 														</div>
-														<div className="flex shrink-0 flex-wrap items-center gap-4 text-sm">
-															<label className="flex items-center gap-2">
-																Approval
-																<Switch
-																	aria-label={`Require approval for ${tool.name}`}
-																	checked={
-																		server.requireApproval || tool.requireApproval
-																	}
-																	disabled={server.requireApproval}
-																	onCheckedChange={(checked) =>
-																		void toggleToolApproval(
-																			server.id,
-																			tool.id,
-																			checked,
-																		)
-																	}
-																/>
-															</label>
-															<label className="flex items-center gap-2">
-																Enabled
-																<Switch
-																	aria-label={`Enable ${tool.name}`}
-																	checked={tool.enabled}
-																	onCheckedChange={(checked) =>
-																		void toggleTool(server.id, tool.id, checked)
-																	}
-																/>
-															</label>
-														</div>
-													</div>
-												))
+													);
+												})
 											)}
 										</CardContent>
 									</CollapsibleContent>
@@ -1009,10 +1088,14 @@ export function McpServerManager() {
 									<SelectContent>
 										<SelectItem value="none">Keep current auth</SelectItem>
 										{editServer?.transport === "stdio" ? (
-											<SelectItem value="env">Replace API key / token</SelectItem>
+											<SelectItem value="env">
+												Replace API key / token
+											</SelectItem>
 										) : (
 											<>
-												<SelectItem value="bearer">Replace with bearer token</SelectItem>
+												<SelectItem value="bearer">
+													Replace with bearer token
+												</SelectItem>
 												<SelectItem value="api-key">
 													Replace with API key header
 												</SelectItem>
@@ -1021,7 +1104,8 @@ export function McpServerManager() {
 									</SelectContent>
 								</Select>
 							</div>
-							{editServer?.transport === "stdio" && editForm.authMode === "env" ? (
+							{editServer?.transport === "stdio" &&
+							editForm.authMode === "env" ? (
 								<div className="grid gap-3 sm:grid-cols-[minmax(0,0.7fr)_minmax(0,1fr)]">
 									<div className="grid gap-2">
 										<Label htmlFor="mcp-edit-env-key-name">Variable name</Label>
@@ -1187,7 +1271,10 @@ export function McpServerManager() {
 				</DialogContent>
 			</Dialog>
 
-			<AlertDialog open={Boolean(deleteId)} onOpenChange={() => setDeleteId(null)}>
+			<AlertDialog
+				open={Boolean(deleteId)}
+				onOpenChange={() => setDeleteId(null)}
+			>
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>Remove MCP server?</AlertDialogTitle>
