@@ -65,7 +65,7 @@ export async function fetchDefaultWorkspaceId(): Promise<string | null> {
 export async function resolveWorkspaceId(): Promise<string | null> {
 	const stored = getStoredWorkspaceId();
 	if (stored) return stored;
-	return fetchDefaultWorkspaceId();
+	return await fetchDefaultWorkspaceId();
 }
 
 export async function fetchJson<T>(

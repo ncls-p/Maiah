@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { OnboardingRedirect } from "@/components/onboarding-redirect";
 import { WorkspaceProvider } from "@/components/workspace-provider";
+import { env } from "@/lib/env";
 import { ensureBootstrapAdmin, isAdminRole } from "@/modules/admin/use-cases";
 import { getSession } from "@/modules/auth/session";
 import {
@@ -15,6 +16,10 @@ import {
 export const metadata: Metadata = {
 	title: "Workspace",
 };
+
+// Workspace pages depend on request-bound auth/session state.
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 function toSlug(value: string, fallback: string) {
 	const slug = value
@@ -35,8 +40,7 @@ async function ensureDefaultWorkspace(user: {
 	const existingWorkspaces = await getWorkspacesByUserId(user.id);
 	if (existingWorkspaces.length > 0) return;
 
-	const allowPersonal =
-		process.env.ALLOW_PERSONAL_WORKSPACES !== "false";
+	const allowPersonal = env.ALLOW_PERSONAL_WORKSPACES !== "false";
 	const totalWorkspaces = await countWorkspaces();
 
 	if (!allowPersonal && totalWorkspaces > 0) return;

@@ -12,5 +12,6 @@ export default defineConfig({
 		environment: "node",
 		include: ["test/**/*.test.ts"],
 		exclude: ["test/e2e/**"],
+		setupFiles: ["./test/setup-env.ts"],
 	},
 });

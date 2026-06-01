@@ -32,7 +32,7 @@ function slugify(value: string) {
 		.slice(0, 96);
 }
 
-export async function listMarketplaceItems(input: {
+export function listMarketplaceItems(input: {
 	status?: string;
 	includeDrafts?: boolean;
 }) {

@@ -10,6 +10,10 @@ import {
 	CardTitle,
 } from "@/components/ui/card";
 
+// Prevent static prerendering to avoid SSR hydration issues with theme provider
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default function NotFound() {
 	return (
 		<main

@@ -326,7 +326,10 @@ async function knowledgeBaseHasEmbeddings(
 	const [row] = await db
 		.select({ count: sql<number>`count(*)::int` })
 		.from(documentEmbeddings)
-		.innerJoin(documentChunks, eq(documentEmbeddings.chunkId, documentChunks.id))
+		.innerJoin(
+			documentChunks,
+			eq(documentEmbeddings.chunkId, documentChunks.id),
+		)
 		.innerJoin(documents, eq(documentChunks.documentId, documents.id))
 		.where(
 			and(
@@ -411,7 +414,10 @@ async function searchKnowledgeBaseByVector(input: {
 			))`,
 		})
 		.from(documentEmbeddings)
-		.innerJoin(documentChunks, eq(documentEmbeddings.chunkId, documentChunks.id))
+		.innerJoin(
+			documentChunks,
+			eq(documentEmbeddings.chunkId, documentChunks.id),
+		)
 		.innerJoin(documents, eq(documentChunks.documentId, documents.id))
 		.where(
 			and(
@@ -566,7 +572,9 @@ export async function searchBoundKnowledgeBases(input: {
 		}
 	}
 
-	return allResults.sort((a, b) => b.score - a.score).slice(0, input.limit ?? 5);
+	return allResults
+		.sort((a, b) => b.score - a.score)
+		.slice(0, input.limit ?? 5);
 }
 
 const ingestionQueue: Array<{
@@ -588,7 +596,7 @@ export function dequeueDocumentIngestionJob() {
 	return ingestionQueue.shift() ?? null;
 }
 
-export async function listProcessingDocuments(limit = 5) {
+export function listProcessingDocuments(limit = 5) {
 	return db
 		.select({ id: documents.id })
 		.from(documents)

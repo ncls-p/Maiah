@@ -74,7 +74,7 @@ async function drainQueues() {
 	}
 }
 
-async function main() {
+function main() {
 	logger.info("Worker starting...", { env: env.NODE_ENV });
 
 	const server = http.createServer((req, res) => {
@@ -108,7 +108,4 @@ async function main() {
 	});
 }
 
-main().catch((err) => {
-	logger.error("Worker crashed", { error: (err as Error).message });
-	process.exit(1);
-});
+main();

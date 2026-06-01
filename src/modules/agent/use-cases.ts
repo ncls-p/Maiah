@@ -102,7 +102,7 @@ async function resolveShareTargetUserId(
 
 async function requireShareTargetUserId(email: string | null | undefined) {
 	if (!email?.trim()) throw new Error("Share target user is required");
-	return resolveShareTargetUserId(email);
+	return await resolveShareTargetUserId(email);
 }
 
 function normalizeCurationLabel(
@@ -243,10 +243,7 @@ export async function createAgent(input: CreateAgentInput) {
 	});
 
 	await insertToolBindingsForVersion(version.id, toolBindings ?? []);
-	await replaceKnowledgeBindingsForVersion(
-		version.id,
-		knowledgeBindings ?? [],
-	);
+	await replaceKnowledgeBindingsForVersion(version.id, knowledgeBindings ?? []);
 
 	logger.info("Agent created", { agentId: agent.id, userId });
 	return { agent, version };
@@ -283,7 +280,7 @@ export async function getVisibleAgentById(
 	return null;
 }
 
-export async function listAgents(
+export function listAgents(
 	workspaceId: string,
 	userId: string,
 	canAdminCurate: boolean,

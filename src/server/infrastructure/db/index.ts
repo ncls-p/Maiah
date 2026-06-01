@@ -4,11 +4,11 @@ import { env } from "@/lib/env";
 import * as schema from "./schema";
 
 const pool = new Pool({
-    connectionString: env.DATABASE_URL,
-    ssl:
-        env.NODE_ENV === "production"
-            ? { rejectUnauthorized: false }
-            : undefined,
+	connectionString: env.DATABASE_URL,
+	ssl:
+		env.NODE_ENV === "production"
+			? { rejectUnauthorized: env.DATABASE_SSL_REJECT_UNAUTHORIZED !== "false" }
+			: undefined,
 });
 
 export const db = drizzle(pool, { schema });

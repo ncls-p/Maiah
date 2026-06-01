@@ -10,11 +10,7 @@ import {
 	mcpTools,
 	toolInvocations,
 } from "@/server/infrastructure/db/schema";
-import {
-	getBuiltInTool,
-	listBuiltInTools,
-	requiresApproval,
-} from "./builtin-tools";
+import { getBuiltInTool, requiresApproval } from "./builtin-tools";
 
 export const toolBindingInputSchema = z.discriminatedUnion("toolSource", [
 	z.object({
@@ -31,10 +27,6 @@ export const toolBindingInputSchema = z.discriminatedUnion("toolSource", [
 ]);
 
 export type ToolBindingInput = z.infer<typeof toolBindingInputSchema>;
-
-export function listAvailableBuiltInTools() {
-	return listBuiltInTools();
-}
 
 export async function getToolBindingsForVersion(agentVersionId: string) {
 	return db

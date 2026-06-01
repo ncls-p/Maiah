@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { env } from "@/lib/env";
 
 export type ToolRiskLevel = "low" | "medium" | "high" | "critical";
 
@@ -63,12 +64,11 @@ function normalizeSearxngEngines(result: SearxngResult) {
 	return [];
 }
 
-async function searchWebWithSearxng(input: z.infer<typeof webSearchInputSchema>) {
+async function searchWebWithSearxng(
+	input: z.infer<typeof webSearchInputSchema>,
+) {
 	const limit = input.limit ?? 5;
-	const url = new URL(
-		"/search",
-		process.env.SEARXNG_URL || "http://localhost:18088",
-	);
+	const url = new URL("/search", env.SEARXNG_URL);
 	url.searchParams.set("q", input.query);
 	url.searchParams.set("format", "json");
 	url.searchParams.set("safesearch", "1");
@@ -99,7 +99,9 @@ async function searchWebWithSearxng(input: z.infer<typeof webSearchInputSchema>)
 				title: result.title as string,
 				url: result.url as string,
 				snippet:
-					typeof result.content === "string" ? result.content.slice(0, 800) : "",
+					typeof result.content === "string"
+						? result.content.slice(0, 800)
+						: "",
 				score: typeof result.score === "number" ? result.score : null,
 				engines: normalizeSearxngEngines(result),
 			})),

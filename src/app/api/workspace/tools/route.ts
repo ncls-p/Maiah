@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
 import { getSession } from "@/modules/auth/session";
-import { listAvailableBuiltInTools } from "@/modules/tool/use-cases";
+import { listBuiltInTools } from "@/modules/tool/builtin-tools";
 import { authorization } from "@/server/domain/services/authorization";
 
 const querySchema = z.object({ workspaceId: z.uuid() });
@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
 			);
 		}
 
-		return NextResponse.json(listAvailableBuiltInTools());
+		return NextResponse.json(listBuiltInTools());
 	} catch (error) {
 		logger.error("Failed to list tools", {}, error as Error);
 		return NextResponse.json(

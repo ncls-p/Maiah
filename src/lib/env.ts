@@ -36,6 +36,9 @@ export const baseEnvSchema = z.object({
 	OBJECT_STORAGE_SECRET_ACCESS_KEY: z.string().min(1),
 	OBJECT_STORAGE_FORCE_PATH_STYLE: z.string().default("true"),
 	SEARXNG_URL: z.url().default("http://localhost:18088"),
+	ALLOW_PERSONAL_WORKSPACES: z.string().default("true"),
+	DATABASE_SSL_REJECT_UNAUTHORIZED: z.string().default("true"),
+	WORKSPACE_MONTHLY_TOKEN_LIMIT: z.string().optional(),
 });
 
 export const productionEnvSchema = baseEnvSchema.extend({
@@ -99,6 +102,11 @@ function readEnv(source: EnvSource): EnvSource {
 		OBJECT_STORAGE_FORCE_PATH_STYLE:
 			source.OBJECT_STORAGE_FORCE_PATH_STYLE || "true",
 		SEARXNG_URL: source.SEARXNG_URL || "http://localhost:18088",
+		ALLOW_PERSONAL_WORKSPACES: source.ALLOW_PERSONAL_WORKSPACES || "true",
+		DATABASE_SSL_REJECT_UNAUTHORIZED:
+			source.DATABASE_SSL_REJECT_UNAUTHORIZED || "true",
+		WORKSPACE_MONTHLY_TOKEN_LIMIT:
+			source.WORKSPACE_MONTHLY_TOKEN_LIMIT || undefined,
 	};
 }
 
