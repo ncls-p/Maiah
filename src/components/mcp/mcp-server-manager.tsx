@@ -2,9 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-	CheckCircle2,
 	ChevronDownIcon,
-	ClipboardList,
+	CloudIcon,
 	Loader2,
 	MoreHorizontal,
 	NetworkIcon,
@@ -33,12 +32,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-	Card,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
-import {
 	Collapsible,
 	CollapsibleContent,
 	CollapsibleTrigger,
@@ -58,15 +51,9 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
-import {
-	Empty,
-	EmptyDescription,
-	EmptyHeader,
-	EmptyMedia,
-	EmptyTitle,
-} from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
 	Select,
 	SelectContent,
@@ -74,7 +61,6 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useWorkspace } from "@/hooks/use-workspace";
@@ -106,6 +92,78 @@ interface McpTool {
 
 type SimpleAuthMode = "none" | "bearer" | "api-key" | "env";
 type HealthColor = "success" | "warning" | "destructive" | "muted";
+
+/* ─── transport accent colors ───────────────────────── */
+
+const TRANSPORT_ICONS: Record<string, React.ElementType> = {
+	"streamable-http": CloudIcon,
+	sse: NetworkIcon,
+	stdio: Wrench,
+};
+
+const transportAccent = (transport: string) => {
+	const map: Record<
+		string,
+		{
+			bar: string;
+			bg: string;
+			text: string;
+			ring: string;
+			badge: string;
+			iconBg: string;
+		}
+	> = {
+		"streamable-http": {
+			bar: "bg-blue-500",
+			bg: "bg-blue-500/5",
+			text: "text-blue-600 dark:text-blue-400",
+			ring: "ring-blue-500/20",
+			badge: "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400",
+			iconBg: "bg-blue-100 dark:bg-blue-500/15",
+		},
+		sse: {
+			bar: "bg-teal-500",
+			bg: "bg-teal-500/5",
+			text: "text-teal-600 dark:text-teal-400",
+			ring: "ring-teal-500/20",
+			badge: "bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-400",
+			iconBg: "bg-teal-100 dark:bg-teal-500/15",
+		},
+		stdio: {
+			bar: "bg-amber-500",
+			bg: "bg-amber-500/5",
+			text: "text-amber-600 dark:text-amber-400",
+			ring: "ring-amber-500/20",
+			badge:
+				"bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400",
+			iconBg: "bg-amber-100 dark:bg-amber-500/15",
+		},
+	};
+	return map[transport] ?? map["streamable-http"];
+};
+
+function TransportTypeIcon({
+	transport,
+	className,
+}: {
+	transport: string;
+	className?: string;
+}) {
+	const Icon = TRANSPORT_ICONS[transport] ?? Wrench;
+	const colors = transportAccent(transport);
+	return (
+		<div
+			className={cn(
+				"flex size-8 shrink-0 items-center justify-center rounded-lg",
+				colors.iconBg,
+				colors.text,
+				className,
+			)}
+		>
+			<Icon className="size-4" />
+		</div>
+	);
+}
 
 /* ─── helpers ───────────────────────────────────────── */
 
@@ -222,29 +280,69 @@ function transportLabel(transport: string) {
 	}
 }
 
-/* ─── stat card ─────────────────────────────────────── */
+/* ─── sub-components ────────────────────────────────── */
 
-function StatCard({
-	icon: Icon,
+function ServerCardSkeleton() {
+	return (
+		<div className="flex items-center gap-3 px-4 py-3">
+			<Skeleton className="size-8 rounded-lg" />
+			<div className="flex-1 space-y-2">
+				<Skeleton className="h-4 w-40" />
+				<Skeleton className="h-3 w-64" />
+			</div>
+		</div>
+	);
+}
+
+function MetricCell({
 	label,
 	value,
-	className,
+	accent = false,
 }: {
-	icon: typeof NetworkIcon;
 	label: string;
-	value: number | string;
-	className?: string;
+	value: string | number;
+	accent?: boolean;
 }) {
 	return (
-		<Card size="sm" className={cn("flex items-center gap-3", className)}>
-			<div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-				<Icon className="size-4" aria-hidden="true" />
-			</div>
-			<div>
-				<p className="text-lg font-semibold tracking-tight">{value}</p>
-				<p className="text-xs text-muted-foreground">{label}</p>
-			</div>
-		</Card>
+		<div>
+			<p
+				className={cn(
+					"text-2xl font-bold leading-none",
+					accent ? "text-emerald-600 dark:text-emerald-400" : "text-foreground",
+				)}
+			>
+				{value}
+			</p>
+			<p className="mt-1 text-xs text-muted-foreground">{label}</p>
+		</div>
+	);
+}
+
+function SystemStrip({
+	servers,
+	toolsByServer,
+}: {
+	servers: McpServer[];
+	toolsByServer: Record<string, McpTool[]>;
+}) {
+	const totalServers = servers.length;
+	const totalTools = Object.values(toolsByServer).reduce(
+		(sum, t) => sum + t.length,
+		0,
+	);
+	const enabledServers = servers.filter((s) => s.enabled).length;
+	const enabledTools = Object.values(toolsByServer).reduce(
+		(sum, t) => sum + t.filter((t) => t.enabled).length,
+		0,
+	);
+
+	return (
+		<div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
+			<MetricCell label="Servers" value={totalServers} />
+			<MetricCell label="Tools" value={totalTools} />
+			<MetricCell label="Enabled servers" value={enabledServers} accent />
+			<MetricCell label="Enabled tools" value={enabledTools} />
+		</div>
 	);
 }
 
@@ -514,21 +612,6 @@ export function McpServerManager() {
 		return result;
 	}, [servers, search, filterStatus]);
 
-	// stats
-	const stats = useMemo(() => {
-		const totalServers = servers.length;
-		const totalTools = Object.values(toolsByServer).reduce(
-			(sum, t) => sum + t.length,
-			0,
-		);
-		const enabledServers = servers.filter((s) => s.enabled).length;
-		const enabledTools = Object.values(toolsByServer).reduce(
-			(sum, t) => sum + t.filter((t) => t.enabled).length,
-			0,
-		);
-		return { totalServers, totalTools, enabledServers, enabledTools };
-	}, [servers, toolsByServer]);
-
 	/* ─── actions ───────────────────────────────────── */
 
 	async function createServer() {
@@ -742,190 +825,163 @@ export function McpServerManager() {
 	/* ─── render ────────────────────────────────────── */
 
 	return (
-		<div className="flex flex-col gap-6">
-			{/* ── Stats overview ── */}
-			<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-				<StatCard
-					icon={NetworkIcon}
-					label="Total servers"
-					value={stats.totalServers}
-				/>
-				<StatCard
-					icon={CheckCircle2}
-					label="Enabled servers"
-					value={stats.enabledServers}
-				/>
-				<StatCard icon={Wrench} label="Total tools" value={stats.totalTools} />
-				<StatCard
-					icon={ClipboardList}
-					label="Enabled tools"
-					value={stats.enabledTools}
-				/>
+		<div className="space-y-6">
+			{/* ─── Header card ─── */}
+			<div className="rounded-xl border bg-card p-5 sm:p-6">
+				<div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+					<div>
+						<h2 className="text-xl font-semibold tracking-tight">
+							MCP Servers
+						</h2>
+						<p className="mt-1 text-sm text-muted-foreground">
+							Connect external MCP servers so your agents can use their tools.
+						</p>
+					</div>
+					<Button size="sm" onClick={() => setShowCreate(true)}>
+						<PlusIcon className="size-4" aria-hidden="true" />
+						Add server
+					</Button>
+				</div>
+
+				<div className="mt-5">
+					<SystemStrip servers={servers} toolsByServer={toolsByServer} />
+				</div>
 			</div>
 
-			{/* ── Search & filter bar ── */}
-			{servers.length > 0 && (
-				<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-					<div className="relative flex-1">
-						<SearchIcon
-							className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-							aria-hidden="true"
-						/>
-						<Input
-							placeholder="Search servers…"
-							value={search}
-							onChange={(e) => setSearch(e.target.value)}
-							className="pl-9"
-						/>
-						{search ? (
-							<Button
-								variant="ghost"
-								size="icon-sm"
-								className="absolute right-1 top-1/2 size-6 -translate-y-1/2"
-								onClick={() => setSearch("")}
-								aria-label="Clear search"
-							>
-								<XIcon className="size-3" aria-hidden="true" />
-							</Button>
-						) : null}
+			{/* ─── Server list ─── */}
+			<section className="rounded-xl border bg-card">
+				<div className="flex flex-col gap-3 border-b px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+					<div>
+						<h3 className="text-base font-semibold">Servers</h3>
+						<p className="text-sm text-muted-foreground">
+							{servers.length} server{servers.length !== 1 ? "s" : ""}{" "}
+							configured
+						</p>
 					</div>
 					<div className="flex items-center gap-2">
+						{servers.length > 2 ? (
+							<div className="relative w-48 sm:w-56">
+								<SearchIcon className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+								<Input
+									placeholder="Filter…"
+									value={search}
+									onChange={(e) => setSearch(e.target.value)}
+									className="h-8 pl-9 text-sm"
+								/>
+								{search ? (
+									<Button
+										variant="ghost"
+										size="icon-sm"
+										className="absolute right-1 top-1/2 size-6 -translate-y-1/2"
+										onClick={() => setSearch("")}
+										aria-label="Clear search"
+									>
+										<XIcon className="size-3" aria-hidden="true" />
+									</Button>
+								) : null}
+							</div>
+						) : null}
 						<Select
 							value={filterStatus}
 							onValueChange={(v) =>
 								setFilterStatus(v as "all" | "enabled" | "disabled")
 							}
 						>
-							<SelectTrigger className="w-36">
+							<SelectTrigger className="w-32">
 								<SelectValue />
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value="all">All servers</SelectItem>
+								<SelectItem value="all">All</SelectItem>
 								<SelectItem value="enabled">Enabled</SelectItem>
 								<SelectItem value="disabled">Disabled</SelectItem>
 							</SelectContent>
 						</Select>
-						<Button
-							variant="default"
-							size="sm"
-							onClick={() => setShowCreate(true)}
-						>
-							<PlusIcon data-icon="inline-start" aria-hidden="true" />
-							Add Server
-						</Button>
 					</div>
 				</div>
-			)}
 
-			{/* ── Loading ── */}
-			{loading ? (
-				<div className="flex justify-center py-12">
-					<Loader2 className="animate-spin" aria-hidden="true" />
-				</div>
-			) : filteredServers.length === 0 ? (
-				/* ── Empty state ── */
-				servers.length === 0 ? (
-					<Empty>
-						<EmptyHeader>
-							<EmptyMedia variant="icon">
-								<NetworkIcon className="size-5" aria-hidden="true" />
-							</EmptyMedia>
-							<EmptyTitle>No MCP servers configured</EmptyTitle>
-							<EmptyDescription>
-								Connect an MCP server to give your agents access to external
-								tools. Start by adding your first server.
-							</EmptyDescription>
-						</EmptyHeader>
-						<Button variant="default" onClick={() => setShowCreate(true)}>
-							<PlusIcon data-icon="inline-start" aria-hidden="true" />
-							Add your first server
+				{loading ? (
+					<div className="space-y-1 p-2">
+						<ServerCardSkeleton />
+						<ServerCardSkeleton />
+					</div>
+				) : filteredServers.length === 0 && servers.length === 0 ? (
+					<div className="px-5 py-12 text-center">
+						<p className="text-sm font-medium">No MCP servers yet</p>
+						<p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
+							Connect an MCP server to give your agents access to external
+							tools.
+						</p>
+						<Button
+							size="sm"
+							className="mt-4"
+							onClick={() => setShowCreate(true)}
+						>
+							<PlusIcon className="size-4" aria-hidden="true" />
+							Add first server
 						</Button>
-					</Empty>
+					</div>
+				) : filteredServers.length === 0 ? (
+					<div className="px-5 py-8 text-center text-sm text-muted-foreground">
+						No server matches &ldquo;{search}&rdquo;.
+					</div>
 				) : (
-					/* ── No search results ── */
-					<Empty>
-						<EmptyHeader>
-							<EmptyMedia variant="icon">
-								<SearchIcon className="size-5" aria-hidden="true" />
-							</EmptyMedia>
-							<EmptyTitle>No matching servers</EmptyTitle>
-							<EmptyDescription>
-								No servers match &ldquo;{search}&rdquo;. Try a different search
-								or clear the filter.
-							</EmptyDescription>
-						</EmptyHeader>
-						<Button variant="outline" onClick={() => setSearch("")}>
-							Clear search
-						</Button>
-					</Empty>
-				)
-			) : null}
+					<div className="divide-y">
+						{filteredServers.map((server) => {
+							const colors = transportAccent(server.transport);
+							const tools = toolsByServer[server.id] ?? [];
+							const isExpanded = expandedServers[server.id] ?? false;
+							const serverToolSearch = toolSearch[server.id] ?? "";
+							const filteredTools = serverToolSearch
+								? tools.filter(
+										(t) =>
+											t.name
+												.toLowerCase()
+												.includes(serverToolSearch.toLowerCase()) ||
+											(t.description ?? "")
+												.toLowerCase()
+												.includes(serverToolSearch.toLowerCase()),
+									)
+								: tools;
 
-			{/* ── Server list ── */}
-			{filteredServers.length > 0 && (
-				<div className="grid gap-4">
-					{filteredServers.map((server) => {
-						const tools = toolsByServer[server.id] ?? [];
-						const isExpanded = expandedServers[server.id] ?? false;
-						const healthColor = getHealthColor(server.healthStatus);
-						const serverToolSearch = toolSearch[server.id] ?? "";
-						const filteredTools = serverToolSearch
-							? tools.filter(
-									(t) =>
-										t.name
-											.toLowerCase()
-											.includes(serverToolSearch.toLowerCase()) ||
-										(t.description ?? "")
-											.toLowerCase()
-											.includes(serverToolSearch.toLowerCase()),
-								)
-							: tools;
-
-						return (
-							<Collapsible
-								key={server.id}
-								open={isExpanded}
-								onOpenChange={(open) =>
-									setExpandedServers((current) => ({
-										...current,
-										[server.id]: open,
-									}))
-								}
-							>
-								<Card
-									className={cn(
-										"transition-shadow",
-										!server.enabled && "opacity-60",
-									)}
+							return (
+								<Collapsible
+									key={server.id}
+									open={isExpanded}
+									onOpenChange={(open) =>
+										setExpandedServers((current) => ({
+											...current,
+											[server.id]: open,
+										}))
+									}
 								>
-									<CardHeader>
-										<div className="flex flex-wrap items-start justify-between gap-3">
-											{/* Left: expand + info */}
-											<div className="flex min-w-0 flex-1 items-start gap-2">
-												<CollapsibleTrigger asChild>
-													<Button
-														type="button"
-														variant="ghost"
-														size="icon"
-														className="mt-0.5 size-8 shrink-0"
-														aria-label={
-															isExpanded
-																? `Collapse ${server.name} tools`
-																: `Expand ${server.name} tools`
-														}
-													>
-														<ChevronDownIcon
-															className={cn(
-																"transition-transform",
-																isExpanded && "rotate-180",
-															)}
-															aria-hidden="true"
-														/>
-													</Button>
-												</CollapsibleTrigger>
-												<div className="min-w-0">
-													<CardTitle className="flex flex-wrap items-center gap-2">
-														<span className="truncate">{server.name}</span>
+									<div
+										className={cn(
+											"group transition-colors",
+											!server.enabled && "opacity-60",
+										)}
+									>
+										{/* Server header row */}
+										<CollapsibleTrigger asChild>
+											<div
+												className={cn(
+													"flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/40 focus-visible:outline-none",
+												)}
+											>
+												{/* Accent bar */}
+												<div
+													className={cn(
+														"hidden h-8 w-1 shrink-0 rounded-full sm:block",
+														colors.bar,
+													)}
+												/>
+
+												<TransportTypeIcon transport={server.transport} />
+
+												<div className="min-w-0 flex-1">
+													<div className="flex items-center gap-2">
+														<p className="truncate text-sm font-medium">
+															{server.name}
+														</p>
 														<Badge
 															variant="outline"
 															className={cn(
@@ -935,7 +991,11 @@ export function McpServerManager() {
 																	: "text-muted-foreground",
 															)}
 														>
-															<span className={healthDotClass(healthColor)} />
+															<span
+																className={healthDotClass(
+																	getHealthColor(server.healthStatus),
+																)}
+															/>
 															{transportLabel(server.transport)}
 														</Badge>
 														{tools.length > 0 ? (
@@ -944,42 +1004,15 @@ export function McpServerManager() {
 																{tools.length === 1 ? "" : "s"}
 															</Badge>
 														) : null}
-													</CardTitle>
-													<CardDescription className="truncate">
-														{server.url || server.command || server.transport}
-													</CardDescription>
-												</div>
-											</div>
-
-											{/* Right: controls */}
-											<div className="flex shrink-0 items-center gap-2">
-												{/* Quick toggles */}
-												<div className="hidden items-center gap-3 sm:flex">
-													<div className="flex items-center gap-1.5">
-														<span className="text-xs text-muted-foreground">
-															Enabled
-														</span>
-														<Switch
-															aria-label={`Enable ${server.name}`}
-															checked={server.enabled}
-															onCheckedChange={(checked) =>
-																void toggleEnabled(server, checked)
-															}
-														/>
 													</div>
-													<Separator orientation="vertical" className="h-4" />
-													<div className="flex items-center gap-1.5">
-														<span className="text-xs text-muted-foreground">
-															Approval
-														</span>
-														<Switch
-															aria-label={`Require approval for ${server.name}`}
-															checked={server.requireApproval}
-															onCheckedChange={(checked) =>
-																void toggleServerApproval(server, checked)
-															}
-														/>
-													</div>
+													<p className="truncate font-mono text-xs text-muted-foreground">
+														{server.url ||
+															(server.command
+																? [server.command, ...(server.argsJson ?? [])]
+																		.filter(Boolean)
+																		.join(" ")
+																: server.transport)}
+													</p>
 												</div>
 
 												{/* Status badges */}
@@ -1004,28 +1037,61 @@ export function McpServerManager() {
 													</Badge>
 												) : null}
 
+												{/* Quick toggles */}
+												<div
+													className="hidden items-center gap-3 sm:flex"
+													onClick={(e) => e.stopPropagation()}
+												>
+													<div className="flex items-center gap-1.5">
+														<span className="text-xs text-muted-foreground">
+															Enabled
+														</span>
+														<Switch
+															aria-label={`Enable ${server.name}`}
+															checked={server.enabled}
+															onCheckedChange={(checked) =>
+																void toggleEnabled(server, checked)
+															}
+														/>
+													</div>
+													<div className="flex items-center gap-1.5">
+														<span className="text-xs text-muted-foreground">
+															Approval
+														</span>
+														<Switch
+															aria-label={`Require approval for ${server.name}`}
+															checked={server.requireApproval}
+															onCheckedChange={(checked) =>
+																void toggleServerApproval(server, checked)
+															}
+														/>
+													</div>
+												</div>
+
 												{/* Actions dropdown */}
 												<DropdownMenu>
 													<DropdownMenuTrigger asChild>
 														<Button
 															size="icon-sm"
 															variant="ghost"
+															className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
+															onClick={(e) => e.stopPropagation()}
 															aria-label="Server actions"
 														>
-															<MoreHorizontal aria-hidden="true" />
+															<MoreHorizontal className="size-4" />
 														</Button>
 													</DropdownMenuTrigger>
 													<DropdownMenuContent align="end">
 														<DropdownMenuItem
 															onClick={() => void test(server.id)}
 														>
-															<ZapIcon aria-hidden="true" />
+															<ZapIcon className="size-4" />
 															Test connection
 														</DropdownMenuItem>
 														<DropdownMenuItem
 															onClick={() => void sync(server.id)}
 														>
-															<RefreshCwIcon aria-hidden="true" />
+															<RefreshCwIcon className="size-4" />
 															Sync tools
 														</DropdownMenuItem>
 														<DropdownMenuSeparator />
@@ -1051,7 +1117,7 @@ export function McpServerManager() {
 																setShowAdvancedEdit(false);
 															}}
 														>
-															<PencilIcon aria-hidden="true" />
+															<PencilIcon className="size-4" />
 															Edit server
 														</DropdownMenuItem>
 														<DropdownMenuSeparator />
@@ -1059,16 +1125,25 @@ export function McpServerManager() {
 															variant="destructive"
 															onClick={() => setDeleteId(server.id)}
 														>
-															<Trash2Icon aria-hidden="true" />
+															<Trash2Icon className="size-4" />
 															Remove server
 														</DropdownMenuItem>
 													</DropdownMenuContent>
 												</DropdownMenu>
+
+												{/* Expand chevron */}
+												<ChevronDownIcon
+													className={cn(
+														"size-4 shrink-0 text-muted-foreground transition-transform",
+														isExpanded && "rotate-180",
+													)}
+													aria-hidden="true"
+												/>
 											</div>
-										</div>
+										</CollapsibleTrigger>
 
 										{/* Mobile toggles */}
-										<div className="flex items-center gap-4 pt-2 sm:hidden">
+										<div className="flex items-center gap-4 border-t border-border/30 px-4 pt-2 pb-1 sm:hidden">
 											<div className="flex items-center gap-1.5">
 												<span className="text-xs text-muted-foreground">
 													Enabled
@@ -1103,175 +1178,172 @@ export function McpServerManager() {
 												<Badge variant="secondary">API key</Badge>
 											) : null}
 										</div>
-									</CardHeader>
 
-									{/* ── Tools (collapsible) ── */}
-									<CollapsibleContent>
-										<div className="border-t border-border/60">
-											{/* Tool search */}
-											{tools.length > 3 && (
-												<div className="flex items-center gap-2 border-b border-border/40 px-4 py-2">
-													<SearchIcon
-														className="size-4 shrink-0 text-muted-foreground"
-														aria-hidden="true"
-													/>
-													<Input
-														placeholder="Search tools…"
-														value={serverToolSearch}
-														onChange={(e) =>
-															setToolSearch((prev) => ({
-																...prev,
-																[server.id]: e.target.value,
-															}))
-														}
-														className="h-8 border-0 bg-transparent p-0 shadow-none focus-visible:ring-0"
-													/>
-													{serverToolSearch ? (
-														<Button
-															variant="ghost"
-															size="icon-sm"
-															className="size-6"
-															onClick={() =>
+										{/* ── Tools (collapsible) ── */}
+										<CollapsibleContent>
+											<div className="border-t border-border/60">
+												{/* Tool search */}
+												{tools.length > 3 && (
+													<div className="flex items-center gap-2 border-b border-border/40 px-4 py-2">
+														<SearchIcon
+															className="size-4 shrink-0 text-muted-foreground"
+															aria-hidden="true"
+														/>
+														<Input
+															placeholder="Search tools…"
+															value={serverToolSearch}
+															onChange={(e) =>
 																setToolSearch((prev) => ({
 																	...prev,
-																	[server.id]: "",
+																	[server.id]: e.target.value,
 																}))
 															}
-														>
-															<XIcon className="size-3" aria-hidden="true" />
-														</Button>
-													) : null}
-												</div>
-											)}
-
-											<div className="max-h-96 overflow-y-auto">
-												{filteredTools.length === 0 ? (
-													<div className="px-4 py-6 text-center text-sm text-muted-foreground">
-														{tools.length === 0
-															? "No tools discovered. Run sync after configuring credentials."
-															: "No tools match your search."}
-													</div>
-												) : (
-													<div className="divide-y divide-border/30 px-4 py-2">
-														{filteredTools.map((tool) => {
-															const isApprovalForced =
-																server.requireApproval || tool.requireApproval;
-
-															return (
-																<div
-																	key={tool.id}
-																	className={cn(
-																		"flex items-center gap-3 py-2.5 transition-opacity",
-																		!tool.enabled && "opacity-50",
-																	)}
-																>
-																	{/* Tool icon */}
-																	<div
-																		className={cn(
-																			"flex size-8 shrink-0 items-center justify-center rounded-lg",
-																			tool.enabled
-																				? "bg-primary/10 text-primary"
-																				: "bg-muted text-muted-foreground",
-																		)}
-																	>
-																		<Wrench
-																			className="size-4"
-																			aria-hidden="true"
-																		/>
-																	</div>
-
-																	{/* Info */}
-																	<div className="min-w-0 flex-1">
-																		<div className="flex items-center gap-2">
-																			<span className="truncate font-medium text-sm">
-																				{tool.name}
-																			</span>
-																			<span
-																				className={cn(
-																					"size-2 shrink-0 rounded-full",
-																					tool.enabled
-																						? "bg-success"
-																						: "bg-muted-foreground",
-																				)}
-																			/>
-																		</div>
-																		{tool.description ? (
-																			<p className="line-clamp-1 text-xs text-muted-foreground">
-																				{tool.description}
-																			</p>
-																		) : null}
-																	</div>
-
-																	{/* Badges */}
-																	{isApprovalForced ? (
-																		<Badge
-																			variant="secondary"
-																			className="hidden items-center gap-1 sm:flex"
-																		>
-																			<ShieldAlert
-																				className="size-3"
-																				aria-hidden="true"
-																			/>
-																			{server.requireApproval
-																				? "Forced"
-																				: "Approval"}
-																		</Badge>
-																	) : null}
-
-																	{/* Toggles */}
-																	<div className="flex shrink-0 items-center gap-3">
-																		<div className="flex items-center gap-1.5">
-																			<span className="hidden text-xs text-muted-foreground sm:inline">
-																				Approval
-																			</span>
-																			<Switch
-																				aria-label={`Require approval for ${tool.name}`}
-																				checked={isApprovalForced}
-																				disabled={server.requireApproval}
-																				onCheckedChange={(checked) =>
-																					void toggleToolApproval(
-																						server.id,
-																						tool.id,
-																						checked,
-																					)
-																				}
-																			/>
-																		</div>
-																		<div className="flex items-center gap-1.5">
-																			<span className="hidden text-xs text-muted-foreground sm:inline">
-																				Enabled
-																			</span>
-																			<Switch
-																				aria-label={`Enable ${tool.name}`}
-																				checked={tool.enabled}
-																				onCheckedChange={(checked) =>
-																					void toggleTool(
-																						server.id,
-																						tool.id,
-																						checked,
-																					)
-																				}
-																			/>
-																		</div>
-																	</div>
-																</div>
-															);
-														})}
+															className="h-8 border-0 bg-transparent p-0 shadow-none focus-visible:ring-0"
+														/>
+														{serverToolSearch ? (
+															<Button
+																variant="ghost"
+																size="icon-sm"
+																className="size-6"
+																onClick={() =>
+																	setToolSearch((prev) => ({
+																		...prev,
+																		[server.id]: "",
+																	}))
+																}
+															>
+																<XIcon className="size-3" aria-hidden="true" />
+															</Button>
+														) : null}
 													</div>
 												)}
-											</div>
-										</div>
-									</CollapsibleContent>
-								</Card>
-							</Collapsible>
-						);
-					})}
-				</div>
-			)}
 
-			{/* ════════════════════════════════════════════
-			 *  CREATE DIALOG
-			 * ════════════════════════════════════════════ */}
+												<div className="max-h-96 overflow-y-auto">
+													{filteredTools.length === 0 ? (
+														<div className="px-4 py-6 text-center text-sm text-muted-foreground">
+															{tools.length === 0
+																? "No tools discovered. Run sync after configuring credentials."
+																: "No tools match your search."}
+														</div>
+													) : (
+														<div className="divide-y divide-border/30 px-4 py-2">
+															{filteredTools.map((tool) => {
+																const isApprovalForced =
+																	server.requireApproval ||
+																	tool.requireApproval;
+
+																return (
+																	<div
+																		key={tool.id}
+																		className={cn(
+																			"flex items-center gap-3 py-2.5 transition-opacity",
+																			!tool.enabled && "opacity-50",
+																		)}
+																	>
+																		{/* Tool icon */}
+																		<div
+																			className={cn(
+																				"flex size-8 shrink-0 items-center justify-center rounded-lg",
+																				tool.enabled
+																					? "bg-primary/10 text-primary"
+																					: "bg-muted text-muted-foreground",
+																			)}
+																		>
+																			<Wrench
+																				className="size-4"
+																				aria-hidden="true"
+																			/>
+																		</div>
+
+																		{/* Info */}
+																		<div className="min-w-0 flex-1">
+																			<div className="flex items-center gap-2">
+																				<span className="truncate font-medium text-sm">
+																					{tool.name}
+																				</span>
+																				<span
+																					className={cn(
+																						"size-2 shrink-0 rounded-full",
+																						tool.enabled
+																							? "bg-success"
+																							: "bg-muted-foreground",
+																					)}
+																				/>
+																			</div>
+																			{tool.description ? (
+																				<p className="line-clamp-1 text-xs text-muted-foreground">
+																					{tool.description}
+																				</p>
+																			) : null}
+																		</div>
+
+																		{/* Badges */}
+																		{isApprovalForced ? (
+																			<Badge
+																				variant="secondary"
+																				className="hidden items-center gap-1 sm:flex"
+																			>
+																				<ShieldAlert
+																					className="size-3"
+																					aria-hidden="true"
+																				/>
+																				{server.requireApproval
+																					? "Forced"
+																					: "Approval"}
+																			</Badge>
+																		) : null}
+
+																		{/* Toggles */}
+																		<div className="flex shrink-0 items-center gap-3">
+																			<div className="flex items-center gap-1.5">
+																				<span className="hidden text-xs text-muted-foreground sm:inline">
+																					Approval
+																				</span>
+																				<Switch
+																					aria-label={`Require approval for ${tool.name}`}
+																					checked={isApprovalForced}
+																					disabled={server.requireApproval}
+																					onCheckedChange={(checked) =>
+																						void toggleToolApproval(
+																							server.id,
+																							tool.id,
+																							checked,
+																						)
+																					}
+																				/>
+																			</div>
+																			<div className="flex items-center gap-1.5">
+																				<span className="hidden text-xs text-muted-foreground sm:inline">
+																					Enabled
+																				</span>
+																				<Switch
+																					aria-label={`Enable ${tool.name}`}
+																					checked={tool.enabled}
+																					onCheckedChange={(checked) =>
+																						void toggleTool(
+																							server.id,
+																							tool.id,
+																							checked,
+																						)
+																					}
+																				/>
+																			</div>
+																		</div>
+																	</div>
+																);
+															})}
+														</div>
+													)}
+												</div>
+											</div>
+										</CollapsibleContent>
+									</div>
+								</Collapsible>
+							);
+						})}
+					</div>
+				)}
+			</section>
 			<Dialog
 				open={showCreate}
 				onOpenChange={(open) => {
@@ -1417,7 +1489,7 @@ export function McpServerManager() {
 							{busy ? (
 								<Loader2 className="animate-spin" aria-hidden="true" />
 							) : (
-								<PlusIcon data-icon="inline-start" aria-hidden="true" />
+								<PlusIcon className="size-4" aria-hidden="true" />
 							)}
 							Add Server
 						</Button>
