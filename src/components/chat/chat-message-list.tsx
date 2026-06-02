@@ -31,8 +31,11 @@ import {
 	type ChatMessagePart,
 	type PendingToolApproval,
 } from "@/components/chat/chat-types";
+import { RichEditor } from "@/components/chat/rich-editor";
 import { summarizeToolInput } from "@/components/chat/tool-approval-banner";
 import { Button } from "@/components/ui/button";
+import { markdownToHtml } from "@/lib/markdown-to-html";
+import { copyRichHtml } from "@/lib/rich-clipboard";
 import {
 	Collapsible,
 	CollapsibleContent,
@@ -40,7 +43,6 @@ import {
 } from "@/components/ui/collapsible";
 
 import { Skeleton } from "@/components/ui/skeleton";
-import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
 const STREAMING_TEXT_ANIMATION = {
@@ -440,36 +442,13 @@ const MessageContent = memo(function MessageContent({
 
 	if (isEditing) {
 		return (
-			<div className="flex min-w-72 flex-col gap-2">
-				<Textarea
-					value={editingContent}
-					onChange={(event) => onEditingContentChange?.(event.target.value)}
-					rows={3}
-					disabled={isSaving}
-					className="min-h-24 bg-background/80 text-foreground"
-				/>
-				<div className="flex justify-end gap-2">
-					<Button
-						type="button"
-						size="sm"
-						variant="ghost"
-						disabled={isSaving}
-						onClick={onCancelEdit}
-					>
-						<XIcon data-icon="inline-start" aria-hidden="true" />
-						Cancel
-					</Button>
-					<Button
-						type="button"
-						size="sm"
-						disabled={isSaving || !editingContent.trim()}
-						onClick={onSaveEdit}
-					>
-						<CheckIcon data-icon="inline-start" aria-hidden="true" />
-						Save
-					</Button>
-				</div>
-			</div>
+			<RichEditor
+				value={editingContent}
+				onChange={onEditingContentChange}
+				onSave={onSaveEdit}
+				onCancel={onCancelEdit}
+				disabled={isSaving}
+			/>
 		);
 	}
 
@@ -727,19 +706,7 @@ export function ChatMessageList({
 								canDelete={canDelete}
 								canRegenerate={canRegenerate}
 								onCopy={async () => {
-									try {
-										await navigator.clipboard.writeText(content);
-									} catch {
-										// Fallback for non-HTTPS environments
-										const ta = document.createElement("textarea");
-										ta.value = content;
-										ta.style.position = "fixed";
-										ta.style.opacity = "0";
-										document.body.appendChild(ta);
-										ta.select();
-										document.execCommand("copy");
-										document.body.removeChild(ta);
-									}
+									await copyRichHtml(markdownToHtml(content));
 								}}
 								onEdit={() => {
 									setEditingMessageId(message.id);
