@@ -10,6 +10,14 @@ import {
 	SaveIcon,
 	ServerIcon,
 	WrenchIcon,
+	SparklesIcon,
+	SettingsIcon,
+	InfoIcon,
+	ZapIcon,
+	SlidersIcon,
+	BrainIcon,
+	ShieldCheckIcon,
+	AlertCircleIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -49,7 +57,14 @@ import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useWorkspace } from "@/hooks/use-workspace";
+import { cn } from "@/lib/utils";
 
 type Agent = {
 	id: string;
@@ -95,6 +110,75 @@ type KnowledgeBinding = {
 	knowledgeBaseId: string;
 	name: string;
 };
+
+const AVATAR_COLORS = [
+	"from-violet-500 to-indigo-600",
+	"from-cyan-500 to-blue-600",
+	"from-emerald-500 to-teal-600",
+	"from-amber-500 to-orange-600",
+	"from-rose-500 to-pink-600",
+	"from-fuchsia-500 to-purple-600",
+	"from-lime-500 to-green-600",
+	"from-sky-500 to-cyan-600",
+];
+
+function getAvatarColor(name: string): string {
+	let hash = 0;
+	for (let i = 0; i < name.length; i++) {
+		hash = name.charCodeAt(i) + ((hash << 5) - hash);
+	}
+	return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+
+function getInitials(name: string): string {
+	return name
+		.split(/\s+/)
+		.map((w) => w[0])
+		.join("")
+		.toUpperCase()
+		.slice(0, 2);
+}
+
+function InfoCallout({
+	title,
+	children,
+	icon: Icon = InfoIcon,
+}: {
+	title: string;
+	children: React.ReactNode;
+	icon?: typeof InfoIcon;
+}) {
+	return (
+		<div className="flex items-start gap-3 rounded-xl border border-border/60 bg-muted/30 p-4">
+			<Icon
+				className="size-4 shrink-0 mt-0.5 text-muted-foreground"
+				aria-hidden="true"
+			/>
+			<div className="flex-1 text-sm">
+				<p className="font-medium">{title}</p>
+				<p className="mt-1 text-muted-foreground leading-relaxed">{children}</p>
+			</div>
+		</div>
+	);
+}
+
+function SettingHint({ text }: { text: string }) {
+	return (
+		<TooltipProvider delayDuration={300}>
+			<Tooltip>
+				<TooltipTrigger asChild>
+					<InfoIcon
+						className="size-3.5 text-muted-foreground/50 cursor-help"
+						aria-hidden="true"
+					/>
+				</TooltipTrigger>
+				<TooltipContent side="top" className="max-w-xs text-xs">
+					{text}
+				</TooltipContent>
+			</Tooltip>
+		</TooltipProvider>
+	);
+}
 
 export default function AgentConfigurePage() {
 	const params = useParams<{ agentId: string }>();
@@ -195,8 +279,11 @@ export default function AgentConfigurePage() {
 			? ((await bindingsRes.json()) as ToolBinding[])
 			: [];
 		const knowledgeBindings = knowledgeBindingsRes.ok
-			? ((await knowledgeBindingsRes.json()) as { bindings: KnowledgeBinding[] })
-					.bindings
+			? (
+					(await knowledgeBindingsRes.json()) as {
+						bindings: KnowledgeBinding[];
+					}
+				).bindings
 			: [];
 
 		const activeVersion = versions.find((v) => v.isActive) ?? null;
@@ -455,8 +542,10 @@ export default function AgentConfigurePage() {
 	}
 
 	function isMcpToolApprovalForced(tool: McpTool) {
-		return Boolean(getMcpServer(tool.mcpServerId)?.requireApproval) ||
-			tool.requireApproval;
+		return (
+			Boolean(getMcpServer(tool.mcpServerId)?.requireApproval) ||
+			tool.requireApproval
+		);
 	}
 
 	function setMcpServerToolsEnabled(serverId: string, enabled: boolean) {
@@ -527,8 +616,9 @@ export default function AgentConfigurePage() {
 			(tool) =>
 				isMcpToolApprovalForced(tool) || mcpBindings[tool.id]?.requireApproval,
 		);
-		const forcedApprovalCount = selectedTools.filter(isMcpToolApprovalForced)
-			.length;
+		const forcedApprovalCount = selectedTools.filter(
+			isMcpToolApprovalForced,
+		).length;
 
 		return {
 			allTools,
@@ -536,7 +626,8 @@ export default function AgentConfigurePage() {
 			selectedCount: selectedTools.length,
 			forcedApprovalCount,
 			allSelected:
-				bindableTools.length > 0 && selectedTools.length === bindableTools.length,
+				bindableTools.length > 0 &&
+				selectedTools.length === bindableTools.length,
 			someSelected:
 				selectedTools.length > 0 && selectedTools.length < bindableTools.length,
 			allApproval:
@@ -548,15 +639,27 @@ export default function AgentConfigurePage() {
 		};
 	}
 
+	// Computed stats
+	const enabledBuiltinCount = Object.values(builtinBindings).filter(
+		(b) => b.enabled,
+	).length;
+	const enabledMcpCount = Object.values(mcpBindings).filter(
+		(b) => b.enabled,
+	).length;
+	const hasModel = Boolean(form.providerId && form.modelId);
+
 	if (workspaceLoading || !workspaceId || loading) {
 		return <PageLoading label="Loading assistant" />;
 	}
 
+	const avatarColor = agent ? getAvatarColor(agent.name) : AVATAR_COLORS[0];
+	const initials = agent ? getInitials(agent.name) : "?";
+
 	return (
 		<WorkspacePage
 			kicker="Configuration"
-			title={agent?.name ?? "Assistant"}
-			description="Configure model behavior, tools, knowledge, and MCP access."
+			title="Assistant configuration"
+			description="Tune identity, model behavior, tools, and knowledge for this assistant."
 			width="default"
 			actions={
 				<Button asChild variant="outline" size="sm">
@@ -567,20 +670,136 @@ export default function AgentConfigurePage() {
 				</Button>
 			}
 		>
+			{/* Agent identity header */}
+			<div className="rounded-2xl border border-border/60 bg-gradient-to-br from-muted/40 to-muted/20 p-6">
+				<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
+					{/* Avatar */}
+					<div
+						className={cn(
+							"flex size-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br text-white shadow-lg",
+							avatarColor,
+						)}
+					>
+						<span className="text-xl font-bold">{initials}</span>
+					</div>
+
+					{/* Name + description + badges */}
+					<div className="flex-1 min-w-0">
+						<div className="flex flex-wrap items-center gap-2">
+							<h2 className="text-2xl font-semibold tracking-tight">
+								{agent?.name ?? "Assistant"}
+							</h2>
+							{hasModel ? (
+								<Badge className="gap-1 bg-emerald-500/15 text-emerald-600">
+									<SparklesIcon className="size-3" aria-hidden="true" />
+									Model bound
+								</Badge>
+							) : (
+								<Badge variant="outline" className="gap-1">
+									<AlertCircleIcon className="size-3" aria-hidden="true" />
+									No model
+								</Badge>
+							)}
+							{agent?.sharingMode === "marketplace" && (
+								<Badge variant="secondary">Workspace</Badge>
+							)}
+							{agent?.sharingMode === "specific_user" && (
+								<Badge variant="secondary">Shared</Badge>
+							)}
+						</div>
+						{agent?.description && (
+							<p className="mt-1 text-sm text-muted-foreground">
+								{agent.description}
+							</p>
+						)}
+					</div>
+
+					{/* Quick stats */}
+					<div className="flex gap-3 sm:gap-4">
+						<div className="flex flex-col items-center rounded-xl bg-background/60 px-4 py-2.5 text-center shadow-sm">
+							<SlidersIcon
+								className="size-4 text-muted-foreground"
+								aria-hidden="true"
+							/>
+							<span className="mt-1 text-lg font-semibold">
+								{enabledBuiltinCount + enabledMcpCount}
+							</span>
+							<span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+								Tools
+							</span>
+						</div>
+						<div className="flex flex-col items-center rounded-xl bg-background/60 px-4 py-2.5 text-center shadow-sm">
+							<BrainIcon
+								className="size-4 text-muted-foreground"
+								aria-hidden="true"
+							/>
+							<span className="mt-1 text-lg font-semibold">
+								{selectedKnowledgeIds.length}
+							</span>
+							<span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+								Knowledge
+							</span>
+						</div>
+						<div className="flex flex-col items-center rounded-xl bg-background/60 px-4 py-2.5 text-center shadow-sm">
+							<ZapIcon
+								className="size-4 text-muted-foreground"
+								aria-hidden="true"
+							/>
+							<span className="mt-1 text-lg font-semibold">
+								{enabledMcpCount}
+							</span>
+							<span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+								MCP
+							</span>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			{/* Tabs */}
 			<Tabs defaultValue="general">
 				<TabsList className="w-full flex-wrap">
-					<TabsTrigger value="general">Basics</TabsTrigger>
-					<TabsTrigger value="model">Model</TabsTrigger>
-					<TabsTrigger value="tools">Tools</TabsTrigger>
-					<TabsTrigger value="knowledge">Knowledge</TabsTrigger>
+					<TabsTrigger value="general" className="gap-2">
+						<SettingsIcon className="size-4" aria-hidden="true" />
+						Basics
+					</TabsTrigger>
+					<TabsTrigger value="model" className="gap-2">
+						<BrainIcon className="size-4" aria-hidden="true" />
+						Model
+					</TabsTrigger>
+					<TabsTrigger value="tools" className="gap-2">
+						<WrenchIcon className="size-4" aria-hidden="true" />
+						Tools
+						{enabledBuiltinCount + enabledMcpCount > 0 && (
+							<Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+								{enabledBuiltinCount + enabledMcpCount}
+							</Badge>
+						)}
+					</TabsTrigger>
+					<TabsTrigger value="knowledge" className="gap-2">
+						<BookOpenIcon className="size-4" aria-hidden="true" />
+						Knowledge
+						{selectedKnowledgeIds.length > 0 && (
+							<Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+								{selectedKnowledgeIds.length}
+							</Badge>
+						)}
+					</TabsTrigger>
 				</TabsList>
 
-				<TabsContent value="general" className="mt-4">
+				{/* BASICS TAB */}
+				<TabsContent value="general" className="mt-4 space-y-4">
+					<InfoCallout title="About this section">
+						Set your assistant&apos;s identity and who can use it. The name and
+						description appear in chat and the assistant listing. Sharing
+						controls determine visibility within your workspace.
+					</InfoCallout>
+
 					<Card>
 						<CardHeader>
-							<CardTitle>General</CardTitle>
+							<CardTitle>Identity</CardTitle>
 							<CardDescription>
-								Name, description, and sharing settings.
+								Name and description for this assistant.
 							</CardDescription>
 						</CardHeader>
 						<form onSubmit={saveGeneralModel}>
@@ -600,12 +819,16 @@ export default function AgentConfigurePage() {
 										</FieldContent>
 									</Field>
 									<Field>
-										<FieldLabel htmlFor="agent-description">
-											Description
-										</FieldLabel>
+										<div className="flex items-center gap-2">
+											<FieldLabel htmlFor="agent-description">
+												Description
+											</FieldLabel>
+											<SettingHint text="A short description helps users understand what this assistant does. Shown in the assistant listing and chat header." />
+										</div>
 										<FieldContent>
 											<Textarea
 												id="agent-description"
+												placeholder="A helpful assistant for…"
 												value={form.description}
 												onChange={(e) =>
 													setForm({ ...form, description: e.target.value })
@@ -613,8 +836,38 @@ export default function AgentConfigurePage() {
 											/>
 										</FieldContent>
 									</Field>
+								</FieldGroup>
+							</CardContent>
+							<CardFooter className="justify-end">
+								<Button type="submit" disabled={saving}>
+									{saving ? (
+										<Spinner data-icon="inline-start" />
+									) : (
+										<SaveIcon data-icon="inline-start" aria-hidden="true" />
+									)}
+									Save
+								</Button>
+							</CardFooter>
+						</form>
+					</Card>
+
+					<Card>
+						<CardHeader>
+							<CardTitle>Access & Sharing</CardTitle>
+							<CardDescription>
+								Control who can discover and use this assistant.
+							</CardDescription>
+						</CardHeader>
+						<form onSubmit={saveGeneralModel}>
+							<CardContent>
+								<FieldGroup>
 									<Field>
-										<FieldLabel htmlFor="agent-sharing">Access</FieldLabel>
+										<div className="flex items-center gap-2">
+											<FieldLabel htmlFor="agent-sharing">
+												Sharing mode
+											</FieldLabel>
+											<SettingHint text="Personal means only you can use it. Workspace makes it visible to everyone. Specific user shares with one person by email." />
+										</div>
 										<FieldContent>
 											<Select
 												value={form.sharingMode}
@@ -649,6 +902,7 @@ export default function AgentConfigurePage() {
 												<Input
 													id="agent-share-email"
 													type="email"
+													placeholder="colleague@example.com"
 													value={form.shareTargetEmail}
 													onChange={(e) =>
 														setForm({
@@ -669,26 +923,37 @@ export default function AgentConfigurePage() {
 									) : (
 										<SaveIcon data-icon="inline-start" aria-hidden="true" />
 									)}
-									Save General
+									Save
 								</Button>
 							</CardFooter>
 						</form>
 					</Card>
 				</TabsContent>
 
-				<TabsContent value="model" className="mt-4">
+				{/* MODEL TAB */}
+				<TabsContent value="model" className="mt-4 space-y-4">
+					<InfoCallout title="About models" icon={BrainIcon}>
+						Choose an AI provider and model for this assistant. The model
+						determines the assistant&apos;s reasoning ability, knowledge cutoff,
+						and response style. The system prompt guides how it behaves — be
+						specific about its role, tone, and constraints.
+					</InfoCallout>
+
 					<Card>
 						<CardHeader>
-							<CardTitle>Model</CardTitle>
+							<CardTitle>Provider & Model</CardTitle>
 							<CardDescription>
-								Provider, model, and generation parameters.
+								Select the AI provider and specific model for this assistant.
 							</CardDescription>
 						</CardHeader>
 						<form onSubmit={saveGeneralModel}>
 							<CardContent>
 								<FieldGroup>
 									<Field>
-										<FieldLabel htmlFor="agent-provider">Provider</FieldLabel>
+										<div className="flex items-center gap-2">
+											<FieldLabel htmlFor="agent-provider">Provider</FieldLabel>
+											<SettingHint text="The AI provider hosts the model. You need to configure provider credentials in Settings &gt; Providers first." />
+										</div>
 										<FieldContent>
 											<Select
 												value={form.providerId || "__none__"}
@@ -715,7 +980,10 @@ export default function AgentConfigurePage() {
 										</FieldContent>
 									</Field>
 									<Field>
-										<FieldLabel htmlFor="agent-model">Model</FieldLabel>
+										<div className="flex items-center gap-2">
+											<FieldLabel htmlFor="agent-model">Model</FieldLabel>
+											<SettingHint text="Different models vary in capability, speed, and cost. Larger models are generally more capable but slower and more expensive." />
+										</div>
 										<FieldContent>
 											<Select
 												value={form.modelId || "__none__"}
@@ -741,74 +1009,6 @@ export default function AgentConfigurePage() {
 											</Select>
 										</FieldContent>
 									</Field>
-									<Field>
-										<FieldLabel htmlFor="agent-prompt">System prompt</FieldLabel>
-										<FieldContent>
-											<Textarea
-												id="agent-prompt"
-												className="min-h-36"
-												value={form.systemPrompt}
-												onChange={(e) =>
-													setForm({ ...form, systemPrompt: e.target.value })
-												}
-											/>
-										</FieldContent>
-									</Field>
-									<div className="grid gap-4 sm:grid-cols-3">
-										<Field>
-											<FieldLabel htmlFor="agent-temperature">
-												Temperature
-											</FieldLabel>
-											<FieldContent>
-												<Input
-													id="agent-temperature"
-													value={form.temperature}
-													onChange={(e) =>
-														setForm({ ...form, temperature: e.target.value })
-													}
-												/>
-											</FieldContent>
-										</Field>
-										<Field>
-											<FieldLabel htmlFor="agent-max-output">
-												Max output tokens
-											</FieldLabel>
-											<FieldContent>
-												<Input
-													id="agent-max-output"
-													type="number"
-													min={1}
-													value={form.maxOutputTokens}
-													onChange={(e) =>
-														setForm({
-															...form,
-															maxOutputTokens: e.target.value,
-														})
-													}
-												/>
-											</FieldContent>
-										</Field>
-										<Field>
-											<FieldLabel htmlFor="agent-max-tool-calls">
-												Max tool uses
-											</FieldLabel>
-											<FieldContent>
-												<Input
-													id="agent-max-tool-calls"
-													type="number"
-													min={0}
-													max={20}
-													value={form.maxToolCalls}
-													onChange={(e) =>
-														setForm({
-															...form,
-															maxToolCalls: e.target.value,
-														})
-													}
-												/>
-											</FieldContent>
-										</Field>
-									</div>
 								</FieldGroup>
 							</CardContent>
 							<CardFooter className="justify-end">
@@ -818,256 +1018,450 @@ export default function AgentConfigurePage() {
 									) : (
 										<SaveIcon data-icon="inline-start" aria-hidden="true" />
 									)}
-									Save Model
+									Save
+								</Button>
+							</CardFooter>
+						</form>
+					</Card>
+
+					<Card>
+						<CardHeader>
+							<CardTitle>System Prompt</CardTitle>
+							<CardDescription>
+								The system prompt defines the assistant&apos;s behavior, tone,
+								and constraints.
+							</CardDescription>
+						</CardHeader>
+						<form onSubmit={saveGeneralModel}>
+							<CardContent>
+								<FieldGroup>
+									<Field>
+										<div className="flex items-center gap-2">
+											<FieldLabel htmlFor="agent-prompt">
+												System prompt
+											</FieldLabel>
+											<SettingHint text="This prompt runs before every conversation. Use it to set the assistant&apos;s role, personality, response format, and any rules it should follow. Leave empty for default behavior." />
+										</div>
+										<FieldContent>
+											<Textarea
+												id="agent-prompt"
+												className="min-h-40 font-mono text-sm"
+												placeholder="You are a helpful coding assistant. You write clean, well-documented code and explain your reasoning…"
+												value={form.systemPrompt}
+												onChange={(e) =>
+													setForm({ ...form, systemPrompt: e.target.value })
+												}
+											/>
+										</FieldContent>
+									</Field>
+								</FieldGroup>
+							</CardContent>
+							<CardFooter className="justify-end">
+								<Button type="submit" disabled={saving}>
+									{saving ? (
+										<Spinner data-icon="inline-start" />
+									) : (
+										<SaveIcon data-icon="inline-start" aria-hidden="true" />
+									)}
+									Save
+								</Button>
+							</CardFooter>
+						</form>
+					</Card>
+
+					<Card>
+						<CardHeader>
+							<CardTitle>Generation Parameters</CardTitle>
+							<CardDescription>
+								Fine-tune how the model generates responses.
+							</CardDescription>
+						</CardHeader>
+						<form onSubmit={saveGeneralModel}>
+							<CardContent>
+								<div className="grid gap-4 sm:grid-cols-3">
+									<Field>
+										<div className="flex items-center gap-2">
+											<FieldLabel htmlFor="agent-temperature">
+												Temperature
+											</FieldLabel>
+											<SettingHint text="Controls randomness: 0 = deterministic, 0.7 = balanced, 1.0 = creative. Lower values for factual tasks, higher for creative work." />
+										</div>
+										<FieldContent>
+											<Input
+												id="agent-temperature"
+												type="number"
+												min={0}
+												max={2}
+												step={0.1}
+												value={form.temperature}
+												onChange={(e) =>
+													setForm({ ...form, temperature: e.target.value })
+												}
+											/>
+										</FieldContent>
+									</Field>
+									<Field>
+										<div className="flex items-center gap-2">
+											<FieldLabel htmlFor="agent-max-output">
+												Max output tokens
+											</FieldLabel>
+											<SettingHint text="Maximum length of the model&apos;s response in tokens. Higher values allow longer responses but cost more. 1024 is good for most tasks." />
+										</div>
+										<FieldContent>
+											<Input
+												id="agent-max-output"
+												type="number"
+												min={1}
+												value={form.maxOutputTokens}
+												onChange={(e) =>
+													setForm({
+														...form,
+														maxOutputTokens: e.target.value,
+													})
+												}
+											/>
+										</FieldContent>
+									</Field>
+									<Field>
+										<div className="flex items-center gap-2">
+											<FieldLabel htmlFor="agent-max-tool-calls">
+												Max tool uses
+											</FieldLabel>
+											<SettingHint text="How many times the assistant can call tools in a single response. More allows complex multi-step tasks but increases latency." />
+										</div>
+										<FieldContent>
+											<Input
+												id="agent-max-tool-calls"
+												type="number"
+												min={0}
+												max={20}
+												value={form.maxToolCalls}
+												onChange={(e) =>
+													setForm({
+														...form,
+														maxToolCalls: e.target.value,
+													})
+												}
+											/>
+										</FieldContent>
+									</Field>
+								</div>
+							</CardContent>
+							<CardFooter className="justify-end">
+								<Button type="submit" disabled={saving}>
+									{saving ? (
+										<Spinner data-icon="inline-start" />
+									) : (
+										<SaveIcon data-icon="inline-start" aria-hidden="true" />
+									)}
+									Save
 								</Button>
 							</CardFooter>
 						</form>
 					</Card>
 				</TabsContent>
 
-				<TabsContent value="tools" className="mt-4">
+				{/* TOOLS TAB */}
+				<TabsContent value="tools" className="mt-4 space-y-4">
+					<InfoCallout title="About tools" icon={WrenchIcon}>
+						Tools give your assistant the ability to perform actions beyond text
+						generation. Built-in tools are provided by the platform. MCP (Model
+						Context Protocol) tools connect to external services. Enable
+						&quot;Approval&quot; to require user confirmation before a tool
+						runs.
+					</InfoCallout>
+
 					<Card>
 						<CardHeader>
 							<CardTitle className="flex items-center gap-2">
 								<WrenchIcon className="size-5" aria-hidden="true" />
-								Tools
+								Built-in Tools
 							</CardTitle>
 							<CardDescription>
-								Enable built-in tools and synced MCP tools for this
-								assistant.
+								Platform-provided tools. Toggle to enable and set approval
+								requirements.
+								{enabledBuiltinCount > 0 && (
+									<span className="ml-2">({enabledBuiltinCount} enabled)</span>
+								)}
 							</CardDescription>
 						</CardHeader>
-						<CardContent className="flex flex-col gap-3">
-							<div className="flex flex-col gap-2">
-								<p className="text-sm font-semibold">Built-in</p>
-							{builtinTools.map((tool) => (
-								<ListRow
-									key={tool.id}
-									className="items-center justify-between"
-								>
-									<div>
-										<p className="font-medium">{tool.name}</p>
-										<p className="text-xs text-muted-foreground">
-											{tool.description} · {tool.riskLevel}
-										</p>
-									</div>
-									<div className="flex items-center gap-4">
-										<label className="flex items-center gap-2 text-xs">
-											Approval
+						<CardContent className="flex flex-col gap-2">
+							{builtinTools.length === 0 ? (
+								<p className="text-sm text-muted-foreground">
+									No built-in tools available.
+								</p>
+							) : (
+								builtinTools.map((tool) => (
+									<ListRow
+										key={tool.id}
+										className="items-center justify-between"
+									>
+										<div className="min-w-0">
+											<div className="flex items-center gap-2">
+												<p className="font-medium">{tool.name}</p>
+												<Badge
+													variant={
+														tool.riskLevel === "high"
+															? "destructive"
+															: tool.riskLevel === "medium"
+																? "secondary"
+																: "outline"
+													}
+													className="text-[10px]"
+												>
+													{tool.riskLevel} risk
+												</Badge>
+											</div>
+											<p className="mt-0.5 text-xs text-muted-foreground">
+												{tool.description}
+											</p>
+										</div>
+										<div className="flex items-center gap-4">
+											<label className="flex items-center gap-2 text-xs">
+												<ShieldCheckIcon
+													className="size-3 text-muted-foreground"
+													aria-hidden="true"
+												/>
+												Approval
+												<Switch
+													checked={
+														builtinBindings[tool.id]?.requireApproval ?? false
+													}
+													disabled={!builtinBindings[tool.id]?.enabled}
+													onCheckedChange={(checked) =>
+														setBuiltinBindings((current) => ({
+															...current,
+															[tool.id]: {
+																enabled: current[tool.id]?.enabled ?? false,
+																requireApproval: checked,
+															},
+														}))
+													}
+												/>
+											</label>
 											<Switch
-												checked={
-													builtinBindings[tool.id]?.requireApproval ?? false
-												}
-												disabled={!builtinBindings[tool.id]?.enabled}
+												checked={builtinBindings[tool.id]?.enabled ?? false}
 												onCheckedChange={(checked) =>
 													setBuiltinBindings((current) => ({
 														...current,
 														[tool.id]: {
-															enabled: current[tool.id]?.enabled ?? false,
-															requireApproval: checked,
+															enabled: checked,
+															requireApproval:
+																current[tool.id]?.requireApproval ?? false,
 														},
 													}))
 												}
 											/>
-										</label>
-										<Switch
-											checked={builtinBindings[tool.id]?.enabled ?? false}
-											onCheckedChange={(checked) =>
-												setBuiltinBindings((current) => ({
+										</div>
+									</ListRow>
+								))
+							)}
+						</CardContent>
+
+						<div className="border-t border-border/60" />
+
+						<CardHeader>
+							<CardTitle className="flex items-center gap-2">
+								<ServerIcon className="size-5" aria-hidden="true" />
+								MCP Tools
+							</CardTitle>
+							<CardDescription>
+								External tools via MCP servers. Configure per-server and
+								per-tool.
+							</CardDescription>
+						</CardHeader>
+						<CardContent className="flex flex-col gap-3">
+							{mcpServers.length === 0 ? (
+								<div className="rounded-xl border border-dashed border-border/60 p-6 text-center">
+									<ServerIcon
+										className="mx-auto size-8 text-muted-foreground/50"
+										aria-hidden="true"
+									/>
+									<p className="mt-2 text-sm font-medium">
+										No MCP servers configured
+									</p>
+									<p className="mt-1 text-sm text-muted-foreground">
+										Connect an MCP server to give your assistant access to
+										external tools.
+									</p>
+									<Button variant="outline" size="sm" asChild className="mt-3">
+										<Link href="/mcp">Add MCP server</Link>
+									</Button>
+								</div>
+							) : (
+								mcpServers.map((server) => {
+									const serverState = getMcpServerState(server.id);
+									const serverOpen =
+										openMcpServerIds[server.id] ??
+										serverState.selectedCount > 0;
+									return (
+										<Collapsible
+											key={server.id}
+											open={serverOpen}
+											onOpenChange={(open) =>
+												setOpenMcpServerIds((current) => ({
 													...current,
-													[tool.id]: {
-														enabled: checked,
-														requireApproval:
-															current[tool.id]?.requireApproval ?? false,
-													},
+													[server.id]: open,
 												}))
 											}
-										/>
-									</div>
-								</ListRow>
-							))}
-							</div>
-							<div className="flex flex-col gap-2 border-t border-border/70 pt-3">
-								<p className="flex items-center gap-2 text-sm font-semibold">
-									<ServerIcon className="size-4" aria-hidden="true" />
-									MCP tools
-								</p>
-								{mcpServers.length === 0 ? (
-									<p className="text-sm text-muted-foreground">
-										No MCP servers yet.{" "}
-										<Link href="/mcp" className="underline">
-											Add an MCP server
-										</Link>
-										.
-									</p>
-								) : (
-									mcpServers.map((server) => {
-										const serverState = getMcpServerState(server.id);
-										const serverOpen =
-											openMcpServerIds[server.id] ??
-											serverState.selectedCount > 0;
-										return (
-											<Collapsible
-												key={server.id}
-												open={serverOpen}
-												onOpenChange={(open) =>
-													setOpenMcpServerIds((current) => ({
-														...current,
-														[server.id]: open,
-													}))
-												}
-												className="ui-list-row flex flex-col gap-3 p-3"
-											>
-												<div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
-													<div className="flex min-w-0 gap-2">
-														<CollapsibleTrigger asChild>
-															<Button
-																type="button"
-																variant="ghost"
-																size="icon"
-																aria-label={
-																	serverOpen
-																		? `Collapse ${server.name}`
-																		: `Expand ${server.name}`
-																}
-																className="shrink-0"
-															>
-																<ChevronDownIcon
-																	data-icon="inline-start"
-																	className={
-																		serverOpen ? "rotate-180 transition-transform" : "transition-transform"
-																	}
-																	aria-hidden="true"
-																/>
-															</Button>
-														</CollapsibleTrigger>
-														<div className="min-w-0">
-															<div className="flex flex-wrap items-center gap-2">
-																<p className="font-medium">{server.name}</p>
+											className="rounded-xl border border-border/60 p-3"
+										>
+											<div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+												<div className="flex min-w-0 gap-2">
+													<CollapsibleTrigger asChild>
+														<Button
+															type="button"
+															variant="ghost"
+															size="icon"
+															aria-label={
+																serverOpen
+																	? `Collapse ${server.name}`
+																	: `Expand ${server.name}`
+															}
+															className="shrink-0"
+														>
+															<ChevronDownIcon
+																data-icon="inline-start"
+																className={cn(
+																	"transition-transform",
+																	serverOpen && "rotate-180",
+																)}
+																aria-hidden="true"
+															/>
+														</Button>
+													</CollapsibleTrigger>
+													<div className="min-w-0">
+														<div className="flex flex-wrap items-center gap-2">
+															<p className="font-medium">{server.name}</p>
+															<Badge variant="secondary">
+																{serverState.selectedCount}/
+																{serverState.bindableTools.length}
+															</Badge>
+															{serverState.someSelected ? (
+																<Badge variant="outline">Partial</Badge>
+															) : null}
+															{serverState.someApproval ? (
+																<Badge variant="outline">Mixed approval</Badge>
+															) : null}
+															{serverState.forcedApprovalCount > 0 ? (
 																<Badge variant="secondary">
-																	{serverState.selectedCount}/
-																	{serverState.bindableTools.length} selected
+																	{serverState.forcedApprovalCount} forced
 																</Badge>
-																{serverState.someSelected ? (
-																	<Badge variant="outline">Partial</Badge>
-																) : null}
-																{serverState.someApproval ? (
-																	<Badge variant="outline">Mixed approval</Badge>
-																) : null}
-																{serverState.forcedApprovalCount > 0 ? (
-																	<Badge variant="secondary">
-																		{serverState.forcedApprovalCount} forced
-																	</Badge>
-																) : null}
-															</div>
-															<p className="mt-1 text-xs text-muted-foreground">
-																Select every enabled tool from this MCP server, then
-																set extra approval here. MCP-forced approval cannot be
-																disabled from an agent.
-															</p>
+															) : null}
 														</div>
-													</div>
-													<div className="flex flex-wrap items-center gap-4 text-xs">
-														<label className="flex items-center gap-2">
-															All tools
-															<Switch
-																checked={serverState.allSelected}
-																disabled={serverState.bindableTools.length === 0}
-																onCheckedChange={(checked) =>
-																	setMcpServerToolsEnabled(server.id, checked)
-																}
-															/>
-														</label>
-														<label className="flex items-center gap-2">
-															Extra approval
-															<Switch
-																checked={serverState.allApproval}
-																disabled={
-																	serverState.selectedCount === 0 ||
-																	serverState.selectedCount ===
-																		serverState.forcedApprovalCount
-																}
-																onCheckedChange={(checked) =>
-																	setMcpServerApproval(server.id, checked)
-																}
-															/>
-														</label>
+														<p className="mt-1 text-xs text-muted-foreground">
+															{serverState.bindableTools.length} available tool
+															{serverState.bindableTools.length !== 1 && "s"}
+															{" · "}
+															{serverState.selectedCount} bound to this
+															assistant
+														</p>
 													</div>
 												</div>
-												<CollapsibleContent className="flex flex-col gap-2">
-													{serverState.allTools.length === 0 ? (
-														<p className="text-sm text-muted-foreground">
-															No tools synced yet. Sync this MCP server before binding
-															it to an assistant.
-														</p>
-													) : (
-														serverState.allTools.map((tool) => {
-																const binding = mcpBindings[tool.id];
-																const toolSelected =
-																	tool.enabled && Boolean(binding?.enabled);
-																const approvalForced =
-																	isMcpToolApprovalForced(tool);
-																return (
-																	<ListRow
-																		key={tool.id}
-																		className="flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
-																	>
-																		<div className="min-w-0">
-																			<div className="flex flex-wrap items-center gap-2">
-																				<p className="font-medium">{tool.name}</p>
-																				{!tool.enabled ? (
-																					<Badge variant="outline">
-																						Disabled in MCP
-																					</Badge>
-																				) : null}
-																				{approvalForced ? (
-																					<Badge variant="secondary">
-																						Approval forced
-																					</Badge>
-																				) : null}
-																			</div>
-																			{tool.description ? (
-																				<p className="mt-1 text-xs text-muted-foreground">
-																					{tool.description}
-																				</p>
-																			) : null}
-																		</div>
-																		<div className="flex flex-wrap items-center gap-4 text-xs">
-																			<label className="flex items-center gap-2">
-																				Approval
-																				<Switch
-																					checked={
-																						tool.enabled &&
-																						(approvalForced ||
-																							Boolean(binding?.requireApproval))
-																					}
-																					disabled={!toolSelected || approvalForced}
-																					onCheckedChange={(checked) =>
-																						setMcpToolApproval(tool, checked)
-																					}
-																				/>
-																			</label>
-																			<label className="flex items-center gap-2">
-																				Use
-																				<Switch
-																					checked={toolSelected}
-																					disabled={!tool.enabled}
-																					onCheckedChange={(checked) =>
-																						setMcpToolEnabled(tool, checked)
-																					}
-																				/>
-																			</label>
-																		</div>
-																	</ListRow>
-																);
-															})
-													)}
-												</CollapsibleContent>
-											</Collapsible>
-										);
-									})
-								)}
-							</div>
+												<div className="flex flex-wrap items-center gap-4 text-xs">
+													<label className="flex items-center gap-2">
+														All tools
+														<Switch
+															checked={serverState.allSelected}
+															disabled={serverState.bindableTools.length === 0}
+															onCheckedChange={(checked) =>
+																setMcpServerToolsEnabled(server.id, checked)
+															}
+														/>
+													</label>
+													<label className="flex items-center gap-2">
+														Extra approval
+														<Switch
+															checked={serverState.allApproval}
+															disabled={
+																serverState.selectedCount === 0 ||
+																serverState.selectedCount ===
+																	serverState.forcedApprovalCount
+															}
+															onCheckedChange={(checked) =>
+																setMcpServerApproval(server.id, checked)
+															}
+														/>
+													</label>
+												</div>
+											</div>
+											<CollapsibleContent className="flex flex-col gap-2 pt-3">
+												{serverState.allTools.length === 0 ? (
+													<p className="text-sm text-muted-foreground">
+														No tools synced yet. Sync this MCP server before
+														binding it to an assistant.
+													</p>
+												) : (
+													serverState.allTools.map((tool) => {
+														const binding = mcpBindings[tool.id];
+														const toolSelected =
+															tool.enabled && Boolean(binding?.enabled);
+														const approvalForced =
+															isMcpToolApprovalForced(tool);
+														return (
+															<ListRow
+																key={tool.id}
+																className="flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+															>
+																<div className="min-w-0">
+																	<div className="flex flex-wrap items-center gap-2">
+																		<p className="font-medium">{tool.name}</p>
+																		{!tool.enabled ? (
+																			<Badge variant="outline">
+																				Disabled in MCP
+																			</Badge>
+																		) : null}
+																		{approvalForced ? (
+																			<Badge variant="secondary">
+																				Approval forced
+																			</Badge>
+																		) : null}
+																	</div>
+																	{tool.description ? (
+																		<p className="mt-1 text-xs text-muted-foreground">
+																			{tool.description}
+																		</p>
+																	) : null}
+																</div>
+																<div className="flex flex-wrap items-center gap-4 text-xs">
+																	<label className="flex items-center gap-2">
+																		<ShieldCheckIcon
+																			className="size-3 text-muted-foreground"
+																			aria-hidden="true"
+																		/>
+																		Approval
+																		<Switch
+																			checked={
+																				tool.enabled &&
+																				(approvalForced ||
+																					Boolean(binding?.requireApproval))
+																			}
+																			disabled={!toolSelected || approvalForced}
+																			onCheckedChange={(checked) =>
+																				setMcpToolApproval(tool, checked)
+																			}
+																		/>
+																	</label>
+																	<label className="flex items-center gap-2">
+																		Use
+																		<Switch
+																			checked={toolSelected}
+																			disabled={!tool.enabled}
+																			onCheckedChange={(checked) =>
+																				setMcpToolEnabled(tool, checked)
+																			}
+																		/>
+																	</label>
+																</div>
+															</ListRow>
+														);
+													})
+												)}
+											</CollapsibleContent>
+										</Collapsible>
+									);
+								})
+							)}
 						</CardContent>
 						<CardFooter className="justify-end">
 							<Button onClick={() => void saveToolBindings()} disabled={saving}>
@@ -1078,7 +1472,15 @@ export default function AgentConfigurePage() {
 					</Card>
 				</TabsContent>
 
-				<TabsContent value="knowledge" className="mt-4">
+				{/* KNOWLEDGE TAB */}
+				<TabsContent value="knowledge" className="mt-4 space-y-4">
+					<InfoCallout title="About knowledge bases" icon={BookOpenIcon}>
+						Knowledge bases give your assistant access to reference material.
+						When enabled, the assistant searches bound knowledge bases during
+						conversations and cites relevant passages. Create knowledge bases in
+						the Knowledge section and bind them here.
+					</InfoCallout>
+
 					<Card>
 						<CardHeader>
 							<CardTitle className="flex items-center gap-2">
@@ -1086,25 +1488,56 @@ export default function AgentConfigurePage() {
 								Knowledge Bases
 							</CardTitle>
 							<CardDescription>
-								Bound bases are searched during chat for citations.
+								Select knowledge bases to search during chat.
+								{selectedKnowledgeIds.length > 0 && (
+									<span className="ml-1">
+										({selectedKnowledgeIds.length} bound)
+									</span>
+								)}
 							</CardDescription>
 						</CardHeader>
-						<CardContent className="flex flex-col gap-3">
+						<CardContent className="flex flex-col gap-2">
 							{knowledgeBases.length === 0 ? (
-								<p className="text-sm text-muted-foreground">
-									No knowledge bases yet.{" "}
-									<Link href="/knowledge" className="underline">
-										Create one
-									</Link>
-									.
-								</p>
+								<div className="rounded-xl border border-dashed border-border/60 p-6 text-center">
+									<BookOpenIcon
+										className="mx-auto size-8 text-muted-foreground/50"
+										aria-hidden="true"
+									/>
+									<p className="mt-2 text-sm font-medium">
+										No knowledge bases yet
+									</p>
+									<p className="mt-1 text-sm text-muted-foreground">
+										Create a knowledge base to give your assistant reference
+										material it can cite in conversations.
+									</p>
+									<Button variant="outline" size="sm" asChild className="mt-3">
+										<Link href="/knowledge">Create knowledge base</Link>
+									</Button>
+								</div>
 							) : (
 								knowledgeBases.map((kb) => (
 									<label
 										key={kb.id}
-										className="ui-list-row flex cursor-pointer items-center justify-between p-3"
+										className={cn(
+											"ui-list-row flex cursor-pointer items-center justify-between rounded-xl border p-4 transition-colors hover:bg-muted/30",
+											selectedKnowledgeIds.includes(kb.id)
+												? "border-primary/30 bg-primary/5"
+												: "border-border/60",
+										)}
 									>
-										<span className="font-medium">{kb.name}</span>
+										<div className="flex items-center gap-3">
+											<div
+												className={cn(
+													"flex size-8 items-center justify-center rounded-lg",
+													selectedKnowledgeIds.includes(kb.id)
+														? "bg-primary/10 text-primary"
+														: "bg-muted text-muted-foreground",
+												)}
+											>
+												<BookOpenIcon className="size-4" aria-hidden="true" />
+											</div>
+											<span className="font-medium">{kb.name}</span>
+										</div>
 										<Switch
 											checked={selectedKnowledgeIds.includes(kb.id)}
 											onCheckedChange={(checked) =>
@@ -1130,7 +1563,6 @@ export default function AgentConfigurePage() {
 						</CardFooter>
 					</Card>
 				</TabsContent>
-
 			</Tabs>
 		</WorkspacePage>
 	);

@@ -6,8 +6,17 @@ import {
 	BotIcon,
 	PlusIcon,
 	TrashIcon,
-	ChevronRightIcon,
+	SearchIcon,
 	Loader2,
+	SparklesIcon,
+	WrenchIcon,
+	BookOpenIcon,
+	ServerIcon,
+	ClockIcon,
+	ShieldIcon,
+	UsersIcon,
+	GlobeIcon,
+	StarIcon,
 } from "lucide-react";
 
 import { PageLoading } from "@/components/page-loading";
@@ -25,7 +34,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import {
 	Empty,
 	EmptyContent,
@@ -54,6 +63,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 interface Agent {
 	id: string;
@@ -86,6 +96,46 @@ function slugifyAgentName(value: string) {
 	);
 }
 
+function timeAgo(dateString: string): string {
+	const now = new Date();
+	const date = new Date(dateString);
+	const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+	if (seconds < 60) return "just now";
+	if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+	if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+	if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
+	return date.toLocaleDateString();
+}
+
+const AVATAR_COLORS = [
+	"from-violet-500 to-indigo-600",
+	"from-cyan-500 to-blue-600",
+	"from-emerald-500 to-teal-600",
+	"from-amber-500 to-orange-600",
+	"from-rose-500 to-pink-600",
+	"from-fuchsia-500 to-purple-600",
+	"from-lime-500 to-green-600",
+	"from-sky-500 to-cyan-600",
+];
+
+function getAvatarColor(name: string): string {
+	let hash = 0;
+	for (let i = 0; i < name.length; i++) {
+		hash = name.charCodeAt(i) + ((hash << 5) - hash);
+	}
+	return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+
+function getInitials(name: string): string {
+	return name
+		.split(/\s+/)
+		.map((w) => w[0])
+		.join("")
+		.toUpperCase()
+		.slice(0, 2);
+}
+
 export default function AgentsPage() {
 	const router = useRouter();
 	const { workspaceId, isLoading: workspaceLoading } = useWorkspace();
@@ -95,6 +145,7 @@ export default function AgentsPage() {
 	const [showCreateDialog, setShowCreateDialog] = useState(false);
 	const [showAdvancedCreate, setShowAdvancedCreate] = useState(false);
 	const [creating, setCreating] = useState(false);
+	const [searchQuery, setSearchQuery] = useState("");
 	const [form, setForm] = useState({
 		name: "",
 		slug: "",
@@ -301,6 +352,16 @@ export default function AgentsPage() {
 		}
 	};
 
+	const filteredAgents = agents.filter((agent) => {
+		if (!searchQuery.trim()) return true;
+		const q = searchQuery.toLowerCase();
+		return (
+			agent.name.toLowerCase().includes(q) ||
+			(agent.description ?? "").toLowerCase().includes(q) ||
+			agent.slug.toLowerCase().includes(q)
+		);
+	});
+
 	if (workspaceLoading || !workspaceId) {
 		return <PageLoading label="Loading workspace" />;
 	}
@@ -309,7 +370,7 @@ export default function AgentsPage() {
 		<WorkspacePage
 			kicker="Configuration"
 			title="Assistants"
-			description="Pick an assistant to chat, or open configuration when you need to change its model, tools, or knowledge."
+			description="Manage your AI assistants — each one can have its own model, system prompt, tools, and knowledge bases."
 			width="default"
 			actions={
 				<Button type="button" onClick={() => setShowCreateDialog(true)}>
@@ -323,7 +384,8 @@ export default function AgentsPage() {
 					<DialogHeader>
 						<DialogTitle>Create assistant</DialogTitle>
 						<DialogDescription>
-							Give your assistant a name. You can bind a model after creation.
+							Give your assistant a name and optional description. Bind a model,
+							tools, and knowledge after creation.
 						</DialogDescription>
 					</DialogHeader>
 					<div className="flex flex-col gap-4">
@@ -529,6 +591,22 @@ export default function AgentsPage() {
 				</AlertDialogContent>
 			</AlertDialog>
 
+			{/* Search bar */}
+			{agents.length > 2 && (
+				<div className="relative">
+					<SearchIcon
+						className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+						aria-hidden="true"
+					/>
+					<Input
+						placeholder="Search assistants…"
+						value={searchQuery}
+						onChange={(e) => setSearchQuery(e.target.value)}
+						className="pl-9"
+					/>
+				</div>
+			)}
+
 			{loading ? (
 				<div className="flex items-center justify-center py-20">
 					<Loader2 className="size-6 animate-spin text-muted-foreground" />
@@ -541,8 +619,9 @@ export default function AgentsPage() {
 						</EmptyMedia>
 						<EmptyTitle>No assistants yet</EmptyTitle>
 						<EmptyDescription>
-							Create your first assistant to start chatting with AI. You can
-							configure model, tools, and knowledge after creation.
+							Create your first assistant to start chatting with AI. Each
+							assistant gets its own model, system prompt, tools, and knowledge
+							bases.
 						</EmptyDescription>
 					</EmptyHeader>
 					<EmptyContent>
@@ -552,27 +631,72 @@ export default function AgentsPage() {
 						</Button>
 					</EmptyContent>
 				</Empty>
+			) : filteredAgents.length === 0 ? (
+				<div className="flex flex-col items-center justify-center py-16 text-center">
+					<SearchIcon
+						className="size-8 text-muted-foreground/50"
+						aria-hidden="true"
+					/>
+					<p className="mt-3 text-sm font-medium">
+						No assistants match your search
+					</p>
+					<p className="mt-1 text-xs text-muted-foreground">
+						Try a different keyword or clear the search
+					</p>
+					<Button
+						variant="ghost"
+						size="sm"
+						className="mt-3"
+						onClick={() => setSearchQuery("")}
+					>
+						Clear search
+					</Button>
+				</div>
 			) : (
 				<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-					{agents.map((agent) => {
+					{filteredAgents.map((agent) => {
 						const bindings = bindingSummaries[agent.id];
 						const isReady = Boolean(agent.activeVersionId);
+						const avatarColor = getAvatarColor(agent.name);
+						const initials = getInitials(agent.name);
+
 						return (
-							<Card key={agent.id} className="group flex flex-col">
-								<CardHeader className="pb-3">
+							<Card
+								key={agent.id}
+								className={cn(
+									"group relative overflow-hidden transition-shadow hover:shadow-md",
+									!isReady && "border-l-2 border-l-amber-500",
+								)}
+							>
+								{/* Top accent bar */}
+								<div
+									className={cn(
+										"absolute inset-x-0 top-0 h-1 bg-gradient-to-r",
+										avatarColor,
+									)}
+								/>
+
+								<div className="flex flex-col gap-4 p-4 pt-5">
+									{/* Header: avatar + name + delete */}
 									<div className="flex items-start justify-between gap-2">
 										<div className="flex min-w-0 items-center gap-3">
-											<div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-												<BotIcon
-													className="size-4 text-primary"
-													aria-hidden="true"
-												/>
+											<div
+												className={cn(
+													"flex size-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br text-white shadow-sm",
+													avatarColor,
+												)}
+											>
+												<span className="text-sm font-bold">{initials}</span>
 											</div>
 											<div className="min-w-0">
 												<p className="truncate font-semibold">{agent.name}</p>
-												{agent.description && (
+												{agent.description ? (
 													<p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
 														{agent.description}
+													</p>
+												) : (
+													<p className="mt-0.5 line-clamp-1 text-xs italic text-muted-foreground/60">
+														No description
 													</p>
 												)}
 											</div>
@@ -587,29 +711,99 @@ export default function AgentsPage() {
 											<TrashIcon className="size-4 text-destructive" />
 										</Button>
 									</div>
-									<div className="mt-3 flex flex-wrap gap-1.5">
+
+									{/* Status + sharing badges */}
+									<div className="flex flex-wrap items-center gap-2">
 										<Badge
-											variant={isReady ? "secondary" : "outline"}
-											className={isReady ? "bg-primary/10 text-primary" : ""}
+											variant={isReady ? "default" : "outline"}
+											className={cn(
+												"gap-1",
+												isReady
+													? "bg-emerald-500/15 text-emerald-600 hover:bg-emerald-500/25"
+													: "",
+											)}
 										>
+											{isReady ? (
+												<SparklesIcon className="size-3" aria-hidden="true" />
+											) : (
+												<ClockIcon className="size-3" aria-hidden="true" />
+											)}
 											{isReady ? "Ready" : "Needs setup"}
 										</Badge>
-										{bindings?.toolCount ? (
-											<Badge variant="outline">
-												{bindings.toolCount} tools
+
+										{agent.sharingMode === "marketplace" && (
+											<Badge variant="secondary" className="gap-1">
+												<UsersIcon className="size-3" aria-hidden="true" />
+												Workspace
 											</Badge>
-										) : null}
-										{bindings?.knowledgeCount ? (
-											<Badge variant="outline">
-												{bindings.knowledgeCount} knowledge
+										)}
+										{agent.sharingMode === "specific_user" && (
+											<Badge variant="secondary" className="gap-1">
+												<ShieldIcon className="size-3" aria-hidden="true" />
+												Shared
 											</Badge>
-										) : null}
-										{bindings?.mcpCount ? (
-											<Badge variant="outline">{bindings.mcpCount} MCP</Badge>
-										) : null}
+										)}
+										{agent.isGlobal && (
+											<Badge variant="secondary" className="gap-1">
+												<GlobeIcon className="size-3" aria-hidden="true" />
+												Global
+											</Badge>
+										)}
+										{agent.isRecommended && (
+											<Badge variant="secondary" className="gap-1">
+												<StarIcon className="size-3" aria-hidden="true" />
+												Recommended
+											</Badge>
+										)}
 									</div>
-								</CardHeader>
-								<CardContent className="mt-auto">
+
+									{/* Capability indicators */}
+									<div className="grid grid-cols-3 gap-2">
+										<div className="flex flex-col items-center rounded-lg bg-muted/50 px-2 py-2 text-center">
+											<WrenchIcon
+												className="size-3.5 text-muted-foreground"
+												aria-hidden="true"
+											/>
+											<span className="mt-1 text-xs font-medium">
+												{bindings?.toolCount ?? "–"}
+											</span>
+											<span className="text-[10px] text-muted-foreground">
+												Tools
+											</span>
+										</div>
+										<div className="flex flex-col items-center rounded-lg bg-muted/50 px-2 py-2 text-center">
+											<BookOpenIcon
+												className="size-3.5 text-muted-foreground"
+												aria-hidden="true"
+											/>
+											<span className="mt-1 text-xs font-medium">
+												{bindings?.knowledgeCount ?? "–"}
+											</span>
+											<span className="text-[10px] text-muted-foreground">
+												Knowledge
+											</span>
+										</div>
+										<div className="flex flex-col items-center rounded-lg bg-muted/50 px-2 py-2 text-center">
+											<ServerIcon
+												className="size-3.5 text-muted-foreground"
+												aria-hidden="true"
+											/>
+											<span className="mt-1 text-xs font-medium">
+												{bindings?.mcpCount ?? "–"}
+											</span>
+											<span className="text-[10px] text-muted-foreground">
+												MCP
+											</span>
+										</div>
+									</div>
+
+									{/* Metadata */}
+									<div className="flex items-center justify-between text-[11px] text-muted-foreground/70">
+										<span>Created {timeAgo(agent.createdAt)}</span>
+										<span className="font-mono opacity-60">{agent.slug}</span>
+									</div>
+
+									{/* Actions */}
 									<div className="flex gap-2">
 										<Button
 											variant={isReady ? "default" : "outline"}
@@ -623,8 +817,7 @@ export default function AgentsPage() {
 												)
 											}
 										>
-											{isReady ? "Chat" : "Finish setup"}
-											<ChevronRightIcon className="ml-1 size-3" />
+											{isReady ? "Chat now" : "Finish setup"}
 										</Button>
 										<Button
 											variant="ghost"
@@ -635,7 +828,7 @@ export default function AgentsPage() {
 											Configure
 										</Button>
 									</div>
-								</CardContent>
+								</div>
 							</Card>
 						);
 					})}
