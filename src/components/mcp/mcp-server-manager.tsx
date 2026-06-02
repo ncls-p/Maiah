@@ -1,16 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+	CheckCircle2,
 	ChevronDownIcon,
+	ClipboardList,
 	Loader2,
+	MoreHorizontal,
 	NetworkIcon,
 	PencilIcon,
 	PlusIcon,
 	RefreshCwIcon,
+	SearchIcon,
 	ShieldAlert,
 	Trash2Icon,
 	Wrench,
+	XIcon,
 	ZapIcon,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -29,10 +34,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
-	CardAction,
-	CardContent,
 	CardDescription,
-	CardFooter,
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
@@ -42,12 +44,27 @@ import {
 	CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
 	Dialog,
 	DialogContent,
+	DialogDescription,
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
+import {
+	Empty,
+	EmptyDescription,
+	EmptyHeader,
+	EmptyMedia,
+	EmptyTitle,
+} from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -57,10 +74,13 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { cn } from "@/lib/utils";
+
+/* ─── types ─────────────────────────────────────────── */
 
 interface McpServer {
 	id: string;
@@ -71,9 +91,11 @@ interface McpServer {
 	healthStatus: string | null;
 	enabled: boolean;
 	requireApproval: boolean;
+	argsJson?: string[] | null;
 	hasHeaders: boolean;
 	hasEnv: boolean;
 }
+
 interface McpTool {
 	id: string;
 	name: string;
@@ -83,6 +105,9 @@ interface McpTool {
 }
 
 type SimpleAuthMode = "none" | "bearer" | "api-key" | "env";
+type HealthColor = "success" | "warning" | "destructive" | "muted";
+
+/* ─── helpers ───────────────────────────────────────── */
 
 const emptyForm = {
 	name: "",
@@ -164,15 +189,268 @@ function buildEnv(form: typeof emptyForm) {
 	return mergeRecords(buildSimpleAuthEnv(form), parsePairs(form.env));
 }
 
+function getHealthColor(status: string | null): HealthColor {
+	if (!status) return "muted";
+	const s = status.toLowerCase();
+	if (s === "connected" || s === "healthy" || s === "ok") return "success";
+	if (s === "degraded" || s === "warning") return "warning";
+	if (s === "error" || s === "disconnected" || s === "failed")
+		return "destructive";
+	return "muted";
+}
+
+function healthDotClass(color: HealthColor) {
+	const map: Record<HealthColor, string> = {
+		success: "bg-success",
+		warning: "bg-warning",
+		destructive: "bg-destructive",
+		muted: "bg-muted-foreground",
+	};
+	return cn("size-2 rounded-full shrink-0", map[color]);
+}
+
+function transportLabel(transport: string) {
+	switch (transport) {
+		case "streamable-http":
+			return "Streamable HTTP";
+		case "sse":
+			return "SSE";
+		case "stdio":
+			return "Stdio";
+		default:
+			return transport;
+	}
+}
+
+/* ─── stat card ─────────────────────────────────────── */
+
+function StatCard({
+	icon: Icon,
+	label,
+	value,
+	className,
+}: {
+	icon: typeof NetworkIcon;
+	label: string;
+	value: number | string;
+	className?: string;
+}) {
+	return (
+		<Card size="sm" className={cn("flex items-center gap-3", className)}>
+			<div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+				<Icon className="size-4" aria-hidden="true" />
+			</div>
+			<div>
+				<p className="text-lg font-semibold tracking-tight">{value}</p>
+				<p className="text-xs text-muted-foreground">{label}</p>
+			</div>
+		</Card>
+	);
+}
+
+/* ─── auth section (shared between create / edit) ──── */
+
+function AuthSection({
+	form,
+	setForm,
+	transport,
+	prefix,
+}: {
+	form: typeof emptyForm;
+	setForm: (f: typeof emptyForm) => void;
+	transport: string;
+	prefix: string;
+}) {
+	return (
+		<div className="grid min-w-0 gap-3 rounded-lg border border-border/70 bg-background/70 p-3">
+			<div className="grid min-w-0 gap-2">
+				<Label htmlFor={`${prefix}-auth-mode`}>Authentication</Label>
+				<Select
+					value={form.authMode}
+					onValueChange={(value) =>
+						setForm({ ...form, authMode: value as SimpleAuthMode })
+					}
+				>
+					<SelectTrigger id={`${prefix}-auth-mode`} className="w-full">
+						<SelectValue />
+					</SelectTrigger>
+					<SelectContent>
+						<SelectItem value="none">No auth</SelectItem>
+						{transport === "stdio" ? (
+							<SelectItem value="env">API key / token</SelectItem>
+						) : (
+							<>
+								<SelectItem value="bearer">Bearer token</SelectItem>
+								<SelectItem value="api-key">API key header</SelectItem>
+							</>
+						)}
+					</SelectContent>
+				</Select>
+			</div>
+
+			{transport === "stdio" && form.authMode === "env" ? (
+				<div className="grid gap-3 sm:grid-cols-[minmax(0,0.7fr)_minmax(0,1fr)]">
+					<div className="grid gap-2">
+						<Label htmlFor={`${prefix}-env-key-name`}>Variable name</Label>
+						<Input
+							id={`${prefix}-env-key-name`}
+							autoComplete="off"
+							value={form.envKeyName}
+							onChange={(e) => setForm({ ...form, envKeyName: e.target.value })}
+							placeholder="API_KEY"
+						/>
+					</div>
+					<div className="grid gap-2">
+						<Label htmlFor={`${prefix}-env-key-value`}>Secret value</Label>
+						<Input
+							id={`${prefix}-env-key-value`}
+							type="password"
+							autoComplete="off"
+							value={form.envKeyValue}
+							onChange={(e) =>
+								setForm({ ...form, envKeyValue: e.target.value })
+							}
+							placeholder="Paste token…"
+						/>
+					</div>
+				</div>
+			) : null}
+
+			{transport !== "stdio" && form.authMode === "bearer" ? (
+				<div className="grid gap-2">
+					<Label htmlFor={`${prefix}-bearer-token`}>Bearer token</Label>
+					<Input
+						id={`${prefix}-bearer-token`}
+						type="password"
+						autoComplete="off"
+						value={form.bearerToken}
+						onChange={(e) => setForm({ ...form, bearerToken: e.target.value })}
+						placeholder="Paste token…"
+					/>
+				</div>
+			) : null}
+
+			{transport !== "stdio" && form.authMode === "api-key" ? (
+				<div className="grid gap-3 sm:grid-cols-[minmax(0,0.7fr)_minmax(0,1fr)]">
+					<div className="grid gap-2">
+						<Label htmlFor={`${prefix}-api-key-header`}>Header name</Label>
+						<Input
+							id={`${prefix}-api-key-header`}
+							autoComplete="off"
+							value={form.apiKeyHeader}
+							onChange={(e) =>
+								setForm({ ...form, apiKeyHeader: e.target.value })
+							}
+							placeholder="X-API-Key"
+						/>
+					</div>
+					<div className="grid gap-2">
+						<Label htmlFor={`${prefix}-api-key-value`}>API key</Label>
+						<Input
+							id={`${prefix}-api-key-value`}
+							type="password"
+							autoComplete="off"
+							value={form.apiKeyValue}
+							onChange={(e) =>
+								setForm({ ...form, apiKeyValue: e.target.value })
+							}
+							placeholder="Paste key…"
+						/>
+					</div>
+				</div>
+			) : null}
+		</div>
+	);
+}
+
+/* ─── advanced section (shared) ─────────────────────── */
+
+function AdvancedSection({
+	open,
+	onOpenChange,
+	form,
+	setForm,
+	prefix,
+	placeholder,
+}: {
+	open: boolean;
+	onOpenChange: (o: boolean) => void;
+	form: typeof emptyForm;
+	setForm: (f: typeof emptyForm) => void;
+	prefix: string;
+	placeholder: string;
+}) {
+	return (
+		<Collapsible
+			open={open}
+			onOpenChange={onOpenChange}
+			className="min-w-0 overflow-hidden rounded-lg border border-border/70 bg-muted/20"
+		>
+			<CollapsibleTrigger asChild>
+				<Button
+					type="button"
+					variant="ghost"
+					className="flex w-full justify-between px-3 py-2 text-sm"
+				>
+					<span>Advanced options</span>
+					<ChevronDownIcon
+						className={cn("size-4 transition-transform", open && "rotate-180")}
+						aria-hidden="true"
+					/>
+				</Button>
+			</CollapsibleTrigger>
+			<CollapsibleContent className="grid min-w-0 gap-4 border-t border-border/60 p-3">
+				<p className="text-xs text-muted-foreground">{placeholder}</p>
+				<div className="grid gap-2">
+					<Label htmlFor={`${prefix}-headers`}>HTTP headers</Label>
+					<Textarea
+						id={`${prefix}-headers`}
+						autoComplete="off"
+						value={form.headers}
+						onChange={(e) => setForm({ ...form, headers: e.target.value })}
+						placeholder="Authorization=Bearer sk-…"
+					/>
+					<p className="text-xs text-muted-foreground">
+						One header per line as <code>Key=Value</code>.
+					</p>
+				</div>
+				<div className="grid gap-2">
+					<Label htmlFor={`${prefix}-env`}>Environment variables</Label>
+					<Textarea
+						id={`${prefix}-env`}
+						autoComplete="off"
+						value={form.env}
+						onChange={(e) => setForm({ ...form, env: e.target.value })}
+						placeholder="API_KEY=…"
+					/>
+					<p className="text-xs text-muted-foreground">
+						One variable per line as <code>KEY=VALUE</code>.
+					</p>
+				</div>
+			</CollapsibleContent>
+		</Collapsible>
+	);
+}
+
+/* ─── main component ────────────────────────────────── */
+
 export function McpServerManager() {
 	const { workspaceId } = useWorkspace();
+
+	// data
 	const [servers, setServers] = useState<McpServer[]>([]);
 	const [toolsByServer, setToolsByServer] = useState<Record<string, McpTool[]>>(
 		{},
 	);
 	const [loading, setLoading] = useState(true);
 	const [busy, setBusy] = useState(false);
-	const [showCreateForm, setShowCreateForm] = useState(false);
+
+	// UI state
+	const [search, setSearch] = useState("");
+	const [filterStatus, setFilterStatus] = useState<
+		"all" | "enabled" | "disabled"
+	>("all");
+	const [showCreate, setShowCreate] = useState(false);
 	const [showAdvancedCreate, setShowAdvancedCreate] = useState(false);
 	const [showAdvancedEdit, setShowAdvancedEdit] = useState(false);
 	const [form, setForm] = useState(emptyForm);
@@ -182,7 +460,9 @@ export function McpServerManager() {
 	const [expandedServers, setExpandedServers] = useState<
 		Record<string, boolean>
 	>({});
+	const [toolSearch, setToolSearch] = useState<Record<string, string>>({});
 
+	// load
 	const load = useCallback(async () => {
 		if (!workspaceId) return;
 		setLoading(true);
@@ -216,6 +496,41 @@ export function McpServerManager() {
 		void load();
 	}, [load]);
 
+	// filtered servers
+	const filteredServers = useMemo(() => {
+		let result = servers;
+		if (search.trim()) {
+			const q = search.toLowerCase();
+			result = result.filter(
+				(s) =>
+					s.name.toLowerCase().includes(q) ||
+					s.transport.toLowerCase().includes(q) ||
+					(s.url ?? "").toLowerCase().includes(q) ||
+					(s.command ?? "").toLowerCase().includes(q),
+			);
+		}
+		if (filterStatus === "enabled") result = result.filter((s) => s.enabled);
+		if (filterStatus === "disabled") result = result.filter((s) => !s.enabled);
+		return result;
+	}, [servers, search, filterStatus]);
+
+	// stats
+	const stats = useMemo(() => {
+		const totalServers = servers.length;
+		const totalTools = Object.values(toolsByServer).reduce(
+			(sum, t) => sum + t.length,
+			0,
+		);
+		const enabledServers = servers.filter((s) => s.enabled).length;
+		const enabledTools = Object.values(toolsByServer).reduce(
+			(sum, t) => sum + t.filter((t) => t.enabled).length,
+			0,
+		);
+		return { totalServers, totalTools, enabledServers, enabledTools };
+	}, [servers, toolsByServer]);
+
+	/* ─── actions ───────────────────────────────────── */
+
 	async function createServer() {
 		if (!workspaceId || !form.name.trim()) return;
 		setBusy(true);
@@ -240,7 +555,7 @@ export function McpServerManager() {
 			});
 			if (!res.ok) throw new Error((await res.json()).error || "Failed");
 			setForm(emptyForm);
-			setShowCreateForm(false);
+			setShowCreate(false);
 			setShowAdvancedCreate(false);
 			toast.success("MCP server added");
 			await load();
@@ -424,328 +739,147 @@ export function McpServerManager() {
 		await load();
 	}
 
+	/* ─── render ────────────────────────────────────── */
+
 	return (
 		<div className="flex flex-col gap-6">
-			<Card size={showCreateForm ? "default" : "sm"}>
-				<CardHeader>
-					<CardTitle>MCP servers</CardTitle>
-					<CardDescription>
-						Connect servers once, then sync tools and enable only what agents
-						can use.
-					</CardDescription>
-					<CardAction>
-						<Button
-							type="button"
-							variant={showCreateForm ? "outline" : "default"}
-							size="sm"
-							onClick={() => {
-								setShowCreateForm(!showCreateForm);
-								setShowAdvancedCreate(false);
-							}}
-						>
-							{showCreateForm ? (
-								"Cancel"
-							) : (
-								<>
-									<PlusIcon data-icon="inline-start" aria-hidden="true" />
-									Add Server
-								</>
-							)}
-						</Button>
-					</CardAction>
-				</CardHeader>
-				{showCreateForm ? (
-					<>
-						<CardContent className="grid gap-4">
-							<div className="grid gap-4 sm:grid-cols-2">
-								<div className="grid gap-2">
-									<Label htmlFor="mcp-name">Name</Label>
-									<Input
-										id="mcp-name"
-										autoComplete="off"
-										value={form.name}
-										onChange={(e) => setForm({ ...form, name: e.target.value })}
-										placeholder="Company tools…"
-									/>
-								</div>
-								<div className="grid gap-2">
-									<Label htmlFor="mcp-transport">Transport</Label>
-									<Select
-										value={form.transport}
-										onValueChange={(value) =>
-											setForm({
-												...form,
-												transport: value,
-												authMode: "none",
-											})
-										}
-									>
-										<SelectTrigger id="mcp-transport">
-											<SelectValue />
-										</SelectTrigger>
-										<SelectContent>
-											<SelectItem value="streamable-http">
-												Streamable HTTP
-											</SelectItem>
-											<SelectItem value="sse">SSE</SelectItem>
-											<SelectItem value="stdio">stdio</SelectItem>
-										</SelectContent>
-									</Select>
-								</div>
-							</div>
-							{form.transport === "stdio" ? (
-								<>
-									<div className="grid gap-2">
-										<Label htmlFor="mcp-command">Command</Label>
-										<Input
-											id="mcp-command"
-											autoComplete="off"
-											value={form.command}
-											onChange={(e) =>
-												setForm({ ...form, command: e.target.value })
-											}
-											placeholder="npx…"
-										/>
-									</div>
-									<div className="grid gap-2">
-										<Label htmlFor="mcp-args">Args (one per line)</Label>
-										<Textarea
-											id="mcp-args"
-											autoComplete="off"
-											value={form.args}
-											onChange={(e) =>
-												setForm({ ...form, args: e.target.value })
-											}
-											placeholder={
-												"-y\n@modelcontextprotocol/server-filesystem…"
-											}
-										/>
-									</div>
-								</>
-							) : (
-								<div className="grid gap-2">
-									<Label htmlFor="mcp-url">Server URL</Label>
-									<Input
-										id="mcp-url"
-										type="url"
-										autoComplete="off"
-										value={form.url}
-										onChange={(e) => setForm({ ...form, url: e.target.value })}
-										placeholder="https://mcp.example.com…"
-									/>
-								</div>
-							)}
-							<div className="grid gap-3 rounded-lg border border-border/70 bg-background/70 p-3">
-								<div className="grid gap-2">
-									<Label htmlFor="mcp-auth-mode">Authentication</Label>
-									<Select
-										value={form.authMode}
-										onValueChange={(value) =>
-											setForm({
-												...form,
-												authMode: value as SimpleAuthMode,
-											})
-										}
-									>
-										<SelectTrigger id="mcp-auth-mode" className="w-full">
-											<SelectValue />
-										</SelectTrigger>
-										<SelectContent>
-											<SelectItem value="none">No auth</SelectItem>
-											{form.transport === "stdio" ? (
-												<SelectItem value="env">API key / token</SelectItem>
-											) : (
-												<>
-													<SelectItem value="bearer">Bearer token</SelectItem>
-													<SelectItem value="api-key">
-														API key header
-													</SelectItem>
-												</>
-											)}
-										</SelectContent>
-									</Select>
-								</div>
-								{form.transport === "stdio" && form.authMode === "env" ? (
-									<div className="grid gap-3 sm:grid-cols-[minmax(0,0.7fr)_minmax(0,1fr)]">
-										<div className="grid gap-2">
-											<Label htmlFor="mcp-env-key-name">Variable name</Label>
-											<Input
-												id="mcp-env-key-name"
-												autoComplete="off"
-												value={form.envKeyName}
-												onChange={(e) =>
-													setForm({ ...form, envKeyName: e.target.value })
-												}
-												placeholder="API_KEY"
-											/>
-										</div>
-										<div className="grid gap-2">
-											<Label htmlFor="mcp-env-key-value">Secret value</Label>
-											<Input
-												id="mcp-env-key-value"
-												type="password"
-												autoComplete="off"
-												value={form.envKeyValue}
-												onChange={(e) =>
-													setForm({ ...form, envKeyValue: e.target.value })
-												}
-												placeholder="Paste token…"
-											/>
-										</div>
-									</div>
-								) : null}
-								{form.transport !== "stdio" && form.authMode === "bearer" ? (
-									<div className="grid gap-2">
-										<Label htmlFor="mcp-bearer-token">Bearer token</Label>
-										<Input
-											id="mcp-bearer-token"
-											type="password"
-											autoComplete="off"
-											value={form.bearerToken}
-											onChange={(e) =>
-												setForm({ ...form, bearerToken: e.target.value })
-											}
-											placeholder="Paste token…"
-										/>
-									</div>
-								) : null}
-								{form.transport !== "stdio" && form.authMode === "api-key" ? (
-									<div className="grid gap-3 sm:grid-cols-[minmax(0,0.7fr)_minmax(0,1fr)]">
-										<div className="grid gap-2">
-											<Label htmlFor="mcp-api-key-header">Header name</Label>
-											<Input
-												id="mcp-api-key-header"
-												autoComplete="off"
-												value={form.apiKeyHeader}
-												onChange={(e) =>
-													setForm({ ...form, apiKeyHeader: e.target.value })
-												}
-												placeholder="X-API-Key"
-											/>
-										</div>
-										<div className="grid gap-2">
-											<Label htmlFor="mcp-api-key-value">API key</Label>
-											<Input
-												id="mcp-api-key-value"
-												type="password"
-												autoComplete="off"
-												value={form.apiKeyValue}
-												onChange={(e) =>
-													setForm({ ...form, apiKeyValue: e.target.value })
-												}
-												placeholder="Paste key…"
-											/>
-										</div>
-									</div>
-								) : null}
-							</div>
-							<div className="flex flex-col gap-3 rounded-lg border border-border/70 bg-background/70 p-3 sm:flex-row sm:items-center sm:justify-between">
-								<div>
-									<p className="text-sm font-medium">Require approval</p>
-									<p className="text-xs text-muted-foreground">
-										Force approval before any tool from this MCP server runs.
-									</p>
-								</div>
-								<Switch
-									aria-label="Require approval for all MCP tools"
-									checked={form.requireApproval}
-									onCheckedChange={(checked) =>
-										setForm({ ...form, requireApproval: checked })
-									}
-								/>
-							</div>
-							<Collapsible
-								open={showAdvancedCreate}
-								onOpenChange={setShowAdvancedCreate}
-								className="rounded-lg border border-border/70 bg-muted/20"
-							>
-								<CollapsibleTrigger asChild>
-									<Button
-										type="button"
-										variant="ghost"
-										className="flex w-full justify-between px-3 py-2 text-sm"
-									>
-										<span>Advanced options</span>
-										<ChevronDownIcon
-											className={cn(
-												"size-4 transition-transform",
-												showAdvancedCreate && "rotate-180",
-											)}
-											aria-hidden="true"
-										/>
-									</Button>
-								</CollapsibleTrigger>
-								<CollapsibleContent className="grid gap-4 border-t border-border/60 p-3">
-									<p className="text-sm text-muted-foreground">
-										Use these only when the server documentation requires
-										multiple headers or custom environment variables.
-									</p>
-									<div className="grid gap-2">
-										<Label htmlFor="mcp-headers">HTTP headers</Label>
-										<Textarea
-											id="mcp-headers"
-											autoComplete="off"
-											value={form.headers}
-											onChange={(e) =>
-												setForm({ ...form, headers: e.target.value })
-											}
-											placeholder="Authorization=Bearer sk-…"
-										/>
-										<p className="text-xs text-muted-foreground">
-											One header per line as <code>Key=Value</code>.
-										</p>
-									</div>
-									<div className="grid gap-2">
-										<Label htmlFor="mcp-env">Environment variables</Label>
-										<Textarea
-											id="mcp-env"
-											autoComplete="off"
-											value={form.env}
-											onChange={(e) =>
-												setForm({ ...form, env: e.target.value })
-											}
-											placeholder="API_KEY=…"
-										/>
-										<p className="text-xs text-muted-foreground">
-											One variable per line as <code>KEY=VALUE</code>.
-										</p>
-									</div>
-								</CollapsibleContent>
-							</Collapsible>
-						</CardContent>
-						<CardFooter className="justify-end">
-							<Button
-								disabled={busy || !form.name.trim()}
-								onClick={() => void createServer()}
-							>
-								{busy ? (
-									<Loader2 className="animate-spin" aria-hidden="true" />
-								) : (
-									<PlusIcon data-icon="inline-start" aria-hidden="true" />
-								)}
-								Add MCP Server
-							</Button>
-						</CardFooter>
-					</>
-				) : null}
-			</Card>
+			{/* ── Stats overview ── */}
+			<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+				<StatCard
+					icon={NetworkIcon}
+					label="Total servers"
+					value={stats.totalServers}
+				/>
+				<StatCard
+					icon={CheckCircle2}
+					label="Enabled servers"
+					value={stats.enabledServers}
+				/>
+				<StatCard icon={Wrench} label="Total tools" value={stats.totalTools} />
+				<StatCard
+					icon={ClipboardList}
+					label="Enabled tools"
+					value={stats.enabledTools}
+				/>
+			</div>
 
+			{/* ── Search & filter bar ── */}
+			{servers.length > 0 && (
+				<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+					<div className="relative flex-1">
+						<SearchIcon
+							className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+							aria-hidden="true"
+						/>
+						<Input
+							placeholder="Search servers…"
+							value={search}
+							onChange={(e) => setSearch(e.target.value)}
+							className="pl-9"
+						/>
+						{search ? (
+							<Button
+								variant="ghost"
+								size="icon-sm"
+								className="absolute right-1 top-1/2 size-6 -translate-y-1/2"
+								onClick={() => setSearch("")}
+								aria-label="Clear search"
+							>
+								<XIcon className="size-3" aria-hidden="true" />
+							</Button>
+						) : null}
+					</div>
+					<div className="flex items-center gap-2">
+						<Select
+							value={filterStatus}
+							onValueChange={(v) =>
+								setFilterStatus(v as "all" | "enabled" | "disabled")
+							}
+						>
+							<SelectTrigger className="w-36">
+								<SelectValue />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="all">All servers</SelectItem>
+								<SelectItem value="enabled">Enabled</SelectItem>
+								<SelectItem value="disabled">Disabled</SelectItem>
+							</SelectContent>
+						</Select>
+						<Button
+							variant="default"
+							size="sm"
+							onClick={() => setShowCreate(true)}
+						>
+							<PlusIcon data-icon="inline-start" aria-hidden="true" />
+							Add Server
+						</Button>
+					</div>
+				</div>
+			)}
+
+			{/* ── Loading ── */}
 			{loading ? (
 				<div className="flex justify-center py-12">
 					<Loader2 className="animate-spin" aria-hidden="true" />
 				</div>
-			) : servers.length === 0 ? (
-				<Card size="sm">
-					<CardContent className="p-8 text-center text-sm text-muted-foreground">
-						No MCP servers yet. Add a server when an assistant needs external
-						tools.
-					</CardContent>
-				</Card>
-			) : (
+			) : filteredServers.length === 0 ? (
+				/* ── Empty state ── */
+				servers.length === 0 ? (
+					<Empty>
+						<EmptyHeader>
+							<EmptyMedia variant="icon">
+								<NetworkIcon className="size-5" aria-hidden="true" />
+							</EmptyMedia>
+							<EmptyTitle>No MCP servers configured</EmptyTitle>
+							<EmptyDescription>
+								Connect an MCP server to give your agents access to external
+								tools. Start by adding your first server.
+							</EmptyDescription>
+						</EmptyHeader>
+						<Button variant="default" onClick={() => setShowCreate(true)}>
+							<PlusIcon data-icon="inline-start" aria-hidden="true" />
+							Add your first server
+						</Button>
+					</Empty>
+				) : (
+					/* ── No search results ── */
+					<Empty>
+						<EmptyHeader>
+							<EmptyMedia variant="icon">
+								<SearchIcon className="size-5" aria-hidden="true" />
+							</EmptyMedia>
+							<EmptyTitle>No matching servers</EmptyTitle>
+							<EmptyDescription>
+								No servers match &ldquo;{search}&rdquo;. Try a different search
+								or clear the filter.
+							</EmptyDescription>
+						</EmptyHeader>
+						<Button variant="outline" onClick={() => setSearch("")}>
+							Clear search
+						</Button>
+					</Empty>
+				)
+			) : null}
+
+			{/* ── Server list ── */}
+			{filteredServers.length > 0 && (
 				<div className="grid gap-4">
-					{servers.map((server) => {
+					{filteredServers.map((server) => {
 						const tools = toolsByServer[server.id] ?? [];
 						const isExpanded = expandedServers[server.id] ?? false;
+						const healthColor = getHealthColor(server.healthStatus);
+						const serverToolSearch = toolSearch[server.id] ?? "";
+						const filteredTools = serverToolSearch
+							? tools.filter(
+									(t) =>
+										t.name
+											.toLowerCase()
+											.includes(serverToolSearch.toLowerCase()) ||
+										(t.description ?? "")
+											.toLowerCase()
+											.includes(serverToolSearch.toLowerCase()),
+								)
+							: tools;
 
 						return (
 							<Collapsible
@@ -758,9 +892,15 @@ export function McpServerManager() {
 									}))
 								}
 							>
-								<Card>
+								<Card
+									className={cn(
+										"transition-shadow",
+										!server.enabled && "opacity-60",
+									)}
+								>
 									<CardHeader>
 										<div className="flex flex-wrap items-start justify-between gap-3">
+											{/* Left: expand + info */}
 											<div className="flex min-w-0 flex-1 items-start gap-2">
 												<CollapsibleTrigger asChild>
 													<Button
@@ -785,11 +925,19 @@ export function McpServerManager() {
 												</CollapsibleTrigger>
 												<div className="min-w-0">
 													<CardTitle className="flex flex-wrap items-center gap-2">
-														<NetworkIcon
-															className="size-5 shrink-0"
-															aria-hidden="true"
-														/>
 														<span className="truncate">{server.name}</span>
+														<Badge
+															variant="outline"
+															className={cn(
+																"font-normal",
+																server.enabled
+																	? "text-success"
+																	: "text-muted-foreground",
+															)}
+														>
+															<span className={healthDotClass(healthColor)} />
+															{transportLabel(server.transport)}
+														</Badge>
 														{tools.length > 0 ? (
 															<Badge variant="secondary">
 																{tools.length} tool
@@ -802,214 +950,317 @@ export function McpServerManager() {
 													</CardDescription>
 												</div>
 											</div>
-											<div className="flex flex-wrap items-center justify-end gap-2">
-												<div className="flex items-center gap-2 text-sm">
-													<span className="hidden sm:inline">Enabled</span>
-													<Switch
-														aria-label={`Enable ${server.name}`}
-														checked={server.enabled}
-														onCheckedChange={(checked) =>
-															void toggleEnabled(server, checked)
-														}
-													/>
+
+											{/* Right: controls */}
+											<div className="flex shrink-0 items-center gap-2">
+												{/* Quick toggles */}
+												<div className="hidden items-center gap-3 sm:flex">
+													<div className="flex items-center gap-1.5">
+														<span className="text-xs text-muted-foreground">
+															Enabled
+														</span>
+														<Switch
+															aria-label={`Enable ${server.name}`}
+															checked={server.enabled}
+															onCheckedChange={(checked) =>
+																void toggleEnabled(server, checked)
+															}
+														/>
+													</div>
+													<Separator orientation="vertical" className="h-4" />
+													<div className="flex items-center gap-1.5">
+														<span className="text-xs text-muted-foreground">
+															Approval
+														</span>
+														<Switch
+															aria-label={`Require approval for ${server.name}`}
+															checked={server.requireApproval}
+															onCheckedChange={(checked) =>
+																void toggleServerApproval(server, checked)
+															}
+														/>
+													</div>
 												</div>
-												<div className="flex items-center gap-2 text-sm">
-													<span className="hidden sm:inline">Approval</span>
-													<Switch
-														aria-label={`Require approval for ${server.name}`}
-														checked={server.requireApproval}
-														onCheckedChange={(checked) =>
-															void toggleServerApproval(server, checked)
-														}
-													/>
-												</div>
-												<Badge variant="outline">
-													{server.healthStatus || "unknown"}
-												</Badge>
+
+												{/* Status badges */}
 												{server.requireApproval ? (
-													<Badge variant="secondary">Approval forced</Badge>
+													<Badge
+														variant="secondary"
+														className="hidden lg:inline-flex"
+													>
+														<ShieldAlert
+															className="size-3"
+															aria-hidden="true"
+														/>
+														Approval
+													</Badge>
 												) : null}
 												{server.hasHeaders ? (
-													<Badge variant="secondary">API key</Badge>
+													<Badge
+														variant="secondary"
+														className="hidden lg:inline-flex"
+													>
+														API key
+													</Badge>
 												) : null}
-												<Button
-													size="sm"
-													variant="outline"
-													onClick={() => void test(server.id)}
-												>
-													<ZapIcon
-														data-icon="inline-start"
-														aria-hidden="true"
-													/>
-													Test
-												</Button>
-												<Button
-													size="sm"
-													variant="outline"
-													onClick={() => void sync(server.id)}
-												>
-													<RefreshCwIcon
-														data-icon="inline-start"
-														aria-hidden="true"
-													/>
-													Sync
-												</Button>
-												<Button
-													size="icon-sm"
-													variant="ghost"
-													aria-label={`Edit ${server.name}`}
-													onClick={() => {
-														setEditServer(server);
-														setEditForm({
-															name: server.name,
-															transport: server.transport,
-															url: server.url ?? "",
-															command: server.command ?? "",
-															args: "",
-															authMode: "none",
-															bearerToken: "",
-															apiKeyHeader: "X-API-Key",
-															apiKeyValue: "",
-															envKeyName: "API_KEY",
-															envKeyValue: "",
-															requireApproval: server.requireApproval,
-															headers: "",
-															env: "",
-														});
-														setShowAdvancedEdit(false);
-													}}
-												>
-													<PencilIcon aria-hidden="true" />
-												</Button>
-												<Button
-													size="icon-sm"
-													variant="ghost"
-													aria-label={`Remove ${server.name}`}
-													onClick={() => setDeleteId(server.id)}
-												>
-													<Trash2Icon aria-hidden="true" />
-												</Button>
+
+												{/* Actions dropdown */}
+												<DropdownMenu>
+													<DropdownMenuTrigger asChild>
+														<Button
+															size="icon-sm"
+															variant="ghost"
+															aria-label="Server actions"
+														>
+															<MoreHorizontal aria-hidden="true" />
+														</Button>
+													</DropdownMenuTrigger>
+													<DropdownMenuContent align="end">
+														<DropdownMenuItem
+															onClick={() => void test(server.id)}
+														>
+															<ZapIcon aria-hidden="true" />
+															Test connection
+														</DropdownMenuItem>
+														<DropdownMenuItem
+															onClick={() => void sync(server.id)}
+														>
+															<RefreshCwIcon aria-hidden="true" />
+															Sync tools
+														</DropdownMenuItem>
+														<DropdownMenuSeparator />
+														<DropdownMenuItem
+															onClick={() => {
+																setEditServer(server);
+																setEditForm({
+																	name: server.name,
+																	transport: server.transport,
+																	url: server.url ?? "",
+																	command: server.command ?? "",
+																	args: server.argsJson?.join("\n") ?? "",
+																	authMode: "none",
+																	bearerToken: "",
+																	apiKeyHeader: "X-API-Key",
+																	apiKeyValue: "",
+																	envKeyName: "API_KEY",
+																	envKeyValue: "",
+																	requireApproval: server.requireApproval,
+																	headers: "",
+																	env: "",
+																});
+																setShowAdvancedEdit(false);
+															}}
+														>
+															<PencilIcon aria-hidden="true" />
+															Edit server
+														</DropdownMenuItem>
+														<DropdownMenuSeparator />
+														<DropdownMenuItem
+															variant="destructive"
+															onClick={() => setDeleteId(server.id)}
+														>
+															<Trash2Icon aria-hidden="true" />
+															Remove server
+														</DropdownMenuItem>
+													</DropdownMenuContent>
+												</DropdownMenu>
 											</div>
 										</div>
+
+										{/* Mobile toggles */}
+										<div className="flex items-center gap-4 pt-2 sm:hidden">
+											<div className="flex items-center gap-1.5">
+												<span className="text-xs text-muted-foreground">
+													Enabled
+												</span>
+												<Switch
+													aria-label={`Enable ${server.name}`}
+													checked={server.enabled}
+													onCheckedChange={(checked) =>
+														void toggleEnabled(server, checked)
+													}
+												/>
+											</div>
+											<div className="flex items-center gap-1.5">
+												<span className="text-xs text-muted-foreground">
+													Approval
+												</span>
+												<Switch
+													aria-label={`Require approval for ${server.name}`}
+													checked={server.requireApproval}
+													onCheckedChange={(checked) =>
+														void toggleServerApproval(server, checked)
+													}
+												/>
+											</div>
+											{server.requireApproval ? (
+												<Badge variant="secondary">
+													<ShieldAlert className="size-3" aria-hidden="true" />
+													Approval
+												</Badge>
+											) : null}
+											{server.hasHeaders ? (
+												<Badge variant="secondary">API key</Badge>
+											) : null}
+										</div>
 									</CardHeader>
+
+									{/* ── Tools (collapsible) ── */}
 									<CollapsibleContent>
-										<CardContent className="grid max-h-96 gap-2 overflow-y-auto border-t border-border/60 pt-4">
-											{tools.length === 0 ? (
-												<p className="text-sm text-muted-foreground">
-													No tools discovered. Run sync after configuring
-													credentials.
-												</p>
-											) : (
-												tools.map((tool) => {
-													const isApprovalForced =
-														server.requireApproval || tool.requireApproval;
-
-													return (
-														<div
-															key={tool.id}
-															className={cn(
-																"group flex items-center gap-3 rounded-xl border border-transparent px-3 py-2.5 transition-all duration-200 hover:border-border/60 hover:bg-muted/30",
-																!tool.enabled && "opacity-50",
-															)}
+										<div className="border-t border-border/60">
+											{/* Tool search */}
+											{tools.length > 3 && (
+												<div className="flex items-center gap-2 border-b border-border/40 px-4 py-2">
+													<SearchIcon
+														className="size-4 shrink-0 text-muted-foreground"
+														aria-hidden="true"
+													/>
+													<Input
+														placeholder="Search tools…"
+														value={serverToolSearch}
+														onChange={(e) =>
+															setToolSearch((prev) => ({
+																...prev,
+																[server.id]: e.target.value,
+															}))
+														}
+														className="h-8 border-0 bg-transparent p-0 shadow-none focus-visible:ring-0"
+													/>
+													{serverToolSearch ? (
+														<Button
+															variant="ghost"
+															size="icon-sm"
+															className="size-6"
+															onClick={() =>
+																setToolSearch((prev) => ({
+																	...prev,
+																	[server.id]: "",
+																}))
+															}
 														>
-															{/* Tool icon */}
-															<div
-																className={cn(
-																	"flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors",
-																	tool.enabled
-																		? "bg-primary/10 text-primary"
-																		: "bg-muted text-muted-foreground",
-																)}
-															>
-																<Wrench className="size-4" aria-hidden="true" />
-															</div>
+															<XIcon className="size-3" aria-hidden="true" />
+														</Button>
+													) : null}
+												</div>
+											)}
 
-															{/* Info */}
-															<div className="min-w-0 flex-1">
-																<div className="flex items-center gap-2">
-																	<span className="truncate font-medium text-sm">
-																		{tool.name}
-																	</span>
-																	{/* Status dot */}
-																	<span
+											<div className="max-h-96 overflow-y-auto">
+												{filteredTools.length === 0 ? (
+													<div className="px-4 py-6 text-center text-sm text-muted-foreground">
+														{tools.length === 0
+															? "No tools discovered. Run sync after configuring credentials."
+															: "No tools match your search."}
+													</div>
+												) : (
+													<div className="divide-y divide-border/30 px-4 py-2">
+														{filteredTools.map((tool) => {
+															const isApprovalForced =
+																server.requireApproval || tool.requireApproval;
+
+															return (
+																<div
+																	key={tool.id}
+																	className={cn(
+																		"flex items-center gap-3 py-2.5 transition-opacity",
+																		!tool.enabled && "opacity-50",
+																	)}
+																>
+																	{/* Tool icon */}
+																	<div
 																		className={cn(
-																			"flex size-2 shrink-0",
+																			"flex size-8 shrink-0 items-center justify-center rounded-lg",
 																			tool.enabled
-																				? "bg-success"
-																				: "bg-muted-foreground",
-																		)}
-																	/>
-																</div>
-																{tool.description ? (
-																	<p className="line-clamp-1 text-xs text-muted-foreground">
-																		{tool.description}
-																	</p>
-																) : null}
-															</div>
-
-															{/* Badges */}
-															<div className="flex shrink-0 items-center gap-1.5">
-																{isApprovalForced && (
-																	<span
-																		className={cn(
-																			"inline-flex items-center gap-1 rounded-md bg-warning/10 px-2 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wider text-warning ring-1 ring-warning/20",
+																				? "bg-primary/10 text-primary"
+																				: "bg-muted text-muted-foreground",
 																		)}
 																	>
-																		<ShieldAlert
-																			className="size-3"
+																		<Wrench
+																			className="size-4"
 																			aria-hidden="true"
 																		/>
-																		{server.requireApproval
-																			? "Forced"
-																			: "Approval"}
-																	</span>
-																)}
-															</div>
+																	</div>
 
-															{/* Toggles */}
-															<div className="flex shrink-0 items-center gap-3">
-																{/* Approval toggle */}
-																<div className="flex items-center gap-1.5">
-																	<span className="hidden text-xs text-muted-foreground sm:inline">
-																		Approval
-																	</span>
-																	<Switch
-																		aria-label={`Require approval for ${tool.name}`}
-																		checked={isApprovalForced}
-																		disabled={server.requireApproval}
-																		onCheckedChange={(checked) =>
-																			void toggleToolApproval(
-																				server.id,
-																				tool.id,
-																				checked,
-																			)
-																		}
-																	/>
-																</div>
+																	{/* Info */}
+																	<div className="min-w-0 flex-1">
+																		<div className="flex items-center gap-2">
+																			<span className="truncate font-medium text-sm">
+																				{tool.name}
+																			</span>
+																			<span
+																				className={cn(
+																					"size-2 shrink-0 rounded-full",
+																					tool.enabled
+																						? "bg-success"
+																						: "bg-muted-foreground",
+																				)}
+																			/>
+																		</div>
+																		{tool.description ? (
+																			<p className="line-clamp-1 text-xs text-muted-foreground">
+																				{tool.description}
+																			</p>
+																		) : null}
+																	</div>
 
-																{/* Enabled toggle */}
-																<div className="flex items-center gap-1.5">
-																	<span className="hidden text-xs text-muted-foreground sm:inline">
-																		Enabled
-																	</span>
-																	<Switch
-																		aria-label={`Enable ${tool.name}`}
-																		checked={tool.enabled}
-																		onCheckedChange={(checked) =>
-																			void toggleTool(
-																				server.id,
-																				tool.id,
-																				checked,
-																			)
-																		}
-																	/>
+																	{/* Badges */}
+																	{isApprovalForced ? (
+																		<Badge
+																			variant="secondary"
+																			className="hidden items-center gap-1 sm:flex"
+																		>
+																			<ShieldAlert
+																				className="size-3"
+																				aria-hidden="true"
+																			/>
+																			{server.requireApproval
+																				? "Forced"
+																				: "Approval"}
+																		</Badge>
+																	) : null}
+
+																	{/* Toggles */}
+																	<div className="flex shrink-0 items-center gap-3">
+																		<div className="flex items-center gap-1.5">
+																			<span className="hidden text-xs text-muted-foreground sm:inline">
+																				Approval
+																			</span>
+																			<Switch
+																				aria-label={`Require approval for ${tool.name}`}
+																				checked={isApprovalForced}
+																				disabled={server.requireApproval}
+																				onCheckedChange={(checked) =>
+																					void toggleToolApproval(
+																						server.id,
+																						tool.id,
+																						checked,
+																					)
+																				}
+																			/>
+																		</div>
+																		<div className="flex items-center gap-1.5">
+																			<span className="hidden text-xs text-muted-foreground sm:inline">
+																				Enabled
+																			</span>
+																			<Switch
+																				aria-label={`Enable ${tool.name}`}
+																				checked={tool.enabled}
+																				onCheckedChange={(checked) =>
+																					void toggleTool(
+																						server.id,
+																						tool.id,
+																						checked,
+																					)
+																				}
+																			/>
+																		</div>
+																	</div>
 																</div>
-															</div>
-														</div>
-													);
-												})
-											)}
-										</CardContent>
+															);
+														})}
+													</div>
+												)}
+											</div>
+										</div>
 									</CollapsibleContent>
 								</Card>
 							</Collapsible>
@@ -1018,6 +1269,165 @@ export function McpServerManager() {
 				</div>
 			)}
 
+			{/* ════════════════════════════════════════════
+			 *  CREATE DIALOG
+			 * ════════════════════════════════════════════ */}
+			<Dialog
+				open={showCreate}
+				onOpenChange={(open) => {
+					if (!open) {
+						setShowCreate(false);
+						setForm(emptyForm);
+						setShowAdvancedCreate(false);
+					}
+				}}
+			>
+				<DialogContent className="max-h-[calc(100svh-2rem)] max-w-lg overflow-x-hidden overflow-y-auto">
+					<DialogHeader>
+						<DialogTitle>Add MCP server</DialogTitle>
+						<DialogDescription>
+							Connect an external MCP server so your agents can use its tools.
+						</DialogDescription>
+					</DialogHeader>
+					<div className="grid gap-4">
+						<div className="grid gap-4 sm:grid-cols-2">
+							<div className="grid gap-2">
+								<Label htmlFor="mcp-name">Name</Label>
+								<Input
+									id="mcp-name"
+									autoComplete="off"
+									value={form.name}
+									onChange={(e) => setForm({ ...form, name: e.target.value })}
+									placeholder="Company tools…"
+								/>
+							</div>
+							<div className="grid gap-2">
+								<Label htmlFor="mcp-transport">Transport</Label>
+								<Select
+									value={form.transport}
+									onValueChange={(value) =>
+										setForm({
+											...form,
+											transport: value,
+											authMode: "none",
+										})
+									}
+								>
+									<SelectTrigger id="mcp-transport">
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="streamable-http">
+											Streamable HTTP
+										</SelectItem>
+										<SelectItem value="sse">SSE</SelectItem>
+										<SelectItem value="stdio">stdio</SelectItem>
+									</SelectContent>
+								</Select>
+							</div>
+						</div>
+
+						{form.transport === "stdio" ? (
+							<>
+								<div className="grid gap-2">
+									<Label htmlFor="mcp-command">Command</Label>
+									<Input
+										id="mcp-command"
+										autoComplete="off"
+										value={form.command}
+										onChange={(e) =>
+											setForm({ ...form, command: e.target.value })
+										}
+										placeholder="npx…"
+									/>
+								</div>
+								<div className="grid gap-2">
+									<Label htmlFor="mcp-args">Args (one per line)</Label>
+									<Textarea
+										id="mcp-args"
+										autoComplete="off"
+										value={form.args}
+										onChange={(e) => setForm({ ...form, args: e.target.value })}
+										placeholder={"-y\n@modelcontextprotocol/server-filesystem…"}
+									/>
+								</div>
+							</>
+						) : (
+							<div className="grid gap-2">
+								<Label htmlFor="mcp-url">Server URL</Label>
+								<Input
+									id="mcp-url"
+									type="url"
+									autoComplete="off"
+									value={form.url}
+									onChange={(e) => setForm({ ...form, url: e.target.value })}
+									placeholder="https://mcp.example.com…"
+								/>
+							</div>
+						)}
+
+						<AuthSection
+							form={form}
+							setForm={setForm}
+							transport={form.transport}
+							prefix="mcp-create"
+						/>
+
+						{/* Approval toggle */}
+						<div className="flex min-w-0 items-center justify-between gap-4 rounded-lg border border-border/70 bg-background/70 p-3">
+							<div>
+								<p className="text-sm font-medium">Require approval</p>
+								<p className="text-xs text-muted-foreground">
+									Force approval before any tool from this server runs.
+								</p>
+							</div>
+							<Switch
+								aria-label="Require approval for all MCP tools"
+								checked={form.requireApproval}
+								onCheckedChange={(checked) =>
+									setForm({ ...form, requireApproval: checked })
+								}
+							/>
+						</div>
+
+						<AdvancedSection
+							open={showAdvancedCreate}
+							onOpenChange={setShowAdvancedCreate}
+							form={form}
+							setForm={setForm}
+							prefix="mcp-create"
+							placeholder="Use these only when the server documentation requires multiple headers or custom environment variables."
+						/>
+					</div>
+					<DialogFooter>
+						<Button
+							variant="outline"
+							onClick={() => {
+								setShowCreate(false);
+								setForm(emptyForm);
+								setShowAdvancedCreate(false);
+							}}
+						>
+							Cancel
+						</Button>
+						<Button
+							disabled={busy || !form.name.trim()}
+							onClick={() => void createServer()}
+						>
+							{busy ? (
+								<Loader2 className="animate-spin" aria-hidden="true" />
+							) : (
+								<PlusIcon data-icon="inline-start" aria-hidden="true" />
+							)}
+							Add Server
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
+
+			{/* ════════════════════════════════════════════
+			 *  EDIT DIALOG
+			 * ════════════════════════════════════════════ */}
 			<Dialog
 				open={Boolean(editServer)}
 				onOpenChange={(open) => {
@@ -1027,12 +1437,16 @@ export function McpServerManager() {
 					}
 				}}
 			>
-				<DialogContent className="max-w-lg">
-					<DialogHeader>
+				<DialogContent className="max-h-[calc(100svh-2rem)] max-w-lg overflow-x-hidden overflow-y-auto">
+					<DialogHeader className="min-w-0">
 						<DialogTitle>Edit MCP server</DialogTitle>
+						<DialogDescription>
+							Update the configuration for{" "}
+							<span className="font-medium">{editServer?.name}</span>.
+						</DialogDescription>
 					</DialogHeader>
-					<div className="grid gap-3">
-						<div className="grid gap-2">
+					<div className="grid min-w-0 gap-4">
+						<div className="grid min-w-0 gap-2">
 							<Label htmlFor="mcp-edit-name">Name</Label>
 							<Input
 								id="mcp-edit-name"
@@ -1043,23 +1457,75 @@ export function McpServerManager() {
 								}
 							/>
 						</div>
-						<div className="grid gap-2">
-							<Label htmlFor="mcp-edit-url">URL</Label>
-							<Input
-								id="mcp-edit-url"
-								type="url"
-								autoComplete="off"
-								value={editForm.url}
-								onChange={(e) =>
-									setEditForm({ ...editForm, url: e.target.value })
-								}
-							/>
-						</div>
-						<div className="flex flex-col gap-3 rounded-lg border border-border/70 bg-background/70 p-3 sm:flex-row sm:items-center sm:justify-between">
+
+						{/* Transport info (read-only) */}
+						{editServer && (
+							<div className="flex min-w-0 items-center gap-2 overflow-hidden rounded-lg border border-border/70 bg-muted/40 px-3 py-2">
+								<Badge variant="outline">
+									{transportLabel(editServer.transport)}
+								</Badge>
+								{editServer.transport === "stdio" ? (
+									<code className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+										{[editServer.command, ...(editServer.argsJson ?? [])]
+											.filter(Boolean)
+											.join(" ")}
+									</code>
+								) : (
+									<code className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+										{editServer.url}
+									</code>
+								)}
+							</div>
+						)}
+
+						{editServer?.transport !== "stdio" ? (
+							<div className="grid min-w-0 gap-2">
+								<Label htmlFor="mcp-edit-url">URL</Label>
+								<Input
+									id="mcp-edit-url"
+									type="url"
+									autoComplete="off"
+									value={editForm.url}
+									onChange={(e) =>
+										setEditForm({ ...editForm, url: e.target.value })
+									}
+								/>
+							</div>
+						) : (
+							<>
+								<div className="grid gap-2">
+									<Label htmlFor="mcp-edit-command">Command</Label>
+									<Input
+										id="mcp-edit-command"
+										autoComplete="off"
+										value={editForm.command}
+										onChange={(e) =>
+											setEditForm({ ...editForm, command: e.target.value })
+										}
+										placeholder="npx…"
+									/>
+								</div>
+								<div className="grid gap-2">
+									<Label htmlFor="mcp-edit-args">Args (one per line)</Label>
+									<Textarea
+										id="mcp-edit-args"
+										autoComplete="off"
+										value={editForm.args}
+										onChange={(e) =>
+											setEditForm({ ...editForm, args: e.target.value })
+										}
+										placeholder={"-y\n@modelcontextprotocol/server-filesystem…"}
+									/>
+								</div>
+							</>
+						)}
+
+						{/* Approval toggle */}
+						<div className="flex min-w-0 items-center justify-between gap-4 rounded-lg border border-border/70 bg-background/70 p-3">
 							<div>
 								<p className="text-sm font-medium">Require approval</p>
 								<p className="text-xs text-muted-foreground">
-									Force approval before any tool from this MCP server runs.
+									Force approval before any tool from this server runs.
 								</p>
 							</div>
 							<Switch
@@ -1070,191 +1536,27 @@ export function McpServerManager() {
 								}
 							/>
 						</div>
-						<div className="grid gap-3 rounded-lg border border-border/70 bg-background/70 p-3">
-							<div className="grid gap-2">
-								<Label htmlFor="mcp-edit-auth-mode">Authentication</Label>
-								<Select
-									value={editForm.authMode}
-									onValueChange={(value) =>
-										setEditForm({
-											...editForm,
-											authMode: value as SimpleAuthMode,
-										})
-									}
-								>
-									<SelectTrigger id="mcp-edit-auth-mode" className="w-full">
-										<SelectValue />
-									</SelectTrigger>
-									<SelectContent>
-										<SelectItem value="none">Keep current auth</SelectItem>
-										{editServer?.transport === "stdio" ? (
-											<SelectItem value="env">
-												Replace API key / token
-											</SelectItem>
-										) : (
-											<>
-												<SelectItem value="bearer">
-													Replace with bearer token
-												</SelectItem>
-												<SelectItem value="api-key">
-													Replace with API key header
-												</SelectItem>
-											</>
-										)}
-									</SelectContent>
-								</Select>
-							</div>
-							{editServer?.transport === "stdio" &&
-							editForm.authMode === "env" ? (
-								<div className="grid gap-3 sm:grid-cols-[minmax(0,0.7fr)_minmax(0,1fr)]">
-									<div className="grid gap-2">
-										<Label htmlFor="mcp-edit-env-key-name">Variable name</Label>
-										<Input
-											id="mcp-edit-env-key-name"
-											autoComplete="off"
-											value={editForm.envKeyName}
-											onChange={(e) =>
-												setEditForm({
-													...editForm,
-													envKeyName: e.target.value,
-												})
-											}
-											placeholder="API_KEY"
-										/>
-									</div>
-									<div className="grid gap-2">
-										<Label htmlFor="mcp-edit-env-key-value">Secret value</Label>
-										<Input
-											id="mcp-edit-env-key-value"
-											type="password"
-											autoComplete="off"
-											value={editForm.envKeyValue}
-											onChange={(e) =>
-												setEditForm({
-													...editForm,
-													envKeyValue: e.target.value,
-												})
-											}
-											placeholder="Paste token…"
-										/>
-									</div>
-								</div>
-							) : null}
-							{editServer &&
-							editServer.transport !== "stdio" &&
-							editForm.authMode === "bearer" ? (
-								<div className="grid gap-2">
-									<Label htmlFor="mcp-edit-bearer-token">Bearer token</Label>
-									<Input
-										id="mcp-edit-bearer-token"
-										type="password"
-										autoComplete="off"
-										value={editForm.bearerToken}
-										onChange={(e) =>
-											setEditForm({
-												...editForm,
-												bearerToken: e.target.value,
-											})
-										}
-										placeholder="Paste token…"
-									/>
-								</div>
-							) : null}
-							{editServer &&
-							editServer.transport !== "stdio" &&
-							editForm.authMode === "api-key" ? (
-								<div className="grid gap-3 sm:grid-cols-[minmax(0,0.7fr)_minmax(0,1fr)]">
-									<div className="grid gap-2">
-										<Label htmlFor="mcp-edit-api-key-header">Header name</Label>
-										<Input
-											id="mcp-edit-api-key-header"
-											autoComplete="off"
-											value={editForm.apiKeyHeader}
-											onChange={(e) =>
-												setEditForm({
-													...editForm,
-													apiKeyHeader: e.target.value,
-												})
-											}
-											placeholder="X-API-Key"
-										/>
-									</div>
-									<div className="grid gap-2">
-										<Label htmlFor="mcp-edit-api-key-value">API key</Label>
-										<Input
-											id="mcp-edit-api-key-value"
-											type="password"
-											autoComplete="off"
-											value={editForm.apiKeyValue}
-											onChange={(e) =>
-												setEditForm({
-													...editForm,
-													apiKeyValue: e.target.value,
-												})
-											}
-											placeholder="Paste key…"
-										/>
-									</div>
-								</div>
-							) : null}
-						</div>
-						<Collapsible
+
+						{/* Auth */}
+						{editServer && (
+							<AuthSection
+								form={editForm}
+								setForm={setEditForm}
+								transport={editServer.transport}
+								prefix="mcp-edit"
+							/>
+						)}
+
+						<AdvancedSection
 							open={showAdvancedEdit}
 							onOpenChange={setShowAdvancedEdit}
-							className="rounded-lg border border-border/70 bg-muted/20"
-						>
-							<CollapsibleTrigger asChild>
-								<Button
-									type="button"
-									variant="ghost"
-									className="flex w-full justify-between px-3 py-2 text-sm"
-								>
-									<span>Advanced options</span>
-									<ChevronDownIcon
-										className={cn(
-											"size-4 transition-transform",
-											showAdvancedEdit && "rotate-180",
-										)}
-										aria-hidden="true"
-									/>
-								</Button>
-							</CollapsibleTrigger>
-							<CollapsibleContent className="grid gap-4 border-t border-border/60 p-3">
-								<p className="text-sm text-muted-foreground">
-									Leave these empty to keep the existing secret configuration.
-								</p>
-								<div className="grid gap-2">
-									<Label htmlFor="mcp-edit-headers">
-										HTTP headers (replaces existing)
-									</Label>
-									<Textarea
-										id="mcp-edit-headers"
-										autoComplete="off"
-										value={editForm.headers}
-										onChange={(e) =>
-											setEditForm({ ...editForm, headers: e.target.value })
-										}
-										placeholder="Authorization=Bearer …"
-									/>
-								</div>
-								<div className="grid gap-2">
-									<Label htmlFor="mcp-edit-env">
-										Environment variables (replaces existing)
-									</Label>
-									<Textarea
-										id="mcp-edit-env"
-										autoComplete="off"
-										value={editForm.env}
-										onChange={(e) =>
-											setEditForm({ ...editForm, env: e.target.value })
-										}
-										placeholder="API_KEY=…"
-									/>
-								</div>
-							</CollapsibleContent>
-						</Collapsible>
+							form={editForm}
+							setForm={setEditForm}
+							prefix="mcp-edit"
+							placeholder="Leave these empty to keep the existing secret configuration."
+						/>
 					</div>
-					<DialogFooter>
+					<DialogFooter className="overflow-hidden">
 						<Button
 							variant="outline"
 							onClick={() => {
@@ -1265,12 +1567,15 @@ export function McpServerManager() {
 							Cancel
 						</Button>
 						<Button disabled={busy} onClick={() => void saveEdit()}>
-							Save
+							Save changes
 						</Button>
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>
 
+			{/* ════════════════════════════════════════════
+			 *  DELETE DIALOG
+			 * ════════════════════════════════════════════ */}
 			<AlertDialog
 				open={Boolean(deleteId)}
 				onOpenChange={() => setDeleteId(null)}
@@ -1279,7 +1584,8 @@ export function McpServerManager() {
 					<AlertDialogHeader>
 						<AlertDialogTitle>Remove MCP server?</AlertDialogTitle>
 						<AlertDialogDescription>
-							Agents bound to these tools will lose access.
+							Agents bound to these tools will lose access. This action cannot
+							be undone.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
