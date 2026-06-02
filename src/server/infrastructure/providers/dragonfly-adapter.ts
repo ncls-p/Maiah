@@ -148,6 +148,153 @@ function createRequestNonce() {
 	return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
+type DragonflyToolCallContainer = {
+	tool_calls?: Array<Record<string, unknown>>;
+	tool_calls_index?: unknown;
+};
+
+type DragonflyChatChunk = {
+	choices?: Array<{
+		delta?: DragonflyToolCallContainer;
+		message?: DragonflyToolCallContainer;
+	}>;
+};
+
+function removeInvalidThinkingToolCalls(chunk: DragonflyChatChunk) {
+	for (const choice of chunk.choices ?? []) {
+		for (const container of [choice.delta, choice.message]) {
+			if (!container?.tool_calls) continue;
+			const validToolCalls = container.tool_calls.filter((toolCall) => {
+				// Dragonfly streams Anthropic content blocks as OpenAI `tool_calls`
+				// entries like `{ type: "thinking" }` or `{ type: "text" }`, without
+				// the required OpenAI `function` object. The AI SDK correctly rejects
+				// those. Reasoning/text content is already exposed via `reasoning_content`
+				// and `content`, so drop only non-function tool-call shims.
+				return (
+					typeof toolCall.function === "object" && toolCall.function !== null
+				);
+			});
+			if (validToolCalls.length > 0) {
+				container.tool_calls = validToolCalls;
+			} else {
+				delete container.tool_calls;
+				delete container.tool_calls_index;
+			}
+		}
+	}
+	return chunk;
+}
+
+function sanitizeDragonflySsePayload(payload: string) {
+	if (!payload || payload === "[DONE]") return payload;
+	try {
+		return JSON.stringify(removeInvalidThinkingToolCalls(JSON.parse(payload)));
+	} catch {
+		return payload;
+	}
+}
+
+function sanitizeDragonflySseEvent(eventText: string) {
+	const lines = eventText.split("\n");
+	return lines
+		.map((line) => {
+			if (!line.startsWith("data:")) return line;
+			const prefix = line.match(/^data:\s*/)?.[0] ?? "data: ";
+			const payload = line.slice(prefix.length);
+			return `${prefix}${sanitizeDragonflySsePayload(payload)}`;
+		})
+		.join("\n");
+}
+
+type OpenAiCompatibleMessage = Record<string, unknown> & {
+	role?: string;
+	content?: unknown;
+	tool_call_id?: unknown;
+	tool_calls?: unknown;
+	reasoning_content?: unknown;
+};
+
+function isDragonflyAnthropicModel(model: unknown) {
+	return (
+		typeof model === "string" &&
+		(model.includes("claude") || model.includes("anthropic"))
+	);
+}
+
+function normalizeAnthropicToolLoopMessages(
+	messages: unknown,
+): OpenAiCompatibleMessage[] | unknown {
+	if (!Array.isArray(messages)) return messages;
+
+	return (messages as OpenAiCompatibleMessage[]).map((message) => {
+		if (message.role === "assistant" && Array.isArray(message.tool_calls)) {
+			const { reasoning_content: _reasoningContent, ...rest } = message;
+			return {
+				...rest,
+				// Dragonfly's Anthropic bridge rejects assistant prefill when the
+				// assistant message also contains tool_calls. Keep the tool_use signal,
+				// but remove generated text/reasoning from the replayed assistant turn.
+				content: null,
+			};
+		}
+
+		if (message.role === "tool") {
+			return {
+				role: "user",
+				content: [
+					`Tool result for ${String(message.tool_call_id ?? "unknown")}:`,
+					typeof message.content === "string"
+						? message.content
+						: JSON.stringify(message.content ?? null),
+					"Use this result to answer the user's request. Do not call the same tool again unless the result is insufficient.",
+				].join("\n"),
+			};
+		}
+
+		return message;
+	});
+}
+
+async function dragonflyFetch(
+	input: RequestInfo | URL,
+	init?: RequestInit,
+): Promise<Response> {
+	const response = await fetch(input, init);
+	const contentType = response.headers.get("content-type") ?? "";
+	if (!response.body || !contentType.includes("text/event-stream")) {
+		return response;
+	}
+
+	const decoder = new TextDecoder();
+	const encoder = new TextEncoder();
+	let buffer = "";
+
+	const stream = new TransformStream<Uint8Array, Uint8Array>({
+		transform(chunk, controller) {
+			buffer += decoder.decode(chunk, { stream: true });
+			const events = buffer.split("\n\n");
+			buffer = events.pop() ?? "";
+			for (const event of events) {
+				controller.enqueue(
+					encoder.encode(`${sanitizeDragonflySseEvent(event)}\n\n`),
+				);
+			}
+		},
+		flush(controller) {
+			buffer += decoder.decode();
+			if (buffer) {
+				controller.enqueue(encoder.encode(sanitizeDragonflySseEvent(buffer)));
+			}
+		},
+	});
+
+	return new Response(response.body.pipeThrough(stream), {
+		status: response.status,
+		statusText: response.statusText,
+		headers: response.headers,
+	});
+}
+
 export const dragonflyAdapter: ProviderAdapter = {
 	kind: "dragonfly",
 
@@ -214,6 +361,7 @@ export const dragonflyAdapter: ProviderAdapter = {
 			baseURL: normalizeBaseUrl(config.baseUrl),
 			headers: buildHeaders(config),
 			queryParams: config.queryParams,
+			fetch: dragonflyFetch,
 			includeUsage: true,
 			// Dragonfly uses a custom endpoint path
 			transformRequestBody: (args: Record<string, unknown>) => {
@@ -233,6 +381,9 @@ export const dragonflyAdapter: ProviderAdapter = {
 					.join("\n\n");
 				return {
 					...args,
+					messages: isDragonflyAnthropicModel(args.model)
+						? normalizeAnthropicToolLoopMessages(args.messages)
+						: args.messages,
 					promptSystem,
 					cache: false,
 					save: false,

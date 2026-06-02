@@ -367,51 +367,12 @@ export default function ChatPage() {
 		const container = scrollContainerRef.current;
 		if (!container || !autoFollowRef.current) return;
 
-		const reduceMotion = window.matchMedia(
-			"(prefers-reduced-motion: reduce)",
-		).matches;
-
 		programmaticScrollRef.current = true;
-
-		if (reduceMotion) {
-			container.scrollTop = container.scrollHeight;
-			requestAnimationFrame(() => {
-				programmaticScrollRef.current = false;
-			});
-			return;
-		}
-
-		if (scrollAnimationRef.current !== null) return;
-
-		function followBottom() {
-			const activeContainer = scrollContainerRef.current;
-			if (!activeContainer || !autoFollowRef.current) {
-				programmaticScrollRef.current = false;
-				scrollAnimationRef.current = null;
-				return;
-			}
-
-			const target = Math.max(
-				0,
-				activeContainer.scrollHeight - activeContainer.clientHeight,
-			);
-			const distance = target - activeContainer.scrollTop;
-
-			if (Math.abs(distance) < 0.6) {
-				activeContainer.scrollTop = target;
-				scrollAnimationRef.current = null;
-				requestAnimationFrame(() => {
-					programmaticScrollRef.current = false;
-				});
-				return;
-			}
-
-			activeContainer.scrollTop += distance * 0.46;
-			scrollAnimationRef.current = window.requestAnimationFrame(followBottom);
-		}
-
-		scrollAnimationRef.current = window.requestAnimationFrame(followBottom);
-	}, [cancelScrollAnimation]);
+		container.scrollTop = container.scrollHeight;
+		requestAnimationFrame(() => {
+			programmaticScrollRef.current = false;
+		});
+	}, []);
 
 	useEffect(() => {
 		const container = scrollContainerRef.current;
@@ -419,33 +380,28 @@ export default function ChatPage() {
 
 		function updateAutoFollow() {
 			if (programmaticScrollRef.current) return;
-			const activeContainer = scrollContainerRef.current;
-			if (!activeContainer) return;
-			const distanceFromBottom =
-				activeContainer.scrollHeight -
-				activeContainer.scrollTop -
-				activeContainer.clientHeight;
+			const c = scrollContainerRef.current;
+			if (!c) return;
+			const distanceFromBottom = c.scrollHeight - c.scrollTop - c.clientHeight;
 			autoFollowRef.current = distanceFromBottom < 180;
 		}
 
-		function handleUserScrollIntent() {
+		function handleWheel(event: WheelEvent) {
 			programmaticScrollRef.current = false;
 			cancelScrollAnimation();
+			if (event.deltaY < 0) {
+				autoFollowRef.current = false;
+				return;
+			}
 			updateAutoFollow();
 		}
 
 		updateAutoFollow();
 		container.addEventListener("scroll", updateAutoFollow, { passive: true });
-		container.addEventListener("wheel", handleUserScrollIntent, {
-			passive: true,
-		});
-		container.addEventListener("touchmove", handleUserScrollIntent, {
-			passive: true,
-		});
+		container.addEventListener("wheel", handleWheel, { passive: true });
 		return () => {
 			container.removeEventListener("scroll", updateAutoFollow);
-			container.removeEventListener("wheel", handleUserScrollIntent);
-			container.removeEventListener("touchmove", handleUserScrollIntent);
+			container.removeEventListener("wheel", handleWheel);
 		};
 	}, [cancelScrollAnimation]);
 
