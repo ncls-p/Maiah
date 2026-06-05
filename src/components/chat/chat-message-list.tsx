@@ -429,13 +429,13 @@ function HtmlArtifactCard({
 				</CollapsibleContent>
 			</Collapsible>
 			<Dialog open={fullscreenOpen} onOpenChange={setFullscreenOpen}>
-				<DialogContent className="!fixed !inset-0 !top-0 !left-0 flex !h-[100dvh] !max-h-[100dvh] !w-[100vw] !max-w-[100vw] !translate-x-0 !translate-y-0 grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden !rounded-none !border-0 bg-background p-0 sm:!max-w-[100vw]">
-					<div className="flex min-h-16 flex-wrap items-center justify-between gap-3 border-b border-border/60 bg-background/95 px-5 py-4 pr-16 shadow-sm backdrop-blur md:px-7">
+				<DialogContent className="!fixed !inset-0 flex !h-dvh !w-full !translate-x-0 !translate-y-0 flex-col overflow-hidden !rounded-none !border-0 bg-background p-0 sm:!max-w-none">
+					<div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border/60 bg-background/95 px-4 py-3 shadow-sm backdrop-blur sm:px-6">
 						<div className="min-w-0">
 							<DialogTitle className="truncate text-base font-semibold">
 								{artifact.title}
 							</DialogTitle>
-							<p className="mt-1 text-xs text-muted-foreground">
+							<p className="mt-0.5 text-xs text-muted-foreground">
 								Fullscreen HTML/CSS/JS preview
 							</p>
 						</div>
@@ -444,7 +444,7 @@ function HtmlArtifactCard({
 								type="button"
 								variant="outline"
 								size="sm"
-								className="h-9 px-3 text-xs"
+								className="h-8 px-3 text-xs"
 								onClick={copyCode}
 							>
 								{copied ? "Copied" : "Copy code"}
@@ -453,34 +453,30 @@ function HtmlArtifactCard({
 								type="button"
 								variant="ghost"
 								size="sm"
-								className="h-9 px-3 text-xs"
+								className="h-8 px-3 text-xs"
 								onClick={() => setFullscreenCodeOpen((current) => !current)}
 							>
 								{fullscreenCodeOpen ? "Hide code" : "View code"}
 							</Button>
 						</div>
 					</div>
-					<div
-						className={cn(
-							"grid min-h-0 gap-5 bg-muted/30 p-5 md:p-8",
-							fullscreenCodeOpen &&
-								"grid-rows-[minmax(0,1fr)_auto] lg:grid-cols-[minmax(0,1fr)_minmax(22rem,32rem)] lg:grid-rows-1",
-						)}
-					>
-						<div className="min-h-0 overflow-hidden rounded-2xl border border-border/70 bg-white shadow-2xl shadow-black/10 ring-1 ring-black/5">
+					<div className="flex min-h-0 flex-1 flex-col gap-4 bg-muted/30 p-4 sm:p-6 lg:flex-row">
+						<div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-border/70 bg-white shadow-2xl shadow-black/10 ring-1 ring-black/5 lg:min-w-0">
 							<iframe
 								title={`${artifact.title} fullscreen`}
 								srcDoc={fullscreenSrcDoc}
 								sandbox="allow-scripts"
-								className="h-full min-h-[82dvh] w-full bg-white lg:min-h-0"
+								className="h-full w-full bg-white"
 							/>
 						</div>
 						<Collapsible
 							open={fullscreenCodeOpen}
 							onOpenChange={setFullscreenCodeOpen}
 						>
-							<CollapsibleContent className="max-h-[34dvh] overflow-auto rounded-2xl border border-border/70 bg-background shadow-xl lg:h-full lg:max-h-none">
-								<ArtifactCodeBlocks artifact={artifact} />
+							<CollapsibleContent className="flex max-h-[45%] flex-1 flex-col overflow-hidden rounded-xl border border-border/70 bg-background shadow-xl lg:max-h-none lg:min-w-[22rem] lg:max-w-[32rem]">
+								<div className="flex-1 overflow-auto">
+									<ArtifactCodeBlocks artifact={artifact} />
+								</div>
 							</CollapsibleContent>
 						</Collapsible>
 					</div>
