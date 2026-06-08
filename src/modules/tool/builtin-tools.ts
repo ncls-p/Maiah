@@ -1,3 +1,4 @@
+import { createHash, randomInt, randomUUID } from "node:crypto";
 import { z } from "zod";
 
 import type { ToolRiskLevel } from "./builtin-tools-catalog";
@@ -10,6 +11,7 @@ export interface BuiltInToolDefinition<Input = unknown, Output = unknown> {
 	displayName: string;
 	description: string;
 	riskLevel: ToolRiskLevel;
+	category: string;
 	inputSchema: z.ZodType<Input>;
 	execute(input: Input): Promise<Output> | Output;
 }
@@ -45,6 +47,112 @@ const htmlArtifactInputSchema = z.object({
 	height: z.number().int().min(160).max(900).default(420),
 });
 
+const randomNumberInputSchema = z.object({
+	min: z.number().default(0),
+	max: z.number().default(100),
+	count: z.number().int().min(1).max(100).default(1),
+	integer: z.boolean().default(true),
+});
+
+const uuidGeneratorInputSchema = z.object({
+	count: z.number().int().min(1).max(50).default(1),
+});
+
+const dateMathInputSchema = z.object({
+	operation: z.enum(["add", "subtract", "difference"]),
+	date: z.string().trim().min(1).max(64),
+	endDate: z.string().trim().min(1).max(64).optional(),
+	amount: z.number().int().min(0).max(100_000).default(0),
+	unit: z.enum(["days", "weeks", "months", "years"]).default("days"),
+});
+
+const jsonToolInputSchema = z.object({
+	action: z.enum(["validate", "format", "minify", "inspect"]).default("format"),
+	json: z.string().min(1).max(100_000),
+});
+
+const textStatsInputSchema = z.object({
+	text: z.string().max(100_000),
+	wordsPerMinute: z.number().int().min(80).max(500).default(200),
+});
+
+const base64ToolInputSchema = z.object({
+	action: z.enum(["encode", "decode"]),
+	value: z.string().max(100_000),
+});
+
+const hashTextInputSchema = z.object({
+	text: z.string().max(100_000),
+	algorithm: z.enum(["sha256", "sha1", "md5"]).default("sha256"),
+});
+
+const unitConverterInputSchema = z.object({
+	value: z.number(),
+	from: z.enum([
+		"mm",
+		"cm",
+		"m",
+		"km",
+		"in",
+		"ft",
+		"yd",
+		"mi",
+		"mg",
+		"g",
+		"kg",
+		"oz",
+		"lb",
+		"b",
+		"kb",
+		"mb",
+		"gb",
+		"tb",
+		"c",
+		"f",
+		"k",
+	]),
+	to: z.enum([
+		"mm",
+		"cm",
+		"m",
+		"km",
+		"in",
+		"ft",
+		"yd",
+		"mi",
+		"mg",
+		"g",
+		"kg",
+		"oz",
+		"lb",
+		"b",
+		"kb",
+		"mb",
+		"gb",
+		"tb",
+		"c",
+		"f",
+		"k",
+	]),
+});
+
+const slugifyTextInputSchema = z.object({
+	text: z.string().min(1).max(1_000),
+	separator: z.enum(["-", "_"]).default("-"),
+});
+
+const colorConverterInputSchema = z.object({
+	hex: z
+		.string()
+		.trim()
+		.regex(/^#?[0-9a-fA-F]{6}$/, "Use a 6-digit hex color"),
+});
+
+const markdownTableInputSchema = z.object({
+	columns: z.array(z.string().min(1).max(80)).min(1).max(12),
+	rows: z.array(z.array(z.string().max(500)).max(12)).max(100),
+});
+
 type SearxngResult = {
 	title?: unknown;
 	url?: unknown;
@@ -52,6 +160,32 @@ type SearxngResult = {
 	engine?: unknown;
 	engines?: unknown;
 	score?: unknown;
+};
+
+type UnitKind = "length" | "weight" | "data" | "temperature";
+
+const unitFactors: Record<string, { kind: UnitKind; factor: number }> = {
+	mm: { kind: "length", factor: 0.001 },
+	cm: { kind: "length", factor: 0.01 },
+	m: { kind: "length", factor: 1 },
+	km: { kind: "length", factor: 1_000 },
+	in: { kind: "length", factor: 0.0254 },
+	ft: { kind: "length", factor: 0.3048 },
+	yd: { kind: "length", factor: 0.9144 },
+	mi: { kind: "length", factor: 1_609.344 },
+	mg: { kind: "weight", factor: 0.001 },
+	g: { kind: "weight", factor: 1 },
+	kg: { kind: "weight", factor: 1_000 },
+	oz: { kind: "weight", factor: 28.349523125 },
+	lb: { kind: "weight", factor: 453.59237 },
+	b: { kind: "data", factor: 1 },
+	kb: { kind: "data", factor: 1_024 },
+	mb: { kind: "data", factor: 1_048_576 },
+	gb: { kind: "data", factor: 1_073_741_824 },
+	tb: { kind: "data", factor: 1_099_511_627_776 },
+	c: { kind: "temperature", factor: 1 },
+	f: { kind: "temperature", factor: 1 },
+	k: { kind: "temperature", factor: 1 },
 };
 
 function calculateExpression(expression: string) {
@@ -73,13 +207,18 @@ function normalizeSearxngEngines(result: SearxngResult) {
 	return [];
 }
 
+function todaySearchSuffix() {
+	return `today ${new Date().toISOString().slice(0, 10)}`;
+}
+
 async function searchWebWithSearxng(
 	input: z.infer<typeof webSearchInputSchema>,
 ) {
 	const { env } = await import("@/lib/env");
 	const limit = input.limit ?? 5;
+	const searchedQuery = `${input.query} ${todaySearchSuffix()}`.trim();
 	const url = new URL("/search", env.SEARXNG_URL);
-	url.searchParams.set("q", input.query);
+	url.searchParams.set("q", searchedQuery);
 	url.searchParams.set("format", "json");
 	url.searchParams.set("safesearch", "1");
 	if (input.language) url.searchParams.set("language", input.language);
@@ -99,6 +238,7 @@ async function searchWebWithSearxng(
 
 	return {
 		query: input.query,
+		searchedQuery,
 		results: results
 			.filter(
 				(result) =>
@@ -118,13 +258,189 @@ async function searchWebWithSearxng(
 	};
 }
 
+function randomNumbers({
+	min,
+	max,
+	count,
+	integer,
+}: z.infer<typeof randomNumberInputSchema>) {
+	if (max <= min) throw new Error("max must be greater than min");
+	const values = Array.from({ length: count }, () => {
+		if (!integer) return min + Math.random() * (max - min);
+		const safeMin = Math.ceil(min);
+		const safeMax = Math.floor(max);
+		if (safeMax < safeMin) throw new Error("No integer exists in this range");
+		return randomInt(safeMin, safeMax + 1);
+	});
+	return { values, value: values[0] };
+}
+
+function parseDate(value: string) {
+	const date = new Date(value);
+	if (Number.isNaN(date.getTime())) throw new Error(`Invalid date: ${value}`);
+	return date;
+}
+
+function mutateDate(date: Date, amount: number, unit: string) {
+	const next = new Date(date);
+	if (unit === "days") next.setUTCDate(next.getUTCDate() + amount);
+	if (unit === "weeks") next.setUTCDate(next.getUTCDate() + amount * 7);
+	if (unit === "months") next.setUTCMonth(next.getUTCMonth() + amount);
+	if (unit === "years") next.setUTCFullYear(next.getUTCFullYear() + amount);
+	return next;
+}
+
+function dateMath(input: z.infer<typeof dateMathInputSchema>) {
+	const date = parseDate(input.date);
+	if (input.operation === "difference") {
+		if (!input.endDate) throw new Error("endDate is required for difference");
+		const endDate = parseDate(input.endDate);
+		const milliseconds = endDate.getTime() - date.getTime();
+		return {
+			startDate: date.toISOString(),
+			endDate: endDate.toISOString(),
+			milliseconds,
+			days: milliseconds / 86_400_000,
+		};
+	}
+	const amount = input.operation === "subtract" ? -input.amount : input.amount;
+	const result = mutateDate(date, amount, input.unit);
+	return { inputDate: date.toISOString(), result: result.toISOString() };
+}
+
+function jsonTool({ action, json }: z.infer<typeof jsonToolInputSchema>) {
+	try {
+		const parsed = JSON.parse(json) as unknown;
+		if (action === "validate") return { valid: true };
+		if (action === "minify") return { result: JSON.stringify(parsed) };
+		if (action === "inspect") {
+			return {
+				valid: true,
+				type: Array.isArray(parsed) ? "array" : typeof parsed,
+				keys:
+					parsed && typeof parsed === "object" && !Array.isArray(parsed)
+						? Object.keys(parsed as Record<string, unknown>)
+						: [],
+				items: Array.isArray(parsed) ? parsed.length : undefined,
+			};
+		}
+		return { result: JSON.stringify(parsed, null, 2) };
+	} catch (error) {
+		return {
+			valid: false,
+			error: error instanceof Error ? error.message : String(error),
+		};
+	}
+}
+
+function textStats({ text, wordsPerMinute }: z.infer<typeof textStatsInputSchema>) {
+	const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+	return {
+		characters: text.length,
+		charactersNoSpaces: text.replace(/\s/g, "").length,
+		words,
+		lines: text.length ? text.split(/\r?\n/).length : 0,
+		paragraphs: text.trim() ? text.trim().split(/\n\s*\n/).length : 0,
+		readingTimeMinutes: Math.max(1, Math.ceil(words / wordsPerMinute)),
+	};
+}
+
+function base64Tool({ action, value }: z.infer<typeof base64ToolInputSchema>) {
+	if (action === "encode") {
+		return { result: Buffer.from(value, "utf8").toString("base64") };
+	}
+	return { result: Buffer.from(value, "base64").toString("utf8") };
+}
+
+function convertTemperature(value: number, from: string, to: string) {
+	const celsius =
+		from === "c" ? value : from === "f" ? (value - 32) * (5 / 9) : value - 273.15;
+	if (to === "c") return celsius;
+	if (to === "f") return celsius * (9 / 5) + 32;
+	return celsius + 273.15;
+}
+
+function unitConverter({ value, from, to }: z.infer<typeof unitConverterInputSchema>) {
+	const fromUnit = unitFactors[from];
+	const toUnit = unitFactors[to];
+	if (fromUnit.kind !== toUnit.kind) {
+		throw new Error(`Cannot convert ${from} to ${to}`);
+	}
+	const result =
+		fromUnit.kind === "temperature"
+			? convertTemperature(value, from, to)
+			: (value * fromUnit.factor) / toUnit.factor;
+	return { value, from, to, result };
+}
+
+function trimSlugSeparator(value: string, separator: "-" | "_") {
+	let start = 0;
+	let end = value.length;
+	while (value[start] === separator) start += 1;
+	while (end > start && value[end - 1] === separator) end -= 1;
+	return value.slice(start, end);
+}
+
+function slugifyText({ text, separator }: z.infer<typeof slugifyTextInputSchema>) {
+	const slug = text
+		.normalize("NFKD")
+		.replace(/[\u0300-\u036f]/g, "")
+		.toLowerCase()
+		.trim()
+		.replace(/[^a-z0-9]+/g, separator);
+	return { slug: trimSlugSeparator(slug, separator) };
+}
+
+function colorConverter({ hex }: z.infer<typeof colorConverterInputSchema>) {
+	const normalized = hex.replace("#", "").toLowerCase();
+	const r = Number.parseInt(normalized.slice(0, 2), 16);
+	const g = Number.parseInt(normalized.slice(2, 4), 16);
+	const b = Number.parseInt(normalized.slice(4, 6), 16);
+	const r1 = r / 255;
+	const g1 = g / 255;
+	const b1 = b / 255;
+	const max = Math.max(r1, g1, b1);
+	const min = Math.min(r1, g1, b1);
+	const lightness = (max + min) / 2;
+	const delta = max - min;
+	let hue = 0;
+	let saturation = 0;
+	if (delta !== 0) {
+		saturation = delta / (1 - Math.abs(2 * lightness - 1));
+		if (max === r1) hue = 60 * (((g1 - b1) / delta) % 6);
+		if (max === g1) hue = 60 * ((b1 - r1) / delta + 2);
+		if (max === b1) hue = 60 * ((r1 - g1) / delta + 4);
+	}
+	return {
+		hex: `#${normalized}`,
+		rgb: { r, g, b },
+		hsl: {
+			h: Math.round((hue + 360) % 360),
+			s: Math.round(saturation * 100),
+			l: Math.round(lightness * 100),
+		},
+	};
+}
+
+function markdownTable({ columns, rows }: z.infer<typeof markdownTableInputSchema>) {
+	const escapeCell = (value: string) => value.replace(/\|/g, "\\|").replace(/\n/g, " ");
+	const normalizedRows = rows.map((row) =>
+		columns.map((_, index) => escapeCell(row[index] ?? "")),
+	);
+	const header = `| ${columns.map(escapeCell).join(" | ")} |`;
+	const separator = `| ${columns.map(() => "---").join(" | ")} |`;
+	const body = normalizedRows.map((row) => `| ${row.join(" | ")} |`);
+	return { markdown: [header, separator, ...body].join("\n") };
+}
+
 export const builtInTools = [
 	{
 		id: "00000000-0000-4000-8000-000000000001",
 		name: "calculator",
 		displayName: "Calculator",
-		description: "Safely evaluate arithmetic expressions.",
+		description: "Evaluate arithmetic expressions safely.",
 		riskLevel: "low",
+		category: "Think",
 		inputSchema: calculatorInputSchema,
 		execute: ({ expression }) => ({
 			result: calculateExpression(expression),
@@ -134,8 +450,9 @@ export const builtInTools = [
 		id: "00000000-0000-4000-8000-000000000002",
 		name: "current_time",
 		displayName: "Current time",
-		description: "Return the current date and time for a requested timezone.",
+		description: "Return the current date and time for any timezone.",
 		riskLevel: "low",
+		category: "Time",
 		inputSchema: currentTimeInputSchema,
 		execute: ({ timezone }) => ({
 			timezone,
@@ -151,8 +468,9 @@ export const builtInTools = [
 		id: "00000000-0000-4000-8000-000000000003",
 		name: "http_fetch",
 		displayName: "HTTP fetch",
-		description: "Request a remote URL. Requires approval before execution.",
+		description: "Fetch a remote URL after approval.",
 		riskLevel: "high",
+		category: "Web",
 		inputSchema: httpFetchInputSchema,
 		execute: async ({ url, method }) => {
 			const response = await fetch(url, {
@@ -172,8 +490,9 @@ export const builtInTools = [
 		id: "00000000-0000-4000-8000-000000000004",
 		name: "web_search",
 		displayName: "Web search",
-		description: "Search the web through the workspace SearXNG instance.",
+		description: "Search the web with today’s date automatically included.",
 		riskLevel: "medium",
+		category: "Web",
 		inputSchema: webSearchInputSchema,
 		execute: searchWebWithSearxng,
 	},
@@ -182,8 +501,9 @@ export const builtInTools = [
 		name: "render_html_artifact",
 		displayName: "HTML artifact",
 		description:
-			"Render a self-contained HTML/CSS/JS artifact in the chat for UI mockups, diagrams, cards, and interactive demos. The user can inspect the source code.",
+			"Render interactive HTML/CSS/JS previews in chat for UI mockups, diagrams, cards, and demos.",
 		riskLevel: "medium",
+		category: "Create",
 		inputSchema: htmlArtifactInputSchema,
 		execute: ({ title, html, css, js, height }) => ({
 			kind: "html_artifact" as const,
@@ -194,6 +514,122 @@ export const builtInTools = [
 			height,
 		}),
 	},
+	{
+		id: "00000000-0000-4000-8000-000000000006",
+		name: "random_number",
+		displayName: "Random number",
+		description: "Generate one or more random numbers in a range.",
+		riskLevel: "low",
+		category: "Think",
+		inputSchema: randomNumberInputSchema,
+		execute: randomNumbers,
+	},
+	{
+		id: "00000000-0000-4000-8000-000000000007",
+		name: "uuid_generator",
+		displayName: "UUID generator",
+		description: "Generate UUIDs for IDs, examples, and test data.",
+		riskLevel: "low",
+		category: "Create",
+		inputSchema: uuidGeneratorInputSchema,
+		execute: ({ count }) => {
+			const values = Array.from({ length: count }, () => randomUUID());
+			return { values, value: values[0] };
+		},
+	},
+	{
+		id: "00000000-0000-4000-8000-000000000008",
+		name: "date_math",
+		displayName: "Date math",
+		description: "Add, subtract, or compare dates.",
+		riskLevel: "low",
+		category: "Time",
+		inputSchema: dateMathInputSchema,
+		execute: dateMath,
+	},
+	{
+		id: "00000000-0000-4000-8000-000000000009",
+		name: "json_tool",
+		displayName: "JSON helper",
+		description: "Validate, format, minify, or inspect JSON.",
+		riskLevel: "low",
+		category: "Code",
+		inputSchema: jsonToolInputSchema,
+		execute: jsonTool,
+	},
+	{
+		id: "00000000-0000-4000-8000-000000000010",
+		name: "text_stats",
+		displayName: "Text stats",
+		description: "Count words, characters, lines, and reading time.",
+		riskLevel: "low",
+		category: "Write",
+		inputSchema: textStatsInputSchema,
+		execute: textStats,
+	},
+	{
+		id: "00000000-0000-4000-8000-000000000011",
+		name: "base64_tool",
+		displayName: "Base64",
+		description: "Encode or decode Base64 text.",
+		riskLevel: "low",
+		category: "Code",
+		inputSchema: base64ToolInputSchema,
+		execute: base64Tool,
+	},
+	{
+		id: "00000000-0000-4000-8000-000000000012",
+		name: "hash_text",
+		displayName: "Hash text",
+		description: "Create SHA-256, SHA-1, or MD5 hashes.",
+		riskLevel: "low",
+		category: "Code",
+		inputSchema: hashTextInputSchema,
+		execute: ({ text, algorithm }) => ({
+			algorithm,
+			hash: createHash(algorithm).update(text).digest("hex"),
+		}),
+	},
+	{
+		id: "00000000-0000-4000-8000-000000000013",
+		name: "unit_converter",
+		displayName: "Unit converter",
+		description: "Convert length, weight, data, and temperature units.",
+		riskLevel: "low",
+		category: "Think",
+		inputSchema: unitConverterInputSchema,
+		execute: unitConverter,
+	},
+	{
+		id: "00000000-0000-4000-8000-000000000014",
+		name: "slugify_text",
+		displayName: "Slugify text",
+		description: "Turn text into clean URL/file slugs.",
+		riskLevel: "low",
+		category: "Write",
+		inputSchema: slugifyTextInputSchema,
+		execute: slugifyText,
+	},
+	{
+		id: "00000000-0000-4000-8000-000000000015",
+		name: "color_converter",
+		displayName: "Color converter",
+		description: "Convert hex colors to RGB and HSL.",
+		riskLevel: "low",
+		category: "Design",
+		inputSchema: colorConverterInputSchema,
+		execute: colorConverter,
+	},
+	{
+		id: "00000000-0000-4000-8000-000000000016",
+		name: "markdown_table",
+		displayName: "Markdown table",
+		description: "Create a clean Markdown table from columns and rows.",
+		riskLevel: "low",
+		category: "Write",
+		inputSchema: markdownTableInputSchema,
+		execute: markdownTable,
+	},
 ] satisfies BuiltInToolDefinition[];
 
 export function listBuiltInTools() {
@@ -203,6 +639,7 @@ export function listBuiltInTools() {
 		displayName: tool.displayName,
 		description: tool.description,
 		riskLevel: tool.riskLevel,
+		category: tool.category,
 		inputSchemaJson: toolToJsonSchema(tool.id),
 		requiresApprovalByDefault: requiresApproval(tool.riskLevel),
 	}));
@@ -222,95 +659,141 @@ export function requiresApproval(
 	return riskLevel === "high" || riskLevel === "critical";
 }
 
-export function toolToJsonSchema(toolId: string) {
-	const tool = getBuiltInTool(toolId);
-	if (!tool) return null;
-
-	if (tool.name === "calculator") {
-		return {
-			type: "object",
-			properties: {
-				expression: {
-					type: "string",
-					description: "Arithmetic expression",
-				},
-			},
-			required: ["expression"],
-		};
-	}
-	if (tool.name === "current_time") {
-		return {
-			type: "object",
-			properties: {
-				timezone: { type: "string", default: "UTC" },
-			},
-			required: [],
-		};
-	}
-	if (tool.name === "web_search") {
-		return {
-			type: "object",
-			properties: {
-				query: {
-					type: "string",
-					description: "Search query to send to SearXNG.",
-				},
-				limit: {
-					type: "number",
-					default: 5,
-					minimum: 1,
-					maximum: 10,
-				},
-				language: {
-					type: "string",
-					description: "Optional SearXNG language code, for example en or fr.",
-				},
-			},
-			required: ["query"],
-		};
-	}
-	if (tool.name === "render_html_artifact") {
-		return {
-			type: "object",
-			properties: {
-				title: {
-					type: "string",
-					description: "Short title displayed above the preview.",
-					default: "Interactive preview",
-				},
-				html: {
-					type: "string",
-					description:
-						"HTML fragment to render inside the isolated preview. Do not include html/head/body tags unless necessary.",
-				},
-				css: {
-					type: "string",
-					description: "CSS for the preview.",
-					default: "",
-				},
-				js: {
-					type: "string",
-					description:
-						"Optional JavaScript for the preview. It runs only inside a sandboxed iframe.",
-					default: "",
-				},
-				height: {
-					type: "number",
-					description: "Preview height in pixels.",
-					default: 420,
-					minimum: 160,
-					maximum: 900,
-				},
-			},
-			required: ["html"],
-		};
-	}
-	return {
+const commonSchemas: Record<string, unknown> = {
+	calculator: {
+		type: "object",
+		properties: { expression: { type: "string", description: "Arithmetic expression" } },
+		required: ["expression"],
+	},
+	current_time: {
+		type: "object",
+		properties: { timezone: { type: "string", default: "UTC" } },
+		required: [],
+	},
+	http_fetch: {
 		type: "object",
 		properties: {
 			url: { type: "string", format: "uri" },
 			method: { type: "string", enum: ["GET", "HEAD"], default: "GET" },
 		},
 		required: ["url"],
-	};
+	},
+	web_search: {
+		type: "object",
+		properties: {
+			query: {
+				type: "string",
+				description:
+					"Search query. The tool automatically appends today's date to keep results current.",
+			},
+			limit: { type: "number", default: 5, minimum: 1, maximum: 10 },
+			language: { type: "string", description: "Optional language code, for example en or fr." },
+		},
+		required: ["query"],
+	},
+	render_html_artifact: {
+		type: "object",
+		properties: {
+			title: { type: "string", default: "Interactive preview" },
+			html: { type: "string", description: "HTML fragment for the isolated preview." },
+			css: { type: "string", default: "" },
+			js: { type: "string", default: "" },
+			height: { type: "number", default: 420, minimum: 160, maximum: 900 },
+		},
+		required: ["html"],
+	},
+	random_number: {
+		type: "object",
+		properties: {
+			min: { type: "number", default: 0 },
+			max: { type: "number", default: 100 },
+			count: { type: "number", default: 1, minimum: 1, maximum: 100 },
+			integer: { type: "boolean", default: true },
+		},
+		required: [],
+	},
+	uuid_generator: {
+		type: "object",
+		properties: { count: { type: "number", default: 1, minimum: 1, maximum: 50 } },
+		required: [],
+	},
+	date_math: {
+		type: "object",
+		properties: {
+			operation: { type: "string", enum: ["add", "subtract", "difference"] },
+			date: { type: "string", description: "Start date, e.g. 2026-06-08" },
+			endDate: { type: "string", description: "End date for difference" },
+			amount: { type: "number", default: 0 },
+			unit: { type: "string", enum: ["days", "weeks", "months", "years"], default: "days" },
+		},
+		required: ["operation", "date"],
+	},
+	json_tool: {
+		type: "object",
+		properties: {
+			action: { type: "string", enum: ["validate", "format", "minify", "inspect"], default: "format" },
+			json: { type: "string" },
+		},
+		required: ["json"],
+	},
+	text_stats: {
+		type: "object",
+		properties: {
+			text: { type: "string" },
+			wordsPerMinute: { type: "number", default: 200 },
+		},
+		required: ["text"],
+	},
+	base64_tool: {
+		type: "object",
+		properties: {
+			action: { type: "string", enum: ["encode", "decode"] },
+			value: { type: "string" },
+		},
+		required: ["action", "value"],
+	},
+	hash_text: {
+		type: "object",
+		properties: {
+			text: { type: "string" },
+			algorithm: { type: "string", enum: ["sha256", "sha1", "md5"], default: "sha256" },
+		},
+		required: ["text"],
+	},
+	unit_converter: {
+		type: "object",
+		properties: {
+			value: { type: "number" },
+			from: { type: "string" },
+			to: { type: "string" },
+		},
+		required: ["value", "from", "to"],
+	},
+	slugify_text: {
+		type: "object",
+		properties: {
+			text: { type: "string" },
+			separator: { type: "string", enum: ["-", "_"], default: "-" },
+		},
+		required: ["text"],
+	},
+	color_converter: {
+		type: "object",
+		properties: { hex: { type: "string", description: "6-digit hex color, e.g. #0ea5e9" } },
+		required: ["hex"],
+	},
+	markdown_table: {
+		type: "object",
+		properties: {
+			columns: { type: "array", items: { type: "string" } },
+			rows: { type: "array", items: { type: "array", items: { type: "string" } } },
+		},
+		required: ["columns", "rows"],
+	},
+};
+
+export function toolToJsonSchema(toolId: string) {
+	const tool = getBuiltInTool(toolId);
+	if (!tool) return null;
+	return commonSchemas[tool.name] ?? { type: "object", properties: {}, required: [] };
 }

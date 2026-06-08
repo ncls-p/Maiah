@@ -8,13 +8,13 @@ import {
 } from "lucide-react";
 
 import { ListRow } from "@/components/list-row";
+import { AdvancedSection } from "@/components/ui/advanced-section";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
 	CardContent,
 	CardDescription,
-	CardFooter,
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
@@ -37,6 +37,28 @@ import { InfoCallout, Toolbar } from "./shared";
 
 /* ─── Built-in Tools Section ──────────────────────────────────────── */
 
+function toolRiskVariant(riskLevel: string) {
+	if (riskLevel === "high" || riskLevel === "critical") return "destructive";
+	if (riskLevel === "medium") return "secondary";
+	return "outline";
+}
+
+function setBuiltinToolEnabled(
+	tool: BuiltinTool,
+	enabled: boolean,
+	setBindings: (fn: (prev: ToolBindingState) => ToolBindingState) => void,
+) {
+	setBindings((current) => ({
+		...current,
+		[tool.id]: {
+			enabled,
+			requireApproval:
+				current[tool.id]?.requireApproval ??
+				(tool.riskLevel === "high" || tool.riskLevel === "critical"),
+		},
+	}));
+}
+
 function BuiltinToolsSection({
 	tools,
 	bindings,
@@ -50,34 +72,43 @@ function BuiltinToolsSection({
 	searchQuery: string;
 	filter: ToolFilter;
 }) {
-	const filtered = tools.filter((t) => {
+	const filtered = tools.filter((tool) => {
 		if (searchQuery.trim()) {
 			const q = searchQuery.toLowerCase();
 			if (
-				!t.name.toLowerCase().includes(q) &&
-				!t.displayName.toLowerCase().includes(q) &&
-				!t.description.toLowerCase().includes(q)
+				!tool.name.toLowerCase().includes(q) &&
+				!tool.displayName.toLowerCase().includes(q) &&
+				!tool.description.toLowerCase().includes(q) &&
+				!(tool.category ?? "").toLowerCase().includes(q)
 			)
 				return false;
 		}
-		if (filter === "enabled" && !bindings[t.id]?.enabled) return false;
-		if (filter === "disabled" && bindings[t.id]?.enabled) return false;
+		if (filter === "enabled" && !bindings[tool.id]?.enabled) return false;
+		if (filter === "disabled" && bindings[tool.id]?.enabled) return false;
 		return true;
 	});
+	const selectedCount = tools.filter((tool) => bindings[tool.id]?.enabled).length;
 
 	return (
-		<Card className="animate-in-up stagger-3">
-			<CardHeader>
-				<CardTitle className="flex items-center gap-2">
-					<WrenchIcon className="size-5" aria-hidden="true" />
-					Built-in Tools
-				</CardTitle>
-				<CardDescription>
-					Platform-provided tools. Toggle to enable and set approval
-					requirements.
-				</CardDescription>
+		<Card className="animate-in-up stagger-3 overflow-hidden border-border/70 bg-card/80 shadow-sm">
+			<CardHeader className="gap-2 border-b border-border/60 bg-muted/20">
+				<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+					<div>
+						<CardTitle className="flex items-center gap-2 text-base">
+							<WrenchIcon className="size-4" aria-hidden="true" />
+							Built-in tools
+						</CardTitle>
+						<CardDescription className="mt-1">
+							Enable useful native capabilities. Advanced approval stays hidden by
+							default.
+						</CardDescription>
+					</div>
+					<Badge variant="secondary" className="w-fit rounded-full">
+						{selectedCount}/{tools.length} enabled
+					</Badge>
+				</div>
 			</CardHeader>
-			<CardContent className="flex flex-col gap-2">
+			<CardContent className="p-3 sm:p-4">
 				{filtered.length === 0 ? (
 					<div className="py-8 text-center">
 						<WrenchIcon
@@ -89,72 +120,78 @@ function BuiltinToolsSection({
 								? "No built-in tools available"
 								: "No tools match your filters"}
 						</p>
-						{tools.length > 0 && (
-							<p className="mt-1 text-xs text-muted-foreground">
-								Try adjusting your search or filter
-							</p>
-						)}
 					</div>
 				) : (
-					filtered.map((tool) => (
-						<ListRow key={tool.id} className="items-center justify-between">
-							<div className="min-w-0">
-								<div className="flex items-center gap-2">
-									<p className="font-medium">{tool.displayName}</p>
-									<Badge
-										variant={
-											tool.riskLevel === "high"
-												? "destructive"
-												: tool.riskLevel === "medium"
-													? "secondary"
-													: "outline"
-										}
-										className="text-[10px]"
+					<div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+						{filtered.map((tool) => {
+							const binding = bindings[tool.id];
+							const enabled = Boolean(binding?.enabled);
+							return (
+								<div
+									key={tool.id}
+									className="rounded-2xl border border-border/60 bg-background/70 p-3 transition-colors hover:border-primary/30 hover:bg-muted/30"
+								>
+									<div className="flex items-start justify-between gap-3">
+										<div className="min-w-0">
+											<div className="flex flex-wrap items-center gap-1.5">
+												<p className="truncate text-sm font-medium">
+													{tool.displayName}
+												</p>
+												{tool.category ? (
+													<Badge variant="outline" className="text-[10px]">
+														{tool.category}
+													</Badge>
+												) : null}
+											</div>
+											<p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+												{tool.description}
+											</p>
+										</div>
+										<Switch
+											checked={enabled}
+											onCheckedChange={(checked) =>
+												setBuiltinToolEnabled(tool, checked, setBindings)
+											}
+											aria-label={`Enable ${tool.displayName}`}
+										/>
+									</div>
+									<AdvancedSection
+										label="Advanced"
+										hint="Approval"
+										className="mt-3 border-border/50 bg-muted/10"
 									>
-										{tool.riskLevel} risk
-									</Badge>
+										<div className="flex items-center justify-between gap-3">
+											<div className="min-w-0">
+												<p className="text-sm font-medium">Require approval</p>
+												<p className="text-xs text-muted-foreground">
+													Ask before this tool runs.
+												</p>
+											</div>
+											<Switch
+												checked={binding?.requireApproval ?? false}
+												disabled={!enabled}
+												onCheckedChange={(checked) =>
+													setBindings((current) => ({
+														...current,
+														[tool.id]: {
+															enabled: current[tool.id]?.enabled ?? false,
+															requireApproval: checked,
+														},
+													}))
+												}
+											/>
+										</div>
+										<Badge
+											variant={toolRiskVariant(tool.riskLevel)}
+											className="mt-3 text-[10px]"
+										>
+											{tool.riskLevel} risk
+										</Badge>
+									</AdvancedSection>
 								</div>
-								<p className="mt-0.5 text-xs text-muted-foreground line-clamp-1">
-									{tool.description}
-								</p>
-							</div>
-							<div className="flex items-center gap-4">
-								<label className="flex items-center gap-2 text-xs">
-									<ShieldCheckIcon
-										className="size-3 text-muted-foreground"
-										aria-hidden="true"
-									/>
-									Approval
-									<Switch
-										checked={bindings[tool.id]?.requireApproval ?? false}
-										disabled={!bindings[tool.id]?.enabled}
-										onCheckedChange={(checked) =>
-											setBindings((current) => ({
-												...current,
-												[tool.id]: {
-													enabled: current[tool.id]?.enabled ?? false,
-													requireApproval: checked,
-												},
-											}))
-										}
-									/>
-								</label>
-								<Switch
-									checked={bindings[tool.id]?.enabled ?? false}
-									onCheckedChange={(checked) =>
-										setBindings((current) => ({
-											...current,
-											[tool.id]: {
-												enabled: checked,
-												requireApproval:
-													current[tool.id]?.requireApproval ?? false,
-											},
-										}))
-									}
-								/>
-							</div>
-						</ListRow>
-					))
+							);
+						})}
+					</div>
 				)}
 			</CardContent>
 		</Card>
@@ -388,16 +425,12 @@ function McpToolsSection({
 	mcpBindings,
 	setMcpBindings,
 	searchQuery,
-	onSave,
-	saving,
 }: {
 	mcpServers: McpServer[];
 	mcpTools: McpTool[];
 	mcpBindings: ToolBindingState;
 	setMcpBindings: (fn: (prev: ToolBindingState) => ToolBindingState) => void;
 	searchQuery: string;
-	onSave: () => void;
-	saving: boolean;
 }) {
 	const filteredServers = searchQuery.trim()
 		? mcpServers.filter((server) => {
@@ -461,16 +494,6 @@ function McpToolsSection({
 					))
 				)}
 			</CardContent>
-			<CardFooter className="justify-end">
-				<Button onClick={onSave} disabled={saving}>
-					{saving ? (
-						<Spinner data-icon="inline-start" />
-					) : (
-						<SaveIcon data-icon="inline-start" aria-hidden="true" />
-					)}
-					Save tools
-				</Button>
-			</CardFooter>
 		</Card>
 	);
 }
@@ -508,13 +531,19 @@ export function ToolsTab({
 	saving: boolean;
 	onSave: () => void;
 }) {
+	const selectedBuiltinCount = builtinTools.filter(
+		(tool) => builtinBindings[tool.id]?.enabled,
+	).length;
+	const selectedMcpCount = mcpTools.filter(
+		(tool) => mcpBindings[tool.id]?.enabled,
+	).length;
+	const selectedCount = selectedBuiltinCount + selectedMcpCount;
+
 	return (
 		<div className="space-y-4">
-			<InfoCallout title="About tools" icon={WrenchIcon}>
-				Tools give your assistant the ability to perform actions beyond text
-				generation. Built-in tools are provided by the platform. MCP (Model
-				Context Protocol) tools connect to external services. Enable
-				&quot;Approval&quot; to require user confirmation before a tool runs.
+			<InfoCallout title="Choose capabilities" icon={WrenchIcon}>
+				Turn on the tools this assistant can use. Keep it simple: enable a tool,
+				then use Advanced only when approval needs to change.
 			</InfoCallout>
 
 			<Toolbar
@@ -527,6 +556,16 @@ export function ToolsTab({
 					{ value: "enabled", label: "Enabled" },
 					{ value: "disabled", label: "Disabled" },
 				]}
+				addButton={
+					<Button onClick={onSave} disabled={saving}>
+						{saving ? (
+							<Spinner data-icon="inline-start" />
+						) : (
+							<SaveIcon data-icon="inline-start" aria-hidden="true" />
+						)}
+						Save {selectedCount > 0 ? `${selectedCount} tools` : "tools"}
+					</Button>
+				}
 			/>
 
 			<BuiltinToolsSection
@@ -543,8 +582,6 @@ export function ToolsTab({
 				mcpBindings={mcpBindings}
 				setMcpBindings={setMcpBindings}
 				searchQuery={toolSearch}
-				onSave={onSave}
-				saving={saving}
 			/>
 		</div>
 	);
