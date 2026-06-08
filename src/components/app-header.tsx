@@ -11,7 +11,7 @@ export type AppHeaderBreadcrumb = {
 
 export function AppHeader({
 	title,
-	subtitle = "Workspace",
+	subtitle,
 	breadcrumbs,
 	leading,
 	center,
@@ -41,9 +41,15 @@ export function AppHeader({
 								className="flex min-w-0 flex-wrap items-center gap-1 text-xs text-muted-foreground"
 							>
 								{breadcrumbs.map((crumb, index) => (
-									<span key={`${crumb.label}-${index}`} className="flex items-center gap-1">
+									<span
+										key={`${crumb.label}-${index}`}
+										className="flex items-center gap-1"
+									>
 										{index > 0 ? (
-											<ChevronRightIcon className="size-3 shrink-0 opacity-60" aria-hidden="true" />
+											<ChevronRightIcon
+												className="size-3 shrink-0 opacity-60"
+												aria-hidden="true"
+											/>
 										) : null}
 										{crumb.href ? (
 											<Link
@@ -63,7 +69,9 @@ export function AppHeader({
 							<div className="min-w-0">
 								<p className="truncate text-sm font-semibold">{title}</p>
 								{subtitle ? (
-									<p className="truncate text-xs text-muted-foreground">{subtitle}</p>
+									<p className="truncate text-xs text-muted-foreground">
+										{subtitle}
+									</p>
 								) : null}
 							</div>
 						) : null}
@@ -74,7 +82,9 @@ export function AppHeader({
 				) : null}
 			</div>
 			{actions ? (
-				<div className="flex shrink-0 items-center gap-0.5 sm:gap-1">{actions}</div>
+				<div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
+					{actions}
+				</div>
 			) : null}
 		</header>
 	);

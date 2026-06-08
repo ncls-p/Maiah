@@ -15,6 +15,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
@@ -138,6 +139,7 @@ export function AdvancedSection({
 	setForm,
 	prefix,
 	placeholder,
+	showConnectionMode = true,
 }: {
 	open: boolean;
 	onOpenChange: (o: boolean) => void;
@@ -145,6 +147,7 @@ export function AdvancedSection({
 	setForm: (f: McpServerForm) => void;
 	prefix: string;
 	placeholder: string;
+	showConnectionMode?: boolean;
 }) {
 	return (
 		<Collapsible
@@ -167,6 +170,72 @@ export function AdvancedSection({
 			</CollapsibleTrigger>
 			<CollapsibleContent className="grid min-w-0 gap-4 border-t border-border/60 p-3">
 				<p className="text-xs text-muted-foreground">{placeholder}</p>
+				{showConnectionMode ? (
+					<div className="grid gap-3 rounded-lg border border-border/60 bg-background/60 p-3">
+						<div className="grid gap-2">
+							<Label htmlFor={`${prefix}-transport`}>Connection mode</Label>
+							<Select
+								value={form.transport}
+								onValueChange={(value) =>
+									setForm({ ...form, transport: value, authMode: "none" })
+								}
+							>
+								<SelectTrigger id={`${prefix}-transport`}>
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="streamable-http">HTTP server</SelectItem>
+									<SelectItem value="sse">SSE server</SelectItem>
+									<SelectItem value="stdio">Local command</SelectItem>
+								</SelectContent>
+							</Select>
+						</div>
+						{form.transport === "stdio" ? (
+							<>
+								<div className="grid gap-2">
+									<Label htmlFor={`${prefix}-command`}>Command</Label>
+									<Input
+										id={`${prefix}-command`}
+										autoComplete="off"
+										value={form.command}
+										onChange={(e) =>
+											setForm({ ...form, command: e.target.value })
+										}
+										placeholder="npx…"
+									/>
+								</div>
+								<div className="grid gap-2">
+									<Label htmlFor={`${prefix}-args`}>Args</Label>
+									<Textarea
+										id={`${prefix}-args`}
+										autoComplete="off"
+										value={form.args}
+										onChange={(e) => setForm({ ...form, args: e.target.value })}
+										placeholder={"-y\n@modelcontextprotocol/server-filesystem…"}
+									/>
+									<p className="text-xs text-muted-foreground">
+										One argument per line.
+									</p>
+								</div>
+							</>
+						) : null}
+					</div>
+				) : null}
+				<div className="flex min-w-0 items-center justify-between gap-4 rounded-lg border border-border/60 bg-background/60 p-3">
+					<div>
+						<p className="text-sm font-medium">Require approval</p>
+						<p className="text-xs text-muted-foreground">
+							Ask before tools from this server run.
+						</p>
+					</div>
+					<Switch
+						aria-label="Require approval for all tools from this server"
+						checked={form.requireApproval}
+						onCheckedChange={(checked) =>
+							setForm({ ...form, requireApproval: checked })
+						}
+					/>
+				</div>
 				<div className="grid gap-2">
 					<Label htmlFor={`${prefix}-headers`}>HTTP headers</Label>
 					<Textarea

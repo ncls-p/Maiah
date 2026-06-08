@@ -40,10 +40,10 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
 				setWorkspaceIdState(active);
 			} else {
 				setWorkspaceIdState(null);
-				setError("No workspace found");
+				setError("Setup required");
 			}
 		} catch {
-			setError("Unable to load workspace");
+			setError("Unable to load setup");
 		} finally {
 			setIsLoading(false);
 		}

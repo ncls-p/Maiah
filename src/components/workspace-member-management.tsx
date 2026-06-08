@@ -43,16 +43,16 @@ export function WorkspaceMemberManagement({
 	const [inviting, setInviting] = useState(false);
 	const [busyUserId, setBusyUserId] = useState<string | null>(null);
 	const [email, setEmail] = useState("");
-	const [roleName, setRoleName] = useState<"workspace.member" | "workspace.owner" | "workspace.admin">(
-		"workspace.member",
-	);
+	const [roleName, setRoleName] = useState<
+		"workspace.member" | "workspace.owner" | "workspace.admin"
+	>("workspace.member");
 
 	const loadMembers = useCallback(async () => {
 		if (!workspaceId) return;
 		const res = await fetch(
 			`/api/workspace/members?workspaceId=${workspaceId}`,
 		);
-		if (!res.ok) throw new Error("Unable to load workspace members");
+		if (!res.ok) throw new Error("Unable to load team members");
 		const data = (await res.json()) as { members: WorkspaceMember[] };
 		setMembers(data.members);
 	}, [workspaceId]);
@@ -68,7 +68,7 @@ export function WorkspaceMemberManagement({
 					toast.error(
 						error instanceof Error
 							? error.message
-							: "Unable to load workspace members",
+							: "Unable to load team members",
 					);
 				}
 			} finally {
@@ -128,7 +128,7 @@ export function WorkspaceMemberManagement({
 			}
 			setEmail("");
 			await loadMembers();
-			toast.success("Member added to workspace");
+			toast.success("Member added to team");
 		} catch (error) {
 			toast.error(
 				error instanceof Error ? error.message : "Unable to invite member",
@@ -178,11 +178,11 @@ export function WorkspaceMemberManagement({
 			<CardHeader>
 				<CardTitle className="flex items-center gap-2">
 					<UsersIcon className="size-4" aria-hidden="true" />
-					Workspace Members
+					Team members
 				</CardTitle>
 				<CardDescription>
-					Invite existing accounts to this workspace. They will see the same
-					assistants and connections.
+					Invite existing accounts. They will see the same assistants and
+					connections.
 				</CardDescription>
 			</CardHeader>
 			<CardContent className="flex flex-col gap-6">
@@ -206,9 +206,7 @@ export function WorkspaceMemberManagement({
 						<Label htmlFor="invite-role">Role</Label>
 						<Select
 							value={roleName}
-							onValueChange={(value) =>
-								setRoleName(value as typeof roleName)
-							}
+							onValueChange={(value) => setRoleName(value as typeof roleName)}
 						>
 							<SelectTrigger id="invite-role">
 								<SelectValue />
@@ -284,7 +282,10 @@ export function WorkspaceMemberManagement({
 											aria-label={`Remove ${member.name}`}
 										>
 											{busyUserId === member.userId ? (
-												<Loader2 className="size-4 animate-spin" aria-hidden="true" />
+												<Loader2
+													className="size-4 animate-spin"
+													aria-hidden="true"
+												/>
 											) : (
 												<UserMinusIcon aria-hidden="true" />
 											)}

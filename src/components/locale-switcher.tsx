@@ -7,7 +7,6 @@ import {
 	SelectContent,
 	SelectItem,
 	SelectTrigger,
-	SelectValue,
 } from "@/components/ui/select";
 import { locales, type Locale } from "@/i18n/routing";
 
@@ -24,7 +23,7 @@ export function LocaleSwitcher({ className }: { className?: string }) {
 	return (
 		<Select value={locale} onValueChange={onChange}>
 			<SelectTrigger className={className} aria-label={t("language")}>
-				<SelectValue />
+				<span className="font-medium uppercase">{locale}</span>
 			</SelectTrigger>
 			<SelectContent>
 				{locales.map((code) => (

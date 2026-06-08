@@ -21,7 +21,8 @@
       "primary": "Main",
       "capabilities": "Capabilities",
       "configuration": "Configuration",
-      "administration": "Administration"
+      "administration": "Administration",
+      "advanced": "Advanced"
     },
     "chat": "Chat",
     "assistants": "Assistants",
@@ -36,7 +37,7 @@
     "settings": "Settings",
     "setup": "Setup",
     "assistantConfig": "Assistant settings",
-    "workspace": "Workspace",
+    "workspace": "App",
     "customTools": "Custom tools"
   },
   "chat": {
@@ -64,7 +65,7 @@
       "model": "Pick a model",
       "agent": "Start chatting"
     },
-    "providerDescription": "Choose how this workspace talks to AI models.",
+    "providerDescription": "Choose how the app talks to AI models.",
     "modelDescription": "Select the model your assistant will use.",
     "agentDescription": "Name your assistant and go to chat.",
     "assistantName": "Assistant name",
@@ -114,7 +115,7 @@
       "modelHint": "Which AI powers replies and how it should behave.",
       "sharing": "Who can use it",
       "sharingPersonal": "Only me",
-      "sharingWorkspace": "Everyone in workspace",
+      "sharingWorkspace": "Everyone in the team",
       "sharingUser": "One person (email)",
       "globalAssistant": "Visible across the organization",
       "recommended": "Show as recommended",
@@ -155,7 +156,7 @@
   },
   "providers": {
     "title": "AI connections",
-    "description": "Connect providers and manage models for your workspace.",
+    "description": "Connect providers and manage available models.",
     "add": "Add connection",
     "test": "Test",
     "manageModels": "Models",
@@ -195,7 +196,7 @@
   },
   "admin": {
     "settingsTitle": "Settings",
-    "settingsDescription": "Workspace registration and system health.",
+    "settingsDescription": "Registration and system health.",
     "membersTitle": "Team",
     "usageTitle": "Usage",
     "auditTitle": "Activity log",
@@ -203,7 +204,7 @@
   },
   "shell": {
     "returnToChat": "Back to chat",
-    "workspace": "Workspace"
+    "workspace": "App"
   },
   "auth": {
     "signIn": "Sign in",
@@ -213,6 +214,6 @@
   },
   "notFound": {
     "title": "Page not found",
-    "return": "Return to workspace"
+    "return": "Return to chat"
   }
 }

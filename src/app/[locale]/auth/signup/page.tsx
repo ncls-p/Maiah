@@ -92,7 +92,7 @@ export default function SignUpPage() {
 						<CardDescription>
 							{registrationClosed
 								? "Ask an admin to create an account for you."
-								: "Create an account to start your workspace."}
+								: "Create an account to get started."}
 						</CardDescription>
 					</CardHeader>
 					<CardContent>

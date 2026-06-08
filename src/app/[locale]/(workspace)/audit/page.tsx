@@ -111,13 +111,13 @@ export default function AuditPage() {
 	}, [loadEvents, workspaceId]);
 
 	if (workspaceLoading || !workspaceId) {
-		return <PageLoading label="Loading workspace" />;
+		return <PageLoading label="Loading" />;
 	}
 
 	return (
 		<WorkspacePage
 			title="Audit Log"
-			description="Track security-sensitive actions, changes, and access events across your workspace."
+			description="Track security-sensitive actions, changes, and access events."
 			width="default"
 		>
 			<Card size="sm">
@@ -185,7 +185,7 @@ export default function AuditPage() {
 						<ClipboardListIcon className="size-5" aria-hidden="true" />
 						Recent events
 					</CardTitle>
-					<CardDescription>Filtered workspace audit events.</CardDescription>
+					<CardDescription>Filtered audit events.</CardDescription>
 				</CardHeader>
 				<CardContent className="grid gap-2">
 					{loading ? (
@@ -199,7 +199,7 @@ export default function AuditPage() {
 								<EmptyTitle>No events match</EmptyTitle>
 								<EmptyDescription>
 									Try adjusting filters or check back after activity in this
-									workspace.
+									account.
 								</EmptyDescription>
 							</EmptyHeader>
 						</Empty>

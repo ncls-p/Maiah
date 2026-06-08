@@ -33,7 +33,7 @@ export default function NotFound() {
 					</CardHeader>
 					<CardContent className="flex justify-center pb-6">
 						<Button asChild>
-							<Link href="/chat">Return to workspace</Link>
+							<Link href="/chat">Return to chat</Link>
 						</Button>
 					</CardContent>
 				</Card>

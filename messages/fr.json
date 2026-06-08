@@ -21,7 +21,8 @@
       "primary": "Principal",
       "capabilities": "Capacités",
       "configuration": "Configuration",
-      "administration": "Administration"
+      "administration": "Administration",
+      "advanced": "Avancé"
     },
     "chat": "Chat",
     "assistants": "Assistants",
@@ -36,7 +37,7 @@
     "settings": "Paramètres",
     "setup": "Configuration initiale",
     "assistantConfig": "Réglages de l’assistant",
-    "workspace": "Espace de travail",
+    "workspace": "App",
     "customTools": "Tools custom"
   },
   "chat": {
@@ -114,7 +115,7 @@
       "modelHint": "Quelle IA répond et comment elle doit se comporter.",
       "sharing": "Qui peut l’utiliser",
       "sharingPersonal": "Moi seulement",
-      "sharingWorkspace": "Tout l’espace de travail",
+      "sharingWorkspace": "Toute l’équipe",
       "sharingUser": "Une personne (e-mail)",
       "globalAssistant": "Visible dans l’organisation",
       "recommended": "Afficher comme recommandé",
@@ -203,7 +204,7 @@
   },
   "shell": {
     "returnToChat": "Retour au chat",
-    "workspace": "Espace de travail"
+    "workspace": "App"
   },
   "auth": {
     "signIn": "Connexion",

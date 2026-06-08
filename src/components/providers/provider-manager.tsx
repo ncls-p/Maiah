@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import { PlusIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { AdvancedSection } from "@/components/ui/advanced-section";
 import { Button } from "@/components/ui/button";
 
 import {
@@ -392,9 +393,14 @@ export function ProviderManager({
 						New connection
 					</Button>
 				</div>
-				<div className="mt-5">
+				<AdvancedSection
+					label="System health"
+					hint="Status, model counts, and connection details"
+					storageKey="advanced:providers-health"
+					className="mt-5 border-border/50 bg-muted/20"
+				>
 					<SystemStrip providers={providers} models={models} />
-				</div>
+				</AdvancedSection>
 			</div>
 
 			<div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">

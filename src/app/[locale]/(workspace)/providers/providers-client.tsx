@@ -62,7 +62,7 @@ export function ProvidersPageClient() {
 	}, [load, workspaceId]);
 
 	if (isLoading || !workspaceId) {
-		return <PageLoading label="Loading workspace" />;
+		return <PageLoading label="Loading" />;
 	}
 
 	if (!activeWorkspace) {
@@ -73,9 +73,9 @@ export function ProvidersPageClient() {
 						<EmptyMedia variant="icon">
 							<PlugZapIcon aria-hidden="true" />
 						</EmptyMedia>
-						<EmptyTitle>No workspace found</EmptyTitle>
+						<EmptyTitle>Setup required</EmptyTitle>
 						<EmptyDescription>
-							Join or create a workspace before configuring AI connections.
+							Finish setup before configuring AI connections.
 						</EmptyDescription>
 					</EmptyHeader>
 				</Empty>

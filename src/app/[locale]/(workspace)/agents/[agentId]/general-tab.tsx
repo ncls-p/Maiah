@@ -55,7 +55,7 @@ export function GeneralTab({
 			<InfoCallout title="About this section">
 				Set your assistant&apos;s identity and who can use it. The name and
 				description appear in chat and the assistant listing. Sharing controls
-				determine visibility within your workspace.
+				determine visibility.
 			</InfoCallout>
 
 			<form onSubmit={onSave}>
@@ -87,7 +87,7 @@ export function GeneralTab({
 							<Field>
 								<div className="flex items-center gap-2">
 									<FieldLabel htmlFor="agent-slug">Slug</FieldLabel>
-									<SettingHint text="Unique URL-safe identifier for this assistant inside the workspace. Use lowercase letters, numbers, and hyphens." />
+									<SettingHint text="Unique URL-safe identifier for this assistant. Use lowercase letters, numbers, and hyphens." />
 								</div>
 								<FieldContent>
 									<Input
@@ -146,7 +146,7 @@ export function GeneralTab({
 							<Field>
 								<div className="flex items-center gap-2">
 									<FieldLabel htmlFor="agent-sharing">Sharing mode</FieldLabel>
-									<SettingHint text="Personal means only you can use it. Workspace makes it visible to everyone. Specific user shares with one person by email." />
+									<SettingHint text="Personal means only you can use it. Team makes it visible to everyone. Specific user shares with one person by email." />
 								</div>
 								<FieldContent>
 									<Select
@@ -164,7 +164,7 @@ export function GeneralTab({
 										<SelectContent>
 											<SelectItem value="personal">Personal</SelectItem>
 											<SelectItem value="marketplace">
-												Share with workspace
+												Share with team
 											</SelectItem>
 											<SelectItem value="specific_user">
 												Specific user

@@ -87,13 +87,13 @@ export default function UsagePage() {
 	}, [loadUsage, workspaceId]);
 
 	if (workspaceLoading || !workspaceId) {
-		return <PageLoading label="Loading workspace" />;
+		return <PageLoading label="Loading" />;
 	}
 
 	return (
 		<WorkspacePage
 			title="Usage"
-			description="Monitor token consumption, API usage, and quota across your workspace."
+			description="Monitor token consumption, API usage, and quota."
 			width="wide"
 		>
 			{data?.quota ? (
@@ -234,7 +234,7 @@ export default function UsagePage() {
 								Recent usage
 							</CardTitle>
 							<CardDescription>
-								Newest usage records in this workspace.
+								Newest usage records.
 							</CardDescription>
 						</CardHeader>
 						<CardContent className="grid gap-2">

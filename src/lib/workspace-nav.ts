@@ -41,11 +41,14 @@ export type WorkspaceShellState = {
 export const primaryNavItems: NavItem[] = [
 	{ href: "/chat", labelKey: "chat", icon: MessageSquareIcon },
 	{ href: "/agents", labelKey: "assistants", icon: BotIcon },
+	{ href: "/knowledge", labelKey: "knowledge", icon: BookOpenIcon },
 ];
 
 export const capabilitiesNavItems: NavItem[] = [
-	{ href: "/knowledge", labelKey: "knowledge", icon: BookOpenIcon },
 	{ href: "/tools", labelKey: "toolsHub", icon: WrenchIcon },
+];
+
+export const advancedCapabilityNavItems: NavItem[] = [
 	{ href: "/custom-tools", labelKey: "customTools", icon: SparklesIcon },
 	{ href: "/marketplace", labelKey: "marketplace", icon: StoreIcon },
 ];
@@ -110,12 +113,12 @@ export function buildMenuGroups({
 	);
 
 	const groups: NavGroup[] = [
-		{ labelKey: "primary", items: primaryNavItems },
-		{ labelKey: "capabilities", items: capabilities },
-		{ labelKey: "configuration", items: configNavItems },
+		{ labelKey: "primary", items: [...primaryNavItems, ...capabilities] },
 		{
-			labelKey: "administration",
+			labelKey: "advanced",
 			items: [
+				...advancedCapabilityNavItems,
+				...configNavItems,
 				...adminItems,
 				...(isAdmin
 					? [{ href: "/settings", labelKey: "settings", icon: SettingsIcon }]

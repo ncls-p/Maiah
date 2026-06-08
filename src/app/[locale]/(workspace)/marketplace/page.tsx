@@ -166,7 +166,7 @@ export default function MarketplacePage() {
 		});
 		if (res.ok) {
 			const payload = (await res.json()) as { agent?: { id?: string } };
-			toast.success("Installed as a local workspace agent");
+			toast.success("Installed as a local agent");
 			if (payload.agent?.id) {
 				router.push(`/agents/${payload.agent.id}`);
 			}
@@ -235,7 +235,7 @@ export default function MarketplacePage() {
 	}
 
 	if (workspaceLoading || !workspaceId) {
-		return <PageLoading label="Loading workspace" />;
+		return <PageLoading label="Loading" />;
 	}
 
 	return (

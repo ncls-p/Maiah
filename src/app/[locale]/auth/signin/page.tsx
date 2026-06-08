@@ -68,7 +68,7 @@ export default function SignInPage() {
 							Sign in to AI Hub
 						</CardTitle>
 						<CardDescription>
-							Welcome back. Open your workspace to manage providers, agents,
+							Welcome back. Open the app to manage providers, agents,
 							and conversations.
 						</CardDescription>
 					</CardHeader>

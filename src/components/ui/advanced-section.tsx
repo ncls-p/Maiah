@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { ChevronDownIcon } from "lucide-react";
 
 import {
@@ -14,31 +14,21 @@ export function AdvancedSection({
 	children,
 	label,
 	hint,
-	storageKey,
-	defaultOpen = false,
 	className,
 }: {
 	children: ReactNode;
 	label: string;
 	hint?: string;
-	/** Persist open state for power users */
+	/** Kept for API compatibility; advanced sections are intentionally closed by default. */
 	storageKey?: string;
+	/** Kept for API compatibility; advanced sections are intentionally closed by default. */
 	defaultOpen?: boolean;
 	className?: string;
 }) {
-	const [open, setOpen] = useState(defaultOpen);
-
-	useEffect(() => {
-		if (!storageKey) return;
-		const stored = window.localStorage.getItem(storageKey);
-		if (stored === "true") setOpen(true);
-	}, [storageKey]);
+	const [open, setOpen] = useState(false);
 
 	function handleOpenChange(next: boolean) {
 		setOpen(next);
-		if (storageKey) {
-			window.localStorage.setItem(storageKey, String(next));
-		}
 	}
 
 	return (

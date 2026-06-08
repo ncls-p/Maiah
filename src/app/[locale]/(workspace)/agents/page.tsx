@@ -339,7 +339,7 @@ export default function AgentsPage() {
 	});
 
 	if (workspaceLoading || !workspaceId) {
-		return <PageLoading label="Loading workspace" />;
+		return <PageLoading label="Loading" />;
 	}
 
 	return (
@@ -472,7 +472,7 @@ export default function AgentsPage() {
 											{agent.sharingMode === "marketplace" && (
 												<Badge variant="secondary" className="gap-1">
 													<UsersIcon className="size-3" aria-hidden="true" />
-													Workspace
+													Team
 												</Badge>
 											)}
 											{agent.sharingMode === "specific_user" && (
@@ -651,7 +651,7 @@ export default function AgentsPage() {
 										<SelectContent>
 											<SelectItem value="personal">Personal</SelectItem>
 											<SelectItem value="marketplace">
-												Share with workspace
+												Share with team
 											</SelectItem>
 											<SelectItem value="specific_user">
 												Specific user

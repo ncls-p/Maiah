@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { PlusIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { AdvancedSection } from "@/components/ui/advanced-section";
 import { Button } from "@/components/ui/button";
 import { useWorkspace } from "@/hooks/use-workspace";
 
@@ -292,9 +293,14 @@ export function McpServerManager() {
 						Add server
 					</Button>
 				</div>
-				<div className="mt-5">
+				<AdvancedSection
+					label="Server health"
+					hint="Status, enabled tools, and sync details"
+					storageKey="advanced:mcp-health"
+					className="mt-5 border-border/50 bg-muted/20"
+				>
 					<SystemStrip servers={servers} toolsByServer={toolsByServer} />
-				</div>
+				</AdvancedSection>
 			</div>
 
 			<ServerList

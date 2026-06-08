@@ -269,7 +269,7 @@ export default function KnowledgePage() {
 	}
 
 	if (workspaceLoading || !workspaceId) {
-		return <PageLoading label="Loading workspace" />;
+		return <PageLoading label="Loading" />;
 	}
 
 	return (

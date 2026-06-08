@@ -627,7 +627,7 @@ export default function ChatPage() {
 					</div>
 				</div>
 				<div className="flex flex-col items-center gap-1 text-sm">
-					<span className="font-medium text-foreground">Loading workspace</span>
+					<span className="font-medium text-foreground">Loading</span>
 					<span className="text-xs text-muted-foreground">
 						Fetching your assistants and conversations…
 					</span>

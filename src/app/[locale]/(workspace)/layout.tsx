@@ -15,7 +15,7 @@ import {
 } from "@/modules/workspace/use-cases";
 
 export const metadata: Metadata = {
-	title: "Workspace",
+	title: "App",
 };
 
 // Workspace pages depend on request-bound auth/session state.
@@ -79,8 +79,7 @@ export default async function WorkspaceLayout({
 	const bootstrappedAdminId = await ensureBootstrapAdmin();
 	await ensureDefaultWorkspace(user);
 	const displayName = user.name || user.email;
-	const isAdmin =
-		isAdminRole(user.role) || bootstrappedAdminId === user.id;
+	const isAdmin = isAdminRole(user.role) || bootstrappedAdminId === user.id;
 
 	return (
 		<WorkspaceProvider>

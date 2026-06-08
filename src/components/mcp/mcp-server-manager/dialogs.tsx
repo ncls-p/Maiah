@@ -22,14 +22,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 
 import { emptyForm, type McpServerForm } from "./form";
@@ -86,7 +78,6 @@ export function CreateServerDialog({
 					transport={form.transport}
 					prefix="mcp-create"
 				/>
-				<ApprovalSection form={form} setForm={setForm} />
 				<AdvancedSection
 					open={showAdvanced}
 					onOpenChange={onAdvancedChange}
@@ -116,37 +107,23 @@ export function CreateServerDialog({
 function ServerFormFields({ form, setForm }: Omit<ServerDialogProps, "busy">) {
 	return (
 		<div className="grid gap-4">
-			<div className="grid gap-4 sm:grid-cols-2">
-				<div className="grid gap-2">
-					<Label htmlFor="mcp-name">Name</Label>
-					<Input
-						id="mcp-name"
-						autoComplete="off"
-						value={form.name}
-						onChange={(e) => setForm({ ...form, name: e.target.value })}
-						placeholder="Company tools…"
-					/>
-				</div>
-				<div className="grid gap-2">
-					<Label htmlFor="mcp-transport">Transport</Label>
-					<Select
-						value={form.transport}
-						onValueChange={(value) =>
-							setForm({ ...form, transport: value, authMode: "none" })
-						}
-					>
-						<SelectTrigger id="mcp-transport">
-							<SelectValue />
-						</SelectTrigger>
-						<SelectContent>
-							<SelectItem value="streamable-http">Streamable HTTP</SelectItem>
-							<SelectItem value="sse">SSE</SelectItem>
-							<SelectItem value="stdio">stdio</SelectItem>
-						</SelectContent>
-					</Select>
-				</div>
+			<div className="grid gap-2">
+				<Label htmlFor="mcp-name">Name</Label>
+				<Input
+					id="mcp-name"
+					autoComplete="off"
+					value={form.name}
+					onChange={(e) => setForm({ ...form, name: e.target.value })}
+					placeholder="Company tools…"
+				/>
 			</div>
-			<TransportTargetFields form={form} setForm={setForm} prefix="mcp" />
+			{form.transport === "stdio" ? (
+				<div className="rounded-lg border border-border/70 bg-muted/20 p-3 text-xs text-muted-foreground">
+					Local command mode is enabled in Advanced options.
+				</div>
+			) : (
+				<TransportTargetFields form={form} setForm={setForm} prefix="mcp" />
+			)}
 		</div>
 	);
 }
@@ -193,26 +170,6 @@ function TransportTargetFields({
 				value={form.url}
 				onChange={(e) => setForm({ ...form, url: e.target.value })}
 				placeholder="https://mcp.example.com…"
-			/>
-		</div>
-	);
-}
-
-function ApprovalSection({ form, setForm }: Omit<ServerDialogProps, "busy">) {
-	return (
-		<div className="flex min-w-0 items-center justify-between gap-4 rounded-lg border border-border/70 bg-background/70 p-3">
-			<div>
-				<p className="text-sm font-medium">Require approval</p>
-				<p className="text-xs text-muted-foreground">
-					Force approval before any tool from this server runs.
-				</p>
-			</div>
-			<Switch
-				aria-label="Require approval for all MCP tools"
-				checked={form.requireApproval}
-				onCheckedChange={(checked) =>
-					setForm({ ...form, requireApproval: checked })
-				}
 			/>
 		</div>
 	);
@@ -265,12 +222,11 @@ export function EditServerDialog({
 						setForm={setForm}
 						prefix="mcp-edit"
 					/>
-					<ApprovalSection form={form} setForm={setForm} />
 					{server ? (
 						<AuthSection
 							form={form}
 							setForm={setForm}
-							transport={server.transport}
+							transport={form.transport}
 							prefix="mcp-edit"
 						/>
 					) : null}
@@ -281,6 +237,7 @@ export function EditServerDialog({
 						setForm={setForm}
 						prefix="mcp-edit"
 						placeholder="Leave these empty to keep the existing secret configuration."
+						showConnectionMode={false}
 					/>
 				</div>
 				<DialogFooter className="overflow-hidden">

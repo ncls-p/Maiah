@@ -229,7 +229,7 @@ export function UserManagement({
 										htmlFor="new-user-workspace"
 										className="text-sm leading-none"
 									>
-										Add to current workspace
+										Add to team
 									</label>
 								</div>
 							</Field>

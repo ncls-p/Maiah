@@ -32,9 +32,7 @@ export default async function MembersPage() {
 							<ShieldAlertIcon aria-hidden="true" />
 						</EmptyMedia>
 						<EmptyTitle>Sign in required</EmptyTitle>
-						<EmptyDescription>
-							Sign in to manage workspace members.
-						</EmptyDescription>
+						<EmptyDescription>Sign in to manage team members.</EmptyDescription>
 					</EmptyHeader>
 				</Empty>
 			</WorkspacePage>
@@ -46,7 +44,7 @@ export default async function MembersPage() {
 	return (
 		<WorkspacePage
 			title="Team"
-			description="Invite members, manage roles, and control who has access to this workspace."
+			description="Invite members, manage roles, and control who has access."
 			width="default"
 		>
 			<WorkspaceMemberManagement currentUserId={session.user.id} />
@@ -56,7 +54,7 @@ export default async function MembersPage() {
 					<div>
 						<h2 className="text-lg font-semibold">Platform accounts</h2>
 						<p className="text-sm text-muted-foreground">
-							Create sign-in accounts. New users can be added to this workspace
+							Create sign-in accounts. New users can be added to the team
 							automatically.
 						</p>
 					</div>
