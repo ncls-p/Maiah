@@ -2,6 +2,7 @@
 
 import { Link } from "@/i18n/navigation";
 import {
+	BookMarkedIcon,
 	BookOpenIcon,
 	ChevronDownIcon,
 	PlusIcon,
@@ -30,6 +31,7 @@ import type {
 	BuiltinTool,
 	CustomTool,
 	KnowledgeBase,
+	AgentSkill,
 	McpServer,
 	McpTool,
 	ToolBindingState,
@@ -298,6 +300,9 @@ export function CapabilitiesTab({
 	knowledgeBases,
 	selectedKnowledgeIds,
 	setSelectedKnowledgeIds,
+	skills,
+	selectedSkillIds,
+	setSelectedSkillIds,
 	saving,
 	onSave,
 }: {
@@ -316,6 +321,9 @@ export function CapabilitiesTab({
 	knowledgeBases: KnowledgeBase[];
 	selectedKnowledgeIds: string[];
 	setSelectedKnowledgeIds: (fn: (prev: string[]) => string[]) => void;
+	skills: AgentSkill[];
+	selectedSkillIds: string[];
+	setSelectedSkillIds: (fn: (prev: string[]) => string[]) => void;
 	saving: boolean;
 	onSave: () => void;
 }) {
@@ -449,6 +457,76 @@ export function CapabilitiesTab({
 								}
 								approvalLabel={t("approval")}
 							/>
+						))}
+					</div>
+				)}
+			</ConfigSection>
+
+			<ConfigSection
+				title="Skills"
+				description="Instructions Markdown installées depuis skills.sh. Aucun fichier Python ou script n’est attaché aux assistants."
+				icon={BookMarkedIcon}
+				stagger="5"
+			>
+				{skills.length === 0 ? (
+					<div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border/60 py-8 text-center">
+						<BookMarkedIcon
+							className="size-8 text-muted-foreground/50"
+							aria-hidden="true"
+						/>
+						<p className="text-sm text-muted-foreground">
+							Aucun skill installé pour l’instant.
+						</p>
+						<Button variant="outline" size="sm" asChild>
+							<Link href="/tools?tab=skills">
+								<PlusIcon className="size-4" aria-hidden="true" />
+								Installer un skill
+							</Link>
+						</Button>
+					</div>
+				) : (
+					<div className="flex flex-col gap-2">
+						{skills.map((skill) => (
+							<label
+								key={skill.id}
+								className={cn(
+									"ui-list-row flex cursor-pointer items-center justify-between gap-4 rounded-xl border p-4 transition-all hover:border-primary/25 hover:bg-card/65 hover:shadow-sm",
+									selectedSkillIds.includes(skill.id)
+										? "border-primary/30 bg-primary/5"
+										: "border-border/60",
+								)}
+							>
+								<span className="min-w-0">
+									<span className="flex items-center gap-3 font-medium">
+										<span
+											className={cn(
+												"flex size-8 items-center justify-center rounded-lg",
+												selectedSkillIds.includes(skill.id)
+													? "bg-primary/10 text-primary"
+													: "bg-muted text-muted-foreground",
+											)}
+										>
+											<BookMarkedIcon className="size-4" aria-hidden="true" />
+										</span>
+										{skill.name}
+									</span>
+									{skill.description ? (
+										<span className="mt-1 line-clamp-1 block text-xs text-muted-foreground">
+											{skill.description}
+										</span>
+									) : null}
+								</span>
+								<Switch
+									checked={selectedSkillIds.includes(skill.id)}
+									onCheckedChange={(checked) =>
+										setSelectedSkillIds((current) =>
+											checked
+												? [...current, skill.id]
+												: current.filter((id) => id !== skill.id),
+										)
+									}
+								/>
+							</label>
 						))}
 					</div>
 				)}

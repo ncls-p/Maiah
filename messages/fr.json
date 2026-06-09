@@ -176,10 +176,12 @@
     "tabs": {
       "builtin": "Intégrés",
       "mcp": "Serveurs MCP",
+      "skills": "Skills",
       "approvals": "Approbations"
     },
     "builtinHelp": "Capacités fournies par AI Hub.",
     "mcpHelp": "Outils externes via le Model Context Protocol.",
+    "skillsHelp": "Installez des skills Markdown-only depuis skills.sh et attachez-les aux assistants.",
     "approvalsHelp": "Validez les appels d’outils sensibles.",
     "filters": {
       "all": "Tout",

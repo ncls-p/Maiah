@@ -23,6 +23,10 @@ import {
 	replaceKnowledgeBindingsForVersion,
 } from "@/modules/knowledge/use-cases";
 import {
+	cloneSkillBindings,
+	replaceSkillBindingsForVersion,
+} from "@/modules/skills/use-cases";
+import {
 	cloneToolBindings,
 	insertToolBindingsForVersion,
 	type ToolBindingInput,
@@ -53,6 +57,7 @@ export interface CreateAgentInput {
 	maxToolCalls?: number;
 	toolBindings?: ToolBindingInput[];
 	knowledgeBindings?: string[];
+	skillBindings?: string[];
 	sharingMode?: AgentSharingMode;
 	shareTargetEmail?: string;
 	isGlobal?: boolean;
@@ -109,6 +114,7 @@ export interface UpdateAgentInput {
 	approvalPolicy?: AgentApprovalPolicy;
 	toolBindings?: ToolBindingInput[];
 	knowledgeBindings?: string[];
+	skillBindings?: string[];
 	sharingMode?: AgentSharingMode;
 	shareTargetEmail?: string | null;
 	isGlobal?: boolean;
@@ -165,6 +171,7 @@ export async function createAgent(input: CreateAgentInput) {
 		maxToolCalls,
 		toolBindings,
 		knowledgeBindings,
+		skillBindings,
 		sharingMode = "personal",
 		shareTargetEmail,
 		isGlobal,
@@ -276,6 +283,11 @@ export async function createAgent(input: CreateAgentInput) {
 
 	await insertToolBindingsForVersion(version.id, toolBindings ?? []);
 	await replaceKnowledgeBindingsForVersion(version.id, knowledgeBindings ?? []);
+	await replaceSkillBindingsForVersion(
+		version.id,
+		workspaceId,
+		skillBindings ?? [],
+	);
 
 	logger.info("Agent created", { agentId: agent.id, userId });
 	return { agent, version };
@@ -382,6 +394,7 @@ export async function updateAgent(input: UpdateAgentInput) {
 		maxToolCalls,
 		toolBindings,
 		knowledgeBindings,
+		skillBindings,
 		sharingMode,
 		shareTargetEmail,
 		isGlobal,
@@ -592,6 +605,16 @@ export async function updateAgent(input: UpdateAgentInput) {
 		await replaceKnowledgeBindingsForVersion(version.id, knowledgeBindings);
 	} else {
 		await cloneKnowledgeBindings(existing.activeVersionId, version.id);
+	}
+
+	if (skillBindings) {
+		await replaceSkillBindingsForVersion(
+			version.id,
+			workspaceId,
+			skillBindings,
+		);
+	} else {
+		await cloneSkillBindings(existing.activeVersionId, version.id);
 	}
 
 	logger.info("Agent updated", {

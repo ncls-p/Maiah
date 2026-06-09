@@ -44,6 +44,7 @@ const updateAgentSchema = z.object({
 		.optional(),
 	toolBindings: z.array(toolBindingInputSchema).optional(),
 	knowledgeBindings: z.array(z.uuid()).optional(),
+	skillBindings: z.array(z.uuid()).optional(),
 	toolChoice: z.enum(["auto", "required", "none"]).optional(),
 	generationSettings: z
 		.object({

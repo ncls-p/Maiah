@@ -45,6 +45,8 @@ const createAgentSchema = z.object({
 			}),
 		)
 		.optional(),
+	knowledgeBindings: z.array(z.uuid()).optional(),
+	skillBindings: z.array(z.uuid()).optional(),
 });
 
 const listAgentsSchema = z.object({

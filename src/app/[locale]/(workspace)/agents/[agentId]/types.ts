@@ -45,6 +45,11 @@ export type CustomTool = {
 	status: string;
 };
 export type KnowledgeBase = { id: string; name: string };
+export type AgentSkill = {
+	id: string;
+	name: string;
+	description: string | null;
+};
 export type ToolBinding = {
 	toolSource: string;
 	toolId: string;
@@ -53,6 +58,11 @@ export type ToolBinding = {
 export type KnowledgeBinding = {
 	knowledgeBaseId: string;
 	name: string;
+};
+export type SkillBinding = {
+	skillId: string;
+	name: string;
+	description: string | null;
 };
 
 export type ToolFilter = "all" | "enabled" | "disabled";

@@ -20,8 +20,10 @@ import type {
 	McpTool,
 	CustomTool,
 	KnowledgeBase,
+	AgentSkill,
 	ToolBinding,
 	KnowledgeBinding,
+	SkillBinding,
 	ToolBindingState,
 } from "./types";
 import { createEmptyForm } from "./types";
@@ -50,6 +52,7 @@ export default function AgentConfigurePage() {
 	const [mcpTools, setMcpTools] = useState<McpTool[]>([]);
 	const [customTools, setCustomTools] = useState<CustomTool[]>([]);
 	const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
+	const [skills, setSkills] = useState<AgentSkill[]>([]);
 
 	const [loading, setLoading] = useState(true);
 	const [saving, setSaving] = useState(false);
@@ -62,6 +65,7 @@ export default function AgentConfigurePage() {
 	const [selectedKnowledgeIds, setSelectedKnowledgeIds] = useState<string[]>(
 		[],
 	);
+	const [selectedSkillIds, setSelectedSkillIds] = useState<string[]>([]);
 
 	const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 	const [deleting, setDeleting] = useState(false);
@@ -76,8 +80,10 @@ export default function AgentConfigurePage() {
 			mcpRes,
 			customToolsRes,
 			kbRes,
+			skillsRes,
 			bindingsRes,
 			knowledgeBindingsRes,
+			skillBindingsRes,
 		] = await Promise.all([
 			fetch(`/api/workspace/agents/${agentId}?workspaceId=${workspaceId}`),
 			fetch(`/api/workspace/providers?workspaceId=${workspaceId}`),
@@ -85,11 +91,15 @@ export default function AgentConfigurePage() {
 			fetch(`/api/workspace/mcp-servers?workspaceId=${workspaceId}`),
 			fetch(`/api/workspace/custom-tools?workspaceId=${workspaceId}`),
 			fetch(`/api/workspace/knowledge-bases?workspaceId=${workspaceId}`),
+			fetch(`/api/workspace/skills?workspaceId=${workspaceId}`),
 			fetch(
 				`/api/workspace/agents/${agentId}/tools?workspaceId=${workspaceId}`,
 			),
 			fetch(
 				`/api/workspace/agents/${agentId}/knowledge?workspaceId=${workspaceId}`,
+			),
+			fetch(
+				`/api/workspace/agents/${agentId}/skills?workspaceId=${workspaceId}`,
 			),
 		]);
 
@@ -99,7 +109,8 @@ export default function AgentConfigurePage() {
 			!toolsRes.ok ||
 			!mcpRes.ok ||
 			!customToolsRes.ok ||
-			!kbRes.ok
+			!kbRes.ok ||
+			!skillsRes.ok
 		) {
 			throw new Error("Unable to load agent settings");
 		}
@@ -133,6 +144,7 @@ export default function AgentConfigurePage() {
 		const mcpServerRows = (await mcpRes.json()) as McpServer[];
 		const customToolRows = (await customToolsRes.json()) as CustomTool[];
 		const kbRows = (await kbRes.json()) as KnowledgeBase[];
+		const skillRows = (await skillsRes.json()) as AgentSkill[];
 		const toolBindings = bindingsRes.ok
 			? ((await bindingsRes.json()) as ToolBinding[])
 			: [];
@@ -140,6 +152,13 @@ export default function AgentConfigurePage() {
 			? (
 					(await knowledgeBindingsRes.json()) as {
 						bindings: KnowledgeBinding[];
+					}
+				).bindings
+			: [];
+		const skillBindings = skillBindingsRes.ok
+			? (
+					(await skillBindingsRes.json()) as {
+						bindings: SkillBinding[];
 					}
 				).bindings
 			: [];
@@ -174,6 +193,7 @@ export default function AgentConfigurePage() {
 		setMcpTools(mcpToolRows);
 		setCustomTools(customToolRows);
 		setKnowledgeBases(kbRows);
+		setSkills(skillRows);
 
 		setForm(
 			buildAgentFormFromVersion(
@@ -220,6 +240,7 @@ export default function AgentConfigurePage() {
 		}
 		setCustomBindings(nextCustom);
 		setSelectedKnowledgeIds(knowledgeBindings.map((b) => b.knowledgeBaseId));
+		setSelectedSkillIds(skillBindings.map((b) => b.skillId));
 	}, [agentId, workspaceId]);
 
 	useEffect(() => {
@@ -382,7 +403,7 @@ export default function AgentConfigurePage() {
 						requireApproval: customBindings[tool.id]?.requireApproval ?? true,
 					})),
 			];
-			const [toolsRes, kbRes] = await Promise.all([
+			const [toolsRes, kbRes, skillsRes] = await Promise.all([
 				fetch(
 					`/api/workspace/agents/${agentId}/tools?workspaceId=${workspaceId}`,
 					{
@@ -402,8 +423,19 @@ export default function AgentConfigurePage() {
 						}),
 					},
 				),
+				fetch(
+					`/api/workspace/agents/${agentId}/skills?workspaceId=${workspaceId}`,
+					{
+						method: "PUT",
+						headers: { "Content-Type": "application/json" },
+						body: JSON.stringify({
+							workspaceId,
+							skillIds: selectedSkillIds,
+						}),
+					},
+				),
 			]);
-			if (!toolsRes.ok || !kbRes.ok) {
+			if (!toolsRes.ok || !kbRes.ok || !skillsRes.ok) {
 				throw new Error("Unable to save capabilities");
 			}
 			toast.success(t("configurePage.capabilitiesSaved"));
@@ -457,7 +489,8 @@ export default function AgentConfigurePage() {
 	).length;
 	const totalEnabledTools =
 		enabledBuiltinCount + enabledMcpCount + enabledCustomCount;
-	const capabilitiesCount = totalEnabledTools + selectedKnowledgeIds.length;
+	const capabilitiesCount =
+		totalEnabledTools + selectedKnowledgeIds.length + selectedSkillIds.length;
 
 	return (
 		<WorkspacePage
@@ -516,6 +549,9 @@ export default function AgentConfigurePage() {
 								knowledgeBases={knowledgeBases}
 								selectedKnowledgeIds={selectedKnowledgeIds}
 								setSelectedKnowledgeIds={setSelectedKnowledgeIds}
+								skills={skills}
+								selectedSkillIds={selectedSkillIds}
+								setSelectedSkillIds={setSelectedSkillIds}
 								saving={saving}
 								onSave={() => void saveCapabilities()}
 							/>

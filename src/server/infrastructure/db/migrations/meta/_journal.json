@@ -57,6 +57,13 @@
       "when": 1780766749717,
       "tag": "0007_custom_tool_builder",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1781032633327,
+      "tag": "0008_agent_skills",
+      "breakpoints": true
     }
   ]
 }

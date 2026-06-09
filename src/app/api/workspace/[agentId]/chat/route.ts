@@ -24,6 +24,10 @@ import {
 } from "@/modules/chat/stream-bus";
 import { generateChatAutomationArtifacts } from "@/modules/chat/automation";
 import { searchBoundKnowledgeBases } from "@/modules/knowledge/use-cases";
+import {
+	buildSkillsRegistryPrompt,
+	loadBoundSkillContent,
+} from "@/modules/skills/use-cases";
 import { executeCustomToolWorkflow } from "@/modules/custom-tools/use-cases";
 import { executeMcpTool } from "@/modules/mcp/executor";
 import { assertWorkspaceWithinTokenQuota } from "@/modules/usage/quota";
@@ -78,6 +82,7 @@ async function buildBoundTools(input: {
 	userId: string;
 	maxToolCalls: number;
 	requireApprovalForAllTools?: boolean;
+	hasSkills?: boolean;
 	emitEvent?: (event: Record<string, unknown>) => void;
 	onApprovalRequired?: (event: ToolApprovalRequiredEvent) => void;
 }) {
@@ -96,6 +101,37 @@ async function buildBoundTools(input: {
 			denied: true,
 			message:
 				"Tool call limit reached. Answer the user now using the information already gathered.",
+		};
+	}
+
+	if (input.hasSkills) {
+		tools.load_skill = {
+			description:
+				"Load the full Markdown instructions for an enabled agent skill by exact skill name. Use this when a listed skill is relevant before applying its workflow.",
+			inputSchema: jsonSchema({
+				type: "object",
+				properties: {
+					skillName: {
+						type: "string",
+						description: "Exact skill name from the available skills registry.",
+					},
+				},
+				required: ["skillName"],
+				additionalProperties: false,
+			}),
+			execute: async (toolInput: unknown) => {
+				if (!reserveToolCall()) return toolLimitReachedResult();
+				const parsed = z
+					.object({ skillName: z.string().trim().min(1) })
+					.safeParse(toolInput);
+				if (!parsed.success) {
+					return { found: false, message: "skillName is required." };
+				}
+				return loadBoundSkillContent({
+					agentVersionId: input.agentVersionId,
+					skillName: parsed.data.skillName,
+				});
+			},
 		};
 	}
 
@@ -879,6 +915,8 @@ export async function POST(
 			0,
 			Math.min(20, version.maxToolCalls ?? defaultMaxToolCalls),
 		);
+		const skillsPrompt =
+			maxToolCalls > 0 ? await buildSkillsRegistryPrompt(version.id) : null;
 		const approvalPolicy = version.approvalPolicyJson as {
 			requireApprovalForAllTools?: boolean;
 		} | null;
@@ -891,6 +929,7 @@ export async function POST(
 						messageId: assistantMessage.id,
 						userId: actorUserId,
 						maxToolCalls,
+						hasSkills: Boolean(skillsPrompt),
 						requireApprovalForAllTools: Boolean(
 							approvalPolicy?.requireApprovalForAllTools,
 						),
@@ -949,6 +988,7 @@ export async function POST(
 		const localeCookie = (await cookies()).get("NEXT_LOCALE")?.value ?? "en";
 		const systemPrompt = [
 			version.systemPrompt?.trim() || fallbackSystemPrompt(localeCookie),
+			skillsPrompt,
 			responseFormatGuidance,
 			guardrailGuidance,
 			toolGuidance,

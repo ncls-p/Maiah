@@ -897,6 +897,58 @@ export const agentKnowledgeBindings = pgTable(
 	}),
 );
 
+export const agentSkills = pgTable(
+	"agent_skills",
+	{
+		id: uuid("id").primaryKey().defaultRandom(),
+		workspaceId: uuid("workspace_id")
+			.notNull()
+			.references(() => workspaces.id, { onDelete: "cascade" }),
+		createdById: uuid("created_by_user_id")
+			.notNull()
+			.references(() => users.id),
+		name: varchar("name", { length: 255 }).notNull(),
+		description: text("description"),
+		sourcePackage: text("source_package"),
+		sourceSkillName: varchar("source_skill_name", { length: 255 }),
+		installCommand: text("install_command"),
+		markdownFilesJson: jsonb("markdown_files_json").notNull(),
+		metadataJson: jsonb("metadata_json"),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+		archivedAt: timestamp("archived_at", { withTimezone: true }),
+	},
+	(t) => ({
+		workspace: index("agent_skills_workspace").on(t.workspaceId),
+	}),
+);
+
+export const agentSkillBindings = pgTable(
+	"agent_skill_bindings",
+	{
+		id: uuid("id").primaryKey().defaultRandom(),
+		agentVersionId: uuid("agent_version_id")
+			.notNull()
+			.references(() => agentVersions.id, { onDelete: "cascade" }),
+		skillId: uuid("skill_id")
+			.notNull()
+			.references(() => agentSkills.id, { onDelete: "cascade" }),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+	},
+	(t) => ({
+		agentVersionSkill: uniqueIndex("agent_skill_bindings_unique").on(
+			t.agentVersionId,
+			t.skillId,
+		),
+	}),
+);
+
 // ─── Marketplace ───────────────────────────────────────────────────────
 
 export const marketplaceItemTypeEnum = pgEnum("marketplace_item_type", [
@@ -1198,6 +1250,7 @@ export const workspaceRelations = relations(workspaces, ({ one, many }) => ({
 	providers: many(aiProviders),
 	mcpServers: many(mcpServers),
 	knowledgeBases: many(knowledgeBases),
+	skills: many(agentSkills),
 }));
 
 export const agentRelations = relations(agents, ({ one, many }) => ({
@@ -1229,6 +1282,7 @@ export const agentVersionRelations = relations(
 		}),
 		toolBindings: many(agentToolBindings),
 		knowledgeBindings: many(agentKnowledgeBindings),
+		skillBindings: many(agentSkillBindings),
 	}),
 );
 
@@ -1262,3 +1316,29 @@ export const messageRelations = relations(messages, ({ one, many }) => ({
 	}),
 	parts: many(messageParts),
 }));
+
+export const agentSkillRelations = relations(agentSkills, ({ one, many }) => ({
+	workspace: one(workspaces, {
+		fields: [agentSkills.workspaceId],
+		references: [workspaces.id],
+	}),
+	creator: one(users, {
+		fields: [agentSkills.createdById],
+		references: [users.id],
+	}),
+	bindings: many(agentSkillBindings),
+}));
+
+export const agentSkillBindingRelations = relations(
+	agentSkillBindings,
+	({ one }) => ({
+		agentVersion: one(agentVersions, {
+			fields: [agentSkillBindings.agentVersionId],
+			references: [agentVersions.id],
+		}),
+		skill: one(agentSkills, {
+			fields: [agentSkillBindings.skillId],
+			references: [agentSkills.id],
+		}),
+	}),
+);

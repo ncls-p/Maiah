@@ -2,9 +2,15 @@
 
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { ServerIcon, ShieldIcon, WrenchIcon } from "lucide-react";
+import {
+	BookMarkedIcon,
+	ServerIcon,
+	ShieldIcon,
+	WrenchIcon,
+} from "lucide-react";
 
 import { McpServerManager } from "@/components/mcp/mcp-server-manager";
+import { SkillManager } from "@/components/skills/skill-manager";
 import { Badge } from "@/components/ui/badge";
 import { WorkspacePage } from "@/components/workspace-page";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -40,6 +46,10 @@ export function ToolsHub() {
 					<TabsTrigger value="mcp" className="gap-1.5">
 						<ServerIcon className="size-3.5" aria-hidden="true" />
 						{t("tabs.mcp")}
+					</TabsTrigger>
+					<TabsTrigger value="skills" className="gap-1.5">
+						<BookMarkedIcon className="size-3.5" aria-hidden="true" />
+						{t("tabs.skills")}
 					</TabsTrigger>
 					<TabsTrigger value="approvals" className="gap-1.5">
 						<ShieldIcon className="size-3.5" aria-hidden="true" />
@@ -102,6 +112,11 @@ export function ToolsHub() {
 				<TabsContent value="mcp" className="mt-6 space-y-4">
 					<p className="text-sm text-muted-foreground">{t("mcpHelp")}</p>
 					<McpServerManager />
+				</TabsContent>
+
+				<TabsContent value="skills" className="mt-6 space-y-4">
+					<p className="text-sm text-muted-foreground">{t("skillsHelp")}</p>
+					<SkillManager />
 				</TabsContent>
 
 				<TabsContent value="approvals" className="mt-6 space-y-4">
