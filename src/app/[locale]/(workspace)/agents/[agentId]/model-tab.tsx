@@ -7,7 +7,6 @@ import {
 	Card,
 	CardContent,
 	CardDescription,
-	CardFooter,
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
@@ -248,7 +247,7 @@ export function ModelTab({
 										<FieldLabel htmlFor="agent-max-output">
 											Max output tokens
 										</FieldLabel>
-										<SettingHint text="Maximum length of the model's response in tokens. Higher values allow longer responses but cost more. 1024 is good for most tasks." />
+										<SettingHint text="Maximum length of the model's response in tokens. Higher values allow longer responses but cost more. 30000 is the default for newly created agents." />
 									</div>
 									<FieldContent>
 										<Input

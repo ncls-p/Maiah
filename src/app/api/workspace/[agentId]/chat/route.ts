@@ -62,6 +62,7 @@ const chatRequestSchema = z.object({
 });
 
 const defaultMaxToolCalls = 6;
+const defaultMaxOutputTokens = 30_000;
 
 type ToolApprovalRequiredEvent = {
 	invocationId: string;
@@ -1042,7 +1043,7 @@ export async function POST(
 			stopSequences: generationSettings?.stopSequences?.length
 				? generationSettings.stopSequences
 				: undefined,
-			maxOutputTokens: version.maxOutputTokens ?? undefined,
+			maxOutputTokens: version.maxOutputTokens ?? defaultMaxOutputTokens,
 			tools,
 			toolChoice: configuredToolChoice,
 			stopWhen: availableToolNames.length > 0 ? () => false : undefined,

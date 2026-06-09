@@ -118,7 +118,7 @@ export type ToolBindingState = Record<
 export const defaultGenParams = {
 	temperature: "0.7",
 	topP: "1",
-	maxOutputTokens: "1024",
+	maxOutputTokens: "30000",
 	maxToolCalls: "6",
 };
 

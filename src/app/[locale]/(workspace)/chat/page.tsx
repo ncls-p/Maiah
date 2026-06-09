@@ -183,13 +183,24 @@ export default function ChatPage() {
 			window.history.replaceState(null, "", `/chat?${params.toString()}`);
 		},
 		onConversationTitle: (conversationId, title) => {
-			setConversations((current) =>
-				current.map((conversation) =>
-					conversation.id === conversationId
-						? { ...conversation, title }
-						: conversation,
-				),
-			);
+			setConversations((current) => {
+				let found = false;
+				const next = current.map((conversation) => {
+					if (conversation.id !== conversationId) return conversation;
+					found = true;
+					return { ...conversation, title };
+				});
+				if (found || !selectedAgentId) return next;
+				return [
+					{
+						id: conversationId,
+						title,
+						agentId: selectedAgentId,
+						updatedAt: new Date().toISOString(),
+					},
+					...next,
+				];
+			});
 		},
 		onConversationsRefresh: refreshConversations,
 	});

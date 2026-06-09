@@ -265,6 +265,7 @@ export async function installMarketplaceItem(input: {
 				versionNumber: 1,
 				name: `Installed from marketplace ${version.version}`,
 				systemPrompt: manifest.agent.systemPrompt ?? null,
+				maxOutputTokens: 30_000,
 				createdById: input.userId,
 			})
 			.returning();

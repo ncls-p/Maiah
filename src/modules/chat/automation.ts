@@ -168,7 +168,12 @@ async function resolveRuntimeModel(
 	};
 }
 
-async function generateWithRuntimeModel(input: {
+const chatArtifactsSchema = z.object({
+	title: z.string().default(""),
+	suggestions: z.array(z.string()).default([]),
+});
+
+async function generateArtifactsWithRuntimeModel(input: {
 	runtime: RuntimeModel;
 	prompt: string;
 	maxOutputTokens: number;
@@ -183,7 +188,7 @@ async function generateWithRuntimeModel(input: {
 		temperature: 0.2,
 		maxOutputTokens: input.maxOutputTokens,
 	});
-	return text.trim();
+	return parseArtifacts(text);
 }
 
 export async function generateChatAutomationArtifacts(input: {
@@ -203,36 +208,41 @@ export async function generateChatAutomationArtifacts(input: {
 	if (!runtime) return { title: input.fallbackTitle, suggestions: [] };
 
 	try {
-		const text = await generateWithRuntimeModel({
+		const object = await generateArtifactsWithRuntimeModel({
 			runtime,
-			maxOutputTokens: 220,
+			maxOutputTokens: 260,
 			prompt: [
-				"Generate chat metadata for this conversation using one consistent style.",
-				'Return JSON only with this exact shape: {"title": string, "suggestions": string[]}.',
-				"Title rules: 3 to 7 words, no quotes, no trailing punctuation, same language as the user if obvious.",
-				"Suggestions rules: exactly 3 useful next messages, each under 80 characters, same language as the conversation.",
+				"You generate concise chat UI metadata after an assistant response.",
+				"Return ONLY valid minified JSON. No markdown, no prose, no code fence.",
+				'Required shape: {"title":"...","suggestions":["...","...","..."]}',
+				"Title: 3 to 7 words, no quotes, no trailing punctuation, same language as the user's message when obvious.",
+				"Suggestions: exactly 3 useful next user messages, each under 80 characters, same language as the conversation, phrased as prompts the user can click.",
 				shouldGenerateTitle ? null : "Set title to an empty string.",
 				shouldGenerateSuggestions ? null : "Set suggestions to an empty array.",
-				`User message: ${input.userMessage.slice(0, 1_500)}`,
-				`Assistant answer: ${input.assistantText.slice(0, 4_000)}`,
+				`User message:\n${input.userMessage.slice(0, 1_500)}`,
+				`Assistant answer:\n${input.assistantText.slice(0, 4_000)}`,
 			]
 				.filter(Boolean)
 				.join("\n\n"),
 		});
-		const parsed = parseArtifacts(text);
+		const fallback = createFallbackArtifacts(input);
 		return {
 			title: shouldGenerateTitle
-				? sanitizeTitle(parsed.title, input.fallbackTitle)
+				? sanitizeTitle(object.title, fallback.title)
 				: input.fallbackTitle,
 			suggestions: shouldGenerateSuggestions
-				? sanitizeSuggestions(parsed.suggestions)
+				? ensureThreeSuggestions(object.suggestions, fallback.suggestions)
 				: [],
 		};
 	} catch (error) {
 		logger.warn("Failed to generate chat automation artifacts", {
 			error: error instanceof Error ? error.message : String(error),
 		});
-		return { title: input.fallbackTitle, suggestions: [] };
+		const fallback = createFallbackArtifacts(input);
+		return {
+			title: shouldGenerateTitle ? fallback.title : input.fallbackTitle,
+			suggestions: shouldGenerateSuggestions ? fallback.suggestions : [],
+		};
 	}
 }
 
@@ -260,6 +270,47 @@ export async function generateNextChatSuggestions(input: {
 	return artifacts.suggestions;
 }
 
+function parseArtifacts(value: string) {
+	const cleaned = value
+		.replace(/^```(?:json|text)?/i, "")
+		.replace(/```$/i, "")
+		.trim();
+	const jsonStart = cleaned.indexOf("{");
+	const jsonEnd = cleaned.lastIndexOf("}");
+	const json =
+		jsonStart >= 0 && jsonEnd > jsonStart
+			? cleaned.slice(jsonStart, jsonEnd + 1)
+			: cleaned;
+
+	try {
+		const parsed = JSON.parse(json) as unknown;
+		const result = chatArtifactsSchema.safeParse(parsed);
+		if (result.success) return result.data;
+	} catch {
+		// Fall through to best-effort extraction below.
+	}
+
+	return {
+		title: extractTitle(cleaned),
+		suggestions: extractSuggestions(cleaned),
+	};
+}
+
+function extractTitle(value: string) {
+	const match = /"?title"?\s*[:=]\s*["“”']([^"“”'\n]+)/i.exec(value);
+	return match?.[1]?.trim() ?? "";
+}
+
+function extractSuggestions(value: string) {
+	const parsedLines = value
+		.split("\n")
+		.map((line) => line.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, "").trim())
+		.filter(Boolean)
+		.filter((line) => !/^title\s*[:=]/i.test(line))
+		.filter((line) => !/^suggestions?\s*[:=]\s*\[?\s*$/i.test(line));
+	return parsedLines.slice(0, 3);
+}
+
 function sanitizeTitle(value: string, fallback: string) {
 	const title = value
 		.replace(/^```(?:json|text)?/i, "")
@@ -270,26 +321,58 @@ function sanitizeTitle(value: string, fallback: string) {
 	return (title || fallback).slice(0, 100);
 }
 
-function parseArtifacts(value: string) {
-	const cleaned = value
-		.replace(/^```(?:json)?/i, "")
-		.replace(/```$/i, "")
-		.trim();
-	try {
-		const parsed = JSON.parse(cleaned) as unknown;
-		if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-			const record = parsed as Record<string, unknown>;
-			return {
-				title: typeof record.title === "string" ? record.title : "",
-				suggestions: Array.isArray(record.suggestions)
-					? record.suggestions
-					: [],
-			};
-		}
-	} catch {
-		// fall through to a safe empty shape
+function createFallbackArtifacts(input: {
+	userMessage: string;
+	assistantText: string;
+	fallbackTitle: string;
+}) {
+	const french = looksFrench(`${input.userMessage}\n${input.assistantText}`);
+	return {
+		title:
+			buildLocalTitle(input.userMessage) ||
+			sanitizeTitle(
+				input.fallbackTitle,
+				french ? "Nouvelle discussion" : "New chat",
+			),
+		suggestions: french
+			? [
+					"Peux-tu détailler les étapes ?",
+					"Donne-moi un exemple concret",
+					"Quelles sont les alternatives ?",
+				]
+			: [
+					"Can you break that into steps?",
+					"Show me a concrete example",
+					"What are the alternatives?",
+				],
+	};
+}
+
+function buildLocalTitle(value: string) {
+	const words = value
+		.replace(/[\r\n]+/g, " ")
+		.replace(/[`*_#>\[\]{}()]/g, " ")
+		.replace(/[.。!?！？,;:]+$/g, "")
+		.trim()
+		.split(/\s+/)
+		.filter(Boolean)
+		.slice(0, 7);
+	return words.join(" ").slice(0, 100);
+}
+
+function looksFrench(value: string) {
+	return /[àâçéèêëîïôùûüÿœæ]|\b(le|la|les|un|une|des|du|de|ce|cette|ces|pour|avec|sans|est|sont|peux|peut|comment|quoi|quel|quelle)\b/i.test(
+		value,
+	);
+}
+
+function ensureThreeSuggestions(values: unknown[], fallback: string[]) {
+	const suggestions = sanitizeSuggestions(values);
+	for (const suggestion of fallback) {
+		if (suggestions.length >= 3) break;
+		if (!suggestions.includes(suggestion)) suggestions.push(suggestion);
 	}
-	return { title: "", suggestions: [] };
+	return suggestions.slice(0, 3);
 }
 
 function sanitizeSuggestions(values: unknown[]) {
@@ -297,6 +380,6 @@ function sanitizeSuggestions(values: unknown[]) {
 		.filter((value): value is string => typeof value === "string")
 		.map((value) => value.replace(/^['\"]|['\"]$/g, "").trim())
 		.filter(Boolean)
-		.slice(0, 3)
-		.map((value) => value.slice(0, 80));
+		.map((value) => value.slice(0, 80))
+		.slice(0, 3);
 }
