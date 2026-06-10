@@ -48,6 +48,7 @@ export function McpServerManager() {
 	const [form, setForm] = useState<McpServerForm>(emptyForm);
 	const [editServer, setEditServer] = useState<McpServer | null>(null);
 	const [editForm, setEditForm] = useState<McpServerForm>(emptyForm);
+	const [editLoading, setEditLoading] = useState(false);
 	const [deleteId, setDeleteId] = useState<string | null>(null);
 	const [shareResource, setShareResource] = useState<ShareableResource | null>(
 		null,
@@ -107,14 +108,38 @@ export function McpServerManager() {
 		return result;
 	}, [servers, search, filterStatus]);
 
-	function openEdit(server: McpServer) {
+	async function openEdit(server: McpServer) {
+		if (!workspaceId) return;
 		setEditServer(server);
-		setEditForm(serverFormFromServer(server));
+		setEditForm(emptyForm);
+		setEditLoading(true);
 		setShowAdvancedEdit(false);
+		try {
+			const res = await fetch(
+				`/api/workspace/mcp-servers/${server.id}?workspaceId=${workspaceId}`,
+			);
+			if (!res.ok) {
+				throw new Error(
+					((await res.json().catch(() => ({}))) as { error?: string }).error ||
+						"Failed to load MCP server",
+				);
+			}
+			const data = (await res.json()) as McpServer;
+			setEditServer(data);
+			setEditForm(serverFormFromServer(data, data.authHint));
+		} catch (error) {
+			setEditServer(null);
+			toast.error(
+				error instanceof Error ? error.message : "Failed to load MCP server",
+			);
+		} finally {
+			setEditLoading(false);
+		}
 	}
 
 	function closeEdit() {
 		setEditServer(null);
+		setEditLoading(false);
 		setShowAdvancedEdit(false);
 	}
 
@@ -162,6 +187,7 @@ export function McpServerManager() {
 				body: JSON.stringify({
 					workspaceId,
 					name: editForm.name.trim(),
+					transport: editForm.transport,
 					url: editForm.url.trim() || "",
 					command: editForm.command.trim() || undefined,
 					args: linesFromTextarea(editForm.args),
@@ -324,7 +350,7 @@ export function McpServerManager() {
 				onAddServer={() => setShowCreate(true)}
 				onExpandedServersChange={setExpandedServers}
 				onToolSearchChange={setToolSearch}
-				onEditServer={openEdit}
+				onEditServer={(server) => void openEdit(server)}
 				onDeleteServer={setDeleteId}
 				onTestServer={(serverId) => void test(serverId)}
 				onSyncServer={(serverId) => void sync(serverId)}
@@ -371,6 +397,7 @@ export function McpServerManager() {
 			<EditServerDialog
 				server={editServer}
 				busy={busy}
+				loading={editLoading}
 				form={editForm}
 				setForm={setEditForm}
 				showAdvanced={showAdvancedEdit}

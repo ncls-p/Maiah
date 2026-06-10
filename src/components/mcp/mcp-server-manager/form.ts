@@ -1,4 +1,4 @@
-import type { SimpleAuthMode } from "./types";
+import type { McpAuthHint, SimpleAuthMode } from "./types";
 
 export const emptyForm = {
 	name: "",
@@ -82,25 +82,33 @@ export function buildEnv(form: McpServerForm) {
 	return mergeRecords(buildSimpleAuthEnv(form), parsePairs(form.env));
 }
 
-export function serverFormFromServer(server: {
-	name: string;
-	transport: string;
-	url: string | null;
-	command: string | null;
-	argsJson?: string[] | null;
-	requireApproval: boolean;
-}): McpServerForm {
+function authModeFromHint(authHint?: McpAuthHint): SimpleAuthMode {
+	if (!authHint || authHint.mode === "none") return "none";
+	return authHint.mode;
+}
+
+export function serverFormFromServer(
+	server: {
+		name: string;
+		transport: string;
+		url: string | null;
+		command: string | null;
+		argsJson?: string[] | null;
+		requireApproval: boolean;
+	},
+	authHint?: McpAuthHint,
+): McpServerForm {
 	return {
 		name: server.name,
 		transport: server.transport,
 		url: server.url ?? "",
 		command: server.command ?? "",
 		args: server.argsJson?.join("\n") ?? "",
-		authMode: "none",
+		authMode: authModeFromHint(authHint),
 		bearerToken: "",
-		apiKeyHeader: "X-API-Key",
+		apiKeyHeader: authHint?.apiKeyHeader ?? "X-API-Key",
 		apiKeyValue: "",
-		envKeyName: "API_KEY",
+		envKeyName: authHint?.envKeyName ?? "API_KEY",
 		envKeyValue: "",
 		requireApproval: server.requireApproval,
 		headers: "",

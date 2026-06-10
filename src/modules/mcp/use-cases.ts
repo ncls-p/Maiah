@@ -1,5 +1,6 @@
 import { and, eq, isNull, sql } from "drizzle-orm";
-import { encryptValue } from "@/lib/crypto";
+import { decryptValue, encryptValue } from "@/lib/crypto";
+import { inferMcpAuthHint } from "@/modules/mcp/auth-hint";
 import { listRemoteMcpTools } from "@/modules/mcp/client";
 import { logger } from "@/lib/logger";
 import { audit } from "@/server/domain/services/audit";
@@ -41,6 +42,13 @@ export function toSafeMcpServer(server: typeof mcpServers.$inferSelect) {
 	};
 }
 
+export function toMcpServerForEdit(server: typeof mcpServers.$inferSelect) {
+	return {
+		...toSafeMcpServer(server),
+		authHint: inferMcpAuthHint(server),
+	};
+}
+
 async function encryptRecord(record?: Record<string, string>) {
 	if (!record || Object.keys(record).length === 0) return null;
 	const encrypted: Record<string, string> = {};
@@ -48,6 +56,46 @@ async function encryptRecord(record?: Record<string, string>) {
 		encrypted[key] = await encryptValue(value);
 	}
 	return encrypted;
+}
+
+async function decryptRecord(
+	encrypted?: Record<string, string> | null,
+): Promise<Record<string, string>> {
+	if (!encrypted) return {};
+	const decrypted: Record<string, string> = {};
+	for (const [key, value] of Object.entries(encrypted)) {
+		decrypted[key] = await decryptValue(value);
+	}
+	return decrypted;
+}
+
+async function mergeEncryptedRecord(
+	existing: Record<string, string> | null | undefined,
+	incoming: Record<string, string>,
+) {
+	const merged = await decryptRecord(existing ?? null);
+	for (const [key, value] of Object.entries(incoming)) {
+		if (value.trim()) {
+			merged[key] = value;
+		}
+	}
+	return encryptRecord(merged);
+}
+
+function validateTransportConfig(
+	transport: McpTransport,
+	url: string | null,
+	command: string | null,
+) {
+	if (transport === "stdio" && !command?.trim()) {
+		throw new Error("Command is required for stdio transport");
+	}
+	if (
+		(transport === "sse" || transport === "streamable-http") &&
+		!url?.trim()
+	) {
+		throw new Error("URL is required for remote transport");
+	}
 }
 
 export async function createMcpServer(input: CreateMcpServerInput) {
@@ -121,6 +169,7 @@ export async function updateMcpServer(input: {
 	workspaceId: string;
 	userId: string;
 	name?: string;
+	transport?: McpTransport;
 	url?: string;
 	command?: string;
 	args?: string[];
@@ -132,18 +181,35 @@ export async function updateMcpServer(input: {
 	const existing = await getMcpServer(input.serverId, input.workspaceId);
 	if (!existing) throw new Error("MCP server not found");
 
+	const nextTransport = input.transport ?? existing.transport;
+	const nextUrl =
+		input.url !== undefined ? input.url || null : existing.url;
+	const nextCommand =
+		input.command !== undefined ? input.command || null : existing.command;
+
+	validateTransportConfig(nextTransport, nextUrl, nextCommand);
+
 	const updates: Record<string, unknown> = { updatedAt: new Date() };
 	if (input.name !== undefined) updates.name = input.name;
+	if (input.transport !== undefined) updates.transport = input.transport;
 	if (input.url !== undefined) updates.url = input.url || null;
 	if (input.command !== undefined) updates.command = input.command || null;
 	if (input.args !== undefined) updates.argsJson = input.args;
 	if (input.enabled !== undefined) updates.enabled = input.enabled;
 	if (input.requireApproval !== undefined)
 		updates.requireApproval = input.requireApproval;
-	if (input.headers !== undefined)
-		updates.encryptedHeadersJson = await encryptRecord(input.headers);
-	if (input.env !== undefined)
-		updates.encryptedEnvJson = await encryptRecord(input.env);
+	if (input.headers !== undefined) {
+		updates.encryptedHeadersJson = await mergeEncryptedRecord(
+			existing.encryptedHeadersJson as Record<string, string> | null,
+			input.headers,
+		);
+	}
+	if (input.env !== undefined) {
+		updates.encryptedEnvJson = await mergeEncryptedRecord(
+			existing.encryptedEnvJson as Record<string, string> | null,
+			input.env,
+		);
+	}
 
 	const [server] = await db
 		.update(mcpServers)

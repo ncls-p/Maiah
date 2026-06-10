@@ -5,6 +5,7 @@ import { getSession } from "@/modules/auth/session";
 import {
 	archiveMcpServer,
 	getMcpServer,
+	toMcpServerForEdit,
 	toSafeMcpServer,
 	updateMcpServer,
 } from "@/modules/mcp/use-cases";
@@ -14,6 +15,7 @@ const querySchema = z.object({ workspaceId: z.uuid() });
 const updateSchema = z.object({
 	workspaceId: z.uuid(),
 	name: z.string().min(1).max(255).optional(),
+	transport: z.enum(["stdio", "sse", "streamable-http"]).optional(),
 	url: z.url().or(z.literal("")).optional(),
 	command: z.string().max(2048).optional(),
 	args: z.array(z.string().max(512)).optional(),
@@ -69,7 +71,7 @@ export async function GET(
 				{ error: "MCP server not found" },
 				{ status: 404 },
 			);
-		return NextResponse.json(toSafeMcpServer(server));
+		return NextResponse.json(toMcpServerForEdit(server));
 	} catch (error) {
 		logger.error("Failed to get MCP server", {}, error as Error);
 		return NextResponse.json(

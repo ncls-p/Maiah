@@ -22,23 +22,30 @@ import { cn } from "@/lib/utils";
 import type { McpServerForm } from "./form";
 import type { SimpleAuthMode } from "./types";
 
+const secretPlaceholder = (isEdit: boolean, fallback: string) =>
+	isEdit ? "Leave blank to keep current value" : fallback;
+
 export function AuthSection({
 	form,
 	setForm,
 	transport,
 	prefix,
+	isEdit = false,
 }: {
 	form: McpServerForm;
 	setForm: (f: McpServerForm) => void;
 	transport: string;
 	prefix: string;
+	isEdit?: boolean;
 }) {
+	const showCustomHint = form.authMode === "custom";
+
 	return (
 		<div className="grid min-w-0 gap-3 rounded-lg border border-border/70 bg-background/70 p-3">
 			<div className="grid min-w-0 gap-2">
 				<Label htmlFor={`${prefix}-auth-mode`}>Authentication</Label>
 				<Select
-					value={form.authMode}
+					value={form.authMode === "custom" ? "custom" : form.authMode}
 					onValueChange={(value) =>
 						setForm({ ...form, authMode: value as SimpleAuthMode })
 					}
@@ -47,6 +54,9 @@ export function AuthSection({
 						<SelectValue />
 					</SelectTrigger>
 					<SelectContent>
+						{form.authMode === "custom" ? (
+							<SelectItem value="custom">Custom headers / env</SelectItem>
+						) : null}
 						<SelectItem value="none">No auth</SelectItem>
 						{transport === "stdio" ? (
 							<SelectItem value="env">API key / token</SelectItem>
@@ -59,6 +69,12 @@ export function AuthSection({
 					</SelectContent>
 				</Select>
 			</div>
+			{showCustomHint ? (
+				<p className="text-xs text-muted-foreground">
+					Custom credentials are configured. Use Advanced options to update
+					individual headers or environment variables.
+				</p>
+			) : null}
 			{transport === "stdio" && form.authMode === "env" ? (
 				<div className="grid gap-3 sm:grid-cols-[minmax(0,0.7fr)_minmax(0,1fr)]">
 					<div className="grid gap-2">
@@ -81,7 +97,7 @@ export function AuthSection({
 							onChange={(e) =>
 								setForm({ ...form, envKeyValue: e.target.value })
 							}
-							placeholder="Paste token…"
+							placeholder={secretPlaceholder(isEdit, "Paste token…")}
 						/>
 					</div>
 				</div>
@@ -95,7 +111,7 @@ export function AuthSection({
 						autoComplete="off"
 						value={form.bearerToken}
 						onChange={(e) => setForm({ ...form, bearerToken: e.target.value })}
-						placeholder="Paste token…"
+						placeholder={secretPlaceholder(isEdit, "Paste token…")}
 					/>
 				</div>
 			) : null}
@@ -123,7 +139,7 @@ export function AuthSection({
 							onChange={(e) =>
 								setForm({ ...form, apiKeyValue: e.target.value })
 							}
-							placeholder="Paste key…"
+							placeholder={secretPlaceholder(isEdit, "Paste key…")}
 						/>
 					</div>
 				</div>

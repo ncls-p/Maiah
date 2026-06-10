@@ -22,11 +22,17 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
 import { emptyForm, type McpServerForm } from "./form";
 import { AdvancedSection, AuthSection } from "./form-sections";
-import { serverEndpointLabel, transportLabel } from "./transport";
 import type { McpServer } from "./types";
 
 type ServerDialogProps = {
@@ -175,9 +181,46 @@ function TransportTargetFields({
 	);
 }
 
+function ConnectionFields({
+	form,
+	setForm,
+	prefix,
+	showTransportSelector,
+}: Omit<ServerDialogProps, "busy"> & {
+	prefix: string;
+	showTransportSelector: boolean;
+}) {
+	return (
+		<div className="grid min-w-0 gap-4">
+			{showTransportSelector ? (
+				<div className="grid min-w-0 gap-2">
+					<Label htmlFor={`${prefix}-transport`}>Connection mode</Label>
+					<Select
+						value={form.transport}
+						onValueChange={(value) =>
+							setForm({ ...form, transport: value, authMode: "none" })
+						}
+					>
+						<SelectTrigger id={`${prefix}-transport`} className="w-full">
+							<SelectValue />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value="streamable-http">HTTP server</SelectItem>
+							<SelectItem value="sse">SSE server</SelectItem>
+							<SelectItem value="stdio">Local command</SelectItem>
+						</SelectContent>
+					</Select>
+				</div>
+			) : null}
+			<TransportTargetFields form={form} setForm={setForm} prefix={prefix} />
+		</div>
+	);
+}
+
 export function EditServerDialog({
 	server,
 	busy,
+	loading,
 	form,
 	setForm,
 	showAdvanced,
@@ -186,11 +229,14 @@ export function EditServerDialog({
 	onSave,
 }: ServerDialogProps & {
 	server: McpServer | null;
+	loading: boolean;
 	showAdvanced: boolean;
 	onAdvancedChange: (open: boolean) => void;
 	onClose: () => void;
 	onSave: () => void;
 }) {
+	const fieldsDisabled = busy || loading;
+
 	return (
 		<Dialog
 			open={Boolean(server)}
@@ -211,61 +257,57 @@ export function EditServerDialog({
 						</Badge>
 					) : null}
 				</DialogHeader>
-				<div className="grid min-w-0 gap-4">
-					<div className="grid min-w-0 gap-2">
-						<Label htmlFor="mcp-edit-name">Name</Label>
-						<Input
-							id="mcp-edit-name"
-							autoComplete="off"
-							value={form.name}
-							onChange={(e) => setForm({ ...form, name: e.target.value })}
-						/>
+				{loading ? (
+					<div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
+						<Loader2 className="size-4 animate-spin" aria-hidden="true" />
+						Loading configuration…
 					</div>
-					{server ? <ReadonlyTransportSummary server={server} /> : null}
-					<TransportTargetFields
-						form={form}
-						setForm={setForm}
-						prefix="mcp-edit"
-					/>
-					{server ? (
+				) : (
+					<div className="grid min-w-0 gap-4">
+						<div className="grid min-w-0 gap-2">
+							<Label htmlFor="mcp-edit-name">Name</Label>
+							<Input
+								id="mcp-edit-name"
+								autoComplete="off"
+								value={form.name}
+								disabled={fieldsDisabled}
+								onChange={(e) => setForm({ ...form, name: e.target.value })}
+							/>
+						</div>
+						<ConnectionFields
+							form={form}
+							setForm={setForm}
+							prefix="mcp-edit"
+							showTransportSelector
+						/>
 						<AuthSection
 							form={form}
 							setForm={setForm}
 							transport={form.transport}
 							prefix="mcp-edit"
+							isEdit
 						/>
-					) : null}
-					<AdvancedSection
-						open={showAdvanced}
-						onOpenChange={onAdvancedChange}
-						form={form}
-						setForm={setForm}
-						prefix="mcp-edit"
-						placeholder="Leave these empty to keep the existing secret configuration."
-						showConnectionMode={false}
-					/>
-				</div>
+						<AdvancedSection
+							open={showAdvanced}
+							onOpenChange={onAdvancedChange}
+							form={form}
+							setForm={setForm}
+							prefix="mcp-edit"
+							placeholder="Leave these empty to keep the existing secret configuration."
+							showConnectionMode={false}
+						/>
+					</div>
+				)}
 				<DialogFooter className="overflow-hidden">
 					<Button variant="outline" onClick={onClose}>
 						Cancel
 					</Button>
-					<Button disabled={busy} onClick={onSave}>
+					<Button disabled={fieldsDisabled || loading} onClick={onSave}>
 						Save changes
 					</Button>
 				</DialogFooter>
 			</DialogContent>
 		</Dialog>
-	);
-}
-
-function ReadonlyTransportSummary({ server }: { server: McpServer }) {
-	return (
-		<div className="flex min-w-0 items-center gap-2 overflow-hidden rounded-lg border border-border/70 bg-muted/40 px-3 py-2">
-			<Badge variant="outline">{transportLabel(server.transport)}</Badge>
-			<code className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
-				{serverEndpointLabel(server)}
-			</code>
-		</div>
 	);
 }
 
