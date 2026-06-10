@@ -249,7 +249,7 @@ export function ChatLayout({
 				}}
 			>
 				{sidebarOpen && (
-					<aside className="relative h-full w-full border-r border-border bg-background">
+					<aside className="glass-panel glass-panel--heavy relative h-full w-full rounded-none border-r">
 						<ChatSidebar {...desktopSidebarProps} className="w-full" />
 						<div
 							role="separator"

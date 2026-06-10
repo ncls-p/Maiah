@@ -324,7 +324,7 @@ export function ChatSidebar({
 	}
 
 	return (
-		<div className={cn("flex h-full min-h-0 flex-col", className)}>
+		<div className={cn("glass-panel glass-panel--heavy flex h-full min-h-0 flex-col rounded-none", className)}>
 			<div className="flex items-center justify-between border-b border-border/50 px-4 py-3">
 				<div className="flex items-center gap-2">
 					{onCollapsedChange ? (

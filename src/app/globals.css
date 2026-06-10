@@ -59,6 +59,13 @@
   --brand-gris: #3d3d3d;
   --brand-blanc: #ffffff;
   --brand-noir: #0f0f0f;
+
+  /* ── Background mesh (Apple-style gradient) ── */
+  --mesh-1: oklch(0.95 0.04 230);
+  --mesh-2: oklch(0.96 0.03 180);
+  --mesh-3: oklch(0.94 0.05 260);
+  --mesh-4: oklch(0.97 0.02 150);
+
   --background: var(--brand-blanc);
   --foreground: var(--brand-noir);
   --card: oklch(0.98 0.004 210);
@@ -94,6 +101,63 @@
   --sidebar-accent-foreground: var(--brand-noir);
   --sidebar-border: oklch(0.76 0.02 210);
   --sidebar-ring: var(--brand-azur);
+
+  /* ── Glass tokens (light) ── */
+  --glass-bg: oklch(1 0 0 / 0.72);
+  --glass-bg-heavy: oklch(1 0 0 / 0.82);
+  --glass-border: oklch(1 0 0 / 0.45);
+  --glass-border-strong: oklch(1 0 0 / 0.6);
+  --glass-shadow: oklch(0 0 0 / 0.06);
+  --glass-blur: 20px;
+  --glass-blur-heavy: 40px;
+  --glass-highlight: oklch(1 0 0 / 0.25);
+}
+
+.dark {
+  --background: oklch(0.16 0.01 250);
+  --foreground: var(--brand-blanc);
+  --card: oklch(0.22 0.015 250 / 0.9);
+  --card-foreground: var(--brand-blanc);
+  --popover: oklch(0.22 0.015 250 / 0.96);
+  --popover-foreground: var(--brand-blanc);
+  --primary: oklch(0.72 0.11 210);
+  --primary-foreground: var(--brand-noir);
+  --secondary: oklch(0.28 0.02 250);
+  --secondary-foreground: var(--brand-blanc);
+  --muted: oklch(0.26 0.015 250);
+  --muted-foreground: oklch(0.72 0.01 210);
+  --accent: oklch(0.3 0.03 210);
+  --accent-foreground: var(--brand-blanc);
+  --destructive: oklch(0.704 0.191 22.216);
+  --success: oklch(0.68 0.12 155);
+  --warning: oklch(0.78 0.12 75);
+  --info: oklch(0.68 0.08 230);
+  --border: oklch(0.55 0.02 250 / 0.35);
+  --input: oklch(0.28 0.015 250 / 0.8);
+  --ring: oklch(0.72 0.11 210);
+  --chart-1: oklch(0.72 0.11 210);
+  --chart-2: oklch(0.62 0.08 210);
+  --chart-3: oklch(0.55 0.01 210);
+  --chart-4: oklch(0.78 0.06 210);
+  --chart-5: oklch(0.45 0.02 210);
+  --sidebar: oklch(0.22 0.015 250 / 0.94);
+  --sidebar-foreground: var(--brand-blanc);
+  --sidebar-primary: oklch(0.72 0.11 210);
+  --sidebar-primary-foreground: var(--brand-noir);
+  --sidebar-accent: oklch(0.3 0.03 210);
+  --sidebar-accent-foreground: var(--brand-blanc);
+  --sidebar-border: oklch(0.55 0.02 250 / 0.35);
+  --sidebar-ring: oklch(0.72 0.11 210);
+
+  /* ── Glass tokens (dark) ── */
+  --glass-bg: oklch(0.22 0.015 250 / 0.65);
+  --glass-bg-heavy: oklch(0.22 0.015 250 / 0.78);
+  --glass-border: oklch(1 0 0 / 0.12);
+  --glass-border-strong: oklch(1 0 0 / 0.18);
+  --glass-shadow: oklch(0 0 0 / 0.15);
+  --glass-blur: 24px;
+  --glass-blur-heavy: 48px;
+  --glass-highlight: oklch(1 0 0 / 0.06);
 }
 
 .dark {
@@ -161,6 +225,24 @@
     @apply min-h-svh overflow-hidden;
   }
 
+  /* ── Mesh gradient background (Apple-style) ── */
+  [data-page="app-shell"] {
+    background-image:
+      radial-gradient(ellipse 80% 60% at 10% 10%, var(--mesh-1), transparent),
+      radial-gradient(ellipse 70% 50% at 90% 20%, var(--mesh-2), transparent),
+      radial-gradient(ellipse 60% 70% at 50% 90%, var(--mesh-3), transparent),
+      radial-gradient(ellipse 50% 40% at 80% 80%, var(--mesh-4), transparent);
+    background-color: var(--background);
+    background-attachment: fixed;
+  }
+
+  .dark [data-page="app-shell"] {
+    --mesh-1: oklch(0.20 0.04 250);
+    --mesh-2: oklch(0.18 0.03 220);
+    --mesh-3: oklch(0.22 0.05 270);
+    --mesh-4: oklch(0.19 0.02 200);
+  }
+
   ::selection {
     background: color-mix(in oklch, var(--primary) 38%, transparent);
     color: var(--foreground);
@@ -198,6 +280,45 @@
  * - List rows: .ui-list-row (rounded-xl)
  */
 @layer components {
+  /* ── Glass surfaces ── */
+  .glass-panel {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    box-shadow:
+      0 1px 3px color-mix(in oklch, var(--glass-shadow) 40%, transparent),
+      0 8px 32px -8px color-mix(in oklch, var(--glass-shadow) 30%, transparent);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    position: relative;
+    overflow: hidden;
+  }
+
+  .glass-panel::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(
+      160deg,
+      var(--glass-highlight) 0%,
+      transparent 50%
+    );
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .glass-panel--heavy {
+    background: var(--glass-bg-heavy);
+    border-color: var(--glass-border-strong);
+    backdrop-filter: blur(var(--glass-blur-heavy));
+    -webkit-backdrop-filter: blur(var(--glass-blur-heavy));
+  }
+
+  .glass-panel--subtle {
+    background: color-mix(in oklch, var(--glass-bg) 50%, transparent);
+    border-color: color-mix(in oklch, var(--glass-border) 50%, transparent);
+  }
+
   .surface-panel {
     @apply rounded-2xl border border-border bg-card;
   }
@@ -227,15 +348,20 @@
   }
 
   .ui-list-row {
-    @apply rounded-xl border border-border bg-background transition-colors hover:border-primary/35 hover:bg-muted/40;
+    @apply rounded-xl border border-border/60 bg-card/60 transition-colors hover:border-primary/35 hover:bg-card/80;
   }
 
   .app-shell {
-    @apply flex h-svh min-h-svh flex-col overflow-hidden bg-muted/20 text-foreground;
+    @apply flex h-svh min-h-svh flex-col overflow-hidden text-foreground;
   }
 
   .app-shell__header {
-    @apply flex h-16 shrink-0 items-center justify-between border-b border-border bg-background px-4 shadow-sm;
+    @apply flex h-16 shrink-0 items-center justify-between border-b px-4;
+    border-color: var(--glass-border);
+    background: var(--glass-bg-heavy);
+    backdrop-filter: blur(var(--glass-blur-heavy));
+    -webkit-backdrop-filter: blur(var(--glass-blur-heavy));
+    box-shadow: 0 1px 3px color-mix(in oklch, var(--glass-shadow) 20%, transparent);
     padding-top: max(0rem, env(safe-area-inset-top));
   }
 
@@ -409,56 +535,83 @@
     }
   }
 
-  /* ── Message bubble polish ── */
+  /* ── Message bubble polish (Apple glass) ── */
   .msg-bubble--user {
     @apply rounded-2xl px-4 py-3 text-sm leading-6;
-    background: var(--primary);
+    background: linear-gradient(135deg, var(--primary), color-mix(in oklch, var(--primary) 85%, oklch(0 0.05 260)));
     color: var(--primary-foreground);
     box-shadow:
       0 1px 2px color-mix(in oklch, var(--primary) 15%, transparent),
-      0 4px 12px -4px color-mix(in oklch, var(--primary) 20%, transparent);
+      0 8px 24px -8px color-mix(in oklch, var(--primary) 25%, transparent);
     border-bottom-right-radius: 0.375rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .msg-bubble--user::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, oklch(1 0 0 / 0.12) 0%, transparent 60%);
+    pointer-events: none;
+    border-radius: inherit;
   }
 
   .msg-bubble--assistant {
     @apply rounded-2xl px-4 py-3 text-sm leading-6;
-    background: color-mix(in oklch, var(--card) 92%, transparent);
+    background: var(--glass-bg);
     color: var(--foreground);
-    border: 1px solid color-mix(in oklch, var(--border) 70%, transparent);
+    border: 1px solid var(--glass-border);
     box-shadow:
-      0 1px 2px color-mix(in oklch, var(--foreground) 4%, transparent),
-      0 4px 12px -4px color-mix(in oklch, var(--foreground) 6%, transparent);
-    backdrop-filter: blur(8px);
+      0 1px 3px color-mix(in oklch, var(--glass-shadow) 30%, transparent),
+      0 8px 24px -8px color-mix(in oklch, var(--glass-shadow) 20%, transparent);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
     border-bottom-left-radius: 0.375rem;
+    position: relative;
+    overflow: hidden;
   }
 
-  .dark .msg-bubble--assistant {
-    background: color-mix(in oklch, var(--card) 92%, white 8%);
-    border: 1px solid color-mix(in oklch, var(--border) 88%, white 12%);
-    box-shadow:
-      0 1px 3px color-mix(in oklch, var(--foreground) 8%, transparent),
-      0 8px 24px -8px color-mix(in oklch, var(--foreground) 12%, transparent);
+  .msg-bubble--assistant::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(160deg, var(--glass-highlight) 0%, transparent 50%);
+    pointer-events: none;
+    border-radius: inherit;
   }
 
-  /* ── Composer polish ── */
+  /* ── Composer polish (Apple glass) ── */
   .composer-box {
     @apply relative;
-    background: color-mix(in oklch, var(--card) 96%, transparent);
-    border: 1px solid color-mix(in oklch, var(--border) 70%, transparent);
+    background: var(--glass-bg-heavy);
+    border: 1px solid var(--glass-border-strong);
     box-shadow:
-      0 4px 24px -8px color-mix(in oklch, var(--foreground) 15%, transparent),
-      0 12px 48px -12px color-mix(in oklch, var(--foreground) 10%, transparent);
+      0 4px 24px -8px color-mix(in oklch, var(--glass-shadow) 40%, transparent),
+      0 16px 48px -12px color-mix(in oklch, var(--glass-shadow) 25%, transparent);
+    backdrop-filter: blur(var(--glass-blur-heavy));
+    -webkit-backdrop-filter: blur(var(--glass-blur-heavy));
     transition:
       border-color 0.2s ease,
       box-shadow 0.2s ease;
+    overflow: hidden;
+  }
+
+  .composer-box::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(160deg, var(--glass-highlight) 0%, transparent 40%);
+    pointer-events: none;
+    border-radius: inherit;
   }
 
   .composer-box:focus-within {
-    border-color: color-mix(in oklch, var(--ring) 70%, transparent);
+    border-color: color-mix(in oklch, var(--ring) 50%, var(--glass-border-strong));
     box-shadow:
       0 0 0 4px color-mix(in oklch, var(--ring) 10%, transparent),
-      0 4px 24px -8px color-mix(in oklch, var(--foreground) 15%, transparent),
-      0 12px 48px -12px color-mix(in oklch, var(--foreground) 10%, transparent);
+      0 4px 24px -8px color-mix(in oklch, var(--glass-shadow) 40%, transparent),
+      0 16px 48px -12px color-mix(in oklch, var(--glass-shadow) 25%, transparent);
   }
 
   /* ── Nav item active indicator ── */

@@ -482,7 +482,7 @@ export function WorkspaceSidebar({ shell }: { shell: WorkspaceShellState }) {
 		<aside
 			data-slot="workspace-sidebar"
 			className={cn(
-				"relative hidden h-full shrink-0 border-r border-sidebar-border bg-sidebar md:flex md:flex-col",
+				"glass-panel glass-panel--heavy relative hidden h-full shrink-0 rounded-none border-r md:flex md:flex-col",
 				!resizing && "transition-[width] duration-200",
 			)}
 			style={{ width: collapsed ? "3.25rem" : `${width}px` }}
