@@ -1,14 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import {
 	ArrowRightIcon,
 	CheckCircle2Icon,
 	EyeIcon,
 	SendIcon,
+	Share2,
 	SparklesIcon,
-	Store,
 	Trash2Icon,
 	WorkflowIcon,
 } from "lucide-react";
@@ -35,6 +34,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
+import {
+	ResourceShareDialog,
+	type ShareableResource,
+} from "@/components/marketplace/resource-share-dialog";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { cn } from "@/lib/utils";
 
@@ -100,8 +103,10 @@ function userSafeText(value: string) {
 }
 
 export function CustomToolBuilder() {
-	const router = useRouter();
 	const { workspaceId } = useWorkspace();
+	const [shareResource, setShareResource] = useState<ShareableResource | null>(
+		null,
+	);
 	const [messages, setMessages] = useState<BuilderMessage[]>([
 		{
 			role: "assistant",
@@ -266,38 +271,6 @@ export function CustomToolBuilder() {
 		} catch (error) {
 			toast.error(
 				error instanceof Error ? error.message : "Suppression impossible",
-			);
-		}
-	}
-
-	async function publishCustomToolToMarketplace(tool: CustomTool) {
-		if (!workspaceId) return;
-		try {
-			const res = await fetch("/api/marketplace/items", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					customToolId: tool.id,
-					workspaceId,
-					version: "1.0.0",
-					name: tool.name,
-					description: tool.description || undefined,
-					draftOnly: true,
-				}),
-			});
-			if (!res.ok) {
-				const err = await res.json().catch(() => ({}));
-				toast.error(err.error || "Failed to create marketplace draft");
-				return;
-			}
-			const data = await res.json();
-			toast.success("Marketplace draft created");
-			if (data.item?.id) {
-				router.push(`/marketplace/items/${data.item.id}`);
-			}
-		} catch (err) {
-			toast.error(
-				err instanceof Error ? err.message : "Failed to create marketplace draft",
 			);
 		}
 	}
@@ -608,10 +581,17 @@ export function CustomToolBuilder() {
 											type="button"
 											variant="outline"
 											size="sm"
-											onClick={() => void publishCustomToolToMarketplace(tool)}
+											onClick={() =>
+												setShareResource({
+													kind: "custom_tool",
+													id: tool.id,
+													name: tool.name,
+													description: tool.description,
+												})
+											}
 										>
-											<Store className="size-3" aria-hidden="true" />
-											Marketplace
+											<Share2 className="size-3" aria-hidden="true" />
+											Partager
 										</Button>
 										<Button
 											type="button"
@@ -684,6 +664,13 @@ export function CustomToolBuilder() {
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>
+
+			<ResourceShareDialog
+				resource={shareResource}
+				workspaceId={workspaceId}
+				open={shareResource !== null}
+				onClose={() => setShareResource(null)}
+			/>
 		</div>
 	);
 }

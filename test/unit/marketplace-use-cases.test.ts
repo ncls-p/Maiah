@@ -11,6 +11,7 @@ import {
 	updateMarketplaceItem,
 	deleteMarketplaceItem,
 	adminModerateItem,
+	canUserInstallMarketplaceItem,
 } from "@/modules/marketplace/use-cases";
 
 // ─── Mocks ─────────────────────────────────────────────────────────────
@@ -447,6 +448,72 @@ describe("marketplace use-cases", () => {
 			await expect(deleteMarketplaceItem("1", "user1")).rejects.toThrow(
 				"Not authorized to delete this item",
 			);
+		});
+	});
+
+	describe("canUserInstallMarketplaceItem", () => {
+		it("allows owner to install draft items", async () => {
+			const item = {
+				id: "1",
+				publisherUserId: "user1",
+				status: "draft",
+				visibility: "private",
+			};
+			await expect(
+				canUserInstallMarketplaceItem(item as never, "user1"),
+			).resolves.toBe(true);
+		});
+
+		it("allows install of public published items", async () => {
+			const item = {
+				id: "1",
+				publisherUserId: "publisher",
+				status: "published",
+				visibility: "public",
+			};
+			await expect(
+				canUserInstallMarketplaceItem(item as never, "user2"),
+			).resolves.toBe(true);
+		});
+
+		it("allows install when item is shared with user", async () => {
+			const item = {
+				id: "1",
+				publisherUserId: "publisher",
+				status: "draft",
+				visibility: "private",
+			};
+			const sc = dbModule._selectChain;
+			sc.where.mockImplementationOnce(() => sc);
+			givenSelectLimitOnce([{ id: "share-1" }]);
+			await expect(
+				canUserInstallMarketplaceItem(item as never, "user2"),
+			).resolves.toBe(true);
+		});
+
+		it("denies install for private draft without access", async () => {
+			const item = {
+				id: "1",
+				publisherUserId: "publisher",
+				status: "draft",
+				visibility: "private",
+			};
+			givenSelectLimit([]);
+			await expect(
+				canUserInstallMarketplaceItem(item as never, "user2"),
+			).resolves.toBe(false);
+		});
+
+		it("denies install for suspended items", async () => {
+			const item = {
+				id: "1",
+				publisherUserId: "user1",
+				status: "suspended",
+				visibility: "public",
+			};
+			await expect(
+				canUserInstallMarketplaceItem(item as never, "user1"),
+			).resolves.toBe(false);
 		});
 	});
 

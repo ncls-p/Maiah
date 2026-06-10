@@ -10,6 +10,8 @@ import {
 	marketplaceItems,
 	marketplaceItemVersions,
 	marketplaceItemShares,
+	mcpServers,
+	mcpTools,
 	users,
 } from "@/server/infrastructure/db/schema";
 
@@ -53,10 +55,142 @@ export interface ToolMarketplaceManifest {
 	};
 }
 
+export interface McpPresetMarketplaceManifest {
+	type: "mcp_preset";
+	name: string;
+	description?: string;
+	preset: {
+		scope: "server" | "tool";
+		serverName: string;
+		transport: "stdio" | "sse" | "streamable-http";
+		command?: string;
+		args?: string[];
+		url?: string;
+		requireApproval: boolean;
+		requiresCredentials: boolean;
+		tools: Array<{
+			name: string;
+			description?: string | null;
+			inputSchema?: Record<string, unknown> | null;
+			outputSchema?: Record<string, unknown> | null;
+			requireApproval: boolean;
+			enabled: boolean;
+		}>;
+	};
+}
+
 export type MarketplaceManifest =
 	| AgentMarketplaceManifest
 	| SkillMarketplaceManifest
-	| ToolMarketplaceManifest;
+	| ToolMarketplaceManifest
+	| McpPresetMarketplaceManifest;
+
+function buildMcpPresetManifest(
+	name: string,
+	description: string | null | undefined,
+	server: typeof mcpServers.$inferSelect,
+	tools: Array<typeof mcpTools.$inferSelect>,
+	scope: "server" | "tool",
+): McpPresetMarketplaceManifest {
+	const args = Array.isArray(server.argsJson)
+		? (server.argsJson as string[])
+		: undefined;
+
+	return {
+		type: "mcp_preset",
+		name,
+		description: description ?? undefined,
+		preset: {
+			scope,
+			serverName: server.name,
+			transport: server.transport,
+			command: server.command ?? undefined,
+			args,
+			url: server.url ?? undefined,
+			requireApproval: server.requireApproval,
+			requiresCredentials: Boolean(
+				server.encryptedHeadersJson || server.encryptedEnvJson,
+			),
+			tools: tools.map((tool) => ({
+				name: tool.name,
+				description: tool.description,
+				inputSchema:
+					tool.inputSchemaJson && typeof tool.inputSchemaJson === "object"
+						? (tool.inputSchemaJson as Record<string, unknown>)
+						: null,
+				outputSchema:
+					tool.outputSchemaJson && typeof tool.outputSchemaJson === "object"
+						? (tool.outputSchemaJson as Record<string, unknown>)
+						: null,
+				requireApproval: tool.requireApproval,
+				enabled: tool.enabled,
+			})),
+		},
+	};
+}
+
+async function insertMcpPresetDraft(input: {
+	workspaceId: string;
+	userId: string;
+	version: string;
+	name: string;
+	description?: string | null;
+	visibility?: "public" | "private" | "unlisted" | "organization";
+	tags?: string[];
+	manifest: McpPresetMarketplaceManifest;
+	metadata: Record<string, unknown>;
+}) {
+	const { item, version } = await db.transaction(async (tx) => {
+		const [item] = await tx
+			.insert(marketplaceItems)
+			.values({
+				publisherUserId: input.userId,
+				publisherWorkspaceId: input.workspaceId,
+				type: "mcp_preset",
+				slug: `${slugify(input.name)}-${Date.now().toString(36)}`,
+				name: input.name,
+				description: input.description,
+				visibility: input.visibility ?? "private",
+				status: "draft",
+				pricingModel: "free",
+				tagsJson: input.tags ?? [],
+			})
+			.returning();
+
+		const [version] = await tx
+			.insert(marketplaceItemVersions)
+			.values({
+				itemId: item.id,
+				version: input.version,
+				manifestJson: input.manifest,
+				changelog: "Initial marketplace draft",
+				compatibilityJson: { app: "ai-hub", schema: 1 },
+				securityReviewStatus: "pending",
+				createdById: input.userId,
+			})
+			.returning();
+
+		await tx
+			.update(marketplaceItems)
+			.set({ latestVersionId: version.id, updatedAt: new Date() })
+			.where(eq(marketplaceItems.id, item.id));
+
+		return { item, version };
+	});
+
+	await audit.emit({
+		workspaceId: input.workspaceId,
+		actorPrincipalType: "user",
+		actorPrincipalId: input.userId,
+		action: "marketplace.draftCreated",
+		resourceType: "marketplace_item",
+		resourceId: item.id,
+		outcome: "success",
+		metadata: { ...input.metadata, versionId: version.id },
+	});
+
+	return { item, version };
+}
 
 function slugify(value: string) {
 	return value
@@ -190,6 +324,40 @@ export async function getLatestVersion(itemId: string) {
 		.orderBy(desc(marketplaceItemVersions.createdAt))
 		.limit(1);
 	return version ?? null;
+}
+
+async function userHasMarketplaceShare(itemId: string, userId: string) {
+	const [share] = await db
+		.select({ id: marketplaceItemShares.id })
+		.from(marketplaceItemShares)
+		.where(
+			and(
+				eq(marketplaceItemShares.itemId, itemId),
+				eq(marketplaceItemShares.sharedWithUserId, userId),
+			),
+		)
+		.limit(1);
+	return Boolean(share);
+}
+
+export async function canUserInstallMarketplaceItem(
+	item: NonNullable<Awaited<ReturnType<typeof getMarketplaceItem>>>,
+	userId: string,
+) {
+	const blockedStatuses = new Set(["suspended", "archived", "rejected"]);
+	if (blockedStatuses.has(item.status)) return false;
+
+	if (item.publisherUserId === userId) return true;
+
+	if (item.status === "published" && item.visibility === "public") return true;
+
+	if (await userHasMarketplaceShare(item.id, userId)) return true;
+
+	if (item.status === "draft" || item.status === "published") {
+		return false;
+	}
+
+	return false;
 }
 
 // ─── Create / Publish ──────────────────────────────────────────────────
@@ -572,6 +740,110 @@ export async function createCustomToolMarketplaceDraft(input: {
 	return { item, version };
 }
 
+export async function createMcpServerMarketplaceDraft(input: {
+	workspaceId: string;
+	userId: string;
+	mcpServerId: string;
+	version: string;
+	name?: string;
+	description?: string;
+	visibility?: "public" | "private" | "unlisted" | "organization";
+	tags?: string[];
+}) {
+	const [server] = await db
+		.select()
+		.from(mcpServers)
+		.where(
+			and(
+				eq(mcpServers.id, input.mcpServerId),
+				eq(mcpServers.workspaceId, input.workspaceId),
+			),
+		)
+		.limit(1);
+	if (!server) throw new Error("MCP server not found");
+
+	const tools = await db
+		.select()
+		.from(mcpTools)
+		.where(eq(mcpTools.mcpServerId, server.id));
+
+	const name = input.name || server.name;
+	const manifest = buildMcpPresetManifest(
+		name,
+		input.description,
+		server,
+		tools,
+		"server",
+	);
+
+	return insertMcpPresetDraft({
+		workspaceId: input.workspaceId,
+		userId: input.userId,
+		version: input.version,
+		name,
+		description: input.description ?? null,
+		visibility: input.visibility,
+		tags: input.tags,
+		manifest,
+		metadata: { mcpServerId: input.mcpServerId, scope: "server" },
+	});
+}
+
+export async function createMcpToolMarketplaceDraft(input: {
+	workspaceId: string;
+	userId: string;
+	mcpToolId: string;
+	version: string;
+	name?: string;
+	description?: string;
+	visibility?: "public" | "private" | "unlisted" | "organization";
+	tags?: string[];
+}) {
+	const [tool] = await db
+		.select()
+		.from(mcpTools)
+		.where(eq(mcpTools.id, input.mcpToolId))
+		.limit(1);
+	if (!tool) throw new Error("MCP tool not found");
+
+	const [server] = await db
+		.select()
+		.from(mcpServers)
+		.where(
+			and(
+				eq(mcpServers.id, tool.mcpServerId),
+				eq(mcpServers.workspaceId, input.workspaceId),
+			),
+		)
+		.limit(1);
+	if (!server) throw new Error("MCP server not found");
+
+	const name = input.name || `${server.name} — ${tool.name}`;
+	const manifest = buildMcpPresetManifest(
+		name,
+		input.description ?? tool.description,
+		server,
+		[tool],
+		"tool",
+	);
+
+	return insertMcpPresetDraft({
+		workspaceId: input.workspaceId,
+		userId: input.userId,
+		version: input.version,
+		name,
+		description: input.description ?? tool.description,
+		visibility: input.visibility,
+		tags: input.tags,
+		manifest,
+		metadata: {
+			mcpToolId: input.mcpToolId,
+			mcpServerId: server.id,
+			scope: "tool",
+		},
+	});
+}
+
 // ─── Publish (draft → published directly) ──────────────────────────────
 
 export async function publishMarketplaceItem(
@@ -929,7 +1201,8 @@ export async function installMarketplaceItem(input: {
 	itemId: string;
 }) {
 	const item = await getMarketplaceItem(input.itemId);
-	if (!item || item.status !== "published")
+	if (!item) throw new Error("Marketplace item not found");
+	if (!(await canUserInstallMarketplaceItem(item, input.userId)))
 		throw new Error("Marketplace item not available");
 	const version = await getLatestVersion(item.id);
 	if (!version) throw new Error("Marketplace item has no version");
@@ -1019,6 +1292,44 @@ export async function installMarketplaceItem(input: {
 
 				installedResource = installedTool;
 				resourceType = "custom_tool";
+				break;
+			}
+
+			case "mcp_preset": {
+				const [installedServer] = await tx
+					.insert(mcpServers)
+					.values({
+						workspaceId: input.workspaceId,
+						createdById: input.userId,
+						name: manifest.preset.serverName,
+						transport: manifest.preset.transport,
+						command: manifest.preset.command ?? null,
+						argsJson: manifest.preset.args ?? null,
+						url: manifest.preset.url ?? null,
+						enabled: true,
+						requireApproval: manifest.preset.requireApproval,
+						healthStatus: manifest.preset.requiresCredentials
+							? "unknown"
+							: "healthy",
+					})
+					.returning();
+
+				if (manifest.preset.tools.length > 0) {
+					await tx.insert(mcpTools).values(
+						manifest.preset.tools.map((tool) => ({
+							mcpServerId: installedServer.id,
+							name: tool.name,
+							description: tool.description ?? null,
+							inputSchemaJson: tool.inputSchema ?? null,
+							outputSchemaJson: tool.outputSchema ?? null,
+							enabled: tool.enabled,
+							requireApproval: tool.requireApproval,
+						})),
+					);
+				}
+
+				installedResource = installedServer;
+				resourceType = "mcp_preset";
 				break;
 			}
 

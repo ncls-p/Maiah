@@ -5,6 +5,7 @@ import {
 	PencilIcon,
 	RefreshCwIcon,
 	SearchIcon,
+	Share2,
 	ShieldAlert,
 	Trash2Icon,
 	Wrench,
@@ -67,6 +68,8 @@ type ServerListProps = {
 	onDeleteServer: (serverId: string) => void;
 	onTestServer: (serverId: string) => void;
 	onSyncServer: (serverId: string) => void;
+	onShareServer: (server: McpServer) => void;
+	onShareTool: (server: McpServer, tool: McpTool) => void;
 	onToggleEnabled: (server: McpServer, enabled: boolean) => void;
 	onToggleServerApproval: (server: McpServer, requireApproval: boolean) => void;
 	onToggleTool: (serverId: string, toolId: string, enabled: boolean) => void;
@@ -248,6 +251,7 @@ function ServerHeader({
 	onDeleteServer,
 	onTestServer,
 	onSyncServer,
+	onShareServer,
 	onToggleEnabled,
 	onToggleServerApproval,
 }: ServerListProps & {
@@ -280,6 +284,7 @@ function ServerHeader({
 					onDeleteServer={onDeleteServer}
 					onTestServer={onTestServer}
 					onSyncServer={onSyncServer}
+					onShareServer={onShareServer}
 				/>
 				<ChevronDownIcon
 					className={cn(
@@ -437,9 +442,14 @@ function ServerActions({
 	onDeleteServer,
 	onTestServer,
 	onSyncServer,
+	onShareServer,
 }: Pick<
 	ServerListProps,
-	"onEditServer" | "onDeleteServer" | "onTestServer" | "onSyncServer"
+	| "onEditServer"
+	| "onDeleteServer"
+	| "onTestServer"
+	| "onSyncServer"
+	| "onShareServer"
 > & { server: McpServer }) {
 	return (
 		<DropdownMenu>
@@ -462,6 +472,10 @@ function ServerActions({
 				<DropdownMenuItem onClick={() => onSyncServer(server.id)}>
 					<RefreshCwIcon className="size-4" />
 					Sync tools
+				</DropdownMenuItem>
+				<DropdownMenuItem onClick={() => onShareServer(server)}>
+					<Share2 className="size-4" />
+					Partager
 				</DropdownMenuItem>
 				<DropdownMenuSeparator />
 				<DropdownMenuItem onClick={() => onEditServer(server)}>
@@ -489,6 +503,7 @@ function ToolsPanel({
 	onToolSearchChange,
 	onToggleTool,
 	onToggleToolApproval,
+	onShareTool,
 }: ServerListProps & {
 	server: McpServer;
 	tools: McpTool[];
@@ -521,6 +536,7 @@ function ToolsPanel({
 									tool={tool}
 									onToggleTool={onToggleTool}
 									onToggleToolApproval={onToggleToolApproval}
+									onShareTool={onShareTool}
 								/>
 							))}
 						</div>
@@ -578,7 +594,11 @@ function ToolRow({
 	tool,
 	onToggleTool,
 	onToggleToolApproval,
-}: Pick<ServerListProps, "onToggleTool" | "onToggleToolApproval"> & {
+	onShareTool,
+}: Pick<
+	ServerListProps,
+	"onToggleTool" | "onToggleToolApproval" | "onShareTool"
+> & {
 	server: McpServer;
 	tool: McpTool;
 }) {
@@ -626,7 +646,16 @@ function ToolRow({
 					{server.requireApproval ? "Forced" : "Approval"}
 				</Badge>
 			) : null}
-			<div className="flex shrink-0 items-center gap-3">
+			<div className="flex shrink-0 items-center gap-2">
+				<Button
+					size="icon-sm"
+					variant="ghost"
+					className="size-7 shrink-0"
+					aria-label={`Partager ${tool.name}`}
+					onClick={() => onShareTool(server, tool)}
+				>
+					<Share2 className="size-3.5" aria-hidden="true" />
+				</Button>
 				<LabeledSwitch
 					label="Approval"
 					ariaLabel={`Require approval for ${tool.name}`}

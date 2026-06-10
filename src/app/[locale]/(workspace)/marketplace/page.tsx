@@ -8,8 +8,6 @@ import {
 	Bot,
 	Download,
 	ExternalLink,
-	Globe,
-	Lock,
 	Package,
 	PackagePlus,
 	Plug,
@@ -20,7 +18,6 @@ import {
 	Star,
 	Store,
 	Trash2,
-	User,
 	Wrench,
 	Workflow,
 } from "lucide-react";
@@ -45,16 +42,12 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-} from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useWorkspaceShell } from "@/components/app-shell";
+import {
+	ResourceShareDialog,
+	type ShareableResource,
+} from "@/components/marketplace/resource-share-dialog";
 import { useWorkspace } from "@/hooks/use-workspace";
 
 // ─── Types ─────────────────────────────────────────────────────────────
@@ -69,18 +62,14 @@ interface MarketplaceItem {
 	installCount: number;
 	totalDownloads: number;
 	isFeatured: boolean;
+	featuredOrder?: number | null;
+	ratingAverage?: string | null;
 	verifiedPublisher: boolean;
 	publishedAt: string | null;
 	createdAt: string;
 	tagsJson: string[] | null;
 	publisherUserId: string;
 	shareCount?: number;
-}
-
-interface User {
-	id: string;
-	name: string;
-	email: string;
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────
@@ -139,6 +128,59 @@ function formatDate(dateStr: string | null) {
 	});
 }
 
+type MarketplaceFilters = {
+	search: string;
+	typeFilter: string;
+	sortBy: string;
+	featuredOnly: boolean;
+};
+
+function filterAndSortMarketplaceItems(
+	items: MarketplaceItem[],
+	filters: MarketplaceFilters,
+): MarketplaceItem[] {
+	let result = items;
+
+	if (filters.featuredOnly) {
+		result = result.filter((item) => item.isFeatured);
+	}
+
+	if (filters.typeFilter !== "all") {
+		result = result.filter((item) => item.type === filters.typeFilter);
+	}
+
+	if (filters.search.trim()) {
+		const q = filters.search.trim().toLowerCase();
+		result = result.filter(
+			(item) =>
+				item.name.toLowerCase().includes(q) ||
+				(item.description?.toLowerCase().includes(q) ?? false) ||
+				(item.tagsJson?.some((tag) => tag.toLowerCase().includes(q)) ?? false),
+		);
+	}
+
+	return [...result].sort((a, b) => {
+		switch (filters.sortBy) {
+			case "newest":
+				return (
+					new Date(b.publishedAt ?? b.createdAt).getTime() -
+					new Date(a.publishedAt ?? a.createdAt).getTime()
+				);
+			case "downloads":
+				return b.totalDownloads - a.totalDownloads;
+			case "rating":
+				return (b.ratingAverage ?? "").localeCompare(a.ratingAverage ?? "");
+			case "featured":
+			default: {
+				if (a.isFeatured !== b.isFeatured) return a.isFeatured ? -1 : 1;
+				const orderDiff = (b.featuredOrder ?? 0) - (a.featuredOrder ?? 0);
+				if (orderDiff !== 0) return orderDiff;
+				return b.totalDownloads - a.totalDownloads;
+			}
+		}
+	});
+}
+
 // ─── Components ────────────────────────────────────────────────────────
 
 function MarketplaceItemCard({
@@ -161,36 +203,37 @@ function MarketplaceItemCard({
 	onUnfeature: (id: string) => void;
 }) {
 	return (
-		<Card className="relative group">
-			{item.isFeatured && (
-				<div className="absolute -top-2 -right-2 z-10">
-					<Badge variant="default" className="bg-yellow-500 text-black">
-						<Star className="h-3 w-3 mr-1 fill-current" /> Featured
-					</Badge>
-				</div>
-			)}
+		<Card
+			className={
+				item.isFeatured ? "ring-1 ring-yellow-500/30 bg-yellow-500/[0.03]" : undefined
+			}
+		>
 			<CardHeader className="pb-2">
-				<div className="flex items-start justify-between gap-2">
-					<div className="flex items-center gap-2">
-						<div className="flex items-center justify-center w-9 h-9 rounded-lg bg-muted">
-							<ItemIcon
-								type={item.type}
-								className="h-5 w-5 text-muted-foreground"
-							/>
-						</div>
-						<div>
-							<CardTitle className="text-base">{item.name}</CardTitle>
-							<CardDescription className="flex items-center gap-2">
-								<Badge variant="secondary" className="text-xs">
-									{getItemLabel(item.type)}
+				<div className="flex items-start gap-2">
+					<div className="flex items-center justify-center w-9 h-9 shrink-0 rounded-lg bg-muted">
+						<ItemIcon
+							type={item.type}
+							className="h-5 w-5 text-muted-foreground"
+						/>
+					</div>
+					<div className="min-w-0 flex-1 space-y-1">
+						<div className="flex flex-wrap items-center gap-1.5">
+							<CardTitle className="text-base leading-snug">{item.name}</CardTitle>
+							{item.isFeatured ? (
+								<Badge
+									variant="default"
+									className="shrink-0 bg-yellow-500 text-black text-[10px] uppercase tracking-wide"
+								>
+									<Star className="h-3 w-3 mr-0.5 fill-current" />
+									Featured
 								</Badge>
-								{item.isFeatured ? (
-									<Badge variant="outline" className="text-xs">
-										<Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-									</Badge>
-								) : null}
-							</CardDescription>
+							) : null}
 						</div>
+						<CardDescription className="flex items-center gap-2">
+							<Badge variant="secondary" className="text-xs">
+								{getItemLabel(item.type)}
+							</Badge>
+						</CardDescription>
 					</div>
 				</div>
 			</CardHeader>
@@ -274,131 +317,6 @@ function MarketplaceItemCard({
 	);
 }
 
-function ShareDialog({
-	item,
-	users,
-	open,
-	onClose,
-	onShare,
-	onPublish,
-}: {
-	item: MarketplaceItem | null;
-	users: User[];
-	open: boolean;
-	onClose: () => void;
-	onShare: (targetUserId: string) => void;
-	onPublish: () => void;
-}) {
-	const [search, setSearch] = useState("");
-	const [selectedUserId, setSelectedUserId] = useState("");
-
-	const filteredUsers = useMemo(
-		() =>
-			users.filter(
-				(u) =>
-					u.id !== item?.publisherUserId &&
-					(u.name.toLowerCase().includes(search.toLowerCase()) ||
-						u.email.toLowerCase().includes(search.toLowerCase())),
-			),
-		[users, search, item],
-	);
-
-	if (!item) return null;
-
-	return (
-		<Dialog open={open} onOpenChange={onClose}>
-			<DialogContent>
-				<DialogHeader>
-					<DialogTitle>Partager &quot;{item.name}&quot;</DialogTitle>
-					<DialogDescription>
-						Choisissez comment partager cet item.
-					</DialogDescription>
-				</DialogHeader>
-				<div className="space-y-4">
-					{/* Private */}
-					<div className="flex items-center gap-3 p-3 border rounded-lg">
-						<Lock className="h-5 w-5 text-muted-foreground" />
-						<div>
-							<p className="font-medium text-sm">Privé</p>
-							<p className="text-xs text-muted-foreground">
-								Seulement vous pouvez y accéder
-							</p>
-						</div>
-					</div>
-
-					{/* Share with user */}
-					<div className="space-y-2">
-						<label className="text-sm font-medium flex items-center gap-2">
-							<User className="h-4 w-4" /> Partager avec un utilisateur
-						</label>
-						<Input
-							placeholder="Rechercher un utilisateur..."
-							value={search}
-							onChange={(e) => setSearch(e.target.value)}
-						/>
-						<div className="max-h-40 overflow-y-auto space-y-1">
-							{filteredUsers.map((user) => (
-								<button
-									key={user.id}
-									className={`w-full text-left px-3 py-2 rounded text-sm flex items-center justify-between ${
-										selectedUserId === user.id
-											? "bg-primary/10 font-medium"
-											: "hover:bg-muted"
-									}`}
-									onClick={() =>
-										setSelectedUserId(selectedUserId === user.id ? "" : user.id)
-									}
-								>
-									<span>
-										{user.name} ({user.email})
-									</span>
-									{selectedUserId === user.id && (
-										<Star className="h-3 w-3 fill-primary text-primary" />
-									)}
-								</button>
-							))}
-							{filteredUsers.length === 0 && (
-								<p className="text-sm text-muted-foreground px-3">
-									Aucun utilisateur trouvé
-								</p>
-							)}
-						</div>
-					</div>
-
-					{/* Publish to marketplace */}
-					<button
-						className="w-full flex items-center gap-3 p-3 border rounded-lg hover:bg-muted transition-colors"
-						onClick={onPublish}
-					>
-						<Globe className="h-5 w-5 text-muted-foreground" />
-						<div className="text-left">
-							<p className="font-medium text-sm">Publier sur la marketplace</p>
-							<p className="text-xs text-muted-foreground">
-								Visible par tous les utilisateurs
-							</p>
-						</div>
-					</button>
-				</div>
-				<DialogFooter>
-					<Button variant="outline" onClick={onClose}>
-						Annuler
-					</Button>
-					<Button
-						disabled={!selectedUserId}
-						onClick={() => {
-							onShare(selectedUserId);
-							setSelectedUserId("");
-							setSearch("");
-						}}
-					>
-						Partager avec l&apos;utilisateur
-					</Button>
-				</DialogFooter>
-			</DialogContent>
-		</Dialog>
-	);
-}
-
 // ─── Main Page ─────────────────────────────────────────────────────────
 
 export default function MarketplacePage() {
@@ -409,7 +327,6 @@ export default function MarketplacePage() {
 	const [publishedItems, setPublishedItems] = useState<MarketplaceItem[]>([]);
 	const [draftItems, setDraftItems] = useState<MarketplaceItem[]>([]);
 	const [sharedItems, setSharedItems] = useState<MarketplaceItem[]>([]);
-	const [users, setUsers] = useState<User[]>([]);
 
 	// Filters
 	const [search, setSearch] = useState("");
@@ -418,22 +335,19 @@ export default function MarketplacePage() {
 	const [featuredOnly, setFeaturedOnly] = useState(false);
 
 	// Share dialog
-	const [shareDialogOpen, setShareDialogOpen] = useState(false);
-	const [shareItem, setShareItem] = useState<MarketplaceItem | null>(null);
+	const [shareResource, setShareResource] = useState<ShareableResource | null>(
+		null,
+	);
 
 	const fetchMarketplaceData = useCallback(async (): Promise<{
 		published: MarketplaceItem[];
 		drafts: MarketplaceItem[];
 		shared: MarketplaceItem[];
-		users: User[];
 	}> => {
-		const [publishedRes, draftsRes, sharedRes, usersRes] = await Promise.all([
-			fetch(
-				`/api/marketplace/items?sortBy=${sortBy}&featuredOnly=${featuredOnly}`,
-			),
+		const [publishedRes, draftsRes, sharedRes] = await Promise.all([
+			fetch("/api/marketplace/items"),
 			fetch("/api/marketplace/items?includeDrafts=true"),
 			fetch("/api/marketplace/items?_path=shared-with-me"),
-			fetch("/api/admin/users"),
 		]);
 
 		if (!publishedRes.ok) throw new Error("Failed to load marketplace");
@@ -444,18 +358,12 @@ export default function MarketplacePage() {
 		const shared = Array.isArray(sharedData)
 			? sharedData.map((s: { item: MarketplaceItem }) => s.item)
 			: [];
-		const usersData = await usersRes.json();
-		const allUsers = Array.isArray(usersData)
-			? usersData
-			: (usersData.users ?? []);
-
 		return {
 			published,
 			drafts: allDrafts.filter((item) => item.status === "draft"),
 			shared,
-			users: allUsers || [],
 		};
-	}, [sortBy, featuredOnly]);
+	}, []);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -465,7 +373,6 @@ export default function MarketplacePage() {
 					setPublishedItems(data.published);
 					setDraftItems(data.drafts);
 					setSharedItems(data.shared);
-					setUsers(data.users);
 				}
 			})
 			.catch((error) => {
@@ -484,27 +391,31 @@ export default function MarketplacePage() {
 		};
 	}, [fetchMarketplaceData]);
 
-	// Apply client-side filters
-	const filteredItems = useMemo(() => {
-		let items = publishedItems;
+	const filters = useMemo<MarketplaceFilters>(
+		() => ({ search, typeFilter, sortBy, featuredOnly }),
+		[search, typeFilter, sortBy, featuredOnly],
+	);
 
-		if (search) {
-			const q = search.toLowerCase();
-			items = items.filter(
-				(item) =>
-					item.name.toLowerCase().includes(q) ||
-					(item.description && item.description.toLowerCase().includes(q)) ||
-					(item.tagsJson &&
-						item.tagsJson.some((t) => t.toLowerCase().includes(q))),
-			);
-		}
+	const myItems = useMemo(
+		() =>
+			draftItems.filter((item) => item.publisherUserId === currentUserId),
+		[draftItems, currentUserId],
+	);
 
-		if (typeFilter !== "all") {
-			items = items.filter((item) => item.type === typeFilter);
-		}
+	const filteredPublished = useMemo(
+		() => filterAndSortMarketplaceItems(publishedItems, filters),
+		[publishedItems, filters],
+	);
 
-		return items;
-	}, [publishedItems, search, typeFilter]);
+	const filteredMyItems = useMemo(
+		() => filterAndSortMarketplaceItems(myItems, filters),
+		[myItems, filters],
+	);
+
+	const filteredShared = useMemo(
+		() => filterAndSortMarketplaceItems(sharedItems, filters),
+		[sharedItems, filters],
+	);
 
 	const handleInstall = useCallback(
 		async (itemId: string) => {
@@ -519,6 +430,12 @@ export default function MarketplacePage() {
 				const payload = await res.json();
 				if (payload.agent?.id) {
 					router.push(`/agents/${payload.agent.id}`);
+				} else if (payload.skill?.id) {
+					router.push("/tools?tab=skills");
+				} else if (payload.custom_tool?.id) {
+					router.push("/custom-tools");
+				} else if (payload.mcp_preset?.id) {
+					router.push("/tools?tab=mcp");
 				}
 			} else {
 				toast.error(
@@ -535,7 +452,6 @@ export default function MarketplacePage() {
 				setPublishedItems(data.published);
 				setDraftItems(data.drafts);
 				setSharedItems(data.shared);
-				setUsers(data.users);
 			})
 			.catch((error) => {
 				toast.error(error instanceof Error ? error.message : "Reload failed");
@@ -590,52 +506,14 @@ export default function MarketplacePage() {
 		[reload],
 	);
 
-	const handleShare = useCallback(
-		async (targetUserId: string) => {
-			if (!shareItem) return;
-			const res = await fetch(`/api/marketplace/items/${shareItem.id}/share`, {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ targetUserId }),
-			});
-			if (res.ok) {
-				toast.success("Item partagé");
-				setShareDialogOpen(false);
-				setShareItem(null);
-			} else {
-				toast.error("Partage échoué");
-			}
-		},
-		[shareItem],
-	);
-
-	const handlePublish = useCallback(() => {
-		if (!shareItem) return;
-		fetch(`/api/marketplace/items/${shareItem.id}/publish`, {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ visibility: "public" }),
-		})
-			.then((r) => {
-				if (r.ok) {
-					toast.success("Item publié sur la marketplace");
-					setShareDialogOpen(false);
-					setShareItem(null);
-					reload();
-				} else {
-					r.json()
-						.catch(() => ({}))
-						.then((j) => {
-							toast.error(j?.error || "Publication échouée");
-						});
-				}
-			})
-			.catch((error) => {
-				toast.error(
-					error instanceof Error ? error.message : "Publication échouée",
-				);
-			});
-	}, [shareItem, reload]);
+	const openShareDialog = useCallback((item: MarketplaceItem) => {
+		setShareResource({
+			kind: "marketplace_item",
+			id: item.id,
+			name: item.name,
+			publisherUserId: item.publisherUserId,
+		});
+	}, []);
 
 	if (loading) return <PageLoading />;
 
@@ -653,10 +531,10 @@ export default function MarketplacePage() {
 					/>
 				</div>
 				<Select value={typeFilter} onValueChange={setTypeFilter}>
-					<SelectTrigger className="w-full sm:w-40">
+					<SelectTrigger className="w-full sm:w-40" aria-label="Filtrer par type">
 						<SelectValue placeholder="Type" />
 					</SelectTrigger>
-					<SelectContent>
+					<SelectContent position="popper" className="z-[100]">
 						<SelectItem value="all">Tous les types</SelectItem>
 						<SelectItem value="agent">Agents</SelectItem>
 						<SelectItem value="skill">Skills</SelectItem>
@@ -670,10 +548,10 @@ export default function MarketplacePage() {
 					</SelectContent>
 				</Select>
 				<Select value={sortBy} onValueChange={setSortBy}>
-					<SelectTrigger className="w-full sm:w-40">
+					<SelectTrigger className="w-full sm:w-40" aria-label="Trier les items">
 						<SelectValue placeholder="Trier par" />
 					</SelectTrigger>
-					<SelectContent>
+					<SelectContent position="popper" className="z-[100]">
 						<SelectItem value="featured">Mis en avant</SelectItem>
 						<SelectItem value="newest">Plus récent</SelectItem>
 						<SelectItem value="downloads">Téléchargements</SelectItem>
@@ -681,10 +559,14 @@ export default function MarketplacePage() {
 					</SelectContent>
 				</Select>
 				<Button
+					type="button"
 					variant={featuredOnly ? "default" : "outline"}
-					onClick={() => setFeaturedOnly(!featuredOnly)}
+					aria-pressed={featuredOnly}
+					onClick={() => setFeaturedOnly((current) => !current)}
 				>
-					<Star className="h-4 w-4 mr-1" />
+					<Star
+						className={`h-4 w-4 mr-1 ${featuredOnly ? "fill-current" : ""}`}
+					/>
 					Featured
 				</Button>
 			</div>
@@ -692,18 +574,18 @@ export default function MarketplacePage() {
 			{/* Tabs */}
 			<Tabs defaultValue="all">
 				<TabsList>
-					<TabsTrigger value="all">Tous ({filteredItems.length})</TabsTrigger>
+					<TabsTrigger value="all">Tous ({filteredPublished.length})</TabsTrigger>
 					<TabsTrigger value="my-items">
-						Mes items ({draftItems.length})
+						Mes items ({filteredMyItems.length})
 					</TabsTrigger>
 					<TabsTrigger value="shared">
-						Partagés ({sharedItems.length})
+						Partagés ({filteredShared.length})
 					</TabsTrigger>
 				</TabsList>
 
 				{/* All Items */}
 				<TabsContent value="all" className="mt-4">
-					{filteredItems.length === 0 ? (
+					{filteredPublished.length === 0 ? (
 						<PageEmptyState
 							icon={Store}
 							title="Aucun item trouvé"
@@ -711,17 +593,14 @@ export default function MarketplacePage() {
 						/>
 					) : (
 						<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-							{filteredItems.map((item) => (
+							{filteredPublished.map((item) => (
 								<MarketplaceItemCard
 									key={item.id}
 									item={item}
 									isOwner={item.publisherUserId === currentUserId}
 									isAdmin={isAdmin}
 									onInstall={handleInstall}
-									onShare={(i) => {
-										setShareItem(i);
-										setShareDialogOpen(true);
-									}}
+									onShare={openShareDialog}
 									onDelete={handleDelete}
 									onFeature={handleFeature}
 									onUnfeature={handleUnfeature}
@@ -733,7 +612,7 @@ export default function MarketplacePage() {
 
 				{/* My Items */}
 				<TabsContent value="my-items" className="mt-4">
-					{draftItems.length === 0 ? (
+					{filteredMyItems.length === 0 ? (
 						<PageEmptyState
 							icon={PackagePlus}
 							title="Aucun brouillon"
@@ -741,17 +620,14 @@ export default function MarketplacePage() {
 						/>
 					) : (
 						<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-							{draftItems.map((item) => (
+							{filteredMyItems.map((item) => (
 								<MarketplaceItemCard
 									key={item.id}
 									item={item}
 									isOwner={true}
 									isAdmin={isAdmin}
 									onInstall={handleInstall}
-									onShare={(i) => {
-										setShareItem(i);
-										setShareDialogOpen(true);
-									}}
+									onShare={openShareDialog}
 									onDelete={handleDelete}
 									onFeature={handleFeature}
 									onUnfeature={handleUnfeature}
@@ -763,7 +639,7 @@ export default function MarketplacePage() {
 
 				{/* Shared with me */}
 				<TabsContent value="shared" className="mt-4">
-					{sharedItems.length === 0 ? (
+					{filteredShared.length === 0 ? (
 						<PageEmptyState
 							icon={Share2}
 							title="Aucun item partagé"
@@ -771,17 +647,14 @@ export default function MarketplacePage() {
 						/>
 					) : (
 						<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-							{sharedItems.map((item) => (
+							{filteredShared.map((item) => (
 								<MarketplaceItemCard
 									key={item.id}
 									item={item}
 									isOwner={item.publisherUserId === currentUserId}
 									isAdmin={isAdmin}
 									onInstall={handleInstall}
-									onShare={(i) => {
-										setShareItem(i);
-										setShareDialogOpen(true);
-									}}
+									onShare={openShareDialog}
 									onDelete={handleDelete}
 									onFeature={handleFeature}
 									onUnfeature={handleUnfeature}
@@ -793,16 +666,12 @@ export default function MarketplacePage() {
 			</Tabs>
 
 			{/* Share Dialog */}
-			<ShareDialog
-				item={shareItem}
-				users={users}
-				open={shareDialogOpen}
-				onClose={() => {
-					setShareDialogOpen(false);
-					setShareItem(null);
-				}}
-				onShare={handleShare}
-				onPublish={handlePublish}
+			<ResourceShareDialog
+				resource={shareResource}
+				workspaceId={workspaceId}
+				open={shareResource !== null}
+				onClose={() => setShareResource(null)}
+				onSuccess={reload}
 			/>
 		</WorkspacePage>
 	);

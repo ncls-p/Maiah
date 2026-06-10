@@ -22,7 +22,7 @@ import {
 	GlobeIcon,
 	StarIcon,
 	XIcon,
-	Store,
+	Share2,
 } from "lucide-react";
 
 import { PageLoading } from "@/components/page-loading";
@@ -65,6 +65,10 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import {
+	ResourceShareDialog,
+	type ShareableResource,
+} from "@/components/marketplace/resource-share-dialog";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -133,6 +137,9 @@ export default function AgentsPage() {
 		isRecommended: false,
 		curationLabel: "none",
 	});
+	const [shareResource, setShareResource] = useState<ShareableResource | null>(
+		null,
+	);
 	const [deleteAgentId, setDeleteAgentId] = useState<string | null>(null);
 	const [deleting, setDeleting] = useState(false);
 	const [bindingSummaries, setBindingSummaries] = useState<
@@ -560,51 +567,17 @@ export default function AgentsPage() {
 													Configure
 												</DropdownMenuItem>
 												<DropdownMenuItem
-													onClick={async () => {
-														try {
-															const res = await fetch(
-																"/api/marketplace/items",
-																{
-																	method: "POST",
-																	headers: {
-																		"Content-Type": "application/json",
-																	},
-																	body: JSON.stringify({
-																		agentId: agent.id,
-																		workspaceId,
-																		version: "1.0.0",
-																		name: agent.name,
-																		description: agent.description || undefined,
-																		draftOnly: true,
-																	}),
-																},
-															);
-															if (!res.ok) {
-																const err = await res.json().catch(() => ({}));
-																toast.error(
-																	err.error ||
-																		"Failed to create marketplace draft",
-																);
-																return;
-															}
-															const data = await res.json();
-															toast.success("Marketplace draft created");
-															if (data.item?.id) {
-																router.push(
-																	`/marketplace/items/${data.item.id}`,
-																);
-															}
-														} catch (err) {
-															toast.error(
-																err instanceof Error
-																	? err.message
-																	: "Failed to create marketplace draft",
-															);
-														}
-													}}
+													onClick={() =>
+														setShareResource({
+															kind: "agent",
+															id: agent.id,
+															name: agent.name,
+															description: agent.description,
+														})
+													}
 												>
-													<Store className="size-4" />
-													Publish to marketplace
+													<Share2 className="size-4" />
+													Partager
 												</DropdownMenuItem>
 												<DropdownMenuSeparator />
 												<DropdownMenuItem
@@ -828,6 +801,13 @@ export default function AgentsPage() {
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>
+
+			<ResourceShareDialog
+				resource={shareResource}
+				workspaceId={workspaceId}
+				open={shareResource !== null}
+				onClose={() => setShareResource(null)}
+			/>
 		</WorkspacePage>
 	);
 }

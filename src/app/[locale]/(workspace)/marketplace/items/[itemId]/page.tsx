@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
 	ArrowLeft,
@@ -19,6 +19,11 @@ import {
 	Workflow,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useWorkspaceShell } from "@/components/app-shell";
+import {
+	ResourceShareDialog,
+	type ShareableResource,
+} from "@/components/marketplace/resource-share-dialog";
 import { PageLoading } from "@/components/page-loading";
 import { WorkspacePage } from "@/components/workspace-page";
 import { Badge } from "@/components/ui/badge";
@@ -111,19 +116,27 @@ export default function MarketplaceItemPage({
 }) {
 	const router = useRouter();
 	const { workspaceId } = useWorkspace();
+	const { currentUserId } = useWorkspaceShell();
 	const [loading, setLoading] = useState(true);
 	const [item, setItem] = useState<MarketplaceItem | null>(null);
+	const [shareResource, setShareResource] = useState<ShareableResource | null>(
+		null,
+	);
+
+	const isOwner = item?.publisherUserId === currentUserId;
+
+	const loadItem = useCallback(async (itemId: string) => {
+		const res = await fetch(`/api/marketplace/items/${itemId}`);
+		if (!res.ok) throw new Error("Item not found");
+		return (await res.json()) as MarketplaceItem;
+	}, []);
 
 	useEffect(() => {
 		let cancelled = false;
 		params.then(async ({ itemId }) => {
 			try {
-				const res = await fetch(`/api/marketplace/items/${itemId}`);
-				if (!res.ok) throw new Error("Item not found");
-				const data = (await res.json()) as MarketplaceItem;
-				if (!cancelled) {
-					setItem(data);
-				}
+				const data = await loadItem(itemId);
+				if (!cancelled) setItem(data);
 			} catch (error) {
 				if (!cancelled) {
 					toast.error(
@@ -138,7 +151,7 @@ export default function MarketplaceItemPage({
 		return () => {
 			cancelled = true;
 		};
-	}, [params, router]);
+	}, [params, router, loadItem]);
 
 	const handleInstall = async () => {
 		if (!workspaceId || !item) return;
@@ -152,6 +165,12 @@ export default function MarketplaceItemPage({
 			const payload = await res.json();
 			if (payload.agent?.id) {
 				router.push(`/agents/${payload.agent.id}`);
+			} else if (payload.skill?.id) {
+				router.push("/tools");
+			} else if (payload.custom_tool?.id) {
+				router.push("/custom-tools");
+			} else if (payload.mcp_preset?.id) {
+				router.push("/tools?tab=mcp");
 			}
 		} else {
 			toast.error(
@@ -166,7 +185,6 @@ export default function MarketplaceItemPage({
 	return (
 		<WorkspacePage title={item.name}>
 			<div className="max-w-3xl mx-auto space-y-6">
-				{/* Back button */}
 				<Button
 					variant="ghost"
 					size="sm"
@@ -176,7 +194,6 @@ export default function MarketplaceItemPage({
 					Retour à la marketplace
 				</Button>
 
-				{/* Main card */}
 				<Card>
 					<CardHeader>
 						<div className="flex items-start gap-3">
@@ -200,15 +217,16 @@ export default function MarketplaceItemPage({
 								</div>
 								<CardDescription className="flex items-center gap-2 mt-1">
 									<Badge variant="secondary">{getItemLabel(item.type)}</Badge>
-									{item.status === "published" && (
+									{item.status === "published" ? (
 										<Badge variant="outline">Publié</Badge>
+									) : (
+										<Badge variant="outline">Brouillon</Badge>
 									)}
 								</CardDescription>
 							</div>
 						</div>
 					</CardHeader>
 					<CardContent className="space-y-6">
-						{/* Description */}
 						{item.description && (
 							<div>
 								<h3 className="text-sm font-medium text-muted-foreground mb-2">
@@ -218,7 +236,6 @@ export default function MarketplaceItemPage({
 							</div>
 						)}
 
-						{/* Tags */}
 						{item.tagsJson && item.tagsJson.length > 0 && (
 							<div>
 								<h3 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-1">
@@ -235,7 +252,6 @@ export default function MarketplaceItemPage({
 							</div>
 						)}
 
-						{/* Stats */}
 						<div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
 							<div className="text-center p-3 bg-muted rounded-lg">
 								<p className="text-2xl font-bold">{item.totalDownloads}</p>
@@ -259,27 +275,40 @@ export default function MarketplaceItemPage({
 							</div>
 						</div>
 
-						{/* Actions */}
 						<div className="flex flex-wrap gap-3 pt-4 border-t">
 							<Button size="lg" onClick={handleInstall}>
 								<PackagePlus className="h-4 w-4 mr-2" />
 								Installer
 							</Button>
-							<Button
-								size="lg"
-								variant="outline"
-								onClick={() => {
-									// Share dialog would go here
-									toast.info("Partage en cours de développement");
-								}}
-							>
-								<Share2 className="h-4 w-4 mr-2" />
-								Partager
-							</Button>
+							{isOwner ? (
+								<Button
+									size="lg"
+									variant="outline"
+									onClick={() =>
+										setShareResource({
+											kind: "marketplace_item",
+											id: item.id,
+											name: item.name,
+											publisherUserId: item.publisherUserId,
+										})
+									}
+								>
+									<Share2 className="h-4 w-4 mr-2" />
+									Partager
+								</Button>
+							) : null}
 						</div>
 					</CardContent>
 				</Card>
 			</div>
+
+			<ResourceShareDialog
+				resource={shareResource}
+				workspaceId={workspaceId}
+				open={shareResource !== null}
+				onClose={() => setShareResource(null)}
+				onSuccess={() => void loadItem(item.id).then(setItem)}
+			/>
 		</WorkspacePage>
 	);
 }

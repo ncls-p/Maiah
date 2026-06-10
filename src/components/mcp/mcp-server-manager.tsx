@@ -20,6 +20,10 @@ import {
 	serverFormFromServer,
 	type McpServerForm,
 } from "./mcp-server-manager/form";
+import {
+	ResourceShareDialog,
+	type ShareableResource,
+} from "@/components/marketplace/resource-share-dialog";
 import { ServerList } from "./mcp-server-manager/server-list";
 import { SystemStrip } from "./mcp-server-manager/stats";
 import type {
@@ -45,6 +49,9 @@ export function McpServerManager() {
 	const [editServer, setEditServer] = useState<McpServer | null>(null);
 	const [editForm, setEditForm] = useState<McpServerForm>(emptyForm);
 	const [deleteId, setDeleteId] = useState<string | null>(null);
+	const [shareResource, setShareResource] = useState<ShareableResource | null>(
+		null,
+	);
 	const [expandedServers, setExpandedServers] = useState<
 		Record<string, boolean>
 	>({});
@@ -321,6 +328,22 @@ export function McpServerManager() {
 				onDeleteServer={setDeleteId}
 				onTestServer={(serverId) => void test(serverId)}
 				onSyncServer={(serverId) => void sync(serverId)}
+				onShareServer={(server) =>
+					setShareResource({
+						kind: "mcp_server",
+						id: server.id,
+						name: server.name,
+						description: null,
+					})
+				}
+				onShareTool={(server, tool) =>
+					setShareResource({
+						kind: "mcp_tool",
+						id: tool.id,
+						name: `${server.name} — ${tool.name}`,
+						description: tool.description,
+					})
+				}
 				onToggleEnabled={(server, enabled) =>
 					void patchServer(server, { enabled })
 				}
@@ -359,6 +382,12 @@ export function McpServerManager() {
 				deleteId={deleteId}
 				onClose={() => setDeleteId(null)}
 				onDelete={(id) => void removeServer(id)}
+			/>
+			<ResourceShareDialog
+				resource={shareResource}
+				workspaceId={workspaceId}
+				open={shareResource !== null}
+				onClose={() => setShareResource(null)}
 			/>
 		</div>
 	);

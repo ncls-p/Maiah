@@ -8,6 +8,8 @@ import {
 	createMarketplaceDraft,
 	createSkillMarketplaceDraft,
 	createCustomToolMarketplaceDraft,
+	createMcpServerMarketplaceDraft,
+	createMcpToolMarketplaceDraft,
 	getMyPublishedItems,
 	getSharedWithMe,
 } from "@/modules/marketplace/use-cases";
@@ -19,6 +21,8 @@ const createSchema = z
 		agentId: z.uuid().optional(),
 		skillId: z.uuid().optional(),
 		customToolId: z.uuid().optional(),
+		mcpServerId: z.uuid().optional(),
+		mcpToolId: z.uuid().optional(),
 		version: z.string().min(1).max(32).default("1.0.0"),
 		name: z.string().min(1).max(255).optional(),
 		description: z.string().max(2048).optional(),
@@ -30,12 +34,19 @@ const createSchema = z
 	})
 	.refine(
 		(data) => {
-			const resourceIds = [data.agentId, data.skillId, data.customToolId].filter(
-				Boolean,
-			);
+			const resourceIds = [
+				data.agentId,
+				data.skillId,
+				data.customToolId,
+				data.mcpServerId,
+				data.mcpToolId,
+			].filter(Boolean);
 			return resourceIds.length === 1;
 		},
-		{ message: "Exactly one of agentId, skillId, or customToolId is required" },
+		{
+			message:
+				"Exactly one of agentId, skillId, customToolId, mcpServerId, or mcpToolId is required",
+		},
 	);
 
 export async function GET(req: NextRequest) {
@@ -136,9 +147,23 @@ export async function POST(req: NextRequest) {
 				});
 				return NextResponse.json(result, { status: 201 });
 			}
-			const result = await createCustomToolMarketplaceDraft({
+			if (parsed.data.customToolId) {
+				const result = await createCustomToolMarketplaceDraft({
+					...baseInput,
+					customToolId: parsed.data.customToolId,
+				});
+				return NextResponse.json(result, { status: 201 });
+			}
+			if (parsed.data.mcpServerId) {
+				const result = await createMcpServerMarketplaceDraft({
+					...baseInput,
+					mcpServerId: parsed.data.mcpServerId,
+				});
+				return NextResponse.json(result, { status: 201 });
+			}
+			const result = await createMcpToolMarketplaceDraft({
 				...baseInput,
-				customToolId: parsed.data.customToolId!,
+				mcpToolId: parsed.data.mcpToolId!,
 			});
 			return NextResponse.json(result, { status: 201 });
 		}
@@ -147,7 +172,7 @@ export async function POST(req: NextRequest) {
 			return NextResponse.json(
 				{
 					error:
-						"Only agents can be published directly. Use draftOnly for skills and custom tools.",
+						"Only agents can be published directly. Use draftOnly for skills, custom tools, and MCP presets.",
 				},
 				{ status: 400 },
 			);

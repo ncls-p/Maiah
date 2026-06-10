@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
 import {
 	BookMarkedIcon,
 	EyeIcon,
@@ -10,7 +9,7 @@ import {
 	PencilIcon,
 	PlusIcon,
 	SearchIcon,
-	Store,
+	Share2,
 	Trash2Icon,
 	XIcon,
 } from "lucide-react";
@@ -36,6 +35,10 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import {
+	ResourceShareDialog,
+	type ShareableResource,
+} from "@/components/marketplace/resource-share-dialog";
 import { useWorkspace } from "@/hooks/use-workspace";
 
 export type AgentSkill = {
@@ -622,8 +625,10 @@ function PreviewPanel({
 // ─── Main Skill Manager ────────────────────────────────────────────────
 
 export function SkillManager() {
-	const router = useRouter();
 	const { workspaceId } = useWorkspace();
+	const [shareResource, setShareResource] = useState<ShareableResource | null>(
+		null,
+	);
 	const [skills, setSkills] = useState<AgentSkill[]>([]);
 	const [installCommand, setInstallCommand] = useState("");
 	const [loading, setLoading] = useState(true);
@@ -725,38 +730,6 @@ export function SkillManager() {
 		}
 		toast.success("Skill removed");
 		await loadSkills();
-	}
-
-	async function publishSkillToMarketplace(skill: AgentSkill) {
-		if (!workspaceId) return;
-		try {
-			const res = await fetch("/api/marketplace/items", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					skillId: skill.id,
-					workspaceId,
-					version: "1.0.0",
-					name: skill.name,
-					description: skill.description || undefined,
-					draftOnly: true,
-				}),
-			});
-			if (!res.ok) {
-				const err = await res.json().catch(() => ({}));
-				toast.error(err.error || "Failed to create marketplace draft");
-				return;
-			}
-			const data = await res.json();
-			toast.success("Marketplace draft created");
-			if (data.item?.id) {
-				router.push(`/marketplace/items/${data.item.id}`);
-			}
-		} catch (err) {
-			toast.error(
-				err instanceof Error ? err.message : "Failed to create marketplace draft",
-			);
-		}
 	}
 
 	return (
@@ -887,10 +860,17 @@ export function SkillManager() {
 											variant="ghost"
 											size="icon"
 											className="h-7 w-7"
-											aria-label={`Publish ${skill.name} to marketplace`}
-											onClick={() => void publishSkillToMarketplace(skill)}
+											aria-label={`Partager ${skill.name}`}
+											onClick={() =>
+												setShareResource({
+													kind: "skill",
+													id: skill.id,
+													name: skill.name,
+													description: skill.description,
+												})
+											}
 										>
-											<Store className="size-3.5" aria-hidden="true" />
+											<Share2 className="size-3.5" aria-hidden="true" />
 										</Button>
 										<Button
 											type="button"
@@ -919,6 +899,13 @@ export function SkillManager() {
 					))}
 				</div>
 			)}
+
+			<ResourceShareDialog
+				resource={shareResource}
+				workspaceId={workspaceId}
+				open={shareResource !== null}
+				onClose={() => setShareResource(null)}
+			/>
 		</div>
 	);
 }
