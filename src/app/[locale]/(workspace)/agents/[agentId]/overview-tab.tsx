@@ -22,7 +22,7 @@ export function OverviewTab({
 	providers,
 	knowledgeCount,
 	toolsCount,
-	onOpenModelTab,
+	onOpenModelTabAction: onOpenModelTab,
 }: {
 	agentId: string;
 	form: AgentForm;
@@ -30,7 +30,7 @@ export function OverviewTab({
 	providers: Provider[];
 	knowledgeCount: number;
 	toolsCount: number;
-	onOpenModelTab?: () => void;
+	onOpenModelTabAction?: () => void;
 }) {
 	const t = useTranslations("agents.overview");
 	const model = models.find((m) => m.id === form.modelId);

@@ -64,12 +64,6 @@ const PRIMARY_SECTION_IDS = new Set<string>([
 	...capabilitiesNavItems.map((item) => item.href),
 ]);
 
-const ADVANCED_SECTION_IDS = new Set<string>([
-	...advancedCapabilityNavItems.map((item) => item.href),
-	...configNavItems.map((item) => item.href),
-	...adminNavItems.map((item) => item.href),
-]);
-
 export function getDefaultSectionForNavId(id: string): SidebarNavSection {
 	if (PRIMARY_SECTION_IDS.has(id)) return "primary";
 	return "advanced";
@@ -196,7 +190,9 @@ export function applySidebarNavConfig(
 	config: SidebarNavConfig,
 ): NavItem[] {
 	const normalized = normalizeSidebarNavConfig(config);
-	const eligibleByHref = new Map(eligibleItems.map((item) => [item.href, item]));
+	const eligibleByHref = new Map(
+		eligibleItems.map((item) => [item.href, item]),
+	);
 	const visibilityById = new Map(
 		normalized.items.map((entry) => [entry.id, entry.visible]),
 	);
@@ -266,11 +262,7 @@ function buildLegacyMenuGroups(shell: WorkspaceShellState): NavGroup[] {
 		{ labelKey: "primary", items: [...primaryNavItems, ...capabilities] },
 		{
 			labelKey: "advanced",
-			items: [
-				...advancedCapabilityNavItems,
-				...configNavItems,
-				...adminItems,
-			],
+			items: [...advancedCapabilityNavItems, ...configNavItems, ...adminItems],
 		},
 	];
 

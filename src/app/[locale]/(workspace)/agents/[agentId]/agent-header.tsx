@@ -32,7 +32,7 @@ export function AgentHeader({
 	totalEnabledTools,
 	enabledMcpCount,
 	selectedKnowledgeIds,
-	onShowDeleteDialog,
+	onShowDeleteDialogAction: onShowDeleteDialog,
 }: {
 	agent: Agent | null;
 	providers: Provider[];
@@ -41,7 +41,7 @@ export function AgentHeader({
 	totalEnabledTools: number;
 	enabledMcpCount: number;
 	selectedKnowledgeIds: string[];
-	onShowDeleteDialog: () => void;
+	onShowDeleteDialogAction: () => void;
 }) {
 	const t = useTranslations("agents");
 	const selectedProvider = providers.find((p) => p.id === form.providerId);
@@ -61,7 +61,10 @@ export function AgentHeader({
 							{agent?.name ?? form.name}
 						</h2>
 						{hasModel ? (
-							<Badge variant="outline" className="gap-1 border-success/30 bg-success/10 text-success">
+							<Badge
+								variant="outline"
+								className="gap-1 border-success/30 bg-success/10 text-success"
+							>
 								<SparklesIcon className="size-3" aria-hidden="true" />
 								{t("statusReady")}
 							</Badge>
@@ -100,7 +103,9 @@ export function AgentHeader({
 					<Button asChild variant="outline" size="sm">
 						<Link href="/agents">
 							<ArrowLeftIcon className="size-4" aria-hidden="true" />
-							<span className="hidden sm:inline">{t("configurePage.back")}</span>
+							<span className="hidden sm:inline">
+								{t("configurePage.back")}
+							</span>
 						</Link>
 					</Button>
 					<DropdownMenu>
@@ -124,7 +129,10 @@ export function AgentHeader({
 
 			<div className="mt-5 grid grid-cols-3 gap-x-6 gap-y-3 border-t border-border pt-5">
 				<MetricCell label={t("tabs.tools")} value={totalEnabledTools} />
-				<MetricCell label={t("tabs.knowledge")} value={selectedKnowledgeIds.length} />
+				<MetricCell
+					label={t("tabs.knowledge")}
+					value={selectedKnowledgeIds.length}
+				/>
 				<MetricCell label="MCP" value={enabledMcpCount} />
 			</div>
 		</div>

@@ -1,6 +1,11 @@
 "use client";
 
-import { MessageSquareIcon, SaveIcon, SettingsIcon, SparklesIcon } from "lucide-react";
+import {
+	MessageSquareIcon,
+	SaveIcon,
+	SettingsIcon,
+	SparklesIcon,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { SyntheticEvent } from "react";
 
@@ -32,20 +37,20 @@ import { getProviderKindIcon } from "./utils";
 
 export function EssentialTab({
 	form,
-	setForm,
+	setFormAction: setForm,
 	providers,
 	models,
 	saving,
 	canAdminCurate,
-	onSave,
+	onSaveAction: onSave,
 }: {
 	form: AgentForm;
-	setForm: (fn: (prev: AgentForm) => AgentForm) => void;
+	setFormAction: (fn: (prev: AgentForm) => AgentForm) => void;
 	providers: Provider[];
 	models: Model[];
 	saving: boolean;
 	canAdminCurate: boolean;
-	onSave: (e: SyntheticEvent<HTMLFormElement>) => void;
+	onSaveAction: (e: SyntheticEvent<HTMLFormElement>) => void;
 }) {
 	const t = useTranslations("agents");
 	const tModel = useTranslations("agents.model");
@@ -105,7 +110,9 @@ export function EssentialTab({
 				<FieldGroup className="gap-4">
 					<div className="grid gap-4 sm:grid-cols-2">
 						<Field>
-							<FieldLabel htmlFor="agent-provider">{tModel("provider")}</FieldLabel>
+							<FieldLabel htmlFor="agent-provider">
+								{tModel("provider")}
+							</FieldLabel>
 							<FieldContent>
 								<Select
 									value={form.providerId || "__none__"}
@@ -135,7 +142,9 @@ export function EssentialTab({
 							</FieldContent>
 						</Field>
 						<Field>
-							<FieldLabel htmlFor="agent-model">{tModel("modelLabel")}</FieldLabel>
+							<FieldLabel htmlFor="agent-model">
+								{tModel("modelLabel")}
+							</FieldLabel>
 							<FieldContent>
 								<Select
 									value={form.modelId || "__none__"}
@@ -163,7 +172,9 @@ export function EssentialTab({
 						</Field>
 					</div>
 					<Field>
-						<FieldLabel htmlFor="agent-prompt">{tModel("systemPrompt")}</FieldLabel>
+						<FieldLabel htmlFor="agent-prompt">
+							{tModel("systemPrompt")}
+						</FieldLabel>
 						<FieldContent>
 							<Textarea
 								id="agent-prompt"
@@ -289,10 +300,13 @@ export function EssentialTab({
 
 					<div className="border-t border-border/50 pt-4">
 						<p className="mb-3 flex items-center gap-2 text-sm font-medium">
-							<MessageSquareIcon className="size-4 text-muted-foreground" aria-hidden="true" />
+							<MessageSquareIcon
+								className="size-4 text-muted-foreground"
+								aria-hidden="true"
+							/>
 							{tModel("advancedHint")}
 						</p>
-						<ModelAdvancedFields form={form} setForm={setForm} />
+						<ModelAdvancedFields form={form} setFormAction={setForm} />
 					</div>
 				</div>
 			</AdvancedSection>

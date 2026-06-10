@@ -19,7 +19,15 @@ const mockAdapter = vi.hoisted(() => ({
 	validateConnection: vi
 		.fn()
 		.mockResolvedValue({ status: "healthy", latencyMs: 50 }),
-	listModels: vi.fn().mockResolvedValue([{ modelId: "model-1", displayName: "GPT-4", capabilities: { text: true } }]),
+	listModels: vi
+		.fn()
+		.mockResolvedValue([
+			{
+				modelId: "model-1",
+				displayName: "GPT-4",
+				capabilities: { text: true },
+			},
+		]),
 }));
 
 vi.mock("@/server/infrastructure/providers", () => ({

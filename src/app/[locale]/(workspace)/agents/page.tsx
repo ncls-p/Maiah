@@ -594,19 +594,6 @@ export default function AgentsPage() {
 													{tShare("action")}
 												</DropdownMenuItem>
 												<DropdownMenuItem
-													onClick={() =>
-														setShareResource({
-															kind: "agent",
-															id: agent.id,
-															name: agent.name,
-															description: agent.description,
-														})
-													}
-												>
-													<Share2 className="size-4" />
-													{tShare("action")}
-												</DropdownMenuItem>
-												<DropdownMenuItem
 													onClick={async () => {
 														try {
 															const res = await fetch(

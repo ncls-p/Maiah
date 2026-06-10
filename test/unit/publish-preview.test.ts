@@ -58,7 +58,9 @@ const mockBuildAgent = vi.mocked(manifestBuilders.buildAgentManifest);
 const mockBuildSkill = vi.mocked(manifestBuilders.buildSkillManifest);
 const mockBuildTool = vi.mocked(manifestBuilders.buildCustomToolManifest);
 const mockBuildMcp = vi.mocked(manifestBuilders.buildMcpPresetManifest);
-const mockFindDraft = vi.mocked(draftHelpers.findExistingDraft) as ReturnType<typeof vi.fn<() => Promise<unknown>>>;
+const mockFindDraft = vi.mocked(draftHelpers.findExistingDraft) as ReturnType<
+	typeof vi.fn<() => Promise<unknown>>
+>;
 
 function resetChains() {
 	dbModule._selectChain.from.mockReset().mockReturnThis();
@@ -86,7 +88,9 @@ const agentManifest: AgentMarketplaceManifest = {
 		providerName: "OpenAI",
 		modelName: "gpt-4",
 	},
-	toolBindings: [{ source: "builtin", ref: "web_search", requireApproval: false }],
+	toolBindings: [
+		{ source: "builtin", ref: "web_search", requireApproval: false },
+	],
 	skillBindings: [{ ref: "my-skill" }],
 	knowledgeBindings: [{ name: "kb-1" }],
 	bundledResources: { skills: [], mcpPresets: [], customTools: [] },
@@ -114,9 +118,7 @@ const toolManifest: ToolMarketplaceManifest = {
 		outputSchema: { type: "string" },
 		n8nWorkflowId: "wf-1",
 		requiresCredentials: true,
-		credentialSchema: [
-			{ key: "API_KEY", label: "API Key", required: true },
-		],
+		credentialSchema: [{ key: "API_KEY", label: "API Key", required: true }],
 	},
 };
 
@@ -133,9 +135,7 @@ const mcpManifest: McpPresetMarketplaceManifest = {
 		credentialSchema: [
 			{ key: "GH_TOKEN", label: "GitHub Token", required: true },
 		],
-		tools: [
-			{ name: "list_repos", requireApproval: false, enabled: true },
-		],
+		tools: [{ name: "list_repos", requireApproval: false, enabled: true }],
 	},
 };
 
@@ -438,7 +438,7 @@ describe("getPublishPreview", () => {
 			mockFindDraft.mockResolvedValueOnce({
 				id: draftId,
 				tagsJson: ["beta"],
-			} as Parameters<typeof mockFindDraft.mock.results[0]["value"]>[0]);
+			} as Parameters<(typeof mockFindDraft.mock.results)[0]["value"]>[0]);
 
 			const preview = await getPublishPreview({
 				workspaceId: "ws-1",

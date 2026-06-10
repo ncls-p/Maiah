@@ -307,6 +307,8 @@
     "description": "Discover, install, and share assistants, skills, and tools with your team.",
     "share": {
       "action": "Share",
+      "publish": "Publish",
+      "publishedDraft": "Draft created",
       "title": "Share “{name}”",
       "stepIndicator": "Step {current} of {total}",
       "steps": {

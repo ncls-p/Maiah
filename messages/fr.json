@@ -307,6 +307,8 @@
     "description": "Découvrez, installez et partagez des assistants, compétences et outils avec votre équipe.",
     "share": {
       "action": "Partager",
+      "publish": "Publier",
+      "publishedDraft": "Brouillon créé",
       "title": "Partager « {name} »",
       "stepIndicator": "Étape {current} sur {total}",
       "steps": {

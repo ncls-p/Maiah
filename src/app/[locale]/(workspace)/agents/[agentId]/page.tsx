@@ -507,7 +507,7 @@ export default function AgentConfigurePage() {
 					totalEnabledTools={totalEnabledTools}
 					enabledMcpCount={enabledMcpCount}
 					selectedKnowledgeIds={selectedKnowledgeIds}
-					onShowDeleteDialog={() => setShowDeleteDialog(true)}
+					onShowDeleteDialogAction={() => setShowDeleteDialog(true)}
 				/>
 
 				<div className="surface-panel animate-in-up stagger-2 px-5 pb-5 pt-5">
@@ -525,12 +525,12 @@ export default function AgentConfigurePage() {
 						<TabsContent value="essential" className="mt-4">
 							<EssentialTab
 								form={form}
-								setForm={setForm}
+								setFormAction={setForm}
 								providers={providers}
 								models={models}
 								saving={saving}
 								canAdminCurate={agent?.canAdminCurate ?? false}
-								onSave={saveEssential}
+								onSaveAction={saveEssential}
 							/>
 						</TabsContent>
 
@@ -538,22 +538,22 @@ export default function AgentConfigurePage() {
 							<CapabilitiesTab
 								builtinTools={builtinTools}
 								builtinBindings={builtinBindings}
-								setBuiltinBindings={setBuiltinBindings}
+								setBuiltinBindingsAction={setBuiltinBindings}
 								mcpServers={mcpServers}
 								mcpTools={mcpTools}
 								mcpBindings={mcpBindings}
-								setMcpBindings={setMcpBindings}
+								setMcpBindingsAction={setMcpBindings}
 								customTools={customTools}
 								customBindings={customBindings}
-								setCustomBindings={setCustomBindings}
+								setCustomBindingsAction={setCustomBindings}
 								knowledgeBases={knowledgeBases}
 								selectedKnowledgeIds={selectedKnowledgeIds}
-								setSelectedKnowledgeIds={setSelectedKnowledgeIds}
+								setSelectedKnowledgeIdsAction={setSelectedKnowledgeIds}
 								skills={skills}
 								selectedSkillIds={selectedSkillIds}
-								setSelectedSkillIds={setSelectedSkillIds}
+								setSelectedSkillIdsAction={setSelectedSkillIds}
 								saving={saving}
-								onSave={() => void saveCapabilities()}
+								onSaveAction={() => void saveCapabilities()}
 							/>
 						</TabsContent>
 					</Tabs>

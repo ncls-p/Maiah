@@ -25,12 +25,12 @@ import { defaultGenParams } from "./types";
 
 export function ModelAdvancedFields({
 	form,
-	setForm,
-	onReset,
+	setFormAction: setForm,
+	onResetAction: onReset,
 }: {
 	form: AgentForm;
-	setForm: (fn: (prev: AgentForm) => AgentForm) => void;
-	onReset?: () => void;
+	setFormAction: (fn: (prev: AgentForm) => AgentForm) => void;
+	onResetAction?: () => void;
 }) {
 	const t = useTranslations("agents.model");
 
@@ -149,7 +149,9 @@ export function ModelAdvancedFields({
 					</FieldContent>
 				</Field>
 				<Field>
-					<FieldLabel htmlFor="agent-response-format">Response format</FieldLabel>
+					<FieldLabel htmlFor="agent-response-format">
+						Response format
+					</FieldLabel>
 					<FieldContent>
 						<Select
 							value={form.responseFormat}
@@ -239,7 +241,9 @@ export function ModelAdvancedFields({
 					</FieldContent>
 				</Field>
 				<Field>
-					<FieldLabel htmlFor="agent-presence-penalty">Presence penalty</FieldLabel>
+					<FieldLabel htmlFor="agent-presence-penalty">
+						Presence penalty
+					</FieldLabel>
 					<FieldContent>
 						<Input
 							id="agent-presence-penalty"
@@ -312,7 +316,9 @@ export function ModelAdvancedFields({
 					</FieldContent>
 				</Field>
 				<Field className="sm:col-span-2">
-					<FieldLabel htmlFor="agent-guardrail-topics">Blocked topics</FieldLabel>
+					<FieldLabel htmlFor="agent-guardrail-topics">
+						Blocked topics
+					</FieldLabel>
 					<FieldContent>
 						<Textarea
 							id="agent-guardrail-topics"

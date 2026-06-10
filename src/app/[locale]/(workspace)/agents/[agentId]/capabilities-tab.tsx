@@ -289,43 +289,47 @@ function McpServerCollapsible({
 export function CapabilitiesTab({
 	builtinTools,
 	builtinBindings,
-	setBuiltinBindings,
+	setBuiltinBindingsAction: setBuiltinBindings,
 	mcpServers,
 	mcpTools,
 	mcpBindings,
-	setMcpBindings,
+	setMcpBindingsAction: setMcpBindings,
 	customTools,
 	customBindings,
-	setCustomBindings,
+	setCustomBindingsAction: setCustomBindings,
 	knowledgeBases,
 	selectedKnowledgeIds,
-	setSelectedKnowledgeIds,
+	setSelectedKnowledgeIdsAction: setSelectedKnowledgeIds,
 	skills,
 	selectedSkillIds,
-	setSelectedSkillIds,
+	setSelectedSkillIdsAction: setSelectedSkillIds,
 	saving,
-	onSave,
+	onSaveAction: onSave,
 }: {
 	builtinTools: BuiltinTool[];
 	builtinBindings: ToolBindingState;
-	setBuiltinBindings: (
+	setBuiltinBindingsAction: (
 		fn: (prev: ToolBindingState) => ToolBindingState,
 	) => void;
 	mcpServers: McpServer[];
 	mcpTools: McpTool[];
 	mcpBindings: ToolBindingState;
-	setMcpBindings: (fn: (prev: ToolBindingState) => ToolBindingState) => void;
+	setMcpBindingsAction: (
+		fn: (prev: ToolBindingState) => ToolBindingState,
+	) => void;
 	customTools: CustomTool[];
 	customBindings: ToolBindingState;
-	setCustomBindings: (fn: (prev: ToolBindingState) => ToolBindingState) => void;
+	setCustomBindingsAction: (
+		fn: (prev: ToolBindingState) => ToolBindingState,
+	) => void;
 	knowledgeBases: KnowledgeBase[];
 	selectedKnowledgeIds: string[];
-	setSelectedKnowledgeIds: (fn: (prev: string[]) => string[]) => void;
+	setSelectedKnowledgeIdsAction: (fn: (prev: string[]) => string[]) => void;
 	skills: AgentSkill[];
 	selectedSkillIds: string[];
-	setSelectedSkillIds: (fn: (prev: string[]) => string[]) => void;
+	setSelectedSkillIdsAction: (fn: (prev: string[]) => string[]) => void;
 	saving: boolean;
-	onSave: () => void;
+	onSaveAction: () => void;
 }) {
 	const t = useTranslations("agents.configurePage");
 	const tCap = useTranslations("agents.capabilities");
@@ -475,9 +479,7 @@ export function CapabilitiesTab({
 							className="size-8 text-muted-foreground/50"
 							aria-hidden="true"
 						/>
-						<p className="text-sm text-muted-foreground">
-							{tCap("noSkills")}
-						</p>
+						<p className="text-sm text-muted-foreground">{tCap("noSkills")}</p>
 						<Button variant="outline" size="sm" asChild>
 							<Link href="/tools?tab=skills">
 								<PlusIcon className="size-4" aria-hidden="true" />
