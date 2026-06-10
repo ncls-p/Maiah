@@ -47,15 +47,17 @@ export default async function MembersPage() {
 		<WorkspacePage
 			title={t("membersTitle")}
 			description={t("membersDescription")}
-			width="default"
+			width="wide"
 		>
 			<WorkspaceMemberManagement currentUserId={session.user.id} />
 
 			{isAdmin ? (
-				<div className="flex flex-col gap-3">
-					<div>
-						<h2 className="text-lg font-semibold">{t("platformAccounts")}</h2>
-						<p className="text-sm text-muted-foreground">
+				<section className="flex flex-col gap-6 border-t border-border/60 pt-8 animate-in-up stagger-4">
+					<div className="flex flex-col gap-2">
+						<h2 className="text-lg font-semibold tracking-tight">
+							{t("platformAccounts")}
+						</h2>
+						<p className="max-w-2xl text-sm text-muted-foreground">
 							{t("platformAccountsDescription")}
 						</p>
 					</div>
@@ -63,7 +65,7 @@ export default async function MembersPage() {
 						initialUsers={JSON.parse(JSON.stringify(users))}
 						currentUserId={session.user.id}
 					/>
-				</div>
+				</section>
 			) : null}
 		</WorkspacePage>
 	);

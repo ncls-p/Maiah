@@ -1,62 +1,61 @@
 import { getTranslations } from "next-intl/server";
-import { ShieldAlertIcon } from "lucide-react";
+import { Link } from "@/i18n/navigation";
+import { ArrowRightIcon, ShieldCheckIcon } from "lucide-react";
 
 import { WorkspacePage } from "@/components/workspace-page";
-import { SettingsLocaleCard } from "./settings-locale";
-import { ChatAutomationSettings } from "@/components/admin/chat-automation-settings";
-import { CustomToolBuilderSettings } from "@/components/admin/custom-tool-builder-settings";
-import { RegistrationSettings } from "@/components/admin/registration-settings";
-import { SystemHealthCard } from "@/components/admin/system-health-card";
-import {
-	Empty,
-	EmptyDescription,
-	EmptyHeader,
-	EmptyMedia,
-	EmptyTitle,
-} from "@/components/ui/empty";
+import { Button } from "@/components/ui/button";
 import {
 	ensureBootstrapAdmin,
-	getRegistrationSetting,
 	isAdminRole,
 } from "@/modules/admin/use-cases";
 import { getSession } from "@/modules/auth/session";
 
+import { SettingsLocaleCard } from "./settings-locale";
+
 export default async function SettingsPage() {
-	const t = await getTranslations("admin");
+	const t = await getTranslations("settings");
+	const tAdmin = await getTranslations("admin");
 	const session = await getSession();
 	const bootstrappedAdminId = await ensureBootstrapAdmin();
 	const isAdmin =
 		isAdminRole(session?.user.role) || bootstrappedAdminId === session?.user.id;
 
-	if (!session || !isAdmin) {
-		return (
-			<WorkspacePage title={t("settingsTitle")} width="narrow">
-				<Empty className="min-h-80 border border-border/70 bg-background/55">
-					<EmptyHeader>
-						<EmptyMedia variant="icon">
-							<ShieldAlertIcon aria-hidden="true" />
-						</EmptyMedia>
-						<EmptyTitle>{t("adminRequired")}</EmptyTitle>
-						<EmptyDescription>{t("adminRequiredDescription")}</EmptyDescription>
-					</EmptyHeader>
-				</Empty>
-			</WorkspacePage>
-		);
-	}
-
-	const registration = await getRegistrationSetting();
-
 	return (
 		<WorkspacePage
-			title={t("settingsTitle")}
-			description={t("settingsDescription")}
-			width="narrow"
+			title={t("title")}
+			description={t("description")}
+			width="default"
 		>
-			<SettingsLocaleCard />
-			<RegistrationSettings initialState={registration} />
-			<ChatAutomationSettings />
-			<CustomToolBuilderSettings />
-			<SystemHealthCard />
+			<div className="flex flex-col gap-6">
+				<SettingsLocaleCard />
+
+				{isAdmin ? (
+					<section className="surface-panel animate-in-up stagger-2 overflow-hidden p-0">
+						<div className="border-b border-border/60 bg-gradient-to-br from-primary/8 via-background to-chart-2/10 px-5 py-5 sm:px-6">
+							<div className="flex items-center gap-2 text-primary">
+								<ShieldCheckIcon className="size-4" aria-hidden="true" />
+								<h2 className="text-sm font-semibold uppercase tracking-wider">
+									{t("adminLinkTitle")}
+								</h2>
+							</div>
+							<p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+								{t("adminLinkDescription")}
+							</p>
+						</div>
+						<div className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+							<p className="text-sm text-muted-foreground">
+								{tAdmin("platformSettingsDescription")}
+							</p>
+							<Button asChild variant="outline">
+								<Link href="/admin/settings">
+									{t("goToAdminSettings")}
+									<ArrowRightIcon data-icon="inline-end" aria-hidden="true" />
+								</Link>
+							</Button>
+						</div>
+					</section>
+				) : null}
+			</div>
 		</WorkspacePage>
 	);
 }

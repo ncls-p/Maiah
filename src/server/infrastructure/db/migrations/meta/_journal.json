@@ -78,6 +78,13 @@
       "when": 1781200000000,
       "tag": "0010_marketplace_source_resource",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1781300000000,
+      "tag": "0011_message_part_suggestions",
+      "breakpoints": true
     }
   ]
 }

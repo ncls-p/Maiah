@@ -7,15 +7,33 @@ import { getSession } from "@/modules/auth/session";
 import {
 	getChatAutomationAdminState,
 	setChatAutomationConfig,
+	validateChatAutomationConfig,
 } from "@/modules/chat/automation";
 
-const updateSchema = z.object({
-	enabled: z.boolean(),
-	providerId: z.uuid().optional(),
-	modelId: z.uuid().optional(),
-	generateTitles: z.boolean().default(true),
-	generateSuggestions: z.boolean().default(true),
-});
+const updateSchema = z
+	.object({
+		enabled: z.boolean(),
+		providerId: z.uuid().optional(),
+		modelId: z.uuid().optional(),
+		generateTitles: z.boolean().default(true),
+		generateSuggestions: z.boolean().default(true),
+	})
+	.superRefine((data, ctx) => {
+		if (data.enabled && !data.providerId) {
+			ctx.addIssue({
+				code: "custom",
+				message: "providerId is required when automation is enabled",
+				path: ["providerId"],
+			});
+		}
+		if (data.enabled && !data.modelId) {
+			ctx.addIssue({
+				code: "custom",
+				message: "modelId is required when automation is enabled",
+				path: ["modelId"],
+			});
+		}
+	});
 
 async function requireAdmin() {
 	const session = await getSession();
@@ -59,6 +77,16 @@ export async function PATCH(req: NextRequest) {
 		if (!parsed.success) {
 			return NextResponse.json(
 				{ error: "Invalid input", details: parsed.error.issues },
+				{ status: 400 },
+			);
+		}
+		const validation = await validateChatAutomationConfig(parsed.data);
+		if (!validation.ok) {
+			return NextResponse.json(
+				{
+					error: validation.issues.map((issue) => issue.message).join(" "),
+					issues: validation.issues,
+				},
 				{ status: 400 },
 			);
 		}

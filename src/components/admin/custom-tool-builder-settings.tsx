@@ -2,18 +2,16 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { BotIcon, WorkflowIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+	SettingsSection,
+	SettingsSectionSkeleton,
+	SettingsStatusBadge,
+	SettingsToggleRow,
+} from "@/components/admin/settings-panel";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -23,7 +21,6 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { Spinner } from "@/components/ui/spinner";
 
 const NONE = "__none__";
@@ -65,6 +62,7 @@ type AdminState = {
 };
 
 export function CustomToolBuilderSettings() {
+	const t = useTranslations("admin.settingsPage.customToolBuilder");
 	const [state, setState] = useState<AdminState | null>(null);
 	const [config, setConfig] = useState<BuilderConfig | null>(null);
 	const [loading, setLoading] = useState(true);
@@ -122,7 +120,7 @@ export function CustomToolBuilderSettings() {
 				throw new Error((await res.json()).error || "Unable to save settings");
 			const nextConfig = (await res.json()) as BuilderConfig;
 			setConfig(nextConfig);
-			toast.success("Custom tool builder settings saved");
+			toast.success(t("saved"));
 		} catch (error) {
 			toast.error(
 				error instanceof Error ? error.message : "Unable to save settings",
@@ -133,13 +131,7 @@ export function CustomToolBuilderSettings() {
 	}
 
 	if (loading || !state || !config) {
-		return (
-			<Card>
-				<CardContent className="flex items-center gap-2 py-8 text-muted-foreground">
-					<Spinner /> Loading custom tool builder settings…
-				</CardContent>
-			</Card>
-		);
+		return <SettingsSectionSkeleton rows={5} />;
 	}
 
 	const ready = Boolean(
@@ -150,67 +142,54 @@ export function CustomToolBuilderSettings() {
 	);
 
 	return (
-		<Card>
-			<CardHeader>
-				<div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-					<div className="flex flex-col gap-1">
-						<CardTitle className="flex items-center gap-2">
-							<WorkflowIcon className="size-5" aria-hidden="true" />
-							Custom tool builder
-						</CardTitle>
-						<CardDescription>
-							Configure the LLM and n8n MCP used by the user-facing custom tool
-							creation page.
-						</CardDescription>
-					</div>
-					<Badge variant={ready ? "secondary" : "outline"}>
-						{ready ? "Ready" : "Incomplete"}
-					</Badge>
-				</div>
-			</CardHeader>
-			<CardContent className="space-y-5">
-				<Alert>
-					<BotIcon className="size-4" aria-hidden="true" />
-					<AlertTitle>Secrets stay out of the model context</AlertTitle>
-					<AlertDescription>
-						The builder can request a secure modal. Submitted values are
-						encrypted server-side and the LLM only receives opaque credential
-						refs.
-					</AlertDescription>
-				</Alert>
-
-				<div className="flex items-center justify-between rounded-xl border border-border/70 p-3">
+		<SettingsSection
+			icon={WorkflowIcon}
+			title={t("title")}
+			description={t("description")}
+			stagger="stagger-4"
+			badge={
+				<SettingsStatusBadge
+					label={ready ? t("statusReady") : t("statusIncomplete")}
+					tone={ready ? "success" : "warning"}
+				/>
+			}
+		>
+			<div className="space-y-5">
+				<div className="flex gap-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-muted-foreground">
+					<BotIcon className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
 					<div>
-						<Label htmlFor="ctb-enabled">Enable builder</Label>
-						<p className="text-xs text-muted-foreground">
-							When disabled, the public builder API refuses requests.
-						</p>
+						<p className="font-medium text-foreground">{t("secretsTitle")}</p>
+						<p className="mt-1">{t("secretsDescription")}</p>
 					</div>
-					<Switch
-						id="ctb-enabled"
-						checked={config.enabled}
-						onCheckedChange={(enabled) => setConfig({ ...config, enabled })}
-					/>
 				</div>
+
+				<SettingsToggleRow
+					id="ctb-enabled"
+					label={t("enable")}
+					description={t("enableDescription")}
+					checked={config.enabled}
+					onCheckedChange={(enabled) => setConfig({ ...config, enabled })}
+				/>
 
 				<div className="grid gap-4 md:grid-cols-2">
 					<div className="space-y-2">
-						<Label>LLM provider</Label>
+						<Label>{t("provider")}</Label>
 						<Select
 							value={config.providerId || NONE}
-							onValueChange={(providerId) =>
+							onValueChange={(nextProviderId) =>
 								setConfig({
 									...config,
-									providerId: providerId === NONE ? undefined : providerId,
+									providerId:
+										nextProviderId === NONE ? undefined : nextProviderId,
 									modelId: undefined,
 								})
 							}
 						>
 							<SelectTrigger>
-								<SelectValue placeholder="Select provider" />
+								<SelectValue placeholder={t("providerPlaceholder")} />
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value={NONE}>Not configured</SelectItem>
+								<SelectItem value={NONE}>{t("notConfigured")}</SelectItem>
 								{state.providers.map((provider) => (
 									<SelectItem key={provider.id} value={provider.id}>
 										{provider.name} · {provider.kind}
@@ -220,7 +199,7 @@ export function CustomToolBuilderSettings() {
 						</Select>
 					</div>
 					<div className="space-y-2">
-						<Label>Model</Label>
+						<Label>{t("model")}</Label>
 						<Select
 							value={config.modelId || NONE}
 							onValueChange={(modelId) =>
@@ -232,10 +211,10 @@ export function CustomToolBuilderSettings() {
 							disabled={!config.providerId}
 						>
 							<SelectTrigger>
-								<SelectValue placeholder="Select model" />
+								<SelectValue placeholder={t("modelPlaceholder")} />
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value={NONE}>Not configured</SelectItem>
+								<SelectItem value={NONE}>{t("notConfigured")}</SelectItem>
 								{filteredModels.map((model) => (
 									<SelectItem key={model.id} value={model.id}>
 										{model.displayName || model.modelId}
@@ -247,7 +226,7 @@ export function CustomToolBuilderSettings() {
 				</div>
 
 				<div className="space-y-2">
-					<Label>n8n MCP server</Label>
+					<Label>{t("mcpServer")}</Label>
 					<Select
 						value={config.n8nMcpServerId || NONE}
 						onValueChange={(n8nMcpServerId) =>
@@ -259,28 +238,24 @@ export function CustomToolBuilderSettings() {
 						}
 					>
 						<SelectTrigger>
-							<SelectValue placeholder="Select n8n MCP server" />
+							<SelectValue placeholder={t("mcpPlaceholder")} />
 						</SelectTrigger>
 						<SelectContent>
-							<SelectItem value={NONE}>Not configured</SelectItem>
+							<SelectItem value={NONE}>{t("notConfigured")}</SelectItem>
 							{state.mcpServers.map((server) => (
 								<SelectItem key={server.id} value={server.id}>
 									{server.name} · {server.transport}
-									{server.url ? "" : " · no URL"}
+									{server.url ? "" : ` · ${t("noUrl")}`}
 								</SelectItem>
 							))}
 						</SelectContent>
 					</Select>
-					<p className="text-xs text-muted-foreground">
-						For the web app, use an SSE or streamable HTTP MCP URL. Stdio
-						configs are useful for desktop clients but cannot be called by this
-						route.
-					</p>
+					<p className="text-xs text-muted-foreground">{t("mcpHint")}</p>
 				</div>
 
-				<div className="grid gap-4 md:grid-cols-4">
+				<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
 					<div className="space-y-2">
-						<Label>Create workflow tool</Label>
+						<Label>{t("createTool")}</Label>
 						<Input
 							value={config.createWorkflowToolName}
 							onChange={(event) =>
@@ -292,7 +267,7 @@ export function CustomToolBuilderSettings() {
 						/>
 					</div>
 					<div className="space-y-2">
-						<Label>Validate workflow tool</Label>
+						<Label>{t("validateTool")}</Label>
 						<Input
 							value={config.validateWorkflowToolName}
 							onChange={(event) =>
@@ -304,7 +279,7 @@ export function CustomToolBuilderSettings() {
 						/>
 					</div>
 					<div className="space-y-2">
-						<Label>Update/activate tool</Label>
+						<Label>{t("activateTool")}</Label>
 						<Input
 							value={config.activateWorkflowToolName}
 							onChange={(event) =>
@@ -316,7 +291,7 @@ export function CustomToolBuilderSettings() {
 						/>
 					</div>
 					<div className="space-y-2">
-						<Label>Credential tool</Label>
+						<Label>{t("credentialTool")}</Label>
 						<Input
 							value={config.credentialToolName}
 							onChange={(event) =>
@@ -329,28 +304,23 @@ export function CustomToolBuilderSettings() {
 					</div>
 				</div>
 
-				<div className="flex items-center justify-between rounded-xl border border-border/70 p-3">
-					<div>
-						<Label htmlFor="ctb-activate">Allow workflow activation</Label>
-						<p className="text-xs text-muted-foreground">
-							Keep this off to require human review before production
-							activation.
-						</p>
-					</div>
-					<Switch
-						id="ctb-activate"
-						checked={config.allowWorkflowActivation}
-						onCheckedChange={(allowWorkflowActivation) =>
-							setConfig({ ...config, allowWorkflowActivation })
-						}
-					/>
-				</div>
+				<SettingsToggleRow
+					id="ctb-activate"
+					label={t("allowActivation")}
+					description={t("allowActivationDescription")}
+					checked={config.allowWorkflowActivation}
+					onCheckedChange={(allowWorkflowActivation) =>
+						setConfig({ ...config, allowWorkflowActivation })
+					}
+				/>
 
-				<Button onClick={save} disabled={saving}>
-					{saving ? <Spinner data-icon="inline-start" /> : null}
-					Save builder settings
-				</Button>
-			</CardContent>
-		</Card>
+				<div className="flex justify-end border-t border-border/60 pt-4">
+					<Button onClick={() => void save()} disabled={saving}>
+						{saving ? <Spinner data-icon="inline-start" /> : null}
+						{t("save")}
+					</Button>
+				</div>
+			</div>
+		</SettingsSection>
 	);
 }

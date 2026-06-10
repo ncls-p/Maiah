@@ -869,6 +869,15 @@ export function useChatStream({
 				clearStoredChatStreamDraft(activeConversationId);
 
 			await onConversationsRefresh();
+			if (activeConversationId) {
+				const res = await fetch(
+					`/api/workspace/conversations/${activeConversationId}`,
+				);
+				if (res.ok) {
+					const data = (await res.json()) as { messages?: ChatMessage[] };
+					if (data.messages) setMessages(data.messages);
+				}
+			}
 		} catch (err) {
 			if (err instanceof Error && err.name === "AbortError") {
 				updateAssistantDraft((message) => ({

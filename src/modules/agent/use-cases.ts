@@ -826,7 +826,10 @@ export async function getConversationMessages(conversationId: string) {
 		const decryptedParts: Array<{ type: string; content: string }> = [];
 		for (const part of parts) {
 			if (
-				(part.type === "text" || part.type === "reasoning") &&
+				(part.type === "text" ||
+					part.type === "reasoning" ||
+					part.type === "suggestions" ||
+					part.type === "citations") &&
 				part.contentEncrypted
 			) {
 				try {

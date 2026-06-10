@@ -1,19 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { LockIcon, UnlockIcon } from "lucide-react";
+import { LockIcon, UnlockIcon, UserPlusIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+	SettingsMetricRow,
+	SettingsSection,
+	SettingsStatusBadge,
+} from "@/components/admin/settings-panel";
+import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 
 type RegistrationState = {
@@ -27,6 +24,7 @@ export function RegistrationSettings({
 }: {
 	initialState: RegistrationState;
 }) {
+	const t = useTranslations("admin.settingsPage.registration");
 	const [settings, setSettings] = useState(initialState);
 	const [saving, setSaving] = useState(false);
 	const isOpen = settings.registrationEnabled;
@@ -48,9 +46,7 @@ export function RegistrationSettings({
 			const nextSettings = (await res.json()) as RegistrationState;
 			setSettings(nextSettings);
 			toast.success(
-				nextSettings.registrationEnabled
-					? "Registration is open"
-					: "Registration is closed",
+				nextSettings.registrationEnabled ? t("opened") : t("closed"),
 			);
 		} catch (error) {
 			toast.error(
@@ -64,57 +60,58 @@ export function RegistrationSettings({
 	}
 
 	return (
-		<Card>
-			<CardHeader>
-				<div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-					<div className="flex flex-col gap-1">
-						<CardTitle>Registration</CardTitle>
-						<CardDescription>
-							Control whether people can create accounts without an admin.
-						</CardDescription>
-					</div>
-					<Badge variant={isOpen ? "secondary" : "outline"}>
-						{isOpen ? "Open" : "Closed"}
-					</Badge>
-				</div>
-			</CardHeader>
-			<CardContent className="flex flex-col gap-4">
-				<Alert>
-					<AlertTitle>{settings.userCount} account(s)</AlertTitle>
-					<AlertDescription>
-						The first account can always be created and becomes admin. After
-						that, this setting decides public sign-up access.
-					</AlertDescription>
-				</Alert>
+		<SettingsSection
+			icon={UserPlusIcon}
+			title={t("title")}
+			description={t("description")}
+			stagger="stagger-1"
+			badge={
+				<SettingsStatusBadge
+					label={isOpen ? t("statusOpen") : t("statusClosed")}
+					tone={isOpen ? "success" : "muted"}
+				/>
+			}
+		>
+			<div className="flex flex-col gap-4">
+				<SettingsMetricRow
+					label={t("accounts")}
+					value={t("accountCount", { count: settings.userCount })}
+					icon={UserPlusIcon}
+				/>
+				<p className="rounded-xl border border-border/60 bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
+					{t("hint")}
+				</p>
 				<div className="flex flex-col gap-2 sm:flex-row">
 					<Button
 						type="button"
 						onClick={() => updateRegistration(false)}
 						disabled={saving || !isOpen}
 						variant={isOpen ? "default" : "outline"}
+						className="sm:flex-1"
 					>
 						{saving ? (
 							<Spinner data-icon="inline-start" />
 						) : (
 							<LockIcon data-icon="inline-start" aria-hidden="true" />
 						)}
-						Close registration
+						{t("close")}
 					</Button>
 					<Button
 						type="button"
 						onClick={() => updateRegistration(true)}
 						disabled={saving || isOpen}
 						variant="outline"
+						className="sm:flex-1"
 					>
 						{saving ? (
 							<Spinner data-icon="inline-start" />
 						) : (
 							<UnlockIcon data-icon="inline-start" aria-hidden="true" />
 						)}
-						Open registration
+						{t("open")}
 					</Button>
 				</div>
-			</CardContent>
-		</Card>
+			</div>
+		</SettingsSection>
 	);
 }

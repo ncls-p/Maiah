@@ -1,17 +1,21 @@
 "use client";
 
-import { type SyntheticEvent, useCallback, useEffect, useState } from "react";
-import { Loader2, UserMinusIcon, UserPlusIcon, UsersIcon } from "lucide-react";
+import type { ElementType } from "react";
+import { type SyntheticEvent, useCallback, useEffect, useMemo, useState } from "react";
+import {
+	CrownIcon,
+	Loader2,
+	MailIcon,
+	ShieldIcon,
+	UserMinusIcon,
+	UserPlusIcon,
+	UsersIcon,
+} from "lucide-react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -21,7 +25,9 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useWorkspace } from "@/hooks/use-workspace";
+import { cn } from "@/lib/utils";
 
 type WorkspaceMember = {
 	id: string;
@@ -32,20 +38,145 @@ type WorkspaceMember = {
 	createdAt: string;
 };
 
+type WorkspaceRole =
+	| "workspace.member"
+	| "workspace.owner"
+	| "workspace.admin";
+
+function initialsFromName(name: string) {
+	return (
+		name
+			.split(/\s+/)
+			.map((part) => part[0])
+			.join("")
+			.slice(0, 2)
+			.toUpperCase() || "?"
+	);
+}
+
+function roleLabel(
+	roleName: string,
+	t: ReturnType<typeof useTranslations<"admin.members">>,
+) {
+	switch (roleName) {
+		case "workspace.owner":
+			return t("roleOwner");
+		case "workspace.admin":
+			return t("roleAdmin");
+		default:
+			return t("roleMember");
+	}
+}
+
+function roleBadgeClass(roleName: string) {
+	switch (roleName) {
+		case "workspace.owner":
+			return "border-primary/30 bg-primary/10 text-primary";
+		case "workspace.admin":
+			return "border-info/30 bg-info/10 text-info";
+		default:
+			return "";
+	}
+}
+
+function StatCard({
+	label,
+	value,
+	icon: Icon,
+	color,
+	accent,
+}: {
+	label: string;
+	value: string | number;
+	icon: ElementType;
+	color: string;
+	accent: string;
+}) {
+	return (
+		<div className="group relative overflow-hidden rounded-2xl border border-border/70 bg-card p-4 shadow-sm transition-colors hover:border-primary/35">
+			<div
+				className={cn(
+					"absolute left-0 top-0 h-full w-1 opacity-60 transition-opacity duration-300 group-hover:opacity-100",
+					accent,
+				)}
+			/>
+			<div className="flex items-start justify-between gap-3">
+				<div className="flex min-w-0 flex-col gap-1">
+					<span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+						{label}
+					</span>
+					<span className="text-2xl font-bold tracking-tight text-foreground">
+						{value}
+					</span>
+				</div>
+				<div
+					className={cn(
+						"flex size-10 shrink-0 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-110",
+						color,
+					)}
+				>
+					<Icon className="size-5" aria-hidden="true" />
+				</div>
+			</div>
+		</div>
+	);
+}
+
+function MemberAvatar({ name, isCurrentUser }: { name: string; isCurrentUser: boolean }) {
+	return (
+		<div
+			className={cn(
+				"flex size-11 shrink-0 items-center justify-center rounded-full text-sm font-semibold ring-2 ring-background",
+				isCurrentUser
+					? "bg-primary text-primary-foreground"
+					: "bg-primary/10 text-primary",
+			)}
+		>
+			{initialsFromName(name)}
+		</div>
+	);
+}
+
+function MembersSkeleton() {
+	return (
+		<div className="flex flex-col gap-6">
+			<div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+				{Array.from({ length: 4 }).map((_, index) => (
+					<Skeleton key={index} className="h-24 rounded-2xl" />
+				))}
+			</div>
+			<Skeleton className="h-36 rounded-2xl" />
+			<Skeleton className="h-64 rounded-2xl" />
+		</div>
+	);
+}
+
 export function WorkspaceMemberManagement({
 	currentUserId,
 }: {
 	currentUserId: string;
 }) {
+	const t = useTranslations("admin.members");
 	const { workspaceId, isLoading: workspaceLoading } = useWorkspace();
 	const [members, setMembers] = useState<WorkspaceMember[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [inviting, setInviting] = useState(false);
 	const [busyUserId, setBusyUserId] = useState<string | null>(null);
 	const [email, setEmail] = useState("");
-	const [roleName, setRoleName] = useState<
-		"workspace.member" | "workspace.owner" | "workspace.admin"
-	>("workspace.member");
+	const [roleName, setRoleName] = useState<WorkspaceRole>("workspace.member");
+
+	const stats = useMemo(() => {
+		return members.reduce(
+			(acc, member) => {
+				acc.total += 1;
+				if (member.roleName === "workspace.owner") acc.owners += 1;
+				else if (member.roleName === "workspace.admin") acc.admins += 1;
+				else acc.members += 1;
+				return acc;
+			},
+			{ total: 0, owners: 0, admins: 0, members: 0 },
+		);
+	}, [members]);
 
 	const loadMembers = useCallback(async () => {
 		if (!workspaceId) return;
@@ -81,10 +212,7 @@ export function WorkspaceMemberManagement({
 		};
 	}, [loadMembers, workspaceId]);
 
-	async function updateMemberRole(
-		userId: string,
-		nextRole: "workspace.member" | "workspace.owner" | "workspace.admin",
-	) {
+	async function updateMemberRole(userId: string, nextRole: WorkspaceRole) {
 		if (!workspaceId) return;
 		setBusyUserId(userId);
 		try {
@@ -100,7 +228,7 @@ export function WorkspaceMemberManagement({
 				);
 			}
 			await loadMembers();
-			toast.success("Member role updated");
+			toast.success(t("roleUpdated"));
 		} catch (error) {
 			toast.error(
 				error instanceof Error ? error.message : "Unable to update role",
@@ -128,7 +256,7 @@ export function WorkspaceMemberManagement({
 			}
 			setEmail("");
 			await loadMembers();
-			toast.success("Member added to team");
+			toast.success(t("memberAdded"));
 		} catch (error) {
 			toast.error(
 				error instanceof Error ? error.message : "Unable to invite member",
@@ -153,7 +281,7 @@ export function WorkspaceMemberManagement({
 				);
 			}
 			await loadMembers();
-			toast.success("Member removed");
+			toast.success(t("memberRemoved"));
 		} catch (error) {
 			toast.error(
 				error instanceof Error ? error.message : "Unable to remove member",
@@ -164,139 +292,221 @@ export function WorkspaceMemberManagement({
 	}
 
 	if (workspaceLoading || !workspaceId) {
-		return (
-			<Card>
-				<CardContent className="flex items-center justify-center py-10">
-					<Loader2 className="size-5 animate-spin text-muted-foreground" />
-				</CardContent>
-			</Card>
-		);
+		return <MembersSkeleton />;
+	}
+
+	if (loading) {
+		return <MembersSkeleton />;
 	}
 
 	return (
-		<Card>
-			<CardHeader>
-				<CardTitle className="flex items-center gap-2">
-					<UsersIcon className="size-4" aria-hidden="true" />
-					Team members
-				</CardTitle>
-				<CardDescription>
-					Invite existing accounts. They will see the same assistants and
-					connections.
-				</CardDescription>
-			</CardHeader>
-			<CardContent className="flex flex-col gap-6">
+		<div className="flex flex-col gap-6">
+			<div className="grid grid-cols-2 gap-3 lg:grid-cols-4 animate-in-up stagger-1">
+				<StatCard
+					label={t("statTotal")}
+					value={stats.total}
+					icon={UsersIcon}
+					color="bg-primary/10 text-primary"
+					accent="bg-primary"
+				/>
+				<StatCard
+					label={t("statOwners")}
+					value={stats.owners}
+					icon={CrownIcon}
+					color="bg-primary/10 text-primary"
+					accent="bg-primary"
+				/>
+				<StatCard
+					label={t("statAdmins")}
+					value={stats.admins}
+					icon={ShieldIcon}
+					color="bg-info/10 text-info"
+					accent="bg-info"
+				/>
+				<StatCard
+					label={t("statMembers")}
+					value={stats.members}
+					icon={UsersIcon}
+					color="bg-muted text-muted-foreground"
+					accent="bg-muted-foreground"
+				/>
+			</div>
+
+			<section className="surface-panel animate-in-up stagger-2 overflow-hidden p-0">
+				<div className="border-b border-border/60 bg-gradient-to-br from-primary/8 via-background to-chart-2/10 px-5 py-5 sm:px-6">
+					<div className="flex items-center gap-2 text-primary">
+						<UserPlusIcon className="size-4" aria-hidden="true" />
+						<h2 className="text-sm font-semibold uppercase tracking-wider">
+							{t("inviteTitle")}
+						</h2>
+					</div>
+					<p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+						{t("inviteDescription")}
+					</p>
+				</div>
 				<form
-					className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_12rem_auto]"
+					className="grid gap-4 p-5 sm:grid-cols-[minmax(0,1fr)_12rem_auto] sm:items-end sm:px-6"
 					onSubmit={(event) => void inviteMember(event)}
 				>
-					<div className="flex flex-col gap-2">
-						<Label htmlFor="invite-email">Email</Label>
-						<Input
-							id="invite-email"
-							type="email"
-							autoComplete="email"
-							placeholder="colleague@company.com…"
-							value={email}
-							onChange={(event) => setEmail(event.target.value)}
-							required
-						/>
+					<div className="grid gap-2">
+						<Label htmlFor="invite-email">{t("email")}</Label>
+						<div className="relative">
+							<MailIcon
+								className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+								aria-hidden="true"
+							/>
+							<Input
+								id="invite-email"
+								type="email"
+								autoComplete="email"
+								className="pl-9"
+								placeholder={t("emailPlaceholder")}
+								value={email}
+								onChange={(event) => setEmail(event.target.value)}
+								required
+							/>
+						</div>
 					</div>
-					<div className="flex flex-col gap-2">
-						<Label htmlFor="invite-role">Role</Label>
+					<div className="grid gap-2">
+						<Label htmlFor="invite-role">{t("role")}</Label>
 						<Select
 							value={roleName}
-							onValueChange={(value) => setRoleName(value as typeof roleName)}
+							onValueChange={(value) => setRoleName(value as WorkspaceRole)}
 						>
 							<SelectTrigger id="invite-role">
 								<SelectValue />
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value="workspace.member">Member</SelectItem>
-								<SelectItem value="workspace.admin">Admin</SelectItem>
-								<SelectItem value="workspace.owner">Owner</SelectItem>
+								<SelectItem value="workspace.member">{t("roleMember")}</SelectItem>
+								<SelectItem value="workspace.admin">{t("roleAdmin")}</SelectItem>
+								<SelectItem value="workspace.owner">{t("roleOwner")}</SelectItem>
 							</SelectContent>
 						</Select>
 					</div>
-					<div className="flex items-end">
-						<Button type="submit" disabled={inviting}>
-							{inviting ? (
-								<Loader2 className="animate-spin" aria-hidden="true" />
-							) : (
-								<>
-									<UserPlusIcon data-icon="inline-start" aria-hidden="true" />
-									Invite Member
-								</>
-							)}
-						</Button>
-					</div>
+					<Button type="submit" disabled={inviting} className="w-full sm:w-auto">
+						{inviting ? (
+							<Loader2 className="animate-spin" aria-hidden="true" />
+						) : (
+							<>
+								<UserPlusIcon data-icon="inline-start" aria-hidden="true" />
+								{t("inviteButton")}
+							</>
+						)}
+					</Button>
 				</form>
+			</section>
 
-				{loading ? (
-					<div className="flex justify-center py-6">
-						<Loader2 className="size-5 animate-spin text-muted-foreground" />
+			<section className="surface-panel animate-in-up stagger-3 p-5">
+				<div className="mb-5 flex flex-col gap-1">
+					<div className="flex items-center gap-2">
+						<UsersIcon className="size-4 text-primary" aria-hidden="true" />
+						<h2 className="text-base font-semibold">{t("listTitle")}</h2>
 					</div>
-				) : members.length === 0 ? (
-					<p className="text-sm text-muted-foreground">No members yet.</p>
+					<p className="text-sm text-muted-foreground">{t("listDescription")}</p>
+				</div>
+
+				{members.length === 0 ? (
+					<div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-12 text-center">
+						<UsersIcon
+							className="size-8 text-muted-foreground/60"
+							aria-hidden="true"
+						/>
+						<p className="text-sm font-medium text-foreground">{t("emptyTitle")}</p>
+						<p className="max-w-sm text-sm text-muted-foreground">
+							{t("emptyDescription")}
+						</p>
+					</div>
 				) : (
-					<ul className="divide-y divide-border/70 rounded-xl border border-border/70">
-						{members.map((member) => (
-							<li
-								key={member.id}
-								className="flex items-center justify-between gap-3 px-4 py-3"
-							>
-								<div className="min-w-0">
-									<p className="truncate font-medium">{member.name}</p>
-									<p className="truncate text-sm text-muted-foreground">
-										{member.email}
-									</p>
-								</div>
-								<div className="flex shrink-0 items-center gap-2">
-									<Select
-										aria-label={`Role for ${member.name}`}
-										value={member.roleName}
-										onValueChange={(value) =>
-											void updateMemberRole(
-												member.userId,
-												value as typeof roleName,
-											)
-										}
-										disabled={busyUserId === member.userId}
-									>
-										<SelectTrigger className="h-8 w-28">
-											<SelectValue />
-										</SelectTrigger>
-										<SelectContent>
-											<SelectItem value="workspace.member">Member</SelectItem>
-											<SelectItem value="workspace.admin">Admin</SelectItem>
-											<SelectItem value="workspace.owner">Owner</SelectItem>
-										</SelectContent>
-									</Select>
-									{member.userId !== currentUserId ? (
-										<Button
-											type="button"
-											variant="ghost"
-											size="icon-sm"
+					<ul className="flex flex-col gap-2">
+						{members.map((member) => {
+							const isCurrentUser = member.userId === currentUserId;
+							return (
+								<li
+									key={member.id}
+									className="flex flex-col gap-3 rounded-xl border border-border/60 bg-background/80 px-4 py-3 transition-colors hover:border-primary/25 hover:bg-muted/20 sm:flex-row sm:items-center sm:justify-between"
+								>
+									<div className="flex min-w-0 items-center gap-3">
+										<MemberAvatar
+											name={member.name}
+											isCurrentUser={isCurrentUser}
+										/>
+										<div className="min-w-0">
+											<div className="flex flex-wrap items-center gap-2">
+												<p className="truncate font-medium">{member.name}</p>
+												{isCurrentUser ? (
+													<Badge variant="outline" className="rounded-md">
+														{t("you")}
+													</Badge>
+												) : null}
+												<Badge
+													variant="outline"
+													className={cn(
+														"rounded-md capitalize",
+														roleBadgeClass(member.roleName),
+													)}
+												>
+													{roleLabel(member.roleName, t)}
+												</Badge>
+											</div>
+											<p className="truncate text-sm text-muted-foreground">
+												{member.email}
+											</p>
+										</div>
+									</div>
+
+									<div className="flex shrink-0 items-center gap-2 sm:pl-0 pl-14">
+										<Select
+											aria-label={t("roleFor", { name: member.name })}
+											value={member.roleName}
+											onValueChange={(value) =>
+												void updateMemberRole(
+													member.userId,
+													value as WorkspaceRole,
+												)
+											}
 											disabled={busyUserId === member.userId}
-											onClick={() => void removeMember(member.userId)}
-											aria-label={`Remove ${member.name}`}
 										>
-											{busyUserId === member.userId ? (
-												<Loader2
-													className="size-4 animate-spin"
-													aria-hidden="true"
-												/>
-											) : (
-												<UserMinusIcon aria-hidden="true" />
-											)}
-										</Button>
-									) : null}
-								</div>
-							</li>
-						))}
+											<SelectTrigger className="h-9 w-[8.5rem]">
+												<SelectValue />
+											</SelectTrigger>
+											<SelectContent>
+												<SelectItem value="workspace.member">
+													{t("roleMember")}
+												</SelectItem>
+												<SelectItem value="workspace.admin">
+													{t("roleAdmin")}
+												</SelectItem>
+												<SelectItem value="workspace.owner">
+													{t("roleOwner")}
+												</SelectItem>
+											</SelectContent>
+										</Select>
+										{!isCurrentUser ? (
+											<Button
+												type="button"
+												variant="ghost"
+												size="icon-sm"
+												disabled={busyUserId === member.userId}
+												onClick={() => void removeMember(member.userId)}
+												aria-label={t("removeMember", { name: member.name })}
+											>
+												{busyUserId === member.userId ? (
+													<Loader2
+														className="size-4 animate-spin"
+														aria-hidden="true"
+													/>
+												) : (
+													<UserMinusIcon aria-hidden="true" />
+												)}
+											</Button>
+										) : null}
+									</div>
+								</li>
+							);
+						})}
 					</ul>
 				)}
-			</CardContent>
-		</Card>
+			</section>
+		</div>
 	);
 }

@@ -1,18 +1,24 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { MessageSquareTextIcon, SparklesIcon } from "lucide-react";
+import {
+	CheckIcon,
+	CircleIcon,
+	MessageSquareTextIcon,
+	PlugZapIcon,
+	SparklesIcon,
+} from "lucide-react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+	SettingsFeatureToggle,
+	SettingsSection,
+	SettingsSectionSkeleton,
+	SettingsStatusBadge,
+	SettingsToggleRow,
+} from "@/components/admin/settings-panel";
+import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
 	Select,
@@ -22,7 +28,8 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
-import { Switch } from "@/components/ui/switch";
+import { Link } from "@/i18n/navigation";
+import { cn } from "@/lib/utils";
 
 const NONE = "__none__";
 
@@ -45,11 +52,40 @@ type ChatAutomationState = {
 	}>;
 };
 
+function ChecklistItem({
+	done,
+	label,
+}: {
+	done: boolean;
+	label: string;
+}) {
+	return (
+		<li className="flex items-center gap-2 text-sm">
+			{done ? (
+				<CheckIcon
+					className="size-4 shrink-0 text-emerald-600"
+					aria-hidden="true"
+				/>
+			) : (
+				<CircleIcon
+					className="size-4 shrink-0 text-muted-foreground/70"
+					aria-hidden="true"
+				/>
+			)}
+			<span className={cn(done ? "text-foreground" : "text-muted-foreground")}>
+				{label}
+			</span>
+		</li>
+	);
+}
+
 export function ChatAutomationSettings() {
+	const t = useTranslations("admin.settingsPage.chatAutomation");
 	const [state, setState] = useState<ChatAutomationState | null>(null);
 	const [config, setConfig] = useState<ChatAutomationConfig | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [saving, setSaving] = useState(false);
+	const [testing, setTesting] = useState(false);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -81,8 +117,16 @@ export function ChatAutomationSettings() {
 			? state.models.filter((model) => model.providerId === config.providerId)
 			: [];
 
+	function canSaveCurrentConfig(current: ChatAutomationConfig) {
+		return !current.enabled || Boolean(current.providerId && current.modelId);
+	}
+
 	async function save() {
 		if (!config) return;
+		if (!canSaveCurrentConfig(config)) {
+			toast.error(t("saveInvalid"));
+			return;
+		}
 		setSaving(true);
 		try {
 			const res = await fetch("/api/admin/chat-automation", {
@@ -95,11 +139,12 @@ export function ChatAutomationSettings() {
 				}),
 			});
 			if (!res.ok) {
-				throw new Error((await res.json()).error || "Unable to save settings");
+				const body = (await res.json()) as { error?: string };
+				throw new Error(body.error || "Unable to save settings");
 			}
 			const nextConfig = (await res.json()) as ChatAutomationConfig;
 			setConfig(nextConfig);
-			toast.success("Chat automation settings saved");
+			toast.success(t("saved"));
 		} catch (error) {
 			toast.error(
 				error instanceof Error ? error.message : "Unable to save settings",
@@ -109,55 +154,100 @@ export function ChatAutomationSettings() {
 		}
 	}
 
+	async function testConnection() {
+		setTesting(true);
+		try {
+			const res = await fetch("/api/admin/chat-automation/test", {
+				method: "POST",
+			});
+			const body = (await res.json()) as { ok?: boolean; error?: string };
+			if (!res.ok || !body.ok) {
+				throw new Error(body.error || t("testFailed"));
+			}
+			toast.success(t("testSuccess"));
+		} catch (error) {
+			toast.error(
+				error instanceof Error ? error.message : t("testFailed"),
+			);
+		} finally {
+			setTesting(false);
+		}
+	}
+
 	if (loading || !state || !config) {
-		return (
-			<Card>
-				<CardContent className="flex items-center gap-2 py-8 text-muted-foreground">
-					<Spinner /> Loading chat automation settings…
-				</CardContent>
-			</Card>
-		);
+		return <SettingsSectionSkeleton rows={4} />;
 	}
 
 	const ready = Boolean(config.enabled && config.providerId && config.modelId);
+	const savedReady = Boolean(
+		state.config.enabled &&
+			state.config.providerId &&
+			state.config.modelId,
+	);
 
 	return (
-		<Card>
-			<CardHeader>
-				<div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-					<div className="flex flex-col gap-1">
-						<CardTitle className="flex items-center gap-2">
-							<MessageSquareTextIcon className="size-5" aria-hidden="true" />
-							Chat automation
-						</CardTitle>
-						<CardDescription>
-							Choose the small model used for conversation titles and
-							next-message suggestions.
-						</CardDescription>
+		<SettingsSection
+			icon={MessageSquareTextIcon}
+			title={t("title")}
+			description={t("description")}
+			stagger="stagger-3"
+			badge={
+				<SettingsStatusBadge
+					label={ready ? t("statusReady") : t("statusIncomplete")}
+					tone={ready ? "success" : "warning"}
+				/>
+			}
+		>
+			<div className="space-y-5">
+				{state.providers.length === 0 ? (
+					<div className="flex gap-3 rounded-xl border border-amber-500/25 bg-amber-500/5 px-4 py-3 text-sm">
+						<PlugZapIcon
+							className="mt-0.5 size-4 shrink-0 text-amber-600"
+							aria-hidden="true"
+						/>
+						<div className="space-y-2">
+							<p className="font-medium text-foreground">
+								{t("noProvidersTitle")}
+							</p>
+							<p className="text-muted-foreground">
+								{t("noProvidersDescription")}
+							</p>
+							<Button variant="outline" size="sm" asChild>
+								<Link href="/providers">{t("noProvidersAction")}</Link>
+							</Button>
+						</div>
 					</div>
-					<Badge variant={ready ? "secondary" : "outline"}>
-						{ready ? "Ready" : "Incomplete"}
-					</Badge>
-				</div>
-			</CardHeader>
-			<CardContent className="space-y-5">
-				<div className="flex items-center justify-between rounded-xl border border-border/70 p-3">
-					<div>
-						<Label htmlFor="chat-automation-enabled">Enable automation</Label>
-						<p className="text-xs text-muted-foreground">
-							When disabled, chat falls back to simple local titles.
-						</p>
+				) : null}
+
+				{!ready ? (
+					<div className="rounded-xl border border-border/60 bg-muted/20 px-4 py-3">
+						<p className="mb-2 text-sm font-medium">{t("checklistTitle")}</p>
+						<ul className="space-y-1.5">
+							<ChecklistItem done={config.enabled} label={t("checklistEnable")} />
+							<ChecklistItem
+								done={Boolean(config.providerId)}
+								label={t("checklistProvider")}
+							/>
+							<ChecklistItem
+								done={Boolean(config.modelId)}
+								label={t("checklistModel")}
+							/>
+							<ChecklistItem done={savedReady} label={t("checklistSave")} />
+						</ul>
 					</div>
-					<Switch
-						id="chat-automation-enabled"
-						checked={config.enabled}
-						onCheckedChange={(enabled) => setConfig({ ...config, enabled })}
-					/>
-				</div>
+				) : null}
+
+				<SettingsToggleRow
+					id="chat-automation-enabled"
+					label={t("enable")}
+					description={t("enableDescription")}
+					checked={config.enabled}
+					onCheckedChange={(enabled) => setConfig({ ...config, enabled })}
+				/>
 
 				<div className="grid gap-4 md:grid-cols-2">
 					<div className="space-y-2">
-						<Label>Provider</Label>
+						<Label>{t("provider")}</Label>
 						<Select
 							value={config.providerId || NONE}
 							onValueChange={(providerId) =>
@@ -167,12 +257,13 @@ export function ChatAutomationSettings() {
 									modelId: undefined,
 								})
 							}
+							disabled={state.providers.length === 0}
 						>
 							<SelectTrigger>
-								<SelectValue placeholder="Select provider" />
+								<SelectValue placeholder={t("providerPlaceholder")} />
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value={NONE}>Not configured</SelectItem>
+								<SelectItem value={NONE}>{t("notConfigured")}</SelectItem>
 								{state.providers.map((provider) => (
 									<SelectItem key={provider.id} value={provider.id}>
 										{provider.name} · {provider.kind}
@@ -182,7 +273,7 @@ export function ChatAutomationSettings() {
 						</Select>
 					</div>
 					<div className="space-y-2">
-						<Label>Model</Label>
+						<Label>{t("model")}</Label>
 						<Select
 							value={config.modelId || NONE}
 							onValueChange={(modelId) =>
@@ -191,13 +282,13 @@ export function ChatAutomationSettings() {
 									modelId: modelId === NONE ? undefined : modelId,
 								})
 							}
-							disabled={!config.providerId}
+							disabled={!config.providerId || filteredModels.length === 0}
 						>
 							<SelectTrigger>
-								<SelectValue placeholder="Select model" />
+								<SelectValue placeholder={t("modelPlaceholder")} />
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value={NONE}>Not configured</SelectItem>
+								<SelectItem value={NONE}>{t("notConfigured")}</SelectItem>
 								{filteredModels.map((model) => (
 									<SelectItem key={model.id} value={model.id}>
 										{model.displayName || model.modelId}
@@ -209,49 +300,47 @@ export function ChatAutomationSettings() {
 				</div>
 
 				<div className="grid gap-3 sm:grid-cols-2">
-					<label className="flex items-center justify-between gap-3 rounded-xl border border-border/70 p-3">
-						<span>
-							<span className="flex items-center gap-2 text-sm font-medium">
-								<SparklesIcon className="size-4" aria-hidden="true" />
-								Titles
-							</span>
-							<span className="text-xs text-muted-foreground">
-								Generate concise conversation names.
-							</span>
-						</span>
-						<Switch
-							checked={config.generateTitles}
-							onCheckedChange={(generateTitles) =>
-								setConfig({ ...config, generateTitles })
-							}
-						/>
-					</label>
-					<label className="flex items-center justify-between gap-3 rounded-xl border border-border/70 p-3">
-						<span>
-							<span className="flex items-center gap-2 text-sm font-medium">
-								<SparklesIcon className="size-4" aria-hidden="true" />
-								Next suggestions
-							</span>
-							<span className="text-xs text-muted-foreground">
-								Suggest useful follow-up messages.
-							</span>
-						</span>
-						<Switch
-							checked={config.generateSuggestions}
-							onCheckedChange={(generateSuggestions) =>
-								setConfig({ ...config, generateSuggestions })
-							}
-						/>
-					</label>
+					<SettingsFeatureToggle
+						icon={SparklesIcon}
+						label={t("titles")}
+						description={t("titlesDescription")}
+						checked={config.generateTitles}
+						onCheckedChange={(generateTitles) =>
+							setConfig({ ...config, generateTitles })
+						}
+					/>
+					<SettingsFeatureToggle
+						icon={SparklesIcon}
+						label={t("suggestions")}
+						description={t("suggestionsDescription")}
+						checked={config.generateSuggestions}
+						onCheckedChange={(generateSuggestions) =>
+							setConfig({ ...config, generateSuggestions })
+						}
+					/>
 				</div>
 
-				<div className="flex justify-end">
-					<Button onClick={() => void save()} disabled={saving}>
+				<div className="flex flex-wrap justify-end gap-2 border-t border-border/60 pt-4">
+					{ready ? (
+						<Button
+							type="button"
+							variant="outline"
+							onClick={() => void testConnection()}
+							disabled={testing || saving}
+						>
+							{testing ? <Spinner data-icon="inline-start" /> : null}
+							{t("testConnection")}
+						</Button>
+					) : null}
+					<Button
+						onClick={() => void save()}
+						disabled={saving || testing || !canSaveCurrentConfig(config)}
+					>
 						{saving ? <Spinner data-icon="inline-start" /> : null}
-						Save chat automation
+						{t("save")}
 					</Button>
 				</div>
-			</CardContent>
-		</Card>
+			</div>
+		</SettingsSection>
 	);
 }

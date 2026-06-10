@@ -597,6 +597,8 @@ export const messagePartTypeEnum = pgEnum("message_part_type", [
 	"reasoning",
 	"error",
 	"citation",
+	"citations",
+	"suggestions",
 ]);
 
 export const messageParts = pgTable(

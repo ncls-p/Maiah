@@ -1,27 +1,22 @@
 "use client";
 
+import { LanguagesIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { SettingsSection } from "@/components/admin/settings-panel";
 import { LocaleSwitcher } from "@/components/locale-switcher";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
 
 export function SettingsLocaleCard() {
-	const t = useTranslations("common");
+	const t = useTranslations("settings");
+
 	return (
-		<Card>
-			<CardHeader>
-				<CardTitle>{t("language")}</CardTitle>
-				<CardDescription>{t("language")}</CardDescription>
-			</CardHeader>
-			<CardContent>
-				<LocaleSwitcher className="w-full max-w-xs" />
-			</CardContent>
-		</Card>
+		<SettingsSection
+			icon={LanguagesIcon}
+			title={t("languageTitle")}
+			description={t("languageDescription")}
+			stagger="stagger-1"
+		>
+			<LocaleSwitcher className="w-full max-w-xs" />
+		</SettingsSection>
 	);
 }

@@ -28,6 +28,21 @@ const chatAutomationConfigSchema = z.object({
 
 export type ChatAutomationConfig = z.infer<typeof chatAutomationConfigSchema>;
 
+export type ChatAutomationValidationIssue = {
+	code: string;
+	message: string;
+};
+
+type RuntimeModel = {
+	runtimeConfig: ProviderRuntimeConfig;
+	providerKind: ProviderKind;
+	modelId: string;
+};
+
+type ResolveRuntimeResult =
+	| { ok: true; runtime: RuntimeModel }
+	| { ok: false; reason: string };
+
 function defaultChatAutomationConfig(): ChatAutomationConfig {
 	return {
 		enabled: false,
@@ -100,16 +115,56 @@ export async function getChatAutomationAdminState() {
 	return { config, providers, models };
 }
 
-type RuntimeModel = {
-	runtimeConfig: ProviderRuntimeConfig;
-	providerKind: ProviderKind;
-	modelId: string;
-};
+export function validateChatAutomationConfigShape(
+	config: ChatAutomationConfig,
+): ChatAutomationValidationIssue[] {
+	const issues: ChatAutomationValidationIssue[] = [];
+	if (config.enabled && !config.providerId) {
+		issues.push({
+			code: "provider_required",
+			message: "A provider is required when automation is enabled.",
+		});
+	}
+	if (config.enabled && !config.modelId) {
+		issues.push({
+			code: "model_required",
+			message: "A model is required when automation is enabled.",
+		});
+	}
+	return issues;
+}
+
+export async function validateChatAutomationConfig(
+	config: ChatAutomationConfig,
+): Promise<{ ok: boolean; issues: ChatAutomationValidationIssue[] }> {
+	const issues = validateChatAutomationConfigShape(config);
+	if (issues.length > 0) {
+		return { ok: false, issues };
+	}
+	if (!config.enabled) {
+		return { ok: true, issues: [] };
+	}
+
+	const resolved = await resolveRuntimeModel(config);
+	if (!resolved.ok) {
+		issues.push({
+			code: "runtime_unavailable",
+			message: resolved.reason,
+		});
+		return { ok: false, issues };
+	}
+	return { ok: true, issues: [] };
+}
 
 async function resolveRuntimeModel(
 	config: ChatAutomationConfig,
-): Promise<RuntimeModel | null> {
-	if (!config.enabled || !config.providerId || !config.modelId) return null;
+): Promise<ResolveRuntimeResult> {
+	if (!config.enabled || !config.providerId || !config.modelId) {
+		return {
+			ok: false,
+			reason: "Automation is disabled or provider/model is not configured.",
+		};
+	}
 
 	const [provider] = await db
 		.select()
@@ -122,7 +177,12 @@ async function resolveRuntimeModel(
 			),
 		)
 		.limit(1);
-	if (!provider) return null;
+	if (!provider) {
+		return {
+			ok: false,
+			reason: "Selected provider was not found, is disabled, or is archived.",
+		};
+	}
 
 	const [model] = await db
 		.select()
@@ -135,7 +195,13 @@ async function resolveRuntimeModel(
 			),
 		)
 		.limit(1);
-	if (!model) return null;
+	if (!model) {
+		return {
+			ok: false,
+			reason:
+				"Selected model was not found, is disabled, or does not belong to the provider.",
+		};
+	}
 
 	let apiKey: string | undefined;
 	if (provider.encryptedApiKey) {
@@ -153,19 +219,66 @@ async function resolveRuntimeModel(
 	}
 
 	return {
-		providerKind: provider.kind as ProviderKind,
-		modelId: model.modelId,
-		runtimeConfig: {
-			kind: provider.kind as ProviderKind,
-			name: provider.name,
-			baseUrl: provider.baseUrl || undefined,
-			authType: provider.authType,
-			apiKey,
-			headers,
-			queryParams:
-				(provider.queryParamsJson as Record<string, string>) || undefined,
+		ok: true,
+		runtime: {
+			providerKind: provider.kind as ProviderKind,
+			modelId: model.modelId,
+			runtimeConfig: {
+				kind: provider.kind as ProviderKind,
+				name: provider.name,
+				baseUrl: provider.baseUrl || undefined,
+				authType: provider.authType,
+				apiKey,
+				headers,
+				queryParams:
+					(provider.queryParamsJson as Record<string, string>) || undefined,
+			},
 		},
 	};
+}
+
+export async function testChatAutomationConnection(): Promise<
+	{ ok: true } | { ok: false; error: string }
+> {
+	const config = await getChatAutomationConfig();
+	const validation = await validateChatAutomationConfig(config);
+	if (!validation.ok) {
+		return {
+			ok: false,
+			error: validation.issues.map((issue) => issue.message).join(" "),
+		};
+	}
+
+	const resolved = await resolveRuntimeModel(config);
+	if (!resolved.ok) {
+		return { ok: false, error: resolved.reason };
+	}
+
+	try {
+		const adapter = getAdapter(resolved.runtime.providerKind);
+		const { text, reasoning } = await generateText({
+			model: adapter.createChatModel(
+				resolved.runtime.runtimeConfig,
+				resolved.runtime.modelId,
+			),
+			prompt: 'Reply with only the JSON object {"ok":true}.',
+			temperature: 0,
+			maxOutputTokens: 64,
+		});
+		const output = `${text}${reasoningTextFromParts(reasoning)}`.trim();
+		if (!output) {
+			return {
+				ok: false,
+				error: "Model returned an empty response.",
+			};
+		}
+		return { ok: true };
+	} catch (error) {
+		return {
+			ok: false,
+			error: error instanceof Error ? error.message : String(error),
+		};
+	}
 }
 
 const chatArtifactsSchema = z.object({
@@ -173,22 +286,97 @@ const chatArtifactsSchema = z.object({
 	suggestions: z.array(z.string()).default([]),
 });
 
+function reasoningTextFromParts(
+	reasoning: Array<{ type: string; text: string }> | undefined,
+) {
+	return (
+		reasoning
+			?.map((part) => (part.type === "reasoning" ? part.text : ""))
+			.join("\n")
+			.trim() ?? ""
+	);
+}
+
+function extractJsonObjectCandidate(value: string) {
+	const cleaned = value
+		.replace(/^```(?:json|text)?/i, "")
+		.replace(/```$/i, "")
+		.trim();
+	const jsonStart = cleaned.indexOf("{");
+	const jsonEnd = cleaned.lastIndexOf("}");
+	if (jsonStart < 0 || jsonEnd <= jsonStart) return cleaned;
+	return cleaned.slice(jsonStart, jsonEnd + 1);
+}
+
+function parseArtifactsStrict(value: string) {
+	const json = extractJsonObjectCandidate(value);
+	try {
+		const parsed = JSON.parse(json) as unknown;
+		const result = chatArtifactsSchema.safeParse(parsed);
+		if (result.success) return result.data;
+	} catch {
+		// Fall through to looser parsing below.
+	}
+	return null;
+}
+
+export function parseArtifactsFromModelOutput(input: {
+	text: string;
+	reasoning?: Array<{ type: string; text: string }>;
+}) {
+	const candidates = [
+		input.text.trim(),
+		reasoningTextFromParts(input.reasoning),
+	].filter(Boolean);
+
+	for (const candidate of candidates) {
+		const strict = parseArtifactsStrict(candidate);
+		if (strict) return strict;
+	}
+
+	const trimmedText = input.text.trim();
+	if (trimmedText) {
+		const parsed = parseArtifacts(trimmedText);
+		if (parsed.title || parsed.suggestions.length > 0) {
+			return parsed;
+		}
+	}
+
+	return { title: "", suggestions: [] };
+}
+
+function hasParsedArtifacts(value: { title: string; suggestions: string[] }) {
+	return (
+		Boolean(value.title.trim()) ||
+		value.suggestions.some((suggestion) => suggestion.trim().length > 0)
+	);
+}
+
 async function generateArtifactsWithRuntimeModel(input: {
 	runtime: RuntimeModel;
 	prompt: string;
 	maxOutputTokens: number;
 }) {
 	const adapter = getAdapter(input.runtime.providerKind);
-	const { text } = await generateText({
-		model: adapter.createChatModel(
-			input.runtime.runtimeConfig,
-			input.runtime.modelId,
-		),
-		prompt: input.prompt,
-		temperature: 0.2,
-		maxOutputTokens: input.maxOutputTokens,
-	});
-	return parseArtifacts(text);
+	const model = adapter.createChatModel(
+		input.runtime.runtimeConfig,
+		input.runtime.modelId,
+	);
+
+	for (let attempt = 0; attempt < 2; attempt += 1) {
+		const { text, reasoning } = await generateText({
+			model,
+			prompt: input.prompt,
+			temperature: attempt === 0 ? 0.2 : 0.35,
+			maxOutputTokens: input.maxOutputTokens,
+		});
+		const parsed = parseArtifactsFromModelOutput({ text, reasoning });
+		if (hasParsedArtifacts(parsed)) {
+			return parsed;
+		}
+	}
+
+	return { title: "", suggestions: [] };
 }
 
 export async function generateChatAutomationArtifacts(input: {
@@ -204,26 +392,34 @@ export async function generateChatAutomationArtifacts(input: {
 		return { title: input.fallbackTitle, suggestions: [] };
 	}
 
-	const runtime = await resolveRuntimeModel(config);
-	if (!runtime) return { title: input.fallbackTitle, suggestions: [] };
+	const resolved = await resolveRuntimeModel(config);
+	if (!resolved.ok) {
+		logger.warn("Chat automation runtime unavailable, using local fallback", {
+			reason: resolved.reason,
+		});
+		const fallback = createFallbackArtifacts(input);
+		return {
+			title: shouldGenerateTitle ? fallback.title : input.fallbackTitle,
+			suggestions: shouldGenerateSuggestions ? fallback.suggestions : [],
+		};
+	}
 
 	try {
 		const object = await generateArtifactsWithRuntimeModel({
-			runtime,
-			maxOutputTokens: 260,
+			runtime: resolved.runtime,
+			maxOutputTokens: 1024,
 			prompt: [
-				"You generate concise chat UI metadata after an assistant response.",
-				"Return ONLY valid minified JSON. No markdown, no prose, no code fence.",
-				'Required shape: {"title":"...","suggestions":["...","...","..."]}',
-				"Title: 3 to 7 words, no quotes, no trailing punctuation, same language as the user's message when obvious.",
-				"Suggestions: exactly 3 useful next user messages, each under 80 characters, same language as the conversation, phrased as prompts the user can click.",
-				shouldGenerateTitle ? null : "Set title to an empty string.",
-				shouldGenerateSuggestions ? null : "Set suggestions to an empty array.",
-				`User message:\n${input.userMessage.slice(0, 1_500)}`,
-				`Assistant answer:\n${input.assistantText.slice(0, 4_000)}`,
+				'Return ONLY minified JSON: {"title":"...","suggestions":["...","...","..."]}.',
+				"No markdown, prose, or code fences.",
+				"Title: 3-7 words, same language as the user when obvious.",
+				"Suggestions: exactly 3 short follow-up prompts the user can click.",
+				shouldGenerateTitle ? null : 'Use an empty string for "title".',
+				shouldGenerateSuggestions ? null : 'Use an empty array for "suggestions".',
+				`User: ${input.userMessage.slice(0, 1_500)}`,
+				`Assistant: ${input.assistantText.slice(0, 4_000)}`,
 			]
 				.filter(Boolean)
-				.join("\n\n"),
+				.join(" "),
 		});
 		const fallback = createFallbackArtifacts(input);
 		return {
@@ -270,7 +466,7 @@ export async function generateNextChatSuggestions(input: {
 	return artifacts.suggestions;
 }
 
-function parseArtifacts(value: string) {
+export function parseArtifacts(value: string) {
 	const cleaned = value
 		.replace(/^```(?:json|text)?/i, "")
 		.replace(/```$/i, "")
@@ -321,7 +517,7 @@ function sanitizeTitle(value: string, fallback: string) {
 	return (title || fallback).slice(0, 100);
 }
 
-function createFallbackArtifacts(input: {
+export function createFallbackArtifacts(input: {
 	userMessage: string;
 	assistantText: string;
 	fallbackTitle: string;
@@ -366,7 +562,7 @@ function looksFrench(value: string) {
 	);
 }
 
-function ensureThreeSuggestions(values: unknown[], fallback: string[]) {
+export function ensureThreeSuggestions(values: unknown[], fallback: string[]) {
 	const suggestions = sanitizeSuggestions(values);
 	for (const suggestion of fallback) {
 		if (suggestions.length >= 3) break;
@@ -375,11 +571,18 @@ function ensureThreeSuggestions(values: unknown[], fallback: string[]) {
 	return suggestions.slice(0, 3);
 }
 
+function looksLikeArtifactSuggestion(value: string) {
+	return !/^(?:input|constraint|task|goal|format|json schema|context|required shape)\b/i.test(
+		value.trim(),
+	);
+}
+
 function sanitizeSuggestions(values: unknown[]) {
 	return values
 		.filter((value): value is string => typeof value === "string")
 		.map((value) => value.replace(/^['\"]|['\"]$/g, "").trim())
 		.filter(Boolean)
+		.filter(looksLikeArtifactSuggestion)
 		.map((value) => value.slice(0, 80))
 		.slice(0, 3);
 }

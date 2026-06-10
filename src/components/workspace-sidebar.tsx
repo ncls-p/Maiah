@@ -371,7 +371,7 @@ function SidebarPanel({
 						<Tooltip>
 							<TooltipTrigger asChild>
 								<span className="inline-flex">
-									<LocaleSwitcher compact className="shrink-0" />
+									<LocaleSwitcher compact className="size-8 shrink-0" />
 								</span>
 							</TooltipTrigger>
 							<TooltipContent side="right">{tCommon("language")}</TooltipContent>
@@ -381,7 +381,7 @@ function SidebarPanel({
 								<span className="inline-flex">
 									<ThemeToggleButton
 										iconOnly
-										className="size-9 shrink-0 rounded-lg"
+										className="size-8 shrink-0 rounded-lg"
 									/>
 								</span>
 							</TooltipTrigger>
@@ -393,7 +393,7 @@ function SidebarPanel({
 									<span className="inline-flex">
 										<SignOutButton
 											iconOnly
-											className="size-9 shrink-0 rounded-lg"
+											className="size-8 shrink-0 rounded-lg"
 										/>
 									</span>
 								</TooltipTrigger>
@@ -402,11 +402,31 @@ function SidebarPanel({
 						) : null}
 					</div>
 				) : (
-					<div className="grid gap-2">
-						<LocaleSwitcher />
-						<ThemeToggleButton className="w-full justify-start rounded-lg" />
+					<div className="flex min-w-0 items-center gap-1.5">
+						<LocaleSwitcher className="min-w-0 flex-1" />
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<span className="inline-flex shrink-0">
+									<ThemeToggleButton
+										iconOnly
+										className="size-8 rounded-lg"
+									/>
+								</span>
+							</TooltipTrigger>
+							<TooltipContent side="top">{tShell("theme")}</TooltipContent>
+						</Tooltip>
 						{shell.displayName ? (
-							<SignOutButton className="w-full justify-start rounded-lg" />
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<span className="inline-flex shrink-0">
+										<SignOutButton
+											iconOnly
+											className="size-8 rounded-lg"
+										/>
+									</span>
+								</TooltipTrigger>
+								<TooltipContent side="top">{tShell("signOut")}</TooltipContent>
+							</Tooltip>
 						) : null}
 					</div>
 				)}

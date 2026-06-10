@@ -531,6 +531,25 @@ async function findUserMessageForResend(input: {
 	return null;
 }
 
+async function isFirstUserMessageInConversation(
+	conversationId: string,
+	userMessageId: string,
+) {
+	const [firstUserMessage] = await db
+		.select({ id: messages.id })
+		.from(messages)
+		.where(
+			and(
+				eq(messages.conversationId, conversationId),
+				eq(messages.role, "user"),
+			),
+		)
+		.orderBy(messages.createdAt)
+		.limit(1);
+
+	return firstUserMessage?.id === userMessageId;
+}
+
 function htmlArtifactCodeFromValue(value: unknown) {
 	if (typeof value !== "object" || value === null) return null;
 	const record = value as Record<string, unknown>;
@@ -850,6 +869,14 @@ export async function POST(
 			});
 		}
 		userMessageId = userMessage.id;
+		const shouldRegenerateConversationTitle =
+			createdConversation ||
+			(resendFromMessageId
+				? await isFirstUserMessageInConversation(
+						conversation.id,
+						userMessage.id,
+					)
+				: false);
 
 		const [assistantMessage] = await db
 			.insert(messages)
@@ -1002,7 +1029,7 @@ export async function POST(
 			"Tool call limit reached. Do not call another tool. Answer the user now using the available conversation context, knowledge excerpts, and tool results. If the available information is incomplete, clearly say what is known and what is uncertain.";
 		const startedAt = Date.now();
 		type StreamedAssistantPart =
-			| { id: string; type: "text" | "reasoning"; content: string }
+			| { id: string; type: "text" | "reasoning" | "suggestions"; content: string }
 			| { id: string; type: "tool-call" | "tool-result"; metadata: unknown };
 		const streamedParts: StreamedAssistantPart[] = [];
 		let nextSortOrder = 0;
@@ -1032,6 +1059,22 @@ export async function POST(
 				.returning({ id: messageParts.id });
 			nextSortOrder += 1;
 			streamedParts.push({ id: inserted.id, type, content });
+		}
+
+		async function appendStreamedSuggestionsPart(suggestions: string[]) {
+			const content = JSON.stringify(suggestions);
+			const [inserted] = await db
+				.insert(messageParts)
+				.values({
+					messageId: assistantMessage.id,
+					type: "suggestions",
+					contentEncrypted: await encryptValue(content),
+					metadataJson: null,
+					sortOrder: nextSortOrder,
+				})
+				.returning({ id: messageParts.id });
+			nextSortOrder += 1;
+			streamedParts.push({ id: inserted.id, type: "suggestions", content });
 		}
 
 		async function appendStreamedMetadataPart(
@@ -1194,13 +1237,18 @@ export async function POST(
 							fallbackTitle: conversation.title,
 						})
 					: { title: conversation.title, suggestions: [] };
-				const generatedTitle = createdConversation
+				const generatedTitle = shouldRegenerateConversationTitle
 					? artifacts.title
 					: conversation.title;
-				if (createdConversation && generatedTitle !== conversation.title) {
+				if (
+					shouldRegenerateConversationTitle &&
+					generatedTitle.trim() &&
+					generatedTitle.trim() !== conversation.title.trim()
+				) {
 					enqueueEvent({ type: "conversation_title", title: generatedTitle });
 				}
 				if (artifacts.suggestions.length > 0) {
+					await appendStreamedSuggestionsPart(artifacts.suggestions);
 					enqueueEvent({
 						type: "suggestions",
 						suggestions: artifacts.suggestions,

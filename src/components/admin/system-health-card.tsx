@@ -1,16 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ActivityIcon, Loader2, StoreIcon } from "lucide-react";
+import { ActivityIcon, DatabaseIcon, StoreIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 
-import { Badge } from "@/components/ui/badge";
 import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+	SettingsMetricRow,
+	SettingsSection,
+	SettingsSectionSkeleton,
+	SettingsStatusBadge,
+} from "@/components/admin/settings-panel";
 
 type HealthResponse = {
 	status: string;
@@ -18,6 +17,7 @@ type HealthResponse = {
 };
 
 export function SystemHealthCard() {
+	const t = useTranslations("admin.settingsPage.health");
 	const [health, setHealth] = useState<HealthResponse | null>(null);
 	const [pendingReviews, setPendingReviews] = useState<number | null>(null);
 	const [loading, setLoading] = useState(true);
@@ -47,46 +47,49 @@ export function SystemHealthCard() {
 		};
 	}, []);
 
+	if (loading) {
+		return <SettingsSectionSkeleton rows={2} />;
+	}
+
+	const apiHealthy = health?.status === "ok";
+
 	return (
-		<Card>
-			<CardHeader>
-				<CardTitle className="flex items-center gap-2">
-					<ActivityIcon className="size-4" aria-hidden="true" />
-					System status
-				</CardTitle>
-				<CardDescription>
-					Health checks and operational counters.
-				</CardDescription>
-			</CardHeader>
-			<CardContent className="flex flex-col gap-3">
-				{loading ? (
-					<Loader2 className="size-5 animate-spin text-muted-foreground" />
-				) : (
-					<>
-						<div className="flex items-center justify-between rounded-xl border p-3">
-							<span className="text-sm">API health</span>
-							<Badge
-								variant={
-									health?.status === "ok" ? "secondary" : "destructive"
-								}
-							>
-								{health?.status ?? "unknown"}
-							</Badge>
-						</div>
-						{pendingReviews !== null ? (
-							<div className="flex items-center justify-between rounded-xl border p-3">
-								<span className="flex items-center gap-2 text-sm">
-									<StoreIcon className="size-4" aria-hidden="true" />
-									Marketplace pending review
-								</span>
-								<Badge variant={pendingReviews > 0 ? "destructive" : "outline"}>
-									{pendingReviews}
-								</Badge>
-							</div>
-						) : null}
-					</>
-				)}
-			</CardContent>
-		</Card>
+		<SettingsSection
+			icon={ActivityIcon}
+			title={t("title")}
+			description={t("description")}
+			stagger="stagger-2"
+			badge={
+				<SettingsStatusBadge
+					label={apiHealthy ? t("statusHealthy") : t("statusUnknown")}
+					tone={apiHealthy ? "success" : "warning"}
+				/>
+			}
+		>
+			<div className="flex flex-col gap-3">
+				<SettingsMetricRow
+					label={t("apiHealth")}
+					value={health?.status ?? t("statusUnknown")}
+					icon={ActivityIcon}
+					tone={apiHealthy ? "success" : "destructive"}
+				/>
+				{health?.database ? (
+					<SettingsMetricRow
+						label={t("database")}
+						value={health.database}
+						icon={DatabaseIcon}
+						tone={health.database === "ok" ? "success" : "warning"}
+					/>
+				) : null}
+				{pendingReviews !== null ? (
+					<SettingsMetricRow
+						label={t("marketplacePending")}
+						value={pendingReviews}
+						icon={StoreIcon}
+						tone={pendingReviews > 0 ? "warning" : "muted"}
+					/>
+				) : null}
+			</div>
+		</SettingsSection>
 	);
 }

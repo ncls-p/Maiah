@@ -795,8 +795,10 @@ const MessageContent = memo(function MessageContent({
 	onApproveTool,
 	onRejectTool,
 	onSuggestionClick,
+	showSuggestions = true,
 }: {
 	message: ChatMessage;
+	showSuggestions?: boolean;
 	isEditing: boolean;
 	editingContent: string;
 	isSaving: boolean;
@@ -874,6 +876,7 @@ const MessageContent = memo(function MessageContent({
 			{renderableParts.length > 0 ? (
 				renderableParts.map((part, partIndex) => {
 					if (part.type === "suggestions") {
+						if (!showSuggestions) return null;
 						return (
 							<SuggestionsPart
 								key={`${message.id}-${part.type}-${partIndex}`}
@@ -977,6 +980,10 @@ export function ChatMessageList({
 		return <div ref={bottomRef} />;
 	}
 
+	const lastAssistantMessageId = [...messages]
+		.reverse()
+		.find((message) => message.role === "assistant")?.id;
+
 	return (
 		<div className="mx-auto flex w-full max-w-4xl flex-col gap-5">
 			{messages.map((message, index) => {
@@ -1050,6 +1057,7 @@ export function ChatMessageList({
 							>
 								<MessageContent
 									message={message}
+									showSuggestions={message.id === lastAssistantMessageId}
 									isEditing={isEditing}
 									editingContent={isEditing ? editingContent : ""}
 									isSaving={savingMessageId === message.id}

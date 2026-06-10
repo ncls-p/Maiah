@@ -24,7 +24,8 @@ export function ThemeToggleButton({
       variant="outline"
       size={iconOnly ? "icon" : "sm"}
       className={cn(
-        "rounded-full text-muted-foreground transition-colors hover:text-foreground",
+        "text-muted-foreground transition-colors hover:text-foreground",
+        iconOnly ? "rounded-lg" : "rounded-full",
         className,
       )}
       aria-label={t("toggleTheme")}

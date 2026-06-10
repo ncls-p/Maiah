@@ -57,12 +57,14 @@ export const advancedCapabilityNavItems: NavItem[] = [
 export const configNavItems: NavItem[] = [
 	{ href: "/providers", labelKey: "aiConnections", icon: PlugZapIcon },
 	{ href: "/api-keys", labelKey: "apiKeys", icon: KeyRoundIcon },
+	{ href: "/settings", labelKey: "settings", icon: SettingsIcon },
 ];
 
 export const adminNavItems: NavItem[] = [
 	{ href: "/usage", labelKey: "usage", icon: ActivityIcon },
 	{ href: "/audit", labelKey: "activityLog", icon: ScrollTextIcon },
 	{ href: "/members", labelKey: "team", icon: UsersIcon },
+	{ href: "/admin/settings", labelKey: "adminSettings", icon: SettingsIcon },
 ];
 
 export const routeTitleKeys: Record<string, string> = {
@@ -78,6 +80,7 @@ export const routeTitleKeys: Record<string, string> = {
 	"/audit": "activityLog",
 	"/members": "team",
 	"/settings": "settings",
+	"/admin/settings": "adminSettings",
 	"/setup": "setup",
 };
 
@@ -106,6 +109,7 @@ export function buildMenuGroups({
 	const adminItems = adminNavItems.filter((item) => {
 		if (item.href === "/usage") return permissions.canViewUsage;
 		if (item.href === "/audit") return permissions.canViewAudit;
+		if (item.href === "/admin/settings") return isAdmin;
 		return true;
 	});
 
@@ -121,9 +125,6 @@ export function buildMenuGroups({
 				...advancedCapabilityNavItems,
 				...configNavItems,
 				...adminItems,
-				...(isAdmin
-					? [{ href: "/settings", labelKey: "settings", icon: SettingsIcon }]
-					: []),
 			],
 		},
 	];
