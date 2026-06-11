@@ -36,7 +36,7 @@ export function AdvancedSection({
 			open={open}
 			onOpenChange={handleOpenChange}
 			className={cn(
-				"rounded-xl border border-border/60 bg-background/45",
+				"glass-panel rounded-2xl border-border/45 bg-background/35",
 				className,
 			)}
 		>
@@ -55,7 +55,7 @@ export function AdvancedSection({
 					/>
 				</span>
 			</CollapsibleTrigger>
-			<CollapsibleContent className="border-t border-border/50 px-4 pb-4 pt-3">
+			<CollapsibleContent className="border-t border-border/35 px-4 pb-4 pt-3">
 				{children}
 			</CollapsibleContent>
 		</Collapsible>

@@ -1,29 +1,29 @@
-import * as React from "react"
+import * as React from "react";
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils";
 
 function Input({
-  className,
-  type,
-  id,
-  name,
-  ...props
+	className,
+	type,
+	id,
+	name,
+	...props
 }: React.ComponentProps<"input">) {
-  const inputName = name ?? (typeof id === "string" ? id : undefined)
+	const inputName = name ?? (typeof id === "string" ? id : undefined);
 
-  return (
-    <input
-      id={id}
-      name={inputName}
-      type={type}
-      data-slot="input"
-      className={cn(
-        "h-11 w-full min-w-0 rounded-lg border border-input bg-background/65 px-3.5 py-2 text-base shadow-[inset_0_1px_0_0_color-mix(in_oklch,white_38%,transparent)] transition-[background-color,border-color,box-shadow] duration-200 outline-none file:inline-flex file:h-6 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground/85 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/35 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 md:text-sm dark:bg-input/40 dark:disabled:bg-input/80 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40",
-        className
-      )}
-      {...props}
-    />
-  )
+	return (
+		<input
+			id={id}
+			name={inputName}
+			type={type}
+			data-slot="input"
+			className={cn(
+				"h-11 w-full min-w-0 rounded-xl border border-input bg-background/42 px-3.5 py-2 text-base shadow-[inset_0_1px_0_0_oklch(1_0_0_/_0.22)] backdrop-blur-md transition-[background-color,border-color,box-shadow] duration-200 outline-none file:inline-flex file:h-6 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground/75 focus-visible:border-ring/55 focus-visible:bg-background/58 focus-visible:ring-3 focus-visible:ring-ring/18 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/45 disabled:opacity-50 aria-invalid:border-destructive/60 aria-invalid:ring-3 aria-invalid:ring-destructive/15 md:text-sm dark:bg-input/25 dark:disabled:bg-input/60 dark:aria-invalid:border-destructive/45 dark:aria-invalid:ring-destructive/25",
+				className,
+			)}
+			{...props}
+		/>
+	);
 }
 
-export { Input }
+export { Input };

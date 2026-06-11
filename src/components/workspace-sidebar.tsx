@@ -176,10 +176,10 @@ function SidebarNavLink({
 			onClick={onNavigate}
 			aria-current={active ? "page" : undefined}
 			className={cn(
-				"group relative flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-all duration-200",
+				"group relative flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-sm font-medium transition-all duration-200",
 				active
-					? "nav-item-active bg-primary/10 text-primary shadow-sm"
-					: "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground hover:shadow-sm",
+					? "nav-item-active bg-primary/9 text-primary shadow-[inset_0_1px_0_oklch(1_0_0_/_0.16)]"
+					: "text-sidebar-foreground/68 hover:bg-sidebar-accent/55 hover:text-sidebar-foreground",
 				collapsed && "justify-center px-2.5",
 			)}
 		>
@@ -238,9 +238,9 @@ function SidebarNavGroups({
 	const showAdvancedItems = !collapsed && advancedOpen;
 
 	return (
-		<nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-2 py-2">
+		<nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-2 py-2.5">
 			{simpleGroups.map((group) => (
-				<div key={group.labelKey} className="flex flex-col gap-0.5">
+				<div key={group.labelKey} className="flex flex-col gap-1">
 					{!collapsed ? (
 						<p className="px-2 pb-1 pt-1 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground/70">
 							{t(group.labelKey)}
@@ -258,7 +258,7 @@ function SidebarNavGroups({
 			))}
 
 			{advancedGroup ? (
-				<div className="mt-2 flex flex-col gap-0.5 border-t border-border/50 pt-2">
+				<div className="mt-2 flex flex-col gap-1 border-t border-border/35 pt-2">
 					{!collapsed ? (
 						<button
 							type="button"
@@ -309,10 +309,10 @@ function SidebarPanel({
 	const groups = buildMenuGroups(shell);
 
 	return (
-		<div className="flex h-full min-h-0 flex-col bg-sidebar text-sidebar-foreground">
+		<div className="flex h-full min-h-0 flex-col bg-transparent text-sidebar-foreground">
 			<div
 				className={cn(
-					"flex shrink-0 flex-col gap-3 border-b border-sidebar-border p-3",
+					"flex shrink-0 flex-col gap-3 border-b border-sidebar-border/70 p-3",
 					collapsed && "items-center px-2",
 				)}
 			>
@@ -357,7 +357,7 @@ function SidebarPanel({
 			/>
 			<div
 				className={cn(
-					"relative z-30 mt-auto shrink-0 border-t border-sidebar-border p-3",
+					"relative z-30 mt-auto shrink-0 border-t border-sidebar-border/70 p-3",
 					collapsed && "flex flex-col items-center gap-2 overflow-hidden px-2",
 				)}
 			>
@@ -374,7 +374,9 @@ function SidebarPanel({
 									<LocaleSwitcher compact className="size-8 shrink-0" />
 								</span>
 							</TooltipTrigger>
-							<TooltipContent side="right">{tCommon("language")}</TooltipContent>
+							<TooltipContent side="right">
+								{tCommon("language")}
+							</TooltipContent>
 						</Tooltip>
 						<Tooltip>
 							<TooltipTrigger asChild>
@@ -397,7 +399,9 @@ function SidebarPanel({
 										/>
 									</span>
 								</TooltipTrigger>
-								<TooltipContent side="right">{tShell("signOut")}</TooltipContent>
+								<TooltipContent side="right">
+									{tShell("signOut")}
+								</TooltipContent>
 							</Tooltip>
 						) : null}
 					</div>
@@ -407,10 +411,7 @@ function SidebarPanel({
 						<Tooltip>
 							<TooltipTrigger asChild>
 								<span className="inline-flex shrink-0">
-									<ThemeToggleButton
-										iconOnly
-										className="size-8 rounded-lg"
-									/>
+									<ThemeToggleButton iconOnly className="size-8 rounded-lg" />
 								</span>
 							</TooltipTrigger>
 							<TooltipContent side="top">{tShell("theme")}</TooltipContent>
@@ -419,10 +420,7 @@ function SidebarPanel({
 							<Tooltip>
 								<TooltipTrigger asChild>
 									<span className="inline-flex shrink-0">
-										<SignOutButton
-											iconOnly
-											className="size-8 rounded-lg"
-										/>
+										<SignOutButton iconOnly className="size-8 rounded-lg" />
 									</span>
 								</TooltipTrigger>
 								<TooltipContent side="top">{tShell("signOut")}</TooltipContent>
