@@ -115,6 +115,7 @@ Important production requirements:
 - `BETTER_AUTH_SECRET` must be at least 32 characters and not a placeholder.
 - `APP_ENCRYPTION_KEY` must be a 64-character hex string and not all zeroes.
 - `DRAGONFLY_PASSWORD` and object storage secrets must be strong non-placeholder values.
+- For the bundled Garage service, `OBJECT_STORAGE_ACCESS_KEY_ID` must be `GK` followed by exactly 24 hexadecimal characters.
 
 The app validates environment variables at runtime and rejects insecure production configuration. `next build` may use safe local placeholder values so CI and image builds remain reproducible.
 
@@ -208,7 +209,8 @@ worker, migrator, Garage, and Garage init images before patching the single
 Required Coolify secrets/variables include `POSTGRES_PASSWORD`,
 `BETTER_AUTH_SECRET`, `APP_ENCRYPTION_KEY`, `DRAGONFLY_PASSWORD`,
 `OBJECT_STORAGE_ACCESS_KEY_ID`, and `OBJECT_STORAGE_SECRET_ACCESS_KEY`. For the
-bundled Garage service, use a `GK...` access key and a 64-character hexadecimal
+bundled Garage service, generate the access key with
+`printf 'GK%s\n' "$(openssl rand -hex 12)"` and use a 64-character hexadecimal
 secret. Override `AI_HUB_PROD_APP_PORT` if the host port must differ from the
 safe default `3001` for the local production compose file.
 

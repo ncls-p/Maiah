@@ -299,8 +299,8 @@ jobs:
             echo "OBJECT_STORAGE_ACCESS_KEY_ID must not contain a development or placeholder access key." >&2
             exit 1
           fi
-          if [[ ! "$OBJECT_STORAGE_ACCESS_KEY_ID" =~ ^GK[[:alnum:]]{24,}$ ]]; then
-            echo "OBJECT_STORAGE_ACCESS_KEY_ID must be a real Garage access key: GK followed by at least 24 alphanumeric characters." >&2
+          if [[ ! "$OBJECT_STORAGE_ACCESS_KEY_ID" =~ ^GK[[:xdigit:]]{24}$ ]]; then
+            echo "OBJECT_STORAGE_ACCESS_KEY_ID must be a real Garage access key: GK followed by exactly 24 hexadecimal characters." >&2
             exit 1
           fi
           if [[ ! "$OBJECT_STORAGE_SECRET_ACCESS_KEY" =~ ^[[:xdigit:]]{64}$ ]]; then

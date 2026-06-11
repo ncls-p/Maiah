@@ -217,8 +217,8 @@ services:
       - -c
       - |
         set -eu
-        if ! printf '%s' "$$GARAGE_ACCESS_KEY_ID" | grep -Eq '^GK[[:alnum:]]{24,}$$'; then
-          echo "GARAGE_ACCESS_KEY_ID must be a real Garage access key, for example GK followed by at least 24 alphanumeric characters." >&2
+        if ! printf '%s' "$$GARAGE_ACCESS_KEY_ID" | grep -Eq '^GK[[:xdigit:]]{24}$$'; then
+          echo "GARAGE_ACCESS_KEY_ID must be a real Garage access key: GK followed by exactly 24 hexadecimal characters." >&2
           exit 1
         fi
         if ! printf '%s' "$$GARAGE_SECRET_ACCESS_KEY" | grep -Eq '^[[:xdigit:]]{64}$$'; then
@@ -240,7 +240,19 @@ services:
         /garage -c /etc/garage.toml layout assign -z dc1 -c 1G "$$NODE_ID" >/dev/null 2>&1 || true
         /garage -c /etc/garage.toml layout apply --version 1 >/dev/null 2>&1 || true
         /garage -c /etc/garage.toml bucket create "$$GARAGE_BUCKET" >/dev/null 2>&1 || true
-        /garage -c /etc/garage.toml key import --yes -n ai-hub "$$GARAGE_ACCESS_KEY_ID" "$$GARAGE_SECRET_ACCESS_KEY" >/dev/null 2>&1 || true
+        if ! /garage -c /etc/garage.toml key info "$$GARAGE_ACCESS_KEY_ID" >/dev/null 2>&1; then
+          /garage -c /etc/garage.toml key import --yes -n ai-hub "$$GARAGE_ACCESS_KEY_ID" "$$GARAGE_SECRET_ACCESS_KEY"
+        fi
+        for attempt in $$(seq 1 10); do
+          if /garage -c /etc/garage.toml key info "$$GARAGE_ACCESS_KEY_ID" >/dev/null 2>&1; then
+            break
+          fi
+          if [ "$$attempt" = "10" ]; then
+            echo "Garage access key was not available after import." >&2
+            exit 1
+          fi
+          sleep 1
+        done
         /garage -c /etc/garage.toml bucket allow --read --write --owner "$$GARAGE_BUCKET" --key "$$GARAGE_ACCESS_KEY_ID"
 
   searxng:
