@@ -388,7 +388,9 @@ export async function generateChatAutomationArtifacts(input: {
 	const config = await getChatAutomationConfig();
 	const shouldGenerateTitle = config.enabled && config.generateTitles;
 	const shouldGenerateSuggestions =
-		config.enabled && config.generateSuggestions && input.generateSuggestions !== false;
+		config.enabled &&
+		config.generateSuggestions &&
+		input.generateSuggestions !== false;
 	if (!shouldGenerateTitle && !shouldGenerateSuggestions) {
 		return { title: input.fallbackTitle, suggestions: [] };
 	}
@@ -415,7 +417,9 @@ export async function generateChatAutomationArtifacts(input: {
 				"Title: 3-7 words, same language as the user when obvious.",
 				"Suggestions: exactly 3 short follow-up prompts the user can click.",
 				shouldGenerateTitle ? null : 'Use an empty string for "title".',
-				shouldGenerateSuggestions ? null : 'Use an empty array for "suggestions".',
+				shouldGenerateSuggestions
+					? null
+					: 'Use an empty array for "suggestions".',
 				`User: ${input.userMessage.slice(0, 1_500)}`,
 				`Assistant: ${input.assistantText.slice(0, 4_000)}`,
 			]

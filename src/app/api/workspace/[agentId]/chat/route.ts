@@ -1030,7 +1030,11 @@ export async function POST(
 			"Tool call limit reached. Do not call another tool. Answer the user now using the available conversation context, knowledge excerpts, and tool results. If the available information is incomplete, clearly say what is known and what is uncertain.";
 		const startedAt = Date.now();
 		type StreamedAssistantPart =
-			| { id: string; type: "text" | "reasoning" | "suggestions"; content: string }
+			| {
+					id: string;
+					type: "text" | "reasoning" | "suggestions";
+					content: string;
+			  }
 			| { id: string; type: "tool-call" | "tool-result"; metadata: unknown };
 		const streamedParts: StreamedAssistantPart[] = [];
 		let nextSortOrder = 0;
