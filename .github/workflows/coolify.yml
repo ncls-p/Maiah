@@ -259,6 +259,55 @@ jobs:
             fi
           done
 
+          is_placeholder_secret() {
+            local value="${1,,}"
+            [[ "$value" == *"dev-secret"* ]] \
+              || [[ "$value" == *"change-in-production"* ]] \
+              || [[ "$value" == *"test-secret"* ]] \
+              || [[ "$value" == *"minioadmin"* ]] \
+              || [[ "$value" == *"changeme"* ]]
+          }
+
+          validate_secret_length() {
+            local key="$1"
+            local value="$2"
+            local min_length="$3"
+            if (( ${#value} < min_length )); then
+              echo "${key} must be at least ${min_length} characters for production deployment." >&2
+              exit 1
+            fi
+            if is_placeholder_secret "$value"; then
+              echo "${key} must not contain a development or placeholder secret." >&2
+              exit 1
+            fi
+          }
+
+          validate_secret_length BETTER_AUTH_SECRET "$BETTER_AUTH_SECRET" 32
+          validate_secret_length POSTGRES_PASSWORD "$POSTGRES_PASSWORD" 16
+          validate_secret_length DRAGONFLY_PASSWORD "$DRAGONFLY_PASSWORD" 16
+          validate_secret_length OBJECT_STORAGE_SECRET_ACCESS_KEY "$OBJECT_STORAGE_SECRET_ACCESS_KEY" 16
+
+          if [[ ! "$APP_ENCRYPTION_KEY" =~ ^[0-9A-Fa-f]{64}$ ]]; then
+            echo "APP_ENCRYPTION_KEY must be a 64-character hexadecimal string." >&2
+            exit 1
+          fi
+          if [[ "$APP_ENCRYPTION_KEY" =~ ^0+$ ]]; then
+            echo "APP_ENCRYPTION_KEY must not use the all-zero development key." >&2
+            exit 1
+          fi
+          if is_placeholder_secret "$OBJECT_STORAGE_ACCESS_KEY_ID"; then
+            echo "OBJECT_STORAGE_ACCESS_KEY_ID must not contain a development or placeholder access key." >&2
+            exit 1
+          fi
+          if [[ ! "$OBJECT_STORAGE_ACCESS_KEY_ID" =~ ^GK[[:alnum:]]{24,}$ ]]; then
+            echo "OBJECT_STORAGE_ACCESS_KEY_ID must be a real Garage access key: GK followed by at least 24 alphanumeric characters." >&2
+            exit 1
+          fi
+          if [[ ! "$OBJECT_STORAGE_SECRET_ACCESS_KEY" =~ ^[[:xdigit:]]{64}$ ]]; then
+            echo "OBJECT_STORAGE_SECRET_ACCESS_KEY must be a 64-character hexadecimal Garage secret." >&2
+            exit 1
+          fi
+
           APP_ENCRYPTION_KEY_ID="${APP_ENCRYPTION_KEY_ID:-default}"
           OBJECT_STORAGE_BUCKET="${OBJECT_STORAGE_BUCKET:-ai-hub}"
           ALLOW_PERSONAL_WORKSPACES="${ALLOW_PERSONAL_WORKSPACES:-true}"
@@ -416,23 +465,37 @@ jobs:
 
           long_running='["app", "worker", "garage", "dragonflydb", "searxng"]'
           success=false
-          for _ in $(seq 1 40); do
+          for attempt in $(seq 1 60); do
             STATUS_JSON="$(api GET "/services/${SERVICE_UUID}")"
-            UNHEALTHY_COUNT="$(
+            NOT_READY_COUNT="$(
               jq -r --argjson names "${long_running}" '
-                ([.applications[]? | select(.name as $name | $names | index($name)) | select(.status != "running:healthy" and .status != "running")] | length)
-                + ([.databases[]? | select(.status != "running:healthy" and .status != "running")] | length)
+                def ready_app:
+                  .status == "running:healthy"
+                  or .status == "running"
+                  or (.name == "searxng" and .status == "running:unknown");
+                def ready_database:
+                  .status == "running:healthy" or .status == "running";
+                ([.applications[]? | select(.name as $name | $names | index($name)) | select((ready_app | not))] | length)
+                + ([.databases[]? | select((ready_database | not))] | length)
               ' <<<"${STATUS_JSON}"
             )"
-            if [[ "${UNHEALTHY_COUNT}" -eq 0 ]]; then
+            if [[ "${NOT_READY_COUNT}" -eq 0 ]]; then
               success=true
               break
+            fi
+
+            if (( attempt == 1 || attempt % 4 == 0 )); then
+              jq -r --argjson names "${long_running}" '
+                "Coolify status poll:",
+                (.applications[]? | select(.name as $name | $names | index($name)) | "  \(.name): \(.status)"),
+                (.databases[]? | "  \(.name): \(.status)")
+              ' <<<"${STATUS_JSON}" >&2
             fi
 
             EXITED_COUNT="$(
               jq -r --argjson names "${long_running}" '[.applications[]? | select(.name as $name | $names | index($name)) | select(.status | test("exited|dead|unhealthy"))] | length' <<<"${STATUS_JSON}"
             )"
-            if [[ "${EXITED_COUNT}" -gt 0 ]]; then
+            if [[ "${EXITED_COUNT}" -gt 0 && "${attempt}" -gt 8 ]]; then
               echo "Coolify deployment failed: one or more long-running services exited." >&2
               jq -r --argjson names "${long_running}" '.applications[]? | select(.name as $name | $names | index($name)) | "\(.name): \(.status)"' <<<"${STATUS_JSON}" >&2
               break
