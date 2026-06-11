@@ -256,12 +256,13 @@ services:
         /garage -c /etc/garage.toml bucket allow --read --write --owner "$$GARAGE_BUCKET" --key "$$GARAGE_ACCESS_KEY_ID"
 
   searxng:
-    image: searxng/searxng:latest
+    build:
+      context: .
+      target: searxng
     restart: unless-stopped
-    volumes:
-      - ./searxng:/etc/searxng:ro
     environment:
       SEARXNG_BASE_URL: ${SEARXNG_BASE_URL:-http://searxng:8080/}
+      SEARXNG_SECRET: ${SEARXNG_SECRET:-local-searxng-secret-change-me}
     healthcheck:
       test:
         - CMD-SHELL

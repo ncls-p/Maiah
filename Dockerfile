@@ -7,6 +7,9 @@ FROM alpine:3.22 AS garage-init
 COPY --from=garage-binary /garage /garage
 COPY docker/garage/garage.toml /etc/garage.toml
 
+FROM searxng/searxng:latest AS searxng
+COPY searxng/settings.yml /etc/searxng/settings.yml
+
 FROM node:22-bookworm-slim AS base
 
 WORKDIR /app

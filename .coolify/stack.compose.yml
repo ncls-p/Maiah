@@ -226,10 +226,11 @@ services:
         /garage -c /etc/garage.toml bucket allow --read --write --owner "$$GARAGE_BUCKET" --key "$$GARAGE_ACCESS_KEY_ID"
 
   searxng:
-    image: searxng/searxng:latest
+    image: ${AI_HUB_SEARXNG_IMAGE:?set AI_HUB_SEARXNG_IMAGE}
     restart: unless-stopped
     environment:
       SEARXNG_BASE_URL: ${SEARXNG_BASE_URL:-http://searxng:8080/}
+      SEARXNG_SECRET: ${SEARXNG_SECRET:?set SEARXNG_SECRET}
     healthcheck:
       test:
         - CMD-SHELL
