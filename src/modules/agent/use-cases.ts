@@ -1,4 +1,4 @@
-import { and, eq, isNull, sql, max, or } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql, max, or } from "drizzle-orm";
 import { db } from "@/server/infrastructure/db";
 import {
 	agents,
@@ -808,6 +808,32 @@ export async function getConversationMessages(conversationId: string) {
 		.where(eq(messages.conversationId, conversationId))
 		.orderBy(messages.createdAt);
 
+	if (messageRows.length === 0) return [];
+
+	const partsByMessageId = new Map<
+		string,
+		Array<typeof messageParts.$inferSelect>
+	>();
+	const parts = await db
+		.select()
+		.from(messageParts)
+		.where(
+			inArray(
+				messageParts.messageId,
+				messageRows.map((message) => message.id),
+			),
+		)
+		.orderBy(messageParts.messageId, messageParts.sortOrder);
+
+	for (const part of parts) {
+		const existing = partsByMessageId.get(part.messageId);
+		if (existing) {
+			existing.push(part);
+		} else {
+			partsByMessageId.set(part.messageId, [part]);
+		}
+	}
+
 	const enriched: Array<{
 		id: string;
 		role: string;
@@ -817,14 +843,8 @@ export async function getConversationMessages(conversationId: string) {
 	}> = [];
 
 	for (const msg of messageRows) {
-		const parts = await db
-			.select()
-			.from(messageParts)
-			.where(eq(messageParts.messageId, msg.id))
-			.orderBy(messageParts.sortOrder);
-
 		const decryptedParts: Array<{ type: string; content: string }> = [];
-		for (const part of parts) {
+		for (const part of partsByMessageId.get(msg.id) ?? []) {
 			if (
 				(part.type === "text" ||
 					part.type === "reasoning" ||

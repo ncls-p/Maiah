@@ -125,6 +125,9 @@ interface ChatLayoutProps {
 	onNewConversation: () => void;
 	onRenameConversation?: (conversationId: string, title: string) => void;
 	onDeleteConversation?: (conversationId: string) => void;
+	hasMoreConversations?: boolean;
+	loadingMoreConversations?: boolean;
+	onLoadMoreConversations?: () => void;
 	onSetupComplete?: () => void;
 	children: React.ReactNode;
 }
@@ -141,6 +144,9 @@ export function ChatLayout({
 	onNewConversation,
 	onRenameConversation,
 	onDeleteConversation,
+	hasMoreConversations,
+	loadingMoreConversations,
+	onLoadMoreConversations,
 	onSetupComplete,
 	children,
 }: ChatLayoutProps) {
@@ -201,6 +207,9 @@ export function ChatLayout({
 		onNewConversation,
 		onRenameConversation,
 		onDeleteConversation,
+		hasMoreConversations,
+		loadingMoreConversations,
+		onLoadMoreConversations,
 		collapsed: false,
 		onCollapsedChange: undefined,
 	};

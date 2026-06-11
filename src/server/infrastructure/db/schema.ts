@@ -550,6 +550,14 @@ export const conversations = pgTable(
 			t.agentId,
 		),
 		user: index("conversations_user").on(t.userId),
+		userWorkspaceUpdated: index("conversations_user_workspace_updated").on(
+			t.userId,
+			t.workspaceId,
+			t.status,
+			t.archivedAt,
+			t.updatedAt,
+			t.id,
+		),
 	}),
 );
 
@@ -586,6 +594,10 @@ export const messages = pgTable(
 	},
 	(t) => ({
 		conversation: index("messages_conversation").on(t.conversationId),
+		conversationCreated: index("messages_conversation_created").on(
+			t.conversationId,
+			t.createdAt,
+		),
 	}),
 );
 

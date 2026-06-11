@@ -62,6 +62,53 @@ function createQueuedMessage(content: string): QueuedChatMessage {
 	};
 }
 
+const CONVERSATION_PAGE_SIZE = 50;
+
+type ConversationListPage = {
+	conversations: ChatConversation[];
+	hasMore: boolean;
+	nextCursor: string | null;
+};
+
+type ConversationListPayload = ChatConversation[] | ConversationListPage;
+
+function normalizeConversationList(
+	payload: ConversationListPayload,
+): ConversationListPage {
+	if (Array.isArray(payload)) {
+		return { conversations: payload, hasMore: false, nextCursor: null };
+	}
+	return {
+		conversations: payload.conversations ?? [],
+		hasMore: payload.hasMore,
+		nextCursor: payload.nextCursor,
+	};
+}
+
+function mergeConversationPages(
+	current: ChatConversation[],
+	incoming: ChatConversation[],
+) {
+	const existingIds = new Set(current.map((conversation) => conversation.id));
+	return [
+		...current,
+		...incoming.filter((conversation) => !existingIds.has(conversation.id)),
+	];
+}
+
+function upsertConversation(
+	current: ChatConversation[],
+	conversation: ChatConversation,
+) {
+	let found = false;
+	const next = current.map((item) => {
+		if (item.id !== conversation.id) return item;
+		found = true;
+		return { ...item, ...conversation };
+	});
+	return found ? next : [conversation, ...next];
+}
+
 function ChatContextBar({
 	quota,
 }: {
@@ -138,6 +185,12 @@ export default function ChatPage() {
 	const [agents, setAgents] = useState<ChatAgent[]>([]);
 	const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
 	const [conversations, setConversations] = useState<ChatConversation[]>([]);
+	const [hasMoreConversations, setHasMoreConversations] = useState(false);
+	const [conversationCursor, setConversationCursor] = useState<string | null>(
+		null,
+	);
+	const [loadingMoreConversations, setLoadingMoreConversations] =
+		useState(false);
 	const [activeVersion, setActiveVersion] = useState<AgentVersion | null>(null);
 	const [activeConversationId, setActiveConversationId] = useState<
 		string | null
@@ -168,13 +221,65 @@ export default function ChatPage() {
 	);
 	const canChat = Boolean(activeVersion?.providerId && activeVersion?.modelId);
 
+	const fetchConversationPage = useCallback(
+		async ({
+			before,
+			signal,
+		}: {
+			before?: string | null;
+			signal?: AbortSignal;
+		} = {}) => {
+			if (!workspaceId) {
+				return { conversations: [], hasMore: false, nextCursor: null };
+			}
+			const params = new URLSearchParams({
+				workspaceId,
+				limit: String(CONVERSATION_PAGE_SIZE),
+				includeMeta: "true",
+			});
+			if (before) params.set("before", before);
+			const data = await fetchJson<ConversationListPayload>(
+				`/api/workspace/conversations?${params.toString()}`,
+				{ signal },
+			);
+			return normalizeConversationList(data);
+		},
+		[workspaceId],
+	);
+
 	const refreshConversations = useCallback(async () => {
-		if (!workspaceId) return;
-		const data = await fetchJson<ChatConversation[]>(
-			`/api/workspace/conversations?workspaceId=${workspaceId}`,
-		);
-		setConversations(data);
-	}, [workspaceId]);
+		const data = await fetchConversationPage();
+		setConversations(data.conversations);
+		setHasMoreConversations(data.hasMore);
+		setConversationCursor(data.nextCursor);
+	}, [fetchConversationPage]);
+
+	const loadMoreConversations = useCallback(async () => {
+		if (loadingMoreConversations || !hasMoreConversations) return;
+		const before = conversationCursor ?? conversations.at(-1)?.updatedAt;
+		if (!before) return;
+		setLoadingMoreConversations(true);
+		try {
+			const data = await fetchConversationPage({ before });
+			setConversations((current) =>
+				mergeConversationPages(current, data.conversations),
+			);
+			setHasMoreConversations(data.hasMore);
+			setConversationCursor(data.nextCursor);
+		} catch (error) {
+			toast.error(
+				error instanceof Error ? error.message : "Failed to load older chats",
+			);
+		} finally {
+			setLoadingMoreConversations(false);
+		}
+	}, [
+		conversationCursor,
+		conversations,
+		fetchConversationPage,
+		hasMoreConversations,
+		loadingMoreConversations,
+	]);
 
 	const {
 		messages,
@@ -305,12 +410,13 @@ export default function ChatPage() {
 
 		async function loadConversations() {
 			try {
-				const conversationData = await fetchJson<ChatConversation[]>(
-					`/api/workspace/conversations?workspaceId=${workspaceId}`,
-					{ signal: controller.signal },
-				);
+				const conversationData = await fetchConversationPage({
+					signal: controller.signal,
+				});
 				if (cancelled) return;
-				setConversations(conversationData);
+				setConversations(conversationData.conversations);
+				setHasMoreConversations(conversationData.hasMore);
+				setConversationCursor(conversationData.nextCursor);
 			} catch (err) {
 				if (err instanceof Error && err.name !== "AbortError") {
 					toast.error(err.message);
@@ -325,7 +431,7 @@ export default function ChatPage() {
 			cancelled = true;
 			controller.abort();
 		};
-	}, [workspaceId]);
+	}, [fetchConversationPage, workspaceId]);
 
 	useEffect(() => {
 		if (!selectedAgentId || !workspaceId) return;
@@ -396,7 +502,7 @@ export default function ChatPage() {
 		async function loadMessages() {
 			try {
 				const data = await fetchJson<{
-					conversation?: { agentId?: string };
+					conversation?: ChatConversation;
 					messages?: ChatMessage[];
 				}>(`/api/workspace/conversations/${activeConversationId}`, {
 					signal: controller.signal,
@@ -407,6 +513,12 @@ export default function ChatPage() {
 				);
 				if (data.conversation?.agentId && !urlAgentId) {
 					setSelectedAgentId(data.conversation.agentId);
+				}
+				const loadedConversation = data.conversation;
+				if (loadedConversation) {
+					setConversations((current) =>
+						upsertConversation(current, loadedConversation),
+					);
 				}
 				setMessages(data.messages ?? []);
 			} catch (err) {
@@ -784,6 +896,9 @@ export default function ChatPage() {
 			activeConversationId={activeConversationId}
 			canChat={canChat}
 			loadingSidebar={loadingContext}
+			hasMoreConversations={hasMoreConversations}
+			loadingMoreConversations={loadingMoreConversations}
+			onLoadMoreConversations={loadMoreConversations}
 			onSelectAgent={selectAgent}
 			onSelectConversation={selectConversation}
 			onNewConversation={startNewConversation}
@@ -860,6 +975,7 @@ export default function ChatPage() {
 				) : null}
 				<div ref={scrollContentRef}>
 					<ChatMessageList
+						key={activeConversationId ?? "new-conversation"}
 						messages={messages}
 						sending={sending}
 						loading={loadingMessages}

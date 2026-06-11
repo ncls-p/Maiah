@@ -14,7 +14,7 @@ import {
 	Trash2Icon,
 	XIcon,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import type { ChatAgent, ChatConversation } from "@/components/chat/chat-types";
 import { ThemeToggleButton } from "@/components/theme-toggle-button";
@@ -56,6 +56,9 @@ interface ChatSidebarProps {
 	onNewConversation: () => void;
 	onRenameConversation?: (conversationId: string, title: string) => void;
 	onDeleteConversation?: (conversationId: string) => void;
+	hasMoreConversations?: boolean;
+	loadingMoreConversations?: boolean;
+	onLoadMoreConversations?: () => void;
 	collapsed?: boolean;
 	onCollapsedChange?: (collapsed: boolean) => void;
 	className?: string;
@@ -230,6 +233,9 @@ export function ChatSidebar({
 	onNewConversation,
 	onRenameConversation,
 	onDeleteConversation,
+	hasMoreConversations,
+	loadingMoreConversations,
+	onLoadMoreConversations,
 	collapsed,
 	onCollapsedChange,
 	className,
@@ -240,7 +246,10 @@ export function ChatSidebar({
 		string | null
 	>(null);
 	const [editingTitle, setEditingTitle] = useState("");
-	const agentNameById = new Map(agents.map((agent) => [agent.id, agent.name]));
+	const agentNameById = useMemo(
+		() => new Map(agents.map((agent) => [agent.id, agent.name])),
+		[agents],
+	);
 
 	useEffect(() => {
 		const stored = window.localStorage.getItem("chat-conversations-open");
@@ -324,7 +333,12 @@ export function ChatSidebar({
 	}
 
 	return (
-		<div className={cn("glass-panel glass-panel--heavy flex h-full min-h-0 flex-col rounded-none", className)}>
+		<div
+			className={cn(
+				"glass-panel glass-panel--heavy flex h-full min-h-0 flex-col rounded-none",
+				className,
+			)}
+		>
 			<div className="flex items-center justify-between border-b border-border/50 px-4 py-3">
 				<div className="flex items-center gap-2">
 					{onCollapsedChange ? (
@@ -377,8 +391,9 @@ export function ChatSidebar({
 							<span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground/70">
 								Conversations
 								{conversations.length > 0 && (
-									<span className="ml-1.5 inline-flex size-5 items-center justify-center rounded-full bg-muted text-[10px] font-medium text-muted-foreground">
+									<span className="ml-1.5 inline-flex min-w-5 items-center justify-center rounded-full bg-muted px-1 text-[10px] font-medium text-muted-foreground">
 										{conversations.length}
+										{hasMoreConversations ? "+" : ""}
 									</span>
 								)}
 							</span>
@@ -470,6 +485,18 @@ export function ChatSidebar({
 										/>
 									);
 								})}
+								{hasMoreConversations && onLoadMoreConversations ? (
+									<Button
+										type="button"
+										variant="ghost"
+										size="sm"
+										className="mt-2 h-8 rounded-lg text-xs text-muted-foreground"
+										disabled={loadingMoreConversations}
+										onClick={onLoadMoreConversations}
+									>
+										{loadingMoreConversations ? "Loading…" : "Load older chats"}
+									</Button>
+								) : null}
 							</div>
 						)}
 					</CollapsibleContent>

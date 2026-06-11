@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, isNull, lt, or } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
@@ -7,10 +7,32 @@ import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
 import { agents, conversations } from "@/server/infrastructure/db/schema";
 
+const DEFAULT_CONVERSATION_LIMIT = 50;
+const MAX_CONVERSATION_LIMIT = 100;
+
 const querySchema = z.object({
 	workspaceId: z.uuid().optional(),
 	agentId: z.uuid().optional(),
+	before: z.string().optional(),
+	includeMeta: z.enum(["true", "false"]).optional(),
+	limit: z.coerce
+		.number()
+		.int()
+		.min(1)
+		.max(MAX_CONVERSATION_LIMIT)
+		.default(DEFAULT_CONVERSATION_LIMIT),
 });
+
+function createConversationCursor(
+	conversation: { id: string; updatedAt: Date | string } | undefined,
+) {
+	if (!conversation) return null;
+	const updatedAt =
+		conversation.updatedAt instanceof Date
+			? conversation.updatedAt.toISOString()
+			: conversation.updatedAt;
+	return `${updatedAt}|${conversation.id}`;
+}
 
 export async function GET(req: Request) {
 	try {
@@ -23,20 +45,28 @@ export async function GET(req: Request) {
 		const parsed = querySchema.safeParse({
 			agentId: searchParams.get("agentId") ?? undefined,
 			workspaceId: searchParams.get("workspaceId") ?? undefined,
+			before: searchParams.get("before") ?? undefined,
+			includeMeta: searchParams.get("includeMeta") ?? undefined,
+			limit: searchParams.get("limit") ?? undefined,
 		});
 
-		if (
-			!parsed.success ||
-			(!parsed.data.workspaceId && !parsed.data.agentId)
-		) {
+		if (!parsed.success || (!parsed.data.workspaceId && !parsed.data.agentId)) {
 			return NextResponse.json(
 				{ error: "workspaceId or agentId must be a valid UUID" },
 				{ status: 400 },
 			);
 		}
 
-		const { agentId } = parsed.data;
+		const { agentId, includeMeta, limit } = parsed.data;
 		let workspaceId = parsed.data.workspaceId ?? null;
+		const [beforeDateValue, beforeId] = parsed.data.before?.split("|") ?? [];
+		const before = beforeDateValue ? new Date(beforeDateValue) : null;
+		if (beforeDateValue && (!before || Number.isNaN(before.getTime()))) {
+			return NextResponse.json(
+				{ error: "before must be a valid conversation cursor" },
+				{ status: 400 },
+			);
+		}
 
 		if (!workspaceId && agentId) {
 			const [agent] = await db
@@ -79,8 +109,20 @@ export async function GET(req: Request) {
 		if (agentId) {
 			conditions.push(eq(conversations.agentId, agentId));
 		}
+		if (before) {
+			const cursorCondition = beforeId
+				? or(
+						lt(conversations.updatedAt, before),
+						and(
+							eq(conversations.updatedAt, before),
+							lt(conversations.id, beforeId),
+						),
+					)
+				: lt(conversations.updatedAt, before);
+			if (cursorCondition) conditions.push(cursorCondition);
+		}
 
-		const list = await db
+		const rows = await db
 			.select({
 				id: conversations.id,
 				title: conversations.title,
@@ -91,7 +133,18 @@ export async function GET(req: Request) {
 			})
 			.from(conversations)
 			.where(and(...conditions))
-			.orderBy(desc(conversations.updatedAt));
+			.orderBy(desc(conversations.updatedAt), desc(conversations.id))
+			.limit(limit + 1);
+		const hasMore = rows.length > limit;
+		const list = hasMore ? rows.slice(0, limit) : rows;
+
+		if (includeMeta === "true") {
+			return NextResponse.json({
+				conversations: list,
+				hasMore,
+				nextCursor: hasMore ? createConversationCursor(list.at(-1)) : null,
+			});
+		}
 
 		return NextResponse.json(list);
 	} catch (error) {

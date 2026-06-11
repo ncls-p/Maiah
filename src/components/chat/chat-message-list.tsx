@@ -1,6 +1,7 @@
 "use client";
 
-import { memo, useState } from "react";
+import dynamic from "next/dynamic";
+import { memo, useMemo, useState } from "react";
 import {
 	BrainIcon,
 	CheckCircle2Icon,
@@ -33,7 +34,7 @@ import {
 	type ChatMessagePart,
 	type PendingToolApproval,
 } from "@/components/chat/chat-types";
-import { RichEditor } from "@/components/chat/rich-editor";
+import type { RichEditorProps } from "@/components/chat/rich-editor";
 import { summarizeToolInput } from "@/components/chat/tool-approval-banner";
 import { Button } from "@/components/ui/button";
 import { markdownToHtml } from "@/lib/markdown-to-html";
@@ -47,6 +48,17 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+
+const RichEditor = dynamic<RichEditorProps>(
+	() => import("@/components/chat/rich-editor").then((mod) => mod.RichEditor),
+	{
+		ssr: false,
+		loading: () => <Skeleton className="h-32 w-full rounded-xl" />,
+	},
+);
+
+const INITIAL_VISIBLE_MESSAGES = 80;
+const LOAD_MORE_MESSAGES = 40;
 
 const STREAMING_TEXT_ANIMATION = {
 	animation: "softReveal",
@@ -827,6 +839,22 @@ function ThinkingPart({
 	);
 }
 
+type MessageContentProps = {
+	message: ChatMessage;
+	showSuggestions?: boolean;
+	isEditing: boolean;
+	editingContent: string;
+	isSaving: boolean;
+	isAnimating: boolean;
+	onEditingContentChange?: (content: string) => void;
+	onCancelEdit?: () => void;
+	onSaveEdit?: () => void;
+	pendingApprovals: PendingToolApproval[];
+	onApproveTool?: (approval: PendingToolApproval) => void;
+	onRejectTool?: (approval: PendingToolApproval) => void;
+	onSuggestionClick?: (suggestion: string) => void;
+};
+
 const MessageContent = memo(function MessageContent({
 	message,
 	isEditing,
@@ -841,21 +869,7 @@ const MessageContent = memo(function MessageContent({
 	onRejectTool,
 	onSuggestionClick,
 	showSuggestions = true,
-}: {
-	message: ChatMessage;
-	showSuggestions?: boolean;
-	isEditing: boolean;
-	editingContent: string;
-	isSaving: boolean;
-	isAnimating: boolean;
-	onEditingContentChange?: (content: string) => void;
-	onCancelEdit?: () => void;
-	onSaveEdit?: () => void;
-	pendingApprovals: PendingToolApproval[];
-	onApproveTool?: (approval: PendingToolApproval) => void;
-	onRejectTool?: (approval: PendingToolApproval) => void;
-	onSuggestionClick?: (suggestion: string) => void;
-}) {
+}: MessageContentProps) {
 	const content = textFromMessage(message);
 	const citations = citationsFromMessage(message);
 	const isAssistant = message.role === "assistant";
@@ -978,7 +992,22 @@ const MessageContent = memo(function MessageContent({
 			) : null}
 		</div>
 	);
-});
+}, areMessageContentPropsEqual);
+
+function areMessageContentPropsEqual(
+	previous: Readonly<MessageContentProps>,
+	next: Readonly<MessageContentProps>,
+) {
+	return (
+		previous.message === next.message &&
+		previous.showSuggestions === next.showSuggestions &&
+		previous.isEditing === next.isEditing &&
+		previous.editingContent === next.editingContent &&
+		previous.isSaving === next.isSaving &&
+		previous.isAnimating === next.isAnimating &&
+		previous.pendingApprovals === next.pendingApprovals
+	);
+}
 
 interface ChatMessageListProps {
 	messages: ChatMessage[];
@@ -1015,6 +1044,24 @@ export function ChatMessageList({
 	const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
 	const [editingContent, setEditingContent] = useState("");
 	const [savingMessageId, setSavingMessageId] = useState<string | null>(null);
+	const [visibleMessageCount, setVisibleMessageCount] = useState(
+		INITIAL_VISIBLE_MESSAGES,
+	);
+	const messageListMeta = useMemo(() => {
+		const precedingUserByMessageId = new Map<string, ChatMessage | null>();
+		let lastUserMessage: ChatMessage | null = null;
+		let lastAssistantMessageId: string | undefined;
+		for (const message of messages) {
+			precedingUserByMessageId.set(message.id, lastUserMessage);
+			if (message.role === "assistant") lastAssistantMessageId = message.id;
+			if (message.role === "user") lastUserMessage = message;
+		}
+		return { lastAssistantMessageId, precedingUserByMessageId };
+	}, [messages]);
+	const hiddenMessageCount = Math.max(0, messages.length - visibleMessageCount);
+	const visibleMessages =
+		hiddenMessageCount > 0 ? messages.slice(hiddenMessageCount) : messages;
+	const lastMessageId = messages[messages.length - 1]?.id ?? null;
 
 	if (loading) {
 		return (
@@ -1030,13 +1077,26 @@ export function ChatMessageList({
 		return <div ref={bottomRef} />;
 	}
 
-	const lastAssistantMessageId = [...messages]
-		.reverse()
-		.find((message) => message.role === "assistant")?.id;
+	const { lastAssistantMessageId, precedingUserByMessageId } = messageListMeta;
 
 	return (
 		<div className="mx-auto flex w-full max-w-4xl flex-col gap-5">
-			{messages.map((message, index) => {
+			{hiddenMessageCount > 0 ? (
+				<div className="flex justify-center">
+					<Button
+						type="button"
+						variant="outline"
+						size="sm"
+						className="rounded-full text-xs text-muted-foreground"
+						onClick={() =>
+							setVisibleMessageCount((count) => count + LOAD_MORE_MESSAGES)
+						}
+					>
+						{`Show ${Math.min(LOAD_MORE_MESSAGES, hiddenMessageCount)} older messages`}
+					</Button>
+				</div>
+			) : null}
+			{visibleMessages.map((message) => {
 				const content = textFromMessage(message);
 				const isAssistant = message.role === "assistant";
 				const isUser = message.role === "user";
@@ -1046,19 +1106,11 @@ export function ChatMessageList({
 					Boolean(onRegenerateAssistant) &&
 					isAssistant &&
 					message.status !== "streaming";
-				// Find the user message before this assistant message
-				const precedingUserMsg = (() => {
-					for (let i = index - 1; i >= 0; i--) {
-						if (messages[i].role === "user") return messages[i];
-					}
-					return null;
-				})();
+				const precedingUserMsg =
+					precedingUserByMessageId.get(message.id) ?? null;
 				const isEditing = editingMessageId === message.id;
-				const isAnimating =
-					sending &&
-					index === messages.length - 1 &&
-					message.status === "streaming";
-				const isLast = index === messages.length - 1;
+				const isLast = message.id === lastMessageId;
+				const isAnimating = sending && isLast && message.status === "streaming";
 
 				return (
 					<article

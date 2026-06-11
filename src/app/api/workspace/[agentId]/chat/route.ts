@@ -587,37 +587,79 @@ async function loadConversationHistory(
 	conversationId: string,
 	maxMessages?: number,
 ): Promise<ModelMessage[]> {
-	const messageRows = await db
-		.select({
-			id: messages.id,
-			role: messages.role,
-			createdAt: messages.createdAt,
-		})
-		.from(messages)
-		.where(eq(messages.conversationId, conversationId))
-		.orderBy(messages.createdAt);
+	const historyLimit =
+		typeof maxMessages === "number" && maxMessages > 0
+			? Math.floor(maxMessages)
+			: null;
+	const messageRows = historyLimit
+		? (
+				await db
+					.select({
+						id: messages.id,
+						role: messages.role,
+						createdAt: messages.createdAt,
+					})
+					.from(messages)
+					.where(eq(messages.conversationId, conversationId))
+					.orderBy(desc(messages.createdAt))
+					.limit(historyLimit)
+			).reverse()
+		: await db
+				.select({
+					id: messages.id,
+					role: messages.role,
+					createdAt: messages.createdAt,
+				})
+				.from(messages)
+				.where(eq(messages.conversationId, conversationId))
+				.orderBy(messages.createdAt);
 
 	const modelMessages: ModelMessage[] = [];
+	const modelMessageRows = messageRows.filter(
+		(message) => message.role === "user" || message.role === "assistant",
+	);
+	if (modelMessageRows.length === 0) return modelMessages;
 
-	for (const message of messageRows) {
-		if (message.role !== "user" && message.role !== "assistant") {
-			continue;
+	const partsByMessageId = new Map<
+		string,
+		Array<{
+			messageId: string;
+			type: string;
+			contentEncrypted: string | null;
+			metadataJson: unknown;
+			sortOrder: number;
+		}>
+	>();
+	const partRows = await db
+		.select({
+			messageId: messageParts.messageId,
+			type: messageParts.type,
+			contentEncrypted: messageParts.contentEncrypted,
+			metadataJson: messageParts.metadataJson,
+			sortOrder: messageParts.sortOrder,
+		})
+		.from(messageParts)
+		.where(
+			inArray(
+				messageParts.messageId,
+				modelMessageRows.map((message) => message.id),
+			),
+		)
+		.orderBy(messageParts.messageId, messageParts.sortOrder);
+
+	for (const part of partRows) {
+		const existing = partsByMessageId.get(part.messageId);
+		if (existing) {
+			existing.push(part);
+		} else {
+			partsByMessageId.set(part.messageId, [part]);
 		}
+	}
 
-		const parts = await db
-			.select({
-				type: messageParts.type,
-				contentEncrypted: messageParts.contentEncrypted,
-				metadataJson: messageParts.metadataJson,
-				sortOrder: messageParts.sortOrder,
-			})
-			.from(messageParts)
-			.where(eq(messageParts.messageId, message.id))
-			.orderBy(messageParts.sortOrder);
-
+	for (const message of modelMessageRows) {
 		const textParts: string[] = [];
 		const artifactCodeBlocks = new Set<string>();
-		for (const part of parts) {
+		for (const part of partsByMessageId.get(message.id) ?? []) {
 			if (part.type === "text" && part.contentEncrypted) {
 				try {
 					textParts.push(await decryptValue(part.contentEncrypted));
@@ -645,11 +687,12 @@ async function loadConversationHistory(
 
 		const content = textParts.join("\n").trim();
 		if (content) {
-			modelMessages.push({ role: message.role, content });
+			const role = message.role === "assistant" ? "assistant" : "user";
+			modelMessages.push({ role, content });
 		}
 	}
 
-	return maxMessages ? modelMessages.slice(-maxMessages) : modelMessages;
+	return modelMessages;
 }
 
 export async function POST(
