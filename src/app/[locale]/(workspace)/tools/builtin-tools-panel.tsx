@@ -70,45 +70,14 @@ const TOOL_ICONS: Record<string, LucideIcon> = {
 	markdown_table: TableIcon,
 };
 
-const CATEGORY_STYLES: Record<
-	ToolCategory,
-	{ icon: LucideIcon; chip: string; tile: string }
-> = {
-	Think: {
-		icon: SparklesIcon,
-		chip: "border-violet-500/25 bg-violet-500/10 text-violet-700 dark:text-violet-300",
-		tile: "bg-violet-500/12 text-violet-600 dark:text-violet-400",
-	},
-	Time: {
-		icon: ClockIcon,
-		chip: "border-sky-500/25 bg-sky-500/10 text-sky-700 dark:text-sky-300",
-		tile: "bg-sky-500/12 text-sky-600 dark:text-sky-400",
-	},
-	Web: {
-		icon: GlobeIcon,
-		chip: "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
-		tile: "bg-emerald-500/12 text-emerald-600 dark:text-emerald-400",
-	},
-	Create: {
-		icon: SparklesIcon,
-		chip: "border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-300",
-		tile: "bg-amber-500/12 text-amber-600 dark:text-amber-400",
-	},
-	Code: {
-		icon: BracesIcon,
-		chip: "border-orange-500/25 bg-orange-500/10 text-orange-700 dark:text-orange-300",
-		tile: "bg-orange-500/12 text-orange-600 dark:text-orange-400",
-	},
-	Write: {
-		icon: PenLineIcon,
-		chip: "border-rose-500/25 bg-rose-500/10 text-rose-700 dark:text-rose-300",
-		tile: "bg-rose-500/12 text-rose-600 dark:text-rose-400",
-	},
-	Design: {
-		icon: PaletteIcon,
-		chip: "border-fuchsia-500/25 bg-fuchsia-500/10 text-fuchsia-700 dark:text-fuchsia-300",
-		tile: "bg-fuchsia-500/12 text-fuchsia-600 dark:text-fuchsia-400",
-	},
+const CATEGORY_STYLES: Record<ToolCategory, { icon: LucideIcon }> = {
+	Think: { icon: SparklesIcon },
+	Time: { icon: ClockIcon },
+	Web: { icon: GlobeIcon },
+	Create: { icon: SparklesIcon },
+	Code: { icon: BracesIcon },
+	Write: { icon: PenLineIcon },
+	Design: { icon: PaletteIcon },
 };
 
 function isToolCategory(value: string): value is ToolCategory {
@@ -146,45 +115,49 @@ function BuiltinToolCard({
 	tool,
 	riskLabel,
 	approvalLabel,
+	categoryLabel,
 }: {
 	tool: BuiltInToolSummary;
 	riskLabel: string;
 	approvalLabel: string;
+	categoryLabel: string;
 }) {
-	const categoryStyle = isToolCategory(tool.category)
-		? CATEGORY_STYLES[tool.category]
-		: CATEGORY_STYLES.Think;
 	const ToolIcon = TOOL_ICONS[tool.name] ?? WrenchIcon;
 	const needsApproval = requiresApproval(tool.riskLevel);
 
 	return (
-		<article className="group relative overflow-hidden rounded-2xl border border-border/60 bg-card/85 p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-md">
-			<div className="pointer-events-none absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
-			<div className="flex gap-3">
-				<div
-					className={cn(
-						"flex size-10 shrink-0 items-center justify-center rounded-xl ring-1 ring-inset ring-black/5 dark:ring-white/10",
-						categoryStyle.tile,
-					)}
-				>
-					<ToolIcon className="size-4.5" aria-hidden="true" />
+		<article className="group relative min-h-full overflow-hidden rounded-2xl border border-border/45 bg-card/48 p-4 shadow-[inset_0_1px_0_oklch(1_0_0_/_0.16)] backdrop-blur-md transition-[border-color,background-color,transform] duration-200 hover:-translate-y-px hover:border-foreground/12 hover:bg-card/62">
+			<div className="pointer-events-none absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-foreground/18 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+			<div className="flex items-start gap-3.5">
+				<div className="flex size-9 shrink-0 items-center justify-center rounded-2xl border border-border/45 bg-background/44 text-foreground/72 shadow-[inset_0_1px_0_oklch(1_0_0_/_0.18)]">
+					<ToolIcon className="size-4" aria-hidden="true" />
 				</div>
 				<div className="min-w-0 flex-1">
-					<div className="flex flex-wrap items-start justify-between gap-2">
-						<h4 className="text-sm font-semibold leading-tight">
-							{tool.displayName}
-						</h4>
+					<div className="flex items-start justify-between gap-3">
+						<div className="min-w-0">
+							<p className="mb-1 text-[0.64rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground/72">
+								{categoryLabel}
+							</p>
+							<h4 className="truncate text-sm font-semibold leading-tight tracking-[-0.015em] text-foreground/92">
+								{tool.displayName}
+							</h4>
+						</div>
 						<RiskBadge riskLevel={tool.riskLevel} label={riskLabel} />
 					</div>
-					<p className="mt-1.5 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+					<p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted-foreground/82">
 						{tool.description}
 					</p>
-					{needsApproval ? (
-						<p className="mt-2.5 flex items-center gap-1.5 text-xs font-medium text-amber-700 dark:text-amber-300">
-							<ShieldCheckIcon className="size-3.5 shrink-0" aria-hidden="true" />
-							{approvalLabel}
-						</p>
-					) : null}
+					<div className="mt-3 flex items-center justify-between gap-3">
+						<code className="truncate text-[0.68rem] text-muted-foreground/62">
+							{tool.name}
+						</code>
+						{needsApproval ? (
+							<span className="flex shrink-0 items-center gap-1.5 text-[0.68rem] font-medium text-muted-foreground">
+								<ShieldCheckIcon className="size-3.5" aria-hidden="true" />
+								{approvalLabel}
+							</span>
+						) : null}
+					</div>
 				</div>
 			</div>
 		</article>
@@ -201,25 +174,25 @@ function StatCard({
 	tone?: "default" | "low" | "medium" | "high";
 }) {
 	const toneClass =
-		tone === "low"
-			? "border-emerald-500/20 bg-emerald-500/[0.06]"
+		tone === "high"
+			? "text-destructive"
 			: tone === "medium"
-				? "border-amber-500/20 bg-amber-500/[0.06]"
-				: tone === "high"
-					? "border-destructive/25 bg-destructive/[0.06]"
-					: "border-border/70 bg-muted/25";
+				? "text-amber-700 dark:text-amber-300"
+				: tone === "low"
+					? "text-emerald-700 dark:text-emerald-300"
+					: "text-foreground";
 
 	return (
-		<div
-			className={cn(
-				"rounded-xl border px-3 py-2.5 transition-colors",
-				toneClass,
-			)}
-		>
-			<p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+		<div className="rounded-2xl border border-border/42 bg-background/34 px-3.5 py-3 shadow-[inset_0_1px_0_oklch(1_0_0_/_0.14)] backdrop-blur-sm">
+			<p className="text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground/72">
 				{label}
 			</p>
-			<p className="mt-0.5 text-2xl font-semibold tabular-nums leading-none">
+			<p
+				className={cn(
+					"mt-1 text-2xl font-semibold tabular-nums leading-none tracking-[-0.04em]",
+					toneClass,
+				)}
+			>
 				{value}
 			</p>
 		</div>
@@ -297,60 +270,54 @@ export function BuiltinToolsPanel() {
 
 	return (
 		<div className="space-y-5 animate-in-up">
-			<section className="relative overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-br from-card via-card to-primary/[0.04] p-5 shadow-sm sm:p-6">
-				<div
-					className="pointer-events-none absolute -right-8 -top-10 size-40 rounded-full bg-primary/10 blur-3xl"
-					aria-hidden="true"
-				/>
-				<div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-					<div className="max-w-2xl space-y-2">
-						<div className="flex items-center gap-2 text-primary">
-							<div className="flex size-8 items-center justify-center rounded-lg bg-primary/10">
-								<WrenchIcon className="size-4" aria-hidden="true" />
-							</div>
-							<p className="text-xs font-semibold uppercase tracking-[0.16em]">
+			<section className="glass-panel relative overflow-hidden rounded-3xl p-5 sm:p-6">
+				<div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-end">
+					<div className="max-w-2xl space-y-3">
+						<div className="inline-flex items-center gap-2 rounded-full border border-border/45 bg-background/36 px-3 py-1 text-muted-foreground shadow-[inset_0_1px_0_oklch(1_0_0_/_0.14)]">
+							<WrenchIcon className="size-3.5" aria-hidden="true" />
+							<p className="text-[0.66rem] font-semibold uppercase tracking-[0.18em]">
 								{t("eyebrow")}
 							</p>
 						</div>
-						<h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
+						<h2 className="max-w-xl text-2xl font-semibold tracking-[-0.045em] text-foreground/92 sm:text-3xl">
 							{t("title")}
 						</h2>
-						<p className="text-sm leading-relaxed text-muted-foreground">
+						<p className="max-w-xl text-sm leading-relaxed text-muted-foreground/82">
 							{t("description")}
 						</p>
+						<Button variant="outline" size="sm" className="mt-1 w-fit" asChild>
+							<Link href="/agents">{t("enableCta")}</Link>
+						</Button>
 					</div>
-					<Button variant="outline" size="sm" className="w-fit shrink-0" asChild>
-						<Link href="/agents">{t("enableCta")}</Link>
-					</Button>
-				</div>
-				<div className="relative mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-					<StatCard label={t("stats.total")} value={stats.total} />
-					<StatCard label={t("stats.low")} value={stats.low} tone="low" />
-					<StatCard label={t("stats.medium")} value={stats.medium} tone="medium" />
-					<StatCard label={t("stats.high")} value={stats.high} tone="high" />
+					<div className="grid grid-cols-2 gap-2.5">
+						<StatCard label={t("stats.total")} value={stats.total} />
+						<StatCard label={t("stats.low")} value={stats.low} tone="low" />
+						<StatCard label={t("stats.medium")} value={stats.medium} tone="medium" />
+						<StatCard label={t("stats.high")} value={stats.high} tone="high" />
+					</div>
 				</div>
 			</section>
 
-			<section className="space-y-3 rounded-2xl border border-border/70 bg-card/75 p-4 shadow-sm sm:p-5">
+			<section className="glass-panel rounded-3xl p-3.5 sm:p-4">
 				<div className="flex flex-col gap-3 lg:flex-row lg:items-center">
 					<div className="relative min-w-0 flex-1">
 						<SearchIcon
-							className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+							className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground/70"
 							aria-hidden="true"
 						/>
 						<Input
 							value={search}
 							onChange={(event) => setSearch(event.target.value)}
 							placeholder={t("searchPlaceholder")}
-							className="h-10 rounded-xl border-border/70 bg-background/80 pl-9"
+							className="h-10 border-border/45 bg-background/32 pl-9"
 							aria-label={t("searchPlaceholder")}
 						/>
 					</div>
-					<p className="shrink-0 text-xs text-muted-foreground lg:text-right">
+					<p className="shrink-0 px-1 text-xs text-muted-foreground/72 lg:text-right">
 						{t("resultsCount", { count: filteredTools.length })}
 					</p>
 				</div>
-				<div className="flex flex-wrap gap-2">
+				<div className="mt-3 flex flex-wrap gap-2">
 					<Button
 						type="button"
 						size="sm"
@@ -361,8 +328,7 @@ export function BuiltinToolsPanel() {
 						{t("allCategories")}
 					</Button>
 					{categories.map((category) => {
-						const style = CATEGORY_STYLES[category];
-						const CategoryIcon = style.icon;
+						const CategoryIcon = CATEGORY_STYLES[category].icon;
 						const active = categoryFilter === category;
 						return (
 							<Button
@@ -373,8 +339,8 @@ export function BuiltinToolsPanel() {
 								className={cn(
 									"h-8 gap-1.5 rounded-full border px-3 text-xs",
 									active
-										? style.chip
-										: "border-border/70 bg-background/60 text-muted-foreground hover:text-foreground",
+										? "border-foreground/16 bg-foreground/8 text-foreground"
+										: "border-border/45 bg-background/28 text-muted-foreground hover:bg-muted/45 hover:text-foreground",
 								)}
 								onClick={() => setCategoryFilter(category)}
 							>
@@ -393,30 +359,25 @@ export function BuiltinToolsPanel() {
 					description={t("noResultsHint")}
 				/>
 			) : (
-				<div className="space-y-6">
+				<div className="space-y-7">
 					{groupedTools.map((group) => {
-						const style = isToolCategory(group.category)
-							? CATEGORY_STYLES[group.category]
-							: CATEGORY_STYLES.Think;
-						const CategoryIcon = style.icon;
+						const CategoryIcon = isToolCategory(group.category)
+							? CATEGORY_STYLES[group.category].icon
+							: CATEGORY_STYLES.Think.icon;
 						const showHeader = categoryFilter === "all";
+						const label = categoryLabel(group.category);
 
 						return (
 							<section key={group.category} className="space-y-3">
 								{showHeader ? (
 									<div className="flex items-center gap-2.5 px-1">
-										<div
-											className={cn(
-												"flex size-7 items-center justify-center rounded-lg",
-												style.tile,
-											)}
-										>
+										<div className="flex size-7 items-center justify-center rounded-xl border border-border/42 bg-background/36 text-muted-foreground">
 											<CategoryIcon className="size-3.5" aria-hidden="true" />
 										</div>
-										<h3 className="text-sm font-semibold">
-											{categoryLabel(group.category)}
+										<h3 className="text-sm font-semibold tracking-[-0.02em] text-foreground/88">
+											{label}
 										</h3>
-										<span className="text-xs text-muted-foreground">
+										<span className="rounded-full bg-muted/42 px-2 py-0.5 text-[0.68rem] text-muted-foreground">
 											{group.tools.length}
 										</span>
 									</div>
@@ -428,6 +389,7 @@ export function BuiltinToolsPanel() {
 												tool={tool}
 												riskLabel={riskLabels[tool.riskLevel]}
 												approvalLabel={t("requiresApproval")}
+												categoryLabel={label}
 											/>
 										</li>
 									))}
