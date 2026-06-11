@@ -1,7 +1,7 @@
 "use client";
 
 import { Link } from "@/i18n/navigation";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore, type ComponentProps } from "react";
 import {
 	BotIcon,
 	MessageSquarePlusIcon,
@@ -43,8 +43,12 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
+const HISTORY_OPEN_STORAGE_KEY = "chat-history-sidebar-open";
+const LEGACY_HISTORY_OPEN_STORAGE_KEY = "chat-sidebar-open";
+const HISTORY_OPEN_STORAGE_EVENT = "chat-history-sidebar-open-change";
 const HISTORY_WIDTH_STORAGE_KEY = "chat-history-sidebar-width";
 const HISTORY_WIDTH_STORAGE_EVENT = "chat-history-sidebar-width-change";
+const DEFAULT_HISTORY_OPEN = false;
 const DEFAULT_HISTORY_WIDTH = 320;
 const MIN_HISTORY_WIDTH = 260;
 const MAX_HISTORY_WIDTH = 480;
@@ -54,6 +58,29 @@ function clampHistoryWidth(value: number) {
 		MAX_HISTORY_WIDTH,
 		Math.max(MIN_HISTORY_WIDTH, Math.round(value)),
 	);
+}
+
+function subscribeHistoryOpen(callback: () => void) {
+	window.addEventListener("storage", callback);
+	window.addEventListener(HISTORY_OPEN_STORAGE_EVENT, callback);
+	return () => {
+		window.removeEventListener("storage", callback);
+		window.removeEventListener(HISTORY_OPEN_STORAGE_EVENT, callback);
+	};
+}
+
+function getStoredHistoryOpen(): boolean {
+	const stored =
+		window.localStorage.getItem(HISTORY_OPEN_STORAGE_KEY) ??
+		window.localStorage.getItem(LEGACY_HISTORY_OPEN_STORAGE_KEY);
+	if (stored === null) return DEFAULT_HISTORY_OPEN;
+	return stored === "true";
+}
+
+function setStoredHistoryOpen({ open }: { open: boolean }) {
+	window.localStorage.setItem(HISTORY_OPEN_STORAGE_KEY, String(open));
+	window.localStorage.removeItem(LEGACY_HISTORY_OPEN_STORAGE_KEY);
+	window.dispatchEvent(new Event(HISTORY_OPEN_STORAGE_EVENT));
 }
 
 function subscribeHistoryWidth(callback: () => void) {
@@ -80,6 +107,10 @@ function setStoredHistoryWidth(width: number) {
 	);
 	window.dispatchEvent(new Event(HISTORY_WIDTH_STORAGE_EVENT));
 }
+
+type ChatSidebarCollapsedChangeHandler = NonNullable<
+	ComponentProps<typeof ChatSidebar>["onCollapsedChange"]
+>;
 
 interface ChatLayoutProps {
 	agents: ChatAgent[];
@@ -115,7 +146,11 @@ export function ChatLayout({
 }: ChatLayoutProps) {
 	const shell = useWorkspaceShell();
 	const [setupOpen, setSetupOpen] = useState(false);
-	const [sidebarOpen, setSidebarOpen] = useState(false);
+	const sidebarOpen = useSyncExternalStore(
+		subscribeHistoryOpen,
+		getStoredHistoryOpen,
+		() => DEFAULT_HISTORY_OPEN,
+	);
 	const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 	const [resizingSidebar, setResizingSidebar] = useState(false);
 	const sidebarWidth = useSyncExternalStore(
@@ -124,16 +159,8 @@ export function ChatLayout({
 		() => DEFAULT_HISTORY_WIDTH,
 	);
 
-	useEffect(() => {
-		const stored = window.localStorage.getItem("chat-sidebar-open");
-		if (stored) {
-			queueMicrotask(() => setSidebarOpen(stored === "true"));
-		}
-	}, []);
-
-	function updateSidebarOpen(open: boolean) {
-		setSidebarOpen(open);
-		window.localStorage.setItem("chat-sidebar-open", String(open));
+	function updateSidebarOpen({ open }: { open: boolean }) {
+		setStoredHistoryOpen({ open });
 	}
 
 	function startSidebarResize(event: React.PointerEvent<HTMLDivElement>) {
@@ -177,9 +204,12 @@ export function ChatLayout({
 		collapsed: false,
 		onCollapsedChange: undefined,
 	};
+	const handleDesktopSidebarCollapsedChange = ((collapsed) => {
+		updateSidebarOpen({ open: !collapsed });
+	}) satisfies ChatSidebarCollapsedChangeHandler;
 	const desktopSidebarProps = {
 		...sidebarProps,
-		onCollapsedChange: (collapsed: boolean) => updateSidebarOpen(!collapsed),
+		onCollapsedChange: handleDesktopSidebarCollapsedChange,
 	};
 	const mobileSidebarProps = {
 		...sidebarProps,
@@ -288,7 +318,7 @@ export function ChatLayout({
 								aria-label={
 									sidebarOpen ? "Close conversations" : "Open conversations"
 								}
-								onClick={() => updateSidebarOpen(!sidebarOpen)}
+								onClick={() => updateSidebarOpen({ open: !sidebarOpen })}
 							>
 								{sidebarOpen ? (
 									<PanelLeftCloseIcon className="size-4" aria-hidden="true" />

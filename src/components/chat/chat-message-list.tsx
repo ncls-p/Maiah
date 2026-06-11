@@ -49,12 +49,34 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
 const STREAMING_TEXT_ANIMATION = {
-	animation: "tokenFadeIn",
-	duration: 340,
-	easing: "cubic-bezier(0.16, 1, 0.3, 1)",
+	animation: "softReveal",
+	duration: 220,
+	easing: "cubic-bezier(0.2, 0, 0, 1)",
 	sep: "word",
-	stagger: 12,
+	stagger: 3,
 } satisfies AnimateOptions;
+
+function StreamingThinking() {
+	return (
+		<div className="streaming-thinking" aria-label="Assistant is thinking">
+			<span className="streaming-thinking__text">Thinking</span>
+			<span className="streaming-thinking__dots" aria-hidden="true">
+				<span />
+				<span />
+				<span />
+			</span>
+		</div>
+	);
+}
+
+function StreamingStatus() {
+	return (
+		<span className="streaming-status" aria-label="Assistant is generating">
+			<span className="streaming-status__dot" aria-hidden="true" />
+			<span>Generating</span>
+		</span>
+	);
+}
 
 function stringifyForMatch(value: unknown) {
 	try {
@@ -727,30 +749,47 @@ function SuggestionsPart({
 	);
 }
 
-function ThinkingPart({ part }: { part: ChatMessagePart }) {
+function ThinkingPart({
+	part,
+	isStreaming = false,
+}: {
+	part: ChatMessagePart;
+	isStreaming?: boolean;
+}) {
 	const [open, setOpen] = useState(false);
-	const preview = part.content.trim().slice(0, 180);
+	const content = part.content.trim();
 
 	return (
 		<Collapsible
 			open={open}
 			onOpenChange={setOpen}
-			className="overflow-hidden rounded-xl border border-border/50 bg-muted/35 text-xs"
+			className={cn(
+				"overflow-hidden rounded-xl border text-xs transition-colors duration-200",
+				isStreaming
+					? "border-primary/25 bg-primary/5"
+					: "border-border/50 bg-muted/25",
+			)}
 		>
-			<div className="flex items-start gap-3 px-3 py-2.5">
-				<div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md border border-border/60 bg-background/70 text-muted-foreground">
-					<BrainIcon className="size-4" aria-hidden="true" />
+			<div className="flex items-center gap-3 px-3 py-2.5">
+				<div className="flex size-7 shrink-0 items-center justify-center rounded-md border border-border/60 bg-background/70 text-muted-foreground">
+					{isStreaming ? (
+						<BrainIcon className="size-4" aria-hidden="true" />
+					) : (
+						<CheckCircle2Icon
+							className="size-4 text-success"
+							aria-hidden="true"
+						/>
+					)}
 				</div>
 				<div className="min-w-0 flex-1">
 					<div className="flex items-center gap-2">
 						<span className="font-medium text-foreground">
-							Assistant is reasoning
+							{isStreaming ? "Reasoning…" : "Reasoning complete"}
 						</span>
-						<span className="size-1.5 rounded-full bg-primary/70 animate-pulse" />
+						{isStreaming ? (
+							<span className="streaming-status__dot" aria-hidden="true" />
+						) : null}
 					</div>
-					{preview ? (
-						<p className="mt-1 line-clamp-2 text-muted-foreground">{preview}</p>
-					) : null}
 				</div>
 				<CollapsibleTrigger asChild>
 					<Button
@@ -766,17 +805,23 @@ function ThinkingPart({ part }: { part: ChatMessagePart }) {
 							)}
 							aria-hidden="true"
 						/>
-						{open ? "Hide" : "Notes"}
+						{open ? "Hide" : "View"}
 					</Button>
 				</CollapsibleTrigger>
 			</div>
 			<CollapsibleContent>
-				<Streamdown
-					plugins={{ code }}
-					className="border-t border-border/50 bg-background/50 px-3 py-2.5 text-xs leading-5 text-muted-foreground"
-				>
-					{part.content}
-				</Streamdown>
+				{content ? (
+					<Streamdown
+						plugins={{ code }}
+						className="border-t border-border/50 bg-background/40 px-3 py-2.5 text-xs leading-5 text-muted-foreground"
+					>
+						{content}
+					</Streamdown>
+				) : (
+					<div className="border-t border-border/50 bg-background/40 px-3 py-2.5 text-xs leading-5 text-muted-foreground">
+						Reasoning is starting…
+					</div>
+				)}
 			</CollapsibleContent>
 		</Collapsible>
 	);
@@ -890,6 +935,7 @@ const MessageContent = memo(function MessageContent({
 							<ThinkingPart
 								key={`${message.id}-${part.type}-${partIndex}`}
 								part={part}
+								isStreaming={isAnimating}
 							/>
 						);
 					}
@@ -917,14 +963,18 @@ const MessageContent = memo(function MessageContent({
 					);
 				})
 			) : standaloneApprovals.length === 0 ? (
-				<Streamdown
-					plugins={{ code }}
-					isAnimating={isAnimating}
-					animated={isAnimating ? STREAMING_TEXT_ANIMATION : false}
-					className="streaming-markdown text-sm"
-				>
-					{content || "Thinking…"}
-				</Streamdown>
+				content ? (
+					<Streamdown
+						plugins={{ code }}
+						isAnimating={isAnimating}
+						animated={isAnimating ? STREAMING_TEXT_ANIMATION : false}
+						className="streaming-markdown text-sm"
+					>
+						{content}
+					</Streamdown>
+				) : isAnimating ? (
+					<StreamingThinking />
+				) : null
 			) : null}
 		</div>
 	);
@@ -1026,7 +1076,7 @@ export function ChatMessageList({
 									className={cn(
 										"flex size-6 items-center justify-center rounded-full text-[10px] font-bold shadow-sm",
 										isAssistant
-											? "bg-primary/15 text-primary ring-1 ring-primary/20"
+											? "assistant-avatar bg-primary/15 text-primary ring-1 ring-primary/20"
 											: "bg-muted text-muted-foreground",
 									)}
 								>
@@ -1111,12 +1161,7 @@ export function ChatMessageList({
 											minute: "2-digit",
 										})}
 									</span>
-									{message.status === "streaming" && (
-										<span className="flex items-center gap-1">
-											<span className="size-1 rounded-full bg-primary/60 animate-pulse" />
-											<span>typing</span>
-										</span>
-									)}
+									{message.status === "streaming" ? <StreamingStatus /> : null}
 								</div>
 							)}
 
