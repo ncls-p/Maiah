@@ -137,10 +137,16 @@ describe("current_time tool", () => {
 
 describe("web_search tool", () => {
 	it("queries SearXNG and normalizes results", async () => {
-		const fetchMock = vi.fn(async (url: string | URL) => {
+		const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
 			expect(String(url)).toContain("/search?");
 			expect(String(url)).toContain("format=json");
 			expect(String(url)).toContain("q=ai+hub");
+			expect(init?.headers).toMatchObject({
+				Accept: "application/json",
+				"X-Forwarded-For": "127.0.0.1",
+				"X-Real-IP": "127.0.0.1",
+				"User-Agent": "ai-hub-web-search/1.0",
+			});
 			return new Response(
 				JSON.stringify({
 					results: [

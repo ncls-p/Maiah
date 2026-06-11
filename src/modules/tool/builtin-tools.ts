@@ -211,6 +211,15 @@ function todaySearchSuffix() {
 	return `today ${new Date().toISOString().slice(0, 10)}`;
 }
 
+function searxngRequestHeaders() {
+	return {
+		Accept: "application/json",
+		"X-Forwarded-For": "127.0.0.1",
+		"X-Real-IP": "127.0.0.1",
+		"User-Agent": "ai-hub-web-search/1.0",
+	};
+}
+
 async function searchWebWithSearxng(
 	input: z.infer<typeof webSearchInputSchema>,
 ) {
@@ -224,7 +233,7 @@ async function searchWebWithSearxng(
 	if (input.language) url.searchParams.set("language", input.language);
 
 	const response = await fetch(url, {
-		headers: { Accept: "application/json" },
+		headers: searxngRequestHeaders(),
 		signal: AbortSignal.timeout(15_000),
 	});
 	if (!response.ok) {
