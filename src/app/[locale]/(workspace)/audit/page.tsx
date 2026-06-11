@@ -92,7 +92,10 @@ export default function AuditPage() {
 
 	useEffect(() => {
 		if (!workspaceId) return;
-		void loadEvents();
+		const timeout = window.setTimeout(() => {
+			void loadEvents();
+		}, 0);
+		return () => window.clearTimeout(timeout);
 	}, [loadEvents, workspaceId]);
 
 	if (workspaceLoading || !workspaceId) {

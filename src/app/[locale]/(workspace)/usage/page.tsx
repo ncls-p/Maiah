@@ -65,7 +65,10 @@ export default function UsagePage() {
 
 	useEffect(() => {
 		if (!workspaceId) return;
-		void loadUsage();
+		const timeout = window.setTimeout(() => {
+			void loadUsage();
+		}, 0);
+		return () => window.clearTimeout(timeout);
 	}, [loadUsage, workspaceId]);
 
 	if (workspaceLoading || !workspaceId) {

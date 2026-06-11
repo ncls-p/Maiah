@@ -188,12 +188,29 @@ Other targets:
 - `runner` — Next.js standalone app
 - `worker` — background worker process
 - `migrator` — database migrations
+- `garage` / `garage-init` — single-node S3-compatible object storage used by Compose
+- `dev` — optional containerized Next.js development server
 
-Production compose:
+Production compose mirrors the existing Coolify layout used by the sibling
+projects, but this repository deploys as one web app: Postgres + DragonflyDB +
+Garage + SearXNG + one-shot `garage-init` + one-shot `migrate` + standalone app
++ worker. The default production browser origin is `https://maiah.shiftify.eco`.
 
 ```bash
 docker compose -f docker-compose.prod.yml up -d --build
 ```
+
+For Coolify/GitHub Actions, `.coolify/stack.compose.yml` is the deployment-safe
+image-based stack and `.github/workflows/coolify.yml` builds/pushes the app,
+worker, migrator, Garage, and Garage init images before patching the single
+`ai-hub` Coolify service.
+
+Required Coolify secrets/variables include `POSTGRES_PASSWORD`,
+`BETTER_AUTH_SECRET`, `APP_ENCRYPTION_KEY`, `DRAGONFLY_PASSWORD`,
+`OBJECT_STORAGE_ACCESS_KEY_ID`, and `OBJECT_STORAGE_SECRET_ACCESS_KEY`. For the
+bundled Garage service, use a `GK...` access key and a 64-character hexadecimal
+secret. Override `AI_HUB_PROD_APP_PORT` if the host port must differ from the
+safe default `3001` for the local production compose file.
 
 ## Phase Roadmap
 

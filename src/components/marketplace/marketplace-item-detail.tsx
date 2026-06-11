@@ -99,7 +99,9 @@ function AgentManifestSection({ manifest }: { manifest: MarketplaceManifest }) {
 			<div className="grid gap-3 sm:grid-cols-2">
 				<InfoRow
 					label={t("provider")}
-					value={manifest.agent.providerName ?? manifest.agent.providerId ?? "—"}
+					value={
+						manifest.agent.providerName ?? manifest.agent.providerId ?? "—"
+					}
 				/>
 				<InfoRow
 					label={t("model")}
@@ -182,7 +184,9 @@ function AgentManifestSection({ manifest }: { manifest: MarketplaceManifest }) {
 							<li key={kb.name}>
 								<span className="font-medium">{kb.name}</span>
 								{kb.description ? (
-									<p className="text-xs text-muted-foreground">{kb.description}</p>
+									<p className="text-xs text-muted-foreground">
+										{kb.description}
+									</p>
 								) : null}
 							</li>
 						))}
@@ -203,14 +207,29 @@ function AgentManifestSection({ manifest }: { manifest: MarketplaceManifest }) {
 	);
 }
 
+type SkillMarketplaceManifest = Extract<MarketplaceManifest, { type: "skill" }>;
+
 function SkillManifestSection({ manifest }: { manifest: MarketplaceManifest }) {
 	const t = useTranslations("marketplace.manifest");
 
 	if (manifest.type !== "skill") return null;
+
+	return <SkillManifestDetails manifest={manifest} t={t} />;
+}
+
+function SkillManifestDetails({
+	manifest,
+	t,
+}: {
+	manifest: SkillMarketplaceManifest;
+	t: ReturnType<typeof useTranslations>;
+}) {
 	const [selectedFile, setSelectedFile] = useState(
 		manifest.skill.markdownFiles[0]?.path ?? "",
 	);
-	const file = manifest.skill.markdownFiles.find((f) => f.path === selectedFile);
+	const file = manifest.skill.markdownFiles.find(
+		(f) => f.path === selectedFile,
+	);
 	return (
 		<div className="space-y-4">
 			<div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
@@ -357,7 +376,10 @@ function McpManifestSection({ manifest }: { manifest: MarketplaceManifest }) {
 					</Badge>
 				) : null}
 			</div>
-			<InfoRow label={t("endpoint")} value={preset.url ?? preset.command ?? "—"} />
+			<InfoRow
+				label={t("endpoint")}
+				value={preset.url ?? preset.command ?? "—"}
+			/>
 			{preset.args?.length ? (
 				<InfoRow label={t("args")} value={preset.args.join(" ")} />
 			) : null}
@@ -440,10 +462,10 @@ function CollapsibleSection({
 
 export function MarketplaceItemDetailSections({
 	item,
-	onUnshare,
+	onUnshareAction,
 }: {
 	item: MarketplaceItemDetailData;
-	onUnshare?: (userId: string) => void;
+	onUnshareAction?: (userId: string) => void;
 }) {
 	const t = useTranslations("marketplace.detail");
 	const manifest = item.latestVersion?.manifestJson;
@@ -501,13 +523,15 @@ export function MarketplaceItemDetailSections({
 								>
 									<div>
 										<p className="font-medium">{share.name}</p>
-										<p className="text-xs text-muted-foreground">{share.email}</p>
+										<p className="text-xs text-muted-foreground">
+											{share.email}
+										</p>
 									</div>
-									{onUnshare ? (
+									{onUnshareAction ? (
 										<Button
 											size="sm"
 											variant="ghost"
-											onClick={() => onUnshare(share.userId)}
+											onClick={() => onUnshareAction(share.userId)}
 										>
 											{t("removeShare")}
 										</Button>

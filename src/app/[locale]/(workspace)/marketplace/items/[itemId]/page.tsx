@@ -3,13 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter, Link } from "@/i18n/navigation";
-import {
-	ArrowLeft,
-	PackagePlus,
-	Share2,
-	Star,
-	Tag,
-} from "lucide-react";
+import { ArrowLeft, PackagePlus, Share2, Star, Tag } from "lucide-react";
 import { toast } from "sonner";
 import {
 	MarketplaceItemDetailSections,
@@ -35,7 +29,10 @@ import {
 	CardTitle,
 } from "@/components/ui/card";
 import { useWorkspace } from "@/hooks/use-workspace";
-import { ItemIcon, getItemLabel } from "@/components/marketplace/marketplace-shared";
+import {
+	ItemIcon,
+	getItemLabel,
+} from "@/components/marketplace/marketplace-shared";
 
 export default function MarketplaceItemPage({
 	params,
@@ -53,11 +50,14 @@ export default function MarketplaceItemPage({
 		null,
 	);
 
-	const loadItem = useCallback(async (itemId: string) => {
-		const res = await fetch(`/api/marketplace/items/${itemId}`);
-		if (!res.ok) throw new Error(tDetail("toast.loadFailed"));
-		return (await res.json()) as MarketplaceItemDetailData;
-	}, [tDetail]);
+	const loadItem = useCallback(
+		async (itemId: string) => {
+			const res = await fetch(`/api/marketplace/items/${itemId}`);
+			if (!res.ok) throw new Error(tDetail("toast.loadFailed"));
+			return (await res.json()) as MarketplaceItemDetailData;
+		},
+		[tDetail],
+	);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -68,7 +68,9 @@ export default function MarketplaceItemPage({
 			} catch (error) {
 				if (!cancelled) {
 					toast.error(
-						error instanceof Error ? error.message : tDetail("toast.loadFailed"),
+						error instanceof Error
+							? error.message
+							: tDetail("toast.loadFailed"),
 					);
 					router.push("/marketplace");
 				}
@@ -271,7 +273,7 @@ export default function MarketplaceItemPage({
 
 				<MarketplaceItemDetailSections
 					item={item}
-					onUnshare={item.isOwner ? handleUnshare : undefined}
+					onUnshareAction={item.isOwner ? handleUnshare : undefined}
 				/>
 			</div>
 

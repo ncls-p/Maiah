@@ -1,16 +1,18 @@
+name: ai-hub-dev
+
 services:
   postgres:
     image: pgvector/pgvector:pg16
     ports:
-      - "15432:5432"
+      - "${AI_HUB_DEV_POSTGRES_PORT:-15432}:5432"
     environment:
       POSTGRES_DB: ai_hub
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     volumes:
-      - postgres_dev:/var/lib/postgresql/data
+      - postgres-dev-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ai_hub"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -18,9 +20,9 @@ services:
   dragonflydb:
     image: docker.dragonflydb.io/dragonflydb/dragonfly
     ports:
-      - "16379:6379"
+      - "${AI_HUB_DEV_DRAGONFLY_PORT:-16379}:6379"
     volumes:
-      - dragonfly_dev:/data
+      - dragonfly-dev-data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -28,46 +30,79 @@ services:
       retries: 10
 
   garage:
-    image: rustfs/rustfs:latest
-    command: server /data --address ":9000" --console-address ":9001"
+    build:
+      context: .
+      target: garage
+    restart: unless-stopped
+    command: ["/garage", "-c", "/etc/garage.toml", "server"]
     ports:
-      - "13900:9000"
-      - "13901:9001"
+      - "${AI_HUB_DEV_GARAGE_S3_PORT:-13900}:3900"
     volumes:
-      - garage_data_dev:/data
-    environment:
-      RUSTFS_ACCESS_KEY: minioadmin
-      RUSTFS_SECRET_KEY: minioadmin
+      - garage-dev-meta:/var/lib/garage/meta
+      - garage-dev-data:/var/lib/garage/data
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
-      interval: 10s
+      test: ["CMD", "/garage", "-c", "/etc/garage.toml", "node", "id"]
+      interval: 5s
       timeout: 5s
-      retries: 10
+      retries: 20
 
   garage-init:
-    image: minio/mc:latest
+    build:
+      context: .
+      target: garage-init
     depends_on:
       garage:
         condition: service_healthy
-    entrypoint: >
-      sh -c "
-        mc alias set local http://garage:9000 minioadmin minioadmin &&
-        mc mb --ignore-existing local/ai-hub &&
-        echo 'Object storage bucket initialized'
-      "
     restart: "no"
+    environment:
+      GARAGE_ACCESS_KEY_ID: ${OBJECT_STORAGE_ACCESS_KEY_ID:-GK0123456789abcdef01234567}
+      GARAGE_BUCKET: ${OBJECT_STORAGE_BUCKET:-ai-hub}
+      GARAGE_SECRET_ACCESS_KEY: ${OBJECT_STORAGE_SECRET_ACCESS_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+    volumes:
+      - garage-dev-meta:/var/lib/garage/meta:ro
+    command:
+      - /bin/sh
+      - -c
+      - |
+        set -eu
+        if ! printf '%s' "$$GARAGE_ACCESS_KEY_ID" | grep -Eq '^GK[[:alnum:]]{24,}$$'; then
+          echo "GARAGE_ACCESS_KEY_ID must be a real Garage access key, for example GK followed by at least 24 alphanumeric characters." >&2
+          exit 1
+        fi
+        if ! printf '%s' "$$GARAGE_SECRET_ACCESS_KEY" | grep -Eq '^[[:xdigit:]]{64}$$'; then
+          echo "GARAGE_SECRET_ACCESS_KEY must be a 64-character hexadecimal secret." >&2
+          exit 1
+        fi
+        NODE_ID=""
+        for attempt in $$(seq 1 10); do
+          NODE_ID="$(/garage -c /etc/garage.toml node id 2>/dev/null | sed -n 's/^\([0-9a-f][0-9a-f]*\)@.*/\1/p' | head -n 1)"
+          if [ -n "$$NODE_ID" ]; then
+            break
+          fi
+          sleep 1
+        done
+        if [ -z "$$NODE_ID" ]; then
+          echo "Unable to determine Garage node ID" >&2
+          exit 1
+        fi
+        /garage -c /etc/garage.toml layout assign -z dc1 -c 1G "$$NODE_ID" >/dev/null 2>&1 || true
+        /garage -c /etc/garage.toml layout apply --version 1 >/dev/null 2>&1 || true
+        /garage -c /etc/garage.toml bucket create "$$GARAGE_BUCKET" >/dev/null 2>&1 || true
+        /garage -c /etc/garage.toml key import --yes -n ai-hub "$$GARAGE_ACCESS_KEY_ID" "$$GARAGE_SECRET_ACCESS_KEY" >/dev/null 2>&1 || true
+        /garage -c /etc/garage.toml bucket allow --read --write --owner "$$GARAGE_BUCKET" --key "$$GARAGE_ACCESS_KEY_ID"
 
   searxng:
     image: searxng/searxng:latest
     ports:
-      - "18088:8080"
+      - "${AI_HUB_DEV_SEARXNG_PORT:-18088}:8080"
     volumes:
-      - ./searxng:/etc/searxng
+      - ./searxng:/etc/searxng:ro
     environment:
-      SEARXNG_BASE_URL: http://localhost:18088/
+      SEARXNG_BASE_URL: http://localhost:${AI_HUB_DEV_SEARXNG_PORT:-18088}/
     restart: unless-stopped
 
 volumes:
-  postgres_dev:
-  dragonfly_dev:
-  garage_data_dev:
+  postgres-dev-data:
+  dragonfly-dev-data:
+  garage-dev-data:
+  garage-dev-meta:

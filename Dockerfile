@@ -1,54 +1,93 @@
-# ─── Stage 1: Dependencies ───────────────────────────────────────────────
-FROM node:20-alpine AS deps
+FROM dxflrs/garage:v2.1.0 AS garage-binary
+
+FROM garage-binary AS garage
+COPY docker/garage/garage.toml /etc/garage.toml
+
+FROM alpine:3.22 AS garage-init
+COPY --from=garage-binary /garage /garage
+COPY docker/garage/garage.toml /etc/garage.toml
+
+FROM node:22-bookworm-slim AS base
+
 WORKDIR /app
 
-# Install libc6-compat for better Node.js compatibility on Alpine
-RUN apk add --no-cache libc6-compat
+ENV NEXT_TELEMETRY_DISABLED=1
 
-COPY package.json package-lock.json* pnpm-lock.yaml* yarn.lock* ./
-RUN \
-  if [ -f yarn.lock ]; then yarn install --frozen-lockfile; \
-  elif [ -f package-lock.json ]; then npm ci; \
-  elif [ -f pnpm-lock.yaml ]; then corepack enable pnpm && pnpm install --frozen-lockfile; \
-  else echo "No lockfile found." && exit 1; \
-  fi
+FROM base AS deps
+COPY package.json package-lock.json ./
+RUN npm ci
 
-# ─── Stage 2: Build ──────────────────────────────────────────────────────
-FROM node:20-alpine AS builder
-WORKDIR /app
-
-COPY --from=deps /app/node_modules ./node_modules
+FROM deps AS builder
 COPY . .
 
-# Disable Next.js telemetry during build
-ENV NEXT_TELEMETRY_DISABLED=1
+# Build-time placeholders keep the standalone build reproducible without
+# leaking production secrets into the Docker build context. Runtime values are
+# injected by Compose/Coolify.
+ENV NODE_ENV=production \
+    APP_ENV=development \
+    BETTER_AUTH_SECRET=buildtimeonlysecretvalue1234567890 \
+    BETTER_AUTH_URL=http://localhost:3000 \
+    BETTER_AUTH_TRUSTED_ORIGINS=http://localhost:3000 \
+    DATABASE_URL=postgresql://postgres:postgres@localhost:5432/ai_hub \
+    DATABASE_SSL_REJECT_UNAUTHORIZED=disable \
+    APP_ENCRYPTION_KEY=1111111111111111111111111111111111111111111111111111111111111111 \
+    APP_ENCRYPTION_KEY_ID=build \
+    DRAGONFLY_URL=redis://localhost:6379 \
+    DRAGONFLY_PASSWORD=builddragonflypassword \
+    OBJECT_STORAGE_ENDPOINT=http://localhost:3900 \
+    OBJECT_STORAGE_REGION=garage \
+    OBJECT_STORAGE_BUCKET=ai-hub \
+    OBJECT_STORAGE_ACCESS_KEY_ID=build-access-key \
+    OBJECT_STORAGE_SECRET_ACCESS_KEY=buildobjectsecretvalue \
+    OBJECT_STORAGE_FORCE_PATH_STYLE=true \
+    SEARXNG_URL=http://localhost:18088 \
+    ALLOW_PERSONAL_WORKSPACES=true
 
-RUN \
-  if [ -f yarn.lock ]; then yarn run build; \
-  elif [ -f package-lock.json ]; then npm run build; \
-  elif [ -f pnpm-lock.yaml ]; then corepack enable pnpm && pnpm run build; \
-  else echo "No lockfile found." && exit 1; \
-  fi
+RUN npm run build && mkdir -p public
 
-# ─── Stage 3: Runner ─────────────────────────────────────────────────────
-FROM node:20-alpine AS runner
-WORKDIR /app
+FROM deps AS migrator
+COPY . .
+ENV NODE_ENV=production \
+    NEXT_TELEMETRY_DISABLED=1
+CMD ["npm", "run", "db:migrate"]
 
-ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
+FROM deps AS worker
+COPY . .
+ENV NODE_ENV=production \
+    HOSTNAME=0.0.0.0 \
+    NEXT_TELEMETRY_DISABLED=1
+EXPOSE 3001
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 CMD node -e "fetch('http://127.0.0.1:3001/health').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"
+CMD ["npm", "run", "worker"]
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+FROM deps AS dev
+COPY . .
+ENV NODE_ENV=development \
+    HOSTNAME=0.0.0.0 \
+    PORT=3000 \
+    NEXT_TELEMETRY_DISABLED=1
+EXPOSE 3000
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 CMD node -e "fetch('http://127.0.0.1:' + (process.env.PORT || 3000) + '/api/health').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"
+CMD ["npm", "run", "dev"]
 
-# Copy built assets
-COPY --from=builder /app/public ./public
+FROM base AS runner
+
+ENV NODE_ENV=production \
+    HOSTNAME=0.0.0.0 \
+    PORT=3000 \
+    NEXT_TELEMETRY_DISABLED=1
+
+RUN groupadd --system --gid 1001 nodejs \
+  && useradd --system --uid 1001 --gid nodejs nextjs
+
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
 USER nextjs
 
 EXPOSE 3000
-ENV PORT=3000
-ENV HOSTNAME="0.0.0.0"
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 CMD node -e "fetch('http://127.0.0.1:' + (process.env.PORT || 3000) + '/api/health').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"
 
 CMD ["node", "server.js"]

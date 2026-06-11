@@ -1,42 +1,30 @@
-name: ai-hub-prod
-
-x-env-files: &env-files
-  - path: .env
-    required: false
-  - path: .env.local
-    required: false
-
-x-app-environment: &app-environment
-  APP_ENV: production
-  NODE_ENV: production
-  NEXT_TELEMETRY_DISABLED: "1"
-  BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?set BETTER_AUTH_SECRET}
-  BETTER_AUTH_URL: ${BETTER_AUTH_URL:-https://maiah.shiftify.eco}
-  BETTER_AUTH_TRUSTED_ORIGINS: ${BETTER_AUTH_TRUSTED_ORIGINS:-https://maiah.shiftify.eco}
-  DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ai_hub}
-  DATABASE_SSL_REJECT_UNAUTHORIZED: disable
-  APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY:?set APP_ENCRYPTION_KEY}
-  APP_ENCRYPTION_KEY_ID: ${APP_ENCRYPTION_KEY_ID:-default}
-  DRAGONFLY_URL: redis://dragonflydb:6379
-  DRAGONFLY_PASSWORD: ${DRAGONFLY_PASSWORD:?set DRAGONFLY_PASSWORD}
-  OBJECT_STORAGE_ENDPOINT: http://garage:3900
-  OBJECT_STORAGE_REGION: ${OBJECT_STORAGE_REGION:-garage}
-  OBJECT_STORAGE_BUCKET: ${OBJECT_STORAGE_BUCKET:-ai-hub}
-  OBJECT_STORAGE_ACCESS_KEY_ID: ${OBJECT_STORAGE_ACCESS_KEY_ID:?set OBJECT_STORAGE_ACCESS_KEY_ID}
-  OBJECT_STORAGE_SECRET_ACCESS_KEY: ${OBJECT_STORAGE_SECRET_ACCESS_KEY:?set OBJECT_STORAGE_SECRET_ACCESS_KEY}
-  OBJECT_STORAGE_FORCE_PATH_STYLE: "true"
-  SEARXNG_URL: ${SEARXNG_URL:-http://searxng:8080}
-  ALLOW_PERSONAL_WORKSPACES: ${ALLOW_PERSONAL_WORKSPACES:-true}
-  WORKSPACE_MONTHLY_TOKEN_LIMIT: ${WORKSPACE_MONTHLY_TOKEN_LIMIT:-}
+name: ai-hub
 
 services:
   migrate:
-    build:
-      context: .
-      target: migrator
-    env_file: *env-files
-    environment:
-      <<: *app-environment
+    image: ${AI_HUB_MIGRATOR_IMAGE:?set AI_HUB_MIGRATOR_IMAGE}
+    environment: &app-environment
+      APP_ENV: production
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: "1"
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?set BETTER_AUTH_SECRET}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-https://maiah.shiftify.eco}
+      BETTER_AUTH_TRUSTED_ORIGINS: ${BETTER_AUTH_TRUSTED_ORIGINS:-https://maiah.shiftify.eco}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ai_hub}
+      DATABASE_SSL_REJECT_UNAUTHORIZED: disable
+      APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY:?set APP_ENCRYPTION_KEY}
+      APP_ENCRYPTION_KEY_ID: ${APP_ENCRYPTION_KEY_ID:-default}
+      DRAGONFLY_URL: redis://dragonflydb:6379
+      DRAGONFLY_PASSWORD: ${DRAGONFLY_PASSWORD:?set DRAGONFLY_PASSWORD}
+      OBJECT_STORAGE_ENDPOINT: http://garage:3900
+      OBJECT_STORAGE_REGION: ${OBJECT_STORAGE_REGION:-garage}
+      OBJECT_STORAGE_BUCKET: ${OBJECT_STORAGE_BUCKET:-ai-hub}
+      OBJECT_STORAGE_ACCESS_KEY_ID: ${OBJECT_STORAGE_ACCESS_KEY_ID:?set OBJECT_STORAGE_ACCESS_KEY_ID}
+      OBJECT_STORAGE_SECRET_ACCESS_KEY: ${OBJECT_STORAGE_SECRET_ACCESS_KEY:?set OBJECT_STORAGE_SECRET_ACCESS_KEY}
+      OBJECT_STORAGE_FORCE_PATH_STYLE: "true"
+      SEARXNG_URL: ${SEARXNG_URL:-http://searxng:8080}
+      ALLOW_PERSONAL_WORKSPACES: ${ALLOW_PERSONAL_WORKSPACES:-true}
+      WORKSPACE_MONTHLY_TOKEN_LIMIT: ${WORKSPACE_MONTHLY_TOKEN_LIMIT:-}
     depends_on:
       garage-init:
         condition: service_completed_successfully
@@ -45,12 +33,7 @@ services:
     restart: "no"
 
   app:
-    build:
-      context: .
-      target: runner
-    env_file: *env-files
-    ports:
-      - "${AI_HUB_PROD_APP_PORT:-3001}:3000"
+    image: ${AI_HUB_APP_IMAGE:?set AI_HUB_APP_IMAGE}
     environment:
       <<: *app-environment
     depends_on:
@@ -74,10 +57,9 @@ services:
           memory: 512M
     healthcheck:
       test:
-        [
-          "CMD-SHELL",
-          'node -e "fetch(''http://127.0.0.1:'' + (process.env.PORT || 3000) + ''/api/health'').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"',
-        ]
+        - CMD-SHELL
+        - >-
+          node -e "fetch('http://127.0.0.1:' + (process.env.PORT || 3000) + '/api/health').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"
       interval: 30s
       timeout: 5s
       start_period: 30s
@@ -85,10 +67,7 @@ services:
     restart: unless-stopped
 
   worker:
-    build:
-      context: .
-      target: worker
-    env_file: *env-files
+    image: ${AI_HUB_WORKER_IMAGE:?set AI_HUB_WORKER_IMAGE}
     environment:
       <<: *app-environment
     depends_on:
@@ -112,10 +91,9 @@ services:
           memory: 256M
     healthcheck:
       test:
-        [
-          "CMD-SHELL",
-          'node -e "fetch(''http://127.0.0.1:3001/health'').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"',
-        ]
+        - CMD-SHELL
+        - >-
+          node -e "fetch('http://127.0.0.1:3001/health').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"
       interval: 30s
       timeout: 5s
       start_period: 20s
@@ -130,7 +108,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
     volumes:
-      - postgres-prod-data:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql/data
     deploy:
       resources:
         limits:
@@ -141,10 +119,8 @@ services:
           memory: 256M
     healthcheck:
       test:
-        [
-          "CMD-SHELL",
-          "pg_isready -U $${POSTGRES_USER:-postgres} -d $${POSTGRES_DB:-ai_hub}",
-        ]
+        - CMD-SHELL
+        - pg_isready -U $${POSTGRES_USER:-postgres} -d $${POSTGRES_DB:-ai_hub}
       interval: 5s
       timeout: 5s
       retries: 20
@@ -156,7 +132,7 @@ services:
     environment:
       DRAGONFLY_PASSWORD: ${DRAGONFLY_PASSWORD:?set DRAGONFLY_PASSWORD}
     volumes:
-      - dragonfly-prod-data:/data
+      - dragonfly-data:/data
     deploy:
       resources:
         limits:
@@ -167,23 +143,19 @@ services:
           memory: 256M
     healthcheck:
       test:
-        [
-          "CMD-SHELL",
-          'redis-cli -a "$${DRAGONFLY_PASSWORD}" ping | grep -q PONG',
-        ]
+        - CMD-SHELL
+        - redis-cli -a "$${DRAGONFLY_PASSWORD}" ping | grep -q PONG
       interval: 5s
       timeout: 5s
       retries: 20
 
   garage:
-    build:
-      context: .
-      target: garage
+    image: ${AI_HUB_GARAGE_IMAGE:?set AI_HUB_GARAGE_IMAGE}
     restart: unless-stopped
     command: ["/garage", "-c", "/etc/garage.toml", "server"]
     volumes:
-      - garage-prod-meta:/var/lib/garage/meta
-      - garage-prod-data:/var/lib/garage/data
+      - garage-meta:/var/lib/garage/meta
+      - garage-data:/var/lib/garage/data
     deploy:
       resources:
         limits:
@@ -199,9 +171,7 @@ services:
       retries: 20
 
   garage-init:
-    build:
-      context: .
-      target: garage-init
+    image: ${AI_HUB_GARAGE_INIT_IMAGE:?set AI_HUB_GARAGE_INIT_IMAGE}
     depends_on:
       garage:
         condition: service_healthy
@@ -211,7 +181,7 @@ services:
       GARAGE_BUCKET: ${OBJECT_STORAGE_BUCKET:-ai-hub}
       GARAGE_SECRET_ACCESS_KEY: ${OBJECT_STORAGE_SECRET_ACCESS_KEY:?set OBJECT_STORAGE_SECRET_ACCESS_KEY}
     volumes:
-      - garage-prod-meta:/var/lib/garage/meta:ro
+      - garage-meta:/var/lib/garage/meta:ro
     command:
       - /bin/sh
       - -c
@@ -246,13 +216,11 @@ services:
   searxng:
     image: searxng/searxng:latest
     restart: unless-stopped
-    volumes:
-      - ./searxng:/etc/searxng:ro
     environment:
       SEARXNG_BASE_URL: ${SEARXNG_BASE_URL:-http://searxng:8080/}
 
 volumes:
-  dragonfly-prod-data:
-  garage-prod-data:
-  garage-prod-meta:
-  postgres-prod-data:
+  dragonfly-data:
+  garage-data:
+  garage-meta:
+  postgres-data:
