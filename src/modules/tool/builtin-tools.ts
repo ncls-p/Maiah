@@ -162,6 +162,14 @@ type SearxngResult = {
 	score?: unknown;
 };
 
+type NormalizedSearxngResult = {
+	title: string;
+	url: string;
+	snippet: string;
+	score: number | null;
+	engines: string[];
+};
+
 type UnitKind = "length" | "weight" | "data" | "temperature";
 
 const unitFactors: Record<string, { kind: UnitKind; factor: number }> = {
@@ -220,18 +228,7 @@ function searxngRequestHeaders() {
 	};
 }
 
-async function searchWebWithSearxng(
-	input: z.infer<typeof webSearchInputSchema>,
-) {
-	const { env } = await import("@/lib/env");
-	const limit = input.limit ?? 5;
-	const searchedQuery = `${input.query} ${todaySearchSuffix()}`.trim();
-	const url = new URL("/search", env.SEARXNG_URL);
-	url.searchParams.set("q", searchedQuery);
-	url.searchParams.set("format", "json");
-	url.searchParams.set("safesearch", "1");
-	if (input.language) url.searchParams.set("language", input.language);
-
+async function fetchSearxngResults(url: URL) {
 	const response = await fetch(url, {
 		headers: searxngRequestHeaders(),
 		signal: AbortSignal.timeout(15_000),
@@ -243,27 +240,80 @@ async function searchWebWithSearxng(
 	}
 
 	const payload = (await response.json()) as { results?: SearxngResult[] };
-	const results = Array.isArray(payload.results) ? payload.results : [];
+	return Array.isArray(payload.results) ? payload.results : [];
+}
+
+function normalizeSearxngResults(
+	results: SearxngResult[],
+	limit: number,
+): NormalizedSearxngResult[] {
+	return results
+		.filter(
+			(result) =>
+				typeof result.title === "string" && typeof result.url === "string",
+		)
+		.slice(0, limit)
+		.map((result) => ({
+			title: result.title as string,
+			url: result.url as string,
+			snippet:
+				typeof result.content === "string" ? result.content.slice(0, 800) : "",
+			score: typeof result.score === "number" ? result.score : null,
+			engines: normalizeSearxngEngines(result),
+		}));
+}
+
+function summarizeSearchResults(results: NormalizedSearxngResult[]) {
+	if (results.length === 0) {
+		return "No web search results were returned.";
+	}
+
+	return results
+		.map((result, index) => {
+			const snippet = result.snippet ? ` — ${result.snippet}` : "";
+			return `${index + 1}. ${result.title}${snippet}\n${result.url}`;
+		})
+		.join("\n\n");
+}
+
+async function searchWebWithSearxng(
+	input: z.infer<typeof webSearchInputSchema>,
+) {
+	const { env } = await import("@/lib/env");
+	const limit = input.limit ?? 5;
+	const searchedQuery = `${input.query} ${todaySearchSuffix()}`.trim();
+	const attemptedQueries = [searchedQuery, input.query];
+	let lastError: string | null = null;
+	let results: NormalizedSearxngResult[] = [];
+	let successfulQuery = searchedQuery;
+
+	for (const query of attemptedQueries) {
+		const url = new URL("/search", env.SEARXNG_URL);
+		url.searchParams.set("q", query);
+		url.searchParams.set("format", "json");
+		url.searchParams.set("safesearch", "1");
+		if (input.language) url.searchParams.set("language", input.language);
+
+		try {
+			const rawResults = await fetchSearxngResults(url);
+			results = normalizeSearxngResults(rawResults, limit);
+			successfulQuery = query;
+			if (results.length > 0) break;
+		} catch (error) {
+			lastError = error instanceof Error ? error.message : String(error);
+		}
+	}
 
 	return {
+		ok: results.length > 0,
 		query: input.query,
+		fetchedAt: new Date().toISOString(),
 		searchedQuery,
-		results: results
-			.filter(
-				(result) =>
-					typeof result.title === "string" && typeof result.url === "string",
-			)
-			.slice(0, limit)
-			.map((result) => ({
-				title: result.title as string,
-				url: result.url as string,
-				snippet:
-					typeof result.content === "string"
-						? result.content.slice(0, 800)
-						: "",
-				score: typeof result.score === "number" ? result.score : null,
-				engines: normalizeSearxngEngines(result),
-			})),
+		successfulQuery,
+		resultCount: results.length,
+		error: results.length === 0 ? lastError : null,
+		summary: summarizeSearchResults(results),
+		results,
 	};
 }
 
@@ -517,7 +567,8 @@ export const builtInTools = [
 		id: "00000000-0000-4000-8000-000000000004",
 		name: "web_search",
 		displayName: "Web search",
-		description: "Search the web with today’s date automatically included.",
+		description:
+			"Search the web with today's date automatically included. When ok is true, use the returned summary and results to answer current-events and web questions.",
 		riskLevel: "medium",
 		category: "Web",
 		inputSchema: webSearchInputSchema,

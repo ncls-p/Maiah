@@ -177,11 +177,25 @@ describe("web_search tool", () => {
 			query: "ai hub",
 			limit: 3,
 		})) as {
+			ok: boolean;
 			query: string;
+			searchedQuery: string;
+			successfulQuery: string;
+			resultCount: number;
+			error: string | null;
+			summary: string;
 			results: Array<{ title: string; url: string; engines: string[] }>;
 		};
 
+		expect(result.ok).toBe(true);
 		expect(result.query).toBe("ai hub");
+		expect(result.searchedQuery).toMatch(/^ai hub today \d{4}-\d{2}-\d{2}$/);
+		expect(result.successfulQuery).toBe(result.searchedQuery);
+		expect(result.resultCount).toBe(1);
+		expect(result.error).toBeNull();
+		expect(result.summary).toContain("1. AI Hub");
+		expect(result.summary).toContain("Workspace assistant platform");
+		expect(result.summary).toContain("https://example.com/ai-hub");
 		expect(result.results).toEqual([
 			{
 				title: "AI Hub",
@@ -189,6 +203,67 @@ describe("web_search tool", () => {
 				snippet: "Workspace assistant platform",
 				score: 2.5,
 				engines: ["duckduckgo"],
+			},
+		]);
+	});
+
+	it("falls back to the original query when the dated query is empty", async () => {
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(
+				new Response(JSON.stringify({ results: [] }), {
+					status: 200,
+					headers: { "content-type": "application/json" },
+				}),
+			)
+			.mockResolvedValueOnce(
+				new Response(
+					JSON.stringify({
+						results: [
+							{
+								title: "Fallback result",
+								url: "https://example.com/fallback",
+								content: "Result from the original query",
+								engine: "brave",
+							},
+						],
+					}),
+					{
+						status: 200,
+						headers: { "content-type": "application/json" },
+					},
+				),
+			);
+		vi.stubGlobal("fetch", fetchMock);
+
+		const tool = getBuiltInToolByName("web_search");
+		expect(tool).not.toBeNull();
+		const result = (await tool!.execute({
+			query: "ai hub",
+			limit: 3,
+		})) as {
+			ok: boolean;
+			searchedQuery: string;
+			successfulQuery: string;
+			resultCount: number;
+			results: Array<{ title: string; url: string; engines: string[] }>;
+		};
+
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+		expect(new URL(String(fetchMock.mock.calls[0]?.[0])).searchParams.get("q"))
+			.toBe(result.searchedQuery);
+		expect(new URL(String(fetchMock.mock.calls[1]?.[0])).searchParams.get("q"))
+			.toBe("ai hub");
+		expect(result.ok).toBe(true);
+		expect(result.successfulQuery).toBe("ai hub");
+		expect(result.resultCount).toBe(1);
+		expect(result.results).toEqual([
+			{
+				title: "Fallback result",
+				url: "https://example.com/fallback",
+				snippet: "Result from the original query",
+				score: null,
+				engines: ["brave"],
 			},
 		]);
 	});
