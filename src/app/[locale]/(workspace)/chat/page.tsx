@@ -19,7 +19,10 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { ChatComposer } from "@/components/chat/chat-composer";
+import {
+	ChatComposer,
+	type QueuedChatMessage,
+} from "@/components/chat/chat-composer";
 import { ChatLayout } from "@/components/chat/chat-layout";
 import { ChatMessageList } from "@/components/chat/chat-message-list";
 import { QuotaBanner } from "@/components/chat/quota-banner";
@@ -48,6 +51,16 @@ import { useChatStream } from "@/hooks/use-chat-stream";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { fetchJson } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
+
+function createQueuedMessage(content: string): QueuedChatMessage {
+	return {
+		id:
+			typeof crypto !== "undefined" && "randomUUID" in crypto
+				? crypto.randomUUID()
+				: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+		content,
+	};
+}
 
 function ChatContextBar({
 	quota,
@@ -133,6 +146,7 @@ export default function ChatPage() {
 	const [loadingContext, setLoadingContext] = useState(false);
 	const [loadingMessages, setLoadingMessages] = useState(false);
 	const [input, setInput] = useState("");
+	const [queuedMessages, setQueuedMessages] = useState<QueuedChatMessage[]>([]);
 	const [quota, setQuota] = useState<{ used: number; limit: number } | null>(
 		null,
 	);
@@ -146,6 +160,7 @@ export default function ChatPage() {
 	const scrollAnimationRef = useRef<number | null>(null);
 	const STICK_RESUME_THRESHOLD_PX = 48;
 	const skipNextMessageLoadRef = useRef(false);
+	const processingQueuedMessageRef = useRef(false);
 
 	const selectedAgent = useMemo(
 		() => agents.find((agent) => agent.id === selectedAgentId) ?? null,
@@ -204,6 +219,37 @@ export default function ChatPage() {
 		},
 		onConversationsRefresh: refreshConversations,
 	});
+
+	useEffect(() => {
+		if (
+			sending ||
+			!canChat ||
+			queuedMessages.length === 0 ||
+			processingQueuedMessageRef.current
+		) {
+			return;
+		}
+
+		const nextMessage = queuedMessages[0];
+		if (!nextMessage?.content.trim()) {
+			queueMicrotask(() => {
+				setQueuedMessages((current) => current.slice(1));
+			});
+			return;
+		}
+
+		processingQueuedMessageRef.current = true;
+		queueMicrotask(() => {
+			setQueuedMessages((current) =>
+				current[0]?.id === nextMessage.id
+					? current.slice(1)
+					: current.filter((message) => message.id !== nextMessage.id),
+			);
+			void handleSubmit(nextMessage.content.trim()).finally(() => {
+				processingQueuedMessageRef.current = false;
+			});
+		});
+	}, [canChat, handleSubmit, queuedMessages, sending]);
 
 	useEffect(() => {
 		if (!workspaceId) return;
@@ -492,6 +538,7 @@ export default function ChatPage() {
 	}, [cancelScrollAnimation]);
 
 	function selectAgent(agentId: string) {
+		setQueuedMessages([]);
 		setSelectedAgentId(agentId);
 		setActiveVersion(null);
 		const params = new URLSearchParams({ agentId });
@@ -502,6 +549,7 @@ export default function ChatPage() {
 	}
 
 	function selectConversation(conversationId: string) {
+		setQueuedMessages([]);
 		const conversation = conversations.find(
 			(item) => item.id === conversationId,
 		);
@@ -516,6 +564,7 @@ export default function ChatPage() {
 	}
 
 	function startNewConversation() {
+		setQueuedMessages([]);
 		setActiveConversationId(null);
 		setMessages([]);
 		window.history.replaceState(
@@ -558,6 +607,7 @@ export default function ChatPage() {
 			current.filter((conversation) => conversation.id !== conversationId),
 		);
 		if (activeConversationId === conversationId) {
+			setQueuedMessages([]);
 			setActiveConversationId(null);
 			setMessages([]);
 			window.history.replaceState(
@@ -568,17 +618,44 @@ export default function ChatPage() {
 		}
 	}
 
+	function queueMessage(content: string) {
+		setQueuedMessages((current) => [...current, createQueuedMessage(content)]);
+	}
+
 	function submitMessage() {
 		const content = input.trim();
-		if (!content || !canChat || sending) return;
+		if (!content || !canChat) return;
 		setInput("");
+		if (sending) {
+			queueMessage(content);
+			return;
+		}
 		void handleSubmit(content);
 	}
 
 	function submitSuggestion(content: string) {
-		if (!content.trim() || !canChat || sending) return;
+		const trimmedContent = content.trim();
+		if (!trimmedContent || !canChat) return;
 		setInput("");
-		void handleSubmit(content.trim());
+		if (sending) {
+			queueMessage(trimmedContent);
+			return;
+		}
+		void handleSubmit(trimmedContent);
+	}
+
+	function updateQueuedMessage(id: string, content: string) {
+		setQueuedMessages((current) =>
+			current.map((message) =>
+				message.id === id ? { ...message, content } : message,
+			),
+		);
+	}
+
+	function cancelQueuedMessage(id: string) {
+		setQueuedMessages((current) =>
+			current.filter((message) => message.id !== id),
+		);
 	}
 
 	async function editMessage(message: ChatMessage, content: string) {
@@ -797,9 +874,12 @@ export default function ChatPage() {
 				input={input}
 				canChat={canChat}
 				sending={sending}
+				queuedMessages={queuedMessages}
 				onInputChange={setInput}
 				onSubmit={submitMessage}
 				onStop={stopGeneration}
+				onQueuedMessageChange={updateQueuedMessage}
+				onQueuedMessageCancel={cancelQueuedMessage}
 			/>
 		</ChatLayout>
 	);

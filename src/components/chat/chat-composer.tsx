@@ -6,6 +6,7 @@ import {
 	SendIcon,
 	SparklesIcon,
 	SquareIcon,
+	XIcon,
 } from "lucide-react";
 import { useRef, useEffect, useState } from "react";
 
@@ -13,22 +14,33 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
+export interface QueuedChatMessage {
+	id: string;
+	content: string;
+}
+
 interface ChatComposerProps {
 	input: string;
 	canChat: boolean;
 	sending: boolean;
+	queuedMessages?: QueuedChatMessage[];
 	onInputChange: (value: string) => void;
 	onSubmit: () => void;
 	onStop?: () => void;
+	onQueuedMessageChange?: (id: string, content: string) => void;
+	onQueuedMessageCancel?: (id: string) => void;
 }
 
 export function ChatComposer({
 	input,
 	canChat,
 	sending,
+	queuedMessages = [],
 	onSubmit,
 	onInputChange,
 	onStop,
+	onQueuedMessageChange,
+	onQueuedMessageCancel,
 }: ChatComposerProps) {
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 	const [focused, setFocused] = useState(false);
@@ -50,6 +62,41 @@ export function ChatComposer({
 			}}
 			className="w-full min-w-0 shrink-0 bg-transparent px-3 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4 sm:pt-3"
 		>
+			{queuedMessages.length > 0 ? (
+				<div className="mx-auto mb-2 flex w-full max-w-4xl flex-col gap-2">
+					{queuedMessages.map((message, index) => (
+						<div
+							key={message.id}
+							className="rounded-xl border border-primary/15 bg-primary/5 p-2 shadow-sm"
+						>
+							<div className="mb-1.5 flex items-center justify-between gap-2 px-1">
+								<span className="text-[11px] font-medium text-primary">
+									Queued message {index + 1}
+								</span>
+								<Button
+									type="button"
+									variant="ghost"
+									size="icon"
+									className="size-6 rounded-md text-muted-foreground hover:text-foreground"
+									aria-label="Cancel queued message"
+									onClick={() => onQueuedMessageCancel?.(message.id)}
+								>
+									<XIcon className="size-3.5" aria-hidden="true" />
+								</Button>
+							</div>
+							<Textarea
+								aria-label={`Queued message ${index + 1}`}
+								value={message.content}
+								onChange={(event) =>
+									onQueuedMessageChange?.(message.id, event.target.value)
+								}
+								rows={1}
+								className="max-h-28 min-h-9 resize-none border-border/50 bg-background/70 text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary/20"
+							/>
+						</div>
+					))}
+				</div>
+			) : null}
 			<div className="relative mx-auto w-full min-w-0 max-w-4xl">
 				<div
 					className={cn(
@@ -87,13 +134,30 @@ export function ChatComposer({
 							}}
 							placeholder={
 								canChat
-									? "Message your assistant…"
+									? sending
+										? "Queue your next message…"
+										: "Message your assistant…"
 									: "Finish setup before chatting…"
 							}
-							disabled={sending || !canChat}
+							disabled={!canChat}
 							rows={1}
 							className="max-h-40 min-h-10 flex-1 resize-none border-0 bg-transparent px-2 py-2 text-base shadow-none focus-visible:ring-0 sm:min-h-12 sm:px-3 sm:py-3 sm:text-sm placeholder:text-muted-foreground/60"
 						/>
+
+						<Button
+							type="submit"
+							size="icon"
+							disabled={!input.trim() || !canChat}
+							aria-label={sending ? "Queue message" : "Send message"}
+							className={cn(
+								"size-9 shrink-0 rounded-lg transition-colors sm:size-10 sm:rounded-xl",
+								input.trim() && canChat
+									? "bg-primary text-primary-foreground hover:bg-primary/90"
+									: "opacity-60",
+							)}
+						>
+							<SendIcon className="size-4" aria-hidden="true" />
+						</Button>
 
 						{sending ? (
 							<Button
@@ -108,22 +172,7 @@ export function ChatComposer({
 									aria-hidden="true"
 								/>
 							</Button>
-						) : (
-							<Button
-								type="submit"
-								size="icon"
-								disabled={!input.trim() || !canChat}
-								aria-label="Send message"
-								className={cn(
-									"size-9 shrink-0 rounded-lg transition-colors sm:size-10 sm:rounded-xl",
-									input.trim() && canChat
-										? "bg-primary text-primary-foreground hover:bg-primary/90"
-										: "opacity-60",
-								)}
-							>
-								<SendIcon className="size-4" aria-hidden="true" />
-							</Button>
-						)}
+						) : null}
 					</div>
 				</div>
 
@@ -142,7 +191,11 @@ export function ChatComposer({
 					) : (
 						<div className="flex items-center gap-1.5 text-[11px] text-muted-foreground/50">
 							<SparklesIcon className="size-3" aria-hidden="true" />
-							<span>Press Enter to send · Shift+Enter for new line</span>
+							<span>
+								{sending
+									? "Press Enter to queue next · Shift+Enter for new line"
+									: "Press Enter to send · Shift+Enter for new line"}
+							</span>
 						</div>
 					)}
 				</div>
