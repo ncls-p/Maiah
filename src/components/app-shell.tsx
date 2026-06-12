@@ -13,8 +13,12 @@ import {
 } from "@/components/workspace-sidebar";
 import { Button } from "@/components/ui/button";
 import { useWorkspace } from "@/hooks/use-workspace";
-import { fetchJson, fetchPendingToolCount } from "@/lib/api-client";
 import {
+	fetchPendingToolCount,
+	fetchWorkspacePermissions,
+} from "@/lib/api-client";
+import {
+	DEFAULT_WORKSPACE_PERMISSIONS,
 	getRouteBreadcrumbs,
 	getRouteTitleKey,
 	type WorkspacePermissions,
@@ -61,10 +65,9 @@ export function AppShell({
 		href: crumb.href,
 	}));
 	const [pendingToolCount, setPendingToolCount] = useState(0);
-	const [permissions, setPermissions] = useState<WorkspacePermissions>({
-		canViewUsage: false,
-		canViewAudit: false,
-	});
+	const [permissions, setPermissions] = useState<WorkspacePermissions>(
+		DEFAULT_WORKSPACE_PERMISSIONS,
+	);
 
 	useEffect(() => {
 		if (!workspaceId) return;
@@ -95,13 +98,11 @@ export function AppShell({
 
 		async function loadPermissions() {
 			try {
-				const data = await fetchJson<WorkspacePermissions>(
-					`/api/workspace/permissions?workspaceId=${workspaceId}`,
-				);
+				const data = await fetchWorkspacePermissions(workspaceId!);
 				if (!cancelled) setPermissions(data);
 			} catch {
 				if (!cancelled) {
-					setPermissions({ canViewUsage: false, canViewAudit: false });
+					setPermissions(DEFAULT_WORKSPACE_PERMISSIONS);
 				}
 			}
 		}

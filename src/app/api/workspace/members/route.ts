@@ -17,7 +17,9 @@ const querySchema = z.object({
 const addMemberSchema = z.object({
 	workspaceId: z.uuid(),
 	email: z.email(),
-	roleName: z.enum(["workspace.member", "workspace.owner"]).optional(),
+	roleName: z
+		.enum(["workspace.member", "workspace.admin", "workspace.owner"])
+		.optional(),
 });
 
 export async function GET(req: NextRequest) {

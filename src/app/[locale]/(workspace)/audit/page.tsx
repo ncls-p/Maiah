@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import { PageLoading } from "@/components/page-loading";
+import { RequireWorkspaceAccess } from "@/components/require-workspace-access";
 import { WorkspacePage } from "@/components/workspace-page";
 import { useWorkspace } from "@/hooks/use-workspace";
 
@@ -14,7 +15,7 @@ import {
 	type AuditEvent,
 } from "./audit-dashboard";
 
-export default function AuditPage() {
+function AuditPageContent() {
 	const t = useTranslations("admin");
 	const tCommon = useTranslations("common");
 	const { workspaceId, isLoading: workspaceLoading } = useWorkspace();
@@ -142,5 +143,13 @@ export default function AuditPage() {
 				<AuditDashboardSkeleton />
 			)}
 		</WorkspacePage>
+	);
+}
+
+export default function AuditPage() {
+	return (
+		<RequireWorkspaceAccess required="canViewAudit">
+			<AuditPageContent />
+		</RequireWorkspaceAccess>
 	);
 }

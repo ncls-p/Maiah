@@ -1,6 +1,7 @@
 import { ShieldAlertIcon } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 
+import { RequireWorkspaceAccess } from "@/components/require-workspace-access";
 import { WorkspacePage } from "@/components/workspace-page";
 import { UserManagement } from "@/components/admin/user-management";
 import { WorkspaceMemberManagement } from "@/components/workspace-member-management";
@@ -34,7 +35,9 @@ export default async function MembersPage() {
 							<ShieldAlertIcon aria-hidden="true" />
 						</EmptyMedia>
 						<EmptyTitle>{t("signInRequired")}</EmptyTitle>
-						<EmptyDescription>{t("signInRequiredDescription")}</EmptyDescription>
+						<EmptyDescription>
+							{t("signInRequiredDescription")}
+						</EmptyDescription>
 					</EmptyHeader>
 				</Empty>
 			</WorkspacePage>
@@ -44,29 +47,31 @@ export default async function MembersPage() {
 	const users = isAdmin ? await listAdminUsers() : [];
 
 	return (
-		<WorkspacePage
-			title={t("membersTitle")}
-			description={t("membersDescription")}
-			width="wide"
-		>
-			<WorkspaceMemberManagement currentUserId={session.user.id} />
+		<RequireWorkspaceAccess required="canInviteMembers">
+			<WorkspacePage
+				title={t("membersTitle")}
+				description={t("membersDescription")}
+				width="wide"
+			>
+				<WorkspaceMemberManagement currentUserId={session.user.id} />
 
-			{isAdmin ? (
-				<section className="flex flex-col gap-6 border-t border-border/60 pt-8 animate-in-up stagger-4">
-					<div className="flex flex-col gap-2">
-						<h2 className="text-lg font-semibold tracking-tight">
-							{t("platformAccounts")}
-						</h2>
-						<p className="max-w-2xl text-sm text-muted-foreground">
-							{t("platformAccountsDescription")}
-						</p>
-					</div>
-					<UserManagement
-						initialUsers={JSON.parse(JSON.stringify(users))}
-						currentUserId={session.user.id}
-					/>
-				</section>
-			) : null}
-		</WorkspacePage>
+				{isAdmin ? (
+					<section className="flex flex-col gap-6 border-t border-border/60 pt-8 animate-in-up stagger-4">
+						<div className="flex flex-col gap-2">
+							<h2 className="text-lg font-semibold tracking-tight">
+								{t("platformAccounts")}
+							</h2>
+							<p className="max-w-2xl text-sm text-muted-foreground">
+								{t("platformAccountsDescription")}
+							</p>
+						</div>
+						<UserManagement
+							initialUsers={JSON.parse(JSON.stringify(users))}
+							currentUserId={session.user.id}
+						/>
+					</section>
+				) : null}
+			</WorkspacePage>
+		</RequireWorkspaceAccess>
 	);
 }

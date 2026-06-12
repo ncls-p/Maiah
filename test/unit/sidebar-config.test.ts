@@ -8,7 +8,10 @@ import {
 	getDefaultSectionForNavId,
 	normalizeSidebarNavConfig,
 } from "@/modules/navigation/sidebar-config";
-import type { NavItem } from "@/lib/workspace-nav";
+import {
+	DEFAULT_WORKSPACE_PERMISSIONS,
+	type NavItem,
+} from "@/lib/workspace-nav";
 
 const sampleItems: NavItem[] = [
 	{ href: "/chat", labelKey: "chat", icon: MessageSquareIcon },
@@ -77,14 +80,24 @@ describe("buildSidebarMenuGroups", () => {
 		const groups = buildSidebarMenuGroups(
 			{
 				pendingToolCount: 0,
-				permissions: { canViewUsage: true, canViewAudit: true },
+				permissions: {
+					...DEFAULT_WORKSPACE_PERMISSIONS,
+					canViewUsage: true,
+					canViewAudit: true,
+					canInviteMembers: true,
+					canViewProviders: true,
+					canManageApiKeys: true,
+				},
 				isAdmin: true,
 				sidebarNavConfig: config,
 			},
 			config,
 		);
 
-		expect(groups.map((group) => group.labelKey)).toEqual(["primary", "advanced"]);
+		expect(groups.map((group) => group.labelKey)).toEqual([
+			"primary",
+			"advanced",
+		]);
 		expect(groups[0]?.items[0]?.href).toBe("/chat");
 		expect(groups[1]?.items[0]?.href).toBe("/settings");
 		expect(groups[1]?.items[1]?.href).toBe("/marketplace");
@@ -100,7 +113,14 @@ describe("buildSidebarMenuGroups", () => {
 		const groups = buildSidebarMenuGroups(
 			{
 				pendingToolCount: 0,
-				permissions: { canViewUsage: true, canViewAudit: true },
+				permissions: {
+					...DEFAULT_WORKSPACE_PERMISSIONS,
+					canViewUsage: true,
+					canViewAudit: true,
+					canInviteMembers: true,
+					canViewProviders: true,
+					canManageApiKeys: true,
+				},
 				isAdmin: true,
 				sidebarNavConfig: config,
 			},

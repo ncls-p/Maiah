@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import { PageLoading } from "@/components/page-loading";
+import { RequireWorkspaceAccess } from "@/components/require-workspace-access";
 import { WorkspacePage } from "@/components/workspace-page";
 import { useWorkspace } from "@/hooks/use-workspace";
 
@@ -14,7 +15,7 @@ import {
 	type UsageResponse,
 } from "./usage-dashboard";
 
-export default function UsagePage() {
+function UsagePageContent() {
 	const t = useTranslations("admin");
 	const tCommon = useTranslations("common");
 	const { workspaceId, isLoading: workspaceLoading } = useWorkspace();
@@ -110,5 +111,13 @@ export default function UsagePage() {
 				<UsageDashboardSkeleton />
 			)}
 		</WorkspacePage>
+	);
+}
+
+export default function UsagePage() {
+	return (
+		<RequireWorkspaceAccess required="canViewUsage">
+			<UsagePageContent />
+		</RequireWorkspaceAccess>
 	);
 }

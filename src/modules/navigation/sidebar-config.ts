@@ -150,6 +150,11 @@ export function normalizeSidebarNavConfig(
 }
 
 export function collectEligibleNavItems(shell: WorkspaceShellState): NavItem[] {
+	const { permissions } = shell;
+	const canUseToolsHub =
+		permissions.canConfigureTools ||
+		permissions.canViewTools ||
+		permissions.canGetMcpServers;
 	const toolsItem: NavItem = {
 		href: "/tools",
 		labelKey: "toolsHub",
@@ -158,8 +163,9 @@ export function collectEligibleNavItems(shell: WorkspaceShellState): NavItem[] {
 	};
 
 	const adminItems = adminNavItems.filter((item) => {
-		if (item.href === "/usage") return shell.permissions.canViewUsage;
-		if (item.href === "/audit") return shell.permissions.canViewAudit;
+		if (item.href === "/usage") return permissions.canViewUsage;
+		if (item.href === "/audit") return permissions.canViewAudit;
+		if (item.href === "/members") return permissions.canInviteMembers;
 		if (item.href === "/admin/settings") return shell.isAdmin;
 		return true;
 	});
@@ -168,9 +174,12 @@ export function collectEligibleNavItems(shell: WorkspaceShellState): NavItem[] {
 
 	for (const id of DEFAULT_SIDEBAR_NAV_IDS) {
 		if (id === "/tools") {
-			items.push(toolsItem);
+			if (canUseToolsHub) items.push(toolsItem);
 			continue;
 		}
+
+		if (id === "/providers" && !permissions.canViewProviders) continue;
+		if (id === "/api-keys" && !permissions.canManageApiKeys) continue;
 
 		const template = NAV_ITEM_TEMPLATES.get(id);
 		if (!template) continue;
@@ -240,6 +249,10 @@ export function buildSidebarMenuGroups(
 
 function buildLegacyMenuGroups(shell: WorkspaceShellState): NavGroup[] {
 	const { isAdmin, pendingToolCount, permissions } = shell;
+	const canUseToolsHub =
+		permissions.canConfigureTools ||
+		permissions.canViewTools ||
+		permissions.canGetMcpServers;
 	const toolsItem: NavItem = {
 		href: "/tools",
 		labelKey: "toolsHub",
@@ -250,19 +263,25 @@ function buildLegacyMenuGroups(shell: WorkspaceShellState): NavGroup[] {
 	const adminItems = adminNavItems.filter((item) => {
 		if (item.href === "/usage") return permissions.canViewUsage;
 		if (item.href === "/audit") return permissions.canViewAudit;
+		if (item.href === "/members") return permissions.canInviteMembers;
 		if (item.href === "/admin/settings") return isAdmin;
 		return true;
 	});
 
-	const capabilities = capabilitiesNavItems.map((item) =>
-		item.href === "/tools" ? toolsItem : item,
-	);
+	const capabilities = capabilitiesNavItems
+		.map((item) => (item.href === "/tools" ? toolsItem : item))
+		.filter((item) => item.href !== "/tools" || canUseToolsHub);
+	const configuration = configNavItems.filter((item) => {
+		if (item.href === "/providers") return permissions.canViewProviders;
+		if (item.href === "/api-keys") return permissions.canManageApiKeys;
+		return true;
+	});
 
 	const groups: NavGroup[] = [
 		{ labelKey: "primary", items: [...primaryNavItems, ...capabilities] },
 		{
 			labelKey: "advanced",
-			items: [...advancedCapabilityNavItems, ...configNavItems, ...adminItems],
+			items: [...advancedCapabilityNavItems, ...configuration, ...adminItems],
 		},
 	];
 

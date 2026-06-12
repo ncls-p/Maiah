@@ -29,6 +29,25 @@ export type NavGroup = {
 export type WorkspacePermissions = {
 	canViewUsage: boolean;
 	canViewAudit: boolean;
+	canInviteMembers: boolean;
+	canViewProviders: boolean;
+	canConfigureTools: boolean;
+	canViewTools: boolean;
+	canGetMcpServers: boolean;
+	canManageApiKeys: boolean;
+	canManageWorkspace: boolean;
+};
+
+export const DEFAULT_WORKSPACE_PERMISSIONS: WorkspacePermissions = {
+	canViewUsage: false,
+	canViewAudit: false,
+	canInviteMembers: false,
+	canViewProviders: false,
+	canConfigureTools: false,
+	canViewTools: false,
+	canGetMcpServers: false,
+	canManageApiKeys: false,
+	canManageWorkspace: false,
 };
 
 export type WorkspaceShellState = {

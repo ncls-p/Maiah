@@ -1,3 +1,5 @@
+import type { WorkspacePermissions } from "@/lib/workspace-nav";
+
 const ACTIVE_WORKSPACE_KEY = "active_workspace_id";
 
 export function getStoredWorkspaceId(): string | null {
@@ -92,4 +94,12 @@ export async function fetchPendingToolCount(
 	if (!res.ok) return 0;
 	const data = await res.json();
 	return Array.isArray(data) ? data.length : 0;
+}
+
+export async function fetchWorkspacePermissions(
+	workspaceId: string,
+): Promise<WorkspacePermissions> {
+	return fetchJson<WorkspacePermissions>(
+		`/api/workspace/permissions?workspaceId=${workspaceId}`,
+	);
 }

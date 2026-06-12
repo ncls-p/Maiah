@@ -75,6 +75,8 @@ export async function POST(req: NextRequest) {
 			await addWorkspaceMember({
 				workspaceId: parsed.data.workspaceId,
 				userId: user.id,
+				roleName:
+					parsed.data.role === "admin" ? "workspace.admin" : "workspace.member",
 				invitedBy: auth.session.user.id,
 			});
 		}

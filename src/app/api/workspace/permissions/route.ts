@@ -40,12 +40,53 @@ export async function GET(req: NextRequest) {
 			principalId: session.user.id,
 		};
 
-		const [canViewUsage, canViewAudit, canInviteMembers] = await Promise.all([
+		const [
+			canViewUsage,
+			canViewAudit,
+			canInviteMembers,
+			canViewProviders,
+			canConfigureTools,
+			canViewTools,
+			canGetMcpServers,
+			canManageApiKeys,
+			canManageWorkspace,
+		] = await Promise.all([
 			authorization.hasPermission(ctx, "usage.view", "workspace", workspaceId),
 			authorization.hasPermission(ctx, "audit.view", "workspace", workspaceId),
 			authorization.hasPermission(
 				ctx,
 				"members.invite",
+				"workspace",
+				workspaceId,
+			),
+			authorization.hasPermission(
+				ctx,
+				"providers.viewMetadata",
+				"workspace",
+				workspaceId,
+			),
+			authorization.hasPermission(
+				ctx,
+				"tools.configure",
+				"workspace",
+				workspaceId,
+			),
+			authorization.hasPermission(ctx, "tools.view", "workspace", workspaceId),
+			authorization.hasPermission(
+				ctx,
+				"mcpServers.get",
+				"workspace",
+				workspaceId,
+			),
+			authorization.hasPermission(
+				ctx,
+				"apiKeys.manage",
+				"workspace",
+				workspaceId,
+			),
+			authorization.hasPermission(
+				ctx,
+				"workspace.manage",
 				"workspace",
 				workspaceId,
 			),
@@ -55,6 +96,12 @@ export async function GET(req: NextRequest) {
 			canViewUsage,
 			canViewAudit,
 			canInviteMembers,
+			canViewProviders,
+			canConfigureTools,
+			canViewTools,
+			canGetMcpServers,
+			canManageApiKeys: canManageApiKeys || canManageWorkspace,
+			canManageWorkspace,
 		});
 	} catch (error) {
 		logger.error("Failed to read workspace permissions", {}, error as Error);

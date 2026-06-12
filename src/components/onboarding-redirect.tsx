@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { usePathname, useRouter } from "@/i18n/navigation";
 
 import { useWorkspace } from "@/hooks/use-workspace";
-import { fetchJson } from "@/lib/api-client";
+import { fetchJson, fetchWorkspacePermissions } from "@/lib/api-client";
 
 export function OnboardingRedirect() {
 	const router = useRouter();
@@ -23,6 +23,9 @@ export function OnboardingRedirect() {
 					"/api/onboarding",
 				);
 				if (cancelled || completed) return;
+
+				const permissions = await fetchWorkspacePermissions(workspaceId!);
+				if (cancelled || !permissions.canViewProviders) return;
 
 				const providers = await fetchJson<unknown[]>(
 					`/api/workspace/providers?workspaceId=${workspaceId}`,

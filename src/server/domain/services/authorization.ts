@@ -92,7 +92,7 @@ async function resolvePermissions(
 }
 
 export const authorization = {
-	async requirePermission(
+	async checkPermission(
 		ctx: AuthorizationContext,
 		permission: string,
 		resourceType: ResourceType,
@@ -101,7 +101,26 @@ export const authorization = {
 		const permissions = await resolvePermissions(ctx, resourceType, resourceId);
 		const granted = permissions.some((p) => matchesPermission(p, permission));
 
-		if (!granted) {
+		return {
+			granted,
+			reason: granted ? undefined : `Missing permission: ${permission}`,
+		};
+	},
+
+	async requirePermission(
+		ctx: AuthorizationContext,
+		permission: string,
+		resourceType: ResourceType,
+		resourceId: string,
+	): Promise<PermissionCheckResult> {
+		const result = await this.checkPermission(
+			ctx,
+			permission,
+			resourceType,
+			resourceId,
+		);
+
+		if (!result.granted) {
 			logger.warn("Permission denied", {
 				principal: ctx.principalId,
 				permission,
@@ -110,10 +129,7 @@ export const authorization = {
 			});
 		}
 
-		return {
-			granted,
-			reason: granted ? undefined : `Missing permission: ${permission}`,
-		};
+		return result;
 	},
 
 	async hasPermission(
@@ -122,7 +138,7 @@ export const authorization = {
 		resourceType: ResourceType,
 		resourceId: string,
 	): Promise<boolean> {
-		const result = await this.requirePermission(
+		const result = await this.checkPermission(
 			ctx,
 			permission,
 			resourceType,
