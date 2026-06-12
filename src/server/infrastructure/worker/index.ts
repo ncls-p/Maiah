@@ -7,6 +7,7 @@ import {
 	processDocumentIngestion,
 } from "@/modules/knowledge/use-cases";
 import { syncMcpTools } from "@/modules/mcp/use-cases";
+import { processDueScheduledTasks } from "@/modules/scheduled-tasks/use-cases";
 
 type WorkerJob =
 	| {
@@ -71,6 +72,14 @@ async function drainQueues() {
 				error: error instanceof Error ? error.message : String(error),
 			});
 		}
+	}
+
+	try {
+		await processDueScheduledTasks();
+	} catch (error) {
+		logger.error("Scheduled task drain failed", {
+			error: error instanceof Error ? error.message : String(error),
+		});
 	}
 }
 

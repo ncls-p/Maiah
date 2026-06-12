@@ -575,6 +575,18 @@ export const messageStatusEnum = pgEnum("message_status", [
 	"cancelled",
 ]);
 
+export const scheduledTaskFrequencyEnum = pgEnum("scheduled_task_frequency", [
+	"daily",
+	"interval",
+]);
+
+export const scheduledTaskStatusEnum = pgEnum("scheduled_task_status", [
+	"idle",
+	"running",
+	"success",
+	"failed",
+]);
+
 export const messages = pgTable(
 	"messages",
 	{
@@ -612,6 +624,49 @@ export const messagePartTypeEnum = pgEnum("message_part_type", [
 	"citations",
 	"suggestions",
 ]);
+
+export const scheduledTasks = pgTable(
+	"scheduled_tasks",
+	{
+		id: uuid("id").primaryKey().defaultRandom(),
+		workspaceId: uuid("workspace_id")
+			.notNull()
+			.references(() => workspaces.id, { onDelete: "cascade" }),
+		userId: uuid("user_id")
+			.notNull()
+			.references(() => users.id, { onDelete: "cascade" }),
+		agentId: uuid("agent_id")
+			.notNull()
+			.references(() => agents.id, { onDelete: "cascade" }),
+		conversationId: uuid("conversation_id").references(() => conversations.id, {
+			onDelete: "set null",
+		}),
+		title: varchar("title", { length: 255 }).notNull(),
+		prompt: text("prompt").notNull(),
+		frequency: scheduledTaskFrequencyEnum("frequency").notNull(),
+		timezone: varchar("timezone", { length: 64 }).notNull().default("UTC"),
+		timeOfDay: varchar("time_of_day", { length: 5 }),
+		intervalMinutes: integer("interval_minutes"),
+		enabled: boolean("enabled").notNull().default(true),
+		nextRunAt: timestamp("next_run_at", { withTimezone: true }).notNull(),
+		lastRunAt: timestamp("last_run_at", { withTimezone: true }),
+		lastStatus: scheduledTaskStatusEnum("last_status").notNull().default("idle"),
+		lastError: text("last_error"),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+	},
+	(t) => ({
+		due: index("scheduled_tasks_due").on(t.enabled, t.nextRunAt),
+		workspaceUser: index("scheduled_tasks_workspace_user").on(
+			t.workspaceId,
+			t.userId,
+		),
+	}),
+);
 
 export const messageParts = pgTable(
 	"message_parts",

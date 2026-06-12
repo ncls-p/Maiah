@@ -85,6 +85,20 @@
       "when": 1781300000000,
       "tag": "0011_message_part_suggestions",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1781272980026,
+      "tag": "0012_chat_performance_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1781272980027,
+      "tag": "0013_scheduled_tasks",
+      "breakpoints": true
     }
   ]
 }
