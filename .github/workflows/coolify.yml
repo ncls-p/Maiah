@@ -512,11 +512,8 @@ jobs:
               jq -nc \
                 --arg name "${COOLIFY_SERVICE_NAME}" \
                 --arg description "Managed by GitHub Actions for AI Hub" \
-                --arg project_uuid "${COOLIFY_PROJECT_UUID}" \
-                --arg environment_name "${COOLIFY_ENVIRONMENT_NAME}" \
-                --arg server_uuid "${COOLIFY_SERVER_UUID}" \
                 --arg docker_compose_raw "${COMPOSE_B64}" \
-                '{name: $name, description: $description, project_uuid: $project_uuid, environment_name: $environment_name, server_uuid: $server_uuid, instant_deploy: false, docker_compose_raw: $docker_compose_raw}'
+                '{name: $name, description: $description, instant_deploy: false, docker_compose_raw: $docker_compose_raw}'
             )"
             api PATCH "/services/${SERVICE_UUID}" "${PATCH_BODY}" >/dev/null
           fi
@@ -605,11 +602,8 @@ jobs:
               jq -nc \
                 --arg name "${COOLIFY_SERVICE_NAME}" \
                 --arg description "Managed by GitHub Actions for AI Hub" \
-                --arg project_uuid "${COOLIFY_PROJECT_UUID}" \
-                --arg environment_name "${COOLIFY_ENVIRONMENT_NAME}" \
-                --arg server_uuid "${COOLIFY_SERVER_UUID}" \
                 --rawfile docker_compose_raw /tmp/ai-hub.coolify.compose.yml \
-                '{name: $name, description: $description, project_uuid: $project_uuid, environment_name: $environment_name, server_uuid: $server_uuid, instant_deploy: false, docker_compose_raw: $docker_compose_raw}'
+                '{name: $name, description: $description, instant_deploy: false, docker_compose_raw: $docker_compose_raw}'
             )"
             api PATCH "/services/${SERVICE_UUID}" "${RAW_PATCH_BODY}" >/dev/null
             SERVICE_JSON="$(api GET "/services/${SERVICE_UUID}")"
