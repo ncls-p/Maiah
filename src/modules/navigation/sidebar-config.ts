@@ -5,6 +5,7 @@ import {
 	advancedCapabilityNavItems,
 	capabilitiesNavItems,
 	configNavItems,
+	planningNavItems,
 	primaryNavItems,
 	type NavGroup,
 	type NavItem,
@@ -15,6 +16,7 @@ export const DEFAULT_SIDEBAR_NAV_IDS = [
 	"/chat",
 	"/agents",
 	"/knowledge",
+	"/scheduled-tasks",
 	"/tools",
 	"/custom-tools",
 	"/marketplace",
@@ -29,7 +31,7 @@ export const DEFAULT_SIDEBAR_NAV_IDS = [
 
 export type SidebarNavItemId = (typeof DEFAULT_SIDEBAR_NAV_IDS)[number];
 
-export const SIDEBAR_NAV_SECTIONS = ["primary", "advanced"] as const;
+export const SIDEBAR_NAV_SECTIONS = ["primary", "planning", "advanced"] as const;
 export type SidebarNavSection = (typeof SIDEBAR_NAV_SECTIONS)[number];
 
 const sidebarNavItemSchema = z.object({
@@ -54,6 +56,7 @@ function registerNavTemplates(items: Array<Omit<NavItem, "badge">>) {
 }
 
 registerNavTemplates(primaryNavItems);
+registerNavTemplates(planningNavItems);
 registerNavTemplates(capabilitiesNavItems);
 registerNavTemplates(advancedCapabilityNavItems);
 registerNavTemplates(configNavItems);
@@ -63,9 +66,13 @@ const PRIMARY_SECTION_IDS = new Set<string>([
 	...primaryNavItems.map((item) => item.href),
 	...capabilitiesNavItems.map((item) => item.href),
 ]);
+const PLANNING_SECTION_IDS = new Set<string>(
+	planningNavItems.map((item) => item.href),
+);
 
 export function getDefaultSectionForNavId(id: string): SidebarNavSection {
 	if (PRIMARY_SECTION_IDS.has(id)) return "primary";
+	if (PLANNING_SECTION_IDS.has(id)) return "planning";
 	return "advanced";
 }
 
@@ -84,6 +91,7 @@ function splitNavItemsBySection(items: NavItem[], config: SidebarNavConfig) {
 		]),
 	);
 	const primaryItems: NavItem[] = [];
+	const planningItems: NavItem[] = [];
 	const advancedItems: NavItem[] = [];
 
 	for (const item of items) {
@@ -91,12 +99,14 @@ function splitNavItemsBySection(items: NavItem[], config: SidebarNavConfig) {
 			sectionById.get(item.href) ?? getDefaultSectionForNavId(item.href);
 		if (section === "primary") {
 			primaryItems.push(item);
+		} else if (section === "planning") {
+			planningItems.push(item);
 		} else {
 			advancedItems.push(item);
 		}
 	}
 
-	return { primaryItems, advancedItems };
+	return { primaryItems, planningItems, advancedItems };
 }
 
 export function defaultSidebarNavConfig(): SidebarNavConfig {
@@ -232,7 +242,7 @@ export function buildSidebarMenuGroups(
 	const eligibleItems = collectEligibleNavItems(shell);
 	const items = applySidebarNavConfig(eligibleItems, config);
 	const normalized = normalizeSidebarNavConfig(config);
-	const { primaryItems, advancedItems } = splitNavItemsBySection(
+	const { primaryItems, planningItems, advancedItems } = splitNavItemsBySection(
 		items,
 		normalized,
 	);
@@ -240,6 +250,9 @@ export function buildSidebarMenuGroups(
 	const groups: NavGroup[] = [];
 	if (primaryItems.length > 0) {
 		groups.push({ labelKey: "primary", items: primaryItems });
+	}
+	if (planningItems.length > 0) {
+		groups.push({ labelKey: "planning", items: planningItems });
 	}
 	if (advancedItems.length > 0) {
 		groups.push({ labelKey: "advanced", items: advancedItems });

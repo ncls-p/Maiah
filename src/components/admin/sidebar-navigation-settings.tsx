@@ -251,6 +251,9 @@ export function SidebarNavigationSettings() {
 											<SelectItem value="primary">
 												{t("sectionPrimary")}
 											</SelectItem>
+											<SelectItem value="planning">
+												{t("sectionPlanning")}
+											</SelectItem>
 											<SelectItem value="advanced">
 												{t("sectionAdvanced")}
 											</SelectItem>

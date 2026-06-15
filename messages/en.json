@@ -22,7 +22,8 @@
       "capabilities": "Capabilities",
       "configuration": "Configuration",
       "administration": "Administration",
-      "advanced": "Advanced"
+      "advanced": "Advanced",
+      "planning": "Planning"
     },
     "chat": "Chat",
     "assistants": "Assistants",
@@ -39,7 +40,8 @@
     "setup": "Setup",
     "assistantConfig": "Assistant settings",
     "workspace": "App",
-    "customTools": "Custom tools"
+    "customTools": "Custom tools",
+    "scheduledTasks": "Scheduled tasks"
   },
   "chat": {
     "title": "Chat",
@@ -552,7 +554,7 @@
         "description": "Reorder navigation items and choose which pages appear in the sidebar for everyone.",
         "statusCustom": "Custom",
         "statusDefault": "Default layout",
-        "hint": "Drag items to reorder them. Choose whether each page appears in the main sidebar or in the collapsible Advanced section. Disabled items stay available by direct URL but are hidden from the sidebar. Admin-only pages still respect role permissions.",
+        "hint": "Drag items to reorder them. Choose whether each page appears in the main sidebar, Planning, or in the collapsible Advanced section. Disabled items stay available by direct URL but are hidden from the sidebar. Admin-only pages still respect role permissions.",
         "moveUp": "Move up",
         "moveDown": "Move down",
         "section": "Section",
@@ -564,7 +566,8 @@
         "save": "Save navigation",
         "saved": "Sidebar navigation saved",
         "reset": "Restore default layout",
-        "resetDone": "Default sidebar layout restored"
+        "resetDone": "Default sidebar layout restored",
+        "sectionPlanning": "Planning"
       },
       "chatAutomation": {
         "title": "Chat automation",
@@ -765,5 +768,69 @@
   "notFound": {
     "title": "Page not found",
     "return": "Return to chat"
+  },
+  "scheduledTasks": {
+    "title": "Scheduled tasks",
+    "description": "Schedule automatic prompts for your assistants without opening the chat page.",
+    "openChat": "Open chat",
+    "loadingAgents": "Loading assistants",
+    "sectionHint": "These tasks run automatically with the selected assistant. Results are posted to a dedicated conversation created on the first run.",
+    "loading": "Loading tasks…",
+    "defaults": {
+      "title": "News briefing"
+    },
+    "create": {
+      "title": "Create a task",
+      "description": "Define the prompt, assistant, and run cadence.",
+      "submit": "Create task"
+    },
+    "fields": {
+      "title": "Title",
+      "prompt": "Prompt",
+      "assistant": "Assistant",
+      "assistantPlaceholder": "Choose an assistant",
+      "frequency": "Frequency",
+      "time": "Time",
+      "minutes": "Minutes"
+    },
+    "frequency": {
+      "daily": "Every day",
+      "interval": "Every X minutes"
+    },
+    "overview": {
+      "title": "Tasks",
+      "description": "{active} active of {total}.",
+      "activeCount": "{count} active",
+      "nextRun": "Next run"
+    },
+    "empty": {
+      "title": "No scheduled tasks",
+      "description": "Create your first task to automate a briefing, report, or recurring follow-up."
+    },
+    "noAssistants": {
+      "title": "No assistant available",
+      "description": "Create an assistant before scheduling an automatic task.",
+      "cta": "Create assistant"
+    },
+    "status": {
+      "idle": "Idle",
+      "running": "Running",
+      "success": "Succeeded",
+      "failed": "Failed"
+    },
+    "dailyAt": "Every day at {time}",
+    "intervalEvery": "Every {minutes} minutes",
+    "nextRun": "next run: {date}",
+    "toggleTask": "Enable or disable {title}",
+    "deleteTask": "Delete {title}",
+    "toasts": {
+      "loadAgentsFailed": "Unable to load assistants",
+      "loadFailed": "Unable to load tasks",
+      "created": "Scheduled task created",
+      "createFailed": "Unable to create task",
+      "updateFailed": "Unable to update task",
+      "deleted": "Task deleted",
+      "deleteFailed": "Unable to delete task"
+    }
   }
 }

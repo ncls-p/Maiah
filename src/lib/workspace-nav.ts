@@ -2,6 +2,7 @@ import {
 	ActivityIcon,
 	BookOpenIcon,
 	BotIcon,
+	CalendarClockIcon,
 	KeyRoundIcon,
 	MessageSquareIcon,
 	PlugZapIcon,
@@ -58,7 +59,7 @@ export type WorkspaceShellState = {
 		items: Array<{
 			id: string;
 			visible: boolean;
-			section?: "primary" | "advanced";
+			section?: "primary" | "planning" | "advanced";
 		}>;
 	};
 };
@@ -67,6 +68,14 @@ export const primaryNavItems: NavItem[] = [
 	{ href: "/chat", labelKey: "chat", icon: MessageSquareIcon },
 	{ href: "/agents", labelKey: "assistants", icon: BotIcon },
 	{ href: "/knowledge", labelKey: "knowledge", icon: BookOpenIcon },
+];
+
+export const planningNavItems: NavItem[] = [
+	{
+		href: "/scheduled-tasks",
+		labelKey: "scheduledTasks",
+		icon: CalendarClockIcon,
+	},
 ];
 
 export const capabilitiesNavItems: NavItem[] = [
@@ -94,6 +103,7 @@ export const adminNavItems: NavItem[] = [
 export const routeTitleKeys: Record<string, string> = {
 	"/chat": "chat",
 	"/agents": "assistants",
+	"/scheduled-tasks": "scheduledTasks",
 	"/providers": "aiConnections",
 	"/knowledge": "knowledge",
 	"/tools": "toolsHub",

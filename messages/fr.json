@@ -22,7 +22,8 @@
       "capabilities": "Capacités",
       "configuration": "Configuration",
       "administration": "Administration",
-      "advanced": "Avancé"
+      "advanced": "Avancé",
+      "planning": "Planification"
     },
     "chat": "Chat",
     "assistants": "Assistants",
@@ -39,7 +40,8 @@
     "setup": "Configuration initiale",
     "assistantConfig": "Réglages de l’assistant",
     "workspace": "App",
-    "customTools": "Tools custom"
+    "customTools": "Tools custom",
+    "scheduledTasks": "Tâches planifiées"
   },
   "chat": {
     "title": "Chat",
@@ -552,7 +554,7 @@
         "description": "Réordonnez les entrées de navigation et choisissez les pages visibles dans la sidebar pour tous les utilisateurs.",
         "statusCustom": "Personnalisée",
         "statusDefault": "Disposition par défaut",
-        "hint": "Glissez les entrées pour les réordonner. Choisissez si chaque page apparaît dans la navigation principale ou dans la section Advanced repliable. Les éléments masqués restent accessibles par URL directe mais n’apparaissent plus dans la sidebar. Les pages admin restent soumises aux permissions.",
+        "hint": "Glissez les entrées pour les réordonner. Choisissez si chaque page apparaît dans la navigation principale, Planification ou dans la section Advanced repliable. Les éléments masqués restent accessibles par URL directe mais n’apparaissent plus dans la sidebar. Les pages admin restent soumises aux permissions.",
         "moveUp": "Monter",
         "moveDown": "Descendre",
         "section": "Section",
@@ -564,7 +566,8 @@
         "save": "Enregistrer la navigation",
         "saved": "Navigation latérale enregistrée",
         "reset": "Restaurer la disposition par défaut",
-        "resetDone": "Disposition par défaut restaurée"
+        "resetDone": "Disposition par défaut restaurée",
+        "sectionPlanning": "Planification"
       },
       "chatAutomation": {
         "title": "Automatisation du chat",
@@ -765,5 +768,69 @@
   "notFound": {
     "title": "Page introuvable",
     "return": "Retour à l’app"
+  },
+  "scheduledTasks": {
+    "title": "Tâches planifiées",
+    "description": "Planifiez des prompts automatiques pour vos assistants, sans passer par la page de chat.",
+    "openChat": "Ouvrir le chat",
+    "loadingAgents": "Chargement des assistants",
+    "sectionHint": "Ces tâches s’exécutent automatiquement avec l’assistant choisi. Les résultats sont publiés dans une conversation dédiée créée au premier lancement.",
+    "loading": "Chargement des tâches…",
+    "defaults": {
+      "title": "Résumé d’actualité"
+    },
+    "create": {
+      "title": "Créer une tâche",
+      "description": "Définissez le prompt, l’assistant et le rythme d’exécution.",
+      "submit": "Créer la tâche"
+    },
+    "fields": {
+      "title": "Titre",
+      "prompt": "Prompt",
+      "assistant": "Assistant",
+      "assistantPlaceholder": "Choisir un assistant",
+      "frequency": "Fréquence",
+      "time": "Heure",
+      "minutes": "Minutes"
+    },
+    "frequency": {
+      "daily": "Tous les jours",
+      "interval": "Toutes les X minutes"
+    },
+    "overview": {
+      "title": "Tâches",
+      "description": "{active} active(s) sur {total}.",
+      "activeCount": "{count} active(s)",
+      "nextRun": "Prochain lancement"
+    },
+    "empty": {
+      "title": "Aucune tâche planifiée",
+      "description": "Créez votre première tâche pour automatiser une veille, un résumé ou un suivi récurrent."
+    },
+    "noAssistants": {
+      "title": "Aucun assistant disponible",
+      "description": "Créez un assistant avant de planifier une tâche automatique.",
+      "cta": "Créer un assistant"
+    },
+    "status": {
+      "idle": "En attente",
+      "running": "En cours",
+      "success": "Réussie",
+      "failed": "Échec"
+    },
+    "dailyAt": "Tous les jours à {time}",
+    "intervalEvery": "Toutes les {minutes} minutes",
+    "nextRun": "prochain lancement : {date}",
+    "toggleTask": "Activer ou désactiver {title}",
+    "deleteTask": "Supprimer {title}",
+    "toasts": {
+      "loadAgentsFailed": "Impossible de charger les assistants",
+      "loadFailed": "Impossible de charger les tâches",
+      "created": "Tâche planifiée créée",
+      "createFailed": "Impossible de créer la tâche",
+      "updateFailed": "Impossible de mettre à jour la tâche",
+      "deleted": "Tâche supprimée",
+      "deleteFailed": "Impossible de supprimer la tâche"
+    }
   }
 }

@@ -26,7 +26,6 @@ import {
 import { ChatLayout } from "@/components/chat/chat-layout";
 import { ChatMessageList } from "@/components/chat/chat-message-list";
 import { QuotaBanner } from "@/components/chat/quota-banner";
-import { ScheduledTaskManager } from "@/components/chat/scheduled-task-manager";
 import { textFromMessage } from "@/components/chat/chat-types";
 import type {
 	AgentVersion,
@@ -112,16 +111,8 @@ function upsertConversation(
 
 function ChatContextBar({
 	quota,
-	workspaceId,
-	agents,
-	selectedAgentId,
-	activeConversationId,
 }: {
 	quota: { used: number; limit: number } | null;
-	workspaceId: string | null;
-	agents: ChatAgent[];
-	selectedAgentId: string | null;
-	activeConversationId: string | null;
 }) {
 	const [open, setOpen] = useState(false);
 	const quotaPercent = quota
@@ -140,6 +131,8 @@ function ChatContextBar({
 		setOpen(nextOpen);
 		window.localStorage.setItem("chat-context-open-v2", String(nextOpen));
 	}
+
+	if (!showQuota) return null;
 
 	return (
 		<Collapsible
@@ -160,31 +153,23 @@ function ChatContextBar({
 					) : null}
 				</div>
 				<div className="flex shrink-0 items-center gap-2">
-					<ScheduledTaskManager
-						workspaceId={workspaceId}
-						agents={agents}
-						selectedAgentId={selectedAgentId}
-						activeConversationId={activeConversationId}
-					/>
-					{showQuota ? (
-						<CollapsibleTrigger asChild>
-							<Button
-								type="button"
-								size="sm"
-								variant="ghost"
-								className="h-7 gap-1 px-2 text-xs"
-								aria-label={open ? "Hide context" : "Show context"}
-							>
-								<ChevronDownIcon
-									className={cn(
-										"size-3 transition-transform",
-										!open && "-rotate-90",
-									)}
-									aria-hidden="true"
-								/>
-							</Button>
-						</CollapsibleTrigger>
-					) : null}
+					<CollapsibleTrigger asChild>
+						<Button
+							type="button"
+							size="sm"
+							variant="ghost"
+							className="h-7 gap-1 px-2 text-xs"
+							aria-label={open ? "Hide context" : "Show context"}
+						>
+							<ChevronDownIcon
+								className={cn(
+									"size-3 transition-transform",
+									!open && "-rotate-90",
+								)}
+								aria-hidden="true"
+							/>
+						</Button>
+					</CollapsibleTrigger>
 				</div>
 			</div>
 			{showQuota ? (
@@ -931,13 +916,7 @@ export default function ChatPage() {
 			}
 			onSetupComplete={() => void reloadAgentContext()}
 		>
-			<ChatContextBar
-				quota={quota}
-				workspaceId={workspaceId}
-				agents={agents}
-				selectedAgentId={selectedAgentId}
-				activeConversationId={activeConversationId}
-			/>
+			<ChatContextBar quota={quota} />
 			<section
 				ref={scrollContainerRef}
 				className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden [overflow-anchor:none] px-3 py-4 sm:px-4 sm:py-8"
