@@ -216,6 +216,35 @@ jobs:
             --push \
             .
 
+      - name: Verify pushed SearXNG image config
+        run: |
+          docker pull "${{ steps.images.outputs.searxng_image }}"
+          docker run --rm -i \
+            --entrypoint /usr/local/searxng/.venv/bin/python \
+            "${{ steps.images.outputs.searxng_image }}" \
+            - <<'PY'
+          from searx.enginelib import EngineAbout
+          from searx.settings_loader import DEFAULT_SETTINGS_FILE, get_yaml_cfg, load_yaml, update_settings
+
+          blocked_engines = {"woxikon.de synonyme", "wikimini"}
+          effective_settings = update_settings(load_yaml(DEFAULT_SETTINGS_FILE), get_yaml_cfg("settings.yml"))
+          remaining_blocked = sorted(
+              engine.get("name")
+              for engine in effective_settings.get("engines", [])
+              if engine.get("name") in blocked_engines
+          )
+          if remaining_blocked:
+              raise SystemExit(f"blocked SearXNG engines still enabled: {', '.join(remaining_blocked)}")
+
+          for engine in effective_settings.get("engines", []):
+              about = engine.get("about")
+              if about:
+                  try:
+                      EngineAbout(**about)
+                  except TypeError as exc:
+                      raise SystemExit(f"invalid about metadata for engine {engine.get('name')!r}: {exc}") from exc
+          PY
+
   deploy:
     name: Deploy to Coolify
     runs-on: ubuntu-latest
@@ -239,6 +268,7 @@ jobs:
           OBJECT_STORAGE_ACCESS_KEY_ID: ${{ secrets.OBJECT_STORAGE_ACCESS_KEY_ID }}
           OBJECT_STORAGE_SECRET_ACCESS_KEY: ${{ secrets.OBJECT_STORAGE_SECRET_ACCESS_KEY }}
           SEARXNG_SECRET: ${{ secrets.SEARXNG_SECRET }}
+          SEARXNG_SETTINGS_REVISION: ${{ github.sha }}
           OBJECT_STORAGE_BUCKET: ${{ vars.OBJECT_STORAGE_BUCKET || 'ai-hub' }}
           ALLOW_PERSONAL_WORKSPACES: ${{ vars.ALLOW_PERSONAL_WORKSPACES || 'true' }}
           WORKSPACE_MONTHLY_TOKEN_LIMIT: ${{ vars.WORKSPACE_MONTHLY_TOKEN_LIMIT }}
@@ -418,7 +448,30 @@ jobs:
               | head -n1
           )"
 
-          docker compose -f .coolify/stack.compose.yml config --no-interpolate > /tmp/ai-hub.coolify.compose.yml
+          # Render image references directly into the Compose payload so Coolify
+          # cannot keep running a stale AI_HUB_*_IMAGE environment value.
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+
+          compose_path = Path(".coolify/stack.compose.yml")
+          compose = compose_path.read_text(encoding="utf-8")
+          replacements = {
+              "${AI_HUB_APP_IMAGE:?set AI_HUB_APP_IMAGE}": os.environ["AI_HUB_APP_IMAGE"],
+              "${AI_HUB_WORKER_IMAGE:?set AI_HUB_WORKER_IMAGE}": os.environ["AI_HUB_WORKER_IMAGE"],
+              "${AI_HUB_MIGRATOR_IMAGE:?set AI_HUB_MIGRATOR_IMAGE}": os.environ["AI_HUB_MIGRATOR_IMAGE"],
+              "${AI_HUB_GARAGE_IMAGE:?set AI_HUB_GARAGE_IMAGE}": os.environ["AI_HUB_GARAGE_IMAGE"],
+              "${AI_HUB_GARAGE_INIT_IMAGE:?set AI_HUB_GARAGE_INIT_IMAGE}": os.environ["AI_HUB_GARAGE_INIT_IMAGE"],
+              "${AI_HUB_SEARXNG_IMAGE:?set AI_HUB_SEARXNG_IMAGE}": os.environ["AI_HUB_SEARXNG_IMAGE"],
+          }
+          missing = [needle for needle in replacements if needle not in compose]
+          if missing:
+              raise SystemExit(f"missing image placeholders in {compose_path}: {missing}")
+          for needle, value in replacements.items():
+              compose = compose.replace(needle, value)
+          Path("/tmp/ai-hub.coolify.stack.yml").write_text(compose, encoding="utf-8")
+          PY
+          docker compose -f /tmp/ai-hub.coolify.stack.yml config --no-interpolate > /tmp/ai-hub.coolify.compose.yml
           COMPOSE_B64="$(base64 < /tmp/ai-hub.coolify.compose.yml | tr -d '\n')"
 
           if [[ -z "$SERVICE_UUID" ]]; then
@@ -465,6 +518,7 @@ jobs:
               --arg object_storage_secret_access_key "${OBJECT_STORAGE_SECRET_ACCESS_KEY}" \
               --arg object_storage_bucket "${OBJECT_STORAGE_BUCKET}" \
               --arg searxng_secret "${SEARXNG_SECRET}" \
+              --arg searxng_settings_revision "${SEARXNG_SETTINGS_REVISION:-local}" \
               --arg allow_personal_workspaces "${ALLOW_PERSONAL_WORKSPACES}" \
               --arg workspace_monthly_token_limit "${WORKSPACE_MONTHLY_TOKEN_LIMIT}" \
               '{data: [
@@ -485,6 +539,7 @@ jobs:
                 {key: "OBJECT_STORAGE_SECRET_ACCESS_KEY", value: $object_storage_secret_access_key, is_preview: false, is_literal: true, is_multiline: false, is_shown_once: false},
                 {key: "OBJECT_STORAGE_BUCKET", value: $object_storage_bucket, is_preview: false, is_literal: true, is_multiline: false, is_shown_once: false},
                 {key: "SEARXNG_SECRET", value: $searxng_secret, is_preview: false, is_literal: true, is_multiline: false, is_shown_once: false},
+                {key: "SEARXNG_SETTINGS_REVISION", value: $searxng_settings_revision, is_preview: false, is_literal: true, is_multiline: false, is_shown_once: false},
                 {key: "ALLOW_PERSONAL_WORKSPACES", value: $allow_personal_workspaces, is_preview: false, is_literal: true, is_multiline: false, is_shown_once: false},
                 {key: "WORKSPACE_MONTHLY_TOKEN_LIMIT", value: $workspace_monthly_token_limit, is_preview: false, is_literal: true, is_multiline: false, is_shown_once: false}
               ]}'
@@ -502,8 +557,7 @@ jobs:
               jq -r --argjson names "${long_running}" '
                 def ready_app:
                   .status == "running:healthy"
-                  or .status == "running"
-                  or (.name == "searxng" and .status == "running:unknown");
+                  or .status == "running";
                 def ready_database:
                   .status == "running:healthy" or .status == "running";
                 ([.applications[]? | select(.name as $name | $names | index($name)) | select((ready_app | not))] | length)

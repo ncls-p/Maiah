@@ -46,7 +46,7 @@ services:
       garage-init:
         condition: service_completed_successfully
       searxng:
-        condition: service_started
+        condition: service_healthy
     deploy:
       resources:
         limits:
@@ -80,7 +80,7 @@ services:
       garage-init:
         condition: service_completed_successfully
       searxng:
-        condition: service_started
+        condition: service_healthy
     deploy:
       resources:
         limits:
@@ -231,6 +231,7 @@ services:
     environment:
       SEARXNG_BASE_URL: ${SEARXNG_BASE_URL:-http://searxng:8080/}
       SEARXNG_SECRET: ${SEARXNG_SECRET:?set SEARXNG_SECRET}
+      SEARXNG_SETTINGS_REVISION: ${SEARXNG_SETTINGS_REVISION:-local}
     healthcheck:
       test:
         - CMD-SHELL

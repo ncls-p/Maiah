@@ -9,6 +9,44 @@ COPY docker/garage/garage.toml /etc/garage.toml
 
 FROM searxng/searxng:latest AS searxng
 COPY searxng/settings.yml /etc/searxng/settings.yml
+# SearXNG 2026.6.15 made EngineAbout strict while some packaged
+# disabled engines can still carry stale `about.language` metadata. Remove the
+# known-bad defaults from the image itself and fail the build if the effective
+# engine config would crash at runtime.
+RUN /usr/local/searxng/.venv/bin/python - <<'PY'
+from pathlib import Path
+
+import yaml
+
+from searx.enginelib import EngineAbout
+from searx.settings_loader import DEFAULT_SETTINGS_FILE, get_yaml_cfg, load_yaml, update_settings
+
+blocked_engines = {"woxikon.de synonyme", "wikimini"}
+default_settings = load_yaml(DEFAULT_SETTINGS_FILE)
+default_settings["engines"] = [
+    engine for engine in default_settings.get("engines", []) if engine.get("name") not in blocked_engines
+]
+Path(DEFAULT_SETTINGS_FILE).write_text(
+    yaml.safe_dump(default_settings, allow_unicode=True, sort_keys=False),
+    encoding="utf-8",
+)
+
+user_settings = get_yaml_cfg("settings.yml")
+effective_settings = update_settings(default_settings, user_settings)
+remaining_blocked = sorted(
+    engine.get("name") for engine in effective_settings.get("engines", []) if engine.get("name") in blocked_engines
+)
+if remaining_blocked:
+    raise SystemExit(f"blocked SearXNG engines still enabled: {', '.join(remaining_blocked)}")
+
+for engine in effective_settings.get("engines", []):
+    about = engine.get("about")
+    if about:
+        try:
+            EngineAbout(**about)
+        except TypeError as exc:
+            raise SystemExit(f"invalid about metadata for engine {engine.get('name')!r}: {exc}") from exc
+PY
 
 FROM node:22-bookworm-slim AS base
 
