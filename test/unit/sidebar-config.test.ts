@@ -68,7 +68,7 @@ describe("applySidebarNavConfig", () => {
 });
 
 describe("buildSidebarMenuGroups", () => {
-	it("keeps primary and advanced sections when using custom config", () => {
+	it("keeps primary, planning, and advanced sections when using custom config", () => {
 		const config = normalizeSidebarNavConfig({
 			items: [
 				{ id: "/settings", visible: true },
@@ -95,11 +95,13 @@ describe("buildSidebarMenuGroups", () => {
 
 		expect(groups.map((group) => group.labelKey)).toEqual([
 			"primary",
+			"planning",
 			"advanced",
 		]);
 		expect(groups[0]?.items[0]?.href).toBe("/chat");
-		expect(groups[1]?.items[0]?.href).toBe("/settings");
-		expect(groups[1]?.items[1]?.href).toBe("/marketplace");
+		expect(groups[1]?.items[0]?.href).toBe("/scheduled-tasks");
+		expect(groups[2]?.items[0]?.href).toBe("/settings");
+		expect(groups[2]?.items[1]?.href).toBe("/marketplace");
 	});
 
 	it("respects custom section assignments from admin config", () => {
@@ -139,6 +141,7 @@ describe("buildSidebarMenuGroups", () => {
 describe("getDefaultSectionForNavId", () => {
 	it("maps default sections", () => {
 		expect(getDefaultSectionForNavId("/chat")).toBe("primary");
+		expect(getDefaultSectionForNavId("/scheduled-tasks")).toBe("planning");
 		expect(getDefaultSectionForNavId("/marketplace")).toBe("advanced");
 	});
 });

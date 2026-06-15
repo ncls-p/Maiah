@@ -31,7 +31,11 @@ export const DEFAULT_SIDEBAR_NAV_IDS = [
 
 export type SidebarNavItemId = (typeof DEFAULT_SIDEBAR_NAV_IDS)[number];
 
-export const SIDEBAR_NAV_SECTIONS = ["primary", "planning", "advanced"] as const;
+export const SIDEBAR_NAV_SECTIONS = [
+	"primary",
+	"planning",
+	"advanced",
+] as const;
 export type SidebarNavSection = (typeof SIDEBAR_NAV_SECTIONS)[number];
 
 const sidebarNavItemSchema = z.object({
