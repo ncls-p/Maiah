@@ -377,19 +377,39 @@ jobs:
             local method="$1"
             local path="$2"
             local data="${3:-}"
+            local response_file status
+            response_file="$(mktemp)"
             if [[ -n "$data" ]]; then
-              /usr/bin/curl -fsSL -X "$method" \
-                -H "Authorization: Bearer ${COOLIFY_TOKEN}" \
-                -H "Accept: application/json" \
-                -H "Content-Type: application/json" \
-                -d "$data" \
-                "${COOLIFY_BASE_URL}/api/v1${path}"
+              status="$(
+                /usr/bin/curl -sS -X "$method" \
+                  -H "Authorization: Bearer ${COOLIFY_TOKEN}" \
+                  -H "Accept: application/json" \
+                  -H "Content-Type: application/json" \
+                  -d "$data" \
+                  --output "${response_file}" \
+                  --write-out '%{http_code}' \
+                  "${COOLIFY_BASE_URL}/api/v1${path}" || true
+              )"
             else
-              /usr/bin/curl -fsSL -X "$method" \
-                -H "Authorization: Bearer ${COOLIFY_TOKEN}" \
-                -H "Accept: application/json" \
-                "${COOLIFY_BASE_URL}/api/v1${path}"
+              status="$(
+                /usr/bin/curl -sS -X "$method" \
+                  -H "Authorization: Bearer ${COOLIFY_TOKEN}" \
+                  -H "Accept: application/json" \
+                  --output "${response_file}" \
+                  --write-out '%{http_code}' \
+                  "${COOLIFY_BASE_URL}/api/v1${path}" || true
+              )"
             fi
+            if [[ "${status}" =~ ^2 ]]; then
+              cat "${response_file}"
+              rm -f "${response_file}"
+              return 0
+            fi
+            echo "Coolify API ${method} ${path} failed with HTTP ${status}" >&2
+            cat "${response_file}" >&2 || true
+            echo >&2
+            rm -f "${response_file}"
+            exit 1
           }
 
           wait_for_http_status() {
@@ -496,8 +516,7 @@ jobs:
                 --arg environment_name "${COOLIFY_ENVIRONMENT_NAME}" \
                 --arg server_uuid "${COOLIFY_SERVER_UUID}" \
                 --arg docker_compose_raw "${COMPOSE_B64}" \
-                --arg app_url "${APP_ROUTING_URL}" \
-                '{name: $name, description: $description, project_uuid: $project_uuid, environment_name: $environment_name, server_uuid: $server_uuid, instant_deploy: false, docker_compose_raw: $docker_compose_raw, force_domain_override: true, is_container_label_escape_enabled: true, urls: [{name: "app", url: $app_url}]}'
+                '{name: $name, description: $description, project_uuid: $project_uuid, environment_name: $environment_name, server_uuid: $server_uuid, instant_deploy: false, docker_compose_raw: $docker_compose_raw}'
             )"
             api PATCH "/services/${SERVICE_UUID}" "${PATCH_BODY}" >/dev/null
           fi
@@ -590,8 +609,7 @@ jobs:
                 --arg environment_name "${COOLIFY_ENVIRONMENT_NAME}" \
                 --arg server_uuid "${COOLIFY_SERVER_UUID}" \
                 --rawfile docker_compose_raw /tmp/ai-hub.coolify.compose.yml \
-                --arg app_url "${APP_ROUTING_URL}" \
-                '{name: $name, description: $description, project_uuid: $project_uuid, environment_name: $environment_name, server_uuid: $server_uuid, instant_deploy: false, docker_compose_raw: $docker_compose_raw, force_domain_override: true, is_container_label_escape_enabled: true, urls: [{name: "app", url: $app_url}]}'
+                '{name: $name, description: $description, project_uuid: $project_uuid, environment_name: $environment_name, server_uuid: $server_uuid, instant_deploy: false, docker_compose_raw: $docker_compose_raw}'
             )"
             api PATCH "/services/${SERVICE_UUID}" "${RAW_PATCH_BODY}" >/dev/null
             SERVICE_JSON="$(api GET "/services/${SERVICE_UUID}")"
