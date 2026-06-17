@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, type DragEvent } from "react";
+import { Link } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
 import {
 	BookOpenIcon,
@@ -16,6 +17,7 @@ import { PageEmptyState } from "@/components/page-empty-state";
 import { PageLoading } from "@/components/page-loading";
 import { SectionHeader } from "@/components/section-header";
 import { WorkspacePage } from "@/components/workspace-page";
+import { AdvancedSection } from "@/components/ui/advanced-section";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -62,6 +64,12 @@ function statusVariant(status: string) {
 	if (status === "ready") return "secondary" as const;
 	if (status === "processing") return "outline" as const;
 	return "destructive" as const;
+}
+
+function statusLabel(status: string, t: (key: string) => string) {
+	if (status === "ready") return t("statusReady");
+	if (status === "processing") return t("statusProcessing");
+	return t("statusFailed");
 }
 
 export default function KnowledgePage() {
@@ -125,10 +133,10 @@ export default function KnowledgePage() {
 				}),
 			},
 		);
-		if (!res.ok) return toast.error("Failed to ingest document");
+		if (!res.ok) return toast.error(t("errorIngest"));
 		setDocForm({ title: "", content: "" });
 		await loadDocuments();
-		toast.success("Document queued for indexing");
+		toast.success(t("toastDocumentQueued"));
 	}
 
 	function handleFileDrop(event: DragEvent<HTMLDivElement>) {
@@ -204,11 +212,13 @@ export default function KnowledgePage() {
 				description: baseForm.description.trim() || undefined,
 			}),
 		});
-		if (!res.ok) return toast.error("Failed to create knowledge base");
+		if (!res.ok) return toast.error(t("errorCreate"));
+		const created = (await res.json()) as KnowledgeBase;
 		setBaseForm({ name: "", description: "" });
 		setShowCreateDialog(false);
+		setSelectedId(created.id);
 		await loadBases();
-		toast.success("Knowledge base created");
+		toast.success(t("toastBaseCreated"));
 	}
 
 	async function ingestDocument() {
@@ -225,7 +235,7 @@ export default function KnowledgePage() {
 				body: JSON.stringify({ workspaceId, query }),
 			},
 		);
-		if (!res.ok) return toast.error("Search failed");
+		if (!res.ok) return toast.error(t("errorSearch"));
 		setResults(await res.json());
 	}
 
@@ -243,49 +253,47 @@ export default function KnowledgePage() {
 				}),
 			},
 		);
-		if (!res.ok) return toast.error("Failed to update knowledge base");
+		if (!res.ok) return toast.error(t("errorUpdate"));
 		setEditingBase(null);
 		await loadBases();
-		toast.success("Knowledge base updated");
+		toast.success(t("toastBaseUpdated"));
 	}
 
 	async function deleteBase(baseId: string) {
 		if (!workspaceId) return;
+		if (!window.confirm(t("confirmDeleteBase"))) return;
 		const res = await fetch(
 			`/api/workspace/knowledge-bases/${baseId}?workspaceId=${workspaceId}`,
 			{ method: "DELETE" },
 		);
-		if (!res.ok) return toast.error("Failed to remove knowledge base");
+		if (!res.ok) return toast.error(t("errorDeleteBase"));
 		await loadBases();
-		toast.success("Knowledge base removed");
+		toast.success(t("toastBaseRemoved"));
 	}
 
 	async function deleteDocument(documentId: string) {
 		if (!workspaceId || !selectedId) return;
+		if (!window.confirm(t("confirmDeleteDocument"))) return;
 		const res = await fetch(
 			`/api/workspace/knowledge-bases/${selectedId}/documents/${documentId}?workspaceId=${workspaceId}`,
 			{ method: "DELETE" },
 		);
-		if (!res.ok) return toast.error("Failed to remove document");
+		if (!res.ok) return toast.error(t("errorDeleteDocument"));
 		await loadDocuments();
-		toast.success("Document removed");
+		toast.success(t("toastDocumentRemoved"));
 	}
 
 	if (workspaceLoading || !workspaceId) {
 		return <PageLoading label={tCommon("loading")} />;
 	}
 
+	const selectedBase = bases.find((base) => base.id === selectedId) ?? null;
+
 	return (
 		<WorkspacePage
 			title={t("title")}
 			description={t("description")}
 			width="wide"
-			actions={
-				<Button type="button" onClick={() => setShowCreateDialog(true)}>
-					<PlusIcon data-icon="inline-start" />
-					{t("newBase")}
-				</Button>
-			}
 		>
 			<Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
 				<DialogContent>
@@ -296,6 +304,8 @@ export default function KnowledgePage() {
 						<Label htmlFor="knowledge-name">{t("name")}</Label>
 						<Input
 							id="knowledge-name"
+							name="knowledge-name"
+							autoComplete="off"
 							value={baseForm.name}
 							onChange={(e) =>
 								setBaseForm({ ...baseForm, name: e.target.value })
@@ -304,6 +314,8 @@ export default function KnowledgePage() {
 						<Label htmlFor="knowledge-description">{t("descriptionLabel")}</Label>
 						<Input
 							id="knowledge-description"
+							name="knowledge-description"
+							autoComplete="off"
 							value={baseForm.description}
 							onChange={(e) =>
 								setBaseForm({ ...baseForm, description: e.target.value })
@@ -326,6 +338,63 @@ export default function KnowledgePage() {
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>
+			<section className="mb-6 rounded-2xl border bg-card p-5">
+				<div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+					<div className="max-w-2xl">
+						<p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+							{t("guideEyebrow")}
+						</p>
+						<h2 className="mt-2 text-xl font-semibold tracking-tight">
+							{t("guideTitle")}
+						</h2>
+						<p className="mt-2 text-sm text-muted-foreground">
+							{t("guideDescription")}
+						</p>
+					</div>
+					<div className="flex flex-col gap-3 sm:flex-row sm:items-center lg:flex-col lg:items-stretch">
+						<div className="grid grid-cols-2 gap-2 text-sm">
+							<div className="rounded-xl border bg-background px-3 py-2">
+								<p className="font-medium">{bases.length}</p>
+								<p className="text-xs text-muted-foreground">
+									{t("basesCount", { count: bases.length })}
+								</p>
+							</div>
+							<div className="rounded-xl border bg-background px-3 py-2">
+								<p className="font-medium">{documents.length}</p>
+								<p className="text-xs text-muted-foreground">
+									{t("selectedDocumentsCount", { count: documents.length })}
+								</p>
+							</div>
+						</div>
+						<Button
+							type="button"
+							size="sm"
+							onClick={() => setShowCreateDialog(true)}
+						>
+							<PlusIcon data-icon="inline-start" />
+							{t("newBase")}
+						</Button>
+					</div>
+				</div>
+				<ol className="mt-5 grid gap-2 sm:grid-cols-3">
+					{[
+						t("guideStepCreate"),
+						t("guideStepDocuments"),
+						t("guideStepAttach"),
+					].map((step, index) => (
+						<li
+							key={step}
+							className="flex items-center gap-3 rounded-xl border bg-background px-3 py-2 text-sm"
+						>
+							<span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium text-muted-foreground">
+								{index + 1}
+							</span>
+							<span className="min-w-0 truncate">{step}</span>
+						</li>
+					))}
+				</ol>
+			</section>
+
 			<div className="grid gap-6 lg:grid-cols-[20rem_1fr]">
 				<section className="flex flex-col gap-4">
 					<SectionHeader
@@ -411,6 +480,20 @@ export default function KnowledgePage() {
 						/>
 					) : (
 						<>
+							<div className="flex flex-col gap-3 rounded-2xl border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
+								<div className="min-w-0">
+									<p className="truncate text-base font-semibold">
+										{selectedBase?.name ?? t("documents")}
+									</p>
+									<p className="mt-1 text-sm text-muted-foreground">
+										{selectedBase?.description || t("documentsHint")}
+									</p>
+								</div>
+								<Button asChild size="sm" variant="outline">
+									<Link href="/agents">{t("attachAssistant")}</Link>
+								</Button>
+							</div>
+
 							<Card>
 								<CardHeader>
 									<CardTitle className="flex items-center gap-2">
@@ -476,13 +559,13 @@ export default function KnowledgePage() {
 											</span>
 											<div className="flex shrink-0 items-center gap-2">
 												<Badge variant={statusVariant(doc.status)}>
-													{doc.status}
+													{statusLabel(doc.status, t)}
 												</Badge>
 												<Button
 													type="button"
 													size="icon-sm"
 													variant="ghost"
-													aria-label={`Delete ${doc.title}`}
+													aria-label={t("deleteAria", { name: doc.title })}
 													onClick={() => void deleteDocument(doc.id)}
 												>
 													<Trash2Icon aria-hidden="true" />
@@ -492,11 +575,12 @@ export default function KnowledgePage() {
 									</Card>
 								))}
 							</div>
-							<Card>
-								<CardHeader>
-									<CardTitle>{t("search")}</CardTitle>
-								</CardHeader>
-								<CardContent className="grid gap-3">
+							<AdvancedSection
+								label={t("optionalSearch")}
+								hint={t("optionalSearchHint")}
+								storageKey="advanced:knowledge-search"
+							>
+								<div className="grid gap-3">
 									<div className="flex flex-col gap-2 sm:flex-row">
 										<Input
 											aria-label={t("searchAriaLabel")}
@@ -522,8 +606,8 @@ export default function KnowledgePage() {
 											</p>
 										</div>
 									))}
-								</CardContent>
-							</Card>
+								</div>
+							</AdvancedSection>
 						</>
 					)}
 				</section>
@@ -533,18 +617,26 @@ export default function KnowledgePage() {
 				>
 					<DialogContent>
 						<DialogHeader>
-							<DialogTitle>Edit knowledge base</DialogTitle>
+							<DialogTitle>{t("editBaseTitle")}</DialogTitle>
 						</DialogHeader>
 						<div className="grid gap-3">
-							<Label>Name</Label>
+							<Label htmlFor="edit-knowledge-name">{t("name")}</Label>
 							<Input
+								id="edit-knowledge-name"
+								name="edit-knowledge-name"
+								autoComplete="off"
 								value={editBaseForm.name}
 								onChange={(e) =>
 									setEditBaseForm({ ...editBaseForm, name: e.target.value })
 								}
 							/>
-							<Label>Description</Label>
+							<Label htmlFor="edit-knowledge-description">
+								{t("descriptionLabel")}
+							</Label>
 							<Input
+								id="edit-knowledge-description"
+								name="edit-knowledge-description"
+								autoComplete="off"
 								value={editBaseForm.description}
 								onChange={(e) =>
 									setEditBaseForm({
@@ -556,9 +648,9 @@ export default function KnowledgePage() {
 						</div>
 						<DialogFooter>
 							<Button variant="outline" onClick={() => setEditingBase(null)}>
-								Cancel
+								{tCommon("cancel")}
 							</Button>
-							<Button onClick={() => void updateBase()}>Save</Button>
+							<Button onClick={() => void updateBase()}>{tCommon("save")}</Button>
 						</DialogFooter>
 					</DialogContent>
 				</Dialog>
