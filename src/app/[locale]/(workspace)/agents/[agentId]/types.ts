@@ -5,6 +5,7 @@ export type Agent = {
 	name: string;
 	slug: string;
 	description: string | null;
+	logoUrl?: string | null;
 	activeVersionId?: string | null;
 	sharingMode: "personal" | "marketplace" | "specific_user";
 	shareTargetEmail?: string | null;

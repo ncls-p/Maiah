@@ -6,15 +6,18 @@ import {
 	CheckCircle2Icon,
 	ClockIcon,
 	CopyIcon,
+	ImagePlusIcon,
 	MessageCircleIcon,
 	MoreHorizontalIcon,
 	Trash2Icon,
+	XIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 
 import { ModelLogo } from "@/components/providers/model-logo";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -25,6 +28,27 @@ import {
 import { MetricCell } from "./shared";
 import type { Agent, Model, Provider } from "./types";
 
+const MAX_LOGO_BYTES = 256 * 1024;
+
+function readLogoFile(file: File) {
+	return new Promise<string>((resolve, reject) => {
+		if (!file.type.startsWith("image/") || file.type === "image/svg+xml") {
+			reject(
+				new Error("Use a bitmap image such as PNG, JPG, WebP, GIF, or AVIF."),
+			);
+			return;
+		}
+		if (file.size > MAX_LOGO_BYTES) {
+			reject(new Error("Logo must stay under 256 KB."));
+			return;
+		}
+		const reader = new FileReader();
+		reader.onload = () => resolve(String(reader.result));
+		reader.onerror = () => reject(new Error("Unable to read logo file."));
+		reader.readAsDataURL(file);
+	});
+}
+
 export function AgentHeader({
 	agent,
 	providers,
@@ -34,6 +58,7 @@ export function AgentHeader({
 	enabledMcpCount,
 	selectedKnowledgeIds,
 	canEdit,
+	onLogoChangeAction: onLogoChange,
 	onCloneAction: onClone,
 	onShowDeleteDialogAction: onShowDeleteDialog,
 }: {
@@ -45,6 +70,7 @@ export function AgentHeader({
 	enabledMcpCount: number;
 	selectedKnowledgeIds: string[];
 	canEdit: boolean;
+	onLogoChangeAction: (logoUrl: string | null) => void;
 	onCloneAction: () => void;
 	onShowDeleteDialogAction: () => void;
 }) {
@@ -52,23 +78,63 @@ export function AgentHeader({
 	const selectedProvider = providers.find((p) => p.id === form.providerId);
 	const selectedModel = models.find((m) => m.id === form.modelId);
 	const selectedModelLabel = selectedModel?.displayName || selectedModel?.modelId;
+	const agentLabel = agent?.name ?? form.name;
 	const hasModel = Boolean(form.providerId && form.modelId);
+
+	async function handleLogoFile(file: File | undefined) {
+		if (!file) return;
+		try {
+			onLogoChange(await readLogoFile(file));
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : "Invalid image file");
+		}
+	}
 
 	return (
 		<div className="rounded-2xl border bg-card p-5 sm:p-6">
 			<div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-6">
-				{selectedModelLabel ? (
+				<div className="flex shrink-0 flex-col items-center gap-2">
 					<ModelLogo
-						logoUrl={selectedModel?.logoUrl}
-						label={selectedModelLabel}
+						logoUrl={agent?.logoUrl}
+						label={agentLabel}
 						size="lg"
 						className="rounded-xl"
 					/>
-				) : (
-					<div className="flex size-12 shrink-0 items-center justify-center rounded-xl border bg-muted text-muted-foreground">
-						<MessageCircleIcon className="size-6" aria-hidden="true" />
-					</div>
-				)}
+					{canEdit && agent?.id ? (
+						<div className="flex items-center gap-1">
+							<input
+								id={`agent-logo-${agent.id}`}
+								type="file"
+								accept="image/png,image/jpeg,image/webp,image/gif,image/avif,image/bmp,image/x-icon,image/*"
+								className="sr-only"
+								onChange={(event) => {
+									void handleLogoFile(event.currentTarget.files?.[0]);
+									event.currentTarget.value = "";
+								}}
+							/>
+							<Button size="xs" variant="outline" asChild>
+								<label
+									htmlFor={`agent-logo-${agent.id}`}
+									aria-label="Change assistant logo"
+									className="cursor-pointer"
+								>
+									<ImagePlusIcon data-icon="inline-start" aria-hidden="true" />
+									Logo
+								</label>
+							</Button>
+							{agent.logoUrl ? (
+								<Button
+									size="icon-xs"
+									variant="ghost"
+									aria-label="Remove assistant logo"
+									onClick={() => onLogoChange(null)}
+								>
+									<XIcon className="size-3.5" aria-hidden="true" />
+								</Button>
+							) : null}
+						</div>
+					) : null}
+				</div>
 
 				<div className="min-w-0 flex-1">
 					<div className="flex flex-wrap items-center gap-2">

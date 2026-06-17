@@ -456,6 +456,34 @@ export default function AgentConfigurePage() {
     }
   }
 
+  async function handleLogoChange(logoUrl: string | null) {
+    if (!agentId || !workspaceId || !agent?.canEdit) return;
+    try {
+      const res = await fetch(`/api/workspace/agents/${agentId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workspaceId, logoUrl }),
+      });
+      if (!res.ok) {
+        throw new Error(
+          (await res.json().catch(() => null))?.error ||
+            "Unable to update assistant logo",
+        );
+      }
+      const data = (await res.json()) as { agent?: Agent };
+      if (data.agent) {
+        setAgent((current) =>
+          current ? { ...current, logoUrl: data.agent?.logoUrl ?? null } : current,
+        );
+      }
+      toast.success(logoUrl ? "Assistant logo updated" : "Assistant logo removed");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Unable to update assistant logo",
+      );
+    }
+  }
+
   async function handleClone() {
     if (!agentId || !workspaceId) return;
     try {
@@ -550,6 +578,7 @@ export default function AgentConfigurePage() {
           enabledMcpCount={enabledMcpCount}
           selectedKnowledgeIds={selectedKnowledgeIds}
           canEdit={canEdit}
+          onLogoChangeAction={(logoUrl) => void handleLogoChange(logoUrl)}
           onCloneAction={() => void handleClone()}
           onShowDeleteDialogAction={() => setShowDeleteDialog(true)}
         />

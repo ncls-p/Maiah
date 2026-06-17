@@ -266,7 +266,7 @@ export function ChatLayout({
           {selectedAgent ? (
             <span className="flex min-w-0 items-center gap-2">
               <ModelLogo
-                logoUrl={selectedAgent.modelLogoUrl}
+                logoUrl={selectedAgent.logoUrl}
                 label={selectedAgentLabel}
                 size="sm"
               />
@@ -282,7 +282,7 @@ export function ChatLayout({
               <SelectItem key={agent.id} value={agent.id}>
                 <span className="flex items-center gap-2">
                   <ModelLogo
-                    logoUrl={agent.modelLogoUrl}
+                    logoUrl={agent.logoUrl}
                     label={agent.name}
                     size="sm"
                   />

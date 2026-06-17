@@ -48,6 +48,7 @@ export interface CreateAgentInput {
 	name: string;
 	slug: string;
 	description?: string;
+	logoUrl?: string | null;
 	systemPrompt?: string;
 	providerId?: string;
 	modelId?: string;
@@ -108,6 +109,7 @@ export interface UpdateAgentInput {
 	name?: string;
 	slug?: string;
 	description?: string;
+	logoUrl?: string | null;
 	systemPrompt?: string;
 	providerId?: string;
 	modelId?: string;
@@ -206,6 +208,7 @@ export async function createAgent(input: CreateAgentInput) {
 		name,
 		slug,
 		description,
+		logoUrl,
 		systemPrompt,
 		providerId,
 		modelId,
@@ -280,6 +283,7 @@ export async function createAgent(input: CreateAgentInput) {
 				name,
 				slug,
 				description: description || null,
+				logoUrl: logoUrl ?? null,
 				createdById: userId,
 				visibility: sharingMode === "marketplace" ? "public" : "private",
 				sourceType: "custom",
@@ -459,6 +463,7 @@ export async function cloneAgent(input: CloneAgentInput) {
 				name,
 				slug,
 				description: source.description,
+				logoUrl: source.logoUrl,
 				createdById: input.userId,
 				visibility: "private",
 				sourceType: "fork",
@@ -533,6 +538,7 @@ export async function updateAgent(input: UpdateAgentInput) {
 		name,
 		slug,
 		description,
+		logoUrl,
 		systemPrompt,
 		providerId,
 		modelId,
@@ -583,6 +589,7 @@ export async function updateAgent(input: UpdateAgentInput) {
 		if (name !== undefined) agentUpdates.name = name;
 		if (slug !== undefined) agentUpdates.slug = slug;
 		if (description !== undefined) agentUpdates.description = description;
+		if (logoUrl !== undefined) agentUpdates.logoUrl = logoUrl ?? null;
 		if (sharingMode !== undefined) {
 			agentUpdates.sharingMode = sharingMode;
 			agentUpdates.shareTargetUserId = nextShareTargetUserId;

@@ -1099,7 +1099,7 @@ export default function ChatPage() {
 							<div className="flex max-w-xl flex-col items-center text-center">
 								{selectedAgent ? (
 									<ModelLogo
-										logoUrl={selectedAgent.modelLogoUrl}
+										logoUrl={selectedAgent.logoUrl}
 										label={selectedAgent.name}
 										size="lg"
 										className="mb-4 rounded-2xl"

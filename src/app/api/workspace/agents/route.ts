@@ -22,11 +22,19 @@ const slugSchema = z
 	.min(1)
 	.max(128)
 	.regex(/^[a-z0-9-]+$/);
+const agentLogoUrlSchema = z
+	.string()
+	.max(350_000)
+	.regex(
+		/^data:image\/(?!svg\+xml)[A-Za-z0-9.+-]+;base64,[A-Za-z0-9+/]+={0,2}$/,
+	)
+	.nullable();
 
 const createAgentSchema = z.object({
 	name: z.string().min(1).max(255),
 	slug: slugSchema,
 	description: z.string().max(2048).optional(),
+	logoUrl: agentLogoUrlSchema.optional(),
 	workspaceId: z.uuid(),
 	systemPrompt: z.string().max(64_000).optional(),
 	providerId: z.uuid().optional(),
@@ -259,7 +267,8 @@ export async function GET(req: NextRequest) {
 				? {
 						modelDisplayName: modelMetaByVersionId.get(agent.activeVersionId)
 							?.displayName,
-						modelLogoUrl: modelMetaByVersionId.get(agent.activeVersionId)?.logoUrl,
+						modelLogoUrl: modelMetaByVersionId.get(agent.activeVersionId)
+							?.logoUrl,
 					}
 				: {}),
 			canEdit: canEditAgent(agent, session.user.id, canAdminCurate),

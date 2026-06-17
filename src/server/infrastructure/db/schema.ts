@@ -442,6 +442,7 @@ export const agents = pgTable(
 		name: varchar("name", { length: 255 }).notNull(),
 		slug: varchar("slug", { length: 128 }).notNull(),
 		description: text("description"),
+		logoUrl: text("logo_url"),
 		visibility: agentVisibilityEnum("visibility").notNull().default("private"),
 		sourceType: agentSourceTypeEnum("source_type").notNull().default("custom"),
 		sharingMode: varchar("sharing_mode", { length: 32 })

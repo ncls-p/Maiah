@@ -23,12 +23,20 @@ const slugSchema = z
 	.min(1)
 	.max(128)
 	.regex(/^[a-z0-9-]+$/);
+const agentLogoUrlSchema = z
+	.string()
+	.max(350_000)
+	.regex(
+		/^data:image\/(?!svg\+xml)[A-Za-z0-9.+-]+;base64,[A-Za-z0-9+/]+={0,2}$/,
+	)
+	.nullable();
 
 const updateAgentSchema = z.object({
 	workspaceId: z.uuid(),
 	name: z.string().min(1).max(255).optional(),
 	slug: slugSchema.optional(),
 	description: z.string().max(2048).optional().or(z.literal("")),
+	logoUrl: agentLogoUrlSchema.optional(),
 	systemPrompt: z.string().max(64_000).optional().or(z.literal("")),
 	providerId: z.uuid().optional(),
 	modelId: z.uuid().optional(),
