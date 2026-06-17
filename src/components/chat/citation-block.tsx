@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpenIcon, FileTextIcon, SparklesIcon } from "lucide-react";
+import { BookOpenIcon, FileTextIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import type { ChatCitation } from "@/components/chat/chat-types";
@@ -17,13 +17,13 @@ export function CitationBlock({ citations, className }: CitationBlockProps) {
 	return (
 		<div
 			className={cn(
-				"group/citations overflow-hidden rounded-xl border border-border bg-muted/30 transition-colors hover:border-primary/25",
+				"group/citations overflow-hidden rounded-xl border bg-muted/30 transition-colors hover:border-input",
 				className,
 			)}
 		>
 			<div className="border-b border-border/50 px-3.5 py-2.5">
 				<div className="flex items-center gap-2">
-					<div className="flex size-6 items-center justify-center rounded-md bg-primary/10 text-primary">
+					<div className="flex size-6 items-center justify-center rounded-md border bg-background text-muted-foreground">
 						<BookOpenIcon className="size-3" aria-hidden="true" />
 					</div>
 					<span className="text-xs font-semibold text-foreground">Sources</span>
@@ -47,7 +47,7 @@ export function CitationBlock({ citations, className }: CitationBlockProps) {
 						relevancePct > 70
 							? "bg-success"
 							: relevancePct > 40
-								? "bg-primary"
+								? "bg-foreground"
 								: "bg-muted-foreground";
 
 					return (
@@ -71,7 +71,7 @@ export function CitationBlock({ citations, className }: CitationBlockProps) {
 									{citation.knowledgeBaseName ? (
 										<Badge
 											variant="outline"
-											className="mt-1 rounded-md border-primary/20 bg-primary/5 px-1.5 py-0 text-[10px] font-medium text-primary"
+											className="mt-1 rounded-md px-1.5 py-0 text-[10px] font-medium"
 										>
 											{citation.knowledgeBaseName}
 										</Badge>
@@ -81,7 +81,6 @@ export function CitationBlock({ citations, className }: CitationBlockProps) {
 								{/* Relevance indicator */}
 								<div className="shrink-0 flex items-center gap-1.5 text-[10px] text-muted-foreground/60">
 									<div className="flex items-center gap-0.5">
-										<SparklesIcon className="size-2.5" aria-hidden="true" />
 										<span>{relevancePct}%</span>
 									</div>
 									<div className="h-1 w-8 overflow-hidden rounded-full bg-muted">

@@ -31,7 +31,10 @@ export function LocaleSwitcher({
 				type="button"
 				variant="outline"
 				size="icon"
-				className={cn("size-8 shrink-0 rounded-lg font-semibold uppercase", className)}
+				className={cn(
+					"size-8 shrink-0 rounded-lg font-semibold uppercase",
+					className,
+				)}
 				aria-label={t("language")}
 				title={locale === "fr" ? t("french") : t("english")}
 				onClick={() => switchLocale(nextLocale)}
@@ -46,7 +49,7 @@ export function LocaleSwitcher({
 			role="group"
 			aria-label={t("language")}
 			className={cn(
-				"relative z-30 flex h-8 w-full min-w-0 overflow-hidden rounded-lg border border-input bg-background/65 shadow-[inset_0_1px_0_0_color-mix(in_oklch,white_38%,transparent)]",
+				"relative z-30 flex h-8 w-full min-w-0 overflow-hidden rounded-lg border border-input bg-background",
 				className,
 			)}
 		>

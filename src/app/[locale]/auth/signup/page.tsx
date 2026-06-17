@@ -77,7 +77,7 @@ export default function SignUpPage() {
 			data-page="auth"
 			className="flex min-h-svh items-center justify-center bg-background p-4"
 		>
-			<div className="animate-in-up flex w-full max-w-md flex-col gap-6">
+			<div className="animate-in-fade flex w-full max-w-md flex-col gap-6">
 				<div className="flex justify-center">
 					<DeodisLogo priority className="h-8" />
 				</div>
@@ -101,7 +101,7 @@ export default function SignUpPage() {
 								<Link href="/auth/signin">Go to sign in</Link>
 							</Button>
 						) : (
-							<form onSubmit={handleSubmit} className="space-y-4">
+							<form onSubmit={handleSubmit} className="flex flex-col gap-4">
 								{error ? (
 									<Alert variant="destructive" aria-live="polite">
 										<AlertTitle>
@@ -157,14 +157,16 @@ export default function SignUpPage() {
 									</FieldContent>
 								</Field>
 
-								<Button type="submit" size="lg" className="w-full" disabled={loading}>
+								<Button
+									type="submit"
+									size="lg"
+									className="w-full"
+									disabled={loading}
+								>
 									{loading ? (
 										<Spinner data-icon="inline-start" />
 									) : (
-										<UserPlusIcon
-											data-icon="inline-start"
-											aria-hidden="true"
-										/>
+										<UserPlusIcon data-icon="inline-start" aria-hidden="true" />
 									)}
 									Create account
 								</Button>

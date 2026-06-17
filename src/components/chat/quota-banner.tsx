@@ -38,13 +38,7 @@ export function QuotaBanner({ used, limit }: { used: number; limit: number }) {
 			: "text-info";
 
 	return (
-		<div
-			className={cn(
-				"animate-in-up border-b px-4 py-3 text-sm",
-				borderColor,
-				bgColor,
-			)}
-		>
+		<div className={cn("border-b px-4 py-3 text-sm", borderColor, bgColor)}>
 			<div className="mx-auto flex max-w-4xl items-center gap-4">
 				{/* Icon */}
 				<div
@@ -58,7 +52,7 @@ export function QuotaBanner({ used, limit }: { used: number; limit: number }) {
 					)}
 				>
 					<AlertTriangleIcon
-						className={cn("size-4 animate-pulse", iconColor)}
+						className={cn("size-4", iconColor)}
 						aria-hidden="true"
 					/>
 				</div>

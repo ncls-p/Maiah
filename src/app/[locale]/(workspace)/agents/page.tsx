@@ -12,15 +12,7 @@ import {
 	MoreHorizontal,
 	PencilIcon,
 	Trash2Icon,
-	SparklesIcon,
-	WrenchIcon,
-	BookOpenIcon,
-	ServerIcon,
 	ClockIcon,
-	ShieldIcon,
-	UsersIcon,
-	GlobeIcon,
-	StarIcon,
 	Store,
 	XIcon,
 	Share2,
@@ -88,12 +80,6 @@ interface Agent {
 	updatedAt: string;
 }
 
-type AgentBindingSummary = {
-	toolCount: number;
-	knowledgeCount: number;
-	mcpCount: number;
-};
-
 function slugifyAgentName(value: string) {
 	return (
 		value
@@ -154,58 +140,7 @@ export default function AgentsPage() {
 	);
 	const [deleteAgentId, setDeleteAgentId] = useState<string | null>(null);
 	const [deleting, setDeleting] = useState(false);
-	const [bindingSummaries, setBindingSummaries] = useState<
-		Record<string, AgentBindingSummary>
-	>({});
 	const abortRef = useRef<AbortController | null>(null);
-
-	const loadBindingSummaries = useCallback(
-		async (agentList: Agent[], currentWorkspaceId: string) => {
-			const summaries = await Promise.all(
-				agentList.map(async (agent) => {
-					const [toolsRes, knowledgeRes] = await Promise.all([
-						fetch(
-							`/api/workspace/agents/${agent.id}/tools?workspaceId=${currentWorkspaceId}`,
-						),
-						fetch(
-							`/api/workspace/agents/${agent.id}/knowledge?workspaceId=${currentWorkspaceId}`,
-						),
-					]);
-					const tools = toolsRes.ok ? await toolsRes.json() : [];
-					const knowledge = knowledgeRes.ok
-						? ((await knowledgeRes.json()) as { bindings?: unknown[] }).bindings
-						: [];
-					const toolList = Array.isArray(tools) ? tools : [];
-					const mcpCount = toolList.filter(
-						(tool) =>
-							typeof tool === "object" &&
-							tool !== null &&
-							"toolSource" in tool &&
-							(tool as { toolSource: string }).toolSource === "mcp",
-					).length;
-					return {
-						agentId: agent.id,
-						toolCount: toolList.length,
-						knowledgeCount: Array.isArray(knowledge) ? knowledge.length : 0,
-						mcpCount,
-					};
-				}),
-			);
-			setBindingSummaries(
-				Object.fromEntries(
-					summaries.map((summary) => [
-						summary.agentId,
-						{
-							toolCount: summary.toolCount,
-							knowledgeCount: summary.knowledgeCount,
-							mcpCount: summary.mcpCount,
-						},
-					]),
-				),
-			);
-		},
-		[],
-	);
 
 	const refreshAgents = useCallback(async () => {
 		if (!workspaceId) return;
@@ -223,7 +158,6 @@ export default function AgentsPage() {
 			const nextAgents = Array.isArray(data) ? data : data.agents;
 			setAgents(nextAgents);
 			setCanAdminCurate(Boolean(data.canAdminCurate));
-			await loadBindingSummaries(nextAgents, workspaceId);
 		} catch (err) {
 			if (err instanceof Error && err.name !== "AbortError") {
 				console.error("Failed to load agents", err);
@@ -231,7 +165,7 @@ export default function AgentsPage() {
 		} finally {
 			setLoading(false);
 		}
-	}, [workspaceId, loadBindingSummaries]);
+	}, [workspaceId]);
 
 	useEffect(() => {
 		if (!workspaceId) return;
@@ -251,7 +185,6 @@ export default function AgentsPage() {
 					const nextAgents = Array.isArray(data) ? data : data.agents;
 					setAgents(nextAgents);
 					setCanAdminCurate(Boolean(data.canAdminCurate));
-					await loadBindingSummaries(nextAgents, currentWorkspaceId);
 				}
 			} catch (err) {
 				if (err instanceof Error && err.name !== "AbortError") {
@@ -267,7 +200,7 @@ export default function AgentsPage() {
 			cancelled = true;
 			controller.abort();
 		};
-	}, [workspaceId, loadBindingSummaries]);
+	}, [workspaceId]);
 
 	const handleCreate = async () => {
 		if (!workspaceId || !form.name.trim()) return;
@@ -374,9 +307,9 @@ export default function AgentsPage() {
 				</Button>
 			}
 		>
-			<div className="space-y-6">
+			<div className="flex flex-col gap-6">
 				{/* Agents list card */}
-				<section className="surface-panel">
+				<section className="rounded-2xl border bg-card">
 					{/* Toolbar */}
 					<div className="flex flex-col gap-3 border-b px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
 						<div>
@@ -436,9 +369,8 @@ export default function AgentsPage() {
 							{tList("noMatch", { query: searchQuery })}
 						</div>
 					) : (
-						<div className="p-2 space-y-1">
+						<div className="flex flex-col gap-1 p-2">
 							{filteredAgents.map((agent) => {
-								const bindings = bindingSummaries[agent.id];
 								const isReady = Boolean(agent.activeVersionId);
 
 								return (
@@ -449,7 +381,7 @@ export default function AgentsPage() {
 											!isReady && "opacity-60",
 										)}
 									>
-										<div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+										<div className="flex size-8 shrink-0 items-center justify-center rounded-lg border bg-muted text-muted-foreground">
 											<BotIcon className="size-4" aria-hidden="true" />
 										</div>
 										<div className="min-w-0 flex-1">
@@ -467,10 +399,7 @@ export default function AgentsPage() {
 													)}
 												>
 													{isReady ? (
-														<SparklesIcon
-															className="size-3"
-															aria-hidden="true"
-														/>
+														<BotIcon className="size-3" aria-hidden="true" />
 													) : (
 														<ClockIcon className="size-3" aria-hidden="true" />
 													)}
@@ -487,50 +416,6 @@ export default function AgentsPage() {
 															date: timeAgo(agent.createdAt, tList, locale),
 														})}
 											</p>
-										</div>
-
-										{/* Badges */}
-										<div className="hidden items-center gap-1.5 sm:flex">
-											{agent.sharingMode === "marketplace" && (
-												<Badge variant="secondary" className="gap-1">
-													<UsersIcon className="size-3" aria-hidden="true" />
-													{tList("badgeTeam")}
-												</Badge>
-											)}
-											{agent.sharingMode === "specific_user" && (
-												<Badge variant="secondary" className="gap-1">
-													<ShieldIcon className="size-3" aria-hidden="true" />
-													{tList("badgeShared")}
-												</Badge>
-											)}
-											{agent.isGlobal && (
-												<Badge variant="secondary" className="gap-1">
-													<GlobeIcon className="size-3" aria-hidden="true" />
-													{tList("badgeGlobal")}
-												</Badge>
-											)}
-											{agent.isRecommended && (
-												<Badge variant="secondary" className="gap-1">
-													<StarIcon className="size-3" aria-hidden="true" />
-													{tList("badgeRecommended")}
-												</Badge>
-											)}
-										</div>
-
-										{/* Capability indicators */}
-										<div className="hidden items-center gap-3 lg:flex">
-											<div className="flex items-center gap-1 text-xs text-muted-foreground">
-												<WrenchIcon className="size-3" aria-hidden="true" />
-												<span>{bindings?.toolCount ?? "–"}</span>
-											</div>
-											<div className="flex items-center gap-1 text-xs text-muted-foreground">
-												<BookOpenIcon className="size-3" aria-hidden="true" />
-												<span>{bindings?.knowledgeCount ?? "–"}</span>
-											</div>
-											<div className="flex items-center gap-1 text-xs text-muted-foreground">
-												<ServerIcon className="size-3" aria-hidden="true" />
-												<span>{bindings?.mcpCount ?? "–"}</span>
-											</div>
 										</div>
 
 										{/* Quick actions */}
@@ -571,7 +456,7 @@ export default function AgentsPage() {
 														)
 													}
 												>
-													<SparklesIcon className="size-4" />
+													<BotIcon className="size-4" />
 													{isReady ? tCommon("chatNow") : tChat("finishSetup")}
 												</DropdownMenuItem>
 												<DropdownMenuItem

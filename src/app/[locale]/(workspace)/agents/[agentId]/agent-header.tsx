@@ -7,7 +7,6 @@ import {
 	ClockIcon,
 	MessageCircleIcon,
 	MoreHorizontalIcon,
-	SparklesIcon,
 	Trash2Icon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -49,9 +48,9 @@ export function AgentHeader({
 	const hasModel = Boolean(form.providerId && form.modelId);
 
 	return (
-		<div className="surface-panel p-5 sm:p-6">
+		<div className="rounded-2xl border bg-card p-5 sm:p-6">
 			<div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-6">
-				<div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+				<div className="flex size-12 shrink-0 items-center justify-center rounded-xl border bg-muted text-muted-foreground">
 					<BotIcon className="size-6" aria-hidden="true" />
 				</div>
 
@@ -65,7 +64,7 @@ export function AgentHeader({
 								variant="outline"
 								className="gap-1 border-success/30 bg-success/10 text-success"
 							>
-								<SparklesIcon className="size-3" aria-hidden="true" />
+								<BotIcon className="size-3" aria-hidden="true" />
 								{t("statusReady")}
 							</Badge>
 						) : (

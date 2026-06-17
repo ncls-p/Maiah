@@ -18,7 +18,6 @@ import {
 	PenLineIcon,
 	SearchIcon,
 	ShieldCheckIcon,
-	SparklesIcon,
 	TableIcon,
 	WrenchIcon,
 	type LucideIcon,
@@ -71,10 +70,10 @@ const TOOL_ICONS: Record<string, LucideIcon> = {
 };
 
 const CATEGORY_STYLES: Record<ToolCategory, { icon: LucideIcon }> = {
-	Think: { icon: SparklesIcon },
+	Think: { icon: WrenchIcon },
 	Time: { icon: ClockIcon },
 	Web: { icon: GlobeIcon },
-	Create: { icon: SparklesIcon },
+	Create: { icon: Code2Icon },
 	Code: { icon: BracesIcon },
 	Write: { icon: PenLineIcon },
 	Design: { icon: PaletteIcon },
@@ -104,7 +103,7 @@ function RiskBadge({
 	return (
 		<Badge
 			variant={riskBadgeVariant(riskLevel)}
-			className="shrink-0 rounded-full px-2 text-[10px] font-medium uppercase tracking-wide"
+			className="shrink-0 rounded-full px-2 text-[10px] font-medium"
 		>
 			{label}
 		</Badge>
@@ -126,29 +125,28 @@ function BuiltinToolCard({
 	const needsApproval = requiresApproval(tool.riskLevel);
 
 	return (
-		<article className="group relative min-h-full overflow-hidden rounded-2xl border border-border/45 bg-card/48 p-4 shadow-[inset_0_1px_0_oklch(1_0_0_/_0.16)] backdrop-blur-md transition-[border-color,background-color,transform] duration-200 hover:-translate-y-px hover:border-foreground/12 hover:bg-card/62">
-			<div className="pointer-events-none absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-foreground/18 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+		<article className="group min-h-full rounded-2xl border bg-card p-4 transition-colors duration-150 hover:border-input hover:bg-muted/30">
 			<div className="flex items-start gap-3.5">
-				<div className="flex size-9 shrink-0 items-center justify-center rounded-2xl border border-border/45 bg-background/44 text-foreground/72 shadow-[inset_0_1px_0_oklch(1_0_0_/_0.18)]">
+				<div className="flex size-9 shrink-0 items-center justify-center rounded-xl border bg-background text-muted-foreground">
 					<ToolIcon className="size-4" aria-hidden="true" />
 				</div>
 				<div className="min-w-0 flex-1">
 					<div className="flex items-start justify-between gap-3">
 						<div className="min-w-0">
-							<p className="mb-1 text-[0.64rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground/72">
+							<p className="mb-1 text-[0.64rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
 								{categoryLabel}
 							</p>
-							<h4 className="truncate text-sm font-semibold leading-tight tracking-[-0.015em] text-foreground/92">
+							<h4 className="truncate text-sm font-semibold leading-tight tracking-[-0.015em] text-foreground">
 								{tool.displayName}
 							</h4>
 						</div>
 						<RiskBadge riskLevel={tool.riskLevel} label={riskLabel} />
 					</div>
-					<p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted-foreground/82">
+					<p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
 						{tool.description}
 					</p>
 					<div className="mt-3 flex items-center justify-between gap-3">
-						<code className="truncate text-[0.68rem] text-muted-foreground/62">
+						<code className="truncate text-[0.68rem] text-muted-foreground">
 							{tool.name}
 						</code>
 						{needsApproval ? (
@@ -183,8 +181,8 @@ function StatCard({
 					: "text-foreground";
 
 	return (
-		<div className="rounded-2xl border border-border/42 bg-background/34 px-3.5 py-3 shadow-[inset_0_1px_0_oklch(1_0_0_/_0.14)] backdrop-blur-sm">
-			<p className="text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground/72">
+		<div className="rounded-2xl border bg-card px-3.5 py-3">
+			<p className="text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
 				{label}
 			</p>
 			<p
@@ -269,20 +267,20 @@ export function BuiltinToolsPanel() {
 	}
 
 	return (
-		<div className="space-y-5 animate-in-up">
-			<section className="glass-panel relative overflow-hidden rounded-3xl p-5 sm:p-6">
+		<div className="flex flex-col gap-5 animate-in-fade">
+			<section className="rounded-2xl border bg-card p-5 sm:p-6">
 				<div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-end">
-					<div className="max-w-2xl space-y-3">
-						<div className="inline-flex items-center gap-2 rounded-full border border-border/45 bg-background/36 px-3 py-1 text-muted-foreground shadow-[inset_0_1px_0_oklch(1_0_0_/_0.14)]">
+					<div className="flex max-w-2xl flex-col gap-3">
+						<div className="inline-flex w-fit items-center gap-2 rounded-full border bg-background px-3 py-1 text-muted-foreground">
 							<WrenchIcon className="size-3.5" aria-hidden="true" />
 							<p className="text-[0.66rem] font-semibold uppercase tracking-[0.18em]">
 								{t("eyebrow")}
 							</p>
 						</div>
-						<h2 className="max-w-xl text-2xl font-semibold tracking-[-0.045em] text-foreground/92 sm:text-3xl">
+						<h2 className="max-w-xl text-2xl font-semibold tracking-[-0.045em] text-foreground sm:text-3xl">
 							{t("title")}
 						</h2>
-						<p className="max-w-xl text-sm leading-relaxed text-muted-foreground/82">
+						<p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
 							{t("description")}
 						</p>
 						<Button variant="outline" size="sm" className="mt-1 w-fit" asChild>
@@ -302,7 +300,7 @@ export function BuiltinToolsPanel() {
 				</div>
 			</section>
 
-			<section className="glass-panel rounded-3xl p-3.5 sm:p-4">
+			<section className="rounded-2xl border bg-card p-3.5 sm:p-4">
 				<div className="flex flex-col gap-3 lg:flex-row lg:items-center">
 					<div className="relative min-w-0 flex-1">
 						<SearchIcon
@@ -313,11 +311,11 @@ export function BuiltinToolsPanel() {
 							value={search}
 							onChange={(event) => setSearch(event.target.value)}
 							placeholder={t("searchPlaceholder")}
-							className="h-10 border-border/45 bg-background/32 pl-9"
+							className="h-10 pl-9"
 							aria-label={t("searchPlaceholder")}
 						/>
 					</div>
-					<p className="shrink-0 px-1 text-xs text-muted-foreground/72 lg:text-right">
+					<p className="shrink-0 px-1 text-xs text-muted-foreground lg:text-right">
 						{t("resultsCount", { count: filteredTools.length })}
 					</p>
 				</div>
@@ -343,8 +341,8 @@ export function BuiltinToolsPanel() {
 								className={cn(
 									"h-8 gap-1.5 rounded-full border px-3 text-xs",
 									active
-										? "border-foreground/16 bg-foreground/8 text-foreground"
-										: "border-border/45 bg-background/28 text-muted-foreground hover:bg-muted/45 hover:text-foreground",
+										? "border-input bg-muted text-foreground"
+										: "text-muted-foreground hover:bg-muted hover:text-foreground",
 								)}
 								onClick={() => setCategoryFilter(category)}
 							>
@@ -363,7 +361,7 @@ export function BuiltinToolsPanel() {
 					description={t("noResultsHint")}
 				/>
 			) : (
-				<div className="space-y-7">
+				<div className="flex flex-col gap-7">
 					{groupedTools.map((group) => {
 						const CategoryIcon = isToolCategory(group.category)
 							? CATEGORY_STYLES[group.category].icon
@@ -372,13 +370,13 @@ export function BuiltinToolsPanel() {
 						const label = categoryLabel(group.category);
 
 						return (
-							<section key={group.category} className="space-y-3">
+							<section key={group.category} className="flex flex-col gap-3">
 								{showHeader ? (
 									<div className="flex items-center gap-2.5 px-1">
-										<div className="flex size-7 items-center justify-center rounded-xl border border-border/42 bg-background/36 text-muted-foreground">
+										<div className="flex size-7 items-center justify-center rounded-xl border bg-background text-muted-foreground">
 											<CategoryIcon className="size-3.5" aria-hidden="true" />
 										</div>
-										<h3 className="text-sm font-semibold tracking-[-0.02em] text-foreground/88">
+										<h3 className="text-sm font-semibold tracking-[-0.02em] text-foreground">
 											{label}
 										</h3>
 										<span className="rounded-full bg-muted/42 px-2 py-0.5 text-[0.68rem] text-muted-foreground">

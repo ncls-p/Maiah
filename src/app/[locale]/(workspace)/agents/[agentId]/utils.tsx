@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { BrainIcon, ServerIcon, SparklesIcon, ZapIcon } from "lucide-react";
+import { BrainIcon, ServerIcon, ZapIcon } from "lucide-react";
 
 import type { McpServer, McpTool, ToolBindingState } from "./types";
 
@@ -8,7 +8,7 @@ import type { McpServer, McpTool, ToolBindingState } from "./types";
 export function getProviderKindIcon(kind: string): ReactNode {
 	switch (kind.toLowerCase()) {
 		case "openai":
-			return <SparklesIcon className="size-4" aria-hidden="true" />;
+			return <ServerIcon className="size-4" aria-hidden="true" />;
 		case "anthropic":
 			return <BrainIcon className="size-4" aria-hidden="true" />;
 		case "google":

@@ -26,15 +26,15 @@ export function SettingsSection({
 	return (
 		<section
 			className={cn(
-				"surface-panel overflow-hidden p-0 animate-in-up",
+				"overflow-hidden rounded-2xl border bg-card p-0 animate-in-fade",
 				stagger,
 				className,
 			)}
 		>
-			<div className="border-b border-border/60 bg-gradient-to-br from-primary/8 via-background to-chart-2/10 px-5 py-5 sm:px-6">
+			<div className="border-b px-5 py-5 sm:px-6">
 				<div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 					<div className="min-w-0">
-						<div className="flex items-center gap-2 text-primary">
+						<div className="flex items-center gap-2 text-muted-foreground">
 							<Icon className="size-4 shrink-0" aria-hidden="true" />
 							<h2 className="text-sm font-semibold uppercase tracking-wider">
 								{title}
@@ -68,7 +68,10 @@ export function SettingsStatusBadge({
 	}[tone];
 
 	return (
-		<Badge variant="outline" className={cn("rounded-full px-3 py-1 capitalize", className)}>
+		<Badge
+			variant="outline"
+			className={cn("rounded-full px-3 py-1 capitalize", className)}
+		>
 			{label}
 		</Badge>
 	);
@@ -88,7 +91,7 @@ export function SettingsToggleRow({
 	onCheckedChange: (checked: boolean) => void;
 }) {
 	return (
-		<div className="flex items-center justify-between gap-4 rounded-xl border border-border/60 bg-background/70 p-4">
+		<div className="flex items-center justify-between gap-4 rounded-xl border bg-background p-4">
 			<div className="min-w-0">
 				<Label htmlFor={id}>{label}</Label>
 				<p className="mt-1 text-xs text-muted-foreground">{description}</p>
@@ -112,13 +115,17 @@ export function SettingsFeatureToggle({
 	icon?: ElementType;
 }) {
 	return (
-		<label className="flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-background/70 p-4 transition-colors hover:border-primary/25">
+		<label className="flex items-center justify-between gap-3 rounded-xl border bg-background p-4 transition-colors hover:border-input">
 			<span className="min-w-0">
 				<span className="flex items-center gap-2 text-sm font-medium">
-					{Icon ? <Icon className="size-4 text-primary" aria-hidden="true" /> : null}
+					{Icon ? (
+						<Icon className="size-4 text-muted-foreground" aria-hidden="true" />
+					) : null}
 					{label}
 				</span>
-				<span className="mt-1 block text-xs text-muted-foreground">{description}</span>
+				<span className="mt-1 block text-xs text-muted-foreground">
+					{description}
+				</span>
 			</span>
 			<Switch checked={checked} onCheckedChange={onCheckedChange} />
 		</label>
@@ -144,12 +151,14 @@ export function SettingsMetricRow({
 	}[tone];
 
 	return (
-		<div className="flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-background/70 px-4 py-3">
+		<div className="flex items-center justify-between gap-3 rounded-xl border bg-background px-4 py-3">
 			<span className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
 				{Icon ? <Icon className="size-4 shrink-0" aria-hidden="true" /> : null}
 				{label}
 			</span>
-			<span className={cn("shrink-0 text-sm font-semibold capitalize", valueClass)}>
+			<span
+				className={cn("shrink-0 text-sm font-semibold capitalize", valueClass)}
+			>
 				{value}
 			</span>
 		</div>
@@ -158,9 +167,9 @@ export function SettingsMetricRow({
 
 export function SettingsSectionSkeleton({ rows = 3 }: { rows?: number }) {
 	return (
-		<div className="surface-panel overflow-hidden p-0">
+		<div className="overflow-hidden rounded-2xl border bg-card p-0">
 			<Skeleton className="h-28 w-full rounded-none" />
-			<div className="space-y-3 p-5 sm:p-6">
+			<div className="flex flex-col gap-3 p-5 sm:p-6">
 				{Array.from({ length: rows }).map((_, index) => (
 					<Skeleton key={index} className="h-14 w-full rounded-xl" />
 				))}

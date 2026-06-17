@@ -18,8 +18,7 @@ export function ListRow({
 			data-slot="list-row"
 			className={cn(
 				"ui-list-row flex items-center gap-3 p-3",
-				selected &&
-					"border-primary/25 bg-primary/8 shadow-[inset_0_1px_0_oklch(1_0_0_/_0.18)]",
+				selected && "border-input bg-muted",
 				className,
 			)}
 			{...props}
@@ -46,9 +45,8 @@ export function ListRowButton({
 			type={type}
 			data-slot="list-row-button"
 			className={cn(
-				"ui-list-row flex w-full items-center gap-3 p-3 text-left text-sm transition-all duration-200",
-				selected &&
-					"border-primary/25 bg-primary/8 shadow-[inset_0_1px_0_oklch(1_0_0_/_0.18)]",
+				"ui-list-row flex w-full items-center gap-3 p-3 text-left text-sm transition-colors duration-150",
+				selected && "border-input bg-muted",
 				className,
 			)}
 			{...props}

@@ -34,9 +34,9 @@ export function WorkspacePage({
 				className,
 			)}
 		>
-			<header className="flex flex-col gap-4 border-b border-border/35 pb-6 sm:flex-row sm:items-start sm:justify-between">
+			<header className="flex flex-col gap-4 border-b pb-6 sm:flex-row sm:items-start sm:justify-between">
 				<div className="flex min-w-0 flex-1 flex-col gap-2">
-					<h1 className="text-pretty text-2xl font-semibold tracking-[-0.035em] text-foreground/92">
+					<h1 className="text-pretty text-2xl font-semibold tracking-[-0.035em] text-foreground">
 						{title}
 					</h1>
 					{description ? (

@@ -57,7 +57,7 @@ export default function SignInPage() {
 			data-page="auth"
 			className="flex min-h-svh items-center justify-center bg-background p-4"
 		>
-			<div className="animate-in-up flex w-full max-w-md flex-col gap-6">
+			<div className="animate-in-fade flex w-full max-w-md flex-col gap-6">
 				<div className="flex justify-center">
 					<DeodisLogo priority className="h-8" />
 				</div>
@@ -68,12 +68,12 @@ export default function SignInPage() {
 							Sign in to AI Hub
 						</CardTitle>
 						<CardDescription>
-							Welcome back. Open the app to manage providers, agents,
-							and conversations.
+							Welcome back. Open the app to manage providers, agents, and
+							conversations.
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<form onSubmit={handleSubmit} className="space-y-4">
+						<form onSubmit={handleSubmit} className="flex flex-col gap-4">
 							{error ? (
 								<Alert variant="destructive" aria-live="polite">
 									<AlertTitle>We couldn&apos;t sign you in</AlertTitle>
@@ -111,7 +111,12 @@ export default function SignInPage() {
 								</FieldContent>
 							</Field>
 
-							<Button type="submit" size="lg" className="w-full" disabled={loading}>
+							<Button
+								type="submit"
+								size="lg"
+								className="w-full"
+								disabled={loading}
+							>
 								{loading ? (
 									<Spinner data-icon="inline-start" />
 								) : (

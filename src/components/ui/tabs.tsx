@@ -16,7 +16,7 @@ function Tabs({
 			data-slot="tabs"
 			data-orientation={orientation}
 			className={cn(
-				"group/tabs flex gap-2 data-horizontal:flex-col",
+				"group/tabs flex gap-3 data-horizontal:flex-col",
 				className,
 			)}
 			{...props}
@@ -25,12 +25,12 @@ function Tabs({
 }
 
 const tabsListVariants = cva(
-	"group/tabs-list inline-flex w-fit items-center justify-center rounded-full border border-border/45 bg-background/38 p-1 text-muted-foreground shadow-[inset_0_1px_0_0_oklch(1_0_0_/_0.18)] backdrop-blur-md group-data-horizontal/tabs:min-h-11 group-data-vertical/tabs:h-fit group-data-vertical/tabs:flex-col data-[variant=line]:rounded-none data-[variant=line]:border-0 data-[variant=line]:bg-transparent data-[variant=line]:p-0 data-[variant=line]:shadow-none",
+	"group/tabs-list inline-flex w-fit items-center justify-center rounded-lg border bg-muted p-1 text-muted-foreground group-data-horizontal/tabs:min-h-10 group-data-vertical/tabs:h-fit group-data-vertical/tabs:flex-col data-[variant=line]:rounded-none data-[variant=line]:border-0 data-[variant=line]:bg-transparent data-[variant=line]:p-0",
 	{
 		variants: {
 			variant: {
-				default: "bg-muted",
-				line: "gap-1 bg-transparent",
+				default: "",
+				line: "gap-1",
 			},
 		},
 		defaultVariants: {
@@ -63,10 +63,10 @@ function TabsTrigger({
 		<TabsPrimitive.Trigger
 			data-slot="tabs-trigger"
 			className={cn(
-				"relative inline-flex min-h-9 flex-1 items-center justify-center gap-1.5 rounded-full border border-transparent px-3 py-1.5 text-sm font-medium whitespace-nowrap text-foreground/60 transition-[background-color,border-color,color,box-shadow,opacity] duration-200 group-data-vertical/tabs:w-full group-data-vertical/tabs:justify-start hover:text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-50 has-data-[icon=inline-end]:pr-1 has-data-[icon=inline-start]:pl-1 dark:text-muted-foreground dark:hover:text-foreground group-data-[variant=default]/tabs-list:data-active:shadow-[0_10px_30px_-22px_color-mix(in_oklch,var(--foreground)_35%,transparent)] group-data-[variant=line]/tabs-list:data-active:shadow-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
-				"group-data-[variant=line]/tabs-list:bg-transparent group-data-[variant=line]/tabs-list:data-active:bg-transparent dark:group-data-[variant=line]/tabs-list:data-active:border-transparent dark:group-data-[variant=line]/tabs-list:data-active:bg-transparent",
-				"data-active:border-border/55 data-active:bg-background/68 data-active:text-foreground dark:data-active:border-input/60 dark:data-active:bg-input/32 dark:data-active:text-foreground",
-				"after:absolute after:bg-primary after:opacity-0 after:transition-opacity after:duration-200 group-data-horizontal/tabs:after:inset-x-5 group-data-horizontal/tabs:after:bottom-[-0.55rem] group-data-horizontal/tabs:after:h-0.5 group-data-vertical/tabs:after:inset-y-2 group-data-vertical/tabs:after:-right-1 group-data-vertical/tabs:after:w-0.5 group-data-[variant=line]/tabs-list:data-active:after:opacity-100",
+				"relative inline-flex min-h-8 flex-1 items-center justify-center gap-1.5 rounded-md border border-transparent px-3 py-1.5 text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors duration-150 group-data-vertical/tabs:w-full group-data-vertical/tabs:justify-start hover:text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/20 disabled:pointer-events-none disabled:opacity-50 has-data-[icon=inline-end]:pr-1 has-data-[icon=inline-start]:pl-1 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+				"group-data-[variant=line]/tabs-list:bg-transparent group-data-[variant=line]/tabs-list:data-active:bg-transparent",
+				"data-active:border-border data-active:bg-background data-active:text-foreground",
+				"after:absolute after:bg-foreground after:opacity-0 after:transition-opacity after:duration-150 group-data-horizontal/tabs:after:inset-x-4 group-data-horizontal/tabs:after:bottom-[-0.45rem] group-data-horizontal/tabs:after:h-px group-data-vertical/tabs:after:inset-y-2 group-data-vertical/tabs:after:-right-1 group-data-vertical/tabs:after:w-px group-data-[variant=line]/tabs-list:data-active:after:opacity-100",
 				className,
 			)}
 			{...props}

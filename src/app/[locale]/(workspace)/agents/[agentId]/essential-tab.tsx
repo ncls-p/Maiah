@@ -1,11 +1,6 @@
 "use client";
 
-import {
-	MessageSquareIcon,
-	SaveIcon,
-	SettingsIcon,
-	SparklesIcon,
-} from "lucide-react";
+import { MessageSquareIcon, SaveIcon, SettingsIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { SyntheticEvent } from "react";
 
@@ -58,7 +53,7 @@ export function EssentialTab({
 	const filteredModels = models.filter((m) => m.providerId === form.providerId);
 
 	return (
-		<form onSubmit={onSave} className="space-y-4">
+		<form onSubmit={onSave} className="flex flex-col gap-4">
 			<ConfigSection
 				title={t("name")}
 				description={t("configurePage.identityHint")}
@@ -104,7 +99,7 @@ export function EssentialTab({
 			<ConfigSection
 				title={tModel("modelLabel")}
 				description={t("configurePage.modelHint")}
-				icon={SparklesIcon}
+				icon={MessageSquareIcon}
 				stagger="4"
 			>
 				<FieldGroup className="gap-4">

@@ -1,6 +1,12 @@
 import type { ReactNode } from "react";
 
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+	Card,
+	CardContent,
+	CardFooter,
+	CardHeader,
+	CardTitle,
+} from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 import { StatusBadge, type StatusKind } from "./status-badge";
@@ -23,7 +29,12 @@ export function ResourceCard({
 	className?: string;
 }) {
 	return (
-		<Card className={cn("flex flex-col transition-colors hover:border-primary/35", className)}>
+		<Card
+			className={cn(
+				"flex flex-col transition-colors hover:border-input",
+				className,
+			)}
+		>
 			<CardHeader className="gap-2 pb-2">
 				<div className="flex items-start justify-between gap-2">
 					<CardTitle className="text-base">{title}</CardTitle>

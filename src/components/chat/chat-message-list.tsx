@@ -13,9 +13,7 @@ import {
 	PencilIcon,
 	RefreshCcwIcon,
 	ShieldAlertIcon,
-	SparklesIcon,
 	Trash2Icon,
-	UserIcon,
 	XCircleIcon,
 	XIcon,
 } from "lucide-react";
@@ -464,7 +462,7 @@ function HtmlArtifactCard({
 			</Collapsible>
 			<Dialog open={fullscreenOpen} onOpenChange={setFullscreenOpen}>
 				<DialogContent className="!fixed !inset-0 flex !h-dvh !w-full !translate-x-0 !translate-y-0 flex-col overflow-hidden !rounded-none !border-0 bg-background p-0 sm:!max-w-none">
-					<div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border/60 bg-background/95 px-4 py-3 shadow-sm backdrop-blur sm:px-6">
+					<div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-3 border-b bg-background px-4 py-3 sm:px-6">
 						<div className="min-w-0">
 							<DialogTitle className="truncate text-base font-semibold">
 								{artifact.title}
@@ -753,7 +751,6 @@ function SuggestionsPart({
 					className="h-auto rounded-full px-3 py-1.5 text-xs"
 					onClick={() => onSuggestionClick?.(suggestion)}
 				>
-					<SparklesIcon className="size-3" aria-hidden="true" />
 					{suggestion}
 				</Button>
 			))}
@@ -1133,30 +1130,11 @@ export function ChatMessageList({
 						)}
 						style={{ animationDelay: isLast ? "0s" : undefined }}
 					>
-						{/* Assistant avatar */}
-						{message.role !== "user" && (
-							<div className="mt-1.5 flex size-7 shrink-0 items-center justify-center">
-								<div
-									className={cn(
-										"flex size-6 items-center justify-center rounded-full text-[10px] font-bold shadow-sm",
-										isAssistant
-											? "assistant-avatar bg-primary/15 text-primary ring-1 ring-primary/20"
-											: "bg-muted text-muted-foreground",
-									)}
-								>
-									{isAssistant ? (
-										<SparklesIcon className="size-3" aria-hidden="true" />
-									) : (
-										"S"
-									)}
-								</div>
-							</div>
-						)}
-
 						<div
 							className={cn(
-								"flex max-w-[85%] flex-col transition-all duration-200",
-								isLast && isAnimating && "animate-in-up",
+								"flex flex-col transition-opacity duration-150",
+								isUser ? "max-w-[82%]" : "max-w-[min(100%,48rem)]",
+								isLast && isAnimating && "animate-in-fade",
 							)}
 						>
 							{/* Message bubble */}
@@ -1251,15 +1229,6 @@ export function ChatMessageList({
 								}}
 							/>
 						</div>
-
-						{/* User avatar */}
-						{message.role === "user" && (
-							<div className="mt-1.5 flex size-7 shrink-0 items-center justify-center">
-								<div className="flex size-6 items-center justify-center rounded-full bg-primary/10 text-primary ring-1 ring-primary/20">
-									<UserIcon className="size-3" aria-hidden="true" />
-								</div>
-							</div>
-						)}
 					</article>
 				);
 			})}

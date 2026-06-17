@@ -848,13 +848,11 @@ export default function ChatPage() {
 	if (workspaceLoading || loadingAgents) {
 		return (
 			<div className="flex h-full flex-col items-center justify-center gap-4">
-				<div className="relative">
-					<div className="flex size-12 items-center justify-center rounded-full bg-primary/10">
-						<Loader2
-							className="size-6 animate-spin text-primary"
-							aria-hidden="true"
-						/>
-					</div>
+				<div className="flex size-12 items-center justify-center rounded-full border bg-card">
+					<Loader2
+						className="size-5 animate-spin text-muted-foreground"
+						aria-hidden="true"
+					/>
 				</div>
 				<div className="flex flex-col items-center gap-1 text-sm">
 					<span className="font-medium text-foreground">Loading</span>
@@ -868,8 +866,8 @@ export default function ChatPage() {
 
 	if (agents.length === 0) {
 		return (
-			<div className="mx-auto flex h-full w-full max-w-3xl items-center justify-center px-4 animate-in-up">
-				<Empty className="min-h-80 w-full surface-panel">
+			<div className="mx-auto flex h-full w-full max-w-3xl items-center justify-center px-4 animate-in-fade">
+				<Empty className="min-h-80 w-full">
 					<EmptyHeader>
 						<EmptyMedia variant="icon">
 							<BotIcon aria-hidden="true" />
@@ -877,15 +875,12 @@ export default function ChatPage() {
 						<EmptyTitle>{t("noAssistants")}</EmptyTitle>
 						<EmptyDescription>{t("noAssistantsDescription")}</EmptyDescription>
 					</EmptyHeader>
-					<div className="flex flex-wrap justify-center gap-2">
+					<div className="flex justify-center">
 						<Button asChild>
 							<Link href="/setup">
 								<PlusIcon className="size-4" aria-hidden="true" />
 								{t("finishSetup")}
 							</Link>
-						</Button>
-						<Button asChild variant="outline">
-							<Link href="/agents">{t("manageAssistants")}</Link>
 						</Button>
 					</div>
 				</Empty>
@@ -923,19 +918,7 @@ export default function ChatPage() {
 			>
 				{!loadingMessages && messages.length === 0 ? (
 					<div className="mx-auto flex h-full w-full max-w-3xl flex-col items-center justify-center px-4 py-12 sm:py-16 animate-in-fade">
-						<div className="relative flex w-full flex-col items-center gap-6">
-							{/* Icon */}
-							<div
-								className={cn(
-									"mb-2 flex size-16 items-center justify-center rounded-2xl border",
-									canChat
-										? "border-primary/20 bg-primary/10 text-primary"
-										: "border-border bg-muted/50 text-muted-foreground",
-								)}
-							>
-								<BotIcon className="size-8" aria-hidden="true" />
-							</div>
-
+						<div className="relative flex w-full flex-col items-center gap-5">
 							<div className="text-center">
 								<h2 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
 									{canChat
@@ -957,14 +940,6 @@ export default function ChatPage() {
 										onClick={() => selectConversation(conversations[0].id)}
 									>
 										{t("continueLast")}
-									</Button>
-								) : null}
-								{canChat && selectedAgentId ? (
-									<Button asChild variant="outline">
-										<Link href={`/agents/${selectedAgentId}`}>
-											<Settings2Icon className="size-4" aria-hidden="true" />
-											{t("openSettings")}
-										</Link>
 									</Button>
 								) : null}
 								{!canChat ? (

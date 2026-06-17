@@ -35,10 +35,7 @@ export function AdvancedSection({
 		<Collapsible
 			open={open}
 			onOpenChange={handleOpenChange}
-			className={cn(
-				"glass-panel rounded-2xl border-border/45 bg-background/35",
-				className,
-			)}
+			className={cn("rounded-2xl border bg-card", className)}
 		>
 			<CollapsibleTrigger className="flex w-full cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-left text-sm font-medium">
 				<span>{label}</span>
@@ -55,7 +52,7 @@ export function AdvancedSection({
 					/>
 				</span>
 			</CollapsibleTrigger>
-			<CollapsibleContent className="border-t border-border/35 px-4 pb-4 pt-3">
+			<CollapsibleContent className="border-t px-4 pb-4 pt-3">
 				{children}
 			</CollapsibleContent>
 		</Collapsible>

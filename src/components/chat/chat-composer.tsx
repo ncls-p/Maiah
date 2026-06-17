@@ -1,14 +1,8 @@
 "use client";
 
 import { Link } from "@/i18n/navigation";
-import {
-	PaperclipIcon,
-	SendIcon,
-	SparklesIcon,
-	SquareIcon,
-	XIcon,
-} from "lucide-react";
-import { useRef, useEffect, useState } from "react";
+import { PaperclipIcon, SendIcon, SquareIcon, XIcon } from "lucide-react";
+import { useEffect, useRef } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -43,7 +37,6 @@ export function ChatComposer({
 	onQueuedMessageCancel,
 }: ChatComposerProps) {
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
-	const [focused, setFocused] = useState(false);
 
 	// Auto-resize textarea
 	useEffect(() => {
@@ -65,12 +58,9 @@ export function ChatComposer({
 			{queuedMessages.length > 0 ? (
 				<div className="mx-auto mb-2 flex w-full max-w-4xl flex-col gap-2">
 					{queuedMessages.map((message, index) => (
-						<div
-							key={message.id}
-							className="rounded-xl border border-primary/15 bg-primary/5 p-2 shadow-sm"
-						>
+						<div key={message.id} className="rounded-xl border bg-card p-2">
 							<div className="mb-1.5 flex items-center justify-between gap-2 px-1">
-								<span className="text-[11px] font-medium text-primary">
+								<span className="text-[11px] font-medium text-muted-foreground">
 									Queued message {index + 1}
 								</span>
 								<Button
@@ -91,26 +81,21 @@ export function ChatComposer({
 									onQueuedMessageChange?.(message.id, event.target.value)
 								}
 								rows={1}
-								className="max-h-28 min-h-9 resize-none border-border/50 bg-background/70 text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary/20"
+								className="max-h-28 min-h-9 resize-none text-sm shadow-none"
 							/>
 						</div>
 					))}
 				</div>
 			) : null}
 			<div className="relative mx-auto w-full min-w-0 max-w-4xl">
-				<div
-					className={cn(
-						"composer-box rounded-xl sm:rounded-2xl transition-all duration-300",
-						focused && "ring-2 ring-primary/15",
-					)}
-				>
+				<div className={cn("composer-box rounded-xl sm:rounded-2xl")}>
 					<div className="flex items-end gap-1.5 p-1.5 sm:gap-2 sm:p-2">
 						{/* Attachment button */}
 						<Button
 							type="button"
 							size="icon"
 							variant="ghost"
-							className="size-8 shrink-0 rounded-lg text-muted-foreground transition-all duration-200 hover:bg-primary/10 hover:text-primary active:scale-95 sm:size-9"
+							className="size-8 shrink-0 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground sm:size-9"
 							aria-label="Attach file"
 							disabled={sending || !canChat}
 						>
@@ -124,8 +109,6 @@ export function ChatComposer({
 							autoComplete="off"
 							value={input}
 							onChange={(event) => onInputChange(event.target.value)}
-							onFocus={() => setFocused(true)}
-							onBlur={() => setFocused(false)}
 							onKeyDown={(event) => {
 								if (event.key === "Enter" && !event.shiftKey) {
 									event.preventDefault();
@@ -141,7 +124,7 @@ export function ChatComposer({
 							}
 							disabled={!canChat}
 							rows={1}
-							className="max-h-40 min-h-10 flex-1 resize-none border-0 bg-transparent px-2 py-2 text-base shadow-none focus-visible:ring-0 sm:min-h-12 sm:px-3 sm:py-3 sm:text-sm placeholder:text-muted-foreground/60"
+							className="max-h-40 min-h-10 flex-1 resize-none border-0 bg-transparent px-2 py-2 text-base shadow-none focus-visible:ring-0 sm:min-h-12 sm:px-3 sm:py-3 sm:text-sm placeholder:text-muted-foreground"
 						/>
 
 						<Button
@@ -189,14 +172,11 @@ export function ChatComposer({
 							</Link>
 						</p>
 					) : (
-						<div className="flex items-center gap-1.5 text-[11px] text-muted-foreground/50">
-							<SparklesIcon className="size-3" aria-hidden="true" />
-							<span>
-								{sending
-									? "Press Enter to queue next · Shift+Enter for new line"
-									: "Press Enter to send · Shift+Enter for new line"}
-							</span>
-						</div>
+						<p className="text-[11px] text-muted-foreground">
+							{sending
+								? "Enter queues the next message · Shift+Enter adds a line"
+								: "Enter sends · Shift+Enter adds a line"}
+						</p>
 					)}
 				</div>
 			</div>

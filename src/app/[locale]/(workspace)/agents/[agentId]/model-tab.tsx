@@ -1,4 +1,4 @@
-import { MessageSquareIcon, RefreshCwIcon, SaveIcon, SparklesIcon } from "lucide-react";
+import { MessageSquareIcon, RefreshCwIcon, SaveIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { SyntheticEvent } from "react";
 
@@ -73,12 +73,12 @@ export function ModelTab({
 	}
 
 	return (
-		<div className="space-y-4">
+		<div className="flex flex-col gap-4">
 			{/* Provider & Model */}
 			<Card className="animate-in-up stagger-3">
 				<CardHeader>
 					<CardTitle className="flex items-center gap-2">
-						<SparklesIcon className="size-5" aria-hidden="true" />
+						<MessageSquareIcon className="size-5" aria-hidden="true" />
 						Provider & Model
 					</CardTitle>
 					<CardDescription>
@@ -89,7 +89,9 @@ export function ModelTab({
 					<FieldGroup>
 						<Field>
 							<div className="flex items-center gap-2">
-								<FieldLabel htmlFor="agent-provider">{t("provider")}</FieldLabel>
+								<FieldLabel htmlFor="agent-provider">
+									{t("provider")}
+								</FieldLabel>
 								<SettingHint text="The AI provider hosts the model. You need to configure provider credentials in Settings > Providers first." />
 							</div>
 							<FieldContent>
@@ -167,7 +169,9 @@ export function ModelTab({
 						<Field>
 							<div className="flex items-center justify-between">
 								<div className="flex items-center gap-2">
-									<FieldLabel htmlFor="agent-prompt">{t("systemPrompt")}</FieldLabel>
+									<FieldLabel htmlFor="agent-prompt">
+										{t("systemPrompt")}
+									</FieldLabel>
 									<SettingHint text="This prompt runs before every conversation. Use it to set the assistant's role, personality, response format, and any rules it should follow. Leave empty for default behavior." />
 								</div>
 								<span className="text-xs text-muted-foreground">
@@ -199,431 +203,411 @@ export function ModelTab({
 				storageKey="advanced:agent-model"
 			>
 				<FieldGroup>
-								<Field>
-									<div className="flex items-center gap-2">
-										<FieldLabel htmlFor="agent-temperature">
-											Temperature
-										</FieldLabel>
-										<SettingHint text="Controls randomness: 0 = deterministic, 0.7 = balanced, 1.0 = creative. Lower values for factual tasks, higher for creative work." />
-									</div>
-									<FieldContent>
-										<Input
-											id="agent-temperature"
-											type="number"
-											min={0}
-											max={2}
-											step={0.1}
-											value={form.temperature}
-											onChange={(e) =>
-												setForm((prev) => ({
-													...prev,
-													temperature: e.target.value,
-												}))
-											}
-										/>
-									</FieldContent>
-								</Field>
-								<Field>
-									<div className="flex items-center gap-2">
-										<FieldLabel htmlFor="agent-top-p">Top P</FieldLabel>
-										<SettingHint text="Nucleus sampling: 1.0 considers all tokens, 0.1 considers only the most likely. Lower values make output more focused." />
-									</div>
-									<FieldContent>
-										<Input
-											id="agent-top-p"
-											type="number"
-											min={0}
-											max={1}
-											step={0.1}
-											value={form.topP}
-											onChange={(e) =>
-												setForm((prev) => ({ ...prev, topP: e.target.value }))
-											}
-										/>
-									</FieldContent>
-								</Field>
-								<Field>
-									<div className="flex items-center gap-2">
-										<FieldLabel htmlFor="agent-max-output">
-											Max output tokens
-										</FieldLabel>
-										<SettingHint text="Maximum length of the model's response in tokens. Higher values allow longer responses but cost more. 30000 is the default for newly created agents." />
-									</div>
-									<FieldContent>
-										<Input
-											id="agent-max-output"
-											type="number"
-											min={1}
-											value={form.maxOutputTokens}
-											onChange={(e) =>
-												setForm((prev) => ({
-													...prev,
-													maxOutputTokens: e.target.value,
-												}))
-											}
-										/>
-									</FieldContent>
-								</Field>
-								<Field>
-									<div className="flex items-center gap-2">
-										<FieldLabel htmlFor="agent-max-tool-calls">
-											Max tool uses
-										</FieldLabel>
-										<SettingHint text="How many times the assistant can call tools in a single response. More allows complex multi-step tasks but increases latency." />
-									</div>
-									<FieldContent>
-										<Input
-											id="agent-max-tool-calls"
-											type="number"
-											min={0}
-											max={20}
-											value={form.maxToolCalls}
-											onChange={(e) =>
-												setForm((prev) => ({
-													...prev,
-													maxToolCalls: e.target.value,
-												}))
-											}
-										/>
-									</FieldContent>
-								</Field>
-								<Field>
-									<div className="flex items-center gap-2">
-										<FieldLabel htmlFor="agent-tool-choice">
-											Tool choice
-										</FieldLabel>
-										<SettingHint text="Auto lets the model decide. Required encourages tool use when tools are available. None disables tool calls for responses." />
-									</div>
-									<FieldContent>
-										<Select
-											value={form.toolChoice}
-											onValueChange={(value) =>
-												setForm((prev) => ({
-													...prev,
-													toolChoice: value as AgentForm["toolChoice"],
-												}))
-											}
-										>
-											<SelectTrigger id="agent-tool-choice" className="w-full">
-												<SelectValue />
-											</SelectTrigger>
-											<SelectContent>
-												<SelectItem value="auto">Auto</SelectItem>
-												<SelectItem value="required">Required</SelectItem>
-												<SelectItem value="none">None</SelectItem>
-											</SelectContent>
-										</Select>
-									</FieldContent>
-								</Field>
-								<Field>
-									<div className="flex items-center gap-2">
-										<FieldLabel htmlFor="agent-response-format">
-											Response format
-										</FieldLabel>
-										<SettingHint text="Text is the default. JSON object stores a structured-output preference for providers and flows that support it." />
-									</div>
-									<FieldContent>
-										<Select
-											value={form.responseFormat}
-											onValueChange={(value) =>
-												setForm((prev) => ({
-													...prev,
-													responseFormat: value as AgentForm["responseFormat"],
-												}))
-											}
-										>
-											<SelectTrigger
-												id="agent-response-format"
-												className="w-full"
-											>
-												<SelectValue />
-											</SelectTrigger>
-											<SelectContent>
-												<SelectItem value="text">Text</SelectItem>
-												<SelectItem value="json_object">JSON object</SelectItem>
-											</SelectContent>
-										</Select>
-									</FieldContent>
-								</Field>
-								<Field>
-									<FieldLabel htmlFor="agent-memory-enabled">Memory</FieldLabel>
-									<FieldContent>
-										<Select
-											value={form.memoryPolicy.enabled ? "enabled" : "disabled"}
-											onValueChange={(value) =>
-												setForm((prev) => ({
-													...prev,
-													memoryPolicy: {
-														...prev.memoryPolicy,
-														enabled: value === "enabled",
-													},
-												}))
-											}
-										>
-											<SelectTrigger
-												id="agent-memory-enabled"
-												className="w-full"
-											>
-												<SelectValue />
-											</SelectTrigger>
-											<SelectContent>
-												<SelectItem value="disabled">Disabled</SelectItem>
-												<SelectItem value="enabled">Enabled</SelectItem>
-											</SelectContent>
-										</Select>
-									</FieldContent>
-								</Field>
-								<Field>
-									<FieldLabel htmlFor="agent-memory-max-messages">
-										Memory max messages
-									</FieldLabel>
-									<FieldContent>
-										<Input
-											id="agent-memory-max-messages"
-											type="number"
-											min={1}
-											value={form.memoryPolicy.maxMessages}
-											onChange={(e) =>
-												setForm((prev) => ({
-													...prev,
-													memoryPolicy: {
-														...prev.memoryPolicy,
-														maxMessages: Number(e.target.value) || 1,
-													},
-												}))
-											}
-										/>
-									</FieldContent>
-								</Field>
-								<Field>
-									<div className="flex items-center gap-2">
-										<FieldLabel htmlFor="agent-top-k">Top K</FieldLabel>
-										<SettingHint text="Advanced sampling: only consider the top K token options. Leave empty for provider default." />
-									</div>
-									<FieldContent>
-										<Input
-											id="agent-top-k"
-											type="number"
-											min={1}
-											placeholder="Provider default"
-											value={form.generationSettings.topK}
-											onChange={(e) =>
-												setForm((prev) => ({
-													...prev,
-													generationSettings: {
-														...prev.generationSettings,
-														topK: e.target.value,
-													},
-												}))
-											}
-										/>
-									</FieldContent>
-								</Field>
-								<Field>
-									<FieldLabel htmlFor="agent-presence-penalty">
-										Presence penalty
-									</FieldLabel>
-									<FieldContent>
-										<Input
-											id="agent-presence-penalty"
-											type="number"
-											min={-1}
-											max={1}
-											step={0.1}
-											placeholder="Provider default"
-											value={form.generationSettings.presencePenalty}
-											onChange={(e) =>
-												setForm((prev) => ({
-													...prev,
-													generationSettings: {
-														...prev.generationSettings,
-														presencePenalty: e.target.value,
-													},
-												}))
-											}
-										/>
-									</FieldContent>
-								</Field>
-								<Field>
-									<FieldLabel htmlFor="agent-frequency-penalty">
-										Frequency penalty
-									</FieldLabel>
-									<FieldContent>
-										<Input
-											id="agent-frequency-penalty"
-											type="number"
-											min={-1}
-											max={1}
-											step={0.1}
-											placeholder="Provider default"
-											value={form.generationSettings.frequencyPenalty}
-											onChange={(e) =>
-												setForm((prev) => ({
-													...prev,
-													generationSettings: {
-														...prev.generationSettings,
-														frequencyPenalty: e.target.value,
-													},
-												}))
-											}
-										/>
-									</FieldContent>
-								</Field>
-								<Field>
-									<FieldLabel htmlFor="agent-seed">Seed</FieldLabel>
-									<FieldContent>
-										<Input
-											id="agent-seed"
-											type="number"
-											placeholder="Provider default"
-											value={form.generationSettings.seed}
-											onChange={(e) =>
-												setForm((prev) => ({
-													...prev,
-													generationSettings: {
-														...prev.generationSettings,
-														seed: e.target.value,
-													},
-												}))
-											}
-										/>
-									</FieldContent>
-								</Field>
-								<Field>
-									<FieldLabel htmlFor="agent-max-retries">
-										Max retries
-									</FieldLabel>
-									<FieldContent>
-										<Input
-											id="agent-max-retries"
-											type="number"
-											min={0}
-											placeholder="2"
-											value={form.generationSettings.maxRetries}
-											onChange={(e) =>
-												setForm((prev) => ({
-													...prev,
-													generationSettings: {
-														...prev.generationSettings,
-														maxRetries: e.target.value,
-													},
-												}))
-											}
-										/>
-									</FieldContent>
-								</Field>
-								<Field>
-									<FieldLabel htmlFor="agent-stop-sequences">
-										Stop sequences
-									</FieldLabel>
-									<FieldContent>
-										<Textarea
-											id="agent-stop-sequences"
-											placeholder="One stop sequence per line"
-											value={form.generationSettings.stopSequences}
-											onChange={(e) =>
-												setForm((prev) => ({
-													...prev,
-													generationSettings: {
-														...prev.generationSettings,
-														stopSequences: e.target.value,
-													},
-												}))
-											}
-										/>
-									</FieldContent>
-								</Field>
-								<Field>
-									<FieldLabel htmlFor="agent-guardrails-enabled">
-										Guardrails
-									</FieldLabel>
-									<FieldContent>
-										<Select
-											value={form.guardrails.enabled ? "enabled" : "disabled"}
-											onValueChange={(value) =>
-												setForm((prev) => ({
-													...prev,
-													guardrails: {
-														...prev.guardrails,
-														enabled: value === "enabled",
-													},
-												}))
-											}
-										>
-											<SelectTrigger
-												id="agent-guardrails-enabled"
-												className="w-full"
-											>
-												<SelectValue />
-											</SelectTrigger>
-											<SelectContent>
-												<SelectItem value="disabled">Disabled</SelectItem>
-												<SelectItem value="enabled">Enabled</SelectItem>
-											</SelectContent>
-										</Select>
-									</FieldContent>
-								</Field>
-								<Field>
-									<FieldLabel htmlFor="agent-guardrail-topics">
-										Blocked topics
-									</FieldLabel>
-									<FieldContent>
-										<Textarea
-											id="agent-guardrail-topics"
-											placeholder="One topic per line"
-											value={form.guardrails.blockedTopics.join("\n")}
-											onChange={(e) =>
-												setForm((prev) => ({
-													...prev,
-													guardrails: {
-														...prev.guardrails,
-														blockedTopics: e.target.value
-															.split(/\n|,/)
-															.map((topic) => topic.trim())
-															.filter(Boolean),
-													},
-												}))
-											}
-										/>
-									</FieldContent>
-								</Field>
-								<Field>
-									<FieldLabel htmlFor="agent-approval-all-tools">
-										Approval policy
-									</FieldLabel>
-									<FieldContent>
-										<Select
-											value={
-												form.approvalPolicy.requireApprovalForAllTools
-													? "all"
-													: "per-tool"
-											}
-											onValueChange={(value) =>
-												setForm((prev) => ({
-													...prev,
-													approvalPolicy: {
-														requireApprovalForAllTools: value === "all",
-													},
-												}))
-											}
-										>
-											<SelectTrigger
-												id="agent-approval-all-tools"
-												className="w-full"
-											>
-												<SelectValue />
-											</SelectTrigger>
-											<SelectContent>
-												<SelectItem value="per-tool">
-													Per-tool settings
-												</SelectItem>
-												<SelectItem value="all">
-													Require approval for all tools
-												</SelectItem>
-											</SelectContent>
-										</Select>
-									</FieldContent>
-								</Field>
+					<Field>
+						<div className="flex items-center gap-2">
+							<FieldLabel htmlFor="agent-temperature">Temperature</FieldLabel>
+							<SettingHint text="Controls randomness: 0 = deterministic, 0.7 = balanced, 1.0 = creative. Lower values for factual tasks, higher for creative work." />
+						</div>
+						<FieldContent>
+							<Input
+								id="agent-temperature"
+								type="number"
+								min={0}
+								max={2}
+								step={0.1}
+								value={form.temperature}
+								onChange={(e) =>
+									setForm((prev) => ({
+										...prev,
+										temperature: e.target.value,
+									}))
+								}
+							/>
+						</FieldContent>
+					</Field>
+					<Field>
+						<div className="flex items-center gap-2">
+							<FieldLabel htmlFor="agent-top-p">Top P</FieldLabel>
+							<SettingHint text="Nucleus sampling: 1.0 considers all tokens, 0.1 considers only the most likely. Lower values make output more focused." />
+						</div>
+						<FieldContent>
+							<Input
+								id="agent-top-p"
+								type="number"
+								min={0}
+								max={1}
+								step={0.1}
+								value={form.topP}
+								onChange={(e) =>
+									setForm((prev) => ({ ...prev, topP: e.target.value }))
+								}
+							/>
+						</FieldContent>
+					</Field>
+					<Field>
+						<div className="flex items-center gap-2">
+							<FieldLabel htmlFor="agent-max-output">
+								Max output tokens
+							</FieldLabel>
+							<SettingHint text="Maximum length of the model's response in tokens. Higher values allow longer responses but cost more. 30000 is the default for newly created agents." />
+						</div>
+						<FieldContent>
+							<Input
+								id="agent-max-output"
+								type="number"
+								min={1}
+								value={form.maxOutputTokens}
+								onChange={(e) =>
+									setForm((prev) => ({
+										...prev,
+										maxOutputTokens: e.target.value,
+									}))
+								}
+							/>
+						</FieldContent>
+					</Field>
+					<Field>
+						<div className="flex items-center gap-2">
+							<FieldLabel htmlFor="agent-max-tool-calls">
+								Max tool uses
+							</FieldLabel>
+							<SettingHint text="How many times the assistant can call tools in a single response. More allows complex multi-step tasks but increases latency." />
+						</div>
+						<FieldContent>
+							<Input
+								id="agent-max-tool-calls"
+								type="number"
+								min={0}
+								max={20}
+								value={form.maxToolCalls}
+								onChange={(e) =>
+									setForm((prev) => ({
+										...prev,
+										maxToolCalls: e.target.value,
+									}))
+								}
+							/>
+						</FieldContent>
+					</Field>
+					<Field>
+						<div className="flex items-center gap-2">
+							<FieldLabel htmlFor="agent-tool-choice">Tool choice</FieldLabel>
+							<SettingHint text="Auto lets the model decide. Required encourages tool use when tools are available. None disables tool calls for responses." />
+						</div>
+						<FieldContent>
+							<Select
+								value={form.toolChoice}
+								onValueChange={(value) =>
+									setForm((prev) => ({
+										...prev,
+										toolChoice: value as AgentForm["toolChoice"],
+									}))
+								}
+							>
+								<SelectTrigger id="agent-tool-choice" className="w-full">
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="auto">Auto</SelectItem>
+									<SelectItem value="required">Required</SelectItem>
+									<SelectItem value="none">None</SelectItem>
+								</SelectContent>
+							</Select>
+						</FieldContent>
+					</Field>
+					<Field>
+						<div className="flex items-center gap-2">
+							<FieldLabel htmlFor="agent-response-format">
+								Response format
+							</FieldLabel>
+							<SettingHint text="Text is the default. JSON object stores a structured-output preference for providers and flows that support it." />
+						</div>
+						<FieldContent>
+							<Select
+								value={form.responseFormat}
+								onValueChange={(value) =>
+									setForm((prev) => ({
+										...prev,
+										responseFormat: value as AgentForm["responseFormat"],
+									}))
+								}
+							>
+								<SelectTrigger id="agent-response-format" className="w-full">
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="text">Text</SelectItem>
+									<SelectItem value="json_object">JSON object</SelectItem>
+								</SelectContent>
+							</Select>
+						</FieldContent>
+					</Field>
+					<Field>
+						<FieldLabel htmlFor="agent-memory-enabled">Memory</FieldLabel>
+						<FieldContent>
+							<Select
+								value={form.memoryPolicy.enabled ? "enabled" : "disabled"}
+								onValueChange={(value) =>
+									setForm((prev) => ({
+										...prev,
+										memoryPolicy: {
+											...prev.memoryPolicy,
+											enabled: value === "enabled",
+										},
+									}))
+								}
+							>
+								<SelectTrigger id="agent-memory-enabled" className="w-full">
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="disabled">Disabled</SelectItem>
+									<SelectItem value="enabled">Enabled</SelectItem>
+								</SelectContent>
+							</Select>
+						</FieldContent>
+					</Field>
+					<Field>
+						<FieldLabel htmlFor="agent-memory-max-messages">
+							Memory max messages
+						</FieldLabel>
+						<FieldContent>
+							<Input
+								id="agent-memory-max-messages"
+								type="number"
+								min={1}
+								value={form.memoryPolicy.maxMessages}
+								onChange={(e) =>
+									setForm((prev) => ({
+										...prev,
+										memoryPolicy: {
+											...prev.memoryPolicy,
+											maxMessages: Number(e.target.value) || 1,
+										},
+									}))
+								}
+							/>
+						</FieldContent>
+					</Field>
+					<Field>
+						<div className="flex items-center gap-2">
+							<FieldLabel htmlFor="agent-top-k">Top K</FieldLabel>
+							<SettingHint text="Advanced sampling: only consider the top K token options. Leave empty for provider default." />
+						</div>
+						<FieldContent>
+							<Input
+								id="agent-top-k"
+								type="number"
+								min={1}
+								placeholder="Provider default"
+								value={form.generationSettings.topK}
+								onChange={(e) =>
+									setForm((prev) => ({
+										...prev,
+										generationSettings: {
+											...prev.generationSettings,
+											topK: e.target.value,
+										},
+									}))
+								}
+							/>
+						</FieldContent>
+					</Field>
+					<Field>
+						<FieldLabel htmlFor="agent-presence-penalty">
+							Presence penalty
+						</FieldLabel>
+						<FieldContent>
+							<Input
+								id="agent-presence-penalty"
+								type="number"
+								min={-1}
+								max={1}
+								step={0.1}
+								placeholder="Provider default"
+								value={form.generationSettings.presencePenalty}
+								onChange={(e) =>
+									setForm((prev) => ({
+										...prev,
+										generationSettings: {
+											...prev.generationSettings,
+											presencePenalty: e.target.value,
+										},
+									}))
+								}
+							/>
+						</FieldContent>
+					</Field>
+					<Field>
+						<FieldLabel htmlFor="agent-frequency-penalty">
+							Frequency penalty
+						</FieldLabel>
+						<FieldContent>
+							<Input
+								id="agent-frequency-penalty"
+								type="number"
+								min={-1}
+								max={1}
+								step={0.1}
+								placeholder="Provider default"
+								value={form.generationSettings.frequencyPenalty}
+								onChange={(e) =>
+									setForm((prev) => ({
+										...prev,
+										generationSettings: {
+											...prev.generationSettings,
+											frequencyPenalty: e.target.value,
+										},
+									}))
+								}
+							/>
+						</FieldContent>
+					</Field>
+					<Field>
+						<FieldLabel htmlFor="agent-seed">Seed</FieldLabel>
+						<FieldContent>
+							<Input
+								id="agent-seed"
+								type="number"
+								placeholder="Provider default"
+								value={form.generationSettings.seed}
+								onChange={(e) =>
+									setForm((prev) => ({
+										...prev,
+										generationSettings: {
+											...prev.generationSettings,
+											seed: e.target.value,
+										},
+									}))
+								}
+							/>
+						</FieldContent>
+					</Field>
+					<Field>
+						<FieldLabel htmlFor="agent-max-retries">Max retries</FieldLabel>
+						<FieldContent>
+							<Input
+								id="agent-max-retries"
+								type="number"
+								min={0}
+								placeholder="2"
+								value={form.generationSettings.maxRetries}
+								onChange={(e) =>
+									setForm((prev) => ({
+										...prev,
+										generationSettings: {
+											...prev.generationSettings,
+											maxRetries: e.target.value,
+										},
+									}))
+								}
+							/>
+						</FieldContent>
+					</Field>
+					<Field>
+						<FieldLabel htmlFor="agent-stop-sequences">
+							Stop sequences
+						</FieldLabel>
+						<FieldContent>
+							<Textarea
+								id="agent-stop-sequences"
+								placeholder="One stop sequence per line"
+								value={form.generationSettings.stopSequences}
+								onChange={(e) =>
+									setForm((prev) => ({
+										...prev,
+										generationSettings: {
+											...prev.generationSettings,
+											stopSequences: e.target.value,
+										},
+									}))
+								}
+							/>
+						</FieldContent>
+					</Field>
+					<Field>
+						<FieldLabel htmlFor="agent-guardrails-enabled">
+							Guardrails
+						</FieldLabel>
+						<FieldContent>
+							<Select
+								value={form.guardrails.enabled ? "enabled" : "disabled"}
+								onValueChange={(value) =>
+									setForm((prev) => ({
+										...prev,
+										guardrails: {
+											...prev.guardrails,
+											enabled: value === "enabled",
+										},
+									}))
+								}
+							>
+								<SelectTrigger id="agent-guardrails-enabled" className="w-full">
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="disabled">Disabled</SelectItem>
+									<SelectItem value="enabled">Enabled</SelectItem>
+								</SelectContent>
+							</Select>
+						</FieldContent>
+					</Field>
+					<Field>
+						<FieldLabel htmlFor="agent-guardrail-topics">
+							Blocked topics
+						</FieldLabel>
+						<FieldContent>
+							<Textarea
+								id="agent-guardrail-topics"
+								placeholder="One topic per line"
+								value={form.guardrails.blockedTopics.join("\n")}
+								onChange={(e) =>
+									setForm((prev) => ({
+										...prev,
+										guardrails: {
+											...prev.guardrails,
+											blockedTopics: e.target.value
+												.split(/\n|,/)
+												.map((topic) => topic.trim())
+												.filter(Boolean),
+										},
+									}))
+								}
+							/>
+						</FieldContent>
+					</Field>
+					<Field>
+						<FieldLabel htmlFor="agent-approval-all-tools">
+							Approval policy
+						</FieldLabel>
+						<FieldContent>
+							<Select
+								value={
+									form.approvalPolicy.requireApprovalForAllTools
+										? "all"
+										: "per-tool"
+								}
+								onValueChange={(value) =>
+									setForm((prev) => ({
+										...prev,
+										approvalPolicy: {
+											requireApprovalForAllTools: value === "all",
+										},
+									}))
+								}
+							>
+								<SelectTrigger id="agent-approval-all-tools" className="w-full">
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="per-tool">Per-tool settings</SelectItem>
+									<SelectItem value="all">
+										Require approval for all tools
+									</SelectItem>
+								</SelectContent>
+							</Select>
+						</FieldContent>
+					</Field>
 				</FieldGroup>
 				<div className="mt-4 flex flex-wrap items-center justify-between gap-2">
 					<Button
