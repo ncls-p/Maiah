@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 
 import { useWorkspaceShell } from "@/components/app-shell";
+import { ModelLogo } from "@/components/providers/model-logo";
 import { AppHeader } from "@/components/app-header";
 import { ChatSidebar } from "@/components/chat/chat-sidebar";
 import type {
@@ -143,6 +144,7 @@ export function ChatLayout({
   agents,
   conversations,
   conversationFolders,
+  selectedAgent,
   selectedAgentId,
   activeConversationId,
   canChat,
@@ -249,6 +251,7 @@ export function ChatLayout({
     },
   };
 
+  const selectedAgentLabel = selectedAgent?.name ?? "";
   const agentSelector = (
     <div className="flex items-center gap-2">
       <Select
@@ -257,16 +260,34 @@ export function ChatLayout({
       >
         <SelectTrigger
           size="sm"
-          className="h-8 min-w-0 max-w-[min(100%,11rem)] flex-1 px-3 font-medium sm:max-w-60 sm:min-w-48"
+          className="h-8 min-w-0 max-w-[min(100%,13rem)] flex-1 px-2 font-medium sm:max-w-72 sm:min-w-56"
           aria-label="Current assistant"
         >
-          <SelectValue placeholder="Choose assistant" />
+          {selectedAgent ? (
+            <span className="flex min-w-0 items-center gap-2">
+              <ModelLogo
+                logoUrl={selectedAgent.modelLogoUrl}
+                label={selectedAgentLabel}
+                size="sm"
+              />
+              <span className="truncate">{selectedAgentLabel}</span>
+            </span>
+          ) : (
+            <SelectValue placeholder="Choose assistant" />
+          )}
         </SelectTrigger>
         <SelectContent>
           <SelectGroup>
             {agents.map((agent) => (
               <SelectItem key={agent.id} value={agent.id}>
-                {agent.name}
+                <span className="flex items-center gap-2">
+                  <ModelLogo
+                    logoUrl={agent.modelLogoUrl}
+                    label={agent.name}
+                    size="sm"
+                  />
+                  {agent.name}
+                </span>
               </SelectItem>
             ))}
           </SelectGroup>

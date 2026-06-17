@@ -3,6 +3,8 @@ export interface ChatAgent {
 	name: string;
 	description: string | null;
 	activeVersionId: string | null;
+	modelDisplayName?: string | null;
+	modelLogoUrl?: string | null;
 }
 
 export interface ChatConversation {

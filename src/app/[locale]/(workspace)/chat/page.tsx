@@ -18,6 +18,7 @@ import {
 } from "@/components/chat/chat-composer";
 import { ChatLayout } from "@/components/chat/chat-layout";
 import { ChatMessageList } from "@/components/chat/chat-message-list";
+import { ModelLogo } from "@/components/providers/model-logo";
 import { QuotaBanner } from "@/components/chat/quota-banner";
 import { textFromMessage } from "@/components/chat/chat-types";
 import type {
@@ -376,14 +377,19 @@ export default function ChatPage() {
 
 	useEffect(() => {
 		if (!workspaceId) return;
+		const currentWorkspaceId = workspaceId;
 		let cancelled = false;
 		const controller = new AbortController();
 
 		async function loadAgents() {
 			try {
+				const agentParams = new URLSearchParams({
+					workspaceId: currentWorkspaceId,
+					includeModelMeta: "true",
+				});
 				const response = await fetchJson<
 					{ agents?: ChatAgent[] } | ChatAgent[]
-				>(`/api/workspace/agents?workspaceId=${workspaceId}`, {
+				>(`/api/workspace/agents?${agentParams.toString()}`, {
 					signal: controller.signal,
 				});
 				const data = (
@@ -1090,7 +1096,15 @@ export default function ChatPage() {
 				{!loadingMessages && messages.length === 0 ? (
 					<div className="mx-auto flex h-full w-full max-w-3xl flex-col items-center justify-center px-4 py-12 sm:py-16 animate-in-fade">
 						<div className="relative flex w-full flex-col items-center gap-5">
-							<div className="text-center">
+							<div className="flex max-w-xl flex-col items-center text-center">
+								{selectedAgent ? (
+									<ModelLogo
+										logoUrl={selectedAgent.modelLogoUrl}
+										label={selectedAgent.name}
+										size="lg"
+										className="mb-4 rounded-2xl"
+									/>
+								) : null}
 								<h2 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
 									{canChat
 										? selectedAgent
@@ -1099,7 +1113,9 @@ export default function ChatPage() {
 										: t("finishSetup")}
 								</h2>
 								<p className="mt-2 max-w-sm text-sm text-muted-foreground">
-									{canChat ? t("emptyDescription") : t("emptySetup")}
+									{canChat
+										? selectedAgent?.description || t("emptyDescription")
+										: t("emptySetup")}
 								</p>
 							</div>
 

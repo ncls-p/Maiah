@@ -7,9 +7,13 @@ import {
 } from "@/modules/agent/use-cases";
 import { isAdminRole } from "@/modules/admin/use-cases";
 import { db } from "@/server/infrastructure/db";
-import { workspaces } from "@/server/infrastructure/db/schema";
+import {
+	agentVersions,
+	aiModels,
+	workspaces,
+} from "@/server/infrastructure/db/schema";
 import { authorization } from "@/server/domain/services/authorization";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
 
@@ -55,6 +59,7 @@ const createAgentSchema = z.object({
 
 const listAgentsSchema = z.object({
 	workspaceId: z.uuid(),
+	includeModelMeta: z.boolean().optional(),
 });
 
 function isUniqueConstraintError(error: unknown) {
@@ -64,6 +69,53 @@ function isUniqueConstraintError(error: unknown) {
 		"code" in error &&
 		error.code === "23505"
 	);
+}
+
+async function getModelMetaByVersionId(
+	versionIds: Array<string | null | undefined>,
+) {
+	const ids = Array.from(
+		new Set(versionIds.filter((id): id is string => Boolean(id))),
+	);
+	const meta = new Map<
+		string,
+		{ displayName: string | null; logoUrl: string | null }
+	>();
+	if (ids.length === 0) return meta;
+
+	const versions = await db
+		.select({ id: agentVersions.id, modelId: agentVersions.modelId })
+		.from(agentVersions)
+		.where(inArray(agentVersions.id, ids));
+	const modelIds = Array.from(
+		new Set(
+			versions
+				.map((version) => version.modelId)
+				.filter((id): id is string => Boolean(id)),
+		),
+	);
+	const modelRows = modelIds.length
+		? await db
+				.select({
+					id: aiModels.id,
+					modelId: aiModels.modelId,
+					displayName: aiModels.displayName,
+					logoUrl: aiModels.logoUrl,
+				})
+				.from(aiModels)
+				.where(inArray(aiModels.id, modelIds))
+		: [];
+	const modelsById = new Map(modelRows.map((model) => [model.id, model]));
+
+	for (const version of versions) {
+		const model = version.modelId ? modelsById.get(version.modelId) : null;
+		meta.set(version.id, {
+			displayName: model?.displayName || model?.modelId || null,
+			logoUrl: model?.logoUrl ?? null,
+		});
+	}
+
+	return meta;
 }
 
 export async function POST(req: NextRequest) {
@@ -159,6 +211,7 @@ export async function GET(req: NextRequest) {
 		const { searchParams } = new URL(req.url);
 		const parsed = listAgentsSchema.safeParse({
 			workspaceId: searchParams.get("workspaceId"),
+			includeModelMeta: searchParams.get("includeModelMeta") === "true",
 		});
 
 		if (!parsed.success) {
@@ -168,7 +221,7 @@ export async function GET(req: NextRequest) {
 			);
 		}
 
-		const { workspaceId } = parsed.data;
+		const { workspaceId, includeModelMeta } = parsed.data;
 
 		const permission = await authorization.requirePermission(
 			{ principalType: "user", principalId: session.user.id },
@@ -192,8 +245,23 @@ export async function GET(req: NextRequest) {
 			workspaceId,
 		);
 		const list = await listAgents(workspaceId, session.user.id, canAdminCurate);
+		const modelMetaByVersionId = includeModelMeta
+			? await getModelMetaByVersionId(
+					list.map((agent) => agent.activeVersionId).filter(Boolean),
+				)
+			: new Map<
+					string,
+					{ displayName: string | null; logoUrl: string | null }
+				>();
 		const agentsWithAccess = list.map((agent) => ({
 			...agent,
+			...(agent.activeVersionId
+				? {
+						modelDisplayName: modelMetaByVersionId.get(agent.activeVersionId)
+							?.displayName,
+						modelLogoUrl: modelMetaByVersionId.get(agent.activeVersionId)?.logoUrl,
+					}
+				: {}),
 			canEdit: canEditAgent(agent, session.user.id, canAdminCurate),
 			canClone: createPermission.granted,
 		}));
