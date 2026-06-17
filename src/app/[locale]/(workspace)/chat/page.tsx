@@ -803,7 +803,9 @@ export default function ChatPage() {
 	}
 
 	async function deleteConversationFolder(folderId: string) {
-		const confirmed = window.confirm("Delete this folder? Conversations stay available.");
+		const confirmed = window.confirm(
+			"Delete this folder? Conversations stay available.",
+		);
 		if (!confirmed) return;
 		try {
 			await fetchJson(`/api/workspace/conversation-folders/${folderId}`, {
@@ -826,7 +828,10 @@ export default function ChatPage() {
 		}
 	}
 
-	async function toggleConversationPin(conversationId: string, pinned: boolean) {
+	async function toggleConversationPin(
+		conversationId: string,
+		pinned: boolean,
+	) {
 		try {
 			const data = await fetchJson<{ conversation: ChatConversation }>(
 				`/api/workspace/conversations/${conversationId}`,
@@ -881,7 +886,9 @@ export default function ChatPage() {
 				body: JSON.stringify({ workspaceId, ...input }),
 			});
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : "Failed to move chat");
+			toast.error(
+				error instanceof Error ? error.message : "Failed to move chat",
+			);
 			await refreshConversations();
 		}
 	}
@@ -1073,9 +1080,7 @@ export default function ChatPage() {
 			onDeleteConversation={(conversationId) =>
 				void deleteConversation(conversationId)
 			}
-			onCreateConversationFolder={(name) =>
-				void createConversationFolder(name)
-			}
+			onCreateConversationFolder={(name) => void createConversationFolder(name)}
 			onRenameConversationFolder={(folderId, name) =>
 				void renameConversationFolder(folderId, name)
 			}

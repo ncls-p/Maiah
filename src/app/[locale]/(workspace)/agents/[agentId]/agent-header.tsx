@@ -77,7 +77,8 @@ export function AgentHeader({
 	const t = useTranslations("agents");
 	const selectedProvider = providers.find((p) => p.id === form.providerId);
 	const selectedModel = models.find((m) => m.id === form.modelId);
-	const selectedModelLabel = selectedModel?.displayName || selectedModel?.modelId;
+	const selectedModelLabel =
+		selectedModel?.displayName || selectedModel?.modelId;
 	const agentLabel = agent?.name ?? form.name;
 	const hasModel = Boolean(form.providerId && form.modelId);
 
@@ -86,7 +87,9 @@ export function AgentHeader({
 		try {
 			onLogoChange(await readLogoFile(file));
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : "Invalid image file");
+			toast.error(
+				error instanceof Error ? error.message : "Invalid image file",
+			);
 		}
 	}
 
