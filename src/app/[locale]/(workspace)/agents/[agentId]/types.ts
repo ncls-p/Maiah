@@ -11,7 +11,10 @@ export type Agent = {
 	shareTargetEmail?: string | null;
 	isGlobal: boolean;
 	isRecommended: boolean;
+	isOrganizationDefault?: boolean;
+	organizationDisplayOrder?: number;
 	curationLabel: string | null;
+	promptSuggestions?: string[];
 	canAdminCurate: boolean;
 	canEdit?: boolean;
 	canClone?: boolean;
@@ -102,6 +105,7 @@ export type AgentForm = {
 	slug: string;
 	description: string;
 	systemPrompt: string;
+	promptSuggestions: string;
 	providerId: string;
 	modelId: string;
 	temperature: string;
@@ -142,6 +146,7 @@ export function createEmptyForm(): AgentForm {
 		slug: "",
 		description: "",
 		systemPrompt: "",
+		promptSuggestions: "",
 		providerId: "",
 		modelId: "",
 		temperature: defaultGenParams.temperature,

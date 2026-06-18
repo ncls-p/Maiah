@@ -10,6 +10,7 @@ import {
 	PanelLeftOpenIcon,
 	SearchIcon,
 	Settings2Icon,
+	StarIcon,
 } from "lucide-react";
 
 import { useWorkspaceShell } from "@/components/app-shell";
@@ -121,11 +122,14 @@ interface ChatLayoutProps {
 	selectedAgent: ChatAgent | null;
 	selectedAgentId: string | null;
 	activeConversationId: string | null;
+	organizationDefaultAgentId?: string | null;
+	userDefaultAgentId?: string | null;
 	canChat: boolean;
 	loadingSidebar?: boolean;
 	onSelectAgent: (agentId: string) => void;
 	onSelectConversation: (conversationId: string) => void;
 	onNewConversation: () => void;
+	onSetUserDefaultAgent?: (agentId: string | null) => void;
 	onRenameConversation?: (conversationId: string, title: string) => void;
 	onDeleteConversation?: (conversationId: string) => void;
 	onCreateConversationFolder?: (name: string) => void;
@@ -151,11 +155,14 @@ export function ChatLayout({
 	selectedAgent,
 	selectedAgentId,
 	activeConversationId,
+	organizationDefaultAgentId,
+	userDefaultAgentId,
 	canChat,
 	loadingSidebar,
 	onSelectAgent,
 	onSelectConversation,
 	onNewConversation,
+	onSetUserDefaultAgent,
 	onRenameConversation,
 	onDeleteConversation,
 	onCreateConversationFolder,
@@ -272,8 +279,21 @@ export function ChatLayout({
 		(agent) => agent.isGlobal || agent.isRecommended || agent.canEdit === false,
 	);
 	const personalAgents = visibleAgents.filter(
-		(agent) => agent.isGlobal !== true && agent.isRecommended !== true && agent.canEdit !== false,
+		(agent) =>
+			agent.isGlobal !== true &&
+			agent.isRecommended !== true &&
+			agent.canEdit !== false,
 	);
+	const defaultLabelForAgent = (agent: ChatAgent) => {
+		if (agent.id === userDefaultAgentId) return t("myDefault");
+		if (
+			agent.id === organizationDefaultAgentId ||
+			agent.isOrganizationDefault
+		) {
+			return t("organizationDefault");
+		}
+		return null;
+	};
 	const agentSelector = (
 		<div className="relative z-10 flex min-w-0 items-center gap-2">
 			<DropdownMenu onOpenChange={(open) => !open && setAgentSearch("")}>
@@ -335,11 +355,18 @@ export function ChatLayout({
 										size="sm"
 									/>
 									<span className="min-w-0 flex-1 truncate">{agent.name}</span>
-									<span className="shrink-0 text-[11px] text-muted-foreground">
-										{agent.modelDisplayName
-											? t("statusReady")
-											: t("statusNeedsSetup")}
-									</span>
+									{defaultLabelForAgent(agent) ? (
+										<span className="inline-flex shrink-0 items-center gap-1 text-[11px] text-muted-foreground">
+											<StarIcon className="size-3" aria-hidden="true" />
+											{defaultLabelForAgent(agent)}
+										</span>
+									) : (
+										<span className="shrink-0 text-[11px] text-muted-foreground">
+											{agent.modelDisplayName
+												? t("statusReady")
+												: t("statusNeedsSetup")}
+										</span>
+									)}
 								</DropdownMenuItem>
 							))}
 						</>
@@ -360,11 +387,18 @@ export function ChatLayout({
 										size="sm"
 									/>
 									<span className="min-w-0 flex-1 truncate">{agent.name}</span>
-									<span className="shrink-0 text-[11px] text-muted-foreground">
-										{agent.modelDisplayName
-											? t("statusReady")
-											: t("statusNeedsSetup")}
-									</span>
+									{defaultLabelForAgent(agent) ? (
+										<span className="inline-flex shrink-0 items-center gap-1 text-[11px] text-muted-foreground">
+											<StarIcon className="size-3" aria-hidden="true" />
+											{defaultLabelForAgent(agent)}
+										</span>
+									) : (
+										<span className="shrink-0 text-[11px] text-muted-foreground">
+											{agent.modelDisplayName
+												? t("statusReady")
+												: t("statusNeedsSetup")}
+										</span>
+									)}
 								</DropdownMenuItem>
 							))}
 						</>
@@ -373,6 +407,25 @@ export function ChatLayout({
 						<p className="px-2 py-3 text-center text-sm text-muted-foreground">
 							{t("noAssistantMatches")}
 						</p>
+					) : null}
+					{selectedAgent && onSetUserDefaultAgent ? (
+						<>
+							<DropdownMenuSeparator />
+							<DropdownMenuItem
+								className="gap-2"
+								onClick={() => onSetUserDefaultAgent(selectedAgent.id)}
+							>
+								<StarIcon className="size-4" aria-hidden="true" />
+								{selectedAgent.id === userDefaultAgentId
+									? t("myDefaultCurrent")
+									: t("setMyDefault")}
+							</DropdownMenuItem>
+							{userDefaultAgentId ? (
+								<DropdownMenuItem onClick={() => onSetUserDefaultAgent(null)}>
+									{t("clearMyDefault")}
+								</DropdownMenuItem>
+							) : null}
+						</>
 					) : null}
 					<DropdownMenuSeparator />
 					<DropdownMenuItem asChild>

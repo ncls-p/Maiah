@@ -51,6 +51,7 @@ export function buildAgentFormFromVersion(
 		slug: agent.slug,
 		description: agent.description ?? "",
 		systemPrompt: activeVersion?.systemPrompt ?? "",
+		promptSuggestions: agent.promptSuggestions?.join("\n") ?? "",
 		providerId: activeVersion?.providerId ?? "",
 		modelId: activeVersion?.modelId ?? "",
 		temperature: coerceNumericField(

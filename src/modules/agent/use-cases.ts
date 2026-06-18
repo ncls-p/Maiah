@@ -10,6 +10,7 @@ import {
 	messageParts,
 	usageEvents,
 	users,
+	userAgentPreferences,
 } from "@/server/infrastructure/db/schema";
 import { decryptValue } from "@/lib/crypto";
 import type {
@@ -65,6 +66,7 @@ export interface CreateAgentInput {
 	isRecommended?: boolean;
 	curationLabel?: AgentCurationLabel;
 	canAdminCurate?: boolean;
+	promptSuggestions?: string[];
 }
 
 export interface CloneAgentInput {
@@ -132,6 +134,13 @@ export interface UpdateAgentInput {
 	isRecommended?: boolean;
 	curationLabel?: AgentCurationLabel;
 	canAdminCurate?: boolean;
+	promptSuggestions?: string[];
+}
+
+export interface AgentDefaultPreferences {
+	organizationDefaultAgentId: string | null;
+	userDefaultAgentId: string | null;
+	effectiveDefaultAgentId: string | null;
 }
 
 async function resolveShareTargetUserId(
@@ -177,6 +186,20 @@ function slugifyAgentName(value: string) {
 	);
 }
 
+export function normalizePromptSuggestions(input: unknown): string[] {
+	if (!Array.isArray(input)) return [];
+	return input
+		.map((value) => (typeof value === "string" ? value.trim() : ""))
+		.filter(Boolean)
+		.slice(0, 12);
+}
+
+function preparePromptSuggestions(input: string[] | undefined) {
+	return normalizePromptSuggestions(input).map((suggestion) =>
+		suggestion.slice(0, 240),
+	);
+}
+
 async function agentSlugExists(workspaceId: string, slug: string) {
 	const [existing] = await db
 		.select({ id: agents.id })
@@ -219,6 +242,7 @@ export async function createAgent(input: CreateAgentInput) {
 		toolBindings,
 		knowledgeBindings,
 		skillBindings,
+		promptSuggestions,
 		sharingMode = "personal",
 		shareTargetEmail,
 		isGlobal,
@@ -284,6 +308,7 @@ export async function createAgent(input: CreateAgentInput) {
 				slug,
 				description: description || null,
 				logoUrl: logoUrl ?? null,
+				promptSuggestionsJson: preparePromptSuggestions(promptSuggestions),
 				createdById: userId,
 				visibility: sharingMode === "marketplace" ? "public" : "private",
 				sourceType: "custom",
@@ -401,6 +426,7 @@ export function listAgents(
 		)
 		.orderBy(
 			sql`${agents.isGlobal} DESC`,
+			sql`${agents.organizationDisplayOrder} ASC`,
 			sql`${agents.isRecommended} DESC`,
 			sql`${agents.updatedAt} DESC`,
 		);
@@ -422,6 +448,188 @@ export function canEditAgent(
 	canAdminCurate = false,
 ) {
 	return canAdminCurate || agent.createdById === userId;
+}
+
+export async function getAgentDefaultPreferences(
+	workspaceId: string,
+	userId: string,
+	availableAgentIds?: Set<string>,
+): Promise<AgentDefaultPreferences> {
+	const [organizationDefault] = await db
+		.select({ id: agents.id })
+		.from(agents)
+		.where(
+			and(
+				eq(agents.workspaceId, workspaceId),
+				eq(agents.isOrganizationDefault, true),
+				isNull(agents.archivedAt),
+			),
+		)
+		.limit(1);
+	const [userPreference] = await db
+		.select({ defaultAgentId: userAgentPreferences.defaultAgentId })
+		.from(userAgentPreferences)
+		.where(
+			and(
+				eq(userAgentPreferences.workspaceId, workspaceId),
+				eq(userAgentPreferences.userId, userId),
+			),
+		)
+		.limit(1);
+
+	const organizationDefaultAgentId = organizationDefault?.id ?? null;
+	const userDefaultAgentId = userPreference?.defaultAgentId ?? null;
+	const usableOrganizationDefault =
+		organizationDefaultAgentId &&
+		(!availableAgentIds || availableAgentIds.has(organizationDefaultAgentId))
+			? organizationDefaultAgentId
+			: null;
+	const usableUserDefault =
+		userDefaultAgentId &&
+		(!availableAgentIds || availableAgentIds.has(userDefaultAgentId))
+			? userDefaultAgentId
+			: null;
+
+	return {
+		organizationDefaultAgentId: usableOrganizationDefault,
+		userDefaultAgentId: usableUserDefault,
+		effectiveDefaultAgentId: usableUserDefault ?? usableOrganizationDefault,
+	};
+}
+
+export async function setUserDefaultAgent(input: {
+	workspaceId: string;
+	userId: string;
+	agentId: string | null;
+	canAdminCurate?: boolean;
+}) {
+	if (!input.agentId) {
+		await db
+			.delete(userAgentPreferences)
+			.where(
+				and(
+					eq(userAgentPreferences.workspaceId, input.workspaceId),
+					eq(userAgentPreferences.userId, input.userId),
+				),
+			);
+		return getAgentDefaultPreferences(input.workspaceId, input.userId);
+	}
+
+	const agent = await getVisibleAgentById(
+		input.agentId,
+		input.workspaceId,
+		input.userId,
+		Boolean(input.canAdminCurate),
+	);
+	if (!agent) throw new Error("Agent not found");
+
+	await db
+		.insert(userAgentPreferences)
+		.values({
+			workspaceId: input.workspaceId,
+			userId: input.userId,
+			defaultAgentId: input.agentId,
+			updatedAt: new Date(),
+		})
+		.onConflictDoUpdate({
+			target: [userAgentPreferences.workspaceId, userAgentPreferences.userId],
+			set: { defaultAgentId: input.agentId, updatedAt: new Date() },
+		});
+
+	return getAgentDefaultPreferences(input.workspaceId, input.userId);
+}
+
+export async function setOrganizationDefaultAgent(input: {
+	workspaceId: string;
+	userId: string;
+	agentId: string | null;
+}) {
+	if (input.agentId) {
+		const [agent] = await db
+			.select()
+			.from(agents)
+			.where(
+				and(
+					eq(agents.id, input.agentId),
+					eq(agents.workspaceId, input.workspaceId),
+					isNull(agents.archivedAt),
+				),
+			)
+			.limit(1);
+		if (!agent || (!agent.isGlobal && !agent.isRecommended)) {
+			throw new Error("Organization assistant not found");
+		}
+	}
+
+	await db.transaction(async (tx) => {
+		await tx
+			.update(agents)
+			.set({ isOrganizationDefault: false, updatedAt: new Date() })
+			.where(eq(agents.workspaceId, input.workspaceId));
+		if (input.agentId) {
+			await tx
+				.update(agents)
+				.set({ isOrganizationDefault: true, updatedAt: new Date() })
+				.where(eq(agents.id, input.agentId));
+		}
+	});
+
+	await audit.emit({
+		workspaceId: input.workspaceId,
+		actorPrincipalType: "user",
+		actorPrincipalId: input.userId,
+		action: "agent.organization_default.updated",
+		resourceType: "agent",
+		resourceId: input.agentId ?? input.workspaceId,
+		outcome: "success",
+		metadata: { agentId: input.agentId },
+	});
+
+	return getAgentDefaultPreferences(input.workspaceId, input.userId);
+}
+
+export async function reorderOrganizationAgents(input: {
+	workspaceId: string;
+	userId: string;
+	agentIds: string[];
+}) {
+	const agentIds = Array.from(new Set(input.agentIds));
+	if (agentIds.length === 0) return;
+
+	const rows = await db
+		.select({ id: agents.id })
+		.from(agents)
+		.where(
+			and(
+				eq(agents.workspaceId, input.workspaceId),
+				isNull(agents.archivedAt),
+				inArray(agents.id, agentIds),
+				or(eq(agents.isGlobal, true), eq(agents.isRecommended, true)),
+			),
+		);
+	if (rows.length !== agentIds.length) {
+		throw new Error("Organization assistant not found");
+	}
+
+	await db.transaction(async (tx) => {
+		for (const [index, agentId] of agentIds.entries()) {
+			await tx
+				.update(agents)
+				.set({ organizationDisplayOrder: index, updatedAt: new Date() })
+				.where(eq(agents.id, agentId));
+		}
+	});
+
+	await audit.emit({
+		workspaceId: input.workspaceId,
+		actorPrincipalType: "user",
+		actorPrincipalId: input.userId,
+		action: "agent.organization_order.updated",
+		resourceType: "workspace",
+		resourceId: input.workspaceId,
+		outcome: "success",
+		metadata: { agentIds },
+	});
 }
 
 async function getActiveVersionConfig(
@@ -472,6 +680,7 @@ export async function cloneAgent(input: CloneAgentInput) {
 				isGlobal: false,
 				isRecommended: false,
 				curationLabel: null,
+				promptSuggestionsJson: source.promptSuggestionsJson,
 				forkedFromAgentId: source.id,
 			})
 			.returning();
@@ -561,6 +770,7 @@ export async function updateAgent(input: UpdateAgentInput) {
 		memoryPolicy,
 		guardrails,
 		approvalPolicy,
+		promptSuggestions,
 	} = input;
 
 	const [existing] = await db
@@ -590,6 +800,10 @@ export async function updateAgent(input: UpdateAgentInput) {
 		if (slug !== undefined) agentUpdates.slug = slug;
 		if (description !== undefined) agentUpdates.description = description;
 		if (logoUrl !== undefined) agentUpdates.logoUrl = logoUrl ?? null;
+		if (promptSuggestions !== undefined) {
+			agentUpdates.promptSuggestionsJson =
+				preparePromptSuggestions(promptSuggestions);
+		}
 		if (sharingMode !== undefined) {
 			agentUpdates.sharingMode = sharingMode;
 			agentUpdates.shareTargetUserId = nextShareTargetUserId;

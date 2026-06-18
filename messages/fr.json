@@ -65,6 +65,13 @@
     "statusReady": "Prêt",
     "statusNeedsSetup": "À configurer",
     "noAssistantMatches": "Aucun assistant ne correspond.",
+    "organizationDefault": "Défaut org.",
+    "myDefault": "Mon défaut",
+    "setMyDefault": "Définir comme mon défaut",
+    "myDefaultCurrent": "Défaut personnel actuel",
+    "clearMyDefault": "Retirer mon défaut personnel",
+    "defaultSaved": "Assistant par défaut enregistré",
+    "defaultSaveFailed": "Impossible d’enregistrer l’assistant par défaut",
     "configureProvider": "Connecter l’IA",
     "addKnowledge": "Ajouter des documents",
     "createAgent": "Créer un assistant"
@@ -101,6 +108,9 @@
       "modelLabel": "Modèle",
       "systemPrompt": "Instructions",
       "systemPromptPlaceholder": "Rôle, ton et limites de cet assistant…",
+      "promptSuggestions": "Prompts proposés",
+      "promptSuggestionsPlaceholder": "Résume ce document en 5 points\nPrépare un e-mail de réponse\nListe les actions à faire",
+      "promptSuggestionsHint": "Une proposition par ligne. Quelques-unes apparaîtront sur l’écran vide du chat.",
       "advancedHint": "Échantillonnage, mémoire, garde-fous et outils",
       "resetDefaults": "Réinitialiser la génération"
     },
@@ -200,6 +210,14 @@
       "badgeShared": "Partagé",
       "badgeGlobal": "Global",
       "badgeRecommended": "Recommandé",
+      "badgeOrganizationDefault": "Défaut organisation",
+      "badgeMyDefault": "Mon défaut",
+      "moveUp": "Monter",
+      "moveDown": "Descendre",
+      "setMyDefault": "Définir comme mon défaut",
+      "myDefaultCurrent": "Défaut personnel actuel",
+      "setOrganizationDefault": "Définir par défaut pour l’organisation",
+      "organizationDefaultCurrent": "Défaut organisation actuel",
       "setup": "Configurer",
       "view": "Voir",
       "clone": "Cloner",
@@ -217,32 +235,62 @@
         "support": {
           "name": "Assistant support",
           "description": "Répond aux questions clients avec un ton clair, calme et orienté solution.",
-          "prompt": "Tu es un assistant de support client. Réponds clairement, pose des questions si nécessaire, propose des étapes concrètes et signale quand une demande doit être transmise à un humain."
+          "prompt": "Tu es un assistant de support client. Réponds clairement, pose des questions si nécessaire, propose des étapes concrètes et signale quand une demande doit être transmise à un humain.",
+          "suggestions": {
+            "0": "Aide-moi à répondre à ce client",
+            "1": "Résume ce ticket et propose les prochaines étapes",
+            "2": "Prépare une réponse courte et professionnelle"
+          }
         },
         "hr": {
           "name": "Assistant RH",
           "description": "Aide les équipes à comprendre procédures, politiques internes et documents RH.",
-          "prompt": "Tu es un assistant RH interne. Explique les politiques avec prudence, cite les limites de tes connaissances et recommande de contacter l’équipe RH pour les cas sensibles ou personnels."
+          "prompt": "Tu es un assistant RH interne. Explique les politiques avec prudence, cite les limites de tes connaissances et recommande de contacter l’équipe RH pour les cas sensibles ou personnels.",
+          "suggestions": {
+            "0": "Explique cette procédure simplement",
+            "1": "Prépare une annonce interne claire",
+            "2": "Liste les points RH à vérifier"
+          }
         },
         "documents": {
           "name": "Assistant documents",
           "description": "Analyse, résume et compare des documents ou bases de connaissances.",
-          "prompt": "Tu es un assistant d’analyse documentaire. Résume les informations, cite les sources disponibles, distingue les faits des hypothèses et indique les passages manquants."
+          "prompt": "Tu es un assistant d’analyse documentaire. Résume les informations, cite les sources disponibles, distingue les faits des hypothèses et indique les passages manquants.",
+          "suggestions": {
+            "0": "Résume ce document en 5 points",
+            "1": "Compare ces deux documents",
+            "2": "Trouve les risques ou points manquants"
+          }
         },
         "sales": {
           "name": "Assistant commercial",
           "description": "Rédige e-mails, offres, réponses clients et synthèses commerciales.",
-          "prompt": "Tu es un assistant commercial B2B. Aide à rédiger des messages concis, adaptés au contexte, avec des prochaines étapes claires et un ton professionnel."
+          "prompt": "Tu es un assistant commercial B2B. Aide à rédiger des messages concis, adaptés au contexte, avec des prochaines étapes claires et un ton professionnel.",
+          "suggestions": {
+            "0": "Rédige un e-mail de relance",
+            "1": "Transforme ces notes en proposition commerciale",
+            "2": "Prépare une réponse à cette objection"
+          }
         },
         "project": {
           "name": "Chef de projet",
           "description": "Transforme les discussions en plans d’action, décisions et suivis opérationnels.",
-          "prompt": "Tu es un assistant chef de projet. Clarifie les objectifs, découpe le travail en étapes, identifie risques/dépendances et propose des actions datées quand c’est utile."
+          "prompt": "Tu es un assistant chef de projet. Clarifie les objectifs, découpe le travail en étapes, identifie risques/dépendances et propose des actions datées quand c’est utile.",
+          "suggestions": {
+            "0": "Crée un plan d’action à partir de ces notes",
+            "1": "Liste les risques et dépendances",
+            "2": "Prépare un compte rendu de réunion"
+          }
         },
         "blank": {
           "name": "Assistant personnalisé",
           "description": "Commencer vide et définir librement le rôle de l’assistant.",
-          "prompt": "Tu es un assistant utile, clair et prudent. Adapte tes réponses au besoin de l’utilisateur."
+          "prompt": "Tu es un assistant utile, clair et prudent. Adapte tes réponses au besoin de l’utilisateur.",
+          "suggestions": {
+            "0": "Aide-moi à clarifier ce sujet",
+            "1": "Résume et propose les prochaines étapes",
+            "2": "Rédige une version plus claire"
+          }
         }
       },
       "slug": "Slug",
@@ -258,6 +306,11 @@
       "toastDeleteFailed": "Échec de la suppression",
       "toastCloned": "Assistant cloné dans vos assistants",
       "toastCloneFailed": "Échec du clonage",
+      "toastUserDefaultSaved": "Assistant par défaut personnel enregistré",
+      "toastOrganizationDefaultSaved": "Assistant par défaut de l’organisation enregistré",
+      "toastDefaultFailed": "Impossible d’enregistrer le défaut",
+      "toastOrderSaved": "Ordre des assistants enregistré",
+      "toastOrderFailed": "Impossible d’enregistrer l’ordre",
       "timeJustNow": "à l’instant",
       "timeMinutesAgo": "il y a {count} min",
       "timeHoursAgo": "il y a {count} h",

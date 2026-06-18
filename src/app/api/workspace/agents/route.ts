@@ -3,7 +3,9 @@ import { getSession } from "@/modules/auth/session";
 import {
 	canEditAgent,
 	createAgent,
+	getAgentDefaultPreferences,
 	listAgents,
+	normalizePromptSuggestions,
 } from "@/modules/agent/use-cases";
 import { isAdminRole } from "@/modules/admin/use-cases";
 import { db } from "@/server/infrastructure/db";
@@ -30,6 +32,10 @@ const agentLogoUrlSchema = z
 	)
 	.nullable();
 
+const promptSuggestionsSchema = z
+	.array(z.string().trim().min(1).max(240))
+	.max(12);
+
 const createAgentSchema = z.object({
 	name: z.string().min(1).max(255),
 	slug: slugSchema,
@@ -37,6 +43,7 @@ const createAgentSchema = z.object({
 	logoUrl: agentLogoUrlSchema.optional(),
 	workspaceId: z.uuid(),
 	systemPrompt: z.string().max(64_000).optional(),
+	promptSuggestions: promptSuggestionsSchema.optional(),
 	providerId: z.uuid().optional(),
 	modelId: z.uuid().optional(),
 	temperature: z.string().optional(),
@@ -253,6 +260,11 @@ export async function GET(req: NextRequest) {
 			workspaceId,
 		);
 		const list = await listAgents(workspaceId, session.user.id, canAdminCurate);
+		const defaultPreferences = await getAgentDefaultPreferences(
+			workspaceId,
+			session.user.id,
+			new Set(list.map((agent) => agent.id)),
+		);
 		const modelMetaByVersionId = includeModelMeta
 			? await getModelMetaByVersionId(
 					list.map((agent) => agent.activeVersionId).filter(Boolean),
@@ -263,6 +275,9 @@ export async function GET(req: NextRequest) {
 				>();
 		const agentsWithAccess = list.map((agent) => ({
 			...agent,
+			promptSuggestions: normalizePromptSuggestions(
+				agent.promptSuggestionsJson,
+			),
 			...(agent.activeVersionId
 				? {
 						modelDisplayName: modelMetaByVersionId.get(agent.activeVersionId)
@@ -278,6 +293,7 @@ export async function GET(req: NextRequest) {
 		return NextResponse.json({
 			agents: agentsWithAccess,
 			canAdminCurate,
+			...defaultPreferences,
 		});
 	} catch (error) {
 		logger.error("Failed to list agents", {}, error as Error);

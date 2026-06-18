@@ -453,7 +453,16 @@ export const agents = pgTable(
 		}),
 		isGlobal: boolean("is_global").notNull().default(false),
 		isRecommended: boolean("is_recommended").notNull().default(false),
+		isOrganizationDefault: boolean("is_organization_default")
+			.notNull()
+			.default(false),
+		organizationDisplayOrder: integer("organization_display_order")
+			.notNull()
+			.default(0),
 		curationLabel: varchar("curation_label", { length: 64 }),
+		promptSuggestionsJson: jsonb("prompt_suggestions_json")
+			.notNull()
+			.default(sql`'[]'::jsonb`),
 		marketplaceItemId: uuid("marketplace_item_id"),
 		marketplaceVersionId: uuid("marketplace_version_id"),
 		forkedFromAgentId: uuid("forked_from_agent_id"),
@@ -474,6 +483,33 @@ export const agents = pgTable(
 			t.workspaceId,
 			t.slug,
 		),
+	}),
+);
+
+export const userAgentPreferences = pgTable(
+	"user_agent_preferences",
+	{
+		id: uuid("id").primaryKey().defaultRandom(),
+		workspaceId: uuid("workspace_id")
+			.notNull()
+			.references(() => workspaces.id, { onDelete: "cascade" }),
+		userId: uuid("user_id")
+			.notNull()
+			.references(() => users.id, { onDelete: "cascade" }),
+		defaultAgentId: uuid("default_agent_id").references(() => agents.id, {
+			onDelete: "set null",
+		}),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+	},
+	(t) => ({
+		workspaceUser: uniqueIndex(
+			"user_agent_preferences_workspace_user_unique",
+		).on(t.workspaceId, t.userId),
 	}),
 );
 
@@ -1402,6 +1438,7 @@ export const userRelations = relations(users, ({ many }) => ({
 	sessions: many(sessions),
 	accounts: many(accounts),
 	workspaceMembers: many(workspaceMembers),
+	agentPreferences: many(userAgentPreferences),
 }));
 
 export const sessionRelations = relations(sessions, ({ one }) => ({
@@ -1419,6 +1456,7 @@ export const workspaceRelations = relations(workspaces, ({ one, many }) => ({
 	}),
 	members: many(workspaceMembers),
 	agents: many(agents),
+	agentPreferences: many(userAgentPreferences),
 	conversationFolders: many(conversationFolders),
 	providers: many(aiProviders),
 	mcpServers: many(mcpServers),
@@ -1440,7 +1478,26 @@ export const agentRelations = relations(agents, ({ one, many }) => ({
 		references: [agentVersions.id],
 	}),
 	versions: many(agentVersions),
+	userPreferences: many(userAgentPreferences),
 }));
+
+export const userAgentPreferenceRelations = relations(
+	userAgentPreferences,
+	({ one }) => ({
+		workspace: one(workspaces, {
+			fields: [userAgentPreferences.workspaceId],
+			references: [workspaces.id],
+		}),
+		user: one(users, {
+			fields: [userAgentPreferences.userId],
+			references: [users.id],
+		}),
+		defaultAgent: one(agents, {
+			fields: [userAgentPreferences.defaultAgentId],
+			references: [agents.id],
+		}),
+	}),
+);
 
 export const agentVersionRelations = relations(
 	agentVersions,

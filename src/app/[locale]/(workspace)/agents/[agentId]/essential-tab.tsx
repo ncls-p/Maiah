@@ -202,6 +202,28 @@ export function EssentialTab({
 							/>
 						</FieldContent>
 					</Field>
+					<Field>
+						<FieldLabel htmlFor="agent-prompt-suggestions">
+							{tModel("promptSuggestions")}
+						</FieldLabel>
+						<FieldContent>
+							<Textarea
+								id="agent-prompt-suggestions"
+								className="min-h-24 text-sm"
+								placeholder={tModel("promptSuggestionsPlaceholder")}
+								value={form.promptSuggestions}
+								onChange={(e) =>
+									setForm((prev) => ({
+										...prev,
+										promptSuggestions: e.target.value,
+									}))
+								}
+							/>
+							<p className="mt-1 text-xs text-muted-foreground">
+								{tModel("promptSuggestionsHint")}
+							</p>
+						</FieldContent>
+					</Field>
 				</FieldGroup>
 			</ConfigSection>
 

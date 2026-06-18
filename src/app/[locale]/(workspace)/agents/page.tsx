@@ -5,6 +5,8 @@ import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
 import { AdvancedSection } from "@/components/ui/advanced-section";
 import {
+	ArrowDownIcon,
+	ArrowUpIcon,
 	CheckCircle2Icon,
 	CopyIcon,
 	MessageCircleIcon,
@@ -18,6 +20,7 @@ import {
 	Store,
 	XIcon,
 	Share2,
+	StarIcon,
 } from "lucide-react";
 
 import { PageLoading } from "@/components/page-loading";
@@ -75,36 +78,66 @@ const AGENT_TEMPLATES = [
 		nameKey: "templates.support.name",
 		descriptionKey: "templates.support.description",
 		promptKey: "templates.support.prompt",
+		suggestionKeys: [
+			"templates.support.suggestions.0",
+			"templates.support.suggestions.1",
+			"templates.support.suggestions.2",
+		],
 	},
 	{
 		id: "hr",
 		nameKey: "templates.hr.name",
 		descriptionKey: "templates.hr.description",
 		promptKey: "templates.hr.prompt",
+		suggestionKeys: [
+			"templates.hr.suggestions.0",
+			"templates.hr.suggestions.1",
+			"templates.hr.suggestions.2",
+		],
 	},
 	{
 		id: "documents",
 		nameKey: "templates.documents.name",
 		descriptionKey: "templates.documents.description",
 		promptKey: "templates.documents.prompt",
+		suggestionKeys: [
+			"templates.documents.suggestions.0",
+			"templates.documents.suggestions.1",
+			"templates.documents.suggestions.2",
+		],
 	},
 	{
 		id: "sales",
 		nameKey: "templates.sales.name",
 		descriptionKey: "templates.sales.description",
 		promptKey: "templates.sales.prompt",
+		suggestionKeys: [
+			"templates.sales.suggestions.0",
+			"templates.sales.suggestions.1",
+			"templates.sales.suggestions.2",
+		],
 	},
 	{
 		id: "project",
 		nameKey: "templates.project.name",
 		descriptionKey: "templates.project.description",
 		promptKey: "templates.project.prompt",
+		suggestionKeys: [
+			"templates.project.suggestions.0",
+			"templates.project.suggestions.1",
+			"templates.project.suggestions.2",
+		],
 	},
 	{
 		id: "blank",
 		nameKey: "templates.blank.name",
 		descriptionKey: "templates.blank.description",
 		promptKey: "templates.blank.prompt",
+		suggestionKeys: [
+			"templates.blank.suggestions.0",
+			"templates.blank.suggestions.1",
+			"templates.blank.suggestions.2",
+		],
 	},
 ] as const;
 
@@ -116,6 +149,9 @@ interface Agent {
 	logoUrl?: string | null;
 	activeVersionId: string | null;
 	modelDisplayName?: string | null;
+	promptSuggestions?: string[];
+	organizationDisplayOrder?: number;
+	isOrganizationDefault?: boolean;
 	sharingMode: "personal" | "marketplace" | "specific_user";
 	isGlobal: boolean;
 	isRecommended: boolean;
@@ -135,6 +171,10 @@ function slugifyAgentName(value: string) {
 			.replace(/^-+|-+$/g, "")
 			.slice(0, 64) || "assistant"
 	);
+}
+
+function isOrganizationAgent(agent: Agent) {
+	return agent.isGlobal || agent.isRecommended;
 }
 
 function timeAgo(
@@ -168,6 +208,12 @@ export default function AgentsPage() {
 	const [agents, setAgents] = useState<Agent[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [canAdminCurate, setCanAdminCurate] = useState(false);
+	const [organizationDefaultAgentId, setOrganizationDefaultAgentId] = useState<
+		string | null
+	>(null);
+	const [userDefaultAgentId, setUserDefaultAgentId] = useState<string | null>(
+		null,
+	);
 	const [showCreateDialog, setShowCreateDialog] = useState(false);
 	const [creating, setCreating] = useState(false);
 	const [searchQuery, setSearchQuery] = useState("");
@@ -177,6 +223,7 @@ export default function AgentsPage() {
 		slug: "",
 		description: "",
 		systemPrompt: "",
+		promptSuggestions: "",
 		sharingMode: "personal" as Agent["sharingMode"],
 		shareTargetEmail: "",
 		isGlobal: false,
@@ -206,6 +253,8 @@ export default function AgentsPage() {
 			const nextAgents = Array.isArray(data) ? data : data.agents;
 			setAgents(nextAgents);
 			setCanAdminCurate(Boolean(data.canAdminCurate));
+			setOrganizationDefaultAgentId(data.organizationDefaultAgentId ?? null);
+			setUserDefaultAgentId(data.userDefaultAgentId ?? null);
 		} catch (err) {
 			if (err instanceof Error && err.name !== "AbortError") {
 				console.error("Failed to load agents", err);
@@ -233,6 +282,10 @@ export default function AgentsPage() {
 					const nextAgents = Array.isArray(data) ? data : data.agents;
 					setAgents(nextAgents);
 					setCanAdminCurate(Boolean(data.canAdminCurate));
+					setOrganizationDefaultAgentId(
+						data.organizationDefaultAgentId ?? null,
+					);
+					setUserDefaultAgentId(data.userDefaultAgentId ?? null);
 				}
 			} catch (err) {
 				if (err instanceof Error && err.name !== "AbortError") {
@@ -259,6 +312,9 @@ export default function AgentsPage() {
 			slug: slugifyAgentName(name),
 			description: tList(template.descriptionKey),
 			systemPrompt: tList(template.promptKey),
+			promptSuggestions: template.suggestionKeys
+				.map((key) => tList(key))
+				.join("\n"),
 		}));
 	}
 
@@ -275,6 +331,10 @@ export default function AgentsPage() {
 					slug,
 					description: form.description.trim() || undefined,
 					systemPrompt: form.systemPrompt.trim() || undefined,
+					promptSuggestions: form.promptSuggestions
+						.split(/\n/)
+						.map((suggestion) => suggestion.trim())
+						.filter(Boolean),
 					workspaceId,
 					sharingMode: form.sharingMode,
 					shareTargetEmail:
@@ -301,6 +361,7 @@ export default function AgentsPage() {
 				slug: "",
 				description: "",
 				systemPrompt: "",
+				promptSuggestions: "",
 				sharingMode: "personal",
 				shareTargetEmail: "",
 				isGlobal: false,
@@ -400,10 +461,104 @@ export default function AgentsPage() {
 		}
 	}
 
+	async function setDefaultAgent(
+		scope: "organization" | "user",
+		agentId: string | null,
+	) {
+		if (!workspaceId) return;
+		try {
+			const res = await fetch("/api/workspace/agents/preferences", {
+				method: "PATCH",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ workspaceId, scope, defaultAgentId: agentId }),
+			});
+			if (!res.ok) {
+				const err = await res.json().catch(() => null);
+				throw new Error(err?.error || tList("toastDefaultFailed"));
+			}
+			const data = (await res.json()) as {
+				organizationDefaultAgentId: string | null;
+				userDefaultAgentId: string | null;
+			};
+			setOrganizationDefaultAgentId(data.organizationDefaultAgentId ?? null);
+			setUserDefaultAgentId(data.userDefaultAgentId ?? null);
+			setAgents((current) =>
+				current.map((agent) => ({
+					...agent,
+					isOrganizationDefault: agent.id === data.organizationDefaultAgentId,
+				})),
+			);
+			toast.success(
+				scope === "organization"
+					? tList("toastOrganizationDefaultSaved")
+					: tList("toastUserDefaultSaved"),
+			);
+		} catch (err) {
+			toast.error(
+				err instanceof Error ? err.message : tList("toastDefaultFailed"),
+			);
+		}
+	}
+
+	async function moveOrganizationAgent(agentId: string, direction: -1 | 1) {
+		if (!workspaceId || !canAdminCurate) return;
+		const organizationAgents = agents.filter(isOrganizationAgent);
+		const currentIndex = organizationAgents.findIndex(
+			(agent) => agent.id === agentId,
+		);
+		const nextIndex = currentIndex + direction;
+		if (
+			currentIndex < 0 ||
+			nextIndex < 0 ||
+			nextIndex >= organizationAgents.length
+		) {
+			return;
+		}
+
+		const nextOrganizationAgents = [...organizationAgents];
+		const [movedAgent] = nextOrganizationAgents.splice(currentIndex, 1);
+		if (!movedAgent) return;
+		nextOrganizationAgents.splice(nextIndex, 0, movedAgent);
+		const nextOrderById = new Map(
+			nextOrganizationAgents.map((agent, index) => [agent.id, index]),
+		);
+		setAgents([
+			...nextOrganizationAgents.map((agent, index) => ({
+				...agent,
+				organizationDisplayOrder: index,
+			})),
+			...agents.filter((agent) => !isOrganizationAgent(agent)),
+		]);
+
+		try {
+			const res = await fetch("/api/workspace/agents/order", {
+				method: "PUT",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					workspaceId,
+					agentIds: Array.from(nextOrderById.keys()),
+				}),
+			});
+			if (!res.ok) {
+				const err = await res.json().catch(() => null);
+				throw new Error(err?.error || tList("toastOrderFailed"));
+			}
+			toast.success(tList("toastOrderSaved"));
+		} catch (err) {
+			toast.error(
+				err instanceof Error ? err.message : tList("toastOrderFailed"),
+			);
+			await refreshAgents();
+		}
+	}
+
 	const readyAgentsCount = agents.filter((agent) =>
 		Boolean(agent.activeVersionId && agent.modelDisplayName),
 	).length;
 	const needsSetupCount = agents.length - readyAgentsCount;
+	const organizationAgentIds = agents
+		.filter(isOrganizationAgent)
+		.map((agent) => agent.id);
 	const filteredAgents = agents.filter((agent) => {
 		if (!searchQuery.trim()) return true;
 		const q = searchQuery.toLowerCase();
@@ -550,6 +705,12 @@ export default function AgentsPage() {
 								const isReady = Boolean(
 									agent.activeVersionId && agent.modelDisplayName,
 								);
+								const isOrgAgent = isOrganizationAgent(agent);
+								const orgIndex = organizationAgentIds.indexOf(agent.id);
+								const isOrganizationDefault =
+									agent.id === organizationDefaultAgentId ||
+									agent.isOrganizationDefault;
+								const isUserDefault = agent.id === userDefaultAgentId;
 
 								return (
 									<div
@@ -600,6 +761,18 @@ export default function AgentsPage() {
 														{tList("badgeRecommended")}
 													</Badge>
 												) : null}
+												{isOrganizationDefault ? (
+													<Badge variant="secondary" className="gap-1 text-xs">
+														<StarIcon className="size-3" aria-hidden="true" />
+														{tList("badgeOrganizationDefault")}
+													</Badge>
+												) : null}
+												{isUserDefault ? (
+													<Badge variant="outline" className="gap-1 text-xs">
+														<StarIcon className="size-3" aria-hidden="true" />
+														{tList("badgeMyDefault")}
+													</Badge>
+												) : null}
 											</div>
 											<p className="truncate font-mono text-xs text-muted-foreground">
 												{agent.description
@@ -610,6 +783,43 @@ export default function AgentsPage() {
 														})}
 											</p>
 										</div>
+
+										{canAdminCurate && isOrgAgent ? (
+											<div className="hidden shrink-0 items-center gap-1 sm:flex">
+												<Button
+													type="button"
+													variant="ghost"
+													size="icon-sm"
+													disabled={orgIndex <= 0}
+													onClick={() =>
+														void moveOrganizationAgent(agent.id, -1)
+													}
+													aria-label={tList("moveUp")}
+												>
+													<ArrowUpIcon
+														className="size-3.5"
+														aria-hidden="true"
+													/>
+												</Button>
+												<Button
+													type="button"
+													variant="ghost"
+													size="icon-sm"
+													disabled={
+														orgIndex === organizationAgentIds.length - 1
+													}
+													onClick={() =>
+														void moveOrganizationAgent(agent.id, 1)
+													}
+													aria-label={tList("moveDown")}
+												>
+													<ArrowDownIcon
+														className="size-3.5"
+														aria-hidden="true"
+													/>
+												</Button>
+											</div>
+										) : null}
 
 										{/* Quick actions */}
 										<Button
@@ -664,6 +874,26 @@ export default function AgentsPage() {
 													>
 														<CopyIcon className="size-4" />
 														{tList("clone")}
+													</DropdownMenuItem>
+												) : null}
+												<DropdownMenuItem
+													onClick={() => void setDefaultAgent("user", agent.id)}
+												>
+													<StarIcon className="size-4" />
+													{isUserDefault
+														? tList("myDefaultCurrent")
+														: tList("setMyDefault")}
+												</DropdownMenuItem>
+												{canAdminCurate && isOrgAgent ? (
+													<DropdownMenuItem
+														onClick={() =>
+															void setDefaultAgent("organization", agent.id)
+														}
+													>
+														<StarIcon className="size-4" />
+														{isOrganizationDefault
+															? tList("organizationDefaultCurrent")
+															: tList("setOrganizationDefault")}
 													</DropdownMenuItem>
 												) : null}
 												{agent.canEdit ? (

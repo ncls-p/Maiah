@@ -309,6 +309,10 @@ export default function AgentConfigurePage() {
 					systemPrompt: form.systemPrompt,
 					providerId: form.providerId || undefined,
 					modelId: form.modelId || undefined,
+					promptSuggestions: form.promptSuggestions
+						.split(/\n/)
+						.map((suggestion) => suggestion.trim())
+						.filter(Boolean),
 					temperature: form.temperature,
 					topP: form.topP,
 					maxOutputTokens: Number(form.maxOutputTokens) || undefined,

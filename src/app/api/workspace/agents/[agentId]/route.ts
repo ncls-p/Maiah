@@ -8,6 +8,7 @@ import {
 	archiveAgent,
 	canEditAgent,
 	getVisibleAgentById,
+	normalizePromptSuggestions,
 	updateAgent,
 } from "@/modules/agent/use-cases";
 import { isAdminRole } from "@/modules/admin/use-cases";
@@ -31,6 +32,10 @@ const agentLogoUrlSchema = z
 	)
 	.nullable();
 
+const promptSuggestionsSchema = z
+	.array(z.string().trim().min(1).max(240))
+	.max(12);
+
 const updateAgentSchema = z.object({
 	workspaceId: z.uuid(),
 	name: z.string().min(1).max(255).optional(),
@@ -38,6 +43,7 @@ const updateAgentSchema = z.object({
 	description: z.string().max(2048).optional().or(z.literal("")),
 	logoUrl: agentLogoUrlSchema.optional(),
 	systemPrompt: z.string().max(64_000).optional().or(z.literal("")),
+	promptSuggestions: promptSuggestionsSchema.optional(),
 	providerId: z.uuid().optional(),
 	modelId: z.uuid().optional(),
 	temperature: z.string().optional(),
@@ -161,6 +167,9 @@ export async function GET(
 
 		return NextResponse.json({
 			...agent,
+			promptSuggestions: normalizePromptSuggestions(
+				agent.promptSuggestionsJson,
+			),
 			canAdminCurate,
 			canEdit: canEditAgent(agent, session.user.id, canAdminCurate),
 			canClone: createPermission.granted,
@@ -226,7 +235,15 @@ export async function PATCH(
 			shareTargetEmail: input.shareTargetEmail || undefined,
 		});
 
-		return NextResponse.json({ agent, version });
+		return NextResponse.json({
+			agent: {
+				...agent,
+				promptSuggestions: normalizePromptSuggestions(
+					agent.promptSuggestionsJson,
+				),
+			},
+			version,
+		});
 	} catch (error) {
 		if (isUniqueConstraintError(error)) {
 			return NextResponse.json(

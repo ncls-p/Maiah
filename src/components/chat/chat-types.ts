@@ -8,6 +8,8 @@ export interface ChatAgent {
 	isGlobal?: boolean;
 	isRecommended?: boolean;
 	canEdit?: boolean;
+	isOrganizationDefault?: boolean;
+	promptSuggestions?: string[];
 	modelLogoUrl?: string | null;
 }
 

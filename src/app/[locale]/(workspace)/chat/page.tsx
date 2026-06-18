@@ -8,7 +8,6 @@ import {
 	MessageSquareIcon,
 	Loader2,
 	PlusIcon,
-	Settings2Icon,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -97,6 +96,17 @@ function mergeConversationPages(
 		...current,
 		...incoming.filter((conversation) => !existingIds.has(conversation.id)),
 	];
+}
+
+function rotatePromptSuggestions(suggestions: string[], seed: string) {
+	if (suggestions.length <= 3) return suggestions;
+	const offset =
+		Array.from(seed).reduce((total, char) => total + char.charCodeAt(0), 0) %
+		suggestions.length;
+	return [...suggestions.slice(offset), ...suggestions.slice(0, offset)].slice(
+		0,
+		3,
+	);
 }
 
 function upsertConversation(
@@ -193,6 +203,12 @@ export default function ChatPage() {
 	const { workspaceId, isLoading: workspaceLoading } = useWorkspace();
 	const [agents, setAgents] = useState<ChatAgent[]>([]);
 	const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+	const [organizationDefaultAgentId, setOrganizationDefaultAgentId] = useState<
+		string | null
+	>(null);
+	const [userDefaultAgentId, setUserDefaultAgentId] = useState<string | null>(
+		null,
+	);
 	const [conversations, setConversations] = useState<ChatConversation[]>([]);
 	const [conversationFolders, setConversationFolders] = useState<
 		ChatConversationFolder[]
@@ -232,6 +248,16 @@ export default function ChatPage() {
 		[agents, selectedAgentId],
 	);
 	const canChat = Boolean(activeVersion?.providerId && activeVersion?.modelId);
+	const emptyPromptSuggestions = useMemo(
+		() =>
+			selectedAgent
+				? rotatePromptSuggestions(
+						selectedAgent.promptSuggestions ?? [],
+						`${selectedAgent.id}-${new Date().toISOString().slice(0, 10)}`,
+					)
+				: [],
+		[selectedAgent],
+	);
 
 	const fetchConversationPage = useCallback(
 		async ({
@@ -388,7 +414,13 @@ export default function ChatPage() {
 					includeModelMeta: "true",
 				});
 				const response = await fetchJson<
-					{ agents?: ChatAgent[] } | ChatAgent[]
+					| {
+							agents?: ChatAgent[];
+							organizationDefaultAgentId?: string | null;
+							userDefaultAgentId?: string | null;
+							effectiveDefaultAgentId?: string | null;
+					  }
+					| ChatAgent[]
 				>(`/api/workspace/agents?${agentParams.toString()}`, {
 					signal: controller.signal,
 				});
@@ -398,14 +430,29 @@ export default function ChatPage() {
 				if (cancelled) return;
 
 				setAgents(data);
+				const responseDefaults = Array.isArray(response)
+					? {
+							organizationDefaultAgentId: null,
+							userDefaultAgentId: null,
+							effectiveDefaultAgentId: null,
+						}
+					: response;
+				setOrganizationDefaultAgentId(
+					responseDefaults.organizationDefaultAgentId ?? null,
+				);
+				setUserDefaultAgentId(responseDefaults.userDefaultAgentId ?? null);
 				const params = new URL(window.location.href).searchParams;
 				const requestedAgentId = params.get("agentId");
 				const requestedConversationId = params.get("conversationId");
+				const defaultAgentId = responseDefaults.effectiveDefaultAgentId;
 				setSelectedAgentId(
 					requestedAgentId &&
 						data.some((agent) => agent.id === requestedAgentId)
 						? requestedAgentId
-						: (data[0]?.id ?? null),
+						: defaultAgentId &&
+								data.some((agent) => agent.id === defaultAgentId)
+							? defaultAgentId
+							: (data[0]?.id ?? null),
 				);
 				if (requestedConversationId) {
 					setActiveConversationId(requestedConversationId);
@@ -927,6 +974,36 @@ export default function ChatPage() {
 		void handleSubmit(trimmedContent);
 	}
 
+	async function setUserDefaultAgent(agentId: string | null) {
+		if (!workspaceId) return;
+		try {
+			const res = await fetch("/api/workspace/agents/preferences", {
+				method: "PATCH",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					workspaceId,
+					scope: "user",
+					defaultAgentId: agentId,
+				}),
+			});
+			if (!res.ok) {
+				const error = await res.json().catch(() => null);
+				throw new Error(error?.error || t("defaultSaveFailed"));
+			}
+			const data = (await res.json()) as {
+				organizationDefaultAgentId: string | null;
+				userDefaultAgentId: string | null;
+			};
+			setOrganizationDefaultAgentId(data.organizationDefaultAgentId ?? null);
+			setUserDefaultAgentId(data.userDefaultAgentId ?? null);
+			toast.success(t("defaultSaved"));
+		} catch (error) {
+			toast.error(
+				error instanceof Error ? error.message : t("defaultSaveFailed"),
+			);
+		}
+	}
+
 	function updateQueuedMessage(id: string, content: string) {
 		setQueuedMessages((current) =>
 			current.map((message) =>
@@ -1065,6 +1142,8 @@ export default function ChatPage() {
 			selectedAgent={selectedAgent}
 			selectedAgentId={selectedAgentId}
 			activeConversationId={activeConversationId}
+			organizationDefaultAgentId={organizationDefaultAgentId}
+			userDefaultAgentId={userDefaultAgentId}
 			canChat={canChat}
 			loadingSidebar={loadingContext}
 			hasMoreConversations={hasMoreConversations}
@@ -1073,6 +1152,9 @@ export default function ChatPage() {
 			onSelectAgent={selectAgent}
 			onSelectConversation={selectConversation}
 			onNewConversation={startNewConversation}
+			onSetUserDefaultAgent={(agentId: string | null) =>
+				void setUserDefaultAgent(agentId)
+			}
 			onRenameConversation={(conversationId, title) =>
 				void renameConversation(conversationId, title)
 			}
@@ -1123,29 +1205,30 @@ export default function ChatPage() {
 								</p>
 							</div>
 
-							<div className="flex flex-wrap justify-center gap-2">
-								{canChat && conversations[0] ? (
-									<Button
-										type="button"
-										variant="outline"
-										onClick={() => selectConversation(conversations[0].id)}
-									>
-										{t("continueLast")}
-									</Button>
-								) : null}
-								<Button asChild variant={canChat ? "outline" : "default"}>
-									<Link href={canChat ? "/agents" : "/setup"}>
-										<Settings2Icon className="size-4" aria-hidden="true" />
-										{canChat ? t("createAgent") : t("finishSetup")}
-									</Link>
-								</Button>
-								<Button asChild variant="outline">
-									<Link href="/knowledge">{t("addKnowledge")}</Link>
-								</Button>
-								<Button asChild variant="outline">
-									<Link href="/providers">{t("configureProvider")}</Link>
-								</Button>
-							</div>
+							{canChat &&
+							(conversations[0] || emptyPromptSuggestions.length > 0) ? (
+								<div className="flex flex-wrap justify-center gap-2">
+									{conversations[0] ? (
+										<Button
+											type="button"
+											variant="outline"
+											onClick={() => selectConversation(conversations[0].id)}
+										>
+											{t("continueLast")}
+										</Button>
+									) : null}
+									{emptyPromptSuggestions.map((suggestion) => (
+										<Button
+											key={suggestion}
+											type="button"
+											variant="outline"
+											onClick={() => submitSuggestion(suggestion)}
+										>
+											{suggestion}
+										</Button>
+									))}
+								</div>
+							) : null}
 						</div>
 					</div>
 				) : null}

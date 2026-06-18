@@ -65,6 +65,13 @@
     "statusReady": "Ready",
     "statusNeedsSetup": "Needs setup",
     "noAssistantMatches": "No assistant matches.",
+    "organizationDefault": "Org default",
+    "myDefault": "My default",
+    "setMyDefault": "Set as my default",
+    "myDefaultCurrent": "Current personal default",
+    "clearMyDefault": "Clear my personal default",
+    "defaultSaved": "Default assistant saved",
+    "defaultSaveFailed": "Failed to save default assistant",
     "configureProvider": "Connect AI",
     "addKnowledge": "Add documents",
     "createAgent": "Create assistant"
@@ -101,6 +108,9 @@
       "modelLabel": "Model",
       "systemPrompt": "Instructions",
       "systemPromptPlaceholder": "Describe role, tone, and limits for this assistant…",
+      "promptSuggestions": "Suggested prompts",
+      "promptSuggestionsPlaceholder": "Summarize this document in 5 points\nDraft a reply email\nList the next actions",
+      "promptSuggestionsHint": "One suggestion per line. A few will appear on the empty chat screen.",
       "advancedHint": "Sampling, memory, guardrails, and tool behavior",
       "resetDefaults": "Reset generation defaults"
     },
@@ -200,7 +210,16 @@
       "badgeShared": "Shared",
       "badgeGlobal": "Global",
       "badgeRecommended": "Recommended",
-      "setup": "Setup",
+      "badgeOrganizationDefault": "Organization default",
+      "badgeMyDefault": "My default",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "setMyDefault": "Set as my default",
+      "myDefaultCurrent": "Current personal default",
+      "setOrganizationDefault": "Set as organization default",
+      "organizationDefaultCurrent": "Current organization default",
+      "setup": "Set up",
+
       "view": "View",
       "clone": "Clone",
       "agentActions": "Agent actions",
@@ -217,32 +236,62 @@
         "support": {
           "name": "Support assistant",
           "description": "Answers customer questions with a clear, calm, solution-oriented tone.",
-          "prompt": "You are a customer support assistant. Answer clearly, ask questions when needed, suggest concrete next steps, and flag when a request should be handed to a human."
+          "prompt": "You are a customer support assistant. Answer clearly, ask questions when needed, suggest concrete next steps, and flag when a request should be handed to a human.",
+          "suggestions": {
+            "0": "Help me reply to this customer",
+            "1": "Summarize this ticket and suggest next steps",
+            "2": "Draft a short professional response"
+          }
         },
         "hr": {
           "name": "HR assistant",
           "description": "Helps teams understand procedures, internal policies, and HR documents.",
-          "prompt": "You are an internal HR assistant. Explain policies carefully, state the limits of your knowledge, and recommend contacting HR for sensitive or personal cases."
+          "prompt": "You are an internal HR assistant. Explain policies carefully, state the limits of your knowledge, and recommend contacting HR for sensitive or personal cases.",
+          "suggestions": {
+            "0": "Explain this procedure simply",
+            "1": "Draft a clear internal announcement",
+            "2": "List the HR points to check"
+          }
         },
         "documents": {
           "name": "Document assistant",
           "description": "Analyzes, summarizes, and compares documents or knowledge bases.",
-          "prompt": "You are a document analysis assistant. Summarize information, cite available sources, separate facts from assumptions, and point out missing context."
+          "prompt": "You are a document analysis assistant. Summarize information, cite available sources, separate facts from assumptions, and point out missing context.",
+          "suggestions": {
+            "0": "Summarize this document in 5 points",
+            "1": "Compare these two documents",
+            "2": "Find risks or missing points"
+          }
         },
         "sales": {
           "name": "Sales assistant",
           "description": "Drafts emails, offers, customer replies, and commercial summaries.",
-          "prompt": "You are a B2B sales assistant. Help write concise, contextual messages with clear next steps and a professional tone."
+          "prompt": "You are a B2B sales assistant. Help write concise, contextual messages with clear next steps and a professional tone.",
+          "suggestions": {
+            "0": "Draft a follow-up email",
+            "1": "Turn these notes into a commercial proposal",
+            "2": "Prepare a reply to this objection"
+          }
         },
         "project": {
           "name": "Project manager",
           "description": "Turns discussions into action plans, decisions, and operational follow-up.",
-          "prompt": "You are a project management assistant. Clarify goals, break work into steps, identify risks/dependencies, and suggest dated actions when useful."
+          "prompt": "You are a project management assistant. Clarify goals, break work into steps, identify risks/dependencies, and suggest dated actions when useful.",
+          "suggestions": {
+            "0": "Create an action plan from these notes",
+            "1": "List risks and dependencies",
+            "2": "Draft meeting minutes"
+          }
         },
         "blank": {
           "name": "Custom assistant",
           "description": "Start blank and define the assistant’s role freely.",
-          "prompt": "You are a helpful, clear, and careful assistant. Adapt your answers to the user’s needs."
+          "prompt": "You are a helpful, clear, and careful assistant. Adapt your answers to the user’s needs.",
+          "suggestions": {
+            "0": "Help me clarify this topic",
+            "1": "Summarize and suggest next steps",
+            "2": "Write a clearer version"
+          }
         }
       },
       "slug": "Slug",
@@ -258,6 +307,11 @@
       "toastDeleteFailed": "Failed to delete agent",
       "toastCloned": "Agent cloned into your assistants",
       "toastCloneFailed": "Failed to clone agent",
+      "toastUserDefaultSaved": "Personal default assistant saved",
+      "toastOrganizationDefaultSaved": "Organization default assistant saved",
+      "toastDefaultFailed": "Failed to save default",
+      "toastOrderSaved": "Assistant order saved",
+      "toastOrderFailed": "Failed to save order",
       "timeJustNow": "just now",
       "timeMinutesAgo": "{count}m ago",
       "timeHoursAgo": "{count}h ago",
