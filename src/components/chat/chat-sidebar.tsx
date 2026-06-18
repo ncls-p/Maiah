@@ -24,6 +24,7 @@ import type {
 	ChatConversationFolder,
 } from "@/components/chat/chat-types";
 import { DeodisLogo } from "@/components/deodis-logo";
+import { LocaleSwitcher } from "@/components/locale-switcher";
 import { ThemeToggleButton } from "@/components/theme-toggle-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -1046,7 +1047,10 @@ export function ChatSidebar({
 			{/* Footer */}
 			{showThemeToggle ? (
 				<div className="border-t border-border/50 p-3">
-					<ThemeToggleButton className="w-full" />
+					<div className="flex min-w-0 items-center gap-1.5">
+						<ThemeToggleButton className="min-w-0 flex-1" />
+						<LocaleSwitcher compact className="size-8 shrink-0" />
+					</div>
 				</div>
 			) : null}
 		</div>
