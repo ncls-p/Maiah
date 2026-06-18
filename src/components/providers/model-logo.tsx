@@ -25,11 +25,13 @@ export function ModelLogo({
 	label,
 	size = "md",
 	className,
+	imageFit = "contain",
 }: {
 	logoUrl?: string | null;
 	label: string;
 	size?: keyof typeof LOGO_SIZES;
 	className?: string;
+	imageFit?: "contain" | "cover";
 }) {
 	const dimension = LOGO_SIZES[size];
 
@@ -48,7 +50,10 @@ export function ModelLogo({
 					width={dimension}
 					height={dimension}
 					unoptimized
-					className="h-full w-full object-contain p-1"
+					className={cn(
+						"h-full w-full",
+						imageFit === "cover" ? "object-cover" : "object-contain p-1",
+					)}
 				/>
 			) : (
 				<span aria-hidden="true">{initialsFromLabel(label)}</span>

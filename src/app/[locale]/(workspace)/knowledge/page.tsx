@@ -798,6 +798,8 @@ export default function KnowledgePage() {
 												logoUrl={agent.logoUrl}
 												label={agent.name}
 												size="md"
+												imageFit="cover"
+												className="rounded-full"
 											/>
 											<span className="min-w-0 flex-1">
 												<span className="block truncate font-medium">

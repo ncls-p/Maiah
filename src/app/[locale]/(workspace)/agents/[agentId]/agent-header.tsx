@@ -101,7 +101,8 @@ export function AgentHeader({
 						logoUrl={agent?.logoUrl}
 						label={agentLabel}
 						size="lg"
-						className="rounded-xl"
+						imageFit="cover"
+						className="rounded-full"
 					/>
 					{canEdit && agent?.id ? (
 						<div className="flex items-center gap-1">

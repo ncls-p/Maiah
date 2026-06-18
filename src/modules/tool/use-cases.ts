@@ -5,7 +5,6 @@ import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
 import {
 	agentToolBindings,
-	agents,
 	agentVersions,
 	customTools,
 	mcpServers,
@@ -45,44 +44,35 @@ export async function getToolBindingsForVersion(agentVersionId: string) {
 export async function replaceToolBindingsForVersion(
 	agentVersionId: string,
 	bindings: ToolBindingInput[],
+	workspaceId?: string,
 ) {
 	await db
 		.delete(agentToolBindings)
 		.where(eq(agentToolBindings.agentVersionId, agentVersionId));
-	await insertToolBindingsForVersion(agentVersionId, bindings);
-}
-
-async function getWorkspaceIdForAgentVersion(agentVersionId: string) {
-	const [row] = await db
-		.select({ workspaceId: agents.workspaceId })
-		.from(agentVersions)
-		.innerJoin(agents, eq(agentVersions.agentId, agents.id))
-		.where(eq(agentVersions.id, agentVersionId))
-		.limit(1);
-	if (!row) throw new Error("Agent version not found");
-	return row.workspaceId;
+	await insertToolBindingsForVersion(agentVersionId, bindings, workspaceId);
 }
 
 export async function insertToolBindingsForVersion(
 	agentVersionId: string,
 	bindings: ToolBindingInput[],
+	workspaceId?: string,
 ) {
 	if (bindings.length === 0) return;
 
-	const workspaceId = await getWorkspaceIdForAgentVersion(agentVersionId);
 	const values = await Promise.all(
 		bindings.map(async (binding) => {
 			if (binding.toolSource === "custom") {
-				const [customTool] = await db
-					.select()
-					.from(customTools)
-					.where(
-						and(
+				const customToolFilters = workspaceId
+					? and(
 							eq(customTools.id, binding.toolId),
 							eq(customTools.workspaceId, workspaceId),
 							isNull(customTools.archivedAt),
-						),
-					)
+						)
+					: eq(customTools.id, binding.toolId);
+				const [customTool] = await db
+					.select()
+					.from(customTools)
+					.where(customToolFilters)
 					.limit(1);
 				if (!customTool) throw new Error("Custom tool not found");
 
@@ -96,20 +86,31 @@ export async function insertToolBindingsForVersion(
 			}
 
 			if (binding.toolSource === "mcp") {
-				const [tool] = await db
-					.select({ requireApproval: mcpTools.requireApproval })
-					.from(mcpTools)
-					.innerJoin(mcpServers, eq(mcpTools.mcpServerId, mcpServers.id))
-					.where(
-						and(
-							eq(mcpTools.id, binding.toolId),
-							eq(mcpTools.mcpServerId, binding.mcpServerId),
-							eq(mcpServers.workspaceId, workspaceId),
-							eq(mcpServers.enabled, true),
-							isNull(mcpServers.archivedAt),
-						),
-					)
-					.limit(1);
+				const [tool] = workspaceId
+					? await db
+							.select({ requireApproval: mcpTools.requireApproval })
+							.from(mcpTools)
+							.innerJoin(mcpServers, eq(mcpTools.mcpServerId, mcpServers.id))
+							.where(
+								and(
+									eq(mcpTools.id, binding.toolId),
+									eq(mcpTools.mcpServerId, binding.mcpServerId),
+									eq(mcpServers.workspaceId, workspaceId),
+									eq(mcpServers.enabled, true),
+									isNull(mcpServers.archivedAt),
+								),
+							)
+							.limit(1)
+					: await db
+							.select()
+							.from(mcpTools)
+							.where(
+								and(
+									eq(mcpTools.id, binding.toolId),
+									eq(mcpTools.mcpServerId, binding.mcpServerId),
+								),
+							)
+							.limit(1);
 				if (!tool) throw new Error("MCP tool not found");
 
 				return {
@@ -141,6 +142,7 @@ export async function insertToolBindingsForVersion(
 export async function cloneToolBindings(
 	fromAgentVersionId: string | null,
 	toAgentVersionId: string,
+	workspaceId?: string,
 ) {
 	if (!fromAgentVersionId) return;
 	const existing = await getToolBindingsForVersion(fromAgentVersionId);
@@ -179,7 +181,7 @@ export async function cloneToolBindings(
 		});
 	}
 
-	await insertToolBindingsForVersion(toAgentVersionId, inputs);
+	await insertToolBindingsForVersion(toAgentVersionId, inputs, workspaceId);
 }
 
 export async function getCustomBindingContext(

@@ -4,8 +4,6 @@ import { audit } from "@/server/domain/services/audit";
 import { db } from "@/server/infrastructure/db";
 import {
 	agentKnowledgeBindings,
-	agents,
-	agentVersions,
 	documentChunks,
 	documentEmbeddings,
 	documents,
@@ -496,24 +494,13 @@ export async function getKnowledgeBindingsForVersion(agentVersionId: string) {
 	return rows;
 }
 
-async function getWorkspaceIdForAgentVersion(agentVersionId: string) {
-	const [row] = await db
-		.select({ workspaceId: agents.workspaceId })
-		.from(agentVersions)
-		.innerJoin(agents, eq(agentVersions.agentId, agents.id))
-		.where(eq(agentVersions.id, agentVersionId))
-		.limit(1);
-	if (!row) throw new Error("Agent version not found");
-	return row.workspaceId;
-}
-
 export async function replaceKnowledgeBindingsForVersion(
 	agentVersionId: string,
 	knowledgeBaseIds: string[],
+	workspaceId?: string,
 ) {
 	const uniqueKnowledgeBaseIds = [...new Set(knowledgeBaseIds)];
-	if (uniqueKnowledgeBaseIds.length > 0) {
-		const workspaceId = await getWorkspaceIdForAgentVersion(agentVersionId);
+	if (workspaceId && uniqueKnowledgeBaseIds.length > 0) {
 		const availableKnowledgeBases = await db
 			.select({ id: knowledgeBases.id })
 			.from(knowledgeBases)

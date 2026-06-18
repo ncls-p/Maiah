@@ -354,8 +354,16 @@ export async function createAgent(input: CreateAgentInput) {
 		metadata: { name, slug, sharingMode },
 	});
 
-	await insertToolBindingsForVersion(version.id, toolBindings ?? []);
-	await replaceKnowledgeBindingsForVersion(version.id, knowledgeBindings ?? []);
+	await insertToolBindingsForVersion(
+		version.id,
+		toolBindings ?? [],
+		workspaceId,
+	);
+	await replaceKnowledgeBindingsForVersion(
+		version.id,
+		knowledgeBindings ?? [],
+		workspaceId,
+	);
 	await replaceSkillBindingsForVersion(
 		version.id,
 		workspaceId,
@@ -716,7 +724,7 @@ export async function cloneAgent(input: CloneAgentInput) {
 		return { agent, version };
 	});
 
-	await cloneToolBindings(source.activeVersionId, version.id);
+	await cloneToolBindings(source.activeVersionId, version.id, input.workspaceId);
 	await cloneKnowledgeBindings(source.activeVersionId, version.id);
 	await cloneSkillBindings(source.activeVersionId, version.id);
 
@@ -965,13 +973,17 @@ export async function updateAgent(input: UpdateAgentInput) {
 	});
 
 	if (toolBindings) {
-		await insertToolBindingsForVersion(version.id, toolBindings);
+		await insertToolBindingsForVersion(version.id, toolBindings, workspaceId);
 	} else {
-		await cloneToolBindings(existing.activeVersionId, version.id);
+		await cloneToolBindings(existing.activeVersionId, version.id, workspaceId);
 	}
 
 	if (knowledgeBindings) {
-		await replaceKnowledgeBindingsForVersion(version.id, knowledgeBindings);
+		await replaceKnowledgeBindingsForVersion(
+			version.id,
+			knowledgeBindings,
+			workspaceId,
+		);
 	} else {
 		await cloneKnowledgeBindings(existing.activeVersionId, version.id);
 	}

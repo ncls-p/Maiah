@@ -1205,7 +1205,8 @@ export default function ChatPage() {
 										logoUrl={selectedAgent.logoUrl}
 										label={selectedAgent.name}
 										size="lg"
-										className="mb-4 rounded-2xl"
+										imageFit="cover"
+										className="mb-4 rounded-full"
 									/>
 								) : null}
 								<h2 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">

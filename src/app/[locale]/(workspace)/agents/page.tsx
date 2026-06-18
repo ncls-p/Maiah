@@ -670,6 +670,8 @@ export default function AgentsPage() {
 											logoUrl={agent.logoUrl}
 											label={agent.name}
 											size="md"
+											imageFit="cover"
+											className="rounded-full"
 										/>
 										<div className="min-w-0 flex-1">
 											<div className="flex items-center gap-2">
