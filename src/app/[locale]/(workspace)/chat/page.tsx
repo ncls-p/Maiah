@@ -681,14 +681,13 @@ export default function ChatPage() {
 	}, [cancelScrollAnimation]);
 
 	function selectAgent(agentId: string) {
+		if (agentId === selectedAgentId) return;
 		setQueuedMessages([]);
 		setSelectedAgentId(agentId);
 		setActiveVersion(null);
-		const params = new URLSearchParams({ agentId });
-		if (activeConversationId) {
-			params.set("conversationId", activeConversationId);
-		}
-		window.history.replaceState(null, "", `/chat?${params.toString()}`);
+		setActiveConversationId(null);
+		setMessages([]);
+		window.history.replaceState(null, "", `/chat?agentId=${agentId}`);
 	}
 
 	function selectConversation(conversationId: string) {

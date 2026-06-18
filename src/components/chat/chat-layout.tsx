@@ -3,6 +3,7 @@
 import { Link } from "@/i18n/navigation";
 import { useState, useSyncExternalStore, type ComponentProps } from "react";
 import {
+	ChevronDownIcon,
 	MessageSquarePlusIcon,
 	PanelLeftCloseIcon,
 	PanelLeftOpenIcon,
@@ -36,13 +37,11 @@ import {
 	SheetTrigger,
 } from "@/components/ui/sheet";
 import {
-	Select,
-	SelectContent,
-	SelectGroup,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
 const HISTORY_OPEN_STORAGE_KEY = "chat-unified-sidebar-open";
@@ -251,48 +250,47 @@ export function ChatLayout({
 		},
 	};
 
-	const selectedAgentLabel = selectedAgent?.name ?? "";
+	const selectedAgentLabel = selectedAgent?.name ?? "Choose assistant";
 	const agentSelector = (
-		<div className="flex items-center gap-2">
-			<Select
-				value={selectedAgentId ?? undefined}
-				onValueChange={onSelectAgent}
-			>
-				<SelectTrigger
-					size="sm"
-					className="h-8 min-w-0 max-w-[min(100%,13rem)] flex-1 px-2 font-medium sm:max-w-72 sm:min-w-56"
-					aria-label="Current assistant"
-				>
-					{selectedAgent ? (
+		<div className="relative z-10 flex min-w-0 items-center gap-2">
+			<DropdownMenu>
+				<DropdownMenuTrigger asChild>
+					<Button
+						type="button"
+						variant="outline"
+						size="sm"
+						className="h-8 min-w-0 max-w-[min(100%,13rem)] justify-between gap-2 px-2 font-medium sm:max-w-72 sm:min-w-56"
+						aria-label="Current assistant"
+					>
 						<span className="flex min-w-0 items-center gap-2">
-							<ModelLogo
-								logoUrl={selectedAgent.logoUrl}
-								label={selectedAgentLabel}
-								size="sm"
-							/>
+							{selectedAgent ? (
+								<ModelLogo
+									logoUrl={selectedAgent.logoUrl}
+									label={selectedAgentLabel}
+									size="sm"
+								/>
+							) : null}
 							<span className="truncate">{selectedAgentLabel}</span>
 						</span>
-					) : (
-						<SelectValue placeholder="Choose assistant" />
-					)}
-				</SelectTrigger>
-				<SelectContent>
-					<SelectGroup>
-						{agents.map((agent) => (
-							<SelectItem key={agent.id} value={agent.id}>
-								<span className="flex items-center gap-2">
-									<ModelLogo
-										logoUrl={agent.logoUrl}
-										label={agent.name}
-										size="sm"
-									/>
-									{agent.name}
-								</span>
-							</SelectItem>
-						))}
-					</SelectGroup>
-				</SelectContent>
-			</Select>
+						<ChevronDownIcon
+							className="size-3.5 shrink-0 text-muted-foreground"
+							aria-hidden="true"
+						/>
+					</Button>
+				</DropdownMenuTrigger>
+				<DropdownMenuContent align="center" className="w-64">
+					{agents.map((agent) => (
+						<DropdownMenuItem
+							key={agent.id}
+							className="gap-2"
+							onClick={() => onSelectAgent(agent.id)}
+						>
+							<ModelLogo logoUrl={agent.logoUrl} label={agent.name} size="sm" />
+							<span className="min-w-0 truncate">{agent.name}</span>
+						</DropdownMenuItem>
+					))}
+				</DropdownMenuContent>
+			</DropdownMenu>
 			{!canChat ? (
 				<Badge
 					variant="outline"
@@ -344,7 +342,7 @@ export function ChatLayout({
 
 			<div className="flex min-h-0 min-w-0 flex-1 flex-col">
 				<AppHeader
-					className="px-2 sm:px-4"
+					className="relative z-30 px-2 sm:px-4"
 					leading={
 						<>
 							<Button
