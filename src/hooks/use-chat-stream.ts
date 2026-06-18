@@ -19,7 +19,7 @@ interface UseChatStreamOptions {
 	conversationId: string | null;
 	workspaceId: string | null;
 	canChat: boolean;
-	onConversationCreated: (conversationId: string) => void;
+	onConversationCreated: (conversationId: string, firstMessage: string) => void;
 	onConversationTitle?: (conversationId: string, title: string) => void;
 	onConversationsRefresh: () => Promise<void>;
 }
@@ -905,7 +905,7 @@ export function useChatStream({
 				);
 			}
 			if (headerConversationId && !conversationId) {
-				onConversationCreated(headerConversationId);
+				onConversationCreated(headerConversationId, content);
 			}
 
 			const reader = res.body.getReader();

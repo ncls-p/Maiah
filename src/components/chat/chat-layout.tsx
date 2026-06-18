@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 
 import { useWorkspaceShell } from "@/components/app-shell";
+import { DeodisLogo } from "@/components/deodis-logo";
 import { ModelLogo } from "@/components/providers/model-logo";
 import { AppHeader } from "@/components/app-header";
 import { ChatSidebar } from "@/components/chat/chat-sidebar";
@@ -467,7 +468,7 @@ export function ChatLayout({
 	);
 
 	return (
-		<div className="flex h-full min-h-0">
+		<div className="chat-shell-brand flex h-full min-h-0 overflow-hidden">
 			{/* Desktop sidebar with smooth transition */}
 			<div
 				className={cn(
@@ -505,7 +506,7 @@ export function ChatLayout({
 
 			<div className="flex min-h-0 min-w-0 flex-1 flex-col">
 				<AppHeader
-					className="relative z-30 px-2 sm:px-4"
+					className="relative z-30 border-primary/10 bg-background/95 px-2 sm:px-4"
 					leading={
 						<>
 							<Button
@@ -549,6 +550,20 @@ export function ChatLayout({
 									<ChatSidebar {...mobileSidebarProps} />
 								</SheetContent>
 							</Sheet>
+							{!sidebarOpen ? (
+								<DeodisLogo
+									href="/chat"
+									className="hidden h-5 w-auto md:block"
+									priority
+									label="Deodis chat"
+								/>
+							) : null}
+							<DeodisLogo
+								href="/chat"
+								className="h-5 w-auto md:hidden"
+								priority
+								label="Deodis chat"
+							/>
 						</>
 					}
 					center={agentSelector}

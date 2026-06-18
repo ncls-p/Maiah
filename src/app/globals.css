@@ -306,6 +306,48 @@
   .app-shell__main--chat {
     @apply overflow-hidden;
   }
+
+  .chat-shell-brand {
+    position: relative;
+    isolation: isolate;
+    background:
+      linear-gradient(
+        90deg,
+        color-mix(in oklch, var(--brand-azur) 8%, transparent) 0,
+        transparent 11rem
+      ),
+      linear-gradient(
+        270deg,
+        color-mix(in oklch, var(--brand-azur) 7%, transparent) 0,
+        transparent 10rem
+      ),
+      var(--background);
+  }
+
+  .chat-shell-brand::before,
+  .chat-shell-brand::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 0;
+    width: 1px;
+    pointer-events: none;
+    background: color-mix(in oklch, var(--brand-azur) 34%, transparent);
+  }
+
+  .chat-shell-brand::before {
+    left: 0;
+  }
+
+  .chat-shell-brand::after {
+    right: 0;
+  }
+
+  .chat-shell-brand > * {
+    position: relative;
+    z-index: 1;
+  }
 }
 
 @layer utilities {

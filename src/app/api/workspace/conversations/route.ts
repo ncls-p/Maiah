@@ -142,7 +142,7 @@ export async function GET(req: Request) {
 			.where(and(...conditions))
 			.orderBy(
 				sql`${conversations.pinnedAt} IS NULL`,
-				sql`${conversations.sidebarOrder} IS NULL`,
+				desc(sql`${conversations.sidebarOrder} IS NULL`),
 				asc(conversations.sidebarOrder),
 				desc(conversations.updatedAt),
 				desc(conversations.id),

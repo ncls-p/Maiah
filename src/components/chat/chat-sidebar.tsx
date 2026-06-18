@@ -23,6 +23,7 @@ import type {
 	ChatConversation,
 	ChatConversationFolder,
 } from "@/components/chat/chat-types";
+import { DeodisLogo } from "@/components/deodis-logo";
 import { ThemeToggleButton } from "@/components/theme-toggle-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -287,14 +288,14 @@ function ConversationItem({
 			className={cn(
 				"group/conversation relative overflow-hidden rounded-lg border transition-colors",
 				isActive
-					? "border-input bg-muted"
+					? "border-primary/20 bg-primary/10"
 					: "border-transparent hover:border-border hover:bg-muted/70",
 				isDragging && "opacity-45",
 			)}
 		>
 			{/* Active indicator bar */}
 			{isActive && (
-				<div className="absolute left-1 top-1/2 h-4 w-px -translate-y-1/2 rounded-full bg-foreground" />
+				<div className="absolute left-1 top-1/2 h-4 w-px -translate-y-1/2 rounded-full bg-primary" />
 			)}
 
 			{isEditing ? (
@@ -465,9 +466,23 @@ export function ChatSidebar({
 			const aPinned = a.pinnedAt ? 0 : 1;
 			const bPinned = b.pinnedAt ? 0 : 1;
 			if (aPinned !== bPinned) return aPinned - bPinned;
-			const aOrder = a.sidebarOrder ?? Number.MAX_SAFE_INTEGER;
-			const bOrder = b.sidebarOrder ?? Number.MAX_SAFE_INTEGER;
-			if (aOrder !== bOrder) return aOrder - bOrder;
+
+			const aHasManualOrder =
+				a.sidebarOrder !== null && a.sidebarOrder !== undefined;
+			const bHasManualOrder =
+				b.sidebarOrder !== null && b.sidebarOrder !== undefined;
+			if (aHasManualOrder !== bHasManualOrder) {
+				return aHasManualOrder ? 1 : -1;
+			}
+
+			if (
+				aHasManualOrder &&
+				bHasManualOrder &&
+				a.sidebarOrder !== b.sidebarOrder
+			) {
+				return (a.sidebarOrder ?? 0) - (b.sidebarOrder ?? 0);
+			}
+
 			return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
 		});
 	}, [conversations]);
@@ -623,13 +638,24 @@ export function ChatSidebar({
 			>
 				<Tooltip>
 					<TooltipTrigger asChild>
+						<DeodisLogo
+							href="/chat"
+							className="h-5 w-8 object-contain"
+							label="Deodis chat"
+						/>
+					</TooltipTrigger>
+					<TooltipContent side="right">Deodis</TooltipContent>
+				</Tooltip>
+				<div className="my-1 h-px w-6 rounded-full bg-primary/20" />
+				<Tooltip>
+					<TooltipTrigger asChild>
 						<Button
 							type="button"
 							size="icon"
 							variant="ghost"
 							aria-label="Expand chat sidebar"
 							onClick={() => onCollapsedChange?.(false)}
-							className="size-9 rounded-lg transition-all duration-200 hover:bg-muted"
+							className="size-9 rounded-lg transition-all duration-200 hover:bg-primary/10"
 						>
 							<PanelLeftOpenIcon className="size-4" aria-hidden="true" />
 						</Button>
@@ -668,7 +694,7 @@ export function ChatSidebar({
 									className={cn(
 										"size-9 rounded-lg transition-colors",
 										activeConversationId === conversation.id &&
-											"bg-muted text-foreground",
+											"bg-primary/10 text-foreground ring-1 ring-primary/15",
 									)}
 								>
 									<MessageSquareIcon className="size-4" aria-hidden="true" />
@@ -689,13 +715,8 @@ export function ChatSidebar({
 				className,
 			)}
 		>
-			<div className="flex items-center justify-between border-b border-sidebar-border px-4 py-3">
-				<div className="flex items-center gap-2">
-					<div className="flex size-6 items-center justify-center rounded-md border bg-muted text-muted-foreground">
-						<MessageSquareIcon className="size-3" aria-hidden="true" />
-					</div>
-					<span className="text-sm font-semibold tracking-tight">Chat</span>
-				</div>
+			<div className="flex items-center justify-between border-b border-primary/10 px-4 py-3">
+				<DeodisLogo href="/chat" className="h-6 w-auto" label="Deodis chat" />
 				<Button
 					type="button"
 					size="sm"

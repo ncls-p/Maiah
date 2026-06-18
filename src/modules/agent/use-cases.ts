@@ -724,7 +724,11 @@ export async function cloneAgent(input: CloneAgentInput) {
 		return { agent, version };
 	});
 
-	await cloneToolBindings(source.activeVersionId, version.id, input.workspaceId);
+	await cloneToolBindings(
+		source.activeVersionId,
+		version.id,
+		input.workspaceId,
+	);
 	await cloneKnowledgeBindings(source.activeVersionId, version.id);
 	await cloneSkillBindings(source.activeVersionId, version.id);
 

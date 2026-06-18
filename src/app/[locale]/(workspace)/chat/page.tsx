@@ -98,6 +98,11 @@ function mergeConversationPages(
 	];
 }
 
+function conversationTitleFromFirstMessage(content: string) {
+	const normalized = content.trim().replace(/\s+/g, " ");
+	return normalized.length > 100 ? `${normalized.slice(0, 97)}…` : normalized;
+}
+
 function rotatePromptSuggestions(suggestions: string[], seed: string) {
 	if (suggestions.length <= 3) return suggestions;
 	const offset =
@@ -341,9 +346,23 @@ export default function ChatPage() {
 		conversationId: activeConversationId,
 		workspaceId,
 		canChat,
-		onConversationCreated: (conversationId) => {
+		onConversationCreated: (conversationId, firstMessage) => {
 			skipNextMessageLoadRef.current = true;
 			setActiveConversationId(conversationId);
+			if (selectedAgentId) {
+				const now = new Date().toISOString();
+				setConversations((current) =>
+					upsertConversation(current, {
+						id: conversationId,
+						title: conversationTitleFromFirstMessage(firstMessage),
+						agentId: selectedAgentId,
+						folderId: null,
+						pinnedAt: null,
+						sidebarOrder: null,
+						updatedAt: now,
+					}),
+				);
+			}
 			const params = new URLSearchParams();
 			if (selectedAgentId) params.set("agentId", selectedAgentId);
 			params.set("conversationId", conversationId);
