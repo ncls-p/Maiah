@@ -9,6 +9,7 @@ import {
 	isChatStreamEvent,
 	toolNameMatches,
 	type ChatCitation,
+	type ChatImageAttachment,
 	type ChatMessage,
 	type ChatStreamEvent,
 	type CodeWorkspaceArtifact,
@@ -30,6 +31,7 @@ type SubmitOptions = {
 	reuseUserMessage?: boolean;
 	codeWorkspaceArtifact?: CodeWorkspaceArtifact;
 	codeWorkspaceId?: string;
+	imageAttachments?: ChatImageAttachment[];
 };
 
 type StoredChatStreamDraft = {
@@ -747,17 +749,24 @@ export function useChatStream({
 	async function handleSubmit(content: string, options: SubmitOptions = {}) {
 		if (!content || !agentId || !canChat || sending) return;
 
-		const userMessage = createLocalMessage(
-			"user",
-			content,
-			options.codeWorkspaceArtifact
+		const userMessageFileParts = [
+			...(options.codeWorkspaceArtifact
 				? [
 						{
 							type: "file",
 							content: JSON.stringify(options.codeWorkspaceArtifact),
 						},
 					]
-				: [],
+				: []),
+			...(options.imageAttachments ?? []).map((attachment) => ({
+				type: "file",
+				content: JSON.stringify(attachment),
+			})),
+		];
+		const userMessage = createLocalMessage(
+			"user",
+			content,
+			userMessageFileParts,
 		);
 		const assistantMessage = createLocalMessage("assistant", "");
 		let activeConversationId = conversationId;
@@ -897,6 +906,9 @@ export function useChatStream({
 					resendFromMessageId: options.resendFromMessageId,
 					codeWorkspaceId:
 						options.codeWorkspaceId ?? options.codeWorkspaceArtifact?.projectId,
+					imageAttachmentIds: options.imageAttachments?.map(
+						(attachment) => attachment.id,
+					),
 				}),
 			});
 

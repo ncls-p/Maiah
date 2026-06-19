@@ -22,6 +22,14 @@ import {
 	publishChatStreamEvent,
 	registerChatStreamAbortController,
 } from "@/modules/chat/stream-bus";
+import {
+	getChatImageAttachment,
+	getChatImageAttachmentBytes,
+	isChatImageAttachment,
+	maxChatImageAttachments,
+	publicChatImageAttachment,
+	type ChatImageAttachment,
+} from "@/modules/chat/attachments";
 import { generateChatAutomationArtifacts } from "@/modules/chat/automation";
 import { consumeSkipNextChatSuggestions } from "@/modules/chat/suggestion-skip";
 import {
@@ -74,6 +82,7 @@ const chatRequestSchema = z.object({
 	conversationId: z.uuid().nullable().optional(),
 	resendFromMessageId: z.uuid().nullable().optional(),
 	codeWorkspaceId: z.uuid().optional(),
+	imageAttachmentIds: z.array(z.uuid()).max(maxChatImageAttachments).optional(),
 });
 
 const defaultMaxToolCalls = 6;
@@ -710,6 +719,7 @@ function codeWorkspaceContextFromToolMetadata(metadata: unknown) {
 
 async function loadConversationHistory(
 	conversationId: string,
+	context: { workspaceId: string; userId: string },
 	maxMessages?: number,
 ): Promise<ModelMessage[]> {
 	const historyLimit =
@@ -783,9 +793,39 @@ async function loadConversationHistory(
 
 	for (const message of modelMessageRows) {
 		const textParts: string[] = [];
+		const imageParts: Array<{
+			type: "image";
+			image: Uint8Array;
+			mediaType: string;
+		}> = [];
 		const artifactCodeBlocks = new Set<string>();
 		for (const part of partsByMessageId.get(message.id) ?? []) {
 			if (part.type === "file") {
+				const imageAttachment = isChatImageAttachment(part.metadataJson)
+					? part.metadataJson
+					: null;
+				if (message.role === "user" && imageAttachment) {
+					try {
+						const attachment = await getChatImageAttachmentBytes({
+							attachmentId: imageAttachment.id,
+							workspaceId: context.workspaceId,
+							userId: context.userId,
+						});
+						textParts.push(`Attached image: ${attachment.metadata.fileName}`);
+						imageParts.push({
+							type: "image",
+							image: attachment.bytes,
+							mediaType: attachment.metadata.mimeType,
+						});
+					} catch (error) {
+						logger.warn("Skipping unavailable chat image attachment", {
+							messageId: message.id,
+							attachmentId: imageAttachment.id,
+							error: error instanceof Error ? error.message : String(error),
+						});
+					}
+				}
+
 				const codeWorkspaceContext = codeWorkspaceContextFromToolMetadata(
 					part.metadataJson,
 				);
@@ -830,6 +870,16 @@ async function loadConversationHistory(
 		}
 
 		const content = textParts.join("\n").trim();
+		if (message.role === "user" && imageParts.length > 0) {
+			modelMessages.push({
+				role: "user",
+				content: [
+					...(content ? [{ type: "text" as const, text: content }] : []),
+					...imageParts,
+				],
+			});
+			continue;
+		}
 		if (content) {
 			const role = message.role === "assistant" ? "assistant" : "user";
 			modelMessages.push({ role, content });
@@ -867,6 +917,7 @@ export async function POST(
 			conversationId: existingConversationId,
 			resendFromMessageId,
 			codeWorkspaceId,
+			imageAttachmentIds = [],
 		} = parsed.data;
 
 		const [agent] = await db
@@ -918,9 +969,13 @@ export async function POST(
 		let codeWorkspaceAttachment: ReturnType<
 			typeof codeWorkspaceArtifact
 		> | null = null;
+		const imageAttachments: ChatImageAttachment[] = [];
 		if (codeWorkspaceId) {
 			const metadata = await getCodeWorkspace(codeWorkspaceId);
-			if (metadata.workspaceId !== agent.workspaceId) {
+			if (
+				metadata.workspaceId !== agent.workspaceId ||
+				metadata.createdByUserId !== actorUserId
+			) {
 				return NextResponse.json(
 					{ error: "Code workspace not found" },
 					{ status: 404 },
@@ -930,6 +985,19 @@ export async function POST(
 				metadata,
 				"Uploaded ZIP workspace.",
 			);
+		}
+		for (const attachmentId of imageAttachmentIds) {
+			const metadata = await getChatImageAttachment(attachmentId);
+			if (
+				metadata.workspaceId !== agent.workspaceId ||
+				metadata.createdByUserId !== actorUserId
+			) {
+				return NextResponse.json(
+					{ error: "Attachment not found" },
+					{ status: 404 },
+				);
+			}
+			imageAttachments.push(publicChatImageAttachment(metadata));
 		}
 
 		let conversation: typeof conversations.$inferSelect | null = null;
@@ -1052,12 +1120,16 @@ export async function POST(
 					contentEncrypted: encryptedContent,
 					sortOrder: 0,
 				});
-				if (codeWorkspaceAttachment) {
+				const userFileParts = [
+					...(codeWorkspaceAttachment ? [codeWorkspaceAttachment] : []),
+					...imageAttachments,
+				];
+				for (const [index, metadata] of userFileParts.entries()) {
 					await tx.insert(messageParts).values({
 						messageId: existingUserMessage.id,
 						type: "file",
-						metadataJson: codeWorkspaceAttachment,
-						sortOrder: 1,
+						metadataJson: metadata,
+						sortOrder: index + 1,
 					});
 				}
 			});
@@ -1081,12 +1153,16 @@ export async function POST(
 				contentEncrypted: encryptedContent,
 				sortOrder: 0,
 			});
-			if (codeWorkspaceAttachment) {
+			const userFileParts = [
+				...(codeWorkspaceAttachment ? [codeWorkspaceAttachment] : []),
+				...imageAttachments,
+			];
+			for (const [index, metadata] of userFileParts.entries()) {
 				await db.insert(messageParts).values({
 					messageId: newUserMessage.id,
 					type: "file",
-					metadataJson: codeWorkspaceAttachment,
-					sortOrder: 1,
+					metadataJson: metadata,
+					sortOrder: index + 1,
 				});
 			}
 		}
@@ -1126,6 +1202,7 @@ export async function POST(
 		} | null;
 		const history = await loadConversationHistory(
 			conversation.id,
+			{ workspaceId: agent.workspaceId, userId: actorUserId },
 			memoryPolicy?.enabled ? memoryPolicy.maxMessages : undefined,
 		);
 

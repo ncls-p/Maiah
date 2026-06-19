@@ -2,6 +2,8 @@
 
 import { Link } from "@/i18n/navigation";
 import {
+	FileArchiveIcon,
+	ImageIcon,
 	Loader2Icon,
 	PaperclipIcon,
 	SendIcon,
@@ -9,9 +11,11 @@ import {
 	XIcon,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import type { ChatImageAttachment } from "@/components/chat/chat-types";
 import { cn } from "@/lib/utils";
 
 export interface QueuedChatMessage {
@@ -29,7 +33,10 @@ interface ChatComposerProps {
 	onStop?: () => void;
 	onQueuedMessageChange?: (id: string, content: string) => void;
 	onQueuedMessageCancel?: (id: string) => void;
-	onUploadCodeWorkspace?: (file: File) => Promise<void>;
+	onUploadCodeWorkspace?: (files: File[]) => Promise<void>;
+	onUploadChatImage?: (file: File) => Promise<void>;
+	imageAttachments?: ChatImageAttachment[];
+	onRemoveImageAttachment?: (attachmentId: string) => void;
 }
 
 export function ChatComposer({
@@ -43,10 +50,13 @@ export function ChatComposer({
 	onQueuedMessageChange,
 	onQueuedMessageCancel,
 	onUploadCodeWorkspace,
+	onUploadChatImage,
+	imageAttachments = [],
+	onRemoveImageAttachment,
 }: ChatComposerProps) {
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
-	const [uploadingWorkspace, setUploadingWorkspace] = useState(false);
+	const [uploadingAttachment, setUploadingAttachment] = useState(false);
 
 	// Auto-resize textarea
 	useEffect(() => {
@@ -58,14 +68,49 @@ export function ChatComposer({
 	}, [input]);
 
 	async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
-		const file = event.target.files?.[0];
+		const files = Array.from(event.target.files ?? []);
 		event.target.value = "";
-		if (!file || !onUploadCodeWorkspace) return;
-		setUploadingWorkspace(true);
+		if (files.length === 0) return;
+		setUploadingAttachment(true);
 		try {
-			await onUploadCodeWorkspace(file);
+			const zipFiles = files.filter((file) =>
+				file.name.toLowerCase().endsWith(".zip"),
+			);
+			const imageFiles = files.filter((file) => file.type.startsWith("image/"));
+			const codeFiles = files.filter((file) =>
+				/\.(?:html?|css|[cm]?js)$/i.test(file.name),
+			);
+			if (zipFiles.length > 0) {
+				if (files.length > 1) {
+					toast.error("Upload one ZIP or select direct HTML/CSS/JS files.");
+					return;
+				}
+				await onUploadCodeWorkspace?.(zipFiles);
+			} else if (codeFiles.length > 0) {
+				if (codeFiles.length !== files.length) {
+					toast.error("Upload code files or images separately.");
+					return;
+				}
+				await onUploadCodeWorkspace?.(codeFiles);
+			} else if (imageFiles.length > 0) {
+				if (imageFiles.length !== files.length) {
+					toast.error("Upload code files or images separately.");
+					return;
+				}
+				if (imageAttachments.length + imageFiles.length > 4) {
+					toast.error("You can attach up to 4 images per message.");
+					return;
+				}
+				for (const imageFile of imageFiles) {
+					await onUploadChatImage?.(imageFile);
+				}
+			} else {
+				toast.error(
+					"Upload a ZIP, HTML/CSS/JS files, or PNG/JPEG/WebP images.",
+				);
+			}
 		} finally {
-			setUploadingWorkspace(false);
+			setUploadingAttachment(false);
 		}
 	}
 
@@ -110,13 +155,39 @@ export function ChatComposer({
 				</div>
 			) : null}
 			<div className="relative mx-auto w-full min-w-0 max-w-4xl">
+				{imageAttachments.length > 0 ? (
+					<div className="mb-2 flex flex-wrap gap-2">
+						{imageAttachments.map((attachment) => (
+							<div
+								key={attachment.id}
+								className="group relative h-20 w-20 overflow-hidden rounded-xl border bg-card bg-cover bg-center"
+								style={{
+									backgroundImage: `url("${attachment.url.replace(/"/g, '\\"')}")`,
+								}}
+							>
+								<span className="sr-only">{attachment.fileName}</span>
+								<Button
+									type="button"
+									variant="secondary"
+									size="icon"
+									className="absolute right-1 top-1 size-6 rounded-full opacity-90"
+									aria-label={`Remove ${attachment.fileName}`}
+									onClick={() => onRemoveImageAttachment?.(attachment.id)}
+								>
+									<XIcon className="size-3" aria-hidden="true" />
+								</Button>
+							</div>
+						))}
+					</div>
+				) : null}
 				<div className={cn("composer-box rounded-xl sm:rounded-2xl")}>
 					<div className="flex items-end gap-1.5 p-1.5 sm:gap-2 sm:p-2">
 						<input
 							ref={fileInputRef}
 							type="file"
-							accept=".zip,application/zip,application/x-zip-compressed"
+							accept=".zip,.html,.htm,.css,.js,.mjs,.cjs,application/zip,application/x-zip-compressed,image/png,image/jpeg,image/webp"
 							className="hidden"
+							multiple
 							onChange={(event) => void handleFileChange(event)}
 						/>
 						<Button
@@ -124,11 +195,11 @@ export function ChatComposer({
 							size="icon"
 							variant="ghost"
 							className="size-8 shrink-0 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground sm:size-9"
-							aria-label="Upload ZIP code workspace"
-							disabled={uploadingWorkspace || sending || !canChat}
+							aria-label="Upload file"
+							disabled={uploadingAttachment || sending || !canChat}
 							onClick={() => fileInputRef.current?.click()}
 						>
-							{uploadingWorkspace ? (
+							{uploadingAttachment ? (
 								<Loader2Icon
 									className="size-4 animate-spin"
 									aria-hidden="true"
@@ -166,11 +237,13 @@ export function ChatComposer({
 						<Button
 							type="submit"
 							size="icon"
-							disabled={!input.trim() || !canChat}
+							disabled={
+								!canChat || (!input.trim() && imageAttachments.length === 0)
+							}
 							aria-label={sending ? "Queue message" : "Send message"}
 							className={cn(
 								"size-9 shrink-0 rounded-lg transition-colors sm:size-10 sm:rounded-xl",
-								input.trim() && canChat
+								canChat && (input.trim() || imageAttachments.length > 0)
 									? "bg-primary text-primary-foreground hover:bg-primary/90"
 									: "opacity-60",
 							)}
@@ -208,10 +281,17 @@ export function ChatComposer({
 							</Link>
 						</p>
 					) : (
-						<p className="text-[11px] text-muted-foreground">
-							{sending
-								? "Enter queues the next message · Shift+Enter adds a line"
-								: "Enter sends · Shift+Enter adds a line"}
+						<p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+							<span>
+								{sending
+									? "Enter queues the next message · Shift+Enter adds a line"
+									: "Enter sends · Shift+Enter adds a line"}
+							</span>
+							<span className="hidden items-center gap-1 sm:inline-flex">
+								<FileArchiveIcon className="size-3" aria-hidden="true" />{" "}
+								ZIP/HTML/CSS/JS
+								<ImageIcon className="size-3" aria-hidden="true" /> Images
+							</span>
 						</p>
 					)}
 				</div>

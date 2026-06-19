@@ -609,6 +609,7 @@ async function replaceCodeWorkspaceText(
 	const existing = await readCodeWorkspaceFile({
 		projectId: input.projectId,
 		workspaceId: context.workspaceId,
+		userId: context.userId,
 		filePath: input.path,
 	});
 	const occurrences = existing.content.split(input.oldText).length - 1;
@@ -626,6 +627,7 @@ async function replaceCodeWorkspaceText(
 	return writeCodeWorkspaceFile({
 		projectId: input.projectId,
 		workspaceId: context.workspaceId,
+		userId: context.userId,
 		filePath: input.path,
 		content: nextContent,
 	});
@@ -742,11 +744,14 @@ export const builtInTools = [
 		riskLevel: "low",
 		category: "Code",
 		inputSchema: codeWorkspaceProjectInputSchema,
-		execute: async ({ projectId }, context) =>
-			listCodeWorkspaceFiles({
+		execute: async ({ projectId }, context) => {
+			const workspaceContext = requireCodeWorkspaceContext(context);
+			return listCodeWorkspaceFiles({
 				projectId,
-				workspaceId: requireCodeWorkspaceContext(context).workspaceId,
-			}),
+				workspaceId: workspaceContext.workspaceId,
+				userId: workspaceContext.userId,
+			});
+		},
 	},
 	{
 		id: "00000000-0000-4000-8000-000000000030",
@@ -757,12 +762,15 @@ export const builtInTools = [
 		riskLevel: "low",
 		category: "Code",
 		inputSchema: codeWorkspaceReadFileInputSchema,
-		execute: async ({ projectId, path }, context) =>
-			readCodeWorkspaceFile({
+		execute: async ({ projectId, path }, context) => {
+			const workspaceContext = requireCodeWorkspaceContext(context);
+			return readCodeWorkspaceFile({
 				projectId,
-				workspaceId: requireCodeWorkspaceContext(context).workspaceId,
+				workspaceId: workspaceContext.workspaceId,
+				userId: workspaceContext.userId,
 				filePath: path,
-			}),
+			});
+		},
 	},
 	{
 		id: "00000000-0000-4000-8000-000000000031",
@@ -773,13 +781,16 @@ export const builtInTools = [
 		riskLevel: "medium",
 		category: "Code",
 		inputSchema: codeWorkspaceWriteFileInputSchema,
-		execute: async ({ projectId, path, content }, context) =>
-			writeCodeWorkspaceFile({
+		execute: async ({ projectId, path, content }, context) => {
+			const workspaceContext = requireCodeWorkspaceContext(context);
+			return writeCodeWorkspaceFile({
 				projectId,
-				workspaceId: requireCodeWorkspaceContext(context).workspaceId,
+				workspaceId: workspaceContext.workspaceId,
+				userId: workspaceContext.userId,
 				filePath: path,
 				content,
-			}),
+			});
+		},
 	},
 	{
 		id: "00000000-0000-4000-8000-000000000032",
@@ -805,12 +816,15 @@ export const builtInTools = [
 		riskLevel: "medium",
 		category: "Code",
 		inputSchema: codeWorkspaceReadFileInputSchema,
-		execute: async ({ projectId, path }, context) =>
-			deleteCodeWorkspaceFile({
+		execute: async ({ projectId, path }, context) => {
+			const workspaceContext = requireCodeWorkspaceContext(context);
+			return deleteCodeWorkspaceFile({
 				projectId,
-				workspaceId: requireCodeWorkspaceContext(context).workspaceId,
+				workspaceId: workspaceContext.workspaceId,
+				userId: workspaceContext.userId,
 				filePath: path,
-			}),
+			});
+		},
 	},
 	{
 		id: "00000000-0000-4000-8000-000000000017",

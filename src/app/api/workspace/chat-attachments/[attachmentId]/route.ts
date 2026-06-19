@@ -3,13 +3,10 @@ import { z } from "zod";
 
 import { logger } from "@/lib/logger";
 import { getSession } from "@/modules/auth/session";
-import {
-	createCodeWorkspaceZip,
-	getCodeWorkspace,
-} from "@/modules/code-workspace/storage";
+import { getChatImageAttachmentBytes } from "@/modules/chat/attachments";
 import { authorization } from "@/server/domain/services/authorization";
 
-const paramsSchema = z.object({ projectId: z.uuid() });
+const paramsSchema = z.object({ attachmentId: z.uuid() });
 
 function arrayBufferFromBytes(bytes: Uint8Array) {
 	const buffer = new ArrayBuffer(bytes.byteLength);
@@ -19,7 +16,7 @@ function arrayBufferFromBytes(bytes: Uint8Array) {
 
 export async function GET(
 	_req: Request,
-	{ params }: { params: Promise<{ projectId: string }> },
+	{ params }: { params: Promise<{ attachmentId: string }> },
 ) {
 	try {
 		const session = await getSession();
@@ -32,15 +29,15 @@ export async function GET(
 			return NextResponse.json({ error: "Invalid request" }, { status: 400 });
 		}
 
-		const metadata = await getCodeWorkspace(parsed.data.projectId);
-		if (metadata.createdByUserId !== session.user.id) {
-			return NextResponse.json({ error: "Not found" }, { status: 404 });
-		}
+		const attachment = await getChatImageAttachmentBytes({
+			attachmentId: parsed.data.attachmentId,
+			userId: session.user.id,
+		});
 		const permission = await authorization.requirePermission(
 			{ principalType: "user", principalId: session.user.id },
 			"agents.chat",
 			"workspace",
-			metadata.workspaceId,
+			attachment.metadata.workspaceId,
 		);
 		if (!permission.granted) {
 			return NextResponse.json(
@@ -49,24 +46,21 @@ export async function GET(
 			);
 		}
 
-		const zip = await createCodeWorkspaceZip({
-			projectId: metadata.id,
-			workspaceId: metadata.workspaceId,
-			userId: session.user.id,
-		});
-		return new Response(arrayBufferFromBytes(zip.bytes), {
+		return new Response(arrayBufferFromBytes(attachment.bytes), {
 			headers: {
-				"Content-Type": "application/zip",
-				"Content-Disposition": `attachment; filename="${zip.fileName}"`,
-				"Cache-Control": "no-store",
+				"Content-Type": attachment.metadata.mimeType,
+				"Content-Length": String(attachment.metadata.size),
+				"Cache-Control": "private, max-age=300",
+				"Content-Security-Policy": "default-src 'none'; sandbox",
+				"X-Content-Type-Options": "nosniff",
 			},
 		});
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
-		if (/not found|workspace/i.test(message)) {
-			return NextResponse.json({ error: message }, { status: 404 });
+		if (/not found|attachment|invalid/i.test(message)) {
+			return NextResponse.json({ error: "Not found" }, { status: 404 });
 		}
-		logger.error("Failed to download code workspace", {}, error as Error);
+		logger.error("Failed to serve chat image", {}, error as Error);
 		return NextResponse.json(
 			{ error: "Internal server error" },
 			{ status: 500 },

@@ -2,10 +2,12 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { logger } from "@/lib/logger";
+import { getSession } from "@/modules/auth/session";
 import {
 	getCodeWorkspace,
 	getCodeWorkspaceFileBytes,
 } from "@/modules/code-workspace/storage";
+import { authorization } from "@/server/domain/services/authorization";
 
 const paramsSchema = z.object({
 	projectId: z.uuid(),
@@ -13,6 +15,7 @@ const paramsSchema = z.object({
 });
 
 const previewCsp = [
+	"sandbox allow-scripts allow-modals",
 	"default-src 'none'",
 	"script-src 'self' 'unsafe-inline' 'unsafe-eval'",
 	"style-src 'self' 'unsafe-inline'",
@@ -21,9 +24,22 @@ const previewCsp = [
 	"media-src 'self' data: blob:",
 	"connect-src 'none'",
 	"frame-src 'none'",
+	"object-src 'none'",
 	"base-uri 'none'",
 	"form-action 'none'",
 ].join("; ");
+
+async function canRevealPreviewToken(metadata: Awaited<ReturnType<typeof getCodeWorkspace>>) {
+	const session = await getSession();
+	if (!session || metadata.createdByUserId !== session.user.id) return false;
+	const permission = await authorization.requirePermission(
+		{ principalType: "user", principalId: session.user.id },
+		"agents.chat",
+		"workspace",
+		metadata.workspaceId,
+	);
+	return permission.granted;
+}
 
 function arrayBufferFromBytes(bytes: Uint8Array) {
 	const buffer = new ArrayBuffer(bytes.byteLength);
@@ -46,6 +62,9 @@ export async function GET(
 		const [previewToken, ...filePathSegments] = segments;
 
 		if (previewToken !== metadata.previewToken) {
+			if (!(await canRevealPreviewToken(metadata))) {
+				return NextResponse.json({ error: "Not found" }, { status: 404 });
+			}
 			const legacyPath = segments.join("/") || metadata.rootFile || "";
 			const encodedLegacyPath = legacyPath
 				.split("/")

@@ -32,6 +32,7 @@ import {
 	renderablePartsFromMessage,
 	textFromMessage,
 	toolNameMatches,
+	type ChatImageAttachment,
 	type ChatMessage,
 	type ChatMessagePart,
 	type CodeWorkspaceArtifact,
@@ -176,6 +177,29 @@ function codeWorkspaceArtifactFromPartContent(content: string) {
 	}
 }
 
+function isChatImageAttachmentOutput(
+	value: unknown,
+): value is ChatImageAttachment {
+	if (typeof value !== "object" || value === null) return false;
+	const record = value as Record<string, unknown>;
+	return (
+		record.kind === "chat_image" &&
+		typeof record.id === "string" &&
+		typeof record.fileName === "string" &&
+		typeof record.mimeType === "string" &&
+		typeof record.url === "string"
+	);
+}
+
+function chatImageAttachmentFromPartContent(content: string) {
+	try {
+		const parsed = JSON.parse(content) as unknown;
+		return isChatImageAttachmentOutput(parsed) ? parsed : null;
+	} catch {
+		return null;
+	}
+}
+
 function htmlArtifactFromToolInput(value: unknown): HtmlArtifactOutput | null {
 	if (typeof value !== "object" || value === null) return null;
 	const record = value as Record<string, unknown>;
@@ -288,7 +312,7 @@ body > div:first-child {
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: blob: https:; font-src data: https:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: blob: https:; font-src data: https:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'" />
 <style>
 :root { color-scheme: light dark; }
 * { box-sizing: border-box; }
@@ -893,6 +917,34 @@ function CodeWorkspaceArtifactSummary({
 	);
 }
 
+function ChatImageAttachmentCard({
+	attachment,
+}: {
+	attachment: ChatImageAttachment;
+}) {
+	return (
+		<a
+			href={attachment.url}
+			target="_blank"
+			rel="noreferrer"
+			className="group block w-fit overflow-hidden rounded-xl border bg-card text-xs shadow-sm transition-colors hover:border-primary/30"
+		>
+			<span
+				role="img"
+				aria-label={attachment.fileName}
+				className="block h-64 w-[min(24rem,80vw)] bg-contain bg-center bg-no-repeat"
+				style={{
+					backgroundImage: `url("${attachment.url.replace(/"/g, '\\"')}")`,
+				}}
+			/>
+			<span className="flex items-center gap-2 border-t px-2 py-1.5 text-[11px] text-muted-foreground">
+				<FileIcon className="size-3" aria-hidden="true" />
+				<span className="max-w-56 truncate">{attachment.fileName}</span>
+			</span>
+		</a>
+	);
+}
+
 function codeWorkspaceFileUrl(projectId: string, filePath: string) {
 	return `/api/workspace/code-projects/${projectId}/files?path=${encodeURIComponent(filePath)}`;
 }
@@ -976,16 +1028,36 @@ function previewBaseHref(artifact: CodeWorkspaceArtifact, filePath: string) {
 	);
 }
 
-function injectPreviewBase(
+function previewSrcDocCsp() {
+	const origin =
+		typeof window === "undefined" ? "'self'" : window.location.origin;
+	return [
+		"default-src 'none'",
+		"script-src 'unsafe-inline' 'unsafe-eval'",
+		"style-src 'unsafe-inline'",
+		`img-src ${origin} data: blob:`,
+		`font-src ${origin} data:`,
+		`media-src ${origin} data: blob:`,
+		"connect-src 'none'",
+		"frame-src 'none'",
+		"object-src 'none'",
+		`base-uri ${origin}`,
+		"form-action 'none'",
+	].join("; ");
+}
+
+function injectPreviewSecurityHead(
 	html: string,
 	artifact: CodeWorkspaceArtifact,
 	path: string,
 ) {
 	const baseTag = `<base href="${previewBaseHref(artifact, path)}" />`;
+	const cspTag = `<meta http-equiv="Content-Security-Policy" content="${escapeHtmlAttribute(previewSrcDocCsp())}" />`;
+	const headTags = `${cspTag}${baseTag}`;
 	if (/<head\b[^>]*>/i.test(html)) {
-		return html.replace(/<head\b([^>]*)>/i, `<head$1>${baseTag}`);
+		return html.replace(/<head\b([^>]*)>/i, `<head$1>${headTags}`);
 	}
-	return `${baseTag}${html}`;
+	return `${headTags}${html}`;
 }
 
 function injectPreviewNavigationBridge(
@@ -1006,7 +1078,7 @@ function buildPreviewSrcDoc(
 	path: string,
 ) {
 	return injectPreviewNavigationBridge(
-		injectPreviewBase(stripMetaRefresh(html), artifact, path),
+		injectPreviewSecurityHead(stripMetaRefresh(html), artifact, path),
 		artifact,
 		path,
 	);
@@ -1699,6 +1771,13 @@ const ToolPartCard = memo(function ToolPartCard({
 				: null,
 		[part.content, part.type],
 	);
+	const imageAttachment = useMemo(
+		() =>
+			part.type === "file"
+				? chatImageAttachmentFromPartContent(part.content)
+				: null,
+		[part.content, part.type],
+	);
 	const friendlyName = useMemo(
 		() => formatToolName(parsed.toolName),
 		[parsed.toolName],
@@ -1749,6 +1828,9 @@ const ToolPartCard = memo(function ToolPartCard({
 		) : (
 			<CodeWorkspaceArtifactCard artifact={fileArtifact} />
 		);
+	}
+	if (imageAttachment) {
+		return <ChatImageAttachmentCard attachment={imageAttachment} />;
 	}
 	if (isHtmlArtifactOutput(parsed.output)) {
 		return <HtmlArtifactCard artifact={parsed.output} />;
@@ -2114,20 +2196,23 @@ const MessageContent = memo(function MessageContent({
 			<div className="flex flex-col gap-2">
 				{content ? <div>{content}</div> : null}
 				{fileParts.map((part, partIndex) => {
+					const key = `${message.id}-${part.type}-${partIndex}`;
+					const imageAttachment = chatImageAttachmentFromPartContent(
+						part.content,
+					);
+					if (imageAttachment) {
+						return (
+							<ChatImageAttachmentCard key={key} attachment={imageAttachment} />
+						);
+					}
 					const fileArtifact = codeWorkspaceArtifactFromPartContent(
 						part.content,
 					);
 					if (!fileArtifact) return null;
 					return workspaceArtifactDisplay === "summary" ? (
-						<CodeWorkspaceArtifactSummary
-							key={`${message.id}-${part.type}-${partIndex}`}
-							artifact={fileArtifact}
-						/>
+						<CodeWorkspaceArtifactSummary key={key} artifact={fileArtifact} />
 					) : (
-						<CodeWorkspaceArtifactCard
-							key={`${message.id}-${part.type}-${partIndex}`}
-							artifact={fileArtifact}
-						/>
+						<CodeWorkspaceArtifactCard key={key} artifact={fileArtifact} />
 					);
 				})}
 			</div>
@@ -2169,20 +2254,26 @@ const MessageContent = memo(function MessageContent({
 						);
 					}
 					if (part.type === "file") {
+						const key = `${message.id}-${part.type}-${partIndex}`;
+						const imageAttachment = chatImageAttachmentFromPartContent(
+							part.content,
+						);
+						if (imageAttachment) {
+							return (
+								<ChatImageAttachmentCard
+									key={key}
+									attachment={imageAttachment}
+								/>
+							);
+						}
 						const fileArtifact = codeWorkspaceArtifactFromPartContent(
 							part.content,
 						);
 						if (!fileArtifact) return null;
 						return workspaceArtifactDisplay === "summary" ? (
-							<CodeWorkspaceArtifactSummary
-								key={`${message.id}-${part.type}-${partIndex}`}
-								artifact={fileArtifact}
-							/>
+							<CodeWorkspaceArtifactSummary key={key} artifact={fileArtifact} />
 						) : (
-							<CodeWorkspaceArtifactCard
-								key={`${message.id}-${part.type}-${partIndex}`}
-								artifact={fileArtifact}
-							/>
+							<CodeWorkspaceArtifactCard key={key} artifact={fileArtifact} />
 						);
 					}
 					if (part.type === "tool-call" || part.type === "tool-result") {

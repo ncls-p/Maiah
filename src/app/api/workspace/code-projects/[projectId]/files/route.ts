@@ -29,6 +29,11 @@ async function authorizeProject(projectId: string) {
 		};
 
 	const metadata = await getCodeWorkspace(projectId);
+	if (metadata.createdByUserId !== session.user.id) {
+		return {
+			response: NextResponse.json({ error: "Not found" }, { status: 404 }),
+		};
+	}
 	const permission = await authorization.requirePermission(
 		{ principalType: "user", principalId: session.user.id },
 		"agents.chat",
@@ -43,7 +48,7 @@ async function authorizeProject(projectId: string) {
 			),
 		};
 	}
-	return { metadata };
+	return { metadata, session };
 }
 
 export async function GET(
@@ -69,6 +74,7 @@ export async function GET(
 				await listCodeWorkspaceFiles({
 					projectId: metadata.id,
 					workspaceId: metadata.workspaceId,
+					userId: metadata.createdByUserId,
 				}),
 			);
 		}
@@ -77,6 +83,7 @@ export async function GET(
 			await readCodeWorkspaceFile({
 				projectId: metadata.id,
 				workspaceId: metadata.workspaceId,
+				userId: metadata.createdByUserId,
 				filePath,
 			}),
 		);
@@ -114,6 +121,7 @@ export async function PUT(
 			await writeCodeWorkspaceFile({
 				projectId: metadata.id,
 				workspaceId: metadata.workspaceId,
+				userId: metadata.createdByUserId,
 				filePath: parsedBody.data.path,
 				content: parsedBody.data.content,
 			}),
@@ -152,6 +160,7 @@ export async function DELETE(
 			await deleteCodeWorkspaceFile({
 				projectId: metadata.id,
 				workspaceId: metadata.workspaceId,
+				userId: metadata.createdByUserId,
 				filePath: parsedBody.data.path,
 			}),
 		);

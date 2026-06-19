@@ -29,6 +29,7 @@ import type {
 	ChatAgent,
 	ChatConversation,
 	ChatConversationFolder,
+	ChatImageAttachment,
 	ChatMessage,
 	CodeWorkspaceArtifact,
 	PendingToolApproval,
@@ -63,6 +64,12 @@ function createQueuedMessage(content: string): QueuedChatMessage {
 }
 
 const CONVERSATION_PAGE_SIZE = 50;
+
+function uploadPathForFile(file: File) {
+	const relativePath = (file as File & { webkitRelativePath?: string })
+		.webkitRelativePath;
+	return relativePath?.trim() || file.name;
+}
 
 type ConversationListPage = {
 	conversations: ChatConversation[];
@@ -289,6 +296,9 @@ export default function ChatPage() {
 	);
 	const [codeWorkspaceArtifact, setCodeWorkspaceArtifact] =
 		useState<CodeWorkspaceArtifact | null>(null);
+	const [imageAttachments, setImageAttachments] = useState<
+		ChatImageAttachment[]
+	>([]);
 	const [interfaceMode, setInterfaceMode] = useState<"chat" | "coding">("chat");
 	const bottomRef = useRef<HTMLDivElement | null>(null);
 	const scrollContainerRef = useRef<HTMLElement | null>(null);
@@ -717,6 +727,7 @@ export default function ChatPage() {
 			queueMicrotask(() => {
 				setMessages([]);
 				setCodeWorkspaceArtifact(null);
+				setImageAttachments([]);
 				setInterfaceMode("chat");
 			});
 			return;
@@ -901,6 +912,7 @@ export default function ChatPage() {
 		} else {
 			setMessages([]);
 			setCodeWorkspaceArtifact(null);
+			setImageAttachments([]);
 			setInterfaceMode("chat");
 		}
 		window.history.replaceState(null, "", `/chat?${params.toString()}`);
@@ -910,6 +922,7 @@ export default function ChatPage() {
 		setQueuedMessages([]);
 		setMessages([]);
 		setCodeWorkspaceArtifact(null);
+		setImageAttachments([]);
 		setInterfaceMode("chat");
 		const conversation = conversations.find(
 			(item) => item.id === conversationId,
@@ -929,6 +942,7 @@ export default function ChatPage() {
 		setActiveConversationId(null);
 		setMessages([]);
 		setCodeWorkspaceArtifact(null);
+		setImageAttachments([]);
 		setInterfaceMode("chat");
 		window.history.replaceState(
 			null,
@@ -974,6 +988,7 @@ export default function ChatPage() {
 			setActiveConversationId(null);
 			setMessages([]);
 			setCodeWorkspaceArtifact(null);
+			setImageAttachments([]);
 			setInterfaceMode("chat");
 			window.history.replaceState(
 				null,
@@ -1129,9 +1144,17 @@ export default function ChatPage() {
 	}
 
 	function submitMessage() {
-		const content = input.trim();
+		const content =
+			input.trim() ||
+			(imageAttachments.length > 0 ? "Please analyze the attached image." : "");
 		if (!content || !canChat) return;
+		if (sending && imageAttachments.length > 0) {
+			toast.error("Wait for the current response before sending images.");
+			return;
+		}
+		const attachmentsToSend = imageAttachments;
 		setInput("");
+		setImageAttachments([]);
 		if (sending) {
 			queueMessage(content);
 			return;
@@ -1141,19 +1164,40 @@ export default function ChatPage() {
 				interfaceMode === "coding"
 					? codeWorkspaceArtifact?.projectId
 					: undefined,
+			imageAttachments: attachmentsToSend,
 		});
 	}
 
-	async function uploadCodeWorkspace(file: File) {
+	async function uploadCodeWorkspace(files: File[]) {
 		if (!workspaceId || !canChat) return;
-		if (!file.name.toLowerCase().endsWith(".zip")) {
-			toast.error("Upload a .zip file containing HTML/CSS/JS files.");
+		const uploadedFiles = files.filter(Boolean);
+		if (uploadedFiles.length === 0) return;
+		const zipFiles = uploadedFiles.filter((file) =>
+			file.name.toLowerCase().endsWith(".zip"),
+		);
+		if (zipFiles.length > 0 && uploadedFiles.length > 1) {
+			toast.error(
+				"Upload one ZIP or select direct HTML/CSS/JS files, not both.",
+			);
+			return;
+		}
+		if (
+			zipFiles.length === 0 &&
+			!uploadedFiles.some((file) => /\.html?$/i.test(uploadPathForFile(file)))
+		) {
+			toast.error("Select at least one HTML file, usually index.html.");
 			return;
 		}
 		try {
 			const formData = new FormData();
 			formData.set("workspaceId", workspaceId);
-			formData.set("file", file);
+			if (zipFiles.length === 1) {
+				formData.set("file", zipFiles[0]);
+			} else {
+				for (const file of uploadedFiles) {
+					formData.append("files", file, uploadPathForFile(file));
+				}
+			}
 			const response = await fetch("/api/workspace/code-projects/upload", {
 				method: "POST",
 				body: formData,
@@ -1166,6 +1210,7 @@ export default function ChatPage() {
 			if (!response.ok || !data?.artifact || !data.prompt) {
 				throw new Error(data?.error || "Failed to upload code workspace");
 			}
+			setImageAttachments([]);
 			setCodeWorkspaceArtifact(data.artifact);
 			setInterfaceMode("coding");
 			lastAutoOpenedWorkspaceRef.current = `${data.artifact.projectId}:${data.artifact.version}`;
@@ -1176,6 +1221,36 @@ export default function ChatPage() {
 				error instanceof Error
 					? error.message
 					: "Failed to upload code workspace",
+			);
+		}
+	}
+
+	async function uploadChatImage(file: File) {
+		if (!workspaceId || !canChat) return;
+		if (imageAttachments.length >= 4) {
+			toast.error("You can attach up to 4 images per message.");
+			return;
+		}
+		try {
+			const formData = new FormData();
+			formData.set("workspaceId", workspaceId);
+			formData.set("file", file);
+			const response = await fetch("/api/workspace/chat-attachments/upload", {
+				method: "POST",
+				body: formData,
+			});
+			const data = (await response.json().catch(() => null)) as {
+				attachment?: ChatImageAttachment;
+				error?: string;
+			} | null;
+			if (!response.ok || !data?.attachment) {
+				throw new Error(data?.error || "Failed to upload image");
+			}
+			setImageAttachments((current) => [...current, data.attachment!]);
+			toast.success("Image attached");
+		} catch (error) {
+			toast.error(
+				error instanceof Error ? error.message : "Failed to upload image",
 			);
 		}
 	}
@@ -1471,6 +1546,15 @@ export default function ChatPage() {
 							onQueuedMessageChange={updateQueuedMessage}
 							onQueuedMessageCancel={cancelQueuedMessage}
 							onUploadCodeWorkspace={uploadCodeWorkspace}
+							onUploadChatImage={uploadChatImage}
+							imageAttachments={imageAttachments}
+							onRemoveImageAttachment={(attachmentId) =>
+								setImageAttachments((current) =>
+									current.filter(
+										(attachment) => attachment.id !== attachmentId,
+									),
+								)
+							}
 						/>
 					</aside>
 					<div className="min-h-0 overflow-hidden">
@@ -1570,6 +1654,13 @@ export default function ChatPage() {
 					onQueuedMessageChange={updateQueuedMessage}
 					onQueuedMessageCancel={cancelQueuedMessage}
 					onUploadCodeWorkspace={uploadCodeWorkspace}
+					onUploadChatImage={uploadChatImage}
+					imageAttachments={imageAttachments}
+					onRemoveImageAttachment={(attachmentId) =>
+						setImageAttachments((current) =>
+							current.filter((attachment) => attachment.id !== attachmentId),
+						)
+					}
 				/>
 			)}
 		</ChatLayout>

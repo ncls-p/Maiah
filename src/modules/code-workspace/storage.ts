@@ -258,6 +258,18 @@ function isAllowedPath(projectPath: string) {
 	return textExtensions.has(extension) || binaryExtensions.has(extension);
 }
 
+function declaredZipUncompressedSize(entry: JSZip.JSZipObject) {
+	const compressedEntry = entry as unknown as {
+		_data?: { uncompressedSize?: unknown };
+	};
+	const size = compressedEntry._data?.uncompressedSize;
+	return typeof size === "number" && Number.isFinite(size) ? size : null;
+}
+
+function totalWorkspaceBytes(files: CodeWorkspaceFileSummary[]) {
+	return files.reduce((total, file) => total + file.size, 0);
+}
+
 export function isTextWorkspacePath(projectPath: string) {
 	return textExtensions.has(path.posix.extname(projectPath).toLowerCase());
 }
@@ -492,11 +504,15 @@ export async function createCodeWorkspaceFromZip(input: {
 	const now = new Date().toISOString();
 	const files: CodeWorkspaceFileSummary[] = [];
 	const writtenPaths: string[] = [];
+	const seenPaths = new Set<string>();
 	let extractedBytes = 0;
 
 	try {
 		for (const entry of Object.values(zip.files)) {
 			if (entry.dir) continue;
+			if (entry.unsafeOriginalName && entry.unsafeOriginalName !== entry.name) {
+				throw new Error(`Unsafe ZIP path: ${entry.unsafeOriginalName}`);
+			}
 			const unixPermissions = entry.unixPermissions;
 			if (
 				typeof unixPermissions === "number" &&
@@ -515,10 +531,23 @@ export async function createCodeWorkspaceFromZip(input: {
 			if (!isAllowedPath(projectPath)) {
 				throw new Error(`Unsupported file type in ZIP: ${projectPath}`);
 			}
+			if (seenPaths.has(projectPath)) {
+				throw new Error(`Duplicate file path in ZIP: ${projectPath}`);
+			}
+			seenPaths.add(projectPath);
 			if (files.length >= maxFiles) {
 				throw new Error(`Too many files in ZIP. Maximum is ${maxFiles}.`);
 			}
 
+			const declaredSize = declaredZipUncompressedSize(entry);
+			if (
+				declaredSize !== null &&
+				extractedBytes + declaredSize > maxExtractedBytes
+			) {
+				throw new Error(
+					"Extracted ZIP contents are too large. Maximum is 50 MB.",
+				);
+			}
 			const bytes = await entry.async("uint8array");
 			extractedBytes += bytes.byteLength;
 			if (extractedBytes > maxExtractedBytes) {
@@ -576,8 +605,12 @@ export async function createCodeWorkspaceFromZip(input: {
 export function assertCodeWorkspaceAccess(
 	metadata: CodeWorkspaceMetadata,
 	workspaceId: string,
+	userId?: string,
 ) {
-	if (metadata.workspaceId !== workspaceId) {
+	if (
+		metadata.workspaceId !== workspaceId ||
+		(userId && metadata.createdByUserId !== userId)
+	) {
 		throw new Error("Code workspace not found.");
 	}
 }
@@ -585,19 +618,21 @@ export function assertCodeWorkspaceAccess(
 export async function listCodeWorkspaceFiles(input: {
 	projectId: string;
 	workspaceId: string;
+	userId?: string;
 }) {
 	const metadata = await getCodeWorkspace(input.projectId);
-	assertCodeWorkspaceAccess(metadata, input.workspaceId);
+	assertCodeWorkspaceAccess(metadata, input.workspaceId, input.userId);
 	return codeWorkspaceArtifact(metadata);
 }
 
 export async function readCodeWorkspaceFile(input: {
 	projectId: string;
 	workspaceId: string;
+	userId?: string;
 	filePath: string;
 }): Promise<CodeWorkspaceReadResult> {
 	const metadata = await getCodeWorkspace(input.projectId);
-	assertCodeWorkspaceAccess(metadata, input.workspaceId);
+	assertCodeWorkspaceAccess(metadata, input.workspaceId, input.userId);
 	const projectPath = normalizeWorkspacePath(input.filePath);
 	const summary = metadata.files.find((file) => file.path === projectPath);
 	if (!summary) throw new Error("File not found in code workspace.");
@@ -618,11 +653,12 @@ export async function readCodeWorkspaceFile(input: {
 export async function writeCodeWorkspaceFile(input: {
 	projectId: string;
 	workspaceId: string;
+	userId?: string;
 	filePath: string;
 	content: string;
 }) {
 	const metadata = await getCodeWorkspace(input.projectId);
-	assertCodeWorkspaceAccess(metadata, input.workspaceId);
+	assertCodeWorkspaceAccess(metadata, input.workspaceId, input.userId);
 	const projectPath = normalizeWorkspacePath(input.filePath);
 	if (!isAllowedPath(projectPath) || !isTextWorkspacePath(projectPath)) {
 		throw new Error("Only supported text web files can be written.");
@@ -654,7 +690,13 @@ export async function writeCodeWorkspaceFile(input: {
 	if (existingIndex >= 0) {
 		nextFiles[existingIndex] = nextSummary;
 	} else {
+		if (nextFiles.length >= maxFiles) {
+			throw new Error(`Too many files. Maximum is ${maxFiles}.`);
+		}
 		nextFiles.push(nextSummary);
+	}
+	if (totalWorkspaceBytes(nextFiles) > maxExtractedBytes) {
+		throw new Error("Code workspace contents are too large. Maximum is 50 MB.");
 	}
 	const nextMetadata: CodeWorkspaceMetadata = {
 		...metadata,
@@ -674,10 +716,11 @@ export async function writeCodeWorkspaceFile(input: {
 export async function deleteCodeWorkspaceFile(input: {
 	projectId: string;
 	workspaceId: string;
+	userId?: string;
 	filePath: string;
 }) {
 	const metadata = await getCodeWorkspace(input.projectId);
-	assertCodeWorkspaceAccess(metadata, input.workspaceId);
+	assertCodeWorkspaceAccess(metadata, input.workspaceId, input.userId);
 	const projectPath = normalizeWorkspacePath(input.filePath);
 	if (!metadata.files.some((file) => file.path === projectPath)) {
 		throw new Error("File not found in code workspace.");
@@ -716,9 +759,10 @@ export async function getCodeWorkspaceFileBytes(input: {
 export async function createCodeWorkspaceZip(input: {
 	projectId: string;
 	workspaceId: string;
+	userId?: string;
 }) {
 	const metadata = await getCodeWorkspace(input.projectId);
-	assertCodeWorkspaceAccess(metadata, input.workspaceId);
+	assertCodeWorkspaceAccess(metadata, input.workspaceId, input.userId);
 	const zip = new JSZip();
 	for (const file of metadata.files) {
 		const bytes = await storage.download(fileObjectKey(metadata.id, file.path));

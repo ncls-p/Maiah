@@ -64,6 +64,16 @@ export interface CodeWorkspaceArtifact {
 	message?: string;
 }
 
+export interface ChatImageAttachment {
+	kind: "chat_image";
+	id: string;
+	fileName: string;
+	mimeType: string;
+	size: number;
+	hash: string;
+	url: string;
+}
+
 export interface ChatMessage {
 	id: string;
 	role: "user" | "assistant" | "system" | "tool";
