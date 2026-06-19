@@ -616,7 +616,7 @@ export function CustomToolBuilder() {
         open={Boolean(secretRequest)}
         onOpenChange={(open) => !open && setSecretRequest(null)}
       >
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{secretRequest?.title ?? "Credentials"}</DialogTitle>
             <DialogDescription>

@@ -445,7 +445,7 @@ export function ResourceShareDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={(next) => !next && onCloseAction()}>
-			<DialogContent className="sm:max-w-lg">
+			<DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto sm:max-w-lg">
 				<DialogHeader>
 					<DialogTitle className="flex items-center gap-2">
 						<Share2 className="size-4" />

@@ -385,7 +385,7 @@ export default function KnowledgePage() {
 				open={canManageKnowledgeBases && showCreateDialog}
 				onOpenChange={setShowCreateDialog}
 			>
-				<DialogContent>
+				<DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto">
 					<DialogHeader>
 						<DialogTitle>{t("createBaseTitle")}</DialogTitle>
 					</DialogHeader>
@@ -723,7 +723,7 @@ export default function KnowledgePage() {
 					open={canManageKnowledgeBases && Boolean(editingBase)}
 					onOpenChange={() => setEditingBase(null)}
 				>
-					<DialogContent>
+					<DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto">
 						<DialogHeader>
 							<DialogTitle>{t("editBaseTitle")}</DialogTitle>
 						</DialogHeader>
@@ -768,7 +768,7 @@ export default function KnowledgePage() {
 					open={canManageKnowledgeBases && attachOpen}
 					onOpenChange={setAttachOpen}
 				>
-					<DialogContent className="max-h-[85vh] overflow-y-auto">
+					<DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto">
 						<DialogHeader>
 							<DialogTitle>{t("attachDialogTitle")}</DialogTitle>
 						</DialogHeader>

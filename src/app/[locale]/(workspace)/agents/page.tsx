@@ -845,7 +845,7 @@ export default function AgentsPage() {
 				open={canCreateAgent && showCreateDialog}
 				onOpenChange={setShowCreateDialog}
 			>
-				<DialogContent className="max-w-md">
+				<DialogContent className="max-h-[calc(100svh-2rem)] max-w-md overflow-y-auto sm:max-w-lg">
 					<DialogHeader>
 						<DialogTitle>{t("createTitle")}</DialogTitle>
 						<DialogDescription>{tList("guideDescription")}</DialogDescription>

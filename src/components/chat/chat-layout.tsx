@@ -630,7 +630,7 @@ export function ChatLayout({
 			</div>
 
 			<Dialog open={canRunSetup && setupOpen} onOpenChange={setSetupOpen}>
-				<DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+				<DialogContent className="max-h-[calc(100svh-2rem)] max-w-2xl overflow-y-auto">
 					<DialogHeader>
 						<DialogTitle>{t("finishSetup")}</DialogTitle>
 						<DialogDescription>{t("setupDialogDescription")}</DialogDescription>

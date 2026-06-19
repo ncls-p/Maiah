@@ -66,7 +66,7 @@ export function AddProviderDialog(props: AddProviderDialogProps) {
 	const tCommon = useTranslations("common");
 	return (
 		<Dialog open={props.open} onOpenChange={props.onOpenChange}>
-			<DialogContent className="sm:max-w-lg">
+			<DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto sm:max-w-lg">
 				<DialogHeader>
 					<DialogTitle>{t("add")}</DialogTitle>
 					<DialogDescription>{tm("addDialogDescription")}</DialogDescription>
@@ -255,7 +255,7 @@ export function EditProviderDialog({
 	const tCommon = useTranslations("common");
 	return (
 		<Dialog open={Boolean(editingProvider)} onOpenChange={onClose}>
-			<DialogContent>
+			<DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto">
 				<DialogHeader>
 					<DialogTitle>{t("editDialogTitle")}</DialogTitle>
 					<DialogDescription>
