@@ -1073,6 +1073,7 @@ function GitHubPublishDialog({
 				);
 				const data = (await response.json().catch(() => null)) as {
 					configured?: boolean;
+					connectPath?: string | null;
 					connectUrl?: string | null;
 					repositories?: GitHubRepositoryOption[];
 					error?: string;
@@ -1080,7 +1081,7 @@ function GitHubPublishDialog({
 				if (!response.ok) throw new Error(data?.error || "GitHub unavailable");
 				if (cancelled) return;
 				setConfigured(Boolean(data?.configured));
-				setConnectUrl(data?.connectUrl ?? null);
+				setConnectUrl(data?.connectPath ?? data?.connectUrl ?? null);
 				const nextRepos = data?.repositories ?? [];
 				setRepositories(nextRepos);
 				const nextRepo = nextRepos[0];
