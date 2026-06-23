@@ -70,6 +70,14 @@ const secretPatterns = [
 	/(?:api[_-]?key|secret|token|password)\s*[:=]\s*["'][^"']{16,}["']/i,
 ];
 
+function githubPublishLog(
+	stage: string,
+	metadata: Record<string, unknown>,
+	level: "info" | "error" = "info",
+) {
+	console[level]("[github-publish]", { stage, ...metadata });
+}
+
 const publishInputSchema = z.object({
 	workspaceId: z.uuid(),
 	userId: z.uuid(),
@@ -212,6 +220,16 @@ async function githubRequest<T>(
 			typeof (body as { message?: unknown }).message === "string"
 				? (body as { message: string }).message
 				: response.statusText;
+		githubPublishLog(
+			"github-api-error",
+			{
+				method: options.method ?? "GET",
+				path,
+				status: response.status,
+				message,
+			},
+			"error",
+		);
 		throw new Error(`GitHub API error (${response.status}): ${message}`);
 	}
 	return body as T;
@@ -567,40 +585,87 @@ async function createGitRef(input: {
 	);
 }
 
-async function createEmptyBaseBranch(input: {
+function encodeRepositoryContentPath(filePath: string) {
+	return filePath.split("/").map(encodeURIComponent).join("/");
+}
+
+async function createRepositoryFile(input: {
 	token: string;
 	owner: string;
 	repo: string;
 	branch: string;
+	path: string;
+	bytes: Uint8Array;
+	message: string;
 }) {
-	const emptyTree = await githubRequest<{ sha: string }>(
-		`/repos/${encodeURIComponent(input.owner)}/${encodeURIComponent(input.repo)}/git/trees`,
+	return githubRequest<{ commit: { sha: string } }>(
+		`/repos/${encodeURIComponent(input.owner)}/${encodeURIComponent(input.repo)}/contents/${encodeRepositoryContentPath(input.path)}`,
 		input.token,
 		{
-			method: "POST",
-			body: JSON.stringify({ tree: [] }),
-		},
-	);
-	const initialCommit = await githubRequest<{ sha: string }>(
-		`/repos/${encodeURIComponent(input.owner)}/${encodeURIComponent(input.repo)}/git/commits`,
-		input.token,
-		{
-			method: "POST",
+			method: "PUT",
 			body: JSON.stringify({
-				message: "Initialize repository for AI Hub publishing",
-				tree: emptyTree.sha,
-				parents: [],
+				branch: input.branch,
+				message: input.message,
+				content: Buffer.from(input.bytes).toString("base64"),
 			}),
 		},
 	);
-	await createGitRef({
+}
+
+async function getCommitTreeSha(input: {
+	token: string;
+	owner: string;
+	repo: string;
+	commitSha: string;
+}) {
+	const commit = await githubRequest<{ tree: { sha: string } }>(
+		`/repos/${encodeURIComponent(input.owner)}/${encodeURIComponent(input.repo)}/git/commits/${encodeURIComponent(input.commitSha)}`,
+		input.token,
+	);
+	return commit.tree.sha;
+}
+
+async function initializeEmptyRepository(input: {
+	token: string;
+	owner: string;
+	repo: string;
+	branch: string;
+	path: string;
+	bytes: Uint8Array;
+	logContext: Record<string, unknown>;
+}) {
+	githubPublishLog("empty-repository-initialize-start", {
+		...input.logContext,
+		initialPath: input.path,
+	});
+	const created = await createRepositoryFile({
 		token: input.token,
 		owner: input.owner,
 		repo: input.repo,
 		branch: input.branch,
-		sha: initialCommit.sha,
+		path: input.path,
+		bytes: input.bytes,
+		message: "Initialize repository for AI Hub publishing",
 	});
-	return { commitSha: initialCommit.sha, treeSha: emptyTree.sha };
+	const targetRef = await getGitRef({
+		token: input.token,
+		owner: input.owner,
+		repo: input.repo,
+		branch: input.branch,
+	});
+	const commitSha = targetRef.object.sha || created.commit.sha;
+	const treeSha = await getCommitTreeSha({
+		token: input.token,
+		owner: input.owner,
+		repo: input.repo,
+		commitSha,
+	});
+	githubPublishLog("empty-repository-initialize-success", {
+		...input.logContext,
+		initialPath: input.path,
+		commitSha,
+	});
+	return { commitSha, treeSha };
 }
 
 export async function publishCodeWorkspaceToGitHub(
@@ -647,11 +712,25 @@ export async function publishCodeWorkspaceToGitHub(
 			: targetBranch;
 	sourceBranch = assertSafeBranchName(sourceBranch);
 	let eventId: string | null = null;
+	const logContext = {
+		workspaceId: parsed.workspaceId,
+		userId: parsed.userId,
+		codeWorkspaceId: workspace.metadata.id,
+		repository: repo.fullName,
+		mode: parsed.mode,
+		targetBranch,
+		sourceBranch,
+		targetDirectory: targetDirectory || null,
+		fileCount: workspace.files.length,
+		totalBytes,
+	};
+	githubPublishLog("start", logContext);
 
 	try {
 		let baseCommitSha: string | null = null;
 		let baseTreeSha: string | null = null;
 		try {
+			githubPublishLog("target-ref-load-start", logContext);
 			const targetRef = await getGitRef({
 				token,
 				owner: repo.owner,
@@ -659,29 +738,51 @@ export async function publishCodeWorkspaceToGitHub(
 				branch: targetBranch,
 			});
 			baseCommitSha = targetRef.object.sha;
-			const baseCommit = await githubRequest<{ tree: { sha: string } }>(
-				`/repos/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.name)}/git/commits/${encodeURIComponent(baseCommitSha)}`,
+			baseTreeSha = await getCommitTreeSha({
 				token,
-			);
-			baseTreeSha = baseCommit.tree.sha;
+				owner: repo.owner,
+				repo: repo.name,
+				commitSha: baseCommitSha,
+			});
+			githubPublishLog("target-ref-load-success", {
+				...logContext,
+				baseCommitSha,
+			});
 		} catch (error) {
 			if (!isEmptyGitRepositoryError(error)) throw error;
-			if (parsed.mode === "pull_request") {
-				const emptyBase = await createEmptyBaseBranch({
-					token,
-					owner: repo.owner,
-					repo: repo.name,
-					branch: targetBranch,
-				});
-				baseCommitSha = emptyBase.commitSha;
-				baseTreeSha = emptyBase.treeSha;
+			githubPublishLog("empty-repository-detected", logContext);
+			const firstFile = workspace.files[0];
+			if (!firstFile) {
+				throw new Error("No files available to publish.");
 			}
+			const initialPath =
+				parsed.mode === "pull_request"
+					? "README.md"
+					: prefixedPath(targetDirectory, firstFile.path);
+			const initialBytes =
+				parsed.mode === "pull_request"
+					? Buffer.from(
+							"# AI Hub publishing\n\nInitialized to enable publishing from AI Hub.\n",
+						)
+					: firstFile.bytes;
+			const emptyBase = await initializeEmptyRepository({
+				token,
+				owner: repo.owner,
+				repo: repo.name,
+				branch: targetBranch,
+				path: initialPath,
+				bytes: initialBytes,
+				logContext,
+			});
+			baseCommitSha = emptyBase.commitSha;
+			baseTreeSha = emptyBase.treeSha;
 		}
 
 		if (parsed.mode === "pull_request") {
 			if (!baseCommitSha) {
 				throw new Error("Cannot create a pull request without a base branch.");
 			}
+			githubPublishLog("source-branch-check-start", logContext);
 			if (
 				await gitRefExists({
 					token,
@@ -692,6 +793,7 @@ export async function publishCodeWorkspaceToGitHub(
 			) {
 				throw new Error(`Source branch already exists: ${sourceBranch}`);
 			}
+			githubPublishLog("source-branch-create-start", logContext);
 			await createGitRef({
 				token,
 				owner: repo.owner,
@@ -699,8 +801,10 @@ export async function publishCodeWorkspaceToGitHub(
 				branch: sourceBranch,
 				sha: baseCommitSha,
 			});
+			githubPublishLog("source-branch-create-success", logContext);
 		}
 
+		githubPublishLog("blobs-create-start", logContext);
 		const treeItems = await Promise.all(
 			workspace.files.map(async (file) => {
 				const blob = await githubRequest<{ sha: string }>(
@@ -722,6 +826,8 @@ export async function publishCodeWorkspaceToGitHub(
 				};
 			}),
 		);
+		githubPublishLog("blobs-create-success", logContext);
+		githubPublishLog("tree-create-start", logContext);
 		const tree = await githubRequest<{ sha: string }>(
 			`/repos/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.name)}/git/trees`,
 			token,
@@ -733,6 +839,8 @@ export async function publishCodeWorkspaceToGitHub(
 				}),
 			},
 		);
+		githubPublishLog("tree-create-success", { ...logContext, treeSha: tree.sha });
+		githubPublishLog("commit-create-start", logContext);
 		const commit = await githubRequest<{ sha: string; html_url?: string }>(
 			`/repos/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.name)}/git/commits`,
 			token,
@@ -745,7 +853,12 @@ export async function publishCodeWorkspaceToGitHub(
 				}),
 			},
 		);
+		githubPublishLog("commit-create-success", {
+			...logContext,
+			commitSha: commit.sha,
+		});
 		if (baseCommitSha) {
+			githubPublishLog("ref-update-start", logContext);
 			await githubRequest(
 				`/repos/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.name)}/git/refs/heads/${encodeRefPath(sourceBranch)}`,
 				token,
@@ -754,7 +867,9 @@ export async function publishCodeWorkspaceToGitHub(
 					body: JSON.stringify({ sha: commit.sha, force: false }),
 				},
 			);
+			githubPublishLog("ref-update-success", logContext);
 		} else {
+			githubPublishLog("ref-create-start", logContext);
 			await createGitRef({
 				token,
 				owner: repo.owner,
@@ -762,10 +877,12 @@ export async function publishCodeWorkspaceToGitHub(
 				branch: sourceBranch,
 				sha: commit.sha,
 			});
+			githubPublishLog("ref-create-success", logContext);
 		}
 
 		let pullRequestUrl: string | null = null;
 		if (parsed.mode === "pull_request") {
+			githubPublishLog("pull-request-create-start", logContext);
 			const pr = await githubRequest<{ html_url: string }>(
 				`/repos/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.name)}/pulls`,
 				token,
@@ -782,8 +899,13 @@ export async function publishCodeWorkspaceToGitHub(
 				},
 			);
 			pullRequestUrl = pr.html_url;
+			githubPublishLog("pull-request-create-success", {
+				...logContext,
+				pullRequestUrl,
+			});
 		}
 
+		githubPublishLog("audit-log-write-start", logContext);
 		const [event] = await db
 			.insert(githubPublishEvents)
 			.values({
@@ -807,6 +929,12 @@ export async function publishCodeWorkspaceToGitHub(
 			})
 			.returning({ id: githubPublishEvents.id });
 		eventId = event.id;
+		githubPublishLog("success", {
+			...logContext,
+			commitSha: commit.sha,
+			pullRequestUrl,
+			eventId,
+		});
 
 		return {
 			kind: "github_publish_result",
@@ -826,7 +954,16 @@ export async function publishCodeWorkspaceToGitHub(
 					: `Changes pushed to ${repo.fullName}:${targetBranch}.`,
 		};
 	} catch (error) {
+		githubPublishLog(
+			"failure",
+			{
+				...logContext,
+				error: error instanceof Error ? error.message : String(error),
+			},
+			"error",
+		);
 		if (!eventId) {
+			githubPublishLog("audit-log-failure-write-start", logContext);
 			await db.insert(githubPublishEvents).values({
 				workspaceId: parsed.workspaceId,
 				userId: parsed.userId,
@@ -844,6 +981,7 @@ export async function publishCodeWorkspaceToGitHub(
 					targetDirectory,
 				},
 			});
+			githubPublishLog("audit-log-failure-write-success", logContext);
 		}
 		throw error;
 	}
