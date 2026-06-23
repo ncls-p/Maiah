@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { env } from "@/lib/env";
 import { getSession } from "@/modules/auth/session";
 import {
 	parseGitHubState,
@@ -7,8 +8,18 @@ import {
 } from "@/modules/github/publishing";
 import { authorization } from "@/server/domain/services/authorization";
 
+function publicOrigin(req: NextRequest) {
+	const forwardedHost = req.headers.get("x-forwarded-host")?.split(",")[0]?.trim();
+	const forwardedProto =
+		req.headers.get("x-forwarded-proto")?.split(",")[0]?.trim() ?? "https";
+	if (forwardedHost && forwardedHost !== "0.0.0.0") {
+		return `${forwardedProto}://${forwardedHost}`;
+	}
+	return env.BETTER_AUTH_URL || req.nextUrl.origin;
+}
+
 function chatRedirect(req: NextRequest, params: Record<string, string>) {
-	const url = new URL("/chat", req.nextUrl.origin);
+	const url = new URL("/chat", publicOrigin(req));
 	for (const [key, value] of Object.entries(params)) {
 		url.searchParams.set(key, value);
 	}
