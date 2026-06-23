@@ -104,7 +104,10 @@ export function getGitHubAppPublicConfig() {
 
 export function normalizeGitHubPrivateKey(rawValue: string) {
 	let privateKey = rawValue.trim();
-	privateKey = privateKey.replace(/^export\s+GITHUB_APP_PRIVATE_KEY\s*=\s*/i, "");
+	privateKey = privateKey.replace(
+		/^export\s+GITHUB_APP_PRIVATE_KEY\s*=\s*/i,
+		"",
+	);
 	privateKey = privateKey.replace(/^GITHUB_APP_PRIVATE_KEY\s*=\s*/i, "");
 	privateKey = privateKey.replace(/%$/, "").trim();
 	if (
@@ -537,6 +540,69 @@ async function gitRefExists(input: {
 	}
 }
 
+function isEmptyGitRepositoryError(error: unknown) {
+	return (
+		error instanceof Error &&
+		/GitHub API error \(409\): Git Repository is empty/i.test(error.message)
+	);
+}
+
+async function createGitRef(input: {
+	token: string;
+	owner: string;
+	repo: string;
+	branch: string;
+	sha: string;
+}) {
+	return githubRequest(
+		`/repos/${encodeURIComponent(input.owner)}/${encodeURIComponent(input.repo)}/git/refs`,
+		input.token,
+		{
+			method: "POST",
+			body: JSON.stringify({
+				ref: `refs/heads/${assertSafeBranchName(input.branch)}`,
+				sha: input.sha,
+			}),
+		},
+	);
+}
+
+async function createEmptyBaseBranch(input: {
+	token: string;
+	owner: string;
+	repo: string;
+	branch: string;
+}) {
+	const emptyTree = await githubRequest<{ sha: string }>(
+		`/repos/${encodeURIComponent(input.owner)}/${encodeURIComponent(input.repo)}/git/trees`,
+		input.token,
+		{
+			method: "POST",
+			body: JSON.stringify({ tree: [] }),
+		},
+	);
+	const initialCommit = await githubRequest<{ sha: string }>(
+		`/repos/${encodeURIComponent(input.owner)}/${encodeURIComponent(input.repo)}/git/commits`,
+		input.token,
+		{
+			method: "POST",
+			body: JSON.stringify({
+				message: "Initialize repository for AI Hub publishing",
+				tree: emptyTree.sha,
+				parents: [],
+			}),
+		},
+	);
+	await createGitRef({
+		token: input.token,
+		owner: input.owner,
+		repo: input.repo,
+		branch: input.branch,
+		sha: initialCommit.sha,
+	});
+	return { commitSha: initialCommit.sha, treeSha: emptyTree.sha };
+}
+
 export async function publishCodeWorkspaceToGitHub(
 	input: PublishCodeWorkspaceInput,
 ): Promise<GitHubPublishResult> {
@@ -583,19 +649,39 @@ export async function publishCodeWorkspaceToGitHub(
 	let eventId: string | null = null;
 
 	try {
-		const targetRef = await getGitRef({
-			token,
-			owner: repo.owner,
-			repo: repo.name,
-			branch: targetBranch,
-		});
-		const baseCommitSha = targetRef.object.sha;
-		const baseCommit = await githubRequest<{ tree: { sha: string } }>(
-			`/repos/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.name)}/git/commits/${encodeURIComponent(baseCommitSha)}`,
-			token,
-		);
+		let baseCommitSha: string | null = null;
+		let baseTreeSha: string | null = null;
+		try {
+			const targetRef = await getGitRef({
+				token,
+				owner: repo.owner,
+				repo: repo.name,
+				branch: targetBranch,
+			});
+			baseCommitSha = targetRef.object.sha;
+			const baseCommit = await githubRequest<{ tree: { sha: string } }>(
+				`/repos/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.name)}/git/commits/${encodeURIComponent(baseCommitSha)}`,
+				token,
+			);
+			baseTreeSha = baseCommit.tree.sha;
+		} catch (error) {
+			if (!isEmptyGitRepositoryError(error)) throw error;
+			if (parsed.mode === "pull_request") {
+				const emptyBase = await createEmptyBaseBranch({
+					token,
+					owner: repo.owner,
+					repo: repo.name,
+					branch: targetBranch,
+				});
+				baseCommitSha = emptyBase.commitSha;
+				baseTreeSha = emptyBase.treeSha;
+			}
+		}
 
 		if (parsed.mode === "pull_request") {
+			if (!baseCommitSha) {
+				throw new Error("Cannot create a pull request without a base branch.");
+			}
 			if (
 				await gitRefExists({
 					token,
@@ -606,17 +692,13 @@ export async function publishCodeWorkspaceToGitHub(
 			) {
 				throw new Error(`Source branch already exists: ${sourceBranch}`);
 			}
-			await githubRequest(
-				`/repos/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.name)}/git/refs`,
+			await createGitRef({
 				token,
-				{
-					method: "POST",
-					body: JSON.stringify({
-						ref: `refs/heads/${sourceBranch}`,
-						sha: baseCommitSha,
-					}),
-				},
-			);
+				owner: repo.owner,
+				repo: repo.name,
+				branch: sourceBranch,
+				sha: baseCommitSha,
+			});
 		}
 
 		const treeItems = await Promise.all(
@@ -646,7 +728,7 @@ export async function publishCodeWorkspaceToGitHub(
 			{
 				method: "POST",
 				body: JSON.stringify({
-					base_tree: baseCommit.tree.sha,
+					...(baseTreeSha ? { base_tree: baseTreeSha } : {}),
 					tree: treeItems,
 				}),
 			},
@@ -659,18 +741,28 @@ export async function publishCodeWorkspaceToGitHub(
 				body: JSON.stringify({
 					message: parsed.commitMessage,
 					tree: tree.sha,
-					parents: [baseCommitSha],
+					parents: baseCommitSha ? [baseCommitSha] : [],
 				}),
 			},
 		);
-		await githubRequest(
-			`/repos/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.name)}/git/refs/heads/${encodeRefPath(sourceBranch)}`,
-			token,
-			{
-				method: "PATCH",
-				body: JSON.stringify({ sha: commit.sha, force: false }),
-			},
-		);
+		if (baseCommitSha) {
+			await githubRequest(
+				`/repos/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.name)}/git/refs/heads/${encodeRefPath(sourceBranch)}`,
+				token,
+				{
+					method: "PATCH",
+					body: JSON.stringify({ sha: commit.sha, force: false }),
+				},
+			);
+		} else {
+			await createGitRef({
+				token,
+				owner: repo.owner,
+				repo: repo.name,
+				branch: sourceBranch,
+				sha: commit.sha,
+			});
+		}
 
 		let pullRequestUrl: string | null = null;
 		if (parsed.mode === "pull_request") {
