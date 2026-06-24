@@ -132,10 +132,9 @@ describe("sandbox-runner", () => {
 	it("runs Bash commands with binary input files", async () => {
 		const result = await requestRun({
 			language: "bash",
-			code: [
-				"wc -c < data/input.bin",
-				"printf 'bash-ok' > output.txt",
-			].join("\n"),
+			code: ["wc -c < data/input.bin", "printf 'bash-ok' > output.txt"].join(
+				"\n",
+			),
 			files: [
 				{
 					path: "data/input.bin",

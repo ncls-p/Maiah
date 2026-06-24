@@ -391,8 +391,12 @@ function codeSandboxOutputFromUnknown(
 	};
 }
 
-function normalizeCodeSandboxLanguage(value: unknown): CodeSandboxLanguage | null {
-	return value === "python" || value === "node" || value === "bash" ? value : null;
+function normalizeCodeSandboxLanguage(
+	value: unknown,
+): CodeSandboxLanguage | null {
+	return value === "python" || value === "node" || value === "bash"
+		? value
+		: null;
 }
 
 function codeSandboxInputFromUnknown(
@@ -435,7 +439,10 @@ function codeSandboxInputFromUnknown(
 }
 
 function isCodeSandboxToolName(toolName: string | undefined) {
-	return toolName === "run_code_sandbox" || Boolean(toolName?.endsWith("_run_code_sandbox"));
+	return (
+		toolName === "run_code_sandbox" ||
+		Boolean(toolName?.endsWith("_run_code_sandbox"))
+	);
 }
 
 function htmlArtifactFromToolInput(value: unknown): HtmlArtifactOutput | null {
@@ -2716,10 +2723,7 @@ function CodeSandboxResultCard({
 						>
 							Source code
 							<ChevronDownIcon
-								className={cn(
-									COMPACT_ICON_CLASS,
-									sourceOpen && "rotate-180",
-								)}
+								className={cn(COMPACT_ICON_CLASS, sourceOpen && "rotate-180")}
 								aria-hidden="true"
 							/>
 						</Button>
@@ -2964,7 +2968,9 @@ const ToolPartCard = memo(function ToolPartCard({
 		return <ChatFileAttachmentCard attachment={fileAttachment} />;
 	}
 	if (sandboxOutput) {
-		return <CodeSandboxResultCard result={sandboxOutput} input={sandboxInput} />;
+		return (
+			<CodeSandboxResultCard result={sandboxOutput} input={sandboxInput} />
+		);
 	}
 	if (isHtmlArtifactOutput(parsed.output)) {
 		return <HtmlArtifactCard artifact={parsed.output} />;

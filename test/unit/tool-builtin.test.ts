@@ -267,10 +267,12 @@ describe("web_search tool", () => {
 		};
 
 		expect(fetchMock).toHaveBeenCalledTimes(2);
-		expect(new URL(String(fetchMock.mock.calls[0]?.[0])).searchParams.get("q"))
-			.toBe(result.searchedQuery);
-		expect(new URL(String(fetchMock.mock.calls[1]?.[0])).searchParams.get("q"))
-			.toBe("ai hub");
+		expect(
+			new URL(String(fetchMock.mock.calls[0]?.[0])).searchParams.get("q"),
+		).toBe(result.searchedQuery);
+		expect(
+			new URL(String(fetchMock.mock.calls[1]?.[0])).searchParams.get("q"),
+		).toBe("ai hub");
 		expect(result.ok).toBe(true);
 		expect(result.successfulQuery).toBe("ai hub");
 		expect(result.resultCount).toBe(1);
