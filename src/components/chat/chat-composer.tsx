@@ -3,6 +3,7 @@
 import { Link } from "@/i18n/navigation";
 import {
 	FileArchiveIcon,
+	FileIcon,
 	ImageIcon,
 	Loader2Icon,
 	PaperclipIcon,
@@ -15,7 +16,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import type { ChatImageAttachment } from "@/components/chat/chat-types";
+import type { ChatAttachment } from "@/components/chat/chat-types";
 import { cn } from "@/lib/utils";
 
 export interface QueuedChatMessage {
@@ -34,9 +35,128 @@ interface ChatComposerProps {
 	onQueuedMessageChange?: (id: string, content: string) => void;
 	onQueuedMessageCancel?: (id: string) => void;
 	onUploadCodeWorkspace?: (files: File[]) => Promise<void>;
-	onUploadChatImage?: (file: File) => Promise<void>;
-	imageAttachments?: ChatImageAttachment[];
-	onRemoveImageAttachment?: (attachmentId: string) => void;
+	onUploadChatAttachment?: (file: File) => Promise<void>;
+	attachments?: ChatAttachment[];
+	onRemoveAttachment?: (attachmentId: string) => void;
+}
+
+const maxChatAttachments = 8;
+const codeFilePattern = /\.(?:html?|css|[cm]?js)$/i;
+
+function uploadedFilePath(file: File) {
+	const relativePath = (file as File & { webkitRelativePath?: string })
+		.webkitRelativePath;
+	return relativePath?.trim() || file.name;
+}
+
+function isDirectCodeFile(file: File) {
+	return codeFilePattern.test(uploadedFilePath(file));
+}
+
+function formatBytes(bytes: number) {
+	if (bytes < 1024) return `${bytes} B`;
+	const units = ["KB", "MB", "GB"];
+	let value = bytes / 1024;
+	let unitIndex = 0;
+	while (value >= 1024 && unitIndex < units.length - 1) {
+		value /= 1024;
+		unitIndex += 1;
+	}
+	return `${value >= 10 ? value.toFixed(0) : value.toFixed(1)} ${units[unitIndex]}`;
+}
+
+function pastedFileName(file: File, index: number) {
+	if (file.name.trim()) return file;
+	const extension =
+		file.type === "image/jpeg" ? "jpg" : file.type.split("/")[1];
+	const safeExtension = extension?.replace(/[^a-z0-9]/gi, "").toLowerCase();
+	return new File(
+		[file],
+		`pasted-image-${index + 1}.${safeExtension || "png"}`,
+		{
+			type: file.type || "image/png",
+			lastModified: file.lastModified,
+		},
+	);
+}
+
+function filesFromClipboard(data: DataTransfer) {
+	const files = Array.from(data.files);
+	if (files.length > 0) return files.map(pastedFileName);
+	return Array.from(data.items)
+		.filter((item) => item.kind === "file")
+		.map((item) => item.getAsFile())
+		.filter((file): file is File => Boolean(file))
+		.map(pastedFileName);
+}
+
+function attachmentSubtitle(attachment: ChatAttachment) {
+	if (attachment.kind === "chat_image") {
+		return `${attachment.mimeType.replace("image/", "").toUpperCase()} · ${formatBytes(attachment.size)}`;
+	}
+	if (attachment.extractionStatus === "unreadable") {
+		return `Stored safely · ${formatBytes(attachment.size)}`;
+	}
+	const readLabel =
+		attachment.extractionStatus === "truncated" ? "Partially read" : "Readable";
+	return `${readLabel} · ${attachment.extractedTextChars.toLocaleString()} chars · ${formatBytes(attachment.size)}`;
+}
+
+function AttachmentPreview({
+	attachment,
+	onRemove,
+}: {
+	attachment: ChatAttachment;
+	onRemove?: (attachmentId: string) => void;
+}) {
+	if (attachment.kind === "chat_image") {
+		return (
+			<div
+				className="group relative h-20 w-20 overflow-hidden rounded-xl border bg-card bg-cover bg-center"
+				style={{
+					backgroundImage: `url("${attachment.url.replace(/"/g, '\\"')}")`,
+				}}
+			>
+				<span className="sr-only">{attachment.fileName}</span>
+				<Button
+					type="button"
+					variant="secondary"
+					size="icon"
+					className="absolute right-1 top-1 size-6 rounded-full opacity-90"
+					aria-label={`Remove ${attachment.fileName}`}
+					onClick={() => onRemove?.(attachment.id)}
+				>
+					<XIcon className="size-3" aria-hidden="true" />
+				</Button>
+			</div>
+		);
+	}
+
+	return (
+		<div className="group relative flex min-h-16 w-56 max-w-full items-center gap-2 rounded-xl border bg-card p-2 pr-8 text-xs">
+			<span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+				<FileIcon className="size-4" aria-hidden="true" />
+			</span>
+			<span className="min-w-0 flex-1">
+				<span className="block truncate font-medium text-foreground">
+					{attachment.fileName}
+				</span>
+				<span className="block truncate text-[11px] text-muted-foreground">
+					{attachmentSubtitle(attachment)}
+				</span>
+			</span>
+			<Button
+				type="button"
+				variant="ghost"
+				size="icon"
+				className="absolute right-1 top-1 size-6 rounded-full text-muted-foreground hover:text-foreground"
+				aria-label={`Remove ${attachment.fileName}`}
+				onClick={() => onRemove?.(attachment.id)}
+			>
+				<XIcon className="size-3" aria-hidden="true" />
+			</Button>
+		</div>
+	);
 }
 
 export function ChatComposer({
@@ -50,9 +170,9 @@ export function ChatComposer({
 	onQueuedMessageChange,
 	onQueuedMessageCancel,
 	onUploadCodeWorkspace,
-	onUploadChatImage,
-	imageAttachments = [],
-	onRemoveImageAttachment,
+	onUploadChatAttachment,
+	attachments = [],
+	onRemoveAttachment,
 }: ChatComposerProps) {
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
@@ -67,51 +187,64 @@ export function ChatComposer({
 		el.style.height = `${newHeight}px`;
 	}, [input]);
 
-	async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
-		const files = Array.from(event.target.files ?? []);
-		event.target.value = "";
-		if (files.length === 0) return;
+	async function handleSelectedFiles(files: File[]) {
+		const uploadedFiles = files.filter(Boolean);
+		if (uploadedFiles.length === 0) return;
+		if (!canChat) return;
+		if (sending) {
+			toast.error("Wait for the current response before attaching files.");
+			return;
+		}
 		setUploadingAttachment(true);
 		try {
-			const zipFiles = files.filter((file) =>
+			const zipFiles = uploadedFiles.filter((file) =>
 				file.name.toLowerCase().endsWith(".zip"),
 			);
-			const imageFiles = files.filter((file) => file.type.startsWith("image/"));
-			const codeFiles = files.filter((file) =>
-				/\.(?:html?|css|[cm]?js)$/i.test(file.name),
-			);
+			const codeFiles = uploadedFiles.filter(isDirectCodeFile);
 			if (zipFiles.length > 0) {
-				if (files.length > 1) {
-					toast.error("Upload one ZIP or select direct HTML/CSS/JS files.");
+				if (uploadedFiles.length > 1) {
+					toast.error("Upload one ZIP or attach other files separately.");
 					return;
 				}
 				await onUploadCodeWorkspace?.(zipFiles);
-			} else if (codeFiles.length > 0) {
-				if (codeFiles.length !== files.length) {
-					toast.error("Upload code files or images separately.");
-					return;
-				}
+				return;
+			}
+			if (
+				codeFiles.length === uploadedFiles.length &&
+				codeFiles.some((file) => /\.html?$/i.test(uploadedFilePath(file)))
+			) {
 				await onUploadCodeWorkspace?.(codeFiles);
-			} else if (imageFiles.length > 0) {
-				if (imageFiles.length !== files.length) {
-					toast.error("Upload code files or images separately.");
-					return;
-				}
-				if (imageAttachments.length + imageFiles.length > 4) {
-					toast.error("You can attach up to 4 images per message.");
-					return;
-				}
-				for (const imageFile of imageFiles) {
-					await onUploadChatImage?.(imageFile);
-				}
-			} else {
+				return;
+			}
+			if (!onUploadChatAttachment) {
+				toast.error("File attachments are not available for this chat.");
+				return;
+			}
+			if (attachments.length + uploadedFiles.length > maxChatAttachments) {
 				toast.error(
-					"Upload a ZIP, HTML/CSS/JS files, or PNG/JPEG/WebP images.",
+					`You can attach up to ${maxChatAttachments} files per message.`,
 				);
+				return;
+			}
+			for (const file of uploadedFiles) {
+				await onUploadChatAttachment(file);
 			}
 		} finally {
 			setUploadingAttachment(false);
 		}
+	}
+
+	async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+		const files = Array.from(event.target.files ?? []);
+		event.target.value = "";
+		await handleSelectedFiles(files);
+	}
+
+	function handlePaste(event: React.ClipboardEvent<HTMLTextAreaElement>) {
+		const files = filesFromClipboard(event.clipboardData);
+		if (files.length === 0) return;
+		event.preventDefault();
+		void handleSelectedFiles(files);
 	}
 
 	return (
@@ -155,28 +288,14 @@ export function ChatComposer({
 				</div>
 			) : null}
 			<div className="relative mx-auto w-full min-w-0 max-w-4xl">
-				{imageAttachments.length > 0 ? (
+				{attachments.length > 0 ? (
 					<div className="mb-2 flex flex-wrap gap-2">
-						{imageAttachments.map((attachment) => (
-							<div
+						{attachments.map((attachment) => (
+							<AttachmentPreview
 								key={attachment.id}
-								className="group relative h-20 w-20 overflow-hidden rounded-xl border bg-card bg-cover bg-center"
-								style={{
-									backgroundImage: `url("${attachment.url.replace(/"/g, '\\"')}")`,
-								}}
-							>
-								<span className="sr-only">{attachment.fileName}</span>
-								<Button
-									type="button"
-									variant="secondary"
-									size="icon"
-									className="absolute right-1 top-1 size-6 rounded-full opacity-90"
-									aria-label={`Remove ${attachment.fileName}`}
-									onClick={() => onRemoveImageAttachment?.(attachment.id)}
-								>
-									<XIcon className="size-3" aria-hidden="true" />
-								</Button>
-							</div>
+								attachment={attachment}
+								onRemove={onRemoveAttachment}
+							/>
 						))}
 					</div>
 				) : null}
@@ -185,7 +304,6 @@ export function ChatComposer({
 						<input
 							ref={fileInputRef}
 							type="file"
-							accept=".zip,.html,.htm,.css,.js,.mjs,.cjs,application/zip,application/x-zip-compressed,image/png,image/jpeg,image/webp"
 							className="hidden"
 							multiple
 							onChange={(event) => void handleFileChange(event)}
@@ -195,7 +313,7 @@ export function ChatComposer({
 							size="icon"
 							variant="ghost"
 							className="size-8 shrink-0 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground sm:size-9"
-							aria-label="Upload file"
+							aria-label="Upload files"
 							disabled={uploadingAttachment || sending || !canChat}
 							onClick={() => fileInputRef.current?.click()}
 						>
@@ -216,6 +334,7 @@ export function ChatComposer({
 							autoComplete="off"
 							value={input}
 							onChange={(event) => onInputChange(event.target.value)}
+							onPaste={handlePaste}
 							onKeyDown={(event) => {
 								if (event.key === "Enter" && !event.shiftKey) {
 									event.preventDefault();
@@ -226,7 +345,7 @@ export function ChatComposer({
 								canChat
 									? sending
 										? "Queue your next message…"
-										: "Message your assistant…"
+										: "Message, paste images, or attach files…"
 									: "Finish setup before chatting…"
 							}
 							disabled={!canChat}
@@ -237,13 +356,11 @@ export function ChatComposer({
 						<Button
 							type="submit"
 							size="icon"
-							disabled={
-								!canChat || (!input.trim() && imageAttachments.length === 0)
-							}
+							disabled={!canChat || (!input.trim() && attachments.length === 0)}
 							aria-label={sending ? "Queue message" : "Send message"}
 							className={cn(
 								"size-9 shrink-0 rounded-lg transition-colors sm:size-10 sm:rounded-xl",
-								canChat && (input.trim() || imageAttachments.length > 0)
+								canChat && (input.trim() || attachments.length > 0)
 									? "bg-primary text-primary-foreground hover:bg-primary/90"
 									: "opacity-60",
 							)}
@@ -284,13 +401,15 @@ export function ChatComposer({
 						<p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
 							<span>
 								{sending
-									? "Enter queues the next message · Shift+Enter adds a line"
-									: "Enter sends · Shift+Enter adds a line"}
+									? "Enter queues · Shift+Enter adds a line"
+									: "Enter sends · Shift+Enter adds a line · paste images"}
 							</span>
 							<span className="hidden items-center gap-1 sm:inline-flex">
 								<FileArchiveIcon className="size-3" aria-hidden="true" />{" "}
-								ZIP/HTML/CSS/JS
+								ZIP/code
 								<ImageIcon className="size-3" aria-hidden="true" /> Images
+								<FileIcon className="size-3" aria-hidden="true" />{" "}
+								PDF/Word/PPTX/MD
 							</span>
 						</p>
 					)}

@@ -40,6 +40,7 @@ import {
 	renderablePartsFromMessage,
 	textFromMessage,
 	toolNameMatches,
+	type ChatFileAttachment,
 	type ChatImageAttachment,
 	type ChatMessage,
 	type ChatMessagePart,
@@ -241,6 +242,31 @@ function chatImageAttachmentFromPartContent(content: string) {
 	try {
 		const parsed = JSON.parse(content) as unknown;
 		return isChatImageAttachmentOutput(parsed) ? parsed : null;
+	} catch {
+		return null;
+	}
+}
+
+function isChatFileAttachmentOutput(
+	value: unknown,
+): value is ChatFileAttachment {
+	if (typeof value !== "object" || value === null) return false;
+	const record = value as Record<string, unknown>;
+	return (
+		record.kind === "chat_file" &&
+		typeof record.id === "string" &&
+		typeof record.fileName === "string" &&
+		typeof record.mimeType === "string" &&
+		typeof record.url === "string" &&
+		typeof record.extractionStatus === "string" &&
+		typeof record.extractedTextChars === "number"
+	);
+}
+
+function chatFileAttachmentFromPartContent(content: string) {
+	try {
+		const parsed = JSON.parse(content) as unknown;
+		return isChatFileAttachmentOutput(parsed) ? parsed : null;
 	} catch {
 		return null;
 	}
@@ -1048,6 +1074,42 @@ function ChatImageAttachmentCard({
 			<span className="flex items-center gap-2 border-t px-2 py-1.5 text-[11px] text-muted-foreground">
 				<FileIcon className={COMPACT_ICON_CLASS} aria-hidden="true" />
 				<span className="max-w-56 truncate">{attachment.fileName}</span>
+			</span>
+		</a>
+	);
+}
+
+function ChatFileAttachmentCard({
+	attachment,
+}: {
+	attachment: ChatFileAttachment;
+}) {
+	const readLabel =
+		attachment.extractionStatus === "unreadable"
+			? "Stored safely"
+			: attachment.extractionStatus === "truncated"
+				? "Partially read"
+				: "Readable";
+	return (
+		<a
+			href={attachment.url}
+			target="_blank"
+			rel="noreferrer"
+			className="group flex w-fit max-w-[min(26rem,84vw)] items-center gap-3 rounded-xl border bg-card p-3 text-xs shadow-sm transition-colors hover:border-primary/30"
+		>
+			<span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+				<FileIcon className="size-4" aria-hidden="true" />
+			</span>
+			<span className="min-w-0 flex-1">
+				<span className="block truncate font-medium text-foreground">
+					{attachment.fileName}
+				</span>
+				<span className="block truncate text-[11px] text-muted-foreground">
+					{readLabel} · {formatBytes(attachment.size)}
+					{attachment.extractedTextChars > 0
+						? ` · ${attachment.extractedTextChars.toLocaleString()} chars`
+						: ""}
+				</span>
 			</span>
 		</a>
 	);
@@ -2337,6 +2399,13 @@ const ToolPartCard = memo(function ToolPartCard({
 				: null,
 		[part.content, part.type],
 	);
+	const fileAttachment = useMemo(
+		() =>
+			part.type === "file"
+				? chatFileAttachmentFromPartContent(part.content)
+				: null,
+		[part.content, part.type],
+	);
 	const friendlyName = useMemo(
 		() => formatToolName(parsed.toolName),
 		[parsed.toolName],
@@ -2393,6 +2462,9 @@ const ToolPartCard = memo(function ToolPartCard({
 	}
 	if (imageAttachment) {
 		return <ChatImageAttachmentCard attachment={imageAttachment} />;
+	}
+	if (fileAttachment) {
+		return <ChatFileAttachmentCard attachment={fileAttachment} />;
 	}
 	if (isHtmlArtifactOutput(parsed.output)) {
 		return <HtmlArtifactCard artifact={parsed.output} />;
@@ -2776,6 +2848,14 @@ const MessageContent = memo(function MessageContent({
 							<ChatImageAttachmentCard key={key} attachment={imageAttachment} />
 						);
 					}
+					const fileAttachment = chatFileAttachmentFromPartContent(
+						part.content,
+					);
+					if (fileAttachment) {
+						return (
+							<ChatFileAttachmentCard key={key} attachment={fileAttachment} />
+						);
+					}
 					const fileArtifact = codeWorkspaceArtifactFromPartContent(
 						part.content,
 					);
@@ -2835,6 +2915,14 @@ const MessageContent = memo(function MessageContent({
 									key={key}
 									attachment={imageAttachment}
 								/>
+							);
+						}
+						const fileAttachment = chatFileAttachmentFromPartContent(
+							part.content,
+						);
+						if (fileAttachment) {
+							return (
+								<ChatFileAttachmentCard key={key} attachment={fileAttachment} />
 							);
 						}
 						const fileArtifact = codeWorkspaceArtifactFromPartContent(

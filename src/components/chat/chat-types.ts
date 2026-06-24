@@ -74,6 +74,22 @@ export interface ChatImageAttachment {
 	url: string;
 }
 
+export interface ChatFileAttachment {
+	kind: "chat_file";
+	id: string;
+	fileName: string;
+	mimeType: string;
+	size: number;
+	hash: string;
+	url: string;
+	category: "document" | "presentation" | "spreadsheet" | "text" | "file";
+	extractionStatus: "readable" | "truncated" | "unreadable";
+	extractedTextChars: number;
+	extractionMessage?: string;
+}
+
+export type ChatAttachment = ChatImageAttachment | ChatFileAttachment;
+
 export interface ChatMessage {
 	id: string;
 	role: "user" | "assistant" | "system" | "tool";

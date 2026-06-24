@@ -29,7 +29,7 @@ import type {
 	ChatAgent,
 	ChatConversation,
 	ChatConversationFolder,
-	ChatImageAttachment,
+	ChatAttachment,
 	ChatMessage,
 	CodeWorkspaceArtifact,
 	PendingToolApproval,
@@ -300,9 +300,7 @@ export default function ChatPage() {
 	);
 	const [codeWorkspaceArtifact, setCodeWorkspaceArtifact] =
 		useState<CodeWorkspaceArtifact | null>(null);
-	const [imageAttachments, setImageAttachments] = useState<
-		ChatImageAttachment[]
-	>([]);
+	const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
 	const [interfaceMode, setInterfaceMode] =
 		useState<InterfaceMode>(CHAT_INTERFACE_MODE);
 	const bottomRef = useRef<HTMLDivElement | null>(null);
@@ -736,7 +734,7 @@ export default function ChatPage() {
 			queueMicrotask(() => {
 				setMessages([]);
 				setCodeWorkspaceArtifact(null);
-				setImageAttachments([]);
+				setAttachments([]);
 				setInterfaceMode(CHAT_INTERFACE_MODE);
 			});
 			return;
@@ -922,7 +920,7 @@ export default function ChatPage() {
 		} else {
 			setMessages([]);
 			setCodeWorkspaceArtifact(null);
-			setImageAttachments([]);
+			setAttachments([]);
 			setInterfaceMode(CHAT_INTERFACE_MODE);
 		}
 		window.history.replaceState(null, "", `/chat?${params.toString()}`);
@@ -932,7 +930,7 @@ export default function ChatPage() {
 		setQueuedMessages([]);
 		setMessages([]);
 		setCodeWorkspaceArtifact(null);
-		setImageAttachments([]);
+		setAttachments([]);
 		setInterfaceMode(CHAT_INTERFACE_MODE);
 		const conversation = conversations.find(
 			(item) => item.id === conversationId,
@@ -952,7 +950,7 @@ export default function ChatPage() {
 		setActiveConversationId(null);
 		setMessages([]);
 		setCodeWorkspaceArtifact(null);
-		setImageAttachments([]);
+		setAttachments([]);
 		setInterfaceMode(CHAT_INTERFACE_MODE);
 		window.history.replaceState(
 			null,
@@ -998,7 +996,7 @@ export default function ChatPage() {
 			setActiveConversationId(null);
 			setMessages([]);
 			setCodeWorkspaceArtifact(null);
-			setImageAttachments([]);
+			setAttachments([]);
 			setInterfaceMode(CHAT_INTERFACE_MODE);
 			window.history.replaceState(
 				null,
@@ -1161,15 +1159,15 @@ export default function ChatPage() {
 	function submitMessage() {
 		const content =
 			input.trim() ||
-			(imageAttachments.length > 0 ? "Please analyze the attached image." : "");
+			(attachments.length > 0 ? "Please analyze the attached file." : "");
 		if (!content || !canChat) return;
-		if (sending && imageAttachments.length > 0) {
-			toast.error("Wait for the current response before sending images.");
+		if (sending && attachments.length > 0) {
+			toast.error("Wait for the current response before sending attachments.");
 			return;
 		}
-		const attachmentsToSend = imageAttachments;
+		const attachmentsToSend = attachments;
 		setInput("");
-		setImageAttachments([]);
+		setAttachments([]);
 		if (sending) {
 			queueMessage(content);
 			return;
@@ -1179,7 +1177,7 @@ export default function ChatPage() {
 				interfaceMode === CODING_INTERFACE_MODE
 					? codeWorkspaceArtifact?.projectId
 					: undefined,
-			imageAttachments: attachmentsToSend,
+			attachments: attachmentsToSend,
 		});
 	}
 
@@ -1225,7 +1223,7 @@ export default function ChatPage() {
 			if (!response.ok || !data?.artifact || !data.prompt) {
 				throw new Error(data?.error || "Failed to upload code workspace");
 			}
-			setImageAttachments([]);
+			setAttachments([]);
 			setCodeWorkspaceArtifact(data.artifact);
 			setInterfaceMode(CODING_INTERFACE_MODE);
 			lastAutoOpenedWorkspaceRef.current = `${data.artifact.projectId}:${data.artifact.version}`;
@@ -1241,10 +1239,10 @@ export default function ChatPage() {
 		}
 	}
 
-	async function uploadChatImage(file: File) {
+	async function uploadChatAttachment(file: File) {
 		if (!workspaceId || !canChat) return;
-		if (imageAttachments.length >= 4) {
-			toast.error("You can attach up to 4 images per message.");
+		if (attachments.length >= 8) {
+			toast.error("You can attach up to 8 files per message.");
 			return;
 		}
 		try {
@@ -1256,17 +1254,17 @@ export default function ChatPage() {
 				body: formData,
 			});
 			const data = (await response.json().catch(() => null)) as {
-				attachment?: ChatImageAttachment;
+				attachment?: ChatAttachment;
 				error?: string;
 			} | null;
 			if (!response.ok || !data?.attachment) {
-				throw new Error(data?.error || "Failed to upload image");
+				throw new Error(data?.error || "Failed to upload file");
 			}
-			setImageAttachments((current) => [...current, data.attachment!]);
-			toast.success("Image attached");
+			setAttachments((current) => [...current, data.attachment!]);
+			toast.success("File attached");
 		} catch (error) {
 			toast.error(
-				error instanceof Error ? error.message : "Failed to upload image",
+				error instanceof Error ? error.message : "Failed to upload file",
 			);
 			return;
 		}
@@ -1570,10 +1568,10 @@ export default function ChatPage() {
 							onQueuedMessageChange={updateQueuedMessage}
 							onQueuedMessageCancel={cancelQueuedMessage}
 							onUploadCodeWorkspace={uploadCodeWorkspace}
-							onUploadChatImage={uploadChatImage}
-							imageAttachments={imageAttachments}
-							onRemoveImageAttachment={(attachmentId) =>
-								setImageAttachments((current) =>
+							onUploadChatAttachment={uploadChatAttachment}
+							attachments={attachments}
+							onRemoveAttachment={(attachmentId) =>
+								setAttachments((current) =>
 									current.filter(
 										(attachment) => attachment.id !== attachmentId,
 									),
@@ -1681,10 +1679,10 @@ export default function ChatPage() {
 					onQueuedMessageChange={updateQueuedMessage}
 					onQueuedMessageCancel={cancelQueuedMessage}
 					onUploadCodeWorkspace={uploadCodeWorkspace}
-					onUploadChatImage={uploadChatImage}
-					imageAttachments={imageAttachments}
-					onRemoveImageAttachment={(attachmentId) =>
-						setImageAttachments((current) =>
+					onUploadChatAttachment={uploadChatAttachment}
+					attachments={attachments}
+					onRemoveAttachment={(attachmentId) =>
+						setAttachments((current) =>
 							current.filter((attachment) => attachment.id !== attachmentId),
 						)
 					}

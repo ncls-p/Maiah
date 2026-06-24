@@ -8,8 +8,8 @@ import {
 	createLocalMessage,
 	isChatStreamEvent,
 	toolNameMatches,
+	type ChatAttachment,
 	type ChatCitation,
-	type ChatImageAttachment,
 	type ChatMessage,
 	type ChatStreamEvent,
 	type CodeWorkspaceArtifact,
@@ -31,7 +31,7 @@ type SubmitOptions = {
 	reuseUserMessage?: boolean;
 	codeWorkspaceArtifact?: CodeWorkspaceArtifact;
 	codeWorkspaceId?: string;
-	imageAttachments?: ChatImageAttachment[];
+	attachments?: ChatAttachment[];
 };
 
 type StoredChatStreamDraft = {
@@ -759,7 +759,7 @@ export function useChatStream({
 						},
 					]
 				: []),
-			...(options.imageAttachments ?? []).map((attachment) => ({
+			...(options.attachments ?? []).map((attachment) => ({
 				type: "file",
 				content: JSON.stringify(attachment),
 			})),
@@ -907,7 +907,7 @@ export function useChatStream({
 					resendFromMessageId: options.resendFromMessageId,
 					codeWorkspaceId:
 						options.codeWorkspaceId ?? options.codeWorkspaceArtifact?.projectId,
-					imageAttachmentIds: options.imageAttachments?.map(
+					attachmentIds: options.attachments?.map(
 						(attachment) => attachment.id,
 					),
 				}),

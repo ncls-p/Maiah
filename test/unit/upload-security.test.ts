@@ -141,4 +141,92 @@ describe("upload security", () => {
 			}),
 		).rejects.toThrow(/Unsupported image type/);
 	});
+
+	it("extracts readable text from markdown chat attachments", async () => {
+		const { createChatAttachment, getChatAttachmentExtractedText } =
+			await import("@/modules/chat/attachments");
+
+		const attachment = await createChatAttachment({
+			workspaceId: "11111111-1111-4111-8111-111111111111",
+			userId: "user-1",
+			fileName: "notes.md",
+			mimeType: "text/markdown",
+			bytes: new TextEncoder().encode("# Notes\n\nBonjour tout le monde"),
+		});
+
+		expect(attachment).toMatchObject({
+			kind: "chat_file",
+			fileName: "notes.md",
+			extractionStatus: "readable",
+		});
+		await expect(
+			getChatAttachmentExtractedText({
+				attachmentId: attachment.id,
+				workspaceId: "11111111-1111-4111-8111-111111111111",
+				userId: "user-1",
+			}),
+		).resolves.toMatchObject({ text: expect.stringContaining("Bonjour") });
+	});
+
+	it("extracts readable text from Word and PowerPoint chat attachments", async () => {
+		const { createChatAttachment, getChatAttachmentExtractedText } =
+			await import("@/modules/chat/attachments");
+		const workspaceId = "11111111-1111-4111-8111-111111111111";
+		const userId = "user-1";
+
+		const docx = await createChatAttachment({
+			workspaceId,
+			userId,
+			fileName: "brief.docx",
+			bytes: await zipBytes({
+				"word/document.xml":
+					'<w:document xmlns:w="w"><w:body><w:p><w:r><w:t>Hello Word</w:t></w:r></w:p></w:body></w:document>',
+			}),
+		});
+		const pptx = await createChatAttachment({
+			workspaceId,
+			userId,
+			fileName: "deck.pptx",
+			bytes: await zipBytes({
+				"ppt/slides/slide1.xml":
+					'<p:sld xmlns:a="a" xmlns:p="p"><a:t>Hello Slide</a:t></p:sld>',
+			}),
+		});
+
+		await expect(
+			getChatAttachmentExtractedText({
+				attachmentId: docx.id,
+				workspaceId,
+				userId,
+			}),
+		).resolves.toMatchObject({ text: expect.stringContaining("Hello Word") });
+		await expect(
+			getChatAttachmentExtractedText({
+				attachmentId: pptx.id,
+				workspaceId,
+				userId,
+			}),
+		).resolves.toMatchObject({ text: expect.stringContaining("Hello Slide") });
+	});
+
+	it("extracts best-effort text from PDF chat attachments", async () => {
+		const { createChatAttachment, getChatAttachmentExtractedText } =
+			await import("@/modules/chat/attachments");
+		const attachment = await createChatAttachment({
+			workspaceId: "11111111-1111-4111-8111-111111111111",
+			userId: "user-1",
+			fileName: "simple.pdf",
+			bytes: new TextEncoder().encode(
+				"%PDF-1.4\n1 0 obj\nstream\nBT (Hello PDF) Tj ET\nendstream\n%%EOF",
+			),
+		});
+
+		await expect(
+			getChatAttachmentExtractedText({
+				attachmentId: attachment.id,
+				workspaceId: "11111111-1111-4111-8111-111111111111",
+				userId: "user-1",
+			}),
+		).resolves.toMatchObject({ text: expect.stringContaining("Hello PDF") });
+	});
 });
