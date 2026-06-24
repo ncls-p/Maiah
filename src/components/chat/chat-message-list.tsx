@@ -91,7 +91,9 @@ function GithubIcon(props: SVGProps<SVGSVGElement>) {
 function StreamingThinking() {
 	return (
 		<div className="streaming-thinking" aria-label="Assistant is thinking">
-			<span className="streaming-thinking__text">Thinking</span>
+			<span className="streaming-thinking__text t-shimmer" data-text="Thinking">
+				Thinking
+			</span>
 			<span className="streaming-thinking__dots" aria-hidden="true">
 				<span />
 				<span />
@@ -105,7 +107,9 @@ function StreamingStatus() {
 	return (
 		<span className="streaming-status" aria-label="Assistant is generating">
 			<span className="streaming-status__dot" aria-hidden="true" />
-			<span>Generating</span>
+			<span className="t-shimmer" data-text="Generating">
+				Generating
+			</span>
 		</span>
 	);
 }

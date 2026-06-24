@@ -35,25 +35,27 @@ export function AdvancedSection({
     <Collapsible
       open={open}
       onOpenChange={handleOpenChange}
-      className={cn("rounded-2xl border bg-card", className)}
+      data-open={String(open)}
+      className={cn("t-acc rounded-2xl border bg-card", className)}
     >
-      <CollapsibleTrigger className="flex w-full cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-left text-sm font-medium">
+      <CollapsibleTrigger
+        aria-expanded={open}
+        className="t-acc-head flex w-full cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-left text-sm font-medium"
+      >
         <span>{label}</span>
         <span className="flex items-center gap-2 text-xs text-muted-foreground">
           {!open && hint ? (
             <span className="hidden sm:inline">{hint}</span>
           ) : null}
-          <ChevronDownIcon
-            className={cn(
-              "size-4 shrink-0 transition-transform",
-              open && "rotate-180",
-            )}
-            aria-hidden="true"
-          />
+          <span className="t-acc-chevron" aria-hidden="true">
+            <ChevronDownIcon className="size-4 shrink-0" />
+          </span>
         </span>
       </CollapsibleTrigger>
-      <CollapsibleContent className="border-t px-4 pb-4 pt-3">
-        {children}
+      <CollapsibleContent forceMount className="t-acc-panel">
+        <div className="t-acc-panel-inner border-t px-4 pb-4 pt-3">
+          {children}
+        </div>
       </CollapsibleContent>
     </Collapsible>
   );
