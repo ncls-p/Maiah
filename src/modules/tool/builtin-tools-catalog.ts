@@ -59,7 +59,7 @@ export const BUILTIN_TOOL_SUMMARIES: BuiltInToolSummary[] = [
 		name: "run_code_sandbox",
 		displayName: "Code sandbox",
 		description:
-			"Run Python or Node.js in a wiped no-network sandbox with classic libraries preinstalled.",
+			"Run Python, Node.js, or Bash in a wiped no-network sandbox with document access.",
 		riskLevel: "high",
 		category: "Code",
 	},

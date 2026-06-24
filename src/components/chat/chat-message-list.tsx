@@ -284,16 +284,25 @@ type CodeSandboxFileOutput = {
 	attachment?: ChatFileAttachment | ChatImageAttachment;
 };
 
+type CodeSandboxLanguage = "python" | "node" | "bash";
+
 type CodeSandboxOutput = {
 	kind: "code_sandbox_result";
 	ok: boolean;
-	language: "python" | "node";
+	language: CodeSandboxLanguage;
 	exitCode: number | null;
 	timedOut: boolean;
 	durationMs: number;
 	stdout: string;
 	stderr: string;
 	files: CodeSandboxFileOutput[];
+};
+
+type CodeSandboxInputPreview = {
+	language: CodeSandboxLanguage | null;
+	code: string;
+	files: Array<{ path: string }>;
+	attachments: Array<{ id: string; path?: string }>;
 };
 
 function isCodeSandboxFileOutput(
@@ -354,7 +363,9 @@ function isCodeSandboxOutput(value: unknown): value is CodeSandboxOutput {
 	return (
 		record.kind === "code_sandbox_result" &&
 		typeof record.ok === "boolean" &&
-		(record.language === "python" || record.language === "node") &&
+		(record.language === "python" ||
+			record.language === "node" ||
+			record.language === "bash") &&
 		Array.isArray(record.files)
 	);
 }
@@ -378,6 +389,53 @@ function codeSandboxOutputFromUnknown(
 			return normalized ? [normalized] : [];
 		}),
 	};
+}
+
+function normalizeCodeSandboxLanguage(value: unknown): CodeSandboxLanguage | null {
+	return value === "python" || value === "node" || value === "bash" ? value : null;
+}
+
+function codeSandboxInputFromUnknown(
+	value: unknown,
+): CodeSandboxInputPreview | null {
+	if (typeof value !== "object" || value === null) return null;
+	const record = value as Record<string, unknown>;
+	if (typeof record.code !== "string") return null;
+	const files = Array.isArray(record.files)
+		? record.files.flatMap((file) => {
+				if (typeof file !== "object" || file === null) return [];
+				const fileRecord = file as Record<string, unknown>;
+				return typeof fileRecord.path === "string"
+					? [{ path: fileRecord.path }]
+					: [];
+			})
+		: [];
+	const attachments = Array.isArray(record.attachments)
+		? record.attachments.flatMap((attachment) => {
+				if (typeof attachment !== "object" || attachment === null) return [];
+				const attachmentRecord = attachment as Record<string, unknown>;
+				return typeof attachmentRecord.id === "string"
+					? [
+							{
+								id: attachmentRecord.id,
+								...(typeof attachmentRecord.path === "string"
+									? { path: attachmentRecord.path }
+									: {}),
+							},
+						]
+					: [];
+			})
+		: [];
+	return {
+		language: normalizeCodeSandboxLanguage(record.language),
+		code: record.code,
+		files,
+		attachments,
+	};
+}
+
+function isCodeSandboxToolName(toolName: string | undefined) {
+	return toolName === "run_code_sandbox" || Boolean(toolName?.endsWith("_run_code_sandbox"));
 }
 
 function htmlArtifactFromToolInput(value: unknown): HtmlArtifactOutput | null {
@@ -434,6 +492,24 @@ function extractJsonStringField(inputText: string, field: string) {
 	}
 	if (escaped) raw += "\\";
 	return decodeJsonStringFragment(raw);
+}
+
+function codeSandboxInputFromInputText(inputText: string | undefined) {
+	if (!inputText) return null;
+	try {
+		return codeSandboxInputFromUnknown(JSON.parse(inputText));
+	} catch {
+		const code = extractJsonStringField(inputText, "code");
+		if (!code) return null;
+		return {
+			language: normalizeCodeSandboxLanguage(
+				extractJsonStringField(inputText, "language"),
+			),
+			code,
+			files: [],
+			attachments: [],
+		};
+	}
 }
 
 function htmlArtifactFromInputText(inputText: string | undefined) {
@@ -2606,14 +2682,22 @@ function SandboxOutputFileCard({ file }: { file: CodeSandboxFileOutput }) {
 	);
 }
 
-function CodeSandboxResultCard({ result }: { result: CodeSandboxOutput }) {
+function CodeSandboxResultCard({
+	result,
+	input,
+}: {
+	result: CodeSandboxOutput;
+	input?: CodeSandboxInputPreview | null;
+}) {
+	const [sourceOpen, setSourceOpen] = useState(false);
+	const language = input?.language ?? result.language;
 	return (
 		<div className="overflow-hidden rounded-xl border border-border/50 bg-card text-xs shadow-sm">
 			<div className="flex items-center justify-between gap-3 border-b border-border/50 bg-muted/25 px-3 py-2.5">
 				<div>
 					<p className="font-medium text-foreground">Code sandbox</p>
 					<p className="text-[11px] text-muted-foreground">
-						{result.language} · {result.durationMs}ms ·{" "}
+						{language} · {result.durationMs}ms ·{" "}
 						{result.timedOut
 							? "timed out"
 							: result.exitCode === null
@@ -2621,18 +2705,58 @@ function CodeSandboxResultCard({ result }: { result: CodeSandboxOutput }) {
 								: `exit ${result.exitCode}`}
 					</p>
 				</div>
-				<span
-					className={cn(
-						"rounded-full px-2 py-0.5 text-[10px] font-medium",
-						result.ok
-							? "bg-success/10 text-success"
-							: "bg-destructive/10 text-destructive",
-					)}
-				>
-					{result.ok ? "Done" : "Failed"}
-				</span>
+				<div className="flex shrink-0 items-center gap-2">
+					{input?.code ? (
+						<Button
+							type={BUTTON_TYPE}
+							variant={GHOST_VARIANT}
+							size="sm"
+							className="h-7 px-2 text-[11px]"
+							onClick={() => setSourceOpen((current) => !current)}
+						>
+							Source code
+							<ChevronDownIcon
+								className={cn(
+									COMPACT_ICON_CLASS,
+									sourceOpen && "rotate-180",
+								)}
+								aria-hidden="true"
+							/>
+						</Button>
+					) : null}
+					<span
+						className={cn(
+							"rounded-full px-2 py-0.5 text-[10px] font-medium",
+							result.ok
+								? "bg-success/10 text-success"
+								: "bg-destructive/10 text-destructive",
+						)}
+					>
+						{result.ok ? "Done" : "Failed"}
+					</span>
+				</div>
 			</div>
 			<div className="space-y-3 p-3">
+				{input?.code ? (
+					<Collapsible open={sourceOpen} onOpenChange={setSourceOpen}>
+						<CollapsibleContent>
+							<div className="space-y-2 rounded-lg border border-border/50 bg-muted/20 p-2.5">
+								<div className="flex flex-wrap items-center gap-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+									<span>Executed {language} code</span>
+									{input.files.length > 0 ? (
+										<span>· {input.files.length} input file(s)</span>
+									) : null}
+									{input.attachments.length > 0 ? (
+										<span>· {input.attachments.length} attachment(s)</span>
+									) : null}
+								</div>
+								<pre className="max-h-72 overflow-auto rounded-md bg-background/70 p-2 whitespace-pre-wrap font-mono text-[11px] leading-4 text-foreground">
+									{input.code}
+								</pre>
+							</div>
+						</CollapsibleContent>
+					</Collapsible>
+				) : null}
 				{result.stdout ? (
 					<div>
 						<p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
@@ -2656,7 +2780,7 @@ function CodeSandboxResultCard({ result }: { result: CodeSandboxOutput }) {
 				{result.files.length > 0 ? (
 					<div className="space-y-2">
 						<p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-							Generated files
+							Sandbox files
 						</p>
 						{result.files.map((file) => (
 							<SandboxOutputFileCard key={file.path} file={file} />
@@ -2671,14 +2795,23 @@ function CodeSandboxResultCard({ result }: { result: CodeSandboxOutput }) {
 function LiveToolInputCard({
 	toolName,
 	inputText,
+	sandboxInput,
 }: {
 	toolName: string;
 	inputText: string;
+	sandboxInput?: CodeSandboxInputPreview | null;
 }) {
 	const visibleInputText = useMemo(() => {
 		if (inputText.length <= MAX_LIVE_TOOL_INPUT_CHARS) return inputText;
 		return `…${inputText.length - MAX_LIVE_TOOL_INPUT_CHARS} earlier characters hidden while streaming\n${inputText.slice(-MAX_LIVE_TOOL_INPUT_CHARS)}`;
 	}, [inputText]);
+	const visibleCode = useMemo(() => {
+		const code = sandboxInput?.code ?? "";
+		if (!code) return "";
+		if (code.length <= MAX_LIVE_TOOL_INPUT_CHARS) return code;
+		return `…${code.length - MAX_LIVE_TOOL_INPUT_CHARS} earlier characters hidden while streaming\n${code.slice(-MAX_LIVE_TOOL_INPUT_CHARS)}`;
+	}, [sandboxInput?.code]);
+	const displayText = visibleCode || visibleInputText;
 
 	return (
 		<div className="overflow-hidden rounded-xl border border-primary/20 bg-background text-xs shadow-sm">
@@ -2686,13 +2819,25 @@ function LiveToolInputCard({
 				<div>
 					<p className="font-medium text-foreground">{toolName}</p>
 					<p className="text-[11px] text-muted-foreground">
-						Generating interface code…
+						{sandboxInput
+							? `Writing ${sandboxInput.language ?? "sandbox"} code…`
+							: "Writing tool input…"}
 					</p>
 				</div>
 				<span className="size-2 rounded-full bg-primary/70 animate-pulse" />
 			</div>
-			<pre className="max-h-72 overflow-auto bg-muted/20 p-3 font-mono text-[11px] leading-4 text-muted-foreground">
-				{visibleInputText || "Waiting for streamed tool input…"}
+			{sandboxInput ? (
+				<div className="flex flex-wrap gap-2 border-b border-border/40 px-3 py-2 text-[10px] text-muted-foreground">
+					{sandboxInput.files.length > 0 ? (
+						<span>{sandboxInput.files.length} input file(s)</span>
+					) : null}
+					{sandboxInput.attachments.length > 0 ? (
+						<span>{sandboxInput.attachments.length} attachment(s)</span>
+					) : null}
+				</div>
+			) : null}
+			<pre className="max-h-72 overflow-auto bg-muted/20 p-3 font-mono text-[11px] leading-4 text-muted-foreground whitespace-pre-wrap">
+				{displayText || "Waiting for streamed tool input…"}
 			</pre>
 		</div>
 	);
@@ -2766,6 +2911,17 @@ const ToolPartCard = memo(function ToolPartCard({
 		() => codeSandboxOutputFromUnknown(parsed.output),
 		[parsed.output],
 	);
+	const sandboxInput = useMemo(
+		() => codeSandboxInputFromUnknown(parsed.input),
+		[parsed.input],
+	);
+	const liveSandboxInput = useMemo(
+		() =>
+			isCodeSandboxToolName(parsed.toolName)
+				? codeSandboxInputFromInputText(parsed.inputText)
+				: null,
+		[parsed.inputText, parsed.toolName],
+	);
 	const summaryText = useMemo(() => {
 		if (status === "pending") {
 			return summarizeToolInput(friendlyName, parsed.input);
@@ -2808,7 +2964,7 @@ const ToolPartCard = memo(function ToolPartCard({
 		return <ChatFileAttachmentCard attachment={fileAttachment} />;
 	}
 	if (sandboxOutput) {
-		return <CodeSandboxResultCard result={sandboxOutput} />;
+		return <CodeSandboxResultCard result={sandboxOutput} input={sandboxInput} />;
 	}
 	if (isHtmlArtifactOutput(parsed.output)) {
 		return <HtmlArtifactCard artifact={parsed.output} />;
@@ -2831,7 +2987,11 @@ const ToolPartCard = memo(function ToolPartCard({
 	}
 	if (parsed.streamingInput && parsed.inputText !== undefined) {
 		return (
-			<LiveToolInputCard toolName={friendlyName} inputText={parsed.inputText} />
+			<LiveToolInputCard
+				toolName={friendlyName}
+				inputText={parsed.inputText}
+				sandboxInput={liveSandboxInput}
+			/>
 		);
 	}
 	if (streamingInputArtifact) {

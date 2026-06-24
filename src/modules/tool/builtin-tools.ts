@@ -99,7 +99,7 @@ const htmlArtifactInputSchema = z.object({
 });
 
 const codeSandboxInputSchema = z.object({
-	language: z.enum(["python", "node"]),
+	language: z.enum(["python", "node", "bash"]),
 	code: z.string().trim().min(1).max(100_000),
 	stdin: z.string().max(100_000).optional(),
 	files: z
@@ -110,6 +110,16 @@ const codeSandboxInputSchema = z.object({
 			}),
 		)
 		.max(25)
+		.default([]),
+	attachments: z
+		.array(
+			z.object({
+				id: z.uuid(),
+				path: z.string().trim().min(1).max(260).optional(),
+				includeExtractedText: z.boolean().default(true),
+			}),
+		)
+		.max(8)
 		.default([]),
 	timeoutMs: z.number().int().min(250).max(10_000).default(5_000),
 });
@@ -759,7 +769,7 @@ export const builtInTools = [
 		name: "run_code_sandbox",
 		displayName: "Code sandbox",
 		description:
-			"Run Python or Node.js code in a wiped, no-network sandbox with classic data/science/document libraries preinstalled.",
+			"Run Python, Node.js, or Bash in a wiped, no-network sandbox with classic data/science/document libraries and safe uploaded-document access.",
 		riskLevel: "high",
 		category: "Code",
 		inputSchema: codeSandboxInputSchema,
@@ -1257,13 +1267,13 @@ const commonSchemas: Record<string, unknown> = {
 		properties: {
 			language: {
 				type: "string",
-				enum: ["python", "node"],
+				enum: ["python", "node", "bash"],
 				description: "Runtime to use for this execution.",
 			},
 			code: {
 				type: "string",
 				description:
-					"Python or Node.js code to run. Print values you want in stdout.",
+					"Python, Node.js, or Bash code to run. Print values you want in stdout.",
 			},
 			stdin: {
 				type: "string",
@@ -1281,6 +1291,31 @@ const commonSchemas: Record<string, unknown> = {
 						content: { type: "string", description: "Text file content." },
 					},
 					required: ["path", "content"],
+				},
+				default: [],
+			},
+			attachments: {
+				type: "array",
+				maxItems: 8,
+				description:
+					"Uploaded chat attachment IDs to copy into the sandbox as files. Use IDs shown in the conversation context when analyzing uploaded documents or images. Readable documents also get a .extracted.txt sidecar unless includeExtractedText is false.",
+				items: {
+					type: "object",
+					properties: {
+						id: { type: "string", format: "uuid" },
+						path: {
+							type: "string",
+							description:
+								"Optional relative path inside the sandbox, for example attachments/report.pdf.",
+						},
+						includeExtractedText: {
+							type: "boolean",
+							default: true,
+							description:
+								"Also add extracted text as <path>.extracted.txt when available.",
+						},
+					},
+					required: ["id"],
 				},
 				default: [],
 			},

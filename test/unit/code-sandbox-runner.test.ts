@@ -14,7 +14,12 @@ type SandboxResponse = {
 	stderr?: string;
 	exitCode?: number | null;
 	timedOut?: boolean;
-	files?: Array<{ path: string; textPreview?: string; modified?: boolean }>;
+	files?: Array<{
+		path: string;
+		textPreview?: string;
+		modified?: boolean;
+		size?: number;
+	}>;
 };
 
 let child: ChildProcessByStdio<null, Readable, Readable>;
@@ -118,6 +123,34 @@ describe("sandbox-runner", () => {
 			expect.objectContaining({
 				path: "result.txt",
 				textPreview: "squares=1,4,9",
+				modified: true,
+			}),
+		);
+		expect(readdirSync(runRoot)).toEqual([]);
+	});
+
+	it("runs Bash commands with binary input files", async () => {
+		const result = await requestRun({
+			language: "bash",
+			code: [
+				"wc -c < data/input.bin",
+				"printf 'bash-ok' > output.txt",
+			].join("\n"),
+			files: [
+				{
+					path: "data/input.bin",
+					contentBase64: Buffer.from([0, 1, 2, 3]).toString("base64"),
+				},
+			],
+		});
+
+		expect(result.status).toBe(200);
+		expect(result.body.ok).toBe(true);
+		expect(result.body.stdout?.trim()).toBe("4");
+		expect(result.body.files).toContainEqual(
+			expect.objectContaining({
+				path: "output.txt",
+				textPreview: "bash-ok",
 				modified: true,
 			}),
 		);

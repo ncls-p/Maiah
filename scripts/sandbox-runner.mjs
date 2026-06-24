@@ -27,13 +27,19 @@ const socketGid = Number(process.env.SANDBOX_SOCKET_GID ?? "1001");
 const canSwitchUser =
 	typeof process.getuid === "function" && process.getuid() === 0;
 const maxRequestBytes = Number(
-	process.env.SANDBOX_MAX_REQUEST_BYTES ?? 3_000_000,
+	process.env.SANDBOX_MAX_REQUEST_BYTES ?? 8_000_000,
 );
 const maxCodeChars = Number(process.env.SANDBOX_MAX_CODE_CHARS ?? 100_000);
 const maxInputFileChars = Number(
 	process.env.SANDBOX_MAX_INPUT_FILE_CHARS ?? 200_000,
 );
-const maxInputFiles = Number(process.env.SANDBOX_MAX_INPUT_FILES ?? 25);
+const maxInputFileBytes = Number(
+	process.env.SANDBOX_MAX_INPUT_FILE_BYTES ?? 1_500_000,
+);
+const maxInputTotalBytes = Number(
+	process.env.SANDBOX_MAX_INPUT_TOTAL_BYTES ?? 5_000_000,
+);
+const maxInputFiles = Number(process.env.SANDBOX_MAX_INPUT_FILES ?? 40);
 const maxStdoutBytes = Number(process.env.SANDBOX_MAX_STDOUT_BYTES ?? 64_000);
 const maxStderrBytes = Number(process.env.SANDBOX_MAX_STDERR_BYTES ?? 64_000);
 const maxFilePreviewBytes = Number(
@@ -53,6 +59,12 @@ const defaultTimeoutMs = Number(
 	process.env.SANDBOX_DEFAULT_TIMEOUT_MS ?? 5_000,
 );
 const maxTimeoutMs = Number(process.env.SANDBOX_MAX_TIMEOUT_MS ?? 10_000);
+const maxProcesses = Number(process.env.SANDBOX_MAX_PROCESSES ?? 64);
+const maxOutputFileSizeBytes = Number(
+	process.env.SANDBOX_MAX_OUTPUT_FILE_SIZE_BYTES ?? 10_000_000,
+);
+const maxCpuSeconds = Number(process.env.SANDBOX_MAX_CPU_SECONDS ?? 12);
+const canUsePrlimit = process.platform === "linux";
 
 const textExtensions = new Set([
 	".c",
@@ -126,6 +138,7 @@ function safeRelativePath(rawPath) {
 	if (
 		normalized === "main.py" ||
 		normalized === "main.mjs" ||
+		normalized === "main.sh" ||
 		normalized === "package.json" ||
 		firstSegment === "node_modules" ||
 		firstSegment === "home" ||
@@ -140,12 +153,23 @@ function isPlainObject(value) {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+function bytesFromBase64(value, filePath) {
+	const normalized = value.replace(/\s/g, "");
+	if (
+		normalized.length % 4 !== 0 ||
+		!/^[A-Za-z0-9+/]*={0,2}$/.test(normalized)
+	) {
+		throw new Error(`Input file is not valid base64: ${filePath}`);
+	}
+	return Buffer.from(normalized, "base64");
+}
+
 function validateRunPayload(payload) {
 	if (!isPlainObject(payload))
 		throw new Error("Request body must be an object.");
 	const language = payload.language;
-	if (language !== "python" && language !== "node") {
-		throw new Error("language must be 'python' or 'node'.");
+	if (language !== "python" && language !== "node" && language !== "bash") {
+		throw new Error("language must be 'python', 'node', or 'bash'.");
 	}
 	if (typeof payload.code !== "string" || !payload.code.trim()) {
 		throw new Error("code is required.");
@@ -161,14 +185,28 @@ function validateRunPayload(payload) {
 	if (files.length > maxInputFiles) {
 		throw new Error(`Too many input files. Maximum is ${maxInputFiles}.`);
 	}
+	let totalInputBytes = 0;
 	const normalizedFiles = files.map((file) => {
 		if (!isPlainObject(file)) throw new Error("Each file must be an object.");
 		const filePath = safeRelativePath(file.path);
-		const content = typeof file.content === "string" ? file.content : "";
-		if (content.length > maxInputFileChars) {
+		const hasBase64 = typeof file.contentBase64 === "string";
+		const textContent = typeof file.content === "string" ? file.content : "";
+		if (!hasBase64 && textContent.length > maxInputFileChars) {
+			throw new Error(`Input text file is too large: ${filePath}`);
+		}
+		const bytes = hasBase64
+			? bytesFromBase64(file.contentBase64, filePath)
+			: Buffer.from(textContent, "utf8");
+		if (bytes.byteLength > maxInputFileBytes) {
 			throw new Error(`Input file is too large: ${filePath}`);
 		}
-		return { path: filePath, content };
+		totalInputBytes += bytes.byteLength;
+		if (totalInputBytes > maxInputTotalBytes) {
+			throw new Error(
+				`Input files are too large. Maximum total is ${maxInputTotalBytes} bytes.`,
+			);
+		}
+		return { path: filePath, bytes };
 	});
 	return {
 		language,
@@ -195,7 +233,7 @@ async function readJsonBody(request) {
 	return validateRunPayload(JSON.parse(raw || "{}"));
 }
 
-function hashText(value) {
+function hashBytes(value) {
 	return createHash("sha256").update(value).digest("hex");
 }
 
@@ -207,11 +245,11 @@ async function writeInputFiles(workdir, files) {
 			throw new Error("Path traversal is not allowed.");
 		}
 		await mkdir(path.dirname(target), { recursive: true });
-		await writeFile(target, file.content, "utf8");
+		await writeFile(target, file.bytes);
 		if (canSwitchUser) {
 			await chown(target, sandboxUid, sandboxGid).catch(() => undefined);
 		}
-		hashes.set(file.path, hashText(file.content));
+		hashes.set(file.path, hashBytes(file.bytes));
 	}
 	return hashes;
 }
@@ -247,10 +285,35 @@ function commandForLanguage(language) {
 			entryFile: "main.py",
 		};
 	}
+	if (language === "bash") {
+		return {
+			command: "bash",
+			args: ["--noprofile", "--norc", "-e", "-u", "-o", "pipefail", "main.sh"],
+			entryFile: "main.sh",
+		};
+	}
 	return {
 		command: process.execPath,
 		args: ["--no-warnings", "main.mjs"],
 		entryFile: "main.mjs",
+	};
+}
+
+function executionCommandForLanguage(language) {
+	const base = commandForLanguage(language);
+	const limitArgs = [];
+	if (canSwitchUser && maxProcesses > 0) {
+		limitArgs.push(`--nproc=${Math.floor(maxProcesses)}`);
+	}
+	if (maxOutputFileSizeBytes > 0) {
+		limitArgs.push(`--fsize=${Math.floor(maxOutputFileSizeBytes)}`);
+	}
+	if (maxCpuSeconds > 0) limitArgs.push(`--cpu=${Math.floor(maxCpuSeconds)}`);
+	if (!canUsePrlimit || limitArgs.length === 0) return base;
+	return {
+		...base,
+		command: "prlimit",
+		args: [...limitArgs, "--", base.command, ...base.args],
 	};
 }
 
@@ -279,7 +342,9 @@ async function prepareRun(input) {
 	const source =
 		input.language === "node"
 			? `${nodePrelude()}\n${input.code}\n`
-			: `${input.code}\n`;
+			: input.language === "bash"
+				? `set -euo pipefail\n${input.code}\n`
+				: `${input.code}\n`;
 	await writeFile(path.join(workdir, entryFile), source, "utf8");
 	if (input.language === "node") {
 		await writeFile(
@@ -299,7 +364,7 @@ async function prepareRun(input) {
 }
 
 function executeProcess(input, workdir) {
-	const { command, args } = commandForLanguage(input.language);
+	const { command, args } = executionCommandForLanguage(input.language);
 	const startedAt = Date.now();
 	return new Promise((resolve) => {
 		let stdout = { buffer: Buffer.alloc(0), truncated: false };
@@ -411,6 +476,7 @@ async function collectFiles(root, inputHashes) {
 			if (
 				entry.name === "main.py" ||
 				entry.name === "main.mjs" ||
+				entry.name === "main.sh" ||
 				entry.name === "package.json"
 			)
 				continue;

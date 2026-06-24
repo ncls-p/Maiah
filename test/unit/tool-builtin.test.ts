@@ -66,6 +66,23 @@ describe("built-in tool registry", () => {
 		expect(webSearch!.riskLevel).toBe("medium");
 	});
 
+	it("supports Bash and attachment references in the code sandbox schema", () => {
+		const sandbox = getBuiltInToolByName("run_code_sandbox");
+		expect(sandbox).not.toBeNull();
+		expect(
+			sandbox!.inputSchema.safeParse({
+				language: "bash",
+				code: "echo ok",
+				attachments: [
+					{
+						id: "00000000-0000-4000-8000-000000000001",
+						path: "attachments/input.txt",
+					},
+				],
+			}).success,
+		).toBe(true);
+	});
+
 	it("returns null for unknown tool name", () => {
 		expect(getBuiltInToolByName("nonexistent-tool")).toBeNull();
 	});

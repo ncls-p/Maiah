@@ -5,14 +5,24 @@ import path from "node:path";
 import { env } from "@/lib/env";
 import {
 	createChatAttachment,
+	getChatAttachmentBytes,
+	getChatAttachmentExtractedText,
+	isChatFileAttachment,
 	type ChatAttachment,
 } from "@/modules/chat/attachments";
 
-type CodeSandboxLanguage = "python" | "node";
+type CodeSandboxLanguage = "python" | "node" | "bash";
 
 type CodeSandboxInputFile = {
 	path: string;
-	content: string;
+	content?: string;
+	contentBase64?: string;
+};
+
+type CodeSandboxAttachmentReference = {
+	id: string;
+	path?: string;
+	includeExtractedText?: boolean;
 };
 
 type CodeSandboxOutputFile = {
@@ -52,6 +62,7 @@ export type CodeSandboxRequest = {
 	code: string;
 	stdin?: string;
 	files?: CodeSandboxInputFile[];
+	attachments?: CodeSandboxAttachmentReference[];
 	timeoutMs?: number;
 };
 
@@ -67,6 +78,7 @@ const localDevSocketPath = path.resolve(
 	process.cwd(),
 	".data/sandbox-runner/sandbox.sock",
 );
+const maxSandboxAttachmentTextChars = 200_000;
 
 function absoluteSocketPath(socketPath: string) {
 	return path.isAbsolute(socketPath)
@@ -112,7 +124,11 @@ function normalizeLanguage(
 	payload: Partial<CodeSandboxResult>,
 	input: CodeSandboxRequest,
 ) {
-	if (payload.language === "python" || payload.language === "node") {
+	if (
+		payload.language === "python" ||
+		payload.language === "node" ||
+		payload.language === "bash"
+	) {
 		return payload.language;
 	}
 	return input.language;
@@ -152,6 +168,127 @@ function normalizeSandboxResponse(
 		truncated: Boolean(payload.truncated || options.responseTruncated),
 		files: Array.isArray(payload.files) ? payload.files : [],
 		error: typeof payload.error === "string" ? payload.error : undefined,
+	};
+}
+
+function failedSandboxResult(
+	input: CodeSandboxRequest,
+	message: string,
+): CodeSandboxResult {
+	return {
+		kind: "code_sandbox_result",
+		ok: false,
+		language: input.language,
+		exitCode: null,
+		signal: null,
+		timedOut: false,
+		durationMs: 0,
+		stdout: "",
+		stderr: message,
+		truncated: false,
+		files: [],
+		error: message,
+	};
+}
+
+function sanitizeAttachmentFileName(fileName: string) {
+	const baseName = path.basename(fileName.replace(/\\/g, "/")).trim();
+	const safeName = baseName
+		.replace(/[^a-zA-Z0-9._ -]/g, "_")
+		.replace(/\s+/g, " ")
+		.replace(/^\.+/, "")
+		.slice(0, 120)
+		.trim();
+	return safeName || "attachment.bin";
+}
+
+function defaultAttachmentPath(attachment: ChatAttachment) {
+	return `attachments/${sanitizeAttachmentFileName(attachment.fileName)}`;
+}
+
+function extractedTextPath(filePath: string) {
+	const parsed = path.posix.parse(filePath.replace(/\\/g, "/"));
+	const baseName = `${parsed.name || "attachment"}.extracted.txt`;
+	return path.posix.join(parsed.dir, baseName).slice(0, 260);
+}
+
+function uniqueSandboxPath(filePath: string, usedPaths: Set<string>) {
+	const normalized = filePath.trim().replace(/\\/g, "/");
+	if (!usedPaths.has(normalized)) {
+		usedPaths.add(normalized);
+		return normalized;
+	}
+	const parsed = path.posix.parse(normalized);
+	for (let index = 2; index < 100; index += 1) {
+		const candidate = path.posix.join(
+			parsed.dir,
+			`${parsed.name}-${index}${parsed.ext}`,
+		);
+		if (!usedPaths.has(candidate)) {
+			usedPaths.add(candidate);
+			return candidate;
+		}
+	}
+	throw new Error(`Too many sandbox files named ${normalized}.`);
+}
+
+function truncateSandboxInputText(text: string) {
+	if (text.length <= maxSandboxAttachmentTextChars) return text;
+	return `${text.slice(0, maxSandboxAttachmentTextChars)}\n\n[Truncated before sandbox execution: ${text.length - maxSandboxAttachmentTextChars} additional characters omitted.]`;
+}
+
+async function prepareSandboxRunnerRequest(
+	input: CodeSandboxRequest,
+	context?: CodeSandboxExecutionContext,
+): Promise<CodeSandboxRequest> {
+	const files: CodeSandboxInputFile[] = [...(input.files ?? [])];
+	const attachmentReferences = input.attachments ?? [];
+	if (attachmentReferences.length === 0) {
+		return { ...input, files };
+	}
+	if (!context) {
+		throw new Error("Sandbox attachment access requires a workspace context.");
+	}
+
+	const usedPaths = new Set(files.map((file) => file.path));
+	for (const reference of attachmentReferences) {
+		const { metadata, bytes } = await getChatAttachmentBytes({
+			attachmentId: reference.id,
+			workspaceId: context.workspaceId,
+			userId: context.userId,
+		});
+		const requestedPath = reference.path?.trim();
+		const filePath = uniqueSandboxPath(
+			requestedPath || defaultAttachmentPath(metadata),
+			usedPaths,
+		);
+		files.push({
+			path: filePath,
+			contentBase64: Buffer.from(bytes).toString("base64"),
+		});
+
+		if (
+			reference.includeExtractedText === false ||
+			!isChatFileAttachment(metadata)
+		) {
+			continue;
+		}
+		const { text } = await getChatAttachmentExtractedText({
+			attachmentId: reference.id,
+			workspaceId: context.workspaceId,
+			userId: context.userId,
+		});
+		if (!text.trim()) continue;
+		files.push({
+			path: uniqueSandboxPath(extractedTextPath(filePath), usedPaths),
+			content: truncateSandboxInputText(text),
+		});
+	}
+
+	return {
+		...input,
+		files,
+		attachments: [],
 	};
 }
 
@@ -224,7 +361,19 @@ export async function executeCodeSandbox(
 	input: CodeSandboxRequest,
 	context?: CodeSandboxExecutionContext,
 ): Promise<CodeSandboxResult> {
-	const body = JSON.stringify(input);
+	let runnerInput: CodeSandboxRequest;
+	try {
+		runnerInput = await prepareSandboxRunnerRequest(input, context);
+	} catch (error) {
+		return failedSandboxResult(
+			input,
+			error instanceof Error
+				? error.message
+				: "Failed to prepare sandbox inputs.",
+		);
+	}
+
+	const body = JSON.stringify(runnerInput);
 	const socketPath = resolveSandboxRunnerSocket();
 	return new Promise((resolve) => {
 		const request = http.request(

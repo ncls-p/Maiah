@@ -116,6 +116,24 @@ const codeWorkspaceCreateToolNames = [
 	...codeWorkspaceEditToolNames,
 ];
 
+function streamToolCallId(part: unknown) {
+	const record = part as Record<string, unknown>;
+	return typeof record.toolCallId === "string"
+		? record.toolCallId
+		: typeof record.id === "string"
+			? record.id
+			: "";
+}
+
+function streamToolInputDelta(part: unknown) {
+	const record = part as Record<string, unknown>;
+	return typeof record.delta === "string"
+		? record.delta
+		: typeof record.inputTextDelta === "string"
+			? record.inputTextDelta
+			: "";
+}
+
 function shouldEnableCodeWorkspaceCreation(content: string) {
 	const normalized = content.toLowerCase();
 	const wantsBuild =
@@ -696,6 +714,19 @@ function htmlArtifactCodeFromToolMetadata(metadata: unknown) {
 	);
 }
 
+function sandboxAttachmentPathHint(fileName: string) {
+	const baseName =
+		fileName
+			.replace(/\\/g, "/")
+			.split("/")
+			.pop()
+			?.replace(/[^a-zA-Z0-9._ -]/g, "_")
+			.replace(/^\.+/, "")
+			.trim()
+			.slice(0, 120) || "attachment.bin";
+	return `attachments/${baseName}`;
+}
+
 function codeWorkspaceContextFromValue(value: unknown) {
 	if (typeof value !== "object" || value === null) return null;
 	const record = value as Record<string, unknown>;
@@ -830,7 +861,13 @@ async function loadConversationHistory(
 							workspaceId: context.workspaceId,
 							userId: context.userId,
 						});
-						textParts.push(`Attached image: ${attachment.metadata.fileName}`);
+						textParts.push(
+							[
+								`Attached image: ${attachment.metadata.fileName}`,
+								`Attachment ID: ${imageAttachment.id}`,
+								`Sandbox path hint: ${sandboxAttachmentPathHint(imageAttachment.fileName)}`,
+							].join("\n"),
+						);
 						imageParts.push({
 							type: "image",
 							image: attachment.bytes,
@@ -854,6 +891,8 @@ async function loadConversationHistory(
 							textParts.push(
 								[
 									`Attached file: ${fileAttachment.fileName} (${fileAttachment.mimeType}, ${fileAttachment.size} bytes).`,
+									`Attachment ID: ${fileAttachment.id}`,
+									`Sandbox path hint: ${sandboxAttachmentPathHint(fileAttachment.fileName)}`,
 									fileAttachment.extractionStatus === "truncated"
 										? "The extracted text was truncated for safety."
 										: null,
@@ -865,7 +904,13 @@ async function loadConversationHistory(
 							);
 						} else {
 							textParts.push(
-								`Attached file: ${fileAttachment.fileName} (${fileAttachment.mimeType}, ${fileAttachment.size} bytes). ${fileAttachment.extractionMessage ?? "No readable text was extracted."}`,
+								[
+									`Attached file: ${fileAttachment.fileName} (${fileAttachment.mimeType}, ${fileAttachment.size} bytes).`,
+									`Attachment ID: ${fileAttachment.id}`,
+									`Sandbox path hint: ${sandboxAttachmentPathHint(fileAttachment.fileName)}`,
+									fileAttachment.extractionMessage ??
+										"No readable text was extracted.",
+								].join("\n"),
 							);
 						}
 					} catch (error) {
@@ -1384,7 +1429,7 @@ export async function POST(
 							? "When the user asks for a visual design, diagram, UI mockup, chart-like schema, or interactive demo that is not specifically a slide deck, use render_html_artifact with self-contained HTML, CSS, and optional JavaScript so it appears directly in the chat. The user can view and copy the code from the artifact card, so do not duplicate the full code in your final text unless explicitly asked."
 							: null,
 						availableToolNames.includes("run_code_sandbox")
-							? "Use run_code_sandbox when the user asks you to execute Python or Node.js, verify a calculation with code, inspect data, transform text/files, or produce computed results. The sandbox is wiped after each run, has no network, has common Python/Node libraries preinstalled, and returns stdout/stderr plus generated file previews. Generated files are persisted as downloadable chat attachments when possible; reference the returned downloadUrl or tell the user to use the generated file card instead of inventing links. Print or write the values you need returned; do not assume files persist between runs."
+							? "Use run_code_sandbox when the user asks you to execute Python, Node.js, or Bash; verify a calculation with code; inspect data; interact with uploaded documents; transform text/files; or produce computed results. The sandbox is wiped after each run, has no network, runs as an unprivileged user in a read-only container with resource limits, and returns stdout/stderr plus generated file previews. If the user uploaded a document or image and you need programmatic access to the original bytes, pass its Attachment ID in attachments, optionally with the path hint shown in context; readable documents also get a .extracted.txt sidecar in the sandbox. Generated files are persisted as downloadable chat attachments when possible; reference the returned downloadUrl or tell the user to use the generated file card instead of inventing links. Print or write the values you need returned; do not assume files persist between runs."
 							: null,
 						hasCodeWorkspaceTools
 							? "For static HTML/CSS/JS apps, keep the whole workflow in chat. If the user asks you to build a small website/app/demo from scratch, first use code_workspace_create_project with only short starter files or just file paths such as index.html, styles.css, and script.js, then fill or revise files one at a time with code_workspace_write_file or code_workspace_replace_text. Avoid one huge create_project call containing all final code. If the user uploaded a ZIP/code workspace, use code_workspace_list_files to inspect it, code_workspace_read_file before editing, code_workspace_replace_text for targeted edits, and code_workspace_write_file only when full-file replacement is safer. These tools return a live code workspace artifact with preview and ZIP download; do not paste full files unless asked. If the user wants to publish to GitHub, use github_get_publish_status to check the current user's connected repositories or get the connect URL. For GitHub publishing, the user must choose the repository, target branch, and mode: pull_request or direct_push. Use github_publish_code_workspace only after the user explicitly confirms those choices; direct_push requires confirmDirectPush=true and can target main only if the user explicitly selected main."
@@ -1589,22 +1634,32 @@ export async function POST(
 						await appendStreamedTextPart("reasoning", part.text);
 						enqueueEvent({ type: "reasoning", delta: part.text });
 					} else if (part.type === "tool-input-start") {
-						enqueueEvent({
-							type: "tool_input_start",
-							toolCallId: part.id,
-							toolName: part.toolName,
-						});
+						const toolCallId = streamToolCallId(part);
+						if (toolCallId) {
+							enqueueEvent({
+								type: "tool_input_start",
+								toolCallId,
+								toolName: part.toolName,
+							});
+						}
 					} else if (part.type === "tool-input-delta") {
-						enqueueEvent({
-							type: "tool_input_delta",
-							toolCallId: part.id,
-							delta: part.delta,
-						});
+						const toolCallId = streamToolCallId(part);
+						const delta = streamToolInputDelta(part);
+						if (toolCallId && delta) {
+							enqueueEvent({
+								type: "tool_input_delta",
+								toolCallId,
+								delta,
+							});
+						}
 					} else if (part.type === "tool-input-end") {
-						enqueueEvent({
-							type: "tool_input_end",
-							toolCallId: part.id,
-						});
+						const toolCallId = streamToolCallId(part);
+						if (toolCallId) {
+							enqueueEvent({
+								type: "tool_input_end",
+								toolCallId,
+							});
+						}
 					} else if (part.type === "tool-call") {
 						await appendStreamedMetadataPart("tool-call", part);
 						enqueueEvent({

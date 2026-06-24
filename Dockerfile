@@ -61,6 +61,7 @@ ENV NODE_ENV=production \
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
+    bash \
     ca-certificates \
     coreutils \
     procps \
