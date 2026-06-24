@@ -9,6 +9,7 @@ import {
 	useState,
 	type SVGProps,
 } from "react";
+import { createPortal } from "react-dom";
 import {
 	BrainIcon,
 	CheckCircle2Icon,
@@ -29,7 +30,7 @@ import {
 	XCircleIcon,
 	XIcon,
 } from "lucide-react";
-import { Streamdown } from "streamdown";
+import { Streamdown, type LinkSafetyConfig, type LinkSafetyModalProps } from "streamdown";
 import { code } from "@streamdown/code";
 
 import { CitationBlock } from "@/components/chat/citation-block";
@@ -80,6 +81,72 @@ const GHOST_VARIANT = "ghost";
 const COMPACT_ICON_CLASS = "size-3";
 
 const STREAMDOWN_PLUGINS = { code };
+
+function isTrustedInternalLink(url: string) {
+	if (typeof window === "undefined") return false;
+	try {
+		const parsed = new URL(url, window.location.origin);
+		return parsed.origin === window.location.origin;
+	} catch {
+		return false;
+	}
+}
+
+function ExternalLinkSafetyModal({
+	url,
+	isOpen,
+	onClose,
+	onConfirm,
+}: LinkSafetyModalProps) {
+	if (!isOpen || typeof document === "undefined") return null;
+
+	return createPortal(
+		<div
+			className="fixed inset-0 z-[100] flex items-center justify-center bg-background/60 p-4 backdrop-blur-sm"
+			onClick={onClose}
+		>
+			<div
+				role="dialog"
+				aria-modal="true"
+				aria-labelledby="external-link-title"
+				className="w-full max-w-md rounded-2xl border bg-card p-5 text-sm shadow-2xl"
+				onClick={(event) => event.stopPropagation()}
+			>
+				<h2 id="external-link-title" className="text-base font-semibold text-foreground">
+					Open external link?
+				</h2>
+				<p className="mt-2 text-muted-foreground">
+					You&apos;re about to visit an external website.
+				</p>
+				<p className="mt-3 break-all rounded-lg bg-muted/50 p-2 font-mono text-xs text-muted-foreground">
+					{url}
+				</p>
+				<div className="mt-5 flex flex-wrap justify-end gap-2">
+					<Button type={BUTTON_TYPE} variant={GHOST_VARIANT} onClick={onClose}>
+						Cancel
+					</Button>
+					<Button
+						type={BUTTON_TYPE}
+						variant={OUTLINE_VARIANT}
+						onClick={() => void navigator.clipboard.writeText(url)}
+					>
+						Copy link
+					</Button>
+					<Button type={BUTTON_TYPE} onClick={onConfirm}>
+						Open link
+					</Button>
+				</div>
+			</div>
+		</div>,
+		document.body,
+	);
+}
+
+const STREAMDOWN_LINK_SAFETY: LinkSafetyConfig = {
+	enabled: true,
+	onLinkCheck: isTrustedInternalLink,
+	renderModal: (props) => <ExternalLinkSafetyModal {...props} />,
+};
 
 function GithubIcon(props: SVGProps<SVGSVGElement>) {
 	return (
@@ -3239,6 +3306,7 @@ function ThinkingPart({
 				{content ? (
 					<Streamdown
 						plugins={STREAMDOWN_PLUGINS}
+						linkSafety={STREAMDOWN_LINK_SAFETY}
 						className="border-t border-border/50 bg-background/40 px-3 py-2.5 text-xs leading-5 text-muted-foreground"
 					>
 						{content}
@@ -3466,6 +3534,7 @@ const MessageContent = memo(function MessageContent({
 						<Streamdown
 							key={`${message.id}-${part.type}-${partIndex}`}
 							plugins={STREAMDOWN_PLUGINS}
+							linkSafety={STREAMDOWN_LINK_SAFETY}
 							className="streaming-markdown text-sm"
 						>
 							{part.content}
@@ -3476,6 +3545,7 @@ const MessageContent = memo(function MessageContent({
 				content ? (
 					<Streamdown
 						plugins={STREAMDOWN_PLUGINS}
+						linkSafety={STREAMDOWN_LINK_SAFETY}
 						className="streaming-markdown text-sm"
 					>
 						{content}
