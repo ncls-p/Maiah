@@ -151,6 +151,7 @@ export default function KnowledgePage() {
 			toast.error(
 				error instanceof Error ? error.message : t("errorLoadAgents"),
 			);
+			return;
 		} finally {
 			setLoadingAttachAgents(false);
 		}
@@ -188,6 +189,7 @@ export default function KnowledgePage() {
 			toast.error(
 				error instanceof Error ? error.message : t("errorAttachAgent"),
 			);
+			return;
 		} finally {
 			setAttachingAgentId(null);
 		}
@@ -245,6 +247,7 @@ export default function KnowledgePage() {
 					toast.error(
 						error instanceof Error ? error.message : "Failed to load",
 					);
+				return;
 			} finally {
 				if (!cancelled) setLoading(false);
 			}
@@ -266,6 +269,7 @@ export default function KnowledgePage() {
 					toast.error(
 						error instanceof Error ? error.message : "Failed to load documents",
 					);
+				return;
 			}
 		}
 		void run();
@@ -289,22 +293,27 @@ export default function KnowledgePage() {
 	async function createBase() {
 		if (!canManageKnowledgeBases || !workspaceId || !baseForm.name.trim())
 			return;
-		const res = await fetch("/api/workspace/knowledge-bases", {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({
-				workspaceId,
-				name: baseForm.name.trim(),
-				description: baseForm.description.trim() || undefined,
-			}),
-		});
-		if (!res.ok) return toast.error(t("errorCreate"));
-		const created = (await res.json()) as KnowledgeBase;
-		setBaseForm({ name: "", description: "" });
-		setShowCreateDialog(false);
-		setSelectedId(created.id);
-		await loadBases();
-		toast.success(t("toastBaseCreated"));
+		try {
+			const res = await fetch("/api/workspace/knowledge-bases", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					workspaceId,
+					name: baseForm.name.trim(),
+					description: baseForm.description.trim() || undefined,
+				}),
+			});
+			if (!res.ok) return toast.error(t("errorCreate"));
+			const created = (await res.json()) as KnowledgeBase;
+			setBaseForm({ name: "", description: "" });
+			setShowCreateDialog(false);
+			setSelectedId(created.id);
+			await loadBases();
+			toast.success(t("toastBaseCreated"));
+		} catch {
+			toast.error(t("errorCreate"));
+			return;
+		}
 	}
 
 	async function ingestDocument() {
@@ -327,22 +336,27 @@ export default function KnowledgePage() {
 
 	async function updateBase() {
 		if (!canManageKnowledgeBases || !workspaceId || !editingBase) return;
-		const res = await fetch(
-			`/api/workspace/knowledge-bases/${editingBase.id}`,
-			{
-				method: "PATCH",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					workspaceId,
-					name: editBaseForm.name.trim(),
-					description: editBaseForm.description.trim() || undefined,
-				}),
-			},
-		);
-		if (!res.ok) return toast.error(t("errorUpdate"));
-		setEditingBase(null);
-		await loadBases();
-		toast.success(t("toastBaseUpdated"));
+		try {
+			const res = await fetch(
+				`/api/workspace/knowledge-bases/${editingBase.id}`,
+				{
+					method: "PATCH",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({
+						workspaceId,
+						name: editBaseForm.name.trim(),
+						description: editBaseForm.description.trim() || undefined,
+					}),
+				},
+			);
+			if (!res.ok) return toast.error(t("errorUpdate"));
+			setEditingBase(null);
+			await loadBases();
+			toast.success(t("toastBaseUpdated"));
+		} catch {
+			toast.error(t("errorUpdate"));
+			return;
+		}
 	}
 
 	async function deleteBase(baseId: string) {
@@ -360,13 +374,18 @@ export default function KnowledgePage() {
 	async function deleteDocument(documentId: string) {
 		if (!canManageKnowledgeBases || !workspaceId || !selectedId) return;
 		if (!window.confirm(t("confirmDeleteDocument"))) return;
-		const res = await fetch(
-			`/api/workspace/knowledge-bases/${selectedId}/documents/${documentId}?workspaceId=${workspaceId}`,
-			{ method: "DELETE" },
-		);
-		if (!res.ok) return toast.error(t("errorDeleteDocument"));
-		await loadDocuments();
-		toast.success(t("toastDocumentRemoved"));
+		try {
+			const res = await fetch(
+				`/api/workspace/knowledge-bases/${selectedId}/documents/${documentId}?workspaceId=${workspaceId}`,
+				{ method: "DELETE" },
+			);
+			if (!res.ok) return toast.error(t("errorDeleteDocument"));
+			await loadDocuments();
+			toast.success(t("toastDocumentRemoved"));
+		} catch {
+			toast.error(t("errorDeleteDocument"));
+			return;
+		}
 	}
 
 	if (workspaceLoading || !workspaceId) {

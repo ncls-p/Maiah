@@ -38,20 +38,38 @@ function optionalNumericField(value: number | null | undefined): string {
 	return String(value);
 }
 
-export function buildAgentFormFromVersion(
-	agent: Agent,
-	activeVersion: AgentVersionPayload | null,
-	shareTargetEmail?: string | null,
-): AgentForm {
+function buildGenerationSettings(activeVersion: AgentVersionPayload | null) {
 	const gen = activeVersion?.generationSettingsJson;
-	const responseType = activeVersion?.responseFormatJson?.type;
 
 	return {
-		name: agent.name,
-		slug: agent.slug,
-		description: agent.description ?? "",
-		systemPrompt: activeVersion?.systemPrompt ?? "",
-		promptSuggestions: agent.promptSuggestions?.join("\n") ?? "",
+		topK: optionalNumericField(gen?.topK),
+		presencePenalty: optionalNumericField(gen?.presencePenalty),
+		frequencyPenalty: optionalNumericField(gen?.frequencyPenalty),
+		seed: optionalNumericField(gen?.seed),
+		maxRetries: optionalNumericField(gen?.maxRetries),
+		stopSequences: gen?.stopSequences?.join("\n") ?? "",
+	};
+}
+
+function buildPolicySettings(activeVersion: AgentVersionPayload | null) {
+	return {
+		memoryPolicy: {
+			enabled: activeVersion?.memoryPolicyJson?.enabled ?? false,
+			maxMessages: activeVersion?.memoryPolicyJson?.maxMessages ?? 50,
+		},
+		guardrails: {
+			enabled: activeVersion?.guardrailsJson?.enabled ?? false,
+			blockedTopics: activeVersion?.guardrailsJson?.blockedTopics ?? [],
+		},
+		approvalPolicy: {
+			requireApprovalForAllTools:
+				activeVersion?.approvalPolicyJson?.requireApprovalForAllTools ?? false,
+		},
+	};
+}
+
+function buildModelSettings(activeVersion: AgentVersionPayload | null) {
+	return {
 		providerId: activeVersion?.providerId ?? "",
 		modelId: activeVersion?.modelId ?? "",
 		temperature: coerceNumericField(
@@ -68,27 +86,38 @@ export function buildAgentFormFromVersion(
 			defaultGenParams.maxToolCalls,
 		),
 		toolChoice: activeVersion?.toolChoice ?? "auto",
-		generationSettings: {
-			topK: optionalNumericField(gen?.topK),
-			presencePenalty: optionalNumericField(gen?.presencePenalty),
-			frequencyPenalty: optionalNumericField(gen?.frequencyPenalty),
-			seed: optionalNumericField(gen?.seed),
-			maxRetries: optionalNumericField(gen?.maxRetries),
-			stopSequences: gen?.stopSequences?.join("\n") ?? "",
-		},
-		responseFormat: responseType === "json_object" ? "json_object" : "text",
-		memoryPolicy: {
-			enabled: activeVersion?.memoryPolicyJson?.enabled ?? false,
-			maxMessages: activeVersion?.memoryPolicyJson?.maxMessages ?? 50,
-		},
-		guardrails: {
-			enabled: activeVersion?.guardrailsJson?.enabled ?? false,
-			blockedTopics: activeVersion?.guardrailsJson?.blockedTopics ?? [],
-		},
-		approvalPolicy: {
-			requireApprovalForAllTools:
-				activeVersion?.approvalPolicyJson?.requireApprovalForAllTools ?? false,
-		},
+		generationSettings: buildGenerationSettings(activeVersion),
+		responseFormat:
+			activeVersion?.responseFormatJson?.type === "json_object"
+				? "json_object"
+				: "text",
+	} satisfies Pick<
+		AgentForm,
+		| "providerId"
+		| "modelId"
+		| "temperature"
+		| "topP"
+		| "maxOutputTokens"
+		| "maxToolCalls"
+		| "toolChoice"
+		| "generationSettings"
+		| "responseFormat"
+	>;
+}
+
+export function buildAgentFormFromVersion(
+	agent: Agent,
+	activeVersion: AgentVersionPayload | null,
+	shareTargetEmail?: string | null,
+): AgentForm {
+	return {
+		name: agent.name,
+		slug: agent.slug,
+		description: agent.description ?? "",
+		systemPrompt: activeVersion?.systemPrompt ?? "",
+		promptSuggestions: agent.promptSuggestions?.join("\n") ?? "",
+		...buildModelSettings(activeVersion),
+		...buildPolicySettings(activeVersion),
 		sharingMode: agent.sharingMode,
 		shareTargetEmail: shareTargetEmail ?? "",
 		originalSharingMode: agent.sharingMode,

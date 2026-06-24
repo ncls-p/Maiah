@@ -1,4 +1,5 @@
 import { and, eq } from "drizzle-orm";
+import { logHandledError } from "@/lib/logger";
 import { audit } from "@/server/domain/services/audit";
 import { db } from "@/server/infrastructure/db";
 import {
@@ -55,43 +56,105 @@ export async function upsertMarketplaceDraft(input: {
 	status?: "draft" | "published";
 	publishedAt?: Date | null;
 }) {
-	const existing = await findExistingDraft(
-		input.sourceResourceType,
-		input.sourceResourceId,
-		input.userId,
-	);
+	try {
+		const existing = await findExistingDraft(
+			input.sourceResourceType,
+			input.sourceResourceId,
+			input.userId,
+		);
 
-	if (existing) {
-		const [version] = await db
-			.insert(marketplaceItemVersions)
-			.values({
-				itemId: existing.id,
-				version: input.version,
-				manifestJson: input.manifest,
-				changelog: input.changelog ?? "Updated marketplace draft",
-				compatibilityJson: { app: "ai-hub", schema: 2 },
-				securityReviewStatus: "pending",
-				createdById: input.userId,
-			})
-			.returning();
+		if (existing) {
+			const [version] = await db
+				.insert(marketplaceItemVersions)
+				.values({
+					itemId: existing.id,
+					version: input.version,
+					manifestJson: input.manifest,
+					changelog: input.changelog ?? "Updated marketplace draft",
+					compatibilityJson: { app: "ai-hub", schema: 2 },
+					securityReviewStatus: "pending",
+					createdById: input.userId,
+				})
+				.returning();
 
-		const [item] = await db
-			.update(marketplaceItems)
-			.set({
-				name: input.name,
-				description: input.description,
-				visibility: input.visibility ?? existing.visibility,
-				tagsJson: input.tags ?? existing.tagsJson,
-				status: input.status ?? existing.status,
-				publishedAt:
+			const [item] = await db
+				.update(marketplaceItems)
+				.set({
+					name: input.name,
+					description: input.description,
+					visibility: input.visibility ?? existing.visibility,
+					tagsJson: input.tags ?? existing.tagsJson,
+					status: input.status ?? existing.status,
+					publishedAt:
+						input.status === "published"
+							? (input.publishedAt ?? new Date())
+							: existing.publishedAt,
+					latestVersionId: version.id,
+					updatedAt: new Date(),
+				})
+				.where(eq(marketplaceItems.id, existing.id))
+				.returning();
+
+			await audit.emit({
+				workspaceId: input.workspaceId,
+				actorPrincipalType: "user",
+				actorPrincipalId: input.userId,
+				action:
 					input.status === "published"
-						? (input.publishedAt ?? new Date())
-						: existing.publishedAt,
-				latestVersionId: version.id,
-				updatedAt: new Date(),
-			})
-			.where(eq(marketplaceItems.id, existing.id))
-			.returning();
+						? "marketplace.published"
+						: "marketplace.draftUpdated",
+				resourceType: "marketplace_item",
+				resourceId: item.id,
+				outcome: "success",
+				metadata: { ...input.metadata, versionId: version.id, reused: true },
+			});
+
+			return { item, version, reused: true as const };
+		}
+
+		const { item, version } = await db.transaction(async (tx) => {
+			const [item] = await tx
+				.insert(marketplaceItems)
+				.values({
+					publisherUserId: input.userId,
+					publisherWorkspaceId: input.workspaceId,
+					type: input.type,
+					sourceResourceType: input.sourceResourceType,
+					sourceResourceId: input.sourceResourceId,
+					slug: `${slugify(input.name)}-${Date.now().toString(36)}`,
+					name: input.name,
+					description: input.description,
+					visibility: input.visibility ?? "private",
+					status: input.status ?? "draft",
+					pricingModel: "free",
+					tagsJson: input.tags ?? [],
+					publishedAt:
+						input.status === "published"
+							? (input.publishedAt ?? new Date())
+							: null,
+				})
+				.returning();
+
+			const [version] = await tx
+				.insert(marketplaceItemVersions)
+				.values({
+					itemId: item.id,
+					version: input.version,
+					manifestJson: input.manifest,
+					changelog: input.changelog ?? "Initial marketplace draft",
+					compatibilityJson: { app: "ai-hub", schema: 2 },
+					securityReviewStatus: "pending",
+					createdById: input.userId,
+				})
+				.returning();
+
+			await tx
+				.update(marketplaceItems)
+				.set({ latestVersionId: version.id, updatedAt: new Date() })
+				.where(eq(marketplaceItems.id, item.id));
+
+			return { item, version };
+		});
 
 		await audit.emit({
 			workspaceId: input.workspaceId,
@@ -100,73 +163,16 @@ export async function upsertMarketplaceDraft(input: {
 			action:
 				input.status === "published"
 					? "marketplace.published"
-					: "marketplace.draftUpdated",
+					: "marketplace.draftCreated",
 			resourceType: "marketplace_item",
 			resourceId: item.id,
 			outcome: "success",
-			metadata: { ...input.metadata, versionId: version.id, reused: true },
+			metadata: { ...input.metadata, versionId: version.id },
 		});
 
-		return { item, version, reused: true as const };
+		return { item, version, reused: false as const };
+	} catch (error) {
+		logHandledError("Failed to upsert marketplace draft", {}, error as Error);
+		throw error;
 	}
-
-	const { item, version } = await db.transaction(async (tx) => {
-		const [item] = await tx
-			.insert(marketplaceItems)
-			.values({
-				publisherUserId: input.userId,
-				publisherWorkspaceId: input.workspaceId,
-				type: input.type,
-				sourceResourceType: input.sourceResourceType,
-				sourceResourceId: input.sourceResourceId,
-				slug: `${slugify(input.name)}-${Date.now().toString(36)}`,
-				name: input.name,
-				description: input.description,
-				visibility: input.visibility ?? "private",
-				status: input.status ?? "draft",
-				pricingModel: "free",
-				tagsJson: input.tags ?? [],
-				publishedAt:
-					input.status === "published"
-						? (input.publishedAt ?? new Date())
-						: null,
-			})
-			.returning();
-
-		const [version] = await tx
-			.insert(marketplaceItemVersions)
-			.values({
-				itemId: item.id,
-				version: input.version,
-				manifestJson: input.manifest,
-				changelog: input.changelog ?? "Initial marketplace draft",
-				compatibilityJson: { app: "ai-hub", schema: 2 },
-				securityReviewStatus: "pending",
-				createdById: input.userId,
-			})
-			.returning();
-
-		await tx
-			.update(marketplaceItems)
-			.set({ latestVersionId: version.id, updatedAt: new Date() })
-			.where(eq(marketplaceItems.id, item.id));
-
-		return { item, version };
-	});
-
-	await audit.emit({
-		workspaceId: input.workspaceId,
-		actorPrincipalType: "user",
-		actorPrincipalId: input.userId,
-		action:
-			input.status === "published"
-				? "marketplace.published"
-				: "marketplace.draftCreated",
-		resourceType: "marketplace_item",
-		resourceId: item.id,
-		outcome: "success",
-		metadata: { ...input.metadata, versionId: version.id },
-	});
-
-	return { item, version, reused: false as const };
 }

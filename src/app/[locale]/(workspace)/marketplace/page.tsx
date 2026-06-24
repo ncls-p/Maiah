@@ -73,44 +73,51 @@ type MarketplaceFilters = {
 	sortBy: string;
 };
 
+type MarketplaceItemComparator = (
+	a: MarketplaceItem,
+	b: MarketplaceItem,
+) => number;
+
+function matchesMarketplaceSearch(item: MarketplaceItem, query: string) {
+	const searchableValues = [
+		item.name,
+		item.description,
+		...(item.tagsJson ?? []),
+	];
+	return searchableValues.some((value) => value?.toLowerCase().includes(query));
+}
+
+const MARKETPLACE_SORTERS: Record<string, MarketplaceItemComparator> = {
+	newest: (a, b) =>
+		new Date(b.publishedAt ?? b.createdAt).getTime() -
+		new Date(a.publishedAt ?? a.createdAt).getTime(),
+	downloads: (a, b) => b.totalDownloads - a.totalDownloads,
+	featured: (a, b) => {
+		if (a.isFeatured !== b.isFeatured) return a.isFeatured ? -1 : 1;
+		const orderDiff = (b.featuredOrder ?? 0) - (a.featuredOrder ?? 0);
+		return orderDiff || b.totalDownloads - a.totalDownloads;
+	},
+};
+
+function filterMarketplaceItems(
+	items: MarketplaceItem[],
+	{ search, typeFilter }: MarketplaceFilters,
+) {
+	const query = search.trim().toLowerCase();
+
+	return items.filter((item) => {
+		if (typeFilter !== "all" && item.type !== typeFilter) return false;
+		return query ? matchesMarketplaceSearch(item, query) : true;
+	});
+}
+
 function filterAndSortMarketplaceItems(
 	items: MarketplaceItem[],
 	filters: MarketplaceFilters,
 ): MarketplaceItem[] {
-	let result = items;
-
-	if (filters.typeFilter !== "all") {
-		result = result.filter((item) => item.type === filters.typeFilter);
-	}
-
-	if (filters.search.trim()) {
-		const q = filters.search.trim().toLowerCase();
-		result = result.filter(
-			(item) =>
-				item.name.toLowerCase().includes(q) ||
-				(item.description?.toLowerCase().includes(q) ?? false) ||
-				(item.tagsJson?.some((tag) => tag.toLowerCase().includes(q)) ?? false),
-		);
-	}
-
-	return [...result].sort((a, b) => {
-		switch (filters.sortBy) {
-			case "newest":
-				return (
-					new Date(b.publishedAt ?? b.createdAt).getTime() -
-					new Date(a.publishedAt ?? a.createdAt).getTime()
-				);
-			case "downloads":
-				return b.totalDownloads - a.totalDownloads;
-			case "featured":
-			default: {
-				if (a.isFeatured !== b.isFeatured) return a.isFeatured ? -1 : 1;
-				const orderDiff = (b.featuredOrder ?? 0) - (a.featuredOrder ?? 0);
-				if (orderDiff !== 0) return orderDiff;
-				return b.totalDownloads - a.totalDownloads;
-			}
-		}
-	});
+	const sorter =
+		MARKETPLACE_SORTERS[filters.sortBy] ?? MARKETPLACE_SORTERS.featured;
+	return [...filterMarketplaceItems(items, filters)].sort(sorter);
 }
 
 function MarketplaceItemCard({
@@ -337,6 +344,7 @@ export default function MarketplacePage() {
 					toast.error(
 						error instanceof Error ? error.message : t("toast.loadFailed"),
 					);
+				return;
 			})
 			.finally(() => {
 				if (!cancelled) setLoading(false);
@@ -374,31 +382,36 @@ export default function MarketplacePage() {
 	const handleInstall = useCallback(
 		async (itemId: string) => {
 			if (!workspaceId) return;
-			const res = await fetch(`/api/marketplace/items/${itemId}/install`, {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ workspaceId }),
-			});
-			if (res.ok) {
-				const payload = await res.json();
-				toast.success(t("toast.installed"));
-				if (payload.requiresCredentials) {
-					toast.info(t("toast.credentialsNeeded"), { duration: 8000 });
+			try {
+				const res = await fetch(`/api/marketplace/items/${itemId}/install`, {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ workspaceId }),
+				});
+				if (res.ok) {
+					const payload = await res.json();
+					toast.success(t("toast.installed"));
+					if (payload.requiresCredentials) {
+						toast.info(t("toast.credentialsNeeded"), { duration: 8000 });
+					}
+					if (payload.agent?.id) {
+						router.push(`/agents/${payload.agent.id}`);
+					} else if (payload.skill?.id) {
+						router.push("/tools?tab=skills");
+					} else if (payload.custom_tool?.id) {
+						router.push("/custom-tools");
+					} else if (payload.mcp_preset?.id) {
+						router.push("/tools?tab=mcp");
+					}
+				} else {
+					toast.error(
+						(await res.json().catch(() => ({}))).error ||
+							t("toast.installFailed"),
+					);
 				}
-				if (payload.agent?.id) {
-					router.push(`/agents/${payload.agent.id}`);
-				} else if (payload.skill?.id) {
-					router.push("/tools?tab=skills");
-				} else if (payload.custom_tool?.id) {
-					router.push("/custom-tools");
-				} else if (payload.mcp_preset?.id) {
-					router.push("/tools?tab=mcp");
-				}
-			} else {
-				toast.error(
-					(await res.json().catch(() => ({}))).error ||
-						t("toast.installFailed"),
-				);
+			} catch {
+				toast.error(t("toast.installFailed"));
+				return;
 			}
 		},
 		[workspaceId, router, t],
@@ -415,6 +428,7 @@ export default function MarketplacePage() {
 				toast.error(
 					error instanceof Error ? error.message : t("toast.loadFailed"),
 				);
+				return;
 			});
 	}, [fetchMarketplaceData, t]);
 

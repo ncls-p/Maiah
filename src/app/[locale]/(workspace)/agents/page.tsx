@@ -70,6 +70,8 @@ import { useWorkspace } from "@/hooks/use-workspace";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
+const ICON_SIZE_CLASS = "size-4";
+
 const AGENT_TEMPLATES = [
 	{
 		id: "support",
@@ -376,6 +378,7 @@ export default function AgentsPage() {
 			toast.error(
 				err instanceof Error ? err.message : tList("toastCreateFailed"),
 			);
+			return;
 		} finally {
 			setCreating(false);
 		}
@@ -404,6 +407,7 @@ export default function AgentsPage() {
 			toast.error(
 				err instanceof Error ? err.message : tList("toastDeleteFailed"),
 			);
+			return;
 		} finally {
 			setDeleting(false);
 		}
@@ -429,6 +433,7 @@ export default function AgentsPage() {
 			toast.error(
 				err instanceof Error ? err.message : tList("toastCloneFailed"),
 			);
+			return;
 		}
 	}
 
@@ -457,6 +462,7 @@ export default function AgentsPage() {
 			toast.error(
 				err instanceof Error ? err.message : "Une erreur est survenue",
 			);
+			return;
 		}
 	}
 
@@ -496,6 +502,7 @@ export default function AgentsPage() {
 			toast.error(
 				err instanceof Error ? err.message : tList("toastDefaultFailed"),
 			);
+			return;
 		}
 	}
 
@@ -525,7 +532,7 @@ export default function AgentsPage() {
 			actions={
 				canCreateAgent ? (
 					<Button size="sm" onClick={() => setShowCreateDialog(true)}>
-						<PlusIcon className="size-4" aria-hidden="true" />
+						<PlusIcon className={ICON_SIZE_CLASS} aria-hidden="true" />
 						{t("create")}
 					</Button>
 				) : null
@@ -562,7 +569,7 @@ export default function AgentsPage() {
 							</div>
 							{canCreateAgent ? (
 								<Button size="sm" onClick={() => setShowCreateDialog(true)}>
-									<PlusIcon className="size-4" aria-hidden="true" />
+									<PlusIcon className={ICON_SIZE_CLASS} aria-hidden="true" />
 									{t("create")}
 								</Button>
 							) : null}
@@ -640,7 +647,7 @@ export default function AgentsPage() {
 									className="mt-4"
 									onClick={() => setShowCreateDialog(true)}
 								>
-									<PlusIcon className="size-4" aria-hidden="true" />
+									<PlusIcon className={ICON_SIZE_CLASS} aria-hidden="true" />
 									{tList("emptyCta")}
 								</Button>
 							) : null}
@@ -759,7 +766,7 @@ export default function AgentsPage() {
 													className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
 													aria-label={tList("agentActions")}
 												>
-													<MoreHorizontal className="size-4" />
+													<MoreHorizontal className={ICON_SIZE_CLASS} />
 												</Button>
 											</DropdownMenuTrigger>
 											<DropdownMenuContent align="end">
@@ -772,27 +779,27 @@ export default function AgentsPage() {
 														)
 													}
 												>
-													<MessageCircleIcon className="size-4" />
+													<MessageCircleIcon className={ICON_SIZE_CLASS} />
 													{isReady ? tCommon("chatNow") : tChat("finishSetup")}
 												</DropdownMenuItem>
 												<DropdownMenuItem
 													onClick={() => router.push(`/agents/${agent.id}`)}
 												>
-													<PencilIcon className="size-4" />
+													<PencilIcon className={ICON_SIZE_CLASS} />
 													{agent.canEdit ? t("configure") : tList("view")}
 												</DropdownMenuItem>
 												{agent.canClone !== false ? (
 													<DropdownMenuItem
 														onClick={() => void cloneAgent(agent)}
 													>
-														<CopyIcon className="size-4" />
+														<CopyIcon className={ICON_SIZE_CLASS} />
 														{tList("clone")}
 													</DropdownMenuItem>
 												) : null}
 												<DropdownMenuItem
 													onClick={() => void setDefaultAgent("user", agent.id)}
 												>
-													<StarIcon className="size-4" />
+													<StarIcon className={ICON_SIZE_CLASS} />
 													{isUserDefault
 														? tList("myDefaultCurrent")
 														: tList("setMyDefault")}
@@ -808,7 +815,7 @@ export default function AgentsPage() {
 															})
 														}
 													>
-														<Share2 className="size-4" />
+														<Share2 className={ICON_SIZE_CLASS} />
 														{tShare("action")}
 													</DropdownMenuItem>
 												) : null}
@@ -816,7 +823,7 @@ export default function AgentsPage() {
 													<DropdownMenuItem
 														onClick={() => void publishAgent(agent)}
 													>
-														<Store className="size-4" />
+														<Store className={ICON_SIZE_CLASS} />
 														{tShare("publish")}
 													</DropdownMenuItem>
 												) : null}
@@ -827,7 +834,7 @@ export default function AgentsPage() {
 															variant="destructive"
 															onClick={() => setDeleteAgentId(agent.id)}
 														>
-															<Trash2Icon className="size-4" />
+															<Trash2Icon className={ICON_SIZE_CLASS} />
 															{t("configurePage.delete")}
 														</DropdownMenuItem>
 													</>

@@ -15,6 +15,80 @@ import {
 	type AuditEvent,
 } from "./audit-dashboard";
 
+type AuditFilters = {
+	action: string;
+	outcome: string;
+	from: string;
+	to: string;
+};
+
+type LoadAuditEventsInput = AuditFilters & {
+	workspaceId: string;
+};
+
+function auditFiltersFromState(input: {
+	actionFilter: string;
+	outcomeFilter: string;
+	fromDate: string;
+	toDate: string;
+}) {
+	return {
+		action: input.actionFilter,
+		outcome: input.outcomeFilter,
+		from: input.fromDate,
+		to: input.toDate,
+	} satisfies AuditFilters;
+}
+
+function buildAuditQuery({
+	workspaceId,
+	action,
+	outcome,
+	from,
+	to,
+}: LoadAuditEventsInput) {
+	const params = new URLSearchParams({ workspaceId, limit: "100" });
+	if (action.trim()) params.set("action", action.trim());
+	if (outcome !== "all") params.set("outcome", outcome);
+	if (from) params.set("from", new Date(from).toISOString());
+	if (to) params.set("to", new Date(`${to}T23:59:59`).toISOString());
+	return params.toString();
+}
+
+async function fetchAuditEvents(input: LoadAuditEventsInput) {
+	const res = await fetch(`/api/workspace/audit?${buildAuditQuery(input)}`);
+	if (!res.ok) throw new Error("Failed to load audit log");
+	return (await res.json()) as AuditEvent[];
+}
+
+function csvEscape(value: unknown) {
+	return `"${String(value).replace(/"/g, '""')}"`;
+}
+
+function downloadAuditCsv(events: AuditEvent[], workspaceId: string) {
+	const header = ["createdAt", "action", "resourceType", "outcome", "actor"];
+	const rows = events.map((event) =>
+		[
+			event.createdAt,
+			event.action,
+			event.resourceType ?? "",
+			event.outcome,
+			event.actorName ?? event.actorEmail ?? event.actorPrincipalId ?? "",
+		]
+			.map(csvEscape)
+			.join(","),
+	);
+	const blob = new Blob([[header.join(","), ...rows].join("\n")], {
+		type: "text/csv;charset=utf-8;",
+	});
+	const url = URL.createObjectURL(blob);
+	const link = document.createElement("a");
+	link.href = url;
+	link.download = `audit-${workspaceId.slice(0, 8)}.csv`;
+	link.click();
+	URL.revokeObjectURL(url);
+}
+
 function AuditPageContent() {
 	const t = useTranslations("admin");
 	const tCommon = useTranslations("common");
@@ -28,36 +102,29 @@ function AuditPageContent() {
 	const [toDate, setToDate] = useState("");
 
 	const loadEvents = useCallback(
-		async (options?: {
-			silent?: boolean;
-			action?: string;
-			outcome?: string;
-			from?: string;
-			to?: string;
-		}) => {
+		async (options?: Partial<AuditFilters> & { silent?: boolean }) => {
 			if (!workspaceId) return;
-			if (options?.silent) {
-				setRefreshing(true);
-			} else {
-				setLoading(true);
-			}
+			if (options?.silent) setRefreshing(true);
+			else setLoading(true);
+
 			try {
-				const action = options?.action ?? actionFilter;
-				const outcome = options?.outcome ?? outcomeFilter;
-				const from = options?.from ?? fromDate;
-				const to = options?.to ?? toDate;
-				const params = new URLSearchParams({ workspaceId, limit: "100" });
-				if (action.trim()) params.set("action", action.trim());
-				if (outcome !== "all") params.set("outcome", outcome);
-				if (from) params.set("from", new Date(from).toISOString());
-				if (to) params.set("to", new Date(`${to}T23:59:59`).toISOString());
-				const res = await fetch(`/api/workspace/audit?${params.toString()}`);
-				if (!res.ok) throw new Error("Failed to load audit log");
-				setEvents(await res.json());
+				setEvents(
+					await fetchAuditEvents({
+						workspaceId,
+						...auditFiltersFromState({
+							actionFilter,
+							outcomeFilter,
+							fromDate,
+							toDate,
+						}),
+						...options,
+					}),
+				);
 			} catch (error) {
 				toast.error(
 					error instanceof Error ? error.message : "Failed to load audit log",
 				);
+				return;
 			} finally {
 				setLoading(false);
 				setRefreshing(false);
@@ -67,28 +134,7 @@ function AuditPageContent() {
 	);
 
 	function exportCsv() {
-		if (!events || events.length === 0) return;
-		const header = ["createdAt", "action", "resourceType", "outcome", "actor"];
-		const rows = events.map((event) =>
-			[
-				event.createdAt,
-				event.action,
-				event.resourceType ?? "",
-				event.outcome,
-				event.actorName ?? event.actorEmail ?? event.actorPrincipalId ?? "",
-			]
-				.map((value) => `"${String(value).replace(/"/g, '""')}"`)
-				.join(","),
-		);
-		const blob = new Blob([[header.join(","), ...rows].join("\n")], {
-			type: "text/csv;charset=utf-8;",
-		});
-		const url = URL.createObjectURL(blob);
-		const link = document.createElement("a");
-		link.href = url;
-		link.download = `audit-${workspaceId?.slice(0, 8) ?? "export"}.csv`;
-		link.click();
-		URL.revokeObjectURL(url);
+		if (events?.length && workspaceId) downloadAuditCsv(events, workspaceId);
 	}
 
 	useEffect(() => {
@@ -119,12 +165,12 @@ function AuditPageContent() {
 					outcomeFilter={outcomeFilter}
 					fromDate={fromDate}
 					toDate={toDate}
-					onActionChange={setActionFilter}
-					onOutcomeChange={setOutcomeFilter}
-					onFromChange={setFromDate}
-					onToChange={setToDate}
-					onApply={() => void loadEvents({ silent: true })}
-					onReset={() => {
+					onActionChangeAction={setActionFilter}
+					onOutcomeChangeAction={setOutcomeFilter}
+					onFromChangeAction={setFromDate}
+					onToChangeAction={setToDate}
+					onApplyAction={() => void loadEvents({ silent: true })}
+					onResetAction={() => {
 						setActionFilter("");
 						setOutcomeFilter("all");
 						setFromDate("");
@@ -137,7 +183,7 @@ function AuditPageContent() {
 							to: "",
 						});
 					}}
-					onExport={exportCsv}
+					onExportAction={exportCsv}
 				/>
 			) : (
 				<AuditDashboardSkeleton />

@@ -45,37 +45,17 @@ export function useWorkspaceShell() {
 	return value;
 }
 
-export function AppShell({
-	children,
-	displayName,
-	currentUserId,
-	isAdmin,
-	sidebarNavConfig,
-}: AppShellProps) {
-	const pathname = usePathname();
-	const tNav = useTranslations("nav");
-	const tShell = useTranslations("shell");
-	const { workspaceId } = useWorkspace();
-	const isChatRoute = pathname === "/chat" || pathname.startsWith("/chat/");
-	const titleKey = getRouteTitleKey(pathname);
-	const currentTitle = titleKey === "workspace" ? tNav("chat") : tNav(titleKey);
-	const rawBreadcrumbs = getRouteBreadcrumbs(pathname);
-	const breadcrumbs = rawBreadcrumbs?.map((crumb) => ({
-		label: tNav(crumb.labelKey),
-		href: crumb.href,
-	}));
+function usePendingToolCount(workspaceId: string | null | undefined) {
 	const [pendingToolCount, setPendingToolCount] = useState(0);
-	const [permissions, setPermissions] = useState<WorkspacePermissions>(
-		DEFAULT_WORKSPACE_PERMISSIONS,
-	);
 
 	useEffect(() => {
-		if (!workspaceId) return;
+		const currentWorkspaceId = workspaceId ?? "";
+		if (!currentWorkspaceId) return;
 		let cancelled = false;
 
 		async function loadPending() {
 			if (typeof document !== "undefined" && document.hidden) return;
-			const count = await fetchPendingToolCount(workspaceId!);
+			const count = await fetchPendingToolCount(currentWorkspaceId);
 			if (!cancelled) setPendingToolCount(count);
 		}
 
@@ -92,13 +72,22 @@ export function AppShell({
 		};
 	}, [workspaceId]);
 
+	return pendingToolCount;
+}
+
+function useWorkspacePermissions(workspaceId: string | null | undefined) {
+	const [permissions, setPermissions] = useState<WorkspacePermissions>(
+		DEFAULT_WORKSPACE_PERMISSIONS,
+	);
+
 	useEffect(() => {
-		if (!workspaceId) return;
+		const currentWorkspaceId = workspaceId ?? "";
+		if (!currentWorkspaceId) return;
 		let cancelled = false;
 
 		async function loadPermissions() {
 			try {
-				const data = await fetchWorkspacePermissions(workspaceId!);
+				const data = await fetchWorkspacePermissions(currentWorkspaceId);
 				if (!cancelled) setPermissions(data);
 			} catch {
 				if (!cancelled) {
@@ -112,6 +101,37 @@ export function AppShell({
 			cancelled = true;
 		};
 	}, [workspaceId]);
+
+	return permissions;
+}
+
+function useShellRouteMetadata(pathname: string) {
+	const tNav = useTranslations("nav");
+	const titleKey = getRouteTitleKey(pathname);
+	const rawBreadcrumbs = getRouteBreadcrumbs(pathname);
+	return {
+		currentTitle: titleKey === "workspace" ? tNav("chat") : tNav(titleKey),
+		breadcrumbs: rawBreadcrumbs?.map((crumb) => ({
+			label: tNav(crumb.labelKey),
+			href: crumb.href,
+		})),
+	};
+}
+
+export function AppShell({
+	children,
+	displayName,
+	currentUserId,
+	isAdmin,
+	sidebarNavConfig,
+}: AppShellProps) {
+	const pathname = usePathname();
+	const tShell = useTranslations("shell");
+	const { workspaceId } = useWorkspace();
+	const isChatRoute = pathname === "/chat" || pathname.startsWith("/chat/");
+	const { currentTitle, breadcrumbs } = useShellRouteMetadata(pathname);
+	const pendingToolCount = usePendingToolCount(workspaceId);
+	const permissions = useWorkspacePermissions(workspaceId);
 
 	const shellValue = useMemo(
 		() => ({

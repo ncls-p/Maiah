@@ -74,6 +74,7 @@ export default function MarketplaceItemPage({
 					);
 					router.push("/marketplace");
 				}
+				return;
 			} finally {
 				if (!cancelled) setLoading(false);
 			}
@@ -85,31 +86,36 @@ export default function MarketplaceItemPage({
 
 	const handleInstall = async () => {
 		if (!workspaceId || !item) return;
-		const res = await fetch(`/api/marketplace/items/${item.id}/install`, {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ workspaceId }),
-		});
-		if (res.ok) {
-			const payload = await res.json();
-			toast.success(tDetail("toast.installed"));
-			if (payload.requiresCredentials) {
-				toast.info(tDetail("toast.credentialsNeeded"), { duration: 8000 });
+		try {
+			const res = await fetch(`/api/marketplace/items/${item.id}/install`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ workspaceId }),
+			});
+			if (res.ok) {
+				const payload = await res.json();
+				toast.success(tDetail("toast.installed"));
+				if (payload.requiresCredentials) {
+					toast.info(tDetail("toast.credentialsNeeded"), { duration: 8000 });
+				}
+				if (payload.agent?.id) {
+					router.push(`/agents/${payload.agent.id}`);
+				} else if (payload.skill?.id) {
+					router.push("/tools?tab=skills");
+				} else if (payload.custom_tool?.id) {
+					router.push("/custom-tools");
+				} else if (payload.mcp_preset?.id) {
+					router.push("/tools?tab=mcp");
+				}
+			} else {
+				toast.error(
+					(await res.json().catch(() => ({}))).error ||
+						tDetail("toast.installFailed"),
+				);
 			}
-			if (payload.agent?.id) {
-				router.push(`/agents/${payload.agent.id}`);
-			} else if (payload.skill?.id) {
-				router.push("/tools?tab=skills");
-			} else if (payload.custom_tool?.id) {
-				router.push("/custom-tools");
-			} else if (payload.mcp_preset?.id) {
-				router.push("/tools?tab=mcp");
-			}
-		} else {
-			toast.error(
-				(await res.json().catch(() => ({}))).error ||
-					tDetail("toast.installFailed"),
-			);
+		} catch {
+			toast.error(tDetail("toast.installFailed"));
+			return;
 		}
 	};
 

@@ -60,21 +60,30 @@ type ServerListProps = {
   filterStatus: ServerStatusFilter;
   expandedServers: Record<string, boolean>;
   toolSearch: Record<string, string>;
-  onSearchChange: (value: string) => void;
-  onFilterChange: (value: ServerStatusFilter) => void;
-  onAddServer: () => void;
-  onExpandedServersChange: Dispatch<SetStateAction<Record<string, boolean>>>;
-  onToolSearchChange: Dispatch<SetStateAction<Record<string, string>>>;
-  onEditServer: (server: McpServer) => void;
-  onDeleteServer: (serverId: string) => void;
-  onTestServer: (serverId: string) => void;
-  onSyncServer: (serverId: string) => void;
-  onShareServer: (server: McpServer) => void;
-  onShareTool: (server: McpServer, tool: McpTool) => void;
-  onToggleEnabled: (server: McpServer, enabled: boolean) => void;
-  onToggleServerApproval: (server: McpServer, requireApproval: boolean) => void;
-  onToggleTool: (serverId: string, toolId: string, enabled: boolean) => void;
-  onToggleToolApproval: (
+  onSearchChangeAction: (value: string) => void;
+  onFilterChangeAction: (value: ServerStatusFilter) => void;
+  onAddServerAction: () => void;
+  onExpandedServersChangeAction: Dispatch<
+    SetStateAction<Record<string, boolean>>
+  >;
+  onToolSearchChangeAction: Dispatch<SetStateAction<Record<string, string>>>;
+  onEditServerAction: (server: McpServer) => void;
+  onDeleteServerAction: (serverId: string) => void;
+  onTestServerAction: (serverId: string) => void;
+  onSyncServerAction: (serverId: string) => void;
+  onShareServerAction: (server: McpServer) => void;
+  onShareToolAction: (server: McpServer, tool: McpTool) => void;
+  onToggleEnabledAction: (server: McpServer, enabled: boolean) => void;
+  onToggleServerApprovalAction: (
+    server: McpServer,
+    requireApproval: boolean,
+  ) => void;
+  onToggleToolAction: (
+    serverId: string,
+    toolId: string,
+    enabled: boolean,
+  ) => void;
+  onToggleToolActionApproval: (
     serverId: string,
     toolId: string,
     requireApproval: boolean,
@@ -94,8 +103,8 @@ function ServerListToolbar({
   servers,
   search,
   filterStatus,
-  onSearchChange,
-  onFilterChange,
+  onSearchChangeAction,
+  onFilterChangeAction,
 }: ServerListProps) {
   return (
     <div className="flex flex-col gap-3 border-b px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
@@ -112,7 +121,7 @@ function ServerListToolbar({
             <Input
               placeholder="Filter…"
               value={search}
-              onChange={(e) => onSearchChange(e.target.value)}
+              onChange={(e) => onSearchChangeAction(e.target.value)}
               className="h-8 pl-9 text-sm"
             />
             {search ? (
@@ -120,7 +129,7 @@ function ServerListToolbar({
                 variant="ghost"
                 size="icon-sm"
                 className="absolute right-1 top-1/2 size-6 -translate-y-1/2"
-                onClick={() => onSearchChange("")}
+                onClick={() => onSearchChangeAction("")}
                 aria-label="Clear search"
               >
                 <XIcon className="size-3" aria-hidden="true" />
@@ -130,7 +139,7 @@ function ServerListToolbar({
         ) : null}
         <Select
           value={filterStatus}
-          onValueChange={(v) => onFilterChange(v as ServerStatusFilter)}
+          onValueChange={(v) => onFilterChangeAction(v as ServerStatusFilter)}
         >
           <SelectTrigger className="w-32">
             <SelectValue />
@@ -157,7 +166,7 @@ function ServerListContent(props: ServerListProps) {
   }
 
   if (props.filteredServers.length === 0 && props.servers.length === 0) {
-    return <EmptyServers onAddServer={props.onAddServer} />;
+    return <EmptyServers onAddServerAction={props.onAddServerAction} />;
   }
 
   if (props.filteredServers.length === 0) {
@@ -177,14 +186,18 @@ function ServerListContent(props: ServerListProps) {
   );
 }
 
-function EmptyServers({ onAddServer }: { onAddServer: () => void }) {
+function EmptyServers({
+  onAddServerAction,
+}: {
+  onAddServerAction: () => void;
+}) {
   return (
     <div className="px-5 py-12 text-center">
       <p className="text-sm font-medium">No MCP servers yet</p>
       <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
         Connect an MCP server to give your agents access to external tools.
       </p>
-      <Button size="sm" className="mt-4" onClick={onAddServer}>
+      <Button size="sm" className="mt-4" onClick={onAddServerAction}>
         <PlusIcon className="size-4" aria-hidden="true" />
         Add first server
       </Button>
@@ -213,7 +226,7 @@ function ServerItem({
     <Collapsible
       open={isExpanded}
       onOpenChange={(open) =>
-        props.onExpandedServersChange((current) => ({
+        props.onExpandedServersChangeAction((current) => ({
           ...current,
           [server.id]: open,
         }))
@@ -248,13 +261,13 @@ function ServerHeader({
   server,
   tools,
   isExpanded,
-  onEditServer,
-  onDeleteServer,
-  onTestServer,
-  onSyncServer,
-  onShareServer,
-  onToggleEnabled,
-  onToggleServerApproval,
+  onEditServerAction,
+  onDeleteServerAction,
+  onTestServerAction,
+  onSyncServerAction,
+  onShareServerAction,
+  onToggleEnabledAction,
+  onToggleServerApprovalAction,
 }: ServerListProps & {
   server: McpServer;
   tools: McpTool[];
@@ -276,16 +289,16 @@ function ServerHeader({
         <ServerBadges server={server} />
         <DesktopServerToggles
           server={server}
-          onToggleEnabled={onToggleEnabled}
-          onToggleServerApproval={onToggleServerApproval}
+          onToggleEnabledAction={onToggleEnabledAction}
+          onToggleServerApprovalAction={onToggleServerApprovalAction}
         />
         <ServerActions
           server={server}
-          onEditServer={onEditServer}
-          onDeleteServer={onDeleteServer}
-          onTestServer={onTestServer}
-          onSyncServer={onSyncServer}
-          onShareServer={onShareServer}
+          onEditServerAction={onEditServerAction}
+          onDeleteServerAction={onDeleteServerAction}
+          onTestServerAction={onTestServerAction}
+          onSyncServerAction={onSyncServerAction}
+          onShareServerAction={onShareServerAction}
         />
         <ChevronDownIcon
           className={cn(
@@ -355,9 +368,12 @@ function ServerBadges({ server }: { server: McpServer }) {
 
 function DesktopServerToggles({
   server,
-  onToggleEnabled,
-  onToggleServerApproval,
-}: Pick<ServerListProps, "onToggleEnabled" | "onToggleServerApproval"> & {
+  onToggleEnabledAction,
+  onToggleServerApprovalAction,
+}: Pick<
+  ServerListProps,
+  "onToggleEnabledAction" | "onToggleServerApprovalAction"
+> & {
   server: McpServer;
 }) {
   return (
@@ -369,13 +385,15 @@ function DesktopServerToggles({
         label="Enabled"
         ariaLabel={`Enable ${server.name}`}
         checked={server.enabled}
-        onCheckedChange={(checked) => onToggleEnabled(server, checked)}
+        onCheckedChange={(checked) => onToggleEnabledAction(server, checked)}
       />
       <LabeledSwitch
         label="Approval"
         ariaLabel={`Require approval for ${server.name}`}
         checked={server.requireApproval}
-        onCheckedChange={(checked) => onToggleServerApproval(server, checked)}
+        onCheckedChange={(checked) =>
+          onToggleServerApprovalAction(server, checked)
+        }
       />
     </div>
   );
@@ -383,8 +401,8 @@ function DesktopServerToggles({
 
 function MobileServerToggles({
   server,
-  onToggleEnabled,
-  onToggleServerApproval,
+  onToggleEnabledAction,
+  onToggleServerApprovalAction,
 }: ServerListProps & { server: McpServer }) {
   return (
     <div className="flex items-center gap-4 border-t border-border/30 px-4 pt-2 pb-1 sm:hidden">
@@ -392,13 +410,15 @@ function MobileServerToggles({
         label="Enabled"
         ariaLabel={`Enable ${server.name}`}
         checked={server.enabled}
-        onCheckedChange={(checked) => onToggleEnabled(server, checked)}
+        onCheckedChange={(checked) => onToggleEnabledAction(server, checked)}
       />
       <LabeledSwitch
         label="Approval"
         ariaLabel={`Require approval for ${server.name}`}
         checked={server.requireApproval}
-        onCheckedChange={(checked) => onToggleServerApproval(server, checked)}
+        onCheckedChange={(checked) =>
+          onToggleServerApprovalAction(server, checked)
+        }
       />
       {server.requireApproval ? (
         <Badge variant="secondary">
@@ -439,18 +459,18 @@ function LabeledSwitch({
 
 function ServerActions({
   server,
-  onEditServer,
-  onDeleteServer,
-  onTestServer,
-  onSyncServer,
-  onShareServer,
+  onEditServerAction,
+  onDeleteServerAction,
+  onTestServerAction,
+  onSyncServerAction,
+  onShareServerAction,
 }: Pick<
   ServerListProps,
-  | "onEditServer"
-  | "onDeleteServer"
-  | "onTestServer"
-  | "onSyncServer"
-  | "onShareServer"
+  | "onEditServerAction"
+  | "onDeleteServerAction"
+  | "onTestServerAction"
+  | "onSyncServerAction"
+  | "onShareServerAction"
 > & { server: McpServer }) {
   const tShare = useTranslations("marketplace.share");
 
@@ -468,27 +488,27 @@ function ServerActions({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => onTestServer(server.id)}>
+        <DropdownMenuItem onClick={() => onTestServerAction(server.id)}>
           <ZapIcon className="size-4" />
           Test connection
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onSyncServer(server.id)}>
+        <DropdownMenuItem onClick={() => onSyncServerAction(server.id)}>
           <RefreshCwIcon className="size-4" />
           Sync tools
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onShareServer(server)}>
+        <DropdownMenuItem onClick={() => onShareServerAction(server)}>
           <Share2 className="size-4" />
           {tShare("action")}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => onEditServer(server)}>
+        <DropdownMenuItem onClick={() => onEditServerAction(server)}>
           <PencilIcon className="size-4" />
           Edit server
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           variant="destructive"
-          onClick={() => onDeleteServer(server.id)}
+          onClick={() => onDeleteServerAction(server.id)}
         >
           <Trash2Icon className="size-4" />
           Remove server
@@ -503,10 +523,10 @@ function ToolsPanel({
   tools,
   filteredTools,
   serverToolSearch,
-  onToolSearchChange,
-  onToggleTool,
-  onToggleToolApproval,
-  onShareTool,
+  onToolSearchChangeAction,
+  onToggleToolAction,
+  onToggleToolActionApproval,
+  onShareToolAction,
 }: ServerListProps & {
   server: McpServer;
   tools: McpTool[];
@@ -520,7 +540,7 @@ function ToolsPanel({
           <ToolSearch
             serverId={server.id}
             value={serverToolSearch}
-            onToolSearchChange={onToolSearchChange}
+            onToolSearchChangeAction={onToolSearchChangeAction}
           />
         ) : null}
         <div className="max-h-96 overflow-y-auto">
@@ -537,9 +557,9 @@ function ToolsPanel({
                   key={tool.id}
                   server={server}
                   tool={tool}
-                  onToggleTool={onToggleTool}
-                  onToggleToolApproval={onToggleToolApproval}
-                  onShareTool={onShareTool}
+                  onToggleToolAction={onToggleToolAction}
+                  onToggleToolActionApproval={onToggleToolActionApproval}
+                  onShareToolAction={onShareToolAction}
                 />
               ))}
             </div>
@@ -553,11 +573,11 @@ function ToolsPanel({
 function ToolSearch({
   serverId,
   value,
-  onToolSearchChange,
+  onToolSearchChangeAction,
 }: {
   serverId: string;
   value: string;
-  onToolSearchChange: Dispatch<SetStateAction<Record<string, string>>>;
+  onToolSearchChangeAction: Dispatch<SetStateAction<Record<string, string>>>;
 }) {
   return (
     <div className="flex items-center gap-2 border-b border-border/40 px-4 py-2">
@@ -569,7 +589,7 @@ function ToolSearch({
         placeholder="Search tools…"
         value={value}
         onChange={(e) =>
-          onToolSearchChange((prev) => ({
+          onToolSearchChangeAction((prev) => ({
             ...prev,
             [serverId]: e.target.value,
           }))
@@ -582,7 +602,7 @@ function ToolSearch({
           size="icon-sm"
           className="size-6"
           onClick={() =>
-            onToolSearchChange((prev) => ({ ...prev, [serverId]: "" }))
+            onToolSearchChangeAction((prev) => ({ ...prev, [serverId]: "" }))
           }
         >
           <XIcon className="size-3" aria-hidden="true" />
@@ -595,12 +615,12 @@ function ToolSearch({
 function ToolRow({
   server,
   tool,
-  onToggleTool,
-  onToggleToolApproval,
-  onShareTool,
+  onToggleToolAction,
+  onToggleToolActionApproval,
+  onShareToolAction,
 }: Pick<
   ServerListProps,
-  "onToggleTool" | "onToggleToolApproval" | "onShareTool"
+  "onToggleToolAction" | "onToggleToolActionApproval" | "onShareToolAction"
 > & {
   server: McpServer;
   tool: McpTool;
@@ -656,7 +676,7 @@ function ToolRow({
           variant="ghost"
           className="size-7 shrink-0"
           aria-label={`${tShare("action")} ${tool.name}`}
-          onClick={() => onShareTool(server, tool)}
+          onClick={() => onShareToolAction(server, tool)}
         >
           <Share2 className="size-3.5" aria-hidden="true" />
         </Button>
@@ -666,7 +686,7 @@ function ToolRow({
           checked={isApprovalForced}
           disabled={server.requireApproval}
           onCheckedChange={(checked) =>
-            onToggleToolApproval(server.id, tool.id, checked)
+            onToggleToolActionApproval(server.id, tool.id, checked)
           }
         />
         <LabeledSwitch
@@ -674,7 +694,7 @@ function ToolRow({
           ariaLabel={`Enable ${tool.name}`}
           checked={tool.enabled}
           onCheckedChange={(checked) =>
-            onToggleTool(server.id, tool.id, checked)
+            onToggleToolAction(server.id, tool.id, checked)
           }
         />
       </div>

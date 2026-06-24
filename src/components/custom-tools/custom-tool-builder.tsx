@@ -206,6 +206,7 @@ export function CustomToolBuilder() {
         ...current,
         { role: "assistant", content: `Erreur: ${message}` },
       ]);
+      return;
     } finally {
       setBusy(false);
     }
@@ -274,6 +275,7 @@ export function CustomToolBuilder() {
       toast.error(
         error instanceof Error ? error.message : "Suppression impossible",
       );
+      return;
     }
   }
 
@@ -326,6 +328,7 @@ export function CustomToolBuilder() {
       toast.error(
         error instanceof Error ? error.message : "Unable to submit secrets",
       );
+      return;
     }
   }
 

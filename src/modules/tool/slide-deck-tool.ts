@@ -1,145 +1,149 @@
 import { z } from "zod";
 
 const hexColorSchema = z
-	.string()
-	.trim()
-	.regex(/^#?[0-9a-fA-F]{6}$/, "Use a 6-digit hex color")
-	.default("#25adc5");
+  .string()
+  .trim()
+  .regex(/^#?[0-9a-fA-F]{6}$/, "Use a 6-digit hex color")
+  .default("#25adc5");
 
 export const slideDeckInputSchema = z.object({
-	title: z.string().trim().min(1).max(140),
-	subtitle: z.string().trim().max(220).optional(),
-	theme: z.enum(["minimal", "deodis", "midnight", "warm"]).default("deodis"),
-	accentColor: hexColorSchema,
-	aspectRatio: z.enum(["16:9", "4:3"]).default("16:9"),
-	animation: z.enum(["rise", "fade", "none"]).default("rise"),
-	height: z.number().int().min(360).max(900).default(560),
-	showPrintButton: z.boolean().default(true),
-	slides: z
-		.array(
-			z.object({
-				layout: z
-					.enum(["title", "section", "bullets", "two_column", "quote", "closing"])
-					.default("bullets"),
-				kicker: z.string().trim().max(80).optional(),
-				title: z.string().trim().min(1).max(140),
-				body: z.string().trim().max(900).optional(),
-				bullets: z
-					.array(z.string().trim().min(1).max(280))
-					.max(8)
-					.default([]),
-				secondaryTitle: z.string().trim().max(100).optional(),
-				secondaryBullets: z
-					.array(z.string().trim().min(1).max(240))
-					.max(6)
-					.default([]),
-				quote: z.string().trim().max(700).optional(),
-				attribution: z.string().trim().max(120).optional(),
-				metricValue: z.string().trim().max(80).optional(),
-				metricLabel: z.string().trim().max(120).optional(),
-				imageUrl: z.url().optional(),
-				imageAlt: z.string().trim().max(160).optional(),
-				footer: z.string().trim().max(180).optional(),
-				notes: z.string().trim().max(1_200).optional(),
-			}),
-		)
-		.min(1)
-		.max(30),
+  title: z.string().trim().min(1).max(140),
+  subtitle: z.string().trim().max(220).optional(),
+  theme: z.enum(["minimal", "deodis", "midnight", "warm"]).default("deodis"),
+  accentColor: hexColorSchema,
+  aspectRatio: z.enum(["16:9", "4:3"]).default("16:9"),
+  animation: z.enum(["rise", "fade", "none"]).default("rise"),
+  height: z.number().int().min(360).max(900).default(560),
+  showPrintButton: z.boolean().default(true),
+  slides: z
+    .array(
+      z.object({
+        layout: z
+          .enum([
+            "title",
+            "section",
+            "bullets",
+            "two_column",
+            "quote",
+            "closing",
+          ])
+          .default("bullets"),
+        kicker: z.string().trim().max(80).optional(),
+        title: z.string().trim().min(1).max(140),
+        body: z.string().trim().max(900).optional(),
+        bullets: z.array(z.string().trim().min(1).max(280)).max(8).default([]),
+        secondaryTitle: z.string().trim().max(100).optional(),
+        secondaryBullets: z
+          .array(z.string().trim().min(1).max(240))
+          .max(6)
+          .default([]),
+        quote: z.string().trim().max(700).optional(),
+        attribution: z.string().trim().max(120).optional(),
+        metricValue: z.string().trim().max(80).optional(),
+        metricLabel: z.string().trim().max(120).optional(),
+        imageUrl: z.url().optional(),
+        imageAlt: z.string().trim().max(160).optional(),
+        footer: z.string().trim().max(180).optional(),
+        notes: z.string().trim().max(1_200).optional(),
+      }),
+    )
+    .min(1)
+    .max(30),
 });
 
 export type SlideDeckInput = z.infer<typeof slideDeckInputSchema>;
 
 type DeckSlide = SlideDeckInput["slides"][number];
 type SlideFrame = {
-	bullets: string[];
-	secondaryBullets: string[];
-	footer: string;
-	note: string;
+  bullets: string[];
+  secondaryBullets: string[];
+  footer: string;
+  note: string;
 };
 
 const themeClasses: Record<SlideDeckInput["theme"], string> = {
-	minimal: "theme-minimal",
-	deodis: "theme-deodis",
-	midnight: "theme-midnight",
-	warm: "theme-warm",
+  minimal: "theme-minimal",
+  deodis: "theme-deodis",
+  midnight: "theme-midnight",
+  warm: "theme-warm",
 };
 
 function escapeHtml(value: string | undefined) {
-	return (value ?? "").replace(/[&<>'"]/g, (char) => {
-		if (char === "&") return "&amp;";
-		if (char === "<") return "&lt;";
-		if (char === ">") return "&gt;";
-		if (char === "'") return "&#39;";
-		return "&quot;";
-	});
+  return (value ?? "").replace(/[&<>'"]/g, (char) => {
+    if (char === "&") return "&amp;";
+    if (char === "<") return "&lt;";
+    if (char === ">") return "&gt;";
+    if (char === "'") return "&#39;";
+    return "&quot;";
+  });
 }
 
 function escapeJsonForHtml(value: unknown) {
-	return JSON.stringify(value, null, 2).replace(/</g, "\\u003c");
+  return JSON.stringify(value, null, 2).replace(/</g, "\\u003c");
 }
 
 function normalizeAccentColor(color: string) {
-	const normalized = color.startsWith("#") ? color : `#${color}`;
-	return /^#[0-9a-fA-F]{6}$/.test(normalized) ? normalized : "#25adc5";
+  const normalized = color.startsWith("#") ? color : `#${color}`;
+  return /^#[0-9a-fA-F]{6}$/.test(normalized) ? normalized : "#25adc5";
 }
 
 function aspectRatioCss(aspectRatio: SlideDeckInput["aspectRatio"]) {
-	return aspectRatio === "4:3" ? "4 / 3" : "16 / 9";
+  return aspectRatio === "4:3" ? "4 / 3" : "16 / 9";
 }
 
 function printPageSize(aspectRatio: SlideDeckInput["aspectRatio"]) {
-	return aspectRatio === "4:3" ? "10in 7.5in" : "16in 9in";
+  return aspectRatio === "4:3" ? "10in 7.5in" : "16in 9in";
 }
 
 function renderKicker(value: string | undefined) {
-	return value ? `<p class="slide-kicker">${escapeHtml(value)}</p>` : "";
+  return value ? `<p class="slide-kicker">${escapeHtml(value)}</p>` : "";
 }
 
 function renderBody(value: string | undefined) {
-	return value ? `<p class="slide-body">${escapeHtml(value)}</p>` : "";
+  return value ? `<p class="slide-body">${escapeHtml(value)}</p>` : "";
 }
 
 function renderBullets(bullets: string[], variant = "") {
-	if (bullets.length === 0) return "";
-	const className = variant ? `slide-bullets ${variant}` : "slide-bullets";
-	return `<ul class="${className}">${bullets
-		.map(
-			(bullet, index) =>
-				`<li class="fragment" data-fragment="${index}">${escapeHtml(bullet)}</li>`,
-		)
-		.join("")}</ul>`;
+  if (bullets.length === 0) return "";
+  const className = variant ? `slide-bullets ${variant}` : "slide-bullets";
+  return `<ul class="${className}">${bullets
+    .map(
+      (bullet, index) =>
+        `<li class="fragment" data-fragment="${index}">${escapeHtml(bullet)}</li>`,
+    )
+    .join("")}</ul>`;
 }
 
 function renderMetric(input: { metricValue?: string; metricLabel?: string }) {
-	if (!input.metricValue) return "";
-	return `<div class="metric-card fragment" data-fragment="metric">
+  if (!input.metricValue) return "";
+  return `<div class="metric-card fragment" data-fragment="metric">
 		<div class="metric-value">${escapeHtml(input.metricValue)}</div>
 		${input.metricLabel ? `<div class="metric-label">${escapeHtml(input.metricLabel)}</div>` : ""}
 	</div>`;
 }
 
 function renderImage(input: { imageUrl?: string; imageAlt?: string }) {
-	if (!input.imageUrl) return "";
-	return `<figure class="slide-image fragment" data-fragment="image">
+  if (!input.imageUrl) return "";
+  return `<figure class="slide-image fragment" data-fragment="image">
 		<img src="${escapeHtml(input.imageUrl)}" alt="${escapeHtml(input.imageAlt ?? "Slide visual")}" />
 	</figure>`;
 }
 
 function createSlideFrame(slide: DeckSlide): SlideFrame {
-	return {
-		bullets: slide.bullets ?? [],
-		secondaryBullets: slide.secondaryBullets ?? [],
-		footer: slide.footer
-			? `<p class="slide-footer">${escapeHtml(slide.footer)}</p>`
-			: "",
-		note: slide.notes
-			? `<aside class="speaker-notes">${escapeHtml(slide.notes)}</aside>`
-			: "",
-	};
+  return {
+    bullets: slide.bullets ?? [],
+    secondaryBullets: slide.secondaryBullets ?? [],
+    footer: slide.footer
+      ? `<p class="slide-footer">${escapeHtml(slide.footer)}</p>`
+      : "",
+    note: slide.notes
+      ? `<aside class="speaker-notes">${escapeHtml(slide.notes)}</aside>`
+      : "",
+  };
 }
 
 function renderTitleSlide(slide: DeckSlide, frame: SlideFrame) {
-	return `<div class="slide-content title-layout">
+  return `<div class="slide-content title-layout">
 		${renderKicker(slide.kicker)}
 		<h1>${escapeHtml(slide.title)}</h1>
 		${renderBody(slide.body)}
@@ -150,11 +154,11 @@ function renderTitleSlide(slide: DeckSlide, frame: SlideFrame) {
 }
 
 function renderSectionSlide(
-	slide: DeckSlide,
-	frame: SlideFrame,
-	index: number,
+  slide: DeckSlide,
+  frame: SlideFrame,
+  index: number,
 ) {
-	return `<div class="slide-content section-layout">
+  return `<div class="slide-content section-layout">
 		${renderKicker(slide.kicker ?? `Section ${index + 1}`)}
 		<h2>${escapeHtml(slide.title)}</h2>
 		${renderBody(slide.body)}
@@ -164,8 +168,8 @@ function renderSectionSlide(
 }
 
 function renderQuoteSlide(slide: DeckSlide, frame: SlideFrame) {
-	const quote = slide.quote ?? slide.body ?? slide.title;
-	return `<div class="slide-content quote-layout">
+  const quote = slide.quote ?? slide.body ?? slide.title;
+  return `<div class="slide-content quote-layout">
 		${renderKicker(slide.kicker)}
 		<blockquote>${escapeHtml(quote)}</blockquote>
 		${slide.attribution ? `<p class="quote-attribution">${escapeHtml(slide.attribution)}</p>` : ""}
@@ -175,7 +179,7 @@ function renderQuoteSlide(slide: DeckSlide, frame: SlideFrame) {
 }
 
 function renderTwoColumnSlide(slide: DeckSlide, frame: SlideFrame) {
-	return `<div class="slide-content">
+  return `<div class="slide-content">
 		${renderKicker(slide.kicker)}
 		<h2>${escapeHtml(slide.title)}</h2>
 		<div class="two-column-grid">
@@ -196,7 +200,7 @@ function renderTwoColumnSlide(slide: DeckSlide, frame: SlideFrame) {
 }
 
 function renderClosingSlide(slide: DeckSlide, frame: SlideFrame) {
-	return `<div class="slide-content closing-layout">
+  return `<div class="slide-content closing-layout">
 		${renderKicker(slide.kicker)}
 		<h2>${escapeHtml(slide.title)}</h2>
 		${renderBody(slide.body)}
@@ -207,7 +211,7 @@ function renderClosingSlide(slide: DeckSlide, frame: SlideFrame) {
 }
 
 function renderBulletSlide(slide: DeckSlide, frame: SlideFrame) {
-	return `<div class="slide-content">
+  return `<div class="slide-content">
 		${renderKicker(slide.kicker)}
 		<h2>${escapeHtml(slide.title)}</h2>
 		${renderBody(slide.body)}
@@ -220,34 +224,37 @@ function renderBulletSlide(slide: DeckSlide, frame: SlideFrame) {
 }
 
 const slideRenderers = {
-	title: renderTitleSlide,
-	section: renderSectionSlide,
-	bullets: renderBulletSlide,
-	two_column: renderTwoColumnSlide,
-	quote: renderQuoteSlide,
-	closing: renderClosingSlide,
+  title: renderTitleSlide,
+  section: renderSectionSlide,
+  bullets: renderBulletSlide,
+  two_column: renderTwoColumnSlide,
+  quote: renderQuoteSlide,
+  closing: renderClosingSlide,
 } satisfies Record<
-	DeckSlide["layout"],
-	(slide: DeckSlide, frame: SlideFrame, index: number) => string
+  DeckSlide["layout"],
+  (slide: DeckSlide, frame: SlideFrame, index: number) => string
 >;
 
 function renderSlideContent(slide: DeckSlide, index: number) {
-	return slideRenderers[slide.layout](slide, createSlideFrame(slide), index);
+  return slideRenderers[slide.layout](slide, createSlideFrame(slide), index);
 }
 
 function renderSlides(input: SlideDeckInput) {
-	return input.slides
-		.map(
-			(slide, index) => `<section class="deck-slide layout-${slide.layout}" data-slide="${index}" aria-label="Slide ${index + 1}: ${escapeHtml(slide.title)}">
+  return input.slides
+    .map(
+      (
+        slide,
+        index,
+      ) => `<section class="deck-slide layout-${slide.layout}" data-slide="${index}" aria-label="Slide ${index + 1}: ${escapeHtml(slide.title)}">
 				<div class="slide-number">${String(index + 1).padStart(2, "0")}</div>
 				${renderSlideContent(slide, index)}
 			</section>`,
-		)
-		.join("\n");
+    )
+    .join("\n");
 }
 
 function createSlideDeckHtml(input: SlideDeckInput) {
-	return `<div class="deck-shell ${themeClasses[input.theme]}" data-deck data-animation="${input.animation}">
+  return `<div class="deck-shell ${themeClasses[input.theme]}" data-deck data-animation="${input.animation}">
 		<header class="deck-toolbar" aria-label="Presentation controls">
 			<div class="deck-meta">
 				<span>Slide deck</span>
@@ -269,8 +276,8 @@ function createSlideDeckHtml(input: SlideDeckInput) {
 }
 
 function createSlideDeckCss(input: SlideDeckInput) {
-	const accent = normalizeAccentColor(input.accentColor);
-	return `:root {
+  const accent = normalizeAccentColor(input.accentColor);
+  return `:root {
 	--deck-accent: ${accent};
 	--deck-ink: #111827;
 	--deck-muted: #6b7280;
@@ -358,7 +365,7 @@ h3 { margin: 0 0 14px; font-size: clamp(20px, 2.3vw, 30px); letter-spacing: -.03
 }
 
 function createSlideDeckJs() {
-	return `(function () {
+  return `(function () {
 	const root = document.querySelector('[data-deck]');
 	if (!root) return;
 	const slides = Array.from(root.querySelectorAll('[data-slide]'));
@@ -459,15 +466,15 @@ function createSlideDeckJs() {
 }
 
 export function createSlideDeckArtifact(input: SlideDeckInput) {
-	return {
-		kind: "html_artifact" as const,
-		title: input.title,
-		html: createSlideDeckHtml(input),
-		css: createSlideDeckCss(input),
-		js: createSlideDeckJs(),
-		height: input.height,
-		deck: input,
-		exportNotes:
-			"Use the PDF button or browser print dialog to export a static PDF. Click animations stay interactive in the HTML artifact; PDF viewers generally do not preserve JavaScript slide-step animations.",
-	};
+  return {
+    kind: "html_artifact" as const,
+    title: input.title,
+    html: createSlideDeckHtml(input),
+    css: createSlideDeckCss(input),
+    js: createSlideDeckJs(),
+    height: input.height,
+    deck: input,
+    exportNotes:
+      "Use the PDF button or browser print dialog to export a static PDF. Click animations stay interactive in the HTML artifact; PDF viewers generally do not preserve JavaScript slide-step animations.",
+  };
 }

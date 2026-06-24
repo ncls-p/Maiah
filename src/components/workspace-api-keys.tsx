@@ -32,6 +32,77 @@ type ApiKeyRow = {
 	lastUsedAt: string | null;
 };
 
+type ApiKeysTranslator = ReturnType<typeof useTranslations<"admin.apiKeys">>;
+
+async function fetchApiKeys(workspaceId: string, t: ApiKeysTranslator) {
+	const res = await fetch(`/api/workspace/api-keys?workspaceId=${workspaceId}`);
+	if (!res.ok) throw new Error(t("loadFailed"));
+	return ((await res.json()) as { keys: ApiKeyRow[] }).keys;
+}
+
+async function createApiKey(
+	workspaceId: string,
+	name: string,
+	t: ApiKeysTranslator,
+) {
+	const res = await fetch("/api/workspace/api-keys", {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({ workspaceId, name: name.trim() }),
+	});
+	if (!res.ok) throw new Error((await res.json()).error || t("createFailed"));
+	return ((await res.json()) as { rawKey: string }).rawKey;
+}
+
+async function revokeApiKey(workspaceId: string, keyId: string) {
+	return fetch(`/api/workspace/api-keys/${keyId}?workspaceId=${workspaceId}`, {
+		method: "DELETE",
+	});
+}
+
+function ApiKeyListItem({
+	apiKey,
+	locale,
+	onRevokeAction,
+	t,
+}: {
+	apiKey: ApiKeyRow;
+	locale: string;
+	onRevokeAction: (keyId: string) => void;
+	t: ApiKeysTranslator;
+}) {
+	const lastUsedLabel = apiKey.lastUsedAt
+		? t("lastUsed", {
+				date: new Intl.DateTimeFormat(locale, {
+					dateStyle: "medium",
+					timeStyle: "short",
+				}).format(new Date(apiKey.lastUsedAt)),
+			})
+		: t("neverUsed");
+
+	return (
+		<li className="flex items-center justify-between gap-3 px-4 py-3">
+			<div>
+				<p className="font-medium">{apiKey.name}</p>
+				<p className="text-xs text-muted-foreground">
+					{apiKey.keyPrefix}… · {lastUsedLabel}
+				</p>
+			</div>
+			<div className="flex items-center gap-2">
+				<Badge variant="outline">{t("active")}</Badge>
+				<Button
+					size="icon-sm"
+					variant="ghost"
+					onClick={() => onRevokeAction(apiKey.id)}
+					aria-label={t("revokeLabel", { name: apiKey.name })}
+				>
+					<Trash2Icon aria-hidden="true" />
+				</Button>
+			</div>
+		</li>
+	);
+}
+
 export function WorkspaceApiKeys() {
 	const t = useTranslations("admin.apiKeys");
 	const locale = useLocale();
@@ -44,12 +115,7 @@ export function WorkspaceApiKeys() {
 
 	const load = useCallback(async () => {
 		if (!workspaceId) return;
-		const res = await fetch(
-			`/api/workspace/api-keys?workspaceId=${workspaceId}`,
-		);
-		if (!res.ok) throw new Error(t("loadFailed"));
-		const data = (await res.json()) as { keys: ApiKeyRow[] };
-		setKeys(data.keys);
+		setKeys(await fetchApiKeys(workspaceId, t));
 	}, [t, workspaceId]);
 
 	useEffect(() => {
@@ -66,20 +132,13 @@ export function WorkspaceApiKeys() {
 		if (!workspaceId || !name.trim()) return;
 		setCreating(true);
 		try {
-			const res = await fetch("/api/workspace/api-keys", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ workspaceId, name: name.trim() }),
-			});
-			if (!res.ok)
-				throw new Error((await res.json()).error || t("createFailed"));
-			const data = (await res.json()) as { rawKey: string };
-			setRevealedKey(data.rawKey);
+			setRevealedKey(await createApiKey(workspaceId, name, t));
 			setName("");
 			await load();
 			toast.success(t("created"));
 		} catch (error) {
 			toast.error(error instanceof Error ? error.message : t("createFailed"));
+			return;
 		} finally {
 			setCreating(false);
 		}
@@ -87,10 +146,7 @@ export function WorkspaceApiKeys() {
 
 	async function revokeKey(keyId: string) {
 		if (!workspaceId) return;
-		const res = await fetch(
-			`/api/workspace/api-keys/${keyId}?workspaceId=${workspaceId}`,
-			{ method: "DELETE" },
-		);
+		const res = await revokeApiKey(workspaceId, keyId);
 		if (!res.ok) {
 			toast.error(t("revokeFailed"));
 			return;
@@ -175,36 +231,13 @@ export function WorkspaceApiKeys() {
 				) : (
 					<ul className="divide-y divide-border/70 rounded-xl border">
 						{keys.map((key) => (
-							<li
+							<ApiKeyListItem
 								key={key.id}
-								className="flex items-center justify-between gap-3 px-4 py-3"
-							>
-								<div>
-									<p className="font-medium">{key.name}</p>
-									<p className="text-xs text-muted-foreground">
-										{key.keyPrefix}… ·{" "}
-										{key.lastUsedAt
-											? t("lastUsed", {
-													date: new Intl.DateTimeFormat(locale, {
-														dateStyle: "medium",
-														timeStyle: "short",
-													}).format(new Date(key.lastUsedAt)),
-												})
-											: t("neverUsed")}
-									</p>
-								</div>
-								<div className="flex items-center gap-2">
-									<Badge variant="outline">{t("active")}</Badge>
-									<Button
-										size="icon-sm"
-										variant="ghost"
-										onClick={() => void revokeKey(key.id)}
-										aria-label={t("revokeLabel", { name: key.name })}
-									>
-										<Trash2Icon aria-hidden="true" />
-									</Button>
-								</div>
-							</li>
+								apiKey={key}
+								locale={locale}
+								t={t}
+								onRevokeAction={(keyId) => void revokeKey(keyId)}
+							/>
 						))}
 					</ul>
 				)}

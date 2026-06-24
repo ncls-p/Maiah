@@ -74,6 +74,7 @@ export function SidebarNavigationSettings() {
         toast.error(
           error instanceof Error ? error.message : "Unable to load settings",
         );
+        return;
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -156,6 +157,7 @@ export function SidebarNavigationSettings() {
       toast.error(
         error instanceof Error ? error.message : "Unable to save settings",
       );
+      return;
     } finally {
       setSaving(false);
     }
@@ -179,6 +181,7 @@ export function SidebarNavigationSettings() {
       toast.error(
         error instanceof Error ? error.message : "Unable to reset settings",
       );
+      return;
     } finally {
       setResetting(false);
     }

@@ -41,6 +41,9 @@ import { useWorkspace } from "@/hooks/use-workspace";
 import { fetchJson } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 
+const BUTTON_TYPE = "button";
+const OUTLINE_VARIANT = "outline";
+
 const steps = [
 	{ id: "provider", icon: PlugZapIcon },
 	{ id: "model", icon: CheckCircle2Icon },
@@ -143,24 +146,26 @@ function ModelMetadata({
 	return (
 		<div className="mt-2 flex flex-wrap gap-1.5">
 			{enabled === false ? (
-				<Badge variant="outline">{t("disabled")}</Badge>
+				<Badge variant={OUTLINE_VARIANT}>{t("disabled")}</Badge>
 			) : null}
-			{hostedBy ? <Badge variant="outline">{hostedBy}</Badge> : null}
+			{hostedBy ? <Badge variant={OUTLINE_VARIANT}>{hostedBy}</Badge> : null}
 			{contextWindowLabel ? (
-				<Badge variant="outline">
+				<Badge variant={OUTLINE_VARIANT}>
 					{t("context", { value: contextWindowLabel })}
 				</Badge>
 			) : null}
 			{maxOutputTokensLabel ? (
-				<Badge variant="outline">
+				<Badge variant={OUTLINE_VARIANT}>
 					{t("maxOutput", { value: maxOutputTokensLabel })}
 				</Badge>
 			) : null}
 			{inputTokenCost ? (
-				<Badge variant="outline">{t("input", { value: inputTokenCost })}</Badge>
+				<Badge variant={OUTLINE_VARIANT}>
+					{t("input", { value: inputTokenCost })}
+				</Badge>
 			) : null}
 			{outputTokenCost ? (
-				<Badge variant="outline">
+				<Badge variant={OUTLINE_VARIANT}>
 					{t("output", { value: outputTokenCost })}
 				</Badge>
 			) : null}
@@ -366,6 +371,7 @@ export function SetupWizard({
 			toast.error(
 				error instanceof Error ? error.message : t("toasts.discoverFailed"),
 			);
+			return;
 		} finally {
 			setDiscoveringModels(false);
 		}
@@ -400,6 +406,7 @@ export function SetupWizard({
 					? error.message
 					: t("toasts.providerCreateFailed"),
 			);
+			return;
 		} finally {
 			setBusy(false);
 		}
@@ -428,6 +435,7 @@ export function SetupWizard({
 					? error.message
 					: t("toasts.connectionTestFailed"),
 			);
+			return;
 		} finally {
 			setBusy(false);
 		}
@@ -465,6 +473,7 @@ export function SetupWizard({
 			toast.error(
 				error instanceof Error ? error.message : t("toasts.modelAddFailed"),
 			);
+			return;
 		} finally {
 			setBusy(false);
 		}
@@ -513,6 +522,7 @@ export function SetupWizard({
 			toast.error(
 				error instanceof Error ? error.message : t("toasts.finishFailed"),
 			);
+			return;
 		} finally {
 			setBusy(false);
 		}
@@ -641,7 +651,7 @@ export function SetupWizard({
 
 							<div className="flex flex-wrap gap-2 pt-2">
 								<Button
-									type="button"
+									type={BUTTON_TYPE}
 									onClick={() => void createProvider()}
 									disabled={busy || !providerForm.name.trim()}
 								>
@@ -654,8 +664,8 @@ export function SetupWizard({
 								</Button>
 								{providers.length > 0 ? (
 									<Button
-										type="button"
-										variant="outline"
+										type={BUTTON_TYPE}
+										variant={OUTLINE_VARIANT}
 										disabled={loadingProviders}
 										onClick={() => setStep("model")}
 									>
@@ -713,8 +723,8 @@ export function SetupWizard({
 
 							<div className="flex flex-wrap gap-2">
 								<Button
-									type="button"
-									variant="outline"
+									type={BUTTON_TYPE}
+									variant={OUTLINE_VARIANT}
 									onClick={() => void testProvider()}
 									disabled={busy || !providerId}
 								>
@@ -729,8 +739,8 @@ export function SetupWizard({
 									{t("testConnection")}
 								</Button>
 								<Button
-									type="button"
-									variant="outline"
+									type={BUTTON_TYPE}
+									variant={OUTLINE_VARIANT}
 									onClick={() => void discoverProviderModels()}
 									disabled={discoveringModels || !providerId}
 								>
@@ -745,7 +755,7 @@ export function SetupWizard({
 									{t("discoverModels")}
 								</Button>
 								<Button
-									type="button"
+									type={BUTTON_TYPE}
 									variant="ghost"
 									onClick={() => setStep("provider")}
 								>
@@ -810,7 +820,7 @@ export function SetupWizard({
 														/>
 													</div>
 													<Button
-														type="button"
+														type={BUTTON_TYPE}
 														size="sm"
 														variant={isSelected ? "secondary" : "outline"}
 														disabled={busy || isSelected}
@@ -897,8 +907,8 @@ export function SetupWizard({
 											onChange={(event) => setManualModelId(event.target.value)}
 										/>
 										<Button
-											type="button"
-											variant="outline"
+											type={BUTTON_TYPE}
+											variant={OUTLINE_VARIANT}
 											disabled={busy || !providerId || !manualModelId.trim()}
 											onClick={() => void addAndSelectModel()}
 										>
@@ -913,7 +923,7 @@ export function SetupWizard({
 							)}
 
 							<Button
-								type="button"
+								type={BUTTON_TYPE}
 								className="mt-2"
 								onClick={() => setStep("agent")}
 								disabled={!modelDbId}
@@ -984,7 +994,7 @@ export function SetupWizard({
 
 							<div className="flex flex-wrap gap-2 pt-2">
 								<Button
-									type="button"
+									type={BUTTON_TYPE}
 									onClick={() => void finishSetup()}
 									disabled={
 										busy || !modelDbId || (!agentId && !agentForm.name.trim())
@@ -1001,8 +1011,8 @@ export function SetupWizard({
 									{t("startChat")}
 								</Button>
 								<Button
-									type="button"
-									variant="outline"
+									type={BUTTON_TYPE}
+									variant={OUTLINE_VARIANT}
 									onClick={() => setStep("model")}
 								>
 									{t("back")}
@@ -1021,7 +1031,7 @@ export function SetupWizard({
 			)}
 
 			{onCancelAction && (
-				<Button type="button" variant="ghost" onClick={onCancelAction}>
+				<Button type={BUTTON_TYPE} variant="ghost" onClick={onCancelAction}>
 					{t("cancel")}
 				</Button>
 			)}

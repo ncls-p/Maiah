@@ -16,6 +16,15 @@ function CapabilityBadge({ label }: { label: string }) {
 	);
 }
 
+const MODEL_CAPABILITY_KEYS = [
+	"text",
+	"vision",
+	"tools",
+	"reasoning",
+	"embeddings",
+	"audio",
+] as const;
+
 export function ModelCapabilities({
 	capabilities,
 	contextWindow,
@@ -38,14 +47,18 @@ export function ModelCapabilities({
 	const contextLabel = formatNumber(contextWindow);
 	const maxOutLabel = formatNumber(maxOutputTokens);
 
+	const metadataItems = [
+		hostedBy,
+		contextLabel,
+		maxOutLabel,
+		inputTokenCost,
+		outputTokenCost,
+	];
+	const visibleCapabilities = MODEL_CAPABILITY_KEYS.filter((key) => caps[key]);
 	const hasAny =
 		enabled === false ||
-		hostedBy ||
-		contextLabel ||
-		maxOutLabel ||
-		inputTokenCost ||
-		outputTokenCost ||
-		Object.values(caps).some(Boolean);
+		metadataItems.some(Boolean) ||
+		visibleCapabilities.length > 0;
 
 	if (!hasAny) return null;
 
@@ -81,12 +94,9 @@ export function ModelCapabilities({
 					↘ {outputTokenCost}
 				</span>
 			) : null}
-			{caps.text ? <CapabilityBadge label="text" /> : null}
-			{caps.vision ? <CapabilityBadge label="vision" /> : null}
-			{caps.tools ? <CapabilityBadge label="tools" /> : null}
-			{caps.reasoning ? <CapabilityBadge label="reasoning" /> : null}
-			{caps.embeddings ? <CapabilityBadge label="embeddings" /> : null}
-			{caps.audio ? <CapabilityBadge label="audio" /> : null}
+			{visibleCapabilities.map((capability) => (
+				<CapabilityBadge key={capability} label={capability} />
+			))}
 		</div>
 	);
 }

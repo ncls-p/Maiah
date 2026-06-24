@@ -205,6 +205,7 @@ export function ResourceShareDialog({
         toast.error(
           error instanceof Error ? error.message : t("toast.loadFailed"),
         );
+        return;
       } finally {
         setPreviewLoading(false);
       }
@@ -412,6 +413,7 @@ export function ResourceShareDialog({
       toast.error(
         error instanceof Error ? error.message : t("toast.publishFailed"),
       );
+      return;
     } finally {
       setBusy(false);
     }
@@ -437,6 +439,7 @@ export function ResourceShareDialog({
       toast.error(
         error instanceof Error ? error.message : t("toast.shareFailed"),
       );
+      return;
     } finally {
       setBusy(false);
     }

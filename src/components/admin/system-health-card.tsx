@@ -16,8 +16,7 @@ type HealthResponse = {
 	database?: string;
 };
 
-export function SystemHealthCard() {
-	const t = useTranslations("admin.settingsPage.health");
+function useSystemHealth() {
 	const [health, setHealth] = useState<HealthResponse | null>(null);
 	const [pendingReviews, setPendingReviews] = useState<number | null>(null);
 	const [loading, setLoading] = useState(true);
@@ -37,6 +36,11 @@ export function SystemHealthCard() {
 					const items = (await marketplaceRes.json()) as unknown[];
 					setPendingReviews(Array.isArray(items) ? items.length : 0);
 				}
+			} catch {
+				if (!cancelled) {
+					setHealth(null);
+					setPendingReviews(null);
+				}
 			} finally {
 				if (!cancelled) setLoading(false);
 			}
@@ -46,6 +50,13 @@ export function SystemHealthCard() {
 			cancelled = true;
 		};
 	}, []);
+
+	return { health, loading, pendingReviews };
+}
+
+export function SystemHealthCard() {
+	const t = useTranslations("admin.settingsPage.health");
+	const { health, loading, pendingReviews } = useSystemHealth();
 
 	if (loading) {
 		return <SettingsSectionSkeleton rows={2} />;

@@ -83,37 +83,39 @@ export type AppEnv = z.infer<typeof baseEnvSchema>;
 
 type EnvSource = Record<string, string | undefined>;
 
+const ENV_DEFAULTS: EnvSource = {
+	NODE_ENV: "development",
+	APP_ENV: undefined,
+	BETTER_AUTH_SECRET: "",
+	BETTER_AUTH_URL: "",
+	BETTER_AUTH_TRUSTED_ORIGINS: "",
+	DATABASE_URL: "",
+	APP_ENCRYPTION_KEY: "",
+	APP_ENCRYPTION_KEY_ID: "default",
+	DRAGONFLY_URL: "redis://localhost:6379",
+	DRAGONFLY_PASSWORD: "",
+	OBJECT_STORAGE_ENDPOINT: "http://localhost:3900",
+	OBJECT_STORAGE_REGION: "garage",
+	OBJECT_STORAGE_BUCKET: "",
+	OBJECT_STORAGE_ACCESS_KEY_ID: "",
+	OBJECT_STORAGE_SECRET_ACCESS_KEY: "",
+	OBJECT_STORAGE_FORCE_PATH_STYLE: "true",
+	SEARXNG_URL: "http://localhost:18088",
+	ALLOW_PERSONAL_WORKSPACES: "true",
+	DATABASE_SSL_REJECT_UNAUTHORIZED: "true",
+	WORKSPACE_MONTHLY_TOKEN_LIMIT: undefined,
+	GITHUB_APP_ID: undefined,
+	GITHUB_APP_SLUG: undefined,
+	GITHUB_APP_PRIVATE_KEY: undefined,
+};
+
 function readEnv(source: EnvSource): EnvSource {
-	return {
-		NODE_ENV: source.NODE_ENV || "development",
-		APP_ENV: source.APP_ENV || undefined,
-		BETTER_AUTH_SECRET: source.BETTER_AUTH_SECRET || "",
-		BETTER_AUTH_URL: source.BETTER_AUTH_URL || "",
-		BETTER_AUTH_TRUSTED_ORIGINS: source.BETTER_AUTH_TRUSTED_ORIGINS || "",
-		DATABASE_URL: source.DATABASE_URL || "",
-		APP_ENCRYPTION_KEY: source.APP_ENCRYPTION_KEY || "",
-		APP_ENCRYPTION_KEY_ID: source.APP_ENCRYPTION_KEY_ID || "default",
-		DRAGONFLY_URL: source.DRAGONFLY_URL || "redis://localhost:6379",
-		DRAGONFLY_PASSWORD: source.DRAGONFLY_PASSWORD || "",
-		OBJECT_STORAGE_ENDPOINT:
-			source.OBJECT_STORAGE_ENDPOINT || "http://localhost:3900",
-		OBJECT_STORAGE_REGION: source.OBJECT_STORAGE_REGION || "garage",
-		OBJECT_STORAGE_BUCKET: source.OBJECT_STORAGE_BUCKET || "",
-		OBJECT_STORAGE_ACCESS_KEY_ID: source.OBJECT_STORAGE_ACCESS_KEY_ID || "",
-		OBJECT_STORAGE_SECRET_ACCESS_KEY:
-			source.OBJECT_STORAGE_SECRET_ACCESS_KEY || "",
-		OBJECT_STORAGE_FORCE_PATH_STYLE:
-			source.OBJECT_STORAGE_FORCE_PATH_STYLE || "true",
-		SEARXNG_URL: source.SEARXNG_URL || "http://localhost:18088",
-		ALLOW_PERSONAL_WORKSPACES: source.ALLOW_PERSONAL_WORKSPACES || "true",
-		DATABASE_SSL_REJECT_UNAUTHORIZED:
-			source.DATABASE_SSL_REJECT_UNAUTHORIZED || "true",
-		WORKSPACE_MONTHLY_TOKEN_LIMIT:
-			source.WORKSPACE_MONTHLY_TOKEN_LIMIT || undefined,
-		GITHUB_APP_ID: source.GITHUB_APP_ID || undefined,
-		GITHUB_APP_SLUG: source.GITHUB_APP_SLUG || undefined,
-		GITHUB_APP_PRIVATE_KEY: source.GITHUB_APP_PRIVATE_KEY || undefined,
-	};
+	return Object.fromEntries(
+		Object.entries(ENV_DEFAULTS).map(([key, fallback]) => [
+			key,
+			source[key] || fallback,
+		]),
+	);
 }
 
 function shouldUseProductionValidation(env: EnvSource) {
