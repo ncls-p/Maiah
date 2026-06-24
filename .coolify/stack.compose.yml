@@ -16,8 +16,8 @@ services:
       APP_ENCRYPTION_KEY_ID: ${APP_ENCRYPTION_KEY_ID:-default}
       DRAGONFLY_URL: redis://dragonflydb:6379
       DRAGONFLY_PASSWORD: ${DRAGONFLY_PASSWORD:?set DRAGONFLY_PASSWORD}
-      OBJECT_STORAGE_ENDPOINT: http://garage:3900
-      OBJECT_STORAGE_REGION: ${OBJECT_STORAGE_REGION:-garage}
+      OBJECT_STORAGE_ENDPOINT: http://rustfs:9000
+      OBJECT_STORAGE_REGION: ${OBJECT_STORAGE_REGION:-us-east-1}
       OBJECT_STORAGE_BUCKET: ${OBJECT_STORAGE_BUCKET:-ai-hub}
       CODE_WORKSPACE_STORAGE_PREFIX: ${CODE_WORKSPACE_STORAGE_PREFIX:-code-workspaces}
       OBJECT_STORAGE_ACCESS_KEY_ID: ${OBJECT_STORAGE_ACCESS_KEY_ID:?set OBJECT_STORAGE_ACCESS_KEY_ID}
@@ -28,7 +28,7 @@ services:
       ALLOW_PERSONAL_WORKSPACES: ${ALLOW_PERSONAL_WORKSPACES:-true}
       WORKSPACE_MONTHLY_TOKEN_LIMIT: ${WORKSPACE_MONTHLY_TOKEN_LIMIT:-}
     depends_on:
-      garage-init:
+      rustfs-init:
         condition: service_completed_successfully
       postgres:
         condition: service_healthy
@@ -45,7 +45,7 @@ services:
         condition: service_healthy
       dragonflydb:
         condition: service_healthy
-      garage-init:
+      rustfs-init:
         condition: service_completed_successfully
       searxng:
         condition: service_healthy
@@ -83,7 +83,7 @@ services:
         condition: service_healthy
       dragonflydb:
         condition: service_healthy
-      garage-init:
+      rustfs-init:
         condition: service_completed_successfully
       searxng:
         condition: service_healthy
@@ -193,13 +193,18 @@ services:
       timeout: 5s
       retries: 20
 
-  garage:
-    image: ${AI_HUB_GARAGE_IMAGE:?set AI_HUB_GARAGE_IMAGE}
+  rustfs:
+    image: rustfs/rustfs:latest
     restart: unless-stopped
-    command: ["/garage", "-c", "/etc/garage.toml", "server"]
+    command: ["/data"]
+    environment:
+      RUSTFS_ADDRESS: 0.0.0.0:9000
+      RUSTFS_CONSOLE_ADDRESS: 0.0.0.0:9001
+      RUSTFS_CONSOLE_ENABLE: "false"
+      RUSTFS_ACCESS_KEY: ${OBJECT_STORAGE_ACCESS_KEY_ID:?set OBJECT_STORAGE_ACCESS_KEY_ID}
+      RUSTFS_SECRET_KEY: ${OBJECT_STORAGE_SECRET_ACCESS_KEY:?set OBJECT_STORAGE_SECRET_ACCESS_KEY}
     volumes:
-      - garage-meta:/var/lib/garage/meta
-      - garage-data:/var/lib/garage/data
+      - rustfs-data:/data
     deploy:
       resources:
         limits:
@@ -209,65 +214,45 @@ services:
           cpus: "0.25"
           memory: 256M
     healthcheck:
-      test: ["CMD", "/garage", "-c", "/etc/garage.toml", "node", "id"]
+      test:
+        - CMD-SHELL
+        - >-
+          code="$$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:9000/)" && { test "$$code" = "200" || test "$$code" = "403"; }
       interval: 5s
       timeout: 5s
       retries: 20
 
-  garage-init:
-    image: ${AI_HUB_GARAGE_INIT_IMAGE:?set AI_HUB_GARAGE_INIT_IMAGE}
+  rustfs-init:
+    image: amazon/aws-cli:2.32.3
     depends_on:
-      garage:
+      rustfs:
         condition: service_healthy
     restart: "no"
     environment:
-      GARAGE_ACCESS_KEY_ID: ${OBJECT_STORAGE_ACCESS_KEY_ID:?set OBJECT_STORAGE_ACCESS_KEY_ID}
-      GARAGE_BUCKET: ${OBJECT_STORAGE_BUCKET:-ai-hub}
-      GARAGE_SECRET_ACCESS_KEY: ${OBJECT_STORAGE_SECRET_ACCESS_KEY:?set OBJECT_STORAGE_SECRET_ACCESS_KEY}
-    volumes:
-      - garage-meta:/var/lib/garage/meta:ro
-    command:
+      AWS_ACCESS_KEY_ID: ${OBJECT_STORAGE_ACCESS_KEY_ID:?set OBJECT_STORAGE_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${OBJECT_STORAGE_SECRET_ACCESS_KEY:?set OBJECT_STORAGE_SECRET_ACCESS_KEY}
+      AWS_DEFAULT_REGION: ${OBJECT_STORAGE_REGION:-us-east-1}
+      AWS_EC2_METADATA_DISABLED: "true"
+      AWS_BUCKET: ${OBJECT_STORAGE_BUCKET:-ai-hub}
+    entrypoint:
       - /bin/sh
       - -c
       - |
         set -eu
-        if ! printf '%s' "$$GARAGE_ACCESS_KEY_ID" | grep -Eq '^GK[[:xdigit:]]{24}$$'; then
-          echo "GARAGE_ACCESS_KEY_ID must be a real Garage access key: GK followed by exactly 24 hexadecimal characters." >&2
-          exit 1
-        fi
-        if ! printf '%s' "$$GARAGE_SECRET_ACCESS_KEY" | grep -Eq '^[[:xdigit:]]{64}$$'; then
-          echo "GARAGE_SECRET_ACCESS_KEY must be a 64-character hexadecimal secret." >&2
-          exit 1
-        fi
-        NODE_ID=""
-        for attempt in $$(seq 1 10); do
-          NODE_ID="$(/garage -c /etc/garage.toml node id 2>/dev/null | sed -n 's/^\([0-9a-f][0-9a-f]*\)@.*/\1/p' | head -n 1)"
-          if [ -n "$$NODE_ID" ]; then
+        endpoint="http://rustfs:9000"
+        for attempt in $$(seq 1 30); do
+          if aws --endpoint-url "$$endpoint" s3api list-buckets >/dev/null 2>&1; then
             break
           fi
-          sleep 1
-        done
-        if [ -z "$$NODE_ID" ]; then
-          echo "Unable to determine Garage node ID" >&2
-          exit 1
-        fi
-        /garage -c /etc/garage.toml layout assign -z dc1 -c 1G "$$NODE_ID" >/dev/null 2>&1 || true
-        /garage -c /etc/garage.toml layout apply --version 1 >/dev/null 2>&1 || true
-        /garage -c /etc/garage.toml bucket create "$$GARAGE_BUCKET" >/dev/null 2>&1 || true
-        if ! /garage -c /etc/garage.toml key info "$$GARAGE_ACCESS_KEY_ID" >/dev/null 2>&1; then
-          /garage -c /etc/garage.toml key import --yes -n ai-hub "$$GARAGE_ACCESS_KEY_ID" "$$GARAGE_SECRET_ACCESS_KEY"
-        fi
-        for attempt in $$(seq 1 10); do
-          if /garage -c /etc/garage.toml key info "$$GARAGE_ACCESS_KEY_ID" >/dev/null 2>&1; then
-            break
-          fi
-          if [ "$$attempt" = "10" ]; then
-            echo "Garage access key was not available after import." >&2
+          if [ "$$attempt" = "30" ]; then
+            echo "RustFS S3 API was not ready after 30 attempts." >&2
             exit 1
           fi
           sleep 1
         done
-        /garage -c /etc/garage.toml bucket allow --read --write --owner "$$GARAGE_BUCKET" --key "$$GARAGE_ACCESS_KEY_ID"
+        if ! aws --endpoint-url "$$endpoint" s3api head-bucket --bucket "$${AWS_BUCKET}" >/dev/null 2>&1; then
+          aws --endpoint-url "$$endpoint" s3api create-bucket --bucket "$${AWS_BUCKET}"
+        fi
 
   searxng:
     image: ${AI_HUB_SEARXNG_IMAGE:?set AI_HUB_SEARXNG_IMAGE}
@@ -317,7 +302,6 @@ services:
 
 volumes:
   dragonfly-data:
-  garage-data:
-  garage-meta:
+  rustfs-data:
   postgres-data:
   sandbox-runner-socket:

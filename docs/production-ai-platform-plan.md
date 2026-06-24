@@ -91,7 +91,7 @@ Later provider types:
 
 - S3-compatible object storage
 - SaaS: R2 or S3
-- Self-hosted: Garage
+- Self-hosted: RustFS
 
 ### Jobs
 
@@ -1373,7 +1373,7 @@ Purpose:
 - Hot reload
 - Local Postgres
 - Local DragonflyDB
-- Local Garage/S3-compatible storage
+- Local RustFS/S3-compatible storage
 - Optional local worker
 - Safe development defaults
 
@@ -1384,8 +1384,8 @@ app-dev
 worker-dev
 postgres
 dragonflydb
-garage
-garage-init
+rustfs
+rustfs-init
 ```
 
 Development behavior:
@@ -1393,7 +1393,7 @@ Development behavior:
 - Bind mount source code into app container or run app locally against compose services
 - Expose Postgres on local port
 - Expose DragonflyDB on local port
-- Expose Garage/S3 API locally
+- Expose RustFS/S3 API locally
 - Use non-production generated secrets only for local dev
 - Run migrations automatically or via explicit `npm run db:setup`
 - Enable verbose logs
@@ -1402,7 +1402,7 @@ Development behavior:
 Development compose should support this flow:
 
 ```bash
-docker compose -f docker-compose.dev.yml up -d postgres dragonflydb garage garage-init
+docker compose -f docker-compose.dev.yml up -d postgres dragonflydb rustfs rustfs-init
 npm run db:setup
 npm run dev
 ```
@@ -1439,8 +1439,8 @@ worker
 migrate
 postgres
 dragonflydb
-garage
-garage-init
+rustfs
+rustfs-init
 ```
 
 Production requirements:
@@ -1450,8 +1450,8 @@ Production requirements:
 - `migrate` runs database migrations before app/worker start
 - `postgres` has persistent named volume
 - `dragonflydb` has persistent named volume if configured for persistence
-- `garage` has persistent named volumes for metadata and data
-- `garage-init` creates bucket and keys when self-hosting storage
+- `rustfs` has persistent named volumes for metadata and data
+- `rustfs-init` creates bucket and keys when self-hosting storage
 - All production secrets must come from Coolify environment variables
 - No production fallback for `BETTER_AUTH_SECRET`
 - No production fallback for `APP_ENCRYPTION_KEY`
@@ -1461,7 +1461,7 @@ Production requirements:
 - Worker healthcheck calls a worker health command or endpoint
 - Postgres healthcheck uses `pg_isready`
 - DragonflyDB healthcheck uses `redis-cli PING` or equivalent
-- Garage healthcheck verifies node health
+- RustFS healthcheck verifies node health
 - Graceful shutdown is handled by app and worker
 - Backups are documented
 
@@ -1470,7 +1470,7 @@ Coolify deployment assumptions:
 - Coolify injects environment variables from its UI/secrets manager
 - Coolify controls domain and HTTPS routing
 - The compose file exposes only the app HTTP port publicly
-- Postgres, DragonflyDB, and Garage should stay internal unless explicitly needed
+- Postgres, DragonflyDB, and RustFS should stay internal unless explicitly needed
 - Healthchecks should be compatible with Coolify service health detection
 - `restart: unless-stopped` for long-running services
 - `restart: "no"` for one-shot init/migration services
@@ -1498,8 +1498,8 @@ POSTGRES_PASSWORD=...
 APP_ENCRYPTION_KEY=...
 APP_ENCRYPTION_KEY_ID=default
 DRAGONFLY_PASSWORD=...
-OBJECT_STORAGE_ENDPOINT=http://garage:3900
-OBJECT_STORAGE_REGION=garage
+OBJECT_STORAGE_ENDPOINT=http://rustfs:9000
+OBJECT_STORAGE_REGION=us-east-1
 OBJECT_STORAGE_BUCKET=...
 OBJECT_STORAGE_ACCESS_KEY_ID=...
 OBJECT_STORAGE_SECRET_ACCESS_KEY=...
@@ -1518,7 +1518,7 @@ builder
 migrator
 runner
 worker
-garage
+rustfs
 ```
 
 The `runner` target should:
@@ -1551,7 +1551,7 @@ Possible managed replacements:
 ```txt
 Postgres -> Neon / Supabase / RDS
 DragonflyDB -> Dragonfly Cloud / Redis / Upstash
-Garage -> R2 / S3
+RustFS -> R2 / S3
 Worker -> separate Coolify service using same image
 ```
 
@@ -1618,8 +1618,8 @@ Deliver:
 - Env validation with Zod
 - Encryption utility
 - DragonflyDB/Redis cache adapter
-- `docker-compose.dev.yml` with Postgres + DragonflyDB + Garage
-- `docker-compose.prod.yml` for Coolify with app + worker + migrate + Postgres + DragonflyDB + Garage
+- `docker-compose.dev.yml` with Postgres + DragonflyDB + RustFS
+- `docker-compose.prod.yml` for Coolify with app + worker + migrate + Postgres + DragonflyDB + RustFS
 - Multi-stage Dockerfile targets for runner, worker, and migrator
 - Health endpoint
 - CI scripts

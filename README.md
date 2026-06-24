@@ -16,7 +16,7 @@ The current implementation covers the Phase 1 production foundation: authenticat
 - **DragonflyDB / Redis-compatible cache adapter**
 - **S3-compatible object storage adapter**
 - **Docker targets** for app runner, worker, and migrator
-- **Development compose stack** with Postgres, DragonflyDB, and Garage-compatible storage
+- **Development compose stack** with Postgres, DragonflyDB, and RustFS object storage
 - **Production compose stack** suitable for Coolify-style deployments
 - **CI workflow** for lint, typecheck, tests, and build
 
@@ -68,7 +68,7 @@ This starts:
 
 - Postgres with pgvector
 - DragonflyDB
-- Garage-compatible object storage
+- RustFS S3-compatible object storage
 
 ### 4. Run migrations
 
@@ -115,7 +115,7 @@ Important production requirements:
 - `BETTER_AUTH_SECRET` must be at least 32 characters and not a placeholder.
 - `APP_ENCRYPTION_KEY` must be a 64-character hex string and not all zeroes.
 - `DRAGONFLY_PASSWORD` and object storage secrets must be strong non-placeholder values.
-- For the bundled Garage service, `OBJECT_STORAGE_ACCESS_KEY_ID` must be `GK` followed by exactly 24 hexadecimal characters.
+- Bundled RustFS object storage uses `OBJECT_STORAGE_ACCESS_KEY_ID` and `OBJECT_STORAGE_SECRET_ACCESS_KEY`; set strong non-placeholder values in production.
 
 The app validates environment variables at runtime and rejects insecure production configuration. `next build` may use safe local placeholder values so CI and image builds remain reproducible.
 
@@ -189,12 +189,12 @@ Other targets:
 - `runner` — Next.js standalone app
 - `worker` — background worker process
 - `migrator` — database migrations
-- `garage` / `garage-init` — single-node S3-compatible object storage used by Compose
+- `rustfs` / `rustfs-init` — single-node S3-compatible object storage used by Compose
 - `dev` — optional containerized Next.js development server
 
 Production compose mirrors the existing Coolify layout used by the sibling
 projects, but this repository deploys as one web app: Postgres + DragonflyDB +
-Garage + SearXNG + one-shot `garage-init` + one-shot `migrate` + standalone app
+RustFS + SearXNG + one-shot `rustfs-init` + one-shot `migrate` + standalone app
 + worker. The default production browser origin is `https://maiah.shiftify.eco`.
 
 ```bash
@@ -203,16 +203,15 @@ docker compose -f docker-compose.prod.yml up -d --build
 
 For Coolify/GitHub Actions, `.coolify/stack.compose.yml` is the deployment-safe
 image-based stack and `.github/workflows/coolify.yml` builds/pushes the app,
-worker, migrator, Garage, and Garage init images before patching the single
-`ai-hub` Coolify service.
+worker, migrator, SearXNG, and sandbox runner images before patching the single
+`ai-hub` Coolify service. RustFS runs from the official `rustfs/rustfs` image.
 
 Required Coolify secrets/variables include `POSTGRES_PASSWORD`,
 `BETTER_AUTH_SECRET`, `APP_ENCRYPTION_KEY`, `DRAGONFLY_PASSWORD`,
 `OBJECT_STORAGE_ACCESS_KEY_ID`, and `OBJECT_STORAGE_SECRET_ACCESS_KEY`. For the
-bundled Garage service, generate the access key with
-`printf 'GK%s\n' "$(openssl rand -hex 12)"` and use a 64-character hexadecimal
-secret. Override `AI_HUB_PROD_APP_PORT` if the host port must differ from the
-safe default `3001` for the local production compose file.
+bundled RustFS service, use strong non-placeholder S3 credentials. Override
+`AI_HUB_PROD_APP_PORT` if the host port must differ from the safe default `3001`
+for the local production compose file.
 
 ## Phase Roadmap
 

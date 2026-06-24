@@ -12,6 +12,7 @@ const placeholderSecret = (value: string) => {
 		"change-in-production",
 		"test-secret",
 		"minioadmin",
+		"rustfsadmin",
 		"changeme",
 	].some((placeholder) => normalized.includes(placeholder));
 };
@@ -30,7 +31,7 @@ export const baseEnvSchema = z.object({
 	DRAGONFLY_URL: z.string().min(1).default("redis://localhost:6379"),
 	DRAGONFLY_PASSWORD: z.string().default(""),
 	OBJECT_STORAGE_ENDPOINT: z.url().default("http://localhost:3900"),
-	OBJECT_STORAGE_REGION: z.string().min(1).default("garage"),
+	OBJECT_STORAGE_REGION: z.string().min(1).default("us-east-1"),
 	OBJECT_STORAGE_BUCKET: z.string().min(1),
 	OBJECT_STORAGE_ACCESS_KEY_ID: z.string().min(1),
 	OBJECT_STORAGE_SECRET_ACCESS_KEY: z.string().min(1),
@@ -96,7 +97,7 @@ const ENV_DEFAULTS: EnvSource = {
 	DRAGONFLY_URL: "redis://localhost:6379",
 	DRAGONFLY_PASSWORD: "",
 	OBJECT_STORAGE_ENDPOINT: "http://localhost:3900",
-	OBJECT_STORAGE_REGION: "garage",
+	OBJECT_STORAGE_REGION: "us-east-1",
 	OBJECT_STORAGE_BUCKET: "",
 	OBJECT_STORAGE_ACCESS_KEY_ID: "",
 	OBJECT_STORAGE_SECRET_ACCESS_KEY: "",

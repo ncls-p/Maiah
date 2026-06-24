@@ -1,12 +1,3 @@
-FROM dxflrs/garage:v2.1.0 AS garage-binary
-
-FROM garage-binary AS garage
-COPY docker/garage/garage.toml /etc/garage.toml
-
-FROM alpine:3.22 AS garage-init
-COPY --from=garage-binary /garage /garage
-COPY docker/garage/garage.toml /etc/garage.toml
-
 FROM searxng/searxng:latest AS searxng
 COPY searxng/settings.yml /etc/searxng/settings.yml
 # SearXNG 2026.6.15 made EngineAbout strict while some packaged
@@ -150,7 +141,7 @@ ENV NODE_ENV=production \
     DRAGONFLY_URL=redis://localhost:6379 \
     DRAGONFLY_PASSWORD=builddragonflypassword \
     OBJECT_STORAGE_ENDPOINT=http://localhost:3900 \
-    OBJECT_STORAGE_REGION=garage \
+    OBJECT_STORAGE_REGION=us-east-1 \
     OBJECT_STORAGE_BUCKET=ai-hub \
     OBJECT_STORAGE_ACCESS_KEY_ID=build-access-key \
     OBJECT_STORAGE_SECRET_ACCESS_KEY=buildobjectsecretvalue \

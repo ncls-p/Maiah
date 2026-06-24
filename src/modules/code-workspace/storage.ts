@@ -175,7 +175,7 @@ function safeLegacyStoragePath(
 	return fullPath;
 }
 
-async function migrateLegacyProjectToGarage(projectId: string) {
+async function migrateLegacyProjectToObjectStorage(projectId: string) {
 	for (const root of legacyCodeWorkspaceRoots) {
 		const metadataFilePath = legacyMetadataPath(projectId, root);
 		if (!(await pathExists(metadataFilePath))) continue;
@@ -351,7 +351,7 @@ export async function getCodeWorkspace(projectId: string) {
 			Buffer.from(bytes).toString("utf8"),
 		) as CodeWorkspaceMetadata;
 	} catch {
-		const migrated = await migrateLegacyProjectToGarage(projectId);
+		const migrated = await migrateLegacyProjectToObjectStorage(projectId);
 		if (migrated) return migrated;
 		throw new Error("Code workspace not found.");
 	}
