@@ -42,6 +42,7 @@
     "@ai-sdk/sandbox-just-bash": "^1.0.6",
     "@ai-sdk/sandbox-vercel": "^1.0.6",
     "@ai-sdk/workflow": "^1.0.4",
+    "@alibaba-group/opensandbox": "^0.1.9",
     "@aws-sdk/client-s3": "^3.800.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@next/env": "^16.2.6",
@@ -99,10 +100,5 @@
   "description": "Production-oriented AI agent hub built with Next.js, Better Auth, Drizzle, and workspace IAM.",
   "author": "Deodis",
   "license": "UNLICENSED",
-  "main": "next.config.ts",
-  "knip": {
-    "ignore": [
-      "scripts/sandbox-runner.mjs"
-    ]
-  }
+  "main": "next.config.ts"
 }

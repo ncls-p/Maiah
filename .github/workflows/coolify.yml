@@ -7,7 +7,6 @@ on:
 
 permissions:
   contents: read
-  packages: write
 
 concurrency:
   group: coolify-ai-hub-${{ github.ref }}
@@ -54,10 +53,12 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: npm
@@ -104,23 +105,27 @@ jobs:
     name: Build and push deployment images
     runs-on: ubuntu-latest
     needs: validate
+    permissions:
+      contents: read
+      packages: write
     if: needs.validate.result == 'success' && vars.COOLIFY_DEPLOY_ENABLED == 'true'
     outputs:
       app_image: ${{ steps.images.outputs.app_image }}
       worker_image: ${{ steps.images.outputs.worker_image }}
       migrator_image: ${{ steps.images.outputs.migrator_image }}
       searxng_image: ${{ steps.images.outputs.searxng_image }}
-      sandbox_runner_image: ${{ steps.images.outputs.sandbox_runner_image }}
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -138,13 +143,11 @@ jobs:
           worker_image="ghcr.io/${owner_lc}/ai-hub-worker:${tag}"
           migrator_image="ghcr.io/${owner_lc}/ai-hub-migrator:${tag}"
           searxng_image="ghcr.io/${owner_lc}/ai-hub-searxng:${tag}"
-          sandbox_runner_image="ghcr.io/${owner_lc}/ai-hub-sandbox-runner:${tag}"
           {
             echo "app_image=${app_image}"
             echo "worker_image=${worker_image}"
             echo "migrator_image=${migrator_image}"
             echo "searxng_image=${searxng_image}"
-            echo "sandbox_runner_image=${sandbox_runner_image}"
           } >> "$GITHUB_OUTPUT"
 
       - name: Build and push app image
@@ -191,16 +194,6 @@ jobs:
             --push \
             .
 
-      - name: Build and push sandbox runner image
-        run: |
-          docker buildx build \
-            --platform linux/amd64 \
-            --target sandbox-runner \
-            --tag "${{ steps.images.outputs.sandbox_runner_image }}" \
-            --cache-from type=gha \
-            --cache-to type=gha,mode=max \
-            --push \
-            .
 
       - name: Verify pushed SearXNG image config
         run: |
@@ -241,7 +234,9 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
 
       - name: Create/update Coolify service
         env:
@@ -263,7 +258,9 @@ jobs:
           AI_HUB_WORKER_IMAGE: ${{ needs.build_images.outputs.worker_image }}
           AI_HUB_MIGRATOR_IMAGE: ${{ needs.build_images.outputs.migrator_image }}
           AI_HUB_SEARXNG_IMAGE: ${{ needs.build_images.outputs.searxng_image }}
-          AI_HUB_SANDBOX_RUNNER_IMAGE: ${{ needs.build_images.outputs.sandbox_runner_image }}
+          OPENSANDBOX_API_KEY: ${{ secrets.OPENSANDBOX_API_KEY }}
+          OPENSANDBOX_IMAGE: ${{ vars.OPENSANDBOX_IMAGE || 'opensandbox/code-interpreter:v1.1.0' }}
+          OPENSANDBOX_USE_SERVER_PROXY: ${{ vars.OPENSANDBOX_USE_SERVER_PROXY || 'false' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -282,7 +279,6 @@ jobs:
             AI_HUB_WORKER_IMAGE
             AI_HUB_MIGRATOR_IMAGE
             AI_HUB_SEARXNG_IMAGE
-            AI_HUB_SANDBOX_RUNNER_IMAGE
           )
           for key in "${required[@]}"; do
             if [[ -z "${!key:-}" ]]; then
@@ -347,6 +343,16 @@ jobs:
                 | awk '{print $1}'
             )"
           fi
+          OPENSANDBOX_IMAGE="${OPENSANDBOX_IMAGE:-opensandbox/code-interpreter:v1.1.0}"
+          OPENSANDBOX_USE_SERVER_PROXY="${OPENSANDBOX_USE_SERVER_PROXY:-false}"
+          if [[ -z "${OPENSANDBOX_API_KEY:-}" ]]; then
+            OPENSANDBOX_API_KEY="$(
+              printf '%s:%s:%s' "${APP_ENCRYPTION_KEY}" "${COOLIFY_SERVICE_NAME}" "opensandbox" \
+                | sha256sum \
+                | awk '{print $1}'
+            )"
+          fi
+          validate_secret_length OPENSANDBOX_API_KEY "${OPENSANDBOX_API_KEY}" 32
           BETTER_AUTH_URL="${AI_HUB_PUBLIC_URL}"
           BETTER_AUTH_TRUSTED_ORIGINS="${AI_HUB_PUBLIC_URL}"
           APP_ROUTING_URL="http://${AI_HUB_PUBLIC_HOST}:3000"
@@ -459,7 +465,6 @@ jobs:
               "${AI_HUB_WORKER_IMAGE:?set AI_HUB_WORKER_IMAGE}": os.environ["AI_HUB_WORKER_IMAGE"],
               "${AI_HUB_MIGRATOR_IMAGE:?set AI_HUB_MIGRATOR_IMAGE}": os.environ["AI_HUB_MIGRATOR_IMAGE"],
               "${AI_HUB_SEARXNG_IMAGE:?set AI_HUB_SEARXNG_IMAGE}": os.environ["AI_HUB_SEARXNG_IMAGE"],
-              "${AI_HUB_SANDBOX_RUNNER_IMAGE:?set AI_HUB_SANDBOX_RUNNER_IMAGE}": os.environ["AI_HUB_SANDBOX_RUNNER_IMAGE"],
           }
           missing = [needle for needle in replacements if needle not in compose]
           if missing:
@@ -501,7 +506,6 @@ jobs:
               --arg ai_hub_worker_image "${AI_HUB_WORKER_IMAGE}" \
               --arg ai_hub_migrator_image "${AI_HUB_MIGRATOR_IMAGE}" \
               --arg ai_hub_searxng_image "${AI_HUB_SEARXNG_IMAGE}" \
-              --arg ai_hub_sandbox_runner_image "${AI_HUB_SANDBOX_RUNNER_IMAGE}" \
               --arg postgres_password "${POSTGRES_PASSWORD}" \
               --arg better_auth_secret "${BETTER_AUTH_SECRET}" \
               --arg better_auth_url "${BETTER_AUTH_URL}" \
@@ -515,6 +519,9 @@ jobs:
               --arg code_workspace_storage_prefix "${CODE_WORKSPACE_STORAGE_PREFIX}" \
               --arg searxng_secret "${SEARXNG_SECRET}" \
               --arg searxng_settings_revision "${SEARXNG_SETTINGS_REVISION:-local}" \
+              --arg opensandbox_api_key "${OPENSANDBOX_API_KEY}" \
+              --arg opensandbox_image "${OPENSANDBOX_IMAGE}" \
+              --arg opensandbox_use_server_proxy "${OPENSANDBOX_USE_SERVER_PROXY}" \
               --arg allow_personal_workspaces "${ALLOW_PERSONAL_WORKSPACES}" \
               --arg workspace_monthly_token_limit "${WORKSPACE_MONTHLY_TOKEN_LIMIT}" \
               '{data: [
@@ -522,7 +529,6 @@ jobs:
                 {key: "AI_HUB_WORKER_IMAGE", value: $ai_hub_worker_image, is_preview: false, is_literal: true, is_multiline: false, is_shown_once: false},
                 {key: "AI_HUB_MIGRATOR_IMAGE", value: $ai_hub_migrator_image, is_preview: false, is_literal: true, is_multiline: false, is_shown_once: false},
                 {key: "AI_HUB_SEARXNG_IMAGE", value: $ai_hub_searxng_image, is_preview: false, is_literal: true, is_multiline: false, is_shown_once: false},
-                {key: "AI_HUB_SANDBOX_RUNNER_IMAGE", value: $ai_hub_sandbox_runner_image, is_preview: false, is_literal: true, is_multiline: false, is_shown_once: false},
                 {key: "POSTGRES_PASSWORD", value: $postgres_password, is_preview: false, is_literal: true, is_multiline: false, is_shown_once: false},
                 {key: "BETTER_AUTH_SECRET", value: $better_auth_secret, is_preview: false, is_literal: true, is_multiline: false, is_shown_once: false},
                 {key: "BETTER_AUTH_URL", value: $better_auth_url, is_preview: false, is_literal: true, is_multiline: false, is_shown_once: false},
@@ -536,21 +542,30 @@ jobs:
                 {key: "CODE_WORKSPACE_STORAGE_PREFIX", value: $code_workspace_storage_prefix, is_preview: false, is_literal: true, is_multiline: false, is_shown_once: false},
                 {key: "SEARXNG_SECRET", value: $searxng_secret, is_preview: false, is_literal: true, is_multiline: false, is_shown_once: false},
                 {key: "SEARXNG_SETTINGS_REVISION", value: $searxng_settings_revision, is_preview: false, is_literal: true, is_multiline: false, is_shown_once: false},
+                {key: "OPENSANDBOX_API_KEY", value: $opensandbox_api_key, is_preview: false, is_literal: true, is_multiline: false, is_shown_once: false},
+                {key: "OPENSANDBOX_IMAGE", value: $opensandbox_image, is_preview: false, is_literal: true, is_multiline: false, is_shown_once: false},
+                {key: "OPENSANDBOX_USE_SERVER_PROXY", value: $opensandbox_use_server_proxy, is_preview: false, is_literal: true, is_multiline: false, is_shown_once: false},
                 {key: "ALLOW_PERSONAL_WORKSPACES", value: $allow_personal_workspaces, is_preview: false, is_literal: true, is_multiline: false, is_shown_once: false},
                 {key: "WORKSPACE_MONTHLY_TOKEN_LIMIT", value: $workspace_monthly_token_limit, is_preview: false, is_literal: true, is_multiline: false, is_shown_once: false}
               ]}'
           )"
           api PATCH "/services/${SERVICE_UUID}/envs/bulk" "${ENV_PAYLOAD}" >/dev/null
 
-          verify_compose_image() {
+          verify_compose_images() {
             local service_json="$1"
-            SERVICE_JSON_FOR_VERIFY="${service_json}" python3 - "${AI_HUB_SEARXNG_IMAGE}" <<'PY'
+            SERVICE_JSON_FOR_VERIFY="${service_json}" python3 - \
+              "${AI_HUB_APP_IMAGE}" \
+              "${AI_HUB_WORKER_IMAGE}" \
+              "${AI_HUB_MIGRATOR_IMAGE}" \
+              "${AI_HUB_SEARXNG_IMAGE}" \
+              "opensandbox/server:latest" \
+              "${OPENSANDBOX_IMAGE}" <<'PY'
           import base64
           import json
           import os
           import sys
 
-          expected = sys.argv[1]
+          expected_values = sys.argv[1:]
           service = json.loads(os.environ["SERVICE_JSON_FOR_VERIFY"])
           fields = [service.get("docker_compose") or "", service.get("docker_compose_raw") or ""]
           expanded = list(fields)
@@ -559,9 +574,10 @@ jobs:
                   expanded.append(base64.b64decode(value, validate=True).decode("utf-8", "replace"))
               except Exception:
                   pass
-          if any(expected in value for value in expanded):
+          missing = [expected for expected in expected_values if not any(expected in value for value in expanded)]
+          if not missing:
               sys.exit(0)
-          print(f"Expected SearXNG image not found in Coolify service compose: {expected}", file=sys.stderr)
+          print(f"Expected values not found in Coolify service compose: {missing}", file=sys.stderr)
           print(
               "Compose field lengths: "
               f"docker_compose={len(fields[0])}, docker_compose_raw={len(fields[1])}",
@@ -572,13 +588,14 @@ jobs:
           }
 
           SERVICE_JSON="$(api GET "/services/${SERVICE_UUID}")"
-          verify_compose_image "${SERVICE_JSON}"
+          verify_compose_images "${SERVICE_JSON}"
 
           echo "Using Coolify service UUID ${SERVICE_UUID}"
           echo "Using SearXNG image ${AI_HUB_SEARXNG_IMAGE}"
+          echo "Using OpenSandbox image ${OPENSANDBOX_IMAGE}"
           api GET "/deploy?uuid=${SERVICE_UUID}&force=true" >/dev/null
 
-          long_running='["app", "worker", "rustfs", "dragonflydb", "searxng", "sandbox-runner"]'
+          long_running='["app", "worker", "rustfs", "dragonflydb", "searxng", "opensandbox-server"]'
           success=false
           for attempt in $(seq 1 60); do
             STATUS_JSON="$(api GET "/services/${SERVICE_UUID}")"
@@ -636,4 +653,6 @@ jobs:
             echo "- App image: \`${AI_HUB_APP_IMAGE}\`"
             echo "- Worker image: \`${AI_HUB_WORKER_IMAGE}\`"
             echo "- Migrator image: \`${AI_HUB_MIGRATOR_IMAGE}\`"
+            echo "- SearXNG image: \`${AI_HUB_SEARXNG_IMAGE}\`"
+            echo "- OpenSandbox image: \`${OPENSANDBOX_IMAGE}\`"
           } >> "$GITHUB_STEP_SUMMARY"

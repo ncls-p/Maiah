@@ -1,6 +1,8 @@
-import { existsSync } from "node:fs";
-import http from "node:http";
+import { createHash } from "node:crypto";
 import path from "node:path";
+
+import { ConnectionConfig, Sandbox } from "@alibaba-group/opensandbox";
+import type { Execution } from "@alibaba-group/opensandbox";
 
 import { env } from "@/lib/env";
 import {
@@ -71,104 +73,71 @@ type CodeSandboxExecutionContext = {
 	userId: string;
 };
 
-const requestTimeoutMs = 15_000;
-const maxResponseBytes = 8_000_000;
-const defaultSocketPath = "/run/sandbox/sandbox.sock";
-const localDevSocketPath = path.resolve(
-	process.cwd(),
-	".data/sandbox-runner/sandbox.sock",
-);
-const maxSandboxAttachmentTextChars = 200_000;
-
-function absoluteSocketPath(socketPath: string) {
-	return path.isAbsolute(socketPath)
-		? socketPath
-		: path.resolve(process.cwd(), socketPath);
-}
-
-function resolveSandboxRunnerSocket() {
-	if (process.env.SANDBOX_RUNNER_SOCKET) {
-		return absoluteSocketPath(env.SANDBOX_RUNNER_SOCKET);
-	}
-	if (
-		env.SANDBOX_RUNNER_SOCKET === defaultSocketPath &&
-		existsSync(localDevSocketPath)
-	) {
-		return localDevSocketPath;
-	}
-	return absoluteSocketPath(env.SANDBOX_RUNNER_SOCKET);
-}
-
-function sandboxUnavailableMessage(error: unknown, socketPath: string) {
-	const message = error instanceof Error ? error.message : String(error);
-	const localHint =
-		socketPath === defaultSocketPath && !existsSync(defaultSocketPath)
-			? " For local development, start the runner with `docker compose -f docker-compose.dev.yml up -d sandbox-runner` and set SANDBOX_RUNNER_SOCKET=.data/sandbox-runner/sandbox.sock."
-			: "";
-	return `Sandbox runner unavailable at ${socketPath}: ${message}${localHint}`;
-}
-
-function parseJsonResponse(body: string) {
-	try {
-		return JSON.parse(body) as Partial<CodeSandboxResult>;
-	} catch {
-		return null;
-	}
-}
-
-type NormalizeSandboxResponseOptions = {
-	responseTruncated: boolean;
+type PreparedOpenSandboxInput = Omit<CodeSandboxRequest, "files"> & {
+	files: Array<{ path: string; bytes: Buffer }>;
 };
 
-function normalizeLanguage(
-	payload: Partial<CodeSandboxResult>,
-	input: CodeSandboxRequest,
-) {
+type OpenSandboxExecutionPayload = {
+	result: CodeSandboxResult;
+	inputHashes: Map<string, string>;
+};
+
+const maxSandboxAttachmentTextChars = 200_000;
+const maxOpenSandboxInputFiles = 40;
+const maxOpenSandboxInputFileBytes = 1_500_000;
+const maxOpenSandboxInputTotalBytes = 5_000_000;
+const maxOpenSandboxCodeChars = 100_000;
+const defaultOpenSandboxTimeoutMs = 5_000;
+const maxOpenSandboxTimeoutMs = 10_000;
+const maxStdoutBytes = 64_000;
+const maxStderrBytes = 64_000;
+const maxFilePreviewBytes = 16_000;
+const maxCollectedFiles = 30;
+const maxCollectedFileBytes = 1_000_000;
+const maxDownloadFileBytes = 1_000_000;
+const maxDownloadTotalBytes = 5_000_000;
+const openSandboxWorkspaceDir = "/workspace";
+
+const textExtensions = new Set([
+	".c",
+	".conf",
+	".cpp",
+	".cs",
+	".css",
+	".csv",
+	".go",
+	".html",
+	".java",
+	".js",
+	".json",
+	".jsx",
+	".log",
+	".md",
+	".mjs",
+	".py",
+	".rb",
+	".rs",
+	".sh",
+	".sql",
+	".svg",
+	".toml",
+	".ts",
+	".tsx",
+	".txt",
+	".xml",
+	".yaml",
+	".yml",
+]);
+
+function normalizeLanguage(input: CodeSandboxRequest) {
 	if (
-		payload.language === "python" ||
-		payload.language === "node" ||
-		payload.language === "bash"
+		input.language === "python" ||
+		input.language === "node" ||
+		input.language === "bash"
 	) {
-		return payload.language;
+		return input.language;
 	}
-	return input.language;
-}
-
-function normalizeDuration(value: unknown) {
-	return typeof value === "number" && Number.isFinite(value) ? value : 0;
-}
-
-function normalizeStderr(payload: Partial<CodeSandboxResult>) {
-	if (typeof payload.stderr === "string" && payload.stderr.length > 0) {
-		return payload.stderr;
-	}
-	if (payload.ok === false) {
-		return typeof payload.error === "string" && payload.error.length > 0
-			? payload.error
-			: "Sandbox runner returned an incomplete response.";
-	}
-	return "";
-}
-
-function normalizeSandboxResponse(
-	payload: Partial<CodeSandboxResult>,
-	input: CodeSandboxRequest,
-	options: NormalizeSandboxResponseOptions,
-): CodeSandboxResult {
-	return {
-		kind: "code_sandbox_result",
-		ok: payload.ok === true,
-		language: normalizeLanguage(payload, input),
-		exitCode: typeof payload.exitCode === "number" ? payload.exitCode : null,
-		signal: typeof payload.signal === "string" ? payload.signal : null,
-		timedOut: payload.timedOut === true,
-		durationMs: normalizeDuration(payload.durationMs),
-		stdout: typeof payload.stdout === "string" ? payload.stdout : "",
-		stderr: normalizeStderr(payload),
-		truncated: Boolean(payload.truncated || options.responseTruncated),
-		files: Array.isArray(payload.files) ? payload.files : [],
-		error: typeof payload.error === "string" ? payload.error : undefined,
-	};
+	throw new Error("language must be 'python', 'node', or 'bash'.");
 }
 
 function failedSandboxResult(
@@ -189,6 +158,22 @@ function failedSandboxResult(
 		files: [],
 		error: message,
 	};
+}
+
+function clampTimeoutMs(value: unknown) {
+	if (typeof value !== "number" || !Number.isFinite(value)) {
+		return defaultOpenSandboxTimeoutMs;
+	}
+	return Math.max(250, Math.min(maxOpenSandboxTimeoutMs, Math.floor(value)));
+}
+
+function hashBytes(value: Uint8Array) {
+	return createHash("sha256").update(value).digest("hex");
+}
+
+function sandboxUnavailableMessage(error: unknown) {
+	const message = error instanceof Error ? error.message : String(error);
+	return `OpenSandbox unavailable at ${env.OPENSANDBOX_PROTOCOL}://${env.OPENSANDBOX_DOMAIN}: ${message}. For local development, start OpenSandbox with \`docker compose -f docker-compose.dev.yml up -d opensandbox-server\`.`;
 }
 
 function sanitizeAttachmentFileName(fileName: string) {
@@ -212,8 +197,45 @@ function extractedTextPath(filePath: string) {
 	return path.posix.join(parsed.dir, baseName).slice(0, 260);
 }
 
+function safeRelativePath(rawPath: string) {
+	if (typeof rawPath !== "string")
+		throw new Error("File path must be a string.");
+	const trimmed = rawPath.trim().replace(/\\/g, "/");
+	if (!trimmed || trimmed.includes("\0")) throw new Error("Invalid file path.");
+	if (trimmed.startsWith("/") || /^[a-zA-Z]:\//.test(trimmed)) {
+		throw new Error("Absolute file paths are not allowed.");
+	}
+	const normalized = path.posix.normalize(trimmed).replace(/^\.\//, "");
+	if (
+		!normalized ||
+		normalized === "." ||
+		normalized === ".." ||
+		normalized.startsWith("../") ||
+		normalized.includes("/../")
+	) {
+		throw new Error("Path traversal is not allowed.");
+	}
+	if (normalized.length > 260 || normalized.split("/").length > 16) {
+		throw new Error("File path is too long or too deep.");
+	}
+	const [firstSegment] = normalized.split("/");
+	if (
+		normalized === "main.py" ||
+		normalized === "main.mjs" ||
+		normalized === "main.sh" ||
+		normalized === "package.json" ||
+		normalized === ".stdin" ||
+		firstSegment === "node_modules" ||
+		firstSegment === "home" ||
+		firstSegment === "tmp"
+	) {
+		throw new Error("Reserved sandbox file path.");
+	}
+	return normalized;
+}
+
 function uniqueSandboxPath(filePath: string, usedPaths: Set<string>) {
-	const normalized = filePath.trim().replace(/\\/g, "/");
+	const normalized = safeRelativePath(filePath);
 	if (!usedPaths.has(normalized)) {
 		usedPaths.add(normalized);
 		return normalized;
@@ -237,14 +259,63 @@ function truncateSandboxInputText(text: string) {
 	return `${text.slice(0, maxSandboxAttachmentTextChars)}\n\n[Truncated before sandbox execution: ${text.length - maxSandboxAttachmentTextChars} additional characters omitted.]`;
 }
 
-async function prepareSandboxRunnerRequest(
+function bytesFromBase64(value: string, filePath: string) {
+	const normalized = value.replace(/\s/g, "");
+	if (
+		normalized.length % 4 !== 0 ||
+		!/^[A-Za-z0-9+/]*={0,2}$/.test(normalized)
+	) {
+		throw new Error(`Input file is not valid base64: ${filePath}`);
+	}
+	return Buffer.from(normalized, "base64");
+}
+
+function normalizeInputFiles(input: CodeSandboxRequest) {
+	const files = input.files ?? [];
+	if (files.length > maxOpenSandboxInputFiles) {
+		throw new Error(
+			`Too many input files. Maximum is ${maxOpenSandboxInputFiles}.`,
+		);
+	}
+	let totalInputBytes = 0;
+	return files.map((file) => {
+		const filePath = safeRelativePath(file.path);
+		const hasBase64 = typeof file.contentBase64 === "string";
+		const textContent = typeof file.content === "string" ? file.content : "";
+		const bytes = hasBase64
+			? bytesFromBase64(file.contentBase64 ?? "", filePath)
+			: Buffer.from(textContent, "utf8");
+		if (bytes.byteLength > maxOpenSandboxInputFileBytes) {
+			throw new Error(`Input file is too large: ${filePath}`);
+		}
+		totalInputBytes += bytes.byteLength;
+		if (totalInputBytes > maxOpenSandboxInputTotalBytes) {
+			throw new Error(
+				`Input files are too large. Maximum total is ${maxOpenSandboxInputTotalBytes} bytes.`,
+			);
+		}
+		return { path: filePath, bytes };
+	});
+}
+
+async function prepareOpenSandboxRequest(
 	input: CodeSandboxRequest,
 	context?: CodeSandboxExecutionContext,
-): Promise<CodeSandboxRequest> {
-	const files: CodeSandboxInputFile[] = [...(input.files ?? [])];
+): Promise<PreparedOpenSandboxInput> {
+	const language = normalizeLanguage(input);
+	if (typeof input.code !== "string" || !input.code.trim()) {
+		throw new Error("code is required.");
+	}
+	if (input.code.length > maxOpenSandboxCodeChars) {
+		throw new Error(
+			`code is too large. Maximum is ${maxOpenSandboxCodeChars} characters.`,
+		);
+	}
+
+	const files = normalizeInputFiles(input);
 	const attachmentReferences = input.attachments ?? [];
 	if (attachmentReferences.length === 0) {
-		return { ...input, files };
+		return { ...input, language, files, attachments: [] };
 	}
 	if (!context) {
 		throw new Error("Sandbox attachment access requires a workspace context.");
@@ -262,10 +333,7 @@ async function prepareSandboxRunnerRequest(
 			requestedPath || defaultAttachmentPath(metadata),
 			usedPaths,
 		);
-		files.push({
-			path: filePath,
-			contentBase64: Buffer.from(bytes).toString("base64"),
-		});
+		files.push({ path: filePath, bytes: Buffer.from(bytes) });
 
 		if (
 			reference.includeExtractedText === false ||
@@ -281,15 +349,11 @@ async function prepareSandboxRunnerRequest(
 		if (!text.trim()) continue;
 		files.push({
 			path: uniqueSandboxPath(extractedTextPath(filePath), usedPaths),
-			content: truncateSandboxInputText(text),
+			bytes: Buffer.from(truncateSandboxInputText(text), "utf8"),
 		});
 	}
 
-	return {
-		...input,
-		files,
-		attachments: [],
-	};
+	return { ...input, language, files, attachments: [] };
 }
 
 function stripEmbeddedContent(file: CodeSandboxOutputFile) {
@@ -357,13 +421,320 @@ async function persistSandboxFiles(
 	};
 }
 
+function createOpenSandboxConnectionConfig(timeoutMs: number) {
+	return new ConnectionConfig({
+		domain: env.OPENSANDBOX_DOMAIN,
+		protocol: env.OPENSANDBOX_PROTOCOL,
+		apiKey: env.OPENSANDBOX_API_KEY || undefined,
+		requestTimeoutSeconds: Math.max(30, Math.ceil(timeoutMs / 1000) + 30),
+		useServerProxy: env.OPENSANDBOX_USE_SERVER_PROXY === "true",
+	});
+}
+
+function entryFileForLanguage(language: CodeSandboxLanguage) {
+	if (language === "python") return "main.py";
+	if (language === "bash") return "main.sh";
+	return "main.mjs";
+}
+
+function sourceForLanguage(input: PreparedOpenSandboxInput) {
+	if (input.language === "bash") return `set -euo pipefail\n${input.code}\n`;
+	if (input.language === "node") {
+		return [
+			"import { createRequire } from 'node:module';",
+			"import { fileURLToPath } from 'node:url';",
+			"import path from 'node:path';",
+			"const require = createRequire(import.meta.url);",
+			"const __filename = fileURLToPath(import.meta.url);",
+			"const __dirname = path.dirname(__filename);",
+			"globalThis.require = require;",
+			"globalThis.__filename = __filename;",
+			"globalThis.__dirname = __dirname;",
+			"",
+			input.code,
+			"",
+		].join("\n");
+	}
+	return `${input.code}\n`;
+}
+
+function commandForLanguage(language: CodeSandboxLanguage, hasStdin: boolean) {
+	const stdin = hasStdin ? " < .stdin" : "";
+	if (language === "python") return `python3 -I main.py${stdin}`;
+	if (language === "bash") {
+		return `bash --noprofile --norc -e -u -o pipefail main.sh${stdin}`;
+	}
+	return `node --no-warnings main.mjs${stdin}`;
+}
+
+function isProbablyText(bytes: Uint8Array, filePath: string) {
+	if (textExtensions.has(path.extname(filePath).toLowerCase())) return true;
+	if (Buffer.from(bytes).includes(0)) return false;
+	return Buffer.from(bytes)
+		.subarray(0, Math.min(bytes.length, 4096))
+		.every((byte) => byte === 9 || byte === 10 || byte === 13 || byte >= 32);
+}
+
+function mimeTypeForPath(filePath: string) {
+	const extension = path.extname(filePath).toLowerCase();
+	if (extension === ".json") return "application/json";
+	if (extension === ".csv") return "text/csv";
+	if (extension === ".html" || extension === ".htm") return "text/html";
+	if (extension === ".svg") return "image/svg+xml";
+	if (extension === ".png") return "image/png";
+	if (extension === ".jpg" || extension === ".jpeg") return "image/jpeg";
+	if (extension === ".webp") return "image/webp";
+	if (extension === ".pdf") return "application/pdf";
+	if (textExtensions.has(extension)) return "text/plain";
+	return "application/octet-stream";
+}
+
+function workspaceRelativePath(filePath: string) {
+	const normalized = filePath.replace(/\\/g, "/");
+	const prefix = `${openSandboxWorkspaceDir}/`;
+	return normalized.startsWith(prefix)
+		? normalized.slice(prefix.length)
+		: normalized.replace(/^\/+/, "");
+}
+
+function shouldIgnoreCollectedPath(filePath: string) {
+	return (
+		filePath === "main.py" ||
+		filePath === "main.mjs" ||
+		filePath === "main.sh" ||
+		filePath === "package.json" ||
+		filePath === ".stdin" ||
+		filePath === "" ||
+		filePath.startsWith("home/") ||
+		filePath.startsWith("tmp/") ||
+		filePath.startsWith("node_modules/")
+	);
+}
+
+function truncateTextBytes(value: string, maxBytes: number) {
+	const bytes = Buffer.from(value, "utf8");
+	if (bytes.byteLength <= maxBytes) return { value, truncated: false };
+	return {
+		value: bytes.subarray(0, maxBytes).toString("utf8"),
+		truncated: true,
+	};
+}
+
+async function writeOpenSandboxFiles(
+	sandbox: Sandbox,
+	input: PreparedOpenSandboxInput,
+) {
+	const inputHashes = new Map<string, string>();
+	const writes = input.files.map((file) => {
+		inputHashes.set(file.path, hashBytes(file.bytes));
+		return {
+			path: `${openSandboxWorkspaceDir}/${file.path}`,
+			data: file.bytes,
+			mode: 644,
+		};
+	});
+
+	writes.push({
+		path: `${openSandboxWorkspaceDir}/${entryFileForLanguage(input.language)}`,
+		data: Buffer.from(sourceForLanguage(input), "utf8"),
+		mode: 644,
+	});
+	if (input.stdin) {
+		writes.push({
+			path: `${openSandboxWorkspaceDir}/.stdin`,
+			data: Buffer.from(input.stdin.slice(0, 100_000), "utf8"),
+			mode: 600,
+		});
+	}
+
+	await sandbox.files.createDirectories([
+		{ path: openSandboxWorkspaceDir, mode: 700 },
+		{ path: `${openSandboxWorkspaceDir}/home`, mode: 700 },
+		{ path: `${openSandboxWorkspaceDir}/tmp`, mode: 700 },
+	]);
+	await sandbox.files.writeFiles(writes);
+	return inputHashes;
+}
+
+function executionText(execution: Execution) {
+	const stdout = execution.logs.stdout.map((message) => message.text).join("");
+	const stderrFromLogs = execution.logs.stderr
+		.map((message) => message.text)
+		.join("");
+	const stderrFromError = execution.error
+		? [
+				execution.error.name,
+				execution.error.value,
+				...(execution.error.traceback ?? []),
+			]
+				.filter(Boolean)
+				.join("\n")
+		: "";
+	return {
+		stdout,
+		stderr: [stderrFromLogs, stderrFromError].filter(Boolean).join("\n"),
+	};
+}
+
+function resultFromExecution(
+	input: PreparedOpenSandboxInput,
+	execution: Execution,
+	startedAt: number,
+): CodeSandboxResult {
+	const { stdout, stderr } = executionText(execution);
+	const limitedStdout = truncateTextBytes(stdout, maxStdoutBytes);
+	const limitedStderr = truncateTextBytes(stderr, maxStderrBytes);
+	const timedOut =
+		execution.exitCode === null && /timeout|timed out|deadline/i.test(stderr);
+	const exitCode = timedOut ? null : (execution.exitCode ?? null);
+	return {
+		kind: "code_sandbox_result",
+		ok: exitCode === 0 && !execution.error,
+		language: input.language,
+		exitCode,
+		signal: null,
+		timedOut,
+		durationMs: execution.complete?.executionTimeMs ?? Date.now() - startedAt,
+		stdout: limitedStdout.value,
+		stderr: limitedStderr.value,
+		truncated: limitedStdout.truncated || limitedStderr.truncated,
+		files: [],
+		error: execution.error?.value,
+	};
+}
+
+async function collectOpenSandboxFiles(
+	sandbox: Sandbox,
+	inputHashes: Map<string, string>,
+) {
+	const entries = await sandbox.files.listDirectory({
+		path: openSandboxWorkspaceDir,
+		depth: 16,
+	});
+	const collected: CodeSandboxOutputFile[] = [];
+	let embeddedBytes = 0;
+
+	for (const entry of entries) {
+		if (collected.length >= maxCollectedFiles) break;
+		if (entry.type && entry.type !== "file") continue;
+		const relativePath = workspaceRelativePath(entry.path);
+		if (shouldIgnoreCollectedPath(relativePath)) continue;
+
+		const size = typeof entry.size === "number" ? entry.size : 0;
+		const fromInput = inputHashes.has(relativePath);
+		if (size > maxCollectedFileBytes) {
+			collected.push({
+				path: relativePath,
+				size,
+				mimeType: mimeTypeForPath(relativePath),
+				skipped: "too_large",
+				fromInput,
+				modified: true,
+			});
+			continue;
+		}
+
+		const bytes = Buffer.from(
+			await sandbox.files.readBytes(entry.path, {
+				limit: Math.max(size, maxFilePreviewBytes, 1),
+			}),
+		);
+		const hash = hashBytes(bytes);
+		const modified = fromInput ? inputHashes.get(relativePath) !== hash : true;
+		const output: CodeSandboxOutputFile = {
+			path: relativePath,
+			size: size || bytes.byteLength,
+			mimeType: mimeTypeForPath(relativePath),
+			hash,
+			fromInput,
+			modified,
+		};
+
+		if (isProbablyText(bytes, relativePath)) {
+			output.textPreview = bytes
+				.subarray(0, maxFilePreviewBytes)
+				.toString("utf8");
+			output.truncated = bytes.byteLength > maxFilePreviewBytes;
+		}
+
+		if (bytes.byteLength > maxDownloadFileBytes) {
+			output.contentOmitted = "too_large";
+		} else if (embeddedBytes + bytes.byteLength > maxDownloadTotalBytes) {
+			output.contentOmitted = "total_limit";
+		} else {
+			output.contentBase64 = bytes.toString("base64");
+			embeddedBytes += bytes.byteLength;
+		}
+
+		collected.push(output);
+	}
+
+	return collected;
+}
+
+async function runOpenSandbox(
+	input: PreparedOpenSandboxInput,
+): Promise<OpenSandboxExecutionPayload> {
+	const timeoutMs = clampTimeoutMs(input.timeoutMs);
+	const timeoutSeconds = Math.max(1, Math.ceil(timeoutMs / 1000));
+	const sandboxTimeoutSeconds = Math.max(60, timeoutSeconds + 60);
+	let sandbox: Sandbox | null = null;
+	const startedAt = Date.now();
+
+	try {
+		sandbox = await Sandbox.create({
+			connectionConfig: createOpenSandboxConnectionConfig(timeoutMs),
+			image: env.OPENSANDBOX_IMAGE,
+			timeoutSeconds: sandboxTimeoutSeconds,
+			resource: { cpu: "1", memory: "2Gi" },
+			env: {
+				NODE_OPTIONS: "--no-warnings",
+				PYTHONDONTWRITEBYTECODE: "1",
+				PYTHONUNBUFFERED: "1",
+			},
+			metadata: {
+				app: "ai-hub",
+				kind: "code-sandbox",
+				language: input.language,
+			},
+		});
+		const inputHashes = await writeOpenSandboxFiles(sandbox, input);
+		const execution = await sandbox.commands.run(
+			commandForLanguage(input.language, Boolean(input.stdin)),
+			{
+				workingDirectory: openSandboxWorkspaceDir,
+				timeoutSeconds,
+				envs: {
+					HOME: `${openSandboxWorkspaceDir}/home`,
+					MPLCONFIGDIR: `${openSandboxWorkspaceDir}/tmp/matplotlib`,
+					TMPDIR: `${openSandboxWorkspaceDir}/tmp`,
+					XDG_CACHE_HOME: `${openSandboxWorkspaceDir}/tmp/cache`,
+				},
+			},
+		);
+		const result = resultFromExecution(input, execution, startedAt);
+		return {
+			inputHashes,
+			result: {
+				...result,
+				files: await collectOpenSandboxFiles(sandbox, inputHashes),
+			},
+		};
+	} finally {
+		if (sandbox) {
+			await sandbox.kill().catch(() => undefined);
+			await sandbox.close().catch(() => undefined);
+		}
+	}
+}
+
 export async function executeCodeSandbox(
 	input: CodeSandboxRequest,
 	context?: CodeSandboxExecutionContext,
 ): Promise<CodeSandboxResult> {
-	let runnerInput: CodeSandboxRequest;
+	let openSandboxInput: PreparedOpenSandboxInput;
 	try {
-		runnerInput = await prepareSandboxRunnerRequest(input, context);
+		openSandboxInput = await prepareOpenSandboxRequest(input, context);
 	} catch (error) {
 		return failedSandboxResult(
 			input,
@@ -373,90 +744,10 @@ export async function executeCodeSandbox(
 		);
 	}
 
-	const body = JSON.stringify(runnerInput);
-	const socketPath = resolveSandboxRunnerSocket();
-	return new Promise((resolve) => {
-		const request = http.request(
-			{
-				socketPath,
-				path: "/run",
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-					"Content-Length": Buffer.byteLength(body),
-				},
-				timeout: requestTimeoutMs,
-			},
-			(response) => {
-				const chunks: Buffer[] = [];
-				let totalBytes = 0;
-				let responseTruncated = false;
-
-				response.on("data", (chunk: Buffer) => {
-					totalBytes += chunk.byteLength;
-					if (totalBytes <= maxResponseBytes) {
-						chunks.push(chunk);
-						return;
-					}
-					responseTruncated = true;
-					const currentBytes = chunks.reduce(
-						(total, item) => total + item.byteLength,
-						0,
-					);
-					const remaining = Math.max(0, maxResponseBytes - currentBytes);
-					if (remaining > 0) chunks.push(chunk.subarray(0, remaining));
-				});
-
-				response.on("end", () => {
-					const payload = parseJsonResponse(
-						Buffer.concat(chunks).toString("utf8"),
-					);
-					if (!payload) {
-						resolve({
-							kind: "code_sandbox_result",
-							ok: false,
-							language: input.language,
-							exitCode: null,
-							signal: null,
-							timedOut: false,
-							durationMs: 0,
-							stdout: "",
-							stderr: `Sandbox runner returned an invalid response (HTTP ${response.statusCode ?? "unknown"}).`,
-							truncated: responseTruncated,
-							files: [],
-						});
-						return;
-					}
-					void persistSandboxFiles(
-						normalizeSandboxResponse(payload, input, { responseTruncated }),
-						context,
-					).then(resolve);
-				});
-			},
-		);
-
-		request.on("timeout", () => {
-			request.destroy(new Error("Sandbox runner request timed out."));
-		});
-
-		request.on("error", (error) => {
-			const unavailableMessage = sandboxUnavailableMessage(error, socketPath);
-			resolve({
-				kind: "code_sandbox_result",
-				ok: false,
-				language: input.language,
-				exitCode: null,
-				signal: null,
-				timedOut: false,
-				durationMs: 0,
-				stdout: "",
-				stderr: unavailableMessage,
-				truncated: false,
-				files: [],
-				error: unavailableMessage,
-			});
-		});
-
-		request.end(body);
-	});
+	try {
+		const { result } = await runOpenSandbox(openSandboxInput);
+		return persistSandboxFiles(result, context);
+	} catch (error) {
+		return failedSandboxResult(input, sandboxUnavailableMessage(error));
+	}
 }

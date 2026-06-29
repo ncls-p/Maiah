@@ -27,7 +27,11 @@ x-app-environment: &app-environment
   OBJECT_STORAGE_SECRET_ACCESS_KEY: ${OBJECT_STORAGE_SECRET_ACCESS_KEY:?set OBJECT_STORAGE_SECRET_ACCESS_KEY}
   OBJECT_STORAGE_FORCE_PATH_STYLE: "true"
   SEARXNG_URL: ${SEARXNG_URL:-http://searxng:8080}
-  SANDBOX_RUNNER_SOCKET: /run/sandbox/sandbox.sock
+  OPENSANDBOX_DOMAIN: ${OPENSANDBOX_DOMAIN:-opensandbox-server:8090}
+  OPENSANDBOX_PROTOCOL: ${OPENSANDBOX_PROTOCOL:-http}
+  OPENSANDBOX_API_KEY: ${OPENSANDBOX_API_KEY:-ai-hub-internal-opensandbox-key}
+  OPENSANDBOX_IMAGE: ${OPENSANDBOX_IMAGE:-opensandbox/code-interpreter:v1.1.0}
+  OPENSANDBOX_USE_SERVER_PROXY: ${OPENSANDBOX_USE_SERVER_PROXY:-false}
   ALLOW_PERSONAL_WORKSPACES: ${ALLOW_PERSONAL_WORKSPACES:-true}
   WORKSPACE_MONTHLY_TOKEN_LIMIT: ${WORKSPACE_MONTHLY_TOKEN_LIMIT:-}
 
@@ -55,6 +59,8 @@ services:
       - "${AI_HUB_PROD_APP_PORT:-3001}:3000"
     environment:
       <<: *app-environment
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -66,10 +72,8 @@ services:
         condition: service_completed_successfully
       searxng:
         condition: service_healthy
-      sandbox-runner:
+      opensandbox-server:
         condition: service_healthy
-    volumes:
-      - sandbox-runner-socket:/run/sandbox
     deploy:
       resources:
         limits:
@@ -97,6 +101,8 @@ services:
     env_file: *env-files
     environment:
       <<: *app-environment
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -107,6 +113,8 @@ services:
       rustfs-init:
         condition: service_completed_successfully
       searxng:
+        condition: service_healthy
+      opensandbox-server:
         condition: service_healthy
     deploy:
       resources:
@@ -128,28 +136,18 @@ services:
       retries: 5
     restart: unless-stopped
 
-  sandbox-runner:
-    build:
-      context: .
-      target: sandbox-runner
+  opensandbox-server:
+    image: opensandbox/server:latest
     restart: unless-stopped
-    network_mode: "none"
-    read_only: true
-    tmpfs:
-      - /sandbox-runs:rw,nosuid,nodev,size=512m
-      - /tmp:rw,nosuid,nodev,size=128m
     volumes:
-      - sandbox-runner-socket:/run/sandbox
-    cap_drop:
-      - ALL
-    cap_add:
-      - CHOWN
-      - DAC_OVERRIDE
-      - KILL
-      - SETGID
-      - SETUID
-    security_opt:
-      - no-new-privileges:true
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./opensandbox/config.prod.toml:/etc/opensandbox/config.toml:ro
+      - opensandbox-prod-data:/root/.opensandbox
+    environment:
+      SANDBOX_CONFIG_PATH: /etc/opensandbox/config.toml
+      OPENSANDBOX_SERVER_API_KEY: ${OPENSANDBOX_API_KEY:-ai-hub-internal-opensandbox-key}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     deploy:
       resources:
         limits:
@@ -162,11 +160,11 @@ services:
       test:
         [
           "CMD-SHELL",
-          'node -e "const http=require(''http'');const req=http.request({socketPath:process.env.SANDBOX_RUNNER_SOCKET||''/run/sandbox/sandbox.sock'',path:''/health''},res=>process.exit(res.statusCode===200?0:1));req.on(''error'',()=>process.exit(1));req.end();"',
+          'python -c "import urllib.request; urllib.request.urlopen(''http://127.0.0.1:8090/health'', timeout=3).read()"',
         ]
       interval: 30s
       timeout: 5s
-      start_period: 20s
+      start_period: 30s
       retries: 5
 
   postgres:
@@ -334,5 +332,5 @@ services:
 volumes:
   dragonfly-prod-data:
   rustfs-prod-data:
-  sandbox-runner-socket:
+  opensandbox-prod-data:
   postgres-prod-data:
