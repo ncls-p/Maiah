@@ -4,7 +4,7 @@ import {
   createSign,
   randomUUID,
 } from "node:crypto";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { env } from "@/lib/env";
@@ -31,6 +31,8 @@ export type GitHubRepositorySummary = {
   private: boolean;
   defaultBranch: string;
   permissions: Record<string, unknown> | null;
+  access: "admin" | "maintain" | "write" | "triage" | "read" | "unknown";
+  relationship: "account" | "collaborator";
 };
 
 export type GitHubConnectionSummary = {
@@ -38,6 +40,9 @@ export type GitHubConnectionSummary = {
   installationId: string;
   accountLogin: string;
   accountType: string | null;
+  repositorySelection: string | null;
+  settingsUrl: string | null;
+  lastSyncedAt: string | null;
 };
 
 export type GitHubPublishResult = {
@@ -54,6 +59,8 @@ export type GitHubPublishResult = {
 
 const githubApiBaseUrl = "https://api.github.com";
 const githubStateMaxAgeMs = 10 * 60 * 1000;
+const githubRepositorySyncPageSize = 100;
+const githubRepositorySyncMaxPages = 30;
 const maxCommitFiles = 500;
 const maxCommitBytes = 50 * 1024 * 1024;
 const blockedPublishPathPatterns = [
@@ -306,6 +313,97 @@ function normalizePermissions(value: unknown) {
     : null;
 }
 
+function normalizeRepositorySelection(value: unknown) {
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
+function permissionEnabled(
+  permissions: Record<string, unknown> | null,
+  key: string,
+) {
+  return permissions?.[key] === true;
+}
+
+export function describeGitHubRepositoryAccess(
+  permissions: Record<string, unknown> | null,
+): GitHubRepositorySummary["access"] {
+  if (!permissions) return "unknown";
+  if (permissionEnabled(permissions, "admin")) return "admin";
+  if (permissionEnabled(permissions, "maintain")) return "maintain";
+  if (permissionEnabled(permissions, "push")) return "write";
+  if (permissionEnabled(permissions, "triage")) return "triage";
+  if (permissionEnabled(permissions, "pull")) return "read";
+  return "unknown";
+}
+
+export function describeGitHubRepositoryRelationship(input: {
+  accountLogin: string | null;
+  owner: string;
+}): GitHubRepositorySummary["relationship"] {
+  return input.accountLogin?.toLowerCase() === input.owner.toLowerCase()
+    ? "account"
+    : "collaborator";
+}
+
+function canPublishToGitHubRepository(
+  permissions: Record<string, unknown> | null,
+) {
+  const access = describeGitHubRepositoryAccess(permissions);
+  return access === "admin" || access === "maintain" || access === "write";
+}
+
+function trustedGitHubUrl(value: unknown) {
+  if (typeof value !== "string") return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && url.hostname === "github.com"
+      ? url.toString()
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+export function createGitHubInstallationSettingsUrl(input: {
+  installationId: string;
+  accountLogin?: string | null;
+  accountType?: string | null;
+  htmlUrl?: string | null;
+}) {
+  const htmlUrl = trustedGitHubUrl(input.htmlUrl);
+  if (htmlUrl) return htmlUrl;
+  const encodedInstallationId = encodeURIComponent(input.installationId);
+  if (input.accountType === "Organization" && input.accountLogin) {
+    return `https://github.com/organizations/${encodeURIComponent(input.accountLogin)}/settings/installations/${encodedInstallationId}`;
+  }
+  return `https://github.com/settings/installations/${encodedInstallationId}`;
+}
+
+type GitHubInstallationRepository = {
+  id: number;
+  name: string;
+  full_name: string;
+  private: boolean;
+  default_branch: string;
+  owner: { login: string };
+  permissions?: unknown;
+};
+
+async function fetchInstallationRepositories(token: string) {
+  const repositories: GitHubInstallationRepository[] = [];
+  for (let page = 1; page <= githubRepositorySyncMaxPages; page += 1) {
+    const result = await githubRequest<{
+      repositories: GitHubInstallationRepository[];
+    }>(
+      `/installation/repositories?per_page=${githubRepositorySyncPageSize}&page=${page}`,
+      token,
+    );
+    repositories.push(...result.repositories);
+    if (result.repositories.length < githubRepositorySyncPageSize) break;
+  }
+  return repositories;
+}
+
 export async function syncGitHubInstallation(input: {
   userId: string;
   installationId: string;
@@ -314,10 +412,22 @@ export async function syncGitHubInstallation(input: {
   const installation = await githubRequest<{
     id: number;
     account?: { id?: number; login?: string; type?: string } | null;
+    html_url?: string | null;
+    repository_selection?: string | null;
   }>(`/app/installations/${encodeURIComponent(input.installationId)}`, appJwt);
   const accountLogin = installation.account?.login ?? "GitHub";
   const accountId = installation.account?.id?.toString() ?? null;
   const accountType = installation.account?.type ?? null;
+  const repositorySelection = normalizeRepositorySelection(
+    installation.repository_selection,
+  );
+  const settingsUrl = createGitHubInstallationSettingsUrl({
+    installationId: String(installation.id),
+    accountLogin,
+    accountType,
+    htmlUrl: installation.html_url,
+  });
+  const syncedAt = new Date();
 
   const [connection] = await db
     .insert(userGithubConnections)
@@ -327,48 +437,92 @@ export async function syncGitHubInstallation(input: {
       accountLogin,
       accountId,
       accountType,
-      updatedAt: new Date(),
+      repositorySelection,
+      settingsUrl,
+      lastSyncedAt: syncedAt,
+      updatedAt: syncedAt,
     })
     .onConflictDoUpdate({
       target: [
         userGithubConnections.userId,
         userGithubConnections.installationId,
       ],
-      set: { accountLogin, accountId, accountType, updatedAt: new Date() },
+      set: {
+        accountLogin,
+        accountId,
+        accountType,
+        repositorySelection,
+        settingsUrl,
+        lastSyncedAt: syncedAt,
+        updatedAt: syncedAt,
+      },
     })
     .returning();
 
   const installationToken = await getInstallationToken(String(installation.id));
-  const repos = await githubRequest<{
-    repositories: Array<{
-      id: number;
-      name: string;
-      full_name: string;
-      private: boolean;
-      default_branch: string;
-      owner: { login: string };
-      permissions?: unknown;
-    }>;
-  }>("/installation/repositories?per_page=100", installationToken);
+  const repositories = await fetchInstallationRepositories(installationToken);
 
   await db
     .delete(userGithubRepositories)
     .where(eq(userGithubRepositories.connectionId, connection.id));
-  if (repos.repositories.length > 0) {
-    await db.insert(userGithubRepositories).values(
-      repos.repositories.map((repo) => ({
-        connectionId: connection.id,
-        userId: input.userId,
-        githubRepositoryId: String(repo.id),
-        owner: repo.owner.login,
-        name: repo.name,
-        fullName: repo.full_name,
-        private: repo.private,
-        defaultBranch: repo.default_branch,
-        permissionsJson: normalizePermissions(repo.permissions),
-        lastSyncedAt: new Date(),
-      })),
-    );
+  if (repositories.length > 0) {
+    await db
+      .insert(userGithubRepositories)
+      .values(
+        repositories.map((repo) => ({
+          connectionId: connection.id,
+          userId: input.userId,
+          githubRepositoryId: String(repo.id),
+          owner: repo.owner.login,
+          name: repo.name,
+          fullName: repo.full_name,
+          private: repo.private,
+          defaultBranch: repo.default_branch,
+          permissionsJson: normalizePermissions(repo.permissions),
+          lastSyncedAt: syncedAt,
+        })),
+      )
+      .onConflictDoUpdate({
+        target: [
+          userGithubRepositories.userId,
+          userGithubRepositories.owner,
+          userGithubRepositories.name,
+        ],
+        set: {
+          connectionId: sql`excluded.connection_id`,
+          githubRepositoryId: sql`excluded.github_repository_id`,
+          fullName: sql`excluded.full_name`,
+          private: sql`excluded.private`,
+          defaultBranch: sql`excluded.default_branch`,
+          permissionsJson: sql`excluded.permissions_json`,
+          lastSyncedAt: sql`excluded.last_synced_at`,
+        },
+      });
+  }
+
+  return getUserGitHubStatus({ userId: input.userId });
+}
+
+export async function syncUserGitHubInstallations(input: {
+  userId: string;
+  connectionId?: string;
+}) {
+  const query = input.connectionId
+    ? and(
+        eq(userGithubConnections.userId, input.userId),
+        eq(userGithubConnections.id, input.connectionId),
+      )
+    : eq(userGithubConnections.userId, input.userId);
+  const connections = await db
+    .select()
+    .from(userGithubConnections)
+    .where(query);
+
+  for (const connection of connections) {
+    await syncGitHubInstallation({
+      userId: input.userId,
+      installationId: connection.installationId,
+    });
   }
 
   return getUserGitHubStatus({ userId: input.userId });
@@ -392,6 +546,9 @@ export async function getUserGitHubStatus(input: {
     githubAppConfigured() && input.workspaceId
       ? `/api/workspace/github/connect?workspaceId=${encodeURIComponent(input.workspaceId)}`
       : null;
+  const connectionsById = new Map(
+    connections.map((connection) => [connection.id, connection]),
+  );
   return {
     configured: githubAppConfigured(),
     connectPath,
@@ -405,20 +562,32 @@ export async function getUserGitHubStatus(input: {
         installationId: connection.installationId,
         accountLogin: connection.accountLogin,
         accountType: connection.accountType,
+        repositorySelection: connection.repositorySelection,
+        settingsUrl: connection.settingsUrl,
+        lastSyncedAt: connection.lastSyncedAt?.toISOString() ?? null,
       }),
     ),
-    repositories: repositories.map(
-      (repo): GitHubRepositorySummary => ({
-        id: repo.id,
-        connectionId: repo.connectionId,
-        owner: repo.owner,
-        name: repo.name,
-        fullName: repo.fullName,
-        private: repo.private,
-        defaultBranch: repo.defaultBranch,
-        permissions: normalizePermissions(repo.permissionsJson),
-      }),
-    ),
+    repositories: repositories
+      .map((repo): GitHubRepositorySummary => {
+        const permissions = normalizePermissions(repo.permissionsJson);
+        const connection = connectionsById.get(repo.connectionId);
+        return {
+          id: repo.id,
+          connectionId: repo.connectionId,
+          owner: repo.owner,
+          name: repo.name,
+          fullName: repo.fullName,
+          private: repo.private,
+          defaultBranch: repo.defaultBranch,
+          permissions,
+          access: describeGitHubRepositoryAccess(permissions),
+          relationship: describeGitHubRepositoryRelationship({
+            accountLogin: connection?.accountLogin ?? null,
+            owner: repo.owner,
+          }),
+        };
+      })
+      .sort((a, b) => a.fullName.localeCompare(b.fullName)),
   };
 }
 
@@ -737,6 +906,11 @@ export async function publishCodeWorkspaceToGitHub(
     userId: parsed.userId,
     repositoryId: parsed.repositoryId,
   });
+  if (!canPublishToGitHubRepository(normalizePermissions(repo.permissionsJson))) {
+    throw new Error(
+      "GitHub repository write access is required before publishing.",
+    );
+  }
   const workspace = await getCodeWorkspaceFilesForPublish({
     projectId: parsed.projectId,
     workspaceId: parsed.workspaceId,

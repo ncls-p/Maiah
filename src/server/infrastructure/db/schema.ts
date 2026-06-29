@@ -1400,6 +1400,11 @@ export const userGithubConnections = pgTable(
     accountLogin: varchar("account_login", { length: 255 }).notNull(),
     accountId: varchar("account_id", { length: 64 }),
     accountType: varchar("account_type", { length: 32 }),
+    repositorySelection: varchar("repository_selection", { length: 32 }),
+    settingsUrl: text("settings_url"),
+    lastSyncedAt: timestamp("last_synced_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
     createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
       .notNull()
       .defaultNow(),

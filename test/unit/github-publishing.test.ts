@@ -1,7 +1,11 @@
 import { createPrivateKey, generateKeyPairSync } from "node:crypto";
 import { describe, expect, it } from "vitest";
 
-import { normalizeGitHubPrivateKey } from "@/modules/github/publishing";
+import {
+	describeGitHubRepositoryAccess,
+	describeGitHubRepositoryRelationship,
+	normalizeGitHubPrivateKey,
+} from "@/modules/github/publishing";
 
 function privateKeyPem() {
 	return generateKeyPairSync("rsa", { modulusLength: 2048 })
@@ -40,5 +44,29 @@ describe("GitHub publishing", () => {
 
 		expect(() => createPrivateKey(normalizedPem)).not.toThrow();
 		expect(() => createPrivateKey(normalizedBase64)).not.toThrow();
+	});
+
+	it("describes repository access from GitHub App permissions", () => {
+		expect(describeGitHubRepositoryAccess({ admin: true })).toBe("admin");
+		expect(describeGitHubRepositoryAccess({ maintain: true })).toBe("maintain");
+		expect(describeGitHubRepositoryAccess({ push: true })).toBe("write");
+		expect(describeGitHubRepositoryAccess({ triage: true })).toBe("triage");
+		expect(describeGitHubRepositoryAccess({ pull: true })).toBe("read");
+		expect(describeGitHubRepositoryAccess(null)).toBe("unknown");
+	});
+
+	it("labels repositories outside the installation account as collaborator repositories", () => {
+		expect(
+			describeGitHubRepositoryRelationship({
+				accountLogin: "octocat",
+				owner: "OctoCat",
+			}),
+		).toBe("account");
+		expect(
+			describeGitHubRepositoryRelationship({
+				accountLogin: "octocat",
+				owner: "friend-org",
+			}),
+		).toBe("collaborator");
 	});
 });

@@ -148,6 +148,13 @@
       "when": 1781300000006,
       "tag": "0020_github_publishing",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1781300000007,
+      "tag": "0021_github_connection_resync",
+      "breakpoints": true
     }
   ]
 }
