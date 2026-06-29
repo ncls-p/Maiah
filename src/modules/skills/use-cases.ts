@@ -218,6 +218,46 @@ function parseSkillsInstallCommand(command: string): ParsedInstallCommand {
 	};
 }
 
+function processOutputToString(value: unknown) {
+	if (!value) return "";
+	return Buffer.isBuffer(value) ? value.toString("utf8") : String(value);
+}
+
+async function runSkillsCli(args: string[], tempDir: string, tempHome: string) {
+	try {
+		return await execFileAsync("npx", args, {
+			cwd: tempDir,
+			env: {
+				...process.env,
+				GIT_TERMINAL_PROMPT: "0",
+				HOME: tempHome,
+				NO_UPDATE_NOTIFIER: "1",
+				npm_config_update_notifier: "false",
+				npm_config_yes: "true",
+			},
+			timeout: 120_000,
+			maxBuffer: 2_000_000,
+		});
+	} catch (error) {
+		const execError = error as Error & {
+			code?: unknown;
+			stderr?: unknown;
+			stdout?: unknown;
+		};
+		const output = stripAnsi(
+			[
+				processOutputToString(execError.stdout),
+				processOutputToString(execError.stderr),
+			]
+				.filter(Boolean)
+				.join("\n"),
+		).trim();
+		const exit = execError.code ? ` (exit ${String(execError.code)})` : "";
+		const reason = (output || execError.message).slice(0, 4_000);
+		throw new Error(`Skill CLI failed${exit}: ${reason}`, { cause: error });
+	}
+}
+
 async function walkFiles(root: string): Promise<string[]> {
 	try {
 		const entries = await readdir(root, { withFileTypes: true });
@@ -318,16 +358,7 @@ export async function installSkillsFromCommand(input: {
 			args.push("--skill", skillName);
 		}
 
-		const { stdout, stderr } = await execFileAsync("npx", args, {
-			cwd: tempDir,
-			env: {
-				...process.env,
-				HOME: tempHome,
-				npm_config_yes: "true",
-			},
-			timeout: 120_000,
-			maxBuffer: 2_000_000,
-		});
+		const { stdout, stderr } = await runSkillsCli(args, tempDir, tempHome);
 
 		const installedRoot = path.join(tempDir, ".claude", "skills");
 		const rootEntries = await readdir(installedRoot, {
@@ -573,16 +604,7 @@ export async function previewSkillInstall(
 			args.push("--skill", skillName);
 		}
 
-		await execFileAsync("npx", args, {
-			cwd: tempDir,
-			env: {
-				...process.env,
-				HOME: tempHome,
-				npm_config_yes: "true",
-			},
-			timeout: 120_000,
-			maxBuffer: 2_000_000,
-		});
+		await runSkillsCli(args, tempDir, tempHome);
 
 		const installedRoot = path.join(tempDir, ".claude", "skills");
 		const rootEntries = await readdir(installedRoot, {
