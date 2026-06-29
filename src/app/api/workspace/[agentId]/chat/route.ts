@@ -100,6 +100,7 @@ const chatRequestSchema = z.object({
 
 const defaultMaxToolCalls = 6;
 const defaultMaxOutputTokens = 30_000;
+const previousToolTextContextChars = 4_000;
 
 type ToolApprovalRequiredEvent = {
 	invocationId: string;
@@ -862,6 +863,78 @@ function sandboxAttachmentPathHint(fileName: string) {
 	return `attachments/${baseName}`;
 }
 
+function truncatePreviousToolContext(value: string) {
+	const normalized = value.trim();
+	if (normalized.length <= previousToolTextContextChars) return normalized;
+	return `${normalized.slice(0, previousToolTextContextChars)}\n… truncated`;
+}
+
+function sandboxAttachmentContext(attachment: unknown) {
+	if (!isChatFileAttachment(attachment) && !isChatImageAttachment(attachment)) {
+		return null;
+	}
+	return [
+		`Attachment ID: ${attachment.id}`,
+		`file name: ${attachment.fileName}`,
+		`sandbox path hint: ${sandboxAttachmentPathHint(attachment.fileName)}`,
+	].join("; ");
+}
+
+function sandboxTextContext(label: string, value: unknown) {
+	if (typeof value !== "string") return null;
+	const trimmed = value.trim();
+	return trimmed ? `${label}:\n${truncatePreviousToolContext(trimmed)}` : null;
+}
+
+function codeSandboxFileContextLine(file: unknown) {
+	if (typeof file !== "object" || file === null) return null;
+	const fileRecord = file as Record<string, unknown>;
+	if (typeof fileRecord.path !== "string") return null;
+	const details = [
+		typeof fileRecord.mimeType === "string" ? fileRecord.mimeType : null,
+		typeof fileRecord.size === "number" ? `${fileRecord.size} bytes` : null,
+	]
+		.filter(Boolean)
+		.join(", ");
+	const attachmentContext = sandboxAttachmentContext(fileRecord.attachment);
+	return `- ${fileRecord.path}${details ? ` (${details})` : ""}${attachmentContext ? ` — ${attachmentContext}` : ""}`;
+}
+
+function codeSandboxFilesContext(files: unknown) {
+	if (!Array.isArray(files) || files.length === 0) return [];
+	const lines = files.slice(0, 12).flatMap((file) => {
+		const line = codeSandboxFileContextLine(file);
+		return line ? [line] : [];
+	});
+	if (files.length > 12) lines.push(`- … ${files.length - 12} more file(s)`);
+	return lines.length > 0 ? ["Generated files:", ...lines] : [];
+}
+
+function codeSandboxContextFromValue(value: unknown) {
+	if (typeof value !== "object" || value === null) return null;
+	const record = value as Record<string, unknown>;
+	if (record.kind !== "code_sandbox_result") return null;
+
+	const lines = [
+		`Previous code sandbox result (${typeof record.language === "string" ? record.language : "unknown"}, ${record.ok === false ? "failed" : "ok"}).`,
+		"If the user asks to inspect or modify one of these generated files, call run_code_sandbox with its Attachment ID in the attachments array; do not ask the user to re-upload it.",
+		sandboxTextContext("stdout", record.stdout),
+		sandboxTextContext("stderr", record.stderr),
+		...codeSandboxFilesContext(record.files),
+	].filter(Boolean);
+
+	return lines.join("\n");
+}
+
+function codeSandboxContextFromToolMetadata(metadata: unknown) {
+	if (typeof metadata !== "object" || metadata === null) return null;
+	const record = metadata as Record<string, unknown>;
+	return (
+		codeSandboxContextFromValue(record.output) ??
+		codeSandboxContextFromValue(record)
+	);
+}
+
 function codeWorkspaceContextFromValue(value: unknown) {
 	if (typeof value !== "object" || value === null) return null;
 	const record = value as Record<string, unknown>;
@@ -1089,6 +1162,14 @@ async function loadConversationHistory(
 				if (codeWorkspaceContext) {
 					artifactCodeBlocks.add(
 						`Previously updated code workspace:\n${codeWorkspaceContext}`,
+					);
+				}
+				const codeSandboxContext = codeSandboxContextFromToolMetadata(
+					part.metadataJson,
+				);
+				if (codeSandboxContext) {
+					textParts.push(
+						`Previously generated code sandbox output available for follow-up:\n${codeSandboxContext}`,
 					);
 				}
 			}
@@ -1566,7 +1647,7 @@ export async function POST(
 							? "When the user asks for a visual design, diagram, UI mockup, chart-like schema, or interactive demo that is not specifically a slide deck, use render_html_artifact with self-contained HTML, CSS, and optional JavaScript so it appears directly in the chat. The user can view and copy the code from the artifact card, so do not duplicate the full code in your final text unless explicitly asked."
 							: null,
 						availableToolNames.includes("run_code_sandbox")
-							? "Use run_code_sandbox when the user asks you to execute Python, Node.js, or Bash; verify a calculation with code; inspect data; interact with uploaded documents; transform text/files; or produce computed results. The sandbox is wiped after each run, has no network, runs as an unprivileged user in a read-only container with resource limits, and returns stdout/stderr plus generated file previews. If the user uploaded a document or image and you need programmatic access to the original bytes, pass its Attachment ID in attachments, optionally with the path hint shown in context; readable documents also get a .extracted.txt sidecar in the sandbox. Generated files are persisted as downloadable chat attachments when possible; reference the returned downloadUrl or tell the user to use the generated file card instead of inventing links. Print or write the values you need returned; do not assume files persist between runs."
+							? "Use run_code_sandbox when the user asks you to execute Python, Node.js, or Bash; verify a calculation with code; inspect data; interact with uploaded documents; transform text/files; download public web assets; or produce computed results. The sandbox is wiped after each run, has internet access, includes broad data/science/office/media libraries, runs in an isolated container with resource limits, and returns stdout/stderr plus generated file previews. If the user uploaded a document or image and you need programmatic access to the original bytes, pass its Attachment ID in attachments, optionally with the path hint shown in context; readable documents also get a .extracted.txt sidecar in the sandbox. Generated files are persisted as downloadable chat attachments when possible; reference the returned downloadUrl or tell the user to use the generated file card instead of inventing links. Print or write the values you need returned; do not assume files persist between runs. You may write outputs to /workspace or /mnt/data; /mnt/data is mapped to the returned workspace files."
 							: null,
 						hasCodeWorkspaceTools
 							? "For static HTML/CSS/JS apps, keep the whole workflow in chat. If the user asks you to build a small website/app/demo from scratch, first use code_workspace_create_project with only short starter files or just file paths such as index.html, styles.css, and script.js, then fill or revise files one at a time with code_workspace_write_file or code_workspace_replace_text. Avoid one huge create_project call containing all final code. If the user uploaded a ZIP/code workspace, use code_workspace_list_files to inspect it, code_workspace_read_file before editing, code_workspace_replace_text for targeted edits, and code_workspace_write_file only when full-file replacement is safer. These tools return a live code workspace artifact with preview and ZIP download; do not paste full files unless asked. If the user wants to publish to GitHub, use github_get_publish_status to check the current user's connected repositories or get the connect URL. For GitHub publishing, the user must choose the repository, target branch, and mode: pull_request or direct_push. Use github_publish_code_workspace only after the user explicitly confirms those choices; direct_push requires confirmDirectPush=true and can target main only if the user explicitly selected main."

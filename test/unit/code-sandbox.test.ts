@@ -143,7 +143,7 @@ describe("OpenSandbox code sandbox", () => {
 			sandbox.writtenFiles.get("/workspace/data/input.txt")?.toString(),
 		).toBe("hello");
 		expect(sandbox.commands.run).toHaveBeenCalledWith(
-			"node --no-warnings main.mjs",
+			expect.stringContaining("node --no-warnings main.mjs"),
 			expect.objectContaining({ workingDirectory: "/workspace" }),
 		);
 		expect(sandbox.kill).toHaveBeenCalled();

@@ -137,7 +137,7 @@ const codeSandboxInputSchema = z.object({
 		)
 		.max(8)
 		.default([]),
-	timeoutMs: z.number().int().min(250).max(10_000).default(5_000),
+	timeoutMs: z.number().int().min(250).max(120_000).default(15_000),
 });
 
 const codeWorkspaceCreateInputSchema = z.object({
@@ -785,7 +785,7 @@ export const builtInTools = [
 		name: "run_code_sandbox",
 		displayName: "Code sandbox",
 		description:
-			"Run Python, Node.js, or Bash in a wiped, no-network sandbox with classic data/science/document libraries and safe uploaded-document access.",
+			"Run Python, Node.js, or Bash in a wiped sandbox with internet access, broad data/science/office/media libraries, and safe uploaded-document access.",
 		riskLevel: "high",
 		category: "Code",
 		inputSchema: codeSandboxInputSchema,
@@ -1337,9 +1337,9 @@ const commonSchemas: Record<string, unknown> = {
 			},
 			timeoutMs: {
 				type: "number",
-				default: 5000,
+				default: 15000,
 				minimum: 250,
-				maximum: 10000,
+				maximum: 120000,
 				description: "Maximum execution time in milliseconds.",
 			},
 		},

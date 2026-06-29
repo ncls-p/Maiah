@@ -114,6 +114,7 @@ jobs:
       worker_image: ${{ steps.images.outputs.worker_image }}
       migrator_image: ${{ steps.images.outputs.migrator_image }}
       searxng_image: ${{ steps.images.outputs.searxng_image }}
+      sandbox_image: ${{ steps.images.outputs.sandbox_image }}
 
     steps:
       - name: Checkout repository
@@ -143,11 +144,13 @@ jobs:
           worker_image="ghcr.io/${owner_lc}/ai-hub-worker:${tag}"
           migrator_image="ghcr.io/${owner_lc}/ai-hub-migrator:${tag}"
           searxng_image="ghcr.io/${owner_lc}/ai-hub-searxng:${tag}"
+          sandbox_image="ghcr.io/${owner_lc}/ai-hub-sandbox:${tag}"
           {
             echo "app_image=${app_image}"
             echo "worker_image=${worker_image}"
             echo "migrator_image=${migrator_image}"
             echo "searxng_image=${searxng_image}"
+            echo "sandbox_image=${sandbox_image}"
           } >> "$GITHUB_OUTPUT"
 
       - name: Build and push app image
@@ -194,6 +197,17 @@ jobs:
             --push \
             .
 
+
+      - name: Build and push OpenSandbox code image
+        run: |
+          docker buildx build \
+            --platform linux/amd64 \
+            --file opensandbox/Dockerfile.code-interpreter \
+            --tag "${{ steps.images.outputs.sandbox_image }}" \
+            --cache-from type=gha \
+            --cache-to type=gha,mode=max \
+            --push \
+            opensandbox
 
       - name: Verify pushed SearXNG image config
         run: |
@@ -258,8 +272,9 @@ jobs:
           AI_HUB_WORKER_IMAGE: ${{ needs.build_images.outputs.worker_image }}
           AI_HUB_MIGRATOR_IMAGE: ${{ needs.build_images.outputs.migrator_image }}
           AI_HUB_SEARXNG_IMAGE: ${{ needs.build_images.outputs.searxng_image }}
+          AI_HUB_SANDBOX_IMAGE: ${{ needs.build_images.outputs.sandbox_image }}
           OPENSANDBOX_API_KEY: ${{ secrets.OPENSANDBOX_API_KEY }}
-          OPENSANDBOX_IMAGE: ${{ vars.OPENSANDBOX_IMAGE || 'opensandbox/code-interpreter:v1.1.0' }}
+          OPENSANDBOX_IMAGE: ${{ needs.build_images.outputs.sandbox_image }}
           OPENSANDBOX_USE_SERVER_PROXY: ${{ vars.OPENSANDBOX_USE_SERVER_PROXY || 'false' }}
         shell: bash
         run: |
@@ -279,6 +294,7 @@ jobs:
             AI_HUB_WORKER_IMAGE
             AI_HUB_MIGRATOR_IMAGE
             AI_HUB_SEARXNG_IMAGE
+            AI_HUB_SANDBOX_IMAGE
           )
           for key in "${required[@]}"; do
             if [[ -z "${!key:-}" ]]; then
@@ -343,7 +359,7 @@ jobs:
                 | awk '{print $1}'
             )"
           fi
-          OPENSANDBOX_IMAGE="${OPENSANDBOX_IMAGE:-opensandbox/code-interpreter:v1.1.0}"
+          OPENSANDBOX_IMAGE="${OPENSANDBOX_IMAGE:-$AI_HUB_SANDBOX_IMAGE}"
           OPENSANDBOX_USE_SERVER_PROXY="${OPENSANDBOX_USE_SERVER_PROXY:-false}"
           if [[ -z "${OPENSANDBOX_API_KEY:-}" ]]; then
             OPENSANDBOX_API_KEY="$(
@@ -465,6 +481,7 @@ jobs:
               "${AI_HUB_WORKER_IMAGE:?set AI_HUB_WORKER_IMAGE}": os.environ["AI_HUB_WORKER_IMAGE"],
               "${AI_HUB_MIGRATOR_IMAGE:?set AI_HUB_MIGRATOR_IMAGE}": os.environ["AI_HUB_MIGRATOR_IMAGE"],
               "${AI_HUB_SEARXNG_IMAGE:?set AI_HUB_SEARXNG_IMAGE}": os.environ["AI_HUB_SEARXNG_IMAGE"],
+              "${AI_HUB_SANDBOX_IMAGE:?set AI_HUB_SANDBOX_IMAGE}": os.environ["OPENSANDBOX_IMAGE"],
           }
           missing = [needle for needle in replacements if needle not in compose]
           if missing:
@@ -506,6 +523,7 @@ jobs:
               --arg ai_hub_worker_image "${AI_HUB_WORKER_IMAGE}" \
               --arg ai_hub_migrator_image "${AI_HUB_MIGRATOR_IMAGE}" \
               --arg ai_hub_searxng_image "${AI_HUB_SEARXNG_IMAGE}" \
+              --arg ai_hub_sandbox_image "${AI_HUB_SANDBOX_IMAGE}" \
               --arg postgres_password "${POSTGRES_PASSWORD}" \
               --arg better_auth_secret "${BETTER_AUTH_SECRET}" \
               --arg better_auth_url "${BETTER_AUTH_URL}" \
@@ -529,6 +547,7 @@ jobs:
                 {key: "AI_HUB_WORKER_IMAGE", value: $ai_hub_worker_image, is_preview: false, is_literal: true, is_multiline: false, is_shown_once: false},
                 {key: "AI_HUB_MIGRATOR_IMAGE", value: $ai_hub_migrator_image, is_preview: false, is_literal: true, is_multiline: false, is_shown_once: false},
                 {key: "AI_HUB_SEARXNG_IMAGE", value: $ai_hub_searxng_image, is_preview: false, is_literal: true, is_multiline: false, is_shown_once: false},
+                {key: "AI_HUB_SANDBOX_IMAGE", value: $ai_hub_sandbox_image, is_preview: false, is_literal: true, is_multiline: false, is_shown_once: false},
                 {key: "POSTGRES_PASSWORD", value: $postgres_password, is_preview: false, is_literal: true, is_multiline: false, is_shown_once: false},
                 {key: "BETTER_AUTH_SECRET", value: $better_auth_secret, is_preview: false, is_literal: true, is_multiline: false, is_shown_once: false},
                 {key: "BETTER_AUTH_URL", value: $better_auth_url, is_preview: false, is_literal: true, is_multiline: false, is_shown_once: false},
@@ -558,8 +577,8 @@ jobs:
               "${AI_HUB_WORKER_IMAGE}" \
               "${AI_HUB_MIGRATOR_IMAGE}" \
               "${AI_HUB_SEARXNG_IMAGE}" \
-              "opensandbox/server:latest" \
-              "OPENSANDBOX_IMAGE" <<'PY'
+              "${OPENSANDBOX_IMAGE}" \
+              "opensandbox/server:latest" <<'PY'
           import base64
           import json
           import os
@@ -655,4 +674,5 @@ jobs:
             echo "- Migrator image: \`${AI_HUB_MIGRATOR_IMAGE}\`"
             echo "- SearXNG image: \`${AI_HUB_SEARXNG_IMAGE}\`"
             echo "- OpenSandbox image: \`${OPENSANDBOX_IMAGE}\`"
+            echo "- Built OpenSandbox image: \`${AI_HUB_SANDBOX_IMAGE}\`"
           } >> "$GITHUB_STEP_SUMMARY"

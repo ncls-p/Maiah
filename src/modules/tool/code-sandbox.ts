@@ -87,8 +87,8 @@ const maxOpenSandboxInputFiles = 40;
 const maxOpenSandboxInputFileBytes = 1_500_000;
 const maxOpenSandboxInputTotalBytes = 5_000_000;
 const maxOpenSandboxCodeChars = 100_000;
-const defaultOpenSandboxTimeoutMs = 5_000;
-const maxOpenSandboxTimeoutMs = 10_000;
+const defaultOpenSandboxTimeoutMs = 15_000;
+const maxOpenSandboxTimeoutMs = 120_000;
 const maxStdoutBytes = 64_000;
 const maxStderrBytes = 64_000;
 const maxFilePreviewBytes = 16_000;
@@ -458,13 +458,62 @@ function sourceForLanguage(input: PreparedOpenSandboxInput) {
 	return `${input.code}\n`;
 }
 
+function shellQuote(value: string) {
+	return `'${value.replace(/'/g, `'\\''`)}'`;
+}
+
+function bashLoginCommand(script: string) {
+	return `bash -lc ${shellQuote(script)}`;
+}
+
+function commonSandboxSetupScript() {
+	return [
+		"mkdir -p /workspace/home /workspace/tmp /mnt",
+		"[ -e /mnt/data ] || ln -s /workspace /mnt/data || mkdir -p /mnt/data",
+	].join(" && ");
+}
+
+function sourceCodeInterpreterRuntimeScript(language: "node" | "python") {
+	const versionVariable =
+		language === "python" ? "PYTHON_VERSION" : "NODE_VERSION";
+	const fallbackVersion = language === "python" ? "3.11" : "22";
+	return `if [ -f /opt/code-interpreter/code-interpreter-env.sh ]; then source /opt/code-interpreter/code-interpreter-env.sh ${language} "\${${versionVariable}:-${fallbackVersion}}" >/dev/null; fi`;
+}
+
+function nodePackageResolutionScript() {
+	return [
+		'export NODE_PATH="$(npm root -g)${NODE_PATH:+:$NODE_PATH}"',
+		'[ -e node_modules ] || ln -s "$(npm root -g)" node_modules || true',
+	].join(" && ");
+}
+
 function commandForLanguage(language: CodeSandboxLanguage, hasStdin: boolean) {
 	const stdin = hasStdin ? " < .stdin" : "";
-	if (language === "python") return `python3 -I main.py${stdin}`;
-	if (language === "bash") {
-		return `bash --noprofile --norc -e -u -o pipefail main.sh${stdin}`;
+	if (language === "python") {
+		return bashLoginCommand(
+			[
+				commonSandboxSetupScript(),
+				sourceCodeInterpreterRuntimeScript("python"),
+				`python3 -I main.py${stdin}`,
+			].join(" && "),
+		);
 	}
-	return `node --no-warnings main.mjs${stdin}`;
+	if (language === "bash") {
+		return bashLoginCommand(
+			[
+				commonSandboxSetupScript(),
+				`bash --noprofile --norc -e -u -o pipefail main.sh${stdin}`,
+			].join(" && "),
+		);
+	}
+	return bashLoginCommand(
+		[
+			commonSandboxSetupScript(),
+			sourceCodeInterpreterRuntimeScript("node"),
+			nodePackageResolutionScript(),
+			`node --no-warnings main.mjs${stdin}`,
+		].join(" && "),
+	);
 }
 
 function isProbablyText(bytes: Uint8Array, filePath: string) {
@@ -689,8 +738,10 @@ async function runOpenSandbox(
 			resource: { cpu: "1", memory: "2Gi" },
 			env: {
 				NODE_OPTIONS: "--no-warnings",
+				NODE_VERSION: "22",
 				PYTHONDONTWRITEBYTECODE: "1",
 				PYTHONUNBUFFERED: "1",
+				PYTHON_VERSION: "3.11",
 			},
 			metadata: {
 				app: "ai-hub",

@@ -40,10 +40,7 @@ export const baseEnvSchema = z.object({
 	OPENSANDBOX_DOMAIN: z.string().min(1).default("localhost:18090"),
 	OPENSANDBOX_PROTOCOL: z.enum(["http", "https"]).default("http"),
 	OPENSANDBOX_API_KEY: z.string().optional(),
-	OPENSANDBOX_IMAGE: z
-		.string()
-		.min(1)
-		.default("opensandbox/code-interpreter:v1.1.0"),
+	OPENSANDBOX_IMAGE: z.string().min(1).default("ai-hub/code-interpreter:local"),
 	OPENSANDBOX_USE_SERVER_PROXY: z.string().default("false"),
 	ALLOW_PERSONAL_WORKSPACES: z.string().default("true"),
 	DATABASE_SSL_REJECT_UNAUTHORIZED: z.string().default("true"),
@@ -113,7 +110,7 @@ const ENV_DEFAULTS: EnvSource = {
 	OPENSANDBOX_DOMAIN: "localhost:18090",
 	OPENSANDBOX_PROTOCOL: "http",
 	OPENSANDBOX_API_KEY: undefined,
-	OPENSANDBOX_IMAGE: "opensandbox/code-interpreter:v1.1.0",
+	OPENSANDBOX_IMAGE: "ai-hub/code-interpreter:local",
 	OPENSANDBOX_USE_SERVER_PROXY: "false",
 	ALLOW_PERSONAL_WORKSPACES: "true",
 	DATABASE_SSL_REJECT_UNAUTHORIZED: "true",

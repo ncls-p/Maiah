@@ -56,11 +56,16 @@ Copy the example file and adjust values as needed:
 cp .env.example .env.local
 ```
 
-For local development, the default `.env.example` values are designed to work with `docker-compose.dev.yml`.
+For local development, the default `.env.example` values are designed to work
+with `docker-compose.dev.yml`.
 
-### 3. Start local infrastructure
+### 3. Build and start local infrastructure
+
+Build the batteries-included OpenSandbox code image once, then start the local
+services:
 
 ```bash
+npm run sandbox:build
 docker compose -f docker-compose.dev.yml up -d
 ```
 
@@ -69,6 +74,12 @@ This starts:
 - Postgres with pgvector
 - DragonflyDB
 - RustFS S3-compatible object storage
+- OpenSandbox server for the `run_code_sandbox` tool
+
+The default sandbox image is `ai-hub/code-interpreter:local`. It keeps internet
+access enabled and preinstalls common Python/Node libraries for dataframes,
+Excel/PowerPoint/PDF handling, charts, file conversion, scraping, OCR, and
+audio/video tasks.
 
 ### 4. Run migrations
 
@@ -103,6 +114,7 @@ npm run typecheck  # Run TypeScript checks
 npm run test       # Run Vitest in watch/dev mode
 npm run test:ci    # Run Vitest once
 npm run worker     # Start background worker process
+npm run sandbox:build  # Build the OpenSandbox code image
 ```
 
 ## Environment Variables
@@ -194,8 +206,9 @@ Other targets:
 
 Production compose mirrors the existing Coolify layout used by the sibling
 projects, but this repository deploys as one web app: Postgres + DragonflyDB +
-RustFS + SearXNG + one-shot `rustfs-init` + one-shot `migrate` + standalone app
-+ worker. The default production browser origin is `https://maiah.shiftify.eco`.
+RustFS + SearXNG + one-shot `rustfs-init` + one-shot `migrate`, plus the
+standalone app and worker. The default production browser origin is
+`https://maiah.shiftify.eco`.
 
 ```bash
 docker compose -f docker-compose.prod.yml up -d --build
