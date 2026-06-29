@@ -559,7 +559,7 @@ jobs:
               "${AI_HUB_MIGRATOR_IMAGE}" \
               "${AI_HUB_SEARXNG_IMAGE}" \
               "opensandbox/server:latest" \
-              "${OPENSANDBOX_IMAGE}" <<'PY'
+              "OPENSANDBOX_IMAGE" <<'PY'
           import base64
           import json
           import os
