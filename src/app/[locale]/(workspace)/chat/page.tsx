@@ -1157,9 +1157,14 @@ export default function ChatPage() {
 	}
 
 	function submitMessage() {
+		const hasAttachments = attachments.length > 0;
 		const content =
 			input.trim() ||
-			(attachments.length > 0 ? "Please analyze the attached file." : "");
+			(hasAttachments
+				? attachments.every((attachment) => attachment.kind === "chat_image")
+					? "Please analyze the attached image."
+					: "Please analyze the attached file."
+				: "");
 		if (!content || !canChat) return;
 		if (sending && attachments.length > 0) {
 			toast.error("Wait for the current response before sending attachments.");
@@ -1261,7 +1266,11 @@ export default function ChatPage() {
 				throw new Error(data?.error || "Failed to upload file");
 			}
 			setAttachments((current) => [...current, data.attachment!]);
-			toast.success("File attached");
+			toast.success(
+				data.attachment.kind === "chat_image"
+					? "Image attached for vision"
+					: "File attached",
+			);
 		} catch (error) {
 			toast.error(
 				error instanceof Error ? error.message : "Failed to upload file",

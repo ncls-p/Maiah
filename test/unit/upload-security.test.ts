@@ -142,6 +142,28 @@ describe("upload security", () => {
 		).rejects.toThrow(/Unsupported image type/);
 	});
 
+	it("classifies generic chat uploads with image bytes as vision images", async () => {
+		const { createChatAttachment } = await import(
+			"@/modules/chat/attachments"
+		);
+
+		const attachment = await createChatAttachment({
+			workspaceId: "11111111-1111-4111-8111-111111111111",
+			userId: "user-1",
+			fileName: "screenshot.png",
+			mimeType: "application/octet-stream",
+			bytes: new Uint8Array([
+				0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00,
+			]),
+		});
+
+		expect(attachment).toMatchObject({
+			kind: "chat_image",
+			fileName: "screenshot.png",
+			mimeType: "image/png",
+		});
+	});
+
 	it("extracts readable text from markdown chat attachments", async () => {
 		const { createChatAttachment, getChatAttachmentExtractedText } =
 			await import("@/modules/chat/attachments");

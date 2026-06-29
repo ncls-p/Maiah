@@ -913,6 +913,7 @@ export function useChatStream({
 				});
 			}
 
+			const attachmentsToSend = options.attachments ?? [];
 			await streamAiSdkUIChat({
 				api: `/api/workspace/${agentId}/chat`,
 				chatId: activeConversationId ?? userMessage.id,
@@ -925,8 +926,11 @@ export function useChatStream({
 					resendFromMessageId: options.resendFromMessageId,
 					codeWorkspaceId:
 						options.codeWorkspaceId ?? options.codeWorkspaceArtifact?.projectId,
-					attachmentIds: options.attachments?.map(
-						(attachment) => attachment.id,
+					attachmentIds: attachmentsToSend.flatMap((attachment) =>
+						attachment.kind === "chat_file" ? [attachment.id] : [],
+					),
+					imageAttachmentIds: attachmentsToSend.flatMap((attachment) =>
+						attachment.kind === "chat_image" ? [attachment.id] : [],
 					),
 				},
 				abortSignal: controller.signal,

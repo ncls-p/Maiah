@@ -1049,9 +1049,10 @@ async function loadConversationHistory(
 	for (const message of modelMessageRows) {
 		const textParts: string[] = [];
 		const imageParts: Array<{
-			type: "image";
-			image: Uint8Array;
+			type: "file";
+			data: Uint8Array;
 			mediaType: string;
+			filename: string;
 		}> = [];
 		const artifactCodeBlocks = new Set<string>();
 		for (const part of partsByMessageId.get(message.id) ?? []) {
@@ -1071,15 +1072,17 @@ async function loadConversationHistory(
 						});
 						textParts.push(
 							[
-								`Attached image: ${attachment.metadata.fileName}`,
+								`Attached image for visual analysis: ${attachment.metadata.fileName}`,
 								`Attachment ID: ${imageAttachment.id}`,
+								`MIME type: ${attachment.metadata.mimeType}`,
 								`Sandbox path hint: ${sandboxAttachmentPathHint(imageAttachment.fileName)}`,
 							].join("\n"),
 						);
 						imageParts.push({
-							type: "image",
-							image: attachment.bytes,
+							type: "file",
+							data: attachment.bytes,
 							mediaType: attachment.metadata.mimeType,
+							filename: attachment.metadata.fileName,
 						});
 					} catch (error) {
 						logHandledWarning("Skipping unavailable chat image attachment", {
