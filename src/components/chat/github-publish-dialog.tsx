@@ -83,8 +83,17 @@ function formatGitHubAccess(access: GitHubRepositoryAccess) {
 	return labels[access];
 }
 
-function canWriteRepository(access: GitHubRepositoryAccess) {
-	return access === "admin" || access === "maintain" || access === "write";
+function canAttemptPublishToRepository(access: GitHubRepositoryAccess) {
+	return (
+		access === "unknown" ||
+		access === "admin" ||
+		access === "maintain" ||
+		access === "write"
+	);
+}
+
+function hasLimitedRepositoryAccess(access: GitHubRepositoryAccess) {
+	return access === "read" || access === "triage";
 }
 
 function formatLastSynced(value: string | null) {
@@ -140,7 +149,7 @@ export function GitHubPublishDialog({
 	const primaryManageUrl =
 		selectedConnection?.settingsUrl ?? connections[0]?.settingsUrl ?? connectUrl;
 	const canPublishToSelectedRepository = selectedRepository
-		? canWriteRepository(selectedRepository.access)
+		? canAttemptPublishToRepository(selectedRepository.access)
 		: false;
 
 	const applyGitHubStatus = useCallback((data: GitHubStatusPayload) => {
@@ -400,8 +409,10 @@ export function GitHubPublishDialog({
 											: `${repositories.length} authorized repositories`}
 									</p>
 									<p className="mt-1">
-										To add collaborator repositories, install or update the GitHub App
-										on the account or organization that owns them, then sync.
+										This list includes every repository authorized for the GitHub App,
+										including collaborator repositories when the app is allowed on the
+										owning account or organization. To add more repositories, update the
+										installation, then sync.
 									</p>
 								</div>
 								<div className="flex shrink-0 flex-wrap gap-2">
@@ -439,7 +450,7 @@ export function GitHubPublishDialog({
 								</div>
 							</div>
 						</div>
-						{selectedRepository && !canPublishToSelectedRepository ? (
+						{selectedRepository && hasLimitedRepositoryAccess(selectedRepository.access) ? (
 							<div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-muted-foreground">
 								<p className="font-medium text-foreground">
 									This repository is currently {formatGitHubAccess(selectedRepository.access)}.
@@ -471,9 +482,9 @@ export function GitHubPublishDialog({
 										{repo.fullName}
 										{repo.private ? " · private" : ""}
 										{repo.relationship === "collaborator" ? " · collaborator" : ""}
-										{canWriteRepository(repo.access)
-											? ""
-											: ` · ${formatGitHubAccess(repo.access)}`}
+										{hasLimitedRepositoryAccess(repo.access)
+											? ` · ${formatGitHubAccess(repo.access)}`
+											: ""}
 									</option>
 								))}
 							</select>

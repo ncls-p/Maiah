@@ -345,11 +345,16 @@ export function describeGitHubRepositoryRelationship(input: {
     : "collaborator";
 }
 
-function canPublishToGitHubRepository(
+export function canAttemptGitHubRepositoryPublish(
   permissions: Record<string, unknown> | null,
 ) {
   const access = describeGitHubRepositoryAccess(permissions);
-  return access === "admin" || access === "maintain" || access === "write";
+  return (
+    access === "unknown" ||
+    access === "admin" ||
+    access === "maintain" ||
+    access === "write"
+  );
 }
 
 function trustedGitHubUrl(value: unknown) {
@@ -906,7 +911,7 @@ export async function publishCodeWorkspaceToGitHub(
     userId: parsed.userId,
     repositoryId: parsed.repositoryId,
   });
-  if (!canPublishToGitHubRepository(normalizePermissions(repo.permissionsJson))) {
+  if (!canAttemptGitHubRepositoryPublish(normalizePermissions(repo.permissionsJson))) {
     throw new Error(
       "GitHub repository write access is required before publishing.",
     );

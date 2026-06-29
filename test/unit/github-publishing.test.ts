@@ -2,6 +2,7 @@ import { createPrivateKey, generateKeyPairSync } from "node:crypto";
 import { describe, expect, it } from "vitest";
 
 import {
+	canAttemptGitHubRepositoryPublish,
 	describeGitHubRepositoryAccess,
 	describeGitHubRepositoryRelationship,
 	normalizeGitHubPrivateKey,
@@ -53,6 +54,13 @@ describe("GitHub publishing", () => {
 		expect(describeGitHubRepositoryAccess({ triage: true })).toBe("triage");
 		expect(describeGitHubRepositoryAccess({ pull: true })).toBe("read");
 		expect(describeGitHubRepositoryAccess(null)).toBe("unknown");
+	});
+
+	it("allows publishing attempts when GitHub App repository permissions are not exposed", () => {
+		expect(canAttemptGitHubRepositoryPublish(null)).toBe(true);
+		expect(canAttemptGitHubRepositoryPublish({ push: true })).toBe(true);
+		expect(canAttemptGitHubRepositoryPublish({ pull: true })).toBe(false);
+		expect(canAttemptGitHubRepositoryPublish({ triage: true })).toBe(false);
 	});
 
 	it("labels repositories outside the installation account as collaborator repositories", () => {
