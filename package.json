@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "engines": {
-    "node": ">=22"
+    "node": ">=22.9.0",
+    "npm": "11.18.0"
   },
   "scripts": {
     "dev": "tsx scripts/migrate.ts && next dev",
@@ -25,7 +26,8 @@
     "format": "prettier --write \"src/**/*.{ts,tsx,md}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,md}\"",
     "analyze": "ANALYZE=true next build",
-    "sandbox:build": "bash scripts/build-opensandbox-image.sh"
+    "sandbox:build": "bash scripts/build-opensandbox-image.sh",
+    "lockfile:check": "node scripts/check-lockfile.mjs"
   },
   "dependencies": {
     "@ai-sdk/devtools": "^1.0.0",
@@ -90,5 +92,6 @@
   "description": "Production-oriented AI agent hub built with Next.js, Better Auth, Drizzle, and workspace IAM.",
   "author": "Deodis",
   "license": "UNLICENSED",
-  "main": "next.config.ts"
+  "main": "next.config.ts",
+  "packageManager": "npm@11.18.0"
 }

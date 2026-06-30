@@ -10,10 +10,10 @@ import {
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 
 import { decryptValue } from "@/lib/crypto";
-import type { McpTransport } from "@/modules/mcp/use-cases";
 import type { mcpServers } from "@/server/infrastructure/db/schema";
 
 type McpServerRow = typeof mcpServers.$inferSelect;
+type McpTransport = McpServerRow["transport"];
 
 const CONNECT_TIMEOUT_MS = 15_000;
 
@@ -44,6 +44,23 @@ function createTransport(
   return new StreamableHTTPClientTransport(url, { requestInit });
 }
 
+async function connectTransport(client: Client, transport: Transport) {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      client.connect(transport),
+      new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(
+          () => reject(new Error("MCP connection timed out")),
+          CONNECT_TIMEOUT_MS,
+        );
+      }),
+    ]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
+
 async function connectClient(
   server: McpServerRow,
 ): Promise<{ client: Client; transport: Transport }> {
@@ -64,15 +81,7 @@ async function connectClient(
     Boolean,
   ) as Transport[]) {
     try {
-      await Promise.race([
-        client.connect(transport),
-        new Promise<never>((_, reject) =>
-          setTimeout(
-            () => reject(new Error("MCP connection timed out")),
-            CONNECT_TIMEOUT_MS,
-          ),
-        ),
-      ]);
+      await connectTransport(client, transport);
       return { client, transport };
     } catch (error) {
       lastError = error;

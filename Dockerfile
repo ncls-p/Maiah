@@ -41,6 +41,8 @@ PY
 
 FROM node:22-bookworm-slim AS base
 
+ARG NPM_VERSION=11.18.0
+
 WORKDIR /app
 
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -49,11 +51,13 @@ RUN apt-get update \
   && apt-get install -y --no-install-recommends \
     ca-certificates \
     git \
-  && rm -rf /var/lib/apt/lists/*
+  && rm -rf /var/lib/apt/lists/* \
+  && npm install --global "npm@${NPM_VERSION}" --no-audit --no-fund \
+  && test "$(npm --version)" = "${NPM_VERSION}"
 
 FROM base AS deps
-COPY package.json package-lock.json ./
-RUN npm ci
+COPY package.json package-lock.json .npmrc ./
+RUN npm ci --no-audit --no-fund
 
 FROM deps AS builder
 COPY . .

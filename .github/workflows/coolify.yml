@@ -13,6 +13,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
+  NPM_VERSION: 11.18.0
   COOLIFY_BASE_URL: https://coolify.shiftify.eco
   COOLIFY_PROJECT_UUID: ${{ vars.COOLIFY_PROJECT_UUID || 'g10sq9dzp3869m0qjn6midtp' }}
   COOLIFY_SERVER_UUID: ${{ vars.COOLIFY_SERVER_UUID || 'o2dnvmz0zrjz0frynoq6bnfj' }}
@@ -63,8 +64,16 @@ jobs:
           node-version: 22
           cache: npm
 
+      - name: Pin npm
+        run: |
+          npm install --global "npm@${NPM_VERSION}" --no-audit --no-fund
+          test "$(npm --version)" = "${NPM_VERSION}"
+
+      - name: Verify lockfile is reproducible
+        run: npm run lockfile:check
+
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --no-audit --no-fund
 
       - name: Lint
         run: npm run lint
@@ -196,7 +205,6 @@ jobs:
             --cache-to type=gha,mode=max \
             --push \
             .
-
 
       - name: Build and push OpenSandbox code image
         run: |

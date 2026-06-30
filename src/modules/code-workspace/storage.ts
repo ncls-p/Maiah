@@ -197,10 +197,14 @@ async function migrateLegacyProjectToObjectStorage(projectId: string) {
       JSON.stringify(metadata, null, 2),
       "application/json; charset=utf-8",
     );
-    await rm(legacyProjectDirectory(projectId, root), {
-      recursive: true,
-      force: true,
-    }).catch(() => {});
+    try {
+      await rm(legacyProjectDirectory(projectId, root), {
+        recursive: true,
+        force: true,
+      });
+    } catch {
+      // Best-effort cleanup after the object-storage migration succeeds.
+    }
     return metadata;
   }
   return null;
@@ -215,6 +219,16 @@ async function deleteUploadedProject(projectId: string, filePaths: string[]) {
   );
 }
 
+function isPathTraversal(normalizedPath: string) {
+  return (
+    !normalizedPath ||
+    normalizedPath === "." ||
+    normalizedPath.startsWith("../") ||
+    normalizedPath === ".." ||
+    normalizedPath.includes("/../")
+  );
+}
+
 export function normalizeWorkspacePath(rawPath: string) {
   const trimmed = rawPath.trim().replace(/\\/g, "/");
   if (!trimmed || trimmed.includes("\0")) {
@@ -224,13 +238,7 @@ export function normalizeWorkspacePath(rawPath: string) {
     throw new Error("Absolute paths are not allowed.");
   }
   const normalized = path.posix.normalize(trimmed).replace(/^\.\//, "");
-  if (
-    !normalized ||
-    normalized === "." ||
-    normalized.startsWith("../") ||
-    normalized === ".." ||
-    normalized.includes("/../")
-  ) {
+  if (isPathTraversal(normalized)) {
     throw new Error("Path traversal is not allowed.");
   }
   if (normalized.length > maxPathLength) {
@@ -633,6 +641,76 @@ export async function readCodeWorkspaceFile(input: {
   };
 }
 
+function writableWorkspaceFilePath(filePath: string) {
+  const projectPath = normalizeWorkspacePath(filePath);
+  if (!isAllowedPath(projectPath) || !isTextWorkspacePath(projectPath)) {
+    throw new Error("Only supported text web files can be written.");
+  }
+  return projectPath;
+}
+
+function encodeWorkspaceTextContent(content: string) {
+  const bytes = new TextEncoder().encode(content);
+  if (bytes.byteLength > maxTextFileBytes) {
+    throw new Error("File content is too large.");
+  }
+  return bytes;
+}
+
+function fileSummaryForTextContent(
+  projectPath: string,
+  bytes: Uint8Array,
+  updatedAt: string,
+): CodeWorkspaceFileSummary {
+  return {
+    path: projectPath,
+    size: bytes.byteLength,
+    mimeType: contentTypeForPath(projectPath),
+    binary: false,
+    hash: hashBytes(bytes),
+    updatedAt,
+  };
+}
+
+function upsertWorkspaceFileSummary(
+  files: CodeWorkspaceFileSummary[],
+  nextSummary: CodeWorkspaceFileSummary,
+) {
+  const existingIndex = files.findIndex(
+    (file) => file.path === nextSummary.path,
+  );
+  const nextFiles = [...files];
+  if (existingIndex >= 0) {
+    nextFiles[existingIndex] = nextSummary;
+    return nextFiles;
+  }
+  if (nextFiles.length >= maxFiles) {
+    throw new Error(`Too many files. Maximum is ${maxFiles}.`);
+  }
+  return [...nextFiles, nextSummary];
+}
+
+function updatedCodeWorkspaceMetadata(
+  metadata: CodeWorkspaceMetadata,
+  nextSummary: CodeWorkspaceFileSummary,
+  updatedAt: string,
+): CodeWorkspaceMetadata {
+  const nextFiles = upsertWorkspaceFileSummary(metadata.files, nextSummary);
+  if (totalWorkspaceBytes(nextFiles) > maxExtractedBytes) {
+    throw new Error("Code workspace contents are too large. Maximum is 50 MB.");
+  }
+  const rootFile = nextFiles.some((file) => file.path === metadata.rootFile)
+    ? metadata.rootFile
+    : findRootFile(nextFiles);
+  return {
+    ...metadata,
+    rootFile,
+    version: metadata.version + 1,
+    updatedAt,
+    files: nextFiles.sort((a, b) => a.path.localeCompare(b.path)),
+  };
+}
+
 export async function writeCodeWorkspaceFile(input: {
   projectId: string;
   workspaceId: string;
@@ -643,58 +721,25 @@ export async function writeCodeWorkspaceFile(input: {
   try {
     const metadata = await getCodeWorkspace(input.projectId);
     assertCodeWorkspaceAccess(metadata, input.workspaceId, input.userId);
-    const projectPath = normalizeWorkspacePath(input.filePath);
-    if (!isAllowedPath(projectPath) || !isTextWorkspacePath(projectPath)) {
-      throw new Error("Only supported text web files can be written.");
-    }
-    const bytes = new TextEncoder().encode(input.content);
-    if (bytes.byteLength > maxTextFileBytes) {
-      throw new Error("File content is too large.");
-    }
+    const projectPath = writableWorkspaceFilePath(input.filePath);
+    const bytes = encodeWorkspaceTextContent(input.content);
+    const updatedAt = new Date().toISOString();
+    const nextSummary = fileSummaryForTextContent(
+      projectPath,
+      bytes,
+      updatedAt,
+    );
+    const nextMetadata = updatedCodeWorkspaceMetadata(
+      metadata,
+      nextSummary,
+      updatedAt,
+    );
 
     await storage.upload(
       fileObjectKey(metadata.id, projectPath),
       bytes,
-      contentTypeForPath(projectPath),
+      nextSummary.mimeType,
     );
-
-    const now = new Date().toISOString();
-    const nextSummary: CodeWorkspaceFileSummary = {
-      path: projectPath,
-      size: bytes.byteLength,
-      mimeType: contentTypeForPath(projectPath),
-      binary: false,
-      hash: hashBytes(bytes),
-      updatedAt: now,
-    };
-    const existingIndex = metadata.files.findIndex(
-      (file) => file.path === projectPath,
-    );
-    const nextFiles = [...metadata.files];
-    if (existingIndex >= 0) {
-      nextFiles[existingIndex] = nextSummary;
-    } else {
-      if (nextFiles.length >= maxFiles) {
-        throw new Error(`Too many files. Maximum is ${maxFiles}.`);
-      }
-      nextFiles.push(nextSummary);
-    }
-    if (totalWorkspaceBytes(nextFiles) > maxExtractedBytes) {
-      throw new Error(
-        "Code workspace contents are too large. Maximum is 50 MB.",
-      );
-    }
-    const nextMetadata: CodeWorkspaceMetadata = {
-      ...metadata,
-      rootFile:
-        metadata.rootFile &&
-        nextFiles.some((file) => file.path === metadata.rootFile)
-          ? metadata.rootFile
-          : findRootFile(nextFiles),
-      version: metadata.version + 1,
-      updatedAt: now,
-      files: nextFiles.sort((a, b) => a.path.localeCompare(b.path)),
-    };
     await saveMetadata(nextMetadata);
     return codeWorkspaceArtifact(nextMetadata, `Updated ${projectPath}.`);
   } catch (error) {

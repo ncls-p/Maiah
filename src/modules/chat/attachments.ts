@@ -77,6 +77,9 @@ const maxExtractedChatAttachmentTextChars = 120_000;
 
 const maxOfficeXmlBytes = 8 * 1024 * 1024;
 const maxPdfInflatedBytes = 12 * 1024 * 1024;
+const unsupportedChatImageTypeMessage =
+  "Unsupported image type. Upload PNG, JPEG, GIF, or WebP.";
+const utf8Decoder = new TextDecoder("utf-8", { fatal: false });
 
 const imageTypes = {
   "image/jpeg": {
@@ -446,6 +449,130 @@ function normalizedDeclaredMimeType(mimeType?: string) {
   return normalized || null;
 }
 
+function detectOfficeAttachment(
+  declaredMimeType: string | null,
+  isZipArchive: boolean,
+): AttachmentDetection | null {
+  if (!isZipArchive) return null;
+
+  switch (declaredMimeType) {
+    case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+      return {
+        mimeType: declaredMimeType,
+        extension: ".docx",
+        category: "document",
+        textKind: "docx",
+      };
+    case "application/vnd.openxmlformats-officedocument.presentationml.presentation":
+      return {
+        mimeType: declaredMimeType,
+        extension: ".pptx",
+        category: "presentation",
+        textKind: "pptx",
+      };
+    case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+      return {
+        mimeType: declaredMimeType,
+        extension: ".xlsx",
+        category: "spreadsheet",
+        textKind: "xlsx",
+      };
+    default:
+      return null;
+  }
+}
+
+function isZipBackedOfficeDetection(detection: AttachmentDetection) {
+  return ["docx", "pptx", "xlsx"].includes(detection.textKind);
+}
+
+function canTrustExtensionDetection(
+  detection: AttachmentDetection,
+  isZipArchive: boolean,
+) {
+  return !isZipBackedOfficeDetection(detection) || isZipArchive;
+}
+
+function detectPdfAttachment(
+  bytes: Uint8Array,
+  declaredMimeType: string | null,
+): AttachmentDetection | null {
+  if (!hasPdfSignature(bytes) && declaredMimeType !== "application/pdf") {
+    return null;
+  }
+
+  return {
+    mimeType: "application/pdf",
+    extension: ".pdf",
+    category: "document",
+    textKind: "pdf",
+  };
+}
+
+function detectByExtension(
+  extension: string,
+  isZipArchive: boolean,
+): AttachmentDetection | null {
+  const detection = mimeTypesByExtension.get(extension);
+  if (!detection || !canTrustExtensionDetection(detection, isZipArchive)) {
+    return null;
+  }
+  return detection;
+}
+
+function detectCodeTextAttachment(
+  extension: string,
+): AttachmentDetection | null {
+  if (!codeTextExtensions.has(extension)) return null;
+  return {
+    mimeType: "text/plain; charset=utf-8",
+    extension: extension || ".txt",
+    category: "text",
+    textKind: "text",
+  };
+}
+
+function detectDeclaredTextAttachment(
+  declaredMimeType: string | null,
+  extension: string,
+): AttachmentDetection | null {
+  if (!declaredMimeType || !textMimeTypes.has(declaredMimeType)) return null;
+  return {
+    mimeType: `${declaredMimeType}; charset=utf-8`,
+    extension: extension || ".txt",
+    category: "text",
+    textKind: declaredMimeType === "text/rtf" ? "rtf" : "text",
+  };
+}
+
+function detectUtf8Attachment(
+  bytes: Uint8Array,
+  declaredMimeType: string | null,
+  extension: string,
+): AttachmentDetection | null {
+  if (!isUtf8Text(bytes)) return null;
+  return {
+    mimeType: declaredMimeType?.startsWith("text/")
+      ? `${declaredMimeType}; charset=utf-8`
+      : "text/plain; charset=utf-8",
+    extension: extension || ".txt",
+    category: "text",
+    textKind: "text",
+  };
+}
+
+function fallbackFileAttachment(
+  declaredMimeType: string | null,
+  extension: string,
+): AttachmentDetection {
+  return {
+    mimeType: declaredMimeType || "application/octet-stream",
+    extension: extension || ".bin",
+    category: "file",
+    textKind: "none",
+  };
+}
+
 function isUtf8Text(bytes: Uint8Array) {
   if (bytes.length === 0) return true;
   const sample = bytes.slice(0, Math.min(bytes.length, 8192));
@@ -470,96 +597,17 @@ function detectAttachment(input: {
 }): AttachmentDetection {
   const extension = path.extname(input.fileName).toLowerCase();
   const declaredMimeType = normalizedDeclaredMimeType(input.declaredMimeType);
-  if (hasPdfSignature(input.bytes) || declaredMimeType === "application/pdf") {
-    return {
-      mimeType: "application/pdf",
-      extension: ".pdf",
-      category: "document",
-      textKind: "pdf",
-    };
-  }
-  if (
-    hasZipSignature(input.bytes) &&
-    declaredMimeType ===
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-  ) {
-    return {
-      mimeType: declaredMimeType,
-      extension: ".docx",
-      category: "document",
-      textKind: "docx",
-    };
-  }
-  if (
-    hasZipSignature(input.bytes) &&
-    declaredMimeType ===
-      "application/vnd.openxmlformats-officedocument.presentationml.presentation"
-  ) {
-    return {
-      mimeType: declaredMimeType,
-      extension: ".pptx",
-      category: "presentation",
-      textKind: "pptx",
-    };
-  }
-  if (
-    hasZipSignature(input.bytes) &&
-    declaredMimeType ===
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-  ) {
-    return {
-      mimeType: declaredMimeType,
-      extension: ".xlsx",
-      category: "spreadsheet",
-      textKind: "xlsx",
-    };
-  }
+  const isZipArchive = hasZipSignature(input.bytes);
 
-  const extensionDetection = mimeTypesByExtension.get(extension);
-  if (
-    extensionDetection &&
-    (extensionDetection.textKind !== "docx" || hasZipSignature(input.bytes)) &&
-    (extensionDetection.textKind !== "pptx" || hasZipSignature(input.bytes)) &&
-    (extensionDetection.textKind !== "xlsx" || hasZipSignature(input.bytes))
-  ) {
-    return extensionDetection;
-  }
-
-  if (codeTextExtensions.has(extension)) {
-    return {
-      mimeType: "text/plain; charset=utf-8",
-      extension: extension || ".txt",
-      category: "text",
-      textKind: "text",
-    };
-  }
-
-  if (declaredMimeType && textMimeTypes.has(declaredMimeType)) {
-    return {
-      mimeType: `${declaredMimeType}; charset=utf-8`,
-      extension: extension || ".txt",
-      category: "text",
-      textKind: declaredMimeType === "text/rtf" ? "rtf" : "text",
-    };
-  }
-
-  if (isUtf8Text(input.bytes)) {
-    return {
-      mimeType: declaredMimeType?.startsWith("text/")
-        ? `${declaredMimeType}; charset=utf-8`
-        : "text/plain; charset=utf-8",
-      extension: extension || ".txt",
-      category: "text",
-      textKind: "text",
-    };
-  }
-
-  return {
-    mimeType: declaredMimeType || "application/octet-stream",
-    extension: extension || ".bin",
-    category: "file",
-    textKind: "none",
-  };
+  return (
+    detectPdfAttachment(input.bytes, declaredMimeType) ??
+    detectOfficeAttachment(declaredMimeType, isZipArchive) ??
+    detectByExtension(extension, isZipArchive) ??
+    detectCodeTextAttachment(extension) ??
+    detectDeclaredTextAttachment(declaredMimeType, extension) ??
+    detectUtf8Attachment(input.bytes, declaredMimeType, extension) ??
+    fallbackFileAttachment(declaredMimeType, extension)
+  );
 }
 
 function normalizeExtractedText(text: string) {
@@ -590,10 +638,6 @@ function limitExtractedText(text: string, message?: string): ExtractedText {
       message ??
       `Only the first ${maxExtractedChatAttachmentTextChars.toLocaleString()} characters were extracted.`,
   };
-}
-
-function decodeUtf8(bytes: Uint8Array) {
-  return new TextDecoder("utf-8", { fatal: false }).decode(bytes);
 }
 
 function decodeXmlEntities(value: string) {
@@ -675,7 +719,7 @@ async function extractOfficeText(
       break;
     }
     const extracted = normalizeExtractedText(
-      extractXmlText(decodeUtf8(xmlBytes)),
+      extractXmlText(utf8Decoder.decode(xmlBytes)),
     );
     if (!extracted) continue;
     const label =
@@ -768,12 +812,12 @@ function extractPdfTextOperators(content: string) {
   return tokens.join(" ");
 }
 
-function extractFlatePdfStreams(raw: string) {
+function extractCompressedPdfStreams(raw: string) {
   const chunks: string[] = [];
-  const streamPattern =
+  const compressedStreamPattern =
     /<<(?:.|\n|\r){0,4000}?\/Filter\s*(?:\[[^\]]*)?\/FlateDecode(?:[^\]]*\])?(?:.|\n|\r){0,4000}?>>\s*stream\r?\n/g;
   let inflatedBytes = 0;
-  for (const match of raw.matchAll(streamPattern)) {
+  for (const match of raw.matchAll(compressedStreamPattern)) {
     const start = match.index + match[0].length;
     const end = raw.indexOf("endstream", start);
     if (end === -1) continue;
@@ -794,7 +838,7 @@ function extractFlatePdfStreams(raw: string) {
 
 function extractPdfText(bytes: Uint8Array) {
   const raw = Buffer.from(bytes).toString("latin1");
-  const chunks = [raw, ...extractFlatePdfStreams(raw)];
+  const chunks = [raw, ...extractCompressedPdfStreams(raw)];
   const text = chunks.map(extractPdfTextOperators).join("\n");
   return limitExtractedText(
     text,
@@ -818,10 +862,10 @@ async function extractAttachmentText(input: {
       input.detection.textKind === "text" ||
       input.detection.textKind === "markdown"
     ) {
-      return limitExtractedText(decodeUtf8(input.bytes));
+      return limitExtractedText(utf8Decoder.decode(input.bytes));
     }
     if (input.detection.textKind === "rtf") {
-      return limitExtractedText(stripRtf(decodeUtf8(input.bytes)));
+      return limitExtractedText(stripRtf(utf8Decoder.decode(input.bytes)));
     }
     if (input.detection.textKind === "pdf") {
       return extractPdfText(input.bytes);
@@ -897,73 +941,80 @@ function assertChatAttachmentAccess(
   }
 }
 
-async function createChatAttachmentInternal(
-  input: {
-    workspaceId: string;
-    userId: string;
-    fileName: string;
-    mimeType?: string;
-    bytes: Uint8Array;
-  },
-  options: { imageOnly?: boolean } = {},
-): Promise<ChatAttachment> {
-  if (input.bytes.byteLength === 0) {
+type CreateChatAttachmentInput = {
+  workspaceId: string;
+  userId: string;
+  fileName: string;
+  mimeType?: string;
+  bytes: Uint8Array;
+};
+
+type CreateChatImageAttachmentInput = Omit<
+  CreateChatAttachmentInput,
+  "mimeType"
+>;
+
+function assertAttachmentHasContent(bytes: Uint8Array) {
+  if (bytes.byteLength === 0) {
     throw new Error("Attachment file is empty.");
   }
+}
 
-  const imageMimeType = detectImageMimeType(input.bytes);
-  if (options.imageOnly && !imageMimeType) {
-    throw new Error("Unsupported image type. Upload PNG, JPEG, GIF, or WebP.");
+async function deleteStoredAttachmentPart(objectKey: string | undefined) {
+  if (!objectKey) return;
+  try {
+    await storage.delete(objectKey);
+  } catch {
+    // Cleanup is best-effort after a failed attachment upload.
+  }
+}
+
+async function createStoredImageAttachment(
+  input: CreateChatImageAttachmentInput,
+  imageMimeType: keyof typeof imageTypes,
+): Promise<ChatImageAttachment> {
+  if (input.bytes.byteLength > maxChatImageBytes) {
+    throw new Error("Image file is too large. Maximum size is 8 MB.");
   }
 
-  if (imageMimeType) {
-    if (input.bytes.byteLength > maxChatImageBytes) {
-      throw new Error("Image file is too large. Maximum size is 8 MB.");
-    }
-    const attachmentId = randomUUID();
-    const objectKey = chatAttachmentObjectKey(
-      attachmentId,
-      `image${imageTypes[imageMimeType].extension}`,
+  const attachmentId = randomUUID();
+  const imageExtension = imageTypes[imageMimeType].extension;
+  const objectKey = chatAttachmentObjectKey(
+    attachmentId,
+    `image${imageExtension}`,
+  );
+  const metadata: ChatImageAttachmentMetadata = {
+    kind: "chat_image",
+    id: attachmentId,
+    workspaceId: input.workspaceId,
+    createdByUserId: input.userId,
+    fileName: sanitizeFileName(input.fileName, "image", imageExtension),
+    mimeType: imageMimeType,
+    size: input.bytes.byteLength,
+    hash: hashBytes(input.bytes),
+    objectKey,
+    url: `/api/workspace/chat-attachments/${attachmentId}`,
+    createdAt: new Date().toISOString(),
+  };
+
+  try {
+    await storage.upload(objectKey, input.bytes, imageMimeType);
+    await storage.upload(
+      metadataObjectKey(attachmentId),
+      JSON.stringify(metadata, null, 2),
+      "application/json; charset=utf-8",
     );
-    const now = new Date().toISOString();
-    const metadata: ChatImageAttachmentMetadata = {
-      kind: "chat_image",
-      id: attachmentId,
-      workspaceId: input.workspaceId,
-      createdByUserId: input.userId,
-      fileName: sanitizeFileName(
-        input.fileName,
-        "image",
-        imageTypes[imageMimeType].extension,
-      ),
-      mimeType: imageMimeType,
-      size: input.bytes.byteLength,
-      hash: hashBytes(input.bytes),
-      objectKey,
-      url: `/api/workspace/chat-attachments/${attachmentId}`,
-      createdAt: now,
-    };
-
-    try {
-      await storage.upload(objectKey, input.bytes, imageMimeType);
-      await storage.upload(
-        metadataObjectKey(attachmentId),
-        JSON.stringify(metadata, null, 2),
-        "application/json; charset=utf-8",
-      );
-      return publicChatAttachment(metadata);
-    } catch (error) {
-      await storage.delete(objectKey).catch(() => undefined);
-      await storage
-        .delete(metadataObjectKey(attachmentId))
-        .catch(() => undefined);
-      throw error;
-    }
+    return publicChatImageAttachment(metadata);
+  } catch (error) {
+    await deleteStoredAttachmentPart(objectKey);
+    await deleteStoredAttachmentPart(metadataObjectKey(attachmentId));
+    throw error;
   }
+}
 
-  if (options.imageOnly) {
-    throw new Error("Unsupported image type. Upload PNG, JPEG, GIF, or WebP.");
-  }
+async function createStoredFileAttachment(
+  input: CreateChatAttachmentInput,
+): Promise<ChatFileAttachment> {
   if (input.bytes.byteLength > maxChatAttachmentBytes) {
     throw new Error("Attachment file is too large. Maximum size is 25 MB.");
   }
@@ -985,7 +1036,6 @@ async function createChatAttachmentInternal(
   const textObjectKey = extracted.text
     ? extractedTextObjectKey(attachmentId)
     : undefined;
-  const now = new Date().toISOString();
   const metadata: ChatFileAttachmentMetadata = {
     kind: "chat_file",
     id: attachmentId,
@@ -1002,7 +1052,7 @@ async function createChatAttachmentInternal(
     objectKey,
     ...(textObjectKey ? { extractedTextObjectKey: textObjectKey } : {}),
     url: `/api/workspace/chat-attachments/${attachmentId}`,
-    createdAt: now,
+    createdAt: new Date().toISOString(),
     category: detection.category,
     extractionStatus: extracted.status,
     extractedTextChars: extracted.text.length,
@@ -1023,41 +1073,39 @@ async function createChatAttachmentInternal(
       JSON.stringify(metadata, null, 2),
       "application/json; charset=utf-8",
     );
-    return publicChatAttachment(metadata);
+    return publicChatAttachment(metadata) as ChatFileAttachment;
   } catch (error) {
-    await storage.delete(objectKey).catch(() => undefined);
-    if (textObjectKey)
-      await storage.delete(textObjectKey).catch(() => undefined);
-    await storage
-      .delete(metadataObjectKey(attachmentId))
-      .catch(() => undefined);
+    await deleteStoredAttachmentPart(objectKey);
+    await deleteStoredAttachmentPart(textObjectKey);
+    await deleteStoredAttachmentPart(metadataObjectKey(attachmentId));
     throw error;
   }
 }
 
-export function createChatAttachment(input: {
-  workspaceId: string;
-  userId: string;
-  fileName: string;
-  mimeType?: string;
-  bytes: Uint8Array;
-}) {
-  return createChatAttachmentInternal(input);
+export async function createChatAttachment(
+  input: CreateChatAttachmentInput,
+): Promise<ChatAttachment> {
+  assertAttachmentHasContent(input.bytes);
+
+  const imageMimeType = detectImageMimeType(input.bytes);
+  if (imageMimeType) {
+    return await createStoredImageAttachment(input, imageMimeType);
+  }
+
+  return await createStoredFileAttachment(input);
 }
 
-export async function createChatImageAttachment(input: {
-  workspaceId: string;
-  userId: string;
-  fileName: string;
-  bytes: Uint8Array;
-}) {
-  const attachment = await createChatAttachmentInternal(input, {
-    imageOnly: true,
-  });
-  if (!isChatImageAttachment(attachment)) {
-    throw new Error("Unsupported image type. Upload PNG, JPEG, GIF, or WebP.");
+export async function createChatImageAttachment(
+  input: CreateChatImageAttachmentInput,
+): Promise<ChatImageAttachment> {
+  assertAttachmentHasContent(input.bytes);
+
+  const imageMimeType = detectImageMimeType(input.bytes);
+  if (!imageMimeType) {
+    throw new Error(unsupportedChatImageTypeMessage);
   }
-  return attachment;
+
+  return await createStoredImageAttachment(input, imageMimeType);
 }
 
 export function publicChatAttachment(

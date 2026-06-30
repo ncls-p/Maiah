@@ -7,7 +7,17 @@ import { audit } from "@/server/domain/services/audit";
 import { db } from "@/server/infrastructure/db";
 import { mcpServers, mcpTools } from "@/server/infrastructure/db/schema";
 
-export type McpTransport = "stdio" | "sse" | "streamable-http";
+type McpServer = typeof mcpServers.$inferSelect;
+
+export type McpTransport = McpServer["transport"];
+
+type DiscoveredMcpTool = {
+  name: string;
+  description: string | null;
+  inputSchemaJson: Record<string, unknown> | null;
+  outputSchemaJson: Record<string, unknown> | null;
+  requireApproval: boolean;
+};
 
 export interface CreateMcpServerInput {
   workspaceId: string;
@@ -22,7 +32,22 @@ export interface CreateMcpServerInput {
   env?: Record<string, string>;
 }
 
-export function toSafeMcpServer(server: typeof mcpServers.$inferSelect) {
+export interface UpdateMcpServerInput {
+  serverId: string;
+  workspaceId: string;
+  userId: string;
+  name?: string;
+  transport?: McpTransport;
+  url?: string;
+  command?: string;
+  args?: string[];
+  enabled?: boolean;
+  requireApproval?: boolean;
+  headers?: Record<string, string>;
+  env?: Record<string, string>;
+}
+
+export function toSafeMcpServer(server: McpServer) {
   return {
     id: server.id,
     workspaceId: server.workspaceId,
@@ -42,7 +67,7 @@ export function toSafeMcpServer(server: typeof mcpServers.$inferSelect) {
   };
 }
 
-export function toMcpServerForEdit(server: typeof mcpServers.$inferSelect) {
+export function toMcpServerForEdit(server: McpServer) {
   return {
     ...toSafeMcpServer(server),
     authHint: inferMcpAuthHint(server),
@@ -164,39 +189,43 @@ export async function getMcpServer(serverId: string, workspaceId: string) {
   return server ?? null;
 }
 
-export async function updateMcpServer(input: {
-  serverId: string;
-  workspaceId: string;
-  userId: string;
-  name?: string;
-  transport?: McpTransport;
-  url?: string;
-  command?: string;
-  args?: string[];
-  enabled?: boolean;
-  requireApproval?: boolean;
-  headers?: Record<string, string>;
-  env?: Record<string, string>;
-}) {
-  const existing = await getMcpServer(input.serverId, input.workspaceId);
-  if (!existing) throw new Error("MCP server not found");
+function nullableTextUpdate(value?: string) {
+  return value === undefined ? undefined : value || null;
+}
 
-  const nextTransport = input.transport ?? existing.transport;
-  const nextUrl = input.url !== undefined ? input.url || null : existing.url;
-  const nextCommand =
-    input.command !== undefined ? input.command || null : existing.command;
+function nextNullableText(value: string | undefined, current: string | null) {
+  return value === undefined ? current : value || null;
+}
 
-  validateTransportConfig(nextTransport, nextUrl, nextCommand);
+function validateMcpServerUpdate(
+  input: UpdateMcpServerInput,
+  existing: McpServer,
+) {
+  validateTransportConfig(
+    input.transport ?? existing.transport,
+    nextNullableText(input.url, existing.url),
+    nextNullableText(input.command, existing.command),
+  );
+}
 
+async function buildMcpServerUpdates(
+  input: UpdateMcpServerInput,
+  existing: McpServer,
+) {
   const updates: Record<string, unknown> = { updatedAt: new Date() };
-  if (input.name !== undefined) updates.name = input.name;
-  if (input.transport !== undefined) updates.transport = input.transport;
-  if (input.url !== undefined) updates.url = input.url || null;
-  if (input.command !== undefined) updates.command = input.command || null;
-  if (input.args !== undefined) updates.argsJson = input.args;
-  if (input.enabled !== undefined) updates.enabled = input.enabled;
-  if (input.requireApproval !== undefined)
-    updates.requireApproval = input.requireApproval;
+  const simpleUpdates: Array<[string, unknown]> = [
+    ["name", input.name],
+    ["transport", input.transport],
+    ["url", nullableTextUpdate(input.url)],
+    ["command", nullableTextUpdate(input.command)],
+    ["argsJson", input.args],
+    ["enabled", input.enabled],
+    ["requireApproval", input.requireApproval],
+  ];
+
+  for (const [field, value] of simpleUpdates) {
+    if (value !== undefined) updates[field] = value;
+  }
   if (input.headers !== undefined) {
     updates.encryptedHeadersJson = await mergeEncryptedRecord(
       existing.encryptedHeadersJson as Record<string, string> | null,
@@ -209,6 +238,16 @@ export async function updateMcpServer(input: {
       input.env,
     );
   }
+
+  return updates;
+}
+
+export async function updateMcpServer(input: UpdateMcpServerInput) {
+  const existing = await getMcpServer(input.serverId, input.workspaceId);
+  if (!existing) throw new Error("MCP server not found");
+
+  validateMcpServerUpdate(input, existing);
+  const updates = await buildMcpServerUpdates(input, existing);
 
   const [server] = await db
     .update(mcpServers)
@@ -263,61 +302,55 @@ export async function listMcpTools(serverId: string, workspaceId: string) {
     .orderBy(mcpTools.name);
 }
 
-export async function syncMcpTools(
+async function markMcpServerManual(serverId: string) {
+  await db
+    .update(mcpServers)
+    .set({ healthStatus: "manual", lastCheckedAt: new Date() })
+    .where(eq(mcpServers.id, serverId));
+}
+
+async function existingToolApprovalByName(serverId: string) {
+  const existingTools = await db
+    .select({
+      name: mcpTools.name,
+      requireApproval: mcpTools.requireApproval,
+    })
+    .from(mcpTools)
+    .where(eq(mcpTools.mcpServerId, serverId));
+  return new Map(
+    existingTools.map((tool) => [tool.name, tool.requireApproval]),
+  );
+}
+
+function discoveredMcpTool(
+  tool: Awaited<ReturnType<typeof listRemoteMcpTools>>[number],
+  approvalByName: Map<string, boolean>,
+): DiscoveredMcpTool {
+  return {
+    name: tool.name,
+    description: typeof tool.description === "string" ? tool.description : null,
+    inputSchemaJson:
+      (tool.inputSchema as Record<string, unknown> | undefined) ?? null,
+    outputSchemaJson:
+      (tool.outputSchema as Record<string, unknown> | undefined) ?? null,
+    requireApproval: approvalByName.get(tool.name) ?? false,
+  };
+}
+
+async function discoverMcpTools(
+  server: McpServer,
   serverId: string,
-  workspaceId: string,
-  userId: string,
+): Promise<DiscoveredMcpTool[]> {
+  const approvalByName = await existingToolApprovalByName(serverId);
+  const remoteTools = await listRemoteMcpTools(server);
+  return remoteTools.map((tool) => discoveredMcpTool(tool, approvalByName));
+}
+
+async function saveMcpToolSyncResult(
+  serverId: string,
+  discovered: DiscoveredMcpTool[],
+  healthStatus: string,
 ) {
-  const server = await getMcpServer(serverId, workspaceId);
-  if (!server) throw new Error("MCP server not found");
-  if (server.transport === "stdio" || !server.url) {
-    await db
-      .update(mcpServers)
-      .set({ healthStatus: "manual", lastCheckedAt: new Date() })
-      .where(eq(mcpServers.id, serverId));
-    return { status: "manual", discovered: 0 };
-  }
-
-  let discovered: Array<{
-    name: string;
-    description: string | null;
-    inputSchemaJson: Record<string, unknown> | null;
-    outputSchemaJson: Record<string, unknown> | null;
-    requireApproval: boolean;
-  }> = [];
-  let healthStatus = "healthy";
-
-  try {
-    const existingTools = await db
-      .select({
-        name: mcpTools.name,
-        requireApproval: mcpTools.requireApproval,
-      })
-      .from(mcpTools)
-      .where(eq(mcpTools.mcpServerId, serverId));
-    const approvalByName = new Map(
-      existingTools.map((tool) => [tool.name, tool.requireApproval]),
-    );
-    const remoteTools = await listRemoteMcpTools(server);
-    discovered = remoteTools.map((tool) => ({
-      name: tool.name,
-      description:
-        typeof tool.description === "string" ? tool.description : null,
-      inputSchemaJson:
-        (tool.inputSchema as Record<string, unknown> | undefined) ?? null,
-      outputSchemaJson:
-        (tool.outputSchema as Record<string, unknown> | undefined) ?? null,
-      requireApproval: approvalByName.get(tool.name) ?? false,
-    }));
-  } catch (error) {
-    // Persist an unhealthy sync result instead of aborting the whole settings action.
-    healthStatus = "unhealthy";
-    logger.warn("MCP tool sync failed", {
-      serverId,
-      error: error instanceof Error ? error.message : String(error),
-    });
-  }
-
   await db.transaction(async (tx) => {
     if (discovered.length > 0) {
       await tx.delete(mcpTools).where(eq(mcpTools.mcpServerId, serverId));
@@ -342,16 +375,64 @@ export async function syncMcpTools(
       })
       .where(eq(mcpServers.id, serverId));
   });
+}
 
+async function emitMcpToolsSyncedAudit(input: {
+  workspaceId: string;
+  userId: string;
+  serverId: string;
+  healthStatus: string;
+  discoveredCount: number;
+}) {
   await audit.emit({
-    workspaceId,
+    workspaceId: input.workspaceId,
     actorPrincipalType: "user",
-    actorPrincipalId: userId,
+    actorPrincipalId: input.userId,
     action: "mcpServer.toolsSynced",
     resourceType: "mcp_server",
-    resourceId: serverId,
-    outcome: healthStatus === "healthy" ? "success" : "failed",
-    metadata: { discovered: discovered.length },
+    resourceId: input.serverId,
+    outcome: input.healthStatus === "healthy" ? "success" : "failed",
+    metadata: { discovered: input.discoveredCount },
+  });
+}
+
+export async function syncMcpTools(
+  serverId: string,
+  workspaceId: string,
+  userId: string,
+) {
+  const server = await getMcpServer(serverId, workspaceId);
+  if (!server) throw new Error("MCP server not found");
+  if (server.transport === "stdio" || !server.url) {
+    await markMcpServerManual(serverId);
+    return { status: "manual", discovered: 0 };
+  }
+
+  let discovered: DiscoveredMcpTool[] = [];
+  let healthStatus = "healthy";
+  let syncError: unknown;
+
+  try {
+    discovered = await discoverMcpTools(server, serverId);
+  } catch (error) {
+    healthStatus = "unhealthy";
+    syncError = error;
+  }
+
+  if (syncError) {
+    logger.warn("MCP tool sync failed", {
+      serverId,
+      error: syncError instanceof Error ? syncError.message : String(syncError),
+    });
+  }
+
+  await saveMcpToolSyncResult(serverId, discovered, healthStatus);
+  await emitMcpToolsSyncedAudit({
+    workspaceId,
+    userId,
+    serverId,
+    healthStatus,
+    discoveredCount: discovered.length,
   });
 
   return { status: healthStatus, discovered: discovered.length };
