@@ -889,6 +889,7 @@ jobs:
                   source: /var/lib/docker/volumes/${AI_HUB_PROD_VOLUME_PREFIX}_dragonfly-data/_data
                   target: /data
             rustfs:
+              user: "0:0"
               volumes:
                 - type: bind
                   source: /var/lib/docker/volumes/${AI_HUB_PROD_VOLUME_PREFIX}_rustfs-data/_data
