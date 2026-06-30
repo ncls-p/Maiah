@@ -28,7 +28,7 @@ env:
   COOLIFY_SERVICE_NAME: maiah
   AI_HUB_PUBLIC_HOST: maiah.shiftify.eco
   AI_HUB_PUBLIC_URL: https://maiah.shiftify.eco
-  AI_HUB_PROD_VOLUME_PREFIX: ${{ vars.AI_HUB_PROD_VOLUME_PREFIX || 'i12keosppki9yixi1s1aeeav' }}
+  AI_HUB_PROD_VOLUME_PREFIX: ${{ vars.AI_HUB_PROD_VOLUME_PREFIX }}
 
 jobs:
   prepare:
@@ -877,11 +877,6 @@ jobs:
           compose_args=(-f /tmp/ai-hub.coolify.stack.yml)
           if [[ "${IS_PREVIEW}" != "true" ]]; then
             cat > /tmp/ai-hub.coolify.prod-volumes.yml <<EOF
-          services:
-            app:
-              volumes:
-                - sandbox-runner-socket:/run/sandbox
-
           volumes:
             dragonfly-data:
               name: ${AI_HUB_PROD_VOLUME_PREFIX}_dragonfly-data
@@ -894,9 +889,6 @@ jobs:
               external: true
             opensandbox-data:
               name: ${AI_HUB_PROD_VOLUME_PREFIX}_opensandbox-data
-              external: true
-            sandbox-runner-socket:
-              name: ${AI_HUB_PROD_VOLUME_PREFIX}_sandbox-runner-socket
               external: true
           EOF
             compose_args+=(-f /tmp/ai-hub.coolify.prod-volumes.yml)

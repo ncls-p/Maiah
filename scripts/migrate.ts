@@ -1,4 +1,4 @@
-import * as nextEnv from "@next/env";
+import nextEnv from "@next/env";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 
 nextEnv.loadEnvConfig(process.cwd());
