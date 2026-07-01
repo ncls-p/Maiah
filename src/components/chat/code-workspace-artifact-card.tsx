@@ -3,7 +3,6 @@
 import type React from "react";
 import { useEffect, useMemo, useRef, useState, type SVGProps } from "react";
 import {
-  CopyIcon,
   DownloadIcon,
   FileIcon,
   FolderIcon,
@@ -29,8 +28,11 @@ import {
 } from "@/components/ui/attachment";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import {
+  useFilePreview,
+  FilePreviewDialog,
+} from "@/components/chat/file-preview";
 import { GitHubPublishDialog } from "@/components/chat/github-publish-dialog";
 import { CodeWorkspacePreviewFrame } from "@/components/chat/code-workspace-preview-frame";
 
@@ -466,21 +468,11 @@ export function ChatImageAttachmentCard({
   );
 }
 
-type ChatFileAttachmentPreviewPayload = {
-  attachment?: ChatFileAttachment;
-  text?: string;
-  error?: string;
-};
-
 export function ChatFileAttachmentCard({
   attachment,
 }: {
   attachment: ChatFileAttachment;
 }) {
-  const [previewOpen, setPreviewOpen] = useState(false);
-  const [previewText, setPreviewText] = useState<string | null>(null);
-  const [previewError, setPreviewError] = useState<string | null>(null);
-  const [loadingPreview, setLoadingPreview] = useState(false);
   const canPreview = attachment.extractedTextChars > 0;
   const readLabel =
     attachment.extractionStatus === "unreadable"
@@ -488,37 +480,10 @@ export function ChatFileAttachmentCard({
       : attachment.extractionStatus === "truncated"
         ? "Partially read"
         : "Readable";
-
-  async function loadPreviewText() {
-    if (!canPreview || previewText !== null || loadingPreview) return;
-    setLoadingPreview(true);
-    setPreviewError(null);
-    try {
-      const response = await fetch(
-        `/api/workspace/chat-attachments/${attachment.id}/extracted`,
-      );
-      const data = (await response
-        .json()
-        .catch(() => null)) as ChatFileAttachmentPreviewPayload | null;
-      if (!response.ok) {
-        throw new Error(data?.error || "Failed to load extracted file text");
-      }
-      setPreviewText(data?.text ?? "");
-    } catch (error) {
-      setPreviewError(
-        error instanceof Error
-          ? error.message
-          : "Failed to load extracted file text",
-      );
-    } finally {
-      setLoadingPreview(false);
-    }
-  }
-
-  function openPreview() {
-    setPreviewOpen(true);
-    void loadPreviewText();
-  }
+  const preview = useFilePreview({
+    attachmentId: attachment.id,
+    canPreview,
+  });
 
   return (
     <>
@@ -541,7 +506,7 @@ export function ChatFileAttachmentCard({
               type="button"
               variant="outline"
               size="sm"
-              onClick={openPreview}
+              onClick={preview.openPreview}
             >
               <Maximize2Icon data-icon="inline-start" aria-hidden="true" />
               View
@@ -555,59 +520,19 @@ export function ChatFileAttachmentCard({
           </AttachmentAction>
         </AttachmentActions>
       </Attachment>
-      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-        <DialogContent className="flex max-h-[85dvh] max-w-3xl flex-col overflow-hidden">
-          <div className="flex min-w-0 items-start justify-between gap-3 border-b pb-3">
-            <div className="min-w-0">
-              <DialogTitle className="truncate text-base">
-                {attachment.fileName}
-              </DialogTitle>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {readLabel} · {formatBytes(attachment.size)} ·{" "}
-                {attachment.extractedTextChars.toLocaleString()} extracted chars
-              </p>
-            </div>
-            <div className="flex shrink-0 items-center gap-1 pr-8">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 gap-1.5 px-2 text-xs"
-                disabled={!previewText}
-                onClick={() => {
-                  if (!previewText) return;
-                  void navigator.clipboard.writeText(previewText);
-                }}
-              >
-                <CopyIcon className="size-3" aria-hidden="true" />
-                Copy
-              </Button>
-              <Button
-                asChild
-                variant="ghost"
-                size="sm"
-                className="h-8 gap-1.5 px-2 text-xs"
-              >
-                <a href={attachment.url} target="_blank" rel="noreferrer">
-                  <DownloadIcon className="size-3" aria-hidden="true" />
-                  Download
-                </a>
-              </Button>
-            </div>
-          </div>
-          {loadingPreview ? (
-            <Skeleton className="h-64 w-full rounded-xl" />
-          ) : previewError ? (
-            <p className="rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">
-              {previewError}
-            </p>
-          ) : (
-            <pre className="min-h-0 flex-1 overflow-auto rounded-xl border bg-muted/20 p-3 whitespace-pre-wrap font-mono text-xs leading-5 text-foreground">
-              {previewText || "No extracted text available."}
-            </pre>
-          )}
-        </DialogContent>
-      </Dialog>
+      <FilePreviewDialog
+        open={preview.previewOpen}
+        onOpenChange={preview.setPreviewOpen}
+        fileName={attachment.fileName}
+        url={attachment.url}
+        subtitle={
+          `${readLabel} · ${formatBytes(attachment.size)} · ` +
+          `${attachment.extractedTextChars.toLocaleString()} extracted chars`
+        }
+        previewText={preview.previewText}
+        previewError={preview.previewError}
+        loadingPreview={preview.loadingPreview}
+      />
     </>
   );
 }

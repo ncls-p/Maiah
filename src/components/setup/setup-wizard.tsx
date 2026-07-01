@@ -131,17 +131,15 @@ function ModelMetadata({
   const contextWindowLabel = formatModelNumber(contextWindow);
   const maxOutputTokensLabel = formatModelNumber(maxOutputTokens);
 
-  if (
+  const hasNoMetadata =
     enabled !== false &&
     !hostedBy &&
     !contextWindowLabel &&
     !maxOutputTokensLabel &&
     !inputTokenCost &&
     !outputTokenCost &&
-    enabledCapabilities.length === 0
-  ) {
-    return null;
-  }
+    enabledCapabilities.length === 0;
+  if (hasNoMetadata) return null;
 
   return (
     <div className="mt-2 flex flex-wrap gap-1.5">

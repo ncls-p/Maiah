@@ -69,9 +69,16 @@ export function parseSearchParams(
   req: NextRequest,
   schema: z.ZodType<Record<string, unknown>>,
 ) {
-  const { searchParams } = new URL(req.url);
+  let url: URL;
+  try {
+    url = new URL(req.url);
+  } catch {
+    throw new Error(`Invalid request URL: ${req.url}`);
+  }
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { searchParams: _searchParams } = url;
   const raw: Record<string, string | undefined> = {};
-  for (const [key, value] of searchParams.entries()) {
+  for (const [key, value] of url.searchParams.entries()) {
     raw[key] = value;
   }
   return schema.safeParse(raw);

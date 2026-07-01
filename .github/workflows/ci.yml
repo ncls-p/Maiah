@@ -17,6 +17,8 @@ jobs:
   lint-typecheck-test:
     name: Lint, Typecheck & Test
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     services:
       postgres:
@@ -45,10 +47,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@692979e3891fa7a6a9c2939e561259747f9bd5e8
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@60edb5151533d05c17d0e5aba29fa4d3f32bbb5d
         with:
           node-version: 22
           cache: npm

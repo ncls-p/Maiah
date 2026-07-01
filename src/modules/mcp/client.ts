@@ -66,7 +66,12 @@ async function connectClient(
 ): Promise<{ client: Client; transport: Transport }> {
   if (!server.url) throw new Error("MCP server URL is not configured");
 
-  const url = new URL(server.url);
+  let url: URL;
+  try {
+    url = new URL(server.url);
+  } catch {
+    throw new Error(`Invalid MCP server URL: ${server.url}`);
+  }
   const headers = await buildAuthHeaders(server);
   const client = new Client({ name: "ai-hub", version: "0.1.0" });
 

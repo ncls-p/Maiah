@@ -327,7 +327,16 @@ function extractWorkflowId(result: unknown) {
     Array.isArray(result) && typeof result[0]?.text === "string"
       ? result[0].text
       : result;
-  const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+  const parsed =
+    typeof raw === "string"
+      ? (() => {
+          try {
+            return JSON.parse(raw);
+          } catch {
+            return null;
+          }
+        })()
+      : raw;
   if (typeof parsed !== "object" || parsed === null) return null;
   const record = parsed as Record<string, unknown>;
   const data = record.data as Record<string, unknown> | undefined;
@@ -421,13 +430,13 @@ async function loadSecretPayloads(
       )
       .limit(1);
     if (!row) continue;
-    payloads.push({
-      credentialRef: ref.credentialRef,
-      values: JSON.parse(await decryptValue(row.encryptedPayload)) as Record<
-        string,
-        string
-      >,
-    });
+    let values: Record<string, string>;
+    try {
+      values = JSON.parse(await decryptValue(row.encryptedPayload));
+    } catch {
+      continue;
+    }
+    payloads.push({ credentialRef: ref.credentialRef, values });
   }
   return payloads;
 }
@@ -1038,9 +1047,12 @@ export async function runCustomToolBuilder(input: {
             )
             .limit(1);
           if (!ref) throw new Error("Credential ref not found");
-          const data = JSON.parse(
-            await decryptValue(ref.encryptedPayload),
-          ) as Record<string, string>;
+          let data: Record<string, string>;
+          try {
+            data = JSON.parse(await decryptValue(ref.encryptedPayload));
+          } catch {
+            throw new Error("Failed to parse credential payload");
+          }
           const result = await callConfiguredN8nTool({
             config,
             workspaceId: input.workspaceId,

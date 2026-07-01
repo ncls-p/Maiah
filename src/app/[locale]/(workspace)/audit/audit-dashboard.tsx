@@ -1,6 +1,5 @@
 "use client";
 
-import type { ElementType } from "react";
 import {
   BanIcon,
   CalendarRangeIcon,
@@ -27,6 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { StatCard } from "@/components/ui/stat-card";
 import { cn } from "@/lib/utils";
 
 export interface AuditEvent {
@@ -83,49 +83,6 @@ function formatAction(action: string) {
   const [scope, verb] = action.split(".");
   if (!verb) return action;
   return { scope, verb };
-}
-
-function StatCard({
-  label,
-  value,
-  icon: Icon,
-  color,
-  accent,
-}: {
-  label: string;
-  value: string | number;
-  icon: ElementType;
-  color: string;
-  accent: string;
-}) {
-  return (
-    <div className="group relative overflow-hidden rounded-2xl border border-border/70 bg-card p-4 shadow-sm transition-colors hover:border-primary/35">
-      <div
-        className={cn(
-          "absolute left-0 top-0 h-full w-1 opacity-60 transition-opacity duration-300 group-hover:opacity-100",
-          accent,
-        )}
-      />
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 flex-col gap-1">
-          <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            {label}
-          </span>
-          <span className="text-2xl font-bold tracking-tight text-foreground">
-            {value}
-          </span>
-        </div>
-        <div
-          className={cn(
-            "flex size-10 shrink-0 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-110",
-            color,
-          )}
-        >
-          <Icon className="size-5" aria-hidden="true" />
-        </div>
-      </div>
-    </div>
-  );
 }
 
 function AuditFilters({

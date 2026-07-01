@@ -47,31 +47,32 @@ function mergeRecords(
   return Object.keys(merged).length > 0 ? merged : undefined;
 }
 
+function singleTrimmedRecord(
+  key: string,
+  value: string,
+): Record<string, string> | undefined {
+  const trimmedKey = key.trim();
+  const trimmedValue = value.trim();
+  return trimmedKey && trimmedValue
+    ? { [trimmedKey]: trimmedValue }
+    : undefined;
+}
+
 function buildSimpleAuthHeaders(form: McpServerForm) {
   if (form.transport === "stdio") return undefined;
-  if (form.authMode === "bearer" && form.bearerToken.trim()) {
-    return { Authorization: `Bearer ${form.bearerToken.trim()}` };
+  if (form.authMode === "bearer") {
+    const token = form.bearerToken.trim();
+    return token ? { Authorization: `Bearer ${token}` } : undefined;
   }
-  if (
-    form.authMode === "api-key" &&
-    form.apiKeyHeader.trim() &&
-    form.apiKeyValue.trim()
-  ) {
-    return { [form.apiKeyHeader.trim()]: form.apiKeyValue.trim() };
+  if (form.authMode === "api-key") {
+    return singleTrimmedRecord(form.apiKeyHeader, form.apiKeyValue);
   }
   return undefined;
 }
 
 function buildSimpleAuthEnv(form: McpServerForm) {
-  if (
-    form.transport === "stdio" &&
-    form.authMode === "env" &&
-    form.envKeyName.trim() &&
-    form.envKeyValue.trim()
-  ) {
-    return { [form.envKeyName.trim()]: form.envKeyValue.trim() };
-  }
-  return undefined;
+  if (form.transport !== "stdio" || form.authMode !== "env") return undefined;
+  return singleTrimmedRecord(form.envKeyName, form.envKeyValue);
 }
 
 export function buildHeaders(form: McpServerForm) {

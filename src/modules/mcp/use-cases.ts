@@ -9,7 +9,7 @@ import { mcpServers, mcpTools } from "@/server/infrastructure/db/schema";
 
 type McpServer = typeof mcpServers.$inferSelect;
 
-export type McpTransport = McpServer["transport"];
+type McpTransport = McpServer["transport"];
 
 type DiscoveredMcpTool = {
   name: string;

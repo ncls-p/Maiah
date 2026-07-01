@@ -1,6 +1,5 @@
 "use client";
 
-import type { ElementType } from "react";
 import {
   ActivityIcon,
   ArrowDownToLineIcon,
@@ -20,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { StatCard } from "@/components/ui/stat-card";
 import { cn } from "@/lib/utils";
 
 interface UsageEvent {
@@ -69,49 +69,6 @@ function statusTone(status: string | null) {
     return "destructive" as const;
   }
   return "muted" as const;
-}
-
-function StatCard({
-  label,
-  value,
-  icon: Icon,
-  color,
-  accent,
-}: {
-  label: string;
-  value: string | number;
-  icon: ElementType;
-  color: string;
-  accent: string;
-}) {
-  return (
-    <div className="group relative overflow-hidden rounded-2xl border border-transparent bg-card p-4 shadow-[var(--surface-shadow)] transition-[background-color,box-shadow] duration-150 ease-out hover:shadow-[var(--surface-shadow-hover)]">
-      <div
-        className={cn(
-          "absolute top-0 left-0 h-full w-1 opacity-70 transition-opacity duration-150 ease-out group-hover:opacity-100",
-          accent,
-        )}
-      />
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 flex-col gap-1">
-          <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            {label}
-          </span>
-          <span className="text-2xl font-bold tabular-nums tracking-tight text-foreground">
-            {value}
-          </span>
-        </div>
-        <div
-          className={cn(
-            "flex size-10 shrink-0 items-center justify-center rounded-xl transition-transform duration-150 ease-out group-hover:scale-[1.03]",
-            color,
-          )}
-        >
-          <Icon className="size-5" aria-hidden="true" />
-        </div>
-      </div>
-    </div>
-  );
 }
 
 function QuotaHero({
@@ -546,6 +503,7 @@ export function UsageDashboard({
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 animate-in-up stagger-1">
         <StatCard
+          variant="usage"
           label={t("events")}
           value={formatCount(data.totals.events)}
           icon={ActivityIcon}
@@ -553,6 +511,7 @@ export function UsageDashboard({
           accent="bg-primary"
         />
         <StatCard
+          variant="usage"
           label={t("inputTokens")}
           value={formatCount(data.totals.inputTokens)}
           icon={ArrowDownToLineIcon}
@@ -560,6 +519,7 @@ export function UsageDashboard({
           accent="bg-chart-1"
         />
         <StatCard
+          variant="usage"
           label={t("outputTokens")}
           value={formatCount(data.totals.outputTokens)}
           icon={ArrowUpFromLineIcon}
@@ -567,6 +527,7 @@ export function UsageDashboard({
           accent="bg-chart-2"
         />
         <StatCard
+          variant="usage"
           label={t("totalTokens")}
           value={formatCount(totalTokens)}
           icon={LayersIcon}

@@ -28,6 +28,28 @@ import type {
   SkillBinding,
   ToolBindingState,
 } from "./types";
+
+function buildToolBindingMap<T extends { id: string }>(
+  tools: T[],
+  bindings: ToolBinding[],
+  source: "builtin" | "mcp" | "custom",
+  defaultApproval: (tool: T) => boolean,
+): ToolBindingState {
+  const bindingsByToolId = new Map(
+    bindings
+      .filter((binding) => binding.toolSource === source)
+      .map((binding) => [binding.toolId, binding]),
+  );
+  const map: ToolBindingState = {};
+  for (const tool of tools) {
+    const binding = bindingsByToolId.get(tool.id);
+    map[tool.id] = {
+      enabled: Boolean(binding),
+      requireApproval: binding?.requireApproval ?? defaultApproval(tool),
+    };
+  }
+  return map;
+}
 import { createEmptyForm } from "./types";
 import {
   buildAgentFormFromVersion,
@@ -226,42 +248,20 @@ export default function AgentConfigurePage() {
     setKnowledgeBases(kbRows);
     setSkills(skillRows);
 
-    const nextBuiltin: ToolBindingState = {};
-    for (const tool of builtinRows) {
-      const binding = toolBindings.find(
-        (b) => b.toolSource === "builtin" && b.toolId === tool.id,
-      );
-      nextBuiltin[tool.id] = {
-        enabled: Boolean(binding),
-        requireApproval: binding?.requireApproval ?? false,
-      };
-    }
-    setBuiltinBindings(nextBuiltin);
-
-    const nextMcp: ToolBindingState = {};
-    for (const tool of mcpToolRows) {
-      const binding = toolBindings.find(
-        (b) => b.toolSource === "mcp" && b.toolId === tool.id,
-      );
-      nextMcp[tool.id] = {
-        enabled: Boolean(binding),
-        requireApproval:
-          binding?.requireApproval ?? tool.requireApproval ?? false,
-      };
-    }
-    setMcpBindings(nextMcp);
-
-    const nextCustom: ToolBindingState = {};
-    for (const tool of customToolRows) {
-      const binding = toolBindings.find(
-        (b) => b.toolSource === "custom" && b.toolId === tool.id,
-      );
-      nextCustom[tool.id] = {
-        enabled: Boolean(binding),
-        requireApproval: binding?.requireApproval ?? true,
-      };
-    }
-    setCustomBindings(nextCustom);
+    setBuiltinBindings(
+      buildToolBindingMap(builtinRows, toolBindings, "builtin", () => false),
+    );
+    setMcpBindings(
+      buildToolBindingMap(
+        mcpToolRows,
+        toolBindings,
+        "mcp",
+        (tool) => tool.requireApproval ?? false,
+      ),
+    );
+    setCustomBindings(
+      buildToolBindingMap(customToolRows, toolBindings, "custom", () => true),
+    );
     setSelectedKnowledgeIds(knowledgeBindings.map((b) => b.knowledgeBaseId));
     setSelectedSkillIds(skillBindings.map((b) => b.skillId));
   }, [agentId, workspaceId]);

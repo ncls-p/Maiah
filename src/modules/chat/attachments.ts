@@ -1153,9 +1153,13 @@ export async function getChatAttachment(
 ): Promise<ChatAttachmentMetadata> {
   assertSafeAttachmentId(attachmentId);
   const bytes = await storage.download(metadataObjectKey(attachmentId));
-  return JSON.parse(
-    Buffer.from(bytes).toString("utf8"),
-  ) as ChatAttachmentMetadata;
+  try {
+    return JSON.parse(
+      Buffer.from(bytes).toString("utf8"),
+    ) as ChatAttachmentMetadata;
+  } catch {
+    throw new Error(`Failed to parse attachment metadata for ${attachmentId}`);
+  }
 }
 
 export async function getChatAttachmentBytes(input: {

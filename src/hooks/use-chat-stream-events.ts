@@ -153,7 +153,12 @@ export function parseStreamEventText(
     .map((line) => line.slice("data:".length).trimStart())
     .join("\n");
   const payload = data || eventText.trim();
-  const parsed = JSON.parse(payload) as unknown;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(payload);
+  } catch {
+    return null;
+  }
   return isChatStreamEvent(parsed) ? parsed : null;
 }
 

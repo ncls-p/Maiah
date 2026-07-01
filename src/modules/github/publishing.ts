@@ -118,11 +118,11 @@ export function normalizeGitHubPrivateKey(rawValue: string) {
   );
   privateKey = privateKey.replace(/^GITHUB_APP_PRIVATE_KEY\s*=\s*/i, "");
   privateKey = privateKey.replace(/%$/, "").trim();
-  if (
-    (privateKey.startsWith('"') && privateKey.endsWith('"')) ||
-    (privateKey.startsWith("'") && privateKey.endsWith("'")) ||
-    (privateKey.startsWith("`") && privateKey.endsWith("`"))
-  ) {
+  const firstChar = privateKey[0];
+  const lastChar = privateKey[privateKey.length - 1];
+  const isQuoted =
+    firstChar === lastChar && ['"', "'", "`"].includes(firstChar);
+  if (isQuoted) {
     privateKey = privateKey.slice(1, -1).trim();
   }
   privateKey = privateKey
@@ -211,7 +211,15 @@ async function githubRequest<T>(
     },
   });
   const text = await response.text();
-  const body = text ? (JSON.parse(text) as unknown) : null;
+  const body = text
+    ? (() => {
+        try {
+          return JSON.parse(text) as unknown;
+        } catch {
+          return null;
+        }
+      })()
+    : null;
   if (!response.ok) {
     const message =
       typeof body === "object" &&
@@ -272,12 +280,17 @@ export function parseGitHubState(state: string) {
   );
   if (signature !== expected)
     throw new Error("Invalid GitHub state signature.");
-  const parsed = JSON.parse(
-    Buffer.from(
-      payload.replace(/-/g, "+").replace(/_/g, "/"),
-      "base64",
-    ).toString("utf8"),
-  ) as { userId?: unknown; workspaceId?: unknown; expiresAt?: unknown };
+  let parsed: { userId?: unknown; workspaceId?: unknown; expiresAt?: unknown };
+  try {
+    parsed = JSON.parse(
+      Buffer.from(
+        payload.replace(/-/g, "+").replace(/_/g, "/"),
+        "base64",
+      ).toString("utf8"),
+    );
+  } catch {
+    throw new Error("Failed to parse GitHub state payload.");
+  }
   if (
     typeof parsed.userId !== "string" ||
     typeof parsed.workspaceId !== "string" ||
@@ -302,7 +315,12 @@ export function createGitHubConnectUrl(input: {
     userId: input.userId,
     workspaceId: input.workspaceId,
   });
-  const url = new URL(`https://github.com/apps/${appSlug}/installations/new`);
+  let url: URL;
+  try {
+    url = new URL(`https://github.com/apps/${appSlug}/installations/new`);
+  } catch {
+    throw new Error("Failed to construct GitHub connect URL");
+  }
   url.searchParams.set("state", state);
   return url.toString();
 }

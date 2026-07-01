@@ -62,7 +62,10 @@ export default async function MembersPage() {
       width="wide"
     >
       <UserManagement
-        initialUsers={JSON.parse(JSON.stringify(users))}
+        initialUsers={users.map((u) => ({
+          ...u,
+          createdAt: u.createdAt.toISOString(),
+        }))}
         currentUserId={session.user.id}
       />
     </WorkspacePage>

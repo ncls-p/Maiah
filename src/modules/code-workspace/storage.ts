@@ -5,6 +5,7 @@ import path from "node:path";
 import JSZip from "jszip";
 
 import { logHandledError } from "@/lib/logger";
+import { isPathTraversal } from "@/lib/path-utils";
 import { storage } from "@/server/infrastructure/storage";
 
 export type CodeWorkspaceFileSummary = {
@@ -181,7 +182,12 @@ async function migrateLegacyProjectToObjectStorage(projectId: string) {
     if (!(await pathExists(metadataFilePath))) continue;
 
     const raw = await readFile(metadataFilePath, "utf8");
-    const metadata = JSON.parse(raw) as CodeWorkspaceMetadata;
+    let metadata: CodeWorkspaceMetadata;
+    try {
+      metadata = JSON.parse(raw);
+    } catch {
+      continue;
+    }
     for (const file of metadata.files) {
       const bytes = await readFile(
         safeLegacyStoragePath(root, projectId, file.path),
@@ -216,16 +222,6 @@ async function deleteUploadedProject(projectId: string, filePaths: string[]) {
       .map((filePath) => fileObjectKey(projectId, filePath))
       .concat(metadataObjectKey(projectId))
       .map((key) => storage.delete(key).catch(() => undefined)),
-  );
-}
-
-function isPathTraversal(normalizedPath: string) {
-  return (
-    !normalizedPath ||
-    normalizedPath === "." ||
-    normalizedPath.startsWith("../") ||
-    normalizedPath === ".." ||
-    normalizedPath.includes("/../")
   );
 }
 

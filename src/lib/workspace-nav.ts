@@ -134,16 +134,19 @@ export function getRouteTitleKey(pathname: string): string {
   return match?.[1] ?? "workspace";
 }
 
-export function isNavItemActive(pathname: string, href: string): boolean {
-  if (href === "/tools") {
-    return (
-      pathname === "/tools" ||
-      pathname.startsWith("/tools/") ||
-      pathname === "/mcp" ||
-      pathname.startsWith("/mcp/")
-    );
-  }
+const toolsRelatedPaths = ["/tools", "/mcp"] as const;
+
+function isExactOrChildPath(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+function matchesToolsSection(pathname: string): boolean {
+  return toolsRelatedPaths.some((href) => isExactOrChildPath(pathname, href));
+}
+
+export function isNavItemActive(pathname: string, href: string): boolean {
+  if (href === "/tools") return matchesToolsSection(pathname);
+  return isExactOrChildPath(pathname, href);
 }
 
 export type RouteBreadcrumb = {

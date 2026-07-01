@@ -556,22 +556,27 @@ export async function cloneSkillBindings(
   );
 }
 
+function isSkillMarkdownFile(
+  file: unknown,
+): file is { path: string; content: string } {
+  return (
+    typeof file === "object" &&
+    file !== null &&
+    "path" in file &&
+    "content" in file &&
+    typeof file.path === "string" &&
+    typeof file.content === "string" &&
+    file.path.toLowerCase().endsWith(".md")
+  );
+}
+
 function toMarkdownFiles(value: unknown): SkillMarkdownFile[] {
   if (!Array.isArray(value)) return [];
-  return value.flatMap((file) => {
-    if (
-      typeof file === "object" &&
-      file !== null &&
-      "path" in file &&
-      "content" in file &&
-      typeof file.path === "string" &&
-      typeof file.content === "string" &&
-      file.path.toLowerCase().endsWith(".md")
-    ) {
-      return [{ path: file.path, content: file.content }];
-    }
-    return [];
-  });
+  return value.flatMap((file) =>
+    isSkillMarkdownFile(file)
+      ? [{ path: file.path, content: file.content }]
+      : [],
+  );
 }
 
 export type SkillPreviewResult = {

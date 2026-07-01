@@ -71,7 +71,12 @@ export async function encryptValue(plaintext: string): Promise<string> {
  * Decrypt a value encrypted by encryptValue.
  */
 export async function decryptValue(encryptedJson: string): Promise<string> {
-  const payload = JSON.parse(encryptedJson);
+  let payload: { kid: unknown; iv: string; ct: string };
+  try {
+    payload = JSON.parse(encryptedJson);
+  } catch {
+    throw new Error("Failed to parse encrypted payload");
+  }
 
   if (payload.kid !== env.APP_ENCRYPTION_KEY_ID) {
     throw new Error(

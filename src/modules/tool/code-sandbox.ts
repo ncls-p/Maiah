@@ -5,6 +5,7 @@ import { ConnectionConfig, Sandbox } from "@alibaba-group/opensandbox";
 import type { Execution } from "@alibaba-group/opensandbox";
 
 import { env } from "@/lib/env";
+import { isPathTraversal } from "@/lib/path-utils";
 import {
   createChatAttachment,
   getChatAttachmentBytes,
@@ -206,13 +207,7 @@ function safeRelativePath(rawPath: string) {
     throw new Error("Absolute file paths are not allowed.");
   }
   const normalized = path.posix.normalize(trimmed).replace(/^\.\//, "");
-  if (
-    !normalized ||
-    normalized === "." ||
-    normalized === ".." ||
-    normalized.startsWith("../") ||
-    normalized.includes("/../")
-  ) {
+  if (isPathTraversal(normalized)) {
     throw new Error("Path traversal is not allowed.");
   }
   if (normalized.length > 260 || normalized.split("/").length > 16) {

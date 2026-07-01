@@ -165,6 +165,22 @@ function ChatScrollControls({ sending }: { sending: boolean }) {
   );
 }
 
+/** Returns true when a user message sits right before a streaming assistant. */
+function isMessageSecondToLastStreamingUser(
+  message: ChatMessage,
+  messages: ChatMessage[],
+  sending: boolean,
+): boolean {
+  if (!sending) return false;
+  const prev = messages[messages.length - 2];
+  const next = messages[messages.length - 1];
+  return (
+    prev?.id === message.id &&
+    next?.role === "assistant" &&
+    next?.status === "streaming"
+  );
+}
+
 export function ChatMessageList({
   messages,
   sending,
@@ -289,10 +305,9 @@ export function ChatMessageList({
                 isAssistant && message.status === "streaming";
               const isOutgoingUserBeforeStreamingAssistant =
                 isUser &&
-                sending &&
-                messages[messages.length - 2]?.id === message.id &&
-                messages[messages.length - 1]?.role === "assistant" &&
-                messages[messages.length - 1]?.status === "streaming";
+                isMessageSecondToLastStreamingUser(message, messages, sending);
+              const shouldScrollAnchor =
+                isUser && !isOutgoingUserBeforeStreamingAssistant;
               const isAnimating = sending && isLast && isStreamingAssistant;
               const messagePendingApprovals = isStreamingAssistant
                 ? pendingApprovals
@@ -303,9 +318,7 @@ export function ChatMessageList({
                 <MessageScrollerItem
                   key={message.id}
                   messageId={message.id}
-                  scrollAnchor={
-                    isUser && !isOutgoingUserBeforeStreamingAssistant
-                  }
+                  scrollAnchor={shouldScrollAnchor}
                   id={`message-${message.id}`}
                   className="scroll-mt-6 animate-in-up"
                   style={{ animationDelay: isLast ? "0s" : undefined }}

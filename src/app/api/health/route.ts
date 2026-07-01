@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/server/infrastructure/db";
+import { users } from "@/server/infrastructure/db/schema-tables";
 
 export async function GET() {
   const result: Record<string, string> = {
@@ -9,7 +10,7 @@ export async function GET() {
   };
 
   try {
-    await db.$client.query("SELECT 1");
+    await db.select().from(users).limit(0);
     result.database = "connected";
   } catch {
     result.status = "degraded";
