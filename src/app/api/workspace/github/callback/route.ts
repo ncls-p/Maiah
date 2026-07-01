@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
     if (parsedState.userId !== session.user.id) {
       return chatRedirect(req, { github: "forbidden" });
     }
-    const permission = await authorization.requirePermission(
+    const permission = await authorization.checkPermission(
       { principalType: "user", principalId: session.user.id },
       "agents.chat",
       "workspace",

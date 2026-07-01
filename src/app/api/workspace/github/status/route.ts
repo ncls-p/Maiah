@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
-  const permission = await authorization.requirePermission(
+  const permission = await authorization.checkPermission(
     { principalType: "user", principalId: session.user.id },
     "agents.chat",
     "workspace",

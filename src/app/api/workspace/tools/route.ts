@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
   return handleRoute(
     req,
     async ({ session }) => {
-      const { searchParams } = new URL(req.url);
+      const { searchParams } = req.nextUrl;
       const parsed = querySchema.safeParse({
         workspaceId: searchParams.get("workspaceId"),
       });

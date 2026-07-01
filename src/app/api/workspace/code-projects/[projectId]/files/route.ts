@@ -62,7 +62,7 @@ export async function GET(
       if (!metadata) {
         return NextResponse.json({ error: "Not found" }, { status: 404 });
       }
-      const { searchParams } = new URL(req.url);
+      const { searchParams } = req.nextUrl;
       const filePath = searchParams.get("path");
       if (!filePath) {
         return NextResponse.json(

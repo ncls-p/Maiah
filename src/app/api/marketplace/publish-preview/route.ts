@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
   return handleRoute(
     req,
     async ({ session }) => {
-      const { searchParams } = new URL(req.url);
+      const { searchParams } = req.nextUrl;
       const parsed = schema.safeParse({
         workspaceId: searchParams.get("workspaceId"),
         agentId: searchParams.get("agentId") ?? undefined,

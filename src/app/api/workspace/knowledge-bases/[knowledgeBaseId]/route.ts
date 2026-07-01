@@ -4,6 +4,7 @@ import {
   handleRoute,
   requireWorkspacePermissionAsync,
 } from "@/lib/route-handler";
+import { canManageTenantGlobals } from "@/modules/admin/auth";
 import {
   archiveKnowledgeBase,
   getKnowledgeBase,
@@ -15,6 +16,7 @@ const updateSchema = z.object({
   workspaceId: z.uuid(),
   name: z.string().min(1).max(255).optional(),
   description: z.string().max(2048).optional(),
+  isGlobal: z.boolean().optional(),
 });
 
 export async function GET(
@@ -25,7 +27,7 @@ export async function GET(
     req,
     async ({ session }) => {
       const parsed = querySchema.safeParse({
-        workspaceId: new URL(req.url).searchParams.get("workspaceId"),
+        workspaceId: req.nextUrl.searchParams.get("workspaceId"),
       });
       if (!parsed.success)
         return NextResponse.json(
@@ -42,6 +44,7 @@ export async function GET(
       const knowledgeBase = await getKnowledgeBase(
         knowledgeBaseId,
         parsed.data.workspaceId,
+        session.user.id,
       );
       if (!knowledgeBase)
         return NextResponse.json(
@@ -74,10 +77,21 @@ export async function PATCH(
       );
       if (forbidden) return forbidden;
       const { knowledgeBaseId } = await params;
+      const canManageGlobal = await canManageTenantGlobals(
+        session,
+        parsed.data.workspaceId,
+      );
+      if (parsed.data.isGlobal && !canManageGlobal) {
+        return NextResponse.json(
+          { error: "Only admins can make knowledge bases global" },
+          { status: 403 },
+        );
+      }
       return NextResponse.json(
         await updateKnowledgeBase({
           knowledgeBaseId,
           userId: session.user.id,
+          canManageGlobal,
           ...parsed.data,
         }),
       );
@@ -105,7 +119,7 @@ export async function DELETE(
     req,
     async ({ session }) => {
       const parsed = querySchema.safeParse({
-        workspaceId: new URL(req.url).searchParams.get("workspaceId"),
+        workspaceId: req.nextUrl.searchParams.get("workspaceId"),
       });
       if (!parsed.success)
         return NextResponse.json(
@@ -119,10 +133,15 @@ export async function DELETE(
       );
       if (forbidden) return forbidden;
       const { knowledgeBaseId } = await params;
+      const canManageGlobal = await canManageTenantGlobals(
+        session,
+        parsed.data.workspaceId,
+      );
       await archiveKnowledgeBase(
         knowledgeBaseId,
         parsed.data.workspaceId,
         session.user.id,
+        canManageGlobal,
       );
       return NextResponse.json({ ok: true });
     },

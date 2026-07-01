@@ -4,6 +4,7 @@ import {
   handleRoute,
   requireWorkspacePermissionAsync,
 } from "@/lib/route-handler";
+import { canManageTenantGlobals } from "@/modules/admin/auth";
 import {
   createSkillManually,
   installSkillsFromCommand,
@@ -14,6 +15,7 @@ const workspaceQuerySchema = z.object({ workspaceId: z.uuid() });
 const installSkillSchema = z.object({
   workspaceId: z.uuid(),
   installCommand: z.string().trim().min(1).max(700),
+  isGlobal: z.boolean().optional(),
 });
 const createSkillSchema = z.object({
   workspaceId: z.uuid(),
@@ -27,6 +29,7 @@ const createSkillSchema = z.object({
       }),
     )
     .min(1),
+  isGlobal: z.boolean().optional(),
 });
 
 const installErrorMessages = [
@@ -73,7 +76,7 @@ export async function GET(req: NextRequest) {
   return handleRoute(
     req,
     async ({ session }) => {
-      const { searchParams } = new URL(req.url);
+      const { searchParams } = req.nextUrl;
       const parsed = workspaceQuerySchema.safeParse({
         workspaceId: searchParams.get("workspaceId"),
       });
@@ -89,7 +92,17 @@ export async function GET(req: NextRequest) {
         "agents.get",
       );
       if (forbidden) return forbidden;
-      return NextResponse.json(await listAgentSkills(parsed.data.workspaceId));
+      const canManageGlobal = await canManageTenantGlobals(
+        session,
+        parsed.data.workspaceId,
+      );
+      return NextResponse.json(
+        await listAgentSkills(
+          parsed.data.workspaceId,
+          session.user.id,
+          canManageGlobal,
+        ),
+      );
     },
     { logLabel: "Failed to list skills" },
   );
@@ -112,10 +125,21 @@ export async function POST(req: NextRequest) {
         "tools.configure",
       );
       if (forbidden) return forbidden;
+      const canManageGlobal = await canManageTenantGlobals(
+        session,
+        parsed.data.workspaceId,
+      );
+      if (parsed.data.isGlobal && !canManageGlobal) {
+        return NextResponse.json(
+          { error: "Only admins can make skills global" },
+          { status: 403 },
+        );
+      }
       const skills = await installSkillsFromCommand({
         workspaceId: parsed.data.workspaceId,
         userId: session.user.id,
         installCommand: parsed.data.installCommand,
+        isGlobal: parsed.data.isGlobal && canManageGlobal,
       });
       return NextResponse.json({ skills }, { status: 201 });
     },
@@ -151,12 +175,23 @@ export async function PUT(req: NextRequest) {
         "tools.configure",
       );
       if (forbidden) return forbidden;
+      const canManageGlobal = await canManageTenantGlobals(
+        session,
+        parsed.data.workspaceId,
+      );
+      if (parsed.data.isGlobal && !canManageGlobal) {
+        return NextResponse.json(
+          { error: "Only admins can make skills global" },
+          { status: 403 },
+        );
+      }
       const skill = await createSkillManually({
         workspaceId: parsed.data.workspaceId,
         userId: session.user.id,
         name: parsed.data.name,
         description: parsed.data.description,
         markdownFiles: parsed.data.markdownFiles,
+        isGlobal: parsed.data.isGlobal && canManageGlobal,
       });
       return NextResponse.json({ skill }, { status: 201 });
     },

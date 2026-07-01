@@ -155,6 +155,13 @@
       "when": 1781300000007,
       "tag": "0021_github_connection_resync",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1781300000008,
+      "tag": "0022_tenant_resource_scoping",
+      "breakpoints": true
     }
   ]
 }

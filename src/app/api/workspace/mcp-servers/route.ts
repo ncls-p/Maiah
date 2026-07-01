@@ -4,6 +4,7 @@ import {
   handleRoute,
   requireWorkspacePermissionAsync,
 } from "@/lib/route-handler";
+import { canManageTenantGlobals } from "@/modules/admin/auth";
 import { createMcpServer, listMcpServers } from "@/modules/mcp/use-cases";
 
 const querySchema = z.object({ workspaceId: z.uuid() });
@@ -15,6 +16,7 @@ const createSchema = z.object({
   args: z.array(z.string().max(512)).optional(),
   url: z.url().optional(),
   requireApproval: z.boolean().optional(),
+  isGlobal: z.boolean().optional(),
   headers: z.record(z.string(), z.string()).optional(),
   env: z.record(z.string(), z.string()).optional(),
 });
@@ -24,7 +26,7 @@ export async function GET(req: NextRequest) {
     req,
     async ({ session }) => {
       const parsed = querySchema.safeParse({
-        workspaceId: new URL(req.url).searchParams.get("workspaceId"),
+        workspaceId: req.nextUrl.searchParams.get("workspaceId"),
       });
       if (!parsed.success)
         return NextResponse.json(
@@ -37,7 +39,17 @@ export async function GET(req: NextRequest) {
         "mcpServers.get",
       );
       if (forbidden) return forbidden;
-      return NextResponse.json(await listMcpServers(parsed.data.workspaceId));
+      const canManageGlobal = await canManageTenantGlobals(
+        session,
+        parsed.data.workspaceId,
+      );
+      return NextResponse.json(
+        await listMcpServers(
+          parsed.data.workspaceId,
+          session.user.id,
+          canManageGlobal,
+        ),
+      );
     },
     { logLabel: "Failed to list MCP servers" },
   );
@@ -59,8 +71,19 @@ export async function POST(req: NextRequest) {
         "mcpServers.manage",
       );
       if (forbidden) return forbidden;
+      const canManageGlobal = await canManageTenantGlobals(
+        session,
+        parsed.data.workspaceId,
+      );
+      if (parsed.data.isGlobal && !canManageGlobal) {
+        return NextResponse.json(
+          { error: "Only admins can make MCP servers global" },
+          { status: 403 },
+        );
+      }
       const server = await createMcpServer({
         ...parsed.data,
+        isGlobal: parsed.data.isGlobal && canManageGlobal,
         userId: session.user.id,
       });
       return NextResponse.json(server, { status: 201 });

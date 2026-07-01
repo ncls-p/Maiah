@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
       targetDirectory: parsed.data.targetDirectory || null,
     };
     githubPublishRouteLog("request", routeLogContext);
-    const permission = await authorization.requirePermission(
+    const permission = await authorization.checkPermission(
       { principalType: "user", principalId: session.user.id },
       "agents.chat",
       "workspace",

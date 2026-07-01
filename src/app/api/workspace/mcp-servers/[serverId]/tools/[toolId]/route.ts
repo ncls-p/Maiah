@@ -4,6 +4,7 @@ import {
   handleRoute,
   requireWorkspacePermissionAsync,
 } from "@/lib/route-handler";
+import { canManageTenantGlobals } from "@/modules/admin/auth";
 import { updateMcpTool } from "@/modules/mcp/use-cases";
 
 const updateSchema = z.object({
@@ -33,11 +34,16 @@ export async function PATCH(
       );
       if (forbidden) return forbidden;
       const { serverId, toolId } = await params;
+      const canManageGlobal = await canManageTenantGlobals(
+        session,
+        parsed.data.workspaceId,
+      );
       const tool = await updateMcpTool({
         toolId,
         serverId,
         workspaceId: parsed.data.workspaceId,
         userId: session.user.id,
+        canManageGlobal,
         enabled: parsed.data.enabled,
         requireApproval: parsed.data.requireApproval,
       });

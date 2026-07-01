@@ -11,6 +11,7 @@ vi.mock("@/modules/admin/auth", () => ({
 
 vi.mock("@/server/domain/services/authorization", () => ({
 	authorization: {
+		checkPermission: vi.fn(),
 		requirePermission: vi.fn(),
 		requireWorkspaceMember: vi.fn(),
 	},
@@ -101,7 +102,7 @@ describe("route-handler – requireWorkspacePermissionAsync", async () => {
 	});
 
 	it("returns null when permission is granted", async () => {
-		vi.mocked(authz.authorization.requirePermission).mockResolvedValue({
+		vi.mocked(authz.authorization.checkPermission).mockResolvedValue({
 			granted: true,
 		});
 		const result = await requireWorkspacePermissionAsync(
@@ -110,7 +111,7 @@ describe("route-handler – requireWorkspacePermissionAsync", async () => {
 			"read",
 		);
 		expect(result).toBeNull();
-		expect(authz.authorization.requirePermission).toHaveBeenCalledWith(
+		expect(authz.authorization.checkPermission).toHaveBeenCalledWith(
 			{ principalType: "user", principalId: "session-1" },
 			"read",
 			"workspace",
@@ -119,7 +120,7 @@ describe("route-handler – requireWorkspacePermissionAsync", async () => {
 	});
 
 	it("returns 403 when permission is denied", async () => {
-		vi.mocked(authz.authorization.requirePermission).mockResolvedValue({
+		vi.mocked(authz.authorization.checkPermission).mockResolvedValue({
 			granted: false,
 			reason: "Not a member",
 		});

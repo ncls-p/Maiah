@@ -43,22 +43,22 @@ describe("workspace IAM", () => {
 
 	it("keeps app-management permissions for hidden primary workspace access", async () => {
 		const { SYSTEM_ROLES } = await import("@/server/domain/entities/iam");
-		const ownerRole = SYSTEM_ROLES.find(
-			(role) => role.name === "workspace.owner",
-		);
 		const adminRole = SYSTEM_ROLES.find(
 			(role) => role.name === "workspace.admin",
 		);
-		const requiredPermissions = [
+		const memberRole = SYSTEM_ROLES.find(
+			(role) => role.name === "workspace.member",
+		);
+		const memberPermissions = ["agents.chat", "tools.executeRestricted"];
+		const adminOnlyPermissions = [
 			"providers.viewMetadata",
 			"apiKeys.manage",
-			"agents.chat",
-			"tools.executeRestricted",
+			"roles.manage",
 		];
 
-		for (const requiredPermission of requiredPermissions) {
+		for (const requiredPermission of memberPermissions) {
 			expect(
-				ownerRole?.permissions.some((permission) =>
+				memberRole?.permissions.some((permission) =>
 					matchesPermission(permission, requiredPermission),
 				),
 			).toBe(true);
@@ -67,6 +67,19 @@ describe("workspace IAM", () => {
 					matchesPermission(permission, requiredPermission),
 				),
 			).toBe(true);
+		}
+
+		for (const requiredPermission of adminOnlyPermissions) {
+			expect(
+				adminRole?.permissions.some((permission) =>
+					matchesPermission(permission, requiredPermission),
+				),
+			).toBe(true);
+			expect(
+				memberRole?.permissions.some((permission) =>
+					matchesPermission(permission, requiredPermission),
+				),
+			).toBe(false);
 		}
 	});
 });

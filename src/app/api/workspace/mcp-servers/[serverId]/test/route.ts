@@ -4,6 +4,7 @@ import {
   handleRoute,
   requireWorkspacePermissionAsync,
 } from "@/lib/route-handler";
+import { canManageTenantGlobals } from "@/modules/admin/auth";
 import { testMcpConnection } from "@/modules/mcp/use-cases";
 
 const querySchema = z.object({ workspaceId: z.uuid() });
@@ -16,7 +17,7 @@ export async function POST(
     req,
     async ({ session }) => {
       const parsed = querySchema.safeParse({
-        workspaceId: new URL(req.url).searchParams.get("workspaceId"),
+        workspaceId: req.nextUrl.searchParams.get("workspaceId"),
       });
       if (!parsed.success) {
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
@@ -28,10 +29,15 @@ export async function POST(
       );
       if (forbidden) return forbidden;
       const { serverId } = await params;
+      const canManageGlobal = await canManageTenantGlobals(
+        session,
+        parsed.data.workspaceId,
+      );
       const result = await testMcpConnection(
         serverId,
         parsed.data.workspaceId,
         session.user.id,
+        canManageGlobal,
       );
       return NextResponse.json(result);
     },

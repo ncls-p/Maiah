@@ -22,10 +22,7 @@ export interface CreateWorkspaceInput {
   workspaceSlug: string;
 }
 
-type WorkspaceRoleName =
-  | "workspace.member"
-  | "workspace.owner"
-  | "workspace.admin";
+type WorkspaceRoleName = "workspace.member" | "workspace.admin";
 
 const PRIMARY_ORGANIZATION_NAME = "Deodis";
 const PRIMARY_ORGANIZATION_SLUG = "deodis";
@@ -124,16 +121,16 @@ export async function createWorkspace(input: CreateWorkspaceInput) {
     });
 
     const seededRoles = await seedSystemRoles(tx, userId);
-    const workspaceOwnerRole = seededRoles.get("workspace.owner");
+    const workspaceAdminRole = seededRoles.get("workspace.admin");
 
-    if (!workspaceOwnerRole) {
-      throw new Error("Workspace owner system role is not available");
+    if (!workspaceAdminRole) {
+      throw new Error("Workspace admin system role is not available");
     }
 
     await tx.insert(roleBindings).values({
       principalType: "user",
       principalId: userId,
-      roleId: workspaceOwnerRole.id,
+      roleId: workspaceAdminRole.id,
       resourceType: WORKSPACE_SCOPE,
       resourceId: workspace.id,
       createdById: userId,
@@ -283,10 +280,7 @@ export async function ensurePrimaryWorkspaceForUser(input: {
   }
 
   const currentRole = await getWorkspaceRoleName(workspace.id, input.userId);
-  const roleIsCurrent =
-    desiredRole === "workspace.admin"
-      ? currentRole === "workspace.owner" || currentRole === "workspace.admin"
-      : currentRole === desiredRole;
+  const roleIsCurrent = currentRole === desiredRole;
 
   if (!roleIsCurrent) {
     await updateWorkspaceMemberRole({

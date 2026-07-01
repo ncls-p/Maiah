@@ -7,7 +7,10 @@ import {
   requireWorkspacePermissionAsync,
 } from "@/lib/route-handler";
 import { db } from "@/server/infrastructure/db";
-import { toolInvocations } from "@/server/infrastructure/db/schema";
+import {
+  conversations,
+  toolInvocations,
+} from "@/server/infrastructure/db/schema";
 
 const querySchema = z.object({
   workspaceId: z.uuid(),
@@ -30,7 +33,7 @@ export async function GET(req: NextRequest) {
   return handleRoute(
     req,
     async ({ session }) => {
-      const { searchParams } = new URL(req.url);
+      const { searchParams } = req.nextUrl;
       const parsed = querySchema.safeParse({
         workspaceId: searchParams.get("workspaceId"),
         status: searchParams.get("status") ?? undefined,
@@ -73,9 +76,14 @@ export async function GET(req: NextRequest) {
           completedAt: toolInvocations.completedAt,
         })
         .from(toolInvocations)
+        .innerJoin(
+          conversations,
+          eq(toolInvocations.conversationId, conversations.id),
+        )
         .where(
           and(
             eq(toolInvocations.workspaceId, parsed.data.workspaceId),
+            eq(conversations.userId, session.user.id),
             statusFilter,
             conversationFilter,
           ),

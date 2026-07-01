@@ -55,7 +55,7 @@ const createSchema = z
 export async function GET(req: NextRequest) {
   try {
     const session = await getSession();
-    const { searchParams } = new URL(req.url);
+    const { searchParams } = req.nextUrl;
     const path = searchParams.get("_path");
     if (path === "my-items" && session) {
       return NextResponse.json(await getMyMarketplaceItems(session.user.id));

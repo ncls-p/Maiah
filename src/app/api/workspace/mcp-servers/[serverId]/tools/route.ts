@@ -4,6 +4,7 @@ import {
   handleRoute,
   requireWorkspacePermissionAsync,
 } from "@/lib/route-handler";
+import { canManageTenantGlobals } from "@/modules/admin/auth";
 import { listMcpTools, syncMcpTools } from "@/modules/mcp/use-cases";
 
 const querySchema = z.object({ workspaceId: z.uuid() });
@@ -16,7 +17,7 @@ export async function GET(
     req,
     async ({ session }) => {
       const parsed = querySchema.safeParse({
-        workspaceId: new URL(req.url).searchParams.get("workspaceId"),
+        workspaceId: req.nextUrl.searchParams.get("workspaceId"),
       });
       if (!parsed.success)
         return NextResponse.json(
@@ -31,7 +32,7 @@ export async function GET(
       if (forbidden) return forbidden;
       const { serverId } = await params;
       return NextResponse.json(
-        await listMcpTools(serverId, parsed.data.workspaceId),
+        await listMcpTools(serverId, parsed.data.workspaceId, session.user.id),
       );
     },
     {
@@ -58,7 +59,7 @@ export async function POST(
     async ({ session }) => {
       const parsed = querySchema.safeParse({
         workspaceId:
-          new URL(req.url).searchParams.get("workspaceId") ??
+          req.nextUrl.searchParams.get("workspaceId") ??
           (await req.json().catch(() => ({}))).workspaceId,
       });
       if (!parsed.success)
@@ -73,8 +74,17 @@ export async function POST(
       );
       if (forbidden) return forbidden;
       const { serverId } = await params;
+      const canManageGlobal = await canManageTenantGlobals(
+        session,
+        parsed.data.workspaceId,
+      );
       return NextResponse.json(
-        await syncMcpTools(serverId, parsed.data.workspaceId, session.user.id),
+        await syncMcpTools(
+          serverId,
+          parsed.data.workspaceId,
+          session.user.id,
+          canManageGlobal,
+        ),
       );
     },
     {

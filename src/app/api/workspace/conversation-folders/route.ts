@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
   return handleRoute(
     req,
     async ({ session }) => {
-      const workspaceId = new URL(req.url).searchParams.get("workspaceId");
+      const workspaceId = req.nextUrl.searchParams.get("workspaceId");
       const parsed = z.uuid().safeParse(workspaceId);
       if (!parsed.success) {
         return NextResponse.json(

@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, or, sql } from "drizzle-orm";
 import { generateText, tool } from "ai";
 import { z } from "zod";
 
@@ -28,6 +28,27 @@ import {
 registerAiSdkDevTools();
 
 const CUSTOM_TOOL_BUILDER_SETTING_KEY = "customToolBuilder";
+
+type CustomToolRow = typeof customTools.$inferSelect;
+
+function visibleCustomToolCondition(workspaceId: string, userId: string) {
+	return and(
+		eq(customTools.workspaceId, workspaceId),
+		isNull(customTools.archivedAt),
+		or(eq(customTools.createdById, userId), eq(customTools.isGlobal, true)),
+	);
+}
+
+function canManageCustomTool(
+	customTool: CustomToolRow,
+	userId: string,
+	canManageGlobal = false,
+) {
+	return (
+		customTool.createdById === userId ||
+		(customTool.isGlobal && canManageGlobal)
+	);
+}
 
 const secretFieldSchema = z.object({
 	name: z
@@ -695,12 +716,11 @@ export async function submitSecretRequest(input: {
 	return safeCredentialSummary(fields, credentialRef.id);
 }
 
-export async function listCustomTools(workspaceId: string, userId?: string) {
-	const conditions = [
-		eq(customTools.workspaceId, workspaceId),
-		isNull(customTools.archivedAt),
-	];
-	if (userId) conditions.push(eq(customTools.createdById, userId));
+export async function listCustomTools(
+	workspaceId: string,
+	userId: string,
+	canManageGlobal = false,
+) {
 	const tools = await db
 		.select({
 			id: customTools.id,
@@ -710,19 +730,29 @@ export async function listCustomTools(workspaceId: string, userId?: string) {
 			n8nWorkflowId: customTools.n8nWorkflowId,
 			n8nWorkflowUrl: customTools.n8nWorkflowUrl,
 			metadataJson: customTools.metadataJson,
+			createdById: customTools.createdById,
+			isGlobal: customTools.isGlobal,
 			createdAt: customTools.createdAt,
 			updatedAt: customTools.updatedAt,
 		})
 		.from(customTools)
-		.where(and(...conditions))
-		.orderBy(desc(customTools.createdAt));
-	return tools;
+		.where(visibleCustomToolCondition(workspaceId, userId))
+		.orderBy(desc(customTools.isGlobal), desc(customTools.createdAt));
+	return tools.map((tool) => ({
+		...tool,
+		canEdit: canManageCustomTool(
+			tool as CustomToolRow,
+			userId,
+			canManageGlobal,
+		),
+	}));
 }
 
 export async function deleteCustomTool(input: {
 	workspaceId: string;
 	userId: string;
 	customToolId: string;
+	canManageGlobal?: boolean;
 }) {
 	const config = await getCustomToolBuilderConfig();
 	const [customTool] = await db
@@ -732,12 +762,14 @@ export async function deleteCustomTool(input: {
 			and(
 				eq(customTools.id, input.customToolId),
 				eq(customTools.workspaceId, input.workspaceId),
-				eq(customTools.createdById, input.userId),
 				isNull(customTools.archivedAt),
 			),
 		)
 		.limit(1);
 	if (!customTool) throw new Error("Custom tool not found");
+	if (!canManageCustomTool(customTool, input.userId, input.canManageGlobal)) {
+		throw new Error("Custom tool not found");
+	}
 
 	let workflowDeleted = false;
 	let workflowDeleteError: string | undefined;
@@ -793,12 +825,14 @@ export async function executeCustomToolWorkflow(input: {
 			and(
 				eq(customTools.id, input.customToolId),
 				eq(customTools.workspaceId, input.workspaceId),
-				eq(customTools.createdById, input.userId),
 				isNull(customTools.archivedAt),
 			),
 		)
 		.limit(1);
 	if (!customTool) throw new Error("Custom tool not found");
+	if (customTool.createdById !== input.userId && !customTool.isGlobal) {
+		throw new Error("Custom tool not found");
+	}
 	if (!customTool.n8nWorkflowId) {
 		throw new Error("Custom tool is not linked to a workflow yet");
 	}
@@ -823,6 +857,7 @@ export async function runCustomToolBuilder(input: {
 	userId: string;
 	messages: BuilderMessage[];
 	credentialRefs?: Array<{ requestId: string; credentialRef: string }>;
+	isGlobal?: boolean;
 }) {
 	const config = await getCustomToolBuilderConfig();
 	if (!config.enabled) {
@@ -1130,6 +1165,7 @@ export async function runCustomToolBuilder(input: {
 								resolvedWorkflowId || n8nWorkflowUrl
 									? "workflow_created"
 									: "draft",
+							isGlobal: input.isGlobal ?? false,
 							inputSchemaJson: inputSchema ?? null,
 							outputSchemaJson: outputSchema ?? null,
 							metadataJson: {
@@ -1141,6 +1177,7 @@ export async function runCustomToolBuilder(input: {
 							id: customTools.id,
 							name: customTools.name,
 							status: customTools.status,
+							isGlobal: customTools.isGlobal,
 						});
 					registeredTools.push(row);
 					progressEvents.push({ label: "Tool enregistré", status: "done" });

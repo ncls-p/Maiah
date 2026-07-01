@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { decryptValue, encryptValue } from "@/lib/crypto";
 import { getSession } from "@/modules/auth/session";
@@ -8,7 +8,11 @@ import { getBuiltInTool } from "@/modules/tool/builtin-tools";
 import { audit } from "@/server/domain/services/audit";
 import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
-import { mcpTools, toolInvocations } from "@/server/infrastructure/db/schema";
+import {
+  conversations,
+  mcpTools,
+  toolInvocations,
+} from "@/server/infrastructure/db/schema";
 
 import { invocationParamsSchema } from "../../invocation-shared";
 
@@ -53,6 +57,7 @@ async function executeInvocation(
       serverId: tool.mcpServerId,
       toolId: invocation.toolId,
       workspaceId: invocation.workspaceId,
+      userId,
       toolInput: input,
     });
   } else {
@@ -79,11 +84,21 @@ export async function POST(
       return NextResponse.json({ error: "Invalid request" }, { status: 400 });
     }
 
-    const [invocation] = await db
-      .select()
+    const [row] = await db
+      .select({ invocation: toolInvocations, conversation: conversations })
       .from(toolInvocations)
-      .where(eq(toolInvocations.id, parsed.data.invocationId))
+      .innerJoin(
+        conversations,
+        eq(toolInvocations.conversationId, conversations.id),
+      )
+      .where(
+        and(
+          eq(toolInvocations.id, parsed.data.invocationId),
+          eq(conversations.userId, session.user.id),
+        ),
+      )
       .limit(1);
+    const invocation = row?.invocation;
 
     if (!invocation) {
       return NextResponse.json(
@@ -98,17 +113,14 @@ export async function POST(
         "github_publish_code_workspace"
         ? "agents.chat"
         : "tools.executeRestricted";
-    const permission = await authorization.requirePermission(
+    const permissionGranted = await authorization.hasPermission(
       { principalType: "user", principalId: session.user.id },
       approvalPermission,
       "workspace",
       invocation.workspaceId,
     );
-    if (!permission.granted) {
-      return NextResponse.json(
-        { error: "Forbidden", reason: permission.reason },
-        { status: 403 },
-      );
+    if (!permissionGranted) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     if (invocation.status !== "awaiting_approval") {

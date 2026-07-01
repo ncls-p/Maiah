@@ -9,7 +9,7 @@ import {
   getAgentVersions,
   getAgentVersionById,
 } from "@/modules/agent/use-cases";
-import { isAdminRole } from "@/modules/admin/use-cases";
+import { canManageTenantGlobals } from "@/modules/admin/auth";
 
 const routeParamsSchema = z.object({ agentId: z.uuid() });
 const workspaceQuerySchema = z.object({ workspaceId: z.uuid() });
@@ -22,7 +22,7 @@ export async function GET(
     req,
     async ({ session }) => {
       const parsedParams = routeParamsSchema.safeParse(await params);
-      const { searchParams } = new URL(req.url);
+      const { searchParams } = req.nextUrl;
       const parsedQuery = workspaceQuerySchema.safeParse({
         workspaceId: searchParams.get("workspaceId"),
       });
@@ -41,7 +41,7 @@ export async function GET(
         agentId,
         workspaceId,
         session.user.id,
-        isAdminRole(session.user.role),
+        await canManageTenantGlobals(session, workspaceId),
       );
       if (!agent) {
         return NextResponse.json({ error: "Agent not found" }, { status: 404 });

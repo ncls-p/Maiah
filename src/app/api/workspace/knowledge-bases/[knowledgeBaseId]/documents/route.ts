@@ -4,6 +4,7 @@ import {
   handleRoute,
   requireWorkspacePermissionAsync,
 } from "@/lib/route-handler";
+import { canManageTenantGlobals } from "@/modules/admin/auth";
 import {
   ingestTextDocument,
   listDocuments,
@@ -25,7 +26,7 @@ export async function GET(
     req,
     async ({ session }) => {
       const parsed = querySchema.safeParse({
-        workspaceId: new URL(req.url).searchParams.get("workspaceId"),
+        workspaceId: req.nextUrl.searchParams.get("workspaceId"),
       });
       if (!parsed.success)
         return NextResponse.json(
@@ -40,7 +41,11 @@ export async function GET(
       if (forbidden) return forbidden;
       const { knowledgeBaseId } = await params;
       return NextResponse.json(
-        await listDocuments(knowledgeBaseId, parsed.data.workspaceId),
+        await listDocuments(
+          knowledgeBaseId,
+          parsed.data.workspaceId,
+          session.user.id,
+        ),
       );
     },
     {
@@ -78,9 +83,14 @@ export async function POST(
       );
       if (forbidden) return forbidden;
       const { knowledgeBaseId } = await params;
+      const canManageGlobal = await canManageTenantGlobals(
+        session,
+        parsed.data.workspaceId,
+      );
       const document = await ingestTextDocument({
         knowledgeBaseId,
         userId: session.user.id,
+        canManageGlobal,
         ...parsed.data,
       });
       return NextResponse.json(document, { status: 201 });

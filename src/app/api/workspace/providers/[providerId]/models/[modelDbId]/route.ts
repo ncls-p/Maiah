@@ -91,7 +91,7 @@ export async function DELETE(
     req,
     async ({ session }) => {
       const parsedParams = paramsSchema.safeParse(await params);
-      const { searchParams } = new URL(req.url);
+      const { searchParams } = req.nextUrl;
       const parsedQuery = workspaceQuerySchema.safeParse({
         workspaceId: searchParams.get("workspaceId"),
       });

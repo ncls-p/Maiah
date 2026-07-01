@@ -14,7 +14,7 @@ import {
   normalizePromptSuggestions,
   updateAgent,
 } from "@/modules/agent/use-cases";
-import { isAdminRole } from "@/modules/admin/use-cases";
+import { canManageTenantGlobals } from "@/modules/admin/auth";
 import { authorization } from "@/server/domain/services/authorization";
 import { toolBindingInputSchema } from "@/modules/tool/use-cases";
 
@@ -120,7 +120,7 @@ export async function GET(
     req,
     async ({ session }) => {
       const parsedParams = routeParamsSchema.safeParse(await params);
-      const { searchParams } = new URL(req.url);
+      const { searchParams } = req.nextUrl;
       const parsedQuery = workspaceQuerySchema.safeParse({
         workspaceId: searchParams.get("workspaceId"),
       });
@@ -135,7 +135,7 @@ export async function GET(
         "agents.get",
       );
       if (forbidden) return forbidden;
-      const canAdminCurate = isAdminRole(session.user.role);
+      const canAdminCurate = await canManageTenantGlobals(session, workspaceId);
       const agent = await getVisibleAgentById(
         agentId,
         workspaceId,
@@ -210,7 +210,7 @@ export async function PATCH(
       }
       const { agentId } = parsedParams.data;
       const { workspaceId, ...input } = parsedBody.data;
-      const canAdminCurate = isAdminRole(session.user.role);
+      const canAdminCurate = await canManageTenantGlobals(session, workspaceId);
       const forbidden = await requireWorkspacePermissionAsync(
         session.user.id,
         workspaceId,
@@ -289,7 +289,7 @@ export async function DELETE(
     req,
     async ({ session }) => {
       const parsedParams = routeParamsSchema.safeParse(await params);
-      const { searchParams } = new URL(req.url);
+      const { searchParams } = req.nextUrl;
       const parsedQuery = workspaceQuerySchema.safeParse({
         workspaceId: searchParams.get("workspaceId"),
       });
@@ -308,7 +308,7 @@ export async function DELETE(
         agentId,
         workspaceId,
         session.user.id,
-        isAdminRole(session.user.role),
+        await canManageTenantGlobals(session, workspaceId),
       );
       return NextResponse.json({ ok: true });
     },

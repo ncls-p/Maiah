@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
-import { isAdminRole } from "@/modules/admin/use-cases";
+import { canManageTenantGlobals } from "@/modules/admin/auth";
 import {
   getAgentDefaultPreferences,
   setOrganizationDefaultAgent,
@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
   return handleRoute(
     req,
     async ({ session }) => {
-      const { searchParams } = new URL(req.url);
+      const { searchParams } = req.nextUrl;
       const parsed = querySchema.safeParse({
         workspaceId: searchParams.get("workspaceId"),
       });
@@ -66,7 +66,7 @@ export async function PATCH(req: NextRequest) {
         scope === "organization" ? "agents.update" : "agents.list",
       );
       if (forbidden) return forbidden;
-      const canAdminCurate = isAdminRole(session.user.role);
+      const canAdminCurate = await canManageTenantGlobals(session, workspaceId);
       if (scope === "organization") {
         if (!canAdminCurate) {
           return NextResponse.json({ error: "Forbidden" }, { status: 403 });

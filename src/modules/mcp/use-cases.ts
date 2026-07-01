@@ -1,4 +1,4 @@
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, isNull, or, sql } from "drizzle-orm";
 import { decryptValue, encryptValue } from "@/lib/crypto";
 import { inferMcpAuthHint } from "@/modules/mcp/auth-hint";
 import { listRemoteMcpTools } from "@/modules/mcp/client";
@@ -28,6 +28,7 @@ export interface CreateMcpServerInput {
   args?: string[];
   url?: string;
   requireApproval?: boolean;
+  isGlobal?: boolean;
   headers?: Record<string, string>;
   env?: Record<string, string>;
 }
@@ -36,6 +37,7 @@ export interface UpdateMcpServerInput {
   serverId: string;
   workspaceId: string;
   userId: string;
+  canManageGlobal?: boolean;
   name?: string;
   transport?: McpTransport;
   url?: string;
@@ -43,6 +45,7 @@ export interface UpdateMcpServerInput {
   args?: string[];
   enabled?: boolean;
   requireApproval?: boolean;
+  isGlobal?: boolean;
   headers?: Record<string, string>;
   env?: Record<string, string>;
 }
@@ -58,6 +61,8 @@ export function toSafeMcpServer(server: McpServer) {
     url: server.url,
     enabled: server.enabled,
     requireApproval: server.requireApproval,
+    isGlobal: server.isGlobal,
+    createdById: server.createdById,
     healthStatus: server.healthStatus,
     lastCheckedAt: server.lastCheckedAt,
     createdAt: server.createdAt,
@@ -123,6 +128,32 @@ function validateTransportConfig(
   }
 }
 
+function visibleMcpServerCondition(workspaceId: string, userId: string) {
+  return and(
+    eq(mcpServers.workspaceId, workspaceId),
+    isNull(mcpServers.archivedAt),
+    or(eq(mcpServers.createdById, userId), eq(mcpServers.isGlobal, true)),
+  );
+}
+
+function canManageMcpServer(
+  server: McpServer,
+  userId: string,
+  canManageGlobal = false,
+) {
+  return server.createdById === userId || (server.isGlobal && canManageGlobal);
+}
+
+function assertCanManageMcpServer(
+  server: McpServer,
+  userId: string,
+  canManageGlobal = false,
+) {
+  if (!canManageMcpServer(server, userId, canManageGlobal)) {
+    throw new Error("MCP server not found");
+  }
+}
+
 export async function createMcpServer(input: CreateMcpServerInput) {
   const [server] = await db
     .insert(mcpServers)
@@ -137,6 +168,7 @@ export async function createMcpServer(input: CreateMcpServerInput) {
       encryptedEnvJson: await encryptRecord(input.env),
       enabled: true,
       requireApproval: input.requireApproval ?? false,
+      isGlobal: input.isGlobal ?? false,
       healthStatus: "unknown",
       createdById: input.userId,
     })
@@ -160,21 +192,39 @@ export async function createMcpServer(input: CreateMcpServerInput) {
   return server;
 }
 
-export async function listMcpServers(workspaceId: string) {
+export async function listMcpServers(
+  workspaceId: string,
+  userId?: string,
+  canManageGlobal = false,
+) {
   const rows = await db
     .select()
     .from(mcpServers)
     .where(
-      and(
-        eq(mcpServers.workspaceId, workspaceId),
-        isNull(mcpServers.archivedAt),
-      ),
+      userId
+        ? visibleMcpServerCondition(workspaceId, userId)
+        : and(
+            eq(mcpServers.workspaceId, workspaceId),
+            isNull(mcpServers.archivedAt),
+          ),
     )
-    .orderBy(sql`${mcpServers.createdAt} DESC`);
-  return rows.map(toSafeMcpServer);
+    .orderBy(
+      sql`${mcpServers.isGlobal} DESC`,
+      sql`${mcpServers.createdAt} DESC`,
+    );
+  return rows.map((server) => ({
+    ...toSafeMcpServer(server),
+    canEdit: userId
+      ? canManageMcpServer(server, userId, canManageGlobal)
+      : true,
+  }));
 }
 
-export async function getMcpServer(serverId: string, workspaceId: string) {
+export async function getMcpServer(
+  serverId: string,
+  workspaceId: string,
+  userId?: string,
+) {
   const [server] = await db
     .select()
     .from(mcpServers)
@@ -183,6 +233,12 @@ export async function getMcpServer(serverId: string, workspaceId: string) {
         eq(mcpServers.id, serverId),
         eq(mcpServers.workspaceId, workspaceId),
         isNull(mcpServers.archivedAt),
+        userId
+          ? or(
+              eq(mcpServers.createdById, userId),
+              eq(mcpServers.isGlobal, true),
+            )
+          : undefined,
       ),
     )
     .limit(1);
@@ -221,6 +277,7 @@ async function buildMcpServerUpdates(
     ["argsJson", input.args],
     ["enabled", input.enabled],
     ["requireApproval", input.requireApproval],
+    ["isGlobal", input.isGlobal],
   ];
 
   for (const [field, value] of simpleUpdates) {
@@ -245,6 +302,10 @@ async function buildMcpServerUpdates(
 export async function updateMcpServer(input: UpdateMcpServerInput) {
   const existing = await getMcpServer(input.serverId, input.workspaceId);
   if (!existing) throw new Error("MCP server not found");
+  assertCanManageMcpServer(existing, input.userId, input.canManageGlobal);
+  if (input.isGlobal && !input.canManageGlobal) {
+    throw new Error("Only admins can make MCP servers global");
+  }
 
   validateMcpServerUpdate(input, existing);
   const updates = await buildMcpServerUpdates(input, existing);
@@ -272,9 +333,11 @@ export async function archiveMcpServer(
   serverId: string,
   workspaceId: string,
   userId: string,
+  canManageGlobal = false,
 ) {
   const existing = await getMcpServer(serverId, workspaceId);
   if (!existing) throw new Error("MCP server not found");
+  assertCanManageMcpServer(existing, userId, canManageGlobal);
 
   await db
     .update(mcpServers)
@@ -292,8 +355,12 @@ export async function archiveMcpServer(
   });
 }
 
-export async function listMcpTools(serverId: string, workspaceId: string) {
-  const server = await getMcpServer(serverId, workspaceId);
+export async function listMcpTools(
+  serverId: string,
+  workspaceId: string,
+  userId?: string,
+) {
+  const server = await getMcpServer(serverId, workspaceId, userId);
   if (!server) throw new Error("MCP server not found");
   return db
     .select()
@@ -400,9 +467,11 @@ export async function syncMcpTools(
   serverId: string,
   workspaceId: string,
   userId: string,
+  canManageGlobal = false,
 ) {
   const server = await getMcpServer(serverId, workspaceId);
   if (!server) throw new Error("MCP server not found");
+  assertCanManageMcpServer(server, userId, canManageGlobal);
   if (server.transport === "stdio" || !server.url) {
     await markMcpServerManual(serverId);
     return { status: "manual", discovered: 0 };
@@ -442,9 +511,11 @@ export async function testMcpConnection(
   serverId: string,
   workspaceId: string,
   userId: string,
+  canManageGlobal = false,
 ) {
   const server = await getMcpServer(serverId, workspaceId);
   if (!server) throw new Error("MCP server not found");
+  assertCanManageMcpServer(server, userId, canManageGlobal);
 
   if (server.transport === "stdio" || !server.url) {
     await db
@@ -501,9 +572,11 @@ export async function updateMcpTool(input: {
   userId: string;
   enabled?: boolean;
   requireApproval?: boolean;
+  canManageGlobal?: boolean;
 }) {
   const server = await getMcpServer(input.serverId, input.workspaceId);
   if (!server) throw new Error("MCP server not found");
+  assertCanManageMcpServer(server, input.userId, input.canManageGlobal);
 
   const updates: Record<string, unknown> = {};
   if (input.enabled !== undefined) updates.enabled = input.enabled;

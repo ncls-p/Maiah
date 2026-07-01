@@ -5,6 +5,7 @@ import {
   handleRoute,
   requireWorkspacePermissionAsync,
 } from "@/lib/route-handler";
+import { canManageTenantGlobals } from "@/modules/admin/auth";
 import { deleteCustomTool } from "@/modules/custom-tools/use-cases";
 
 const paramsSchema = z.object({ toolId: z.uuid() });
@@ -19,7 +20,7 @@ export async function DELETE(
     async ({ session }) => {
       const parsedParams = paramsSchema.safeParse(await params);
       const parsedQuery = querySchema.safeParse({
-        workspaceId: new URL(req.url).searchParams.get("workspaceId"),
+        workspaceId: req.nextUrl.searchParams.get("workspaceId"),
       });
       if (!parsedParams.success || !parsedQuery.success) {
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
@@ -30,11 +31,16 @@ export async function DELETE(
         "tools.configure",
       );
       if (forbidden) return forbidden;
+      const canManageGlobal = await canManageTenantGlobals(
+        session,
+        parsedQuery.data.workspaceId,
+      );
       return NextResponse.json(
         await deleteCustomTool({
           workspaceId: parsedQuery.data.workspaceId,
           userId: session.user.id,
           customToolId: parsedParams.data.toolId,
+          canManageGlobal,
         }),
       );
     },

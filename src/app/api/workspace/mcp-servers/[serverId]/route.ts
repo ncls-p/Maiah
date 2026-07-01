@@ -4,6 +4,7 @@ import {
   handleRoute,
   requireWorkspacePermissionAsync,
 } from "@/lib/route-handler";
+import { canManageTenantGlobals } from "@/modules/admin/auth";
 import {
   archiveMcpServer,
   getMcpServer,
@@ -22,6 +23,7 @@ const updateSchema = z.object({
   args: z.array(z.string().max(512)).optional(),
   enabled: z.boolean().optional(),
   requireApproval: z.boolean().optional(),
+  isGlobal: z.boolean().optional(),
   headers: z.record(z.string(), z.string()).optional(),
   env: z.record(z.string(), z.string()).optional(),
 });
@@ -34,7 +36,7 @@ export async function GET(
     req,
     async ({ session }) => {
       const parsed = querySchema.safeParse({
-        workspaceId: new URL(req.url).searchParams.get("workspaceId"),
+        workspaceId: req.nextUrl.searchParams.get("workspaceId"),
       });
       if (!parsed.success)
         return NextResponse.json(
@@ -48,7 +50,11 @@ export async function GET(
       );
       if (forbidden) return forbidden;
       const { serverId } = await params;
-      const server = await getMcpServer(serverId, parsed.data.workspaceId);
+      const server = await getMcpServer(
+        serverId,
+        parsed.data.workspaceId,
+        session.user.id,
+      );
       if (!server)
         return NextResponse.json(
           { error: "MCP server not found" },
@@ -80,10 +86,22 @@ export async function PATCH(
       );
       if (forbidden) return forbidden;
       const { serverId } = await params;
+      const canManageGlobal = await canManageTenantGlobals(
+        session,
+        parsed.data.workspaceId,
+      );
+      if (parsed.data.isGlobal && !canManageGlobal) {
+        return NextResponse.json(
+          { error: "Only admins can make MCP servers global" },
+          { status: 403 },
+        );
+      }
       const server = await updateMcpServer({
         serverId,
         userId: session.user.id,
+        canManageGlobal,
         ...parsed.data,
+        isGlobal: parsed.data.isGlobal,
       });
       return NextResponse.json(toSafeMcpServer(server));
     },
@@ -110,7 +128,7 @@ export async function DELETE(
     req,
     async ({ session }) => {
       const parsed = querySchema.safeParse({
-        workspaceId: new URL(req.url).searchParams.get("workspaceId"),
+        workspaceId: req.nextUrl.searchParams.get("workspaceId"),
       });
       if (!parsed.success)
         return NextResponse.json(
@@ -124,10 +142,15 @@ export async function DELETE(
       );
       if (forbidden) return forbidden;
       const { serverId } = await params;
+      const canManageGlobal = await canManageTenantGlobals(
+        session,
+        parsed.data.workspaceId,
+      );
       await archiveMcpServer(
         serverId,
         parsed.data.workspaceId,
         session.user.id,
+        canManageGlobal,
       );
       return NextResponse.json({ ok: true });
     },

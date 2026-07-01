@@ -4,6 +4,7 @@ import {
   handleRoute,
   requireWorkspacePermissionAsync,
 } from "@/lib/route-handler";
+import { canManageTenantGlobals } from "@/modules/admin/auth";
 import {
   archiveAgentSkill,
   updateSkillManually,
@@ -23,6 +24,7 @@ const updateSkillSchema = z.object({
       }),
     )
     .min(1),
+  isGlobal: z.boolean().optional(),
 });
 
 export async function PATCH(
@@ -43,6 +45,16 @@ export async function PATCH(
         "tools.configure",
       );
       if (forbidden) return forbidden;
+      const canManageGlobal = await canManageTenantGlobals(
+        session,
+        parsedBody.data.workspaceId,
+      );
+      if (parsedBody.data.isGlobal && !canManageGlobal) {
+        return NextResponse.json(
+          { error: "Only admins can make skills global" },
+          { status: 403 },
+        );
+      }
       const skill = await updateSkillManually({
         workspaceId: parsedBody.data.workspaceId,
         userId: session.user.id,
@@ -50,6 +62,8 @@ export async function PATCH(
         name: parsedBody.data.name,
         description: parsedBody.data.description,
         markdownFiles: parsedBody.data.markdownFiles,
+        isGlobal: parsedBody.data.isGlobal,
+        canManageGlobal,
       });
       return NextResponse.json({ skill });
     },
@@ -92,7 +106,7 @@ export async function DELETE(
     req,
     async ({ session }) => {
       const parsedParams = routeParamsSchema.safeParse(await params);
-      const { searchParams } = new URL(req.url);
+      const { searchParams } = req.nextUrl;
       const parsedQuery = workspaceQuerySchema.safeParse({
         workspaceId: searchParams.get("workspaceId"),
       });
@@ -105,10 +119,15 @@ export async function DELETE(
         "tools.configure",
       );
       if (forbidden) return forbidden;
+      const canManageGlobal = await canManageTenantGlobals(
+        session,
+        parsedQuery.data.workspaceId,
+      );
       await archiveAgentSkill({
         workspaceId: parsedQuery.data.workspaceId,
         skillId: parsedParams.data.skillId,
         userId: session.user.id,
+        canManageGlobal,
       });
       return NextResponse.json({ ok: true });
     },

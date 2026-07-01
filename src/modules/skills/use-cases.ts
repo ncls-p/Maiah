@@ -3,7 +3,7 @@ import { mkdtemp, mkdir, readdir, readFile, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, isNull, or, sql } from "drizzle-orm";
 import { logHandledError } from "@/lib/logger";
 import { audit } from "@/server/domain/services/audit";
 import { db } from "@/server/infrastructure/db";
@@ -36,6 +36,32 @@ type SkillFrontmatter = {
 };
 
 export type AgentSkillRow = typeof agentSkills.$inferSelect;
+
+function visibleSkillCondition(workspaceId: string, userId: string) {
+	return and(
+		eq(agentSkills.workspaceId, workspaceId),
+		isNull(agentSkills.archivedAt),
+		or(eq(agentSkills.createdById, userId), eq(agentSkills.isGlobal, true)),
+	);
+}
+
+function canManageSkill(
+	skill: AgentSkillRow,
+	userId: string,
+	canManageGlobal = false,
+) {
+	return skill.createdById === userId || (skill.isGlobal && canManageGlobal);
+}
+
+function assertCanManageSkill(
+	skill: AgentSkillRow,
+	userId: string,
+	canManageGlobal = false,
+) {
+	if (!canManageSkill(skill, userId, canManageGlobal)) {
+		throw new Error("Skill not found");
+	}
+}
 
 function stripAnsi(value: string) {
 	return value.replace(/\u001b\[[0-9;?]*[ -/]*[@-~]/g, "");
@@ -339,6 +365,7 @@ export async function installSkillsFromCommand(input: {
 	workspaceId: string;
 	userId: string;
 	installCommand: string;
+	isGlobal?: boolean;
 }) {
 	const parsed = parseSkillsInstallCommand(input.installCommand);
 	const tempDir = await mkdtemp(path.join(tmpdir(), "ai-hub-skills-"));
@@ -390,6 +417,7 @@ export async function installSkillsFromCommand(input: {
 				.values({
 					workspaceId: input.workspaceId,
 					createdById: input.userId,
+					isGlobal: input.isGlobal ?? false,
 					name: frontmatter.name || fallbackName,
 					description: frontmatter.description ?? null,
 					sourcePackage: parsed.sourcePackage,
@@ -439,33 +467,56 @@ export async function installSkillsFromCommand(input: {
 	}
 }
 
-export function listAgentSkills(workspaceId: string) {
-	return db
+export async function listAgentSkills(
+	workspaceId: string,
+	userId?: string,
+	canManageGlobal = false,
+) {
+	const rows = await db
 		.select()
 		.from(agentSkills)
 		.where(
-			and(
-				eq(agentSkills.workspaceId, workspaceId),
-				isNull(agentSkills.archivedAt),
-			),
+			userId
+				? visibleSkillCondition(workspaceId, userId)
+				: and(
+						eq(agentSkills.workspaceId, workspaceId),
+						isNull(agentSkills.archivedAt),
+					),
 		)
-		.orderBy(sql`${agentSkills.createdAt} DESC`);
+		.orderBy(
+			sql`${agentSkills.isGlobal} DESC`,
+			sql`${agentSkills.createdAt} DESC`,
+		);
+	return rows.map((skill) => ({
+		...skill,
+		canEdit: userId ? canManageSkill(skill, userId, canManageGlobal) : true,
+	}));
 }
 
 export async function archiveAgentSkill(input: {
 	workspaceId: string;
 	skillId: string;
 	userId: string;
+	canManageGlobal?: boolean;
 }) {
-	const [skill] = await db
-		.update(agentSkills)
-		.set({ archivedAt: new Date(), updatedAt: new Date() })
+	const [existing] = await db
+		.select()
+		.from(agentSkills)
 		.where(
 			and(
 				eq(agentSkills.id, input.skillId),
 				eq(agentSkills.workspaceId, input.workspaceId),
+				isNull(agentSkills.archivedAt),
 			),
 		)
+		.limit(1);
+	if (!existing) throw new Error("Skill not found");
+	assertCanManageSkill(existing, input.userId, input.canManageGlobal);
+
+	const [skill] = await db
+		.update(agentSkills)
+		.set({ archivedAt: new Date(), updatedAt: new Date() })
+		.where(eq(agentSkills.id, input.skillId))
 		.returning();
 
 	if (!skill) throw new Error("Skill not found");
@@ -482,7 +533,10 @@ export async function archiveAgentSkill(input: {
 	});
 }
 
-export async function getSkillBindingsForVersion(agentVersionId: string) {
+export async function getSkillBindingsForVersion(
+	agentVersionId: string,
+	visibility?: { workspaceId: string; userId: string },
+) {
 	return db
 		.select({
 			id: agentSkillBindings.id,
@@ -493,10 +547,15 @@ export async function getSkillBindingsForVersion(agentVersionId: string) {
 		.from(agentSkillBindings)
 		.innerJoin(agentSkills, eq(agentSkillBindings.skillId, agentSkills.id))
 		.where(
-			and(
-				eq(agentSkillBindings.agentVersionId, agentVersionId),
-				isNull(agentSkills.archivedAt),
-			),
+			visibility
+				? and(
+						eq(agentSkillBindings.agentVersionId, agentVersionId),
+						visibleSkillCondition(visibility.workspaceId, visibility.userId),
+					)
+				: and(
+						eq(agentSkillBindings.agentVersionId, agentVersionId),
+						isNull(agentSkills.archivedAt),
+					),
 		);
 }
 
@@ -504,6 +563,7 @@ export async function replaceSkillBindingsForVersion(
 	agentVersionId: string,
 	workspaceId: string,
 	skillIds: string[],
+	options?: { userId?: string },
 ) {
 	const uniqueSkillIds = [...new Set(skillIds)];
 	if (uniqueSkillIds.length === 0) {
@@ -517,10 +577,12 @@ export async function replaceSkillBindingsForVersion(
 		.select({ id: agentSkills.id })
 		.from(agentSkills)
 		.where(
-			and(
-				eq(agentSkills.workspaceId, workspaceId),
-				isNull(agentSkills.archivedAt),
-			),
+			options?.userId
+				? visibleSkillCondition(workspaceId, options.userId)
+				: and(
+						eq(agentSkills.workspaceId, workspaceId),
+						isNull(agentSkills.archivedAt),
+					),
 		);
 	const availableIds = new Set(availableSkills.map((skill) => skill.id));
 	const invalidSkillId = uniqueSkillIds.find(
@@ -543,12 +605,22 @@ export async function replaceSkillBindingsForVersion(
 export async function cloneSkillBindings(
 	fromAgentVersionId: string | null,
 	toAgentVersionId: string,
+	workspaceId?: string,
+	options?: { userId?: string },
 ) {
 	if (!fromAgentVersionId) return;
 	const existing = await db
 		.select({ skillId: agentSkillBindings.skillId })
 		.from(agentSkillBindings)
-		.where(eq(agentSkillBindings.agentVersionId, fromAgentVersionId));
+		.innerJoin(agentSkills, eq(agentSkillBindings.skillId, agentSkills.id))
+		.where(
+			workspaceId && options?.userId
+				? and(
+						eq(agentSkillBindings.agentVersionId, fromAgentVersionId),
+						visibleSkillCondition(workspaceId, options.userId),
+					)
+				: eq(agentSkillBindings.agentVersionId, fromAgentVersionId),
+		);
 
 	if (existing.length === 0) return;
 
@@ -669,6 +741,7 @@ export async function createSkillManually(input: {
 	name: string;
 	description: string | null;
 	markdownFiles: { path: string; content: string }[];
+	isGlobal?: boolean;
 }): Promise<AgentSkillRow> {
 	if (input.markdownFiles.length === 0) {
 		throw new Error("At least one Markdown file is required");
@@ -689,6 +762,7 @@ export async function createSkillManually(input: {
 		.values({
 			workspaceId: input.workspaceId,
 			createdById: input.userId,
+			isGlobal: input.isGlobal ?? false,
 			name: input.name.trim(),
 			description: input.description?.trim() || null,
 			sourcePackage: null,
@@ -726,6 +800,8 @@ export async function updateSkillManually(input: {
 	name: string;
 	description: string | null;
 	markdownFiles: { path: string; content: string }[];
+	isGlobal?: boolean;
+	canManageGlobal?: boolean;
 }): Promise<AgentSkillRow> {
 	if (input.markdownFiles.length === 0) {
 		throw new Error("At least one Markdown file is required");
@@ -741,24 +817,39 @@ export async function updateSkillManually(input: {
 		throw new Error("All files must be .md files");
 	}
 
-	const [row] = await db
-		.update(agentSkills)
-		.set({
-			name: input.name.trim(),
-			description: input.description?.trim() || null,
-			markdownFilesJson: normalizedFiles,
-			metadataJson: {
-				...(input.markdownFiles.length > 0 ? { lastEditedManually: true } : {}),
-				importedMarkdownFiles: normalizedFiles.length,
-			},
-			updatedAt: new Date(),
-		})
+	const [existing] = await db
+		.select()
+		.from(agentSkills)
 		.where(
 			and(
 				eq(agentSkills.id, input.skillId),
 				eq(agentSkills.workspaceId, input.workspaceId),
+				isNull(agentSkills.archivedAt),
 			),
 		)
+		.limit(1);
+	if (!existing) throw new Error("Skill not found");
+	assertCanManageSkill(existing, input.userId, input.canManageGlobal);
+	if (input.isGlobal && !input.canManageGlobal) {
+		throw new Error("Only admins can make skills global");
+	}
+
+	const updates: Partial<typeof agentSkills.$inferInsert> = {
+		name: input.name.trim(),
+		description: input.description?.trim() || null,
+		markdownFilesJson: normalizedFiles,
+		metadataJson: {
+			...(input.markdownFiles.length > 0 ? { lastEditedManually: true } : {}),
+			importedMarkdownFiles: normalizedFiles.length,
+		},
+		updatedAt: new Date(),
+	};
+	if (input.isGlobal !== undefined) updates.isGlobal = input.isGlobal;
+
+	const [row] = await db
+		.update(agentSkills)
+		.set(updates)
+		.where(eq(agentSkills.id, input.skillId))
 		.returning();
 
 	if (!row) throw new Error("Skill not found");

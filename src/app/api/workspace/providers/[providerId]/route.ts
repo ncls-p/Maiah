@@ -37,7 +37,7 @@ export async function GET(
     req,
     async ({ session }) => {
       const parsedParams = routeParamsSchema.safeParse(await params);
-      const { searchParams } = new URL(req.url);
+      const { searchParams } = req.nextUrl;
       const parsedQuery = workspaceQuerySchema.safeParse({
         workspaceId: searchParams.get("workspaceId"),
       });
@@ -127,7 +127,7 @@ export async function DELETE(
     req,
     async ({ session }) => {
       const parsedParams = routeParamsSchema.safeParse(await params);
-      const { searchParams } = new URL(req.url);
+      const { searchParams } = req.nextUrl;
       const parsedQuery = workspaceQuerySchema.safeParse({
         workspaceId: searchParams.get("workspaceId"),
       });

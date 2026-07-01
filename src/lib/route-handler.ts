@@ -47,7 +47,7 @@ export async function requireWorkspacePermissionAsync(
   workspaceId: string,
   permission: string,
 ): Promise<NextResponse | null> {
-  const result = await authorization.requirePermission(
+  const result = await authorization.checkPermission(
     { principalType: "user", principalId: sessionId },
     permission,
     "workspace",

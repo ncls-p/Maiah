@@ -33,7 +33,11 @@ export async function POST(
       if (forbidden) return forbidden;
       const { knowledgeBaseId } = await params;
       return NextResponse.json(
-        await searchKnowledgeBase({ knowledgeBaseId, ...parsed.data }),
+        await searchKnowledgeBase({
+          knowledgeBaseId,
+          userId: session.user.id,
+          ...parsed.data,
+        }),
       );
     },
     {

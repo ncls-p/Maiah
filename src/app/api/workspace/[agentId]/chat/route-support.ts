@@ -224,7 +224,12 @@ function createCustomToolExecute(
 }
 
 function createMcpToolExecute(
-  input: { workspaceId: string; conversationId: string; messageId: string },
+  input: {
+    workspaceId: string;
+    userId: string;
+    conversationId: string;
+    messageId: string;
+  },
   mcpTool: { id: string; name: string; mcpServerId: string },
   binding: { riskLevel: string | null; requireApproval: boolean },
   approvalConfig: {
@@ -281,6 +286,7 @@ function createMcpToolExecute(
         serverId: mcpTool.mcpServerId,
         toolId: mcpTool.id,
         workspaceId: input.workspaceId,
+        userId: input.userId,
         toolInput,
       });
       await logToolInvocation({
@@ -371,14 +377,12 @@ function createBuiltinToolExecute(
     if (restricted) {
       const canExecute =
         definition.name === "github_publish_code_workspace"
-          ? (
-              await authorization.requirePermission(
-                { principalType: "user", principalId: input.userId },
-                "agents.chat",
-                "workspace",
-                input.workspaceId,
-              )
-            ).granted
+          ? await authorization.hasPermission(
+              { principalType: "user", principalId: input.userId },
+              "agents.chat",
+              "workspace",
+              input.workspaceId,
+            )
           : await canExecuteRestrictedToolFn(input.userId, input.workspaceId);
       if (!canExecute) {
         await logToolInvocation({
@@ -687,6 +691,8 @@ export async function buildBoundTools(input: {
       const mcpContext = await getMcpBindingContext(
         input.agentVersionId,
         binding.toolId,
+        input.userId,
+        input.workspaceId,
       );
       if (!mcpContext) continue;
       const mcpTool = mcpContext.tool;

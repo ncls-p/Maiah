@@ -11,11 +11,13 @@ vi.mock("@/lib/crypto", () => ({
 vi.mock("@/server/domain/services/authorization", () => ({
 	authorization: {
 		requirePermission: vi.fn().mockResolvedValue({ granted: true }),
+		hasPermission: vi.fn().mockResolvedValue(true),
 	},
 }));
 
 type SelectChain = {
 	from: ReturnType<typeof vi.fn>;
+	innerJoin: ReturnType<typeof vi.fn>;
 	where: ReturnType<typeof vi.fn>;
 	limit: ReturnType<typeof vi.fn>;
 };
@@ -46,6 +48,7 @@ type DbModule = {
 vi.mock("@/server/infrastructure/db", () => {
 	const sc: SelectChain = {
 		from: vi.fn().mockReturnThis(),
+		innerJoin: vi.fn().mockReturnThis(),
 		where: vi.fn().mockReturnThis(),
 		limit: vi.fn().mockResolvedValue([]),
 	};
@@ -87,6 +90,7 @@ import {
 
 function reset() {
 	dbModule._sc.from.mockReset().mockReturnThis();
+	dbModule._sc.innerJoin.mockReset().mockReturnThis();
 	dbModule._sc.where.mockReset().mockReturnThis();
 	dbModule._sc.limit.mockReset().mockResolvedValue([]);
 	dbModule._ic.values.mockReset().mockReturnThis();
@@ -167,6 +171,27 @@ describe("getToolBindingsForVersion", () => {
 
 		const result = await getToolBindingsForVersion("v1");
 		expect(result).toEqual([]);
+	});
+
+	it("filters custom and MCP bindings to resources visible to the user", async () => {
+		const bindings = [
+			{ id: "b1", toolSource: "builtin", toolId: "builtin-1" },
+			{ id: "b2", toolSource: "custom", toolId: "custom-visible" },
+			{ id: "b3", toolSource: "custom", toolId: "custom-private" },
+			{ id: "b4", toolSource: "mcp", toolId: "mcp-visible" },
+			{ id: "b5", toolSource: "mcp", toolId: "mcp-private" },
+		];
+		dbModule._sc.where
+			.mockResolvedValueOnce(bindings)
+			.mockResolvedValueOnce([{ id: "custom-visible" }])
+			.mockResolvedValueOnce([{ id: "mcp-visible" }]);
+
+		const result = await getToolBindingsForVersion("v1", {
+			workspaceId: "ws-1",
+			userId: "user-1",
+		});
+
+		expect(result.map((binding) => binding.id)).toEqual(["b1", "b2", "b4"]);
 	});
 });
 
@@ -320,19 +345,14 @@ describe("logToolInvocation", () => {
 
 describe("canExecuteRestrictedTool", () => {
 	it("returns true when permission is granted", async () => {
-		vi.mocked(authorization.requirePermission).mockResolvedValueOnce({
-			granted: true,
-		});
+		vi.mocked(authorization.hasPermission).mockResolvedValueOnce(true);
 
 		const result = await canExecuteRestrictedTool("user-1", "ws-1");
 		expect(result).toBe(true);
 	});
 
 	it("returns false when permission is denied", async () => {
-		vi.mocked(authorization.requirePermission).mockResolvedValueOnce({
-			granted: false,
-			reason: "Missing permission",
-		});
+		vi.mocked(authorization.hasPermission).mockResolvedValueOnce(false);
 
 		const result = await canExecuteRestrictedTool("user-1", "ws-1");
 		expect(result).toBe(false);

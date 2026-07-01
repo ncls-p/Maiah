@@ -19,6 +19,7 @@ const permissionNames = [
   "agents.create",
   "apiKeys.manage",
   "workspaces.update",
+  "roles.manage",
 ] as const;
 
 export async function GET(req: NextRequest) {
@@ -66,6 +67,7 @@ export async function GET(req: NextRequest) {
         canCreateAgent,
         canManageApiKeys,
         canManageWorkspace,
+        canManageTenantGlobals,
       ] = results;
 
       return NextResponse.json({
@@ -80,6 +82,7 @@ export async function GET(req: NextRequest) {
         canCreateAgent,
         canManageApiKeys,
         canManageWorkspace,
+        canManageTenantGlobals,
       });
     },
     { logLabel: "Failed to read workspace permissions" },

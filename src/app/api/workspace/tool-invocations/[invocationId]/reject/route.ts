@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import {
   handleRoute,
@@ -6,7 +6,10 @@ import {
 } from "@/lib/route-handler";
 import { audit } from "@/server/domain/services/audit";
 import { db } from "@/server/infrastructure/db";
-import { toolInvocations } from "@/server/infrastructure/db/schema";
+import {
+  conversations,
+  toolInvocations,
+} from "@/server/infrastructure/db/schema";
 import { invocationParamsSchema } from "../../invocation-shared";
 
 export async function POST(
@@ -20,11 +23,21 @@ export async function POST(
       if (!parsed.success) {
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
       }
-      const [invocation] = await db
-        .select()
+      const [row] = await db
+        .select({ invocation: toolInvocations, conversation: conversations })
         .from(toolInvocations)
-        .where(eq(toolInvocations.id, parsed.data.invocationId))
+        .innerJoin(
+          conversations,
+          eq(toolInvocations.conversationId, conversations.id),
+        )
+        .where(
+          and(
+            eq(toolInvocations.id, parsed.data.invocationId),
+            eq(conversations.userId, session.user.id),
+          ),
+        )
         .limit(1);
+      const invocation = row?.invocation;
       if (!invocation) {
         return NextResponse.json(
           { error: "Invocation not found" },

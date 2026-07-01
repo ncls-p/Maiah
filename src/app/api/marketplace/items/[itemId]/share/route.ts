@@ -56,7 +56,7 @@ export async function DELETE(
     req,
     async ({ session }) => {
       const { itemId } = await params;
-      const { searchParams } = new URL(req.url);
+      const { searchParams } = req.nextUrl;
       const targetUserId = searchParams.get("targetUserId");
       if (!targetUserId)
         return NextResponse.json(

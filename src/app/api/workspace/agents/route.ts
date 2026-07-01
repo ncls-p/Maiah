@@ -12,7 +12,7 @@ import {
   listAgents,
   normalizePromptSuggestions,
 } from "@/modules/agent/use-cases";
-import { isAdminRole } from "@/modules/admin/use-cases";
+import { canManageTenantGlobals } from "@/modules/admin/auth";
 import { db } from "@/server/infrastructure/db";
 import {
   agentVersions,
@@ -168,7 +168,7 @@ export async function POST(req: NextRequest) {
       const result = await createAgent({
         workspaceId,
         userId: session.user.id,
-        canAdminCurate: isAdminRole(session.user.role),
+        canAdminCurate: await canManageTenantGlobals(session, workspaceId),
         ...input,
       });
       return NextResponse.json(result, { status: 201 });
@@ -211,7 +211,7 @@ export async function GET(req: NextRequest) {
   return handleRoute(
     req,
     async ({ session }) => {
-      const { searchParams } = new URL(req.url);
+      const { searchParams } = req.nextUrl;
       const parsed = listAgentsSchema.safeParse({
         workspaceId: searchParams.get("workspaceId"),
         includeModelMeta: searchParams.get("includeModelMeta") === "true",
@@ -229,7 +229,7 @@ export async function GET(req: NextRequest) {
         "agents.list",
       );
       if (forbidden) return forbidden;
-      const canAdminCurate = isAdminRole(session.user.role);
+      const canAdminCurate = await canManageTenantGlobals(session, workspaceId);
       const permissionContext = {
         principalType: "user" as const,
         principalId: session.user.id,

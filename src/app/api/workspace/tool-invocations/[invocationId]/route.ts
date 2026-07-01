@@ -7,7 +7,10 @@ import {
   requireWorkspacePermissionAsync,
 } from "@/lib/route-handler";
 import { db } from "@/server/infrastructure/db";
-import { toolInvocations } from "@/server/infrastructure/db/schema";
+import {
+  conversations,
+  toolInvocations,
+} from "@/server/infrastructure/db/schema";
 
 import { invocationParamsSchema } from "../invocation-shared";
 
@@ -36,16 +39,22 @@ export async function GET(
       );
       if (forbidden) return forbidden;
 
-      const [invocation] = await db
-        .select()
+      const [row] = await db
+        .select({ invocation: toolInvocations, conversation: conversations })
         .from(toolInvocations)
+        .innerJoin(
+          conversations,
+          eq(toolInvocations.conversationId, conversations.id),
+        )
         .where(
           and(
             eq(toolInvocations.id, parsedParams.data.invocationId),
             eq(toolInvocations.workspaceId, parsedQuery.data.workspaceId),
+            eq(conversations.userId, session.user.id),
           ),
         )
         .limit(1);
+      const invocation = row?.invocation;
 
       if (!invocation) {
         return NextResponse.json(

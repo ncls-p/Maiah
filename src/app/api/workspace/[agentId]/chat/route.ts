@@ -400,6 +400,7 @@ export async function POST(
       workspaceId: agent.workspaceId,
       query: content,
       limit: 5,
+      userId: actorUserId,
     });
 
     const citations = ragHits.map((hit) => ({

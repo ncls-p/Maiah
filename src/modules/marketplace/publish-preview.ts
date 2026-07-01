@@ -186,7 +186,9 @@ export async function getPublishPreview(input: {
         ),
       )
       .limit(1);
-    if (!agent) throw new Error("Agent not found");
+    if (!agent || agent.createdById !== input.userId) {
+      throw new Error("Agent not found");
+    }
     manifest = await buildAgentManifest(
       input.agentId,
       input.workspaceId,
@@ -209,7 +211,9 @@ export async function getPublishPreview(input: {
         ),
       )
       .limit(1);
-    if (!skill) throw new Error("Skill not found");
+    if (!skill || skill.createdById !== input.userId) {
+      throw new Error("Skill not found");
+    }
     manifest = buildSkillManifest(skill, skill.name, skill.description);
     name = skill.name;
     description = skill.description;
@@ -226,7 +230,9 @@ export async function getPublishPreview(input: {
         ),
       )
       .limit(1);
-    if (!tool) throw new Error("Custom tool not found");
+    if (!tool || tool.createdById !== input.userId) {
+      throw new Error("Custom tool not found");
+    }
     manifest = await buildCustomToolManifest(
       tool,
       tool.name,
@@ -248,7 +254,9 @@ export async function getPublishPreview(input: {
         ),
       )
       .limit(1);
-    if (!server) throw new Error("MCP server not found");
+    if (!server || server.createdById !== input.userId) {
+      throw new Error("MCP server not found");
+    }
     const tools = await db
       .select()
       .from(mcpTools)
@@ -282,7 +290,9 @@ export async function getPublishPreview(input: {
         ),
       )
       .limit(1);
-    if (!server) throw new Error("MCP server not found");
+    if (!server || server.createdById !== input.userId) {
+      throw new Error("MCP server not found");
+    }
     manifest = buildMcpPresetManifest(
       `${server.name} — ${tool.name}`,
       tool.description,
