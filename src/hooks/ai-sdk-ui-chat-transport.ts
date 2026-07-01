@@ -137,6 +137,8 @@ export async function streamAiSdkUIChat(options: StreamAiSdkUIChatOptions) {
     body: options.body,
   });
 
+  const _isString = (item: unknown) => typeof item === "string";
+
   for await (const chunk of iterateChunks(stream)) {
     switch (chunk.type) {
       case "start":
@@ -216,10 +218,7 @@ export async function streamAiSdkUIChat(options: StreamAiSdkUIChatOptions) {
         }
         break;
       case "data-suggestions":
-        if (
-          Array.isArray(chunk.data) &&
-          chunk.data.every((item) => typeof item === "string")
-        ) {
+        if (Array.isArray(chunk.data) && chunk.data.every(_isString)) {
           options.onEvent({ type: "suggestions", suggestions: chunk.data });
         }
         break;

@@ -700,6 +700,15 @@ export const MessageContent = memo(function MessageContent({
   const { approvalByPartIndex, standaloneApprovals } = useMemo(() => {
     const approvalByIndex = new Map<number, PendingToolApproval>();
     const matchedApprovalIds = new Set<string>();
+    const findUnmatchedApproval = (
+      pendingApprovals: PendingToolApproval[],
+      part: (typeof renderableParts)[number],
+    ): PendingToolApproval | undefined =>
+      pendingApprovals.find(
+        (item) =>
+          !matchedApprovalIds.has(item.invocationId) &&
+          toolPartMatchesApproval(part, item),
+      );
     if (message.status === "streaming") {
       for (
         let partIndex = renderableParts.length - 1;
@@ -708,11 +717,7 @@ export const MessageContent = memo(function MessageContent({
       ) {
         const part = renderableParts[partIndex];
         if (part.type !== "tool-call") continue;
-        const approval = pendingApprovals.find(
-          (item) =>
-            !matchedApprovalIds.has(item.invocationId) &&
-            toolPartMatchesApproval(part, item),
-        );
+        const approval = findUnmatchedApproval(pendingApprovals, part);
         if (!approval) continue;
         approvalByIndex.set(partIndex, approval);
         matchedApprovalIds.add(approval.invocationId);

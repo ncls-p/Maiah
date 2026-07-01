@@ -43,6 +43,10 @@ export const chatRequestSchema = z.object({
 export const defaultMaxToolCalls = 6;
 export const defaultMaxOutputTokens = 30_000;
 const BUILTIN_TOOL_SOURCE = "builtin";
+const TOOL_GATE_RETURN = "return" as const;
+type ToolGateResult =
+  | { status: "continue" }
+  | { status: typeof TOOL_GATE_RETURN; output: unknown };
 
 export type ToolApprovalRequiredEvent = {
   invocationId: string;
@@ -126,6 +130,330 @@ export function parseCodeWorkspaceFileFences(content: string) {
   return files;
 }
 
+// --- Execute handlers extracted from loops to avoid function-in-loop ---
+
+function createCustomToolExecute(
+  input: {
+    workspaceId: string;
+    conversationId: string;
+    messageId: string;
+    userId: string;
+    agentVersionId: string;
+  },
+  customTool: { id: string; name: string },
+  binding: { riskLevel: string | null; requireApproval: boolean },
+  reserveToolCall: () => boolean,
+  toolLimitReachedResult: () => unknown,
+  gateToolExecution: (args: {
+    startedAt: number;
+    toolSource: "custom";
+    toolId: string;
+    toolName: string;
+    riskLevel: string | null;
+    toolInput: unknown;
+    bindingRequiresApproval: boolean;
+  }) => Promise<ToolGateResult>,
+): (toolInput: unknown) => Promise<unknown> {
+  return async (toolInput: unknown) => {
+    const startedAt = Date.now();
+    if (!reserveToolCall()) {
+      await logToolInvocation({
+        workspaceId: input.workspaceId,
+        conversationId: input.conversationId,
+        messageId: input.messageId,
+        toolSource: "custom",
+        toolId: customTool.id,
+        toolName: customTool.name,
+        riskLevel: binding.riskLevel,
+        input: toolInput,
+        status: "denied",
+        latencyMs: Date.now() - startedAt,
+        errorMessage: "Tool call limit reached",
+      });
+      return toolLimitReachedResult();
+    }
+    const gate = await gateToolExecution({
+      startedAt,
+      toolSource: "custom",
+      toolId: customTool.id,
+      toolName: customTool.name,
+      riskLevel: binding.riskLevel,
+      toolInput,
+      bindingRequiresApproval: binding.requireApproval,
+    });
+    if (gate.status === TOOL_GATE_RETURN) return gate.output;
+
+    try {
+      const output = await executeCustomToolWorkflow({
+        workspaceId: input.workspaceId,
+        userId: input.userId,
+        customToolId: customTool.id,
+        toolInput,
+      });
+      await logToolInvocation({
+        workspaceId: input.workspaceId,
+        conversationId: input.conversationId,
+        messageId: input.messageId,
+        toolSource: "custom",
+        toolId: customTool.id,
+        toolName: customTool.name,
+        riskLevel: binding.riskLevel,
+        input: toolInput,
+        output,
+        status: "success",
+        latencyMs: Date.now() - startedAt,
+      });
+      return output;
+    } catch (error) {
+      await logToolInvocation({
+        workspaceId: input.workspaceId,
+        conversationId: input.conversationId,
+        messageId: input.messageId,
+        toolSource: "custom",
+        toolId: customTool.id,
+        toolName: customTool.name,
+        riskLevel: binding.riskLevel,
+        input: toolInput,
+        status: "failed",
+        latencyMs: Date.now() - startedAt,
+        errorMessage: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
+  };
+}
+
+function createMcpToolExecute(
+  input: { workspaceId: string; conversationId: string; messageId: string },
+  mcpTool: { id: string; name: string; mcpServerId: string },
+  binding: { riskLevel: string | null; requireApproval: boolean },
+  approvalConfig: {
+    serverRequiresApproval: boolean;
+    toolRequiresApproval: boolean;
+  },
+  reserveToolCall: () => boolean,
+  toolLimitReachedResult: () => unknown,
+  gateToolExecution: (args: {
+    startedAt: number;
+    toolSource: "mcp";
+    toolId: string;
+    toolName: string;
+    riskLevel: string | null;
+    toolInput: unknown;
+    bindingRequiresApproval: boolean;
+    serverRequiresApproval: boolean;
+    toolRequiresApproval: boolean;
+  }) => Promise<ToolGateResult>,
+): (toolInput: unknown) => Promise<unknown> {
+  return async (toolInput: unknown) => {
+    const startedAt = Date.now();
+    if (!reserveToolCall()) {
+      await logToolInvocation({
+        workspaceId: input.workspaceId,
+        conversationId: input.conversationId,
+        messageId: input.messageId,
+        toolSource: "mcp",
+        toolId: mcpTool.id,
+        toolName: mcpTool.name,
+        riskLevel: binding.riskLevel,
+        input: toolInput,
+        status: "denied",
+        latencyMs: Date.now() - startedAt,
+        errorMessage: "Tool call limit reached",
+      });
+      return toolLimitReachedResult();
+    }
+    const gate = await gateToolExecution({
+      startedAt,
+      toolSource: "mcp",
+      toolId: mcpTool.id,
+      toolName: mcpTool.name,
+      riskLevel: binding.riskLevel,
+      toolInput,
+      bindingRequiresApproval: binding.requireApproval,
+      serverRequiresApproval: approvalConfig.serverRequiresApproval,
+      toolRequiresApproval: approvalConfig.toolRequiresApproval,
+    });
+    if (gate.status === TOOL_GATE_RETURN) return gate.output;
+
+    try {
+      const output = await executeMcpTool({
+        serverId: mcpTool.mcpServerId,
+        toolId: mcpTool.id,
+        workspaceId: input.workspaceId,
+        toolInput,
+      });
+      await logToolInvocation({
+        workspaceId: input.workspaceId,
+        conversationId: input.conversationId,
+        messageId: input.messageId,
+        toolSource: "mcp",
+        toolId: mcpTool.id,
+        toolName: mcpTool.name,
+        riskLevel: binding.riskLevel,
+        input: toolInput,
+        output,
+        status: "success",
+        latencyMs: Date.now() - startedAt,
+      });
+      return output;
+    } catch (error) {
+      await logToolInvocation({
+        workspaceId: input.workspaceId,
+        conversationId: input.conversationId,
+        messageId: input.messageId,
+        toolSource: "mcp",
+        toolId: mcpTool.id,
+        toolName: mcpTool.name,
+        riskLevel: binding.riskLevel,
+        input: toolInput,
+        status: "failed",
+        latencyMs: Date.now() - startedAt,
+        errorMessage: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
+  };
+}
+
+function createBuiltinToolExecute(
+  input: {
+    workspaceId: string;
+    conversationId: string;
+    messageId: string;
+    userId: string;
+    emitEvent?: (event: Record<string, unknown>) => void;
+  },
+  definition: {
+    id: string;
+    name: string;
+    riskLevel: string;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    execute: (...args: any[]) => any;
+  },
+  binding: { riskLevel: string | null; requireApproval: boolean },
+  reserveToolCall: () => boolean,
+  toolLimitReachedResult: () => unknown,
+  gateToolExecution: (args: {
+    startedAt: number;
+    toolSource: "builtin";
+    toolId: string;
+    toolName: string;
+    riskLevel: string | null;
+    toolInput: unknown;
+    bindingRequiresApproval: boolean;
+  }) => Promise<ToolGateResult>,
+  canExecuteRestrictedToolFn: (
+    userId: string,
+    workspaceId: string,
+  ) => Promise<boolean>,
+): (toolInput: unknown) => Promise<unknown> {
+  return async (toolInput: unknown) => {
+    const startedAt = Date.now();
+    if (!reserveToolCall()) {
+      await logToolInvocation({
+        workspaceId: input.workspaceId,
+        conversationId: input.conversationId,
+        messageId: input.messageId,
+        toolSource: BUILTIN_TOOL_SOURCE,
+        toolId: definition.id,
+        toolName: definition.name,
+        riskLevel: definition.riskLevel,
+        input: toolInput,
+        status: "denied",
+        latencyMs: Date.now() - startedAt,
+        errorMessage: "Tool call limit reached",
+      });
+      return toolLimitReachedResult();
+    }
+    const restricted = requiresApproval(definition.riskLevel);
+
+    if (restricted) {
+      const canExecute =
+        definition.name === "github_publish_code_workspace"
+          ? (
+              await authorization.requirePermission(
+                { principalType: "user", principalId: input.userId },
+                "agents.chat",
+                "workspace",
+                input.workspaceId,
+              )
+            ).granted
+          : await canExecuteRestrictedToolFn(input.userId, input.workspaceId);
+      if (!canExecute) {
+        await logToolInvocation({
+          workspaceId: input.workspaceId,
+          conversationId: input.conversationId,
+          messageId: input.messageId,
+          toolSource: BUILTIN_TOOL_SOURCE,
+          toolId: definition.id,
+          toolName: definition.name,
+          riskLevel: definition.riskLevel,
+          input: toolInput,
+          status: "denied",
+          latencyMs: Date.now() - startedAt,
+          errorMessage: "Missing permission: tools.executeRestricted",
+        });
+        return {
+          denied: true,
+          message:
+            "You do not have permission to execute this restricted tool.",
+        };
+      }
+    }
+
+    const gate = await gateToolExecution({
+      startedAt,
+      toolSource: BUILTIN_TOOL_SOURCE,
+      toolId: definition.id,
+      toolName: definition.name,
+      riskLevel: definition.riskLevel,
+      toolInput,
+      bindingRequiresApproval: binding.requireApproval,
+    });
+    if (gate.status === TOOL_GATE_RETURN) return gate.output;
+
+    try {
+      const output = await definition.execute(toolInput as never, {
+        workspaceId: input.workspaceId,
+        userId: input.userId,
+        conversationId: input.conversationId,
+        messageId: input.messageId,
+        emitEvent: input.emitEvent,
+      });
+      await logToolInvocation({
+        workspaceId: input.workspaceId,
+        conversationId: input.conversationId,
+        messageId: input.messageId,
+        toolSource: BUILTIN_TOOL_SOURCE,
+        toolId: definition.id,
+        toolName: definition.name,
+        riskLevel: definition.riskLevel,
+        input: toolInput,
+        output,
+        status: "success",
+        latencyMs: Date.now() - startedAt,
+      });
+      return output;
+    } catch (error) {
+      await logToolInvocation({
+        workspaceId: input.workspaceId,
+        conversationId: input.conversationId,
+        messageId: input.messageId,
+        toolSource: BUILTIN_TOOL_SOURCE,
+        toolId: definition.id,
+        toolName: definition.name,
+        riskLevel: definition.riskLevel,
+        input: toolInput,
+        status: "failed",
+        latencyMs: Date.now() - startedAt,
+        errorMessage: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
+  };
+}
+
 export async function buildBoundTools(input: {
   agentVersionId: string;
   workspaceId: string;
@@ -195,7 +523,7 @@ export async function buildBoundTools(input: {
     bindingRequiresApproval?: boolean;
     serverRequiresApproval?: boolean;
     toolRequiresApproval?: boolean;
-  }): Promise<{ status: "continue" } | { status: "return"; output: unknown }> {
+  }): Promise<ToolGateResult> {
     const decision =
       (await evaluateOpaToolApprovalPolicy({
         toolName: inputArgs.toolName,
@@ -235,7 +563,7 @@ export async function buildBoundTools(input: {
         errorMessage: decision.reason ?? "Tool denied by approval policy",
       });
       return {
-        status: "return",
+        status: TOOL_GATE_RETURN,
         output: {
           denied: true,
           message: decision.reason ?? "Tool denied by approval policy.",
@@ -264,11 +592,11 @@ export async function buildBoundTools(input: {
 
     const approvalResult = await waitForApproval(invocation.id);
     if (approvalResult.status === "success") {
-      return { status: "return", output: approvalResult.output };
+      return { status: TOOL_GATE_RETURN, output: approvalResult.output };
     }
 
     return {
-      status: "return",
+      status: TOOL_GATE_RETURN,
       output: {
         denied: true,
         invocationId: invocation.id,
@@ -343,74 +671,14 @@ export async function buildBoundTools(input: {
           customTool.description ??
           `Custom tool ${customTool.name} created by the current user.`,
         inputSchema: jsonSchema(schema),
-        execute: async (toolInput: unknown) => {
-          const startedAt = Date.now();
-          if (!reserveToolCall()) {
-            await logToolInvocation({
-              workspaceId: input.workspaceId,
-              conversationId: input.conversationId,
-              messageId: input.messageId,
-              toolSource: "custom",
-              toolId: customTool.id,
-              toolName: customTool.name,
-              riskLevel: binding.riskLevel,
-              input: toolInput,
-              status: "denied",
-              latencyMs: Date.now() - startedAt,
-              errorMessage: "Tool call limit reached",
-            });
-            return toolLimitReachedResult();
-          }
-          const gate = await gateToolExecution({
-            startedAt,
-            toolSource: "custom",
-            toolId: customTool.id,
-            toolName: customTool.name,
-            riskLevel: binding.riskLevel,
-            toolInput,
-            bindingRequiresApproval: binding.requireApproval,
-          });
-          if (gate.status === "return") return gate.output;
-
-          try {
-            const output = await executeCustomToolWorkflow({
-              workspaceId: input.workspaceId,
-              userId: input.userId,
-              customToolId: customTool.id,
-              toolInput,
-            });
-            await logToolInvocation({
-              workspaceId: input.workspaceId,
-              conversationId: input.conversationId,
-              messageId: input.messageId,
-              toolSource: "custom",
-              toolId: customTool.id,
-              toolName: customTool.name,
-              riskLevel: binding.riskLevel,
-              input: toolInput,
-              output,
-              status: "success",
-              latencyMs: Date.now() - startedAt,
-            });
-            return output;
-          } catch (error) {
-            await logToolInvocation({
-              workspaceId: input.workspaceId,
-              conversationId: input.conversationId,
-              messageId: input.messageId,
-              toolSource: "custom",
-              toolId: customTool.id,
-              toolName: customTool.name,
-              riskLevel: binding.riskLevel,
-              input: toolInput,
-              status: "failed",
-              latencyMs: Date.now() - startedAt,
-              errorMessage:
-                error instanceof Error ? error.message : String(error),
-            });
-            throw error;
-          }
-        },
+        execute: createCustomToolExecute(
+          input,
+          customTool,
+          binding,
+          reserveToolCall,
+          toolLimitReachedResult,
+          gateToolExecution,
+        ),
       };
       continue;
     }
@@ -448,76 +716,18 @@ export async function buildBoundTools(input: {
           mcpTool.description ??
           `MCP tool ${mcpTool.name} from connected server.`,
         inputSchema: jsonSchema(schema),
-        execute: async (toolInput: unknown) => {
-          const startedAt = Date.now();
-          if (!reserveToolCall()) {
-            await logToolInvocation({
-              workspaceId: input.workspaceId,
-              conversationId: input.conversationId,
-              messageId: input.messageId,
-              toolSource: "mcp",
-              toolId: mcpTool.id,
-              toolName: mcpTool.name,
-              riskLevel: binding.riskLevel,
-              input: toolInput,
-              status: "denied",
-              latencyMs: Date.now() - startedAt,
-              errorMessage: "Tool call limit reached",
-            });
-            return toolLimitReachedResult();
-          }
-          const gate = await gateToolExecution({
-            startedAt,
-            toolSource: "mcp",
-            toolId: mcpTool.id,
-            toolName: mcpTool.name,
-            riskLevel: binding.riskLevel,
-            toolInput,
-            bindingRequiresApproval: binding.requireApproval,
+        execute: createMcpToolExecute(
+          input,
+          mcpTool,
+          binding,
+          {
             serverRequiresApproval: mcpContext.server.requireApproval,
             toolRequiresApproval: mcpTool.requireApproval,
-          });
-          if (gate.status === "return") return gate.output;
-
-          try {
-            const output = await executeMcpTool({
-              serverId: mcpTool.mcpServerId,
-              toolId: mcpTool.id,
-              workspaceId: input.workspaceId,
-              toolInput,
-            });
-            await logToolInvocation({
-              workspaceId: input.workspaceId,
-              conversationId: input.conversationId,
-              messageId: input.messageId,
-              toolSource: "mcp",
-              toolId: mcpTool.id,
-              toolName: mcpTool.name,
-              riskLevel: binding.riskLevel,
-              input: toolInput,
-              output,
-              status: "success",
-              latencyMs: Date.now() - startedAt,
-            });
-            return output;
-          } catch (error) {
-            await logToolInvocation({
-              workspaceId: input.workspaceId,
-              conversationId: input.conversationId,
-              messageId: input.messageId,
-              toolSource: "mcp",
-              toolId: mcpTool.id,
-              toolName: mcpTool.name,
-              riskLevel: binding.riskLevel,
-              input: toolInput,
-              status: "failed",
-              latencyMs: Date.now() - startedAt,
-              errorMessage:
-                error instanceof Error ? error.message : String(error),
-            });
-            throw error;
-          }
-        },
+          },
+          reserveToolCall,
+          toolLimitReachedResult,
+          gateToolExecution,
+        ),
       };
       continue;
     }
@@ -535,111 +745,15 @@ export async function buildBoundTools(input: {
     tools[definition.name] = {
       description: `${definition.description} Risk level: ${definition.riskLevel}.`,
       inputSchema: definition.inputSchema,
-      execute: async (toolInput: unknown) => {
-        const startedAt = Date.now();
-        if (!reserveToolCall()) {
-          await logToolInvocation({
-            workspaceId: input.workspaceId,
-            conversationId: input.conversationId,
-            messageId: input.messageId,
-            toolSource: BUILTIN_TOOL_SOURCE,
-            toolId: definition.id,
-            toolName: definition.name,
-            riskLevel: definition.riskLevel,
-            input: toolInput,
-            status: "denied",
-            latencyMs: Date.now() - startedAt,
-            errorMessage: "Tool call limit reached",
-          });
-          return toolLimitReachedResult();
-        }
-        const restricted = requiresApproval(definition.riskLevel);
-
-        if (restricted) {
-          const canExecute =
-            definition.name === "github_publish_code_workspace"
-              ? (
-                  await authorization.requirePermission(
-                    { principalType: "user", principalId: input.userId },
-                    "agents.chat",
-                    "workspace",
-                    input.workspaceId,
-                  )
-                ).granted
-              : await canExecuteRestrictedTool(input.userId, input.workspaceId);
-          if (!canExecute) {
-            await logToolInvocation({
-              workspaceId: input.workspaceId,
-              conversationId: input.conversationId,
-              messageId: input.messageId,
-              toolSource: BUILTIN_TOOL_SOURCE,
-              toolId: definition.id,
-              toolName: definition.name,
-              riskLevel: definition.riskLevel,
-              input: toolInput,
-              status: "denied",
-              latencyMs: Date.now() - startedAt,
-              errorMessage: "Missing permission: tools.executeRestricted",
-            });
-            return {
-              denied: true,
-              message:
-                "You do not have permission to execute this restricted tool.",
-            };
-          }
-        }
-
-        const gate = await gateToolExecution({
-          startedAt,
-          toolSource: BUILTIN_TOOL_SOURCE,
-          toolId: definition.id,
-          toolName: definition.name,
-          riskLevel: definition.riskLevel,
-          toolInput,
-          bindingRequiresApproval: binding.requireApproval,
-        });
-        if (gate.status === "return") return gate.output;
-
-        try {
-          const output = await definition.execute(toolInput as never, {
-            workspaceId: input.workspaceId,
-            userId: input.userId,
-            conversationId: input.conversationId,
-            messageId: input.messageId,
-            emitEvent: input.emitEvent,
-          });
-          await logToolInvocation({
-            workspaceId: input.workspaceId,
-            conversationId: input.conversationId,
-            messageId: input.messageId,
-            toolSource: BUILTIN_TOOL_SOURCE,
-            toolId: definition.id,
-            toolName: definition.name,
-            riskLevel: definition.riskLevel,
-            input: toolInput,
-            output,
-            status: "success",
-            latencyMs: Date.now() - startedAt,
-          });
-          return output;
-        } catch (error) {
-          await logToolInvocation({
-            workspaceId: input.workspaceId,
-            conversationId: input.conversationId,
-            messageId: input.messageId,
-            toolSource: BUILTIN_TOOL_SOURCE,
-            toolId: definition.id,
-            toolName: definition.name,
-            riskLevel: definition.riskLevel,
-            input: toolInput,
-            status: "failed",
-            latencyMs: Date.now() - startedAt,
-            errorMessage:
-              error instanceof Error ? error.message : String(error),
-          });
-          throw error;
-        }
-      },
+      execute: createBuiltinToolExecute(
+        input,
+        definition,
+        binding,
+        reserveToolCall,
+        toolLimitReachedResult,
+        gateToolExecution,
+        canExecuteRestrictedTool,
+      ),
     };
   }
 

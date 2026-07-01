@@ -566,7 +566,11 @@ export async function setOrganizationDefaultAgent(input: {
         ),
       )
       .limit(1);
-    if (!agent || (!agent.isGlobal && !agent.isRecommended)) {
+    if (!agent) {
+      throw new Error("Organization assistant not found");
+    }
+    const canBeOrganizationDefault = agent.isGlobal || agent.isRecommended;
+    if (!canBeOrganizationDefault) {
       throw new Error("Organization assistant not found");
     }
   }

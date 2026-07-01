@@ -10,6 +10,9 @@ import { decryptValue } from "@/lib/crypto";
 import { db } from "@/server/infrastructure/db";
 import { toolInvocations } from "@/server/infrastructure/db/schema";
 
+const sleep = (ms: number) =>
+  new Promise<void>((resolve) => setTimeout(resolve, ms));
+
 export async function waitForApproval(
   invocationId: string,
   options: { maxWaitMs?: number; pollIntervalMs?: number } = {},
@@ -23,7 +26,7 @@ export async function waitForApproval(
   const deadline = Date.now() + maxWaitMs;
 
   while (Date.now() < deadline) {
-    await new Promise((r) => setTimeout(r, pollIntervalMs));
+    await sleep(pollIntervalMs);
 
     const [row] = await db
       .select()

@@ -29,14 +29,6 @@ const updateProviderSchema = z.object({
   enabled: z.boolean().optional(),
 });
 
-async function requireProviderPermission(
-  userId: string,
-  workspaceId: string,
-  permissionName: string,
-) {
-  return requireWorkspacePermissionAsync(userId, workspaceId, permissionName);
-}
-
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ providerId: string }> },
@@ -54,7 +46,7 @@ export async function GET(
       }
       const { providerId } = parsedParams.data;
       const { workspaceId } = parsedQuery.data;
-      const forbidden = await requireProviderPermission(
+      const forbidden = await requireWorkspacePermissionAsync(
         session.user.id,
         workspaceId,
         "providers.viewMetadata",
@@ -94,7 +86,7 @@ export async function PATCH(
       }
       const { providerId } = parsedParams.data;
       const { workspaceId, ...input } = parsedBody.data;
-      const forbidden = await requireProviderPermission(
+      const forbidden = await requireWorkspacePermissionAsync(
         session.user.id,
         workspaceId,
         "providers.update",
@@ -144,7 +136,7 @@ export async function DELETE(
       }
       const { providerId } = parsedParams.data;
       const { workspaceId } = parsedQuery.data;
-      const forbidden = await requireProviderPermission(
+      const forbidden = await requireWorkspacePermissionAsync(
         session.user.id,
         workspaceId,
         "providers.delete",

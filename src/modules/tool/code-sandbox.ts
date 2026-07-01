@@ -214,16 +214,17 @@ function safeRelativePath(rawPath: string) {
     throw new Error("File path is too long or too deep.");
   }
   const [firstSegment] = normalized.split("/");
-  if (
-    normalized === "main.py" ||
-    normalized === "main.mjs" ||
-    normalized === "main.sh" ||
-    normalized === "package.json" ||
-    normalized === ".stdin" ||
-    firstSegment === "node_modules" ||
-    firstSegment === "home" ||
-    firstSegment === "tmp"
-  ) {
+  const reservedSandboxFile = [
+    "main.py",
+    "main.mjs",
+    "main.sh",
+    "package.json",
+    ".stdin",
+  ].includes(normalized);
+  const reservedSandboxDirectory = ["node_modules", "home", "tmp"].includes(
+    firstSegment ?? "",
+  );
+  if (reservedSandboxFile || reservedSandboxDirectory) {
     throw new Error("Reserved sandbox file path.");
   }
   return normalized;

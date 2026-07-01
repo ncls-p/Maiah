@@ -8,14 +8,6 @@ import { listMcpTools, syncMcpTools } from "@/modules/mcp/use-cases";
 
 const querySchema = z.object({ workspaceId: z.uuid() });
 
-async function ensure(
-  userId: string,
-  workspaceId: string,
-  permissionName: string,
-) {
-  return requireWorkspacePermissionAsync(userId, workspaceId, permissionName);
-}
-
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ serverId: string }> },
@@ -31,7 +23,7 @@ export async function GET(
           { error: "workspaceId must be a valid UUID" },
           { status: 400 },
         );
-      const forbidden = await ensure(
+      const forbidden = await requireWorkspacePermissionAsync(
         session.user.id,
         parsed.data.workspaceId,
         "mcpServers.get",
@@ -74,7 +66,7 @@ export async function POST(
           { error: "workspaceId must be a valid UUID" },
           { status: 400 },
         );
-      const forbidden = await ensure(
+      const forbidden = await requireWorkspacePermissionAsync(
         session.user.id,
         parsed.data.workspaceId,
         "mcpServers.manage",

@@ -16,13 +16,6 @@ const createSchema = z.object({
   content: z.string().min(1).max(2_000_000),
   sourceType: z.enum(["text", "url"]).optional(),
 });
-async function ensure(
-  userId: string,
-  workspaceId: string,
-  permissionName: string,
-) {
-  return requireWorkspacePermissionAsync(userId, workspaceId, permissionName);
-}
 
 export async function GET(
   req: NextRequest,
@@ -39,7 +32,7 @@ export async function GET(
           { error: "workspaceId must be a valid UUID" },
           { status: 400 },
         );
-      const forbidden = await ensure(
+      const forbidden = await requireWorkspacePermissionAsync(
         session.user.id,
         parsed.data.workspaceId,
         "knowledgeBases.viewAllowed",
@@ -78,7 +71,7 @@ export async function POST(
           { error: "Invalid input", details: parsed.error.issues },
           { status: 400 },
         );
-      const forbidden = await ensure(
+      const forbidden = await requireWorkspacePermissionAsync(
         session.user.id,
         parsed.data.workspaceId,
         "knowledgeBases.manage",

@@ -33,14 +33,6 @@ const createModelSchema = z.object({
   outputTokenCost: z.string().optional(),
 });
 
-async function requirePermission(
-  userId: string,
-  workspaceId: string,
-  permissionName: string,
-) {
-  return requireWorkspacePermissionAsync(userId, workspaceId, permissionName);
-}
-
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ providerId: string }> },
@@ -59,7 +51,7 @@ export async function GET(
       const { providerId } = parsedParams.data;
       const { workspaceId } = parsedQuery.data;
       const action = searchParams.get("action");
-      const forbidden = await requirePermission(
+      const forbidden = await requireWorkspacePermissionAsync(
         session.user.id,
         workspaceId,
         action === "discover" ? "models.sync" : "models.view",
@@ -103,7 +95,7 @@ export async function POST(
       }
       const { providerId } = parsedParams.data;
       const { workspaceId, ...input } = parsedBody.data;
-      const forbidden = await requirePermission(
+      const forbidden = await requireWorkspacePermissionAsync(
         session.user.id,
         workspaceId,
         "models.create",

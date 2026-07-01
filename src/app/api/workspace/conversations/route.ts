@@ -52,10 +52,10 @@ export async function GET(req: NextRequest) {
         limit: searchParams.get("limit") ?? undefined,
       });
 
-      if (
-        !parsed.success ||
-        (!parsed.data.workspaceId && !parsed.data.agentId)
-      ) {
+      const hasConversationScope =
+        parsed.success &&
+        Boolean(parsed.data.workspaceId || parsed.data.agentId);
+      if (!hasConversationScope) {
         return NextResponse.json(
           { error: "workspaceId or agentId must be a valid UUID" },
           { status: 400 },

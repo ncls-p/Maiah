@@ -316,9 +316,12 @@ export function useChatStream({
           await onConversationsRefresh();
           return;
         }
-        if (!res.ok || !res.body) {
+        if (!res.ok) {
           const error = await res.json().catch(() => null);
           throw new Error(error?.error || "Failed to resume chat stream");
+        }
+        if (!res.body) {
+          throw new Error("Failed to resume chat stream");
         }
 
         updateAssistant((message) => ({ ...message, parts: [] }));
@@ -404,7 +407,10 @@ export function useChatStream({
   ]);
 
   async function handleSubmit(content: string, options: SubmitOptions = {}) {
-    if (!content || !agentId || !canChat || sending) return;
+    if (!content) return;
+    if (!agentId) return;
+    if (!canChat) return;
+    if (sending) return;
 
     const userMessageFileParts = [
       ...(options.codeWorkspaceArtifact

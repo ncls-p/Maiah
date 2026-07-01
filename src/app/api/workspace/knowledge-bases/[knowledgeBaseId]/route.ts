@@ -16,13 +16,6 @@ const updateSchema = z.object({
   name: z.string().min(1).max(255).optional(),
   description: z.string().max(2048).optional(),
 });
-async function ensure(
-  userId: string,
-  workspaceId: string,
-  permissionName: string,
-) {
-  return requireWorkspacePermissionAsync(userId, workspaceId, permissionName);
-}
 
 export async function GET(
   req: NextRequest,
@@ -39,7 +32,7 @@ export async function GET(
           { error: "workspaceId must be a valid UUID" },
           { status: 400 },
         );
-      const forbidden = await ensure(
+      const forbidden = await requireWorkspacePermissionAsync(
         session.user.id,
         parsed.data.workspaceId,
         "knowledgeBases.viewAllowed",
@@ -74,7 +67,7 @@ export async function PATCH(
           { error: "Invalid input", details: parsed.error.issues },
           { status: 400 },
         );
-      const forbidden = await ensure(
+      const forbidden = await requireWorkspacePermissionAsync(
         session.user.id,
         parsed.data.workspaceId,
         "knowledgeBases.manage",
@@ -119,7 +112,7 @@ export async function DELETE(
           { error: "workspaceId must be a valid UUID" },
           { status: 400 },
         );
-      const forbidden = await ensure(
+      const forbidden = await requireWorkspacePermissionAsync(
         session.user.id,
         parsed.data.workspaceId,
         "knowledgeBases.manage",

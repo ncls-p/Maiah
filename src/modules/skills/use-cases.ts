@@ -375,10 +375,12 @@ export async function installSkillsFromCommand(input: {
     }
 
     const created: AgentSkillRow[] = [];
+    const _isSkillMdInstall = (file: { path: string }) =>
+      file.path === "SKILL.md";
     for (const skillDir of skillDirs) {
       const markdownFiles = await extractMarkdownFiles(skillDir);
       if (markdownFiles.length === 0) continue;
-      const skillFile = markdownFiles.find((file) => file.path === "SKILL.md");
+      const skillFile = markdownFiles.find(_isSkillMdInstall);
       const frontmatter = skillFile ? parseFrontmatter(skillFile.content) : {};
       const fallbackName = path.basename(skillDir);
       const [row] = await db
@@ -626,10 +628,12 @@ export async function previewSkillInstall(
     }
 
     const results: SkillPreviewResult[] = [];
+    const _isSkillMdPreview = (file: { path: string }) =>
+      file.path === "SKILL.md";
     for (const skillDir of skillDirs) {
       const markdownFiles = await extractMarkdownFiles(skillDir);
       if (markdownFiles.length === 0) continue;
-      const skillFile = markdownFiles.find((file) => file.path === "SKILL.md");
+      const skillFile = markdownFiles.find(_isSkillMdPreview);
       const frontmatter = skillFile ? parseFrontmatter(skillFile.content) : {};
       const fallbackName = path.basename(skillDir);
       results.push({

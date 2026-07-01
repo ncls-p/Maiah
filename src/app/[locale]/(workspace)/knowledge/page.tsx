@@ -135,7 +135,10 @@ export default function KnowledgePage() {
   }, [workspaceId, selectedId]);
 
   async function openAttachDialog() {
-    if (!canManageKnowledgeBases || !workspaceId || !selectedId) return;
+    const canAttachKnowledgeBase = Boolean(
+      canManageKnowledgeBases && workspaceId && selectedId,
+    );
+    if (!canAttachKnowledgeBase) return;
     setAttachOpen(true);
     setLoadingAttachAgents(true);
     try {
@@ -158,7 +161,10 @@ export default function KnowledgePage() {
   }
 
   async function attachBaseToAgent(agentId: string) {
-    if (!canManageKnowledgeBases || !workspaceId || !selectedId) return;
+    const canAttachKnowledgeBase = Boolean(
+      canManageKnowledgeBases && workspaceId && selectedId,
+    );
+    if (!canAttachKnowledgeBase) return;
     setAttachingAgentId(agentId);
     try {
       const bindingsRes = await fetch(
@@ -196,14 +202,16 @@ export default function KnowledgePage() {
   }
 
   async function ingestFromContent(title: string, content: string) {
-    if (
-      !canManageKnowledgeBases ||
-      !workspaceId ||
-      !selectedId ||
-      !title.trim() ||
-      !content.trim()
-    )
-      return;
+    const trimmedTitle = title.trim();
+    const trimmedContent = content.trim();
+    const canIngestContent = Boolean(
+      canManageKnowledgeBases &&
+      workspaceId &&
+      selectedId &&
+      trimmedTitle &&
+      trimmedContent,
+    );
+    if (!canIngestContent) return;
     const res = await fetch(
       `/api/workspace/knowledge-bases/${selectedId}/documents`,
       {
@@ -211,7 +219,7 @@ export default function KnowledgePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           workspaceId,
-          title: title.trim(),
+          title: trimmedTitle,
           content,
         }),
       },
@@ -291,8 +299,9 @@ export default function KnowledgePage() {
   }, [documents, loadDocuments, selectedId, workspaceId]);
 
   async function createBase() {
-    if (!canManageKnowledgeBases || !workspaceId || !baseForm.name.trim())
-      return;
+    const hasBaseName = Boolean(baseForm.name.trim());
+    const canCreateBase = Boolean(canManageKnowledgeBases && workspaceId);
+    if (!canCreateBase || !hasBaseName) return;
     try {
       const res = await fetch("/api/workspace/knowledge-bases", {
         method: "POST",
@@ -321,7 +330,9 @@ export default function KnowledgePage() {
   }
 
   async function search() {
-    if (!workspaceId || !selectedId || !query.trim()) return;
+    const hasSearchQuery = Boolean(query.trim());
+    const canSearchKnowledge = Boolean(workspaceId && selectedId);
+    if (!canSearchKnowledge || !hasSearchQuery) return;
     const res = await fetch(
       `/api/workspace/knowledge-bases/${selectedId}/search`,
       {
@@ -335,7 +346,9 @@ export default function KnowledgePage() {
   }
 
   async function updateBase() {
-    if (!canManageKnowledgeBases || !workspaceId || !editingBase) return;
+    if (!canManageKnowledgeBases) return;
+    if (!workspaceId) return;
+    if (!editingBase) return;
     try {
       const res = await fetch(
         `/api/workspace/knowledge-bases/${editingBase.id}`,
@@ -372,7 +385,10 @@ export default function KnowledgePage() {
   }
 
   async function deleteDocument(documentId: string) {
-    if (!canManageKnowledgeBases || !workspaceId || !selectedId) return;
+    const canDeleteDocument = Boolean(
+      canManageKnowledgeBases && workspaceId && selectedId,
+    );
+    if (!canDeleteDocument) return;
     if (!window.confirm(t("confirmDeleteDocument"))) return;
     try {
       const res = await fetch(

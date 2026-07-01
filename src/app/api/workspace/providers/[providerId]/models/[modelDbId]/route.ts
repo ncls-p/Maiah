@@ -37,14 +37,6 @@ const updateModelSchema = z.object({
   enabled: z.boolean().optional(),
 });
 
-async function requirePermission(
-  userId: string,
-  workspaceId: string,
-  permissionName: string,
-) {
-  return requireWorkspacePermissionAsync(userId, workspaceId, permissionName);
-}
-
 async function assertModelBelongsToProvider(
   modelDbId: string,
   providerId: string,
@@ -73,7 +65,7 @@ export async function PATCH(
       }
       const { providerId, modelDbId } = parsedParams.data;
       const { workspaceId, ...input } = parsedBody.data;
-      const forbidden = await requirePermission(
+      const forbidden = await requireWorkspacePermissionAsync(
         session.user.id,
         workspaceId,
         "models.update",
@@ -108,7 +100,7 @@ export async function DELETE(
       }
       const { providerId, modelDbId } = parsedParams.data;
       const { workspaceId } = parsedQuery.data;
-      const forbidden = await requirePermission(
+      const forbidden = await requireWorkspacePermissionAsync(
         session.user.id,
         workspaceId,
         "models.delete",

@@ -26,18 +26,6 @@ const updateSchema = z.object({
   env: z.record(z.string(), z.string()).optional(),
 });
 
-async function ensure(
-  sessionUserId: string,
-  workspaceId: string,
-  permissionName: string,
-) {
-  return requireWorkspacePermissionAsync(
-    sessionUserId,
-    workspaceId,
-    permissionName,
-  );
-}
-
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ serverId: string }> },
@@ -53,7 +41,7 @@ export async function GET(
           { error: "workspaceId must be a valid UUID" },
           { status: 400 },
         );
-      const forbidden = await ensure(
+      const forbidden = await requireWorkspacePermissionAsync(
         session.user.id,
         parsed.data.workspaceId,
         "mcpServers.get",
@@ -85,7 +73,7 @@ export async function PATCH(
           { error: "Invalid input", details: parsed.error.issues },
           { status: 400 },
         );
-      const forbidden = await ensure(
+      const forbidden = await requireWorkspacePermissionAsync(
         session.user.id,
         parsed.data.workspaceId,
         "mcpServers.manage",
@@ -129,7 +117,7 @@ export async function DELETE(
           { error: "workspaceId must be a valid UUID" },
           { status: 400 },
         );
-      const forbidden = await ensure(
+      const forbidden = await requireWorkspacePermissionAsync(
         session.user.id,
         parsed.data.workspaceId,
         "mcpServers.manage",

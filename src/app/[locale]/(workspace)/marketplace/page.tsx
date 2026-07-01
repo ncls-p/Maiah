@@ -316,7 +316,8 @@ export default function MarketplacePage() {
       fetch("/api/marketplace/items?_path=shared-with-me"),
     ]);
 
-    if (!publishedRes.ok || !mineRes.ok || !sharedRes.ok) {
+    const marketplaceRequestsOk = publishedRes.ok && mineRes.ok && sharedRes.ok;
+    if (!marketplaceRequestsOk) {
       throw new Error(t("toast.loadFailed"));
     }
 
