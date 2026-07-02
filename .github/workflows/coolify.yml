@@ -328,17 +328,21 @@ jobs:
             grep -E "${pattern}" "${changed_files}" >/dev/null
           }
 
-          # Keep app images pinned to the current commit for each deployment.
-          app_changed=true
-          searxng_changed=true
+          # Build images only when their build context changes. Unchanged images
+          # reuse main-latest, avoiding large pulls on the Coolify host for PRs
+          # that only touch tests, docs, CI, or another independent service.
+          app_changed=false
+          if changes_match '^(Dockerfile$|package\.json$|package-lock\.json$|\.npmrc$|next\.config\.ts$|tsconfig\.json$|postcss\.config\.mjs$|components\.json$|drizzle\.config\.ts$|src/|public/|messages/|scripts/migrate)'; then
+            app_changed=true
+          fi
 
-          # The OpenSandbox code image is very large and blocks Coolify deploys
-          # while every unique PR tag is pulled on the target server. Its content
-          # only depends on the opensandbox build context, so reuse main-latest
-          # for normal app-only changes and build/pull a new sandbox image only
-          # when the sandbox image definition changes.
+          searxng_changed=false
+          if changes_match '^(Dockerfile$|searxng/)'; then
+            searxng_changed=true
+          fi
+
           sandbox_changed=false
-          if changes_match '^(opensandbox/|scripts/build-opensandbox-image\.sh$|\.github/workflows/coolify\.yml$)'; then
+          if changes_match '^(opensandbox/|scripts/build-opensandbox-image\.sh$)'; then
             sandbox_changed=true
           fi
 
