@@ -16,8 +16,15 @@ vi.mock("next/server", () => ({
 	},
 }));
 
+vi.mock("@/server/domain/services/authorization", () => ({
+	authorization: {
+		hasPermission: vi.fn(),
+	},
+}));
+
 import * as adminUseCases from "@/modules/admin/use-cases";
 import * as sessionMod from "@/modules/auth/session";
+import * as authzMod from "@/server/domain/services/authorization";
 
 describe("admin/auth – isPlatformAdminSession", () => {
 	// Import the function lazily so it picks up the mocks
@@ -50,6 +57,53 @@ describe("admin/auth – isPlatformAdminSession", () => {
 		vi.mocked(adminUseCases.isAdminRole).mockReturnValue(false);
 		const session = { user: { id: "user-1", role: "user" } };
 		expect(await testSession(session)).toBe(false);
+	});
+});
+
+describe("admin/auth – canManageTenantGlobals", () => {
+	async function testManage(session: unknown, workspaceId = "ws-1") {
+		const { canManageTenantGlobals } = await import("@/modules/admin/auth");
+		return canManageTenantGlobals(session as never, workspaceId);
+	}
+
+	it("returns false when session is null", async () => {
+		expect(await testManage(null)).toBe(false);
+	});
+
+	it("returns true when user is platform admin", async () => {
+		vi.mocked(adminUseCases.isAdminRole).mockReturnValue(true);
+		const session = { user: { id: "admin-1", role: "admin" } };
+		expect(await testManage(session)).toBe(true);
+	});
+
+	it("returns true when user has manage permission via authorization", async () => {
+		vi.mocked(adminUseCases.isAdminRole).mockReturnValue(false);
+		vi.mocked(adminUseCases.ensureBootstrapAdmin).mockResolvedValue(null);
+		vi.mocked(authzMod.authorization.hasPermission).mockResolvedValue(true);
+		const session = { user: { id: "user-1", role: "user" } };
+		expect(await testManage(session)).toBe(true);
+	});
+
+	it("returns false when user lacks manage permission", async () => {
+		vi.mocked(adminUseCases.isAdminRole).mockReturnValue(false);
+		vi.mocked(adminUseCases.ensureBootstrapAdmin).mockResolvedValue(null);
+		vi.mocked(authzMod.authorization.hasPermission).mockResolvedValue(false);
+		const session = { user: { id: "user-1", role: "user" } };
+		expect(await testManage(session)).toBe(false);
+	});
+
+	it("passes correct workspaceId to authorization", async () => {
+		vi.mocked(adminUseCases.isAdminRole).mockReturnValue(false);
+		vi.mocked(adminUseCases.ensureBootstrapAdmin).mockResolvedValue(null);
+		vi.mocked(authzMod.authorization.hasPermission).mockResolvedValue(true);
+		const session = { user: { id: "user-1", role: "user" } };
+		await testManage(session, "custom-ws");
+		expect(authzMod.authorization.hasPermission).toHaveBeenCalledWith(
+			{ principalType: "user", principalId: "user-1" },
+			"roles.manage",
+			"workspace",
+			"custom-ws",
+		);
 	});
 });
 

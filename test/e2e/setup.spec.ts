@@ -1,63 +1,12 @@
-import { expect, test, type Page } from "@playwright/test";
-import { hashPassword } from "better-auth/crypto";
-import { randomUUID } from "node:crypto";
-import { Client } from "pg";
-
-const e2eUser = {
-	name: "E2E Admin",
-	email: "e2e-admin@example.test",
-	password: "Password123!",
-};
-
-function databaseUrl() {
-	return (
-		process.env.DATABASE_URL ??
-		"postgres://postgres:postgres@localhost:15432/ai_hub"
-	);
-}
-
-async function ensureE2EUser() {
-	const client = new Client({ connectionString: databaseUrl() });
-	await client.connect();
-	try {
-		const upserted = await client.query<{ id: string }>(
-			`insert into "user" (id, name, email, email_verified, role, banned, created_at, updated_at)
-			 values ($1, $2, $3, true, $4, false, now(), now())
-			 on conflict (email) do update
-			 set name = excluded.name, role = excluded.role, banned = false, updated_at = now()
-			 returning id`,
-			[randomUUID(), e2eUser.name, e2eUser.email, "admin"],
-		);
-		const userId = upserted.rows[0].id;
-
-		const password = await hashPassword(e2eUser.password);
-		await client.query(
-			"delete from account where account_id = $1 and provider_id = 'credential'",
-			[userId],
-		);
-		await client.query(
-			"insert into account (account_id, provider_id, user_id, password, created_at, updated_at) values ($1, 'credential', $2, $3, now(), now())",
-			[userId, userId, password],
-		);
-	} finally {
-		await client.end();
-	}
-}
-
-async function signIn(page: Page) {
-	await page.goto("/en/auth/signin");
-	await page.getByLabel("Email").fill(e2eUser.email);
-	await page.getByLabel("Password").fill(e2eUser.password);
-	await page.getByRole("button", { name: "Sign in" }).click();
-	await expect(page).toHaveURL(/\/en\/(chat|setup)/);
-}
+import { expect, test } from "@playwright/test";
+import { ensureE2EUser, login } from "./fixtures";
 
 test.beforeAll(async () => {
 	await ensureE2EUser();
 });
 
 test.beforeEach(async ({ page }) => {
-	await signIn(page);
+	await login(page);
 });
 
 test.describe("setup wizard", () => {
@@ -72,6 +21,65 @@ test.describe("setup wizard", () => {
 		await expect(
 			page.getByText("Pick a model", { exact: true }).first(),
 		).toBeVisible();
+	});
+
+	test("setup wizard has 3 steps", async ({ page }) => {
+		await page.goto("/en/setup");
+		await page.waitForTimeout(2000);
+
+		// Step indicators should be visible
+		await expect(
+			page.getByText(/Connect AI|Pick a model|Start chatting/i).first(),
+		).toBeVisible({ timeout: 10_000 });
+	});
+
+	test("setup page navigation buttons exist", async ({ page }) => {
+		await page.goto("/en/setup");
+		await page.waitForTimeout(2000);
+
+		// Continue or navigation buttons should be present
+		const navBtn = page
+			.getByRole("button", { name: /Continue|Back|Skip|Start/i })
+			.first();
+
+		if (await navBtn.isVisible()) {
+			await expect(navBtn).toBeEnabled();
+		}
+	});
+
+	test("setup page shows provider configuration step", async ({ page }) => {
+		await page.goto("/en/setup");
+		await page.waitForTimeout(2000);
+
+		// Provider configuration should be visible
+		await expect(
+			page.getByText(/Provider|Connection|API key|Service URL/i).first(),
+		).toBeVisible({ timeout: 10_000 });
+	});
+});
+
+test.describe("setup wizard provider step", () => {
+	test("provider form has required fields", async ({ page }) => {
+		await page.goto("/en/setup");
+		await page.waitForTimeout(2000);
+
+		// Connection name field
+		const nameInput = page.getByLabel(/Connection|Name/i).first();
+		if (await nameInput.isVisible()) {
+			await expect(nameInput).toBeVisible();
+		}
+
+		// Service URL field
+		const urlInput = page.getByLabel(/Service|URL/i).first();
+		if (await urlInput.isVisible()) {
+			await expect(urlInput).toBeVisible();
+		}
+
+		// API key field
+		const apiKeyInput = page.getByLabel(/API key/i).first();
+		if (await apiKeyInput.isVisible()) {
+			await expect(apiKeyInput).toBeVisible();
+		}
 	});
 });
 

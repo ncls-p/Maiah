@@ -65,10 +65,6 @@ function metadataKey(projectId: string) {
 	return `code-workspaces/${projectId}/metadata.json`;
 }
 
-function fileKey(projectId: string, filePath: string) {
-	return `code-workspaces/${projectId}/files/${filePath}`;
-}
-
 async function loadMetadata(projectId: string) {
 	return JSON.parse(
 		Buffer.from(await storageMock.download(metadataKey(projectId))).toString(
