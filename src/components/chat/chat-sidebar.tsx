@@ -2,6 +2,8 @@
 
 import { Link, usePathname } from "@/i18n/navigation";
 import {
+  ArrowDownIcon,
+  ArrowUpIcon,
   ChevronDownIcon,
   CheckIcon,
   FolderIcon,
@@ -257,6 +259,10 @@ function ConversationItem({
   onEditChange,
   onEditCancel,
   onTogglePin,
+  onMoveUp,
+  onMoveDown,
+  canMoveUp,
+  canMoveDown,
   onDragStart,
   onDragEnd,
   onDropBefore,
@@ -274,6 +280,10 @@ function ConversationItem({
   onEditChange: (title: string) => void;
   onEditCancel: () => void;
   onTogglePin: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
   onDragStart: (event: React.DragEvent<HTMLDivElement>) => void;
   onDragEnd: () => void;
   onDropBefore: (event: React.DragEvent<HTMLDivElement>) => void;
@@ -304,6 +314,7 @@ function ConversationItem({
       {isEditing ? (
         <div className="flex min-w-0 flex-1 items-center gap-1 p-1 pl-2.5">
           <Input
+            aria-label="Conversation title"
             value={editingTitle}
             onChange={(event) => onEditChange(event.target.value)}
             onKeyDown={(event) => {
@@ -394,6 +405,22 @@ function ConversationItem({
                 <DropdownMenuItem onSelect={onTogglePin} className="gap-2">
                   <PinIcon className="size-3.5" aria-hidden="true" />
                   {pinned ? "Unpin" : "Pin to top"}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={onMoveUp}
+                  disabled={!canMoveUp}
+                  className="gap-2"
+                >
+                  <ArrowUpIcon className="size-3.5" aria-hidden="true" />
+                  Move up
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={onMoveDown}
+                  disabled={!canMoveDown}
+                  className="gap-2"
+                >
+                  <ArrowDownIcon className="size-3.5" aria-hidden="true" />
+                  Move down
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={onEditStart} className="gap-2">
                   <PencilIcon className="size-3.5" aria-hidden="true" />
@@ -569,6 +596,40 @@ export function ChatSidebar({
     });
   }
 
+  function conversationGroup(conversation: ChatConversation) {
+    const pinned = Boolean(conversation.pinnedAt);
+    const folderId = pinned ? null : (conversation.folderId ?? null);
+    const items = pinned
+      ? pinnedConversations
+      : folderId
+        ? (folderSections.find((section) => section.folder.id === folderId)
+            ?.conversations ?? [])
+        : topLevelConversations;
+    return { folderId, pinned, items };
+  }
+
+  function canMoveConversation(conversation: ChatConversation, delta: -1 | 1) {
+    if (!onReorderConversations) return false;
+    const { items } = conversationGroup(conversation);
+    const currentIndex = items.findIndex((item) => item.id === conversation.id);
+    const nextIndex = currentIndex + delta;
+    return currentIndex >= 0 && nextIndex >= 0 && nextIndex < items.length;
+  }
+
+  function moveConversation(conversation: ChatConversation, delta: -1 | 1) {
+    if (!onReorderConversations) return;
+    const { folderId, pinned, items } = conversationGroup(conversation);
+    const currentIndex = items.findIndex((item) => item.id === conversation.id);
+    const nextIndex = currentIndex + delta;
+    if (currentIndex < 0 || nextIndex < 0 || nextIndex >= items.length) return;
+
+    const conversationIds = items.map((item) => item.id);
+    const [conversationId] = conversationIds.splice(currentIndex, 1);
+    if (!conversationId) return;
+    conversationIds.splice(nextIndex, 0, conversationId);
+    onReorderConversations({ conversationIds, folderId, pinned });
+  }
+
   function startFolderCreate() {
     setCreatingFolder(true);
     setNewFolderName("");
@@ -619,6 +680,10 @@ export function ChatSidebar({
         onTogglePin={() =>
           onToggleConversationPin?.(conversation.id, !conversation.pinnedAt)
         }
+        onMoveUp={() => moveConversation(conversation, -1)}
+        onMoveDown={() => moveConversation(conversation, 1)}
+        canMoveUp={canMoveConversation(conversation, -1)}
+        canMoveDown={canMoveConversation(conversation, 1)}
         onDragStart={(event) => {
           setDraggingConversationId(conversation.id);
           event.dataTransfer.effectAllowed = "move";
@@ -761,6 +826,7 @@ export function ChatSidebar({
         {creatingFolder ? (
           <div className="flex items-center gap-1 rounded-lg border bg-background p-1">
             <Input
+              aria-label="Folder name"
               value={newFolderName}
               onChange={(event) => setNewFolderName(event.target.value)}
               onKeyDown={(event) => {
@@ -891,6 +957,7 @@ export function ChatSidebar({
                         {isEditingFolder ? (
                           <div className="flex min-w-0 flex-1 items-center gap-1">
                             <Input
+                              aria-label="Folder name"
                               value={editingFolderName}
                               onChange={(event) =>
                                 setEditingFolderName(event.target.value)

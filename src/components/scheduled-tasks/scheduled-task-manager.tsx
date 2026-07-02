@@ -255,7 +255,7 @@ export function ScheduledTaskManager({
 							<div className="grid gap-2 sm:col-span-3 xl:col-span-1">
 								<Label>{t("fields.assistant")}</Label>
 								<Select value={currentAgentId} onValueChange={setAgentId}>
-									<SelectTrigger>
+									<SelectTrigger aria-label={t("fields.assistant")}>
 										<SelectValue
 											placeholder={t("fields.assistantPlaceholder")}
 										/>
@@ -277,7 +277,7 @@ export function ScheduledTaskManager({
 										setFrequency(value as ScheduleFrequency)
 									}
 								>
-									<SelectTrigger>
+									<SelectTrigger aria-label={t("fields.frequency")}>
 										<SelectValue />
 									</SelectTrigger>
 									<SelectContent>

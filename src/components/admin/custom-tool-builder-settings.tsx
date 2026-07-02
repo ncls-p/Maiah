@@ -203,7 +203,7 @@ export function CustomToolBuilderSettings() {
                     })
                   }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger aria-label={t("provider")}>
                     <SelectValue placeholder={t("providerPlaceholder")} />
                   </SelectTrigger>
                   <SelectContent>
@@ -228,7 +228,7 @@ export function CustomToolBuilderSettings() {
                   }
                   disabled={!config.providerId}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger aria-label={t("model")}>
                     <SelectValue placeholder={t("modelPlaceholder")} />
                   </SelectTrigger>
                   <SelectContent>
@@ -255,7 +255,7 @@ export function CustomToolBuilderSettings() {
                   })
                 }
               >
-                <SelectTrigger>
+                <SelectTrigger aria-label={t("mcpServer")}>
                   <SelectValue placeholder={t("mcpPlaceholder")} />
                 </SelectTrigger>
                 <SelectContent>
@@ -273,8 +273,9 @@ export function CustomToolBuilderSettings() {
 
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
               <div className="space-y-2">
-                <Label>{t("createTool")}</Label>
+                <Label htmlFor="ctb-create-tool-name">{t("createTool")}</Label>
                 <Input
+                  id="ctb-create-tool-name"
                   value={config.createWorkflowToolName}
                   onChange={(event) =>
                     setConfig({
@@ -285,8 +286,11 @@ export function CustomToolBuilderSettings() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>{t("validateTool")}</Label>
+                <Label htmlFor="ctb-validate-tool-name">
+                  {t("validateTool")}
+                </Label>
                 <Input
+                  id="ctb-validate-tool-name"
                   value={config.validateWorkflowToolName}
                   onChange={(event) =>
                     setConfig({
@@ -297,8 +301,11 @@ export function CustomToolBuilderSettings() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>{t("activateTool")}</Label>
+                <Label htmlFor="ctb-activate-tool-name">
+                  {t("activateTool")}
+                </Label>
                 <Input
+                  id="ctb-activate-tool-name"
                   value={config.activateWorkflowToolName}
                   onChange={(event) =>
                     setConfig({
@@ -309,8 +316,11 @@ export function CustomToolBuilderSettings() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>{t("credentialTool")}</Label>
+                <Label htmlFor="ctb-credential-tool-name">
+                  {t("credentialTool")}
+                </Label>
                 <Input
+                  id="ctb-credential-tool-name"
                   value={config.credentialToolName}
                   onChange={(event) =>
                     setConfig({

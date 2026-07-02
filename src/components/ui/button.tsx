@@ -46,6 +46,7 @@ function Button({
   size = "default",
   asChild = false,
   static: isStatic = false,
+  type,
   ...props
 }: React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
@@ -64,6 +65,7 @@ function Button({
         !isStatic && variant !== "link" && tapScale,
         className,
       )}
+      {...(!asChild ? { type: type ?? "button" } : {})}
       {...props}
     />
   );

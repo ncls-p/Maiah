@@ -307,6 +307,7 @@ export function EssentialTab({
               <FieldGroup className="gap-3 border-t border-border/50 pt-4">
                 <label className="flex items-center gap-3 rounded-xl border border-border/60 p-3 text-sm">
                   <Checkbox
+                    aria-label={t("configurePage.globalAssistant")}
                     checked={form.isGlobal}
                     onCheckedChange={(checked) =>
                       setForm((prev) => ({
@@ -319,6 +320,7 @@ export function EssentialTab({
                 </label>
                 <label className="flex items-center gap-3 rounded-xl border border-border/60 p-3 text-sm">
                   <Checkbox
+                    aria-label={t("configurePage.recommended")}
                     checked={form.isRecommended}
                     onCheckedChange={(checked) =>
                       setForm((prev) => ({

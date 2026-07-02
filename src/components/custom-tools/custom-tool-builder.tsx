@@ -475,6 +475,7 @@ export function CustomToolBuilder() {
 						) : null}
 						<div className="flex gap-2">
 							<Textarea
+								aria-label="Custom tool builder prompt"
 								value={input}
 								onChange={(event) => setInput(event.target.value)}
 								placeholder="Décris le tool, son input, son résultat attendu, et les services à connecter…"

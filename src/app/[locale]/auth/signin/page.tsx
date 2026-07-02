@@ -25,6 +25,7 @@ export default function SignInPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const errorId = "signin-error";
 
   async function handleSubmit(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -73,9 +74,13 @@ export default function SignInPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <form
+              onSubmit={handleSubmit}
+              className="flex flex-col gap-4"
+              aria-busy={loading}
+            >
               {error ? (
-                <Alert variant="destructive" aria-live="polite">
+                <Alert id={errorId} variant="destructive">
                   <AlertTitle>We couldn&apos;t sign you in</AlertTitle>
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
@@ -89,6 +94,8 @@ export default function SignInPage() {
                     type="email"
                     autoComplete="email"
                     required
+                    aria-invalid={error ? true : undefined}
+                    aria-describedby={error ? errorId : undefined}
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
                     placeholder="you@company.com"
@@ -104,6 +111,8 @@ export default function SignInPage() {
                     type="password"
                     autoComplete="current-password"
                     required
+                    aria-invalid={error ? true : undefined}
+                    aria-describedby={error ? errorId : undefined}
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
                     placeholder="Enter your password…"
@@ -116,6 +125,7 @@ export default function SignInPage() {
                 size="lg"
                 className="w-full"
                 disabled={loading}
+                aria-busy={loading}
               >
                 {loading ? (
                   <Spinner data-icon="inline-start" />

@@ -503,7 +503,7 @@ export function ResourceShareDialog({
                 value={visibility}
                 onValueChange={(v) => setVisibility(v as "public" | "private")}
               >
-                <SelectTrigger>
+                <SelectTrigger aria-label={t("fields.visibility")}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -537,6 +537,7 @@ export function ResourceShareDialog({
             {preview?.canIncludeSecrets ? (
               <label className="flex items-start gap-2 rounded-lg border border-border/60 bg-muted/20 p-3 text-sm">
                 <Checkbox
+                  aria-label={t("secrets.include")}
                   checked={includeSecrets}
                   onCheckedChange={(v) => setIncludeSecrets(v === true)}
                 />
@@ -585,6 +586,7 @@ export function ResourceShareDialog({
         {step === "user" ? (
           <div className="space-y-3">
             <Input
+              aria-label={t("searchUser")}
               placeholder={t("searchUser")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}

@@ -71,6 +71,7 @@ function ProviderListHeader({
         <div className="relative w-56 sm:w-64">
           <SearchIcon className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
+            aria-label={t("filterConnections")}
             name="provider-search"
             autoComplete="off"
             placeholder={t("filterConnections")}

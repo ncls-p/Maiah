@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { cookies } from "next/headers";
 
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { defaultLocale, locales } from "@/i18n/routing";
 
 const fontBody = Geist({
   subsets: ["latin"],
@@ -26,14 +28,18 @@ export const metadata: Metadata = {
     "Build, configure, and run AI agents with multi-provider support and team collaboration.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const localeCookie = (await cookies()).get("NEXT_LOCALE")?.value;
+  const documentLanguage =
+    locales.find((locale) => locale === localeCookie) ?? defaultLocale;
+
   return (
     <html
-      lang="en"
+      lang={documentLanguage}
       data-scroll-behavior="smooth"
       suppressHydrationWarning
       className={cn(

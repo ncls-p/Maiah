@@ -265,7 +265,7 @@ export function ChatAutomationSettings() {
                   }
                   disabled={state.providers.length === 0}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger aria-label={t("provider")}>
                     <SelectValue placeholder={t("providerPlaceholder")} />
                   </SelectTrigger>
                   <SelectContent>
@@ -290,7 +290,7 @@ export function ChatAutomationSettings() {
                   }
                   disabled={!config.providerId || filteredModels.length === 0}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger aria-label={t("model")}>
                     <SelectValue placeholder={t("modelPlaceholder")} />
                   </SelectTrigger>
                   <SelectContent>

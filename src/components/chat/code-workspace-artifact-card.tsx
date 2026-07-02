@@ -399,13 +399,14 @@ function CodeWorkspaceEditor({
 				{highlighted}
 			</pre>
 			<textarea
+				aria-label={filePath ? `Code editor for ${filePath}` : "Code editor"}
 				value={value}
 				onChange={(event) => onChange(event.target.value)}
 				onScroll={syncScroll}
 				disabled={disabled}
 				spellCheck={false}
 				wrap="off"
-				className="absolute inset-0 h-full w-full resize-none overflow-auto border-0 bg-transparent p-3 font-mono text-[11px] leading-4 text-transparent caret-foreground outline-none selection:bg-primary/20 focus:ring-0 disabled:opacity-70"
+				className="absolute inset-0 h-full w-full resize-none overflow-auto border-0 bg-transparent p-3 font-mono text-[11px] leading-4 text-transparent caret-foreground outline-none selection:bg-primary/20 focus:ring-0 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring disabled:opacity-70"
 			/>
 		</div>
 	);

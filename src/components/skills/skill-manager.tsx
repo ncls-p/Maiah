@@ -490,6 +490,7 @@ function SkillEditorDialog({
 										<div className="flex shrink-0 items-center gap-2 border-b border-border/70 px-4 py-2.5 sm:px-5">
 											<FileTextIcon className="size-3.5 shrink-0 text-muted-foreground" />
 											<Input
+												aria-label="Skill file path"
 												value={currentFile.path}
 												onChange={(e) =>
 													updateFile(activeFile, "path", e.target.value)
@@ -510,6 +511,7 @@ function SkillEditorDialog({
 										</div>
 										<div className="min-h-0 flex-1 p-3 sm:p-4">
 											<Textarea
+												aria-label="Skill file content"
 												value={currentFile.content}
 												onChange={(e) =>
 													updateFile(activeFile, "content", e.target.value)
@@ -800,6 +802,7 @@ export function SkillManager() {
 				</CardHeader>
 				<CardContent className="space-y-3">
 					<Textarea
+						aria-label="skills.sh install command"
 						value={installCommand}
 						onChange={(event) => setInstallCommand(event.target.value)}
 						placeholder="npx skills add anthropics/skills --skill skill-creator"

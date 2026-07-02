@@ -27,6 +27,8 @@ export default function SignUpPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [registrationClosed, setRegistrationClosed] = useState(false);
+  const errorId = "signup-error";
+  const passwordRequirementsId = "signup-password-requirements";
 
   useEffect(() => {
     let cancelled = false;
@@ -102,9 +104,13 @@ export default function SignUpPage() {
                 <Link href="/auth/signin">Go to sign in</Link>
               </Button>
             ) : (
-              <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+              <form
+                onSubmit={handleSubmit}
+                className="flex flex-col gap-4"
+                aria-busy={loading}
+              >
                 {error ? (
-                  <Alert variant="destructive" aria-live="polite">
+                  <Alert id={errorId} variant="destructive">
                     <AlertTitle>
                       We couldn&apos;t create your account
                     </AlertTitle>
@@ -120,6 +126,8 @@ export default function SignUpPage() {
                       type="text"
                       autoComplete="name"
                       required
+                      aria-invalid={error ? true : undefined}
+                      aria-describedby={error ? errorId : undefined}
                       value={name}
                       onChange={(event) => setName(event.target.value)}
                       placeholder="Example: Avery Chen"
@@ -135,6 +143,8 @@ export default function SignUpPage() {
                       type="email"
                       autoComplete="email"
                       required
+                      aria-invalid={error ? true : undefined}
+                      aria-describedby={error ? errorId : undefined}
                       value={email}
                       onChange={(event) => setEmail(event.target.value)}
                       placeholder="you@company.com"
@@ -151,10 +161,22 @@ export default function SignUpPage() {
                       autoComplete="new-password"
                       required
                       minLength={8}
+                      aria-invalid={error ? true : undefined}
+                      aria-describedby={
+                        error
+                          ? `${passwordRequirementsId} ${errorId}`
+                          : passwordRequirementsId
+                      }
                       value={password}
                       onChange={(event) => setPassword(event.target.value)}
                       placeholder="Pick a password (at least 8 characters)"
                     />
+                    <p
+                      id={passwordRequirementsId}
+                      className="text-xs text-muted-foreground"
+                    >
+                      Use at least 8 characters.
+                    </p>
                   </FieldContent>
                 </Field>
 
@@ -163,6 +185,7 @@ export default function SignUpPage() {
                   size="lg"
                   className="w-full"
                   disabled={loading}
+                  aria-busy={loading}
                 >
                   {loading ? (
                     <Spinner data-icon="inline-start" />

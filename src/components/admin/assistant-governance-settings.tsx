@@ -244,7 +244,7 @@ export function AssistantGovernanceSettings() {
                   }
                   disabled={savingDefault}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger aria-label={t("defaultLabel")}>
                     <SelectValue placeholder={t("defaultPlaceholder")} />
                   </SelectTrigger>
                   <SelectContent>

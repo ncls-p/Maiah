@@ -119,6 +119,7 @@ function ServerListToolbar({
 					<div className="relative w-48 sm:w-56">
 						<SearchIcon className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
 						<Input
+							aria-label="Filter servers"
 							placeholder="Filter…"
 							value={search}
 							onChange={(e) => onSearchChangeAction(e.target.value)}
@@ -141,7 +142,7 @@ function ServerListToolbar({
 					value={filterStatus}
 					onValueChange={(v) => onFilterChangeAction(v as ServerStatusFilter)}
 				>
-					<SelectTrigger className="w-32">
+					<SelectTrigger className="w-32" aria-label="Filter servers by status">
 						<SelectValue />
 					</SelectTrigger>
 					<SelectContent>
@@ -609,6 +610,7 @@ function ToolSearch({
 				aria-hidden="true"
 			/>
 			<Input
+				aria-label="Search tools"
 				placeholder="Search tools…"
 				value={value}
 				onChange={(e) =>
@@ -624,6 +626,7 @@ function ToolSearch({
 					variant="ghost"
 					size="icon-sm"
 					className="size-6"
+					aria-label="Clear tool search"
 					onClick={() =>
 						onToolSearchChangeAction((prev) => ({ ...prev, [serverId]: "" }))
 					}

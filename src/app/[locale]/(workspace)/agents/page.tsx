@@ -609,6 +609,7 @@ export default function AgentsPage() {
                 <div className="relative w-48 sm:w-56">
                   <SearchIcon className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
+                    aria-label={tList("filterPlaceholder")}
                     placeholder={tList("filterPlaceholder")}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -1018,7 +1019,10 @@ export default function AgentsPage() {
                           setForm({ ...form, curationLabel: value })
                         }
                       >
-                        <SelectTrigger className="w-full">
+                        <SelectTrigger
+                          className="w-full"
+                          aria-label="Curation label"
+                        >
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>

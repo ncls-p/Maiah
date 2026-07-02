@@ -191,13 +191,22 @@ function ToolRow({
             />
             {approvalLabel}
             <Switch
+              aria-label={
+                approvalLabel
+                  ? `${approvalLabel} for ${name}`
+                  : `Require approval for ${name}`
+              }
               checked={requireApproval ?? false}
               disabled={approvalDisabled ?? false}
               onCheckedChange={onApprovalChange}
             />
           </label>
         )}
-        <Switch checked={enabled} onCheckedChange={onEnabledChange} />
+        <Switch
+          aria-label={`Enable ${name}`}
+          checked={enabled}
+          onCheckedChange={onEnabledChange}
+        />
       </div>
     </ListRow>
   );
@@ -293,6 +302,7 @@ function BuiltinToolPackageCard({
           <label className="flex items-center gap-2">
             {allToolsLabel}
             <Switch
+              aria-label={allToolsLabel}
               checked={allSelected}
               disabled={toolPackage.tools.length === 0}
               onCheckedChange={setPackageEnabled}
@@ -469,6 +479,7 @@ function McpServerCollapsible({
           <label className="flex items-center gap-2">
             {allToolsLabel}
             <Switch
+              aria-label={allToolsLabel}
               checked={serverState.allSelected}
               disabled={serverState.bindableTools.length === 0}
               onCheckedChange={setServerToolsEnabled}
@@ -477,6 +488,7 @@ function McpServerCollapsible({
           <label className="flex items-center gap-2">
             {extraApprovalLabel}
             <Switch
+              aria-label={extraApprovalLabel}
               checked={serverState.allApproval}
               disabled={
                 serverState.selectedCount === 0 ||
@@ -770,6 +782,7 @@ export function CapabilitiesTab({
                   ) : null}
                 </span>
                 <Switch
+                  aria-label={`Toggle skill ${skill.name}`}
                   checked={selectedSkillIds.includes(skill.id)}
                   onCheckedChange={(checked) =>
                     setSelectedSkillIds((current) =>
@@ -831,6 +844,7 @@ export function CapabilitiesTab({
                   {kb.name}
                 </span>
                 <Switch
+                  aria-label={`Toggle knowledge base ${kb.name}`}
                   checked={selectedKnowledgeIds.includes(kb.id)}
                   onCheckedChange={(checked) =>
                     setSelectedKnowledgeIds((current) =>

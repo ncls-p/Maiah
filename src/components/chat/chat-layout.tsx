@@ -337,6 +337,7 @@ export function ChatLayout({
                 aria-hidden="true"
               />
               <Input
+                aria-label={t("assistantSearch")}
                 name="assistant-search"
                 autoComplete="off"
                 value={agentSearch}

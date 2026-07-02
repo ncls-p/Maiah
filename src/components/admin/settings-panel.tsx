@@ -127,7 +127,11 @@ export function SettingsFeatureToggle({
           {description}
         </span>
       </span>
-      <Switch checked={checked} onCheckedChange={onCheckedChange} />
+      <Switch
+        aria-label={label}
+        checked={checked}
+        onCheckedChange={onCheckedChange}
+      />
     </label>
   );
 }
