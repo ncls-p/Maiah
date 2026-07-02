@@ -275,9 +275,7 @@ describe("code sandbox runner client", () => {
 						mimeType: "text/plain",
 						textPreview: "generated report",
 						modified: true,
-						contentBase64: Buffer.from("generated report").toString(
-							"base64",
-						),
+						contentBase64: Buffer.from("generated report").toString("base64"),
 					},
 					{
 						path: "data.bin",
@@ -373,9 +371,9 @@ describe("code sandbox runner client", () => {
 				mimeType: "application/octet-stream",
 			}),
 		);
-		expect(result.files.find((file) => file.path === "image.bin")).not.toHaveProperty(
-			"contentBase64",
-		);
+		expect(
+			result.files.find((file) => file.path === "image.bin"),
+		).not.toHaveProperty("contentBase64");
 	});
 
 	it("validates language, code, input file size, base64, reserved paths, and attachment context", async () => {

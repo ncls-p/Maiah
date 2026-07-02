@@ -269,7 +269,9 @@ function bytesFromBase64(value: string, filePath: string) {
 function normalizeInputFiles(input: CodeSandboxRequest) {
 	const files = Array.isArray(input.files) ? input.files : [];
 	if (files.length > maxSandboxInputFiles) {
-		throw new Error(`Too many input files. Maximum is ${maxSandboxInputFiles}.`);
+		throw new Error(
+			`Too many input files. Maximum is ${maxSandboxInputFiles}.`,
+		);
 	}
 
 	let totalInputBytes = 0;
@@ -397,7 +399,10 @@ async function prepareSandboxRunnerRequest(
 		});
 	}
 
-	const totalBytes = files.reduce((total, file) => total + file.bytes.byteLength, 0);
+	const totalBytes = files.reduce(
+		(total, file) => total + file.bytes.byteLength,
+		0,
+	);
 	if (totalBytes > maxSandboxInputTotalBytes) {
 		throw new Error(
 			`Input files are too large. Maximum total is ${maxSandboxInputTotalBytes} bytes.`,

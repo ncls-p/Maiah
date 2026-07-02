@@ -168,7 +168,8 @@ function bytesFromBase64(value, filePath) {
 }
 
 function validateRunPayload(payload) {
-	if (!isPlainObject(payload)) throw new Error("Request body must be an object.");
+	if (!isPlainObject(payload))
+		throw new Error("Request body must be an object.");
 	const language = payload.language;
 	if (language !== "python" && language !== "node" && language !== "bash") {
 		throw new Error("language must be 'python', 'node', or 'bash'.");
@@ -177,7 +178,9 @@ function validateRunPayload(payload) {
 		throw new Error("code is required.");
 	}
 	if (payload.code.length > maxCodeChars) {
-		throw new Error(`code is too large. Maximum is ${maxCodeChars} characters.`);
+		throw new Error(
+			`code is too large. Maximum is ${maxCodeChars} characters.`,
+		);
 	}
 	const stdin =
 		typeof payload.stdin === "string" ? payload.stdin.slice(0, 100_000) : "";
@@ -432,7 +435,11 @@ function executeProcess(input, workdir) {
 		}
 
 		child.on("error", (error) => {
-			stderr = appendLimited(stderr, Buffer.from(error.message), maxStderrBytes);
+			stderr = appendLimited(
+				stderr,
+				Buffer.from(error.message),
+				maxStderrBytes,
+			);
 			finish(127, null);
 		});
 		child.on("close", finish);

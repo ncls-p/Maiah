@@ -178,7 +178,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          "node -e \"const http=require('http');const req=http.request({socketPath:process.env.SANDBOX_RUNNER_SOCKET||'/run/sandbox/sandbox.sock',path:'/health'},res=>process.exit(res.statusCode===200?0:1));req.on('error',()=>process.exit(1));req.end();\"",
+          'node -e "const http=require(''http'');const req=http.request({socketPath:process.env.SANDBOX_RUNNER_SOCKET||''/run/sandbox/sandbox.sock'',path:''/health''},res=>process.exit(res.statusCode===200?0:1));req.on(''error'',()=>process.exit(1));req.end();"',
         ]
       interval: 30s
       timeout: 5s
