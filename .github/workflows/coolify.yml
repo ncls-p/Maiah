@@ -328,12 +328,19 @@ jobs:
             grep -E "${pattern}" "${changed_files}" >/dev/null
           }
 
-          # Build every deployable image for every deployment event. This keeps
-          # PR previews and production fully pinned to the current commit instead
-          # of reusing main-latest for unchanged paths.
+          # Keep app images pinned to the current commit for each deployment.
           app_changed=true
           searxng_changed=true
-          sandbox_changed=true
+
+          # The OpenSandbox code image is very large and blocks Coolify deploys
+          # while every unique PR tag is pulled on the target server. Its content
+          # only depends on the opensandbox build context, so reuse main-latest
+          # for normal app-only changes and build/pull a new sandbox image only
+          # when the sandbox image definition changes.
+          sandbox_changed=false
+          if changes_match '^(opensandbox/|scripts/build-opensandbox-image\.sh$|\.github/workflows/coolify\.yml$)'; then
+            sandbox_changed=true
+          fi
 
           image_exists() {
             docker buildx imagetools inspect "$1" >/dev/null 2>&1
