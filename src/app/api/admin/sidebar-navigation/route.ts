@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-
-import { logHandledError } from "@/lib/logger";
+import { handleRoute } from "@/lib/route-handler";
 import { requireAdminApiSession } from "@/modules/admin/auth";
 import {
   defaultSidebarNavConfig,
@@ -37,12 +36,7 @@ export async function GET() {
       catalog: getSidebarNavCatalog(),
       isCustomized: saved !== null,
     });
-  } catch (error) {
-    logHandledError(
-      "Failed to read sidebar navigation config",
-      {},
-      error as Error,
-    );
+  } catch {
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },
@@ -51,44 +45,38 @@ export async function GET() {
 }
 
 export async function PATCH(req: NextRequest) {
-  try {
-    const auth = await requireAdminApiSession();
-    if (!auth.ok) return auth.response;
+  return handleRoute(
+    req,
+    async ({ session }) => {
+      const auth = await requireAdminApiSession();
+      if (!auth.ok) return auth.response;
 
-    const parsed = updateSchema.safeParse(await req.json());
-    if (!parsed.success) {
-      return NextResponse.json(
-        { error: "Invalid input", details: parsed.error.issues },
-        { status: 400 },
-      );
-    }
+      const parsed = updateSchema.safeParse(await req.json());
+      if (!parsed.success) {
+        return NextResponse.json(
+          { error: "Invalid input", details: parsed.error.issues },
+          { status: 400 },
+        );
+      }
 
-    const config = normalizeSidebarNavConfig(parsed.data);
-    const visibleCount = config.items.filter((item) => item.visible).length;
-    if (visibleCount === 0) {
-      return NextResponse.json(
-        { error: "At least one navigation item must remain visible." },
-        { status: 400 },
-      );
-    }
+      const config = normalizeSidebarNavConfig(parsed.data);
+      const visibleCount = config.items.filter((item) => item.visible).length;
+      if (visibleCount === 0) {
+        return NextResponse.json(
+          { error: "At least one navigation item must remain visible." },
+          { status: 400 },
+        );
+      }
 
-    const saved = await setSidebarNavConfig(config, auth.session.user.id);
-    return NextResponse.json({
-      config: saved,
-      catalog: getSidebarNavCatalog(),
-      isCustomized: true,
-    });
-  } catch (error) {
-    logHandledError(
-      "Failed to update sidebar navigation config",
-      {},
-      error as Error,
-    );
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
-  }
+      const saved = await setSidebarNavConfig(config, session.user.id);
+      return NextResponse.json({
+        config: saved,
+        catalog: getSidebarNavCatalog(),
+        isCustomized: true,
+      });
+    },
+    { logLabel: "Failed to update sidebar navigation config" },
+  );
 }
 
 export async function DELETE() {
@@ -103,12 +91,7 @@ export async function DELETE() {
       catalog: getSidebarNavCatalog(),
       isCustomized: false,
     });
-  } catch (error) {
-    logHandledError(
-      "Failed to reset sidebar navigation config",
-      {},
-      error as Error,
-    );
+  } catch {
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },

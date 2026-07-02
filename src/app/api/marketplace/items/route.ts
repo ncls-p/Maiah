@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { logHandledError } from "@/lib/logger";
+import {
+  handleRoute,
+  requireWorkspacePermissionAsync,
+} from "@/lib/route-handler";
 import { isPlatformAdminSession } from "@/modules/admin/auth";
 import { getSession } from "@/modules/auth/session";
 import {
@@ -14,7 +17,6 @@ import {
   getMyMarketplaceItems,
   getSharedWithMe,
 } from "@/modules/marketplace/use-cases";
-import { authorization } from "@/server/domain/services/authorization";
 
 const createSchema = z
   .object({
@@ -53,9 +55,7 @@ const createSchema = z
 export async function GET(req: NextRequest) {
   try {
     const session = await getSession();
-    const { searchParams } = new URL(req.url);
-
-    // Special endpoints
+    const { searchParams } = req.nextUrl;
     const path = searchParams.get("_path");
     if (path === "my-items" && session) {
       return NextResponse.json(await getMyMarketplaceItems(session.user.id));
@@ -63,7 +63,6 @@ export async function GET(req: NextRequest) {
     if (path === "shared-with-me" && session) {
       return NextResponse.json(await getSharedWithMe(session.user.id));
     }
-
     const search = searchParams.get("search") || undefined;
     const type = searchParams.get("type")
       ? searchParams.get("type")!.split(",")
@@ -80,7 +79,6 @@ export async function GET(req: NextRequest) {
     if (status && !(await isPlatformAdminSession(session))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
-
     return NextResponse.json(
       await listMarketplaceItems({
         userId: session?.user.id,
@@ -91,8 +89,7 @@ export async function GET(req: NextRequest) {
         status,
       }),
     );
-  } catch (error) {
-    logHandledError("Failed to list marketplace items", {}, error as Error);
+  } catch {
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },
@@ -101,104 +98,97 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  try {
-    const session = await getSession();
-    if (!session)
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const parsed = createSchema.safeParse(await req.json());
-    if (!parsed.success)
-      return NextResponse.json(
-        { error: "Invalid input", details: parsed.error.issues },
-        { status: 400 },
+  return handleRoute(
+    req,
+    async ({ session }) => {
+      const parsed = createSchema.safeParse(await req.json());
+      if (!parsed.success)
+        return NextResponse.json(
+          { error: "Invalid input", details: parsed.error.issues },
+          { status: 400 },
+        );
+      const forbidden = await requireWorkspacePermissionAsync(
+        session.user.id,
+        parsed.data.workspaceId,
+        "marketplaceItems.publish",
       );
-
-    const permission = await authorization.requirePermission(
-      { principalType: "user", principalId: session.user.id },
-      "marketplaceItems.publish",
-      "workspace",
-      parsed.data.workspaceId,
-    );
-    if (!permission.granted)
-      return NextResponse.json(
-        { error: "Forbidden", reason: permission.reason },
-        { status: 403 },
-      );
-
-    const baseInput = {
-      workspaceId: parsed.data.workspaceId,
-      userId: session.user.id,
-      version: parsed.data.version,
-      name: parsed.data.name,
-      description: parsed.data.description,
-      visibility: parsed.data.visibility,
-      tags: parsed.data.tags,
-      changelog: parsed.data.changelog,
-      includeSecrets: parsed.data.includeSecrets,
-    };
-
-    if (parsed.data.draftOnly) {
-      if (parsed.data.agentId) {
-        const result = await createMarketplaceDraft({
+      if (forbidden) return forbidden;
+      const baseInput = {
+        workspaceId: parsed.data.workspaceId,
+        userId: session.user.id,
+        version: parsed.data.version,
+        name: parsed.data.name,
+        description: parsed.data.description,
+        visibility: parsed.data.visibility,
+        tags: parsed.data.tags,
+        changelog: parsed.data.changelog,
+        includeSecrets: parsed.data.includeSecrets,
+      };
+      if (parsed.data.draftOnly) {
+        if (parsed.data.agentId) {
+          const result = await createMarketplaceDraft({
+            ...baseInput,
+            agentId: parsed.data.agentId,
+          });
+          return NextResponse.json(result, { status: 201 });
+        }
+        if (parsed.data.skillId) {
+          const result = await createSkillMarketplaceDraft({
+            ...baseInput,
+            skillId: parsed.data.skillId,
+          });
+          return NextResponse.json(result, { status: 201 });
+        }
+        if (parsed.data.customToolId) {
+          const result = await createCustomToolMarketplaceDraft({
+            ...baseInput,
+            customToolId: parsed.data.customToolId,
+          });
+          return NextResponse.json(result, { status: 201 });
+        }
+        if (parsed.data.mcpServerId) {
+          const result = await createMcpServerMarketplaceDraft({
+            ...baseInput,
+            mcpServerId: parsed.data.mcpServerId,
+          });
+          return NextResponse.json(result, { status: 201 });
+        }
+        const result = await createMcpToolMarketplaceDraft({
           ...baseInput,
-          agentId: parsed.data.agentId,
+          mcpToolId: parsed.data.mcpToolId!,
         });
         return NextResponse.json(result, { status: 201 });
       }
-      if (parsed.data.skillId) {
-        const result = await createSkillMarketplaceDraft({
-          ...baseInput,
-          skillId: parsed.data.skillId,
-        });
-        return NextResponse.json(result, { status: 201 });
+      if (!parsed.data.agentId) {
+        return NextResponse.json(
+          {
+            error:
+              "Only agents can be published directly. Use draftOnly for skills, custom tools, and MCP presets.",
+          },
+          { status: 400 },
+        );
       }
-      if (parsed.data.customToolId) {
-        const result = await createCustomToolMarketplaceDraft({
-          ...baseInput,
-          customToolId: parsed.data.customToolId,
-        });
-        return NextResponse.json(result, { status: 201 });
-      }
-      if (parsed.data.mcpServerId) {
-        const result = await createMcpServerMarketplaceDraft({
-          ...baseInput,
-          mcpServerId: parsed.data.mcpServerId,
-        });
-        return NextResponse.json(result, { status: 201 });
-      }
-      const result = await createMcpToolMarketplaceDraft({
+      const result = await publishAgentDraft({
         ...baseInput,
-        mcpToolId: parsed.data.mcpToolId!,
+        agentId: parsed.data.agentId,
       });
       return NextResponse.json(result, { status: 201 });
-    }
-
-    if (!parsed.data.agentId) {
-      return NextResponse.json(
-        {
-          error:
-            "Only agents can be published directly. Use draftOnly for skills, custom tools, and MCP presets.",
-        },
-        { status: 400 },
-      );
-    }
-
-    const result = await publishAgentDraft({
-      ...baseInput,
-      agentId: parsed.data.agentId,
-    });
-    return NextResponse.json(result, { status: 201 });
-  } catch (error) {
-    logHandledError("Failed to create marketplace item", {}, error as Error);
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Internal server error",
+    },
+    {
+      logLabel: "Failed to create marketplace item",
+      expectedError: (error) => {
+        const message =
+          error instanceof Error ? error.message : "Internal server error";
+        return NextResponse.json(
+          { error: message },
+          {
+            status:
+              error instanceof Error && error.message.includes("not found")
+                ? 404
+                : 500,
+          },
+        );
       },
-      {
-        status:
-          error instanceof Error && error.message.includes("not found")
-            ? 404
-            : 500,
-      },
-    );
-  }
+    },
+  );
 }

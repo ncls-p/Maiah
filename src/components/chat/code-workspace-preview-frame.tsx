@@ -196,6 +196,13 @@ async function replacePreviewMatches(
   return `${result}${value.slice(cursor)}`;
 }
 
+function hasWorkspaceTextFile(
+  files: CodeWorkspaceArtifact["files"],
+  path: string,
+) {
+  return files.some((file) => file.path === path && !file.binary);
+}
+
 async function inlineLocalPreviewStyles(
   html: string,
   artifact: CodeWorkspaceArtifact,
@@ -207,14 +214,8 @@ async function inlineLocalPreviewStyles(
     if (!rel.split(/\s+/).includes("stylesheet")) return tag;
     const href = htmlAttributeValue(tag, "href");
     const stylesheetPath = href ? normalizeWorkspaceHref(path, href) : null;
-    if (
-      !stylesheetPath ||
-      !artifact.files.some(
-        (file) => file.path === stylesheetPath && !file.binary,
-      )
-    ) {
-      return tag;
-    }
+    if (!stylesheetPath) return tag;
+    if (!hasWorkspaceTextFile(artifact.files, stylesheetPath)) return tag;
     try {
       const css = await fetchCodeWorkspaceTextFile(
         artifact.projectId,
@@ -241,12 +242,8 @@ async function inlineLocalPreviewScripts(
       const openingTag = tag.match(/^<script\b([^>]*)>/i)?.[1] ?? "";
       const src = htmlAttributeValue(tag, "src");
       const scriptPath = src ? normalizeWorkspaceHref(path, src) : null;
-      if (
-        !scriptPath ||
-        !artifact.files.some((file) => file.path === scriptPath && !file.binary)
-      ) {
-        return tag;
-      }
+      if (!scriptPath) return tag;
+      if (!hasWorkspaceTextFile(artifact.files, scriptPath)) return tag;
       try {
         const js = await fetchCodeWorkspaceTextFile(
           artifact.projectId,

@@ -782,6 +782,7 @@ export const mcpServers = pgTable(
     encryptedEnvJson: jsonb("encrypted_env_json"),
     enabled: boolean("enabled").notNull().default(true),
     requireApproval: boolean("require_approval").notNull().default(false),
+    isGlobal: boolean("is_global").notNull().default(false),
     healthStatus: varchar("health_status", { length: 16 }),
     lastCheckedAt: timestamp("last_checked_at", { withTimezone: true }),
     createdById: uuid(CREATED_BY_USER_ID_COLUMN)
@@ -912,6 +913,7 @@ export const knowledgeBases = pgTable(
       .references(() => workspaces.id, { onDelete: CASCADE_ACTION }),
     name: varchar("name", { length: 255 }).notNull(),
     description: text("description"),
+    isGlobal: boolean("is_global").notNull().default(false),
     createdById: uuid(CREATED_BY_USER_ID_COLUMN)
       .notNull()
       .references(() => users.id),
@@ -1034,6 +1036,7 @@ export const agentSkills = pgTable(
     createdById: uuid(CREATED_BY_USER_ID_COLUMN)
       .notNull()
       .references(() => users.id),
+    isGlobal: boolean("is_global").notNull().default(false),
     name: varchar("name", { length: 255 }).notNull(),
     description: text("description"),
     sourcePackage: text("source_package"),
@@ -1315,6 +1318,7 @@ export const customTools = pgTable(
     createdById: uuid(CREATED_BY_USER_ID_COLUMN)
       .notNull()
       .references(() => users.id),
+    isGlobal: boolean("is_global").notNull().default(false),
     name: varchar("name", { length: 255 }).notNull(),
     description: text("description"),
     n8nWorkflowId: varchar("n8n_workflow_id", { length: 255 }),

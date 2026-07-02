@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { logHandledError } from "@/lib/logger";
-import { getSession } from "@/modules/auth/session";
+import {
+  handleRoute,
+  requireWorkspacePermissionAsync,
+} from "@/lib/route-handler";
+import { canManageTenantGlobals } from "@/modules/admin/auth";
 import { createMcpServer, listMcpServers } from "@/modules/mcp/use-cases";
-import { authorization } from "@/server/domain/services/authorization";
 
 const querySchema = z.object({ workspaceId: z.uuid() });
 const createSchema = z.object({
@@ -14,88 +16,78 @@ const createSchema = z.object({
   args: z.array(z.string().max(512)).optional(),
   url: z.url().optional(),
   requireApproval: z.boolean().optional(),
+  isGlobal: z.boolean().optional(),
   headers: z.record(z.string(), z.string()).optional(),
   env: z.record(z.string(), z.string()).optional(),
 });
 
-async function requireUserPermission(
-  userId: string,
-  workspaceId: string,
-  permission: string,
-) {
-  const result = await authorization.requirePermission(
-    { principalType: "user", principalId: userId },
-    permission,
-    "workspace",
-    workspaceId,
-  );
-  return result;
-}
-
 export async function GET(req: NextRequest) {
-  try {
-    const session = await getSession();
-    if (!session)
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const parsed = querySchema.safeParse({
-      workspaceId: new URL(req.url).searchParams.get("workspaceId"),
-    });
-    if (!parsed.success)
-      return NextResponse.json(
-        { error: "workspaceId must be a valid UUID" },
-        { status: 400 },
+  return handleRoute(
+    req,
+    async ({ session }) => {
+      const parsed = querySchema.safeParse({
+        workspaceId: req.nextUrl.searchParams.get("workspaceId"),
+      });
+      if (!parsed.success)
+        return NextResponse.json(
+          { error: "workspaceId must be a valid UUID" },
+          { status: 400 },
+        );
+      const forbidden = await requireWorkspacePermissionAsync(
+        session.user.id,
+        parsed.data.workspaceId,
+        "mcpServers.get",
       );
-    const permission = await requireUserPermission(
-      session.user.id,
-      parsed.data.workspaceId,
-      "mcpServers.get",
-    );
-    if (!permission.granted)
-      return NextResponse.json(
-        { error: "Forbidden", reason: permission.reason },
-        { status: 403 },
+      if (forbidden) return forbidden;
+      const canManageGlobal = await canManageTenantGlobals(
+        session,
+        parsed.data.workspaceId,
       );
-    return NextResponse.json(await listMcpServers(parsed.data.workspaceId));
-  } catch (error) {
-    logHandledError("Failed to list MCP servers", {}, error as Error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
-  }
+      return NextResponse.json(
+        await listMcpServers(
+          parsed.data.workspaceId,
+          session.user.id,
+          canManageGlobal,
+        ),
+      );
+    },
+    { logLabel: "Failed to list MCP servers" },
+  );
 }
 
 export async function POST(req: NextRequest) {
-  try {
-    const session = await getSession();
-    if (!session)
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const parsed = createSchema.safeParse(await req.json());
-    if (!parsed.success)
-      return NextResponse.json(
-        { error: "Invalid input", details: parsed.error.issues },
-        { status: 400 },
+  return handleRoute(
+    req,
+    async ({ session }) => {
+      const parsed = createSchema.safeParse(await req.json());
+      if (!parsed.success)
+        return NextResponse.json(
+          { error: "Invalid input", details: parsed.error.issues },
+          { status: 400 },
+        );
+      const forbidden = await requireWorkspacePermissionAsync(
+        session.user.id,
+        parsed.data.workspaceId,
+        "mcpServers.manage",
       );
-    const permission = await requireUserPermission(
-      session.user.id,
-      parsed.data.workspaceId,
-      "mcpServers.manage",
-    );
-    if (!permission.granted)
-      return NextResponse.json(
-        { error: "Forbidden", reason: permission.reason },
-        { status: 403 },
+      if (forbidden) return forbidden;
+      const canManageGlobal = await canManageTenantGlobals(
+        session,
+        parsed.data.workspaceId,
       );
-    const server = await createMcpServer({
-      ...parsed.data,
-      userId: session.user.id,
-    });
-    return NextResponse.json(server, { status: 201 });
-  } catch (error) {
-    logHandledError("Failed to create MCP server", {}, error as Error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
-  }
+      if (parsed.data.isGlobal && !canManageGlobal) {
+        return NextResponse.json(
+          { error: "Only admins can make MCP servers global" },
+          { status: 403 },
+        );
+      }
+      const server = await createMcpServer({
+        ...parsed.data,
+        isGlobal: parsed.data.isGlobal && canManageGlobal,
+        userId: session.user.id,
+      });
+      return NextResponse.json(server, { status: 201 });
+    },
+    { logLabel: "Failed to create MCP server" },
+  );
 }

@@ -1018,15 +1018,22 @@ export default function ChatPage() {
         prompt?: string;
         error?: string;
       } | null;
-      if (!response.ok || !data?.artifact || !data.prompt) {
+      if (!response.ok) {
         throw new Error(data?.error || "Failed to upload code workspace");
       }
+      if (!data?.artifact) {
+        throw new Error(data?.error || "Failed to upload code workspace");
+      }
+      if (!data.prompt) {
+        throw new Error(data.error || "Failed to upload code workspace");
+      }
+      const { artifact: uploadedArtifact, prompt } = data;
       setAttachments([]);
-      setCodeWorkspaceArtifact(data.artifact);
+      setCodeWorkspaceArtifact(uploadedArtifact);
       setInterfaceMode(CODING_INTERFACE_MODE);
-      lastAutoOpenedWorkspaceRef.current = `${data.artifact.projectId}:${data.artifact.version}`;
+      lastAutoOpenedWorkspaceRef.current = `${uploadedArtifact.projectId}:${uploadedArtifact.version}`;
       toast.success("Code workspace uploaded in chat");
-      await handleSubmit(data.prompt, { codeWorkspaceArtifact: data.artifact });
+      await handleSubmit(prompt, { codeWorkspaceArtifact: uploadedArtifact });
     } catch (error) {
       toast.error(
         error instanceof Error

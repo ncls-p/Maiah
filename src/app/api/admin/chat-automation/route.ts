@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-
-import { logHandledError } from "@/lib/logger";
+import { handleAdminRoute } from "@/lib/route-handler";
 import { requireAdminApiSession } from "@/modules/admin/auth";
 import {
   getChatAutomationAdminState,
@@ -39,12 +38,7 @@ export async function GET() {
     const auth = await requireAdminApiSession();
     if (!auth.ok) return auth.response;
     return NextResponse.json(await getChatAutomationAdminState());
-  } catch (error) {
-    logHandledError(
-      "Failed to read chat automation config",
-      {},
-      error as Error,
-    );
+  } catch {
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },
@@ -53,40 +47,34 @@ export async function GET() {
 }
 
 export async function PATCH(req: NextRequest) {
-  try {
-    const auth = await requireAdminApiSession();
-    if (!auth.ok) return auth.response;
-    const parsed = updateSchema.safeParse(await req.json());
-    if (!parsed.success) {
-      return NextResponse.json(
-        { error: "Invalid input", details: parsed.error.issues },
-        { status: 400 },
+  return handleAdminRoute(
+    req,
+    async ({ session }) => {
+      const auth = await requireAdminApiSession();
+      if (!auth.ok) return auth.response;
+      const parsed = updateSchema.safeParse(await req.json());
+      if (!parsed.success) {
+        return NextResponse.json(
+          { error: "Invalid input", details: parsed.error.issues },
+          { status: 400 },
+        );
+      }
+      const validation = await validateChatAutomationConfig(parsed.data);
+      if (!validation.ok) {
+        return NextResponse.json(
+          {
+            error: validation.issues.map((issue) => issue.message).join(" "),
+            issues: validation.issues,
+          },
+          { status: 400 },
+        );
+      }
+      const config = await setChatAutomationConfig(
+        parsed.data,
+        session.user.id,
       );
-    }
-    const validation = await validateChatAutomationConfig(parsed.data);
-    if (!validation.ok) {
-      return NextResponse.json(
-        {
-          error: validation.issues.map((issue) => issue.message).join(" "),
-          issues: validation.issues,
-        },
-        { status: 400 },
-      );
-    }
-    const config = await setChatAutomationConfig(
-      parsed.data,
-      auth.session.user.id,
-    );
-    return NextResponse.json(config);
-  } catch (error) {
-    logHandledError(
-      "Failed to update chat automation config",
-      {},
-      error as Error,
-    );
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
-  }
+      return NextResponse.json(config);
+    },
+    { logLabel: "Failed to update chat automation config" },
+  );
 }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { logHandledError } from "@/lib/logger";
+import { handleRoute } from "@/lib/route-handler";
 import { getSession } from "@/modules/auth/session";
 import {
   getMarketplaceItemDetail,
@@ -25,8 +25,7 @@ export async function GET(
     if (!item)
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     return NextResponse.json(item);
-  } catch (error) {
-    logHandledError("Failed to get marketplace item", {}, error as Error);
+  } catch {
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },
@@ -38,69 +37,64 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ itemId: string }> },
 ) {
-  try {
-    const session = await getSession();
-    if (!session)
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-    const { itemId } = await params;
-    const parsed = updateSchema.safeParse(await req.json());
-    if (!parsed.success)
-      return NextResponse.json(
-        { error: "Invalid input", details: parsed.error.issues },
-        { status: 400 },
-      );
-
-    const updated = await updateMarketplaceItem({
-      itemId,
-      userId: session.user.id,
-      ...parsed.data,
-    });
-    return NextResponse.json(updated);
-  } catch (error) {
-    logHandledError("Failed to update marketplace item", {}, error as Error);
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Internal server error",
-      },
-      {
-        status:
+  return handleRoute(
+    req,
+    async ({ session }) => {
+      const { itemId } = await params;
+      const parsed = updateSchema.safeParse(await req.json());
+      if (!parsed.success)
+        return NextResponse.json(
+          { error: "Invalid input", details: parsed.error.issues },
+          { status: 400 },
+        );
+      const updated = await updateMarketplaceItem({
+        itemId,
+        userId: session.user.id,
+        ...parsed.data,
+      });
+      return NextResponse.json(updated);
+    },
+    {
+      logLabel: "Failed to update marketplace item",
+      expectedError: (error) => {
+        const message =
+          error instanceof Error ? error.message : "Internal server error";
+        const status =
           error instanceof Error && error.message.includes("not found")
             ? 404
             : error instanceof Error && error.message.includes("Not authorized")
               ? 403
-              : 500,
+              : 500;
+        return NextResponse.json({ error: message }, { status });
       },
-    );
-  }
+    },
+  );
 }
 
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ itemId: string }> },
 ) {
-  try {
-    const session = await getSession();
-    if (!session)
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-    const { itemId } = await params;
-    const deleted = await deleteMarketplaceItem(itemId, session.user.id);
-    return NextResponse.json(deleted);
-  } catch (error) {
-    logHandledError("Failed to delete marketplace item", {}, error as Error);
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Internal server error",
-      },
-      {
-        status:
+  return handleRoute(
+    req,
+    async ({ session }) => {
+      const { itemId } = await params;
+      const deleted = await deleteMarketplaceItem(itemId, session.user.id);
+      return NextResponse.json(deleted);
+    },
+    {
+      logLabel: "Failed to delete marketplace item",
+      expectedError: (error) => {
+        const message =
+          error instanceof Error ? error.message : "Internal server error";
+        const status =
           error instanceof Error && error.message.includes("not found")
             ? 404
             : error instanceof Error && error.message.includes("Not authorized")
               ? 403
-              : 500,
+              : 500;
+        return NextResponse.json({ error: message }, { status });
       },
-    );
-  }
+    },
+  );
 }

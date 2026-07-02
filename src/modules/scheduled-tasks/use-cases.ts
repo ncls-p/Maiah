@@ -4,6 +4,7 @@ import { generateText } from "ai";
 import { encryptValue } from "@/lib/crypto";
 import { logHandledError, logHandledWarning } from "@/lib/logger";
 import {
+  canUseAgent,
   getActiveVersion,
   getAgentById,
   resolveProviderForVersion,
@@ -63,7 +64,7 @@ function assertValidTimeOfDay(value: string | null | undefined) {
   if (hour > 23 || minute > 59) throw new Error("timeOfDay is invalid");
 }
 
-function normalizeTaskInput(input: ScheduledTaskInput) {
+export function normalizeTaskInput(input: ScheduledTaskInput) {
   const title = input.title.trim();
   const prompt = input.prompt.trim();
   if (!title) throw new Error("Title is required");
@@ -151,7 +152,7 @@ function zonedTimeToUtc(input: {
   );
 }
 
-function computeNextRunAt(input: {
+export function computeNextRunAt(input: {
   frequency: ScheduledTaskFrequency;
   timezone?: string;
   timeOfDay?: string | null;
@@ -195,9 +196,14 @@ function computeNextRunAt(input: {
   return candidate;
 }
 
-async function assertAgentInWorkspace(agentId: string, workspaceId: string) {
+async function assertAgentInWorkspace(
+  agentId: string,
+  workspaceId: string,
+  userId?: string,
+) {
   const agent = await getAgentById(agentId, workspaceId);
   if (!agent) throw new Error("Agent not found");
+  if (userId && !canUseAgent(agent, userId)) throw new Error("Agent not found");
   return agent;
 }
 
@@ -216,7 +222,11 @@ export async function listScheduledTasks(workspaceId: string, userId: string) {
 
 export async function createScheduledTask(input: ScheduledTaskInput) {
   const normalized = normalizeTaskInput(input);
-  await assertAgentInWorkspace(normalized.agentId, normalized.workspaceId);
+  await assertAgentInWorkspace(
+    normalized.agentId,
+    normalized.workspaceId,
+    normalized.userId,
+  );
   const nextRunAt = computeNextRunAt(normalized);
   const [task] = await db
     .insert(scheduledTasks)
@@ -270,7 +280,7 @@ export async function updateScheduledTask(
     intervalMinutes: input.intervalMinutes ?? existing.intervalMinutes,
     enabled: input.enabled ?? existing.enabled,
   });
-  await assertAgentInWorkspace(merged.agentId, workspaceId);
+  await assertAgentInWorkspace(merged.agentId, workspaceId, userId);
   const nextRunAt = computeNextRunAt(merged);
 
   const [task] = await db
@@ -411,7 +421,11 @@ async function insertMessage(input: {
 
 async function runScheduledTask(task: typeof scheduledTasks.$inferSelect) {
   const startedAt = Date.now();
-  const agent = await assertAgentInWorkspace(task.agentId, task.workspaceId);
+  const agent = await assertAgentInWorkspace(
+    task.agentId,
+    task.workspaceId,
+    task.userId,
+  );
   const version = await getActiveVersion(task.agentId);
   if (!version) throw new Error("Agent has no active version");
   const providerConfig = await resolveProviderForVersion(version);

@@ -17,6 +17,8 @@ export interface McpServer {
   healthStatus: string | null;
   enabled: boolean;
   requireApproval: boolean;
+  isGlobal: boolean;
+  canEdit: boolean;
   argsJson?: string[] | null;
   hasHeaders: boolean;
   hasEnv: boolean;

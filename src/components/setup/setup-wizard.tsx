@@ -443,7 +443,9 @@ export function SetupWizard({
     const modelId = discoveredModel?.modelId ?? manualModelId.trim();
     const displayName =
       discoveredModel?.displayName ?? discoveredModel?.modelId ?? modelId;
-    if (!workspaceId || !providerId || !modelId) return;
+    if (!workspaceId) return;
+    if (!providerId) return;
+    if (!modelId) return;
     setBusy(true);
     try {
       const model = await fetchJson<ProviderModel>(
@@ -478,7 +480,9 @@ export function SetupWizard({
   }
 
   async function finishSetup() {
-    if (!workspaceId || !providerId || !modelDbId) return;
+    if (!workspaceId) return;
+    if (!providerId) return;
+    if (!modelDbId) return;
     setBusy(true);
     try {
       let completedAgentId = agentId;

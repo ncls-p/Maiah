@@ -25,12 +25,14 @@ describe("SYSTEM_ROLES", () => {
 		}
 	});
 
-	it("workspace.owner has broad explicit wildcard permissions", () => {
-		const owner = SYSTEM_ROLES.find((r) => r.name === "workspace.owner");
-		expect(owner).toBeDefined();
-		expect(owner!.permissions).toContain("workspaces.*");
-		expect(owner!.permissions).not.toContain("members.*");
-		expect(owner!.permissions).not.toContain("workspace.*");
+	it("defines only tenant admin and tenant user workspace roles", () => {
+		const workspaceRoleNames = SYSTEM_ROLES.filter(
+			(r) => r.scopeType === "workspace",
+		).map((role) => role.name);
+		expect(workspaceRoleNames.sort()).toEqual([
+			"workspace.admin",
+			"workspace.member",
+		]);
 	});
 
 	it("workspace.member has restricted permissions", () => {
@@ -40,17 +42,32 @@ describe("SYSTEM_ROLES", () => {
 		expect(member!.permissions).not.toContain("providers.*");
 	});
 
-	it("organization.owner has org-level wildcard permissions", () => {
-		const owner = SYSTEM_ROLES.find((r) => r.name === "organization.owner");
-		expect(owner).toBeDefined();
-		expect(owner!.scopeType).toBe("organization");
-		expect(owner!.permissions.some((p) => p.endsWith(".*"))).toBe(true);
+	it("defines only organization admin and organization user roles", () => {
+		const organizationRoleNames = SYSTEM_ROLES.filter(
+			(r) => r.scopeType === "organization",
+		).map((role) => role.name);
+		expect(organizationRoleNames.sort()).toEqual([
+			"organization.admin",
+			"organization.user",
+		]);
 	});
 
 	it("role names are unique", () => {
 		const names = SYSTEM_ROLES.map((r) => r.name);
 		const unique = new Set(names);
 		expect(unique.size).toBe(names.length);
+	});
+
+	it("workspace roles do not include legacy owner/developer/viewer roles", () => {
+		expect(SYSTEM_ROLES.some((role) => role.name.includes("owner"))).toBe(
+			false,
+		);
+		expect(SYSTEM_ROLES.some((role) => role.name.includes("developer"))).toBe(
+			false,
+		);
+		expect(SYSTEM_ROLES.some((role) => role.name.includes("viewer"))).toBe(
+			false,
+		);
 	});
 
 	it("workspace roles do not include member-management permissions", () => {

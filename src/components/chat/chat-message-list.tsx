@@ -169,9 +169,9 @@ function ChatScrollControls({ sending }: { sending: boolean }) {
 function isMessageSecondToLastStreamingUser(
   message: ChatMessage,
   messages: ChatMessage[],
-  sending: boolean,
+  options?: { sending?: boolean },
 ): boolean {
-  if (!sending) return false;
+  if (!options?.sending) return false;
   const prev = messages[messages.length - 2];
   const next = messages[messages.length - 1];
   return (
@@ -305,7 +305,9 @@ export function ChatMessageList({
                 isAssistant && message.status === "streaming";
               const isOutgoingUserBeforeStreamingAssistant =
                 isUser &&
-                isMessageSecondToLastStreamingUser(message, messages, sending);
+                isMessageSecondToLastStreamingUser(message, messages, {
+                  sending,
+                });
               const shouldScrollAnchor =
                 isUser && !isOutgoingUserBeforeStreamingAssistant;
               const isAnimating = sending && isLast && isStreamingAssistant;

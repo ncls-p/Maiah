@@ -177,6 +177,9 @@ function collectEligibleNavItems(shell: WorkspaceShellState): NavItem[] {
     return true;
   });
 
+  const _hrefMatch = (href: string) => (item: { href: string }) =>
+    item.href === href;
+
   const items: NavItem[] = [];
 
   for (const id of DEFAULT_SIDEBAR_NAV_IDS) {
@@ -192,8 +195,8 @@ function collectEligibleNavItems(shell: WorkspaceShellState): NavItem[] {
     const template = NAV_ITEM_TEMPLATES.get(id);
     if (!template) continue;
 
-    if (adminNavItems.some((item) => item.href === id)) {
-      if (!adminItems.some((item) => item.href === id)) continue;
+    if (adminNavItems.some(_hrefMatch(id))) {
+      if (!adminItems.some(_hrefMatch(id))) continue;
     }
 
     items.push({ ...template });

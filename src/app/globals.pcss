@@ -255,6 +255,17 @@
   html {
     @apply font-sans scroll-smooth;
     color-scheme: light;
+    scroll-padding-block-start: 5rem;
+  }
+
+  :target,
+  :focus-visible {
+    scroll-margin-block: 5rem;
+  }
+
+  :where(a, button, input, textarea, select, summary, [tabindex]:not([tabindex="-1"])):focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
   }
 
   html.dark {

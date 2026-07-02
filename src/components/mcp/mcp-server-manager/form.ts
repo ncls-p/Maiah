@@ -13,6 +13,7 @@ export const emptyForm = {
   envKeyName: "API_KEY",
   envKeyValue: "",
   requireApproval: false,
+  isGlobal: false,
   headers: "",
   env: "",
 };
@@ -96,6 +97,7 @@ export function serverFormFromServer(
     command: string | null;
     argsJson?: string[] | null;
     requireApproval: boolean;
+    isGlobal?: boolean;
   },
   authHint?: McpAuthHint,
 ): McpServerForm {
@@ -112,6 +114,7 @@ export function serverFormFromServer(
     envKeyName: authHint?.envKeyName ?? "API_KEY",
     envKeyValue: "",
     requireApproval: server.requireApproval,
+    isGlobal: server.isGlobal ?? false,
     headers: "",
     env: "",
   };

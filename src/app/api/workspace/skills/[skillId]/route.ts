@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { getSession } from "@/modules/auth/session";
+import {
+  handleRoute,
+  requireWorkspacePermissionAsync,
+} from "@/lib/route-handler";
+import { canManageTenantGlobals } from "@/modules/admin/auth";
 import {
   archiveAgentSkill,
   updateSkillManually,
 } from "@/modules/skills/use-cases";
-import { authorization } from "@/server/domain/services/authorization";
-import { logHandledError } from "@/lib/logger";
 
 const routeParamsSchema = z.object({ skillId: z.uuid() });
 const workspaceQuerySchema = z.object({ workspaceId: z.uuid() });
@@ -22,123 +24,127 @@ const updateSkillSchema = z.object({
       }),
     )
     .min(1),
+  isGlobal: z.boolean().optional(),
 });
 
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ skillId: string }> },
 ) {
-  try {
-    const session = await getSession();
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const parsedParams = routeParamsSchema.safeParse(await params);
-    const parsedBody = updateSkillSchema.safeParse(await req.json());
-    if (!parsedParams.success || !parsedBody.success) {
-      return NextResponse.json({ error: "Invalid request" }, { status: 400 });
-    }
-
-    const permission = await authorization.requirePermission(
-      { principalType: "user", principalId: session.user.id },
-      "tools.configure",
-      "workspace",
-      parsedBody.data.workspaceId,
-    );
-    if (!permission.granted) {
-      return NextResponse.json(
-        { error: "Forbidden", reason: permission.reason },
-        { status: 403 },
+  return handleRoute(
+    req,
+    async ({ session }) => {
+      const parsedParams = routeParamsSchema.safeParse(await params);
+      const parsedBody = updateSkillSchema.safeParse(await req.json());
+      if (!parsedParams.success || !parsedBody.success) {
+        return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+      }
+      const forbidden = await requireWorkspacePermissionAsync(
+        session.user.id,
+        parsedBody.data.workspaceId,
+        "tools.configure",
       );
-    }
-
-    const skill = await updateSkillManually({
-      workspaceId: parsedBody.data.workspaceId,
-      userId: session.user.id,
-      skillId: parsedParams.data.skillId,
-      name: parsedBody.data.name,
-      description: parsedBody.data.description,
-      markdownFiles: parsedBody.data.markdownFiles,
-    });
-
-    return NextResponse.json({ skill });
-  } catch (error) {
-    if (error instanceof Error) {
-      const expectedMessages = [
-        "Skill not found",
-        "At least one Markdown file is required",
-        "All files must be .md files",
-        "Total Markdown content exceeds size limit",
-        "Skill name must be 1-64 chars and contain only lowercase letters, numbers, and hyphens",
-        "Skill name cannot contain reserved words",
-        "Skill description is required",
-        "Skill description must be 1024 characters or less",
-        "Skill metadata cannot contain XML or HTML tags",
-      ];
-      if (expectedMessages.includes(error.message)) {
+      if (forbidden) return forbidden;
+      const canManageGlobal = await canManageTenantGlobals(
+        session,
+        parsedBody.data.workspaceId,
+      );
+      if (parsedBody.data.isGlobal && !canManageGlobal) {
         return NextResponse.json(
-          { error: error.message },
-          { status: error.message === "Skill not found" ? 404 : 400 },
+          { error: "Only admins can make skills global" },
+          { status: 403 },
         );
       }
-    }
-    logHandledError("Failed to update skill", {}, error as Error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
-  }
+      const skill = await updateSkillManually({
+        workspaceId: parsedBody.data.workspaceId,
+        userId: session.user.id,
+        skillId: parsedParams.data.skillId,
+        name: parsedBody.data.name,
+        description: parsedBody.data.description,
+        markdownFiles: parsedBody.data.markdownFiles,
+        isGlobal: parsedBody.data.isGlobal,
+        canManageGlobal,
+      });
+      return NextResponse.json({ skill });
+    },
+    {
+      logLabel: "Failed to update skill",
+      expectedError: (error) => {
+        if (error instanceof Error) {
+          const expectedMessages = [
+            "Skill not found",
+            "At least one Markdown file is required",
+            "All files must be .md files",
+            "Total Markdown content exceeds size limit",
+            "Skill name must be 1-64 chars and contain only lowercase letters, numbers, and hyphens",
+            "Skill name cannot contain reserved words",
+            "Skill description is required",
+            "Skill description must be 1024 characters or less",
+            "Skill metadata cannot contain XML or HTML tags",
+          ];
+          if (expectedMessages.includes(error.message)) {
+            return NextResponse.json(
+              { error: error.message },
+              { status: error.message === "Skill not found" ? 404 : 400 },
+            );
+          }
+        }
+        return NextResponse.json(
+          { error: "Internal server error" },
+          { status: 500 },
+        );
+      },
+    },
+  );
 }
 
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ skillId: string }> },
 ) {
-  try {
-    const session = await getSession();
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const parsedParams = routeParamsSchema.safeParse(await params);
-    const { searchParams } = new URL(req.url);
-    const parsedQuery = workspaceQuerySchema.safeParse({
-      workspaceId: searchParams.get("workspaceId"),
-    });
-
-    if (!parsedParams.success || !parsedQuery.success) {
-      return NextResponse.json({ error: "Invalid request" }, { status: 400 });
-    }
-
-    const permission = await authorization.requirePermission(
-      { principalType: "user", principalId: session.user.id },
-      "tools.configure",
-      "workspace",
-      parsedQuery.data.workspaceId,
-    );
-    if (!permission.granted) {
-      return NextResponse.json(
-        { error: "Forbidden", reason: permission.reason },
-        { status: 403 },
+  return handleRoute(
+    req,
+    async ({ session }) => {
+      const parsedParams = routeParamsSchema.safeParse(await params);
+      const { searchParams } = req.nextUrl;
+      const parsedQuery = workspaceQuerySchema.safeParse({
+        workspaceId: searchParams.get("workspaceId"),
+      });
+      if (!parsedParams.success || !parsedQuery.success) {
+        return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+      }
+      const forbidden = await requireWorkspacePermissionAsync(
+        session.user.id,
+        parsedQuery.data.workspaceId,
+        "tools.configure",
       );
-    }
-
-    await archiveAgentSkill({
-      workspaceId: parsedQuery.data.workspaceId,
-      skillId: parsedParams.data.skillId,
-      userId: session.user.id,
-    });
-
-    return NextResponse.json({ ok: true });
-  } catch (error) {
-    if ((error as Error).message === "Skill not found") {
-      return NextResponse.json({ error: "Skill not found" }, { status: 404 });
-    }
-    logHandledError("Failed to delete skill", {}, error as Error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
-  }
+      if (forbidden) return forbidden;
+      const canManageGlobal = await canManageTenantGlobals(
+        session,
+        parsedQuery.data.workspaceId,
+      );
+      await archiveAgentSkill({
+        workspaceId: parsedQuery.data.workspaceId,
+        skillId: parsedParams.data.skillId,
+        userId: session.user.id,
+        canManageGlobal,
+      });
+      return NextResponse.json({ ok: true });
+    },
+    {
+      logLabel: "Failed to delete skill",
+      expectedError: (error) => {
+        if (error instanceof Error && error.message === "Skill not found") {
+          return NextResponse.json(
+            { error: "Skill not found" },
+            { status: 404 },
+          );
+        }
+        return NextResponse.json(
+          { error: "Internal server error" },
+          { status: 500 },
+        );
+      },
+    },
+  );
 }

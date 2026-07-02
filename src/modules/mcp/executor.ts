@@ -10,8 +10,13 @@ export async function executeMcpTool(input: {
   toolId: string;
   workspaceId: string;
   toolInput: unknown;
+  userId?: string;
 }) {
-  const server = await getMcpServer(input.serverId, input.workspaceId);
+  const server = await getMcpServer(
+    input.serverId,
+    input.workspaceId,
+    input.userId,
+  );
   if (!server) throw new Error("MCP server not found");
   if (!server.enabled) throw new Error("MCP server is disabled");
   if (!server.url) throw new Error("MCP server URL is not configured");

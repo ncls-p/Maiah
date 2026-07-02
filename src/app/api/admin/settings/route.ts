@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-
-import { logHandledError } from "@/lib/logger";
+import { handleRoute } from "@/lib/route-handler";
 import { requireAdminApiSession } from "@/modules/admin/auth";
 import {
   getRegistrationSetting,
@@ -15,8 +14,7 @@ const updateSettingsSchema = z.object({
 export async function GET() {
   try {
     return NextResponse.json(await getRegistrationSetting());
-  } catch (error) {
-    logHandledError("Failed to read admin settings", {}, error as Error);
+  } catch {
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },
@@ -25,28 +23,26 @@ export async function GET() {
 }
 
 export async function PATCH(req: NextRequest) {
-  try {
-    const auth = await requireAdminApiSession();
-    if (!auth.ok) return auth.response;
+  return handleRoute(
+    req,
+    async ({ session }) => {
+      const auth = await requireAdminApiSession();
+      if (!auth.ok) return auth.response;
 
-    const parsed = updateSettingsSchema.safeParse(await req.json());
-    if (!parsed.success) {
-      return NextResponse.json(
-        { error: "Invalid input", details: parsed.error.issues },
-        { status: 400 },
+      const parsed = updateSettingsSchema.safeParse(await req.json());
+      if (!parsed.success) {
+        return NextResponse.json(
+          { error: "Invalid input", details: parsed.error.issues },
+          { status: 400 },
+        );
+      }
+
+      const setting = await setRegistrationEnabled(
+        parsed.data.registrationEnabled,
+        session.user.id,
       );
-    }
-
-    const setting = await setRegistrationEnabled(
-      parsed.data.registrationEnabled,
-      auth.session.user.id,
-    );
-    return NextResponse.json(setting);
-  } catch (error) {
-    logHandledError("Failed to update admin settings", {}, error as Error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
-  }
+      return NextResponse.json(setting);
+    },
+    { logLabel: "Failed to update admin settings" },
+  );
 }
