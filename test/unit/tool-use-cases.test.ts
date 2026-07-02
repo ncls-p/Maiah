@@ -235,6 +235,38 @@ describe("insertToolBindingsForVersion", () => {
 		).rejects.toThrow("Tool not found");
 	});
 
+	it("inserts custom and MCP tool bindings with workspace visibility", async () => {
+		const customId = crypto.randomUUID();
+		const mcpId = crypto.randomUUID();
+		const serverId = crypto.randomUUID();
+		dbModule._sc.limit
+			.mockResolvedValueOnce([{ id: customId }])
+			.mockResolvedValueOnce([{ requireApproval: false }]);
+
+		await insertToolBindingsForVersion(
+			"v1",
+			[
+				{ toolSource: "custom", toolId: customId, requireApproval: false },
+				{ toolSource: "mcp", toolId: mcpId, mcpServerId: serverId },
+			],
+			"ws-1",
+			{ userId: "user-1" },
+		);
+
+		expect(dbModule._ic.values).toHaveBeenCalledWith([
+			expect.objectContaining({
+				toolSource: "custom",
+				toolId: customId,
+				requireApproval: false,
+			}),
+			expect.objectContaining({
+				toolSource: "mcp",
+				toolId: mcpId,
+				requireApproval: false,
+			}),
+		]);
+	});
+
 	it("inserts builtin tool binding", async () => {
 		// Use a real builtin tool ID from the catalog
 		const CALCULATOR_ID = "00000000-0000-4000-8000-000000000001";
@@ -285,6 +317,38 @@ describe("cloneToolBindings", () => {
 
 		// No bindings inserted because the mcp tool lookup failed
 		expect(dbModule.db.insert).not.toHaveBeenCalled();
+	});
+
+	it("clones custom, MCP, and builtin bindings", async () => {
+		const CALCULATOR_ID = "00000000-0000-4000-8000-000000000001";
+		const mcpToolId = crypto.randomUUID();
+		const serverId = crypto.randomUUID();
+		dbModule._sc.where.mockResolvedValueOnce([
+			{
+				toolSource: "custom",
+				toolId: crypto.randomUUID(),
+				requireApproval: true,
+			},
+			{ toolSource: "mcp", toolId: mcpToolId, requireApproval: false },
+			{ toolSource: "builtin", toolId: CALCULATOR_ID, requireApproval: false },
+		]);
+		dbModule._sc.limit
+			.mockResolvedValueOnce([{ mcpServerId: serverId }])
+			.mockResolvedValueOnce([{ id: "custom-ok" }])
+			.mockResolvedValueOnce([{ requireApproval: true }]);
+
+		await cloneToolBindings("v1", "v2", "ws-1", { userId: "user-1" });
+
+		expect(dbModule._ic.values).toHaveBeenCalledWith(
+			expect.arrayContaining([
+				expect.objectContaining({ toolSource: "custom" }),
+				expect.objectContaining({ toolSource: "mcp", toolId: mcpToolId }),
+				expect.objectContaining({
+					toolSource: "builtin",
+					toolId: CALCULATOR_ID,
+				}),
+			]),
+		);
 	});
 
 	it("clones builtin bindings", async () => {

@@ -15,6 +15,42 @@ vi.mock("@alibaba-group/opensandbox", () => ({
 	Sandbox: { create: opensandboxMock.create },
 }));
 
+vi.mock("@/modules/chat/attachments", () => ({
+	createChatAttachment: vi.fn(async (input: { fileName: string }) => ({
+		kind: "chat_file",
+		id: `att-${input.fileName}`,
+		fileName: input.fileName,
+		mimeType: "text/plain",
+		size: 1,
+		hash: "hash",
+		url: `/attachments/${input.fileName}`,
+		category: "text",
+		extractionStatus: "readable",
+		extractedTextChars: 0,
+	})),
+	getChatAttachmentBytes: vi.fn(async () => ({
+		metadata: {
+			kind: "chat_file",
+			id: "source-att",
+			fileName: "Source File.txt",
+			mimeType: "text/plain",
+			size: 5,
+			hash: "hash",
+			url: "/attachments/source",
+			category: "text",
+			extractionStatus: "readable",
+			extractedTextChars: 12,
+		},
+		bytes: Buffer.from("input"),
+	})),
+	getChatAttachmentExtractedText: vi.fn(async () => ({
+		text: "extracted text",
+	})),
+	isChatFileAttachment: vi.fn(
+		(value: { kind?: string }) => value.kind === "chat_file",
+	),
+}));
+
 type ExecuteCodeSandbox =
 	typeof import("@/modules/tool/code-sandbox")["executeCodeSandbox"];
 
@@ -67,7 +103,7 @@ function fakeSandbox(options: {
 					stderr: [{ text: options.stderr ?? "" }],
 				},
 				result: [],
-				exitCode: options.exitCode ?? 0,
+				exitCode: options.exitCode === undefined ? 0 : options.exitCode,
 				complete: { executionTimeMs: 12, timestamp: Date.now() },
 			}),
 		},
@@ -178,5 +214,167 @@ describe("OpenSandbox code sandbox", () => {
 		expect(result.stderr).toContain(
 			"docker compose -f docker-compose.dev.yml up -d opensandbox-server",
 		);
+	});
+
+	it("runs Python with stdin, base64 files, attachment text, and persisted outputs", async () => {
+		const sandbox = fakeSandbox({
+			stdout: "py ok\n",
+			files: [
+				{ path: "/workspace/report.txt", content: "generated report" },
+				{ path: "/workspace/data.bin", content: Buffer.from("bin") },
+				{ path: "/workspace/home/ignored.txt", content: "ignore" },
+			],
+		});
+		opensandboxMock.create.mockResolvedValue(sandbox);
+		const { executeCodeSandbox } = await loadSandboxModule();
+
+		const result = await (executeCodeSandbox as ExecuteCodeSandbox)(
+			{
+				language: "python",
+				code: "print(input())",
+				stdin: "hello stdin",
+				files: [
+					{
+						path: "data.bin",
+						contentBase64: Buffer.from("bin").toString("base64"),
+					},
+				],
+				attachments: [{ id: "source-att", includeExtractedText: true }],
+				timeoutMs: 999_999,
+			},
+			{ workspaceId: "ws-1", userId: "user-1" },
+		);
+
+		expect(result.ok).toBe(true);
+		expect(result.language).toBe("python");
+		expect(result.files).toContainEqual(
+			expect.objectContaining({
+				path: "report.txt",
+				textPreview: "generated report",
+				downloadUrl: "/attachments/report.txt",
+			}),
+		);
+		expect(result.files).toContainEqual(
+			expect.objectContaining({
+				path: "data.bin",
+				fromInput: true,
+				modified: false,
+			}),
+		);
+		expect(sandbox.writtenFiles.get("/workspace/.stdin")?.toString()).toBe(
+			"hello stdin",
+		);
+		expect(
+			sandbox.writtenFiles
+				.get("/workspace/attachments/Source File.txt")
+				?.toString(),
+		).toBe("input");
+		expect(
+			sandbox.writtenFiles
+				.get("/workspace/attachments/Source File.extracted.txt")
+				?.toString(),
+		).toBe("extracted text");
+		expect(sandbox.commands.run).toHaveBeenCalledWith(
+			expect.stringContaining("python3 -I main.py < .stdin"),
+			expect.objectContaining({ timeoutSeconds: 120 }),
+		);
+	});
+
+	it("reports execution errors, timeouts, binary previews, and oversized collected files", async () => {
+		const sandbox = fakeSandbox({
+			exitCode: null,
+			stderr: "execution timed out",
+			files: [
+				{ path: "/workspace/big.txt", content: Buffer.alloc(1_000_001, "a") },
+				{ path: "/workspace/image.bin", content: Buffer.from([0, 1, 2, 3]) },
+			],
+		});
+		opensandboxMock.create.mockResolvedValue(sandbox);
+		const { executeCodeSandbox } = await loadSandboxModule();
+
+		const result = await (executeCodeSandbox as ExecuteCodeSandbox)({
+			language: "bash",
+			code: "sleep 999",
+			timeoutMs: 10,
+		});
+
+		expect(result.ok).toBe(false);
+		expect(result.timedOut).toBe(true);
+		expect(result.exitCode).toBeNull();
+		expect(result.files).toContainEqual(
+			expect.objectContaining({ path: "big.txt", skipped: "too_large" }),
+		);
+		expect(result.files).toContainEqual(
+			expect.objectContaining({
+				path: "image.bin",
+				mimeType: "application/octet-stream",
+			}),
+		);
+		expect(sandbox.commands.run).toHaveBeenCalledWith(
+			expect.stringContaining(
+				"bash --noprofile --norc -e -u -o pipefail main.sh",
+			),
+			expect.any(Object),
+		);
+	});
+
+	it("validates language, code, input file size, base64, reserved paths, and attachment context", async () => {
+		const { executeCodeSandbox } = await loadSandboxModule();
+		await expect(
+			(executeCodeSandbox as ExecuteCodeSandbox)({
+				language: "ruby" as never,
+				code: "puts 1",
+			}),
+		).resolves.toMatchObject({
+			ok: false,
+			error: "language must be 'python', 'node', or 'bash'.",
+		});
+		await expect(
+			(executeCodeSandbox as ExecuteCodeSandbox)({
+				language: "node",
+				code: "   ",
+			}),
+		).resolves.toMatchObject({ ok: false, error: "code is required." });
+		await expect(
+			(executeCodeSandbox as ExecuteCodeSandbox)({
+				language: "node",
+				code: "x",
+				files: [{ path: "main.mjs", content: "reserved" }],
+			}),
+		).resolves.toMatchObject({
+			ok: false,
+			error: "Reserved sandbox file path.",
+		});
+		await expect(
+			(executeCodeSandbox as ExecuteCodeSandbox)({
+				language: "node",
+				code: "x",
+				files: [{ path: "data.txt", contentBase64: "not-base64" }],
+			}),
+		).resolves.toMatchObject({
+			ok: false,
+			error: expect.stringContaining("not valid base64"),
+		});
+		await expect(
+			(executeCodeSandbox as ExecuteCodeSandbox)({
+				language: "node",
+				code: "x",
+				files: [{ path: "huge.txt", content: "x".repeat(1_500_001) }],
+			}),
+		).resolves.toMatchObject({
+			ok: false,
+			error: expect.stringContaining("Input file is too large"),
+		});
+		await expect(
+			(executeCodeSandbox as ExecuteCodeSandbox)({
+				language: "node",
+				code: "x",
+				attachments: [{ id: "a" }],
+			}),
+		).resolves.toMatchObject({
+			ok: false,
+			error: "Sandbox attachment access requires a workspace context.",
+		});
+		expect(opensandboxMock.create).not.toHaveBeenCalled();
 	});
 });
