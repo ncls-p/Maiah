@@ -1,7 +1,7 @@
-import nextEnv from "@next/env";
+import { loadEnvConfig } from "@next/env";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 
-nextEnv.loadEnvConfig(process.cwd());
+loadEnvConfig(process.cwd());
 
 async function run() {
 	const [{ db }, { logger }] = await Promise.all([

@@ -5,6 +5,26 @@ let matchesPermission: (
 	requiredPermission: string,
 ) => boolean;
 
+type RoleWithPermissions = {
+	scopeType: string;
+	permissions: string[];
+};
+
+function isWorkspaceRole(role: RoleWithPermissions) {
+	return role.scopeType === "workspace";
+}
+
+function roleHasPermission(
+	role: { permissions: string[] } | undefined,
+	requiredPermission: string,
+) {
+	return Boolean(
+		role?.permissions.some((permission) =>
+			matchesPermission(permission, requiredPermission),
+		),
+	);
+}
+
 beforeAll(async () => {
 	process.env.APP_ENCRYPTION_KEY =
 		"0000000000000000000000000000000000000000000000000000000000000000";
@@ -25,19 +45,9 @@ beforeAll(async () => {
 describe("workspace IAM", () => {
 	it("does not grant workspace member-management permissions", async () => {
 		const { SYSTEM_ROLES } = await import("@/server/domain/entities/iam");
-		for (const role of SYSTEM_ROLES.filter(
-			(item) => item.scopeType === "workspace",
-		)) {
-			expect(
-				role.permissions.some((permission) =>
-					matchesPermission(permission, "members.invite"),
-				),
-			).toBe(false);
-			expect(
-				role.permissions.some((permission) =>
-					matchesPermission(permission, "members.remove"),
-				),
-			).toBe(false);
+		for (const role of SYSTEM_ROLES.filter(isWorkspaceRole)) {
+			expect(roleHasPermission(role, "members.invite")).toBe(false);
+			expect(roleHasPermission(role, "members.remove")).toBe(false);
 		}
 	});
 
@@ -49,37 +59,23 @@ describe("workspace IAM", () => {
 		const memberRole = SYSTEM_ROLES.find(
 			(role) => role.name === "workspace.member",
 		);
-		const memberPermissions = ["agents.chat", "tools.executeRestricted"];
-		const adminOnlyPermissions = [
+		const memberPermissions = [
+			"agents.chat",
+			"tools.executeRestricted",
 			"providers.viewMetadata",
-			"apiKeys.manage",
-			"roles.manage",
+			"models.view",
+			"apiKeys.manageOwn",
 		];
+		const adminOnlyPermissions = ["apiKeys.manage", "roles.manage"];
 
 		for (const requiredPermission of memberPermissions) {
-			expect(
-				memberRole?.permissions.some((permission) =>
-					matchesPermission(permission, requiredPermission),
-				),
-			).toBe(true);
-			expect(
-				adminRole?.permissions.some((permission) =>
-					matchesPermission(permission, requiredPermission),
-				),
-			).toBe(true);
+			expect(roleHasPermission(memberRole, requiredPermission)).toBe(true);
+			expect(roleHasPermission(adminRole, requiredPermission)).toBe(true);
 		}
 
 		for (const requiredPermission of adminOnlyPermissions) {
-			expect(
-				adminRole?.permissions.some((permission) =>
-					matchesPermission(permission, requiredPermission),
-				),
-			).toBe(true);
-			expect(
-				memberRole?.permissions.some((permission) =>
-					matchesPermission(permission, requiredPermission),
-				),
-			).toBe(false);
+			expect(roleHasPermission(adminRole, requiredPermission)).toBe(true);
+			expect(roleHasPermission(memberRole, requiredPermission)).toBe(false);
 		}
 	});
 });

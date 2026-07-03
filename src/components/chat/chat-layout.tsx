@@ -16,6 +16,7 @@ import {
 import { useWorkspaceShell } from "@/components/app-shell";
 import { DeodisLogo } from "@/components/deodis-logo";
 import { ModelLogo } from "@/components/providers/model-logo";
+import { SignOutButton } from "@/components/sign-out-button";
 import { AppHeader } from "@/components/app-header";
 import { ChatSidebar } from "@/components/chat/chat-sidebar";
 import type {
@@ -622,6 +623,7 @@ export function ChatLayout({
 									<Settings2Icon className="size-4" aria-hidden="true" />
 								</Link>
 							</Button>
+							<SignOutButton iconOnly className="size-8 rounded-lg" />
 						</div>
 					}
 				/>
