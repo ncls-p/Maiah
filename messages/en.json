@@ -875,7 +875,21 @@
     "languageDescription": "Choose the interface language for your account.",
     "adminLinkTitle": "Platform administration",
     "adminLinkDescription": "Registration, automation, integrations, and system health are managed separately.",
-    "goToAdminSettings": "Open platform settings"
+    "goToAdminSettings": "Open platform settings",
+    "passwordTitle": "Password",
+    "passwordDescription": "Change your sign-in password for this account.",
+    "currentPassword": "Current password",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm new password",
+    "revokeOtherSessions": "Sign out other sessions",
+    "revokeOtherSessionsHint": "Keep this session active and revoke other browser sessions after the change.",
+    "passwordMismatch": "The new password and confirmation do not match.",
+    "passwordTooShort": "Use at least 8 characters for the new password.",
+    "passwordUpdated": "Password updated",
+    "passwordUpdatedDescription": "Use the new password the next time you sign in.",
+    "passwordUpdateFailed": "Unable to update password",
+    "updatePassword": "Update password",
+    "updatingPassword": "Updating password…"
   },
   "admin": {
     "platformSettingsTitle": "Platform settings",

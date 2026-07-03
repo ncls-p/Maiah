@@ -162,6 +162,13 @@
       "when": 1781300000008,
       "tag": "0022_tenant_resource_scoping",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1781300000009,
+      "tag": "0023_member_self_service_permissions",
+      "breakpoints": true
     }
   ]
 }

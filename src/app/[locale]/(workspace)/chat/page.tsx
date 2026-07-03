@@ -1088,7 +1088,55 @@ export default function ChatPage() {
 	}
 
 	if (agents.length === 0) {
-		return <NoAssistantsState canRunSetup={canRunSetup} t={t} />;
+		return (
+			<ChatLayout
+				agents={agents}
+				conversations={conversations}
+				conversationFolders={conversationFolders}
+				selectedAgent={selectedAgent}
+				selectedAgentId={selectedAgentId}
+				activeConversationId={activeConversationId}
+				organizationDefaultAgentId={organizationDefaultAgentId}
+				userDefaultAgentId={userDefaultAgentId}
+				canChat={canChat}
+				canCreateAgent={canCreateAgent}
+				canRunSetup={canRunSetup}
+				loadingSidebar={loadingContext}
+				hasMoreConversations={hasMoreConversations}
+				loadingMoreConversations={loadingMoreConversations}
+				onLoadMoreConversations={loadMoreConversations}
+				onSelectAgent={selectAgent}
+				onSelectConversation={selectConversation}
+				onNewConversation={startNewConversation}
+				onSetUserDefaultAgent={(agentId: string | null) =>
+					void setUserDefaultAgent(agentId)
+				}
+				onRenameConversation={(conversationId, title) =>
+					void renameConversation(conversationId, title)
+				}
+				onDeleteConversation={(conversationId) =>
+					void deleteConversation(conversationId)
+				}
+				onCreateConversationFolder={(name) => void createConversationFolder(name)}
+				onRenameConversationFolder={(folderId, name) =>
+					void renameConversationFolder(folderId, name)
+				}
+				onDeleteConversationFolder={(folderId) =>
+					void deleteConversationFolder(folderId)
+				}
+				onToggleConversationPin={(conversationId, pinned) =>
+					void toggleConversationPin(conversationId, pinned)
+				}
+				onReorderConversations={(input) => void reorderConversations(input)}
+				onSetupComplete={() => void reloadAgentContext()}
+			>
+				<NoAssistantsState
+					canCreateAgent={canCreateAgent}
+					canRunSetup={canRunSetup}
+					t={t}
+				/>
+			</ChatLayout>
+		);
 	}
 
 	return (
