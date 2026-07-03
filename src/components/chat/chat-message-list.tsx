@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useEffect, useMemo, useRef, useState } from "react";
 import type * as React from "react";
 import {
   CheckIcon,
@@ -223,6 +223,37 @@ export function ChatMessageList({
   }, [visibleMessages]);
   const lastMessageId = messages[messages.length - 1]?.id ?? null;
 
+  // Smart scroll: stay at bottom when user is at bottom, preserve position when scrolled up
+  const viewportRef = useRef<HTMLDivElement | null>(null);
+  const isAtBottomRef = useRef(true);
+  const SCROLL_THRESHOLD = 10;
+
+  useLayoutEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+
+    const updateAtBottom = () => {
+      const { scrollTop, scrollHeight, clientHeight } = viewport;
+      isAtBottomRef.current = scrollHeight - scrollTop - clientHeight <= SCROLL_THRESHOLD;
+    };
+
+    updateAtBottom();
+    viewport.addEventListener("scroll", updateAtBottom, { passive: true });
+
+    return () => {
+      viewport.removeEventListener("scroll", updateAtBottom);
+    };
+  }, []);
+
+  useLayoutEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+
+    if (isAtBottomRef.current) {
+      viewport.scrollTo({ top: viewport.scrollHeight, behavior: "auto" });
+    }
+  }, [messages.length, pendingApprovals.length]);
+
   if (loading) {
     return (
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-4">
@@ -246,8 +277,6 @@ export function ChatMessageList({
 
   return (
     <MessageScrollerProvider
-      autoScroll
-      defaultScrollPosition="last-anchor"
       scrollMargin={24}
       scrollPreviousItemPeek={96}
     >
@@ -255,6 +284,7 @@ export function ChatMessageList({
       <MessageVisibilityPersistence conversationId={conversationId} />
       <MessageScroller className="min-h-0 flex-1">
         <MessageScrollerViewport
+          ref={viewportRef}
           preserveScrollOnPrepend
           className={viewportClassName}
           aria-label="Chat transcript"

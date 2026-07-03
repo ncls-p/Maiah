@@ -92,14 +92,6 @@ export default function ChatPage() {
   const [interfaceMode, setInterfaceMode] =
     useState<InterfaceMode>(CHAT_INTERFACE_MODE);
   const bottomRef = useRef<HTMLDivElement | null>(null);
-  const scrollContainerRef = useRef<HTMLElement | null>(null);
-  const scrollContentRef = useRef<HTMLDivElement | null>(null);
-  const stickToBottomRef = useRef(true);
-  const userDetachedRef = useRef(false);
-  const lastScrollTopRef = useRef(0);
-  const programmaticScrollRef = useRef(false);
-  const scrollAnimationRef = useRef<number | null>(null);
-  const STICK_RESUME_THRESHOLD_PX = 48;
   const skipNextMessageLoadRef = useRef(false);
   const processingQueuedMessageRef = useRef(false);
   const lastAutoOpenedWorkspaceRef = useRef<string | null>(null);
@@ -579,124 +571,6 @@ export default function ChatPage() {
       controller.abort();
     };
   }, [activeConversationId, setMessages]);
-
-  const cancelScrollAnimation = useCallback(() => {
-    if (scrollAnimationRef.current === null) return;
-    window.cancelAnimationFrame(scrollAnimationRef.current);
-    scrollAnimationRef.current = null;
-    programmaticScrollRef.current = false;
-  }, []);
-
-  const detachFromBottom = useCallback(() => {
-    userDetachedRef.current = true;
-    stickToBottomRef.current = false;
-  }, []);
-
-  const scrollToConversationBottom = useCallback(() => {
-    if (scrollAnimationRef.current !== null) return;
-
-    scrollAnimationRef.current = window.requestAnimationFrame(() => {
-      scrollAnimationRef.current = null;
-      const container = scrollContainerRef.current;
-      if (!container || !stickToBottomRef.current) return;
-
-      programmaticScrollRef.current = true;
-      container.scrollTop = container.scrollHeight;
-      lastScrollTopRef.current = container.scrollTop;
-      window.requestAnimationFrame(() => {
-        programmaticScrollRef.current = false;
-      });
-    });
-  }, []);
-
-  useEffect(() => {
-    stickToBottomRef.current = true;
-    userDetachedRef.current = false;
-    lastScrollTopRef.current = 0;
-  }, [activeConversationId]);
-
-  useEffect(() => {
-    const container = scrollContainerRef.current;
-    const sentinel = bottomRef.current;
-    if (!container || !sentinel) return;
-
-    const intersection = new IntersectionObserver(
-      ([entry]) => {
-        if (programmaticScrollRef.current || userDetachedRef.current) return;
-        stickToBottomRef.current = entry.isIntersecting;
-      },
-      { root: container, threshold: 0 },
-    );
-    intersection.observe(sentinel);
-
-    function updateStickOnScroll() {
-      if (programmaticScrollRef.current) return;
-      const c = scrollContainerRef.current;
-      if (!c) return;
-
-      const scrollTop = c.scrollTop;
-      const previousScrollTop = lastScrollTopRef.current;
-      const distanceFromBottom = c.scrollHeight - scrollTop - c.clientHeight;
-
-      if (scrollTop < previousScrollTop - 2) {
-        detachFromBottom();
-      } else if (
-        userDetachedRef.current &&
-        scrollTop > previousScrollTop + 2 &&
-        distanceFromBottom <= STICK_RESUME_THRESHOLD_PX
-      ) {
-        userDetachedRef.current = false;
-        stickToBottomRef.current = true;
-      }
-
-      lastScrollTopRef.current = scrollTop;
-    }
-
-    function handleWheel(event: WheelEvent) {
-      programmaticScrollRef.current = false;
-      cancelScrollAnimation();
-      if (event.deltaY < 0) detachFromBottom();
-    }
-
-    lastScrollTopRef.current = container.scrollTop;
-    container.addEventListener("scroll", updateStickOnScroll, {
-      passive: true,
-    });
-    container.addEventListener("wheel", handleWheel, { passive: true });
-    return () => {
-      intersection.disconnect();
-      container.removeEventListener("scroll", updateStickOnScroll);
-      container.removeEventListener("wheel", handleWheel);
-    };
-  }, [
-    cancelScrollAnimation,
-    detachFromBottom,
-    loadingMessages,
-    messages.length,
-  ]);
-
-  useEffect(() => {
-    scrollToConversationBottom();
-  }, [messages, pendingApprovals, scrollToConversationBottom]);
-
-  useEffect(() => {
-    const content = scrollContentRef.current;
-    if (!content) return;
-
-    const observer = new ResizeObserver(() => {
-      if (stickToBottomRef.current) scrollToConversationBottom();
-    });
-    observer.observe(content);
-    return () => {
-      observer.disconnect();
-    };
-  }, [scrollToConversationBottom, loadingMessages, messages.length]);
-
-  useEffect(() => {
-    return () => {
-      cancelScrollAnimation();
-    };
-  }, [cancelScrollAnimation]);
 
   function selectAgent(agentId: string) {
     if (agentId === selectedAgentId) return;
