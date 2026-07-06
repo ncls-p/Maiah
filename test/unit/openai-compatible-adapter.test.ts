@@ -45,7 +45,7 @@ describe("openaiCompatibleAdapter.listModels", () => {
 		]);
 	});
 
-	it("filters explicit embedding models", async () => {
+	it("keeps every model with an id, including embedding models", async () => {
 		vi.stubGlobal(
 			"fetch",
 			vi.fn().mockResolvedValue(
@@ -53,6 +53,7 @@ describe("openaiCompatibleAdapter.listModels", () => {
 					data: [
 						{ id: "chat-model", backend: "vllm" },
 						{ id: "embedding-model", backend: "vllm", task: "embedding" },
+						{ object: "model", backend: "vllm" },
 					],
 				}),
 			),
@@ -65,6 +66,9 @@ describe("openaiCompatibleAdapter.listModels", () => {
 			authType: "custom-header",
 		});
 
-		expect(models?.map((model) => model.modelId)).toEqual(["chat-model"]);
+		expect(models?.map((model) => model.modelId)).toEqual([
+			"chat-model",
+			"embedding-model",
+		]);
 	});
 });

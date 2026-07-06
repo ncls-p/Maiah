@@ -72,15 +72,6 @@ function normalizeModalities(values: string[] | undefined) {
 	return new Set((values ?? []).map((value) => value.toLowerCase()));
 }
 
-function isChatModel(model: OpenAICompatibleModel) {
-	// OpenAI-compatible proxies use `backend` for the serving engine
-	// (for example `llamacpp` or `vllm`), not for the model modality.
-	// This adapter creates chat models, so only explicit embedding models are
-	// filtered out.
-	const task = model.task?.toLowerCase();
-	return task !== "embedding" && task !== "embeddings";
-}
-
 function capabilitiesFromModel(model: OpenAICompatibleModel): ModelCapability {
 	const capabilities = { ...DEFAULT_CAPABILITIES };
 	const inputModalities = normalizeModalities(
@@ -109,7 +100,7 @@ function parseModels(data: unknown): ModelDescriptor[] {
 	if (!Array.isArray(payload.data)) return [];
 
 	return (payload.data as OpenAICompatibleModel[])
-		.filter((model) => typeof model.id === "string" && isChatModel(model))
+		.filter((model) => typeof model.id === "string")
 		.map((model) => ({
 			modelId: model.id,
 			displayName: model.id,
