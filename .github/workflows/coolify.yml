@@ -636,7 +636,10 @@ jobs:
           WORKSPACE_MONTHLY_TOKEN_LIMIT: ${{ vars.WORKSPACE_MONTHLY_TOKEN_LIMIT }}
           OTEL_SERVICE_NAME: ${{ vars.OTEL_SERVICE_NAME || 'maiah' }}
           OTEL_SERVICE_NAMESPACE: ${{ vars.OTEL_SERVICE_NAMESPACE || 'deodis' }}
+          OTEL_RESOURCE_ATTRIBUTES: ${{ vars.OTEL_RESOURCE_ATTRIBUTES }}
           OTEL_SERVICE_VERSION: ${{ needs.prepare.outputs.image_tag }}
+          DT_CUSTOM_PROP: ${{ vars.DT_CUSTOM_PROP }}
+          DT_TAGS: ${{ vars.DT_TAGS }}
           OBSERVABILITY_PLATFORM: coolify
           OBSERVABILITY_OWNER: ${{ vars.OBSERVABILITY_OWNER || 'deodis' }}
           AI_HUB_APP_IMAGE: ${{ needs.plan_images.outputs.app_image }}
@@ -749,6 +752,9 @@ jobs:
           OTEL_SERVICE_VERSION="${OTEL_SERVICE_VERSION:-local}"
           OBSERVABILITY_PLATFORM="${OBSERVABILITY_PLATFORM:-coolify}"
           OBSERVABILITY_OWNER="${OBSERVABILITY_OWNER:-deodis}"
+          OTEL_RESOURCE_ATTRIBUTES="${OTEL_RESOURCE_ATTRIBUTES:-service.namespace=${OTEL_SERVICE_NAMESPACE},deployment.environment=${OTEL_DEPLOYMENT_ENVIRONMENT},service.version=${OTEL_SERVICE_VERSION}}"
+          DT_CUSTOM_PROP="${DT_CUSTOM_PROP:-app=${OTEL_SERVICE_NAME} env=${OTEL_DEPLOYMENT_ENVIRONMENT} platform=${OBSERVABILITY_PLATFORM} owner=${OBSERVABILITY_OWNER}}"
+          DT_TAGS="${DT_TAGS:-app=${OTEL_SERVICE_NAME} env=${OTEL_DEPLOYMENT_ENVIRONMENT} platform=${OBSERVABILITY_PLATFORM} owner=${OBSERVABILITY_OWNER}}"
           if [[ -z "${SEARXNG_SECRET:-}" ]]; then
             SEARXNG_SECRET="$(
               printf '%s:%s:%s' "${APP_ENCRYPTION_KEY}" "${COOLIFY_SERVICE_NAME}" "${AI_HUB_PUBLIC_HOST}" \
@@ -916,7 +922,9 @@ jobs:
               --arg allow_personal_workspaces "${ALLOW_PERSONAL_WORKSPACES}" \
               --arg workspace_monthly_token_limit "${WORKSPACE_MONTHLY_TOKEN_LIMIT}" \
               --arg otel_service_name "${OTEL_SERVICE_NAME}" \
-              --arg otel_service_namespace "${OTEL_SERVICE_NAMESPACE}" \
+              --arg otel_resource_attributes "${OTEL_RESOURCE_ATTRIBUTES}" \
+              --arg dt_custom_prop "${DT_CUSTOM_PROP}" \
+              --arg dt_tags "${DT_TAGS}" \
               --arg otel_deployment_environment "${OTEL_DEPLOYMENT_ENVIRONMENT}" \
               --arg otel_service_version "${OTEL_SERVICE_VERSION}" \
               --arg observability_platform "${OBSERVABILITY_PLATFORM}" \
@@ -944,7 +952,9 @@ jobs:
                 {key: "ALLOW_PERSONAL_WORKSPACES", value: $allow_personal_workspaces},
                 {key: "WORKSPACE_MONTHLY_TOKEN_LIMIT", value: $workspace_monthly_token_limit},
                 {key: "OTEL_SERVICE_NAME", value: $otel_service_name},
-                {key: "OTEL_SERVICE_NAMESPACE", value: $otel_service_namespace},
+                {key: "OTEL_RESOURCE_ATTRIBUTES", value: $otel_resource_attributes},
+                {key: "DT_CUSTOM_PROP", value: $dt_custom_prop},
+                {key: "DT_TAGS", value: $dt_tags},
                 {key: "OTEL_DEPLOYMENT_ENVIRONMENT", value: $otel_deployment_environment},
                 {key: "OTEL_SERVICE_VERSION", value: $otel_service_version},
                 {key: "OBSERVABILITY_PLATFORM", value: $observability_platform},
