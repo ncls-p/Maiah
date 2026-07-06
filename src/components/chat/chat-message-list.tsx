@@ -238,7 +238,7 @@ export function ChatMessageList({
 		if (isAtBottomRef.current) {
 			viewport.scrollTo({ top: viewport.scrollHeight, behavior: "auto" });
 		}
-	}, [messages.length, pendingApprovals.length]);
+	});
 
 	if (loading) {
 		return (
@@ -262,11 +262,7 @@ export function ChatMessageList({
 			: "px-3 py-4 sm:px-4 sm:py-8";
 
 	return (
-		<MessageScrollerProvider
-			autoScroll
-			scrollMargin={24}
-			scrollPreviousItemPeek={96}
-		>
+		<MessageScrollerProvider scrollMargin={24} scrollPreviousItemPeek={96}>
 			<SavedMessageAnchorRestorer conversationId={conversationId} />
 			<MessageVisibilityPersistence conversationId={conversationId} />
 			<MessageScroller className="min-h-0 flex-1">
