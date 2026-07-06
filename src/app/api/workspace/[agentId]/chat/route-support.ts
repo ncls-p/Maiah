@@ -39,6 +39,7 @@ export const chatRequestSchema = z.object({
 export const defaultMaxToolCalls = 6;
 export const defaultMaxOutputTokens = 30_000;
 const BUILTIN_TOOL_SOURCE = "builtin";
+const MAX_OPENAI_TOOL_NAME_LENGTH = 64;
 const TOOL_GATE_RETURN = "return" as const;
 type ToolGateResult =
 	| { status: "continue" }
@@ -94,6 +95,57 @@ export function streamToolInputDelta(part: unknown) {
 		: typeof record.inputTextDelta === "string"
 			? record.inputTextDelta
 			: "";
+}
+
+function sanitizeToolKeyPart(value: string) {
+	return value.replace(/[^a-zA-Z0-9_-]/g, "_").replace(/^_+|_+$/g, "");
+}
+
+function stableToolKeyHash(value: string) {
+	let hash = 0x811c9dc5;
+	for (let index = 0; index < value.length; index += 1) {
+		hash ^= value.charCodeAt(index);
+		hash = Math.imul(hash, 0x01000193) >>> 0;
+	}
+	return hash.toString(36).padStart(7, "0").slice(0, 8);
+}
+
+function buildExternalToolKey({
+	source,
+	toolId,
+	toolName,
+	usedKeys,
+}: {
+	source: "custom" | "mcp";
+	toolId: string;
+	toolName: string;
+	usedKeys: Set<string>;
+}) {
+	const sanitizedName = sanitizeToolKeyPart(toolName) || "tool";
+	const fullKey = `${source}_${toolId.replace(/-/g, "_")}_${sanitizedName}`;
+	if (fullKey.length <= MAX_OPENAI_TOOL_NAME_LENGTH && !usedKeys.has(fullKey)) {
+		usedKeys.add(fullKey);
+		return fullKey;
+	}
+
+	const hash = stableToolKeyHash(`${source}:${toolId}:${toolName}`);
+	const prefix = `${source}_${hash}_`;
+	const suffixLimit = MAX_OPENAI_TOOL_NAME_LENGTH - prefix.length;
+	const baseSuffix =
+		sanitizedName.slice(0, suffixLimit).replace(/_+$/g, "") || "tool";
+	let key = `${prefix}${baseSuffix}`;
+	let counter = 2;
+	while (usedKeys.has(key)) {
+		const counterSuffix = `_${counter.toString(36)}`;
+		const adjustedSuffix =
+			baseSuffix
+				.slice(0, Math.max(1, suffixLimit - counterSuffix.length))
+				.replace(/_+$/g, "") || "tool";
+		key = `${prefix}${adjustedSuffix}${counterSuffix}`;
+		counter += 1;
+	}
+	usedKeys.add(key);
+	return key;
 }
 
 // --- Execute handlers extracted from loops to avoid function-in-loop ---
@@ -438,6 +490,7 @@ export async function buildBoundTools(input: {
 }) {
 	const bindings = await getToolBindingsForVersion(input.agentVersionId);
 	const tools: ToolSet = {};
+	const usedToolKeys = new Set<string>();
 	const toolApprovalMetadata = new Map<string, BoundToolApprovalMetadata>();
 	let executedToolCallCount = 0;
 
@@ -560,6 +613,7 @@ export async function buildBoundTools(input: {
 			toolName: "load_skill",
 			riskLevel: "low",
 		});
+		usedToolKeys.add("load_skill");
 		tools.load_skill = {
 			description:
 				"Load the full Markdown instructions for an enabled agent skill by exact skill name. Use this when a listed skill is relevant before applying its workflow.",
@@ -600,10 +654,12 @@ export async function buildBoundTools(input: {
 			);
 			if (!customContext) continue;
 			const customTool = customContext.tool;
-			const sanitizedName = customTool.name
-				.replace(/[^a-zA-Z0-9_]/g, "_")
-				.replace(/^_+|_+$/g, "");
-			const toolKey = `custom_${customTool.id.replace(/-/g, "_")}_${sanitizedName || "tool"}`;
+			const toolKey = buildExternalToolKey({
+				source: "custom",
+				toolId: customTool.id,
+				toolName: customTool.name,
+				usedKeys: usedToolKeys,
+			});
 			const schema = (customTool.inputSchemaJson as Record<
 				string,
 				unknown
@@ -642,10 +698,12 @@ export async function buildBoundTools(input: {
 			if (!mcpContext) continue;
 			const mcpTool = mcpContext.tool;
 
-			const sanitizedName = mcpTool.name
-				.replace(/[^a-zA-Z0-9_]/g, "_")
-				.replace(/^_+|_+$/g, "");
-			const toolKey = `mcp_${mcpTool.id.replace(/-/g, "_")}_${sanitizedName || "tool"}`;
+			const toolKey = buildExternalToolKey({
+				source: "mcp",
+				toolId: mcpTool.id,
+				toolName: mcpTool.name,
+				usedKeys: usedToolKeys,
+			});
 			const schema = (mcpTool.inputSchemaJson as Record<
 				string,
 				unknown
@@ -693,6 +751,7 @@ export async function buildBoundTools(input: {
 			bindingRequiresApproval: binding.requireApproval,
 		});
 
+		usedToolKeys.add(definition.name);
 		tools[definition.name] = {
 			description: `${definition.description} Risk level: ${definition.riskLevel}.`,
 			inputSchema: definition.inputSchema,
