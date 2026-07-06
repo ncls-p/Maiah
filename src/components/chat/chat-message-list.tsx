@@ -219,36 +219,34 @@ export function ChatMessageList({
 		].join(":");
 	}, [lastMessage, messages.length]);
 
-	// Smart scroll: stay at bottom when user is at bottom, preserve position when scrolled up
+	// Smart scroll: only follow the stream after the user explicitly reaches
+	// the bottom. Posting from older history must preserve the current position.
 	const viewportRef = useRef<HTMLDivElement | null>(null);
-	const isAtBottomRef = useRef(true);
+	const shouldFollowStreamRef = useRef(false);
 	const SCROLL_THRESHOLD = 10;
 
 	useLayoutEffect(() => {
 		const viewport = viewportRef.current;
 		if (!viewport) return;
 
-		const updateAtBottom = () => {
+		const updateFollowStream = () => {
 			const { scrollTop, scrollHeight, clientHeight } = viewport;
-			isAtBottomRef.current =
+			shouldFollowStreamRef.current =
 				scrollHeight - scrollTop - clientHeight <= SCROLL_THRESHOLD;
 		};
 
-		updateAtBottom();
-		viewport.addEventListener("scroll", updateAtBottom, { passive: true });
+		viewport.addEventListener("scroll", updateFollowStream, { passive: true });
 
 		return () => {
-			viewport.removeEventListener("scroll", updateAtBottom);
+			viewport.removeEventListener("scroll", updateFollowStream);
 		};
 	}, []);
 
 	useLayoutEffect(() => {
 		const viewport = viewportRef.current;
-		if (!viewport) return;
+		if (!viewport || !shouldFollowStreamRef.current) return;
 
-		if (isAtBottomRef.current) {
-			viewport.scrollTo({ top: viewport.scrollHeight, behavior: "auto" });
-		}
+		viewport.scrollTo({ top: viewport.scrollHeight, behavior: "auto" });
 	}, [scrollFollowKey, pendingApprovals.length]);
 
 	if (loading) {
@@ -273,7 +271,11 @@ export function ChatMessageList({
 			: "px-3 py-4 sm:px-4 sm:py-8";
 
 	return (
-		<MessageScrollerProvider scrollMargin={24} scrollPreviousItemPeek={96}>
+		<MessageScrollerProvider
+			defaultScrollPosition="start"
+			scrollMargin={24}
+			scrollPreviousItemPeek={96}
+		>
 			<SavedMessageAnchorRestorer conversationId={conversationId} />
 			<MessageVisibilityPersistence conversationId={conversationId} />
 			<MessageScroller className="min-h-0 flex-1">

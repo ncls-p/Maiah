@@ -1,11 +1,9 @@
 import type { ChatMessage } from "@/components/chat/chat-types";
 
-export function shouldUseMessageScrollAnchor({
-	message,
-	sending,
-}: {
+export function shouldUseMessageScrollAnchor(input: {
 	message: ChatMessage;
 	sending: boolean;
 }) {
-	return message.role === "user" && !sending;
+	void input;
+	return false;
 }

@@ -17,13 +17,13 @@ describe("shouldUseMessageScrollAnchor", () => {
 		).toBe(false);
 	});
 
-	it("keeps user messages anchorable when the chat is idle", () => {
+	it("does not use message anchors while the chat is idle", () => {
 		expect(
 			shouldUseMessageScrollAnchor({
 				message: message("user"),
 				sending: false,
 			}),
-		).toBe(true);
+		).toBe(false);
 	});
 
 	it("never anchors assistant messages", () => {
