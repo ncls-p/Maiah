@@ -36,7 +36,7 @@ export const chatRequestSchema = z.object({
 	imageAttachmentIds: z.array(z.uuid()).max(maxChatAttachments).optional(),
 });
 
-export const defaultMaxToolCalls = 6;
+export const defaultMaxToolCalls = 20;
 export const defaultMaxOutputTokens = 30_000;
 const BUILTIN_TOOL_SOURCE = "builtin";
 const MAX_OPENAI_TOOL_NAME_LENGTH = 64;

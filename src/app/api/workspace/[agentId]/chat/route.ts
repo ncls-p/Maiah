@@ -529,7 +529,7 @@ export async function POST(
 
 		const maxToolCalls = Math.max(
 			0,
-			Math.min(20, version.maxToolCalls ?? defaultMaxToolCalls),
+			version.maxToolCalls ?? defaultMaxToolCalls,
 		);
 		const shouldUseToolCalling = maxToolCalls > 0;
 		const skillsPrompt = shouldUseToolCalling

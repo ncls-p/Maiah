@@ -219,8 +219,12 @@ function BuiltinToolPackageCard({
 	description,
 	countLabel,
 	allToolsLabel,
+	extraApprovalLabel,
 	detailsLabel,
 	partialLabel,
+	mixedApprovalLabel,
+	approvalLabel,
+	canConfigureApproval,
 	setBindings,
 }: {
 	toolPackage: BuiltinToolPackage;
@@ -229,8 +233,12 @@ function BuiltinToolPackageCard({
 	description: string;
 	countLabel: string;
 	allToolsLabel: string;
+	extraApprovalLabel: string;
 	detailsLabel: string;
 	partialLabel: string;
+	mixedApprovalLabel: string;
+	approvalLabel: string;
+	canConfigureApproval: boolean;
 	setBindings: (fn: (prev: ToolBindingState) => ToolBindingState) => void;
 }) {
 	const PackageIcon = toolPackage.icon;
@@ -241,6 +249,15 @@ function BuiltinToolPackageCard({
 		toolPackage.tools.length > 0 && selectedCount === toolPackage.tools.length;
 	const partiallySelected =
 		selectedCount > 0 && selectedCount < toolPackage.tools.length;
+	const selectedTools = toolPackage.tools.filter(
+		(tool) => bindings[tool.id]?.enabled,
+	);
+	const approvalCount = selectedTools.filter(
+		(tool) => bindings[tool.id]?.requireApproval,
+	).length;
+	const allSelectedRequireApproval =
+		selectedTools.length > 0 && approvalCount === selectedTools.length;
+	const someSelectedRequireApproval = approvalCount > 0;
 
 	function setPackageEnabled(enabled: boolean) {
 		setBindings((current) => {
@@ -255,12 +272,36 @@ function BuiltinToolPackageCard({
 		});
 	}
 
+	function setPackageApproval(shouldRequireApproval: boolean) {
+		setBindings((current) => {
+			const next = { ...current };
+			for (const tool of toolPackage.tools) {
+				if (!current[tool.id]?.enabled) continue;
+				next[tool.id] = {
+					enabled: true,
+					requireApproval: shouldRequireApproval,
+				};
+			}
+			return next;
+		});
+	}
+
 	function setToolEnabled(tool: BuiltinTool, enabled: boolean) {
 		setBindings((current) => ({
 			...current,
 			[tool.id]: {
 				enabled,
 				requireApproval: current[tool.id]?.requireApproval ?? false,
+			},
+		}));
+	}
+
+	function setToolApproval(tool: BuiltinTool, shouldRequireApproval: boolean) {
+		setBindings((current) => ({
+			...current,
+			[tool.id]: {
+				enabled: current[tool.id]?.enabled ?? false,
+				requireApproval: shouldRequireApproval,
 			},
 		}));
 	}
@@ -292,6 +333,13 @@ function BuiltinToolPackageCard({
 							{partiallySelected ? (
 								<Badge variant="outline">{partialLabel}</Badge>
 							) : null}
+							{someSelectedRequireApproval ? (
+								<Badge variant="outline">
+									{allSelectedRequireApproval
+										? approvalLabel
+										: mixedApprovalLabel}
+								</Badge>
+							) : null}
 						</div>
 						<p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground">
 							{description}
@@ -308,6 +356,17 @@ function BuiltinToolPackageCard({
 							onCheckedChange={setPackageEnabled}
 						/>
 					</label>
+					{canConfigureApproval ? (
+						<label className="flex items-center gap-2">
+							{extraApprovalLabel}
+							<Switch
+								aria-label={extraApprovalLabel}
+								checked={allSelectedRequireApproval}
+								disabled={selectedCount === 0}
+								onCheckedChange={setPackageApproval}
+							/>
+						</label>
+					) : null}
 					<CollapsibleTrigger asChild>
 						<Button
 							type="button"
@@ -329,6 +388,14 @@ function BuiltinToolPackageCard({
 						description={tool.description}
 						enabled={bindings[tool.id]?.enabled ?? false}
 						onEnabledChange={(enabled) => setToolEnabled(tool, enabled)}
+						requireApproval={bindings[tool.id]?.requireApproval ?? false}
+						approvalDisabled={!bindings[tool.id]?.enabled}
+						onApprovalChange={
+							canConfigureApproval
+								? (checked) => setToolApproval(tool, checked)
+								: undefined
+						}
+						approvalLabel={approvalLabel}
 					/>
 				))}
 			</CollapsibleContent>
@@ -555,6 +622,7 @@ export function CapabilitiesTab({
 	setSelectedSkillIdsAction: setSelectedSkillIds,
 	saving,
 	readOnly = false,
+	canConfigureBuiltinApproval = false,
 	onSaveAction: onSave,
 }: {
 	builtinTools: BuiltinTool[];
@@ -581,6 +649,7 @@ export function CapabilitiesTab({
 	setSelectedSkillIdsAction: (fn: (prev: string[]) => string[]) => void;
 	saving: boolean;
 	readOnly?: boolean;
+	canConfigureBuiltinApproval?: boolean;
 	onSaveAction: () => void;
 }) {
 	const t = useTranslations("agents.configurePage");
@@ -624,8 +693,12 @@ export function CapabilitiesTab({
 										total: toolPackage.tools.length,
 									})}
 									allToolsLabel={t("allTools")}
+									extraApprovalLabel={t("extraApproval")}
 									detailsLabel={t("customizePackage")}
 									partialLabel={t("partial")}
+									mixedApprovalLabel={t("mixedApproval")}
+									approvalLabel={t("approval")}
+									canConfigureApproval={canConfigureBuiltinApproval}
 								/>
 							);
 						})}

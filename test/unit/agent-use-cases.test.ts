@@ -28,6 +28,7 @@ vi.mock("@/modules/skills/use-cases", () => ({
 
 vi.mock("@/modules/tool/use-cases", () => ({
 	cloneToolBindings: vi.fn().mockResolvedValue(undefined),
+	getToolBindingsForVersion: vi.fn().mockResolvedValue([]),
 	insertToolBindingsForVersion: vi.fn().mockResolvedValue(undefined),
 }));
 
@@ -400,6 +401,9 @@ describe("createAgent", () => {
 
 		expect(result.agent).toEqual(agent);
 		expect(result.version).toEqual(version);
+		expect(dbModule._tx.values).toHaveBeenCalledWith(
+			expect.objectContaining({ maxToolCalls: 20 }),
+		);
 		expect(dbModule.db.transaction).toHaveBeenCalledOnce();
 	});
 });

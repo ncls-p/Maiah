@@ -31,6 +31,7 @@ import {
 import type { AiHubToolApprovalPolicy } from "@/modules/tool/approval-policy";
 import {
 	cloneToolBindings,
+	getToolBindingsForVersion,
 	insertToolBindingsForVersion,
 	type ToolBindingInput,
 } from "@/modules/tool/use-cases";
@@ -222,6 +223,40 @@ async function createAvailableAgentSlug(
 	return `${base.slice(0, 88)}-${Date.now().toString(36)}`;
 }
 
+function stripBuiltinApprovalOverrides(
+	bindings: ToolBindingInput[] | undefined,
+): ToolBindingInput[] | undefined {
+	return bindings?.map((binding) => {
+		if (binding.toolSource !== "builtin") return binding;
+		return { ...binding, requireApproval: undefined };
+	});
+}
+
+async function preserveBuiltinApprovalOverrides(
+	bindings: ToolBindingInput[] | undefined,
+	activeVersionId: string | null,
+	visibility: { workspaceId: string; userId: string },
+): Promise<ToolBindingInput[] | undefined> {
+	if (!bindings || !activeVersionId)
+		return stripBuiltinApprovalOverrides(bindings);
+	const existingBindings = await getToolBindingsForVersion(
+		activeVersionId,
+		visibility,
+	);
+	const builtinApprovalByToolId = new Map(
+		existingBindings
+			.filter((binding) => binding.toolSource === "builtin")
+			.map((binding) => [binding.toolId, binding.requireApproval]),
+	);
+	return bindings.map((binding) => {
+		if (binding.toolSource !== "builtin") return binding;
+		return {
+			...binding,
+			requireApproval: builtinApprovalByToolId.get(binding.toolId),
+		};
+	});
+}
+
 // ─── Agent CRUD ────────────────────────────────────────────────────────
 
 export async function createAgent(input: CreateAgentInput) {
@@ -287,6 +322,10 @@ export async function createAgent(input: CreateAgentInput) {
 			? await requireShareTargetUserId(shareTargetEmail)
 			: null;
 
+	const normalizedToolBindings = canAdminCurate
+		? toolBindings
+		: stripBuiltinApprovalOverrides(toolBindings);
+
 	const curated = canAdminCurate
 		? {
 				isGlobal: Boolean(isGlobal),
@@ -330,7 +369,7 @@ export async function createAgent(input: CreateAgentInput) {
 				temperature: temperature || null,
 				topP: topP || null,
 				maxOutputTokens: maxOutputTokens ?? 30_000,
-				maxToolCalls: maxToolCalls ?? 6,
+				maxToolCalls: maxToolCalls ?? 20,
 				createdById: userId,
 			})
 			.returning();
@@ -356,7 +395,7 @@ export async function createAgent(input: CreateAgentInput) {
 
 	await insertToolBindingsForVersion(
 		version.id,
-		toolBindings ?? [],
+		normalizedToolBindings ?? [],
 		workspaceId,
 		{ userId },
 	);
@@ -714,7 +753,7 @@ export async function cloneAgent(input: CloneAgentInput) {
 				temperature: sourceVersion?.temperature ?? null,
 				topP: sourceVersion?.topP ?? null,
 				maxOutputTokens: sourceVersion?.maxOutputTokens ?? 30_000,
-				maxToolCalls: sourceVersion?.maxToolCalls ?? 6,
+				maxToolCalls: sourceVersion?.maxToolCalls ?? 20,
 				toolChoice: sourceVersion?.toolChoice ?? null,
 				generationSettingsJson: sourceVersion?.generationSettingsJson ?? null,
 				responseFormatJson: sourceVersion?.responseFormatJson ?? null,
@@ -856,6 +895,17 @@ async function updateAgentUnlocked(input: UpdateAgentInput) {
 		throw new Error("Only the creator or an admin can update this agent");
 	}
 
+	const normalizedToolBindings = canAdminCurate
+		? toolBindings
+		: await preserveBuiltinApprovalOverrides(
+				toolBindings,
+				existing.activeVersionId,
+				{
+					workspaceId,
+					userId,
+				},
+			);
+
 	const nextShareTargetUserId =
 		sharingMode === "specific_user"
 			? await requireShareTargetUserId(shareTargetEmail)
@@ -976,7 +1026,7 @@ async function updateAgentUnlocked(input: UpdateAgentInput) {
 				maxToolCalls:
 					maxToolCalls !== undefined
 						? maxToolCalls
-						: (activeConfig?.maxToolCalls ?? 6),
+						: (activeConfig?.maxToolCalls ?? 20),
 				toolChoice:
 					toolChoice !== undefined
 						? toolChoice
@@ -1033,10 +1083,15 @@ async function updateAgentUnlocked(input: UpdateAgentInput) {
 		},
 	});
 
-	if (toolBindings) {
-		await insertToolBindingsForVersion(version.id, toolBindings, workspaceId, {
-			userId,
-		});
+	if (normalizedToolBindings) {
+		await insertToolBindingsForVersion(
+			version.id,
+			normalizedToolBindings,
+			workspaceId,
+			{
+				userId,
+			},
+		);
 	} else {
 		await cloneToolBindings(existing.activeVersionId, version.id, workspaceId, {
 			userId,

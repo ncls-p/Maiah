@@ -751,6 +751,7 @@ export default function AgentConfigurePage() {
 									setSelectedSkillIdsAction={setSelectedSkillIds}
 									saving={saving}
 									readOnly={!canEdit}
+									canConfigureBuiltinApproval={agent?.canAdminCurate ?? false}
 									onSaveAction={() => void saveCapabilities()}
 								/>
 							</TabsContent>
