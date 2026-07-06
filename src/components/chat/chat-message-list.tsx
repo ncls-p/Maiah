@@ -16,6 +16,7 @@ import {
 	MessageContent,
 	StreamingStatus,
 } from "@/components/chat/chat-message-rendering";
+import { shouldUseMessageScrollAnchor } from "@/components/chat/chat-scroll";
 import {
 	textFromMessage,
 	type ChatMessage,
@@ -165,22 +166,6 @@ function ChatScrollControls({ sending }: { sending: boolean }) {
 	);
 }
 
-/** Returns true when a user message sits right before a streaming assistant. */
-function isMessageSecondToLastStreamingUser(
-	message: ChatMessage,
-	messages: ChatMessage[],
-	options?: { sending?: boolean },
-): boolean {
-	if (!options?.sending) return false;
-	const prev = messages[messages.length - 2];
-	const next = messages[messages.length - 1];
-	return (
-		prev?.id === message.id &&
-		next?.role === "assistant" &&
-		next?.status === "streaming"
-	);
-}
-
 export function ChatMessageList({
 	messages,
 	sending,
@@ -277,7 +262,11 @@ export function ChatMessageList({
 			: "px-3 py-4 sm:px-4 sm:py-8";
 
 	return (
-		<MessageScrollerProvider scrollMargin={24} scrollPreviousItemPeek={96}>
+		<MessageScrollerProvider
+			autoScroll
+			scrollMargin={24}
+			scrollPreviousItemPeek={96}
+		>
 			<SavedMessageAnchorRestorer conversationId={conversationId} />
 			<MessageVisibilityPersistence conversationId={conversationId} />
 			<MessageScroller className="min-h-0 flex-1">
@@ -331,13 +320,10 @@ export function ChatMessageList({
 							const isLast = message.id === lastMessageId;
 							const isStreamingAssistant =
 								isAssistant && message.status === "streaming";
-							const isOutgoingUserBeforeStreamingAssistant =
-								isUser &&
-								isMessageSecondToLastStreamingUser(message, messages, {
-									sending,
-								});
-							const shouldScrollAnchor =
-								isUser && !isOutgoingUserBeforeStreamingAssistant;
+							const shouldScrollAnchor = shouldUseMessageScrollAnchor({
+								message,
+								sending,
+							});
 							const isAnimating = sending && isLast && isStreamingAssistant;
 							const messagePendingApprovals = isStreamingAssistant
 								? pendingApprovals
