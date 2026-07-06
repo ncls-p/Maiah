@@ -72,12 +72,6 @@ function normalizeModalities(values: string[] | undefined) {
 	return new Set((values ?? []).map((value) => value.toLowerCase()));
 }
 
-function isChatModel(model: OpenAICompatibleModel) {
-	// OpenAI's official /models response has no backend field. If a proxy adds one,
-	// this adapter only registers language models because it creates chat models.
-	return !model.backend || model.backend === "llm";
-}
-
 function capabilitiesFromModel(model: OpenAICompatibleModel): ModelCapability {
 	const capabilities = { ...DEFAULT_CAPABILITIES };
 	const inputModalities = normalizeModalities(
@@ -106,7 +100,7 @@ function parseModels(data: unknown): ModelDescriptor[] {
 	if (!Array.isArray(payload.data)) return [];
 
 	return (payload.data as OpenAICompatibleModel[])
-		.filter((model) => typeof model.id === "string" && isChatModel(model))
+		.filter((model) => typeof model.id === "string")
 		.map((model) => ({
 			modelId: model.id,
 			displayName: model.id,

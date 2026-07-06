@@ -1011,12 +1011,13 @@ export default function ChatPage() {
 
 	async function editMessage(message: ChatMessage, content: string) {
 		if (!activeConversationId) return;
+		const trimmedContent = content.trim();
 		await fetchJson(
 			`/api/workspace/conversations/${activeConversationId}/messages/${message.id}`,
 			{
 				method: "PATCH",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ content }),
+				body: JSON.stringify({ content: trimmedContent }),
 			},
 		);
 		setMessages(
@@ -1025,11 +1026,16 @@ export default function ChatPage() {
 					? {
 							...item,
 							status: "completed",
-							parts: [{ type: "text", content }],
+							parts: [{ type: "text", content: trimmedContent }],
 						}
 					: item,
 			),
 		);
+		if (message.role !== "user" || !trimmedContent || sending) return;
+		await handleSubmit(trimmedContent, {
+			resendFromMessageId: message.id,
+			reuseUserMessage: true,
+		});
 	}
 
 	async function deleteMessage(message: ChatMessage) {
@@ -1117,7 +1123,9 @@ export default function ChatPage() {
 				onDeleteConversation={(conversationId) =>
 					void deleteConversation(conversationId)
 				}
-				onCreateConversationFolder={(name) => void createConversationFolder(name)}
+				onCreateConversationFolder={(name) =>
+					void createConversationFolder(name)
+				}
 				onRenameConversationFolder={(folderId, name) =>
 					void renameConversationFolder(folderId, name)
 				}

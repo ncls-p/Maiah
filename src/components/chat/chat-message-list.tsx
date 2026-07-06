@@ -16,6 +16,7 @@ import {
 	MessageContent,
 	StreamingStatus,
 } from "@/components/chat/chat-message-rendering";
+import { shouldUseMessageScrollAnchor } from "@/components/chat/chat-scroll";
 import {
 	textFromMessage,
 	type ChatMessage,
@@ -57,6 +58,8 @@ const BUTTON_TYPE = "button";
 const OUTLINE_VARIANT = "outline";
 const GHOST_VARIANT = "ghost";
 const COMPACT_ICON_CLASS = "size-3";
+const USER_MESSAGE_PREVIEW_LENGTH = 180;
+const MESSAGE_JUMP_SCROLL_MARGIN = 24;
 
 interface ChatMessageListProps {
 	messages: ChatMessage[];
@@ -137,6 +140,54 @@ function MessageVisibilityPersistence({
 	return null;
 }
 
+interface UserMessageShortcut {
+	id: string;
+	messageIndex: number;
+	ordinal: number;
+	preview: string;
+	fullText: string;
+}
+
+function fallbackUserMessageText(message: ChatMessage) {
+	const attachmentCount = message.parts.filter(
+		(part) => part.type === "file" || part.type === "image",
+	).length;
+	if (attachmentCount === 1) return "Message with 1 attachment";
+	if (attachmentCount > 1) return `Message with ${attachmentCount} attachments`;
+
+	return "Empty user message";
+}
+
+function userMessageFullText(message: ChatMessage) {
+	return textFromMessage(message).trim() || fallbackUserMessageText(message);
+}
+
+function userMessagePreview(message: ChatMessage) {
+	const normalizedText = userMessageFullText(message)
+		.replace(/\s+/g, " ")
+		.trim();
+	if (normalizedText.length > USER_MESSAGE_PREVIEW_LENGTH) {
+		return `${normalizedText.slice(0, USER_MESSAGE_PREVIEW_LENGTH).trimEnd()}…`;
+	}
+
+	return normalizedText;
+}
+
+function preferredScrollBehavior(): ScrollBehavior {
+	return window.matchMedia("(prefers-reduced-motion: reduce)").matches
+		? "auto"
+		: "smooth";
+}
+
+function rememberUserMessageAnchor(
+	conversationId: string | null | undefined,
+	messageId: string,
+) {
+	window.history.replaceState(null, "", `#message-${messageId}`);
+	if (!conversationId) return;
+	window.localStorage.setItem(chatAnchorStorageKey(conversationId), messageId);
+}
+
 function ChatScrollControls({ sending }: { sending: boolean }) {
 	const scrollable = useMessageScrollerScrollable();
 
@@ -165,19 +216,170 @@ function ChatScrollControls({ sending }: { sending: boolean }) {
 	);
 }
 
-/** Returns true when a user message sits right before a streaming assistant. */
-function isMessageSecondToLastStreamingUser(
-	message: ChatMessage,
-	messages: ChatMessage[],
-	options?: { sending?: boolean },
-): boolean {
-	if (!options?.sending) return false;
-	const prev = messages[messages.length - 2];
-	const next = messages[messages.length - 1];
+function UserMessageRail({
+	shortcuts,
+	hiddenMessageCount,
+	totalMessageCount,
+	conversationId,
+	messageIndexById,
+	setVisibleMessageCount,
+}: {
+	shortcuts: UserMessageShortcut[];
+	hiddenMessageCount: number;
+	totalMessageCount: number;
+	conversationId?: string | null;
+	messageIndexById: ReadonlyMap<string, number>;
+	setVisibleMessageCount: React.Dispatch<React.SetStateAction<number>>;
+}) {
+	const { scrollToMessage } = useMessageScroller();
+	const { currentAnchorId } = useMessageScrollerVisibility();
+	const [activeShortcutId, setActiveShortcutId] = useState<string | null>(null);
+	const [isPanelOpen, setIsPanelOpen] = useState(false);
+	const [pendingMessageId, setPendingMessageId] = useState<string | null>(null);
+	const currentShortcutId = useMemo(() => {
+		if (!currentAnchorId) return null;
+		const currentAnchorIndex = messageIndexById.get(currentAnchorId);
+		if (currentAnchorIndex === undefined) return null;
+
+		let nearestUserShortcutId: string | null = null;
+		for (const shortcut of shortcuts) {
+			if (shortcut.messageIndex > currentAnchorIndex) break;
+			nearestUserShortcutId = shortcut.id;
+		}
+
+		return nearestUserShortcutId;
+	}, [currentAnchorId, messageIndexById, shortcuts]);
+
+	useLayoutEffect(() => {
+		if (!pendingMessageId) return;
+
+		const pendingShortcut = shortcuts.find(
+			(shortcut) => shortcut.id === pendingMessageId,
+		);
+		if (!pendingShortcut) return;
+		if (pendingShortcut.messageIndex < hiddenMessageCount) return;
+
+		const frame = window.requestAnimationFrame(() => {
+			scrollToMessage(pendingMessageId, {
+				align: "start",
+				behavior: preferredScrollBehavior(),
+				scrollMargin: MESSAGE_JUMP_SCROLL_MARGIN,
+			});
+			rememberUserMessageAnchor(conversationId, pendingMessageId);
+			setPendingMessageId(null);
+		});
+
+		return () => window.cancelAnimationFrame(frame);
+	}, [
+		conversationId,
+		hiddenMessageCount,
+		pendingMessageId,
+		scrollToMessage,
+		shortcuts,
+	]);
+
+	if (shortcuts.length === 0) return null;
+
+	const jumpToShortcut = (shortcut: UserMessageShortcut) => {
+		const requiredVisibleCount = totalMessageCount - shortcut.messageIndex;
+		if (shortcut.messageIndex < hiddenMessageCount) {
+			setPendingMessageId(shortcut.id);
+			setVisibleMessageCount((count) => Math.max(count, requiredVisibleCount));
+			return;
+		}
+
+		scrollToMessage(shortcut.id, {
+			align: "start",
+			behavior: preferredScrollBehavior(),
+			scrollMargin: MESSAGE_JUMP_SCROLL_MARGIN,
+		});
+		rememberUserMessageAnchor(conversationId, shortcut.id);
+	};
+
+	const closePanel = () => {
+		setIsPanelOpen(false);
+		setActiveShortcutId(null);
+	};
+
 	return (
-		prev?.id === message.id &&
-		next?.role === "assistant" &&
-		next?.status === "streaming"
+		<nav
+			aria-label="User message shortcuts"
+			className="absolute right-1 top-1/2 z-30 hidden -translate-y-1/2 items-center gap-1.5 sm:flex"
+			onMouseEnter={() => setIsPanelOpen(true)}
+			onMouseLeave={closePanel}
+			onBlur={(event) => {
+				const nextFocusedElement = event.relatedTarget as Node | null;
+				if (
+					!nextFocusedElement ||
+					!event.currentTarget.contains(nextFocusedElement)
+				) {
+					closePanel();
+				}
+			}}
+		>
+			{isPanelOpen ? (
+				<div
+					className="w-60 max-w-[calc(100vw-4rem)] rounded-xl bg-popover/95 p-1 text-left text-popover-foreground shadow-[0_10px_26px_rgba(15,23,42,0.12)] ring-1 ring-border/55 backdrop-blur-md transition-[opacity,transform] duration-150 ease-out"
+					onWheelCapture={(event) => event.stopPropagation()}
+				>
+					<div className="flex max-h-[42vh] min-h-0 flex-col gap-0.5 overflow-y-auto overscroll-contain pr-1 scrollbar-thin">
+						{shortcuts.map((shortcut) => {
+							const isCurrent = currentShortcutId === shortcut.id;
+							const isActive = activeShortcutId === shortcut.id;
+							return (
+								<button
+									key={shortcut.id}
+									type="button"
+									aria-current={isCurrent ? "location" : undefined}
+									aria-label={`Jump to user message ${shortcut.ordinal}: ${shortcut.preview}`}
+									className={cn(
+										"rounded-lg px-2 py-1 text-left outline-none transition-[background-color,box-shadow,transform] duration-150 ease-out hover:bg-muted focus-visible:bg-muted focus-visible:ring-2 focus-visible:ring-ring/35 active:scale-[0.96]",
+										(isActive || isCurrent) &&
+											"bg-muted shadow-[0_6px_14px_rgba(15,23,42,0.07)]",
+									)}
+									onMouseEnter={() => setActiveShortcutId(shortcut.id)}
+									onFocus={() => {
+										setIsPanelOpen(true);
+										setActiveShortcutId(shortcut.id);
+									}}
+									onClick={() => jumpToShortcut(shortcut)}
+								>
+									<span className="text-[8px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+										Message {shortcut.ordinal}
+									</span>
+									<span
+										className={cn(
+											"mt-0.5 block text-[11px] leading-4 text-foreground transition-[color] duration-150",
+											isActive
+												? "whitespace-pre-wrap"
+												: "line-clamp-1 text-muted-foreground",
+										)}
+									>
+										{isActive ? shortcut.fullText : shortcut.preview}
+									</span>
+								</button>
+							);
+						})}
+					</div>
+				</div>
+			) : null}
+			<button
+				type="button"
+				aria-expanded={isPanelOpen}
+				aria-label={`${shortcuts.length} user messages. Show navigation list.`}
+				className="flex flex-col items-center gap-0.5 rounded-full bg-background/50 px-1.5 py-1.5 shadow-[0_8px_22px_rgba(15,23,42,0.08)] outline-none ring-1 ring-border/45 backdrop-blur-md transition-[background-color,box-shadow,transform] duration-150 ease-out hover:bg-background/80 focus-visible:ring-2 focus-visible:ring-ring/35 active:scale-[0.96]"
+				onFocus={() => setIsPanelOpen(true)}
+				onClick={() => setIsPanelOpen((open) => !open)}
+			>
+				{[0, 1, 2].map((index) => (
+					<span
+						key={index}
+						aria-hidden="true"
+						className="size-1 rounded-full bg-neutral-950/75 shadow-sm ring-1 ring-background/80 dark:bg-neutral-50/75"
+					/>
+				))}
+			</button>
+		</nav>
 	);
 }
 
@@ -210,6 +412,29 @@ export function ChatMessageList({
 			hiddenMessageCount > 0 ? messages.slice(hiddenMessageCount) : messages,
 		[hiddenMessageCount, messages],
 	);
+	const messageIndexById = useMemo(
+		() => new Map(messages.map((message, index) => [message.id, index])),
+		[messages],
+	);
+	const userMessageShortcuts = useMemo(
+		() =>
+			messages
+				.flatMap((message, messageIndex) =>
+					message.role === "user"
+						? [
+								{
+									id: message.id,
+									messageIndex,
+									ordinal: 0,
+									preview: userMessagePreview(message),
+									fullText: userMessageFullText(message),
+								},
+							]
+						: [],
+				)
+				.map((shortcut, index) => ({ ...shortcut, ordinal: index + 1 })),
+		[messages],
+	);
 	const messageListMeta = useMemo(() => {
 		const precedingUserByMessageId = new Map<string, ChatMessage | null>();
 		let lastUserMessage: ChatMessage | null = null;
@@ -221,39 +446,48 @@ export function ChatMessageList({
 		}
 		return { lastAssistantMessageId, precedingUserByMessageId };
 	}, [visibleMessages]);
-	const lastMessageId = messages[messages.length - 1]?.id ?? null;
+	const lastMessage = messages[messages.length - 1] ?? null;
+	const lastMessageId = lastMessage?.id ?? null;
+	const scrollFollowKey = useMemo(() => {
+		if (!lastMessage) return `empty:${messages.length}`;
+		return [
+			messages.length,
+			lastMessage.id,
+			lastMessage.status ?? "",
+			lastMessage.parts.length,
+			textFromMessage(lastMessage).length,
+		].join(":");
+	}, [lastMessage, messages.length]);
 
-	// Smart scroll: stay at bottom when user is at bottom, preserve position when scrolled up
+	// Smart scroll: only follow the stream after the user explicitly reaches
+	// the bottom. Posting from older history must preserve the current position.
 	const viewportRef = useRef<HTMLDivElement | null>(null);
-	const isAtBottomRef = useRef(true);
+	const shouldFollowStreamRef = useRef(false);
 	const SCROLL_THRESHOLD = 10;
 
 	useLayoutEffect(() => {
 		const viewport = viewportRef.current;
 		if (!viewport) return;
 
-		const updateAtBottom = () => {
+		const updateFollowStream = () => {
 			const { scrollTop, scrollHeight, clientHeight } = viewport;
-			isAtBottomRef.current =
+			shouldFollowStreamRef.current =
 				scrollHeight - scrollTop - clientHeight <= SCROLL_THRESHOLD;
 		};
 
-		updateAtBottom();
-		viewport.addEventListener("scroll", updateAtBottom, { passive: true });
+		viewport.addEventListener("scroll", updateFollowStream, { passive: true });
 
 		return () => {
-			viewport.removeEventListener("scroll", updateAtBottom);
+			viewport.removeEventListener("scroll", updateFollowStream);
 		};
 	}, []);
 
 	useLayoutEffect(() => {
 		const viewport = viewportRef.current;
-		if (!viewport) return;
+		if (!viewport || !shouldFollowStreamRef.current) return;
 
-		if (isAtBottomRef.current) {
-			viewport.scrollTo({ top: viewport.scrollHeight, behavior: "auto" });
-		}
-	}, [messages.length, pendingApprovals.length]);
+		viewport.scrollTo({ top: viewport.scrollHeight, behavior: "auto" });
+	}, [scrollFollowKey, pendingApprovals.length]);
 
 	if (loading) {
 		return (
@@ -277,7 +511,11 @@ export function ChatMessageList({
 			: "px-3 py-4 sm:px-4 sm:py-8";
 
 	return (
-		<MessageScrollerProvider scrollMargin={24} scrollPreviousItemPeek={96}>
+		<MessageScrollerProvider
+			defaultScrollPosition="start"
+			scrollMargin={24}
+			scrollPreviousItemPeek={96}
+		>
 			<SavedMessageAnchorRestorer conversationId={conversationId} />
 			<MessageVisibilityPersistence conversationId={conversationId} />
 			<MessageScroller className="min-h-0 flex-1">
@@ -331,13 +569,10 @@ export function ChatMessageList({
 							const isLast = message.id === lastMessageId;
 							const isStreamingAssistant =
 								isAssistant && message.status === "streaming";
-							const isOutgoingUserBeforeStreamingAssistant =
-								isUser &&
-								isMessageSecondToLastStreamingUser(message, messages, {
-									sending,
-								});
-							const shouldScrollAnchor =
-								isUser && !isOutgoingUserBeforeStreamingAssistant;
+							const shouldScrollAnchor = shouldUseMessageScrollAnchor({
+								message,
+								sending,
+							});
 							const isAnimating = sending && isLast && isStreamingAssistant;
 							const messagePendingApprovals = isStreamingAssistant
 								? pendingApprovals
@@ -472,6 +707,14 @@ export function ChatMessageList({
 						<div ref={bottomRef} aria-hidden="true" />
 					</MessageScrollerContent>
 				</MessageScrollerViewport>
+				<UserMessageRail
+					shortcuts={userMessageShortcuts}
+					hiddenMessageCount={hiddenMessageCount}
+					totalMessageCount={messages.length}
+					conversationId={conversationId}
+					messageIndexById={messageIndexById}
+					setVisibleMessageCount={setVisibleMessageCount}
+				/>
 				<ChatScrollControls sending={sending} />
 			</MessageScroller>
 		</MessageScrollerProvider>

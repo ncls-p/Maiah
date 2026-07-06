@@ -634,6 +634,14 @@ jobs:
           CODE_WORKSPACE_STORAGE_PREFIX: ${{ vars.CODE_WORKSPACE_STORAGE_PREFIX || 'code-workspaces' }}
           ALLOW_PERSONAL_WORKSPACES: ${{ vars.ALLOW_PERSONAL_WORKSPACES || 'true' }}
           WORKSPACE_MONTHLY_TOKEN_LIMIT: ${{ vars.WORKSPACE_MONTHLY_TOKEN_LIMIT }}
+          OTEL_SERVICE_NAME: ${{ vars.OTEL_SERVICE_NAME || 'maiah' }}
+          OTEL_SERVICE_NAMESPACE: ${{ vars.OTEL_SERVICE_NAMESPACE || 'deodis' }}
+          OTEL_RESOURCE_ATTRIBUTES: ${{ vars.OTEL_RESOURCE_ATTRIBUTES }}
+          OTEL_SERVICE_VERSION: ${{ needs.prepare.outputs.image_tag }}
+          DT_CUSTOM_PROP: ${{ vars.DT_CUSTOM_PROP }}
+          DT_TAGS: ${{ vars.DT_TAGS }}
+          OBSERVABILITY_PLATFORM: coolify
+          OBSERVABILITY_OWNER: ${{ vars.OBSERVABILITY_OWNER || 'deodis' }}
           AI_HUB_APP_IMAGE: ${{ needs.plan_images.outputs.app_image }}
           AI_HUB_WORKER_IMAGE: ${{ needs.plan_images.outputs.worker_image }}
           AI_HUB_MIGRATOR_IMAGE: ${{ needs.plan_images.outputs.migrator_image }}
@@ -738,6 +746,15 @@ jobs:
           CODE_WORKSPACE_STORAGE_PREFIX="${CODE_WORKSPACE_STORAGE_PREFIX:-code-workspaces}"
           ALLOW_PERSONAL_WORKSPACES="${ALLOW_PERSONAL_WORKSPACES:-true}"
           WORKSPACE_MONTHLY_TOKEN_LIMIT="${WORKSPACE_MONTHLY_TOKEN_LIMIT:-}"
+          OTEL_SERVICE_NAME="${OTEL_SERVICE_NAME:-maiah}"
+          OTEL_SERVICE_NAMESPACE="${OTEL_SERVICE_NAMESPACE:-deodis}"
+          OTEL_DEPLOYMENT_ENVIRONMENT="${TARGET_ENV_NAME:-production}"
+          OTEL_SERVICE_VERSION="${OTEL_SERVICE_VERSION:-local}"
+          OBSERVABILITY_PLATFORM="${OBSERVABILITY_PLATFORM:-coolify}"
+          OBSERVABILITY_OWNER="${OBSERVABILITY_OWNER:-deodis}"
+          OTEL_RESOURCE_ATTRIBUTES="${OTEL_RESOURCE_ATTRIBUTES:-service.namespace=${OTEL_SERVICE_NAMESPACE},deployment.environment=${OTEL_DEPLOYMENT_ENVIRONMENT},service.version=${OTEL_SERVICE_VERSION}}"
+          DT_CUSTOM_PROP="${DT_CUSTOM_PROP:-app=${OTEL_SERVICE_NAME} env=${OTEL_DEPLOYMENT_ENVIRONMENT} platform=${OBSERVABILITY_PLATFORM} owner=${OBSERVABILITY_OWNER}}"
+          DT_TAGS="${DT_TAGS:-app=${OTEL_SERVICE_NAME} env=${OTEL_DEPLOYMENT_ENVIRONMENT} platform=${OBSERVABILITY_PLATFORM} owner=${OBSERVABILITY_OWNER}}"
           if [[ -z "${SEARXNG_SECRET:-}" ]]; then
             SEARXNG_SECRET="$(
               printf '%s:%s:%s' "${APP_ENCRYPTION_KEY}" "${COOLIFY_SERVICE_NAME}" "${AI_HUB_PUBLIC_HOST}" \
@@ -904,6 +921,14 @@ jobs:
               --arg searxng_settings_revision "${SEARXNG_SETTINGS_REVISION:-local}" \
               --arg allow_personal_workspaces "${ALLOW_PERSONAL_WORKSPACES}" \
               --arg workspace_monthly_token_limit "${WORKSPACE_MONTHLY_TOKEN_LIMIT}" \
+              --arg otel_service_name "${OTEL_SERVICE_NAME}" \
+              --arg otel_resource_attributes "${OTEL_RESOURCE_ATTRIBUTES}" \
+              --arg dt_custom_prop "${DT_CUSTOM_PROP}" \
+              --arg dt_tags "${DT_TAGS}" \
+              --arg otel_deployment_environment "${OTEL_DEPLOYMENT_ENVIRONMENT}" \
+              --arg otel_service_version "${OTEL_SERVICE_VERSION}" \
+              --arg observability_platform "${OBSERVABILITY_PLATFORM}" \
+              --arg observability_owner "${OBSERVABILITY_OWNER}" \
               --argjson is_preview "${IS_PREVIEW}" \
               '{data: ([
                 {key: "AI_HUB_APP_IMAGE", value: $ai_hub_app_image},
@@ -925,7 +950,15 @@ jobs:
                 {key: "SEARXNG_SECRET", value: $searxng_secret},
                 {key: "SEARXNG_SETTINGS_REVISION", value: $searxng_settings_revision},
                 {key: "ALLOW_PERSONAL_WORKSPACES", value: $allow_personal_workspaces},
-                {key: "WORKSPACE_MONTHLY_TOKEN_LIMIT", value: $workspace_monthly_token_limit}
+                {key: "WORKSPACE_MONTHLY_TOKEN_LIMIT", value: $workspace_monthly_token_limit},
+                {key: "OTEL_SERVICE_NAME", value: $otel_service_name},
+                {key: "OTEL_RESOURCE_ATTRIBUTES", value: $otel_resource_attributes},
+                {key: "DT_CUSTOM_PROP", value: $dt_custom_prop},
+                {key: "DT_TAGS", value: $dt_tags},
+                {key: "OTEL_DEPLOYMENT_ENVIRONMENT", value: $otel_deployment_environment},
+                {key: "OTEL_SERVICE_VERSION", value: $otel_service_version},
+                {key: "OBSERVABILITY_PLATFORM", value: $observability_platform},
+                {key: "OBSERVABILITY_OWNER", value: $observability_owner}
               ] | map(. + {is_preview: $is_preview, is_literal: true, is_multiline: false, is_shown_once: false}))}'
           )"
           api PATCH "/services/${SERVICE_UUID}/envs/bulk" "${ENV_PAYLOAD}" >/dev/null

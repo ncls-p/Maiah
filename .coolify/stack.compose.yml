@@ -5,6 +5,10 @@ services:
       - APP_ENV=production
       - NODE_ENV=production
       - NEXT_TELEMETRY_DISABLED=1
+      - OTEL_SERVICE_NAME=${OTEL_SERVICE_NAME:-maiah}
+      - OTEL_RESOURCE_ATTRIBUTES=${OTEL_RESOURCE_ATTRIBUTES:-service.namespace=${OTEL_SERVICE_NAMESPACE:-deodis},deployment.environment=${OTEL_DEPLOYMENT_ENVIRONMENT:-production},service.version=${OTEL_SERVICE_VERSION:-local}}
+      - DT_CUSTOM_PROP=${DT_CUSTOM_PROP:-app=${OTEL_SERVICE_NAME:-maiah} env=${OTEL_DEPLOYMENT_ENVIRONMENT:-production} platform=${OBSERVABILITY_PLATFORM:-coolify} owner=${OBSERVABILITY_OWNER:-deodis}}
+      - DT_TAGS=${DT_TAGS:-app=${OTEL_SERVICE_NAME:-maiah} env=${OTEL_DEPLOYMENT_ENVIRONMENT:-production} platform=${OBSERVABILITY_PLATFORM:-coolify} owner=${OBSERVABILITY_OWNER:-deodis}}
       - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET:?set BETTER_AUTH_SECRET}
       - BETTER_AUTH_URL=${BETTER_AUTH_URL:-https://maiah.shiftify.eco}
       - BETTER_AUTH_TRUSTED_ORIGINS=${BETTER_AUTH_TRUSTED_ORIGINS:-https://maiah.shiftify.eco}

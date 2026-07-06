@@ -95,4 +95,44 @@ describe("chat route tool gating", () => {
 		expect(Object.keys(tools)).toContain("code_workspace_create_project");
 		expect(Object.keys(tools)).not.toContain("code_workspace_write_file");
 	});
+
+	it("aliases long custom tool keys to OpenAI-compatible names", async () => {
+		const { buildBoundTools } = await loadModules();
+		const longToolName =
+			"tool_name_that_is_long_enough_to_break_openai_function_name_limits";
+		toolUseCasesMock.getToolBindingsForVersion.mockResolvedValue([
+			{
+				id: "binding-1",
+				agentVersionId: "version-1",
+				toolSource: "custom",
+				toolId: "12345678-1234-4234-9234-123456789abc",
+				requireApproval: false,
+				riskLevel: "low",
+				createdAt: new Date(),
+			},
+		]);
+		toolUseCasesMock.getCustomBindingContext.mockResolvedValue({
+			tool: {
+				id: "12345678-1234-4234-9234-123456789abc",
+				name: longToolName,
+				description: "Long custom tool",
+				inputSchemaJson: { type: "object", properties: {} },
+			},
+		});
+
+		const { tools, toolApproval } = await buildBoundTools({
+			...buildInput(),
+			approvalPolicy: { denyToolNames: [longToolName] },
+		});
+		const [toolKey] = Object.keys(tools);
+
+		expect(toolKey).toMatch(/^custom_[a-z0-9]+_/);
+		expect(toolKey.length).toBeLessThanOrEqual(64);
+		expect(toolKey).not.toContain("12345678_1234_4234_9234_123456789abc");
+		await expect(
+			toolApproval?.({
+				toolCall: { toolName: toolKey, input: {} },
+			} as never),
+		).resolves.toMatchObject({ type: "denied" });
+	});
 });

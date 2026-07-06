@@ -159,6 +159,7 @@ See `.env.example` for the full reference. Key categories:
 | `AI_HUB_TOOL_POLICY_OPA_URL` | OPA endpoint for tool approval policies |
 | `WORKSPACE_MONTHLY_TOKEN_LIMIT` | Per-workspace monthly token quota |
 | `ALLOW_PERSONAL_WORKSPACES` | Set to `false` to disable personal workspaces |
+| `OTEL_SERVICE_NAME`, `OTEL_RESOURCE_ATTRIBUTES`, `DT_CUSTOM_PROP`, `DT_TAGS` | Dynatrace/OpenTelemetry service naming, metadata, and tags |
 
 > **Security note:** The app validates environment variables at startup and rejects insecure production configuration. `next build` may use placeholder values so CI builds remain reproducible.
 
@@ -374,6 +375,10 @@ GitHub repository **variables**:
 | `CODE_WORKSPACE_STORAGE_PREFIX` | `code-workspaces` | S3 prefix for code workspaces |
 | `ALLOW_PERSONAL_WORKSPACES` | `true` | Allow personal workspace creation |
 | `WORKSPACE_MONTHLY_TOKEN_LIMIT` | — | Token quota per workspace |
+| `OTEL_SERVICE_NAME` | `maiah` | Stable Dynatrace/OpenTelemetry service name |
+| `OTEL_RESOURCE_ATTRIBUTES` | derived | Standard OpenTelemetry resource attributes |
+| `DT_TAGS` | derived | Dynatrace tags for filtering |
+| `OBSERVABILITY_OWNER` | `deodis` | Owner metadata exported through `DT_CUSTOM_PROP` and `DT_TAGS` |
 
 #### Coolify stack
 
@@ -388,6 +393,31 @@ AI_HUB_SANDBOX_IMAGE:   ghcr.io/.../ai-hub-sandbox:<tag>
 ```
 
 For PR previews, the deploy step merges in an additional compose overlay that adds Traefik basic auth labels to the `app` container.
+
+#### Dynatrace service naming
+
+The production compose files set a stable application-side service name first, then leave Dynatrace naming rules as fallback only:
+
+```env
+OTEL_SERVICE_NAME=maiah
+OTEL_RESOURCE_ATTRIBUTES=service.namespace=deodis,deployment.environment=production,service.version=<image-tag>
+DT_CUSTOM_PROP=app=maiah env=production platform=coolify owner=deodis
+DT_TAGS=app=maiah env=production platform=coolify owner=deodis
+```
+
+The GitHub deploy workflow publishes `OTEL_RESOURCE_ATTRIBUTES` directly so standard attributes such as `service.namespace` and `deployment.environment` are available to Dynatrace. It derives `OTEL_SERVICE_VERSION` from the deployed image tag and `OTEL_DEPLOYMENT_ENVIRONMENT` from the Coolify environment (`production` or `pr-<number>`). In Dynatrace, keep the displayed service name short (`maiah`) and use `deployment.environment`, `service.namespace`, `platform`, and `owner` as filterable dimensions/tags.
+
+Recommended Dynatrace fallbacks:
+
+1. **Service naming rule** — add a low-priority Docker fallback such as `{DockerContainerGroupInstance:ContainerName}` only if `service.name` is not picked up cleanly.
+2. **Process group naming rule** — use `{DockerContainerGroupInstance:ContainerName}` to avoid generic names such as `node /app/server.js`.
+3. **Service detection rules** — only change detection if Dynatrace groups distinct runtime services incorrectly; naming rules should handle display-name cleanup.
+
+After redeploying, generate traffic and verify in Dynatrace **Properties and tags** that `service.name`, `deployment.environment`, `service.namespace`, `DT_CUSTOM_PROP`, and `DT_TAGS` values are present. If needed, check the running container with:
+
+```bash
+docker exec -it <container_name> printenv | grep -E "OTEL|DT_CUSTOM_PROP|DT_TAGS"
+```
 
 ### Standalone deployment
 
