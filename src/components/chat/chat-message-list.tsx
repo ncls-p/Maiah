@@ -206,7 +206,18 @@ export function ChatMessageList({
 		}
 		return { lastAssistantMessageId, precedingUserByMessageId };
 	}, [visibleMessages]);
-	const lastMessageId = messages[messages.length - 1]?.id ?? null;
+	const lastMessage = messages[messages.length - 1] ?? null;
+	const lastMessageId = lastMessage?.id ?? null;
+	const scrollFollowKey = useMemo(() => {
+		if (!lastMessage) return `empty:${messages.length}`;
+		return [
+			messages.length,
+			lastMessage.id,
+			lastMessage.status ?? "",
+			lastMessage.parts.length,
+			textFromMessage(lastMessage).length,
+		].join(":");
+	}, [lastMessage, messages.length]);
 
 	// Smart scroll: stay at bottom when user is at bottom, preserve position when scrolled up
 	const viewportRef = useRef<HTMLDivElement | null>(null);
@@ -238,7 +249,7 @@ export function ChatMessageList({
 		if (isAtBottomRef.current) {
 			viewport.scrollTo({ top: viewport.scrollHeight, behavior: "auto" });
 		}
-	});
+	}, [scrollFollowKey, pendingApprovals.length]);
 
 	if (loading) {
 		return (
