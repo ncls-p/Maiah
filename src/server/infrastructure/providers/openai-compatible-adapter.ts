@@ -73,9 +73,12 @@ function normalizeModalities(values: string[] | undefined) {
 }
 
 function isChatModel(model: OpenAICompatibleModel) {
-	// OpenAI's official /models response has no backend field. If a proxy adds one,
-	// this adapter only registers language models because it creates chat models.
-	return !model.backend || model.backend === "llm";
+	// OpenAI-compatible proxies use `backend` for the serving engine
+	// (for example `llamacpp` or `vllm`), not for the model modality.
+	// This adapter creates chat models, so only explicit embedding models are
+	// filtered out.
+	const task = model.task?.toLowerCase();
+	return task !== "embedding" && task !== "embeddings";
 }
 
 function capabilitiesFromModel(model: OpenAICompatibleModel): ModelCapability {
