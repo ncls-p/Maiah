@@ -38,6 +38,7 @@ export default defineConfig({
 				"src/modules/custom-tools/use-cases.ts",
 				"src/modules/github/publishing.ts",
 				"src/modules/knowledge/use-cases.ts",
+				"src/modules/tool-connections/use-cases.ts",
 				"src/proxy.ts",
 			],
 			thresholds: {

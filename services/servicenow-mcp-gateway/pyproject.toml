@@ -1,0 +1,27 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "maiah-servicenow-mcp-gateway"
+version = "0.1.0"
+description = "Multi-tenant ServiceNow MCP gateway for Maiah per-user tool connections"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "servicenow-mcp @ git+https://github.com/echelon-ai-labs/servicenow-mcp.git@06250607bdfc814f9bb56551bba16c3a7fb5a8c9",
+  "mcp[cli]==1.3.0",
+  "pydantic>=2.0.0",
+  "starlette>=0.27.0",
+  "uvicorn>=0.22.0",
+  "cryptography>=43.0.0",
+]
+
+[project.scripts]
+maiah-servicenow-mcp-gateway = "servicenow_mcp_gateway.app:main"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/servicenow_mcp_gateway"]

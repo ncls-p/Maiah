@@ -34,10 +34,17 @@ vi.mock("@/modules/github/publishing", () => ({
 	publishCodeWorkspaceToGitHub: mocks.publishCodeWorkspaceToGitHub,
 }));
 
-vi.mock("@/modules/tool/search-web", () => ({
-	searchWebWithSearxng: mocks.searchWebWithSearxng,
-	webSearchInputSchema: { parse: vi.fn((value) => value) },
-}));
+vi.mock("@/modules/tool/builtin-tool-primitives", async (importOriginal) => {
+	const actual =
+		await importOriginal<
+			typeof import("@/modules/tool/builtin-tool-primitives")
+		>();
+	return {
+		...actual,
+		searchWebWithSearxng: mocks.searchWebWithSearxng,
+		webSearchInputSchema: { parse: vi.fn((value) => value) },
+	};
+});
 
 vi.mock("@/modules/tool/code-sandbox", () => ({
 	codeSandboxInputSchema: { parse: vi.fn((value) => value) },
@@ -115,10 +122,13 @@ beforeEach(() => {
 	mockFn(mocks.deleteCodeWorkspaceFile).mockResolvedValue({ ok: "deleted" });
 	mockFn(mocks.getUserGitHubStatus).mockResolvedValue({ connected: true });
 	mockFn(mocks.publishCodeWorkspaceToGitHub).mockResolvedValue({ ok: true });
-	mockFn(mocks.searchWebWithSearxng).mockResolvedValue({
-		ok: true,
-		results: [],
-	});
+	mockFn(mocks.searchWebWithSearxng).mockImplementation(
+		async (input: { query: string }) => ({
+			ok: true,
+			query: input.query,
+			results: [],
+		}),
+	);
 	mockFn(mocks.executeCodeSandbox).mockResolvedValue({
 		kind: "code_sandbox_result",
 		ok: true,

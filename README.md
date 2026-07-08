@@ -199,6 +199,7 @@ Create, configure, and run AI agents with streaming chat, tool calling, and poli
 
 - **Custom tools** — user-defined functions agents can call
 - **MCP servers** — register external Model Context Protocol servers and auto-discover their tools
+- **Tool connections** — per-user or workspace credentials/settings for connector-backed tools such as ServiceNow
 - **Web search** — SearXNG-backed search tool
 - **Code sandbox** — Docker-isolated execution for Python/Node workloads
 
@@ -237,6 +238,9 @@ Per-workspace token usage tracking and security audit logs for sensitive actions
 | `GET/POST` | `/api/workspace/providers` | Manage provider registry |
 | `GET/POST` | `/api/workspace/knowledge-bases` | Manage RAG knowledge bases |
 | `GET/POST` | `/api/workspace/mcp-servers` | Register MCP servers |
+| `GET/POST` | `/api/workspace/tool-connectors` | Manage connector templates for tools/MCP servers |
+| `GET/POST` | `/api/workspace/tool-connections` | Manage per-user/workspace tool credentials |
+| `PUT` | `/api/workspace/user-tool-settings` | Save per-user per-tool overrides |
 | `GET` | `/api/workspace/usage` | Token usage metrics |
 | `GET` | `/api/workspace/audit` | Audit log entries |
 | `*` | `/api/auth/[...all]` | Better Auth handler |

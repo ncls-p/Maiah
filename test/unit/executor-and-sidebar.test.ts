@@ -33,6 +33,10 @@ vi.mock("@/modules/mcp/use-cases", () => {
 	};
 });
 
+vi.mock("@/modules/tool-connections/use-cases", () => ({
+	resolveToolExecutionHeaders: vi.fn().mockResolvedValue({}),
+}));
+
 type Chain = {
 	select: ReturnType<typeof vi.fn>;
 	insert: ReturnType<typeof vi.fn>;
@@ -101,6 +105,7 @@ import * as _dbModule from "@/server/infrastructure/db";
 const dbModule = _dbModule as unknown as DbModule;
 import { callRemoteMcpTool } from "@/modules/mcp/client";
 import { getMcpServer } from "@/modules/mcp/use-cases";
+import { resolveToolExecutionHeaders } from "@/modules/tool-connections/use-cases";
 
 function resetDb() {
 	for (const chain of [dbModule._c, dbModule._tx]) {
@@ -151,6 +156,7 @@ describe("mcp/executor", async () => {
 		resetDb();
 		vi.mocked(callRemoteMcpTool).mockReset();
 		vi.mocked(getMcpServer).mockReset();
+		vi.mocked(resolveToolExecutionHeaders).mockReset().mockResolvedValue({});
 	});
 
 	it("throws when server not found", async () => {
@@ -244,6 +250,53 @@ describe("mcp/executor", async () => {
 			toolInput: { query: "test" },
 		});
 		expect(result).toEqual({ result: "data" });
+	});
+
+	it("passes per-user gateway headers when a user id is present", async () => {
+		vi.mocked(getMcpServer).mockResolvedValue(fakeSseServer);
+		vi.mocked(resolveToolExecutionHeaders).mockResolvedValue({
+			"x-maiah-tool-context": "payload",
+			"x-maiah-tool-context-signature": "sig",
+		});
+		vi.mocked(callRemoteMcpTool).mockResolvedValue({
+			structuredContent: { result: "data" },
+			content: [{ type: "text", text: "data" }],
+		});
+
+		dbModule.db.select.mockReturnValue(dbModule._c);
+		dbModule._c.from.mockReturnValue(dbModule._c);
+		dbModule._c.where.mockReturnValue(dbModule._c);
+		dbModule._c.limit.mockResolvedValueOnce([
+			{ id: "tool-1", name: "search", enabled: true },
+		]);
+
+		const { executeMcpTool } = await import("../../src/modules/mcp/executor");
+		await executeMcpTool({
+			serverId: "srv-1",
+			toolId: "tool-1",
+			workspaceId: "ws-1",
+			userId: "user-1",
+			toolInput: { query: "test" },
+		});
+
+		expect(resolveToolExecutionHeaders).toHaveBeenCalledWith({
+			workspaceId: "ws-1",
+			userId: "user-1",
+			toolSource: "mcp",
+			toolId: "tool-1",
+			mcpServerId: "srv-1",
+		});
+		expect(callRemoteMcpTool).toHaveBeenCalledWith(
+			fakeSseServer,
+			"search",
+			{ query: "test" },
+			{
+				headers: {
+					"x-maiah-tool-context": "payload",
+					"x-maiah-tool-context-signature": "sig",
+				},
+			},
+		);
 	});
 
 	it("returns content when only content present", async () => {

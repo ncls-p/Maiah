@@ -44,6 +44,7 @@ export const baseEnvSchema = z.object({
 	GITHUB_APP_ID: z.string().optional(),
 	GITHUB_APP_SLUG: z.string().optional(),
 	GITHUB_APP_PRIVATE_KEY: z.string().optional(),
+	MCP_GATEWAY_SHARED_SECRET: z.string().min(16).optional(),
 });
 
 export const productionEnvSchema = baseEnvSchema.extend({
@@ -110,6 +111,7 @@ const ENV_DEFAULTS: EnvSource = {
 	GITHUB_APP_ID: undefined,
 	GITHUB_APP_SLUG: undefined,
 	GITHUB_APP_PRIVATE_KEY: undefined,
+	MCP_GATEWAY_SHARED_SECRET: undefined,
 };
 
 function readEnv(source: EnvSource): EnvSource {

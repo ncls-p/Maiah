@@ -27,6 +27,7 @@ import {
 } from "@/components/marketplace/resource-share-dialog";
 import { ServerList } from "./mcp-server-manager/server-list";
 import { SystemStrip } from "./mcp-server-manager/stats";
+import { ToolConnectionsPanel } from "./mcp-server-manager/tool-connections-panel";
 import type {
 	McpServer,
 	McpTool,
@@ -346,6 +347,12 @@ export function McpServerManager() {
 					<SystemStrip servers={servers} toolsByServer={toolsByServer} />
 				</AdvancedSection>
 			</div>
+
+			<ToolConnectionsPanel
+				workspaceId={workspaceId}
+				servers={servers}
+				canManageWorkspaceConnections={canManageTenantGlobals}
+			/>
 
 			<ServerList
 				servers={servers}
