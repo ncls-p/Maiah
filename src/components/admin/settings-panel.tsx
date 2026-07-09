@@ -1,6 +1,7 @@
 import type { ElementType, ReactNode } from "react";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
@@ -193,6 +194,37 @@ export function SettingsSectionSkeleton({ rows = 3 }: { rows?: number }) {
 					<Skeleton key={index} className="h-14 w-full rounded-xl" />
 				))}
 			</div>
+		</div>
+	);
+}
+
+export function SettingsLoadError({
+	title,
+	description,
+	retryLabel,
+	onRetry,
+}: {
+	title: string;
+	description: string;
+	retryLabel: string;
+	onRetry: () => void;
+}) {
+	return (
+		<div
+			className="rounded-2xl border border-destructive/25 bg-destructive/5 p-5"
+			role="alert"
+		>
+			<h2 className="text-base font-semibold">{title}</h2>
+			<p className="mt-1 text-sm text-muted-foreground">{description}</p>
+			<Button
+				type="button"
+				variant="outline"
+				size="sm"
+				className="mt-4"
+				onClick={onRetry}
+			>
+				{retryLabel}
+			</Button>
 		</div>
 	);
 }

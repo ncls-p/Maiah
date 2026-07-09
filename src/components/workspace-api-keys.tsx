@@ -12,6 +12,16 @@ import {
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -68,7 +78,7 @@ function ApiKeyListItem({
 }: {
   apiKey: ApiKeyRow;
   locale: string;
-  onRevokeAction: (keyId: string) => void;
+  onRevokeAction: (apiKey: ApiKeyRow) => void;
   t: ApiKeysTranslator;
 }) {
   const lastUsedLabel = apiKey.lastUsedAt
@@ -93,7 +103,7 @@ function ApiKeyListItem({
         <Button
           size="icon-sm"
           variant="ghost"
-          onClick={() => onRevokeAction(apiKey.id)}
+          onClick={() => onRevokeAction(apiKey)}
           aria-label={t("revokeLabel", { name: apiKey.name })}
         >
           <Trash2Icon aria-hidden="true" />
@@ -111,6 +121,8 @@ export function WorkspaceApiKeys() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [revoking, setRevoking] = useState(false);
+  const [pendingRevoke, setPendingRevoke] = useState<ApiKeyRow | null>(null);
   const [name, setName] = useState("");
   const [revealedKey, setRevealedKey] = useState<string | null>(null);
 
@@ -151,126 +163,166 @@ export function WorkspaceApiKeys() {
 
   async function revokeKey(keyId: string) {
     if (!workspaceId) return;
-    const res = await revokeApiKey(workspaceId, keyId);
-    if (!res.ok) {
-      toast.error(t("revokeFailed"));
-      return;
+    setRevoking(true);
+    try {
+      const res = await revokeApiKey(workspaceId, keyId);
+      if (!res.ok) {
+        toast.error(t("revokeFailed"));
+        return;
+      }
+      setPendingRevoke(null);
+      await load();
+      toast.success(t("revoked"));
+    } finally {
+      setRevoking(false);
     }
-    await load();
-    toast.success(t("revoked"));
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <KeyRoundIcon className="size-4" aria-hidden="true" />
-          {t("cardTitle")}
-        </CardTitle>
-        <CardDescription>
-          {t.rich("cardDescription", {
-            code: (chunks) => <code className="text-xs">{chunks}</code>,
-          })}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4">
-        <div
-          className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end"
-          suppressHydrationWarning
-        >
-          <div className="grid flex-1 gap-2">
-            <Label htmlFor="api-key-name">{t("nameLabel")}</Label>
-            <Input
-              id="api-key-name"
-              name="api-key-name"
-              autoComplete="off"
-              data-1p-ignore
-              data-bwignore
-              data-form-type="other"
-              data-lpignore="true"
-              data-protonpass-ignore
-              placeholder="CI pipeline…"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-            />
-          </div>
-          <Button
-            disabled={creating || loadError || !name.trim()}
-            onClick={() => void createKey()}
-          >
-            {creating ? (
-              <Loader2 className="animate-spin" aria-hidden="true" />
-            ) : (
-              <PlusIcon data-icon="inline-start" aria-hidden="true" />
-            )}
-            {t("createButton")}
-          </Button>
-        </div>
-
-        {revealedKey ? (
-          <div className="rounded-xl border border-warning/35 bg-warning/10 p-3 text-sm">
-            <p className="font-medium">{t("copyTitle")}</p>
-            <div className="mt-2 flex items-center gap-2">
-              <code className="flex-1 truncate rounded bg-background px-2 py-1 text-xs">
-                {revealedKey}
-              </code>
-              <Button
-                size="sm"
-                variant="outline"
-                aria-label={t("copyKey")}
-                onClick={() => {
-                  void navigator.clipboard
-                    .writeText(revealedKey)
-                    .then(() => toast.success(t("copied")))
-                    .catch(() => toast.error(t("copyFailed")));
-                }}
-              >
-                <CopyIcon aria-hidden="true" />
-              </Button>
-            </div>
-          </div>
-        ) : null}
-
-        {loading ? (
-          <Loader2
-            className="mx-auto size-5 animate-spin text-muted-foreground"
-            aria-hidden="true"
-          />
-        ) : loadError ? (
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <KeyRoundIcon className="size-4" aria-hidden="true" />
+            {t("cardTitle")}
+          </CardTitle>
+          <CardDescription>
+            {t.rich("cardDescription", {
+              code: (chunks) => <code className="text-xs">{chunks}</code>,
+            })}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
           <div
-            className="rounded-xl border border-destructive/25 bg-destructive/5 p-4"
-            role="alert"
+            className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end"
+            suppressHydrationWarning
           >
-            <p className="text-sm font-medium">{t("loadFailed")}</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {t("loadFailedDescription")}
-            </p>
+            <div className="grid flex-1 gap-2">
+              <Label htmlFor="api-key-name">{t("nameLabel")}</Label>
+              <Input
+                id="api-key-name"
+                name="api-key-name"
+                autoComplete="off"
+                data-1p-ignore
+                data-bwignore
+                data-form-type="other"
+                data-lpignore="true"
+                data-protonpass-ignore
+                placeholder="CI pipeline…"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+              />
+            </div>
             <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="mt-3"
-              onClick={() => void load()}
+              disabled={creating || loadError || !name.trim()}
+              onClick={() => void createKey()}
             >
-              {t("retry")}
+              {creating ? (
+                <Loader2 className="animate-spin" aria-hidden="true" />
+              ) : (
+                <PlusIcon data-icon="inline-start" aria-hidden="true" />
+              )}
+              {t("createButton")}
             </Button>
           </div>
-        ) : keys.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("empty")}</p>
-        ) : (
-          <ul className="divide-y divide-border/70 rounded-xl border">
-            {keys.map((key) => (
-              <ApiKeyListItem
-                key={key.id}
-                apiKey={key}
-                locale={locale}
-                t={t}
-                onRevokeAction={(keyId) => void revokeKey(keyId)}
-              />
-            ))}
-          </ul>
-        )}
-      </CardContent>
-    </Card>
+
+          {revealedKey ? (
+            <div className="rounded-xl border border-warning/35 bg-warning/10 p-3 text-sm">
+              <p className="font-medium">{t("copyTitle")}</p>
+              <div className="mt-2 flex items-center gap-2">
+                <code className="flex-1 truncate rounded bg-background px-2 py-1 text-xs">
+                  {revealedKey}
+                </code>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  aria-label={t("copyKey")}
+                  onClick={() => {
+                    void navigator.clipboard
+                      .writeText(revealedKey)
+                      .then(() => toast.success(t("copied")))
+                      .catch(() => toast.error(t("copyFailed")));
+                  }}
+                >
+                  <CopyIcon aria-hidden="true" />
+                </Button>
+              </div>
+            </div>
+          ) : null}
+
+          {loading ? (
+            <Loader2
+              className="mx-auto size-5 animate-spin text-muted-foreground"
+              aria-hidden="true"
+            />
+          ) : loadError ? (
+            <div
+              className="rounded-xl border border-destructive/25 bg-destructive/5 p-4"
+              role="alert"
+            >
+              <p className="text-sm font-medium">{t("loadFailed")}</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {t("loadFailedDescription")}
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-3"
+                onClick={() => void load()}
+              >
+                {t("retry")}
+              </Button>
+            </div>
+          ) : keys.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t("empty")}</p>
+          ) : (
+            <ul className="divide-y divide-border/70 rounded-xl border">
+              {keys.map((key) => (
+                <ApiKeyListItem
+                  key={key.id}
+                  apiKey={key}
+                  locale={locale}
+                  t={t}
+                  onRevokeAction={setPendingRevoke}
+                />
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+      <AlertDialog
+        open={Boolean(pendingRevoke)}
+        onOpenChange={(open) => {
+          if (!open && !revoking) setPendingRevoke(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("revokeTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("revokeDescription", {
+                name: pendingRevoke?.name ?? "",
+              })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={revoking}>
+              {t("cancelRevoke")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={revoking || !pendingRevoke}
+              onClick={(event) => {
+                event.preventDefault();
+                if (pendingRevoke) void revokeKey(pendingRevoke.id);
+              }}
+            >
+              {revoking ? t("revoking") : t("revokeAction")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

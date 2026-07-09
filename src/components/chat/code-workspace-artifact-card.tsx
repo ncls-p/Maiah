@@ -11,6 +11,7 @@ import {
 	SaveIcon,
 	Trash2Icon,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import type {
 	ChatFileAttachment,
@@ -83,14 +84,18 @@ async function requestCodeWorkspaceJson<T>(
 	return data as T | null;
 }
 
-async function loadCodeWorkspaceFileContent(projectId: string, path: string) {
+async function loadCodeWorkspaceFileContent(
+	projectId: string,
+	path: string,
+	fallbackError: string,
+) {
 	const data = await requestCodeWorkspaceJson<CodeWorkspaceFilePayload>(
 		`/api/workspace/code-projects/${projectId}/files?path=${encodeURIComponent(path)}`,
 		undefined,
-		"Failed to load file",
+		fallbackError,
 	);
 	if (typeof data?.content !== "string") {
-		throw new Error(data?.error || "Failed to load file");
+		throw new Error(data?.error || fallbackError);
 	}
 	return data.content;
 }
@@ -372,6 +377,7 @@ function CodeWorkspaceEditor({
 	onChange: (value: string) => void;
 	className?: string;
 }) {
+	const t = useTranslations("chat.artifacts");
 	const highlightRef = useRef<HTMLPreElement | null>(null);
 	const highlighted = useMemo(
 		() => highlightCode(value, filePath),
@@ -399,7 +405,9 @@ function CodeWorkspaceEditor({
 				{highlighted}
 			</pre>
 			<textarea
-				aria-label={filePath ? `Code editor for ${filePath}` : "Code editor"}
+				aria-label={
+					filePath ? t("codeEditorFor", { path: filePath }) : t("codeEditor")
+				}
 				value={value}
 				onChange={(event) => onChange(event.target.value)}
 				onScroll={syncScroll}
@@ -444,6 +452,7 @@ export function CodeWorkspaceArtifactSummary({
 }: {
 	artifact: CodeWorkspaceArtifact;
 }) {
+	const t = useTranslations("chat.artifacts");
 	return (
 		<button
 			type={BUTTON_TYPE}
@@ -458,7 +467,10 @@ export function CodeWorkspaceArtifactSummary({
 					{artifact.title}
 				</span>
 				<span className="block truncate text-[11px] text-muted-foreground">
-					Workspace v{artifact.version} · {artifact.files.length} files
+					{t("workspaceSummary", {
+						version: artifact.version,
+						count: artifact.files.length,
+					})}
 				</span>
 			</span>
 		</button>
@@ -481,6 +493,7 @@ export function GitHubPublishResultCard({
 }: {
 	result: GitHubPublishOutput;
 }) {
+	const t = useTranslations("chat.artifacts");
 	return (
 		<div className="w-fit max-w-full overflow-hidden rounded-xl border bg-card text-xs shadow-sm">
 			<div className="flex items-center gap-2 border-b px-3 py-2">
@@ -489,13 +502,13 @@ export function GitHubPublishResultCard({
 					<p className="font-medium text-foreground">{result.message}</p>
 					<p className="truncate text-[11px] text-muted-foreground">
 						{result.repository} ·{" "}
-						{result.mode === "pull_request" ? "PR" : "direct push"} ·{" "}
+						{result.mode === "pull_request" ? "PR" : t("directPush")} ·{" "}
 						{result.targetBranch}
 					</p>
 				</div>
 			</div>
 			<div className="flex flex-wrap items-center gap-2 px-3 py-2 text-[11px] text-muted-foreground">
-				<span>Commit {result.commitSha.slice(0, 7)}</span>
+				<span>{t("commit", { sha: result.commitSha.slice(0, 7) })}</span>
 				{result.pullRequestUrl ? (
 					<a
 						href={result.pullRequestUrl}
@@ -503,7 +516,7 @@ export function GitHubPublishResultCard({
 						rel="noreferrer"
 						className="font-medium text-primary underline underline-offset-2"
 					>
-						Open PR
+						{t("openPr")}
 					</a>
 				) : null}
 			</div>
@@ -547,13 +560,20 @@ export function ChatFileAttachmentCard({
 }: {
 	attachment: ChatFileAttachment;
 }) {
+	const t = useTranslations("chat.artifacts");
+	const tComposer = useTranslations("chat.composer");
 	const canPreview = attachment.extractedTextChars > 0;
 	const readLabel =
 		attachment.extractionStatus === "unreadable"
-			? "Stored safely"
+			? tComposer("storedSafely", { size: formatBytes(attachment.size) })
 			: attachment.extractionStatus === "truncated"
-				? "Partially read"
-				: "Readable";
+				? tComposer("partiallyRead")
+				: tComposer("readable");
+	const fileSummary = `${readLabel}${
+		attachment.extractionStatus === "unreadable"
+			? ""
+			: ` · ${formatBytes(attachment.size)}`
+	}`;
 	const preview = useFilePreview({
 		attachmentId: attachment.id,
 		canPreview,
@@ -568,9 +588,9 @@ export function ChatFileAttachmentCard({
 				<AttachmentContent>
 					<AttachmentTitle>{attachment.fileName}</AttachmentTitle>
 					<AttachmentDescription>
-						{readLabel} · {formatBytes(attachment.size)}
+						{fileSummary}
 						{attachment.extractedTextChars > 0
-							? ` · ${attachment.extractedTextChars.toLocaleString()} chars`
+							? ` · ${t("extractedChars", { count: attachment.extractedTextChars })}`
 							: ""}
 					</AttachmentDescription>
 				</AttachmentContent>
@@ -583,13 +603,13 @@ export function ChatFileAttachmentCard({
 							onClick={preview.openPreview}
 						>
 							<Maximize2Icon data-icon="inline-start" aria-hidden="true" />
-							View
+							{t("view")}
 						</AttachmentAction>
 					) : null}
 					<AttachmentAction asChild variant="ghost" size="sm">
 						<a href={attachment.url} target="_blank" rel="noreferrer">
 							<DownloadIcon data-icon="inline-start" aria-hidden="true" />
-							Download
+							{t("download")}
 						</a>
 					</AttachmentAction>
 				</AttachmentActions>
@@ -600,8 +620,8 @@ export function ChatFileAttachmentCard({
 				fileName={attachment.fileName}
 				url={attachment.url}
 				subtitle={
-					`${readLabel} · ${formatBytes(attachment.size)} · ` +
-					`${attachment.extractedTextChars.toLocaleString()} extracted chars`
+					`${fileSummary} · ` +
+					t("extractedChars", { count: attachment.extractedTextChars })
 				}
 				previewText={preview.previewText}
 				previewError={preview.previewError}
@@ -622,6 +642,7 @@ export function CodeWorkspaceArtifactCard({
 	variant?: "card" | "workbench";
 	activateOnMount?: boolean;
 }) {
+	const t = useTranslations("chat.artifacts");
 	const [currentArtifact, setCurrentArtifact] = useState(artifact);
 	const [selectedPath, setSelectedPath] = useState<string | null>(
 		artifact.rootFile ??
@@ -700,6 +721,7 @@ export function CodeWorkspaceArtifactCard({
 				const fileContent = await loadCodeWorkspaceFileContent(
 					currentArtifact.projectId,
 					filePath,
+					t("loadFileFailed"),
 				);
 				if (!cancelled) setContent(fileContent);
 			} catch (loadError) {
@@ -707,7 +729,7 @@ export function CodeWorkspaceArtifactCard({
 					setError(
 						loadError instanceof Error
 							? loadError.message
-							: "Failed to load file",
+							: t("loadFileFailed"),
 					);
 				}
 			} finally {
@@ -723,6 +745,7 @@ export function CodeWorkspaceArtifactCard({
 		fileReloadKey,
 		selectedFile?.binary,
 		selectedPath,
+		t,
 	]);
 
 	async function saveSelectedFile() {
@@ -734,13 +757,13 @@ export function CodeWorkspaceArtifactCard({
 				currentArtifact.projectId,
 				"PUT",
 				{ path: selectedPath, content },
-				"Failed to save file",
+				t("saveFileFailed"),
 			);
 			setCurrentArtifact(nextArtifact);
 			dispatchCodeWorkspaceArtifact(nextArtifact, { activate: true });
 		} catch (saveError) {
 			setError(
-				saveError instanceof Error ? saveError.message : "Failed to save file",
+				saveError instanceof Error ? saveError.message : t("saveFileFailed"),
 			);
 		} finally {
 			setSavingFile(false);
@@ -749,7 +772,9 @@ export function CodeWorkspaceArtifactCard({
 
 	async function deleteSelectedFile() {
 		if (!selectedPath) return;
-		const confirmed = window.confirm(`Delete ${selectedPath}?`);
+		const confirmed = window.confirm(
+			t("deleteFileConfirm", { path: selectedPath }),
+		);
 		if (!confirmed) return;
 		setSavingFile(true);
 		setError(null);
@@ -758,7 +783,7 @@ export function CodeWorkspaceArtifactCard({
 				currentArtifact.projectId,
 				"DELETE",
 				{ path: selectedPath },
-				"Failed to delete file",
+				t("deleteFileFailed"),
 			);
 			setCurrentArtifact(nextArtifact);
 			dispatchCodeWorkspaceArtifact(nextArtifact, { activate: true });
@@ -766,7 +791,7 @@ export function CodeWorkspaceArtifactCard({
 			setError(
 				deleteError instanceof Error
 					? deleteError.message
-					: "Failed to delete file",
+					: t("deleteFileFailed"),
 			);
 		} finally {
 			setSavingFile(false);
@@ -794,8 +819,10 @@ export function CodeWorkspaceArtifactCard({
 							{currentArtifact.title}
 						</p>
 						<p className="text-[11px] text-muted-foreground">
-							Code workspace · v{currentArtifact.version} ·{" "}
-							{currentArtifact.files.length} files
+							{t("workspaceSummary", {
+								version: currentArtifact.version,
+								count: currentArtifact.files.length,
+							})}
 						</p>
 					</div>
 					<div className="flex items-center gap-1.5">
@@ -839,7 +866,7 @@ export function CodeWorkspaceArtifactCard({
 				>
 					<div className="border-b border-border/50 bg-muted/20 lg:border-r lg:border-b-0">
 						<div className="border-b border-border/40 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
-							Files
+							{t("files")}
 						</div>
 						<div className="max-h-64 overflow-auto p-2 lg:max-h-[480px]">
 							<CodeWorkspaceFileTree
@@ -853,12 +880,12 @@ export function CodeWorkspaceArtifactCard({
 						<div className="flex min-h-10 items-center justify-between gap-2 border-b border-border/40 px-3 py-2">
 							<div className="min-w-0">
 								<p className="truncate font-medium text-foreground">
-									{selectedPath ?? "No file selected"}
+									{selectedPath ?? t("noFileSelected")}
 								</p>
 								<p className="text-[10px] text-muted-foreground">
 									{selectedFile?.binary
-										? "Binary asset"
-										: (selectedFile?.mimeType ?? "Select a file")}
+										? t("binaryAsset")
+										: (selectedFile?.mimeType ?? t("selectFile"))}
 								</p>
 							</div>
 							<div className="flex shrink-0 items-center gap-1.5">
@@ -869,6 +896,7 @@ export function CodeWorkspaceArtifactCard({
 									className="h-7 px-2 text-[11px]"
 									disabled={!selectedPath || selectedFile?.binary}
 									onClick={() => setFullscreenPane("code")}
+									aria-label={t("fullscreen")}
 								>
 									<Maximize2Icon
 										className={COMPACT_ICON_CLASS}
@@ -884,6 +912,7 @@ export function CodeWorkspaceArtifactCard({
 										!selectedPath || selectedFile?.binary || loadingFile
 									}
 									onClick={() => setFileReloadKey((key) => key + 1)}
+									aria-label={t("refreshFile")}
 								>
 									<RefreshCcwIcon
 										className={COMPACT_ICON_CLASS}
@@ -899,7 +928,7 @@ export function CodeWorkspaceArtifactCard({
 									onClick={() => void saveSelectedFile()}
 								>
 									<SaveIcon className={COMPACT_ICON_CLASS} aria-hidden="true" />
-									Save
+									{t("save")}
 								</Button>
 								<Button
 									type={BUTTON_TYPE}
@@ -908,6 +937,7 @@ export function CodeWorkspaceArtifactCard({
 									className="h-7 px-2 text-[11px] text-destructive hover:text-destructive"
 									disabled={!selectedPath || savingFile}
 									onClick={() => void deleteSelectedFile()}
+									aria-label={t("deleteFile")}
 								>
 									<Trash2Icon
 										className={COMPACT_ICON_CLASS}
@@ -923,12 +953,11 @@ export function CodeWorkspaceArtifactCard({
 						) : null}
 						{selectedFile?.binary ? (
 							<div className="flex flex-1 items-center justify-center p-6 text-center text-xs text-muted-foreground">
-								Binary assets are served in preview and included in ZIP
-								download.
+								{t("binaryDescription")}
 							</div>
 						) : (
 							<CodeWorkspaceEditor
-								value={loadingFile ? "Loading file…" : content}
+								value={loadingFile ? t("loadingFile") : content}
 								filePath={selectedPath}
 								disabled={!selectedPath || loadingFile || savingFile}
 								onChange={setContent}
@@ -938,9 +967,11 @@ export function CodeWorkspaceArtifactCard({
 					<div className="flex min-w-0 flex-col bg-white">
 						<div className="flex min-h-10 items-center justify-between gap-2 border-b border-border/40 bg-background px-3 py-2">
 							<div>
-								<p className="font-medium text-foreground">Live preview</p>
+								<p className="font-medium text-foreground">
+									{t("livePreview")}
+								</p>
 								<p className="text-[10px] text-muted-foreground">
-									{currentArtifact.rootFile ?? "No HTML entry"}
+									{currentArtifact.rootFile ?? t("noHtmlEntry")}
 								</p>
 							</div>
 							<Button
@@ -955,7 +986,7 @@ export function CodeWorkspaceArtifactCard({
 									className={COMPACT_ICON_CLASS}
 									aria-hidden="true"
 								/>
-								Fullscreen
+								{t("fullscreen")}
 							</Button>
 						</div>
 						<CodeWorkspacePreviewFrame
@@ -973,8 +1004,8 @@ export function CodeWorkspaceArtifactCard({
 							<div className="min-w-0">
 								<DialogTitle className="truncate text-base font-semibold">
 									{fullscreenPane === "preview"
-										? "Live preview"
-										: (selectedPath ?? "Code")}
+										? t("livePreview")
+										: (selectedPath ?? t("code"))}
 								</DialogTitle>
 								<p className="mt-0.5 text-xs text-muted-foreground">
 									{currentArtifact.title} · v{currentArtifact.version}
@@ -989,7 +1020,7 @@ export function CodeWorkspaceArtifactCard({
 									onClick={() => void saveSelectedFile()}
 								>
 									<SaveIcon className={COMPACT_ICON_CLASS} aria-hidden="true" />
-									Save
+									{t("save")}
 								</Button>
 							) : null}
 						</div>
@@ -1003,7 +1034,7 @@ export function CodeWorkspaceArtifactCard({
 						) : null}
 						{fullscreenPane === "code" ? (
 							<CodeWorkspaceEditor
-								value={loadingFile ? "Loading file…" : content}
+								value={loadingFile ? t("loadingFile") : content}
 								filePath={selectedPath}
 								disabled={!selectedPath || loadingFile || savingFile}
 								onChange={setContent}

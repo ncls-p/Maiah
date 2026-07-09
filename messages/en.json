@@ -84,7 +84,12 @@
     "createAgent": "Create assistant",
     "errors": {
       "moveFailed": "Unable to move the conversation",
-      "reloadAgentFailed": "Unable to reload the assistant"
+      "reloadAgentFailed": "Unable to reload the assistant",
+      "loadOlderFailed": "Unable to load older conversations",
+      "createFolderFailed": "Unable to create the folder",
+      "renameFolderFailed": "Unable to rename the folder",
+      "deleteFolderFailed": "Unable to delete the folder",
+      "updatePinFailed": "Unable to update the pin"
     },
     "attachments": {
       "analyzeImage": "Please analyze the attached image.",
@@ -159,6 +164,8 @@
       "pinned": "Pinned",
       "folderActions": "Folder actions",
       "deleteFolder": "Delete folder",
+      "deleteConversationConfirm": "Delete this conversation? This action cannot be undone.",
+      "deleteFolderConfirm": "Delete this folder? Its conversations will remain available.",
       "dropChatsHere": "Drop chats here",
       "recent": "Recent",
       "loading": "Loading…",
@@ -242,7 +249,31 @@
       "sandboxFiles": "Sandbox files",
       "writingCode": "Writing {language} code…",
       "writingInput": "Writing tool input…",
-      "waitingInput": "Waiting for streamed tool input…"
+      "waitingInput": "Waiting for streamed tool input…",
+      "workspaceSummary": "Workspace v{version} · {count, plural, one {# file} other {# files}}",
+      "directPush": "direct push",
+      "commit": "Commit {sha}",
+      "openPr": "Open PR",
+      "view": "View",
+      "extractedChars": "{count} extracted characters",
+      "codeEditor": "Code editor",
+      "codeEditorFor": "Code editor for {path}",
+      "loadFileFailed": "Unable to load the file",
+      "saveFileFailed": "Unable to save the file",
+      "deleteFileFailed": "Unable to delete the file",
+      "deleteFileConfirm": "Delete {path}? This action cannot be undone.",
+      "files": "Files",
+      "noFileSelected": "No file selected",
+      "binaryAsset": "Binary asset",
+      "selectFile": "Select a file",
+      "save": "Save",
+      "refreshFile": "Reload file",
+      "deleteFile": "Delete file",
+      "binaryDescription": "Binary assets are served in the preview and included in the ZIP download.",
+      "loadingFile": "Loading file…",
+      "livePreview": "Live preview",
+      "noHtmlEntry": "No HTML entry",
+      "code": "Code"
     },
     "github": {
       "title": "Publish to GitHub",
@@ -304,6 +335,10 @@
   "setup": {
     "title": "Get started",
     "description": "Connect your AI, pick a model, and start chatting.",
+    "providerLoadFailed": "Unable to load AI connections",
+    "modelLoadFailed": "Unable to load models",
+    "loadFailedDescription": "Existing configuration may still be available. Reload before creating another connection or model.",
+    "retry": "Try again",
     "steps": {
       "provider": "Connect AI",
       "model": "Pick a model",
@@ -372,7 +407,8 @@
       "modelSelected": "Model selected",
       "modelAddFailed": "Failed to add model",
       "assistantReady": "Assistant is ready",
-      "finishFailed": "Failed to finish setup"
+      "finishFailed": "Failed to finish setup",
+      "onboardingMarkerFailed": "The assistant is ready, but onboarding progress could not be saved."
     }
   },
   "agents": {
@@ -1334,6 +1370,11 @@
     "platformSettingsTitle": "Platform settings",
     "platformSettingsDescription": "Registration, automation, integrations, and system health.",
     "settingsPage": {
+      "loadFailed": "Unable to load settings",
+      "loadErrorDescription": "This section could not be loaded. No settings were changed.",
+      "retry": "Try again",
+      "saveFailed": "Unable to save settings",
+      "resetFailed": "Unable to restore settings",
       "registration": {
         "title": "Registration",
         "description": "Control whether people can create accounts without an admin.",
@@ -1345,7 +1386,8 @@
         "close": "Close registration",
         "open": "Open registration",
         "opened": "Registration is open",
-        "closed": "Registration is closed"
+        "closed": "Registration is closed",
+        "updateFailed": "Unable to update registration"
       },
       "health": {
         "title": "System status",
@@ -1524,7 +1566,10 @@
       "restore": "Restore",
       "suspend": "Suspend",
       "userCreated": "User created",
-      "userUpdated": "User updated"
+      "userUpdated": "User updated",
+      "refreshFailed": "Unable to refresh users",
+      "createFailed": "Unable to create user",
+      "updateFailed": "Unable to update user"
     },
     "signInRequired": "Sign in required",
     "signInRequiredDescription": "Sign in to manage users.",
@@ -1606,6 +1651,11 @@
       "neverUsed": "Never used",
       "active": "Active",
       "revokeLabel": "Revoke {name}",
+      "revokeTitle": "Revoke this API key?",
+      "revokeDescription": "{name} will stop working immediately. Any script or integration using it will lose access.",
+      "revokeAction": "Revoke key",
+      "revoking": "Revoking…",
+      "cancelRevoke": "Keep key",
       "created": "API key created — copy it now, it will not be shown again",
       "revoked": "API key revoked",
       "loadFailed": "Unable to load API keys",
@@ -1626,6 +1676,7 @@
     "theme": "Theme",
     "toggleTheme": "Toggle theme",
     "signOut": "Sign out",
+    "signOutFailed": "Unable to sign out",
     "navigation": "Navigation",
     "openNavigation": "Open navigation",
     "expandSidebar": "Expand sidebar",

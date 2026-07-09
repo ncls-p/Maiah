@@ -203,7 +203,7 @@ export default function ChatPage() {
       setConversationCursor(data.nextCursor);
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Failed to load older chats",
+        error instanceof Error ? error.message : t("errors.loadOlderFailed"),
       );
       return;
     } finally {
@@ -215,6 +215,7 @@ export default function ChatPage() {
     fetchConversationPage,
     hasMoreConversations,
     loadingMoreConversations,
+    t,
   ]);
 
   const {
@@ -648,7 +649,7 @@ export default function ChatPage() {
   }
 
   async function deleteConversation(conversationId: string) {
-    const confirmed = window.confirm("Delete this conversation?");
+    const confirmed = window.confirm(t("sidebar.deleteConversationConfirm"));
     if (!confirmed) return;
 
     await fetchJson(`/api/workspace/conversations/${conversationId}`, {
@@ -687,7 +688,7 @@ export default function ChatPage() {
       setConversationFolders((current) => [...current, data.folder]);
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Failed to create folder",
+        error instanceof Error ? error.message : t("errors.createFolderFailed"),
       );
       return;
     }
@@ -710,16 +711,14 @@ export default function ChatPage() {
       );
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Failed to rename folder",
+        error instanceof Error ? error.message : t("errors.renameFolderFailed"),
       );
       return;
     }
   }
 
   async function deleteConversationFolder(folderId: string) {
-    const confirmed = window.confirm(
-      "Delete this folder? Conversations stay available.",
-    );
+    const confirmed = window.confirm(t("sidebar.deleteFolderConfirm"));
     if (!confirmed) return;
     try {
       await fetchJson(`/api/workspace/conversation-folders/${folderId}`, {
@@ -737,7 +736,7 @@ export default function ChatPage() {
       );
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Failed to delete folder",
+        error instanceof Error ? error.message : t("errors.deleteFolderFailed"),
       );
       return;
     }
@@ -765,7 +764,7 @@ export default function ChatPage() {
       );
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Failed to update pin",
+        error instanceof Error ? error.message : t("errors.updatePinFailed"),
       );
       return;
     }

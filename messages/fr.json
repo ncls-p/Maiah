@@ -84,7 +84,12 @@
     "createAgent": "Créer un assistant",
     "errors": {
       "moveFailed": "Impossible de déplacer la conversation",
-      "reloadAgentFailed": "Impossible de recharger l’assistant"
+      "reloadAgentFailed": "Impossible de recharger l’assistant",
+      "loadOlderFailed": "Impossible de charger les anciennes conversations",
+      "createFolderFailed": "Impossible de créer le dossier",
+      "renameFolderFailed": "Impossible de renommer le dossier",
+      "deleteFolderFailed": "Impossible de supprimer le dossier",
+      "updatePinFailed": "Impossible de modifier l’épinglage"
     },
     "attachments": {
       "analyzeImage": "Analyse l’image jointe.",
@@ -159,6 +164,8 @@
       "pinned": "Épinglées",
       "folderActions": "Actions du dossier",
       "deleteFolder": "Supprimer le dossier",
+      "deleteConversationConfirm": "Supprimer cette conversation ? Cette action est irréversible.",
+      "deleteFolderConfirm": "Supprimer ce dossier ? Ses conversations resteront disponibles.",
       "dropChatsHere": "Déposez les conversations ici",
       "recent": "Récentes",
       "loading": "Chargement…",
@@ -242,7 +249,31 @@
       "sandboxFiles": "Fichiers du sandbox",
       "writingCode": "Écriture du code {language}…",
       "writingInput": "Écriture des paramètres de l’outil…",
-      "waitingInput": "En attente des paramètres diffusés par l’outil…"
+      "waitingInput": "En attente des paramètres diffusés par l’outil…",
+      "workspaceSummary": "Workspace v{version} · {count, plural, one {# fichier} other {# fichiers}}",
+      "directPush": "push direct",
+      "commit": "Commit {sha}",
+      "openPr": "Ouvrir la PR",
+      "view": "Voir",
+      "extractedChars": "{count} caractères extraits",
+      "codeEditor": "Éditeur de code",
+      "codeEditorFor": "Éditeur de code pour {path}",
+      "loadFileFailed": "Impossible de charger le fichier",
+      "saveFileFailed": "Impossible d’enregistrer le fichier",
+      "deleteFileFailed": "Impossible de supprimer le fichier",
+      "deleteFileConfirm": "Supprimer {path} ? Cette action est irréversible.",
+      "files": "Fichiers",
+      "noFileSelected": "Aucun fichier sélectionné",
+      "binaryAsset": "Fichier binaire",
+      "selectFile": "Sélectionner un fichier",
+      "save": "Enregistrer",
+      "refreshFile": "Recharger le fichier",
+      "deleteFile": "Supprimer le fichier",
+      "binaryDescription": "Les fichiers binaires sont servis dans l’aperçu et inclus dans le téléchargement ZIP.",
+      "loadingFile": "Chargement du fichier…",
+      "livePreview": "Aperçu en direct",
+      "noHtmlEntry": "Aucun point d’entrée HTML",
+      "code": "Code"
     },
     "github": {
       "title": "Publier sur GitHub",
@@ -304,6 +335,10 @@
   "setup": {
     "title": "Premiers pas",
     "description": "Connectez votre IA, choisissez un modèle, puis discutez.",
+    "providerLoadFailed": "Impossible de charger les connexions IA",
+    "modelLoadFailed": "Impossible de charger les modèles",
+    "loadFailedDescription": "Une configuration existante est peut-être toujours disponible. Rechargez avant de créer une nouvelle connexion ou un nouveau modèle.",
+    "retry": "Réessayer",
     "steps": {
       "provider": "Connecter l’IA",
       "model": "Choisir un modèle",
@@ -372,7 +407,8 @@
       "modelSelected": "Modèle sélectionné",
       "modelAddFailed": "Impossible d’ajouter le modèle",
       "assistantReady": "Assistant prêt",
-      "finishFailed": "Impossible de terminer la configuration"
+      "finishFailed": "Impossible de terminer la configuration",
+      "onboardingMarkerFailed": "L’assistant est prêt, mais la progression de l’onboarding n’a pas pu être enregistrée."
     }
   },
   "agents": {
@@ -1333,6 +1369,11 @@
     "platformSettingsTitle": "Paramètres plateforme",
     "platformSettingsDescription": "Inscription, automatisation, intégrations et santé du système.",
     "settingsPage": {
+      "loadFailed": "Impossible de charger les réglages",
+      "loadErrorDescription": "Cette section n’a pas pu être chargée. Aucun réglage n’a été modifié.",
+      "retry": "Réessayer",
+      "saveFailed": "Impossible d’enregistrer les réglages",
+      "resetFailed": "Impossible de restaurer les réglages",
       "registration": {
         "title": "Inscription",
         "description": "Contrôlez si de nouveaux comptes peuvent être créés sans administrateur.",
@@ -1344,7 +1385,8 @@
         "close": "Fermer l’inscription",
         "open": "Ouvrir l’inscription",
         "opened": "L’inscription est ouverte",
-        "closed": "L’inscription est fermée"
+        "closed": "L’inscription est fermée",
+        "updateFailed": "Impossible de modifier les inscriptions"
       },
       "health": {
         "title": "État du système",
@@ -1523,7 +1565,10 @@
       "restore": "Réactiver",
       "suspend": "Suspendre",
       "userCreated": "Utilisateur créé",
-      "userUpdated": "Utilisateur mis à jour"
+      "userUpdated": "Utilisateur mis à jour",
+      "refreshFailed": "Impossible d’actualiser les utilisateurs",
+      "createFailed": "Impossible de créer l’utilisateur",
+      "updateFailed": "Impossible de modifier l’utilisateur"
     },
     "signInRequired": "Connexion requise",
     "signInRequiredDescription": "Connectez-vous pour gérer les utilisateurs.",
@@ -1605,6 +1650,11 @@
       "neverUsed": "Jamais utilisée",
       "active": "Active",
       "revokeLabel": "Révoquer {name}",
+      "revokeTitle": "Révoquer cette clé API ?",
+      "revokeDescription": "{name} cessera immédiatement de fonctionner. Les scripts et intégrations qui l’utilisent perdront leur accès.",
+      "revokeAction": "Révoquer la clé",
+      "revoking": "Révocation…",
+      "cancelRevoke": "Conserver la clé",
       "created": "Clé API créée — copiez-la maintenant, elle ne sera plus affichée",
       "revoked": "Clé API révoquée",
       "loadFailed": "Impossible de charger les clés API",
@@ -1625,6 +1675,7 @@
     "theme": "Thème",
     "toggleTheme": "Changer de thème",
     "signOut": "Déconnexion",
+    "signOutFailed": "Impossible de se déconnecter",
     "navigation": "Navigation",
     "openNavigation": "Ouvrir la navigation",
     "expandSidebar": "Développer la barre latérale",

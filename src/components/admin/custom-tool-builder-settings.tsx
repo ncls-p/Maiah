@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { WorkflowIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import {
 	SettingsDisabledNotice,
+	SettingsLoadError,
 	SettingsSection,
 	SettingsSectionSkeleton,
 	SettingsStatusBadge,
@@ -64,37 +65,45 @@ type AdminState = {
 
 export function CustomToolBuilderSettings() {
 	const t = useTranslations("admin.settingsPage.customToolBuilder");
+	const tPage = useTranslations("admin.settingsPage");
 	const [state, setState] = useState<AdminState | null>(null);
 	const [config, setConfig] = useState<BuilderConfig | null>(null);
 	const [loading, setLoading] = useState(true);
+	const [loadError, setLoadError] = useState(false);
 	const [saving, setSaving] = useState(false);
 
-	useEffect(() => {
-		let cancelled = false;
-		async function load() {
+	const loadSettings = useCallback(
+		async (signal?: AbortSignal) => {
+			setLoading(true);
+			setLoadError(false);
 			try {
-				const res = await fetch("/api/admin/custom-tool-builder");
-				if (!res.ok)
-					throw new Error("Unable to load custom tool builder settings");
+				const res = await fetch("/api/admin/custom-tool-builder", { signal });
+				if (!res.ok) throw new Error(tPage("loadFailed"));
 				const data = (await res.json()) as AdminState;
-				if (!cancelled) {
-					setState(data);
-					setConfig(data.config);
-				}
+				if (signal?.aborted) return;
+				setState(data);
+				setConfig(data.config);
 			} catch (error) {
+				if (signal?.aborted) return;
+				setLoadError(true);
 				toast.error(
-					error instanceof Error ? error.message : "Unable to load settings",
+					error instanceof Error ? error.message : tPage("loadFailed"),
 				);
-				return;
 			} finally {
-				if (!cancelled) setLoading(false);
+				if (!signal?.aborted) setLoading(false);
 			}
-		}
-		void load();
+		},
+		[tPage],
+	);
+
+	useEffect(() => {
+		const controller = new AbortController();
+		// eslint-disable-next-line react-hooks/set-state-in-effect -- async settings bootstrap
+		void loadSettings(controller.signal);
 		return () => {
-			cancelled = true;
+			controller.abort();
 		};
-	}, []);
+	}, [loadSettings]);
 
 	const providerId = config?.providerId;
 	const filteredModels = useMemo(() => {
@@ -119,29 +128,38 @@ export function CustomToolBuilderSettings() {
 				body: JSON.stringify(body),
 			});
 			if (!res.ok)
-				throw new Error((await res.json()).error || "Unable to save settings");
+				throw new Error((await res.json()).error || tPage("saveFailed"));
 			const nextConfig = (await res.json()) as BuilderConfig;
 			setConfig(nextConfig);
 			toast.success(t("saved"));
 		} catch (error) {
-			toast.error(
-				error instanceof Error ? error.message : "Unable to save settings",
-			);
+			toast.error(error instanceof Error ? error.message : tPage("saveFailed"));
 			return;
 		} finally {
 			setSaving(false);
 		}
 	}
 
-	if (loading || !state || !config) {
+	if (loading) {
 		return <SettingsSectionSkeleton rows={5} />;
+	}
+
+	if (loadError || !state || !config) {
+		return (
+			<SettingsLoadError
+				title={tPage("loadFailed")}
+				description={tPage("loadErrorDescription")}
+				retryLabel={tPage("retry")}
+				onRetry={() => void loadSettings()}
+			/>
+		);
 	}
 
 	const ready = Boolean(
 		config.enabled &&
-			config.providerId &&
-			config.modelId &&
-			config.n8nMcpServerId,
+		config.providerId &&
+		config.modelId &&
+		config.n8nMcpServerId,
 	);
 	const statusLabel = !config.enabled
 		? t("statusDisabled")

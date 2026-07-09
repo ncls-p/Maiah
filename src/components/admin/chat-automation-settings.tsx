@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
 	CheckIcon,
 	CircleIcon,
@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import {
 	SettingsDisabledNotice,
 	SettingsFeatureToggle,
+	SettingsLoadError,
 	SettingsSection,
 	SettingsSectionSkeleton,
 	SettingsStatusBadge,
@@ -75,37 +76,46 @@ function ChecklistItem({ done, label }: { done: boolean; label: string }) {
 
 export function ChatAutomationSettings() {
 	const t = useTranslations("admin.settingsPage.chatAutomation");
+	const tPage = useTranslations("admin.settingsPage");
 	const [state, setState] = useState<ChatAutomationState | null>(null);
 	const [config, setConfig] = useState<ChatAutomationConfig | null>(null);
 	const [loading, setLoading] = useState(true);
+	const [loadError, setLoadError] = useState(false);
 	const [saving, setSaving] = useState(false);
 	const [testing, setTesting] = useState(false);
 
-	useEffect(() => {
-		let cancelled = false;
-		async function load() {
+	const loadSettings = useCallback(
+		async (signal?: AbortSignal) => {
+			setLoading(true);
+			setLoadError(false);
 			try {
-				const res = await fetch("/api/admin/chat-automation");
-				if (!res.ok) throw new Error("Unable to load chat automation settings");
+				const res = await fetch("/api/admin/chat-automation", { signal });
+				if (!res.ok) throw new Error(tPage("loadFailed"));
 				const data = (await res.json()) as ChatAutomationState;
-				if (!cancelled) {
-					setState(data);
-					setConfig(data.config);
-				}
+				if (signal?.aborted) return;
+				setState(data);
+				setConfig(data.config);
 			} catch (error) {
+				if (signal?.aborted) return;
+				setLoadError(true);
 				toast.error(
-					error instanceof Error ? error.message : "Unable to load settings",
+					error instanceof Error ? error.message : tPage("loadFailed"),
 				);
-				return;
 			} finally {
-				if (!cancelled) setLoading(false);
+				if (!signal?.aborted) setLoading(false);
 			}
-		}
-		void load();
+		},
+		[tPage],
+	);
+
+	useEffect(() => {
+		const controller = new AbortController();
+		// eslint-disable-next-line react-hooks/set-state-in-effect -- async settings bootstrap
+		void loadSettings(controller.signal);
 		return () => {
-			cancelled = true;
+			controller.abort();
 		};
-	}, []);
+	}, [loadSettings]);
 
 	const filteredModels =
 		state && config?.providerId
@@ -135,15 +145,13 @@ export function ChatAutomationSettings() {
 			});
 			if (!res.ok) {
 				const body = (await res.json()) as { error?: string };
-				throw new Error(body.error || "Unable to save settings");
+				throw new Error(body.error || tPage("saveFailed"));
 			}
 			const nextConfig = (await res.json()) as ChatAutomationConfig;
 			setConfig(nextConfig);
 			toast.success(t("saved"));
 		} catch (error) {
-			toast.error(
-				error instanceof Error ? error.message : "Unable to save settings",
-			);
+			toast.error(error instanceof Error ? error.message : tPage("saveFailed"));
 			return;
 		} finally {
 			setSaving(false);
@@ -169,8 +177,19 @@ export function ChatAutomationSettings() {
 		}
 	}
 
-	if (loading || !state || !config) {
+	if (loading) {
 		return <SettingsSectionSkeleton rows={4} />;
+	}
+
+	if (loadError || !state || !config) {
+		return (
+			<SettingsLoadError
+				title={tPage("loadFailed")}
+				description={tPage("loadErrorDescription")}
+				retryLabel={tPage("retry")}
+				onRetry={() => void loadSettings()}
+			/>
+		);
 	}
 
 	const ready = Boolean(config.enabled && config.providerId && config.modelId);

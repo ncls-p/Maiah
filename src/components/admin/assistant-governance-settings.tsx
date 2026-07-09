@@ -15,6 +15,7 @@ import { toast } from "sonner";
 
 import {
 	SettingsDisabledNotice,
+	SettingsLoadError,
 	SettingsSection,
 	SettingsSectionSkeleton,
 	SettingsStatusBadge,
@@ -57,6 +58,7 @@ function isOrganizationAgent(agent: Agent) {
 
 export function AssistantGovernanceSettings() {
 	const t = useTranslations("admin.settingsPage.assistantGovernance");
+	const tPage = useTranslations("admin.settingsPage");
 	const tAgents = useTranslations("agents");
 	const { workspaceId } = useWorkspace();
 	const [agents, setAgents] = useState<Agent[]>([]);
@@ -65,6 +67,7 @@ export function AssistantGovernanceSettings() {
 	>(null);
 	const [canAdminCurate, setCanAdminCurate] = useState(false);
 	const [loading, setLoading] = useState(true);
+	const [loadError, setLoadError] = useState(false);
 	const [savingDefault, setSavingDefault] = useState(false);
 	const [movingAgentId, setMovingAgentId] = useState<string | null>(null);
 
@@ -79,6 +82,7 @@ export function AssistantGovernanceSettings() {
 
 	const loadAgents = useCallback(async () => {
 		if (!workspaceId) return;
+		setLoadError(false);
 		try {
 			const res = await fetch(
 				`/api/workspace/agents?workspaceId=${workspaceId}&includeModelMeta=true`,
@@ -90,6 +94,7 @@ export function AssistantGovernanceSettings() {
 			setCanAdminCurate(Boolean(data.canAdminCurate));
 			setOrganizationDefaultAgentId(data.organizationDefaultAgentId ?? null);
 		} catch (error) {
+			setLoadError(true);
 			toast.error(error instanceof Error ? error.message : t("loadFailed"));
 			return;
 		} finally {
@@ -190,6 +195,17 @@ export function AssistantGovernanceSettings() {
 
 	if (loading || !workspaceId) {
 		return <SettingsSectionSkeleton rows={4} />;
+	}
+
+	if (loadError) {
+		return (
+			<SettingsLoadError
+				title={t("loadFailed")}
+				description={tPage("loadErrorDescription")}
+				retryLabel={tPage("retry")}
+				onRetry={() => void loadAgents()}
+			/>
+		);
 	}
 
 	const badgeTone = organizationDefaultAgentId ? "success" : "warning";

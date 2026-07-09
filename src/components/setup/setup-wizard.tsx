@@ -266,7 +266,10 @@ export function SetupWizard({
   const [agentId, setAgentId] = useState<string | null>(initialAgentId);
   const [busy, setBusy] = useState(false);
   const [loadingProviders, setLoadingProviders] = useState(true);
+  const [providersLoadError, setProvidersLoadError] = useState(false);
   const [loadingModels, setLoadingModels] = useState(false);
+  const [modelsLoadError, setModelsLoadError] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [discoveringModels, setDiscoveringModels] = useState(false);
   const [models, setModels] = useState<ProviderModel[]>([]);
   const [discoveredModels, setDiscoveredModels] = useState<DiscoveredModel[]>(
@@ -294,6 +297,7 @@ export function SetupWizard({
 
     async function loadProviders() {
       setLoadingProviders(true);
+      setProvidersLoadError(false);
       try {
         const rows = await fetchJson<ProviderSummary[]>(
           `/api/workspace/providers?workspaceId=${workspaceId}`,
@@ -305,7 +309,7 @@ export function SetupWizard({
           setStep("model");
         }
       } catch {
-        if (!cancelled) setProviders([]);
+        if (!cancelled) setProvidersLoadError(true);
       } finally {
         if (!cancelled) setLoadingProviders(false);
       }
@@ -315,7 +319,7 @@ export function SetupWizard({
     return () => {
       cancelled = true;
     };
-  }, [workspaceId]);
+  }, [workspaceId, loadAttempt]);
 
   useEffect(() => {
     if (!workspaceId || !providerId) return;
@@ -323,6 +327,7 @@ export function SetupWizard({
 
     async function loadModels() {
       setLoadingModels(true);
+      setModelsLoadError(false);
       try {
         const rows = await fetchJson<ProviderModel[]>(
           `/api/workspace/providers/${providerId}/models?workspaceId=${workspaceId}`,
@@ -337,9 +342,7 @@ export function SetupWizard({
         );
       } catch {
         if (!cancelled) {
-          setModels([]);
-          setDiscoveredModels([]);
-          setModelDbId(null);
+          setModelsLoadError(true);
         }
       } finally {
         if (!cancelled) setLoadingModels(false);
@@ -350,7 +353,7 @@ export function SetupWizard({
     return () => {
       cancelled = true;
     };
-  }, [workspaceId, providerId]);
+  }, [workspaceId, providerId, loadAttempt]);
 
   async function discoverProviderModels() {
     if (!workspaceId || !providerId) return;
@@ -488,7 +491,9 @@ export function SetupWizard({
       let completedAgentId = agentId;
 
       if (completedAgentId) {
-        const currentAgent = await fetchJson<{ activeVersionId: string | null }>(
+        const currentAgent = await fetchJson<{
+          activeVersionId: string | null;
+        }>(
           `/api/workspace/agents/${completedAgentId}?workspaceId=${workspaceId}`,
         );
         await fetchJson(`/api/workspace/agents/${completedAgentId}`, {
@@ -521,7 +526,12 @@ export function SetupWizard({
         setAgentId(completedAgentId);
       }
 
-      await fetch("/api/onboarding", { method: "POST" });
+      const onboardingResponse = await fetch("/api/onboarding", {
+        method: "POST",
+      });
+      if (!onboardingResponse.ok) {
+        toast.warning(t("toasts.onboardingMarkerFailed"));
+      }
       toast.success(t("toasts.assistantReady"));
       if (completedAgentId) onCompleteAction?.(completedAgentId);
     } catch (error) {
@@ -546,6 +556,31 @@ export function SetupWizard({
     (provider) => provider.id === providerId,
   );
   const selectedModel = models.find((model) => model.id === modelDbId);
+
+  if (providersLoadError || (step === "model" && modelsLoadError)) {
+    return (
+      <div
+        className="rounded-2xl border border-destructive/25 bg-destructive/5 p-5"
+        role="alert"
+      >
+        <h2 className="text-base font-semibold">
+          {providersLoadError ? t("providerLoadFailed") : t("modelLoadFailed")}
+        </h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {t("loadFailedDescription")}
+        </p>
+        <Button
+          type={BUTTON_TYPE}
+          variant={OUTLINE_VARIANT}
+          size="sm"
+          className="mt-4"
+          onClick={() => setLoadAttempt((attempt) => attempt + 1)}
+        >
+          {t("retry")}
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -642,7 +677,7 @@ export function SetupWizard({
                     id="api-key"
                     name="setup-provider-api-key"
                     type="password"
-                    autoComplete="off"
+                    autoComplete="new-password"
                     placeholder="sk-…"
                     value={providerForm.apiKey}
                     onChange={(event) =>

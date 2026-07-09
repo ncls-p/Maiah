@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { LogOutIcon } from "lucide-react";
 import { toast } from "sonner";
 
@@ -17,6 +18,7 @@ export function SignOutButton({
   className?: string;
 }) {
   const router = useRouter();
+  const t = useTranslations("shell");
   const [pending, setPending] = useState(false);
 
   async function signOut() {
@@ -29,13 +31,13 @@ export function SignOutButton({
         body: JSON.stringify({}),
       });
 
-      if (!response.ok) throw new Error("Sign out failed");
+      if (!response.ok) throw new Error(t("signOutFailed"));
 
       window.sessionStorage.removeItem("active_workspace_id");
       router.push("/auth/signin");
       router.refresh();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Sign out failed");
+      toast.error(error instanceof Error ? error.message : t("signOutFailed"));
     } finally {
       setPending(false);
     }
@@ -50,9 +52,9 @@ export function SignOutButton({
         "group justify-start rounded-xl transition-[background-color,color,scale] duration-150 ease-out hover:bg-destructive/10 hover:text-destructive",
         className,
       )}
-      onClick={signOut}
+      onClick={() => void signOut()}
       disabled={pending}
-      aria-label="Sign out"
+      aria-label={t("signOut")}
     >
       {pending ? (
         <Spinner data-icon={iconOnly ? undefined : "inline-start"} />
@@ -63,7 +65,11 @@ export function SignOutButton({
           className="transition-transform duration-200 group-hover:translate-x-0.5"
         />
       )}
-      {iconOnly ? <span className="sr-only">Sign out</span> : "Sign out"}
+      {iconOnly ? (
+        <span className="sr-only">{t("signOut")}</span>
+      ) : (
+        t("signOut")
+      )}
     </Button>
   );
 }
