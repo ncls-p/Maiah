@@ -43,6 +43,13 @@ active reservation, so concurrent runs cannot individually pass a stale quota
 check. Child runs consume the root reservation instead of reserving the same
 budget again.
 
+Terminal status, token reservation settlement and the corresponding usage event
+are written in one database transaction. A successful run therefore cannot be
+reported as failed only because telemetry was written afterward, and quota
+accounting cannot silently lag behind a persisted success. Queued cancellation
+and deadline/lease reaping update the terminal run and reservation atomically as
+well.
+
 Workers claim only queued runs and renew a short lease while executing. A lost
 lease is terminal: the reaper marks the run failed and releases its reservation
 instead of replaying it automatically. This deliberately avoids presenting

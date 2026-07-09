@@ -2,13 +2,15 @@
 
 ## Statut et périmètre
 
-- Statut : prêt pour handoff et implémentation.
+- Statut : implémentation réalisée sur la branche ; gates finaux et validation PostgreSQL CI en cours.
 - Branche : feat/ux-orchestrator-agents.
 - Base auditée : main au commit 8afd251.
 - Date de l’audit : 2026-07-09.
-- Ce document est le seul livrable de la phase actuelle. Aucun code applicatif n’est implémenté dans ce commit.
+- Le backend orchestrateur, les garde-fous P0, les parcours UI/UX, la documentation et le skill d’audit sont implémentés par commits verticaux et poussés régulièrement.
 - Ordre demandé : sécuriser et simplifier tous les parcours utilisateurs, terminer la refonte UI/UX, puis ajouter les agents orchestrateurs.
 - Identité visuelle à conserver : palette blanche/bleue Deodis, police et marque existantes.
+
+La recette détaillée et les limites de validation locale sont suivies dans `docs/ux/user-workflow-test-matrix.md`.
 
 Le chantier doit être mené par lots verticaux, avec un commit cohérent et des tests ciblés pour chaque lot. Les commits verts doivent être poussés régulièrement sur la branche, sans attendre la fin du chantier.
 

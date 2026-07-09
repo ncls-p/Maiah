@@ -8,17 +8,17 @@ AI Hub provides a full stack — from authentication and workspace isolation to 
 
 ## At a glance
 
-| Layer | Stack |
-|---|---|
-| **Framework** | Next.js 16 (App Router) + React 19 + TypeScript |
+| Layer          | Stack                                                        |
+| -------------- | ------------------------------------------------------------ |
+| **Framework**  | Next.js 16 (App Router) + React 19 + TypeScript              |
 | **Auth & IAM** | Better Auth + custom workspace roles and permission bindings |
-| **Database** | PostgreSQL + pgvector + Drizzle ORM |
-| **Cache** | DragonflyDB / Redis |
-| **Storage** | S3-compatible (RustFS) |
-| **AI** | AI SDK 7 — `streamText`, tool calling, OPA policy gates |
-| **Sandbox** | Custom sandbox runner (Unix-socket code execution) |
-| **MCP** | Model Context Protocol client and server registry |
-| **Search** | SearXNG-backed web search tool |
+| **Database**   | PostgreSQL + pgvector + Drizzle ORM                          |
+| **Cache**      | DragonflyDB / Redis                                          |
+| **Storage**    | S3-compatible (RustFS)                                       |
+| **AI**         | AI SDK 7 — `streamText`, tool calling, OPA policy gates      |
+| **Sandbox**    | Custom sandbox runner (Unix-socket code execution)           |
+| **MCP**        | Model Context Protocol client and server registry            |
+| **Search**     | SearXNG-backed web search tool                               |
 
 ---
 
@@ -103,13 +103,13 @@ The app is available at [http://localhost:3000](http://localhost:3000).
 
 The dev compose stack starts:
 
-| Service | Port | Purpose |
-|---|---|---|
-| PostgreSQL + pgvector | 15432 | Primary database |
-| DragonflyDB | 6379 | Cache layer |
-| RustFS | 13900 | S3-compatible object storage |
-| Sandbox runner | Unix socket (`.data/sandbox-runner/sandbox.sock`) | Isolated code execution |
-| SearXNG | 18088 | Web search |
+| Service               | Port                                              | Purpose                      |
+| --------------------- | ------------------------------------------------- | ---------------------------- |
+| PostgreSQL + pgvector | 15432                                             | Primary database             |
+| DragonflyDB           | 6379                                              | Cache layer                  |
+| RustFS                | 13900                                             | S3-compatible object storage |
+| Sandbox runner        | Unix socket (`.data/sandbox-runner/sandbox.sock`) | Isolated code execution      |
+| SearXNG               | 18088                                             | Web search                   |
 
 ### Useful commands
 
@@ -140,25 +140,25 @@ See `.env.example` for the full reference. Key categories:
 
 ### Required for production
 
-| Variable | Description |
-|---|---|
-| `APP_ENV` | Set to `production` in deployed environments |
-| `BETTER_AUTH_SECRET` | ≥ 32-char random string (`openssl rand -hex 32`) |
+| Variable             | Description                                          |
+| -------------------- | ---------------------------------------------------- |
+| `APP_ENV`            | Set to `production` in deployed environments         |
+| `BETTER_AUTH_SECRET` | ≥ 32-char random string (`openssl rand -hex 32`)     |
 | `APP_ENCRYPTION_KEY` | 64-char hex string for AES-GCM encryption of secrets |
-| `DATABASE_URL` | PostgreSQL connection string |
-| `DRAGONFLY_URL` | Redis/DragonflyDB connection string |
-| `OBJECT_STORAGE_*` | S3-compatible storage credentials and endpoint |
+| `DATABASE_URL`       | PostgreSQL connection string                         |
+| `DRAGONFLY_URL`      | Redis/DragonflyDB connection string                  |
+| `OBJECT_STORAGE_*`   | S3-compatible storage credentials and endpoint       |
 
 ### Optional features
 
-| Variable | Description |
-|---|---|
-| `GITHUB_APP_*` | GitHub App credentials for agent publishing |
-| `SEARXNG_URL` | SearXNG endpoint for web search tool |
-| `SANDBOX_RUNNER_SOCKET` | Unix socket path for code execution sandbox |
-| `AI_HUB_TOOL_POLICY_OPA_URL` | OPA endpoint for tool approval policies |
-| `WORKSPACE_MONTHLY_TOKEN_LIMIT` | Per-workspace monthly token quota |
-| `ALLOW_PERSONAL_WORKSPACES` | Set to `false` to disable personal workspaces |
+| Variable                                                                     | Description                                                |
+| ---------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| `GITHUB_APP_*`                                                               | GitHub App credentials for agent publishing                |
+| `SEARXNG_URL`                                                                | SearXNG endpoint for web search tool                       |
+| `SANDBOX_RUNNER_SOCKET`                                                      | Unix socket path for code execution sandbox                |
+| `AI_HUB_TOOL_POLICY_OPA_URL`                                                 | OPA endpoint for tool approval policies                    |
+| `WORKSPACE_MONTHLY_TOKEN_LIMIT`                                              | Per-workspace monthly token quota                          |
+| `ALLOW_PERSONAL_WORKSPACES`                                                  | Set to `false` to disable personal workspaces              |
 | `OTEL_SERVICE_NAME`, `OTEL_RESOURCE_ATTRIBUTES`, `DT_CUSTOM_PROP`, `DT_TAGS` | Dynatrace/OpenTelemetry service naming, metadata, and tags |
 
 > **Security note:** The app validates environment variables at startup and rejects insecure production configuration. `next build` may use placeholder values so CI builds remain reproducible.
@@ -183,6 +183,8 @@ AI Hub follows a **modular monolith** pattern with clean separation:
 
 Route handlers authenticate, validate input, delegate to use cases or domain services, and format responses. Business rules live in `modules/` and `server/domain/` — never in route handlers.
 
+For the full ownership map, persistence model, critical request flows, security invariants, test strategy, and extension checklist, see the [codebase guide](docs/architecture/codebase-guide.md).
+
 ---
 
 ## Key features
@@ -194,6 +196,8 @@ Multi-tenant workspaces with role-based access control inspired by GCP IAM. Each
 ### AI Agents
 
 Create, configure, and run AI agents with streaming chat, tool calling, and policy-gated tool approvals via OPA.
+
+Agents can also be created as orchestrators. Orchestrators use immutable, version-pinned specialist bindings and durable run trees with permission checks, cancellation, idempotency, encrypted payloads, redacted traces, quota reservations, and explicit depth/step/token/time limits. See [the orchestrator run model](docs/architecture/orchestrator-run-model.md).
 
 ### Tools & MCP
 
@@ -227,23 +231,28 @@ Per-workspace token usage tracking and security audit logs for sensitive actions
 
 ## API routes
 
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/api/health` | Health check (app + database) |
-| `GET` | `/api/workspaces` | List current user's workspaces |
-| `POST` | `/api/workspaces` | Create workspace with owner role |
-| `GET` | `/api/workspace/agents` | List agents (IAM-gated) |
-| `POST` | `/api/workspace/agents` | Create agent |
-| `POST` | `/api/workspace/[agentId]/chat` | Stream chat (encrypted messages) |
-| `GET/POST` | `/api/workspace/providers` | Manage provider registry |
-| `GET/POST` | `/api/workspace/knowledge-bases` | Manage RAG knowledge bases |
-| `GET/POST` | `/api/workspace/mcp-servers` | Register MCP servers |
-| `GET/POST` | `/api/workspace/tool-connectors` | Manage connector templates for tools/MCP servers |
-| `GET/POST` | `/api/workspace/tool-connections` | Manage per-user/workspace tool credentials |
-| `PUT` | `/api/workspace/user-tool-settings` | Save per-user per-tool overrides |
-| `GET` | `/api/workspace/usage` | Token usage metrics |
-| `GET` | `/api/workspace/audit` | Audit log entries |
-| `*` | `/api/auth/[...all]` | Better Auth handler |
+| Method       | Path                                         | Description                                                            |
+| ------------ | -------------------------------------------- | ---------------------------------------------------------------------- |
+| `GET`        | `/api/health`                                | Health check (app + database)                                          |
+| `GET`        | `/api/workspaces`                            | List current user's workspaces                                         |
+| `POST`       | `/api/workspaces`                            | Create workspace with owner role                                       |
+| `GET`        | `/api/workspace/agents`                      | List agents (IAM-gated)                                                |
+| `POST`       | `/api/workspace/agents`                      | Create agent                                                           |
+| `GET/PUT`    | `/api/workspace/agents/:agentId/delegations` | Read or replace versioned orchestration policy and specialist bindings |
+| `GET/POST`   | `/api/workspace/agents/:agentId/runs`        | List, dry-run, or execute durable agent runs                           |
+| `GET/DELETE` | `/api/workspace/agents/:agentId/runs/:runId` | Inspect a safe run tree or request cancellation                        |
+| `POST`       | `/api/workspace/[agentId]/chat`              | Stream chat (encrypted messages)                                       |
+| `GET/POST`   | `/api/workspace/providers`                   | Manage provider registry                                               |
+| `GET/POST`   | `/api/workspace/knowledge-bases`             | Manage RAG knowledge bases                                             |
+| `GET/POST`   | `/api/workspace/mcp-servers`                 | Register MCP servers                                                   |
+| `GET/POST`   | `/api/workspace/tool-connectors`             | Manage connector templates for tools/MCP servers                       |
+| `GET/POST`   | `/api/workspace/tool-connections`            | Manage per-user/workspace tool credentials                             |
+| `PUT`        | `/api/workspace/user-tool-settings`          | Save per-user per-tool overrides                                       |
+| `GET`        | `/api/workspace/usage`                       | Token usage metrics                                                    |
+| `GET`        | `/api/workspace/audit`                       | Audit log entries                                                      |
+| `*`          | `/api/auth/[...all]`                         | Better Auth handler                                                    |
+
+The complete UX and release scenario inventory lives in [the user workflow test matrix](docs/ux/user-workflow-test-matrix.md). Repository agents should use [the UX workflow audit skill](.agents/skills/ux-workflow-audit/SKILL.md) for future end-to-end interface changes.
 
 ---
 
@@ -253,13 +262,13 @@ Per-workspace token usage tracking and security audit logs for sensitive actions
 
 The `Dockerfile` is multi-stage and produces several targets:
 
-| Target | Description |
-|---|---|
-| `runner` | Next.js standalone production app (runs as non-root `nextjs` user). Auto-runs migrations on startup |
-| `worker` | Background job processor. Runs migrations then starts the worker loop on `:3001` |
-| `migrator` | One-shot migration runner (standalone, no dev deps) |
-| `dev` | Containerized dev server |
-| `searxng` | Custom SearXNG image with engine filtering |
+| Target     | Description                                                                                         |
+| ---------- | --------------------------------------------------------------------------------------------------- |
+| `runner`   | Next.js standalone production app (runs as non-root `nextjs` user). Auto-runs migrations on startup |
+| `worker`   | Background job processor. Runs migrations then starts the worker loop on `:3001`                    |
+| `migrator` | One-shot migration runner (standalone, no dev deps)                                                 |
+| `dev`      | Containerized dev server                                                                            |
+| `searxng`  | Custom SearXNG image with engine filtering                                                          |
 
 The ServiceNow MCP gateway has its own Dockerfile under `services/servicenow-mcp-gateway`.
 
@@ -282,18 +291,18 @@ docker compose -f docker-compose.prod.yml up -d --build
 
 Services started:
 
-| Service | Image | Port (host → container) |
-|---|---|---|
-| **app** | `runner` target | `3001:3000` |
-| **worker** | `worker` target | internal (`:3001`) |
-| **migrate** | `migrator` target | one-shot (runs before app) |
-| **postgres** | `pgvector/pgvector:pg16` | internal (`:5432`) |
-| **dragonflydb** | `dragonfly` | internal (`:6379`) |
-| **rustfs** | `rustfs/rustfs` | internal (`:9000`) |
-| **rustfs-init** | `aws-cli` | one-shot (creates S3 bucket) |
-| **searxng** | `searxng` target | internal (`:8080`) |
-| **sandbox-runner** | `sandbox-runner` target | Unix socket (`/run/sandbox/sandbox.sock`) |
-| **servicenow-mcp-gateway** | `services/servicenow-mcp-gateway` | internal (`:8080`) |
+| Service                    | Image                             | Port (host → container)                   |
+| -------------------------- | --------------------------------- | ----------------------------------------- |
+| **app**                    | `runner` target                   | `3001:3000`                               |
+| **worker**                 | `worker` target                   | internal (`:3001`)                        |
+| **migrate**                | `migrator` target                 | one-shot (runs before app)                |
+| **postgres**               | `pgvector/pgvector:pg16`          | internal (`:5432`)                        |
+| **dragonflydb**            | `dragonfly`                       | internal (`:6379`)                        |
+| **rustfs**                 | `rustfs/rustfs`                   | internal (`:9000`)                        |
+| **rustfs-init**            | `aws-cli`                         | one-shot (creates S3 bucket)              |
+| **searxng**                | `searxng` target                  | internal (`:8080`)                        |
+| **sandbox-runner**         | `sandbox-runner` target           | Unix socket (`/run/sandbox/sandbox.sock`) |
+| **servicenow-mcp-gateway** | `services/servicenow-mcp-gateway` | internal (`:8080`)                        |
 
 Startup order: `postgres` + `rustfs` + `dragonflydb` → `rustfs-init` + `searxng` + `sandbox-runner` + `servicenow-mcp-gateway` → `migrate` → `app` + `worker`.
 
@@ -303,26 +312,26 @@ All long-running services have health checks. The `app` and `worker` containers 
 
 Production compose sets soft and hard resource limits per service:
 
-| Service | CPU limit | Memory limit | CPU reservation | Memory reservation |
-|---|---|---|---|---|
-| **app** | 2.0 | 2G | 0.25 | 512M |
-| **worker** | 1.0 | 1G | 0.25 | 256M |
-| **postgres** | 1.0 | 1G | 0.25 | 256M |
-| **dragonflydb** | 1.0 | 1G | 0.25 | 256M |
-| **rustfs** | 1.0 | 1G | 0.25 | 256M |
-| **sandbox-runner** | 1.0 | 2G | 0.10 | 512M |
-| **servicenow-mcp-gateway** | 0.5 | 512M | 0.10 | 128M |
+| Service                    | CPU limit | Memory limit | CPU reservation | Memory reservation |
+| -------------------------- | --------- | ------------ | --------------- | ------------------ |
+| **app**                    | 2.0       | 2G           | 0.25            | 512M               |
+| **worker**                 | 1.0       | 1G           | 0.25            | 256M               |
+| **postgres**               | 1.0       | 1G           | 0.25            | 256M               |
+| **dragonflydb**            | 1.0       | 1G           | 0.25            | 256M               |
+| **rustfs**                 | 1.0       | 1G           | 0.25            | 256M               |
+| **sandbox-runner**         | 1.0       | 2G           | 0.10            | 512M               |
+| **servicenow-mcp-gateway** | 0.5       | 512M         | 0.10            | 128M               |
 
 ### Docker volumes
 
 Production compose uses named volumes for persistent data:
 
-| Volume | Service | Purpose |
-|---|---|---|
-| `postgres-prod-data` | postgres | Database files |
-| `dragonfly-prod-data` | dragonflydb | Cache persistence |
-| `rustfs-prod-data` | rustfs | Object storage files |
-| `sandbox-runner-socket` | app / worker / sandbox-runner | Shared Unix socket |
+| Volume                  | Service                       | Purpose              |
+| ----------------------- | ----------------------------- | -------------------- |
+| `postgres-prod-data`    | postgres                      | Database files       |
+| `dragonfly-prod-data`   | dragonflydb                   | Cache persistence    |
+| `rustfs-prod-data`      | rustfs                        | Object storage files |
+| `sandbox-runner-socket` | app / worker / sandbox-runner | Shared Unix socket   |
 
 When migrating between Coolify projects, stop the old service, copy volumes to the new ones, then redeploy.
 
@@ -348,11 +357,11 @@ prepare → validate → plan_images → build → deploy → cleanup
 
 #### Environments
 
-| Trigger | Environment | URL | Auth |
-|---|---|---|---|
-| **Push to `main`** | `production` | `https://maiah.shiftify.eco` | None |
+| Trigger              | Environment   | URL                                      | Auth               |
+| -------------------- | ------------- | ---------------------------------------- | ------------------ |
+| **Push to `main`**   | `production`  | `https://maiah.shiftify.eco`             | None               |
 | **PR opened/synced** | `pr-<number>` | `https://maiah-pr-<number>.shiftify.eco` | Traefik basic auth |
-| **PR closed** | — | (deleted) | — |
+| **PR closed**        | —             | (deleted)                                | —                  |
 
 PR previews are isolated — each gets its own Coolify environment and service. They are auto-deleted when the PR is closed. Fork PRs skip deployment entirely.
 
@@ -360,49 +369,49 @@ PR previews are isolated — each gets its own Coolify environment and service. 
 
 GitHub repository **secrets**:
 
-| Secret | Purpose |
-|---|---|
-| `COOLIFY_TOKEN` | Coolify API token |
-| `POSTGRES_PASSWORD` | Database password (≥ 16 chars) |
-| `BETTER_AUTH_SECRET` | Auth secret (≥ 32 chars) |
-| `APP_ENCRYPTION_KEY` | AES-GCM encryption key (64-char hex) |
-| `APP_ENCRYPTION_KEY_ID` | Encryption key identifier |
-| `DRAGONFLY_PASSWORD` | DragonflyDB password (≥ 16 chars) |
-| `OBJECT_STORAGE_ACCESS_KEY_ID` | S3 access key |
-| `OBJECT_STORAGE_SECRET_ACCESS_KEY` | S3 secret key (≥ 16 chars) |
-| `SEARXNG_SECRET` | SearXNG secret (≥ 32 chars) |
-| `MCP_GATEWAY_SHARED_SECRET` | Shared Maiah↔MCP gateway context secret (≥ 32 chars) |
-| `TRAEFIK_BASIC_AUTH_USERS` | PR preview auth (format: `user:hashed_password`) |
+| Secret                             | Purpose                                              |
+| ---------------------------------- | ---------------------------------------------------- |
+| `COOLIFY_TOKEN`                    | Coolify API token                                    |
+| `POSTGRES_PASSWORD`                | Database password (≥ 16 chars)                       |
+| `BETTER_AUTH_SECRET`               | Auth secret (≥ 32 chars)                             |
+| `APP_ENCRYPTION_KEY`               | AES-GCM encryption key (64-char hex)                 |
+| `APP_ENCRYPTION_KEY_ID`            | Encryption key identifier                            |
+| `DRAGONFLY_PASSWORD`               | DragonflyDB password (≥ 16 chars)                    |
+| `OBJECT_STORAGE_ACCESS_KEY_ID`     | S3 access key                                        |
+| `OBJECT_STORAGE_SECRET_ACCESS_KEY` | S3 secret key (≥ 16 chars)                           |
+| `SEARXNG_SECRET`                   | SearXNG secret (≥ 32 chars)                          |
+| `MCP_GATEWAY_SHARED_SECRET`        | Shared Maiah↔MCP gateway context secret (≥ 32 chars) |
+| `TRAEFIK_BASIC_AUTH_USERS`         | PR preview auth (format: `user:hashed_password`)     |
 
 GitHub repository **variables**:
 
-| Variable | Default | Purpose |
-|---|---|---|
-| `COOLIFY_DEPLOY_ENABLED` | `true` | Master switch — disable to skip deploys |
-| `COOLIFY_PROJECT_UUID` | `w2chgobcwbe3j1j9lj7m8dke` | Coolify project ID |
-| `COOLIFY_SERVER_UUID` | `o2dnvmz0zrjz0frynoq6bnfj` | Coolify server ID |
-| `COOLIFY_ENVIRONMENT_NAME` | `production` | Default environment name |
-| `OBJECT_STORAGE_BUCKET` | `ai-hub` | S3 bucket name |
-| `CODE_WORKSPACE_STORAGE_PREFIX` | `code-workspaces` | S3 prefix for code workspaces |
-| `SERVICENOW_ALLOWED_HOST_SUFFIXES` | `service-now.com` | Allowed ServiceNow host suffixes for the gateway |
-| `SERVICENOW_GATEWAY_RESOLVE_HOSTS` | `true` | Resolve and block private ServiceNow host IPs |
-| `ALLOW_PERSONAL_WORKSPACES` | `true` | Allow personal workspace creation |
-| `WORKSPACE_MONTHLY_TOKEN_LIMIT` | — | Token quota per workspace |
-| `OTEL_SERVICE_NAME` | `maiah` | Stable Dynatrace/OpenTelemetry service name |
-| `OTEL_RESOURCE_ATTRIBUTES` | derived | Standard OpenTelemetry resource attributes |
-| `DT_TAGS` | derived | Dynatrace tags for filtering |
-| `OBSERVABILITY_OWNER` | `deodis` | Owner metadata exported through `DT_CUSTOM_PROP` and `DT_TAGS` |
+| Variable                           | Default                    | Purpose                                                        |
+| ---------------------------------- | -------------------------- | -------------------------------------------------------------- |
+| `COOLIFY_DEPLOY_ENABLED`           | `true`                     | Master switch — disable to skip deploys                        |
+| `COOLIFY_PROJECT_UUID`             | `w2chgobcwbe3j1j9lj7m8dke` | Coolify project ID                                             |
+| `COOLIFY_SERVER_UUID`              | `o2dnvmz0zrjz0frynoq6bnfj` | Coolify server ID                                              |
+| `COOLIFY_ENVIRONMENT_NAME`         | `production`               | Default environment name                                       |
+| `OBJECT_STORAGE_BUCKET`            | `ai-hub`                   | S3 bucket name                                                 |
+| `CODE_WORKSPACE_STORAGE_PREFIX`    | `code-workspaces`          | S3 prefix for code workspaces                                  |
+| `SERVICENOW_ALLOWED_HOST_SUFFIXES` | `service-now.com`          | Allowed ServiceNow host suffixes for the gateway               |
+| `SERVICENOW_GATEWAY_RESOLVE_HOSTS` | `true`                     | Resolve and block private ServiceNow host IPs                  |
+| `ALLOW_PERSONAL_WORKSPACES`        | `true`                     | Allow personal workspace creation                              |
+| `WORKSPACE_MONTHLY_TOKEN_LIMIT`    | —                          | Token quota per workspace                                      |
+| `OTEL_SERVICE_NAME`                | `maiah`                    | Stable Dynatrace/OpenTelemetry service name                    |
+| `OTEL_RESOURCE_ATTRIBUTES`         | derived                    | Standard OpenTelemetry resource attributes                     |
+| `DT_TAGS`                          | derived                    | Dynatrace tags for filtering                                   |
+| `OBSERVABILITY_OWNER`              | `deodis`                   | Owner metadata exported through `DT_CUSTOM_PROP` and `DT_TAGS` |
 
 #### Coolify stack
 
 `.coolify/stack.compose.yml` is the image-based compose file used by the deploy step. It references pre-built images from GHCR via env vars:
 
 ```yaml
-AI_HUB_APP_IMAGE:       ghcr.io/.../ai-hub-app:<tag>
-AI_HUB_WORKER_IMAGE:    ghcr.io/.../ai-hub-worker:<tag>
-AI_HUB_MIGRATOR_IMAGE:  ghcr.io/.../ai-hub-migrator:<tag>
-AI_HUB_SEARXNG_IMAGE:   ghcr.io/.../ai-hub-searxng:<tag>
-AI_HUB_SANDBOX_IMAGE:   ghcr.io/.../ai-hub-sandbox:<tag>
+AI_HUB_APP_IMAGE: ghcr.io/.../ai-hub-app:<tag>
+AI_HUB_WORKER_IMAGE: ghcr.io/.../ai-hub-worker:<tag>
+AI_HUB_MIGRATOR_IMAGE: ghcr.io/.../ai-hub-migrator:<tag>
+AI_HUB_SEARXNG_IMAGE: ghcr.io/.../ai-hub-searxng:<tag>
+AI_HUB_SANDBOX_IMAGE: ghcr.io/.../ai-hub-sandbox:<tag>
 ```
 
 For PR previews, the deploy step merges in an additional compose overlay that adds Traefik basic auth labels to the `app` container.

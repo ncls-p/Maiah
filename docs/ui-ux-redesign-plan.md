@@ -1,5 +1,11 @@
 # Plan de refonte UI/UX
 
+## Statut d’implémentation — 9 juillet 2026
+
+La refonte est implémentée par lots sur `feat/ux-orchestrator-agents` : authentification, navigation, agents et orchestrateurs, chat, connaissances, hub Outils, approbations, fournisseurs, tâches planifiées, clés API, Marketplace, observabilité et panneaux admin.
+
+Les principes ci-dessous restent la référence produit. La couverture scénario par scénario, les validations réalisées et les gates encore dépendants de PostgreSQL sont suivis dans [`docs/ux/user-workflow-test-matrix.md`](ux/user-workflow-test-matrix.md).
+
 ## Objectif
 
 Refaire l’UI/UX pour rendre les workflows utilisateurs plus simples, plus logiques et plus élégants, sans modifier :
