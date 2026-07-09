@@ -718,8 +718,8 @@ function ConnectorCard({
 					<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 						<p className="text-muted-foreground">
 							No MCP tools are synced yet for this connector. Sync discovers the
-							tool catalog without credentials; your URL and secrets are required
-							only when a tool is executed.
+							tool catalog without credentials; your URL and secrets are
+							required only when a tool is executed.
 						</p>
 						<Button
 							variant="outline"

@@ -736,6 +736,19 @@ jobs:
         run: |
           set -euo pipefail
 
+          if [[ -z "${MCP_GATEWAY_SHARED_SECRET:-}" && "${IS_PREVIEW}" == "true" ]]; then
+            MCP_GATEWAY_SHARED_SECRET="$(
+              printf '%s:%s:%s:%s:%s' \
+                "${APP_ENCRYPTION_KEY}" \
+                "${COOLIFY_SERVICE_NAME}" \
+                "${TARGET_ENV_NAME}" \
+                "${AI_HUB_PUBLIC_HOST}" \
+                "mcp-gateway" \
+                | sha256sum \
+                | awk '{print $1}'
+            )"
+          fi
+
           required=(
             COOLIFY_TOKEN
             COOLIFY_PROJECT_UUID
