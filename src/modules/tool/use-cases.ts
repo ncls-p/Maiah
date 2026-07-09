@@ -34,12 +34,14 @@ export const toolBindingInputSchema = z.discriminatedUnion("toolSource", [
 ]);
 
 export type ToolBindingInput = z.infer<typeof toolBindingInputSchema>;
+type BindingDb = Pick<typeof db, "select" | "insert" | "delete">;
 
 export async function getToolBindingsForVersion(
 	agentVersionId: string,
 	visibility?: { workspaceId: string; userId: string },
+	executor: BindingDb = db,
 ) {
-	const bindings = await db
+	const bindings = await executor
 		.select()
 		.from(agentToolBindings)
 		.where(eq(agentToolBindings.agentVersionId, agentVersionId));
@@ -54,7 +56,7 @@ export async function getToolBindingsForVersion(
 
 	const [visibleCustomTools, visibleMcpTools] = await Promise.all([
 		customToolIds.length > 0
-			? db
+			? executor
 					.select({ id: customTools.id })
 					.from(customTools)
 					.where(
@@ -70,7 +72,7 @@ export async function getToolBindingsForVersion(
 					)
 			: Promise.resolve([]),
 		mcpToolIds.length > 0
-			? db
+			? executor
 					.select({ id: mcpTools.id })
 					.from(mcpTools)
 					.innerJoin(mcpServers, eq(mcpTools.mcpServerId, mcpServers.id))
@@ -110,8 +112,9 @@ export async function replaceToolBindingsForVersion(
 	bindings: ToolBindingInput[],
 	workspaceId?: string,
 	options?: { userId?: string },
+	executor: BindingDb = db,
 ) {
-	await db
+	await executor
 		.delete(agentToolBindings)
 		.where(eq(agentToolBindings.agentVersionId, agentVersionId));
 	await insertToolBindingsForVersion(
@@ -119,6 +122,7 @@ export async function replaceToolBindingsForVersion(
 		bindings,
 		workspaceId,
 		options,
+		executor,
 	);
 }
 
@@ -127,6 +131,7 @@ export async function insertToolBindingsForVersion(
 	bindings: ToolBindingInput[],
 	workspaceId?: string,
 	options?: { userId?: string },
+	executor: BindingDb = db,
 ) {
 	if (bindings.length === 0) return;
 
@@ -147,7 +152,7 @@ export async function insertToolBindingsForVersion(
 									: undefined,
 							)
 						: eq(customTools.id, binding.toolId);
-					const [customTool] = await db
+					const [customTool] = await executor
 						.select()
 						.from(customTools)
 						.where(customToolFilters)
@@ -165,7 +170,7 @@ export async function insertToolBindingsForVersion(
 
 				if (binding.toolSource === "mcp") {
 					const [tool] = workspaceId
-						? await db
+						? await executor
 								.select({ requireApproval: mcpTools.requireApproval })
 								.from(mcpTools)
 								.innerJoin(mcpServers, eq(mcpTools.mcpServerId, mcpServers.id))
@@ -185,7 +190,7 @@ export async function insertToolBindingsForVersion(
 									),
 								)
 								.limit(1)
-						: await db
+						: await executor
 								.select()
 								.from(mcpTools)
 								.where(
@@ -220,7 +225,10 @@ export async function insertToolBindingsForVersion(
 			}),
 		);
 
-		await db.insert(agentToolBindings).values(values).onConflictDoNothing();
+		await executor
+			.insert(agentToolBindings)
+			.values(values)
+			.onConflictDoNothing();
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
 		if (
@@ -245,9 +253,14 @@ export async function cloneToolBindings(
 	toAgentVersionId: string,
 	workspaceId?: string,
 	options?: { userId?: string },
+	executor: BindingDb = db,
 ) {
 	if (!fromAgentVersionId) return;
-	const existing = await getToolBindingsForVersion(fromAgentVersionId);
+	const existing = await getToolBindingsForVersion(
+		fromAgentVersionId,
+		undefined,
+		executor,
+	);
 	const inputs: ToolBindingInput[] = [];
 
 	for (const binding of existing) {
@@ -261,7 +274,7 @@ export async function cloneToolBindings(
 		}
 
 		if (binding.toolSource === "mcp") {
-			const [tool] = await db
+			const [tool] = await executor
 				.select({ mcpServerId: mcpTools.mcpServerId })
 				.from(mcpTools)
 				.where(eq(mcpTools.id, binding.toolId))
@@ -288,6 +301,7 @@ export async function cloneToolBindings(
 		inputs,
 		workspaceId,
 		options,
+		executor,
 	);
 }
 

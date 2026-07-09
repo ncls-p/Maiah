@@ -451,6 +451,7 @@ describe("updateAgent", () => {
 				agentId: "nonexistent",
 				workspaceId: "ws-1",
 				userId: "user-1",
+				baseVersionId: null,
 			}),
 		).rejects.toThrow("Agent not found");
 	});
@@ -459,7 +460,12 @@ describe("updateAgent", () => {
 		dbModule._c.limit.mockResolvedValueOnce([fakeAgent]);
 
 		await expect(
-			updateAgent({ agentId: "agent-1", workspaceId: "ws-1", userId: "other" }),
+			updateAgent({
+				agentId: "agent-1",
+				workspaceId: "ws-1",
+				userId: "other",
+				baseVersionId: "v1",
+			}),
 		).rejects.toThrow("Only the creator or an admin can update this agent");
 	});
 
@@ -475,27 +481,29 @@ describe("updateAgent", () => {
 		const newVersion = { ...fakeVersion, versionNumber: 2, id: "v2" };
 		const updatedAgent = { ...fakeAgent };
 
-		// Tx where call sequence (no name changes → no Q1 update):
-		// Q2 getActiveVersionConfig: where → chains to limit
-		// Q5 maxVersion select: where terminal → resolves to [{maxVersion:1}]
-		// Q7 update activeVersionId: where → chains (result discarded)
-		// Q8 select updatedAgent: where → chains to limit
+		// Tx where call sequence (no identity changes):
+		// Q1 lock the agent row, Q2 load active version, Q3 compute max version,
+		// Q4 activate the new version, Q5 reload the updated agent.
 		dbModule._tx.where
-			.mockReturnValueOnce(dbModule._tx) // Q2 chains to limit
-			.mockResolvedValueOnce([{ maxVersion: 1 }]) // Q5 terminal
-			.mockReturnValueOnce(dbModule._tx) // Q7 chains (update)
-			.mockReturnValueOnce(dbModule._tx); // Q8 chains to limit
+			.mockReturnValueOnce(dbModule._tx)
+			.mockReturnValueOnce(dbModule._tx)
+			.mockResolvedValueOnce([{ maxVersion: 1 }])
+			.mockReturnValueOnce(dbModule._tx)
+			.mockReturnValueOnce(dbModule._tx);
 
 		dbModule._tx.limit
 			.mockResolvedValueOnce([versionNoProvider]) // Q2 getActiveVersionConfig
 			.mockResolvedValueOnce([updatedAgent]); // Q8 updatedAgent
 
-		dbModule._tx.returning.mockResolvedValueOnce([newVersion]);
+		dbModule._tx.returning
+			.mockResolvedValueOnce([fakeAgent])
+			.mockResolvedValueOnce([newVersion]);
 
 		const result = await updateAgent({
 			agentId: "agent-1",
 			workspaceId: "ws-1",
 			userId: "user-1",
+			baseVersionId: "v1",
 		});
 
 		expect(result.agent).toBeDefined();

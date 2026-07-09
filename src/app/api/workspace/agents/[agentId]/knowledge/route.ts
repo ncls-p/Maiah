@@ -5,6 +5,7 @@ import {
 	requireWorkspacePermissionAsync,
 } from "@/lib/route-handler";
 import {
+	AgentVersionConflictError,
 	getActiveVersion,
 	getVisibleAgentById,
 	updateAgent,
@@ -16,6 +17,7 @@ const routeParamsSchema = z.object({ agentId: z.uuid() });
 const workspaceQuerySchema = z.object({ workspaceId: z.uuid() });
 const putSchema = z.object({
 	workspaceId: z.uuid(),
+	baseVersionId: z.uuid().nullable(),
 	knowledgeBaseIds: z.array(z.uuid()),
 });
 
@@ -90,6 +92,7 @@ export async function PUT(
 				agentId,
 				workspaceId,
 				userId: session.user.id,
+				baseVersionId: parsedBody.data.baseVersionId,
 				canAdminCurate: await canManageTenantGlobals(session, workspaceId),
 				knowledgeBindings: knowledgeBaseIds,
 			});
@@ -99,6 +102,16 @@ export async function PUT(
 		{
 			logLabel: "Failed to update knowledge bindings",
 			expectedError: (error) => {
+				if (error instanceof AgentVersionConflictError) {
+					return NextResponse.json(
+						{
+							error: error.message,
+							code: error.code,
+							currentVersionId: error.currentVersionId,
+						},
+						{ status: 409 },
+					);
+				}
 				if (error instanceof Error && error.message === "Agent not found") {
 					return NextResponse.json(
 						{ error: "Agent not found" },

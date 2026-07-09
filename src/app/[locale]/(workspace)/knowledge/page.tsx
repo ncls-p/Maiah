@@ -176,16 +176,17 @@ export default function KnowledgePage() {
 		if (!canAttachKnowledgeBase) return;
 		setAttachingAgentId(agentId);
 		try {
+			const targetAgent = attachAgents.find((agent) => agent.id === agentId);
+			if (!targetAgent) throw new Error(t("errorAttachAgent"));
 			const bindingsRes = await fetch(
 				`/api/workspace/agents/${agentId}/knowledge?workspaceId=${workspaceId}`,
 			);
-			const currentBindings = bindingsRes.ok
-				? ((
-						(await bindingsRes.json()) as {
-							bindings?: Array<{ knowledgeBaseId: string }>;
-						}
-					).bindings ?? [])
-				: [];
+			if (!bindingsRes.ok) throw new Error(t("errorAttachAgent"));
+			const currentBindings = (
+				(await bindingsRes.json()) as {
+					bindings?: Array<{ knowledgeBaseId: string }>;
+				}
+			).bindings ?? [];
 			const knowledgeBaseIds = Array.from(
 				new Set([
 					...currentBindings.map((binding) => binding.knowledgeBaseId),
@@ -195,7 +196,11 @@ export default function KnowledgePage() {
 			const res = await fetch(`/api/workspace/agents/${agentId}/knowledge`, {
 				method: "PUT",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ workspaceId, knowledgeBaseIds }),
+				body: JSON.stringify({
+					workspaceId,
+					baseVersionId: targetAgent.activeVersionId,
+					knowledgeBaseIds,
+				}),
 			});
 			if (!res.ok) throw new Error(t("errorAttachAgent"));
 			toast.success(t("toastAttachedAgent"));

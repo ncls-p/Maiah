@@ -109,6 +109,7 @@ export interface UpdateAgentInput {
 	agentId: string;
 	workspaceId: string;
 	userId: string;
+	baseVersionId: string | null;
 	name?: string;
 	slug?: string;
 	description?: string;
@@ -136,6 +137,15 @@ export interface UpdateAgentInput {
 	curationLabel?: AgentCurationLabel;
 	canAdminCurate?: boolean;
 	promptSuggestions?: string[];
+}
+
+export class AgentVersionConflictError extends Error {
+	readonly code = "AGENT_VERSION_CONFLICT";
+
+	constructor(readonly currentVersionId: string | null) {
+		super("Agent configuration changed since it was loaded");
+		this.name = "AgentVersionConflictError";
+	}
 }
 
 export interface AgentDefaultPreferences {
@@ -379,6 +389,28 @@ export async function createAgent(input: CreateAgentInput) {
 			.set({ activeVersionId: version.id })
 			.where(eq(agents.id, agent.id));
 
+		await insertToolBindingsForVersion(
+			version.id,
+			normalizedToolBindings ?? [],
+			workspaceId,
+			{ userId },
+			tx,
+		);
+		await replaceKnowledgeBindingsForVersion(
+			version.id,
+			knowledgeBindings ?? [],
+			workspaceId,
+			{ userId },
+			tx,
+		);
+		await replaceSkillBindingsForVersion(
+			version.id,
+			workspaceId,
+			skillBindings ?? [],
+			{ userId },
+			tx,
+		);
+
 		return { agent, version };
 	});
 
@@ -392,25 +424,6 @@ export async function createAgent(input: CreateAgentInput) {
 		outcome: "success",
 		metadata: { name, slug, sharingMode },
 	});
-
-	await insertToolBindingsForVersion(
-		version.id,
-		normalizedToolBindings ?? [],
-		workspaceId,
-		{ userId },
-	);
-	await replaceKnowledgeBindingsForVersion(
-		version.id,
-		knowledgeBindings ?? [],
-		workspaceId,
-		{ userId },
-	);
-	await replaceSkillBindingsForVersion(
-		version.id,
-		workspaceId,
-		skillBindings ?? [],
-		{ userId },
-	);
 
 	logger.info("Agent created", { agentId: agent.id, userId });
 	return { agent, version };
@@ -769,31 +782,30 @@ export async function cloneAgent(input: CloneAgentInput) {
 			.set({ activeVersionId: version.id })
 			.where(eq(agents.id, agent.id));
 
+		await cloneToolBindings(
+			source.activeVersionId,
+			version.id,
+			input.workspaceId,
+			{ userId: input.userId },
+			tx,
+		);
+		await cloneKnowledgeBindings(
+			source.activeVersionId,
+			version.id,
+			input.workspaceId,
+			{ userId: input.userId },
+			tx,
+		);
+		await cloneSkillBindings(
+			source.activeVersionId,
+			version.id,
+			input.workspaceId,
+			{ userId: input.userId },
+			tx,
+		);
+
 		return { agent, version };
 	});
-
-	await cloneToolBindings(
-		source.activeVersionId,
-		version.id,
-		input.workspaceId,
-		{ userId: input.userId },
-	);
-	await cloneKnowledgeBindings(
-		source.activeVersionId,
-		version.id,
-		input.workspaceId,
-		{
-			userId: input.userId,
-		},
-	);
-	await cloneSkillBindings(
-		source.activeVersionId,
-		version.id,
-		input.workspaceId,
-		{
-			userId: input.userId,
-		},
-	);
 
 	await audit.emit({
 		workspaceId: input.workspaceId,
@@ -825,19 +837,17 @@ async function withAgentUpdateLock<T>(
 	const current = new Promise<void>((resolve) => {
 		release = resolve;
 	});
-	agentUpdateLocks.set(
-		agentId,
-		previous.then(
-			() => current,
-			() => current,
-		),
+	const queued = previous.then(
+		() => current,
+		() => current,
 	);
+	agentUpdateLocks.set(agentId, queued);
 	await previous.catch(() => undefined);
 	try {
 		return await operation();
 	} finally {
 		release();
-		if (agentUpdateLocks.get(agentId) === current) {
+		if (agentUpdateLocks.get(agentId) === queued) {
 			agentUpdateLocks.delete(agentId);
 		}
 	}
@@ -852,6 +862,7 @@ async function updateAgentUnlocked(input: UpdateAgentInput) {
 		agentId,
 		workspaceId,
 		userId,
+		baseVersionId,
 		name,
 		slug,
 		description,
@@ -894,6 +905,9 @@ async function updateAgentUnlocked(input: UpdateAgentInput) {
 	if (!canEditAgent(existing, userId, Boolean(canAdminCurate))) {
 		throw new Error("Only the creator or an admin can update this agent");
 	}
+	if (existing.activeVersionId !== baseVersionId) {
+		throw new AgentVersionConflictError(existing.activeVersionId);
+	}
 
 	const normalizedToolBindings = canAdminCurate
 		? toolBindings
@@ -914,6 +928,32 @@ async function updateAgentUnlocked(input: UpdateAgentInput) {
 				: existing.shareTargetUserId;
 
 	const { agent, version } = await db.transaction(async (tx) => {
+		const activeVersionPredicate = baseVersionId
+			? eq(agents.activeVersionId, baseVersionId)
+			: isNull(agents.activeVersionId);
+		const [lockedAgent] = await tx
+			.update(agents)
+			.set({ updatedAt: sql`${agents.updatedAt}` })
+			.where(
+				and(
+					eq(agents.id, agentId),
+					eq(agents.workspaceId, workspaceId),
+					activeVersionPredicate,
+				),
+			)
+			.returning();
+		if (!lockedAgent) {
+			const [current] = await tx
+				.select({ activeVersionId: agents.activeVersionId })
+				.from(agents)
+				.where(
+					and(eq(agents.id, agentId), eq(agents.workspaceId, workspaceId)),
+				)
+				.limit(1);
+			if (!current) throw new Error("Agent not found");
+			throw new AgentVersionConflictError(current.activeVersionId);
+		}
+
 		const agentUpdates: Record<string, unknown> = { updatedAt: new Date() };
 		if (name !== undefined) agentUpdates.name = name;
 		if (slug !== undefined) agentUpdates.slug = slug;
@@ -949,7 +989,7 @@ async function updateAgentUnlocked(input: UpdateAgentInput) {
 		// Get active version config for inheritance
 		const activeConfig = await getActiveVersionConfig(
 			tx,
-			existing.activeVersionId,
+			baseVersionId,
 		);
 
 		const nextProviderId =
@@ -1055,9 +1095,59 @@ async function updateAgentUnlocked(input: UpdateAgentInput) {
 			})
 			.returning();
 
+		if (normalizedToolBindings !== undefined) {
+			await insertToolBindingsForVersion(
+				version.id,
+				normalizedToolBindings,
+				workspaceId,
+				{ userId },
+				tx,
+			);
+		} else {
+			await cloneToolBindings(baseVersionId, version.id, workspaceId, {
+				userId,
+			}, tx);
+		}
+
+		if (knowledgeBindings !== undefined) {
+			await replaceKnowledgeBindingsForVersion(
+				version.id,
+				knowledgeBindings,
+				workspaceId,
+				{ userId },
+				tx,
+			);
+		} else {
+			await cloneKnowledgeBindings(
+				baseVersionId,
+				version.id,
+				workspaceId,
+				{ userId },
+				tx,
+			);
+		}
+
+		if (skillBindings !== undefined) {
+			await replaceSkillBindingsForVersion(
+				version.id,
+				workspaceId,
+				skillBindings,
+				{ userId },
+				tx,
+			);
+		} else {
+			await cloneSkillBindings(
+				baseVersionId,
+				version.id,
+				workspaceId,
+				{ userId },
+				tx,
+			);
+		}
+
 		await tx
 			.update(agents)
-			.set({ activeVersionId: version.id })
+			.set({ activeVersionId: version.id, updatedAt: new Date() })
 			.where(eq(agents.id, agentId));
 
 		const [updatedAgent] = await tx
@@ -1082,57 +1172,6 @@ async function updateAgentUnlocked(input: UpdateAgentInput) {
 			sharingMode: sharingMode ?? existing.sharingMode,
 		},
 	});
-
-	if (normalizedToolBindings) {
-		await insertToolBindingsForVersion(
-			version.id,
-			normalizedToolBindings,
-			workspaceId,
-			{
-				userId,
-			},
-		);
-	} else {
-		await cloneToolBindings(existing.activeVersionId, version.id, workspaceId, {
-			userId,
-		});
-	}
-
-	if (knowledgeBindings) {
-		await replaceKnowledgeBindingsForVersion(
-			version.id,
-			knowledgeBindings,
-			workspaceId,
-			{ userId },
-		);
-	} else {
-		await cloneKnowledgeBindings(
-			existing.activeVersionId,
-			version.id,
-			workspaceId,
-			{
-				userId,
-			},
-		);
-	}
-
-	if (skillBindings) {
-		await replaceSkillBindingsForVersion(
-			version.id,
-			workspaceId,
-			skillBindings,
-			{ userId },
-		);
-	} else {
-		await cloneSkillBindings(
-			existing.activeVersionId,
-			version.id,
-			workspaceId,
-			{
-				userId,
-			},
-		);
-	}
 
 	logger.info("Agent updated", {
 		agentId,

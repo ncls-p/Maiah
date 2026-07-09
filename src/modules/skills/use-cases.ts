@@ -559,21 +559,24 @@ export async function getSkillBindingsForVersion(
 		);
 }
 
+type BindingDb = Pick<typeof db, "select" | "insert" | "delete">;
+
 export async function replaceSkillBindingsForVersion(
 	agentVersionId: string,
 	workspaceId: string,
 	skillIds: string[],
 	options?: { userId?: string },
+	executor: BindingDb = db,
 ) {
 	const uniqueSkillIds = [...new Set(skillIds)];
 	if (uniqueSkillIds.length === 0) {
-		await db
+		await executor
 			.delete(agentSkillBindings)
 			.where(eq(agentSkillBindings.agentVersionId, agentVersionId));
 		return;
 	}
 
-	const availableSkills = await db
+	const availableSkills = await executor
 		.select({ id: agentSkills.id })
 		.from(agentSkills)
 		.where(
@@ -590,11 +593,11 @@ export async function replaceSkillBindingsForVersion(
 	);
 	if (invalidSkillId) throw new Error("Skill not found");
 
-	await db
+	await executor
 		.delete(agentSkillBindings)
 		.where(eq(agentSkillBindings.agentVersionId, agentVersionId));
 
-	await db.insert(agentSkillBindings).values(
+	await executor.insert(agentSkillBindings).values(
 		uniqueSkillIds.map((skillId) => ({
 			agentVersionId,
 			skillId,
@@ -607,9 +610,10 @@ export async function cloneSkillBindings(
 	toAgentVersionId: string,
 	workspaceId?: string,
 	options?: { userId?: string },
+	executor: BindingDb = db,
 ) {
 	if (!fromAgentVersionId) return;
-	const existing = await db
+	const existing = await executor
 		.select({ skillId: agentSkillBindings.skillId })
 		.from(agentSkillBindings)
 		.innerJoin(agentSkills, eq(agentSkillBindings.skillId, agentSkills.id))
@@ -624,7 +628,7 @@ export async function cloneSkillBindings(
 
 	if (existing.length === 0) return;
 
-	await db.insert(agentSkillBindings).values(
+	await executor.insert(agentSkillBindings).values(
 		existing.map((row) => ({
 			agentVersionId: toAgentVersionId,
 			skillId: row.skillId,

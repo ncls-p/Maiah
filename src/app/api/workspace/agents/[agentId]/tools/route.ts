@@ -5,6 +5,7 @@ import {
 	requireWorkspacePermissionAsync,
 } from "@/lib/route-handler";
 import {
+	AgentVersionConflictError,
 	getVisibleAgentById,
 	getActiveVersion,
 	getAgentVersionById,
@@ -121,7 +122,10 @@ export async function PUT(
 			}
 			const body = await req.json();
 			const parsedBody = z
-				.object({ bindings: z.array(toolBindingInputSchema) })
+				.object({
+					baseVersionId: z.uuid().nullable(),
+					bindings: z.array(toolBindingInputSchema),
+				})
 				.safeParse(body);
 			if (!parsedBody.success) {
 				return NextResponse.json(
@@ -133,6 +137,7 @@ export async function PUT(
 				agentId,
 				workspaceId,
 				userId: session.user.id,
+				baseVersionId: parsedBody.data.baseVersionId,
 				canAdminCurate,
 				toolBindings: parsedBody.data.bindings,
 			});
@@ -156,6 +161,16 @@ export async function PUT(
 		{
 			logLabel: "Failed to update agent tools",
 			expectedError: (error) => {
+				if (error instanceof AgentVersionConflictError) {
+					return NextResponse.json(
+						{
+							error: error.message,
+							code: error.code,
+							currentVersionId: error.currentVersionId,
+						},
+						{ status: 409 },
+					);
+				}
 				if (error instanceof Error && error.message === "Agent not found") {
 					return NextResponse.json(
 						{ error: "Agent not found" },

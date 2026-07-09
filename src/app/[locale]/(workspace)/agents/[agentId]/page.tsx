@@ -189,7 +189,10 @@ export default function AgentConfigurePage() {
 			mcpRes.ok &&
 			customToolsRes.ok &&
 			kbRes.ok &&
-			skillsRes.ok;
+			skillsRes.ok &&
+			bindingsRes.ok &&
+			knowledgeBindingsRes.ok &&
+			skillBindingsRes.ok;
 		if (!allCoreOk) {
 			throw new Error("Unable to load agent settings");
 		}
@@ -200,23 +203,17 @@ export default function AgentConfigurePage() {
 		const customToolRows = (await customToolsRes.json()) as CustomTool[];
 		const kbRows = (await kbRes.json()) as KnowledgeBase[];
 		const skillRows = (await skillsRes.json()) as AgentSkill[];
-		const toolBindings = bindingsRes.ok
-			? ((await bindingsRes.json()) as ToolBinding[])
-			: [];
-		const knowledgeBindings = knowledgeBindingsRes.ok
-			? (
-					(await knowledgeBindingsRes.json()) as {
-						bindings: KnowledgeBinding[];
-					}
-				).bindings
-			: [];
-		const skillBindings = skillBindingsRes.ok
-			? (
-					(await skillBindingsRes.json()) as {
-						bindings: SkillBinding[];
-					}
-				).bindings
-			: [];
+		const toolBindings = (await bindingsRes.json()) as ToolBinding[];
+		const knowledgeBindings = (
+			(await knowledgeBindingsRes.json()) as {
+				bindings: KnowledgeBinding[];
+			}
+		).bindings;
+		const skillBindings = (
+			(await skillBindingsRes.json()) as {
+				bindings: SkillBinding[];
+			}
+		).bindings;
 
 		const modelRows = (
 			await Promise.all(
@@ -326,6 +323,7 @@ export default function AgentConfigurePage() {
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({
 					workspaceId,
+					baseVersionId: agent?.activeVersionId ?? null,
 					name: form.name,
 					slug: form.slug,
 					description: form.description,
@@ -441,41 +439,35 @@ export default function AgentConfigurePage() {
 						requireApproval: customBindings[tool.id]?.requireApproval ?? true,
 					})),
 			];
-			const [toolsRes, kbRes, skillsRes] = await Promise.all([
-				fetch(
-					`/api/workspace/agents/${agentId}/tools?workspaceId=${workspaceId}`,
-					{
-						method: "PUT",
-						headers: { "Content-Type": "application/json" },
-						body: JSON.stringify({ bindings }),
-					},
-				),
-				fetch(
-					`/api/workspace/agents/${agentId}/knowledge?workspaceId=${workspaceId}`,
-					{
-						method: "PUT",
-						headers: { "Content-Type": "application/json" },
-						body: JSON.stringify({
-							workspaceId,
-							knowledgeBaseIds: selectedKnowledgeIds,
-						}),
-					},
-				),
-				fetch(
-					`/api/workspace/agents/${agentId}/skills?workspaceId=${workspaceId}`,
-					{
-						method: "PUT",
-						headers: { "Content-Type": "application/json" },
-						body: JSON.stringify({
-							workspaceId,
-							skillIds: selectedSkillIds,
-						}),
-					},
-				),
-			]);
-			const capabilitiesSaved = toolsRes.ok && kbRes.ok && skillsRes.ok;
-			if (!capabilitiesSaved) {
-				throw new Error("Unable to save capabilities");
+			const res = await fetch(`/api/workspace/agents/${agentId}`, {
+				method: "PATCH",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					workspaceId,
+					baseVersionId: agent.activeVersionId ?? null,
+					toolBindings: bindings,
+					knowledgeBindings: selectedKnowledgeIds,
+					skillBindings: selectedSkillIds,
+				}),
+			});
+			if (!res.ok) {
+				throw new Error(
+					(await res.json().catch(() => null))?.error ||
+						"Unable to save capabilities",
+				);
+			}
+			const data = (await res.json()) as { agent?: Agent };
+			if (data.agent) {
+				setAgent((current) =>
+					current
+						? {
+								...data.agent!,
+								canAdminCurate: current.canAdminCurate,
+								canEdit: current.canEdit,
+								canClone: current.canClone,
+							}
+						: current,
+				);
 			}
 			toast.success(t("configurePage.capabilitiesSaved"));
 		} catch (error) {
@@ -495,7 +487,11 @@ export default function AgentConfigurePage() {
 			const res = await fetch(`/api/workspace/agents/${agentId}`, {
 				method: "PATCH",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ workspaceId, logoUrl }),
+				body: JSON.stringify({
+					workspaceId,
+					baseVersionId: agent?.activeVersionId ?? null,
+					logoUrl,
+				}),
 			});
 			if (!res.ok) {
 				throw new Error(
@@ -507,7 +503,12 @@ export default function AgentConfigurePage() {
 			if (data.agent) {
 				setAgent((current) =>
 					current
-						? { ...current, logoUrl: data.agent?.logoUrl ?? null }
+						? {
+								...data.agent!,
+								canAdminCurate: current.canAdminCurate,
+								canEdit: current.canEdit,
+								canClone: current.canClone,
+							}
 						: current,
 				);
 			}

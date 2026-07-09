@@ -488,11 +488,15 @@ export function SetupWizard({
       let completedAgentId = agentId;
 
       if (completedAgentId) {
+        const currentAgent = await fetchJson<{ activeVersionId: string | null }>(
+          `/api/workspace/agents/${completedAgentId}?workspaceId=${workspaceId}`,
+        );
         await fetchJson(`/api/workspace/agents/${completedAgentId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             workspaceId,
+            baseVersionId: currentAgent.activeVersionId,
             providerId,
             modelId: modelDbId,
           }),

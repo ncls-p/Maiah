@@ -9,6 +9,7 @@ import { db } from "@/server/infrastructure/db";
 import { users } from "@/server/infrastructure/db/schema";
 import {
 	archiveAgent,
+	AgentVersionConflictError,
 	canEditAgent,
 	getVisibleAgentById,
 	normalizePromptSuggestions,
@@ -40,6 +41,7 @@ const promptSuggestionsSchema = z
 
 const updateAgentSchema = z.object({
 	workspaceId: z.uuid(),
+	baseVersionId: z.uuid().nullable(),
 	name: z.string().min(1).max(255).optional(),
 	slug: slugSchema.optional(),
 	description: z.string().max(2048).optional().or(z.literal("")),
@@ -238,6 +240,16 @@ export async function PATCH(
 		{
 			logLabel: "Failed to update agent",
 			expectedError: (error) => {
+				if (error instanceof AgentVersionConflictError) {
+					return NextResponse.json(
+						{
+							error: error.message,
+							code: error.code,
+							currentVersionId: error.currentVersionId,
+						},
+						{ status: 409 },
+					);
+				}
 				if (isUniqueConstraintError(error)) {
 					return NextResponse.json(
 						{ error: "Agent slug already exists in this workspace" },

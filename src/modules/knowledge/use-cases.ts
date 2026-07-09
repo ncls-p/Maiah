@@ -598,15 +598,18 @@ export async function getKnowledgeBindingsForVersion(
 	return rows;
 }
 
+type BindingDb = Pick<typeof db, "select" | "insert" | "delete">;
+
 export async function replaceKnowledgeBindingsForVersion(
 	agentVersionId: string,
 	knowledgeBaseIds: string[],
 	workspaceId?: string,
 	options?: { userId?: string },
+	executor: BindingDb = db,
 ) {
 	const uniqueKnowledgeBaseIds = [...new Set(knowledgeBaseIds)];
 	if (workspaceId && uniqueKnowledgeBaseIds.length > 0) {
-		const availableKnowledgeBases = await db
+		const availableKnowledgeBases = await executor
 			.select({ id: knowledgeBases.id })
 			.from(knowledgeBases)
 			.where(
@@ -631,13 +634,13 @@ export async function replaceKnowledgeBindingsForVersion(
 		if (invalidKnowledgeBaseId) throw new Error("Knowledge base not found");
 	}
 
-	await db
+	await executor
 		.delete(agentKnowledgeBindings)
 		.where(eq(agentKnowledgeBindings.agentVersionId, agentVersionId));
 
 	if (uniqueKnowledgeBaseIds.length === 0) return;
 
-	await db.insert(agentKnowledgeBindings).values(
+	await executor.insert(agentKnowledgeBindings).values(
 		uniqueKnowledgeBaseIds.map((knowledgeBaseId) => ({
 			agentVersionId,
 			knowledgeBaseId,
@@ -650,9 +653,10 @@ export async function cloneKnowledgeBindings(
 	toAgentVersionId: string,
 	workspaceId?: string,
 	options?: { userId?: string },
+	executor: BindingDb = db,
 ) {
 	if (!fromAgentVersionId) return;
-	const existing = await db
+	const existing = await executor
 		.select({ knowledgeBaseId: agentKnowledgeBindings.knowledgeBaseId })
 		.from(agentKnowledgeBindings)
 		.innerJoin(
@@ -670,7 +674,7 @@ export async function cloneKnowledgeBindings(
 
 	if (existing.length === 0) return;
 
-	await db.insert(agentKnowledgeBindings).values(
+	await executor.insert(agentKnowledgeBindings).values(
 		existing.map((row) => ({
 			agentVersionId: toAgentVersionId,
 			knowledgeBaseId: row.knowledgeBaseId,
