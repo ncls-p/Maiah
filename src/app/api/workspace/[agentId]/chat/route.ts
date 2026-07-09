@@ -20,6 +20,7 @@ import {
 	createRuntimeDeadline,
 	resolveAgentRuntimeLimits,
 } from "@/modules/agent/runtime-policy";
+import { executeAgent } from "@/modules/agent/runtime-executor";
 import {
 	completeChatStream,
 	createChatStreamResponse,
@@ -535,6 +536,124 @@ export async function POST(
 					`[${index + 1}] ${hit.documentTitle} (${hit.knowledgeBaseName}): ${hit.content}`,
 			)
 			.join("\n\n");
+
+		if (agent.kind === "orchestrator") {
+			const streamAbortController = new AbortController();
+			registerChatStreamAbortController(
+				assistantMessage.id,
+				streamAbortController,
+			);
+			const orchestrationPrompt = [
+				content,
+				ragContext
+					? `Use these knowledge base excerpts when relevant:\n\n${ragContext}`
+					: null,
+			]
+				.filter(Boolean)
+				.join("\n\n");
+
+			void (async () => {
+				try {
+					const result = await executeAgent({
+						workspaceId: agent.workspaceId,
+						userId: actorUserId,
+						agentId,
+						agentVersionId: version.id,
+						prompt: orchestrationPrompt,
+						messages: history,
+						systemContext: ragContext
+							? `Use these knowledge base excerpts when relevant:\n\n${ragContext}`
+							: undefined,
+						trigger: "chat",
+						conversationId: conversation.id,
+						messageId: assistantMessage.id,
+						idempotencyKey: `chat:${assistantMessage.id}`,
+						abortSignal: streamAbortController.signal,
+					});
+					if (result.text) {
+						await db.insert(messageParts).values({
+							messageId: assistantMessage.id,
+							type: "text",
+							contentEncrypted: await encryptValue(result.text),
+							sortOrder: 0,
+						});
+						enqueueEvent({ type: "text", delta: result.text });
+					}
+					const completedAt = new Date();
+					await db
+						.update(messages)
+						.set({
+							status: "completed",
+							tokenInput: result.inputTokens,
+							tokenOutput: result.outputTokens,
+							completedAt,
+						})
+						.where(eq(messages.id, assistantMessage.id));
+					await db
+						.update(conversations)
+						.set({
+							agentId,
+							agentVersionId: version.id,
+							sidebarOrder: null,
+							updatedAt: completedAt,
+						})
+						.where(eq(conversations.id, conversation.id));
+					enqueueEvent({
+						type: "agent_run",
+						runId: result.runId,
+						status: "success",
+						totalTreeTokens: result.totalTreeTokens,
+					});
+					enqueueEvent({ type: "done" });
+				} catch (error) {
+					const aborted = streamAbortController.signal.aborted;
+					await db
+						.update(messages)
+						.set({
+							status: aborted ? "completed" : "failed",
+							completedAt: new Date(),
+						})
+						.where(eq(messages.id, assistantMessage.id));
+					if (aborted) {
+						enqueueEvent({ type: "done", stopped: true });
+					} else {
+						enqueueEvent({
+							type: "error",
+							error: safeToolErrorMessage(
+								error,
+								"Orchestration failed. Review the run trace and try again.",
+							),
+						});
+					}
+					logHandledError(
+						"Orchestrator chat run failed",
+						{
+							requestId,
+							agentId,
+							workspaceId: agent.workspaceId,
+							conversationId: conversation.id,
+							assistantMessageId: assistantMessage.id,
+						},
+						error as Error,
+					);
+				} finally {
+					completeChatStream(assistantMessage.id);
+				}
+			})();
+
+			const streamHeaders = {
+				"X-Conversation-Id": conversation.id,
+				"X-Message-Id": assistantMessage.id,
+				"X-User-Message-Id": userMessage.id,
+				"X-Request-Id": requestId,
+			};
+			return useAiSdkUIStream
+				? createChatUIMessageStreamResponse(
+						assistantMessage.id,
+						streamHeaders,
+					)
+				: createChatStreamResponse(assistantMessage.id, streamHeaders);
+		}
 
 		const runtimeLimits = resolveAgentRuntimeLimits({
 			maxToolCalls: version.maxToolCalls ?? defaultMaxToolCalls,

@@ -53,6 +53,32 @@ Raw run input and output are encrypted. List/detail responses and run steps use
 bounded, secret-aware projections, while unexpected terminal errors fall back
 to a generic message when redaction would otherwise reveal sensitive material.
 
+## Runtime entry points
+
+The shared executor powers orchestrator chat and scheduled tasks. It can also be
+called synchronously through:
+
+- `POST /api/workspace/agents/:agentId/runs` to run or dry-run a pinned or active
+  version;
+- `GET /api/workspace/agents/:agentId/runs` for bounded run history;
+- `GET /api/workspace/agents/:agentId/runs/:runId` for the safe run tree trace;
+- `DELETE /api/workspace/agents/:agentId/runs/:runId` to request cancellation.
+
+API callers may supply an idempotency key. A completed duplicate returns the
+encrypted run result without another model call; a duplicate still in progress
+returns a conflict with the existing run ID.
+
+Every delegation rechecks `agents.delegate`, target visibility, pinned-version
+ownership, ancestry and depth immediately before creating the child run. The
+root policy bounds total delegations, parallel children, child steps, output
+size, whole-tree tokens and wall-clock time. Root quota settlement uses the
+whole-tree token count rather than only the parent model call.
+
+Scheduled, delegated and direct API executions are non-interactive. A tool that
+requires human approval is denied and logged instead of waiting forever. Chat
+assistants keep the existing interactive approval flow; orchestrator child runs
+use the same fail-closed non-interactive rule in V1.
+
 ## Authorization
 
 Every child call requires `agents.delegate` at runtime, in addition to normal

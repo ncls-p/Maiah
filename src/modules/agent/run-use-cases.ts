@@ -1,4 +1,4 @@
-import { and, desc, eq, gt, inArray, isNull, lt } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, isNull, lt, sql } from "drizzle-orm";
 import { decryptValue, encryptValue } from "@/lib/crypto";
 import {
   projectToolMessagePayload,
@@ -196,6 +196,7 @@ export async function heartbeatAgentRun(input: {
         eq(agentRuns.id, input.runId),
         eq(agentRuns.status, "running"),
         eq(agentRuns.leaseOwner, input.leaseOwner),
+        isNull(agentRuns.cancelRequestedAt),
       ),
     )
     .returning({ id: agentRuns.id });
@@ -239,6 +240,7 @@ export async function completeAgentRun(input: {
   output: unknown;
   inputTokens: number;
   outputTokens: number;
+  reservationTokens?: number;
   now?: Date;
 }) {
   const now = input.now ?? new Date();
@@ -260,10 +262,33 @@ export async function completeAgentRun(input: {
   if (!run) throw new AgentRunConflictError("Run is no longer executing");
   await settleWorkspaceTokenReservation({
     runId: input.runId,
-    actualTokens: input.inputTokens + input.outputTokens,
+    actualTokens:
+      input.reservationTokens ?? input.inputTokens + input.outputTokens,
     now,
   });
   return run;
+}
+
+export async function consumeAgentRunDelegationBudget(input: {
+  rootRunId: string;
+  maxDelegations: number;
+  now?: Date;
+}) {
+  const [root] = await db
+    .update(agentRuns)
+    .set({
+      delegationCount: sql`${agentRuns.delegationCount} + 1`,
+      updatedAt: input.now ?? new Date(),
+    })
+    .where(
+      and(
+        eq(agentRuns.id, input.rootRunId),
+        inArray(agentRuns.status, ["queued", "running"]),
+        lt(agentRuns.delegationCount, Math.max(1, input.maxDelegations)),
+      ),
+    )
+    .returning({ delegationCount: agentRuns.delegationCount });
+  return root?.delegationCount ?? null;
 }
 
 export async function failAgentRun(input: {
@@ -273,6 +298,7 @@ export async function failAgentRun(input: {
   errorCode?: string;
   inputTokens?: number;
   outputTokens?: number;
+  reservationTokens?: number;
   now?: Date;
 }) {
   const now = input.now ?? new Date();
@@ -298,7 +324,9 @@ export async function failAgentRun(input: {
     )
     .returning();
   if (run) {
-    const actualTokens = (input.inputTokens ?? 0) + (input.outputTokens ?? 0);
+    const actualTokens =
+      input.reservationTokens ??
+      (input.inputTokens ?? 0) + (input.outputTokens ?? 0);
     if (actualTokens > 0) {
       await settleWorkspaceTokenReservation({
         runId: input.runId,

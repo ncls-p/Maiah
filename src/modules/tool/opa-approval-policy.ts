@@ -13,8 +13,8 @@ export type OpaToolApprovalInput = {
   riskLevel?: string | null;
   toolInput: unknown;
   workspaceId: string;
-  conversationId: string;
-  messageId: string;
+  conversationId?: string;
+  messageId?: string;
   userId: string;
   agentVersionId: string;
 };
