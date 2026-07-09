@@ -2,11 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { toast } from "sonner";
 
 import { PageLoading } from "@/components/page-loading";
 import { RequireWorkspaceAccess } from "@/components/require-workspace-access";
 import { WorkspacePage } from "@/components/workspace-page";
+import { Button } from "@/components/ui/button";
 import { useWorkspace } from "@/hooks/use-workspace";
 
 import {
@@ -50,7 +50,7 @@ function buildAuditQuery({
   const params = new URLSearchParams({ workspaceId, limit: "100" });
   if (action.trim()) params.set("action", action.trim());
   if (outcome !== "all") params.set("outcome", outcome);
-  if (from) params.set("from", new Date(from).toISOString());
+  if (from) params.set("from", new Date(`${from}T00:00:00`).toISOString());
   if (to) params.set("to", new Date(`${to}T23:59:59`).toISOString());
   return params.toString();
 }
@@ -96,6 +96,7 @@ function AuditPageContent() {
   const [events, setEvents] = useState<AuditEvent[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [actionFilter, setActionFilter] = useState("");
   const [outcomeFilter, setOutcomeFilter] = useState("all");
   const [fromDate, setFromDate] = useState("");
@@ -106,6 +107,7 @@ function AuditPageContent() {
       if (!workspaceId) return;
       if (options?.silent) setRefreshing(true);
       else setLoading(true);
+      setLoadError(false);
 
       try {
         setEvents(
@@ -120,10 +122,8 @@ function AuditPageContent() {
             ...options,
           }),
         );
-      } catch (error) {
-        toast.error(
-          error instanceof Error ? error.message : "Failed to load audit log",
-        );
+      } catch {
+        setLoadError(true);
         return;
       } finally {
         setLoading(false);
@@ -155,6 +155,26 @@ function AuditPageContent() {
       description={t("auditDescription")}
       width="wide"
     >
+      {loadError ? (
+        <div
+          className="mb-5 rounded-2xl border border-destructive/25 bg-destructive/5 p-5"
+          role="alert"
+        >
+          <h2 className="text-base font-semibold">{t("audit.loadFailed")}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {t("audit.loadFailedDescription")}
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="mt-4"
+            onClick={() => void loadEvents()}
+          >
+            {t("audit.retry")}
+          </Button>
+        </div>
+      ) : null}
       {loading && !events ? (
         <AuditDashboardSkeleton />
       ) : events ? (
@@ -185,9 +205,7 @@ function AuditPageContent() {
           }}
           onExportAction={exportCsv}
         />
-      ) : (
-        <AuditDashboardSkeleton />
-      )}
+      ) : null}
     </WorkspacePage>
   );
 }

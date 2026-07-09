@@ -7,6 +7,7 @@ import { PlugZapIcon } from "lucide-react";
 import { PageLoading } from "@/components/page-loading";
 import { ProviderManager } from "@/components/providers/provider-manager";
 import { WorkspacePage } from "@/components/workspace-page";
+import { Button } from "@/components/ui/button";
 import {
   Empty,
   EmptyDescription,
@@ -31,12 +32,14 @@ export function ProvidersPageClient() {
   const [providers, setProviders] = useState<SafeProvider[]>([]);
   const [models, setModels] = useState<ProviderModel[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   const activeWorkspace = workspaces.find((w) => w.id === workspaceId);
 
   const load = useCallback(async () => {
     if (!workspaceId) return;
     setLoading(true);
+    setLoadError(false);
     try {
       const providerRes = await fetch(
         `/api/workspace/providers?workspaceId=${workspaceId}`,
@@ -50,10 +53,13 @@ export function ProvidersPageClient() {
         const modelRes = await fetch(
           `/api/workspace/providers/${first.id}/models?workspaceId=${workspaceId}`,
         );
-        setModels(modelRes.ok ? await modelRes.json() : []);
+        if (!modelRes.ok) throw new Error(t("loadFailed"));
+        setModels(await modelRes.json());
       } else {
         setModels([]);
       }
+    } catch {
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -96,6 +102,25 @@ export function ProvidersPageClient() {
           className="min-h-64"
           label={tShell("loadingConnections")}
         />
+      ) : loadError ? (
+        <div
+          className="rounded-2xl border border-destructive/25 bg-destructive/5 p-5"
+          role="alert"
+        >
+          <h2 className="text-base font-semibold">{t("loadFailed")}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {t("loadFailedDescription")}
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="mt-4"
+            onClick={() => void load()}
+          >
+            {t("retry")}
+          </Button>
+        </div>
       ) : (
         <ProviderManager
           key={workspaceId}

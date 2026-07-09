@@ -12,7 +12,7 @@ import {
   RotateCcwIcon,
   ZapIcon,
 } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -327,9 +327,11 @@ function TokenChart({
 
 function UsageEventRow({
   event,
+  locale,
   t,
 }: {
   event: UsageEvent;
+  locale: string;
   t: ReturnType<typeof useTranslations<"admin.usage">>;
 }) {
   const input = event.inputTokens ?? 0;
@@ -337,6 +339,10 @@ function UsageEventRow({
   const total = input + output;
   const tone = statusTone(event.status);
   const createdAt = new Date(event.createdAt);
+  const createdAtLabel = new Intl.DateTimeFormat(locale, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(createdAt);
 
   return (
     <article className="group flex flex-col gap-3 rounded-xl border border-transparent bg-background/80 px-4 py-3 shadow-[var(--surface-shadow)] transition-[background-color,box-shadow] duration-150 ease-out hover:bg-muted/20 hover:shadow-[var(--surface-shadow-hover)] sm:flex-row sm:items-center sm:justify-between">
@@ -362,9 +368,9 @@ function UsageEventRow({
           <time
             className="text-xs tabular-nums text-muted-foreground"
             dateTime={event.createdAt}
-            title={createdAt.toLocaleString()}
+            title={createdAtLabel}
           >
-            {createdAt.toLocaleString()}
+            {createdAtLabel}
           </time>
         </div>
         <div className="flex items-center gap-3 text-sm">
@@ -422,6 +428,7 @@ function UsageEventList({
   events: UsageEvent[];
   t: ReturnType<typeof useTranslations<"admin.usage">>;
 }) {
+  const locale = useLocale();
   return (
     <section className="flex h-full flex-col rounded-2xl border border-transparent bg-card p-5 shadow-[var(--surface-shadow)] animate-in-fade stagger-4">
       <div className="mb-5 flex flex-col gap-1">
@@ -445,7 +452,7 @@ function UsageEventList({
       ) : (
         <div className="flex max-h-[32rem] flex-col gap-2 overflow-y-auto pr-1">
           {events.map((event) => (
-            <UsageEventRow key={event.id} event={event} t={t} />
+            <UsageEventRow key={event.id} event={event} locale={locale} t={t} />
           ))}
         </div>
       )}

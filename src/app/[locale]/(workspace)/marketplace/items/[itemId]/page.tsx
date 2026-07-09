@@ -45,6 +45,8 @@ export default function MarketplaceItemPage({
   const tDetail = useTranslations("marketplace.detail");
   const { workspaceId } = useWorkspace();
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [resolvedItemId, setResolvedItemId] = useState<string | null>(null);
   const [item, setItem] = useState<MarketplaceItemDetailData | null>(null);
   const [shareResource, setShareResource] = useState<ShareableResource | null>(
     null,
@@ -62,17 +64,13 @@ export default function MarketplaceItemPage({
   useEffect(() => {
     let cancelled = false;
     params.then(async ({ itemId }) => {
+      if (!cancelled) setResolvedItemId(itemId);
       try {
         const data = await loadItem(itemId);
         if (!cancelled) setItem(data);
-      } catch (error) {
+      } catch {
         if (!cancelled) {
-          toast.error(
-            error instanceof Error
-              ? error.message
-              : tDetail("toast.loadFailed"),
-          );
-          router.push("/marketplace");
+          setLoadError(true);
         }
         return;
       } finally {
@@ -82,7 +80,20 @@ export default function MarketplaceItemPage({
     return () => {
       cancelled = true;
     };
-  }, [params, router, loadItem, tDetail]);
+  }, [params, loadItem]);
+
+  const retryLoad = useCallback(async () => {
+    if (!resolvedItemId) return;
+    setLoading(true);
+    setLoadError(false);
+    try {
+      setItem(await loadItem(resolvedItemId));
+    } catch {
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
+  }, [loadItem, resolvedItemId]);
 
   const handleInstall = async () => {
     if (!workspaceId || !item) return;
@@ -103,7 +114,7 @@ export default function MarketplaceItemPage({
         } else if (payload.skill?.id) {
           router.push("/tools?tab=skills");
         } else if (payload.custom_tool?.id) {
-          router.push("/custom-tools");
+          router.push("/tools?tab=custom");
         } else if (payload.mcp_preset?.id) {
           router.push("/tools?tab=mcp");
         }
@@ -134,7 +145,28 @@ export default function MarketplaceItemPage({
   };
 
   if (loading) return <PageLoading />;
-  if (!item) return null;
+  if (loadError || !item) {
+    return (
+      <WorkspacePage
+        title={tDetail("loadErrorTitle")}
+        description={tDetail("loadErrorDescription")}
+      >
+        <div
+          className="rounded-2xl border border-destructive/25 bg-destructive/5 p-5"
+          role="alert"
+        >
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" size="sm" onClick={() => void retryLoad()}>
+              {tDetail("retry")}
+            </Button>
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/marketplace">{tDetail("back")}</Link>
+            </Button>
+          </div>
+        </div>
+      </WorkspacePage>
+    );
+  }
 
   const itemTypeLabel = getItemLabel(item.type, (key) =>
     t(key as "itemTypes.agent"),

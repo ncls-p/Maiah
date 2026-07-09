@@ -109,24 +109,29 @@ export function WorkspaceApiKeys() {
   const { workspaceId } = useWorkspace();
   const [keys, setKeys] = useState<ApiKeyRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
   const [revealedKey, setRevealedKey] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!workspaceId) return;
-    setKeys(await fetchApiKeys(workspaceId, t));
+    setLoading(true);
+    setLoadError(false);
+    try {
+      setKeys(await fetchApiKeys(workspaceId, t));
+    } catch {
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
   }, [t, workspaceId]);
 
   useEffect(() => {
     if (!workspaceId) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- async key bootstrap
-    void load()
-      .catch((error) =>
-        toast.error(error instanceof Error ? error.message : t("loadFailed")),
-      )
-      .finally(() => setLoading(false));
-  }, [load, t, workspaceId]);
+    void load();
+  }, [load, workspaceId]);
 
   async function createKey() {
     if (!workspaceId || !name.trim()) return;
@@ -190,7 +195,7 @@ export function WorkspaceApiKeys() {
             />
           </div>
           <Button
-            disabled={creating || !name.trim()}
+            disabled={creating || loadError || !name.trim()}
             onClick={() => void createKey()}
           >
             {creating ? (
@@ -214,8 +219,10 @@ export function WorkspaceApiKeys() {
                 variant="outline"
                 aria-label={t("copyKey")}
                 onClick={() => {
-                  void navigator.clipboard.writeText(revealedKey);
-                  toast.success(t("copied"));
+                  void navigator.clipboard
+                    .writeText(revealedKey)
+                    .then(() => toast.success(t("copied")))
+                    .catch(() => toast.error(t("copyFailed")));
                 }}
               >
                 <CopyIcon aria-hidden="true" />
@@ -225,7 +232,29 @@ export function WorkspaceApiKeys() {
         ) : null}
 
         {loading ? (
-          <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" />
+          <Loader2
+            className="mx-auto size-5 animate-spin text-muted-foreground"
+            aria-hidden="true"
+          />
+        ) : loadError ? (
+          <div
+            className="rounded-xl border border-destructive/25 bg-destructive/5 p-4"
+            role="alert"
+          >
+            <p className="text-sm font-medium">{t("loadFailed")}</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {t("loadFailedDescription")}
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-3"
+              onClick={() => void load()}
+            >
+              {t("retry")}
+            </Button>
+          </div>
         ) : keys.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t("empty")}</p>
         ) : (
