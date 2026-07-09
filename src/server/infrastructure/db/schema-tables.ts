@@ -10,3 +10,4 @@ export * from "./schema-tables/mcp";
 export * from "./schema-tables/knowledge";
 export * from "./schema-tables/marketplace";
 export * from "./schema-tables/custom-tools";
+export * from "./schema-tables/tool-connections";

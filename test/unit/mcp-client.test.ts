@@ -135,6 +135,26 @@ describe("listRemoteMcpTools", () => {
 		});
 	});
 
+	it("merges per-execution headers for gateway-backed tool calls", async () => {
+		await callRemoteMcpTool(
+			server({ encryptedHeadersJson: { Authorization: "token" } }) as never,
+			"search",
+			{ query: "docs" },
+			{
+				headers: {
+					"x-maiah-tool-context": "payload",
+					"x-maiah-tool-context-signature": "sig",
+				},
+			},
+		);
+
+		expect(sdkMocks.transports[0].headers).toEqual({
+			Authorization: "decrypted:token",
+			"x-maiah-tool-context": "payload",
+			"x-maiah-tool-context-signature": "sig",
+		});
+	});
+
 	it("falls back from streamable HTTP to SSE when the primary transport fails", async () => {
 		sdkMocks.connect
 			.mockRejectedValueOnce(new Error("stream failed"))
@@ -150,6 +170,17 @@ describe("listRemoteMcpTools", () => {
 			"streamable-http",
 			"sse",
 		]);
+		expect(sdkMocks.transportClose).toHaveBeenCalledTimes(2);
+	});
+
+	it("throws the last transport error when all connection attempts fail", async () => {
+		sdkMocks.connect
+			.mockRejectedValueOnce(new Error("stream failed"))
+			.mockRejectedValueOnce(new Error("sse failed"));
+
+		await expect(
+			listRemoteMcpTools(server({ transport: "streamable-http" }) as never),
+		).rejects.toThrow("sse failed");
 		expect(sdkMocks.transportClose).toHaveBeenCalledTimes(2);
 	});
 

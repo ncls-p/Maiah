@@ -11,6 +11,7 @@ const testEnv = {
 	OBJECT_STORAGE_ACCESS_KEY_ID: "test-access-key",
 	OBJECT_STORAGE_SECRET_ACCESS_KEY: "test-secret-key",
 	SEARXNG_URL: "http://localhost:18088",
+	MCP_GATEWAY_SHARED_SECRET: "test-mcp-gateway-shared-secret",
 } satisfies Record<string, string>;
 
 for (const [key, value] of Object.entries(testEnv)) {

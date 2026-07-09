@@ -27,6 +27,7 @@ import {
 } from "@/components/marketplace/resource-share-dialog";
 import { ServerList } from "./mcp-server-manager/server-list";
 import { SystemStrip } from "./mcp-server-manager/stats";
+import { ToolConnectionsPanel } from "./mcp-server-manager/tool-connections-panel";
 import type {
 	McpServer,
 	McpTool,
@@ -59,6 +60,7 @@ export function McpServerManager() {
 	>({});
 	const [toolSearch, setToolSearch] = useState<Record<string, string>>({});
 	const [canManageTenantGlobals, setCanManageTenantGlobals] = useState(false);
+	const [canManageMcpServers, setCanManageMcpServers] = useState(false);
 
 	const load = useCallback(async () => {
 		if (!workspaceId) return;
@@ -66,6 +68,7 @@ export function McpServerManager() {
 		try {
 			const permissions = await fetchWorkspacePermissions(workspaceId);
 			setCanManageTenantGlobals(permissions.canManageTenantGlobals);
+			setCanManageMcpServers(permissions.canManageMcpServers);
 			const res = await fetch(
 				`/api/workspace/mcp-servers?workspaceId=${workspaceId}`,
 			);
@@ -265,6 +268,8 @@ export function McpServerManager() {
 			} else {
 				toast.error(data.error || "Sync failed");
 			}
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : "Sync failed");
 		} finally {
 			setBusy(false);
 		}
@@ -346,6 +351,15 @@ export function McpServerManager() {
 					<SystemStrip servers={servers} toolsByServer={toolsByServer} />
 				</AdvancedSection>
 			</div>
+
+			<ToolConnectionsPanel
+				workspaceId={workspaceId}
+				servers={servers}
+				toolsByServer={toolsByServer}
+				canManageMcpServers={canManageMcpServers}
+				canManageWorkspaceConnections={canManageTenantGlobals}
+				onSyncServerAction={(serverId) => sync(serverId)}
+			/>
 
 			<ServerList
 				servers={servers}

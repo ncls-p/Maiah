@@ -199,6 +199,7 @@ Create, configure, and run AI agents with streaming chat, tool calling, and poli
 
 - **Custom tools** — user-defined functions agents can call
 - **MCP servers** — register external Model Context Protocol servers and auto-discover their tools
+- **Tool connections** — per-user or workspace credentials/settings for connector-backed tools such as ServiceNow
 - **Web search** — SearXNG-backed search tool
 - **Code sandbox** — Docker-isolated execution for Python/Node workloads
 
@@ -237,6 +238,9 @@ Per-workspace token usage tracking and security audit logs for sensitive actions
 | `GET/POST` | `/api/workspace/providers` | Manage provider registry |
 | `GET/POST` | `/api/workspace/knowledge-bases` | Manage RAG knowledge bases |
 | `GET/POST` | `/api/workspace/mcp-servers` | Register MCP servers |
+| `GET/POST` | `/api/workspace/tool-connectors` | Manage connector templates for tools/MCP servers |
+| `GET/POST` | `/api/workspace/tool-connections` | Manage per-user/workspace tool credentials |
+| `PUT` | `/api/workspace/user-tool-settings` | Save per-user per-tool overrides |
 | `GET` | `/api/workspace/usage` | Token usage metrics |
 | `GET` | `/api/workspace/audit` | Audit log entries |
 | `*` | `/api/auth/[...all]` | Better Auth handler |
@@ -257,12 +261,15 @@ The `Dockerfile` is multi-stage and produces several targets:
 | `dev` | Containerized dev server |
 | `searxng` | Custom SearXNG image with engine filtering |
 
+The ServiceNow MCP gateway has its own Dockerfile under `services/servicenow-mcp-gateway`.
+
 Build a single target:
 
 ```bash
 docker build --target runner -t ai-hub-app:latest .
 docker build --target worker -t ai-hub-worker:latest .
 docker build --target migrator -t ai-hub-migrator:latest .
+docker build -t maiah-servicenow-mcp-gateway services/servicenow-mcp-gateway
 ```
 
 ### Docker Compose — local production
@@ -286,8 +293,9 @@ Services started:
 | **rustfs-init** | `aws-cli` | one-shot (creates S3 bucket) |
 | **searxng** | `searxng` target | internal (`:8080`) |
 | **sandbox-runner** | `sandbox-runner` target | Unix socket (`/run/sandbox/sandbox.sock`) |
+| **servicenow-mcp-gateway** | `services/servicenow-mcp-gateway` | internal (`:8080`) |
 
-Startup order: `postgres` + `rustfs` + `dragonflydb` → `rustfs-init` + `searxng` + `sandbox-runner` → `migrate` → `app` + `worker`.
+Startup order: `postgres` + `rustfs` + `dragonflydb` → `rustfs-init` + `searxng` + `sandbox-runner` + `servicenow-mcp-gateway` → `migrate` → `app` + `worker`.
 
 All long-running services have health checks. The `app` and `worker` containers won't start until their dependencies are healthy.
 
@@ -303,6 +311,7 @@ Production compose sets soft and hard resource limits per service:
 | **dragonflydb** | 1.0 | 1G | 0.25 | 256M |
 | **rustfs** | 1.0 | 1G | 0.25 | 256M |
 | **sandbox-runner** | 1.0 | 2G | 0.10 | 512M |
+| **servicenow-mcp-gateway** | 0.5 | 512M | 0.10 | 128M |
 
 ### Docker volumes
 
@@ -326,7 +335,8 @@ The production deployment pipeline is driven by GitHub Actions (`.github/workflo
 ```
 prepare → validate → plan_images → build → deploy → cleanup
          (lint, typecheck, tests, build) (app, worker,
-                                          migrator, searxng, sandbox)
+                                          migrator, searxng, sandbox,
+                                          ServiceNow gateway)
 ```
 
 1. **prepare** — determines deployment target (production or PR preview), computes image tags
@@ -361,6 +371,7 @@ GitHub repository **secrets**:
 | `OBJECT_STORAGE_ACCESS_KEY_ID` | S3 access key |
 | `OBJECT_STORAGE_SECRET_ACCESS_KEY` | S3 secret key (≥ 16 chars) |
 | `SEARXNG_SECRET` | SearXNG secret (≥ 32 chars) |
+| `MCP_GATEWAY_SHARED_SECRET` | Shared Maiah↔MCP gateway context secret (≥ 32 chars) |
 | `TRAEFIK_BASIC_AUTH_USERS` | PR preview auth (format: `user:hashed_password`) |
 
 GitHub repository **variables**:
@@ -373,6 +384,8 @@ GitHub repository **variables**:
 | `COOLIFY_ENVIRONMENT_NAME` | `production` | Default environment name |
 | `OBJECT_STORAGE_BUCKET` | `ai-hub` | S3 bucket name |
 | `CODE_WORKSPACE_STORAGE_PREFIX` | `code-workspaces` | S3 prefix for code workspaces |
+| `SERVICENOW_ALLOWED_HOST_SUFFIXES` | `service-now.com` | Allowed ServiceNow host suffixes for the gateway |
+| `SERVICENOW_GATEWAY_RESOLVE_HOSTS` | `true` | Resolve and block private ServiceNow host IPs |
 | `ALLOW_PERSONAL_WORKSPACES` | `true` | Allow personal workspace creation |
 | `WORKSPACE_MONTHLY_TOKEN_LIMIT` | — | Token quota per workspace |
 | `OTEL_SERVICE_NAME` | `maiah` | Stable Dynatrace/OpenTelemetry service name |

@@ -18,6 +18,7 @@ services:
       - APP_ENCRYPTION_KEY_ID=${APP_ENCRYPTION_KEY_ID:-default}
       - DRAGONFLY_URL=redis://dragonflydb:6379
       - DRAGONFLY_PASSWORD=${DRAGONFLY_PASSWORD:?set DRAGONFLY_PASSWORD}
+      - MCP_GATEWAY_SHARED_SECRET=${MCP_GATEWAY_SHARED_SECRET:?set MCP_GATEWAY_SHARED_SECRET}
       - OBJECT_STORAGE_ENDPOINT=http://rustfs:9000
       - OBJECT_STORAGE_REGION=${OBJECT_STORAGE_REGION:-us-east-1}
       - OBJECT_STORAGE_BUCKET=${OBJECT_STORAGE_BUCKET:-ai-hub}
@@ -53,6 +54,8 @@ services:
       searxng:
         condition: service_healthy
       sandbox-runner:
+        condition: service_healthy
+      servicenow-mcp-gateway:
         condition: service_healthy
     volumes:
       - sandbox-runner-socket:/run/sandbox
@@ -92,6 +95,8 @@ services:
       searxng:
         condition: service_healthy
       sandbox-runner:
+        condition: service_healthy
+      servicenow-mcp-gateway:
         condition: service_healthy
     volumes:
       - sandbox-runner-socket:/run/sandbox
@@ -157,6 +162,31 @@ services:
       interval: 30s
       timeout: 5s
       start_period: 30s
+      retries: 5
+
+  servicenow-mcp-gateway:
+    image: ${AI_HUB_SERVICENOW_MCP_GATEWAY_IMAGE:?set AI_HUB_SERVICENOW_MCP_GATEWAY_IMAGE}
+    restart: unless-stopped
+    environment:
+      - MAIAH_MCP_GATEWAY_SHARED_SECRET=${MCP_GATEWAY_SHARED_SECRET:?set MCP_GATEWAY_SHARED_SECRET}
+      - SERVICENOW_ALLOWED_HOST_SUFFIXES=${SERVICENOW_ALLOWED_HOST_SUFFIXES:-service-now.com}
+      - SERVICENOW_GATEWAY_RESOLVE_HOSTS=${SERVICENOW_GATEWAY_RESOLVE_HOSTS:-true}
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+        reservations:
+          cpus: "0.10"
+          memory: 128M
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=5).read()"
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
       retries: 5
 
   postgres:

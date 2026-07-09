@@ -169,6 +169,20 @@
       "when": 1781300000009,
       "tag": "0023_member_self_service_permissions",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1781300000010,
+      "tag": "0024_agent_max_tool_calls_default",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1781300000011,
+      "tag": "0025_tool_connectors_and_user_settings",
+      "breakpoints": true
     }
   ]
 }
