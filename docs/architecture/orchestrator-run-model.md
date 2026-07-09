@@ -7,6 +7,16 @@ keeps historical runs and permission decisions understandable.
 Orchestration policy and delegation bindings belong to an immutable agent
 version. Each binding pins both a child agent and a specific child version, so a
 parent run cannot change behavior halfway through because a child was edited.
+Creation accepts `kind: "orchestrator"`; later updates cannot change that kind.
+The versioned policy and bindings can be read or replaced through
+`/api/workspace/agents/:agentId/delegations`. Replacement uses the same
+`baseVersionId` compare-and-swap contract as the rest of the agent editor.
+
+Bindings are accepted only when every child is currently visible to the editor,
+belongs to the same workspace, and the pinned version belongs to that child.
+Duplicate children, direct self-delegation and indirect cycles through pinned
+versions are rejected before activation. Agent marketplace manifests reject
+orchestrators in V1 so a package cannot silently omit its delegation graph.
 
 ## Durable run tree
 

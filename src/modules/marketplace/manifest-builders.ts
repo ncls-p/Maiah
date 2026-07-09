@@ -305,6 +305,10 @@ export async function buildAgentManifest(
   const resolved = await resolveAgentVersion(agentId);
   if (!resolved) throw new Error("Agent not found");
   const { agent, agentVersion, providerName, modelName } = resolved;
+  if (agent.workspaceId !== workspaceId) throw new Error("Agent not found");
+  if (agent.kind === "orchestrator") {
+    throw new Error("Orchestrators cannot be published to the marketplace yet");
+  }
   if (!agentVersion) throw new Error("Agent has no version");
 
   const toolBindings = await db

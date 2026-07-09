@@ -80,7 +80,11 @@ export async function GET(req: NextRequest) {
             status:
               error instanceof Error && error.message.includes("not found")
                 ? 404
-                : 500,
+                : error instanceof Error &&
+                    error.message ===
+                      "Orchestrators cannot be published to the marketplace yet"
+                  ? 400
+                  : 500,
           },
         );
       },
