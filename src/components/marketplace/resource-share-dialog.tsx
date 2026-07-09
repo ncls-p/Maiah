@@ -6,7 +6,6 @@ import { Globe, Share2, Star, User, Users } from "lucide-react";
 import { toast } from "sonner";
 import type { PublishPreviewResult } from "@/modules/marketplace/use-cases";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
 	Dialog,
 	DialogContent,
@@ -88,7 +87,6 @@ interface PlatformUser {
 function previewQueryParams(
 	resource: ShareableResource,
 	workspaceId: string,
-	includeSecrets: boolean,
 ) {
 	const params = new URLSearchParams({ workspaceId });
 	if (resource.kind === "marketplace_item") {
@@ -104,7 +102,6 @@ function previewQueryParams(
 	} else {
 		params.set("mcpToolId", resource.id);
 	}
-	if (includeSecrets) params.set("includeSecrets", "true");
 	return params;
 }
 
@@ -174,22 +171,17 @@ export function ResourceShareDialog({
 	const [changelog, setChangelog] = useState("");
 	const [tagsInput, setTagsInput] = useState("");
 	const [visibility, setVisibility] = useState<"public" | "private">("public");
-	const [includeSecrets, setIncludeSecrets] = useState(false);
 	const [users, setUsers] = useState<PlatformUser[]>([]);
 	const [search, setSearch] = useState("");
 	const [selectedUserId, setSelectedUserId] = useState("");
 	const [busy, setBusy] = useState(false);
 
 	const loadPreview = useCallback(
-		async (shouldIncludeSecrets: boolean) => {
+		async () => {
 			if (!resource || !workspaceId) return;
 			setPreviewLoading(true);
 			try {
-				const params = previewQueryParams(
-					resource,
-					workspaceId,
-					shouldIncludeSecrets,
-				);
+				const params = previewQueryParams(resource, workspaceId);
 				const res = await fetch(`/api/marketplace/publish-preview?${params}`);
 				if (!res.ok) {
 					const err = await res.json().catch(() => ({}));
@@ -220,10 +212,9 @@ export function ResourceShareDialog({
 				setSearch("");
 				setSelectedUserId("");
 				setBusy(false);
-				setIncludeSecrets(false);
 				setVisibility("public");
 				setChangelog("");
-				void loadPreview(false);
+				void loadPreview();
 			});
 		}
 	}, [open, resource, workspaceId, loadPreview]);
@@ -276,7 +267,6 @@ export function ResourceShareDialog({
 			changelog: changelog || undefined,
 			visibility,
 			tags,
-			includeSecrets,
 			draftOnly: true,
 		};
 
@@ -309,7 +299,6 @@ export function ResourceShareDialog({
 		changelog,
 		visibility,
 		tags,
-		includeSecrets,
 		t,
 	]);
 
@@ -338,7 +327,6 @@ export function ResourceShareDialog({
 			changelog: changelog || undefined,
 			visibility,
 			tags,
-			includeSecrets,
 		};
 
 		if (resource.kind === "agent") body.agentId = resource.id;
@@ -385,7 +373,6 @@ export function ResourceShareDialog({
 		changelog,
 		visibility,
 		tags,
-		includeSecrets,
 		t,
 	]);
 
@@ -534,23 +521,6 @@ export function ResourceShareDialog({
 								onChange={(e) => setTagsInput(e.target.value)}
 							/>
 						</div>
-						{preview?.canIncludeSecrets ? (
-							<label className="flex items-start gap-2 rounded-lg border border-border/60 bg-muted/20 p-3 text-sm">
-								<Checkbox
-									aria-label={t("secrets.include")}
-									checked={includeSecrets}
-									onCheckedChange={(v) => setIncludeSecrets(v === true)}
-								/>
-								<span className="space-y-1">
-									<span className="block font-medium">
-										{t("secrets.include")}
-									</span>
-									<span className="block text-xs leading-relaxed text-muted-foreground">
-										{t("secrets.warning")}
-									</span>
-								</span>
-							</label>
-						) : null}
 						{preview?.manifestPreview ? (
 							<div className="rounded-lg border border-border/60 bg-muted/30 p-3">
 								<p className="mb-2 text-xs font-medium">

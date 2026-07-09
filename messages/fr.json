@@ -702,11 +702,6 @@
           "description": "Partage privé avec une personne choisie."
         }
       },
-      "secrets": {
-        "warning": "Si vous incluez les identifiants, la personne qui installe n’aura rien à reconfigurer. Seules les personnes autorisées pourront les utiliser.",
-        "include": "Inclure les identifiants de connexion",
-        "fieldRequired": "obligatoire"
-      },
       "searchUser": "Rechercher par nom ou e-mail…",
       "noUsers": "Aucune personne trouvée",
       "next": "Suivant",
@@ -827,7 +822,6 @@
       "installCommand": "Commande d’installation",
       "status": "État",
       "credentialsRequired": "Identifiants requis",
-      "credentialsIncluded": "Identifiants inclus",
       "workflow": "Workflow",
       "inputSchema": "Format d’entrée",
       "outputSchema": "Format de sortie",

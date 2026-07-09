@@ -32,7 +32,6 @@ const createSchema = z
     visibility: z.enum(["public", "private"]).optional(),
     tags: z.array(z.string()).optional(),
     changelog: z.string().max(2048).optional(),
-    includeSecrets: z.boolean().optional(),
     draftOnly: z.boolean().optional(),
   })
   .refine(
@@ -122,7 +121,6 @@ export async function POST(req: NextRequest) {
         visibility: parsed.data.visibility,
         tags: parsed.data.tags,
         changelog: parsed.data.changelog,
-        includeSecrets: parsed.data.includeSecrets,
       };
       if (parsed.data.draftOnly) {
         if (parsed.data.agentId) {

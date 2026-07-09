@@ -94,8 +94,8 @@ describe("buildCustomToolManifest", () => {
 		expect(manifest.type).toBe("custom_tool");
 		expect(manifest.description).toBe("Send alerts");
 		expect(manifest.tool.requiresCredentials).toBe(true);
-		expect(manifest.tool.secretsIncluded).toBe(false);
-		expect(manifest.tool.encryptedCredentialRefs).toBeUndefined();
+		expect(manifest.tool).not.toHaveProperty("secretsIncluded");
+		expect(manifest.tool).not.toHaveProperty("encryptedCredentialRefs");
 		expect(manifest.tool.credentialSchema).toEqual([
 			{
 				key: "webhookUrl",
@@ -114,39 +114,21 @@ describe("buildCustomToolManifest", () => {
 		]);
 	});
 
-	it("includes encrypted credential refs when explicitly requested", async () => {
-		dbModule._c.where
-			.mockResolvedValueOnce([
-				{ fieldsJson: [{ key: "apiKey", label: "API key" }] },
-			])
-			.mockResolvedValueOnce([
-				{
-					provider: "Discord",
-					label: "Main",
-					n8nCredentialId: "n8n-cred",
-					encryptedPayload: "encrypted",
-					metadataJson: { fieldNames: ["apiKey"] },
-				},
-			]);
+	it("never queries or exports encrypted credential references", async () => {
+		dbModule._c.where.mockResolvedValueOnce([
+			{ fieldsJson: [{ key: "apiKey", label: "API key" }] },
+		]);
 
 		const manifest = await buildCustomToolManifest(
 			customToolRow as never,
 			"Discord",
 			"Override",
-			true,
 		);
 
 		expect(manifest.description).toBe("Override");
-		expect(manifest.tool.secretsIncluded).toBe(true);
-		expect(manifest.tool.encryptedCredentialRefs).toEqual([
-			{
-				provider: "Discord",
-				label: "Main",
-				n8nCredentialId: "n8n-cred",
-				encryptedPayload: "encrypted",
-				metadata: { fieldNames: ["apiKey"] },
-			},
-		]);
+		expect(manifest.tool).not.toHaveProperty("secretsIncluded");
+		expect(manifest.tool).not.toHaveProperty("encryptedCredentialRefs");
+		expect(dbModule._c.where).toHaveBeenCalledTimes(1);
 	});
 });
 
@@ -281,7 +263,6 @@ describe("buildAgentManifest", () => {
 			"ws-1",
 			"Portable agent",
 			null,
-			false,
 		);
 
 		expect(manifest.type).toBe("agent");

@@ -55,7 +55,6 @@ const mcpManifest = {
 		requireApproval: false,
 		healthStatus: "healthy",
 		requiresCredentials: true,
-		secretsIncluded: false,
 		credentialSchema: [
 			{
 				key: "header:Authorization",
@@ -88,16 +87,6 @@ const customToolManifest = {
 		n8nWorkflowUrl: "https://n8n.test/workflow/wf-1",
 		metadata: { source: "builder" },
 		requiresCredentials: true,
-		secretsIncluded: true,
-		encryptedCredentialRefs: [
-			{
-				provider: "Discord",
-				label: "Main webhook",
-				n8nCredentialId: "cred-1",
-				encryptedPayload: "encrypted",
-				metadata: { fieldNames: ["webhookUrl"] },
-			},
-		],
 	},
 };
 
@@ -154,7 +143,7 @@ describe("installMcpPreset", () => {
 });
 
 describe("installCustomTool", () => {
-	it("installs custom tools and bundled credential refs", async () => {
+	it("installs custom tools without transferring credentials", async () => {
 		tx.returning.mockResolvedValueOnce([
 			{ id: "custom-1", name: "Discord notifier" },
 		]);
@@ -165,21 +154,14 @@ describe("installCustomTool", () => {
 			manifest: customToolManifest,
 		});
 
-		expect(result.requiresCredentials).toBe(false);
+		expect(result.requiresCredentials).toBe(true);
 		expect(result.tool).toEqual({ id: "custom-1", name: "Discord notifier" });
-		expect(tx.insert).toHaveBeenCalledTimes(2);
+		expect(tx.insert).toHaveBeenCalledTimes(1);
 		expect(tx.values).toHaveBeenCalledWith(
 			expect.objectContaining({
 				name: "Discord notifier",
 				status: "workflow_created",
 				n8nWorkflowId: "wf-1",
-			}),
-		);
-		expect(tx.values).toHaveBeenCalledWith(
-			expect.objectContaining({
-				provider: "Discord",
-				n8nCredentialId: "cred-1",
-				encryptedPayload: "encrypted",
 			}),
 		);
 	});
@@ -376,7 +358,7 @@ describe("installPostInstallFlags", () => {
 			installPostInstallFlags({
 				type: "custom_tool",
 				name: "Tool",
-				tool: { requiresCredentials: false, secretsIncluded: false },
+				tool: { requiresCredentials: false },
 			}),
 		).toEqual({ requiresCredentials: false });
 	});

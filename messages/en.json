@@ -703,11 +703,6 @@
           "description": "Private share with one selected teammate."
         }
       },
-      "secrets": {
-        "warning": "If you include credentials, the installer won’t need to reconfigure anything. Only authorized people can use them.",
-        "include": "Include connection credentials",
-        "fieldRequired": "required"
-      },
       "searchUser": "Search by name or email…",
       "noUsers": "No one found",
       "next": "Next",
@@ -828,7 +823,6 @@
       "installCommand": "Install command",
       "status": "Status",
       "credentialsRequired": "Credentials required",
-      "credentialsIncluded": "Credentials included",
       "workflow": "Workflow",
       "inputSchema": "Input format",
       "outputSchema": "Output format",

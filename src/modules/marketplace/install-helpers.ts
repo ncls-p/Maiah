@@ -9,7 +9,6 @@ import {
 	agentVersions,
 	aiModels,
 	aiProviders,
-	customToolCredentialRefs,
 	customTools,
 	knowledgeBases,
 	mcpServers,
@@ -127,12 +126,11 @@ export async function installMcpPreset(
 			url: preset.url ?? null,
 			enabled: preset.enabled ?? true,
 			requireApproval: preset.requireApproval,
-			encryptedHeadersJson: preset.encryptedHeadersJson ?? null,
-			encryptedEnvJson: preset.encryptedEnvJson ?? null,
-			healthStatus:
-				preset.requiresCredentials && !preset.secretsIncluded
-					? "unknown"
-					: (preset.healthStatus ?? "healthy"),
+			encryptedHeadersJson: null,
+			encryptedEnvJson: null,
+			healthStatus: preset.requiresCredentials
+				? "unknown"
+				: (preset.healthStatus ?? "healthy"),
 		})
 		.returning();
 
@@ -152,7 +150,7 @@ export async function installMcpPreset(
 
 	return {
 		server: installedServer,
-		requiresCredentials: preset.requiresCredentials && !preset.secretsIncluded,
+		requiresCredentials: preset.requiresCredentials,
 	};
 }
 
@@ -188,24 +186,9 @@ export async function installCustomTool(
 		})
 		.returning();
 
-	if (tool.encryptedCredentialRefs?.length) {
-		for (const ref of tool.encryptedCredentialRefs) {
-			await tx.insert(customToolCredentialRefs).values({
-				workspaceId: input.workspaceId,
-				userId: input.userId,
-				provider: ref.provider,
-				label: ref.label,
-				n8nCredentialId: ref.n8nCredentialId ?? null,
-				encryptedPayload: ref.encryptedPayload,
-				metadataJson: ref.metadata ?? null,
-			});
-		}
-	}
-
 	return {
 		tool: installedTool,
-		requiresCredentials:
-			Boolean(tool.requiresCredentials) && !tool.secretsIncluded,
+		requiresCredentials: Boolean(tool.requiresCredentials),
 	};
 }
 
@@ -474,15 +457,12 @@ export async function installAgentManifest(
 export function installPostInstallFlags(manifest: MarketplaceManifest) {
 	if (manifest.type === "mcp_preset") {
 		return {
-			requiresCredentials:
-				manifest.preset.requiresCredentials && !manifest.preset.secretsIncluded,
+			requiresCredentials: manifest.preset.requiresCredentials,
 		};
 	}
 	if (manifest.type === "custom_tool") {
 		return {
-			requiresCredentials:
-				Boolean(manifest.tool.requiresCredentials) &&
-				!manifest.tool.secretsIncluded,
+			requiresCredentials: Boolean(manifest.tool.requiresCredentials),
 		};
 	}
 	return { requiresCredentials: false };

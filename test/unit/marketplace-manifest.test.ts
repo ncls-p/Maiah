@@ -5,6 +5,10 @@ import {
 } from "@/modules/marketplace/manifest-builders";
 import { skillFileStats } from "@/modules/marketplace/manifest-types";
 import { installPostInstallFlags } from "@/modules/marketplace/install-helpers";
+import {
+	containsMarketplaceSecretMaterial,
+	sanitizeMarketplaceManifest,
+} from "@/modules/marketplace/manifest-sanitizer";
 
 const baseServer = {
 	id: "srv-1",
@@ -80,35 +84,68 @@ describe("buildSkillManifest", () => {
 });
 
 describe("buildMcpPresetManifest", () => {
-	it("excludes secrets by default", () => {
+	it("exports credential schema without credential values", () => {
 		const manifest = buildMcpPresetManifest(
 			"Test Server",
 			null,
 			baseServer,
 			[baseTool],
 			"server",
-			false,
 		);
 		expect(manifest.preset.requiresCredentials).toBe(true);
-		expect(manifest.preset.secretsIncluded).toBeFalsy();
-		expect(manifest.preset.encryptedHeadersJson).toBeUndefined();
+		expect(manifest.preset).not.toHaveProperty("secretsIncluded");
+		expect(manifest.preset).not.toHaveProperty("encryptedHeadersJson");
+		expect(manifest.preset.credentialSchema).toEqual([
+			expect.objectContaining({ key: "header:Authorization" }),
+		]);
 		expect(manifest.preset.tools[0].name).toBe("search");
 		expect(manifest.preset.enabled).toBe(true);
 	});
+});
 
-	it("includes secrets when requested", () => {
-		const manifest = buildMcpPresetManifest(
-			"Test Server",
-			null,
-			baseServer,
-			[baseTool],
-			"server",
-			true,
-		);
-		expect(manifest.preset.secretsIncluded).toBe(true);
-		expect(manifest.preset.encryptedHeadersJson).toEqual({
-			Authorization: "enc",
+describe("sanitizeMarketplaceManifest", () => {
+	it("recursively strips historical encrypted and plain secret material", () => {
+		const sanitized = sanitizeMarketplaceManifest({
+			type: "agent",
+			name: "legacy",
+			agent: {},
+			bundledResources: {
+				mcpPresets: [
+					{
+						type: "mcp_preset",
+						preset: {
+							credentialSchema: [{ key: "API_KEY", label: "API key" }],
+							encryptedHeadersJson: { Authorization: "ciphertext" },
+							encryptedEnvJson: { API_KEY: "ciphertext" },
+							secretsIncluded: true,
+						},
+					},
+				],
+				customTools: [
+					{
+						tool: {
+							credentialSchema: [{ key: "TOKEN", label: "Token" }],
+							encryptedCredentialRefs: [
+								{ encryptedPayload: "ciphertext" },
+							],
+							metadata: { clientSecret: "plaintext" },
+						},
+					},
+				],
+			},
 		});
+
+		expect(containsMarketplaceSecretMaterial(sanitized)).toBe(false);
+		expect(JSON.stringify(sanitized)).not.toContain("ciphertext");
+		expect(JSON.stringify(sanitized)).not.toContain("plaintext");
+		expect(JSON.stringify(sanitized)).toContain("credentialSchema");
+		expect(
+			sanitizeMarketplaceManifest({
+				type: "agent",
+				name: "bounded",
+				agent: { maxOutputTokens: 4_000 },
+			}),
+		).toMatchObject({ agent: { maxOutputTokens: 4_000 } });
 	});
 });
 
@@ -124,14 +161,13 @@ describe("installPostInstallFlags", () => {
 				enabled: true,
 				requireApproval: false,
 				requiresCredentials: true,
-				secretsIncluded: false,
 				tools: [],
 			},
 		});
 		expect(flags.requiresCredentials).toBe(true);
 	});
 
-	it("clears flag when secrets included", () => {
+	it("never treats a legacy included-secret marker as portable credentials", () => {
 		const flags = installPostInstallFlags({
 			type: "custom_tool",
 			name: "t",
@@ -139,7 +175,7 @@ describe("installPostInstallFlags", () => {
 				requiresCredentials: true,
 				secretsIncluded: true,
 			},
-		});
-		expect(flags.requiresCredentials).toBe(false);
+		} as never);
+		expect(flags.requiresCredentials).toBe(true);
 	});
 });

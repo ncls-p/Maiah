@@ -27,7 +27,7 @@ import {
   buildMcpPresetManifest,
   buildSkillManifest,
 } from "./manifest-builders";
-import type { MarketplaceManifest } from "./manifest-types";
+import { sanitizeMarketplaceManifest } from "./manifest-sanitizer";
 
 export { getPublishPreview } from "./publish-preview";
 export type { PublishPreviewResult } from "./publish-preview";
@@ -189,7 +189,7 @@ export async function getMarketplaceItemDetail(
           id: latestVersion.id,
           version: latestVersion.version,
           changelog: latestVersion.changelog,
-          manifestJson: latestVersion.manifestJson as MarketplaceManifest,
+          manifestJson: sanitizeMarketplaceManifest(latestVersion.manifestJson),
           compatibilityJson: latestVersion.compatibilityJson,
           createdAt: latestVersion.createdAt,
         }
@@ -256,7 +256,6 @@ export async function canUserInstallMarketplaceItem(
 
 type DraftInputExtras = {
   changelog?: string;
-  includeSecrets?: boolean;
   tags?: string[];
 };
 
@@ -291,7 +290,6 @@ export async function publishAgentDraft(
     input.workspaceId,
     name,
     input.description ?? agent.description,
-    input.includeSecrets,
   );
 
   return upsertMarketplaceDraft({
@@ -344,7 +342,6 @@ export async function createMarketplaceDraft(
     input.workspaceId,
     name,
     input.description ?? agent.description,
-    input.includeSecrets,
   );
 
   return upsertMarketplaceDraft({
@@ -443,7 +440,6 @@ export async function createCustomToolMarketplaceDraft(
     tool,
     name,
     input.description ?? tool.description,
-    input.includeSecrets,
   );
 
   return upsertMarketplaceDraft({
@@ -500,7 +496,6 @@ export async function createMcpServerMarketplaceDraft(
     server,
     tools,
     "server",
-    input.includeSecrets,
   );
 
   return upsertMarketplaceDraft({
@@ -559,7 +554,6 @@ export async function createMcpToolMarketplaceDraft(
     server,
     [tool],
     "tool",
-    input.includeSecrets,
   );
 
   return upsertMarketplaceDraft({
@@ -602,6 +596,21 @@ export async function publishMarketplaceItem(
   if (item.publisherUserId !== userId)
     throw new Error("Not authorized to publish this item");
   if (item.status !== "draft") throw new Error("Only drafts can be published");
+
+  if (!item.latestVersionId) {
+    throw new Error("Marketplace item has no version");
+  }
+  const [version] = await db
+    .select()
+    .from(marketplaceItemVersions)
+    .where(eq(marketplaceItemVersions.id, item.latestVersionId))
+    .limit(1);
+  if (!version) throw new Error("Marketplace item has no version");
+
+  await db
+    .update(marketplaceItemVersions)
+    .set({ manifestJson: sanitizeMarketplaceManifest(version.manifestJson) })
+    .where(eq(marketplaceItemVersions.id, version.id));
 
   const [updated] = await db
     .update(marketplaceItems)
@@ -942,7 +951,7 @@ export async function installMarketplaceItem(input: {
     const version = await getLatestVersion(item.id);
     if (!version) throw new Error("Marketplace item has no version");
 
-    const manifest = version.manifestJson as MarketplaceManifest;
+    const manifest = sanitizeMarketplaceManifest(version.manifestJson);
     const postInstall = installPostInstallFlags(manifest);
 
     const { installedResource, install } = await db.transaction(async (tx) => {
