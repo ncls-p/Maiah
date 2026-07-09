@@ -51,7 +51,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 
-import type { McpServer } from "./types";
+import type { McpServer, McpTool } from "./types";
 
 type JsonRecord = Record<string, unknown>;
 type FieldValue = string | boolean;
@@ -121,7 +121,10 @@ interface ConnectionFormState {
 interface ToolConnectionsPanelProps {
 	workspaceId: string | null;
 	servers: McpServer[];
+	toolsByServer: Record<string, McpTool[]>;
+	canManageMcpServers: boolean;
 	canManageWorkspaceConnections: boolean;
+	onSyncServerAction: (serverId: string) => Promise<void>;
 }
 
 const DEFAULT_STATUS: ToolConnectionStatus = "active";
@@ -181,7 +184,10 @@ const SERVICE_NOW_DEFAULT_CONFIG = {
 export function ToolConnectionsPanel({
 	workspaceId,
 	servers,
+	toolsByServer,
+	canManageMcpServers,
 	canManageWorkspaceConnections,
+	onSyncServerAction,
 }: ToolConnectionsPanelProps) {
 	const [connectors, setConnectors] = useState<ToolConnector[]>([]);
 	const [connections, setConnections] = useState<ToolConnection[]>([]);
@@ -195,6 +201,10 @@ export function ToolConnectionsPanel({
 
 	const serverById = useMemo(
 		() => new Map(servers.map((server) => [server.id, server])),
+		[servers],
+	);
+	const serviceNowServers = useMemo(
+		() => servers.filter(isServiceNowGatewayServer),
 		[servers],
 	);
 
@@ -302,7 +312,12 @@ export function ToolConnectionsPanel({
 			});
 			const data = (await res.json().catch(() => ({}))) as { error?: string };
 			if (!res.ok) throw new Error(data.error || "Failed to create connector");
-			toast.success("ServiceNow connector ready");
+			if ((toolsByServer[serverId]?.length ?? 0) === 0) {
+				toast.success("ServiceNow connector ready — syncing MCP tools");
+				await onSyncServerAction(serverId);
+			} else {
+				toast.success("ServiceNow connector ready");
+			}
 			await load();
 		} catch (error) {
 			toast.error(
@@ -364,6 +379,30 @@ export function ToolConnectionsPanel({
 	const connectorsWithServers = connectors.filter(
 		(connector) => connector.enabled || connector.mcpServerId,
 	);
+	const serviceNowConnectors = connectors.filter(
+		(connector) => connector.key === "servicenow",
+	);
+	const provisionCandidateServers = serviceNowServers.length
+		? serviceNowServers
+		: servers.length === 1
+			? servers
+			: [];
+	const requestedProvisioningServerId =
+		provisioningServerId ||
+		serviceNowConnectors.find((connector) => connector.mcpServerId)
+			?.mcpServerId ||
+		"";
+	const selectedProvisioningServerId = provisionCandidateServers.some(
+		(server) => server.id === requestedProvisioningServerId,
+	)
+		? requestedProvisioningServerId
+		: (provisionCandidateServers[0]?.id ?? "");
+	const selectedProvisioningToolCount = selectedProvisioningServerId
+		? (toolsByServer[selectedProvisioningServerId]?.length ?? 0)
+		: 0;
+	const shouldShowServiceNowProvision =
+		serviceNowConnectors.length === 0 &&
+		(connectorsWithServers.length === 0 || provisionCandidateServers.length > 0);
 
 	return (
 		<Card>
@@ -397,45 +436,83 @@ export function ToolConnectionsPanel({
 
 				{loading ? (
 					<ToolConnectionsSkeleton />
-				) : connectorsWithServers.length === 0 ? (
-					<ProvisionServiceNowConnectorCard
-						servers={servers}
-						busy={busy}
-						selectedServerId={provisioningServerId || servers[0]?.id || ""}
-						onServerChangeAction={setProvisioningServerId}
-						onProvisionAction={(serverId) =>
-							void provisionServiceNowConnector(serverId)
-						}
-					/>
 				) : (
-					<div className="grid gap-3 md:grid-cols-2">
-						{connectorsWithServers.map((connector) => {
-							const connectorConnections = connections.filter(
-								(connection) => connection.connectorId === connector.id,
-							);
-							return (
-								<ConnectorCard
-									key={connector.id}
-									connector={connector}
-									connections={connectorConnections}
-									server={
-										connector.mcpServerId
-											? serverById.get(connector.mcpServerId)
-											: undefined
-									}
-									busy={busy}
-									canManageWorkspaceConnections={canManageWorkspaceConnections}
-									onCreateAction={openCreate}
-									onEditAction={openEdit}
-									onMakeDefaultAction={(connection) =>
-										void makeDefault(connection)
-									}
-									onRemoveAction={(connection) =>
-										void removeConnection(connection)
-									}
+					<div className="flex flex-col gap-4">
+						{shouldShowServiceNowProvision ? (
+							<ProvisionServiceNowConnectorCard
+								servers={provisionCandidateServers}
+								busy={busy}
+								canManageMcpServers={canManageMcpServers}
+								selectedServerId={selectedProvisioningServerId}
+								selectedToolCount={selectedProvisioningToolCount}
+								onServerChangeAction={setProvisioningServerId}
+								onProvisionAction={(serverId) =>
+									void provisionServiceNowConnector(serverId)
+								}
+								onSyncServerAction={(serverId) =>
+									void onSyncServerAction(serverId)
+								}
+							/>
+						) : null}
+
+						{connectorsWithServers.length === 0 &&
+						!shouldShowServiceNowProvision ? (
+							<div className="flex flex-col items-center gap-2 rounded-xl border border-dashed p-6 text-center">
+								<UnplugIcon
+									className="size-5 text-muted-foreground"
+									aria-hidden="true"
 								/>
-							);
-						})}
+								<p className="font-medium">
+									No configurable tool connectors yet
+								</p>
+								<p className="max-w-md text-sm text-muted-foreground">
+									Create a connector for an MCP server to expose per-user
+									settings here.
+								</p>
+							</div>
+						) : null}
+
+						{connectorsWithServers.length > 0 ? (
+							<div className="grid gap-3 md:grid-cols-2">
+								{connectorsWithServers.map((connector) => {
+									const connectorConnections = connections.filter(
+										(connection) => connection.connectorId === connector.id,
+									);
+									const toolCount = connector.mcpServerId
+										? (toolsByServer[connector.mcpServerId]?.length ?? 0)
+										: undefined;
+									return (
+										<ConnectorCard
+											key={connector.id}
+											connector={connector}
+											connections={connectorConnections}
+											server={
+												connector.mcpServerId
+													? serverById.get(connector.mcpServerId)
+													: undefined
+											}
+											toolCount={toolCount}
+											busy={busy}
+											canManageMcpServers={canManageMcpServers}
+											canManageWorkspaceConnections={
+												canManageWorkspaceConnections
+											}
+											onSyncServerAction={(serverId) =>
+												void onSyncServerAction(serverId)
+											}
+											onCreateAction={openCreate}
+											onEditAction={openEdit}
+											onMakeDefaultAction={(connection) =>
+												void makeDefault(connection)
+											}
+											onRemoveAction={(connection) =>
+												void removeConnection(connection)
+											}
+										/>
+									);
+								})}
+							</div>
+						) : null}
 					</div>
 				)}
 			</CardContent>
@@ -465,15 +542,21 @@ export function ToolConnectionsPanel({
 function ProvisionServiceNowConnectorCard({
 	servers,
 	busy,
+	canManageMcpServers,
 	selectedServerId,
+	selectedToolCount,
 	onServerChangeAction,
 	onProvisionAction,
+	onSyncServerAction,
 }: {
 	servers: McpServer[];
 	busy: boolean;
+	canManageMcpServers: boolean;
 	selectedServerId: string;
+	selectedToolCount: number;
 	onServerChangeAction: (serverId: string) => void;
 	onProvisionAction: (serverId: string) => void;
+	onSyncServerAction: (serverId: string) => void;
 }) {
 	if (servers.length === 0) {
 		return (
@@ -508,6 +591,36 @@ function ProvisionServiceNowConnectorCard({
 					</p>
 				</div>
 			</div>
+			{!canManageMcpServers ? (
+				<Alert>
+					<LockKeyholeIcon aria-hidden="true" />
+					<AlertTitle>Admin action required</AlertTitle>
+					<AlertDescription>
+						Ask a workspace admin to provision the connector and sync the MCP
+						tools. You will still be able to add your own private credentials
+						afterwards.
+					</AlertDescription>
+				</Alert>
+			) : null}
+			{selectedServerId && selectedToolCount === 0 ? (
+				<div className="rounded-lg border bg-muted/30 p-3 text-sm">
+					<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+						<p className="text-muted-foreground">
+							This server has no synced tools yet. Sync it now so agents can
+							see the ServiceNow MCP tools.
+						</p>
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={() => onSyncServerAction(selectedServerId)}
+							disabled={busy || !canManageMcpServers}
+						>
+							<RefreshCwIcon aria-hidden="true" />
+							Sync tools
+						</Button>
+					</div>
+				</div>
+			) : null}
 			<div className="flex flex-col gap-3 sm:flex-row">
 				<Select value={selectedServerId} onValueChange={onServerChangeAction}>
 					<SelectTrigger className="w-full" aria-label="ServiceNow MCP server">
@@ -524,7 +637,7 @@ function ProvisionServiceNowConnectorCard({
 				<Button
 					className="sm:w-fit"
 					onClick={() => onProvisionAction(selectedServerId)}
-					disabled={busy || !selectedServerId}
+					disabled={busy || !selectedServerId || !canManageMcpServers}
 				>
 					<PlusIcon aria-hidden="true" />
 					Provision connector
@@ -538,8 +651,11 @@ function ConnectorCard({
 	connector,
 	connections,
 	server,
+	toolCount,
 	busy,
+	canManageMcpServers,
 	canManageWorkspaceConnections,
+	onSyncServerAction,
 	onCreateAction,
 	onEditAction,
 	onMakeDefaultAction,
@@ -548,8 +664,11 @@ function ConnectorCard({
 	connector: ToolConnector;
 	connections: ToolConnection[];
 	server?: McpServer;
+	toolCount?: number;
 	busy: boolean;
+	canManageMcpServers: boolean;
 	canManageWorkspaceConnections: boolean;
+	onSyncServerAction: (serverId: string) => void;
 	onCreateAction: (connector: ToolConnector) => void;
 	onEditAction: (connector: ToolConnector, connection: ToolConnection) => void;
 	onMakeDefaultAction: (connection: ToolConnection) => void;
@@ -575,6 +694,9 @@ function ConnectorCard({
 					{server ? (
 						<p className="mt-2 text-xs text-muted-foreground">
 							MCP server: <span className="font-medium">{server.name}</span>
+							{typeof toolCount === "number" ? (
+								<span> · {toolCount} synced tools</span>
+							) : null}
 						</p>
 					) : null}
 				</div>
@@ -588,6 +710,26 @@ function ConnectorCard({
 					Add
 				</Button>
 			</div>
+
+			{server && toolCount === 0 ? (
+				<div className="rounded-lg border bg-muted/30 p-3 text-sm">
+					<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+						<p className="text-muted-foreground">
+							No MCP tools are synced yet for this connector. Sync the server
+							before enabling tools on agents.
+						</p>
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={() => onSyncServerAction(server.id)}
+							disabled={busy || !canManageMcpServers}
+						>
+							<RefreshCwIcon aria-hidden="true" />
+							Sync tools
+						</Button>
+					</div>
+				</div>
+			) : null}
 
 			{connections.length === 0 ? (
 				<div className="flex flex-1 flex-col items-center justify-center gap-2 rounded-lg border border-dashed p-5 text-center">
@@ -1028,6 +1170,11 @@ function ToolConnectionsSkeleton() {
 			))}
 		</div>
 	);
+}
+
+function isServiceNowGatewayServer(server: McpServer) {
+	const haystack = `${server.name} ${server.url ?? ""} ${server.command ?? ""}`;
+	return /service[-_\s]?now/i.test(haystack);
 }
 
 function createFormFromConnector(

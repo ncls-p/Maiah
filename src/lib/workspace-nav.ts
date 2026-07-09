@@ -35,6 +35,7 @@ export type WorkspacePermissions = {
 	canConfigureTools: boolean;
 	canViewTools: boolean;
 	canGetMcpServers: boolean;
+	canManageMcpServers: boolean;
 	canManageKnowledgeBases: boolean;
 	canCreateAgent: boolean;
 	canManageApiKeys: boolean;
@@ -50,6 +51,7 @@ export const DEFAULT_WORKSPACE_PERMISSIONS: WorkspacePermissions = {
 	canConfigureTools: false,
 	canViewTools: false,
 	canGetMcpServers: false,
+	canManageMcpServers: false,
 	canManageKnowledgeBases: false,
 	canCreateAgent: false,
 	canManageApiKeys: false,
