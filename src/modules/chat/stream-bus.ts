@@ -1,4 +1,5 @@
 import { createUIMessageStream, createUIMessageStreamResponse } from "ai";
+import { projectToolMessagePayload } from "@/modules/tool/safe-payload";
 
 type StreamEvent = Record<string, unknown>;
 
@@ -29,6 +30,22 @@ const globalStore = globalThis as typeof globalThis & {
 const runs = globalStore.__aiHubChatStreamRuns ?? new Map<string, StreamRun>();
 globalStore.__aiHubChatStreamRuns = runs;
 
+function safeStreamEvent(event: StreamEvent): StreamEvent {
+  if (event.type === "tool_call") {
+    return { ...event, input: projectToolMessagePayload(event.input) };
+  }
+  if (event.type === "tool_result") {
+    return { ...event, output: projectToolMessagePayload(event.output) };
+  }
+  if (event.type === "tool_approval_required") {
+    return { ...event, input: projectToolMessagePayload(event.input) };
+  }
+  if (event.type === "tool_input_delta") {
+    return { ...event, delta: "" };
+  }
+  return event;
+}
+
 function getRun(messageId: string) {
   let run = runs.get(messageId);
   if (!run) {
@@ -40,9 +57,10 @@ function getRun(messageId: string) {
 
 export function publishChatStreamEvent(messageId: string, event: StreamEvent) {
   const run = getRun(messageId);
-  run.events.push(event);
+  const safeEvent = safeStreamEvent(event);
+  run.events.push(safeEvent);
   for (const subscriber of run.subscribers) {
-    subscriber.enqueue(event);
+    subscriber.enqueue(safeEvent);
   }
 }
 
@@ -289,7 +307,7 @@ export function createChatUIMessageStreamResponse(
                     type: "tool-input-available",
                     toolCallId,
                     toolName,
-                    input: event.input,
+                    input: projectToolMessagePayload(event.input),
                   });
                 }
                 return;
@@ -304,7 +322,7 @@ export function createChatUIMessageStreamResponse(
                   writer.write({
                     type: "tool-output-available",
                     toolCallId,
-                    output: event.output,
+                    output: projectToolMessagePayload(event.output),
                   });
                 }
                 return;
@@ -319,7 +337,7 @@ export function createChatUIMessageStreamResponse(
                     data: {
                       invocationId,
                       toolName: event.toolName,
-                      input: event.input,
+                      input: projectToolMessagePayload(event.input),
                     },
                   });
                 }

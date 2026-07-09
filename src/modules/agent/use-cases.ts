@@ -14,6 +14,7 @@ import {
 } from "@/server/infrastructure/db/schema";
 import { decryptValue } from "@/lib/crypto";
 import { logHandledError } from "@/lib/logger";
+import { projectToolMessagePayload } from "@/modules/tool/safe-payload";
 import type {
 	ProviderRuntimeConfig,
 	ProviderKind,
@@ -1409,6 +1410,12 @@ export async function getConversationMessages(conversationId: string) {
 					content: "[decryption failed]",
 				};
 			}
+		}
+		if (part.type === "tool-call" || part.type === "tool-result") {
+			return {
+				type: part.type,
+				content: JSON.stringify(projectToolMessagePayload(part.metadataJson)),
+			};
 		}
 
 		return {

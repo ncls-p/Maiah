@@ -405,6 +405,28 @@ describe("logToolInvocation", () => {
 
 		expect(result.status).toBe("failed");
 	});
+
+	it("redacts credentials embedded in persisted tool errors", async () => {
+		dbModule._ic.returning.mockResolvedValueOnce([
+			{ id: "inv-3", status: "failed" },
+		]);
+
+		await logToolInvocation({
+			workspaceId: "ws-1",
+			toolSource: "mcp",
+			toolId: "tool-1",
+			toolName: "webhook",
+			input: {},
+			status: "failed",
+			errorMessage: "Request failed with Bearer hidden-token",
+		});
+
+		expect(dbModule._ic.values).toHaveBeenCalledWith(
+			expect.objectContaining({
+				errorMessage: "Request failed with Bearer [REDACTED]",
+			}),
+		);
+	});
 });
 
 describe("canExecuteRestrictedTool", () => {

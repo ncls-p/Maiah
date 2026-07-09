@@ -176,6 +176,24 @@ function codeWorkspaceContextFromToolMetadata(metadata: unknown) {
   );
 }
 
+async function toolMetadataForModelHistory(part: {
+  type: string;
+  contentEncrypted: string | null;
+  metadataJson: unknown;
+}) {
+  if (
+    (part.type === "tool-call" || part.type === "tool-result") &&
+    part.contentEncrypted
+  ) {
+    try {
+      return JSON.parse(await decryptValue(part.contentEncrypted)) as unknown;
+    } catch {
+      return part.metadataJson;
+    }
+  }
+  return part.metadataJson;
+}
+
 export async function loadConversationHistory(
   conversationId: string,
   context: { workspaceId: string; userId: string },
@@ -260,12 +278,13 @@ export async function loadConversationHistory(
     }> = [];
     const artifactCodeBlocks = new Set<string>();
     for (const part of partsByMessageId.get(message.id) ?? []) {
+      const metadata = await toolMetadataForModelHistory(part);
       if (part.type === "file") {
-        const imageAttachment = isChatImageAttachment(part.metadataJson)
-          ? part.metadataJson
+        const imageAttachment = isChatImageAttachment(metadata)
+          ? metadata
           : null;
-        const fileAttachment = isChatFileAttachment(part.metadataJson)
-          ? part.metadataJson
+        const fileAttachment = isChatFileAttachment(metadata)
+          ? metadata
           : null;
         if (message.role === "user" && imageAttachment) {
           try {
@@ -338,7 +357,7 @@ export async function loadConversationHistory(
         }
 
         const codeWorkspaceContext = codeWorkspaceContextFromToolMetadata(
-          part.metadataJson,
+          metadata,
         );
         if (codeWorkspaceContext) {
           textParts.push(
@@ -360,11 +379,11 @@ export async function loadConversationHistory(
 
       if (message.role === "assistant") {
         const artifactCode = htmlArtifactCodeFromToolMetadata(
-          part.metadataJson,
+          metadata,
         );
         if (artifactCode) artifactCodeBlocks.add(artifactCode);
         const codeWorkspaceContext = codeWorkspaceContextFromToolMetadata(
-          part.metadataJson,
+          metadata,
         );
         if (codeWorkspaceContext) {
           artifactCodeBlocks.add(
@@ -372,7 +391,7 @@ export async function loadConversationHistory(
           );
         }
         const codeSandboxContext = codeSandboxContextFromToolMetadata(
-          part.metadataJson,
+          metadata,
         );
         if (codeSandboxContext) {
           textParts.push(

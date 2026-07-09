@@ -782,6 +782,36 @@ describe("getConversationMessages", () => {
 		const result = await getConversationMessages("conv-1");
 		expect(result[0].parts[0].content).toBe(JSON.stringify(meta));
 	});
+
+	it("redacts historical tool metadata before returning conversation data", async () => {
+		const msg = {
+			id: "msg-1",
+			role: "assistant",
+			status: "complete",
+			createdAt: new Date(),
+		};
+		const part = {
+			id: "part-2",
+			messageId: "msg-1",
+			type: "tool-call",
+			contentEncrypted: null,
+			sortOrder: 0,
+			metadataJson: {
+				toolName: "webhook",
+				input: { apiKey: "hidden", maxOutputTokens: 256 },
+			},
+		};
+		dbModule._c.orderBy
+			.mockResolvedValueOnce([msg])
+			.mockResolvedValueOnce([part]);
+
+		const result = await getConversationMessages("conv-1");
+
+		expect(JSON.parse(result[0].parts[0].content)).toEqual({
+			toolName: "webhook",
+			input: { apiKey: "[REDACTED]", maxOutputTokens: 256 },
+		});
+	});
 });
 
 // ─── recordUsageEvent ─────────────────────────────────────────────────

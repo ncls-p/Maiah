@@ -250,6 +250,29 @@ describe("stream-bus", () => {
 
 			expect(received).toHaveLength(2);
 		});
+
+		it("redacts tool payloads before replay or delivery", () => {
+			const id = crypto.randomUUID();
+			publishChatStreamEvent(id, {
+				type: "tool_call",
+				toolCallId: "call-1",
+				toolName: "webhook",
+				input: { apiKey: "hidden", maxOutputTokens: 128 },
+			});
+
+			const received: Record<string, unknown>[] = [];
+			subscribeToChatStream(
+				id,
+				{ enqueue: (event) => received.push(event), close: () => {} },
+				{ replay: true },
+			);
+
+			expect(received).toEqual([
+				expect.objectContaining({
+					input: { apiKey: "[REDACTED]", maxOutputTokens: 128 },
+				}),
+			]);
+		});
 	});
 });
 
@@ -336,7 +359,8 @@ describe("additional stream response event mappings", () => {
 		expect(text).toContain('"type":"reasoning-start"');
 		expect(text).toContain('"type":"reasoning-delta"');
 		expect(text).toContain('"type":"tool-input-start"');
-		expect(text).toContain('"type":"tool-input-delta"');
+		expect(text).not.toContain('"type":"tool-input-delta"');
+		expect(text).not.toContain('{"q"');
 		expect(text).toContain('"type":"tool-output-denied"');
 		expect(text).toContain('"type":"data-tool-approval"');
 		expect(text).toContain('"type":"data-citations"');

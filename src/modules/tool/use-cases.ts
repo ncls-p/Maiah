@@ -2,6 +2,7 @@ import { and, eq, inArray, isNull, or } from "drizzle-orm";
 import { z } from "zod";
 import { encryptValue } from "@/lib/crypto";
 import { logHandledError } from "@/lib/logger";
+import { safeToolErrorMessage } from "@/modules/tool/safe-payload";
 import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
 import {
@@ -424,7 +425,12 @@ export async function logToolInvocation(input: {
 					: await encryptValue(JSON.stringify(input.output)),
 			status: input.status,
 			latencyMs: input.latencyMs ?? null,
-			errorMessage: input.errorMessage ?? null,
+			errorMessage: input.errorMessage
+				? safeToolErrorMessage(
+						new Error(input.errorMessage),
+						"Tool execution failed",
+					)
+				: null,
 			approvedByUserId: input.approvedByUserId ?? null,
 			completedAt:
 				input.status === "success" || input.status === "failed"

@@ -73,6 +73,14 @@ describe("tool payload display projection", () => {
 				url: "https://example.com/path?token=hidden",
 			}),
 		).not.toContain("hidden");
+		expect(
+			projectToolPayloadForDisplay({
+				message: "Request used Bearer hidden and access_token=also-hidden",
+			}),
+		).toEqual({
+			message:
+				"Request used Bearer [REDACTED] and access_token=[REDACTED]",
+		});
 	});
 
 	it("does not expose an error that is itself a credential", () => {

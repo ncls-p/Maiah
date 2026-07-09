@@ -63,6 +63,25 @@ function isObviouslySecretString(value: string) {
 	);
 }
 
+function redactInlineSecrets(value: string) {
+	if (
+		/-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/.test(value)
+	) {
+		return REDACTED_VALUE;
+	}
+	return value
+		.replace(/\b(bearer|basic)\s+[^\s"'<>]+/gi, "$1 [REDACTED]")
+		.replace(
+			/\b(api[_-]?key|access[_-]?token|refresh[_-]?token|client[_-]?secret|password|webhook[_-]?secret)\s*[:=]\s*[^\s,;"'<>]+/gi,
+			"$1=[REDACTED]",
+		)
+		.replace(
+			/\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g,
+			REDACTED_VALUE,
+		)
+		.replace(/https?:\/\/[^\s"'<>]+/gi, (url) => projectUrl(url));
+}
+
 function projectUrl(value: string) {
 	if (/^data:/i.test(value)) return "[DATA URL OMITTED]";
 	if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(value)) return value;
@@ -82,7 +101,7 @@ function projectUrl(value: string) {
 
 function projectString(value: string, maxLength: number) {
 	if (isObviouslySecretString(value)) return REDACTED_VALUE;
-	const safeValue = projectUrl(value);
+	const safeValue = projectUrl(redactInlineSecrets(value));
 	if (safeValue.length <= maxLength) return safeValue;
 	return `${safeValue.slice(0, maxLength)}… ${TRUNCATED_VALUE}`;
 }
@@ -156,6 +175,15 @@ export function safeToolErrorMessage(error: unknown, fallback: string) {
 	);
 	const projected = projectString(withSafeUrls, 500);
 	return projected === REDACTED_VALUE ? fallback : projected;
+}
+
+export function projectToolMessagePayload(value: unknown) {
+	return projectToolPayloadForDisplay(value, {
+		maxArrayItems: 200,
+		maxDepth: 8,
+		maxObjectKeys: 200,
+		maxStringLength: 100_000,
+	});
 }
 
 export { REDACTED_VALUE };

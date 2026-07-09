@@ -42,6 +42,10 @@ import { searchBoundKnowledgeBases } from "@/modules/knowledge/use-cases";
 import { buildSkillsRegistryPrompt } from "@/modules/skills/use-cases";
 import { assertWorkspaceWithinTokenQuota } from "@/modules/usage/quota";
 import type { AiHubToolApprovalPolicy } from "@/modules/tool/approval-policy";
+import {
+	projectToolMessagePayload,
+	safeToolErrorMessage,
+} from "@/modules/tool/safe-payload";
 import { db } from "@/server/infrastructure/db";
 import {
 	agents,
@@ -70,7 +74,6 @@ import {
 	findUserMessageForResend,
 	isFirstUserMessageInConversation,
 	streamToolCallId,
-	streamToolInputDelta,
 } from "./route-support";
 import { loadConversationHistory } from "./route-history";
 
@@ -734,18 +737,23 @@ export async function POST(
 			type: "tool-call" | "tool-result" | "file",
 			metadata: unknown,
 		) {
+			const safeMetadata =
+				type === "file" ? metadata : projectToolMessagePayload(metadata);
 			const [inserted] = await db
 				.insert(messageParts)
 				.values({
 					messageId: assistantMessage.id,
 					type,
-					contentEncrypted: null,
-					metadataJson: metadata,
+					contentEncrypted:
+						type === "file"
+							? null
+							: await encryptValue(JSON.stringify(metadata ?? null)),
+					metadataJson: safeMetadata,
 					sortOrder: nextSortOrder,
 				})
 				.returning({ id: messageParts.id });
 			nextSortOrder += 1;
-			streamedParts.push({ id: inserted.id, type, metadata });
+			streamedParts.push({ id: inserted.id, type, metadata: safeMetadata });
 		}
 
 		const postCompletionAutomationRef: {
@@ -807,8 +815,8 @@ export async function POST(
 			},
 			telemetry: {
 				functionId: "ai-hub.chat",
-				recordInputs: process.env.AI_SDK_TELEMETRY_RECORD_INPUTS === "true",
-				recordOutputs: process.env.AI_SDK_TELEMETRY_RECORD_OUTPUTS === "true",
+				recordInputs: false,
+				recordOutputs: false,
 				includeRuntimeContext: {
 					workspaceId: true,
 					userId: true,
@@ -864,15 +872,8 @@ export async function POST(
 							});
 						}
 					} else if (part.type === "tool-input-delta") {
-						const toolCallId = streamToolCallId(part);
-						const delta = streamToolInputDelta(part);
-						if (toolCallId && delta) {
-							enqueueEvent({
-								type: "tool_input_delta",
-								toolCallId,
-								delta,
-							});
-						}
+						// Tool input can contain credentials. Do not stream partial JSON;
+						// the complete redacted input is emitted with the tool-call event.
 					} else if (part.type === "tool-input-end") {
 						const toolCallId = streamToolCallId(part);
 						if (toolCallId) {
@@ -887,7 +888,7 @@ export async function POST(
 							type: "tool_call",
 							toolCallId: part.toolCallId,
 							toolName: part.toolName,
-							input: part.input,
+							input: projectToolMessagePayload(part.input),
 						});
 					} else if (part.type === "tool-result") {
 						await appendStreamedMetadataPart("tool-result", part);
@@ -895,18 +896,22 @@ export async function POST(
 							type: "tool_result",
 							toolCallId: part.toolCallId,
 							toolName: part.toolName,
-							output: part.output,
+							output: projectToolMessagePayload(part.output),
 						});
 					} else if (part.type === "error") {
 						const error =
 							part.error instanceof Error
 								? part.error
 								: new Error(String(part.error));
+						const errorMessage = safeToolErrorMessage(
+							error,
+							"Tool execution failed",
+						);
 						enqueueEvent({
 							type: "error",
-							error: error.message,
+							error: errorMessage,
 						});
-						throw error;
+						throw new Error(errorMessage);
 					}
 				}
 
