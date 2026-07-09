@@ -402,7 +402,8 @@ export function ToolConnectionsPanel({
 		: 0;
 	const shouldShowServiceNowProvision =
 		serviceNowConnectors.length === 0 &&
-		(connectorsWithServers.length === 0 || provisionCandidateServers.length > 0);
+		(connectorsWithServers.length === 0 ||
+			provisionCandidateServers.length > 0);
 
 	return (
 		<Card>
@@ -606,8 +607,9 @@ function ProvisionServiceNowConnectorCard({
 				<div className="rounded-lg border bg-muted/30 p-3 text-sm">
 					<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 						<p className="text-muted-foreground">
-							This server has no synced tools yet. Sync it now so agents can
-							see the ServiceNow MCP tools.
+							This server has no synced tools yet. Sync only discovers the
+							ServiceNow tool catalog; it does not require or expose your
+							credentials. Add your personal connection before executing tools.
 						</p>
 						<Button
 							variant="outline"
@@ -715,8 +717,9 @@ function ConnectorCard({
 				<div className="rounded-lg border bg-muted/30 p-3 text-sm">
 					<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 						<p className="text-muted-foreground">
-							No MCP tools are synced yet for this connector. Sync the server
-							before enabling tools on agents.
+							No MCP tools are synced yet for this connector. Sync discovers the
+							tool catalog without credentials; your URL and secrets are required
+							only when a tool is executed.
 						</p>
 						<Button
 							variant="outline"
