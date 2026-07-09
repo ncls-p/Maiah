@@ -950,6 +950,20 @@ describe("recordUsageEvent", () => {
     expect(insertValues.inputTokens).toBeNull();
     expect(insertValues.outputTokens).toBeNull();
   });
+
+  it("does not break a completed workflow when telemetry is unavailable", async () => {
+    dbModule._c.values.mockRejectedValueOnce(
+      new Error("telemetry unavailable"),
+    );
+
+    await expect(
+      recordUsageEvent({
+        workspaceId: "ws-1",
+        userId: "user-1",
+        operation: "chat.completion.failed",
+      }),
+    ).resolves.toBeUndefined();
+  });
 });
 
 // ─── defaults, ordering, cloning ───────────────────────────────────────

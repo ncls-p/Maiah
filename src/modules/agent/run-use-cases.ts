@@ -4,16 +4,12 @@ import {
   projectToolMessagePayload,
   safeToolErrorMessage,
 } from "@/modules/tool/safe-payload";
-import {
-  expireWorkspaceTokenReservations,
-  releaseWorkspaceTokenReservation,
-  reserveWorkspaceTokens,
-  settleWorkspaceTokenReservation,
-} from "@/modules/usage/quota-reservations";
+import { reserveWorkspaceTokens } from "@/modules/usage/quota-reservations";
 import { db } from "@/server/infrastructure/db";
 import {
   agentRuns,
   agentRunSteps,
+  usageEvents,
   workspaceTokenReservations,
 } from "@/server/infrastructure/db/schema";
 
@@ -28,6 +24,17 @@ export type AgentRunTerminalStatus =
   | "failed"
   | "cancelled"
   | "timed_out";
+
+type AgentRunUsageEvent = {
+  workspaceId: string;
+  userId: string;
+  providerId?: string;
+  modelId?: string;
+  agentId: string;
+  conversationId?: string;
+  operation: string;
+  latencyMs?: number;
+};
 
 export class AgentRunConflictError extends Error {
   readonly code = "AGENT_RUN_CONFLICT";
@@ -241,32 +248,69 @@ export async function completeAgentRun(input: {
   inputTokens: number;
   outputTokens: number;
   reservationTokens?: number;
+  usage?: AgentRunUsageEvent;
   now?: Date;
 }) {
   const now = input.now ?? new Date();
-  const [run] = await db
-    .update(agentRuns)
-    .set({
-      status: "success",
-      outputEncrypted: await encryptValue(JSON.stringify(input.output ?? null)),
-      outputPreviewJson: projectToolMessagePayload(input.output),
-      inputTokens: Math.max(0, input.inputTokens),
-      outputTokens: Math.max(0, input.outputTokens),
-      leaseOwner: null,
-      leaseExpiresAt: null,
-      completedAt: now,
-      updatedAt: now,
-    })
-    .where(and(eq(agentRuns.id, input.runId), eq(agentRuns.status, "running")))
-    .returning();
-  if (!run) throw new AgentRunConflictError("Run is no longer executing");
-  await settleWorkspaceTokenReservation({
-    runId: input.runId,
-    actualTokens:
-      input.reservationTokens ?? input.inputTokens + input.outputTokens,
-    now,
+  const outputEncrypted = await encryptValue(
+    JSON.stringify(input.output ?? null),
+  );
+  const inputTokens = Math.max(0, input.inputTokens);
+  const outputTokens = Math.max(0, input.outputTokens);
+  const actualTokens = Math.max(
+    0,
+    Math.floor(input.reservationTokens ?? inputTokens + outputTokens),
+  );
+
+  return db.transaction(async (tx) => {
+    const [run] = await tx
+      .update(agentRuns)
+      .set({
+        status: "success",
+        outputEncrypted,
+        outputPreviewJson: projectToolMessagePayload(input.output),
+        inputTokens,
+        outputTokens,
+        reservedTokens: 0,
+        leaseOwner: null,
+        leaseExpiresAt: null,
+        completedAt: now,
+        updatedAt: now,
+      })
+      .where(
+        and(eq(agentRuns.id, input.runId), eq(agentRuns.status, "running")),
+      )
+      .returning();
+    if (!run) throw new AgentRunConflictError("Run is no longer executing");
+
+    await tx
+      .update(workspaceTokenReservations)
+      .set({ status: "settled", actualTokens, updatedAt: now })
+      .where(
+        and(
+          eq(workspaceTokenReservations.runId, input.runId),
+          eq(workspaceTokenReservations.status, "active"),
+        ),
+      );
+
+    if (input.usage) {
+      await tx.insert(usageEvents).values({
+        workspaceId: input.usage.workspaceId,
+        userId: input.usage.userId,
+        providerId: input.usage.providerId ?? null,
+        modelId: input.usage.modelId ?? null,
+        agentId: input.usage.agentId,
+        conversationId: input.usage.conversationId ?? null,
+        operation: input.usage.operation,
+        inputTokens: inputTokens || null,
+        outputTokens: outputTokens || null,
+        latencyMs: input.usage.latencyMs ?? null,
+        status: "success",
+      });
+    }
+
+    return run;
   });
-  return run;
 }
 
 export async function consumeAgentRunDelegationBudget(input: {
@@ -299,77 +343,117 @@ export async function failAgentRun(input: {
   inputTokens?: number;
   outputTokens?: number;
   reservationTokens?: number;
+  usage?: AgentRunUsageEvent;
   now?: Date;
 }) {
   const now = input.now ?? new Date();
   const status = input.status ?? "failed";
-  const [run] = await db
-    .update(agentRuns)
-    .set({
-      status,
-      errorCode: input.errorCode ?? "AGENT_RUN_FAILED",
-      errorMessage: safeToolErrorMessage(input.error, "Agent run failed"),
-      inputTokens: input.inputTokens ?? null,
-      outputTokens: input.outputTokens ?? null,
-      leaseOwner: null,
-      leaseExpiresAt: null,
-      completedAt: now,
-      updatedAt: now,
-    })
-    .where(
-      and(
-        eq(agentRuns.id, input.runId),
-        inArray(agentRuns.status, ["queued", "running", "waiting_approval"]),
-      ),
-    )
-    .returning();
-  if (run) {
-    const actualTokens =
-      input.reservationTokens ??
-      (input.inputTokens ?? 0) + (input.outputTokens ?? 0);
-    if (actualTokens > 0) {
-      await settleWorkspaceTokenReservation({
-        runId: input.runId,
-        actualTokens,
-        now,
+  const inputTokens = Math.max(0, input.inputTokens ?? 0);
+  const outputTokens = Math.max(0, input.outputTokens ?? 0);
+  const actualTokens = Math.max(
+    0,
+    Math.floor(input.reservationTokens ?? inputTokens + outputTokens),
+  );
+
+  return db.transaction(async (tx) => {
+    const [run] = await tx
+      .update(agentRuns)
+      .set({
+        status,
+        errorCode: input.errorCode ?? "AGENT_RUN_FAILED",
+        errorMessage: safeToolErrorMessage(input.error, "Agent run failed"),
+        inputTokens: input.inputTokens ?? null,
+        outputTokens: input.outputTokens ?? null,
+        reservedTokens: 0,
+        leaseOwner: null,
+        leaseExpiresAt: null,
+        completedAt: now,
+        updatedAt: now,
+      })
+      .where(
+        and(
+          eq(agentRuns.id, input.runId),
+          inArray(agentRuns.status, ["queued", "running", "waiting_approval"]),
+        ),
+      )
+      .returning();
+    if (!run) return null;
+
+    await tx
+      .update(workspaceTokenReservations)
+      .set(
+        actualTokens > 0
+          ? { status: "settled", actualTokens, updatedAt: now }
+          : { status: "released", updatedAt: now },
+      )
+      .where(
+        and(
+          eq(workspaceTokenReservations.runId, input.runId),
+          eq(workspaceTokenReservations.status, "active"),
+        ),
+      );
+
+    if (input.usage) {
+      await tx.insert(usageEvents).values({
+        workspaceId: input.usage.workspaceId,
+        userId: input.usage.userId,
+        providerId: input.usage.providerId ?? null,
+        modelId: input.usage.modelId ?? null,
+        agentId: input.usage.agentId,
+        conversationId: input.usage.conversationId ?? null,
+        operation: input.usage.operation,
+        inputTokens: inputTokens || null,
+        outputTokens: outputTokens || null,
+        latencyMs: input.usage.latencyMs ?? null,
+        status,
       });
-    } else {
-      await releaseWorkspaceTokenReservation(input.runId, now);
     }
-  }
-  return run ?? null;
+
+    return run;
+  });
 }
 
 export async function requestAgentRunCancellation(
   runId: string,
   now = new Date(),
 ) {
-  const [queued] = await db
-    .update(agentRuns)
-    .set({
-      status: "cancelled",
-      cancelRequestedAt: now,
-      completedAt: now,
-      updatedAt: now,
-    })
-    .where(and(eq(agentRuns.id, runId), eq(agentRuns.status, "queued")))
-    .returning();
-  if (queued) {
-    await releaseWorkspaceTokenReservation(runId, now);
-    return queued;
-  }
+  return db.transaction(async (tx) => {
+    const [queued] = await tx
+      .update(agentRuns)
+      .set({
+        status: "cancelled",
+        reservedTokens: 0,
+        cancelRequestedAt: now,
+        completedAt: now,
+        updatedAt: now,
+      })
+      .where(and(eq(agentRuns.id, runId), eq(agentRuns.status, "queued")))
+      .returning();
+    if (queued) {
+      await tx
+        .update(workspaceTokenReservations)
+        .set({ status: "released", updatedAt: now })
+        .where(
+          and(
+            eq(workspaceTokenReservations.runId, runId),
+            eq(workspaceTokenReservations.status, "active"),
+          ),
+        );
+      return queued;
+    }
 
-  const [running] = await db
-    .update(agentRuns)
-    .set({ cancelRequestedAt: now, updatedAt: now })
-    .where(
-      and(
-        eq(agentRuns.id, runId),
-        inArray(agentRuns.status, ["running", "waiting_approval"]),
-      ),
-    )
-    .returning();
-  return running ?? null;
+    const [running] = await tx
+      .update(agentRuns)
+      .set({ cancelRequestedAt: now, updatedAt: now })
+      .where(
+        and(
+          eq(agentRuns.id, runId),
+          inArray(agentRuns.status, ["running", "waiting_approval"]),
+        ),
+      )
+      .returning();
+    return running ?? null;
+  });
 }
 
 export async function getAgentRun(runId: string, workspaceId: string) {
@@ -449,53 +533,78 @@ export async function readAgentRunPayload(runId: string) {
 }
 
 export async function reapExpiredAgentRuns(now = new Date()) {
-  await expireWorkspaceTokenReservations(now);
-  const expired = await db
-    .update(agentRuns)
-    .set({
-      status: "timed_out",
-      errorCode: "AGENT_RUN_DEADLINE_EXCEEDED",
-      errorMessage: "Agent run exceeded its deadline",
-      leaseOwner: null,
-      leaseExpiresAt: null,
-      completedAt: now,
-      updatedAt: now,
-    })
-    .where(
-      and(
-        inArray(agentRuns.status, ["queued", "running", "waiting_approval"]),
-        lt(agentRuns.deadlineAt, now),
-      ),
-    )
-    .returning({ id: agentRuns.id });
-
-  const leaseLost = await db
-    .update(agentRuns)
-    .set({
-      status: "failed",
-      errorCode: "AGENT_RUN_LEASE_EXPIRED",
-      errorMessage: "Agent worker lease expired before completion",
-      leaseOwner: null,
-      leaseExpiresAt: null,
-      completedAt: now,
-      updatedAt: now,
-    })
-    .where(
-      and(eq(agentRuns.status, "running"), lt(agentRuns.leaseExpiresAt, now)),
-    )
-    .returning({ id: agentRuns.id });
-
-  const terminalRunIds = [...expired, ...leaseLost].map((row) => row.id);
-  if (terminalRunIds.length > 0) {
-    await db
+  return db.transaction(async (tx) => {
+    const expiredReservations = await tx
       .update(workspaceTokenReservations)
       .set({ status: "expired", updatedAt: now })
       .where(
         and(
-          inArray(workspaceTokenReservations.runId, terminalRunIds),
           eq(workspaceTokenReservations.status, "active"),
+          lt(workspaceTokenReservations.expiresAt, now),
         ),
-      );
-  }
-  return { timedOut: expired.length, leaseExpired: leaseLost.length };
+      )
+      .returning({ runId: workspaceTokenReservations.runId });
+    if (expiredReservations.length > 0) {
+      await tx
+        .update(agentRuns)
+        .set({ reservedTokens: 0, updatedAt: now })
+        .where(
+          inArray(
+            agentRuns.id,
+            expiredReservations.map((row) => row.runId),
+          ),
+        );
+    }
+
+    const expired = await tx
+      .update(agentRuns)
+      .set({
+        status: "timed_out",
+        reservedTokens: 0,
+        errorCode: "AGENT_RUN_DEADLINE_EXCEEDED",
+        errorMessage: "Agent run exceeded its deadline",
+        leaseOwner: null,
+        leaseExpiresAt: null,
+        completedAt: now,
+        updatedAt: now,
+      })
+      .where(
+        and(
+          inArray(agentRuns.status, ["queued", "running", "waiting_approval"]),
+          lt(agentRuns.deadlineAt, now),
+        ),
+      )
+      .returning({ id: agentRuns.id });
+
+    const leaseLost = await tx
+      .update(agentRuns)
+      .set({
+        status: "failed",
+        reservedTokens: 0,
+        errorCode: "AGENT_RUN_LEASE_EXPIRED",
+        errorMessage: "Agent worker lease expired before completion",
+        leaseOwner: null,
+        leaseExpiresAt: null,
+        completedAt: now,
+        updatedAt: now,
+      })
+      .where(
+        and(eq(agentRuns.status, "running"), lt(agentRuns.leaseExpiresAt, now)),
+      )
+      .returning({ id: agentRuns.id });
+
+    const terminalRunIds = [...expired, ...leaseLost].map((row) => row.id);
+    if (terminalRunIds.length > 0) {
+      await tx
+        .update(workspaceTokenReservations)
+        .set({ status: "expired", updatedAt: now })
+        .where(
+          and(
+            inArray(workspaceTokenReservations.runId, terminalRunIds),
+            eq(workspaceTokenReservations.status, "active"),
+          ),
+        );
+    }
+    return { timedOut: expired.length, leaseExpired: leaseLost.length };
+  });
 }

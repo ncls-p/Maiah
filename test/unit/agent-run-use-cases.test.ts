@@ -63,6 +63,8 @@ import {
   completeAgentRun,
   createAgentRun,
   failAgentRun,
+  reapExpiredAgentRuns,
+  requestAgentRunCancellation,
 } from "@/modules/agent/run-use-cases";
 
 const run = {
@@ -170,17 +172,77 @@ describe("agent run lifecycle", () => {
       output: { ok: true },
       inputTokens: 10,
       outputTokens: 20,
+      usage: {
+        workspaceId: run.workspaceId,
+        userId: "55555555-5555-4555-8555-555555555555",
+        agentId: "33333333-3333-4333-8333-333333333333",
+        operation: "api",
+      },
     });
     await failAgentRun({
       runId: run.id,
       error: new Error("Bearer hidden-token"),
     });
 
-    expect(quotaMocks.settle).toHaveBeenCalledWith(
-      expect.objectContaining({ actualTokens: 30 }),
+    expect(dbMock.db.transaction).toHaveBeenCalledTimes(2);
+    expect(dbMock.chain.set).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "settled",
+        actualTokens: 30,
+      }),
     );
-    expect(dbMock.chain.set).toHaveBeenLastCalledWith(
+    expect(dbMock.chain.values).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workspaceId: run.workspaceId,
+        operation: "api",
+        inputTokens: 10,
+        outputTokens: 20,
+        status: "success",
+      }),
+    );
+    expect(dbMock.chain.set).toHaveBeenCalledWith(
       expect.objectContaining({ errorMessage: "Agent run failed" }),
+    );
+  });
+
+  it("cancels queued work and releases its reservation atomically", async () => {
+    dbMock.chain.returning.mockResolvedValueOnce([
+      { ...run, status: "cancelled" },
+    ]);
+
+    await expect(requestAgentRunCancellation(run.id)).resolves.toMatchObject({
+      status: "cancelled",
+    });
+
+    expect(dbMock.db.transaction).toHaveBeenCalledOnce();
+    expect(dbMock.chain.set).toHaveBeenCalledWith(
+      expect.objectContaining({ status: "cancelled", reservedTokens: 0 }),
+    );
+    expect(dbMock.chain.set).toHaveBeenCalledWith(
+      expect.objectContaining({ status: "released" }),
+    );
+  });
+
+  it("reaps deadlines, lost leases, and reservations atomically", async () => {
+    dbMock.chain.returning
+      .mockResolvedValueOnce([{ runId: run.id }])
+      .mockResolvedValueOnce([{ id: run.id }])
+      .mockResolvedValueOnce([{ id: "66666666-6666-4666-8666-666666666666" }]);
+
+    await expect(reapExpiredAgentRuns()).resolves.toEqual({
+      timedOut: 1,
+      leaseExpired: 1,
+    });
+
+    expect(dbMock.db.transaction).toHaveBeenCalledOnce();
+    expect(dbMock.chain.set).toHaveBeenCalledWith(
+      expect.objectContaining({ status: "timed_out", reservedTokens: 0 }),
+    );
+    expect(dbMock.chain.set).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "failed",
+        errorCode: "AGENT_RUN_LEASE_EXPIRED",
+      }),
     );
   });
 });

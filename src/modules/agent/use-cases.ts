@@ -1580,6 +1580,5 @@ export async function recordUsageEvent(input: {
     });
   } catch (error) {
     logHandledError("Failed to record usage event", {}, error as Error);
-    throw error;
   }
 }

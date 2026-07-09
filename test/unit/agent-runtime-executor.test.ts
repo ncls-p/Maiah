@@ -16,7 +16,6 @@ const mocks = vi.hoisted(() => ({
   getActiveVersion: vi.fn(),
   getVersion: vi.fn(),
   resolveProvider: vi.fn(),
-  recordUsage: vi.fn(),
   buildSkillsPrompt: vi.fn(),
   checkPermission: vi.fn(),
   createChatModel: vi.fn(),
@@ -47,7 +46,6 @@ vi.mock("@/modules/agent/use-cases", () => ({
   getActiveVersion: mocks.getActiveVersion,
   getAgentVersionById: mocks.getVersion,
   resolveProviderForVersion: mocks.resolveProvider,
-  recordUsageEvent: mocks.recordUsage,
 }));
 vi.mock("@/modules/skills/use-cases", () => ({
   buildSkillsRegistryPrompt: mocks.buildSkillsPrompt,
@@ -112,7 +110,6 @@ beforeEach(() => {
   mocks.completeRun.mockResolvedValue({ status: "success" });
   mocks.failRun.mockResolvedValue(null);
   mocks.consumeDelegation.mockResolvedValue(1);
-  mocks.recordUsage.mockResolvedValue(undefined);
 });
 
 describe("agent runtime executor", () => {
@@ -152,8 +149,30 @@ describe("agent runtime executor", () => {
     expect(mocks.completeRun).toHaveBeenCalledWith(
       expect.objectContaining({ reservationTokens: 30 }),
     );
-    expect(mocks.recordUsage).toHaveBeenCalledWith(
-      expect.objectContaining({ operation: "api", status: "success" }),
+    expect(mocks.completeRun).toHaveBeenCalledWith(
+      expect.objectContaining({
+        usage: expect.objectContaining({ operation: "api" }),
+      }),
+    );
+  });
+
+  it("does not report success when atomic completion fails", async () => {
+    mocks.completeRun.mockRejectedValueOnce(new Error("usage write failed"));
+
+    await expect(
+      executeAgent({
+        workspaceId: rootAgent.workspaceId,
+        userId: rootAgent.createdById,
+        agentId: rootAgent.id,
+        prompt: "Hello",
+        trigger: "api",
+      }),
+    ).rejects.toMatchObject({ code: "AGENT_RUN_FAILED" });
+
+    expect(mocks.failRun).toHaveBeenCalledWith(
+      expect.objectContaining({
+        usage: expect.objectContaining({ operation: "api" }),
+      }),
     );
   });
 

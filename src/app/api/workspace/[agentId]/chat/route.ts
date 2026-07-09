@@ -54,6 +54,7 @@ import {
 	messageParts,
 	messages,
 	toolInvocations,
+	usageEvents,
 } from "@/server/infrastructure/db/schema";
 import { registerAiSdkDevTools } from "@/server/infrastructure/ai-sdk/devtools";
 import { getAdapter } from "@/server/infrastructure/providers";
@@ -543,6 +544,7 @@ export async function POST(
 				assistantMessage.id,
 				streamAbortController,
 			);
+			let completedRun: Awaited<ReturnType<typeof executeAgent>> | null = null;
 			const orchestrationPrompt = [
 				content,
 				ragContext
@@ -570,34 +572,42 @@ export async function POST(
 						idempotencyKey: `chat:${assistantMessage.id}`,
 						abortSignal: streamAbortController.signal,
 					});
+					completedRun = result;
+					const completedAt = new Date();
+					const encryptedText = result.text
+						? await encryptValue(result.text)
+						: null;
+					await db.transaction(async (tx) => {
+						if (encryptedText) {
+							await tx.insert(messageParts).values({
+								messageId: assistantMessage.id,
+								type: "text",
+								contentEncrypted: encryptedText,
+								sortOrder: 0,
+							});
+						}
+						await tx
+							.update(messages)
+							.set({
+								status: "completed",
+								tokenInput: result.inputTokens,
+								tokenOutput: result.outputTokens,
+								completedAt,
+							})
+							.where(eq(messages.id, assistantMessage.id));
+						await tx
+							.update(conversations)
+							.set({
+								agentId,
+								agentVersionId: version.id,
+								sidebarOrder: null,
+								updatedAt: completedAt,
+							})
+							.where(eq(conversations.id, conversation.id));
+					});
 					if (result.text) {
-						await db.insert(messageParts).values({
-							messageId: assistantMessage.id,
-							type: "text",
-							contentEncrypted: await encryptValue(result.text),
-							sortOrder: 0,
-						});
 						enqueueEvent({ type: "text", delta: result.text });
 					}
-					const completedAt = new Date();
-					await db
-						.update(messages)
-						.set({
-							status: "completed",
-							tokenInput: result.inputTokens,
-							tokenOutput: result.outputTokens,
-							completedAt,
-						})
-						.where(eq(messages.id, assistantMessage.id));
-					await db
-						.update(conversations)
-						.set({
-							agentId,
-							agentVersionId: version.id,
-							sidebarOrder: null,
-							updatedAt: completedAt,
-						})
-						.where(eq(conversations.id, conversation.id));
 					enqueueEvent({
 						type: "agent_run",
 						runId: result.runId,
@@ -617,12 +627,22 @@ export async function POST(
 					if (aborted) {
 						enqueueEvent({ type: "done", stopped: true });
 					} else {
+						if (completedRun) {
+							enqueueEvent({
+								type: "agent_run",
+								runId: completedRun.runId,
+								status: "success",
+								totalTreeTokens: completedRun.totalTreeTokens,
+							});
+						}
 						enqueueEvent({
 							type: "error",
-							error: safeToolErrorMessage(
-								error,
-								"Orchestration failed. Review the run trace and try again.",
-							),
+							error: completedRun
+								? "The agent run completed, but its response could not be saved. Open the run history to recover the result."
+								: safeToolErrorMessage(
+										error,
+										"Orchestration failed. Review the run trace and try again.",
+									),
 						});
 					}
 					logHandledError(
@@ -1072,38 +1092,40 @@ export async function POST(
 				};
 
 				const completedAt = new Date();
-				await db
-					.update(messages)
-					.set({
-						status: "completed",
-						tokenInput: totalUsage.inputTokens,
-						tokenOutput: totalUsage.outputTokens,
-						completedAt,
-					})
-					.where(eq(messages.id, assistantMessage.id));
+				await db.transaction(async (tx) => {
+					await tx
+						.update(messages)
+						.set({
+							status: "completed",
+							tokenInput: totalUsage.inputTokens,
+							tokenOutput: totalUsage.outputTokens,
+							completedAt,
+						})
+						.where(eq(messages.id, assistantMessage.id));
 
-				await db
-					.update(conversations)
-					.set({
+					await tx
+						.update(conversations)
+						.set({
+							agentId,
+							agentVersionId: version.id,
+							sidebarOrder: null,
+							updatedAt: completedAt,
+						})
+						.where(eq(conversations.id, conversation.id));
+
+					await tx.insert(usageEvents).values({
+						workspaceId: agent.workspaceId,
+						userId: actorUserId,
+						providerId: providerConfig.providerId,
+						modelId: providerConfig.modelRecordId,
 						agentId,
-						agentVersionId: version.id,
-						sidebarOrder: null,
-						updatedAt: completedAt,
-					})
-					.where(eq(conversations.id, conversation.id));
-
-				await recordUsageEvent({
-					workspaceId: agent.workspaceId,
-					userId: actorUserId,
-					providerId: providerConfig.providerId,
-					modelId: providerConfig.modelRecordId,
-					agentId,
-					conversationId: conversation.id,
-					operation: "chat",
-					inputTokens: totalUsage.inputTokens,
-					outputTokens: totalUsage.outputTokens,
-					latencyMs: Date.now() - startedAt,
-					status: "success",
+						conversationId: conversation.id,
+						operation: "chat",
+						inputTokens: totalUsage.inputTokens || null,
+						outputTokens: totalUsage.outputTokens || null,
+						latencyMs: Date.now() - startedAt,
+						status: "success",
+					});
 				});
 				logger.info("Chat stream completed", {
 					requestId,

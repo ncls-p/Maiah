@@ -33,7 +33,6 @@ import {
   getActiveVersion,
   getAgentVersionById,
   getVisibleAgentById,
-  recordUsageEvent,
   resolveProviderForVersion,
   type AgentRow,
   type AgentVersionRow,
@@ -433,9 +432,13 @@ async function executeResolvedAgent(
 
   let inputTokens = 0;
   let outputTokens = 0;
+  let usageProvider:
+    | Awaited<ReturnType<typeof resolveProviderForVersion>>
+    | undefined;
   const startedAt = Date.now();
   try {
     const provider = await resolveProviderForVersion(input.resolved.version);
+    usageProvider = provider;
     if (!provider?.modelId) {
       throw new AgentExecutionError(
         "Agent model is not configured",
@@ -571,19 +574,17 @@ async function executeResolvedAgent(
       outputTokens,
       reservationTokens:
         input.depth === 0 ? input.budget.tokensUsed : undefined,
-    });
-    await recordUsageEvent({
-      workspaceId: input.workspaceId,
-      userId: input.userId,
-      providerId: provider.providerId,
-      modelId: provider.modelRecordId,
-      agentId: input.resolved.agent.id,
-      conversationId: input.conversationId ?? undefined,
-      operation: input.trigger === "delegation" ? "delegation" : input.trigger,
-      inputTokens,
-      outputTokens,
-      latencyMs: Date.now() - startedAt,
-      status: "success",
+      usage: {
+        workspaceId: input.workspaceId,
+        userId: input.userId,
+        providerId: provider.providerId,
+        modelId: provider.modelRecordId,
+        agentId: input.resolved.agent.id,
+        conversationId: input.conversationId ?? undefined,
+        operation:
+          input.trigger === "delegation" ? "delegation" : input.trigger,
+        latencyMs: Date.now() - startedAt,
+      },
     });
     return {
       runId,
@@ -609,6 +610,17 @@ async function executeResolvedAgent(
       outputTokens,
       reservationTokens:
         input.depth === 0 ? input.budget.tokensUsed : undefined,
+      usage: {
+        workspaceId: input.workspaceId,
+        userId: input.userId,
+        providerId: usageProvider?.providerId,
+        modelId: usageProvider?.modelRecordId,
+        agentId: input.resolved.agent.id,
+        conversationId: input.conversationId ?? undefined,
+        operation:
+          input.trigger === "delegation" ? "delegation" : input.trigger,
+        latencyMs: Date.now() - startedAt,
+      },
     });
     throw error instanceof AgentExecutionError
       ? new AgentExecutionError(error.message, error.code, runId)
