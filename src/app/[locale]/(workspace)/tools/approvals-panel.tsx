@@ -16,6 +16,7 @@ import {
 import { toast } from "sonner";
 
 import { PageLoading } from "@/components/page-loading";
+import { summarizeToolInput } from "@/components/chat/tool-approval-banner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,6 +39,7 @@ interface ToolInvocation {
   toolSource: string;
   toolId: string;
   toolName: string;
+  input: unknown;
   riskLevel: string | null;
   status: string;
   latencyMs: number | null;
@@ -65,6 +67,10 @@ function isPendingApproval(invocation: ToolInvocation) {
 
 function getStatusLabel(status: string) {
   return status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function getToolDisplayName(toolName: string) {
+  return getStatusLabel(toolName);
 }
 
 function getStatusColor(status: string) {
@@ -335,6 +341,13 @@ function InvocationRow({
               {getStatusLabel(invocation.status)}
             </span>
           </div>
+
+          <p className="mt-2 text-sm leading-5 text-foreground/80">
+            {summarizeToolInput(
+              getToolDisplayName(invocation.toolName),
+              invocation.input,
+            )}
+          </p>
 
           {/* Secondary line: metadata */}
           <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">

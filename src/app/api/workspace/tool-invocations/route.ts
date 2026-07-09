@@ -2,6 +2,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { decryptValue } from "@/lib/crypto";
+import { projectToolPayloadForDisplay } from "@/modules/tool/safe-payload";
 import {
   handleRoute,
   requireWorkspacePermissionAsync,
@@ -101,7 +102,10 @@ export async function GET(req: NextRequest) {
               input = null;
             }
           }
-          return { ...invocation, input };
+          return {
+            ...invocation,
+            input: projectToolPayloadForDisplay(input),
+          };
         }),
       );
 

@@ -1,9 +1,12 @@
-export function summarizeToolInput(toolName: string, input: unknown) {
-  if (!input || typeof input !== "object") {
-    return `Run ${toolName}`;
-  }
+import { projectToolPayloadForDisplay } from "@/modules/tool/safe-payload";
 
-  const record = input as Record<string, unknown>;
+export function summarizeToolInput(toolName: string, input: unknown) {
+	const safeInput = projectToolPayloadForDisplay(input);
+	if (!safeInput || typeof safeInput !== "object") {
+		return `Run ${toolName}`;
+	}
+
+	const record = safeInput as Record<string, unknown>;
   if (typeof record.url === "string") {
     return `Access URL ${record.url}`;
   }

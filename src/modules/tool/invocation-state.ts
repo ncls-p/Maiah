@@ -5,7 +5,7 @@
  * status changes from `awaiting_approval` to `success` / `failed` / `rejected`.
  * The approve/reject endpoints update the DB row and the poller picks it up.
  */
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { decryptValue } from "@/lib/crypto";
 import { db } from "@/server/infrastructure/db";
 import { toolInvocations } from "@/server/infrastructure/db/schema";
@@ -69,7 +69,12 @@ export async function waitForApproval(
       errorMessage: "Approval timed out",
       completedAt: new Date(),
     })
-    .where(eq(toolInvocations.id, invocationId));
+    .where(
+      and(
+        eq(toolInvocations.id, invocationId),
+        eq(toolInvocations.status, "awaiting_approval"),
+      ),
+    );
 
   return { status: "failed", error: "Approval timed out" };
 }

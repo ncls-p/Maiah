@@ -18,6 +18,7 @@ import {
 	type AiHubToolApprovalPolicy,
 } from "@/modules/tool/approval-policy";
 import { waitForApproval } from "@/modules/tool/invocation-state";
+import { projectToolPayloadForDisplay } from "@/modules/tool/safe-payload";
 import { evaluateOpaToolApprovalPolicy } from "@/modules/tool/opa-approval-policy";
 import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
@@ -589,7 +590,7 @@ export async function buildBoundTools(input: {
 		input.onApprovalRequired?.({
 			invocationId: invocation.id,
 			toolName: inputArgs.toolName,
-			input: inputArgs.toolInput,
+			input: projectToolPayloadForDisplay(inputArgs.toolInput),
 		});
 
 		const approvalResult = await waitForApproval(invocation.id);

@@ -2,6 +2,7 @@ import { eq, and } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { decryptValue } from "@/lib/crypto";
+import { projectToolPayloadForDisplay } from "@/modules/tool/safe-payload";
 import {
   handleRoute,
   requireWorkspacePermissionAsync,
@@ -95,8 +96,8 @@ export async function GET(
         toolId: invocation.toolId,
         toolName: invocation.toolName,
         riskLevel: invocation.riskLevel,
-        input: inputDecrypted,
-        output: outputDecrypted,
+        input: projectToolPayloadForDisplay(inputDecrypted),
+        output: projectToolPayloadForDisplay(outputDecrypted),
         status: invocation.status,
         latencyMs: invocation.latencyMs,
         errorMessage: invocation.errorMessage,

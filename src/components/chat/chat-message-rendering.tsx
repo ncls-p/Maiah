@@ -297,17 +297,18 @@ const ToolPartCard = memo(function ToolPartCard({
   const status = useMemo(() => getToolStatus(parsed), [parsed]);
   const hasResult = parsed.output !== undefined;
   const approvalMatches = Boolean(approval);
+  const displayInput = approvalMatches ? approval?.input : parsed.input;
 
   const inputArtifact = useMemo(
-    () => htmlArtifactFromToolInput(parsed.input),
-    [parsed.input],
+    () => (approvalMatches ? null : htmlArtifactFromToolInput(parsed.input)),
+    [approvalMatches, parsed.input],
   );
   const streamingInputArtifact = useMemo(
     () =>
-      parsed.streamingInput
+      approvalMatches || parsed.streamingInput
         ? null
         : htmlArtifactFromInputText(parsed.inputText),
-    [parsed.inputText, parsed.streamingInput],
+    [approvalMatches, parsed.inputText, parsed.streamingInput],
   );
   const sandboxOutput = useMemo(
     () => codeSandboxOutputFromUnknown(parsed.output),
@@ -326,7 +327,7 @@ const ToolPartCard = memo(function ToolPartCard({
   );
   const summaryText = useMemo(() => {
     if (status === "pending") {
-      return summarizeToolInput(friendlyName, parsed.input);
+      return summarizeToolInput(friendlyName, displayInput);
     }
     if (hasResult) {
       return summarizeToolBody(parsed.toolName, parsed.output, false);
@@ -335,14 +336,14 @@ const ToolPartCard = memo(function ToolPartCard({
   }, [
     friendlyName,
     hasResult,
-    parsed.input,
+    displayInput,
     parsed.output,
     parsed.toolName,
     status,
   ]);
   const inputText = useMemo(
-    () => formatExpandedToolValue(parsed.input, open),
-    [open, parsed.input],
+    () => formatExpandedToolValue(displayInput, open),
+    [displayInput, open],
   );
   const outputText = useMemo(
     () => formatExpandedToolValue(parsed.output, open),
