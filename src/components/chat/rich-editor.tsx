@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import TurndownService from "turndown";
@@ -41,6 +42,7 @@ export function RichEditor({
   disabled,
   className,
 }: RichEditorProps) {
+  const t = useTranslations("chat.richEditor");
   const prevValue = useRef(value);
   const initialized = useRef(false);
   const turndown = useMemo(
@@ -101,7 +103,7 @@ export function RichEditor({
           className={toolbarButtonClass}
           onClick={() => editor.chain().focus().toggleBold().run()}
           disabled={disabled}
-          aria-label="Bold"
+          aria-label={t("bold")}
         >
           <BoldIcon className="size-3.5" aria-hidden="true" />
         </Button>
@@ -112,7 +114,7 @@ export function RichEditor({
           className={toolbarButtonClass}
           onClick={() => editor.chain().focus().toggleItalic().run()}
           disabled={disabled}
-          aria-label="Italic"
+          aria-label={t("italic")}
         >
           <ItalicIcon className="size-3.5" aria-hidden="true" />
         </Button>
@@ -123,7 +125,7 @@ export function RichEditor({
           className={toolbarButtonClass}
           onClick={() => editor.chain().focus().toggleStrike().run()}
           disabled={disabled}
-          aria-label="Strikethrough"
+          aria-label={t("strikethrough")}
         >
           <StrikethroughIcon className="size-3.5" aria-hidden="true" />
         </Button>
@@ -137,7 +139,7 @@ export function RichEditor({
           className={toolbarButtonClass}
           onClick={() => editor.chain().focus().toggleCode().run()}
           disabled={disabled}
-          aria-label="Inline code"
+          aria-label={t("inlineCode")}
         >
           <CodeIcon className="size-3.5" aria-hidden="true" />
         </Button>
@@ -148,7 +150,7 @@ export function RichEditor({
           className={toolbarButtonClass}
           onClick={() => editor.chain().focus().toggleBlockquote().run()}
           disabled={disabled}
-          aria-label="Blockquote"
+          aria-label={t("blockquote")}
         >
           <QuoteIcon className="size-3.5" aria-hidden="true" />
         </Button>
@@ -162,7 +164,7 @@ export function RichEditor({
           className={toolbarButtonClass}
           onClick={() => editor.chain().focus().toggleBulletList().run()}
           disabled={disabled}
-          aria-label="Bullet list"
+          aria-label={t("bulletList")}
         >
           <ListIcon className="size-3.5" aria-hidden="true" />
         </Button>
@@ -173,7 +175,7 @@ export function RichEditor({
           className={toolbarButtonClass}
           onClick={() => editor.chain().focus().toggleOrderedList().run()}
           disabled={disabled}
-          aria-label="Ordered list"
+          aria-label={t("orderedList")}
         >
           <ListOrderedIcon className="size-3.5" aria-hidden="true" />
         </Button>
@@ -191,10 +193,10 @@ export function RichEditor({
           disabled={disabled}
           onClick={onCancel}
         >
-          Annuler
+          {t("cancel")}
         </Button>
         <Button type="button" size="sm" disabled={disabled} onClick={onSave}>
-          Sauvegarder
+          {t("save")}
         </Button>
       </div>
     </div>

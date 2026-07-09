@@ -1,6 +1,7 @@
 "use client";
 
 import { BookOpenIcon, FileTextIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { Badge } from "@/components/ui/badge";
 import type { ChatCitation } from "@/components/chat/chat-types";
@@ -12,6 +13,7 @@ interface CitationBlockProps {
 }
 
 export function CitationBlock({ citations, className }: CitationBlockProps) {
+  const t = useTranslations("chat.citations");
   if (citations.length === 0) return null;
 
   return (
@@ -26,7 +28,9 @@ export function CitationBlock({ citations, className }: CitationBlockProps) {
           <div className="flex size-6 items-center justify-center rounded-md border bg-background text-muted-foreground">
             <BookOpenIcon className="size-3" aria-hidden="true" />
           </div>
-          <span className="text-xs font-semibold text-foreground">Sources</span>
+          <span className="text-xs font-semibold text-foreground">
+            {t("title")}
+          </span>
           <Badge
             variant="secondary"
             className="h-5 rounded-full px-2 text-[11px] font-medium"

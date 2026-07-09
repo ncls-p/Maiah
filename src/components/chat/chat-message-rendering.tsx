@@ -2,6 +2,8 @@
 
 import dynamic from "next/dynamic";
 import { memo, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import type * as React from "react";
 import { createPortal } from "react-dom";
 import {
@@ -106,6 +108,7 @@ function ExternalLinkSafetyModal({
   onClose,
   onConfirm,
 }: LinkSafetyModalProps) {
+  const t = useTranslations("chat.rendering");
   if (!isOpen || typeof document === "undefined") return null;
 
   return createPortal(
@@ -124,27 +127,32 @@ function ExternalLinkSafetyModal({
           id="external-link-title"
           className="text-base font-semibold text-foreground"
         >
-          Open external link?
+          {t("externalLinkTitle")}
         </h2>
         <p className="mt-2 text-muted-foreground">
-          You&apos;re about to visit an external website.
+          {t("externalLinkDescription")}
         </p>
         <p className="mt-3 break-all rounded-lg bg-muted/50 p-2 font-mono text-xs text-muted-foreground">
           {url}
         </p>
         <div className="mt-5 flex flex-wrap justify-end gap-2">
           <Button type={BUTTON_TYPE} variant={GHOST_VARIANT} onClick={onClose}>
-            Cancel
+            {t("cancel")}
           </Button>
           <Button
             type={BUTTON_TYPE}
             variant={OUTLINE_VARIANT}
-            onClick={() => void navigator.clipboard.writeText(url)}
+            onClick={() => {
+              void navigator.clipboard
+                .writeText(url)
+                .then(() => toast.success(t("linkCopied")))
+                .catch(() => toast.error(t("linkCopyFailed")));
+            }}
           >
-            Copy link
+            {t("copyLink")}
           </Button>
           <Button type={BUTTON_TYPE} onClick={onConfirm}>
-            Open link
+            {t("openLink")}
           </Button>
         </div>
       </div>
@@ -160,10 +168,12 @@ const STREAMDOWN_LINK_SAFETY: LinkSafetyConfig = {
 };
 
 function StreamingThinking() {
+  const t = useTranslations("chat.rendering");
+  const label = t("thinking");
   return (
-    <div className="streaming-thinking" aria-label="Assistant is thinking">
-      <span className="streaming-thinking__text t-shimmer" data-text="Thinking">
-        Thinking
+    <div className="streaming-thinking" aria-label={t("assistantThinking")}>
+      <span className="streaming-thinking__text t-shimmer" data-text={label}>
+        {label}
       </span>
       <span className="streaming-thinking__dots" aria-hidden="true">
         <span />
@@ -175,11 +185,13 @@ function StreamingThinking() {
 }
 
 export function StreamingStatus() {
+  const t = useTranslations("chat.rendering");
+  const label = t("generating");
   return (
-    <span className="streaming-status" aria-label="Assistant is generating">
+    <span className="streaming-status" aria-label={t("assistantGenerating")}>
       <span className="streaming-status__dot" aria-hidden="true" />
-      <span className="t-shimmer" data-text="Generating">
-        Generating
+      <span className="t-shimmer" data-text={label}>
+        {label}
       </span>
     </span>
   );
@@ -194,6 +206,7 @@ function PendingApprovalCard({
   onApprove?: (approval: PendingToolApproval) => void;
   onReject?: (approval: PendingToolApproval) => void;
 }) {
+  const t = useTranslations("chat.rendering");
   const friendlyName = formatToolName(pendingApproval.toolName);
   const summary = summarizeToolInput(friendlyName, pendingApproval.input);
 
@@ -205,7 +218,9 @@ function PendingApprovalCard({
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-medium text-foreground">Needs approval</span>
+            <span className="font-medium text-foreground">
+              {t("needsApproval")}
+            </span>
             <span className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-[11px] leading-4 text-muted-foreground">
               {friendlyName}
             </span>
@@ -215,9 +230,7 @@ function PendingApprovalCard({
       </div>
       <div className="border-t border-warning/25 bg-warning/10 px-3 py-2.5">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xs text-foreground">
-            The assistant is waiting before running this action.
-          </p>
+          <p className="text-xs text-foreground">{t("approvalWaiting")}</p>
           <div className="flex shrink-0 justify-end gap-2">
             <Button
               type={BUTTON_TYPE}
@@ -227,7 +240,7 @@ function PendingApprovalCard({
               onClick={() => onReject?.(pendingApproval)}
             >
               <XIcon data-icon="inline-start" aria-hidden="true" />
-              Reject
+              {t("reject")}
             </Button>
             <Button
               type={BUTTON_TYPE}
@@ -236,7 +249,7 @@ function PendingApprovalCard({
               onClick={() => onApprove?.(pendingApproval)}
             >
               <CheckIcon data-icon="inline-start" aria-hidden="true" />
-              Approve
+              {t("approve")}
             </Button>
           </div>
         </div>

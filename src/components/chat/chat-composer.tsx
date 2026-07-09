@@ -13,6 +13,7 @@ import {
   XIcon,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import {
@@ -106,16 +107,26 @@ function filesFromClipboard(data: DataTransfer) {
     .map(pastedFileName);
 }
 
-function attachmentSubtitle(attachment: ChatAttachment) {
+function attachmentSubtitle(
+  attachment: ChatAttachment,
+  locale: string,
+  t: ReturnType<typeof useTranslations<"chat.composer">>,
+) {
   if (attachment.kind === "chat_image") {
     return `${attachment.mimeType.replace("image/", "").toUpperCase()} · ${formatBytes(attachment.size)}`;
   }
   if (attachment.extractionStatus === "unreadable") {
-    return `Stored safely · ${formatBytes(attachment.size)}`;
+    return t("storedSafely", { size: formatBytes(attachment.size) });
   }
   const readLabel =
-    attachment.extractionStatus === "truncated" ? "Partially read" : "Readable";
-  return `${readLabel} · ${attachment.extractedTextChars.toLocaleString()} chars · ${formatBytes(attachment.size)}`;
+    attachment.extractionStatus === "truncated"
+      ? t("partiallyRead")
+      : t("readable");
+  return t("fileSummary", {
+    status: readLabel,
+    count: attachment.extractedTextChars.toLocaleString(locale),
+    size: formatBytes(attachment.size),
+  });
 }
 
 function AttachmentPreview({
@@ -125,6 +136,9 @@ function AttachmentPreview({
   attachment: ChatAttachment;
   onRemove?: (attachmentId: string) => void;
 }) {
+  const locale = useLocale();
+  const t = useTranslations("chat.composer");
+  const subtitle = attachmentSubtitle(attachment, locale, t);
   const canPreview =
     attachment.kind === "chat_file" && attachment.extractedTextChars > 0;
   const preview = useFilePreview({
@@ -147,15 +161,13 @@ function AttachmentPreview({
         />
         <AttachmentContent>
           <AttachmentTitle>{attachment.fileName}</AttachmentTitle>
-          <AttachmentDescription>
-            {attachmentSubtitle(attachment)}
-          </AttachmentDescription>
+          <AttachmentDescription>{subtitle}</AttachmentDescription>
         </AttachmentContent>
         <AttachmentActions>
           <AttachmentAction
             type="button"
             variant="secondary"
-            aria-label={`Remove ${attachment.fileName}`}
+            aria-label={t("removeFile", { name: attachment.fileName })}
             onClick={() => onRemove?.(attachment.id)}
           >
             <XIcon aria-hidden="true" />
@@ -173,15 +185,13 @@ function AttachmentPreview({
         </AttachmentMedia>
         <AttachmentContent>
           <AttachmentTitle>{attachment.fileName}</AttachmentTitle>
-          <AttachmentDescription>
-            {attachmentSubtitle(attachment)}
-          </AttachmentDescription>
+          <AttachmentDescription>{subtitle}</AttachmentDescription>
         </AttachmentContent>
         <AttachmentActions>
           {canPreview ? (
             <AttachmentAction
               type="button"
-              aria-label={`View extracted text for ${attachment.fileName}`}
+              aria-label={t("viewExtractedText", { name: attachment.fileName })}
               onClick={preview.openPreview}
             >
               <Maximize2Icon aria-hidden="true" />
@@ -189,7 +199,7 @@ function AttachmentPreview({
           ) : null}
           <AttachmentAction
             type="button"
-            aria-label={`Remove ${attachment.fileName}`}
+            aria-label={t("removeFile", { name: attachment.fileName })}
             onClick={() => onRemove?.(attachment.id)}
           >
             <XIcon aria-hidden="true" />
@@ -201,7 +211,7 @@ function AttachmentPreview({
         onOpenChange={preview.setPreviewOpen}
         fileName={attachment.fileName}
         url={attachment.url}
-        subtitle={attachmentSubtitle(attachment)}
+        subtitle={subtitle}
         previewText={preview.previewText}
         previewError={preview.previewError}
         loadingPreview={preview.loadingPreview}
@@ -225,6 +235,7 @@ export function ChatComposer({
   attachments = [],
   onRemoveAttachment,
 }: ChatComposerProps) {
+  const t = useTranslations("chat.composer");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingAttachment, setUploadingAttachment] = useState(false);
@@ -243,7 +254,7 @@ export function ChatComposer({
     if (uploadedFiles.length === 0) return;
     if (!canChat) return;
     if (sending) {
-      toast.error("Wait for the current response before attaching files.");
+      toast.error(t("waitForResponse"));
       return;
     }
     setUploadingAttachment(true);
@@ -254,7 +265,7 @@ export function ChatComposer({
       const codeFiles = uploadedFiles.filter(isDirectCodeFile);
       if (zipFiles.length > 0) {
         if (uploadedFiles.length > 1) {
-          toast.error("Upload one ZIP or attach other files separately.");
+          toast.error(t("singleZip"));
           return;
         }
         await onUploadCodeWorkspace?.(zipFiles);
@@ -268,13 +279,11 @@ export function ChatComposer({
         return;
       }
       if (!onUploadChatAttachment) {
-        toast.error("File attachments are not available for this chat.");
+        toast.error(t("unavailable"));
         return;
       }
       if (attachments.length + uploadedFiles.length > maxChatAttachments) {
-        toast.error(
-          `You can attach up to ${maxChatAttachments} files per message.`,
-        );
+        toast.error(t("limit", { count: maxChatAttachments }));
         return;
       }
       for (const file of uploadedFiles) {
@@ -312,21 +321,21 @@ export function ChatComposer({
             <div key={message.id} className="rounded-xl border bg-card p-2">
               <div className="mb-1.5 flex items-center justify-between gap-2 px-1">
                 <span className="text-[11px] font-medium text-muted-foreground">
-                  Queued message {index + 1}
+                  {t("queuedMessage", { count: index + 1 })}
                 </span>
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
                   className="size-6 rounded-md text-muted-foreground hover:text-foreground"
-                  aria-label="Cancel queued message"
+                  aria-label={t("cancelQueued")}
                   onClick={() => onQueuedMessageCancel?.(message.id)}
                 >
                   <XIcon className="size-3.5" aria-hidden="true" />
                 </Button>
               </div>
               <Textarea
-                aria-label={`Queued message ${index + 1}`}
+                aria-label={t("queuedMessage", { count: index + 1 })}
                 value={message.content}
                 onChange={(event) =>
                   onQueuedMessageChange?.(message.id, event.target.value)
@@ -364,7 +373,7 @@ export function ChatComposer({
               size="icon"
               variant="ghost"
               className="size-8 shrink-0 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground sm:size-9"
-              aria-label="Upload files"
+              aria-label={t("uploadFiles")}
               disabled={uploadingAttachment || sending || !canChat}
               onClick={() => fileInputRef.current?.click()}
             >
@@ -380,7 +389,7 @@ export function ChatComposer({
 
             <Textarea
               ref={textareaRef}
-              aria-label="Message"
+              aria-label={t("messageLabel")}
               name="message"
               autoComplete="off"
               value={input}
@@ -395,9 +404,9 @@ export function ChatComposer({
               placeholder={
                 canChat
                   ? sending
-                    ? "Queue your next message…"
-                    : "Message, paste images, or attach files…"
-                  : "Finish setup before chatting…"
+                    ? t("queuePlaceholder")
+                    : t("messagePlaceholder")
+                  : t("setupPlaceholder")
               }
               disabled={!canChat}
               rows={1}
@@ -408,7 +417,7 @@ export function ChatComposer({
               type="submit"
               size="icon"
               disabled={!canChat || (!input.trim() && attachments.length === 0)}
-              aria-label={sending ? "Queue message" : "Send message"}
+              aria-label={sending ? t("queueMessage") : t("sendMessage")}
               className={cn(
                 "size-9 shrink-0 rounded-lg transition-colors sm:size-10 sm:rounded-xl",
                 canChat && (input.trim() || attachments.length > 0)
@@ -423,7 +432,7 @@ export function ChatComposer({
               <Button
                 type="button"
                 size="icon"
-                aria-label="Stop generation"
+                aria-label={t("stopGeneration")}
                 className="size-9 shrink-0 rounded-lg bg-destructive text-destructive-foreground transition-colors hover:bg-destructive/90 sm:size-10 sm:rounded-xl"
                 onClick={onStop}
               >
@@ -440,27 +449,24 @@ export function ChatComposer({
         <div className="mt-2 flex items-center justify-between px-1">
           {!canChat ? (
             <p className="text-center text-xs text-muted-foreground/70 animate-in-fade">
-              This assistant needs a provider and model.{" "}
+              {t("needsSetup")}{" "}
               <Link
                 href="/agents"
                 className="font-medium underline underline-offset-2 transition-colors hover:text-primary"
               >
-                Configure assistant
+                {t("configureAssistant")}
               </Link>
             </p>
           ) : (
             <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-              <span>
-                {sending
-                  ? "Enter queues · Shift+Enter adds a line"
-                  : "Enter sends · Shift+Enter adds a line · paste images"}
-              </span>
+              <span>{sending ? t("queueHint") : t("sendHint")}</span>
               <span className="hidden items-center gap-1 sm:inline-flex">
                 <FileArchiveIcon className="size-3" aria-hidden="true" />{" "}
-                ZIP/code
-                <ImageIcon className="size-3" aria-hidden="true" /> Images
+                {t("codeFiles")}
+                <ImageIcon className="size-3" aria-hidden="true" />{" "}
+                {t("images")}
                 <FileIcon className="size-3" aria-hidden="true" />{" "}
-                PDF/Word/PPTX/MD
+                {t("documents")}
               </span>
             </p>
           )}
