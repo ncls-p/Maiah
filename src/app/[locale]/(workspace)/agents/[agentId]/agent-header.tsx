@@ -9,6 +9,7 @@ import {
   ImagePlusIcon,
   MessageCircleIcon,
   MoreHorizontalIcon,
+  NetworkIcon,
   Trash2Icon,
   XIcon,
 } from "lucide-react";
@@ -153,6 +154,12 @@ function AgentHeaderTitle({
             {t("statusMissingModel")}
           </Badge>
         )}
+        {agent?.kind === "orchestrator" ? (
+          <Badge variant="secondary" className="gap-1">
+            <NetworkIcon className="size-3" aria-hidden="true" />
+            {t("list.kindOrchestrator")}
+          </Badge>
+        ) : null}
       </div>
       {hasModel ? (
         <p className="mt-1 text-sm text-muted-foreground">
@@ -236,6 +243,7 @@ export function AgentHeader({
   form,
   totalEnabledTools,
   enabledMcpCount,
+  delegationCount,
   selectedKnowledgeIds,
   canEdit,
   onLogoChangeAction: onLogoChange,
@@ -248,6 +256,7 @@ export function AgentHeader({
   form: { providerId: string; modelId: string; name: string };
   totalEnabledTools: number;
   enabledMcpCount: number;
+  delegationCount: number;
   selectedKnowledgeIds: string[];
   canEdit: boolean;
   onLogoChangeAction: (logoUrl: string | null) => void;
@@ -295,7 +304,16 @@ export function AgentHeader({
           label={t("tabs.knowledge")}
           value={selectedKnowledgeIds.length}
         />
-        <MetricCell label="MCP" value={enabledMcpCount} />
+        <MetricCell
+          label={
+            agent?.kind === "orchestrator"
+              ? t("orchestration.specialistsTitle")
+              : "MCP"
+          }
+          value={
+            agent?.kind === "orchestrator" ? delegationCount : enabledMcpCount
+          }
+        />
       </div>
     </div>
   );
