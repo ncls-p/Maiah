@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PlusIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import { AdvancedSection } from "@/components/ui/advanced-section";
@@ -35,12 +36,14 @@ import type {
 } from "./mcp-server-manager/types";
 
 export function McpServerManager() {
+	const t = useTranslations("mcp.serverManager");
 	const { workspaceId } = useWorkspace();
 	const [servers, setServers] = useState<McpServer[]>([]);
 	const [toolsByServer, setToolsByServer] = useState<Record<string, McpTool[]>>(
 		{},
 	);
 	const [loading, setLoading] = useState(true);
+	const [loadError, setLoadError] = useState(false);
 	const [busy, setBusy] = useState(false);
 	const [search, setSearch] = useState("");
 	const [filterStatus, setFilterStatus] = useState<ServerStatusFilter>("all");
@@ -65,6 +68,7 @@ export function McpServerManager() {
 	const load = useCallback(async () => {
 		if (!workspaceId) return;
 		setLoading(true);
+		setLoadError(false);
 		try {
 			const permissions = await fetchWorkspacePermissions(workspaceId);
 			setCanManageTenantGlobals(permissions.canManageTenantGlobals);
@@ -72,7 +76,7 @@ export function McpServerManager() {
 			const res = await fetch(
 				`/api/workspace/mcp-servers?workspaceId=${workspaceId}`,
 			);
-			if (!res.ok) throw new Error("Failed to load MCP servers");
+			if (!res.ok) throw new Error(t("loadFailed"));
 			const data = (await res.json()) as McpServer[];
 			setServers(data);
 			const entries = await Promise.all(
@@ -80,19 +84,19 @@ export function McpServerManager() {
 					const toolRes = await fetch(
 						`/api/workspace/mcp-servers/${server.id}/tools?workspaceId=${workspaceId}`,
 					);
-					return [server.id, toolRes.ok ? await toolRes.json() : []] as const;
+					if (!toolRes.ok) throw new Error(t("loadFailed"));
+					return [server.id, await toolRes.json()] as const;
 				}),
 			);
 			setToolsByServer(Object.fromEntries(entries));
 		} catch (error) {
-			toast.error(
-				error instanceof Error ? error.message : "Failed to load MCP servers",
-			);
+			setLoadError(true);
+			toast.error(error instanceof Error ? error.message : t("loadFailed"));
 			return;
 		} finally {
 			setLoading(false);
 		}
-	}, [workspaceId]);
+	}, [t, workspaceId]);
 
 	useEffect(() => {
 		// eslint-disable-next-line react-hooks/set-state-in-effect -- async MCP bootstrap
@@ -129,7 +133,7 @@ export function McpServerManager() {
 			if (!res.ok) {
 				throw new Error(
 					((await res.json().catch(() => ({}))) as { error?: string }).error ||
-						"Failed to load MCP server",
+						t("loadServerFailed"),
 				);
 			}
 			const data = (await res.json()) as McpServer;
@@ -138,7 +142,7 @@ export function McpServerManager() {
 		} catch (error) {
 			setEditServer(null);
 			toast.error(
-				error instanceof Error ? error.message : "Failed to load MCP server",
+				error instanceof Error ? error.message : t("loadServerFailed"),
 			);
 			return;
 		} finally {
@@ -153,7 +157,7 @@ export function McpServerManager() {
 	}
 
 	async function createServer() {
-		if (!workspaceId || !form.name.trim()) return;
+		if (!workspaceId || !canManageMcpServers || !form.name.trim()) return;
 		setBusy(true);
 		try {
 			const res = await fetch("/api/workspace/mcp-servers", {
@@ -172,16 +176,15 @@ export function McpServerManager() {
 					env: buildEnv(form),
 				}),
 			});
-			if (!res.ok) throw new Error((await res.json()).error || "Failed");
+			if (!res.ok)
+				throw new Error((await res.json()).error || t("createFailed"));
 			setForm(emptyForm);
 			setShowCreate(false);
 			setShowAdvancedCreate(false);
-			toast.success("MCP server added");
+			toast.success(t("created"));
 			await load();
 		} catch (error) {
-			toast.error(
-				error instanceof Error ? error.message : "Failed to create server",
-			);
+			toast.error(error instanceof Error ? error.message : t("createFailed"));
 			return;
 		} finally {
 			setBusy(false);
@@ -209,14 +212,13 @@ export function McpServerManager() {
 					env: buildEnv(editForm),
 				}),
 			});
-			if (!res.ok) throw new Error((await res.json()).error || "Failed");
+			if (!res.ok)
+				throw new Error((await res.json()).error || t("updateFailed"));
 			closeEdit();
-			toast.success("MCP server updated");
+			toast.success(t("updated"));
 			await load();
 		} catch (error) {
-			toast.error(
-				error instanceof Error ? error.message : "Failed to update server",
-			);
+			toast.error(error instanceof Error ? error.message : t("updateFailed"));
 			return;
 		} finally {
 			setBusy(false);
@@ -231,14 +233,12 @@ export function McpServerManager() {
 				`/api/workspace/mcp-servers/${serverId}?workspaceId=${workspaceId}`,
 				{ method: "DELETE" },
 			);
-			if (!res.ok) throw new Error("Failed to remove");
+			if (!res.ok) throw new Error(t("removeFailed"));
 			setDeleteId(null);
-			toast.success("MCP server removed");
+			toast.success(t("removed"));
 			await load();
 		} catch (error) {
-			toast.error(
-				error instanceof Error ? error.message : "Failed to remove server",
-			);
+			toast.error(error instanceof Error ? error.message : t("removeFailed"));
 			return;
 		} finally {
 			setBusy(false);
@@ -261,15 +261,15 @@ export function McpServerManager() {
 			if (res.ok) {
 				toast.success(
 					data.discovered
-						? `Synced ${data.discovered} tools`
-						: "Sync completed — no tools returned",
+						? t("syncSuccess", { count: data.discovered })
+						: t("syncEmpty"),
 				);
 				await load();
 			} else {
-				toast.error(data.error || "Sync failed");
+				toast.error(data.error || t("syncFailed"));
 			}
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : "Sync failed");
+			toast.error(error instanceof Error ? error.message : t("syncFailed"));
 		} finally {
 			setBusy(false);
 		}
@@ -277,31 +277,35 @@ export function McpServerManager() {
 
 	async function test(serverId: string) {
 		if (!workspaceId) return;
-		const res = await fetch(
-			`/api/workspace/mcp-servers/${serverId}/test?workspaceId=${workspaceId}`,
-			{ method: "POST" },
-		);
-		const data = await res.json().catch(() => ({}));
-		if (res.ok) {
-			toast.success(data.message || "Connection OK");
+		try {
+			const res = await fetch(
+				`/api/workspace/mcp-servers/${serverId}/test?workspaceId=${workspaceId}`,
+				{ method: "POST" },
+			);
+			const data = await res.json().catch(() => ({}));
+			if (!res.ok) throw new Error(data.error || t("connectionFailed"));
+			toast.success(data.message || t("connectionOk"));
 			await load();
-		} else {
-			toast.error(data.error || "Connection failed");
+		} catch (error) {
+			toast.error(
+				error instanceof Error ? error.message : t("connectionFailed"),
+			);
 		}
 	}
 
 	async function patchServer(server: McpServer, body: Record<string, unknown>) {
 		if (!workspaceId || !server.canEdit) return;
-		const res = await fetch(`/api/workspace/mcp-servers/${server.id}`, {
-			method: "PATCH",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ workspaceId, ...body }),
-		});
-		if (!res.ok) {
-			toast.error("Unable to update server");
-			return;
+		try {
+			const res = await fetch(`/api/workspace/mcp-servers/${server.id}`, {
+				method: "PATCH",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ workspaceId, ...body }),
+			});
+			if (!res.ok) throw new Error(t("updateFailed"));
+			await load();
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : t("updateFailed"));
 		}
-		await load();
 	}
 
 	async function patchTool(
@@ -310,19 +314,22 @@ export function McpServerManager() {
 		body: Record<string, unknown>,
 	) {
 		if (!workspaceId) return;
-		const res = await fetch(
-			`/api/workspace/mcp-servers/${serverId}/tools/${toolId}`,
-			{
-				method: "PATCH",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ workspaceId, ...body }),
-			},
-		);
-		if (!res.ok) {
-			toast.error("Unable to update tool");
-			return;
+		try {
+			const res = await fetch(
+				`/api/workspace/mcp-servers/${serverId}/tools/${toolId}`,
+				{
+					method: "PATCH",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ workspaceId, ...body }),
+				},
+			);
+			if (!res.ok) throw new Error(t("updateToolFailed"));
+			await load();
+		} catch (error) {
+			toast.error(
+				error instanceof Error ? error.message : t("updateToolFailed"),
+			);
 		}
-		await load();
 	}
 
 	return (
@@ -331,20 +338,24 @@ export function McpServerManager() {
 				<div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 					<div>
 						<h2 className="text-xl font-semibold tracking-tight">
-							MCP Servers
+							{t("title")}
 						</h2>
 						<p className="mt-1 text-sm text-muted-foreground">
-							Connect external MCP servers so your agents can use their tools.
+							{t("description")}
 						</p>
 					</div>
-					<Button size="sm" onClick={() => setShowCreate(true)}>
+					<Button
+						size="sm"
+						disabled={loading || loadError || !canManageMcpServers}
+						onClick={() => setShowCreate(true)}
+					>
 						<PlusIcon className="size-4" aria-hidden="true" />
-						Add server
+						{t("addServer")}
 					</Button>
 				</div>
 				<AdvancedSection
-					label="Server health"
-					hint="Status, enabled tools, and sync details"
+					label={t("serverHealth")}
+					hint={t("serverHealthHint")}
 					storageKey="advanced:mcp-health"
 					className="mt-5 border-border/50 bg-muted/20"
 				>
@@ -352,62 +363,85 @@ export function McpServerManager() {
 				</AdvancedSection>
 			</div>
 
-			<ToolConnectionsPanel
-				workspaceId={workspaceId}
-				servers={servers}
-				toolsByServer={toolsByServer}
-				canManageMcpServers={canManageMcpServers}
-				canManageWorkspaceConnections={canManageTenantGlobals}
-				onSyncServerAction={(serverId) => sync(serverId)}
-			/>
+			{loadError ? (
+				<div
+					className="rounded-xl border border-destructive/25 bg-destructive/5 p-4"
+					role="alert"
+				>
+					<p className="text-sm font-medium">{t("loadFailed")}</p>
+					<Button
+						type="button"
+						variant="outline"
+						size="sm"
+						className="mt-3"
+						onClick={() => void load()}
+					>
+						{t("retry")}
+					</Button>
+				</div>
+			) : null}
 
-			<ServerList
-				servers={servers}
-				filteredServers={filteredServers}
-				toolsByServer={toolsByServer}
-				loading={loading}
-				search={search}
-				filterStatus={filterStatus}
-				expandedServers={expandedServers}
-				toolSearch={toolSearch}
-				onSearchChangeAction={setSearch}
-				onFilterChangeAction={setFilterStatus}
-				onAddServerAction={() => setShowCreate(true)}
-				onExpandedServersChangeAction={setExpandedServers}
-				onToolSearchChangeAction={setToolSearch}
-				onEditServerAction={(server) => void openEdit(server)}
-				onDeleteServerAction={setDeleteId}
-				onTestServerAction={(serverId) => void test(serverId)}
-				onSyncServerAction={(serverId) => void sync(serverId)}
-				onShareServerAction={(server) =>
-					setShareResource({
-						kind: "mcp_server",
-						id: server.id,
-						name: server.name,
-						description: null,
-					})
-				}
-				onShareToolAction={(server, tool) =>
-					setShareResource({
-						kind: "mcp_tool",
-						id: tool.id,
-						name: `${server.name} — ${tool.name}`,
-						description: tool.description,
-					})
-				}
-				onToggleEnabledAction={(server, enabled) =>
-					void patchServer(server, { enabled })
-				}
-				onToggleServerApprovalAction={(server, requireApproval) =>
-					void patchServer(server, { requireApproval })
-				}
-				onToggleToolAction={(serverId, toolId, enabled) =>
-					void patchTool(serverId, toolId, { enabled })
-				}
-				onToggleToolActionApproval={(serverId, toolId, requireApproval) =>
-					void patchTool(serverId, toolId, { requireApproval })
-				}
-			/>
+			{!loadError ? (
+				<ToolConnectionsPanel
+					workspaceId={workspaceId}
+					servers={servers}
+					toolsByServer={toolsByServer}
+					canManageMcpServers={canManageMcpServers}
+					canManageWorkspaceConnections={canManageTenantGlobals}
+					onSyncServerAction={(serverId) => sync(serverId)}
+				/>
+			) : null}
+
+			{!loadError ? (
+				<ServerList
+					canManageServers={canManageMcpServers}
+					servers={servers}
+					filteredServers={filteredServers}
+					toolsByServer={toolsByServer}
+					loading={loading}
+					search={search}
+					filterStatus={filterStatus}
+					expandedServers={expandedServers}
+					toolSearch={toolSearch}
+					onSearchChangeAction={setSearch}
+					onFilterChangeAction={setFilterStatus}
+					onAddServerAction={() => setShowCreate(true)}
+					onExpandedServersChangeAction={setExpandedServers}
+					onToolSearchChangeAction={setToolSearch}
+					onEditServerAction={(server) => void openEdit(server)}
+					onDeleteServerAction={setDeleteId}
+					onTestServerAction={(serverId) => void test(serverId)}
+					onSyncServerAction={(serverId) => void sync(serverId)}
+					onShareServerAction={(server) =>
+						setShareResource({
+							kind: "mcp_server",
+							id: server.id,
+							name: server.name,
+							description: null,
+						})
+					}
+					onShareToolAction={(server, tool) =>
+						setShareResource({
+							kind: "mcp_tool",
+							id: tool.id,
+							name: `${server.name} — ${tool.name}`,
+							description: tool.description,
+						})
+					}
+					onToggleEnabledAction={(server, enabled) =>
+						void patchServer(server, { enabled })
+					}
+					onToggleServerApprovalAction={(server, requireApproval) =>
+						void patchServer(server, { requireApproval })
+					}
+					onToggleToolAction={(serverId, toolId, enabled) =>
+						void patchTool(serverId, toolId, { enabled })
+					}
+					onToggleToolActionApproval={(serverId, toolId, requireApproval) =>
+						void patchTool(serverId, toolId, { requireApproval })
+					}
+				/>
+			) : null}
 
 			<CreateServerDialog
 				open={showCreate}
@@ -434,6 +468,7 @@ export function McpServerManager() {
 			/>
 			<DeleteServerDialog
 				deleteId={deleteId}
+				busy={busy}
 				onClose={() => setDeleteId(null)}
 				onDelete={(id) => void removeServer(id)}
 			/>

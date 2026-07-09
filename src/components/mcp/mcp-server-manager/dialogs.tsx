@@ -1,4 +1,5 @@
 import { Loader2, PlusIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import {
 	AlertDialog,
@@ -60,6 +61,7 @@ export function CreateServerDialog({
 	onOpenChange: (open: boolean) => void;
 	onCreate: () => void;
 }) {
+	const t = useTranslations("mcp.serverManager");
 	function close() {
 		onOpenChange(false);
 		setForm(emptyForm);
@@ -75,10 +77,8 @@ export function CreateServerDialog({
 		>
 			<DialogContent className="max-h-[calc(100svh-2rem)] max-w-lg overflow-x-hidden overflow-y-auto">
 				<DialogHeader>
-					<DialogTitle>Add MCP server</DialogTitle>
-					<DialogDescription>
-						Connect an external MCP server so your agents can use its tools.
-					</DialogDescription>
+					<DialogTitle>{t("addTitle")}</DialogTitle>
+					<DialogDescription>{t("addDescription")}</DialogDescription>
 				</DialogHeader>
 				<ServerFormFields form={form} setForm={setForm} />
 				{canManageGlobal ? (
@@ -96,11 +96,11 @@ export function CreateServerDialog({
 					form={form}
 					setForm={setForm}
 					prefix="mcp-create"
-					placeholder="Use these only when the server documentation requires multiple headers or custom environment variables."
+					placeholder={t("advancedCreatePlaceholder")}
 				/>
 				<DialogFooter>
 					<Button variant="outline" onClick={close}>
-						Cancel
+						{t("cancel")}
 					</Button>
 					<Button disabled={busy || !form.name.trim()} onClick={onCreate}>
 						{busy ? (
@@ -108,7 +108,7 @@ export function CreateServerDialog({
 						) : (
 							<PlusIcon className="size-4" aria-hidden="true" />
 						)}
-						Add Server
+						{t("addAction")}
 					</Button>
 				</DialogFooter>
 			</DialogContent>
@@ -117,21 +117,22 @@ export function CreateServerDialog({
 }
 
 function ServerFormFields({ form, setForm }: Omit<ServerDialogProps, "busy">) {
+	const t = useTranslations("mcp.serverManager");
 	return (
 		<div className="grid gap-4">
 			<div className="grid gap-2">
-				<Label htmlFor="mcp-name">Name</Label>
+				<Label htmlFor="mcp-name">{t("name")}</Label>
 				<Input
 					id="mcp-name"
 					autoComplete="off"
 					value={form.name}
 					onChange={(e) => setForm({ ...form, name: e.target.value })}
-					placeholder="Company tools…"
+					placeholder={t("namePlaceholder")}
 				/>
 			</div>
 			{form.transport === "stdio" ? (
 				<div className="rounded-lg border border-border/70 bg-muted/20 p-3 text-xs text-muted-foreground">
-					Local command mode is enabled in Advanced options.
+					{t("localModeHint")}
 				</div>
 			) : (
 				<TransportTargetFields form={form} setForm={setForm} prefix="mcp" />
@@ -145,6 +146,7 @@ function GlobalScopeField({
 	setForm,
 	prefix,
 }: Omit<ServerDialogProps, "busy"> & { prefix: string }) {
+	const t = useTranslations("mcp.serverManager");
 	return (
 		<div className="flex items-start gap-3 rounded-lg border border-border/70 bg-muted/20 p-3">
 			<Checkbox
@@ -155,10 +157,9 @@ function GlobalScopeField({
 				}
 			/>
 			<div className="grid gap-1.5 leading-none">
-				<Label htmlFor={`${prefix}-global`}>Make visible to everyone</Label>
+				<Label htmlFor={`${prefix}-global`}>{t("globalLabel")}</Label>
 				<p className="text-xs text-muted-foreground">
-					Admin-only. Leave unchecked to keep this MCP server scoped to your
-					account.
+					{t("globalDescription")}
 				</p>
 			</div>
 		</div>
@@ -170,11 +171,12 @@ function TransportTargetFields({
 	setForm,
 	prefix,
 }: Omit<ServerDialogProps, "busy"> & { prefix: string }) {
+	const t = useTranslations("mcp.serverManager");
 	if (form.transport === "stdio") {
 		return (
 			<>
 				<div className="grid gap-2">
-					<Label htmlFor={`${prefix}-command`}>Command</Label>
+					<Label htmlFor={`${prefix}-command`}>{t("command")}</Label>
 					<Input
 						id={`${prefix}-command`}
 						autoComplete="off"
@@ -184,7 +186,7 @@ function TransportTargetFields({
 					/>
 				</div>
 				<div className="grid gap-2">
-					<Label htmlFor={`${prefix}-args`}>Args (one per line)</Label>
+					<Label htmlFor={`${prefix}-args`}>{t("argsOnePerLine")}</Label>
 					<Textarea
 						id={`${prefix}-args`}
 						autoComplete="off"
@@ -199,7 +201,7 @@ function TransportTargetFields({
 
 	return (
 		<div className="grid gap-2">
-			<Label htmlFor={`${prefix}-url`}>Server URL</Label>
+			<Label htmlFor={`${prefix}-url`}>{t("serverUrl")}</Label>
 			<Input
 				id={`${prefix}-url`}
 				type="url"
@@ -221,11 +223,12 @@ function ConnectionFields({
 	prefix: string;
 	showTransportSelector: boolean;
 }) {
+	const t = useTranslations("mcp.serverManager");
 	return (
 		<div className="grid min-w-0 gap-4">
 			{showTransportSelector ? (
 				<div className="grid min-w-0 gap-2">
-					<Label htmlFor={`${prefix}-transport`}>Connection mode</Label>
+					<Label htmlFor={`${prefix}-transport`}>{t("connectionMode")}</Label>
 					<Select
 						value={form.transport}
 						onValueChange={(value) =>
@@ -236,9 +239,9 @@ function ConnectionFields({
 							<SelectValue />
 						</SelectTrigger>
 						<SelectContent>
-							<SelectItem value="streamable-http">HTTP server</SelectItem>
-							<SelectItem value="sse">SSE server</SelectItem>
-							<SelectItem value="stdio">Local command</SelectItem>
+							<SelectItem value="streamable-http">{t("httpServer")}</SelectItem>
+							<SelectItem value="sse">{t("sseServer")}</SelectItem>
+							<SelectItem value="stdio">{t("localCommand")}</SelectItem>
 						</SelectContent>
 					</Select>
 				</div>
@@ -267,6 +270,7 @@ export function EditServerDialog({
 	onClose: () => void;
 	onSave: () => void;
 }) {
+	const t = useTranslations("mcp.serverManager");
 	const fieldsDisabled = busy || loading;
 
 	return (
@@ -278,26 +282,25 @@ export function EditServerDialog({
 		>
 			<DialogContent className="max-h-[calc(100svh-2rem)] max-w-lg overflow-x-hidden overflow-y-auto">
 				<DialogHeader className="min-w-0">
-					<DialogTitle>Edit MCP server</DialogTitle>
+					<DialogTitle>{t("editTitle")}</DialogTitle>
 					<DialogDescription>
-						Update the configuration for{" "}
-						<span className="font-medium">{server?.name}</span>.
+						{t("editDescription", { name: server?.name ?? "" })}
 					</DialogDescription>
 					{server?.hasHeaders || server?.hasEnv ? (
 						<Badge variant="secondary" className="w-fit">
-							Credentials configurés (valeurs masquées)
+							{t("credentialsConfigured")}
 						</Badge>
 					) : null}
 				</DialogHeader>
 				{loading ? (
 					<div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
 						<Loader2 className="size-4 animate-spin" aria-hidden="true" />
-						Loading configuration…
+						{t("loadingConfiguration")}
 					</div>
 				) : (
 					<div className="grid min-w-0 gap-4">
 						<div className="grid min-w-0 gap-2">
-							<Label htmlFor="mcp-edit-name">Name</Label>
+							<Label htmlFor="mcp-edit-name">{t("name")}</Label>
 							<Input
 								id="mcp-edit-name"
 								autoComplete="off"
@@ -332,17 +335,17 @@ export function EditServerDialog({
 							form={form}
 							setForm={setForm}
 							prefix="mcp-edit"
-							placeholder="Leave these empty to keep the existing secret configuration."
+							placeholder={t("advancedEditPlaceholder")}
 							showConnectionMode={false}
 						/>
 					</div>
 				)}
 				<DialogFooter className="overflow-hidden">
 					<Button variant="outline" onClick={onClose}>
-						Cancel
+						{t("cancel")}
 					</Button>
 					<Button disabled={fieldsDisabled || loading} onClick={onSave}>
-						Save changes
+						{t("saveChanges")}
 					</Button>
 				</DialogFooter>
 			</DialogContent>
@@ -352,27 +355,32 @@ export function EditServerDialog({
 
 export function DeleteServerDialog({
 	deleteId,
+	busy,
 	onClose,
 	onDelete,
 }: {
 	deleteId: string | null;
+	busy: boolean;
 	onClose: () => void;
 	onDelete: (id: string) => void;
 }) {
+	const t = useTranslations("mcp.serverManager");
 	return (
 		<AlertDialog open={Boolean(deleteId)} onOpenChange={onClose}>
 			<AlertDialogContent>
 				<AlertDialogHeader>
-					<AlertDialogTitle>Remove MCP server?</AlertDialogTitle>
+					<AlertDialogTitle>{t("removeTitle")}</AlertDialogTitle>
 					<AlertDialogDescription>
-						Agents bound to these tools will lose access. This action cannot be
-						undone.
+						{t("removeDescription")}
 					</AlertDialogDescription>
 				</AlertDialogHeader>
 				<AlertDialogFooter>
-					<AlertDialogCancel>Cancel</AlertDialogCancel>
-					<AlertDialogAction onClick={() => deleteId && onDelete(deleteId)}>
-						Remove
+					<AlertDialogCancel disabled={busy}>{t("cancel")}</AlertDialogCancel>
+					<AlertDialogAction
+						disabled={busy}
+						onClick={() => deleteId && onDelete(deleteId)}
+					>
+						{busy ? t("removing") : t("remove")}
 					</AlertDialogAction>
 				</AlertDialogFooter>
 			</AlertDialogContent>

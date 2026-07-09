@@ -1,4 +1,5 @@
 import { ChevronDownIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -24,9 +25,6 @@ import type { SimpleAuthMode } from "./types";
 
 const FIELD_STACK_CLASS = "grid gap-2";
 
-const secretPlaceholder = (isEdit: boolean, fallback: string) =>
-  isEdit ? "Leave blank to keep current value" : fallback;
-
 export function AuthSection({
   form,
   setForm,
@@ -40,12 +38,15 @@ export function AuthSection({
   prefix: string;
   isEdit?: boolean;
 }) {
+  const t = useTranslations("mcp.serverManager");
   const showCustomHint = form.authMode === "custom";
+  const secretPlaceholder = (fallback: string) =>
+    isEdit ? t("keepCurrentSecret") : fallback;
 
   return (
     <div className="grid min-w-0 gap-3 rounded-lg border border-border/70 bg-background/70 p-3">
       <div className="grid min-w-0 gap-2">
-        <Label htmlFor={`${prefix}-auth-mode`}>Authentication</Label>
+        <Label htmlFor={`${prefix}-auth-mode`}>{t("authentication")}</Label>
         <Select
           value={form.authMode === "custom" ? "custom" : form.authMode}
           onValueChange={(value) =>
@@ -57,15 +58,15 @@ export function AuthSection({
           </SelectTrigger>
           <SelectContent>
             {form.authMode === "custom" ? (
-              <SelectItem value="custom">Custom headers / env</SelectItem>
+              <SelectItem value="custom">{t("authCustom")}</SelectItem>
             ) : null}
-            <SelectItem value="none">No auth</SelectItem>
+            <SelectItem value="none">{t("authNone")}</SelectItem>
             {transport === "stdio" ? (
-              <SelectItem value="env">API key / token</SelectItem>
+              <SelectItem value="env">{t("authToken")}</SelectItem>
             ) : (
               <>
-                <SelectItem value="bearer">Bearer token</SelectItem>
-                <SelectItem value="api-key">API key header</SelectItem>
+                <SelectItem value="bearer">{t("authBearer")}</SelectItem>
+                <SelectItem value="api-key">{t("authApiKey")}</SelectItem>
               </>
             )}
           </SelectContent>
@@ -73,14 +74,15 @@ export function AuthSection({
       </div>
       {showCustomHint ? (
         <p className="text-xs text-muted-foreground">
-          Custom credentials are configured. Use Advanced options to update
-          individual headers or environment variables.
+          {t("customCredentialsHint")}
         </p>
       ) : null}
       {transport === "stdio" && form.authMode === "env" ? (
         <div className="grid gap-3 sm:grid-cols-[minmax(0,0.7fr)_minmax(0,1fr)]">
           <div className={FIELD_STACK_CLASS}>
-            <Label htmlFor={`${prefix}-env-key-name`}>Variable name</Label>
+            <Label htmlFor={`${prefix}-env-key-name`}>
+              {t("variableName")}
+            </Label>
             <Input
               id={`${prefix}-env-key-name`}
               autoComplete="off"
@@ -90,7 +92,9 @@ export function AuthSection({
             />
           </div>
           <div className={FIELD_STACK_CLASS}>
-            <Label htmlFor={`${prefix}-env-key-value`}>Secret value</Label>
+            <Label htmlFor={`${prefix}-env-key-value`}>
+              {t("secretValue")}
+            </Label>
             <Input
               id={`${prefix}-env-key-value`}
               type="password"
@@ -99,28 +103,30 @@ export function AuthSection({
               onChange={(e) =>
                 setForm({ ...form, envKeyValue: e.target.value })
               }
-              placeholder={secretPlaceholder(isEdit, "Paste token…")}
+              placeholder={secretPlaceholder(t("pasteToken"))}
             />
           </div>
         </div>
       ) : null}
       {transport !== "stdio" && form.authMode === "bearer" ? (
         <div className={FIELD_STACK_CLASS}>
-          <Label htmlFor={`${prefix}-bearer-token`}>Bearer token</Label>
+          <Label htmlFor={`${prefix}-bearer-token`}>{t("authBearer")}</Label>
           <Input
             id={`${prefix}-bearer-token`}
             type="password"
             autoComplete="off"
             value={form.bearerToken}
             onChange={(e) => setForm({ ...form, bearerToken: e.target.value })}
-            placeholder={secretPlaceholder(isEdit, "Paste token…")}
+            placeholder={secretPlaceholder(t("pasteToken"))}
           />
         </div>
       ) : null}
       {transport !== "stdio" && form.authMode === "api-key" ? (
         <div className="grid gap-3 sm:grid-cols-[minmax(0,0.7fr)_minmax(0,1fr)]">
           <div className={FIELD_STACK_CLASS}>
-            <Label htmlFor={`${prefix}-api-key-header`}>Header name</Label>
+            <Label htmlFor={`${prefix}-api-key-header`}>
+              {t("headerName")}
+            </Label>
             <Input
               id={`${prefix}-api-key-header`}
               autoComplete="off"
@@ -132,7 +138,7 @@ export function AuthSection({
             />
           </div>
           <div className={FIELD_STACK_CLASS}>
-            <Label htmlFor={`${prefix}-api-key-value`}>API key</Label>
+            <Label htmlFor={`${prefix}-api-key-value`}>{t("apiKey")}</Label>
             <Input
               id={`${prefix}-api-key-value`}
               type="password"
@@ -141,7 +147,7 @@ export function AuthSection({
               onChange={(e) =>
                 setForm({ ...form, apiKeyValue: e.target.value })
               }
-              placeholder={secretPlaceholder(isEdit, "Paste key…")}
+              placeholder={secretPlaceholder(t("pasteKey"))}
             />
           </div>
         </div>
@@ -167,6 +173,7 @@ export function AdvancedSection({
   placeholder: string;
   showConnectionMode?: boolean;
 }) {
+  const t = useTranslations("mcp.serverManager");
   return (
     <Collapsible
       open={open}
@@ -179,7 +186,7 @@ export function AdvancedSection({
           variant="ghost"
           className="flex w-full justify-between px-3 py-2 text-sm"
         >
-          <span>Advanced options</span>
+          <span>{t("advancedOptions")}</span>
           <ChevronDownIcon
             className={cn("size-4 transition-transform", open && "rotate-180")}
             aria-hidden="true"
@@ -191,7 +198,9 @@ export function AdvancedSection({
         {showConnectionMode ? (
           <div className="grid gap-3 rounded-lg border border-border/60 bg-background/60 p-3">
             <div className={FIELD_STACK_CLASS}>
-              <Label htmlFor={`${prefix}-transport`}>Connection mode</Label>
+              <Label htmlFor={`${prefix}-transport`}>
+                {t("connectionMode")}
+              </Label>
               <Select
                 value={form.transport}
                 onValueChange={(value) =>
@@ -202,16 +211,18 @@ export function AdvancedSection({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="streamable-http">HTTP server</SelectItem>
-                  <SelectItem value="sse">SSE server</SelectItem>
-                  <SelectItem value="stdio">Local command</SelectItem>
+                  <SelectItem value="streamable-http">
+                    {t("httpServer")}
+                  </SelectItem>
+                  <SelectItem value="sse">{t("sseServer")}</SelectItem>
+                  <SelectItem value="stdio">{t("localCommand")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             {form.transport === "stdio" ? (
               <>
                 <div className={FIELD_STACK_CLASS}>
-                  <Label htmlFor={`${prefix}-command`}>Command</Label>
+                  <Label htmlFor={`${prefix}-command`}>{t("command")}</Label>
                   <Input
                     id={`${prefix}-command`}
                     autoComplete="off"
@@ -223,7 +234,7 @@ export function AdvancedSection({
                   />
                 </div>
                 <div className={FIELD_STACK_CLASS}>
-                  <Label htmlFor={`${prefix}-args`}>Args</Label>
+                  <Label htmlFor={`${prefix}-args`}>{t("args")}</Label>
                   <Textarea
                     id={`${prefix}-args`}
                     autoComplete="off"
@@ -232,7 +243,7 @@ export function AdvancedSection({
                     placeholder={"-y\n@modelcontextprotocol/server-filesystem…"}
                   />
                   <p className="text-xs text-muted-foreground">
-                    One argument per line.
+                    {t("oneArgumentPerLine")}
                   </p>
                 </div>
               </>
@@ -241,13 +252,13 @@ export function AdvancedSection({
         ) : null}
         <div className="flex min-w-0 items-center justify-between gap-4 rounded-lg border border-border/60 bg-background/60 p-3">
           <div>
-            <p className="text-sm font-medium">Require approval</p>
+            <p className="text-sm font-medium">{t("requireApproval")}</p>
             <p className="text-xs text-muted-foreground">
-              Ask before tools from this server run.
+              {t("requireApprovalDescription")}
             </p>
           </div>
           <Switch
-            aria-label="Require approval for all tools from this server"
+            aria-label={t("requireApprovalAria")}
             checked={form.requireApproval}
             onCheckedChange={(checked) =>
               setForm({ ...form, requireApproval: checked })
@@ -255,7 +266,7 @@ export function AdvancedSection({
           />
         </div>
         <div className={FIELD_STACK_CLASS}>
-          <Label htmlFor={`${prefix}-headers`}>HTTP headers</Label>
+          <Label htmlFor={`${prefix}-headers`}>{t("httpHeaders")}</Label>
           <Textarea
             id={`${prefix}-headers`}
             autoComplete="off"
@@ -264,11 +275,11 @@ export function AdvancedSection({
             placeholder="Authorization=Bearer sk-…"
           />
           <p className="text-xs text-muted-foreground">
-            One header per line as <code>Key=Value</code>.
+            {t("httpHeadersHint")}
           </p>
         </div>
         <div className={FIELD_STACK_CLASS}>
-          <Label htmlFor={`${prefix}-env`}>Environment variables</Label>
+          <Label htmlFor={`${prefix}-env`}>{t("environmentVariables")}</Label>
           <Textarea
             id={`${prefix}-env`}
             autoComplete="off"
@@ -277,7 +288,7 @@ export function AdvancedSection({
             placeholder="API_KEY=…"
           />
           <p className="text-xs text-muted-foreground">
-            One variable per line as <code>KEY=VALUE</code>.
+            {t("environmentVariablesHint")}
           </p>
         </div>
       </CollapsibleContent>

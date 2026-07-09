@@ -52,6 +52,7 @@ import {
 import type { McpServer, McpTool, ServerStatusFilter } from "./types";
 
 type ServerListProps = {
+  canManageServers: boolean;
   servers: McpServer[];
   filteredServers: McpServer[];
   toolsByServer: Record<string, McpTool[]>;
@@ -106,12 +107,13 @@ function ServerListToolbar({
   onSearchChangeAction,
   onFilterChangeAction,
 }: ServerListProps) {
+  const t = useTranslations("mcp.serverManager");
   return (
     <div className="flex flex-col gap-3 border-b px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
       <div>
-        <h3 className="text-base font-semibold">Servers</h3>
+        <h3 className="text-base font-semibold">{t("servers")}</h3>
         <p className="text-sm text-muted-foreground">
-          {servers.length} server{servers.length !== 1 ? "s" : ""} configured
+          {t("serverCount", { count: servers.length })}
         </p>
       </div>
       <div className="flex items-center gap-2">
@@ -119,8 +121,8 @@ function ServerListToolbar({
           <div className="relative w-48 sm:w-56">
             <SearchIcon className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              aria-label="Filter servers"
-              placeholder="Filter…"
+              aria-label={t("filterServers")}
+              placeholder={t("filterPlaceholder")}
               value={search}
               onChange={(e) => onSearchChangeAction(e.target.value)}
               className="h-8 pl-9 text-sm"
@@ -131,7 +133,7 @@ function ServerListToolbar({
                 size="icon-sm"
                 className="absolute right-1 top-1/2 size-6 -translate-y-1/2"
                 onClick={() => onSearchChangeAction("")}
-                aria-label="Clear search"
+                aria-label={t("clearSearch")}
               >
                 <XIcon className="size-3" aria-hidden="true" />
               </Button>
@@ -142,13 +144,13 @@ function ServerListToolbar({
           value={filterStatus}
           onValueChange={(v) => onFilterChangeAction(v as ServerStatusFilter)}
         >
-          <SelectTrigger className="w-32" aria-label="Filter servers by status">
+          <SelectTrigger className="w-32" aria-label={t("filterStatus")}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All</SelectItem>
-            <SelectItem value="enabled">Enabled</SelectItem>
-            <SelectItem value="disabled">Disabled</SelectItem>
+            <SelectItem value="all">{t("all")}</SelectItem>
+            <SelectItem value="enabled">{t("enabled")}</SelectItem>
+            <SelectItem value="disabled">{t("disabled")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -157,6 +159,7 @@ function ServerListToolbar({
 }
 
 function ServerListContent(props: ServerListProps) {
+  const t = useTranslations("mcp.serverManager");
   if (props.loading) {
     return (
       <div className="space-y-1 p-2">
@@ -167,13 +170,18 @@ function ServerListContent(props: ServerListProps) {
   }
 
   if (props.filteredServers.length === 0 && props.servers.length === 0) {
-    return <EmptyServers onAddServerAction={props.onAddServerAction} />;
+    return (
+      <EmptyServers
+        canManageServers={props.canManageServers}
+        onAddServerAction={props.onAddServerAction}
+      />
+    );
   }
 
   if (props.filteredServers.length === 0) {
     return (
       <div className="px-5 py-8 text-center text-sm text-muted-foreground">
-        No server matches &ldquo;{props.search}&rdquo;.
+        {t("noMatch", { query: props.search })}
       </div>
     );
   }
@@ -188,20 +196,25 @@ function ServerListContent(props: ServerListProps) {
 }
 
 function EmptyServers({
+  canManageServers,
   onAddServerAction,
 }: {
+  canManageServers: boolean;
   onAddServerAction: () => void;
 }) {
+  const t = useTranslations("mcp.serverManager");
   return (
     <div className="px-5 py-12 text-center">
-      <p className="text-sm font-medium">No MCP servers yet</p>
+      <p className="text-sm font-medium">{t("emptyTitle")}</p>
       <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
-        Connect an MCP server to give your agents access to external tools.
+        {t("emptyDescription")}
       </p>
-      <Button size="sm" className="mt-4" onClick={onAddServerAction}>
-        <PlusIcon className="size-4" aria-hidden="true" />
-        Add first server
-      </Button>
+      {canManageServers ? (
+        <Button size="sm" className="mt-4" onClick={onAddServerAction}>
+          <PlusIcon className="size-4" aria-hidden="true" />
+          {t("emptyAction")}
+        </Button>
+      ) : null}
     </div>
   );
 }
@@ -325,6 +338,7 @@ function ServerSummary({
   server: McpServer;
   tools: McpTool[];
 }) {
+  const t = useTranslations("mcp.serverManager");
   return (
     <div className="min-w-0 flex-1">
       <div className="flex items-center gap-2">
@@ -343,7 +357,7 @@ function ServerSummary({
         </Badge>
         {tools.length > 0 ? (
           <Badge variant="secondary">
-            {tools.length} tool{tools.length === 1 ? "" : "s"}
+            {t("toolCount", { count: tools.length })}
           </Badge>
         ) : null}
       </div>
@@ -355,23 +369,24 @@ function ServerSummary({
 }
 
 function ServerBadges({ server }: { server: McpServer }) {
+  const t = useTranslations("mcp.serverManager");
   return (
     <>
       <Badge
         variant={server.isGlobal ? "secondary" : "outline"}
         className="hidden lg:inline-flex"
       >
-        {server.isGlobal ? "Tenant" : "Private"}
+        {server.isGlobal ? t("organization") : t("private")}
       </Badge>
       {server.requireApproval ? (
         <Badge variant="secondary" className="hidden lg:inline-flex">
           <ShieldAlert className="size-3" aria-hidden="true" />
-          Approval
+          {t("approval")}
         </Badge>
       ) : null}
       {server.hasHeaders ? (
         <Badge variant="secondary" className="hidden lg:inline-flex">
-          API key
+          {t("apiKey")}
         </Badge>
       ) : null}
     </>
@@ -388,21 +403,22 @@ function DesktopServerToggles({
 > & {
   server: McpServer;
 }) {
+  const t = useTranslations("mcp.serverManager");
   return (
     <div
       className="hidden items-center gap-3 sm:flex"
       onClick={(e) => e.stopPropagation()}
     >
       <LabeledSwitch
-        label="Enabled"
-        ariaLabel={`Enable ${server.name}`}
+        label={t("enabled")}
+        ariaLabel={t("enableNamed", { name: server.name })}
         checked={server.enabled}
         disabled={!server.canEdit}
         onCheckedChange={(checked) => onToggleEnabledAction(server, checked)}
       />
       <LabeledSwitch
-        label="Approval"
-        ariaLabel={`Require approval for ${server.name}`}
+        label={t("approval")}
+        ariaLabel={t("approvalNamed", { name: server.name })}
         checked={server.requireApproval}
         disabled={!server.canEdit}
         onCheckedChange={(checked) =>
@@ -418,18 +434,19 @@ function MobileServerToggles({
   onToggleEnabledAction,
   onToggleServerApprovalAction,
 }: ServerListProps & { server: McpServer }) {
+  const t = useTranslations("mcp.serverManager");
   return (
     <div className="flex items-center gap-4 border-t border-border/30 px-4 pt-2 pb-1 sm:hidden">
       <LabeledSwitch
-        label="Enabled"
-        ariaLabel={`Enable ${server.name}`}
+        label={t("enabled")}
+        ariaLabel={t("enableNamed", { name: server.name })}
         checked={server.enabled}
         disabled={!server.canEdit}
         onCheckedChange={(checked) => onToggleEnabledAction(server, checked)}
       />
       <LabeledSwitch
-        label="Approval"
-        ariaLabel={`Require approval for ${server.name}`}
+        label={t("approval")}
+        ariaLabel={t("approvalNamed", { name: server.name })}
         checked={server.requireApproval}
         disabled={!server.canEdit}
         onCheckedChange={(checked) =>
@@ -439,10 +456,12 @@ function MobileServerToggles({
       {server.requireApproval ? (
         <Badge variant="secondary">
           <ShieldAlert className="size-3" aria-hidden="true" />
-          Approval
+          {t("approval")}
         </Badge>
       ) : null}
-      {server.hasHeaders ? <Badge variant="secondary">API key</Badge> : null}
+      {server.hasHeaders ? (
+        <Badge variant="secondary">{t("apiKey")}</Badge>
+      ) : null}
     </div>
   );
 }
@@ -489,6 +508,7 @@ function ServerActions({
   | "onShareServerAction"
 > & { server: McpServer }) {
   const tShare = useTranslations("marketplace.share");
+  const t = useTranslations("mcp.serverManager");
 
   return (
     <DropdownMenu>
@@ -498,7 +518,7 @@ function ServerActions({
           variant="ghost"
           className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
           onClick={(e) => e.stopPropagation()}
-          aria-label="Server actions"
+          aria-label={t("serverActions")}
         >
           <MoreHorizontal className="size-4" />
         </Button>
@@ -509,14 +529,14 @@ function ServerActions({
           onClick={() => onTestServerAction(server.id)}
         >
           <ZapIcon className="size-4" />
-          Test connection
+          {t("testConnection")}
         </DropdownMenuItem>
         <DropdownMenuItem
           disabled={!server.canEdit}
           onClick={() => onSyncServerAction(server.id)}
         >
           <RefreshCwIcon className="size-4" />
-          Sync tools
+          {t("syncTools")}
         </DropdownMenuItem>
         <DropdownMenuItem
           disabled={!server.canEdit}
@@ -531,7 +551,7 @@ function ServerActions({
           onClick={() => onEditServerAction(server)}
         >
           <PencilIcon className="size-4" />
-          Edit server
+          {t("editServer")}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
@@ -540,7 +560,7 @@ function ServerActions({
           onClick={() => onDeleteServerAction(server.id)}
         >
           <Trash2Icon className="size-4" />
-          Remove server
+          {t("removeServer")}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -562,6 +582,7 @@ function ToolsPanel({
   filteredTools: McpTool[];
   serverToolSearch: string;
 }) {
+  const t = useTranslations("mcp.serverManager");
   return (
     <CollapsibleContent>
       <div className="border-t border-border/60">
@@ -575,9 +596,7 @@ function ToolsPanel({
         <div className="max-h-96 overflow-y-auto">
           {filteredTools.length === 0 ? (
             <div className="px-4 py-6 text-center text-sm text-muted-foreground">
-              {tools.length === 0
-                ? "No tools discovered. Run sync after configuring credentials."
-                : "No tools match your search."}
+              {tools.length === 0 ? t("noTools") : t("noToolMatch")}
             </div>
           ) : (
             <div className="divide-y divide-border/30 px-4 py-2">
@@ -608,6 +627,7 @@ function ToolSearch({
   value: string;
   onToolSearchChangeAction: Dispatch<SetStateAction<Record<string, string>>>;
 }) {
+  const t = useTranslations("mcp.serverManager");
   return (
     <div className="flex items-center gap-2 border-b border-border/40 px-4 py-2">
       <SearchIcon
@@ -615,8 +635,8 @@ function ToolSearch({
         aria-hidden="true"
       />
       <Input
-        aria-label="Search tools"
-        placeholder="Search tools…"
+        aria-label={t("searchTools")}
+        placeholder={t("searchToolsPlaceholder")}
         value={value}
         onChange={(e) =>
           onToolSearchChangeAction((prev) => ({
@@ -631,7 +651,7 @@ function ToolSearch({
           variant="ghost"
           size="icon-sm"
           className="size-6"
-          aria-label="Clear tool search"
+          aria-label={t("clearToolSearch")}
           onClick={() =>
             onToolSearchChangeAction((prev) => ({ ...prev, [serverId]: "" }))
           }
@@ -657,6 +677,7 @@ function ToolRow({
   tool: McpTool;
 }) {
   const tShare = useTranslations("marketplace.share");
+  const t = useTranslations("mcp.serverManager");
   const isApprovalForced = server.requireApproval || tool.requireApproval;
 
   return (
@@ -698,7 +719,7 @@ function ToolRow({
           className="hidden items-center gap-1 sm:flex"
         >
           <ShieldAlert className="size-3" aria-hidden="true" />
-          {server.requireApproval ? "Forced" : "Approval"}
+          {server.requireApproval ? t("forced") : t("approval")}
         </Badge>
       ) : null}
       <div className="flex shrink-0 items-center gap-2">
@@ -713,8 +734,8 @@ function ToolRow({
           <Share2 className="size-3.5" aria-hidden="true" />
         </Button>
         <LabeledSwitch
-          label="Approval"
-          ariaLabel={`Require approval for ${tool.name}`}
+          label={t("approval")}
+          ariaLabel={t("approvalNamed", { name: tool.name })}
           checked={isApprovalForced}
           disabled={!server.canEdit || server.requireApproval}
           onCheckedChange={(checked) =>
@@ -722,8 +743,8 @@ function ToolRow({
           }
         />
         <LabeledSwitch
-          label="Enabled"
-          ariaLabel={`Enable ${tool.name}`}
+          label={t("enabled")}
+          ariaLabel={t("enableNamed", { name: tool.name })}
           checked={tool.enabled}
           disabled={!server.canEdit}
           onCheckedChange={(checked) =>
