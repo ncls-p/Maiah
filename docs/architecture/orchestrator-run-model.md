@@ -25,6 +25,24 @@ Only safe projections are stored there. `workspace_token_reservations` tracks
 admission-control reservations independently from settled usage and supports
 expiry/reaping after crashes.
 
+## Admission and execution guarantees
+
+Root runs reserve their maximum token budget before execution. Monthly quota
+admission is serialized per workspace and includes both settled usage and every
+active reservation, so concurrent runs cannot individually pass a stale quota
+check. Child runs consume the root reservation instead of reserving the same
+budget again.
+
+Workers claim only queued runs and renew a short lease while executing. A lost
+lease is terminal: the reaper marks the run failed and releases its reservation
+instead of replaying it automatically. This deliberately avoids presenting
+at-most-once database claiming as exactly-once execution when tools may have
+external side effects. Callers that retry must provide an idempotency key.
+
+Raw run input and output are encrypted. List/detail responses and run steps use
+bounded, secret-aware projections, while unexpected terminal errors fall back
+to a generic message when redaction would otherwise reveal sensitive material.
+
 ## Authorization
 
 Every child call requires `agents.delegate` at runtime, in addition to normal

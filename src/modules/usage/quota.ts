@@ -1,6 +1,7 @@
 import { and, eq, gte, sql } from "drizzle-orm";
 
 import { getWorkspaceMonthlyTokenLimit } from "@/modules/usage/quota-config";
+import { getActiveWorkspaceReservationTokens } from "@/modules/usage/quota-reservations";
 import { db } from "@/server/infrastructure/db";
 import { usageEvents } from "@/server/infrastructure/db/schema";
 
@@ -33,15 +34,19 @@ export async function assertWorkspaceWithinTokenQuota(workspaceId: string) {
   const limit = getWorkspaceMonthlyTokenLimit();
   if (!limit) return { allowed: true as const };
 
-  const used = await getWorkspaceMonthlyTokenUsage(workspaceId);
-  if (used >= limit) {
+  const [used, reserved] = await Promise.all([
+    getWorkspaceMonthlyTokenUsage(workspaceId),
+    getActiveWorkspaceReservationTokens(workspaceId),
+  ]);
+  if (used + reserved >= limit) {
     return {
       allowed: false as const,
       used,
+      reserved,
       limit,
-      message: `Monthly token limit reached (${used.toLocaleString()} / ${limit.toLocaleString()}). Contact your administrator or visit Usage for details.`,
+      message: `Monthly token limit reached (${used.toLocaleString()} used + ${reserved.toLocaleString()} reserved / ${limit.toLocaleString()}). Contact your administrator or visit Usage for details.`,
     };
   }
 
-  return { allowed: true as const, used, limit };
+  return { allowed: true as const, used, reserved, limit };
 }
