@@ -15,6 +15,7 @@ import {
 	normalizePromptSuggestions,
 	updateAgent,
 } from "@/modules/agent/use-cases";
+import { agentRuntimePolicy } from "@/modules/agent/runtime-policy";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
 import { authorization } from "@/server/domain/services/authorization";
 import { toolBindingInputSchema } from "@/modules/tool/use-cases";
@@ -52,8 +53,18 @@ const updateAgentSchema = z.object({
 	modelId: z.uuid().optional(),
 	temperature: z.string().optional(),
 	topP: z.string().optional(),
-	maxOutputTokens: z.number().int().positive().optional(),
-	maxToolCalls: z.number().int().min(0).optional(),
+	maxOutputTokens: z
+		.number()
+		.int()
+		.positive()
+		.max(agentRuntimePolicy.maxOutputTokens)
+		.optional(),
+	maxToolCalls: z
+		.number()
+		.int()
+		.min(0)
+		.max(agentRuntimePolicy.maxToolCalls)
+		.optional(),
 	sharingMode: z.enum(["personal", "marketplace", "specific_user"]).optional(),
 	shareTargetEmail: z.email().optional().or(z.literal("")),
 	isGlobal: z.boolean().optional(),

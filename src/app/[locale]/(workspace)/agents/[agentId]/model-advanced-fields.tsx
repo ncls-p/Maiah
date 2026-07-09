@@ -19,6 +19,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { agentRuntimePolicy } from "@/modules/agent/runtime-policy";
 
 import type { AgentForm } from "./types";
 import { defaultGenParams } from "./types";
@@ -117,6 +118,7 @@ export function ModelAdvancedFields({
 							id="agent-max-output"
 							type="number"
 							min={1}
+							max={agentRuntimePolicy.maxOutputTokens}
 							value={form.maxOutputTokens}
 							onChange={(e) =>
 								setForm((prev) => ({
@@ -134,6 +136,7 @@ export function ModelAdvancedFields({
 							id="agent-max-tool-calls"
 							type="number"
 							min={0}
+							max={agentRuntimePolicy.maxToolCalls}
 							value={form.maxToolCalls}
 							onChange={(e) =>
 								setForm((prev) => ({

@@ -1,9 +1,13 @@
 import { and, desc, eq, isNull, or, sql } from "drizzle-orm";
-import { generateText, tool } from "ai";
+import { generateText, stepCountIs, tool } from "ai";
 import { z } from "zod";
 
 import { decryptValue, encryptValue } from "@/lib/crypto";
 import { logger } from "@/lib/logger";
+import {
+	agentRuntimePolicy,
+	createRuntimeDeadline,
+} from "@/modules/agent/runtime-policy";
 import { callRemoteMcpTool } from "@/modules/mcp/client";
 import { getMcpServer } from "@/modules/mcp/use-cases";
 import { registerAiSdkDevTools } from "@/server/infrastructure/ai-sdk/devtools";
@@ -895,6 +899,15 @@ export async function runCustomToolBuilder(input: {
 		[];
 	const progressEvents: Array<{ label: string; status: "done" | "pending" }> =
 		[];
+	let builderActionCount = 0;
+	function reserveBuilderAction() {
+		if (
+			builderActionCount >= agentRuntimePolicy.customToolBuilderMaxActions
+		) {
+			throw new Error("Custom tool builder action limit reached");
+		}
+		builderActionCount += 1;
+	}
 
 	const n8nTools = await db
 		.select({ name: mcpTools.name, description: mcpTools.description })
@@ -929,6 +942,9 @@ export async function runCustomToolBuilder(input: {
 		.filter(Boolean)
 		.join("\n\n");
 
+	const runtimeDeadline = createRuntimeDeadline(
+		agentRuntimePolicy.customToolBuilderTimeoutMs,
+	);
 	const result = await generateText({
 		model,
 		system,
@@ -936,7 +952,9 @@ export async function runCustomToolBuilder(input: {
 			role: message.role,
 			content: message.content,
 		})),
-		stopWhen: () => false,
+		stopWhen: stepCountIs(agentRuntimePolicy.customToolBuilderMaxSteps),
+		maxOutputTokens: agentRuntimePolicy.customToolBuilderMaxOutputTokens,
+		abortSignal: runtimeDeadline.signal,
 		tools: {
 			update_workflow_preview: tool({
 				description:
@@ -959,6 +977,7 @@ export async function runCustomToolBuilder(input: {
 					outputs: z.array(z.string().min(1).max(80)).max(8).optional(),
 				}),
 				execute: async (preview) => {
+					reserveBuilderAction();
 					workflowPreviews.push(preview);
 					progressEvents.push({ label: "Schéma actualisé", status: "done" });
 					return { status: "preview_updated", stepCount: preview.steps.length };
@@ -973,6 +992,7 @@ export async function runCustomToolBuilder(input: {
 					fields: z.array(secretFieldSchema).min(1).max(12),
 				}),
 				execute: async ({ title, description, fields }) => {
+					reserveBuilderAction();
 					const request = await createSecretRequest({
 						workspaceId: input.workspaceId,
 						userId: input.userId,
@@ -1009,6 +1029,7 @@ export async function runCustomToolBuilder(input: {
 					settings: z.record(z.string(), z.unknown()).optional(),
 				}),
 				execute: async ({ name, nodes, connections, settings }) => {
+					reserveBuilderAction();
 					const secretPayloads = await loadSecretPayloads(
 						input.workspaceId,
 						input.userId,
@@ -1062,13 +1083,15 @@ export async function runCustomToolBuilder(input: {
 			validate_n8n_workflow: tool({
 				description: "Validate a workflow through the configured n8n MCP.",
 				inputSchema: z.object({ id: z.string().min(1) }),
-				execute: async ({ id }) =>
-					callConfiguredN8nTool({
+				execute: async ({ id }) => {
+					reserveBuilderAction();
+					return callConfiguredN8nTool({
 						config,
 						workspaceId: input.workspaceId,
 						toolName: config.validateWorkflowToolName,
 						arguments: { id },
-					}),
+					});
+				},
 			}),
 			create_n8n_credential_from_ref: tool({
 				description:
@@ -1079,6 +1102,7 @@ export async function runCustomToolBuilder(input: {
 					name: z.string().min(1).max(255),
 				}),
 				execute: async ({ credentialRef, credentialType, name }) => {
+					reserveBuilderAction();
 					const [ref] = await db
 						.select()
 						.from(customToolCredentialRefs)
@@ -1146,6 +1170,7 @@ export async function runCustomToolBuilder(input: {
 					inputSchema,
 					outputSchema,
 				}) => {
+					reserveBuilderAction();
 					const resolvedWorkflowId =
 						n8nWorkflowId ??
 						(createdWorkflows.length

@@ -89,4 +89,14 @@ describe("agent configuration route conflicts", () => {
 		expect(response.status).toBe(400);
 		expect(updateAgent).not.toHaveBeenCalled();
 	});
+
+	it("rejects runtime budgets above the executable policy", async () => {
+		const response = await PATCH(
+			patchRequest({ workspaceId, baseVersionId, maxToolCalls: 51 }) as never,
+			{ params: Promise.resolve({ agentId }) },
+		);
+
+		expect(response.status).toBe(400);
+		expect(updateAgent).not.toHaveBeenCalled();
+	});
 });

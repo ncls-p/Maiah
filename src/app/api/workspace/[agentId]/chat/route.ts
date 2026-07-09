@@ -16,6 +16,11 @@ import {
 	resolveProviderForVersion,
 } from "@/modules/agent/use-cases";
 import {
+	agentRuntimePolicy,
+	createRuntimeDeadline,
+	resolveAgentRuntimeLimits,
+} from "@/modules/agent/runtime-policy";
+import {
 	completeChatStream,
 	createChatStreamResponse,
 	createChatUIMessageStreamResponse,
@@ -49,6 +54,7 @@ import { registerAiSdkDevTools } from "@/server/infrastructure/ai-sdk/devtools";
 import { getAdapter } from "@/server/infrastructure/providers";
 import {
 	extractReasoningMiddleware,
+	stepCountIs,
 	ToolLoopAgent,
 	wrapLanguageModel,
 	type ToolSet,
@@ -527,10 +533,11 @@ export async function POST(
 			)
 			.join("\n\n");
 
-		const maxToolCalls = Math.max(
-			0,
-			version.maxToolCalls ?? defaultMaxToolCalls,
-		);
+		const runtimeLimits = resolveAgentRuntimeLimits({
+			maxToolCalls: version.maxToolCalls ?? defaultMaxToolCalls,
+			maxOutputTokens: version.maxOutputTokens ?? defaultMaxOutputTokens,
+		});
+		const { maxToolCalls, maxOutputTokens, maxSteps } = runtimeLimits;
 		const shouldUseToolCalling = maxToolCalls > 0;
 		const skillsPrompt = shouldUseToolCalling
 			? await buildSkillsRegistryPrompt(version.id)
@@ -786,7 +793,7 @@ export async function POST(
 			stopSequences: generationSettings?.stopSequences?.length
 				? generationSettings.stopSequences
 				: undefined,
-			maxOutputTokens: version.maxOutputTokens ?? defaultMaxOutputTokens,
+			maxOutputTokens,
 			tools,
 			toolChoice: configuredToolChoice,
 			toolApproval: boundToolConfig.toolApproval,
@@ -810,7 +817,7 @@ export async function POST(
 					conversationId: true,
 				},
 			},
-			stopWhen: availableToolNames.length > 0 ? () => false : undefined,
+			stopWhen: stepCountIs(maxSteps),
 			prepareStep:
 				availableToolNames.length > 0
 					? ({ steps }) => {
@@ -829,8 +836,12 @@ export async function POST(
 						}
 					: undefined,
 		});
+		const runtimeDeadline = createRuntimeDeadline(
+			agentRuntimePolicy.chatTimeoutMs,
+			streamAbortController.signal,
+		);
 		const result = await runtimeAgent.stream({
-			abortSignal: streamAbortController.signal,
+			abortSignal: runtimeDeadline.signal,
 			messages: history,
 		});
 
@@ -1001,6 +1012,11 @@ export async function POST(
 					});
 					enqueueEvent({ type: "done", stopped: true });
 				} else {
+					const streamError = runtimeDeadline.timeoutSignal.aborted
+						? new Error(
+								"Assistant run timed out before it could finish. Try again with a narrower request.",
+							)
+						: error;
 					// Chat stream failed — message already marked failed below
 					await db
 						.update(messages)
@@ -1029,11 +1045,14 @@ export async function POST(
 							assistantMessageId: assistantMessage.id,
 							latencyMs: Date.now() - startedAt,
 						},
-						error as Error,
+						streamError as Error,
 					);
 					enqueueEvent({
 						type: "error",
-						error: error instanceof Error ? error.message : String(error),
+						error:
+							streamError instanceof Error
+								? streamError.message
+								: String(streamError),
 					});
 				}
 			} finally {

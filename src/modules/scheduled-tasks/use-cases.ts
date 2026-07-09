@@ -10,6 +10,10 @@ import {
   resolveProviderForVersion,
   recordUsageEvent,
 } from "@/modules/agent/use-cases";
+import {
+  agentRuntimePolicy,
+  createRuntimeDeadline,
+} from "@/modules/agent/runtime-policy";
 import { getBuiltInToolByName } from "@/modules/tool/builtin-tools";
 import { registerAiSdkDevTools } from "@/server/infrastructure/ai-sdk/devtools";
 import { db } from "@/server/infrastructure/db";
@@ -448,6 +452,9 @@ async function runScheduledTask(task: typeof scheduledTasks.$inferSelect) {
     .filter(Boolean)
     .join("\n\n");
 
+  const runtimeDeadline = createRuntimeDeadline(
+    agentRuntimePolicy.chatTimeoutMs,
+  );
   const result = await generateText({
     model: adapter.createChatModel(
       providerConfig.runtimeConfig,
@@ -460,6 +467,7 @@ async function runScheduledTask(task: typeof scheduledTasks.$inferSelect) {
       : undefined,
     topP: version.topP ? Number.parseFloat(version.topP) : undefined,
     maxOutputTokens: Math.min(version.maxOutputTokens ?? 4_000, 4_000),
+    abortSignal: runtimeDeadline.signal,
   });
 
   const assistantText =

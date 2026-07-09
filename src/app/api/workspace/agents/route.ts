@@ -12,6 +12,7 @@ import {
 	listAgents,
 	normalizePromptSuggestions,
 } from "@/modules/agent/use-cases";
+import { agentRuntimePolicy } from "@/modules/agent/runtime-policy";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
 import { db } from "@/server/infrastructure/db";
 import {
@@ -50,8 +51,18 @@ const createAgentSchema = z.object({
 	modelId: z.uuid().optional(),
 	temperature: z.string().optional(),
 	topP: z.string().optional(),
-	maxOutputTokens: z.number().int().positive().optional(),
-	maxToolCalls: z.number().int().min(0).optional(),
+	maxOutputTokens: z
+		.number()
+		.int()
+		.positive()
+		.max(agentRuntimePolicy.maxOutputTokens)
+		.optional(),
+	maxToolCalls: z
+		.number()
+		.int()
+		.min(0)
+		.max(agentRuntimePolicy.maxToolCalls)
+		.optional(),
 	sharingMode: z
 		.enum(["personal", "marketplace", "specific_user"])
 		.default("personal"),

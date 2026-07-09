@@ -4,6 +4,10 @@ import { z } from "zod";
 
 import { decryptValue } from "@/lib/crypto";
 import { logHandledWarning } from "@/lib/logger";
+import {
+	agentRuntimePolicy,
+	createRuntimeDeadline,
+} from "@/modules/agent/runtime-policy";
 import { registerAiSdkDevTools } from "@/server/infrastructure/ai-sdk/devtools";
 import { db } from "@/server/infrastructure/db";
 import {
@@ -272,6 +276,9 @@ export async function testChatAutomationConnection(): Promise<
 
 	try {
 		const adapter = getAdapter(resolved.runtime.providerKind);
+		const runtimeDeadline = createRuntimeDeadline(
+			agentRuntimePolicy.automationTimeoutMs,
+		);
 		const result = await generateText({
 			model: adapter.createChatModel(
 				resolved.runtime.runtimeConfig,
@@ -280,6 +287,7 @@ export async function testChatAutomationConnection(): Promise<
 			prompt: 'Reply with only the JSON object {"ok":true}.',
 			temperature: 0,
 			maxOutputTokens: 64,
+			abortSignal: runtimeDeadline.signal,
 		});
 		const output =
 			`${result.text}${reasoningTextFromParts(result.finalStep.reasoning)}`.trim();
@@ -388,11 +396,15 @@ async function generateArtifactsWithRuntimeModel(input: {
 	);
 
 	for (let attempt = 0; attempt < 2; attempt += 1) {
+		const runtimeDeadline = createRuntimeDeadline(
+			agentRuntimePolicy.automationTimeoutMs,
+		);
 		const result = await generateText({
 			model,
 			prompt: input.prompt,
 			temperature: attempt === 0 ? 0.2 : 0.35,
 			maxOutputTokens: input.maxOutputTokens,
+			abortSignal: runtimeDeadline.signal,
 		});
 		const parsed = parseArtifactsFromModelOutput({
 			text: result.text,
