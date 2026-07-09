@@ -8,6 +8,7 @@ import {
 	PencilIcon,
 	PlusIcon,
 	RefreshCwIcon,
+	ServerIcon,
 	Trash2Icon,
 	UnplugIcon,
 } from "lucide-react";
@@ -137,6 +138,46 @@ const SERVICE_NOW_PACKAGE_LABELS: Record<string, string> = {
 	none: "No tools",
 };
 
+const SERVICE_NOW_CONFIG_SCHEMA: JsonSchemaObject = {
+	type: "object",
+	required: ["instanceUrl", "authType"],
+	properties: {
+		instanceUrl: {
+			type: "string",
+			format: "uri",
+			title: "ServiceNow instance URL",
+			description: "Example: https://your-instance.service-now.com",
+		},
+		authType: {
+			type: "string",
+			enum: ["basic", "oauth", "api_key"],
+			default: "basic",
+		},
+		toolPackage: {
+			type: "string",
+			enum: Object.keys(SERVICE_NOW_PACKAGE_LABELS),
+			default: "full",
+		},
+	},
+};
+
+const SERVICE_NOW_SECRET_SCHEMA: JsonSchemaObject = {
+	type: "object",
+	required: ["username", "password"],
+	properties: {
+		username: { type: "string", title: "ServiceNow username" },
+		password: { type: "password", title: "ServiceNow password" },
+		apiKey: { type: "password", title: "ServiceNow API key" },
+		clientId: { type: "string", title: "OAuth client ID" },
+		clientSecret: { type: "password", title: "OAuth client secret" },
+	},
+};
+
+const SERVICE_NOW_DEFAULT_CONFIG = {
+	authType: "basic",
+	toolPackage: "full",
+};
+
 export function ToolConnectionsPanel({
 	workspaceId,
 	servers,
@@ -150,6 +191,7 @@ export function ToolConnectionsPanel({
 	const [activeForm, setActiveForm] = useState<ConnectionFormState | null>(
 		null,
 	);
+	const [provisioningServerId, setProvisioningServerId] = useState("");
 
 	const serverById = useMemo(
 		() => new Map(servers.map((server) => [server.id, server])),
@@ -231,6 +273,42 @@ export function ToolConnectionsPanel({
 		} catch (error) {
 			toast.error(
 				error instanceof Error ? error.message : "Failed to save connection",
+			);
+		} finally {
+			setBusy(false);
+		}
+	}
+
+	async function provisionServiceNowConnector(serverId: string) {
+		if (!workspaceId || !serverId) return;
+		setBusy(true);
+		try {
+			const res = await fetch("/api/workspace/tool-connectors", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					workspaceId,
+					key: "servicenow",
+					name: "ServiceNow",
+					description:
+						"Per-user ServiceNow connections routed through the MCP gateway.",
+					kind: "mcp",
+					mcpServerId: serverId,
+					configSchema: SERVICE_NOW_CONFIG_SCHEMA,
+					secretSchema: SERVICE_NOW_SECRET_SCHEMA,
+					defaultConfig: SERVICE_NOW_DEFAULT_CONFIG,
+					isGlobal: canManageWorkspaceConnections,
+				}),
+			});
+			const data = (await res.json().catch(() => ({}))) as { error?: string };
+			if (!res.ok) throw new Error(data.error || "Failed to create connector");
+			toast.success("ServiceNow connector ready");
+			await load();
+		} catch (error) {
+			toast.error(
+				error instanceof Error
+					? error.message
+					: "Failed to create ServiceNow connector",
 			);
 		} finally {
 			setBusy(false);
@@ -320,17 +398,15 @@ export function ToolConnectionsPanel({
 				{loading ? (
 					<ToolConnectionsSkeleton />
 				) : connectorsWithServers.length === 0 ? (
-					<div className="flex flex-col items-center gap-2 rounded-xl border border-dashed p-6 text-center">
-						<UnplugIcon
-							className="size-5 text-muted-foreground"
-							aria-hidden="true"
-						/>
-						<p className="font-medium">No configurable tool connectors yet</p>
-						<p className="max-w-md text-sm text-muted-foreground">
-							Create a connector for an MCP server to expose per-user settings
-							here.
-						</p>
-					</div>
+					<ProvisionServiceNowConnectorCard
+						servers={servers}
+						busy={busy}
+						selectedServerId={provisioningServerId || servers[0]?.id || ""}
+						onServerChangeAction={setProvisioningServerId}
+						onProvisionAction={(serverId) =>
+							void provisionServiceNowConnector(serverId)
+						}
+					/>
 				) : (
 					<div className="grid gap-3 md:grid-cols-2">
 						{connectorsWithServers.map((connector) => {
@@ -383,6 +459,75 @@ export function ToolConnectionsPanel({
 				onSaveAction={() => void saveConnection()}
 			/>
 		</Card>
+	);
+}
+
+function ProvisionServiceNowConnectorCard({
+	servers,
+	busy,
+	selectedServerId,
+	onServerChangeAction,
+	onProvisionAction,
+}: {
+	servers: McpServer[];
+	busy: boolean;
+	selectedServerId: string;
+	onServerChangeAction: (serverId: string) => void;
+	onProvisionAction: (serverId: string) => void;
+}) {
+	if (servers.length === 0) {
+		return (
+			<div className="flex flex-col items-center gap-2 rounded-xl border border-dashed p-6 text-center">
+				<UnplugIcon
+					className="size-5 text-muted-foreground"
+					aria-hidden="true"
+				/>
+				<p className="font-medium">No configurable tool connectors yet</p>
+				<p className="max-w-md text-sm text-muted-foreground">
+					Add and sync the ServiceNow MCP server first, then provision its
+					connector here.
+				</p>
+			</div>
+		);
+	}
+
+	return (
+		<div className="flex flex-col gap-4 rounded-xl border border-dashed p-5">
+			<div className="flex items-start gap-3">
+				<div className="rounded-lg border bg-muted/40 p-2">
+					<ServerIcon className="size-5 text-muted-foreground" aria-hidden="true" />
+				</div>
+				<div className="min-w-0">
+					<p className="font-medium">Provision the ServiceNow connector</p>
+					<p className="mt-1 text-sm text-muted-foreground">
+						Choose the MCP gateway server that exposes ServiceNow tools. This
+						creates the connector needed by per-user credentials.
+					</p>
+				</div>
+			</div>
+			<div className="flex flex-col gap-3 sm:flex-row">
+				<Select value={selectedServerId} onValueChange={onServerChangeAction}>
+					<SelectTrigger className="w-full" aria-label="ServiceNow MCP server">
+						<SelectValue placeholder="Select MCP server" />
+					</SelectTrigger>
+					<SelectContent>
+						{servers.map((server) => (
+							<SelectItem key={server.id} value={server.id}>
+								{server.name}
+							</SelectItem>
+						))}
+					</SelectContent>
+				</Select>
+				<Button
+					className="sm:w-fit"
+					onClick={() => onProvisionAction(selectedServerId)}
+					disabled={busy || !selectedServerId}
+				>
+					<PlusIcon aria-hidden="true" />
+					Provision connector
+				</Button>
+			</div>
+		</div>
 	);
 }
 

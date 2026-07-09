@@ -64,12 +64,29 @@ docker run --rm -p 8080:8080 \
   maiah-servicenow-mcp-gateway
 ```
 
+## Docker Compose
+
+Local dev:
+
+```bash
+docker compose -f docker-compose.dev.yml up -d servicenow-mcp-gateway
+```
+
+Production compose:
+
+```bash
+MCP_GATEWAY_SHARED_SECRET="$(openssl rand -base64 32)" \
+  docker compose -f docker-compose.prod.yml up -d --build servicenow-mcp-gateway
+```
+
 Then register this MCP server in Maiah:
 
 ```txt
 name: ServiceNow Gateway
 transport: sse
-url: https://<gateway-host>/sse
+url: http://servicenow-mcp-gateway:8080/sse
 ```
 
-Create a `servicenow` tool connector linked to that MCP server and let users create their own `tool_connections` with `config.instanceUrl` and encrypted `secrets.username/password`.
+For host-based local testing, use `http://127.0.0.1:18080/sse`.
+
+In Maiah, open **Tools → MCP → Tool connections**, provision the ServiceNow connector if needed, then let users create their own encrypted connections with `config.instanceUrl` and `secrets.username/password`.

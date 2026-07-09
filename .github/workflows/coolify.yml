@@ -228,16 +228,19 @@ jobs:
       migrator_image: ${{ steps.images.outputs.migrator_image }}
       searxng_image: ${{ steps.images.outputs.searxng_image }}
       sandbox_image: ${{ steps.images.outputs.sandbox_image }}
+      servicenow_gateway_image: ${{ steps.images.outputs.servicenow_gateway_image }}
       app_latest: ${{ steps.images.outputs.app_latest }}
       worker_latest: ${{ steps.images.outputs.worker_latest }}
       migrator_latest: ${{ steps.images.outputs.migrator_latest }}
       searxng_latest: ${{ steps.images.outputs.searxng_latest }}
       sandbox_latest: ${{ steps.images.outputs.sandbox_latest }}
+      servicenow_gateway_latest: ${{ steps.images.outputs.servicenow_gateway_latest }}
       build_app: ${{ steps.images.outputs.build_app }}
       build_worker: ${{ steps.images.outputs.build_worker }}
       build_migrator: ${{ steps.images.outputs.build_migrator }}
       build_searxng: ${{ steps.images.outputs.build_searxng }}
       build_sandbox: ${{ steps.images.outputs.build_sandbox }}
+      build_servicenow_gateway: ${{ steps.images.outputs.build_servicenow_gateway }}
 
     steps:
       - name: Checkout repository
@@ -277,24 +280,28 @@ jobs:
           migrator_current="ghcr.io/${owner_lc}/ai-hub-migrator:${tag}"
           searxng_current="ghcr.io/${owner_lc}/ai-hub-searxng:${tag}"
           sandbox_current="ghcr.io/${owner_lc}/ai-hub-sandbox:${tag}"
+          servicenow_gateway_current="ghcr.io/${owner_lc}/ai-hub-servicenow-mcp-gateway:${tag}"
 
           app_fallback="ghcr.io/${owner_lc}/ai-hub-app:${fallback_tag}"
           worker_fallback="ghcr.io/${owner_lc}/ai-hub-worker:${fallback_tag}"
           migrator_fallback="ghcr.io/${owner_lc}/ai-hub-migrator:${fallback_tag}"
           searxng_fallback="ghcr.io/${owner_lc}/ai-hub-searxng:${fallback_tag}"
           sandbox_fallback="ghcr.io/${owner_lc}/ai-hub-sandbox:${fallback_tag}"
+          servicenow_gateway_fallback="ghcr.io/${owner_lc}/ai-hub-servicenow-mcp-gateway:${fallback_tag}"
 
           app_latest=""
           worker_latest=""
           migrator_latest=""
           searxng_latest=""
           sandbox_latest=""
+          servicenow_gateway_latest=""
           if [[ "${PUBLISH_LATEST}" == "true" ]]; then
             app_latest="${app_fallback}"
             worker_latest="${worker_fallback}"
             migrator_latest="${migrator_fallback}"
             searxng_latest="${searxng_fallback}"
             sandbox_latest="${sandbox_fallback}"
+            servicenow_gateway_latest="${servicenow_gateway_fallback}"
           fi
 
           changed_files="$(mktemp)"
@@ -346,6 +353,11 @@ jobs:
             sandbox_changed=true
           fi
 
+          servicenow_gateway_changed=false
+          if changes_match '^(services/servicenow-mcp-gateway/)'; then
+            servicenow_gateway_changed=true
+          fi
+
           image_exists() {
             docker buildx imagetools inspect "$1" >/dev/null 2>&1
           }
@@ -375,6 +387,7 @@ jobs:
           choose_image migrator "${migrator_current}" "${migrator_fallback}" "${migrator_latest}" "${app_changed}"
           choose_image searxng "${searxng_current}" "${searxng_fallback}" "${searxng_latest}" "${searxng_changed}"
           choose_image sandbox "${sandbox_current}" "${sandbox_fallback}" "${sandbox_latest}" "${sandbox_changed}"
+          choose_image servicenow_gateway "${servicenow_gateway_current}" "${servicenow_gateway_fallback}" "${servicenow_gateway_latest}" "${servicenow_gateway_changed}"
 
           output_value() {
             sed -n "s/^$1=//p" "${GITHUB_OUTPUT}"
@@ -397,6 +410,7 @@ jobs:
             echo "| migrator | $(output_value build_migrator) | $(output_value migrator_image) | $(publish_label migrator_latest) |"
             echo "| searxng | $(output_value build_searxng) | $(output_value searxng_image) | $(publish_label searxng_latest) |"
             echo "| sandbox | $(output_value build_sandbox) | $(output_value sandbox_image) | $(publish_label sandbox_latest) |"
+            echo "| servicenow gateway | $(output_value build_servicenow_gateway) | $(output_value servicenow_gateway_image) | $(publish_label servicenow_gateway_latest) |"
           } >> "${GITHUB_STEP_SUMMARY}"
 
   build_app_images:
@@ -600,6 +614,65 @@ jobs:
             --push \
             .
 
+  build_servicenow_gateway_image:
+    name: Build ServiceNow MCP gateway image
+    runs-on: ubuntu-latest
+    needs: plan_images
+    permissions:
+      contents: read
+      packages: write
+    if: needs.plan_images.outputs.build_servicenow_gateway == 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push ServiceNow MCP gateway image
+        env:
+          SERVICENOW_GATEWAY_IMAGE: ${{ needs.plan_images.outputs.servicenow_gateway_image }}
+          SERVICENOW_GATEWAY_LATEST: ${{ needs.plan_images.outputs.servicenow_gateway_latest }}
+        run: |
+          set -euo pipefail
+          latest_tag_args=()
+          if [[ -n "${SERVICENOW_GATEWAY_LATEST}" ]]; then
+            latest_tag_args+=(--tag "${SERVICENOW_GATEWAY_LATEST}")
+          fi
+          docker buildx build \
+            --platform linux/amd64 \
+            --tag "${SERVICENOW_GATEWAY_IMAGE}" \
+            "${latest_tag_args[@]}" \
+            --cache-from type=gha,scope=ai-hub-servicenow-mcp-gateway \
+            --cache-to type=gha,mode=max,scope=ai-hub-servicenow-mcp-gateway \
+            --push \
+            services/servicenow-mcp-gateway
+
+      - name: Verify pushed ServiceNow MCP gateway image
+        env:
+          SERVICENOW_GATEWAY_IMAGE: ${{ needs.plan_images.outputs.servicenow_gateway_image }}
+        run: |
+          docker pull "${SERVICENOW_GATEWAY_IMAGE}"
+          docker run --rm --entrypoint python "${SERVICENOW_GATEWAY_IMAGE}" - <<'PY'
+          import os
+
+          expected = "/app/config/tool_packages.yaml"
+          if os.environ.get("TOOL_PACKAGE_CONFIG_PATH") != expected:
+              raise SystemExit("TOOL_PACKAGE_CONFIG_PATH is not configured for bundled packages")
+          if not os.path.exists(expected):
+              raise SystemExit(f"missing bundled ServiceNow package config: {expected}")
+          PY
+
   deploy:
     name: Deploy to Coolify
     runs-on: ubuntu-latest
@@ -610,7 +683,8 @@ jobs:
       - build_app_images
       - build_searxng_image
       - build_sandbox_image
-    if: always() && needs.prepare.outputs.deploy_stack == 'true' && needs.validate.result == 'success' && needs.plan_images.result == 'success' && (needs.build_app_images.result == 'success' || needs.build_app_images.result == 'skipped') && (needs.build_searxng_image.result == 'success' || needs.build_searxng_image.result == 'skipped') && (needs.build_sandbox_image.result == 'success' || needs.build_sandbox_image.result == 'skipped') && vars.COOLIFY_DEPLOY_ENABLED == 'true'
+      - build_servicenow_gateway_image
+    if: always() && needs.prepare.outputs.deploy_stack == 'true' && needs.validate.result == 'success' && needs.plan_images.result == 'success' && (needs.build_app_images.result == 'success' || needs.build_app_images.result == 'skipped') && (needs.build_searxng_image.result == 'success' || needs.build_searxng_image.result == 'skipped') && (needs.build_sandbox_image.result == 'success' || needs.build_sandbox_image.result == 'skipped') && (needs.build_servicenow_gateway_image.result == 'success' || needs.build_servicenow_gateway_image.result == 'skipped') && vars.COOLIFY_DEPLOY_ENABLED == 'true'
 
     steps:
       - name: Checkout repository
@@ -629,6 +703,7 @@ jobs:
           OBJECT_STORAGE_ACCESS_KEY_ID: ${{ secrets.OBJECT_STORAGE_ACCESS_KEY_ID }}
           OBJECT_STORAGE_SECRET_ACCESS_KEY: ${{ secrets.OBJECT_STORAGE_SECRET_ACCESS_KEY }}
           SEARXNG_SECRET: ${{ secrets.SEARXNG_SECRET }}
+          MCP_GATEWAY_SHARED_SECRET: ${{ secrets.MCP_GATEWAY_SHARED_SECRET }}
           SEARXNG_SETTINGS_REVISION: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
           OBJECT_STORAGE_BUCKET: ${{ vars.OBJECT_STORAGE_BUCKET || 'ai-hub' }}
           CODE_WORKSPACE_STORAGE_PREFIX: ${{ vars.CODE_WORKSPACE_STORAGE_PREFIX || 'code-workspaces' }}
@@ -647,6 +722,7 @@ jobs:
           AI_HUB_MIGRATOR_IMAGE: ${{ needs.plan_images.outputs.migrator_image }}
           AI_HUB_SEARXNG_IMAGE: ${{ needs.plan_images.outputs.searxng_image }}
           AI_HUB_SANDBOX_IMAGE: ${{ needs.plan_images.outputs.sandbox_image }}
+          AI_HUB_SERVICENOW_MCP_GATEWAY_IMAGE: ${{ needs.plan_images.outputs.servicenow_gateway_image }}
           TARGET_ENV_NAME: ${{ needs.prepare.outputs.target_env_name }}
           AI_HUB_PUBLIC_HOST: ${{ needs.prepare.outputs.public_host }}
           AI_HUB_PUBLIC_URL: ${{ needs.prepare.outputs.public_url }}
@@ -654,6 +730,8 @@ jobs:
           IS_PREVIEW: ${{ needs.prepare.outputs.is_preview }}
           ENABLE_BASIC_AUTH: ${{ needs.prepare.outputs.enable_basic_auth }}
           TRAEFIK_BASIC_AUTH_USERS_VALUE: ${{ secrets.TRAEFIK_BASIC_AUTH_USERS }}
+          SERVICENOW_ALLOWED_HOST_SUFFIXES: ${{ vars.SERVICENOW_ALLOWED_HOST_SUFFIXES || 'service-now.com' }}
+          SERVICENOW_GATEWAY_RESOLVE_HOSTS: ${{ vars.SERVICENOW_GATEWAY_RESOLVE_HOSTS || 'true' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -672,11 +750,13 @@ jobs:
             DRAGONFLY_PASSWORD
             OBJECT_STORAGE_ACCESS_KEY_ID
             OBJECT_STORAGE_SECRET_ACCESS_KEY
+            MCP_GATEWAY_SHARED_SECRET
             AI_HUB_APP_IMAGE
             AI_HUB_WORKER_IMAGE
             AI_HUB_MIGRATOR_IMAGE
             AI_HUB_SEARXNG_IMAGE
             AI_HUB_SANDBOX_IMAGE
+            AI_HUB_SERVICENOW_MCP_GATEWAY_IMAGE
           )
           for key in "${required[@]}"; do
             if [[ -z "${!key:-}" ]]; then
@@ -713,6 +793,7 @@ jobs:
           validate_secret_length POSTGRES_PASSWORD "$POSTGRES_PASSWORD" 16
           validate_secret_length DRAGONFLY_PASSWORD "$DRAGONFLY_PASSWORD" 16
           validate_secret_length OBJECT_STORAGE_SECRET_ACCESS_KEY "$OBJECT_STORAGE_SECRET_ACCESS_KEY" 16
+          validate_secret_length MCP_GATEWAY_SHARED_SECRET "$MCP_GATEWAY_SHARED_SECRET" 32
           if [[ -n "${SEARXNG_SECRET:-}" ]]; then
             validate_secret_length SEARXNG_SECRET "$SEARXNG_SECRET" 32
           fi
@@ -906,6 +987,7 @@ jobs:
               --arg ai_hub_migrator_image "${AI_HUB_MIGRATOR_IMAGE}" \
               --arg ai_hub_searxng_image "${AI_HUB_SEARXNG_IMAGE}" \
               --arg ai_hub_sandbox_image "${AI_HUB_SANDBOX_IMAGE}" \
+              --arg ai_hub_servicenow_mcp_gateway_image "${AI_HUB_SERVICENOW_MCP_GATEWAY_IMAGE}" \
               --arg postgres_password "${POSTGRES_PASSWORD}" \
               --arg better_auth_secret "${BETTER_AUTH_SECRET}" \
               --arg better_auth_url "${BETTER_AUTH_URL}" \
@@ -913,12 +995,15 @@ jobs:
               --arg app_encryption_key "${APP_ENCRYPTION_KEY}" \
               --arg app_encryption_key_id "${APP_ENCRYPTION_KEY_ID}" \
               --arg dragonfly_password "${DRAGONFLY_PASSWORD}" \
+              --arg mcp_gateway_shared_secret "${MCP_GATEWAY_SHARED_SECRET}" \
               --arg object_storage_access_key_id "${OBJECT_STORAGE_ACCESS_KEY_ID}" \
               --arg object_storage_secret_access_key "${OBJECT_STORAGE_SECRET_ACCESS_KEY}" \
               --arg object_storage_bucket "${OBJECT_STORAGE_BUCKET}" \
               --arg code_workspace_storage_prefix "${CODE_WORKSPACE_STORAGE_PREFIX}" \
               --arg searxng_secret "${SEARXNG_SECRET}" \
               --arg searxng_settings_revision "${SEARXNG_SETTINGS_REVISION:-local}" \
+              --arg servicenow_allowed_host_suffixes "${SERVICENOW_ALLOWED_HOST_SUFFIXES:-service-now.com}" \
+              --arg servicenow_gateway_resolve_hosts "${SERVICENOW_GATEWAY_RESOLVE_HOSTS:-true}" \
               --arg allow_personal_workspaces "${ALLOW_PERSONAL_WORKSPACES}" \
               --arg workspace_monthly_token_limit "${WORKSPACE_MONTHLY_TOKEN_LIMIT}" \
               --arg otel_service_name "${OTEL_SERVICE_NAME}" \
@@ -936,6 +1021,7 @@ jobs:
                 {key: "AI_HUB_MIGRATOR_IMAGE", value: $ai_hub_migrator_image},
                 {key: "AI_HUB_SEARXNG_IMAGE", value: $ai_hub_searxng_image},
                 {key: "AI_HUB_SANDBOX_IMAGE", value: $ai_hub_sandbox_image},
+                {key: "AI_HUB_SERVICENOW_MCP_GATEWAY_IMAGE", value: $ai_hub_servicenow_mcp_gateway_image},
                 {key: "POSTGRES_PASSWORD", value: $postgres_password},
                 {key: "BETTER_AUTH_SECRET", value: $better_auth_secret},
                 {key: "BETTER_AUTH_URL", value: $better_auth_url},
@@ -943,12 +1029,15 @@ jobs:
                 {key: "APP_ENCRYPTION_KEY", value: $app_encryption_key},
                 {key: "APP_ENCRYPTION_KEY_ID", value: $app_encryption_key_id},
                 {key: "DRAGONFLY_PASSWORD", value: $dragonfly_password},
+                {key: "MCP_GATEWAY_SHARED_SECRET", value: $mcp_gateway_shared_secret},
                 {key: "OBJECT_STORAGE_ACCESS_KEY_ID", value: $object_storage_access_key_id},
                 {key: "OBJECT_STORAGE_SECRET_ACCESS_KEY", value: $object_storage_secret_access_key},
                 {key: "OBJECT_STORAGE_BUCKET", value: $object_storage_bucket},
                 {key: "CODE_WORKSPACE_STORAGE_PREFIX", value: $code_workspace_storage_prefix},
                 {key: "SEARXNG_SECRET", value: $searxng_secret},
                 {key: "SEARXNG_SETTINGS_REVISION", value: $searxng_settings_revision},
+                {key: "SERVICENOW_ALLOWED_HOST_SUFFIXES", value: $servicenow_allowed_host_suffixes},
+                {key: "SERVICENOW_GATEWAY_RESOLVE_HOSTS", value: $servicenow_gateway_resolve_hosts},
                 {key: "ALLOW_PERSONAL_WORKSPACES", value: $allow_personal_workspaces},
                 {key: "WORKSPACE_MONTHLY_TOKEN_LIMIT", value: $workspace_monthly_token_limit},
                 {key: "OTEL_SERVICE_NAME", value: $otel_service_name},
@@ -966,9 +1055,10 @@ jobs:
           echo "Using Coolify service UUID ${SERVICE_UUID}"
           echo "Using SearXNG image ${AI_HUB_SEARXNG_IMAGE}"
           echo "Using sandbox runner image ${AI_HUB_SANDBOX_IMAGE}"
+          echo "Using ServiceNow MCP gateway image ${AI_HUB_SERVICENOW_MCP_GATEWAY_IMAGE}"
           api GET "/deploy?uuid=${SERVICE_UUID}&force=true" >/dev/null
 
-          long_running='["app", "worker", "rustfs", "dragonflydb", "searxng", "sandbox-runner"]'
+          long_running='["app", "worker", "rustfs", "dragonflydb", "searxng", "sandbox-runner", "servicenow-mcp-gateway"]'
           success=false
           for attempt in $(seq 1 60); do
             STATUS_JSON="$(api GET "/services/${SERVICE_UUID}")"
@@ -1024,6 +1114,7 @@ jobs:
             echo "- Migrator image: \`${AI_HUB_MIGRATOR_IMAGE}\`"
             echo "- SearXNG image: \`${AI_HUB_SEARXNG_IMAGE}\`"
             echo "- Sandbox runner image: \`${AI_HUB_SANDBOX_IMAGE}\`"
+            echo "- ServiceNow MCP gateway image: \`${AI_HUB_SERVICENOW_MCP_GATEWAY_IMAGE}\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
   cleanup_preview:
