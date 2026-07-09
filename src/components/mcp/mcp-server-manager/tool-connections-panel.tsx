@@ -495,7 +495,10 @@ function ProvisionServiceNowConnectorCard({
 		<div className="flex flex-col gap-4 rounded-xl border border-dashed p-5">
 			<div className="flex items-start gap-3">
 				<div className="rounded-lg border bg-muted/40 p-2">
-					<ServerIcon className="size-5 text-muted-foreground" aria-hidden="true" />
+					<ServerIcon
+						className="size-5 text-muted-foreground"
+						aria-hidden="true"
+					/>
 				</div>
 				<div className="min-w-0">
 					<p className="font-medium">Provision the ServiceNow connector</p>
