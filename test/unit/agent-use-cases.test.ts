@@ -127,6 +127,12 @@ import {
 	setUserDefaultAgent,
 	updateAgent,
 } from "@/modules/agent/use-cases";
+import { cloneKnowledgeBindings } from "@/modules/knowledge/use-cases";
+import { cloneSkillBindings } from "@/modules/skills/use-cases";
+import {
+	cloneToolBindings,
+	insertToolBindingsForVersion,
+} from "@/modules/tool/use-cases";
 
 function reset() {
 	for (const chain of [dbModule._c, dbModule._tx]) {
@@ -405,6 +411,13 @@ describe("createAgent", () => {
 			expect.objectContaining({ maxToolCalls: 20 }),
 		);
 		expect(dbModule.db.transaction).toHaveBeenCalledOnce();
+		expect(vi.mocked(insertToolBindingsForVersion)).toHaveBeenCalledWith(
+			version.id,
+			[],
+			"ws-1",
+			{ userId: "user-1" },
+			dbModule._tx,
+		);
 	});
 });
 
@@ -469,6 +482,47 @@ describe("updateAgent", () => {
 		).rejects.toThrow("Only the creator or an admin can update this agent");
 	});
 
+	it("rejects stale configuration without starting a transaction", async () => {
+		dbModule._c.limit.mockResolvedValueOnce([fakeAgent]);
+
+		await expect(
+			updateAgent({
+				agentId: "agent-1",
+				workspaceId: "ws-1",
+				userId: "user-1",
+				baseVersionId: "00000000-0000-4000-8000-000000000099",
+			}),
+		).rejects.toMatchObject({
+			code: "AGENT_VERSION_CONFLICT",
+			currentVersionId: "v1",
+		});
+		expect(dbModule.db.transaction).not.toHaveBeenCalled();
+	});
+
+	it("rechecks the base version after acquiring the database row lock", async () => {
+		dbModule._c.limit.mockResolvedValueOnce([fakeAgent]);
+		dbModule._tx.where
+			.mockReturnValueOnce(dbModule._tx)
+			.mockReturnValueOnce(dbModule._tx);
+		dbModule._tx.returning.mockResolvedValueOnce([]);
+		dbModule._tx.limit.mockResolvedValueOnce([
+			{ activeVersionId: "00000000-0000-4000-8000-000000000002" },
+		]);
+
+		await expect(
+			updateAgent({
+				agentId: "agent-1",
+				workspaceId: "ws-1",
+				userId: "user-1",
+				baseVersionId: "v1",
+			}),
+		).rejects.toMatchObject({
+			code: "AGENT_VERSION_CONFLICT",
+			currentVersionId: "00000000-0000-4000-8000-000000000002",
+		});
+		expect(dbModule._tx.insert).not.toHaveBeenCalled();
+	});
+
 	it("updates agent when creator", async () => {
 		dbModule._c.limit.mockResolvedValueOnce([fakeAgent]);
 
@@ -508,6 +562,13 @@ describe("updateAgent", () => {
 
 		expect(result.agent).toBeDefined();
 		expect(dbModule.db.transaction).toHaveBeenCalledOnce();
+		expect(vi.mocked(cloneToolBindings)).toHaveBeenCalledWith(
+			"v1",
+			"v2",
+			"ws-1",
+			{ userId: "user-1" },
+			dbModule._tx,
+		);
 	});
 });
 
@@ -900,6 +961,27 @@ describe("agent defaults, ordering, and cloning", () => {
 				forkedFromAgentId: "agent-1",
 				sharingMode: "personal",
 			}),
+		);
+		expect(vi.mocked(cloneToolBindings)).toHaveBeenCalledWith(
+			"v1",
+			"clone-version",
+			"ws-1",
+			{ userId: "user-2" },
+			dbModule._tx,
+		);
+		expect(vi.mocked(cloneKnowledgeBindings)).toHaveBeenCalledWith(
+			"v1",
+			"clone-version",
+			"ws-1",
+			{ userId: "user-2" },
+			dbModule._tx,
+		);
+		expect(vi.mocked(cloneSkillBindings)).toHaveBeenCalledWith(
+			"v1",
+			"clone-version",
+			"ws-1",
+			{ userId: "user-2" },
+			dbModule._tx,
 		);
 	});
 });

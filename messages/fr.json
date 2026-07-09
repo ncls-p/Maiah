@@ -218,6 +218,7 @@
       "cloneToEditHint": "Clonez cet assistant pour le modifier sans toucher à la version de l’organisation.",
       "saved": "Assistant enregistré",
       "capabilitiesSaved": "Outils et connaissances enregistrés",
+      "conflictReload": "Cet assistant a été modifié dans un autre onglet. Rechargez-le avant d’enregistrer à nouveau.",
       "deleted": "Assistant supprimé",
       "delete": "Supprimer l’assistant",
       "builtinTools": "Outils intégrés",

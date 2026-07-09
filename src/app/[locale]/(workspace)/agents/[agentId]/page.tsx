@@ -50,6 +50,20 @@ function buildToolBindingMap<T extends { id: string }>(
 	}
 	return map;
 }
+
+async function agentSaveError(
+	response: Response,
+	fallback: string,
+	conflictMessage: string,
+) {
+	const payload = (await response.json().catch(() => null)) as {
+		error?: string;
+		code?: string;
+	} | null;
+	return payload?.code === "AGENT_VERSION_CONFLICT"
+		? conflictMessage
+		: (payload?.error ?? fallback);
+}
 import { createEmptyForm } from "./types";
 import {
 	buildAgentFormFromVersion,
@@ -365,7 +379,11 @@ export default function AgentConfigurePage() {
 			});
 			if (!res.ok) {
 				throw new Error(
-					(await res.json().catch(() => null))?.error || "Unable to save agent",
+					await agentSaveError(
+						res,
+						"Unable to save agent",
+						t("configurePage.conflictReload"),
+					),
 				);
 			}
 			const data = (await res.json()) as {
@@ -452,8 +470,11 @@ export default function AgentConfigurePage() {
 			});
 			if (!res.ok) {
 				throw new Error(
-					(await res.json().catch(() => null))?.error ||
+					await agentSaveError(
+						res,
 						"Unable to save capabilities",
+						t("configurePage.conflictReload"),
+					),
 				);
 			}
 			const data = (await res.json()) as { agent?: Agent };
@@ -495,8 +516,11 @@ export default function AgentConfigurePage() {
 			});
 			if (!res.ok) {
 				throw new Error(
-					(await res.json().catch(() => null))?.error ||
+					await agentSaveError(
+						res,
 						"Unable to update assistant logo",
+						t("configurePage.conflictReload"),
+					),
 				);
 			}
 			const data = (await res.json()) as { agent?: Agent };

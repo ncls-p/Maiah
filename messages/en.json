@@ -218,6 +218,7 @@
       "cloneToEditHint": "Clone this assistant to edit your own copy without changing the organization version.",
       "saved": "Assistant saved",
       "capabilitiesSaved": "Tools and knowledge saved",
+      "conflictReload": "This assistant changed in another tab. Reload it before saving again.",
       "deleted": "Assistant deleted",
       "delete": "Delete assistant",
       "builtinTools": "Built-in tools",
