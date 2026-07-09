@@ -553,9 +553,11 @@ function SkillEditorDialog({
 function PreviewPanel({
 	preview,
 	onInstall,
+	installing,
 }: {
 	preview: SkillPreview[];
 	onInstall: () => void;
+	installing: boolean;
 }) {
 	const [expandedSkill, setExpandedSkill] = useState(0);
 	const [expandedFile, setExpandedFile] = useState<string | null>(null);
@@ -570,7 +572,8 @@ function PreviewPanel({
 					found
 				</CardTitle>
 				<CardDescription>
-					These skills will be imported (Markdown files only)
+					Reviewed snapshot. The source is checked again before any Markdown
+					file is imported.
 				</CardDescription>
 			</CardHeader>
 			<CardContent className="space-y-4">
@@ -650,9 +653,16 @@ function PreviewPanel({
 						</details>
 
 						<div className="flex justify-end">
-							<Button onClick={() => void onInstall()}>
-								<BookMarkedIcon className="mr-1 size-3.5" />
-								Install {preview.length > 1 ? "all skills" : "this skill"}
+							<Button
+								onClick={() => void onInstall()}
+								disabled={installing}
+							>
+								{installing ? (
+									<Loader2Icon className="mr-1 size-3 animate-spin" />
+								) : (
+									<BookMarkedIcon className="mr-1 size-3.5" />
+								)}
+								Install reviewed {preview.length > 1 ? "skills" : "skill"}
 							</Button>
 						</div>
 					</>
@@ -677,6 +687,10 @@ export function SkillManager() {
 	const [installing, setInstalling] = useState(false);
 	const [previewing, setPreviewing] = useState(false);
 	const [preview, setPreview] = useState<SkillPreview[] | null>(null);
+	const [previewToken, setPreviewToken] = useState<string | null>(null);
+	const [previewWorkspaceId, setPreviewWorkspaceId] = useState<string | null>(
+		null,
+	);
 	const [canManageTenantGlobals, setCanManageTenantGlobals] = useState(false);
 
 	const loadSkills = useCallback(async () => {
@@ -712,9 +726,14 @@ export function SkillManager() {
 	}, [workspaceId, loadSkills]);
 
 	async function installSkill() {
-		if (!workspaceId || !installCommand.trim()) return;
+		if (
+			!workspaceId ||
+			!installCommand.trim() ||
+			!previewToken ||
+			previewWorkspaceId !== workspaceId
+		)
+			return;
 		setInstalling(true);
-		setPreview(null);
 		try {
 			const res = await fetch("/api/workspace/skills", {
 				method: "POST",
@@ -722,16 +741,27 @@ export function SkillManager() {
 				body: JSON.stringify({
 					workspaceId,
 					installCommand,
+					previewToken,
 					isGlobal: canManageTenantGlobals ? installGlobal : undefined,
 				}),
 			});
 			if (!res.ok) {
-				throw new Error(
-					(await res.json().catch(() => null))?.error || "Skill install failed",
-				);
+				const payload = (await res.json().catch(() => null)) as {
+					error?: string;
+					code?: string;
+				} | null;
+				if (payload?.code === "SKILL_PREVIEW_STALE") {
+					setPreview(null);
+					setPreviewToken(null);
+					setPreviewWorkspaceId(null);
+				}
+				throw new Error(payload?.error || "Skill install failed");
 			}
 			setInstallCommand("");
 			setInstallGlobal(false);
+			setPreview(null);
+			setPreviewToken(null);
+			setPreviewWorkspaceId(null);
 			toast.success("Skill installed. Only Markdown files were imported.");
 			await loadSkills();
 		} catch (error) {
@@ -748,19 +778,27 @@ export function SkillManager() {
 		if (!installCommand.trim()) return;
 		setPreviewing(true);
 		setPreview(null);
+		setPreviewToken(null);
+		setPreviewWorkspaceId(null);
 		try {
+			if (!workspaceId) return;
 			const res = await fetch("/api/workspace/skills/preview", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ installCommand }),
+				body: JSON.stringify({ workspaceId, installCommand }),
 			});
 			if (!res.ok) {
 				throw new Error(
 					(await res.json().catch(() => null))?.error || "Preview failed",
 				);
 			}
-			const data = (await res.json()) as { skills: SkillPreview[] };
+			const data = (await res.json()) as {
+				skills: SkillPreview[];
+				previewToken: string;
+			};
 			setPreview(data.skills);
+			setPreviewToken(data.previewToken);
+			setPreviewWorkspaceId(workspaceId);
 		} catch (error) {
 			toast.error(error instanceof Error ? error.message : "Preview failed");
 			return;
@@ -804,7 +842,12 @@ export function SkillManager() {
 					<Textarea
 						aria-label="skills.sh install command"
 						value={installCommand}
-						onChange={(event) => setInstallCommand(event.target.value)}
+						onChange={(event) => {
+							setInstallCommand(event.target.value);
+							setPreview(null);
+							setPreviewToken(null);
+							setPreviewWorkspaceId(null);
+						}}
 						placeholder="npx skills add anthropics/skills --skill skill-creator"
 						className="min-h-20 font-mono text-sm"
 					/>
@@ -838,7 +881,7 @@ export function SkillManager() {
 								variant="outline"
 								size="sm"
 								onClick={() => void previewSkill()}
-								disabled={previewing || !installCommand.trim()}
+								disabled={previewing || installing || !installCommand.trim()}
 							>
 								{previewing ? (
 									<Loader2Icon
@@ -848,20 +891,7 @@ export function SkillManager() {
 								) : (
 									<EyeIcon className="mr-1 size-3.5" />
 								)}
-								Preview
-							</Button>
-							<Button
-								type={BUTTON_TYPE}
-								onClick={() => void installSkill()}
-								disabled={installing || !installCommand.trim()}
-							>
-								{installing ? (
-									<Loader2Icon
-										className="mr-1 size-3 animate-spin"
-										data-icon="inline-start"
-									/>
-								) : null}
-								Install
+								Preview before install
 							</Button>
 						</div>
 					</div>
@@ -869,7 +899,13 @@ export function SkillManager() {
 			</Card>
 
 			{/* Preview panel */}
-			{preview && <PreviewPanel preview={preview} onInstall={installSkill} />}
+			{preview && previewWorkspaceId === workspaceId && (
+				<PreviewPanel
+					preview={preview}
+					onInstall={installSkill}
+					installing={installing}
+				/>
+			)}
 
 			{/* Installed skills */}
 			<div className="flex items-center justify-between gap-3">

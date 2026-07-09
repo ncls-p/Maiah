@@ -9,12 +9,14 @@ import {
   createSkillManually,
   installSkillsFromCommand,
   listAgentSkills,
+  SkillPreviewConflictError,
 } from "@/modules/skills/use-cases";
 
 const workspaceQuerySchema = z.object({ workspaceId: z.uuid() });
 const installSkillSchema = z.object({
   workspaceId: z.uuid(),
   installCommand: z.string().trim().min(1).max(700),
+  previewToken: z.string().min(1).max(2_000),
   isGlobal: z.boolean().optional(),
 });
 const createSkillSchema = z.object({
@@ -37,6 +39,7 @@ const installErrorMessages = [
   "Install command is too long",
   "Install command contains an unterminated quote",
   "Only `npx skills add ...` commands are supported",
+  "Use `npx skills add ...` with a space between skills and add",
   "Only `skills add` install commands are supported",
   "Install command must include a skill package",
   "Only GitHub owner/repository skill packages are supported",
@@ -139,6 +142,7 @@ export async function POST(req: NextRequest) {
         workspaceId: parsed.data.workspaceId,
         userId: session.user.id,
         installCommand: parsed.data.installCommand,
+        previewToken: parsed.data.previewToken,
         isGlobal: parsed.data.isGlobal && canManageGlobal,
       });
       return NextResponse.json({ skills }, { status: 201 });
@@ -146,6 +150,12 @@ export async function POST(req: NextRequest) {
     {
       logLabel: "Failed to install skill",
       expectedError: (error) => {
+        if (error instanceof SkillPreviewConflictError) {
+          return NextResponse.json(
+            { error: error.message, code: error.code },
+            { status: 409 },
+          );
+        }
         if (isExpectedInstallError(error)) {
           return NextResponse.json(
             { error: (error as Error).message },

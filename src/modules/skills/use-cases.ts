@@ -1,10 +1,12 @@
 import { execFile } from "node:child_process";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { mkdtemp, mkdir, readdir, readFile, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import { and, eq, isNull, or, sql } from "drizzle-orm";
 import { logHandledError } from "@/lib/logger";
+import { env } from "@/lib/env";
 import { audit } from "@/server/domain/services/audit";
 import { db } from "@/server/infrastructure/db";
 import {
@@ -19,6 +21,8 @@ const maxSkillMarkdownBytes = 320_000;
 const maxPromptBytes = 48_000;
 const skillDescriptionMaxLength = 1024;
 const skillNamePattern = /^[a-z0-9-]{1,64}$/;
+const skillPreviewTokenVersion = 1;
+const skillPreviewTtlMs = 10 * 60_000;
 
 export type SkillMarkdownFile = {
 	path: string;
@@ -36,6 +40,39 @@ type SkillFrontmatter = {
 };
 
 export type AgentSkillRow = typeof agentSkills.$inferSelect;
+
+export type SkillPreviewResult = {
+	name: string;
+	description: string | null;
+	markdownFiles: SkillMarkdownFile[];
+	sourcePackage: string;
+};
+
+type LoadedSkillPackage = {
+	parsed: ParsedInstallCommand;
+	results: SkillPreviewResult[];
+	installOutput: string;
+};
+
+type SkillPreviewAttestation = {
+	version: typeof skillPreviewTokenVersion;
+	workspaceId: string;
+	userId: string;
+	commandHash: string;
+	contentChecksum: string;
+	expiresAt: number;
+};
+
+export class SkillPreviewConflictError extends Error {
+	readonly code = "SKILL_PREVIEW_STALE";
+
+	constructor(
+		message = "Skill source changed since preview. Review it again before installing.",
+	) {
+		super(message);
+		this.name = "SkillPreviewConflictError";
+	}
+}
 
 function visibleSkillCondition(workspaceId: string, userId: string) {
 	return and(
@@ -246,6 +283,121 @@ export function parseSkillsInstallCommand(
 	};
 }
 
+function sha256(value: string) {
+	return createHash("sha256").update(value).digest("hex");
+}
+
+function installCommandHash(command: string) {
+	const parsed = parseSkillsInstallCommand(command);
+	return sha256(
+		JSON.stringify({
+			sourcePackage: parsed.sourcePackage,
+			skillNames: [...parsed.skillNames].sort(),
+		}),
+	);
+}
+
+export function checksumSkillPreview(skills: SkillPreviewResult[]) {
+	const canonical = [...skills]
+		.map((skill) => ({
+			name: skill.name,
+			description: skill.description,
+			sourcePackage: skill.sourcePackage,
+			markdownFiles: [...skill.markdownFiles]
+				.sort((a, b) => a.path.localeCompare(b.path))
+				.map((file) => ({
+					path: file.path,
+					contentHash: sha256(file.content),
+				})),
+		}))
+		.sort((a, b) =>
+			`${a.sourcePackage}/${a.name}`.localeCompare(
+				`${b.sourcePackage}/${b.name}`,
+			),
+		);
+	return sha256(JSON.stringify(canonical));
+}
+
+function signSkillPreviewPayload(payload: string) {
+	return createHmac("sha256", Buffer.from(env.APP_ENCRYPTION_KEY, "hex"))
+		.update(payload)
+		.digest("base64url");
+}
+
+export function createSkillInstallPreviewToken(input: {
+	workspaceId: string;
+	userId: string;
+	installCommand: string;
+	skills: SkillPreviewResult[];
+	now?: number;
+}) {
+	const expiresAt = (input.now ?? Date.now()) + skillPreviewTtlMs;
+	const attestation: SkillPreviewAttestation = {
+		version: skillPreviewTokenVersion,
+		workspaceId: input.workspaceId,
+		userId: input.userId,
+		commandHash: installCommandHash(input.installCommand),
+		contentChecksum: checksumSkillPreview(input.skills),
+		expiresAt,
+	};
+	const payload = Buffer.from(JSON.stringify(attestation)).toString("base64url");
+	return {
+		previewToken: `${payload}.${signSkillPreviewPayload(payload)}`,
+		expiresAt: new Date(expiresAt).toISOString(),
+		contentChecksum: attestation.contentChecksum,
+	};
+}
+
+function invalidSkillPreview(): never {
+	throw new SkillPreviewConflictError(
+		"Skill preview is invalid or expired. Preview the source again before installing.",
+	);
+}
+
+export function verifySkillInstallPreviewToken(input: {
+	previewToken: string;
+	workspaceId: string;
+	userId: string;
+	installCommand: string;
+	now?: number;
+}) {
+	const [payload, signature, extra] = input.previewToken.split(".");
+	if (!payload || !signature || extra) invalidSkillPreview();
+
+	const expectedSignature = signSkillPreviewPayload(payload);
+	const actualBytes = Buffer.from(signature, "utf8");
+	const expectedBytes = Buffer.from(expectedSignature, "utf8");
+	if (
+		actualBytes.length !== expectedBytes.length ||
+		!timingSafeEqual(actualBytes, expectedBytes)
+	) {
+		invalidSkillPreview();
+	}
+
+	let attestation: SkillPreviewAttestation;
+	try {
+		attestation = JSON.parse(
+			Buffer.from(payload, "base64url").toString("utf8"),
+		) as SkillPreviewAttestation;
+	} catch {
+		invalidSkillPreview();
+	}
+
+	if (
+		attestation.version !== skillPreviewTokenVersion ||
+		attestation.workspaceId !== input.workspaceId ||
+		attestation.userId !== input.userId ||
+		attestation.commandHash !== installCommandHash(input.installCommand) ||
+		!Number.isFinite(attestation.expiresAt) ||
+		attestation.expiresAt <= (input.now ?? Date.now()) ||
+		!/^([a-f0-9]{64})$/.test(attestation.contentChecksum)
+	) {
+		invalidSkillPreview();
+	}
+
+	return attestation;
+}
+
 function processOutputToString(value: unknown) {
 	if (!value) return "";
 	return Buffer.isBuffer(value) ? value.toString("utf8") : String(value);
@@ -361,14 +513,12 @@ async function extractMarkdownFiles(
 	}
 }
 
-export async function installSkillsFromCommand(input: {
-	workspaceId: string;
-	userId: string;
-	installCommand: string;
-	isGlobal?: boolean;
-}) {
-	const parsed = parseSkillsInstallCommand(input.installCommand);
-	const tempDir = await mkdtemp(path.join(tmpdir(), "ai-hub-skills-"));
+async function loadSkillPackage(
+	installCommand: string,
+	tempPrefix: string,
+): Promise<LoadedSkillPackage> {
+	const parsed = parseSkillsInstallCommand(installCommand);
+	const tempDir = await mkdtemp(path.join(tmpdir(), tempPrefix));
 	const tempHome = path.join(tempDir, "home");
 	await mkdir(tempHome, { recursive: true });
 
@@ -388,14 +538,14 @@ export async function installSkillsFromCommand(input: {
 		}
 
 		const { stdout, stderr } = await runSkillsCli(args, tempDir, tempHome);
-
 		const installedRoot = path.join(tempDir, ".claude", "skills");
 		const rootEntries = await readdir(installedRoot, {
 			withFileTypes: true,
 		}).catch(() => []);
 		const skillDirs = rootEntries
 			.filter((entry) => entry.isDirectory())
-			.map((entry) => path.join(installedRoot, entry.name));
+			.map((entry) => path.join(installedRoot, entry.name))
+			.sort((a, b) => path.basename(a).localeCompare(path.basename(b)));
 
 		if (skillDirs.length === 0) {
 			throw new Error(
@@ -403,40 +553,81 @@ export async function installSkillsFromCommand(input: {
 			);
 		}
 
-		const created: AgentSkillRow[] = [];
-		const _isSkillMdInstall = (file: { path: string }) =>
-			file.path === "SKILL.md";
+		const results: SkillPreviewResult[] = [];
 		for (const skillDir of skillDirs) {
 			const markdownFiles = await extractMarkdownFiles(skillDir);
 			if (markdownFiles.length === 0) continue;
-			const skillFile = markdownFiles.find(_isSkillMdInstall);
+			const skillFile = markdownFiles.find((file) => file.path === "SKILL.md");
 			const frontmatter = skillFile ? parseFrontmatter(skillFile.content) : {};
 			const fallbackName = path.basename(skillDir);
-			const [row] = await db
-				.insert(agentSkills)
-				.values({
-					workspaceId: input.workspaceId,
-					createdById: input.userId,
-					isGlobal: input.isGlobal ?? false,
-					name: frontmatter.name || fallbackName,
-					description: frontmatter.description ?? null,
-					sourcePackage: parsed.sourcePackage,
-					sourceSkillName: frontmatter.name || fallbackName,
-					installCommand: input.installCommand,
-					markdownFilesJson: markdownFiles,
-					metadataJson: {
-						importedMarkdownFiles: markdownFiles.length,
-						omittedNonMarkdownFiles: true,
-						installOutput: stripAnsi(`${stdout}\n${stderr}`).slice(0, 4_000),
-					},
-				})
-				.returning();
-			created.push(row);
+			results.push({
+				name: frontmatter.name || fallbackName,
+				description: frontmatter.description ?? null,
+				markdownFiles,
+				sourcePackage: parsed.sourcePackage,
+			});
 		}
 
-		if (created.length === 0) {
+		if (results.length === 0) {
 			throw new Error("No Markdown files were found in the installed skill");
 		}
+
+		return {
+			parsed,
+			results,
+			installOutput: stripAnsi(`${stdout}\n${stderr}`).slice(0, 4_000),
+		};
+	} finally {
+		await rm(tempDir, { recursive: true, force: true });
+	}
+}
+
+export async function installSkillsFromCommand(input: {
+	workspaceId: string;
+	userId: string;
+	installCommand: string;
+	previewToken: string;
+	isGlobal?: boolean;
+}) {
+	const preview = verifySkillInstallPreviewToken(input);
+
+	try {
+		const loaded = await loadSkillPackage(
+			input.installCommand,
+			"ai-hub-skills-install-",
+		);
+		const contentChecksum = checksumSkillPreview(loaded.results);
+		if (contentChecksum !== preview.contentChecksum) {
+			throw new SkillPreviewConflictError();
+		}
+
+		const created = await db.transaction(async (tx) => {
+			const rows: AgentSkillRow[] = [];
+			for (const skill of loaded.results) {
+				const [row] = await tx
+					.insert(agentSkills)
+					.values({
+						workspaceId: input.workspaceId,
+						createdById: input.userId,
+						isGlobal: input.isGlobal ?? false,
+						name: skill.name,
+						description: skill.description,
+						sourcePackage: loaded.parsed.sourcePackage,
+						sourceSkillName: skill.name,
+						installCommand: input.installCommand,
+						markdownFilesJson: skill.markdownFiles,
+						metadataJson: {
+							importedMarkdownFiles: skill.markdownFiles.length,
+							omittedNonMarkdownFiles: true,
+							installOutput: loaded.installOutput,
+							previewChecksum: contentChecksum,
+						},
+					})
+					.returning();
+				rows.push(row);
+			}
+			return rows;
+		});
 
 		await audit.emit({
 			workspaceId: input.workspaceId,
@@ -447,23 +638,23 @@ export async function installSkillsFromCommand(input: {
 			resourceId: input.workspaceId,
 			outcome: "success",
 			metadata: {
-				sourcePackage: parsed.sourcePackage,
-				skillNames: parsed.skillNames,
+				sourcePackage: loaded.parsed.sourcePackage,
+				skillNames: loaded.parsed.skillNames,
 				installedSkillIds: created.map((skill) => skill.id),
 				onlyMarkdownImported: true,
+				previewChecksum: contentChecksum,
 			},
 		});
 
 		return created;
 	} catch (error) {
+		const parsed = parseSkillsInstallCommand(input.installCommand);
 		logHandledError(
 			"Failed to install skills from command",
 			{ sourcePackage: parsed.sourcePackage },
 			error as Error,
 		);
 		throw error;
-	} finally {
-		await rm(tempDir, { recursive: true, force: true });
 	}
 }
 
@@ -659,74 +850,18 @@ function toMarkdownFiles(value: unknown): SkillMarkdownFile[] {
 	);
 }
 
-export type SkillPreviewResult = {
-	name: string;
-	description: string | null;
-	markdownFiles: SkillMarkdownFile[];
-	sourcePackage: string;
-};
-
 export async function previewSkillInstall(
 	installCommand: string,
 ): Promise<SkillPreviewResult[]> {
 	const parsed = parseSkillsInstallCommand(installCommand);
-	const tempDir = await mkdtemp(path.join(tmpdir(), "ai-hub-skills-preview-"));
-	const tempHome = path.join(tempDir, "home");
-	await mkdir(tempHome, { recursive: true });
 
 	try {
-		const args = [
-			"--yes",
-			"skills",
-			"add",
-			parsed.sourcePackage,
-			"--copy",
-			"-y",
-			"--agent",
-			"claude-code",
-		];
-		for (const skillName of parsed.skillNames) {
-			args.push("--skill", skillName);
-		}
-
-		await runSkillsCli(args, tempDir, tempHome);
-
-		const installedRoot = path.join(tempDir, ".claude", "skills");
-		const rootEntries = await readdir(installedRoot, {
-			withFileTypes: true,
-		}).catch(() => []);
-		const skillDirs = rootEntries
-			.filter((entry) => entry.isDirectory())
-			.map((entry) => path.join(installedRoot, entry.name));
-
-		if (skillDirs.length === 0) {
-			throw new Error(
-				"The install command did not produce any skill directory",
-			);
-		}
-
-		const results: SkillPreviewResult[] = [];
-		const _isSkillMdPreview = (file: { path: string }) =>
-			file.path === "SKILL.md";
-		for (const skillDir of skillDirs) {
-			const markdownFiles = await extractMarkdownFiles(skillDir);
-			if (markdownFiles.length === 0) continue;
-			const skillFile = markdownFiles.find(_isSkillMdPreview);
-			const frontmatter = skillFile ? parseFrontmatter(skillFile.content) : {};
-			const fallbackName = path.basename(skillDir);
-			results.push({
-				name: frontmatter.name || fallbackName,
-				description: frontmatter.description ?? null,
-				markdownFiles,
-				sourcePackage: parsed.sourcePackage,
-			});
-		}
-
-		if (results.length === 0) {
-			throw new Error("No Markdown files were found in the installed skill");
-		}
-
-		return results;
+		return (
+			await loadSkillPackage(
+				installCommand,
+				"ai-hub-skills-preview-",
+			)
+		).results;
 	} catch (error) {
 		logHandledError(
 			"Failed to preview skill install",
@@ -734,8 +869,6 @@ export async function previewSkillInstall(
 			error as Error,
 		);
 		throw error;
-	} finally {
-		await rm(tempDir, { recursive: true, force: true });
 	}
 }
 
