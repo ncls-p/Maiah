@@ -283,9 +283,7 @@ export async function loadConversationHistory(
         const imageAttachment = isChatImageAttachment(metadata)
           ? metadata
           : null;
-        const fileAttachment = isChatFileAttachment(metadata)
-          ? metadata
-          : null;
+        const fileAttachment = isChatFileAttachment(metadata) ? metadata : null;
         if (message.role === "user" && imageAttachment) {
           try {
             const attachment = await getChatImageAttachmentBytes({
@@ -356,9 +354,8 @@ export async function loadConversationHistory(
           }
         }
 
-        const codeWorkspaceContext = codeWorkspaceContextFromToolMetadata(
-          metadata,
-        );
+        const codeWorkspaceContext =
+          codeWorkspaceContextFromToolMetadata(metadata);
         if (codeWorkspaceContext) {
           textParts.push(
             `Uploaded code workspace available in chat:\n${codeWorkspaceContext}`,
@@ -378,21 +375,16 @@ export async function loadConversationHistory(
       }
 
       if (message.role === "assistant") {
-        const artifactCode = htmlArtifactCodeFromToolMetadata(
-          metadata,
-        );
+        const artifactCode = htmlArtifactCodeFromToolMetadata(metadata);
         if (artifactCode) artifactCodeBlocks.add(artifactCode);
-        const codeWorkspaceContext = codeWorkspaceContextFromToolMetadata(
-          metadata,
-        );
+        const codeWorkspaceContext =
+          codeWorkspaceContextFromToolMetadata(metadata);
         if (codeWorkspaceContext) {
           artifactCodeBlocks.add(
             `Previously updated code workspace:\n${codeWorkspaceContext}`,
           );
         }
-        const codeSandboxContext = codeSandboxContextFromToolMetadata(
-          metadata,
-        );
+        const codeSandboxContext = codeSandboxContextFromToolMetadata(metadata);
         if (codeSandboxContext) {
           textParts.push(
             `Previously generated code sandbox output available for follow-up:\n${codeSandboxContext}`,

@@ -212,7 +212,10 @@ export async function POST(
 
     const execStartedAt = Date.now();
     try {
-      const result = await executeInvocation(claimedInvocation, session.user.id);
+      const result = await executeInvocation(
+        claimedInvocation,
+        session.user.id,
+      );
       const latencyMs = Date.now() - execStartedAt;
       const completed = await completeToolInvocationSuccess(
         claimedInvocation.id,

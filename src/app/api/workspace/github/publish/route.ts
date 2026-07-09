@@ -39,7 +39,11 @@ export async function POST(req: NextRequest) {
       if (!parsed.success) {
         githubPublishRouteLog(
           "invalid-request",
-          { requestId, userId: session.user.id, issues: parsed.error.issues.length },
+          {
+            requestId,
+            userId: session.user.id,
+            issues: parsed.error.issues.length,
+          },
           "error",
         );
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
@@ -89,7 +93,8 @@ export async function POST(req: NextRequest) {
       );
       return NextResponse.json(
         {
-          error: error instanceof Error ? error.message : "GitHub publish failed",
+          error:
+            error instanceof Error ? error.message : "GitHub publish failed",
         },
         { status: 400 },
       );
