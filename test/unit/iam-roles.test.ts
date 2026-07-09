@@ -40,6 +40,7 @@ describe("SYSTEM_ROLES", () => {
 		expect(member).toBeDefined();
 		expect(member!.permissions).not.toContain("members.*");
 		expect(member!.permissions).not.toContain("providers.*");
+		expect(member!.permissions).toContain("agents.delegate");
 	});
 
 	it("defines only organization admin and organization user roles", () => {

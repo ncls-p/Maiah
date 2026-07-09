@@ -7,6 +7,7 @@ import {
 	varchar,
 	uuid,
 	jsonb,
+	index,
 	uniqueIndex,
 	pgEnum,
 } from "drizzle-orm/pg-core";
@@ -36,6 +37,10 @@ export const agentSourceTypeEnum = pgEnum("agent_source_type", [
 	"marketplace_install",
 	"fork",
 ]);
+export const agentKindEnum = pgEnum("agent_kind", [
+	"assistant",
+	"orchestrator",
+]);
 
 export const agents = pgTable(
 	"agents",
@@ -50,6 +55,7 @@ export const agents = pgTable(
 		logoUrl: text("logo_url"),
 		visibility: agentVisibilityEnum("visibility").notNull().default("private"),
 		sourceType: agentSourceTypeEnum("source_type").notNull().default("custom"),
+		kind: agentKindEnum("kind").notNull().default("assistant"),
 		sharingMode: varchar("sharing_mode", { length: 32 })
 			.notNull()
 			.default("personal"),
@@ -136,6 +142,7 @@ export const agentVersions = pgTable(
 		memoryPolicyJson: jsonb("memory_policy_json"),
 		guardrailsJson: jsonb("guardrails_json"),
 		approvalPolicyJson: jsonb("approval_policy_json"),
+		orchestrationPolicyJson: jsonb("orchestration_policy_json"),
 		createdById: uuid(CREATED_BY_USER_ID_COLUMN)
 			.notNull()
 			.references(() => users.id),
@@ -147,6 +154,35 @@ export const agentVersions = pgTable(
 		uniqueIndex("agent_versions_agent_version_unique").on(
 			t.agentId,
 			t.versionNumber,
+		),
+	],
+);
+
+export const agentDelegationBindings = pgTable(
+	"agent_delegation_bindings",
+	{
+		id: uuid("id").primaryKey().defaultRandom(),
+		agentVersionId: uuid("agent_version_id")
+			.notNull()
+			.references(() => agentVersions.id, { onDelete: CASCADE_ACTION }),
+		childAgentId: uuid("child_agent_id")
+			.notNull()
+			.references(() => agents.id, { onDelete: CASCADE_ACTION }),
+		childAgentVersionId: uuid("child_agent_version_id")
+			.notNull()
+			.references(() => agentVersions.id, { onDelete: CASCADE_ACTION }),
+		instructions: text("instructions"),
+		createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+	},
+	(t) => [
+		uniqueIndex("agent_delegation_bindings_version_child_unique").on(
+			t.agentVersionId,
+			t.childAgentId,
+		),
+		index("agent_delegation_bindings_child_version").on(
+			t.childAgentVersionId,
 		),
 	],
 );
