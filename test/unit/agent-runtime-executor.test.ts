@@ -532,9 +532,12 @@ describe("agent runtime executor", () => {
     mocks.generateText.mockImplementation(async (options) => {
       call += 1;
       if (call === 1) {
-        const delegate = Object.entries(options.tools).find(([name]) =>
+        const delegationEntry = Object.entries(options.tools).find(([name]) =>
           name.startsWith("delegate_"),
-        )?.[1] as {
+        );
+        expect(delegationEntry?.[0]).toBe("delegate_specialist_1");
+        const delegate = delegationEntry?.[1] as {
+          description: string;
           execute: (input: { task: string }) => Promise<unknown>;
           toModelOutput: (options: {
             toolCallId: string;
@@ -542,6 +545,7 @@ describe("agent runtime executor", () => {
             output: unknown;
           }) => unknown;
         };
+        expect(delegate.description).not.toContain(childAgent.id);
         const delegatedOutput = await delegate.execute({
           task: "Investigate",
         });
@@ -567,6 +571,9 @@ describe("agent runtime executor", () => {
           usage: { inputTokens: 7, outputTokens: 8 },
         };
       }
+      expect(options.system).toContain(
+        "Return only the final answer needed by the parent orchestrator.",
+      );
       const childToolCall = {
         type: "tool-call" as const,
         toolCallId: "child-tool-call",
@@ -636,6 +643,7 @@ describe("agent runtime executor", () => {
       runId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
       parentRunId: "77777777-7777-4777-8777-777777777777",
       depth: 1,
+      modelHistoryKind: "visual-only",
       input: { query: "Investigate" },
     });
     expect(onProgress).toHaveBeenNthCalledWith(2, {
@@ -648,6 +656,7 @@ describe("agent runtime executor", () => {
       runId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
       parentRunId: "77777777-7777-4777-8777-777777777777",
       depth: 1,
+      modelHistoryKind: "visual-only",
       durationMs: 31,
       output: { sourceCount: 3 },
     });
@@ -699,7 +708,10 @@ describe("agent runtime executor", () => {
         prompt: "Coordinate",
         trigger: "api",
       }),
-    ).rejects.toMatchObject({ code: "AGENT_DELEGATION_FORBIDDEN" });
+    ).rejects.toMatchObject({
+      code: "AGENT_DELEGATION_FORBIDDEN",
+      message: "The specialist could not complete the delegated task.",
+    });
     expect(mocks.getVersion).not.toHaveBeenCalled();
     expect(mocks.failRun).toHaveBeenCalledWith(
       expect.objectContaining({ errorCode: "AGENT_DELEGATION_FORBIDDEN" }),

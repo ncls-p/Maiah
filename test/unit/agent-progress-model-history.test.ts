@@ -38,13 +38,14 @@ describe("agent progress model-history projection", () => {
 
   it("exposes only the bounded final text of a successful root delegation", () => {
     const metadata = {
-      toolName: "delegate_88888888888848888888888888888888",
+      toolName: "delegate_specialist_1",
       output: {
         childRunId: "private-child-run",
         childAgentId: "private-child-agent",
         childAgentName: "Private specialist",
         result: "Final specialist answer",
       },
+      modelHistoryKind: "delegation-result",
       agentContext: rootContext,
     };
 
@@ -61,15 +62,17 @@ describe("agent progress model-history projection", () => {
   it("keeps delegation starts and failures visual-only", () => {
     expect(
       projectAgentProgressForModelHistory({
-        toolName: "delegate_88888888888848888888888888888888",
+        toolName: "delegate_specialist_1",
         input: { task: "Private task" },
+        modelHistoryKind: "visual-only",
         agentContext: { ...rootContext, status: "running" },
       }),
     ).toEqual({ kind: "visual-only" });
     expect(
       projectAgentProgressForModelHistory({
-        toolName: "delegate_88888888888848888888888888888888",
+        toolName: "delegate_specialist_1",
         output: { error: "Private failure" },
+        modelHistoryKind: "visual-only",
         agentContext: { ...rootContext, status: "error" },
       }),
     ).toEqual({ kind: "visual-only" });
@@ -88,7 +91,7 @@ describe("agent progress model-history projection", () => {
   it("does not trust agent provenance nested inside tool-controlled output", () => {
     expect(
       projectAgentProgressForModelHistory({
-        toolName: "delegate_88888888888848888888888888888888",
+        toolName: "delegate_specialist_1",
         output: {
           result: "Untrusted",
           agentContext: rootContext,

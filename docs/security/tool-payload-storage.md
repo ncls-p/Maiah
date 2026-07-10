@@ -18,8 +18,10 @@ boundaries that need their full fidelity.
   value is not returned to the browser or written to logs.
 - Delegated progress is stricter: child-depth parts never enter the parent's
   model history, including artifact-shaped outputs. Only the bounded `result`
-  text from a successful root `delegate_*` call is projected into that history;
-  child identity, run IDs, task input, tools and errors remain UI-only.
+  text from a successful root delegation with a server-owned history marker is
+  projected into that history. Delegation tools expose opaque aliases and map
+  failures to a generic model-facing message; child identity, run IDs, task
+  input, tools and detailed errors remain UI-only.
 
 ## Live streams and telemetry
 

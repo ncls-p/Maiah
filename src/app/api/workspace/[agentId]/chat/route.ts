@@ -580,18 +580,23 @@ export async function POST(
           status,
           ...(!isStart ? { durationMs: progress.durationMs } : {}),
         } satisfies AgentToolDisplayContext;
+        const modelHistoryMetadata = progress.modelHistoryKind
+          ? { modelHistoryKind: progress.modelHistoryKind }
+          : {};
         const rawMetadata = isStart
           ? {
               toolCallId: progress.id,
               toolName: progress.toolName,
               input: value,
               agentContext,
+              ...modelHistoryMetadata,
             }
           : {
               toolCallId: progress.id,
               toolName: progress.toolName,
               output: value,
               agentContext,
+              ...modelHistoryMetadata,
             };
         const safeValue = projectToolMessagePayload(value);
         const safeMetadata = isStart
@@ -600,12 +605,14 @@ export async function POST(
               toolName: progress.toolName,
               input: safeValue,
               agentContext,
+              ...modelHistoryMetadata,
             }
           : {
               toolCallId: progress.id,
               toolName: progress.toolName,
               output: safeValue,
               agentContext,
+              ...modelHistoryMetadata,
             };
 
         try {
@@ -622,14 +629,14 @@ export async function POST(
                   type: "tool_call",
                   toolCallId: progress.id,
                   toolName: progress.toolName,
-                  input: safeMetadata.input,
+                  input: safeValue,
                   agentContext,
                 }
               : {
                   type: "tool_result",
                   toolCallId: progress.id,
                   toolName: progress.toolName,
-                  output: safeMetadata.output,
+                  output: safeValue,
                   agentContext,
                 },
           );

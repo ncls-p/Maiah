@@ -51,8 +51,11 @@ memory. During the active run, each `delegate_*` tool uses AI SDK
 full structured output remains available to progress callbacks. When a later
 turn reconstructs model history, every child-depth action is discarded before
 artifact context extraction; a successful root delegation contributes only its
-`result` string. Child run IDs, agent identity, task input, intermediate tools,
-artifacts and errors therefore remain visual-only.
+`result` string through an explicit server-owned history marker. Delegation
+tools use opaque specialist aliases instead of agent IDs, and failures expose
+only a generic control message to the active parent model. Child run IDs, agent
+identity, task input, intermediate tools, artifacts and detailed errors
+therefore remain visual-only.
 
 Full progress input and output are encrypted in the message part. Public stream
 events and `metadata_json` contain bounded, secret-aware input, output or safe

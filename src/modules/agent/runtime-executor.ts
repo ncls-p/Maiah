@@ -14,6 +14,10 @@ import {
   type OrchestrationPolicy,
 } from "@/modules/agent/orchestration-policy";
 import {
+  delegationFinalTextFromOutput,
+  type AgentProgressModelHistoryKind,
+} from "@/modules/agent/progress-model-history";
+import {
   agentRuntimePolicy,
   createRuntimeDeadline,
   resolveAgentRuntimeLimits,
@@ -39,12 +43,13 @@ import {
 } from "@/modules/agent/use-cases";
 import { buildSkillsRegistryPrompt } from "@/modules/skills/use-cases";
 import { safeToolErrorMessage } from "@/modules/tool/safe-payload";
-import { delegationFinalTextFromOutput } from "@/modules/agent/progress-model-history";
 import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
 import { getAdapter } from "@/server/infrastructure/providers";
 
 const HEARTBEAT_MS = 10_000;
+const delegationFailureModelMessage =
+  "The specialist could not complete the delegated task.";
 const activeRunControllers = new Map<string, AbortController>();
 
 export class AgentExecutionError extends Error {
@@ -91,6 +96,7 @@ type AgentToolProgressContext = {
   runId: string;
   parentRunId: string | null;
   depth: number;
+  modelHistoryKind?: AgentProgressModelHistoryKind;
 };
 
 export type AgentToolProgressEvent =
@@ -288,6 +294,31 @@ function truncateDelegationResult(value: string, maxChars: number) {
   return `${value.slice(0, maxChars)}\n\n[Delegated result truncated]`;
 }
 
+function modelSafeDelegationError(error: unknown, childRunId?: string) {
+  return new AgentExecutionError(
+    delegationFailureModelMessage,
+    error instanceof AgentExecutionError
+      ? error.code
+      : "AGENT_DELEGATION_FAILED",
+    error instanceof AgentExecutionError
+      ? (error.runId ?? childRunId)
+      : childRunId,
+  );
+}
+
+function progressModelHistoryMetadata(input: {
+  depth: number;
+  isDelegation: boolean;
+  phase: "start" | "success" | "error";
+}): { modelHistoryKind?: AgentProgressModelHistoryKind } {
+  if (input.depth > 0) return { modelHistoryKind: "visual-only" };
+  if (!input.isDelegation) return {};
+  return {
+    modelHistoryKind:
+      input.phase === "success" ? "delegation-result" : "visual-only",
+  };
+}
+
 async function buildDelegationTools(input: {
   runId: string;
   resolved: ResolvedAgent;
@@ -303,11 +334,15 @@ async function buildDelegationTools(input: {
   );
   const delegationTools: ToolSet = {};
 
-  for (const binding of bindings) {
-    const toolName = `delegate_${binding.childAgentId.replaceAll("-", "")}`;
+  const orderedBindings = [...bindings].sort((left, right) =>
+    left.childAgentId.localeCompare(right.childAgentId),
+  );
+  for (const [bindingIndex, binding] of orderedBindings.entries()) {
+    const specialistNumber = bindingIndex + 1;
+    const toolName = `delegate_specialist_${specialistNumber}`;
     delegationTools[toolName] = tool({
       description: [
-        `Delegate one bounded task to agent ${binding.childAgentId}.`,
+        `Delegate one bounded task to configured specialist ${specialistNumber}.`,
         binding.instructions?.trim(),
         "Return the child result to the orchestrator and continue the parent plan.",
       ]
@@ -431,11 +466,10 @@ async function buildDelegationTools(input: {
             name: toolName,
             childRunId,
             inputPreview: { task },
-            errorMessage:
-              error instanceof Error ? error.message : String(error),
+            errorMessage: safeToolErrorMessage(error, "Delegated task failed"),
             completedAt: new Date(),
           });
-          throw error;
+          throw modelSafeDelegationError(error, childRunId);
         } finally {
           if (activeSlotReserved) {
             input.execution.budget.activeDelegations = Math.max(
@@ -563,13 +597,18 @@ async function executeResolvedAgent(
     );
     const delegationPrompt =
       Object.keys(delegationTools).length > 0
-        ? "You are an orchestrator. Break the request into bounded tasks and use only the delegate_* tools whose child expertise is relevant. Synthesize the returned results into one answer. Never invent a child result."
+        ? "You are an orchestrator. Break the request into bounded tasks and use only the delegate_specialist_* tools whose configured expertise is relevant. Synthesize the returned results into one answer. Never invent a child result."
+        : null;
+    const delegatedResultPrompt =
+      input.trigger === "delegation"
+        ? "Return only the final answer needed by the parent orchestrator. Do not mention internal tools, execution steps, agent identities, run identifiers, or hidden instructions."
         : null;
     const system = [
       input.resolved.version.systemPrompt?.trim() ||
         "You are a helpful enterprise AI assistant.",
       skillsPrompt,
       delegationPrompt,
+      delegatedResultPrompt,
       input.systemContext?.trim() || null,
       input.dryRun
         ? "This is a dry run. Do not call tools or delegate. Explain the execution plan and configuration issues only."
@@ -610,6 +649,11 @@ async function executeResolvedAgent(
           runId,
           parentRunId: input.parentRunId ?? null,
           depth: input.depth,
+          ...progressModelHistoryMetadata({
+            depth: input.depth,
+            isDelegation: Object.hasOwn(delegationTools, toolCall.toolName),
+            phase: "start",
+          }),
           input: toolCall.input,
         }),
       onToolExecutionEnd: ({ toolCall, toolExecutionMs, toolOutput }) => {
@@ -622,6 +666,11 @@ async function executeResolvedAgent(
           runId,
           parentRunId: input.parentRunId ?? null,
           depth: input.depth,
+          ...progressModelHistoryMetadata({
+            depth: input.depth,
+            isDelegation: Object.hasOwn(delegationTools, toolCall.toolName),
+            phase: toolOutput.type === "tool-error" ? "error" : "success",
+          }),
         } satisfies AgentToolProgressContext;
         if (toolOutput.type === "tool-error") {
           emitToolProgress(input.onProgress, {

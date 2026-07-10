@@ -1,6 +1,6 @@
 import { parseAgentToolDisplayContext } from "@/modules/agent/tool-progress-payload";
 
-const delegationToolNamePattern = /^delegate_[0-9a-f]{32}$/;
+export type AgentProgressModelHistoryKind = "visual-only" | "delegation-result";
 
 export type AgentProgressModelHistoryProjection =
   | { kind: "visual-only" }
@@ -29,12 +29,11 @@ export function projectAgentProgressForModelHistory(
   if (!context) return null;
 
   if (context.depth > 0) return { kind: "visual-only" };
-  if (
-    typeof metadata.toolName !== "string" ||
-    !delegationToolNamePattern.test(metadata.toolName)
-  ) {
-    return null;
+  if (metadata.modelHistoryKind === "visual-only") {
+    return { kind: "visual-only" };
   }
+  if (metadata.modelHistoryKind !== "delegation-result") return null;
+  if (context.status !== "success") return { kind: "visual-only" };
 
   const text = delegationFinalTextFromOutput(metadata.output);
   return text === null

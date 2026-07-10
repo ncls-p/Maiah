@@ -54,13 +54,14 @@ describe("orchestrator conversation history", () => {
     };
     const delegationResult = {
       toolCallId: "root-run:delegate-call",
-      toolName: "delegate_88888888888848888888888888888888",
+      toolName: "delegate_specialist_1",
       output: {
         childRunId: "private-child-run",
         childAgentId: "private-child-agent",
         childAgentName: "Private specialist",
         result: "FINAL CHILD RESPONSE",
       },
+      modelHistoryKind: "delegation-result",
       agentContext: {
         agentId: "root-agent",
         agentName: "Root orchestrator",
