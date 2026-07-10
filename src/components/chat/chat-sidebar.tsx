@@ -153,10 +153,10 @@ function ChatNavLink({ item }: { item: NavItem }) {
       href={item.href}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors",
+        "flex min-h-10 items-center gap-2.5 rounded-xl px-3 text-[13px] font-medium transition-[background-color,color]",
         active
           ? "bg-sidebar-accent text-sidebar-accent-foreground"
-          : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground",
+          : "text-sidebar-foreground/75 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground",
       )}
     >
       <Icon className="size-4 shrink-0" aria-hidden="true" />
@@ -199,12 +199,12 @@ function ChatAppNavigation({ groups }: { groups: NavGroup[] }) {
     <Collapsible
       open={workspaceOpen}
       onOpenChange={setStoredWorkspaceNavOpen}
-      className="border-t border-sidebar-border px-3 py-3"
+      className="border-t border-sidebar-border/60 px-2 py-2"
     >
       <CollapsibleTrigger asChild>
         <button
           type={BUTTON_TYPE}
-          className="flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+          className="flex min-h-10 w-full items-center justify-between rounded-xl px-3 text-xs font-medium text-muted-foreground transition-[background-color,color] hover:bg-sidebar-accent/70 hover:text-sidebar-foreground"
         >
           <span>{t("workspace")}</span>
           <ChevronDownIcon
@@ -227,7 +227,7 @@ function ChatAppNavigation({ groups }: { groups: NavGroup[] }) {
             <CollapsibleTrigger asChild>
               <button
                 type={BUTTON_TYPE}
-                className="mt-1 flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-sm font-medium text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                className="mt-1 flex min-h-10 w-full items-center justify-between rounded-xl px-3 text-[13px] font-medium text-sidebar-foreground/75 transition-[background-color,color] hover:bg-sidebar-accent/70 hover:text-sidebar-foreground"
               >
                 <span>{tGroups("advanced")}</span>
                 <ChevronDownIcon
@@ -306,20 +306,15 @@ function ConversationItem({
       onDragOver={(event) => event.preventDefault()}
       onDrop={onDropBefore}
       className={cn(
-        "group/conversation relative overflow-hidden rounded-lg border transition-colors",
+        "group/conversation relative overflow-hidden rounded-xl transition-[background-color,opacity]",
         isActive
-          ? "border-primary/20 bg-primary/10"
-          : "border-transparent hover:border-border hover:bg-muted/70",
+          ? "bg-sidebar-accent text-sidebar-accent-foreground"
+          : "hover:bg-muted/70",
         isDragging && "opacity-45",
       )}
     >
-      {/* Active indicator bar */}
-      {isActive && (
-        <div className="absolute left-1 top-1/2 h-4 w-px -translate-y-1/2 rounded-full bg-primary" />
-      )}
-
       {isEditing ? (
-        <div className="flex min-w-0 flex-1 items-center gap-1 p-1 pl-2.5">
+        <div className="flex min-w-0 flex-1 items-center gap-1 p-1.5">
           <Input
             aria-label={t("conversationTitle")}
             value={editingTitle}
@@ -335,7 +330,7 @@ function ConversationItem({
                 onEditCancel();
               }
             }}
-            className="h-7 min-w-0 rounded-md px-2 text-xs"
+            className="h-10 min-w-0 rounded-xl px-3 text-xs"
             autoFocus
           />
           <Button
@@ -343,7 +338,7 @@ function ConversationItem({
             size="icon-sm"
             variant={GHOST_VARIANT}
             aria-label={t("saveTitle")}
-            className="size-6 shrink-0 rounded-md"
+            className="size-10 shrink-0 rounded-xl"
             onClick={() => {
               const nextTitle = editingTitle.trim();
               if (!nextTitle) return;
@@ -357,28 +352,28 @@ function ConversationItem({
             size="icon-sm"
             variant={GHOST_VARIANT}
             aria-label={t("cancelTitleEdit")}
-            className="size-6 shrink-0 rounded-md"
+            className="size-10 shrink-0 rounded-xl"
             onClick={onEditCancel}
           >
             <XIcon className="size-3" aria-hidden="true" />
           </Button>
         </div>
       ) : (
-        <div className="flex items-center gap-0.5 px-2.5 py-1.5">
+        <div className="flex min-h-12 items-center gap-0.5 px-2 py-1">
           <button
             type={BUTTON_TYPE}
             onClick={onSelect}
-            className="min-w-0 flex-1 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary/40"
+            className="min-h-10 min-w-0 flex-1 rounded-lg px-1.5 text-left outline-none transition-[color] focus-visible:ring-2 focus-visible:ring-ring/40"
           >
             <span
               className={cn(
-                "block truncate text-xs leading-tight transition-colors",
+                "block truncate text-[13px] leading-tight transition-[color]",
                 isActive ? "font-semibold text-foreground" : "font-medium",
               )}
             >
               {conversation.title}
             </span>
-            <span className="mt-0.5 flex items-center gap-1 text-[11px] leading-none text-muted-foreground/50">
+            <span className="mt-1 flex items-center gap-1 text-[11px] leading-none text-muted-foreground/75">
               <span className="truncate">{agentName}</span>
               <span className="shrink-0 text-muted-foreground/25">·</span>
               <span className="shrink-0">
@@ -400,7 +395,7 @@ function ConversationItem({
                 variant={GHOST_VARIANT}
                 aria-label={t("conversationActions")}
                 className={cn(
-                  "size-6 shrink-0 rounded-md transition-opacity hover:bg-background md:opacity-0 md:group-hover/conversation:opacity-100 md:group-focus-within/conversation:opacity-100 data-[state=open]:opacity-100",
+                  "size-10 shrink-0 rounded-xl transition-[background-color,opacity] hover:bg-background/80 md:opacity-0 md:group-hover/conversation:opacity-100 md:group-focus-within/conversation:opacity-100 data-[state=open]:opacity-100",
                   isActive && "opacity-100",
                 )}
               >
@@ -409,14 +404,17 @@ function ConversationItem({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuGroup>
-                <DropdownMenuItem onSelect={onTogglePin} className="gap-2">
+                <DropdownMenuItem
+                  onSelect={onTogglePin}
+                  className="min-h-10 gap-2"
+                >
                   <PinIcon className="size-3.5" aria-hidden="true" />
                   {pinned ? t("unpin") : t("pinToTop")}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onSelect={onMoveUp}
                   disabled={!canMoveUp}
-                  className="gap-2"
+                  className="min-h-10 gap-2"
                 >
                   <ArrowUpIcon className="size-3.5" aria-hidden="true" />
                   {t("moveUp")}
@@ -424,19 +422,22 @@ function ConversationItem({
                 <DropdownMenuItem
                   onSelect={onMoveDown}
                   disabled={!canMoveDown}
-                  className="gap-2"
+                  className="min-h-10 gap-2"
                 >
                   <ArrowDownIcon className="size-3.5" aria-hidden="true" />
                   {t("moveDown")}
                 </DropdownMenuItem>
-                <DropdownMenuItem onSelect={onEditStart} className="gap-2">
+                <DropdownMenuItem
+                  onSelect={onEditStart}
+                  className="min-h-10 gap-2"
+                >
                   <PencilIcon className="size-3.5" aria-hidden="true" />
                   {t("rename")}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   variant="destructive"
                   onSelect={onDelete}
-                  className="gap-2"
+                  className="min-h-10 gap-2"
                 >
                   <Trash2Icon className="size-3.5" aria-hidden="true" />
                   {t("delete")}
@@ -708,7 +709,7 @@ export function ChatSidebar({
     return (
       <div
         className={cn(
-          "flex h-full min-h-0 flex-col items-center gap-1.5 py-3",
+          "flex h-full min-h-0 flex-col items-center gap-1 py-2",
           className,
         )}
       >
@@ -722,7 +723,7 @@ export function ChatSidebar({
           </TooltipTrigger>
           <TooltipContent side="right">Deodis</TooltipContent>
         </Tooltip>
-        <div className="my-1 h-px w-6 rounded-full bg-primary/20" />
+        <div className="my-1 h-px w-6 rounded-full bg-sidebar-border" />
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
@@ -731,7 +732,7 @@ export function ChatSidebar({
               variant={GHOST_VARIANT}
               aria-label={t("expandSidebar")}
               onClick={() => onCollapsedChange?.(false)}
-              className="size-9 rounded-lg transition-[background-color,scale] duration-150 ease-out hover:bg-primary/10"
+              className="size-10 rounded-xl transition-[background-color,scale] duration-150 ease-out hover:bg-sidebar-accent"
             >
               <PanelLeftOpenIcon className="size-4" aria-hidden="true" />
             </Button>
@@ -746,7 +747,7 @@ export function ChatSidebar({
               variant={GHOST_VARIANT}
               aria-label={t("newConversation")}
               onClick={onNewConversation}
-              className="size-9 rounded-lg"
+              className="size-10 rounded-xl"
             >
               <PlusIcon className="size-4" aria-hidden="true" />
             </Button>
@@ -768,9 +769,9 @@ export function ChatSidebar({
                   aria-label={conversation.title}
                   onClick={() => onSelectConversation(conversation.id)}
                   className={cn(
-                    "size-9 rounded-lg transition-colors",
+                    "size-10 rounded-xl transition-[background-color,color]",
                     activeConversationId === conversation.id &&
-                      "bg-primary/10 text-foreground ring-1 ring-primary/15",
+                      "bg-sidebar-accent text-sidebar-accent-foreground",
                   )}
                 >
                   <MessageSquareIcon className="size-4" aria-hidden="true" />
@@ -787,43 +788,36 @@ export function ChatSidebar({
   return (
     <div
       className={cn(
-        "flex h-full min-h-0 flex-col rounded-none bg-sidebar text-sidebar-foreground",
+        "flex h-full min-h-0 flex-col bg-sidebar text-sidebar-foreground",
         className,
       )}
     >
-      <div className="flex items-center justify-between border-b border-primary/10 px-4 py-3">
+      <div className="flex min-h-14 items-center justify-between border-b border-sidebar-border/60 px-3 py-2">
         <DeodisLogo href="/chat" className="h-6 w-auto" label="Deodis chat" />
         <Button
           type={BUTTON_TYPE}
           size="sm"
           variant="outline"
           onClick={onNewConversation}
-          className="h-8 gap-1 rounded-lg px-3 text-xs font-medium"
+          className="min-h-10 gap-1 rounded-xl border-sidebar-border/70 px-3 text-xs font-medium"
         >
           <PlusIcon className="size-3" aria-hidden="true" />
           {t("new")}
         </Button>
       </div>
 
-      {/* Scrollable content */}
-      <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-3 py-3">
-        <div className="flex items-center justify-between px-2 py-1.5">
+      <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto px-2 py-2">
+        <div className="flex min-h-10 items-center justify-between px-2">
           <span className="text-[11px] font-medium text-muted-foreground">
             {t("conversations")}
           </span>
-          <div className="flex items-center gap-1">
-            {conversations.length > 0 ? (
-              <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                {conversations.length}
-                {hasMoreConversations ? "+" : ""}
-              </span>
-            ) : null}
+          <div className="flex items-center">
             <Button
               type={BUTTON_TYPE}
               size="icon-sm"
               variant={GHOST_VARIANT}
               aria-label={t("createFolder")}
-              className="size-6 rounded-md text-muted-foreground"
+              className="size-10 rounded-xl text-muted-foreground"
               onClick={startFolderCreate}
             >
               <FolderPlusIcon className="size-3.5" aria-hidden="true" />
@@ -832,7 +826,7 @@ export function ChatSidebar({
         </div>
 
         {creatingFolder ? (
-          <div className="flex items-center gap-1 rounded-lg border bg-background p-1">
+          <div className="flex items-center gap-1 rounded-xl border border-sidebar-border/60 bg-background p-1">
             <Input
               aria-label={t("folderName")}
               value={newFolderName}
@@ -842,7 +836,7 @@ export function ChatSidebar({
                 if (event.key === "Escape") setCreatingFolder(false);
               }}
               placeholder={t("folderName")}
-              className="h-7 min-w-0 rounded-md px-2 text-xs"
+              className="h-10 min-w-0 rounded-lg px-3 text-xs"
               autoFocus
             />
             <Button
@@ -850,7 +844,7 @@ export function ChatSidebar({
               size="icon-sm"
               variant={GHOST_VARIANT}
               aria-label={t("createFolder")}
-              className="size-6 shrink-0"
+              className="size-10 shrink-0 rounded-xl"
               onClick={saveNewFolder}
             >
               <CheckIcon className="size-3" aria-hidden="true" />
@@ -860,7 +854,7 @@ export function ChatSidebar({
               size="icon-sm"
               variant={GHOST_VARIANT}
               aria-label={t("cancelFolderCreation")}
-              className="size-6 shrink-0"
+              className="size-10 shrink-0 rounded-xl"
               onClick={() => setCreatingFolder(false)}
             >
               <XIcon className="size-3" aria-hidden="true" />
@@ -871,17 +865,17 @@ export function ChatSidebar({
         <div className="flex min-h-0 flex-col gap-1">
           {loading ? (
             <div className="flex flex-col gap-px pt-px">
-              <Skeleton className="h-8 w-full rounded" />
-              <Skeleton className="h-8 w-full rounded" />
-              <Skeleton className="h-8 w-full rounded" />
+              <Skeleton className="h-12 w-full rounded-xl" />
+              <Skeleton className="h-12 w-full rounded-xl" />
+              <Skeleton className="h-12 w-full rounded-xl" />
             </div>
           ) : conversations.length === 0 && conversationFolders.length === 0 ? (
             <div className="pt-2">
-              <Empty className="border border-dashed py-8">
+              <Empty className="border-0 bg-transparent px-2 py-10">
                 <EmptyHeader>
                   <EmptyMedia
                     variant="icon"
-                    className="text-muted-foreground/40"
+                    className="border-0 bg-transparent text-muted-foreground/40"
                   >
                     <MessageSquareIcon className="size-5" aria-hidden="true" />
                   </EmptyMedia>
@@ -899,7 +893,7 @@ export function ChatSidebar({
                         asChild
                         variant="link"
                         size="sm"
-                        className="h-auto px-0 text-muted-foreground/70"
+                        className="min-h-10 px-0 text-muted-foreground"
                       >
                         <Link href="/providers">{t("configureProvider")}</Link>
                       </Button>
@@ -909,7 +903,7 @@ export function ChatSidebar({
                         asChild
                         variant="link"
                         size="sm"
-                        className="h-auto px-0 text-muted-foreground/70"
+                        className="min-h-10 px-0 text-muted-foreground"
                       >
                         <Link href="/agents">{t("createAgent")}</Link>
                       </Button>
@@ -948,7 +942,7 @@ export function ChatSidebar({
                   return (
                     <section key={folder.id} className="flex flex-col gap-px">
                       <div
-                        className="group/folder flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted/60"
+                        className="group/folder flex min-h-12 items-center gap-1 rounded-xl px-2 text-xs text-muted-foreground transition-[background-color,color] hover:bg-muted/60"
                         onDragOver={(event) => event.preventDefault()}
                         onDrop={(event) => {
                           event.preventDefault();
@@ -984,14 +978,14 @@ export function ChatSidebar({
                                 if (event.key === "Escape")
                                   setEditingFolderId(null);
                               }}
-                              className="h-6 min-w-0 rounded-md px-2 text-xs"
+                              className="h-10 min-w-0 rounded-lg px-3 text-xs"
                               autoFocus
                             />
                           </div>
                         ) : (
                           <button
                             type={BUTTON_TYPE}
-                            className="flex min-w-0 flex-1 items-center gap-1 text-left"
+                            className="flex min-h-10 min-w-0 flex-1 items-center gap-1 rounded-lg px-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                             onClick={() => toggleFolder(folder.id)}
                           >
                             <ChevronDownIcon
@@ -1015,7 +1009,7 @@ export function ChatSidebar({
                               type={BUTTON_TYPE}
                               size="icon-sm"
                               variant={GHOST_VARIANT}
-                              className="size-6 md:opacity-0 md:group-hover/folder:opacity-100 md:group-focus-within/folder:opacity-100 data-[state=open]:opacity-100"
+                              className="size-10 rounded-xl transition-[background-color,opacity] md:opacity-0 md:group-hover/folder:opacity-100 md:group-focus-within/folder:opacity-100 data-[state=open]:opacity-100"
                               aria-label={t("folderActions")}
                             >
                               <MoreHorizontalIcon
@@ -1030,7 +1024,7 @@ export function ChatSidebar({
                                 setEditingFolderId(folder.id);
                                 setEditingFolderName(folder.name);
                               }}
-                              className="gap-2"
+                              className="min-h-10 gap-2"
                             >
                               <PencilIcon
                                 className="size-3.5"
@@ -1043,7 +1037,7 @@ export function ChatSidebar({
                               onSelect={() =>
                                 onDeleteConversationFolder?.(folder.id)
                               }
-                              className="gap-2"
+                              className="min-h-10 gap-2"
                             >
                               <Trash2Icon
                                 className="size-3.5"
@@ -1107,7 +1101,7 @@ export function ChatSidebar({
                   type={BUTTON_TYPE}
                   variant={GHOST_VARIANT}
                   size="sm"
-                  className="mt-2 h-8 rounded-lg text-xs text-muted-foreground"
+                  className="mt-2 min-h-10 rounded-xl text-xs text-muted-foreground"
                   disabled={loadingMoreConversations}
                   onClick={onLoadMoreConversations}
                 >
@@ -1121,12 +1115,11 @@ export function ChatSidebar({
 
       {navGroups.length > 0 ? <ChatAppNavigation groups={navGroups} /> : null}
 
-      {/* Footer */}
       {showThemeToggle ? (
-        <div className="border-t border-border/50 p-3">
-          <div className="flex min-w-0 items-center gap-1.5">
-            <ThemeToggleButton className="min-w-0 flex-1" />
-            <LocaleSwitcher compact className="size-8 shrink-0" />
+        <div className="border-t border-sidebar-border/60 px-3 py-2">
+          <div className="flex min-w-0 items-center gap-1">
+            <ThemeToggleButton iconOnly className="size-10 rounded-xl" />
+            <LocaleSwitcher compact className="size-10 rounded-xl" />
           </div>
         </div>
       ) : null}

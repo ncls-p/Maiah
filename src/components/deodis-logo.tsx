@@ -20,6 +20,7 @@ export function DeodisLogo({
     <Image
       src="/deodis-logo.png"
       alt="Deodis"
+      data-no-outline="true"
       width={857}
       height={320}
       loading={priority ? "eager" : "lazy"}
@@ -35,7 +36,7 @@ export function DeodisLogo({
   return (
     <Link
       href={href}
-      className="inline-flex shrink-0 items-center"
+      className="inline-flex min-h-10 shrink-0 items-center rounded-lg"
       aria-label={label}
     >
       {image}

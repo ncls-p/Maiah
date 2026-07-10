@@ -57,9 +57,9 @@ const HISTORY_OPEN_STORAGE_EVENT = "chat-unified-sidebar-open-change";
 const HISTORY_WIDTH_STORAGE_KEY = "chat-unified-sidebar-width";
 const HISTORY_WIDTH_STORAGE_EVENT = "chat-unified-sidebar-width-change";
 const DEFAULT_HISTORY_OPEN = true;
-const DEFAULT_HISTORY_WIDTH = 320;
-const MIN_HISTORY_WIDTH = 260;
-const MAX_HISTORY_WIDTH = 480;
+const DEFAULT_HISTORY_WIDTH = 288;
+const MIN_HISTORY_WIDTH = 240;
+const MAX_HISTORY_WIDTH = 420;
 
 function clampHistoryWidth(value: number) {
   return Math.min(
@@ -307,9 +307,9 @@ export function ChatLayout({
         <DropdownMenuTrigger asChild>
           <Button
             type="button"
-            variant="outline"
+            variant="ghost"
             size="sm"
-            className="h-8 min-w-0 max-w-[min(100%,13rem)] justify-between gap-2 px-2 font-medium sm:max-w-72 sm:min-w-56"
+            className="min-h-10 min-w-0 max-w-[min(100%,13rem)] justify-between gap-2 rounded-xl px-3 font-medium hover:bg-muted sm:max-w-72 sm:min-w-56"
             aria-label={t("currentAssistant")}
           >
             <span className="flex min-w-0 items-center gap-2">
@@ -344,7 +344,7 @@ export function ChatLayout({
                 value={agentSearch}
                 onChange={(event) => setAgentSearch(event.target.value)}
                 placeholder={t("assistantSearch")}
-                className="h-8 pl-8 text-sm"
+                className="h-10 pl-8 text-sm"
               />
             </div>
           </div>
@@ -356,7 +356,7 @@ export function ChatLayout({
               {organizationAgents.map((agent) => (
                 <DropdownMenuItem
                   key={agent.id}
-                  className="gap-2"
+                  className="min-h-10 gap-2"
                   onClick={() => onSelectAgent(agent.id)}
                 >
                   <ModelLogo
@@ -390,7 +390,7 @@ export function ChatLayout({
               {personalAgents.map((agent) => (
                 <DropdownMenuItem
                   key={agent.id}
-                  className="gap-2"
+                  className="min-h-10 gap-2"
                   onClick={() => onSelectAgent(agent.id)}
                 >
                   <ModelLogo
@@ -426,7 +426,7 @@ export function ChatLayout({
             <>
               <DropdownMenuSeparator />
               <DropdownMenuItem
-                className="gap-2"
+                className="min-h-10 gap-2"
                 onClick={() => onSetUserDefaultAgent(selectedAgent.id)}
               >
                 <StarIcon className="size-4" aria-hidden="true" />
@@ -435,7 +435,10 @@ export function ChatLayout({
                   : t("setMyDefault")}
               </DropdownMenuItem>
               {userDefaultAgentId ? (
-                <DropdownMenuItem onClick={() => onSetUserDefaultAgent(null)}>
+                <DropdownMenuItem
+                  className="min-h-10"
+                  onClick={() => onSetUserDefaultAgent(null)}
+                >
                   {t("clearMyDefault")}
                 </DropdownMenuItem>
               ) : null}
@@ -444,7 +447,7 @@ export function ChatLayout({
           {canCreateAgent ? (
             <>
               <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
+              <DropdownMenuItem asChild className="min-h-10">
                 <Link href="/agents" className="gap-2">
                   <MessageSquarePlusIcon
                     className="size-4"
@@ -460,7 +463,7 @@ export function ChatLayout({
       {!canChat ? (
         <Badge
           variant="outline"
-          className="hidden shrink-0 items-center gap-1 rounded-lg border-warning/30 bg-warning/10 px-2 py-0.5 text-[11px] font-medium text-warning sm:inline-flex"
+          className="hidden min-h-8 shrink-0 items-center gap-1 rounded-lg border-transparent bg-warning/10 px-2 text-[11px] font-medium text-warning sm:inline-flex"
         >
           <Settings2Icon className="size-3" aria-hidden="true" />
           {t("statusNeedsSetup")}
@@ -474,8 +477,8 @@ export function ChatLayout({
       {/* Desktop sidebar with smooth transition */}
       <div
         className={cn(
-          "hidden ease-[cubic-bezier(0.4,0,0.2,1)] md:block",
-          !resizingSidebar && "transition-[opacity,width] duration-300",
+          "hidden ease-[cubic-bezier(0.2,0,0,1)] md:block",
+          !resizingSidebar && "transition-[opacity,width] duration-200",
         )}
         style={{
           width: sidebarOpen ? `${sidebarWidth}px` : 0,
@@ -483,7 +486,7 @@ export function ChatLayout({
         }}
       >
         {sidebarOpen && (
-          <aside className="relative h-full w-full rounded-none border-r bg-sidebar">
+          <aside className="relative h-full w-full border-r border-sidebar-border/60 bg-sidebar">
             <ChatSidebar {...desktopSidebarProps} className="w-full" />
             <div
               role="separator"
@@ -493,14 +496,14 @@ export function ChatLayout({
               aria-valuemax={MAX_HISTORY_WIDTH}
               aria-valuenow={sidebarWidth}
               tabIndex={0}
-              className="group absolute inset-y-0 right-0 z-20 w-2 translate-x-1 cursor-col-resize outline-none"
+              className="group absolute inset-y-0 right-0 z-20 w-4 translate-x-2 cursor-col-resize outline-none"
               onPointerDown={startSidebarResize}
               onKeyDown={(event) => {
                 if (event.key === "ArrowLeft") adjustSidebarWidth(-12);
                 if (event.key === "ArrowRight") adjustSidebarWidth(12);
               }}
             >
-              <div className="mx-auto h-full w-px bg-transparent transition-colors group-hover:bg-primary/40 group-focus-visible:bg-primary/60" />
+              <div className="mx-auto h-full w-px bg-transparent transition-[background-color] group-hover:bg-border group-focus-visible:bg-ring" />
             </div>
           </aside>
         )}
@@ -508,14 +511,14 @@ export function ChatLayout({
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <AppHeader
-          className="relative z-30 border-primary/10 bg-background/95 px-2 sm:px-4"
+          className="relative z-30 border-border/60 bg-background px-2 sm:px-4"
           leading={
             <>
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="hidden size-8 rounded-lg md:inline-flex"
+                className="hidden size-10 rounded-xl md:inline-flex"
                 aria-label={
                   sidebarOpen ? t("closeConversations") : t("openConversations")
                 }
@@ -536,7 +539,7 @@ export function ChatLayout({
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="size-8 rounded-lg md:hidden"
+                    className="size-10 rounded-xl md:hidden"
                     aria-label={t("openConversations")}
                   >
                     <PanelLeftOpenIcon className="size-4" aria-hidden="true" />
@@ -576,7 +579,7 @@ export function ChatLayout({
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="hidden h-8 gap-1.5 rounded-lg px-3 text-xs font-medium sm:inline-flex"
+                  className="hidden min-h-10 gap-1.5 rounded-xl border-border/60 px-3 text-xs font-medium sm:inline-flex"
                   aria-label={t("newConversation")}
                   onClick={onNewConversation}
                 >
@@ -591,7 +594,7 @@ export function ChatLayout({
                 type="button"
                 size="icon"
                 variant="ghost"
-                className="size-8 rounded-lg sm:hidden"
+                className="size-10 rounded-xl sm:hidden"
                 aria-label={t("newConversation")}
                 onClick={onNewConversation}
               >
@@ -601,7 +604,7 @@ export function ChatLayout({
                 <Button
                   type="button"
                   size="sm"
-                  className="h-8 gap-1.5 rounded-lg px-3 text-xs font-medium"
+                  className="min-h-10 gap-1.5 rounded-xl px-3 text-xs font-medium"
                   onClick={() => setSetupOpen(true)}
                 >
                   <Settings2Icon className="size-3.5" aria-hidden="true" />
@@ -612,7 +615,7 @@ export function ChatLayout({
                 asChild
                 variant="ghost"
                 size="icon"
-                className="size-8 rounded-lg"
+                className="size-10 rounded-xl"
                 aria-label={t("configureAssistant")}
               >
                 <Link
@@ -623,7 +626,7 @@ export function ChatLayout({
                   <Settings2Icon className="size-4" aria-hidden="true" />
                 </Link>
               </Button>
-              <SignOutButton iconOnly className="size-8 rounded-lg" />
+              <SignOutButton iconOnly className="size-10 rounded-xl" />
             </div>
           }
         />

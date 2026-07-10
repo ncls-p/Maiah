@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import type * as React from "react";
 import { createPortal } from "react-dom";
 import {
+  BotIcon,
   BrainIcon,
   CheckCircle2Icon,
   CheckIcon,
@@ -75,6 +76,10 @@ import {
 } from "@/components/ui/collapsible";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import {
+  parseAgentToolDisplayContext,
+  type AgentToolDisplayContext,
+} from "@/modules/agent/tool-progress-payload";
 
 const RichEditor = dynamic<RichEditorProps>(
   () => import("@/components/chat/rich-editor").then((mod) => mod.RichEditor),
@@ -272,6 +277,52 @@ type ToolPartCardProps = {
   onReject?: (approval: PendingToolApproval) => void;
 };
 
+function AgentActionAttribution({
+  context,
+  status,
+  toolName,
+  children,
+}: {
+  context: AgentToolDisplayContext | null;
+  status: "pending" | "completed" | "error";
+  toolName: string;
+  children: React.ReactNode;
+}) {
+  const t = useTranslations("chat.rendering");
+  if (!context) return children;
+
+  const StatusIcon =
+    status === "error"
+      ? XCircleIcon
+      : status === "pending"
+        ? ClockIcon
+        : CheckCircle2Icon;
+
+  return (
+    <div className="space-y-2">
+      <div className="flex min-h-10 items-center gap-2 rounded-xl bg-card px-3 py-2 text-xs shadow-[var(--surface-shadow)]">
+        <StatusIcon className="size-3.5 shrink-0" aria-hidden="true" />
+        <BotIcon className="size-3.5 shrink-0" aria-hidden="true" />
+        <span className="min-w-0 truncate font-medium">
+          {context.agentName}
+        </span>
+        <span className="text-muted-foreground" aria-hidden="true">
+          ·
+        </span>
+        <span className="truncate text-muted-foreground">{toolName}</span>
+        <span className="sr-only" aria-live="polite">
+          {status === "pending"
+            ? t("agentActionRunning", { name: context.agentName })
+            : status === "error"
+              ? t("agentActionFailed", { name: context.agentName })
+              : t("agentActionCompleted", { name: context.agentName })}
+        </span>
+      </div>
+      {children}
+    </div>
+  );
+}
+
 const ToolPartCard = memo(function ToolPartCard({
   part,
   approval,
@@ -280,8 +331,13 @@ const ToolPartCard = memo(function ToolPartCard({
   onApprove,
   onReject,
 }: ToolPartCardProps) {
+  const t = useTranslations("chat.rendering");
   const [open, setOpen] = useState(false);
   const parsed = useMemo(() => parseToolPart(part.content), [part.content]);
+  const agentContext = useMemo(
+    () => parseAgentToolDisplayContext(parsed.agentContext),
+    [parsed.agentContext],
+  );
   const fileArtifact = useMemo(
     () =>
       part.type === "file"
@@ -303,11 +359,15 @@ const ToolPartCard = memo(function ToolPartCard({
         : null,
     [part.content, part.type],
   );
+  const isDelegation = parsed.toolName?.startsWith("delegate_") ?? false;
   const friendlyName = useMemo(
-    () => formatToolName(parsed.toolName),
-    [parsed.toolName],
+    () => (isDelegation ? t("delegation") : formatToolName(parsed.toolName)),
+    [isDelegation, parsed.toolName, t],
   );
-  const status = useMemo(() => getToolStatus(parsed), [parsed]);
+  const status = useMemo(
+    () => (agentContext?.status === "error" ? "error" : getToolStatus(parsed)),
+    [agentContext?.status, parsed],
+  );
   const hasResult = parsed.output !== undefined;
   const approvalMatches = Boolean(approval);
   const displayInput = approvalMatches ? approval?.input : parsed.input;
@@ -339,6 +399,22 @@ const ToolPartCard = memo(function ToolPartCard({
     [parsed.inputText, parsed.toolName],
   );
   const summaryText = useMemo(() => {
+    if (isDelegation && status === "completed") {
+      const output = parsed.output;
+      const childName =
+        typeof output === "object" &&
+        output !== null &&
+        typeof (output as { childAgentName?: unknown }).childAgentName ===
+          "string"
+          ? (output as { childAgentName: string }).childAgentName
+          : null;
+      return childName
+        ? t("delegationCompletedBy", { name: childName })
+        : t("delegationCompleted");
+    }
+    if (isDelegation && status === "error") {
+      return t("delegationFailed");
+    }
     if (status === "pending") {
       return summarizeToolInput(friendlyName, displayInput);
     }
@@ -349,10 +425,12 @@ const ToolPartCard = memo(function ToolPartCard({
   }, [
     friendlyName,
     hasResult,
+    isDelegation,
     displayInput,
     parsed.output,
     parsed.toolName,
     status,
+    t,
   ]);
   const inputText = useMemo(
     () => formatExpandedToolValue(displayInput, open),
@@ -363,57 +441,67 @@ const ToolPartCard = memo(function ToolPartCard({
     [open, parsed.output],
   );
 
+  let specializedContent: React.ReactNode = null;
   if (fileArtifact) {
-    return workspaceArtifactDisplay === "summary" ? (
-      <CodeWorkspaceArtifactSummary artifact={fileArtifact} />
-    ) : (
-      <CodeWorkspaceArtifactCard
-        artifact={fileArtifact}
-        workspaceId={workspaceId}
-      />
+    specializedContent =
+      workspaceArtifactDisplay === "summary" ? (
+        <CodeWorkspaceArtifactSummary artifact={fileArtifact} />
+      ) : (
+        <CodeWorkspaceArtifactCard
+          artifact={fileArtifact}
+          workspaceId={workspaceId}
+        />
+      );
+  } else if (imageAttachment) {
+    specializedContent = (
+      <ChatImageAttachmentCard attachment={imageAttachment} />
     );
-  }
-  if (imageAttachment) {
-    return <ChatImageAttachmentCard attachment={imageAttachment} />;
-  }
-  if (fileAttachment) {
-    return <ChatFileAttachmentCard attachment={fileAttachment} />;
-  }
-  if (sandboxOutput) {
-    return (
+  } else if (fileAttachment) {
+    specializedContent = <ChatFileAttachmentCard attachment={fileAttachment} />;
+  } else if (sandboxOutput) {
+    specializedContent = (
       <CodeSandboxResultCard result={sandboxOutput} input={sandboxInput} />
     );
-  }
-  if (isHtmlArtifactOutput(parsed.output)) {
-    return <HtmlArtifactCard artifact={parsed.output} />;
-  }
-  if (isCodeWorkspaceArtifactOutput(parsed.output)) {
-    return workspaceArtifactDisplay === "summary" ? (
-      <CodeWorkspaceArtifactSummary artifact={parsed.output} />
-    ) : (
-      <CodeWorkspaceArtifactCard
-        artifact={parsed.output}
-        workspaceId={workspaceId}
-      />
-    );
-  }
-  if (isGitHubPublishOutput(parsed.output)) {
-    return <GitHubPublishResultCard result={parsed.output} />;
-  }
-  if (inputArtifact) {
-    return <HtmlArtifactCard artifact={inputArtifact} isLive />;
-  }
-  if (parsed.streamingInput && parsed.inputText !== undefined) {
-    return (
+  } else if (isHtmlArtifactOutput(parsed.output)) {
+    specializedContent = <HtmlArtifactCard artifact={parsed.output} />;
+  } else if (isCodeWorkspaceArtifactOutput(parsed.output)) {
+    specializedContent =
+      workspaceArtifactDisplay === "summary" ? (
+        <CodeWorkspaceArtifactSummary artifact={parsed.output} />
+      ) : (
+        <CodeWorkspaceArtifactCard
+          artifact={parsed.output}
+          workspaceId={workspaceId}
+        />
+      );
+  } else if (isGitHubPublishOutput(parsed.output)) {
+    specializedContent = <GitHubPublishResultCard result={parsed.output} />;
+  } else if (inputArtifact) {
+    specializedContent = <HtmlArtifactCard artifact={inputArtifact} isLive />;
+  } else if (parsed.streamingInput && parsed.inputText !== undefined) {
+    specializedContent = (
       <LiveToolInputCard
         toolName={friendlyName}
         inputText={parsed.inputText}
         sandboxInput={liveSandboxInput}
       />
     );
+  } else if (streamingInputArtifact) {
+    specializedContent = (
+      <HtmlArtifactCard artifact={streamingInputArtifact} isLive />
+    );
   }
-  if (streamingInputArtifact) {
-    return <HtmlArtifactCard artifact={streamingInputArtifact} isLive />;
+
+  if (specializedContent) {
+    return (
+      <AgentActionAttribution
+        context={agentContext}
+        status={status}
+        toolName={friendlyName}
+      >
+        {specializedContent}
+      </AgentActionAttribution>
+    );
   }
 
   // Determine icon and colors based on status
@@ -438,39 +526,66 @@ const ToolPartCard = memo(function ToolPartCard({
       open={open}
       onOpenChange={setOpen}
       className={cn(
-        "group/tool overflow-hidden rounded-lg border text-[11px] transition-colors",
+        "group/tool overflow-hidden rounded-xl text-xs shadow-[var(--surface-shadow)] transition-[background-color,box-shadow] duration-150 ease-out",
         approvalMatches
-          ? "border-warning/30 bg-warning/[0.04]"
-          : "border-border/40 bg-muted/[0.3] hover:bg-muted/[0.45]",
+          ? "bg-warning/[0.04]"
+          : "bg-card hover:shadow-[var(--surface-shadow-hover)]",
       )}
     >
-      <div className="flex items-center gap-2 px-2.5 py-1.5">
+      <div className="flex min-h-10 items-center gap-2.5 px-3 py-2">
         <div
           className={cn(
-            "flex size-5 shrink-0 items-center justify-center rounded border",
+            "flex size-7 shrink-0 items-center justify-center rounded-lg border",
             iconBgClass,
           )}
         >
-          <StatusIcon className={COMPACT_ICON_CLASS} aria-hidden="true" />
+          <StatusIcon className="size-3.5" aria-hidden="true" />
         </div>
-        <span className="shrink-0 font-medium text-foreground/80">
-          {friendlyName}
-        </span>
-        {summaryText ? (
-          <span className="truncate text-muted-foreground">
-            · {summaryText}
-          </span>
-        ) : null}
+        <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 items-center gap-1.5">
+            {agentContext ? (
+              <span className="inline-flex min-w-0 items-center gap-1 font-medium text-foreground">
+                <BotIcon className="size-3.5 shrink-0" aria-hidden="true" />
+                <span className="truncate">{agentContext.agentName}</span>
+              </span>
+            ) : null}
+            {agentContext ? (
+              <span className="text-muted-foreground" aria-hidden="true">
+                ·
+              </span>
+            ) : null}
+            <span className="shrink-0 font-medium text-foreground/80">
+              {friendlyName}
+            </span>
+          </div>
+          {summaryText ? (
+            <p className="truncate text-[11px] text-muted-foreground">
+              {summaryText}
+            </p>
+          ) : null}
+          {agentContext ? (
+            <span className="sr-only" aria-live="polite">
+              {status === "pending"
+                ? t("agentActionRunning", { name: agentContext.agentName })
+                : status === "error"
+                  ? t("agentActionFailed", { name: agentContext.agentName })
+                  : t("agentActionCompleted", {
+                      name: agentContext.agentName,
+                    })}
+            </span>
+          ) : null}
+        </div>
         <CollapsibleTrigger asChild>
           <Button
             type={BUTTON_TYPE}
             variant={GHOST_VARIANT}
-            size="sm"
-            className="ml-auto h-5 shrink-0 px-1.5 text-[11px] opacity-0 group-hover/tool:opacity-100"
+            size="icon-sm"
+            className="ml-auto size-8 shrink-0 text-muted-foreground opacity-70 transition-[background-color,opacity,scale] duration-150 ease-out hover:opacity-100"
+            aria-label={open ? t("hideActionDetails") : t("showActionDetails")}
           >
             <ChevronDownIcon
               className={cn(
-                "size-3 transition-transform",
+                "transition-transform duration-150 ease-out",
                 open && "rotate-180",
               )}
               aria-hidden="true"
@@ -513,7 +628,7 @@ const ToolPartCard = memo(function ToolPartCard({
           {inputText ? (
             <div className="mb-2">
               <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
-                Input
+                {t("actionInput")}
               </div>
               <pre className="max-h-40 overflow-auto rounded bg-background/60 p-2 leading-4 text-[11px] text-muted-foreground">
                 {inputText}
@@ -523,7 +638,7 @@ const ToolPartCard = memo(function ToolPartCard({
           {outputText ? (
             <div>
               <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
-                Output
+                {t("actionOutput")}
               </div>
               <pre className="max-h-60 overflow-auto rounded bg-background/60 p-2 leading-4 text-[11px] text-muted-foreground">
                 {outputText}

@@ -402,10 +402,10 @@ describe("createAgent", () => {
   });
 
   it("creates agent and version via transaction", async () => {
-    const agent = { ...fakeAgent };
+    const insertedAgent = { ...fakeAgent, activeVersionId: null };
     const version = { ...fakeVersion };
     dbModule._tx.returning
-      .mockResolvedValueOnce([agent]) // insert agent
+      .mockResolvedValueOnce([insertedAgent]) // insert agent
       .mockResolvedValueOnce([version]); // insert version
 
     const result = await createAgent({
@@ -415,7 +415,10 @@ describe("createAgent", () => {
       slug: "test",
     });
 
-    expect(result.agent).toEqual(agent);
+    expect(result.agent).toEqual({
+      ...insertedAgent,
+      activeVersionId: version.id,
+    });
     expect(result.version).toEqual(version);
     expect(dbModule._tx.values).toHaveBeenCalledWith(
       expect.objectContaining({ maxToolCalls: 20 }),
@@ -428,6 +431,76 @@ describe("createAgent", () => {
       { userId: "user-1" },
       dbModule._tx,
     );
+  });
+
+  it("applies the exact approval-free onboarding tool preset", async () => {
+    const insertedAgent = { ...fakeAgent, activeVersionId: null };
+    const version = { ...fakeVersion };
+    dbModule._tx.returning
+      .mockResolvedValueOnce([insertedAgent])
+      .mockResolvedValueOnce([version]);
+
+    await createAgent({
+      workspaceId: "ws-1",
+      userId: "user-1",
+      name: "First assistant",
+      slug: "first-assistant",
+      toolPreset: "onboarding",
+    });
+
+    expect(vi.mocked(insertToolBindingsForVersion)).toHaveBeenCalledWith(
+      version.id,
+      [
+        {
+          toolSource: "builtin",
+          toolId: "00000000-0000-4000-8000-000000000001",
+          requireApproval: false,
+        },
+        {
+          toolSource: "builtin",
+          toolId: "00000000-0000-4000-8000-000000000002",
+          requireApproval: false,
+        },
+        {
+          toolSource: "builtin",
+          toolId: "00000000-0000-4000-8000-000000000006",
+          requireApproval: false,
+        },
+        {
+          toolSource: "builtin",
+          toolId: "00000000-0000-4000-8000-000000000007",
+          requireApproval: false,
+        },
+        {
+          toolSource: "builtin",
+          toolId: "00000000-0000-4000-8000-000000000008",
+          requireApproval: false,
+        },
+        {
+          toolSource: "builtin",
+          toolId: "00000000-0000-4000-8000-000000000004",
+          requireApproval: false,
+        },
+      ],
+      "ws-1",
+      { userId: "user-1" },
+      dbModule._tx,
+    );
+  });
+
+  it("keeps manual creation empty and rejects mixing a preset with bindings", async () => {
+    await expect(
+      createAgent({
+        workspaceId: "ws-1",
+        userId: "user-1",
+        name: "Ambiguous assistant",
+        slug: "ambiguous-assistant",
+        toolPreset: "onboarding",
+        toolBindings: [],
+      }),
+    ).rejects.toThrow("toolPreset cannot be combined with toolBindings");
+
+    expect(dbModule.db.transaction).not.toHaveBeenCalled();
   });
 
   it("creates an orchestrator with versioned policy and bindings", async () => {

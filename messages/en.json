@@ -211,7 +211,18 @@
       "needsApproval": "Needs approval",
       "approvalWaiting": "The assistant is waiting before running this action.",
       "reject": "Reject",
-      "approve": "Approve"
+      "approve": "Approve",
+      "delegation": "Delegation",
+      "delegationCompleted": "Specialist task completed",
+      "delegationCompletedBy": "Completed by {name}",
+      "delegationFailed": "Specialist task failed",
+      "agentActionRunning": "{name} is running an action",
+      "agentActionCompleted": "{name} completed an action",
+      "agentActionFailed": "{name} failed to complete an action",
+      "showActionDetails": "Show action details",
+      "hideActionDetails": "Hide action details",
+      "actionInput": "Input",
+      "actionOutput": "Output"
     },
     "richEditor": {
       "bold": "Bold",

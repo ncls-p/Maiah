@@ -45,54 +45,57 @@ Chaque ressource distante doit distinguer :
 
 ## Onboarding et setup
 
-| Scénario                         | Attendu                                                  | Couverture                   |
-| -------------------------------- | -------------------------------------------------------- | ---------------------------- |
-| Aucun fournisseur                | Une action primaire « connecter l’IA »                   | Code + navigateur CI         |
-| Fournisseurs existants           | Passage direct au choix du modèle                        | Code                         |
-| Erreur GET fournisseurs          | Erreur relançable, aucune fausse proposition de création | Code                         |
-| Erreur GET modèles               | Erreur relançable, aucun faux état « aucun modèle »      | Code                         |
-| Découverte vide                  | Information non bloquante, ajout manuel disponible       | Code + tests fournisseurs    |
-| Échec du test de connexion       | Message localisé, saisie conservée                       | Code                         |
-| Création concurrente             | Bouton occupé, double envoi désactivé                    | Code + tests API             |
-| Finalisation assistant           | Version configurée puis ouverture du chat                | Tests agents + CI PostgreSQL |
-| Marqueur onboarding indisponible | Assistant utilisable, avertissement distinct             | Code                         |
+| Scénario                         | Attendu                                                                  | Couverture                   |
+| -------------------------------- | ------------------------------------------------------------------------ | ---------------------------- |
+| Aucun fournisseur                | Une action primaire « connecter l’IA »                                   | Code + navigateur CI         |
+| Fournisseurs existants           | Passage direct au choix du modèle                                        | Code                         |
+| Erreur GET fournisseurs          | Erreur relançable, aucune fausse proposition de création                 | Code                         |
+| Erreur GET modèles               | Erreur relançable, aucun faux état « aucun modèle »                      | Code                         |
+| Découverte vide                  | Information non bloquante, ajout manuel disponible                       | Code + tests fournisseurs    |
+| Échec du test de connexion       | Message localisé, saisie conservée                                       | Code                         |
+| Création concurrente             | Bouton occupé, double envoi désactivé                                    | Code + tests API             |
+| Finalisation assistant           | Version configurée puis ouverture du chat                                | Tests agents + CI PostgreSQL |
+| Premier assistant via setup      | Calcul, heure, aléatoire, UUID, dates et recherche web, sans approbation | Tests route/use case         |
+| Marqueur onboarding indisponible | Assistant utilisable, avertissement distinct                             | Code                         |
 
 ## Chat et conversations
 
-| Scénario                         | Attendu                                                               | Couverture                  |
-| -------------------------------- | --------------------------------------------------------------------- | --------------------------- |
-| Aucun assistant                  | État guidé selon permissions                                          | Code + tests de permissions |
-| Assistant incomplet              | CTA de configuration, envoi désactivé                                 | Code                        |
-| Conversation vide                | Prompts et message d’entrée utiles                                    | Code                        |
-| Streaming                        | Statut localisé, arrêt visible, suivi du scroll maîtrisé              | 82 tests ciblés + code      |
-| Message pendant streaming        | Mise en file modifiable et annulable                                  | Tests chat + code           |
-| Pièces jointes pendant streaming | Refus explicite sans perte de fichier                                 | Code                        |
-| Limite de huit fichiers          | Refus localisé avant upload                                           | Tests attachments + code    |
-| ZIP et fichiers directs mélangés | Refus explicite                                                       | Tests attachments + code    |
-| Upload ou extraction en échec    | Erreur localisée, conversation conservée                              | Code + tests route          |
-| Édition/suppression/régénération | Actions tactiles et clavier, échec non silencieux                     | Tests chat + navigateur CI  |
-| Copie message/lien               | Succès uniquement après presse-papiers, échec visible                 | Code                        |
-| Liens externes                   | Confirmation avant sortie, URL visible                                | Code                        |
-| Dossiers, épinglage et ordre     | Actions clavier/tactile, rollback après échec                         | Code + tests à étendre      |
-| Publication GitHub               | Connexion, synchronisation, permissions, PR/push direct, confirmation | Tests GitHub + code         |
-| Artefacts HTML/sandbox           | Preview différée, plein écran, copie et téléchargement                | Tests artifacts + code      |
+| Scénario                         | Attendu                                                                                       | Couverture                                |
+| -------------------------------- | --------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| Aucun assistant                  | État guidé selon permissions                                                                  | Code + tests de permissions               |
+| Assistant incomplet              | CTA de configuration, envoi désactivé                                                         | Code                                      |
+| Conversation vide                | Prompts et message d’entrée utiles                                                            | Code                                      |
+| Streaming                        | Statut localisé, arrêt visible, suivi du scroll maîtrisé                                      | 82 tests ciblés + code                    |
+| Message pendant streaming        | Mise en file modifiable et annulable                                                          | Tests chat + code                         |
+| Pièces jointes pendant streaming | Refus explicite sans perte de fichier                                                         | Code                                      |
+| Limite de huit fichiers          | Refus localisé avant upload                                                                   | Tests attachments + code                  |
+| ZIP et fichiers directs mélangés | Refus explicite                                                                               | Tests attachments + code                  |
+| Upload ou extraction en échec    | Erreur localisée, conversation conservée                                                      | Code + tests route                        |
+| Édition/suppression/régénération | Actions tactiles et clavier, échec non silencieux                                             | Tests chat + navigateur CI                |
+| Copie message/lien               | Succès uniquement après presse-papiers, échec visible                                         | Code                                      |
+| Liens externes                   | Confirmation avant sortie, URL visible                                                        | Code                                      |
+| Dossiers, épinglage et ordre     | Actions clavier/tactile, rollback après échec                                                 | Code + tests à étendre                    |
+| Publication GitHub               | Connexion, synchronisation, permissions, PR/push direct, confirmation                         | Tests GitHub + code                       |
+| Artefacts HTML/sandbox           | Preview différée, plein écran, copie et téléchargement                                        | Tests artifacts + code                    |
+| Actions des sous-agents          | Visibles en direct/rechargement; seule la réponse finale entre dans le contexte orchestrateur | Tests runtime/historique/transport + code |
 
 ## Assistants
 
-| Scénario                  | Attendu                                                      | Couverture                       |
-| ------------------------- | ------------------------------------------------------------ | -------------------------------- |
-| Liste en chargement       | Progression stable                                           | Code                             |
-| Erreur de liste           | Erreur relançable, jamais « aucun assistant »                | Code                             |
-| Liste vide                | Un CTA de création                                           | Code                             |
-| Recherche vide            | Message de filtre, collection intacte                        | Code                             |
-| Création assistant        | Type, modèle et instructions simples                         | Tests routes + code              |
-| Création orchestrateur    | Type explicite, privé en V1, accès à l’onglet orchestration  | Playwright + tests routes        |
-| Lecture seule             | Explication organisation, clone possible, mutations masquées | Tests permissions + code         |
-| Chargement partiel config | Éditeur bloqué avec relance                                  | Code                             |
-| Sauvegarde concurrente    | `baseVersionId`, erreur 409 exploitable                      | Tests versioning                 |
-| Capacités                 | Une version atomique pour outils, connaissances et skills    | Tests versioning + CI PostgreSQL |
-| Configuration terminée    | Checklist masquée, test chat prioritaire                     | Code                             |
-| Suppression               | Confirmation d’impact et état occupé                         | Code + tests API                 |
+| Scénario                  | Attendu                                                          | Couverture                       |
+| ------------------------- | ---------------------------------------------------------------- | -------------------------------- |
+| Liste en chargement       | Progression stable                                               | Code                             |
+| Erreur de liste           | Erreur relançable, jamais « aucun assistant »                    | Code                             |
+| Liste vide                | Un CTA de création                                               | Code                             |
+| Recherche vide            | Message de filtre, collection intacte                            | Code                             |
+| Création assistant        | Type, modèle et instructions simples                             | Tests routes + code              |
+| Création orchestrateur    | Type explicite, privé en V1, accès à l’onglet orchestration      | Playwright + tests routes        |
+| Lecture seule             | Explication organisation, clone possible, mutations masquées     | Tests permissions + code         |
+| Chargement partiel config | Éditeur bloqué avec relance                                      | Code                             |
+| Sauvegarde concurrente    | `baseVersionId`, erreur 409 exploitable                          | Tests versioning                 |
+| Sauvegarde dans l'éditeur | Version et droits actualisés sans masquer l'écran ni les onglets | Test d'état éditeur + code       |
+| Capacités                 | Une version atomique pour outils, connaissances et skills        | Tests versioning + CI PostgreSQL |
+| Configuration terminée    | Checklist masquée, test chat prioritaire                         | Code                             |
+| Suppression               | Confirmation d’impact et état occupé                             | Code + tests API                 |
 
 ## Orchestrateurs
 

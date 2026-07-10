@@ -38,6 +38,8 @@ import {
   type AgentVersionRow,
 } from "@/modules/agent/use-cases";
 import { buildSkillsRegistryPrompt } from "@/modules/skills/use-cases";
+import { safeToolErrorMessage } from "@/modules/tool/safe-payload";
+import { delegationFinalTextFromOutput } from "@/modules/agent/progress-model-history";
 import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
 import { getAdapter } from "@/server/infrastructure/providers";
@@ -80,6 +82,37 @@ type ExecutionBudget = {
 
 type ResolvedAgent = { agent: AgentRow; version: AgentVersionRow };
 
+type AgentToolProgressContext = {
+  id: string;
+  toolCallId: string;
+  toolName: string;
+  agentName: string;
+  agentId: string;
+  runId: string;
+  parentRunId: string | null;
+  depth: number;
+};
+
+export type AgentToolProgressEvent =
+  | (AgentToolProgressContext & {
+      type: "tool-start";
+      input: unknown;
+    })
+  | (AgentToolProgressContext & {
+      type: "tool-end";
+      durationMs: number;
+      output: unknown;
+    })
+  | (AgentToolProgressContext & {
+      type: "tool-end";
+      durationMs: number;
+      error: string;
+    });
+
+type AgentToolProgressCallback = (
+  event: AgentToolProgressEvent,
+) => void | Promise<void>;
+
 type InternalExecutionInput = {
   resolved: ResolvedAgent;
   workspaceId: string;
@@ -98,6 +131,7 @@ type InternalExecutionInput = {
   scheduledTaskId?: string | null;
   idempotencyKey?: string | null;
   dryRun?: boolean;
+  onProgress?: AgentToolProgressCallback;
 };
 
 export type ExecuteAgentInput = {
@@ -114,6 +148,7 @@ export type ExecuteAgentInput = {
   scheduledTaskId?: string | null;
   idempotencyKey?: string | null;
   abortSignal?: AbortSignal;
+  onProgress?: AgentToolProgressCallback;
 };
 
 export type AgentExecutionResult = {
@@ -182,6 +217,18 @@ function nextSequence() {
     sequence += 1;
     return sequence;
   };
+}
+
+function emitToolProgress(
+  callback: AgentToolProgressCallback | undefined,
+  event: AgentToolProgressEvent,
+) {
+  if (!callback) return;
+  try {
+    void Promise.resolve(callback(event)).catch(() => undefined);
+  } catch {
+    // Live progress is best-effort and must never fail the durable run.
+  }
 }
 
 function instrumentTools(
@@ -269,6 +316,12 @@ async function buildDelegationTools(input: {
       inputSchema: z.object({
         task: z.string().trim().min(1).max(32_000),
       }),
+      toModelOutput: ({ output }) => ({
+        type: "text",
+        value:
+          delegationFinalTextFromOutput(output) ??
+          "The specialist completed without a final text response.",
+      }),
       execute: async ({ task }) => {
         const sequence = input.allocateSequence();
         let childRunId: string | undefined;
@@ -342,6 +395,7 @@ async function buildDelegationTools(input: {
             parentRunId: input.runId,
             conversationId: input.execution.conversationId,
             messageId: input.execution.messageId,
+            onProgress: input.execution.onProgress,
           });
           childRunId = result.runId;
           const output = truncateDelegationResult(
@@ -359,7 +413,12 @@ async function buildDelegationTools(input: {
             outputPreview: { text: output },
             completedAt: new Date(),
           });
-          return { childRunId, result: output };
+          return {
+            childRunId,
+            childAgentId: child.agent.id,
+            childAgentName: child.agent.name,
+            result: output,
+          };
         } catch (error) {
           if (error instanceof AgentExecutionError && error.runId) {
             childRunId = error.runId;
@@ -540,6 +599,49 @@ async function executeResolvedAgent(
       toolApproval: bound.toolApproval,
       stopWhen: stepCountIs(Math.max(1, maxSteps)),
       abortSignal: deadline.signal,
+      onToolExecutionStart: ({ toolCall }) =>
+        emitToolProgress(input.onProgress, {
+          type: "tool-start",
+          id: `${runId}:${toolCall.toolCallId}`,
+          toolCallId: toolCall.toolCallId,
+          toolName: toolCall.toolName,
+          agentName: input.resolved.agent.name,
+          agentId: input.resolved.agent.id,
+          runId,
+          parentRunId: input.parentRunId ?? null,
+          depth: input.depth,
+          input: toolCall.input,
+        }),
+      onToolExecutionEnd: ({ toolCall, toolExecutionMs, toolOutput }) => {
+        const context = {
+          id: `${runId}:${toolCall.toolCallId}`,
+          toolCallId: toolCall.toolCallId,
+          toolName: toolCall.toolName,
+          agentName: input.resolved.agent.name,
+          agentId: input.resolved.agent.id,
+          runId,
+          parentRunId: input.parentRunId ?? null,
+          depth: input.depth,
+        } satisfies AgentToolProgressContext;
+        if (toolOutput.type === "tool-error") {
+          emitToolProgress(input.onProgress, {
+            ...context,
+            type: "tool-end",
+            durationMs: toolExecutionMs,
+            error: safeToolErrorMessage(
+              toolOutput.error,
+              "Tool execution failed",
+            ),
+          });
+          return;
+        }
+        emitToolProgress(input.onProgress, {
+          ...context,
+          type: "tool-end",
+          durationMs: toolExecutionMs,
+          output: toolOutput.output,
+        });
+      },
       telemetry: {
         functionId: "ai-hub.agent-run",
         recordInputs: false,
@@ -726,6 +828,7 @@ export async function executeAgent(
     scheduledTaskId: input.scheduledTaskId,
     idempotencyKey: input.idempotencyKey,
     dryRun: input.trigger === "dry_run",
+    onProgress: input.onProgress,
   });
 }
 

@@ -18,6 +18,7 @@ import {
   orchestrationPolicySchema,
 } from "@/modules/agent/orchestration-policy";
 import { DelegationBindingValidationError } from "@/modules/agent/delegation-use-cases";
+import { ONBOARDING_TOOL_PRESET } from "@/modules/agent/onboarding-tools";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
 import { db } from "@/server/infrastructure/db";
 import {
@@ -44,54 +45,65 @@ const promptSuggestionsSchema = z
   .array(z.string().trim().min(1).max(240))
   .max(12);
 
-const createAgentSchema = z.object({
-  name: z.string().min(1).max(255),
-  slug: slugSchema,
-  kind: z.enum(["assistant", "orchestrator"]).default("assistant"),
-  description: z.string().max(2048).optional(),
-  logoUrl: agentLogoUrlSchema.optional(),
-  workspaceId: z.uuid(),
-  systemPrompt: z.string().max(64_000).optional(),
-  promptSuggestions: promptSuggestionsSchema.optional(),
-  providerId: z.uuid().optional(),
-  modelId: z.uuid().optional(),
-  temperature: z.string().optional(),
-  topP: z.string().optional(),
-  maxOutputTokens: z
-    .number()
-    .int()
-    .positive()
-    .max(agentRuntimePolicy.maxOutputTokens)
-    .optional(),
-  maxToolCalls: z
-    .number()
-    .int()
-    .min(0)
-    .max(agentRuntimePolicy.maxToolCalls)
-    .optional(),
-  sharingMode: z
-    .enum(["personal", "marketplace", "specific_user"])
-    .default("personal"),
-  shareTargetEmail: z.email().optional(),
-  isGlobal: z.boolean().optional(),
-  isRecommended: z.boolean().optional(),
-  curationLabel: z
-    .enum(["none", "recommended", "organization_created"])
-    .optional(),
-  toolBindings: z
-    .array(
-      z.object({
-        toolSource: z.literal("builtin").default("builtin"),
-        toolId: z.uuid(),
-        requireApproval: z.boolean().optional(),
-      }),
-    )
-    .optional(),
-  knowledgeBindings: z.array(z.uuid()).optional(),
-  skillBindings: z.array(z.uuid()).optional(),
-  orchestrationPolicy: orchestrationPolicySchema.optional(),
-  delegationBindings: z.array(delegationBindingInputSchema).optional(),
-});
+const createAgentSchema = z
+  .object({
+    name: z.string().min(1).max(255),
+    slug: slugSchema,
+    kind: z.enum(["assistant", "orchestrator"]).default("assistant"),
+    description: z.string().max(2048).optional(),
+    logoUrl: agentLogoUrlSchema.optional(),
+    workspaceId: z.uuid(),
+    systemPrompt: z.string().max(64_000).optional(),
+    promptSuggestions: promptSuggestionsSchema.optional(),
+    providerId: z.uuid().optional(),
+    modelId: z.uuid().optional(),
+    temperature: z.string().optional(),
+    topP: z.string().optional(),
+    maxOutputTokens: z
+      .number()
+      .int()
+      .positive()
+      .max(agentRuntimePolicy.maxOutputTokens)
+      .optional(),
+    maxToolCalls: z
+      .number()
+      .int()
+      .min(0)
+      .max(agentRuntimePolicy.maxToolCalls)
+      .optional(),
+    sharingMode: z
+      .enum(["personal", "marketplace", "specific_user"])
+      .default("personal"),
+    shareTargetEmail: z.email().optional(),
+    isGlobal: z.boolean().optional(),
+    isRecommended: z.boolean().optional(),
+    curationLabel: z
+      .enum(["none", "recommended", "organization_created"])
+      .optional(),
+    toolPreset: z.literal(ONBOARDING_TOOL_PRESET).optional(),
+    toolBindings: z
+      .array(
+        z.object({
+          toolSource: z.literal("builtin").default("builtin"),
+          toolId: z.uuid(),
+          requireApproval: z.boolean().optional(),
+        }),
+      )
+      .optional(),
+    knowledgeBindings: z.array(z.uuid()).optional(),
+    skillBindings: z.array(z.uuid()).optional(),
+    orchestrationPolicy: orchestrationPolicySchema.optional(),
+    delegationBindings: z.array(delegationBindingInputSchema).optional(),
+  })
+  .superRefine((input, context) => {
+    if (input.toolPreset && input.toolBindings !== undefined) {
+      context.addIssue({
+        code: "custom",
+        message: "toolPreset cannot be combined with toolBindings",
+        path: ["toolBindings"],
+      });
+    }
+  });
 
 const listAgentsSchema = z.object({
   workspaceId: z.uuid(),

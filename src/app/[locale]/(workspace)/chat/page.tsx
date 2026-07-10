@@ -52,6 +52,15 @@ import {
   NoAssistantsState,
 } from "./chat-page-view";
 
+type AgentDirectoryPayload = {
+  agents?: ChatAgent[];
+  organizationDefaultAgentId?: string | null;
+  userDefaultAgentId?: string | null;
+  effectiveDefaultAgentId?: string | null;
+  canCreateAgent?: boolean;
+  canManageProviders?: boolean;
+};
+
 export default function ChatPage() {
   const t = useTranslations(CHAT_INTERFACE_MODE);
   const { workspaceId, isLoading: workspaceLoading } = useWorkspace();
@@ -183,6 +192,78 @@ export default function ChatPage() {
         { signal },
       );
       return normalizeConversationList(data);
+    },
+    [workspaceId],
+  );
+
+  const loadAgentDirectory = useCallback(
+    async ({
+      preferredAgentId,
+      signal,
+    }: {
+      preferredAgentId?: string | null;
+      signal?: AbortSignal;
+    } = {}) => {
+      if (!workspaceId) return null;
+
+      const agentParams = new URLSearchParams({
+        workspaceId,
+        includeModelMeta: "true",
+      });
+      const response = await fetchJson<AgentDirectoryPayload | ChatAgent[]>(
+        `/api/workspace/agents?${agentParams.toString()}`,
+        { signal },
+      );
+      const data = (
+        Array.isArray(response) ? response : (response.agents ?? [])
+      ) as ChatAgent[];
+      const responseDefaults = Array.isArray(response)
+        ? {
+            organizationDefaultAgentId: null,
+            userDefaultAgentId: null,
+            effectiveDefaultAgentId: null,
+            canCreateAgent: false,
+            canManageProviders: false,
+          }
+        : response;
+
+      setAgents(data);
+      setOrganizationDefaultAgentId(
+        responseDefaults.organizationDefaultAgentId ?? null,
+      );
+      setCanCreateAgent(Boolean(responseDefaults.canCreateAgent));
+      setCanRunSetup(
+        Boolean(
+          responseDefaults.canCreateAgent &&
+          responseDefaults.canManageProviders,
+        ),
+      );
+      setUserDefaultAgentId(responseDefaults.userDefaultAgentId ?? null);
+
+      const params = new URL(window.location.href).searchParams;
+      const requestedAgentId = params.get("agentId");
+      const requestedConversationId = params.get("conversationId");
+      const nextAgentId =
+        (requestedAgentId && data.some((agent) => agent.id === requestedAgentId)
+          ? requestedAgentId
+          : null) ??
+        (preferredAgentId && data.some((agent) => agent.id === preferredAgentId)
+          ? preferredAgentId
+          : null) ??
+        (responseDefaults.effectiveDefaultAgentId &&
+        data.some(
+          (agent) => agent.id === responseDefaults.effectiveDefaultAgentId,
+        )
+          ? responseDefaults.effectiveDefaultAgentId
+          : null) ??
+        data[0]?.id ??
+        null;
+
+      setSelectedAgentId(nextAgentId);
+      if (requestedConversationId) {
+        setActiveConversationId(requestedConversationId);
+      }
+      return nextAgentId;
     },
     [workspaceId],
   );
@@ -350,71 +431,12 @@ export default function ChatPage() {
 
   useEffect(() => {
     if (!workspaceId) return;
-    const currentWorkspaceId = workspaceId;
     let cancelled = false;
     const controller = new AbortController();
 
     async function loadAgents() {
       try {
-        const agentParams = new URLSearchParams({
-          workspaceId: currentWorkspaceId,
-          includeModelMeta: "true",
-        });
-        const response = await fetchJson<
-          | {
-              agents?: ChatAgent[];
-              organizationDefaultAgentId?: string | null;
-              userDefaultAgentId?: string | null;
-              effectiveDefaultAgentId?: string | null;
-              canCreateAgent?: boolean;
-              canManageProviders?: boolean;
-            }
-          | ChatAgent[]
-        >(`/api/workspace/agents?${agentParams.toString()}`, {
-          signal: controller.signal,
-        });
-        const data = (
-          Array.isArray(response) ? response : (response.agents ?? [])
-        ) as ChatAgent[];
-        if (cancelled) return;
-
-        setAgents(data);
-        const responseDefaults = Array.isArray(response)
-          ? {
-              organizationDefaultAgentId: null,
-              userDefaultAgentId: null,
-              effectiveDefaultAgentId: null,
-              canCreateAgent: false,
-              canManageProviders: false,
-            }
-          : response;
-        setOrganizationDefaultAgentId(
-          responseDefaults.organizationDefaultAgentId ?? null,
-        );
-        setCanCreateAgent(Boolean(responseDefaults.canCreateAgent));
-        setCanRunSetup(
-          Boolean(
-            responseDefaults.canCreateAgent &&
-            responseDefaults.canManageProviders,
-          ),
-        );
-        setUserDefaultAgentId(responseDefaults.userDefaultAgentId ?? null);
-        const params = new URL(window.location.href).searchParams;
-        const requestedAgentId = params.get("agentId");
-        const requestedConversationId = params.get("conversationId");
-        const defaultAgentId = responseDefaults.effectiveDefaultAgentId;
-        setSelectedAgentId(
-          requestedAgentId &&
-            data.some((agent) => agent.id === requestedAgentId)
-            ? requestedAgentId
-            : defaultAgentId &&
-                data.some((agent) => agent.id === defaultAgentId)
-              ? defaultAgentId
-              : (data[0]?.id ?? null),
-        );
-        if (requestedConversationId) {
-          setActiveConversationId(requestedConversationId);
-        }
+        await loadAgentDirectory({ signal: controller.signal });
       } catch (err) {
         if (err instanceof Error && err.name !== "AbortError") {
           toast.error(err.message);
@@ -430,7 +452,7 @@ export default function ChatPage() {
       cancelled = true;
       controller.abort();
     };
-  }, [workspaceId]);
+  }, [loadAgentDirectory, workspaceId]);
 
   useEffect(() => {
     if (!workspaceId) return;
@@ -1095,11 +1117,22 @@ export default function ChatPage() {
   }
 
   async function reloadAgentContext() {
-    if (!selectedAgentId || !workspaceId) return;
+    if (!workspaceId) return;
     setLoadingContext(true);
     try {
+      const refreshedAgentId = await loadAgentDirectory({
+        preferredAgentId: selectedAgentId,
+      });
+      if (!refreshedAgentId) {
+        setActiveVersion(null);
+        return;
+      }
+      if (refreshedAgentId !== selectedAgentId) {
+        setActiveVersion(null);
+        return;
+      }
       const versionData = await fetchJson<AgentVersion[]>(
-        `/api/workspace/agents/${selectedAgentId}/versions?workspaceId=${workspaceId}`,
+        `/api/workspace/agents/${refreshedAgentId}/versions?workspaceId=${workspaceId}`,
       );
       setActiveVersion(versionData.find((version) => version.isActive) ?? null);
     } catch (error) {

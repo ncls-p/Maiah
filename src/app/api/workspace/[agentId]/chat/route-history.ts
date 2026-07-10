@@ -10,6 +10,7 @@ import { decryptValue } from "@/lib/crypto";
 import { logHandledWarning } from "@/lib/logger";
 import { db } from "@/server/infrastructure/db";
 import { messageParts, messages } from "@/server/infrastructure/db/schema";
+import { projectAgentProgressForModelHistory } from "@/modules/agent/progress-model-history";
 import type { ModelMessage } from "ai";
 
 const previousToolTextContextChars = 4_000;
@@ -279,6 +280,12 @@ export async function loadConversationHistory(
     const artifactCodeBlocks = new Set<string>();
     for (const part of partsByMessageId.get(message.id) ?? []) {
       const metadata = await toolMetadataForModelHistory(part);
+      const agentProgress = projectAgentProgressForModelHistory(metadata);
+      if (agentProgress?.kind === "visual-only") continue;
+      if (agentProgress?.kind === "delegation-result") {
+        textParts.push(agentProgress.text);
+        continue;
+      }
       if (part.type === "file") {
         const imageAttachment = isChatImageAttachment(metadata)
           ? metadata

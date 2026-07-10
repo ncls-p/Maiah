@@ -20,7 +20,11 @@ import {
   createRuntimeDeadline,
   resolveAgentRuntimeLimits,
 } from "@/modules/agent/runtime-policy";
-import { executeAgent } from "@/modules/agent/runtime-executor";
+import {
+  executeAgent,
+  type AgentToolProgressEvent,
+} from "@/modules/agent/runtime-executor";
+import type { AgentToolDisplayContext } from "@/modules/agent/tool-progress-payload";
 import {
   completeChatStream,
   createChatStreamResponse,
@@ -545,6 +549,130 @@ export async function POST(
         streamAbortController,
       );
       let completedRun: Awaited<ReturnType<typeof executeAgent>> | null = null;
+      let nextOrchestrationSortOrder = 0;
+      let orchestrationProgressQueue = Promise.resolve();
+      const allocateOrchestrationSortOrder = () => {
+        const sortOrder = nextOrchestrationSortOrder;
+        nextOrchestrationSortOrder += 1;
+        return sortOrder;
+      };
+      const persistOrchestrationProgress = async (
+        progress: AgentToolProgressEvent,
+        sortOrder: number,
+      ) => {
+        const isStart = progress.type === "tool-start";
+        const status = isStart
+          ? "running"
+          : "error" in progress
+            ? "error"
+            : "success";
+        const value = isStart
+          ? progress.input
+          : "error" in progress
+            ? { error: progress.error }
+            : progress.output;
+        const agentContext = {
+          agentId: progress.agentId,
+          agentName: progress.agentName,
+          runId: progress.runId,
+          parentRunId: progress.parentRunId ?? undefined,
+          depth: progress.depth,
+          status,
+          ...(!isStart ? { durationMs: progress.durationMs } : {}),
+        } satisfies AgentToolDisplayContext;
+        const rawMetadata = isStart
+          ? {
+              toolCallId: progress.id,
+              toolName: progress.toolName,
+              input: value,
+              agentContext,
+            }
+          : {
+              toolCallId: progress.id,
+              toolName: progress.toolName,
+              output: value,
+              agentContext,
+            };
+        const safeValue = projectToolMessagePayload(value);
+        const safeMetadata = isStart
+          ? {
+              toolCallId: progress.id,
+              toolName: progress.toolName,
+              input: safeValue,
+              agentContext,
+            }
+          : {
+              toolCallId: progress.id,
+              toolName: progress.toolName,
+              output: safeValue,
+              agentContext,
+            };
+
+        try {
+          await db.insert(messageParts).values({
+            messageId: assistantMessage.id,
+            type: isStart ? "tool-call" : "tool-result",
+            contentEncrypted: await encryptValue(JSON.stringify(rawMetadata)),
+            metadataJson: safeMetadata,
+            sortOrder,
+          });
+          enqueueEvent(
+            isStart
+              ? {
+                  type: "tool_call",
+                  toolCallId: progress.id,
+                  toolName: progress.toolName,
+                  input: safeMetadata.input,
+                  agentContext,
+                }
+              : {
+                  type: "tool_result",
+                  toolCallId: progress.id,
+                  toolName: progress.toolName,
+                  output: safeMetadata.output,
+                  agentContext,
+                },
+          );
+        } catch (error) {
+          logHandledWarning("Failed to persist orchestrator progress", {
+            requestId,
+            agentId,
+            runId: progress.runId,
+            toolName: progress.toolName,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      };
+      const queueOrchestrationProgress = (progress: AgentToolProgressEvent) => {
+        const sortOrder = allocateOrchestrationSortOrder();
+        orchestrationProgressQueue = orchestrationProgressQueue
+          .then(() => persistOrchestrationProgress(progress, sortOrder))
+          .catch((error) => {
+            logHandledWarning("Orchestrator progress queue failed", {
+              requestId,
+              agentId,
+              runId: progress.runId,
+              error: error instanceof Error ? error.message : String(error),
+            });
+          });
+      };
+      const flushOrchestrationProgress = async () => {
+        let timeout: ReturnType<typeof setTimeout> | undefined;
+        const flushed = await Promise.race([
+          orchestrationProgressQueue.then(() => true),
+          new Promise<false>((resolve) => {
+            timeout = setTimeout(() => resolve(false), 2_000);
+          }),
+        ]);
+        if (timeout) clearTimeout(timeout);
+        if (!flushed) {
+          logHandledWarning("Orchestrator progress flush timed out", {
+            requestId,
+            agentId,
+            assistantMessageId: assistantMessage.id,
+          });
+        }
+      };
       const orchestrationPrompt = [
         content,
         ragContext
@@ -556,6 +684,15 @@ export async function POST(
 
       void (async () => {
         try {
+          if (citations.length > 0) {
+            await db.insert(messageParts).values({
+              messageId: assistantMessage.id,
+              type: "citations",
+              contentEncrypted: await encryptValue(JSON.stringify(citations)),
+              metadataJson: null,
+              sortOrder: allocateOrchestrationSortOrder(),
+            });
+          }
           const result = await executeAgent({
             workspaceId: agent.workspaceId,
             userId: actorUserId,
@@ -571,8 +708,10 @@ export async function POST(
             messageId: assistantMessage.id,
             idempotencyKey: `chat:${assistantMessage.id}`,
             abortSignal: streamAbortController.signal,
+            onProgress: queueOrchestrationProgress,
           });
           completedRun = result;
+          await flushOrchestrationProgress();
           const completedAt = new Date();
           const encryptedText = result.text
             ? await encryptValue(result.text)
@@ -583,7 +722,7 @@ export async function POST(
                 messageId: assistantMessage.id,
                 type: "text",
                 contentEncrypted: encryptedText,
-                sortOrder: 0,
+                sortOrder: allocateOrchestrationSortOrder(),
               });
             }
             await tx
@@ -608,15 +747,10 @@ export async function POST(
           if (result.text) {
             enqueueEvent({ type: "text", delta: result.text });
           }
-          enqueueEvent({
-            type: "agent_run",
-            runId: result.runId,
-            status: "success",
-            totalTreeTokens: result.totalTreeTokens,
-          });
           enqueueEvent({ type: "done" });
         } catch (error) {
           const aborted = streamAbortController.signal.aborted;
+          await flushOrchestrationProgress();
           await db
             .update(messages)
             .set({
@@ -627,14 +761,6 @@ export async function POST(
           if (aborted) {
             enqueueEvent({ type: "done", stopped: true });
           } else {
-            if (completedRun) {
-              enqueueEvent({
-                type: "agent_run",
-                runId: completedRun.runId,
-                status: "success",
-                totalTreeTokens: completedRun.totalTreeTokens,
-              });
-            }
             enqueueEvent({
               type: "error",
               error: completedRun

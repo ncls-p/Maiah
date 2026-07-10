@@ -211,7 +211,18 @@
       "needsApproval": "Validation requise",
       "approvalWaiting": "L’assistant attend votre décision avant d’exécuter cette action.",
       "reject": "Refuser",
-      "approve": "Autoriser"
+      "approve": "Autoriser",
+      "delegation": "Délégation",
+      "delegationCompleted": "Mission du spécialiste terminée",
+      "delegationCompletedBy": "Terminée par {name}",
+      "delegationFailed": "La mission du spécialiste a échoué",
+      "agentActionRunning": "{name} exécute une action",
+      "agentActionCompleted": "{name} a terminé une action",
+      "agentActionFailed": "{name} n’a pas pu terminer une action",
+      "showActionDetails": "Afficher le détail de l’action",
+      "hideActionDetails": "Masquer le détail de l’action",
+      "actionInput": "Entrée",
+      "actionOutput": "Sortie"
     },
     "richEditor": {
       "bold": "Gras",

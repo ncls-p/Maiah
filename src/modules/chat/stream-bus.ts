@@ -1,4 +1,5 @@
 import { createUIMessageStream, createUIMessageStreamResponse } from "ai";
+import { parseAgentToolDisplayContext } from "@/modules/agent/tool-progress-payload";
 import { projectToolMessagePayload } from "@/modules/tool/safe-payload";
 
 type StreamEvent = Record<string, unknown>;
@@ -32,10 +33,20 @@ globalStore.__aiHubChatStreamRuns = runs;
 
 function safeStreamEvent(event: StreamEvent): StreamEvent {
   if (event.type === "tool_call") {
-    return { ...event, input: projectToolMessagePayload(event.input) };
+    return {
+      ...event,
+      input: projectToolMessagePayload(event.input),
+      agentContext:
+        parseAgentToolDisplayContext(event.agentContext) ?? undefined,
+    };
   }
   if (event.type === "tool_result") {
-    return { ...event, output: projectToolMessagePayload(event.output) };
+    return {
+      ...event,
+      output: projectToolMessagePayload(event.output),
+      agentContext:
+        parseAgentToolDisplayContext(event.agentContext) ?? undefined,
+    };
   }
   if (event.type === "tool_approval_required") {
     return { ...event, input: projectToolMessagePayload(event.input) };
@@ -303,6 +314,16 @@ export function createChatUIMessageStreamResponse(
                 const toolCallId = stringValue(event.toolCallId);
                 const toolName = stringValue(event.toolName);
                 if (toolCallId && toolName) {
+                  if (event.agentContext) {
+                    writer.write({
+                      type: "data-agent-tool-context",
+                      id: `${toolCallId}:context`,
+                      data: {
+                        toolCallId,
+                        agentContext: event.agentContext,
+                      },
+                    });
+                  }
                   writer.write({
                     type: "tool-input-available",
                     toolCallId,
@@ -316,6 +337,16 @@ export function createChatUIMessageStreamResponse(
               if (type === "tool_result") {
                 const toolCallId = stringValue(event.toolCallId);
                 if (!toolCallId) return;
+                if (event.agentContext) {
+                  writer.write({
+                    type: "data-agent-tool-context",
+                    id: `${toolCallId}:context`,
+                    data: {
+                      toolCallId,
+                      agentContext: event.agentContext,
+                    },
+                  });
+                }
                 if (outputIsDenied(event.output)) {
                   writer.write({ type: "tool-output-denied", toolCallId });
                 } else {

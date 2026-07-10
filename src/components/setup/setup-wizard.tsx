@@ -40,6 +40,7 @@ import {
 import { useWorkspace } from "@/hooks/use-workspace";
 import { fetchJson } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
+import { ONBOARDING_TOOL_PRESET } from "@/modules/agent/onboarding-tools";
 
 const BUTTON_TYPE = "button";
 const OUTLINE_VARIANT = "outline";
@@ -519,6 +520,7 @@ export function SetupWizard({
               systemPrompt: "",
               providerId,
               modelId: modelDbId,
+              toolPreset: ONBOARDING_TOOL_PRESET,
             }),
           },
         );

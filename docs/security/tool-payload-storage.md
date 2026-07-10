@@ -16,6 +16,10 @@ boundaries that need their full fidelity.
 - Model-history reconstruction may decrypt the full message part internally so
   an assistant can continue working with an earlier artifact. The decrypted
   value is not returned to the browser or written to logs.
+- Delegated progress is stricter: child-depth parts never enter the parent's
+  model history, including artifact-shaped outputs. Only the bounded `result`
+  text from a successful root `delegate_*` call is projected into that history;
+  child identity, run IDs, task input, tools and errors remain UI-only.
 
 ## Live streams and telemetry
 

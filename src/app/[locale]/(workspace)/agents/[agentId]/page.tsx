@@ -70,6 +70,7 @@ import {
   buildAgentFormFromVersion,
   type AgentVersionPayload,
 } from "./agent-form-from-version";
+import { mergeAgentEditorState } from "./agent-editor-state";
 import { isMcpToolApprovalForced } from "./utils";
 import { TabBadge } from "./shared";
 import { AgentHeader } from "./agent-header";
@@ -455,10 +456,12 @@ export default function AgentConfigurePage() {
         version?: AgentVersionPayload;
       };
       if (data.agent) {
-        const updatedAgent = {
-          ...data.agent,
-          canAdminCurate: agent?.canAdminCurate ?? false,
-        };
+        const updatedAgent = mergeAgentEditorState(agent, data.agent, {
+          shareTargetEmail:
+            data.agent.sharingMode === "specific_user"
+              ? form.shareTargetEmail.trim()
+              : null,
+        });
         setAgent(updatedAgent);
         if (data.version) {
           setForm(
@@ -544,14 +547,7 @@ export default function AgentConfigurePage() {
       const data = (await res.json()) as { agent?: Agent };
       if (data.agent) {
         setAgent((current) =>
-          current
-            ? {
-                ...data.agent!,
-                canAdminCurate: current.canAdminCurate,
-                canEdit: current.canEdit,
-                canClone: current.canClone,
-              }
-            : current,
+          current ? mergeAgentEditorState(current, data.agent!) : current,
         );
       }
       toast.success(t("configurePage.capabilitiesSaved"));
@@ -639,14 +635,7 @@ export default function AgentConfigurePage() {
       const data = (await res.json()) as { agent?: Agent };
       if (data.agent) {
         setAgent((current) =>
-          current
-            ? {
-                ...data.agent!,
-                canAdminCurate: current.canAdminCurate,
-                canEdit: current.canEdit,
-                canClone: current.canClone,
-              }
-            : current,
+          current ? mergeAgentEditorState(current, data.agent!) : current,
         );
       }
       toast.success(
@@ -765,34 +754,7 @@ export default function AgentConfigurePage() {
     totalEnabledTools + selectedKnowledgeIds.length + selectedSkillIds.length;
   const delegationCount = delegationConfig.bindings.length;
   const canEdit = agent?.canEdit ?? false;
-  const hasIdentity = Boolean(form.name.trim());
   const hasModel = Boolean(form.providerId && form.modelId);
-  const setupSteps = [
-    {
-      label: t("configurePage.stepIdentity"),
-      status: hasIdentity ? t("configurePage.stepDone") : t("statusDraft"),
-      done: hasIdentity,
-    },
-    {
-      label: t("configurePage.stepModel"),
-      status: hasModel ? t("configurePage.stepDone") : t("statusMissingModel"),
-      done: hasModel,
-    },
-    {
-      label:
-        agent?.kind === "orchestrator"
-          ? t("orchestration.specialistsTitle")
-          : t("configurePage.stepCapabilities"),
-      status:
-        (agent?.kind === "orchestrator" ? delegationCount : capabilitiesCount) >
-        0
-          ? t("configurePage.stepDone")
-          : t("configurePage.stepOptional"),
-      done:
-        (agent?.kind === "orchestrator" ? delegationCount : capabilitiesCount) >
-        0,
-    },
-  ];
 
   return (
     <WorkspacePage
@@ -815,10 +777,6 @@ export default function AgentConfigurePage() {
           providers={providers}
           models={models}
           form={form}
-          totalEnabledTools={totalEnabledTools}
-          enabledMcpCount={enabledMcpCount}
-          delegationCount={delegationCount}
-          selectedKnowledgeIds={selectedKnowledgeIds}
           canEdit={canEdit}
           onLogoChangeAction={(logoUrl) => void handleLogoChange(logoUrl)}
           onCloneAction={() => void handleClone()}
@@ -828,7 +786,7 @@ export default function AgentConfigurePage() {
         {canEdit &&
         (!hasModel ||
           (agent.kind === "orchestrator" && delegationCount === 0)) ? (
-          <div className="rounded-2xl border bg-card p-4 animate-in-fade stagger-2">
+          <div className="rounded-xl bg-muted/45 p-4 animate-in-fade stagger-2">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h3 className="text-base font-semibold">
@@ -855,37 +813,16 @@ export default function AgentConfigurePage() {
                 </Button>
               )}
             </div>
-            <div className="mt-4 grid gap-2 md:grid-cols-3">
-              {setupSteps.map((step, index) => (
-                <div
-                  key={step.label}
-                  className="flex items-center gap-3 rounded-xl border bg-background px-3 py-2"
-                >
-                  <span
-                    className={`flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-medium ${
-                      step.done
-                        ? "bg-success/10 text-success"
-                        : "bg-muted text-muted-foreground"
-                    }`}
-                  >
-                    {step.done ? "✓" : index + 1}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">{step.label}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {step.status}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
           </div>
         ) : null}
 
         {canEdit ? (
-          <div className="rounded-2xl border bg-card px-5 pb-5 pt-5 animate-in-fade stagger-3">
+          <div className="animate-in-fade stagger-3">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="w-full flex-wrap sm:w-auto">
+              <TabsList
+                variant="line"
+                className="w-full justify-start overflow-x-auto border-b border-border/70"
+              >
                 <TabsTrigger value="essential" className="gap-2">
                   {t("tabs.essential")}
                 </TabsTrigger>

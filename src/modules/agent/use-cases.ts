@@ -30,6 +30,7 @@ import {
   replaceSkillBindingsForVersion,
 } from "@/modules/skills/use-cases";
 import type { AiHubToolApprovalPolicy } from "@/modules/tool/approval-policy";
+import { BUILTIN_TOOL_SUMMARIES } from "@/modules/tool/builtin-tools-catalog";
 import {
   cloneToolBindings,
   getToolBindingsForVersion,
@@ -45,6 +46,11 @@ import {
   type DelegationBindingInput,
   type OrchestrationPolicy,
 } from "@/modules/agent/orchestration-policy";
+import {
+  ONBOARDING_BUILTIN_TOOL_NAMES,
+  ONBOARDING_TOOL_PRESET,
+  type AgentToolPreset,
+} from "@/modules/agent/onboarding-tools";
 
 // ─── Types ─────────────────────────────────────────────────────────────
 
@@ -72,6 +78,7 @@ export interface CreateAgentInput {
   topP?: string;
   maxOutputTokens?: number;
   maxToolCalls?: number;
+  toolPreset?: AgentToolPreset;
   toolBindings?: ToolBindingInput[];
   knowledgeBindings?: string[];
   skillBindings?: string[];
@@ -258,6 +265,21 @@ function stripBuiltinApprovalOverrides(
   });
 }
 
+function getOnboardingToolBindings(): ToolBindingInput[] {
+  return ONBOARDING_BUILTIN_TOOL_NAMES.map((name) => {
+    const tool = BUILTIN_TOOL_SUMMARIES.find(
+      (candidate) => candidate.name === name,
+    );
+    if (!tool) throw new Error(`Onboarding tool not found: ${name}`);
+
+    return {
+      toolSource: "builtin",
+      toolId: tool.id,
+      requireApproval: false,
+    };
+  });
+}
+
 async function preserveBuiltinApprovalOverrides(
   bindings: ToolBindingInput[] | undefined,
   activeVersionId: string | null,
@@ -301,6 +323,7 @@ export async function createAgent(input: CreateAgentInput) {
     topP,
     maxOutputTokens,
     maxToolCalls,
+    toolPreset,
     toolBindings,
     knowledgeBindings,
     skillBindings,
@@ -365,9 +388,15 @@ export async function createAgent(input: CreateAgentInput) {
       ? await requireShareTargetUserId(shareTargetEmail)
       : null;
 
-  const normalizedToolBindings = canAdminCurate
-    ? toolBindings
-    : stripBuiltinApprovalOverrides(toolBindings);
+  if (toolPreset && toolBindings !== undefined) {
+    throw new Error("toolPreset cannot be combined with toolBindings");
+  }
+  const normalizedToolBindings =
+    toolPreset === ONBOARDING_TOOL_PRESET
+      ? getOnboardingToolBindings()
+      : canAdminCurate
+        ? toolBindings
+        : stripBuiltinApprovalOverrides(toolBindings);
 
   const curated = canAdminCurate
     ? {
@@ -457,7 +486,10 @@ export async function createAgent(input: CreateAgentInput) {
       });
     }
 
-    return { agent, version };
+    return {
+      agent: { ...agent, activeVersionId: version.id },
+      version,
+    };
   });
 
   await audit.emit({

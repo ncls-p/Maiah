@@ -215,12 +215,26 @@ describe("stream-bus", () => {
 				toolCallId: "call-1",
 				toolName: "lookup",
 				input: { q: "x" },
+				agentContext: {
+					agentId: "agent-1",
+					agentName: "Research specialist",
+					runId: "run-1",
+					depth: 1,
+					status: "running",
+				},
 			});
 			publishChatStreamEvent(id, {
 				type: "tool_result",
 				toolCallId: "call-1",
 				toolName: "lookup",
 				output: { ok: true },
+				agentContext: {
+					agentId: "agent-1",
+					agentName: "Research specialist",
+					runId: "run-1",
+					depth: 1,
+					status: "success",
+				},
 			});
 			publishChatStreamEvent(id, { type: "done" });
 			completeChatStream(id);
@@ -231,6 +245,8 @@ describe("stream-bus", () => {
 			expect(text).toContain('"type":"text-delta"');
 			expect(text).toContain('"type":"tool-input-available"');
 			expect(text).toContain('"type":"tool-output-available"');
+			expect(text).toContain('"type":"data-agent-tool-context"');
+			expect(text).toContain('"agentName":"Research specialist"');
 			expect(text).toContain('"type":"finish"');
 		});
 	});
@@ -291,9 +307,8 @@ describe("additional stream response event mappings", () => {
 	}
 
 	it("creates a raw SSE response with replay and custom headers", async () => {
-		const { createChatStreamResponse } = await import(
-			"@/modules/chat/stream-bus"
-		);
+		const { createChatStreamResponse } =
+			await import("@/modules/chat/stream-bus");
 		const id = crypto.randomUUID();
 		publishChatStreamEvent(id, { type: "text", delta: "old" });
 		const response = createChatStreamResponse(id, { "X-Test": "yes" });

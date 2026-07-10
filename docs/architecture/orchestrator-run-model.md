@@ -35,6 +35,33 @@ Only safe projections are stored there. `workspace_token_reservations` tracks
 admission-control reservations independently from settled usage and supports
 expiry/reaping after crashes.
 
+## Chat progress
+
+The shared executor emits tool lifecycle progress for the root agent and every
+delegated child. Each event carries the responsible agent, run, parent run and
+depth. Orchestrator chat maps starts and terminal outcomes to the existing
+`tool_call` and `tool_result` stream events, and stores matching ordered
+`tool-call` and `tool-result` message parts. The UI can therefore show which
+specialist is acting during execution and reconstruct the same actions after a
+conversation reload.
+
+These persisted parts are a durable UI trace, not the orchestrator's model
+memory. During the active run, each `delegate_*` tool uses AI SDK
+`toModelOutput` to give the parent only the child's bounded final text while the
+full structured output remains available to progress callbacks. When a later
+turn reconstructs model history, every child-depth action is discarded before
+artifact context extraction; a successful root delegation contributes only its
+`result` string. Child run IDs, agent identity, task input, intermediate tools,
+artifacts and errors therefore remain visual-only.
+
+Full progress input and output are encrypted in the message part. Public stream
+events and `metadata_json` contain bounded, secret-aware input, output or safe
+error from `projectToolMessagePayload(...)`, plus a server-owned top-level
+`agentContext`. Provenance is never inferred from tool-controlled input or
+output. Progress delivery uses an ordered, time-bounded queue outside the tool
+execution path, so an unavailable observer cannot slow down or turn a
+successful durable run into a failure.
+
 ## Admission and execution guarantees
 
 Root runs reserve their maximum token budget before execution. Monthly quota

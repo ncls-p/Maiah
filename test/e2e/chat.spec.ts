@@ -15,6 +15,29 @@ test.describe("chat page", () => {
     await expect(page).toHaveURL(/\/en\/chat/);
   });
 
+  test("keeps the minimalist chat shell responsive and the brand logo unframed", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/en/chat");
+
+    const logo = page.locator('img[alt="Deodis"]:visible').first();
+    await expect(logo).toBeVisible({ timeout: 15_000 });
+    await expect(logo).toHaveAttribute("data-no-outline", "true");
+    expect(
+      await logo.evaluate((element) => getComputedStyle(element).outlineStyle),
+    ).toBe("none");
+
+    const brandLink = logo.locator("xpath=..");
+    const brandLinkBox = await brandLink.boundingBox();
+    expect(brandLinkBox?.height ?? 0).toBeGreaterThanOrEqual(40);
+
+    const hasHorizontalOverflow = await page.evaluate(
+      () => document.documentElement.scrollWidth > window.innerWidth,
+    );
+    expect(hasHorizontalOverflow).toBe(false);
+  });
+
   test("shows no assistants message when no agents exist", async ({ page }) => {
     await page.goto("/en/chat");
     await page.waitForTimeout(3000);

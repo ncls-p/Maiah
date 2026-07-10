@@ -2,9 +2,7 @@
 
 import { Link } from "@/i18n/navigation";
 import {
-  FileArchiveIcon,
   FileIcon,
-  ImageIcon,
   Loader2Icon,
   Maximize2Icon,
   PaperclipIcon,
@@ -167,6 +165,7 @@ function AttachmentPreview({
           <AttachmentAction
             type="button"
             variant="secondary"
+            className="size-10 rounded-xl"
             aria-label={t("removeFile", { name: attachment.fileName })}
             onClick={() => onRemove?.(attachment.id)}
           >
@@ -191,6 +190,7 @@ function AttachmentPreview({
           {canPreview ? (
             <AttachmentAction
               type="button"
+              className="size-10 rounded-xl"
               aria-label={t("viewExtractedText", { name: attachment.fileName })}
               onClick={preview.openPreview}
             >
@@ -199,6 +199,7 @@ function AttachmentPreview({
           ) : null}
           <AttachmentAction
             type="button"
+            className="size-10 rounded-xl"
             aria-label={t("removeFile", { name: attachment.fileName })}
             onClick={() => onRemove?.(attachment.id)}
           >
@@ -313,12 +314,15 @@ export function ChatComposer({
         event.preventDefault();
         onSubmit();
       }}
-      className="w-full min-w-0 shrink-0 bg-transparent px-3 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4 sm:pt-3"
+      className="w-full min-w-0 shrink-0 bg-transparent px-3 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-5 sm:pt-3"
     >
       {queuedMessages.length > 0 ? (
         <div className="mx-auto mb-2 flex w-full max-w-4xl flex-col gap-2">
           {queuedMessages.map((message, index) => (
-            <div key={message.id} className="rounded-xl border bg-card p-2">
+            <div
+              key={message.id}
+              className="rounded-2xl border border-border/60 bg-card p-2.5"
+            >
               <div className="mb-1.5 flex items-center justify-between gap-2 px-1">
                 <span className="text-[11px] font-medium text-muted-foreground">
                   {t("queuedMessage", { count: index + 1 })}
@@ -327,7 +331,7 @@ export function ChatComposer({
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="size-6 rounded-md text-muted-foreground hover:text-foreground"
+                  className="size-10 rounded-xl text-muted-foreground hover:text-foreground"
                   aria-label={t("cancelQueued")}
                   onClick={() => onQueuedMessageCancel?.(message.id)}
                 >
@@ -341,7 +345,7 @@ export function ChatComposer({
                   onQueuedMessageChange?.(message.id, event.target.value)
                 }
                 rows={1}
-                className="max-h-28 min-h-9 resize-none text-sm shadow-none"
+                className="max-h-28 min-h-10 resize-none text-sm shadow-none"
               />
             </div>
           ))}
@@ -359,8 +363,8 @@ export function ChatComposer({
             ))}
           </AttachmentGroup>
         ) : null}
-        <div className={cn("composer-box rounded-xl sm:rounded-2xl")}>
-          <div className="flex items-end gap-1.5 p-1.5 sm:gap-2 sm:p-2">
+        <div className={cn("composer-box rounded-2xl")}>
+          <div className="flex items-end gap-1 p-1.5 sm:gap-1.5 sm:p-2">
             <input
               ref={fileInputRef}
               type="file"
@@ -372,7 +376,7 @@ export function ChatComposer({
               type="button"
               size="icon"
               variant="ghost"
-              className="size-8 shrink-0 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground sm:size-9"
+              className="size-10 shrink-0 rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"
               aria-label={t("uploadFiles")}
               disabled={uploadingAttachment || sending || !canChat}
               onClick={() => fileInputRef.current?.click()}
@@ -419,7 +423,7 @@ export function ChatComposer({
               disabled={!canChat || (!input.trim() && attachments.length === 0)}
               aria-label={sending ? t("queueMessage") : t("sendMessage")}
               className={cn(
-                "size-9 shrink-0 rounded-lg transition-colors sm:size-10 sm:rounded-xl",
+                "size-10 shrink-0 rounded-xl transition-[background-color,color,opacity]",
                 canChat && (input.trim() || attachments.length > 0)
                   ? "bg-primary text-primary-foreground hover:bg-primary/90"
                   : "opacity-60",
@@ -433,7 +437,7 @@ export function ChatComposer({
                 type="button"
                 size="icon"
                 aria-label={t("stopGeneration")}
-                className="size-9 shrink-0 rounded-lg bg-destructive text-destructive-foreground transition-colors hover:bg-destructive/90 sm:size-10 sm:rounded-xl"
+                className="size-10 shrink-0 rounded-xl bg-destructive text-destructive-foreground transition-[background-color,color] hover:bg-destructive/90"
                 onClick={onStop}
               >
                 <SquareIcon
@@ -445,10 +449,9 @@ export function ChatComposer({
           </div>
         </div>
 
-        {/* Footer hints */}
-        <div className="mt-2 flex items-center justify-between px-1">
+        <div className="mt-1.5 min-h-5 px-1">
           {!canChat ? (
-            <p className="text-center text-xs text-muted-foreground/70 animate-in-fade">
+            <p className="text-xs text-muted-foreground animate-in-fade">
               {t("needsSetup")}{" "}
               <Link
                 href="/agents"
@@ -458,16 +461,8 @@ export function ChatComposer({
               </Link>
             </p>
           ) : (
-            <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-              <span>{sending ? t("queueHint") : t("sendHint")}</span>
-              <span className="hidden items-center gap-1 sm:inline-flex">
-                <FileArchiveIcon className="size-3" aria-hidden="true" />{" "}
-                {t("codeFiles")}
-                <ImageIcon className="size-3" aria-hidden="true" />{" "}
-                {t("images")}
-                <FileIcon className="size-3" aria-hidden="true" />{" "}
-                {t("documents")}
-              </span>
+            <p className="hidden text-[11px] text-muted-foreground sm:block">
+              {sending ? t("queueHint") : t("sendHint")}
             </p>
           )}
         </div>

@@ -67,6 +67,7 @@ const rootAgent = {
   id: "11111111-1111-4111-8111-111111111111",
   workspaceId: "22222222-2222-4222-8222-222222222222",
   createdById: "33333333-3333-4333-8333-333333333333",
+  name: "Root agent",
   kind: "assistant",
 };
 const rootVersion = {
@@ -252,6 +253,129 @@ describe("agent runtime executor", () => {
     );
   });
 
+  it("emits parent tool lifecycle progress without waiting for or trusting the observer", async () => {
+    const onProgress = vi
+      .fn()
+      .mockReturnValueOnce(new Promise<void>(() => undefined))
+      .mockRejectedValueOnce(new Error("progress subscriber unavailable"));
+    mocks.getActiveVersion.mockResolvedValueOnce({
+      ...rootVersion,
+      maxToolCalls: 1,
+    });
+    mocks.generateText.mockImplementationOnce(async (options) => {
+      const toolCall = {
+        type: "tool-call" as const,
+        toolCallId: "lookup-call",
+        toolName: "lookup",
+        input: { query: "status" },
+        dynamic: false,
+      };
+      await options.onToolExecutionStart?.({
+        callId: "model-call",
+        messages: [],
+        toolCall,
+        toolContext: undefined,
+      });
+      await options.onToolExecutionEnd?.({
+        callId: "model-call",
+        messages: [],
+        toolCall,
+        toolContext: undefined,
+        toolExecutionMs: 27,
+        toolOutput: {
+          ...toolCall,
+          type: "tool-result",
+          output: { answer: 42 },
+        },
+      });
+      return {
+        text: "Completed with progress",
+        usage: { inputTokens: 4, outputTokens: 5 },
+      };
+    });
+
+    await expect(
+      executeAgent({
+        workspaceId: rootAgent.workspaceId,
+        userId: rootAgent.createdById,
+        agentId: rootAgent.id,
+        prompt: "Use lookup",
+        trigger: "api",
+        onProgress,
+      }),
+    ).resolves.toMatchObject({ text: "Completed with progress" });
+
+    const context = {
+      id: "77777777-7777-4777-8777-777777777777:lookup-call",
+      toolCallId: "lookup-call",
+      toolName: "lookup",
+      agentName: rootAgent.name,
+      agentId: rootAgent.id,
+      runId: "77777777-7777-4777-8777-777777777777",
+      parentRunId: null,
+      depth: 0,
+    };
+    expect(onProgress).toHaveBeenNthCalledWith(1, {
+      ...context,
+      type: "tool-start",
+      input: { query: "status" },
+    });
+    expect(onProgress).toHaveBeenNthCalledWith(2, {
+      ...context,
+      type: "tool-end",
+      durationMs: 27,
+      output: { answer: 42 },
+    });
+  });
+
+  it("emits a safe tool error in lifecycle progress", async () => {
+    const onProgress = vi.fn();
+    mocks.generateText.mockImplementationOnce(async (options) => {
+      const toolCall = {
+        type: "tool-call" as const,
+        toolCallId: "unstable-call",
+        toolName: "unstable",
+        input: { query: "status" },
+        dynamic: false,
+      };
+      await options.onToolExecutionEnd?.({
+        callId: "model-call",
+        messages: [],
+        toolCall,
+        toolContext: undefined,
+        toolExecutionMs: 13,
+        toolOutput: {
+          ...toolCall,
+          type: "tool-error",
+          error: new Error("Request failed with Bearer super-secret"),
+        },
+      });
+      return {
+        text: "Recovered",
+        usage: { inputTokens: 2, outputTokens: 3 },
+      };
+    });
+
+    await executeAgent({
+      workspaceId: rootAgent.workspaceId,
+      userId: rootAgent.createdById,
+      agentId: rootAgent.id,
+      prompt: "Try the unstable tool",
+      trigger: "api",
+      onProgress,
+    });
+
+    expect(onProgress).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "tool-end",
+        toolName: "unstable",
+        durationMs: 13,
+        error: "Request failed with Bearer [REDACTED]",
+      }),
+    );
+    expect(JSON.stringify(onProgress.mock.calls)).not.toContain("super-secret");
+  });
+
   it("fails when a new run cannot be claimed", async () => {
     mocks.claimRun.mockResolvedValueOnce(null);
 
@@ -348,9 +472,11 @@ describe("agent runtime executor", () => {
   });
 
   it("rechecks delegation permission and executes the pinned child version", async () => {
+    const onProgress = vi.fn();
     const childAgent = {
       ...rootAgent,
       id: "88888888-8888-4888-8888-888888888888",
+      name: "Research specialist",
       kind: "assistant",
     };
     const childVersion = {
@@ -408,13 +534,64 @@ describe("agent runtime executor", () => {
       if (call === 1) {
         const delegate = Object.entries(options.tools).find(([name]) =>
           name.startsWith("delegate_"),
-        )?.[1] as { execute: (input: { task: string }) => Promise<unknown> };
-        await delegate.execute({ task: "Investigate" });
+        )?.[1] as {
+          execute: (input: { task: string }) => Promise<unknown>;
+          toModelOutput: (options: {
+            toolCallId: string;
+            input: { task: string };
+            output: unknown;
+          }) => unknown;
+        };
+        const delegatedOutput = await delegate.execute({
+          task: "Investigate",
+        });
+        expect(delegatedOutput).toMatchObject({
+          childRunId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          childAgentId: childAgent.id,
+          childAgentName: childAgent.name,
+          result: "Child result",
+        });
+        const modelOutput = await delegate.toModelOutput({
+          toolCallId: "delegate-call",
+          input: { task: "Investigate" },
+          output: delegatedOutput,
+        });
+        expect(modelOutput).toEqual({ type: "text", value: "Child result" });
+        expect(JSON.stringify(modelOutput)).not.toContain(childAgent.id);
+        expect(JSON.stringify(modelOutput)).not.toContain(childAgent.name);
+        expect(JSON.stringify(modelOutput)).not.toContain(
+          "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        );
         return {
           text: "Synthesized",
           usage: { inputTokens: 7, outputTokens: 8 },
         };
       }
+      const childToolCall = {
+        type: "tool-call" as const,
+        toolCallId: "child-tool-call",
+        toolName: "web_search",
+        input: { query: "Investigate" },
+        dynamic: false,
+      };
+      await options.onToolExecutionStart?.({
+        callId: "child-model-call",
+        messages: [],
+        toolCall: childToolCall,
+        toolContext: undefined,
+      });
+      await options.onToolExecutionEnd?.({
+        callId: "child-model-call",
+        messages: [],
+        toolCall: childToolCall,
+        toolContext: undefined,
+        toolExecutionMs: 31,
+        toolOutput: {
+          ...childToolCall,
+          type: "tool-result",
+          output: { sourceCount: 3 },
+        },
+      });
       return {
         text: "Child result",
         usage: { inputTokens: 2, outputTokens: 3 },
@@ -427,6 +604,7 @@ describe("agent runtime executor", () => {
       agentId: rootAgent.id,
       prompt: "Coordinate",
       trigger: "api",
+      onProgress,
     });
 
     expect(result.totalTreeTokens).toBe(20);
@@ -448,6 +626,31 @@ describe("agent runtime executor", () => {
     expect(mocks.completeRun).toHaveBeenLastCalledWith(
       expect.objectContaining({ reservationTokens: 20 }),
     );
+    expect(onProgress).toHaveBeenNthCalledWith(1, {
+      type: "tool-start",
+      id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa:child-tool-call",
+      toolCallId: "child-tool-call",
+      toolName: "web_search",
+      agentName: childAgent.name,
+      agentId: childAgent.id,
+      runId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      parentRunId: "77777777-7777-4777-8777-777777777777",
+      depth: 1,
+      input: { query: "Investigate" },
+    });
+    expect(onProgress).toHaveBeenNthCalledWith(2, {
+      type: "tool-end",
+      id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa:child-tool-call",
+      toolCallId: "child-tool-call",
+      toolName: "web_search",
+      agentName: childAgent.name,
+      agentId: childAgent.id,
+      runId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      parentRunId: "77777777-7777-4777-8777-777777777777",
+      depth: 1,
+      durationMs: 31,
+      output: { sourceCount: 3 },
+    });
   });
 
   it("fails closed when delegation permission is revoked at call time", async () => {
