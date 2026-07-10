@@ -2,91 +2,97 @@ import { expect, test } from "@playwright/test";
 import { ensureE2EUser, login } from "./fixtures";
 
 test.beforeAll(async () => {
-	await ensureE2EUser();
+  await ensureE2EUser();
 });
 
 test.beforeEach(async ({ page }) => {
-	await login(page);
+  await login(page);
 });
 
 test.describe("chat page", () => {
-	test("loads chat page", async ({ page }) => {
-		await page.goto("/en/chat");
-		await expect(page).toHaveURL(/\/en\/chat/);
-	});
+  test("loads chat page", async ({ page }) => {
+    await page.goto("/en/chat");
+    await expect(page).toHaveURL(/\/en\/chat/);
+  });
 
-	test("shows no assistants message when no agents exist", async ({ page }) => {
-		await page.goto("/en/chat");
-		await page.waitForTimeout(3000);
+  test("shows no assistants message when no agents exist", async ({ page }) => {
+    await page.goto("/en/chat");
+    await page.waitForTimeout(3000);
 
-		// The chat page should show some content
-		const content = page.locator(".page-content");
-		await expect(content).toBeVisible();
+    // The chat page should show some content
+    const content = page.locator(".page-content").last();
+    await expect(content).toBeVisible();
 
-		// Check for either the chat interface or the "no assistants" state
-		await expect(
-			page.getByText(/No assistants|New conversation|Message|Chat/i).first(),
-		).toBeVisible({ timeout: 10_000 });
-	});
+    // Check for either the chat interface or the "no assistants" state
+    await expect(
+      page.getByText(/No assistants|New conversation|Message|Chat/i).first(),
+    ).toBeVisible({ timeout: 10_000 });
+  });
 
-	test("chat sidebar contains conversation list", async ({ page }) => {
-		await page.goto("/en/chat");
-		await page.waitForTimeout(2000);
+  test("chat sidebar contains conversation list", async ({ page }) => {
+    await page.goto("/en/chat");
+    await page.waitForTimeout(2000);
 
-		// Chat sidebar should be visible with the chat interface
-		const chatInterface = page.getByRole("main").first();
-		await expect(chatInterface).toBeVisible();
-	});
+    // Chat sidebar should be visible with the chat interface
+    await expect(page.getByRole("complementary").first()).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(page.getByText(/Conversations/i).first()).toBeVisible();
+  });
 
-	test("new conversation button exists", async ({ page }) => {
-		await page.goto("/en/chat");
-		await page.waitForTimeout(2000);
+  test("new conversation button exists", async ({ page }) => {
+    await page.goto("/en/chat");
+    await page.waitForTimeout(2000);
 
-		// Look for new conversation button or similar
-		const newConversationBtn = page
-			.getByRole("button", { name: /New conversation|New chat/i })
-			.first();
+    // Look for new conversation button or similar
+    const newConversationBtn = page
+      .getByRole("button", { name: /^New(?: conversation| chat)?$/i })
+      .first();
+    await expect(newConversationBtn).toBeEnabled({ timeout: 15_000 });
+  });
 
-		if (await newConversationBtn.isVisible()) {
-			await expect(newConversationBtn).toBeEnabled();
-		}
-	});
+  test("agent selector is present when agents exist", async ({ page }) => {
+    await page.goto("/en/chat");
+    await page.waitForTimeout(2000);
 
-	test("agent selector is present when agents exist", async ({ page }) => {
-		await page.goto("/en/chat");
-		await page.waitForTimeout(2000);
+    // Agent selector should be present in the chat sidebar
+    const agentSelector = page
+      .getByRole("button", { name: /Current assistant/i })
+      .first();
+    if (await agentSelector.isVisible()) {
+      await expect(agentSelector).toBeVisible();
+    }
+  });
 
-		// Agent selector should be present in the chat sidebar
-		const agentSelector = page.getByRole("combobox").first();
-		if (await agentSelector.isVisible()) {
-			await expect(agentSelector).toBeVisible();
-		}
-	});
+  test("navigate between chat and other pages", async ({ page }) => {
+    await page.goto("/en/chat");
+    await expect(page).toHaveURL(/\/en\/chat/);
 
-	test("navigate between chat and other pages", async ({ page }) => {
-		await page.goto("/en/chat");
-		await expect(page).toHaveURL(/\/en\/chat/);
+    // Navigate to agents
+    await page
+      .getByRole("link", {
+        name: /Create an assistant|Configure assistant/i,
+      })
+      .first()
+      .click();
+    await expect(page).toHaveURL(/\/en\/agents/);
 
-		// Navigate to agents
-		await page.getByRole("link", { name: /Assistants/i }).click();
-		await expect(page).toHaveURL(/\/en\/agents/);
-
-		// Navigate back to chat
-		await page.getByRole("link", { name: /Chat/i }).click();
-		await expect(page).toHaveURL(/\/en\/chat/);
-	});
+    // Navigate back to chat
+    await page.getByRole("link", { name: "Chat", exact: true }).click();
+    await expect(page).toHaveURL(/\/en\/chat/);
+  });
 });
 
 test.describe("chat composer", () => {
-	test("input field is present when agents exist", async ({ page }) => {
-		await page.goto("/en/chat");
-		await page.waitForTimeout(2000);
+  test("input field is present when agents exist", async ({ page }) => {
+    await page.goto("/en/chat");
+    await page.waitForTimeout(2000);
 
-		// Chat composer / textarea should be present
-		const composer = page.locator("textarea, [role='textbox']").first();
+    // Chat composer / textarea should be present
+    const composer = page.locator("textarea, [role='textbox']").first();
 
-		if (await composer.isVisible()) {
-			await expect(composer).toBeVisible();
-		}
-	});
+    if (await composer.isVisible()) {
+      await expect(composer).toBeVisible();
+    }
+  });
 });
