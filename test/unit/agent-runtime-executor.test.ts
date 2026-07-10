@@ -58,7 +58,10 @@ vi.mock("@/server/infrastructure/providers", () => ({
 }));
 vi.mock("@/server/infrastructure/db", () => ({ db: {} }));
 
-import { executeAgent } from "@/modules/agent/runtime-executor";
+import {
+  abortActiveAgentRun,
+  executeAgent,
+} from "@/modules/agent/runtime-executor";
 
 const rootAgent = {
   id: "11111111-1111-4111-8111-111111111111",
@@ -113,6 +116,35 @@ beforeEach(() => {
 });
 
 describe("agent runtime executor", () => {
+  it("rejects agents and versions that are not visible", async () => {
+    mocks.getVisibleAgent.mockResolvedValueOnce(null);
+
+    await expect(
+      executeAgent({
+        workspaceId: rootAgent.workspaceId,
+        userId: rootAgent.createdById,
+        agentId: rootAgent.id,
+        prompt: "Hello",
+        trigger: "api",
+      }),
+    ).rejects.toMatchObject({ code: "AGENT_NOT_FOUND" });
+
+    mocks.getVisibleAgent.mockResolvedValueOnce(rootAgent);
+    mocks.getActiveVersion.mockResolvedValueOnce({
+      ...rootVersion,
+      agentId: "another-agent",
+    });
+    await expect(
+      executeAgent({
+        workspaceId: rootAgent.workspaceId,
+        userId: rootAgent.createdById,
+        agentId: rootAgent.id,
+        prompt: "Hello",
+        trigger: "api",
+      }),
+    ).rejects.toMatchObject({ code: "AGENT_VERSION_NOT_FOUND" });
+  });
+
   it("checks chat permission before creating a run", async () => {
     mocks.checkPermission.mockResolvedValueOnce({
       granted: false,
@@ -154,6 +186,88 @@ describe("agent runtime executor", () => {
         usage: expect.objectContaining({ operation: "api" }),
       }),
     );
+  });
+
+  it("records successful and failed bound tool executions", async () => {
+    mocks.getActiveVersion.mockResolvedValueOnce({
+      ...rootVersion,
+      maxToolCalls: 3,
+    });
+    mocks.buildBoundTools.mockResolvedValueOnce({
+      tools: {
+        lookup: {
+          execute: vi.fn(async () => ({ answer: 42 })),
+        },
+        unstable: {
+          execute: vi.fn(async () => {
+            throw new Error("upstream unavailable");
+          }),
+        },
+        metadata_only: { description: "No executable handler" },
+      },
+      toolApproval: undefined,
+    });
+    mocks.generateText.mockImplementationOnce(async (options) => {
+      const tools = options.tools as Record<
+        string,
+        { execute?: (input: unknown) => Promise<unknown> }
+      >;
+      await expect(
+        tools.lookup.execute?.({ query: "status" }),
+      ).resolves.toEqual({ answer: 42 });
+      await expect(
+        tools.unstable.execute?.({ query: "status" }),
+      ).rejects.toThrow("upstream unavailable");
+      expect(tools.metadata_only).toEqual({
+        description: "No executable handler",
+      });
+      return {
+        text: "Completed with tools",
+        usage: { inputTokens: 4, outputTokens: 5 },
+      };
+    });
+
+    await expect(
+      executeAgent({
+        workspaceId: rootAgent.workspaceId,
+        userId: rootAgent.createdById,
+        agentId: rootAgent.id,
+        prompt: "Use the tools",
+        trigger: "api",
+      }),
+    ).resolves.toMatchObject({ text: "Completed with tools" });
+    expect(mocks.appendStep).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "tool",
+        status: "success",
+        name: "lookup",
+      }),
+    );
+    expect(mocks.appendStep).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "tool",
+        status: "failed",
+        name: "unstable",
+      }),
+    );
+  });
+
+  it("fails when a new run cannot be claimed", async () => {
+    mocks.claimRun.mockResolvedValueOnce(null);
+
+    await expect(
+      executeAgent({
+        workspaceId: rootAgent.workspaceId,
+        userId: rootAgent.createdById,
+        agentId: rootAgent.id,
+        prompt: "Hello",
+        trigger: "api",
+      }),
+    ).rejects.toMatchObject({
+      code: "AGENT_RUN_NOT_EXECUTABLE",
+      status: "not claimable",
+    });
+    expect(mocks.generateText).not.toHaveBeenCalled();
   });
 
   it("does not report success when atomic completion fails", async () => {
@@ -203,6 +317,34 @@ describe("agent runtime executor", () => {
     ).resolves.toMatchObject({ text: "Cached", reused: true });
     expect(mocks.claimRun).not.toHaveBeenCalled();
     expect(mocks.generateText).not.toHaveBeenCalled();
+  });
+
+  it("rejects reuse of a run that is still active", async () => {
+    mocks.createRun.mockResolvedValueOnce({
+      run: {
+        id: "77777777-7777-4777-8777-777777777777",
+        status: "running",
+      },
+      reused: true,
+    });
+
+    await expect(
+      executeAgent({
+        workspaceId: rootAgent.workspaceId,
+        userId: rootAgent.createdById,
+        agentId: rootAgent.id,
+        prompt: "Hello",
+        trigger: "api",
+        idempotencyKey: "request-active",
+      }),
+    ).rejects.toMatchObject({
+      code: "AGENT_RUN_NOT_EXECUTABLE",
+      status: "running",
+    });
+  });
+
+  it("returns false when no active run can be aborted", () => {
+    expect(abortActiveAgentRun("missing-run")).toBe(false);
   });
 
   it("rechecks delegation permission and executes the pinned child version", async () => {

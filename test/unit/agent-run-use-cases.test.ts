@@ -59,10 +59,16 @@ vi.mock("@/modules/usage/quota-reservations", () => ({
 }));
 
 import {
+  appendAgentRunStep,
   claimAgentRun,
   completeAgentRun,
+  consumeAgentRunDelegationBudget,
   createAgentRun,
   failAgentRun,
+  getAgentRun,
+  heartbeatAgentRun,
+  listAgentRuns,
+  readAgentRunPayload,
   reapExpiredAgentRuns,
   requestAgentRunCancellation,
 } from "@/modules/agent/run-use-cases";
@@ -86,10 +92,10 @@ beforeEach(() => {
     "set",
     "orderBy",
   ] as const) {
-    dbMock.chain[method].mockReturnValue(dbMock.chain);
+    dbMock.chain[method].mockReset().mockReturnValue(dbMock.chain);
   }
-  dbMock.chain.limit.mockResolvedValue([]);
-  dbMock.chain.returning.mockResolvedValue([]);
+  dbMock.chain.limit.mockReset().mockResolvedValue([]);
+  dbMock.chain.returning.mockReset().mockResolvedValue([]);
   dbMock.db.select.mockReturnValue(dbMock.chain);
   dbMock.db.insert.mockReturnValue(dbMock.chain);
   dbMock.db.update.mockReturnValue(dbMock.chain);
@@ -149,6 +155,88 @@ describe("agent run lifecycle", () => {
     );
   });
 
+  it("creates child runs without reserving the root workspace budget", async () => {
+    dbMock.chain.returning.mockResolvedValueOnce([
+      { ...run, parentRunId: "parent-run" },
+    ]);
+
+    const result = await createAgentRun({
+      workspaceId: run.workspaceId,
+      agentId: "33333333-3333-4333-8333-333333333333",
+      agentVersionId: "44444444-4444-4444-8444-444444444444",
+      actorPrincipalType: "user",
+      actorPrincipalId: "55555555-5555-4555-8555-555555555555",
+      trigger: "delegation",
+      payload: null,
+      requestedTokens: 0,
+      deadlineAt: new Date(Date.now() + 60_000),
+      parentRunId: "parent-run",
+      rootRunId: "root-run",
+      depth: 1,
+    });
+
+    expect(result.reused).toBe(false);
+    expect(quotaMocks.reserve).not.toHaveBeenCalled();
+    expect(dbMock.chain.values).toHaveBeenCalledWith(
+      expect.objectContaining({
+        parentRunId: "parent-run",
+        rootRunId: "root-run",
+        depth: 1,
+      }),
+    );
+  });
+
+  it("recovers a concurrent idempotent insert", async () => {
+    const conflict = Object.assign(new Error("duplicate"), { code: "23505" });
+    dbMock.chain.limit
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ ...run, idempotencyKey: "request-1" }]);
+    dbMock.chain.returning.mockRejectedValueOnce(conflict);
+
+    await expect(
+      createAgentRun({
+        workspaceId: run.workspaceId,
+        agentId: "33333333-3333-4333-8333-333333333333",
+        agentVersionId: "44444444-4444-4444-8444-444444444444",
+        actorPrincipalType: "user",
+        actorPrincipalId: "55555555-5555-4555-8555-555555555555",
+        trigger: "api",
+        payload: {},
+        requestedTokens: 100,
+        deadlineAt: new Date(Date.now() + 60_000),
+        idempotencyKey: "request-1",
+      }),
+    ).resolves.toMatchObject({ reused: true });
+  });
+
+  it("fails the created run when root quota reservation fails", async () => {
+    const quotaError = Object.assign(new Error("quota exceeded"), {
+      code: "WORKSPACE_TOKEN_QUOTA_EXCEEDED",
+    });
+    dbMock.chain.returning.mockResolvedValueOnce([run]);
+    quotaMocks.reserve.mockRejectedValueOnce(quotaError);
+
+    await expect(
+      createAgentRun({
+        workspaceId: run.workspaceId,
+        agentId: "33333333-3333-4333-8333-333333333333",
+        agentVersionId: "44444444-4444-4444-8444-444444444444",
+        actorPrincipalType: "user",
+        actorPrincipalId: "55555555-5555-4555-8555-555555555555",
+        trigger: "api",
+        payload: {},
+        requestedTokens: 100,
+        deadlineAt: new Date(Date.now() + 60_000),
+      }),
+    ).rejects.toBe(quotaError);
+    expect(dbMock.chain.set).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "failed",
+        errorCode: "WORKSPACE_TOKEN_QUOTA_EXCEEDED",
+      }),
+    );
+  });
+
   it("claims queued work with an expiring lease", async () => {
     dbMock.chain.returning.mockResolvedValueOnce([
       { ...run, status: "running", leaseOwner: "worker-1" },
@@ -159,6 +247,61 @@ describe("agent run lifecycle", () => {
     ).resolves.toMatchObject({ status: "running", leaseOwner: "worker-1" });
     expect(dbMock.chain.set).toHaveBeenCalledWith(
       expect.objectContaining({ status: "running", leaseOwner: "worker-1" }),
+    );
+  });
+
+  it("returns null for unclaimable work and heartbeats only its lease owner", async () => {
+    dbMock.chain.returning
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ id: run.id }])
+      .mockResolvedValueOnce([]);
+
+    await expect(
+      claimAgentRun({ runId: run.id, leaseOwner: "worker-1" }),
+    ).resolves.toBeNull();
+    await expect(
+      heartbeatAgentRun({ runId: run.id, leaseOwner: "worker-1" }),
+    ).resolves.toBe(true);
+    await expect(
+      heartbeatAgentRun({ runId: run.id, leaseOwner: "worker-2" }),
+    ).resolves.toBe(false);
+  });
+
+  it("appends redacted run steps and consumes a bounded delegation", async () => {
+    dbMock.chain.returning
+      .mockResolvedValueOnce([{ id: "step-1" }])
+      .mockResolvedValueOnce([{ delegationCount: 3 }])
+      .mockResolvedValueOnce([]);
+
+    await expect(
+      appendAgentRunStep({
+        runId: run.id,
+        sequence: 1,
+        kind: "tool",
+        status: "failed",
+        name: "external.request",
+        inputPreview: { authorization: "Bearer hidden" },
+        outputPreview: { ok: false },
+        errorMessage: "Bearer hidden",
+      }),
+    ).resolves.toEqual({ id: "step-1" });
+    await expect(
+      consumeAgentRunDelegationBudget({
+        rootRunId: run.id,
+        maxDelegations: 3,
+      }),
+    ).resolves.toBe(3);
+    await expect(
+      consumeAgentRunDelegationBudget({
+        rootRunId: run.id,
+        maxDelegations: 3,
+      }),
+    ).resolves.toBeNull();
+    expect(dbMock.chain.values).toHaveBeenCalledWith(
+      expect.objectContaining({
+        inputPreviewJson: { authorization: "[REDACTED]" },
+        errorMessage: "Run step failed",
+      }),
     );
   });
 
@@ -205,6 +348,52 @@ describe("agent run lifecycle", () => {
     );
   });
 
+  it("rejects duplicate completion and records terminal failure usage", async () => {
+    dbMock.chain.returning
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ ...run, status: "timed_out" }]);
+
+    await expect(
+      completeAgentRun({
+        runId: run.id,
+        output: null,
+        inputTokens: -1,
+        outputTokens: -1,
+      }),
+    ).rejects.toMatchObject({ code: "AGENT_RUN_CONFLICT" });
+    await expect(
+      failAgentRun({
+        runId: run.id,
+        status: "timed_out",
+        error: new Error("deadline"),
+        errorCode: "DEADLINE",
+        inputTokens: 4,
+        outputTokens: 6,
+        usage: {
+          workspaceId: run.workspaceId,
+          userId: "55555555-5555-4555-8555-555555555555",
+          agentId: "33333333-3333-4333-8333-333333333333",
+          operation: "scheduled",
+        },
+      }),
+    ).resolves.toMatchObject({ status: "timed_out" });
+    expect(dbMock.chain.values).toHaveBeenCalledWith(
+      expect.objectContaining({
+        inputTokens: 4,
+        outputTokens: 6,
+        status: "timed_out",
+      }),
+    );
+  });
+
+  it("returns null when a failure races with another terminal transition", async () => {
+    dbMock.chain.returning.mockResolvedValueOnce([]);
+
+    await expect(
+      failAgentRun({ runId: run.id, error: new Error("late") }),
+    ).resolves.toBeNull();
+  });
+
   it("cancels queued work and releases its reservation atomically", async () => {
     dbMock.chain.returning.mockResolvedValueOnce([
       { ...run, status: "cancelled" },
@@ -221,6 +410,82 @@ describe("agent run lifecycle", () => {
     expect(dbMock.chain.set).toHaveBeenCalledWith(
       expect.objectContaining({ status: "released" }),
     );
+  });
+
+  it("marks running work for cooperative cancellation", async () => {
+    dbMock.chain.returning
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ ...run, status: "running" }]);
+
+    await expect(requestAgentRunCancellation(run.id)).resolves.toMatchObject({
+      status: "running",
+    });
+    expect(dbMock.chain.set).toHaveBeenCalledWith(
+      expect.objectContaining({ cancelRequestedAt: expect.any(Date) }),
+    );
+  });
+
+  it("projects run details without exposing encrypted payloads", async () => {
+    const storedRun = {
+      ...run,
+      inputEncrypted: "enc:secret",
+      outputEncrypted: "enc:secret",
+    };
+    const steps = [{ id: "step-1", sequence: 1 }];
+    dbMock.chain.limit.mockResolvedValueOnce([storedRun]);
+    dbMock.chain.orderBy.mockResolvedValueOnce(steps);
+
+    await expect(getAgentRun(run.id, run.workspaceId)).resolves.toEqual({
+      ...storedRun,
+      inputEncrypted: undefined,
+      outputEncrypted: undefined,
+      steps,
+    });
+  });
+
+  it("returns null for missing runs and clamps list limits", async () => {
+    dbMock.chain.limit
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ id: run.id }])
+      .mockResolvedValueOnce([]);
+
+    await expect(getAgentRun(run.id, run.workspaceId)).resolves.toBeNull();
+    await expect(
+      listAgentRuns({
+        workspaceId: run.workspaceId,
+        agentId: "agent-1",
+        limit: 500,
+      }),
+    ).resolves.toEqual([{ id: run.id }]);
+    await expect(
+      listAgentRuns({ workspaceId: run.workspaceId, limit: 0 }),
+    ).resolves.toEqual([]);
+    expect(dbMock.chain.limit).toHaveBeenCalledWith(100);
+    expect(dbMock.chain.limit).toHaveBeenCalledWith(1);
+  });
+
+  it("decrypts stored run payloads and handles missing output", async () => {
+    dbMock.chain.limit
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        { inputEncrypted: 'enc:{"prompt":"hello"}', outputEncrypted: null },
+      ])
+      .mockResolvedValueOnce([
+        {
+          inputEncrypted: 'enc:{"prompt":"hello"}',
+          outputEncrypted: 'enc:{"answer":"done"}',
+        },
+      ]);
+
+    await expect(readAgentRunPayload("missing")).resolves.toBeNull();
+    await expect(readAgentRunPayload(run.id)).resolves.toEqual({
+      input: { prompt: "hello" },
+      output: null,
+    });
+    await expect(readAgentRunPayload(run.id)).resolves.toEqual({
+      input: { prompt: "hello" },
+      output: { answer: "done" },
+    });
   });
 
   it("reaps deadlines, lost leases, and reservations atomically", async () => {
@@ -244,5 +509,17 @@ describe("agent run lifecycle", () => {
         errorCode: "AGENT_RUN_LEASE_EXPIRED",
       }),
     );
+  });
+
+  it("reaps cleanly when no run or reservation is stale", async () => {
+    dbMock.chain.returning
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+
+    await expect(reapExpiredAgentRuns()).resolves.toEqual({
+      timedOut: 0,
+      leaseExpired: 0,
+    });
   });
 });
