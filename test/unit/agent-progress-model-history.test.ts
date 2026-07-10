@@ -36,6 +36,20 @@ describe("agent progress model-history projection", () => {
     ).toEqual({ kind: "visual-only" });
   });
 
+  it("fails closed for visual-only artifacts with malformed display context", () => {
+    expect(
+      projectAgentProgressForModelHistory({
+        toolName: "run_code_sandbox",
+        output: {
+          kind: "code_sandbox_result",
+          stdout: "private malformed trace",
+        },
+        modelHistoryKind: "visual-only",
+        agentContext: { depth: "invalid" },
+      }),
+    ).toEqual({ kind: "visual-only" });
+  });
+
   it("exposes only the bounded final text of a successful root delegation", () => {
     const metadata = {
       toolName: "delegate_specialist_1",

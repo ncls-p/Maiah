@@ -70,6 +70,18 @@ describe("orchestrator conversation history", () => {
         status: "success",
       },
     };
+    const malformedVisualTrace = {
+      toolCallId: "child-run:malformed-tool-call",
+      toolName: "run_code_sandbox",
+      output: {
+        kind: "code_sandbox_result",
+        language: "typescript",
+        ok: true,
+        stdout: "PRIVATE MALFORMED CHILD OUTPUT",
+      },
+      modelHistoryKind: "visual-only",
+      agentContext: { depth: "invalid" },
+    };
 
     mocks.select
       .mockReturnValueOnce(
@@ -93,16 +105,23 @@ describe("orchestrator conversation history", () => {
           {
             messageId: assistantMessageId,
             type: "tool-result",
-            contentEncrypted: JSON.stringify(delegationResult),
+            contentEncrypted: JSON.stringify(malformedVisualTrace),
             metadataJson: null,
             sortOrder: 1,
+          },
+          {
+            messageId: assistantMessageId,
+            type: "tool-result",
+            contentEncrypted: JSON.stringify(delegationResult),
+            metadataJson: null,
+            sortOrder: 2,
           },
           {
             messageId: assistantMessageId,
             type: "text",
             contentEncrypted: "PARENT SYNTHESIS",
             metadataJson: null,
-            sortOrder: 2,
+            sortOrder: 3,
           },
         ]),
       );
@@ -120,6 +139,7 @@ describe("orchestrator conversation history", () => {
       },
     ]);
     expect(serializedHistory).not.toContain("PRIVATE CHILD TOOL OUTPUT");
+    expect(serializedHistory).not.toContain("PRIVATE MALFORMED CHILD OUTPUT");
     expect(serializedHistory).not.toContain("private-child");
     expect(serializedHistory).not.toContain("Private specialist");
   });

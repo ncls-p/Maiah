@@ -551,14 +551,17 @@ export async function POST(
       let completedRun: Awaited<ReturnType<typeof executeAgent>> | null = null;
       let nextOrchestrationSortOrder = 0;
       let orchestrationProgressQueue = Promise.resolve();
+      const durableDelegationProgress: Array<{
+        progress: AgentToolProgressEvent;
+        sortOrder: number;
+      }> = [];
       const allocateOrchestrationSortOrder = () => {
         const sortOrder = nextOrchestrationSortOrder;
         nextOrchestrationSortOrder += 1;
         return sortOrder;
       };
-      const persistOrchestrationProgress = async (
+      const projectOrchestrationProgress = (
         progress: AgentToolProgressEvent,
-        sortOrder: number,
       ) => {
         const isStart = progress.type === "tool-start";
         const status = isStart
@@ -615,29 +618,47 @@ export async function POST(
               ...modelHistoryMetadata,
             };
 
+        return {
+          isStart,
+          agentContext,
+          rawMetadata,
+          safeMetadata,
+          safeValue,
+        };
+      };
+      const persistOrchestrationProgress = async (
+        progress: AgentToolProgressEvent,
+        sortOrder: number,
+      ) => {
+        const projected = projectOrchestrationProgress(progress);
+
         try {
-          await db.insert(messageParts).values({
-            messageId: assistantMessage.id,
-            type: isStart ? "tool-call" : "tool-result",
-            contentEncrypted: await encryptValue(JSON.stringify(rawMetadata)),
-            metadataJson: safeMetadata,
-            sortOrder,
-          });
+          if (progress.modelHistoryKind !== "delegation-result") {
+            await db.insert(messageParts).values({
+              messageId: assistantMessage.id,
+              type: projected.isStart ? "tool-call" : "tool-result",
+              contentEncrypted: await encryptValue(
+                JSON.stringify(projected.rawMetadata),
+              ),
+              metadataJson: projected.safeMetadata,
+              sortOrder,
+            });
+          }
           enqueueEvent(
-            isStart
+            projected.isStart
               ? {
                   type: "tool_call",
                   toolCallId: progress.id,
                   toolName: progress.toolName,
-                  input: safeValue,
-                  agentContext,
+                  input: projected.safeValue,
+                  agentContext: projected.agentContext,
                 }
               : {
                   type: "tool_result",
                   toolCallId: progress.id,
                   toolName: progress.toolName,
-                  output: safeValue,
-                  agentContext,
+                  output: projected.safeValue,
+                  agentContext: projected.agentContext,
                 },
           );
         } catch (error) {
@@ -652,6 +673,9 @@ export async function POST(
       };
       const queueOrchestrationProgress = (progress: AgentToolProgressEvent) => {
         const sortOrder = allocateOrchestrationSortOrder();
+        if (progress.modelHistoryKind === "delegation-result") {
+          durableDelegationProgress.push({ progress, sortOrder });
+        }
         orchestrationProgressQueue = orchestrationProgressQueue
           .then(() => persistOrchestrationProgress(progress, sortOrder))
           .catch((error) => {
@@ -723,7 +747,26 @@ export async function POST(
           const encryptedText = result.text
             ? await encryptValue(result.text)
             : null;
+          const durableDelegationParts = await Promise.all(
+            durableDelegationProgress.map(async ({ progress, sortOrder }) => {
+              const projected = projectOrchestrationProgress(progress);
+              return {
+                messageId: assistantMessage.id,
+                type: projected.isStart
+                  ? ("tool-call" as const)
+                  : ("tool-result" as const),
+                contentEncrypted: await encryptValue(
+                  JSON.stringify(projected.rawMetadata),
+                ),
+                metadataJson: projected.safeMetadata,
+                sortOrder,
+              };
+            }),
+          );
           await db.transaction(async (tx) => {
+            if (durableDelegationParts.length > 0) {
+              await tx.insert(messageParts).values(durableDelegationParts);
+            }
             if (encryptedText) {
               await tx.insert(messageParts).values({
                 messageId: assistantMessage.id,

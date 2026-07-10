@@ -25,18 +25,24 @@ export function projectAgentProgressForModelHistory(
   metadata: unknown,
 ): AgentProgressModelHistoryProjection {
   if (!isRecord(metadata)) return null;
-  const context = parseAgentToolDisplayContext(metadata.agentContext);
-  if (!context) return null;
-
-  if (context.depth > 0) return { kind: "visual-only" };
   if (metadata.modelHistoryKind === "visual-only") {
     return { kind: "visual-only" };
   }
-  if (metadata.modelHistoryKind !== "delegation-result") return null;
-  if (context.status !== "success") return { kind: "visual-only" };
+  if ("modelHistoryKind" in metadata) {
+    if (metadata.modelHistoryKind !== "delegation-result") {
+      return { kind: "visual-only" };
+    }
+    const context = parseAgentToolDisplayContext(metadata.agentContext);
+    if (!context || context.depth !== 0 || context.status !== "success") {
+      return { kind: "visual-only" };
+    }
 
-  const text = delegationFinalTextFromOutput(metadata.output);
-  return text === null
-    ? { kind: "visual-only" }
-    : { kind: "delegation-result", text };
+    const text = delegationFinalTextFromOutput(metadata.output);
+    return text === null
+      ? { kind: "visual-only" }
+      : { kind: "delegation-result", text };
+  }
+
+  const context = parseAgentToolDisplayContext(metadata.agentContext);
+  return context && context.depth > 0 ? { kind: "visual-only" } : null;
 }

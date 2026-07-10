@@ -57,6 +57,12 @@ only a generic control message to the active parent model. Child run IDs, agent
 identity, task input, intermediate tools, artifacts and detailed errors
 therefore remain visual-only.
 
+Successful root delegation results are removed from the best-effort progress
+write path and committed in the same final database transaction as the parent
+synthesis. Intermediate visual events may degrade independently, but the child
+final text admitted to future model history is durable whenever the parent
+message completes.
+
 Full progress input and output are encrypted in the message part. Public stream
 events and `metadata_json` contain bounded, secret-aware input, output or safe
 error from `projectToolMessagePayload(...)`, plus a server-owned top-level
