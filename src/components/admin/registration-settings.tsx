@@ -40,7 +40,7 @@ export function RegistrationSettings({
 
       if (!res.ok) {
         const data = await res.json().catch(() => null);
-        throw new Error(data?.error || "Unable to update registration");
+        throw new Error(data?.error || t("updateFailed"));
       }
 
       const nextSettings = (await res.json()) as RegistrationState;
@@ -49,11 +49,7 @@ export function RegistrationSettings({
         nextSettings.registrationEnabled ? t("opened") : t("closed"),
       );
     } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Unable to update registration",
-      );
+      toast.error(error instanceof Error ? error.message : t("updateFailed"));
       return;
     } finally {
       setSaving(false);

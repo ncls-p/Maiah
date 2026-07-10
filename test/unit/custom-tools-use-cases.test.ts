@@ -40,6 +40,7 @@ vi.mock("@/server/infrastructure/providers", () => ({
 
 vi.mock("ai", () => ({
 	generateText: vi.fn().mockResolvedValue({ text: "Automation ready." }),
+	stepCountIs: vi.fn((steps) => ({ type: "step-count", steps })),
 	tool: vi.fn((definition) => definition),
 }));
 
@@ -553,12 +554,57 @@ describe("runCustomToolBuilder", () => {
 		expect(result.actionCount).toBe(0);
 		expect(generateText).toHaveBeenCalledWith(
 			expect.objectContaining({
+				abortSignal: expect.any(AbortSignal),
+				maxOutputTokens: 4_000,
 				messages: [{ role: "user", content: "Build a notifier" }],
+				stopWhen: { type: "step-count", steps: 12 },
 				system: expect.stringContaining("custom-tool builder assistant"),
 			}),
 		);
 		expect(decryptValue).toHaveBeenCalledWith("enc-api-key");
 		expect(decryptValue).toHaveBeenCalledWith("enc-header");
+	});
+
+	it("stops builder side effects at the action budget", async () => {
+		vi.mocked(generateText).mockImplementationOnce((async (
+			options: unknown,
+		) => {
+			const previewTool = (
+				options as {
+					tools: {
+						update_workflow_preview: {
+							execute: (input: unknown) => Promise<unknown>;
+						};
+					};
+				}
+			).tools.update_workflow_preview;
+			for (let index = 0; index < 21; index += 1) {
+				await previewTool.execute({
+					title: "Preview",
+					summary: "Summary",
+					status: "draft",
+					steps: [{ label: "Step", description: "Description" }],
+				});
+			}
+			return { text: "never" } as never;
+		}) as never);
+		dbModule._c.limit
+			.mockResolvedValueOnce([{ valueJson: enabledConfig }])
+			.mockResolvedValueOnce([providerRow])
+			.mockResolvedValueOnce([modelRow]);
+		dbModule._c.where
+			.mockReturnValueOnce(dbModule._c)
+			.mockReturnValueOnce(dbModule._c)
+			.mockReturnValueOnce(dbModule._c)
+			.mockResolvedValueOnce([]);
+
+		await expect(
+			runCustomToolBuilder({
+				workspaceId: "ws-1",
+				userId: "user-1",
+				messages: [{ role: "user", content: "Loop forever" }],
+			}),
+		).rejects.toThrow("Custom tool builder action limit reached");
 	});
 
 	it("infers a secure Discord webhook request from assistant text", async () => {

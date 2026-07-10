@@ -236,7 +236,7 @@ function SidebarNavGroups({
       {simpleGroups.map((group) => (
         <div key={group.labelKey} className="flex flex-col gap-1">
           {!collapsed ? (
-            <p className="px-2 pb-1 pt-1 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground/70">
+            <p className="px-2 pb-1 pt-1 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
               {t(group.labelKey)}
             </p>
           ) : null}
@@ -256,7 +256,7 @@ function SidebarNavGroups({
           {!collapsed ? (
             <button
               type="button"
-              className="flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground/80 transition-colors hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"
+              className="flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground transition-colors hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"
               aria-expanded={showAdvancedItems}
               onClick={() => setAdvancedOpen(!showAdvancedItems)}
             >

@@ -1,9 +1,12 @@
+import { projectToolPayloadForDisplay } from "@/modules/tool/safe-payload";
+
 export function summarizeToolInput(toolName: string, input: unknown) {
-  if (!input || typeof input !== "object") {
+  const safeInput = projectToolPayloadForDisplay(input);
+  if (!safeInput || typeof safeInput !== "object") {
     return `Run ${toolName}`;
   }
 
-  const record = input as Record<string, unknown>;
+  const record = safeInput as Record<string, unknown>;
   if (typeof record.url === "string") {
     return `Access URL ${record.url}`;
   }

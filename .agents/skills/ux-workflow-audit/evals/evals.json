@@ -1,0 +1,44 @@
+{
+  "skill_name": "ux-workflow-audit",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Audit the agents list and editor in this Next.js app. Users report that a network outage sometimes looks like they have no agents, the page feels overloaded, and organization-managed agents are confusing. Implement the fixes and document the workflow states.",
+      "expected_output": "A repository-aware audit and implementation that separates error from empty, simplifies duplicated guidance, handles permissions and conflicts, verifies mobile and keyboard behavior, and updates a workflow matrix.",
+      "files": [],
+      "expectations": [
+        "Distinguishes initial error, empty, filtered-empty, loading, success, and read-only states",
+        "Removes or progressively discloses duplicate guidance, CTAs, and non-actionable counters",
+        "Includes retry behavior and prevents mutations while source state is unverified",
+        "Verifies typecheck, lint, relevant tests, mobile overflow, and keyboard focus",
+        "Updates workflow documentation with verified and blocked scenarios"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Add an orchestrator agent that delegates to specialist agents. It must support configuration, dry runs, run history and cancellation, and it cannot leak credentials or loop forever. Plan and implement the full user workflow and backend safeguards.",
+      "expected_output": "A bounded, version-pinned orchestration design and implementation with cycle and permission checks, durable runs, budgets, redacted traces, cancellation, quota safety, UI states, tests, migrations, and documentation.",
+      "files": [],
+      "expectations": [
+        "Pins specialist versions and rejects self-delegation, duplicates, indirect cycles, and unauthorized agents",
+        "Enforces depth, delegation, parallel, step, token, time, and output-size budgets",
+        "Provides dry-run, history, cancellation, timeout, and terminal failure UX",
+        "Fails closed on non-interactive approvals and redacts secrets from traces",
+        "Tests concurrency, idempotency, conflicts, quota settlement, and browser workflow states"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Review the tools, API keys, marketplace, scheduled tasks and admin settings workflows. Fix likely UX bugs, make the French locale complete, improve accessibility, and remove anything that adds visual noise without helping a decision.",
+      "expected_output": "A cross-workflow implementation that applies a shared state contract, localization and accessibility rules, simplifies hierarchy, and verifies sensitive and destructive paths.",
+      "files": [],
+      "expectations": [
+        "Finds false-empty and infinite-loading states across multiple resources",
+        "Localizes visible copy, accessible names, dates, numbers, plurals, and progress labels",
+        "Makes hover-only actions available to touch and keyboard users",
+        "Handles clipboard, upload, export, permission, and destructive-action failures",
+        "Uses stepwise commits and records full verification results"
+      ]
+    }
+  ]
+}

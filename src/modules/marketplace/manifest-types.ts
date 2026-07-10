@@ -87,15 +87,7 @@ export interface ToolMarketplaceManifest {
     n8nWorkflowUrl?: string;
     metadata?: Record<string, unknown>;
     credentialSchema?: CredentialFieldSchema[];
-    encryptedCredentialRefs?: Array<{
-      provider: string;
-      label: string;
-      n8nCredentialId?: string | null;
-      encryptedPayload: string;
-      metadata?: Record<string, unknown> | null;
-    }>;
     requiresCredentials?: boolean;
-    secretsIncluded?: boolean;
   };
 }
 
@@ -114,10 +106,7 @@ export interface McpPresetMarketplaceManifest {
     requireApproval: boolean;
     healthStatus?: string;
     requiresCredentials: boolean;
-    secretsIncluded?: boolean;
     credentialSchema?: CredentialFieldSchema[];
-    encryptedHeadersJson?: unknown;
-    encryptedEnvJson?: unknown;
     tools: Array<{
       name: string;
       description?: string | null;

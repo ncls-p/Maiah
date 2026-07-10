@@ -9,6 +9,7 @@ import {
   ImagePlusIcon,
   MessageCircleIcon,
   MoreHorizontalIcon,
+  NetworkIcon,
   Trash2Icon,
   XIcon,
 } from "lucide-react";
@@ -21,11 +22,11 @@ import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-import { MetricCell } from "./shared";
 import type { Agent, Model, Provider } from "./types";
 
 const MAX_LOGO_BYTES = 256 * 1024;
@@ -92,7 +93,7 @@ function AgentLogoControls({
               event.currentTarget.value = "";
             }}
           />
-          <Button size="xs" variant="outline" asChild>
+          <Button size="sm" variant="outline" asChild>
             <label
               htmlFor={`agent-logo-${agent.id}`}
               aria-label="Change assistant logo"
@@ -104,12 +105,12 @@ function AgentLogoControls({
           </Button>
           {agent.logoUrl ? (
             <Button
-              size="icon-xs"
+              size="icon-sm"
               variant="ghost"
               aria-label="Remove assistant logo"
               onClick={() => onLogoChange(null)}
             >
-              <XIcon className="size-3.5" aria-hidden="true" />
+              <XIcon aria-hidden="true" />
             </Button>
           ) : null}
         </div>
@@ -120,14 +121,12 @@ function AgentLogoControls({
 
 function AgentHeaderTitle({
   agent,
-  form,
   hasModel,
   providerName,
   modelLabel,
   t,
 }: {
   agent: Agent | null;
-  form: { name: string };
   hasModel: boolean;
   providerName?: string;
   modelLabel?: string;
@@ -136,9 +135,6 @@ function AgentHeaderTitle({
   return (
     <div className="min-w-0 flex-1">
       <div className="flex flex-wrap items-center gap-2">
-        <h2 className="font-heading text-2xl font-semibold tracking-tight">
-          {agent?.name ?? form.name}
-        </h2>
         {hasModel ? (
           <Badge
             variant="outline"
@@ -153,9 +149,15 @@ function AgentHeaderTitle({
             {t("statusMissingModel")}
           </Badge>
         )}
+        {agent?.kind === "orchestrator" ? (
+          <Badge variant="secondary" className="gap-1">
+            <NetworkIcon className="size-3" aria-hidden="true" />
+            {t("list.kindOrchestrator")}
+          </Badge>
+        ) : null}
       </div>
       {hasModel ? (
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="mt-2 text-sm text-muted-foreground">
           {providerName}
           {modelLabel ? (
             <span className="ml-1 opacity-70">· {modelLabel}</span>
@@ -186,42 +188,50 @@ function AgentHeaderActions({
   t: ReturnType<typeof useTranslations<"agents">>;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-2 sm:flex-col sm:items-end">
+    <div className="flex flex-wrap items-center gap-1.5">
+      <Button asChild variant="ghost" size="icon" className="size-10">
+        <Link href="/agents" aria-label={t("configurePage.back")}>
+          <ArrowLeftIcon aria-hidden="true" />
+        </Link>
+      </Button>
       {hasModel && agent?.id ? (
         <Button asChild size="sm">
           <Link href={`/chat?agentId=${agent.id}`}>
-            <MessageCircleIcon className="size-4" aria-hidden="true" />
+            <MessageCircleIcon data-icon="inline-start" aria-hidden="true" />
             {t("chat")}
           </Link>
         </Button>
       ) : null}
-      {agent?.id && agent.canClone !== false ? (
-        <Button variant="outline" size="sm" onClick={onClone}>
-          <CopyIcon className="size-4" aria-hidden="true" />
-          {t("list.clone")}
-        </Button>
-      ) : null}
-      <Button asChild variant="outline" size="sm">
-        <Link href="/agents">
-          <ArrowLeftIcon className="size-4" aria-hidden="true" />
-          <span className="hidden sm:inline">{t("configurePage.back")}</span>
-        </Link>
-      </Button>
-      {canEdit ? (
+      {canEdit || (agent?.id && agent.canClone !== false) ? (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon-sm" className="size-8">
-              <MoreHorizontalIcon className="size-4" aria-hidden="true" />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-10"
+              aria-label={t("configurePage.actions")}
+            >
+              <MoreHorizontalIcon aria-hidden="true" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              className="text-destructive focus:text-destructive"
-              onClick={onShowDeleteDialog}
-            >
-              <Trash2Icon className="size-4" aria-hidden="true" />
-              {t("configurePage.delete")}
-            </DropdownMenuItem>
+            <DropdownMenuGroup>
+              {agent?.id && agent.canClone !== false ? (
+                <DropdownMenuItem onClick={onClone}>
+                  <CopyIcon aria-hidden="true" />
+                  {t("list.clone")}
+                </DropdownMenuItem>
+              ) : null}
+              {canEdit ? (
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  onClick={onShowDeleteDialog}
+                >
+                  <Trash2Icon aria-hidden="true" />
+                  {t("configurePage.delete")}
+                </DropdownMenuItem>
+              ) : null}
+            </DropdownMenuGroup>
           </DropdownMenuContent>
         </DropdownMenu>
       ) : null}
@@ -234,9 +244,6 @@ export function AgentHeader({
   providers,
   models,
   form,
-  totalEnabledTools,
-  enabledMcpCount,
-  selectedKnowledgeIds,
   canEdit,
   onLogoChangeAction: onLogoChange,
   onCloneAction: onClone,
@@ -246,9 +253,6 @@ export function AgentHeader({
   providers: Provider[];
   models: Model[];
   form: { providerId: string; modelId: string; name: string };
-  totalEnabledTools: number;
-  enabledMcpCount: number;
-  selectedKnowledgeIds: string[];
   canEdit: boolean;
   onLogoChangeAction: (logoUrl: string | null) => void;
   onCloneAction: () => void;
@@ -263,8 +267,8 @@ export function AgentHeader({
   const hasModel = Boolean(form.providerId && form.modelId);
 
   return (
-    <div className="rounded-2xl border bg-card p-5 sm:p-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-6">
+    <div className="rounded-2xl bg-card p-4 shadow-[var(--surface-shadow)] sm:p-5">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-5">
         <AgentLogoControls
           agent={agent}
           agentLabel={agentLabel}
@@ -273,7 +277,6 @@ export function AgentHeader({
         />
         <AgentHeaderTitle
           agent={agent}
-          form={form}
           hasModel={hasModel}
           providerName={selectedProvider?.name}
           modelLabel={selectedModelLabel}
@@ -287,15 +290,6 @@ export function AgentHeader({
           onShowDeleteDialog={onShowDeleteDialog}
           t={t}
         />
-      </div>
-
-      <div className="mt-5 grid grid-cols-3 gap-x-6 gap-y-3 border-t border-border pt-5">
-        <MetricCell label={t("tabs.tools")} value={totalEnabledTools} />
-        <MetricCell
-          label={t("tabs.knowledge")}
-          value={selectedKnowledgeIds.length}
-        />
-        <MetricCell label="MCP" value={enabledMcpCount} />
       </div>
     </div>
   );

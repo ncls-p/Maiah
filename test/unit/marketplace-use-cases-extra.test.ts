@@ -145,6 +145,7 @@ const item = {
 	publisherWorkspaceId: ids.workspaceId,
 	status: "draft",
 	visibility: "private",
+	latestVersionId: "version-1",
 	tagsJson: ["old"],
 	description: "Item",
 };
@@ -201,14 +202,12 @@ describe("marketplace draft creation", () => {
 			userId: ids.userId,
 			agentId: "agent-1",
 			version: "1.0.0",
-			includeSecrets: true,
 		});
 		expect(helperMocks.buildAgentManifest).toHaveBeenCalledWith(
 			"agent-1",
 			ids.workspaceId,
 			"Agent",
 			"Desc",
-			true,
 		);
 		expect(helperMocks.upsertMarketplaceDraft).toHaveBeenCalledWith(
 			expect.objectContaining({ type: "agent", status: "published" }),
@@ -293,7 +292,6 @@ describe("marketplace draft creation", () => {
 			expect.any(Object),
 			[{ id: "mcp-tool-1", name: "search" }],
 			"server",
-			undefined,
 		);
 
 		resetChain(dbModule._c);
@@ -322,7 +320,6 @@ describe("marketplace draft creation", () => {
 			expect.any(Object),
 			[expect.objectContaining({ name: "search" })],
 			"tool",
-			undefined,
 		);
 	});
 
@@ -354,7 +351,11 @@ describe("marketplace draft creation", () => {
 
 describe("marketplace item management", () => {
 	it("publishes, updates, deletes, features, unfeatures, and moderates items", async () => {
-		dbModule._c.limit.mockResolvedValueOnce([item]);
+		dbModule._c.limit
+			.mockResolvedValueOnce([item])
+			.mockResolvedValueOnce([
+				{ id: "version-1", manifestJson: { type: "skill", skill: {} } },
+			]);
 		dbModule._c.returning.mockResolvedValueOnce([
 			{ ...item, status: "published" },
 		]);
@@ -541,8 +542,27 @@ describe("marketplace installation", () => {
 			skill: { id: "installed-skill" },
 		});
 		await expect(
-			runInstall({ type: "custom_tool", name: "Tool", tool: {} }),
+			runInstall({
+				type: "custom_tool",
+				name: "Tool",
+				tool: {
+					requiresCredentials: true,
+					secretsIncluded: true,
+					encryptedCredentialRefs: [{ encryptedPayload: "ciphertext" }],
+				},
+			}),
 		).resolves.toMatchObject({ custom_tool: { id: "installed-tool" } });
+		expect(helperMocks.installCustomTool).toHaveBeenLastCalledWith(
+			dbModule._tx,
+			expect.objectContaining({
+				manifest: expect.objectContaining({
+					tool: expect.not.objectContaining({
+						secretsIncluded: expect.anything(),
+						encryptedCredentialRefs: expect.anything(),
+					}),
+				}),
+			}),
+		);
 		await expect(
 			runInstall({ type: "mcp_preset", name: "Preset", preset: { tools: [] } }),
 		).resolves.toMatchObject({ mcp_preset: { id: "installed-server" } });

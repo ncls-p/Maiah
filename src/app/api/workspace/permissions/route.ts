@@ -7,89 +7,92 @@ const WORKSPACE_SCOPE = "workspace";
 const querySchema = z.object({ workspaceId: z.uuid() });
 
 const permissionNames = [
-	"usage.view",
-	"audit.view",
-	"providers.viewMetadata",
-	"providers.update",
-	"models.manage",
-	"tools.configure",
-	"tools.view",
-	"mcpServers.get",
-	"mcpServers.manage",
-	"knowledgeBases.manage",
-	"agents.create",
-	"apiKeys.manage",
-	"apiKeys.manageOwn",
-	"workspaces.update",
-	"roles.manage",
+  "usage.view",
+  "audit.view",
+  "providers.viewMetadata",
+  "providers.update",
+  "models.manage",
+  "tools.configure",
+  "tools.view",
+  "mcpServers.get",
+  "mcpServers.manage",
+  "knowledgeBases.manage",
+  "agents.create",
+  "agents.delegate",
+  "apiKeys.manage",
+  "apiKeys.manageOwn",
+  "workspaces.update",
+  "roles.manage",
 ] as const;
 
 export async function GET(req: NextRequest) {
-	return handleRoute(
-		req,
-		async ({ session }) => {
-			const parsed = querySchema.safeParse({
-				workspaceId: req.nextUrl.searchParams.get("workspaceId"),
-			});
-			if (!parsed.success) {
-				return NextResponse.json(
-					{ error: "Invalid input", details: parsed.error.issues },
-					{ status: 400 },
-				);
-			}
+  return handleRoute(
+    req,
+    async ({ session }) => {
+      const parsed = querySchema.safeParse({
+        workspaceId: req.nextUrl.searchParams.get("workspaceId"),
+      });
+      if (!parsed.success) {
+        return NextResponse.json(
+          { error: "Invalid input", details: parsed.error.issues },
+          { status: 400 },
+        );
+      }
 
-			const { workspaceId } = parsed.data;
-			const forbidden = await requireWorkspaceMemberAsync(
-				session.user.id,
-				workspaceId,
-			);
-			if (forbidden) return forbidden;
+      const { workspaceId } = parsed.data;
+      const forbidden = await requireWorkspaceMemberAsync(
+        session.user.id,
+        workspaceId,
+      );
+      if (forbidden) return forbidden;
 
-			const ctx = {
-				principalType: "user" as const,
-				principalId: session.user.id,
-			};
+      const ctx = {
+        principalType: "user" as const,
+        principalId: session.user.id,
+      };
 
-			const results = await Promise.all(
-				permissionNames.map((name) =>
-					authorization.hasPermission(ctx, name, WORKSPACE_SCOPE, workspaceId),
-				),
-			);
+      const results = await Promise.all(
+        permissionNames.map((name) =>
+          authorization.hasPermission(ctx, name, WORKSPACE_SCOPE, workspaceId),
+        ),
+      );
 
-			const [
-				canViewUsage,
-				canViewAudit,
-				canViewProviders,
-				canManageProviderSettings,
-				canManageModels,
-				canConfigureTools,
-				canViewTools,
-				canGetMcpServers,
-				canManageMcpServers,
-				canManageKnowledgeBases,
-				canCreateAgent,
-				canManageApiKeys,
-				canManageOwnApiKeys,
-				canManageWorkspace,
-				canManageTenantGlobals,
-			] = results;
+      const [
+        canViewUsage,
+        canViewAudit,
+        canViewProviders,
+        canManageProviderSettings,
+        canManageModels,
+        canConfigureTools,
+        canViewTools,
+        canGetMcpServers,
+        canManageMcpServers,
+        canManageKnowledgeBases,
+        canCreateAgent,
+        canDelegateAgents,
+        canManageApiKeys,
+        canManageOwnApiKeys,
+        canManageWorkspace,
+        canManageTenantGlobals,
+      ] = results;
 
-			return NextResponse.json({
-				canViewUsage,
-				canViewAudit,
-				canViewProviders,
-				canManageProviders: canManageProviderSettings && canManageModels,
-				canConfigureTools,
-				canViewTools,
-				canGetMcpServers,
-				canManageMcpServers,
-				canManageKnowledgeBases,
-				canCreateAgent,
-				canManageApiKeys: canManageApiKeys || canManageOwnApiKeys,
-				canManageWorkspace,
-				canManageTenantGlobals,
-			});
-		},
-		{ logLabel: "Failed to read workspace permissions" },
-	);
+      return NextResponse.json({
+        canViewUsage,
+        canViewAudit,
+        canViewProviders,
+        canManageProviders: canManageProviderSettings && canManageModels,
+        canConfigureTools,
+        canViewTools,
+        canGetMcpServers,
+        canManageMcpServers,
+        canManageKnowledgeBases,
+        canCreateAgent,
+        canDelegateAgents,
+        canManageApiKeys: canManageApiKeys || canManageOwnApiKeys,
+        canManageWorkspace,
+        canManageTenantGlobals,
+      });
+    },
+    { logLabel: "Failed to read workspace permissions" },
+  );
 }

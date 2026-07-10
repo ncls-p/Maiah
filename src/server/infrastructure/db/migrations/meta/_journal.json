@@ -183,6 +183,27 @@
       "when": 1781300000011,
       "tag": "0025_tool_connectors_and_user_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1783627200000,
+      "tag": "0026_marketplace_manifest_secret_redaction",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1783628665000,
+      "tag": "0027_encrypt_tool_message_payloads",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1783630000000,
+      "tag": "0028_orchestrator_run_foundation",
+      "breakpoints": true
     }
   ]
 }

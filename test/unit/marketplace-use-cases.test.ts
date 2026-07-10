@@ -238,15 +238,31 @@ describe("marketplace use-cases", () => {
 				publisherUserId: "user1",
 				status: "draft",
 				visibility: "private",
+				latestVersionId: "version-1",
 			};
 			const updated = { ...item, status: "published", visibility: "public" };
 			givenSelectLimitOnce([item]);
+			givenSelectLimitOnce([
+				{
+					id: "version-1",
+					manifestJson: {
+						type: "custom_tool",
+						tool: { encryptedCredentialRefs: [{ encryptedPayload: "cipher" }] },
+					},
+				},
+			]);
 			givenUpdateReturningOnce([updated]);
 			const result = await publishMarketplaceItem("1", "user1", {
 				visibility: "public",
 			});
 			expect(result.status).toBe("published");
 			expect(result.visibility).toBe("public");
+			expect(dbModule._updateChain.set).toHaveBeenCalledWith({
+				manifestJson: {
+					type: "custom_tool",
+					tool: {},
+				},
+			});
 		});
 
 		it("should throw when item not found", async () => {

@@ -17,6 +17,7 @@ import {
   buildSkillManifest,
 } from "./manifest-builders";
 import type { MarketplaceManifest, SourceResourceType } from "./manifest-types";
+import { sanitizeMarketplaceManifest } from "./manifest-sanitizer";
 
 export interface PublishPreviewResult {
   name: string;
@@ -33,7 +34,6 @@ export interface PublishPreviewResult {
   hasExistingDraft: boolean;
   existingItemId: string | null;
   resourceType: SourceResourceType | "marketplace_item";
-  canIncludeSecrets: boolean;
 }
 
 function manifestSummary(
@@ -137,7 +137,6 @@ export async function getPublishPreview(input: {
   mcpServerId?: string;
   mcpToolId?: string;
   itemId?: string;
-  includeSecrets?: boolean;
 }): Promise<PublishPreviewResult> {
   if (input.itemId) {
     const [item] = await db
@@ -154,7 +153,9 @@ export async function getPublishPreview(input: {
           .limit(1)
       : [null];
 
-    const manifest = (versionRow?.manifestJson ?? {}) as MarketplaceManifest;
+    const manifest = sanitizeMarketplaceManifest(
+      versionRow?.manifestJson ?? {},
+    );
     return {
       name: item.name,
       description: item.description,
@@ -165,7 +166,6 @@ export async function getPublishPreview(input: {
       hasExistingDraft: item.status === "draft",
       existingItemId: item.id,
       resourceType: "marketplace_item",
-      canIncludeSecrets: extractCredentialFields(manifest).length > 0,
     };
   }
 
@@ -194,7 +194,6 @@ export async function getPublishPreview(input: {
       input.workspaceId,
       agent.name,
       agent.description,
-      input.includeSecrets,
     );
     name = agent.name;
     description = agent.description;
@@ -233,12 +232,7 @@ export async function getPublishPreview(input: {
     if (!tool || tool.createdById !== input.userId) {
       throw new Error("Custom tool not found");
     }
-    manifest = await buildCustomToolManifest(
-      tool,
-      tool.name,
-      tool.description,
-      input.includeSecrets,
-    );
+    manifest = await buildCustomToolManifest(tool, tool.name, tool.description);
     name = tool.name;
     description = tool.description;
     resourceType = "custom_tool";
@@ -267,7 +261,6 @@ export async function getPublishPreview(input: {
       server,
       tools,
       "server",
-      input.includeSecrets,
     );
     name = server.name;
     description = null;
@@ -299,7 +292,6 @@ export async function getPublishPreview(input: {
       server,
       [tool],
       "tool",
-      input.includeSecrets,
     );
     name = `${server.name} — ${tool.name}`;
     description = tool.description;
@@ -325,6 +317,5 @@ export async function getPublishPreview(input: {
     hasExistingDraft: Boolean(existing),
     existingItemId: existing?.id ?? null,
     resourceType,
-    canIncludeSecrets: extractCredentialFields(manifest).length > 0,
   };
 }

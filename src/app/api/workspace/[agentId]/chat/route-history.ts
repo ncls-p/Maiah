@@ -10,6 +10,7 @@ import { decryptValue } from "@/lib/crypto";
 import { logHandledWarning } from "@/lib/logger";
 import { db } from "@/server/infrastructure/db";
 import { messageParts, messages } from "@/server/infrastructure/db/schema";
+import { projectAgentProgressForModelHistory } from "@/modules/agent/progress-model-history";
 import type { ModelMessage } from "ai";
 
 const previousToolTextContextChars = 4_000;
@@ -176,6 +177,24 @@ function codeWorkspaceContextFromToolMetadata(metadata: unknown) {
   );
 }
 
+async function toolMetadataForModelHistory(part: {
+  type: string;
+  contentEncrypted: string | null;
+  metadataJson: unknown;
+}) {
+  if (
+    (part.type === "tool-call" || part.type === "tool-result") &&
+    part.contentEncrypted
+  ) {
+    try {
+      return JSON.parse(await decryptValue(part.contentEncrypted)) as unknown;
+    } catch {
+      return part.metadataJson;
+    }
+  }
+  return part.metadataJson;
+}
+
 export async function loadConversationHistory(
   conversationId: string,
   context: { workspaceId: string; userId: string },
@@ -260,13 +279,18 @@ export async function loadConversationHistory(
     }> = [];
     const artifactCodeBlocks = new Set<string>();
     for (const part of partsByMessageId.get(message.id) ?? []) {
+      const metadata = await toolMetadataForModelHistory(part);
+      const agentProgress = projectAgentProgressForModelHistory(metadata);
+      if (agentProgress?.kind === "visual-only") continue;
+      if (agentProgress?.kind === "delegation-result") {
+        textParts.push(agentProgress.text);
+        continue;
+      }
       if (part.type === "file") {
-        const imageAttachment = isChatImageAttachment(part.metadataJson)
-          ? part.metadataJson
+        const imageAttachment = isChatImageAttachment(metadata)
+          ? metadata
           : null;
-        const fileAttachment = isChatFileAttachment(part.metadataJson)
-          ? part.metadataJson
-          : null;
+        const fileAttachment = isChatFileAttachment(metadata) ? metadata : null;
         if (message.role === "user" && imageAttachment) {
           try {
             const attachment = await getChatImageAttachmentBytes({
@@ -337,9 +361,8 @@ export async function loadConversationHistory(
           }
         }
 
-        const codeWorkspaceContext = codeWorkspaceContextFromToolMetadata(
-          part.metadataJson,
-        );
+        const codeWorkspaceContext =
+          codeWorkspaceContextFromToolMetadata(metadata);
         if (codeWorkspaceContext) {
           textParts.push(
             `Uploaded code workspace available in chat:\n${codeWorkspaceContext}`,
@@ -359,21 +382,16 @@ export async function loadConversationHistory(
       }
 
       if (message.role === "assistant") {
-        const artifactCode = htmlArtifactCodeFromToolMetadata(
-          part.metadataJson,
-        );
+        const artifactCode = htmlArtifactCodeFromToolMetadata(metadata);
         if (artifactCode) artifactCodeBlocks.add(artifactCode);
-        const codeWorkspaceContext = codeWorkspaceContextFromToolMetadata(
-          part.metadataJson,
-        );
+        const codeWorkspaceContext =
+          codeWorkspaceContextFromToolMetadata(metadata);
         if (codeWorkspaceContext) {
           artifactCodeBlocks.add(
             `Previously updated code workspace:\n${codeWorkspaceContext}`,
           );
         }
-        const codeSandboxContext = codeSandboxContextFromToolMetadata(
-          part.metadataJson,
-        );
+        const codeSandboxContext = codeSandboxContextFromToolMetadata(metadata);
         if (codeSandboxContext) {
           textParts.push(
             `Previously generated code sandbox output available for follow-up:\n${codeSandboxContext}`,

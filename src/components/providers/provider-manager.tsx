@@ -16,7 +16,7 @@ import {
 } from "./provider-manager/provider-dialogs";
 import { ProviderList } from "./provider-manager/provider-list";
 import { ModelsPanel } from "./provider-manager/model-list";
-import { StatsSidebar, SystemStrip } from "./provider-manager/provider-stats";
+import { SystemStrip } from "./provider-manager/provider-stats";
 import { KIND_LABELS } from "./provider-manager/constants";
 import type {
   DiscoveredModel,
@@ -97,10 +97,6 @@ export function ProviderManager({
         (m.displayName ?? "").toLowerCase().includes(q),
     );
   }, [models, modelSearch]);
-  const enabledProviderCount = providers.filter(
-    (provider) => provider.enabled,
-  ).length;
-
   const loadProviders = useCallback(async () => {
     setLoadingProviders(true);
     try {
@@ -133,6 +129,7 @@ export function ProviderManager({
         if (!res.ok) throw new Error(t("errorLoadModels"));
         setModels((await res.json()) as ProviderModel[]);
       } catch (error) {
+        setModels([]);
         toast.error((error as Error).message);
         return;
       } finally {
@@ -419,110 +416,61 @@ export function ProviderManager({
 
   return (
     <div className="space-y-6">
-      <div className="rounded-xl border bg-card p-5 sm:p-6">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-          <div className="max-w-2xl">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              {t("heroEyebrow")}
-            </p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight">
-              {t("heroTitle")}
-            </h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {t("heroDescription")}
-            </p>
-          </div>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center lg:flex-col lg:items-stretch">
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <div className="rounded-xl border bg-background px-3 py-2">
-                <p className="font-medium">{enabledProviderCount}</p>
-                <p className="text-xs text-muted-foreground">
-                  {t("connectionsReady", { count: enabledProviderCount })}
-                </p>
-              </div>
-              <div className="rounded-xl border bg-background px-3 py-2">
-                <p className="font-medium">{models.length}</p>
-                <p className="text-xs text-muted-foreground">
-                  {t("modelsShown", { count: models.length })}
-                </p>
-              </div>
-            </div>
-            <Button size="sm" onClick={openAddDialog}>
-              <PlusIcon className="size-4" aria-hidden="true" />
-              {t("connectAi")}
-            </Button>
-          </div>
-        </div>
-        <ol className="mt-5 grid gap-2 sm:grid-cols-3">
-          {[
-            t("heroStepConnect"),
-            t("heroStepModels"),
-            t("heroStepAssistants"),
-          ].map((step, index) => (
-            <li
-              key={step}
-              className="flex items-center gap-3 rounded-xl border bg-background px-3 py-2 text-sm"
-            >
-              <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium text-muted-foreground">
-                {index + 1}
-              </span>
-              <span className="min-w-0 truncate">{step}</span>
-            </li>
-          ))}
-        </ol>
+      <div className="flex justify-end">
+        <Button size="sm" onClick={openAddDialog}>
+          <PlusIcon className="size-4" aria-hidden="true" />
+          {t("connectAi")}
+        </Button>
+      </div>
+      <div>
         <AdvancedSection
           label={t("systemHealth")}
           hint={t("systemHealthHint")}
           storageKey="advanced:providers-health"
-          className="mt-5 border-border/50 bg-muted/20"
+          className="border-border/50 bg-muted/20"
         >
           <SystemStrip providers={providers} models={models} />
         </AdvancedSection>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
-        <div className="space-y-6">
-          <ProviderList
-            providers={providers}
-            filteredProviders={filteredProviders}
-            selectedProviderId={selectedProviderId}
-            providerSearch={providerSearch}
-            loadingProviders={loadingProviders}
-            busy={busy}
-            onSearchChange={setProviderSearch}
-            onAddProvider={openAddDialog}
-            onSelectProvider={selectProvider}
-            onToggleProvider={(provider) => void toggleProvider(provider)}
-            onTestProvider={(providerId) => void testProvider(providerId)}
-            onEditProvider={openEditDialog}
-            onDeleteProvider={setDeleteProviderId}
-          />
-          <ModelsPanel
-            selectedProvider={selectedProvider}
-            providers={providers}
-            models={models}
-            filteredModels={filteredModels}
-            discoveredModels={discoveredModels}
-            modelSearch={modelSearch}
-            manualModelId={manualModelId}
-            manualModelName={manualModelName}
-            loadingModels={loadingModels}
-            loadingProviders={loadingProviders}
-            busy={busy}
-            onDiscoverModels={() => void discoverProviderModels()}
-            onUpdateModelLogo={(modelId: string, logoUrl: string | null) =>
-              void updateModelLogo(modelId, logoUrl)
-            }
-            onCreateModel={(model) => void createManualModel(model)}
-            onDeleteModel={setDeleteModelId}
-            onModelSearchChange={setModelSearch}
-            onManualModelIdChange={setManualModelId}
-            onManualModelNameChange={setManualModelName}
-          />
-        </div>
-        <div className="space-y-6">
-          <StatsSidebar models={models} selectedProvider={selectedProvider} />
-        </div>
+      <div className="space-y-6">
+        <ProviderList
+          providers={providers}
+          filteredProviders={filteredProviders}
+          selectedProviderId={selectedProviderId}
+          providerSearch={providerSearch}
+          loadingProviders={loadingProviders}
+          busy={busy}
+          onSearchChange={setProviderSearch}
+          onAddProvider={openAddDialog}
+          onSelectProvider={selectProvider}
+          onToggleProvider={(provider) => void toggleProvider(provider)}
+          onTestProvider={(providerId) => void testProvider(providerId)}
+          onEditProvider={openEditDialog}
+          onDeleteProvider={setDeleteProviderId}
+        />
+        <ModelsPanel
+          selectedProvider={selectedProvider}
+          providers={providers}
+          models={models}
+          filteredModels={filteredModels}
+          discoveredModels={discoveredModels}
+          modelSearch={modelSearch}
+          manualModelId={manualModelId}
+          manualModelName={manualModelName}
+          loadingModels={loadingModels}
+          loadingProviders={loadingProviders}
+          busy={busy}
+          onDiscoverModels={() => void discoverProviderModels()}
+          onUpdateModelLogo={(modelId: string, logoUrl: string | null) =>
+            void updateModelLogo(modelId, logoUrl)
+          }
+          onCreateModel={(model) => void createManualModel(model)}
+          onDeleteModel={setDeleteModelId}
+          onModelSearchChange={setModelSearch}
+          onManualModelIdChange={setManualModelId}
+          onManualModelNameChange={setManualModelName}
+        />
       </div>
 
       <AddProviderDialog

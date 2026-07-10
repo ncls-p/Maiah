@@ -2,11 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { toast } from "sonner";
 
 import { PageLoading } from "@/components/page-loading";
 import { RequireWorkspaceAccess } from "@/components/require-workspace-access";
 import { WorkspacePage } from "@/components/workspace-page";
+import { Button } from "@/components/ui/button";
 import { useWorkspace } from "@/hooks/use-workspace";
 
 import {
@@ -28,7 +28,7 @@ type LoadUsageInput = UsageFilters & {
 function buildUsageQuery({ workspaceId, operation, from, to }: LoadUsageInput) {
   const params = new URLSearchParams({ workspaceId, limit: "100" });
   if (operation.trim()) params.set("operation", operation.trim());
-  if (from) params.set("from", new Date(from).toISOString());
+  if (from) params.set("from", new Date(`${from}T00:00:00`).toISOString());
   if (to) params.set("to", new Date(`${to}T23:59:59`).toISOString());
   return params.toString();
 }
@@ -46,6 +46,7 @@ function UsagePageContent() {
   const [data, setData] = useState<UsageResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [operationFilter, setOperationFilter] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
@@ -55,6 +56,7 @@ function UsagePageContent() {
       if (!workspaceId) return;
       if (options?.silent) setRefreshing(true);
       else setLoading(true);
+      setLoadError(false);
 
       try {
         setData(
@@ -66,10 +68,8 @@ function UsagePageContent() {
             ...options,
           }),
         );
-      } catch (error) {
-        toast.error(
-          error instanceof Error ? error.message : "Failed to load usage",
-        );
+      } catch {
+        setLoadError(true);
         return;
       } finally {
         setLoading(false);
@@ -97,6 +97,26 @@ function UsagePageContent() {
       description={t("usageDescription")}
       width="wide"
     >
+      {loadError ? (
+        <div
+          className="mb-5 rounded-2xl border border-destructive/25 bg-destructive/5 p-5"
+          role="alert"
+        >
+          <h2 className="text-base font-semibold">{t("usage.loadFailed")}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {t("usage.loadFailedDescription")}
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="mt-4"
+            onClick={() => void loadUsage()}
+          >
+            {t("usage.retry")}
+          </Button>
+        </div>
+      ) : null}
       {loading && !data ? (
         <UsageDashboardSkeleton />
       ) : data ? (
@@ -122,9 +142,7 @@ function UsagePageContent() {
             });
           }}
         />
-      ) : (
-        <UsageDashboardSkeleton />
-      )}
+      ) : null}
     </WorkspacePage>
   );
 }

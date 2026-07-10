@@ -1,5 +1,4 @@
 import { and, asc, eq, isNull, lte } from "drizzle-orm";
-import { generateText } from "ai";
 
 import { encryptValue } from "@/lib/crypto";
 import { logHandledError, logHandledWarning } from "@/lib/logger";
@@ -7,11 +6,9 @@ import {
   canUseAgent,
   getActiveVersion,
   getAgentById,
-  resolveProviderForVersion,
-  recordUsageEvent,
 } from "@/modules/agent/use-cases";
+import { executeAgent } from "@/modules/agent/runtime-executor";
 import { getBuiltInToolByName } from "@/modules/tool/builtin-tools";
-import { registerAiSdkDevTools } from "@/server/infrastructure/ai-sdk/devtools";
 import { db } from "@/server/infrastructure/db";
 import {
   conversations,
@@ -19,9 +16,6 @@ import {
   messages,
   scheduledTasks,
 } from "@/server/infrastructure/db/schema";
-import { getAdapter } from "@/server/infrastructure/providers";
-
-registerAiSdkDevTools();
 
 export type ScheduledTaskFrequency = "daily" | "interval";
 
@@ -420,7 +414,6 @@ async function insertMessage(input: {
 }
 
 async function runScheduledTask(task: typeof scheduledTasks.$inferSelect) {
-  const startedAt = Date.now();
   const agent = await assertAgentInWorkspace(
     task.agentId,
     task.workspaceId,
@@ -428,18 +421,14 @@ async function runScheduledTask(task: typeof scheduledTasks.$inferSelect) {
   );
   const version = await getActiveVersion(task.agentId);
   if (!version) throw new Error("Agent has no active version");
-  const providerConfig = await resolveProviderForVersion(version);
-  if (!providerConfig?.modelId)
-    throw new Error("Agent model is not configured");
 
   const conversationId = await ensureConversationForTask(task, version.id);
   const prompt = `Tâche planifiée « ${task.title} »\n\n${task.prompt}`;
   await insertMessage({ conversationId, role: "user", content: prompt });
 
   const searchContext = await buildSearchContext(task.prompt);
-  const adapter = getAdapter(providerConfig.providerKind);
-  const system = [
-    version.systemPrompt?.trim(),
+  const executionPrompt = [
+    prompt,
     "Tu exécutes une tâche planifiée automatiquement. Réponds directement dans le chat avec un contenu utile, daté, concis et actionnable. Si un contexte web est fourni, cite les sources importantes par URL.",
     searchContext
       ? `Contexte web récupéré juste avant l'exécution:\n${searchContext}`
@@ -447,19 +436,16 @@ async function runScheduledTask(task: typeof scheduledTasks.$inferSelect) {
   ]
     .filter(Boolean)
     .join("\n\n");
-
-  const result = await generateText({
-    model: adapter.createChatModel(
-      providerConfig.runtimeConfig,
-      providerConfig.modelId,
-    ),
-    system,
-    prompt: task.prompt,
-    temperature: version.temperature
-      ? Number.parseFloat(version.temperature)
-      : undefined,
-    topP: version.topP ? Number.parseFloat(version.topP) : undefined,
-    maxOutputTokens: Math.min(version.maxOutputTokens ?? 4_000, 4_000),
+  const result = await executeAgent({
+    workspaceId: task.workspaceId,
+    userId: task.userId,
+    agentId: task.agentId,
+    agentVersionId: version.id,
+    prompt: executionPrompt,
+    trigger: "scheduled",
+    conversationId,
+    scheduledTaskId: task.id,
+    idempotencyKey: `${task.id}:${task.nextRunAt.toISOString()}`,
   });
 
   const assistantText =
@@ -468,10 +454,10 @@ async function runScheduledTask(task: typeof scheduledTasks.$inferSelect) {
     conversationId,
     role: "assistant",
     content: assistantText,
-    modelId: providerConfig.modelId,
-    providerId: providerConfig.providerId,
-    tokenInput: result.usage.inputTokens,
-    tokenOutput: result.usage.outputTokens,
+    modelId: version.modelId ?? undefined,
+    providerId: version.providerId ?? undefined,
+    tokenInput: result.inputTokens,
+    tokenOutput: result.outputTokens,
   });
 
   await db
@@ -483,20 +469,6 @@ async function runScheduledTask(task: typeof scheduledTasks.$inferSelect) {
       updatedAt: new Date(),
     })
     .where(eq(conversations.id, conversationId));
-
-  await recordUsageEvent({
-    workspaceId: task.workspaceId,
-    userId: task.userId,
-    providerId: providerConfig.providerId,
-    modelId: providerConfig.modelRecordId,
-    agentId: task.agentId,
-    conversationId,
-    operation: "scheduled_task",
-    inputTokens: result.usage.inputTokens,
-    outputTokens: result.usage.outputTokens,
-    latencyMs: Date.now() - startedAt,
-    status: "success",
-  });
 }
 
 export async function processDueScheduledTasks(now = new Date()) {

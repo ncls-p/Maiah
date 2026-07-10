@@ -10,16 +10,14 @@ const globalForAiSdkDevTools = globalThis as typeof globalThis & {
 /**
  * Register AI SDK DevTools telemetry for local debugging only.
  *
- * DevTools captures generateText/streamText/ToolLoopAgent calls globally once
- * registered. Keep it opt-in outside development so production requests do not
- * emit local-only telemetry payloads.
+ * DevTools captures raw generateText/streamText/ToolLoopAgent payloads globally
+ * once registered. It is therefore explicit opt-in in local development and is
+ * never registered in production.
  */
 export function registerAiSdkDevTools() {
   if (globalForAiSdkDevTools.__aiHubAiSdkDevToolsRegistered) return;
   const explicitlyEnabled = process.env.AI_SDK_DEVTOOLS === "true";
-  const explicitlyDisabled = process.env.AI_SDK_DEVTOOLS === "false";
-  if (explicitlyDisabled) return;
-  if (process.env.NODE_ENV === "production" && !explicitlyEnabled) return;
+  if (!explicitlyEnabled || process.env.NODE_ENV === "production") return;
 
   try {
     registerTelemetry(DevToolsTelemetry());

@@ -10,7 +10,6 @@ import {
   agentVersions,
   aiModels,
   aiProviders,
-  customToolCredentialRefs,
   customToolSecretRequests,
   customTools,
   knowledgeBases,
@@ -115,7 +114,6 @@ export async function buildCustomToolManifest(
   tool: typeof customTools.$inferSelect,
   name: string,
   description?: string | null,
-  includeSecrets = false,
 ): Promise<ToolMarketplaceManifest> {
   const secretRequests = await db
     .select()
@@ -125,30 +123,6 @@ export async function buildCustomToolManifest(
   const credentialSchema = secretRequests.flatMap((req) =>
     parseCredentialFields(req.fieldsJson),
   );
-
-  let encryptedCredentialRefs:
-    | ToolMarketplaceManifest["tool"]["encryptedCredentialRefs"]
-    | undefined;
-  if (includeSecrets) {
-    const refs = await db
-      .select()
-      .from(customToolCredentialRefs)
-      .where(
-        and(
-          eq(customToolCredentialRefs.workspaceId, tool.workspaceId),
-          eq(customToolCredentialRefs.userId, tool.createdById),
-        ),
-      );
-    if (refs.length > 0) {
-      encryptedCredentialRefs = refs.map((ref) => ({
-        provider: ref.provider,
-        label: ref.label,
-        n8nCredentialId: ref.n8nCredentialId,
-        encryptedPayload: ref.encryptedPayload,
-        metadata: jsonRecord(ref.metadataJson),
-      }));
-    }
-  }
 
   return {
     type: "custom_tool",
@@ -163,10 +137,7 @@ export async function buildCustomToolManifest(
       metadata: jsonRecord(tool.metadataJson) ?? undefined,
       credentialSchema:
         credentialSchema.length > 0 ? credentialSchema : undefined,
-      encryptedCredentialRefs,
       requiresCredentials: credentialSchema.length > 0,
-      secretsIncluded:
-        includeSecrets && Boolean(encryptedCredentialRefs?.length),
     },
   };
 }
@@ -177,7 +148,6 @@ export function buildMcpPresetManifest(
   server: typeof mcpServers.$inferSelect,
   tools: Array<typeof mcpTools.$inferSelect>,
   scope: "server" | "tool",
-  includeSecrets = false,
 ): McpPresetMarketplaceManifest {
   const args = Array.isArray(server.argsJson)
     ? (server.argsJson as string[])
@@ -200,16 +170,7 @@ export function buildMcpPresetManifest(
       requireApproval: server.requireApproval,
       healthStatus: server.healthStatus ?? undefined,
       requiresCredentials: hasCredentials,
-      secretsIncluded: includeSecrets && hasCredentials,
       credentialSchema: hasCredentials ? credentialSchema : undefined,
-      encryptedHeadersJson:
-        includeSecrets && server.encryptedHeadersJson
-          ? server.encryptedHeadersJson
-          : undefined,
-      encryptedEnvJson:
-        includeSecrets && server.encryptedEnvJson
-          ? server.encryptedEnvJson
-          : undefined,
       tools: tools.map((tool) => ({
         name: tool.name,
         description: tool.description,
@@ -340,11 +301,14 @@ export async function buildAgentManifest(
   workspaceId: string,
   name: string,
   description?: string | null,
-  includeSecrets = false,
 ): Promise<AgentMarketplaceManifest> {
   const resolved = await resolveAgentVersion(agentId);
   if (!resolved) throw new Error("Agent not found");
   const { agent, agentVersion, providerName, modelName } = resolved;
+  if (agent.workspaceId !== workspaceId) throw new Error("Agent not found");
+  if (agent.kind === "orchestrator") {
+    throw new Error("Orchestrators cannot be published to the marketplace yet");
+  }
   if (!agentVersion) throw new Error("Agent has no version");
 
   const toolBindings = await db
@@ -442,7 +406,6 @@ export async function buildAgentManifest(
           server,
           serverTools,
           "server",
-          includeSecrets,
         ),
       );
     }
@@ -461,12 +424,7 @@ export async function buildAgentManifest(
       if (!tool) continue;
       seenCustomTools.add(tool.id);
       bundledCustomTools.push(
-        await buildCustomToolManifest(
-          tool,
-          tool.name,
-          tool.description,
-          includeSecrets,
-        ),
+        await buildCustomToolManifest(tool, tool.name, tool.description),
       );
     }
   }

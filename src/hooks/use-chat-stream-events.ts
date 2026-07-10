@@ -279,6 +279,7 @@ export function applyStreamEvent(
       toolCallId: parsed.toolCallId,
       toolName: parsed.toolName,
       input: parsed.input,
+      agentContext: parsed.agentContext,
     });
     handlers.updateAssistant((message) => {
       const nextParts = [...message.parts];
@@ -336,6 +337,7 @@ export function applyStreamEvent(
                 ...parsedPart,
                 toolName: parsedPart.toolName ?? parsed.toolName,
                 output: parsed.output,
+                agentContext: parsed.agentContext ?? parsedPart.agentContext,
               }),
             };
             matched = true;
@@ -352,6 +354,7 @@ export function applyStreamEvent(
             toolCallId: parsed.toolCallId,
             toolName: parsed.toolName,
             output: parsed.output,
+            agentContext: parsed.agentContext,
           }),
         });
       }

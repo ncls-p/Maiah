@@ -6,6 +6,12 @@ import { getSession } from "@/modules/auth/session";
 import { executeCustomToolWorkflow } from "@/modules/custom-tools/use-cases";
 import { executeMcpTool } from "@/modules/mcp/executor";
 import { getBuiltInTool } from "@/modules/tool/builtin-tools";
+import {
+  claimToolInvocationForExecution,
+  completeToolInvocationFailure,
+  completeToolInvocationSuccess,
+} from "@/modules/tool/invocation-approval";
+import { safeToolErrorMessage } from "@/modules/tool/safe-payload";
 import { audit } from "@/server/domain/services/audit";
 import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
@@ -16,6 +22,16 @@ import {
 } from "@/server/infrastructure/db/schema";
 
 import { invocationParamsSchema } from "../../invocation-shared";
+
+class InvocationExecutionError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+    this.name = "InvocationExecutionError";
+  }
+}
 
 async function executeInvocation(
   invocation: typeof toolInvocations.$inferSelect,
@@ -29,7 +45,7 @@ async function executeInvocation(
   if (invocation.toolSource === "builtin") {
     const tool = getBuiltInTool(invocation.toolId);
     if (!tool) {
-      return NextResponse.json({ error: "Tool not found" }, { status: 404 });
+      throw new InvocationExecutionError("Tool not found", 404);
     }
     output = await tool.execute(input as never, {
       workspaceId: invocation.workspaceId,
@@ -49,10 +65,7 @@ async function executeInvocation(
       .where(eq(mcpTools.id, invocation.toolId))
       .limit(1);
     if (!tool) {
-      return NextResponse.json(
-        { error: "MCP tool not found" },
-        { status: 404 },
-      );
+      throw new InvocationExecutionError("MCP tool not found", 404);
     }
     output = await executeMcpTool({
       serverId: tool.mcpServerId,
@@ -62,12 +75,25 @@ async function executeInvocation(
       toolInput: input,
     });
   } else {
-    return NextResponse.json(
-      { error: "Unsupported tool source" },
-      { status: 400 },
-    );
+    throw new InvocationExecutionError("Unsupported tool source", 400);
   }
   return output;
+}
+
+function alreadyResolvedResponse(status: string) {
+  if (status === "success") {
+    return NextResponse.json({ ok: true, status, alreadyResolved: true });
+  }
+  if (status === "running") {
+    return NextResponse.json(
+      { ok: true, status, alreadyResolved: true },
+      { status: 202 },
+    );
+  }
+  return NextResponse.json(
+    { error: `Invocation can no longer be approved (status: ${status})` },
+    { status: 409 },
+  );
 }
 
 export async function POST(
@@ -152,72 +178,140 @@ export async function POST(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    if (invocation.status !== "awaiting_approval") {
-      logger.warn("Tool invocation approval rejected", {
+    const claim = await claimToolInvocationForExecution(
+      invocation.id,
+      session.user.id,
+    );
+    if (claim.kind === "missing") {
+      return NextResponse.json(
+        { error: "Invocation not found" },
+        { status: 404 },
+      );
+    }
+    if (claim.kind === "unchanged") {
+      logger.info("Tool invocation approval already resolved", {
         requestId,
         userId: session.user.id,
         invocationId: invocation.id,
-        currentStatus: invocation.status,
-        reason: "not_awaiting_approval",
+        currentStatus: claim.invocation.status,
         durationMs: Date.now() - startedAt,
       });
-      return NextResponse.json(
-        { error: "Invocation is not awaiting approval" },
-        { status: 409 },
-      );
+      return alreadyResolvedResponse(claim.invocation.status);
     }
+
+    const claimedInvocation = claim.invocation;
 
     logger.info("Tool invocation approval started", {
       requestId,
       userId: session.user.id,
-      invocationId: invocation.id,
-      toolName: invocation.toolName,
-      toolSource: invocation.toolSource,
-      workspaceId: invocation.workspaceId,
+      invocationId: claimedInvocation.id,
+      toolName: claimedInvocation.toolName,
+      toolSource: claimedInvocation.toolSource,
+      workspaceId: claimedInvocation.workspaceId,
     });
 
     const execStartedAt = Date.now();
-    const result = await executeInvocation(invocation, session.user.id);
-    if (result instanceof NextResponse) return result;
+    try {
+      const result = await executeInvocation(
+        claimedInvocation,
+        session.user.id,
+      );
+      const latencyMs = Date.now() - execStartedAt;
+      const completed = await completeToolInvocationSuccess(
+        claimedInvocation.id,
+        {
+          encryptedOutput: await encryptValue(JSON.stringify(result ?? null)),
+          latencyMs,
+        },
+      );
+      if (!completed) {
+        return NextResponse.json(
+          { error: "Invocation state changed during execution" },
+          { status: 409 },
+        );
+      }
 
-    await db
-      .update(toolInvocations)
-      .set({
-        outputJsonEncrypted: await encryptValue(JSON.stringify(result)),
-        status: "success",
-        latencyMs: Date.now() - execStartedAt,
-        approvedByUserId: session.user.id,
-        completedAt: new Date(),
-      })
-      .where(eq(toolInvocations.id, invocation.id));
+      try {
+        await audit.emit({
+          workspaceId: claimedInvocation.workspaceId,
+          actorPrincipalType: "user",
+          actorPrincipalId: session.user.id,
+          action: "toolInvocation.approved",
+          resourceType: "tool_invocation",
+          resourceId: claimedInvocation.id,
+          outcome: "success",
+          metadata: {
+            toolName: claimedInvocation.toolName,
+            toolSource: claimedInvocation.toolSource,
+            riskLevel: claimedInvocation.riskLevel,
+          },
+        });
+      } catch (auditError) {
+        logHandledError(
+          "Tool invocation approval audit failed",
+          { requestId, invocationId: claimedInvocation.id },
+          auditError as Error,
+        );
+      }
 
-    await audit.emit({
-      workspaceId: invocation.workspaceId,
-      actorPrincipalType: "user",
-      actorPrincipalId: session.user.id,
-      action: "toolInvocation.approved",
-      resourceType: "tool_invocation",
-      resourceId: invocation.id,
-      outcome: "success",
-      metadata: {
-        toolName: invocation.toolName,
-        toolSource: invocation.toolSource,
-        riskLevel: invocation.riskLevel,
-      },
-    });
+      logger.info("Tool invocation approval completed", {
+        requestId,
+        userId: session.user.id,
+        invocationId: claimedInvocation.id,
+        toolName: claimedInvocation.toolName,
+        toolSource: claimedInvocation.toolSource,
+        workspaceId: claimedInvocation.workspaceId,
+        latencyMs,
+        durationMs: Date.now() - startedAt,
+      });
 
-    logger.info("Tool invocation approval completed", {
-      requestId,
-      userId: session.user.id,
-      invocationId: invocation.id,
-      toolName: invocation.toolName,
-      toolSource: invocation.toolSource,
-      workspaceId: invocation.workspaceId,
-      latencyMs: Date.now() - execStartedAt,
-      durationMs: Date.now() - startedAt,
-    });
-
-    return NextResponse.json({ ok: true, output: result });
+      return NextResponse.json({ ok: true, status: "success" });
+    } catch (error) {
+      const latencyMs = Date.now() - execStartedAt;
+      const errorMessage = safeToolErrorMessage(error, "Tool execution failed");
+      await completeToolInvocationFailure(claimedInvocation.id, {
+        errorMessage,
+        latencyMs,
+      });
+      try {
+        await audit.emit({
+          workspaceId: claimedInvocation.workspaceId,
+          actorPrincipalType: "user",
+          actorPrincipalId: session.user.id,
+          action: "toolInvocation.approved",
+          resourceType: "tool_invocation",
+          resourceId: claimedInvocation.id,
+          outcome: "failed",
+          metadata: {
+            toolName: claimedInvocation.toolName,
+            toolSource: claimedInvocation.toolSource,
+            riskLevel: claimedInvocation.riskLevel,
+          },
+        });
+      } catch (auditError) {
+        logHandledError(
+          "Tool invocation approval failure audit failed",
+          { requestId, invocationId: claimedInvocation.id },
+          auditError as Error,
+        );
+      }
+      logHandledError(
+        "Approved tool execution failed",
+        {
+          requestId,
+          invocationId: claimedInvocation.id,
+          durationMs: Date.now() - startedAt,
+        },
+        new Error(errorMessage),
+      );
+      return NextResponse.json(
+        { error: errorMessage },
+        {
+          status:
+            error instanceof InvocationExecutionError ? error.status : 500,
+        },
+      );
+    }
   } catch (error) {
     logHandledError(
       "Tool invocation approval failed",

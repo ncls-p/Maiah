@@ -83,7 +83,7 @@
   --destructive: oklch(0.56 0.18 25);
   --destructive-foreground: oklch(0.99 0 0);
   --success: oklch(0.52 0.12 155);
-  --warning: oklch(0.66 0.13 78);
+  --warning: oklch(0.52 0.13 78);
   --info: oklch(0.56 0.11 230);
   --border: oklch(0.89 0.006 215);
   --input: oklch(0.86 0.006 215);
@@ -221,13 +221,12 @@
   }
 
   .shimmer {
-    background:
-      linear-gradient(
-        110deg,
-        var(--muted-foreground) 0%,
-        color-mix(in oklch, var(--foreground) 45%, transparent) 35%,
-        var(--muted-foreground) 70%
-      );
+    background: linear-gradient(
+      110deg,
+      var(--muted-foreground) 0%,
+      color-mix(in oklch, var(--foreground) 45%, transparent) 35%,
+      var(--muted-foreground) 70%
+    );
     background-size: 220% 100%;
     background-clip: text;
     color: transparent;
@@ -263,7 +262,15 @@
     scroll-margin-block: 5rem;
   }
 
-  :where(a, button, input, textarea, select, summary, [tabindex]:not([tabindex="-1"])):focus-visible {
+  :where(
+    a,
+    button,
+    input,
+    textarea,
+    select,
+    summary,
+    [tabindex]:not([tabindex="-1"])
+  ):focus-visible {
     outline: 2px solid var(--ring);
     outline-offset: 2px;
   }
@@ -430,45 +437,7 @@
   }
 
   .chat-shell-brand {
-    position: relative;
-    isolation: isolate;
-    background:
-      linear-gradient(
-        90deg,
-        color-mix(in oklch, var(--brand-azur) 8%, transparent) 0,
-        transparent 11rem
-      ),
-      linear-gradient(
-        270deg,
-        color-mix(in oklch, var(--brand-azur) 7%, transparent) 0,
-        transparent 10rem
-      ),
-      var(--background);
-  }
-
-  .chat-shell-brand::before,
-  .chat-shell-brand::after {
-    content: "";
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    z-index: 0;
-    width: 1px;
-    pointer-events: none;
-    background: color-mix(in oklch, var(--brand-azur) 34%, transparent);
-  }
-
-  .chat-shell-brand::before {
-    left: 0;
-  }
-
-  .chat-shell-brand::after {
-    right: 0;
-  }
-
-  .chat-shell-brand > * {
-    position: relative;
-    z-index: 1;
+    @apply bg-background;
   }
 }
 
@@ -624,8 +593,10 @@
   }
 
   .composer-box {
-    @apply relative rounded-2xl border border-transparent bg-card;
-    box-shadow: var(--surface-shadow);
+    @apply relative rounded-2xl border border-border/70 bg-card;
+    box-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.035),
+      0 10px 30px rgba(0, 0, 0, 0.035);
     transition-property: background-color, border-color, box-shadow;
     transition-duration: 150ms;
     transition-timing-function: ease-out;
@@ -636,10 +607,11 @@
   }
 
   .composer-box:focus-within {
-    @apply border-ring;
+    @apply border-ring/70;
     box-shadow:
-      var(--surface-shadow-hover),
-      0 0 0 3px color-mix(in oklch, var(--ring) 15%, transparent);
+      0 1px 2px rgba(0, 0, 0, 0.035),
+      0 10px 30px rgba(0, 0, 0, 0.045),
+      0 0 0 3px color-mix(in oklch, var(--ring) 12%, transparent);
   }
 
   .nav-item-active::before {

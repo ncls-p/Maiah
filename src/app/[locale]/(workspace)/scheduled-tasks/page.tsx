@@ -3,8 +3,7 @@
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { CalendarClockIcon } from "lucide-react";
-import { useEffect, useState } from "react";
-import { toast } from "sonner";
+import { useCallback, useEffect, useState } from "react";
 
 import type { ChatAgent } from "@/components/chat/chat-types";
 import { PageEmptyState } from "@/components/page-empty-state";
@@ -26,32 +25,30 @@ export default function ScheduledTasksPage() {
   const { workspaceId, isLoading: workspaceLoading } = useWorkspace();
   const [agents, setAgents] = useState<ChatAgent[]>([]);
   const [loadingAgents, setLoadingAgents] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+
+  const loadAgents = useCallback(async () => {
+    if (!workspaceId) return;
+    setLoadingAgents(true);
+    setLoadError(false);
+    try {
+      const data = await fetchJson<AgentsPayload>(
+        `/api/workspace/agents?workspaceId=${workspaceId}`,
+      );
+      setAgents(normalizeAgents(data));
+    } catch {
+      setLoadError(true);
+    } finally {
+      setLoadingAgents(false);
+    }
+  }, [workspaceId]);
 
   useEffect(() => {
-    if (!workspaceId) return;
-
-    let cancelled = false;
-    async function loadAgents() {
-      setLoadingAgents(true);
-      try {
-        const data = await fetchJson<AgentsPayload>(
-          `/api/workspace/agents?workspaceId=${workspaceId}`,
-        );
-        if (!cancelled) setAgents(normalizeAgents(data));
-      } catch (error) {
-        toast.error(
-          error instanceof Error ? error.message : t("toasts.loadAgentsFailed"),
-        );
-      } finally {
-        if (!cancelled) setLoadingAgents(false);
-      }
-    }
-
-    void loadAgents();
+    const timeout = window.setTimeout(() => void loadAgents(), 0);
     return () => {
-      cancelled = true;
+      window.clearTimeout(timeout);
     };
-  }, [t, workspaceId]);
+  }, [loadAgents]);
 
   const loading = workspaceLoading || loadingAgents;
 
@@ -63,6 +60,25 @@ export default function ScheduledTasksPage() {
     >
       {loading ? (
         <PageLoading label={t("loadingAgents")} />
+      ) : loadError ? (
+        <div
+          className="rounded-2xl border border-destructive/25 bg-destructive/5 p-5"
+          role="alert"
+        >
+          <h2 className="text-base font-semibold">{t("loadErrorTitle")}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {t("loadErrorDescription")}
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="mt-4"
+            onClick={() => void loadAgents()}
+          >
+            {t("retry")}
+          </Button>
+        </div>
       ) : agents.length === 0 ? (
         <PageEmptyState
           icon={CalendarClockIcon}
@@ -79,15 +95,7 @@ export default function ScheduledTasksPage() {
           </div>
         </PageEmptyState>
       ) : (
-        <div>
-          <div className="mb-5 flex items-center gap-3 rounded-2xl border border-border/60 bg-muted/24 p-4 text-sm text-muted-foreground">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <CalendarClockIcon className="size-5" aria-hidden="true" />
-            </div>
-            <p>{t("sectionHint")}</p>
-          </div>
-          <ScheduledTaskManager workspaceId={workspaceId} agents={agents} />
-        </div>
+        <ScheduledTaskManager workspaceId={workspaceId} agents={agents} />
       )}
     </WorkspacePage>
   );

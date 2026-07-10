@@ -7,6 +7,7 @@ import {
   marketplaceItemVersions,
 } from "@/server/infrastructure/db/schema";
 import type { MarketplaceManifest, SourceResourceType } from "./manifest-types";
+import { sanitizeMarketplaceManifest } from "./manifest-sanitizer";
 
 type MarketplaceVisibility = "public" | "private";
 
@@ -57,6 +58,7 @@ export async function upsertMarketplaceDraft(input: {
   publishedAt?: Date | null;
 }) {
   try {
+    const manifest = sanitizeMarketplaceManifest(input.manifest);
     const existing = await findExistingDraft(
       input.sourceResourceType,
       input.sourceResourceId,
@@ -69,7 +71,7 @@ export async function upsertMarketplaceDraft(input: {
         .values({
           itemId: existing.id,
           version: input.version,
-          manifestJson: input.manifest,
+          manifestJson: manifest,
           changelog: input.changelog ?? "Updated marketplace draft",
           compatibilityJson: { app: "ai-hub", schema: 2 },
           securityReviewStatus: "pending",
@@ -140,7 +142,7 @@ export async function upsertMarketplaceDraft(input: {
         .values({
           itemId: item.id,
           version: input.version,
-          manifestJson: input.manifest,
+          manifestJson: manifest,
           changelog: input.changelog ?? "Initial marketplace draft",
           compatibilityJson: { app: "ai-hub", schema: 2 },
           securityReviewStatus: "pending",

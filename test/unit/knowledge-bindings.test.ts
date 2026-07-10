@@ -3,6 +3,7 @@ import { z } from "zod";
 
 const knowledgeBindingPutSchema = z.object({
 	workspaceId: z.uuid(),
+	baseVersionId: z.uuid().nullable(),
 	knowledgeBaseIds: z.array(z.uuid()),
 });
 
@@ -27,6 +28,7 @@ describe("knowledge bindings", () => {
 		expect(
 			knowledgeBindingPutSchema.safeParse({
 				workspaceId,
+				baseVersionId: crypto.randomUUID(),
 				knowledgeBaseIds: [knowledgeBaseId],
 			}).success,
 		).toBe(true);
@@ -34,6 +36,7 @@ describe("knowledge bindings", () => {
 		expect(
 			knowledgeBindingPutSchema.safeParse({
 				workspaceId,
+				baseVersionId: crypto.randomUUID(),
 				knowledgeBaseIds: ["not-a-uuid"],
 			}).success,
 		).toBe(false);

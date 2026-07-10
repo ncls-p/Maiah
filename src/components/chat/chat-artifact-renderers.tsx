@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import { ChevronDownIcon, DownloadIcon, Maximize2Icon } from "lucide-react";
 
 import {
@@ -13,7 +15,12 @@ import {
 } from "@/components/chat/chat-message-rendering-utils";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { formatBytes } from "@/components/chat/code-workspace-artifact-card";
 import { cn } from "@/lib/utils";
 
@@ -53,6 +60,7 @@ function LazyArtifactFrame({
   srcDoc: string;
   height: number;
 }) {
+  const t = useTranslations("chat.artifacts");
   const frameRootRef = useRef<HTMLDivElement | null>(null);
   const [isReady, setIsReady] = useState(false);
 
@@ -92,7 +100,7 @@ function LazyArtifactFrame({
           className="h-full w-full bg-white"
         />
       ) : (
-        <span>Preview loads when visible.</span>
+        <span>{t("previewWhenVisible")}</span>
       )}
     </div>
   );
@@ -105,6 +113,7 @@ export function HtmlArtifactCard({
   artifact: HtmlArtifactOutput;
   isLive?: boolean;
 }) {
+  const t = useTranslations("chat.artifacts");
   const [codeOpen, setCodeOpen] = useState(false);
   const [fullscreenOpen, setFullscreenOpen] = useState(false);
   const [fullscreenCodeOpen, setFullscreenCodeOpen] = useState(false);
@@ -117,9 +126,13 @@ export function HtmlArtifactCard({
   );
 
   async function copyCode() {
-    await navigator.clipboard.writeText(codeText);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      await navigator.clipboard.writeText(codeText);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error(t("copyFailed"));
+    }
   }
 
   return (
@@ -131,8 +144,8 @@ export function HtmlArtifactCard({
           </p>
           <p className="text-[11px] text-muted-foreground">
             {isLive
-              ? "Live HTML/CSS/JS preview"
-              : "Interactive HTML/CSS/JS preview"}
+              ? t("livePreviewDescription")
+              : t("interactivePreviewDescription")}
           </p>
         </div>
         <div className="flex items-center gap-1.5">
@@ -144,7 +157,7 @@ export function HtmlArtifactCard({
             onClick={() => setFullscreenOpen(true)}
           >
             <Maximize2Icon className={COMPACT_ICON_CLASS} aria-hidden="true" />
-            Fullscreen
+            {t("fullscreen")}
           </Button>
           <Button
             type={BUTTON_TYPE}
@@ -153,7 +166,7 @@ export function HtmlArtifactCard({
             className="h-7 px-2.5 text-[11px]"
             onClick={copyCode}
           >
-            {copied ? "Copied" : "Copy code"}
+            {copied ? t("copied") : t("copyCode")}
           </Button>
           <Button
             type={BUTTON_TYPE}
@@ -162,7 +175,7 @@ export function HtmlArtifactCard({
             className="h-7 px-2.5 text-[11px]"
             onClick={() => setCodeOpen((current) => !current)}
           >
-            {codeOpen ? "Hide code" : "View code"}
+            {codeOpen ? t("hideCode") : t("viewCode")}
           </Button>
         </div>
       </div>
@@ -183,9 +196,9 @@ export function HtmlArtifactCard({
               <DialogTitle className="truncate text-base font-semibold">
                 {artifact.title}
               </DialogTitle>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Fullscreen HTML/CSS/JS preview
-              </p>
+              <DialogDescription className="mt-0.5 text-xs text-muted-foreground">
+                {t("fullscreenPreviewDescription")}
+              </DialogDescription>
             </div>
             <div className="flex items-center gap-2">
               <Button
@@ -195,7 +208,7 @@ export function HtmlArtifactCard({
                 className="h-8 px-3 text-xs"
                 onClick={copyCode}
               >
-                {copied ? "Copied" : "Copy code"}
+                {copied ? t("copied") : t("copyCode")}
               </Button>
               <Button
                 type={BUTTON_TYPE}
@@ -204,7 +217,7 @@ export function HtmlArtifactCard({
                 className="h-8 px-3 text-xs"
                 onClick={() => setFullscreenCodeOpen((current) => !current)}
               >
-                {fullscreenCodeOpen ? "Hide code" : "View code"}
+                {fullscreenCodeOpen ? t("hideCode") : t("viewCode")}
               </Button>
             </div>
           </div>
@@ -235,11 +248,12 @@ export function HtmlArtifactCard({
 }
 
 function SandboxOutputFileCard({ file }: { file: CodeSandboxFileOutput }) {
+  const t = useTranslations("chat.artifacts");
   const omittedLabel =
     file.contentOmitted === "too_large"
-      ? "File too large to attach"
+      ? t("fileTooLarge")
       : file.contentOmitted === "total_limit"
-        ? "Sandbox attachment limit reached"
+        ? t("attachmentLimitReached")
         : null;
 
   return (
@@ -260,7 +274,7 @@ function SandboxOutputFileCard({ file }: { file: CodeSandboxFileOutput }) {
           >
             <a href={file.downloadUrl} target="_blank" rel="noreferrer">
               <DownloadIcon className={COMPACT_ICON_CLASS} aria-hidden="true" />
-              Download
+              {t("download")}
             </a>
           </Button>
         ) : null}
@@ -290,20 +304,21 @@ export function CodeSandboxResultCard({
   result: CodeSandboxOutput;
   input?: CodeSandboxInputPreview | null;
 }) {
+  const t = useTranslations("chat.artifacts");
   const [sourceOpen, setSourceOpen] = useState(false);
   const language = input?.language ?? result.language;
   return (
     <div className="overflow-hidden rounded-xl border border-border/50 bg-card text-xs shadow-sm">
       <div className="flex items-center justify-between gap-3 border-b border-border/50 bg-muted/25 px-3 py-2.5">
         <div>
-          <p className="font-medium text-foreground">Code sandbox</p>
+          <p className="font-medium text-foreground">{t("codeSandbox")}</p>
           <p className="text-[11px] text-muted-foreground">
             {language} · {result.durationMs}ms ·{" "}
             {result.timedOut
-              ? "timed out"
+              ? t("timedOut")
               : result.exitCode === null
-                ? "no exit code"
-                : `exit ${result.exitCode}`}
+                ? t("noExitCode")
+                : t("exitCode", { count: result.exitCode })}
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
@@ -315,7 +330,7 @@ export function CodeSandboxResultCard({
               className="h-7 px-2 text-[11px]"
               onClick={() => setSourceOpen((current) => !current)}
             >
-              Source code
+              {t("sourceCode")}
               <ChevronDownIcon
                 className={cn(COMPACT_ICON_CLASS, sourceOpen && "rotate-180")}
                 aria-hidden="true"
@@ -330,7 +345,7 @@ export function CodeSandboxResultCard({
                 : "bg-destructive/10 text-destructive",
             )}
           >
-            {result.ok ? "Done" : "Failed"}
+            {result.ok ? t("done") : t("failed")}
           </span>
         </div>
       </div>
@@ -340,12 +355,16 @@ export function CodeSandboxResultCard({
             <CollapsibleContent>
               <div className="space-y-2 rounded-lg border border-border/50 bg-muted/20 p-2.5">
                 <div className="flex flex-wrap items-center gap-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                  <span>Executed {language} code</span>
+                  <span>{t("executedCode", { language })}</span>
                   {input.files.length > 0 ? (
-                    <span>· {input.files.length} input file(s)</span>
+                    <span>
+                      · {t("inputFiles", { count: input.files.length })}
+                    </span>
                   ) : null}
                   {input.attachments.length > 0 ? (
-                    <span>· {input.attachments.length} attachment(s)</span>
+                    <span>
+                      · {t("attachments", { count: input.attachments.length })}
+                    </span>
                   ) : null}
                 </div>
                 <pre className="max-h-72 overflow-auto rounded-md bg-background/70 p-2 whitespace-pre-wrap font-mono text-[11px] leading-4 text-foreground">
@@ -378,7 +397,7 @@ export function CodeSandboxResultCard({
         {result.files.length > 0 ? (
           <div className="space-y-2">
             <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-              Sandbox files
+              {t("sandboxFiles")}
             </p>
             {result.files.map((file) => (
               <SandboxOutputFileCard key={file.path} file={file} />
@@ -399,6 +418,7 @@ export function LiveToolInputCard({
   inputText: string;
   sandboxInput?: CodeSandboxInputPreview | null;
 }) {
+  const t = useTranslations("chat.artifacts");
   const visibleInputText = useMemo(() => {
     if (inputText.length <= MAX_LIVE_TOOL_INPUT_CHARS) return inputText;
     return `…${inputText.length - MAX_LIVE_TOOL_INPUT_CHARS} earlier characters hidden while streaming\n${inputText.slice(-MAX_LIVE_TOOL_INPUT_CHARS)}`;
@@ -418,8 +438,10 @@ export function LiveToolInputCard({
           <p className="font-medium text-foreground">{toolName}</p>
           <p className="text-[11px] text-muted-foreground">
             {sandboxInput
-              ? `Writing ${sandboxInput.language ?? "sandbox"} code…`
-              : "Writing tool input…"}
+              ? t("writingCode", {
+                  language: sandboxInput.language ?? "sandbox",
+                })
+              : t("writingInput")}
           </p>
         </div>
         <span className="size-2 rounded-full bg-primary/70 animate-pulse" />
@@ -427,15 +449,17 @@ export function LiveToolInputCard({
       {sandboxInput ? (
         <div className="flex flex-wrap gap-2 border-b border-border/40 px-3 py-2 text-[10px] text-muted-foreground">
           {sandboxInput.files.length > 0 ? (
-            <span>{sandboxInput.files.length} input file(s)</span>
+            <span>{t("inputFiles", { count: sandboxInput.files.length })}</span>
           ) : null}
           {sandboxInput.attachments.length > 0 ? (
-            <span>{sandboxInput.attachments.length} attachment(s)</span>
+            <span>
+              {t("attachments", { count: sandboxInput.attachments.length })}
+            </span>
           ) : null}
         </div>
       ) : null}
       <pre className="max-h-72 overflow-auto bg-muted/20 p-3 font-mono text-[11px] leading-4 text-muted-foreground whitespace-pre-wrap">
-        {displayText || "Waiting for streamed tool input…"}
+        {displayText || t("waitingInput")}
       </pre>
     </div>
   );

@@ -2,17 +2,21 @@
 
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   BookMarkedIcon,
+  CodeIcon,
   ServerIcon,
   ShieldIcon,
   WrenchIcon,
 } from "lucide-react";
 
 import { McpServerManager } from "@/components/mcp/mcp-server-manager";
+import { CustomToolBuilder } from "@/components/custom-tools/custom-tool-builder";
+import { PageLoading } from "@/components/page-loading";
 import { SkillManager } from "@/components/skills/skill-manager";
 import { WorkspacePage } from "@/components/workspace-page";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { useRouter } from "@/i18n/navigation";
@@ -25,7 +29,7 @@ import {
 import { ToolApprovalsPanel } from "./approvals-panel";
 import { BuiltinToolsPanel } from "./builtin-tools-panel";
 
-type ToolsTab = "builtin" | "mcp" | "skills" | "approvals";
+type ToolsTab = "builtin" | "mcp" | "skills" | "custom" | "approvals";
 
 const TOOL_TAB_CONFIG = [
   {
@@ -56,6 +60,15 @@ const TOOL_TAB_CONFIG = [
     render: () => <SkillManager />,
   },
   {
+    value: "custom",
+    icon: CodeIcon,
+    labelKey: "tabs.custom",
+    helpKey: "customHelp",
+    canView: (permissions: WorkspacePermissions) =>
+      permissions.canConfigureTools,
+    render: () => <CustomToolBuilder />,
+  },
+  {
     value: "approvals",
     icon: ShieldIcon,
     labelKey: "tabs.approvals",
@@ -74,10 +87,12 @@ export function ToolsHub() {
   const t = useTranslations("tools");
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { workspaceId } = useWorkspace();
+  const { workspaceId, isLoading: workspaceLoading } = useWorkspace();
   const [permissions, setPermissions] = useState<WorkspacePermissions>(
     DEFAULT_WORKSPACE_PERMISSIONS,
   );
+  const [permissionsLoading, setPermissionsLoading] = useState(true);
+  const [permissionsError, setPermissionsError] = useState(false);
   const allowedTabs = useMemo(
     () => allowedToolTabs(permissions),
     [permissions],
@@ -88,23 +103,93 @@ export function ToolsHub() {
     ? requestedTab
     : (allowedTabValues[0] ?? "builtin");
 
-  useEffect(() => {
+  const loadPermissions = useCallback(async () => {
     if (!workspaceId) return;
+    setPermissionsLoading(true);
+    setPermissionsError(false);
+    try {
+      setPermissions(await fetchWorkspacePermissions(workspaceId));
+    } catch {
+      setPermissions(DEFAULT_WORKSPACE_PERMISSIONS);
+      setPermissionsError(true);
+    } finally {
+      setPermissionsLoading(false);
+    }
+  }, [workspaceId]);
+
+  useEffect(() => {
     let cancelled = false;
-    void fetchWorkspacePermissions(workspaceId)
-      .then((nextPermissions) => {
-        if (!cancelled) setPermissions(nextPermissions);
-      })
-      .catch(() => {
-        if (!cancelled) setPermissions(DEFAULT_WORKSPACE_PERMISSIONS);
-      });
+    const timeout = window.setTimeout(() => {
+      if (!cancelled) void loadPermissions();
+    }, 0);
     return () => {
       cancelled = true;
+      window.clearTimeout(timeout);
     };
-  }, [workspaceId]);
+  }, [loadPermissions]);
+
+  useEffect(() => {
+    if (
+      !permissionsLoading &&
+      allowedTabValues.length > 0 &&
+      requestedTab !== tab
+    ) {
+      router.replace(`/tools?tab=${tab}`);
+    }
+  }, [allowedTabValues.length, permissionsLoading, requestedTab, router, tab]);
 
   function setTab(value: string) {
     router.replace(`/tools?tab=${value}`);
+  }
+
+  if (workspaceLoading || !workspaceId || permissionsLoading) {
+    return <PageLoading label={t("permissionsLoading")} />;
+  }
+
+  if (permissionsError) {
+    return (
+      <WorkspacePage
+        title={t("title")}
+        description={t("description")}
+        width="wide"
+      >
+        <div
+          className="rounded-2xl border border-destructive/25 bg-destructive/5 p-5"
+          role="alert"
+        >
+          <h2 className="text-base font-semibold">{t("loadFailed")}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {t("loadFailedDescription")}
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="mt-4"
+            onClick={() => void loadPermissions()}
+          >
+            {t("retry")}
+          </Button>
+        </div>
+      </WorkspacePage>
+    );
+  }
+
+  if (allowedTabs.length === 0) {
+    return (
+      <WorkspacePage
+        title={t("title")}
+        description={t("description")}
+        width="wide"
+      >
+        <div className="rounded-2xl border bg-card p-5">
+          <h2 className="text-base font-semibold">{t("noAccessTitle")}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {t("noAccessDescription")}
+          </p>
+        </div>
+      </WorkspacePage>
+    );
   }
 
   return (

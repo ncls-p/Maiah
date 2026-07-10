@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ArrowDownIcon,
   ArrowUpIcon,
@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import {
+  SettingsLoadError,
   SettingsSection,
   SettingsSectionSkeleton,
   SettingsStatusBadge,
@@ -50,40 +51,49 @@ type SidebarNavState = {
 
 export function SidebarNavigationSettings() {
   const t = useTranslations("admin.settingsPage.sidebarNavigation");
+  const tPage = useTranslations("admin.settingsPage");
   const tNav = useTranslations("nav");
   const router = useRouter();
   const [state, setState] = useState<SidebarNavState | null>(null);
   const [items, setItems] = useState<SidebarNavItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [draggingId, setDraggingId] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
+  const loadSettings = useCallback(
+    async (signal?: AbortSignal) => {
+      setLoading(true);
+      setLoadError(false);
       try {
-        const res = await fetch("/api/admin/sidebar-navigation");
-        if (!res.ok) throw new Error("Unable to load sidebar navigation");
+        const res = await fetch("/api/admin/sidebar-navigation", { signal });
+        if (!res.ok) throw new Error(tPage("loadFailed"));
         const data = (await res.json()) as SidebarNavState;
-        if (!cancelled) {
-          setState(data);
-          setItems(data.config.items);
-        }
+        if (signal?.aborted) return;
+        setState(data);
+        setItems(data.config.items);
       } catch (error) {
+        if (signal?.aborted) return;
+        setLoadError(true);
         toast.error(
-          error instanceof Error ? error.message : "Unable to load settings",
+          error instanceof Error ? error.message : tPage("loadFailed"),
         );
-        return;
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!signal?.aborted) setLoading(false);
       }
-    }
-    void load();
+    },
+    [tPage],
+  );
+
+  useEffect(() => {
+    const controller = new AbortController();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- async settings bootstrap
+    void loadSettings(controller.signal);
     return () => {
-      cancelled = true;
+      controller.abort();
     };
-  }, []);
+  }, [loadSettings]);
 
   const labelById = new Map(
     (state?.catalog ?? []).map((entry) => [entry.id, entry.labelKey]),
@@ -146,7 +156,7 @@ export function SidebarNavigationSettings() {
         body: JSON.stringify({ items }),
       });
       if (!res.ok) {
-        throw new Error((await res.json()).error || "Unable to save settings");
+        throw new Error((await res.json()).error || tPage("saveFailed"));
       }
       const data = (await res.json()) as SidebarNavState;
       setState(data);
@@ -154,9 +164,7 @@ export function SidebarNavigationSettings() {
       toast.success(t("saved"));
       router.refresh();
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Unable to save settings",
-      );
+      toast.error(error instanceof Error ? error.message : tPage("saveFailed"));
       return;
     } finally {
       setSaving(false);
@@ -170,7 +178,7 @@ export function SidebarNavigationSettings() {
         method: "DELETE",
       });
       if (!res.ok) {
-        throw new Error((await res.json()).error || "Unable to reset settings");
+        throw new Error((await res.json()).error || tPage("resetFailed"));
       }
       const data = (await res.json()) as SidebarNavState;
       setState(data);
@@ -179,7 +187,7 @@ export function SidebarNavigationSettings() {
       router.refresh();
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Unable to reset settings",
+        error instanceof Error ? error.message : tPage("resetFailed"),
       );
       return;
     } finally {
@@ -187,8 +195,19 @@ export function SidebarNavigationSettings() {
     }
   }
 
-  if (loading || !state) {
+  if (loading) {
     return <SettingsSectionSkeleton rows={6} />;
+  }
+
+  if (loadError || !state) {
+    return (
+      <SettingsLoadError
+        title={tPage("loadFailed")}
+        description={tPage("loadErrorDescription")}
+        retryLabel={tPage("retry")}
+        onRetry={() => void loadSettings()}
+      />
+    );
   }
 
   const visibleCount = items.filter((item) => item.visible).length;

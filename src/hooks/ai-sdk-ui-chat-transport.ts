@@ -94,6 +94,19 @@ function titleFromData(data: unknown): string | null {
   return typeof title === "string" ? title : null;
 }
 
+function agentToolContextFromData(data: unknown): {
+  toolCallId: string;
+  agentContext: unknown;
+} | null {
+  if (typeof data !== "object" || data === null) return null;
+  const record = data as Record<string, unknown>;
+  if (typeof record.toolCallId !== "string") return null;
+  return {
+    toolCallId: record.toolCallId,
+    agentContext: record.agentContext,
+  };
+}
+
 async function* iterateChunks(stream: ReadableStream<UIMessageChunk>) {
   const reader = stream.getReader();
   try {
@@ -109,6 +122,7 @@ async function* iterateChunks(stream: ReadableStream<UIMessageChunk>) {
 
 export async function streamAiSdkUIChat(options: StreamAiSdkUIChatOptions) {
   const toolNamesByCallId = new Map<string, string>();
+  const agentContextsByCallId = new Map<string, unknown>();
   const transport = new DefaultChatTransport<UIMessage>({
     api: options.api,
     credentials: "same-origin",
@@ -176,6 +190,7 @@ export async function streamAiSdkUIChat(options: StreamAiSdkUIChatOptions) {
           toolCallId: chunk.toolCallId,
           toolName: chunk.toolName,
           input: chunk.input,
+          agentContext: agentContextsByCallId.get(chunk.toolCallId),
         });
         break;
       case "tool-output-available":
@@ -184,7 +199,9 @@ export async function streamAiSdkUIChat(options: StreamAiSdkUIChatOptions) {
           toolCallId: chunk.toolCallId,
           toolName: toolNamesByCallId.get(chunk.toolCallId) ?? "tool",
           output: chunk.output,
+          agentContext: agentContextsByCallId.get(chunk.toolCallId),
         });
+        agentContextsByCallId.delete(chunk.toolCallId);
         break;
       case "tool-output-denied":
         options.onEvent({
@@ -192,7 +209,9 @@ export async function streamAiSdkUIChat(options: StreamAiSdkUIChatOptions) {
           toolCallId: chunk.toolCallId,
           toolName: toolNamesByCallId.get(chunk.toolCallId) ?? "tool",
           output: { denied: true },
+          agentContext: agentContextsByCallId.get(chunk.toolCallId),
         });
+        agentContextsByCallId.delete(chunk.toolCallId);
         break;
       case "tool-output-error":
         options.onEvent({
@@ -200,8 +219,17 @@ export async function streamAiSdkUIChat(options: StreamAiSdkUIChatOptions) {
           toolCallId: chunk.toolCallId,
           toolName: toolNamesByCallId.get(chunk.toolCallId) ?? "tool",
           output: { denied: true, message: chunk.errorText },
+          agentContext: agentContextsByCallId.get(chunk.toolCallId),
         });
+        agentContextsByCallId.delete(chunk.toolCallId);
         break;
+      case "data-agent-tool-context": {
+        const context = agentToolContextFromData(chunk.data);
+        if (context) {
+          agentContextsByCallId.set(context.toolCallId, context.agentContext);
+        }
+        break;
+      }
       case "data-tool-approval": {
         const event = toolApprovalFromData(chunk.data);
         if (event) options.onEvent(event);

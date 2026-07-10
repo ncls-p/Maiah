@@ -6,6 +6,7 @@ export * from "./schema-tables/usage";
 export * from "./schema-tables/ai-providers";
 export * from "./schema-tables/agents";
 export * from "./schema-tables/conversations";
+export * from "./schema-tables/agent-runs";
 export * from "./schema-tables/mcp";
 export * from "./schema-tables/knowledge";
 export * from "./schema-tables/marketplace";

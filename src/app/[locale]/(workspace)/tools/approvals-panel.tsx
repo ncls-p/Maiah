@@ -1,7 +1,7 @@
 "use client";
 
 import { Link } from "@/i18n/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Activity,
@@ -16,6 +16,7 @@ import {
 import { toast } from "sonner";
 
 import { PageLoading } from "@/components/page-loading";
+import { summarizeToolInput } from "@/components/chat/tool-approval-banner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,6 +39,7 @@ interface ToolInvocation {
   toolSource: string;
   toolId: string;
   toolName: string;
+  input: unknown;
   riskLevel: string | null;
   status: string;
   latencyMs: number | null;
@@ -65,6 +67,10 @@ function isPendingApproval(invocation: ToolInvocation) {
 
 function getStatusLabel(status: string) {
   return status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function getToolDisplayName(toolName: string) {
+  return getStatusLabel(toolName);
 }
 
 function getStatusColor(status: string) {
@@ -115,57 +121,6 @@ function getStatusRing(status: string) {
   }
 }
 
-// ── Stat Card ──
-
-function StatCard({
-  label,
-  value,
-  icon: Icon,
-  color,
-  accent,
-}: {
-  label: string;
-  value: string | number;
-  icon: React.ElementType;
-  color: string;
-  accent: string;
-}) {
-  return (
-    <div
-      className={cn(
-        "group relative overflow-hidden rounded-2xl border border-border bg-background p-4 transition-colors hover:border-primary/35",
-      )}
-    >
-      {/* Accent bar */}
-      <div
-        className={cn(
-          "absolute left-0 top-0 h-full w-1 opacity-60 transition-opacity duration-300 group-hover:opacity-100",
-          accent,
-        )}
-      />
-
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex flex-col gap-1">
-          <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            {label}
-          </span>
-          <span className="text-2xl font-bold tracking-tight text-foreground">
-            {value}
-          </span>
-        </div>
-        <div
-          className={cn(
-            "flex size-10 shrink-0 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-110",
-            color,
-          )}
-        >
-          <Icon className="size-5" aria-hidden="true" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ── Status Dot ──
 
 function StatusDot({ status, animate }: { status: string; animate?: boolean }) {
@@ -199,19 +154,20 @@ function StatusDot({ status, animate }: { status: string; animate?: boolean }) {
 // ── Risk Badge ──
 
 function RiskBadge({ riskLevel }: { riskLevel: string | null }) {
+  const t = useTranslations("tools.approvals.risk");
   if (!riskLevel) return null;
   const config =
     riskLevel === "high" || riskLevel === "critical"
       ? {
           variant: "destructive" as const,
-          label: riskLevel === "critical" ? "⚠ Critical" : "↑ High",
+          label: riskLevel === "critical" ? t("critical") : t("high"),
         }
       : riskLevel === "medium"
         ? {
             variant: "outline" as const,
-            label: "→ Medium",
+            label: t("medium"),
           }
-        : { variant: "secondary" as const, label: "↓ Low" };
+        : { variant: "secondary" as const, label: t("low") };
 
   return <Badge variant={config.variant}>{config.label}</Badge>;
 }
@@ -229,6 +185,7 @@ function InvocationActions({
   onApprove: (invocationId: string) => void;
   onReject: (invocationId: string) => void;
 }) {
+  const t = useTranslations("tools.approvals");
   const isBusy = busyAction !== null;
 
   return (
@@ -246,7 +203,7 @@ function InvocationActions({
         ) : (
           <XCircle data-icon="inline-start" aria-hidden="true" />
         )}
-        Reject
+        {t("reject")}
       </Button>
       <Button
         type="button"
@@ -260,7 +217,7 @@ function InvocationActions({
         ) : (
           <CheckCircle2 data-icon="inline-start" aria-hidden="true" />
         )}
-        Approve
+        {t("approve")}
       </Button>
     </div>
   );
@@ -283,6 +240,12 @@ function InvocationRow({
   onReject: (id: string) => void;
   index: number;
 }) {
+  const locale = useLocale();
+  const t = useTranslations("tools.approvals");
+  const translatedStatus = t.has(`status.${invocation.status}`)
+    ? t(`status.${invocation.status}`)
+    : getStatusLabel(invocation.status);
+
   return (
     <div
       className={cn(
@@ -332,14 +295,24 @@ function InvocationRow({
                 status={invocation.status}
                 animate={isPendingApproval(invocation)}
               />
-              {getStatusLabel(invocation.status)}
+              {translatedStatus}
             </span>
           </div>
+
+          <p className="mt-2 text-sm leading-5 text-foreground/80">
+            {summarizeToolInput(
+              getToolDisplayName(invocation.toolName),
+              invocation.input,
+            )}
+          </p>
 
           {/* Secondary line: metadata */}
           <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
             <time dateTime={invocation.createdAt}>
-              {new Date(invocation.createdAt).toLocaleString()}
+              {new Intl.DateTimeFormat(locale, {
+                dateStyle: "medium",
+                timeStyle: "short",
+              }).format(new Date(invocation.createdAt))}
             </time>
 
             {invocation.latencyMs !== null && (
@@ -360,7 +333,7 @@ function InvocationRow({
                   className="inline-flex items-center gap-1 text-primary transition-colors hover:underline"
                 >
                   <MessageSquare className="size-3" aria-hidden="true" />
-                  Conversation
+                  {t("conversation")}
                 </Link>
               </>
             )}
@@ -392,67 +365,6 @@ function InvocationRow({
   );
 }
 
-// ── Pending Approvals Panel ──
-
-function PendingApprovalsPanel({
-  invocations,
-  busyInvocation,
-  onApprove,
-  onReject,
-}: {
-  invocations: ToolInvocation[];
-  busyInvocation: { id: string; action: ToolAction } | null;
-  onApprove: (invocationId: string) => void;
-  onReject: (invocationId: string) => void;
-}) {
-  if (invocations.length === 0) return null;
-
-  return (
-    <div className="animate-in-up stagger-1">
-      {/* Header */}
-      <div className="mb-4 flex items-center gap-3">
-        <div className="relative flex size-11 shrink-0 items-center justify-center rounded-xl bg-warning/10 ring-1 ring-warning/20">
-          <Clock
-            className="size-5 text-warning animate-pulse"
-            aria-hidden="true"
-          />
-          <span className="absolute -right-1.5 -top-1.5 flex size-5 items-center justify-center rounded-full bg-warning text-[0.6rem] font-bold text-warning-foreground shadow-sm">
-            {invocations.length}
-          </span>
-        </div>
-        <div>
-          <h2 className="text-lg font-semibold tracking-tight text-foreground">
-            Pending Approvals
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            {invocations.length} tool invocation
-            {invocations.length !== 1 ? "s" : ""} awaiting your permission
-          </p>
-        </div>
-      </div>
-
-      {/* Items */}
-      <div className="flex flex-col gap-3">
-        {invocations.map((invocation, i) => (
-          <InvocationRow
-            key={invocation.id}
-            invocation={invocation}
-            showActions
-            busyAction={
-              busyInvocation?.id === invocation.id
-                ? busyInvocation.action
-                : null
-            }
-            onApprove={onApprove}
-            onReject={onReject}
-            index={i}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
 // ── Invocation List ──
 
 function InvocationList({
@@ -468,6 +380,7 @@ function InvocationList({
   onApprove: (invocationId: string) => void;
   onReject: (invocationId: string) => void;
 }) {
+  const t = useTranslations("tools.approvals");
   if (invocations.length === 0) {
     return (
       <Empty className="mt-4">
@@ -475,11 +388,11 @@ function InvocationList({
           <EmptyMedia variant="icon">
             <Shield aria-hidden="true" />
           </EmptyMedia>
-          <EmptyTitle>No tool invocations found</EmptyTitle>
+          <EmptyTitle>{t("emptyTitle")}</EmptyTitle>
           <EmptyDescription>
             {filterStatus !== "all"
-              ? `No invocations with status "${getStatusLabel(filterStatus)}".`
-              : "Tool invocations will appear here when agents execute tools."}
+              ? t("emptyFiltered")
+              : t("emptyDescription")}
           </EmptyDescription>
         </EmptyHeader>
       </Empty>
@@ -490,10 +403,8 @@ function InvocationList({
     <div className="mt-4 flex flex-col gap-2">
       {/* Column header */}
       <div className="flex items-center justify-between px-1 pb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-        <span>Invocations</span>
-        <span>
-          {invocations.length} result{invocations.length !== 1 ? "s" : ""}
-        </span>
+        <span>{t("invocations")}</span>
+        <span>{t("results", { count: invocations.length })}</span>
       </div>
 
       {invocations.map((invocation, i) => (
@@ -523,35 +434,6 @@ function filterByStatus(invocations: ToolInvocation[], filterStatus: string) {
     return invocations.filter((i) => HISTORY_STATUSES.has(i.status));
   }
   return invocations;
-}
-
-function getInvocationStats(
-  invocations: ToolInvocation[],
-  pendingCount: number,
-) {
-  const total = invocations.length;
-  const success = invocations.filter((i) => i.status === "success").length;
-  const failed = invocations.filter(
-    (i) =>
-      i.status === "failed" || i.status === "rejected" || i.status === "denied",
-  ).length;
-  const latencies = invocations
-    .map((i) => i.latencyMs)
-    .filter((v): v is number => v !== null);
-  const avgLatency =
-    latencies.length > 0
-      ? Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length)
-      : 0;
-  const successRate = total > 0 ? Math.round((success / total) * 100) : 0;
-
-  return {
-    total,
-    pending: pendingCount,
-    success,
-    failed,
-    avgLatency,
-    successRate,
-  };
 }
 
 async function submitInvocationAction(
@@ -593,45 +475,6 @@ async function fetchToolInvocations({
   );
   if (!res.ok) throw new Error("Failed to load tool invocations");
   return (await res.json()) as ToolInvocation[];
-}
-
-function InvocationStatsRow({
-  stats,
-}: {
-  stats: ReturnType<typeof getInvocationStats>;
-}) {
-  return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 animate-in-up stagger-1">
-      <StatCard
-        label="Total"
-        value={stats.total}
-        icon={Activity}
-        color="bg-primary/10 text-primary"
-        accent="bg-primary"
-      />
-      <StatCard
-        label="Pending"
-        value={stats.pending}
-        icon={Clock}
-        color="bg-warning/10 text-warning"
-        accent="bg-warning"
-      />
-      <StatCard
-        label="Success Rate"
-        value={`${stats.successRate}%`}
-        icon={CheckCircle2}
-        color="bg-success/10 text-success"
-        accent="bg-success"
-      />
-      <StatCard
-        label="Avg Latency"
-        value={`${stats.avgLatency}ms`}
-        icon={Zap}
-        color="bg-info/10 text-info"
-        accent="bg-info"
-      />
-    </div>
-  );
 }
 
 type InvocationTabsProps = {
@@ -693,6 +536,7 @@ function useToolInvocationData(
 ) {
   const [invocations, setInvocations] = useState<ToolInvocation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const fetchInvocations = useCallback(
     (signal?: AbortSignal) =>
       fetchToolInvocations({ workspaceId, filterStatus, signal }),
@@ -705,12 +549,13 @@ function useToolInvocationData(
     const controller = new AbortController();
 
     async function loadInvocations() {
+      setError(null);
       try {
         const data = await fetchInvocations(controller.signal);
         if (!cancelled) setInvocations(data);
       } catch (err) {
         if (err instanceof Error && err.name !== "AbortError") {
-          toast.error(err.message);
+          setError(err.message);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -746,32 +591,36 @@ function useToolInvocationData(
     };
   }, [fetchInvocations, workspaceId]);
 
-  return { invocations, loading, fetchInvocations, setInvocations };
+  return {
+    invocations,
+    loading,
+    error,
+    setError,
+    fetchInvocations,
+    setInvocations,
+  };
 }
 
 function useInvocationActions(
   fetchInvocations: FetchInvocations,
   setInvocations: (invocations: ToolInvocation[]) => void,
 ) {
+  const t = useTranslations("tools.approvals");
   const [busyInvocation, setBusyInvocation] = useState<BusyInvocation>(null);
   const runInvocationAction = useCallback(
     async (invocationId: string, action: ToolAction) => {
       setBusyInvocation({ id: invocationId, action });
       try {
         await submitInvocationAction(invocationId, action);
-        toast.success(
-          `Tool invocation ${action === "approve" ? "approved" : "rejected"}`,
-        );
+        toast.success(action === "approve" ? t("approved") : t("rejected"));
         setInvocations(await fetchInvocations());
       } catch (err) {
-        toast.error(
-          err instanceof Error ? err.message : `Failed to ${action} invocation`,
-        );
+        toast.error(err instanceof Error ? err.message : t("actionFailed"));
       } finally {
         setBusyInvocation(null);
       }
     },
-    [fetchInvocations, setInvocations],
+    [fetchInvocations, setInvocations, t],
   );
 
   return { busyInvocation, runInvocationAction };
@@ -779,10 +628,17 @@ function useInvocationActions(
 
 export function ToolApprovalsPanel() {
   const t = useTranslations("tools.filters");
+  const tApprovals = useTranslations("tools.approvals");
   const { workspaceId, isLoading: workspaceLoading } = useWorkspace();
-  const [filterStatus, setFilterStatus] = useState<string>("all");
-  const { invocations, loading, fetchInvocations, setInvocations } =
-    useToolInvocationData(workspaceId, filterStatus);
+  const [filterStatus, setFilterStatus] = useState<string>("pending");
+  const {
+    invocations,
+    loading,
+    error,
+    setError,
+    fetchInvocations,
+    setInvocations,
+  } = useToolInvocationData(workspaceId, filterStatus);
   const { busyInvocation, runInvocationAction } = useInvocationActions(
     fetchInvocations,
     setInvocations,
@@ -793,24 +649,61 @@ export function ToolApprovalsPanel() {
     [invocations],
   );
 
-  const stats = useMemo(
-    () => getInvocationStats(invocations, pendingInvocations.length),
-    [invocations, pendingInvocations.length],
-  );
-
   if (workspaceLoading || !workspaceId || loading) {
-    return <PageLoading label="Loading tool invocations" />;
+    return <PageLoading label={tApprovals("loading")} />;
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-2xl border border-destructive/25 bg-destructive/5 p-5">
+        <h2 className="text-base font-semibold">{tApprovals("loadFailed")}</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {tApprovals("loadFailedDescription")}
+        </p>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="mt-4"
+          onClick={() => {
+            setError(null);
+            void fetchInvocations()
+              .then(setInvocations)
+              .catch((retryError) => {
+                const message =
+                  retryError instanceof Error
+                    ? retryError.message
+                    : tApprovals("loadFailed");
+                setError(message);
+                toast.error(message);
+              });
+          }}
+        >
+          {tApprovals("retry")}
+        </Button>
+      </div>
+    );
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <InvocationStatsRow stats={stats} />
-      <PendingApprovalsPanel
-        invocations={pendingInvocations}
-        busyInvocation={busyInvocation}
-        onApprove={(id) => void runInvocationAction(id, "approve")}
-        onReject={(id) => void runInvocationAction(id, "reject")}
-      />
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-3 rounded-2xl border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-base font-semibold">{tApprovals("title")}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {pendingInvocations.length > 0
+              ? tApprovals("pendingSummary", {
+                  count: pendingInvocations.length,
+                })
+              : tApprovals("clearSummary")}
+          </p>
+        </div>
+        {pendingInvocations.length > 0 ? (
+          <Badge className="self-start sm:self-auto" variant="secondary">
+            {tApprovals("pendingCount", { count: pendingInvocations.length })}
+          </Badge>
+        ) : null}
+      </div>
       <InvocationTabs
         filterStatus={filterStatus}
         invocations={invocations}

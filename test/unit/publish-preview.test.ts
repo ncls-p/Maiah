@@ -334,7 +334,6 @@ describe("getPublishPreview", () => {
       expect(preview.resourceType).toBe("custom_tool");
       expect(preview.credentialFields).toHaveLength(1);
       expect(preview.credentialFields[0].key).toBe("API_KEY");
-      expect(preview.canIncludeSecrets).toBe(true);
       expect(preview.manifestPreview).toMatchObject({
         type: "custom_tool",
         requiresCredentials: true,

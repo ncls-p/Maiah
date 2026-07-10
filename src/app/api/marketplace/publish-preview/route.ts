@@ -15,10 +15,6 @@ const schema = z
     mcpServerId: z.uuid().optional(),
     mcpToolId: z.uuid().optional(),
     itemId: z.uuid().optional(),
-    includeSecrets: z
-      .enum(["true", "false"])
-      .optional()
-      .transform((v) => v === "true"),
   })
   .refine(
     (data) => {
@@ -48,7 +44,6 @@ export async function GET(req: NextRequest) {
         mcpServerId: searchParams.get("mcpServerId") ?? undefined,
         mcpToolId: searchParams.get("mcpToolId") ?? undefined,
         itemId: searchParams.get("itemId") ?? undefined,
-        includeSecrets: searchParams.get("includeSecrets") ?? undefined,
       });
       if (!parsed.success)
         return NextResponse.json(
@@ -71,7 +66,6 @@ export async function GET(req: NextRequest) {
           mcpServerId: parsed.data.mcpServerId,
           mcpToolId: parsed.data.mcpToolId,
           itemId: parsed.data.itemId,
-          includeSecrets: parsed.data.includeSecrets,
         }),
       );
     },
@@ -86,7 +80,11 @@ export async function GET(req: NextRequest) {
             status:
               error instanceof Error && error.message.includes("not found")
                 ? 404
-                : 500,
+                : error instanceof Error &&
+                    error.message ===
+                      "Orchestrators cannot be published to the marketplace yet"
+                  ? 400
+                  : 500,
           },
         );
       },

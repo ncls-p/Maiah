@@ -84,7 +84,7 @@ export function UserManagement({
 
   async function refreshUsers() {
     const res = await fetch("/api/admin/users");
-    if (!res.ok) throw new Error("Unable to refresh users");
+    if (!res.ok) throw new Error(t("refreshFailed"));
     const data = (await res.json()) as { users: ManagedUser[] };
     setUsers(data.users);
   }
@@ -100,17 +100,14 @@ export function UserManagement({
       });
       if (!res.ok) {
         throw new Error(
-          (await res.json().catch(() => null))?.error ||
-            "Unable to create user",
+          (await res.json().catch(() => null))?.error || t("createFailed"),
         );
       }
       setForm(emptyForm);
       await refreshUsers();
       toast.success(t("userCreated"));
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Unable to create user",
-      );
+      toast.error(error instanceof Error ? error.message : t("createFailed"));
     } finally {
       setCreating(false);
     }
@@ -129,16 +126,13 @@ export function UserManagement({
       });
       if (!res.ok) {
         throw new Error(
-          (await res.json().catch(() => null))?.error ||
-            "Unable to update user",
+          (await res.json().catch(() => null))?.error || t("updateFailed"),
         );
       }
       await refreshUsers();
       toast.success(t("userUpdated"));
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Unable to update user",
-      );
+      toast.error(error instanceof Error ? error.message : t("updateFailed"));
     } finally {
       setBusyUserId(null);
     }
@@ -191,6 +185,8 @@ export function UserManagement({
                   <FieldContent>
                     <Input
                       id="new-user-name"
+                      name="name"
+                      autoComplete="name"
                       required
                       value={form.name}
                       onChange={(event) =>
@@ -204,7 +200,9 @@ export function UserManagement({
                   <FieldContent>
                     <Input
                       id="new-user-email"
+                      name="email"
                       type="email"
+                      autoComplete="email"
                       required
                       value={form.email}
                       onChange={(event) =>
@@ -220,7 +218,9 @@ export function UserManagement({
                   <FieldContent>
                     <Input
                       id="new-user-password"
+                      name="new-password"
                       type="password"
+                      autoComplete="new-password"
                       minLength={8}
                       required
                       value={form.password}
@@ -337,7 +337,7 @@ export function UserManagement({
                       type="button"
                       size="sm"
                       variant="outline"
-                      disabled={busyUserId === user.id}
+                      disabled={isCurrentUser || busyUserId === user.id}
                       onClick={() =>
                         updateUser(user.id, {
                           role: user.role === ADMIN_ROLE ? "user" : ADMIN_ROLE,
@@ -356,7 +356,7 @@ export function UserManagement({
                       type="button"
                       size="sm"
                       variant={user.banned ? "outline" : "destructive"}
-                      disabled={busyUserId === user.id}
+                      disabled={isCurrentUser || busyUserId === user.id}
                       onClick={() =>
                         updateUser(user.id, { banned: !user.banned })
                       }

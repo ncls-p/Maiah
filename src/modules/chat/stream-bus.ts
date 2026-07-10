@@ -1,4 +1,6 @@
 import { createUIMessageStream, createUIMessageStreamResponse } from "ai";
+import { parseAgentToolDisplayContext } from "@/modules/agent/tool-progress-payload";
+import { projectToolMessagePayload } from "@/modules/tool/safe-payload";
 
 type StreamEvent = Record<string, unknown>;
 
@@ -29,6 +31,32 @@ const globalStore = globalThis as typeof globalThis & {
 const runs = globalStore.__aiHubChatStreamRuns ?? new Map<string, StreamRun>();
 globalStore.__aiHubChatStreamRuns = runs;
 
+function safeStreamEvent(event: StreamEvent): StreamEvent {
+  if (event.type === "tool_call") {
+    return {
+      ...event,
+      input: projectToolMessagePayload(event.input),
+      agentContext:
+        parseAgentToolDisplayContext(event.agentContext) ?? undefined,
+    };
+  }
+  if (event.type === "tool_result") {
+    return {
+      ...event,
+      output: projectToolMessagePayload(event.output),
+      agentContext:
+        parseAgentToolDisplayContext(event.agentContext) ?? undefined,
+    };
+  }
+  if (event.type === "tool_approval_required") {
+    return { ...event, input: projectToolMessagePayload(event.input) };
+  }
+  if (event.type === "tool_input_delta") {
+    return { ...event, delta: "" };
+  }
+  return event;
+}
+
 function getRun(messageId: string) {
   let run = runs.get(messageId);
   if (!run) {
@@ -40,9 +68,10 @@ function getRun(messageId: string) {
 
 export function publishChatStreamEvent(messageId: string, event: StreamEvent) {
   const run = getRun(messageId);
-  run.events.push(event);
+  const safeEvent = safeStreamEvent(event);
+  run.events.push(safeEvent);
   for (const subscriber of run.subscribers) {
-    subscriber.enqueue(event);
+    subscriber.enqueue(safeEvent);
   }
 }
 
@@ -285,11 +314,21 @@ export function createChatUIMessageStreamResponse(
                 const toolCallId = stringValue(event.toolCallId);
                 const toolName = stringValue(event.toolName);
                 if (toolCallId && toolName) {
+                  if (event.agentContext) {
+                    writer.write({
+                      type: "data-agent-tool-context",
+                      id: `${toolCallId}:context`,
+                      data: {
+                        toolCallId,
+                        agentContext: event.agentContext,
+                      },
+                    });
+                  }
                   writer.write({
                     type: "tool-input-available",
                     toolCallId,
                     toolName,
-                    input: event.input,
+                    input: projectToolMessagePayload(event.input),
                   });
                 }
                 return;
@@ -298,13 +337,23 @@ export function createChatUIMessageStreamResponse(
               if (type === "tool_result") {
                 const toolCallId = stringValue(event.toolCallId);
                 if (!toolCallId) return;
+                if (event.agentContext) {
+                  writer.write({
+                    type: "data-agent-tool-context",
+                    id: `${toolCallId}:context`,
+                    data: {
+                      toolCallId,
+                      agentContext: event.agentContext,
+                    },
+                  });
+                }
                 if (outputIsDenied(event.output)) {
                   writer.write({ type: "tool-output-denied", toolCallId });
                 } else {
                   writer.write({
                     type: "tool-output-available",
                     toolCallId,
-                    output: event.output,
+                    output: projectToolMessagePayload(event.output),
                   });
                 }
                 return;
@@ -319,7 +368,7 @@ export function createChatUIMessageStreamResponse(
                     data: {
                       invocationId,
                       toolName: event.toolName,
-                      input: event.input,
+                      input: projectToolMessagePayload(event.input),
                     },
                   });
                 }

@@ -12,7 +12,7 @@ import {
   UserIcon,
   XCircleIcon,
 } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -222,10 +222,12 @@ function AuditFilters({
 function AuditEventRow({
   event,
   isLast,
+  locale,
   t,
 }: {
   event: AuditEvent;
   isLast: boolean;
+  locale: string;
   t: ReturnType<typeof useTranslations<"admin.audit">>;
 }) {
   const meta = outcomeMeta(event.outcome);
@@ -233,6 +235,18 @@ function AuditEventRow({
   const parsed = formatAction(event.action);
   const actorLabel = event.actorName ?? event.actorEmail ?? t("systemActor");
   const createdAt = new Date(event.createdAt);
+  const createdAtLabel = new Intl.DateTimeFormat(locale, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(createdAt);
+  const outcomeLabel =
+    event.outcome === "success"
+      ? t("outcomeSuccess")
+      : event.outcome === "failed"
+        ? t("outcomeFailed")
+        : event.outcome === "denied"
+          ? t("outcomeDenied")
+          : meta.label;
 
   return (
     <div className="relative flex gap-4">
@@ -267,7 +281,7 @@ function AuditEventRow({
                 )}
               >
                 <OutcomeIcon aria-hidden="true" />
-                {meta.label}
+                {outcomeLabel}
               </Badge>
               {event.resourceType ? (
                 <Badge
@@ -308,9 +322,9 @@ function AuditEventRow({
           <time
             className="shrink-0 text-xs text-muted-foreground sm:text-right"
             dateTime={event.createdAt}
-            title={createdAt.toLocaleString()}
+            title={createdAtLabel}
           >
-            {createdAt.toLocaleString()}
+            {createdAtLabel}
           </time>
         </div>
       </article>
@@ -374,6 +388,7 @@ export function AuditDashboard({
   onResetAction: () => void;
   onExportAction: () => void;
 }) {
+  const locale = useLocale();
   const t = useTranslations("admin.audit");
   const stats = computeStats(events);
 
@@ -461,6 +476,7 @@ export function AuditDashboard({
                 key={event.id}
                 event={event}
                 isLast={index === events.length - 1}
+                locale={locale}
                 t={t}
               />
             ))}

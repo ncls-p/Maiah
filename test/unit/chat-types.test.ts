@@ -58,6 +58,13 @@ describe("chat message parts", () => {
 	});
 
 	it("merges matching tool calls and results into one renderable card", () => {
+		const completedAgentContext = {
+			agentId: "agent-1",
+			agentName: "Research specialist",
+			runId: "run-1",
+			depth: 1,
+			status: "success",
+		};
 		const message: ChatMessage = {
 			id: "message",
 			role: "assistant",
@@ -68,6 +75,10 @@ describe("chat message parts", () => {
 						toolCallId: "call-1",
 						toolName: "web_search",
 						input: { query: "next" },
+						agentContext: {
+							...completedAgentContext,
+							status: "running",
+						},
 					}),
 				},
 				{
@@ -76,6 +87,7 @@ describe("chat message parts", () => {
 						toolCallId: "call-1",
 						toolName: "web_search",
 						output: { results: [] },
+						agentContext: completedAgentContext,
 					}),
 				},
 			],
@@ -90,6 +102,7 @@ describe("chat message parts", () => {
 			toolName: "web_search",
 			input: { query: "next" },
 			output: { results: [] },
+			agentContext: completedAgentContext,
 		});
 	});
 

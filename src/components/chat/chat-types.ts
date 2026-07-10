@@ -162,12 +162,14 @@ export type ChatStreamEvent =
       toolCallId: string;
       toolName: string;
       input: unknown;
+      agentContext?: unknown;
     }
   | {
       type: "tool_result";
       toolCallId: string;
       toolName: string;
       output: unknown;
+      agentContext?: unknown;
     }
   | { type: "file"; artifact: CodeWorkspaceArtifact }
   | { type: "citations"; citations: ChatCitation[] };
@@ -218,6 +220,7 @@ function mergeToolParts(parts: ChatMessagePart[]): ChatMessagePart[] {
             ...parsed,
             toolName: parsed.toolName ?? result.toolName,
             output: result.output,
+            agentContext: result.agentContext ?? parsed.agentContext,
           }),
         },
       ];
@@ -265,6 +268,7 @@ export function parseToolPart(content: string): {
   streamingInput?: boolean;
   denied?: boolean;
   message?: string;
+  agentContext?: unknown;
 } {
   if (!content) return {};
   try {

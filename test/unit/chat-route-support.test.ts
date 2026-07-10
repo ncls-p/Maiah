@@ -8,6 +8,10 @@ const toolUseCasesMock = vi.hoisted(() => ({
 	logToolInvocation: vi.fn(),
 }));
 
+const invocationStateMock = vi.hoisted(() => ({
+	waitForApproval: vi.fn(),
+}));
+
 vi.mock("@/modules/tool/use-cases", () => toolUseCasesMock);
 
 vi.mock("@/server/infrastructure/db", () => ({
@@ -18,9 +22,7 @@ vi.mock("@/server/infrastructure/ai-sdk/devtools", () => ({
 	registerAiSdkDevTools: vi.fn(),
 }));
 
-vi.mock("@/modules/tool/invocation-state", () => ({
-	waitForApproval: vi.fn(),
-}));
+vi.mock("@/modules/tool/invocation-state", () => invocationStateMock);
 
 vi.mock("@/modules/tool/opa-approval-policy", () => ({
 	evaluateOpaToolApprovalPolicy: vi.fn(async () => null),
@@ -42,6 +44,7 @@ async function loadModules() {
 		buildBoundTools: routeSupport.buildBoundTools as BuildBoundTools,
 		getBuiltInToolByName:
 			builtinTools.getBuiltInToolByName as BuiltInToolLookup,
+		waitForApproval: invocationStateMock.waitForApproval,
 	};
 }
 
@@ -134,5 +137,53 @@ describe("chat route tool gating", () => {
 				toolCall: { toolName: toolKey, input: {} },
 			} as never),
 		).resolves.toMatchObject({ type: "denied" });
+	});
+
+	it("emits a bounded redacted payload for human approval", async () => {
+		const { buildBoundTools, waitForApproval } = await loadModules();
+		const onApprovalRequired = vi.fn();
+		toolUseCasesMock.getToolBindingsForVersion.mockResolvedValue([
+			{
+				id: "binding-1",
+				agentVersionId: "version-1",
+				toolSource: "custom",
+				toolId: "12345678-1234-4234-9234-123456789abc",
+				requireApproval: true,
+				riskLevel: "high",
+				createdAt: new Date(),
+			},
+		]);
+		toolUseCasesMock.getCustomBindingContext.mockResolvedValue({
+			tool: {
+				id: "12345678-1234-4234-9234-123456789abc",
+				name: "post_webhook",
+				description: "Post a webhook",
+				inputSchemaJson: { type: "object", properties: {} },
+			},
+		});
+		toolUseCasesMock.logToolInvocation.mockResolvedValue({ id: "invocation-1" });
+		waitForApproval.mockResolvedValue({
+			status: "rejected",
+			error: "Rejected by user",
+		});
+
+		const { tools } = await buildBoundTools({
+			...buildInput(),
+			onApprovalRequired,
+		});
+		const [tool] = Object.values(tools);
+		await (tool.execute as (input: unknown) => Promise<unknown>)({
+			apiKey: "hidden",
+			maxOutputTokens: 512,
+		});
+
+		expect(onApprovalRequired).toHaveBeenCalledWith({
+			invocationId: "invocation-1",
+			toolName: "post_webhook",
+			input: {
+				apiKey: "[REDACTED]",
+				maxOutputTokens: 512,
+			},
+		});
 	});
 });

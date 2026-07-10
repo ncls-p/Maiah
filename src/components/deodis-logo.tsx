@@ -13,16 +13,18 @@ interface DeodisLogoProps {
 export function DeodisLogo({
   className,
   href = "/",
-  priority = false,
+  priority = true,
   label = "Deodis home",
 }: DeodisLogoProps) {
   const image = (
     <Image
       src="/deodis-logo.png"
       alt="Deodis"
+      data-no-outline="true"
       width={857}
       height={320}
-      priority={priority}
+      loading={priority ? "eager" : "lazy"}
+      fetchPriority={priority ? "high" : "auto"}
       className={cn("h-8 w-auto sm:h-9", className)}
     />
   );
@@ -34,7 +36,7 @@ export function DeodisLogo({
   return (
     <Link
       href={href}
-      className="inline-flex shrink-0 items-center"
+      className="inline-flex min-h-10 shrink-0 items-center rounded-lg"
       aria-label={label}
     >
       {image}

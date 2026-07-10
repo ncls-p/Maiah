@@ -4,6 +4,8 @@ import {
   handleRoute,
   requireWorkspacePermissionAsync,
 } from "@/lib/route-handler";
+import { getBuiltInTool } from "@/modules/tool/builtin-tools";
+import { rejectPendingToolInvocation } from "@/modules/tool/invocation-approval";
 import { audit } from "@/server/domain/services/audit";
 import { db } from "@/server/infrastructure/db";
 import {
@@ -44,27 +46,43 @@ export async function POST(
           { status: 404 },
         );
       }
+      const rejectionPermission =
+        invocation.toolSource === "builtin" &&
+        getBuiltInTool(invocation.toolId)?.name ===
+          "github_publish_code_workspace"
+          ? "agents.chat"
+          : "tools.executeRestricted";
       const forbidden = await requireWorkspacePermissionAsync(
         session.user.id,
         invocation.workspaceId,
-        "tools.executeRestricted",
+        rejectionPermission,
       );
       if (forbidden) return forbidden;
-      if (invocation.status !== "awaiting_approval") {
+      const transition = await rejectPendingToolInvocation(
+        invocation.id,
+        session.user.id,
+      );
+      if (transition.kind === "missing") {
         return NextResponse.json(
-          { error: "Invocation is not awaiting approval" },
+          { error: "Invocation not found" },
+          { status: 404 },
+        );
+      }
+      if (transition.kind === "unchanged") {
+        if (transition.invocation.status === "rejected") {
+          return NextResponse.json({
+            ok: true,
+            status: "rejected",
+            alreadyResolved: true,
+          });
+        }
+        return NextResponse.json(
+          {
+            error: `Invocation can no longer be rejected (status: ${transition.invocation.status})`,
+          },
           { status: 409 },
         );
       }
-      await db
-        .update(toolInvocations)
-        .set({
-          status: "rejected",
-          errorMessage: "Rejected by user",
-          approvedByUserId: session.user.id,
-          completedAt: new Date(),
-        })
-        .where(eq(toolInvocations.id, invocation.id));
       await audit.emit({
         workspaceId: invocation.workspaceId,
         actorPrincipalType: "user",

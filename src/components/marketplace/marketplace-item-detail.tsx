@@ -305,9 +305,6 @@ function CustomToolManifestSection({
             {t("credentialsRequired")}
           </Badge>
         ) : null}
-        {manifest.tool.secretsIncluded ? (
-          <Badge variant="default">{t("credentialsIncluded")}</Badge>
-        ) : null}
       </div>
       {manifest.tool.n8nWorkflowUrl ? (
         <InfoRow label={t("workflow")} value={manifest.tool.n8nWorkflowUrl} />

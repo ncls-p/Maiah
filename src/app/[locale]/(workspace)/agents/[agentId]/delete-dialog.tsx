@@ -1,4 +1,7 @@
+"use client";
+
 import { Loader2, Trash2Icon } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import {
   AlertDialog,
@@ -24,18 +27,21 @@ export function DeleteDialog({
   deleting: boolean;
   onDelete: () => void;
 }) {
+  const t = useTranslations("agents.list");
+  const tCommon = useTranslations("common");
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete assistant?</AlertDialogTitle>
+          <AlertDialogTitle>{t("deleteTitle")}</AlertDialogTitle>
           <AlertDialogDescription>
-            This permanently removes &quot;{agentName}&quot; and all its
-            configuration. This action cannot be undone.
+            {t("deleteNamedDescription", { name: agentName ?? "" })}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={deleting}>
+            {tCommon("cancel")}
+          </AlertDialogCancel>
           <AlertDialogAction
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             disabled={deleting}
@@ -44,12 +50,12 @@ export function DeleteDialog({
             {deleting ? (
               <>
                 <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-                Deleting…
+                {t("deleting")}
               </>
             ) : (
               <>
                 <Trash2Icon className="size-4" aria-hidden="true" />
-                Delete assistant
+                {tCommon("delete")}
               </>
             )}
           </AlertDialogAction>

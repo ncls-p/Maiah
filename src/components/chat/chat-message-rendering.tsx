@@ -2,9 +2,12 @@
 
 import dynamic from "next/dynamic";
 import { memo, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import type * as React from "react";
 import { createPortal } from "react-dom";
 import {
+  BotIcon,
   BrainIcon,
   CheckCircle2Icon,
   CheckIcon,
@@ -73,6 +76,10 @@ import {
 } from "@/components/ui/collapsible";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import {
+  parseAgentToolDisplayContext,
+  type AgentToolDisplayContext,
+} from "@/modules/agent/tool-progress-payload";
 
 const RichEditor = dynamic<RichEditorProps>(
   () => import("@/components/chat/rich-editor").then((mod) => mod.RichEditor),
@@ -106,6 +113,7 @@ function ExternalLinkSafetyModal({
   onClose,
   onConfirm,
 }: LinkSafetyModalProps) {
+  const t = useTranslations("chat.rendering");
   if (!isOpen || typeof document === "undefined") return null;
 
   return createPortal(
@@ -124,27 +132,32 @@ function ExternalLinkSafetyModal({
           id="external-link-title"
           className="text-base font-semibold text-foreground"
         >
-          Open external link?
+          {t("externalLinkTitle")}
         </h2>
         <p className="mt-2 text-muted-foreground">
-          You&apos;re about to visit an external website.
+          {t("externalLinkDescription")}
         </p>
         <p className="mt-3 break-all rounded-lg bg-muted/50 p-2 font-mono text-xs text-muted-foreground">
           {url}
         </p>
         <div className="mt-5 flex flex-wrap justify-end gap-2">
           <Button type={BUTTON_TYPE} variant={GHOST_VARIANT} onClick={onClose}>
-            Cancel
+            {t("cancel")}
           </Button>
           <Button
             type={BUTTON_TYPE}
             variant={OUTLINE_VARIANT}
-            onClick={() => void navigator.clipboard.writeText(url)}
+            onClick={() => {
+              void navigator.clipboard
+                .writeText(url)
+                .then(() => toast.success(t("linkCopied")))
+                .catch(() => toast.error(t("linkCopyFailed")));
+            }}
           >
-            Copy link
+            {t("copyLink")}
           </Button>
           <Button type={BUTTON_TYPE} onClick={onConfirm}>
-            Open link
+            {t("openLink")}
           </Button>
         </div>
       </div>
@@ -160,10 +173,12 @@ const STREAMDOWN_LINK_SAFETY: LinkSafetyConfig = {
 };
 
 function StreamingThinking() {
+  const t = useTranslations("chat.rendering");
+  const label = t("thinking");
   return (
-    <div className="streaming-thinking" aria-label="Assistant is thinking">
-      <span className="streaming-thinking__text t-shimmer" data-text="Thinking">
-        Thinking
+    <div className="streaming-thinking" aria-label={t("assistantThinking")}>
+      <span className="streaming-thinking__text t-shimmer" data-text={label}>
+        {label}
       </span>
       <span className="streaming-thinking__dots" aria-hidden="true">
         <span />
@@ -175,11 +190,13 @@ function StreamingThinking() {
 }
 
 export function StreamingStatus() {
+  const t = useTranslations("chat.rendering");
+  const label = t("generating");
   return (
-    <span className="streaming-status" aria-label="Assistant is generating">
+    <span className="streaming-status" aria-label={t("assistantGenerating")}>
       <span className="streaming-status__dot" aria-hidden="true" />
-      <span className="t-shimmer" data-text="Generating">
-        Generating
+      <span className="t-shimmer" data-text={label}>
+        {label}
       </span>
     </span>
   );
@@ -194,6 +211,7 @@ function PendingApprovalCard({
   onApprove?: (approval: PendingToolApproval) => void;
   onReject?: (approval: PendingToolApproval) => void;
 }) {
+  const t = useTranslations("chat.rendering");
   const friendlyName = formatToolName(pendingApproval.toolName);
   const summary = summarizeToolInput(friendlyName, pendingApproval.input);
 
@@ -205,7 +223,9 @@ function PendingApprovalCard({
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-medium text-foreground">Needs approval</span>
+            <span className="font-medium text-foreground">
+              {t("needsApproval")}
+            </span>
             <span className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-[11px] leading-4 text-muted-foreground">
               {friendlyName}
             </span>
@@ -215,9 +235,7 @@ function PendingApprovalCard({
       </div>
       <div className="border-t border-warning/25 bg-warning/10 px-3 py-2.5">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xs text-foreground">
-            The assistant is waiting before running this action.
-          </p>
+          <p className="text-xs text-foreground">{t("approvalWaiting")}</p>
           <div className="flex shrink-0 justify-end gap-2">
             <Button
               type={BUTTON_TYPE}
@@ -227,7 +245,7 @@ function PendingApprovalCard({
               onClick={() => onReject?.(pendingApproval)}
             >
               <XIcon data-icon="inline-start" aria-hidden="true" />
-              Reject
+              {t("reject")}
             </Button>
             <Button
               type={BUTTON_TYPE}
@@ -236,7 +254,7 @@ function PendingApprovalCard({
               onClick={() => onApprove?.(pendingApproval)}
             >
               <CheckIcon data-icon="inline-start" aria-hidden="true" />
-              Approve
+              {t("approve")}
             </Button>
           </div>
         </div>
@@ -259,6 +277,52 @@ type ToolPartCardProps = {
   onReject?: (approval: PendingToolApproval) => void;
 };
 
+function AgentActionAttribution({
+  context,
+  status,
+  toolName,
+  children,
+}: {
+  context: AgentToolDisplayContext | null;
+  status: "pending" | "completed" | "error";
+  toolName: string;
+  children: React.ReactNode;
+}) {
+  const t = useTranslations("chat.rendering");
+  if (!context) return children;
+
+  const StatusIcon =
+    status === "error"
+      ? XCircleIcon
+      : status === "pending"
+        ? ClockIcon
+        : CheckCircle2Icon;
+
+  return (
+    <div className="space-y-2">
+      <div className="flex min-h-10 items-center gap-2 rounded-xl bg-card px-3 py-2 text-xs shadow-[var(--surface-shadow)]">
+        <StatusIcon className="size-3.5 shrink-0" aria-hidden="true" />
+        <BotIcon className="size-3.5 shrink-0" aria-hidden="true" />
+        <span className="min-w-0 truncate font-medium">
+          {context.agentName}
+        </span>
+        <span className="text-muted-foreground" aria-hidden="true">
+          ·
+        </span>
+        <span className="truncate text-muted-foreground">{toolName}</span>
+        <span className="sr-only" aria-live="polite">
+          {status === "pending"
+            ? t("agentActionRunning", { name: context.agentName })
+            : status === "error"
+              ? t("agentActionFailed", { name: context.agentName })
+              : t("agentActionCompleted", { name: context.agentName })}
+        </span>
+      </div>
+      {children}
+    </div>
+  );
+}
+
 const ToolPartCard = memo(function ToolPartCard({
   part,
   approval,
@@ -267,8 +331,13 @@ const ToolPartCard = memo(function ToolPartCard({
   onApprove,
   onReject,
 }: ToolPartCardProps) {
+  const t = useTranslations("chat.rendering");
   const [open, setOpen] = useState(false);
   const parsed = useMemo(() => parseToolPart(part.content), [part.content]);
+  const agentContext = useMemo(
+    () => parseAgentToolDisplayContext(parsed.agentContext),
+    [parsed.agentContext],
+  );
   const fileArtifact = useMemo(
     () =>
       part.type === "file"
@@ -290,24 +359,29 @@ const ToolPartCard = memo(function ToolPartCard({
         : null,
     [part.content, part.type],
   );
+  const isDelegation = parsed.toolName?.startsWith("delegate_") ?? false;
   const friendlyName = useMemo(
-    () => formatToolName(parsed.toolName),
-    [parsed.toolName],
+    () => (isDelegation ? t("delegation") : formatToolName(parsed.toolName)),
+    [isDelegation, parsed.toolName, t],
   );
-  const status = useMemo(() => getToolStatus(parsed), [parsed]);
+  const status = useMemo(
+    () => (agentContext?.status === "error" ? "error" : getToolStatus(parsed)),
+    [agentContext?.status, parsed],
+  );
   const hasResult = parsed.output !== undefined;
   const approvalMatches = Boolean(approval);
+  const displayInput = approvalMatches ? approval?.input : parsed.input;
 
   const inputArtifact = useMemo(
-    () => htmlArtifactFromToolInput(parsed.input),
-    [parsed.input],
+    () => (approvalMatches ? null : htmlArtifactFromToolInput(parsed.input)),
+    [approvalMatches, parsed.input],
   );
   const streamingInputArtifact = useMemo(
     () =>
-      parsed.streamingInput
+      approvalMatches || parsed.streamingInput
         ? null
         : htmlArtifactFromInputText(parsed.inputText),
-    [parsed.inputText, parsed.streamingInput],
+    [approvalMatches, parsed.inputText, parsed.streamingInput],
   );
   const sandboxOutput = useMemo(
     () => codeSandboxOutputFromUnknown(parsed.output),
@@ -325,8 +399,24 @@ const ToolPartCard = memo(function ToolPartCard({
     [parsed.inputText, parsed.toolName],
   );
   const summaryText = useMemo(() => {
+    if (isDelegation && status === "completed") {
+      const output = parsed.output;
+      const childName =
+        typeof output === "object" &&
+        output !== null &&
+        typeof (output as { childAgentName?: unknown }).childAgentName ===
+          "string"
+          ? (output as { childAgentName: string }).childAgentName
+          : null;
+      return childName
+        ? t("delegationCompletedBy", { name: childName })
+        : t("delegationCompleted");
+    }
+    if (isDelegation && status === "error") {
+      return t("delegationFailed");
+    }
     if (status === "pending") {
-      return summarizeToolInput(friendlyName, parsed.input);
+      return summarizeToolInput(friendlyName, displayInput);
     }
     if (hasResult) {
       return summarizeToolBody(parsed.toolName, parsed.output, false);
@@ -335,71 +425,83 @@ const ToolPartCard = memo(function ToolPartCard({
   }, [
     friendlyName,
     hasResult,
-    parsed.input,
+    isDelegation,
+    displayInput,
     parsed.output,
     parsed.toolName,
     status,
+    t,
   ]);
   const inputText = useMemo(
-    () => formatExpandedToolValue(parsed.input, open),
-    [open, parsed.input],
+    () => formatExpandedToolValue(displayInput, open),
+    [displayInput, open],
   );
   const outputText = useMemo(
     () => formatExpandedToolValue(parsed.output, open),
     [open, parsed.output],
   );
 
+  let specializedContent: React.ReactNode = null;
   if (fileArtifact) {
-    return workspaceArtifactDisplay === "summary" ? (
-      <CodeWorkspaceArtifactSummary artifact={fileArtifact} />
-    ) : (
-      <CodeWorkspaceArtifactCard
-        artifact={fileArtifact}
-        workspaceId={workspaceId}
-      />
+    specializedContent =
+      workspaceArtifactDisplay === "summary" ? (
+        <CodeWorkspaceArtifactSummary artifact={fileArtifact} />
+      ) : (
+        <CodeWorkspaceArtifactCard
+          artifact={fileArtifact}
+          workspaceId={workspaceId}
+        />
+      );
+  } else if (imageAttachment) {
+    specializedContent = (
+      <ChatImageAttachmentCard attachment={imageAttachment} />
     );
-  }
-  if (imageAttachment) {
-    return <ChatImageAttachmentCard attachment={imageAttachment} />;
-  }
-  if (fileAttachment) {
-    return <ChatFileAttachmentCard attachment={fileAttachment} />;
-  }
-  if (sandboxOutput) {
-    return (
+  } else if (fileAttachment) {
+    specializedContent = <ChatFileAttachmentCard attachment={fileAttachment} />;
+  } else if (sandboxOutput) {
+    specializedContent = (
       <CodeSandboxResultCard result={sandboxOutput} input={sandboxInput} />
     );
-  }
-  if (isHtmlArtifactOutput(parsed.output)) {
-    return <HtmlArtifactCard artifact={parsed.output} />;
-  }
-  if (isCodeWorkspaceArtifactOutput(parsed.output)) {
-    return workspaceArtifactDisplay === "summary" ? (
-      <CodeWorkspaceArtifactSummary artifact={parsed.output} />
-    ) : (
-      <CodeWorkspaceArtifactCard
-        artifact={parsed.output}
-        workspaceId={workspaceId}
-      />
-    );
-  }
-  if (isGitHubPublishOutput(parsed.output)) {
-    return <GitHubPublishResultCard result={parsed.output} />;
-  }
-  if (inputArtifact) {
-    return <HtmlArtifactCard artifact={inputArtifact} isLive />;
-  }
-  if (parsed.streamingInput && parsed.inputText !== undefined) {
-    return (
+  } else if (isHtmlArtifactOutput(parsed.output)) {
+    specializedContent = <HtmlArtifactCard artifact={parsed.output} />;
+  } else if (isCodeWorkspaceArtifactOutput(parsed.output)) {
+    specializedContent =
+      workspaceArtifactDisplay === "summary" ? (
+        <CodeWorkspaceArtifactSummary artifact={parsed.output} />
+      ) : (
+        <CodeWorkspaceArtifactCard
+          artifact={parsed.output}
+          workspaceId={workspaceId}
+        />
+      );
+  } else if (isGitHubPublishOutput(parsed.output)) {
+    specializedContent = <GitHubPublishResultCard result={parsed.output} />;
+  } else if (inputArtifact) {
+    specializedContent = <HtmlArtifactCard artifact={inputArtifact} isLive />;
+  } else if (parsed.streamingInput && parsed.inputText !== undefined) {
+    specializedContent = (
       <LiveToolInputCard
         toolName={friendlyName}
         inputText={parsed.inputText}
         sandboxInput={liveSandboxInput}
       />
     );
+  } else if (streamingInputArtifact) {
+    specializedContent = (
+      <HtmlArtifactCard artifact={streamingInputArtifact} isLive />
+    );
   }
-  if (streamingInputArtifact) {
-    return <HtmlArtifactCard artifact={streamingInputArtifact} isLive />;
+
+  if (specializedContent) {
+    return (
+      <AgentActionAttribution
+        context={agentContext}
+        status={status}
+        toolName={friendlyName}
+      >
+        {specializedContent}
+      </AgentActionAttribution>
+    );
   }
 
   // Determine icon and colors based on status
@@ -424,39 +526,66 @@ const ToolPartCard = memo(function ToolPartCard({
       open={open}
       onOpenChange={setOpen}
       className={cn(
-        "group/tool overflow-hidden rounded-lg border text-[11px] transition-colors",
+        "group/tool overflow-hidden rounded-xl text-xs shadow-[var(--surface-shadow)] transition-[background-color,box-shadow] duration-150 ease-out",
         approvalMatches
-          ? "border-warning/30 bg-warning/[0.04]"
-          : "border-border/40 bg-muted/[0.3] hover:bg-muted/[0.45]",
+          ? "bg-warning/[0.04]"
+          : "bg-card hover:shadow-[var(--surface-shadow-hover)]",
       )}
     >
-      <div className="flex items-center gap-2 px-2.5 py-1.5">
+      <div className="flex min-h-10 items-center gap-2.5 px-3 py-2">
         <div
           className={cn(
-            "flex size-5 shrink-0 items-center justify-center rounded border",
+            "flex size-7 shrink-0 items-center justify-center rounded-lg border",
             iconBgClass,
           )}
         >
-          <StatusIcon className={COMPACT_ICON_CLASS} aria-hidden="true" />
+          <StatusIcon className="size-3.5" aria-hidden="true" />
         </div>
-        <span className="shrink-0 font-medium text-foreground/80">
-          {friendlyName}
-        </span>
-        {summaryText ? (
-          <span className="truncate text-muted-foreground">
-            · {summaryText}
-          </span>
-        ) : null}
+        <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 items-center gap-1.5">
+            {agentContext ? (
+              <span className="inline-flex min-w-0 items-center gap-1 font-medium text-foreground">
+                <BotIcon className="size-3.5 shrink-0" aria-hidden="true" />
+                <span className="truncate">{agentContext.agentName}</span>
+              </span>
+            ) : null}
+            {agentContext ? (
+              <span className="text-muted-foreground" aria-hidden="true">
+                ·
+              </span>
+            ) : null}
+            <span className="shrink-0 font-medium text-foreground/80">
+              {friendlyName}
+            </span>
+          </div>
+          {summaryText ? (
+            <p className="truncate text-[11px] text-muted-foreground">
+              {summaryText}
+            </p>
+          ) : null}
+          {agentContext ? (
+            <span className="sr-only" aria-live="polite">
+              {status === "pending"
+                ? t("agentActionRunning", { name: agentContext.agentName })
+                : status === "error"
+                  ? t("agentActionFailed", { name: agentContext.agentName })
+                  : t("agentActionCompleted", {
+                      name: agentContext.agentName,
+                    })}
+            </span>
+          ) : null}
+        </div>
         <CollapsibleTrigger asChild>
           <Button
             type={BUTTON_TYPE}
             variant={GHOST_VARIANT}
-            size="sm"
-            className="ml-auto h-5 shrink-0 px-1.5 text-[11px] opacity-0 group-hover/tool:opacity-100"
+            size="icon-sm"
+            className="ml-auto size-8 shrink-0 text-muted-foreground opacity-70 transition-[background-color,opacity,scale] duration-150 ease-out hover:opacity-100"
+            aria-label={open ? t("hideActionDetails") : t("showActionDetails")}
           >
             <ChevronDownIcon
               className={cn(
-                "size-3 transition-transform",
+                "transition-transform duration-150 ease-out",
                 open && "rotate-180",
               )}
               aria-hidden="true"
@@ -499,7 +628,7 @@ const ToolPartCard = memo(function ToolPartCard({
           {inputText ? (
             <div className="mb-2">
               <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
-                Input
+                {t("actionInput")}
               </div>
               <pre className="max-h-40 overflow-auto rounded bg-background/60 p-2 leading-4 text-[11px] text-muted-foreground">
                 {inputText}
@@ -509,7 +638,7 @@ const ToolPartCard = memo(function ToolPartCard({
           {outputText ? (
             <div>
               <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
-                Output
+                {t("actionOutput")}
               </div>
               <pre className="max-h-60 overflow-auto rounded bg-background/60 p-2 leading-4 text-[11px] text-muted-foreground">
                 {outputText}
