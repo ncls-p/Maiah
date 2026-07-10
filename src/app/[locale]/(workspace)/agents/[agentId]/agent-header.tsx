@@ -217,7 +217,12 @@ function AgentHeaderActions({
       {canEdit ? (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon-sm" className="size-8">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="size-8"
+              aria-label={t("configurePage.actions")}
+            >
               <MoreHorizontalIcon className="size-4" aria-hidden="true" />
             </Button>
           </DropdownMenuTrigger>

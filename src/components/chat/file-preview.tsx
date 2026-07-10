@@ -1,9 +1,15 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CopyIcon, DownloadIcon } from "lucide-react";
 
@@ -91,13 +97,16 @@ export function FilePreviewDialog({
   previewError,
   loadingPreview,
 }: FilePreviewDialogProps) {
+  const t = useTranslations("chat.artifacts");
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[85dvh] max-w-3xl flex-col overflow-hidden">
         <div className="flex min-w-0 items-start justify-between gap-3 border-b pb-3">
           <div className="min-w-0">
             <DialogTitle className="truncate text-base">{fileName}</DialogTitle>
-            <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p>
+            <DialogDescription className="mt-1 text-xs text-muted-foreground">
+              {subtitle}
+            </DialogDescription>
           </div>
           <div className="flex shrink-0 items-center gap-1 pr-8">
             <Button
@@ -112,7 +121,7 @@ export function FilePreviewDialog({
               }}
             >
               <CopyIcon className="size-3" aria-hidden="true" />
-              Copy
+              {t("copy")}
             </Button>
             <Button
               asChild
@@ -122,7 +131,7 @@ export function FilePreviewDialog({
             >
               <a href={url} target="_blank" rel="noreferrer">
                 <DownloadIcon className="size-3" aria-hidden="true" />
-                Download
+                {t("download")}
               </a>
             </Button>
           </div>
@@ -136,7 +145,7 @@ export function FilePreviewDialog({
             </p>
           ) : (
             <pre className="min-h-0 flex-1 overflow-auto rounded-xl border bg-muted/20 p-3 whitespace-pre-wrap font-mono text-xs leading-5 text-foreground">
-              {previewText || "No extracted text available."}
+              {previewText || t("noExtractedText")}
             </pre>
           )}
         </div>

@@ -83,7 +83,7 @@
   --destructive: oklch(0.56 0.18 25);
   --destructive-foreground: oklch(0.99 0 0);
   --success: oklch(0.52 0.12 155);
-  --warning: oklch(0.66 0.13 78);
+  --warning: oklch(0.52 0.13 78);
   --info: oklch(0.56 0.11 230);
   --border: oklch(0.89 0.006 215);
   --input: oklch(0.86 0.006 215);
@@ -221,13 +221,12 @@
   }
 
   .shimmer {
-    background:
-      linear-gradient(
-        110deg,
-        var(--muted-foreground) 0%,
-        color-mix(in oklch, var(--foreground) 45%, transparent) 35%,
-        var(--muted-foreground) 70%
-      );
+    background: linear-gradient(
+      110deg,
+      var(--muted-foreground) 0%,
+      color-mix(in oklch, var(--foreground) 45%, transparent) 35%,
+      var(--muted-foreground) 70%
+    );
     background-size: 220% 100%;
     background-clip: text;
     color: transparent;
@@ -263,7 +262,15 @@
     scroll-margin-block: 5rem;
   }
 
-  :where(a, button, input, textarea, select, summary, [tabindex]:not([tabindex="-1"])):focus-visible {
+  :where(
+    a,
+    button,
+    input,
+    textarea,
+    select,
+    summary,
+    [tabindex]:not([tabindex="-1"])
+  ):focus-visible {
     outline: 2px solid var(--ring);
     outline-offset: 2px;
   }

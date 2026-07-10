@@ -18,11 +18,22 @@ import { SectionHeader } from "@/components/section-header";
 import { ModelLogo } from "@/components/providers/model-logo";
 import { WorkspacePage } from "@/components/workspace-page";
 import { AdvancedSection } from "@/components/ui/advanced-section";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -118,6 +129,12 @@ export default function KnowledgePage() {
   const [attachingAgentId, setAttachingAgentId] = useState<string | null>(null);
   const [canManageKnowledgeBases, setCanManageKnowledgeBases] = useState(false);
   const [canManageTenantGlobals, setCanManageTenantGlobals] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<
+    | { kind: "base"; id: string; name: string }
+    | { kind: "document"; id: string; name: string }
+    | null
+  >(null);
+  const [deleting, setDeleting] = useState(false);
 
   const loadBases = useCallback(async () => {
     if (!workspaceId) return;
@@ -397,14 +414,22 @@ export default function KnowledgePage() {
     if (!workspaceId) return;
     const base = bases.find((item) => item.id === baseId);
     if (!canManageKnowledgeBases || !base?.canEdit) return;
-    if (!window.confirm(t("confirmDeleteBase"))) return;
-    const res = await fetch(
-      `/api/workspace/knowledge-bases/${baseId}?workspaceId=${workspaceId}`,
-      { method: "DELETE" },
-    );
-    if (!res.ok) return toast.error(t("errorDeleteBase"));
-    await loadBases();
-    toast.success(t("toastBaseRemoved"));
+    setDeleting(true);
+    try {
+      const res = await fetch(
+        `/api/workspace/knowledge-bases/${baseId}?workspaceId=${workspaceId}`,
+        { method: "DELETE" },
+      );
+      if (!res.ok) return toast.error(t("errorDeleteBase"));
+      setPendingDelete(null);
+      await loadBases();
+      toast.success(t("toastBaseRemoved"));
+    } catch {
+      toast.error(t("errorDeleteBase"));
+      return;
+    } finally {
+      setDeleting(false);
+    }
   }
 
   async function deleteDocument(documentId: string) {
@@ -412,18 +437,21 @@ export default function KnowledgePage() {
       selectedBaseCanEdit && workspaceId && selectedId,
     );
     if (!canDeleteDocument) return;
-    if (!window.confirm(t("confirmDeleteDocument"))) return;
+    setDeleting(true);
     try {
       const res = await fetch(
         `/api/workspace/knowledge-bases/${selectedId}/documents/${documentId}?workspaceId=${workspaceId}`,
         { method: "DELETE" },
       );
       if (!res.ok) return toast.error(t("errorDeleteDocument"));
+      setPendingDelete(null);
       await loadDocuments();
       toast.success(t("toastDocumentRemoved"));
     } catch {
       toast.error(t("errorDeleteDocument"));
       return;
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -490,6 +518,7 @@ export default function KnowledgePage() {
         <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{t("createBaseTitle")}</DialogTitle>
+            <DialogDescription>{t("createBaseDescription")}</DialogDescription>
           </DialogHeader>
           <div className="grid gap-3">
             <Label htmlFor="knowledge-name">{t("name")}</Label>
@@ -625,7 +654,13 @@ export default function KnowledgePage() {
                         variant="ghost"
                         aria-label={t("deleteAria", { name: base.name })}
                         disabled={!base.canEdit}
-                        onClick={() => void deleteBase(base.id)}
+                        onClick={() =>
+                          setPendingDelete({
+                            kind: "base",
+                            id: base.id,
+                            name: base.name,
+                          })
+                        }
                       >
                         <Trash2Icon aria-hidden="true" />
                       </Button>
@@ -787,7 +822,13 @@ export default function KnowledgePage() {
                             size="icon-sm"
                             variant="ghost"
                             aria-label={t("deleteAria", { name: doc.title })}
-                            onClick={() => void deleteDocument(doc.id)}
+                            onClick={() =>
+                              setPendingDelete({
+                                kind: "document",
+                                id: doc.id,
+                                name: doc.title,
+                              })
+                            }
                           >
                             <Trash2Icon aria-hidden="true" />
                           </Button>
@@ -840,6 +881,7 @@ export default function KnowledgePage() {
           <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{t("editBaseTitle")}</DialogTitle>
+              <DialogDescription>{t("editBaseDescription")}</DialogDescription>
             </DialogHeader>
             <div className="grid gap-3">
               <Label htmlFor="edit-knowledge-name">{t("name")}</Label>
@@ -910,6 +952,9 @@ export default function KnowledgePage() {
           <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{t("attachDialogTitle")}</DialogTitle>
+              <DialogDescription>
+                {t("attachDialogDescription")}
+              </DialogDescription>
             </DialogHeader>
             <div className="grid gap-2">
               {loadingAttachAgents ? (
@@ -985,6 +1030,51 @@ export default function KnowledgePage() {
           </DialogContent>
         </Dialog>
       </div>
+      <AlertDialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => {
+          if (!open && !deleting) setPendingDelete(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {pendingDelete?.kind === "document"
+                ? t("confirmDeleteDocument")
+                : t("confirmDeleteBase")}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingDelete?.kind === "document"
+                ? t("deleteDocumentDescription", {
+                    name: pendingDelete?.name ?? "",
+                  })
+                : t("deleteBaseDescription", {
+                    name: pendingDelete?.name ?? "",
+                  })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>
+              {tCommon("cancel")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={deleting || !pendingDelete}
+              onClick={(event) => {
+                event.preventDefault();
+                if (!pendingDelete) return;
+                if (pendingDelete.kind === "document") {
+                  void deleteDocument(pendingDelete.id);
+                } else {
+                  void deleteBase(pendingDelete.id);
+                }
+              }}
+            >
+              {deleting ? t("deleting") : tCommon("delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </WorkspacePage>
   );
 }

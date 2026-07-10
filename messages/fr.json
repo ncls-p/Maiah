@@ -88,6 +88,7 @@
       "loadOlderFailed": "Impossible de charger les anciennes conversations",
       "createFolderFailed": "Impossible de créer le dossier",
       "renameFolderFailed": "Impossible de renommer le dossier",
+      "deleteConversationFailed": "Impossible de supprimer la conversation",
       "deleteFolderFailed": "Impossible de supprimer le dossier",
       "updatePinFailed": "Impossible de modifier l’épinglage"
     },
@@ -164,8 +165,12 @@
       "pinned": "Épinglées",
       "folderActions": "Actions du dossier",
       "deleteFolder": "Supprimer le dossier",
-      "deleteConversationConfirm": "Supprimer cette conversation ? Cette action est irréversible.",
-      "deleteFolderConfirm": "Supprimer ce dossier ? Ses conversations resteront disponibles.",
+      "deleteConversationTitle": "Supprimer cette conversation ?",
+      "deleteConversationDescription": "{name} sera définitivement supprimée.",
+      "deleteFolderTitle": "Supprimer ce dossier ?",
+      "deleteFolderDescription": "{name} sera supprimé. Ses conversations resteront disponibles.",
+      "deleteCancel": "Conserver",
+      "deleting": "Suppression…",
       "dropChatsHere": "Déposez les conversations ici",
       "recent": "Récentes",
       "loading": "Chargement…",
@@ -262,6 +267,7 @@
       "saveFileFailed": "Impossible d’enregistrer le fichier",
       "deleteFileFailed": "Impossible de supprimer le fichier",
       "deleteFileConfirm": "Supprimer {path} ? Cette action est irréversible.",
+      "deletingFile": "Suppression…",
       "files": "Fichiers",
       "noFileSelected": "Aucun fichier sélectionné",
       "binaryAsset": "Fichier binaire",
@@ -269,6 +275,9 @@
       "save": "Enregistrer",
       "refreshFile": "Recharger le fichier",
       "deleteFile": "Supprimer le fichier",
+      "cancel": "Annuler",
+      "copy": "Copier",
+      "noExtractedText": "Aucun texte extrait disponible.",
       "binaryDescription": "Les fichiers binaires sont servis dans l’aperçu et inclus dans le téléchargement ZIP.",
       "loadingFile": "Chargement du fichier…",
       "livePreview": "Aperçu en direct",
@@ -277,6 +286,7 @@
     },
     "github": {
       "title": "Publier sur GitHub",
+      "dialogDescription": "Choisissez le dépôt et le mode de publication de ce workspace de code.",
       "defaultCommit": "Mettre à jour {name}",
       "unavailable": "GitHub indisponible",
       "loadFailed": "Impossible de charger l’état GitHub",
@@ -451,6 +461,7 @@
     },
     "configurePage": {
       "back": "Retour aux assistants",
+      "actions": "Actions de l’assistant",
       "loadErrorTitle": "Assistant indisponible",
       "loadErrorDescription": "L’assistant ou une partie de sa configuration n’a pas pu être chargé. Rien n’a été modifié. Vérifiez la connexion puis réessayez.",
       "retry": "Réessayer",
@@ -478,6 +489,7 @@
       "capabilitiesSaved": "Outils et connaissances enregistrés",
       "conflictReload": "Cet assistant a été modifié dans un autre onglet. Rechargez-le avant d’enregistrer à nouveau.",
       "deleted": "Assistant supprimé",
+      "deleteFailed": "Impossible de supprimer l’assistant",
       "delete": "Supprimer l’assistant",
       "builtinTools": "Outils intégrés",
       "builtinToolsHint": "Outils fournis par la plateforme.",
@@ -878,6 +890,7 @@
     "selectedDocumentsCount": "{count, plural, one {# document ici} other {# documents ici}}",
     "attachAssistant": "Lier à un assistant",
     "attachDialogTitle": "Lier cette base à un assistant",
+    "attachDialogDescription": "Choisissez l’assistant configuré qui doit utiliser cette base de connaissances.",
     "noAttachAgents": "Aucun assistant modifiable disponible.",
     "agentNeedsModel": "Modèle à configurer avant utilisation",
     "errorLoadAgents": "Impossible de charger les assistants",
@@ -886,8 +899,12 @@
     "optionalSearch": "Tester la recherche",
     "optionalSearchHint": "Optionnel : vérifiez ce qu’un assistant retrouvera dans cette base.",
     "editBaseTitle": "Modifier la base",
+    "editBaseDescription": "Modifiez le nom, la description ou la visibilité dans l’organisation.",
     "confirmDeleteBase": "Supprimer cette base de connaissances ?",
+    "deleteBaseDescription": "{name} et tous ses documents seront définitivement supprimés.",
     "confirmDeleteDocument": "Supprimer ce document ?",
+    "deleteDocumentDescription": "{name} sera définitivement retiré de cette base de connaissances.",
+    "deleting": "Suppression…",
     "errorIngest": "Impossible d’ingérer le document",
     "errorCreate": "Impossible de créer la base",
     "errorSearch": "La recherche a échoué",
@@ -908,6 +925,7 @@
     "newBase": "Nouvelle base",
     "createBase": "Créer une base",
     "createBaseTitle": "Créer une base de connaissances",
+    "createBaseDescription": "Nommez cet ensemble de sources et choisissez qui peut l’utiliser. Vous pourrez ensuite ajouter des documents.",
     "basesTitle": "Bases",
     "basesDescription": "Choisissez l’ensemble de sources à gérer.",
     "emptyBasesDescription": "Créez une base pour y ajouter des documents pour vos assistants.",
@@ -1330,6 +1348,9 @@
       "emptyMy": "Vous n’avez encore rien publié",
       "emptyShared": "Rien n’a encore été partagé avec vous",
       "deleteConfirm": "Supprimer cette publication ?",
+      "deleteDescription": "{name} disparaîtra de la Marketplace. Les installations existantes ne seront pas modifiées.",
+      "deleteCancel": "Conserver la publication",
+      "deleting": "Suppression…",
       "toast": {
         "installed": "Installé avec succès",
         "installFailed": "L’installation a échoué",
@@ -1337,6 +1358,7 @@
         "featured": "Mis à la une",
         "unfeatured": "Retiré de la une",
         "deleted": "Publication supprimée",
+        "deleteFailed": "Impossible de supprimer la publication",
         "loadFailed": "Impossible de charger la marketplace"
       }
     },
@@ -1774,7 +1796,80 @@
   },
   "customTools": {
     "title": "Outils personnalisés",
-    "description": "Créez des outils personnalisés avec un assistant, visualisez le workflow en construction et connectez les identifiants sans les exposer."
+    "description": "Créez des outils personnalisés avec un assistant, visualisez le workflow en construction et connectez les identifiants sans les exposer.",
+    "builder": {
+      "title": "Créateur d’outils personnalisés",
+      "protectedSecrets": "Secrets protégés",
+      "welcome": "Décrivez l’outil personnalisé à créer. Si des identifiants sont nécessaires, j’ouvrirai une fenêtre sécurisée et ne verrai jamais leurs valeurs.",
+      "automationEngine": "moteur d’automatisation",
+      "connectionRequired": "Connexion requise",
+      "openSecureDialog": "Ouvrir la fenêtre sécurisée",
+      "building": "Création en cours…",
+      "actionsCompleted": "{count, plural, one {# action effectuée} other {# actions effectuées}}",
+      "tenantVisibility": "Rendre les outils créés visibles par tous",
+      "tenantVisibilityDescription": "Laissez cette option désactivée pour garder les nouveaux outils privés sur votre compte.",
+      "promptAria": "Demande au créateur d’outils personnalisés",
+      "promptPlaceholder": "Décrivez l’outil, ses entrées, le résultat attendu et les services à connecter…",
+      "send": "Envoyer",
+      "diagram": "Workflow",
+      "emptyDiagram": "L’aperçu du workflow apparaîtra ici.",
+      "createdTools": "Outils créés",
+      "loading": "Chargement…",
+      "toolsCount": "{count, plural, =0 {Aucun outil} one {# outil personnalisé} other {# outils personnalisés}}",
+      "tenant": "Espace de travail",
+      "private": "Privé",
+      "view": "Voir",
+      "examples": {
+        "slack": "Crée un outil qui envoie une notification Slack quand mon assistant détecte une opportunité commerciale.",
+        "api": "Je veux un outil qui appelle une API interne avec une clé API et résume le résultat.",
+        "sheets": "Crée un outil qui ajoute une ligne Google Sheets à partir d’un nom, d’un e-mail et d’un statut."
+      },
+      "errors": {
+        "builderFailed": "Échec du créateur",
+        "runFailed": "Impossible de lancer le créateur",
+        "deleteFailed": "Impossible de supprimer l’outil",
+        "secretsFailed": "Impossible d’enregistrer la connexion",
+        "message": "Erreur : {message}"
+      },
+      "preview": {
+        "savedSummary": "Outil personnalisé enregistré.",
+        "inputLabel": "Entrée de l’assistant",
+        "inputDescription": "L’assistant prépare les données à envoyer à l’outil.",
+        "actionLabel": "Action de l’outil",
+        "actionDescription": "Le workflow exécute l’action configurée.",
+        "resultLabel": "Résultat",
+        "resultDescription": "Le résultat est renvoyé à l’assistant."
+      },
+      "previewStatus": {
+        "created": "Créé",
+        "ready": "Prêt",
+        "needsSecrets": "Connexion requise",
+        "draft": "Brouillon"
+      },
+      "toolStatus": {
+        "ready": "Prêt",
+        "draft": "Brouillon"
+      },
+      "secrets": {
+        "title": "Identifiants",
+        "description": "Renseignez ces champs. Ils sont envoyés uniquement au backend et stockés chiffrés.",
+        "connectionReceived": "Connexion sécurisée reçue. Je continue automatiquement.",
+        "continuePrompt": "La connexion sécurisée est disponible. Continue la création de l’outil avec sa référence opaque.",
+        "stored": "Connexion enregistrée de façon sécurisée",
+        "cancel": "Annuler",
+        "store": "Enregistrer de façon sécurisée"
+      },
+      "delete": {
+        "action": "Supprimer",
+        "title": "Supprimer cet outil personnalisé ?",
+        "description": "{name} et son workflow d’automatisation seront supprimés. Cette action est irréversible.",
+        "cancel": "Conserver l’outil",
+        "confirm": "Supprimer l’outil",
+        "deleting": "Suppression…",
+        "success": "Outil et workflow supprimés",
+        "remoteWarning": "Outil supprimé ; vérifiez le workflow distant"
+      }
+    }
   },
   "shell": {
     "skipToContent": "Aller au contenu",

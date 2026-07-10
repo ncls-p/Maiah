@@ -13,7 +13,7 @@ interface DeodisLogoProps {
 export function DeodisLogo({
   className,
   href = "/",
-  priority = false,
+  priority = true,
   label = "Deodis home",
 }: DeodisLogoProps) {
   const image = (
@@ -22,7 +22,8 @@ export function DeodisLogo({
       alt="Deodis"
       width={857}
       height={320}
-      priority={priority}
+      loading={priority ? "eager" : "lazy"}
+      fetchPriority={priority ? "high" : "auto"}
       className={cn("h-8 w-auto sm:h-9", className)}
     />
   );

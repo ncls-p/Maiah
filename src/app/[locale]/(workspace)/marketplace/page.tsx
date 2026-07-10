@@ -16,6 +16,7 @@ import {
 import { toast } from "sonner";
 import { PageEmptyState } from "@/components/page-empty-state";
 import { PageLoading } from "@/components/page-loading";
+import { DestructiveConfirmationDialog } from "@/components/destructive-confirmation-dialog";
 import { WorkspacePage } from "@/components/workspace-page";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -293,6 +294,11 @@ export default function MarketplacePage() {
   const [shareResource, setShareResource] = useState<ShareableResource | null>(
     null,
   );
+  const [pendingDelete, setPendingDelete] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const typeOptions = useMemo(
     () =>
@@ -438,18 +444,36 @@ export default function MarketplacePage() {
 
   const handleDelete = useCallback(
     async (itemId: string) => {
-      if (!confirm(t("deleteConfirm"))) return;
-      const res = await fetch(`/api/marketplace/items/${itemId}`, {
-        method: "DELETE",
-      });
-      if (res.ok) {
+      setDeleting(true);
+      try {
+        const res = await fetch(`/api/marketplace/items/${itemId}`, {
+          method: "DELETE",
+        });
+        if (!res.ok) {
+          toast.error(t("toast.deleteFailed"));
+          return;
+        }
+        setPendingDelete(null);
         toast.success(t("toast.deleted"));
         reload();
-      } else {
-        toast.error(t("toast.installFailed"));
+      } catch {
+        toast.error(t("toast.deleteFailed"));
+        return;
+      } finally {
+        setDeleting(false);
       }
     },
     [reload, t],
+  );
+
+  const requestDelete = useCallback(
+    (itemId: string) => {
+      const item = [...publishedItems, ...ownedItems, ...sharedItems].find(
+        (candidate) => candidate.id === itemId,
+      );
+      if (item) setPendingDelete({ id: item.id, name: item.name });
+    },
+    [ownedItems, publishedItems, sharedItems],
   );
 
   const handleFeature = useCallback(
@@ -601,7 +625,7 @@ export default function MarketplacePage() {
                   tMarketplace={tMarketplace}
                   onInstall={handleInstall}
                   onShare={openShareDialog}
-                  onDelete={handleDelete}
+                  onDelete={requestDelete}
                   onFeature={handleFeature}
                   onUnfeature={handleUnfeature}
                 />
@@ -630,7 +654,7 @@ export default function MarketplacePage() {
                   tMarketplace={tMarketplace}
                   onInstall={handleInstall}
                   onShare={openShareDialog}
-                  onDelete={handleDelete}
+                  onDelete={requestDelete}
                   onFeature={handleFeature}
                   onUnfeature={handleUnfeature}
                 />
@@ -659,7 +683,7 @@ export default function MarketplacePage() {
                   tMarketplace={tMarketplace}
                   onInstall={handleInstall}
                   onShare={openShareDialog}
-                  onDelete={handleDelete}
+                  onDelete={requestDelete}
                   onFeature={handleFeature}
                   onUnfeature={handleUnfeature}
                 />
@@ -675,6 +699,22 @@ export default function MarketplacePage() {
         open={shareResource !== null}
         onCloseAction={() => setShareResource(null)}
         onSuccessAction={reload}
+      />
+      <DestructiveConfirmationDialog
+        open={pendingDelete !== null}
+        title={t("deleteConfirm")}
+        description={t("deleteDescription", {
+          name: pendingDelete?.name ?? "",
+        })}
+        cancelLabel={t("deleteCancel")}
+        confirmLabel={deleting ? t("deleting") : t("delete")}
+        busy={deleting}
+        onOpenChange={(open) => {
+          if (!open && !deleting) setPendingDelete(null);
+        }}
+        onConfirm={() => {
+          if (pendingDelete) void handleDelete(pendingDelete.id);
+        }}
       />
     </WorkspacePage>
   );

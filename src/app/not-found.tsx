@@ -1,6 +1,6 @@
+import Image from "next/image";
 import Link from "next/link";
 
-import { DeodisLogo } from "@/components/deodis-logo";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -22,11 +22,27 @@ export default function NotFound() {
     >
       <div className="flex w-full max-w-md flex-col gap-5">
         <div className="flex justify-center">
-          <DeodisLogo href="/chat" priority className="h-8" />
+          <Link
+            href="/chat"
+            className="inline-flex shrink-0 items-center"
+            aria-label="Deodis home"
+          >
+            <Image
+              src="/deodis-logo.png"
+              alt="Deodis"
+              width={857}
+              height={320}
+              loading="eager"
+              fetchPriority="high"
+              className="h-8 w-auto"
+            />
+          </Link>
         </div>
         <Card>
           <CardHeader className="gap-2 text-center">
-            <CardTitle className="text-2xl">Page not found</CardTitle>
+            <CardTitle asChild className="text-2xl">
+              <h1>Page not found</h1>
+            </CardTitle>
             <CardDescription>
               The page you requested does not exist or has moved.
             </CardDescription>

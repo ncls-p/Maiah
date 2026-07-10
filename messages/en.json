@@ -88,6 +88,7 @@
       "loadOlderFailed": "Unable to load older conversations",
       "createFolderFailed": "Unable to create the folder",
       "renameFolderFailed": "Unable to rename the folder",
+      "deleteConversationFailed": "Unable to delete the conversation",
       "deleteFolderFailed": "Unable to delete the folder",
       "updatePinFailed": "Unable to update the pin"
     },
@@ -164,8 +165,12 @@
       "pinned": "Pinned",
       "folderActions": "Folder actions",
       "deleteFolder": "Delete folder",
-      "deleteConversationConfirm": "Delete this conversation? This action cannot be undone.",
-      "deleteFolderConfirm": "Delete this folder? Its conversations will remain available.",
+      "deleteConversationTitle": "Delete this conversation?",
+      "deleteConversationDescription": "{name} will be permanently deleted.",
+      "deleteFolderTitle": "Delete this folder?",
+      "deleteFolderDescription": "{name} will be deleted. Its conversations will remain available.",
+      "deleteCancel": "Keep it",
+      "deleting": "Deleting…",
       "dropChatsHere": "Drop chats here",
       "recent": "Recent",
       "loading": "Loading…",
@@ -262,6 +267,7 @@
       "saveFileFailed": "Unable to save the file",
       "deleteFileFailed": "Unable to delete the file",
       "deleteFileConfirm": "Delete {path}? This action cannot be undone.",
+      "deletingFile": "Deleting…",
       "files": "Files",
       "noFileSelected": "No file selected",
       "binaryAsset": "Binary asset",
@@ -269,6 +275,9 @@
       "save": "Save",
       "refreshFile": "Reload file",
       "deleteFile": "Delete file",
+      "cancel": "Cancel",
+      "copy": "Copy",
+      "noExtractedText": "No extracted text available.",
       "binaryDescription": "Binary assets are served in the preview and included in the ZIP download.",
       "loadingFile": "Loading file…",
       "livePreview": "Live preview",
@@ -277,6 +286,7 @@
     },
     "github": {
       "title": "Publish to GitHub",
+      "dialogDescription": "Choose a repository and publishing mode for this code workspace.",
       "defaultCommit": "Update {name}",
       "unavailable": "GitHub unavailable",
       "loadFailed": "Unable to load GitHub status",
@@ -451,6 +461,7 @@
     },
     "configurePage": {
       "back": "Back to assistants",
+      "actions": "Assistant actions",
       "loadErrorTitle": "Assistant unavailable",
       "loadErrorDescription": "The assistant or part of its configuration could not be loaded. Nothing has been changed. Check the connection and try again.",
       "retry": "Try again",
@@ -478,6 +489,7 @@
       "capabilitiesSaved": "Tools and knowledge saved",
       "conflictReload": "This assistant changed in another tab. Reload it before saving again.",
       "deleted": "Assistant deleted",
+      "deleteFailed": "Unable to delete the assistant",
       "delete": "Delete assistant",
       "builtinTools": "Built-in tools",
       "builtinToolsHint": "Platform tools this assistant can call.",
@@ -880,6 +892,7 @@
     "selectedDocumentsCount": "{count, plural, one {# document here} other {# documents here}}",
     "attachAssistant": "Attach to assistant",
     "attachDialogTitle": "Attach this base to an assistant",
+    "attachDialogDescription": "Choose a configured assistant that should use this knowledge base.",
     "noAttachAgents": "No editable assistant available.",
     "agentNeedsModel": "Model required before use",
     "errorLoadAgents": "Failed to load assistants",
@@ -888,8 +901,12 @@
     "optionalSearch": "Test search",
     "optionalSearchHint": "Optional: check what an assistant will find in this base.",
     "editBaseTitle": "Edit knowledge base",
+    "editBaseDescription": "Update the name, description, or organization visibility.",
     "confirmDeleteBase": "Delete this knowledge base?",
+    "deleteBaseDescription": "{name} and all of its documents will be permanently deleted.",
     "confirmDeleteDocument": "Delete this document?",
+    "deleteDocumentDescription": "{name} will be permanently removed from this knowledge base.",
+    "deleting": "Deleting…",
     "errorIngest": "Failed to ingest document",
     "errorCreate": "Failed to create knowledge base",
     "errorSearch": "Search failed",
@@ -910,6 +927,7 @@
     "newBase": "New knowledge base",
     "createBase": "Create knowledge base",
     "createBaseTitle": "Create knowledge base",
+    "createBaseDescription": "Name this source set and choose who can use it. You can add documents next.",
     "basesTitle": "Bases",
     "basesDescription": "Choose the source set to manage.",
     "emptyBasesDescription": "Create a base to upload documents for your assistants.",
@@ -1331,6 +1349,9 @@
       "emptyMy": "You haven’t published anything yet",
       "emptyShared": "Nothing has been shared with you yet",
       "deleteConfirm": "Delete this listing?",
+      "deleteDescription": "{name} will disappear from the Marketplace. Existing installs are not changed.",
+      "deleteCancel": "Keep listing",
+      "deleting": "Deleting…",
       "toast": {
         "installed": "Installed successfully",
         "installFailed": "Installation failed",
@@ -1338,6 +1359,7 @@
         "featured": "Marked as featured",
         "unfeatured": "Removed from featured",
         "deleted": "Listing deleted",
+        "deleteFailed": "Unable to delete the listing",
         "loadFailed": "Could not load marketplace"
       }
     },
@@ -1775,7 +1797,80 @@
   },
   "customTools": {
     "title": "Custom tools",
-    "description": "Create custom tools with an assistant, preview the workflow as it’s built, and connect secrets without exposing them."
+    "description": "Create custom tools with an assistant, preview the workflow as it’s built, and connect secrets without exposing them.",
+    "builder": {
+      "title": "Custom tool builder",
+      "protectedSecrets": "Protected secrets",
+      "welcome": "Describe the custom tool you want to create. If credentials are needed, I’ll open a secure dialog and will never see the secret values.",
+      "automationEngine": "automation engine",
+      "connectionRequired": "Connection required",
+      "openSecureDialog": "Open secure dialog",
+      "building": "Building…",
+      "actionsCompleted": "{count, plural, one {# action completed} other {# actions completed}}",
+      "tenantVisibility": "Make created tools visible to everyone",
+      "tenantVisibilityDescription": "Leave this off to keep new custom tools private to your account.",
+      "promptAria": "Custom tool builder prompt",
+      "promptPlaceholder": "Describe the tool, its inputs, expected result, and services to connect…",
+      "send": "Send",
+      "diagram": "Workflow",
+      "emptyDiagram": "The workflow preview will appear here.",
+      "createdTools": "Created tools",
+      "loading": "Loading…",
+      "toolsCount": "{count, plural, =0 {No tools yet} one {# custom tool} other {# custom tools}}",
+      "tenant": "Workspace",
+      "private": "Private",
+      "view": "View",
+      "examples": {
+        "slack": "Create a tool that sends a Slack notification when my assistant detects a sales opportunity.",
+        "api": "I want a tool that calls an internal API with an API key and summarizes the result.",
+        "sheets": "Create a tool that adds a Google Sheets row from a name, email, and status."
+      },
+      "errors": {
+        "builderFailed": "Builder failed",
+        "runFailed": "Unable to run the builder",
+        "deleteFailed": "Unable to delete the tool",
+        "secretsFailed": "Unable to store the connection",
+        "message": "Error: {message}"
+      },
+      "preview": {
+        "savedSummary": "Saved custom tool.",
+        "inputLabel": "Assistant input",
+        "inputDescription": "The assistant prepares the data to send to the tool.",
+        "actionLabel": "Tool action",
+        "actionDescription": "The workflow runs the configured action.",
+        "resultLabel": "Result",
+        "resultDescription": "The result is returned to the assistant."
+      },
+      "previewStatus": {
+        "created": "Created",
+        "ready": "Ready",
+        "needsSecrets": "Connection required",
+        "draft": "Draft"
+      },
+      "toolStatus": {
+        "ready": "Ready",
+        "draft": "Draft"
+      },
+      "secrets": {
+        "title": "Credentials",
+        "description": "Enter these fields. They are sent only to the backend and stored encrypted.",
+        "connectionReceived": "Secure connection received. I’ll continue automatically.",
+        "continuePrompt": "The secure connection is available. Continue creating the tool using its opaque reference.",
+        "stored": "Connection stored securely",
+        "cancel": "Cancel",
+        "store": "Store securely"
+      },
+      "delete": {
+        "action": "Delete",
+        "title": "Delete this custom tool?",
+        "description": "{name} and its automation workflow will be deleted. This action cannot be undone.",
+        "cancel": "Keep tool",
+        "confirm": "Delete tool",
+        "deleting": "Deleting…",
+        "success": "Tool and workflow deleted",
+        "remoteWarning": "Tool deleted; verify the remote workflow"
+      }
+    }
   },
   "shell": {
     "skipToContent": "Skip to content",

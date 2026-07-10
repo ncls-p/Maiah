@@ -9,6 +9,7 @@ import {
   type QueuedChatMessage,
 } from "@/components/chat/chat-composer";
 import { ChatLayout } from "@/components/chat/chat-layout";
+import { DestructiveConfirmationDialog } from "@/components/destructive-confirmation-dialog";
 import {
   CODE_WORKSPACE_ARTIFACT_EVENT,
   ChatMessageList,
@@ -91,6 +92,12 @@ export default function ChatPage() {
   const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
   const [interfaceMode, setInterfaceMode] =
     useState<InterfaceMode>(CHAT_INTERFACE_MODE);
+  const [pendingDelete, setPendingDelete] = useState<
+    | { kind: "conversation"; id: string; name: string }
+    | { kind: "folder"; id: string; name: string }
+    | null
+  >(null);
+  const [deleting, setDeleting] = useState(false);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const skipNextMessageLoadRef = useRef(false);
   const processingQueuedMessageRef = useRef(false);
@@ -649,28 +656,51 @@ export default function ChatPage() {
   }
 
   async function deleteConversation(conversationId: string) {
-    const confirmed = window.confirm(t("sidebar.deleteConversationConfirm"));
-    if (!confirmed) return;
-
-    await fetchJson(`/api/workspace/conversations/${conversationId}`, {
-      method: "DELETE",
-    });
-    setConversations((current) =>
-      current.filter((conversation) => conversation.id !== conversationId),
-    );
-    if (activeConversationId === conversationId) {
-      detachActiveStream();
-      setQueuedMessages([]);
-      setActiveConversationId(null);
-      setMessages([]);
-      setCodeWorkspaceArtifact(null);
-      setAttachments([]);
-      setInterfaceMode(CHAT_INTERFACE_MODE);
-      window.history.replaceState(
-        null,
-        "",
-        selectedAgentId ? `/chat?agentId=${selectedAgentId}` : "/chat",
+    setDeleting(true);
+    try {
+      await fetchJson(`/api/workspace/conversations/${conversationId}`, {
+        method: "DELETE",
+      });
+      setConversations((current) =>
+        current.filter((conversation) => conversation.id !== conversationId),
       );
+      setPendingDelete(null);
+      if (activeConversationId === conversationId) {
+        detachActiveStream();
+        setQueuedMessages([]);
+        setActiveConversationId(null);
+        setMessages([]);
+        setCodeWorkspaceArtifact(null);
+        setAttachments([]);
+        setInterfaceMode(CHAT_INTERFACE_MODE);
+        window.history.replaceState(
+          null,
+          "",
+          selectedAgentId ? `/chat?agentId=${selectedAgentId}` : "/chat",
+        );
+      }
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : t("errors.deleteConversationFailed"),
+      );
+      return;
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  function requestConversationDelete(conversationId: string) {
+    const conversation = conversations.find(
+      (item) => item.id === conversationId,
+    );
+    if (conversation) {
+      setPendingDelete({
+        kind: "conversation",
+        id: conversation.id,
+        name: conversation.title,
+      });
     }
   }
 
@@ -718,8 +748,7 @@ export default function ChatPage() {
   }
 
   async function deleteConversationFolder(folderId: string) {
-    const confirmed = window.confirm(t("sidebar.deleteFolderConfirm"));
-    if (!confirmed) return;
+    setDeleting(true);
     try {
       await fetchJson(`/api/workspace/conversation-folders/${folderId}`, {
         method: "DELETE",
@@ -734,11 +763,21 @@ export default function ChatPage() {
             : conversation,
         ),
       );
+      setPendingDelete(null);
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : t("errors.deleteFolderFailed"),
       );
       return;
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  function requestFolderDelete(folderId: string) {
+    const folder = conversationFolders.find((item) => item.id === folderId);
+    if (folder) {
+      setPendingDelete({ kind: "folder", id: folder.id, name: folder.name });
     }
   }
 
@@ -1086,12 +1125,99 @@ export default function ChatPage() {
     [resolveApproval],
   );
 
+  const destructiveDialog = (
+    <DestructiveConfirmationDialog
+      open={pendingDelete !== null}
+      title={
+        pendingDelete?.kind === "folder"
+          ? t("sidebar.deleteFolderTitle")
+          : t("sidebar.deleteConversationTitle")
+      }
+      description={
+        pendingDelete?.kind === "folder"
+          ? t("sidebar.deleteFolderDescription", {
+              name: pendingDelete?.name ?? "",
+            })
+          : t("sidebar.deleteConversationDescription", {
+              name: pendingDelete?.name ?? "",
+            })
+      }
+      cancelLabel={t("sidebar.deleteCancel")}
+      confirmLabel={deleting ? t("sidebar.deleting") : t("sidebar.delete")}
+      busy={deleting}
+      onOpenChange={(open) => {
+        if (!open && !deleting) setPendingDelete(null);
+      }}
+      onConfirm={() => {
+        if (!pendingDelete) return;
+        if (pendingDelete.kind === "folder") {
+          void deleteConversationFolder(pendingDelete.id);
+        } else {
+          void deleteConversation(pendingDelete.id);
+        }
+      }}
+    />
+  );
+
   if (workspaceLoading || loadingAgents) {
     return <ChatPageLoading />;
   }
 
   if (agents.length === 0) {
     return (
+      <>
+        <ChatLayout
+          agents={agents}
+          conversations={conversations}
+          conversationFolders={conversationFolders}
+          selectedAgent={selectedAgent}
+          selectedAgentId={selectedAgentId}
+          activeConversationId={activeConversationId}
+          organizationDefaultAgentId={organizationDefaultAgentId}
+          userDefaultAgentId={userDefaultAgentId}
+          canChat={canChat}
+          canCreateAgent={canCreateAgent}
+          canRunSetup={canRunSetup}
+          loadingSidebar={loadingContext}
+          hasMoreConversations={hasMoreConversations}
+          loadingMoreConversations={loadingMoreConversations}
+          onLoadMoreConversations={loadMoreConversations}
+          onSelectAgent={selectAgent}
+          onSelectConversation={selectConversation}
+          onNewConversation={startNewConversation}
+          onSetUserDefaultAgent={(agentId: string | null) =>
+            void setUserDefaultAgent(agentId)
+          }
+          onRenameConversation={(conversationId, title) =>
+            void renameConversation(conversationId, title)
+          }
+          onDeleteConversation={requestConversationDelete}
+          onCreateConversationFolder={(name) =>
+            void createConversationFolder(name)
+          }
+          onRenameConversationFolder={(folderId, name) =>
+            void renameConversationFolder(folderId, name)
+          }
+          onDeleteConversationFolder={requestFolderDelete}
+          onToggleConversationPin={(conversationId, pinned) =>
+            void toggleConversationPin(conversationId, pinned)
+          }
+          onReorderConversations={(input) => void reorderConversations(input)}
+          onSetupComplete={() => void reloadAgentContext()}
+        >
+          <NoAssistantsState
+            canCreateAgent={canCreateAgent}
+            canRunSetup={canRunSetup}
+            t={t}
+          />
+        </ChatLayout>
+        {destructiveDialog}
+      </>
+    );
+  }
+
+  return (
+    <>
       <ChatLayout
         agents={agents}
         conversations={conversations}
@@ -1117,200 +1243,147 @@ export default function ChatPage() {
         onRenameConversation={(conversationId, title) =>
           void renameConversation(conversationId, title)
         }
-        onDeleteConversation={(conversationId) =>
-          void deleteConversation(conversationId)
-        }
+        onDeleteConversation={requestConversationDelete}
         onCreateConversationFolder={(name) =>
           void createConversationFolder(name)
         }
         onRenameConversationFolder={(folderId, name) =>
           void renameConversationFolder(folderId, name)
         }
-        onDeleteConversationFolder={(folderId) =>
-          void deleteConversationFolder(folderId)
-        }
+        onDeleteConversationFolder={requestFolderDelete}
         onToggleConversationPin={(conversationId, pinned) =>
           void toggleConversationPin(conversationId, pinned)
         }
         onReorderConversations={(input) => void reorderConversations(input)}
         onSetupComplete={() => void reloadAgentContext()}
       >
-        <NoAssistantsState
-          canCreateAgent={canCreateAgent}
-          canRunSetup={canRunSetup}
-          t={t}
-        />
-      </ChatLayout>
-    );
-  }
-
-  return (
-    <ChatLayout
-      agents={agents}
-      conversations={conversations}
-      conversationFolders={conversationFolders}
-      selectedAgent={selectedAgent}
-      selectedAgentId={selectedAgentId}
-      activeConversationId={activeConversationId}
-      organizationDefaultAgentId={organizationDefaultAgentId}
-      userDefaultAgentId={userDefaultAgentId}
-      canChat={canChat}
-      canCreateAgent={canCreateAgent}
-      canRunSetup={canRunSetup}
-      loadingSidebar={loadingContext}
-      hasMoreConversations={hasMoreConversations}
-      loadingMoreConversations={loadingMoreConversations}
-      onLoadMoreConversations={loadMoreConversations}
-      onSelectAgent={selectAgent}
-      onSelectConversation={selectConversation}
-      onNewConversation={startNewConversation}
-      onSetUserDefaultAgent={(agentId: string | null) =>
-        void setUserDefaultAgent(agentId)
-      }
-      onRenameConversation={(conversationId, title) =>
-        void renameConversation(conversationId, title)
-      }
-      onDeleteConversation={(conversationId) =>
-        void deleteConversation(conversationId)
-      }
-      onCreateConversationFolder={(name) => void createConversationFolder(name)}
-      onRenameConversationFolder={(folderId, name) =>
-        void renameConversationFolder(folderId, name)
-      }
-      onDeleteConversationFolder={(folderId) =>
-        void deleteConversationFolder(folderId)
-      }
-      onToggleConversationPin={(conversationId, pinned) =>
-        void toggleConversationPin(conversationId, pinned)
-      }
-      onReorderConversations={(input) => void reorderConversations(input)}
-      onSetupComplete={() => void reloadAgentContext()}
-    >
-      <ChatContextBar quota={quota} />
-      {codeWorkspaceArtifact ? (
-        <CodeWorkspaceModeBar
-          artifact={codeWorkspaceArtifact}
-          interfaceMode={interfaceMode}
-          onModeChange={setInterfaceMode}
-        />
-      ) : null}
-      {interfaceMode === CODING_INTERFACE_MODE && codeWorkspaceArtifact ? (
-        <section className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden bg-background lg:grid-cols-[minmax(300px,360px)_minmax(0,1fr)]">
-          <aside className="flex min-h-0 flex-col border-r border-border/60 bg-muted/10">
-            <div className="border-b border-border/50 px-3 py-2">
-              <p className="text-xs font-medium text-foreground">Chat</p>
-              <p className="text-[11px] text-muted-foreground">
-                Demande des modifications pendant que tu codes.
-              </p>
-            </div>
-            <section className="min-h-0 flex-1 overflow-hidden">
-              <div className="size-full min-h-0">
-                <ChatMessageList
-                  key={activeConversationId ?? "new-conversation"}
-                  messages={messages}
-                  sending={sending}
-                  loading={loadingMessages}
-                  workspaceId={workspaceId ?? undefined}
-                  workspaceArtifactDisplay="summary"
-                  conversationId={activeConversationId}
-                  bottomRef={bottomRef}
-                  onEditMessage={editMessage}
-                  onDeleteMessage={deleteMessage}
-                  onResendMessage={resendMessage}
-                  onRegenerateAssistant={resendMessage}
-                  pendingApprovals={pendingApprovals}
-                  onApproveTool={approveToolInvocation}
-                  onRejectTool={rejectToolInvocation}
-                  onSuggestionClick={submitSuggestion}
-                />
+        <ChatContextBar quota={quota} />
+        {codeWorkspaceArtifact ? (
+          <CodeWorkspaceModeBar
+            artifact={codeWorkspaceArtifact}
+            interfaceMode={interfaceMode}
+            onModeChange={setInterfaceMode}
+          />
+        ) : null}
+        {interfaceMode === CODING_INTERFACE_MODE && codeWorkspaceArtifact ? (
+          <section className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden bg-background lg:grid-cols-[minmax(300px,360px)_minmax(0,1fr)]">
+            <aside className="flex min-h-0 flex-col border-r border-border/60 bg-muted/10">
+              <div className="border-b border-border/50 px-3 py-2">
+                <p className="text-xs font-medium text-foreground">Chat</p>
+                <p className="text-[11px] text-muted-foreground">
+                  Demande des modifications pendant que tu codes.
+                </p>
               </div>
-            </section>
-            <ChatComposer
-              input={input}
-              canChat={canChat}
-              sending={sending}
-              queuedMessages={queuedMessages}
-              onInputChange={setInput}
-              onSubmit={submitMessage}
-              onStop={stopGeneration}
-              onQueuedMessageChange={updateQueuedMessage}
-              onQueuedMessageCancel={cancelQueuedMessage}
-              onUploadCodeWorkspace={uploadCodeWorkspace}
-              onUploadChatAttachment={uploadChatAttachment}
-              attachments={attachments}
-              onRemoveAttachment={(attachmentId) =>
-                setAttachments((current) =>
-                  current.filter(
-                    (attachment) => attachment.id !== attachmentId,
-                  ),
-                )
-              }
-            />
-          </aside>
-          <div className="min-h-0 overflow-hidden">
-            <CodeWorkspaceArtifactCard
-              artifact={codeWorkspaceArtifact}
-              workspaceId={workspaceId ?? undefined}
-              variant="workbench"
-            />
-          </div>
-        </section>
-      ) : (
-        <section className="min-h-0 flex-1 overflow-hidden">
-          {!loadingMessages && messages.length === 0 ? (
-            <EmptyConversationState
-              canChat={canChat}
-              selectedAgent={selectedAgent}
-              conversations={conversations}
-              emptyPromptSuggestions={emptyPromptSuggestions}
-              onSelectConversation={selectConversation}
-              onSubmitSuggestion={submitSuggestion}
-              t={t}
-            />
-          ) : null}
-          <div className="size-full min-h-0">
-            <ChatMessageList
-              key={activeConversationId ?? "new-conversation"}
-              messages={messages}
-              sending={sending}
-              loading={loadingMessages}
-              workspaceId={workspaceId ?? undefined}
-              conversationId={activeConversationId}
-              bottomRef={bottomRef}
-              onEditMessage={editMessage}
-              onDeleteMessage={deleteMessage}
-              onResendMessage={resendMessage}
-              onRegenerateAssistant={resendMessage}
-              pendingApprovals={pendingApprovals}
-              onApproveTool={approveToolInvocation}
-              onRejectTool={rejectToolInvocation}
-              onSuggestionClick={submitSuggestion}
-            />
-          </div>
-        </section>
-      )}
-      {interfaceMode === CODING_INTERFACE_MODE &&
-      codeWorkspaceArtifact ? null : (
-        <ChatComposer
-          input={input}
-          canChat={canChat}
-          sending={sending}
-          queuedMessages={queuedMessages}
-          onInputChange={setInput}
-          onSubmit={submitMessage}
-          onStop={stopGeneration}
-          onQueuedMessageChange={updateQueuedMessage}
-          onQueuedMessageCancel={cancelQueuedMessage}
-          onUploadCodeWorkspace={uploadCodeWorkspace}
-          onUploadChatAttachment={uploadChatAttachment}
-          attachments={attachments}
-          onRemoveAttachment={(attachmentId) =>
-            setAttachments((current) =>
-              current.filter((attachment) => attachment.id !== attachmentId),
-            )
-          }
-        />
-      )}
-    </ChatLayout>
+              <section className="min-h-0 flex-1 overflow-hidden">
+                <div className="size-full min-h-0">
+                  <ChatMessageList
+                    key={activeConversationId ?? "new-conversation"}
+                    messages={messages}
+                    sending={sending}
+                    loading={loadingMessages}
+                    workspaceId={workspaceId ?? undefined}
+                    workspaceArtifactDisplay="summary"
+                    conversationId={activeConversationId}
+                    bottomRef={bottomRef}
+                    onEditMessage={editMessage}
+                    onDeleteMessage={deleteMessage}
+                    onResendMessage={resendMessage}
+                    onRegenerateAssistant={resendMessage}
+                    pendingApprovals={pendingApprovals}
+                    onApproveTool={approveToolInvocation}
+                    onRejectTool={rejectToolInvocation}
+                    onSuggestionClick={submitSuggestion}
+                  />
+                </div>
+              </section>
+              <ChatComposer
+                input={input}
+                canChat={canChat}
+                sending={sending}
+                queuedMessages={queuedMessages}
+                onInputChange={setInput}
+                onSubmit={submitMessage}
+                onStop={stopGeneration}
+                onQueuedMessageChange={updateQueuedMessage}
+                onQueuedMessageCancel={cancelQueuedMessage}
+                onUploadCodeWorkspace={uploadCodeWorkspace}
+                onUploadChatAttachment={uploadChatAttachment}
+                attachments={attachments}
+                onRemoveAttachment={(attachmentId) =>
+                  setAttachments((current) =>
+                    current.filter(
+                      (attachment) => attachment.id !== attachmentId,
+                    ),
+                  )
+                }
+              />
+            </aside>
+            <div className="min-h-0 overflow-hidden">
+              <CodeWorkspaceArtifactCard
+                artifact={codeWorkspaceArtifact}
+                workspaceId={workspaceId ?? undefined}
+                variant="workbench"
+              />
+            </div>
+          </section>
+        ) : (
+          <section className="min-h-0 flex-1 overflow-hidden">
+            {!loadingMessages && messages.length === 0 ? (
+              <EmptyConversationState
+                canChat={canChat}
+                selectedAgent={selectedAgent}
+                conversations={conversations}
+                emptyPromptSuggestions={emptyPromptSuggestions}
+                onSelectConversation={selectConversation}
+                onSubmitSuggestion={submitSuggestion}
+                t={t}
+              />
+            ) : null}
+            <div className="size-full min-h-0">
+              <ChatMessageList
+                key={activeConversationId ?? "new-conversation"}
+                messages={messages}
+                sending={sending}
+                loading={loadingMessages}
+                workspaceId={workspaceId ?? undefined}
+                conversationId={activeConversationId}
+                bottomRef={bottomRef}
+                onEditMessage={editMessage}
+                onDeleteMessage={deleteMessage}
+                onResendMessage={resendMessage}
+                onRegenerateAssistant={resendMessage}
+                pendingApprovals={pendingApprovals}
+                onApproveTool={approveToolInvocation}
+                onRejectTool={rejectToolInvocation}
+                onSuggestionClick={submitSuggestion}
+              />
+            </div>
+          </section>
+        )}
+        {interfaceMode === CODING_INTERFACE_MODE &&
+        codeWorkspaceArtifact ? null : (
+          <ChatComposer
+            input={input}
+            canChat={canChat}
+            sending={sending}
+            queuedMessages={queuedMessages}
+            onInputChange={setInput}
+            onSubmit={submitMessage}
+            onStop={stopGeneration}
+            onQueuedMessageChange={updateQueuedMessage}
+            onQueuedMessageCancel={cancelQueuedMessage}
+            onUploadCodeWorkspace={uploadCodeWorkspace}
+            onUploadChatAttachment={uploadChatAttachment}
+            attachments={attachments}
+            onRemoveAttachment={(attachmentId) =>
+              setAttachments((current) =>
+                current.filter((attachment) => attachment.id !== attachmentId),
+              )
+            }
+          />
+        )}
+      </ChatLayout>
+      {destructiveDialog}
+    </>
   );
 }

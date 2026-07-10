@@ -701,14 +701,16 @@ export default function AgentConfigurePage() {
       if (!res.ok) {
         throw new Error(
           (await res.json().catch(() => null))?.error ||
-            "Unable to delete agent",
+            t("configurePage.deleteFailed"),
         );
       }
       toast.success(t("configurePage.deleted"));
       router.push("/agents");
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Unable to delete agent",
+        error instanceof Error
+          ? error.message
+          : t("configurePage.deleteFailed"),
       );
       return;
     } finally {

@@ -1,8 +1,7 @@
 "use client";
 
-import { useTranslations } from "next-intl";
-
 import { useEffect, useMemo, useState, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import {
   ArrowRightIcon,
   CheckCircle2Icon,
@@ -17,6 +16,16 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Card,
   CardContent,
@@ -99,28 +108,19 @@ type CustomTool = {
   createdAt: string;
 };
 
-const examples = [
-  "Crée un tool qui envoie une notification Slack quand mon assistant détecte une opportunité commerciale.",
-  "Je veux un tool qui appelle une API interne avec une clé API et résume le résultat.",
-  "Crée un tool qui ajoute une ligne dans Google Sheets à partir d'un nom, email et statut.",
-];
-
-function userSafeText(value: string) {
-  return value.replace(/n8n/gi, "moteur d’automatisation");
+function userSafeText(value: string, automationEngine: string) {
+  return value.replace(/n8n/gi, automationEngine);
 }
 
 export function CustomToolBuilder() {
+  const t = useTranslations("customTools.builder");
   const tShare = useTranslations("marketplace.share");
   const { workspaceId } = useWorkspace();
   const [shareResource, setShareResource] = useState<ShareableResource | null>(
     null,
   );
-  const [messages, setMessages] = useState<BuilderMessage[]>([
-    {
-      role: "assistant",
-      content:
-        "Décris le tool custom que tu veux créer. Si des credentials sont nécessaires, j'ouvrirai une modal sécurisée : je ne verrai jamais les secrets en clair.",
-    },
+  const [messages, setMessages] = useState<BuilderMessage[]>(() => [
+    { role: "assistant", content: t("welcome") },
   ]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -142,9 +142,19 @@ export function CustomToolBuilder() {
   const [progressEvents, setProgressEvents] = useState<ProgressEvent[]>([]);
   const [canManageTenantGlobals, setCanManageTenantGlobals] = useState(false);
   const [createGlobal, setCreateGlobal] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const lastSecretRequestId = secretRequest?.id;
   const canSend = Boolean(workspaceId && input.trim() && !busy);
+  const examples = [
+    t("examples.slack"),
+    t("examples.api"),
+    t("examples.sheets"),
+  ];
 
   const loadTools = useCallback(async () => {
     if (!workspaceId) return;
@@ -185,11 +195,14 @@ export function CustomToolBuilder() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Builder failed");
+      if (!res.ok) throw new Error(data.error || t("errors.builderFailed"));
       if (data.message) {
         setMessages((current) => [
           ...current,
-          { role: "assistant", content: userSafeText(data.message) },
+          {
+            role: "assistant",
+            content: userSafeText(data.message, t("automationEngine")),
+          },
         ]);
       }
       if (data.workflowPreviews?.length) {
@@ -211,11 +224,11 @@ export function CustomToolBuilder() {
       }
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "Unable to run builder";
+        error instanceof Error ? error.message : t("errors.runFailed");
       toast.error(message);
       setMessages((current) => [
         ...current,
-        { role: "assistant", content: `Erreur: ${message}` },
+        { role: "assistant", content: t("errors.message", { message }) },
       ]);
       return;
     } finally {
@@ -243,20 +256,20 @@ export function CustomToolBuilder() {
     return (
       tool.metadataJson?.workflowPreview ?? {
         title: tool.name,
-        summary: tool.description || "Tool custom enregistré.",
+        summary: tool.description || t("preview.savedSummary"),
         status: tool.status === "workflow_created" ? "created" : "draft",
         steps: [
           {
-            label: "Entrée assistant",
-            description: "L’assistant prépare les données à envoyer au tool.",
+            label: t("preview.inputLabel"),
+            description: t("preview.inputDescription"),
           },
           {
-            label: "Action du tool",
-            description: "Le workflow exécute l’action configurée.",
+            label: t("preview.actionLabel"),
+            description: t("preview.actionDescription"),
           },
           {
-            label: "Résultat",
-            description: "Le résultat est retourné à l’assistant.",
+            label: t("preview.resultLabel"),
+            description: t("preview.resultDescription"),
           },
         ],
       }
@@ -265,28 +278,31 @@ export function CustomToolBuilder() {
 
   async function removeCustomTool(toolId: string) {
     if (!workspaceId) return;
-    if (!window.confirm("Supprimer ce tool et son workflow ?")) return;
+    setDeleting(true);
     try {
       const res = await fetch(
         `/api/workspace/custom-tools/${toolId}?workspaceId=${workspaceId}`,
         { method: "DELETE" },
       );
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Suppression impossible");
+      if (!res.ok) throw new Error(data.error || t("errors.deleteFailed"));
       setRegisteredTools((current) =>
         current.filter((tool) => tool.id !== toolId),
       );
       setCustomTools((current) => current.filter((tool) => tool.id !== toolId));
       toast.success(
         data.workflowDeleteError
-          ? "Tool supprimé, workflow distant à vérifier"
-          : "Tool et workflow supprimés",
+          ? t("delete.remoteWarning")
+          : t("delete.success"),
       );
+      setPendingDelete(null);
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Suppression impossible",
+        error instanceof Error ? error.message : t("errors.deleteFailed"),
       );
       return;
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -307,7 +323,7 @@ export function CustomToolBuilder() {
         },
       );
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Unable to submit secrets");
+      if (!res.ok) throw new Error(data.error || t("errors.secretsFailed"));
       const ref = {
         requestId: secretRequest.id,
         credentialRef: data.credentialRef as string,
@@ -317,15 +333,14 @@ export function CustomToolBuilder() {
         ...messages,
         {
           role: "assistant",
-          content: "Connexion sécurisée reçue. Je continue automatiquement.",
+          content: t("secrets.connectionReceived"),
         },
       ];
       const builderMessages: BuilderMessage[] = [
         ...visibleMessages,
         {
           role: "user",
-          content:
-            "La connexion sécurisée est fournie. Continue automatiquement la création du tool avec la référence opaque disponible.",
+          content: t("secrets.continuePrompt"),
         },
       ];
       setCredentialRefs(nextCredentialRefs);
@@ -333,11 +348,11 @@ export function CustomToolBuilder() {
       setSecretRequest(null);
       setPendingSecretRequest(null);
       setSecretValues({});
-      toast.success("Secrets stored securely");
+      toast.success(t("secrets.stored"));
       await runBuilder(builderMessages, nextCredentialRefs);
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Unable to submit secrets",
+        error instanceof Error ? error.message : t("errors.secretsFailed"),
       );
       return;
     }
@@ -345,10 +360,14 @@ export function CustomToolBuilder() {
 
   const statusSummary = useMemo(() => {
     const total = customTools.length + registeredTools.length;
-    return total > 0
-      ? `${total} custom tool${total > 1 ? "s" : ""}`
-      : "No tools yet";
-  }, [customTools.length, registeredTools.length]);
+    return t("toolsCount", { count: total });
+  }, [customTools.length, registeredTools.length, t]);
+
+  function displayToolStatus(status: string) {
+    if (status === "workflow_created") return t("toolStatus.ready");
+    if (status === "draft") return t("toolStatus.draft");
+    return status;
+  }
   const displayedTools: Array<{
     id: string;
     name: string;
@@ -368,14 +387,16 @@ export function CustomToolBuilder() {
       <Card className="min-h-[680px]">
         <CardHeader>
           <div className="flex items-center justify-between gap-3">
-            <CardTitle className="flex items-center gap-2">
-              <WorkflowIcon
-                className="size-5 text-muted-foreground"
-                aria-hidden="true"
-              />
-              Créer un tool
+            <CardTitle asChild>
+              <h2 className="flex items-center gap-2">
+                <WorkflowIcon
+                  className="size-5 text-muted-foreground"
+                  aria-hidden="true"
+                />
+                {t("title")}
+              </h2>
             </CardTitle>
-            <Badge variant="secondary">Secrets protégés</Badge>
+            <Badge variant="secondary">{t("protectedSecrets")}</Badge>
           </div>
         </CardHeader>
         <CardContent className="flex h-[560px] flex-col gap-4">
@@ -396,7 +417,9 @@ export function CustomToolBuilder() {
               ))}
               {pendingSecretRequest ? (
                 <div className="rounded-2xl border bg-card p-3">
-                  <p className="text-sm font-medium">Connexion requise</p>
+                  <p className="text-sm font-medium">
+                    {t("connectionRequired")}
+                  </p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {pendingSecretRequest.fields
                       .map((field) => field.label)
@@ -408,13 +431,13 @@ export function CustomToolBuilder() {
                     className="mt-3"
                     onClick={() => setSecretRequest(pendingSecretRequest)}
                   >
-                    Ouvrir la fenêtre sécurisée
+                    {t("openSecureDialog")}
                   </Button>
                 </div>
               ) : null}
               {busy ? (
                 <div className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background px-3 py-2 text-xs text-muted-foreground">
-                  <Spinner /> Création en cours…
+                  <Spinner /> {t("building")}
                 </div>
               ) : null}
               {progressEvents.length > 0 ? (
@@ -432,8 +455,7 @@ export function CustomToolBuilder() {
               ) : null}
               {!busy && actionCount > 0 ? (
                 <div className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background px-3 py-2 text-xs text-muted-foreground">
-                  {actionCount} action{actionCount > 1 ? "s" : ""} effectuée
-                  {actionCount > 1 ? "s" : ""}
+                  {t("actionsCompleted", { count: actionCount })}
                 </div>
               ) : null}
             </div>
@@ -464,21 +486,20 @@ export function CustomToolBuilder() {
                 />
                 <div className="grid gap-1.5 leading-none">
                   <Label htmlFor="custom-tool-global">
-                    Make created tools visible to everyone
+                    {t("tenantVisibility")}
                   </Label>
                   <p className="text-xs text-muted-foreground">
-                    Leave unchecked to keep new custom tools scoped to your
-                    account.
+                    {t("tenantVisibilityDescription")}
                   </p>
                 </div>
               </div>
             ) : null}
             <div className="flex gap-2">
               <Textarea
-                aria-label="Custom tool builder prompt"
+                aria-label={t("promptAria")}
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
-                placeholder="Décris le tool, son input, son résultat attendu, et les services à connecter…"
+                placeholder={t("promptPlaceholder")}
                 className="min-h-24"
               />
               <Button
@@ -487,7 +508,7 @@ export function CustomToolBuilder() {
                 disabled={!canSend}
               >
                 {busy ? <Spinner /> : <SendIcon />}
-                <span className="sr-only">Send</span>
+                <span className="sr-only">{t("send")}</span>
               </Button>
             </div>
           </div>
@@ -498,18 +519,20 @@ export function CustomToolBuilder() {
         <Card className="overflow-visible">
           <CardHeader>
             <div className="flex items-center justify-between gap-3">
-              <CardTitle className="flex items-center gap-2">
-                <WorkflowIcon className="size-5" aria-hidden="true" />
-                Schéma
+              <CardTitle asChild>
+                <h2 className="flex items-center gap-2">
+                  <WorkflowIcon className="size-5" aria-hidden="true" />
+                  {t("diagram")}
+                </h2>
               </CardTitle>
               <Badge variant="outline">
                 {workflowPreview?.status === "created"
-                  ? "Créé"
+                  ? t("previewStatus.created")
                   : workflowPreview?.status === "ready"
-                    ? "Prêt"
+                    ? t("previewStatus.ready")
                     : workflowPreview?.status === "needs_secrets"
-                      ? "Connexion requise"
-                      : "Brouillon"}
+                      ? t("previewStatus.needsSecrets")
+                      : t("previewStatus.draft")}
               </Badge>
             </div>
           </CardHeader>
@@ -582,7 +605,7 @@ export function CustomToolBuilder() {
               </div>
             ) : (
               <div className="rounded-2xl border border-dashed p-8 text-center text-sm text-muted-foreground">
-                Le schéma apparaîtra ici.
+                {t("emptyDiagram")}
               </div>
             )}
           </CardContent>
@@ -591,9 +614,11 @@ export function CustomToolBuilder() {
         {displayedTools.length > 0 ? (
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Créés</CardTitle>
+              <CardTitle asChild className="text-base">
+                <h2>{t("createdTools")}</h2>
+              </CardTitle>
               <CardDescription>
-                {loadingTools ? "Chargement…" : statusSummary}
+                {loadingTools ? t("loading") : statusSummary}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
@@ -606,9 +631,11 @@ export function CustomToolBuilder() {
                     <p className="truncate text-sm font-medium">{tool.name}</p>
                     <div className="flex items-center gap-1.5">
                       <Badge variant={tool.isGlobal ? "secondary" : "outline"}>
-                        {tool.isGlobal ? "Tenant" : "Private"}
+                        {tool.isGlobal ? t("tenant") : t("private")}
                       </Badge>
-                      <Badge variant="outline">{tool.status}</Badge>
+                      <Badge variant="outline">
+                        {displayToolStatus(tool.status)}
+                      </Badge>
                     </div>
                   </div>
                   <div className="mt-2 flex flex-wrap gap-2">
@@ -619,7 +646,7 @@ export function CustomToolBuilder() {
                       onClick={() => setWorkflowPreview(previewForTool(tool))}
                     >
                       <EyeIcon className="size-3" aria-hidden="true" />
-                      Voir
+                      {t("view")}
                     </Button>
                     <Button
                       type="button"
@@ -643,10 +670,12 @@ export function CustomToolBuilder() {
                       variant="outline"
                       size="sm"
                       disabled={tool.canEdit === false}
-                      onClick={() => void removeCustomTool(tool.id)}
+                      onClick={() =>
+                        setPendingDelete({ id: tool.id, name: tool.name })
+                      }
                     >
                       <Trash2Icon className="size-3" aria-hidden="true" />
-                      Supprimer
+                      {t("delete.action")}
                     </Button>
                   </div>
                 </div>
@@ -662,10 +691,11 @@ export function CustomToolBuilder() {
       >
         <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>{secretRequest?.title ?? "Credentials"}</DialogTitle>
+            <DialogTitle>
+              {secretRequest?.title ?? t("secrets.title")}
+            </DialogTitle>
             <DialogDescription>
-              {secretRequest?.description ??
-                "Renseigne ces champs. Ils seront envoyés uniquement au backend et chiffrés."}
+              {secretRequest?.description ?? t("secrets.description")}
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-4">
@@ -704,12 +734,43 @@ export function CustomToolBuilder() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setSecretRequest(null)}>
-              Cancel
+              {t("secrets.cancel")}
             </Button>
-            <Button onClick={submitSecrets}>Store securely</Button>
+            <Button onClick={submitSecrets}>{t("secrets.store")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => {
+          if (!open && !deleting) setPendingDelete(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("delete.title")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("delete.description", { name: pendingDelete?.name ?? "" })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>
+              {t("delete.cancel")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={deleting || !pendingDelete}
+              onClick={(event) => {
+                event.preventDefault();
+                if (pendingDelete) void removeCustomTool(pendingDelete.id);
+              }}
+            >
+              {deleting ? t("delete.deleting") : t("delete.confirm")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <ResourceShareDialog
         resource={shareResource}

@@ -18,6 +18,7 @@ import type {
   ChatImageAttachment,
   CodeWorkspaceArtifact,
 } from "@/components/chat/chat-types";
+import { DestructiveConfirmationDialog } from "@/components/destructive-confirmation-dialog";
 import {
   Attachment,
   AttachmentAction,
@@ -28,7 +29,12 @@ import {
   AttachmentTitle,
 } from "@/components/ui/attachment";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import {
   useFilePreview,
@@ -658,6 +664,7 @@ export function CodeWorkspaceArtifactCard({
     "code" | "preview" | null
   >(null);
   const [publishOpen, setPublishOpen] = useState(false);
+  const [deletePath, setDeletePath] = useState<string | null>(null);
   const selectedFile = currentArtifact.files.find(
     (file) => file.path === selectedPath,
   );
@@ -771,22 +778,19 @@ export function CodeWorkspaceArtifactCard({
   }
 
   async function deleteSelectedFile() {
-    if (!selectedPath) return;
-    const confirmed = window.confirm(
-      t("deleteFileConfirm", { path: selectedPath }),
-    );
-    if (!confirmed) return;
+    if (!deletePath) return;
     setSavingFile(true);
     setError(null);
     try {
       const nextArtifact = await requestUpdatedCodeWorkspaceArtifact(
         currentArtifact.projectId,
         "DELETE",
-        { path: selectedPath },
+        { path: deletePath },
         t("deleteFileFailed"),
       );
       setCurrentArtifact(nextArtifact);
       dispatchCodeWorkspaceArtifact(nextArtifact, { activate: true });
+      setDeletePath(null);
     } catch (deleteError) {
       setError(
         deleteError instanceof Error
@@ -936,7 +940,7 @@ export function CodeWorkspaceArtifactCard({
                   size="sm"
                   className="h-7 px-2 text-[11px] text-destructive hover:text-destructive"
                   disabled={!selectedPath || savingFile}
-                  onClick={() => void deleteSelectedFile()}
+                  onClick={() => setDeletePath(selectedPath)}
                   aria-label={t("deleteFile")}
                 >
                   <Trash2Icon
@@ -1007,9 +1011,9 @@ export function CodeWorkspaceArtifactCard({
                     ? t("livePreview")
                     : (selectedPath ?? t("code"))}
                 </DialogTitle>
-                <p className="mt-0.5 text-xs text-muted-foreground">
+                <DialogDescription className="mt-0.5 text-xs text-muted-foreground">
                   {currentArtifact.title} · v{currentArtifact.version}
-                </p>
+                </DialogDescription>
               </div>
               {fullscreenPane === "code" ? (
                 <Button
@@ -1044,6 +1048,18 @@ export function CodeWorkspaceArtifactCard({
           </DialogContent>
         </Dialog>
       </div>
+      <DestructiveConfirmationDialog
+        open={deletePath !== null}
+        title={t("deleteFile")}
+        description={t("deleteFileConfirm", { path: deletePath ?? "" })}
+        cancelLabel={t("cancel")}
+        confirmLabel={savingFile ? t("deletingFile") : t("deleteFile")}
+        busy={savingFile}
+        onOpenChange={(open) => {
+          if (!open && !savingFile) setDeletePath(null);
+        }}
+        onConfirm={() => void deleteSelectedFile()}
+      />
     </>
   );
 }

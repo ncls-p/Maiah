@@ -15,7 +15,12 @@ import {
 } from "@/components/chat/chat-message-rendering-utils";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { formatBytes } from "@/components/chat/code-workspace-artifact-card";
 import { cn } from "@/lib/utils";
 
@@ -191,9 +196,9 @@ export function HtmlArtifactCard({
               <DialogTitle className="truncate text-base font-semibold">
                 {artifact.title}
               </DialogTitle>
-              <p className="mt-0.5 text-xs text-muted-foreground">
+              <DialogDescription className="mt-0.5 text-xs text-muted-foreground">
                 {t("fullscreenPreviewDescription")}
-              </p>
+              </DialogDescription>
             </div>
             <div className="flex items-center gap-2">
               <Button

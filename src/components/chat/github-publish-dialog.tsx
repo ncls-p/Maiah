@@ -6,7 +6,12 @@ import { useLocale, useTranslations } from "next-intl";
 
 import type { CodeWorkspaceArtifact } from "@/components/chat/chat-types";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const BUTTON_TYPE = "button";
 const OUTLINE_VARIANT = "outline";
@@ -336,6 +341,7 @@ export function GitHubPublishDialog({
     <Dialog open={open} onOpenChange={onOpenChangeAction}>
       <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
         <DialogTitle>{t("title")}</DialogTitle>
+        <DialogDescription>{t("dialogDescription")}</DialogDescription>
         {!workspaceId ? (
           <p className="text-sm text-muted-foreground">
             {t("workspaceRequired")}

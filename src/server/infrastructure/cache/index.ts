@@ -15,6 +15,9 @@ function getCache(): Redis {
       return delay;
     },
   });
+  // Cache access is best-effort. Handle connection failures here so an
+  // unavailable cache does not emit process-level "unhandled error" events.
+  redisInstance.on("error", () => undefined);
 
   return redisInstance;
 }
