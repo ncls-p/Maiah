@@ -181,15 +181,16 @@ Le démarrage développement exécute les migrations avant Next.js. Si PostgreSQ
 
 ## Stratégie de test
 
-| Gate             | Commande                             | But                                           |
-| ---------------- | ------------------------------------ | --------------------------------------------- |
-| Lockfile         | `npm run lockfile:check`             | Empêcher une résolution npm non reproductible |
-| Lint             | `npm run lint`                       | React, accessibilité statique et conventions  |
-| Types            | `npm run typecheck`                  | Contrats TypeScript, routes et dictionnaires  |
-| Unit/intégration | `npm run test:ci`                    | Modules, routes, politiques et cas de bord    |
-| Build            | `npm run build`                      | Graphe RSC/client et production Next.js       |
-| E2E              | `npm run test:e2e`                   | Parcours navigateur avec infrastructure       |
-| Migrations       | `npm run db:migrate` sur base propre | SQL, contraintes et triggers PostgreSQL       |
+| Gate             | Commande                                                                                               | But                                           |
+| ---------------- | ------------------------------------------------------------------------------------------------------ | --------------------------------------------- |
+| Lockfile         | `npm run lockfile:check`                                                                               | Empêcher une résolution npm non reproductible |
+| Lint             | `npm run lint`                                                                                         | React, accessibilité statique et conventions  |
+| Types            | `npm run typecheck`                                                                                    | Contrats TypeScript, routes et dictionnaires  |
+| Unit/intégration | `npm run test:ci`                                                                                      | Modules, routes, politiques et cas de bord    |
+| Build            | `npm run build`                                                                                        | Graphe RSC/client et production Next.js       |
+| E2E              | `npm run test:e2e`                                                                                     | Parcours navigateur avec infrastructure       |
+| Migrations       | `npm run db:migrate` sur base propre                                                                   | SQL, contraintes et triggers PostgreSQL       |
+| Skills           | `uv run --with pyyaml python .agents/skills/skill-creator/scripts/quick_validate.py <skill-directory>` | Frontmatter et structure d’un skill           |
 
 Les tests d’un changement doivent cibler le niveau où vit l’invariant. Un test de composant ne remplace pas un test de transaction ou de permission serveur. Les limites locales doivent être écrites dans la matrice de recette.
 
@@ -217,3 +218,5 @@ Les tests d’un changement doivent cibler le niveau où vit l’invariant. Un t
 - [Connexions d’outils et ServiceNow MCP](../tool-connections-and-servicenow-mcp.md)
 - [Plan UI/UX](../ui-ux-redesign-plan.md)
 - [Matrice de recette](../ux/user-workflow-test-matrix.md)
+- [Skill d’orchestration](../../.agents/skills/agent-orchestration/SKILL.md)
+- [Skill d’audit UX](../../.agents/skills/ux-workflow-audit/SKILL.md)

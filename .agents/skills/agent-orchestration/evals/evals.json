@@ -1,0 +1,44 @@
+{
+  "skill_name": "agent-orchestration",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Add an orchestrator agent that delegates research and drafting to two existing assistants. Users need a dry run, history and cancellation. Implement the database, API, runtime and UI without allowing loops, permission bypasses or unbounded token usage.",
+      "expected_output": "A vertical implementation with version-pinned bindings, durable runs, bounded shared runtime, transactional quota handling, complete UX states, migrations, tests and documentation.",
+      "files": [],
+      "expectations": [
+        "Pins child versions and validates visibility, permissions, duplicates, self-delegation and indirect cycles",
+        "Persists root, parent and child runs with explicit terminal states and redacted projections",
+        "Enforces depth, delegation, parallel, step, token, deadline and result-size limits",
+        "Provides dry run, history, cancellation and partial-failure UX in both locales",
+        "Tests PostgreSQL transactions, runtime aborts, API conflicts and the Playwright workflow"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Production sometimes leaves multi-agent runs stuck after a worker restart, and customers occasionally see quota counted twice. Diagnose and fix the orchestration lifecycle without replaying external tools.",
+      "expected_output": "An evidence-backed lifecycle fix covering leases, heartbeats, terminal convergence, idempotent quota settlement and safe handling of ambiguous side effects.",
+      "files": [],
+      "expectations": [
+        "Traces claim, heartbeat, deadline, cancellation, reservation and completion transitions before editing",
+        "Converges lost leases and expired deadlines to explicit terminal states",
+        "Makes reservation settlement, release and expiration idempotent and atomic with run usage",
+        "Avoids automatic replay of tools after an ambiguous worker failure",
+        "Adds concurrency and restart-oriented tests plus operational documentation"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Let marketplace users publish orchestrator agents with all of their child agents, including children from another workspace, and automatically approve any child tools so scheduled runs never pause.",
+      "expected_output": "A safety-aware response that identifies the request as outside V1 constraints, refuses unsafe approval and cross-workspace shortcuts, and proposes an explicit future design rather than weakening current invariants.",
+      "files": [],
+      "expectations": [
+        "Recognizes recursive marketplace packaging and cross-workspace delegation as unsupported V1 scope",
+        "Rejects automatic approval for non-interactive child tools",
+        "Does not weaken workspace isolation, principal propagation or version pinning",
+        "Proposes explicit packaging, authorization and approval-resume contracts for a future version",
+        "Keeps the current UI and API fail closed with a clear explanation"
+      ]
+    }
+  ]
+}

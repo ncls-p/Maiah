@@ -10,9 +10,8 @@ Le skill projet `.agents/skills/ux-workflow-audit` décrit la méthode d’audit
 
 - **Automatisé** : couvert par Vitest, tests de route, tests de domaine ou Playwright.
 - **Navigateur** : vérifié dans un navigateur réel avec DOM, dimensions ou interaction.
-- **CI PostgreSQL** : nécessite le moteur PostgreSQL et les migrations réelles.
+- **PostgreSQL** : vérifié avec le moteur PostgreSQL et les migrations réelles.
 - **Manuel** : recette visuelle ou intégration externe à exécuter avant release.
-- **Bloqué localement** : l’infrastructure locale nécessaire n’était pas disponible pendant l’implémentation.
 
 ## Contrat transversal
 
@@ -87,7 +86,7 @@ Chaque ressource distante doit distinguer :
 | Liste vide                | Un CTA de création                                           | Code                             |
 | Recherche vide            | Message de filtre, collection intacte                        | Code                             |
 | Création assistant        | Type, modèle et instructions simples                         | Tests routes + code              |
-| Création orchestrateur    | Type explicite, privé en V1, accès à l’onglet orchestration  | Tests routes + code              |
+| Création orchestrateur    | Type explicite, privé en V1, accès à l’onglet orchestration  | Playwright + tests routes        |
 | Lecture seule             | Explication organisation, clone possible, mutations masquées | Tests permissions + code         |
 | Chargement partiel config | Éditeur bloqué avec relance                                  | Code                             |
 | Sauvegarde concurrente    | `baseVersionId`, erreur 409 exploitable                      | Tests versioning                 |
@@ -133,7 +132,7 @@ Chaque ressource distante doit distinguer :
 | ------------------------------ | -------------------------------------------------------------------------- | ------------------------- |
 | Vérification des permissions   | Aucun onglet affiché avant réponse réussie                                 | Code + tests sidebar      |
 | URL d’onglet invalide/interdit | Repli vers un onglet autorisé et URL corrigée                              | Code                      |
-| Route `/custom-tools`          | Redirection vers `/tools?tab=custom`                                       | Tests navigation          |
+| Route `/custom-tools`          | Redirection vers `/tools?tab=custom`                                       | Playwright navigation     |
 | Connexions MCP                 | En-tête dépliable sémantique, actions séparées                             | Test accessibilité + code |
 | Catalogue serveurs MCP         | Erreur relançable si serveurs ou outils échouent, aucune fausse liste vide | Code + tests MCP          |
 | Erreur connexions              | Erreur relançable, jamais faux vide                                        | Code                      |
@@ -183,8 +182,11 @@ Avant merge :
 9. vérification des dictionnaires FR/EN ;
 10. scan des secrets et revue des traces/audits.
 
-## Limites de la validation locale du 9 juillet 2026
+## Preuves de validation du 9 juillet 2026
 
-- Le daemon Docker local était indisponible : les migrations `0028` et les parcours authentifiés dépendant de PostgreSQL doivent être validés en CI.
-- Le navigateur local a validé les écrans publics d’authentification, leurs attributs DOM et le responsive à 390px.
-- Les parcours authentifiés ont été vérifiés par code, tests unitaires/intégration disponibles, lint, typecheck et build ; ils ne sont pas déclarés « testés navigateur » sans base locale.
+- PostgreSQL 16/pgvector et Dragonfly ont été démarrés avec Docker ; la migration `0028`, ses tables, contraintes et triggers ont été validés sur le moteur réel.
+- 92 fichiers de tests et 923 tests unitaires/intégration passent. La couverture atteint 95,09 % des statements/lignes, 80,08 % des branches et 96,93 % des fonctions, au-dessus des seuils configurés.
+- Les 104 scénarios Playwright Chromium passent sans retry sur le build de production. Ils couvrent notamment l’authentification, le setup, le chat, les assistants, la création/suppression d’un orchestrateur, les connaissances, les outils, les clés API, les paramètres, les langues, le thème, l’usage et l’audit.
+- Le build Next.js génère avec succès les 84 pages et routes. Le lockfile reproductible, Prettier, ESLint et TypeScript passent également.
+- Huit routes principales ont été contrôlées à 320, 375, 768 et 1440 px sans overflow horizontal. Axe ne remonte aucune violation critique ou sérieuse sur leur état stabilisé.
+- Les intégrations nécessitant des comptes tiers réels (fournisseurs IA, GitHub, MCP distant) restent validées par contrats, mocks et tests d’intégration ; leur smoke avec identifiants de production relève de la recette de déploiement.

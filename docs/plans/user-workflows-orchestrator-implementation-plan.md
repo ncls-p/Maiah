@@ -2,11 +2,12 @@
 
 ## Statut et périmètre
 
-- Statut : implémentation réalisée sur la branche ; gates finaux et validation PostgreSQL CI en cours.
+- Statut : implémentation et validation finale terminées sur la branche.
 - Branche : feat/ux-orchestrator-agents.
 - Base auditée : main au commit 8afd251.
 - Date de l’audit : 2026-07-09.
 - Le backend orchestrateur, les garde-fous P0, les parcours UI/UX, la documentation et le skill d’audit sont implémentés par commits verticaux et poussés régulièrement.
+- Validation finale : 923 tests unitaires/intégration, seuils de couverture atteints, 104 scénarios Playwright sans retry sur le build de production, migration PostgreSQL réelle, build de 84 routes, responsive multi-viewport et Axe sans violation critique/sérieuse.
 - Ordre demandé : sécuriser et simplifier tous les parcours utilisateurs, terminer la refonte UI/UX, puis ajouter les agents orchestrateurs.
 - Identité visuelle à conserver : palette blanche/bleue Deodis, police et marque existantes.
 
@@ -92,16 +93,16 @@ Le groupe avancé s’ouvre automatiquement lorsqu’une de ses routes est activ
 - L’identité et les permissions du principal initiateur sont propagées ; l’identité du créateur de l’enfant n’est jamais utilisée.
 - Chaque run est persistant, hiérarchique, chiffré, annulable et mesuré.
 
-## 3. Baseline à restaurer avant tout diagnostic de code
+## 3. Baseline initiale restaurée avant le diagnostic de code
 
-L’environnement local audité est désynchronisé :
+Lors de l’audit initial, l’environnement local était désynchronisé :
 
 - package-lock.json cible AI SDK 7.0.4, mais node_modules contient AI SDK 5.0.192.
 - npm local est 11.10.0, alors que le projet exige 11.18.0.
 - Plusieurs dépendances du lock sont absentes, dont next-intl, jszip, Prettier, la couverture Vitest, plusieurs packages AI SDK, Tiptap et Streamdown.
 - .next contient des types générés obsolètes.
 
-Conséquences du baseline actuel :
+Conséquences de ce baseline initial :
 
 - lint : vert ;
 - typecheck : 143 erreurs dans 57 fichiers ;
@@ -111,7 +112,7 @@ Conséquences du baseline actuel :
 - format : Prettier absent ;
 - 104 tests Playwright collectés, non exécutés pendant l’audit read-only.
 
-Ce baseline ne prouve pas que le code est défectueux. La première étape de l’implémentation est donc :
+Ce baseline ne prouvait pas que le code était défectueux. La première étape de l’implémentation a donc été :
 
 1. installer npm 11.18.0 ;
 2. supprimer uniquement les artefacts générés .next ;
@@ -1264,7 +1265,8 @@ Mettre à jour .agents/skills/ai-sdk/SKILL.md pour AI SDK 7 :
 
 ### 11.4 Validateur et dette existante
 
-- Documenter/installler PyYAML ou remplacer la dépendance du validateur.
+- Le validateur est documenté avec une exécution isolée et reproductible via `uv run --with pyyaml`, sans polluer les dépendances applicatives.
+- Les skills `agent-orchestration` et `ux-workflow-audit` possèdent chacun trois evals fonctionnelles et passent `quick_validate.py`.
 - Réconcilier les propriétés autorisées avec celles acceptées par le runtime ; user-invocable est actuellement rejeté alors qu’il est utilisé.
 - Corriger les frontmatters clean-code, next-best-practices et shadcn après décision de schéma.
 - Scinder typescript-advanced-types, actuellement supérieur à 500 lignes.
