@@ -3,6 +3,7 @@ import {
 	base64Tool,
 	calculateExpression,
 	colorConverter,
+	codeWorkspaceWriteFileInputSchema,
 	dateMath,
 	jsonTool,
 	markdownTable,
@@ -91,6 +92,33 @@ describe("web search primitive", () => {
 });
 
 describe("utility primitives", () => {
+	it("requires exactly one code workspace write source", () => {
+		const base = {
+			projectId: "00000000-0000-4000-8000-000000000001",
+			path: "assets/logo.png",
+		};
+		expect(
+			codeWorkspaceWriteFileInputSchema.safeParse({
+				...base,
+				attachmentId: "00000000-0000-4000-8000-000000000002",
+			}).success,
+		).toBe(true);
+		expect(
+			codeWorkspaceWriteFileInputSchema.safeParse({ ...base, content: "text" })
+				.success,
+		).toBe(true);
+		expect(codeWorkspaceWriteFileInputSchema.safeParse(base).success).toBe(
+			false,
+		);
+		expect(
+			codeWorkspaceWriteFileInputSchema.safeParse({
+				...base,
+				content: "text",
+				attachmentId: "00000000-0000-4000-8000-000000000002",
+			}).success,
+		).toBe(false);
+	});
+
 	it("generates random numbers and validates ranges", () => {
 		const decimals = randomNumbers({
 			min: 1,

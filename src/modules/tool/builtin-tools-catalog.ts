@@ -91,7 +91,8 @@ export const BUILTIN_TOOL_SUMMARIES: BuiltInToolSummary[] = [
     id: "00000000-0000-4000-8000-000000000031",
     name: "code_workspace_write_file",
     displayName: "Write code file",
-    description: "Create or replace a text file in an uploaded code workspace.",
+    description:
+      "Create or replace text, or import an uploaded asset into a code workspace.",
     riskLevel: MEDIUM_RISK_LEVEL,
     category: "Code",
   },

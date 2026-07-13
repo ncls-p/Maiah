@@ -5,6 +5,8 @@ const mocks = vi.hoisted(() => ({
 	listCodeWorkspaceFiles: vi.fn(),
 	readCodeWorkspaceFile: vi.fn(),
 	writeCodeWorkspaceFile: vi.fn(),
+	importCodeWorkspaceFile: vi.fn(),
+	getChatAttachmentBytes: vi.fn(),
 	deleteCodeWorkspaceFile: vi.fn(),
 	getUserGitHubStatus: vi.fn(),
 	publishCodeWorkspaceToGitHub: vi.fn(),
@@ -25,6 +27,11 @@ vi.mock("@/modules/code-workspace/storage", () => ({
 	listCodeWorkspaceFiles: mocks.listCodeWorkspaceFiles,
 	readCodeWorkspaceFile: mocks.readCodeWorkspaceFile,
 	writeCodeWorkspaceFile: mocks.writeCodeWorkspaceFile,
+	importCodeWorkspaceFile: mocks.importCodeWorkspaceFile,
+}));
+
+vi.mock("@/modules/chat/attachments", () => ({
+	getChatAttachmentBytes: mocks.getChatAttachmentBytes,
 }));
 
 vi.mock("@/modules/github/publishing", () => ({
@@ -119,6 +126,11 @@ beforeEach(() => {
 		content: "one two one",
 	});
 	mockFn(mocks.writeCodeWorkspaceFile).mockResolvedValue({ ok: "written" });
+	mockFn(mocks.importCodeWorkspaceFile).mockResolvedValue({ ok: "imported" });
+	mockFn(mocks.getChatAttachmentBytes).mockResolvedValue({
+		metadata: { kind: "chat_image" },
+		bytes: new Uint8Array([1, 2, 3]),
+	});
 	mockFn(mocks.deleteCodeWorkspaceFile).mockResolvedValue({ ok: "deleted" });
 	mockFn(mocks.getUserGitHubStatus).mockResolvedValue({ connected: true });
 	mockFn(mocks.publishCodeWorkspaceToGitHub).mockResolvedValue({ ok: true });
@@ -209,6 +221,24 @@ describe("builtInTools", () => {
 				context,
 			),
 		).resolves.toEqual({ ok: "written" });
+		await expect(
+			runTool(
+				"code_workspace_write_file",
+				{
+					projectId: "p1",
+					path: "assets/logo.png",
+					attachmentId: "00000000-0000-4000-8000-000000000099",
+				},
+				context,
+			),
+		).resolves.toEqual({ ok: "imported" });
+		expect(mocks.importCodeWorkspaceFile).toHaveBeenCalledWith(
+			expect.objectContaining({
+				projectId: "p1",
+				filePath: "assets/logo.png",
+				bytes: new Uint8Array([1, 2, 3]),
+			}),
+		);
 		await expect(
 			runTool(
 				"code_workspace_delete_file",

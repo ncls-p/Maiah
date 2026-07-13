@@ -744,6 +744,56 @@ export async function writeCodeWorkspaceFile(input: {
   }
 }
 
+export async function importCodeWorkspaceFile(input: {
+  projectId: string;
+  workspaceId: string;
+  userId?: string;
+  filePath: string;
+  bytes: Uint8Array;
+}) {
+  try {
+    const metadata = await getCodeWorkspace(input.projectId);
+    assertCodeWorkspaceAccess(metadata, input.workspaceId, input.userId);
+    const projectPath = normalizeWorkspacePath(input.filePath);
+    if (!isAllowedPath(projectPath)) {
+      throw new Error("Only supported web files can be imported.");
+    }
+    if (
+      isTextWorkspacePath(projectPath) &&
+      input.bytes.byteLength > maxTextFileBytes
+    ) {
+      throw new Error("File content is too large.");
+    }
+
+    const bytes = new Uint8Array(input.bytes);
+    const updatedAt = new Date().toISOString();
+    const nextSummary: CodeWorkspaceFileSummary = {
+      path: projectPath,
+      size: bytes.byteLength,
+      mimeType: contentTypeForPath(projectPath),
+      binary: !isTextWorkspacePath(projectPath),
+      hash: hashBytes(bytes),
+      updatedAt,
+    };
+    const nextMetadata = updatedCodeWorkspaceMetadata(
+      metadata,
+      nextSummary,
+      updatedAt,
+    );
+
+    await storage.upload(
+      fileObjectKey(metadata.id, projectPath),
+      bytes,
+      nextSummary.mimeType,
+    );
+    await saveMetadata(nextMetadata);
+    return codeWorkspaceArtifact(nextMetadata, `Imported ${projectPath}.`);
+  } catch (error) {
+    logHandledError("Failed to import code workspace file", {}, error as Error);
+    throw error;
+  }
+}
+
 export async function deleteCodeWorkspaceFile(input: {
   projectId: string;
   workspaceId: string;

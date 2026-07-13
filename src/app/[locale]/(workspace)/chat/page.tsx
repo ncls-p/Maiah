@@ -1165,7 +1165,10 @@ export default function ChatPage() {
           ? {
               ...item,
               status: "completed",
-              parts: [{ type: "text", content: trimmedContent }],
+              parts: [
+                { type: "text", content: trimmedContent },
+                ...item.parts.filter((part) => part.type === "file"),
+              ],
             }
           : item,
       ),
@@ -1195,6 +1198,17 @@ export default function ChatPage() {
       resendFromMessageId: message.id,
       reuseUserMessage: true,
     });
+  }
+
+  async function reloadActualLatestMessages() {
+    if (!activeConversationId || sending) return;
+    const data = await fetchJson<{ messages?: ChatMessage[] }>(
+      `/api/workspace/conversations/${activeConversationId}`,
+    );
+    const latestMessages = data.messages ?? [];
+    setMessages(latestMessages);
+    const latestArtifact = latestCodeWorkspaceArtifact(latestMessages);
+    setCodeWorkspaceArtifact(latestArtifact);
   }
 
   async function reloadAgentContext() {
@@ -1413,6 +1427,7 @@ export default function ChatPage() {
                     onDeleteMessage={deleteMessage}
                     onResendMessage={resendMessage}
                     onRegenerateAssistant={resendMessage}
+                    onJumpLatest={reloadActualLatestMessages}
                     pendingApprovals={pendingApprovals}
                     onApproveTool={approveToolInvocation}
                     onRejectTool={rejectToolInvocation}
@@ -1486,6 +1501,7 @@ export default function ChatPage() {
                 onDeleteMessage={deleteMessage}
                 onResendMessage={resendMessage}
                 onRegenerateAssistant={resendMessage}
+                onJumpLatest={reloadActualLatestMessages}
                 pendingApprovals={pendingApprovals}
                 onApproveTool={approveToolInvocation}
                 onRejectTool={rejectToolInvocation}

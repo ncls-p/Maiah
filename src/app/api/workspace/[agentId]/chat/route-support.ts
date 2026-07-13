@@ -89,6 +89,47 @@ export const codeWorkspaceCreateToolNames = [
   ...codeWorkspaceEditToolNames,
 ];
 
+function userFilePartIdentity(metadata: unknown) {
+  if (typeof metadata !== "object" || metadata === null) return null;
+  const record = metadata as Record<string, unknown>;
+  if (
+    (record.kind === "chat_file" || record.kind === "chat_image") &&
+    typeof record.id === "string"
+  ) {
+    return `${record.kind}:${record.id}`;
+  }
+  if (
+    record.kind === "code_workspace_artifact" &&
+    typeof record.projectId === "string"
+  ) {
+    return `${record.kind}:${record.projectId}`;
+  }
+  return null;
+}
+
+export function mergeUserFilePartMetadata(
+  persisted: unknown[],
+  requested: unknown[],
+) {
+  const merged: unknown[] = [];
+  const indexesByIdentity = new Map<string, number>();
+  for (const metadata of [...persisted, ...requested]) {
+    const identity = userFilePartIdentity(metadata);
+    if (!identity) {
+      merged.push(metadata);
+      continue;
+    }
+    const existingIndex = indexesByIdentity.get(identity);
+    if (existingIndex === undefined) {
+      indexesByIdentity.set(identity, merged.length);
+      merged.push(metadata);
+    } else {
+      merged[existingIndex] = metadata;
+    }
+  }
+  return merged;
+}
+
 export function streamToolCallId(part: unknown) {
   const record = part as Record<string, unknown>;
   return typeof record.toolCallId === "string"

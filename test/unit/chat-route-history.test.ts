@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   select: vi.fn(),
   decryptValue: vi.fn(),
+  getChatAttachmentExtractedText: vi.fn(),
+  getChatImageAttachmentBytes: vi.fn(),
 }));
 
 vi.mock("@/server/infrastructure/db", () => ({
@@ -11,8 +13,20 @@ vi.mock("@/server/infrastructure/db", () => ({
 vi.mock("@/lib/crypto", () => ({
   decryptValue: mocks.decryptValue,
 }));
+vi.mock("@/modules/chat/attachments", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/modules/chat/attachments")>();
+  return {
+    ...actual,
+    getChatAttachmentExtractedText: mocks.getChatAttachmentExtractedText,
+    getChatImageAttachmentBytes: mocks.getChatImageAttachmentBytes,
+  };
+});
 
-import { loadConversationHistory } from "@/app/api/workspace/[agentId]/chat/route-history";
+import {
+  loadConversationHistory,
+  mergeHistoryWithAttachmentMessages,
+} from "@/app/api/workspace/[agentId]/chat/route-history";
 
 function selectRows(rows: unknown[]) {
   const query = {
@@ -26,10 +40,129 @@ function selectRows(rows: unknown[]) {
   return query;
 }
 
+function selectLimitedRows(rows: unknown[]) {
+  const query = {
+    from: vi.fn(),
+    where: vi.fn(),
+    orderBy: vi.fn(),
+    limit: vi.fn(),
+  };
+  query.from.mockReturnValue(query);
+  query.where.mockReturnValue(query);
+  query.orderBy.mockReturnValue(query);
+  query.limit.mockResolvedValue(rows);
+  return query;
+}
+
+function selectJoinedRows(rows: unknown[]) {
+  const query = {
+    from: vi.fn(),
+    innerJoin: vi.fn(),
+    where: vi.fn(),
+    orderBy: vi.fn(),
+  };
+  query.from.mockReturnValue(query);
+  query.innerJoin.mockReturnValue(query);
+  query.where.mockReturnValue(query);
+  query.orderBy.mockResolvedValue(rows);
+  return query;
+}
+
 describe("orchestrator conversation history", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.decryptValue.mockImplementation(async (value: string) => value);
+    mocks.getChatAttachmentExtractedText.mockResolvedValue({
+      metadata: {},
+      text: "EXTRACTED OLD FILE CONTENT",
+    });
+  });
+
+  it("keeps attachment-bearing turns outside the recent history window", () => {
+    const oldAttachmentTurn = {
+      id: "old-file-turn",
+      role: "user",
+      createdAt: new Date("2026-07-01T10:00:00Z"),
+    };
+    const recentTurn = {
+      id: "recent-turn",
+      role: "user",
+      createdAt: new Date("2026-07-13T10:00:00Z"),
+    };
+
+    expect(
+      mergeHistoryWithAttachmentMessages(
+        [recentTurn],
+        [oldAttachmentTurn, oldAttachmentTurn],
+      ).map((message) => message.id),
+    ).toEqual(["old-file-turn", "recent-turn"]);
+  });
+
+  it("reads an older attached file on a later bounded conversation turn", async () => {
+    const oldMessage = {
+      id: "old-file-turn",
+      role: "user",
+      createdAt: new Date("2026-07-01T10:00:00Z"),
+    };
+    const recentMessage = {
+      id: "recent-assistant-turn",
+      role: "assistant",
+      createdAt: new Date("2026-07-13T10:00:00Z"),
+    };
+    const attachment = {
+      kind: "chat_file",
+      id: "00000000-0000-4000-8000-000000000099",
+      fileName: "brief.pdf",
+      mimeType: "application/pdf",
+      size: 123,
+      hash: "hash",
+      url: "/attachment",
+      category: "document",
+      extractionStatus: "readable",
+      extractedTextChars: 26,
+    };
+    mocks.select
+      .mockReturnValueOnce(selectLimitedRows([recentMessage]))
+      .mockReturnValueOnce(selectJoinedRows([oldMessage]))
+      .mockReturnValueOnce(
+        selectRows([
+          {
+            messageId: oldMessage.id,
+            type: "text",
+            contentEncrypted: "Please keep this file available.",
+            metadataJson: null,
+            sortOrder: 0,
+          },
+          {
+            messageId: oldMessage.id,
+            type: "file",
+            contentEncrypted: null,
+            metadataJson: attachment,
+            sortOrder: 1,
+          },
+          {
+            messageId: recentMessage.id,
+            type: "text",
+            contentEncrypted: "Recent answer",
+            metadataJson: null,
+            sortOrder: 0,
+          },
+        ]),
+      );
+
+    const history = await loadConversationHistory(
+      "conversation",
+      { workspaceId: "workspace", userId: "user" },
+      1,
+    );
+
+    expect(history).toHaveLength(2);
+    expect(JSON.stringify(history[0])).toContain("EXTRACTED OLD FILE CONTENT");
+    expect(mocks.getChatAttachmentExtractedText).toHaveBeenCalledWith({
+      attachmentId: attachment.id,
+      workspaceId: "workspace",
+      userId: "user",
+    });
   });
 
   it("keeps child traces out and retains only their final response", async () => {

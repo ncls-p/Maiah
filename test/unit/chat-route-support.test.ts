@@ -44,6 +44,7 @@ async function loadModules() {
     buildBoundTools: routeSupport.buildBoundTools as BuildBoundTools,
     projectStreamedToolInput: routeSupport.projectStreamedToolInput,
     streamToolErrorOutput: routeSupport.streamToolErrorOutput,
+    mergeUserFilePartMetadata: routeSupport.mergeUserFilePartMetadata,
     getBuiltInToolByName:
       builtinTools.getBuiltInToolByName as BuiltInToolLookup,
     waitForApproval: invocationStateMock.waitForApproval,
@@ -75,6 +76,28 @@ describe("chat route tool gating", () => {
 
     expect(Object.keys(tools)).not.toContain("code_workspace_create_project");
     expect(Object.keys(tools)).not.toContain("code_workspace_write_file");
+  });
+
+  it("keeps persisted attachments when a user message is regenerated", async () => {
+    const { mergeUserFilePartMetadata } = await loadModules();
+    const persistedFile = {
+      kind: "chat_file",
+      id: "file-1",
+      fileName: "brief.pdf",
+    };
+    const refreshedFile = { ...persistedFile, extractionStatus: "readable" };
+    const persistedImage = {
+      kind: "chat_image",
+      id: "image-1",
+      fileName: "logo.png",
+    };
+
+    expect(
+      mergeUserFilePartMetadata(
+        [persistedFile, persistedImage],
+        [refreshedFile],
+      ),
+    ).toEqual([refreshedFile, persistedImage]);
   });
 
   it("projects partial tool input while redacting secrets", async () => {

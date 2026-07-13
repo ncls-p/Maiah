@@ -51,6 +51,7 @@ import {
 	getCodeWorkspace,
 	getCodeWorkspaceFileBytes,
 	getCodeWorkspaceFilesForPublish,
+	importCodeWorkspaceFile,
 	isTextWorkspacePath,
 	listCodeWorkspaceFiles,
 	normalizeWorkspacePath,
@@ -231,13 +232,29 @@ describe("code workspace storage", () => {
 		expect(updated.version).toBe(2);
 		expect(updated.files.map((file) => file.path)).toContain("about.html");
 
+		const imported = await importCodeWorkspaceFile({
+			projectId,
+			workspaceId,
+			userId,
+			filePath: "assets/logo.png",
+			bytes: new Uint8Array([137, 80, 78, 71]),
+		});
+		expect(imported.version).toBe(3);
+		expect(imported.files).toContainEqual(
+			expect.objectContaining({
+				path: "assets/logo.png",
+				binary: true,
+				mimeType: "image/png",
+			}),
+		);
+
 		const deleted = await deleteCodeWorkspaceFile({
 			projectId,
 			workspaceId,
 			userId,
 			filePath: "index.html",
 		});
-		expect(deleted.version).toBe(3);
+		expect(deleted.version).toBe(4);
 		expect(deleted.rootFile).toBe("about.html");
 
 		const bytes = await getCodeWorkspaceFileBytes({
@@ -253,6 +270,7 @@ describe("code workspace storage", () => {
 		});
 		expect(publish.files.map((file) => file.path)).toEqual([
 			"about.html",
+			"assets/logo.png",
 			"style.css",
 		]);
 		expect(Buffer.from(publish.files[0].bytes).toString("utf8")).toBe(
@@ -268,6 +286,8 @@ describe("code workspace storage", () => {
 		const reopened = await JSZip.loadAsync(zipped.bytes);
 		expect(Object.keys(reopened.files).sort()).toEqual([
 			"about.html",
+			"assets/",
+			"assets/logo.png",
 			"style.css",
 		]);
 

@@ -83,6 +83,7 @@ interface ChatMessageListProps {
   onDeleteMessage?: (message: ChatMessage) => Promise<void> | void;
   onResendMessage?: (message: ChatMessage) => Promise<void> | void;
   onRegenerateAssistant?: (message: ChatMessage) => Promise<void> | void;
+  onJumpLatest?: () => Promise<void> | void;
   pendingApprovals?: PendingToolApproval[];
   onApproveTool?: (approval: PendingToolApproval) => void;
   onRejectTool?: (approval: PendingToolApproval) => void;
@@ -202,9 +203,42 @@ function rememberUserMessageAnchor(
   window.localStorage.setItem(chatAnchorStorageKey(conversationId), messageId);
 }
 
-function ChatScrollControls({ sending }: { sending: boolean }) {
+function ChatScrollControls({
+  sending,
+  conversationId,
+  onJumpLatest,
+}: {
+  sending: boolean;
+  conversationId?: string | null;
+  onJumpLatest?: () => Promise<void> | void;
+}) {
   const t = useTranslations("chat.messageList");
   const scrollable = useMessageScrollerScrollable();
+  const { scrollToEnd } = useMessageScroller();
+
+  async function jumpToActualLatest() {
+    if (conversationId) {
+      window.localStorage.removeItem(chatAnchorStorageKey(conversationId));
+    }
+    const url = new URL(window.location.href);
+    url.hash = "";
+    window.history.replaceState(null, "", url);
+    try {
+      await onJumpLatest?.();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("jumpLatest"));
+    }
+
+    let remainingLayoutPasses = 5;
+    const settleAtEnd = () => {
+      scrollToEnd({ behavior: "auto" });
+      remainingLayoutPasses -= 1;
+      if (remainingLayoutPasses > 0) {
+        window.requestAnimationFrame(settleAtEnd);
+      }
+    };
+    window.requestAnimationFrame(settleAtEnd);
+  }
 
   return (
     <>
@@ -223,6 +257,10 @@ function ChatScrollControls({ sending }: { sending: boolean }) {
         variant="secondary"
         size="sm"
         className="z-20 rounded-full px-3 shadow-sm"
+        onClick={(event) => {
+          event.preventDefault();
+          void jumpToActualLatest();
+        }}
       >
         <ChevronDownIcon data-icon="inline-start" />
         {t("jumpLatest")}
@@ -414,6 +452,7 @@ export function ChatMessageList({
   onDeleteMessage,
   onResendMessage,
   onRegenerateAssistant,
+  onJumpLatest,
   pendingApprovals = [],
   onApproveTool,
   onRejectTool,
@@ -795,7 +834,11 @@ export function ChatMessageList({
           messageIndexById={messageIndexById}
           setVisibleMessageCount={setVisibleMessageCount}
         />
-        <ChatScrollControls sending={sending} />
+        <ChatScrollControls
+          sending={sending}
+          conversationId={conversationId}
+          onJumpLatest={onJumpLatest}
+        />
       </MessageScroller>
     </MessageScrollerProvider>
   );

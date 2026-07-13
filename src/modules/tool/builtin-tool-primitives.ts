@@ -97,11 +97,21 @@ export const codeWorkspaceReadFileInputSchema = z.object({
   path: z.string().trim().min(1).max(260),
 });
 
-export const codeWorkspaceWriteFileInputSchema = z.object({
-  projectId: z.uuid(),
-  path: z.string().trim().min(1).max(260),
-  content: runtimeLimitedString(1_000_000, "File content"),
-});
+export const codeWorkspaceWriteFileInputSchema = z
+  .object({
+    projectId: z.uuid(),
+    path: z.string().trim().min(1).max(260),
+    content: runtimeLimitedString(1_000_000, "File content").optional(),
+    attachmentId: z.uuid().optional(),
+  })
+  .superRefine((value, context) => {
+    if ((value.content === undefined) === (value.attachmentId === undefined)) {
+      context.addIssue({
+        code: "custom",
+        message: "Provide exactly one of content or attachmentId.",
+      });
+    }
+  });
 
 export const codeWorkspaceReplaceTextInputSchema = z.object({
   projectId: z.uuid(),
