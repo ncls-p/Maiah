@@ -9,7 +9,7 @@ test.describe("authentication", () => {
   test.describe("sign in page", () => {
     test("loads sign in page with correct structure", async ({ page }) => {
       await page.goto("/en/auth/signin");
-      await expect(page).toHaveTitle(/Sign in to AI Hub|AI Hub|App/i);
+      await expect(page).toHaveTitle(/Sign in to Maiah|Maiah|App/i);
 
       // Logo should be visible
       await expect(page.getByRole("img").first()).toBeVisible();

@@ -1,6 +1,6 @@
 ---
 name: agent-orchestration
-description: Design, implement, review, or debug bounded multi-agent orchestration in AI Hub. Use this skill whenever work mentions orchestrator agents, delegation to child or specialist agents, agent runs, delegation graphs, orchestration budgets, cancellation, leases, idempotency, or multi-agent runtime behavior—even when the request appears limited to an API route or UI tab.
+description: Design, implement, review, or debug bounded multi-agent orchestration in Maiah. Use this skill whenever work mentions orchestrator agents, delegation to child or specialist agents, agent runs, delegation graphs, orchestration budgets, cancellation, leases, idempotency, or multi-agent runtime behavior—even when the request appears limited to an API route or UI tab.
 metadata:
   version: "1.0.0"
   argument-hint: <orchestration-feature-or-incident>

@@ -28,17 +28,17 @@ export function AppHeader({
 }) {
   return (
     <header
-      className={cn("app-shell__header gap-2", className)}
+      className={cn("app-shell__header gap-3", className)}
       data-slot="app-header"
     >
-      <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden sm:gap-2">
+      <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden sm:gap-3">
         {leading}
         {title || (breadcrumbs && breadcrumbs.length > 0) ? (
           <div className="hidden min-w-0 flex-col gap-0.5 sm:flex">
             {breadcrumbs && breadcrumbs.length > 0 ? (
               <nav
                 aria-label="Breadcrumb"
-                className="flex min-w-0 flex-wrap items-center gap-1 text-xs text-muted-foreground"
+                className="flex min-w-0 flex-wrap items-center gap-1 text-[0.7rem] font-medium text-muted-foreground"
               >
                 {breadcrumbs.map((crumb, index) => (
                   <span
@@ -67,7 +67,9 @@ export function AppHeader({
             ) : null}
             {title ? (
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold">{title}</p>
+                <p className="truncate text-sm font-semibold tracking-[-0.02em]">
+                  {title}
+                </p>
                 {subtitle ? (
                   <p className="truncate text-xs text-muted-foreground">
                     {subtitle}

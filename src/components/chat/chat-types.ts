@@ -41,6 +41,7 @@ export interface AgentVersion {
 export interface ChatMessagePart {
   type: string;
   content: string;
+  state?: "streaming" | "done";
 }
 
 interface CodeWorkspaceFileSummary {
@@ -133,6 +134,8 @@ export function toolNameMatches(
 
 export type ChatStreamEvent =
   | { type: "text" | "reasoning"; delta: string }
+  | { type: "reasoning_start" }
+  | { type: "reasoning_end" }
   | { type: "done" }
   | { type: "error"; error: string }
   | { type: "conversation_title"; title: string }
@@ -152,6 +155,12 @@ export type ChatStreamEvent =
       type: "tool_input_delta";
       toolCallId: string;
       delta: string;
+    }
+  | {
+      type: "tool_input_snapshot";
+      toolCallId: string;
+      toolName: string;
+      inputText: string;
     }
   | {
       type: "tool_input_end";
@@ -249,6 +258,87 @@ export function renderablePartsFromMessage(message: ChatMessage) {
   );
 }
 
+export type IndexedChatMessagePart = {
+  part: ChatMessagePart;
+  partIndex: number;
+};
+
+export type ChatMessagePartGroup =
+  | ({ type: "part" } & IndexedChatMessagePart)
+  | {
+      type: "work-phase";
+      parts: IndexedChatMessagePart[];
+      hasVisibleResponseAfter: boolean;
+    };
+
+function isWorkPhasePart(part: ChatMessagePart) {
+  return ["reasoning", "tool-call", "tool-result"].includes(part.type);
+}
+
+function isMeaningfulTextPart(part: ChatMessagePart) {
+  return part.type === "text" && part.content.trim().length > 0;
+}
+
+export function workPhaseHasPendingWork(
+  parts: ChatMessagePart[],
+  messageStatus: ChatMessage["status"],
+) {
+  if (messageStatus !== "streaming") return false;
+  return parts.some(
+    (part) =>
+      (part.type === "reasoning" && part.state === "streaming") ||
+      ((part.type === "tool-call" || part.type === "tool-result") &&
+        getToolStatus(parseToolPart(part.content)) === "pending"),
+  );
+}
+
+export function groupWorkPhaseParts(
+  parts: ChatMessagePart[],
+  options: {
+    isStandalonePart?: (part: ChatMessagePart) => boolean;
+  } = {},
+): ChatMessagePartGroup[] {
+  const groups: ChatMessagePartGroup[] = [];
+  const canGroupPart = (part: ChatMessagePart) =>
+    isWorkPhasePart(part) && !options.isStandalonePart?.(part);
+
+  for (let partIndex = 0; partIndex < parts.length; ) {
+    const part = parts[partIndex];
+    if (!canGroupPart(part)) {
+      groups.push({ type: "part", part, partIndex });
+      partIndex += 1;
+      continue;
+    }
+
+    const phaseStart = partIndex;
+    const phaseParts: IndexedChatMessagePart[] = [];
+    while (partIndex < parts.length && canGroupPart(parts[partIndex])) {
+      phaseParts.push({ part: parts[partIndex], partIndex });
+      partIndex += 1;
+    }
+
+    if (phaseParts.length < 2) {
+      groups.push({ type: "part", part, partIndex: phaseStart });
+      continue;
+    }
+
+    groups.push({
+      type: "work-phase",
+      parts: phaseParts,
+      hasVisibleResponseAfter: parts
+        .slice(partIndex)
+        .some(
+          (candidate) =>
+            isMeaningfulTextPart(candidate) ||
+            candidate.type === "file" ||
+            Boolean(options.isStandalonePart?.(candidate)),
+        ),
+    });
+  }
+
+  return groups;
+}
+
 export function citationsFromMessage(message: ChatMessage): ChatCitation[] {
   const part = message.parts.find((p) => p.type === "citations");
   if (!part?.content) return [];
@@ -267,6 +357,8 @@ export function parseToolPart(content: string): {
   inputText?: string;
   streamingInput?: boolean;
   denied?: boolean;
+  invalid?: boolean;
+  error?: unknown;
   message?: string;
   agentContext?: unknown;
 } {
@@ -287,10 +379,33 @@ function isDeniedToolOutput(output: unknown) {
   );
 }
 
+function isFailedToolOutput(output: unknown) {
+  if (typeof output !== "object" || output === null) return false;
+  const record = output as Record<string, unknown>;
+  return (
+    record.ok === false ||
+    record.success === false ||
+    record.status === "error" ||
+    record.status === "failed" ||
+    (record.error !== undefined &&
+      record.error !== null &&
+      record.error !== false &&
+      record.error !== "")
+  );
+}
+
 export function getToolStatus(
   parsed: ReturnType<typeof parseToolPart>,
 ): "pending" | "completed" | "error" {
-  if (parsed.denied || isDeniedToolOutput(parsed.output)) return "error";
+  if (
+    parsed.denied ||
+    parsed.invalid ||
+    parsed.error != null ||
+    isDeniedToolOutput(parsed.output) ||
+    isFailedToolOutput(parsed.output)
+  ) {
+    return "error";
+  }
   if (parsed.output !== undefined) return "completed";
   return "pending";
 }
@@ -321,14 +436,45 @@ export function appendMessagePart(
   const lastPart = nextParts.at(-1);
 
   if (lastPart?.type !== type) {
-    return [...nextParts, { type, content: delta }];
+    return [
+      ...nextParts,
+      {
+        type,
+        content: delta,
+        ...(type === "reasoning" ? { state: "streaming" as const } : {}),
+      },
+    ];
   }
 
   nextParts[nextParts.length - 1] = {
     ...lastPart,
     content: `${lastPart.content}${delta}`,
+    ...(type === "reasoning" ? { state: "streaming" as const } : {}),
   };
   return nextParts;
+}
+
+export function startReasoningPart(
+  parts: ChatMessage["parts"],
+): ChatMessage["parts"] {
+  const lastPart = parts.at(-1);
+  if (lastPart?.type === "reasoning" && lastPart.state === "streaming") {
+    return parts;
+  }
+  return [
+    ...parts,
+    { type: "reasoning", content: "", state: "streaming" as const },
+  ];
+}
+
+export function completeReasoningParts(parts: ChatMessage["parts"]) {
+  let changed = false;
+  const nextParts = parts.map((part) => {
+    if (part.type !== "reasoning" || part.state !== "streaming") return part;
+    changed = true;
+    return { ...part, state: "done" as const };
+  });
+  return changed ? nextParts : parts;
 }
 
 type StreamEventCandidate = Record<string, unknown> & { type?: unknown };
@@ -344,6 +490,8 @@ const hasToolIdentity: StreamEventValidator = (event) =>
 const STREAM_EVENT_VALIDATORS: Record<string, StreamEventValidator> = {
   text: hasStringDelta,
   reasoning: hasStringDelta,
+  reasoning_start: () => true,
+  reasoning_end: () => true,
   error: (event) => typeof event.error === "string",
   done: () => true,
   tool_approval_required: (event) =>
@@ -352,6 +500,8 @@ const STREAM_EVENT_VALIDATORS: Record<string, StreamEventValidator> = {
   tool_input_start: hasToolIdentity,
   tool_input_delta: (event) =>
     typeof event.toolCallId === "string" && typeof event.delta === "string",
+  tool_input_snapshot: (event) =>
+    hasToolIdentity(event) && typeof event.inputText === "string",
   tool_input_end: (event) => typeof event.toolCallId === "string",
   tool_call: hasToolIdentity,
   tool_result: hasToolIdentity,

@@ -61,7 +61,7 @@ function toToolApprovalDecision(
 
 /**
  * Optional OPA-backed AI SDK approval policy. When configured, OPA gets first
- * refusal/approval and local AI Hub policy handles `not-applicable` decisions.
+ * refusal/approval and local Maiah policy handles `not-applicable` decisions.
  */
 export async function evaluateOpaToolApprovalPolicy(
   input: OpaToolApprovalInput,

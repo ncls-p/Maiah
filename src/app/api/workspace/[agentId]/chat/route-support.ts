@@ -18,13 +18,22 @@ import {
   type AiHubToolApprovalPolicy,
 } from "@/modules/tool/approval-policy";
 import { waitForApproval } from "@/modules/tool/invocation-state";
-import { projectToolPayloadForDisplay } from "@/modules/tool/safe-payload";
+import {
+  projectToolMessagePayload,
+  projectToolPayloadForDisplay,
+  safeToolErrorMessage,
+} from "@/modules/tool/safe-payload";
 import { evaluateOpaToolApprovalPolicy } from "@/modules/tool/opa-approval-policy";
 import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
 import { messageParts, messages } from "@/server/infrastructure/db/schema";
 import { registerAiSdkDevTools } from "@/server/infrastructure/ai-sdk/devtools";
-import { jsonSchema, type ToolApprovalConfiguration, type ToolSet } from "ai";
+import {
+  jsonSchema,
+  parsePartialJson,
+  type ToolApprovalConfiguration,
+  type ToolSet,
+} from "ai";
 
 registerAiSdkDevTools();
 
@@ -96,6 +105,32 @@ export function streamToolInputDelta(part: unknown) {
     : typeof record.inputTextDelta === "string"
       ? record.inputTextDelta
       : "";
+}
+
+export async function projectStreamedToolInput(inputText: string) {
+  const parsed = await parsePartialJson(inputText);
+  if (parsed.value === undefined) return "";
+  return JSON.stringify(projectToolMessagePayload(parsed.value), null, 2);
+}
+
+export function streamToolErrorOutput(part: unknown, originalError?: unknown) {
+  const record = part as Record<string, unknown>;
+  const sourceError = originalError ?? record.error;
+  const errorRecord =
+    typeof sourceError === "object" && sourceError !== null
+      ? (sourceError as Record<string, unknown>)
+      : null;
+  const isUnavailableTool =
+    errorRecord?.name === "AI_NoSuchToolError" ||
+    errorRecord?.name === "NoSuchToolError";
+
+  return {
+    ok: false,
+    code: isUnavailableTool ? "tool_unavailable" : "tool_execution_failed",
+    error: isUnavailableTool
+      ? "The requested tool is not available for this assistant."
+      : safeToolErrorMessage(record.error, "Tool execution failed"),
+  };
 }
 
 function sanitizeToolKeyPart(value: string) {
@@ -815,7 +850,7 @@ export async function buildBoundTools(input: {
         policy: input.approvalPolicy,
         ...metadata,
       });
-    // Keep human approvals in AI Hub's existing DB-audited, streaming approval
+    // Keep human approvals in Maiah's existing DB-audited, streaming approval
     // flow. Native AI SDK approval is used here for hard policy denials so the
     // model receives a standard denied tool output before execution can start.
     return decision.status === "deny" ? decision.aiSdkStatus : undefined;

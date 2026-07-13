@@ -190,8 +190,8 @@ describe("utility primitives", () => {
 			"Cannot convert",
 		);
 		expect(
-			slugifyText({ text: " À bientôt, AI Hub! ", separator: "-" }),
-		).toEqual({ slug: "a-bientot-ai-hub" });
+			slugifyText({ text: " À bientôt, Maiah! ", separator: "-" }),
+		).toEqual({ slug: "a-bientot-maiah" });
 		expect(colorConverter({ hex: "#336699" })).toEqual({
 			hex: "#336699",
 			rgb: { r: 51, g: 102, b: 153 },

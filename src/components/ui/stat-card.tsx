@@ -3,22 +3,24 @@ import { cn } from "@/lib/utils";
 
 const defaultStyles = {
   container:
-    "group relative overflow-hidden rounded-2xl border border-border/70 bg-card p-4 shadow-sm transition-colors hover:border-primary/35",
+    "group relative overflow-hidden rounded-3xl border border-transparent bg-card p-5 shadow-[var(--surface-shadow)] transition-[box-shadow,transform] duration-200 ease-out hover:-translate-y-px hover:shadow-[var(--surface-shadow-hover)]",
   accentBar:
-    "absolute left-0 top-0 h-full w-1 opacity-60 transition-opacity duration-300 group-hover:opacity-100",
-  value: "text-2xl font-bold tracking-tight text-foreground",
+    "absolute inset-x-5 top-0 h-0.5 rounded-full opacity-70 transition-opacity duration-200 group-hover:opacity-100",
+  value:
+    "text-2xl font-semibold tabular-nums tracking-[-0.04em] text-foreground",
   iconContainer:
-    "flex size-10 shrink-0 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-110",
+    "flex size-11 shrink-0 items-center justify-center rounded-2xl transition-transform duration-200 group-hover:scale-[1.03]",
 } as const;
 
 const usageStyles = {
   container:
-    "group relative overflow-hidden rounded-2xl border border-transparent bg-card p-4 shadow-[var(--surface-shadow)] transition-[background-color,box-shadow] duration-150 ease-out hover:shadow-[var(--surface-shadow-hover)]",
+    "group relative overflow-hidden rounded-3xl border border-transparent bg-card p-5 shadow-[var(--surface-shadow)] transition-[background-color,box-shadow,transform] duration-200 ease-out hover:-translate-y-px hover:shadow-[var(--surface-shadow-hover)]",
   accentBar:
-    "absolute top-0 left-0 h-full w-1 opacity-70 transition-opacity duration-150 ease-out group-hover:opacity-100",
-  value: "text-2xl font-bold tabular-nums tracking-tight text-foreground",
+    "absolute inset-x-5 top-0 h-0.5 rounded-full opacity-70 transition-opacity duration-150 ease-out group-hover:opacity-100",
+  value:
+    "text-2xl font-semibold tabular-nums tracking-[-0.04em] text-foreground",
   iconContainer:
-    "flex size-10 shrink-0 items-center justify-center rounded-xl transition-transform duration-150 ease-out group-hover:scale-[1.03]",
+    "flex size-11 shrink-0 items-center justify-center rounded-2xl transition-transform duration-150 ease-out group-hover:scale-[1.03]",
 } as const;
 
 export function StatCard({
@@ -43,7 +45,7 @@ export function StatCard({
       <div className={cn(styles.accentBar, accent)} />
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-1">
-          <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          <span className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
             {label}
           </span>
           <span className={styles.value}>{value}</span>

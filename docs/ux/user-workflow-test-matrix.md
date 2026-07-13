@@ -2,7 +2,7 @@
 
 ## But
 
-Cette matrice est le contrat de recette fonctionnelle et UX d’AI Hub. Un état vide ne peut être validé qu’après une réponse serveur réussie ; une panne de lecture ne doit jamais autoriser une mutation fondée sur des données vides ou obsolètes.
+Cette matrice est le contrat de recette fonctionnelle et UX de Maiah. Un état vide ne peut être validé qu’après une réponse serveur réussie ; une panne de lecture ne doit jamais autoriser une mutation fondée sur des données vides ou obsolètes.
 
 Le skill projet `.agents/skills/ux-workflow-audit` décrit la méthode d’audit et le contrat d’état réutilisables.
 
@@ -77,6 +77,8 @@ Chaque ressource distante doit distinguer :
 | Dossiers, épinglage et ordre     | Actions clavier/tactile, rollback après échec                                                 | Code + tests à étendre                    |
 | Publication GitHub               | Connexion, synchronisation, permissions, PR/push direct, confirmation                         | Tests GitHub + code                       |
 | Artefacts HTML/sandbox           | Preview différée, plein écran, copie et téléchargement                                        | Tests artifacts + code                    |
+| Choix Chat/Coding                | Le choix manuel reste prioritaire pendant les mises à jour et nouveaux messages               | Tests d’état + navigateur                 |
+| Disposition Coding               | Chat redimensionnable ; fichiers, code et aperçu masquables ; largeurs persistées et clavier  | Tests layout + navigateur desktop/mobile  |
 | Actions des sous-agents          | Visibles en direct/rechargement; seule la réponse finale entre dans le contexte orchestrateur | Tests runtime/historique/transport + code |
 
 ## Assistants

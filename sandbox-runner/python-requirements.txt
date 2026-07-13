@@ -1,4 +1,4 @@
-# Curated AI Hub sandbox packages.
+# Curated Maiah sandbox packages.
 # Keep this intentionally smaller than the old OpenSandbox image so Coolify
 # deploys pull a ~2GB runner instead of a 10GB+ code-interpreter image.
 

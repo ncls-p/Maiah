@@ -204,6 +204,13 @@
       "when": 1783630000000,
       "tag": "0028_orchestrator_run_foundation",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1783932106000,
+      "tag": "0029_rename_primary_workspace",
+      "breakpoints": true
     }
   ]
 }

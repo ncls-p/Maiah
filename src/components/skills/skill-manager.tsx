@@ -830,7 +830,7 @@ export function SkillManager() {
             Install from skills.sh
           </CardTitle>
           <CardDescription>
-            Paste a skills.sh install command. AI Hub imports Markdown
+            Paste a skills.sh install command. Maiah imports Markdown
             instructions only: .py files, scripts, HTML, binaries, and other
             resources are ignored.
           </CardDescription>

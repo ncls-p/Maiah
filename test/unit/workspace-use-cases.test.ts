@@ -212,7 +212,7 @@ describe("getWorkspacesByUserId", () => {
 
 describe("ensurePrimaryWorkspaceForUser", () => {
   it("joins the hidden primary workspace with the role derived from platform role", async () => {
-    const primaryWorkspace = { ...fakeWorkspace, slug: "main", name: "AI Hub" };
+    const primaryWorkspace = { ...fakeWorkspace, slug: "main", name: "Maiah" };
     const adminRole = {
       ...fakeRole,
       id: "role-admin",
@@ -238,7 +238,7 @@ describe("ensurePrimaryWorkspaceForUser", () => {
   });
 
   it("updates an active member when platform role is downgraded", async () => {
-    const primaryWorkspace = { ...fakeWorkspace, slug: "main", name: "AI Hub" };
+    const primaryWorkspace = { ...fakeWorkspace, slug: "main", name: "Maiah" };
     const memberRole = {
       ...fakeRole,
       id: "role-member",

@@ -7,7 +7,7 @@ use_default_settings:
       - wikimini
 
 general:
-  instance_name: "AI Hub Search"
+  instance_name: "Maiah Search"
   debug: false
 
 search:

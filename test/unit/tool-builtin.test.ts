@@ -157,7 +157,7 @@ describe("web_search tool", () => {
 		const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
 			expect(String(url)).toContain("/search?");
 			expect(String(url)).toContain("format=json");
-			expect(String(url)).toContain("q=ai+hub");
+			expect(String(url)).toContain("q=maiah");
 			expect(init?.headers).toMatchObject({
 				Accept: "application/json",
 				"X-Forwarded-For": "127.0.0.1",
@@ -168,8 +168,8 @@ describe("web_search tool", () => {
 				JSON.stringify({
 					results: [
 						{
-							title: "AI Hub",
-							url: "https://example.com/ai-hub",
+							title: "Maiah",
+							url: "https://example.com/maiah",
 							content: "Workspace assistant platform",
 							score: 2.5,
 							engines: ["duckduckgo"],
@@ -191,7 +191,7 @@ describe("web_search tool", () => {
 		const tool = getBuiltInToolByName("web_search");
 		expect(tool).not.toBeNull();
 		const result = (await tool!.execute({
-			query: "ai hub",
+			query: "maiah",
 			limit: 3,
 		})) as {
 			ok: boolean;
@@ -205,18 +205,18 @@ describe("web_search tool", () => {
 		};
 
 		expect(result.ok).toBe(true);
-		expect(result.query).toBe("ai hub");
-		expect(result.searchedQuery).toMatch(/^ai hub today \d{4}-\d{2}-\d{2}$/);
+		expect(result.query).toBe("maiah");
+		expect(result.searchedQuery).toMatch(/^maiah today \d{4}-\d{2}-\d{2}$/);
 		expect(result.successfulQuery).toBe(result.searchedQuery);
 		expect(result.resultCount).toBe(1);
 		expect(result.error).toBeNull();
-		expect(result.summary).toContain("1. AI Hub");
+		expect(result.summary).toContain("1. Maiah");
 		expect(result.summary).toContain("Workspace assistant platform");
-		expect(result.summary).toContain("https://example.com/ai-hub");
+		expect(result.summary).toContain("https://example.com/maiah");
 		expect(result.results).toEqual([
 			{
-				title: "AI Hub",
-				url: "https://example.com/ai-hub",
+				title: "Maiah",
+				url: "https://example.com/maiah",
 				snippet: "Workspace assistant platform",
 				score: 2.5,
 				engines: ["duckduckgo"],
@@ -256,7 +256,7 @@ describe("web_search tool", () => {
 		const tool = getBuiltInToolByName("web_search");
 		expect(tool).not.toBeNull();
 		const result = (await tool!.execute({
-			query: "ai hub",
+			query: "maiah",
 			limit: 3,
 		})) as {
 			ok: boolean;
@@ -272,9 +272,9 @@ describe("web_search tool", () => {
 		).toBe(result.searchedQuery);
 		expect(
 			new URL(String(fetchMock.mock.calls[1]?.[0])).searchParams.get("q"),
-		).toBe("ai hub");
+		).toBe("maiah");
 		expect(result.ok).toBe(true);
-		expect(result.successfulQuery).toBe("ai hub");
+		expect(result.successfulQuery).toBe("maiah");
 		expect(result.resultCount).toBe(1);
 		expect(result.results).toEqual([
 			{

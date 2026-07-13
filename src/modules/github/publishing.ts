@@ -859,7 +859,7 @@ async function initializeEmptyRepository(input: {
     branch: input.branch,
     path: input.path,
     bytes: input.bytes,
-    message: "Initialize repository for AI Hub publishing",
+    message: "Initialize repository for Maiah publishing",
   });
   const commitSha = created.commit.sha;
   const treeSha =
@@ -1077,7 +1077,7 @@ export async function publishCodeWorkspaceToGitHub(
       const initialBytes =
         parsed.mode === "pull_request"
           ? Buffer.from(
-              "# AI Hub publishing\n\nInitialized to enable publishing from AI Hub.\n",
+              "# Maiah publishing\n\nInitialized to enable publishing from Maiah.\n",
             )
           : firstFile.bytes;
       const emptyBase = await initializeEmptyRepository({
@@ -1212,7 +1212,7 @@ export async function publishCodeWorkspaceToGitHub(
             base: targetBranch,
             body:
               parsed.pullRequestBody ||
-              `Created by AI Hub from code workspace ${workspace.metadata.id}.`,
+              `Created by Maiah from code workspace ${workspace.metadata.id}.`,
           }),
         },
       );

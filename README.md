@@ -1,8 +1,8 @@
-# AI Hub
+# Maiah
 
 A multi-tenant platform for building, managing, and running AI agents in teams.
 
-AI Hub provides a full stack — from authentication and workspace isolation to agent execution, tool calling, knowledge bases, and marketplace publishing — all behind a single Next.js application.
+Maiah provides a full stack — from authentication and workspace isolation to agent execution, tool calling, knowledge bases, and marketplace publishing — all behind a single Next.js application.
 
 ---
 
@@ -132,6 +132,18 @@ npm run analyze          # Next.js bundle analyzer
 npm run format           # Prettier
 ```
 
+### Product film (Remotion)
+
+The cinematic Maiah presentation lives in `remotion/` as the
+`MaiahLaunchFilm` composition (1920×1080, 30 fps, 34 seconds).
+
+```bash
+npm run video             # Open Remotion Studio
+npm run video:render      # Render out/maiah-launch.mp4
+npm run video:still       # Render out/maiah-cover.png
+npm run video:audio       # Regenerate the original ambient soundtrack
+```
+
 ---
 
 ## Environment variables
@@ -167,7 +179,7 @@ See `.env.example` for the full reference. Key categories:
 
 ## Architecture
 
-AI Hub follows a **modular monolith** pattern with clean separation:
+Maiah follows a **modular monolith** pattern with clean separation:
 
 ```
 ┌──────────────────────────────────────────────────────────┐

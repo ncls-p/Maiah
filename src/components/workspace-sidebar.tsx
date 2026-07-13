@@ -50,8 +50,8 @@ const STORAGE_KEY = "workspace-sidebar-collapsed";
 const STORAGE_EVENT = "workspace-sidebar-collapsed-change";
 const WIDTH_STORAGE_KEY = "workspace-sidebar-width";
 const WIDTH_STORAGE_EVENT = "workspace-sidebar-width-change";
-const DEFAULT_WIDTH = 256;
-const MIN_WIDTH = 208;
+const DEFAULT_WIDTH = 272;
+const MIN_WIDTH = 224;
 const MAX_WIDTH = 360;
 
 function clampWidth(value: number) {
@@ -176,14 +176,21 @@ function SidebarNavLink({
       onClick={onNavigate}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "group relative flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors duration-150",
+        "group relative flex min-h-10 items-center gap-2.5 rounded-xl px-2 py-1.5 text-sm font-medium transition-[background-color,color,box-shadow] duration-150",
         active
-          ? "nav-item-active bg-sidebar-accent text-sidebar-accent-foreground"
-          : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground",
-        collapsed && "justify-center px-2.5",
+          ? "nav-item-active bg-card text-sidebar-accent-foreground shadow-[var(--control-shadow)]"
+          : "text-sidebar-foreground/68 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground",
+        collapsed && "justify-center px-1.5",
       )}
     >
-      <Icon className="size-4 shrink-0" aria-hidden="true" />
+      <span
+        className={cn(
+          "flex size-7 shrink-0 items-center justify-center rounded-lg transition-[background-color,color] duration-150",
+          active ? "bg-accent text-primary" : "text-current",
+        )}
+      >
+        <Icon className="size-4 shrink-0" aria-hidden="true" />
+      </span>
       {!collapsed ? (
         <>
           <span className="min-w-0 flex-1 truncate">{label}</span>
@@ -232,11 +239,11 @@ function SidebarNavGroups({
   const showAdvancedItems = !collapsed && advancedOpen;
 
   return (
-    <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-2 py-2">
+    <nav className="scrollbar-thin flex flex-1 flex-col gap-2 overflow-y-auto px-2.5 py-3">
       {simpleGroups.map((group) => (
-        <div key={group.labelKey} className="flex flex-col gap-1">
+        <div key={group.labelKey} className="flex flex-col gap-1.5">
           {!collapsed ? (
-            <p className="px-2 pb-1 pt-1 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+            <p className="px-2 pb-1 pt-2 text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground/80">
               {t(group.labelKey)}
             </p>
           ) : null}
@@ -252,11 +259,11 @@ function SidebarNavGroups({
       ))}
 
       {advancedGroup ? (
-        <div className="mt-2 flex flex-col gap-1 border-t pt-2">
+        <div className="mt-1 flex flex-col gap-1.5 border-t border-sidebar-border/70 pt-3">
           {!collapsed ? (
             <button
               type="button"
-              className="flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground transition-colors hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"
+              className="flex min-h-9 w-full items-center justify-between rounded-xl px-2 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
               aria-expanded={showAdvancedItems}
               onClick={() => setAdvancedOpen(!showAdvancedItems)}
             >
@@ -306,8 +313,8 @@ function SidebarPanel({
     <div className="flex h-full min-h-0 flex-col bg-transparent text-sidebar-foreground">
       <div
         className={cn(
-          "flex shrink-0 flex-col gap-3 border-b border-sidebar-border p-3",
-          collapsed && "items-center px-2",
+          "flex shrink-0 flex-col gap-3 px-3.5 py-4",
+          collapsed && "items-center px-2.5",
         )}
       >
         <div
@@ -317,7 +324,7 @@ function SidebarPanel({
           )}
         >
           {!collapsed ? (
-            <DeodisLogo href="/chat" className="h-6 shrink-0" />
+            <DeodisLogo href="/chat" className="h-7 shrink-0" />
           ) : (
             <DeodisLogo
               href="/chat"
@@ -329,7 +336,7 @@ function SidebarPanel({
               type="button"
               variant="ghost"
               size="icon"
-              className="size-8 shrink-0"
+              className="size-9 shrink-0 rounded-xl"
               onClick={toggleCollapsed}
               aria-label={
                 collapsed ? tShell("expandSidebar") : tShell("collapseSidebar")
@@ -351,12 +358,12 @@ function SidebarPanel({
       />
       <div
         className={cn(
-          "relative z-30 mt-auto shrink-0 border-t border-sidebar-border p-3",
+          "relative z-30 m-2 mt-auto shrink-0 rounded-2xl bg-card/70 p-3 shadow-[var(--control-shadow)]",
           collapsed && "flex flex-col items-center gap-2 overflow-hidden px-2",
         )}
       >
         {!collapsed && shell.displayName ? (
-          <p className="mb-2 truncate px-1 text-xs text-muted-foreground">
+          <p className="mb-2 truncate px-1 text-xs font-medium text-muted-foreground">
             {shell.displayName}
           </p>
         ) : null}
@@ -474,10 +481,10 @@ export function WorkspaceSidebar({ shell }: { shell: WorkspaceShellState }) {
     <aside
       data-slot="workspace-sidebar"
       className={cn(
-        "relative hidden h-full shrink-0 rounded-none border-r bg-sidebar md:flex md:flex-col",
+        "relative hidden h-full shrink-0 border-r border-sidebar-border/70 bg-sidebar/88 backdrop-blur-xl md:flex md:flex-col",
         !resizing && "transition-[width] duration-200",
       )}
-      style={{ width: collapsed ? "3.25rem" : `${width}px` }}
+      style={{ width: collapsed ? "4rem" : `${width}px` }}
     >
       <SidebarPanel shell={shell} collapsed={collapsed} />
       {!collapsed ? (
@@ -535,7 +542,7 @@ export function WorkspaceSidebarMobileTrigger({
           ) : null}
         </Button>
       </SheetTrigger>
-      <SheetContent side="left" className="w-[min(100vw-2rem,18rem)] p-0">
+      <SheetContent side="left" className="w-[min(100vw-1rem,19rem)] p-0">
         <SheetHeader className="sr-only">
           <SheetTitle>{tShell("navigation")}</SheetTitle>
         </SheetHeader>

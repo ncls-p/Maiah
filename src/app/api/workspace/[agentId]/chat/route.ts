@@ -79,7 +79,10 @@ import {
   defaultMaxToolCalls,
   findUserMessageForResend,
   isFirstUserMessageInConversation,
+  projectStreamedToolInput,
   streamToolCallId,
+  streamToolErrorOutput,
+  streamToolInputDelta,
 } from "./route-support";
 import { loadConversationHistory } from "./route-history";
 
@@ -1164,6 +1167,9 @@ export async function POST(
       abortSignal: runtimeDeadline.signal,
       messages: history,
     });
+    const streamedToolInputs = new Map<string, string>();
+    const streamedToolNames = new Map<string, string>();
+    const invalidToolCallErrors = new Map<string, unknown>();
 
     void (async () => {
       try {
@@ -1171,12 +1177,18 @@ export async function POST(
           if (part.type === "text-delta") {
             await appendStreamedTextPart("text", part.text);
             enqueueEvent({ type: "text", delta: part.text });
+          } else if (part.type === "reasoning-start") {
+            enqueueEvent({ type: "reasoning_start" });
           } else if (part.type === "reasoning-delta") {
             await appendStreamedTextPart("reasoning", part.text);
             enqueueEvent({ type: "reasoning", delta: part.text });
+          } else if (part.type === "reasoning-end") {
+            enqueueEvent({ type: "reasoning_end" });
           } else if (part.type === "tool-input-start") {
             const toolCallId = streamToolCallId(part);
             if (toolCallId) {
+              streamedToolInputs.set(toolCallId, "");
+              streamedToolNames.set(toolCallId, part.toolName);
               enqueueEvent({
                 type: "tool_input_start",
                 toolCallId,
@@ -1184,8 +1196,21 @@ export async function POST(
               });
             }
           } else if (part.type === "tool-input-delta") {
-            // Tool input can contain credentials. Do not stream partial JSON;
-            // the complete redacted input is emitted with the tool-call event.
+            const toolCallId = streamToolCallId(part);
+            const delta = streamToolInputDelta(part);
+            if (toolCallId && delta) {
+              const inputText = `${streamedToolInputs.get(toolCallId) ?? ""}${delta}`;
+              streamedToolInputs.set(toolCallId, inputText);
+              const safeInputText = await projectStreamedToolInput(inputText);
+              if (safeInputText) {
+                enqueueEvent({
+                  type: "tool_input_snapshot",
+                  toolCallId,
+                  toolName: streamedToolNames.get(toolCallId) ?? "tool",
+                  inputText: safeInputText,
+                });
+              }
+            }
           } else if (part.type === "tool-input-end") {
             const toolCallId = streamToolCallId(part);
             if (toolCallId) {
@@ -1195,6 +1220,11 @@ export async function POST(
               });
             }
           } else if (part.type === "tool-call") {
+            streamedToolInputs.delete(part.toolCallId);
+            streamedToolNames.delete(part.toolCallId);
+            if (part.invalid) {
+              invalidToolCallErrors.set(part.toolCallId, part.error);
+            }
             await appendStreamedMetadataPart("tool-call", part);
             enqueueEvent({
               type: "tool_call",
@@ -1209,6 +1239,26 @@ export async function POST(
               toolCallId: part.toolCallId,
               toolName: part.toolName,
               output: projectToolMessagePayload(part.output),
+            });
+          } else if (part.type === "tool-error") {
+            const output = streamToolErrorOutput(
+              part,
+              invalidToolCallErrors.get(part.toolCallId),
+            );
+            invalidToolCallErrors.delete(part.toolCallId);
+            const toolResult = {
+              type: "tool-result" as const,
+              toolCallId: part.toolCallId,
+              toolName: part.toolName,
+              input: projectToolMessagePayload(part.input),
+              output,
+            };
+            await appendStreamedMetadataPart("tool-result", toolResult);
+            enqueueEvent({
+              type: "tool_result",
+              toolCallId: part.toolCallId,
+              toolName: part.toolName,
+              output,
             });
           } else if (part.type === "error") {
             const error =

@@ -102,15 +102,16 @@ export async function GET(req: NextRequest) {
       );
       if (forbidden) return forbidden;
 
-      const conditions = [
+      const scopeConditions = [
         eq(conversations.workspaceId, workspaceId),
         eq(conversations.userId, session.user.id),
         eq(conversations.status, "active"),
         isNull(conversations.archivedAt),
       ];
       if (agentId) {
-        conditions.push(eq(conversations.agentId, agentId));
+        scopeConditions.push(eq(conversations.agentId, agentId));
       }
+      const conditions = [...scopeConditions];
       if (before) {
         const cursorCondition = beforeId
           ? or(
@@ -150,31 +151,44 @@ export async function GET(req: NextRequest) {
       const list = hasMore ? rows.slice(0, limit) : rows;
 
       if (includeMeta === "true") {
-        const folders = await db
-          .select({
-            id: conversationFolders.id,
-            name: conversationFolders.name,
-            sortOrder: conversationFolders.sortOrder,
-            createdAt: conversationFolders.createdAt,
-            updatedAt: conversationFolders.updatedAt,
-          })
-          .from(conversationFolders)
-          .where(
-            and(
-              eq(conversationFolders.workspaceId, workspaceId),
-              eq(conversationFolders.userId, session.user.id),
-              isNull(conversationFolders.archivedAt),
+        const [folders, latestConversation] = await Promise.all([
+          db
+            .select({
+              id: conversationFolders.id,
+              name: conversationFolders.name,
+              sortOrder: conversationFolders.sortOrder,
+              createdAt: conversationFolders.createdAt,
+              updatedAt: conversationFolders.updatedAt,
+            })
+            .from(conversationFolders)
+            .where(
+              and(
+                eq(conversationFolders.workspaceId, workspaceId),
+                eq(conversationFolders.userId, session.user.id),
+                isNull(conversationFolders.archivedAt),
+              ),
+            )
+            .orderBy(
+              asc(conversationFolders.sortOrder),
+              asc(conversationFolders.createdAt),
+              asc(conversationFolders.id),
             ),
-          )
-          .orderBy(
-            asc(conversationFolders.sortOrder),
-            asc(conversationFolders.createdAt),
-            asc(conversationFolders.id),
-          );
+          db
+            .select({
+              id: conversations.id,
+              agentId: conversations.agentId,
+            })
+            .from(conversations)
+            .where(and(...scopeConditions))
+            .orderBy(desc(conversations.updatedAt), desc(conversations.id))
+            .limit(1),
+        ]);
 
         return NextResponse.json({
           conversations: list,
           folders,
+          latestConversationId: latestConversation[0]?.id ?? null,
+          latestConversationAgentId: latestConversation[0]?.agentId ?? null,
           hasMore,
           nextCursor: hasMore ? createConversationCursor(list.at(-1)) : null,
         });
