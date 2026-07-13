@@ -120,6 +120,9 @@
       "queuedMessage": "Queued message {count}",
       "cancelQueued": "Cancel queued message",
       "uploadFiles": "Upload files",
+      "dropFilesTitle": "Drop your files here",
+      "dropFilesDescription": "Images, documents, ZIP files, and code files are supported.",
+      "uploadingFiles": "Uploading files…",
       "messageLabel": "Message",
       "queuePlaceholder": "Queue your next message…",
       "messagePlaceholder": "Message, paste images, or attach files…",
@@ -130,7 +133,7 @@
       "needsSetup": "This assistant needs a provider and model.",
       "configureAssistant": "Configure assistant",
       "queueHint": "Enter queues · Shift+Enter adds a line",
-      "sendHint": "Enter sends · Shift+Enter adds a line · paste images",
+      "sendHint": "Enter sends · Shift+Enter adds a line · paste or drop files",
       "codeFiles": "ZIP/code",
       "images": "Images",
       "documents": "PDF/Word/PPTX/MD"

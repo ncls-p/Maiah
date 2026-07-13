@@ -120,6 +120,9 @@
       "queuedMessage": "Message en attente {count}",
       "cancelQueued": "Annuler le message en attente",
       "uploadFiles": "Joindre des fichiers",
+      "dropFilesTitle": "Déposez vos fichiers ici",
+      "dropFilesDescription": "Images, documents, ZIP et fichiers de code sont pris en charge.",
+      "uploadingFiles": "Import des fichiers en cours…",
       "messageLabel": "Message",
       "queuePlaceholder": "Préparez votre prochain message…",
       "messagePlaceholder": "Écrivez, collez des images ou joignez des fichiers…",
@@ -130,7 +133,7 @@
       "needsSetup": "Cet assistant a besoin d’un fournisseur et d’un modèle.",
       "configureAssistant": "Configurer l’assistant",
       "queueHint": "Entrée met en attente · Maj+Entrée ajoute une ligne",
-      "sendHint": "Entrée envoie · Maj+Entrée ajoute une ligne · collez des images",
+      "sendHint": "Entrée envoie · Maj+Entrée ajoute une ligne · collez ou déposez des fichiers",
       "codeFiles": "ZIP/code",
       "images": "Images",
       "documents": "PDF/Word/PPTX/MD"

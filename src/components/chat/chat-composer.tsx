@@ -3,6 +3,7 @@
 import { Link } from "@/i18n/navigation";
 import {
   FileIcon,
+  FileUpIcon,
   Loader2Icon,
   Maximize2Icon,
   PaperclipIcon,
@@ -10,7 +11,7 @@ import {
   SquareIcon,
   XIcon,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
 
@@ -95,7 +96,7 @@ function pastedFileName(file: File, index: number) {
   );
 }
 
-function filesFromClipboard(data: DataTransfer) {
+function filesFromDataTransfer(data: DataTransfer) {
   const files = Array.from(data.files);
   if (files.length > 0) return files.map(pastedFileName);
   return Array.from(data.items)
@@ -103,6 +104,15 @@ function filesFromClipboard(data: DataTransfer) {
     .map((item) => item.getAsFile())
     .filter((file): file is File => Boolean(file))
     .map(pastedFileName);
+}
+
+function dataTransferContainsFiles(dataTransfer: DataTransfer | null) {
+  if (!dataTransfer) return false;
+  return (
+    Array.from(dataTransfer.types).includes("Files") ||
+    Array.from(dataTransfer.items).some((item) => item.kind === "file") ||
+    dataTransfer.files.length > 0
+  );
 }
 
 function attachmentSubtitle(
@@ -240,6 +250,7 @@ export function ChatComposer({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingAttachment, setUploadingAttachment] = useState(false);
+  const [draggingFiles, setDraggingFiles] = useState(false);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -250,50 +261,113 @@ export function ChatComposer({
     el.style.height = `${newHeight}px`;
   }, [input]);
 
-  async function handleSelectedFiles(files: File[]) {
-    const uploadedFiles = files.filter(Boolean);
-    if (uploadedFiles.length === 0) return;
-    if (!canChat) return;
-    if (sending) {
-      toast.error(t("waitForResponse"));
-      return;
-    }
-    setUploadingAttachment(true);
-    try {
-      const zipFiles = uploadedFiles.filter((file) =>
-        file.name.toLowerCase().endsWith(".zip"),
-      );
-      const codeFiles = uploadedFiles.filter(isDirectCodeFile);
-      if (zipFiles.length > 0) {
-        if (uploadedFiles.length > 1) {
-          toast.error(t("singleZip"));
+  const handleSelectedFiles = useCallback(
+    async (files: File[]) => {
+      const uploadedFiles = files.filter(Boolean);
+      if (uploadedFiles.length === 0 || uploadingAttachment) return;
+      if (!canChat) return;
+      if (sending) {
+        toast.error(t("waitForResponse"));
+        return;
+      }
+      setUploadingAttachment(true);
+      try {
+        const zipFiles = uploadedFiles.filter((file) =>
+          file.name.toLowerCase().endsWith(".zip"),
+        );
+        const codeFiles = uploadedFiles.filter(isDirectCodeFile);
+        if (zipFiles.length > 0) {
+          if (uploadedFiles.length > 1) {
+            toast.error(t("singleZip"));
+            return;
+          }
+          await onUploadCodeWorkspace?.(zipFiles);
           return;
         }
-        await onUploadCodeWorkspace?.(zipFiles);
-        return;
+        if (
+          codeFiles.length === uploadedFiles.length &&
+          codeFiles.some((file) => /\.html?$/i.test(uploadedFilePath(file)))
+        ) {
+          await onUploadCodeWorkspace?.(codeFiles);
+          return;
+        }
+        if (!onUploadChatAttachment) {
+          toast.error(t("unavailable"));
+          return;
+        }
+        if (attachments.length + uploadedFiles.length > maxChatAttachments) {
+          toast.error(t("limit", { count: maxChatAttachments }));
+          return;
+        }
+        for (const file of uploadedFiles) {
+          await onUploadChatAttachment(file);
+        }
+      } finally {
+        setUploadingAttachment(false);
       }
-      if (
-        codeFiles.length === uploadedFiles.length &&
-        codeFiles.some((file) => /\.html?$/i.test(uploadedFilePath(file)))
-      ) {
-        await onUploadCodeWorkspace?.(codeFiles);
-        return;
-      }
-      if (!onUploadChatAttachment) {
-        toast.error(t("unavailable"));
-        return;
-      }
-      if (attachments.length + uploadedFiles.length > maxChatAttachments) {
-        toast.error(t("limit", { count: maxChatAttachments }));
-        return;
-      }
-      for (const file of uploadedFiles) {
-        await onUploadChatAttachment(file);
-      }
-    } finally {
-      setUploadingAttachment(false);
+    },
+    [
+      attachments.length,
+      canChat,
+      onUploadChatAttachment,
+      onUploadCodeWorkspace,
+      sending,
+      t,
+      uploadingAttachment,
+    ],
+  );
+
+  useEffect(() => {
+    let dragDepth = 0;
+
+    function resetFileDrag() {
+      dragDepth = 0;
+      setDraggingFiles(false);
     }
-  }
+
+    function handleDocumentDragEnter(event: DragEvent) {
+      if (!dataTransferContainsFiles(event.dataTransfer)) return;
+      event.preventDefault();
+      dragDepth += 1;
+      setDraggingFiles(true);
+    }
+
+    function handleDocumentDragOver(event: DragEvent) {
+      if (!dataTransferContainsFiles(event.dataTransfer)) return;
+      event.preventDefault();
+      if (event.dataTransfer) {
+        event.dataTransfer.dropEffect =
+          canChat && !sending && !uploadingAttachment ? "copy" : "none";
+      }
+    }
+
+    function handleDocumentDragLeave() {
+      if (dragDepth === 0) return;
+      dragDepth = Math.max(0, dragDepth - 1);
+      if (dragDepth === 0) setDraggingFiles(false);
+    }
+
+    function handleDocumentDrop(event: DragEvent) {
+      if (!dataTransferContainsFiles(event.dataTransfer)) return;
+      event.preventDefault();
+      resetFileDrag();
+      if (!event.dataTransfer) return;
+      void handleSelectedFiles(filesFromDataTransfer(event.dataTransfer));
+    }
+
+    document.addEventListener("dragenter", handleDocumentDragEnter);
+    document.addEventListener("dragover", handleDocumentDragOver);
+    document.addEventListener("dragleave", handleDocumentDragLeave);
+    document.addEventListener("drop", handleDocumentDrop);
+    window.addEventListener("blur", resetFileDrag);
+    return () => {
+      document.removeEventListener("dragenter", handleDocumentDragEnter);
+      document.removeEventListener("dragover", handleDocumentDragOver);
+      document.removeEventListener("dragleave", handleDocumentDragLeave);
+      document.removeEventListener("drop", handleDocumentDrop);
+      window.removeEventListener("blur", resetFileDrag);
+    };
+  }, [canChat, handleSelectedFiles, sending, uploadingAttachment]);
 
   async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? []);
@@ -302,7 +376,7 @@ export function ChatComposer({
   }
 
   function handlePaste(event: React.ClipboardEvent<HTMLTextAreaElement>) {
-    const files = filesFromClipboard(event.clipboardData);
+    const files = filesFromDataTransfer(event.clipboardData);
     if (files.length === 0) return;
     event.preventDefault();
     void handleSelectedFiles(files);
@@ -316,6 +390,47 @@ export function ChatComposer({
       }}
       className="w-full min-w-0 shrink-0 bg-[linear-gradient(to_top,var(--background)_58%,transparent)] px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-5 sm:pt-4"
     >
+      {draggingFiles ? (
+        <div
+          className="fixed inset-0 z-[90] flex items-center justify-center bg-background/72 p-5 backdrop-blur-md animate-in fade-in duration-150"
+          role="status"
+          aria-live="polite"
+        >
+          <div
+            className={cn(
+              "pointer-events-none flex w-full max-w-md flex-col items-center rounded-[2rem] border border-dashed px-8 py-10 text-center shadow-[0_28px_90px_-36px_rgba(3,105,161,0.55)] transition-[border-color,background-color,box-shadow,transform] duration-200 animate-in zoom-in-95",
+              canChat && !sending && !uploadingAttachment
+                ? "border-primary/55 bg-card/96 text-foreground ring-4 ring-primary/8"
+                : "border-border bg-card/96 text-muted-foreground",
+            )}
+          >
+            <span
+              className={cn(
+                "mb-4 flex size-14 items-center justify-center rounded-2xl border shadow-sm",
+                canChat && !sending && !uploadingAttachment
+                  ? "border-primary/20 bg-primary/10 text-primary"
+                  : "border-border bg-muted",
+              )}
+            >
+              <FileUpIcon className="size-6" aria-hidden="true" />
+            </span>
+            <span className="text-base font-semibold tracking-[-0.015em]">
+              {uploadingAttachment
+                ? t("uploadingFiles")
+                : sending
+                  ? t("waitForResponse")
+                  : canChat
+                    ? t("dropFilesTitle")
+                    : t("setupPlaceholder")}
+            </span>
+            {canChat && !sending && !uploadingAttachment ? (
+              <span className="mt-1.5 max-w-sm text-sm leading-5 text-muted-foreground">
+                {t("dropFilesDescription")}
+              </span>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
       {queuedMessages.length > 0 ? (
         <div className="mx-auto mb-2 flex w-full max-w-4xl flex-col gap-2">
           {queuedMessages.map((message, index) => (
