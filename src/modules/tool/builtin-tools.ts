@@ -4,10 +4,12 @@ import { z } from "zod";
 import {
   createCodeWorkspaceFromFiles,
   deleteCodeWorkspaceFile,
+  importCodeWorkspaceFile,
   listCodeWorkspaceFiles,
   readCodeWorkspaceFile,
   writeCodeWorkspaceFile,
 } from "@/modules/code-workspace/storage";
+import { getChatAttachmentBytes } from "@/modules/chat/attachments";
 import {
   getUserGitHubStatus,
   publishCodeWorkspaceToGitHub,
@@ -302,18 +304,32 @@ export const builtInTools = [
     name: "code_workspace_write_file",
     displayName: "Write code file",
     description:
-      "Create or replace a text file in an uploaded code workspace, then return the updated live preview artifact.",
+      "Create or replace a text file, or copy an uploaded chat attachment into a code workspace, then return the updated live preview artifact.",
     riskLevel: MEDIUM_RISK_LEVEL,
     category: "Code",
     inputSchema: codeWorkspaceWriteFileInputSchema,
-    execute: async ({ projectId, path, content }, context) => {
+    execute: async ({ projectId, path, content, attachmentId }, context) => {
       const workspaceContext = requireCodeWorkspaceContext(context);
+      if (attachmentId) {
+        const attachment = await getChatAttachmentBytes({
+          attachmentId,
+          workspaceId: workspaceContext.workspaceId,
+          userId: workspaceContext.userId,
+        });
+        return importCodeWorkspaceFile({
+          projectId,
+          workspaceId: workspaceContext.workspaceId,
+          userId: workspaceContext.userId,
+          filePath: path,
+          bytes: attachment.bytes,
+        });
+      }
       return writeCodeWorkspaceFile({
         projectId,
         workspaceId: workspaceContext.workspaceId,
         userId: workspaceContext.userId,
         filePath: path,
-        content,
+        content: content!,
       });
     },
   },

@@ -970,7 +970,7 @@ jobs:
           PATCH_BODY="$(
             jq -nc \
               --arg name "${COOLIFY_SERVICE_NAME}" \
-              --arg description "Managed by GitHub Actions for AI Hub" \
+              --arg description "Managed by GitHub Actions for Maiah" \
               --arg docker_compose_raw "${COMPOSE_B64}" \
               --arg app_url "${APP_ROUTING_URL}" \
               '{name: $name, description: $description, instant_deploy: false, docker_compose_raw: $docker_compose_raw, force_domain_override: true, is_container_label_escape_enabled: true, urls: [{name: "app", url: $app_url}]}'
@@ -980,7 +980,7 @@ jobs:
             CREATE_BODY="$(
               jq -nc \
                 --arg name "${COOLIFY_SERVICE_NAME}" \
-                --arg description "Managed by GitHub Actions for AI Hub" \
+                --arg description "Managed by GitHub Actions for Maiah" \
                 --arg project_uuid "${COOLIFY_PROJECT_UUID}" \
                 --arg environment_name "${TARGET_ENV_NAME}" \
                 --arg server_uuid "${COOLIFY_SERVER_UUID}" \
@@ -1113,7 +1113,7 @@ jobs:
           if [[ "${ENABLE_BASIC_AUTH}" == "true" ]]; then
             expected_health_status="401"
           fi
-          wait_for_http_status "${AI_HUB_PUBLIC_URL}/api/health" "AI Hub public health endpoint" "${expected_health_status}" 30 10
+          wait_for_http_status "${AI_HUB_PUBLIC_URL}/api/health" "Maiah public health endpoint" "${expected_health_status}" 30 10
 
           {
             echo "## Coolify Deployment"

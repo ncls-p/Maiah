@@ -12,7 +12,7 @@ export default function GlobalError({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="min-h-svh bg-background text-foreground antialiased">
-        <title>Unexpected error · AI Hub</title>
+        <title>Unexpected error · Maiah</title>
         <main
           data-page="auth"
           className="flex min-h-svh items-center justify-center bg-background p-4"

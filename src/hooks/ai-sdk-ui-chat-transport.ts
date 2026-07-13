@@ -107,6 +107,24 @@ function agentToolContextFromData(data: unknown): {
   };
 }
 
+function toolInputProgressFromData(data: unknown): ChatStreamEvent | null {
+  if (typeof data !== "object" || data === null) return null;
+  const record = data as Record<string, unknown>;
+  if (
+    typeof record.toolCallId !== "string" ||
+    typeof record.toolName !== "string" ||
+    typeof record.inputText !== "string"
+  ) {
+    return null;
+  }
+  return {
+    type: "tool_input_snapshot",
+    toolCallId: record.toolCallId,
+    toolName: record.toolName,
+    inputText: record.inputText,
+  };
+}
+
 async function* iterateChunks(stream: ReadableStream<UIMessageChunk>) {
   const reader = stream.getReader();
   try {
@@ -165,8 +183,14 @@ export async function streamAiSdkUIChat(options: StreamAiSdkUIChatOptions) {
       case "text-delta":
         options.onEvent({ type: "text", delta: chunk.delta });
         break;
+      case "reasoning-start":
+        options.onEvent({ type: "reasoning_start" });
+        break;
       case "reasoning-delta":
         options.onEvent({ type: "reasoning", delta: chunk.delta });
+        break;
+      case "reasoning-end":
+        options.onEvent({ type: "reasoning_end" });
         break;
       case "tool-input-start":
         toolNamesByCallId.set(chunk.toolCallId, chunk.toolName);
@@ -228,6 +252,11 @@ export async function streamAiSdkUIChat(options: StreamAiSdkUIChatOptions) {
         if (context) {
           agentContextsByCallId.set(context.toolCallId, context.agentContext);
         }
+        break;
+      }
+      case "data-tool-input-progress": {
+        const event = toolInputProgressFromData(chunk.data);
+        if (event) options.onEvent(event);
         break;
       }
       case "data-tool-approval": {

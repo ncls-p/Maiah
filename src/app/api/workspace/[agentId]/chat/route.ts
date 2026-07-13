@@ -79,7 +79,11 @@ import {
   defaultMaxToolCalls,
   findUserMessageForResend,
   isFirstUserMessageInConversation,
+  mergeUserFilePartMetadata,
+  projectStreamedToolInput,
   streamToolCallId,
+  streamToolErrorOutput,
+  streamToolInputDelta,
 } from "./route-support";
 import { loadConversationHistory } from "./route-history";
 
@@ -389,6 +393,16 @@ export async function POST(
 
       const encryptedContent = await encryptValue(content);
       await db.transaction(async (tx) => {
+        const existingFileParts = await tx
+          .select({ metadataJson: messageParts.metadataJson })
+          .from(messageParts)
+          .where(
+            and(
+              eq(messageParts.messageId, existingUserMessage.id),
+              eq(messageParts.type, "file"),
+            ),
+          )
+          .orderBy(messageParts.sortOrder);
         const messagesToReplace = await tx
           .select({ id: messages.id })
           .from(messages)
@@ -419,10 +433,14 @@ export async function POST(
           contentEncrypted: encryptedContent,
           sortOrder: 0,
         });
-        const userFileParts = [
+        const requestedFileParts = [
           ...(codeWorkspaceAttachment ? [codeWorkspaceAttachment] : []),
           ...messageAttachments,
         ];
+        const userFileParts = mergeUserFilePartMetadata(
+          existingFileParts.map((part) => part.metadataJson),
+          requestedFileParts,
+        );
         for (const [index, metadata] of userFileParts.entries()) {
           await tx.insert(messageParts).values({
             messageId: existingUserMessage.id,
@@ -948,7 +966,7 @@ export async function POST(
               ? "Use run_code_sandbox when the user asks you to execute Python, Node.js, or Bash; verify a calculation with code; inspect data; interact with uploaded documents; transform text/files; or produce computed results. The sandbox is wiped after each run, has no internet access, includes broad data/science/document libraries, runs in an isolated container with resource limits, and returns stdout/stderr plus generated file previews. If the user uploaded a document or image and you need programmatic access to the original bytes, pass its Attachment ID in attachments, optionally with the path hint shown in context; readable documents also get a .extracted.txt sidecar in the sandbox. Generated files are persisted as downloadable chat attachments when possible; reference the returned downloadUrl or tell the user to use the generated file card instead of inventing links. Print or write the values you need returned; do not assume files persist between runs. Write outputs as relative paths in the current working directory so they can be collected."
               : null,
             hasCodeWorkspaceTools
-              ? "For static HTML/CSS/JS apps, keep the whole workflow in chat. If the user asks you to build a small website/app/demo from scratch, first use code_workspace_create_project with only short starter files or just file paths such as index.html, styles.css, and script.js, then fill or revise files one at a time with code_workspace_write_file or code_workspace_replace_text. Avoid one huge create_project call containing all final code. If the user uploaded a ZIP/code workspace, use code_workspace_list_files to inspect it, code_workspace_read_file before editing, code_workspace_replace_text for targeted edits, and code_workspace_write_file only when full-file replacement is safer. These tools return a live code workspace artifact with preview and ZIP download; do not paste full files unless asked. If the user wants to publish to GitHub, use github_get_publish_status to check the current user's connected repositories or get the connect URL. For GitHub publishing, the user must choose the repository, target branch, and mode: pull_request or direct_push. Use github_publish_code_workspace only after the user explicitly confirms those choices; direct_push requires confirmDirectPush=true and can target main only if the user explicitly selected main."
+              ? "For static HTML/CSS/JS apps, keep the whole workflow in chat. If the user asks you to build a small website/app/demo from scratch, first use code_workspace_create_project with only short starter files or just file paths such as index.html, styles.css, and script.js, then fill or revise files one at a time with code_workspace_write_file or code_workspace_replace_text. Avoid one huge create_project call containing all final code. To include an uploaded image, font, media file, or other supported asset, call code_workspace_write_file with its Attachment ID in attachmentId and the desired workspace path; this copies the original bytes, so never recreate binary content as text. If the user uploaded a ZIP/code workspace, use code_workspace_list_files to inspect it, code_workspace_read_file before editing, code_workspace_replace_text for targeted edits, and code_workspace_write_file only when full-file replacement is safer. These tools return a live code workspace artifact with preview and ZIP download; do not paste full files unless asked. If the user wants to publish to GitHub, use github_get_publish_status to check the current user's connected repositories or get the connect URL. For GitHub publishing, the user must choose the repository, target branch, and mode: pull_request or direct_push. Use github_publish_code_workspace only after the user explicitly confirms those choices; direct_push requires confirmDirectPush=true and can target main only if the user explicitly selected main."
               : null,
             `Use at most ${maxToolCalls} tool calls.`,
             "When that limit is reached, do not call another tool; answer the user from the tool results and context already available. If the information is incomplete, say what is known and what remains uncertain.",
@@ -1164,6 +1182,9 @@ export async function POST(
       abortSignal: runtimeDeadline.signal,
       messages: history,
     });
+    const streamedToolInputs = new Map<string, string>();
+    const streamedToolNames = new Map<string, string>();
+    const invalidToolCallErrors = new Map<string, unknown>();
 
     void (async () => {
       try {
@@ -1171,12 +1192,18 @@ export async function POST(
           if (part.type === "text-delta") {
             await appendStreamedTextPart("text", part.text);
             enqueueEvent({ type: "text", delta: part.text });
+          } else if (part.type === "reasoning-start") {
+            enqueueEvent({ type: "reasoning_start" });
           } else if (part.type === "reasoning-delta") {
             await appendStreamedTextPart("reasoning", part.text);
             enqueueEvent({ type: "reasoning", delta: part.text });
+          } else if (part.type === "reasoning-end") {
+            enqueueEvent({ type: "reasoning_end" });
           } else if (part.type === "tool-input-start") {
             const toolCallId = streamToolCallId(part);
             if (toolCallId) {
+              streamedToolInputs.set(toolCallId, "");
+              streamedToolNames.set(toolCallId, part.toolName);
               enqueueEvent({
                 type: "tool_input_start",
                 toolCallId,
@@ -1184,8 +1211,21 @@ export async function POST(
               });
             }
           } else if (part.type === "tool-input-delta") {
-            // Tool input can contain credentials. Do not stream partial JSON;
-            // the complete redacted input is emitted with the tool-call event.
+            const toolCallId = streamToolCallId(part);
+            const delta = streamToolInputDelta(part);
+            if (toolCallId && delta) {
+              const inputText = `${streamedToolInputs.get(toolCallId) ?? ""}${delta}`;
+              streamedToolInputs.set(toolCallId, inputText);
+              const safeInputText = await projectStreamedToolInput(inputText);
+              if (safeInputText) {
+                enqueueEvent({
+                  type: "tool_input_snapshot",
+                  toolCallId,
+                  toolName: streamedToolNames.get(toolCallId) ?? "tool",
+                  inputText: safeInputText,
+                });
+              }
+            }
           } else if (part.type === "tool-input-end") {
             const toolCallId = streamToolCallId(part);
             if (toolCallId) {
@@ -1195,6 +1235,11 @@ export async function POST(
               });
             }
           } else if (part.type === "tool-call") {
+            streamedToolInputs.delete(part.toolCallId);
+            streamedToolNames.delete(part.toolCallId);
+            if (part.invalid) {
+              invalidToolCallErrors.set(part.toolCallId, part.error);
+            }
             await appendStreamedMetadataPart("tool-call", part);
             enqueueEvent({
               type: "tool_call",
@@ -1209,6 +1254,26 @@ export async function POST(
               toolCallId: part.toolCallId,
               toolName: part.toolName,
               output: projectToolMessagePayload(part.output),
+            });
+          } else if (part.type === "tool-error") {
+            const output = streamToolErrorOutput(
+              part,
+              invalidToolCallErrors.get(part.toolCallId),
+            );
+            invalidToolCallErrors.delete(part.toolCallId);
+            const toolResult = {
+              type: "tool-result" as const,
+              toolCallId: part.toolCallId,
+              toolName: part.toolName,
+              input: projectToolMessagePayload(part.input),
+              output,
+            };
+            await appendStreamedMetadataPart("tool-result", toolResult);
+            enqueueEvent({
+              type: "tool_result",
+              toolCallId: part.toolCallId,
+              toolName: part.toolName,
+              output,
             });
           } else if (part.type === "error") {
             const error =

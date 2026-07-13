@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to AI Hub are tracked here.
+All notable changes to Maiah are tracked here.
 
 ## 0.1.0 - 2026-06-24
 

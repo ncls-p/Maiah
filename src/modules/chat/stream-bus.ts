@@ -54,6 +54,20 @@ function safeStreamEvent(event: StreamEvent): StreamEvent {
   if (event.type === "tool_input_delta") {
     return { ...event, delta: "" };
   }
+  if (event.type === "tool_input_snapshot") {
+    try {
+      return {
+        ...event,
+        inputText: JSON.stringify(
+          projectToolMessagePayload(JSON.parse(String(event.inputText))),
+          null,
+          2,
+        ),
+      };
+    } catch {
+      return { ...event, inputText: "" };
+    }
+  }
   return event;
 }
 
@@ -197,7 +211,7 @@ function metadataFromHeaders(headers: Record<string, string>) {
 }
 
 /**
- * AI SDK UI-compatible view of the existing AI Hub stream bus. This lets the
+ * AI SDK UI-compatible view of the existing Maiah stream bus. This lets the
  * current chat runtime keep its audited custom events while clients can consume
  * the standard UIMessage stream protocol through DefaultChatTransport/useChat.
  */
@@ -220,21 +234,29 @@ export function createChatUIMessageStreamResponse(
           return `${prefix}-${partSequence}`;
         }
 
-        function finishTextParts() {
+        function finishTextPart() {
           if (textPartId) {
             writer.write({ type: "text-end", id: textPartId });
             textPartId = null;
           }
+        }
+
+        function finishReasoningPart() {
           if (reasoningPartId) {
             writer.write({ type: "reasoning-end", id: reasoningPartId });
             reasoningPartId = null;
           }
         }
 
+        function finishOpenParts() {
+          finishTextPart();
+          finishReasoningPart();
+        }
+
         function settle(stopped = false) {
           if (settled) return;
           settled = true;
-          finishTextParts();
+          finishOpenParts();
           writer.write({
             type: "finish",
             finishReason: stopped ? "stop" : "stop",
@@ -258,6 +280,7 @@ export function createChatUIMessageStreamResponse(
               if (type === "text") {
                 const delta = stringValue(event.delta);
                 if (!delta) return;
+                finishReasoningPart();
                 if (!textPartId) {
                   textPartId = nextPartId("text");
                   writer.write({ type: "text-start", id: textPartId });
@@ -266,9 +289,22 @@ export function createChatUIMessageStreamResponse(
                 return;
               }
 
+              if (type === "reasoning_start") {
+                finishTextPart();
+                if (!reasoningPartId) {
+                  reasoningPartId = nextPartId("reasoning");
+                  writer.write({
+                    type: "reasoning-start",
+                    id: reasoningPartId,
+                  });
+                }
+                return;
+              }
+
               if (type === "reasoning") {
                 const delta = stringValue(event.delta);
                 if (!delta) return;
+                finishTextPart();
                 if (!reasoningPartId) {
                   reasoningPartId = nextPartId("reasoning");
                   writer.write({
@@ -282,6 +318,15 @@ export function createChatUIMessageStreamResponse(
                   delta,
                 });
                 return;
+              }
+
+              if (type === "reasoning_end") {
+                finishReasoningPart();
+                return;
+              }
+
+              if (type !== "conversation_title") {
+                finishOpenParts();
               }
 
               if (type === "tool_input_start") {
@@ -305,6 +350,20 @@ export function createChatUIMessageStreamResponse(
                     type: "tool-input-delta",
                     toolCallId,
                     inputTextDelta,
+                  });
+                }
+                return;
+              }
+
+              if (type === "tool_input_snapshot") {
+                const toolCallId = stringValue(event.toolCallId);
+                const toolName = stringValue(event.toolName);
+                const inputText = stringValue(event.inputText);
+                if (toolCallId && toolName && inputText) {
+                  writer.write({
+                    type: "data-tool-input-progress",
+                    id: `${toolCallId}:input-progress`,
+                    data: { toolCallId, toolName, inputText },
                   });
                 }
                 return;

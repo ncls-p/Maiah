@@ -148,7 +148,13 @@ function chatToolPartToUIPart(
 function partToUIParts(part: ChatMessagePart): MutableAiHubUIParts {
   if (part.type === "text") return [{ type: "text", text: part.content }];
   if (part.type === "reasoning") {
-    return [{ type: "reasoning", text: part.content, state: "done" }];
+    return [
+      {
+        type: "reasoning",
+        text: part.content,
+        state: part.state ?? "done",
+      },
+    ];
   }
   if (part.type === "tool-call" || part.type === "tool-result") {
     const uiPart = chatToolPartToUIPart(part);

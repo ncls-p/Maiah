@@ -1,7 +1,14 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import { toast } from "sonner";
 
 import {
@@ -16,6 +23,14 @@ import {
   CodeWorkspaceArtifactCard,
 } from "@/components/chat/chat-message-list";
 import { textFromMessage } from "@/components/chat/chat-types";
+import { CodeWorkspaceResizeHandle } from "@/components/chat/code-workspace-artifact-card";
+import {
+  CODE_WORKSPACE_CHAT_WIDTH_STORAGE_KEY,
+  DEFAULT_CHAT_WIDTH,
+  MAX_CHAT_WIDTH,
+  MIN_CHAT_WIDTH,
+  normalizeCodeWorkspaceChatWidth,
+} from "@/components/chat/code-workspace-layout";
 import type {
   AgentVersion,
   ChatAgent,
@@ -30,8 +45,6 @@ import { useChatStream } from "@/hooks/use-chat-stream";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { fetchJson } from "@/lib/api-client";
 import {
-  CHAT_INTERFACE_MODE,
-  CODING_INTERFACE_MODE,
   CONVERSATION_PAGE_SIZE,
   ChatContextBar,
   conversationTitleFromFirstMessage,
@@ -41,10 +54,15 @@ import {
   normalizeConversationList,
   rotatePromptSuggestions,
   type ConversationListPayload,
-  type InterfaceMode,
   uploadPathForFile,
   upsertConversation,
 } from "./chat-page-helpers";
+import {
+  CHAT_INTERFACE_MODE,
+  CODING_INTERFACE_MODE,
+  shouldAutoActivateCoding,
+  type InterfaceMode,
+} from "./chat-interface-mode";
 import {
   ChatPageLoading,
   CodeWorkspaceModeBar,
@@ -75,6 +93,12 @@ export default function ChatPage() {
     null,
   );
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
+  const [latestConversationId, setLatestConversationId] = useState<
+    string | null
+  >(null);
+  const [latestConversationAgentId, setLatestConversationAgentId] = useState<
+    string | null
+  >(null);
   const [conversationFolders, setConversationFolders] = useState<
     ChatConversationFolder[]
   >([]);
@@ -101,6 +125,7 @@ export default function ChatPage() {
   const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
   const [interfaceMode, setInterfaceMode] =
     useState<InterfaceMode>(CHAT_INTERFACE_MODE);
+  const [codingChatWidth, setCodingChatWidth] = useState(DEFAULT_CHAT_WIDTH);
   const [pendingDelete, setPendingDelete] = useState<
     | { kind: "conversation"; id: string; name: string }
     | { kind: "folder"; id: string; name: string }
@@ -111,6 +136,43 @@ export default function ChatPage() {
   const skipNextMessageLoadRef = useRef(false);
   const processingQueuedMessageRef = useRef(false);
   const lastAutoOpenedWorkspaceRef = useRef<string | null>(null);
+  const userSelectedInterfaceModeRef = useRef<InterfaceMode | null>(null);
+
+  function chooseInterfaceMode(mode: InterfaceMode) {
+    userSelectedInterfaceModeRef.current = mode;
+    setInterfaceMode(mode);
+  }
+
+  function resetInterfaceMode() {
+    userSelectedInterfaceModeRef.current = null;
+    setInterfaceMode(CHAT_INTERFACE_MODE);
+  }
+
+  function updateCodingChatWidth(width: number) {
+    const nextWidth = normalizeCodeWorkspaceChatWidth(width);
+    setCodingChatWidth(nextWidth);
+    try {
+      window.localStorage.setItem(
+        CODE_WORKSPACE_CHAT_WIDTH_STORAGE_KEY,
+        JSON.stringify(nextWidth),
+      );
+    } catch {
+      // Keep the resized width for this session when storage is unavailable.
+    }
+  }
+
+  useEffect(() => {
+    try {
+      const persisted = window.localStorage.getItem(
+        CODE_WORKSPACE_CHAT_WIDTH_STORAGE_KEY,
+      );
+      if (!persisted) return;
+      const nextWidth = normalizeCodeWorkspaceChatWidth(JSON.parse(persisted));
+      queueMicrotask(() => setCodingChatWidth(nextWidth));
+    } catch {
+      // Ignore malformed or unavailable local storage and keep the default.
+    }
+  }, []);
 
   const selectedAgent = useMemo(
     () => agents.find((agent) => agent.id === selectedAgentId) ?? null,
@@ -151,6 +213,7 @@ export default function ChatPage() {
       const artifactKey = `${artifact.projectId}:${artifact.version}`;
       if (lastAutoOpenedWorkspaceRef.current === artifactKey) return;
       lastAutoOpenedWorkspaceRef.current = artifactKey;
+      userSelectedInterfaceModeRef.current = CODING_INTERFACE_MODE;
       setInterfaceMode(CODING_INTERFACE_MODE);
     }
     window.addEventListener(
@@ -177,6 +240,8 @@ export default function ChatPage() {
         return {
           conversations: [],
           folders: [],
+          latestConversationId: null,
+          latestConversationAgentId: null,
           hasMore: false,
           nextCursor: null,
         };
@@ -272,6 +337,8 @@ export default function ChatPage() {
     const data = await fetchConversationPage();
     setConversations(data.conversations);
     setConversationFolders(data.folders);
+    setLatestConversationId(data.latestConversationId);
+    setLatestConversationAgentId(data.latestConversationAgentId);
     setHasMoreConversations(data.hasMore);
     setConversationCursor(data.nextCursor);
   }, [fetchConversationPage]);
@@ -323,6 +390,8 @@ export default function ChatPage() {
     onConversationCreated: (conversationId, firstMessage) => {
       skipNextMessageLoadRef.current = true;
       setActiveConversationId(conversationId);
+      setLatestConversationId(conversationId);
+      setLatestConversationAgentId(selectedAgentId);
       if (selectedAgentId) {
         const now = new Date().toISOString();
         setConversations((current) =>
@@ -379,6 +448,9 @@ export default function ChatPage() {
         return latestArtifact;
       });
       if (!sending) return;
+      if (!shouldAutoActivateCoding(userSelectedInterfaceModeRef.current)) {
+        return;
+      }
       const artifactKey = `${latestArtifact.projectId}:${latestArtifact.version}`;
       if (lastAutoOpenedWorkspaceRef.current === artifactKey) return;
       lastAutoOpenedWorkspaceRef.current = artifactKey;
@@ -468,6 +540,10 @@ export default function ChatPage() {
         if (cancelled) return;
         setConversations(conversationData.conversations);
         setConversationFolders(conversationData.folders);
+        setLatestConversationId(conversationData.latestConversationId);
+        setLatestConversationAgentId(
+          conversationData.latestConversationAgentId,
+        );
         setHasMoreConversations(conversationData.hasMore);
         setConversationCursor(conversationData.nextCursor);
       } catch (err) {
@@ -546,7 +622,7 @@ export default function ChatPage() {
         setMessages([]);
         setCodeWorkspaceArtifact(null);
         setAttachments([]);
-        setInterfaceMode(CHAT_INTERFACE_MODE);
+        resetInterfaceMode();
       });
       return;
     }
@@ -614,28 +690,30 @@ export default function ChatPage() {
       setMessages([]);
       setCodeWorkspaceArtifact(null);
       setAttachments([]);
-      setInterfaceMode(CHAT_INTERFACE_MODE);
+      resetInterfaceMode();
     }
     window.history.replaceState(null, "", `/chat?${params.toString()}`);
   }
 
-  function selectConversation(conversationId: string) {
+  function selectConversation(
+    conversationId: string,
+    conversationAgentId?: string | null,
+  ) {
     if (conversationId === activeConversationId) return;
     detachActiveStream();
     setQueuedMessages([]);
     setMessages([]);
     setCodeWorkspaceArtifact(null);
     setAttachments([]);
-    setInterfaceMode(CHAT_INTERFACE_MODE);
+    resetInterfaceMode();
     const conversation = conversations.find(
       (item) => item.id === conversationId,
     );
-    if (conversation) {
-      setSelectedAgentId(conversation.agentId);
-    }
+    const nextAgentId = conversation?.agentId ?? conversationAgentId;
+    if (nextAgentId) setSelectedAgentId(nextAgentId);
     setActiveConversationId(conversationId);
     const params = new URLSearchParams();
-    if (conversation?.agentId) params.set("agentId", conversation.agentId);
+    if (nextAgentId) params.set("agentId", nextAgentId);
     params.set("conversationId", conversationId);
     window.history.replaceState(null, "", `/chat?${params.toString()}`);
   }
@@ -647,7 +725,7 @@ export default function ChatPage() {
     setMessages([]);
     setCodeWorkspaceArtifact(null);
     setAttachments([]);
-    setInterfaceMode(CHAT_INTERFACE_MODE);
+    resetInterfaceMode();
     window.history.replaceState(
       null,
       "",
@@ -694,7 +772,7 @@ export default function ChatPage() {
         setMessages([]);
         setCodeWorkspaceArtifact(null);
         setAttachments([]);
-        setInterfaceMode(CHAT_INTERFACE_MODE);
+        resetInterfaceMode();
         window.history.replaceState(
           null,
           "",
@@ -900,6 +978,8 @@ export default function ChatPage() {
     const attachmentsToSend = attachments;
     setInput("");
     setAttachments([]);
+    if (activeConversationId) setLatestConversationId(activeConversationId);
+    if (activeConversationId) setLatestConversationAgentId(selectedAgentId);
     if (sending) {
       queueMessage(content);
       return;
@@ -962,6 +1042,7 @@ export default function ChatPage() {
       const { artifact: uploadedArtifact, prompt } = data;
       setAttachments([]);
       setCodeWorkspaceArtifact(uploadedArtifact);
+      userSelectedInterfaceModeRef.current = CODING_INTERFACE_MODE;
       setInterfaceMode(CODING_INTERFACE_MODE);
       lastAutoOpenedWorkspaceRef.current = `${uploadedArtifact.projectId}:${uploadedArtifact.version}`;
       toast.success(t("attachments.codeUploaded"));
@@ -1084,7 +1165,10 @@ export default function ChatPage() {
           ? {
               ...item,
               status: "completed",
-              parts: [{ type: "text", content: trimmedContent }],
+              parts: [
+                { type: "text", content: trimmedContent },
+                ...item.parts.filter((part) => part.type === "file"),
+              ],
             }
           : item,
       ),
@@ -1114,6 +1198,17 @@ export default function ChatPage() {
       resendFromMessageId: message.id,
       reuseUserMessage: true,
     });
+  }
+
+  async function reloadActualLatestMessages() {
+    if (!activeConversationId || sending) return;
+    const data = await fetchJson<{ messages?: ChatMessage[] }>(
+      `/api/workspace/conversations/${activeConversationId}`,
+    );
+    const latestMessages = data.messages ?? [];
+    setMessages(latestMessages);
+    const latestArtifact = latestCodeWorkspaceArtifact(latestMessages);
+    setCodeWorkspaceArtifact(latestArtifact);
   }
 
   async function reloadAgentContext() {
@@ -1295,12 +1390,22 @@ export default function ChatPage() {
           <CodeWorkspaceModeBar
             artifact={codeWorkspaceArtifact}
             interfaceMode={interfaceMode}
-            onModeChange={setInterfaceMode}
+            onModeChange={chooseInterfaceMode}
           />
         ) : null}
         {interfaceMode === CODING_INTERFACE_MODE && codeWorkspaceArtifact ? (
-          <section className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden bg-background lg:grid-cols-[minmax(300px,360px)_minmax(0,1fr)]">
-            <aside className="flex min-h-0 flex-col border-r border-border/60 bg-muted/10">
+          <section
+            className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden bg-background lg:[grid-template-columns:var(--coding-chat-width)_0.75rem_minmax(0,1fr)]"
+            style={
+              {
+                "--coding-chat-width": `${codingChatWidth}px`,
+              } as CSSProperties
+            }
+          >
+            <aside
+              className="flex min-h-0 flex-col bg-muted/10"
+              id="coding-chat-panel"
+            >
               <div className="border-b border-border/50 px-3 py-2">
                 <p className="text-xs font-medium text-foreground">Chat</p>
                 <p className="text-[11px] text-muted-foreground">
@@ -1322,6 +1427,7 @@ export default function ChatPage() {
                     onDeleteMessage={deleteMessage}
                     onResendMessage={resendMessage}
                     onRegenerateAssistant={resendMessage}
+                    onJumpLatest={reloadActualLatestMessages}
                     pendingApprovals={pendingApprovals}
                     onApproveTool={approveToolInvocation}
                     onRejectTool={rejectToolInvocation}
@@ -1351,6 +1457,14 @@ export default function ChatPage() {
                 }
               />
             </aside>
+            <CodeWorkspaceResizeHandle
+              controls="coding-chat-panel"
+              label={t("resizeCodingChat")}
+              maximum={MAX_CHAT_WIDTH}
+              minimum={MIN_CHAT_WIDTH}
+              onResize={updateCodingChatWidth}
+              value={codingChatWidth}
+            />
             <div className="min-h-0 overflow-hidden">
               <CodeWorkspaceArtifactCard
                 artifact={codeWorkspaceArtifact}
@@ -1365,9 +1479,11 @@ export default function ChatPage() {
               <EmptyConversationState
                 canChat={canChat}
                 selectedAgent={selectedAgent}
-                conversations={conversations}
+                latestConversationId={latestConversationId}
                 emptyPromptSuggestions={emptyPromptSuggestions}
-                onSelectConversation={selectConversation}
+                onSelectConversation={(conversationId) =>
+                  selectConversation(conversationId, latestConversationAgentId)
+                }
                 onSubmitSuggestion={submitSuggestion}
                 t={t}
               />
@@ -1385,6 +1501,7 @@ export default function ChatPage() {
                 onDeleteMessage={deleteMessage}
                 onResendMessage={resendMessage}
                 onRegenerateAssistant={resendMessage}
+                onJumpLatest={reloadActualLatestMessages}
                 pendingApprovals={pendingApprovals}
                 onApproveTool={approveToolInvocation}
                 onRejectTool={rejectToolInvocation}

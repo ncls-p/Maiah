@@ -314,14 +314,14 @@ export function ChatComposer({
         event.preventDefault();
         onSubmit();
       }}
-      className="w-full min-w-0 shrink-0 bg-transparent px-3 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-5 sm:pt-3"
+      className="w-full min-w-0 shrink-0 bg-[linear-gradient(to_top,var(--background)_58%,transparent)] px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-5 sm:pt-4"
     >
       {queuedMessages.length > 0 ? (
         <div className="mx-auto mb-2 flex w-full max-w-4xl flex-col gap-2">
           {queuedMessages.map((message, index) => (
             <div
               key={message.id}
-              className="rounded-2xl border border-border/60 bg-card p-2.5"
+              className="rounded-2xl border border-transparent bg-card p-3 shadow-[var(--surface-shadow)]"
             >
               <div className="mb-1.5 flex items-center justify-between gap-2 px-1">
                 <span className="text-[11px] font-medium text-muted-foreground">
@@ -363,8 +363,8 @@ export function ChatComposer({
             ))}
           </AttachmentGroup>
         ) : null}
-        <div className={cn("composer-box rounded-2xl")}>
-          <div className="flex items-end gap-1 p-1.5 sm:gap-1.5 sm:p-2">
+        <div className={cn("composer-box rounded-3xl")}>
+          <div className="flex items-end gap-1.5 p-2 sm:p-2.5">
             <input
               ref={fileInputRef}
               type="file"
@@ -376,7 +376,7 @@ export function ChatComposer({
               type="button"
               size="icon"
               variant="ghost"
-              className="size-10 shrink-0 rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"
+              className="size-10 shrink-0 rounded-2xl text-muted-foreground hover:bg-muted hover:text-foreground"
               aria-label={t("uploadFiles")}
               disabled={uploadingAttachment || sending || !canChat}
               onClick={() => fileInputRef.current?.click()}
@@ -414,7 +414,7 @@ export function ChatComposer({
               }
               disabled={!canChat}
               rows={1}
-              className="max-h-40 min-h-10 flex-1 resize-none border-0 bg-transparent px-2 py-2 text-base shadow-none focus-visible:ring-0 sm:min-h-12 sm:px-3 sm:py-3 sm:text-sm placeholder:text-muted-foreground"
+              className="max-h-40 min-h-10 flex-1 resize-none border-0 bg-transparent px-2 py-2 text-base shadow-none hover:border-transparent focus-visible:bg-transparent focus-visible:ring-0 sm:min-h-12 sm:px-3 sm:py-3 sm:text-sm placeholder:text-muted-foreground"
             />
 
             <Button
@@ -423,7 +423,7 @@ export function ChatComposer({
               disabled={!canChat || (!input.trim() && attachments.length === 0)}
               aria-label={sending ? t("queueMessage") : t("sendMessage")}
               className={cn(
-                "size-10 shrink-0 rounded-xl transition-[background-color,color,opacity]",
+                "size-10 shrink-0 rounded-2xl transition-[background-color,color,box-shadow,opacity]",
                 canChat && (input.trim() || attachments.length > 0)
                   ? "bg-primary text-primary-foreground hover:bg-primary/90"
                   : "opacity-60",
@@ -437,7 +437,7 @@ export function ChatComposer({
                 type="button"
                 size="icon"
                 aria-label={t("stopGeneration")}
-                className="size-10 shrink-0 rounded-xl bg-destructive text-destructive-foreground transition-[background-color,color] hover:bg-destructive/90"
+                className="size-10 shrink-0 rounded-2xl bg-destructive text-destructive-foreground transition-[background-color,color,box-shadow] hover:bg-destructive/90"
                 onClick={onStop}
               >
                 <SquareIcon

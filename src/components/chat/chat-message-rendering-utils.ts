@@ -99,6 +99,19 @@ export function isGitHubPublishOutput(
   );
 }
 
+export function toolPartHasStandaloneRendering(part: ChatMessagePart) {
+  if (part.type !== "tool-call" && part.type !== "tool-result") return false;
+  const parsed = parseToolPart(part.content);
+  return Boolean(
+    codeSandboxOutputFromUnknown(parsed.output) ||
+    isHtmlArtifactOutput(parsed.output) ||
+    isCodeWorkspaceArtifactOutput(parsed.output) ||
+    isGitHubPublishOutput(parsed.output) ||
+    htmlArtifactFromToolInput(parsed.input) ||
+    htmlArtifactFromInputText(parsed.inputText),
+  );
+}
+
 export function codeWorkspaceArtifactFromPartContent(content: string) {
   try {
     const parsed = JSON.parse(content) as unknown;

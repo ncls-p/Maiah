@@ -26,7 +26,7 @@ type WorkspaceRoleName = "workspace.member" | "workspace.admin";
 
 const PRIMARY_ORGANIZATION_NAME = "Deodis";
 const PRIMARY_ORGANIZATION_SLUG = "deodis";
-const PRIMARY_WORKSPACE_NAME = "AI Hub";
+const PRIMARY_WORKSPACE_NAME = "Maiah";
 const PRIMARY_WORKSPACE_SLUG = "main";
 
 async function seedSystemRoles(

@@ -10,8 +10,8 @@ describe("tool approval summary", () => {
 	});
 
 	it("summarizes search tools", () => {
-		expect(summarizeToolInput("web_search", { query: "AI Hub pricing" })).toBe(
-			'Search for "AI Hub pricing"',
+		expect(summarizeToolInput("web_search", { query: "Maiah pricing" })).toBe(
+			'Search for "Maiah pricing"',
 		);
 	});
 

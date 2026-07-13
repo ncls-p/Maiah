@@ -1151,7 +1151,7 @@ export async function runCustomToolBuilder(input: {
       }),
       register_custom_tool: tool({
         description:
-          "Register the created n8n workflow as a custom tool draft in AI Hub after it has been created or specified.",
+          "Register the created n8n workflow as a custom tool draft in Maiah after it has been created or specified.",
         inputSchema: z.object({
           name: z.string().min(1).max(255),
           description: z.string().max(2000).optional(),

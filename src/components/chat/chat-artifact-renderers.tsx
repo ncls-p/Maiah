@@ -14,6 +14,7 @@ import {
   type HtmlArtifactOutput,
 } from "@/components/chat/chat-message-rendering-utils";
 import { Button } from "@/components/ui/button";
+import { ToolStateIcon } from "@/components/chat/tool-state-icon";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import {
   Dialog,
@@ -136,24 +137,40 @@ export function HtmlArtifactCard({
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-primary/20 bg-background text-xs shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/50 bg-muted/35 px-3 py-2.5">
-        <div className="min-w-0">
-          <p className="truncate font-medium text-foreground">
-            {artifact.title}
-          </p>
-          <p className="text-[11px] text-muted-foreground">
-            {isLive
-              ? t("livePreviewDescription")
-              : t("interactivePreviewDescription")}
-          </p>
+    <div
+      className={cn(
+        "overflow-hidden rounded-2xl text-xs transition-[background-color,box-shadow] duration-200 ease-out",
+        isLive
+          ? "bg-primary/[0.055] shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--primary)_18%,transparent),0_14px_28px_-24px_color-mix(in_oklch,var(--primary)_55%,transparent)]"
+          : "bg-card shadow-[var(--surface-shadow)]",
+      )}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/40 px-2.5 py-1.5">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <ToolStateIcon state={isLive ? "pending" : "completed"} />
+          <div className="min-w-0">
+            <p className="truncate font-medium text-foreground">
+              {artifact.title}
+            </p>
+            <p
+              className={cn(
+                "text-[11px] text-muted-foreground",
+                isLive && "t-shimmer",
+              )}
+              data-text={isLive ? t("livePreviewDescription") : undefined}
+            >
+              {isLive
+                ? t("livePreviewDescription")
+                : t("interactivePreviewDescription")}
+            </p>
+          </div>
         </div>
         <div className="flex items-center gap-1.5">
           <Button
             type={BUTTON_TYPE}
             variant={GHOST_VARIANT}
             size="sm"
-            className="h-7 px-2.5 text-[11px]"
+            className="h-10 rounded-xl px-3 text-[11px]"
             onClick={() => setFullscreenOpen(true)}
           >
             <Maximize2Icon className={COMPACT_ICON_CLASS} aria-hidden="true" />
@@ -163,7 +180,7 @@ export function HtmlArtifactCard({
             type={BUTTON_TYPE}
             variant={OUTLINE_VARIANT}
             size="sm"
-            className="h-7 px-2.5 text-[11px]"
+            className="h-10 rounded-xl px-3 text-[11px]"
             onClick={copyCode}
           >
             {copied ? t("copied") : t("copyCode")}
@@ -172,7 +189,7 @@ export function HtmlArtifactCard({
             type={BUTTON_TYPE}
             variant={GHOST_VARIANT}
             size="sm"
-            className="h-7 px-2.5 text-[11px]"
+            className="h-10 rounded-xl px-3 text-[11px]"
             onClick={() => setCodeOpen((current) => !current)}
           >
             {codeOpen ? t("hideCode") : t("viewCode")}
@@ -184,9 +201,16 @@ export function HtmlArtifactCard({
         srcDoc={srcDoc}
         height={artifact.height}
       />
-      <Collapsible open={codeOpen} onOpenChange={setCodeOpen}>
-        <CollapsibleContent>
-          <ArtifactCodeBlocks artifact={artifact} />
+      <Collapsible
+        open={codeOpen}
+        onOpenChange={setCodeOpen}
+        data-open={String(codeOpen)}
+        className="t-acc"
+      >
+        <CollapsibleContent forceMount className="t-acc-panel">
+          <div className="t-acc-panel-inner">
+            <ArtifactCodeBlocks artifact={artifact} />
+          </div>
         </CollapsibleContent>
       </Collapsible>
       <Dialog open={fullscreenOpen} onOpenChange={setFullscreenOpen}>
@@ -205,7 +229,7 @@ export function HtmlArtifactCard({
                 type={BUTTON_TYPE}
                 variant={OUTLINE_VARIANT}
                 size="sm"
-                className="h-8 px-3 text-xs"
+                className="h-10 rounded-xl px-3 text-xs"
                 onClick={copyCode}
               >
                 {copied ? t("copied") : t("copyCode")}
@@ -214,7 +238,7 @@ export function HtmlArtifactCard({
                 type={BUTTON_TYPE}
                 variant={GHOST_VARIANT}
                 size="sm"
-                className="h-8 px-3 text-xs"
+                className="h-10 rounded-xl px-3 text-xs"
                 onClick={() => setFullscreenCodeOpen((current) => !current)}
               >
                 {fullscreenCodeOpen ? t("hideCode") : t("viewCode")}
@@ -257,7 +281,7 @@ function SandboxOutputFileCard({ file }: { file: CodeSandboxFileOutput }) {
         : null;
 
   return (
-    <div className="rounded-lg border border-border/50 bg-background p-2.5">
+    <div className="rounded-xl bg-background p-2.5 shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--border)_55%,transparent)]">
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
           <p className="truncate font-medium text-foreground">{file.path}</p>
@@ -270,7 +294,7 @@ function SandboxOutputFileCard({ file }: { file: CodeSandboxFileOutput }) {
             asChild
             variant={OUTLINE_VARIANT}
             size="sm"
-            className="h-7 shrink-0 gap-1.5 px-2 text-[11px]"
+            className="h-10 shrink-0 rounded-xl px-3 text-[11px]"
           >
             <a href={file.downloadUrl} target="_blank" rel="noreferrer">
               <DownloadIcon className={COMPACT_ICON_CLASS} aria-hidden="true" />
@@ -308,18 +332,31 @@ export function CodeSandboxResultCard({
   const [sourceOpen, setSourceOpen] = useState(false);
   const language = input?.language ?? result.language;
   return (
-    <div className="overflow-hidden rounded-xl border border-border/50 bg-card text-xs shadow-sm">
-      <div className="flex items-center justify-between gap-3 border-b border-border/50 bg-muted/25 px-3 py-2.5">
-        <div>
-          <p className="font-medium text-foreground">{t("codeSandbox")}</p>
-          <p className="text-[11px] text-muted-foreground">
-            {language} · {result.durationMs}ms ·{" "}
-            {result.timedOut
-              ? t("timedOut")
-              : result.exitCode === null
-                ? t("noExitCode")
-                : t("exitCode", { count: result.exitCode })}
-          </p>
+    <Collapsible
+      open={sourceOpen}
+      onOpenChange={setSourceOpen}
+      data-open={String(sourceOpen)}
+      className={cn(
+        "t-acc overflow-hidden rounded-2xl text-xs transition-[background-color,box-shadow] duration-200 ease-out",
+        result.ok
+          ? "bg-card shadow-[var(--surface-shadow)]"
+          : "bg-destructive/[0.045] shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--destructive)_22%,transparent),0_14px_28px_-24px_color-mix(in_oklch,var(--destructive)_45%,transparent)]",
+      )}
+    >
+      <div className="flex items-center justify-between gap-3 border-b border-border/40 px-2.5 py-1.5">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <ToolStateIcon state={result.ok ? "completed" : "error"} />
+          <div className="min-w-0">
+            <p className="font-medium text-foreground">{t("codeSandbox")}</p>
+            <p className="truncate text-[11px] text-muted-foreground tabular-nums">
+              {language} · {result.durationMs}ms ·{" "}
+              {result.timedOut
+                ? t("timedOut")
+                : result.exitCode === null
+                  ? t("noExitCode")
+                  : t("exitCode", { count: result.exitCode })}
+            </p>
+          </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {input?.code ? (
@@ -327,14 +364,16 @@ export function CodeSandboxResultCard({
               type={BUTTON_TYPE}
               variant={GHOST_VARIANT}
               size="sm"
-              className="h-7 px-2 text-[11px]"
+              className="h-10 rounded-xl px-3 text-[11px]"
               onClick={() => setSourceOpen((current) => !current)}
             >
               {t("sourceCode")}
-              <ChevronDownIcon
-                className={cn(COMPACT_ICON_CLASS, sourceOpen && "rotate-180")}
-                aria-hidden="true"
-              />
+              <span className="t-acc-chevron">
+                <ChevronDownIcon
+                  className={COMPACT_ICON_CLASS}
+                  aria-hidden="true"
+                />
+              </span>
             </Button>
           ) : null}
           <span
@@ -351,9 +390,9 @@ export function CodeSandboxResultCard({
       </div>
       <div className="space-y-3 p-3">
         {input?.code ? (
-          <Collapsible open={sourceOpen} onOpenChange={setSourceOpen}>
-            <CollapsibleContent>
-              <div className="space-y-2 rounded-lg border border-border/50 bg-muted/20 p-2.5">
+          <CollapsibleContent forceMount className="t-acc-panel">
+            <div className="t-acc-panel-inner">
+              <div className="space-y-2 rounded-xl bg-muted/20 p-2.5 shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--border)_55%,transparent)]">
                 <div className="flex flex-wrap items-center gap-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                   <span>{t("executedCode", { language })}</span>
                   {input.files.length > 0 ? (
@@ -371,8 +410,8 @@ export function CodeSandboxResultCard({
                   {input.code}
                 </pre>
               </div>
-            </CollapsibleContent>
-          </Collapsible>
+            </div>
+          </CollapsibleContent>
         ) : null}
         {result.stdout ? (
           <div>
@@ -405,7 +444,7 @@ export function CodeSandboxResultCard({
           </div>
         ) : null}
       </div>
-    </div>
+    </Collapsible>
   );
 }
 
@@ -432,11 +471,21 @@ export function LiveToolInputCard({
   const displayText = visibleCode || visibleInputText;
 
   return (
-    <div className="overflow-hidden rounded-xl border border-primary/20 bg-background text-xs shadow-sm">
-      <div className="flex items-center justify-between gap-2 border-b border-border/50 bg-muted/35 px-3 py-2.5">
-        <div>
-          <p className="font-medium text-foreground">{toolName}</p>
-          <p className="text-[11px] text-muted-foreground">
+    <div className="overflow-hidden rounded-2xl bg-primary/[0.055] text-xs shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--primary)_18%,transparent),0_14px_28px_-24px_color-mix(in_oklch,var(--primary)_55%,transparent)]">
+      <div className="flex items-center gap-2.5 border-b border-border/40 px-2.5 py-1.5">
+        <ToolStateIcon state="pending" />
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-medium text-foreground">{toolName}</p>
+          <p
+            className="t-shimmer truncate text-[11px] text-muted-foreground"
+            data-text={
+              sandboxInput
+                ? t("writingCode", {
+                    language: sandboxInput.language ?? "sandbox",
+                  })
+                : t("writingInput")
+            }
+          >
             {sandboxInput
               ? t("writingCode", {
                   language: sandboxInput.language ?? "sandbox",
@@ -444,7 +493,14 @@ export function LiveToolInputCard({
               : t("writingInput")}
           </p>
         </div>
-        <span className="size-2 rounded-full bg-primary/70 animate-pulse" />
+        <span
+          className="streaming-thinking__dots mr-2 text-primary"
+          aria-hidden="true"
+        >
+          <span />
+          <span />
+          <span />
+        </span>
       </div>
       {sandboxInput ? (
         <div className="flex flex-wrap gap-2 border-b border-border/40 px-3 py-2 text-[10px] text-muted-foreground">

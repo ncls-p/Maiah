@@ -18,7 +18,12 @@ import {
   MessageContent,
   StreamingStatus,
 } from "@/components/chat/chat-message-rendering";
-import { shouldUseMessageScrollAnchor } from "@/components/chat/chat-scroll";
+import {
+  cancelsChatStreamFollow,
+  getChatStreamFollowKey,
+  isChatViewportAtEnd,
+  shouldUseMessageScrollAnchor,
+} from "@/components/chat/chat-scroll";
 import {
   textFromMessage,
   type ChatMessage,
@@ -78,6 +83,7 @@ interface ChatMessageListProps {
   onDeleteMessage?: (message: ChatMessage) => Promise<void> | void;
   onResendMessage?: (message: ChatMessage) => Promise<void> | void;
   onRegenerateAssistant?: (message: ChatMessage) => Promise<void> | void;
+  onJumpLatest?: () => Promise<void> | void;
   pendingApprovals?: PendingToolApproval[];
   onApproveTool?: (approval: PendingToolApproval) => void;
   onRejectTool?: (approval: PendingToolApproval) => void;
@@ -197,9 +203,42 @@ function rememberUserMessageAnchor(
   window.localStorage.setItem(chatAnchorStorageKey(conversationId), messageId);
 }
 
-function ChatScrollControls({ sending }: { sending: boolean }) {
+function ChatScrollControls({
+  sending,
+  conversationId,
+  onJumpLatest,
+}: {
+  sending: boolean;
+  conversationId?: string | null;
+  onJumpLatest?: () => Promise<void> | void;
+}) {
   const t = useTranslations("chat.messageList");
   const scrollable = useMessageScrollerScrollable();
+  const { scrollToEnd } = useMessageScroller();
+
+  async function jumpToActualLatest() {
+    if (conversationId) {
+      window.localStorage.removeItem(chatAnchorStorageKey(conversationId));
+    }
+    const url = new URL(window.location.href);
+    url.hash = "";
+    window.history.replaceState(null, "", url);
+    try {
+      await onJumpLatest?.();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("jumpLatest"));
+    }
+
+    let remainingLayoutPasses = 5;
+    const settleAtEnd = () => {
+      scrollToEnd({ behavior: "auto" });
+      remainingLayoutPasses -= 1;
+      if (remainingLayoutPasses > 0) {
+        window.requestAnimationFrame(settleAtEnd);
+      }
+    };
+    window.requestAnimationFrame(settleAtEnd);
+  }
 
   return (
     <>
@@ -218,6 +257,10 @@ function ChatScrollControls({ sending }: { sending: boolean }) {
         variant="secondary"
         size="sm"
         className="z-20 rounded-full px-3 shadow-sm"
+        onClick={(event) => {
+          event.preventDefault();
+          void jumpToActualLatest();
+        }}
       >
         <ChevronDownIcon data-icon="inline-start" />
         {t("jumpLatest")}
@@ -409,6 +452,7 @@ export function ChatMessageList({
   onDeleteMessage,
   onResendMessage,
   onRegenerateAssistant,
+  onJumpLatest,
   pendingApprovals = [],
   onApproveTool,
   onRejectTool,
@@ -464,46 +508,103 @@ export function ChatMessageList({
   }, [visibleMessages]);
   const lastMessage = messages[messages.length - 1] ?? null;
   const lastMessageId = lastMessage?.id ?? null;
-  const scrollFollowKey = useMemo(() => {
-    if (!lastMessage) return `empty:${messages.length}`;
-    return [
-      messages.length,
-      lastMessage.id,
-      lastMessage.status ?? "",
-      lastMessage.parts.length,
-      textFromMessage(lastMessage).length,
-    ].join(":");
-  }, [lastMessage, messages.length]);
+  const hasTranscript = !loading && messages.length > 0;
+  const scrollFollowKey = useMemo(
+    () => getChatStreamFollowKey(messages),
+    [messages],
+  );
 
-  // Smart scroll: only follow the stream after the user explicitly reaches
-  // the bottom. Posting from older history must preserve the current position.
+  // Follow every streamed layout change while the reader remains at the end.
+  // Scrolling up opts out immediately and preserves the reader's position.
   const viewportRef = useRef<HTMLDivElement | null>(null);
+  const contentRef = useRef<HTMLDivElement | null>(null);
   const shouldFollowStreamRef = useRef(false);
-  const SCROLL_THRESHOLD = 10;
+  const isDraggingScrollbarRef = useRef(false);
 
   useLayoutEffect(() => {
+    if (!hasTranscript) return;
     const viewport = viewportRef.current;
     if (!viewport) return;
 
     const updateFollowStream = () => {
-      const { scrollTop, scrollHeight, clientHeight } = viewport;
-      shouldFollowStreamRef.current =
-        scrollHeight - scrollTop - clientHeight <= SCROLL_THRESHOLD;
+      if (isChatViewportAtEnd(viewport)) {
+        shouldFollowStreamRef.current = true;
+      } else if (isDraggingScrollbarRef.current) {
+        shouldFollowStreamRef.current = false;
+      }
     };
 
+    const handleWheel = (event: WheelEvent) => {
+      if (event.deltaY < 0) shouldFollowStreamRef.current = false;
+    };
+    const handleTouchMove = () => {
+      shouldFollowStreamRef.current = false;
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (cancelsChatStreamFollow(event)) {
+        shouldFollowStreamRef.current = false;
+      }
+    };
+    const handlePointerDown = (event: PointerEvent) => {
+      isDraggingScrollbarRef.current = event.target === viewport;
+    };
+    const handlePointerUp = () => {
+      isDraggingScrollbarRef.current = false;
+    };
+
+    updateFollowStream();
     viewport.addEventListener("scroll", updateFollowStream, { passive: true });
+    viewport.addEventListener("wheel", handleWheel, { passive: true });
+    viewport.addEventListener("touchmove", handleTouchMove, { passive: true });
+    viewport.addEventListener("keydown", handleKeyDown);
+    viewport.addEventListener("pointerdown", handlePointerDown);
+    window.addEventListener("pointerup", handlePointerUp);
 
     return () => {
       viewport.removeEventListener("scroll", updateFollowStream);
+      viewport.removeEventListener("wheel", handleWheel);
+      viewport.removeEventListener("touchmove", handleTouchMove);
+      viewport.removeEventListener("keydown", handleKeyDown);
+      viewport.removeEventListener("pointerdown", handlePointerDown);
+      window.removeEventListener("pointerup", handlePointerUp);
     };
-  }, []);
+  }, [hasTranscript]);
 
   useLayoutEffect(() => {
     const viewport = viewportRef.current;
     if (!viewport || !shouldFollowStreamRef.current) return;
 
-    viewport.scrollTo({ top: viewport.scrollHeight, behavior: "auto" });
+    const frame = window.requestAnimationFrame(() => {
+      if (!shouldFollowStreamRef.current) return;
+      viewport.scrollTo({ top: viewport.scrollHeight, behavior: "auto" });
+    });
+
+    return () => window.cancelAnimationFrame(frame);
   }, [scrollFollowKey, pendingApprovals.length]);
+
+  useLayoutEffect(() => {
+    if (!hasTranscript) return;
+    const viewport = viewportRef.current;
+    const content = contentRef.current;
+    if (!viewport || !content || typeof ResizeObserver === "undefined") return;
+
+    let frame: number | null = null;
+    const observer = new ResizeObserver(() => {
+      if (!shouldFollowStreamRef.current) return;
+      if (frame !== null) window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => {
+        frame = null;
+        if (!shouldFollowStreamRef.current) return;
+        viewport.scrollTo({ top: viewport.scrollHeight, behavior: "auto" });
+      });
+    });
+    observer.observe(content);
+
+    return () => {
+      observer.disconnect();
+      if (frame !== null) window.cancelAnimationFrame(frame);
+    };
+  }, [hasTranscript]);
 
   if (loading) {
     return (
@@ -541,7 +642,10 @@ export function ChatMessageList({
           className={viewportClassName}
           aria-label={t("transcript")}
         >
-          <MessageScrollerContent className="mx-auto w-full max-w-4xl gap-5 pb-24">
+          <MessageScrollerContent
+            ref={contentRef}
+            className="mx-auto w-full max-w-4xl gap-5 pb-24"
+          >
             {hiddenMessageCount > 0 ? (
               <MessageScrollerItem className="flex justify-center">
                 <Marker variant="separator" className="max-w-lg">
@@ -730,7 +834,11 @@ export function ChatMessageList({
           messageIndexById={messageIndexById}
           setVisibleMessageCount={setVisibleMessageCount}
         />
-        <ChatScrollControls sending={sending} />
+        <ChatScrollControls
+          sending={sending}
+          conversationId={conversationId}
+          onJumpLatest={onJumpLatest}
+        />
       </MessageScroller>
     </MessageScrollerProvider>
   );

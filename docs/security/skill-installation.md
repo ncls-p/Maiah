@@ -1,6 +1,6 @@
 # Skill installation trust boundary
 
-Skills imported from GitHub are untrusted supply-chain input. AI Hub imports
+Skills imported from GitHub are untrusted supply-chain input. Maiah imports
 bounded Markdown files only, but a repository can still change between a user's
 review and their confirmation.
 

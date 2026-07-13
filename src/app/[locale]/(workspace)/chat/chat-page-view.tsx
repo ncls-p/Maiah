@@ -12,14 +12,13 @@ import {
 import { Link } from "@/i18n/navigation";
 import type {
   ChatAgent,
-  ChatConversation,
   CodeWorkspaceArtifact,
 } from "@/components/chat/chat-types";
 import {
   CHAT_INTERFACE_MODE,
   CODING_INTERFACE_MODE,
   type InterfaceMode,
-} from "./chat-page-helpers";
+} from "./chat-interface-mode";
 
 type ChatTranslator = (key: string, values?: Record<string, string>) => string;
 
@@ -126,7 +125,7 @@ export function CodeWorkspaceModeBar({
 export function EmptyConversationState({
   canChat,
   selectedAgent,
-  conversations,
+  latestConversationId,
   emptyPromptSuggestions,
   onSelectConversation,
   onSubmitSuggestion,
@@ -134,7 +133,7 @@ export function EmptyConversationState({
 }: {
   canChat: boolean;
   selectedAgent: ChatAgent | null;
-  conversations: ChatConversation[];
+  latestConversationId: string | null;
   emptyPromptSuggestions: string[];
   onSelectConversation: (conversationId: string) => void;
   onSubmitSuggestion: (suggestion: string) => void;
@@ -167,13 +166,14 @@ export function EmptyConversationState({
           </p>
         </div>
 
-        {canChat && (conversations[0] || emptyPromptSuggestions.length > 0) ? (
+        {canChat &&
+        (latestConversationId || emptyPromptSuggestions.length > 0) ? (
           <div className="flex flex-wrap justify-center gap-2">
-            {conversations[0] ? (
+            {latestConversationId ? (
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => onSelectConversation(conversations[0].id)}
+                onClick={() => onSelectConversation(latestConversationId)}
               >
                 {t("continueLast")}
               </Button>

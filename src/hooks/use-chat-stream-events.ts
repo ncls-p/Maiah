@@ -2,7 +2,9 @@
 
 import {
   appendMessagePart,
+  completeReasoningParts,
   isChatStreamEvent,
+  startReasoningPart,
   type ChatCitation,
   type ChatMessage,
   type ChatStreamEvent,
@@ -181,9 +183,26 @@ export function applyStreamEvent(
     handlers.updateAssistant((message) => ({
       ...message,
       status: "completed",
+      parts: completeReasoningParts(message.parts),
     }));
     handlers.clearPendingApprovals();
     handlers.onDone?.();
+    return;
+  }
+
+  if (parsed.type === "reasoning_start") {
+    handlers.updateAssistant((message) => ({
+      ...message,
+      parts: startReasoningPart(message.parts),
+    }));
+    return;
+  }
+
+  if (parsed.type === "reasoning_end") {
+    handlers.updateAssistant((message) => ({
+      ...message,
+      parts: completeReasoningParts(message.parts),
+    }));
     return;
   }
 
@@ -241,6 +260,51 @@ export function applyStreamEvent(
         }
       }
       return message;
+    });
+    return;
+  }
+
+  if (parsed.type === "tool_input_snapshot") {
+    handlers.updateAssistant((message) => {
+      const nextParts = [...message.parts];
+      for (let i = nextParts.length - 1; i >= 0; i--) {
+        if (nextParts[i].type !== TOOL_CALL_PART_TYPE) continue;
+        try {
+          const parsedPart = JSON.parse(nextParts[i].content) as Record<
+            string,
+            unknown
+          >;
+          if (parsedPart.toolCallId === parsed.toolCallId) {
+            nextParts[i] = {
+              type: TOOL_CALL_PART_TYPE,
+              content: JSON.stringify({
+                ...parsedPart,
+                toolName: parsed.toolName,
+                inputText: parsed.inputText,
+                streamingInput: true,
+              }),
+            };
+            return { ...message, parts: nextParts };
+          }
+        } catch {
+          // Skip malformed historical parts and append a recoverable snapshot.
+        }
+      }
+      return {
+        ...message,
+        parts: [
+          ...nextParts,
+          {
+            type: TOOL_CALL_PART_TYPE,
+            content: JSON.stringify({
+              toolCallId: parsed.toolCallId,
+              toolName: parsed.toolName,
+              inputText: parsed.inputText,
+              streamingInput: true,
+            }),
+          },
+        ],
+      };
     });
     return;
   }

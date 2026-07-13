@@ -1,10 +1,10 @@
-# Guide de la codebase AI Hub
+# Guide de la codebase Maiah
 
 Ce document indique où vit chaque responsabilité, comment une requête traverse l’application et quels invariants préserver lors d’une évolution. Le [README](../../README.md) reste la référence d’installation et d’exploitation ; ce guide est la carte de maintenance du code.
 
 ## Vue d’ensemble
 
-AI Hub est un monolithe modulaire Next.js. Les pages et routes HTTP orchestrent les entrées, les modules portent les cas d’usage, le domaine centralise l’autorisation et l’audit, et l’infrastructure adapte PostgreSQL, le cache, le stockage, les fournisseurs IA et le worker.
+Maiah est un monolithe modulaire Next.js. Les pages et routes HTTP orchestrent les entrées, les modules portent les cas d’usage, le domaine centralise l’autorisation et l’audit, et l’infrastructure adapte PostgreSQL, le cache, le stockage, les fournisseurs IA et le worker.
 
 ```text
 Navigateur / client API

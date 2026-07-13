@@ -421,6 +421,18 @@ function executeProcess(input, workdir) {
 		child.stderr.on("data", (chunk) => {
 			stderr = appendLimited(stderr, chunk, maxStderrBytes);
 		});
+		child.stdin.on("error", (error) => {
+			// Short-lived commands may close stdin before Node flushes it. The
+			// command's close event remains the source of truth for its result.
+			if (error.code === "EPIPE" || error.code === "ERR_STREAM_DESTROYED") {
+				return;
+			}
+			stderr = appendLimited(
+				stderr,
+				Buffer.from(error.message),
+				maxStderrBytes,
+			);
+		});
 		child.stdin.end(input.stdin);
 
 		const timer = setTimeout(() => {

@@ -5,7 +5,7 @@ import { getSession } from "@/modules/auth/session";
 
 export const metadata: Metadata = {
   title: "Account",
-  description: "Sign in or create an AI Hub account.",
+  description: "Sign in or create a Maiah account.",
 };
 
 // Auth pages depend on client-only form state and auth redirects.

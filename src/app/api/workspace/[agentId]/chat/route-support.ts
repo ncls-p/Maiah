@@ -18,13 +18,22 @@ import {
   type AiHubToolApprovalPolicy,
 } from "@/modules/tool/approval-policy";
 import { waitForApproval } from "@/modules/tool/invocation-state";
-import { projectToolPayloadForDisplay } from "@/modules/tool/safe-payload";
+import {
+  projectToolMessagePayload,
+  projectToolPayloadForDisplay,
+  safeToolErrorMessage,
+} from "@/modules/tool/safe-payload";
 import { evaluateOpaToolApprovalPolicy } from "@/modules/tool/opa-approval-policy";
 import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
 import { messageParts, messages } from "@/server/infrastructure/db/schema";
 import { registerAiSdkDevTools } from "@/server/infrastructure/ai-sdk/devtools";
-import { jsonSchema, type ToolApprovalConfiguration, type ToolSet } from "ai";
+import {
+  jsonSchema,
+  parsePartialJson,
+  type ToolApprovalConfiguration,
+  type ToolSet,
+} from "ai";
 
 registerAiSdkDevTools();
 
@@ -80,6 +89,47 @@ export const codeWorkspaceCreateToolNames = [
   ...codeWorkspaceEditToolNames,
 ];
 
+function userFilePartIdentity(metadata: unknown) {
+  if (typeof metadata !== "object" || metadata === null) return null;
+  const record = metadata as Record<string, unknown>;
+  if (
+    (record.kind === "chat_file" || record.kind === "chat_image") &&
+    typeof record.id === "string"
+  ) {
+    return `${record.kind}:${record.id}`;
+  }
+  if (
+    record.kind === "code_workspace_artifact" &&
+    typeof record.projectId === "string"
+  ) {
+    return `${record.kind}:${record.projectId}`;
+  }
+  return null;
+}
+
+export function mergeUserFilePartMetadata(
+  persisted: unknown[],
+  requested: unknown[],
+) {
+  const merged: unknown[] = [];
+  const indexesByIdentity = new Map<string, number>();
+  for (const metadata of [...persisted, ...requested]) {
+    const identity = userFilePartIdentity(metadata);
+    if (!identity) {
+      merged.push(metadata);
+      continue;
+    }
+    const existingIndex = indexesByIdentity.get(identity);
+    if (existingIndex === undefined) {
+      indexesByIdentity.set(identity, merged.length);
+      merged.push(metadata);
+    } else {
+      merged[existingIndex] = metadata;
+    }
+  }
+  return merged;
+}
+
 export function streamToolCallId(part: unknown) {
   const record = part as Record<string, unknown>;
   return typeof record.toolCallId === "string"
@@ -96,6 +146,32 @@ export function streamToolInputDelta(part: unknown) {
     : typeof record.inputTextDelta === "string"
       ? record.inputTextDelta
       : "";
+}
+
+export async function projectStreamedToolInput(inputText: string) {
+  const parsed = await parsePartialJson(inputText);
+  if (parsed.value === undefined) return "";
+  return JSON.stringify(projectToolMessagePayload(parsed.value), null, 2);
+}
+
+export function streamToolErrorOutput(part: unknown, originalError?: unknown) {
+  const record = part as Record<string, unknown>;
+  const sourceError = originalError ?? record.error;
+  const errorRecord =
+    typeof sourceError === "object" && sourceError !== null
+      ? (sourceError as Record<string, unknown>)
+      : null;
+  const isUnavailableTool =
+    errorRecord?.name === "AI_NoSuchToolError" ||
+    errorRecord?.name === "NoSuchToolError";
+
+  return {
+    ok: false,
+    code: isUnavailableTool ? "tool_unavailable" : "tool_execution_failed",
+    error: isUnavailableTool
+      ? "The requested tool is not available for this assistant."
+      : safeToolErrorMessage(record.error, "Tool execution failed"),
+  };
 }
 
 function sanitizeToolKeyPart(value: string) {
@@ -815,7 +891,7 @@ export async function buildBoundTools(input: {
         policy: input.approvalPolicy,
         ...metadata,
       });
-    // Keep human approvals in AI Hub's existing DB-audited, streaming approval
+    // Keep human approvals in Maiah's existing DB-audited, streaming approval
     // flow. Native AI SDK approval is used here for hard policy denials so the
     // model receives a standard denied tool output before execution can start.
     return decision.status === "deny" ? decision.aiSdkStatus : undefined;

@@ -54,14 +54,36 @@ async function replaceMessageTextContent(input: {
   content: string;
 }) {
   try {
-    await db
-      .delete(messageParts)
-      .where(eq(messageParts.messageId, input.messageId));
-    await db.insert(messageParts).values({
-      messageId: input.messageId,
-      type: "text",
-      contentEncrypted: await encryptValue(input.content),
-      sortOrder: 0,
+    const encryptedContent = await encryptValue(input.content);
+    await db.transaction(async (tx) => {
+      const fileParts = await tx
+        .select({ metadataJson: messageParts.metadataJson })
+        .from(messageParts)
+        .where(
+          and(
+            eq(messageParts.messageId, input.messageId),
+            eq(messageParts.type, "file"),
+          ),
+        )
+        .orderBy(messageParts.sortOrder);
+
+      await tx
+        .delete(messageParts)
+        .where(eq(messageParts.messageId, input.messageId));
+      await tx.insert(messageParts).values([
+        {
+          messageId: input.messageId,
+          type: "text" as const,
+          contentEncrypted: encryptedContent,
+          sortOrder: 0,
+        },
+        ...fileParts.map((part, index) => ({
+          messageId: input.messageId,
+          type: "file" as const,
+          metadataJson: part.metadataJson,
+          sortOrder: index + 1,
+        })),
+      ]);
     });
     await db
       .update(messages)

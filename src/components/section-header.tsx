@@ -14,14 +14,16 @@ export function SectionHeader({
   return (
     <div
       className={cn(
-        "flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between",
+        "flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between",
         className,
       )}
     >
-      <div className="flex flex-col gap-1">
-        <h2 className="text-balance text-sm font-semibold">{title}</h2>
+      <div className="flex flex-col gap-1.5">
+        <h2 className="text-balance text-base font-semibold tracking-[-0.025em]">
+          {title}
+        </h2>
         {description ? (
-          <p className="text-pretty text-xs text-muted-foreground">
+          <p className="max-w-2xl text-pretty text-sm leading-6 text-muted-foreground">
             {description}
           </p>
         ) : null}

@@ -171,8 +171,15 @@ const commonSchemas: Record<string, unknown> = {
       projectId: { type: "string", format: "uuid" },
       path: { type: "string", description: "Workspace-relative file path." },
       content: { type: "string", description: "Full text content to write." },
+      attachmentId: {
+        type: "string",
+        format: "uuid",
+        description:
+          "Chat attachment ID to copy byte-for-byte into the workspace. Use this for uploaded images, fonts, media, or other assets.",
+      },
     },
-    required: ["projectId", "path", "content"],
+    required: ["projectId", "path"],
+    oneOf: [{ required: ["content"] }, { required: ["attachmentId"] }],
   },
   code_workspace_replace_text: {
     type: "object",

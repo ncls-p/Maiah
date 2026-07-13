@@ -1,4 +1,4 @@
-import { desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 
 import {
   getChatAttachmentExtractedText,
@@ -14,6 +14,27 @@ import { projectAgentProgressForModelHistory } from "@/modules/agent/progress-mo
 import type { ModelMessage } from "ai";
 
 const previousToolTextContextChars = 4_000;
+
+type HistoryMessageRow = {
+  id: string;
+  role: string;
+  createdAt: Date;
+};
+
+export function mergeHistoryWithAttachmentMessages(
+  recentMessages: HistoryMessageRow[],
+  attachmentMessages: HistoryMessageRow[],
+) {
+  const messagesById = new Map<string, HistoryMessageRow>();
+  for (const message of [...attachmentMessages, ...recentMessages]) {
+    messagesById.set(message.id, message);
+  }
+  return [...messagesById.values()].sort(
+    (left, right) =>
+      left.createdAt.getTime() - right.createdAt.getTime() ||
+      left.id.localeCompare(right.id),
+  );
+}
 
 function htmlArtifactCodeFromValue(value: unknown) {
   if (typeof value !== "object" || value === null) return null;
@@ -204,7 +225,7 @@ export async function loadConversationHistory(
     typeof maxMessages === "number" && maxMessages > 0
       ? Math.floor(maxMessages)
       : null;
-  const messageRows = historyLimit
+  const recentMessageRows = historyLimit
     ? (
         await db
           .select({
@@ -226,6 +247,28 @@ export async function loadConversationHistory(
         .from(messages)
         .where(eq(messages.conversationId, conversationId))
         .orderBy(messages.createdAt);
+  const attachmentMessageRows = historyLimit
+    ? await db
+        .select({
+          id: messages.id,
+          role: messages.role,
+          createdAt: messages.createdAt,
+        })
+        .from(messages)
+        .innerJoin(messageParts, eq(messageParts.messageId, messages.id))
+        .where(
+          and(
+            eq(messages.conversationId, conversationId),
+            eq(messages.role, "user"),
+            eq(messageParts.type, "file"),
+          ),
+        )
+        .orderBy(messages.createdAt)
+    : [];
+  const messageRows = mergeHistoryWithAttachmentMessages(
+    recentMessageRows,
+    attachmentMessageRows,
+  );
 
   const modelMessages: ModelMessage[] = [];
   const modelMessageRows = messageRows.filter(

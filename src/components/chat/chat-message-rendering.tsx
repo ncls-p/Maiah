@@ -12,9 +12,6 @@ import {
   CheckCircle2Icon,
   CheckIcon,
   ChevronDownIcon,
-  ClockIcon,
-  ShieldAlertIcon,
-  XCircleIcon,
   XIcon,
 } from "lucide-react";
 import {
@@ -29,9 +26,11 @@ import { CitationBlock } from "@/components/chat/citation-block";
 import {
   citationsFromMessage,
   getToolStatus,
+  groupWorkPhaseParts,
   parseToolPart,
   renderablePartsFromMessage,
   textFromMessage,
+  workPhaseHasPendingWork,
   type ChatMessage,
   type ChatMessagePart,
   type PendingToolApproval,
@@ -61,6 +60,7 @@ import {
   isGitHubPublishOutput,
   isHtmlArtifactOutput,
   summarizeToolBody,
+  toolPartHasStandaloneRendering,
   toolPartMatchesApproval,
 } from "@/components/chat/chat-message-rendering-utils";
 import {
@@ -68,6 +68,10 @@ import {
   HtmlArtifactCard,
   LiveToolInputCard,
 } from "@/components/chat/chat-artifact-renderers";
+import {
+  ToolStateIcon,
+  type ToolVisualState,
+} from "@/components/chat/tool-state-icon";
 import { Button } from "@/components/ui/button";
 import {
   Collapsible,
@@ -216,11 +220,9 @@ function PendingApprovalCard({
   const summary = summarizeToolInput(friendlyName, pendingApproval.input);
 
   return (
-    <div className="overflow-hidden rounded-xl border border-warning/45 bg-warning/5 text-xs shadow-sm">
+    <div className="overflow-hidden rounded-2xl bg-warning/[0.055] text-xs shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--warning)_22%,transparent),0_14px_28px_-24px_color-mix(in_oklch,var(--warning)_55%,transparent)]">
       <div className="flex items-start gap-3 px-3 py-2.5">
-        <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md border border-warning/35 bg-warning/15 text-warning">
-          <ShieldAlertIcon className="size-4" aria-hidden="true" />
-        </div>
+        <ToolStateIcon state="approval" className="mt-0.5" />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-medium text-foreground">
@@ -241,7 +243,7 @@ function PendingApprovalCard({
               type={BUTTON_TYPE}
               size="sm"
               variant={OUTLINE_VARIANT}
-              className="h-8 px-3 text-xs"
+              className="h-10 rounded-xl px-3 text-xs"
               onClick={() => onReject?.(pendingApproval)}
             >
               <XIcon data-icon="inline-start" aria-hidden="true" />
@@ -250,7 +252,7 @@ function PendingApprovalCard({
             <Button
               type={BUTTON_TYPE}
               size="sm"
-              className="h-8 px-3 text-xs"
+              className="h-10 rounded-xl px-3 text-xs"
               onClick={() => onApprove?.(pendingApproval)}
             >
               <CheckIcon data-icon="inline-start" aria-hidden="true" />
@@ -270,6 +272,7 @@ function formatExpandedToolValue(value: unknown, isOpen: boolean) {
 
 type ToolPartCardProps = {
   part: ChatMessagePart;
+  messageStatus?: ChatMessage["status"];
   approval?: PendingToolApproval;
   workspaceId?: string;
   workspaceArtifactDisplay?: WorkspaceArtifactDisplay;
@@ -291,18 +294,14 @@ function AgentActionAttribution({
   const t = useTranslations("chat.rendering");
   if (!context) return children;
 
-  const StatusIcon =
-    status === "error"
-      ? XCircleIcon
-      : status === "pending"
-        ? ClockIcon
-        : CheckCircle2Icon;
-
   return (
     <div className="space-y-2">
-      <div className="flex min-h-10 items-center gap-2 rounded-xl bg-card px-3 py-2 text-xs shadow-[var(--surface-shadow)]">
-        <StatusIcon className="size-3.5 shrink-0" aria-hidden="true" />
-        <BotIcon className="size-3.5 shrink-0" aria-hidden="true" />
+      <div className="flex min-h-12 items-center gap-2.5 rounded-2xl bg-card px-2.5 py-1.5 text-xs shadow-[var(--surface-shadow)] transition-[background-color,box-shadow] duration-200 ease-out">
+        <ToolStateIcon state={status} />
+        <BotIcon
+          className="size-3.5 shrink-0 text-muted-foreground"
+          aria-hidden="true"
+        />
         <span className="min-w-0 truncate font-medium">
           {context.agentName}
         </span>
@@ -325,6 +324,7 @@ function AgentActionAttribution({
 
 const ToolPartCard = memo(function ToolPartCard({
   part,
+  messageStatus,
   approval,
   workspaceId,
   workspaceArtifactDisplay = "full",
@@ -364,12 +364,26 @@ const ToolPartCard = memo(function ToolPartCard({
     () => (isDelegation ? t("delegation") : formatToolName(parsed.toolName)),
     [isDelegation, parsed.toolName, t],
   );
-  const status = useMemo(
-    () => (agentContext?.status === "error" ? "error" : getToolStatus(parsed)),
-    [agentContext?.status, parsed],
-  );
+  const status = useMemo(() => {
+    if (agentContext?.status === "error" || messageStatus === "failed") {
+      return "error";
+    }
+    const toolStatus = getToolStatus(parsed);
+    return toolStatus === "pending" && messageStatus !== "streaming"
+      ? "completed"
+      : toolStatus;
+  }, [agentContext?.status, messageStatus, parsed]);
   const hasResult = parsed.output !== undefined;
   const approvalMatches = Boolean(approval);
+  const visualState = approvalMatches ? "approval" : status;
+  const statusLabel =
+    visualState === "approval"
+      ? t("actionApproval")
+      : visualState === "pending"
+        ? t("actionRunning")
+        : visualState === "error"
+          ? t("actionFailed")
+          : t("actionCompleted");
   const displayInput = approvalMatches ? approval?.input : parsed.input;
 
   const inputArtifact = useMemo(
@@ -415,6 +429,9 @@ const ToolPartCard = memo(function ToolPartCard({
     if (isDelegation && status === "error") {
       return t("delegationFailed");
     }
+    if (status === "error" && (parsed.invalid || parsed.error != null)) {
+      return t("actionUnavailable");
+    }
     if (status === "pending") {
       return summarizeToolInput(friendlyName, displayInput);
     }
@@ -427,6 +444,8 @@ const ToolPartCard = memo(function ToolPartCard({
     hasResult,
     isDelegation,
     displayInput,
+    parsed.error,
+    parsed.invalid,
     parsed.output,
     parsed.toolName,
     status,
@@ -504,43 +523,25 @@ const ToolPartCard = memo(function ToolPartCard({
     );
   }
 
-  // Determine icon and colors based on status
-  let StatusIcon: React.ComponentType<{ className?: string }>;
-  let iconBgClass: string;
-  if (status === "error") {
-    StatusIcon = XCircleIcon;
-    iconBgClass = "border-destructive/30 bg-destructive/10 text-destructive";
-  } else if (approvalMatches) {
-    StatusIcon = ShieldAlertIcon;
-    iconBgClass = "border-warning/30 bg-warning/15 text-warning";
-  } else if (status === "pending") {
-    StatusIcon = ClockIcon;
-    iconBgClass = "border-info/30 bg-info/10 text-info";
-  } else {
-    StatusIcon = CheckCircle2Icon;
-    iconBgClass = "border-success/30 bg-success/10 text-success";
-  }
-
   return (
     <Collapsible
       open={open}
       onOpenChange={setOpen}
+      data-open={String(open)}
       className={cn(
-        "group/tool overflow-hidden rounded-xl text-xs shadow-[var(--surface-shadow)] transition-[background-color,box-shadow] duration-150 ease-out",
-        approvalMatches
-          ? "bg-warning/[0.04]"
-          : "bg-card hover:shadow-[var(--surface-shadow-hover)]",
+        "t-acc group/tool overflow-hidden rounded-2xl text-xs transition-[background-color,box-shadow] duration-200 ease-out",
+        visualState === "approval" &&
+          "bg-warning/[0.055] shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--warning)_22%,transparent),0_14px_28px_-24px_color-mix(in_oklch,var(--warning)_55%,transparent)]",
+        visualState === "pending" &&
+          "bg-primary/[0.055] shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--primary)_18%,transparent),0_14px_28px_-24px_color-mix(in_oklch,var(--primary)_55%,transparent)]",
+        visualState === "completed" &&
+          "bg-muted/25 shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--border)_72%,transparent),0_12px_24px_-24px_color-mix(in_oklch,var(--foreground)_30%,transparent)] hover:bg-primary/[0.025] hover:shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--primary)_18%,transparent),0_14px_28px_-22px_color-mix(in_oklch,var(--primary)_42%,transparent)]",
+        visualState === "error" &&
+          "bg-destructive/[0.045] shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--destructive)_22%,transparent),0_14px_28px_-24px_color-mix(in_oklch,var(--destructive)_45%,transparent)]",
       )}
     >
-      <div className="flex min-h-10 items-center gap-2.5 px-3 py-2">
-        <div
-          className={cn(
-            "flex size-7 shrink-0 items-center justify-center rounded-lg border",
-            iconBgClass,
-          )}
-        >
-          <StatusIcon className="size-3.5" aria-hidden="true" />
-        </div>
+      <div className="flex min-h-11 items-center gap-2.5 px-2.5 py-0.5">
+        <ToolStateIcon state={visualState} />
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-center gap-1.5">
             {agentContext ? (
@@ -557,6 +558,29 @@ const ToolPartCard = memo(function ToolPartCard({
             <span className="shrink-0 font-medium text-foreground/80">
               {friendlyName}
             </span>
+            <span
+              className={cn(
+                "ml-1 truncate text-[10px] font-medium",
+                visualState === "pending" && "t-shimmer",
+                visualState === "approval" && "text-warning",
+                visualState === "completed" && "text-success",
+                visualState === "error" && "text-destructive",
+              )}
+              data-text={visualState === "pending" ? statusLabel : undefined}
+              aria-live="polite"
+            >
+              {statusLabel}
+            </span>
+            {visualState === "pending" ? (
+              <span
+                className="streaming-thinking__dots text-primary"
+                aria-hidden="true"
+              >
+                <span />
+                <span />
+                <span />
+              </span>
+            ) : null}
           </div>
           {summaryText ? (
             <p className="truncate text-[11px] text-muted-foreground">
@@ -580,16 +604,12 @@ const ToolPartCard = memo(function ToolPartCard({
             type={BUTTON_TYPE}
             variant={GHOST_VARIANT}
             size="icon-sm"
-            className="ml-auto size-8 shrink-0 text-muted-foreground opacity-70 transition-[background-color,opacity,scale] duration-150 ease-out hover:opacity-100"
+            className="ml-auto size-10 shrink-0 rounded-xl text-muted-foreground opacity-70 transition-[background-color,opacity,scale] duration-150 ease-out hover:opacity-100"
             aria-label={open ? t("hideActionDetails") : t("showActionDetails")}
           >
-            <ChevronDownIcon
-              className={cn(
-                "transition-transform duration-150 ease-out",
-                open && "rotate-180",
-              )}
-              aria-hidden="true"
-            />
+            <span className="t-acc-chevron">
+              <ChevronDownIcon aria-hidden="true" />
+            </span>
           </Button>
         </CollapsibleTrigger>
       </div>
@@ -597,54 +617,61 @@ const ToolPartCard = memo(function ToolPartCard({
         <div className="border-t border-warning/20 bg-warning/[0.06] px-3 py-2">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-[11px] text-muted-foreground">
-              Waiting for approval before running this action.
+              {t("approvalWaiting")}
             </p>
             <div className="flex shrink-0 justify-end gap-1.5">
               <Button
                 type={BUTTON_TYPE}
                 size="sm"
                 variant={OUTLINE_VARIANT}
-                className="h-7 px-2.5 text-[11px]"
+                className="h-10 rounded-xl px-3 text-[11px]"
                 onClick={() => onReject?.(approval)}
               >
                 <XIcon className={COMPACT_ICON_CLASS} aria-hidden="true" />
-                Reject
+                {t("reject")}
               </Button>
               <Button
                 type={BUTTON_TYPE}
                 size="sm"
-                className="h-7 px-2.5 text-[11px]"
+                className="h-10 rounded-xl px-3 text-[11px]"
                 onClick={() => onApprove?.(approval)}
               >
                 <CheckIcon className={COMPACT_ICON_CLASS} aria-hidden="true" />
-                Approve
+                {t("approve")}
               </Button>
             </div>
           </div>
         </div>
       ) : null}
-      <CollapsibleContent>
-        <div className="border-t border-border/30 bg-muted/20 px-3 py-2">
-          {inputText ? (
-            <div className="mb-2">
-              <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
-                {t("actionInput")}
+      <CollapsibleContent
+        forceMount
+        className="t-acc-panel"
+        aria-hidden={!open}
+        inert={!open ? true : undefined}
+      >
+        <div className="t-acc-panel-inner">
+          <div className="border-t border-border/30 bg-background/45 px-4 py-3">
+            {inputText ? (
+              <div className="mb-2">
+                <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+                  {t("actionInput")}
+                </div>
+                <pre className="max-h-40 overflow-auto rounded-xl bg-muted/25 p-3 leading-4 text-[11px] text-muted-foreground shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--border)_55%,transparent)]">
+                  {inputText}
+                </pre>
               </div>
-              <pre className="max-h-40 overflow-auto rounded bg-background/60 p-2 leading-4 text-[11px] text-muted-foreground">
-                {inputText}
-              </pre>
-            </div>
-          ) : null}
-          {outputText ? (
-            <div>
-              <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
-                {t("actionOutput")}
+            ) : null}
+            {outputText ? (
+              <div>
+                <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+                  {t("actionOutput")}
+                </div>
+                <pre className="max-h-60 overflow-auto rounded-xl bg-muted/25 p-3 leading-4 text-[11px] text-muted-foreground shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--border)_55%,transparent)]">
+                  {outputText}
+                </pre>
               </div>
-              <pre className="max-h-60 overflow-auto rounded bg-background/60 p-2 leading-4 text-[11px] text-muted-foreground">
-                {outputText}
-              </pre>
-            </div>
-          ) : null}
+            ) : null}
+          </div>
         </div>
       </CollapsibleContent>
     </Collapsible>
@@ -702,45 +729,66 @@ function SuggestionsPart({
   );
 }
 
-function ThinkingPart({
-  part,
-  isStreaming = false,
-}: {
-  part: ChatMessagePart;
-  isStreaming?: boolean;
-}) {
+function ThinkingPart({ part }: { part: ChatMessagePart }) {
+  const t = useTranslations("chat.rendering");
   const [open, setOpen] = useState(false);
   const content = part.content.trim();
+  const isStreaming = part.state === "streaming";
 
   return (
     <Collapsible
       open={open}
       onOpenChange={setOpen}
       className={cn(
-        "overflow-hidden rounded-xl border text-xs transition-colors duration-200",
+        "group/reasoning overflow-hidden rounded-2xl text-xs transition-[background-color,box-shadow] duration-200 ease-out",
         isStreaming
-          ? "border-primary/25 bg-primary/5"
-          : "border-border/50 bg-muted/25",
+          ? "bg-primary/[0.055] shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--primary)_18%,transparent),0_14px_28px_-24px_color-mix(in_oklch,var(--primary)_55%,transparent)]"
+          : "bg-muted/25 shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--border)_72%,transparent),0_12px_24px_-24px_color-mix(in_oklch,var(--foreground)_30%,transparent)]",
       )}
     >
-      <div className="flex items-center gap-3 px-3 py-2.5">
-        <div className="flex size-7 shrink-0 items-center justify-center rounded-md border border-border/60 bg-background/70 text-muted-foreground">
-          {isStreaming ? (
-            <BrainIcon className="size-4" aria-hidden="true" />
-          ) : (
-            <CheckCircle2Icon
-              className="size-4 text-success"
-              aria-hidden="true"
-            />
+      <div className="flex min-h-12 items-center gap-2.5 px-2.5 py-1.5">
+        <div
+          className={cn(
+            "relative flex size-8 shrink-0 items-center justify-center rounded-xl bg-background/70 shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--border)_60%,transparent)]",
+            isStreaming ? "text-primary" : "text-success",
           )}
+        >
+          <BrainIcon
+            className={cn(
+              "absolute size-4 transition-[opacity,filter,scale] duration-300 [transition-timing-function:cubic-bezier(0.2,0,0,1)]",
+              isStreaming
+                ? "scale-100 opacity-100 blur-0"
+                : "scale-[0.25] opacity-0 blur-[4px]",
+            )}
+            aria-hidden="true"
+          />
+          <CheckCircle2Icon
+            className={cn(
+              "absolute size-4 transition-[opacity,filter,scale] duration-300 [transition-timing-function:cubic-bezier(0.2,0,0,1)]",
+              isStreaming
+                ? "scale-[0.25] opacity-0 blur-[4px]"
+                : "scale-100 opacity-100 blur-0",
+            )}
+            aria-hidden="true"
+          />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="font-medium text-foreground">
-              {isStreaming ? "Reasoning…" : "Reasoning complete"}
+            <span
+              className="font-medium tracking-[-0.01em] text-foreground"
+              aria-live="polite"
+            >
+              {isStreaming ? t("reasoningActive") : t("reasoningComplete")}
             </span>
             {isStreaming ? (
-              <span className="streaming-status__dot" aria-hidden="true" />
+              <span
+                className="streaming-thinking__dots text-primary"
+                aria-hidden="true"
+              >
+                <span />
+                <span />
+                <span />
+              </span>
             ) : null}
           </div>
         </div>
@@ -749,16 +797,16 @@ function ThinkingPart({
             type={BUTTON_TYPE}
             variant={GHOST_VARIANT}
             size="sm"
-            className="h-7 shrink-0 px-2 text-xs"
+            className="h-10 shrink-0 rounded-xl pl-3 pr-2.5 text-xs text-muted-foreground hover:text-foreground"
           >
             <ChevronDownIcon
               className={cn(
-                "size-3 transition-transform",
+                "size-3 transition-transform duration-200 ease-out",
                 open && "rotate-180",
               )}
               aria-hidden="true"
             />
-            {open ? "Hide" : "View"}
+            {open ? t("reasoningHide") : t("reasoningView")}
           </Button>
         </CollapsibleTrigger>
       </div>
@@ -767,15 +815,155 @@ function ThinkingPart({
           <Streamdown
             plugins={STREAMDOWN_PLUGINS}
             linkSafety={STREAMDOWN_LINK_SAFETY}
-            className="border-t border-border/50 bg-background/40 px-3 py-2.5 text-xs leading-5 text-muted-foreground"
+            className="border-t border-border/40 bg-background/45 px-4 py-3 text-pretty text-xs leading-5 text-muted-foreground"
           >
             {content}
           </Streamdown>
         ) : (
-          <div className="border-t border-border/50 bg-background/40 px-3 py-2.5 text-xs leading-5 text-muted-foreground">
-            Reasoning is starting…
+          <div className="border-t border-border/40 bg-background/45 px-4 py-3 text-pretty text-xs leading-5 text-muted-foreground">
+            {t("reasoningStarting")}
           </div>
         )}
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
+function WorkPhase({
+  parts,
+  hasVisibleResponseAfter,
+  hasPendingApproval,
+  messageStatus,
+  children,
+}: {
+  parts: Array<{ part: ChatMessagePart; partIndex: number }>;
+  hasVisibleResponseAfter: boolean;
+  hasPendingApproval: boolean;
+  messageStatus?: ChatMessage["status"];
+  children: React.ReactNode;
+}) {
+  const t = useTranslations("chat.rendering");
+  const [manualOpen, setManualOpen] = useState<boolean | null>(null);
+  const hasPendingWork = workPhaseHasPendingWork(
+    parts.map(({ part }) => part),
+    messageStatus,
+  );
+  const visualState: ToolVisualState = hasPendingApproval
+    ? "approval"
+    : hasPendingWork
+      ? "pending"
+      : "completed";
+  const autoOpen =
+    hasPendingApproval ||
+    hasPendingWork ||
+    (messageStatus === "streaming" && !hasVisibleResponseAfter);
+  const open = manualOpen ?? autoOpen;
+
+  const activityLabels = Array.from(
+    new Set(
+      parts.map(({ part }) => {
+        if (part.type === "reasoning") return t("workPhaseReasoning");
+        const { toolName } = parseToolPart(part.content);
+        return toolName ? formatToolName(toolName) : t("workPhaseTool");
+      }),
+    ),
+  );
+  const visibleActivities = activityLabels.slice(0, 3);
+  const hiddenActivityCount = activityLabels.length - visibleActivities.length;
+  const statusLabel =
+    visualState === "approval"
+      ? t("actionApproval")
+      : visualState === "pending"
+        ? t("workPhaseActive")
+        : t("workPhaseComplete");
+
+  return (
+    <Collapsible
+      open={open}
+      onOpenChange={setManualOpen}
+      data-open={String(open)}
+      className={cn(
+        "t-acc group/work-phase overflow-hidden rounded-2xl text-xs transition-[background-color,box-shadow] duration-200 ease-out",
+        visualState === "approval" &&
+          "bg-warning/[0.055] shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--warning)_22%,transparent),0_14px_28px_-24px_color-mix(in_oklch,var(--warning)_55%,transparent)]",
+        visualState === "pending" &&
+          "bg-primary/[0.055] shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--primary)_18%,transparent),0_14px_28px_-24px_color-mix(in_oklch,var(--primary)_55%,transparent)]",
+        visualState === "completed" &&
+          "bg-muted/20 shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--border)_72%,transparent),0_12px_24px_-24px_color-mix(in_oklch,var(--foreground)_30%,transparent)] hover:bg-primary/[0.025] hover:shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--primary)_18%,transparent),0_14px_28px_-22px_color-mix(in_oklch,var(--primary)_42%,transparent)]",
+      )}
+    >
+      <div className="flex min-h-14 items-center gap-2.5 px-2.5 py-1">
+        <ToolStateIcon state={visualState} />
+        <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 items-center gap-2">
+            <span
+              className={cn(
+                "shrink-0 font-medium tracking-[-0.01em] text-foreground",
+                visualState === "pending" && "t-shimmer",
+              )}
+              data-text={visualState === "pending" ? statusLabel : undefined}
+              aria-live="polite"
+            >
+              {statusLabel}
+            </span>
+            <span className="truncate text-[10px] text-muted-foreground/70">
+              {t("workPhaseSteps", { count: parts.length })}
+            </span>
+            {visualState === "pending" ? (
+              <span
+                className="streaming-thinking__dots text-primary"
+                aria-hidden="true"
+              >
+                <span />
+                <span />
+                <span />
+              </span>
+            ) : null}
+          </div>
+          <div className="flex min-w-0 items-center gap-1 overflow-hidden text-[11px] text-muted-foreground">
+            {visibleActivities.map((activity, activityIndex) => (
+              <span key={activity} className="inline-flex min-w-0 items-center">
+                {activityIndex > 0 ? (
+                  <span className="mx-1 text-border" aria-hidden="true">
+                    ·
+                  </span>
+                ) : null}
+                <span className="truncate">{activity}</span>
+              </span>
+            ))}
+            {hiddenActivityCount > 0 ? (
+              <span className="shrink-0 text-muted-foreground/70">
+                {t("workPhaseMore", { count: hiddenActivityCount })}
+              </span>
+            ) : null}
+          </div>
+        </div>
+        <CollapsibleTrigger asChild>
+          <Button
+            type={BUTTON_TYPE}
+            variant={GHOST_VARIANT}
+            size="sm"
+            className="h-10 shrink-0 rounded-xl pl-3 pr-2.5 text-xs text-muted-foreground hover:text-foreground"
+            aria-label={open ? t("workPhaseHide") : t("workPhaseView")}
+          >
+            <span className="t-acc-chevron">
+              <ChevronDownIcon className="size-3" aria-hidden="true" />
+            </span>
+            {open ? t("reasoningHide") : t("reasoningView")}
+          </Button>
+        </CollapsibleTrigger>
+      </div>
+      <CollapsibleContent
+        forceMount
+        className="t-acc-panel"
+        aria-hidden={!open}
+        inert={!open ? true : undefined}
+      >
+        <div className="t-acc-panel-inner">
+          <div className="space-y-2 border-t border-border/35 bg-background/40 p-2.5">
+            {children}
+          </div>
+        </div>
       </CollapsibleContent>
     </Collapsible>
   );
@@ -822,9 +1010,16 @@ export const MessageContent = memo(function MessageContent({
   const renderableParts = useMemo(
     () =>
       renderablePartsFromMessage(message).filter(
-        (part) => part.type !== "text" || part.content,
+        (part) => part.type !== "text" || part.content.trim().length > 0,
       ),
     [message],
+  );
+  const partGroups = useMemo(
+    () =>
+      groupWorkPhaseParts(renderableParts, {
+        isStandalonePart: toolPartHasStandaloneRendering,
+      }),
+    [renderableParts],
   );
   const { approvalByPartIndex, standaloneApprovals } = useMemo(() => {
     const approvalByIndex = new Map<number, PendingToolApproval>();
@@ -913,6 +1108,73 @@ export const MessageContent = memo(function MessageContent({
     );
   }
 
+  const renderAssistantPart = (
+    part: ChatMessagePart,
+    partIndex: number,
+  ): React.ReactNode => {
+    const key = `${message.id}-${part.type}-${partIndex}`;
+    if (part.type === "suggestions") {
+      if (!showSuggestions) return null;
+      return (
+        <SuggestionsPart
+          key={key}
+          part={part}
+          onSuggestionClick={onSuggestionClick}
+        />
+      );
+    }
+    if (part.type === "reasoning") {
+      return <ThinkingPart key={key} part={part} />;
+    }
+    if (part.type === "file") {
+      const imageAttachment = chatImageAttachmentFromPartContent(part.content);
+      if (imageAttachment) {
+        return (
+          <ChatImageAttachmentCard key={key} attachment={imageAttachment} />
+        );
+      }
+      const fileAttachment = chatFileAttachmentFromPartContent(part.content);
+      if (fileAttachment) {
+        return <ChatFileAttachmentCard key={key} attachment={fileAttachment} />;
+      }
+      const fileArtifact = codeWorkspaceArtifactFromPartContent(part.content);
+      if (!fileArtifact) return null;
+      return workspaceArtifactDisplay === "summary" ? (
+        <CodeWorkspaceArtifactSummary key={key} artifact={fileArtifact} />
+      ) : (
+        <CodeWorkspaceArtifactCard
+          key={key}
+          artifact={fileArtifact}
+          workspaceId={workspaceId}
+        />
+      );
+    }
+    if (part.type === "tool-call" || part.type === "tool-result") {
+      return (
+        <ToolPartCard
+          key={key}
+          part={part}
+          messageStatus={message.status}
+          approval={approvalByPartIndex.get(partIndex)}
+          workspaceId={workspaceId}
+          workspaceArtifactDisplay={workspaceArtifactDisplay}
+          onApprove={onApproveTool}
+          onReject={onRejectTool}
+        />
+      );
+    }
+    return (
+      <Streamdown
+        key={key}
+        plugins={STREAMDOWN_PLUGINS}
+        linkSafety={STREAMDOWN_LINK_SAFETY}
+        className="streaming-markdown text-sm"
+      >
+        {part.content}
+      </Streamdown>
+    );
+  };
+
   return (
     <div className="flex flex-col gap-2">
       {citations.length > 0 ? <CitationBlock citations={citations} /> : null}
@@ -927,83 +1189,25 @@ export const MessageContent = memo(function MessageContent({
           ))
         : null}
       {renderableParts.length > 0 ? (
-        renderableParts.map((part, partIndex) => {
-          if (part.type === "suggestions") {
-            if (!showSuggestions) return null;
-            return (
-              <SuggestionsPart
-                key={`${message.id}-${part.type}-${partIndex}`}
-                part={part}
-                onSuggestionClick={onSuggestionClick}
-              />
-            );
+        partGroups.map((group) => {
+          if (group.type === "part") {
+            return renderAssistantPart(group.part, group.partIndex);
           }
-          if (part.type === "reasoning") {
-            return (
-              <ThinkingPart
-                key={`${message.id}-${part.type}-${partIndex}`}
-                part={part}
-                isStreaming={isAnimating}
-              />
-            );
-          }
-          if (part.type === "file") {
-            const key = `${message.id}-${part.type}-${partIndex}`;
-            const imageAttachment = chatImageAttachmentFromPartContent(
-              part.content,
-            );
-            if (imageAttachment) {
-              return (
-                <ChatImageAttachmentCard
-                  key={key}
-                  attachment={imageAttachment}
-                />
-              );
-            }
-            const fileAttachment = chatFileAttachmentFromPartContent(
-              part.content,
-            );
-            if (fileAttachment) {
-              return (
-                <ChatFileAttachmentCard key={key} attachment={fileAttachment} />
-              );
-            }
-            const fileArtifact = codeWorkspaceArtifactFromPartContent(
-              part.content,
-            );
-            if (!fileArtifact) return null;
-            return workspaceArtifactDisplay === "summary" ? (
-              <CodeWorkspaceArtifactSummary key={key} artifact={fileArtifact} />
-            ) : (
-              <CodeWorkspaceArtifactCard
-                key={key}
-                artifact={fileArtifact}
-                workspaceId={workspaceId}
-              />
-            );
-          }
-          if (part.type === "tool-call" || part.type === "tool-result") {
-            return (
-              <ToolPartCard
-                key={`${message.id}-${part.type}-${partIndex}`}
-                part={part}
-                approval={approvalByPartIndex.get(partIndex)}
-                workspaceId={workspaceId}
-                workspaceArtifactDisplay={workspaceArtifactDisplay}
-                onApprove={onApproveTool}
-                onReject={onRejectTool}
-              />
-            );
-          }
+          const firstPartIndex = group.parts[0].partIndex;
           return (
-            <Streamdown
-              key={`${message.id}-${part.type}-${partIndex}`}
-              plugins={STREAMDOWN_PLUGINS}
-              linkSafety={STREAMDOWN_LINK_SAFETY}
-              className="streaming-markdown text-sm"
+            <WorkPhase
+              key={`${message.id}-work-phase-${firstPartIndex}`}
+              parts={group.parts}
+              hasVisibleResponseAfter={group.hasVisibleResponseAfter}
+              hasPendingApproval={group.parts.some(({ partIndex }) =>
+                approvalByPartIndex.has(partIndex),
+              )}
+              messageStatus={message.status}
             >
-              {part.content}
-            </Streamdown>
+              {group.parts.map(({ part, partIndex }) =>
+                renderAssistantPart(part, partIndex),
+              )}
+            </WorkPhase>
           );
         })
       ) : standaloneApprovals.length === 0 ? (

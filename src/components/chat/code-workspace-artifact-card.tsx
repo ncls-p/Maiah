@@ -1,9 +1,18 @@
 "use client";
 
 import type React from "react";
-import { useEffect, useMemo, useRef, useState, type SVGProps } from "react";
 import {
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type SVGProps,
+} from "react";
+import {
+  Code2Icon,
   DownloadIcon,
+  EyeIcon,
   FileIcon,
   FolderIcon,
   Maximize2Icon,
@@ -18,6 +27,7 @@ import type {
   ChatImageAttachment,
   CodeWorkspaceArtifact,
 } from "@/components/chat/chat-types";
+import { ToolStateIcon } from "@/components/chat/tool-state-icon";
 import { DestructiveConfirmationDialog } from "@/components/destructive-confirmation-dialog";
 import {
   Attachment,
@@ -42,11 +52,105 @@ import {
 } from "@/components/chat/file-preview";
 import { GitHubPublishDialog } from "@/components/chat/github-publish-dialog";
 import { CodeWorkspacePreviewFrame } from "@/components/chat/code-workspace-preview-frame";
+import {
+  CODE_WORKSPACE_RESIZE_STEP,
+  DEFAULT_CODE_WORKSPACE_LAYOUT,
+  MAX_CODE_WIDTH,
+  MAX_FILES_WIDTH,
+  MIN_CODE_WIDTH,
+  MIN_FILES_WIDTH,
+  codeWorkspaceGridTemplate,
+  normalizeCodeWorkspaceLayout,
+  resizeCodeWorkspacePane,
+  toggleCodeWorkspacePane,
+  visibleCodeWorkspacePanes,
+  type CodeWorkspaceLayout,
+  type CodeWorkspacePane,
+} from "@/components/chat/code-workspace-layout";
 
 const BUTTON_TYPE = "button";
 const OUTLINE_VARIANT = "outline";
 const GHOST_VARIANT = "ghost";
 const COMPACT_ICON_CLASS = "size-3";
+const CODE_WORKSPACE_LAYOUT_STORAGE_KEY = "maiah-code-workspace-layout-v1";
+
+export function CodeWorkspaceResizeHandle({
+  controls,
+  label,
+  maximum,
+  minimum,
+  onResize,
+  value,
+}: {
+  controls: string;
+  label: string;
+  maximum: number;
+  minimum: number;
+  onResize: (width: number) => void;
+  value: number;
+}) {
+  const pointerState = useRef<{
+    pointerId: number;
+    startWidth: number;
+    startX: number;
+  } | null>(null);
+
+  return (
+    <div
+      aria-controls={controls}
+      aria-label={label}
+      aria-orientation="vertical"
+      aria-valuemax={maximum}
+      aria-valuemin={minimum}
+      aria-valuenow={value}
+      className="group relative z-10 -mx-1.5 hidden w-6 touch-none cursor-col-resize items-center justify-center outline-none lg:flex"
+      onKeyDown={(event) => {
+        let nextWidth: number | null = null;
+        if (event.key === "ArrowLeft") {
+          nextWidth = value - CODE_WORKSPACE_RESIZE_STEP;
+        } else if (event.key === "ArrowRight") {
+          nextWidth = value + CODE_WORKSPACE_RESIZE_STEP;
+        } else if (event.key === "Home") {
+          nextWidth = minimum;
+        } else if (event.key === "End") {
+          nextWidth = maximum;
+        }
+        if (nextWidth === null) return;
+        event.preventDefault();
+        onResize(nextWidth);
+      }}
+      onPointerDown={(event) => {
+        event.preventDefault();
+        event.currentTarget.setPointerCapture(event.pointerId);
+        pointerState.current = {
+          pointerId: event.pointerId,
+          startWidth: value,
+          startX: event.clientX,
+        };
+      }}
+      onPointerMove={(event) => {
+        const pointer = pointerState.current;
+        if (!pointer || pointer.pointerId !== event.pointerId) return;
+        onResize(pointer.startWidth + event.clientX - pointer.startX);
+      }}
+      onPointerUp={(event) => {
+        if (pointerState.current?.pointerId !== event.pointerId) return;
+        pointerState.current = null;
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }}
+      onPointerCancel={() => {
+        pointerState.current = null;
+      }}
+      role="separator"
+      tabIndex={0}
+    >
+      <span
+        aria-hidden="true"
+        className="h-full w-px bg-border/60 transition-[background-color,box-shadow] duration-150 group-hover:bg-primary/55 group-focus-visible:bg-primary group-focus-visible:shadow-[0_0_0_3px_color-mix(in_oklab,var(--primary)_18%,transparent)]"
+      />
+    </div>
+  );
+}
 
 function GithubIcon(props: SVGProps<SVGSVGElement>) {
   return (
@@ -462,12 +566,12 @@ export function CodeWorkspaceArtifactSummary({
   return (
     <button
       type={BUTTON_TYPE}
-      className="flex w-full items-center gap-2 rounded-lg border border-primary/15 bg-primary/5 px-3 py-2 text-left text-xs transition-colors hover:bg-primary/10"
+      className="flex min-h-11 w-full items-center gap-2.5 rounded-2xl bg-muted/25 px-2.5 py-0.5 text-left text-xs shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--border)_72%,transparent),0_12px_24px_-24px_color-mix(in_oklch,var(--foreground)_30%,transparent)] transition-[background-color,box-shadow,scale] duration-150 ease-out hover:bg-primary/[0.025] hover:shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--primary)_18%,transparent),0_14px_28px_-22px_color-mix(in_oklch,var(--primary)_42%,transparent)] active:scale-[0.96]"
       onClick={() =>
         dispatchCodeWorkspaceArtifact(artifact, { activate: true })
       }
     >
-      <FileIcon className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
+      <ToolStateIcon state="completed" />
       <span className="min-w-0 flex-1">
         <span className="block truncate font-medium text-foreground">
           {artifact.title}
@@ -501,9 +605,13 @@ export function GitHubPublishResultCard({
 }) {
   const t = useTranslations("chat.artifacts");
   return (
-    <div className="w-fit max-w-full overflow-hidden rounded-xl border bg-card text-xs shadow-sm">
-      <div className="flex items-center gap-2 border-b px-3 py-2">
-        <GithubIcon className="size-4" aria-hidden="true" />
+    <div className="w-fit max-w-full overflow-hidden rounded-2xl bg-card text-xs shadow-[var(--surface-shadow)]">
+      <div className="flex min-h-12 items-center gap-2.5 border-b border-border/40 px-2.5 py-1.5">
+        <ToolStateIcon state="completed" />
+        <GithubIcon
+          className="size-4 shrink-0 text-muted-foreground"
+          aria-hidden="true"
+        />
         <div className="min-w-0">
           <p className="font-medium text-foreground">{result.message}</p>
           <p className="truncate text-[11px] text-muted-foreground">
@@ -665,6 +773,10 @@ export function CodeWorkspaceArtifactCard({
   >(null);
   const [publishOpen, setPublishOpen] = useState(false);
   const [deletePath, setDeletePath] = useState<string | null>(null);
+  const [workspaceLayout, setWorkspaceLayout] = useState<CodeWorkspaceLayout>(
+    DEFAULT_CODE_WORKSPACE_LAYOUT,
+  );
+  const paneIdPrefix = useId();
   const selectedFile = currentArtifact.files.find(
     (file) => file.path === selectedPath,
   );
@@ -672,6 +784,43 @@ export function CodeWorkspaceArtifactCard({
     () => buildCodeWorkspaceTree(currentArtifact.files),
     [currentArtifact.files],
   );
+  const visiblePanes = visibleCodeWorkspacePanes(workspaceLayout);
+  const workspaceGridTemplate = codeWorkspaceGridTemplate(workspaceLayout);
+
+  function paneId(pane: CodeWorkspacePane) {
+    return `${paneIdPrefix}-${pane}`;
+  }
+
+  function updateWorkspaceLayout(
+    updater: (current: CodeWorkspaceLayout) => CodeWorkspaceLayout,
+  ) {
+    setWorkspaceLayout((current) => {
+      const next = updater(current);
+      try {
+        window.localStorage.setItem(
+          CODE_WORKSPACE_LAYOUT_STORAGE_KEY,
+          JSON.stringify(next),
+        );
+      } catch {
+        // The layout still works for this session when storage is unavailable.
+      }
+      return next;
+    });
+  }
+
+  useEffect(() => {
+    if (variant !== "workbench") return;
+    try {
+      const persisted = window.localStorage.getItem(
+        CODE_WORKSPACE_LAYOUT_STORAGE_KEY,
+      );
+      if (!persisted) return;
+      const next = normalizeCodeWorkspaceLayout(JSON.parse(persisted));
+      queueMicrotask(() => setWorkspaceLayout(next));
+    } catch {
+      // Ignore malformed or unavailable local storage and keep safe defaults.
+    }
+  }, [variant]);
 
   useEffect(() => {
     dispatchCodeWorkspaceArtifact(artifact, { activate: activateOnMount });
@@ -812,29 +961,76 @@ export function CodeWorkspaceArtifactCard({
       />
       <div
         className={cn(
-          "overflow-hidden rounded-xl border border-primary/20 bg-background text-xs shadow-sm",
+          "overflow-hidden rounded-2xl bg-card text-xs shadow-[var(--surface-shadow)]",
           variant === "workbench" &&
             "flex h-full min-h-0 flex-col rounded-none border-0 shadow-none",
         )}
       >
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/50 bg-muted/35 px-3 py-2.5">
-          <div className="min-w-0">
-            <p className="truncate font-medium text-foreground">
-              {currentArtifact.title}
-            </p>
-            <p className="text-[11px] text-muted-foreground">
-              {t("workspaceSummary", {
-                version: currentArtifact.version,
-                count: currentArtifact.files.length,
-              })}
-            </p>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/40 px-2.5 py-1.5">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <ToolStateIcon state="completed" />
+            <div className="min-w-0">
+              <p className="truncate font-medium text-foreground">
+                {currentArtifact.title}
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                {t("workspaceSummary", {
+                  version: currentArtifact.version,
+                  count: currentArtifact.files.length,
+                })}
+              </p>
+            </div>
           </div>
-          <div className="flex items-center gap-1.5">
+          <div className="flex flex-wrap items-center justify-end gap-1.5">
+            {variant === "workbench" ? (
+              <div
+                aria-label={t("workspacePanels")}
+                className="flex items-center gap-0.5 rounded-xl border border-border/50 bg-muted/35 p-0.5"
+                role="group"
+              >
+                {(
+                  [
+                    ["files", FileIcon, t("files")],
+                    ["code", Code2Icon, t("code")],
+                    ["preview", EyeIcon, t("preview")],
+                  ] as const
+                ).map(([pane, Icon, label]) => {
+                  const visible = workspaceLayout.visible[pane];
+                  const actionLabel = visible
+                    ? t("hideWorkspacePane", { pane: label })
+                    : t("showWorkspacePane", { pane: label });
+                  return (
+                    <Button
+                      key={pane}
+                      aria-controls={paneId(pane)}
+                      aria-label={actionLabel}
+                      aria-pressed={visible}
+                      className={cn(
+                        "h-10 rounded-[10px] px-2.5 text-[11px] transition-[background-color,color,box-shadow,transform]",
+                        visible && "bg-background text-foreground shadow-sm",
+                      )}
+                      onClick={() =>
+                        updateWorkspaceLayout((current) =>
+                          toggleCodeWorkspacePane(current, pane),
+                        )
+                      }
+                      size="sm"
+                      title={actionLabel}
+                      type={BUTTON_TYPE}
+                      variant={GHOST_VARIANT}
+                    >
+                      <Icon className="size-3.5" aria-hidden="true" />
+                      <span className="hidden 2xl:inline">{label}</span>
+                    </Button>
+                  );
+                })}
+              </div>
+            ) : null}
             <Button
               type={BUTTON_TYPE}
               variant={OUTLINE_VARIANT}
               size="sm"
-              className="h-7 px-2.5 text-[11px]"
+              className="h-10 rounded-xl px-3 text-[11px]"
               onClick={() => setPublishOpen(true)}
             >
               <GithubIcon className={COMPACT_ICON_CLASS} aria-hidden="true" />
@@ -845,7 +1041,7 @@ export function CodeWorkspaceArtifactCard({
               type={BUTTON_TYPE}
               variant={OUTLINE_VARIANT}
               size="sm"
-              className="h-7 px-2.5 text-[11px]"
+              className="h-10 rounded-xl px-3 text-[11px]"
             >
               <a href={currentArtifact.downloadUrl}>
                 <DownloadIcon
@@ -864,140 +1060,245 @@ export function CodeWorkspaceArtifactCard({
         ) : null}
         <div
           className={cn(
-            "grid min-h-[520px] grid-cols-1 lg:grid-cols-[13rem_minmax(0,1fr)_minmax(18rem,1fr)]",
-            variant === "workbench" && "min-h-0 flex-1",
+            "grid min-h-[520px] grid-cols-1",
+            variant === "workbench"
+              ? "min-h-0 flex-1 overflow-y-auto lg:overflow-hidden lg:[grid-template-columns:var(--workspace-grid-template)]"
+              : "lg:grid-cols-[13rem_minmax(0,1fr)_minmax(18rem,1fr)]",
           )}
+          style={
+            variant === "workbench"
+              ? ({
+                  "--workspace-grid-template": workspaceGridTemplate,
+                } as React.CSSProperties)
+              : undefined
+          }
         >
-          <div className="border-b border-border/50 bg-muted/20 lg:border-r lg:border-b-0">
-            <div className="border-b border-border/40 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
-              {t("files")}
-            </div>
-            <div className="max-h-64 overflow-auto p-2 lg:max-h-[480px]">
-              <CodeWorkspaceFileTree
-                nodes={fileTree}
-                selectedPath={selectedPath}
-                onSelect={setSelectedPath}
-              />
-            </div>
-          </div>
-          <div className="flex min-w-0 flex-col border-b border-border/50 lg:border-r lg:border-b-0">
-            <div className="flex min-h-10 items-center justify-between gap-2 border-b border-border/40 px-3 py-2">
-              <div className="min-w-0">
-                <p className="truncate font-medium text-foreground">
-                  {selectedPath ?? t("noFileSelected")}
-                </p>
-                <p className="text-[10px] text-muted-foreground">
-                  {selectedFile?.binary
-                    ? t("binaryAsset")
-                    : (selectedFile?.mimeType ?? t("selectFile"))}
-                </p>
+          {variant !== "workbench" || workspaceLayout.visible.files ? (
+            <div
+              className={cn(
+                "flex min-w-0 flex-col border-b border-border/50 bg-muted/20 lg:border-b-0",
+                variant === "workbench" && "min-h-[24rem] lg:min-h-0",
+                variant !== "workbench" && "lg:border-r",
+              )}
+              id={paneId("files")}
+            >
+              <div className="border-b border-border/40 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+                {t("files")}
               </div>
-              <div className="flex shrink-0 items-center gap-1.5">
+              <div
+                className={cn(
+                  "overflow-auto p-2",
+                  variant === "workbench"
+                    ? "min-h-0 flex-1"
+                    : "max-h-64 lg:max-h-[480px]",
+                )}
+              >
+                <CodeWorkspaceFileTree
+                  nodes={fileTree}
+                  selectedPath={selectedPath}
+                  onSelect={setSelectedPath}
+                />
+              </div>
+            </div>
+          ) : null}
+          {variant === "workbench" &&
+          workspaceLayout.visible.files &&
+          (workspaceLayout.visible.code || workspaceLayout.visible.preview) ? (
+            <CodeWorkspaceResizeHandle
+              controls={paneId("files")}
+              label={t("resizeFilesPane")}
+              maximum={MAX_FILES_WIDTH}
+              minimum={MIN_FILES_WIDTH}
+              onResize={(width) =>
+                updateWorkspaceLayout((current) =>
+                  resizeCodeWorkspacePane(current, "files", width),
+                )
+              }
+              value={workspaceLayout.filesWidth}
+            />
+          ) : null}
+          {variant !== "workbench" || workspaceLayout.visible.code ? (
+            <div
+              className={cn(
+                "flex min-w-0 flex-col border-b border-border/50 lg:border-b-0",
+                variant === "workbench" && "min-h-[24rem] lg:min-h-0",
+                variant !== "workbench" && "lg:border-r",
+              )}
+              id={paneId("code")}
+            >
+              <div className="flex min-h-10 items-center justify-between gap-2 border-b border-border/40 px-3 py-2">
+                <div className="min-w-0">
+                  <p className="truncate font-medium text-foreground">
+                    {selectedPath ?? t("noFileSelected")}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {selectedFile?.binary
+                      ? t("binaryAsset")
+                      : (selectedFile?.mimeType ?? t("selectFile"))}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-1.5">
+                  <Button
+                    type={BUTTON_TYPE}
+                    variant={GHOST_VARIANT}
+                    size="sm"
+                    className="h-7 px-2 text-[11px]"
+                    disabled={!selectedPath || selectedFile?.binary}
+                    onClick={() => setFullscreenPane("code")}
+                    aria-label={t("fullscreen")}
+                  >
+                    <Maximize2Icon
+                      className={COMPACT_ICON_CLASS}
+                      aria-hidden="true"
+                    />
+                  </Button>
+                  <Button
+                    type={BUTTON_TYPE}
+                    variant={GHOST_VARIANT}
+                    size="sm"
+                    className="h-7 px-2 text-[11px]"
+                    disabled={
+                      !selectedPath || selectedFile?.binary || loadingFile
+                    }
+                    onClick={() => setFileReloadKey((key) => key + 1)}
+                    aria-label={t("refreshFile")}
+                  >
+                    <RefreshCcwIcon
+                      className={COMPACT_ICON_CLASS}
+                      aria-hidden="true"
+                    />
+                  </Button>
+                  <Button
+                    type={BUTTON_TYPE}
+                    variant={OUTLINE_VARIANT}
+                    size="sm"
+                    className="h-7 px-2 text-[11px]"
+                    disabled={
+                      !selectedPath || selectedFile?.binary || savingFile
+                    }
+                    onClick={() => void saveSelectedFile()}
+                  >
+                    <SaveIcon
+                      className={COMPACT_ICON_CLASS}
+                      aria-hidden="true"
+                    />
+                    {t("save")}
+                  </Button>
+                  <Button
+                    type={BUTTON_TYPE}
+                    variant={GHOST_VARIANT}
+                    size="sm"
+                    className="h-7 px-2 text-[11px] text-destructive hover:text-destructive"
+                    disabled={!selectedPath || savingFile}
+                    onClick={() => setDeletePath(selectedPath)}
+                    aria-label={t("deleteFile")}
+                  >
+                    <Trash2Icon
+                      className={COMPACT_ICON_CLASS}
+                      aria-hidden="true"
+                    />
+                  </Button>
+                </div>
+              </div>
+              {error ? (
+                <div className="border-b border-destructive/20 bg-destructive/5 px-3 py-2 text-[11px] text-destructive">
+                  {error}
+                </div>
+              ) : null}
+              {selectedFile?.binary ? (
+                <div className="flex flex-1 items-center justify-center p-6 text-center text-xs text-muted-foreground">
+                  {t("binaryDescription")}
+                </div>
+              ) : (
+                <CodeWorkspaceEditor
+                  value={loadingFile ? t("loadingFile") : content}
+                  filePath={selectedPath}
+                  disabled={!selectedPath || loadingFile || savingFile}
+                  onChange={setContent}
+                />
+              )}
+            </div>
+          ) : null}
+          {variant === "workbench" &&
+          workspaceLayout.visible.code &&
+          workspaceLayout.visible.preview ? (
+            <CodeWorkspaceResizeHandle
+              controls={paneId("code")}
+              label={t("resizeCodePane")}
+              maximum={MAX_CODE_WIDTH}
+              minimum={MIN_CODE_WIDTH}
+              onResize={(width) =>
+                updateWorkspaceLayout((current) =>
+                  resizeCodeWorkspacePane(current, "code", width),
+                )
+              }
+              value={workspaceLayout.codeWidth}
+            />
+          ) : null}
+          {variant !== "workbench" || workspaceLayout.visible.preview ? (
+            <div
+              className={cn(
+                "flex min-w-0 flex-col bg-white",
+                variant === "workbench" && "min-h-[24rem] lg:min-h-0",
+              )}
+              id={paneId("preview")}
+            >
+              <div className="flex min-h-10 items-center justify-between gap-2 border-b border-border/40 bg-background px-3 py-2">
+                <div>
+                  <p className="font-medium text-foreground">
+                    {t("livePreview")}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {currentArtifact.rootFile ?? t("noHtmlEntry")}
+                  </p>
+                </div>
                 <Button
                   type={BUTTON_TYPE}
                   variant={GHOST_VARIANT}
                   size="sm"
                   className="h-7 px-2 text-[11px]"
-                  disabled={!selectedPath || selectedFile?.binary}
-                  onClick={() => setFullscreenPane("code")}
-                  aria-label={t("fullscreen")}
+                  disabled={!currentArtifact.rootFile}
+                  onClick={() => setFullscreenPane("preview")}
                 >
                   <Maximize2Icon
                     className={COMPACT_ICON_CLASS}
                     aria-hidden="true"
                   />
+                  {t("fullscreen")}
                 </Button>
+              </div>
+              <CodeWorkspacePreviewFrame
+                key={`${currentArtifact.projectId}:${currentArtifact.version}:${currentArtifact.rootFile ?? "no-root"}`}
+                artifact={currentArtifact}
+              />
+            </div>
+          ) : null}
+          {variant === "workbench" && visiblePanes.length === 0 ? (
+            <div className="flex min-h-80 items-center justify-center p-6 text-center">
+              <div className="max-w-xs rounded-2xl border border-border/60 bg-muted/20 p-5 shadow-sm">
+                <p className="text-sm font-medium text-foreground">
+                  {t("allWorkspacePanesHidden")}
+                </p>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                  {t("allWorkspacePanesHiddenDescription")}
+                </p>
                 <Button
-                  type={BUTTON_TYPE}
-                  variant={GHOST_VARIANT}
-                  size="sm"
-                  className="h-7 px-2 text-[11px]"
-                  disabled={
-                    !selectedPath || selectedFile?.binary || loadingFile
+                  className="mt-4 h-10 rounded-xl"
+                  onClick={() =>
+                    updateWorkspaceLayout((current) => ({
+                      ...current,
+                      visible: { files: true, code: true, preview: true },
+                    }))
                   }
-                  onClick={() => setFileReloadKey((key) => key + 1)}
-                  aria-label={t("refreshFile")}
-                >
-                  <RefreshCcwIcon
-                    className={COMPACT_ICON_CLASS}
-                    aria-hidden="true"
-                  />
-                </Button>
-                <Button
+                  size="sm"
                   type={BUTTON_TYPE}
                   variant={OUTLINE_VARIANT}
-                  size="sm"
-                  className="h-7 px-2 text-[11px]"
-                  disabled={!selectedPath || selectedFile?.binary || savingFile}
-                  onClick={() => void saveSelectedFile()}
                 >
-                  <SaveIcon className={COMPACT_ICON_CLASS} aria-hidden="true" />
-                  {t("save")}
-                </Button>
-                <Button
-                  type={BUTTON_TYPE}
-                  variant={GHOST_VARIANT}
-                  size="sm"
-                  className="h-7 px-2 text-[11px] text-destructive hover:text-destructive"
-                  disabled={!selectedPath || savingFile}
-                  onClick={() => setDeletePath(selectedPath)}
-                  aria-label={t("deleteFile")}
-                >
-                  <Trash2Icon
-                    className={COMPACT_ICON_CLASS}
-                    aria-hidden="true"
-                  />
+                  {t("showAllWorkspacePanes")}
                 </Button>
               </div>
             </div>
-            {error ? (
-              <div className="border-b border-destructive/20 bg-destructive/5 px-3 py-2 text-[11px] text-destructive">
-                {error}
-              </div>
-            ) : null}
-            {selectedFile?.binary ? (
-              <div className="flex flex-1 items-center justify-center p-6 text-center text-xs text-muted-foreground">
-                {t("binaryDescription")}
-              </div>
-            ) : (
-              <CodeWorkspaceEditor
-                value={loadingFile ? t("loadingFile") : content}
-                filePath={selectedPath}
-                disabled={!selectedPath || loadingFile || savingFile}
-                onChange={setContent}
-              />
-            )}
-          </div>
-          <div className="flex min-w-0 flex-col bg-white">
-            <div className="flex min-h-10 items-center justify-between gap-2 border-b border-border/40 bg-background px-3 py-2">
-              <div>
-                <p className="font-medium text-foreground">
-                  {t("livePreview")}
-                </p>
-                <p className="text-[10px] text-muted-foreground">
-                  {currentArtifact.rootFile ?? t("noHtmlEntry")}
-                </p>
-              </div>
-              <Button
-                type={BUTTON_TYPE}
-                variant={GHOST_VARIANT}
-                size="sm"
-                className="h-7 px-2 text-[11px]"
-                disabled={!currentArtifact.rootFile}
-                onClick={() => setFullscreenPane("preview")}
-              >
-                <Maximize2Icon
-                  className={COMPACT_ICON_CLASS}
-                  aria-hidden="true"
-                />
-                {t("fullscreen")}
-              </Button>
-            </div>
-            <CodeWorkspacePreviewFrame
-              key={`${currentArtifact.projectId}:${currentArtifact.version}:${currentArtifact.rootFile ?? "no-root"}`}
-              artifact={currentArtifact}
-            />
-          </div>
+          ) : null}
         </div>
         <Dialog
           open={fullscreenPane !== null}

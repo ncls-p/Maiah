@@ -167,8 +167,7 @@
   --acc-ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-
-/* transitions-dev theme hooks for AI Hub's existing semantic palette. */
+/* transitions-dev theme hooks for Maiah's existing semantic palette. */
 :root {
   --shimmer-base: var(--muted-foreground);
   --shimmer-highlight: var(--foreground);
@@ -181,6 +180,38 @@
   --panel-translate-y: 24px;
 }
 
+/* Icon swap */
+.t-icon-swap {
+  position: relative;
+  display: inline-grid;
+}
+.t-icon-swap .t-icon {
+  grid-area: 1 / 1;
+  transition:
+    opacity var(--icon-swap-dur) var(--icon-swap-ease),
+    filter var(--icon-swap-dur) var(--icon-swap-ease),
+    transform var(--icon-swap-dur) var(--icon-swap-ease);
+  will-change: opacity, filter, transform;
+}
+.t-icon-swap[data-state="a"] .t-icon[data-icon="a"],
+.t-icon-swap[data-state="b"] .t-icon[data-icon="b"] {
+  opacity: 1;
+  filter: blur(0);
+  transform: scale(1);
+}
+.t-icon-swap[data-state="a"] .t-icon[data-icon="b"],
+.t-icon-swap[data-state="b"] .t-icon[data-icon="a"] {
+  opacity: 0;
+  filter: blur(var(--icon-swap-blur));
+  transform: scale(var(--icon-swap-start-scale));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .t-icon-swap .t-icon {
+    transition: none !important;
+  }
+}
+
 /* Menu dropdown */
 .t-dropdown {
   transform-origin: top left;
@@ -189,14 +220,24 @@
   pointer-events: none;
   transition:
     transform var(--dropdown-open-dur) var(--dropdown-ease),
-    opacity   var(--dropdown-open-dur) var(--dropdown-ease);
+    opacity var(--dropdown-open-dur) var(--dropdown-ease);
   will-change: transform, opacity;
 }
-.t-dropdown[data-origin="top-right"]     { transform-origin: top right; }
-.t-dropdown[data-origin="top-center"]    { transform-origin: top center; }
-.t-dropdown[data-origin="bottom-left"]   { transform-origin: bottom left; }
-.t-dropdown[data-origin="bottom-center"] { transform-origin: bottom center; }
-.t-dropdown[data-origin="bottom-right"]  { transform-origin: bottom right; }
+.t-dropdown[data-origin="top-right"] {
+  transform-origin: top right;
+}
+.t-dropdown[data-origin="top-center"] {
+  transform-origin: top center;
+}
+.t-dropdown[data-origin="bottom-left"] {
+  transform-origin: bottom left;
+}
+.t-dropdown[data-origin="bottom-center"] {
+  transform-origin: bottom center;
+}
+.t-dropdown[data-origin="bottom-right"] {
+  transform-origin: bottom right;
+}
 
 .t-dropdown.is-open,
 .t-dropdown[data-state="open"] {
@@ -213,13 +254,15 @@
   pointer-events: none;
   transition:
     transform var(--dropdown-close-dur) var(--dropdown-ease),
-    opacity   var(--dropdown-close-dur) var(--dropdown-ease);
+    opacity var(--dropdown-close-dur) var(--dropdown-ease);
   animation-duration: var(--dropdown-close-dur);
   animation-timing-function: var(--dropdown-ease);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .t-dropdown { transition: none !important; }
+  .t-dropdown {
+    transition: none !important;
+  }
 }
 
 /* Modal open / close */
@@ -230,7 +273,7 @@
   pointer-events: none;
   transition:
     transform var(--modal-open-dur) var(--modal-ease),
-    opacity   var(--modal-open-dur) var(--modal-ease);
+    opacity var(--modal-open-dur) var(--modal-ease);
   will-change: transform, opacity;
 }
 .t-modal.is-open,
@@ -248,13 +291,15 @@
   pointer-events: none;
   transition:
     transform var(--modal-close-dur) var(--modal-ease),
-    opacity   var(--modal-close-dur) var(--modal-ease);
+    opacity var(--modal-close-dur) var(--modal-ease);
   animation-duration: var(--modal-close-dur);
   animation-timing-function: var(--modal-ease);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .t-modal { transition: none !important; }
+  .t-modal {
+    transition: none !important;
+  }
 }
 
 /* Panel reveal */
@@ -265,8 +310,8 @@
   pointer-events: none;
   transition:
     transform var(--panel-close-dur) var(--panel-ease),
-    opacity   var(--panel-close-dur) var(--panel-ease),
-    filter    var(--panel-close-dur) var(--panel-ease);
+    opacity var(--panel-close-dur) var(--panel-ease),
+    filter var(--panel-close-dur) var(--panel-ease);
   will-change: transform, opacity, filter;
 }
 .t-panel-slide[data-side="left"] {
@@ -286,8 +331,8 @@
   pointer-events: auto;
   transition:
     transform var(--panel-open-dur) var(--panel-ease),
-    opacity   var(--panel-open-dur) var(--panel-ease),
-    filter    var(--panel-open-dur) var(--panel-ease);
+    opacity var(--panel-open-dur) var(--panel-ease),
+    filter var(--panel-open-dur) var(--panel-ease);
   animation-duration: var(--panel-open-dur);
   animation-timing-function: var(--panel-ease);
 }
@@ -297,7 +342,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .t-panel-slide { transition: none !important; }
+  .t-panel-slide {
+    transition: none !important;
+  }
 }
 
 /* Skeleton loader and reveal */
@@ -305,7 +352,9 @@
    skeleton owns the cold pulse + the fade-out side of the
    reveal; the content owns the fade-in side. They share the
    same duration / ease so the swap reads as one motion. */
-.t-skel { position: relative; }
+.t-skel {
+  position: relative;
+}
 .t-skel-skeleton,
 .t-skel-content {
   position: absolute;
@@ -318,7 +367,7 @@
   filter: blur(0);
   transition:
     opacity var(--reveal-dur) var(--reveal-ease),
-    filter  var(--reveal-dur) var(--reveal-ease);
+    filter var(--reveal-dur) var(--reveal-ease);
 }
 .t-skel-content {
   z-index: 2;
@@ -326,7 +375,7 @@
   filter: blur(var(--reveal-blur));
   transition:
     opacity var(--reveal-dur) var(--reveal-ease),
-    filter  var(--reveal-dur) var(--reveal-ease);
+    filter var(--reveal-dur) var(--reveal-ease);
 }
 .t-skel.is-revealed .t-skel-skeleton {
   opacity: 0;
@@ -352,16 +401,24 @@
   animation: t-skel-pulse var(--pulse-dur) ease-in-out var(--pulse-count);
 }
 @keyframes t-skel-pulse {
-  0%, 100% { opacity: 1; }
-  50%      { opacity: var(--pulse-min); }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: var(--pulse-min);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .t-skel-skeleton, .t-skel-content {
+  .t-skel-skeleton,
+  .t-skel-content {
     transition: none !important;
   }
   .t-skel-skeleton.is-pulsing > *,
-  .t-skel-skeleton.is-pulsing[data-slot="skeleton"] { animation: none !important; }
+  .t-skel-skeleton.is-pulsing[data-slot="skeleton"] {
+    animation: none !important;
+  }
 }
 
 /* Shimmer text */
@@ -384,11 +441,11 @@
   pointer-events: none;
   background-image: linear-gradient(
     90deg,
-    transparent          0%,
-    transparent         40%,
+    transparent 0%,
+    transparent 40%,
     var(--shimmer-highlight) 50%,
-    transparent         60%,
-    transparent        100%
+    transparent 60%,
+    transparent 100%
   );
   background-size: var(--shimmer-band) 100%;
   background-repeat: no-repeat;
@@ -399,12 +456,18 @@
   animation: t-shimmer var(--shimmer-dur) var(--shimmer-ease) infinite;
 }
 @keyframes t-shimmer {
-  0%   { background-position: 100% 0; }
-  100% { background-position: 0% 0; }
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: 0% 0;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .t-shimmer::before { animation: none !important; }
+  .t-shimmer::before {
+    animation: none !important;
+  }
 }
 
 /* Tooltip open/close timing for the shared Radix tooltip primitive. */
@@ -419,7 +482,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .t-tt-radix { animation: none !important; }
+  .t-tt-radix {
+    animation: none !important;
+  }
 }
 
 /* Tabs sliding */
@@ -468,15 +533,18 @@
   transform: translate(0, 0);
   transition:
     transform var(--tabs-dur) var(--tabs-ease),
-    width     var(--tabs-dur) var(--tabs-ease),
-    height    var(--tabs-dur) var(--tabs-ease);
+    width var(--tabs-dur) var(--tabs-ease),
+    height var(--tabs-dur) var(--tabs-ease);
   will-change: transform, width, height;
   z-index: 0;
   pointer-events: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .t-tabs-pill, .t-tab { transition: none !important; }
+  .t-tabs-pill,
+  .t-tab {
+    transition: none !important;
+  }
 }
 
 /* Accordion expand */
@@ -519,13 +587,17 @@
   transform-origin: center;
   transition: transform var(--acc-chevron) var(--acc-ease);
 }
-.t-acc-chevron path { vector-effect: non-scaling-stroke; }
+.t-acc-chevron path {
+  vector-effect: non-scaling-stroke;
+}
 .t-acc[data-open="true"] .t-acc-chevron {
   transform: scaleY(-1);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .t-acc-panel, .t-acc-panel-inner, .t-acc-chevron {
+  .t-acc-panel,
+  .t-acc-panel-inner,
+  .t-acc-chevron {
     transition: none !important;
   }
 }

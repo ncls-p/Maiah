@@ -5,7 +5,6 @@ import type { QueuedChatMessage } from "@/components/chat/chat-composer";
 import { QuotaBanner } from "@/components/chat/quota-banner";
 import type {
   ChatConversation,
-  ChatConversationFolder,
   ChatMessage,
   CodeWorkspaceArtifact,
 } from "@/components/chat/chat-types";
@@ -28,12 +27,6 @@ export function createQueuedMessage(content: string): QueuedChatMessage {
   };
 }
 
-export const CHAT_INTERFACE_MODE = "chat";
-export const CODING_INTERFACE_MODE = "coding";
-export type InterfaceMode =
-  | typeof CHAT_INTERFACE_MODE
-  | typeof CODING_INTERFACE_MODE;
-
 export const CONVERSATION_PAGE_SIZE = 50;
 
 export function uploadPathForFile(file: File) {
@@ -42,33 +35,12 @@ export function uploadPathForFile(file: File) {
   return relativePath?.trim() || file.name;
 }
 
-export type ConversationListPage = {
-  conversations: ChatConversation[];
-  folders: ChatConversationFolder[];
-  hasMore: boolean;
-  nextCursor: string | null;
-};
-
-export type ConversationListPayload = ChatConversation[] | ConversationListPage;
-
-export function normalizeConversationList(
-  payload: ConversationListPayload,
-): ConversationListPage {
-  if (Array.isArray(payload)) {
-    return {
-      conversations: payload,
-      folders: [],
-      hasMore: false,
-      nextCursor: null,
-    };
-  }
-  return {
-    conversations: payload.conversations ?? [],
-    folders: payload.folders ?? [],
-    hasMore: payload.hasMore,
-    nextCursor: payload.nextCursor,
-  };
-}
+export {
+  latestConversationIdFromList,
+  normalizeConversationList,
+  type ConversationListPage,
+  type ConversationListPayload,
+} from "./chat-conversation-list";
 
 export function mergeConversationPages(
   current: ChatConversation[],

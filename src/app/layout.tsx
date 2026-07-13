@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist_Mono, Instrument_Sans } from "next/font/google";
 import { cookies } from "next/headers";
 
 import "./globals.css";
@@ -9,20 +9,22 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { defaultLocale, locales } from "@/i18n/routing";
 
-const fontBody = Geist({
+const fontBody = Instrument_Sans({
   subsets: ["latin"],
   variable: "--font-body",
+  display: "swap",
 });
 
 const fontMono = Geist_Mono({
   subsets: ["latin"],
   variable: "--font-mono",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
   title: {
-    default: "AI Hub",
-    template: "%s · AI Hub",
+    default: "Maiah",
+    template: "%s · Maiah",
   },
   description:
     "Build, configure, and run AI agents with multi-provider support and team collaboration.",

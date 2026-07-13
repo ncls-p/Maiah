@@ -89,7 +89,7 @@ export function allowToolDecision(
 }
 
 /**
- * Central AI Hub approval policy. It mirrors AI SDK 7 approval statuses while
+ * Central Maiah approval policy. It mirrors AI SDK 7 approval statuses while
  * remaining compatible with the existing DB-audited approval endpoints.
  */
 export function decideToolApproval(
