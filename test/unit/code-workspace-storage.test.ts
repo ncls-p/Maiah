@@ -161,6 +161,10 @@ describe("code workspace storage", () => {
 		const zip = new JSZip();
 		zip.file("index.html", "<h1>Hello</h1>");
 		zip.file("assets/logo.png", new Uint8Array([1, 2, 3]));
+		zip.file("assets/theme.mp3", new Uint8Array([73, 68, 51, 4]));
+		zip.file("assets/effect.wav", new Uint8Array([82, 73, 70, 70]));
+		zip.file("assets/demo.mp4", new Uint8Array([0, 0, 0, 24]));
+		zip.file("assets/stream.m3u8", "#EXTM3U\n");
 		zip.file("__MACOSX/ignored.txt", "ignored");
 		zip.file(".DS_Store", "ignored");
 		const metadata = await createCodeWorkspaceFromZip({
@@ -178,6 +182,26 @@ describe("code workspace storage", () => {
 					path: "assets/logo.png",
 					binary: true,
 					mimeType: "image/png",
+				}),
+				expect.objectContaining({
+					path: "assets/theme.mp3",
+					binary: true,
+					mimeType: "audio/mpeg",
+				}),
+				expect.objectContaining({
+					path: "assets/effect.wav",
+					binary: true,
+					mimeType: "audio/wav",
+				}),
+				expect.objectContaining({
+					path: "assets/demo.mp4",
+					binary: true,
+					mimeType: "video/mp4",
+				}),
+				expect.objectContaining({
+					path: "assets/stream.m3u8",
+					binary: false,
+					mimeType: "application/vnd.apple.mpegurl; charset=utf-8",
 				}),
 				expect.objectContaining({ path: "index.html", binary: false }),
 			]),

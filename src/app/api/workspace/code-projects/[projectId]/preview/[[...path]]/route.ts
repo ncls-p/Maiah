@@ -49,6 +49,91 @@ function arrayBufferFromBytes(bytes: Uint8Array) {
   return buffer;
 }
 
+type PreviewByteRange =
+  | { kind: "full" }
+  | { kind: "partial"; start: number; end: number }
+  | { kind: "unsatisfiable" };
+
+function safeByteOffset(value: string) {
+  if (!/^\d+$/.test(value)) return null;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : null;
+}
+
+function previewByteRange(
+  rangeHeader: string | null,
+  size: number,
+): PreviewByteRange {
+  if (!rangeHeader) return { kind: "full" };
+  if (size <= 0 || rangeHeader.includes(",")) {
+    return { kind: "unsatisfiable" };
+  }
+  const match = /^bytes=(\d*)-(\d*)$/i.exec(rangeHeader.trim());
+  if (!match || (!match[1] && !match[2])) {
+    return { kind: "unsatisfiable" };
+  }
+
+  if (!match[1]) {
+    const suffixLength = safeByteOffset(match[2] ?? "");
+    if (!suffixLength) return { kind: "unsatisfiable" };
+    return {
+      kind: "partial",
+      start: Math.max(0, size - suffixLength),
+      end: size - 1,
+    };
+  }
+
+  const start = safeByteOffset(match[1]);
+  const requestedEnd = match[2] ? safeByteOffset(match[2]) : size - 1;
+  if (
+    start === null ||
+    requestedEnd === null ||
+    start >= size ||
+    requestedEnd < start
+  ) {
+    return { kind: "unsatisfiable" };
+  }
+  return {
+    kind: "partial",
+    start,
+    end: Math.min(requestedEnd, size - 1),
+  };
+}
+
+function previewFileResponse(
+  req: NextRequest,
+  file: Awaited<ReturnType<typeof getCodeWorkspaceFileBytes>>,
+) {
+  const size = file.bytes.byteLength;
+  const range = previewByteRange(req.headers.get("range"), size);
+  const headers = new Headers({
+    "Accept-Ranges": "bytes",
+    "Cache-Control": "no-store",
+    "Content-Security-Policy": previewCsp,
+    "Content-Type": file.summary.mimeType,
+    "X-Content-Type-Options": "nosniff",
+  });
+
+  if (range.kind === "unsatisfiable") {
+    headers.set("Content-Range", `bytes */${size}`);
+    headers.set("Content-Length", "0");
+    return new Response(null, { status: 416, headers });
+  }
+
+  if (range.kind === "partial") {
+    const bytes = file.bytes.subarray(range.start, range.end + 1);
+    headers.set("Content-Range", `bytes ${range.start}-${range.end}/${size}`);
+    headers.set("Content-Length", String(bytes.byteLength));
+    return new Response(arrayBufferFromBytes(bytes), {
+      status: 206,
+      headers,
+    });
+  }
+
+  headers.set("Content-Length", String(size));
+  return new Response(arrayBufferFromBytes(file.bytes), { headers });
+}
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ projectId: string; path?: string[] }> },
@@ -93,14 +178,7 @@ export async function GET(
         projectId: metadata.id,
         filePath: requestedPath,
       });
-      return new Response(arrayBufferFromBytes(file.bytes), {
-        headers: {
-          "Content-Type": file.summary.mimeType,
-          "Cache-Control": "no-store",
-          "Content-Security-Policy": previewCsp,
-          "X-Content-Type-Options": "nosniff",
-        },
-      });
+      return previewFileResponse(req, file);
     },
     {
       logLabel: "Failed to serve code workspace preview",

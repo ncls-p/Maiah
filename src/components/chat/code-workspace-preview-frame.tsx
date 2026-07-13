@@ -376,6 +376,7 @@ export function CodeWorkspacePreviewFrame({
       key={`${artifact.projectId}:${artifact.version}:${effectivePath}`}
       title={`${artifact.title} preview`}
       srcDoc={srcDoc}
+      allow="autoplay; fullscreen"
       sandbox="allow-scripts allow-modals"
       className="min-h-[480px] flex-1 bg-white"
     />
