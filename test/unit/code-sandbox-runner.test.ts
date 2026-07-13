@@ -156,6 +156,27 @@ describe("sandbox-runner", () => {
 		expect(readdirSync(runRoot)).toEqual([]);
 	});
 
+	it("keeps serving after a command closes stdin before it is flushed", async () => {
+		const result = await requestRun({
+			language: "bash",
+			code: "exec 0<&-\nprintf 'closed-stdin'",
+			stdin: "x".repeat(100_000),
+		});
+
+		expect(result.status).toBe(200);
+		expect(result.body.ok).toBe(true);
+		expect(result.body.stdout).toBe("closed-stdin");
+
+		const followUp = await requestRun({
+			language: "node",
+			code: "console.log('runner-alive')",
+		});
+		expect(followUp.status).toBe(200);
+		expect(followUp.body.ok).toBe(true);
+		expect(followUp.body.stdout?.trim()).toBe("runner-alive");
+		expect(readdirSync(runRoot)).toEqual([]);
+	});
+
 	it("rejects unsafe input file paths", async () => {
 		const result = await requestRun({
 			language: "node",
