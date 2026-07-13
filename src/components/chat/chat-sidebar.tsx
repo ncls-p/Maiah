@@ -14,6 +14,9 @@ import {
   PencilIcon,
   PinIcon,
   PlusIcon,
+  RefreshCwIcon,
+  SearchIcon,
+  SearchXIcon,
   Trash2Icon,
   XIcon,
 } from "lucide-react";
@@ -98,7 +101,19 @@ interface ChatSidebarProps {
   conversationFolders: ChatConversationFolder[];
   activeConversationId: string | null;
   loading?: boolean;
-  onSelectConversation: (conversationId: string) => void;
+  searchQuery?: string;
+  searchResults?: ChatConversation[];
+  searching?: boolean;
+  searchError?: boolean;
+  hasMoreSearchResults?: boolean;
+  loadingMoreSearchResults?: boolean;
+  onSearchQueryChange?: (query: string) => void;
+  onRetrySearch?: () => void;
+  onLoadMoreSearchResults?: () => void;
+  onSelectConversation: (
+    conversationId: string,
+    conversationAgentId?: string | null,
+  ) => void;
   onNewConversation: () => void;
   canCreateAgent?: boolean;
   onRenameConversation?: (conversationId: string, title: string) => void;
@@ -272,6 +287,7 @@ function ConversationItem({
   onDragEnd,
   onDropBefore,
   isDragging,
+  searchMatch,
 }: {
   conversation: ChatConversation;
   isActive: boolean;
@@ -293,6 +309,7 @@ function ConversationItem({
   onDragEnd: () => void;
   onDropBefore: (event: React.DragEvent<HTMLDivElement>) => void;
   isDragging: boolean;
+  searchMatch?: ChatConversation["searchMatch"];
 }) {
   const locale = useLocale();
   const t = useTranslations("chat.sidebar");
@@ -300,7 +317,7 @@ function ConversationItem({
 
   return (
     <div
-      draggable={!isEditing}
+      draggable={!isEditing && !searchMatch}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       onDragOver={(event) => event.preventDefault()}
@@ -373,6 +390,18 @@ function ConversationItem({
             >
               {conversation.title}
             </span>
+            {searchMatch ? (
+              <span className="mt-1 line-clamp-2 text-[11px] leading-4 text-muted-foreground">
+                <span className="font-medium">
+                  {searchMatch.kind === "message"
+                    ? t("messageMatch")
+                    : t("titleMatch")}
+                </span>
+                {searchMatch.kind === "message"
+                  ? ` · “${searchMatch.snippet}”`
+                  : null}
+              </span>
+            ) : null}
             <span className="mt-1 flex items-center gap-1 text-[11px] leading-none text-muted-foreground/75">
               <span className="truncate">{agentName}</span>
               <span className="shrink-0 text-muted-foreground/25">·</span>
@@ -381,70 +410,72 @@ function ConversationItem({
               </span>
             </span>
           </button>
-          {pinned ? (
+          {pinned && !searchMatch ? (
             <PinIcon
               className="size-3 shrink-0 text-primary"
               aria-hidden="true"
             />
           ) : null}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                type={BUTTON_TYPE}
-                size="icon-sm"
-                variant={GHOST_VARIANT}
-                aria-label={t("conversationActions")}
-                className={cn(
-                  "size-10 shrink-0 rounded-xl transition-[background-color,opacity] hover:bg-background/80 md:opacity-0 md:group-hover/conversation:opacity-100 md:group-focus-within/conversation:opacity-100 data-[state=open]:opacity-100",
-                  isActive && "opacity-100",
-                )}
-              >
-                <MoreHorizontalIcon className="size-3" aria-hidden="true" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuGroup>
-                <DropdownMenuItem
-                  onSelect={onTogglePin}
-                  className="min-h-10 gap-2"
+          {!searchMatch ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type={BUTTON_TYPE}
+                  size="icon-sm"
+                  variant={GHOST_VARIANT}
+                  aria-label={t("conversationActions")}
+                  className={cn(
+                    "size-10 shrink-0 rounded-xl transition-[background-color,opacity] hover:bg-background/80 md:opacity-0 md:group-hover/conversation:opacity-100 md:group-focus-within/conversation:opacity-100 data-[state=open]:opacity-100",
+                    isActive && "opacity-100",
+                  )}
                 >
-                  <PinIcon className="size-3.5" aria-hidden="true" />
-                  {pinned ? t("unpin") : t("pinToTop")}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onSelect={onMoveUp}
-                  disabled={!canMoveUp}
-                  className="min-h-10 gap-2"
-                >
-                  <ArrowUpIcon className="size-3.5" aria-hidden="true" />
-                  {t("moveUp")}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onSelect={onMoveDown}
-                  disabled={!canMoveDown}
-                  className="min-h-10 gap-2"
-                >
-                  <ArrowDownIcon className="size-3.5" aria-hidden="true" />
-                  {t("moveDown")}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onSelect={onEditStart}
-                  className="min-h-10 gap-2"
-                >
-                  <PencilIcon className="size-3.5" aria-hidden="true" />
-                  {t("rename")}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  variant="destructive"
-                  onSelect={onDelete}
-                  className="min-h-10 gap-2"
-                >
-                  <Trash2Icon className="size-3.5" aria-hidden="true" />
-                  {t("delete")}
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                  <MoreHorizontalIcon className="size-3" aria-hidden="true" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuGroup>
+                  <DropdownMenuItem
+                    onSelect={onTogglePin}
+                    className="min-h-10 gap-2"
+                  >
+                    <PinIcon className="size-3.5" aria-hidden="true" />
+                    {pinned ? t("unpin") : t("pinToTop")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={onMoveUp}
+                    disabled={!canMoveUp}
+                    className="min-h-10 gap-2"
+                  >
+                    <ArrowUpIcon className="size-3.5" aria-hidden="true" />
+                    {t("moveUp")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={onMoveDown}
+                    disabled={!canMoveDown}
+                    className="min-h-10 gap-2"
+                  >
+                    <ArrowDownIcon className="size-3.5" aria-hidden="true" />
+                    {t("moveDown")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={onEditStart}
+                    className="min-h-10 gap-2"
+                  >
+                    <PencilIcon className="size-3.5" aria-hidden="true" />
+                    {t("rename")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    variant="destructive"
+                    onSelect={onDelete}
+                    className="min-h-10 gap-2"
+                  >
+                    <Trash2Icon className="size-3.5" aria-hidden="true" />
+                    {t("delete")}
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : null}
         </div>
       )}
     </div>
@@ -457,6 +488,15 @@ export function ChatSidebar({
   conversationFolders,
   activeConversationId,
   loading,
+  searchQuery = "",
+  searchResults = [],
+  searching = false,
+  searchError = false,
+  hasMoreSearchResults = false,
+  loadingMoreSearchResults = false,
+  onSearchQueryChange,
+  onRetrySearch,
+  onLoadMoreSearchResults,
   onSelectConversation,
   onNewConversation,
   canCreateAgent = false,
@@ -500,6 +540,7 @@ export function ChatSidebar({
     [shell],
   );
   const canConfigureProviders = Boolean(shell?.permissions.canManageProviders);
+  const searchActive = searchQuery.trim().length > 0;
   const sortedConversations = useMemo(() => {
     return [...conversations].sort((a, b) => {
       const aPinned = a.pinnedAt ? 0 : 1;
@@ -661,7 +702,10 @@ export function ChatSidebar({
     });
   }
 
-  function renderConversation(conversation: ChatConversation) {
+  function renderConversation(
+    conversation: ChatConversation,
+    options?: { searchResult?: boolean },
+  ) {
     const isActive = activeConversationId === conversation.id;
     const isEditing = editingConversationId === conversation.id;
     const agentName = agentNameById.get(conversation.agentId) ?? t("assistant");
@@ -674,7 +718,9 @@ export function ChatSidebar({
         isEditing={isEditing}
         editingTitle={isEditing ? editingTitle : ""}
         agentName={agentName}
-        onSelect={() => onSelectConversation(conversation.id)}
+        onSelect={() =>
+          onSelectConversation(conversation.id, conversation.agentId)
+        }
         onRename={(title) => {
           onRenameConversation?.(conversation.id, title);
           setEditingConversationId(null);
@@ -701,6 +747,9 @@ export function ChatSidebar({
         onDragEnd={() => setDraggingConversationId(null)}
         onDropBefore={(event) => handleConversationDrop(event, conversation)}
         isDragging={draggingConversationId === conversation.id}
+        searchMatch={
+          options?.searchResult ? conversation.searchMatch : undefined
+        }
       />
     );
   }
@@ -825,6 +874,41 @@ export function ChatSidebar({
           </div>
         </div>
 
+        <div className="flex items-center gap-2 px-1 pb-1">
+          <SearchIcon
+            className="size-4 shrink-0 text-muted-foreground"
+            aria-hidden="true"
+          />
+          <Input
+            type="search"
+            name="conversation-search"
+            autoComplete="off"
+            aria-label={t("searchLabel")}
+            placeholder={t("searchPlaceholder")}
+            value={searchQuery}
+            onChange={(event) => onSearchQueryChange?.(event.target.value)}
+            className="h-10 min-w-0 rounded-xl px-3 text-xs"
+          />
+          {searchActive ? (
+            <Button
+              type={BUTTON_TYPE}
+              size="icon-sm"
+              variant={GHOST_VARIANT}
+              className="size-10 shrink-0 rounded-xl"
+              aria-label={t("clearSearch")}
+              onClick={() => onSearchQueryChange?.("")}
+            >
+              <XIcon data-icon="inline-start" aria-hidden="true" />
+            </Button>
+          ) : null}
+        </div>
+
+        <p className="sr-only" aria-live="polite">
+          {searchActive && !searching && !searchError
+            ? t("searchResultCount", { count: searchResults.length })
+            : null}
+        </p>
+
         {creatingFolder ? (
           <div className="flex items-center gap-1 rounded-xl border border-sidebar-border/60 bg-background p-1">
             <Input
@@ -863,7 +947,104 @@ export function ChatSidebar({
         ) : null}
 
         <div className="flex min-h-0 flex-col gap-1">
-          {loading ? (
+          {searchActive ? (
+            searching && searchResults.length === 0 ? (
+              <div className="flex flex-col gap-px pt-px" aria-busy="true">
+                <Skeleton className="h-16 w-full rounded-xl" />
+                <Skeleton className="h-16 w-full rounded-xl" />
+                <Skeleton className="h-16 w-full rounded-xl" />
+              </div>
+            ) : searchError && searchResults.length === 0 ? (
+              <Empty className="border-0 bg-transparent px-2 py-10">
+                <EmptyHeader>
+                  <EmptyMedia
+                    variant="icon"
+                    className="border-0 bg-transparent text-muted-foreground/40"
+                  >
+                    <SearchXIcon aria-hidden="true" />
+                  </EmptyMedia>
+                  <EmptyTitle className="text-sm font-medium">
+                    {t("searchErrorTitle")}
+                  </EmptyTitle>
+                  <EmptyDescription className="text-xs text-muted-foreground/60">
+                    {t("searchErrorDescription")}
+                  </EmptyDescription>
+                </EmptyHeader>
+                {onRetrySearch ? (
+                  <Button
+                    type={BUTTON_TYPE}
+                    variant="outline"
+                    size="sm"
+                    className="min-h-10 rounded-xl"
+                    onClick={onRetrySearch}
+                  >
+                    <RefreshCwIcon
+                      data-icon="inline-start"
+                      aria-hidden="true"
+                    />
+                    {t("retrySearch")}
+                  </Button>
+                ) : null}
+              </Empty>
+            ) : searchResults.length === 0 ? (
+              <Empty className="border-0 bg-transparent px-2 py-10">
+                <EmptyHeader>
+                  <EmptyMedia
+                    variant="icon"
+                    className="border-0 bg-transparent text-muted-foreground/40"
+                  >
+                    <SearchXIcon aria-hidden="true" />
+                  </EmptyMedia>
+                  <EmptyTitle className="text-sm font-medium">
+                    {t("noSearchResultsTitle")}
+                  </EmptyTitle>
+                  <EmptyDescription className="text-xs text-muted-foreground/60">
+                    {t("noSearchResultsDescription", {
+                      query: searchQuery.trim(),
+                    })}
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            ) : (
+              <div className="flex flex-col gap-1">
+                <div className="px-2 pb-1 text-[11px] font-medium text-muted-foreground">
+                  {t("searchResultCount", { count: searchResults.length })}
+                </div>
+                {searchResults.map((conversation) =>
+                  renderConversation(conversation, { searchResult: true }),
+                )}
+                {searchError && onRetrySearch ? (
+                  <Button
+                    type={BUTTON_TYPE}
+                    variant="ghost"
+                    size="sm"
+                    className="min-h-10 rounded-xl text-xs text-muted-foreground"
+                    onClick={onRetrySearch}
+                  >
+                    <RefreshCwIcon
+                      data-icon="inline-start"
+                      aria-hidden="true"
+                    />
+                    {t("retrySearch")}
+                  </Button>
+                ) : null}
+                {hasMoreSearchResults && onLoadMoreSearchResults ? (
+                  <Button
+                    type={BUTTON_TYPE}
+                    variant={GHOST_VARIANT}
+                    size="sm"
+                    className="mt-1 min-h-10 rounded-xl text-xs text-muted-foreground"
+                    disabled={loadingMoreSearchResults}
+                    onClick={onLoadMoreSearchResults}
+                  >
+                    {loadingMoreSearchResults
+                      ? t("loading")
+                      : t("loadMoreResults")}
+                  </Button>
+                ) : null}
+              </div>
+            )
+          ) : loading ? (
             <div className="flex flex-col gap-px pt-px">
               <Skeleton className="h-12 w-full rounded-xl" />
               <Skeleton className="h-12 w-full rounded-xl" />
@@ -930,7 +1111,9 @@ export function ChatSidebar({
                     <PinIcon className="size-3" aria-hidden="true" />
                     {t("pinned")}
                   </div>
-                  {pinnedConversations.map(renderConversation)}
+                  {pinnedConversations.map((conversation) =>
+                    renderConversation(conversation),
+                  )}
                 </section>
               ) : null}
 
@@ -1051,7 +1234,9 @@ export function ChatSidebar({
                       {open ? (
                         <div className="flex flex-col gap-px pl-3">
                           {folderConversations.length > 0 ? (
-                            folderConversations.map(renderConversation)
+                            folderConversations.map((conversation) =>
+                              renderConversation(conversation),
+                            )
                           ) : (
                             <div
                               className="rounded-lg border border-dashed px-3 py-2 text-xs text-muted-foreground/60"
@@ -1087,7 +1272,9 @@ export function ChatSidebar({
                     <div className="px-2 pb-1 text-[11px] font-medium text-muted-foreground">
                       {t("recent")}
                     </div>
-                    {topLevelConversations.map(renderConversation)}
+                    {topLevelConversations.map((conversation) =>
+                      renderConversation(conversation),
+                    )}
                   </>
                 ) : folderSections.length === 0 ? (
                   <div className="rounded-lg border border-dashed px-3 py-2 text-xs text-muted-foreground/60">

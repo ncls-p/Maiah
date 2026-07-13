@@ -130,8 +130,20 @@ interface ChatLayoutProps {
   canCreateAgent?: boolean;
   canRunSetup?: boolean;
   loadingSidebar?: boolean;
+  conversationSearchQuery: string;
+  conversationSearchResults: ChatConversation[];
+  searchingConversations?: boolean;
+  conversationSearchError?: boolean;
+  hasMoreConversationSearchResults?: boolean;
+  loadingMoreConversationSearchResults?: boolean;
+  onConversationSearchQueryChange: (query: string) => void;
+  onRetryConversationSearch?: () => void;
+  onLoadMoreConversationSearchResults?: () => void;
   onSelectAgent: (agentId: string) => void;
-  onSelectConversation: (conversationId: string) => void;
+  onSelectConversation: (
+    conversationId: string,
+    conversationAgentId?: string | null,
+  ) => void;
   onNewConversation: () => void;
   onSetUserDefaultAgent?: (agentId: string | null) => void;
   onRenameConversation?: (conversationId: string, title: string) => void;
@@ -165,6 +177,15 @@ export function ChatLayout({
   canCreateAgent = false,
   canRunSetup = false,
   loadingSidebar,
+  conversationSearchQuery,
+  conversationSearchResults,
+  searchingConversations,
+  conversationSearchError,
+  hasMoreConversationSearchResults,
+  loadingMoreConversationSearchResults,
+  onConversationSearchQueryChange,
+  onRetryConversationSearch,
+  onLoadMoreConversationSearchResults,
   onSelectAgent,
   onSelectConversation,
   onNewConversation,
@@ -238,6 +259,15 @@ export function ChatLayout({
     conversationFolders,
     activeConversationId,
     loading: loadingSidebar,
+    searchQuery: conversationSearchQuery,
+    searchResults: conversationSearchResults,
+    searching: searchingConversations,
+    searchError: conversationSearchError,
+    hasMoreSearchResults: hasMoreConversationSearchResults,
+    loadingMoreSearchResults: loadingMoreConversationSearchResults,
+    onSearchQueryChange: onConversationSearchQueryChange,
+    onRetrySearch: onRetryConversationSearch,
+    onLoadMoreSearchResults: onLoadMoreConversationSearchResults,
     onSelectConversation,
     onNewConversation,
     canCreateAgent,
@@ -265,8 +295,11 @@ export function ChatLayout({
   };
   const mobileSidebarProps = {
     ...sidebarProps,
-    onSelectConversation: (conversationId: string) => {
-      onSelectConversation(conversationId);
+    onSelectConversation: (
+      conversationId: string,
+      conversationAgentId?: string | null,
+    ) => {
+      onSelectConversation(conversationId, conversationAgentId);
       setMobileSidebarOpen(false);
     },
   };

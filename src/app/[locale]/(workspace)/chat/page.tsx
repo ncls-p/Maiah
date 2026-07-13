@@ -79,6 +79,26 @@ type AgentDirectoryPayload = {
   canManageProviders?: boolean;
 };
 
+type ConversationSearchState = {
+  query: string;
+  conversations: ChatConversation[];
+  hasMore: boolean;
+  nextCursor: string | null;
+  loading: boolean;
+  loadingMore: boolean;
+  error: boolean;
+};
+
+const EMPTY_CONVERSATION_SEARCH_STATE: ConversationSearchState = {
+  query: "",
+  conversations: [],
+  hasMore: false,
+  nextCursor: null,
+  loading: false,
+  loadingMore: false,
+  error: false,
+};
+
 export default function ChatPage() {
   const t = useTranslations(CHAT_INTERFACE_MODE);
   const { workspaceId, isLoading: workspaceLoading } = useWorkspace();
@@ -106,6 +126,11 @@ export default function ChatPage() {
   const [conversationCursor, setConversationCursor] = useState<string | null>(
     null,
   );
+  const [conversationSearchQuery, setConversationSearchQuery] = useState("");
+  const [conversationSearchState, setConversationSearchState] =
+    useState<ConversationSearchState>(EMPTY_CONVERSATION_SEARCH_STATE);
+  const [conversationSearchRevision, setConversationSearchRevision] =
+    useState(0);
   const [loadingMoreConversations, setLoadingMoreConversations] =
     useState(false);
   const [activeVersion, setActiveVersion] = useState<AgentVersion | null>(null);
@@ -231,9 +256,11 @@ export default function ChatPage() {
   const fetchConversationPage = useCallback(
     async ({
       before,
+      query,
       signal,
     }: {
       before?: string | null;
+      query?: string;
       signal?: AbortSignal;
     } = {}) => {
       if (!workspaceId) {
@@ -252,6 +279,7 @@ export default function ChatPage() {
         includeMeta: "true",
       });
       if (before) params.set("before", before);
+      if (query?.trim()) params.set("q", query.trim());
       const data = await fetchJson<ConversationListPayload>(
         `/api/workspace/conversations?${params.toString()}`,
         { signal },
@@ -372,6 +400,104 @@ export default function ChatPage() {
     loadingMoreConversations,
     t,
   ]);
+
+  useEffect(() => {
+    const query = conversationSearchQuery.trim();
+    if (!workspaceId || !query) return;
+
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => {
+      setConversationSearchState({
+        query,
+        conversations: [],
+        hasMore: false,
+        nextCursor: null,
+        loading: true,
+        loadingMore: false,
+        error: false,
+      });
+
+      void fetchConversationPage({ query, signal: controller.signal })
+        .then((data) => {
+          setConversationSearchState({
+            query,
+            conversations: data.conversations,
+            hasMore: data.hasMore,
+            nextCursor: data.nextCursor,
+            loading: false,
+            loadingMore: false,
+            error: false,
+          });
+        })
+        .catch((error: unknown) => {
+          if (error instanceof Error && error.name === "AbortError") return;
+          setConversationSearchState({
+            query,
+            conversations: [],
+            hasMore: false,
+            nextCursor: null,
+            loading: false,
+            loadingMore: false,
+            error: true,
+          });
+        });
+    }, 300);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      controller.abort();
+    };
+  }, [
+    conversationSearchQuery,
+    conversationSearchRevision,
+    fetchConversationPage,
+    workspaceId,
+  ]);
+
+  const loadMoreConversationSearchResults = useCallback(async () => {
+    const query = conversationSearchQuery.trim();
+    if (
+      !query ||
+      conversationSearchState.query !== query ||
+      !conversationSearchState.hasMore ||
+      conversationSearchState.loadingMore ||
+      !conversationSearchState.nextCursor
+    ) {
+      return;
+    }
+
+    setConversationSearchState((current) => ({
+      ...current,
+      loadingMore: true,
+      error: false,
+    }));
+    try {
+      const data = await fetchConversationPage({
+        query,
+        before: conversationSearchState.nextCursor,
+      });
+      setConversationSearchState((current) =>
+        current.query === query
+          ? {
+              ...current,
+              conversations: mergeConversationPages(
+                current.conversations,
+                data.conversations,
+              ),
+              hasMore: data.hasMore,
+              nextCursor: data.nextCursor,
+              loadingMore: false,
+            }
+          : current,
+      );
+    } catch {
+      setConversationSearchState((current) =>
+        current.query === query
+          ? { ...current, loadingMore: false, error: true }
+          : current,
+      );
+    }
+  }, [conversationSearchQuery, conversationSearchState, fetchConversationPage]);
 
   const {
     messages,
@@ -1287,6 +1413,29 @@ export default function ChatPage() {
     />
   );
 
+  const normalizedConversationSearchQuery = conversationSearchQuery.trim();
+  const conversationSearchIsCurrent =
+    conversationSearchState.query === normalizedConversationSearchQuery;
+  const conversationSearchProps = {
+    conversationSearchQuery,
+    conversationSearchResults: conversationSearchIsCurrent
+      ? conversationSearchState.conversations
+      : [],
+    searchingConversations:
+      Boolean(normalizedConversationSearchQuery) &&
+      (!conversationSearchIsCurrent || conversationSearchState.loading),
+    conversationSearchError:
+      conversationSearchIsCurrent && conversationSearchState.error,
+    hasMoreConversationSearchResults:
+      conversationSearchIsCurrent && conversationSearchState.hasMore,
+    loadingMoreConversationSearchResults:
+      conversationSearchIsCurrent && conversationSearchState.loadingMore,
+    onConversationSearchQueryChange: setConversationSearchQuery,
+    onRetryConversationSearch: () =>
+      setConversationSearchRevision((current) => current + 1),
+    onLoadMoreConversationSearchResults: loadMoreConversationSearchResults,
+  };
+
   if (workspaceLoading || loadingAgents) {
     return <ChatPageLoading />;
   }
@@ -1307,6 +1456,7 @@ export default function ChatPage() {
           canCreateAgent={canCreateAgent}
           canRunSetup={canRunSetup}
           loadingSidebar={loadingContext}
+          {...conversationSearchProps}
           hasMoreConversations={hasMoreConversations}
           loadingMoreConversations={loadingMoreConversations}
           onLoadMoreConversations={loadMoreConversations}
@@ -1359,6 +1509,7 @@ export default function ChatPage() {
         canCreateAgent={canCreateAgent}
         canRunSetup={canRunSetup}
         loadingSidebar={loadingContext}
+        {...conversationSearchProps}
         hasMoreConversations={hasMoreConversations}
         loadingMoreConversations={loadingMoreConversations}
         onLoadMoreConversations={loadMoreConversations}

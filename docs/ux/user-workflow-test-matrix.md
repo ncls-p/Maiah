@@ -75,6 +75,7 @@ Chaque ressource distante doit distinguer :
 | Copie message/lien               | Succès uniquement après presse-papiers, échec visible                                         | Code                                      |
 | Liens externes                   | Confirmation avant sortie, URL visible                                                        | Code                                      |
 | Dossiers, épinglage et ordre     | Actions clavier/tactile, rollback après échec                                                 | Code + tests à étendre                    |
+| Recherche dans l’historique      | Titres et messages chiffrés, résultats paginés, états chargement/vide/erreur relançable       | Tests unitaires + navigateur desktop/mobile |
 | Publication GitHub               | Connexion, synchronisation, permissions, PR/push direct, confirmation                         | Tests GitHub + code                       |
 | Artefacts HTML/sandbox           | Preview différée, plein écran, copie et téléchargement                                        | Tests artifacts + code                    |
 | Choix Chat/Coding                | Le choix manuel reste prioritaire pendant les mises à jour et nouveaux messages               | Tests d’état + navigateur                 |

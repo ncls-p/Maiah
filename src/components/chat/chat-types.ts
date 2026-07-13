@@ -21,6 +21,10 @@ export interface ChatConversation {
   pinnedAt?: string | null;
   sidebarOrder?: number | null;
   updatedAt: string;
+  searchMatch?: {
+    kind: "title" | "message";
+    snippet: string;
+  };
 }
 
 export interface ChatConversationFolder {
