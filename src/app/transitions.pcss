@@ -1,6 +1,8 @@
 /* transitions-dev — copy this :root block into your project once.
    Every transition snippet reads from these semantic names. */
 :root {
+  /* Sidebar route changes use a local CSS fade; never snapshot the full app. */
+  view-transition-name: none;
   /* Card resize */
   --resize-dur: 300ms;
   --resize-ease: cubic-bezier(0.22, 1, 0.36, 1);
@@ -47,9 +49,6 @@
   --panel-translate-y: 100px;
   --panel-blur: 2px;
   --panel-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  /* Sidebar context change */
-  --sidebar-context-dur: 220ms;
-  --sidebar-context-ease: ease-out;
   /* Page side-by-side */
   --page-slide-dur: 250ms;
   --page-fade-dur: 250ms;
@@ -168,56 +167,6 @@
   --acc-collapse: 250ms;
   --acc-chevron: 250ms;
   --acc-ease: cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-/* Sidebar context change — keeps the left rail spatially anchored while its
-   content switches between workspace navigation and conversation history. */
-::view-transition {
-  background: var(--background);
-}
-
-::view-transition-old(root) {
-  animation: none;
-  opacity: 0;
-  mix-blend-mode: normal;
-}
-
-::view-transition-new(root) {
-  animation: none;
-  mix-blend-mode: normal;
-}
-
-::view-transition-group(app-sidebar-header),
-::view-transition-group(app-sidebar-footer) {
-  z-index: 40;
-  animation: none;
-}
-
-::view-transition-old(app-sidebar-header),
-::view-transition-old(app-sidebar-footer) {
-  display: none;
-}
-
-::view-transition-new(app-sidebar-header),
-::view-transition-new(app-sidebar-footer) {
-  animation: none;
-}
-
-::view-transition-group(app-sidebar-content) {
-  z-index: 40;
-  animation-duration: var(--sidebar-context-dur);
-  animation-timing-function: var(--sidebar-context-ease);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  ::view-transition-group(app-sidebar-content),
-  ::view-transition-old(app-sidebar-content),
-  ::view-transition-new(app-sidebar-content),
-  ::view-transition-old(root),
-  ::view-transition-new(root) {
-    animation-duration: 0s !important;
-    animation-delay: 0s !important;
-  }
 }
 
 /* transitions-dev theme hooks for Maiah's existing semantic palette. */

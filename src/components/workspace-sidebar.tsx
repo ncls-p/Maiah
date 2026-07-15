@@ -9,7 +9,6 @@ import {
   useMemo,
   useState,
   useSyncExternalStore,
-  ViewTransition,
   type ReactNode,
 } from "react";
 import {
@@ -306,20 +305,13 @@ function SidebarPanel({
           ) : null
         }
       />
-      <ViewTransition
-        name="app-sidebar-content"
-        share="auto"
-        enter="auto"
-        default="none"
-      >
-        <div className="flex min-h-0 flex-1 flex-col">
-          <SidebarNavGroups
-            groups={groups}
-            collapsed={collapsed}
-            onNavigate={onNavigate}
-          />
-        </div>
-      </ViewTransition>
+      <div className="animate-in-fade flex min-h-0 flex-1 flex-col motion-reduce:animate-none">
+        <SidebarNavGroups
+          groups={groups}
+          collapsed={collapsed}
+          onNavigate={onNavigate}
+        />
+      </div>
       <SidebarFooter displayName={shell.displayName} collapsed={collapsed} />
     </div>
   );

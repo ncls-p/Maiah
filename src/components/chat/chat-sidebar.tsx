@@ -20,7 +20,7 @@ import {
   Trash2Icon,
   XIcon,
 } from "lucide-react";
-import { useMemo, useState, useSyncExternalStore, ViewTransition } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import { useLocale, useTranslations } from "next-intl";
 
 import type {
@@ -851,12 +851,7 @@ export function ChatSidebar({
         }
       />
 
-      <ViewTransition
-        name="app-sidebar-content"
-        share="auto"
-        enter="auto"
-        default="none"
-      >
+      <div className="animate-in-fade flex min-h-0 flex-1 flex-col motion-reduce:animate-none">
         <div className="flex min-h-0 flex-1 flex-col">
           <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto px-2 py-2">
             <div className="flex min-h-10 items-center justify-between px-2">
@@ -1319,7 +1314,7 @@ export function ChatSidebar({
             <ChatAppNavigation groups={navGroups} />
           ) : null}
         </div>
-      </ViewTransition>
+      </div>
       <SidebarFooter displayName={shell?.displayName} />
     </div>
   );

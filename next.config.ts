@@ -8,7 +8,6 @@ const nextConfig: NextConfig = {
 	allowedDevOrigins: ["192.168.1.152", "100.98.140.47"],
 	experimental: {
 		proxyClientMaxBodySize: "30mb",
-		viewTransition: true,
 		serverActions: {
 			bodySizeLimit: "10mb",
 		},

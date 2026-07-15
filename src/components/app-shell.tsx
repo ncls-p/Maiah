@@ -154,10 +154,7 @@ export function AppShell({
 
   return (
     <WorkspaceShellContext.Provider value={shellValue}>
-      <WorkspaceSidebarProvider
-        key={isChatRoute ? "chat" : "workspace"}
-        defaultCollapsed={isChatRoute}
-      >
+      <WorkspaceSidebarProvider defaultCollapsed={isChatRoute}>
         <div data-page="app-shell" className="app-shell">
           <a
             href="#workspace-main"

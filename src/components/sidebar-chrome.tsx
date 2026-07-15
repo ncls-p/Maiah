@@ -1,6 +1,6 @@
 "use client";
 
-import { ViewTransition, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
 
 import { DeodisLogo } from "@/components/deodis-logo";
@@ -15,7 +15,7 @@ import {
 import { cn } from "@/lib/utils";
 
 export const APP_SIDEBAR_SURFACE_CLASS =
-  "border-sidebar-border/70 bg-sidebar/92 text-sidebar-foreground backdrop-blur-xl";
+  "border-sidebar-border/70 bg-sidebar text-sidebar-foreground";
 
 export function SidebarHeader({
   contextLabel,
@@ -27,7 +27,7 @@ export function SidebarHeader({
   collapsed?: boolean;
 }) {
   return (
-    <ViewTransition name="app-sidebar-header" default="none">
+    <>
       <div
         className={cn(
           "flex shrink-0 items-center border-b border-sidebar-border/60 px-3",
@@ -60,15 +60,7 @@ export function SidebarHeader({
         </div>
         {action}
       </div>
-    </ViewTransition>
-  );
-}
-
-function SidebarFooterTransition({ children }: { children: ReactNode }) {
-  return (
-    <ViewTransition name="app-sidebar-footer" default="none">
-      {children}
-    </ViewTransition>
+    </>
   );
 }
 
@@ -85,7 +77,7 @@ export function SidebarFooter({
 
   if (collapsed) {
     return (
-      <SidebarFooterTransition>
+      <>
         <div className="mt-auto flex shrink-0 flex-col items-center gap-1.5 border-t border-sidebar-border/60 px-2 py-2.5">
           <Tooltip>
             <TooltipTrigger asChild>
@@ -112,12 +104,12 @@ export function SidebarFooter({
             <TooltipContent side="right">{tShell("signOut")}</TooltipContent>
           </Tooltip>
         </div>
-      </SidebarFooterTransition>
+      </>
     );
   }
 
   return (
-    <SidebarFooterTransition>
+    <>
       <div className="mt-auto shrink-0 border-t border-sidebar-border/60 p-2.5">
         <div className="rounded-2xl bg-background/72 p-2 shadow-[var(--control-shadow)] backdrop-blur-sm">
           {displayName ? (
@@ -154,7 +146,7 @@ export function SidebarFooter({
           </div>
         </div>
       </div>
-    </SidebarFooterTransition>
+    </>
   );
 }
 
