@@ -853,7 +853,9 @@ export function ChatSidebar({
 
       <ViewTransition
         name="app-sidebar-content"
-        share="sidebar-context-content"
+        share="auto"
+        enter="auto"
+        default="none"
       >
         <div className="flex min-h-0 flex-1 flex-col">
           <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto px-2 py-2">

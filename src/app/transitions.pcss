@@ -48,14 +48,8 @@
   --panel-blur: 2px;
   --panel-ease: cubic-bezier(0.22, 1, 0.36, 1);
   /* Sidebar context change */
-  --sidebar-context-dur: 520ms;
-  --sidebar-context-exit-dur: 400ms;
-  --sidebar-context-enter-dur: 420ms;
-  --sidebar-context-header-delay: 0ms;
-  --sidebar-context-content-delay: 40ms;
-  --sidebar-context-footer-delay: 80ms;
-  --sidebar-context-blur: 0.5px;
-  --sidebar-context-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --sidebar-context-dur: 220ms;
+  --sidebar-context-ease: ease-out;
   /* Page side-by-side */
   --page-slide-dur: 250ms;
   --page-fade-dur: 250ms;
@@ -193,67 +187,32 @@
   mix-blend-mode: normal;
 }
 
-::view-transition-group(.sidebar-context-header),
-::view-transition-group(.sidebar-context-content),
-::view-transition-group(.sidebar-context-footer) {
+::view-transition-group(app-sidebar-header),
+::view-transition-group(app-sidebar-footer) {
+  z-index: 40;
+  animation: none;
+}
+
+::view-transition-old(app-sidebar-header),
+::view-transition-old(app-sidebar-footer) {
+  display: none;
+}
+
+::view-transition-new(app-sidebar-header),
+::view-transition-new(app-sidebar-footer) {
+  animation: none;
+}
+
+::view-transition-group(app-sidebar-content) {
   z-index: 40;
   animation-duration: var(--sidebar-context-dur);
   animation-timing-function: var(--sidebar-context-ease);
 }
 
-::view-transition-old(.sidebar-context-header),
-::view-transition-old(.sidebar-context-content),
-::view-transition-old(.sidebar-context-footer) {
-  animation: sidebar-context-exit var(--sidebar-context-exit-dur) ease-in both;
-}
-
-::view-transition-new(.sidebar-context-header) {
-  animation: sidebar-context-enter var(--sidebar-context-enter-dur)
-    var(--sidebar-context-ease) var(--sidebar-context-header-delay) both;
-}
-
-::view-transition-new(.sidebar-context-content) {
-  animation: sidebar-context-enter var(--sidebar-context-enter-dur)
-    var(--sidebar-context-ease) var(--sidebar-context-content-delay) both;
-}
-
-::view-transition-new(.sidebar-context-footer) {
-  animation: sidebar-context-enter var(--sidebar-context-enter-dur)
-    var(--sidebar-context-ease) var(--sidebar-context-footer-delay) both;
-}
-
-@keyframes sidebar-context-exit {
-  from {
-    opacity: 1;
-    filter: blur(0);
-  }
-  to {
-    opacity: 0;
-    filter: blur(var(--sidebar-context-blur));
-  }
-}
-
-@keyframes sidebar-context-enter {
-  from {
-    opacity: 0;
-    filter: blur(var(--sidebar-context-blur));
-  }
-  to {
-    opacity: 1;
-    filter: blur(0);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  ::view-transition-group(.sidebar-context-header),
-  ::view-transition-group(.sidebar-context-content),
-  ::view-transition-group(.sidebar-context-footer),
-  ::view-transition-old(.sidebar-context-header),
-  ::view-transition-old(.sidebar-context-content),
-  ::view-transition-old(.sidebar-context-footer),
-  ::view-transition-new(.sidebar-context-header),
-  ::view-transition-new(.sidebar-context-content),
-  ::view-transition-new(.sidebar-context-footer),
+  ::view-transition-group(app-sidebar-content),
+  ::view-transition-old(app-sidebar-content),
+  ::view-transition-new(app-sidebar-content),
   ::view-transition-old(root),
   ::view-transition-new(root) {
     animation-duration: 0s !important;

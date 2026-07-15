@@ -27,43 +27,48 @@ export function SidebarHeader({
   collapsed?: boolean;
 }) {
   return (
-    <div
-      className={cn(
-        "flex shrink-0 items-center border-b border-sidebar-border/60 px-3",
-        collapsed
-          ? "h-24 flex-col justify-center gap-1.5 px-2"
-          : "h-16 justify-between gap-3",
-      )}
-    >
+    <ViewTransition name="app-sidebar-header" default="none">
       <div
         className={cn(
-          "flex min-w-0",
+          "flex shrink-0 items-center border-b border-sidebar-border/60 px-3",
           collapsed
-            ? "items-center justify-center"
-            : "flex-col items-start justify-center",
+            ? "h-24 flex-col justify-center gap-1.5 px-2"
+            : "h-16 justify-between gap-3",
         )}
       >
-        <DeodisLogo
-          href="/chat"
+        <div
           className={cn(
-            "shrink-0 object-contain",
-            collapsed ? "size-6" : "h-6 w-auto",
+            "flex min-w-0",
+            collapsed
+              ? "items-center justify-center"
+              : "flex-col items-start justify-center",
           )}
-          label="Deodis chat"
-        />
-        {!collapsed ? (
-          <ViewTransition
-            name="app-sidebar-context-label"
-            share="sidebar-context-header"
-          >
+        >
+          <DeodisLogo
+            href="/chat"
+            className={cn(
+              "shrink-0 object-contain",
+              collapsed ? "size-6" : "h-6 w-auto",
+            )}
+            label="Deodis chat"
+          />
+          {!collapsed ? (
             <span className="-mt-1 max-w-full truncate pl-0.5 text-[0.625rem] font-semibold uppercase tracking-[0.14em] text-primary/75">
               {contextLabel}
             </span>
-          </ViewTransition>
-        ) : null}
+          ) : null}
+        </div>
+        {action}
       </div>
-      {action}
-    </div>
+    </ViewTransition>
+  );
+}
+
+function SidebarFooterTransition({ children }: { children: ReactNode }) {
+  return (
+    <ViewTransition name="app-sidebar-footer" default="none">
+      {children}
+    </ViewTransition>
   );
 }
 
@@ -80,7 +85,7 @@ export function SidebarFooter({
 
   if (collapsed) {
     return (
-      <ViewTransition name="app-sidebar-footer" share="sidebar-context-footer">
+      <SidebarFooterTransition>
         <div className="mt-auto flex shrink-0 flex-col items-center gap-1.5 border-t border-sidebar-border/60 px-2 py-2.5">
           <Tooltip>
             <TooltipTrigger asChild>
@@ -107,12 +112,12 @@ export function SidebarFooter({
             <TooltipContent side="right">{tShell("signOut")}</TooltipContent>
           </Tooltip>
         </div>
-      </ViewTransition>
+      </SidebarFooterTransition>
     );
   }
 
   return (
-    <ViewTransition name="app-sidebar-footer" share="sidebar-context-footer">
+    <SidebarFooterTransition>
       <div className="mt-auto shrink-0 border-t border-sidebar-border/60 p-2.5">
         <div className="rounded-2xl bg-background/72 p-2 shadow-[var(--control-shadow)] backdrop-blur-sm">
           {displayName ? (
@@ -149,7 +154,7 @@ export function SidebarFooter({
           </div>
         </div>
       </div>
-    </ViewTransition>
+    </SidebarFooterTransition>
   );
 }
 

@@ -308,7 +308,9 @@ function SidebarPanel({
       />
       <ViewTransition
         name="app-sidebar-content"
-        share="sidebar-context-content"
+        share="auto"
+        enter="auto"
+        default="none"
       >
         <div className="flex min-h-0 flex-1 flex-col">
           <SidebarNavGroups
