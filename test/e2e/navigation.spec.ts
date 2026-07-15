@@ -43,7 +43,7 @@ test.describe("workspace navigation", () => {
     await expect(page).toHaveURL(/\/en\/knowledge/);
 
     await expect(
-      page.getByRole("heading", { name: /Knowledge/i }).first(),
+      page.getByRole("heading", { name: "Documents", exact: true }),
     ).toBeVisible({ timeout: 10_000 });
   });
 

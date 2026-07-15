@@ -15,40 +15,38 @@ test.describe("knowledge bases", () => {
     await expect(page).toHaveURL(/\/en\/knowledge/);
 
     await expect(
-      page.getByRole("heading", { name: /Knowledge/i }).first(),
+      page.getByRole("heading", { name: "Documents", exact: true }),
     ).toBeVisible({ timeout: 10_000 });
   });
 
-  test("shows empty state when no knowledge bases", async ({ page }) => {
+  test("shows the document collections state", async ({ page }) => {
     await page.goto("/en/knowledge");
-    await page.waitForTimeout(2000);
 
-    // Should show empty state or bases list
     await expect(
-      page.getByText(/No knowledge|Create|Bases/i).first(),
+      page.getByRole("heading", { name: "Collections", exact: true }),
     ).toBeVisible({ timeout: 10_000 });
   });
 
-  test("create knowledge base button exists", async ({ page }) => {
+  test("create collection button exists", async ({ page }) => {
     await page.goto("/en/knowledge");
-    await page.waitForTimeout(2000);
 
     const createBtn = page
-      .getByRole("button", { name: /Create|New knowledge|Add/i })
+      .getByRole("button", {
+        name: /^(?:New collection|Create a collection)$/i,
+      })
       .first();
-
-    if (await createBtn.isVisible()) {
-      await expect(createBtn).toBeEnabled();
-    }
+    await expect(createBtn).toBeEnabled({ timeout: 10_000 });
   });
 
-  test("knowledge base CRUD flow", async ({ page }) => {
+  test("document collection CRUD flow", async ({ page }) => {
     await page.goto("/en/knowledge");
 
     const testBaseName = `E2E KB ${Date.now()}`;
 
     const createBtn = page
-      .getByRole("button", { name: /New knowledge base/i })
+      .getByRole("button", {
+        name: /^(?:New collection|Create a collection)$/i,
+      })
       .first();
     await expect(createBtn).toBeVisible({ timeout: 15_000 });
     await createBtn.click();

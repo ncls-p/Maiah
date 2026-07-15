@@ -322,6 +322,38 @@ describe("mcp/executor", async () => {
 		expect(result).toEqual([{ type: "text", text: "raw response" }]);
 	});
 
+	it("rejects MCP application errors instead of treating them as tool successes", async () => {
+		vi.mocked(getMcpServer).mockResolvedValue(fakeSseServer);
+		vi.mocked(callRemoteMcpTool).mockResolvedValue({
+			isError: true,
+			structuredContent: {
+				result: "Invalid repoName format",
+				apiKey: "must-not-leak",
+			},
+			content: [{ type: "text", text: "raw error" }],
+		});
+
+		dbModule.db.select.mockReturnValue(dbModule._c);
+		dbModule._c.from.mockReturnValue(dbModule._c);
+		dbModule._c.where.mockReturnValue(dbModule._c);
+		dbModule._c.limit.mockResolvedValueOnce([
+			{ id: "tool-1", name: "search", enabled: true },
+		]);
+
+		const { executeMcpTool } = await import("../../src/modules/mcp/executor");
+		const error = await executeMcpTool({
+			serverId: "srv-1",
+			toolId: "tool-1",
+			workspaceId: "ws-1",
+			toolInput: {},
+		}).catch((cause: unknown) => cause);
+		expect(error).toBeInstanceOf(Error);
+		expect((error as Error).message).toBe(
+			"MCP tool failed: Invalid repoName format",
+		);
+		expect((error as Error).message).not.toContain("must-not-leak");
+	});
+
 	it("returns { ok: true } when result has no structuredContent or content", async () => {
 		vi.mocked(getMcpServer).mockResolvedValue(fakeSseServer);
 		// When result has no structuredContent and no content properties

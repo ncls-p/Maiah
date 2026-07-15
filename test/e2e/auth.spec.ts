@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { ensureE2EUser, login } from "./fixtures";
+import { e2eUser, ensureE2EUser, login } from "./fixtures";
 
 test.beforeAll(async () => {
   await ensureE2EUser();
@@ -95,15 +95,11 @@ test.describe("authentication", () => {
     });
 
     test("sign out button exists in sidebar", async ({ page }) => {
-      // Wait for the workspace shell to load
-      await page.waitForTimeout(1000);
-
-      // Sign out should be accessible via the sidebar footer
+      await page
+        .getByRole("button", { name: e2eUser.name, exact: true })
+        .click();
       await expect(
-        page
-          .getByRole("button")
-          .filter({ hasText: /Sign out/i })
-          .first(),
+        page.getByRole("menuitem", { name: /Sign out/i }),
       ).toBeVisible({ timeout: 10_000 });
     });
   });

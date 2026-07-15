@@ -28,6 +28,8 @@ treated as a safety boundary.
 
 - A specialist has at least two model steps whenever tools or nested
   delegation are available: one action step and one final synthesis step.
+- The active agent version's `toolChoice` (`auto`, `required`, or `none`) is
+  honored on action steps. The final synthesis step still disables tools.
 - `maxChildSteps` bounds the complete specialist loop. On its last permitted
   step, tools and delegation are disabled so the model must answer from the
   results already collected.
@@ -39,8 +41,13 @@ treated as a safety boundary.
   the runtime performs one bounded, tool-free synthesis pass over a
   secret-aware text projection of those results. It does not replay provider
   `tool-call` messages without tool definitions. Its tokens and elapsed time
-  count against the same tree budget; if it is also empty, the run still fails
-  with `AGENT_EMPTY_RESPONSE`.
+  count against the same tree budget. If that optional synthesis is empty or
+  fails, the runtime returns a bounded, secret-aware deterministic projection
+  of the completed tool results instead of discarding successful work.
+- If a provider hits the local run deadline after one or more tools completed,
+  the same deterministic projection completes the run. Usage from every
+  completed model step is retained through the AI SDK step callback. Explicit
+  user cancellation never takes this recovery path.
 - Each specialist receives an earlier local deadline than its parent,
   reserving up to 30 seconds for parent recovery and synthesis.
 - New orchestrators default to a two-minute tree deadline. Administrators may

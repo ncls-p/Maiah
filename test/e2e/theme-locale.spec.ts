@@ -1,5 +1,5 @@
-import { expect, test } from "@playwright/test";
-import { ensureE2EUser, login } from "./fixtures";
+import { expect, type Page, test } from "@playwright/test";
+import { e2eUser, ensureE2EUser, login } from "./fixtures";
 
 test.beforeAll(async () => {
   await ensureE2EUser();
@@ -9,26 +9,23 @@ test.beforeEach(async ({ page }) => {
   await login(page);
 });
 
+async function openAccountMenu(page: Page) {
+  await page.getByRole("button", { name: e2eUser.name, exact: true }).click();
+  await expect(page.getByRole("menu")).toBeVisible();
+}
+
 test.describe("theme toggle", () => {
   test("theme toggle button exists in sidebar", async ({ page }) => {
     await page.goto("/en/settings");
-    await page.waitForTimeout(1000);
-
-    // Theme toggle should be in the sidebar footer
-    const themeToggle = page
-      .getByRole("button", { name: /Toggle theme/i })
-      .first();
+    await openAccountMenu(page);
+    const themeToggle = page.getByRole("menuitem", { name: /Toggle theme/i });
     await expect(themeToggle).toBeVisible({ timeout: 15_000 });
   });
 
   test("theme toggle button changes theme", async ({ page }) => {
     await page.goto("/en/settings");
-    await page.waitForTimeout(1000);
-
-    // Find theme toggle in the sidebar
-    const themeButton = page
-      .getByRole("button", { name: /Toggle theme/i })
-      .first();
+    await openAccountMenu(page);
+    const themeButton = page.getByRole("menuitem", { name: /Toggle theme/i });
     await expect(themeButton).toBeVisible({ timeout: 15_000 });
     const beforeDark = await page.evaluate(() =>
       document.documentElement.classList.contains("dark"),
@@ -46,11 +43,8 @@ test.describe("theme toggle", () => {
 
   test("theme persists across page navigation", async ({ page }) => {
     await page.goto("/en/settings");
-    await page.waitForTimeout(1000);
-
-    const themeButton = page
-      .getByRole("button", { name: /Toggle theme/i })
-      .first();
+    await openAccountMenu(page);
+    const themeButton = page.getByRole("menuitem", { name: /Toggle theme/i });
     await expect(themeButton).toBeVisible({ timeout: 15_000 });
     await themeButton.click();
     const selectedDark = await page.evaluate(() =>
@@ -74,42 +68,29 @@ test.describe("theme toggle", () => {
 test.describe("locale switcher", () => {
   test("locale switcher exists in sidebar", async ({ page }) => {
     await page.goto("/en/settings");
-    await page.waitForTimeout(1000);
-
-    const sidebar = page.getByRole("complementary").first();
-    const localeSwitcher = sidebar.getByRole("group", { name: /Language/i });
+    await openAccountMenu(page);
+    const localeSwitcher = page.getByRole("menuitem", {
+      name: /Language.*English/i,
+    });
     await expect(localeSwitcher).toBeVisible({ timeout: 15_000 });
   });
 
   test("locale switcher shows current locale", async ({ page }) => {
     await page.goto("/en/settings");
-    await page.waitForTimeout(1000);
-
-    const englishButton = page
-      .getByRole("complementary")
-      .first()
-      .getByRole("button", {
-        name: "English",
-        exact: true,
-      });
-    await expect(englishButton).toHaveAttribute("aria-pressed", "true", {
-      timeout: 15_000,
-    });
+    await openAccountMenu(page);
+    await expect(
+      page.getByRole("menuitem", { name: /Language.*English/i }),
+    ).toBeVisible({ timeout: 15_000 });
   });
 
   test("switch to French locale", async ({ page }) => {
     await page.goto("/en/settings");
-    await page.waitForTimeout(1000);
-
-    const frenchButton = page
-      .getByRole("complementary")
-      .first()
-      .getByRole("button", {
-        name: "French",
-        exact: true,
-      });
-    await expect(frenchButton).toBeVisible();
-    await frenchButton.click();
+    await openAccountMenu(page);
+    const languageButton = page.getByRole("menuitem", {
+      name: /Language.*English/i,
+    });
+    await expect(languageButton).toBeVisible();
+    await languageButton.click();
     await expect(page).toHaveURL(/\/fr\/settings/, { timeout: 10_000 });
   });
 });

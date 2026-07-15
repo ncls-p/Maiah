@@ -130,6 +130,8 @@ type AgentToolProgressCallback = (
   event: AgentToolProgressEvent,
 ) => void | Promise<void>;
 
+type SuccessfulToolResult = { toolName: string; output: unknown };
+
 type InternalExecutionInput = {
   resolved: ResolvedAgent;
   workspaceId: string;
@@ -253,6 +255,7 @@ function instrumentTools(
   tools: ToolSet,
   runId: string,
   allocateSequence: () => number,
+  onToolSuccess?: (result: SuccessfulToolResult) => void,
 ) {
   const instrumented: ToolSet = {};
   for (const [name, definition] of Object.entries(tools)) {
@@ -280,6 +283,7 @@ function instrumentTools(
             outputPreview: output,
             completedAt: new Date(),
           });
+          onToolSuccess?.({ toolName: name, output });
           return output;
         } catch (error) {
           await appendAgentRunStep({
@@ -307,7 +311,7 @@ function truncateDelegationResult(value: string, maxChars: number) {
 }
 
 function toolResultRecoveryContext(
-  toolResults: Array<{ toolName: string; output: unknown }>,
+  toolResults: SuccessfulToolResult[],
   maxChars: number,
 ) {
   const context = toolResults
@@ -326,6 +330,65 @@ function toolResultRecoveryContext(
     .join("\n\n");
   if (context.length <= maxChars) return context;
   return `${context.slice(0, maxChars)}\n\n[Tool result context truncated]`;
+}
+
+function projectedToolOutputText(value: unknown): string {
+  if (typeof value === "string") return value.trim();
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  if (Array.isArray(value)) {
+    return value.map(projectedToolOutputText).filter(Boolean).join("\n\n");
+  }
+  if (!value || typeof value !== "object") return "";
+
+  const record = value as Record<string, unknown>;
+  for (const key of ["result", "answer", "text", "content", "output"]) {
+    if (!(key in record)) continue;
+    const nested = projectedToolOutputText(record[key]);
+    if (nested) return nested;
+  }
+  return JSON.stringify(record);
+}
+
+function deterministicToolResultFallback(
+  toolResults: SuccessfulToolResult[],
+  maxChars: number,
+) {
+  const text = toolResults
+    .map((toolResult) =>
+      projectedToolOutputText(
+        projectToolPayloadForDisplay(toolResult.output, {
+          maxArrayItems: 200,
+          maxDepth: 8,
+          maxObjectKeys: 200,
+          maxStringLength: maxChars,
+        }),
+      ),
+    )
+    .filter(Boolean)
+    .join("\n\n");
+  return truncateDelegationResult(text, maxChars).trim();
+}
+
+function isTimeoutFailure(error: unknown) {
+  let current = error;
+  for (let depth = 0; depth < 5 && current; depth += 1) {
+    if (current instanceof Error) {
+      if (
+        current.name === "TimeoutError" ||
+        /(?:aborted|failed|exceeded|timed? out).*timeout|timeout.*(?:aborted|failed|exceeded)/i.test(
+          current.message,
+        )
+      ) {
+        return true;
+      }
+      current = current.cause;
+      continue;
+    }
+    break;
+  }
+  return false;
 }
 
 function safeAgentExecutionDetail(error: unknown, fallback: string) {
@@ -366,6 +429,7 @@ async function buildDelegationTools(input: {
   resolved: ResolvedAgent;
   execution: InternalExecutionInput;
   allocateSequence: () => number;
+  onToolSuccess?: (result: SuccessfulToolResult) => void;
 }) {
   if (input.resolved.agent.kind !== "orchestrator" || input.execution.dryRun) {
     return {} satisfies ToolSet;
@@ -506,12 +570,17 @@ async function buildDelegationTools(input: {
             outputPreview: { text: output },
             completedAt: new Date(),
           });
-          return {
+          const delegationResult = {
             childRunId,
             childAgentId: child.agent.id,
             childAgentName: child.agent.name,
             result: output,
           };
+          input.onToolSuccess?.({
+            toolName,
+            output: { result: output },
+          });
+          return delegationResult;
         } catch (error) {
           if (error instanceof AgentExecutionError && error.runId) {
             childRunId = error.runId;
@@ -637,6 +706,10 @@ async function executeResolvedAgent(
         ? Math.min(runtimeLimits.maxSteps, input.budget.policy.maxChildSteps)
         : runtimeLimits.maxSteps;
     const allocateSequence = nextSequence();
+    const successfulToolResults: SuccessfulToolResult[] = [];
+    const recordSuccessfulToolResult = (result: SuccessfulToolResult) => {
+      successfulToolResults.push(result);
+    };
     const skillsPrompt = input.dryRun
       ? null
       : await buildSkillsRegistryPrompt(input.resolved.version.id);
@@ -660,13 +733,21 @@ async function executeResolvedAgent(
       resolved: input.resolved,
       execution: input,
       allocateSequence,
+      onToolSuccess: recordSuccessfulToolResult,
     });
     const tools = instrumentTools(
       { ...bound.tools, ...delegationTools },
       runId,
       allocateSequence,
+      recordSuccessfulToolResult,
     );
     const hasTools = Object.keys(tools).length > 0;
+    const configuredToolChoice = hasTools
+      ? input.resolved.version.toolChoice === "required" ||
+        input.resolved.version.toolChoice === "none"
+        ? input.resolved.version.toolChoice
+        : "auto"
+      : undefined;
     const effectiveMaxSteps = hasTools ? Math.max(2, maxSteps) : maxSteps;
     const delegationPrompt =
       Object.keys(delegationTools).length > 0
@@ -693,137 +774,193 @@ async function executeResolvedAgent(
       Math.max(1, input.deadlineAt.getTime() - Date.now()),
       input.budget.controller.signal,
     );
-    const result = await generateText({
-      model,
-      system,
-      ...(input.messages?.length
-        ? { messages: input.messages }
-        : { prompt: input.prompt }),
-      temperature: input.resolved.version.temperature
-        ? Number.parseFloat(input.resolved.version.temperature)
-        : undefined,
-      topP: input.resolved.version.topP
-        ? Number.parseFloat(input.resolved.version.topP)
-        : undefined,
-      maxOutputTokens,
-      tools,
-      toolChoice: hasTools ? "auto" : undefined,
-      toolApproval: bound.toolApproval,
-      stopWhen: stepCountIs(Math.max(1, effectiveMaxSteps)),
-      prepareStep: hasTools
-        ? ({ stepNumber }) => {
-            if (stepNumber < effectiveMaxSteps - 1) return undefined;
-            return {
-              activeTools: [],
-              toolChoice: "none",
-              instructions: `${system}\n\n${finalSynthesisInstruction}`,
-            };
+    let completedStepInputTokens = 0;
+    let completedStepOutputTokens = 0;
+    let result: Awaited<ReturnType<typeof generateText>> | undefined;
+    let text = "";
+    let recoveredFromEmptyResponse = false;
+    let recoveredFromToolResult = false;
+    try {
+      result = await generateText({
+        model,
+        system,
+        ...(input.messages?.length
+          ? { messages: input.messages }
+          : { prompt: input.prompt }),
+        temperature: input.resolved.version.temperature
+          ? Number.parseFloat(input.resolved.version.temperature)
+          : undefined,
+        topP: input.resolved.version.topP
+          ? Number.parseFloat(input.resolved.version.topP)
+          : undefined,
+        maxOutputTokens,
+        tools,
+        toolChoice: configuredToolChoice,
+        toolApproval: bound.toolApproval,
+        stopWhen: stepCountIs(Math.max(1, effectiveMaxSteps)),
+        prepareStep: hasTools
+          ? ({ stepNumber }) => {
+              if (stepNumber < effectiveMaxSteps - 1) return undefined;
+              return {
+                activeTools: [],
+                toolChoice: "none",
+                instructions: `${system}\n\n${finalSynthesisInstruction}`,
+              };
+            }
+          : undefined,
+        abortSignal: deadline.signal,
+        onStepEnd: ({ usage }) => {
+          completedStepInputTokens += usage.inputTokens ?? 0;
+          completedStepOutputTokens += usage.outputTokens ?? 0;
+        },
+        onToolExecutionStart: ({ toolCall }) =>
+          emitToolProgress(input.onProgress, {
+            type: "tool-start",
+            id: `${runId}:${toolCall.toolCallId}`,
+            toolCallId: toolCall.toolCallId,
+            toolName: toolCall.toolName,
+            agentName: input.resolved.agent.name,
+            agentId: input.resolved.agent.id,
+            runId,
+            parentRunId: input.parentRunId ?? null,
+            depth: input.depth,
+            ...progressModelHistoryMetadata({
+              depth: input.depth,
+              isDelegation: Object.hasOwn(delegationTools, toolCall.toolName),
+              phase: "start",
+            }),
+            input: toolCall.input,
+          }),
+        onToolExecutionEnd: ({ toolCall, toolExecutionMs, toolOutput }) => {
+          const context = {
+            id: `${runId}:${toolCall.toolCallId}`,
+            toolCallId: toolCall.toolCallId,
+            toolName: toolCall.toolName,
+            agentName: input.resolved.agent.name,
+            agentId: input.resolved.agent.id,
+            runId,
+            parentRunId: input.parentRunId ?? null,
+            depth: input.depth,
+            ...progressModelHistoryMetadata({
+              depth: input.depth,
+              isDelegation: Object.hasOwn(delegationTools, toolCall.toolName),
+              phase: toolOutput.type === "tool-error" ? "error" : "success",
+            }),
+          } satisfies AgentToolProgressContext;
+          if (toolOutput.type === "tool-error") {
+            emitToolProgress(input.onProgress, {
+              ...context,
+              type: "tool-end",
+              durationMs: toolExecutionMs,
+              error: safeToolErrorMessage(
+                toolOutput.error,
+                "Tool execution failed",
+              ),
+            });
+            return;
           }
-        : undefined,
-      abortSignal: deadline.signal,
-      onToolExecutionStart: ({ toolCall }) =>
-        emitToolProgress(input.onProgress, {
-          type: "tool-start",
-          id: `${runId}:${toolCall.toolCallId}`,
-          toolCallId: toolCall.toolCallId,
-          toolName: toolCall.toolName,
-          agentName: input.resolved.agent.name,
-          agentId: input.resolved.agent.id,
-          runId,
-          parentRunId: input.parentRunId ?? null,
-          depth: input.depth,
-          ...progressModelHistoryMetadata({
-            depth: input.depth,
-            isDelegation: Object.hasOwn(delegationTools, toolCall.toolName),
-            phase: "start",
-          }),
-          input: toolCall.input,
-        }),
-      onToolExecutionEnd: ({ toolCall, toolExecutionMs, toolOutput }) => {
-        const context = {
-          id: `${runId}:${toolCall.toolCallId}`,
-          toolCallId: toolCall.toolCallId,
-          toolName: toolCall.toolName,
-          agentName: input.resolved.agent.name,
-          agentId: input.resolved.agent.id,
-          runId,
-          parentRunId: input.parentRunId ?? null,
-          depth: input.depth,
-          ...progressModelHistoryMetadata({
-            depth: input.depth,
-            isDelegation: Object.hasOwn(delegationTools, toolCall.toolName),
-            phase: toolOutput.type === "tool-error" ? "error" : "success",
-          }),
-        } satisfies AgentToolProgressContext;
-        if (toolOutput.type === "tool-error") {
           emitToolProgress(input.onProgress, {
             ...context,
             type: "tool-end",
             durationMs: toolExecutionMs,
-            error: safeToolErrorMessage(
-              toolOutput.error,
-              "Tool execution failed",
-            ),
+            output: toolOutput.output,
           });
-          return;
+        },
+        telemetry: {
+          functionId: "ai-hub.agent-run",
+          recordInputs: false,
+          recordOutputs: false,
+        },
+      });
+    } catch (error) {
+      const fallback = deterministicToolResultFallback(
+        successfulToolResults,
+        input.budget.policy.resultMaxChars,
+      );
+      if (
+        !input.budget.controller.signal.aborted &&
+        fallback &&
+        (deadline.timeoutSignal.aborted || isTimeoutFailure(error))
+      ) {
+        inputTokens = completedStepInputTokens;
+        outputTokens = completedStepOutputTokens;
+        text = fallback;
+        recoveredFromToolResult = true;
+      } else {
+        throw error;
+      }
+    }
+
+    if (result) {
+      inputTokens = result.usage.inputTokens ?? 0;
+      outputTokens = result.usage.outputTokens ?? 0;
+      text = result.text.trim();
+      if (
+        successfulToolResults.length === 0 &&
+        (result.toolResults?.length ?? 0) > 0
+      ) {
+        successfulToolResults.push(
+          ...result.toolResults.map((toolResult) => ({
+            toolName: toolResult.toolName,
+            output: toolResult.output,
+          })),
+        );
+      }
+      if (!text && successfulToolResults.length > 0) {
+        const recoveryRemainingTokens =
+          input.budget.policy.maxTotalTokens -
+          input.budget.tokensUsed -
+          inputTokens -
+          outputTokens;
+        if (recoveryRemainingTokens > 0 && !deadline.signal.aborted) {
+          try {
+            const recoveryResult = await generateText({
+              model,
+              system: `${system}\n\n${emptyResponseRecoveryInstruction}`,
+              prompt: [
+                "Original task:",
+                input.prompt,
+                "Successful tool results:",
+                toolResultRecoveryContext(
+                  successfulToolResults,
+                  input.budget.policy.resultMaxChars,
+                ),
+              ].join("\n\n"),
+              temperature: input.resolved.version.temperature
+                ? Number.parseFloat(input.resolved.version.temperature)
+                : undefined,
+              topP: input.resolved.version.topP
+                ? Number.parseFloat(input.resolved.version.topP)
+                : undefined,
+              maxOutputTokens: Math.max(
+                1,
+                Math.min(
+                  runtimeLimits.maxOutputTokens,
+                  recoveryRemainingTokens,
+                ),
+              ),
+              abortSignal: deadline.signal,
+              telemetry: {
+                functionId: "ai-hub.agent-run.empty-response-recovery",
+                recordInputs: false,
+                recordOutputs: false,
+              },
+            });
+            inputTokens += recoveryResult.usage.inputTokens ?? 0;
+            outputTokens += recoveryResult.usage.outputTokens ?? 0;
+            text = recoveryResult.text.trim();
+            recoveredFromEmptyResponse = Boolean(text);
+          } catch (error) {
+            if (input.budget.controller.signal.aborted) throw error;
+          }
         }
-        emitToolProgress(input.onProgress, {
-          ...context,
-          type: "tool-end",
-          durationMs: toolExecutionMs,
-          output: toolOutput.output,
-        });
-      },
-      telemetry: {
-        functionId: "ai-hub.agent-run",
-        recordInputs: false,
-        recordOutputs: false,
-      },
-    });
-    inputTokens = result.usage.inputTokens ?? 0;
-    outputTokens = result.usage.outputTokens ?? 0;
-    let text = result.text.trim();
-    let recoveredFromEmptyResponse = false;
-    if (!text && (result.toolResults?.length ?? 0) > 0) {
-      const recoveryRemainingTokens =
-        input.budget.policy.maxTotalTokens -
-        input.budget.tokensUsed -
-        inputTokens -
-        outputTokens;
-      if (recoveryRemainingTokens > 0 && !deadline.signal.aborted) {
-        const recoveryResult = await generateText({
-          model,
-          system: `${system}\n\n${emptyResponseRecoveryInstruction}`,
-          prompt: [
-            "Original task:",
-            input.prompt,
-            "Successful tool results:",
-            toolResultRecoveryContext(
-              result.toolResults,
-              input.budget.policy.resultMaxChars,
-            ),
-          ].join("\n\n"),
-          temperature: input.resolved.version.temperature
-            ? Number.parseFloat(input.resolved.version.temperature)
-            : undefined,
-          topP: input.resolved.version.topP
-            ? Number.parseFloat(input.resolved.version.topP)
-            : undefined,
-          maxOutputTokens: Math.max(
-            1,
-            Math.min(runtimeLimits.maxOutputTokens, recoveryRemainingTokens),
-          ),
-          abortSignal: deadline.signal,
-          telemetry: {
-            functionId: "ai-hub.agent-run.empty-response-recovery",
-            recordInputs: false,
-            recordOutputs: false,
-          },
-        });
-        inputTokens += recoveryResult.usage.inputTokens ?? 0;
-        outputTokens += recoveryResult.usage.outputTokens ?? 0;
-        text = recoveryResult.text.trim();
-        recoveredFromEmptyResponse = Boolean(text);
+        if (!text && !input.budget.controller.signal.aborted) {
+          text = deterministicToolResultFallback(
+            successfulToolResults,
+            input.budget.policy.resultMaxChars,
+          );
+          recoveredFromToolResult = Boolean(text);
+        }
       }
     }
     input.budget.tokensUsed += inputTokens + outputTokens;
@@ -856,6 +993,7 @@ async function executeResolvedAgent(
         inputTokens,
         outputTokens,
         recoveredFromEmptyResponse,
+        recoveredFromToolResult,
       },
       completedAt: new Date(),
     });

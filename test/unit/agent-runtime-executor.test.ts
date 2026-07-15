@@ -322,7 +322,7 @@ describe("agent runtime executor", () => {
     );
   });
 
-  it("still fails when the tool-free recovery also returns no text", async () => {
+  it("returns the safe tool result when the tool-free recovery also returns no text", async () => {
     mocks.getActiveVersion.mockResolvedValueOnce({
       ...rootVersion,
       maxToolCalls: 1,
@@ -351,8 +351,141 @@ describe("agent runtime executor", () => {
         prompt: "Use lookup",
         trigger: "api",
       }),
-    ).rejects.toMatchObject({ code: "AGENT_EMPTY_RESPONSE" });
+    ).resolves.toMatchObject({
+      text: "42",
+      inputTokens: 9,
+      outputTokens: 0,
+      totalTreeTokens: 9,
+    });
+    expect(mocks.completeRun).toHaveBeenCalled();
+    expect(mocks.appendStep).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "model",
+        status: "success",
+        outputPreview: expect.objectContaining({
+          recoveredFromEmptyResponse: false,
+          recoveredFromToolResult: true,
+        }),
+      }),
+    );
+  });
+
+  it("returns a completed tool result when final synthesis times out", async () => {
+    mocks.getActiveVersion.mockResolvedValueOnce({
+      ...rootVersion,
+      maxToolCalls: 1,
+      toolChoice: "required",
+    });
+    mocks.buildBoundTools.mockResolvedValueOnce({
+      tools: {
+        deepwiki: {
+          execute: vi.fn(async () => ({
+            result: "ServiceNow Australia release notes",
+            apiKey: "must-remain-redacted",
+          })),
+        },
+      },
+      toolApproval: undefined,
+    });
+    mocks.generateText.mockImplementationOnce(async (options) => {
+      expect(options.toolChoice).toBe("required");
+      const tools = options.tools as Record<
+        string,
+        { execute: (input: unknown) => Promise<unknown> }
+      >;
+      await tools.deepwiki.execute({
+        repoName: "ServiceNow/ServiceNowDocs",
+        question: "Latest ServiceNow updates",
+      });
+      await options.onStepEnd?.({
+        usage: { inputTokens: 11, outputTokens: 2 },
+      });
+      const timeout = new Error("The operation was aborted due to timeout");
+      timeout.name = "TimeoutError";
+      throw timeout;
+    });
+
+    await expect(
+      executeAgent({
+        workspaceId: rootAgent.workspaceId,
+        userId: rootAgent.createdById,
+        agentId: rootAgent.id,
+        prompt: "Latest ServiceNow updates",
+        trigger: "api",
+      }),
+    ).resolves.toMatchObject({
+      text: "ServiceNow Australia release notes",
+      inputTokens: 11,
+      outputTokens: 2,
+      totalTreeTokens: 13,
+    });
+    expect(mocks.generateText).toHaveBeenCalledTimes(1);
+    expect(mocks.failRun).not.toHaveBeenCalled();
+    expect(mocks.completeRun).toHaveBeenCalledWith(
+      expect.objectContaining({
+        inputTokens: 11,
+        outputTokens: 2,
+        reservationTokens: 13,
+      }),
+    );
+    const modelStep = mocks.appendStep.mock.calls.find(
+      ([step]) => step.kind === "model",
+    );
+    expect(JSON.stringify(modelStep)).not.toContain("must-remain-redacted");
+    expect(mocks.appendStep).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "model",
+        status: "success",
+        outputPreview: expect.objectContaining({
+          recoveredFromToolResult: true,
+        }),
+      }),
+    );
+  });
+
+  it("does not recover a completed tool result after explicit user cancellation", async () => {
+    const controller = new AbortController();
+    mocks.getActiveVersion.mockResolvedValueOnce({
+      ...rootVersion,
+      maxToolCalls: 1,
+    });
+    mocks.buildBoundTools.mockResolvedValueOnce({
+      tools: {
+        lookup: {
+          execute: vi.fn(async () => ({ result: "must not be returned" })),
+        },
+      },
+      toolApproval: undefined,
+    });
+    mocks.generateText.mockImplementationOnce(async (options) => {
+      const tools = options.tools as Record<
+        string,
+        { execute: (input: unknown) => Promise<unknown> }
+      >;
+      await tools.lookup.execute({ query: "value" });
+      controller.abort("Cancelled by user");
+      const timeout = new Error("The operation was aborted due to timeout");
+      timeout.name = "TimeoutError";
+      throw timeout;
+    });
+
+    await expect(
+      executeAgent({
+        workspaceId: rootAgent.workspaceId,
+        userId: rootAgent.createdById,
+        agentId: rootAgent.id,
+        prompt: "Use lookup",
+        trigger: "api",
+        abortSignal: controller.signal,
+      }),
+    ).rejects.toMatchObject({ code: "AGENT_RUN_CANCELLED" });
     expect(mocks.completeRun).not.toHaveBeenCalled();
+    expect(mocks.failRun).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "cancelled",
+        errorCode: "AGENT_RUN_CANCELLED",
+      }),
+    );
   });
 
   it("preserves a redacted provider detail for operational logs", async () => {
@@ -901,6 +1034,149 @@ describe("agent runtime executor", () => {
       durationMs: 31,
       output: { sourceCount: 3 },
     });
+  });
+
+  it("preserves a specialist tool result when its final synthesis times out", async () => {
+    const childAgent = {
+      ...rootAgent,
+      id: "88888888-8888-4888-8888-888888888888",
+      name: "ServiceNow specialist",
+      kind: "assistant",
+    };
+    const childVersion = {
+      ...rootVersion,
+      id: "99999999-9999-4999-8999-999999999999",
+      agentId: childAgent.id,
+      maxToolCalls: 1,
+    };
+    const orchestrator = {
+      ...rootAgent,
+      name: "ServiceNow orchestrator",
+      kind: "orchestrator",
+    };
+    const orchestratorVersion = {
+      ...rootVersion,
+      maxToolCalls: 2,
+      orchestrationPolicyJson: {
+        maxDepth: 2,
+        maxDelegations: 2,
+        maxParallel: 1,
+        maxChildSteps: 2,
+        maxTotalTokens: 50_000,
+        timeoutMs: 120_000,
+        resultMaxChars: 12_000,
+      },
+    };
+    mocks.getVisibleAgent
+      .mockResolvedValueOnce(orchestrator)
+      .mockResolvedValueOnce(childAgent);
+    mocks.getActiveVersion.mockResolvedValueOnce(orchestratorVersion);
+    mocks.getVersion.mockResolvedValueOnce(childVersion);
+    mocks.getDelegationBindings.mockResolvedValueOnce([
+      {
+        childAgentId: childAgent.id,
+        childAgentVersionId: childVersion.id,
+        instructions: "Research ServiceNow release notes",
+      },
+    ]);
+    mocks.buildBoundTools
+      .mockResolvedValueOnce({ tools: {}, toolApproval: undefined })
+      .mockResolvedValueOnce({
+        tools: {
+          deepwiki: {
+            execute: vi.fn(async () => ({
+              result: "Australia became generally available on May 5, 2026.",
+            })),
+          },
+        },
+        toolApproval: undefined,
+      });
+    mocks.createRun
+      .mockResolvedValueOnce({
+        run: {
+          id: "77777777-7777-4777-8777-777777777777",
+          status: "queued",
+        },
+        reused: false,
+      })
+      .mockResolvedValueOnce({
+        run: {
+          id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          status: "queued",
+        },
+        reused: false,
+      });
+    mocks.generateText.mockImplementation(async (options) => {
+      const toolEntries = Object.entries(options.tools ?? {});
+      const delegation = toolEntries.find(([name]) =>
+        name.startsWith("delegate_"),
+      );
+      if (delegation) {
+        const delegate = delegation[1] as {
+          execute: (input: { task: string }) => Promise<{
+            result: string;
+          }>;
+        };
+        const delegated = await delegate.execute({
+          task: "Cherche les dernières mises à jour ServiceNow",
+        });
+        expect(delegated.result).toBe(
+          "Australia became generally available on May 5, 2026.",
+        );
+        return {
+          text: `Synthèse: ${delegated.result}`,
+          usage: { inputTokens: 5, outputTokens: 6 },
+        };
+      }
+
+      const deepwiki = Object.fromEntries(toolEntries).deepwiki as {
+        execute: (input: unknown) => Promise<unknown>;
+      };
+      await deepwiki.execute({
+        repoName: "ServiceNow/ServiceNowDocs",
+        question: "Latest updates",
+      });
+      await options.onStepEnd?.({
+        usage: { inputTokens: 15, outputTokens: 3 },
+      });
+      const timeout = new Error("The operation was aborted due to timeout");
+      timeout.name = "TimeoutError";
+      throw timeout;
+    });
+
+    await expect(
+      executeAgent({
+        workspaceId: rootAgent.workspaceId,
+        userId: rootAgent.createdById,
+        agentId: rootAgent.id,
+        prompt: "Parle-moi des dernières mises à jour ServiceNow",
+        trigger: "api",
+      }),
+    ).resolves.toMatchObject({
+      text: "Synthèse: Australia became generally available on May 5, 2026.",
+      totalTreeTokens: 29,
+    });
+
+    expect(mocks.generateText).toHaveBeenCalledTimes(2);
+    expect(mocks.failRun).not.toHaveBeenCalled();
+    expect(mocks.completeRun).toHaveBeenCalledWith(
+      expect.objectContaining({
+        runId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        output: {
+          text: "Australia became generally available on May 5, 2026.",
+        },
+        inputTokens: 15,
+        outputTokens: 3,
+      }),
+    );
+    expect(mocks.appendStep).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "delegation",
+        status: "success",
+        childRunId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      }),
+    );
+    expect(mocks.logWarning).not.toHaveBeenCalled();
   });
 
   it("fails closed when delegation permission is revoked at call time", async () => {
