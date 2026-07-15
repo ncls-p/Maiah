@@ -1,6 +1,5 @@
-import { Loader2 } from "lucide-react";
-
 import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function PageLoading({
   className,
@@ -9,23 +8,27 @@ export function PageLoading({
   className?: string;
   label?: string;
 }) {
-  const displayLabel = label.endsWith("…") ? label : `${label}…`;
-
   return (
     <div
       className={cn(
-        "flex min-h-[40vh] flex-col items-center justify-center gap-4 rounded-3xl border border-transparent bg-card/60 shadow-[var(--surface-shadow)]",
+        "flex min-h-[18rem] w-full flex-col gap-6 rounded-2xl border border-border/60 bg-card p-6 shadow-[var(--surface-shadow)]",
         className,
       )}
       aria-live="polite"
       aria-busy="true"
     >
-      <span className="flex size-12 items-center justify-center rounded-2xl bg-accent text-primary shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--primary)_12%,transparent)]">
-        <Loader2 className="size-5 animate-spin" aria-hidden="true" />
-      </span>
-      <p className="text-sm font-medium text-muted-foreground">
-        {displayLabel}
-      </p>
+      <span className="sr-only">{label}</span>
+      <div className="flex items-center gap-3">
+        <Skeleton className="size-10 shrink-0 rounded-xl" />
+        <div className="flex flex-1 flex-col gap-2">
+          <Skeleton className="h-4 w-40 max-w-[55%]" />
+          <Skeleton className="h-3 w-64 max-w-[80%]" />
+        </div>
+      </div>
+      <div className="grid flex-1 gap-3 sm:grid-cols-2">
+        <Skeleton className="min-h-36 rounded-xl" />
+        <Skeleton className="min-h-36 rounded-xl" />
+      </div>
     </div>
   );
 }

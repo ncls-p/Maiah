@@ -2,11 +2,20 @@
 
 import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
+import { ChevronsUpDownIcon } from "lucide-react";
 
 import { DeodisLogo } from "@/components/deodis-logo";
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { SignOutButton } from "@/components/sign-out-button";
 import { ThemeToggleButton } from "@/components/theme-toggle-button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Tooltip,
   TooltipContent,
@@ -72,81 +81,76 @@ export function SidebarFooter({
   collapsed?: boolean;
 }) {
   const tShell = useTranslations("shell");
-  const tCommon = useTranslations("common");
   const initial = displayName?.trim().charAt(0).toLocaleUpperCase() || "D";
 
-  if (collapsed) {
-    return (
-      <>
-        <div className="mt-auto flex shrink-0 flex-col items-center gap-1.5 border-t border-sidebar-border/60 px-2 py-2.5">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="inline-flex">
-                <LocaleSwitcher compact className="size-10 rounded-xl" />
-              </span>
-            </TooltipTrigger>
-            <TooltipContent side="right">{tCommon("language")}</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="inline-flex">
-                <ThemeToggleButton iconOnly className="size-10 rounded-xl" />
-              </span>
-            </TooltipTrigger>
-            <TooltipContent side="right">{tShell("theme")}</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="inline-flex">
-                <SignOutButton iconOnly className="size-10 rounded-xl" />
-              </span>
-            </TooltipTrigger>
-            <TooltipContent side="right">{tShell("signOut")}</TooltipContent>
-          </Tooltip>
-        </div>
-      </>
-    );
-  }
-
   return (
-    <>
-      <div className="mt-auto shrink-0 border-t border-sidebar-border/60 p-2.5">
-        <div className="rounded-2xl bg-background/72 p-2 shadow-[var(--control-shadow)] backdrop-blur-sm">
-          {displayName ? (
-            <div className="mb-2 flex min-w-0 items-center gap-2 px-1 py-0.5">
-              <span
-                aria-hidden="true"
-                className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-xs font-semibold text-primary"
+    <div
+      className={cn(
+        "mt-auto shrink-0 border-t border-sidebar-border/60",
+        collapsed ? "p-2" : "p-2.5",
+      )}
+    >
+      <DropdownMenu>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className={cn(
+                  "flex min-h-11 items-center rounded-xl text-left text-sm outline-none transition-[background-color,color] duration-200 hover:bg-sidebar-accent/70 focus-visible:ring-2 focus-visible:ring-sidebar-ring",
+                  collapsed ? "w-11 justify-center" : "w-full gap-2.5 px-2.5",
+                )}
+                aria-label={displayName || tShell("workspace")}
               >
-                {initial}
-              </span>
-              <p className="min-w-0 flex-1 truncate text-xs font-medium text-foreground">
-                {displayName}
-              </p>
-            </div>
+                <span
+                  aria-hidden="true"
+                  className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-xs font-semibold text-primary"
+                >
+                  {initial}
+                </span>
+                {!collapsed ? (
+                  <>
+                    <span className="min-w-0 flex-1 truncate font-medium">
+                      {displayName || tShell("workspace")}
+                    </span>
+                    <ChevronsUpDownIcon
+                      className="size-3.5 shrink-0 text-muted-foreground"
+                      aria-hidden="true"
+                    />
+                  </>
+                ) : null}
+              </button>
+            </DropdownMenuTrigger>
+          </TooltipTrigger>
+          {collapsed ? (
+            <TooltipContent side="right">
+              {displayName || tShell("workspace")}
+            </TooltipContent>
           ) : null}
-          <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_2.5rem_2.5rem] gap-1.5">
-            <LocaleSwitcher className="h-10 rounded-xl" />
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="inline-flex">
-                  <ThemeToggleButton iconOnly className="size-10 rounded-xl" />
-                </span>
-              </TooltipTrigger>
-              <TooltipContent side="top">{tShell("theme")}</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="inline-flex">
-                  <SignOutButton iconOnly className="size-10 rounded-xl" />
-                </span>
-              </TooltipTrigger>
-              <TooltipContent side="top">{tShell("signOut")}</TooltipContent>
-            </Tooltip>
-          </div>
-        </div>
-      </div>
-    </>
+        </Tooltip>
+        <DropdownMenuContent
+          side={collapsed ? "right" : "top"}
+          align="start"
+          sideOffset={8}
+          className="w-64 p-1.5"
+        >
+          <DropdownMenuLabel className="truncate px-2.5 py-2 text-sm font-medium text-foreground">
+            {displayName || tShell("workspace")}
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem asChild className="p-0">
+            <LocaleSwitcher menu />
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild className="p-0">
+            <ThemeToggleButton menu />
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem asChild variant="destructive" className="p-0">
+            <SignOutButton className="h-10 w-full rounded-lg px-2.5 font-normal" />
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
   );
 }
 

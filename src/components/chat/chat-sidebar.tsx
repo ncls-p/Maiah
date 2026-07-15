@@ -118,7 +118,6 @@ interface ChatSidebarProps {
     conversationAgentId?: string | null,
   ) => void;
   onNewConversation: () => void;
-  canCreateAgent?: boolean;
   onRenameConversation?: (conversationId: string, title: string) => void;
   onDeleteConversation?: (conversationId: string) => void;
   onCreateConversationFolder?: (name: string) => void;
@@ -498,7 +497,6 @@ export function ChatSidebar({
   onLoadMoreSearchResults,
   onSelectConversation,
   onNewConversation,
-  canCreateAgent = false,
   onRenameConversation,
   onDeleteConversation,
   onCreateConversationFolder,
@@ -537,8 +535,12 @@ export function ChatSidebar({
     () => (shell ? buildMenuGroups(shell) : []),
     [shell],
   );
-  const canConfigureProviders = Boolean(shell?.permissions.canManageProviders);
   const searchActive = searchQuery.trim().length > 0;
+  const showConversationTools =
+    loading ||
+    searchActive ||
+    conversations.length > 0 ||
+    conversationFolders.length > 0;
   const sortedConversations = useMemo(() => {
     return [...conversations].sort((a, b) => {
       const aPinned = a.pinnedAt ? 0 : 1;
@@ -854,52 +856,58 @@ export function ChatSidebar({
       <div className="animate-in-fade flex min-h-0 flex-1 flex-col motion-reduce:animate-none">
         <div className="flex min-h-0 flex-1 flex-col">
           <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto px-2 py-2">
-            <div className="flex min-h-10 items-center justify-between px-2">
-              <span className="text-[11px] font-medium text-muted-foreground">
-                {t("conversations")}
-              </span>
-              <div className="flex items-center">
-                <Button
-                  type={BUTTON_TYPE}
-                  size="icon-sm"
-                  variant={GHOST_VARIANT}
-                  aria-label={t("createFolder")}
-                  className="size-10 rounded-xl text-muted-foreground"
-                  onClick={startFolderCreate}
-                >
-                  <FolderPlusIcon className="size-3.5" aria-hidden="true" />
-                </Button>
+            {showConversationTools ? (
+              <div className="flex min-h-10 items-center justify-between px-2">
+                <span className="text-[11px] font-medium text-muted-foreground">
+                  {t("conversations")}
+                </span>
+                <div className="flex items-center">
+                  <Button
+                    type={BUTTON_TYPE}
+                    size="icon-sm"
+                    variant={GHOST_VARIANT}
+                    aria-label={t("createFolder")}
+                    className="size-10 rounded-xl text-muted-foreground"
+                    onClick={startFolderCreate}
+                  >
+                    <FolderPlusIcon className="size-3.5" aria-hidden="true" />
+                  </Button>
+                </div>
               </div>
-            </div>
+            ) : null}
 
-            <div className="flex items-center gap-2 px-1 pb-1">
-              <SearchIcon
-                className="size-4 shrink-0 text-muted-foreground"
-                aria-hidden="true"
-              />
-              <Input
-                type="search"
-                name="conversation-search"
-                autoComplete="off"
-                aria-label={t("searchLabel")}
-                placeholder={t("searchPlaceholder")}
-                value={searchQuery}
-                onChange={(event) => onSearchQueryChange?.(event.target.value)}
-                className="h-10 min-w-0 rounded-xl px-3 text-xs"
-              />
-              {searchActive ? (
-                <Button
-                  type={BUTTON_TYPE}
-                  size="icon-sm"
-                  variant={GHOST_VARIANT}
-                  className="size-10 shrink-0 rounded-xl"
-                  aria-label={t("clearSearch")}
-                  onClick={() => onSearchQueryChange?.("")}
-                >
-                  <XIcon data-icon="inline-start" aria-hidden="true" />
-                </Button>
-              ) : null}
-            </div>
+            {showConversationTools ? (
+              <div className="flex items-center gap-2 px-1 pb-1">
+                <SearchIcon
+                  className="size-4 shrink-0 text-muted-foreground"
+                  aria-hidden="true"
+                />
+                <Input
+                  type="search"
+                  name="conversation-search"
+                  autoComplete="off"
+                  aria-label={t("searchLabel")}
+                  placeholder={t("searchPlaceholder")}
+                  value={searchQuery}
+                  onChange={(event) =>
+                    onSearchQueryChange?.(event.target.value)
+                  }
+                  className="h-10 min-w-0 rounded-xl px-3 text-xs"
+                />
+                {searchActive ? (
+                  <Button
+                    type={BUTTON_TYPE}
+                    size="icon-sm"
+                    variant={GHOST_VARIANT}
+                    className="size-10 shrink-0 rounded-xl"
+                    aria-label={t("clearSearch")}
+                    onClick={() => onSearchQueryChange?.("")}
+                  >
+                    <XIcon data-icon="inline-start" aria-hidden="true" />
+                  </Button>
+                ) : null}
+              </div>
+            ) : null}
 
             <p className="sr-only" aria-live="polite">
               {searchActive && !searching && !searchError
@@ -1069,32 +1077,6 @@ export function ChatSidebar({
                         {t("emptyDescription")}
                       </EmptyDescription>
                     </EmptyHeader>
-                    {canConfigureProviders || canCreateAgent ? (
-                      <div className="mt-4 flex flex-wrap justify-center gap-2 text-xs">
-                        {canConfigureProviders ? (
-                          <Button
-                            asChild
-                            variant="link"
-                            size="sm"
-                            className="min-h-10 px-0 text-muted-foreground"
-                          >
-                            <Link href="/providers">
-                              {t("configureProvider")}
-                            </Link>
-                          </Button>
-                        ) : null}
-                        {canCreateAgent ? (
-                          <Button
-                            asChild
-                            variant="link"
-                            size="sm"
-                            className="min-h-10 px-0 text-muted-foreground"
-                          >
-                            <Link href="/agents">{t("createAgent")}</Link>
-                          </Button>
-                        ) : null}
-                      </div>
-                    ) : null}
                   </Empty>
                 </div>
               ) : (

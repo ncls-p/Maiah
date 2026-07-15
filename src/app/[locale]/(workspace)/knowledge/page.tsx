@@ -499,7 +499,7 @@ export default function KnowledgePage() {
       description={t("description")}
       width="wide"
       actions={
-        canManageKnowledgeBases ? (
+        canManageKnowledgeBases && !loading && bases.length > 0 ? (
           <Button
             type="button"
             size="sm"
@@ -577,32 +577,29 @@ export default function KnowledgePage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <div className="grid gap-6 lg:grid-cols-[20rem_1fr]">
-        <section className="flex flex-col gap-4">
-          <SectionHeader
-            title={t("basesTitle")}
-            description={t("basesDescription")}
-          />
-          {loading ? (
-            <Loader2 className="animate-spin" />
-          ) : bases.length === 0 ? (
-            <PageEmptyState
-              icon={BookOpenIcon}
-              title={t("emptyTitle")}
-              description={t("emptyBasesDescription")}
-            >
-              {canManageKnowledgeBases ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={() => setShowCreateDialog(true)}
-                >
-                  <PlusIcon data-icon="inline-start" />
-                  {t("createBaseCta")}
-                </Button>
-              ) : null}
-            </PageEmptyState>
-          ) : (
+      {loading ? (
+        <PageLoading label={tCommon("loading")} />
+      ) : bases.length === 0 ? (
+        <PageEmptyState
+          icon={BookOpenIcon}
+          title={t("emptyTitle")}
+          description={t("emptyBasesDescription")}
+          className="min-h-[22rem]"
+        >
+          {canManageKnowledgeBases ? (
+            <Button type="button" onClick={() => setShowCreateDialog(true)}>
+              <PlusIcon data-icon="inline-start" aria-hidden="true" />
+              {t("createBaseCta")}
+            </Button>
+          ) : null}
+        </PageEmptyState>
+      ) : (
+        <div className="grid gap-6 lg:grid-cols-[20rem_1fr]">
+          <section className="flex flex-col gap-4">
+            <SectionHeader
+              title={t("basesTitle")}
+              description={t("basesDescription")}
+            />
             <div className="flex flex-col gap-2">
               {bases.map((base) => (
                 <ListRow
@@ -669,367 +666,372 @@ export default function KnowledgePage() {
                 </ListRow>
               ))}
             </div>
-          )}
-        </section>
-        <section className="flex flex-col gap-4">
-          {!selectedId ? (
-            <PageEmptyState
-              icon={BookOpenIcon}
-              title={t("selectBaseTitle")}
-              description={t("selectBaseDescription")}
-            />
-          ) : (
-            <>
-              <div className="flex flex-col gap-3 rounded-2xl border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="min-w-0">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <p className="truncate text-base font-semibold">
-                      {selectedBase?.name ?? t("documents")}
+          </section>
+          <section className="flex flex-col gap-4">
+            {!selectedId ? (
+              <PageEmptyState
+                icon={BookOpenIcon}
+                title={t("selectBaseTitle")}
+                description={t("selectBaseDescription")}
+              />
+            ) : (
+              <>
+                <div className="flex flex-col gap-3 rounded-2xl border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <p className="truncate text-base font-semibold">
+                        {selectedBase?.name ?? t("documents")}
+                      </p>
+                      {selectedBase ? (
+                        <Badge
+                          variant={
+                            selectedBase.isGlobal ? "secondary" : "outline"
+                          }
+                        >
+                          {selectedBase.isGlobal
+                            ? t("scopeGlobal")
+                            : t("scopePrivate")}
+                        </Badge>
+                      ) : null}
+                    </div>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {selectedBase?.description || t("documentsHint")}
                     </p>
-                    {selectedBase ? (
-                      <Badge
-                        variant={
-                          selectedBase.isGlobal ? "secondary" : "outline"
+                  </div>
+                  {selectedBaseCanEdit ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => void openAttachDialog()}
+                    >
+                      {t("attachAssistant")}
+                    </Button>
+                  ) : null}
+                </div>
+
+                {selectedBaseCanEdit ? (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <BookOpenIcon className="size-5" aria-hidden="true" />
+                        {t("documents")}
+                      </CardTitle>
+                      <CardDescription>{t("documentsHint")}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="grid gap-3">
+                      <div
+                        className={cn(
+                          "rounded-xl border border-dashed p-6 text-center text-sm transition-colors",
+                          dragActive
+                            ? "border-primary bg-primary/5"
+                            : "border-border text-muted-foreground",
+                        )}
+                        onDragOver={(event) => {
+                          event.preventDefault();
+                          setDragActive(true);
+                        }}
+                        onDragLeave={() => setDragActive(false)}
+                        onDrop={handleFileDrop}
+                      >
+                        {t("dropHint")}
+                      </div>
+                      <Input
+                        aria-label={t("documentTitle")}
+                        name="document-title"
+                        autoComplete="off"
+                        placeholder={t("documentTitlePlaceholder")}
+                        value={docForm.title}
+                        onChange={(e) =>
+                          setDocForm({ ...docForm, title: e.target.value })
+                        }
+                      />
+                      <Textarea
+                        aria-label={t("documentContent")}
+                        name="document-content"
+                        autoComplete="off"
+                        className="min-h-40"
+                        placeholder={t("documentContentPlaceholder")}
+                        value={docForm.content}
+                        onChange={(e) =>
+                          setDocForm({ ...docForm, content: e.target.value })
+                        }
+                      />
+                    </CardContent>
+                    <CardFooter className="justify-end">
+                      <Button
+                        onClick={() => void ingestDocument()}
+                        disabled={
+                          !selectedBaseCanEdit ||
+                          !docForm.title.trim() ||
+                          !docForm.content.trim()
                         }
                       >
-                        {selectedBase.isGlobal
-                          ? t("scopeGlobal")
-                          : t("scopePrivate")}
-                      </Badge>
-                    ) : null}
-                  </div>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {selectedBase?.description || t("documentsHint")}
-                  </p>
+                        {t("ingestDocument")}
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                ) : null}
+                <div className="grid gap-2">
+                  {documentsError ? (
+                    <div
+                      className="rounded-xl border border-destructive/25 bg-destructive/5 p-4"
+                      role="alert"
+                    >
+                      <p className="text-sm font-medium">
+                        {t("documentsLoadError")}
+                      </p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="mt-3"
+                        onClick={() => {
+                          setDocumentsError(false);
+                          void loadDocuments().catch(() =>
+                            setDocumentsError(true),
+                          );
+                        }}
+                      >
+                        {t("retry")}
+                      </Button>
+                    </div>
+                  ) : null}
+                  {!documentsError && documents.length === 0 ? (
+                    <p className="rounded-xl border border-dashed p-5 text-center text-sm text-muted-foreground">
+                      {t("documentsEmpty")}
+                    </p>
+                  ) : null}
+                  {documents.map((doc) => (
+                    <Card key={doc.id} size="sm">
+                      <CardContent className="flex items-center justify-between gap-2 p-4">
+                        <span className="min-w-0 truncate font-medium">
+                          {doc.title}
+                        </span>
+                        <div className="flex shrink-0 items-center gap-2">
+                          <Badge variant={statusVariant(doc.status)}>
+                            {statusLabel(doc.status, t)}
+                          </Badge>
+                          {selectedBaseCanEdit ? (
+                            <Button
+                              type="button"
+                              size="icon-sm"
+                              variant="ghost"
+                              aria-label={t("deleteAria", { name: doc.title })}
+                              onClick={() =>
+                                setPendingDelete({
+                                  kind: "document",
+                                  id: doc.id,
+                                  name: doc.title,
+                                })
+                              }
+                            >
+                              <Trash2Icon aria-hidden="true" />
+                            </Button>
+                          ) : null}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
-                {selectedBaseCanEdit ? (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => void openAttachDialog()}
-                  >
-                    {t("attachAssistant")}
-                  </Button>
+                <AdvancedSection
+                  label={t("optionalSearch")}
+                  hint={t("optionalSearchHint")}
+                  storageKey="advanced:knowledge-search"
+                >
+                  <div className="grid gap-3">
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <Input
+                        aria-label={t("searchAriaLabel")}
+                        name="knowledge-search"
+                        autoComplete="off"
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        placeholder={t("searchPlaceholder")}
+                      />
+                      <Button onClick={() => void search()}>
+                        <SearchIcon
+                          data-icon="inline-start"
+                          aria-hidden="true"
+                        />
+                        {t("search")}
+                      </Button>
+                    </div>
+                    {results.map((result) => (
+                      <div
+                        key={result.chunkId}
+                        className="rounded-xl border p-3 text-sm"
+                      >
+                        <p className="font-medium">{result.documentTitle}</p>
+                        <p className="mt-1 line-clamp-4 text-muted-foreground">
+                          {result.content}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </AdvancedSection>
+              </>
+            )}
+          </section>
+          <Dialog
+            open={Boolean(editingBase?.canEdit) && canManageKnowledgeBases}
+            onOpenChange={() => setEditingBase(null)}
+          >
+            <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>{t("editBaseTitle")}</DialogTitle>
+                <DialogDescription>
+                  {t("editBaseDescription")}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-3">
+                <Label htmlFor="edit-knowledge-name">{t("name")}</Label>
+                <Input
+                  id="edit-knowledge-name"
+                  name="edit-knowledge-name"
+                  autoComplete="off"
+                  value={editBaseForm.name}
+                  onChange={(e) =>
+                    setEditBaseForm({ ...editBaseForm, name: e.target.value })
+                  }
+                />
+                <Label htmlFor="edit-knowledge-description">
+                  {t("descriptionLabel")}
+                </Label>
+                <Input
+                  id="edit-knowledge-description"
+                  name="edit-knowledge-description"
+                  autoComplete="off"
+                  value={editBaseForm.description}
+                  onChange={(e) =>
+                    setEditBaseForm({
+                      ...editBaseForm,
+                      description: e.target.value,
+                    })
+                  }
+                />
+                {canManageTenantGlobals ? (
+                  <div className="flex items-start gap-3 rounded-lg border border-border/70 bg-muted/20 p-3">
+                    <Checkbox
+                      id="edit-knowledge-global"
+                      checked={editBaseForm.isGlobal}
+                      onCheckedChange={(checked) =>
+                        setEditBaseForm({
+                          ...editBaseForm,
+                          isGlobal: checked === true,
+                        })
+                      }
+                    />
+                    <div className="grid gap-1.5 leading-none">
+                      <Label htmlFor="edit-knowledge-global">
+                        {t("globalLabel")}
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        {t("globalDescription")}
+                      </p>
+                    </div>
+                  </div>
                 ) : null}
               </div>
-
-              {selectedBaseCanEdit ? (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <BookOpenIcon className="size-5" aria-hidden="true" />
-                      {t("documents")}
-                    </CardTitle>
-                    <CardDescription>{t("documentsHint")}</CardDescription>
-                  </CardHeader>
-                  <CardContent className="grid gap-3">
-                    <div
-                      className={cn(
-                        "rounded-xl border border-dashed p-6 text-center text-sm transition-colors",
-                        dragActive
-                          ? "border-primary bg-primary/5"
-                          : "border-border text-muted-foreground",
-                      )}
-                      onDragOver={(event) => {
-                        event.preventDefault();
-                        setDragActive(true);
-                      }}
-                      onDragLeave={() => setDragActive(false)}
-                      onDrop={handleFileDrop}
-                    >
-                      {t("dropHint")}
-                    </div>
-                    <Input
-                      aria-label={t("documentTitle")}
-                      name="document-title"
-                      autoComplete="off"
-                      placeholder={t("documentTitlePlaceholder")}
-                      value={docForm.title}
-                      onChange={(e) =>
-                        setDocForm({ ...docForm, title: e.target.value })
-                      }
-                    />
-                    <Textarea
-                      aria-label={t("documentContent")}
-                      name="document-content"
-                      autoComplete="off"
-                      className="min-h-40"
-                      placeholder={t("documentContentPlaceholder")}
-                      value={docForm.content}
-                      onChange={(e) =>
-                        setDocForm({ ...docForm, content: e.target.value })
-                      }
-                    />
-                  </CardContent>
-                  <CardFooter className="justify-end">
-                    <Button
-                      onClick={() => void ingestDocument()}
-                      disabled={
-                        !selectedBaseCanEdit ||
-                        !docForm.title.trim() ||
-                        !docForm.content.trim()
-                      }
-                    >
-                      {t("ingestDocument")}
-                    </Button>
-                  </CardFooter>
-                </Card>
-              ) : null}
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setEditingBase(null)}>
+                  {tCommon("cancel")}
+                </Button>
+                <Button
+                  onClick={() => void updateBase()}
+                  disabled={!editingBase?.canEdit || !editBaseForm.name.trim()}
+                >
+                  {tCommon("save")}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+          <Dialog
+            open={selectedBaseCanEdit && attachOpen}
+            onOpenChange={setAttachOpen}
+          >
+            <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>{t("attachDialogTitle")}</DialogTitle>
+                <DialogDescription>
+                  {t("attachDialogDescription")}
+                </DialogDescription>
+              </DialogHeader>
               <div className="grid gap-2">
-                {documentsError ? (
-                  <div
-                    className="rounded-xl border border-destructive/25 bg-destructive/5 p-4"
-                    role="alert"
-                  >
-                    <p className="text-sm font-medium">
-                      {t("documentsLoadError")}
+                {loadingAttachAgents ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2
+                      className="size-5 animate-spin text-muted-foreground"
+                      aria-hidden="true"
+                    />
+                  </div>
+                ) : attachAgentsError ? (
+                  <div className="py-6 text-center" role="alert">
+                    <p className="text-sm text-muted-foreground">
+                      {t("errorLoadAgents")}
                     </p>
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
                       className="mt-3"
-                      onClick={() => {
-                        setDocumentsError(false);
-                        void loadDocuments().catch(() =>
-                          setDocumentsError(true),
-                        );
-                      }}
+                      onClick={() => void openAttachDialog()}
                     >
                       {t("retry")}
                     </Button>
                   </div>
-                ) : null}
-                {!documentsError && documents.length === 0 ? (
-                  <p className="rounded-xl border border-dashed p-5 text-center text-sm text-muted-foreground">
-                    {t("documentsEmpty")}
+                ) : attachAgents.length === 0 ? (
+                  <p className="py-6 text-center text-sm text-muted-foreground">
+                    {t("noAttachAgents")}
                   </p>
-                ) : null}
-                {documents.map((doc) => (
-                  <Card key={doc.id} size="sm">
-                    <CardContent className="flex items-center justify-between gap-2 p-4">
-                      <span className="min-w-0 truncate font-medium">
-                        {doc.title}
-                      </span>
-                      <div className="flex shrink-0 items-center gap-2">
-                        <Badge variant={statusVariant(doc.status)}>
-                          {statusLabel(doc.status, t)}
-                        </Badge>
-                        {selectedBaseCanEdit ? (
-                          <Button
-                            type="button"
-                            size="icon-sm"
-                            variant="ghost"
-                            aria-label={t("deleteAria", { name: doc.title })}
-                            onClick={() =>
-                              setPendingDelete({
-                                kind: "document",
-                                id: doc.id,
-                                name: doc.title,
-                              })
-                            }
-                          >
-                            <Trash2Icon aria-hidden="true" />
-                          </Button>
-                        ) : null}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-              <AdvancedSection
-                label={t("optionalSearch")}
-                hint={t("optionalSearchHint")}
-                storageKey="advanced:knowledge-search"
-              >
-                <div className="grid gap-3">
-                  <div className="flex flex-col gap-2 sm:flex-row">
-                    <Input
-                      aria-label={t("searchAriaLabel")}
-                      name="knowledge-search"
-                      autoComplete="off"
-                      value={query}
-                      onChange={(e) => setQuery(e.target.value)}
-                      placeholder={t("searchPlaceholder")}
-                    />
-                    <Button onClick={() => void search()}>
-                      <SearchIcon data-icon="inline-start" aria-hidden="true" />
-                      {t("search")}
-                    </Button>
-                  </div>
-                  {results.map((result) => (
-                    <div
-                      key={result.chunkId}
-                      className="rounded-xl border p-3 text-sm"
-                    >
-                      <p className="font-medium">{result.documentTitle}</p>
-                      <p className="mt-1 line-clamp-4 text-muted-foreground">
-                        {result.content}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </AdvancedSection>
-            </>
-          )}
-        </section>
-        <Dialog
-          open={Boolean(editingBase?.canEdit) && canManageKnowledgeBases}
-          onOpenChange={() => setEditingBase(null)}
-        >
-          <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>{t("editBaseTitle")}</DialogTitle>
-              <DialogDescription>{t("editBaseDescription")}</DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-3">
-              <Label htmlFor="edit-knowledge-name">{t("name")}</Label>
-              <Input
-                id="edit-knowledge-name"
-                name="edit-knowledge-name"
-                autoComplete="off"
-                value={editBaseForm.name}
-                onChange={(e) =>
-                  setEditBaseForm({ ...editBaseForm, name: e.target.value })
-                }
-              />
-              <Label htmlFor="edit-knowledge-description">
-                {t("descriptionLabel")}
-              </Label>
-              <Input
-                id="edit-knowledge-description"
-                name="edit-knowledge-description"
-                autoComplete="off"
-                value={editBaseForm.description}
-                onChange={(e) =>
-                  setEditBaseForm({
-                    ...editBaseForm,
-                    description: e.target.value,
-                  })
-                }
-              />
-              {canManageTenantGlobals ? (
-                <div className="flex items-start gap-3 rounded-lg border border-border/70 bg-muted/20 p-3">
-                  <Checkbox
-                    id="edit-knowledge-global"
-                    checked={editBaseForm.isGlobal}
-                    onCheckedChange={(checked) =>
-                      setEditBaseForm({
-                        ...editBaseForm,
-                        isGlobal: checked === true,
-                      })
-                    }
-                  />
-                  <div className="grid gap-1.5 leading-none">
-                    <Label htmlFor="edit-knowledge-global">
-                      {t("globalLabel")}
-                    </Label>
-                    <p className="text-xs text-muted-foreground">
-                      {t("globalDescription")}
-                    </p>
-                  </div>
-                </div>
-              ) : null}
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setEditingBase(null)}>
-                {tCommon("cancel")}
-              </Button>
-              <Button
-                onClick={() => void updateBase()}
-                disabled={!editingBase?.canEdit || !editBaseForm.name.trim()}
-              >
-                {tCommon("save")}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-        <Dialog
-          open={selectedBaseCanEdit && attachOpen}
-          onOpenChange={setAttachOpen}
-        >
-          <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>{t("attachDialogTitle")}</DialogTitle>
-              <DialogDescription>
-                {t("attachDialogDescription")}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-2">
-              {loadingAttachAgents ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2
-                    className="size-5 animate-spin text-muted-foreground"
-                    aria-hidden="true"
-                  />
-                </div>
-              ) : attachAgentsError ? (
-                <div className="py-6 text-center" role="alert">
-                  <p className="text-sm text-muted-foreground">
-                    {t("errorLoadAgents")}
-                  </p>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="mt-3"
-                    onClick={() => void openAttachDialog()}
-                  >
-                    {t("retry")}
-                  </Button>
-                </div>
-              ) : attachAgents.length === 0 ? (
-                <p className="py-6 text-center text-sm text-muted-foreground">
-                  {t("noAttachAgents")}
-                </p>
-              ) : (
-                attachAgents.map((agent) => {
-                  const canAttach = Boolean(
-                    agent.canEdit && agent.activeVersionId,
-                  );
-                  return (
-                    <button
-                      key={agent.id}
-                      type="button"
-                      disabled={!canAttach || attachingAgentId !== null}
-                      className="flex items-center gap-3 rounded-xl border p-3 text-left text-sm transition-colors hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-50"
-                      onClick={() => void attachBaseToAgent(agent.id)}
-                    >
-                      <ModelLogo
-                        logoUrl={agent.logoUrl}
-                        label={agent.name}
-                        size="md"
-                        imageFit="cover"
-                        className="rounded-full"
-                      />
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate font-medium">
-                          {agent.name}
-                        </span>
-                        <span className="block truncate text-xs text-muted-foreground">
-                          {agent.modelDisplayName || t("agentNeedsModel")}
-                        </span>
-                      </span>
-                      {attachingAgentId === agent.id ? (
-                        <Loader2
-                          className="size-4 animate-spin"
-                          aria-hidden="true"
+                ) : (
+                  attachAgents.map((agent) => {
+                    const canAttach = Boolean(
+                      agent.canEdit && agent.activeVersionId,
+                    );
+                    return (
+                      <button
+                        key={agent.id}
+                        type="button"
+                        disabled={!canAttach || attachingAgentId !== null}
+                        className="flex items-center gap-3 rounded-xl border p-3 text-left text-sm transition-colors hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-50"
+                        onClick={() => void attachBaseToAgent(agent.id)}
+                      >
+                        <ModelLogo
+                          logoUrl={agent.logoUrl}
+                          label={agent.name}
+                          size="md"
+                          imageFit="cover"
+                          className="rounded-full"
                         />
-                      ) : null}
-                    </button>
-                  );
-                })
-              )}
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setAttachOpen(false)}>
-                {tCommon("cancel")}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate font-medium">
+                            {agent.name}
+                          </span>
+                          <span className="block truncate text-xs text-muted-foreground">
+                            {agent.modelDisplayName || t("agentNeedsModel")}
+                          </span>
+                        </span>
+                        {attachingAgentId === agent.id ? (
+                          <Loader2
+                            className="size-4 animate-spin"
+                            aria-hidden="true"
+                          />
+                        ) : null}
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setAttachOpen(false)}>
+                  {tCommon("cancel")}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+      )}
       <AlertDialog
         open={pendingDelete !== null}
         onOpenChange={(open) => {

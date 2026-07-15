@@ -517,7 +517,16 @@ export default function MarketplacePage() {
     });
   }, []);
 
-  if (loading) return <PageLoading />;
+  if (loading) {
+    return (
+      <WorkspacePage
+        title={tMarketplace("title")}
+        description={tMarketplace("description")}
+      >
+        <PageLoading label={t("loading")} />
+      </WorkspacePage>
+    );
+  }
   if (loadError) {
     return (
       <WorkspacePage
@@ -546,152 +555,166 @@ export default function MarketplacePage() {
     );
   }
 
+  const hasMarketplaceItems =
+    publishedItems.length + myItems.length + sharedItems.length > 0;
+
   return (
     <WorkspacePage
       title={tMarketplace("title")}
       description={tMarketplace("description")}
     >
-      <div className="flex flex-col sm:flex-row gap-3 mb-6">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-          <Input
-            aria-label={t("searchPlaceholder")}
-            placeholder={t("searchPlaceholder")}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-        <Select value={typeFilter} onValueChange={setTypeFilter}>
-          <SelectTrigger
-            className="w-full sm:w-32"
-            aria-label={t("filterType")}
-          >
-            <SelectValue placeholder={t("filterType")} />
-          </SelectTrigger>
-          <SelectContent position="popper" className="z-[100]">
-            {typeOptions.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {t(option.labelKey)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={sortBy} onValueChange={setSortBy}>
-          <SelectTrigger
-            className="w-full sm:w-36"
-            aria-label={t("filterSort")}
-          >
-            <SelectValue placeholder={t("filterSort")} />
-          </SelectTrigger>
-          <SelectContent position="popper" className="z-[100]">
-            <SelectItem value="featured">{t("sort.featured")}</SelectItem>
-            <SelectItem value="newest">{t("sort.newest")}</SelectItem>
-            <SelectItem value="downloads">{t("sort.downloads")}</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      <Tabs defaultValue="all">
-        <TabsList>
-          <TabsTrigger value="all">
-            {t("tabs.all", { count: filteredPublished.length })}
-          </TabsTrigger>
-          <TabsTrigger value="my-items">
-            {t("tabs.myItems", { count: filteredMyItems.length })}
-          </TabsTrigger>
-          <TabsTrigger value="shared">
-            {t("tabs.shared", { count: filteredShared.length })}
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="all" className="mt-4">
-          {filteredPublished.length === 0 ? (
-            <PageEmptyState
-              icon={Store}
-              title={t("emptyAll")}
-              description={tMarketplace("description")}
-            />
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredPublished.map((item) => (
-                <MarketplaceItemCard
-                  key={item.id}
-                  item={item}
-                  isOwner={item.publisherUserId === currentUserId}
-                  isAdmin={isAdmin}
-                  locale={locale}
-                  t={t}
-                  tMarketplace={tMarketplace}
-                  onInstall={handleInstall}
-                  onShare={openShareDialog}
-                  onDelete={requestDelete}
-                  onFeature={handleFeature}
-                  onUnfeature={handleUnfeature}
-                />
-              ))}
+      {!hasMarketplaceItems ? (
+        <PageEmptyState
+          icon={Store}
+          title={t("emptyAll")}
+          description={tMarketplace("description")}
+          className="min-h-[22rem]"
+        />
+      ) : (
+        <>
+          <div className="mb-5 flex flex-col gap-3 sm:flex-row">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+              <Input
+                aria-label={t("searchPlaceholder")}
+                placeholder={t("searchPlaceholder")}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9"
+              />
             </div>
-          )}
-        </TabsContent>
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger
+                className="w-full sm:w-32"
+                aria-label={t("filterType")}
+              >
+                <SelectValue placeholder={t("filterType")} />
+              </SelectTrigger>
+              <SelectContent position="popper" className="z-[100]">
+                {typeOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {t(option.labelKey)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger
+                className="w-full sm:w-36"
+                aria-label={t("filterSort")}
+              >
+                <SelectValue placeholder={t("filterSort")} />
+              </SelectTrigger>
+              <SelectContent position="popper" className="z-[100]">
+                <SelectItem value="featured">{t("sort.featured")}</SelectItem>
+                <SelectItem value="newest">{t("sort.newest")}</SelectItem>
+                <SelectItem value="downloads">{t("sort.downloads")}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-        <TabsContent value="my-items" className="mt-4">
-          {filteredMyItems.length === 0 ? (
-            <PageEmptyState
-              icon={PackagePlus}
-              title={t("emptyMy")}
-              description={tMarketplace("description")}
-            />
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredMyItems.map((item) => (
-                <MarketplaceItemCard
-                  key={item.id}
-                  item={item}
-                  isOwner={true}
-                  isAdmin={isAdmin}
-                  locale={locale}
-                  t={t}
-                  tMarketplace={tMarketplace}
-                  onInstall={handleInstall}
-                  onShare={openShareDialog}
-                  onDelete={requestDelete}
-                  onFeature={handleFeature}
-                  onUnfeature={handleUnfeature}
-                />
-              ))}
-            </div>
-          )}
-        </TabsContent>
+          <Tabs defaultValue="all">
+            <TabsList>
+              <TabsTrigger value="all">
+                {t("tabs.all", { count: filteredPublished.length })}
+              </TabsTrigger>
+              <TabsTrigger value="my-items">
+                {t("tabs.myItems", { count: filteredMyItems.length })}
+              </TabsTrigger>
+              <TabsTrigger value="shared">
+                {t("tabs.shared", { count: filteredShared.length })}
+              </TabsTrigger>
+            </TabsList>
 
-        <TabsContent value="shared" className="mt-4">
-          {filteredShared.length === 0 ? (
-            <PageEmptyState
-              icon={Share2}
-              title={t("emptyShared")}
-              description={tMarketplace("description")}
-            />
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredShared.map((item) => (
-                <MarketplaceItemCard
-                  key={item.id}
-                  item={item}
-                  isOwner={item.publisherUserId === currentUserId}
-                  isAdmin={isAdmin}
-                  locale={locale}
-                  t={t}
-                  tMarketplace={tMarketplace}
-                  onInstall={handleInstall}
-                  onShare={openShareDialog}
-                  onDelete={requestDelete}
-                  onFeature={handleFeature}
-                  onUnfeature={handleUnfeature}
+            <TabsContent value="all" className="mt-4">
+              {filteredPublished.length === 0 ? (
+                <PageEmptyState
+                  icon={Store}
+                  title={t("emptyAll")}
+                  description={tMarketplace("description")}
                 />
-              ))}
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredPublished.map((item) => (
+                    <MarketplaceItemCard
+                      key={item.id}
+                      item={item}
+                      isOwner={item.publisherUserId === currentUserId}
+                      isAdmin={isAdmin}
+                      locale={locale}
+                      t={t}
+                      tMarketplace={tMarketplace}
+                      onInstall={handleInstall}
+                      onShare={openShareDialog}
+                      onDelete={requestDelete}
+                      onFeature={handleFeature}
+                      onUnfeature={handleUnfeature}
+                    />
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="my-items" className="mt-4">
+              {filteredMyItems.length === 0 ? (
+                <PageEmptyState
+                  icon={PackagePlus}
+                  title={t("emptyMy")}
+                  description={tMarketplace("description")}
+                />
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredMyItems.map((item) => (
+                    <MarketplaceItemCard
+                      key={item.id}
+                      item={item}
+                      isOwner={true}
+                      isAdmin={isAdmin}
+                      locale={locale}
+                      t={t}
+                      tMarketplace={tMarketplace}
+                      onInstall={handleInstall}
+                      onShare={openShareDialog}
+                      onDelete={requestDelete}
+                      onFeature={handleFeature}
+                      onUnfeature={handleUnfeature}
+                    />
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="shared" className="mt-4">
+              {filteredShared.length === 0 ? (
+                <PageEmptyState
+                  icon={Share2}
+                  title={t("emptyShared")}
+                  description={tMarketplace("description")}
+                />
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredShared.map((item) => (
+                    <MarketplaceItemCard
+                      key={item.id}
+                      item={item}
+                      isOwner={item.publisherUserId === currentUserId}
+                      isAdmin={isAdmin}
+                      locale={locale}
+                      t={t}
+                      tMarketplace={tMarketplace}
+                      onInstall={handleInstall}
+                      onShare={openShareDialog}
+                      onDelete={requestDelete}
+                      onFeature={handleFeature}
+                      onUnfeature={handleUnfeature}
+                    />
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        </>
+      )}
 
       <ResourceShareDialog
         resource={shareResource}

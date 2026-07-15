@@ -1,5 +1,6 @@
 "use client";
 
+import type { ComponentProps } from "react";
 import { MoonStarIcon, SunIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useTheme } from "@teispace/next-themes";
@@ -10,10 +11,14 @@ import { cn } from "@/lib/utils";
 export function ThemeToggleButton({
   className,
   iconOnly = false,
+  menu = false,
+  onClick,
+  ...buttonProps
 }: {
   className?: string;
   iconOnly?: boolean;
-}) {
+  menu?: boolean;
+} & ComponentProps<"button">) {
   const t = useTranslations("shell");
   const { resolvedTheme, setTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
@@ -21,15 +26,23 @@ export function ThemeToggleButton({
   return (
     <Button
       type="button"
-      variant="outline"
+      variant={menu ? "ghost" : "outline"}
       size={iconOnly ? "icon" : "sm"}
       className={cn(
         "text-muted-foreground transition-colors hover:text-foreground",
-        iconOnly ? "rounded-lg" : "rounded-full",
+        iconOnly
+          ? "rounded-lg"
+          : menu
+            ? "h-10 w-full justify-start rounded-lg px-2.5 font-normal"
+            : "rounded-full",
         className,
       )}
       aria-label={t("toggleTheme")}
-      onClick={() => setTheme(isDark ? "light" : "dark")}
+      onClick={(event) => {
+        onClick?.(event);
+        if (!event.defaultPrevented) setTheme(isDark ? "light" : "dark");
+      }}
+      {...buttonProps}
     >
       <span
         data-icon={iconOnly ? undefined : "inline-start"}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { type ComponentProps, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { LogOutIcon } from "lucide-react";
@@ -13,10 +13,13 @@ import { cn } from "@/lib/utils";
 export function SignOutButton({
   iconOnly = false,
   className,
+  onClick,
+  disabled,
+  ...buttonProps
 }: {
   iconOnly?: boolean;
   className?: string;
-}) {
+} & ComponentProps<"button">) {
   const router = useRouter();
   const t = useTranslations("shell");
   const [pending, setPending] = useState(false);
@@ -52,9 +55,13 @@ export function SignOutButton({
         "group justify-start rounded-xl transition-[background-color,color,scale] duration-150 ease-out hover:bg-destructive/10 hover:text-destructive",
         className,
       )}
-      onClick={() => void signOut()}
-      disabled={pending}
+      onClick={(event) => {
+        onClick?.(event);
+        if (!event.defaultPrevented) void signOut();
+      }}
+      disabled={pending || disabled}
       aria-label={t("signOut")}
+      {...buttonProps}
     >
       {pending ? (
         <Spinner data-icon={iconOnly ? undefined : "inline-start"} />

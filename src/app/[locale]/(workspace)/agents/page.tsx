@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 
 import { PageLoading } from "@/components/page-loading";
+import { PageEmptyState } from "@/components/page-empty-state";
 import { ModelLogo } from "@/components/providers/model-logo";
 import { WorkspacePage } from "@/components/workspace-page";
 import {
@@ -504,7 +505,7 @@ export default function AgentsPage() {
       description={tList("pageDescription")}
       width="default"
       actions={
-        canCreateAgent ? (
+        canCreateAgent && !loading && agents.length > 0 ? (
           <Button size="sm" onClick={() => setShowCreateDialog(true)}>
             <PlusIcon className={ICON_SIZE_CLASS} aria-hidden="true" />
             {t("create")}
@@ -514,50 +515,56 @@ export default function AgentsPage() {
     >
       <div className="flex flex-col gap-6">
         {/* Agents list card */}
-        <section className="rounded-2xl border bg-card">
+        <section
+          className={cn(
+            "rounded-2xl",
+            (loading || loadError || agents.length > 0) &&
+              "border border-border/70 bg-card",
+          )}
+        >
           {/* Toolbar */}
-          <div className="flex flex-col gap-3 border-b px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h3 className="text-base font-semibold">{t("title")}</h3>
-              <p className="text-sm text-muted-foreground">
-                {tList("configuredCount", { count: agents.length })}
-              </p>
+          {!loading && !loadError && agents.length > 0 ? (
+            <div className="flex flex-col gap-3 border-b border-border/60 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h3 className="text-base font-semibold">{t("title")}</h3>
+                <p className="text-sm text-muted-foreground">
+                  {tList("configuredCount", { count: agents.length })}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                {agents.length > 2 ? (
+                  <div className="relative w-48 sm:w-56">
+                    <SearchIcon className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      aria-label={tList("filterPlaceholder")}
+                      placeholder={tList("filterPlaceholder")}
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="h-8 pl-9 text-sm"
+                    />
+                    {searchQuery ? (
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        className="absolute right-1 top-1/2 size-6 -translate-y-1/2"
+                        onClick={() => setSearchQuery("")}
+                        aria-label={tList("clearSearch")}
+                      >
+                        <XIcon className="size-3" aria-hidden="true" />
+                      </Button>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              {agents.length > 2 ? (
-                <div className="relative w-48 sm:w-56">
-                  <SearchIcon className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    aria-label={tList("filterPlaceholder")}
-                    placeholder={tList("filterPlaceholder")}
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="h-8 pl-9 text-sm"
-                  />
-                  {searchQuery ? (
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      className="absolute right-1 top-1/2 size-6 -translate-y-1/2"
-                      onClick={() => setSearchQuery("")}
-                      aria-label={tList("clearSearch")}
-                    >
-                      <XIcon className="size-3" aria-hidden="true" />
-                    </Button>
-                  ) : null}
-                </div>
-              ) : null}
-            </div>
-          </div>
+          ) : null}
 
           {/* List content */}
           {loading ? (
-            <div className="flex items-center justify-center py-20">
-              <Loader2
-                className="size-6 animate-spin text-muted-foreground"
-                aria-hidden="true"
-              />
-            </div>
+            <PageLoading
+              label={tCommon("loading")}
+              className="border-0 shadow-none"
+            />
           ) : loadError ? (
             <div className="px-5 py-12 text-center" role="alert">
               <p className="text-sm font-medium">{tList("loadErrorTitle")}</p>
@@ -575,22 +582,19 @@ export default function AgentsPage() {
               </Button>
             </div>
           ) : agents.length === 0 ? (
-            <div className="px-5 py-12 text-center">
-              <p className="text-sm font-medium">{tList("emptyTitle")}</p>
-              <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
-                {tList("emptyDescription")}
-              </p>
+            <PageEmptyState
+              icon={BotIcon}
+              title={tList("emptyTitle")}
+              description={tList("emptyDescription")}
+              className="min-h-[22rem]"
+            >
               {canCreateAgent ? (
-                <Button
-                  size="sm"
-                  className="mt-4"
-                  onClick={() => setShowCreateDialog(true)}
-                >
+                <Button onClick={() => setShowCreateDialog(true)}>
                   <PlusIcon className={ICON_SIZE_CLASS} aria-hidden="true" />
                   {tList("emptyCta")}
                 </Button>
               ) : null}
-            </div>
+            </PageEmptyState>
           ) : filteredAgents.length === 0 ? (
             <div className="px-5 py-8 text-center text-sm text-muted-foreground">
               {tList("noMatch", { query: searchQuery })}

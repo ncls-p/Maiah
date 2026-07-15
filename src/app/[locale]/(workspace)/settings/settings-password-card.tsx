@@ -5,8 +5,8 @@ import { KeyRoundIcon, SaveIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
-import { SettingsSection } from "@/components/admin/settings-panel";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AdvancedSection } from "@/components/ui/advanced-section";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field";
@@ -79,12 +79,14 @@ export function SettingsPasswordCard() {
   }
 
   return (
-    <SettingsSection
+    <AdvancedSection
       icon={KeyRoundIcon}
-      title={t("passwordTitle")}
-      description={t("passwordDescription")}
-      stagger="stagger-2"
+      label={t("passwordTitle")}
+      hint={t("passwordDescription")}
     >
+      <p className="mb-4 max-w-xl text-sm text-muted-foreground">
+        {t("passwordDescription")}
+      </p>
       <form
         className="flex max-w-xl flex-col gap-4"
         onSubmit={handleSubmit}
@@ -185,6 +187,6 @@ export function SettingsPasswordCard() {
           {loading ? t("updatingPassword") : t("updatePassword")}
         </Button>
       </form>
-    </SettingsSection>
+    </AdvancedSection>
   );
 }

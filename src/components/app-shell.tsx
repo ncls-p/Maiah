@@ -167,15 +167,15 @@ export function AppShell({
             <div className="flex min-w-0 flex-1 flex-col">
               {!isChatRoute ? (
                 <AppHeader
-                  title={currentTitle}
+                  title={breadcrumbs ? currentTitle : tShell("workspace")}
                   breadcrumbs={breadcrumbs}
                   leading={<WorkspaceSidebarMobileTrigger shell={shellValue} />}
                   actions={
                     <Button
                       asChild
-                      variant="default"
+                      variant="ghost"
                       size="sm"
-                      className="gap-2"
+                      className="h-10 gap-2 rounded-xl px-3 text-muted-foreground hover:text-foreground"
                     >
                       <Link href="/chat">
                         <MessageSquareIcon

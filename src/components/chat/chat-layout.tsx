@@ -241,7 +241,6 @@ export function ChatLayout({
     onLoadMoreSearchResults: onLoadMoreConversationSearchResults,
     onSelectConversation,
     onNewConversation,
-    canCreateAgent,
     onRenameConversation,
     onDeleteConversation,
     onCreateConversationFolder,
