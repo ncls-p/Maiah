@@ -9,6 +9,7 @@ import {
   useMemo,
   useState,
   useSyncExternalStore,
+  ViewTransition,
   type ReactNode,
 } from "react";
 import {
@@ -18,10 +19,13 @@ import {
   MenuIcon,
 } from "lucide-react";
 
-import { DeodisLogo } from "@/components/deodis-logo";
-import { LocaleSwitcher } from "@/components/locale-switcher";
-import { SignOutButton } from "@/components/sign-out-button";
-import { ThemeToggleButton } from "@/components/theme-toggle-button";
+import {
+  APP_SIDEBAR_SURFACE_CLASS,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarNavIcon,
+  sidebarNavItemClassName,
+} from "@/components/sidebar-chrome";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,6 +42,14 @@ import {
 } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
+  DEFAULT_APP_SIDEBAR_WIDTH,
+  MAX_APP_SIDEBAR_WIDTH,
+  MIN_APP_SIDEBAR_WIDTH,
+  getStoredAppSidebarWidth,
+  setStoredAppSidebarWidth,
+  subscribeAppSidebarWidth,
+} from "@/lib/sidebar-layout";
+import {
   isNavItemActive,
   type NavGroup,
   type NavItem,
@@ -45,39 +57,9 @@ import {
 } from "@/lib/workspace-nav";
 import { buildMenuGroups } from "@/modules/navigation/sidebar-config";
 import { cn } from "@/lib/utils";
-import { SIDEBAR_TO_CHAT_TRANSITION } from "@/lib/sidebar-transitions";
 
 const STORAGE_KEY = "workspace-sidebar-collapsed";
 const STORAGE_EVENT = "workspace-sidebar-collapsed-change";
-const WIDTH_STORAGE_KEY = "workspace-sidebar-width";
-const WIDTH_STORAGE_EVENT = "workspace-sidebar-width-change";
-const DEFAULT_WIDTH = 272;
-const MIN_WIDTH = 224;
-const MAX_WIDTH = 360;
-
-function clampWidth(value: number) {
-  return Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, Math.round(value)));
-}
-
-function subscribeWidth(callback: () => void) {
-  window.addEventListener("storage", callback);
-  window.addEventListener(WIDTH_STORAGE_EVENT, callback);
-  return () => {
-    window.removeEventListener("storage", callback);
-    window.removeEventListener(WIDTH_STORAGE_EVENT, callback);
-  };
-}
-
-function getStoredWidth(): number {
-  const stored = window.localStorage.getItem(WIDTH_STORAGE_KEY);
-  const parsed = stored ? Number.parseInt(stored, 10) : DEFAULT_WIDTH;
-  return Number.isFinite(parsed) ? clampWidth(parsed) : DEFAULT_WIDTH;
-}
-
-function setStoredWidth(width: number) {
-  window.localStorage.setItem(WIDTH_STORAGE_KEY, String(clampWidth(width)));
-  window.dispatchEvent(new Event(WIDTH_STORAGE_EVENT));
-}
 
 function subscribeCollapsed(callback: () => void) {
   window.addEventListener("storage", callback);
@@ -174,27 +156,13 @@ function SidebarNavLink({
   const link = (
     <Link
       href={item.href}
-      transitionTypes={
-        item.href === "/chat" ? [SIDEBAR_TO_CHAT_TRANSITION] : undefined
-      }
       onClick={onNavigate}
       aria-current={active ? "page" : undefined}
-      className={cn(
-        "group relative flex min-h-10 items-center gap-2.5 rounded-xl px-2 py-1.5 text-sm font-medium transition-[background-color,color,box-shadow] duration-150",
-        active
-          ? "nav-item-active bg-card text-sidebar-accent-foreground shadow-[var(--control-shadow)]"
-          : "text-sidebar-foreground/68 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground",
-        collapsed && "justify-center px-1.5",
-      )}
+      className={sidebarNavItemClassName({ active, collapsed })}
     >
-      <span
-        className={cn(
-          "flex size-7 shrink-0 items-center justify-center rounded-lg transition-[background-color,color] duration-150",
-          active ? "bg-accent text-primary" : "text-current",
-        )}
-      >
+      <SidebarNavIcon active={active}>
         <Icon className="size-4 shrink-0" aria-hidden="true" />
-      </span>
+      </SidebarNavIcon>
       {!collapsed ? (
         <>
           <span className="min-w-0 flex-1 truncate">{label}</span>
@@ -310,42 +278,20 @@ function SidebarPanel({
 }) {
   const { toggleCollapsed } = useWorkspaceSidebar();
   const tShell = useTranslations("shell");
-  const tCommon = useTranslations("common");
   const groups = buildMenuGroups(shell);
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-transparent text-sidebar-foreground">
-      <div
-        className={cn(
-          "flex shrink-0 flex-col gap-3 px-3.5 py-4",
-          collapsed && "items-center px-2.5",
-        )}
-      >
-        <div
-          className={cn(
-            "flex items-center gap-2",
-            collapsed ? "flex-col" : "justify-between",
-          )}
-        >
-          {!collapsed ? (
-            <DeodisLogo
-              href="/chat"
-              transitionTypes={[SIDEBAR_TO_CHAT_TRANSITION]}
-              className="h-7 shrink-0"
-            />
-          ) : (
-            <DeodisLogo
-              href="/chat"
-              transitionTypes={[SIDEBAR_TO_CHAT_TRANSITION]}
-              className="size-6 shrink-0 object-contain"
-            />
-          )}
-          {showCollapseControl ? (
+      <SidebarHeader
+        contextLabel={tShell("navigation")}
+        collapsed={collapsed}
+        action={
+          showCollapseControl ? (
             <Button
               type="button"
               variant="ghost"
               size="icon"
-              className="size-9 shrink-0 rounded-xl"
+              className="size-10 shrink-0 rounded-xl"
               onClick={toggleCollapsed}
               aria-label={
                 collapsed ? tShell("expandSidebar") : tShell("collapseSidebar")
@@ -357,88 +303,22 @@ function SidebarPanel({
                 <ChevronLeftIcon aria-hidden="true" />
               )}
             </Button>
-          ) : null}
-        </div>
-      </div>
-      <SidebarNavGroups
-        groups={groups}
-        collapsed={collapsed}
-        onNavigate={onNavigate}
+          ) : null
+        }
       />
-      <div
-        className={cn(
-          "relative z-30 m-2 mt-auto shrink-0 rounded-2xl bg-card/70 p-3 shadow-[var(--control-shadow)]",
-          collapsed && "flex flex-col items-center gap-2 overflow-hidden px-2",
-        )}
+      <ViewTransition
+        name="app-sidebar-content"
+        share="sidebar-context-content"
       >
-        {!collapsed && shell.displayName ? (
-          <p className="mb-2 truncate px-1 text-xs font-medium text-muted-foreground">
-            {shell.displayName}
-          </p>
-        ) : null}
-        {collapsed ? (
-          <div className="flex flex-col items-center gap-2">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="inline-flex">
-                  <LocaleSwitcher compact className="size-8 shrink-0" />
-                </span>
-              </TooltipTrigger>
-              <TooltipContent side="right">
-                {tCommon("language")}
-              </TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="inline-flex">
-                  <ThemeToggleButton
-                    iconOnly
-                    className="size-8 shrink-0 rounded-lg"
-                  />
-                </span>
-              </TooltipTrigger>
-              <TooltipContent side="right">{tShell("theme")}</TooltipContent>
-            </Tooltip>
-            {shell.displayName ? (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="inline-flex">
-                    <SignOutButton
-                      iconOnly
-                      className="size-8 shrink-0 rounded-lg"
-                    />
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent side="right">
-                  {tShell("signOut")}
-                </TooltipContent>
-              </Tooltip>
-            ) : null}
-          </div>
-        ) : (
-          <div className="flex min-w-0 items-center gap-1.5">
-            <LocaleSwitcher className="min-w-0 flex-1" />
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="inline-flex shrink-0">
-                  <ThemeToggleButton iconOnly className="size-8 rounded-lg" />
-                </span>
-              </TooltipTrigger>
-              <TooltipContent side="top">{tShell("theme")}</TooltipContent>
-            </Tooltip>
-            {shell.displayName ? (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="inline-flex shrink-0">
-                    <SignOutButton iconOnly className="size-8 rounded-lg" />
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent side="top">{tShell("signOut")}</TooltipContent>
-              </Tooltip>
-            ) : null}
-          </div>
-        )}
-      </div>
+        <div className="flex min-h-0 flex-1 flex-col">
+          <SidebarNavGroups
+            groups={groups}
+            collapsed={collapsed}
+            onNavigate={onNavigate}
+          />
+        </div>
+      </ViewTransition>
+      <SidebarFooter displayName={shell.displayName} collapsed={collapsed} />
     </div>
   );
 }
@@ -447,9 +327,9 @@ export function WorkspaceSidebar({ shell }: { shell: WorkspaceShellState }) {
   const tShell = useTranslations("shell");
   const { collapsed, isMobile } = useWorkspaceSidebar();
   const width = useSyncExternalStore(
-    subscribeWidth,
-    getStoredWidth,
-    () => DEFAULT_WIDTH,
+    subscribeAppSidebarWidth,
+    getStoredAppSidebarWidth,
+    () => DEFAULT_APP_SIDEBAR_WIDTH,
   );
   const [resizing, setResizing] = useState(false);
 
@@ -463,7 +343,7 @@ export function WorkspaceSidebar({ shell }: { shell: WorkspaceShellState }) {
     document.body.style.userSelect = "none";
 
     function onPointerMove(moveEvent: PointerEvent) {
-      setStoredWidth(startWidth + moveEvent.clientX - startX);
+      setStoredAppSidebarWidth(startWidth + moveEvent.clientX - startX);
     }
 
     function onPointerUp() {
@@ -479,7 +359,7 @@ export function WorkspaceSidebar({ shell }: { shell: WorkspaceShellState }) {
   }
 
   function adjustWidth(delta: number) {
-    setStoredWidth(width + delta);
+    setStoredAppSidebarWidth(width + delta);
   }
 
   if (isMobile) {
@@ -490,7 +370,8 @@ export function WorkspaceSidebar({ shell }: { shell: WorkspaceShellState }) {
     <aside
       data-slot="workspace-sidebar"
       className={cn(
-        "relative hidden h-full shrink-0 border-r border-sidebar-border/70 bg-sidebar/88 backdrop-blur-xl md:flex md:flex-col",
+        "relative hidden h-full shrink-0 border-r md:flex md:flex-col",
+        APP_SIDEBAR_SURFACE_CLASS,
         !resizing && "transition-[width] duration-200",
       )}
       style={{ width: collapsed ? "4rem" : `${width}px` }}
@@ -501,8 +382,8 @@ export function WorkspaceSidebar({ shell }: { shell: WorkspaceShellState }) {
           role="separator"
           aria-label={tShell("resizeNavigation")}
           aria-orientation="vertical"
-          aria-valuemin={MIN_WIDTH}
-          aria-valuemax={MAX_WIDTH}
+          aria-valuemin={MIN_APP_SIDEBAR_WIDTH}
+          aria-valuemax={MAX_APP_SIDEBAR_WIDTH}
           aria-valuenow={width}
           tabIndex={0}
           className="group absolute inset-y-0 bottom-24 right-0 z-10 w-2 translate-x-1 cursor-col-resize outline-none"

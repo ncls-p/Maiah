@@ -1,6 +1,6 @@
 "use client";
 
-import { MoonStarIcon } from "lucide-react";
+import { MoonStarIcon, SunIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useTheme } from "@teispace/next-themes";
 
@@ -31,11 +31,15 @@ export function ThemeToggleButton({
       aria-label={t("toggleTheme")}
       onClick={() => setTheme(isDark ? "light" : "dark")}
     >
-      <MoonStarIcon
+      <span
         data-icon={iconOnly ? undefined : "inline-start"}
+        data-state={isDark ? "b" : "a"}
+        className="t-icon-swap"
         aria-hidden="true"
-        className="transition-transform duration-300"
-      />
+      >
+        <MoonStarIcon data-icon="a" className="t-icon size-4" />
+        <SunIcon data-icon="b" className="t-icon size-4" />
+      </span>
       {iconOnly ? <span className="sr-only">{t("theme")}</span> : t("theme")}
     </Button>
   );

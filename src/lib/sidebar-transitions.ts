@@ -1,8 +1,0 @@
-export const SIDEBAR_TO_CHAT_TRANSITION = "sidebar-to-chat";
-export const SIDEBAR_TO_WORKSPACE_TRANSITION = "sidebar-to-workspace";
-
-export const SIDEBAR_TRANSITION_CLASSES = {
-  default: "sidebar-context",
-  [SIDEBAR_TO_CHAT_TRANSITION]: SIDEBAR_TO_CHAT_TRANSITION,
-  [SIDEBAR_TO_WORKSPACE_TRANSITION]: SIDEBAR_TO_WORKSPACE_TRANSITION,
-} as const;

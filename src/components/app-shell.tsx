@@ -2,14 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  ViewTransition,
-} from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { MessageSquareIcon } from "lucide-react";
 
 import { AppHeader } from "@/components/app-header";
@@ -31,10 +24,6 @@ import {
   type WorkspacePermissions,
   type WorkspaceShellState,
 } from "@/lib/workspace-nav";
-import {
-  SIDEBAR_TO_CHAT_TRANSITION,
-  SIDEBAR_TRANSITION_CLASSES,
-} from "@/lib/sidebar-transitions";
 import type { SidebarNavConfig } from "@/modules/navigation/sidebar-config";
 import { cn } from "@/lib/utils";
 
@@ -177,14 +166,7 @@ export function AppShell({
             {tShell("skipToContent")}
           </a>
           <div className="flex min-h-0 flex-1 flex-row">
-            {!isChatRoute ? (
-              <ViewTransition
-                name="app-sidebar"
-                share={SIDEBAR_TRANSITION_CLASSES}
-              >
-                <WorkspaceSidebar shell={shellValue} />
-              </ViewTransition>
-            ) : null}
+            {!isChatRoute ? <WorkspaceSidebar shell={shellValue} /> : null}
             <div className="flex min-w-0 flex-1 flex-col">
               {!isChatRoute ? (
                 <AppHeader
@@ -198,10 +180,7 @@ export function AppShell({
                       size="sm"
                       className="gap-2"
                     >
-                      <Link
-                        href="/chat"
-                        transitionTypes={[SIDEBAR_TO_CHAT_TRANSITION]}
-                      >
+                      <Link href="/chat">
                         <MessageSquareIcon
                           className="size-4"
                           aria-hidden="true"
