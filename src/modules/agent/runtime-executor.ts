@@ -6,6 +6,7 @@ import {
   type ToolSet,
 } from "ai";
 import { z } from "zod";
+import { logger } from "@/lib/logger";
 import { buildBoundTools } from "@/app/api/workspace/[agentId]/chat/route-support";
 import { getDelegationBindingsForVersion } from "@/modules/agent/delegation-use-cases";
 import {
@@ -42,7 +43,10 @@ import {
   type AgentVersionRow,
 } from "@/modules/agent/use-cases";
 import { buildSkillsRegistryPrompt } from "@/modules/skills/use-cases";
-import { safeToolErrorMessage } from "@/modules/tool/safe-payload";
+import {
+  projectToolPayloadForDisplay,
+  safeToolErrorMessage,
+} from "@/modules/tool/safe-payload";
 import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
 import { getAdapter } from "@/server/infrastructure/providers";
@@ -65,6 +69,7 @@ export class AgentExecutionError extends Error {
     message: string,
     code: string,
     readonly runId?: string,
+    readonly safeDetail?: string,
   ) {
     super(message);
     this.name = "AgentExecutionError";
@@ -301,6 +306,35 @@ function truncateDelegationResult(value: string, maxChars: number) {
   return `${value.slice(0, maxChars)}\n\n[Delegated result truncated]`;
 }
 
+function toolResultRecoveryContext(
+  toolResults: Array<{ toolName: string; output: unknown }>,
+  maxChars: number,
+) {
+  const context = toolResults
+    .map((toolResult, index) => {
+      const projected = projectToolPayloadForDisplay(toolResult.output, {
+        maxArrayItems: 200,
+        maxDepth: 8,
+        maxObjectKeys: 200,
+        maxStringLength: maxChars,
+      });
+      return [
+        `Result ${index + 1} (${toolResult.toolName}):`,
+        typeof projected === "string" ? projected : JSON.stringify(projected),
+      ].join("\n");
+    })
+    .join("\n\n");
+  if (context.length <= maxChars) return context;
+  return `${context.slice(0, maxChars)}\n\n[Tool result context truncated]`;
+}
+
+function safeAgentExecutionDetail(error: unknown, fallback: string) {
+  if (error instanceof AgentExecutionError && error.safeDetail) {
+    return error.safeDetail;
+  }
+  return safeToolErrorMessage(error, fallback);
+}
+
 function modelSafeDelegationError(error: unknown, childRunId?: string) {
   return new AgentExecutionError(
     delegationFailureModelMessage,
@@ -310,6 +344,7 @@ function modelSafeDelegationError(error: unknown, childRunId?: string) {
     error instanceof AgentExecutionError
       ? (error.runId ?? childRunId)
       : childRunId,
+    safeAgentExecutionDetail(error, "Delegated task failed"),
   );
 }
 
@@ -491,6 +526,19 @@ async function buildDelegationTools(input: {
             inputPreview: { task },
             errorMessage: safeToolErrorMessage(error, "Delegated task failed"),
             completedAt: new Date(),
+          });
+          logger.warn("Specialist delegation failed", {
+            rootRunId: input.execution.budget.rootRunId,
+            parentRunId: input.runId,
+            childRunId: childRunId ?? null,
+            errorCode:
+              error instanceof AgentExecutionError
+                ? error.code
+                : "AGENT_DELEGATION_FAILED",
+            errorDetail: safeAgentExecutionDetail(
+              error,
+              "Delegated task failed",
+            ),
           });
           throw modelSafeDelegationError(error, childRunId);
         } finally {
@@ -746,14 +794,15 @@ async function executeResolvedAgent(
         const recoveryResult = await generateText({
           model,
           system: `${system}\n\n${emptyResponseRecoveryInstruction}`,
-          messages: [
-            ...(input.messages?.length
-              ? input.messages
-              : ([
-                  { role: "user", content: input.prompt },
-                ] satisfies ModelMessage[])),
-            ...(result.responseMessages ?? []),
-          ],
+          prompt: [
+            "Original task:",
+            input.prompt,
+            "Successful tool results:",
+            toolResultRecoveryContext(
+              result.toolResults,
+              input.budget.policy.resultMaxChars,
+            ),
+          ].join("\n\n"),
           temperature: input.resolved.version.temperature
             ? Number.parseFloat(input.resolved.version.temperature)
             : undefined,
@@ -866,11 +915,20 @@ async function executeResolvedAgent(
       },
     });
     throw error instanceof AgentExecutionError
-      ? new AgentExecutionError(error.message, error.code, runId)
+      ? new AgentExecutionError(
+          error.message,
+          error.code,
+          runId,
+          error.safeDetail,
+        )
       : new AgentExecutionError(
           aborted ? "Agent run was cancelled" : "Agent run failed",
           aborted ? "AGENT_RUN_CANCELLED" : "AGENT_RUN_FAILED",
           runId,
+          safeToolErrorMessage(
+            error,
+            aborted ? "Agent run was cancelled" : "Agent run failed",
+          ),
         );
   } finally {
     clearInterval(heartbeat);

@@ -21,6 +21,7 @@ import {
   resolveAgentRuntimeLimits,
 } from "@/modules/agent/runtime-policy";
 import {
+  AgentExecutionError,
   executeAgent,
   type AgentToolProgressEvent,
 } from "@/modules/agent/runtime-executor";
@@ -848,6 +849,18 @@ export async function POST(
               workspaceId: agent.workspaceId,
               conversationId: conversation.id,
               assistantMessageId: assistantMessage.id,
+              errorCode:
+                error instanceof AgentExecutionError
+                  ? error.code
+                  : "AGENT_RUN_FAILED",
+              runId:
+                error instanceof AgentExecutionError
+                  ? (error.runId ?? null)
+                  : null,
+              errorDetail:
+                error instanceof AgentExecutionError
+                  ? (error.safeDetail ?? null)
+                  : safeToolErrorMessage(error, "Agent run failed"),
             },
             error as Error,
           );

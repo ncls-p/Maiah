@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   buildSkillsPrompt: vi.fn(),
   checkPermission: vi.fn(),
   createChatModel: vi.fn(),
+  logWarning: vi.fn(),
 }));
 
 vi.mock("ai", async (importOriginal) => {
@@ -57,6 +58,9 @@ vi.mock("@/server/infrastructure/providers", () => ({
   getAdapter: vi.fn(() => ({ createChatModel: mocks.createChatModel })),
 }));
 vi.mock("@/server/infrastructure/db", () => ({ db: {} }));
+vi.mock("@/lib/logger", () => ({
+  logger: { warn: mocks.logWarning },
+}));
 
 import {
   abortActiveAgentRun,
@@ -223,7 +227,7 @@ describe("agent runtime executor", () => {
       },
       toolApproval: undefined,
     });
-    const responseMessages = [
+    const incompatibleProviderMessages = [
       {
         role: "assistant",
         content: [
@@ -256,10 +260,13 @@ describe("agent runtime executor", () => {
             type: "tool-result",
             toolCallId: "deepwiki-call",
             toolName: "deepwiki",
-            output: { result: "Australia release notes" },
+            output: {
+              result: "Australia release notes",
+              apiKey: "must-not-cross-the-recovery-boundary",
+            },
           },
         ],
-        responseMessages,
+        responseMessages: incompatibleProviderMessages,
       })
       .mockResolvedValueOnce({
         text: "ServiceNow Australia is the latest release.",
@@ -282,21 +289,21 @@ describe("agent runtime executor", () => {
     });
 
     expect(mocks.generateText).toHaveBeenCalledTimes(2);
-    expect(mocks.generateText.mock.calls[1][0]).toEqual(
+    const recoveryCall = mocks.generateText.mock.calls[1][0];
+    expect(recoveryCall).toEqual(
       expect.objectContaining({
-        messages: [
-          {
-            role: "user",
-            content: "Parle-moi des dernières mises à jour ServiceNow",
-          },
-          ...responseMessages,
-        ],
+        prompt: expect.stringContaining("Australia release notes"),
         telemetry: expect.objectContaining({
           functionId: "ai-hub.agent-run.empty-response-recovery",
         }),
       }),
     );
-    expect(mocks.generateText.mock.calls[1][0]).not.toHaveProperty("tools");
+    expect(recoveryCall).not.toHaveProperty("messages");
+    expect(recoveryCall).not.toHaveProperty("tools");
+    expect(recoveryCall.prompt).toContain("[REDACTED]");
+    expect(recoveryCall.prompt).not.toContain(
+      "must-not-cross-the-recovery-boundary",
+    );
     expect(mocks.completeRun).toHaveBeenCalledWith(
       expect.objectContaining({
         inputTokens: 30,
@@ -346,6 +353,26 @@ describe("agent runtime executor", () => {
       }),
     ).rejects.toMatchObject({ code: "AGENT_EMPTY_RESPONSE" });
     expect(mocks.completeRun).not.toHaveBeenCalled();
+  });
+
+  it("preserves a redacted provider detail for operational logs", async () => {
+    mocks.generateText.mockRejectedValueOnce(
+      new Error("Provider rejected Bearer super-secret"),
+    );
+
+    await expect(
+      executeAgent({
+        workspaceId: rootAgent.workspaceId,
+        userId: rootAgent.createdById,
+        agentId: rootAgent.id,
+        prompt: "Hello",
+        trigger: "api",
+      }),
+    ).rejects.toMatchObject({
+      code: "AGENT_RUN_FAILED",
+      message: "Agent run failed",
+      safeDetail: "Provider rejected Bearer [REDACTED]",
+    });
   });
 
   it("records successful and failed bound tool executions", async () => {
@@ -805,6 +832,8 @@ describe("agent runtime executor", () => {
         };
       }
       expect(options).not.toHaveProperty("tools");
+      expect(options).not.toHaveProperty("messages");
+      expect(options.prompt).toContain('"sourceCount":3');
       expect(options.system).toContain(
         "Your previous turn ended without a final text response",
       );
@@ -927,6 +956,13 @@ describe("agent runtime executor", () => {
     expect(mocks.getVersion).not.toHaveBeenCalled();
     expect(mocks.failRun).toHaveBeenCalledWith(
       expect.objectContaining({ errorCode: "AGENT_DELEGATION_FORBIDDEN" }),
+    );
+    expect(mocks.logWarning).toHaveBeenCalledWith(
+      "Specialist delegation failed",
+      expect.objectContaining({
+        errorCode: "AGENT_DELEGATION_FORBIDDEN",
+        errorDetail: "Missing permission: agents.delegate",
+      }),
     );
   });
 
