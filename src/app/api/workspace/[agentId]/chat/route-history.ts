@@ -1,7 +1,6 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
 
 import {
-  getChatAttachmentExtractedText,
   getChatImageAttachmentBytes,
   isChatFileAttachment,
   isChatImageAttachment,
@@ -87,6 +86,17 @@ function sandboxAttachmentPathHint(fileName: string) {
       .trim()
       .slice(0, 120) || "attachment.bin";
   return `attachments/${baseName}`;
+}
+
+function sandboxAttachmentExplorerPathHint(fileName: string) {
+  const originalPath = sandboxAttachmentPathHint(fileName);
+  const slashIndex = originalPath.lastIndexOf("/");
+  const directory = originalPath.slice(0, slashIndex + 1);
+  const baseName = originalPath.slice(slashIndex + 1);
+  const extensionIndex = baseName.lastIndexOf(".");
+  const stem =
+    extensionIndex > 0 ? baseName.slice(0, extensionIndex) : baseName;
+  return `${directory}${stem}.document/README.md`;
 }
 
 function truncatePreviousToolContext(value: string) {
@@ -363,45 +373,25 @@ export async function loadConversationHistory(
             });
           }
         } else if (message.role === "user" && fileAttachment) {
-          try {
-            const { text } = await getChatAttachmentExtractedText({
-              attachmentId: fileAttachment.id,
-              workspaceId: context.workspaceId,
-              userId: context.userId,
-            });
-            if (text.trim()) {
-              textParts.push(
-                [
-                  `Attached file: ${fileAttachment.fileName} (${fileAttachment.mimeType}, ${fileAttachment.size} bytes).`,
-                  `Attachment ID: ${fileAttachment.id}`,
-                  `Sandbox path hint: ${sandboxAttachmentPathHint(fileAttachment.fileName)}`,
-                  fileAttachment.extractionStatus === "truncated"
-                    ? "The extracted text was truncated for safety."
-                    : null,
-                  "Extracted file text:",
-                  text,
-                ]
-                  .filter(Boolean)
-                  .join("\n"),
-              );
-            } else {
-              textParts.push(
-                [
-                  `Attached file: ${fileAttachment.fileName} (${fileAttachment.mimeType}, ${fileAttachment.size} bytes).`,
-                  `Attachment ID: ${fileAttachment.id}`,
-                  `Sandbox path hint: ${sandboxAttachmentPathHint(fileAttachment.fileName)}`,
-                  fileAttachment.extractionMessage ??
-                    "No readable text was extracted.",
-                ].join("\n"),
-              );
-            }
-          } catch (error) {
-            logHandledWarning("Skipping unavailable chat file attachment", {
-              messageId: message.id,
-              attachmentId: fileAttachment.id,
-              error: error instanceof Error ? error.message : String(error),
-            });
-          }
+          textParts.push(
+            [
+              `Attached file: ${fileAttachment.fileName} (${fileAttachment.mimeType}, ${fileAttachment.size} bytes).`,
+              `Attachment ID: ${fileAttachment.id}`,
+              `Sandbox path hint: ${sandboxAttachmentPathHint(fileAttachment.fileName)}`,
+              fileAttachment.extractedTextChars > 0
+                ? `Embedding-free document explorer: ${sandboxAttachmentExplorerPathHint(fileAttachment.fileName)}`
+                : null,
+              fileAttachment.extractedTextChars > 0
+                ? `The stored Markdown extraction contains ${fileAttachment.extractedTextChars} characters. Pass this Attachment ID to run_code_sandbox, read the explorer manifest, then navigate with rg/sed/Python instead of asking for the whole document at once.`
+                : (fileAttachment.extractionMessage ??
+                  "No readable text was extracted."),
+              fileAttachment.extractionStatus === "truncated"
+                ? "The stored extraction is partial because safety limits were reached."
+                : null,
+            ]
+              .filter(Boolean)
+              .join("\n"),
+          );
         }
 
         const codeWorkspaceContext =

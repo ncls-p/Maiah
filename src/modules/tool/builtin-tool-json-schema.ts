@@ -88,7 +88,7 @@ const commonSchemas: Record<string, unknown> = {
         type: "array",
         maxItems: 8,
         description:
-          "Uploaded chat attachment IDs to copy into the sandbox as files. Use IDs shown in the conversation context when analyzing uploaded documents or images. Readable documents also get a .extracted.txt sidecar unless includeExtractedText is false.",
+          "Uploaded chat attachment IDs to expose in the sandbox. Use IDs shown in the conversation context when analyzing uploaded documents or images. Readable documents get an embedding-free .document directory with README.md, manifest.json, and page/section Markdown chunks unless includeExtractedText is false.",
         items: {
           type: "object",
           properties: {
@@ -102,7 +102,7 @@ const commonSchemas: Record<string, unknown> = {
               type: "boolean",
               default: true,
               description:
-                "Also add extracted text as <path>.extracted.txt when available.",
+                "Also add a navigable Markdown document explorer beside the requested path when available.",
             },
           },
           required: ["id"],

@@ -1,7 +1,8 @@
 import { createHash, randomUUID } from "node:crypto";
 import path from "node:path";
-import { inflateSync } from "node:zlib";
 import JSZip from "jszip";
+import { PDFParse } from "pdf-parse";
+import TurndownService from "turndown";
 
 import { storage } from "@/server/infrastructure/storage";
 
@@ -73,13 +74,24 @@ const chatAttachmentStoragePrefix =
 const maxChatImageBytes = 8 * 1024 * 1024;
 export const maxChatAttachmentBytes = 25 * 1024 * 1024;
 export const maxChatAttachments = 8;
-const maxExtractedChatAttachmentTextChars = 120_000;
+const maxStoredChatAttachmentMarkdownChars = 4_000_000;
+export const maxChatAttachmentPreviewChars = 120_000;
+const maxMarkdownConversionSourceChars = maxStoredChatAttachmentMarkdownChars;
+const maxMarkdownTableRows = 2_000;
+const maxMarkdownTableColumns = 100;
 
 const maxOfficeXmlBytes = 8 * 1024 * 1024;
-const maxPdfInflatedBytes = 12 * 1024 * 1024;
+const maxPdfPages = 500;
 const unsupportedChatImageTypeMessage =
   "Unsupported image type. Upload PNG, JPEG, GIF, or WebP.";
 const utf8Decoder = new TextDecoder("utf-8", { fatal: false });
+const htmlToMarkdown = new TurndownService({
+  headingStyle: "atx",
+  bulletListMarker: "-",
+  codeBlockStyle: "fenced",
+  emDelimiter: "*",
+  strongDelimiter: "**",
+});
 
 const imageTypes = {
   "image/jpeg": {
@@ -125,6 +137,7 @@ const imageTypes = {
 const textMimeTypes = new Set([
   "application/json",
   "application/ld+json",
+  "application/x-ndjson",
   "application/xml",
   "application/yaml",
   "application/x-yaml",
@@ -135,7 +148,26 @@ const textMimeTypes = new Set([
   "text/markdown",
   "text/plain",
   "text/rtf",
+  "text/tab-separated-values",
   "text/xml",
+]);
+
+const textExtensionsByMimeType = new Map([
+  ["application/json", ".json"],
+  ["application/ld+json", ".json"],
+  ["application/x-ndjson", ".jsonl"],
+  ["application/xml", ".xml"],
+  ["application/yaml", ".yaml"],
+  ["application/x-yaml", ".yaml"],
+  ["text/css", ".css"],
+  ["text/csv", ".csv"],
+  ["text/html", ".html"],
+  ["text/javascript", ".js"],
+  ["text/markdown", ".md"],
+  ["text/plain", ".txt"],
+  ["text/rtf", ".rtf"],
+  ["text/tab-separated-values", ".tsv"],
+  ["text/xml", ".xml"],
 ]);
 
 const mimeTypesByExtension = new Map<string, AttachmentDetection>([
@@ -379,7 +411,7 @@ function metadataObjectKey(attachmentId: string) {
 }
 
 function extractedTextObjectKey(attachmentId: string) {
-  return chatAttachmentObjectKey(attachmentId, "extracted.txt");
+  return chatAttachmentObjectKey(attachmentId, "extracted.md");
 }
 
 function assertSafeAttachmentId(attachmentId: string) {
@@ -537,11 +569,18 @@ function detectDeclaredTextAttachment(
   extension: string,
 ): AttachmentDetection | null {
   if (!declaredMimeType || !textMimeTypes.has(declaredMimeType)) return null;
+  const detectedExtension =
+    extension || textExtensionsByMimeType.get(declaredMimeType) || ".txt";
   return {
     mimeType: `${declaredMimeType}; charset=utf-8`,
-    extension: extension || ".txt",
+    extension: detectedExtension,
     category: "text",
-    textKind: declaredMimeType === "text/rtf" ? "rtf" : "text",
+    textKind:
+      declaredMimeType === "text/rtf"
+        ? "rtf"
+        : declaredMimeType === "text/markdown"
+          ? "markdown"
+          : "text",
   };
 }
 
@@ -619,7 +658,11 @@ function normalizeExtractedText(text: string) {
     .trim();
 }
 
-function limitExtractedText(text: string, message?: string): ExtractedText {
+function limitExtractedText(
+  text: string,
+  message?: string,
+  forceTruncated = false,
+): ExtractedText {
   const normalized = normalizeExtractedText(text);
   if (!normalized) {
     return {
@@ -628,15 +671,19 @@ function limitExtractedText(text: string, message?: string): ExtractedText {
       message: message ?? "No readable text could be extracted from this file.",
     };
   }
-  if (normalized.length <= maxExtractedChatAttachmentTextChars) {
-    return { text: normalized, status: "readable", message };
+  if (normalized.length <= maxStoredChatAttachmentMarkdownChars) {
+    return {
+      text: normalized,
+      status: forceTruncated ? "truncated" : "readable",
+      message,
+    };
   }
   return {
-    text: `${normalized.slice(0, maxExtractedChatAttachmentTextChars)}\n\n[Attachment text truncated for safety.]`,
+    text: `${normalized.slice(0, maxStoredChatAttachmentMarkdownChars)}\n\n[Attachment text truncated for safety.]`,
     status: "truncated",
     message:
       message ??
-      `Only the first ${maxExtractedChatAttachmentTextChars.toLocaleString()} characters were extracted.`,
+      `Only the first ${maxStoredChatAttachmentMarkdownChars.toLocaleString()} characters were extracted.`,
   };
 }
 
@@ -653,6 +700,141 @@ function decodeXmlEntities(value: string) {
     .replace(/&#x([0-9a-f]+);/gi, (_match, code: string) =>
       String.fromCodePoint(Number.parseInt(code, 16)),
     );
+}
+
+const markdownLanguagesByExtension = new Map([
+  [".c", "c"],
+  [".cpp", "cpp"],
+  [".cs", "csharp"],
+  [".css", "css"],
+  [".go", "go"],
+  [".java", "java"],
+  [".js", "javascript"],
+  [".json", "json"],
+  [".jsonl", "json"],
+  [".jsx", "jsx"],
+  [".kt", "kotlin"],
+  [".log", "text"],
+  [".mjs", "javascript"],
+  [".php", "php"],
+  [".py", "python"],
+  [".rb", "ruby"],
+  [".rs", "rust"],
+  [".sh", "bash"],
+  [".sql", "sql"],
+  [".svg", "xml"],
+  [".svelte", "svelte"],
+  [".swift", "swift"],
+  [".toml", "toml"],
+  [".ts", "typescript"],
+  [".tsx", "tsx"],
+  [".vue", "vue"],
+  [".xml", "xml"],
+  [".yaml", "yaml"],
+  [".yml", "yaml"],
+]);
+
+function fencedMarkdown(value: string, language = "text") {
+  const longestFence = Math.max(
+    2,
+    ...Array.from(value.matchAll(/`+/g), (match) => match[0].length),
+  );
+  const fence = "`".repeat(longestFence + 1);
+  return `${fence}${language}\n${value.trim()}\n${fence}`;
+}
+
+function escapeMarkdownTableCell(value: string) {
+  return value
+    .replace(/\\/g, "\\\\")
+    .replace(/\|/g, "\\|")
+    .replace(/\r?\n/g, "<br>")
+    .trim();
+}
+
+function parseDelimitedRows(value: string, delimiter: string) {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = "";
+  let quoted = false;
+
+  for (let index = 0; index < value.length; index += 1) {
+    const char = value[index];
+    if (char === '"') {
+      if (quoted && value[index + 1] === '"') {
+        field += '"';
+        index += 1;
+      } else {
+        quoted = !quoted;
+      }
+      continue;
+    }
+    if (char === delimiter && !quoted) {
+      row.push(field);
+      field = "";
+      continue;
+    }
+    if ((char === "\n" || char === "\r") && !quoted) {
+      if (char === "\r" && value[index + 1] === "\n") index += 1;
+      row.push(field);
+      if (row.some((cell) => cell.length > 0)) rows.push(row);
+      row = [];
+      field = "";
+      continue;
+    }
+    field += char;
+  }
+
+  row.push(field);
+  if (row.some((cell) => cell.length > 0)) rows.push(row);
+  return rows;
+}
+
+function markdownTable(rows: string[][]) {
+  if (rows.length === 0) return "";
+  const columnCount = rows.reduce(
+    (largest, row) => Math.max(largest, row.length),
+    0,
+  );
+  const renderedColumnCount = Math.min(columnCount, maxMarkdownTableColumns);
+  const normalizedRows = rows
+    .slice(0, maxMarkdownTableRows)
+    .map((row) =>
+      Array.from({ length: renderedColumnCount }, (_, index) =>
+        escapeMarkdownTableCell(row[index] ?? ""),
+      ),
+    );
+  const header = normalizedRows[0];
+  const separator = Array.from({ length: renderedColumnCount }, () => "---");
+  const body = normalizedRows.slice(1);
+  const table = [header, separator, ...body]
+    .map((row) => `| ${row.join(" | ")} |`)
+    .join("\n");
+  const truncated =
+    rows.length > maxMarkdownTableRows || columnCount > maxMarkdownTableColumns;
+  return truncated
+    ? `${table}\n\n> Table truncated during Markdown conversion.`
+    : table;
+}
+
+function textAttachmentToMarkdown(
+  value: string,
+  detection: AttachmentDetection,
+) {
+  const normalized = normalizeExtractedText(value);
+  if (!normalized) return "";
+  if (detection.extension === ".html") {
+    return htmlToMarkdown.turndown(normalized);
+  }
+  if (detection.extension === ".csv" || detection.extension === ".tsv") {
+    return markdownTable(
+      parseDelimitedRows(
+        normalized,
+        detection.extension === ".csv" ? "," : "\t",
+      ),
+    );
+  }
+  const language = markdownLanguagesByExtension.get(detection.extension);
+  return language ? fencedMarkdown(normalized, language) : normalized;
 }
 
 function extractXmlText(xml: string) {
@@ -677,6 +859,88 @@ function declaredZipUncompressedSize(entry: JSZip.JSZipObject) {
   };
   const size = compressedEntry._data?.uncompressedSize;
   return typeof size === "number" && Number.isFinite(size) ? size : null;
+}
+
+function extractDocxMarkdown(xml: string) {
+  const paragraphs = Array.from(
+    xml.matchAll(
+      /<(?:[a-z0-9_-]+:)?p(?:\s[^>]*)?>([\s\S]*?)<\/(?:[a-z0-9_-]+:)?p>/gi,
+    ),
+    (match) => match[1],
+  );
+  if (paragraphs.length === 0) return extractXmlText(xml);
+
+  return paragraphs
+    .map((paragraph) => {
+      const text = normalizeExtractedText(extractXmlText(paragraph));
+      if (!text) return "";
+      const style = paragraph.match(
+        /<(?:[a-z0-9_-]+:)?pStyle\b[^>]*(?:[a-z0-9_-]+:)?val=["']([^"']+)["']/i,
+      )?.[1];
+      const headingLevel = style?.match(/^Heading([1-6])$/i)?.[1];
+      if (headingLevel) return `${"#".repeat(Number(headingLevel))} ${text}`;
+      if (style && /^(?:Title|Subtitle)$/i.test(style)) return `# ${text}`;
+      return text;
+    })
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+function spreadsheetColumnIndex(reference: string) {
+  const letters = reference.match(/^[A-Z]+/i)?.[0]?.toUpperCase();
+  if (!letters) return 0;
+  return (
+    Array.from(letters).reduce(
+      (value, letter) => value * 26 + letter.charCodeAt(0) - 64,
+      0,
+    ) - 1
+  );
+}
+
+function extractSharedStrings(xml: string) {
+  return Array.from(
+    xml.matchAll(
+      /<(?:[a-z0-9_-]+:)?si(?:\s[^>]*)?>([\s\S]*?)<\/(?:[a-z0-9_-]+:)?si>/gi,
+    ),
+    (match) => normalizeExtractedText(extractXmlText(match[1])),
+  );
+}
+
+function extractWorksheetMarkdown(xml: string, sharedStrings: string[]) {
+  const rows = new Map<number, Map<number, string>>();
+  for (const match of xml.matchAll(
+    /<(?:[a-z0-9_-]+:)?c\b([^>]*)>([\s\S]*?)<\/(?:[a-z0-9_-]+:)?c>/gi,
+  )) {
+    const attributes = match[1];
+    const body = match[2];
+    const reference = attributes.match(/\br=["']([^"']+)["']/i)?.[1] ?? "A1";
+    const rowIndex = Number.parseInt(reference.match(/\d+$/)?.[0] ?? "1", 10);
+    const columnIndex = spreadsheetColumnIndex(reference);
+    const type = attributes.match(/\bt=["']([^"']+)["']/i)?.[1];
+    const rawValue = body.match(
+      /<(?:[a-z0-9_-]+:)?v(?:\s[^>]*)?>([\s\S]*?)<\/(?:[a-z0-9_-]+:)?v>/i,
+    )?.[1];
+    const value =
+      type === "s" && rawValue !== undefined
+        ? (sharedStrings[Number.parseInt(rawValue, 10)] ?? rawValue)
+        : type === "inlineStr"
+          ? extractXmlText(body)
+          : decodeXmlEntities(rawValue ?? extractXmlText(body));
+    const row = rows.get(rowIndex) ?? new Map<number, string>();
+    row.set(columnIndex, normalizeExtractedText(value));
+    rows.set(rowIndex, row);
+  }
+
+  const tableRows = Array.from(rows.entries())
+    .sort(([left], [right]) => left - right)
+    .map(([, cells]) => {
+      const width = Math.max(0, ...cells.keys()) + 1;
+      return Array.from(
+        { length: width },
+        (_, index) => cells.get(index) ?? "",
+      );
+    });
+  return markdownTable(tableRows);
 }
 
 async function extractOfficeText(
@@ -704,7 +968,7 @@ async function extractOfficeText(
 
   let totalXmlBytes = 0;
   let truncated = false;
-  const sections: string[] = [];
+  const loadedEntries: Array<{ name: string; xml: string }> = [];
 
   for (const entry of entries) {
     const declaredSize = declaredZipUncompressedSize(entry);
@@ -718,132 +982,75 @@ async function extractOfficeText(
       truncated = true;
       break;
     }
-    const extracted = normalizeExtractedText(
-      extractXmlText(utf8Decoder.decode(xmlBytes)),
+    loadedEntries.push({ name: entry.name, xml: utf8Decoder.decode(xmlBytes) });
+  }
+
+  let markdown = "";
+  if (textKind === "docx") {
+    markdown = loadedEntries
+      .map((entry) => extractDocxMarkdown(entry.xml))
+      .filter(Boolean)
+      .join("\n\n");
+  } else if (textKind === "pptx") {
+    markdown = loadedEntries
+      .map((entry) => {
+        const text = normalizeExtractedText(extractXmlText(entry.xml));
+        return text ? `## Slide ${zipEntryNumber(entry.name)}\n\n${text}` : "";
+      })
+      .filter(Boolean)
+      .join("\n\n");
+  } else {
+    const sharedStringsEntry = loadedEntries.find((entry) =>
+      /xl\/sharedStrings\.xml$/i.test(entry.name),
     );
-    if (!extracted) continue;
-    const label =
-      textKind === "pptx"
-        ? `Slide ${zipEntryNumber(entry.name)}`
-        : textKind === "xlsx"
-          ? entry.name.replace(/^xl\//i, "")
-          : null;
-    sections.push(label ? `${label}:\n${extracted}` : extracted);
+    const sharedStrings = sharedStringsEntry
+      ? extractSharedStrings(sharedStringsEntry.xml)
+      : [];
+    markdown = loadedEntries
+      .filter((entry) => /xl\/worksheets\/sheet\d+\.xml$/i.test(entry.name))
+      .map((entry) => {
+        const table = extractWorksheetMarkdown(entry.xml, sharedStrings);
+        return table
+          ? `## Sheet ${zipEntryNumber(entry.name)}\n\n${table}`
+          : "";
+      })
+      .filter(Boolean)
+      .join("\n\n");
   }
 
   return limitExtractedText(
-    sections.join("\n\n"),
+    markdown,
     truncated
       ? "The document was partially read because it is large."
       : undefined,
+    truncated,
   );
 }
 
-function decodePdfLiteralString(value: string) {
-  let output = "";
-  for (let index = 0; index < value.length; index += 1) {
-    const char = value[index];
-    if (char !== "\\") {
-      output += char;
-      continue;
-    }
-    const next = value[index + 1];
-    if (!next) continue;
-    if (next === "n") output += "\n";
-    else if (next === "r") output += "\r";
-    else if (next === "t") output += "\t";
-    else if (next === "b") output += "\b";
-    else if (next === "f") output += "\f";
-    else if (next === "(" || next === ")" || next === "\\") output += next;
-    else if (/[0-7]/.test(next)) {
-      const octal = value.slice(index + 1, index + 4).match(/^[0-7]{1,3}/)?.[0];
-      if (octal) {
-        output += String.fromCharCode(Number.parseInt(octal, 8));
-        index += octal.length;
-        continue;
-      }
-    } else if (next === "\r" || next === "\n") {
-      while (value[index + 1] === "\r" || value[index + 1] === "\n") index += 1;
-      continue;
-    } else {
-      output += next;
-    }
-    index += 1;
+async function extractPdfMarkdown(bytes: Uint8Array) {
+  const parser = new PDFParse({ data: Buffer.from(bytes) });
+  try {
+    const result = await parser.getText({ first: maxPdfPages });
+    const markdown = result.pages
+      .map((page) => {
+        const text = normalizeExtractedText(page.text);
+        return text ? `## Page ${page.num}\n\n${text}` : "";
+      })
+      .filter(Boolean)
+      .join("\n\n");
+    const pagesTruncated = result.total > result.pages.length;
+    return limitExtractedText(
+      markdown,
+      pagesTruncated
+        ? `Only the first ${maxPdfPages} PDF pages were extracted.`
+        : markdown
+          ? undefined
+          : "No readable text was found in this PDF; scanned pages may require OCR.",
+      pagesTruncated,
+    );
+  } finally {
+    await parser.destroy();
   }
-  return output;
-}
-
-function decodePdfHexString(value: string) {
-  const hex = value.replace(/\s+/g, "");
-  if (!hex) return "";
-  const evenHex = hex.length % 2 === 0 ? hex : `${hex}0`;
-  const bytes = new Uint8Array(evenHex.length / 2);
-  for (let index = 0; index < evenHex.length; index += 2) {
-    bytes[index / 2] = Number.parseInt(evenHex.slice(index, index + 2), 16);
-  }
-  if (bytes[0] === 0xfe && bytes[1] === 0xff) {
-    let output = "";
-    for (let index = 2; index + 1 < bytes.length; index += 2) {
-      output += String.fromCharCode((bytes[index] << 8) | bytes[index + 1]);
-    }
-    return output;
-  }
-  return Buffer.from(bytes).toString("latin1");
-}
-
-function extractPdfTextOperators(content: string) {
-  const blocks = content.match(/BT[\s\S]*?ET/g) ?? [content];
-  const tokens: string[] = [];
-
-  for (const block of blocks) {
-    const literalPattern = /\((?:\\.|[^\\()])*\)/g;
-    for (const match of block.matchAll(literalPattern)) {
-      const decoded = decodePdfLiteralString(match[0].slice(1, -1));
-      if (decoded.trim()) tokens.push(decoded);
-    }
-
-    const hexPattern = /(?<!<)<([0-9a-fA-F\s]{4,})>(?!>)/g;
-    for (const match of block.matchAll(hexPattern)) {
-      const decoded = decodePdfHexString(match[1]);
-      if (decoded.trim()) tokens.push(decoded);
-    }
-  }
-
-  return tokens.join(" ");
-}
-
-function extractCompressedPdfStreams(raw: string) {
-  const chunks: string[] = [];
-  const compressedStreamPattern =
-    /<<(?:.|\n|\r){0,4000}?\/Filter\s*(?:\[[^\]]*)?\/FlateDecode(?:[^\]]*\])?(?:.|\n|\r){0,4000}?>>\s*stream\r?\n/g;
-  let inflatedBytes = 0;
-  for (const match of raw.matchAll(compressedStreamPattern)) {
-    const start = match.index + match[0].length;
-    const end = raw.indexOf("endstream", start);
-    if (end === -1) continue;
-    const streamRaw = raw.slice(start, end).replace(/\r?\n$/, "");
-    try {
-      const inflated = inflateSync(Buffer.from(streamRaw, "latin1"), {
-        maxOutputLength: Math.max(1024, maxPdfInflatedBytes - inflatedBytes),
-      });
-      inflatedBytes += inflated.byteLength;
-      chunks.push(inflated.toString("latin1"));
-      if (inflatedBytes >= maxPdfInflatedBytes) break;
-    } catch {
-      // Ignore individual streams that fail to inflate. PDF extraction is best-effort.
-    }
-  }
-  return chunks;
-}
-
-function extractPdfText(bytes: Uint8Array) {
-  const raw = Buffer.from(bytes).toString("latin1");
-  const chunks = [raw, ...extractCompressedPdfStreams(raw)];
-  const text = chunks.map(extractPdfTextOperators).join("\n");
-  return limitExtractedText(
-    text,
-    "PDF text extraction is best-effort; scanned pages may require OCR.",
-  );
 }
 
 function stripRtf(value: string) {
@@ -862,13 +1069,34 @@ async function extractAttachmentText(input: {
       input.detection.textKind === "text" ||
       input.detection.textKind === "markdown"
     ) {
-      return limitExtractedText(utf8Decoder.decode(input.bytes));
+      const decoded = utf8Decoder.decode(input.bytes);
+      const sourceTruncated = decoded.length > maxMarkdownConversionSourceChars;
+      const markdownSource = sourceTruncated
+        ? decoded.slice(0, maxMarkdownConversionSourceChars)
+        : decoded;
+      return limitExtractedText(
+        input.detection.textKind === "markdown"
+          ? markdownSource
+          : textAttachmentToMarkdown(markdownSource, input.detection),
+        sourceTruncated
+          ? "The file was partially converted to Markdown because it is large."
+          : undefined,
+        sourceTruncated,
+      );
     }
     if (input.detection.textKind === "rtf") {
-      return limitExtractedText(stripRtf(utf8Decoder.decode(input.bytes)));
+      const decoded = utf8Decoder.decode(input.bytes);
+      const sourceTruncated = decoded.length > maxMarkdownConversionSourceChars;
+      return limitExtractedText(
+        stripRtf(decoded.slice(0, maxMarkdownConversionSourceChars)),
+        sourceTruncated
+          ? "The file was partially converted to Markdown because it is large."
+          : undefined,
+        sourceTruncated,
+      );
     }
     if (input.detection.textKind === "pdf") {
-      return extractPdfText(input.bytes);
+      return await extractPdfMarkdown(input.bytes);
     }
     if (
       input.detection.textKind === "docx" ||
@@ -1065,7 +1293,7 @@ async function createStoredFileAttachment(
       await storage.upload(
         textObjectKey,
         extracted.text,
-        "text/plain; charset=utf-8",
+        "text/markdown; charset=utf-8",
       );
     }
     await storage.upload(

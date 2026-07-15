@@ -2,6 +2,8 @@
 
 import { useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
+import { code } from "@streamdown/code";
+import { Streamdown } from "streamdown";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -12,6 +14,8 @@ import {
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CopyIcon, DownloadIcon } from "lucide-react";
+
+const MARKDOWN_PLUGINS = { code };
 
 interface FilePreviewOptions {
   attachmentId: string;
@@ -144,9 +148,16 @@ export function FilePreviewDialog({
               {previewError}
             </p>
           ) : (
-            <pre className="min-h-0 flex-1 overflow-auto rounded-xl border bg-muted/20 p-3 whitespace-pre-wrap font-mono text-xs leading-5 text-foreground">
+            <Streamdown
+              mode="static"
+              plugins={MARKDOWN_PLUGINS}
+              controls={false}
+              skipHtml
+              disallowedElements={["img"]}
+              className="min-h-0 flex-1 rounded-xl border bg-muted/20 p-4 text-sm leading-6 text-foreground"
+            >
               {previewText || t("noExtractedText")}
-            </pre>
+            </Streamdown>
           )}
         </div>
       </DialogContent>

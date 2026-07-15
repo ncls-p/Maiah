@@ -8,6 +8,7 @@ import {
 import {
   getChatAttachment,
   getChatAttachmentExtractedText,
+  maxChatAttachmentPreviewChars,
   publicChatAttachment,
 } from "@/modules/chat/attachments";
 
@@ -45,10 +46,16 @@ export async function GET(
         workspaceId: metadata.workspaceId,
         userId: session.user.id,
       });
+      const previewTruncated =
+        extracted.text.length > maxChatAttachmentPreviewChars;
+      const previewText = previewTruncated
+        ? `${extracted.text.slice(0, maxChatAttachmentPreviewChars)}\n\n> Preview truncated. Use the document explorer in the code sandbox to navigate the complete extraction.`
+        : extracted.text;
       return NextResponse.json(
         {
           attachment: publicChatAttachment(extracted.metadata),
-          text: extracted.text,
+          text: previewText,
+          previewTruncated,
         },
         {
           headers: {

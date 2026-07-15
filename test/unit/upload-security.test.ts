@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import JSZip from "jszip";
 
+import { textPdfBytes } from "../fixtures/pdf";
+
 const objectStore = new Map<string, Uint8Array>();
 
 vi.mock("@/server/infrastructure/storage", () => ({
@@ -238,9 +240,7 @@ describe("upload security", () => {
 			workspaceId: "11111111-1111-4111-8111-111111111111",
 			userId: "user-1",
 			fileName: "simple.pdf",
-			bytes: new TextEncoder().encode(
-				"%PDF-1.4\n1 0 obj\nstream\nBT (Hello PDF) Tj ET\nendstream\n%%EOF",
-			),
+			bytes: textPdfBytes("Hello PDF"),
 		});
 
 		await expect(
@@ -249,6 +249,6 @@ describe("upload security", () => {
 				workspaceId: "11111111-1111-4111-8111-111111111111",
 				userId: "user-1",
 			}),
-		).resolves.toMatchObject({ text: expect.stringContaining("Hello PDF") });
+		).resolves.toMatchObject({ text: "## Page 1\n\nHello PDF" });
 	});
 });

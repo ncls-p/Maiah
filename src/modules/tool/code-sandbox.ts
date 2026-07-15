@@ -89,7 +89,6 @@ const localDevSocketPath = path.resolve(
   /*turbopackIgnore: true*/ process.cwd(),
   ".data/sandbox-runner/sandbox.sock",
 );
-const maxSandboxAttachmentTextChars = 200_000;
 const maxSandboxInputFiles = 40;
 const maxSandboxInputFileBytes = 1_500_000;
 const maxSandboxInputTotalBytes = 5_000_000;
@@ -311,10 +310,268 @@ function defaultAttachmentPath(attachment: ChatAttachment) {
   return `attachments/${sanitizeAttachmentFileName(attachment.fileName)}`;
 }
 
-function extractedTextPath(filePath: string) {
+function documentExplorerRootPath(filePath: string) {
   const parsed = path.posix.parse(filePath.replace(/\\/g, "/"));
-  const baseName = `${parsed.name || "attachment"}.extracted.txt`;
-  return path.posix.join(parsed.dir, baseName).slice(0, 260);
+  const baseName = `${parsed.name || "attachment"}.document`;
+  return path.posix.join(parsed.dir, baseName).slice(0, 220);
+}
+
+type DocumentExplorerUnit = {
+  title: string;
+  text: string;
+  page?: number;
+};
+
+type DocumentExplorerFile = {
+  path: string;
+  bytes: Buffer;
+};
+
+const documentExplorerMetadataReserveBytes = 24_000;
+const maxDocumentExplorerChunkChars = 350_000;
+const minDocumentExplorerChunkChars = 40_000;
+
+function markdownHeadingUnits(markdown: string): DocumentExplorerUnit[] {
+  const headings = Array.from(markdown.matchAll(/^#{1,3}\s+(.+)$/gm));
+  if (headings.length === 0) {
+    return [{ title: "Document", text: markdown }];
+  }
+
+  const units: DocumentExplorerUnit[] = [];
+  const preamble = markdown.slice(0, headings[0].index).trim();
+  if (preamble) units.push({ title: "Overview", text: preamble });
+  for (let index = 0; index < headings.length; index += 1) {
+    const heading = headings[index];
+    const start = heading.index;
+    const end = headings[index + 1]?.index ?? markdown.length;
+    const title = heading[1].trim();
+    const pageMatch = title.match(/^Page\s+(\d+)$/i);
+    units.push({
+      title,
+      text: markdown.slice(start, end).trim(),
+      ...(pageMatch ? { page: Number.parseInt(pageMatch[1], 10) } : {}),
+    });
+  }
+  return units;
+}
+
+function splitDocumentUnit(
+  unit: DocumentExplorerUnit,
+  targetChars: number,
+): DocumentExplorerUnit[] {
+  if (unit.text.length <= targetChars) return [unit];
+  const parts: DocumentExplorerUnit[] = [];
+  let remaining = unit.text;
+  let part = 1;
+  while (remaining.length > 0) {
+    let end = Math.min(targetChars, remaining.length);
+    if (end < remaining.length) {
+      const paragraphBoundary = remaining.lastIndexOf("\n\n", end);
+      const lineBoundary = remaining.lastIndexOf("\n", end);
+      const boundary = Math.max(paragraphBoundary, lineBoundary);
+      if (boundary >= Math.floor(targetChars * 0.6)) end = boundary;
+    }
+    const text = remaining.slice(0, end).trim();
+    if (text) {
+      parts.push({
+        ...unit,
+        title: `${unit.title} - part ${part}`,
+        text,
+      });
+      part += 1;
+    }
+    remaining = remaining.slice(Math.max(end, 1)).trimStart();
+  }
+  return parts;
+}
+
+function groupDocumentUnits(
+  markdown: string,
+  maxChunks: number,
+): { groups: DocumentExplorerUnit[][]; complete: boolean } {
+  const independentlyBrowsableUnits = markdownHeadingUnits(markdown).flatMap(
+    (unit) => splitDocumentUnit(unit, maxDocumentExplorerChunkChars),
+  );
+  if (independentlyBrowsableUnits.length <= maxChunks) {
+    return {
+      groups: independentlyBrowsableUnits.map((unit) => [unit]),
+      complete: true,
+    };
+  }
+
+  const targetChars = Math.min(
+    maxDocumentExplorerChunkChars,
+    Math.max(
+      minDocumentExplorerChunkChars,
+      Math.ceil((markdown.length * 1.15) / Math.max(maxChunks, 1)),
+    ),
+  );
+  const units = markdownHeadingUnits(markdown).flatMap((unit) =>
+    splitDocumentUnit(unit, targetChars),
+  );
+  const groups: DocumentExplorerUnit[][] = [];
+  let current: DocumentExplorerUnit[] = [];
+  let currentChars = 0;
+  let complete = true;
+
+  for (const unit of units) {
+    if (current.length > 0 && currentChars + unit.text.length > targetChars) {
+      groups.push(current);
+      current = [];
+      currentChars = 0;
+      if (groups.length >= maxChunks) {
+        complete = false;
+        break;
+      }
+    }
+    current.push(unit);
+    currentChars += unit.text.length;
+  }
+  if (current.length > 0 && groups.length < maxChunks) groups.push(current);
+  if (groups.flat().length < units.length) complete = false;
+  return { groups, complete };
+}
+
+function safeDocumentChunkSlug(value: string) {
+  return (
+    value
+      .normalize("NFKD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/gi, "-")
+      .replace(/^-+|-+$/g, "")
+      .toLowerCase()
+      .slice(0, 54) || "section"
+  );
+}
+
+function groupTitle(group: DocumentExplorerUnit[]) {
+  const first = group[0];
+  const last = group.at(-1) ?? first;
+  if (group.length === 1) return first.title;
+  if (first.page !== undefined && last.page !== undefined) {
+    return `Pages ${first.page}-${last.page}`;
+  }
+  return `${first.title} to ${last.title}`;
+}
+
+function utf8Prefix(value: string, maxBytes: number) {
+  const bytes = Buffer.from(value, "utf8");
+  if (bytes.byteLength <= maxBytes) return value;
+  return bytes
+    .subarray(0, Math.max(0, maxBytes))
+    .toString("utf8")
+    .replace(/\uFFFD$/, "");
+}
+
+function buildDocumentExplorerFiles(input: {
+  filePath: string;
+  fileName: string;
+  mimeType: string;
+  markdown: string;
+  maxFiles: number;
+  maxBytes: number;
+  originalIncluded: boolean;
+}): DocumentExplorerFile[] {
+  const root = documentExplorerRootPath(input.filePath);
+  const maxChunks = Math.max(1, input.maxFiles - 2);
+  const grouped = groupDocumentUnits(input.markdown, maxChunks);
+  const segmentBudget = Math.max(
+    0,
+    input.maxBytes - documentExplorerMetadataReserveBytes,
+  );
+  const chunks: Array<{
+    path: string;
+    title: string;
+    chars: number;
+    pages?: { start: number; end: number };
+    bytes: Buffer;
+  }> = [];
+  let usedSegmentBytes = 0;
+  let includedChars = 0;
+  let allChunksComplete = true;
+
+  for (const [index, group] of grouped.groups.entries()) {
+    const title = groupTitle(group);
+    const text = group.map((unit) => unit.text).join("\n\n");
+    const boundedText = utf8Prefix(text, maxSandboxInputFileBytes);
+    if (boundedText.length < text.length) allChunksComplete = false;
+    const bytes = Buffer.from(boundedText, "utf8");
+    if (usedSegmentBytes + bytes.byteLength > segmentBudget) {
+      allChunksComplete = false;
+      break;
+    }
+    const firstPage = group.find((unit) => unit.page !== undefined)?.page;
+    const lastPage = group.findLast((unit) => unit.page !== undefined)?.page;
+    const folder =
+      firstPage !== undefined
+        ? group.length === 1
+          ? "pages"
+          : "volumes"
+        : "sections";
+    const fileName = `${String(index + 1).padStart(3, "0")}-${safeDocumentChunkSlug(title)}.md`;
+    chunks.push({
+      path: `${root}/${folder}/${fileName}`,
+      title,
+      chars: boundedText.length,
+      ...(firstPage !== undefined && lastPage !== undefined
+        ? { pages: { start: firstPage, end: lastPage } }
+        : {}),
+      bytes,
+    });
+    usedSegmentBytes += bytes.byteLength;
+    includedChars += boundedText.length;
+  }
+
+  const complete =
+    grouped.complete &&
+    allChunksComplete &&
+    chunks.length === grouped.groups.length;
+  const manifest = {
+    version: 1,
+    fileName: input.fileName,
+    mimeType: input.mimeType,
+    extractedMarkdownChars: input.markdown.length,
+    includedMarkdownChars: includedChars,
+    complete,
+    originalIncluded: input.originalIncluded,
+    chunks: chunks.map((chunk) => ({
+      path: chunk.path,
+      title: chunk.title,
+      chars: chunk.chars,
+      ...(chunk.pages ? { pages: chunk.pages } : {}),
+    })),
+  };
+  const readme = [
+    `# Document explorer: ${input.fileName}`,
+    "",
+    "This directory is a deterministic, embedding-free index for agentic document exploration.",
+    "",
+    "## Recommended workflow",
+    "",
+    "1. Read `manifest.json` to see the available pages, sections, or volumes.",
+    "2. Search all chunks with `rg -n -i 'term|synonym' .`.",
+    "3. Open only relevant ranges with `sed -n 'START,ENDp' <path>` or a short Python script.",
+    "4. Follow adjacent page or section files when more context is needed.",
+    "",
+    complete
+      ? "The complete stored Markdown extraction is present."
+      : "The explorer is partial because sandbox safety limits were reached.",
+    input.originalIncluded
+      ? `The original file is available at \`${input.filePath}\`.`
+      : "The original file was omitted from this sandbox run to prioritize the searchable extraction.",
+  ].join("\n");
+
+  return [
+    { path: `${root}/README.md`, bytes: Buffer.from(readme, "utf8") },
+    {
+      path: `${root}/manifest.json`,
+      bytes: Buffer.from(JSON.stringify(manifest, null, 2), "utf8"),
+    },
+    ...chunks.map(({ path: chunkPath, bytes }) => ({
+      path: chunkPath,
+      bytes,
+    })),
+  ];
 }
 
 function uniqueSandboxPath(filePath: string, usedPaths: Set<string>) {
@@ -335,11 +592,6 @@ function uniqueSandboxPath(filePath: string, usedPaths: Set<string>) {
     }
   }
   throw new Error(`Too many sandbox files named ${normalized}.`);
-}
-
-function truncateSandboxInputText(text: string) {
-  if (text.length <= maxSandboxAttachmentTextChars) return text;
-  return `${text.slice(0, maxSandboxAttachmentTextChars)}\n\n[Truncated before sandbox execution: ${text.length - maxSandboxAttachmentTextChars} additional characters omitted.]`;
 }
 
 async function prepareSandboxRunnerRequest(
@@ -366,7 +618,7 @@ async function prepareSandboxRunnerRequest(
   }
 
   const usedPaths = new Set(files.map((file) => file.path));
-  for (const reference of attachmentReferences) {
+  for (const [attachmentIndex, reference] of attachmentReferences.entries()) {
     const { metadata, bytes } = await getChatAttachmentBytes({
       attachmentId: reference.id,
       workspaceId: context.workspaceId,
@@ -377,29 +629,75 @@ async function prepareSandboxRunnerRequest(
       requestedPath || defaultAttachmentPath(metadata),
       usedPaths,
     );
-    if (bytes.byteLength > maxSandboxInputFileBytes) {
-      throw new Error(`Input file is too large: ${filePath}`);
-    }
-    files.push({ path: filePath, bytes: Buffer.from(bytes) });
+    const remainingAttachments = attachmentReferences.length - attachmentIndex;
+    const currentBytes = files.reduce(
+      (total, file) => total + file.bytes.byteLength,
+      0,
+    );
+    const fairFileBudget = Math.max(
+      1,
+      Math.floor((maxSandboxInputFiles - files.length) / remainingAttachments),
+    );
+    const fairByteBudget = Math.max(
+      0,
+      Math.floor(
+        (maxSandboxInputTotalBytes - currentBytes) / remainingAttachments,
+      ),
+    );
+    const canExtract =
+      reference.includeExtractedText !== false &&
+      isChatFileAttachment(metadata);
+    const extracted = canExtract
+      ? await getChatAttachmentExtractedText({
+          attachmentId: reference.id,
+          workspaceId: context.workspaceId,
+          userId: context.userId,
+        })
+      : null;
+    const hasExplorer = Boolean(extracted?.text.trim());
+    const explorerReserveBytes = hasExplorer ? 150_000 : 0;
+    const originalIncluded =
+      bytes.byteLength <= maxSandboxInputFileBytes &&
+      bytes.byteLength + explorerReserveBytes <= fairByteBudget &&
+      (!hasExplorer || fairFileBudget >= 4);
 
-    if (
-      reference.includeExtractedText === false ||
-      !isChatFileAttachment(metadata)
-    ) {
-      continue;
+    if (originalIncluded) {
+      files.push({ path: filePath, bytes: Buffer.from(bytes) });
+    } else if (!hasExplorer) {
+      if (bytes.byteLength > maxSandboxInputFileBytes) {
+        throw new Error(`Input file is too large: ${filePath}`);
+      }
+      throw new Error(
+        `Not enough sandbox capacity for input file: ${filePath}`,
+      );
     }
-    const { text } = await getChatAttachmentExtractedText({
-      attachmentId: reference.id,
-      workspaceId: context.workspaceId,
-      userId: context.userId,
+
+    if (!hasExplorer || !extracted) continue;
+    const explorerFiles = buildDocumentExplorerFiles({
+      filePath,
+      fileName: metadata.fileName,
+      mimeType: metadata.mimeType,
+      markdown: extracted.text,
+      maxFiles: Math.max(3, fairFileBudget - (originalIncluded ? 1 : 0)),
+      maxBytes: Math.max(
+        documentExplorerMetadataReserveBytes,
+        fairByteBudget - (originalIncluded ? bytes.byteLength : 0),
+      ),
+      originalIncluded,
     });
-    if (!text.trim()) continue;
-    files.push({
-      path: uniqueSandboxPath(extractedTextPath(filePath), usedPaths),
-      bytes: Buffer.from(truncateSandboxInputText(text), "utf8"),
-    });
+    for (const explorerFile of explorerFiles) {
+      files.push({
+        path: uniqueSandboxPath(explorerFile.path, usedPaths),
+        bytes: Buffer.from(explorerFile.bytes),
+      });
+    }
   }
 
+  if (files.length > maxSandboxInputFiles) {
+    throw new Error(
+      `Too many input files after expanding attachments. Maximum is ${maxSandboxInputFiles}.`,
+    );
+  }
   const totalBytes = files.reduce(
     (total, file) => total + file.bytes.byteLength,
     0,

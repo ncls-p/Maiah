@@ -78,6 +78,17 @@ describe("chat route tool gating", () => {
     expect(Object.keys(tools)).not.toContain("code_workspace_write_file");
   });
 
+  it("auto-enables the governed sandbox for readable document exploration", async () => {
+    const { buildBoundTools } = await loadModules();
+
+    const { tools } = await buildBoundTools({
+      ...buildInput(),
+      enableDocumentExplorer: true,
+    });
+
+    expect(Object.keys(tools)).toContain("run_code_sandbox");
+  });
+
   it("keeps persisted attachments when a user message is regenerated", async () => {
     const { mergeUserFilePartMetadata } = await loadModules();
     const persistedFile = {

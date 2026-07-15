@@ -5,7 +5,11 @@ import { maxChatAttachments } from "@/modules/chat/attachments";
 import { loadBoundSkillContent } from "@/modules/skills/use-cases";
 import { executeCustomToolWorkflow } from "@/modules/custom-tools/use-cases";
 import { executeMcpTool } from "@/modules/mcp/executor";
-import { getBuiltInTool, requiresApproval } from "@/modules/tool/builtin-tools";
+import {
+  getBuiltInTool,
+  getBuiltInToolByName,
+  requiresApproval,
+} from "@/modules/tool/builtin-tools";
 import {
   canExecuteRestrictedTool,
   getCustomBindingContext,
@@ -563,6 +567,7 @@ export async function buildBoundTools(input: {
   nonInteractive?: boolean;
   approvalPolicy?: AiHubToolApprovalPolicy | null;
   hasSkills?: boolean;
+  enableDocumentExplorer?: boolean;
   emitEvent?: (event: Record<string, unknown>) => void;
   onApprovalRequired?: (event: ToolApprovalRequiredEvent) => void;
 }) {
@@ -867,6 +872,31 @@ export async function buildBoundTools(input: {
         canExecuteRestrictedTool,
       ),
     };
+  }
+
+  if (input.enableDocumentExplorer && !tools.run_code_sandbox) {
+    const definition = getBuiltInToolByName("run_code_sandbox");
+    if (definition) {
+      registerToolApprovalMetadata(definition.name, {
+        toolSource: BUILTIN_TOOL_SOURCE,
+        toolName: definition.name,
+        riskLevel: definition.riskLevel,
+      });
+      usedToolKeys.add(definition.name);
+      tools[definition.name] = {
+        description: `${definition.description} Automatically enabled for embedding-free document exploration. Risk level: ${definition.riskLevel}.`,
+        inputSchema: definition.inputSchema,
+        execute: createBuiltinToolExecute(
+          input,
+          definition,
+          { riskLevel: definition.riskLevel, requireApproval: false },
+          reserveToolCall,
+          toolLimitReachedResult,
+          gateToolExecution,
+          canExecuteRestrictedTool,
+        ),
+      };
+    }
   }
 
   const toolApproval: ToolApprovalConfiguration<

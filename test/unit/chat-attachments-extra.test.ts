@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { deflateSync } from "node:zlib";
 import JSZip from "jszip";
+
+import { textPdfBytes } from "../fixtures/pdf";
 
 const storageMock = vi.hoisted(() => {
 	const objects = new Map<
@@ -68,7 +69,16 @@ async function officeBytes(kind: "pptx" | "xlsx") {
 	const zip = new JSZip();
 	if (kind === "pptx")
 		zip.file("ppt/slides/slide2.xml", "<a:t>Slide &lt;Two&gt;</a:t>");
-	else zip.file("xl/sharedStrings.xml", "<t>Cell &amp; value</t>");
+	else {
+		zip.file(
+			"xl/sharedStrings.xml",
+			"<sst><si><t>Name</t></si><si><t>Value</t></si><si><t>Alpha</t></si></sst>",
+		);
+		zip.file(
+			"xl/worksheets/sheet1.xml",
+			'<worksheet><row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1" t="s"><v>1</v></c></row><row r="2"><c r="A2" t="s"><v>2</v></c><c r="B2"><v>42</v></c></row></worksheet>',
+		);
+	}
 	return zip.generateAsync({ type: "uint8array" });
 }
 
@@ -148,9 +158,7 @@ describe("chat attachments", () => {
 			workspaceId,
 			userId,
 			fileName: "file.pdf",
-			bytes: new TextEncoder().encode(
-				"%PDF-1.4\nBT (Hello PDF) Tj <00480069> Tj ET",
-			),
+			bytes: textPdfBytes("Hello PDF"),
 		});
 		expect(pdf).toMatchObject({
 			category: "document",
@@ -163,8 +171,15 @@ describe("chat attachments", () => {
 				userId,
 			}),
 		).resolves.toMatchObject({
-			text: expect.stringContaining("Hello PDF"),
+			text: "## Page 1\n\nHello PDF",
 		});
+		expect(
+			Array.from(storageMock.objects.entries()).some(
+				([key, object]) =>
+					key.endsWith("/extracted.md") &&
+					object.contentType === "text/markdown; charset=utf-8",
+			),
+		).toBe(true);
 
 		const docx = await createChatAttachment({
 			workspaceId,
@@ -208,7 +223,9 @@ describe("chat attachments", () => {
 				workspaceId,
 				userId,
 			}),
-		).resolves.toMatchObject({ text: expect.stringContaining("Slide 2") });
+		).resolves.toMatchObject({
+			text: "## Slide 2\n\nSlide <Two>",
+		});
 
 		const xlsx = await createChatAttachment({
 			workspaceId,
@@ -222,39 +239,113 @@ describe("chat attachments", () => {
 			category: "spreadsheet",
 			extractionStatus: "readable",
 		});
+		await expect(
+			getChatAttachmentExtractedText({
+				attachmentId: xlsx.id,
+				workspaceId,
+				userId,
+			}),
+		).resolves.toMatchObject({
+			text: "## Sheet 1\n\n| Name | Value |\n| --- | --- |\n| Alpha | 42 |",
+		});
+
+		const navigable = await createChatAttachment({
+			workspaceId,
+			userId,
+			fileName: "navigable.txt",
+			bytes: new TextEncoder().encode("n".repeat(130_000)),
+		});
+		expect(navigable).toMatchObject({
+			extractionStatus: "readable",
+			extractedTextChars: 130_000,
+		});
+		await expect(
+			getChatAttachmentExtractedText({
+				attachmentId: navigable.id,
+				workspaceId,
+				userId,
+			}),
+		).resolves.toMatchObject({ text: "n".repeat(130_000) });
 
 		const large = await createChatAttachment({
 			workspaceId,
 			userId,
 			fileName: "large.txt",
-			bytes: new TextEncoder().encode("a".repeat(130_000)),
+			bytes: new TextEncoder().encode("a".repeat(4_010_000)),
 		});
 		expect(large).toMatchObject({
 			extractionStatus: "truncated",
-			extractionMessage: expect.stringContaining("first"),
+			extractionMessage: expect.stringContaining("partially"),
 		});
 
-		const compressedStream = deflateSync(
-			Buffer.from("BT (Compressed PDF) Tj ET", "latin1"),
-		).toString("latin1");
-		const compressedPdf = await createChatAttachment({
+		const pdfWithBinaryStream = await createChatAttachment({
 			workspaceId,
 			userId,
-			fileName: "compressed.pdf",
-			bytes: Buffer.from(
-				`%PDF-1.4\n<< /Filter /FlateDecode >>\nstream\n${compressedStream}\nendstream`,
-				"latin1",
+			fileName: "binary-stream.pdf",
+			bytes: textPdfBytes(
+				"Visible PDF text",
+				Buffer.concat([
+					new Uint8Array([0x00, 0xff, 0x8e, 0x1f, 0x03]),
+					Buffer.from("(BINARY GARBAGE) endstream <deadbeef>", "latin1"),
+				]),
 			),
 		});
+		const binaryPdfText = await getChatAttachmentExtractedText({
+			attachmentId: pdfWithBinaryStream.id,
+			workspaceId,
+			userId,
+		});
+		expect(binaryPdfText.text).toBe("## Page 1\n\nVisible PDF text");
+		expect(binaryPdfText.text).not.toContain("BINARY GARBAGE");
+		expect(binaryPdfText.text).not.toContain("endstream");
+	});
+
+	it("converts extracted text formats to Markdown", async () => {
+		const html = await createChatAttachment({
+			workspaceId,
+			userId,
+			fileName: "article.html",
+			bytes: new TextEncoder().encode(
+				"<h1>Title</h1><p>Hello <strong>world</strong>.</p>",
+			),
+		});
+		const csv = await createChatAttachment({
+			workspaceId,
+			userId,
+			fileName: "data.csv",
+			bytes: new TextEncoder().encode('Name,Note\nAlpha,"A | B"'),
+		});
+		const json = await createChatAttachment({
+			workspaceId,
+			userId,
+			fileName: "payload",
+			mimeType: "application/json",
+			bytes: new TextEncoder().encode('{"ok":true}'),
+		});
+
 		await expect(
 			getChatAttachmentExtractedText({
-				attachmentId: compressedPdf.id,
+				attachmentId: html.id,
+				workspaceId,
+				userId,
+			}),
+		).resolves.toMatchObject({ text: "# Title\n\nHello **world**." });
+		await expect(
+			getChatAttachmentExtractedText({
+				attachmentId: csv.id,
 				workspaceId,
 				userId,
 			}),
 		).resolves.toMatchObject({
-			text: expect.stringContaining("Compressed PDF"),
+			text: "| Name | Note |\n| --- | --- |\n| Alpha | A \\| B |",
 		});
+		await expect(
+			getChatAttachmentExtractedText({
+				attachmentId: json.id,
+				workspaceId,
+				userId,
+			}),
+		).resolves.toMatchObject({ text: '```json\n{"ok":true}\n```' });
 	});
 
 	it("handles unreadable files, access checks, invalid metadata, and cleanup on failed upload", async () => {

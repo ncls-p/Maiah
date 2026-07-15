@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   select: vi.fn(),
   decryptValue: vi.fn(),
-  getChatAttachmentExtractedText: vi.fn(),
   getChatImageAttachmentBytes: vi.fn(),
 }));
 
@@ -18,7 +17,6 @@ vi.mock("@/modules/chat/attachments", async (importOriginal) => {
     await importOriginal<typeof import("@/modules/chat/attachments")>();
   return {
     ...actual,
-    getChatAttachmentExtractedText: mocks.getChatAttachmentExtractedText,
     getChatImageAttachmentBytes: mocks.getChatImageAttachmentBytes,
   };
 });
@@ -72,10 +70,6 @@ describe("orchestrator conversation history", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.decryptValue.mockImplementation(async (value: string) => value);
-    mocks.getChatAttachmentExtractedText.mockResolvedValue({
-      metadata: {},
-      text: "EXTRACTED OLD FILE CONTENT",
-    });
   });
 
   it("keeps attachment-bearing turns outside the recent history window", () => {
@@ -157,12 +151,12 @@ describe("orchestrator conversation history", () => {
     );
 
     expect(history).toHaveLength(2);
-    expect(JSON.stringify(history[0])).toContain("EXTRACTED OLD FILE CONTENT");
-    expect(mocks.getChatAttachmentExtractedText).toHaveBeenCalledWith({
-      attachmentId: attachment.id,
-      workspaceId: "workspace",
-      userId: "user",
-    });
+    expect(JSON.stringify(history[0])).toContain(
+      "Embedding-free document explorer",
+    );
+    expect(JSON.stringify(history[0])).not.toContain(
+      "EXTRACTED OLD FILE CONTENT",
+    );
   });
 
   it("keeps child traces out and retains only their final response", async () => {
