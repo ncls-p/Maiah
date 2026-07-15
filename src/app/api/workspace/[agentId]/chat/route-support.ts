@@ -10,6 +10,7 @@ import {
   getBuiltInToolByName,
   requiresApproval,
 } from "@/modules/tool/builtin-tools";
+import { getOrganizationBuiltInToolPolicyMap } from "@/modules/tool/organization-builtin-tool-policies";
 import {
   canExecuteRestrictedTool,
   getCustomBindingContext,
@@ -72,6 +73,7 @@ export type BoundToolApprovalMetadata = {
   bindingRequiresApproval?: boolean;
   serverRequiresApproval?: boolean;
   toolRequiresApproval?: boolean;
+  skipDefaultRiskApproval?: boolean;
 };
 
 const githubPublishToolNames = [
@@ -571,7 +573,10 @@ export async function buildBoundTools(input: {
   emitEvent?: (event: Record<string, unknown>) => void;
   onApprovalRequired?: (event: ToolApprovalRequiredEvent) => void;
 }) {
-  const bindings = await getToolBindingsForVersion(input.agentVersionId);
+  const [bindings, builtInPolicies] = await Promise.all([
+    getToolBindingsForVersion(input.agentVersionId),
+    getOrganizationBuiltInToolPolicyMap(input.workspaceId),
+  ]);
   const tools: ToolSet = {};
   const usedToolKeys = new Set<string>();
   const toolApprovalMetadata = new Map<string, BoundToolApprovalMetadata>();
@@ -629,6 +634,7 @@ export async function buildBoundTools(input: {
         bindingRequiresApproval: inputArgs.bindingRequiresApproval,
         serverRequiresApproval: inputArgs.serverRequiresApproval,
         toolRequiresApproval: inputArgs.toolRequiresApproval,
+        skipDefaultRiskApproval: inputArgs.toolSource === BUILTIN_TOOL_SOURCE,
       });
 
     if (decision.status === "allow") return { status: "continue" };
@@ -851,11 +857,20 @@ export async function buildBoundTools(input: {
     if (binding.toolSource !== BUILTIN_TOOL_SOURCE) continue;
     const definition = getBuiltInTool(binding.toolId);
     if (!definition) continue;
+    const organizationPolicy = builtInPolicies.get(definition.name);
+    if (organizationPolicy?.enabled === false) continue;
+    const effectiveBinding = {
+      ...binding,
+      requireApproval:
+        organizationPolicy?.requireApproval ??
+        requiresApproval(definition.riskLevel),
+    };
     registerToolApprovalMetadata(definition.name, {
       toolSource: BUILTIN_TOOL_SOURCE,
       toolName: definition.name,
       riskLevel: definition.riskLevel,
-      bindingRequiresApproval: binding.requireApproval,
+      bindingRequiresApproval: effectiveBinding.requireApproval,
+      skipDefaultRiskApproval: true,
     });
 
     usedToolKeys.add(definition.name);
@@ -865,7 +880,7 @@ export async function buildBoundTools(input: {
       execute: createBuiltinToolExecute(
         input,
         definition,
-        binding,
+        effectiveBinding,
         reserveToolCall,
         toolLimitReachedResult,
         gateToolExecution,
@@ -876,11 +891,17 @@ export async function buildBoundTools(input: {
 
   if (input.enableDocumentExplorer && !tools.run_code_sandbox) {
     const definition = getBuiltInToolByName("run_code_sandbox");
-    if (definition) {
+    const organizationPolicy = builtInPolicies.get("run_code_sandbox");
+    if (definition && organizationPolicy?.enabled !== false) {
+      const requireApproval =
+        organizationPolicy?.requireApproval ??
+        requiresApproval(definition.riskLevel);
       registerToolApprovalMetadata(definition.name, {
         toolSource: BUILTIN_TOOL_SOURCE,
         toolName: definition.name,
         riskLevel: definition.riskLevel,
+        bindingRequiresApproval: requireApproval,
+        skipDefaultRiskApproval: true,
       });
       usedToolKeys.add(definition.name);
       tools[definition.name] = {
@@ -889,7 +910,7 @@ export async function buildBoundTools(input: {
         execute: createBuiltinToolExecute(
           input,
           definition,
-          { riskLevel: definition.riskLevel, requireApproval: false },
+          { riskLevel: definition.riskLevel, requireApproval },
           reserveToolCall,
           toolLimitReachedResult,
           gateToolExecution,

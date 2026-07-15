@@ -8,6 +8,7 @@ import { ChevronDownIcon, DownloadIcon, Maximize2Icon } from "lucide-react";
 import {
   artifactCombinedCode,
   artifactSourceDocument,
+  partitionCodeSandboxFiles,
   type CodeSandboxFileOutput,
   type CodeSandboxInputPreview,
   type CodeSandboxOutput,
@@ -15,7 +16,11 @@ import {
 } from "@/components/chat/chat-message-rendering-utils";
 import { Button } from "@/components/ui/button";
 import { ToolStateIcon } from "@/components/chat/tool-state-icon";
-import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import {
   Dialog,
   DialogContent,
@@ -330,7 +335,12 @@ export function CodeSandboxResultCard({
 }) {
   const t = useTranslations("chat.artifacts");
   const [sourceOpen, setSourceOpen] = useState(false);
+  const [inputFilesOpen, setInputFilesOpen] = useState(false);
   const language = input?.language ?? result.language;
+  const { inputFiles, outputFiles } = useMemo(
+    () => partitionCodeSandboxFiles(result.files),
+    [result.files],
+  );
   return (
     <Collapsible
       open={sourceOpen}
@@ -388,11 +398,11 @@ export function CodeSandboxResultCard({
           </span>
         </div>
       </div>
-      <div className="space-y-3 p-3">
+      <div className="flex flex-col gap-3 p-3">
         {input?.code ? (
           <CollapsibleContent forceMount className="t-acc-panel">
             <div className="t-acc-panel-inner">
-              <div className="space-y-2 rounded-xl bg-muted/20 p-2.5 shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--border)_55%,transparent)]">
+              <div className="flex flex-col gap-2 rounded-xl bg-muted/20 p-2.5 shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--border)_55%,transparent)]">
                 <div className="flex flex-wrap items-center gap-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                   <span>{t("executedCode", { language })}</span>
                   {input.files.length > 0 ? (
@@ -433,15 +443,63 @@ export function CodeSandboxResultCard({
             </pre>
           </div>
         ) : null}
-        {result.files.length > 0 ? (
-          <div className="space-y-2">
+        {outputFiles.length > 0 ? (
+          <div className="flex flex-col gap-2">
             <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-              {t("sandboxFiles")}
+              {t("generatedFiles", { count: outputFiles.length })}
             </p>
-            {result.files.map((file) => (
+            {outputFiles.map((file) => (
               <SandboxOutputFileCard key={file.path} file={file} />
             ))}
           </div>
+        ) : null}
+        {inputFiles.length > 0 ? (
+          <Collapsible
+            open={inputFilesOpen}
+            onOpenChange={setInputFilesOpen}
+            className="overflow-hidden rounded-xl bg-muted/20 shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--border)_55%,transparent)]"
+          >
+            <CollapsibleTrigger asChild>
+              <Button
+                type={BUTTON_TYPE}
+                variant={GHOST_VARIANT}
+                className="h-auto min-h-12 w-full justify-between rounded-xl px-3 py-2 text-left"
+              >
+                <span className="min-w-0">
+                  <span className="block text-xs font-medium text-foreground">
+                    {t("sandboxInputFiles", { count: inputFiles.length })}
+                  </span>
+                  <span className="mt-0.5 block truncate text-[10px] font-normal text-muted-foreground">
+                    {t("sandboxInputFilesHint")}
+                  </span>
+                </span>
+                <ChevronDownIcon
+                  className={cn(
+                    "size-4 shrink-0 text-muted-foreground transition-transform duration-200",
+                    inputFilesOpen && "rotate-180",
+                  )}
+                  aria-hidden="true"
+                />
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <ul className="max-h-64 overflow-auto border-t border-border/40 px-3 py-2">
+                {inputFiles.map((file) => (
+                  <li
+                    key={file.path}
+                    className="flex min-h-8 items-center justify-between gap-3 border-b border-border/30 py-1.5 last:border-b-0"
+                  >
+                    <code className="min-w-0 truncate text-[10px] text-foreground">
+                      {file.path}
+                    </code>
+                    <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
+                      {formatBytes(file.size)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </CollapsibleContent>
+          </Collapsible>
         ) : null}
       </div>
     </Collapsible>

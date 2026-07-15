@@ -36,6 +36,8 @@ export type BuiltinTool = {
   description: string;
   riskLevel: string;
   category?: string;
+  enabled?: boolean;
+  requireApproval?: boolean;
 };
 export type McpServer = { id: string; name: string; requireApproval: boolean };
 export type McpTool = {

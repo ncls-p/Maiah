@@ -268,7 +268,9 @@ export default function AgentConfigurePage() {
     }
 
     const providerRows = (await providersRes.json()) as Provider[];
-    const builtinRows = (await toolsRes.json()) as BuiltinTool[];
+    const builtinRows = ((await toolsRes.json()) as BuiltinTool[]).filter(
+      (tool) => tool.enabled !== false,
+    );
     const mcpServerRows = (await mcpRes.json()) as McpServer[];
     const customToolRows = (await customToolsRes.json()) as CustomTool[];
     const kbRows = (await kbRes.json()) as KnowledgeBase[];
@@ -317,7 +319,12 @@ export default function AgentConfigurePage() {
     setSkills(skillRows);
 
     setBuiltinBindings(
-      buildToolBindingMap(builtinRows, toolBindings, "builtin", () => false),
+      buildToolBindingMap(
+        builtinRows,
+        toolBindings,
+        "builtin",
+        (tool) => tool.requireApproval ?? false,
+      ),
     );
     setMcpBindings(
       buildToolBindingMap(

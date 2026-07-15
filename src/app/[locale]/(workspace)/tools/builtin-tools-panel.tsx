@@ -1,6 +1,13 @@
 "use client";
 
-import { useMemo, useState, type ComponentType, type SVGProps } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ComponentType,
+  type SVGProps,
+} from "react";
 import {
   BinaryIcon,
   BracesIcon,
@@ -26,20 +33,26 @@ import {
   WrenchIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 
 import { PageEmptyState } from "@/components/page-empty-state";
+import { PageLoading } from "@/components/page-loading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import {
-  listBuiltInToolSummaries,
   type BuiltInToolSummary,
   type ToolRiskLevel,
 } from "@/modules/tool/builtin-tools-catalog";
 
-const builtinTools = listBuiltInToolSummaries();
+type BuiltInToolPolicy = BuiltInToolSummary & {
+  enabled: boolean;
+  requireApproval: boolean;
+  configured: boolean;
+};
 
 const CATEGORY_ORDER = [
   "Think",
@@ -123,10 +136,6 @@ function isToolCategory(value: string): value is ToolCategory {
   return TOOL_CATEGORY_VALUES.has(normalized);
 }
 
-function requiresApproval(riskLevel: ToolRiskLevel) {
-  return riskLevel === "high" || riskLevel === "critical";
-}
-
 function riskBadgeVariant(riskLevel: ToolRiskLevel) {
   if (riskLevel === "high" || riskLevel === "critical") return "destructive";
   if (riskLevel === "medium") return "secondary";
@@ -154,18 +163,34 @@ function BuiltinToolCard({
   tool,
   riskLabel,
   approvalLabel,
+  enabledLabel,
+  disabledLabel,
+  canManage,
+  pending,
+  onEnabledChange,
+  onApprovalChange,
   categoryLabel,
 }: {
-  tool: BuiltInToolSummary;
+  tool: BuiltInToolPolicy;
   riskLabel: string;
   approvalLabel: string;
+  enabledLabel: string;
+  disabledLabel: string;
+  canManage: boolean;
+  pending: boolean;
+  onEnabledChange: (enabled: boolean) => void;
+  onApprovalChange: (requireApproval: boolean) => void;
   categoryLabel: string;
 }) {
   const ToolIcon = TOOL_ICONS[tool.name] ?? WrenchIcon;
-  const needsApproval = requiresApproval(tool.riskLevel);
 
   return (
-    <article className="group min-h-full rounded-2xl border bg-card p-4 transition-colors duration-150 hover:border-input hover:bg-muted/30">
+    <article
+      className={cn(
+        "group flex min-h-full flex-col rounded-2xl border bg-card p-4 transition-colors duration-150 hover:border-input hover:bg-muted/30",
+        !tool.enabled && "bg-muted/20",
+      )}
+    >
       <div className="flex items-start gap-3.5">
         <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border bg-background text-muted-foreground">
           <ToolIcon className="size-4" aria-hidden="true" />
@@ -189,14 +214,37 @@ function BuiltinToolCard({
             <code className="truncate text-[0.68rem] text-muted-foreground">
               {tool.name}
             </code>
-            {needsApproval ? (
-              <span className="flex shrink-0 items-center gap-1.5 text-[0.68rem] font-medium text-muted-foreground">
-                <ShieldCheckIcon className="size-3.5" aria-hidden="true" />
-                {approvalLabel}
-              </span>
-            ) : null}
+            <Badge variant={tool.enabled ? "secondary" : "outline"}>
+              {tool.enabled ? enabledLabel : disabledLabel}
+            </Badge>
           </div>
         </div>
+      </div>
+      <div className="mt-auto grid gap-2 border-t pt-3 sm:grid-cols-2">
+        <label className="flex min-h-10 items-center justify-between gap-3 rounded-xl bg-muted/30 px-3 py-2 text-xs font-medium">
+          <span>{enabledLabel}</span>
+          <Switch
+            checked={tool.enabled}
+            disabled={!canManage || pending}
+            onCheckedChange={onEnabledChange}
+            aria-label={`${enabledLabel} — ${tool.displayName}`}
+          />
+        </label>
+        <label className="flex min-h-10 items-center justify-between gap-3 rounded-xl bg-muted/30 px-3 py-2 text-xs font-medium">
+          <span className="flex items-center gap-1.5">
+            <ShieldCheckIcon
+              className="size-3.5 text-muted-foreground"
+              aria-hidden="true"
+            />
+            {approvalLabel}
+          </span>
+          <Switch
+            checked={tool.requireApproval}
+            disabled={!canManage || pending}
+            onCheckedChange={onApprovalChange}
+            aria-label={`${approvalLabel} — ${tool.displayName}`}
+          />
+        </label>
       </div>
     </article>
   );
@@ -237,10 +285,84 @@ function StatCard({
   );
 }
 
-export function BuiltinToolsPanel() {
+export function BuiltinToolsPanel({
+  workspaceId,
+  canManage,
+}: {
+  workspaceId: string;
+  canManage: boolean;
+}) {
   const t = useTranslations("tools.builtin");
+  const [builtinTools, setBuiltinTools] = useState<BuiltInToolPolicy[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [pendingToolNames, setPendingToolNames] = useState<Set<string>>(
+    new Set(),
+  );
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+
+  const loadTools = useCallback(async () => {
+    setLoading(true);
+    setLoadError(false);
+    try {
+      const response = await fetch(
+        `/api/workspace/tools?workspaceId=${workspaceId}`,
+      );
+      if (!response.ok) throw new Error("Unable to load built-in tools");
+      setBuiltinTools((await response.json()) as BuiltInToolPolicy[]);
+    } catch {
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
+  }, [workspaceId]);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => void loadTools(), 0);
+    return () => window.clearTimeout(timeout);
+  }, [loadTools]);
+
+  async function updatePolicy(
+    tool: BuiltInToolPolicy,
+    patch: Pick<Partial<BuiltInToolPolicy>, "enabled" | "requireApproval">,
+  ) {
+    const previous = tool;
+    setPendingToolNames((current) => new Set(current).add(tool.name));
+    setBuiltinTools((current) =>
+      current.map((candidate) =>
+        candidate.name === tool.name ? { ...candidate, ...patch } : candidate,
+      ),
+    );
+    try {
+      const response = await fetch("/api/workspace/tools", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workspaceId, toolName: tool.name, ...patch }),
+      });
+      if (!response.ok) throw new Error("Unable to update built-in tool");
+      const updated = (await response.json()) as BuiltInToolPolicy;
+      setBuiltinTools((current) =>
+        current.map((candidate) =>
+          candidate.name === updated.name ? updated : candidate,
+        ),
+      );
+      toast.success(t("updateSuccess", { name: tool.displayName }));
+    } catch {
+      setBuiltinTools((current) =>
+        current.map((candidate) =>
+          candidate.name === previous.name ? previous : candidate,
+        ),
+      );
+      toast.error(t("updateFailed"));
+    } finally {
+      setPendingToolNames((current) => {
+        const next = new Set(current);
+        next.delete(tool.name);
+        return next;
+      });
+    }
+  }
 
   const riskLabels: Record<ToolRiskLevel, string> = {
     low: t("risk.low"),
@@ -250,23 +372,21 @@ export function BuiltinToolsPanel() {
   };
 
   const stats = useMemo(() => {
-    const byRisk = { low: 0, medium: 0, high: 0, critical: 0 };
-    for (const tool of builtinTools) {
-      byRisk[tool.riskLevel] += 1;
-    }
     return {
       total: builtinTools.length,
-      low: byRisk.low,
-      medium: byRisk.medium,
-      high: byRisk.high + byRisk.critical,
+      enabled: builtinTools.filter((tool) => tool.enabled).length,
+      approval: builtinTools.filter(
+        (tool) => tool.enabled && tool.requireApproval,
+      ).length,
+      disabled: builtinTools.filter((tool) => !tool.enabled).length,
     };
-  }, []);
+  }, [builtinTools]);
 
   const categories = useMemo(() => {
     const set = new Set<string>();
     for (const tool of builtinTools) set.add(tool.category);
     return CATEGORY_ORDER.filter((category) => set.has(category));
-  }, []);
+  }, [builtinTools]);
 
   const filteredTools = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -282,13 +402,13 @@ export function BuiltinToolsPanel() {
         tool.category.toLowerCase().includes(query)
       );
     });
-  }, [search, categoryFilter]);
+  }, [builtinTools, search, categoryFilter]);
 
   const groupedTools = useMemo(() => {
     if (categoryFilter !== "all") {
       return [{ category: categoryFilter, tools: filteredTools }];
     }
-    const groups = new Map<string, BuiltInToolSummary[]>();
+    const groups = new Map<string, BuiltInToolPolicy[]>();
     for (const tool of filteredTools) {
       const list = groups.get(tool.category) ?? [];
       list.push(tool);
@@ -304,6 +424,28 @@ export function BuiltinToolsPanel() {
 
   function categoryLabel(category: string) {
     return isToolCategory(category) ? t(`categories.${category}`) : category;
+  }
+
+  if (loading) return <PageLoading label={t("loading")} />;
+
+  if (loadError) {
+    return (
+      <div className="rounded-2xl border border-destructive/25 bg-destructive/5 p-5">
+        <h2 className="text-base font-semibold">{t("loadFailed")}</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {t("loadFailedDescription")}
+        </p>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="mt-4"
+          onClick={() => void loadTools()}
+        >
+          {t("retry")}
+        </Button>
+      </div>
+    );
   }
 
   return (
@@ -323,19 +465,30 @@ export function BuiltinToolsPanel() {
             <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
               {t("description")}
             </p>
+            <p className="max-w-xl text-xs leading-relaxed text-muted-foreground">
+              {canManage ? t("adminHint") : t("readOnlyHint")}
+            </p>
             <Button variant="outline" size="sm" className="mt-1 w-fit" asChild>
               <Link href="/agents">{t("enableCta")}</Link>
             </Button>
           </div>
           <div className="grid grid-cols-2 gap-2.5">
             <StatCard label={t("stats.total")} value={stats.total} />
-            <StatCard label={t("stats.low")} value={stats.low} tone="low" />
             <StatCard
-              label={t("stats.medium")}
-              value={stats.medium}
+              label={t("stats.enabled")}
+              value={stats.enabled}
+              tone="low"
+            />
+            <StatCard
+              label={t("stats.approval")}
+              value={stats.approval}
               tone="medium"
             />
-            <StatCard label={t("stats.high")} value={stats.high} tone="high" />
+            <StatCard
+              label={t("stats.disabled")}
+              value={stats.disabled}
+              tone="high"
+            />
           </div>
         </div>
       </section>
@@ -430,7 +583,17 @@ export function BuiltinToolsPanel() {
                       <BuiltinToolCard
                         tool={tool}
                         riskLabel={riskLabels[tool.riskLevel]}
-                        approvalLabel={t("requiresApproval")}
+                        approvalLabel={t("approval")}
+                        enabledLabel={t("enabled")}
+                        disabledLabel={t("disabled")}
+                        canManage={canManage}
+                        pending={pendingToolNames.has(tool.name)}
+                        onEnabledChange={(enabled) =>
+                          void updatePolicy(tool, { enabled })
+                        }
+                        onApprovalChange={(requireApproval) =>
+                          void updatePolicy(tool, { requireApproval })
+                        }
                         categoryLabel={label}
                       />
                     </li>

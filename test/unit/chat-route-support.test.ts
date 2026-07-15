@@ -12,6 +12,10 @@ const invocationStateMock = vi.hoisted(() => ({
   waitForApproval: vi.fn(),
 }));
 
+const organizationToolPolicyMock = vi.hoisted(() => ({
+  getOrganizationBuiltInToolPolicyMap: vi.fn(),
+}));
+
 vi.mock("@/modules/tool/use-cases", () => toolUseCasesMock);
 
 vi.mock("@/server/infrastructure/db", () => ({
@@ -23,6 +27,11 @@ vi.mock("@/server/infrastructure/ai-sdk/devtools", () => ({
 }));
 
 vi.mock("@/modules/tool/invocation-state", () => invocationStateMock);
+
+vi.mock(
+  "@/modules/tool/organization-builtin-tool-policies",
+  () => organizationToolPolicyMock,
+);
 
 vi.mock("@/modules/tool/opa-approval-policy", () => ({
   evaluateOpaToolApprovalPolicy: vi.fn(async () => null),
@@ -67,6 +76,9 @@ describe("chat route tool gating", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     toolUseCasesMock.getToolBindingsForVersion.mockResolvedValue([]);
+    organizationToolPolicyMock.getOrganizationBuiltInToolPolicyMap.mockResolvedValue(
+      new Map(),
+    );
   });
 
   it("does not auto-enable code workspace tools without explicit bindings", async () => {
@@ -87,6 +99,22 @@ describe("chat route tool gating", () => {
     });
 
     expect(Object.keys(tools)).toContain("run_code_sandbox");
+  });
+
+  it("does not auto-enable the document sandbox when the organization disabled it", async () => {
+    organizationToolPolicyMock.getOrganizationBuiltInToolPolicyMap.mockResolvedValue(
+      new Map([
+        ["run_code_sandbox", { enabled: false, requireApproval: true }],
+      ]),
+    );
+    const { buildBoundTools } = await loadModules();
+
+    const { tools } = await buildBoundTools({
+      ...buildInput(),
+      enableDocumentExplorer: true,
+    });
+
+    expect(Object.keys(tools)).not.toContain("run_code_sandbox");
   });
 
   it("keeps persisted attachments when a user message is regenerated", async () => {

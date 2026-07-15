@@ -35,6 +35,8 @@ type ToolApprovalInput = {
   bindingRequiresApproval?: boolean;
   serverRequiresApproval?: boolean;
   toolRequiresApproval?: boolean;
+  /** The organization already resolved the built-in risk default. */
+  skipDefaultRiskApproval?: boolean;
 };
 
 const defaultApprovalRiskLevels = new Set<ToolRiskLevel>(["high", "critical"]);
@@ -54,11 +56,14 @@ function includesToolName(values: string[] | undefined, toolName: string) {
 function riskLevelRequiresApproval(
   riskLevel: ToolApprovalInput["riskLevel"],
   policy: AiHubToolApprovalPolicy | null | undefined,
+  skipDefaultRiskApproval: boolean,
 ) {
   if (!riskLevel) return false;
-  const configured = policy?.requireApprovalRiskLevels?.length
+  const configured = policy?.requireApprovalRiskLevels
     ? new Set(policy.requireApprovalRiskLevels)
-    : defaultApprovalRiskLevels;
+    : skipDefaultRiskApproval
+      ? new Set<ToolRiskLevel>()
+      : defaultApprovalRiskLevels;
   return configured.has(riskLevel as ToolRiskLevel);
 }
 
@@ -135,7 +140,13 @@ export function decideToolApproval(
     );
   }
 
-  if (riskLevelRequiresApproval(input.riskLevel, policy)) {
+  if (
+    riskLevelRequiresApproval(
+      input.riskLevel,
+      policy,
+      input.skipDefaultRiskApproval ?? false,
+    )
+  ) {
     return approvalDecision(`Risk level ${input.riskLevel} requires approval`);
   }
 

@@ -39,7 +39,7 @@ const TOOL_TAB_CONFIG = [
     helpKey: null,
     canView: (permissions: WorkspacePermissions) =>
       permissions.canViewTools || permissions.canConfigureTools,
-    render: () => <BuiltinToolsPanel />,
+    render: null,
   },
   {
     value: "mcp",
@@ -224,7 +224,14 @@ export function ToolsHub() {
             {item.helpKey ? (
               <p className="text-sm text-muted-foreground">{t(item.helpKey)}</p>
             ) : null}
-            {item.render()}
+            {item.value === "builtin" ? (
+              <BuiltinToolsPanel
+                workspaceId={workspaceId}
+                canManage={permissions.canManageTenantGlobals}
+              />
+            ) : (
+              item.render?.()
+            )}
           </TabsContent>
         ))}
       </Tabs>

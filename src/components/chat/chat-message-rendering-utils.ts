@@ -179,6 +179,8 @@ export type CodeSandboxFileOutput = {
   downloadUrl?: string;
   downloadError?: string;
   attachment?: ChatFileAttachment | ChatImageAttachment;
+  fromInput?: boolean;
+  modified?: boolean;
 };
 
 export type CodeSandboxLanguage = "python" | "node" | "bash";
@@ -251,7 +253,25 @@ function normalizeSandboxFileOutput(
     ...(normalizeSandboxAttachment(record.attachment)
       ? { attachment: normalizeSandboxAttachment(record.attachment) }
       : {}),
+    ...(typeof record.fromInput === "boolean"
+      ? { fromInput: record.fromInput }
+      : {}),
+    ...(typeof record.modified === "boolean"
+      ? { modified: record.modified }
+      : {}),
   };
+}
+
+export function partitionCodeSandboxFiles(files: CodeSandboxFileOutput[]) {
+  const inputFiles: CodeSandboxFileOutput[] = [];
+  const outputFiles: CodeSandboxFileOutput[] = [];
+
+  for (const file of files) {
+    if (file.fromInput && !file.modified) inputFiles.push(file);
+    else outputFiles.push(file);
+  }
+
+  return { inputFiles, outputFiles };
 }
 
 function isCodeSandboxOutput(value: unknown): value is CodeSandboxOutput {
