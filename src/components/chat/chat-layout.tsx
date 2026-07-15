@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 
 import { useWorkspaceShell } from "@/components/app-shell";
+import { useWorkspace } from "@/hooks/use-workspace";
 import { DeodisLogo } from "@/components/deodis-logo";
 import { ModelLogo } from "@/components/providers/model-logo";
 import { APP_SIDEBAR_SURFACE_CLASS } from "@/components/sidebar-chrome";
@@ -176,6 +177,7 @@ export function ChatLayout({
 }: ChatLayoutProps) {
   const t = useTranslations("chat");
   const shell = useWorkspaceShell();
+  const { workspaceId } = useWorkspace();
   const [setupOpen, setSetupOpen] = useState(false);
   const [agentSearch, setAgentSearch] = useState("");
   const sidebarOpen = useSyncExternalStore(
@@ -254,6 +256,7 @@ export function ChatLayout({
     collapsed: false,
     onCollapsedChange: undefined,
     shell,
+    workspaceId,
   };
   const handleDesktopSidebarCollapsedChange = ((collapsed) => {
     updateSidebarOpen({ open: !collapsed });

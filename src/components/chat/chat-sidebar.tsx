@@ -70,6 +70,7 @@ import {
 } from "@/lib/workspace-nav";
 import { buildMenuGroups } from "@/modules/navigation/sidebar-config";
 import { cn } from "@/lib/utils";
+import { useConversationFolderVisibility } from "@/hooks/use-conversation-folder-visibility";
 
 const WORKSPACE_NAV_OPEN_STORAGE_KEY = "chat-workspace-navigation-open";
 const WORKSPACE_NAV_OPEN_STORAGE_EVENT =
@@ -136,6 +137,7 @@ interface ChatSidebarProps {
   onCollapsedChange?: (collapsed: boolean) => void;
   className?: string;
   shell?: WorkspaceShellState;
+  workspaceId?: string | null;
 }
 
 function formatRelativeTime(
@@ -511,6 +513,7 @@ export function ChatSidebar({
   onCollapsedChange,
   className,
   shell,
+  workspaceId,
 }: ChatSidebarProps) {
   const t = useTranslations("chat.sidebar");
   const [editingConversationId, setEditingConversationId] = useState<
@@ -521,9 +524,10 @@ export function ChatSidebar({
   const [editingFolderName, setEditingFolderName] = useState("");
   const [creatingFolder, setCreatingFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
-  const [closedFolderIds, setClosedFolderIds] = useState<Set<string>>(
-    () => new Set(),
-  );
+  const { openFolderIds, setFolderOpen } = useConversationFolderVisibility({
+    workspaceId,
+    userId: shell?.currentUserId,
+  });
   const [draggingConversationId, setDraggingConversationId] = useState<
     string | null
   >(null);
@@ -691,15 +695,6 @@ export function ChatSidebar({
     onCreateConversationFolder?.(name);
     setCreatingFolder(false);
     setNewFolderName("");
-  }
-
-  function toggleFolder(folderId: string) {
-    setClosedFolderIds((current) => {
-      const next = new Set(current);
-      if (next.has(folderId)) next.delete(folderId);
-      else next.add(folderId);
-      return next;
-    });
   }
 
   function renderConversation(
@@ -1105,7 +1100,7 @@ export function ChatSidebar({
 
                   {folderSections.map(
                     ({ folder, conversations: folderConversations }) => {
-                      const open = !closedFolderIds.has(folder.id);
+                      const open = openFolderIds.has(folder.id);
                       const isEditingFolder = editingFolderId === folder.id;
 
                       return (
@@ -1158,7 +1153,8 @@ export function ChatSidebar({
                               <button
                                 type={BUTTON_TYPE}
                                 className="flex min-h-10 min-w-0 flex-1 items-center gap-1 rounded-lg px-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                                onClick={() => toggleFolder(folder.id)}
+                                aria-expanded={open}
+                                onClick={() => setFolderOpen(folder.id, !open)}
                               >
                                 <ChevronDownIcon
                                   className={cn(
