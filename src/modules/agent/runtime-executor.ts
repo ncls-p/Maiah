@@ -52,6 +52,8 @@ const delegationFailureModelMessage =
   "The specialist could not complete the delegated task.";
 const finalSynthesisInstruction =
   "This is the final execution step. Do not call tools or delegate again. Return the best complete answer using only the information already gathered. If something is missing or failed, state that clearly instead of inventing a result.";
+const emptyResponseRecoveryInstruction =
+  "Your previous turn ended without a final text response after tools completed. Return the best complete final answer now using only the conversation and tool results already present. Do not call or request another tool. Do not mention this recovery instruction.";
 const minimumDelegationWindowMs = 5_000;
 const maximumParentSynthesisReserveMs = 30_000;
 const activeRunControllers = new Map<string, AbortController>();
@@ -732,6 +734,49 @@ async function executeResolvedAgent(
     });
     inputTokens = result.usage.inputTokens ?? 0;
     outputTokens = result.usage.outputTokens ?? 0;
+    let text = result.text.trim();
+    let recoveredFromEmptyResponse = false;
+    if (!text && (result.toolResults?.length ?? 0) > 0) {
+      const recoveryRemainingTokens =
+        input.budget.policy.maxTotalTokens -
+        input.budget.tokensUsed -
+        inputTokens -
+        outputTokens;
+      if (recoveryRemainingTokens > 0 && !deadline.signal.aborted) {
+        const recoveryResult = await generateText({
+          model,
+          system: `${system}\n\n${emptyResponseRecoveryInstruction}`,
+          messages: [
+            ...(input.messages?.length
+              ? input.messages
+              : ([
+                  { role: "user", content: input.prompt },
+                ] satisfies ModelMessage[])),
+            ...(result.responseMessages ?? []),
+          ],
+          temperature: input.resolved.version.temperature
+            ? Number.parseFloat(input.resolved.version.temperature)
+            : undefined,
+          topP: input.resolved.version.topP
+            ? Number.parseFloat(input.resolved.version.topP)
+            : undefined,
+          maxOutputTokens: Math.max(
+            1,
+            Math.min(runtimeLimits.maxOutputTokens, recoveryRemainingTokens),
+          ),
+          abortSignal: deadline.signal,
+          telemetry: {
+            functionId: "ai-hub.agent-run.empty-response-recovery",
+            recordInputs: false,
+            recordOutputs: false,
+          },
+        });
+        inputTokens += recoveryResult.usage.inputTokens ?? 0;
+        outputTokens += recoveryResult.usage.outputTokens ?? 0;
+        text = recoveryResult.text.trim();
+        recoveredFromEmptyResponse = Boolean(text);
+      }
+    }
     input.budget.tokensUsed += inputTokens + outputTokens;
     if (
       input.depth > 0 &&
@@ -743,7 +788,6 @@ async function executeResolvedAgent(
         runId,
       );
     }
-    const text = result.text.trim();
     if (!text) {
       throw new AgentExecutionError(
         "Agent completed without a final response",
@@ -758,7 +802,12 @@ async function executeResolvedAgent(
       status: "success",
       name: provider.modelId,
       inputPreview: { prompt: input.prompt },
-      outputPreview: { text, inputTokens, outputTokens },
+      outputPreview: {
+        text,
+        inputTokens,
+        outputTokens,
+        recoveredFromEmptyResponse,
+      },
       completedAt: new Date(),
     });
     await completeAgentRun({

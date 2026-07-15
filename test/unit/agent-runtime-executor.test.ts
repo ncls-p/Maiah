@@ -210,6 +210,144 @@ describe("agent runtime executor", () => {
     );
   });
 
+  it("recovers an empty final turn from successful tool results without calling another tool", async () => {
+    mocks.getActiveVersion.mockResolvedValueOnce({
+      ...rootVersion,
+      maxToolCalls: 1,
+    });
+    mocks.buildBoundTools.mockResolvedValueOnce({
+      tools: {
+        deepwiki: {
+          execute: vi.fn(async () => ({ result: "Australia release notes" })),
+        },
+      },
+      toolApproval: undefined,
+    });
+    const responseMessages = [
+      {
+        role: "assistant",
+        content: [
+          {
+            type: "tool-call",
+            toolCallId: "deepwiki-call",
+            toolName: "deepwiki",
+            input: { question: "Latest ServiceNow release" },
+          },
+        ],
+      },
+      {
+        role: "tool",
+        content: [
+          {
+            type: "tool-result",
+            toolCallId: "deepwiki-call",
+            toolName: "deepwiki",
+            output: { type: "text", value: "Australia release notes" },
+          },
+        ],
+      },
+    ];
+    mocks.generateText
+      .mockResolvedValueOnce({
+        text: "",
+        usage: { inputTokens: 10, outputTokens: 1 },
+        toolResults: [
+          {
+            type: "tool-result",
+            toolCallId: "deepwiki-call",
+            toolName: "deepwiki",
+            output: { result: "Australia release notes" },
+          },
+        ],
+        responseMessages,
+      })
+      .mockResolvedValueOnce({
+        text: "ServiceNow Australia is the latest release.",
+        usage: { inputTokens: 20, outputTokens: 5 },
+      });
+
+    await expect(
+      executeAgent({
+        workspaceId: rootAgent.workspaceId,
+        userId: rootAgent.createdById,
+        agentId: rootAgent.id,
+        prompt: "Parle-moi des dernières mises à jour ServiceNow",
+        trigger: "api",
+      }),
+    ).resolves.toMatchObject({
+      text: "ServiceNow Australia is the latest release.",
+      inputTokens: 30,
+      outputTokens: 6,
+      totalTreeTokens: 36,
+    });
+
+    expect(mocks.generateText).toHaveBeenCalledTimes(2);
+    expect(mocks.generateText.mock.calls[1][0]).toEqual(
+      expect.objectContaining({
+        messages: [
+          {
+            role: "user",
+            content: "Parle-moi des dernières mises à jour ServiceNow",
+          },
+          ...responseMessages,
+        ],
+        telemetry: expect.objectContaining({
+          functionId: "ai-hub.agent-run.empty-response-recovery",
+        }),
+      }),
+    );
+    expect(mocks.generateText.mock.calls[1][0]).not.toHaveProperty("tools");
+    expect(mocks.completeRun).toHaveBeenCalledWith(
+      expect.objectContaining({
+        inputTokens: 30,
+        outputTokens: 6,
+        reservationTokens: 36,
+      }),
+    );
+    expect(mocks.appendStep).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "model",
+        status: "success",
+        outputPreview: expect.objectContaining({
+          recoveredFromEmptyResponse: true,
+        }),
+      }),
+    );
+  });
+
+  it("still fails when the tool-free recovery also returns no text", async () => {
+    mocks.getActiveVersion.mockResolvedValueOnce({
+      ...rootVersion,
+      maxToolCalls: 1,
+    });
+    mocks.buildBoundTools.mockResolvedValueOnce({
+      tools: { lookup: { execute: vi.fn() } },
+      toolApproval: undefined,
+    });
+    mocks.generateText
+      .mockResolvedValueOnce({
+        text: "",
+        usage: { inputTokens: 4, outputTokens: 0 },
+        toolResults: [{ toolName: "lookup", output: { answer: 42 } }],
+        responseMessages: [],
+      })
+      .mockResolvedValueOnce({
+        text: "   ",
+        usage: { inputTokens: 5, outputTokens: 0 },
+      });
+
+    await expect(
+      executeAgent({
+        workspaceId: rootAgent.workspaceId,
+        userId: rootAgent.createdById,
+        agentId: rootAgent.id,
+        prompt: "Use lookup",
+        trigger: "api",
+      }),
+    ).rejects.toMatchObject({ code: "AGENT_EMPTY_RESPONSE" });
+    expect(mocks.completeRun).not.toHaveBeenCalled();
+  });
+
   it("records successful and failed bound tool executions", async () => {
     mocks.getActiveVersion.mockResolvedValueOnce({
       ...rootVersion,
@@ -603,45 +741,76 @@ describe("agent runtime executor", () => {
           usage: { inputTokens: 7, outputTokens: 8 },
         };
       }
+      if (call === 2) {
+        expect(options.system).toContain(
+          "Return only the final answer needed by the parent orchestrator.",
+        );
+        const prepareStep = options.prepareStep as (input: {
+          stepNumber: number;
+        }) => unknown;
+        expect(await prepareStep({ stepNumber: 2 })).toBeUndefined();
+        expect(await prepareStep({ stepNumber: 3 })).toMatchObject({
+          activeTools: [],
+          toolChoice: "none",
+        });
+        const childToolCall = {
+          type: "tool-call" as const,
+          toolCallId: "child-tool-call",
+          toolName: "web_search",
+          input: { query: "Investigate" },
+          dynamic: false,
+        };
+        await options.onToolExecutionStart?.({
+          callId: "child-model-call",
+          messages: [],
+          toolCall: childToolCall,
+          toolContext: undefined,
+        });
+        await options.onToolExecutionEnd?.({
+          callId: "child-model-call",
+          messages: [],
+          toolCall: childToolCall,
+          toolContext: undefined,
+          toolExecutionMs: 31,
+          toolOutput: {
+            ...childToolCall,
+            type: "tool-result",
+            output: { sourceCount: 3 },
+          },
+        });
+        return {
+          text: "",
+          usage: { inputTokens: 2, outputTokens: 3 },
+          toolResults: [
+            {
+              type: "tool-result",
+              toolCallId: "child-tool-call",
+              toolName: "web_search",
+              output: { sourceCount: 3 },
+            },
+          ],
+          responseMessages: [
+            {
+              role: "tool",
+              content: [
+                {
+                  type: "tool-result",
+                  toolCallId: "child-tool-call",
+                  toolName: "web_search",
+                  output: { type: "json", value: { sourceCount: 3 } },
+                },
+              ],
+            },
+          ],
+        };
+      }
+      expect(options).not.toHaveProperty("tools");
       expect(options.system).toContain(
-        "Return only the final answer needed by the parent orchestrator.",
+        "Your previous turn ended without a final text response",
       );
-      const prepareStep = options.prepareStep as (
-        input: { stepNumber: number },
-      ) => unknown;
-      expect(await prepareStep({ stepNumber: 2 })).toBeUndefined();
-      expect(await prepareStep({ stepNumber: 3 })).toMatchObject({
-        activeTools: [],
-        toolChoice: "none",
-      });
-      const childToolCall = {
-        type: "tool-call" as const,
-        toolCallId: "child-tool-call",
-        toolName: "web_search",
-        input: { query: "Investigate" },
-        dynamic: false,
-      };
-      await options.onToolExecutionStart?.({
-        callId: "child-model-call",
-        messages: [],
-        toolCall: childToolCall,
-        toolContext: undefined,
-      });
-      await options.onToolExecutionEnd?.({
-        callId: "child-model-call",
-        messages: [],
-        toolCall: childToolCall,
-        toolContext: undefined,
-        toolExecutionMs: 31,
-        toolOutput: {
-          ...childToolCall,
-          type: "tool-result",
-          output: { sourceCount: 3 },
-        },
-      });
       return {
         text: "Child result",
-        usage: { inputTokens: 2, outputTokens: 3 },
+        usage: { inputTokens: 4, outputTokens: 4 },
       };
     });
 
@@ -654,7 +823,7 @@ describe("agent runtime executor", () => {
       onProgress,
     });
 
-    expect(result.totalTreeTokens).toBe(20);
+    expect(result.totalTreeTokens).toBe(28);
     expect(mocks.checkPermission).toHaveBeenCalledWith(
       { principalType: "user", principalId: rootAgent.createdById },
       "agents.delegate",
@@ -674,7 +843,7 @@ describe("agent runtime executor", () => {
     const childDeadline = mocks.createRun.mock.calls[1][0].deadlineAt as Date;
     expect(rootDeadline.getTime() - childDeadline.getTime()).toBe(7_500);
     expect(mocks.completeRun).toHaveBeenLastCalledWith(
-      expect.objectContaining({ reservationTokens: 20 }),
+      expect.objectContaining({ reservationTokens: 28 }),
     );
     expect(onProgress).toHaveBeenNthCalledWith(1, {
       type: "tool-start",
@@ -817,9 +986,9 @@ describe("agent runtime executor", () => {
         const delegate = Object.entries(options.tools).find(([name]) =>
           name.startsWith("delegate_"),
         )?.[1] as { execute: (input: { task: string }) => Promise<unknown> };
-        await expect(delegate.execute({ task: "Research" })).rejects.toMatchObject(
-          { code: "AGENT_TOKEN_BUDGET_EXCEEDED" },
-        );
+        await expect(
+          delegate.execute({ task: "Research" }),
+        ).rejects.toMatchObject({ code: "AGENT_TOKEN_BUDGET_EXCEEDED" });
         return {
           text: "The specialist exceeded its budget; retry with a narrower task.",
           usage: { inputTokens: 10, outputTokens: 12 },

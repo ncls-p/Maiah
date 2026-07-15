@@ -35,6 +35,10 @@ treated as a safety boundary.
   steps are rejected by the API and editor.
 - An empty final model response is a failed run (`AGENT_EMPTY_RESPONSE`), never
   a successful run with no answer.
+- If a model stops early with no text after at least one successful tool result,
+  the runtime performs one bounded, tool-free synthesis pass over the existing
+  conversation. Its tokens and elapsed time count against the same tree budget;
+  if it is also empty, the run still fails with `AGENT_EMPTY_RESPONSE`.
 - Each specialist receives an earlier local deadline than its parent,
   reserving up to 30 seconds for parent recovery and synthesis.
 - New orchestrators default to a two-minute tree deadline. Administrators may
