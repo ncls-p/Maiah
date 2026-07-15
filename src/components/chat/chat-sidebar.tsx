@@ -67,6 +67,7 @@ import {
 } from "@/lib/workspace-nav";
 import { buildMenuGroups } from "@/modules/navigation/sidebar-config";
 import { cn } from "@/lib/utils";
+import { SIDEBAR_TO_WORKSPACE_TRANSITION } from "@/lib/sidebar-transitions";
 
 const WORKSPACE_NAV_OPEN_STORAGE_KEY = "chat-workspace-navigation-open";
 const WORKSPACE_NAV_OPEN_STORAGE_EVENT =
@@ -166,6 +167,7 @@ function ChatNavLink({ item }: { item: NavItem }) {
   return (
     <Link
       href={item.href}
+      transitionTypes={[SIDEBAR_TO_WORKSPACE_TRANSITION]}
       aria-current={active ? "page" : undefined}
       className={cn(
         "flex min-h-10 items-center gap-2.5 rounded-xl px-3 text-[13px] font-medium transition-[background-color,color]",

@@ -31,6 +31,10 @@ import {
   type WorkspacePermissions,
   type WorkspaceShellState,
 } from "@/lib/workspace-nav";
+import {
+  SIDEBAR_TO_CHAT_TRANSITION,
+  SIDEBAR_TRANSITION_CLASSES,
+} from "@/lib/sidebar-transitions";
 import type { SidebarNavConfig } from "@/modules/navigation/sidebar-config";
 import { cn } from "@/lib/utils";
 
@@ -174,7 +178,10 @@ export function AppShell({
           </a>
           <div className="flex min-h-0 flex-1 flex-row">
             {!isChatRoute ? (
-              <ViewTransition name="app-sidebar" share="sidebar-context">
+              <ViewTransition
+                name="app-sidebar"
+                share={SIDEBAR_TRANSITION_CLASSES}
+              >
                 <WorkspaceSidebar shell={shellValue} />
               </ViewTransition>
             ) : null}
@@ -191,7 +198,10 @@ export function AppShell({
                       size="sm"
                       className="gap-2"
                     >
-                      <Link href="/chat">
+                      <Link
+                        href="/chat"
+                        transitionTypes={[SIDEBAR_TO_CHAT_TRANSITION]}
+                      >
                         <MessageSquareIcon
                           className="size-4"
                           aria-hidden="true"

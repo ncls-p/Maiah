@@ -45,6 +45,7 @@ import {
 } from "@/lib/workspace-nav";
 import { buildMenuGroups } from "@/modules/navigation/sidebar-config";
 import { cn } from "@/lib/utils";
+import { SIDEBAR_TO_CHAT_TRANSITION } from "@/lib/sidebar-transitions";
 
 const STORAGE_KEY = "workspace-sidebar-collapsed";
 const STORAGE_EVENT = "workspace-sidebar-collapsed-change";
@@ -173,6 +174,9 @@ function SidebarNavLink({
   const link = (
     <Link
       href={item.href}
+      transitionTypes={
+        item.href === "/chat" ? [SIDEBAR_TO_CHAT_TRANSITION] : undefined
+      }
       onClick={onNavigate}
       aria-current={active ? "page" : undefined}
       className={cn(
@@ -324,10 +328,15 @@ function SidebarPanel({
           )}
         >
           {!collapsed ? (
-            <DeodisLogo href="/chat" className="h-7 shrink-0" />
+            <DeodisLogo
+              href="/chat"
+              transitionTypes={[SIDEBAR_TO_CHAT_TRANSITION]}
+              className="h-7 shrink-0"
+            />
           ) : (
             <DeodisLogo
               href="/chat"
+              transitionTypes={[SIDEBAR_TO_CHAT_TRANSITION]}
               className="size-6 shrink-0 object-contain"
             />
           )}

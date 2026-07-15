@@ -48,8 +48,11 @@
   --panel-blur: 2px;
   --panel-ease: cubic-bezier(0.22, 1, 0.36, 1);
   /* Sidebar context change */
-  --sidebar-context-dur: 400ms;
-  --sidebar-context-fade-dur: 250ms;
+  --sidebar-context-dur: 450ms;
+  --sidebar-context-exit-dur: 180ms;
+  --sidebar-context-enter-dur: 320ms;
+  --sidebar-context-enter-delay: 100ms;
+  --sidebar-context-distance: 32px;
   --sidebar-context-blur: 2px;
   --sidebar-context-ease: cubic-bezier(0.22, 1, 0.36, 1);
   /* Page side-by-side */
@@ -174,20 +177,61 @@
 
 /* Sidebar context change — keeps the left rail spatially anchored while its
    content switches between workspace navigation and conversation history. */
-::view-transition-group(.sidebar-context) {
+::view-transition {
+  background: var(--background);
+}
+
+::view-transition-old(root) {
+  animation: none;
+  opacity: 0;
+  mix-blend-mode: normal;
+}
+
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-group(.sidebar-context),
+::view-transition-group(.sidebar-to-chat),
+::view-transition-group(.sidebar-to-workspace) {
   z-index: 40;
   animation-duration: var(--sidebar-context-dur);
   animation-timing-function: var(--sidebar-context-ease);
 }
 
 ::view-transition-old(.sidebar-context) {
-  animation: sidebar-context-fade-out var(--sidebar-context-fade-dur) ease-in
+  animation: sidebar-context-fade-out var(--sidebar-context-exit-dur) ease-in
     both;
 }
 
 ::view-transition-new(.sidebar-context) {
-  animation: sidebar-context-fade-in var(--sidebar-context-dur)
-    var(--sidebar-context-ease) both;
+  animation: sidebar-context-fade-in var(--sidebar-context-enter-dur)
+    var(--sidebar-context-ease) var(--sidebar-context-enter-delay) both;
+}
+
+::view-transition-old(.sidebar-to-workspace) {
+  --sidebar-context-shift: calc(var(--sidebar-context-distance) * -1);
+  animation: sidebar-context-slide-out var(--sidebar-context-exit-dur) ease-in
+    both;
+}
+
+::view-transition-new(.sidebar-to-workspace) {
+  --sidebar-context-shift: var(--sidebar-context-distance);
+  animation: sidebar-context-slide-in var(--sidebar-context-enter-dur)
+    var(--sidebar-context-ease) var(--sidebar-context-enter-delay) both;
+}
+
+::view-transition-old(.sidebar-to-chat) {
+  --sidebar-context-shift: var(--sidebar-context-distance);
+  animation: sidebar-context-slide-out var(--sidebar-context-exit-dur) ease-in
+    both;
+}
+
+::view-transition-new(.sidebar-to-chat) {
+  --sidebar-context-shift: calc(var(--sidebar-context-distance) * -1);
+  animation: sidebar-context-slide-in var(--sidebar-context-enter-dur)
+    var(--sidebar-context-ease) var(--sidebar-context-enter-delay) both;
 }
 
 @keyframes sidebar-context-fade-out {
@@ -212,10 +256,38 @@
   }
 }
 
+@keyframes sidebar-context-slide-out {
+  from {
+    translate: 0;
+    opacity: 1;
+  }
+  to {
+    translate: var(--sidebar-context-shift);
+    opacity: 0;
+  }
+}
+
+@keyframes sidebar-context-slide-in {
+  from {
+    translate: var(--sidebar-context-shift);
+    opacity: 0;
+  }
+  to {
+    translate: 0;
+    opacity: 1;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-group(.sidebar-context),
+  ::view-transition-group(.sidebar-to-chat),
+  ::view-transition-group(.sidebar-to-workspace),
   ::view-transition-old(.sidebar-context),
-  ::view-transition-new(.sidebar-context) {
+  ::view-transition-new(.sidebar-context),
+  ::view-transition-old(.sidebar-to-chat),
+  ::view-transition-new(.sidebar-to-chat),
+  ::view-transition-old(.sidebar-to-workspace),
+  ::view-transition-new(.sidebar-to-workspace) {
     animation-duration: 0s !important;
     animation-delay: 0s !important;
   }

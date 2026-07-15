@@ -56,6 +56,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { SIDEBAR_TRANSITION_CLASSES } from "@/lib/sidebar-transitions";
 
 const HISTORY_OPEN_STORAGE_KEY = "chat-unified-sidebar-open";
 const HISTORY_OPEN_STORAGE_EVENT = "chat-unified-sidebar-open-change";
@@ -512,7 +513,7 @@ export function ChatLayout({
 
   return (
     <div className="chat-shell-brand flex h-full min-h-0 overflow-hidden">
-      <ViewTransition name="app-sidebar" share="sidebar-context">
+      <ViewTransition name="app-sidebar" share={SIDEBAR_TRANSITION_CLASSES}>
         <div
           className={cn(
             "hidden ease-[cubic-bezier(0.2,0,0,1)] md:block",

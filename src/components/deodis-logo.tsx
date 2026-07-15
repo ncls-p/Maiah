@@ -8,6 +8,7 @@ interface DeodisLogoProps {
   href?: string;
   priority?: boolean;
   label?: string;
+  transitionTypes?: string[];
 }
 
 export function DeodisLogo({
@@ -15,6 +16,7 @@ export function DeodisLogo({
   href = "/",
   priority = true,
   label = "Deodis home",
+  transitionTypes,
 }: DeodisLogoProps) {
   const image = (
     <Image
@@ -36,6 +38,7 @@ export function DeodisLogo({
   return (
     <Link
       href={href}
+      transitionTypes={transitionTypes}
       className="inline-flex min-h-10 shrink-0 items-center rounded-lg"
       aria-label={label}
     >
