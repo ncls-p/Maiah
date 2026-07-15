@@ -24,6 +24,26 @@ treated as a safety boundary.
   4000 output tokens.
 - Title, suggestion and connection-test model calls have a 30-second deadline.
 
+## Orchestrated runs
+
+- A specialist has at least two model steps whenever tools or nested
+  delegation are available: one action step and one final synthesis step.
+- `maxChildSteps` bounds the complete specialist loop. On its last permitted
+  step, tools and delegation are disabled so the model must answer from the
+  results already collected.
+- Legacy one-step policies are normalized to two steps. New policies below two
+  steps are rejected by the API and editor.
+- An empty final model response is a failed run (`AGENT_EMPTY_RESPONSE`), never
+  a successful run with no answer.
+- Each specialist receives an earlier local deadline than its parent,
+  reserving up to 30 seconds for parent recovery and synthesis.
+- New orchestrators default to a two-minute tree deadline. Administrators may
+  configure up to five minutes for longer multi-specialist work.
+- A specialist that crosses the cumulative token budget fails immediately and
+  prevents further delegated work. If the parent model has already produced
+  its terminal recovery text, that text is retained instead of being discarded
+  after the tokens have already been consumed.
+
 The shared policy lives in `src/modules/agent/runtime-policy.ts`. API validation
 and the agent editor expose the same maxima so a saved configuration never
 silently promises more than the runtime will execute.

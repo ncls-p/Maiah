@@ -88,6 +88,12 @@ export type DelegationBinding = {
   childAgentId: string;
   childAgentVersionId: string;
   instructions?: string | null;
+  childVersion?: {
+    id: string;
+    versionNumber: number;
+    name: string | null;
+    isActive: boolean;
+  } | null;
   childAgent?: {
     id: string;
     name: string;

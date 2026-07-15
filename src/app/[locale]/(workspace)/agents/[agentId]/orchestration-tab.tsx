@@ -61,6 +61,7 @@ function policyField(
   min: number,
   max: number,
   step = 1,
+  description?: string,
 ) {
   return (
     <div className="flex flex-col gap-2">
@@ -81,6 +82,9 @@ function policyField(
           })
         }
       />
+      {description ? (
+        <p className="text-xs text-muted-foreground">{description}</p>
+      ) : null}
     </div>
   );
 }
@@ -311,7 +315,7 @@ export function OrchestrationTab({
           {
             childAgentId: candidate.id,
             childAgentVersionId: candidate.activeVersionId!,
-            instructions: "",
+            instructions: candidate.description?.trim() ?? "",
             childAgent: {
               id: candidate.id,
               name: candidate.name,
@@ -376,6 +380,12 @@ export function OrchestrationTab({
             {candidates.map((candidate) => {
               const binding = selectedById.get(candidate.id);
               const selected = Boolean(binding);
+              const pinnedVersion = binding?.childVersion;
+              const hasNewerVersion = Boolean(
+                binding &&
+                candidate.activeVersionId &&
+                candidate.activeVersionId !== binding.childAgentVersionId,
+              );
               return (
                 <div
                   key={candidate.id}
@@ -404,18 +414,35 @@ export function OrchestrationTab({
                     </span>
                     <Badge
                       variant="outline"
-                      className="shrink-0 text-[0.65rem]"
+                      className={cn(
+                        "shrink-0 text-[0.65rem] tabular-nums",
+                        hasNewerVersion && "border-warning/35 text-warning",
+                      )}
                     >
-                      {t("pinnedVersion")}
+                      {pinnedVersion
+                        ? t("pinnedVersionNumber", {
+                            version: pinnedVersion.versionNumber,
+                          })
+                        : t("currentVersion")}
                     </Badge>
                   </label>
                   {binding ? (
                     <div className="mt-3 border-t pt-3">
+                      {hasNewerVersion ? (
+                        <p className="mb-3 text-xs text-warning">
+                          {t("pinnedVersionOutdated")}
+                        </p>
+                      ) : null}
                       <Label
                         htmlFor={`delegation-instructions-${candidate.id}`}
                       >
                         {t("instructions")}
                       </Label>
+                      {!binding.instructions?.trim() ? (
+                        <p className="mt-1 text-xs text-warning">
+                          {t("instructionsMissing")}
+                        </p>
+                      ) : null}
                       <Textarea
                         id={`delegation-instructions-${candidate.id}`}
                         name={`delegation-instructions-${candidate.id}`}
@@ -470,8 +497,10 @@ export function OrchestrationTab({
               (policy) => setConfig({ ...config, policy }),
               "maxChildSteps",
               t("maxChildSteps"),
-              1,
+              2,
               20,
+              1,
+              t("maxChildStepsDescription"),
             )}
             {policyField(
               config.policy,
@@ -488,8 +517,9 @@ export function OrchestrationTab({
               "timeoutMs",
               t("timeoutMs"),
               5000,
-              120000,
+              300000,
               5000,
+              t("timeoutMsDescription"),
             )}
             {policyField(
               config.policy,

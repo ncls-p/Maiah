@@ -194,6 +194,12 @@ export function textFromMessage(message: ChatMessage) {
     .join("\n");
 }
 
+export function preserveAssistantFailureParts(parts: ChatMessagePart[]) {
+  return parts.length > 0
+    ? parts
+    : [{ type: "text", content: "The assistant failed to respond." }];
+}
+
 function parseToolPartRecord(part: ChatMessagePart) {
   try {
     return JSON.parse(part.content) as Record<string, unknown>;
@@ -293,6 +299,43 @@ export function workPhaseHasPendingWork(
       (part.type === "reasoning" && part.state === "streaming") ||
       ((part.type === "tool-call" || part.type === "tool-result") &&
         getToolStatus(parseToolPart(part.content)) === "pending"),
+  );
+}
+
+function agentStatusFromToolPart(
+  parsed: ReturnType<typeof parseToolPart>,
+): "running" | "success" | "error" | undefined {
+  const context = parsed.agentContext;
+  if (typeof context !== "object" || context === null) return undefined;
+  const status = (context as { status?: unknown }).status;
+  return status === "running" || status === "success" || status === "error"
+    ? status
+    : undefined;
+}
+
+export function resolveToolDisplayStatus(
+  parsed: ReturnType<typeof parseToolPart>,
+  messageStatus?: ChatMessage["status"],
+): "pending" | "completed" | "error" {
+  const toolStatus = getToolStatus(parsed);
+  const agentStatus = agentStatusFromToolPart(parsed);
+  if (agentStatus === "error" || toolStatus === "error") return "error";
+  if (agentStatus === "success") return "completed";
+  if (toolStatus !== "pending") return toolStatus;
+  if (messageStatus === "streaming") return "pending";
+  return messageStatus === "failed" ? "error" : "completed";
+}
+
+export function workPhaseHasFailedWork(
+  parts: ChatMessagePart[],
+  messageStatus?: ChatMessage["status"],
+) {
+  if (messageStatus === "failed") return true;
+  return parts.some(
+    (part) =>
+      (part.type === "tool-call" || part.type === "tool-result") &&
+      resolveToolDisplayStatus(parseToolPart(part.content), messageStatus) ===
+        "error",
   );
 }
 

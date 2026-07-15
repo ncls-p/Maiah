@@ -5,13 +5,30 @@ import {
   getToolStatus,
   groupWorkPhaseParts,
   parseToolPart,
+  preserveAssistantFailureParts,
   renderablePartsFromMessage,
+  resolveToolDisplayStatus,
   startReasoningPart,
+  workPhaseHasFailedWork,
   workPhaseHasPendingWork,
   type ChatMessage,
 } from "@/components/chat/chat-types";
 
 describe("chat message parts", () => {
+  it("preserves the execution trace when an assistant request fails", () => {
+    const parts: ChatMessage["parts"] = [
+      {
+        type: "tool-call",
+        content: JSON.stringify({ toolName: "delegate_specialist_1" }),
+      },
+    ];
+
+    expect(preserveAssistantFailureParts(parts)).toBe(parts);
+    expect(preserveAssistantFailureParts([])).toEqual([
+      { type: "text", content: "The assistant failed to respond." },
+    ]);
+  });
+
   it("keeps reasoning blocks split across tool calls", () => {
     let parts: ChatMessage["parts"] = [];
 
@@ -264,5 +281,45 @@ describe("chat message parts", () => {
         ),
       ),
     ).toBe("error");
+  });
+
+  it("keeps a completed child tool successful when the parent message fails", () => {
+    const parsed = parseToolPart(
+      JSON.stringify({
+        output: { result: "Useful specialist research" },
+        agentContext: {
+          agentId: "child",
+          agentName: "Specialist",
+          runId: "child-run",
+          depth: 1,
+          status: "success",
+        },
+      }),
+    );
+
+    expect(resolveToolDisplayStatus(parsed, "failed")).toBe("completed");
+  });
+
+  it("marks an interrupted work phase as failed without poisoning successful tools", () => {
+    const parts = [
+      {
+        type: "tool-call",
+        content: JSON.stringify({
+          output: { result: "Returned result" },
+          agentContext: {
+            agentId: "child",
+            agentName: "Specialist",
+            runId: "child-run",
+            depth: 1,
+            status: "success",
+          },
+        }),
+      },
+    ];
+
+    expect(workPhaseHasFailedWork(parts, "failed")).toBe(true);
+    expect(
+      resolveToolDisplayStatus(parseToolPart(parts[0].content), "failed"),
+    ).toBe("completed");
   });
 });

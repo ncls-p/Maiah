@@ -189,6 +189,27 @@ describe("agent runtime executor", () => {
     );
   });
 
+  it("fails explicitly when the model loop ends without a final answer", async () => {
+    mocks.generateText.mockResolvedValueOnce({
+      text: "   ",
+      usage: { inputTokens: 4, outputTokens: 0 },
+    });
+
+    await expect(
+      executeAgent({
+        workspaceId: rootAgent.workspaceId,
+        userId: rootAgent.createdById,
+        agentId: rootAgent.id,
+        prompt: "Hello",
+        trigger: "api",
+      }),
+    ).rejects.toMatchObject({ code: "AGENT_EMPTY_RESPONSE" });
+    expect(mocks.completeRun).not.toHaveBeenCalled();
+    expect(mocks.failRun).toHaveBeenCalledWith(
+      expect.objectContaining({ errorCode: "AGENT_EMPTY_RESPONSE" }),
+    );
+  });
+
   it("records successful and failed bound tool executions", async () => {
     mocks.getActiveVersion.mockResolvedValueOnce({
       ...rootVersion,
@@ -483,6 +504,7 @@ describe("agent runtime executor", () => {
       ...rootVersion,
       id: "99999999-9999-4999-8999-999999999999",
       agentId: childAgent.id,
+      maxToolCalls: 4,
     };
     const orchestrator = {
       ...rootAgent,
@@ -513,6 +535,16 @@ describe("agent runtime executor", () => {
         instructions: "Research",
       },
     ]);
+    mocks.buildBoundTools
+      .mockResolvedValueOnce({ tools: {}, toolApproval: undefined })
+      .mockResolvedValueOnce({
+        tools: {
+          web_search: {
+            execute: vi.fn(async () => ({ sourceCount: 3 })),
+          },
+        },
+        toolApproval: undefined,
+      });
     mocks.createRun
       .mockResolvedValueOnce({
         run: {
@@ -574,6 +606,14 @@ describe("agent runtime executor", () => {
       expect(options.system).toContain(
         "Return only the final answer needed by the parent orchestrator.",
       );
+      const prepareStep = options.prepareStep as (
+        input: { stepNumber: number },
+      ) => unknown;
+      expect(await prepareStep({ stepNumber: 2 })).toBeUndefined();
+      expect(await prepareStep({ stepNumber: 3 })).toMatchObject({
+        activeTools: [],
+        toolChoice: "none",
+      });
       const childToolCall = {
         type: "tool-call" as const,
         toolCallId: "child-tool-call",
@@ -630,6 +670,9 @@ describe("agent runtime executor", () => {
         trigger: "delegation",
       }),
     );
+    const rootDeadline = mocks.createRun.mock.calls[0][0].deadlineAt as Date;
+    const childDeadline = mocks.createRun.mock.calls[1][0].deadlineAt as Date;
+    expect(rootDeadline.getTime() - childDeadline.getTime()).toBe(7_500);
     expect(mocks.completeRun).toHaveBeenLastCalledWith(
       expect.objectContaining({ reservationTokens: 20 }),
     );
@@ -715,6 +758,102 @@ describe("agent runtime executor", () => {
     expect(mocks.getVersion).not.toHaveBeenCalled();
     expect(mocks.failRun).toHaveBeenCalledWith(
       expect.objectContaining({ errorCode: "AGENT_DELEGATION_FORBIDDEN" }),
+    );
+  });
+
+  it("retains the parent recovery after a specialist exceeds the tree token budget", async () => {
+    const childAgent = {
+      ...rootAgent,
+      id: "88888888-8888-4888-8888-888888888888",
+      kind: "assistant",
+    };
+    const childVersion = {
+      ...rootVersion,
+      id: "99999999-9999-4999-8999-999999999999",
+      agentId: childAgent.id,
+    };
+    mocks.getVisibleAgent
+      .mockResolvedValueOnce({ ...rootAgent, kind: "orchestrator" })
+      .mockResolvedValueOnce(childAgent);
+    mocks.getActiveVersion.mockResolvedValueOnce({
+      ...rootVersion,
+      maxToolCalls: 2,
+      orchestrationPolicyJson: {
+        maxDepth: 2,
+        maxDelegations: 2,
+        maxParallel: 1,
+        maxChildSteps: 2,
+        maxTotalTokens: 1_000,
+        timeoutMs: 30_000,
+        resultMaxChars: 2_000,
+      },
+    });
+    mocks.getVersion.mockResolvedValueOnce(childVersion);
+    mocks.getDelegationBindings.mockResolvedValueOnce([
+      {
+        childAgentId: childAgent.id,
+        childAgentVersionId: childVersion.id,
+      },
+    ]);
+    mocks.createRun
+      .mockResolvedValueOnce({
+        run: {
+          id: "77777777-7777-4777-8777-777777777777",
+          status: "queued",
+        },
+        reused: false,
+      })
+      .mockResolvedValueOnce({
+        run: {
+          id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          status: "queued",
+        },
+        reused: false,
+      });
+    let call = 0;
+    mocks.generateText.mockImplementation(async (options) => {
+      call += 1;
+      if (call === 1) {
+        const delegate = Object.entries(options.tools).find(([name]) =>
+          name.startsWith("delegate_"),
+        )?.[1] as { execute: (input: { task: string }) => Promise<unknown> };
+        await expect(delegate.execute({ task: "Research" })).rejects.toMatchObject(
+          { code: "AGENT_TOKEN_BUDGET_EXCEEDED" },
+        );
+        return {
+          text: "The specialist exceeded its budget; retry with a narrower task.",
+          usage: { inputTokens: 10, outputTokens: 12 },
+        };
+      }
+      return {
+        text: "Oversized specialist result",
+        usage: { inputTokens: 1_100, outputTokens: 5 },
+      };
+    });
+
+    await expect(
+      executeAgent({
+        workspaceId: rootAgent.workspaceId,
+        userId: rootAgent.createdById,
+        agentId: rootAgent.id,
+        prompt: "Coordinate",
+        trigger: "api",
+      }),
+    ).resolves.toMatchObject({
+      text: "The specialist exceeded its budget; retry with a narrower task.",
+      totalTreeTokens: 1_127,
+    });
+    expect(mocks.failRun).toHaveBeenCalledWith(
+      expect.objectContaining({
+        runId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        errorCode: "AGENT_TOKEN_BUDGET_EXCEEDED",
+      }),
+    );
+    expect(mocks.completeRun).toHaveBeenCalledWith(
+      expect.objectContaining({
+        runId: "77777777-7777-4777-8777-777777777777",
+        reservationTokens: 1_127,
+      }),
     );
   });
 });

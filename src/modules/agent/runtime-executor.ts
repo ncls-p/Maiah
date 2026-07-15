@@ -50,6 +50,10 @@ import { getAdapter } from "@/server/infrastructure/providers";
 const HEARTBEAT_MS = 10_000;
 const delegationFailureModelMessage =
   "The specialist could not complete the delegated task.";
+const finalSynthesisInstruction =
+  "This is the final execution step. Do not call tools or delegate again. Return the best complete answer using only the information already gathered. If something is missing or failed, state that clearly instead of inventing a result.";
+const minimumDelegationWindowMs = 5_000;
+const maximumParentSynthesisReserveMs = 30_000;
 const activeRunControllers = new Map<string, AbortController>();
 
 export class AgentExecutionError extends Error {
@@ -128,6 +132,7 @@ type InternalExecutionInput = {
   systemContext?: string;
   trigger: AgentRunTrigger;
   budget: ExecutionBudget;
+  deadlineAt: Date;
   depth: number;
   ancestry: string[];
   parentRunId?: string;
@@ -418,6 +423,21 @@ async function buildDelegationTools(input: {
             workspaceId: input.execution.workspaceId,
             userId: input.execution.userId,
           });
+          const parentDeadlineMs = input.execution.deadlineAt.getTime();
+          const synthesisReserveMs = Math.min(
+            maximumParentSynthesisReserveMs,
+            Math.max(
+              minimumDelegationWindowMs,
+              Math.floor(input.execution.budget.policy.timeoutMs / 4),
+            ),
+          );
+          const childDeadlineMs = parentDeadlineMs - synthesisReserveMs;
+          if (childDeadlineMs - Date.now() < minimumDelegationWindowMs) {
+            throw new AgentExecutionError(
+              "Not enough execution time remains to start a specialist safely",
+              "AGENT_DELEGATION_DEADLINE_EXCEEDED",
+            );
+          }
           const result = await executeResolvedAgent({
             resolved: child,
             workspaceId: input.execution.workspaceId,
@@ -425,6 +445,7 @@ async function buildDelegationTools(input: {
             prompt: task,
             trigger: "delegation",
             budget: input.execution.budget,
+            deadlineAt: new Date(childDeadlineMs),
             depth: input.execution.depth + 1,
             ancestry: [...input.execution.ancestry, binding.childAgentId],
             parentRunId: input.runId,
@@ -498,7 +519,7 @@ async function executeResolvedAgent(
         trigger: input.trigger,
         payload: { prompt: input.prompt },
         requestedTokens: input.budget.policy.maxTotalTokens,
-        deadlineAt: input.budget.deadlineAt,
+        deadlineAt: input.deadlineAt,
         rootRunId: input.budget.rootRunId,
         parentRunId: input.parentRunId,
         conversationId: input.conversationId,
@@ -595,6 +616,8 @@ async function executeResolvedAgent(
       runId,
       allocateSequence,
     );
+    const hasTools = Object.keys(tools).length > 0;
+    const effectiveMaxSteps = hasTools ? Math.max(2, maxSteps) : maxSteps;
     const delegationPrompt =
       Object.keys(delegationTools).length > 0
         ? "You are an orchestrator. Break the request into bounded tasks and use only the delegate_specialist_* tools whose configured expertise is relevant. Synthesize the returned results into one answer. Never invent a child result."
@@ -617,7 +640,7 @@ async function executeResolvedAgent(
       .filter(Boolean)
       .join("\n\n");
     const deadline = createRuntimeDeadline(
-      Math.max(1, input.budget.deadlineAt.getTime() - Date.now()),
+      Math.max(1, input.deadlineAt.getTime() - Date.now()),
       input.budget.controller.signal,
     );
     const result = await generateText({
@@ -634,9 +657,19 @@ async function executeResolvedAgent(
         : undefined,
       maxOutputTokens,
       tools,
-      toolChoice: Object.keys(tools).length > 0 ? "auto" : undefined,
+      toolChoice: hasTools ? "auto" : undefined,
       toolApproval: bound.toolApproval,
-      stopWhen: stepCountIs(Math.max(1, maxSteps)),
+      stopWhen: stepCountIs(Math.max(1, effectiveMaxSteps)),
+      prepareStep: hasTools
+        ? ({ stepNumber }) => {
+            if (stepNumber < effectiveMaxSteps - 1) return undefined;
+            return {
+              activeTools: [],
+              toolChoice: "none",
+              instructions: `${system}\n\n${finalSynthesisInstruction}`,
+            };
+          }
+        : undefined,
       abortSignal: deadline.signal,
       onToolExecutionStart: ({ toolCall }) =>
         emitToolProgress(input.onProgress, {
@@ -700,7 +733,10 @@ async function executeResolvedAgent(
     inputTokens = result.usage.inputTokens ?? 0;
     outputTokens = result.usage.outputTokens ?? 0;
     input.budget.tokensUsed += inputTokens + outputTokens;
-    if (input.budget.tokensUsed > input.budget.policy.maxTotalTokens) {
+    if (
+      input.depth > 0 &&
+      input.budget.tokensUsed > input.budget.policy.maxTotalTokens
+    ) {
       throw new AgentExecutionError(
         "Agent tree token budget exceeded",
         "AGENT_TOKEN_BUDGET_EXCEEDED",
@@ -708,6 +744,13 @@ async function executeResolvedAgent(
       );
     }
     const text = result.text.trim();
+    if (!text) {
+      throw new AgentExecutionError(
+        "Agent completed without a final response",
+        "AGENT_EMPTY_RESPONSE",
+        runId,
+      );
+    }
     await appendAgentRunStep({
       runId,
       sequence: allocateSequence(),
@@ -869,6 +912,7 @@ export async function executeAgent(
       tokensUsed: 0,
       activeDelegations: 0,
     },
+    deadlineAt,
     depth: 0,
     ancestry: [resolved.agent.id],
     existingRunId: created.run.id,

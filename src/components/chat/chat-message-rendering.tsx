@@ -25,11 +25,12 @@ import { createMathPlugin } from "@streamdown/math";
 import { CitationBlock } from "@/components/chat/citation-block";
 import {
   citationsFromMessage,
-  getToolStatus,
   groupWorkPhaseParts,
   parseToolPart,
   renderablePartsFromMessage,
+  resolveToolDisplayStatus,
   textFromMessage,
+  workPhaseHasFailedWork,
   workPhaseHasPendingWork,
   type ChatMessage,
   type ChatMessagePart,
@@ -365,14 +366,8 @@ const ToolPartCard = memo(function ToolPartCard({
     [isDelegation, parsed.toolName, t],
   );
   const status = useMemo(() => {
-    if (agentContext?.status === "error" || messageStatus === "failed") {
-      return "error";
-    }
-    const toolStatus = getToolStatus(parsed);
-    return toolStatus === "pending" && messageStatus !== "streaming"
-      ? "completed"
-      : toolStatus;
-  }, [agentContext?.status, messageStatus, parsed]);
+    return resolveToolDisplayStatus(parsed, messageStatus);
+  }, [messageStatus, parsed]);
   const hasResult = parsed.output !== undefined;
   const approvalMatches = Boolean(approval);
   const visualState = approvalMatches ? "approval" : status;
@@ -529,7 +524,10 @@ const ToolPartCard = memo(function ToolPartCard({
       onOpenChange={setOpen}
       data-open={String(open)}
       className={cn(
-        "t-acc group/tool overflow-hidden rounded-2xl text-xs transition-[background-color,box-shadow] duration-200 ease-out",
+        "t-acc group/tool relative overflow-hidden rounded-2xl text-xs transition-[background-color,box-shadow] duration-200 ease-out",
+        agentContext &&
+          agentContext.depth > 0 &&
+          "ml-4 rounded-xl before:absolute before:inset-y-2.5 before:left-0 before:w-0.5 before:rounded-full before:bg-primary/25 sm:ml-6",
         visualState === "approval" &&
           "bg-warning/[0.055] shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--warning)_22%,transparent),0_14px_28px_-24px_color-mix(in_oklch,var(--warning)_55%,transparent)]",
         visualState === "pending" &&
@@ -684,8 +682,10 @@ function areToolPartCardPropsEqual(
 ) {
   return (
     previous.part === next.part &&
+    previous.messageStatus === next.messageStatus &&
     previous.approval === next.approval &&
     previous.workspaceId === next.workspaceId &&
+    previous.workspaceArtifactDisplay === next.workspaceArtifactDisplay &&
     previous.onApprove === next.onApprove &&
     previous.onReject === next.onReject
   );
@@ -848,14 +848,21 @@ function WorkPhase({
     parts.map(({ part }) => part),
     messageStatus,
   );
+  const hasFailedWork = workPhaseHasFailedWork(
+    parts.map(({ part }) => part),
+    messageStatus,
+  );
   const visualState: ToolVisualState = hasPendingApproval
     ? "approval"
     : hasPendingWork
       ? "pending"
-      : "completed";
+      : hasFailedWork
+        ? "error"
+        : "completed";
   const autoOpen =
     hasPendingApproval ||
     hasPendingWork ||
+    hasFailedWork ||
     (messageStatus === "streaming" && !hasVisibleResponseAfter);
   const open = manualOpen ?? autoOpen;
 
@@ -863,8 +870,18 @@ function WorkPhase({
     new Set(
       parts.map(({ part }) => {
         if (part.type === "reasoning") return t("workPhaseReasoning");
-        const { toolName } = parseToolPart(part.content);
-        return toolName ? formatToolName(toolName) : t("workPhaseTool");
+        const parsed = parseToolPart(part.content);
+        if (parsed.toolName?.startsWith("delegate_")) return t("delegation");
+        const toolName = parsed.toolName
+          ? formatToolName(parsed.toolName)
+          : t("workPhaseTool");
+        const context = parseAgentToolDisplayContext(parsed.agentContext);
+        return context && context.depth > 0
+          ? t("specialistActivity", {
+              name: context.agentName,
+              action: toolName,
+            })
+          : toolName;
       }),
     ),
   );
@@ -875,7 +892,9 @@ function WorkPhase({
       ? t("actionApproval")
       : visualState === "pending"
         ? t("workPhaseActive")
-        : t("workPhaseComplete");
+        : visualState === "error"
+          ? t("workPhaseFailed")
+          : t("workPhaseComplete");
 
   return (
     <Collapsible
@@ -890,6 +909,8 @@ function WorkPhase({
           "bg-primary/[0.055] shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--primary)_18%,transparent),0_14px_28px_-24px_color-mix(in_oklch,var(--primary)_55%,transparent)]",
         visualState === "completed" &&
           "bg-muted/20 shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--border)_72%,transparent),0_12px_24px_-24px_color-mix(in_oklch,var(--foreground)_30%,transparent)] hover:bg-primary/[0.025] hover:shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--primary)_18%,transparent),0_14px_28px_-22px_color-mix(in_oklch,var(--primary)_42%,transparent)]",
+        visualState === "error" &&
+          "bg-destructive/[0.045] shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--destructive)_22%,transparent),0_14px_28px_-24px_color-mix(in_oklch,var(--destructive)_45%,transparent)]",
       )}
     >
       <div className="flex min-h-14 items-center gap-2.5 px-2.5 py-1">

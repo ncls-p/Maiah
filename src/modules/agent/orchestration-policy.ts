@@ -6,7 +6,7 @@ export const orchestrationPolicyCaps = {
   maxParallel: 4,
   maxChildSteps: 20,
   maxTotalTokens: 100_000,
-  timeoutMs: 120_000,
+  timeoutMs: 300_000,
   resultMaxChars: 20_000,
 } as const;
 
@@ -16,7 +16,7 @@ export const orchestrationPolicyDefaults = {
   maxParallel: 2,
   maxChildSteps: 8,
   maxTotalTokens: 50_000,
-  timeoutMs: 60_000,
+  timeoutMs: 120_000,
   resultMaxChars: 8_000,
 } as const;
 
@@ -31,7 +31,7 @@ export const orchestrationPolicySchema = z.object({
   maxChildSteps: z
     .number()
     .int()
-    .min(1)
+    .min(2)
     .max(orchestrationPolicyCaps.maxChildSteps),
   maxTotalTokens: z
     .number()
@@ -55,9 +55,16 @@ export function normalizeOrchestrationPolicy(
     typeof value === "object" && value !== null
       ? (value as Record<string, unknown>)
       : {};
+  const legacyChildSteps = partial.maxChildSteps;
   return orchestrationPolicySchema.parse({
     ...orchestrationPolicyDefaults,
     ...partial,
+    // A tool call and the answer that consumes its result are two distinct
+    // model steps. Older configurations allowed one step, which could never
+    // both use a tool and return a specialist answer.
+    ...(typeof legacyChildSteps === "number"
+      ? { maxChildSteps: Math.max(2, legacyChildSteps) }
+      : {}),
   });
 }
 

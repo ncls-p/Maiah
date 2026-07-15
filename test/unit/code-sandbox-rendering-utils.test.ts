@@ -3,9 +3,20 @@ import { describe, expect, it } from "vitest";
 import {
   codeSandboxOutputFromUnknown,
   partitionCodeSandboxFiles,
+  summarizeToolBody,
 } from "@/components/chat/chat-message-rendering-utils";
 
 describe("code sandbox result rendering", () => {
+  it("previews a structured result instead of its object key", () => {
+    expect(
+      summarizeToolBody(
+        "deepwiki_ask_question",
+        { result: "ServiceNow Australia is the latest release." },
+        false,
+      ),
+    ).toBe("ServiceNow Australia is the latest release.");
+  });
+
   it("keeps input provenance while normalizing a sandbox result", () => {
     const result = codeSandboxOutputFromUnknown({
       kind: "code_sandbox_result",

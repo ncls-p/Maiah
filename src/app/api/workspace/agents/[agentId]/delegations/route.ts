@@ -63,6 +63,14 @@ async function serializeDelegationConfig(input: {
     getDelegationBindingsForVersion(version.id, db),
     listAgents(input.workspaceId, input.userId, input.canAdminCurate),
   ]);
+  const pinnedVersions = await Promise.all(
+    bindings.map((binding) => getAgentVersionById(binding.childAgentVersionId)),
+  );
+  const pinnedVersionById = new Map(
+    pinnedVersions.flatMap((childVersion) =>
+      childVersion ? [[childVersion.id, childVersion] as const] : [],
+    ),
+  );
   const visibleById = new Map(visibleAgents.map((agent) => [agent.id, agent]));
   return {
     version: { id: version.id, versionNumber: version.versionNumber },
@@ -71,8 +79,18 @@ async function serializeDelegationConfig(input: {
       : null,
     bindings: bindings.map((binding) => {
       const child = visibleById.get(binding.childAgentId);
+      const childVersion = pinnedVersionById.get(binding.childAgentVersionId);
       return {
         ...binding,
+        childVersion:
+          child && childVersion
+            ? {
+                id: childVersion.id,
+                versionNumber: childVersion.versionNumber,
+                name: childVersion.name,
+                isActive: child?.activeVersionId === childVersion.id,
+              }
+            : null,
         childAgent: child
           ? {
               id: child.id,

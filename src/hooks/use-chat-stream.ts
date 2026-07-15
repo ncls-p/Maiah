@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 import {
   createLocalMessage,
+  preserveAssistantFailureParts,
   toolNameMatches,
   type ChatAttachment,
   type ChatCitation,
@@ -655,7 +656,7 @@ export function useChatStream({
       updateAssistantDraft((message) => ({
         ...message,
         status: "failed",
-        parts: [{ type: "text", content: "The assistant failed to respond." }],
+        parts: preserveAssistantFailureParts(message.parts),
       }));
       flushAssistantRender();
       clearPendingApprovals();

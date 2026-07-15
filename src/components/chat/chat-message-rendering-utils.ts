@@ -43,6 +43,8 @@ export function summarizeToolBody(
     const record = body as Record<string, unknown>;
     if (typeof record.text === "string") return record.text.slice(0, 180);
     if (typeof record.content === "string") return record.content.slice(0, 180);
+    if (typeof record.result === "string") return record.result.slice(0, 180);
+    if (typeof record.message === "string") return record.message.slice(0, 180);
     const keys = Object.keys(record);
     return keys.length > 0
       ? `Returned ${keys.slice(0, 3).join(", ")}${keys.length > 3 ? "…" : ""}.`
