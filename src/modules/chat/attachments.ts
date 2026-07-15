@@ -1,9 +1,11 @@
 import { createHash, randomUUID } from "node:crypto";
 import path from "node:path";
 import JSZip from "jszip";
+import "pdf-parse/worker";
 import { PDFParse } from "pdf-parse";
 import TurndownService from "turndown";
 
+import { logHandledWarning } from "@/lib/logger";
 import { storage } from "@/server/infrastructure/storage";
 
 export type ChatImageAttachment = {
@@ -1106,6 +1108,13 @@ async function extractAttachmentText(input: {
       return await extractOfficeText(input.bytes, input.detection.textKind);
     }
   } catch (error) {
+    logHandledWarning("Chat attachment text extraction failed", {
+      mimeType: input.detection.mimeType,
+      extension: input.detection.extension,
+      textKind: input.detection.textKind,
+      size: input.bytes.byteLength,
+      error: error instanceof Error ? error.message : String(error),
+    });
     return {
       text: "",
       status: "unreadable",

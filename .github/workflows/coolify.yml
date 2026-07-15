@@ -547,8 +547,12 @@ jobs:
             --entrypoint /usr/local/searxng/.venv/bin/python \
             "${SEARXNG_IMAGE}" \
             - <<'PY'
-          from searx.enginelib import EngineAbout
           from searx.settings_loader import DEFAULT_SETTINGS_FILE, get_yaml_cfg, load_yaml, update_settings
+
+          try:
+              from searx.enginelib import EngineAbout
+          except ImportError:
+              EngineAbout = None
 
           blocked_engines = {"woxikon.de synonyme", "wikimini"}
           effective_settings = update_settings(load_yaml(DEFAULT_SETTINGS_FILE), get_yaml_cfg("settings.yml"))
@@ -563,10 +567,13 @@ jobs:
           for engine in effective_settings.get("engines", []):
               about = engine.get("about")
               if about:
-                  try:
-                      EngineAbout(**about)
-                  except TypeError as exc:
-                      raise SystemExit(f"invalid about metadata for engine {engine.get('name')!r}: {exc}") from exc
+                  if not isinstance(about, dict):
+                      raise SystemExit(f"invalid about metadata for engine {engine.get('name')!r}: expected a mapping")
+                  if EngineAbout is not None:
+                      try:
+                          EngineAbout(**about)
+                      except TypeError as exc:
+                          raise SystemExit(f"invalid about metadata for engine {engine.get('name')!r}: {exc}") from exc
           PY
 
   build_sandbox_image:

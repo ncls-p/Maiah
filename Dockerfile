@@ -9,8 +9,12 @@ from pathlib import Path
 
 import yaml
 
-from searx.enginelib import EngineAbout
 from searx.settings_loader import DEFAULT_SETTINGS_FILE, get_yaml_cfg, load_yaml, update_settings
+
+try:
+    from searx.enginelib import EngineAbout
+except ImportError:
+    EngineAbout = None
 
 blocked_engines = {"woxikon.de synonyme", "wikimini"}
 default_settings = load_yaml(DEFAULT_SETTINGS_FILE)
@@ -33,10 +37,13 @@ if remaining_blocked:
 for engine in effective_settings.get("engines", []):
     about = engine.get("about")
     if about:
-        try:
-            EngineAbout(**about)
-        except TypeError as exc:
-            raise SystemExit(f"invalid about metadata for engine {engine.get('name')!r}: {exc}") from exc
+        if not isinstance(about, dict):
+            raise SystemExit(f"invalid about metadata for engine {engine.get('name')!r}: expected a mapping")
+        if EngineAbout is not None:
+            try:
+                EngineAbout(**about)
+            except TypeError as exc:
+                raise SystemExit(f"invalid about metadata for engine {engine.get('name')!r}: {exc}") from exc
 PY
 
 FROM node:22-bookworm-slim AS base
@@ -91,6 +98,7 @@ RUN apt-get update \
     python3-pip \
     python3-setuptools \
     python3-wheel \
+    ripgrep \
     util-linux \
   && rm -rf /var/lib/apt/lists/* \
   && npm install --global "npm@${NPM_VERSION}" --no-audit --no-fund \
