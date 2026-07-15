@@ -1437,7 +1437,53 @@ export default function ChatPage() {
   };
 
   if (workspaceLoading || loadingAgents) {
-    return <ChatPageLoading />;
+    return (
+      <>
+        <ChatLayout
+          agents={agents}
+          conversations={conversations}
+          conversationFolders={conversationFolders}
+          selectedAgent={selectedAgent}
+          selectedAgentId={selectedAgentId}
+          activeConversationId={activeConversationId}
+          organizationDefaultAgentId={organizationDefaultAgentId}
+          userDefaultAgentId={userDefaultAgentId}
+          canChat={canChat}
+          canCreateAgent={canCreateAgent}
+          canRunSetup={canRunSetup}
+          loadingSidebar
+          {...conversationSearchProps}
+          hasMoreConversations={hasMoreConversations}
+          loadingMoreConversations={loadingMoreConversations}
+          onLoadMoreConversations={loadMoreConversations}
+          onSelectAgent={selectAgent}
+          onSelectConversation={selectConversation}
+          onNewConversation={startNewConversation}
+          onSetUserDefaultAgent={(agentId: string | null) =>
+            void setUserDefaultAgent(agentId)
+          }
+          onRenameConversation={(conversationId, title) =>
+            void renameConversation(conversationId, title)
+          }
+          onDeleteConversation={requestConversationDelete}
+          onCreateConversationFolder={(name) =>
+            void createConversationFolder(name)
+          }
+          onRenameConversationFolder={(folderId, name) =>
+            void renameConversationFolder(folderId, name)
+          }
+          onDeleteConversationFolder={requestFolderDelete}
+          onToggleConversationPin={(conversationId, pinned) =>
+            void toggleConversationPin(conversationId, pinned)
+          }
+          onReorderConversations={(input) => void reorderConversations(input)}
+          onSetupComplete={() => void reloadAgentContext()}
+        >
+          <ChatPageLoading />
+        </ChatLayout>
+        {destructiveDialog}
+      </>
+    );
   }
 
   if (agents.length === 0) {

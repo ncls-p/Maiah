@@ -47,6 +47,11 @@
   --panel-translate-y: 100px;
   --panel-blur: 2px;
   --panel-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  /* Sidebar context change */
+  --sidebar-context-dur: 250ms;
+  --sidebar-context-fade-dur: 150ms;
+  --sidebar-context-blur: 2px;
+  --sidebar-context-ease: cubic-bezier(0.22, 1, 0.36, 1);
   /* Page side-by-side */
   --page-slide-dur: 250ms;
   --page-fade-dur: 250ms;
@@ -165,6 +170,55 @@
   --acc-collapse: 250ms;
   --acc-chevron: 250ms;
   --acc-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Sidebar context change — keeps the left rail spatially anchored while its
+   content switches between workspace navigation and conversation history. */
+::view-transition-group(.sidebar-context) {
+  z-index: 40;
+  animation-duration: var(--sidebar-context-dur);
+  animation-timing-function: var(--sidebar-context-ease);
+}
+
+::view-transition-old(.sidebar-context) {
+  animation: sidebar-context-fade-out var(--sidebar-context-fade-dur) ease-in
+    both;
+}
+
+::view-transition-new(.sidebar-context) {
+  animation: sidebar-context-fade-in var(--sidebar-context-dur)
+    var(--sidebar-context-ease) both;
+}
+
+@keyframes sidebar-context-fade-out {
+  from {
+    opacity: 1;
+    filter: blur(0);
+  }
+  to {
+    opacity: 0;
+    filter: blur(var(--sidebar-context-blur));
+  }
+}
+
+@keyframes sidebar-context-fade-in {
+  from {
+    opacity: 0;
+    filter: blur(var(--sidebar-context-blur));
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(.sidebar-context),
+  ::view-transition-old(.sidebar-context),
+  ::view-transition-new(.sidebar-context) {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+  }
 }
 
 /* transitions-dev theme hooks for Maiah's existing semantic palette. */

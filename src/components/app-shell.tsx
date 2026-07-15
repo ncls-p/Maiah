@@ -2,7 +2,14 @@
 
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  ViewTransition,
+} from "react";
 import { MessageSquareIcon } from "lucide-react";
 
 import { AppHeader } from "@/components/app-header";
@@ -166,7 +173,11 @@ export function AppShell({
             {tShell("skipToContent")}
           </a>
           <div className="flex min-h-0 flex-1 flex-row">
-            {!isChatRoute ? <WorkspaceSidebar shell={shellValue} /> : null}
+            {!isChatRoute ? (
+              <ViewTransition name="app-sidebar" share="sidebar-context">
+                <WorkspaceSidebar shell={shellValue} />
+              </ViewTransition>
+            ) : null}
             <div className="flex min-w-0 flex-1 flex-col">
               {!isChatRoute ? (
                 <AppHeader

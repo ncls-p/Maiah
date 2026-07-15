@@ -1,7 +1,12 @@
 "use client";
 
 import { Link } from "@/i18n/navigation";
-import { useState, useSyncExternalStore, type ComponentProps } from "react";
+import {
+  useState,
+  useSyncExternalStore,
+  ViewTransition,
+  type ComponentProps,
+} from "react";
 import { useTranslations } from "next-intl";
 import {
   ChevronDownIcon,
@@ -507,40 +512,41 @@ export function ChatLayout({
 
   return (
     <div className="chat-shell-brand flex h-full min-h-0 overflow-hidden">
-      {/* Desktop sidebar with smooth transition */}
-      <div
-        className={cn(
-          "hidden ease-[cubic-bezier(0.2,0,0,1)] md:block",
-          !resizingSidebar && "transition-[opacity,width] duration-200",
-        )}
-        style={{
-          width: sidebarOpen ? `${sidebarWidth}px` : 0,
-          opacity: sidebarOpen ? 1 : 0,
-        }}
-      >
-        {sidebarOpen && (
-          <aside className="relative h-full w-full border-r border-sidebar-border/60 bg-sidebar">
-            <ChatSidebar {...desktopSidebarProps} className="w-full" />
-            <div
-              role="separator"
-              aria-label={t("resizeConversations")}
-              aria-orientation="vertical"
-              aria-valuemin={MIN_HISTORY_WIDTH}
-              aria-valuemax={MAX_HISTORY_WIDTH}
-              aria-valuenow={sidebarWidth}
-              tabIndex={0}
-              className="group absolute inset-y-0 right-0 z-20 w-4 translate-x-2 cursor-col-resize outline-none"
-              onPointerDown={startSidebarResize}
-              onKeyDown={(event) => {
-                if (event.key === "ArrowLeft") adjustSidebarWidth(-12);
-                if (event.key === "ArrowRight") adjustSidebarWidth(12);
-              }}
-            >
-              <div className="mx-auto h-full w-px bg-transparent transition-[background-color] group-hover:bg-border group-focus-visible:bg-ring" />
-            </div>
-          </aside>
-        )}
-      </div>
+      <ViewTransition name="app-sidebar" share="sidebar-context">
+        <div
+          className={cn(
+            "hidden ease-[cubic-bezier(0.2,0,0,1)] md:block",
+            !resizingSidebar && "transition-[opacity,width] duration-200",
+          )}
+          style={{
+            width: sidebarOpen ? `${sidebarWidth}px` : 0,
+            opacity: sidebarOpen ? 1 : 0,
+          }}
+        >
+          {sidebarOpen && (
+            <aside className="relative h-full w-full border-r border-sidebar-border/60 bg-sidebar">
+              <ChatSidebar {...desktopSidebarProps} className="w-full" />
+              <div
+                role="separator"
+                aria-label={t("resizeConversations")}
+                aria-orientation="vertical"
+                aria-valuemin={MIN_HISTORY_WIDTH}
+                aria-valuemax={MAX_HISTORY_WIDTH}
+                aria-valuenow={sidebarWidth}
+                tabIndex={0}
+                className="group absolute inset-y-0 right-0 z-20 w-4 translate-x-2 cursor-col-resize outline-none"
+                onPointerDown={startSidebarResize}
+                onKeyDown={(event) => {
+                  if (event.key === "ArrowLeft") adjustSidebarWidth(-12);
+                  if (event.key === "ArrowRight") adjustSidebarWidth(12);
+                }}
+              >
+                <div className="mx-auto h-full w-px bg-transparent transition-[background-color] group-hover:bg-border group-focus-visible:bg-ring" />
+              </div>
+            </aside>
+          )}
+        </div>
+      </ViewTransition>
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <AppHeader
