@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Dialog as SheetPrimitive } from "radix-ui";
+import { useTranslations } from "next-intl";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -49,6 +50,7 @@ function SheetContent({
   side?: "top" | "right" | "bottom" | "left";
   showCloseButton?: boolean;
 }) {
+  const t = useTranslations("common");
   return (
     <SheetPortal>
       <SheetOverlay />
@@ -68,10 +70,10 @@ function SheetContent({
               variant="ghost"
               className="absolute top-3 right-3"
               size="icon-sm"
-              aria-label="Close sheet"
+              aria-label={t("close")}
             >
               <XIcon aria-hidden="true" />
-              <span className="sr-only">Close</span>
+              <span className="sr-only">{t("close")}</span>
             </Button>
           </SheetPrimitive.Close>
         )}

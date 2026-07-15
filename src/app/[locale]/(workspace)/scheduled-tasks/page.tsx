@@ -85,14 +85,9 @@ export default function ScheduledTasksPage() {
           title={t("noAssistants.title")}
           description={t("noAssistants.description")}
         >
-          <div className="flex flex-wrap justify-center gap-2">
-            <Button asChild>
-              <Link href="/agents">{t("noAssistants.cta")}</Link>
-            </Button>
-            <Button asChild variant="outline">
-              <Link href="/chat">{t("openChat")}</Link>
-            </Button>
-          </div>
+          <Button asChild>
+            <Link href="/agents">{t("noAssistants.cta")}</Link>
+          </Button>
         </PageEmptyState>
       ) : (
         <ScheduledTaskManager workspaceId={workspaceId} agents={agents} />

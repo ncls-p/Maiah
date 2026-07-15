@@ -16,7 +16,7 @@ import {
 import { useWorkspaceShell } from "@/components/app-shell";
 import { DeodisLogo } from "@/components/deodis-logo";
 import { ModelLogo } from "@/components/providers/model-logo";
-import { SignOutButton } from "@/components/sign-out-button";
+import { APP_SIDEBAR_SURFACE_CLASS } from "@/components/sidebar-chrome";
 import { AppHeader } from "@/components/app-header";
 import { ChatSidebar } from "@/components/chat/chat-sidebar";
 import type {
@@ -50,23 +50,19 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import {
+  DEFAULT_APP_SIDEBAR_WIDTH,
+  MAX_APP_SIDEBAR_WIDTH,
+  MIN_APP_SIDEBAR_WIDTH,
+  getStoredAppSidebarWidth,
+  setStoredAppSidebarWidth,
+  subscribeAppSidebarWidth,
+} from "@/lib/sidebar-layout";
 import { cn } from "@/lib/utils";
 
 const HISTORY_OPEN_STORAGE_KEY = "chat-unified-sidebar-open";
 const HISTORY_OPEN_STORAGE_EVENT = "chat-unified-sidebar-open-change";
-const HISTORY_WIDTH_STORAGE_KEY = "chat-unified-sidebar-width";
-const HISTORY_WIDTH_STORAGE_EVENT = "chat-unified-sidebar-width-change";
 const DEFAULT_HISTORY_OPEN = true;
-const DEFAULT_HISTORY_WIDTH = 288;
-const MIN_HISTORY_WIDTH = 240;
-const MAX_HISTORY_WIDTH = 420;
-
-function clampHistoryWidth(value: number) {
-  return Math.min(
-    MAX_HISTORY_WIDTH,
-    Math.max(MIN_HISTORY_WIDTH, Math.round(value)),
-  );
-}
 
 function subscribeHistoryOpen(callback: () => void) {
   window.addEventListener("storage", callback);
@@ -86,31 +82,6 @@ function getStoredHistoryOpen(): boolean {
 function setStoredHistoryOpen({ open }: { open: boolean }) {
   window.localStorage.setItem(HISTORY_OPEN_STORAGE_KEY, String(open));
   window.dispatchEvent(new Event(HISTORY_OPEN_STORAGE_EVENT));
-}
-
-function subscribeHistoryWidth(callback: () => void) {
-  window.addEventListener("storage", callback);
-  window.addEventListener(HISTORY_WIDTH_STORAGE_EVENT, callback);
-  return () => {
-    window.removeEventListener("storage", callback);
-    window.removeEventListener(HISTORY_WIDTH_STORAGE_EVENT, callback);
-  };
-}
-
-function getStoredHistoryWidth(): number {
-  const stored = window.localStorage.getItem(HISTORY_WIDTH_STORAGE_KEY);
-  const parsed = stored ? Number.parseInt(stored, 10) : DEFAULT_HISTORY_WIDTH;
-  return Number.isFinite(parsed)
-    ? clampHistoryWidth(parsed)
-    : DEFAULT_HISTORY_WIDTH;
-}
-
-function setStoredHistoryWidth(width: number) {
-  window.localStorage.setItem(
-    HISTORY_WIDTH_STORAGE_KEY,
-    String(clampHistoryWidth(width)),
-  );
-  window.dispatchEvent(new Event(HISTORY_WIDTH_STORAGE_EVENT));
 }
 
 type ChatSidebarCollapsedChangeHandler = NonNullable<
@@ -215,9 +186,9 @@ export function ChatLayout({
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [resizingSidebar, setResizingSidebar] = useState(false);
   const sidebarWidth = useSyncExternalStore(
-    subscribeHistoryWidth,
-    getStoredHistoryWidth,
-    () => DEFAULT_HISTORY_WIDTH,
+    subscribeAppSidebarWidth,
+    getStoredAppSidebarWidth,
+    () => DEFAULT_APP_SIDEBAR_WIDTH,
   );
 
   function updateSidebarOpen({ open }: { open: boolean }) {
@@ -234,7 +205,7 @@ export function ChatLayout({
     document.body.style.userSelect = "none";
 
     function onPointerMove(moveEvent: PointerEvent) {
-      setStoredHistoryWidth(startWidth + moveEvent.clientX - startX);
+      setStoredAppSidebarWidth(startWidth + moveEvent.clientX - startX);
     }
 
     function onPointerUp() {
@@ -250,7 +221,7 @@ export function ChatLayout({
   }
 
   function adjustSidebarWidth(delta: number) {
-    setStoredHistoryWidth(sidebarWidth + delta);
+    setStoredAppSidebarWidth(sidebarWidth + delta);
   }
 
   const sidebarProps = {
@@ -270,7 +241,6 @@ export function ChatLayout({
     onLoadMoreSearchResults: onLoadMoreConversationSearchResults,
     onSelectConversation,
     onNewConversation,
-    canCreateAgent,
     onRenameConversation,
     onDeleteConversation,
     onCreateConversationFolder,
@@ -284,7 +254,6 @@ export function ChatLayout({
     collapsed: false,
     onCollapsedChange: undefined,
     shell,
-    showThemeToggle: true,
   };
   const handleDesktopSidebarCollapsedChange = ((collapsed) => {
     updateSidebarOpen({ open: !collapsed });
@@ -507,7 +476,6 @@ export function ChatLayout({
 
   return (
     <div className="chat-shell-brand flex h-full min-h-0 overflow-hidden">
-      {/* Desktop sidebar with smooth transition */}
       <div
         className={cn(
           "hidden ease-[cubic-bezier(0.2,0,0,1)] md:block",
@@ -519,14 +487,19 @@ export function ChatLayout({
         }}
       >
         {sidebarOpen && (
-          <aside className="relative h-full w-full border-r border-sidebar-border/60 bg-sidebar">
+          <aside
+            className={cn(
+              "relative h-full w-full border-r",
+              APP_SIDEBAR_SURFACE_CLASS,
+            )}
+          >
             <ChatSidebar {...desktopSidebarProps} className="w-full" />
             <div
               role="separator"
               aria-label={t("resizeConversations")}
               aria-orientation="vertical"
-              aria-valuemin={MIN_HISTORY_WIDTH}
-              aria-valuemax={MAX_HISTORY_WIDTH}
+              aria-valuemin={MIN_APP_SIDEBAR_WIDTH}
+              aria-valuemax={MAX_APP_SIDEBAR_WIDTH}
               aria-valuenow={sidebarWidth}
               tabIndex={0}
               className="group absolute inset-y-0 right-0 z-20 w-4 translate-x-2 cursor-col-resize outline-none"
@@ -659,7 +632,6 @@ export function ChatLayout({
                   <Settings2Icon className="size-4" aria-hidden="true" />
                 </Link>
               </Button>
-              <SignOutButton iconOnly className="size-10 rounded-xl" />
             </div>
           }
         />

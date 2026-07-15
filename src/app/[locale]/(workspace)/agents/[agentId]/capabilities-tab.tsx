@@ -172,6 +172,7 @@ function ToolRow({
   onApprovalChange?: (checked: boolean) => void;
   approvalLabel?: string;
 }) {
+  const t = useTranslations("agents.capabilities");
   return (
     <ListRow className="items-center justify-between gap-4">
       <div className="min-w-0">
@@ -191,11 +192,7 @@ function ToolRow({
             />
             {approvalLabel}
             <Switch
-              aria-label={
-                approvalLabel
-                  ? `${approvalLabel} for ${name}`
-                  : `Require approval for ${name}`
-              }
+              aria-label={t("approvalFor", { name })}
               checked={requireApproval ?? false}
               disabled={approvalDisabled ?? false}
               onCheckedChange={onApprovalChange}
@@ -203,7 +200,7 @@ function ToolRow({
           </label>
         )}
         <Switch
-          aria-label={`Enable ${name}`}
+          aria-label={t("toggleTool", { name })}
           checked={enabled}
           onCheckedChange={onEnabledChange}
         />
@@ -855,7 +852,7 @@ export function CapabilitiesTab({
                   ) : null}
                 </span>
                 <Switch
-                  aria-label={`Toggle skill ${skill.name}`}
+                  aria-label={tCap("toggleSkill", { name: skill.name })}
                   checked={selectedSkillIds.includes(skill.id)}
                   onCheckedChange={(checked) =>
                     setSelectedSkillIds((current) =>
@@ -917,7 +914,7 @@ export function CapabilitiesTab({
                   {kb.name}
                 </span>
                 <Switch
-                  aria-label={`Toggle knowledge base ${kb.name}`}
+                  aria-label={tCap("toggleKnowledge", { name: kb.name })}
                   checked={selectedKnowledgeIds.includes(kb.id)}
                   onCheckedChange={(checked) =>
                     setSelectedKnowledgeIds((current) =>

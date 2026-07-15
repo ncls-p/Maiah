@@ -31,21 +31,22 @@ import type { Agent, Model, Provider } from "./types";
 
 const MAX_LOGO_BYTES = 256 * 1024;
 
-function readLogoFile(file: File) {
+function readLogoFile(
+  file: File,
+  messages: { invalid: string; tooLarge: string; readFailed: string },
+) {
   return new Promise<string>((resolve, reject) => {
     if (!file.type.startsWith("image/") || file.type === "image/svg+xml") {
-      reject(
-        new Error("Use a bitmap image such as PNG, JPG, WebP, GIF, or AVIF."),
-      );
+      reject(new Error(messages.invalid));
       return;
     }
     if (file.size > MAX_LOGO_BYTES) {
-      reject(new Error("Logo must stay under 256 KB."));
+      reject(new Error(messages.tooLarge));
       return;
     }
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(new Error("Unable to read logo file."));
+    reader.onerror = () => reject(new Error(messages.readFailed));
     reader.readAsDataURL(file);
   });
 }
@@ -61,14 +62,20 @@ function AgentLogoControls({
   canEdit: boolean;
   onLogoChange: (logoUrl: string | null) => void;
 }) {
+  const t = useTranslations("agents.configurePage");
+
   async function handleLogoFile(file: File | undefined) {
     if (!file) return;
     try {
-      onLogoChange(await readLogoFile(file));
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Invalid image file",
+      onLogoChange(
+        await readLogoFile(file, {
+          invalid: t("logoInvalid"),
+          tooLarge: t("logoTooLarge"),
+          readFailed: t("logoReadFailed"),
+        }),
       );
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("logoInvalid"));
     }
   }
 
@@ -96,7 +103,7 @@ function AgentLogoControls({
           <Button size="sm" variant="outline" asChild>
             <label
               htmlFor={`agent-logo-${agent.id}`}
-              aria-label="Change assistant logo"
+              aria-label={t("changeLogo")}
               className="cursor-pointer"
             >
               <ImagePlusIcon data-icon="inline-start" aria-hidden="true" />
@@ -107,7 +114,7 @@ function AgentLogoControls({
             <Button
               size="icon-sm"
               variant="ghost"
-              aria-label="Remove assistant logo"
+              aria-label={t("removeLogo")}
               onClick={() => onLogoChange(null)}
             >
               <XIcon aria-hidden="true" />

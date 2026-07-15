@@ -1,6 +1,5 @@
 import Image from "next/image";
-import Link from "next/link";
-import { cookies } from "next/headers";
+import { getTranslations } from "next-intl/server";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -10,19 +9,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { defaultLocale, locales } from "@/i18n/routing";
+import { Link } from "@/i18n/navigation";
 
-import enMessages from "../../messages/en.json";
-import frMessages from "../../messages/fr.json";
-
-// Prevent static prerendering to avoid SSR hydration issues with theme provider
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
-
-export default async function NotFound() {
-  const localeCookie = (await cookies()).get("NEXT_LOCALE")?.value;
-  const locale = locales.find((item) => item === localeCookie) ?? defaultLocale;
-  const copy = locale === "fr" ? frMessages.notFound : enMessages.notFound;
+export default async function LocaleNotFound() {
+  const t = await getTranslations("notFound");
 
   return (
     <main
@@ -32,7 +22,7 @@ export default async function NotFound() {
       <div className="flex w-full max-w-md flex-col gap-5">
         <div className="flex justify-center">
           <Link
-            href={`/${locale}/chat`}
+            href="/chat"
             className="inline-flex shrink-0 items-center"
             aria-label="Deodis"
           >
@@ -41,8 +31,6 @@ export default async function NotFound() {
               alt="Deodis"
               width={857}
               height={320}
-              loading="eager"
-              fetchPriority="high"
               className="h-8 w-auto"
             />
           </Link>
@@ -50,13 +38,13 @@ export default async function NotFound() {
         <Card>
           <CardHeader className="gap-2 text-center">
             <CardTitle asChild className="text-2xl">
-              <h1>{copy.title}</h1>
+              <h1>{t("title")}</h1>
             </CardTitle>
-            <CardDescription>{copy.description}</CardDescription>
+            <CardDescription>{t("description")}</CardDescription>
           </CardHeader>
           <CardContent className="flex justify-center pb-6">
             <Button asChild>
-              <Link href={`/${locale}/chat`}>{copy.return}</Link>
+              <Link href="/chat">{t("return")}</Link>
             </Button>
           </CardContent>
         </Card>

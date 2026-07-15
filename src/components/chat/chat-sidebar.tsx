@@ -28,9 +28,12 @@ import type {
   ChatConversation,
   ChatConversationFolder,
 } from "@/components/chat/chat-types";
-import { DeodisLogo } from "@/components/deodis-logo";
-import { LocaleSwitcher } from "@/components/locale-switcher";
-import { ThemeToggleButton } from "@/components/theme-toggle-button";
+import {
+  SidebarFooter,
+  SidebarHeader,
+  SidebarNavIcon,
+  sidebarNavItemClassName,
+} from "@/components/sidebar-chrome";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -115,7 +118,6 @@ interface ChatSidebarProps {
     conversationAgentId?: string | null,
   ) => void;
   onNewConversation: () => void;
-  canCreateAgent?: boolean;
   onRenameConversation?: (conversationId: string, title: string) => void;
   onDeleteConversation?: (conversationId: string) => void;
   onCreateConversationFolder?: (name: string) => void;
@@ -133,7 +135,6 @@ interface ChatSidebarProps {
   collapsed?: boolean;
   onCollapsedChange?: (collapsed: boolean) => void;
   className?: string;
-  showThemeToggle?: boolean;
   shell?: WorkspaceShellState;
 }
 
@@ -167,14 +168,11 @@ function ChatNavLink({ item }: { item: NavItem }) {
     <Link
       href={item.href}
       aria-current={active ? "page" : undefined}
-      className={cn(
-        "flex min-h-10 items-center gap-2.5 rounded-xl px-3 text-[13px] font-medium transition-[background-color,color]",
-        active
-          ? "bg-sidebar-accent text-sidebar-accent-foreground"
-          : "text-sidebar-foreground/75 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground",
-      )}
+      className={sidebarNavItemClassName({ active })}
     >
-      <Icon className="size-4 shrink-0" aria-hidden="true" />
+      <SidebarNavIcon active={active}>
+        <Icon className="size-4 shrink-0" aria-hidden="true" />
+      </SidebarNavIcon>
       <span className="min-w-0 flex-1 truncate">{label}</span>
       {item.badge && item.badge > 0 ? (
         <Badge variant="secondary" className="h-5 min-w-5 px-1 text-[10px]">
@@ -499,7 +497,6 @@ export function ChatSidebar({
   onLoadMoreSearchResults,
   onSelectConversation,
   onNewConversation,
-  canCreateAgent = false,
   onRenameConversation,
   onDeleteConversation,
   onCreateConversationFolder,
@@ -513,7 +510,6 @@ export function ChatSidebar({
   collapsed,
   onCollapsedChange,
   className,
-  showThemeToggle,
   shell,
 }: ChatSidebarProps) {
   const t = useTranslations("chat.sidebar");
@@ -539,8 +535,12 @@ export function ChatSidebar({
     () => (shell ? buildMenuGroups(shell) : []),
     [shell],
   );
-  const canConfigureProviders = Boolean(shell?.permissions.canManageProviders);
   const searchActive = searchQuery.trim().length > 0;
+  const showConversationTools =
+    loading ||
+    searchActive ||
+    conversations.length > 0 ||
+    conversationFolders.length > 0;
   const sortedConversations = useMemo(() => {
     return [...conversations].sort((a, b) => {
       const aPinned = a.pinnedAt ? 0 : 1;
@@ -758,36 +758,31 @@ export function ChatSidebar({
     return (
       <div
         className={cn(
-          "flex h-full min-h-0 flex-col items-center gap-1 py-2",
+          "flex h-full min-h-0 flex-col items-center gap-1 bg-transparent",
           className,
         )}
       >
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <DeodisLogo
-              href="/chat"
-              className="h-5 w-8 object-contain"
-              label="Deodis chat"
-            />
-          </TooltipTrigger>
-          <TooltipContent side="right">Deodis</TooltipContent>
-        </Tooltip>
-        <div className="my-1 h-px w-6 rounded-full bg-sidebar-border" />
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              type={BUTTON_TYPE}
-              size="icon"
-              variant={GHOST_VARIANT}
-              aria-label={t("expandSidebar")}
-              onClick={() => onCollapsedChange?.(false)}
-              className="size-10 rounded-xl transition-[background-color,scale] duration-150 ease-out hover:bg-sidebar-accent"
-            >
-              <PanelLeftOpenIcon className="size-4" aria-hidden="true" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="right">{t("expandSidebar")}</TooltipContent>
-        </Tooltip>
+        <SidebarHeader
+          contextLabel={t("conversations")}
+          collapsed
+          action={
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type={BUTTON_TYPE}
+                  size="icon"
+                  variant={GHOST_VARIANT}
+                  aria-label={t("expandSidebar")}
+                  onClick={() => onCollapsedChange?.(false)}
+                  className="size-10 rounded-xl"
+                >
+                  <PanelLeftOpenIcon className="size-4" aria-hidden="true" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right">{t("expandSidebar")}</TooltipContent>
+            </Tooltip>
+          }
+        />
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
@@ -830,6 +825,7 @@ export function ChatSidebar({
             </Tooltip>
           ))}
         </div>
+        <SidebarFooter displayName={shell?.displayName} collapsed />
       </div>
     );
   }
@@ -837,479 +833,471 @@ export function ChatSidebar({
   return (
     <div
       className={cn(
-        "flex h-full min-h-0 flex-col bg-sidebar text-sidebar-foreground",
+        "flex h-full min-h-0 flex-col bg-transparent text-sidebar-foreground",
         className,
       )}
     >
-      <div className="flex min-h-14 items-center justify-between border-b border-sidebar-border/60 px-3 py-2">
-        <DeodisLogo href="/chat" className="h-6 w-auto" label="Deodis chat" />
-        <Button
-          type={BUTTON_TYPE}
-          size="sm"
-          variant="outline"
-          onClick={onNewConversation}
-          className="min-h-10 gap-1 rounded-xl border-sidebar-border/70 px-3 text-xs font-medium"
-        >
-          <PlusIcon className="size-3" aria-hidden="true" />
-          {t("new")}
-        </Button>
-      </div>
+      <SidebarHeader
+        contextLabel={t("conversations")}
+        action={
+          <Button
+            type={BUTTON_TYPE}
+            size="sm"
+            variant="outline"
+            onClick={onNewConversation}
+            className="min-h-10 gap-1 rounded-xl px-3 text-xs font-medium"
+          >
+            <PlusIcon className="size-3.5" aria-hidden="true" />
+            {t("new")}
+          </Button>
+        }
+      />
 
-      <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto px-2 py-2">
-        <div className="flex min-h-10 items-center justify-between px-2">
-          <span className="text-[11px] font-medium text-muted-foreground">
-            {t("conversations")}
-          </span>
-          <div className="flex items-center">
-            <Button
-              type={BUTTON_TYPE}
-              size="icon-sm"
-              variant={GHOST_VARIANT}
-              aria-label={t("createFolder")}
-              className="size-10 rounded-xl text-muted-foreground"
-              onClick={startFolderCreate}
-            >
-              <FolderPlusIcon className="size-3.5" aria-hidden="true" />
-            </Button>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 px-1 pb-1">
-          <SearchIcon
-            className="size-4 shrink-0 text-muted-foreground"
-            aria-hidden="true"
-          />
-          <Input
-            type="search"
-            name="conversation-search"
-            autoComplete="off"
-            aria-label={t("searchLabel")}
-            placeholder={t("searchPlaceholder")}
-            value={searchQuery}
-            onChange={(event) => onSearchQueryChange?.(event.target.value)}
-            className="h-10 min-w-0 rounded-xl px-3 text-xs"
-          />
-          {searchActive ? (
-            <Button
-              type={BUTTON_TYPE}
-              size="icon-sm"
-              variant={GHOST_VARIANT}
-              className="size-10 shrink-0 rounded-xl"
-              aria-label={t("clearSearch")}
-              onClick={() => onSearchQueryChange?.("")}
-            >
-              <XIcon data-icon="inline-start" aria-hidden="true" />
-            </Button>
-          ) : null}
-        </div>
-
-        <p className="sr-only" aria-live="polite">
-          {searchActive && !searching && !searchError
-            ? t("searchResultCount", { count: searchResults.length })
-            : null}
-        </p>
-
-        {creatingFolder ? (
-          <div className="flex items-center gap-1 rounded-xl border border-sidebar-border/60 bg-background p-1">
-            <Input
-              aria-label={t("folderName")}
-              value={newFolderName}
-              onChange={(event) => setNewFolderName(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") saveNewFolder();
-                if (event.key === "Escape") setCreatingFolder(false);
-              }}
-              placeholder={t("folderName")}
-              className="h-10 min-w-0 rounded-lg px-3 text-xs"
-              autoFocus
-            />
-            <Button
-              type={BUTTON_TYPE}
-              size="icon-sm"
-              variant={GHOST_VARIANT}
-              aria-label={t("createFolder")}
-              className="size-10 shrink-0 rounded-xl"
-              onClick={saveNewFolder}
-            >
-              <CheckIcon className="size-3" aria-hidden="true" />
-            </Button>
-            <Button
-              type={BUTTON_TYPE}
-              size="icon-sm"
-              variant={GHOST_VARIANT}
-              aria-label={t("cancelFolderCreation")}
-              className="size-10 shrink-0 rounded-xl"
-              onClick={() => setCreatingFolder(false)}
-            >
-              <XIcon className="size-3" aria-hidden="true" />
-            </Button>
-          </div>
-        ) : null}
-
-        <div className="flex min-h-0 flex-col gap-1">
-          {searchActive ? (
-            searching && searchResults.length === 0 ? (
-              <div className="flex flex-col gap-px pt-px" aria-busy="true">
-                <Skeleton className="h-16 w-full rounded-xl" />
-                <Skeleton className="h-16 w-full rounded-xl" />
-                <Skeleton className="h-16 w-full rounded-xl" />
-              </div>
-            ) : searchError && searchResults.length === 0 ? (
-              <Empty className="border-0 bg-transparent px-2 py-10">
-                <EmptyHeader>
-                  <EmptyMedia
-                    variant="icon"
-                    className="border-0 bg-transparent text-muted-foreground/40"
-                  >
-                    <SearchXIcon aria-hidden="true" />
-                  </EmptyMedia>
-                  <EmptyTitle className="text-sm font-medium">
-                    {t("searchErrorTitle")}
-                  </EmptyTitle>
-                  <EmptyDescription className="text-xs text-muted-foreground/60">
-                    {t("searchErrorDescription")}
-                  </EmptyDescription>
-                </EmptyHeader>
-                {onRetrySearch ? (
+      <div className="animate-in-fade flex min-h-0 flex-1 flex-col motion-reduce:animate-none">
+        <div className="flex min-h-0 flex-1 flex-col">
+          <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto px-2 py-2">
+            {showConversationTools ? (
+              <div className="flex min-h-10 items-center justify-between px-2">
+                <span className="text-[11px] font-medium text-muted-foreground">
+                  {t("conversations")}
+                </span>
+                <div className="flex items-center">
                   <Button
                     type={BUTTON_TYPE}
-                    variant="outline"
-                    size="sm"
-                    className="min-h-10 rounded-xl"
-                    onClick={onRetrySearch}
-                  >
-                    <RefreshCwIcon
-                      data-icon="inline-start"
-                      aria-hidden="true"
-                    />
-                    {t("retrySearch")}
-                  </Button>
-                ) : null}
-              </Empty>
-            ) : searchResults.length === 0 ? (
-              <Empty className="border-0 bg-transparent px-2 py-10">
-                <EmptyHeader>
-                  <EmptyMedia
-                    variant="icon"
-                    className="border-0 bg-transparent text-muted-foreground/40"
-                  >
-                    <SearchXIcon aria-hidden="true" />
-                  </EmptyMedia>
-                  <EmptyTitle className="text-sm font-medium">
-                    {t("noSearchResultsTitle")}
-                  </EmptyTitle>
-                  <EmptyDescription className="text-xs text-muted-foreground/60">
-                    {t("noSearchResultsDescription", {
-                      query: searchQuery.trim(),
-                    })}
-                  </EmptyDescription>
-                </EmptyHeader>
-              </Empty>
-            ) : (
-              <div className="flex flex-col gap-1">
-                <div className="px-2 pb-1 text-[11px] font-medium text-muted-foreground">
-                  {t("searchResultCount", { count: searchResults.length })}
-                </div>
-                {searchResults.map((conversation) =>
-                  renderConversation(conversation, { searchResult: true }),
-                )}
-                {searchError && onRetrySearch ? (
-                  <Button
-                    type={BUTTON_TYPE}
-                    variant="ghost"
-                    size="sm"
-                    className="min-h-10 rounded-xl text-xs text-muted-foreground"
-                    onClick={onRetrySearch}
-                  >
-                    <RefreshCwIcon
-                      data-icon="inline-start"
-                      aria-hidden="true"
-                    />
-                    {t("retrySearch")}
-                  </Button>
-                ) : null}
-                {hasMoreSearchResults && onLoadMoreSearchResults ? (
-                  <Button
-                    type={BUTTON_TYPE}
+                    size="icon-sm"
                     variant={GHOST_VARIANT}
-                    size="sm"
-                    className="mt-1 min-h-10 rounded-xl text-xs text-muted-foreground"
-                    disabled={loadingMoreSearchResults}
-                    onClick={onLoadMoreSearchResults}
+                    aria-label={t("createFolder")}
+                    className="size-10 rounded-xl text-muted-foreground"
+                    onClick={startFolderCreate}
                   >
-                    {loadingMoreSearchResults
-                      ? t("loading")
-                      : t("loadMoreResults")}
+                    <FolderPlusIcon className="size-3.5" aria-hidden="true" />
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+
+            {showConversationTools ? (
+              <div className="flex items-center gap-2 px-1 pb-1">
+                <SearchIcon
+                  className="size-4 shrink-0 text-muted-foreground"
+                  aria-hidden="true"
+                />
+                <Input
+                  type="search"
+                  name="conversation-search"
+                  autoComplete="off"
+                  aria-label={t("searchLabel")}
+                  placeholder={t("searchPlaceholder")}
+                  value={searchQuery}
+                  onChange={(event) =>
+                    onSearchQueryChange?.(event.target.value)
+                  }
+                  className="h-10 min-w-0 rounded-xl px-3 text-xs"
+                />
+                {searchActive ? (
+                  <Button
+                    type={BUTTON_TYPE}
+                    size="icon-sm"
+                    variant={GHOST_VARIANT}
+                    className="size-10 shrink-0 rounded-xl"
+                    aria-label={t("clearSearch")}
+                    onClick={() => onSearchQueryChange?.("")}
+                  >
+                    <XIcon data-icon="inline-start" aria-hidden="true" />
                   </Button>
                 ) : null}
               </div>
-            )
-          ) : loading ? (
-            <div className="flex flex-col gap-px pt-px">
-              <Skeleton className="h-12 w-full rounded-xl" />
-              <Skeleton className="h-12 w-full rounded-xl" />
-              <Skeleton className="h-12 w-full rounded-xl" />
-            </div>
-          ) : conversations.length === 0 && conversationFolders.length === 0 ? (
-            <div className="pt-2">
-              <Empty className="border-0 bg-transparent px-2 py-10">
-                <EmptyHeader>
-                  <EmptyMedia
-                    variant="icon"
-                    className="border-0 bg-transparent text-muted-foreground/40"
-                  >
-                    <MessageSquareIcon className="size-5" aria-hidden="true" />
-                  </EmptyMedia>
-                  <EmptyTitle className="text-sm font-medium">
-                    {t("emptyTitle")}
-                  </EmptyTitle>
-                  <EmptyDescription className="text-xs text-muted-foreground/60">
-                    {t("emptyDescription")}
-                  </EmptyDescription>
-                </EmptyHeader>
-                {canConfigureProviders || canCreateAgent ? (
-                  <div className="mt-4 flex flex-wrap justify-center gap-2 text-xs">
-                    {canConfigureProviders ? (
-                      <Button
-                        asChild
-                        variant="link"
-                        size="sm"
-                        className="min-h-10 px-0 text-muted-foreground"
-                      >
-                        <Link href="/providers">{t("configureProvider")}</Link>
-                      </Button>
-                    ) : null}
-                    {canCreateAgent ? (
-                      <Button
-                        asChild
-                        variant="link"
-                        size="sm"
-                        className="min-h-10 px-0 text-muted-foreground"
-                      >
-                        <Link href="/agents">{t("createAgent")}</Link>
-                      </Button>
-                    ) : null}
-                  </div>
-                ) : null}
-              </Empty>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {pinnedConversations.length > 0 ? (
-                <section
-                  className="flex flex-col gap-px"
-                  onDragOver={(event) => event.preventDefault()}
-                  onDrop={(event) => {
-                    event.preventDefault();
-                    reorderDraggedConversation({
-                      folderId: null,
-                      pinned: true,
-                    });
+            ) : null}
+
+            <p className="sr-only" aria-live="polite">
+              {searchActive && !searching && !searchError
+                ? t("searchResultCount", { count: searchResults.length })
+                : null}
+            </p>
+
+            {creatingFolder ? (
+              <div className="flex items-center gap-1 rounded-xl border border-sidebar-border/60 bg-background p-1">
+                <Input
+                  aria-label={t("folderName")}
+                  value={newFolderName}
+                  onChange={(event) => setNewFolderName(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") saveNewFolder();
+                    if (event.key === "Escape") setCreatingFolder(false);
                   }}
-                >
-                  <div className="flex items-center gap-1 px-2 pb-1 text-[11px] font-medium text-muted-foreground">
-                    <PinIcon className="size-3" aria-hidden="true" />
-                    {t("pinned")}
-                  </div>
-                  {pinnedConversations.map((conversation) =>
-                    renderConversation(conversation),
-                  )}
-                </section>
-              ) : null}
-
-              {folderSections.map(
-                ({ folder, conversations: folderConversations }) => {
-                  const open = !closedFolderIds.has(folder.id);
-                  const isEditingFolder = editingFolderId === folder.id;
-
-                  return (
-                    <section key={folder.id} className="flex flex-col gap-px">
-                      <div
-                        className="group/folder flex min-h-12 items-center gap-1 rounded-xl px-2 text-xs text-muted-foreground transition-[background-color,color] hover:bg-muted/60"
-                        onDragOver={(event) => event.preventDefault()}
-                        onDrop={(event) => {
-                          event.preventDefault();
-                          reorderDraggedConversation({
-                            folderId: folder.id,
-                            pinned: false,
-                          });
-                        }}
-                      >
-                        <FolderIcon
-                          className="size-3.5 shrink-0"
-                          aria-hidden="true"
-                        />
-                        {isEditingFolder ? (
-                          <div className="flex min-w-0 flex-1 items-center gap-1">
-                            <Input
-                              aria-label={t("folderName")}
-                              value={editingFolderName}
-                              onChange={(event) =>
-                                setEditingFolderName(event.target.value)
-                              }
-                              onKeyDown={(event) => {
-                                if (event.key === "Enter") {
-                                  const name = editingFolderName.trim();
-                                  if (name) {
-                                    onRenameConversationFolder?.(
-                                      folder.id,
-                                      name,
-                                    );
-                                    setEditingFolderId(null);
-                                  }
-                                }
-                                if (event.key === "Escape")
-                                  setEditingFolderId(null);
-                              }}
-                              className="h-10 min-w-0 rounded-lg px-3 text-xs"
-                              autoFocus
-                            />
-                          </div>
-                        ) : (
-                          <button
-                            type={BUTTON_TYPE}
-                            className="flex min-h-10 min-w-0 flex-1 items-center gap-1 rounded-lg px-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                            onClick={() => toggleFolder(folder.id)}
-                          >
-                            <ChevronDownIcon
-                              className={cn(
-                                "size-3 shrink-0 transition-transform",
-                                !open && "-rotate-90",
-                              )}
-                              aria-hidden="true"
-                            />
-                            <span className="truncate font-medium">
-                              {folder.name}
-                            </span>
-                            <span className="text-muted-foreground/50">
-                              {folderConversations.length}
-                            </span>
-                          </button>
-                        )}
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              type={BUTTON_TYPE}
-                              size="icon-sm"
-                              variant={GHOST_VARIANT}
-                              className="size-10 rounded-xl transition-[background-color,opacity] md:opacity-0 md:group-hover/folder:opacity-100 md:group-focus-within/folder:opacity-100 data-[state=open]:opacity-100"
-                              aria-label={t("folderActions")}
-                            >
-                              <MoreHorizontalIcon
-                                className="size-3"
-                                aria-hidden="true"
-                              />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onSelect={() => {
-                                setEditingFolderId(folder.id);
-                                setEditingFolderName(folder.name);
-                              }}
-                              className="min-h-10 gap-2"
-                            >
-                              <PencilIcon
-                                className="size-3.5"
-                                aria-hidden="true"
-                              />
-                              {t("rename")}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              variant="destructive"
-                              onSelect={() =>
-                                onDeleteConversationFolder?.(folder.id)
-                              }
-                              className="min-h-10 gap-2"
-                            >
-                              <Trash2Icon
-                                className="size-3.5"
-                                aria-hidden="true"
-                              />
-                              {t("deleteFolder")}
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                      {open ? (
-                        <div className="flex flex-col gap-px pl-3">
-                          {folderConversations.length > 0 ? (
-                            folderConversations.map((conversation) =>
-                              renderConversation(conversation),
-                            )
-                          ) : (
-                            <div
-                              className="rounded-lg border border-dashed px-3 py-2 text-xs text-muted-foreground/60"
-                              onDragOver={(event) => event.preventDefault()}
-                              onDrop={(event) => {
-                                event.preventDefault();
-                                reorderDraggedConversation({
-                                  folderId: folder.id,
-                                  pinned: false,
-                                });
-                              }}
-                            >
-                              {t("dropChatsHere")}
-                            </div>
-                          )}
-                        </div>
-                      ) : null}
-                    </section>
-                  );
-                },
-              )}
-
-              <section
-                className="flex flex-col gap-px"
-                onDragOver={(event) => event.preventDefault()}
-                onDrop={(event) => {
-                  event.preventDefault();
-                  reorderDraggedConversation({ folderId: null, pinned: false });
-                }}
-              >
-                {topLevelConversations.length > 0 ? (
-                  <>
-                    <div className="px-2 pb-1 text-[11px] font-medium text-muted-foreground">
-                      {t("recent")}
-                    </div>
-                    {topLevelConversations.map((conversation) =>
-                      renderConversation(conversation),
-                    )}
-                  </>
-                ) : folderSections.length === 0 ? (
-                  <div className="rounded-lg border border-dashed px-3 py-2 text-xs text-muted-foreground/60">
-                    {t("dropChatsHere")}
-                  </div>
-                ) : null}
-              </section>
-
-              {hasMoreConversations && onLoadMoreConversations ? (
+                  placeholder={t("folderName")}
+                  className="h-10 min-w-0 rounded-lg px-3 text-xs"
+                  autoFocus
+                />
                 <Button
                   type={BUTTON_TYPE}
+                  size="icon-sm"
                   variant={GHOST_VARIANT}
-                  size="sm"
-                  className="mt-2 min-h-10 rounded-xl text-xs text-muted-foreground"
-                  disabled={loadingMoreConversations}
-                  onClick={onLoadMoreConversations}
+                  aria-label={t("createFolder")}
+                  className="size-10 shrink-0 rounded-xl"
+                  onClick={saveNewFolder}
                 >
-                  {loadingMoreConversations ? t("loading") : t("loadOlder")}
+                  <CheckIcon className="size-3" aria-hidden="true" />
                 </Button>
-              ) : null}
+                <Button
+                  type={BUTTON_TYPE}
+                  size="icon-sm"
+                  variant={GHOST_VARIANT}
+                  aria-label={t("cancelFolderCreation")}
+                  className="size-10 shrink-0 rounded-xl"
+                  onClick={() => setCreatingFolder(false)}
+                >
+                  <XIcon className="size-3" aria-hidden="true" />
+                </Button>
+              </div>
+            ) : null}
+
+            <div className="flex min-h-0 flex-col gap-1">
+              {searchActive ? (
+                searching && searchResults.length === 0 ? (
+                  <div className="flex flex-col gap-px pt-px" aria-busy="true">
+                    <Skeleton className="h-16 w-full rounded-xl" />
+                    <Skeleton className="h-16 w-full rounded-xl" />
+                    <Skeleton className="h-16 w-full rounded-xl" />
+                  </div>
+                ) : searchError && searchResults.length === 0 ? (
+                  <Empty className="border-0 bg-transparent px-2 py-10">
+                    <EmptyHeader>
+                      <EmptyMedia
+                        variant="icon"
+                        className="border-0 bg-transparent text-muted-foreground/40"
+                      >
+                        <SearchXIcon aria-hidden="true" />
+                      </EmptyMedia>
+                      <EmptyTitle className="text-sm font-medium">
+                        {t("searchErrorTitle")}
+                      </EmptyTitle>
+                      <EmptyDescription className="text-xs text-muted-foreground/60">
+                        {t("searchErrorDescription")}
+                      </EmptyDescription>
+                    </EmptyHeader>
+                    {onRetrySearch ? (
+                      <Button
+                        type={BUTTON_TYPE}
+                        variant="outline"
+                        size="sm"
+                        className="min-h-10 rounded-xl"
+                        onClick={onRetrySearch}
+                      >
+                        <RefreshCwIcon
+                          data-icon="inline-start"
+                          aria-hidden="true"
+                        />
+                        {t("retrySearch")}
+                      </Button>
+                    ) : null}
+                  </Empty>
+                ) : searchResults.length === 0 ? (
+                  <Empty className="border-0 bg-transparent px-2 py-10">
+                    <EmptyHeader>
+                      <EmptyMedia
+                        variant="icon"
+                        className="border-0 bg-transparent text-muted-foreground/40"
+                      >
+                        <SearchXIcon aria-hidden="true" />
+                      </EmptyMedia>
+                      <EmptyTitle className="text-sm font-medium">
+                        {t("noSearchResultsTitle")}
+                      </EmptyTitle>
+                      <EmptyDescription className="text-xs text-muted-foreground/60">
+                        {t("noSearchResultsDescription", {
+                          query: searchQuery.trim(),
+                        })}
+                      </EmptyDescription>
+                    </EmptyHeader>
+                  </Empty>
+                ) : (
+                  <div className="flex flex-col gap-1">
+                    <div className="px-2 pb-1 text-[11px] font-medium text-muted-foreground">
+                      {t("searchResultCount", { count: searchResults.length })}
+                    </div>
+                    {searchResults.map((conversation) =>
+                      renderConversation(conversation, { searchResult: true }),
+                    )}
+                    {searchError && onRetrySearch ? (
+                      <Button
+                        type={BUTTON_TYPE}
+                        variant="ghost"
+                        size="sm"
+                        className="min-h-10 rounded-xl text-xs text-muted-foreground"
+                        onClick={onRetrySearch}
+                      >
+                        <RefreshCwIcon
+                          data-icon="inline-start"
+                          aria-hidden="true"
+                        />
+                        {t("retrySearch")}
+                      </Button>
+                    ) : null}
+                    {hasMoreSearchResults && onLoadMoreSearchResults ? (
+                      <Button
+                        type={BUTTON_TYPE}
+                        variant={GHOST_VARIANT}
+                        size="sm"
+                        className="mt-1 min-h-10 rounded-xl text-xs text-muted-foreground"
+                        disabled={loadingMoreSearchResults}
+                        onClick={onLoadMoreSearchResults}
+                      >
+                        {loadingMoreSearchResults
+                          ? t("loading")
+                          : t("loadMoreResults")}
+                      </Button>
+                    ) : null}
+                  </div>
+                )
+              ) : loading ? (
+                <div className="flex flex-col gap-px pt-px">
+                  <Skeleton className="h-12 w-full rounded-xl" />
+                  <Skeleton className="h-12 w-full rounded-xl" />
+                  <Skeleton className="h-12 w-full rounded-xl" />
+                </div>
+              ) : conversations.length === 0 &&
+                conversationFolders.length === 0 ? (
+                <div className="pt-2">
+                  <Empty className="border-0 bg-transparent px-2 py-10">
+                    <EmptyHeader>
+                      <EmptyMedia
+                        variant="icon"
+                        className="border-0 bg-transparent text-muted-foreground/40"
+                      >
+                        <MessageSquareIcon
+                          className="size-5"
+                          aria-hidden="true"
+                        />
+                      </EmptyMedia>
+                      <EmptyTitle className="text-sm font-medium">
+                        {t("emptyTitle")}
+                      </EmptyTitle>
+                      <EmptyDescription className="text-xs text-muted-foreground/60">
+                        {t("emptyDescription")}
+                      </EmptyDescription>
+                    </EmptyHeader>
+                  </Empty>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {pinnedConversations.length > 0 ? (
+                    <section
+                      className="flex flex-col gap-px"
+                      onDragOver={(event) => event.preventDefault()}
+                      onDrop={(event) => {
+                        event.preventDefault();
+                        reorderDraggedConversation({
+                          folderId: null,
+                          pinned: true,
+                        });
+                      }}
+                    >
+                      <div className="flex items-center gap-1 px-2 pb-1 text-[11px] font-medium text-muted-foreground">
+                        <PinIcon className="size-3" aria-hidden="true" />
+                        {t("pinned")}
+                      </div>
+                      {pinnedConversations.map((conversation) =>
+                        renderConversation(conversation),
+                      )}
+                    </section>
+                  ) : null}
+
+                  {folderSections.map(
+                    ({ folder, conversations: folderConversations }) => {
+                      const open = !closedFolderIds.has(folder.id);
+                      const isEditingFolder = editingFolderId === folder.id;
+
+                      return (
+                        <section
+                          key={folder.id}
+                          className="flex flex-col gap-px"
+                        >
+                          <div
+                            className="group/folder flex min-h-12 items-center gap-1 rounded-xl px-2 text-xs text-muted-foreground transition-[background-color,color] hover:bg-muted/60"
+                            onDragOver={(event) => event.preventDefault()}
+                            onDrop={(event) => {
+                              event.preventDefault();
+                              reorderDraggedConversation({
+                                folderId: folder.id,
+                                pinned: false,
+                              });
+                            }}
+                          >
+                            <FolderIcon
+                              className="size-3.5 shrink-0"
+                              aria-hidden="true"
+                            />
+                            {isEditingFolder ? (
+                              <div className="flex min-w-0 flex-1 items-center gap-1">
+                                <Input
+                                  aria-label={t("folderName")}
+                                  value={editingFolderName}
+                                  onChange={(event) =>
+                                    setEditingFolderName(event.target.value)
+                                  }
+                                  onKeyDown={(event) => {
+                                    if (event.key === "Enter") {
+                                      const name = editingFolderName.trim();
+                                      if (name) {
+                                        onRenameConversationFolder?.(
+                                          folder.id,
+                                          name,
+                                        );
+                                        setEditingFolderId(null);
+                                      }
+                                    }
+                                    if (event.key === "Escape")
+                                      setEditingFolderId(null);
+                                  }}
+                                  className="h-10 min-w-0 rounded-lg px-3 text-xs"
+                                  autoFocus
+                                />
+                              </div>
+                            ) : (
+                              <button
+                                type={BUTTON_TYPE}
+                                className="flex min-h-10 min-w-0 flex-1 items-center gap-1 rounded-lg px-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                                onClick={() => toggleFolder(folder.id)}
+                              >
+                                <ChevronDownIcon
+                                  className={cn(
+                                    "size-3 shrink-0 transition-transform",
+                                    !open && "-rotate-90",
+                                  )}
+                                  aria-hidden="true"
+                                />
+                                <span className="truncate font-medium">
+                                  {folder.name}
+                                </span>
+                                <span className="text-muted-foreground/50">
+                                  {folderConversations.length}
+                                </span>
+                              </button>
+                            )}
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  type={BUTTON_TYPE}
+                                  size="icon-sm"
+                                  variant={GHOST_VARIANT}
+                                  className="size-10 rounded-xl transition-[background-color,opacity] md:opacity-0 md:group-hover/folder:opacity-100 md:group-focus-within/folder:opacity-100 data-[state=open]:opacity-100"
+                                  aria-label={t("folderActions")}
+                                >
+                                  <MoreHorizontalIcon
+                                    className="size-3"
+                                    aria-hidden="true"
+                                  />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  onSelect={() => {
+                                    setEditingFolderId(folder.id);
+                                    setEditingFolderName(folder.name);
+                                  }}
+                                  className="min-h-10 gap-2"
+                                >
+                                  <PencilIcon
+                                    className="size-3.5"
+                                    aria-hidden="true"
+                                  />
+                                  {t("rename")}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  variant="destructive"
+                                  onSelect={() =>
+                                    onDeleteConversationFolder?.(folder.id)
+                                  }
+                                  className="min-h-10 gap-2"
+                                >
+                                  <Trash2Icon
+                                    className="size-3.5"
+                                    aria-hidden="true"
+                                  />
+                                  {t("deleteFolder")}
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                          {open ? (
+                            <div className="flex flex-col gap-px pl-3">
+                              {folderConversations.length > 0 ? (
+                                folderConversations.map((conversation) =>
+                                  renderConversation(conversation),
+                                )
+                              ) : (
+                                <div
+                                  className="rounded-lg border border-dashed px-3 py-2 text-xs text-muted-foreground/60"
+                                  onDragOver={(event) => event.preventDefault()}
+                                  onDrop={(event) => {
+                                    event.preventDefault();
+                                    reorderDraggedConversation({
+                                      folderId: folder.id,
+                                      pinned: false,
+                                    });
+                                  }}
+                                >
+                                  {t("dropChatsHere")}
+                                </div>
+                              )}
+                            </div>
+                          ) : null}
+                        </section>
+                      );
+                    },
+                  )}
+
+                  <section
+                    className="flex flex-col gap-px"
+                    onDragOver={(event) => event.preventDefault()}
+                    onDrop={(event) => {
+                      event.preventDefault();
+                      reorderDraggedConversation({
+                        folderId: null,
+                        pinned: false,
+                      });
+                    }}
+                  >
+                    {topLevelConversations.length > 0 ? (
+                      <>
+                        <div className="px-2 pb-1 text-[11px] font-medium text-muted-foreground">
+                          {t("recent")}
+                        </div>
+                        {topLevelConversations.map((conversation) =>
+                          renderConversation(conversation),
+                        )}
+                      </>
+                    ) : folderSections.length === 0 ? (
+                      <div className="rounded-lg border border-dashed px-3 py-2 text-xs text-muted-foreground/60">
+                        {t("dropChatsHere")}
+                      </div>
+                    ) : null}
+                  </section>
+
+                  {hasMoreConversations && onLoadMoreConversations ? (
+                    <Button
+                      type={BUTTON_TYPE}
+                      variant={GHOST_VARIANT}
+                      size="sm"
+                      className="mt-2 min-h-10 rounded-xl text-xs text-muted-foreground"
+                      disabled={loadingMoreConversations}
+                      onClick={onLoadMoreConversations}
+                    >
+                      {loadingMoreConversations ? t("loading") : t("loadOlder")}
+                    </Button>
+                  ) : null}
+                </div>
+              )}
             </div>
-          )}
+          </div>
+
+          {navGroups.length > 0 ? (
+            <ChatAppNavigation groups={navGroups} />
+          ) : null}
         </div>
       </div>
-
-      {navGroups.length > 0 ? <ChatAppNavigation groups={navGroups} /> : null}
-
-      {showThemeToggle ? (
-        <div className="border-t border-sidebar-border/60 px-3 py-2">
-          <div className="flex min-w-0 items-center gap-1">
-            <ThemeToggleButton iconOnly className="size-10 rounded-xl" />
-            <LocaleSwitcher compact className="size-10 rounded-xl" />
-          </div>
-        </div>
-      ) : null}
+      <SidebarFooter displayName={shell?.displayName} />
     </div>
   );
 }

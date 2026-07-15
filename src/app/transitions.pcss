@@ -1,6 +1,8 @@
 /* transitions-dev — copy this :root block into your project once.
    Every transition snippet reads from these semantic names. */
 :root {
+  /* Sidebar route changes use a local CSS fade; never snapshot the full app. */
+  view-transition-name: none;
   /* Card resize */
   --resize-dur: 300ms;
   --resize-ease: cubic-bezier(0.22, 1, 0.36, 1);
@@ -27,7 +29,7 @@
   /* Text states swap */
   --text-swap-dur: 150ms;
   --text-swap-translate-y: 4px;
-  --text-swap-blur: 2px;
+  --text-swap-blur: 0px;
   --text-swap-ease: ease-in-out;
   /* Menu dropdown */
   --dropdown-open-dur: 250ms;
@@ -45,20 +47,20 @@
   --panel-open-dur: 400ms;
   --panel-close-dur: 350ms;
   --panel-translate-y: 100px;
-  --panel-blur: 2px;
+  --panel-blur: 0px;
   --panel-ease: cubic-bezier(0.22, 1, 0.36, 1);
   /* Page side-by-side */
   --page-slide-dur: 250ms;
   --page-fade-dur: 250ms;
   --page-slide-distance: 8px;
-  --page-blur: 3px;
+  --page-blur: 0px;
   --page-stagger: 0ms;
   --page-exit-enabled: 1;
   --page-slide-ease: cubic-bezier(0.22, 1, 0.36, 1);
   --page-fade-ease: cubic-bezier(0.22, 1, 0.36, 1);
   /* Icon swap */
   --icon-swap-dur: 250ms;
-  --icon-swap-blur: 2px;
+  --icon-swap-blur: 0px;
   --icon-swap-start-scale: 0.25;
   --icon-swap-ease: ease-in-out;
   /* Success check */
@@ -109,7 +111,7 @@
   --pulse-count: 1;
   --pulse-min: 0.5;
   --reveal-dur: 400ms;
-  --reveal-blur: 2px;
+  --reveal-blur: 0px;
   --reveal-ease: ease-in-out;
   /* Shimmer text */
   --shimmer-dur: 2000ms;
@@ -137,7 +139,7 @@
   --stagger-dur: 500ms;
   --stagger-distance: 12px;
   --stagger-stagger: 40ms;
-  --stagger-blur: 3px;
+  --stagger-blur: 0px;
   --stagger-ease: cubic-bezier(0.22, 1, 0.36, 1);
   /* Card hover tilt */
   --tilt-perspective: 1000px;
@@ -562,17 +564,11 @@
 .t-acc-panel-inner {
   overflow: hidden;
   opacity: 0;
-  filter: blur(2px);
-  transition:
-    opacity var(--acc-collapse) var(--acc-ease),
-    filter var(--acc-collapse) var(--acc-ease);
+  transition: opacity var(--acc-collapse) var(--acc-ease);
 }
 .t-acc[data-open="true"] .t-acc-panel-inner {
   opacity: 1;
-  filter: blur(0);
-  transition:
-    opacity var(--acc-expand) var(--acc-ease),
-    filter var(--acc-expand) var(--acc-ease);
+  transition: opacity var(--acc-expand) var(--acc-ease);
 }
 /* Flip the chevron vertically to turn the "v" into a "^".
    scaleY(-1) about the centre passes through a flat line at

@@ -1,6 +1,9 @@
+"use client";
+
 import type { ReactNode } from "react";
 import { Link } from "@/i18n/navigation";
 import { ChevronRightIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { cn } from "@/lib/utils";
 
@@ -26,6 +29,7 @@ export function AppHeader({
   actions?: ReactNode;
   className?: string;
 }) {
+  const t = useTranslations("common");
   return (
     <header
       className={cn("app-shell__header gap-3", className)}
@@ -37,7 +41,7 @@ export function AppHeader({
           <div className="hidden min-w-0 flex-col gap-0.5 sm:flex">
             {breadcrumbs && breadcrumbs.length > 0 ? (
               <nav
-                aria-label="Breadcrumb"
+                aria-label={t("breadcrumb")}
                 className="flex min-w-0 flex-wrap items-center gap-1 text-[0.7rem] font-medium text-muted-foreground"
               >
                 {breadcrumbs.map((crumb, index) => (

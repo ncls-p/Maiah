@@ -16,6 +16,7 @@ import {
   XIcon,
 } from "lucide-react";
 import { toast } from "sonner";
+import { DestructiveConfirmationDialog } from "@/components/destructive-confirmation-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -84,6 +85,7 @@ function isManual(skill: AgentSkill): boolean {
 // ─── Skill Detail Dialog ───────────────────────────────────────────────
 
 function SkillDetailDialog({ skill }: { skill: AgentSkill }) {
+  const t = useTranslations("tools.skills");
   const [activeFile, setActiveFile] = useState(0);
   const files = Array.isArray(skill.markdownFilesJson)
     ? (skill.markdownFilesJson as SkillMarkdownFile[])
@@ -99,7 +101,7 @@ function SkillDetailDialog({ skill }: { skill: AgentSkill }) {
           className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
         >
           <EyeIcon className="mr-1 size-3" />
-          View
+          {t("view")}
         </Button>
       </DialogTrigger>
       <DialogContent className="top-0 left-0 flex h-dvh w-screen max-w-none translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden rounded-none border-0 p-0 sm:top-1/2 sm:left-1/2 sm:h-[min(88dvh,760px)] sm:w-[calc(100vw-2rem)] sm:max-w-6xl sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl sm:border">
@@ -111,19 +113,19 @@ function SkillDetailDialog({ skill }: { skill: AgentSkill }) {
             </DialogTitle>
             {isManual(skill) && (
               <Badge variant="secondary" className="shrink-0">
-                manual
+                {t("manual")}
               </Badge>
             )}
           </div>
           <DialogDescription className="mt-1 line-clamp-2 text-left text-xs sm:text-sm">
-            {skill.description || "No description"}
+            {skill.description || t("noDescription")}
           </DialogDescription>
         </header>
 
         {/* Mobile file rail */}
         <div className="shrink-0 border-b border-border/70 bg-muted/25 px-3 py-2 md:hidden">
           <p className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            {files.length} file{files.length !== 1 ? "s" : ""}
+            {t("fileCount", { count: files.length })}
           </p>
           <ScrollArea className="w-full whitespace-nowrap">
             <div className="flex gap-2 pb-2">
@@ -151,7 +153,7 @@ function SkillDetailDialog({ skill }: { skill: AgentSkill }) {
             <ScrollArea className="h-full">
               <div className="p-3">
                 <p className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  {files.length} file{files.length !== 1 ? "s" : ""}
+                  {t("fileCount", { count: files.length })}
                 </p>
                 {files.map((file, i) => (
                   <button
@@ -192,7 +194,7 @@ function SkillDetailDialog({ skill }: { skill: AgentSkill }) {
               </>
             ) : (
               <div className="flex flex-1 items-center justify-center p-8 text-sm text-muted-foreground">
-                No files
+                {t("noFiles")}
               </div>
             )}
           </section>
@@ -217,6 +219,7 @@ function SkillEditorDialog({
   trigger: ReactNode;
   canManageGlobal: boolean;
 }) {
+  const t = useTranslations("tools.skills");
   const { workspaceId } = useWorkspace();
   const isEditing = Boolean(skill);
   const initialFiles = skill?.markdownFilesJson?.length
@@ -298,7 +301,7 @@ function SkillEditorDialog({
       if (!res.ok) {
         throw new Error(
           (await res.json().catch(() => null))?.error ||
-            (isEditing ? "Skill update failed" : "Skill creation failed"),
+            (isEditing ? t("updateFailed") : t("createFailed")),
         );
       }
       if (!isEditing) {
@@ -309,15 +312,15 @@ function SkillEditorDialog({
         setActiveFile(0);
       }
       setOpen(false);
-      toast.success(isEditing ? "Skill updated" : "Skill created successfully");
+      toast.success(isEditing ? t("updated") : t("created"));
       onSaved();
     } catch (error) {
       toast.error(
         error instanceof Error
           ? error.message
           : isEditing
-            ? "Skill update failed"
-            : "Skill creation failed",
+            ? t("updateFailed")
+            : t("createFailed"),
       );
       return;
     } finally {
@@ -337,12 +340,10 @@ function SkillEditorDialog({
       <DialogContent className="top-0 left-0 flex h-dvh w-screen max-w-none translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden rounded-none border-0 p-0 sm:top-1/2 sm:left-1/2 sm:h-[min(90dvh,800px)] sm:w-[calc(100vw-2rem)] sm:max-w-5xl sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl sm:border">
         <header className="shrink-0 border-b border-border/70 px-4 py-3 pr-14 sm:px-5 sm:py-4">
           <DialogTitle className="truncate text-base sm:text-lg">
-            {isEditing ? "Edit skill" : "Create a new skill"}
+            {isEditing ? t("editTitle") : t("createTitle")}
           </DialogTitle>
           <DialogDescription className="mt-1 line-clamp-2 text-left text-xs sm:text-sm">
-            {isEditing
-              ? "Update this skill's metadata and Markdown instruction files."
-              : "Define a custom skill with Markdown instructions. The main file should be named SKILL.md."}
+            {isEditing ? t("editDescription") : t("createDescription")}
           </DialogDescription>
         </header>
 
@@ -356,7 +357,7 @@ function SkillEditorDialog({
                       isEditing ? `skill-name-${skill?.id}` : "skill-name"
                     }
                   >
-                    Name
+                    {t("name")}
                   </Label>
                   <Input
                     id={isEditing ? `skill-name-${skill?.id}` : "skill-name"}
@@ -371,13 +372,13 @@ function SkillEditorDialog({
                       isEditing ? `skill-desc-${skill?.id}` : "skill-desc"
                     }
                   >
-                    Description
+                    {t("description")}
                   </Label>
                   <Textarea
                     id={isEditing ? `skill-desc-${skill?.id}` : "skill-desc"}
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    placeholder="What this skill does and when the agent should use it..."
+                    placeholder={t("descriptionPlaceholder")}
                     className="min-h-16 resize-none"
                   />
                 </div>
@@ -397,10 +398,10 @@ function SkillEditorDialog({
                         isEditing ? `skill-global-${skill?.id}` : "skill-global"
                       }
                     >
-                      Make visible to everyone
+                      {t("globalLabel")}
                     </Label>
                     <p className="text-xs text-muted-foreground">
-                      Leave unchecked to keep this skill scoped to your account.
+                      {t("globalHint")}
                     </p>
                   </div>
                 </div>
@@ -411,7 +412,7 @@ function SkillEditorDialog({
               <div className="shrink-0 border-b border-border/70 bg-muted/25 px-3 py-2 md:hidden">
                 <div className="mb-2 flex items-center justify-between gap-2 px-1">
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    {files.length} file{files.length !== 1 ? "s" : ""}
+                    {t("fileCount", { count: files.length })}
                   </p>
                   <Button
                     variant="ghost"
@@ -420,7 +421,7 @@ function SkillEditorDialog({
                     onClick={addFile}
                   >
                     <PlusIcon className="mr-1 size-3" />
-                    Add
+                    {t("addFile")}
                   </Button>
                 </div>
                 <ScrollArea className="w-full whitespace-nowrap">
@@ -449,7 +450,7 @@ function SkillEditorDialog({
                 <div className="flex h-full min-h-0 flex-col">
                   <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border/70 p-3">
                     <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                      {files.length} file{files.length !== 1 ? "s" : ""}
+                      {t("fileCount", { count: files.length })}
                     </p>
                     <Button
                       variant="ghost"
@@ -458,7 +459,7 @@ function SkillEditorDialog({
                       onClick={addFile}
                     >
                       <PlusIcon className="mr-1 size-3" />
-                      Add
+                      {t("addFile")}
                     </Button>
                   </div>
                   <ScrollArea className="min-h-0 flex-1">
@@ -490,7 +491,7 @@ function SkillEditorDialog({
                     <div className="flex shrink-0 items-center gap-2 border-b border-border/70 px-4 py-2.5 sm:px-5">
                       <FileTextIcon className="size-3.5 shrink-0 text-muted-foreground" />
                       <Input
-                        aria-label="Skill file path"
+                        aria-label={t("filePath")}
                         value={currentFile.path}
                         onChange={(e) =>
                           updateFile(activeFile, "path", e.target.value)
@@ -504,6 +505,7 @@ function SkillEditorDialog({
                           size="icon"
                           className="size-8 shrink-0"
                           onClick={() => removeFile(activeFile)}
+                          aria-label={t("removeFile")}
                         >
                           <XIcon className="size-3.5" />
                         </Button>
@@ -511,19 +513,19 @@ function SkillEditorDialog({
                     </div>
                     <div className="min-h-0 flex-1 p-3 sm:p-4">
                       <Textarea
-                        aria-label="Skill file content"
+                        aria-label={t("fileContent")}
                         value={currentFile.content}
                         onChange={(e) =>
                           updateFile(activeFile, "content", e.target.value)
                         }
-                        placeholder="Skill instructions..."
+                        placeholder={t("fileContentPlaceholder")}
                         className="h-full min-h-[42dvh] resize-none font-mono text-xs leading-relaxed md:min-h-0"
                       />
                     </div>
                   </>
                 ) : (
                   <div className="flex flex-1 items-center justify-center p-8 text-sm text-muted-foreground">
-                    No files
+                    {t("noFiles")}
                   </div>
                 )}
               </section>
@@ -533,14 +535,14 @@ function SkillEditorDialog({
 
         <footer className="flex shrink-0 flex-col-reverse gap-2 border-t border-border/70 bg-muted/30 p-3 sm:flex-row sm:justify-end sm:p-4">
           <Button variant="ghost" onClick={() => setOpen(false)}>
-            Cancel
+            {t("cancel")}
           </Button>
           <Button
             onClick={() => void handleSave()}
             disabled={saving || !canSave}
           >
             {saving && <Loader2Icon className="mr-1 size-3 animate-spin" />}
-            {isEditing ? "Save changes" : "Create skill"}
+            {isEditing ? t("saveChanges") : t("create")}
           </Button>
         </footer>
       </DialogContent>
@@ -559,6 +561,7 @@ function PreviewPanel({
   onInstall: () => void;
   installing: boolean;
 }) {
+  const t = useTranslations("tools.skills");
   const [expandedSkill, setExpandedSkill] = useState(0);
   const [expandedFile, setExpandedFile] = useState<string | null>(null);
   const skill = preview[expandedSkill];
@@ -568,13 +571,9 @@ function PreviewPanel({
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <SearchIcon className="size-4" />
-          Preview — {preview.length} skill{preview.length !== 1 ? "s" : ""}{" "}
-          found
+          {t("previewTitle", { count: preview.length })}
         </CardTitle>
-        <CardDescription>
-          Reviewed snapshot. The source is checked again before any Markdown
-          file is imported.
-        </CardDescription>
+        <CardDescription>{t("previewDescription")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {preview.length > 1 && (
@@ -600,8 +599,7 @@ function PreviewPanel({
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="outline">{skill.sourcePackage}</Badge>
               <Badge variant="secondary">
-                {skill.markdownFiles.length} file
-                {skill.markdownFiles.length !== 1 ? "s" : ""}
+                {t("fileCount", { count: skill.markdownFiles.length })}
               </Badge>
             </div>
 
@@ -618,7 +616,7 @@ function PreviewPanel({
               }}
             >
               <summary className="cursor-pointer text-xs font-medium text-muted-foreground hover:text-foreground">
-                Files included
+                {t("filesIncluded")}
               </summary>
               <div className="mt-2 space-y-1">
                 {skill.markdownFiles.map((file) => (
@@ -635,7 +633,9 @@ function PreviewPanel({
                       <FileTextIcon className="size-3 shrink-0 text-muted-foreground" />
                       <span className="truncate font-mono">{file.path}</span>
                       <span className="ml-auto text-[10px] text-muted-foreground">
-                        {new Blob([file.content]).size} bytes
+                        {t("byteCount", {
+                          count: new Blob([file.content]).size,
+                        })}
                       </span>
                     </button>
                     {expandedFile === file.path && (
@@ -659,7 +659,7 @@ function PreviewPanel({
                 ) : (
                   <BookMarkedIcon className="mr-1 size-3.5" />
                 )}
-                Install reviewed {preview.length > 1 ? "skills" : "skill"}
+                {t("installReviewed", { count: preview.length })}
               </Button>
             </div>
           </>
@@ -672,6 +672,7 @@ function PreviewPanel({
 // ─── Main Skill Manager ────────────────────────────────────────────────
 
 export function SkillManager() {
+  const t = useTranslations("tools.skills");
   const tShare = useTranslations("marketplace.share");
   const { workspaceId } = useWorkspace();
   const [shareResource, setShareResource] = useState<ShareableResource | null>(
@@ -681,6 +682,7 @@ export function SkillManager() {
   const [installCommand, setInstallCommand] = useState("");
   const [installGlobal, setInstallGlobal] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [installing, setInstalling] = useState(false);
   const [previewing, setPreviewing] = useState(false);
   const [preview, setPreview] = useState<SkillPreview[] | null>(null);
@@ -689,15 +691,19 @@ export function SkillManager() {
     null,
   );
   const [canManageTenantGlobals, setCanManageTenantGlobals] = useState(false);
+  const [pendingDeleteSkill, setPendingDeleteSkill] =
+    useState<AgentSkill | null>(null);
+  const [deletingSkillId, setDeletingSkillId] = useState<string | null>(null);
 
   const loadSkills = useCallback(async () => {
     if (!workspaceId) return;
     const permissions = await fetchWorkspacePermissions(workspaceId);
     setCanManageTenantGlobals(permissions.canManageTenantGlobals);
     const res = await fetch(`/api/workspace/skills?workspaceId=${workspaceId}`);
-    if (!res.ok) throw new Error("Unable to load skills");
+    if (!res.ok) throw new Error(t("loadFailed"));
     setSkills((await res.json()) as AgentSkill[]);
-  }, [workspaceId]);
+    setLoadError(false);
+  }, [workspaceId, t]);
 
   useEffect(() => {
     if (!workspaceId) return;
@@ -706,8 +712,9 @@ export function SkillManager() {
       void loadSkills()
         .catch((error) => {
           if (!cancelled) {
+            setLoadError(true);
             toast.error(
-              error instanceof Error ? error.message : "Unable to load skills",
+              error instanceof Error ? error.message : t("loadFailed"),
             );
           }
           return;
@@ -720,7 +727,20 @@ export function SkillManager() {
       cancelled = true;
       window.clearTimeout(timeout);
     };
-  }, [workspaceId, loadSkills]);
+  }, [workspaceId, loadSkills, t]);
+
+  async function retryLoadSkills() {
+    setLoading(true);
+    setLoadError(false);
+    try {
+      await loadSkills();
+    } catch (error) {
+      setLoadError(true);
+      toast.error(error instanceof Error ? error.message : t("loadFailed"));
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function installSkill() {
     if (
@@ -752,19 +772,17 @@ export function SkillManager() {
           setPreviewToken(null);
           setPreviewWorkspaceId(null);
         }
-        throw new Error(payload?.error || "Skill install failed");
+        throw new Error(payload?.error || t("installFailed"));
       }
       setInstallCommand("");
       setInstallGlobal(false);
       setPreview(null);
       setPreviewToken(null);
       setPreviewWorkspaceId(null);
-      toast.success("Skill installed. Only Markdown files were imported.");
+      toast.success(t("installed"));
       await loadSkills();
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Skill install failed",
-      );
+      toast.error(error instanceof Error ? error.message : t("installFailed"));
       return;
     } finally {
       setInstalling(false);
@@ -786,7 +804,7 @@ export function SkillManager() {
       });
       if (!res.ok) {
         throw new Error(
-          (await res.json().catch(() => null))?.error || "Preview failed",
+          (await res.json().catch(() => null))?.error || t("previewFailed"),
         );
       }
       const data = (await res.json()) as {
@@ -797,27 +815,34 @@ export function SkillManager() {
       setPreviewToken(data.previewToken);
       setPreviewWorkspaceId(workspaceId);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Preview failed");
+      toast.error(error instanceof Error ? error.message : t("previewFailed"));
       return;
     } finally {
       setPreviewing(false);
     }
   }
 
-  async function deleteSkill(skillId: string) {
-    if (!workspaceId) return;
-    const res = await fetch(
-      `/api/workspace/skills/${skillId}?workspaceId=${workspaceId}`,
-      { method: "DELETE" },
-    );
-    if (!res.ok) {
-      toast.error(
-        (await res.json().catch(() => null))?.error || "Delete failed",
+  async function deleteSkill(skill: AgentSkill) {
+    if (!workspaceId || deletingSkillId) return;
+    setDeletingSkillId(skill.id);
+    try {
+      const res = await fetch(
+        `/api/workspace/skills/${skill.id}?workspaceId=${workspaceId}`,
+        { method: "DELETE" },
       );
-      return;
+      if (!res.ok) {
+        throw new Error(
+          (await res.json().catch(() => null))?.error || t("deleteFailed"),
+        );
+      }
+      setPendingDeleteSkill(null);
+      toast.success(t("deleted"));
+      await loadSkills();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("deleteFailed"));
+    } finally {
+      setDeletingSkillId(null);
     }
-    toast.success("Skill removed");
-    await loadSkills();
   }
 
   return (
@@ -827,17 +852,13 @@ export function SkillManager() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <BookMarkedIcon className="size-5" aria-hidden="true" />
-            Install from skills.sh
+            {t("installTitle")}
           </CardTitle>
-          <CardDescription>
-            Paste a skills.sh install command. Maiah imports Markdown
-            instructions only: .py files, scripts, HTML, binaries, and other
-            resources are ignored.
-          </CardDescription>
+          <CardDescription>{t("installDescription")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <Textarea
-            aria-label="skills.sh install command"
+            aria-label={t("installCommand")}
             value={installCommand}
             onChange={(event) => {
               setInstallCommand(event.target.value);
@@ -859,18 +880,18 @@ export function SkillManager() {
               />
               <div className="grid gap-1.5 leading-none">
                 <Label htmlFor="skill-install-global">
-                  Make installed skills visible to everyone
+                  {t("installGlobalLabel")}
                 </Label>
                 <p className="text-xs text-muted-foreground">
-                  Leave unchecked to keep them scoped to your account.
+                  {t("installGlobalHint")}
                 </p>
               </div>
             </div>
           ) : null}
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-xs text-muted-foreground">
-              Use an explicit skill: <code>--skill name</code> or{" "}
-              <code>owner/repo@skill</code>. Bulk installs are blocked.
+              {t("explicitHintPrefix")} <code>--skill name</code>{" "}
+              <code>owner/repo@skill</code>. {t("explicitHintSuffix")}
             </p>
             <div className="flex gap-2">
               <Button
@@ -888,7 +909,7 @@ export function SkillManager() {
                 ) : (
                   <EyeIcon className="mr-1 size-3.5" />
                 )}
-                Preview before install
+                {t("previewAction")}
               </Button>
             </div>
           </div>
@@ -907,8 +928,7 @@ export function SkillManager() {
       {/* Installed skills */}
       <div className="flex items-center justify-between gap-3">
         <h3 className="text-sm font-medium">
-          Installed skills{" "}
-          <span className="text-muted-foreground">({skills.length})</span>
+          {t("installedTitle", { count: skills.length })}
         </h3>
         <SkillEditorDialog
           onSaved={loadSkills}
@@ -916,7 +936,7 @@ export function SkillManager() {
           trigger={
             <Button variant="outline" size="sm" className="shrink-0">
               <PlusIcon className="mr-1 size-3.5" />
-              Create from scratch
+              {t("createFromScratch")}
             </Button>
           }
         />
@@ -926,10 +946,29 @@ export function SkillManager() {
         <div className="flex justify-center py-8">
           <Loader2Icon className="animate-spin" />
         </div>
+      ) : loadError ? (
+        <div
+          className="rounded-2xl border border-destructive/25 bg-destructive/5 p-6 text-center"
+          role="alert"
+        >
+          <p className="text-sm font-medium">{t("loadFailed")}</p>
+          <p className="mx-auto mt-1 max-w-lg text-sm text-muted-foreground">
+            {t("loadFailedDescription")}
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="mt-4"
+            onClick={() => void retryLoadSkills()}
+          >
+            {t("retry")}
+          </Button>
+        </div>
       ) : skills.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border/70 p-8 text-center text-sm text-muted-foreground">
-          No skills installed yet. Install from skills.sh or create one from
-          scratch.
+          <p className="font-medium text-foreground">{t("emptyTitle")}</p>
+          <p className="mt-1">{t("emptyDescription")}</p>
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -942,7 +981,7 @@ export function SkillManager() {
                       {skill.name}
                     </CardTitle>
                     <CardDescription className="line-clamp-2 mt-1">
-                      {skill.description || "No description"}
+                      {skill.description || t("noDescription")}
                     </CardDescription>
                   </div>
                   <div className="flex shrink-0 gap-1">
@@ -957,7 +996,7 @@ export function SkillManager() {
                           variant="ghost"
                           size="icon"
                           className="size-7"
-                          aria-label={`Edit ${skill.name}`}
+                          aria-label={t("editAria", { name: skill.name })}
                           disabled={!skill.canEdit}
                         >
                           <PencilIcon className="size-3.5" aria-hidden="true" />
@@ -988,7 +1027,8 @@ export function SkillManager() {
                       size="icon"
                       className="size-7"
                       disabled={!skill.canEdit}
-                      onClick={() => void deleteSkill(skill.id)}
+                      aria-label={t("deleteAria", { name: skill.name })}
+                      onClick={() => setPendingDeleteSkill(skill)}
                     >
                       <Trash2Icon className="size-3.5" aria-hidden="true" />
                     </Button>
@@ -997,16 +1037,17 @@ export function SkillManager() {
               </CardHeader>
               <CardContent className="flex flex-wrap gap-2">
                 <Badge variant={skill.isGlobal ? "secondary" : "outline"}>
-                  {skill.isGlobal ? "Tenant" : "Private"}
+                  {skill.isGlobal ? t("scopeOrganization") : t("scopePrivate")}
                 </Badge>
                 {skill.sourcePackage ? (
                   <Badge variant="outline">{skill.sourcePackage}</Badge>
                 ) : (
-                  <Badge variant="secondary">manual</Badge>
+                  <Badge variant="secondary">{t("manual")}</Badge>
                 )}
                 <Badge variant="outline">
-                  {fileCount(skill.markdownFilesJson)} file
-                  {fileCount(skill.markdownFilesJson) !== 1 ? "s" : ""}
+                  {t("fileCount", {
+                    count: fileCount(skill.markdownFilesJson),
+                  })}
                 </Badge>
               </CardContent>
             </Card>
@@ -1019,6 +1060,22 @@ export function SkillManager() {
         workspaceId={workspaceId}
         open={shareResource !== null}
         onCloseAction={() => setShareResource(null)}
+      />
+      <DestructiveConfirmationDialog
+        open={pendingDeleteSkill !== null}
+        title={t("deleteTitle")}
+        description={t("deleteDescription", {
+          name: pendingDeleteSkill?.name ?? "",
+        })}
+        cancelLabel={t("deleteCancel")}
+        confirmLabel={deletingSkillId ? t("deleting") : t("deleteConfirm")}
+        busy={deletingSkillId !== null}
+        onOpenChange={(open) => {
+          if (!open && !deletingSkillId) setPendingDeleteSkill(null);
+        }}
+        onConfirm={() => {
+          if (pendingDeleteSkill) void deleteSkill(pendingDeleteSkill);
+        }}
       />
     </div>
   );

@@ -1,18 +1,24 @@
 "use client";
 
+import type { ComponentProps } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { locales, type Locale } from "@/i18n/routing";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { LanguagesIcon } from "lucide-react";
 
 export function LocaleSwitcher({
   className,
   compact = false,
+  menu = false,
+  onClick,
+  ...buttonProps
 }: {
   className?: string;
   compact?: boolean;
-}) {
+  menu?: boolean;
+} & ComponentProps<"button">) {
   const t = useTranslations("common");
   const locale = useLocale() as Locale;
   const router = useRouter();
@@ -22,6 +28,31 @@ export function LocaleSwitcher({
     if (code !== locale) {
       router.replace(pathname, { locale: code });
     }
+  }
+
+  if (menu) {
+    const nextLocale = locales.find((code) => code !== locale) ?? locale;
+    const currentLanguage = locale === "fr" ? t("french") : t("english");
+
+    return (
+      <Button
+        type="button"
+        variant="ghost"
+        className={cn(
+          "h-10 w-full justify-start gap-2 rounded-lg px-2.5 font-normal",
+          className,
+        )}
+        onClick={(event) => {
+          onClick?.(event);
+          if (!event.defaultPrevented) switchLocale(nextLocale);
+        }}
+        {...buttonProps}
+      >
+        <LanguagesIcon data-icon="inline-start" aria-hidden="true" />
+        <span className="flex-1 text-left">{t("language")}</span>
+        <span className="text-xs text-muted-foreground">{currentLanguage}</span>
+      </Button>
+    );
   }
 
   if (compact) {
@@ -37,7 +68,11 @@ export function LocaleSwitcher({
         )}
         aria-label={t("language")}
         title={locale === "fr" ? t("french") : t("english")}
-        onClick={() => switchLocale(nextLocale)}
+        onClick={(event) => {
+          onClick?.(event);
+          if (!event.defaultPrevented) switchLocale(nextLocale);
+        }}
+        {...buttonProps}
       >
         {locale}
       </Button>

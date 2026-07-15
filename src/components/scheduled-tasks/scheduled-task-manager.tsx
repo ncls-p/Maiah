@@ -11,6 +11,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import type { ChatAgent } from "@/components/chat/chat-types";
+import { DestructiveConfirmationDialog } from "@/components/destructive-confirmation-dialog";
 import { PageEmptyState } from "@/components/page-empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -54,9 +55,6 @@ type ScheduledTask = {
   lastError: string | null;
 };
 
-const defaultPrompt =
-  "Fais-moi un résumé clair et sourcé des actualités majeures de ce matin en français. Regroupe par thèmes et conclus par les points à surveiller.";
-
 function localTimeZone() {
   return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 }
@@ -95,12 +93,18 @@ export function ScheduledTaskManager({
   const [loadError, setLoadError] = useState(false);
   const [saving, setSaving] = useState(false);
   const [title, setTitle] = useState(t("defaults.title"));
-  const [prompt, setPrompt] = useState(defaultPrompt);
+  const [prompt, setPrompt] = useState(t("defaults.prompt"));
   const [frequency, setFrequency] =
     useState<ScheduleFrequency>(DAILY_FREQUENCY);
   const [timeOfDay, setTimeOfDay] = useState("08:00");
   const [intervalMinutes, setIntervalMinutes] = useState("1440");
   const [agentId, setAgentId] = useState(agents[0]?.id ?? "");
+  const [pendingDeleteTask, setPendingDeleteTask] =
+    useState<ScheduledTask | null>(null);
+  const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
+  const [updatingTaskIds, setUpdatingTaskIds] = useState<Set<string>>(
+    () => new Set(),
+  );
 
   const currentAgentId = useMemo(
     () => agentId || agents[0]?.id || "",
@@ -178,7 +182,8 @@ export function ScheduledTaskManager({
   }
 
   async function toggleTask(task: ScheduledTask, enabled: boolean) {
-    if (!workspaceId) return;
+    if (!workspaceId || updatingTaskIds.has(task.id)) return;
+    setUpdatingTaskIds((current) => new Set(current).add(task.id));
     try {
       const data = await fetchJson<{ task: ScheduledTask }>(
         `/api/workspace/scheduled-tasks/${task.id}`,
@@ -195,22 +200,32 @@ export function ScheduledTaskManager({
       toast.error(
         error instanceof Error ? error.message : t("toasts.updateFailed"),
       );
+    } finally {
+      setUpdatingTaskIds((current) => {
+        const next = new Set(current);
+        next.delete(task.id);
+        return next;
+      });
     }
   }
 
-  async function deleteTask(taskId: string) {
-    if (!workspaceId) return;
+  async function deleteTask(task: ScheduledTask) {
+    if (!workspaceId || deletingTaskId) return;
+    setDeletingTaskId(task.id);
     try {
       await fetchJson(
-        `/api/workspace/scheduled-tasks/${taskId}?workspaceId=${workspaceId}`,
+        `/api/workspace/scheduled-tasks/${task.id}?workspaceId=${workspaceId}`,
         { method: "DELETE" },
       );
-      setTasks((current) => current.filter((task) => task.id !== taskId));
+      setTasks((current) => current.filter((item) => item.id !== task.id));
+      setPendingDeleteTask(null);
       toast.success(t("toasts.deleted"));
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : t("toasts.deleteFailed"),
       );
+    } finally {
+      setDeletingTaskId(null);
     }
   }
 
@@ -222,236 +237,265 @@ export function ScheduledTaskManager({
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
-      <div className="flex flex-col gap-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("create.title")}</CardTitle>
-            <CardDescription>{t("create.description")}</CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="scheduled-task-title">{t("fields.title")}</Label>
-              <Input
-                id="scheduled-task-title"
-                value={title}
-                onChange={(event) => setTitle(event.target.value)}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="scheduled-task-prompt">
-                {t("fields.prompt")}
-              </Label>
-              <Textarea
-                id="scheduled-task-prompt"
-                value={prompt}
-                onChange={(event) => setPrompt(event.target.value)}
-                rows={7}
-              />
-            </div>
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div className="grid gap-2 sm:col-span-3 xl:col-span-1">
-                <Label>{t("fields.assistant")}</Label>
-                <Select value={currentAgentId} onValueChange={setAgentId}>
-                  <SelectTrigger aria-label={t("fields.assistant")}>
-                    <SelectValue
-                      placeholder={t("fields.assistantPlaceholder")}
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {agents.map((agent) => (
-                      <SelectItem key={agent.id} value={agent.id}>
-                        {agent.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+    <>
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
+        <div className="flex flex-col gap-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("create.title")}</CardTitle>
+              <CardDescription>{t("create.description")}</CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-4">
               <div className="grid gap-2">
-                <Label>{t("fields.frequency")}</Label>
-                <Select
-                  value={frequency}
-                  onValueChange={(value) =>
-                    setFrequency(value as ScheduleFrequency)
-                  }
-                >
-                  <SelectTrigger aria-label={t("fields.frequency")}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={DAILY_FREQUENCY}>
-                      {t("frequency.daily")}
-                    </SelectItem>
-                    <SelectItem value="interval">
-                      {t("frequency.interval")}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="scheduled-task-schedule">
-                  {frequency === DAILY_FREQUENCY
-                    ? t("fields.time")
-                    : t("fields.minutes")}
+                <Label htmlFor="scheduled-task-title">
+                  {t("fields.title")}
                 </Label>
                 <Input
-                  id="scheduled-task-schedule"
-                  type={frequency === DAILY_FREQUENCY ? "time" : "number"}
-                  min={frequency === DAILY_FREQUENCY ? undefined : 5}
-                  value={
-                    frequency === DAILY_FREQUENCY ? timeOfDay : intervalMinutes
-                  }
-                  onChange={(event) =>
-                    frequency === DAILY_FREQUENCY
-                      ? setTimeOfDay(event.target.value)
-                      : setIntervalMinutes(event.target.value)
-                  }
+                  id="scheduled-task-title"
+                  value={title}
+                  onChange={(event) => setTitle(event.target.value)}
                 />
               </div>
-            </div>
-            <Button
-              type="button"
-              onClick={() => void createTask()}
-              disabled={
-                saving ||
-                loadError ||
-                !workspaceId ||
-                !currentAgentId ||
-                !title.trim() ||
-                !prompt.trim()
-              }
-            >
-              {saving ? (
-                <Loader2Icon
-                  className="size-4 animate-spin"
-                  aria-hidden="true"
+              <div className="grid gap-2">
+                <Label htmlFor="scheduled-task-prompt">
+                  {t("fields.prompt")}
+                </Label>
+                <Textarea
+                  id="scheduled-task-prompt"
+                  value={prompt}
+                  onChange={(event) => setPrompt(event.target.value)}
+                  rows={7}
+                />
+              </div>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="grid gap-2 sm:col-span-3 xl:col-span-1">
+                  <Label>{t("fields.assistant")}</Label>
+                  <Select value={currentAgentId} onValueChange={setAgentId}>
+                    <SelectTrigger aria-label={t("fields.assistant")}>
+                      <SelectValue
+                        placeholder={t("fields.assistantPlaceholder")}
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {agents.map((agent) => (
+                        <SelectItem key={agent.id} value={agent.id}>
+                          {agent.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label>{t("fields.frequency")}</Label>
+                  <Select
+                    value={frequency}
+                    onValueChange={(value) =>
+                      setFrequency(value as ScheduleFrequency)
+                    }
+                  >
+                    <SelectTrigger aria-label={t("fields.frequency")}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={DAILY_FREQUENCY}>
+                        {t("frequency.daily")}
+                      </SelectItem>
+                      <SelectItem value="interval">
+                        {t("frequency.interval")}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="scheduled-task-schedule">
+                    {frequency === DAILY_FREQUENCY
+                      ? t("fields.time")
+                      : t("fields.minutes")}
+                  </Label>
+                  <Input
+                    id="scheduled-task-schedule"
+                    type={frequency === DAILY_FREQUENCY ? "time" : "number"}
+                    min={frequency === DAILY_FREQUENCY ? undefined : 5}
+                    value={
+                      frequency === DAILY_FREQUENCY
+                        ? timeOfDay
+                        : intervalMinutes
+                    }
+                    onChange={(event) =>
+                      frequency === DAILY_FREQUENCY
+                        ? setTimeOfDay(event.target.value)
+                        : setIntervalMinutes(event.target.value)
+                    }
+                  />
+                </div>
+              </div>
+              <Button
+                type="button"
+                onClick={() => void createTask()}
+                disabled={
+                  saving ||
+                  loadError ||
+                  !workspaceId ||
+                  !currentAgentId ||
+                  !title.trim() ||
+                  !prompt.trim()
+                }
+              >
+                {saving ? (
+                  <Loader2Icon
+                    className="size-4 animate-spin"
+                    aria-hidden="true"
+                  />
+                ) : (
+                  <PlusIcon className="size-4" aria-hidden="true" />
+                )}
+                {t("create.submit")}
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="flex flex-col gap-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("overview.title")}</CardTitle>
+              <CardDescription>
+                {t("overview.description", {
+                  active: enabledTasks,
+                  total: tasks.length,
+                })}
+              </CardDescription>
+              <CardAction>
+                <Badge variant="outline">
+                  {t("overview.activeCount", { count: enabledTasks })}
+                </Badge>
+              </CardAction>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="flex min-h-48 items-center justify-center gap-2 text-sm text-muted-foreground">
+                  <Loader2Icon
+                    className="size-4 animate-spin"
+                    aria-hidden="true"
+                  />
+                  {t("loading")}
+                </div>
+              ) : loadError ? (
+                <div className="min-h-48 py-8 text-center" role="alert">
+                  <p className="text-sm font-medium">
+                    {t("toasts.loadFailed")}
+                  </p>
+                  <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
+                    {t("tasksLoadErrorDescription")}
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="mt-4"
+                    onClick={() => void loadTasks()}
+                  >
+                    {t("retry")}
+                  </Button>
+                </div>
+              ) : tasks.length === 0 ? (
+                <PageEmptyState
+                  icon={CalendarClockIcon}
+                  title={t("empty.title")}
+                  description={t("empty.description")}
+                  className="border border-dashed border-border/70 bg-muted/20"
                 />
               ) : (
-                <PlusIcon className="size-4" aria-hidden="true" />
-              )}
-              {t("create.submit")}
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="flex flex-col gap-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("overview.title")}</CardTitle>
-            <CardDescription>
-              {t("overview.description", {
-                active: enabledTasks,
-                total: tasks.length,
-              })}
-            </CardDescription>
-            <CardAction>
-              <Badge variant="outline">
-                {t("overview.activeCount", { count: enabledTasks })}
-              </Badge>
-            </CardAction>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="flex min-h-48 items-center justify-center gap-2 text-sm text-muted-foreground">
-                <Loader2Icon
-                  className="size-4 animate-spin"
-                  aria-hidden="true"
-                />
-                {t("loading")}
-              </div>
-            ) : loadError ? (
-              <div className="min-h-48 py-8 text-center" role="alert">
-                <p className="text-sm font-medium">{t("toasts.loadFailed")}</p>
-                <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
-                  {t("tasksLoadErrorDescription")}
-                </p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="mt-4"
-                  onClick={() => void loadTasks()}
-                >
-                  {t("retry")}
-                </Button>
-              </div>
-            ) : tasks.length === 0 ? (
-              <PageEmptyState
-                icon={CalendarClockIcon}
-                title={t("empty.title")}
-                description={t("empty.description")}
-                className="border border-dashed border-border/70 bg-muted/20"
-              />
-            ) : (
-              <div className="grid gap-3">
-                {nextTask ? (
-                  <div className="rounded-xl border border-primary/20 bg-primary/7 p-3 text-sm">
-                    <p className="font-medium text-primary">
-                      {t("overview.nextRun")}
-                    </p>
-                    <p className="mt-1 text-muted-foreground">
-                      {nextTask.title} ·{" "}
-                      {formatNextRun(nextTask.nextRunAt, locale)}
-                    </p>
-                  </div>
-                ) : null}
-                {tasks.map((task) => (
-                  <div
-                    key={task.id}
-                    className="grid gap-3 rounded-xl border border-border/70 bg-background/55 p-3 sm:grid-cols-[minmax(0,1fr)_auto]"
-                  >
-                    <div className="min-w-0">
-                      <div className="flex min-w-0 flex-wrap items-center gap-2">
-                        <p className="truncate text-sm font-medium">
-                          {task.title}
-                        </p>
-                        <Badge
-                          variant={statusVariant(task.lastStatus)}
-                          className={statusToneClass(task.lastStatus)}
-                        >
-                          {statusLabels[
-                            task.lastStatus as keyof typeof statusLabels
-                          ] ?? task.lastStatus}
-                        </Badge>
-                      </div>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {formatFrequency(task)} ·{" "}
-                        {t("nextRun", {
-                          date: formatNextRun(task.nextRunAt, locale),
-                        })}
+                <div className="grid gap-3">
+                  {nextTask ? (
+                    <div className="rounded-xl border border-primary/20 bg-primary/7 p-3 text-sm">
+                      <p className="font-medium text-primary">
+                        {t("overview.nextRun")}
                       </p>
-                      {task.lastError ? (
-                        <p className="mt-2 rounded-lg bg-destructive/10 px-2 py-1 text-xs text-destructive">
-                          {task.lastError}
+                      <p className="mt-1 text-muted-foreground">
+                        {nextTask.title} ·{" "}
+                        {formatNextRun(nextTask.nextRunAt, locale)}
+                      </p>
+                    </div>
+                  ) : null}
+                  {tasks.map((task) => (
+                    <div
+                      key={task.id}
+                      className="grid gap-3 rounded-xl border border-border/70 bg-background/55 p-3 sm:grid-cols-[minmax(0,1fr)_auto]"
+                    >
+                      <div className="min-w-0">
+                        <div className="flex min-w-0 flex-wrap items-center gap-2">
+                          <p className="truncate text-sm font-medium">
+                            {task.title}
+                          </p>
+                          <Badge
+                            variant={statusVariant(task.lastStatus)}
+                            className={statusToneClass(task.lastStatus)}
+                          >
+                            {statusLabels[
+                              task.lastStatus as keyof typeof statusLabels
+                            ] ?? task.lastStatus}
+                          </Badge>
+                        </div>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {formatFrequency(task)} ·{" "}
+                          {t("nextRun", {
+                            date: formatNextRun(task.nextRunAt, locale),
+                          })}
                         </p>
-                      ) : null}
+                        {task.lastError ? (
+                          <p className="mt-2 rounded-lg bg-destructive/10 px-2 py-1 text-xs text-destructive">
+                            {task.lastError}
+                          </p>
+                        ) : null}
+                      </div>
+                      <div className="flex shrink-0 items-center justify-end gap-2">
+                        <Switch
+                          checked={task.enabled}
+                          onCheckedChange={(enabled) =>
+                            void toggleTask(task, enabled)
+                          }
+                          aria-label={t("toggleTask", { title: task.title })}
+                          disabled={
+                            updatingTaskIds.has(task.id) ||
+                            deletingTaskId === task.id
+                          }
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => setPendingDeleteTask(task)}
+                          aria-label={t("deleteTask", { title: task.title })}
+                          disabled={deletingTaskId === task.id}
+                        >
+                          <Trash2Icon className="size-4" aria-hidden="true" />
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex shrink-0 items-center justify-end gap-2">
-                      <Switch
-                        checked={task.enabled}
-                        onCheckedChange={(enabled) =>
-                          void toggleTask(task, enabled)
-                        }
-                        aria-label={t("toggleTask", { title: task.title })}
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={() => void deleteTask(task.id)}
-                        aria-label={t("deleteTask", { title: task.title })}
-                      >
-                        <Trash2Icon className="size-4" aria-hidden="true" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
-    </div>
+      <DestructiveConfirmationDialog
+        open={pendingDeleteTask !== null}
+        title={t("deleteTitle")}
+        description={t("deleteDescription", {
+          title: pendingDeleteTask?.title ?? "",
+        })}
+        cancelLabel={t("deleteCancel")}
+        confirmLabel={deletingTaskId ? t("deleting") : t("deleteConfirm")}
+        busy={deletingTaskId !== null}
+        onOpenChange={(open) => {
+          if (!open && !deletingTaskId) setPendingDeleteTask(null);
+        }}
+        onConfirm={() => {
+          if (pendingDeleteTask) void deleteTask(pendingDeleteTask);
+        }}
+      />
+    </>
   );
 }

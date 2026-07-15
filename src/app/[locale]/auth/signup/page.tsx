@@ -17,35 +17,42 @@ export default function SignUpPage() {
   const router = useRouter();
   const t = useTranslations("auth");
   const nameRef = useRef<HTMLInputElement>(null);
+  const errorRef = useRef<HTMLDivElement>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [registrationClosed, setRegistrationClosed] = useState(false);
+  const [registrationStatus, setRegistrationStatus] = useState<
+    "checking" | "open" | "closed" | "error"
+  >("checking");
   const errorId = "signup-error";
   const passwordRequirementsId = "signup-password-requirements";
 
   useEffect(() => {
-    let cancelled = false;
-    queueMicrotask(() => {
-      void fetch("/api/admin/settings")
-        .then((res) => res.json())
-        .then((data) => {
-          if (!cancelled) setRegistrationClosed(data.canPublicSignUp === false);
-        })
-        .catch(() => {
-          if (!cancelled) setRegistrationClosed(false);
-        });
-    });
+    const controller = new AbortController();
+    void checkRegistration(controller.signal);
     return () => {
-      cancelled = true;
+      controller.abort();
     };
   }, []);
 
+  async function checkRegistration(signal?: AbortSignal) {
+    setRegistrationStatus("checking");
+    try {
+      const response = await fetch("/api/admin/settings", { signal });
+      if (!response.ok) throw new Error("registration-check-failed");
+      const data = (await response.json()) as { canPublicSignUp?: boolean };
+      setRegistrationStatus(data.canPublicSignUp === false ? "closed" : "open");
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      setRegistrationStatus("error");
+    }
+  }
+
   async function handleSubmit(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (registrationClosed) return;
+    if (registrationStatus !== "open") return;
     setError("");
     setLoading(true);
 
@@ -65,7 +72,7 @@ export default function SignUpPage() {
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : t("signUpFailed"));
-      queueMicrotask(() => nameRef.current?.focus());
+      queueMicrotask(() => errorRef.current?.focus());
       return;
     } finally {
       setLoading(false);
@@ -74,11 +81,19 @@ export default function SignUpPage() {
 
   return (
     <AuthShell
-      title={registrationClosed ? t("registrationClosed") : t("signUpTitle")}
+      title={
+        registrationStatus === "closed"
+          ? t("registrationClosed")
+          : registrationStatus === "error"
+            ? t("registrationCheckFailed")
+            : t("signUpTitle")
+      }
       description={
-        registrationClosed
+        registrationStatus === "closed"
           ? t("registrationClosedDescription")
-          : t("signUpDescription")
+          : registrationStatus === "error"
+            ? t("registrationCheckFailedDescription")
+            : t("signUpDescription")
       }
       footer={
         <>
@@ -92,7 +107,24 @@ export default function SignUpPage() {
         </>
       }
     >
-      {registrationClosed ? (
+      {registrationStatus === "checking" ? (
+        <div
+          className="flex min-h-28 items-center justify-center gap-2 text-sm text-muted-foreground"
+          role="status"
+        >
+          <Spinner aria-hidden="true" />
+          {t("checkingRegistration")}
+        </div>
+      ) : registrationStatus === "error" ? (
+        <Button
+          type="button"
+          className="w-full"
+          size="lg"
+          onClick={() => void checkRegistration()}
+        >
+          {t("retryRegistration")}
+        </Button>
+      ) : registrationStatus === "closed" ? (
         <Button asChild className="w-full" size="lg">
           <Link href="/auth/signin">{t("goToSignIn")}</Link>
         </Button>
@@ -103,7 +135,12 @@ export default function SignUpPage() {
           aria-busy={loading}
         >
           {error ? (
-            <Alert id={errorId} variant="destructive">
+            <Alert
+              ref={errorRef}
+              id={errorId}
+              variant="destructive"
+              tabIndex={-1}
+            >
               <AlertTitle>{t("signUpErrorTitle")}</AlertTitle>
               <AlertDescription>{error}</AlertDescription>
             </Alert>

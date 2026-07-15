@@ -80,7 +80,9 @@ export function ModelAdvancedFields({
     <div className="space-y-4">
       <FieldGroup className="grid gap-4 sm:grid-cols-2">
         <Field>
-          <FieldLabel htmlFor="agent-temperature">Temperature</FieldLabel>
+          <FieldLabel htmlFor="agent-temperature">
+            {t("temperature")}
+          </FieldLabel>
           <FieldContent>
             <Input
               id="agent-temperature"
@@ -96,7 +98,7 @@ export function ModelAdvancedFields({
           </FieldContent>
         </Field>
         <Field>
-          <FieldLabel htmlFor="agent-top-p">Top P</FieldLabel>
+          <FieldLabel htmlFor="agent-top-p">{t("topP")}</FieldLabel>
           <FieldContent>
             <Input
               id="agent-top-p"
@@ -112,7 +114,9 @@ export function ModelAdvancedFields({
           </FieldContent>
         </Field>
         <Field>
-          <FieldLabel htmlFor="agent-max-output">Max tokens</FieldLabel>
+          <FieldLabel htmlFor="agent-max-output">
+            {t("maxOutputTokens")}
+          </FieldLabel>
           <FieldContent>
             <Input
               id="agent-max-output"
@@ -130,7 +134,9 @@ export function ModelAdvancedFields({
           </FieldContent>
         </Field>
         <Field>
-          <FieldLabel htmlFor="agent-max-tool-calls">Max tool calls</FieldLabel>
+          <FieldLabel htmlFor="agent-max-tool-calls">
+            {t("maxToolCalls")}
+          </FieldLabel>
           <FieldContent>
             <Input
               id="agent-max-tool-calls"
@@ -148,7 +154,7 @@ export function ModelAdvancedFields({
           </FieldContent>
         </Field>
         <Field>
-          <FieldLabel htmlFor="agent-tool-choice">Tool choice</FieldLabel>
+          <FieldLabel htmlFor="agent-tool-choice">{t("toolChoice")}</FieldLabel>
           <FieldContent>
             <Select
               value={form.toolChoice}
@@ -163,16 +169,18 @@ export function ModelAdvancedFields({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="auto">Auto</SelectItem>
-                <SelectItem value="required">Required</SelectItem>
-                <SelectItem value="none">None</SelectItem>
+                <SelectItem value="auto">{t("toolChoiceAuto")}</SelectItem>
+                <SelectItem value="required">
+                  {t("toolChoiceRequired")}
+                </SelectItem>
+                <SelectItem value="none">{t("toolChoiceNone")}</SelectItem>
               </SelectContent>
             </Select>
           </FieldContent>
         </Field>
         <Field>
           <FieldLabel htmlFor="agent-response-format">
-            Response format
+            {t("responseFormat")}
           </FieldLabel>
           <FieldContent>
             <Select
@@ -188,15 +196,15 @@ export function ModelAdvancedFields({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="text">Text</SelectItem>
-                <SelectItem value="json_object">JSON</SelectItem>
+                <SelectItem value="text">{t("responseText")}</SelectItem>
+                <SelectItem value="json_object">{t("responseJson")}</SelectItem>
               </SelectContent>
             </Select>
           </FieldContent>
         </Field>
         <Field>
           <FieldLabel htmlFor="agent-approval-mode">
-            Tool approval policy
+            {t("approvalPolicy")}
           </FieldLabel>
           <FieldContent>
             <Select
@@ -225,19 +233,19 @@ export function ModelAdvancedFields({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="allow">Allow unless risky</SelectItem>
+                <SelectItem value="allow">{t("approvalAllow")}</SelectItem>
                 <SelectItem value="require_approval">
-                  Require by default
+                  {t("approvalDefault")}
                 </SelectItem>
-                <SelectItem value="deny">Deny by default</SelectItem>
-                <SelectItem value="all">Approve every tool</SelectItem>
+                <SelectItem value="deny">{t("approvalDeny")}</SelectItem>
+                <SelectItem value="all">{t("approvalAll")}</SelectItem>
               </SelectContent>
             </Select>
           </FieldContent>
         </Field>
         <Field>
           <FieldLabel htmlFor="agent-approval-risk-levels">
-            Approval risk levels
+            {t("approvalRiskLevels")}
           </FieldLabel>
           <FieldContent>
             <Select
@@ -266,21 +274,23 @@ export function ModelAdvancedFields({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="high,critical">High + critical</SelectItem>
+                <SelectItem value="high,critical">
+                  {t("riskHighCritical")}
+                </SelectItem>
                 <SelectItem value="medium,high,critical">
-                  Medium and above
+                  {t("riskMediumAndAbove")}
                 </SelectItem>
                 <SelectItem value={approvalRiskLevels.join(",")}>
-                  All risks
+                  {t("riskAll")}
                 </SelectItem>
-                <SelectItem value="none">None</SelectItem>
+                <SelectItem value="none">{t("riskNone")}</SelectItem>
               </SelectContent>
             </Select>
           </FieldContent>
         </Field>
         <Field>
           <FieldLabel htmlFor="agent-approval-sources">
-            Approval sources
+            {t("approvalSources")}
           </FieldLabel>
           <FieldContent>
             <Select
@@ -302,14 +312,16 @@ export function ModelAdvancedFields({
               }
             >
               <SelectTrigger id="agent-approval-sources" className="w-full">
-                <SelectValue placeholder="No source override" />
+                <SelectValue placeholder={t("sourceDefault")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">No source override</SelectItem>
-                <SelectItem value="custom,mcp">Custom + MCP</SelectItem>
-                <SelectItem value="mcp">MCP only</SelectItem>
+                <SelectItem value="none">{t("sourceDefault")}</SelectItem>
+                <SelectItem value="custom,mcp">
+                  {t("sourceCustomMcp")}
+                </SelectItem>
+                <SelectItem value="mcp">{t("sourceMcp")}</SelectItem>
                 <SelectItem value={approvalSources.join(",")}>
-                  All sources
+                  {t("sourceAll")}
                 </SelectItem>
               </SelectContent>
             </Select>
@@ -317,12 +329,12 @@ export function ModelAdvancedFields({
         </Field>
         <Field className="sm:col-span-2">
           <FieldLabel htmlFor="agent-approval-tool-names">
-            Tools that always need approval
+            {t("alwaysApproveTools")}
           </FieldLabel>
           <FieldContent>
             <Textarea
               id="agent-approval-tool-names"
-              placeholder="One tool name per line"
+              placeholder={t("oneToolPerLine")}
               value={(form.approvalPolicy.requireApprovalToolNames ?? []).join(
                 "\n",
               )}
@@ -336,12 +348,12 @@ export function ModelAdvancedFields({
         </Field>
         <Field className="sm:col-span-2">
           <FieldLabel htmlFor="agent-denied-tool-names">
-            Denied tool names
+            {t("deniedTools")}
           </FieldLabel>
           <FieldContent>
             <Textarea
               id="agent-denied-tool-names"
-              placeholder="One tool name per line"
+              placeholder={t("oneToolPerLine")}
               value={(form.approvalPolicy.denyToolNames ?? []).join("\n")}
               onChange={(e) =>
                 updateApprovalPolicy({
@@ -352,7 +364,7 @@ export function ModelAdvancedFields({
           </FieldContent>
         </Field>
         <Field>
-          <FieldLabel htmlFor="agent-memory-enabled">Memory</FieldLabel>
+          <FieldLabel htmlFor="agent-memory-enabled">{t("memory")}</FieldLabel>
           <FieldContent>
             <Select
               value={form.memoryPolicy.enabled ? "enabled" : "disabled"}
@@ -370,15 +382,15 @@ export function ModelAdvancedFields({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="disabled">Disabled</SelectItem>
-                <SelectItem value="enabled">Enabled</SelectItem>
+                <SelectItem value="disabled">{t("memoryDisabled")}</SelectItem>
+                <SelectItem value="enabled">{t("memoryEnabled")}</SelectItem>
               </SelectContent>
             </Select>
           </FieldContent>
         </Field>
         <Field>
           <FieldLabel htmlFor="agent-memory-max-messages">
-            Memory max messages
+            {t("memoryMaxMessages")}
           </FieldLabel>
           <FieldContent>
             <Input
@@ -399,13 +411,13 @@ export function ModelAdvancedFields({
           </FieldContent>
         </Field>
         <Field>
-          <FieldLabel htmlFor="agent-top-k">Top K</FieldLabel>
+          <FieldLabel htmlFor="agent-top-k">{t("topK")}</FieldLabel>
           <FieldContent>
             <Input
               id="agent-top-k"
               type="number"
               min={1}
-              placeholder="Provider default"
+              placeholder={t("providerDefault")}
               value={form.generationSettings.topK}
               onChange={(e) =>
                 setForm((prev) => ({
@@ -421,7 +433,7 @@ export function ModelAdvancedFields({
         </Field>
         <Field>
           <FieldLabel htmlFor="agent-presence-penalty">
-            Presence penalty
+            {t("presencePenalty")}
           </FieldLabel>
           <FieldContent>
             <Input
@@ -430,7 +442,7 @@ export function ModelAdvancedFields({
               min={-1}
               max={1}
               step={0.1}
-              placeholder="Provider default"
+              placeholder={t("providerDefault")}
               value={form.generationSettings.presencePenalty}
               onChange={(e) =>
                 setForm((prev) => ({
@@ -446,7 +458,7 @@ export function ModelAdvancedFields({
         </Field>
         <Field>
           <FieldLabel htmlFor="agent-frequency-penalty">
-            Frequency penalty
+            {t("frequencyPenalty")}
           </FieldLabel>
           <FieldContent>
             <Input
@@ -455,7 +467,7 @@ export function ModelAdvancedFields({
               min={-1}
               max={1}
               step={0.1}
-              placeholder="Provider default"
+              placeholder={t("providerDefault")}
               value={form.generationSettings.frequencyPenalty}
               onChange={(e) =>
                 setForm((prev) => ({
@@ -470,7 +482,9 @@ export function ModelAdvancedFields({
           </FieldContent>
         </Field>
         <Field>
-          <FieldLabel htmlFor="agent-guardrails-enabled">Guardrails</FieldLabel>
+          <FieldLabel htmlFor="agent-guardrails-enabled">
+            {t("guardrails")}
+          </FieldLabel>
           <FieldContent>
             <Select
               value={form.guardrails.enabled ? "enabled" : "disabled"}
@@ -488,20 +502,24 @@ export function ModelAdvancedFields({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="disabled">Disabled</SelectItem>
-                <SelectItem value="enabled">Enabled</SelectItem>
+                <SelectItem value="disabled">
+                  {t("guardrailsDisabled")}
+                </SelectItem>
+                <SelectItem value="enabled">
+                  {t("guardrailsEnabled")}
+                </SelectItem>
               </SelectContent>
             </Select>
           </FieldContent>
         </Field>
         <Field className="sm:col-span-2">
           <FieldLabel htmlFor="agent-guardrail-topics">
-            Blocked topics
+            {t("blockedTopics")}
           </FieldLabel>
           <FieldContent>
             <Textarea
               id="agent-guardrail-topics"
-              placeholder="One topic per line"
+              placeholder={t("oneTopicPerLine")}
               value={form.guardrails.blockedTopics.join("\n")}
               onChange={(e) =>
                 setForm((prev) => ({
@@ -519,11 +537,13 @@ export function ModelAdvancedFields({
           </FieldContent>
         </Field>
         <Field className="sm:col-span-2">
-          <FieldLabel htmlFor="agent-stop-sequences">Stop sequences</FieldLabel>
+          <FieldLabel htmlFor="agent-stop-sequences">
+            {t("stopSequences")}
+          </FieldLabel>
           <FieldContent>
             <Textarea
               id="agent-stop-sequences"
-              placeholder="One stop sequence per line"
+              placeholder={t("oneSequencePerLine")}
               value={form.generationSettings.stopSequences}
               onChange={(e) =>
                 setForm((prev) => ({

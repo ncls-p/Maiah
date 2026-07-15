@@ -67,7 +67,7 @@
   --brand-noir: #17222d;
 
   /* Calm, cool surfaces with a concentrated Deodis azure accent. */
-  --background: oklch(0.982 0.007 230);
+  --background: oklch(0.985 0.004 230);
   --foreground: var(--brand-noir);
   --card: oklch(1 0 0);
   --card-foreground: var(--brand-noir);
@@ -96,7 +96,7 @@
   --chart-5: oklch(0.52 0.09 300);
   --radius: 0.875rem;
 
-  --sidebar: oklch(0.974 0.01 225);
+  --sidebar: oklch(0.978 0.007 225);
   --sidebar-foreground: oklch(0.28 0.016 235);
   --sidebar-primary: var(--primary);
   --sidebar-primary-foreground: var(--primary-foreground);
@@ -106,24 +106,13 @@
   --sidebar-ring: var(--ring);
 
   --surface-shadow:
-    0 0 0 1px rgba(16, 43, 56, 0.055),
-    0 1px 2px -1px rgba(16, 43, 56, 0.08),
-    0 10px 28px -18px rgba(16, 43, 56, 0.22);
+    0 1px 2px rgba(16, 43, 56, 0.035), 0 8px 24px -20px rgba(16, 43, 56, 0.18);
   --surface-shadow-hover:
-    0 0 0 1px rgba(15, 127, 148, 0.14),
-    0 2px 4px -2px rgba(16, 43, 56, 0.12),
-    0 18px 38px -22px rgba(16, 43, 56, 0.28);
-  --control-shadow:
-    0 0 0 1px rgba(16, 43, 56, 0.07),
-    0 1px 2px rgba(16, 43, 56, 0.06),
-    0 5px 14px -10px rgba(16, 43, 56, 0.24);
-  --control-shadow-hover:
-    0 0 0 1px rgba(16, 43, 56, 0.1),
-    0 2px 4px rgba(16, 43, 56, 0.07),
-    0 8px 18px -12px rgba(16, 43, 56, 0.3);
+    0 1px 2px rgba(16, 43, 56, 0.05), 0 12px 30px -22px rgba(16, 43, 56, 0.22);
+  --control-shadow: 0 1px 2px rgba(16, 43, 56, 0.05);
+  --control-shadow-hover: 0 1px 3px rgba(16, 43, 56, 0.08);
   --floating-shadow:
-    0 0 0 1px rgba(16, 43, 56, 0.07),
-    0 24px 70px -22px rgba(16, 43, 56, 0.3),
+    0 0 0 1px rgba(16, 43, 56, 0.07), 0 24px 70px -22px rgba(16, 43, 56, 0.3),
     0 8px 24px -16px rgba(16, 43, 56, 0.2);
   --glass-bg: var(--card);
   --glass-bg-heavy: var(--card);
@@ -182,16 +171,13 @@
   --sidebar-ring: var(--ring);
 
   --surface-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.075),
-    0 16px 34px -24px rgba(0, 0, 0, 0.72);
+    0 0 0 1px rgba(255, 255, 255, 0.075), 0 16px 34px -24px rgba(0, 0, 0, 0.72);
   --surface-shadow-hover:
-    0 0 0 1px rgba(255, 255, 255, 0.13),
-    0 20px 42px -24px rgba(0, 0, 0, 0.82);
+    0 0 0 1px rgba(255, 255, 255, 0.13), 0 20px 42px -24px rgba(0, 0, 0, 0.82);
   --control-shadow: 0 0 0 1px rgba(255, 255, 255, 0.09);
   --control-shadow-hover: 0 0 0 1px rgba(255, 255, 255, 0.15);
   --floating-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.1),
-    0 28px 72px -20px rgba(0, 0, 0, 0.72);
+    0 0 0 1px rgba(255, 255, 255, 0.1), 0 28px 72px -20px rgba(0, 0, 0, 0.72);
 }
 
 @layer utilities {
@@ -218,7 +204,11 @@
 
   .scrollbar-thin {
     scrollbar-width: thin;
-    scrollbar-color: color-mix(in oklch, var(--muted-foreground) 28%, transparent)
+    scrollbar-color: color-mix(
+        in oklch,
+        var(--muted-foreground) 28%,
+        transparent
+      )
       transparent;
   }
 
@@ -406,20 +396,13 @@
   .glass-panel--floating,
   .glass-panel--subtle,
   .surface-panel {
-    @apply rounded-3xl border border-transparent bg-card text-card-foreground;
+    @apply rounded-2xl border border-border/70 bg-card text-card-foreground;
     box-shadow: var(--surface-shadow);
     transition-property: background-color, box-shadow;
     transition-duration: 150ms;
     transition-timing-function: ease-out;
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
-  }
-
-  .glass-panel:hover,
-  .glass-panel--heavy:hover,
-  .glass-panel--subtle:hover,
-  .surface-panel:hover {
-    box-shadow: var(--surface-shadow-hover);
   }
 
   .glass-panel--floating {
@@ -453,7 +436,8 @@
 
   .ui-callout-primary {
     @apply rounded-2xl border border-transparent bg-accent/65 px-4 py-3;
-    box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--primary) 10%, transparent);
+    box-shadow: inset 0 0 0 1px
+      color-mix(in oklch, var(--primary) 10%, transparent);
   }
 
   .ui-pill-accent {
@@ -461,35 +445,27 @@
   }
 
   .ui-list-row {
-    @apply rounded-2xl border border-transparent bg-card;
+    @apply rounded-xl border border-border/65 bg-card;
     box-shadow: var(--surface-shadow);
-    transition-property: background-color, border-color, box-shadow, transform;
-    transition-duration: 150ms;
+    transition-property: background-color, border-color, box-shadow;
+    transition-duration: 200ms;
     transition-timing-function: ease-out;
   }
 
   .ui-list-row:hover {
-    @apply border-transparent bg-card;
-    box-shadow: var(--surface-shadow-hover);
-    transform: translateY(-1px);
+    @apply border-border bg-muted/35;
   }
 
   .app-shell {
     @apply flex h-svh min-h-svh flex-col overflow-hidden bg-background text-foreground;
-    background-image:
-      radial-gradient(
-        circle at 82% -16%,
-        color-mix(in oklch, var(--brand-azur) 9%, transparent),
-        transparent 30rem
-      ),
-      linear-gradient(180deg, var(--background), var(--background));
+    background-image: none;
   }
 
   .app-shell__header {
-    @apply flex h-16 shrink-0 items-center justify-between border-b border-border/70 bg-background/80 px-4;
+    @apply flex h-14 shrink-0 items-center justify-between border-b border-border/60 bg-background px-4;
     padding-top: max(0rem, env(safe-area-inset-top));
-    backdrop-filter: blur(18px) saturate(1.15);
-    -webkit-backdrop-filter: blur(18px) saturate(1.15);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
 
   .app-shell__main {
@@ -503,11 +479,7 @@
 
   .chat-shell-brand {
     @apply bg-transparent;
-    background-image: radial-gradient(
-      circle at 72% -18%,
-      color-mix(in oklch, var(--brand-azur) 8%, transparent),
-      transparent 28rem
-    );
+    background-image: none;
   }
 }
 
@@ -554,12 +526,10 @@
   @keyframes animate-in-up {
     from {
       opacity: 0;
-      filter: blur(4px);
-      transform: translateY(10px);
+      transform: translateY(6px);
     }
     to {
       opacity: 1;
-      filter: blur(0);
       transform: translateY(0);
     }
   }
@@ -718,16 +688,8 @@
     box-shadow: 0 0 14px color-mix(in oklch, var(--primary) 45%, transparent);
   }
 
-  .page-content {
-    animation: animate-in-fade 0.22s ease-out both;
-  }
-
-  .page-content > header {
-    animation: animate-in-up 0.34s cubic-bezier(0.2, 0, 0, 1) both;
-  }
-
   .page-content__body {
-    animation: animate-in-up 0.42s 80ms cubic-bezier(0.2, 0, 0, 1) both;
+    animation: animate-in-up 0.26s cubic-bezier(0.2, 0, 0, 1) both;
   }
 
   .typing-dot {

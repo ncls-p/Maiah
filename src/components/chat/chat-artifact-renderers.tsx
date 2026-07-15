@@ -248,7 +248,7 @@ export function HtmlArtifactCard({
           <div className="flex min-h-0 flex-1 flex-col gap-4 bg-muted/30 p-4 sm:p-6 lg:flex-row">
             <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-border/70 bg-white shadow-2xl shadow-black/10 ring-1 ring-black/5 lg:min-w-0">
               <iframe
-                title={`${artifact.title} fullscreen`}
+                title={t("fullscreenTitle", { name: artifact.title })}
                 srcDoc={fullscreenSrcDoc}
                 sandbox="allow-scripts allow-modals"
                 className="h-full w-full bg-white"

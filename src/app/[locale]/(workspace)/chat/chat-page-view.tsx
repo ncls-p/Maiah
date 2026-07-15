@@ -22,7 +22,7 @@ import {
 
 type ChatTranslator = (key: string, values?: Record<string, string>) => string;
 
-export function ChatPageLoading() {
+export function ChatPageLoading({ t }: { t: ChatTranslator }) {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-4">
       <div className="flex size-12 items-center justify-center rounded-full border bg-card">
@@ -32,9 +32,9 @@ export function ChatPageLoading() {
         />
       </div>
       <div className="flex flex-col items-center gap-1 text-sm">
-        <span className="font-medium text-foreground">Loading</span>
+        <span className="font-medium text-foreground">{t("loadingTitle")}</span>
         <span className="text-xs text-muted-foreground">
-          Fetching your assistants and conversations…
+          {t("loadingDescription")}
         </span>
       </div>
     </div>

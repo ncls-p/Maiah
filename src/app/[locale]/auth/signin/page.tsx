@@ -16,7 +16,7 @@ import { Spinner } from "@/components/ui/spinner";
 export default function SignInPage() {
   const router = useRouter();
   const t = useTranslations("auth");
-  const emailRef = useRef<HTMLInputElement>(null);
+  const errorRef = useRef<HTMLDivElement>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -44,7 +44,7 @@ export default function SignInPage() {
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : t("signInFailed"));
-      queueMicrotask(() => emailRef.current?.focus());
+      queueMicrotask(() => errorRef.current?.focus());
     } finally {
       setLoading(false);
     }
@@ -72,7 +72,12 @@ export default function SignInPage() {
         aria-busy={loading}
       >
         {error ? (
-          <Alert id={errorId} variant="destructive">
+          <Alert
+            ref={errorRef}
+            id={errorId}
+            variant="destructive"
+            tabIndex={-1}
+          >
             <AlertTitle>{t("signInErrorTitle")}</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
           </Alert>
@@ -82,7 +87,6 @@ export default function SignInPage() {
           <FieldLabel htmlFor="email">{t("email")}</FieldLabel>
           <FieldContent>
             <Input
-              ref={emailRef}
               id="email"
               name="email"
               type="email"

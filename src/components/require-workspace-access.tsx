@@ -1,10 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { ShieldAlertIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 
+import { PageEmptyState } from "@/components/page-empty-state";
 import { PageLoading } from "@/components/page-loading";
+import { Button } from "@/components/ui/button";
+import { WorkspacePage } from "@/components/workspace-page";
 import { useWorkspace } from "@/hooks/use-workspace";
-import { useRouter } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { fetchWorkspacePermissions } from "@/lib/api-client";
 import type { WorkspacePermissions } from "@/lib/workspace-nav";
 
@@ -35,6 +40,7 @@ export function RequireWorkspaceAccess({
   redirectTo?: string;
 }) {
   const router = useRouter();
+  const t = useTranslations("shell");
   const { workspaceId, isLoading } = useWorkspace();
   const requiredValue = Array.isArray(required) ? required.join(",") : required;
   const requiredKey = `${mode}:${requiredValue}`;
@@ -43,10 +49,11 @@ export function RequireWorkspaceAccess({
     [requiredValue],
   );
   const [access, setAccess] = useState<{
-    status: "allowed" | "denied";
+    status: "allowed" | "denied" | "error";
     workspaceId: string;
     requiredKey: string;
   } | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
     if (isLoading) return;
@@ -70,17 +77,21 @@ export function RequireWorkspaceAccess({
           });
           return;
         }
+        if (!cancelled) {
+          setAccess({
+            status: "denied",
+            workspaceId: currentWorkspaceId,
+            requiredKey,
+          });
+        }
       } catch {
-        // Deny closed if permissions cannot be loaded.
-      }
-
-      if (!cancelled) {
-        setAccess({
-          status: "denied",
-          workspaceId: currentWorkspaceId,
-          requiredKey,
-        });
-        router.replace(redirectTo);
+        if (!cancelled) {
+          setAccess({
+            status: "error",
+            workspaceId: currentWorkspaceId,
+            requiredKey,
+          });
+        }
       }
     }
 
@@ -94,17 +105,56 @@ export function RequireWorkspaceAccess({
     redirectTo,
     requiredKey,
     requiredPermissions,
+    retryKey,
     router,
     workspaceId,
   ]);
 
-  const isCurrentAccessAllowed =
-    access?.status === "allowed" &&
-    access.workspaceId === workspaceId &&
-    access.requiredKey === requiredKey;
+  const isCurrentAccessState =
+    access?.workspaceId === workspaceId && access.requiredKey === requiredKey;
 
-  if (!isCurrentAccessAllowed) {
-    return <PageLoading label="Checking access" />;
+  if (!isCurrentAccessState) {
+    return <PageLoading label={t("checkingAccess")} />;
+  }
+
+  if (access.status === "error") {
+    return (
+      <WorkspacePage title={t("accessCheckFailedTitle")} width="default">
+        <PageEmptyState
+          icon={ShieldAlertIcon}
+          title={t("accessCheckFailedTitle")}
+          description={t("accessCheckFailedDescription")}
+          className="border border-border/70"
+        >
+          <Button
+            type="button"
+            onClick={() => {
+              setAccess(null);
+              setRetryKey((value) => value + 1);
+            }}
+          >
+            {t("retryAccess")}
+          </Button>
+        </PageEmptyState>
+      </WorkspacePage>
+    );
+  }
+
+  if (access.status === "denied") {
+    return (
+      <WorkspacePage title={t("accessDeniedTitle")} width="default">
+        <PageEmptyState
+          icon={ShieldAlertIcon}
+          title={t("accessDeniedTitle")}
+          description={t("accessDeniedDescription")}
+          className="border border-border/70"
+        >
+          <Button asChild>
+            <Link href={redirectTo}>{t("backToChat")}</Link>
+          </Button>
+        </PageEmptyState>
+      </WorkspacePage>
+    );
   }
 
   return children;

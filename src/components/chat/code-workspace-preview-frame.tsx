@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 
 import type { CodeWorkspaceArtifact } from "@/components/chat/chat-types";
 
@@ -280,6 +281,7 @@ export function CodeWorkspacePreviewFrame({
 }: {
   artifact: CodeWorkspaceArtifact;
 }) {
+  const t = useTranslations("chat.artifacts");
   const [previewPath, setPreviewPath] = useState(artifact.rootFile);
   const [effectivePath, setEffectivePath] = useState(artifact.rootFile);
   const [srcDoc, setSrcDoc] = useState("");
@@ -358,7 +360,7 @@ export function CodeWorkspacePreviewFrame({
   if (!artifact.rootFile) {
     return (
       <div className="flex flex-1 items-center justify-center p-6 text-center text-xs text-muted-foreground">
-        No HTML file was detected. Create an index.html file to enable preview.
+        {t("noHtmlPreview")}
       </div>
     );
   }
@@ -374,7 +376,7 @@ export function CodeWorkspacePreviewFrame({
   return srcDoc ? (
     <iframe
       key={`${artifact.projectId}:${artifact.version}:${effectivePath}`}
-      title={`${artifact.title} preview`}
+      title={t("previewTitle", { name: artifact.title })}
       srcDoc={srcDoc}
       allow="autoplay; fullscreen"
       sandbox="allow-scripts allow-modals"
@@ -382,7 +384,7 @@ export function CodeWorkspacePreviewFrame({
     />
   ) : (
     <div className="flex flex-1 items-center justify-center p-6 text-center text-xs text-muted-foreground">
-      Loading preview…
+      {t("loadingPreview")}
     </div>
   );
 }

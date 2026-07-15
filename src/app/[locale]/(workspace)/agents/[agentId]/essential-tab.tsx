@@ -238,7 +238,9 @@ export function EssentialTab({
           <div className="space-y-6">
             <FieldGroup className="gap-4">
               <Field>
-                <FieldLabel htmlFor="agent-slug">Slug</FieldLabel>
+                <FieldLabel htmlFor="agent-slug">
+                  {t("configurePage.technicalId")}
+                </FieldLabel>
                 <FieldContent>
                   <Input
                     id="agent-slug"
@@ -252,6 +254,9 @@ export function EssentialTab({
                       }))
                     }
                   />
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {t("configurePage.technicalIdHint")}
+                  </p>
                 </FieldContent>
               </Field>
               <Field>
@@ -289,7 +294,9 @@ export function EssentialTab({
               </Field>
               {form.sharingMode === "specific_user" ? (
                 <Field>
-                  <FieldLabel htmlFor="agent-share-email">E-mail</FieldLabel>
+                  <FieldLabel htmlFor="agent-share-email">
+                    {t("configurePage.email")}
+                  </FieldLabel>
                   <FieldContent>
                     <Input
                       id="agent-share-email"
