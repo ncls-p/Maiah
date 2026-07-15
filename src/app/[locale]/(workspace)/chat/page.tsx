@@ -1479,7 +1479,7 @@ export default function ChatPage() {
           onReorderConversations={(input) => void reorderConversations(input)}
           onSetupComplete={() => void reloadAgentContext()}
         >
-          <ChatPageLoading />
+          <ChatPageLoading t={t} />
         </ChatLayout>
         {destructiveDialog}
       </>
@@ -1604,9 +1604,11 @@ export default function ChatPage() {
               id="coding-chat-panel"
             >
               <div className="border-b border-border/50 px-3 py-2">
-                <p className="text-xs font-medium text-foreground">Chat</p>
+                <p className="text-xs font-medium text-foreground">
+                  {t("codingPanelTitle")}
+                </p>
                 <p className="text-[11px] text-muted-foreground">
-                  Demande des modifications pendant que tu codes.
+                  {t("codingPanelDescription")}
                 </p>
               </div>
               <section className="min-h-0 flex-1 overflow-hidden">

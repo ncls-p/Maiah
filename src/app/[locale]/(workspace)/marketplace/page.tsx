@@ -567,7 +567,7 @@ export default function MarketplacePage() {
         <PageEmptyState
           icon={Store}
           title={t("emptyAll")}
-          description={tMarketplace("description")}
+          description={t("emptyAllDescription")}
           className="min-h-[22rem]"
         />
       ) : (
@@ -631,7 +631,7 @@ export default function MarketplacePage() {
                 <PageEmptyState
                   icon={Store}
                   title={t("emptyAll")}
-                  description={tMarketplace("description")}
+                  description={t("emptyAllDescription")}
                 />
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -660,7 +660,7 @@ export default function MarketplacePage() {
                 <PageEmptyState
                   icon={PackagePlus}
                   title={t("emptyMy")}
-                  description={tMarketplace("description")}
+                  description={t("emptyMyDescription")}
                 />
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -689,7 +689,7 @@ export default function MarketplacePage() {
                 <PageEmptyState
                   icon={Share2}
                   title={t("emptyShared")}
-                  description={tMarketplace("description")}
+                  description={t("emptySharedDescription")}
                 />
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

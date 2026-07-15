@@ -1039,7 +1039,7 @@ export default function AgentsPage() {
                       >
                         <SelectTrigger
                           className="w-full"
-                          aria-label="Curation label"
+                          aria-label={tList("curationLabel")}
                         >
                           <SelectValue />
                         </SelectTrigger>

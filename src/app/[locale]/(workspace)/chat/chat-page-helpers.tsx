@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { ChevronDownIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import type { QueuedChatMessage } from "@/components/chat/chat-composer";
 import { QuotaBanner } from "@/components/chat/quota-banner";
@@ -131,6 +132,7 @@ export function ChatContextBar({
 }: {
   quota: { used: number; limit: number } | null;
 }) {
+  const t = useTranslations("chat");
   const [open, setOpen] = useState(false);
   const quotaPercent = quota
     ? Math.min(100, Math.round((quota.used / quota.limit) * 100))
@@ -159,13 +161,15 @@ export function ChatContextBar({
     >
       <div className="mx-auto flex min-h-10 w-full max-w-4xl items-center justify-between gap-3 px-4 py-1.5">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <span className="truncate text-sm font-medium">Chat status</span>
+          <span className="truncate text-sm font-medium">
+            {t("statusTitle")}
+          </span>
           {showQuota ? (
             <Badge
               variant={quotaPercent >= 100 ? "destructive" : "outline"}
               className="rounded-lg text-[11px] font-medium"
             >
-              Usage {quotaPercent}%
+              {t("usagePercent", { percent: quotaPercent })}
             </Badge>
           ) : null}
         </div>
@@ -176,7 +180,7 @@ export function ChatContextBar({
               size="sm"
               variant="ghost"
               className="h-7 gap-1 px-2 text-xs"
-              aria-label={open ? "Hide context" : "Show context"}
+              aria-label={open ? t("hideContext") : t("showContext")}
             >
               <ChevronDownIcon
                 className={cn(
