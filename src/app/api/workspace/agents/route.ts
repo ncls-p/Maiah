@@ -20,13 +20,13 @@ import {
 import { DelegationBindingValidationError } from "@/modules/agent/delegation-use-cases";
 import { ONBOARDING_TOOL_PRESET } from "@/modules/agent/onboarding-tools";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
+import { hasWorkspacePermissionForRequest } from "@/modules/auth/workspace-access";
 import { db } from "@/server/infrastructure/db";
 import {
   agentVersions,
   aiModels,
   workspaces,
 } from "@/server/infrastructure/db/schema";
-import { authorization } from "@/server/domain/services/authorization";
 
 const slugSchema = z
   .string()
@@ -269,39 +269,31 @@ export async function GET(req: NextRequest) {
       );
       if (forbidden) return forbidden;
       const canAdminCurate = await canManageTenantGlobals(session, workspaceId);
-      const permissionContext = {
-        principalType: "user" as const,
-        principalId: session.user.id,
-      };
       const [
         canCreateAgent,
         canUpdateAgents,
         canManageProviderSettings,
         canManageModels,
       ] = await Promise.all([
-        authorization.hasPermission(
-          permissionContext,
+        hasWorkspacePermissionForRequest(
+          session.user.id,
+          workspaceId,
           "agents.create",
-          "workspace",
-          workspaceId,
         ),
-        authorization.hasPermission(
-          permissionContext,
+        hasWorkspacePermissionForRequest(
+          session.user.id,
+          workspaceId,
           "agents.update",
-          "workspace",
-          workspaceId,
         ),
-        authorization.hasPermission(
-          permissionContext,
+        hasWorkspacePermissionForRequest(
+          session.user.id,
+          workspaceId,
           "providers.update",
-          "workspace",
-          workspaceId,
         ),
-        authorization.hasPermission(
-          permissionContext,
-          "models.manage",
-          "workspace",
+        hasWorkspacePermissionForRequest(
+          session.user.id,
           workspaceId,
+          "models.manage",
         ),
       ]);
       const canManageProviders = canManageProviderSettings && canManageModels;

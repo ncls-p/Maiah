@@ -3,8 +3,8 @@ import { z } from "zod";
 
 import { logger } from "@/lib/logger";
 import { handleRoute } from "@/lib/route-handler";
+import { checkWorkspacePermissionForRequest } from "@/modules/auth/workspace-access";
 import { publishCodeWorkspaceToGitHub } from "@/modules/github/publishing";
-import { authorization } from "@/server/domain/services/authorization";
 
 const publishSchema = z.object({
   workspaceId: z.uuid(),
@@ -59,11 +59,10 @@ export async function POST(req: NextRequest) {
         targetDirectory: parsed.data.targetDirectory || null,
       };
       githubPublishRouteLog("request", routeLogContext);
-      const permission = await authorization.checkPermission(
-        { principalType: "user", principalId: session.user.id },
-        "agents.chat",
-        "workspace",
+      const permission = await checkWorkspacePermissionForRequest(
+        session.user.id,
         parsed.data.workspaceId,
+        "agents.chat",
       );
       if (!permission.granted) {
         githubPublishRouteLog(

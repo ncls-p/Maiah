@@ -95,12 +95,17 @@ test.describe("authentication", () => {
     });
 
     test("sign out button exists in sidebar", async ({ page }) => {
-      await page
-        .getByRole("button", { name: e2eUser.name, exact: true })
-        .click();
-      await expect(
-        page.getByRole("menuitem", { name: /Sign out/i }),
-      ).toBeVisible({ timeout: 10_000 });
+      const accountMenu = page.getByRole("button", {
+        name: e2eUser.name,
+        exact: true,
+      });
+
+      await expect(async () => {
+        await accountMenu.click();
+        await expect(
+          page.getByRole("menuitem", { name: /Sign out/i }),
+        ).toBeVisible();
+      }).toPass({ timeout: 10_000 });
     });
   });
 

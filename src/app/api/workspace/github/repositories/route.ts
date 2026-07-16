@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { handleRoute } from "@/lib/route-handler";
+import { checkWorkspacePermissionForRequest } from "@/modules/auth/workspace-access";
 import { getUserGitHubStatus } from "@/modules/github/publishing";
-import { authorization } from "@/server/domain/services/authorization";
 
 const querySchema = z.object({ workspaceId: z.uuid() });
 
@@ -15,11 +15,10 @@ export async function GET(req: NextRequest) {
     if (!parsed.success) {
       return NextResponse.json({ error: "Invalid request" }, { status: 400 });
     }
-    const permission = await authorization.checkPermission(
-      { principalType: "user", principalId: session.user.id },
-      "agents.chat",
-      "workspace",
+    const permission = await checkWorkspacePermissionForRequest(
+      session.user.id,
       parsed.data.workspaceId,
+      "agents.chat",
     );
     if (!permission.granted) {
       return NextResponse.json(

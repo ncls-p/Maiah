@@ -1,6 +1,9 @@
 import { expect, test } from "@playwright/test";
 import { ensureE2EUser, login } from "./fixtures";
 
+const createAssistantButtonName =
+  /New assistant|Create(?: your first)? assistant/i;
+
 test.beforeAll(async () => {
   await ensureE2EUser();
 });
@@ -36,7 +39,7 @@ test.describe("agents list page", () => {
     await page.waitForTimeout(2000);
 
     const createBtn = page
-      .getByRole("button", { name: /New assistant|Create/i })
+      .getByRole("button", { name: createAssistantButtonName })
       .first();
 
     if (await createBtn.isVisible()) {
@@ -61,7 +64,7 @@ test.describe("agent CRUD", () => {
     await page.goto("/en/agents");
 
     const createBtn = page
-      .getByRole("button", { name: /New assistant/i })
+      .getByRole("button", { name: createAssistantButtonName })
       .first();
     await expect(createBtn).toBeVisible({ timeout: 15_000 });
     await createBtn.click();
@@ -97,7 +100,7 @@ test.describe("agent CRUD", () => {
   test("agent templates are available", async ({ page }) => {
     await page.goto("/en/agents");
     const createBtn = page
-      .getByRole("button", { name: /New assistant/i })
+      .getByRole("button", { name: createAssistantButtonName })
       .first();
     await expect(createBtn).toBeVisible({ timeout: 15_000 });
     await createBtn.click();

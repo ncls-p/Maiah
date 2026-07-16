@@ -23,7 +23,7 @@ test.describe("knowledge bases", () => {
     await page.goto("/en/knowledge");
 
     await expect(
-      page.getByRole("heading", { name: "Collections", exact: true }),
+      page.getByText("No document collections yet", { exact: true }),
     ).toBeVisible({ timeout: 10_000 });
   });
 

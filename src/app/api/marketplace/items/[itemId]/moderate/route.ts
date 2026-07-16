@@ -42,6 +42,7 @@ export async function PUT(
       return NextResponse.json(updated);
     },
     {
+      allowApiKey: false,
       logLabel: "Failed to moderate marketplace item",
       expectedError: handleMarketplaceError,
     },

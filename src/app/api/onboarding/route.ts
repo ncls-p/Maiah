@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
       const completed = await isOnboardingComplete(session.user.id);
       return NextResponse.json({ completed });
     },
-    { logLabel: "Failed to read onboarding state" },
+    { allowApiKey: false, logLabel: "Failed to read onboarding state" },
   );
 }
 
@@ -24,6 +24,6 @@ export async function POST(req: NextRequest) {
       await markOnboardingComplete(session.user.id);
       return NextResponse.json({ completed: true });
     },
-    { logLabel: "Failed to mark onboarding complete" },
+    { allowApiKey: false, logLabel: "Failed to mark onboarding complete" },
   );
 }

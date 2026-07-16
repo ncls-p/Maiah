@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { handleRoute, requireWorkspaceMemberAsync } from "@/lib/route-handler";
-import { getApiKeyAccessScope } from "@/modules/api-keys/permissions";
+import {
+  getApiKeyAccessScope,
+  getAvailableApiKeyScopes,
+} from "@/modules/api-keys/permissions";
+import { API_KEY_SCOPE_PRESETS } from "@/modules/api-keys/scopes";
 import {
   createWorkspaceApiKey,
   listWorkspaceApiKeys,
@@ -12,6 +16,7 @@ const createSchema = z.object({
   workspaceId: z.uuid(),
   name: z.string().min(1).max(255),
   expiresAt: z.iso.datetime().optional(),
+  scopes: z.array(z.string().min(1)).min(1).max(64),
 });
 
 export async function GET(req: NextRequest) {
@@ -42,11 +47,17 @@ export async function GET(req: NextRequest) {
           { status: 403 },
         );
       }
-      return NextResponse.json({
-        keys: await listWorkspaceApiKeys(
+      const [keys, availableScopes] = await Promise.all([
+        listWorkspaceApiKeys(
           parsed.data.workspaceId,
           accessScope === "own" ? { createdById: session.user.id } : undefined,
         ),
+        getAvailableApiKeyScopes(session.user.id, parsed.data.workspaceId),
+      ]);
+      return NextResponse.json({
+        keys,
+        availableScopes,
+        presets: API_KEY_SCOPE_PRESETS,
       });
     },
     { logLabel: "Failed to list API keys" },
@@ -89,9 +100,23 @@ export async function POST(req: NextRequest) {
         expiresAt: parsed.data.expiresAt
           ? new Date(parsed.data.expiresAt)
           : null,
+        scopes: parsed.data.scopes,
       });
       return NextResponse.json(result, { status: 201 });
     },
-    { logLabel: "Failed to create API key" },
+    {
+      logLabel: "Failed to create API key",
+      expectedError: (error) => {
+        const message = error instanceof Error ? error.message : null;
+        if (
+          message?.startsWith("At least one API token scope") ||
+          message?.startsWith("Unknown API token scopes") ||
+          message?.startsWith("API token scopes exceed")
+        ) {
+          return NextResponse.json({ error: message }, { status: 400 });
+        }
+        return null;
+      },
+    },
   );
 }

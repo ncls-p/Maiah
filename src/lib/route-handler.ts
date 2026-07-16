@@ -1,12 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isPlatformAdminSession } from "@/modules/admin/auth";
+import {
+  resolveAuthContext,
+  type AuthContext,
+} from "@/modules/auth/resolve-auth";
+import { runWithRequestAuth } from "@/modules/auth/request-auth-context";
 import { getSession } from "@/modules/auth/session";
-import { authorization } from "@/server/domain/services/authorization";
+import {
+  checkWorkspacePermissionForRequest,
+  isWorkspaceMemberForRequest,
+} from "@/modules/auth/workspace-access";
 import { logger, logHandledError } from "@/lib/logger";
 
 /** Wrap an async handler with session authentication and consistent error handling. */
 export type RouteHandlerOptions = {
   logLabel?: string;
+  allowApiKey?: boolean;
   expectedError?: (error: unknown) => NextResponse | null;
 };
 
@@ -40,6 +49,7 @@ function routeLogData(
   scope: RouteLogScope,
   status: number,
   session?: AuthSession,
+  auth?: AuthContext,
 ) {
   return {
     requestId,
@@ -49,6 +59,8 @@ function routeLogData(
     durationMs: Date.now() - startedAt,
     scope,
     userId: session?.user?.id,
+    authType: auth?.type,
+    apiKeyId: auth?.type === "api_key" ? auth.apiKeyId : undefined,
   };
 }
 
@@ -59,10 +71,19 @@ function logRouteCompleted(
   scope: RouteLogScope,
   response: Response,
   session?: AuthSession,
+  auth?: AuthContext,
 ) {
   logger.info(
     "API request completed",
-    routeLogData(req, requestId, startedAt, scope, response.status, session),
+    routeLogData(
+      req,
+      requestId,
+      startedAt,
+      scope,
+      response.status,
+      session,
+      auth,
+    ),
   );
   return attachRequestId(response, requestId);
 }
@@ -75,9 +96,10 @@ function logRouteRejected(
   status: number,
   reason: string,
   session?: AuthSession,
+  auth?: AuthContext,
 ) {
   logger.warn("API request rejected", {
-    ...routeLogData(req, requestId, startedAt, scope, status, session),
+    ...routeLogData(req, requestId, startedAt, scope, status, session, auth),
     reason,
   });
 }
@@ -87,6 +109,7 @@ export async function handleRoute(
   req: NextRequest,
   handler: (ctx: {
     session: AuthSession;
+    auth: AuthContext;
     request: NextRequest;
     requestId: string;
   }) => Promise<Response>,
@@ -96,22 +119,55 @@ export async function handleRoute(
   const startedAt = Date.now();
 
   try {
-    const session = await getSession();
-    if (!session) {
+    const auth = await resolveAuthContext(req);
+    if (!auth) {
       logRouteRejected(
         req,
         requestId,
         startedAt,
         "workspace",
         401,
-        "no_session",
+        "no_authentication",
       );
       return attachRequestId(
         NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
         requestId,
       );
     }
-    const response = await handler({ session, request: req, requestId });
+    if (
+      auth.type === "api_key" &&
+      (opts?.allowApiKey === false ||
+        routePathFrom(req).startsWith("/api/admin/"))
+    ) {
+      logRouteRejected(
+        req,
+        requestId,
+        startedAt,
+        "workspace",
+        403,
+        "api_key_not_supported",
+        undefined,
+        auth,
+      );
+      return attachRequestId(
+        NextResponse.json(
+          { error: "Forbidden", reason: "API token not supported" },
+          { status: 403 },
+        ),
+        requestId,
+      );
+    }
+    const session = {
+      user: {
+        id: auth.userId,
+        email: auth.type === "user" ? auth.email : "",
+        name: auth.type === "user" ? auth.name : "API token",
+        role: auth.type === "user" ? auth.role : null,
+      },
+    } as AuthSession;
+    const response = await runWithRequestAuth(auth, () =>
+      handler({ session, auth, request: req, requestId }),
+    );
     return logRouteCompleted(
       req,
       requestId,
@@ -119,6 +175,7 @@ export async function handleRoute(
       "workspace",
       response,
       session,
+      auth,
     );
   } catch (error) {
     const expected = opts?.expectedError?.(error);
@@ -155,11 +212,10 @@ export async function requireWorkspacePermissionAsync(
   workspaceId: string,
   permission: string,
 ): Promise<NextResponse | null> {
-  const result = await authorization.checkPermission(
-    { principalType: "user", principalId: sessionId },
-    permission,
-    "workspace",
+  const result = await checkWorkspacePermissionForRequest(
+    sessionId,
     workspaceId,
+    permission,
   );
   if (!result.granted) {
     return NextResponse.json(
@@ -177,10 +233,7 @@ export async function requireWorkspaceMemberAsync(
   userId: string,
   workspaceId: string,
 ): Promise<NextResponse | null> {
-  const isMember = await authorization.requireWorkspaceMember(
-    userId,
-    workspaceId,
-  );
+  const isMember = await isWorkspaceMemberForRequest(userId, workspaceId);
   if (!isMember) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

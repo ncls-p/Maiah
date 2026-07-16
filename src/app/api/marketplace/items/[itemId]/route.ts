@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { handleRoute } from "@/lib/route-handler";
+import { requireMarketplaceItemMutationPermission } from "@/app/api/marketplace/items/marketplace-route-auth";
 import { getSession } from "@/modules/auth/session";
 import {
   getMarketplaceItemDetail,
@@ -41,6 +42,11 @@ export async function PUT(
     req,
     async ({ session }) => {
       const { itemId } = await params;
+      const forbidden = await requireMarketplaceItemMutationPermission(
+        session.user.id,
+        itemId,
+      );
+      if (forbidden) return forbidden;
       const parsed = updateSchema.safeParse(await req.json());
       if (!parsed.success)
         return NextResponse.json(
@@ -79,6 +85,11 @@ export async function DELETE(
     req,
     async ({ session }) => {
       const { itemId } = await params;
+      const forbidden = await requireMarketplaceItemMutationPermission(
+        session.user.id,
+        itemId,
+      );
+      if (forbidden) return forbidden;
       const deleted = await deleteMarketplaceItem(itemId, session.user.id);
       return NextResponse.json(deleted);
     },

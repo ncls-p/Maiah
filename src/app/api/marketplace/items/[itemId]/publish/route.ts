@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { handleRoute } from "@/lib/route-handler";
+import { requireMarketplaceItemMutationPermission } from "@/app/api/marketplace/items/marketplace-route-auth";
 import { publishMarketplaceItem } from "@/modules/marketplace/use-cases";
 
 const publishSchema = z.object({
@@ -27,6 +28,11 @@ export async function POST(
     req,
     async ({ session }) => {
       const { itemId } = await params;
+      const forbidden = await requireMarketplaceItemMutationPermission(
+        session.user.id,
+        itemId,
+      );
+      if (forbidden) return forbidden;
       const parsed = publishSchema.safeParse(await req.json());
       if (!parsed.success)
         return NextResponse.json(

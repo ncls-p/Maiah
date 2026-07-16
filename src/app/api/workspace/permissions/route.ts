@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { handleRoute, requireWorkspaceMemberAsync } from "@/lib/route-handler";
-import { authorization } from "@/server/domain/services/authorization";
+import {
+  handleRoute,
+  requireWorkspacePermissionAsync,
+} from "@/lib/route-handler";
+import { hasWorkspacePermissionForRequest } from "@/modules/auth/workspace-access";
 
-const WORKSPACE_SCOPE = "workspace";
 const querySchema = z.object({ workspaceId: z.uuid() });
 
 const permissionNames = [
@@ -40,20 +42,16 @@ export async function GET(req: NextRequest) {
       }
 
       const { workspaceId } = parsed.data;
-      const forbidden = await requireWorkspaceMemberAsync(
+      const forbidden = await requireWorkspacePermissionAsync(
         session.user.id,
         workspaceId,
+        "workspaces.get",
       );
       if (forbidden) return forbidden;
 
-      const ctx = {
-        principalType: "user" as const,
-        principalId: session.user.id,
-      };
-
       const results = await Promise.all(
         permissionNames.map((name) =>
-          authorization.hasPermission(ctx, name, WORKSPACE_SCOPE, workspaceId),
+          hasWorkspacePermissionForRequest(session.user.id, workspaceId, name),
         ),
       );
 
