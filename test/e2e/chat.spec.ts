@@ -8,8 +8,8 @@ loadEnvConfig(process.cwd());
 
 async function encryptFixtureText(plaintext: string) {
   const keyHex = process.env.APP_ENCRYPTION_KEY;
-  const keyId = process.env.APP_ENCRYPTION_KEY_ID;
-  if (!keyHex || !keyId) {
+  const keyId = process.env.APP_ENCRYPTION_KEY_ID ?? "default";
+  if (!keyHex) {
     throw new Error("Chat E2E encryption configuration is missing");
   }
 
@@ -39,34 +39,69 @@ async function createRecoveredToolConversation() {
 
   try {
     const context = await client.query<{
-      agent_id: string;
-      agent_version_id: string;
       user_id: string;
       workspace_id: string;
     }>(
-      `select a.id as agent_id,
-              a.active_version_id as agent_version_id,
-              u.id as user_id,
+      `select u.id as user_id,
               wm.workspace_id
        from "user" u
        join workspace_members wm on wm.user_id = u.id and wm.status = 'active'
-       join agents a on a.workspace_id = wm.workspace_id
-                    and a.archived_at is null
-                    and a.active_version_id is not null
        where u.email = $1
-       order by (a.created_by_user_id = u.id) desc, a.created_at
        limit 1`,
       [e2eUser.email],
     );
     const row = context.rows[0];
-    if (!row) throw new Error("No active agent available for chat E2E fixture");
+    if (!row) throw new Error("No workspace available for chat E2E fixture");
 
     const conversationId = randomUUID();
     const assistantMessageId = randomUUID();
+    let agentId: string;
+    let agentVersionId: string;
+    let createdAgent = false;
     const finalText =
       "The first query failed, the corrected query succeeded, and the workflow completed.";
 
     await client.query("begin");
+
+    const activeAgent = await client.query<{
+      agent_id: string;
+      agent_version_id: string;
+    }>(
+      `select id as agent_id, active_version_id as agent_version_id
+       from agents
+       where workspace_id = $1
+         and archived_at is null
+         and active_version_id is not null
+       order by (created_by_user_id = $2) desc, created_at
+       limit 1`,
+      [row.workspace_id, row.user_id],
+    );
+
+    if (activeAgent.rows[0]) {
+      agentId = activeAgent.rows[0].agent_id;
+      agentVersionId = activeAgent.rows[0].agent_version_id;
+    } else {
+      agentId = randomUUID();
+      agentVersionId = randomUUID();
+      createdAgent = true;
+      await client.query(
+        `insert into agents
+           (id, workspace_id, name, slug, visibility, created_by_user_id, created_at, updated_at)
+         values ($1, $2, 'Recovered tool fixture', $3, 'private', $4, now(), now())`,
+        [agentId, row.workspace_id, `recovered-tool-${agentId}`, row.user_id],
+      );
+      await client.query(
+        `insert into agent_versions
+           (id, agent_id, version_number, name, system_prompt, created_by_user_id, created_at)
+         values ($1, $2, 1, 'Recovered tool fixture', 'E2E fixture', $3, now())`,
+        [agentVersionId, agentId, row.user_id],
+      );
+      await client.query(
+        "update agents set active_version_id = $1 where id = $2",
+        [agentVersionId, agentId],
+      );
+    }
+
     await client.query(
       `insert into conversations
          (id, workspace_id, agent_id, agent_version_id, user_id, title, status, created_at, updated_at)
@@ -74,8 +109,8 @@ async function createRecoveredToolConversation() {
       [
         conversationId,
         row.workspace_id,
-        row.agent_id,
-        row.agent_version_id,
+        agentId,
+        agentVersionId,
         row.user_id,
         "Recovered tool failure E2E",
       ],
@@ -120,7 +155,7 @@ async function createRecoveredToolConversation() {
     await client.query("commit");
 
     return {
-      agentId: row.agent_id,
+      agentId,
       conversationId,
       cleanup: async () => {
         try {
@@ -134,6 +169,16 @@ async function createRecoveredToolConversation() {
           await client.query("delete from conversations where id = $1", [
             conversationId,
           ]);
+          if (createdAgent) {
+            await client.query(
+              "update agents set active_version_id = null where id = $1",
+              [agentId],
+            );
+            await client.query("delete from agent_versions where id = $1", [
+              agentVersionId,
+            ]);
+            await client.query("delete from agents where id = $1", [agentId]);
+          }
         } finally {
           await client.end();
         }
