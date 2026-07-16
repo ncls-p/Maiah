@@ -159,6 +159,29 @@ describe("route-handler – handleRoute", async () => {
     });
     expect(response).toBe(customResponse);
   });
+
+  it("handles requests that expose only a URL or no parsed path", async () => {
+    vi.mocked(getSession).mockResolvedValue({
+      session: { id: "s" },
+      user: { id: "u" },
+    } as never);
+    const handler = vi.fn().mockResolvedValue(new Response("ok"));
+
+    await handleRoute(
+      {
+        headers: new Headers(),
+        method: "GET",
+        url: "http://localhost/api/example",
+      } as NextRequest,
+      handler,
+    );
+    await handleRoute(
+      { headers: new Headers(), method: "GET" } as NextRequest,
+      handler,
+    );
+
+    expect(handler).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe("route-handler – requireWorkspacePermissionAsync", async () => {
@@ -289,5 +312,27 @@ describe("route-handler – handleAdminRoute", async () => {
       async () => new Response("ok"),
     );
     expect(response.status).toBe(500);
+  });
+
+  it("returns a custom response for an expected admin error", async () => {
+    const session = { session: { id: "s" }, user: { id: "u" } };
+    vi.mocked(getSession).mockResolvedValue(session as never);
+    vi.mocked(isPlatformAdminSession).mockResolvedValue(true);
+    const customResponse = { status: 409, body: { error: "Conflict" } };
+
+    const response = await handleAdminRoute(
+      mockReq,
+      async () => {
+        throw new Error("conflict");
+      },
+      {
+        expectedError: (error) =>
+          error instanceof Error && error.message === "conflict"
+            ? (customResponse as never)
+            : null,
+      },
+    );
+
+    expect(response).toBe(customResponse);
   });
 });

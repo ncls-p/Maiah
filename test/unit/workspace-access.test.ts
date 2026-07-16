@@ -64,6 +64,22 @@ describe("workspace API token access", () => {
     expect(checkPermission).not.toHaveBeenCalled();
   });
 
+  it("denies use by a different actor before consulting RBAC", async () => {
+    const result = await runWithRequestAuth(apiKeyAuth, () =>
+      checkWorkspacePermissionForRequest(
+        "user-2",
+        "workspace-1",
+        "agents.chat",
+      ),
+    );
+
+    expect(result).toEqual({
+      granted: false,
+      reason: "API token actor mismatch",
+    });
+    expect(checkPermission).not.toHaveBeenCalled();
+  });
+
   it("denies cross-workspace use even when the scope matches", async () => {
     const result = await runWithRequestAuth(apiKeyAuth, () =>
       checkWorkspacePermissionForRequest(

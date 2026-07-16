@@ -155,6 +155,18 @@ describe("createWorkspaceApiKey", () => {
     expect(dbModule.db.insert).not.toHaveBeenCalled();
   });
 
+  it("rejects unknown scopes", async () => {
+    await expect(
+      createWorkspaceApiKey({
+        workspaceId: "ws-1",
+        userId: "user-1",
+        name: "Unknown access",
+        scopes: ["unknown.permission"],
+      }),
+    ).rejects.toThrow("Unknown API token scopes");
+    expect(dbModule.db.insert).not.toHaveBeenCalled();
+  });
+
   it("rejects scopes beyond the caller's effective permissions", async () => {
     vi.mocked(apiKeyPermissions.getAvailableApiKeyScopes).mockResolvedValueOnce(
       [],
@@ -189,6 +201,17 @@ describe("listWorkspaceApiKeys", () => {
     const keys = await listWorkspaceApiKeys("ws-1");
     expect(keys).toEqual([]);
   });
+
+  it("can restrict the list to keys created by one user", async () => {
+    dbModule._sc.where.mockResolvedValueOnce([fakeKey]);
+
+    const keys = await listWorkspaceApiKeys("ws-1", {
+      createdById: "user-1",
+    });
+
+    expect(keys).toHaveLength(1);
+    expect(dbModule._sc.where).toHaveBeenCalledOnce();
+  });
 });
 
 describe("revokeWorkspaceApiKey", () => {
@@ -216,6 +239,19 @@ describe("revokeWorkspaceApiKey", () => {
     ).resolves.toBeUndefined();
 
     expect(dbModule.db.update).toHaveBeenCalled();
+  });
+
+  it("can restrict revocation to a key created by one user", async () => {
+    dbModule._sc.limit.mockResolvedValueOnce([fakeKey]);
+
+    await revokeWorkspaceApiKey({
+      keyId: "key-1",
+      workspaceId: "ws-1",
+      userId: "user-1",
+      createdById: "user-1",
+    });
+
+    expect(dbModule.db.update).toHaveBeenCalledOnce();
   });
 });
 
