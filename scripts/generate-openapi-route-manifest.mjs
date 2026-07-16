@@ -4,6 +4,11 @@ import { format } from "prettier";
 
 const ROOT = process.cwd();
 const API_ROOT = path.join(ROOT, "src/app/api");
+const OPENAI_ROOT = path.join(ROOT, "src/app/v1");
+const ROUTE_ROOTS = [
+  { directory: API_ROOT, prefix: "/api" },
+  { directory: OPENAI_ROOT, prefix: "/v1" },
+];
 const OUTPUT = path.join(
   ROOT,
   "src/modules/openapi/generated-route-manifest.ts",
@@ -31,8 +36,8 @@ async function routeFiles(directory) {
   return nested.flat();
 }
 
-function openApiPath(file) {
-  const relative = path.relative(API_ROOT, path.dirname(file));
+function openApiPath(file, routeRoot) {
+  const relative = path.relative(routeRoot.directory, path.dirname(file));
   const segments = relative.split(path.sep).map((segment) => {
     const optionalCatchAll = segment.match(/^\[\[\.\.\.(.+)\]\]$/);
     if (optionalCatchAll) return `{${optionalCatchAll[1]}}`;
@@ -41,7 +46,7 @@ function openApiPath(file) {
     const dynamic = segment.match(/^\[(.+)\]$/);
     return dynamic ? `{${dynamic[1]}}` : segment;
   });
-  return `/api/${segments.join("/")}`.replace(/\/$/, "");
+  return `${routeRoot.prefix}/${segments.join("/")}`.replace(/\/$/, "");
 }
 
 function exportedMethods(source) {
@@ -68,7 +73,7 @@ function methodChunks(source) {
 function permissionStrings(source) {
   const permissions = new Set();
   const callPattern =
-    /(?:requireWorkspacePermissionAsync|checkWorkspacePermissionForRequest|hasWorkspacePermissionForRequest|authorization\.(?:checkPermission|hasPermission))\([\s\S]{0,420}?"([A-Za-z][A-Za-z0-9]*\.[A-Za-z0-9*]+)"/g;
+    /(?:requireWorkspacePermissionAsync|checkWorkspacePermissionForRequest|hasWorkspacePermissionForRequest|handleOpenAIProxyRoute|authorization\.(?:checkPermission|hasPermission))\([\s\S]{0,420}?"([A-Za-z][A-Za-z0-9]*\.[A-Za-z0-9*]+)"/g;
   for (const match of source.matchAll(callPattern)) permissions.add(match[1]);
   return [...permissions].sort();
 }
@@ -88,11 +93,13 @@ function pathParameters(apiPath) {
 }
 
 function routeTag(apiPath) {
+  if (apiPath.startsWith("/v1/")) return "OpenAI compatible";
   const [, , first = "system", second] = apiPath.split("/");
   return first === "workspace" && second ? second : first;
 }
 
 function authModes(apiPath, source) {
+  if (apiPath.startsWith("/v1/")) return ["apiKey"];
   if (
     apiPath.startsWith("/api/auth/") ||
     apiPath === "/api/health" ||
@@ -113,7 +120,7 @@ function authModes(apiPath, source) {
 
 function operationId(method, apiPath) {
   const suffix = apiPath
-    .replace(/^\/api\//, "")
+    .replace(/^\/(?:api|v1)\//, "")
     .replace(/[{}]/g, "")
     .split("/")
     .map((part) =>
@@ -136,50 +143,52 @@ function summary(method, apiPath) {
     HEAD: "Inspect",
     OPTIONS: "Inspect options for",
   }[method];
-  return `${action} ${apiPath.replace(/^\/api\//, "").replaceAll("/", " · ")}`;
+  return `${action} ${apiPath.replace(/^\/(?:api|v1)\//, "").replaceAll("/", " · ")}`;
 }
 
-const files = (await routeFiles(API_ROOT)).sort();
 const operations = [];
 
-for (const file of files) {
-  const source = await readFile(file, "utf8");
-  const apiPath = openApiPath(file);
-  const auth = authModes(apiPath, source);
-  const filePermissions = permissionStrings(source);
-  for (const chunk of methodChunks(source)) {
-    if (!HTTP_METHODS.has(chunk.method)) continue;
-    const methodPermissions = permissionStrings(chunk.source);
-    if (
-      chunk.source.includes("canManageTenantGlobals") &&
-      !methodPermissions.includes("roles.manage")
-    ) {
-      methodPermissions.push("roles.manage");
+for (const routeRoot of ROUTE_ROOTS) {
+  const files = (await routeFiles(routeRoot.directory)).sort();
+  for (const file of files) {
+    const source = await readFile(file, "utf8");
+    const apiPath = openApiPath(file, routeRoot);
+    const auth = authModes(apiPath, source);
+    const filePermissions = permissionStrings(source);
+    for (const chunk of methodChunks(source)) {
+      if (!HTTP_METHODS.has(chunk.method)) continue;
+      const methodPermissions = permissionStrings(chunk.source);
+      if (
+        chunk.source.includes("canManageTenantGlobals") &&
+        !methodPermissions.includes("roles.manage")
+      ) {
+        methodPermissions.push("roles.manage");
+      }
+      operations.push({
+        path: apiPath,
+        method: chunk.method,
+        operationId: operationId(chunk.method, apiPath),
+        summary: summary(chunk.method, apiPath),
+        tag: routeTag(apiPath),
+        auth,
+        permissions:
+          methodPermissions.length > 0 ? methodPermissions : filePermissions,
+        pathParameters: pathParameters(apiPath),
+        queryParameters: queryParameters(chunk.source),
+        bodyKind: /(?:req|request)\.formData\(\)/.test(chunk.source)
+          ? "multipart"
+          : !["GET", "HEAD", "OPTIONS"].includes(chunk.method) &&
+              /(?:req|request)\.json\(\)/.test(chunk.source)
+            ? "json"
+            : "none",
+        responseKind:
+          /text\/event-stream|createDataStreamResponse|ReadableStream|application\/zip|application\/pdf/.test(
+            chunk.source,
+          )
+            ? "stream"
+            : "json",
+      });
     }
-    operations.push({
-      path: apiPath,
-      method: chunk.method,
-      operationId: operationId(chunk.method, apiPath),
-      summary: summary(chunk.method, apiPath),
-      tag: routeTag(apiPath),
-      auth,
-      permissions:
-        methodPermissions.length > 0 ? methodPermissions : filePermissions,
-      pathParameters: pathParameters(apiPath),
-      queryParameters: queryParameters(chunk.source),
-      bodyKind: /(?:req|request)\.formData\(\)/.test(chunk.source)
-        ? "multipart"
-        : !["GET", "HEAD", "OPTIONS"].includes(chunk.method) &&
-            /(?:req|request)\.json\(\)/.test(chunk.source)
-          ? "json"
-          : "none",
-      responseKind:
-        /text\/event-stream|createDataStreamResponse|ReadableStream|application\/zip|application\/pdf/.test(
-          chunk.source,
-        )
-          ? "stream"
-          : "json",
-    });
   }
 }
 

@@ -248,6 +248,8 @@ The interactive Swagger UI is available at [`/api/docs`](http://localhost:3000/a
 
 Workspace API tokens are created from the API keys screen with explicit scopes. Their effective access is always the intersection of the selected token scopes, the token workspace, and the owner's current workspace permissions. Revoking a user's permission therefore revokes it for their existing tokens immediately. Session-only and public operations are identified directly in Swagger.
 
+Maiah can also be used as an OpenAI-compatible model proxy with `baseURL = https://<deployment>/v1`. It exposes the enabled workspace models through Models, Chat Completions and Responses, with OpenAI-shaped errors and streaming. See [OpenAI-compatible proxy](docs/openai-compatible-proxy.md) for SDK examples, scopes and the compatibility matrix.
+
 | Method       | Path                                         | Description                                                            |
 | ------------ | -------------------------------------------- | ---------------------------------------------------------------------- |
 | `GET`        | `/api/health`                                | Health check (app + database)                                          |

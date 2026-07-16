@@ -17,6 +17,94 @@ const operationOverrides: Record<
     responses?: OpenApiObject;
   }
 > = {
+  "GET /v1/models": {
+    summary: "List enabled OpenAI-compatible models",
+    description:
+      "OpenAI-compatible model catalog for the workspace bound to the Bearer token. Only enabled text-generation models are returned.",
+    auth: ["apiKey"],
+    permissions: ["models.view"],
+    responses: {
+      "200": {
+        description: "OpenAI Model list",
+        content: {
+          "application/json": {
+            schema: { $ref: "#/components/schemas/OpenAIModelList" },
+          },
+        },
+      },
+    },
+  },
+  "GET /v1/models/{model}": {
+    summary: "Retrieve an enabled OpenAI-compatible model",
+    auth: ["apiKey"],
+    permissions: ["models.view"],
+    responses: {
+      "200": {
+        description: "OpenAI Model object",
+        content: {
+          "application/json": {
+            schema: { $ref: "#/components/schemas/OpenAIModel" },
+          },
+        },
+      },
+    },
+  },
+  "POST /v1/chat/completions": {
+    summary: "Create an OpenAI-compatible chat completion",
+    description:
+      "Drop-in Chat Completions endpoint. Supports text and image inputs, function tools, tool results, structured output, token usage and SSE streaming. n must be 1; audio and log probabilities are rejected explicitly.",
+    auth: ["apiKey"],
+    permissions: ["models.invoke"],
+    requestBody: {
+      required: true,
+      content: {
+        "application/json": {
+          schema: { $ref: "#/components/schemas/OpenAIChatCompletionRequest" },
+        },
+      },
+    },
+    responses: {
+      "200": {
+        description:
+          "Chat completion JSON, or OpenAI data-only SSE chunks ending with data: [DONE] when stream=true.",
+        content: {
+          "application/json": {
+            schema: { $ref: "#/components/schemas/OpenAIChatCompletion" },
+          },
+          "text/event-stream": {
+            schema: { type: "string" },
+          },
+        },
+      },
+    },
+  },
+  "POST /v1/responses": {
+    summary: "Create an OpenAI-compatible response",
+    description:
+      "Drop-in Responses endpoint for stateless text generation. Supports text and image inputs, function calls and outputs, structured output, usage and named SSE events. Stateful previous_response_id, background mode and hosted OpenAI tools are rejected explicitly.",
+    auth: ["apiKey"],
+    permissions: ["models.invoke"],
+    requestBody: {
+      required: true,
+      content: {
+        "application/json": {
+          schema: { $ref: "#/components/schemas/OpenAIResponsesRequest" },
+        },
+      },
+    },
+    responses: {
+      "200": {
+        description:
+          "Response object, or OpenAI named SSE events through response.completed/response.incomplete when stream=true.",
+        content: {
+          "application/json": {
+            schema: { $ref: "#/components/schemas/OpenAIResponse" },
+          },
+          "text/event-stream": { schema: { type: "string" } },
+        },
+      },
+    },
+  },
   "GET /api/admin/settings": {
     summary: "Read public registration settings",
     auth: [],
@@ -121,6 +209,26 @@ function commonResponses(): OpenApiObject {
   };
 }
 
+function openAICompatibleResponses(): OpenApiObject {
+  const response = (description: string) => ({
+    description,
+    content: {
+      "application/json": {
+        schema: { $ref: "#/components/schemas/OpenAIError" },
+      },
+    },
+  });
+  return {
+    "400": response("Invalid OpenAI-compatible request"),
+    "401": response("Missing or invalid workspace Bearer token"),
+    "403": response("Token scope or current workspace permission denied"),
+    "404": response("Model not found or not enabled"),
+    "429": response("Workspace quota or upstream rate limit exceeded"),
+    "500": response("Unexpected proxy error"),
+    "502": response("Upstream model provider error"),
+  };
+}
+
 function genericRequestBody(bodyKind: "none" | "json" | "multipart") {
   if (bodyKind === "none") return undefined;
   const mediaType =
@@ -158,7 +266,9 @@ export function buildOpenApiDocument() {
       })),
     ];
     const responses = {
-      ...commonResponses(),
+      ...(route.path.startsWith("/v1/")
+        ? openAICompatibleResponses()
+        : commonResponses()),
       ...(route.responseKind === "stream"
         ? {
             "200": {
@@ -199,7 +309,7 @@ export function buildOpenApiDocument() {
       title: "Maiah API",
       version: "1.0.0",
       description:
-        "Complete contract for the routes used by the Maiah interface. Browser sessions and scoped workspace API tokens use the same permission checks. For a token, effective access is the intersection of its scopes and the owner's current workspace permissions.",
+        "Complete contract for the routes used by the Maiah interface and the OpenAI-compatible model proxy under /v1. Browser sessions and scoped workspace API tokens use the same permission checks. For a token, effective access is the intersection of its scopes and the owner's current workspace permissions.",
     },
     servers: [{ url: "/", description: "Current Maiah deployment" }],
     tags: [...new Set(OPENAPI_ROUTE_MANIFEST.map(({ tag }) => tag))].map(
@@ -291,6 +401,223 @@ export function buildOpenApiDocument() {
               type: "string",
               description: "Displayed once. Store it securely.",
             },
+          },
+        },
+        OpenAIError: {
+          type: "object",
+          required: ["error"],
+          properties: {
+            error: {
+              type: "object",
+              required: ["message", "type", "param", "code"],
+              properties: {
+                message: { type: "string" },
+                type: {
+                  type: "string",
+                  enum: [
+                    "invalid_request_error",
+                    "authentication_error",
+                    "permission_error",
+                    "rate_limit_error",
+                    "server_error",
+                  ],
+                },
+                param: { type: ["string", "null"] },
+                code: { type: ["string", "null"] },
+              },
+            },
+          },
+        },
+        OpenAIModel: {
+          type: "object",
+          required: ["id", "object", "created", "owned_by"],
+          properties: {
+            id: { type: "string" },
+            object: { type: "string", const: "model" },
+            created: { type: "integer" },
+            owned_by: { type: "string" },
+            display_name: { type: "string" },
+            context_window: { type: ["integer", "null"] },
+            max_output_tokens: { type: ["integer", "null"] },
+            capabilities: { type: "object", additionalProperties: true },
+            maiah_model_id: { type: "string", format: "uuid" },
+            maiah_provider_id: { type: "string", format: "uuid" },
+            maiah_provider_name: { type: "string" },
+          },
+        },
+        OpenAIModelList: {
+          type: "object",
+          required: ["object", "data"],
+          properties: {
+            object: { type: "string", const: "list" },
+            data: {
+              type: "array",
+              items: { $ref: "#/components/schemas/OpenAIModel" },
+            },
+          },
+        },
+        OpenAIFunctionTool: {
+          type: "object",
+          required: ["type", "function"],
+          properties: {
+            type: { type: "string", const: "function" },
+            function: {
+              type: "object",
+              required: ["name"],
+              properties: {
+                name: { type: "string", maxLength: 64 },
+                description: { type: "string" },
+                parameters: { type: "object", additionalProperties: true },
+                strict: { type: "boolean" },
+              },
+            },
+          },
+        },
+        OpenAIResponsesFunctionTool: {
+          type: "object",
+          required: ["type", "name"],
+          properties: {
+            type: { type: "string", const: "function" },
+            name: { type: "string", maxLength: 64 },
+            description: { type: "string" },
+            parameters: { type: "object", additionalProperties: true },
+            strict: { type: "boolean" },
+          },
+        },
+        OpenAIChatCompletionRequest: {
+          type: "object",
+          required: ["model", "messages"],
+          additionalProperties: true,
+          properties: {
+            model: { type: "string" },
+            messages: {
+              type: "array",
+              minItems: 1,
+              items: {
+                type: "object",
+                required: ["role"],
+                additionalProperties: true,
+                properties: {
+                  role: {
+                    type: "string",
+                    enum: [
+                      "system",
+                      "developer",
+                      "user",
+                      "assistant",
+                      "tool",
+                      "function",
+                    ],
+                  },
+                  content: {},
+                  tool_call_id: { type: "string" },
+                  tool_calls: { type: "array", items: { type: "object" } },
+                },
+              },
+            },
+            stream: { type: "boolean", default: false },
+            stream_options: {
+              type: "object",
+              properties: { include_usage: { type: "boolean" } },
+            },
+            max_completion_tokens: { type: "integer", minimum: 1 },
+            max_tokens: { type: "integer", minimum: 1, deprecated: true },
+            temperature: { type: "number", minimum: 0, maximum: 2 },
+            top_p: { type: "number", minimum: 0, maximum: 1 },
+            presence_penalty: { type: "number", minimum: -2, maximum: 2 },
+            frequency_penalty: { type: "number", minimum: -2, maximum: 2 },
+            seed: { type: "integer" },
+            stop: {
+              oneOf: [
+                { type: "string" },
+                { type: "array", maxItems: 4, items: { type: "string" } },
+              ],
+            },
+            tools: {
+              type: "array",
+              items: { $ref: "#/components/schemas/OpenAIFunctionTool" },
+            },
+            tool_choice: {},
+            response_format: { type: "object", additionalProperties: true },
+            n: { type: "integer", const: 1, default: 1 },
+          },
+        },
+        OpenAIChatCompletion: {
+          type: "object",
+          required: ["id", "object", "created", "model", "choices", "usage"],
+          additionalProperties: true,
+          properties: {
+            id: { type: "string" },
+            object: { type: "string", const: "chat.completion" },
+            created: { type: "integer" },
+            model: { type: "string" },
+            choices: { type: "array", items: { type: "object" } },
+            usage: { type: "object", additionalProperties: true },
+          },
+        },
+        OpenAIResponsesRequest: {
+          type: "object",
+          required: ["model", "input"],
+          additionalProperties: true,
+          properties: {
+            model: { type: "string" },
+            input: {
+              oneOf: [
+                { type: "string" },
+                { type: "array", minItems: 1, items: { type: "object" } },
+              ],
+            },
+            instructions: { type: "string" },
+            stream: { type: "boolean", default: false },
+            max_output_tokens: { type: "integer", minimum: 1 },
+            temperature: { type: "number", minimum: 0, maximum: 2 },
+            top_p: { type: "number", minimum: 0, maximum: 1 },
+            tools: {
+              type: "array",
+              items: {
+                $ref: "#/components/schemas/OpenAIResponsesFunctionTool",
+              },
+            },
+            tool_choice: {},
+            text: { type: "object", additionalProperties: true },
+            metadata: {
+              type: "object",
+              additionalProperties: { type: "string" },
+            },
+            previous_response_id: {
+              type: ["string", "null"],
+              description: "Rejected: the Maiah proxy is stateless.",
+            },
+            background: {
+              type: "boolean",
+              description: "Rejected when true.",
+            },
+          },
+        },
+        OpenAIResponse: {
+          type: "object",
+          required: [
+            "id",
+            "object",
+            "created_at",
+            "status",
+            "model",
+            "output",
+            "usage",
+          ],
+          additionalProperties: true,
+          properties: {
+            id: { type: "string" },
+            object: { type: "string", const: "response" },
+            created_at: { type: "integer" },
+            status: {
+              type: "string",
+              enum: ["completed", "incomplete", "failed", "in_progress"],
+            },
+            model: { type: "string" },
+            output: { type: "array", items: { type: "object" } },
+            usage: { type: ["object", "null"], additionalProperties: true },
+            error: { type: ["object", "null"], additionalProperties: true },
           },
         },
       },

@@ -123,6 +123,12 @@ export async function POST(
           { status: 400 },
         );
       }
+      const forbidden = await requireWorkspacePermissionAsync(
+        session.user.id,
+        parsedBody.data.workspaceId,
+        "agents.chat",
+      );
+      if (forbidden) return forbidden;
       const result = await executeAgent({
         workspaceId: parsedBody.data.workspaceId,
         userId: session.user.id,

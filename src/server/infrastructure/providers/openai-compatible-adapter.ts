@@ -234,6 +234,9 @@ export const openaiCompatibleAdapter: ProviderAdapter = {
       headers: buildHeaders(config),
       queryParams: config.queryParams,
       includeUsage: true,
+      // Forward OpenAI response_format JSON schemas. Providers that do not
+      // implement Structured Outputs will reject the request explicitly.
+      supportsStructuredOutputs: true,
     });
 
     return provider.chatModel(modelId);
