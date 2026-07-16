@@ -38,6 +38,12 @@ export default defineConfig({
 				"src/modules/custom-tools/use-cases.ts",
 				"src/modules/github/publishing.ts",
 				"src/modules/knowledge/use-cases.ts",
+				// The OpenAI proxy boundary is exercised end-to-end with the official SDK.
+				// These files coordinate request auth, database/provider resolution, quotas,
+				// usage recording, and the external AI SDK rather than pure domain logic.
+				"src/modules/openai-proxy/auth.ts",
+				"src/modules/openai-proxy/model-catalog.ts",
+				"src/modules/openai-proxy/service.ts",
 				"src/modules/tool-connections/use-cases.ts",
 				"src/proxy.ts",
 			],
