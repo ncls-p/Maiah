@@ -239,6 +239,7 @@
       "reasoningStarting": "Le raisonnement démarre…",
       "workPhaseActive": "Travail en cours…",
       "workPhaseComplete": "Travail terminé",
+      "workPhaseCompleteWithIssues": "Travail terminé avec avertissements",
       "workPhaseFailed": "Travail interrompu",
       "workPhaseReasoning": "Raisonnement",
       "workPhaseTool": "Outil",

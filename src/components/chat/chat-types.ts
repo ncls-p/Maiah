@@ -326,17 +326,72 @@ export function resolveToolDisplayStatus(
   return messageStatus === "failed" ? "error" : "completed";
 }
 
-export function workPhaseHasFailedWork(
+function workPhaseHasToolErrors(
   parts: ChatMessagePart[],
   messageStatus?: ChatMessage["status"],
 ) {
-  if (messageStatus === "failed") return true;
   return parts.some(
     (part) =>
       (part.type === "tool-call" || part.type === "tool-result") &&
       resolveToolDisplayStatus(parseToolPart(part.content), messageStatus) ===
         "error",
   );
+}
+
+function workPhaseHasRecoveredToolError(
+  parts: ChatMessagePart[],
+  messageStatus?: ChatMessage["status"],
+) {
+  let hasUnrecoveredError = false;
+
+  for (const part of parts) {
+    if (part.type !== "tool-call" && part.type !== "tool-result") continue;
+    const status = resolveToolDisplayStatus(
+      parseToolPart(part.content),
+      messageStatus,
+    );
+    if (status === "error") {
+      hasUnrecoveredError = true;
+    } else if (status === "completed" && hasUnrecoveredError) {
+      hasUnrecoveredError = false;
+    }
+  }
+
+  return workPhaseHasToolErrors(parts, messageStatus) && !hasUnrecoveredError;
+}
+
+export type WorkPhaseOutcome =
+  | "pending"
+  | "completed"
+  | "completed-with-issues"
+  | "interrupted";
+
+export function resolveWorkPhaseOutcome(input: {
+  parts: ChatMessagePart[];
+  messageStatus?: ChatMessage["status"];
+  hasVisibleResponseAfter: boolean;
+}): WorkPhaseOutcome {
+  const hasToolErrors = workPhaseHasToolErrors(
+    input.parts,
+    input.messageStatus,
+  );
+  const hasRecoveredToolError = workPhaseHasRecoveredToolError(
+    input.parts,
+    input.messageStatus,
+  );
+  if (
+    workPhaseHasPendingWork(input.parts, input.messageStatus) ||
+    (input.messageStatus === "streaming" && !input.hasVisibleResponseAfter)
+  ) {
+    return "pending";
+  }
+  if (
+    input.messageStatus === "failed" ||
+    (hasToolErrors && !hasRecoveredToolError && !input.hasVisibleResponseAfter)
+  ) {
+    return "interrupted";
+  }
+  return hasToolErrors ? "completed-with-issues" : "completed";
 }
 
 export function groupWorkPhaseParts(

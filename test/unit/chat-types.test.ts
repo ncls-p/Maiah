@@ -7,9 +7,9 @@ import {
   parseToolPart,
   preserveAssistantFailureParts,
   renderablePartsFromMessage,
+  resolveWorkPhaseOutcome,
   resolveToolDisplayStatus,
   startReasoningPart,
-  workPhaseHasFailedWork,
   workPhaseHasPendingWork,
   type ChatMessage,
 } from "@/components/chat/chat-types";
@@ -300,7 +300,7 @@ describe("chat message parts", () => {
     expect(resolveToolDisplayStatus(parsed, "failed")).toBe("completed");
   });
 
-  it("marks an interrupted work phase as failed without poisoning successful tools", () => {
+  it("marks a failed assistant message as interrupted without poisoning successful tools", () => {
     const parts = [
       {
         type: "tool-call",
@@ -317,9 +317,71 @@ describe("chat message parts", () => {
       },
     ];
 
-    expect(workPhaseHasFailedWork(parts, "failed")).toBe(true);
+    expect(
+      resolveWorkPhaseOutcome({
+        parts,
+        messageStatus: "failed",
+        hasVisibleResponseAfter: true,
+      }),
+    ).toBe("interrupted");
     expect(
       resolveToolDisplayStatus(parseToolPart(parts[0].content), "failed"),
     ).toBe("completed");
+  });
+
+  it("reports recovered tool failures as completed with warnings", () => {
+    const parts: ChatMessage["parts"] = [
+      {
+        type: "tool-call",
+        content: JSON.stringify({
+          toolCallId: "failed-call",
+          toolName: "execute_dql",
+          output: { ok: false, error: "Invalid DQL query" },
+        }),
+      },
+      {
+        type: "tool-call",
+        content: JSON.stringify({
+          toolCallId: "retry-call",
+          toolName: "execute_dql",
+          output: { ok: true, result: [{ id: "problem-1" }] },
+        }),
+      },
+    ];
+
+    expect(
+      resolveWorkPhaseOutcome({
+        parts,
+        messageStatus: "completed",
+        hasVisibleResponseAfter: false,
+      }),
+    ).toBe("completed-with-issues");
+  });
+
+  it("keeps an unrecovered failed tool sequence interrupted", () => {
+    const parts: ChatMessage["parts"] = [
+      {
+        type: "tool-call",
+        content: JSON.stringify({
+          toolName: "create_or_update_file",
+          output: { ok: false, error: "SHA mismatch" },
+        }),
+      },
+    ];
+
+    expect(
+      resolveWorkPhaseOutcome({
+        parts,
+        messageStatus: "completed",
+        hasVisibleResponseAfter: false,
+      }),
+    ).toBe("interrupted");
+    expect(
+      resolveWorkPhaseOutcome({
+        parts,
+        messageStatus: "streaming",
+        hasVisibleResponseAfter: false,
+      }),
+    ).toBe("pending");
   });
 });

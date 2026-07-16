@@ -1,13 +1,19 @@
 import {
   CheckCircle2Icon,
   ShieldAlertIcon,
+  TriangleAlertIcon,
   WrenchIcon,
   XCircleIcon,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-export type ToolVisualState = "pending" | "approval" | "completed" | "error";
+export type ToolVisualState =
+  | "pending"
+  | "approval"
+  | "completed"
+  | "warning"
+  | "error";
 
 export function ToolStateIcon({
   state,
@@ -18,7 +24,12 @@ export function ToolStateIcon({
 }) {
   const isActive = state === "pending" || state === "approval";
   const ActiveIcon = state === "approval" ? ShieldAlertIcon : WrenchIcon;
-  const SettledIcon = state === "error" ? XCircleIcon : CheckCircle2Icon;
+  const SettledIcon =
+    state === "error"
+      ? XCircleIcon
+      : state === "warning"
+        ? TriangleAlertIcon
+        : CheckCircle2Icon;
 
   return (
     <span
@@ -27,6 +38,7 @@ export function ToolStateIcon({
         state === "pending" && "text-primary",
         state === "approval" && "text-warning",
         state === "completed" && "text-success",
+        state === "warning" && "text-warning",
         state === "error" && "text-destructive",
         className,
       )}

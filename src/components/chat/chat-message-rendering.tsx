@@ -28,10 +28,9 @@ import {
   groupWorkPhaseParts,
   parseToolPart,
   renderablePartsFromMessage,
+  resolveWorkPhaseOutcome,
   resolveToolDisplayStatus,
   textFromMessage,
-  workPhaseHasFailedWork,
-  workPhaseHasPendingWork,
   type ChatMessage,
   type ChatMessagePart,
   type PendingToolApproval,
@@ -844,25 +843,24 @@ function WorkPhase({
 }) {
   const t = useTranslations("chat.rendering");
   const [manualOpen, setManualOpen] = useState<boolean | null>(null);
-  const hasPendingWork = workPhaseHasPendingWork(
-    parts.map(({ part }) => part),
+  const outcome = resolveWorkPhaseOutcome({
+    parts: parts.map(({ part }) => part),
     messageStatus,
-  );
-  const hasFailedWork = workPhaseHasFailedWork(
-    parts.map(({ part }) => part),
-    messageStatus,
-  );
+    hasVisibleResponseAfter,
+  });
   const visualState: ToolVisualState = hasPendingApproval
     ? "approval"
-    : hasPendingWork
+    : outcome === "pending"
       ? "pending"
-      : hasFailedWork
+      : outcome === "interrupted"
         ? "error"
-        : "completed";
+        : outcome === "completed-with-issues"
+          ? "warning"
+          : "completed";
   const autoOpen =
     hasPendingApproval ||
-    hasPendingWork ||
-    hasFailedWork ||
+    outcome === "pending" ||
+    outcome === "interrupted" ||
     (messageStatus === "streaming" && !hasVisibleResponseAfter);
   const open = manualOpen ?? autoOpen;
 
@@ -894,7 +892,9 @@ function WorkPhase({
         ? t("workPhaseActive")
         : visualState === "error"
           ? t("workPhaseFailed")
-          : t("workPhaseComplete");
+          : visualState === "warning"
+            ? t("workPhaseCompleteWithIssues")
+            : t("workPhaseComplete");
 
   return (
     <Collapsible
@@ -909,6 +909,8 @@ function WorkPhase({
           "bg-primary/[0.055] shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--primary)_18%,transparent),0_14px_28px_-24px_color-mix(in_oklch,var(--primary)_55%,transparent)]",
         visualState === "completed" &&
           "bg-muted/20 shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--border)_72%,transparent),0_12px_24px_-24px_color-mix(in_oklch,var(--foreground)_30%,transparent)] hover:bg-primary/[0.025] hover:shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--primary)_18%,transparent),0_14px_28px_-22px_color-mix(in_oklch,var(--primary)_42%,transparent)]",
+        visualState === "warning" &&
+          "bg-warning/[0.045] shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--warning)_22%,transparent),0_14px_28px_-24px_color-mix(in_oklch,var(--warning)_45%,transparent)]",
         visualState === "error" &&
           "bg-destructive/[0.045] shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--destructive)_22%,transparent),0_14px_28px_-24px_color-mix(in_oklch,var(--destructive)_45%,transparent)]",
       )}

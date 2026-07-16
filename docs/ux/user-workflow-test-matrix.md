@@ -60,27 +60,28 @@ Chaque ressource distante doit distinguer :
 
 ## Chat et conversations
 
-| Scénario                         | Attendu                                                                                       | Couverture                                |
-| -------------------------------- | --------------------------------------------------------------------------------------------- | ----------------------------------------- |
-| Aucun assistant                  | État guidé selon permissions                                                                  | Code + tests de permissions               |
-| Assistant incomplet              | CTA de configuration, envoi désactivé                                                         | Code                                      |
-| Conversation vide                | Prompts et message d’entrée utiles                                                            | Code                                      |
-| Streaming                        | Statut localisé, arrêt visible, suivi du scroll maîtrisé                                      | 82 tests ciblés + code                    |
-| Message pendant streaming        | Mise en file modifiable et annulable                                                          | Tests chat + code                         |
-| Pièces jointes pendant streaming | Refus explicite sans perte de fichier                                                         | Code                                      |
-| Limite de huit fichiers          | Refus localisé avant upload                                                                   | Tests attachments + code                  |
-| ZIP et fichiers directs mélangés | Refus explicite                                                                               | Tests attachments + code                  |
-| Upload ou extraction en échec    | Erreur localisée, conversation conservée                                                      | Code + tests route                        |
-| Édition/suppression/régénération | Actions tactiles et clavier, échec non silencieux                                             | Tests chat + navigateur CI                |
-| Copie message/lien               | Succès uniquement après presse-papiers, échec visible                                         | Code                                      |
-| Liens externes                   | Confirmation avant sortie, URL visible                                                        | Code                                      |
-| Dossiers, épinglage et ordre     | Actions clavier/tactile, rollback après échec                                                 | Code + tests à étendre                    |
+| Scénario                         | Attendu                                                                                       | Couverture                                  |
+| -------------------------------- | --------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| Aucun assistant                  | État guidé selon permissions                                                                  | Code + tests de permissions                 |
+| Assistant incomplet              | CTA de configuration, envoi désactivé                                                         | Code                                        |
+| Conversation vide                | Prompts et message d’entrée utiles                                                            | Code                                        |
+| Streaming                        | Statut localisé, arrêt visible, suivi du scroll maîtrisé                                      | 82 tests ciblés + code                      |
+| Message pendant streaming        | Mise en file modifiable et annulable                                                          | Tests chat + code                           |
+| Pièces jointes pendant streaming | Refus explicite sans perte de fichier                                                         | Code                                        |
+| Limite de huit fichiers          | Refus localisé avant upload                                                                   | Tests attachments + code                    |
+| ZIP et fichiers directs mélangés | Refus explicite                                                                               | Tests attachments + code                    |
+| Upload ou extraction en échec    | Erreur localisée, conversation conservée                                                      | Code + tests route                          |
+| Édition/suppression/régénération | Actions tactiles et clavier, échec non silencieux                                             | Tests chat + navigateur CI                  |
+| Copie message/lien               | Succès uniquement après presse-papiers, échec visible                                         | Code                                        |
+| Liens externes                   | Confirmation avant sortie, URL visible                                                        | Code                                        |
+| Dossiers, épinglage et ordre     | Actions clavier/tactile, rollback après échec                                                 | Code + tests à étendre                      |
 | Recherche dans l’historique      | Titres et messages chiffrés, résultats paginés, états chargement/vide/erreur relançable       | Tests unitaires + navigateur desktop/mobile |
-| Publication GitHub               | Connexion, synchronisation, permissions, PR/push direct, confirmation                         | Tests GitHub + code                       |
-| Artefacts HTML/sandbox           | Preview différée, plein écran, copie et téléchargement                                        | Tests artifacts + code                    |
-| Choix Chat/Coding                | Le choix manuel reste prioritaire pendant les mises à jour et nouveaux messages               | Tests d’état + navigateur                 |
-| Disposition Coding               | Chat redimensionnable ; fichiers, code et aperçu masquables ; largeurs persistées et clavier  | Tests layout + navigateur desktop/mobile  |
-| Actions des sous-agents          | Visibles en direct/rechargement; seule la réponse finale entre dans le contexte orchestrateur | Tests runtime/historique/transport + code |
+| Publication GitHub               | Connexion, synchronisation, permissions, PR/push direct, confirmation                         | Tests GitHub + code                         |
+| Artefacts HTML/sandbox           | Preview différée, plein écran, copie et téléchargement                                        | Tests artifacts + code                      |
+| Échec outil récupéré             | Étape en erreur visible ; résumé avec avertissements ; rouge si échec terminal                | Tests d'état + Playwright                   |
+| Choix Chat/Coding                | Le choix manuel reste prioritaire pendant les mises à jour et nouveaux messages               | Tests d’état + navigateur                   |
+| Disposition Coding               | Chat redimensionnable ; fichiers, code et aperçu masquables ; largeurs persistées et clavier  | Tests layout + navigateur desktop/mobile    |
+| Actions des sous-agents          | Visibles en direct/rechargement; seule la réponse finale entre dans le contexte orchestrateur | Tests runtime/historique/transport + code   |
 
 ## Assistants
 

@@ -239,6 +239,7 @@
       "reasoningStarting": "Reasoning is starting…",
       "workPhaseActive": "Working…",
       "workPhaseComplete": "Work completed",
+      "workPhaseCompleteWithIssues": "Work completed with warnings",
       "workPhaseFailed": "Work interrupted",
       "workPhaseReasoning": "Reasoning",
       "workPhaseTool": "Tool",
