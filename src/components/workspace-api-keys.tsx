@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import {
+  ChevronDownIcon,
   CopyIcon,
   KeyRoundIcon,
   Loader2,
@@ -31,6 +32,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { Field, FieldContent, FieldLabel } from "@/components/ui/field";
 import { Label } from "@/components/ui/label";
 import { useWorkspace } from "@/hooks/use-workspace";
 
@@ -40,6 +48,22 @@ type ApiKeyRow = {
   keyPrefix: string;
   createdAt: string;
   lastUsedAt: string | null;
+  scopes: string[];
+};
+
+type ApiKeyScope = {
+  permission: string;
+  group: string;
+  risk: "read" | "write" | "admin";
+};
+
+type ApiKeyResponse = {
+  keys: ApiKeyRow[];
+  availableScopes: ApiKeyScope[];
+  presets: {
+    readOnly: string[];
+    agentRuntime: string[];
+  };
 };
 
 type ApiKeysTranslator = ReturnType<typeof useTranslations<"admin.apiKeys">>;
@@ -47,18 +71,19 @@ type ApiKeysTranslator = ReturnType<typeof useTranslations<"admin.apiKeys">>;
 async function fetchApiKeys(workspaceId: string, t: ApiKeysTranslator) {
   const res = await fetch(`/api/workspace/api-keys?workspaceId=${workspaceId}`);
   if (!res.ok) throw new Error(t("loadFailed"));
-  return ((await res.json()) as { keys: ApiKeyRow[] }).keys;
+  return (await res.json()) as ApiKeyResponse;
 }
 
 async function createApiKey(
   workspaceId: string,
   name: string,
+  scopes: string[],
   t: ApiKeysTranslator,
 ) {
   const res = await fetch("/api/workspace/api-keys", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ workspaceId, name: name.trim() }),
+    body: JSON.stringify({ workspaceId, name: name.trim(), scopes }),
   });
   if (!res.ok) throw new Error((await res.json()).error || t("createFailed"));
   return ((await res.json()) as { rawKey: string }).rawKey;
@@ -97,6 +122,9 @@ function ApiKeyListItem({
         <p className="text-xs text-muted-foreground">
           {apiKey.keyPrefix}… · {lastUsedLabel}
         </p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {t("scopeCount", { count: apiKey.scopes.length })}
+        </p>
       </div>
       <div className="flex items-center gap-2">
         <Badge variant="outline">{t("active")}</Badge>
@@ -118,6 +146,12 @@ export function WorkspaceApiKeys() {
   const locale = useLocale();
   const { workspaceId } = useWorkspace();
   const [keys, setKeys] = useState<ApiKeyRow[]>([]);
+  const [availableScopes, setAvailableScopes] = useState<ApiKeyScope[]>([]);
+  const [presets, setPresets] = useState<ApiKeyResponse["presets"]>({
+    readOnly: [],
+    agentRuntime: [],
+  });
+  const [selectedScopes, setSelectedScopes] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -131,7 +165,23 @@ export function WorkspaceApiKeys() {
     setLoading(true);
     setLoadError(false);
     try {
-      setKeys(await fetchApiKeys(workspaceId, t));
+      const response = await fetchApiKeys(workspaceId, t);
+      setKeys(response.keys);
+      setAvailableScopes(response.availableScopes);
+      setPresets(response.presets);
+      setSelectedScopes((current) => {
+        const available = new Set(
+          response.availableScopes.map(({ permission }) => permission),
+        );
+        const stillAvailable = current.filter((scope) => available.has(scope));
+        if (stillAvailable.length > 0) return stillAvailable;
+        const recommended = response.presets.agentRuntime.filter((scope) =>
+          available.has(scope),
+        );
+        return recommended.length > 0
+          ? recommended
+          : response.presets.readOnly.filter((scope) => available.has(scope));
+      });
     } catch {
       setLoadError(true);
     } finally {
@@ -146,10 +196,10 @@ export function WorkspaceApiKeys() {
   }, [load, workspaceId]);
 
   async function createKey() {
-    if (!workspaceId || !name.trim()) return;
+    if (!workspaceId || !name.trim() || selectedScopes.length === 0) return;
     setCreating(true);
     try {
-      setRevealedKey(await createApiKey(workspaceId, name, t));
+      setRevealedKey(await createApiKey(workspaceId, name, selectedScopes, t));
       setName("");
       await load();
       toast.success(t("created"));
@@ -160,6 +210,23 @@ export function WorkspaceApiKeys() {
       setCreating(false);
     }
   }
+
+  function applyScopes(scopes: readonly string[]) {
+    const available = new Set(
+      availableScopes.map(({ permission }) => permission),
+    );
+    setSelectedScopes(scopes.filter((scope) => available.has(scope)));
+  }
+
+  function toggleScope(permission: string, checked: boolean) {
+    setSelectedScopes((current) =>
+      checked
+        ? [...new Set([...current, permission])]
+        : current.filter((scope) => scope !== permission),
+    );
+  }
+
+  const groupedScopes = Object.groupBy(availableScopes, ({ group }) => group);
 
   async function revokeKey(keyId: string) {
     if (!workspaceId) return;
@@ -189,15 +256,22 @@ export function WorkspaceApiKeys() {
           <CardDescription>
             {t.rich("cardDescription", {
               code: (chunks) => <code className="text-xs">{chunks}</code>,
+              link: (chunks) => (
+                <a
+                  href="/api-docs"
+                  className="underline underline-offset-4"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {chunks}
+                </a>
+              ),
             })}
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          <div
-            className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end"
-            suppressHydrationWarning
-          >
-            <div className="grid flex-1 gap-2">
+          <div className="flex flex-col gap-4" suppressHydrationWarning>
+            <div className="flex flex-col gap-2">
               <Label htmlFor="api-key-name">{t("nameLabel")}</Label>
               <Input
                 id="api-key-name"
@@ -213,8 +287,143 @@ export function WorkspaceApiKeys() {
                 onChange={(event) => setName(event.target.value)}
               />
             </div>
+
+            <fieldset className="flex flex-col gap-3">
+              <legend className="text-sm font-medium">
+                {t("scopesTitle")}
+              </legend>
+              <p className="text-sm text-muted-foreground">
+                {t("scopesDescription")}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => applyScopes(presets.agentRuntime)}
+                >
+                  {t("presetAgentRuntime")}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => applyScopes(presets.readOnly)}
+                >
+                  {t("presetReadOnly")}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() =>
+                    applyScopes(
+                      availableScopes.map(({ permission }) => permission),
+                    )
+                  }
+                >
+                  {t("presetFullAccess")}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setSelectedScopes([])}
+                >
+                  {t("clearScopes")}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground" aria-live="polite">
+                {t("selectedScopes", {
+                  selected: selectedScopes.length,
+                  total: availableScopes.length,
+                })}
+              </p>
+              {availableScopes.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  {t("noAvailableScopes")}
+                </p>
+              ) : (
+                <div className="grid gap-2 lg:grid-cols-2">
+                  {Object.entries(groupedScopes).map(([group, scopes]) => (
+                    <Collapsible
+                      key={group}
+                      defaultOpen={group === "agents"}
+                      className="rounded-xl border"
+                    >
+                      <CollapsibleTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className="w-full justify-between"
+                        >
+                          <span>
+                            {t(`scopeGroups.${group}`)} · {scopes?.length ?? 0}
+                          </span>
+                          <ChevronDownIcon
+                            data-icon="inline-end"
+                            aria-hidden="true"
+                          />
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="border-t p-3">
+                        <div className="flex flex-col gap-3">
+                          {(scopes ?? []).map((scope) => {
+                            const checkboxId = `api-scope-${scope.permission}`;
+                            return (
+                              <Field
+                                key={scope.permission}
+                                orientation="horizontal"
+                              >
+                                <Checkbox
+                                  id={checkboxId}
+                                  checked={selectedScopes.includes(
+                                    scope.permission,
+                                  )}
+                                  onCheckedChange={(checked) =>
+                                    toggleScope(
+                                      scope.permission,
+                                      checked === true,
+                                    )
+                                  }
+                                />
+                                <FieldContent>
+                                  <FieldLabel htmlFor={checkboxId}>
+                                    <code className="text-xs">
+                                      {scope.permission}
+                                    </code>
+                                  </FieldLabel>
+                                  {scope.risk === "admin" ? (
+                                    <Badge variant="outline" className="w-fit">
+                                      {t("sensitiveScope")}
+                                    </Badge>
+                                  ) : null}
+                                </FieldContent>
+                              </Field>
+                            );
+                          })}
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  ))}
+                </div>
+              )}
+            </fieldset>
+
+            {selectedScopes.length === 0 ? (
+              <p className="text-sm text-destructive" role="alert">
+                {t("scopeRequired")}
+              </p>
+            ) : null}
+
             <Button
-              disabled={creating || loadError || !name.trim()}
+              className="self-start"
+              disabled={
+                creating ||
+                loadError ||
+                !name.trim() ||
+                selectedScopes.length === 0
+              }
               onClick={() => void createKey()}
             >
               {creating ? (

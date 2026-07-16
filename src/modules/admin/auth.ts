@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 
 import { ensureBootstrapAdmin, isAdminRole } from "@/modules/admin/use-cases";
 import { getSession } from "@/modules/auth/session";
-import { authorization } from "@/server/domain/services/authorization";
+import { getRequestAuthContext } from "@/modules/auth/request-auth-context";
+import { hasWorkspacePermissionForRequest } from "@/modules/auth/workspace-access";
 
 type Session = NonNullable<Awaited<ReturnType<typeof getSession>>>;
 
@@ -19,12 +20,17 @@ export async function canManageTenantGlobals(
   workspaceId: string,
 ) {
   if (!session) return false;
-  if (await isPlatformAdminSession(session)) return true;
-  return authorization.hasPermission(
-    { principalType: "user", principalId: session.user.id },
-    "roles.manage",
-    "workspace",
+  const requestAuth = getRequestAuthContext();
+  if (
+    requestAuth?.type !== "api_key" &&
+    (await isPlatformAdminSession(session))
+  ) {
+    return true;
+  }
+  return hasWorkspacePermissionForRequest(
+    session.user.id,
     workspaceId,
+    "roles.manage",
   );
 }
 

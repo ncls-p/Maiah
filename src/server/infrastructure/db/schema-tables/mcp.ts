@@ -94,6 +94,7 @@ export const workspaceApiKeys = pgTable(
     name: varchar("name", { length: 255 }).notNull(),
     keyPrefix: varchar("key_prefix", { length: 16 }).notNull(),
     keyHash: text("key_hash").notNull(),
+    scopesJson: jsonb("scopes_json").$type<string[]>().notNull().default([]),
     createdById: uuid(CREATED_BY_USER_ID_COLUMN)
       .notNull()
       .references(() => users.id),

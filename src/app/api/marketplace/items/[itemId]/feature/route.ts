@@ -45,6 +45,7 @@ export async function POST(
       return NextResponse.json(featured);
     },
     {
+      allowApiKey: false,
       logLabel: "Failed to feature marketplace item",
       expectedError: (error) => handleFeatureError(error),
     },
@@ -69,6 +70,7 @@ export async function DELETE(
       return NextResponse.json(unfeatured);
     },
     {
+      allowApiKey: false,
       logLabel: "Failed to unfeature marketplace item",
       expectedError: (error) => handleFeatureError(error),
     },

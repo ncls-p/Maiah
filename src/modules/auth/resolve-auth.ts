@@ -16,9 +16,33 @@ export type AuthContext =
       apiKeyId: string;
       workspaceId: string;
       userId: string;
+      scopes: string[];
     };
 
-export async function resolveAuthContext(): Promise<AuthContext | null> {
+function bearerTokenFrom(headersList: Headers) {
+  const authorization = headersList.get("authorization");
+  if (!authorization?.startsWith("Bearer ")) return null;
+  return authorization.slice("Bearer ".length).trim() || null;
+}
+
+export async function resolveAuthContext(
+  request?: Request,
+): Promise<AuthContext | null> {
+  const headerList = request?.headers ?? (await headers());
+  const rawKey = bearerTokenFrom(headerList);
+  if (rawKey) {
+    const verified = await verifyWorkspaceApiKey(rawKey);
+    if (!verified) return null;
+
+    return {
+      type: "api_key",
+      apiKeyId: verified.id,
+      workspaceId: verified.workspaceId,
+      userId: verified.createdById,
+      scopes: verified.scopes,
+    };
+  }
+
   const session = await getSession();
   if (session?.user) {
     return {
@@ -30,22 +54,7 @@ export async function resolveAuthContext(): Promise<AuthContext | null> {
     };
   }
 
-  const headerList = await headers();
-  const authorization = headerList.get("authorization");
-  if (!authorization?.startsWith("Bearer ")) return null;
-
-  const rawKey = authorization.slice("Bearer ".length).trim();
-  if (!rawKey) return null;
-
-  const verified = await verifyWorkspaceApiKey(rawKey);
-  if (!verified) return null;
-
-  return {
-    type: "api_key",
-    apiKeyId: verified.id,
-    workspaceId: verified.workspaceId,
-    userId: verified.createdById,
-  };
+  return null;
 }
 
 export function getActorUserId(context: AuthContext) {

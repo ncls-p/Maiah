@@ -4,8 +4,24 @@ import { and, eq, isNull } from "drizzle-orm";
 import { audit } from "@/server/domain/services/audit";
 import { db } from "@/server/infrastructure/db";
 import { workspaceApiKeys } from "@/server/infrastructure/db/schema";
+import {
+  isKnownApiKeyScope,
+  uniqueApiKeyScopes,
+} from "@/modules/api-keys/scopes";
+import { getAvailableApiKeyScopes } from "@/modules/api-keys/permissions";
+import { getRequestAuthContext } from "@/modules/auth/request-auth-context";
 
 const KEY_PREFIX = "ahub_";
+
+function auditActor(fallbackUserId: string) {
+  const auth = getRequestAuthContext();
+  return auth?.type === "api_key"
+    ? {
+        actorPrincipalType: "api_key" as const,
+        actorPrincipalId: auth.apiKeyId,
+      }
+    : { actorPrincipalType: "user" as const, actorPrincipalId: fallbackUserId };
+}
 
 function hashApiKey(rawKey: string) {
   return createHash("sha256").update(rawKey).digest("hex");
@@ -20,6 +36,7 @@ export type SafeApiKey = {
   workspaceId: string;
   name: string;
   keyPrefix: string;
+  scopes: string[];
   createdById: string;
   lastUsedAt: Date | null;
   expiresAt: Date | null;
@@ -33,6 +50,7 @@ function toSafeKey(row: typeof workspaceApiKeys.$inferSelect): SafeApiKey {
     workspaceId: row.workspaceId,
     name: row.name,
     keyPrefix: row.keyPrefix,
+    scopes: row.scopesJson,
     createdById: row.createdById,
     lastUsedAt: row.lastUsedAt,
     expiresAt: row.expiresAt,
@@ -46,7 +64,33 @@ export async function createWorkspaceApiKey(input: {
   userId: string;
   name: string;
   expiresAt?: Date | null;
+  scopes: string[];
 }) {
+  const scopes = uniqueApiKeyScopes(input.scopes);
+  if (scopes.length === 0) {
+    throw new Error("At least one API token scope is required");
+  }
+  const unknownScopes = scopes.filter((scope) => !isKnownApiKeyScope(scope));
+  if (unknownScopes.length > 0) {
+    throw new Error(`Unknown API token scopes: ${unknownScopes.join(", ")}`);
+  }
+
+  const availableScopes = await getAvailableApiKeyScopes(
+    input.userId,
+    input.workspaceId,
+  );
+  const availablePermissions = new Set<string>(
+    availableScopes.map(({ permission }) => permission),
+  );
+  const forbiddenScopes = scopes.filter(
+    (scope) => !availablePermissions.has(scope),
+  );
+  if (forbiddenScopes.length > 0) {
+    throw new Error(
+      `API token scopes exceed current permissions: ${forbiddenScopes.join(", ")}`,
+    );
+  }
+
   const rawKey = generateRawApiKey();
   const keyHash = hashApiKey(rawKey);
   const keyPrefix = rawKey.slice(0, 12);
@@ -58,6 +102,7 @@ export async function createWorkspaceApiKey(input: {
       name: input.name,
       keyPrefix,
       keyHash,
+      scopesJson: scopes,
       createdById: input.userId,
       expiresAt: input.expiresAt ?? null,
     })
@@ -65,13 +110,12 @@ export async function createWorkspaceApiKey(input: {
 
   await audit.emit({
     workspaceId: input.workspaceId,
-    actorPrincipalType: "user",
-    actorPrincipalId: input.userId,
+    ...auditActor(input.userId),
     action: "apiKey.created",
     resourceType: "workspace",
     resourceId: row.id,
     outcome: "success",
-    metadata: { name: input.name, keyPrefix },
+    metadata: { name: input.name, keyPrefix, scopes },
   });
 
   return { apiKey: toSafeKey(row), rawKey };
@@ -126,8 +170,7 @@ export async function revokeWorkspaceApiKey(input: {
 
   await audit.emit({
     workspaceId: input.workspaceId,
-    actorPrincipalType: "user",
-    actorPrincipalId: input.userId,
+    ...auditActor(input.userId),
     action: "apiKey.revoked",
     resourceType: "workspace",
     resourceId: input.keyId,
@@ -163,5 +206,6 @@ export async function verifyWorkspaceApiKey(rawKey: string) {
     workspaceId: row.workspaceId,
     createdById: row.createdById,
     name: row.name,
+    scopes: row.scopesJson,
   };
 }

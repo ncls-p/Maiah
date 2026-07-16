@@ -17,7 +17,7 @@ import {
 } from "@/modules/agent/use-cases";
 import { agentRuntimePolicy } from "@/modules/agent/runtime-policy";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
-import { authorization } from "@/server/domain/services/authorization";
+import { hasWorkspacePermissionForRequest } from "@/modules/auth/workspace-access";
 import { toolBindingInputSchema } from "@/modules/tool/use-cases";
 import {
   delegationBindingInputSchema,
@@ -174,22 +174,16 @@ export async function GET(
           .limit(1);
         shareTargetEmail = target?.email ?? null;
       }
-      const permissionContext = {
-        principalType: "user" as const,
-        principalId: session.user.id,
-      };
       const [canCreateAgent, canUpdateAgents] = await Promise.all([
-        authorization.hasPermission(
-          permissionContext,
+        hasWorkspacePermissionForRequest(
+          session.user.id,
+          workspaceId,
           "agents.create",
-          "workspace",
-          workspaceId,
         ),
-        authorization.hasPermission(
-          permissionContext,
-          "agents.update",
-          "workspace",
+        hasWorkspacePermissionForRequest(
+          session.user.id,
           workspaceId,
+          "agents.update",
         ),
       ]);
       return NextResponse.json({

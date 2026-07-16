@@ -148,6 +148,14 @@ async function resolvePermissions(
 }
 
 export const authorization = {
+  async listPermissions(
+    ctx: AuthorizationContext,
+    resourceType: ResourceType,
+    resourceId: string,
+  ): Promise<Permission[]> {
+    return resolvePermissions(ctx, resourceType, resourceId);
+  },
+
   async checkPermission(
     ctx: AuthorizationContext,
     permission: string,

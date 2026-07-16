@@ -9,6 +9,7 @@ import {
   getActorUserId,
   resolveAuthContext,
 } from "@/modules/auth/resolve-auth";
+import { runWithRequestAuth } from "@/modules/auth/request-auth-context";
 import {
   canUseAgent,
   getActiveVersion,
@@ -180,10 +181,12 @@ export async function POST(
       );
     }
 
-    const forbidden = await requireWorkspacePermissionAsync(
-      actorUserId,
-      agent.workspaceId,
-      "agents.chat",
+    const forbidden = await runWithRequestAuth(auth, () =>
+      requireWorkspacePermissionAsync(
+        actorUserId,
+        agent.workspaceId,
+        "agents.chat",
+      ),
     );
     if (forbidden) {
       logger.warn("Chat request rejected", {

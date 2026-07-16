@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { handleRoute } from "@/lib/route-handler";
+import { requireMarketplaceItemMutationPermission } from "@/app/api/marketplace/items/marketplace-route-auth";
 import {
   shareMarketplaceItem,
   unshareMarketplaceItem,
@@ -27,6 +28,11 @@ export async function POST(
     req,
     async ({ session }) => {
       const { itemId } = await params;
+      const forbidden = await requireMarketplaceItemMutationPermission(
+        session.user.id,
+        itemId,
+      );
+      if (forbidden) return forbidden;
       const parsed = shareSchema.safeParse(await req.json());
       if (!parsed.success)
         return NextResponse.json(
@@ -56,6 +62,11 @@ export async function DELETE(
     req,
     async ({ session }) => {
       const { itemId } = await params;
+      const forbidden = await requireMarketplaceItemMutationPermission(
+        session.user.id,
+        itemId,
+      );
+      if (forbidden) return forbidden;
       const { searchParams } = req.nextUrl;
       const targetUserId = searchParams.get("targetUserId");
       if (!targetUserId)

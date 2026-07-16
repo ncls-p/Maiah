@@ -74,6 +74,9 @@ jobs:
           DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/ai_hub_test"
           DATABASE_SSL_REJECT_UNAUTHORIZED: "disable"
 
+      - name: Verify OpenAPI route coverage
+        run: npm run openapi:check
+
       - name: Lint
         run: npm run lint
 
