@@ -33,12 +33,17 @@ import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { fetchJson } from "@/lib/api-client";
+import {
+  DEFAULT_OPENAI_COMPATIBLE_API_ROUTE,
+  type OpenAICompatibleApiRoute,
+} from "@/lib/openai-compatible-api";
 import { cn } from "@/lib/utils";
 import { ONBOARDING_TOOL_PRESET } from "@/modules/agent/onboarding-tools";
 
@@ -281,11 +286,13 @@ export function SetupWizard({
     kind: ProviderKind;
     baseUrl: string;
     apiKey: string;
+    openaiCompatibleApiRoute: OpenAICompatibleApiRoute;
   }>({
     name: t("defaultProviderName"),
     kind: "openai-compatible",
     baseUrl: "",
     apiKey: "",
+    openaiCompatibleApiRoute: DEFAULT_OPENAI_COMPATIBLE_API_ROUTE,
   });
   const [manualModelId, setManualModelId] = useState("");
   const [agentForm, setAgentForm] = useState({
@@ -395,6 +402,12 @@ export function SetupWizard({
             authType: defaultAuthType(providerForm.kind),
             baseUrl: providerForm.baseUrl || undefined,
             apiKey: providerForm.apiKey || undefined,
+            ...(providerForm.kind === "openai-compatible"
+              ? {
+                  openaiCompatibleApiRoute:
+                    providerForm.openaiCompatibleApiRoute,
+                }
+              : {}),
           }),
         },
       );
@@ -639,17 +652,57 @@ export function SetupWizard({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="openai-compatible">
-                        OpenAI-compatible
-                      </SelectItem>
-                      <SelectItem value="vercel-ai-gateway">
-                        Vercel AI Gateway
-                      </SelectItem>
-                      <SelectItem value="dragonfly">Dragonfly</SelectItem>
+                      <SelectGroup>
+                        <SelectItem value="openai-compatible">
+                          OpenAI-compatible
+                        </SelectItem>
+                        <SelectItem value="vercel-ai-gateway">
+                          Vercel AI Gateway
+                        </SelectItem>
+                        <SelectItem value="dragonfly">Dragonfly</SelectItem>
+                      </SelectGroup>
                     </SelectContent>
                   </Select>
                 </FieldContent>
               </Field>
+
+              {providerForm.kind === "openai-compatible" ? (
+                <Field>
+                  <FieldLabel htmlFor="openai-compatible-api-route">
+                    {t("apiRoute")}
+                  </FieldLabel>
+                  <FieldContent>
+                    <Select
+                      value={providerForm.openaiCompatibleApiRoute}
+                      onValueChange={(value) =>
+                        setProviderForm({
+                          ...providerForm,
+                          openaiCompatibleApiRoute:
+                            value as OpenAICompatibleApiRoute,
+                        })
+                      }
+                    >
+                      <SelectTrigger
+                        id="openai-compatible-api-route"
+                        className="w-full"
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          <SelectItem value="responses">
+                            {t("apiRouteResponses")}
+                          </SelectItem>
+                          <SelectItem value="chat-completions">
+                            {t("apiRouteChatCompletions")}
+                          </SelectItem>
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                    <FieldDescription>{t("apiRouteHint")}</FieldDescription>
+                  </FieldContent>
+                </Field>
+              ) : null}
 
               <Field>
                 <FieldLabel htmlFor="base-url">{t("serviceUrl")}</FieldLabel>
@@ -753,11 +806,13 @@ export function SetupWizard({
                         <SelectValue placeholder={t("selectConnection")} />
                       </SelectTrigger>
                       <SelectContent>
-                        {providers.map((provider) => (
-                          <SelectItem key={provider.id} value={provider.id}>
-                            {provider.name}
-                          </SelectItem>
-                        ))}
+                        <SelectGroup>
+                          {providers.map((provider) => (
+                            <SelectItem key={provider.id} value={provider.id}>
+                              {provider.name}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
                       </SelectContent>
                     </Select>
                   </FieldContent>
@@ -913,11 +968,13 @@ export function SetupWizard({
                         <SelectValue placeholder={t("selectModel")} />
                       </SelectTrigger>
                       <SelectContent>
-                        {models.map((model) => (
-                          <SelectItem key={model.id} value={model.id}>
-                            {model.displayName ?? model.modelId}
-                          </SelectItem>
-                        ))}
+                        <SelectGroup>
+                          {models.map((model) => (
+                            <SelectItem key={model.id} value={model.id}>
+                              {model.displayName ?? model.modelId}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
                       </SelectContent>
                     </Select>
                     {selectedModel && (

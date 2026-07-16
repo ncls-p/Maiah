@@ -1,4 +1,5 @@
 import type { LanguageModelV4 } from "@ai-sdk/provider";
+import type { OpenAICompatibleApiRoute } from "@/lib/openai-compatible-api";
 
 export type ProviderKind =
   | "openai-compatible"
@@ -43,6 +44,7 @@ export interface ProviderRuntimeConfig {
   apiKey?: string;
   headers?: Record<string, string>;
   queryParams?: Record<string, string>;
+  openaiCompatibleApiRoute?: OpenAICompatibleApiRoute;
 }
 
 export interface ProviderAdapter {

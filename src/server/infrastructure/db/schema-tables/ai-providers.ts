@@ -49,6 +49,11 @@ export const aiProviders = pgTable(
     encryptedApiKey: text("encrypted_api_key"),
     encryptedHeadersJson: jsonb("encrypted_headers_json"),
     queryParamsJson: jsonb("query_params_json"),
+    openaiCompatibleApiRoute: varchar("openai_compatible_api_route", {
+      length: 32,
+    })
+      .notNull()
+      .default("responses"),
     enabled: boolean("enabled").notNull().default(true),
     healthStatus: varchar("health_status", { length: 16 }),
     lastCheckedAt: timestamp("last_checked_at", { withTimezone: true }),

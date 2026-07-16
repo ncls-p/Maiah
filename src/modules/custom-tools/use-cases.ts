@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { decryptValue, encryptValue } from "@/lib/crypto";
 import { logger } from "@/lib/logger";
+import { normalizeOpenAICompatibleApiRoute } from "@/lib/openai-compatible-api";
 import {
   agentRuntimePolicy,
   createRuntimeDeadline,
@@ -249,6 +250,9 @@ async function resolveRuntimeProvider(config: CustomToolBuilderConfig) {
     apiKey,
     headers,
     queryParams: provider.queryParamsJson as Record<string, string> | undefined,
+    openaiCompatibleApiRoute: normalizeOpenAICompatibleApiRoute(
+      provider.openaiCompatibleApiRoute,
+    ),
   };
 
   return {

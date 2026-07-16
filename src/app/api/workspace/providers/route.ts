@@ -9,6 +9,10 @@ import {
   listProviders,
   toSafeProvider,
 } from "@/modules/provider/use-cases";
+import {
+  DEFAULT_OPENAI_COMPATIBLE_API_ROUTE,
+  OPENAI_COMPATIBLE_API_ROUTES,
+} from "@/lib/openai-compatible-api";
 
 const providerKindSchema = z.enum([
   "openai-compatible",
@@ -32,6 +36,9 @@ const createProviderSchema = z.object({
   apiKey: z.string().min(1).optional().or(z.literal("")),
   headersJson: z.record(z.string(), z.string()).optional(),
   queryParamsJson: z.record(z.string(), z.string()).optional(),
+  openaiCompatibleApiRoute: z
+    .enum(OPENAI_COMPATIBLE_API_ROUTES)
+    .default(DEFAULT_OPENAI_COMPATIBLE_API_ROUTE),
   workspaceId: z.uuid(),
 });
 

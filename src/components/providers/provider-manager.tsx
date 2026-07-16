@@ -7,6 +7,10 @@ import { toast } from "sonner";
 
 import { AdvancedSection } from "@/components/ui/advanced-section";
 import { Button } from "@/components/ui/button";
+import {
+  DEFAULT_OPENAI_COMPATIBLE_API_ROUTE,
+  type OpenAICompatibleApiRoute,
+} from "@/lib/openai-compatible-api";
 
 import {
   AddProviderDialog,
@@ -60,6 +64,9 @@ export function ProviderManager({
   const [addApiKey, setAddApiKey] = useState("");
   const [addCustomHeaders, setAddCustomHeaders] = useState("");
   const [addQueryParams, setAddQueryParams] = useState("");
+  const [addApiRoute, setAddApiRoute] = useState<OpenAICompatibleApiRoute>(
+    DEFAULT_OPENAI_COMPATIBLE_API_ROUTE,
+  );
   const [addAdvanced, setAddAdvanced] = useState(false);
   const [editingProvider, setEditingProvider] = useState<SafeProvider | null>(
     null,
@@ -67,6 +74,9 @@ export function ProviderManager({
   const [editName, setEditName] = useState("");
   const [editBaseUrl, setEditBaseUrl] = useState("");
   const [editApiKey, setEditApiKey] = useState("");
+  const [editApiRoute, setEditApiRoute] = useState<OpenAICompatibleApiRoute>(
+    DEFAULT_OPENAI_COMPATIBLE_API_ROUTE,
+  );
   const [deleteProviderId, setDeleteProviderId] = useState<string | null>(null);
   const [deleteModelId, setDeleteModelId] = useState<string | null>(null);
   const [manualModelId, setManualModelId] = useState("");
@@ -157,6 +167,7 @@ export function ProviderManager({
     setAddApiKey("");
     setAddCustomHeaders("");
     setAddQueryParams("");
+    setAddApiRoute(DEFAULT_OPENAI_COMPATIBLE_API_ROUTE);
     setAddKind("openai-compatible");
     setAddAuthType(defaultAuthType("openai-compatible"));
     setAddAdvanced(false);
@@ -167,6 +178,7 @@ export function ProviderManager({
     setEditName(provider.name);
     setEditBaseUrl(provider.baseUrl ?? "");
     setEditApiKey("");
+    setEditApiRoute(provider.openaiCompatibleApiRoute);
   }
 
   async function createNewProvider() {
@@ -184,6 +196,9 @@ export function ProviderManager({
           apiKey: addApiKey,
           headersJson: parsePairs(addCustomHeaders),
           queryParamsJson: parsePairs(addQueryParams),
+          ...(addKind === "openai-compatible"
+            ? { openaiCompatibleApiRoute: addApiRoute }
+            : {}),
         }),
       });
       if (!res.ok) {
@@ -259,6 +274,9 @@ export function ProviderManager({
             name: editName.trim(),
             baseUrl: editBaseUrl.trim() || "",
             ...(editApiKey.trim() ? { apiKey: editApiKey.trim() } : {}),
+            ...(editingProvider.kind === "openai-compatible"
+              ? { openaiCompatibleApiRoute: editApiRoute }
+              : {}),
           }),
         },
       );
@@ -483,6 +501,7 @@ export function ProviderManager({
         addApiKey={addApiKey}
         addCustomHeaders={addCustomHeaders}
         addQueryParams={addQueryParams}
+        addApiRoute={addApiRoute}
         addAdvanced={addAdvanced}
         onOpenChange={(open) => {
           setShowAddDialog(open);
@@ -495,6 +514,7 @@ export function ProviderManager({
         onApiKeyChange={setAddApiKey}
         onCustomHeadersChange={setAddCustomHeaders}
         onQueryParamsChange={setAddQueryParams}
+        onApiRouteChange={setAddApiRoute}
         onAdvancedChange={setAddAdvanced}
         onCreateProvider={() => void createNewProvider()}
       />
@@ -504,10 +524,12 @@ export function ProviderManager({
         editName={editName}
         editBaseUrl={editBaseUrl}
         editApiKey={editApiKey}
+        editApiRoute={editApiRoute}
         onClose={() => setEditingProvider(null)}
         onNameChange={setEditName}
         onBaseUrlChange={setEditBaseUrl}
         onApiKeyChange={setEditApiKey}
+        onApiRouteChange={setEditApiRoute}
         onSave={() => void saveProviderEdit()}
       />
       <DeleteProviderDialog

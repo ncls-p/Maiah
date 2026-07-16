@@ -35,6 +35,7 @@
   },
   "dependencies": {
     "@ai-sdk/devtools": "^1.0.0",
+    "@ai-sdk/openai": "^4.0.15",
     "@ai-sdk/openai-compatible": "^3.0.1",
     "@ai-sdk/policy-opa": "^1.0.4",
     "@ai-sdk/provider": "^4.0.0",

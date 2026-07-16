@@ -16,6 +16,11 @@ import type {
 } from "@/server/infrastructure/providers";
 import { audit } from "@/server/domain/services/audit";
 import { logger } from "@/lib/logger";
+import {
+  DEFAULT_OPENAI_COMPATIBLE_API_ROUTE,
+  normalizeOpenAICompatibleApiRoute,
+  type OpenAICompatibleApiRoute,
+} from "@/lib/openai-compatible-api";
 
 // ─── Provider CRUD ─────────────────────────────────────────────────────
 
@@ -32,6 +37,9 @@ export function toSafeProvider(provider: ProviderRow) {
     baseUrl: provider.baseUrl,
     authType: provider.authType,
     queryParamsJson: provider.queryParamsJson,
+    openaiCompatibleApiRoute: normalizeOpenAICompatibleApiRoute(
+      provider.openaiCompatibleApiRoute,
+    ),
     enabled: provider.enabled,
     healthStatus: provider.healthStatus,
     lastCheckedAt: provider.lastCheckedAt,
@@ -54,6 +62,7 @@ export interface CreateProviderInput {
   apiKey?: string;
   headersJson?: Record<string, string>;
   queryParamsJson?: Record<string, string>;
+  openaiCompatibleApiRoute?: OpenAICompatibleApiRoute;
 }
 
 export async function createProvider(input: CreateProviderInput) {
@@ -67,6 +76,7 @@ export async function createProvider(input: CreateProviderInput) {
     apiKey,
     headersJson,
     queryParamsJson,
+    openaiCompatibleApiRoute = DEFAULT_OPENAI_COMPATIBLE_API_ROUTE,
   } = input;
 
   const encryptedApiKey = apiKey ? await encryptValue(apiKey) : null;
@@ -91,6 +101,7 @@ export async function createProvider(input: CreateProviderInput) {
       encryptedApiKey,
       encryptedHeadersJson,
       queryParamsJson: queryParamsJson || null,
+      openaiCompatibleApiRoute,
       enabled: true,
     })
     .returning();
@@ -119,6 +130,7 @@ export interface UpdateProviderInput {
   apiKey?: string;
   headersJson?: Record<string, string>;
   queryParamsJson?: Record<string, string>;
+  openaiCompatibleApiRoute?: OpenAICompatibleApiRoute;
   enabled?: boolean;
 }
 
@@ -132,6 +144,7 @@ export async function updateProvider(input: UpdateProviderInput) {
     apiKey,
     headersJson,
     queryParamsJson,
+    openaiCompatibleApiRoute,
     enabled,
   } = input;
 
@@ -157,6 +170,9 @@ export async function updateProvider(input: UpdateProviderInput) {
   if (enabled !== undefined) updates.enabled = enabled;
   if (queryParamsJson !== undefined) {
     updates.queryParamsJson = queryParamsJson || null;
+  }
+  if (openaiCompatibleApiRoute !== undefined) {
+    updates.openaiCompatibleApiRoute = openaiCompatibleApiRoute;
   }
 
   // Encrypt new API key if provided
@@ -305,6 +321,9 @@ export async function testProviderConnection(
     headers,
     queryParams:
       (provider.queryParamsJson as Record<string, string>) || undefined,
+    openaiCompatibleApiRoute: normalizeOpenAICompatibleApiRoute(
+      provider.openaiCompatibleApiRoute,
+    ),
   };
 
   const adapter = getAdapter(provider.kind);
@@ -509,6 +528,9 @@ export async function discoverModels(
     headers,
     queryParams:
       (provider.queryParamsJson as Record<string, string>) || undefined,
+    openaiCompatibleApiRoute: normalizeOpenAICompatibleApiRoute(
+      provider.openaiCompatibleApiRoute,
+    ),
   };
 
   const adapter = getAdapter(provider.kind);

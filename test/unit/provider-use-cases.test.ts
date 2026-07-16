@@ -133,6 +133,7 @@ const fakeProvider = {
   encryptedApiKey: "enc:key",
   encryptedHeadersJson: null,
   queryParamsJson: null,
+  openaiCompatibleApiRoute: "chat-completions",
   enabled: true,
   healthStatus: "healthy",
   lastCheckedAt: null,
@@ -166,6 +167,7 @@ describe("toSafeProvider", () => {
     expect(safe).not.toHaveProperty("encryptedHeadersJson");
     expect(safe.hasApiKey).toBe(true);
     expect(safe.hasCustomHeaders).toBe(false);
+    expect(safe.openaiCompatibleApiRoute).toBe("chat-completions");
   });
 
   it("hasApiKey is false when no encrypted key", () => {
@@ -232,6 +234,22 @@ describe("createProvider", () => {
     });
 
     expect(encryptValue).toHaveBeenCalledWith("secret-header");
+  });
+
+  it("uses the Responses API for new providers by default", async () => {
+    dbModule._c.returning.mockResolvedValueOnce([fakeProvider]);
+
+    await createProvider({
+      workspaceId: "ws-1",
+      userId: "user-1",
+      kind: "openai-compatible",
+      name: "Test",
+      authType: "bearer",
+    });
+
+    expect(dbModule._c.values).toHaveBeenCalledWith(
+      expect.objectContaining({ openaiCompatibleApiRoute: "responses" }),
+    );
   });
 });
 
@@ -323,6 +341,21 @@ describe("updateProvider", () => {
 
     expect(encryptValue).toHaveBeenCalledWith("header-value");
   });
+
+  it("updates the OpenAI-compatible API route", async () => {
+    dbModule._c.limit.mockResolvedValueOnce([fakeProvider]);
+
+    await updateProvider({
+      providerId: "prov-1",
+      workspaceId: "ws-1",
+      userId: "user-1",
+      openaiCompatibleApiRoute: "responses",
+    });
+
+    expect(dbModule._c.set).toHaveBeenCalledWith(
+      expect.objectContaining({ openaiCompatibleApiRoute: "responses" }),
+    );
+  });
 });
 
 // ─── archiveProvider ──────────────────────────────────────────────────
@@ -381,6 +414,18 @@ describe("testProviderConnection", () => {
     await testProviderConnection("prov-1", "ws-1");
 
     expect(decryptValue).toHaveBeenCalledWith("enc:header");
+  });
+
+  it("passes the stored API route to the provider adapter", async () => {
+    dbModule._c.limit.mockResolvedValueOnce([fakeProvider]);
+
+    await testProviderConnection("prov-1", "ws-1");
+
+    expect(mockAdapter.validateConnection).toHaveBeenCalledWith(
+      expect.objectContaining({
+        openaiCompatibleApiRoute: "chat-completions",
+      }),
+    );
   });
 });
 

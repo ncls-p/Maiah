@@ -27,6 +27,7 @@ import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -36,6 +37,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { AUTH_TYPE_LABELS, KIND_LABELS } from "./constants";
 import type { ProviderAuthType, ProviderKind, SafeProvider } from "./types";
 import { defaultAuthType } from "./utils";
+import type { OpenAICompatibleApiRoute } from "@/lib/openai-compatible-api";
 
 const FIELD_STACK_CLASS = "grid gap-2";
 
@@ -49,6 +51,7 @@ type AddProviderDialogProps = {
   addApiKey: string;
   addCustomHeaders: string;
   addQueryParams: string;
+  addApiRoute: OpenAICompatibleApiRoute;
   addAdvanced: boolean;
   onOpenChange: (open: boolean) => void;
   onKindChange: (kind: ProviderKind) => void;
@@ -58,6 +61,7 @@ type AddProviderDialogProps = {
   onApiKeyChange: (value: string) => void;
   onCustomHeadersChange: (value: string) => void;
   onQueryParamsChange: (value: string) => void;
+  onApiRouteChange: (value: OpenAICompatibleApiRoute) => void;
   onAdvancedChange: (value: boolean) => void;
   onCreateProvider: () => void;
 };
@@ -169,11 +173,13 @@ function AddProviderAdvancedFields(props: AddProviderDialogProps) {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {Object.entries(KIND_LABELS).map(([value, label]) => (
-                <SelectItem key={value} value={value}>
-                  {label}
-                </SelectItem>
-              ))}
+              <SelectGroup>
+                {Object.entries(KIND_LABELS).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
             </SelectContent>
           </Select>
         </div>
@@ -189,15 +195,43 @@ function AddProviderAdvancedFields(props: AddProviderDialogProps) {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {Object.entries(AUTH_TYPE_LABELS).map(([value, label]) => (
-                <SelectItem key={value} value={value}>
-                  {label}
-                </SelectItem>
-              ))}
+              <SelectGroup>
+                {Object.entries(AUTH_TYPE_LABELS).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
             </SelectContent>
           </Select>
         </div>
       </div>
+      {props.addKind === "openai-compatible" ? (
+        <div className={FIELD_STACK_CLASS}>
+          <Label htmlFor="add-provider-api-route">{t("apiRoute")}</Label>
+          <Select
+            value={props.addApiRoute}
+            onValueChange={(value) =>
+              props.onApiRouteChange(value as OpenAICompatibleApiRoute)
+            }
+          >
+            <SelectTrigger id="add-provider-api-route">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectItem value="responses">
+                  {t("apiRouteResponses")}
+                </SelectItem>
+                <SelectItem value="chat-completions">
+                  {t("apiRouteChatCompletions")}
+                </SelectItem>
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">{t("apiRouteHint")}</p>
+        </div>
+      ) : null}
       <div className="grid gap-3 sm:grid-cols-2">
         <div className={FIELD_STACK_CLASS}>
           <Label htmlFor="add-headers">{t("customHeaders")}</Label>
@@ -234,10 +268,12 @@ type EditProviderDialogProps = {
   editName: string;
   editBaseUrl: string;
   editApiKey: string;
+  editApiRoute: OpenAICompatibleApiRoute;
   onClose: () => void;
   onNameChange: (value: string) => void;
   onBaseUrlChange: (value: string) => void;
   onApiKeyChange: (value: string) => void;
+  onApiRouteChange: (value: OpenAICompatibleApiRoute) => void;
   onSave: () => void;
 };
 
@@ -247,10 +283,12 @@ export function EditProviderDialog({
   editName,
   editBaseUrl,
   editApiKey,
+  editApiRoute,
   onClose,
   onNameChange,
   onBaseUrlChange,
   onApiKeyChange,
+  onApiRouteChange,
   onSave,
 }: EditProviderDialogProps) {
   const t = useTranslations("providers.manager");
@@ -287,6 +325,34 @@ export function EditProviderDialog({
               onChange={(e) => onBaseUrlChange(e.target.value)}
             />
           </div>
+          {editingProvider?.kind === "openai-compatible" ? (
+            <div className={FIELD_STACK_CLASS}>
+              <Label htmlFor="edit-provider-api-route">{t("apiRoute")}</Label>
+              <Select
+                value={editApiRoute}
+                onValueChange={(value) =>
+                  onApiRouteChange(value as OpenAICompatibleApiRoute)
+                }
+              >
+                <SelectTrigger id="edit-provider-api-route">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem value="responses">
+                      {t("apiRouteResponses")}
+                    </SelectItem>
+                    <SelectItem value="chat-completions">
+                      {t("apiRouteChatCompletions")}
+                    </SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {t("apiRouteHint")}
+              </p>
+            </div>
+          ) : null}
           <div className={FIELD_STACK_CLASS}>
             <Label htmlFor="edit-provider-key">
               {t("newApiKey")}{" "}

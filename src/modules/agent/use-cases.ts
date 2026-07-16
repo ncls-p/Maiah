@@ -14,6 +14,7 @@ import {
 } from "@/server/infrastructure/db/schema";
 import { decryptValue } from "@/lib/crypto";
 import { logHandledError } from "@/lib/logger";
+import { normalizeOpenAICompatibleApiRoute } from "@/lib/openai-compatible-api";
 import { projectToolMessagePayload } from "@/modules/tool/safe-payload";
 import type {
   ProviderRuntimeConfig,
@@ -1473,6 +1474,9 @@ export async function resolveProviderForVersion(
       queryParams: provider.queryParamsJson as
         | Record<string, string>
         | undefined,
+      openaiCompatibleApiRoute: normalizeOpenAICompatibleApiRoute(
+        provider.openaiCompatibleApiRoute,
+      ),
     },
     modelId: runtimeModelId,
     modelRecordId,

@@ -1,5 +1,7 @@
+import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import type { LanguageModelV4 } from "@ai-sdk/provider";
+import { normalizeOpenAICompatibleApiRoute } from "@/lib/openai-compatible-api";
 import type {
   ProviderAdapter,
   ProviderRuntimeConfig,
@@ -42,6 +44,46 @@ function buildHeaders(config: ProviderRuntimeConfig): Record<string, string> {
   }
 
   return headers;
+}
+
+function createResponsesFetch(config: ProviderRuntimeConfig) {
+  const fetchImplementation = globalThis.fetch;
+  const hasExplicitAuthorizationHeader = Object.keys(config.headers ?? {}).some(
+    (key) => key.toLowerCase() === "authorization",
+  );
+
+  return async (input: RequestInfo | URL, init?: RequestInit) => {
+    const request = input instanceof Request ? input : undefined;
+    const url = new URL(
+      input instanceof URL
+        ? input
+        : typeof input === "string"
+          ? input
+          : input.url,
+    );
+    for (const [key, value] of Object.entries(config.queryParams ?? {})) {
+      url.searchParams.set(key, value);
+    }
+
+    const headers = new Headers(request?.headers);
+    new Headers(init?.headers).forEach((value, key) => {
+      headers.set(key, value);
+    });
+    if (
+      !hasExplicitAuthorizationHeader &&
+      (config.authType !== "bearer" || !config.apiKey)
+    ) {
+      headers.delete("authorization");
+    }
+
+    return fetchImplementation(url, {
+      ...init,
+      method: init?.method ?? request?.method,
+      body: init?.body ?? request?.body,
+      signal: init?.signal ?? request?.signal,
+      headers,
+    });
+  };
 }
 
 type OpenAICompatibleModel = {
@@ -170,6 +212,21 @@ export const openaiCompatibleAdapter: ProviderAdapter = {
     config: ProviderRuntimeConfig,
     modelId: string,
   ): LanguageModelV4 {
+    if (
+      normalizeOpenAICompatibleApiRoute(config.openaiCompatibleApiRoute) ===
+      "responses"
+    ) {
+      const provider = createOpenAI({
+        name: config.name || "openai-compatible",
+        apiKey: config.apiKey || "openai-compatible-no-api-key",
+        baseURL: normalizeBaseUrl(config.baseUrl),
+        headers: buildHeaders(config),
+        fetch: createResponsesFetch(config),
+      });
+
+      return provider.responses(modelId);
+    }
+
     const provider = createOpenAICompatible({
       name: config.name || "openai-compatible",
       apiKey: config.apiKey,

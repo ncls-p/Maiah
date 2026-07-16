@@ -10,6 +10,7 @@ import {
   toSafeProvider,
   updateProvider,
 } from "@/modules/provider/use-cases";
+import { OPENAI_COMPATIBLE_API_ROUTES } from "@/lib/openai-compatible-api";
 
 const routeParamsSchema = z.object({
   providerId: z.uuid(),
@@ -26,6 +27,7 @@ const updateProviderSchema = z.object({
   apiKey: z.string().min(1).optional().or(z.literal("")),
   headersJson: z.record(z.string(), z.string()).optional(),
   queryParamsJson: z.record(z.string(), z.string()).optional(),
+  openaiCompatibleApiRoute: z.enum(OPENAI_COMPATIBLE_API_ROUTES).optional(),
   enabled: z.boolean().optional(),
 });
 

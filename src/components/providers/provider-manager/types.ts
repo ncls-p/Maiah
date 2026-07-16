@@ -1,3 +1,5 @@
+import type { OpenAICompatibleApiRoute } from "@/lib/openai-compatible-api";
+
 export type ProviderKind =
   | "openai-compatible"
   | "dragonfly"
@@ -17,6 +19,7 @@ export type SafeProvider = {
   name: string;
   baseUrl: string | null;
   authType: ProviderAuthType;
+  openaiCompatibleApiRoute: OpenAICompatibleApiRoute;
   enabled: boolean;
   healthStatus: string | null;
   lastCheckedAt: string | null;
