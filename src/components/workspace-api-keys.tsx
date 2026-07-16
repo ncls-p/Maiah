@@ -258,7 +258,7 @@ export function WorkspaceApiKeys() {
               code: (chunks) => <code className="text-xs">{chunks}</code>,
               link: (chunks) => (
                 <a
-                  href="/api-docs"
+                  href="/api/docs"
                   className="underline underline-offset-4"
                   target="_blank"
                   rel="noreferrer"

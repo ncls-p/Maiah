@@ -19,7 +19,13 @@ test.describe("OpenAPI documentation", () => {
     expect(document.paths["/api/workspace/api-keys"].post).toBeTruthy();
     expect(document.components.securitySchemes.workspaceBearer).toBeTruthy();
 
-    await page.goto("/api-docs");
+    const legacyResponse = await page.request.get("/api-docs", {
+      maxRedirects: 0,
+    });
+    expect(legacyResponse.status()).toBe(308);
+    expect(legacyResponse.headers().location).toBe("/api/docs");
+
+    await page.goto("/api/docs");
     await expect(page.getByRole("heading", { name: "Maiah API" })).toBeVisible({
       timeout: 20_000,
     });

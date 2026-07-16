@@ -244,7 +244,7 @@ Per-workspace token usage tracking and security audit logs for sensitive actions
 
 ## API routes
 
-The interactive Swagger UI is available at [`/api-docs`](http://localhost:3000/api-docs), and the OpenAPI 3.1 document at [`/api/openapi`](http://localhost:3000/api/openapi). The specification is generated from every App Router API handler and verified in CI so newly added operations cannot be omitted silently.
+The interactive Swagger UI is available at [`/api/docs`](http://localhost:3000/api/docs), and the OpenAPI 3.1 document at [`/api/openapi`](http://localhost:3000/api/openapi). The legacy `/api-docs` URL permanently redirects to `/api/docs`. The specification is generated from every App Router API handler and verified in CI so newly added operations cannot be omitted silently.
 
 Workspace API tokens are created from the API keys screen with explicit scopes. Their effective access is always the intersection of the selected token scopes, the token workspace, and the owner's current workspace permissions. Revoking a user's permission therefore revokes it for their existing tokens immediately. Session-only and public operations are identified directly in Swagger.
 
