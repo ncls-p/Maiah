@@ -49,7 +49,7 @@ async function* textParts(): AsyncIterable<TextStreamPart<ToolSet>> {
 function clientWith(fetch: typeof globalThis.fetch) {
   return new OpenAI({
     apiKey: "ahub_test",
-    baseURL: "http://maiah.test/v1",
+    baseURL: "http://maiah.test/api/v1",
     fetch,
     maxRetries: 0,
   });

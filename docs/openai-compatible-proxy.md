@@ -7,7 +7,7 @@ Maiah exposes the text-generation models enabled in a workspace through an OpenA
 Production:
 
 ```text
-https://maiah.shiftify.eco/v1
+https://maiah.shiftify.eco/api/v1
 ```
 
 Send a Maiah workspace token as a standard Bearer token:
@@ -18,8 +18,8 @@ Authorization: Bearer ahub_...
 
 Create the token from **API keys** with these precise scopes:
 
-- `models.view` for `GET /v1/models` and `GET /v1/models/{model}`;
-- `models.invoke` for `POST /v1/chat/completions` and `POST /v1/responses`.
+- `models.view` for `GET /api/v1/models` and `GET /api/v1/models/{model}`;
+- `models.invoke` for `POST /api/v1/chat/completions` and `POST /api/v1/responses`.
 
 The token remains limited by its owner's current workspace role. Revoking the role permission, expiring the token or revoking the token takes effect immediately.
 
@@ -30,7 +30,7 @@ import OpenAI from "openai";
 
 const client = new OpenAI({
   apiKey: process.env.MAIAH_API_KEY,
-  baseURL: "https://maiah.shiftify.eco/v1",
+  baseURL: "https://maiah.shiftify.eco/api/v1",
 });
 
 const models = await client.models.list();
@@ -66,7 +66,7 @@ from openai import OpenAI
 
 client = OpenAI(
     api_key="ahub_...",
-    base_url="https://maiah.shiftify.eco/v1",
+    base_url="https://maiah.shiftify.eco/api/v1",
 )
 
 models = client.models.list()
@@ -80,7 +80,7 @@ print(result.output_text)
 ## cURL
 
 ```bash
-curl https://maiah.shiftify.eco/v1/chat/completions \
+curl https://maiah.shiftify.eco/api/v1/chat/completions \
   -H "Authorization: Bearer $MAIAH_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -91,9 +91,9 @@ curl https://maiah.shiftify.eco/v1/chat/completions \
 
 ## Model identifiers
 
-`GET /v1/models` returns only enabled text-generation models from enabled, non-archived providers in the token workspace.
+`GET /api/v1/models` returns only enabled text-generation models from enabled, non-archived providers in the token workspace.
 
-The upstream model identifier is used directly when it is unique in the workspace. If two providers expose the same identifier, Maiah returns a qualified identifier in the form `<provider-id>/<upstream-model-id>`. Always use the `id` returned by `/v1/models`; it is accepted by both generation endpoints and by `GET /v1/models/{model}`.
+The upstream model identifier is used directly when it is unique in the workspace. If two providers expose the same identifier, Maiah returns a qualified identifier in the form `<provider-id>/<upstream-model-id>`. Always use the `id` returned by `/api/v1/models`; it is accepted by both generation endpoints and by `GET /api/v1/models/{model}`.
 
 The Model object retains standard OpenAI fields and adds non-breaking Maiah metadata such as `display_name`, capabilities, context limits and internal provider/model IDs.
 

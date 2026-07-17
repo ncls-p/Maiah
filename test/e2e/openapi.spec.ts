@@ -17,6 +17,9 @@ test.describe("OpenAPI documentation", () => {
     expect(document.openapi).toBe("3.1.0");
     expect(Object.keys(document.paths).length).toBeGreaterThan(90);
     expect(document.paths["/api/workspace/api-keys"].post).toBeTruthy();
+    expect(document.paths["/api/v1/models"].get).toBeTruthy();
+    expect(document.paths["/api/v1/chat/completions"].post).toBeTruthy();
+    expect(document.paths["/v1/models"]).toBeUndefined();
     expect(document.components.securitySchemes.workspaceBearer).toBeTruthy();
 
     const legacyResponse = await page.request.get("/api-docs", {

@@ -17,7 +17,7 @@ const operationOverrides: Record<
     responses?: OpenApiObject;
   }
 > = {
-  "GET /v1/models": {
+  "GET /api/v1/models": {
     summary: "List enabled OpenAI-compatible models",
     description:
       "OpenAI-compatible model catalog for the workspace bound to the Bearer token. Only enabled text-generation models are returned.",
@@ -34,7 +34,7 @@ const operationOverrides: Record<
       },
     },
   },
-  "GET /v1/models/{model}": {
+  "GET /api/v1/models/{model}": {
     summary: "Retrieve an enabled OpenAI-compatible model",
     auth: ["apiKey"],
     permissions: ["models.view"],
@@ -49,7 +49,7 @@ const operationOverrides: Record<
       },
     },
   },
-  "POST /v1/chat/completions": {
+  "POST /api/v1/chat/completions": {
     summary: "Create an OpenAI-compatible chat completion",
     description:
       "Drop-in Chat Completions endpoint. Supports text and image inputs, function tools, tool results, structured output, token usage and SSE streaming. n must be 1; audio and log probabilities are rejected explicitly.",
@@ -78,7 +78,7 @@ const operationOverrides: Record<
       },
     },
   },
-  "POST /v1/responses": {
+  "POST /api/v1/responses": {
     summary: "Create an OpenAI-compatible response",
     description:
       "Drop-in Responses endpoint for stateless text generation. Supports text and image inputs, function calls and outputs, structured output, usage and named SSE events. Stateful previous_response_id, background mode and hosted OpenAI tools are rejected explicitly.",
@@ -266,7 +266,7 @@ export function buildOpenApiDocument() {
       })),
     ];
     const responses = {
-      ...(route.path.startsWith("/v1/")
+      ...(route.path.startsWith("/api/v1/")
         ? openAICompatibleResponses()
         : commonResponses()),
       ...(route.responseKind === "stream"
@@ -309,7 +309,7 @@ export function buildOpenApiDocument() {
       title: "Maiah API",
       version: "1.0.0",
       description:
-        "Complete contract for the routes used by the Maiah interface and the OpenAI-compatible model proxy under /v1. Browser sessions and scoped workspace API tokens use the same permission checks. For a token, effective access is the intersection of its scopes and the owner's current workspace permissions.",
+        "Complete contract for the routes used by the Maiah interface and the OpenAI-compatible model proxy under /api/v1. Browser sessions and scoped workspace API tokens use the same permission checks. For a token, effective access is the intersection of its scopes and the owner's current workspace permissions.",
     },
     servers: [{ url: "/", description: "Current Maiah deployment" }],
     tags: [...new Set(OPENAPI_ROUTE_MANIFEST.map(({ tag }) => tag))].map(

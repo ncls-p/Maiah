@@ -250,7 +250,7 @@ test("official OpenAI SDK uses Maiah as a scoped model proxy end to end", async 
       process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000";
     const client = new OpenAI({
       apiKey: token.rawKey,
-      baseURL: `${appBaseUrl}/v1`,
+      baseURL: `${appBaseUrl}/api/v1`,
       maxRetries: 0,
     });
 
@@ -398,7 +398,7 @@ test("proxy enforces authentication, invocation scope and model visibility", asy
       process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000";
     const readOnlyClient = new OpenAI({
       apiKey: token.rawKey,
-      baseURL: `${appBaseUrl}/v1`,
+      baseURL: `${appBaseUrl}/api/v1`,
       maxRetries: 0,
     });
     await expect(readOnlyClient.models.list()).resolves.toBeDefined();
@@ -411,7 +411,7 @@ test("proxy enforces authentication, invocation scope and model visibility", asy
 
     const invalidClient = new OpenAI({
       apiKey: "ahub_invalid",
-      baseURL: `${appBaseUrl}/v1`,
+      baseURL: `${appBaseUrl}/api/v1`,
       maxRetries: 0,
     });
     await expect(invalidClient.models.list()).rejects.toMatchObject({

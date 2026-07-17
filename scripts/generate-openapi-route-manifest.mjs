@@ -4,11 +4,7 @@ import { format } from "prettier";
 
 const ROOT = process.cwd();
 const API_ROOT = path.join(ROOT, "src/app/api");
-const OPENAI_ROOT = path.join(ROOT, "src/app/v1");
-const ROUTE_ROOTS = [
-  { directory: API_ROOT, prefix: "/api" },
-  { directory: OPENAI_ROOT, prefix: "/v1" },
-];
+const ROUTE_ROOTS = [{ directory: API_ROOT, prefix: "/api" }];
 const OUTPUT = path.join(
   ROOT,
   "src/modules/openapi/generated-route-manifest.ts",
@@ -93,13 +89,13 @@ function pathParameters(apiPath) {
 }
 
 function routeTag(apiPath) {
-  if (apiPath.startsWith("/v1/")) return "OpenAI compatible";
+  if (apiPath.startsWith("/api/v1/")) return "OpenAI compatible";
   const [, , first = "system", second] = apiPath.split("/");
   return first === "workspace" && second ? second : first;
 }
 
 function authModes(apiPath, source) {
-  if (apiPath.startsWith("/v1/")) return ["apiKey"];
+  if (apiPath.startsWith("/api/v1/")) return ["apiKey"];
   if (
     apiPath.startsWith("/api/auth/") ||
     apiPath === "/api/health" ||
@@ -120,7 +116,7 @@ function authModes(apiPath, source) {
 
 function operationId(method, apiPath) {
   const suffix = apiPath
-    .replace(/^\/(?:api|v1)\//, "")
+    .replace(/^\/api\/(?:v1\/)?/, "")
     .replace(/[{}]/g, "")
     .split("/")
     .map((part) =>
@@ -143,7 +139,7 @@ function summary(method, apiPath) {
     HEAD: "Inspect",
     OPTIONS: "Inspect options for",
   }[method];
-  return `${action} ${apiPath.replace(/^\/(?:api|v1)\//, "").replaceAll("/", " · ")}`;
+  return `${action} ${apiPath.replace(/^\/api\/(?:v1\/)?/, "").replaceAll("/", " · ")}`;
 }
 
 const operations = [];

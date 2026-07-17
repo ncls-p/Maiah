@@ -39,6 +39,19 @@ describe("OpenAPI document", () => {
     expect(operation.security).toContainEqual({ workspaceBearer: [] });
   });
 
+  it("publishes the OpenAI-compatible API under /api/v1 only", () => {
+    const document = buildOpenApiDocument();
+    const paths = document.paths as Record<string, Record<string, Operation>>;
+
+    expect(paths["/api/v1/models"].get).toBeDefined();
+    expect(paths["/api/v1/models/{model}"].get).toBeDefined();
+    expect(paths["/api/v1/chat/completions"].post).toBeDefined();
+    expect(paths["/api/v1/responses"].post).toBeDefined();
+    expect(Object.keys(paths).some((path) => path.startsWith("/v1/"))).toBe(
+      false,
+    );
+  });
+
   it("publishes the precise API-token creation schema", () => {
     const document = buildOpenApiDocument();
     const paths = document.paths as Record<string, Record<string, Operation>>;
