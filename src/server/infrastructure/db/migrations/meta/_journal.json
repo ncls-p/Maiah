@@ -232,6 +232,20 @@
       "when": 1784204376502,
       "tag": "0032_workspace_api_key_scopes",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1784210000000,
+      "tag": "0033_openai_proxy_permissions",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1784293200000,
+      "tag": "0034_workflow_builder",
+      "breakpoints": true
     }
   ]
 }

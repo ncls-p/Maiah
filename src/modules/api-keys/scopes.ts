@@ -34,6 +34,11 @@ export const API_KEY_SCOPE_CATALOG = [
   { permission: "agents.manage", group: "agents", risk: "admin" },
   { permission: "agentVersions.create", group: "agents", risk: "write" },
   { permission: "agentVersions.manage", group: "agents", risk: "admin" },
+  { permission: "workflows.view", group: "workflows", risk: "read" },
+  { permission: "workflows.create", group: "workflows", risk: "write" },
+  { permission: "workflows.update", group: "workflows", risk: "write" },
+  { permission: "workflows.delete", group: "workflows", risk: "admin" },
+  { permission: "workflows.execute", group: "workflows", risk: "write" },
   { permission: "tools.view", group: "tools", risk: "read" },
   { permission: "tools.configure", group: "tools", risk: "write" },
   {
