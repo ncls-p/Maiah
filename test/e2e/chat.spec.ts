@@ -1,8 +1,10 @@
 import { expect, test } from "@playwright/test";
-import { loadEnvConfig } from "@next/env";
+import nextEnv from "@next/env";
 import { randomUUID, webcrypto } from "node:crypto";
 import { Client } from "pg";
 import { databaseUrl, e2eUser, ensureE2EUser, login } from "./fixtures";
+
+const { loadEnvConfig } = nextEnv;
 
 loadEnvConfig(process.cwd());
 

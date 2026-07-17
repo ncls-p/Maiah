@@ -45,6 +45,7 @@ import {
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
@@ -803,9 +804,9 @@ export function WorkflowBuilder({
         <SheetContent className="sm:max-w-lg">
           <SheetHeader>
             <SheetTitle>{t("runTitle")}</SheetTitle>
-            <p className="text-sm leading-6 text-muted-foreground">
+            <SheetDescription className="leading-6">
               {t("runDescription")}
-            </p>
+            </SheetDescription>
           </SheetHeader>
           <div className="flex flex-1 flex-col gap-4 px-5 pb-5">
             <div className="flex flex-col gap-2">
