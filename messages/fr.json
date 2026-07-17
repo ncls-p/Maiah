@@ -2011,6 +2011,7 @@
         "providers": "Fournisseurs IA",
         "models": "Modèles",
         "agents": "Agents",
+        "workflows": "Workflows",
         "tools": "Outils et MCP",
         "knowledge": "Bases de connaissances",
         "conversations": "Conversations",
@@ -2253,20 +2254,20 @@
       "cancelled": "Annulée"
     },
     "nodes": {
-      "trigger.manual": "Déclencheur API",
-      "agent.run": "Exécuter un assistant",
-      "http.request": "Requête HTTP",
-      "code.execute": "Code personnalisé",
-      "data.set": "Définir des données",
-      "logic.condition": "Condition"
+      "trigger": { "manual": "Déclencheur API" },
+      "agent": { "run": "Exécuter un assistant" },
+      "http": { "request": "Requête HTTP" },
+      "code": { "execute": "Code personnalisé" },
+      "data": { "set": "Définir des données" },
+      "logic": { "condition": "Condition" }
     },
     "nodeDescriptions": {
-      "trigger.manual": "Reçoit le JSON envoyé au lancement.",
-      "agent.run": "Confie cette étape à un assistant Maiah.",
-      "http.request": "Appelle une API HTTPS externe.",
-      "code.execute": "Exécute du JavaScript ou Python isolé.",
-      "data.set": "Ajoute ou remplace des champs.",
-      "logic.condition": "Sépare le flux entre vrai et faux."
+      "trigger": { "manual": "Reçoit le JSON envoyé au lancement." },
+      "agent": { "run": "Confie cette étape à un assistant Maiah." },
+      "http": { "request": "Appelle une API HTTPS externe." },
+      "code": { "execute": "Exécute du JavaScript ou Python isolé." },
+      "data": { "set": "Ajoute ou remplace des champs." },
+      "logic": { "condition": "Sépare le flux entre vrai et faux." }
     }
   },
   "scheduledTasks": {

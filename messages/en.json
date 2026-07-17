@@ -2012,6 +2012,7 @@
         "providers": "AI providers",
         "models": "Models",
         "agents": "Agents",
+        "workflows": "Workflows",
         "tools": "Tools and MCP",
         "knowledge": "Knowledge bases",
         "conversations": "Conversations",
@@ -2254,20 +2255,20 @@
       "cancelled": "Cancelled"
     },
     "nodes": {
-      "trigger.manual": "API trigger",
-      "agent.run": "Run an assistant",
-      "http.request": "HTTP request",
-      "code.execute": "Custom code",
-      "data.set": "Set data",
-      "logic.condition": "Condition"
+      "trigger": { "manual": "API trigger" },
+      "agent": { "run": "Run an assistant" },
+      "http": { "request": "HTTP request" },
+      "code": { "execute": "Custom code" },
+      "data": { "set": "Set data" },
+      "logic": { "condition": "Condition" }
     },
     "nodeDescriptions": {
-      "trigger.manual": "Receives the JSON sent when the run starts.",
-      "agent.run": "Delegates this step to a Maiah assistant.",
-      "http.request": "Calls an external HTTPS API.",
-      "code.execute": "Runs isolated JavaScript or Python.",
-      "data.set": "Adds or replaces fields.",
-      "logic.condition": "Branches the flow between true and false."
+      "trigger": { "manual": "Receives the JSON sent when the run starts." },
+      "agent": { "run": "Delegates this step to a Maiah assistant." },
+      "http": { "request": "Calls an external HTTPS API." },
+      "code": { "execute": "Runs isolated JavaScript or Python." },
+      "data": { "set": "Adds or replaces fields." },
+      "logic": { "condition": "Branches the flow between true and false." }
     }
   },
   "scheduledTasks": {
