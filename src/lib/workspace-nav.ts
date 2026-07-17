@@ -42,6 +42,7 @@ export type WorkspacePermissions = {
   canManageApiKeys: boolean;
   canManageWorkspace: boolean;
   canManageTenantGlobals: boolean;
+  canViewWorkflows: boolean;
 };
 
 export const DEFAULT_WORKSPACE_PERMISSIONS: WorkspacePermissions = {
@@ -59,6 +60,7 @@ export const DEFAULT_WORKSPACE_PERMISSIONS: WorkspacePermissions = {
   canManageApiKeys: false,
   canManageWorkspace: false,
   canManageTenantGlobals: false,
+  canViewWorkflows: false,
 };
 
 export type WorkspaceShellState = {
@@ -83,6 +85,11 @@ export const primaryNavItems: NavItem[] = [
 ];
 
 export const planningNavItems: NavItem[] = [
+  {
+    href: "/workflows",
+    labelKey: "workflows",
+    icon: WorkflowIcon,
+  },
   {
     href: "/scheduled-tasks",
     labelKey: "scheduledTasks",
@@ -116,6 +123,7 @@ const routeTitleKeys: Record<string, string> = {
   "/chat": "chat",
   "/agents": "assistants",
   "/scheduled-tasks": "scheduledTasks",
+  "/workflows": "workflows",
   "/providers": "aiConnections",
   "/knowledge": "knowledge",
   "/tools": "toolsHub",
@@ -168,6 +176,12 @@ export function getRouteBreadcrumbs(
     return [
       { labelKey: "assistants", href: "/agents" },
       { labelKey: "assistantConfig" },
+    ];
+  }
+  if (/^\/workflows\/[^/]+$/.test(pathname)) {
+    return [
+      { labelKey: "workflows", href: "/workflows" },
+      { labelKey: "workflowEditor" },
     ];
   }
   return undefined;

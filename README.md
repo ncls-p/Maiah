@@ -232,6 +232,37 @@ Register AI providers (OpenAI-compatible) with encrypted API key storage using A
 
 Define recurring agent jobs that run on a schedule via the background worker.
 
+### Low-code workflows
+
+Build, version, publish, and execute visual workflows directly inside Maiah. The
+editor is powered by React Flow, while Maiah stores its own versioned JSON DSL
+and compiles published definitions to Flowcraft at runtime. Durable run jobs use
+BullMQ on DragonflyDB; run and step history remains in PostgreSQL.
+
+Available nodes include API input, data transforms, conditions, HTTPS requests,
+assistant execution, and custom JavaScript or Python. Custom code always runs in
+the existing network-isolated sandbox runner. Drafts may be incomplete, but a
+workflow must pass graph validation before it can be published or tested.
+
+The main execution endpoint is:
+
+```http
+POST /api/workspace/workflows/{workflowId}/runs
+Authorization: Bearer <workspace-api-token>
+Content-Type: application/json
+
+{
+  "workspaceId": "<workspace-uuid>",
+  "input": { "message": "Hello" },
+  "idempotencyKey": "optional-client-key"
+}
+```
+
+Use the `workflows.execute` API-token scope and poll
+`GET /api/workspace/workflow-runs/{runId}?workspaceId=...` for status and step
+details. DragonflyDB is started with BullMQ-compatible hashtag locking in both
+development and production Compose configurations.
+
 ### Agent Marketplace
 
 Publish agents to a team marketplace with optional GitHub repository sync.
