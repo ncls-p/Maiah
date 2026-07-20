@@ -258,6 +258,7 @@ services:
       - "--maxmemory=${DRAGONFLY_MAXMEMORY:-256mb}"
       - "--cluster_mode=emulated"
       - "--lock_on_hashtags"
+      - "--default_lua_flags=allow-undeclared-keys"
     environment:
       DRAGONFLY_PASSWORD: ${DRAGONFLY_PASSWORD:?set DRAGONFLY_PASSWORD}
       DRAGONFLY_MAXMEMORY: ${DRAGONFLY_MAXMEMORY:-256mb}

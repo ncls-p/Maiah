@@ -3,45 +3,83 @@
 import type { Node, NodeProps } from "@xyflow/react";
 import { Handle, Position } from "@xyflow/react";
 import {
+  ArrowDownUpIcon,
   BotIcon,
   BracesIcon,
+  CalculatorIcon,
+  CalendarClockIcon,
+  CaseSensitiveIcon,
+  CircleStopIcon,
   Code2Icon,
+  FileJsonIcon,
   GitBranchIcon,
+  ListFilterIcon,
+  ListPlusIcon,
+  ListXIcon,
   PlayIcon,
+  ReplaceIcon,
+  Rows3Icon,
+  TextCursorInputIcon,
+  TimerIcon,
   WebhookIcon,
+  type LucideIcon,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { cn } from "@/lib/utils";
+import { workflowNodeCatalogItem } from "@/modules/workflows/catalog";
+import type { WorkflowNodeType } from "@/modules/workflows/contracts";
 
 import type { WorkflowCanvasData } from "./types";
 
 export type WorkflowCanvasNodeType = Node<WorkflowCanvasData, "workflow">;
 
-const iconByType = {
+export const workflowNodeIconByType: Record<WorkflowNodeType, LucideIcon> = {
   "trigger.manual": PlayIcon,
   "agent.run": BotIcon,
   "http.request": WebhookIcon,
   "code.execute": Code2Icon,
-  "data.set": BracesIcon,
+  "data.set": ListPlusIcon,
+  "data.pick": ListFilterIcon,
+  "data.remove": ListXIcon,
+  "data.rename": ReplaceIcon,
+  "data.template": TextCursorInputIcon,
+  "data.parseJson": BracesIcon,
+  "data.stringifyJson": FileJsonIcon,
+  "text.transform": CaseSensitiveIcon,
+  "number.calculate": CalculatorIcon,
+  "list.filter": ListFilterIcon,
+  "list.sort": ArrowDownUpIcon,
+  "list.slice": Rows3Icon,
   "logic.condition": GitBranchIcon,
-} as const;
+  "logic.delay": TimerIcon,
+  "logic.stop": CircleStopIcon,
+  "date.now": CalendarClockIcon,
+};
 
-const accentByType = {
-  "trigger.manual": "bg-emerald-500/12 text-emerald-700 dark:text-emerald-300",
-  "agent.run": "bg-sky-500/12 text-sky-700 dark:text-sky-300",
-  "http.request": "bg-amber-500/12 text-amber-700 dark:text-amber-300",
-  "code.execute": "bg-foreground/8 text-foreground",
-  "data.set": "bg-teal-500/12 text-teal-700 dark:text-teal-300",
-  "logic.condition": "bg-orange-500/12 text-orange-700 dark:text-orange-300",
-} as const;
+function nodeSummary(data: WorkflowCanvasData, category: string) {
+  const parameters = data.parameters;
+  if (data.workflowType === "http.request")
+    return `${String(parameters.method ?? "GET")} · ${String(parameters.url ?? "")}`;
+  if (data.workflowType === "logic.condition")
+    return `${String(parameters.path ?? "")} · ${String(parameters.operator ?? "equals")}`;
+  if (data.workflowType === "logic.delay")
+    return `${String(parameters.delayMs ?? 0)} ms`;
+  if (data.workflowType === "data.template")
+    return `→ ${String(parameters.outputPath ?? "")}`;
+  return category;
+}
 
 export function WorkflowCanvasNode({
   data,
   selected,
 }: NodeProps<WorkflowCanvasNodeType>) {
-  const Icon = iconByType[data.workflowType];
+  const t = useTranslations("workflows");
+  const Icon = workflowNodeIconByType[data.workflowType];
   const isTrigger = data.workflowType === "trigger.manual";
   const isCondition = data.workflowType === "logic.condition";
+  const isTerminal = data.workflowType === "logic.stop";
+  const category = workflowNodeCatalogItem(data.workflowType).category;
 
   return (
     <div
@@ -63,7 +101,13 @@ export function WorkflowCanvasNode({
         <span
           className={cn(
             "flex size-9 shrink-0 items-center justify-center rounded-xl",
-            accentByType[data.workflowType],
+            category === "ai"
+              ? "bg-primary/10 text-primary"
+              : category === "logic"
+                ? "bg-accent text-accent-foreground"
+                : category === "integration"
+                  ? "bg-secondary text-secondary-foreground"
+                  : "bg-muted text-foreground",
           )}
         >
           <Icon aria-hidden="true" />
@@ -73,38 +117,38 @@ export function WorkflowCanvasNode({
             {data.label}
           </p>
           <p className="mt-0.5 text-[11px] text-muted-foreground">
-            {data.workflowType}
+            {nodeSummary(data, t(`categories.${category}`))}
           </p>
         </div>
       </div>
       {isCondition ? (
         <>
           <div className="mt-3 flex justify-between text-[10px] font-medium text-muted-foreground">
-            <span>faux</span>
-            <span>vrai</span>
+            <span>{t("false")}</span>
+            <span>{t("true")}</span>
           </div>
           <Handle
             id="false"
             type="source"
             position={Position.Bottom}
             style={{ left: "25%" }}
-            className="!size-3 !border-2 !border-card !bg-orange-500"
+            className="!size-3 !border-2 !border-card !bg-destructive"
           />
           <Handle
             id="true"
             type="source"
             position={Position.Bottom}
             style={{ left: "75%" }}
-            className="!size-3 !border-2 !border-card !bg-emerald-500"
+            className="!size-3 !border-2 !border-card !bg-primary"
           />
         </>
-      ) : (
+      ) : !isTerminal ? (
         <Handle
           type="source"
           position={Position.Right}
           className="!size-3 !border-2 !border-card !bg-foreground"
         />
-      )}
+      ) : null}
     </div>
   );
 }

@@ -133,6 +133,25 @@ Chaque ressource distante doit distinguer :
 | Liste assistants en erreur | Erreur distincte de « aucun assistant »                  | Code                    |
 | Portée organisation/privée | Libellés localisés, permission fail-closed               | Code + tests IAM        |
 
+## Workflows no-code
+
+| Scénario                        | Attendu                                                                 | Couverture                        |
+| ------------------------------- | ----------------------------------------------------------------------- | --------------------------------- |
+| Première automatisation         | Déclencheur présent, ajout d’étape guidé et connexion automatique sûre  | Code + navigateur                 |
+| Catalogue et recherche          | 20 nœuds réels, catégories, filtre vide explicite                       | Tests runtime + navigateur        |
+| Configuration no-code           | Formulaires adaptés au nœud ; JSON brut derrière les réglages experts   | Code + tests de dictionnaires     |
+| Échappatoire code               | JavaScript/Python isolé, limites de temps et sortie JSON                | Tests sandbox + runtime           |
+| Graphe invalide                 | Cycle, second déclencheur et sortie après terminal refusés côté serveur | Tests contrats/runtime            |
+| Exécution initiale en erreur    | Erreur persistante et relance ; jamais de faux historique vide          | Code                              |
+| Actualisation en erreur         | Dernier historique valide conservé, avertissement visible               | Code                              |
+| Détail d’exécution              | Statut et sortie de chaque étape consultables                           | API + code                        |
+| Panneaux desktop                | Bibliothèque et inspecteur redimensionnables au clavier                 | Composant accessible + navigateur |
+| Mobile 390 px                   | Canevas sans débordement ; bibliothèque/inspecteur en panneaux latéraux | Navigateur                        |
+| Plein écran                     | Entrée/sortie explicites ; Échap restaure la page                       | Navigateur                        |
+| BullMQ sur Dragonfly            | Ajout de job sans erreur de clé Lua non déclarée                        | Smoke Docker Dragonfly réel       |
+| Publication et test concurrents | Boutons occupés, double soumission empêchée, saisie conservée           | Code + tests API                  |
+| API externe                     | Version publiée stable, scope `workflows.execute`, idempotence          | Tests routes + OpenAPI            |
+
 ## Outils, MCP, skills et approbations
 
 | Scénario                       | Attendu                                                                    | Couverture                |

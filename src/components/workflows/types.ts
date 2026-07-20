@@ -29,6 +29,26 @@ export type WorkflowRun = {
   error: string | null;
 };
 
+export type WorkflowRunStep = {
+  id: string;
+  runId: string;
+  nodeId: string;
+  nodeType: string;
+  status: "pending" | "running" | "completed" | "failed" | "skipped";
+  attempt: number;
+  inputJson: unknown;
+  outputJson: unknown;
+  error: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
+};
+
+export type WorkflowRunDetail = WorkflowRun & {
+  inputJson: unknown;
+  startedAt: string | null;
+  steps: WorkflowRunStep[];
+};
+
 export type WorkflowCanvasData = {
   label: string;
   workflowType: WorkflowNode["type"];

@@ -1,5 +1,6 @@
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
+import { setTimeout as wait } from "node:timers/promises";
 
 import {
   FlowRuntime,
@@ -32,6 +33,10 @@ function objectValue(value: unknown): Record<string, unknown> {
     : {};
 }
 
+function configuredEntries(value: unknown) {
+  return Object.entries(objectValue(value)).filter(([key]) => key.trim());
+}
+
 function inputAsText(input: unknown) {
   return typeof input === "string" ? input : JSON.stringify(input ?? null);
 }
@@ -52,6 +57,97 @@ function readPath(value: unknown, path: string) {
     }, value);
 }
 
+function writePath(input: unknown, path: string, value: unknown): unknown {
+  const segments = path.split(".").filter(Boolean);
+  if (segments.length === 0) return value;
+  const root = { ...objectValue(input) };
+  let current = root;
+  for (const [index, segment] of segments.entries()) {
+    if (index === segments.length - 1) {
+      current[segment] = value;
+      break;
+    }
+    const next = objectValue(current[segment]);
+    current[segment] = { ...next };
+    current = current[segment] as Record<string, unknown>;
+  }
+  return root;
+}
+
+function removePath(input: unknown, path: string): unknown {
+  const segments = path.split(".").filter(Boolean);
+  if (segments.length === 0) return input;
+  const root = { ...objectValue(input) };
+  let current = root;
+  for (const [index, segment] of segments.entries()) {
+    if (index === segments.length - 1) {
+      delete current[segment];
+      break;
+    }
+    const next = objectValue(current[segment]);
+    current[segment] = { ...next };
+    current = current[segment] as Record<string, unknown>;
+  }
+  return root;
+}
+
+function templateValue(path: string, input: unknown) {
+  return path.trim() === "input" ? input : readPath(input, path.trim());
+}
+
+function interpolateTemplate(template: string, input: unknown): unknown {
+  const exact = template.match(/^\s*{{\s*([^{}]+?)\s*}}\s*$/);
+  if (exact?.[1]) return templateValue(exact[1], input);
+  return template.replace(/{{\s*([^{}]+?)\s*}}/g, (_, path: string) => {
+    const value = templateValue(path, input);
+    if (value === undefined || value === null) return "";
+    return typeof value === "string" ? value : JSON.stringify(value);
+  });
+}
+
+function resolveTemplates(value: unknown, input: unknown): unknown {
+  if (typeof value === "string") return interpolateTemplate(value, input);
+  if (Array.isArray(value))
+    return value.map((item) => resolveTemplates(item, input));
+  if (typeof value === "object" && value !== null) {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [
+        key,
+        resolveTemplates(item, input),
+      ]),
+    );
+  }
+  return value;
+}
+
+function matchesComparison(
+  actual: unknown,
+  operator: string,
+  expected: unknown,
+) {
+  if (operator === "exists") return actual !== undefined && actual !== null;
+  if (operator === "isEmpty")
+    return (
+      actual === undefined ||
+      actual === null ||
+      actual === "" ||
+      (Array.isArray(actual) && actual.length === 0) ||
+      (typeof actual === "object" &&
+        actual !== null &&
+        Object.keys(actual).length === 0)
+    );
+  if (operator === "notEquals") return actual !== expected;
+  if (operator === "greaterThan") return Number(actual) > Number(expected);
+  if (operator === "lessThan") return Number(actual) < Number(expected);
+  if (operator === "contains")
+    return Array.isArray(actual)
+      ? actual.includes(expected)
+      : String(actual ?? "").includes(String(expected ?? ""));
+  if (operator === "startsWith")
+    return String(actual ?? "").startsWith(String(expected ?? ""));
+  return actual === expected;
+}
+
 const manualTrigger: NodeFunction<
   RuntimeContext,
   WorkflowRuntimeDependencies
@@ -63,9 +159,210 @@ const setData: NodeFunction<
 > = async ({ input, params }) => ({
   output: {
     ...objectValue(input),
-    ...objectValue(params.values),
+    ...Object.fromEntries(
+      configuredEntries(resolveTemplates(params.values, input)),
+    ),
   },
 });
+
+const pickData: NodeFunction<
+  RuntimeContext,
+  WorkflowRuntimeDependencies
+> = async ({ input, params }) => {
+  const paths = Array.isArray(params.paths)
+    ? params.paths.map(String).filter(Boolean)
+    : [];
+  return {
+    output: paths.reduce<unknown>((result, path) => {
+      const value = readPath(input, path);
+      return value === undefined ? result : writePath(result, path, value);
+    }, {}),
+  };
+};
+
+const removeData: NodeFunction<
+  RuntimeContext,
+  WorkflowRuntimeDependencies
+> = async ({ input, params }) => {
+  const paths = Array.isArray(params.paths)
+    ? params.paths.map(String).filter(Boolean)
+    : [];
+  return { output: paths.reduce(removePath, input) };
+};
+
+const renameData: NodeFunction<
+  RuntimeContext,
+  WorkflowRuntimeDependencies
+> = async ({ input, params }) => {
+  const from = String(params.from ?? "");
+  const to = String(params.to ?? "");
+  const value = readPath(input, from);
+  return {
+    output:
+      value === undefined
+        ? input
+        : writePath(removePath(input, from), to, value),
+  };
+};
+
+const templateData: NodeFunction<
+  RuntimeContext,
+  WorkflowRuntimeDependencies
+> = async ({ input, params }) => ({
+  output: writePath(
+    input,
+    String(params.outputPath ?? ""),
+    interpolateTemplate(String(params.template ?? ""), input),
+  ),
+});
+
+const parseJson: NodeFunction<
+  RuntimeContext,
+  WorkflowRuntimeDependencies
+> = async ({ input, params }) => {
+  const source = readPath(input, String(params.path ?? ""));
+  if (typeof source !== "string") {
+    throw new Error("The JSON source must be text.");
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(source);
+  } catch {
+    throw new Error("The selected value does not contain valid JSON.");
+  }
+  return {
+    output: writePath(input, String(params.outputPath ?? ""), parsed),
+  };
+};
+
+const stringifyJson: NodeFunction<
+  RuntimeContext,
+  WorkflowRuntimeDependencies
+> = async ({ input, params }) => ({
+  output: writePath(
+    input,
+    String(params.outputPath ?? ""),
+    JSON.stringify(readPath(input, String(params.path ?? ""))),
+  ),
+});
+
+const transformText: NodeFunction<
+  RuntimeContext,
+  WorkflowRuntimeDependencies
+> = async ({ input, params }) => {
+  const value = String(readPath(input, String(params.path ?? "")) ?? "");
+  const operation = String(params.operation ?? "trim");
+  const transformed =
+    operation === "uppercase"
+      ? value.toUpperCase()
+      : operation === "lowercase"
+        ? value.toLowerCase()
+        : operation === "replace"
+          ? String(params.search ?? "")
+            ? value.replaceAll(
+                String(params.search),
+                String(params.replacement ?? ""),
+              )
+            : value
+          : value.trim();
+  return {
+    output: writePath(input, String(params.outputPath ?? ""), transformed),
+  };
+};
+
+const calculateNumber: NodeFunction<
+  RuntimeContext,
+  WorkflowRuntimeDependencies
+> = async ({ input, params }) => {
+  const value = Number(readPath(input, String(params.path ?? "")));
+  const operand = Number(params.operand ?? 0);
+  const operation = String(params.operation ?? "add");
+  if (!Number.isFinite(value) || !Number.isFinite(operand)) {
+    throw new Error("The calculation requires finite numbers.");
+  }
+  if ((operation === "divide" || operation === "modulo") && operand === 0) {
+    throw new Error("Division by zero is not allowed.");
+  }
+  const result =
+    operation === "subtract"
+      ? value - operand
+      : operation === "multiply"
+        ? value * operand
+        : operation === "divide"
+          ? value / operand
+          : operation === "modulo"
+            ? value % operand
+            : operation === "round"
+              ? Math.round(value)
+              : value + operand;
+  return {
+    output: writePath(input, String(params.outputPath ?? ""), result),
+  };
+};
+
+function listAtPath(input: unknown, path: unknown) {
+  const value = readPath(input, String(path ?? ""));
+  if (!Array.isArray(value))
+    throw new Error("The selected value must be a list.");
+  return value;
+}
+
+const filterList: NodeFunction<
+  RuntimeContext,
+  WorkflowRuntimeDependencies
+> = async ({ input, params }) => {
+  const list = listAtPath(input, params.path);
+  const field = String(params.field ?? "");
+  const filtered = list.filter((item) =>
+    matchesComparison(
+      readPath(item, field),
+      String(params.operator ?? "equals"),
+      params.value,
+    ),
+  );
+  return {
+    output: writePath(input, String(params.outputPath ?? ""), filtered),
+  };
+};
+
+const sortList: NodeFunction<
+  RuntimeContext,
+  WorkflowRuntimeDependencies
+> = async ({ input, params }) => {
+  const field = String(params.field ?? "");
+  const direction = params.direction === "descending" ? -1 : 1;
+  const sorted = [...listAtPath(input, params.path)].sort((left, right) => {
+    const a = readPath(left, field);
+    const b = readPath(right, field);
+    if (a === b) return 0;
+    if (a === undefined || a === null) return 1;
+    if (b === undefined || b === null) return -1;
+    return (
+      String(a).localeCompare(String(b), undefined, {
+        numeric: true,
+        sensitivity: "base",
+      }) * direction
+    );
+  });
+  return {
+    output: writePath(input, String(params.outputPath ?? ""), sorted),
+  };
+};
+
+const sliceList: NodeFunction<
+  RuntimeContext,
+  WorkflowRuntimeDependencies
+> = async ({ input, params }) => {
+  const start = Math.max(0, Number(params.start) || 0);
+  const limit = Math.max(1, Math.min(10_000, Number(params.limit) || 10));
+  return {
+    output: writePath(
+      input,
+      String(params.outputPath ?? ""),
+      listAtPath(input, params.path).slice(start, start + limit),
+    ),
+  };
+};
 
 const condition: NodeFunction<
   RuntimeContext,
@@ -75,19 +372,45 @@ const condition: NodeFunction<
   "true" | "false"
 > = async ({ input, params }) => {
   const actual = readPath(input, String(params.path ?? ""));
-  const expected = params.value;
   const operator = String(params.operator ?? "equals");
-  const matches =
-    operator === "exists"
-      ? actual !== undefined && actual !== null
-      : operator === "notEquals"
-        ? actual !== expected
-        : operator === "greaterThan"
-          ? Number(actual) > Number(expected)
-          : operator === "lessThan"
-            ? Number(actual) < Number(expected)
-            : actual === expected;
+  const matches = matchesComparison(actual, operator, params.value);
   return { output: input, action: matches ? "true" : "false" };
+};
+
+const delayFlow: NodeFunction<
+  RuntimeContext,
+  WorkflowRuntimeDependencies
+> = async ({ input, params, signal }) => {
+  const delayMs = Math.max(0, Math.min(60_000, Number(params.delayMs) || 0));
+  await wait(delayMs, undefined, { signal });
+  return { output: input };
+};
+
+const stopFlow: NodeFunction<
+  RuntimeContext,
+  WorkflowRuntimeDependencies
+> = async ({ input, params }) => ({
+  output: {
+    ...objectValue(input),
+    workflowResult: interpolateTemplate(String(params.message ?? ""), input),
+  },
+});
+
+const currentDate: NodeFunction<
+  RuntimeContext,
+  WorkflowRuntimeDependencies
+> = async ({ input, params }) => {
+  const now = new Date();
+  const format = String(params.format ?? "iso");
+  const value =
+    format === "timestamp"
+      ? now.getTime()
+      : format === "date"
+        ? now.toISOString().slice(0, 10)
+        : now.toISOString();
+  return {
+    output: writePath(input, String(params.outputPath ?? ""), value),
+  };
 };
 
 function isPrivateIpv4(address: string) {
@@ -150,18 +473,25 @@ const httpRequest: NodeFunction<
   WorkflowRuntimeDependencies
 > = async ({ input, params, signal }) => {
   const url = await assertSafeHttpUrl(params.url);
+  for (const [key, value] of configuredEntries(params.query)) {
+    const resolved = resolveTemplates(value, input);
+    if (resolved !== undefined && resolved !== null) {
+      url.searchParams.set(key, String(resolved));
+    }
+  }
   const method = String(params.method ?? "GET").toUpperCase();
   if (!["GET", "POST", "PUT", "PATCH", "DELETE"].includes(method)) {
     throw new Error(`Unsupported HTTP method: ${method}`);
   }
   const headers = Object.fromEntries(
-    Object.entries(objectValue(params.headers)).map(([key, value]) => [
+    configuredEntries(params.headers).map(([key, value]) => [
       key,
-      String(value),
+      String(resolveTemplates(value, input)),
     ]),
   );
   const hasBody = !["GET", "DELETE"].includes(method);
-  const bodyValue = params.body === undefined ? input : params.body;
+  const bodyValue =
+    params.body === undefined ? input : resolveTemplates(params.body, input);
   if (hasBody && !headers["content-type"] && !headers["Content-Type"]) {
     headers["content-type"] = "application/json";
   }
@@ -231,10 +561,12 @@ const runAgent: NodeFunction<
 > = async ({ input, params, dependencies, signal }) => {
   const agentId = String(params.agentId ?? "");
   if (!agentId) throw new Error("An agent must be selected.");
-  const prompt = String(params.prompt ?? "{{input}}").replaceAll(
-    "{{input}}",
-    inputAsText(input),
+  const promptValue = interpolateTemplate(
+    String(params.prompt ?? "{{input}}"),
+    input,
   );
+  const prompt =
+    typeof promptValue === "string" ? promptValue : inputAsText(promptValue);
   const result = await executeAgent({
     workspaceId: dependencies.workspaceId,
     userId: dependencies.userId,
@@ -250,7 +582,21 @@ const runAgent: NodeFunction<
 export const WORKFLOW_NODE_REGISTRY = {
   "trigger.manual": manualTrigger,
   "data.set": setData,
+  "data.pick": pickData,
+  "data.remove": removeData,
+  "data.rename": renameData,
+  "data.template": templateData,
+  "data.parseJson": parseJson,
+  "data.stringifyJson": stringifyJson,
+  "text.transform": transformText,
+  "number.calculate": calculateNumber,
+  "list.filter": filterList,
+  "list.sort": sortList,
+  "list.slice": sliceList,
   "logic.condition": condition,
+  "logic.delay": delayFlow,
+  "logic.stop": stopFlow,
+  "date.now": currentDate,
   "http.request": httpRequest,
   "code.execute": executeCode,
   "agent.run": runAgent,
@@ -328,6 +674,46 @@ function assertNodeParameters(node: WorkflowNode) {
     Object.keys(objectValue(params.values)).length > 200
   ) {
     throw new Error(`Node '${node.label}' defines too many fields.`);
+  }
+  if (
+    (node.type === "data.pick" || node.type === "data.remove") &&
+    (!Array.isArray(params.paths) ||
+      params.paths.length === 0 ||
+      params.paths.length > 200 ||
+      params.paths.some((path) => typeof path !== "string" || !path.trim()))
+  ) {
+    throw new Error(`Node '${node.label}' requires one or more field paths.`);
+  }
+  if (
+    node.type === "data.rename" &&
+    (typeof params.from !== "string" ||
+      !params.from.trim() ||
+      typeof params.to !== "string" ||
+      !params.to.trim())
+  ) {
+    throw new Error(`Node '${node.label}' requires source and target paths.`);
+  }
+  if (
+    (node.type === "data.template" ||
+      node.type === "data.parseJson" ||
+      node.type === "data.stringifyJson" ||
+      node.type === "text.transform" ||
+      node.type === "number.calculate" ||
+      node.type === "list.filter" ||
+      node.type === "list.sort" ||
+      node.type === "list.slice" ||
+      node.type === "date.now") &&
+    (typeof params.outputPath !== "string" || !params.outputPath.trim())
+  ) {
+    throw new Error(`Node '${node.label}' requires an output path.`);
+  }
+  if (
+    node.type === "logic.delay" &&
+    (!Number.isFinite(Number(params.delayMs)) ||
+      Number(params.delayMs) < 0 ||
+      Number(params.delayMs) > 60_000)
+  ) {
+    throw new Error(`Node '${node.label}' requires a delay under 60 seconds.`);
   }
   if (
     node.type === "logic.condition" &&

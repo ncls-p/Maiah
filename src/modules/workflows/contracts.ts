@@ -3,7 +3,21 @@ import { z } from "zod";
 export const workflowNodeTypeSchema = z.enum([
   "trigger.manual",
   "data.set",
+  "data.pick",
+  "data.remove",
+  "data.rename",
+  "data.template",
+  "data.parseJson",
+  "data.stringifyJson",
+  "text.transform",
+  "number.calculate",
+  "list.filter",
+  "list.sort",
+  "list.slice",
   "logic.condition",
+  "logic.delay",
+  "logic.stop",
+  "date.now",
   "http.request",
   "code.execute",
   "agent.run",
@@ -86,6 +100,14 @@ export const workflowDefinitionSchema = z
           code: "custom",
           path: ["edges"],
           message: `Edge ${edge.id} cannot connect a node to itself.`,
+        });
+      }
+      const source = definition.nodes.find((node) => node.id === edge.source);
+      if (source?.type === "logic.stop") {
+        context.addIssue({
+          code: "custom",
+          path: ["edges"],
+          message: `Terminal node ${source.id} cannot have outgoing edges.`,
         });
       }
     }
