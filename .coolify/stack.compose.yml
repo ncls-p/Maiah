@@ -30,6 +30,9 @@ services:
       - SANDBOX_RUNNER_SOCKET=/run/sandbox/sandbox.sock
       - ALLOW_PERSONAL_WORKSPACES=${ALLOW_PERSONAL_WORKSPACES:-true}
       - WORKSPACE_MONTHLY_TOKEN_LIMIT=${WORKSPACE_MONTHLY_TOKEN_LIMIT:-}
+      - GITHUB_APP_ID=${GITHUB_APP_ID:-}
+      - GITHUB_APP_SLUG=${GITHUB_APP_SLUG:-}
+      - GITHUB_APP_PRIVATE_KEY=${GITHUB_APP_PRIVATE_KEY:-}
     depends_on:
       rustfs-init:
         condition: service_completed_successfully

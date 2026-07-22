@@ -714,6 +714,9 @@ jobs:
           OBJECT_STORAGE_SECRET_ACCESS_KEY: ${{ secrets.OBJECT_STORAGE_SECRET_ACCESS_KEY }}
           SEARXNG_SECRET: ${{ secrets.SEARXNG_SECRET }}
           MCP_GATEWAY_SHARED_SECRET: ${{ secrets.MCP_GATEWAY_SHARED_SECRET }}
+          GITHUB_APP_ID: ${{ github.event_name != 'pull_request' && secrets.MAIAH_GITHUB_APP_ID || '' }}
+          GITHUB_APP_SLUG: ${{ github.event_name != 'pull_request' && secrets.MAIAH_GITHUB_APP_SLUG || '' }}
+          GITHUB_APP_PRIVATE_KEY: ${{ github.event_name != 'pull_request' && secrets.MAIAH_GITHUB_APP_PRIVATE_KEY || '' }}
           SEARXNG_SETTINGS_REVISION: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
           OBJECT_STORAGE_BUCKET: ${{ vars.OBJECT_STORAGE_BUCKET || 'ai-hub' }}
           CODE_WORKSPACE_STORAGE_PREFIX: ${{ vars.CODE_WORKSPACE_STORAGE_PREFIX || 'code-workspaces' }}
@@ -781,6 +784,9 @@ jobs:
             AI_HUB_SANDBOX_IMAGE
             AI_HUB_SERVICENOW_MCP_GATEWAY_IMAGE
           )
+          if [[ "${IS_PREVIEW}" != "true" ]]; then
+            required+=(GITHUB_APP_ID GITHUB_APP_SLUG GITHUB_APP_PRIVATE_KEY)
+          fi
           for key in "${required[@]}"; do
             if [[ -z "${!key:-}" ]]; then
               echo "${key} is required for deployment." >&2
@@ -1019,6 +1025,9 @@ jobs:
               --arg app_encryption_key_id "${APP_ENCRYPTION_KEY_ID}" \
               --arg dragonfly_password "${DRAGONFLY_PASSWORD}" \
               --arg mcp_gateway_shared_secret "${MCP_GATEWAY_SHARED_SECRET}" \
+              --arg github_app_id "${GITHUB_APP_ID}" \
+              --arg github_app_slug "${GITHUB_APP_SLUG}" \
+              --arg github_app_private_key "${GITHUB_APP_PRIVATE_KEY}" \
               --arg object_storage_access_key_id "${OBJECT_STORAGE_ACCESS_KEY_ID}" \
               --arg object_storage_secret_access_key "${OBJECT_STORAGE_SECRET_ACCESS_KEY}" \
               --arg object_storage_bucket "${OBJECT_STORAGE_BUCKET}" \
@@ -1053,6 +1062,9 @@ jobs:
                 {key: "APP_ENCRYPTION_KEY_ID", value: $app_encryption_key_id},
                 {key: "DRAGONFLY_PASSWORD", value: $dragonfly_password},
                 {key: "MCP_GATEWAY_SHARED_SECRET", value: $mcp_gateway_shared_secret},
+                {key: "GITHUB_APP_ID", value: $github_app_id},
+                {key: "GITHUB_APP_SLUG", value: $github_app_slug},
+                {key: "GITHUB_APP_PRIVATE_KEY", value: $github_app_private_key},
                 {key: "OBJECT_STORAGE_ACCESS_KEY_ID", value: $object_storage_access_key_id},
                 {key: "OBJECT_STORAGE_SECRET_ACCESS_KEY", value: $object_storage_secret_access_key},
                 {key: "OBJECT_STORAGE_BUCKET", value: $object_storage_bucket},
