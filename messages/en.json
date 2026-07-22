@@ -361,7 +361,7 @@
     "github": {
       "title": "Publish to GitHub",
       "dialogDescription": "Choose a repository and publishing mode for this code workspace.",
-      "defaultCommit": "Update {name}",
+      "defaultCommit": "Update files from Maiah",
       "unavailable": "GitHub unavailable",
       "loadFailed": "Unable to load GitHub status",
       "branchesFailed": "Unable to load branches",
@@ -398,6 +398,7 @@
       "defaultBranch": "This is the default branch for {name}.",
       "sourceBranch": "Source branch (optional)",
       "targetDirectory": "Target directory (optional)",
+      "targetDirectoryHint": "Leave empty to publish the contents at the repository root.",
       "commitMessage": "Commit message",
       "filesToPublish": "Files to publish",
       "filesSummary": "{count, plural, one {# file} other {# files}} from workspace v{version}. GitHub branch protections still apply.",

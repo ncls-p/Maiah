@@ -361,7 +361,7 @@
     "github": {
       "title": "Publier sur GitHub",
       "dialogDescription": "Choisissez le dépôt et le mode de publication de cet espace de code.",
-      "defaultCommit": "Mettre à jour {name}",
+      "defaultCommit": "Mettre à jour les fichiers depuis Maiah",
       "unavailable": "GitHub indisponible",
       "loadFailed": "Impossible de charger l’état GitHub",
       "branchesFailed": "Impossible de charger les branches",
@@ -398,6 +398,7 @@
       "defaultBranch": "Branche par défaut de {name}.",
       "sourceBranch": "Branche source (optionnel)",
       "targetDirectory": "Dossier cible (optionnel)",
+      "targetDirectoryHint": "Laissez vide pour publier le contenu à la racine du dépôt.",
       "commitMessage": "Message de commit",
       "filesToPublish": "Fichiers à publier",
       "filesSummary": "{count, plural, one {# fichier} other {# fichiers}} de l’espace de code v{version}. Les protections de branche GitHub restent applicables.",

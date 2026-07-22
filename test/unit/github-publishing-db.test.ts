@@ -372,6 +372,67 @@ describe("GitHub publishing DB/API flows", () => {
 		);
 	});
 
+	it("publishes the workspace contents at the repository root when no destination is provided", async () => {
+		vi.mocked(storage.getCodeWorkspaceFilesForPublish).mockResolvedValueOnce({
+			metadata: { id: ids.projectId, rootFile: "generated-site/index.html" },
+			files: [
+				{
+					path: "generated-site/index.html",
+					bytes: new TextEncoder().encode("<h1>Hello</h1>"),
+					size: 14,
+				},
+				{
+					path: "generated-site/assets/app.js",
+					bytes: new TextEncoder().encode("console.log('ok')"),
+					size: 17,
+				},
+			],
+		} as never);
+		dbModule._c.limit
+			.mockResolvedValueOnce([repoRow])
+			.mockResolvedValueOnce([connectionRow]);
+		dbModule._c.returning.mockResolvedValueOnce([{ id: "event-root" }]);
+		vi.mocked(globalThis.fetch)
+			.mockResolvedValueOnce(
+				jsonResponse({ token: "installation-token" }) as never,
+			)
+			.mockResolvedValueOnce(
+				jsonResponse({ object: { sha: "base", type: "commit" } }) as never,
+			)
+			.mockResolvedValueOnce(
+				jsonResponse({ tree: { sha: "tree-base" } }) as never,
+			)
+			.mockResolvedValueOnce(jsonResponse({ sha: "blob-1" }) as never)
+			.mockResolvedValueOnce(jsonResponse({ sha: "blob-2" }) as never)
+			.mockResolvedValueOnce(jsonResponse({ sha: "tree-new" }) as never)
+			.mockResolvedValueOnce(jsonResponse({ sha: "commit-new" }) as never)
+			.mockResolvedValueOnce(jsonResponse({}) as never);
+
+		const result = await publishing.publishCodeWorkspaceToGitHub({
+			workspaceId: ids.workspaceId,
+			userId: ids.userId,
+			projectId: ids.projectId,
+			repositoryId: ids.repositoryId,
+			mode: "direct_push",
+			targetBranch: "main",
+			commitMessage: "Update files from Maiah",
+			confirmDirectPush: true,
+		});
+
+		expect(result.files.map((file) => file.path)).toEqual([
+			"index.html",
+			"assets/app.js",
+		]);
+		const treeRequest = vi
+			.mocked(globalThis.fetch)
+			.mock.calls.find(([url]) => String(url).endsWith("/git/trees"));
+		expect(
+			JSON.parse(String(treeRequest?.[1]?.body)).tree.map(
+				(file: { path: string }) => file.path,
+			),
+		).toEqual(["index.html", "assets/app.js"]);
+	});
+
 	it("handles direct-push validation, safety checks, empty repositories, and failure audit rows", async () => {
 		await expect(
 			publishing.publishCodeWorkspaceToGitHub({

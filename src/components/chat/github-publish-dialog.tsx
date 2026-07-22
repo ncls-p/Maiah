@@ -148,9 +148,7 @@ export function GitHubPublishDialog({
   const [mode, setMode] = useState<"pull_request" | "direct_push">(
     "pull_request",
   );
-  const [commitMessage, setCommitMessage] = useState(
-    t("defaultCommit", { name: artifact.title }),
-  );
+  const [commitMessage, setCommitMessage] = useState(t("defaultCommit"));
   const [confirmDirectPush, setConfirmDirectPush] = useState(false);
   const [result, setResult] = useState<GitHubPublishResult | null>(null);
   const selectedRepository = repositories.find(
@@ -580,6 +578,9 @@ export function GitHubPublishDialog({
                 value={targetDirectory}
                 onChange={(event) => setTargetDirectory(event.target.value)}
               />
+              <p className="text-[11px] text-muted-foreground">
+                {t("targetDirectoryHint")}
+              </p>
             </div>
             <div className="grid gap-1.5">
               <label className="text-xs font-medium" htmlFor="github-commit">

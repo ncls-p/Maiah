@@ -676,6 +676,32 @@ function prefixedPath(directory: string, filePath: string) {
   return directory ? `${directory}/${filePath}` : filePath;
 }
 
+function commonWorkspaceDirectory(filePaths: string[]) {
+  if (filePaths.length === 0) return "";
+  const pathSegments = filePaths.map((filePath) => filePath.split("/"));
+  const maxDirectorySegments = Math.min(
+    ...pathSegments.map((segments) => Math.max(segments.length - 1, 0)),
+  );
+  const commonSegments: string[] = [];
+
+  for (let index = 0; index < maxDirectorySegments; index += 1) {
+    const segment = pathSegments[0]?.[index];
+    if (
+      !segment ||
+      pathSegments.some((segments) => segments[index] !== segment)
+    ) {
+      break;
+    }
+    commonSegments.push(segment);
+  }
+
+  return commonSegments.join("/");
+}
+
+function workspaceContentPath(directory: string, filePath: string) {
+  return directory ? filePath.slice(directory.length + 1) : filePath;
+}
+
 function assertPublishPathAllowed(filePath: string) {
   if (blockedPublishPathPatterns.some((pattern) => pattern.test(filePath))) {
     throw new Error(`Publishing this path is blocked for safety: ${filePath}`);
@@ -958,8 +984,16 @@ export async function publishCodeWorkspaceToGitHub(
       "Code workspace is too large to publish. Maximum is 50 MB.",
     );
   }
+  const workspaceDirectory = commonWorkspaceDirectory(
+    workspace.files.map((file) => file.path),
+  );
+  const repositoryPath = (filePath: string) =>
+    prefixedPath(
+      targetDirectory,
+      workspaceContentPath(workspaceDirectory, filePath),
+    );
   for (const file of workspace.files) {
-    const publishPath = prefixedPath(targetDirectory, file.path);
+    const publishPath = repositoryPath(file.path);
     assertPublishPathAllowed(publishPath);
     scanTextForSecrets(publishPath, file.bytes);
   }
@@ -1022,7 +1056,7 @@ export async function publishCodeWorkspaceToGitHub(
           repo: repo.name,
           branch: targetBranch,
           files: workspace.files.map((file) => ({
-            path: prefixedPath(targetDirectory, file.path),
+            path: repositoryPath(file.path),
             bytes: file.bytes,
             size: file.size,
           })),
@@ -1073,7 +1107,7 @@ export async function publishCodeWorkspaceToGitHub(
       const initialPath =
         parsed.mode === "pull_request"
           ? "README.md"
-          : prefixedPath(targetDirectory, firstFile.path);
+          : repositoryPath(firstFile.path);
       const initialBytes =
         parsed.mode === "pull_request"
           ? Buffer.from(
@@ -1134,7 +1168,7 @@ export async function publishCodeWorkspaceToGitHub(
           },
         );
         return {
-          path: prefixedPath(targetDirectory, file.path),
+          path: repositoryPath(file.path),
           mode: "100644",
           type: "blob",
           sha: blob.sha,
@@ -1242,7 +1276,7 @@ export async function publishCodeWorkspaceToGitHub(
         status: "success",
         metadataJson: {
           targetDirectory,
-          files: workspace.files.map((file) => file.path),
+          files: workspace.files.map((file) => repositoryPath(file.path)),
         },
       })
       .returning({ id: githubPublishEvents.id });
@@ -1263,7 +1297,7 @@ export async function publishCodeWorkspaceToGitHub(
       commitSha: commit.sha,
       pullRequestUrl,
       files: workspace.files.map((file) => ({
-        path: prefixedPath(targetDirectory, file.path),
+        path: repositoryPath(file.path),
         size: file.size,
       })),
       message:
