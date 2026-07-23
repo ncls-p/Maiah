@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { LanguageModelV4Usage } from "@ai-sdk/provider";
+import { MockLanguageModelV4, simulateReadableStream } from "ai/test";
 import { NextRequest } from "next/server";
 
 import { createStarterDefinition } from "@/modules/workflows/contracts";
 
 const mocks = vi.hoisted(() => ({
-  streamText: vi.fn(),
   requirePermission: vi.fn(),
   getWorkflowDetail: vi.fn(),
   updateWorkflow: vi.fn(),
@@ -13,12 +14,6 @@ const mocks = vi.hoisted(() => ({
   getActiveVersion: vi.fn(),
   resolveProviderForVersion: vi.fn(),
   createChatModel: vi.fn(),
-}));
-
-vi.mock("ai", () => ({
-  stepCountIs: vi.fn((count) => ({ count })),
-  tool: vi.fn((definition) => definition),
-  streamText: mocks.streamText,
 }));
 
 vi.mock("@/lib/route-handler", () => ({
@@ -72,6 +67,19 @@ const workspaceId = "22222222-2222-4222-8222-222222222222";
 const workflowId = "33333333-3333-4333-8333-333333333333";
 const agentId = "44444444-4444-4444-8444-444444444444";
 const versionId = "55555555-5555-4555-8555-555555555555";
+const modelUsage: LanguageModelV4Usage = {
+  inputTokens: {
+    total: 10,
+    noCache: 10,
+    cacheRead: 0,
+    cacheWrite: 0,
+  },
+  outputTokens: {
+    total: 5,
+    text: 5,
+    reasoning: 0,
+  },
+};
 
 const generatedDefinition = {
   schemaVersion: 1 as const,
@@ -182,33 +190,61 @@ describe("workflow agentic route", () => {
       modelId: "model-1",
       runtimeConfig: {},
     });
-    mocks.createChatModel.mockReturnValue({ modelId: "model-1" });
+    mocks.createChatModel.mockReturnValue(
+      new MockLanguageModelV4({
+        modelId: "model-1",
+        doStream: [
+          {
+            stream: simulateReadableStream({
+              chunks: [
+                { type: "stream-start", warnings: [] },
+                {
+                  type: "tool-call",
+                  toolCallId: "tool-1",
+                  toolName: "replace_workflow",
+                  input: JSON.stringify({
+                    summary: "Added a summary step",
+                    definition: generatedDefinition,
+                  }),
+                },
+                {
+                  type: "finish",
+                  usage: modelUsage,
+                  finishReason: {
+                    unified: "tool-calls",
+                    raw: "tool_calls",
+                  },
+                },
+              ],
+            }),
+          },
+          {
+            stream: simulateReadableStream({
+              chunks: [
+                { type: "stream-start", warnings: [] },
+                { type: "text-start", id: "text-1" },
+                {
+                  type: "text-delta",
+                  id: "text-1",
+                  delta: "The workflow is ready.",
+                },
+                { type: "text-end", id: "text-1" },
+                {
+                  type: "finish",
+                  usage: modelUsage,
+                  finishReason: { unified: "stop", raw: "stop" },
+                },
+              ],
+            }),
+          },
+        ],
+      }),
+    );
     mocks.updateWorkflow.mockImplementation(async (input) => ({
       ...input,
       latestVersion: 2,
       version: 2,
       status: "draft",
-    }));
-    mocks.streamText.mockImplementation((options) => ({
-      stream: (async function* () {
-        yield {
-          type: "tool-call",
-          toolCallId: "tool-1",
-          toolName: "replace_workflow",
-          input: {},
-        };
-        await options.tools.replace_workflow.execute({
-          summary: "Added a summary step",
-          definition: generatedDefinition,
-        });
-        yield {
-          type: "tool-result",
-          toolCallId: "tool-1",
-          toolName: "replace_workflow",
-          output: { ok: true },
-        };
-        yield { type: "text-delta", text: "The workflow is ready." };
-      })(),
     }));
   });
 
@@ -263,7 +299,7 @@ describe("workflow agentic route", () => {
     });
 
     expect(response.status).toBe(400);
-    expect(mocks.streamText).not.toHaveBeenCalled();
+    expect(mocks.createChatModel).not.toHaveBeenCalled();
     expect(mocks.updateWorkflow).not.toHaveBeenCalled();
   });
 });
