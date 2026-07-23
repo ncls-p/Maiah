@@ -152,15 +152,11 @@ test.describe("workspace navigation", () => {
     ).toBeVisible({ timeout: 10_000 });
   });
 
-  test("navigating to /custom-tools loads custom tools page", async ({
+  test("navigating to /custom-tools redirects to workflows", async ({
     page,
   }) => {
     await page.goto("/en/custom-tools");
-    await expect(page).toHaveURL(/\/en\/tools\?tab=custom/);
-
-    const customTab = page.getByRole("tab", { name: "Custom", exact: true });
-    await expect(customTab).toBeVisible({ timeout: 15_000 });
-    await expect(customTab).toHaveAttribute("data-state", "active");
+    await expect(page).toHaveURL(/\/en\/workflows/);
   });
 });
 

@@ -194,11 +194,11 @@ test("builds, saves, and runs a workflow through the real agentic provider strea
     await page.request.get("/api/workspaces")
   ).json()) as Array<{ workspace: { id: string } }>;
   const workspaceId = workspaces[0]!.workspace.id;
-  const previousPreferences = (await (
+  const previousBuilderState = (await (
     await page.request.get(
-      `/api/workspace/agents/preferences?workspaceId=${workspaceId}`,
+      `/api/admin/workflow-builder?workspaceId=${workspaceId}`,
     )
-  ).json()) as { userDefaultAgentId: string | null };
+  ).json()) as { config: { agentId: string | null } };
 
   let providerId: string | undefined;
   let agentId: string | undefined;
@@ -255,17 +255,16 @@ test("builds, saves, and runs a workflow through the real agentic provider strea
       }
     ).agent.id;
 
-    const preferenceResponse = await page.request.patch(
-      "/api/workspace/agents/preferences",
+    const builderSettingsResponse = await page.request.patch(
+      "/api/admin/workflow-builder",
       {
         data: {
           workspaceId,
-          scope: "user",
-          defaultAgentId: agentId,
+          agentId,
         },
       },
     );
-    expect(preferenceResponse.ok()).toBe(true);
+    expect(builderSettingsResponse.ok()).toBe(true);
 
     const workflowResponse = await page.request.post(
       "/api/workspace/workflows",
@@ -356,11 +355,10 @@ test("builds, saves, and runs a workflow through the real agentic provider strea
         steps: [{ status: "completed" }, { status: "completed" }],
       });
   } finally {
-    await page.request.patch("/api/workspace/agents/preferences", {
+    await page.request.patch("/api/admin/workflow-builder", {
       data: {
         workspaceId,
-        scope: "user",
-        defaultAgentId: previousPreferences.userDefaultAgentId,
+        agentId: previousBuilderState.config.agentId,
       },
     });
     if (workflowId) {

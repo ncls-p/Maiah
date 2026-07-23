@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import {
   getActiveVersion,
+  getAgentById,
   getAgentDefaultPreferences,
   listAgents,
   resolveProviderForVersion,
@@ -18,6 +19,7 @@ import {
   workflowAgenticRequestSchema,
   workflowAgentToolLabels,
 } from "@/modules/workflows/agentic";
+import { getConfiguredWorkflowBuilderAgentId } from "@/modules/workflows/builder-settings";
 import {
   workflowDefinitionSchema,
   workflowEdgeSchema,
@@ -82,40 +84,74 @@ export async function POST(
       );
       if (forbidden) return forbidden;
 
-      const [workflow, availableAgents] = await Promise.all([
-        getWorkflowDetail(workflowId, workspaceId),
-        listAgents(workspaceId, session.user.id, false),
-      ]);
+      const [workflow, availableAgents, configuredBuilderAgentId] =
+        await Promise.all([
+          getWorkflowDetail(workflowId, workspaceId),
+          listAgents(workspaceId, session.user.id, false),
+          getConfiguredWorkflowBuilderAgentId(workspaceId),
+        ]);
       const availableAgentIds = new Set(
         availableAgents.map((agent) => agent.id),
       );
-      const preferences = await getAgentDefaultPreferences(
-        workspaceId,
-        session.user.id,
-        availableAgentIds,
-      );
-      const builderAgent =
-        availableAgents.find(
-          (agent) => agent.id === preferences.effectiveDefaultAgentId,
-        ) ?? availableAgents[0];
-      if (!builderAgent) {
+
+      let builderAgent = configuredBuilderAgentId
+        ? await getAgentById(configuredBuilderAgentId, workspaceId)
+        : null;
+      let version = builderAgent
+        ? await getActiveVersion(builderAgent.id)
+        : null;
+      let provider = version ? await resolveProviderForVersion(version) : null;
+
+      if (configuredBuilderAgentId && !builderAgent) {
         return NextResponse.json(
-          { error: "No assistant is available for agentic mode" },
+          {
+            error:
+              "The workflow builder assistant configured by an administrator is unavailable",
+          },
           { status: 400 },
         );
       }
 
-      const version = await getActiveVersion(builderAgent.id);
-      if (!version) {
+      if (configuredBuilderAgentId && (!version || !provider?.modelId)) {
         return NextResponse.json(
-          { error: "The selected assistant has no active version" },
+          {
+            error:
+              "The workflow builder assistant configured by an administrator requires an active model",
+          },
           { status: 400 },
         );
       }
-      const provider = await resolveProviderForVersion(version);
-      if (!provider?.modelId) {
+
+      if (!builderAgent) {
+        const preferences = await getAgentDefaultPreferences(
+          workspaceId,
+          session.user.id,
+          availableAgentIds,
+        );
+        const preferredAgent = availableAgents.find(
+          (agent) => agent.id === preferences.effectiveDefaultAgentId,
+        );
+        const candidates = [
+          ...(preferredAgent ? [preferredAgent] : []),
+          ...availableAgents.filter((agent) => agent.id !== preferredAgent?.id),
+        ];
+
+        for (const candidate of candidates) {
+          const candidateVersion = await getActiveVersion(candidate.id);
+          if (!candidateVersion) continue;
+          const candidateProvider =
+            await resolveProviderForVersion(candidateVersion);
+          if (!candidateProvider?.modelId) continue;
+          builderAgent = candidate;
+          version = candidateVersion;
+          provider = candidateProvider;
+          break;
+        }
+      }
+
+      if (!builderAgent || !version || !provider?.modelId) {
         return NextResponse.json(
-          { error: "The selected assistant has no configured model" },
+          { error: "No ready assistant is available for agentic mode" },
           { status: 400 },
         );
       }

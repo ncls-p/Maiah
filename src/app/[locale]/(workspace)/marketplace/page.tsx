@@ -306,7 +306,6 @@ export default function MarketplacePage() {
         { value: "all", labelKey: "types.all" },
         { value: "agent", labelKey: "types.agent" },
         { value: "skill", labelKey: "types.skill" },
-        { value: "custom_tool", labelKey: "types.custom_tool" },
         { value: "mcp_preset", labelKey: "types.mcp_preset" },
       ] as const,
     [],
@@ -334,7 +333,13 @@ export default function MarketplacePage() {
     const shared = Array.isArray(sharedData)
       ? sharedData.map((s: { item: MarketplaceItem }) => s.item)
       : [];
-    return { published, owned: mine, shared };
+    const withoutCustomTools = (items: MarketplaceItem[]) =>
+      items.filter((item) => item.type !== "custom_tool");
+    return {
+      published: withoutCustomTools(published),
+      owned: withoutCustomTools(mine),
+      shared: withoutCustomTools(shared),
+    };
   }, [t]);
 
   useEffect(() => {
@@ -409,7 +414,7 @@ export default function MarketplacePage() {
           } else if (payload.skill?.id) {
             router.push("/tools?tab=skills");
           } else if (payload.custom_tool?.id) {
-            router.push("/tools?tab=custom");
+            router.push("/workflows");
           } else if (payload.mcp_preset?.id) {
             router.push("/tools?tab=mcp");
           }

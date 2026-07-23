@@ -233,6 +233,7 @@ describe("workspace-nav pure functions", () => {
     it("advanced capability nav items include marketplace", () => {
       const hrefs = advancedCapabilityNavItems.map((i) => i.href);
       expect(hrefs).toContain("/marketplace");
+      expect(hrefs).not.toContain("/custom-tools");
     });
   });
 });

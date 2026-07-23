@@ -2,7 +2,6 @@ import {
   ActivityIcon,
   BookOpenIcon,
   CalendarClockIcon,
-  CodeIcon,
   KeyRoundIcon,
   MessageSquareIcon,
   PlugZapIcon,
@@ -102,7 +101,6 @@ export const capabilitiesNavItems: NavItem[] = [
 ];
 
 export const advancedCapabilityNavItems: NavItem[] = [
-  { href: "/custom-tools", labelKey: "customTools", icon: CodeIcon },
   { href: "/marketplace", labelKey: "marketplace", icon: StoreIcon },
 ];
 
@@ -127,7 +125,6 @@ const routeTitleKeys: Record<string, string> = {
   "/providers": "aiConnections",
   "/knowledge": "knowledge",
   "/tools": "toolsHub",
-  "/custom-tools": "customTools",
   "/marketplace": "marketplace",
   "/api-keys": "apiKeys",
   "/usage": "usage",
@@ -148,7 +145,7 @@ export function getRouteTitleKey(pathname: string): string {
   return match?.[1] ?? "workspace";
 }
 
-const toolsRelatedPaths = ["/tools", "/mcp", "/custom-tools"] as const;
+const toolsRelatedPaths = ["/tools", "/mcp"] as const;
 
 function isExactOrChildPath(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);

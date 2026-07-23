@@ -10,7 +10,9 @@ const mocks = vi.hoisted(() => ({
   getWorkflowDetail: vi.fn(),
   updateWorkflow: vi.fn(),
   listAgents: vi.fn(),
+  getAgentById: vi.fn(),
   getAgentDefaultPreferences: vi.fn(),
+  getConfiguredWorkflowBuilderAgentId: vi.fn(),
   getActiveVersion: vi.fn(),
   resolveProviderForVersion: vi.fn(),
   createChatModel: vi.fn(),
@@ -42,9 +44,15 @@ vi.mock("@/lib/route-handler", () => ({
 
 vi.mock("@/modules/agent/use-cases", () => ({
   listAgents: mocks.listAgents,
+  getAgentById: mocks.getAgentById,
   getAgentDefaultPreferences: mocks.getAgentDefaultPreferences,
   getActiveVersion: mocks.getActiveVersion,
   resolveProviderForVersion: mocks.resolveProviderForVersion,
+}));
+
+vi.mock("@/modules/workflows/builder-settings", () => ({
+  getConfiguredWorkflowBuilderAgentId:
+    mocks.getConfiguredWorkflowBuilderAgentId,
 }));
 
 vi.mock("@/modules/agent/runtime-policy", () => ({
@@ -173,6 +181,8 @@ describe("workflow agentic route", () => {
     mocks.listAgents.mockResolvedValue([
       { id: agentId, name: "Workflow assistant" },
     ]);
+    mocks.getAgentById.mockResolvedValue(null);
+    mocks.getConfiguredWorkflowBuilderAgentId.mockResolvedValue(null);
     mocks.getAgentDefaultPreferences.mockResolvedValue({
       organizationDefaultAgentId: agentId,
       userDefaultAgentId: null,
@@ -284,6 +294,33 @@ describe("workflow agentic route", () => {
         definition: generatedDefinition,
       }),
     );
+  });
+
+  it("uses the workflow builder assistant selected by an administrator", async () => {
+    const configuredAgentId = "66666666-6666-4666-8666-666666666666";
+    mocks.getConfiguredWorkflowBuilderAgentId.mockResolvedValue(
+      configuredAgentId,
+    );
+    mocks.getAgentById.mockResolvedValue({
+      id: configuredAgentId,
+      name: "Admin workflow builder",
+    });
+
+    const response = await POST(request(), {
+      params: Promise.resolve({ workflowId }),
+    });
+    const events = (await response.text())
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line) as { type: string; name?: string });
+
+    expect(response.status).toBe(200);
+    expect(events[0]).toEqual({
+      type: "agent",
+      name: "Admin workflow builder",
+    });
+    expect(mocks.getAgentDefaultPreferences).not.toHaveBeenCalled();
+    expect(mocks.getActiveVersion).toHaveBeenCalledWith(configuredAgentId);
   });
 
   it("fails closed when no assistant is available", async () => {
