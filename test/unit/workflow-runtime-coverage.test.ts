@@ -191,6 +191,31 @@ describe("workflow data nodes", () => {
     ).resolves.toEqual({ output: input });
   });
 
+  it("rejects field paths that access object prototypes", async () => {
+    await expect(
+      invokeNode(
+        "data.rename",
+        { value: "unsafe" },
+        {
+          from: "value",
+          to: "__proto__.polluted",
+        },
+      ),
+    ).rejects.toThrow("cannot access object prototypes");
+    await expect(
+      invokeNode(
+        "data.pick",
+        { value: "unsafe" },
+        {
+          paths: ["constructor.prototype.polluted"],
+        },
+      ),
+    ).rejects.toThrow("cannot access object prototypes");
+    expect(
+      (Object.prototype as Record<string, unknown>).polluted,
+    ).toBeUndefined();
+  });
+
   it("parses and serializes JSON with useful failures", async () => {
     await expect(
       invokeNode(

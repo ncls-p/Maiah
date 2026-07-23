@@ -47,18 +47,25 @@ function nodeAbortSignal(signal: AbortSignal | undefined, timeoutMs: unknown) {
   return signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal;
 }
 
+const UNSAFE_PATH_SEGMENTS = new Set(["__proto__", "prototype", "constructor"]);
+
+function pathSegments(path: string) {
+  const segments = path.split(".").filter(Boolean);
+  if (segments.some((segment) => UNSAFE_PATH_SEGMENTS.has(segment))) {
+    throw new Error("Workflow field paths cannot access object prototypes.");
+  }
+  return segments;
+}
+
 function readPath(value: unknown, path: string) {
-  return path
-    .split(".")
-    .filter(Boolean)
-    .reduce<unknown>((current, segment) => {
-      if (typeof current !== "object" || current === null) return undefined;
-      return (current as Record<string, unknown>)[segment];
-    }, value);
+  return pathSegments(path).reduce<unknown>((current, segment) => {
+    if (typeof current !== "object" || current === null) return undefined;
+    return (current as Record<string, unknown>)[segment];
+  }, value);
 }
 
 function writePath(input: unknown, path: string, value: unknown): unknown {
-  const segments = path.split(".").filter(Boolean);
+  const segments = pathSegments(path);
   if (segments.length === 0) return value;
   const root = { ...objectValue(input) };
   let current = root;
@@ -75,7 +82,7 @@ function writePath(input: unknown, path: string, value: unknown): unknown {
 }
 
 function removePath(input: unknown, path: string): unknown {
-  const segments = path.split(".").filter(Boolean);
+  const segments = pathSegments(path);
   if (segments.length === 0) return input;
   const root = { ...objectValue(input) };
   let current = root;

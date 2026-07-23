@@ -15,6 +15,7 @@ const database = vi.hoisted(() => {
     "returning",
     "innerJoin",
     "onConflictDoUpdate",
+    "onConflictDoNothing",
   ]) {
     chain[method] = vi.fn();
   }
@@ -213,19 +214,21 @@ describe("workflow CRUD use cases", () => {
       version: 3,
       definition,
     });
+    expect(database.db.update.mock.invocationCallOrder[0]).toBeLessThan(
+      database.db.insert.mock.invocationCallOrder[0]!,
+    );
     expect(database.chain.set).toHaveBeenCalledWith(
       expect.objectContaining({
         name: "Updated",
         description: "New description",
         status: "draft",
-        latestVersion: 3,
+        latestVersion: expect.anything(),
       }),
     );
 
     database.chain.limit
       .mockResolvedValueOnce([workflow])
-      .mockResolvedValueOnce([workflow])
-      .mockResolvedValueOnce([version]);
+      .mockResolvedValueOnce([{ definitionJson: version.definitionJson }]);
     database.chain.returning.mockResolvedValueOnce([workflow]);
     await expect(
       updateWorkflow({
@@ -297,6 +300,26 @@ describe("workflow run use cases", () => {
         idempotencyKey: "same-request",
       }),
     ).resolves.toBe(run);
+    expect(workflowMocks.enqueue).not.toHaveBeenCalled();
+  });
+
+  it("recovers a concurrent idempotent run insert without enqueueing twice", async () => {
+    const concurrentRun = { ...run, idempotencyKey: "same-request" };
+    database.chain.limit
+      .mockResolvedValueOnce([workflow])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([version])
+      .mockResolvedValueOnce([concurrentRun]);
+    database.chain.returning.mockResolvedValueOnce([]);
+
+    await expect(
+      createWorkflowRun({
+        workflowId: workflow.id,
+        workspaceId: workflow.workspaceId,
+        userId: "user-1",
+        idempotencyKey: "same-request",
+      }),
+    ).resolves.toBe(concurrentRun);
     expect(workflowMocks.enqueue).not.toHaveBeenCalled();
   });
 

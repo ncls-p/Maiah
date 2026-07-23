@@ -49,6 +49,24 @@ function errorMessage(error: unknown) {
   );
 }
 
+async function findIdempotentWorkflowRun(input: {
+  workflowId: string;
+  idempotencyKey?: string;
+}) {
+  if (!input.idempotencyKey) return null;
+  const [run] = await db
+    .select()
+    .from(workflowRuns)
+    .where(
+      and(
+        eq(workflowRuns.workflowId, input.workflowId),
+        eq(workflowRuns.idempotencyKey, input.idempotencyKey),
+      ),
+    )
+    .limit(1);
+  return run ?? null;
+}
+
 async function requireWorkflow(workflowId: string, workspaceId: string) {
   const [workflow] = await db
     .select()
@@ -125,16 +143,6 @@ export async function createWorkflow(input: CreateWorkflowInput) {
 export async function updateWorkflow(input: UpdateWorkflowInput) {
   const existing = await requireWorkflow(input.workflowId, input.workspaceId);
   return db.transaction(async (tx) => {
-    let latestVersion = existing.latestVersion;
-    if (input.definition) {
-      latestVersion += 1;
-      await tx.insert(workflowVersions).values({
-        workflowId: existing.id,
-        version: latestVersion,
-        definitionJson: input.definition,
-        createdById: input.userId,
-      });
-    }
     const [workflow] = await tx
       .update(workflows)
       .set({
@@ -143,18 +151,54 @@ export async function updateWorkflow(input: UpdateWorkflowInput) {
           ? { description: input.description }
           : {}),
         ...(input.definition ? { status: "draft" as const } : {}),
-        latestVersion,
+        ...(input.definition
+          ? {
+              latestVersion: sql<number>`${workflows.latestVersion} + 1`,
+            }
+          : {}),
         updatedAt: new Date(),
       })
-      .where(eq(workflows.id, existing.id))
+      .where(
+        and(
+          eq(workflows.id, existing.id),
+          eq(workflows.workspaceId, input.workspaceId),
+          sql`${workflows.status} <> 'archived'`,
+        ),
+      )
       .returning();
     if (!workflow) throw new WorkflowNotFoundError("Workflow not found");
+
+    if (input.definition) {
+      await tx.insert(workflowVersions).values({
+        workflowId: existing.id,
+        version: workflow.latestVersion,
+        definitionJson: input.definition,
+        createdById: input.userId,
+      });
+    }
+
+    let definition = input.definition;
+    if (!definition) {
+      const [version] = await tx
+        .select({ definitionJson: workflowVersions.definitionJson })
+        .from(workflowVersions)
+        .where(
+          and(
+            eq(workflowVersions.workflowId, existing.id),
+            eq(workflowVersions.version, workflow.latestVersion),
+          ),
+        )
+        .limit(1);
+      if (!version) {
+        throw new WorkflowConflictError("Workflow version is missing");
+      }
+      definition = workflowDefinitionSchema.parse(version.definitionJson);
+    }
+
     return {
       ...workflow,
-      version: latestVersion,
-      definition:
-        input.definition ??
-        (await getWorkflowDetail(existing.id, input.workspaceId)).definition,
+      version: workflow.latestVersion,
+      definition,
     };
   });
 }
@@ -205,19 +249,11 @@ export async function createWorkflowRun(input: {
       "Publish the workflow before executing it through the API.",
     );
   }
-  if (input.idempotencyKey) {
-    const [existingRun] = await db
-      .select()
-      .from(workflowRuns)
-      .where(
-        and(
-          eq(workflowRuns.workflowId, workflow.id),
-          eq(workflowRuns.idempotencyKey, input.idempotencyKey),
-        ),
-      )
-      .limit(1);
-    if (existingRun) return existingRun;
-  }
+  const existingRun = await findIdempotentWorkflowRun({
+    workflowId: workflow.id,
+    idempotencyKey: input.idempotencyKey,
+  });
+  if (existingRun) return existingRun;
   const [version] = await db
     .select()
     .from(workflowVersions)
@@ -240,7 +276,17 @@ export async function createWorkflowRun(input: {
       inputJson: input.payload ?? null,
       idempotencyKey: input.idempotencyKey ?? null,
     })
+    .onConflictDoNothing({
+      target: [workflowRuns.workflowId, workflowRuns.idempotencyKey],
+    })
     .returning();
+  if (!run && input.idempotencyKey) {
+    const concurrentRun = await findIdempotentWorkflowRun({
+      workflowId: workflow.id,
+      idempotencyKey: input.idempotencyKey,
+    });
+    if (concurrentRun) return concurrentRun;
+  }
   if (!run) throw new Error("Failed to create workflow run");
   try {
     await enqueueWorkflowRun(run.id);
@@ -448,9 +494,7 @@ export async function failQueuedWorkflowRun(runId: string, error: string) {
       error: errorMessage(error),
       completedAt: new Date(),
     })
-    .where(
-      and(eq(workflowRuns.id, runId), eq(workflowRuns.status, "queued")),
-    )
+    .where(and(eq(workflowRuns.id, runId), eq(workflowRuns.status, "queued")))
     .returning();
   return run;
 }
