@@ -55,6 +55,7 @@ import {
   archiveWorkflow,
   createWorkflow,
   createWorkflowRun,
+  failQueuedWorkflowRun,
   getWorkflowDetail,
   getWorkflowRun,
   listQueuedWorkflowRunIds,
@@ -497,6 +498,44 @@ describe("workflow worker processing", () => {
     expect(database.chain.set).toHaveBeenCalledWith(
       expect.objectContaining({ status: "failed", error: "runtime exploded" }),
     );
+  });
+
+  it("persists compilation failures before the runtime starts", async () => {
+    database.chain.limit.mockResolvedValueOnce([record()]);
+    workflowMocks.compile.mockImplementationOnce(() => {
+      throw new Error("invalid workflow graph");
+    });
+
+    await expect(processWorkflowRun(run.id)).rejects.toThrow(
+      "invalid workflow graph",
+    );
+    expect(database.chain.set).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "failed",
+        error: "invalid workflow graph",
+      }),
+    );
+    expect(workflowMocks.createRuntime).not.toHaveBeenCalled();
+  });
+
+  it("fails only workflow runs that are still queued", async () => {
+    database.chain.returning.mockResolvedValueOnce([
+      { ...run, status: "failed", error: "queue mismatch" },
+    ]);
+
+    await expect(
+      failQueuedWorkflowRun(run.id, "queue mismatch"),
+    ).resolves.toMatchObject({
+      status: "failed",
+      error: "queue mismatch",
+    });
+    expect(database.chain.set).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "failed",
+        error: "queue mismatch",
+      }),
+    );
+    expect(database.chain.where).toHaveBeenCalled();
   });
 
   it("lists queued identifiers for worker recovery", async () => {

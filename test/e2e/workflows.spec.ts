@@ -117,6 +117,36 @@ test("builds, publishes, and executes a no-code workflow through the API", async
       runs: Array<{ id: string }>;
     };
     expect(runs.runs.some(({ id }) => id === firstRun.run.id)).toBeTruthy();
+
+    await expect
+      .poll(
+        async () => {
+          const detailResponse = await page.request.get(
+            `/api/workspace/workflow-runs/${firstRun.run.id}?workspaceId=${workspaceId}`,
+            { headers: bearerHeaders },
+          );
+          expect(detailResponse.status()).toBe(200);
+          const detail = (await detailResponse.json()) as {
+            run: {
+              status: string;
+              steps: Array<{ status: string }>;
+            };
+          };
+          return {
+            status: detail.run.status,
+            stepCount: detail.run.steps.length,
+            stepsCompleted: detail.run.steps.every(
+              ({ status }) => status === "completed",
+            ),
+          };
+        },
+        { timeout: 15_000 },
+      )
+      .toEqual({
+        status: "completed",
+        stepCount: 2,
+        stepsCompleted: true,
+      });
   } finally {
     await page.request.delete(
       `/api/workspace/api-keys/${createdKey.apiKey.id}?workspaceId=${workspaceId}`,

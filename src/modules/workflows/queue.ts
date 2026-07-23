@@ -6,6 +6,17 @@ export const WORKFLOW_QUEUE_NAME = "{maiah-workflow-runs}";
 
 let queue: Queue<{ runId: string }> | null = null;
 
+type WorkflowQueueClient = Pick<
+  Queue<{ runId: string }>,
+  "add" | "getJob"
+>;
+
+export type WorkflowRunRecoveryResult =
+  | "enqueued"
+  | "retried"
+  | "scheduled"
+  | "completed";
+
 export function workflowQueueConnection(): ConnectionOptions {
   const url = new URL(env.DRAGONFLY_URL);
   return {
@@ -34,4 +45,33 @@ function getWorkflowQueue() {
 
 export async function enqueueWorkflowRun(runId: string) {
   await getWorkflowQueue().add("execute", { runId }, { jobId: runId });
+}
+
+export async function recoverWorkflowRunJob(
+  runId: string,
+  targetQueue: WorkflowQueueClient = getWorkflowQueue(),
+): Promise<WorkflowRunRecoveryResult> {
+  const existingJob = await targetQueue.getJob(runId);
+  if (!existingJob) {
+    await targetQueue.add("execute", { runId }, { jobId: runId });
+    return "enqueued";
+  }
+
+  const state = await existingJob.getState();
+  if (state === "unknown") {
+    await targetQueue.add("execute", { runId }, { jobId: runId });
+    return "enqueued";
+  }
+  if (state === "completed") return "completed";
+  if (state !== "failed") return "scheduled";
+
+  try {
+    await existingJob.retry();
+    return "retried";
+  } catch (error) {
+    const currentState = await existingJob.getState();
+    if (currentState === "completed") return "completed";
+    if (currentState !== "failed") return "scheduled";
+    throw error;
+  }
 }

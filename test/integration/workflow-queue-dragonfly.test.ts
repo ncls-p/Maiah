@@ -1,9 +1,12 @@
 import { randomUUID } from "node:crypto";
 
-import { Queue, type ConnectionOptions } from "bullmq";
+import { Queue, QueueEvents, Worker, type ConnectionOptions } from "bullmq";
 import { describe, expect, it } from "vitest";
 
-import { WORKFLOW_QUEUE_NAME } from "@/modules/workflows/queue";
+import {
+  WORKFLOW_QUEUE_NAME,
+  recoverWorkflowRunJob,
+} from "@/modules/workflows/queue";
 
 const dragonflyUrl = process.env.DRAGONFLY_INTEGRATION_URL;
 const describeWithDragonfly = dragonflyUrl ? describe : describe.skip;
@@ -40,6 +43,60 @@ describeWithDragonfly("BullMQ workflow queue on Dragonfly", () => {
       expect(stored?.name).toBe("execute");
       expect(stored?.data).toEqual({ runId });
     } finally {
+      await queue.obliterate({ force: true });
+      await queue.close();
+    }
+  });
+
+  it("retries a failed job instead of silently accepting a duplicate id", async () => {
+    const queueName = `{maiah-recovery-${randomUUID()}}`;
+    const connection = connectionFromUrl(dragonflyUrl!);
+    const queue = new Queue<{ runId: string }>(queueName, {
+      connection,
+      defaultJobOptions: { attempts: 1 },
+    });
+    const events = new QueueEvents(queueName, { connection });
+    let executions = 0;
+    const worker = new Worker<{ runId: string }>(
+      queueName,
+      async () => {
+        executions += 1;
+        if (executions === 1) throw new Error("simulated worker failure");
+        return { recovered: true };
+      },
+      { connection },
+    );
+
+    try {
+      await Promise.all([
+        queue.waitUntilReady(),
+        events.waitUntilReady(),
+        worker.waitUntilReady(),
+      ]);
+      const runId = randomUUID();
+      const job = await queue.add("execute", { runId }, { jobId: runId });
+      await expect(job.waitUntilFinished(events, 5_000)).rejects.toThrow(
+        "simulated worker failure",
+      );
+
+      const duplicate = await queue.add(
+        "execute",
+        { runId },
+        { jobId: runId },
+      );
+      expect(await duplicate.getState()).toBe("failed");
+      expect(executions).toBe(1);
+
+      await expect(recoverWorkflowRunJob(runId, queue)).resolves.toBe(
+        "retried",
+      );
+      await expect(job.waitUntilFinished(events, 5_000)).resolves.toEqual({
+        recovered: true,
+      });
+      expect(executions).toBe(2);
+    } finally {
+      await worker.close();
+      await events.close();
       await queue.obliterate({ force: true });
       await queue.close();
     }

@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const queueMocks = vi.hoisted(() => ({
   add: vi.fn(),
   construct: vi.fn(),
+  getJob: vi.fn(),
   env: {
     DRAGONFLY_URL: "redis://cache.example.test:6379/0",
     DRAGONFLY_PASSWORD: "",
@@ -16,6 +17,7 @@ vi.mock("bullmq", () => ({
     }
 
     add = queueMocks.add;
+    getJob = queueMocks.getJob;
   },
 }));
 
@@ -29,6 +31,7 @@ import {
 import {
   WORKFLOW_QUEUE_NAME,
   enqueueWorkflowRun,
+  recoverWorkflowRunJob,
   workflowQueueConnection,
 } from "@/modules/workflows/queue";
 
@@ -68,6 +71,7 @@ describe("workflow BullMQ queue", () => {
   beforeEach(() => {
     queueMocks.add.mockReset().mockResolvedValue(undefined);
     queueMocks.construct.mockClear();
+    queueMocks.getJob.mockReset().mockResolvedValue(undefined);
     queueMocks.env.DRAGONFLY_URL = "redis://cache.example.test:6379/0";
     queueMocks.env.DRAGONFLY_PASSWORD = "";
   });
@@ -124,5 +128,34 @@ describe("workflow BullMQ queue", () => {
       { runId: "run-2" },
       { jobId: "run-2" },
     );
+  });
+
+  it("recovers missing and failed jobs without duplicating scheduled work", async () => {
+    await expect(recoverWorkflowRunJob("missing")).resolves.toBe("enqueued");
+    expect(queueMocks.add).toHaveBeenCalledWith(
+      "execute",
+      { runId: "missing" },
+      { jobId: "missing" },
+    );
+
+    const retry = vi.fn().mockResolvedValue(undefined);
+    const getState = vi.fn().mockResolvedValue("failed");
+    queueMocks.getJob.mockResolvedValueOnce({ getState, retry });
+    await expect(recoverWorkflowRunJob("failed")).resolves.toBe("retried");
+    expect(retry).toHaveBeenCalledTimes(1);
+
+    queueMocks.getJob.mockResolvedValueOnce({
+      getState: vi.fn().mockResolvedValue("waiting"),
+      retry,
+    });
+    await expect(recoverWorkflowRunJob("waiting")).resolves.toBe("scheduled");
+    expect(retry).toHaveBeenCalledTimes(1);
+
+    queueMocks.getJob.mockResolvedValueOnce({
+      getState: vi.fn().mockResolvedValue("completed"),
+      retry,
+    });
+    await expect(recoverWorkflowRunJob("completed")).resolves.toBe("completed");
+    expect(retry).toHaveBeenCalledTimes(1);
   });
 });

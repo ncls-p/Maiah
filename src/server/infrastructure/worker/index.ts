@@ -10,11 +10,12 @@ import {
 import { syncMcpTools } from "@/modules/mcp/use-cases";
 import { processDueScheduledTasks } from "@/modules/scheduled-tasks/use-cases";
 import {
+  failQueuedWorkflowRun,
   listQueuedWorkflowRunIds,
   processWorkflowRun,
 } from "@/modules/workflows/use-cases";
 import {
-  enqueueWorkflowRun,
+  recoverWorkflowRunJob,
   WORKFLOW_QUEUE_NAME,
   workflowQueueConnection,
 } from "@/modules/workflows/queue";
@@ -105,7 +106,13 @@ async function recoverQueuedWorkflowRuns() {
   }
   for (const runId of runIds) {
     try {
-      await enqueueWorkflowRun(runId);
+      const recovery = await recoverWorkflowRunJob(runId);
+      if (recovery === "completed") {
+        await failQueuedWorkflowRun(
+          runId,
+          "Workflow queue job completed without finalizing the run",
+        );
+      }
     } catch (error) {
       logHandledError("Failed to recover queued workflow run", {
         runId,

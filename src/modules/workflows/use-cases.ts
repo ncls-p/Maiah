@@ -388,27 +388,27 @@ export async function processWorkflowRun(runId: string) {
     .limit(1);
   if (!record) throw new WorkflowNotFoundError("Workflow run not found");
   if (["completed", "cancelled"].includes(record.run.status)) return record.run;
-  const { definition, blueprint } = compileWorkflowDefinition({
-    workflowId: record.run.workflowId,
-    version: record.version.version,
-    definition: record.version.definitionJson,
-  });
-  await db
-    .update(workflowRuns)
-    .set({ status: "running", startedAt: new Date(), error: null })
-    .where(eq(workflowRuns.id, runId));
-  const eventBus = createWorkflowEventBus((event) =>
-    persistRunEvent({ runId, definition, event }),
-  );
-  const runtime = createWorkflowRuntime({
-    dependencies: {
-      workspaceId: record.run.workspaceId,
-      userId: record.run.triggeredById ?? "",
-      runId,
-    },
-    eventBus,
-  });
   try {
+    const { definition, blueprint } = compileWorkflowDefinition({
+      workflowId: record.run.workflowId,
+      version: record.version.version,
+      definition: record.version.definitionJson,
+    });
+    await db
+      .update(workflowRuns)
+      .set({ status: "running", startedAt: new Date(), error: null })
+      .where(eq(workflowRuns.id, runId));
+    const eventBus = createWorkflowEventBus((event) =>
+      persistRunEvent({ runId, definition, event }),
+    );
+    const runtime = createWorkflowRuntime({
+      dependencies: {
+        workspaceId: record.run.workspaceId,
+        userId: record.run.triggeredById ?? "",
+        runId,
+      },
+      eventBus,
+    });
     const result = await runtime.run(
       blueprint,
       { input: record.run.inputJson ?? null },
@@ -438,6 +438,21 @@ export async function processWorkflowRun(runId: string) {
       .where(eq(workflowRuns.id, runId));
     throw error;
   }
+}
+
+export async function failQueuedWorkflowRun(runId: string, error: string) {
+  const [run] = await db
+    .update(workflowRuns)
+    .set({
+      status: "failed",
+      error: errorMessage(error),
+      completedAt: new Date(),
+    })
+    .where(
+      and(eq(workflowRuns.id, runId), eq(workflowRuns.status, "queued")),
+    )
+    .returning();
+  return run;
 }
 
 export async function listQueuedWorkflowRunIds() {

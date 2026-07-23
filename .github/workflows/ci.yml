@@ -132,21 +132,26 @@ jobs:
         run: |
           npm run start > /tmp/next.log 2>&1 &
           SERVER_PID=$!
-          trap 'kill ${SERVER_PID}' EXIT
+          npm run worker > /tmp/worker.log 2>&1 &
+          WORKER_PID=$!
+          trap 'kill ${SERVER_PID} ${WORKER_PID}' EXIT
 
           for attempt in {1..60}; do
-            if curl --fail --silent --show-error http://localhost:3000 > /dev/null; then
+            if curl --fail --silent --show-error http://localhost:3000 > /dev/null \
+              && curl --fail --silent --show-error http://localhost:3001/health > /dev/null; then
               if npm run test:e2e -- --max-failures=1; then
                 exit 0
               fi
               cat /tmp/next.log
+              cat /tmp/worker.log
               exit 1
             fi
             sleep 2
           done
 
-          echo "Next.js server failed to become ready"
+          echo "Next.js server or worker failed to become ready"
           cat /tmp/next.log
+          cat /tmp/worker.log
           exit 1
         env:
           NODE_ENV: "production"
