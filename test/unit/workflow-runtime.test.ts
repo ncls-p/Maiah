@@ -112,6 +112,7 @@ describe("workflow runtime", () => {
     const runtime = createWorkflowRuntime({
       dependencies: {
         workspaceId: "workspace",
+        workflowId: "workflow",
         userId: "user",
         runId: "run",
       },
@@ -193,7 +194,12 @@ describe("workflow runtime", () => {
       definition: { schemaVersion: 1, nodes, edges },
     });
     const runtime = createWorkflowRuntime({
-      dependencies: { workspaceId: "workspace", userId: "user", runId: "run" },
+      dependencies: {
+        workspaceId: "workspace",
+        workflowId: "workflow",
+        userId: "user",
+        runId: "run",
+      },
     });
 
     const result = await runtime.run(blueprint, {
@@ -275,7 +281,12 @@ describe("workflow runtime", () => {
       definition: { schemaVersion: 1, nodes, edges },
     });
     const runtime = createWorkflowRuntime({
-      dependencies: { workspaceId: "workspace", userId: "user", runId: "run" },
+      dependencies: {
+        workspaceId: "workspace",
+        workflowId: "workflow",
+        userId: "user",
+        runId: "run",
+      },
     });
 
     const result = await runtime.run(blueprint, {

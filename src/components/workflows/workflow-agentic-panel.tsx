@@ -5,19 +5,31 @@ import {
   BotIcon,
   CheckIcon,
   CircleStopIcon,
+  KeyRoundIcon,
   SendIcon,
   SparklesIcon,
   WrenchIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import type { FormEvent, KeyboardEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type KeyboardEvent,
+} from "react";
 
+import { ChatMarkdown } from "@/components/chat/chat-markdown";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import type { WorkflowAgenticMessage } from "@/modules/workflows/agentic";
+import type { WorkflowAgenticHistoryMessage } from "@/modules/workflows/agentic";
+import type { WorkflowAgentInputRequest } from "@/modules/workflows/agentic-history";
 
 export type WorkflowAgenticActivity = {
   id: string;
@@ -28,23 +40,42 @@ export type WorkflowAgenticActivity = {
 export function WorkflowAgenticPanel({
   messages,
   activities,
+  pendingRequests,
   input,
   running,
+  historyLoading,
+  submittingRequestId,
   agentName,
   onInputChange,
   onSubmit,
+  onSubmitRequest,
   onStop,
 }: {
-  messages: WorkflowAgenticMessage[];
+  messages: WorkflowAgenticHistoryMessage[];
   activities: WorkflowAgenticActivity[];
+  pendingRequests: WorkflowAgentInputRequest[];
   input: string;
   running: boolean;
+  historyLoading: boolean;
+  submittingRequestId: string | null;
   agentName: string | null;
   onInputChange: (value: string) => void;
   onSubmit: (prompt?: string) => void;
+  onSubmitRequest: (
+    request: WorkflowAgentInputRequest,
+    values: Record<string, string>,
+  ) => void;
   onStop: () => void;
 }) {
   const t = useTranslations("workflows.agentic");
+  const [requestValues, setRequestValues] = useState<
+    Record<string, Record<string, string>>
+  >({});
+  const bottomRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
+  }, [activities, messages, pendingRequests, running]);
 
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -86,7 +117,11 @@ export function WorkflowAgenticPanel({
 
       <ScrollArea className="min-h-0 flex-1">
         <div className="flex min-h-full flex-col gap-4 p-4" aria-live="polite">
-          {messages.length === 0 ? (
+          {historyLoading ? (
+            <div className="my-auto flex items-center justify-center py-10">
+              <Spinner className="size-5 text-muted-foreground" />
+            </div>
+          ) : messages.length === 0 && pendingRequests.length === 0 ? (
             <div className="my-auto flex flex-col items-center px-2 py-8 text-center">
               <span className="mb-3 flex size-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
                 <SparklesIcon className="size-5" aria-hidden="true" />
@@ -115,7 +150,7 @@ export function WorkflowAgenticPanel({
           ) : (
             messages.map((message, index) => (
               <div
-                key={`${message.role}-${index}`}
+                key={message.id}
                 className={cn(
                   "max-w-[92%] rounded-2xl px-3 py-2.5 text-sm leading-6",
                   message.role === "user"
@@ -123,17 +158,135 @@ export function WorkflowAgenticPanel({
                     : "rounded-bl-md border border-border/70 bg-muted/45",
                 )}
               >
-                {message.content ||
-                  (running && index === messages.length - 1 ? (
-                    <span className="flex items-center gap-1 py-1">
-                      <span className="size-1.5 animate-bounce rounded-full bg-current [animation-delay:-0.2s]" />
-                      <span className="size-1.5 animate-bounce rounded-full bg-current [animation-delay:-0.1s]" />
-                      <span className="size-1.5 animate-bounce rounded-full bg-current" />
-                    </span>
-                  ) : null)}
+                {message.content ? (
+                  message.role === "assistant" ? (
+                    <ChatMarkdown
+                      isAnimating={running && index === messages.length - 1}
+                    >
+                      {message.content}
+                    </ChatMarkdown>
+                  ) : (
+                    <p className="whitespace-pre-wrap">{message.content}</p>
+                  )
+                ) : running && index === messages.length - 1 ? (
+                  <span className="flex items-center gap-1 py-1">
+                    <span className="size-1.5 animate-bounce rounded-full bg-current [animation-delay:-0.2s]" />
+                    <span className="size-1.5 animate-bounce rounded-full bg-current [animation-delay:-0.1s]" />
+                    <span className="size-1.5 animate-bounce rounded-full bg-current" />
+                  </span>
+                ) : null}
               </div>
             ))
           )}
+
+          {pendingRequests.map((request) => (
+            <form
+              key={request.id}
+              className="rounded-2xl border border-primary/25 bg-primary/5 p-4"
+              onSubmit={(event) => {
+                event.preventDefault();
+                onSubmitRequest(request, requestValues[request.id] ?? {});
+              }}
+            >
+              <div className="flex items-start gap-3">
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <KeyRoundIcon className="size-4" aria-hidden="true" />
+                </span>
+                <div className="min-w-0">
+                  <h3 className="text-sm font-semibold">{request.title}</h3>
+                  {request.description ? (
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                      {request.description}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+              <div className="mt-4 space-y-3">
+                {request.fields.map((field) => {
+                  const id = `${request.id}-${field.name}`;
+                  const hidden =
+                    field.sensitive ||
+                    field.type === "secret" ||
+                    field.type === "password";
+                  return (
+                    <div key={field.name} className="space-y-1.5">
+                      <Label htmlFor={id} className="text-xs">
+                        {field.label}
+                        {field.required ? " *" : ""}
+                      </Label>
+                      {field.type === "textarea" && !hidden ? (
+                        <Textarea
+                          id={id}
+                          value={requestValues[request.id]?.[field.name] ?? ""}
+                          onChange={(event) =>
+                            setRequestValues((current) => ({
+                              ...current,
+                              [request.id]: {
+                                ...current[request.id],
+                                [field.name]: event.target.value,
+                              },
+                            }))
+                          }
+                          required={field.required}
+                          disabled={submittingRequestId === request.id}
+                          className="min-h-20 bg-background"
+                        />
+                      ) : (
+                        <Input
+                          id={id}
+                          type={
+                            hidden
+                              ? "password"
+                              : field.type === "url"
+                                ? "url"
+                                : field.type === "number"
+                                  ? "number"
+                                  : "text"
+                          }
+                          value={requestValues[request.id]?.[field.name] ?? ""}
+                          onChange={(event) =>
+                            setRequestValues((current) => ({
+                              ...current,
+                              [request.id]: {
+                                ...current[request.id],
+                                [field.name]: event.target.value,
+                              },
+                            }))
+                          }
+                          required={field.required}
+                          disabled={submittingRequestId === request.id}
+                          autoComplete={hidden ? "off" : undefined}
+                          className="bg-background"
+                        />
+                      )}
+                      {field.description ? (
+                        <p className="text-[11px] text-muted-foreground">
+                          {field.description}
+                        </p>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+              {request.fields.some((field) => field.sensitive) ? (
+                <p className="mt-3 text-[11px] leading-4 text-muted-foreground">
+                  {t("secureInputHint")}
+                </p>
+              ) : null}
+              <div className="mt-4 flex justify-end">
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={running || submittingRequestId === request.id}
+                >
+                  {submittingRequestId === request.id ? (
+                    <Spinner data-icon="inline-start" />
+                  ) : null}
+                  {t("submitInformation")}
+                </Button>
+              </div>
+            </form>
+          ))}
 
           {activities.length > 0 ? (
             <div className="rounded-xl border border-border/70 bg-muted/25 p-3">
@@ -170,6 +323,7 @@ export function WorkflowAgenticPanel({
               </div>
             </div>
           ) : null}
+          <div ref={bottomRef} aria-hidden="true" />
         </div>
       </ScrollArea>
 

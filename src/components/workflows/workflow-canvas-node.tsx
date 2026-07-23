@@ -84,7 +84,8 @@ export function WorkflowCanvasNode({
   return (
     <div
       className={cn(
-        "min-w-52 rounded-2xl border bg-card p-3 shadow-[var(--surface-shadow)] transition-[border-color,box-shadow,transform] duration-150",
+        "relative min-w-52 rounded-2xl border bg-card p-3 shadow-[var(--surface-shadow)] transition-[border-color,box-shadow,transform] duration-150",
+        isCondition && "pr-14",
         selected
           ? "border-foreground/45 shadow-lg ring-4 ring-foreground/5"
           : "border-border/80 hover:border-foreground/25",
@@ -123,23 +124,25 @@ export function WorkflowCanvasNode({
       </div>
       {isCondition ? (
         <>
-          <div className="mt-3 flex justify-between text-[10px] font-medium text-muted-foreground">
-            <span>{t("false")}</span>
-            <span>{t("true")}</span>
-          </div>
-          <Handle
-            id="false"
-            type="source"
-            position={Position.Bottom}
-            style={{ left: "25%" }}
-            className="!size-3 !border-2 !border-card !bg-destructive"
-          />
+          <span className="absolute top-[38%] right-3 -translate-y-1/2 text-[9px] font-semibold text-primary">
+            {t("true")}
+          </span>
           <Handle
             id="true"
             type="source"
-            position={Position.Bottom}
-            style={{ left: "75%" }}
+            position={Position.Right}
+            style={{ top: "38%" }}
             className="!size-3 !border-2 !border-card !bg-primary"
+          />
+          <span className="absolute top-[72%] right-3 -translate-y-1/2 text-[9px] font-semibold text-destructive">
+            {t("false")}
+          </span>
+          <Handle
+            id="false"
+            type="source"
+            position={Position.Right}
+            style={{ top: "72%" }}
+            className="!size-3 !border-2 !border-card !bg-destructive"
           />
         </>
       ) : !isTerminal ? (

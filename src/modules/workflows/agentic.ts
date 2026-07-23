@@ -27,19 +27,30 @@ const workflowAgenticDraftDefinitionSchema = z.object({
   edges: z.array(workflowEdgeSchema).max(300),
 });
 
-export const workflowAgenticRequestSchema = z.object({
-  workspaceId: z.uuid(),
-  messages: z.array(workflowAgenticMessageSchema).min(1).max(20),
-  draft: z.object({
-    name: z.string().trim().max(255),
-    description: z.string().trim().max(2_000).nullable(),
-    definition: workflowAgenticDraftDefinitionSchema,
-  }),
-});
+export const workflowAgenticRequestSchema = z
+  .object({
+    workspaceId: z.uuid(),
+    message: z.string().trim().min(1).max(8_000).optional(),
+    inputRequestId: z.uuid().optional(),
+    draft: z.object({
+      name: z.string().trim().max(255),
+      description: z.string().trim().max(2_000).nullable(),
+      definition: workflowAgenticDraftDefinitionSchema,
+    }),
+  })
+  .refine(
+    (value) => Boolean(value.message) !== Boolean(value.inputRequestId),
+    "Provide either a message or a submitted information request.",
+  );
 
 export type WorkflowAgenticMessage = z.infer<
   typeof workflowAgenticMessageSchema
 >;
+
+export type WorkflowAgenticHistoryMessage = WorkflowAgenticMessage & {
+  id: string;
+  createdAt: string;
+};
 
 export type WorkflowAgenticDraft = {
   name: string;
@@ -60,9 +71,27 @@ export type WorkflowAgenticStreamEvent =
       id: string;
       toolName: string;
       label: string;
+      status?: "done" | "error";
     }
   | { type: "workflow"; draft: WorkflowAgenticDraft }
   | { type: "text"; delta: string }
+  | {
+      type: "input_request";
+      request: {
+        id: string;
+        title: string;
+        description: string | null;
+        fields: Array<{
+          name: string;
+          label: string;
+          type: "text" | "textarea" | "url" | "number" | "secret" | "password";
+          sensitive: boolean;
+          required: boolean;
+          description?: string;
+        }>;
+        expiresAt: string;
+      };
+    }
   | { type: "saved"; workflow: unknown }
   | { type: "done" }
   | { type: "error"; message: string };
@@ -74,6 +103,8 @@ export const workflowAgentToolLabels: Record<string, string> = {
   remove_workflow_nodes: "Removing workflow steps",
   replace_workflow_edges: "Connecting workflow steps",
   validate_workflow: "Validating the workflow",
+  web_search: "Researching the web",
+  request_user_input: "Requesting information",
 };
 
 function promptValue(value: unknown, depth = 0): unknown {

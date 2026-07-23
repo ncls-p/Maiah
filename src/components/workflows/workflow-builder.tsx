@@ -85,9 +85,10 @@ import type {
   WorkflowNodeType,
 } from "@/modules/workflows/contracts";
 import type {
-  WorkflowAgenticMessage,
+  WorkflowAgenticHistoryMessage,
   WorkflowAgenticStreamEvent,
 } from "@/modules/workflows/agentic";
+import type { WorkflowAgentInputRequest } from "@/modules/workflows/agentic-history";
 
 import {
   WorkflowCanvasNode,
@@ -206,8 +207,15 @@ export function WorkflowBuilder({
   const [isDesktop, setIsDesktop] = useState(false);
   const [editorMode, setEditorMode] = useState<"visual" | "agentic">("visual");
   const [agenticMessages, setAgenticMessages] = useState<
-    WorkflowAgenticMessage[]
+    WorkflowAgenticHistoryMessage[]
   >([]);
+  const [agenticPendingRequests, setAgenticPendingRequests] = useState<
+    WorkflowAgentInputRequest[]
+  >([]);
+  const [agenticHistoryLoading, setAgenticHistoryLoading] = useState(true);
+  const [submittingAgenticRequestId, setSubmittingAgenticRequestId] = useState<
+    string | null
+  >(null);
   const [agenticActivities, setAgenticActivities] = useState<
     WorkflowAgenticActivity[]
   >([]);
@@ -233,6 +241,42 @@ export function WorkflowBuilder({
     });
   }, [paletteCategory, paletteSearch, t]);
 
+  const loadAgenticHistory = useCallback(async () => {
+    setAgenticHistoryLoading(true);
+    try {
+      const payload = await fetchJson<{
+        messages: WorkflowAgenticHistoryMessage[];
+        pendingRequests: WorkflowAgentInputRequest[];
+      }>(
+        `/api/workspace/workflows/${workflow.id}/agentic?workspaceId=${workspaceId}`,
+      );
+      setAgenticMessages((current) => {
+        const persistedIds = new Set(
+          payload.messages.map((message) => message.id),
+        );
+        return [
+          ...payload.messages,
+          ...current.filter((message) => !persistedIds.has(message.id)),
+        ];
+      });
+      setAgenticPendingRequests((current) => {
+        const persistedIds = new Set(
+          payload.pendingRequests.map((request) => request.id),
+        );
+        return [
+          ...payload.pendingRequests,
+          ...current.filter((request) => !persistedIds.has(request.id)),
+        ];
+      });
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : t("agentic.historyLoadFailed"),
+      );
+    } finally {
+      setAgenticHistoryLoading(false);
+    }
+  }, [t, workflow.id, workspaceId]);
+
   const loadRuns = useCallback(async () => {
     setRunsLoading(true);
     setRunsLoadError(null);
@@ -257,6 +301,11 @@ export function WorkflowBuilder({
     const timeout = window.setTimeout(() => void loadRuns(), 0);
     return () => window.clearTimeout(timeout);
   }, [loadRuns]);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => void loadAgenticHistory(), 0);
+    return () => window.clearTimeout(timeout);
+  }, [loadAgenticHistory]);
 
   useEffect(() => {
     if (
@@ -462,7 +511,9 @@ export function WorkflowBuilder({
     if (event.type === "tool_result") {
       setAgenticActivities((current) =>
         current.map((item) =>
-          item.id === event.id ? { ...item, status: "done" } : item,
+          item.id === event.id
+            ? { ...item, status: event.status ?? "done" }
+            : item,
         ),
       );
       return;
@@ -475,6 +526,13 @@ export function WorkflowBuilder({
       updateLastAgenticMessage(event.delta);
       return;
     }
+    if (event.type === "input_request") {
+      setAgenticPendingRequests((current) => [
+        ...current.filter((request) => request.id !== event.request.id),
+        event.request,
+      ]);
+      return;
+    }
     if (event.type === "saved") {
       const saved = event.workflow as WorkflowDetail;
       setWorkflow(saved);
@@ -485,15 +543,30 @@ export function WorkflowBuilder({
     if (event.type === "error") throw new Error(event.message);
   }
 
-  async function runAgenticBuilder(suggestedPrompt?: string) {
+  async function runAgenticBuilder(
+    suggestedPrompt?: string,
+    inputRequestId?: string,
+  ) {
     const prompt = (suggestedPrompt ?? agenticInput).trim();
     if (!prompt || agenticRunning) return;
 
-    const history = [
-      ...agenticMessages.filter((message) => message.content.trim()),
-      { role: "user" as const, content: prompt },
-    ].slice(-19);
-    setAgenticMessages([...history, { role: "assistant", content: "" }]);
+    const userMessage: WorkflowAgenticHistoryMessage = {
+      id: crypto.randomUUID(),
+      role: "user",
+      content: prompt,
+      createdAt: new Date().toISOString(),
+    };
+    const assistantMessage: WorkflowAgenticHistoryMessage = {
+      id: crypto.randomUUID(),
+      role: "assistant",
+      content: "",
+      createdAt: new Date().toISOString(),
+    };
+    setAgenticMessages((current) => [
+      ...current,
+      userMessage,
+      assistantMessage,
+    ]);
     setAgenticActivities([]);
     setAgenticInput("");
     setAgenticRunning(true);
@@ -508,7 +581,7 @@ export function WorkflowBuilder({
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
             workspaceId,
-            messages: history,
+            ...(inputRequestId ? { inputRequestId } : { message: prompt }),
             draft: {
               name: workflow.name,
               description: workflow.description,
@@ -583,6 +656,39 @@ export function WorkflowBuilder({
         agenticAbortRef.current = null;
       }
       setAgenticRunning(false);
+    }
+  }
+
+  async function submitAgenticRequest(
+    request: WorkflowAgentInputRequest,
+    values: Record<string, string>,
+  ) {
+    if (agenticRunning || submittingAgenticRequestId) return;
+    setSubmittingAgenticRequestId(request.id);
+    try {
+      const payload = await fetchJson<{
+        id: string;
+        displayMessage: string;
+      }>(
+        `/api/workspace/workflows/${workflow.id}/agentic/inputs/${request.id}`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ workspaceId, values }),
+        },
+      );
+      setAgenticPendingRequests((current) =>
+        current.filter((item) => item.id !== request.id),
+      );
+      await runAgenticBuilder(payload.displayMessage, request.id);
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : t("agentic.informationSubmitFailed"),
+      );
+    } finally {
+      setSubmittingAgenticRequestId(null);
     }
   }
 
@@ -1020,9 +1126,11 @@ export function WorkflowBuilder({
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onNodeClick={(_, node) => {
-          if (editorMode === "agentic") return;
           setSelectedNodeId(node.id);
-          if (!window.matchMedia("(min-width: 1024px)").matches) {
+          if (
+            editorMode === "agentic" ||
+            !window.matchMedia("(min-width: 1024px)").matches
+          ) {
             setInspectorOpen(true);
           }
         }}
@@ -1035,10 +1143,10 @@ export function WorkflowBuilder({
         fitViewOptions={{ padding: 0.24 }}
         minZoom={0.25}
         maxZoom={1.8}
-        nodesDraggable={editorMode === "visual"}
+        nodesDraggable
         nodesConnectable={editorMode === "visual"}
         edgesReconnectable={editorMode === "visual"}
-        elementsSelectable={editorMode === "visual"}
+        elementsSelectable
         deleteKeyCode={editorMode === "visual" ? ["Backspace", "Delete"] : null}
         snapToGrid
         snapGrid={[16, 16]}
@@ -1056,7 +1164,9 @@ export function WorkflowBuilder({
         />
       </ReactFlow>
       <div className="pointer-events-none absolute top-3 left-1/2 hidden -translate-x-1/2 rounded-full border border-border/70 bg-background/90 px-3 py-1.5 text-[11px] text-muted-foreground shadow-sm backdrop-blur sm:block">
-        {t("canvasHint")}
+        {editorMode === "agentic"
+          ? t("agentic.canvasEditHint")
+          : t("canvasHint")}
       </div>
     </main>
   );
@@ -1226,11 +1336,17 @@ export function WorkflowBuilder({
                 <WorkflowAgenticPanel
                   messages={agenticMessages}
                   activities={agenticActivities}
+                  pendingRequests={agenticPendingRequests}
                   input={agenticInput}
                   running={agenticRunning}
+                  historyLoading={agenticHistoryLoading}
+                  submittingRequestId={submittingAgenticRequestId}
                   agentName={agenticAgentName}
                   onInputChange={setAgenticInput}
                   onSubmit={(prompt) => void runAgenticBuilder(prompt)}
+                  onSubmitRequest={(request, values) =>
+                    void submitAgenticRequest(request, values)
+                  }
                   onStop={() => agenticAbortRef.current?.abort()}
                 />
               </ResizablePanel>
@@ -1253,11 +1369,17 @@ export function WorkflowBuilder({
               <WorkflowAgenticPanel
                 messages={agenticMessages}
                 activities={agenticActivities}
+                pendingRequests={agenticPendingRequests}
                 input={agenticInput}
                 running={agenticRunning}
+                historyLoading={agenticHistoryLoading}
+                submittingRequestId={submittingAgenticRequestId}
                 agentName={agenticAgentName}
                 onInputChange={setAgenticInput}
                 onSubmit={(prompt) => void runAgenticBuilder(prompt)}
+                onSubmitRequest={(request, values) =>
+                  void submitAgenticRequest(request, values)
+                }
                 onStop={() => agenticAbortRef.current?.abort()}
               />
             </div>

@@ -15,6 +15,10 @@ import { executeAgent } from "@/modules/agent/runtime-executor";
 import { executeCodeSandbox } from "@/modules/tool/code-sandbox";
 
 import {
+  isWorkflowSecretReference,
+  resolveWorkflowSecretReferences,
+} from "./agentic-history";
+import {
   workflowDefinitionSchema,
   type WorkflowDefinition,
   type WorkflowNode,
@@ -22,6 +26,7 @@ import {
 
 export type WorkflowRuntimeDependencies = {
   workspaceId: string;
+  workflowId: string;
   userId: string;
   runId: string;
 };
@@ -478,27 +483,33 @@ async function assertSafeHttpUrl(rawUrl: unknown) {
 const httpRequest: NodeFunction<
   RuntimeContext,
   WorkflowRuntimeDependencies
-> = async ({ input, params, signal }) => {
-  const url = await assertSafeHttpUrl(params.url);
-  for (const [key, value] of configuredEntries(params.query)) {
+> = async ({ input, params, signal, dependencies }) => {
+  const resolvedParams = (await resolveWorkflowSecretReferences(params, {
+    workflowId: dependencies.workflowId,
+    workspaceId: dependencies.workspaceId,
+  })) as Record<string, unknown>;
+  const url = await assertSafeHttpUrl(resolvedParams.url);
+  for (const [key, value] of configuredEntries(resolvedParams.query)) {
     const resolved = resolveTemplates(value, input);
     if (resolved !== undefined && resolved !== null) {
       url.searchParams.set(key, String(resolved));
     }
   }
-  const method = String(params.method ?? "GET").toUpperCase();
+  const method = String(resolvedParams.method ?? "GET").toUpperCase();
   if (!["GET", "POST", "PUT", "PATCH", "DELETE"].includes(method)) {
     throw new Error(`Unsupported HTTP method: ${method}`);
   }
   const headers = Object.fromEntries(
-    configuredEntries(params.headers).map(([key, value]) => [
+    configuredEntries(resolvedParams.headers).map(([key, value]) => [
       key,
       String(resolveTemplates(value, input)),
     ]),
   );
   const hasBody = !["GET", "DELETE"].includes(method);
   const bodyValue =
-    params.body === undefined ? input : resolveTemplates(params.body, input);
+    resolvedParams.body === undefined
+      ? input
+      : resolveTemplates(resolvedParams.body, input);
   if (hasBody && !headers["content-type"] && !headers["Content-Type"]) {
     headers["content-type"] = "application/json";
   }
@@ -507,7 +518,7 @@ const httpRequest: NodeFunction<
     headers,
     body: hasBody ? JSON.stringify(bodyValue ?? null) : undefined,
     redirect: "manual",
-    signal: nodeAbortSignal(signal, params.__timeoutMs),
+    signal: nodeAbortSignal(signal, resolvedParams.__timeoutMs),
   });
   if (response.status >= 300 && response.status < 400) {
     throw new Error("HTTP redirects are not followed by workflow nodes.");
@@ -646,14 +657,16 @@ function assertNodeParameters(node: WorkflowNode) {
     }
   }
   if (node.type === "http.request") {
-    let url: URL;
-    try {
-      url = new URL(String(params.url ?? ""));
-    } catch {
-      throw new Error(`Node '${node.label}' requires a valid HTTPS URL.`);
-    }
-    if (url.protocol !== "https:" || url.toString().length > 2_048) {
-      throw new Error(`Node '${node.label}' requires a valid HTTPS URL.`);
+    if (!isWorkflowSecretReference(params.url)) {
+      let url: URL;
+      try {
+        url = new URL(String(params.url ?? ""));
+      } catch {
+        throw new Error(`Node '${node.label}' requires a valid HTTPS URL.`);
+      }
+      if (url.protocol !== "https:" || url.toString().length > 2_048) {
+        throw new Error(`Node '${node.label}' requires a valid HTTPS URL.`);
+      }
     }
     if (
       params.headers !== undefined &&

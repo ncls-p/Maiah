@@ -450,6 +450,7 @@ export async function processWorkflowRun(runId: string) {
     const runtime = createWorkflowRuntime({
       dependencies: {
         workspaceId: record.run.workspaceId,
+        workflowId: record.run.workflowId,
         userId: record.run.triggeredById ?? "",
         runId,
       },

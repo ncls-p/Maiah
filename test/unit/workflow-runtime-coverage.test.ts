@@ -30,6 +30,7 @@ import {
 
 const dependencies = {
   workspaceId: "workspace-1",
+  workflowId: "workflow-1",
   userId: "user-1",
   runId: "run-1",
 };

@@ -15,10 +15,10 @@ const workflowId = "2e74eae6-e806-4ede-95c5-bb634f6709e4";
 const agentId = "d23e39a7-5a5a-433b-b34e-a556875a1c2f";
 
 describe("workflow agentic mode", () => {
-  it("accepts a bounded conversation and current visual draft", () => {
+  it("accepts one user turn and the current visual draft", () => {
     const parsed = workflowAgenticRequestSchema.parse({
       workspaceId,
-      messages: [{ role: "user", content: "Build a summary workflow" }],
+      message: "Build a summary workflow",
       draft: {
         name: "",
         description: null,
@@ -32,15 +32,12 @@ describe("workflow agentic mode", () => {
       },
     });
 
-    expect(parsed.messages).toHaveLength(1);
+    expect(parsed.message).toBe("Build a summary workflow");
     expect(parsed.draft.definition.nodes[0]?.type).toBe("trigger.manual");
     expect(() =>
       workflowAgenticRequestSchema.parse({
         ...parsed,
-        messages: Array.from({ length: 21 }, () => ({
-          role: "user",
-          content: "Change it",
-        })),
+        inputRequestId: "d23e39a7-5a5a-433b-b34e-a556875a1c2f",
       }),
     ).toThrow();
   });

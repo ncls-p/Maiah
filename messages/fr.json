@@ -2288,6 +2288,11 @@
       "enterHint": "Entrée pour envoyer · Maj+Entrée pour une nouvelle ligne",
       "send": "Envoyer",
       "stop": "Arrêter",
+      "historyLoadFailed": "Impossible de charger l’historique de cette conversation.",
+      "informationSubmitFailed": "Impossible d’enregistrer les informations demandées.",
+      "secureInputHint": "Les valeurs sensibles sont masquées, chiffrées et ne sont jamais révélées à l’agent. Il reçoit uniquement une référence sécurisée.",
+      "submitInformation": "Transmettre",
+      "canvasEditHint": "Vous pouvez déplacer les étapes et cliquer dessus pour les configurer pendant que l’agent travaille.",
       "failed": "Le mode agentique n’a pas pu modifier le workflow.",
       "completed": "Le workflow est prêt. Vous pouvez continuer à me demander des changements ou revenir au mode visuel.",
       "stopped": "Modification arrêtée. Les changements déjà affichés restent disponibles dans le brouillon visuel.",
@@ -2297,7 +2302,9 @@
         "upsert_workflow_nodes": "Mise à jour des étapes",
         "remove_workflow_nodes": "Suppression d’étapes",
         "replace_workflow_edges": "Connexion des étapes",
-        "validate_workflow": "Vérification du workflow"
+        "validate_workflow": "Vérification du workflow",
+        "web_search": "Recherche sur le web",
+        "request_user_input": "Demande d’informations"
       }
     },
     "true": "vrai",

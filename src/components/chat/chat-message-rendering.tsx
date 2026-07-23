@@ -3,9 +3,7 @@
 import dynamic from "next/dynamic";
 import { memo, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { toast } from "sonner";
 import type * as React from "react";
-import { createPortal } from "react-dom";
 import {
   BotIcon,
   BrainIcon,
@@ -14,15 +12,8 @@ import {
   ChevronDownIcon,
   XIcon,
 } from "lucide-react";
-import {
-  Streamdown,
-  type LinkSafetyConfig,
-  type LinkSafetyModalProps,
-} from "streamdown";
-import { code } from "@streamdown/code";
-import { createMathPlugin } from "@streamdown/math";
-
 import { CitationBlock } from "@/components/chat/citation-block";
+import { ChatMarkdown } from "@/components/chat/chat-markdown";
 import {
   citationsFromMessage,
   groupWorkPhaseParts,
@@ -97,84 +88,6 @@ const BUTTON_TYPE = "button";
 const OUTLINE_VARIANT = "outline";
 const GHOST_VARIANT = "ghost";
 const COMPACT_ICON_CLASS = "size-3";
-
-const streamdownMath = createMathPlugin({ singleDollarTextMath: true });
-const STREAMDOWN_PLUGINS = { code, math: streamdownMath };
-
-function isTrustedInternalLink(url: string) {
-  if (typeof window === "undefined") return false;
-  try {
-    const parsed = new URL(url, window.location.origin);
-    return parsed.origin === window.location.origin;
-  } catch {
-    return false;
-  }
-}
-
-function ExternalLinkSafetyModal({
-  url,
-  isOpen,
-  onClose,
-  onConfirm,
-}: LinkSafetyModalProps) {
-  const t = useTranslations("chat.rendering");
-  if (!isOpen || typeof document === "undefined") return null;
-
-  return createPortal(
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-background/60 p-4 backdrop-blur-sm"
-      onClick={onClose}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="external-link-title"
-        className="w-full max-w-md rounded-2xl border bg-card p-5 text-sm shadow-2xl"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <h2
-          id="external-link-title"
-          className="text-base font-semibold text-foreground"
-        >
-          {t("externalLinkTitle")}
-        </h2>
-        <p className="mt-2 text-muted-foreground">
-          {t("externalLinkDescription")}
-        </p>
-        <p className="mt-3 break-all rounded-lg bg-muted/50 p-2 font-mono text-xs text-muted-foreground">
-          {url}
-        </p>
-        <div className="mt-5 flex flex-wrap justify-end gap-2">
-          <Button type={BUTTON_TYPE} variant={GHOST_VARIANT} onClick={onClose}>
-            {t("cancel")}
-          </Button>
-          <Button
-            type={BUTTON_TYPE}
-            variant={OUTLINE_VARIANT}
-            onClick={() => {
-              void navigator.clipboard
-                .writeText(url)
-                .then(() => toast.success(t("linkCopied")))
-                .catch(() => toast.error(t("linkCopyFailed")));
-            }}
-          >
-            {t("copyLink")}
-          </Button>
-          <Button type={BUTTON_TYPE} onClick={onConfirm}>
-            {t("openLink")}
-          </Button>
-        </div>
-      </div>
-    </div>,
-    document.body,
-  );
-}
-
-const STREAMDOWN_LINK_SAFETY: LinkSafetyConfig = {
-  enabled: true,
-  onLinkCheck: isTrustedInternalLink,
-  renderModal: (props) => <ExternalLinkSafetyModal {...props} />,
-};
 
 function StreamingThinking() {
   const t = useTranslations("chat.rendering");
@@ -811,13 +724,9 @@ function ThinkingPart({ part }: { part: ChatMessagePart }) {
       </div>
       <CollapsibleContent>
         {content ? (
-          <Streamdown
-            plugins={STREAMDOWN_PLUGINS}
-            linkSafety={STREAMDOWN_LINK_SAFETY}
-            className="border-t border-border/40 bg-background/45 px-4 py-3 text-pretty text-xs leading-5 text-muted-foreground"
-          >
+          <ChatMarkdown className="border-t border-border/40 bg-background/45 px-4 py-3 text-pretty text-xs leading-5 text-muted-foreground">
             {content}
-          </Streamdown>
+          </ChatMarkdown>
         ) : (
           <div className="border-t border-border/40 bg-background/45 px-4 py-3 text-pretty text-xs leading-5 text-muted-foreground">
             {t("reasoningStarting")}
@@ -1186,16 +1095,7 @@ export const MessageContent = memo(function MessageContent({
         />
       );
     }
-    return (
-      <Streamdown
-        key={key}
-        plugins={STREAMDOWN_PLUGINS}
-        linkSafety={STREAMDOWN_LINK_SAFETY}
-        className="streaming-markdown text-sm"
-      >
-        {part.content}
-      </Streamdown>
-    );
+    return <ChatMarkdown key={key}>{part.content}</ChatMarkdown>;
   };
 
   return (
@@ -1235,13 +1135,7 @@ export const MessageContent = memo(function MessageContent({
         })
       ) : standaloneApprovals.length === 0 ? (
         content ? (
-          <Streamdown
-            plugins={STREAMDOWN_PLUGINS}
-            linkSafety={STREAMDOWN_LINK_SAFETY}
-            className="streaming-markdown text-sm"
-          >
-            {content}
-          </Streamdown>
+          <ChatMarkdown>{content}</ChatMarkdown>
         ) : isAnimating ? (
           <StreamingThinking />
         ) : null

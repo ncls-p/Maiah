@@ -16,6 +16,9 @@ const mocks = vi.hoisted(() => ({
   getActiveVersion: vi.fn(),
   resolveProviderForVersion: vi.fn(),
   createChatModel: vi.fn(),
+  getWorkflowAgentHistory: vi.fn(),
+  appendWorkflowAgentMessage: vi.fn(),
+  searchWebWithSearxng: vi.fn(),
 }));
 
 vi.mock("@/lib/route-handler", () => ({
@@ -64,11 +67,37 @@ vi.mock("@/modules/workflows/use-cases", () => ({
   updateWorkflow: mocks.updateWorkflow,
 }));
 
+vi.mock("@/modules/workflows/agentic-history", async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import("@/modules/workflows/agentic-history")
+    >();
+  return {
+    ...actual,
+    getWorkflowAgentHistory: mocks.getWorkflowAgentHistory,
+    appendWorkflowAgentMessage: mocks.appendWorkflowAgentMessage,
+  };
+});
+
+vi.mock("@/modules/tool/builtin-tool-primitives", async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import("@/modules/tool/builtin-tool-primitives")
+    >();
+  return {
+    ...actual,
+    searchWebWithSearxng: mocks.searchWebWithSearxng,
+  };
+});
+
 vi.mock("@/server/infrastructure/providers", () => ({
   getAdapter: () => ({ createChatModel: mocks.createChatModel }),
 }));
 
-import { POST } from "@/app/api/workspace/workflows/[workflowId]/agentic/route";
+import {
+  GET,
+  POST,
+} from "@/app/api/workspace/workflows/[workflowId]/agentic/route";
 
 const userId = "11111111-1111-4111-8111-111111111111";
 const workspaceId = "22222222-2222-4222-8222-222222222222";
@@ -154,7 +183,7 @@ function request() {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         workspaceId,
-        messages: [{ role: "user", content: "Build a summary workflow" }],
+        message: "Build a summary workflow",
         draft: {
           name: "Summary workflow",
           description: null,
@@ -183,6 +212,21 @@ describe("workflow agentic route", () => {
     ]);
     mocks.getAgentById.mockResolvedValue(null);
     mocks.getConfiguredWorkflowBuilderAgentId.mockResolvedValue(null);
+    mocks.getWorkflowAgentHistory.mockResolvedValue({
+      messages: [],
+      pendingRequests: [],
+    });
+    mocks.appendWorkflowAgentMessage.mockImplementation(async (input) => ({
+      id: crypto.randomUUID(),
+      role: input.role,
+      content: input.content,
+      createdAt: new Date().toISOString(),
+    }));
+    mocks.searchWebWithSearxng.mockResolvedValue({
+      ok: true,
+      query: "Build a summary workflow",
+      results: [],
+    });
     mocks.getAgentDefaultPreferences.mockResolvedValue({
       organizationDefaultAgentId: agentId,
       userDefaultAgentId: null,
@@ -258,6 +302,57 @@ describe("workflow agentic route", () => {
     }));
   });
 
+  it("loads persisted history and pending information for the current user", async () => {
+    mocks.getWorkflowAgentHistory.mockResolvedValueOnce({
+      messages: [
+        {
+          id: "77777777-7777-4777-8777-777777777777",
+          role: "assistant",
+          content: "**Ready**",
+          modelContent: "internal context",
+          createdAt: "2026-07-23T10:00:00.000Z",
+        },
+      ],
+      pendingRequests: [
+        {
+          id: "88888888-8888-4888-8888-888888888888",
+          title: "API details",
+          description: null,
+          fields: [],
+          expiresAt: "2099-07-23T10:00:00.000Z",
+        },
+      ],
+    });
+    const response = await GET(
+      new NextRequest(
+        `http://localhost/api/workspace/workflows/${workflowId}/agentic?workspaceId=${workspaceId}`,
+      ),
+      { params: Promise.resolve({ workflowId }) },
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      messages: [
+        {
+          id: "77777777-7777-4777-8777-777777777777",
+          role: "assistant",
+          content: "**Ready**",
+          createdAt: "2026-07-23T10:00:00.000Z",
+        },
+      ],
+      pendingRequests: [
+        expect.objectContaining({
+          id: "88888888-8888-4888-8888-888888888888",
+        }),
+      ],
+    });
+    expect(mocks.requirePermission).toHaveBeenCalledWith(
+      userId,
+      workspaceId,
+      "workflows.view",
+    );
+  });
+
   it("repairs an incomplete visual draft, streams progress, and persists one validated version", async () => {
     const response = await POST(request(), {
       params: Promise.resolve({ workflowId }),
@@ -275,11 +370,14 @@ describe("workflow agentic route", () => {
       "agent",
       "tool_start",
       "tool_result",
+      "tool_start",
+      "tool_result",
       "workflow",
       "text",
       "saved",
       "done",
     ]);
+    expect(mocks.searchWebWithSearxng).toHaveBeenCalledTimes(1);
     expect(mocks.requirePermission).toHaveBeenCalledWith(
       userId,
       workspaceId,
@@ -294,6 +392,7 @@ describe("workflow agentic route", () => {
         definition: generatedDefinition,
       }),
     );
+    expect(mocks.appendWorkflowAgentMessage).toHaveBeenCalledTimes(2);
   });
 
   it("uses the workflow builder assistant selected by an administrator", async () => {

@@ -300,6 +300,12 @@ test("builds, saves, and runs a workflow through the real agentic provider strea
       page.getByText("Prepare summary", { exact: true }),
     ).toBeVisible();
 
+    await page.reload();
+    await page.getByRole("button", { name: "Agentic" }).click();
+    await expect(
+      page.getByText("The summary workflow is ready."),
+    ).toBeVisible();
+
     const persisted = (await (
       await page.request.get(
         `/api/workspace/workflows/${workflowId}?workspaceId=${workspaceId}`,

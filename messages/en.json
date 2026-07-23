@@ -2289,6 +2289,11 @@
       "enterHint": "Enter to send · Shift+Enter for a new line",
       "send": "Send",
       "stop": "Stop",
+      "historyLoadFailed": "Unable to load this conversation’s history.",
+      "informationSubmitFailed": "Unable to save the requested information.",
+      "secureInputHint": "Sensitive values are masked, encrypted, and never revealed to the agent. It only receives a secure reference.",
+      "submitInformation": "Submit",
+      "canvasEditHint": "You can move steps and click them to edit their settings while the agent is working.",
       "failed": "Agentic mode could not update the workflow.",
       "completed": "The workflow is ready. You can ask for more changes or return to visual mode.",
       "stopped": "Editing stopped. Changes already shown remain available in the visual draft.",
@@ -2298,7 +2303,9 @@
         "upsert_workflow_nodes": "Updating workflow steps",
         "remove_workflow_nodes": "Removing workflow steps",
         "replace_workflow_edges": "Connecting workflow steps",
-        "validate_workflow": "Validating the workflow"
+        "validate_workflow": "Validating the workflow",
+        "web_search": "Searching the web",
+        "request_user_input": "Requesting information"
       }
     },
     "true": "true",

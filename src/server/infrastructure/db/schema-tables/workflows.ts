@@ -160,3 +160,70 @@ export const workflowRunSteps = pgTable(
     index("workflow_run_steps_run_idx").on(table.runId),
   ],
 );
+
+export const workflowAgentMessages = pgTable(
+  "workflow_agent_messages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workflowId: uuid("workflow_id")
+      .notNull()
+      .references(() => workflows.id, { onDelete: CASCADE }),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: CASCADE }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: CASCADE }),
+    role: varchar("role", { length: 16 })
+      .$type<"user" | "assistant">()
+      .notNull(),
+    contentEncrypted: text("content_encrypted").notNull(),
+    modelContentEncrypted: text("model_content_encrypted"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("workflow_agent_messages_history_idx").on(
+      table.workflowId,
+      table.userId,
+      table.createdAt,
+    ),
+  ],
+);
+
+export const workflowAgentInputRequests = pgTable(
+  "workflow_agent_input_requests",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workflowId: uuid("workflow_id")
+      .notNull()
+      .references(() => workflows.id, { onDelete: CASCADE }),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: CASCADE }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: CASCADE }),
+    title: varchar("title", { length: 255 }).notNull(),
+    description: text("description"),
+    fieldsJson: jsonb("fields_json").notNull(),
+    status: varchar("status", { length: 24 }).notNull().default("pending"),
+    valuesEncrypted: text("values_encrypted"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }),
+    consumedAt: timestamp("consumed_at", { withTimezone: true }),
+  },
+  (table) => [
+    index("workflow_agent_input_requests_pending_idx").on(
+      table.workflowId,
+      table.userId,
+      table.status,
+      table.createdAt,
+    ),
+    index("workflow_agent_input_requests_workspace_idx").on(table.workspaceId),
+  ],
+);
