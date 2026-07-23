@@ -18,9 +18,11 @@ import {
 } from "@xyflow/react";
 import {
   AlertCircleIcon,
+  BotIcon,
   CheckIcon,
   Maximize2Icon,
   Minimize2Icon,
+  MousePointer2Icon,
   PanelLeftIcon,
   PanelRightIcon,
   PlayIcon,
@@ -82,12 +84,20 @@ import type {
   WorkflowDefinition,
   WorkflowNodeType,
 } from "@/modules/workflows/contracts";
+import type {
+  WorkflowAgenticMessage,
+  WorkflowAgenticStreamEvent,
+} from "@/modules/workflows/agentic";
 
 import {
   WorkflowCanvasNode,
   workflowNodeIconByType,
   type WorkflowCanvasNodeType,
 } from "./workflow-canvas-node";
+import {
+  WorkflowAgenticPanel,
+  type WorkflowAgenticActivity,
+} from "./workflow-agentic-panel";
 import { JsonValueEditor, WorkflowNodeFields } from "./workflow-node-fields";
 import type { WorkflowDetail, WorkflowRun, WorkflowRunDetail } from "./types";
 
@@ -194,7 +204,18 @@ export function WorkflowBuilder({
   const [runDetailLoading, setRunDetailLoading] = useState(false);
   const [runDetailOpen, setRunDetailOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
-  const actionBusy = saving || publishing || running;
+  const [editorMode, setEditorMode] = useState<"visual" | "agentic">("visual");
+  const [agenticMessages, setAgenticMessages] = useState<
+    WorkflowAgenticMessage[]
+  >([]);
+  const [agenticActivities, setAgenticActivities] = useState<
+    WorkflowAgenticActivity[]
+  >([]);
+  const [agenticInput, setAgenticInput] = useState("");
+  const [agenticRunning, setAgenticRunning] = useState(false);
+  const [agenticAgentName, setAgenticAgentName] = useState<string | null>(null);
+  const agenticAbortRef = useRef<AbortController | null>(null);
+  const actionBusy = saving || publishing || running || agenticRunning;
 
   const selectedNode = nodes.find((node) => node.id === selectedNodeId) ?? null;
   const manualTriggerExists = nodes.some(
@@ -274,7 +295,14 @@ export function WorkflowBuilder({
       180,
     );
     return () => window.clearTimeout(timeout);
-  }, [flow, isFullscreen]);
+  }, [editorMode, flow, isFullscreen]);
+
+  useEffect(
+    () => () => {
+      agenticAbortRef.current?.abort();
+    },
+    [],
+  );
 
   const onConnect = useCallback(
     (connection: Connection) => {
@@ -381,6 +409,180 @@ export function WorkflowBuilder({
       return null;
     } finally {
       setSaving(false);
+    }
+  }
+
+  function applyAgenticDraft(draft: {
+    name: string;
+    description: string | null;
+    definition: WorkflowDefinition;
+  }) {
+    setWorkflow((current) => ({
+      ...current,
+      name: draft.name,
+      description: draft.description,
+      definition: draft.definition,
+    }));
+    setNodes(canvasNodes(draft.definition));
+    setEdges(canvasEdges(draft.definition));
+    setSelectedNodeId(null);
+    window.setTimeout(
+      () => void flow?.fitView({ padding: 0.24, duration: 350 }),
+      0,
+    );
+  }
+
+  function updateLastAgenticMessage(delta: string) {
+    setAgenticMessages((current) => {
+      const last = current.at(-1);
+      if (last?.role !== "assistant") return current;
+      return [
+        ...current.slice(0, -1),
+        { ...last, content: `${last.content}${delta}` },
+      ];
+    });
+  }
+
+  function handleAgenticEvent(event: WorkflowAgenticStreamEvent) {
+    if (event.type === "agent") {
+      setAgenticAgentName(event.name);
+      return;
+    }
+    if (event.type === "tool_start") {
+      setAgenticActivities((current) => [
+        ...current.filter((item) => item.id !== event.id),
+        {
+          id: event.id,
+          toolName: event.toolName,
+          status: "running",
+        },
+      ]);
+      return;
+    }
+    if (event.type === "tool_result") {
+      setAgenticActivities((current) =>
+        current.map((item) =>
+          item.id === event.id ? { ...item, status: "done" } : item,
+        ),
+      );
+      return;
+    }
+    if (event.type === "workflow") {
+      applyAgenticDraft(event.draft);
+      return;
+    }
+    if (event.type === "text") {
+      updateLastAgenticMessage(event.delta);
+      return;
+    }
+    if (event.type === "saved") {
+      const saved = event.workflow as WorkflowDetail;
+      setWorkflow(saved);
+      setNodes(canvasNodes(saved.definition));
+      setEdges(canvasEdges(saved.definition));
+      return;
+    }
+    if (event.type === "error") throw new Error(event.message);
+  }
+
+  async function runAgenticBuilder(suggestedPrompt?: string) {
+    const prompt = (suggestedPrompt ?? agenticInput).trim();
+    if (!prompt || agenticRunning) return;
+
+    const history = [
+      ...agenticMessages.filter((message) => message.content.trim()),
+      { role: "user" as const, content: prompt },
+    ].slice(-19);
+    setAgenticMessages([...history, { role: "assistant", content: "" }]);
+    setAgenticActivities([]);
+    setAgenticInput("");
+    setAgenticRunning(true);
+    const abortController = new AbortController();
+    agenticAbortRef.current = abortController;
+
+    try {
+      const response = await fetch(
+        `/api/workspace/workflows/${workflow.id}/agentic`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            workspaceId,
+            messages: history,
+            draft: {
+              name: workflow.name,
+              description: workflow.description,
+              definition: workflowDefinition(nodes, edges),
+            },
+          }),
+          signal: abortController.signal,
+        },
+      );
+      if (!response.ok || !response.body) {
+        const payload = (await response.json().catch(() => null)) as {
+          error?: string;
+        } | null;
+        throw new Error(payload?.error ?? t("agentic.failed"));
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        buffer += decoder.decode(value, { stream: !done });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          handleAgenticEvent(JSON.parse(line) as WorkflowAgenticStreamEvent);
+        }
+        if (done) break;
+      }
+      if (buffer.trim()) {
+        handleAgenticEvent(JSON.parse(buffer) as WorkflowAgenticStreamEvent);
+      }
+      setAgenticMessages((current) => {
+        const last = current.at(-1);
+        if (last?.role !== "assistant" || last.content.trim()) return current;
+        return [
+          ...current.slice(0, -1),
+          { ...last, content: t("agentic.completed") },
+        ];
+      });
+    } catch (error) {
+      setAgenticActivities((current) =>
+        current.map((item) =>
+          item.status === "running" ? { ...item, status: "error" } : item,
+        ),
+      );
+      if (abortController.signal.aborted) {
+        setAgenticMessages((current) => {
+          const last = current.at(-1);
+          if (last?.role !== "assistant") return current;
+          return [
+            ...current.slice(0, -1),
+            { ...last, content: last.content || t("agentic.stopped") },
+          ];
+        });
+      } else {
+        const message =
+          error instanceof Error ? error.message : t("agentic.failed");
+        toast.error(message);
+        setAgenticMessages((current) => {
+          const last = current.at(-1);
+          if (last?.role !== "assistant") return current;
+          return [
+            ...current.slice(0, -1),
+            { ...last, content: last.content || t("agentic.failed") },
+          ];
+        });
+      }
+    } finally {
+      if (agenticAbortRef.current === abortController) {
+        agenticAbortRef.current = null;
+      }
+      setAgenticRunning(false);
     }
   }
 
@@ -803,7 +1005,12 @@ export function WorkflowBuilder({
   }
 
   const canvas = (
-    <main className="relative h-full min-h-[28rem] bg-muted/10 sm:min-h-[34rem]">
+    <main
+      className={cn(
+        "relative h-full bg-muted/10",
+        editorMode === "visual" ? "min-h-[28rem] sm:min-h-[34rem]" : "min-h-0",
+      )}
+    >
       <ReactFlow<WorkflowCanvasNodeType>
         nodes={nodes}
         edges={edges}
@@ -813,6 +1020,7 @@ export function WorkflowBuilder({
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onNodeClick={(_, node) => {
+          if (editorMode === "agentic") return;
           setSelectedNodeId(node.id);
           if (!window.matchMedia("(min-width: 1024px)").matches) {
             setInspectorOpen(true);
@@ -827,7 +1035,11 @@ export function WorkflowBuilder({
         fitViewOptions={{ padding: 0.24 }}
         minZoom={0.25}
         maxZoom={1.8}
-        deleteKeyCode={["Backspace", "Delete"]}
+        nodesDraggable={editorMode === "visual"}
+        nodesConnectable={editorMode === "visual"}
+        edgesReconnectable={editorMode === "visual"}
+        elementsSelectable={editorMode === "visual"}
+        deleteKeyCode={editorMode === "visual" ? ["Backspace", "Delete"] : null}
         snapToGrid
         snapGrid={[16, 16]}
         panOnScroll
@@ -858,7 +1070,7 @@ export function WorkflowBuilder({
           "fixed inset-0 z-50 h-dvh min-h-0 rounded-none border-0",
       )}
     >
-      <div className="flex flex-wrap items-center gap-2 border-b border-border/70 px-3 py-3 sm:gap-3 sm:px-4">
+      <div className="flex flex-wrap items-center gap-1 border-b border-border/70 px-3 py-3 sm:gap-3 sm:px-4">
         <div className="min-w-44 flex-1 sm:min-w-56">
           <Input
             value={workflow.name}
@@ -883,24 +1095,58 @@ export function WorkflowBuilder({
             ) : null}
           </div>
         </div>
-        <Button
-          variant="outline"
-          size="icon"
-          className="lg:hidden"
-          aria-label={t("openPalette")}
-          onClick={() => setPaletteOpen(true)}
+        <div
+          className="flex items-center rounded-lg border border-border/75 bg-muted/40 p-0.5"
+          role="group"
+          aria-label={t("mode")}
         >
-          <PanelLeftIcon />
-        </Button>
-        <Button
-          variant="outline"
-          size="icon"
-          className="lg:hidden"
-          aria-label={t("openInspector")}
-          onClick={() => setInspectorOpen(true)}
-        >
-          <PanelRightIcon />
-        </Button>
+          <Button
+            type="button"
+            variant={editorMode === "visual" ? "secondary" : "ghost"}
+            size="sm"
+            className="h-7 px-1.5 shadow-none sm:px-2.5"
+            aria-pressed={editorMode === "visual"}
+            disabled={agenticRunning}
+            onClick={() => setEditorMode("visual")}
+          >
+            <MousePointer2Icon data-icon="inline-start" />
+            {t("visualMode")}
+          </Button>
+          <Button
+            type="button"
+            variant={editorMode === "agentic" ? "secondary" : "ghost"}
+            size="sm"
+            className="h-7 px-1.5 shadow-none sm:px-2.5"
+            aria-pressed={editorMode === "agentic"}
+            disabled={agenticRunning}
+            onClick={() => setEditorMode("agentic")}
+          >
+            <BotIcon data-icon="inline-start" />
+            {t("agenticMode")}
+          </Button>
+        </div>
+        {editorMode === "visual" ? (
+          <>
+            <Button
+              variant="outline"
+              size="icon"
+              className="lg:hidden"
+              aria-label={t("openPalette")}
+              onClick={() => setPaletteOpen(true)}
+            >
+              <PanelLeftIcon />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              className="lg:hidden"
+              aria-label={t("openInspector")}
+              onClick={() => setInspectorOpen(true)}
+            >
+              <PanelRightIcon />
+            </Button>
+          </>
+        ) : null}
         <Button
           variant="outline"
           size="icon"
@@ -967,7 +1213,57 @@ export function WorkflowBuilder({
         </Button>
       </div>
 
-      {isDesktop ? (
+      {editorMode === "agentic" ? (
+        isDesktop ? (
+          <div className="min-h-0 flex-1">
+            <ResizablePanelGroup orientation="horizontal">
+              <ResizablePanel
+                id="workflow-agentic-chat"
+                defaultSize="36%"
+                minSize="28%"
+                maxSize="48%"
+              >
+                <WorkflowAgenticPanel
+                  messages={agenticMessages}
+                  activities={agenticActivities}
+                  input={agenticInput}
+                  running={agenticRunning}
+                  agentName={agenticAgentName}
+                  onInputChange={setAgenticInput}
+                  onSubmit={(prompt) => void runAgenticBuilder(prompt)}
+                  onStop={() => agenticAbortRef.current?.abort()}
+                />
+              </ResizablePanel>
+              <ResizableHandle withHandle />
+              <ResizablePanel
+                id="workflow-agentic-canvas"
+                defaultSize="64%"
+                minSize="40%"
+              >
+                {canvas}
+              </ResizablePanel>
+            </ResizablePanelGroup>
+          </div>
+        ) : (
+          <div className="flex min-h-0 flex-1 flex-col">
+            <div className="h-[34%] min-h-36 border-b border-border/70">
+              {canvas}
+            </div>
+            <div className="min-h-0 flex-1">
+              <WorkflowAgenticPanel
+                messages={agenticMessages}
+                activities={agenticActivities}
+                input={agenticInput}
+                running={agenticRunning}
+                agentName={agenticAgentName}
+                onInputChange={setAgenticInput}
+                onSubmit={(prompt) => void runAgenticBuilder(prompt)}
+                onStop={() => agenticAbortRef.current?.abort()}
+              />
+            </div>
+          </div>
+        )
+      ) : isDesktop ? (
         <div className="min-h-0 flex-1">
           <ResizablePanelGroup orientation="horizontal">
             <ResizablePanel

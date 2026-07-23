@@ -194,6 +194,135 @@ test("builds, publishes, and executes a no-code workflow through the API", async
   }
 });
 
+test("switches between visual and agentic editing while keeping live changes", async ({
+  page,
+}) => {
+  const workspaces = (await (
+    await page.request.get("/api/workspaces")
+  ).json()) as Array<{ workspace: { id: string } }>;
+  const workspaceId = workspaces[0]!.workspace.id;
+  const createResponse = await page.request.post("/api/workspace/workflows", {
+    data: { workspaceId, name: `Agentic E2E ${Date.now()}` },
+  });
+  expect(createResponse.status()).toBe(201);
+  const created = (await createResponse.json()) as {
+    workflow: { id: string };
+  };
+  const workflowId = created.workflow.id;
+  const definition = {
+    schemaVersion: 1,
+    nodes: [
+      {
+        id: "trigger",
+        type: "trigger.manual",
+        label: "API trigger",
+        position: { x: 80, y: 180 },
+        parameters: {},
+        settings: {
+          timeoutMs: 30_000,
+          maxRetries: 0,
+          retryDelayMs: 1_000,
+        },
+      },
+      {
+        id: "summary",
+        type: "data.template",
+        label: "Prepare summary",
+        position: { x: 380, y: 180 },
+        parameters: {
+          template: "Summary: {{message}}",
+          outputPath: "summary",
+        },
+        settings: {
+          timeoutMs: 30_000,
+          maxRetries: 0,
+          retryDelayMs: 1_000,
+        },
+      },
+    ],
+    edges: [
+      {
+        id: "edge-trigger-summary",
+        source: "trigger",
+        target: "summary",
+        sourceHandle: null,
+      },
+    ],
+  };
+
+  try {
+    await page.route(
+      `**/api/workspace/workflows/${workflowId}/agentic`,
+      async (route) => {
+        const events = [
+          { type: "agent", name: "Workflow assistant" },
+          {
+            type: "tool_start",
+            id: "tool-1",
+            toolName: "replace_workflow",
+            label: "Building the workflow",
+          },
+          {
+            type: "tool_result",
+            id: "tool-1",
+            toolName: "replace_workflow",
+            label: "Building the workflow",
+          },
+          {
+            type: "workflow",
+            draft: {
+              name: "Live summary",
+              description: null,
+              definition,
+            },
+          },
+          { type: "text", delta: "The summary workflow is ready." },
+          { type: "done" },
+        ];
+        await route.fulfill({
+          status: 200,
+          contentType: "application/x-ndjson",
+          body: `${events.map((event) => JSON.stringify(event)).join("\n")}\n`,
+        });
+      },
+    );
+
+    await page.goto(`/en/workflows/${workflowId}`);
+    await page.getByRole("button", { name: "Agentic" }).click();
+    await expect(
+      page.getByRole("heading", { name: "Build with an agent" }),
+    ).toBeVisible();
+    await page
+      .getByRole("textbox", {
+        name: /When a request arrives, have an assistant analyze it/i,
+      })
+      .fill("Build a summary workflow");
+    await page.getByRole("button", { name: "Send" }).click();
+
+    await expect(page.getByText("Using Workflow assistant")).toBeVisible();
+    await expect(page.getByText("Building the workflow")).toBeVisible();
+    await expect(
+      page.getByText("Prepare summary", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("The summary workflow is ready."),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("textbox", { name: "Workflow name" }),
+    ).toHaveValue("Live summary");
+
+    await page.getByRole("button", { name: "Visual" }).click();
+    await expect(page.getByText("Steps", { exact: true })).toBeVisible();
+    await expect(
+      page.getByText("Prepare summary", { exact: true }),
+    ).toBeVisible();
+  } finally {
+    await page.request.delete(
+      `/api/workspace/workflows/${workflowId}?workspaceId=${workspaceId}`,
+    );
+  }
+});
+
 test("executes JavaScript and Python workflow steps in the local sandbox", async ({
   page,
 }) => {
