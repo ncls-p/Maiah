@@ -89,6 +89,8 @@ import type {
   WorkflowAgenticStreamEvent,
 } from "@/modules/workflows/agentic";
 import type { WorkflowAgentInputRequest } from "@/modules/workflows/agentic-history";
+import type { WorkflowAgentRunRequest } from "@/modules/workflows/agentic-run-approvals";
+import type { ChatTodoList } from "@/modules/chat/todo-list";
 
 import {
   WorkflowCanvasNode,
@@ -212,10 +214,18 @@ export function WorkflowBuilder({
   const [agenticPendingRequests, setAgenticPendingRequests] = useState<
     WorkflowAgentInputRequest[]
   >([]);
+  const [agenticRunRequests, setAgenticRunRequests] = useState<
+    WorkflowAgentRunRequest[]
+  >([]);
+  const [agenticTodoList, setAgenticTodoList] = useState<ChatTodoList | null>(
+    null,
+  );
   const [agenticHistoryLoading, setAgenticHistoryLoading] = useState(true);
   const [submittingAgenticRequestId, setSubmittingAgenticRequestId] = useState<
     string | null
   >(null);
+  const [decidingAgenticRunRequestId, setDecidingAgenticRunRequestId] =
+    useState<string | null>(null);
   const [agenticActivities, setAgenticActivities] = useState<
     WorkflowAgenticActivity[]
   >([]);
@@ -247,6 +257,8 @@ export function WorkflowBuilder({
       const payload = await fetchJson<{
         messages: WorkflowAgenticHistoryMessage[];
         pendingRequests: WorkflowAgentInputRequest[];
+        runRequests?: WorkflowAgentRunRequest[];
+        todoList?: ChatTodoList | null;
       }>(
         `/api/workspace/workflows/${workflow.id}/agentic?workspaceId=${workspaceId}`,
       );
@@ -268,6 +280,15 @@ export function WorkflowBuilder({
           ...current.filter((request) => !persistedIds.has(request.id)),
         ];
       });
+      setAgenticRunRequests((current) => {
+        const requests = payload.runRequests ?? [];
+        const persistedIds = new Set(requests.map((request) => request.id));
+        return [
+          ...requests,
+          ...current.filter((request) => !persistedIds.has(request.id)),
+        ];
+      });
+      setAgenticTodoList(payload.todoList ?? null);
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : t("agentic.historyLoadFailed"),
@@ -533,6 +554,17 @@ export function WorkflowBuilder({
       ]);
       return;
     }
+    if (event.type === "run_request") {
+      setAgenticRunRequests((current) => [
+        ...current.filter((request) => request.id !== event.request.id),
+        event.request,
+      ]);
+      return;
+    }
+    if (event.type === "todo_list") {
+      setAgenticTodoList(event.todoList);
+      return;
+    }
     if (event.type === "saved") {
       const saved = event.workflow as WorkflowDetail;
       setWorkflow(saved);
@@ -692,6 +724,41 @@ export function WorkflowBuilder({
     }
   }
 
+  async function decideAgenticRunRequest(
+    request: WorkflowAgentRunRequest,
+    decision: "approve" | "reject",
+  ) {
+    if (agenticRunning || decidingAgenticRunRequestId) return;
+    setDecidingAgenticRunRequestId(request.id);
+    try {
+      const result = await fetchJson<{
+        requestId: string;
+        status: "approved" | "rejected";
+        runId?: string;
+      }>(`/api/workspace/workflows/${workflow.id}/agentic/runs/${request.id}`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ workspaceId, decision }),
+      });
+      setAgenticRunRequests((current) =>
+        current.filter((item) => item.id !== request.id),
+      );
+      if (decision === "approve") {
+        toast.success(t("agentic.runApproved"));
+        await loadRuns();
+        if (result.runId) await loadRunDetail(result.runId);
+      } else {
+        toast.success(t("agentic.runRejected"));
+      }
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : t("agentic.runDecisionFailed"),
+      );
+    } finally {
+      setDecidingAgenticRunRequestId(null);
+    }
+  }
+
   async function publish() {
     setPublishing(true);
     try {
@@ -759,6 +826,33 @@ export function WorkflowBuilder({
       setRunDetailLoading(false);
     }
   }
+
+  useEffect(() => {
+    if (
+      !runDetailOpen ||
+      !runDetail ||
+      (runDetail.status !== "queued" && runDetail.status !== "running")
+    ) {
+      return;
+    }
+    const interval = window.setInterval(async () => {
+      try {
+        const payload = await fetchJson<{ run: WorkflowRunDetail }>(
+          `/api/workspace/workflow-runs/${runDetail.id}?workspaceId=${workspaceId}`,
+        );
+        setRunDetail(payload.run);
+        if (
+          payload.run.status !== "queued" &&
+          payload.run.status !== "running"
+        ) {
+          await loadRuns();
+        }
+      } catch {
+        // Keep the last visible snapshot; the user can retry from the runs tab.
+      }
+    }, 1_500);
+    return () => window.clearInterval(interval);
+  }, [loadRuns, runDetail, runDetailOpen, workspaceId]);
 
   function removeSelectedNode() {
     if (!selectedNode || selectedNode.data.workflowType === "trigger.manual")
@@ -1337,15 +1431,21 @@ export function WorkflowBuilder({
                   messages={agenticMessages}
                   activities={agenticActivities}
                   pendingRequests={agenticPendingRequests}
+                  runRequests={agenticRunRequests}
+                  todoList={agenticTodoList}
                   input={agenticInput}
                   running={agenticRunning}
                   historyLoading={agenticHistoryLoading}
                   submittingRequestId={submittingAgenticRequestId}
+                  decidingRunRequestId={decidingAgenticRunRequestId}
                   agentName={agenticAgentName}
                   onInputChange={setAgenticInput}
                   onSubmit={(prompt) => void runAgenticBuilder(prompt)}
                   onSubmitRequest={(request, values) =>
                     void submitAgenticRequest(request, values)
+                  }
+                  onDecideRunRequest={(request, decision) =>
+                    void decideAgenticRunRequest(request, decision)
                   }
                   onStop={() => agenticAbortRef.current?.abort()}
                 />
@@ -1370,15 +1470,21 @@ export function WorkflowBuilder({
                 messages={agenticMessages}
                 activities={agenticActivities}
                 pendingRequests={agenticPendingRequests}
+                runRequests={agenticRunRequests}
+                todoList={agenticTodoList}
                 input={agenticInput}
                 running={agenticRunning}
                 historyLoading={agenticHistoryLoading}
                 submittingRequestId={submittingAgenticRequestId}
+                decidingRunRequestId={decidingAgenticRunRequestId}
                 agentName={agenticAgentName}
                 onInputChange={setAgenticInput}
                 onSubmit={(prompt) => void runAgenticBuilder(prompt)}
                 onSubmitRequest={(request, values) =>
                   void submitAgenticRequest(request, values)
+                }
+                onDecideRunRequest={(request, decision) =>
+                  void decideAgenticRunRequest(request, decision)
                 }
                 onStop={() => agenticAbortRef.current?.abort()}
               />
@@ -1530,12 +1636,27 @@ export function WorkflowBuilder({
                         {step.error}
                       </p>
                     ) : null}
-                    {step.outputJson !== null &&
-                    step.outputJson !== undefined ? (
-                      <pre className="mt-3 max-h-48 overflow-auto rounded-lg bg-muted p-3 text-[11px] leading-5">
-                        {JSON.stringify(step.outputJson, null, 2)}
-                      </pre>
-                    ) : null}
+                    <div className="mt-3 grid gap-3">
+                      <div>
+                        <p className="mb-1 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+                          {t("stepInput")}
+                        </p>
+                        <pre className="max-h-48 overflow-auto rounded-lg bg-muted p-3 text-[11px] leading-5">
+                          {JSON.stringify(step.inputJson, null, 2)}
+                        </pre>
+                      </div>
+                      {step.outputJson !== null &&
+                      step.outputJson !== undefined ? (
+                        <div>
+                          <p className="mb-1 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+                            {t("stepOutput")}
+                          </p>
+                          <pre className="max-h-48 overflow-auto rounded-lg bg-muted p-3 text-[11px] leading-5">
+                            {JSON.stringify(step.outputJson, null, 2)}
+                          </pre>
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
                 ))}
                 {runDetail.outputJson !== null &&

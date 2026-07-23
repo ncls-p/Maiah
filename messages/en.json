@@ -271,7 +271,8 @@
       "actionUnavailable": "Tool unavailable or invalid call",
       "actionApproval": "Approval required",
       "actionInput": "Input",
-      "actionOutput": "Output"
+      "actionOutput": "Output",
+      "todoProgress": "{completed}/{total} tasks completed"
     },
     "richEditor": {
       "bold": "Bold",
@@ -2267,6 +2268,8 @@
     "runDetailTitle": "Run details",
     "refreshRuns": "Refresh",
     "output": "Output",
+    "stepInput": "Step input",
+    "stepOutput": "Step output",
     "error": "Error",
     "openPalette": "Open step library",
     "openInspector": "Open configuration",
@@ -2293,6 +2296,14 @@
       "informationSubmitFailed": "Unable to save the requested information.",
       "secureInputHint": "Sensitive values are masked, encrypted, and never revealed to the agent. It only receives a secure reference.",
       "submitInformation": "Submit",
+      "runApprovalHint": "No real execution will start without your explicit approval. This request remains pinned to the tested version below.",
+      "runVersion": "Version {version}",
+      "runInput": "Reviewed input",
+      "approveAndRun": "Approve and run",
+      "rejectRun": "Reject",
+      "runApproved": "Run approved and started.",
+      "runRejected": "Run request rejected.",
+      "runDecisionFailed": "Unable to process this run request.",
       "canvasEditHint": "You can move steps and click them to edit their settings while the agent is working.",
       "failed": "Agentic mode could not update the workflow.",
       "completed": "The workflow is ready. You can ask for more changes or return to visual mode.",
@@ -2305,6 +2316,11 @@
         "replace_workflow_edges": "Connecting workflow steps",
         "validate_workflow": "Validating the workflow",
         "web_search": "Searching the web",
+        "set_workflow_plan": "Planning the workflow",
+        "update_todo_list": "Updating the to-do list",
+        "run_code_sandbox": "Testing in the sandbox",
+        "dry_run_workflow": "Simulating without execution",
+        "request_workflow_run": "Requesting run approval",
         "request_user_input": "Requesting information"
       }
     },
@@ -2346,6 +2362,8 @@
       "limit": "Maximum number of items",
       "delay": "Wait time (ms)",
       "resultMessage": "Result message",
+      "debugNote": "Debug note",
+      "debugNoteHint": "Describe what you want to verify in the run details.",
       "format": "Format",
       "language": "Language",
       "code": "Custom code"
@@ -2417,6 +2435,7 @@
         "delay": "Wait",
         "stop": "End workflow"
       },
+      "debug": { "snapshot": "Inspect data" },
       "date": { "now": "Current date" }
     },
     "nodeDescriptions": {
@@ -2444,6 +2463,9 @@
         "condition": "Branches the flow between true and false.",
         "delay": "Pauses the workflow for a short time.",
         "stop": "Explicitly marks the end of a branch."
+      },
+      "debug": {
+        "snapshot": "Captures the data here without changing it."
       },
       "date": { "now": "Adds the current date or timestamp." }
     }

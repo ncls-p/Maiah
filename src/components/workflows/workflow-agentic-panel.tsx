@@ -6,9 +6,12 @@ import {
   CheckIcon,
   CircleStopIcon,
   KeyRoundIcon,
+  PlayIcon,
   SendIcon,
+  ShieldCheckIcon,
   SparklesIcon,
   WrenchIcon,
+  XIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import {
@@ -20,6 +23,7 @@ import {
 } from "react";
 
 import { ChatMarkdown } from "@/components/chat/chat-markdown";
+import { ChatTodoListCard } from "@/components/chat/chat-todo-list-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +34,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import type { WorkflowAgenticHistoryMessage } from "@/modules/workflows/agentic";
 import type { WorkflowAgentInputRequest } from "@/modules/workflows/agentic-history";
+import type { WorkflowAgentRunRequest } from "@/modules/workflows/agentic-run-approvals";
+import type { ChatTodoList } from "@/modules/chat/todo-list";
 
 export type WorkflowAgenticActivity = {
   id: string;
@@ -41,29 +47,40 @@ export function WorkflowAgenticPanel({
   messages,
   activities,
   pendingRequests,
+  runRequests,
+  todoList,
   input,
   running,
   historyLoading,
   submittingRequestId,
+  decidingRunRequestId,
   agentName,
   onInputChange,
   onSubmit,
   onSubmitRequest,
+  onDecideRunRequest,
   onStop,
 }: {
   messages: WorkflowAgenticHistoryMessage[];
   activities: WorkflowAgenticActivity[];
   pendingRequests: WorkflowAgentInputRequest[];
+  runRequests: WorkflowAgentRunRequest[];
+  todoList: ChatTodoList | null;
   input: string;
   running: boolean;
   historyLoading: boolean;
   submittingRequestId: string | null;
+  decidingRunRequestId: string | null;
   agentName: string | null;
   onInputChange: (value: string) => void;
   onSubmit: (prompt?: string) => void;
   onSubmitRequest: (
     request: WorkflowAgentInputRequest,
     values: Record<string, string>,
+  ) => void;
+  onDecideRunRequest: (
+    request: WorkflowAgentRunRequest,
+    decision: "approve" | "reject",
   ) => void;
   onStop: () => void;
 }) {
@@ -75,7 +92,7 @@ export function WorkflowAgenticPanel({
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
-  }, [activities, messages, pendingRequests, running]);
+  }, [activities, messages, pendingRequests, runRequests, running, todoList]);
 
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -121,7 +138,10 @@ export function WorkflowAgenticPanel({
             <div className="my-auto flex items-center justify-center py-10">
               <Spinner className="size-5 text-muted-foreground" />
             </div>
-          ) : messages.length === 0 && pendingRequests.length === 0 ? (
+          ) : messages.length === 0 &&
+            pendingRequests.length === 0 &&
+            runRequests.length === 0 &&
+            !todoList ? (
             <div className="my-auto flex flex-col items-center px-2 py-8 text-center">
               <span className="mb-3 flex size-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
                 <SparklesIcon className="size-5" aria-hidden="true" />
@@ -178,6 +198,8 @@ export function WorkflowAgenticPanel({
               </div>
             ))
           )}
+
+          {todoList ? <ChatTodoListCard todoList={todoList} /> : null}
 
           {pendingRequests.map((request) => (
             <form
@@ -286,6 +308,66 @@ export function WorkflowAgenticPanel({
                 </Button>
               </div>
             </form>
+          ))}
+
+          {runRequests.map((request) => (
+            <section
+              key={request.id}
+              className="rounded-2xl border border-amber-500/35 bg-amber-500/5 p-4"
+            >
+              <div className="flex items-start gap-3">
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-amber-500/15 text-amber-700 dark:text-amber-300">
+                  <ShieldCheckIcon className="size-4" aria-hidden="true" />
+                </span>
+                <div className="min-w-0">
+                  <h3 className="text-sm font-semibold">{request.title}</h3>
+                  {request.reason ? (
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                      {request.reason}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+              <p className="mt-3 text-xs leading-5 text-muted-foreground">
+                {t("runApprovalHint")}
+              </p>
+              <div className="mt-3 rounded-lg border border-border/70 bg-background/80 p-3">
+                <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+                  {t("runVersion", { version: request.expectedVersion })}
+                </p>
+                <p className="mt-2 text-[11px] font-semibold text-muted-foreground">
+                  {t("runInput")}
+                </p>
+                <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap break-all text-xs">
+                  {JSON.stringify(request.inputPreview, null, 2)}
+                </pre>
+              </div>
+              <div className="mt-4 flex flex-wrap justify-end gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={running || decidingRunRequestId === request.id}
+                  onClick={() => onDecideRunRequest(request, "reject")}
+                >
+                  <XIcon data-icon="inline-start" />
+                  {t("rejectRun")}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={running || decidingRunRequestId === request.id}
+                  onClick={() => onDecideRunRequest(request, "approve")}
+                >
+                  {decidingRunRequestId === request.id ? (
+                    <Spinner data-icon="inline-start" />
+                  ) : (
+                    <PlayIcon data-icon="inline-start" />
+                  )}
+                  {t("approveAndRun")}
+                </Button>
+              </div>
+            </section>
           ))}
 
           {activities.length > 0 ? (

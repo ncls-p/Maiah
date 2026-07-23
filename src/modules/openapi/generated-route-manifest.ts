@@ -2138,6 +2138,20 @@ export const OPENAPI_ROUTE_MANIFEST = [
     responseKind: "json",
   },
   {
+    path: "/api/workspace/workflows/{workflowId}/agentic/runs/{requestId}",
+    method: "POST",
+    operationId: "postWorkspaceWorkflowsWorkflowIdAgenticRunsRequestId",
+    summary:
+      "Create or execute workspace · workflows · {workflowId} · agentic · runs · {requestId}",
+    tag: "workflows",
+    auth: ["session", "apiKey"],
+    permissions: ["workflows.execute"],
+    pathParameters: ["workflowId", "requestId"],
+    queryParameters: [],
+    bodyKind: "json",
+    responseKind: "json",
+  },
+  {
     path: "/api/workspace/workflows/{workflowId}/publish",
     method: "POST",
     operationId: "postWorkspaceWorkflowsWorkflowIdPublish",

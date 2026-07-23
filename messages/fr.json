@@ -271,7 +271,8 @@
       "actionUnavailable": "Outil indisponible ou appel invalide",
       "actionApproval": "Validation requise",
       "actionInput": "Entrée",
-      "actionOutput": "Sortie"
+      "actionOutput": "Sortie",
+      "todoProgress": "{completed}/{total} tâches terminées"
     },
     "richEditor": {
       "bold": "Gras",
@@ -2266,6 +2267,8 @@
     "runDetailTitle": "Détail de l’exécution",
     "refreshRuns": "Actualiser",
     "output": "Sortie",
+    "stepInput": "Entrée de l’étape",
+    "stepOutput": "Sortie de l’étape",
     "error": "Erreur",
     "openPalette": "Ouvrir la bibliothèque d’étapes",
     "openInspector": "Ouvrir la configuration",
@@ -2292,6 +2295,14 @@
       "informationSubmitFailed": "Impossible d’enregistrer les informations demandées.",
       "secureInputHint": "Les valeurs sensibles sont masquées, chiffrées et ne sont jamais révélées à l’agent. Il reçoit uniquement une référence sécurisée.",
       "submitInformation": "Transmettre",
+      "runApprovalHint": "Aucune exécution réelle ne commencera sans votre validation explicite. La demande reste liée à la version testée ci-dessous.",
+      "runVersion": "Version {version}",
+      "runInput": "Données d’entrée vérifiées",
+      "approveAndRun": "Valider et exécuter",
+      "rejectRun": "Refuser",
+      "runApproved": "Exécution validée et lancée.",
+      "runRejected": "Demande d’exécution refusée.",
+      "runDecisionFailed": "Impossible de traiter cette demande d’exécution.",
       "canvasEditHint": "Vous pouvez déplacer les étapes et cliquer dessus pour les configurer pendant que l’agent travaille.",
       "failed": "Le mode agentique n’a pas pu modifier le workflow.",
       "completed": "Le workflow est prêt. Vous pouvez continuer à me demander des changements ou revenir au mode visuel.",
@@ -2304,6 +2315,11 @@
         "replace_workflow_edges": "Connexion des étapes",
         "validate_workflow": "Vérification du workflow",
         "web_search": "Recherche sur le web",
+        "set_workflow_plan": "Préparation du plan",
+        "update_todo_list": "Mise à jour de la liste de tâches",
+        "run_code_sandbox": "Test dans la sandbox",
+        "dry_run_workflow": "Simulation sans exécution",
+        "request_workflow_run": "Demande de validation d’une exécution",
         "request_user_input": "Demande d’informations"
       }
     },
@@ -2345,6 +2361,8 @@
       "limit": "Nombre maximal d’éléments",
       "delay": "Durée d’attente (ms)",
       "resultMessage": "Message de résultat",
+      "debugNote": "Note de debug",
+      "debugNoteHint": "Explique ce que vous souhaitez vérifier dans le détail du run.",
       "format": "Format",
       "language": "Langage",
       "code": "Code personnalisé"
@@ -2416,6 +2434,7 @@
         "delay": "Attendre",
         "stop": "Terminer le workflow"
       },
+      "debug": { "snapshot": "Inspecter les données" },
       "date": { "now": "Date actuelle" }
     },
     "nodeDescriptions": {
@@ -2443,6 +2462,9 @@
         "condition": "Sépare le flux entre vrai et faux.",
         "delay": "Suspend le workflow pendant une courte durée.",
         "stop": "Marque explicitement la fin d’une branche."
+      },
+      "debug": {
+        "snapshot": "Capture les données ici sans les modifier."
       },
       "date": { "now": "Ajoute la date ou l’horodatage courant." }
     }

@@ -253,6 +253,13 @@
       "when": 1784809200000,
       "tag": "0035_workflow_agent_chat",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1784815200000,
+      "tag": "0036_workflow_agent_run_approvals",
+      "breakpoints": true
     }
   ]
 }

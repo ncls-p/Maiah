@@ -17,8 +17,13 @@ const mocks = vi.hoisted(() => ({
   resolveProviderForVersion: vi.fn(),
   createChatModel: vi.fn(),
   getWorkflowAgentHistory: vi.fn(),
+  getPendingWorkflowAgentRunRequests: vi.fn(),
+  createWorkflowAgentRunRequest: vi.fn(),
+  getWorkflowAgentTodoList: vi.fn(),
+  updateWorkflowAgentTodoList: vi.fn(),
   appendWorkflowAgentMessage: vi.fn(),
   searchWebWithSearxng: vi.fn(),
+  executeCodeSandbox: vi.fn(),
 }));
 
 vi.mock("@/lib/route-handler", () => ({
@@ -89,6 +94,20 @@ vi.mock("@/modules/tool/builtin-tool-primitives", async (importOriginal) => {
     searchWebWithSearxng: mocks.searchWebWithSearxng,
   };
 });
+
+vi.mock("@/modules/tool/code-sandbox", () => ({
+  executeCodeSandbox: mocks.executeCodeSandbox,
+}));
+
+vi.mock("@/modules/workflows/agentic-run-approvals", () => ({
+  getPendingWorkflowAgentRunRequests: mocks.getPendingWorkflowAgentRunRequests,
+  createWorkflowAgentRunRequest: mocks.createWorkflowAgentRunRequest,
+}));
+
+vi.mock("@/modules/workflows/agentic-todo-list", () => ({
+  getWorkflowAgentTodoList: mocks.getWorkflowAgentTodoList,
+  updateWorkflowAgentTodoList: mocks.updateWorkflowAgentTodoList,
+}));
 
 vi.mock("@/server/infrastructure/providers", () => ({
   getAdapter: () => ({ createChatModel: mocks.createChatModel }),
@@ -216,6 +235,32 @@ describe("workflow agentic route", () => {
       messages: [],
       pendingRequests: [],
     });
+    mocks.getPendingWorkflowAgentRunRequests.mockResolvedValue([]);
+    mocks.getWorkflowAgentTodoList.mockResolvedValue(null);
+    mocks.updateWorkflowAgentTodoList.mockImplementation(async (input) => ({
+      kind: "chat_todo_list",
+      title: input.todoList.title,
+      items: input.todoList.items,
+      completedCount: input.todoList.items.filter(
+        (item: { status: string }) => item.status === "completed",
+      ).length,
+      totalCount: input.todoList.items.length,
+    }));
+    mocks.createWorkflowAgentRunRequest.mockImplementation(async (input) => ({
+      id: "99999999-9999-4999-8999-999999999999",
+      title: input.title,
+      reason: input.reason ?? null,
+      inputPreview: input.payload ?? {},
+      expectedVersion: input.expectedVersion,
+      status: "pending",
+      expiresAt: "2099-07-23T10:00:00.000Z",
+    }));
+    mocks.executeCodeSandbox.mockResolvedValue({
+      ok: true,
+      stdout: "tests passed",
+      stderr: "",
+      exitCode: 0,
+    });
     mocks.appendWorkflowAgentMessage.mockImplementation(async (input) => ({
       id: crypto.randomUUID(),
       role: input.role,
@@ -254,11 +299,139 @@ describe("workflow agentic route", () => {
                 { type: "stream-start", warnings: [] },
                 {
                   type: "tool-call",
+                  toolCallId: "tool-plan",
+                  toolName: "set_workflow_plan",
+                  input: JSON.stringify({
+                    summary: "Build and verify a summary workflow",
+                    steps: ["Build the graph", "Validate the connections"],
+                    tests: ["Exercise the summary template"],
+                  }),
+                },
+                {
+                  type: "finish",
+                  usage: modelUsage,
+                  finishReason: {
+                    unified: "tool-calls",
+                    raw: "tool_calls",
+                  },
+                },
+              ],
+            }),
+          },
+          {
+            stream: simulateReadableStream({
+              chunks: [
+                { type: "stream-start", warnings: [] },
+                {
+                  type: "tool-call",
+                  toolCallId: "tool-todos",
+                  toolName: "update_todo_list",
+                  input: JSON.stringify({
+                    title: "Summary workflow",
+                    items: [
+                      {
+                        id: "build",
+                        label: "Build the workflow",
+                        status: "in_progress",
+                      },
+                      {
+                        id: "test",
+                        label: "Test the workflow",
+                        status: "pending",
+                      },
+                    ],
+                  }),
+                },
+                {
+                  type: "finish",
+                  usage: modelUsage,
+                  finishReason: {
+                    unified: "tool-calls",
+                    raw: "tool_calls",
+                  },
+                },
+              ],
+            }),
+          },
+          {
+            stream: simulateReadableStream({
+              chunks: [
+                { type: "stream-start", warnings: [] },
+                {
+                  type: "tool-call",
                   toolCallId: "tool-1",
                   toolName: "replace_workflow",
                   input: JSON.stringify({
                     summary: "Added a summary step",
                     definition: generatedDefinition,
+                  }),
+                },
+                {
+                  type: "finish",
+                  usage: modelUsage,
+                  finishReason: {
+                    unified: "tool-calls",
+                    raw: "tool_calls",
+                  },
+                },
+              ],
+            }),
+          },
+          {
+            stream: simulateReadableStream({
+              chunks: [
+                { type: "stream-start", warnings: [] },
+                {
+                  type: "tool-call",
+                  toolCallId: "tool-validate",
+                  toolName: "validate_workflow",
+                  input: "{}",
+                },
+                {
+                  type: "finish",
+                  usage: modelUsage,
+                  finishReason: {
+                    unified: "tool-calls",
+                    raw: "tool_calls",
+                  },
+                },
+              ],
+            }),
+          },
+          {
+            stream: simulateReadableStream({
+              chunks: [
+                { type: "stream-start", warnings: [] },
+                {
+                  type: "tool-call",
+                  toolCallId: "tool-sandbox",
+                  toolName: "run_code_sandbox",
+                  input: JSON.stringify({
+                    language: "node",
+                    code: "console.log('tests passed')",
+                  }),
+                },
+                {
+                  type: "finish",
+                  usage: modelUsage,
+                  finishReason: {
+                    unified: "tool-calls",
+                    raw: "tool_calls",
+                  },
+                },
+              ],
+            }),
+          },
+          {
+            stream: simulateReadableStream({
+              chunks: [
+                { type: "stream-start", warnings: [] },
+                {
+                  type: "tool-call",
+                  toolCallId: "tool-dry-run",
+                  toolName: "dry_run_workflow",
+                  input: JSON.stringify({
+                    testInput: { message: "A long message" },
                   }),
                 },
                 {
@@ -322,6 +495,8 @@ describe("workflow agentic route", () => {
           expiresAt: "2099-07-23T10:00:00.000Z",
         },
       ],
+      runRequests: [],
+      todoList: null,
     });
     const response = await GET(
       new NextRequest(
@@ -345,6 +520,8 @@ describe("workflow agentic route", () => {
           id: "88888888-8888-4888-8888-888888888888",
         }),
       ],
+      runRequests: [],
+      todoList: null,
     });
     expect(mocks.requirePermission).toHaveBeenCalledWith(
       userId,
@@ -372,7 +549,18 @@ describe("workflow agentic route", () => {
       "tool_result",
       "tool_start",
       "tool_result",
+      "tool_start",
+      "tool_result",
+      "todo_list",
+      "tool_start",
+      "tool_result",
       "workflow",
+      "tool_start",
+      "tool_result",
+      "tool_start",
+      "tool_result",
+      "tool_start",
+      "tool_result",
       "text",
       "saved",
       "done",

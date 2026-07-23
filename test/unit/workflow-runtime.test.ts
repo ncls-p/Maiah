@@ -130,6 +130,43 @@ describe("workflow runtime", () => {
     expect(Object.hasOwn(result.context.enrich as object, "")).toBe(false);
   });
 
+  it("captures a debug snapshot without changing downstream data", async () => {
+    const definition = {
+      schemaVersion: 1 as const,
+      nodes: [
+        ...createStarterDefinition().nodes,
+        {
+          id: "debug",
+          type: "debug.snapshot" as const,
+          label: "Inspect payload",
+          position: { x: 300, y: 180 },
+          parameters: { note: "Check the incoming message" },
+          settings,
+        },
+      ],
+      edges: [{ id: "trigger-debug", source: "trigger", target: "debug" }],
+    };
+    const { blueprint } = compileWorkflowDefinition({
+      workflowId: "workflow",
+      version: 1,
+      definition,
+    });
+    const runtime = createWorkflowRuntime({
+      dependencies: {
+        workspaceId: "workspace",
+        workflowId: "workflow",
+        userId: "user",
+        runId: "run",
+      },
+    });
+
+    const input = { message: "hello", nested: { count: 2 } };
+    const result = await runtime.run(blueprint, { input });
+
+    expect(result.status, JSON.stringify(result.errors)).toBe("completed");
+    expect(result.context.debug).toEqual(input);
+  });
+
   it("executes no-code text, number, list, date, delay, and terminal nodes", async () => {
     const node = (
       id: string,

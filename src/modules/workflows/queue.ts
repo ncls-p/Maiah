@@ -6,10 +6,7 @@ export const WORKFLOW_QUEUE_NAME = "{maiah-workflow-runs}";
 
 let queue: Queue<{ runId: string }> | null = null;
 
-type WorkflowQueueClient = Pick<
-  Queue<{ runId: string }>,
-  "add" | "getJob"
->;
+type WorkflowQueueClient = Pick<Queue<{ runId: string }>, "add" | "getJob">;
 
 export type WorkflowRunRecoveryResult =
   | "enqueued"

@@ -63,7 +63,10 @@ async function requestBody(request: IncomingMessage) {
   for await (const chunk of request) chunks.push(Buffer.from(chunk));
   return JSON.parse(Buffer.concat(chunks).toString("utf8")) as {
     model?: string;
-    messages?: Array<{ role?: string }>;
+    messages?: Array<{
+      role?: string;
+      tool_calls?: Array<{ function?: { name?: string } }>;
+    }>;
   };
 }
 
@@ -81,6 +84,54 @@ function writeStream(
   response.end("data: [DONE]\n\n");
 }
 
+function writeToolCall(
+  response: import("node:http").ServerResponse,
+  input: {
+    created: number;
+    model: string;
+    id: string;
+    name: string;
+    arguments: unknown;
+  },
+) {
+  writeStream(response, [
+    {
+      id: `chatcmpl-${input.id}`,
+      object: "chat.completion.chunk",
+      created: input.created,
+      model: input.model,
+      choices: [
+        {
+          index: 0,
+          delta: {
+            role: "assistant",
+            tool_calls: [
+              {
+                index: 0,
+                id: input.id,
+                type: "function",
+                function: {
+                  name: input.name,
+                  arguments: JSON.stringify(input.arguments),
+                },
+              },
+            ],
+          },
+          finish_reason: null,
+        },
+      ],
+    },
+    {
+      id: `chatcmpl-${input.id}`,
+      object: "chat.completion.chunk",
+      created: input.created,
+      model: input.model,
+      choices: [{ index: 0, delta: {}, finish_reason: "tool_calls" }],
+      usage: usage(),
+    },
+  ]);
+}
+
 test.beforeAll(async () => {
   await ensureE2EUser();
   upstream = createServer(async (request, response) => {
@@ -93,11 +144,86 @@ test.beforeAll(async () => {
     const body = await requestBody(request);
     const model = body.model ?? "workflow-agentic-e2e";
     const created = Math.floor(Date.now() / 1_000);
-    const hasToolResult = body.messages?.some(
-      (message) => message.role === "tool",
+    const calledTools = new Set(
+      body.messages
+        ?.flatMap((message) => message.tool_calls ?? [])
+        .map((call) => call.function?.name)
+        .filter((name): name is string => Boolean(name)) ?? [],
     );
 
-    if (hasToolResult) {
+    if (!calledTools.has("set_workflow_plan")) {
+      writeToolCall(response, {
+        created,
+        model,
+        id: "call_plan",
+        name: "set_workflow_plan",
+        arguments: {
+          summary: "Build and verify a summary workflow",
+          steps: ["Build the workflow", "Validate the workflow"],
+          tests: ["Dry-run the workflow with a sample message"],
+        },
+      });
+      return;
+    }
+    if (!calledTools.has("update_todo_list")) {
+      writeToolCall(response, {
+        created,
+        model,
+        id: "call_todos",
+        name: "update_todo_list",
+        arguments: {
+          title: "Summary workflow",
+          items: [
+            {
+              id: "build",
+              label: "Build the workflow",
+              status: "in_progress",
+            },
+            {
+              id: "test",
+              label: "Validate and dry-run the workflow",
+              status: "pending",
+            },
+          ],
+        },
+      });
+      return;
+    }
+    if (!calledTools.has("replace_workflow")) {
+      writeToolCall(response, {
+        created,
+        model,
+        id: "call_replace_workflow",
+        name: "replace_workflow",
+        arguments: {
+          summary: "Added a summary step",
+          definition: generatedDefinition,
+        },
+      });
+      return;
+    }
+    if (!calledTools.has("validate_workflow")) {
+      writeToolCall(response, {
+        created,
+        model,
+        id: "call_validate",
+        name: "validate_workflow",
+        arguments: {},
+      });
+      return;
+    }
+    if (!calledTools.has("dry_run_workflow")) {
+      writeToolCall(response, {
+        created,
+        model,
+        id: "call_dry_run",
+        name: "dry_run_workflow",
+        arguments: { testInput: { message: "Bonjour" } },
+      });
+      return;
+    }
+
+    {
       writeStream(response, [
         {
           id: "chatcmpl-agentic-text",
@@ -126,46 +252,6 @@ test.beforeAll(async () => {
       ]);
       return;
     }
-
-    writeStream(response, [
-      {
-        id: "chatcmpl-agentic-tool",
-        object: "chat.completion.chunk",
-        created,
-        model,
-        choices: [
-          {
-            index: 0,
-            delta: {
-              role: "assistant",
-              tool_calls: [
-                {
-                  index: 0,
-                  id: "call_replace_workflow",
-                  type: "function",
-                  function: {
-                    name: "replace_workflow",
-                    arguments: JSON.stringify({
-                      summary: "Added a summary step",
-                      definition: generatedDefinition,
-                    }),
-                  },
-                },
-              ],
-            },
-            finish_reason: null,
-          },
-        ],
-      },
-      {
-        id: "chatcmpl-agentic-tool",
-        object: "chat.completion.chunk",
-        created,
-        model,
-        choices: [{ index: 0, delta: {}, finish_reason: "tool_calls" }],
-        usage: usage(),
-      },
-    ]);
   });
   await new Promise<void>((resolve) =>
     upstream.listen(0, "127.0.0.1", resolve),

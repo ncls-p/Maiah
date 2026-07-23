@@ -227,3 +227,71 @@ export const workflowAgentInputRequests = pgTable(
     index("workflow_agent_input_requests_workspace_idx").on(table.workspaceId),
   ],
 );
+
+export const workflowAgentRunRequests = pgTable(
+  "workflow_agent_run_requests",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workflowId: uuid("workflow_id")
+      .notNull()
+      .references(() => workflows.id, { onDelete: CASCADE }),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: CASCADE }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: CASCADE }),
+    title: varchar("title", { length: 255 }).notNull(),
+    reason: text("reason"),
+    inputEncrypted: text("input_encrypted").notNull(),
+    inputPreviewJson: jsonb("input_preview_json").notNull(),
+    expectedVersion: integer("expected_version").notNull(),
+    status: varchar("status", { length: 24 }).notNull().default("pending"),
+    runId: uuid("run_id").references(() => workflowRuns.id, {
+      onDelete: SET_NULL,
+    }),
+    error: text("error"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+  },
+  (table) => [
+    index("workflow_agent_run_requests_pending_idx").on(
+      table.workflowId,
+      table.userId,
+      table.status,
+      table.createdAt,
+    ),
+    index("workflow_agent_run_requests_workspace_idx").on(table.workspaceId),
+    uniqueIndex("workflow_agent_run_requests_run_unique").on(table.runId),
+  ],
+);
+
+export const workflowAgentTodoLists = pgTable(
+  "workflow_agent_todo_lists",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workflowId: uuid("workflow_id")
+      .notNull()
+      .references(() => workflows.id, { onDelete: CASCADE }),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: CASCADE }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: CASCADE }),
+    todoListJson: jsonb("todo_list_json").notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("workflow_agent_todo_lists_workflow_user_unique").on(
+      table.workflowId,
+      table.userId,
+    ),
+    index("workflow_agent_todo_lists_workspace_idx").on(table.workspaceId),
+  ],
+);

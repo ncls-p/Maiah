@@ -238,12 +238,14 @@ export async function createWorkflowRun(input: {
   userId: string;
   payload?: unknown;
   useLatestDraft?: boolean;
+  versionNumber?: number;
   idempotencyKey?: string;
+  trigger?: "api" | "agent";
 }) {
   const workflow = await requireWorkflow(input.workflowId, input.workspaceId);
-  const versionNumber = input.useLatestDraft
-    ? workflow.latestVersion
-    : workflow.activeVersion;
+  const versionNumber =
+    input.versionNumber ??
+    (input.useLatestDraft ? workflow.latestVersion : workflow.activeVersion);
   if (!versionNumber) {
     throw new WorkflowConflictError(
       "Publish the workflow before executing it through the API.",
@@ -272,7 +274,7 @@ export async function createWorkflowRun(input: {
       workflowId: workflow.id,
       workflowVersionId: version.id,
       triggeredById: input.userId,
-      trigger: "api",
+      trigger: input.trigger ?? "api",
       inputJson: input.payload ?? null,
       idempotencyKey: input.idempotencyKey ?? null,
     })
@@ -444,9 +446,15 @@ export async function processWorkflowRun(runId: string) {
       .update(workflowRuns)
       .set({ status: "running", startedAt: new Date(), error: null })
       .where(eq(workflowRuns.id, runId));
-    const eventBus = createWorkflowEventBus((event) =>
-      persistRunEvent({ runId, definition, event }),
-    );
+    let failureDetail: string | null = null;
+    const eventBus = createWorkflowEventBus((event) => {
+      if (event.type === "node:error") {
+        const node = workflowNodeById(definition, event.payload.nodeId);
+        const detail = errorMessage(event.payload.error);
+        failureDetail = `${node?.label ?? event.payload.nodeId} (${event.payload.nodeId}): ${detail}`;
+      }
+      return persistRunEvent({ runId, definition, event });
+    });
     const runtime = createWorkflowRuntime({
       dependencies: {
         workspaceId: record.run.workspaceId,
@@ -462,7 +470,8 @@ export async function processWorkflowRun(runId: string) {
       { strict: true, concurrency: 4 },
     );
     const completed = result.status === "completed";
-    const failure = result.errors?.map((error) => error.message).join(" ");
+    const failure =
+      failureDetail ?? result.errors?.map((error) => error.message).join(" ");
     const [run] = await db
       .update(workflowRuns)
       .set({

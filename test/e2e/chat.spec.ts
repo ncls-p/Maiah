@@ -129,7 +129,8 @@ async function createRecoveredToolConversation() {
        values
          ($1, $2, 'tool-call', null, $3::jsonb, 0, now()),
          ($4, $2, 'tool-call', null, $5::jsonb, 1, now()),
-         ($6, $2, 'text', $7, null, 2, now())`,
+         ($6, $2, 'tool-call', null, $7::jsonb, 2, now()),
+         ($8, $2, 'text', $9, null, 3, now())`,
       [
         randomUUID(),
         assistantMessageId,
@@ -149,6 +150,30 @@ async function createRecoveredToolConversation() {
           toolName: "dynatrace_execute_dql",
           input: { query: "fetch logs" },
           output: { ok: true, result: [{ id: "problem-1" }] },
+        }),
+        randomUUID(),
+        JSON.stringify({
+          toolCallId: "todo-progress",
+          toolName: "update_todo_list",
+          input: {},
+          output: {
+            kind: "chat_todo_list",
+            title: "Investigation",
+            items: [
+              {
+                id: "research",
+                label: "Research the issue",
+                status: "completed",
+              },
+              {
+                id: "verify",
+                label: "Verify the fix",
+                status: "in_progress",
+              },
+            ],
+            completedCount: 1,
+            totalCount: 2,
+          },
         }),
         randomUUID(),
         await encryptFixtureText(finalText),
@@ -320,6 +345,15 @@ test.describe("chat page", () => {
       ).toBeVisible();
       await expect(
         transcript.getByText("Completed", { exact: true }),
+      ).toBeVisible();
+      await expect(
+        transcript.getByRole("heading", {
+          name: "Investigation",
+          exact: true,
+        }),
+      ).toBeVisible();
+      await expect(
+        transcript.getByText("1/2 tasks completed", { exact: true }),
       ).toBeVisible();
     } finally {
       await fixture.cleanup();

@@ -8,6 +8,7 @@ import {
 } from "@/components/chat/chat-types";
 import { isCodeWorkspaceArtifactOutput } from "@/components/chat/code-workspace-artifact-card";
 import { summarizeToolInput } from "@/components/chat/tool-approval-banner";
+import { chatTodoListFromUnknown } from "@/modules/chat/todo-list";
 
 function stringifyForMatch(value: unknown) {
   try {
@@ -106,6 +107,7 @@ export function toolPartHasStandaloneRendering(part: ChatMessagePart) {
   const parsed = parseToolPart(part.content);
   return Boolean(
     codeSandboxOutputFromUnknown(parsed.output) ||
+    chatTodoListFromUnknown(parsed.output) ||
     isHtmlArtifactOutput(parsed.output) ||
     isCodeWorkspaceArtifactOutput(parsed.output) ||
     isGitHubPublishOutput(parsed.output) ||

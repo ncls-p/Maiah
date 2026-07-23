@@ -8,6 +8,8 @@ import {
   type WorkflowDefinition,
 } from "./contracts";
 import { compileWorkflowDefinition } from "./runtime";
+import type { WorkflowAgentRunRequest } from "./agentic-run-approvals";
+import type { ChatTodoList } from "@/modules/chat/todo-list";
 
 export const workflowAgenticMessageSchema = z.object({
   role: z.enum(["user", "assistant"]),
@@ -92,6 +94,11 @@ export type WorkflowAgenticStreamEvent =
         expiresAt: string;
       };
     }
+  | {
+      type: "run_request";
+      request: WorkflowAgentRunRequest;
+    }
+  | { type: "todo_list"; todoList: ChatTodoList }
   | { type: "saved"; workflow: unknown }
   | { type: "done" }
   | { type: "error"; message: string };
@@ -104,6 +111,11 @@ export const workflowAgentToolLabels: Record<string, string> = {
   replace_workflow_edges: "Connecting workflow steps",
   validate_workflow: "Validating the workflow",
   web_search: "Researching the web",
+  set_workflow_plan: "Planning the workflow",
+  update_todo_list: "Updating the to-do list",
+  run_code_sandbox: "Testing in the sandbox",
+  dry_run_workflow: "Dry-running the workflow",
+  request_workflow_run: "Requesting workflow execution",
   request_user_input: "Requesting information",
 };
 

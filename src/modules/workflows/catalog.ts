@@ -407,6 +407,24 @@ export const WORKFLOW_NODE_CATALOG: readonly WorkflowNodeCatalogItem[] = [
     fields: [{ key: "message", control: "text", label: "resultMessage" }],
   },
   {
+    type: "debug.snapshot",
+    label: "Inspecter les données",
+    description:
+      "Capture l’entrée de cette étape dans le détail du run sans la modifier.",
+    category: "code",
+    defaultParameters: {
+      note: "Vérifier les données à cet endroit",
+    },
+    fields: [
+      {
+        key: "note",
+        control: "text",
+        label: "debugNote",
+        description: "debugNoteHint",
+      },
+    ],
+  },
+  {
     type: "date.now",
     label: "Date actuelle",
     description: "Ajoute la date ou l’horodatage courant.",

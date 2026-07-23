@@ -17,6 +17,7 @@ export const workflowNodeTypeSchema = z.enum([
   "logic.condition",
   "logic.delay",
   "logic.stop",
+  "debug.snapshot",
   "date.now",
   "http.request",
   "code.execute",

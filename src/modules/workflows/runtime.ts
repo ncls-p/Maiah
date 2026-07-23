@@ -597,6 +597,10 @@ const runAgent: NodeFunction<
   return { output: { text: result.text, agentRunId: result.runId } };
 };
 
+const debugSnapshot: NodeFunction<RuntimeContext> = async ({ input }) => ({
+  output: input,
+});
+
 export const WORKFLOW_NODE_REGISTRY = {
   "trigger.manual": manualTrigger,
   "data.set": setData,
@@ -614,6 +618,7 @@ export const WORKFLOW_NODE_REGISTRY = {
   "logic.condition": condition,
   "logic.delay": delayFlow,
   "logic.stop": stopFlow,
+  "debug.snapshot": debugSnapshot,
   "date.now": currentDate,
   "http.request": httpRequest,
   "code.execute": executeCode,

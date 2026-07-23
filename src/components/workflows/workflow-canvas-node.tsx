@@ -5,6 +5,7 @@ import { Handle, Position } from "@xyflow/react";
 import {
   ArrowDownUpIcon,
   BotIcon,
+  BugIcon,
   BracesIcon,
   CalculatorIcon,
   CalendarClockIcon,
@@ -54,6 +55,7 @@ export const workflowNodeIconByType: Record<WorkflowNodeType, LucideIcon> = {
   "logic.condition": GitBranchIcon,
   "logic.delay": TimerIcon,
   "logic.stop": CircleStopIcon,
+  "debug.snapshot": BugIcon,
   "date.now": CalendarClockIcon,
 };
 

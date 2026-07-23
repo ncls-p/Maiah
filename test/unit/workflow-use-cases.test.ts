@@ -346,6 +346,39 @@ describe("workflow run use cases", () => {
     );
   });
 
+  it("pins agent-approved runs to the exact tested version", async () => {
+    const testedVersion = { ...version, version: 3, id: "version-3" };
+    const agentRun = {
+      ...run,
+      workflowVersionId: testedVersion.id,
+      trigger: "agent",
+    };
+    database.chain.limit
+      .mockResolvedValueOnce([workflow])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([testedVersion]);
+    database.chain.returning.mockResolvedValueOnce([agentRun]);
+
+    await expect(
+      createWorkflowRun({
+        workflowId: workflow.id,
+        workspaceId: workflow.workspaceId,
+        userId: "user-1",
+        payload: { message: "Test" },
+        versionNumber: 3,
+        trigger: "agent",
+        idempotencyKey: "workflow-agent-run:request-1",
+      }),
+    ).resolves.toBe(agentRun);
+    expect(database.chain.values).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workflowVersionId: testedVersion.id,
+        trigger: "agent",
+        idempotencyKey: "workflow-agent-run:request-1",
+      }),
+    );
+  });
+
   it("handles missing versions, failed inserts, and queue outages", async () => {
     database.chain.limit
       .mockResolvedValueOnce([workflow])
