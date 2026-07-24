@@ -3,12 +3,16 @@ import {
   toolNameMatches,
   type ChatFileAttachment,
   type ChatImageAttachment,
+  type ChatMessage,
   type ChatMessagePart,
   type PendingToolApproval,
 } from "@/components/chat/chat-types";
 import { isCodeWorkspaceArtifactOutput } from "@/components/chat/code-workspace-artifact-card";
 import { summarizeToolInput } from "@/components/chat/tool-approval-banner";
-import { chatTodoListFromUnknown } from "@/modules/chat/todo-list";
+import {
+  chatTodoListFromUnknown,
+  type ChatTodoList,
+} from "@/modules/chat/todo-list";
 
 function stringifyForMatch(value: unknown) {
   try {
@@ -107,13 +111,34 @@ export function toolPartHasStandaloneRendering(part: ChatMessagePart) {
   const parsed = parseToolPart(part.content);
   return Boolean(
     codeSandboxOutputFromUnknown(parsed.output) ||
-    chatTodoListFromUnknown(parsed.output) ||
     isHtmlArtifactOutput(parsed.output) ||
     isCodeWorkspaceArtifactOutput(parsed.output) ||
     isGitHubPublishOutput(parsed.output) ||
     htmlArtifactFromToolInput(parsed.input) ||
     htmlArtifactFromInputText(parsed.inputText),
   );
+}
+
+export function chatTodoListFromToolPart(
+  part: ChatMessagePart,
+): ChatTodoList | null {
+  if (part.type !== "tool-call" && part.type !== "tool-result") return null;
+  return chatTodoListFromUnknown(parseToolPart(part.content).output);
+}
+
+export function latestChatTodoListFromMessages(
+  messages: ChatMessage[],
+): ChatTodoList | null {
+  let latestTodoList: ChatTodoList | null = null;
+
+  for (const message of messages) {
+    for (const part of message.parts) {
+      const todoList = chatTodoListFromToolPart(part);
+      if (todoList) latestTodoList = todoList;
+    }
+  }
+
+  return latestTodoList;
 }
 
 export function codeWorkspaceArtifactFromPartContent(content: string) {

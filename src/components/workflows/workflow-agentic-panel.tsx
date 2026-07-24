@@ -23,7 +23,7 @@ import {
 } from "react";
 
 import { ChatMarkdown } from "@/components/chat/chat-markdown";
-import { ChatTodoListCard } from "@/components/chat/chat-todo-list-card";
+import { ChatTodoListDock } from "@/components/chat/chat-todo-list-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -92,7 +92,7 @@ export function WorkflowAgenticPanel({
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
-  }, [activities, messages, pendingRequests, runRequests, running, todoList]);
+  }, [activities, messages, pendingRequests, runRequests, running]);
 
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -198,8 +198,6 @@ export function WorkflowAgenticPanel({
               </div>
             ))
           )}
-
-          {todoList ? <ChatTodoListCard todoList={todoList} /> : null}
 
           {pendingRequests.map((request) => (
             <form
@@ -409,9 +407,18 @@ export function WorkflowAgenticPanel({
         </div>
       </ScrollArea>
 
+      {todoList ? (
+        <div className="relative z-10 shrink-0 bg-[linear-gradient(to_top,var(--background)_70%,transparent)] px-3 pt-3">
+          <ChatTodoListDock todoList={todoList} />
+        </div>
+      ) : null}
+
       <form
         onSubmit={submit}
-        className="border-t border-border/70 bg-background p-3"
+        className={cn(
+          "bg-background p-3",
+          !todoList && "border-t border-border/70",
+        )}
       >
         <div className="rounded-xl border border-border bg-card shadow-sm focus-within:ring-2 focus-within:ring-ring/30">
           <Textarea

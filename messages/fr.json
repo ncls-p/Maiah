@@ -276,7 +276,9 @@
       "todoProgressLabel": "Progression de {title}",
       "todoCompleted": "Terminée",
       "todoInProgress": "En cours",
-      "todoPending": "À faire"
+      "todoPending": "À faire",
+      "todoShowDetails": "Afficher le détail des tâches",
+      "todoHideDetails": "Masquer le détail des tâches"
     },
     "richEditor": {
       "bold": "Gras",

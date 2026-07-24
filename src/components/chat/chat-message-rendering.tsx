@@ -14,7 +14,6 @@ import {
 } from "lucide-react";
 import { CitationBlock } from "@/components/chat/citation-block";
 import { ChatMarkdown } from "@/components/chat/chat-markdown";
-import { ChatTodoListCard } from "@/components/chat/chat-todo-list-card";
 import {
   citationsFromMessage,
   groupWorkPhaseParts,
@@ -41,6 +40,7 @@ import { summarizeToolInput } from "@/components/chat/tool-approval-banner";
 import {
   chatFileAttachmentFromPartContent,
   chatImageAttachmentFromPartContent,
+  chatTodoListFromToolPart,
   codeSandboxInputFromInputText,
   codeSandboxInputFromUnknown,
   codeSandboxOutputFromUnknown,
@@ -55,7 +55,6 @@ import {
   toolPartHasStandaloneRendering,
   toolPartMatchesApproval,
 } from "@/components/chat/chat-message-rendering-utils";
-import { chatTodoListFromUnknown } from "@/modules/chat/todo-list";
 import {
   CodeSandboxResultCard,
   HtmlArtifactCard,
@@ -310,10 +309,6 @@ const ToolPartCard = memo(function ToolPartCard({
     () => codeSandboxOutputFromUnknown(parsed.output),
     [parsed.output],
   );
-  const todoListOutput = useMemo(
-    () => chatTodoListFromUnknown(parsed.output),
-    [parsed.output],
-  );
   const sandboxInput = useMemo(
     () => codeSandboxInputFromUnknown(parsed.input),
     [parsed.input],
@@ -394,8 +389,6 @@ const ToolPartCard = memo(function ToolPartCard({
     specializedContent = (
       <CodeSandboxResultCard result={sandboxOutput} input={sandboxInput} />
     );
-  } else if (todoListOutput) {
-    specializedContent = <ChatTodoListCard todoList={todoListOutput} />;
   } else if (isHtmlArtifactOutput(parsed.output)) {
     specializedContent = <HtmlArtifactCard artifact={parsed.output} />;
   } else if (isCodeWorkspaceArtifactOutput(parsed.output)) {
@@ -950,7 +943,9 @@ export const MessageContent = memo(function MessageContent({
   const renderableParts = useMemo(
     () =>
       renderablePartsFromMessage(message).filter(
-        (part) => part.type !== "text" || part.content.trim().length > 0,
+        (part) =>
+          (part.type !== "text" || part.content.trim().length > 0) &&
+          !chatTodoListFromToolPart(part),
       ),
     [message],
   );

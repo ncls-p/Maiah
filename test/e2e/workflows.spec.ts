@@ -752,13 +752,27 @@ test("shows the live checklist, approves an agentic run, and opens debug details
       .fill("Test this news workflow");
     await page.getByRole("button", { name: "Send" }).click();
 
+    const todoDock = page.getByRole("region", {
+      name: "News workflow",
+      exact: true,
+    });
+    await expect(todoDock).toBeVisible();
     await expect(
-      page.getByRole("heading", { name: "News workflow", exact: true }),
-    ).toBeVisible();
-    await expect(page.getByText("2/2 tasks completed")).toBeVisible();
-    await expect(
-      page.getByRole("progressbar", { name: "News workflow progress" }),
+      todoDock.getByRole("progressbar", { name: "News workflow progress" }),
     ).toHaveAttribute("aria-valuenow", "2");
+    const agentComposer = page.getByRole("textbox", {
+      name: /When a request arrives, have an assistant analyze it/i,
+    });
+    const [dockBox, composerBox] = await Promise.all([
+      todoDock.boundingBox(),
+      agentComposer.boundingBox(),
+    ]);
+    expect(dockBox).not.toBeNull();
+    expect(composerBox).not.toBeNull();
+    expect(dockBox!.y + dockBox!.height).toBeLessThanOrEqual(composerBox!.y);
+
+    await todoDock.getByRole("button", { name: "Show task details" }).click();
+    await expect(todoDock.getByText("2/2 tasks completed")).toBeVisible();
     await expect(
       page.getByRole("heading", {
         name: "Test the news workflow",

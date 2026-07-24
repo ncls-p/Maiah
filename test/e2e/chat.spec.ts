@@ -347,22 +347,49 @@ test.describe("chat page", () => {
         transcript.getByText("Completed", { exact: true }),
       ).toBeVisible();
       await expect(
-        transcript.getByRole("heading", {
+        transcript.getByRole("region", {
           name: "Investigation",
           exact: true,
         }),
-      ).toBeVisible();
-      await expect(
-        transcript.getByText("1/2 tasks completed", { exact: true }),
-      ).toBeVisible();
-      const todoProgress = transcript.getByRole("progressbar", {
+      ).toHaveCount(0);
+
+      const todoDock = page.getByRole("region", {
+        name: "Investigation",
+        exact: true,
+      });
+      await expect(todoDock).toBeVisible();
+      const todoProgress = todoDock.getByRole("progressbar", {
         name: "Investigation progress",
       });
       await expect(todoProgress).toHaveAttribute("aria-valuenow", "1");
       await expect(todoProgress).toHaveAttribute("aria-valuemax", "2");
-      const currentTask = transcript.locator('[aria-current="step"]');
+      await expect(todoDock.getByText("Verify the fix")).toBeVisible();
+
+      const composer = page.getByRole("textbox", { name: "Message" });
+      const [dockBox, composerBox] = await Promise.all([
+        todoDock.boundingBox(),
+        composer.boundingBox(),
+      ]);
+      expect(dockBox).not.toBeNull();
+      expect(composerBox).not.toBeNull();
+      expect(dockBox!.y + dockBox!.height).toBeLessThanOrEqual(composerBox!.y);
+
+      await todoDock.getByRole("button", { name: "Show task details" }).click();
+      await expect(
+        todoDock.getByText("1/2 tasks completed", { exact: true }),
+      ).toBeVisible();
+      const currentTask = todoDock.locator('[aria-current="step"]');
       await expect(currentTask).toContainText("Verify the fix");
       await expect(currentTask).toContainText("In progress");
+
+      await todoDock.getByRole("button", { name: "Hide task details" }).click();
+      await page.setViewportSize({ width: 390, height: 844 });
+      await expect(todoDock).toBeVisible();
+      await expect(composer).toBeVisible();
+      const mobileDockBox = await todoDock.boundingBox();
+      expect(mobileDockBox).not.toBeNull();
+      expect(mobileDockBox!.x).toBeGreaterThanOrEqual(0);
+      expect(mobileDockBox!.x + mobileDockBox!.width).toBeLessThanOrEqual(390);
     } finally {
       await fixture.cleanup();
     }

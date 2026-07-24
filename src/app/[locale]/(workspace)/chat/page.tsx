@@ -22,6 +22,7 @@ import {
   ChatMessageList,
   CodeWorkspaceArtifactCard,
 } from "@/components/chat/chat-message-list";
+import { latestChatTodoListFromMessages } from "@/components/chat/chat-message-rendering-utils";
 import { textFromMessage } from "@/components/chat/chat-types";
 import { CodeWorkspaceResizeHandle } from "@/components/chat/code-workspace-artifact-card";
 import {
@@ -559,6 +560,10 @@ export default function ChatPage() {
     },
     onConversationsRefresh: refreshConversations,
   });
+  const latestTodoList = useMemo(
+    () => latestChatTodoListFromMessages(messages),
+    [messages],
+  );
 
   useEffect(() => {
     const latestArtifact = latestCodeWorkspaceArtifact(messages);
@@ -1647,6 +1652,7 @@ export default function ChatPage() {
                 onUploadCodeWorkspace={uploadCodeWorkspace}
                 onUploadChatAttachment={uploadChatAttachment}
                 attachments={attachments}
+                todoList={latestTodoList}
                 onRemoveAttachment={(attachmentId) =>
                   setAttachments((current) =>
                     current.filter(
@@ -1724,6 +1730,7 @@ export default function ChatPage() {
             onUploadCodeWorkspace={uploadCodeWorkspace}
             onUploadChatAttachment={uploadChatAttachment}
             attachments={attachments}
+            todoList={latestTodoList}
             onRemoveAttachment={(attachmentId) =>
               setAttachments((current) =>
                 current.filter((attachment) => attachment.id !== attachmentId),
