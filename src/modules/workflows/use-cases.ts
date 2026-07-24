@@ -42,11 +42,29 @@ type UpdateWorkflowInput = {
   definition?: WorkflowDefinition;
 };
 
+function boundedErrorMessage(value: string, maxChars = 8_000) {
+  if (value.length <= maxChars) return value;
+  const separator = "\n… error truncated …\n";
+  const headLength = Math.min(1_500, Math.floor(maxChars / 3));
+  const tailLength = maxChars - headLength - separator.length;
+  return `${value.slice(0, headLength)}${separator}${value.slice(-tailLength)}`;
+}
+
 function errorMessage(error: unknown) {
-  return (error instanceof Error ? error.message : String(error)).slice(
-    0,
-    8_000,
-  );
+  const messages: string[] = [];
+  const seen = new Set<unknown>();
+  let current: unknown = error;
+  while (current !== undefined && current !== null && !seen.has(current)) {
+    seen.add(current);
+    const message =
+      current instanceof Error ? current.message : String(current);
+    if (message && !messages.includes(message)) messages.push(message);
+    current =
+      typeof current === "object" && "cause" in current
+        ? (current as { cause?: unknown }).cause
+        : undefined;
+  }
+  return boundedErrorMessage(messages.join("\nCaused by: "));
 }
 
 async function findIdempotentWorkflowRun(input: {

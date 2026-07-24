@@ -1,7 +1,11 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
-import { constants as fsConstants } from "node:fs";
+import {
+	constants as fsConstants,
+	createReadStream,
+	createWriteStream,
+} from "node:fs";
 import {
 	access,
 	chmod,
@@ -40,7 +44,13 @@ const maxInputTotalBytes = Number(
 	process.env.SANDBOX_MAX_INPUT_TOTAL_BYTES ?? 5_000_000,
 );
 const maxInputFiles = Number(process.env.SANDBOX_MAX_INPUT_FILES ?? 40);
+const maxInlineStdinChars = Number(
+	process.env.SANDBOX_MAX_INLINE_STDIN_CHARS ?? 100_000,
+);
 const maxStdoutBytes = Number(process.env.SANDBOX_MAX_STDOUT_BYTES ?? 64_000);
+const maxStdoutFileBytes = Number(
+	process.env.SANDBOX_MAX_STDOUT_FILE_BYTES ?? 1_500_000,
+);
 const maxStderrBytes = Number(process.env.SANDBOX_MAX_STDERR_BYTES ?? 64_000);
 const maxFilePreviewBytes = Number(
 	process.env.SANDBOX_MAX_FILE_PREVIEW_BYTES ?? 16_000,
@@ -158,6 +168,7 @@ function safeRelativePath(rawPath) {
 		normalized === "main.sh" ||
 		normalized === "package.json" ||
 		normalized === ".stdin" ||
+		normalized === ".stdout" ||
 		firstSegment === "node_modules" ||
 		firstSegment === "home" ||
 		firstSegment === "tmp"
@@ -197,13 +208,31 @@ function validateRunPayload(payload) {
 			`code is too large. Maximum is ${maxCodeChars} characters.`,
 		);
 	}
-	const stdin =
-		typeof payload.stdin === "string" ? payload.stdin.slice(0, 100_000) : "";
+	const stdin = typeof payload.stdin === "string" ? payload.stdin : "";
+	if (stdin.length > maxInlineStdinChars) {
+		throw new Error(
+			`Inline standard input is too large. Maximum is ${maxInlineStdinChars} characters; use stdinFileBase64 instead.`,
+		);
+	}
+	const stdinFile =
+		typeof payload.stdinFileBase64 === "string"
+			? bytesFromBase64(payload.stdinFileBase64, ".stdin")
+			: null;
+	if (stdin && stdinFile) {
+		throw new Error(
+			"Use either inline standard input or a standard input file.",
+		);
+	}
+	if (stdinFile && stdinFile.byteLength > maxInputFileBytes) {
+		throw new Error(
+			`Standard input file is too large. Maximum is ${maxInputFileBytes} bytes.`,
+		);
+	}
 	const files = Array.isArray(payload.files) ? payload.files : [];
 	if (files.length > maxInputFiles) {
 		throw new Error(`Too many input files. Maximum is ${maxInputFiles}.`);
 	}
-	let totalInputBytes = 0;
+	let totalInputBytes = stdinFile?.byteLength ?? 0;
 	const normalizedFiles = files.map((file) => {
 		if (!isPlainObject(file)) throw new Error("Each file must be an object.");
 		const filePath = safeRelativePath(file.path);
@@ -230,6 +259,7 @@ function validateRunPayload(payload) {
 		language,
 		code: payload.code,
 		stdin,
+		stdinFile,
 		files: normalizedFiles,
 		timeoutMs: clampTimeout(payload.timeoutMs),
 	};
@@ -292,6 +322,20 @@ function appendLimited(current, chunk, limit) {
 	return {
 		buffer: Buffer.concat([current.buffer, nextChunk]),
 		truncated: current.truncated || chunk.byteLength > remaining,
+	};
+}
+
+function appendTailLimited(current, chunk, limit) {
+	const combined = Buffer.concat([current.buffer, chunk]);
+	if (combined.byteLength <= limit) {
+		return {
+			buffer: combined,
+			truncated: current.truncated,
+		};
+	}
+	return {
+		buffer: combined.subarray(combined.byteLength - limit),
+		truncated: true,
 	};
 }
 
@@ -360,6 +404,13 @@ async function prepareRun(input) {
 	const workdir = await mkdtemp(path.join(runRoot, `run-${runId}-`));
 	await chmod(workdir, 0o700);
 	const inputHashes = await writeInputFiles(workdir, input.files);
+	if (input.stdinFile) {
+		const stdinPath = path.join(workdir, ".stdin");
+		await writeFile(stdinPath, input.stdinFile);
+		if (canSwitchUser) {
+			await chown(stdinPath, sandboxUid, sandboxGid).catch(() => undefined);
+		}
+	}
 	const { entryFile } = commandForLanguage(input.language);
 	const source =
 		input.language === "node"
@@ -391,8 +442,15 @@ function executeProcess(input, workdir) {
 	return new Promise((resolve) => {
 		let stdout = { buffer: Buffer.alloc(0), truncated: false };
 		let stderr = { buffer: Buffer.alloc(0), truncated: false };
+		let stdoutFileBytes = 0;
+		let stdoutFileTruncated = false;
+		let stdoutFileFailed = false;
 		let timedOut = false;
 		let settled = false;
+		const stdoutFile = createWriteStream(path.join(workdir, ".stdout"), {
+			flags: "wx",
+			mode: 0o600,
+		});
 		const child = spawn(command, args, {
 			cwd: workdir,
 			detached: true,
@@ -414,26 +472,63 @@ function executeProcess(input, workdir) {
 				npm_config_cache: path.join(workdir, "tmp", "npm"),
 			},
 		});
+		const stdinStream = input.stdinFile
+			? createReadStream(path.join(workdir, ".stdin"))
+			: null;
+		stdoutFile.on("error", (error) => {
+			stdoutFileFailed = true;
+			stderr = appendTailLimited(
+				stderr,
+				Buffer.from(`Failed to capture complete stdout: ${error.message}`),
+				maxStderrBytes,
+			);
+		});
 
 		child.stdout.on("data", (chunk) => {
 			stdout = appendLimited(stdout, chunk, maxStdoutBytes);
+			if (stdoutFileFailed || stdoutFileTruncated) return;
+			const remaining = maxStdoutFileBytes - stdoutFileBytes;
+			if (remaining <= 0) {
+				stdoutFileTruncated = true;
+				return;
+			}
+			const captured =
+				chunk.byteLength > remaining ? chunk.subarray(0, remaining) : chunk;
+			stdoutFileBytes += captured.byteLength;
+			stdoutFile.write(captured);
+			if (captured.byteLength < chunk.byteLength) {
+				stdoutFileTruncated = true;
+			}
 		});
 		child.stderr.on("data", (chunk) => {
-			stderr = appendLimited(stderr, chunk, maxStderrBytes);
+			stderr = appendTailLimited(stderr, chunk, maxStderrBytes);
 		});
 		child.stdin.on("error", (error) => {
 			// Short-lived commands may close stdin before Node flushes it. The
 			// command's close event remains the source of truth for its result.
 			if (error.code === "EPIPE" || error.code === "ERR_STREAM_DESTROYED") {
+				stdinStream?.destroy();
 				return;
 			}
-			stderr = appendLimited(
+			stderr = appendTailLimited(
 				stderr,
 				Buffer.from(error.message),
 				maxStderrBytes,
 			);
 		});
-		child.stdin.end(input.stdin);
+		if (stdinStream) {
+			stdinStream.on("error", (error) => {
+				stderr = appendTailLimited(
+					stderr,
+					Buffer.from(error.message),
+					maxStderrBytes,
+				);
+				child.stdin.destroy(error);
+			});
+			stdinStream.pipe(child.stdin);
+		} else {
+			child.stdin.end(input.stdin);
+		}
 
 		const timer = setTimeout(() => {
 			timedOut = true;
@@ -446,10 +541,16 @@ function executeProcess(input, workdir) {
 			}
 		}, input.timeoutMs);
 
-		function finish(exitCode, signal) {
+		async function finish(exitCode, signal) {
 			if (settled) return;
 			settled = true;
 			clearTimeout(timer);
+			if (!stdoutFile.closed) {
+				await new Promise((close) => {
+					stdoutFile.once("close", close);
+					stdoutFile.end();
+				});
+			}
 			resolve({
 				exitCode: timedOut ? null : exitCode,
 				signal: signal ?? null,
@@ -457,12 +558,13 @@ function executeProcess(input, workdir) {
 				durationMs: Date.now() - startedAt,
 				stdout: stdout.buffer.toString("utf8"),
 				stderr: stderr.buffer.toString("utf8"),
-				truncated: stdout.truncated || stderr.truncated,
+				stdoutFileTruncated: stdoutFileTruncated || stdoutFileFailed,
+				truncated: stdoutFileTruncated || stdoutFileFailed || stderr.truncated,
 			});
 		}
 
 		child.on("error", (error) => {
-			stderr = appendLimited(
+			stderr = appendTailLimited(
 				stderr,
 				Buffer.from(error.message),
 				maxStderrBytes,
@@ -516,7 +618,9 @@ async function collectFiles(root, inputHashes) {
 				entry.name === "main.py" ||
 				entry.name === "main.mjs" ||
 				entry.name === "main.sh" ||
-				entry.name === "package.json"
+				entry.name === "package.json" ||
+				entry.name === ".stdin" ||
+				entry.name === ".stdout"
 			) {
 				continue;
 			}
@@ -574,11 +678,23 @@ async function runSandbox(input) {
 	const prepared = await prepareRun(input);
 	try {
 		const execution = await executeProcess(input, prepared.workdir);
+		const completeStdout = execution.stdoutFileTruncated
+			? execution.stdout
+			: await readFile(path.join(prepared.workdir, ".stdout"), "utf8");
 		const files = await collectFiles(prepared.workdir, prepared.inputHashes);
 		return {
-			ok: execution.exitCode === 0 && !execution.timedOut,
+			ok:
+				execution.exitCode === 0 &&
+				!execution.timedOut &&
+				!execution.stdoutFileTruncated,
 			language: input.language,
 			...execution,
+			stdout: completeStdout,
+			...(execution.stdoutFileTruncated
+				? {
+						error: `Sandbox standard output exceeded ${maxStdoutFileBytes} bytes.`,
+					}
+				: {}),
 			files,
 		};
 	} finally {

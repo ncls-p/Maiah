@@ -556,6 +556,53 @@ describe("workflow worker processing", () => {
     );
   });
 
+  it("persists the underlying node error instead of only the runtime wrapper", async () => {
+    database.chain.limit.mockResolvedValueOnce([record()]);
+    database.chain.returning.mockResolvedValueOnce([
+      { ...run, status: "failed" },
+    ]);
+    const sandboxError = new Error(
+      "Sandbox execution failed (exit code 1): SyntaxError: Unexpected token",
+    );
+    const wrappedError = new Error("Node 'trigger' execution failed", {
+      cause: sandboxError,
+    });
+    workflowMocks.createRuntime.mockImplementation(({ eventBus }) => ({
+      run: vi.fn().mockImplementation(async () => {
+        await eventBus.emit({
+          type: "node:start",
+          payload: { nodeId: "trigger", input: { body: "rss" } },
+        });
+        await eventBus.emit({
+          type: "node:error",
+          payload: { nodeId: "trigger", error: wrappedError },
+        });
+        return {
+          status: "failed",
+          context: {},
+          errors: [wrappedError],
+        };
+      }),
+    }));
+
+    await expect(processWorkflowRun(run.id)).resolves.toMatchObject({
+      status: "failed",
+    });
+    const storedErrors = database.chain.set.mock.calls
+      .map(([value]) => (value as { error?: string }).error)
+      .filter(Boolean);
+    expect(storedErrors).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("SyntaxError: Unexpected token"),
+      ]),
+    );
+    expect(storedErrors).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("Node 'trigger' execution failed"),
+      ]),
+    );
+  });
+
   it("persists compilation failures before the runtime starts", async () => {
     database.chain.limit.mockResolvedValueOnce([record()]);
     workflowMocks.compile.mockImplementationOnce(() => {

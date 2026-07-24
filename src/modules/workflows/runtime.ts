@@ -12,7 +12,10 @@ import {
 } from "flowcraft";
 
 import { executeAgent } from "@/modules/agent/runtime-executor";
-import { executeCodeSandbox } from "@/modules/tool/code-sandbox";
+import {
+  executeCodeSandbox,
+  type CodeSandboxResult,
+} from "@/modules/tool/code-sandbox";
 
 import {
   isWorkflowSecretReference,
@@ -44,6 +47,45 @@ function configuredEntries(value: unknown) {
 
 function inputAsText(input: unknown) {
   return typeof input === "string" ? input : JSON.stringify(input ?? null);
+}
+
+function boundedDiagnostic(value: string, maxChars = 8_000) {
+  const trimmed = value.trim();
+  if (trimmed.length <= maxChars) return trimmed;
+  const separator = "\n… diagnostic truncated …\n";
+  const headLength = Math.min(1_500, Math.floor(maxChars / 3));
+  const tailLength = maxChars - headLength - separator.length;
+  return `${trimmed.slice(0, headLength)}${separator}${trimmed.slice(-tailLength)}`;
+}
+
+function sandboxFailureMessage(result: CodeSandboxResult) {
+  if (result.timedOut) {
+    return `Sandbox execution timed out after ${result.durationMs} ms.`;
+  }
+  const stderr = result.stderr.trim();
+  const lines = stderr.split(/\r?\n/);
+  let errorLine = -1;
+  for (let index = lines.length - 1; index >= 0; index -= 1) {
+    if (
+      /^\s*(?:[A-Za-z_$][\w.$]*(?:Error|Exception)|Error):\s+\S/.test(
+        lines[index] ?? "",
+      )
+    ) {
+      errorLine = index;
+      break;
+    }
+  }
+  const diagnostic =
+    errorLine >= 0 ? lines.slice(errorLine).join("\n") : stderr || result.error;
+  const exitDetail =
+    typeof result.exitCode === "number"
+      ? ` (exit code ${result.exitCode})`
+      : result.signal
+        ? ` (signal ${result.signal})`
+        : "";
+  return `Sandbox execution failed${exitDetail}: ${boundedDiagnostic(
+    diagnostic || "No error details were returned.",
+  )}`;
 }
 
 function nodeAbortSignal(signal: AbortSignal | undefined, timeoutMs: unknown) {
@@ -561,9 +603,7 @@ const executeCode: NodeFunction<
     },
   );
   if (!result.ok) {
-    throw new Error(
-      result.stderr || result.error || "Sandbox execution failed.",
-    );
+    throw new Error(sandboxFailureMessage(result));
   }
   const stdout = result.stdout.trim();
   try {

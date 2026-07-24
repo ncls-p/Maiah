@@ -743,6 +743,21 @@ describe("workflow integration and expert nodes", () => {
     await expect(
       invokeNode("code.execute", {}, { language: "node", code: "code" }),
     ).rejects.toThrow("sandbox failed");
+
+    vi.mocked(executeCodeSandbox).mockResolvedValueOnce({
+      ok: false,
+      exitCode: 1,
+      timedOut: false,
+      signal: null,
+      durationMs: 5,
+      stdout: "",
+      stderr: `${"rss payload ".repeat(1_000)}\nSyntaxError: invalid formatter code\n    at main.mjs:12:3`,
+    } as never);
+    await expect(
+      invokeNode("code.execute", {}, { language: "node", code: "code" }),
+    ).rejects.toThrow(
+      "Sandbox execution failed (exit code 1): SyntaxError: invalid formatter code",
+    );
   });
 
   it("runs assistants with stable idempotency and validates selection", async () => {

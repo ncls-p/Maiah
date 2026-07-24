@@ -73,8 +73,13 @@ type CodeSandboxExecutionContext = {
   userId: string;
 };
 
-type PreparedSandboxRunnerInput = Omit<CodeSandboxRequest, "files"> & {
+type PreparedSandboxRunnerInput = Omit<
+  CodeSandboxRequest,
+  "files" | "stdin"
+> & {
   language: CodeSandboxLanguage;
+  stdin?: string;
+  stdinFile?: Buffer;
   files: Array<{ path: string; bytes: Buffer }>;
 };
 
@@ -92,6 +97,7 @@ const localDevSocketPath = path.resolve(
 const maxSandboxInputFiles = 40;
 const maxSandboxInputFileBytes = 1_500_000;
 const maxSandboxInputTotalBytes = 5_000_000;
+const maxSandboxInlineStdinChars = 100_000;
 const maxSandboxCodeChars = 100_000;
 const defaultSandboxTimeoutMs = 15_000;
 const maxSandboxTimeoutMs = 120_000;
@@ -245,6 +251,7 @@ function safeRelativePath(rawPath: string) {
     "main.sh",
     "package.json",
     ".stdin",
+    ".stdout",
   ].includes(normalized);
   const reservedSandboxDirectory = ["node_modules", "home", "tmp"].includes(
     firstSegment ?? "",
@@ -609,10 +616,36 @@ async function prepareSandboxRunnerRequest(
     );
   }
 
+  const rawStdin = typeof input.stdin === "string" ? input.stdin : undefined;
+  const stdinFile =
+    rawStdin && rawStdin.length > maxSandboxInlineStdinChars
+      ? Buffer.from(rawStdin, "utf8")
+      : undefined;
+  if (stdinFile && stdinFile.byteLength > maxSandboxInputFileBytes) {
+    throw new Error(
+      `Sandbox standard input is too large. Maximum is ${maxSandboxInputFileBytes} bytes.`,
+    );
+  }
+  const stdin = stdinFile ? undefined : rawStdin;
   const files = normalizeInputFiles(input);
+  const baseInputBytes =
+    files.reduce((total, file) => total + file.bytes.byteLength, 0) +
+    (stdinFile?.byteLength ?? 0);
+  if (baseInputBytes > maxSandboxInputTotalBytes) {
+    throw new Error(
+      `Sandbox inputs are too large. Maximum total is ${maxSandboxInputTotalBytes} bytes.`,
+    );
+  }
   const attachmentReferences = input.attachments ?? [];
   if (attachmentReferences.length === 0) {
-    return { ...input, language, files, attachments: [] };
+    return {
+      ...input,
+      language,
+      stdin,
+      stdinFile,
+      files,
+      attachments: [],
+    };
   }
   if (!context) {
     throw new Error("Sandbox attachment access requires a workspace context.");
@@ -633,7 +666,7 @@ async function prepareSandboxRunnerRequest(
     const remainingAttachments = attachmentReferences.length - attachmentIndex;
     const currentBytes = files.reduce(
       (total, file) => total + file.bytes.byteLength,
-      0,
+      stdinFile?.byteLength ?? 0,
     );
     const fairFileBudget = Math.max(
       1,
@@ -701,7 +734,7 @@ async function prepareSandboxRunnerRequest(
   }
   const totalBytes = files.reduce(
     (total, file) => total + file.bytes.byteLength,
-    0,
+    stdinFile?.byteLength ?? 0,
   );
   if (totalBytes > maxSandboxInputTotalBytes) {
     throw new Error(
@@ -709,7 +742,14 @@ async function prepareSandboxRunnerRequest(
     );
   }
 
-  return { ...input, language, files, attachments: [] };
+  return {
+    ...input,
+    language,
+    stdin,
+    stdinFile,
+    files,
+    attachments: [],
+  };
 }
 
 function serializeSandboxRunnerRequest(input: PreparedSandboxRunnerInput) {
@@ -717,6 +757,7 @@ function serializeSandboxRunnerRequest(input: PreparedSandboxRunnerInput) {
     language: input.language,
     code: input.code,
     stdin: typeof input.stdin === "string" ? input.stdin : undefined,
+    stdinFileBase64: input.stdinFile?.toString("base64"),
     timeoutMs: clampTimeoutMs(input.timeoutMs),
     files: input.files.map((file) => ({
       path: file.path,
@@ -944,7 +985,7 @@ export async function executeCodeSandbox(
     fileCount: persisted.files.length,
     persistedFileCount: persisted.files.filter((file) => file.attachment)
       .length,
-    runcated: persisted.truncated,
+    truncated: persisted.truncated,
   });
   return persisted;
 }

@@ -1613,6 +1613,15 @@ export function WorkflowBuilder({
               <p className="text-sm text-muted-foreground">{t("loading")}</p>
             ) : (
               <div className="flex flex-col gap-4">
+                {runDetail.error ? (
+                  <Alert variant="destructive">
+                    <AlertCircleIcon />
+                    <AlertTitle>{t("error")}</AlertTitle>
+                    <AlertDescription className="max-h-64 overflow-auto whitespace-pre-wrap break-words font-mono text-xs">
+                      {runDetail.error}
+                    </AlertDescription>
+                  </Alert>
+                ) : null}
                 {runDetail.steps.map((step) => (
                   <div
                     key={step.nodeId}
@@ -1632,9 +1641,9 @@ export function WorkflowBuilder({
                       </Badge>
                     </div>
                     {step.error ? (
-                      <p className="mt-2 text-xs text-destructive">
+                      <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-destructive/10 p-3 font-mono text-xs text-destructive">
                         {step.error}
-                      </p>
+                      </pre>
                     ) : null}
                     <div className="mt-3 grid gap-3">
                       <div>
