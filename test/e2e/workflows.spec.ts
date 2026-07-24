@@ -757,6 +757,9 @@ test("shows the live checklist, approves an agentic run, and opens debug details
     ).toBeVisible();
     await expect(page.getByText("2/2 tasks completed")).toBeVisible();
     await expect(
+      page.getByRole("progressbar", { name: "News workflow progress" }),
+    ).toHaveAttribute("aria-valuenow", "2");
+    await expect(
       page.getByRole("heading", {
         name: "Test the news workflow",
         exact: true,
@@ -768,7 +771,9 @@ test("shows the live checklist, approves an agentic run, and opens debug details
     await expect(
       page.getByRole("heading", { name: "Run details" }),
     ).toBeVisible();
-    await expect(page.getByText("HTTP 401: invalid API key")).toBeVisible();
+    await expect(
+      page.getByText("HTTP 401: invalid API key", { exact: true }),
+    ).toBeVisible();
     await expect(page.getByText("Step input")).toBeVisible();
     await expect(page.getByText('"topic": "technology"')).toBeVisible();
   } finally {

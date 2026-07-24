@@ -272,7 +272,11 @@
       "actionApproval": "Approval required",
       "actionInput": "Input",
       "actionOutput": "Output",
-      "todoProgress": "{completed}/{total} tasks completed"
+      "todoProgress": "{completed}/{total} tasks completed",
+      "todoProgressLabel": "{title} progress",
+      "todoCompleted": "Completed",
+      "todoInProgress": "In progress",
+      "todoPending": "To do"
     },
     "richEditor": {
       "bold": "Bold",

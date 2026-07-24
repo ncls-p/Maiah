@@ -355,6 +355,14 @@ test.describe("chat page", () => {
       await expect(
         transcript.getByText("1/2 tasks completed", { exact: true }),
       ).toBeVisible();
+      const todoProgress = transcript.getByRole("progressbar", {
+        name: "Investigation progress",
+      });
+      await expect(todoProgress).toHaveAttribute("aria-valuenow", "1");
+      await expect(todoProgress).toHaveAttribute("aria-valuemax", "2");
+      const currentTask = transcript.locator('[aria-current="step"]');
+      await expect(currentTask).toContainText("Verify the fix");
+      await expect(currentTask).toContainText("In progress");
     } finally {
       await fixture.cleanup();
     }

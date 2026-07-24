@@ -272,7 +272,11 @@
       "actionApproval": "Validation requise",
       "actionInput": "Entrée",
       "actionOutput": "Sortie",
-      "todoProgress": "{completed}/{total} tâches terminées"
+      "todoProgress": "{completed}/{total} tâches terminées",
+      "todoProgressLabel": "Progression de {title}",
+      "todoCompleted": "Terminée",
+      "todoInProgress": "En cours",
+      "todoPending": "À faire"
     },
     "richEditor": {
       "bold": "Gras",
