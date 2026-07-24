@@ -99,7 +99,17 @@ export function ChatTodoListCard({ todoList }: { todoList: ChatTodoList }) {
               )}
               aria-current={active ? "step" : undefined}
             >
-              <span className="relative z-0 mt-0.5 flex size-5 shrink-0 items-center justify-center">
+              <span
+                className="relative z-0 mt-0.5 flex size-5 shrink-0 items-center justify-center"
+                role="img"
+                aria-label={
+                  completed
+                    ? t("todoCompleted")
+                    : active
+                      ? t("todoInProgress")
+                      : t("todoPending")
+                }
+              >
                 {index < todoList.items.length - 1 ? (
                   <span
                     className={cn(
@@ -130,13 +140,6 @@ export function ChatTodoListCard({ todoList }: { todoList: ChatTodoList }) {
                     aria-hidden="true"
                   />
                 )}
-                <span className="sr-only">
-                  {completed
-                    ? t("todoCompleted")
-                    : active
-                      ? t("todoInProgress")
-                      : t("todoPending")}
-                </span>
               </span>
               <span
                 className={cn(
