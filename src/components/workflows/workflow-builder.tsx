@@ -380,7 +380,7 @@ export function WorkflowBuilder({
         addEdge(
           {
             ...connection,
-            id: `edge-${connection.source}-${connection.sourceHandle ?? "out"}-${connection.target}`,
+            id: `edge-${crypto.randomUUID()}`,
             markerEnd: { type: MarkerType.ArrowClosed },
             style: { strokeWidth: 1.6 },
           },
@@ -1238,10 +1238,10 @@ export function WorkflowBuilder({
         minZoom={0.25}
         maxZoom={1.8}
         nodesDraggable
-        nodesConnectable={editorMode === "visual"}
-        edgesReconnectable={editorMode === "visual"}
+        nodesConnectable
+        edgesReconnectable
         elementsSelectable
-        deleteKeyCode={editorMode === "visual" ? ["Backspace", "Delete"] : null}
+        deleteKeyCode={["Backspace", "Delete"]}
         snapToGrid
         snapGrid={[16, 16]}
         panOnScroll

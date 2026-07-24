@@ -2303,7 +2303,7 @@
       "runApproved": "Exécution validée et lancée.",
       "runRejected": "Demande d’exécution refusée.",
       "runDecisionFailed": "Impossible de traiter cette demande d’exécution.",
-      "canvasEditHint": "Vous pouvez déplacer les étapes et cliquer dessus pour les configurer pendant que l’agent travaille.",
+      "canvasEditHint": "Vous pouvez déplacer, connecter et configurer les étapes pendant que l’agent travaille.",
       "failed": "Le mode agentique n’a pas pu modifier le workflow.",
       "completed": "Le workflow est prêt. Vous pouvez continuer à me demander des changements ou revenir au mode visuel.",
       "stopped": "Modification arrêtée. Les changements déjà affichés restent disponibles dans le brouillon visuel.",

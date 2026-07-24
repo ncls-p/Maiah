@@ -2304,7 +2304,7 @@
       "runApproved": "Run approved and started.",
       "runRejected": "Run request rejected.",
       "runDecisionFailed": "Unable to process this run request.",
-      "canvasEditHint": "You can move steps and click them to edit their settings while the agent is working.",
+      "canvasEditHint": "You can move, connect, and configure steps while the agent is working.",
       "failed": "Agentic mode could not update the workflow.",
       "completed": "The workflow is ready. You can ask for more changes or return to visual mode.",
       "stopped": "Editing stopped. Changes already shown remain available in the visual draft.",

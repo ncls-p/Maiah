@@ -269,6 +269,20 @@ test("switches between visual and agentic editing while keeping live changes", a
           retryDelayMs: 1_000,
         },
       },
+      {
+        id: "debug",
+        type: "debug.snapshot",
+        label: "Inspect output",
+        position: { x: 980, y: 100 },
+        parameters: {
+          note: "Verify the final summary",
+        },
+        settings: {
+          timeoutMs: 30_000,
+          maxRetries: 0,
+          retryDelayMs: 1_000,
+        },
+      },
     ],
     edges: [
       {
@@ -404,6 +418,31 @@ test("switches between visual and agentic editing while keeping live changes", a
     await page.mouse.up();
     const afterMove = await summaryNode.boundingBox();
     expect(Math.abs(afterMove!.x - beforeMove!.x)).toBeGreaterThan(40);
+
+    const summarySource = summaryNode.locator(
+      ".react-flow__handle-right.source",
+    );
+    const debugTarget = page
+      .locator('.react-flow__node[data-id="debug"]')
+      .locator(".react-flow__handle-left.target");
+    await expect(summarySource).toHaveCount(1);
+    await expect(debugTarget).toHaveCount(1);
+    const sourceBox = await summarySource.boundingBox();
+    const targetBox = await debugTarget.boundingBox();
+    expect(sourceBox).not.toBeNull();
+    expect(targetBox).not.toBeNull();
+    await page.mouse.move(
+      sourceBox!.x + sourceBox!.width / 2,
+      sourceBox!.y + sourceBox!.height / 2,
+    );
+    await page.mouse.down();
+    await page.mouse.move(
+      targetBox!.x + targetBox!.width / 2,
+      targetBox!.y + targetBox!.height / 2,
+      { steps: 8 },
+    );
+    await page.mouse.up();
+    await expect(page.locator(".react-flow__edge")).toHaveCount(4);
 
     await page.getByRole("button", { name: "Visual" }).click();
     await expect(page.getByText("Steps", { exact: true })).toBeVisible();
