@@ -2313,6 +2313,7 @@
         "replace_workflow": "Building the workflow",
         "upsert_workflow_nodes": "Updating workflow steps",
         "remove_workflow_nodes": "Removing workflow steps",
+        "connect_workflow_nodes": "Connecting workflow steps",
         "replace_workflow_edges": "Connecting workflow steps",
         "validate_workflow": "Validating the workflow",
         "web_search": "Searching the web",

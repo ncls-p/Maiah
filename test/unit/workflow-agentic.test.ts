@@ -91,6 +91,39 @@ describe("workflow agentic mode", () => {
     ).toThrow("references an unavailable assistant");
   });
 
+  it("rejects agent-generated steps that are disconnected from the trigger", () => {
+    const definition: WorkflowDefinition = {
+      ...createStarterDefinition(),
+      nodes: [
+        ...createStarterDefinition().nodes,
+        {
+          id: "summary",
+          type: "data.template",
+          label: "Prepare summary",
+          position: { x: 360, y: 180 },
+          parameters: {
+            template: "Summary: {{message}}",
+            outputPath: "summary",
+          },
+          settings: {
+            timeoutMs: 30_000,
+            maxRetries: 0,
+            retryDelayMs: 1_000,
+          },
+        },
+      ],
+    };
+
+    expect(() =>
+      validateWorkflowAgentDraft({
+        workflowId,
+        version: 2,
+        definition,
+        availableAgentIds: new Set(),
+      }),
+    ).toThrow("Disconnected steps: summary");
+  });
+
   it("gives the builder every supported step with safe defaults", () => {
     const catalog = workflowAgentCatalogPrompt();
 

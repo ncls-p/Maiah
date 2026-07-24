@@ -2312,6 +2312,7 @@
         "replace_workflow": "Construction du workflow",
         "upsert_workflow_nodes": "Mise à jour des étapes",
         "remove_workflow_nodes": "Suppression d’étapes",
+        "connect_workflow_nodes": "Connexion des étapes",
         "replace_workflow_edges": "Connexion des étapes",
         "validate_workflow": "Vérification du workflow",
         "web_search": "Recherche sur le web",

@@ -371,7 +371,7 @@ export async function POST(
         "For every workflow-building turn, follow this order: (1) research the live web, (2) call set_workflow_plan with a concise implementation and test plan, (3) call update_todo_list to show that plan to the user, (4) build or edit the workflow while updating the same to-do item IDs as work starts and completes, (5) call validate_workflow, (6) test relevant logic in run_code_sandbox when useful, (7) call dry_run_workflow, and only then (8) call request_workflow_run if a real execution is useful or requested.",
         "Never skip directly from a user request to workflow edits. The plan must explain the intended nodes, connections, required information, and how you will verify the result.",
         "Keep exactly one trigger.manual node. Build an acyclic graph and connect every useful step. Use clear, non-technical labels and lay nodes out from left to right with generous spacing.",
-        "Use update_workflow_details for the name or description. Prefer upsert_workflow_nodes, remove_workflow_nodes, and replace_workflow_edges when editing an existing graph so unchanged configuration remains intact. Use replace_workflow only when rebuilding the entire graph. Then use validate_workflow before your concise final answer.",
+        "Use update_workflow_details for the name or description. Prefer upsert_workflow_nodes, remove_workflow_nodes, and connect_workflow_nodes when editing an existing graph so unchanged configuration remains intact. connect_workflow_nodes replaces the complete connection set and generates safe edge IDs for you. Use replace_workflow only when rebuilding the entire graph. Then use validate_workflow before your concise final answer.",
         "Large existing parameter values may be truncated in your context. Preserve them with granular tools unless the user explicitly asks to replace them.",
         "Only use assistant IDs from the available assistant list. Never invent an ID.",
         "Never publish the workflow. Never execute it directly. A real workflow run requires request_workflow_run and explicit human approval in the interface. The user may reject it.",
@@ -402,7 +402,7 @@ export async function POST(
           : undefined,
         topP: version.topP ? Number.parseFloat(version.topP) : undefined,
         abortSignal: deadline.signal,
-        stopWhen: stepCountIs(12),
+        stopWhen: stepCountIs(24),
         tools: {
           web_search: tool({
             description:
@@ -595,9 +595,54 @@ export async function POST(
               return { ok: true, revision, removedNodeIds: nodeIds };
             },
           }),
+          connect_workflow_nodes: tool({
+            description:
+              "Replace all workflow connections using only source and target step IDs. For a condition step, set outcome to true or false; omit outcome for every other step. Edge IDs are generated automatically. Include every connection needed to make all useful steps reachable from the manual trigger.",
+            inputSchema: z.object({
+              connections: z
+                .array(
+                  z.object({
+                    source: z.string().trim().min(1).max(128),
+                    target: z.string().trim().min(1).max(128),
+                    outcome: z
+                      .enum(["true", "false", ""])
+                      .nullable()
+                      .optional(),
+                  }),
+                )
+                .max(300),
+            }),
+            execute: async ({ connections }) => {
+              markDraftChanged();
+              reserveAction();
+              const nextDefinition = validateDefinition({
+                ...draft.definition,
+                edges: connections.map((connection, index) => ({
+                  id: `edge-${index + 1}-${crypto.randomUUID()}`,
+                  source: connection.source,
+                  target: connection.target,
+                  sourceHandle:
+                    connection.outcome === "" ||
+                    connection.outcome === undefined
+                      ? null
+                      : connection.outcome,
+                })),
+              });
+              draft = {
+                ...draft,
+                definition: nextDefinition,
+              };
+              revision += 1;
+              return {
+                ok: true,
+                revision,
+                edgeCount: draft.definition.edges.length,
+              };
+            },
+          }),
           replace_workflow_edges: tool({
             description:
-              "Replace all workflow connections while preserving every workflow step.",
+              "Low-level fallback that replaces all workflow connections with explicit edge IDs. Prefer connect_workflow_nodes.",
             inputSchema: z.object({
               edges: z.array(workflowEdgeSchema).max(300),
             }),
@@ -798,9 +843,26 @@ export async function POST(
                   controller.enqueue(encodeEvent({ type: "workflow", draft }));
                 }
               } else if (part.type === "tool-error") {
-                throw part.error instanceof Error
-                  ? part.error
-                  : new Error(String(part.error));
+                logHandledWarning("Workflow builder tool failed", {
+                  workflowId,
+                  workspaceId,
+                  toolName: part.toolName,
+                  revision,
+                  error:
+                    part.error instanceof Error
+                      ? part.error.message
+                      : String(part.error),
+                });
+                controller.enqueue(
+                  encodeEvent({
+                    type: "tool_result",
+                    id: part.toolCallId,
+                    toolName: part.toolName,
+                    label:
+                      workflowAgentToolLabels[part.toolName] ?? part.toolName,
+                    status: "error",
+                  }),
+                );
               } else if (part.type === "error") {
                 throw part.error instanceof Error
                   ? part.error
@@ -857,6 +919,13 @@ export async function POST(
             });
             controller.enqueue(encodeEvent({ type: "done" }));
           } catch (error) {
+            logHandledWarning("Workflow builder stream stopped", {
+              workflowId,
+              workspaceId,
+              revision,
+              actionCount,
+              error: error instanceof Error ? error.message : String(error),
+            });
             controller.enqueue(
               encodeEvent({ type: "error", message: errorMessage(error) }),
             );

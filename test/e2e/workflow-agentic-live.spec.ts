@@ -189,15 +189,34 @@ test.beforeAll(async () => {
       });
       return;
     }
-    if (!calledTools.has("replace_workflow")) {
+    if (!calledTools.has("upsert_workflow_nodes")) {
       writeToolCall(response, {
         created,
         model,
-        id: "call_replace_workflow",
-        name: "replace_workflow",
+        id: "call_upsert_nodes",
+        name: "upsert_workflow_nodes",
         arguments: {
           summary: "Added a summary step",
-          definition: generatedDefinition,
+          nodes: generatedDefinition.nodes.filter(
+            (node) => node.id === "summary",
+          ),
+        },
+      });
+      return;
+    }
+    if (!calledTools.has("connect_workflow_nodes")) {
+      writeToolCall(response, {
+        created,
+        model,
+        id: "call_connect_nodes",
+        name: "connect_workflow_nodes",
+        arguments: {
+          connections: [
+            {
+              source: "trigger",
+              target: "summary",
+            },
+          ],
         },
       });
       return;
@@ -254,13 +273,17 @@ test.beforeAll(async () => {
     }
   });
   await new Promise<void>((resolve) =>
-    upstream.listen(0, "127.0.0.1", resolve),
+    upstream.listen(
+      0,
+      process.env.E2E_UPSTREAM_BIND_HOST ?? "127.0.0.1",
+      resolve,
+    ),
   );
   const address = upstream.address();
   if (!address || typeof address === "string") {
     throw new Error("Failed to start the workflow agentic E2E upstream");
   }
-  upstreamBaseUrl = `http://127.0.0.1:${address.port}`;
+  upstreamBaseUrl = `http://${process.env.E2E_UPSTREAM_HOST ?? "127.0.0.1"}:${address.port}`;
 });
 
 test.afterAll(async () => {
@@ -378,7 +401,8 @@ test("builds, saves, and runs a workflow through the real agentic provider strea
     await page.getByRole("button", { name: "Send" }).click();
 
     await expect(page.getByText("Using Workflow builder E2E")).toBeVisible();
-    await expect(page.getByText("Building the workflow")).toBeVisible();
+    await expect(page.getByText("Updating workflow steps")).toBeVisible();
+    await expect(page.getByText("Connecting workflow steps")).toBeVisible();
     await expect(
       page.getByText("The summary workflow is ready."),
     ).toBeVisible();
@@ -406,6 +430,12 @@ test("builds, saves, and runs a workflow through the real agentic provider strea
     expect(
       persisted.workflow.definition.nodes.some((node) => node.id === "summary"),
     ).toBe(true);
+    expect(persisted.workflow.definition.edges).toHaveLength(1);
+    expect(persisted.workflow.definition.edges[0]).toMatchObject({
+      source: "trigger",
+      target: "summary",
+      sourceHandle: null,
+    });
 
     const runResponse = await page.request.post(
       `/api/workspace/workflows/${workflowId}/runs`,

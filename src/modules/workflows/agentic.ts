@@ -108,6 +108,7 @@ export const workflowAgentToolLabels: Record<string, string> = {
   replace_workflow: "Building the workflow",
   upsert_workflow_nodes: "Updating workflow steps",
   remove_workflow_nodes: "Removing workflow steps",
+  connect_workflow_nodes: "Connecting workflow steps",
   replace_workflow_edges: "Connecting workflow steps",
   validate_workflow: "Validating the workflow",
   web_search: "Researching the web",
@@ -178,6 +179,34 @@ export function validateWorkflowAgentDraft(input: {
     ) {
       throw new Error(
         `Node '${node.label}' references an unavailable assistant.`,
+      );
+    }
+  }
+  const trigger = definition.nodes.find(
+    (node) => node.type === "trigger.manual",
+  );
+  if (trigger) {
+    const outgoing = new Map<string, string[]>();
+    for (const node of definition.nodes) outgoing.set(node.id, []);
+    for (const edge of definition.edges) {
+      outgoing.get(edge.source)?.push(edge.target);
+    }
+    const reachable = new Set<string>();
+    const pending = [trigger.id];
+    while (pending.length > 0) {
+      const nodeId = pending.pop();
+      if (!nodeId || reachable.has(nodeId)) continue;
+      reachable.add(nodeId);
+      pending.push(...(outgoing.get(nodeId) ?? []));
+    }
+    const disconnected = definition.nodes.filter(
+      (node) => !reachable.has(node.id),
+    );
+    if (disconnected.length > 0) {
+      throw new Error(
+        `Connect every workflow step to the manual trigger. Disconnected steps: ${disconnected
+          .map((node) => node.id)
+          .join(", ")}.`,
       );
     }
   }

@@ -3,7 +3,10 @@ import type { LanguageModelV4Usage } from "@ai-sdk/provider";
 import { MockLanguageModelV4, simulateReadableStream } from "ai/test";
 import { NextRequest } from "next/server";
 
-import { createStarterDefinition } from "@/modules/workflows/contracts";
+import {
+  createStarterDefinition,
+  type WorkflowDefinition,
+} from "@/modules/workflows/contracts";
 
 const mocks = vi.hoisted(() => ({
   requirePermission: vi.fn(),
@@ -137,6 +140,56 @@ const modelUsage: LanguageModelV4Usage = {
   },
 };
 
+function toolCallStream(
+  toolCallId: string,
+  toolName: string,
+  input: unknown,
+) {
+  return {
+    stream: simulateReadableStream({
+      chunks: [
+        { type: "stream-start" as const, warnings: [] },
+        {
+          type: "tool-call" as const,
+          toolCallId,
+          toolName,
+          input: JSON.stringify(input),
+        },
+        {
+          type: "finish" as const,
+          usage: modelUsage,
+          finishReason: {
+            unified: "tool-calls" as const,
+            raw: "tool_calls",
+          },
+        },
+      ],
+    }),
+  };
+}
+
+function textStream(text: string) {
+  return {
+    stream: simulateReadableStream({
+      chunks: [
+        { type: "stream-start" as const, warnings: [] },
+        { type: "text-start" as const, id: "text-recovery" },
+        {
+          type: "text-delta" as const,
+          id: "text-recovery",
+          delta: text,
+        },
+        { type: "text-end" as const, id: "text-recovery" },
+        {
+          type: "finish" as const,
+          usage: modelUsage,
+          finishReason: { unified: "stop" as const, raw: "stop" },
+        },
+      ],
+    }),
+  };
+}
+
 const generatedDefinition = {
   schemaVersion: 1 as const,
   nodes: [
@@ -194,7 +247,7 @@ const incompleteDefinition = {
   ],
 };
 
-function request() {
+function request(definition: WorkflowDefinition = incompleteDefinition) {
   return new NextRequest(
     `http://localhost/api/workspace/workflows/${workflowId}/agentic`,
     {
@@ -206,7 +259,7 @@ function request() {
         draft: {
           name: "Summary workflow",
           description: null,
-          definition: incompleteDefinition,
+          definition,
         },
       }),
     },
@@ -581,6 +634,96 @@ describe("workflow agentic route", () => {
       }),
     );
     expect(mocks.appendWorkflowAgentMessage).toHaveBeenCalledTimes(2);
+  });
+
+  it("lets the model repair a failed connection tool call and saves the corrected graph", async () => {
+    mocks.createChatModel.mockReturnValueOnce(
+      new MockLanguageModelV4({
+        modelId: "model-1",
+        doStream: [
+          toolCallStream("tool-plan", "set_workflow_plan", {
+            summary: "Build and connect the summary workflow",
+            steps: ["Add the summary step", "Connect and test the graph"],
+            tests: ["Validate every connection"],
+          }),
+          toolCallStream("tool-todos", "update_todo_list", {
+            title: "Summary workflow",
+            items: [
+              {
+                id: "connect",
+                label: "Connect the workflow",
+                status: "in_progress",
+              },
+            ],
+          }),
+          toolCallStream("tool-nodes", "upsert_workflow_nodes", {
+            summary: "Add the summary step",
+            nodes: generatedDefinition.nodes.filter(
+              (node) => node.id === "summary",
+            ),
+          }),
+          toolCallStream("tool-bad-edge", "connect_workflow_nodes", {
+            connections: [
+              {
+                source: "missing-trigger",
+                target: "summary",
+              },
+            ],
+          }),
+          toolCallStream("tool-good-edge", "connect_workflow_nodes", {
+            connections: [
+              {
+                source: "trigger",
+                target: "summary",
+                outcome: "",
+              },
+            ],
+          }),
+          toolCallStream("tool-validate", "validate_workflow", {}),
+          toolCallStream("tool-dry-run", "dry_run_workflow", {
+            testInput: { message: "Bonjour" },
+          }),
+          textStream("The corrected workflow is ready."),
+        ],
+      }),
+    );
+
+    const response = await POST(request(createStarterDefinition()), {
+      params: Promise.resolve({ workflowId }),
+    });
+    const events = (await response.text())
+      .trim()
+      .split("\n")
+      .map(
+        (line) =>
+          JSON.parse(line) as {
+            type: string;
+            id?: string;
+            status?: string;
+          },
+      );
+
+    expect(
+      events.find(
+        (event) =>
+          event.type === "tool_result" && event.id === "tool-bad-edge",
+      ),
+    ).toMatchObject({ status: "error" });
+    expect(events.at(-1)).toEqual({ type: "done" });
+    expect(mocks.updateWorkflow).toHaveBeenCalledTimes(1);
+    expect(mocks.updateWorkflow).toHaveBeenCalledWith(
+      expect.objectContaining({
+        definition: expect.objectContaining({
+          edges: [
+            expect.objectContaining({
+              source: "trigger",
+              target: "summary",
+              sourceHandle: null,
+            }),
+          ],
+        }),
+      }),
+    );
   });
 
   it("uses the workflow builder assistant selected by an administrator", async () => {
