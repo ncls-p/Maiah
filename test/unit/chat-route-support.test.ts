@@ -90,6 +90,26 @@ describe("chat route tool gating", () => {
     expect(Object.keys(tools)).not.toContain("code_workspace_write_file");
   });
 
+  it("always exposes a live to-do list tool for multi-step chats", async () => {
+    const { buildBoundTools } = await loadModules();
+    const { tools } = await buildBoundTools(buildInput());
+
+    expect(Object.keys(tools)).toContain("update_todo_list");
+    await expect(
+      (tools.update_todo_list.execute as (input: unknown) => Promise<unknown>)({
+        title: "Investigation",
+        items: [
+          { id: "research", label: "Research", status: "completed" },
+          { id: "test", label: "Test", status: "in_progress" },
+        ],
+      }),
+    ).resolves.toMatchObject({
+      kind: "chat_todo_list",
+      completedCount: 1,
+      totalCount: 2,
+    });
+  });
+
   it("auto-enables the governed sandbox for readable document exploration", async () => {
     const { buildBoundTools } = await loadModules();
 

@@ -114,7 +114,7 @@ export default function MarketplaceItemPage({
         } else if (payload.skill?.id) {
           router.push("/tools?tab=skills");
         } else if (payload.custom_tool?.id) {
-          router.push("/tools?tab=custom");
+          router.push("/workflows");
         } else if (payload.mcp_preset?.id) {
           router.push("/tools?tab=mcp");
         }

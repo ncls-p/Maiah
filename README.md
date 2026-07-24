@@ -232,6 +232,47 @@ Register AI providers (OpenAI-compatible) with encrypted API key storage using A
 
 Define recurring agent jobs that run on a schedule via the background worker.
 
+### Low-code workflows
+
+Build, version, publish, and execute visual workflows directly inside Maiah. The
+editor is powered by React Flow, while Maiah stores its own versioned JSON DSL
+and compiles published definitions to Flowcraft at runtime. Durable run jobs use
+BullMQ on DragonflyDB; run and step history remains in PostgreSQL.
+
+The no-code catalog contains 20 ready-to-use nodes: API input, field set/pick/
+remove/rename, templates, JSON parsing and serialization, text transforms,
+calculations, list filtering/sorting/slicing, conditions, delays, terminal
+steps, current dates, HTTPS requests, and assistant execution. Custom
+JavaScript or Python remains available as an expert escape hatch and always
+runs in the existing network-isolated sandbox runner. Drafts may be incomplete,
+but a workflow must pass graph validation before it can be published or tested.
+
+The desktop editor uses keyboard-accessible resizable panels. On smaller
+screens, the node library and inspector become side sheets; the canvas can also
+be switched to a full-screen workspace at any viewport size.
+
+The main execution endpoint is:
+
+```http
+POST /api/workspace/workflows/{workflowId}/runs
+Authorization: Bearer <workspace-api-token>
+Content-Type: application/json
+
+{
+  "workspaceId": "<workspace-uuid>",
+  "input": { "message": "Hello" },
+  "idempotencyKey": "optional-client-key"
+}
+```
+
+Use the `workflows.execute` API-token scope and poll
+`GET /api/workspace/workflow-runs/{runId}?workspaceId=...` for status and step
+details. DragonflyDB is started with BullMQ-compatible hashtag locking in both
+development and production Compose configurations. BullMQ creates some job keys
+inside Lua scripts, so both Compose files also set
+`--default_lua_flags=allow-undeclared-keys`; removing that flag causes queue
+insertion to fail with `script tried accessing undeclared key`.
+
 ### Agent Marketplace
 
 Publish agents to a team marketplace with optional GitHub repository sync.

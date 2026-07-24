@@ -35,12 +35,17 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
-      redis:
-        image: redis:7-alpine
+      dragonfly:
+        image: docker.dragonflydb.io/dragonflydb/dragonfly:v1.39.0
+        env:
+          DFLY_cluster_mode: emulated
+          DFLY_lock_on_hashtags: "true"
+          DFLY_default_lua_flags: allow-undeclared-keys
+          DFLY_requirepass: ci-runtime-cache-secret-2026
         ports:
           - 6379:6379
         options: >-
-          --health-cmd "redis-cli ping"
+          --health-cmd "redis-cli -a ci-runtime-cache-secret-2026 ping"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -104,6 +109,7 @@ jobs:
           OBJECT_STORAGE_BUCKET: "test-bucket"
           OBJECT_STORAGE_ACCESS_KEY_ID: "test"
           OBJECT_STORAGE_SECRET_ACCESS_KEY: "testtesttesttest"
+          DRAGONFLY_INTEGRATION_URL: "redis://:ci-runtime-cache-secret-2026@localhost:6379"
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
@@ -126,21 +132,26 @@ jobs:
         run: |
           npm run start > /tmp/next.log 2>&1 &
           SERVER_PID=$!
-          trap 'kill ${SERVER_PID}' EXIT
+          npm run worker > /tmp/worker.log 2>&1 &
+          WORKER_PID=$!
+          trap 'kill ${SERVER_PID} ${WORKER_PID}' EXIT
 
           for attempt in {1..60}; do
-            if curl --fail --silent --show-error http://localhost:3000 > /dev/null; then
+            if curl --fail --silent --show-error http://localhost:3000 > /dev/null \
+              && curl --fail --silent --show-error http://localhost:3001/health > /dev/null; then
               if npm run test:e2e -- --max-failures=1; then
                 exit 0
               fi
               cat /tmp/next.log
+              cat /tmp/worker.log
               exit 1
             fi
             sleep 2
           done
 
-          echo "Next.js server failed to become ready"
+          echo "Next.js server or worker failed to become ready"
           cat /tmp/next.log
+          cat /tmp/worker.log
           exit 1
         env:
           NODE_ENV: "production"

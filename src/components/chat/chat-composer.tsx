@@ -33,7 +33,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import type { ChatAttachment } from "@/components/chat/chat-types";
+import { ChatTodoListDock } from "@/components/chat/chat-todo-list-card";
 import { cn } from "@/lib/utils";
+import type { ChatTodoList } from "@/modules/chat/todo-list";
 
 export interface QueuedChatMessage {
   id: string;
@@ -54,6 +56,7 @@ interface ChatComposerProps {
   onUploadChatAttachment?: (file: File) => Promise<void>;
   attachments?: ChatAttachment[];
   onRemoveAttachment?: (attachmentId: string) => void;
+  todoList?: ChatTodoList | null;
 }
 
 const maxChatAttachments = 8;
@@ -245,6 +248,7 @@ export function ChatComposer({
   onUploadChatAttachment,
   attachments = [],
   onRemoveAttachment,
+  todoList,
 }: ChatComposerProps) {
   const t = useTranslations("chat.composer");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -467,6 +471,11 @@ export function ChatComposer({
         </div>
       ) : null}
       <div className="relative mx-auto w-full min-w-0 max-w-4xl">
+        {todoList ? (
+          <div className="mb-2">
+            <ChatTodoListDock todoList={todoList} />
+          </div>
+        ) : null}
         {attachments.length > 0 ? (
           <AttachmentGroup className="mb-2">
             {attachments.map((attachment) => (
