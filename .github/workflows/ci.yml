@@ -109,6 +109,8 @@ jobs:
           OBJECT_STORAGE_BUCKET: "test-bucket"
           OBJECT_STORAGE_ACCESS_KEY_ID: "test"
           OBJECT_STORAGE_SECRET_ACCESS_KEY: "testtesttesttest"
+          DRAGONFLY_URL: "redis://localhost:6379"
+          DRAGONFLY_PASSWORD: "ci-runtime-cache-secret-2026"
           DRAGONFLY_INTEGRATION_URL: "redis://:ci-runtime-cache-secret-2026@localhost:6379"
           IAM_INTEGRATION_DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/ai_hub_test"
 
