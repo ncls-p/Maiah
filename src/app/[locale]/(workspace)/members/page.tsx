@@ -1,73 +1,57 @@
-import { ShieldAlertIcon } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 
-import { WorkspacePage } from "@/components/workspace-page";
 import { UserManagement } from "@/components/admin/user-management";
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@/components/ui/empty";
+import { AccessConsole } from "@/components/iam/access-console";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { WorkspacePage } from "@/components/workspace-page";
 import { isPlatformAdminSession } from "@/modules/admin/auth";
 import { listAdminUsers } from "@/modules/admin/use-cases";
 import { getSession } from "@/modules/auth/session";
 
 export default async function MembersPage() {
-  const t = await getTranslations("admin");
+  const t = await getTranslations("access");
   const session = await getSession();
-  const isAdmin = await isPlatformAdminSession(session);
-
-  if (!session) {
-    return (
-      <WorkspacePage title={t("membersTitle")} width="default">
-        <Empty className="min-h-80 border border-border/70 bg-background/55">
-          <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <ShieldAlertIcon aria-hidden="true" />
-            </EmptyMedia>
-            <EmptyTitle>{t("signInRequired")}</EmptyTitle>
-            <EmptyDescription>
-              {t("signInRequiredDescription")}
-            </EmptyDescription>
-          </EmptyHeader>
-        </Empty>
-      </WorkspacePage>
-    );
-  }
-
-  if (!isAdmin) {
-    return (
-      <WorkspacePage title={t("membersTitle")} width="default">
-        <Empty className="min-h-80 border border-border/70 bg-background/55">
-          <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <ShieldAlertIcon aria-hidden="true" />
-            </EmptyMedia>
-            <EmptyTitle>{t("adminRequired")}</EmptyTitle>
-            <EmptyDescription>{t("adminRequiredDescription")}</EmptyDescription>
-          </EmptyHeader>
-        </Empty>
-      </WorkspacePage>
-    );
-  }
-
-  const users = await listAdminUsers();
+  const isPlatformAdmin = await isPlatformAdminSession(session);
+  const users = isPlatformAdmin ? await listAdminUsers() : [];
 
   return (
     <WorkspacePage
-      title={t("platformAccounts")}
-      description={t("platformAccountsDescription")}
+      title={t("title")}
+      description={t("description")}
       width="wide"
     >
-      <UserManagement
-        initialUsers={users.map((u) => ({
-          ...u,
-          createdAt: u.createdAt.toISOString(),
-        }))}
-        currentUserId={session.user.id}
-      />
+      {isPlatformAdmin && session ? (
+        <Tabs defaultValue="organization">
+          <TabsList>
+            <TabsTrigger value="organization">
+              {t("organizationAccess")}
+            </TabsTrigger>
+            <TabsTrigger value="platform">{t("platformAccounts")}</TabsTrigger>
+          </TabsList>
+          <TabsContent value="organization">
+            <AccessConsole />
+          </TabsContent>
+          <TabsContent value="platform" className="flex flex-col gap-5">
+            <div>
+              <h2 className="font-heading text-lg font-semibold">
+                {t("platformAccounts")}
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {t("platformAccountsDescription")}
+              </p>
+            </div>
+            <UserManagement
+              initialUsers={users.map((user) => ({
+                ...user,
+                createdAt: user.createdAt.toISOString(),
+              }))}
+              currentUserId={session.user.id}
+            />
+          </TabsContent>
+        </Tabs>
+      ) : (
+        <AccessConsole />
+      )}
     </WorkspacePage>
   );
 }

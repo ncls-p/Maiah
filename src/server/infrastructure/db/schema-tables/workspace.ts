@@ -1,4 +1,6 @@
 import {
+  boolean,
+  index,
   pgTable,
   text,
   timestamp,
@@ -31,6 +33,87 @@ export const organizations = pgTable("organizations", {
     .notNull()
     .defaultNow(),
 });
+
+export const organizationMemberStatusEnum = pgEnum(
+  "organization_member_status",
+  ["active", "suspended", "removed"],
+);
+
+export const organizationMembers = pgTable(
+  "organization_members",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: CASCADE_ACTION }),
+    userId: uuid(USER_ID_COLUMN)
+      .notNull()
+      .references(() => users.id, { onDelete: CASCADE_ACTION }),
+    status: organizationMemberStatusEnum(STATUS_COLUMN)
+      .notNull()
+      .default("active"),
+    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("organization_members_org_user_unique").on(
+      t.organizationId,
+      t.userId,
+    ),
+    index("organization_members_user_status_idx").on(t.userId, t.status),
+  ],
+);
+
+export const teams = pgTable(
+  "teams",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: CASCADE_ACTION }),
+    name: varchar("name", { length: 255 }).notNull(),
+    slug: varchar("slug", { length: 128 }).notNull(),
+    description: text("description"),
+    isDefault: boolean("is_default").notNull().default(false),
+    createdById: uuid(CREATED_BY_USER_ID_COLUMN)
+      .notNull()
+      .references(() => users.id),
+    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("teams_org_slug_unique").on(t.organizationId, t.slug),
+    index("teams_organization_idx").on(t.organizationId),
+  ],
+);
+
+export const teamMembers = pgTable(
+  "team_members",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    teamId: uuid("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: CASCADE_ACTION }),
+    userId: uuid(USER_ID_COLUMN)
+      .notNull()
+      .references(() => users.id, { onDelete: CASCADE_ACTION }),
+    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("team_members_team_user_unique").on(t.teamId, t.userId),
+    index("team_members_user_idx").on(t.userId),
+  ],
+);
 
 export const workspaces = pgTable(
   "workspaces",

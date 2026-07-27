@@ -35,6 +35,7 @@
     "aiConnections": "AI connections",
     "apiKeys": "API keys",
     "team": "Users",
+    "access": "Access",
     "usage": "Consumption",
     "activityLog": "Activity log",
     "settings": "Settings",
@@ -2121,6 +2122,329 @@
       }
     }
   },
+  "access": {
+    "title": "Access",
+    "description": "Manage organizations, projects, teams, roles, and inherited permissions from one place.",
+    "organizationAccess": "Organization access",
+    "platformAccounts": "Platform accounts",
+    "platformAccountsDescription": "Create sign-in accounts and manage platform administrators. Organization and project permissions are assigned separately.",
+    "loadFailed": "Access could not be loaded",
+    "loadError": "Unable to load permissions and assignments.",
+    "refreshFailed": "Access may be out of date",
+    "retry": "Try again",
+    "mutationError": "Unable to update access.",
+    "inheritanceHint": "Organization roles apply to every project; project roles stay local.",
+    "activeProject": "Active project",
+    "newOrganization": "New organization",
+    "newProject": "New project",
+    "createOrganizationTitle": "Create an organization",
+    "createOrganizationDescription": "Start an independent organization with its first project. You become its owner.",
+    "organizationName": "Organization name",
+    "firstProjectName": "First project",
+    "createOrganization": "Create organization",
+    "organizationCreated": "Organization created",
+    "createProjectTitle": "Create a project",
+    "createProjectDescription": "The project will belong to {organization} and inherit its organization access.",
+    "projectName": "Project name",
+    "createProject": "Create project",
+    "projectCreated": "Project created",
+    "readOnlyTitle": "Access is read-only",
+    "readOnlyDescription": "You can inspect effective access, but only an access administrator can change it.",
+    "tabs": {
+      "access": "Assignments",
+      "members": "Members",
+      "teams": "Teams",
+      "roles": "Roles"
+    },
+    "assignmentsTitle": "Who has access",
+    "assignmentsDescription": "Direct project assignments and inherited organization assignments are shown together.",
+    "assignRole": "Assign role",
+    "assignRoleTitle": "Grant access",
+    "assignRoleDescription": "Choose who receives which role and where it applies.",
+    "scope": "Scope",
+    "projectOnly": "This project only",
+    "wholeOrganization": "Whole organization",
+    "principalType": "Grant to",
+    "member": "Member",
+    "team": "Team",
+    "principal": "Member or team",
+    "choose": "Choose…",
+    "role": "Role",
+    "saveAssignment": "Grant access",
+    "roleAssigned": "Access granted",
+    "noAssignments": "No access assignments",
+    "noAssignmentsDescription": "Grant a role to a member or team to make access explicit.",
+    "inherited": "Inherited",
+    "organizationScope": "Organization",
+    "projectScope": "Project",
+    "removeAssignment": "Remove access for {name}",
+    "removeAssignmentTitle": "Remove {name}’s access?",
+    "removeAssignmentDescription": "The {role} assignment at {scope} scope will be removed. Other inherited access remains unchanged.",
+    "assignmentRemoved": "Access removed",
+    "membersTitle": "Organization members",
+    "membersDescription": "{count, plural, =0 {No active member} one {# active member} other {# active members}} in this organization.",
+    "addMember": "Add member",
+    "addMemberTitle": "Add an organization member",
+    "addMemberDescription": "Members can then receive organization or project roles directly or through a team.",
+    "email": "Email",
+    "accountRequired": "The person needs an existing platform account.",
+    "memberAdded": "Member added",
+    "removeMember": "Remove {name} from the organization",
+    "removeMemberTitle": "Remove {name}?",
+    "removeMemberDescription": "{name} will lose direct and team access to every project in {organization}.",
+    "memberRemoved": "Member removed",
+    "cancel": "Keep access",
+    "confirmRemove": "Remove access",
+    "teamsTitle": "Teams",
+    "teamsDescription": "Group members once, then assign roles to the team across projects.",
+    "createTeam": "Create team",
+    "createTeamTitle": "Create a team",
+    "createTeamDescription": "Teams belong to the organization and can receive reusable access assignments.",
+    "teamName": "Team name",
+    "descriptionLabel": "Description",
+    "teamCreated": "Team created",
+    "noTeams": "No teams yet",
+    "noTeamsDescription": "Create a team to manage access for several members together.",
+    "noTeamDescription": "No description",
+    "memberCount": "{count, plural, =0 {No members} one {# member} other {# members}}",
+    "emptyTeam": "This team has no members.",
+    "addTeamMember": "Add a member",
+    "chooseMember": "Choose a member…",
+    "add": "Add",
+    "teamMemberAdded": "Member added to team",
+    "removeTeamMember": "Remove {name} from the team",
+    "removeTeamMemberTitle": "Remove {name} from this team?",
+    "removeTeamMemberDescription": "They will lose access inherited through {team}. Direct and other team access remain unchanged.",
+    "teamMemberRemoved": "Member removed from team",
+    "deleteTeam": "Delete team {name}",
+    "deleteTeamTitle": "Delete {name}?",
+    "deleteTeamDescription": "The team and all of its access assignments will be removed. Its members remain in the organization.",
+    "teamDeleted": "Team deleted",
+    "rolesTitle": "Roles",
+    "rolesDescription": "Built-in roles cover common cases. Create a custom role only when a smaller permission set is needed.",
+    "createRole": "Create custom role",
+    "createRoleTitle": "Create a custom role",
+    "createRoleDescription": "Give the role a clear outcome-based name, choose its scope, then select only the permissions it needs.",
+    "roleName": "Role name",
+    "roleScope": "Role scope",
+    "projectRole": "Project role",
+    "organizationRole": "Organization role",
+    "roleCreated": "Role created",
+    "deleteRole": "Delete role {name}",
+    "deleteRoleTitle": "Delete {name}?",
+    "deleteRoleDescription": "Only roles with no active assignments can be deleted.",
+    "roleDeleted": "Role deleted",
+    "noRoleDescription": "No description",
+    "permissionCount": "{count, plural, =0 {No permissions} one {# permission} other {# permissions}}",
+    "builtInRoles": {
+      "owner": "Organization Owner",
+      "organizationAdmin": "Organization Administrator",
+      "organizationMember": "Organization Member",
+      "projectAdmin": "Project Administrator",
+      "projectEditor": "Project Editor",
+      "projectViewer": "Project Viewer"
+    },
+    "permissionGroups": {
+      "organization": {
+        "label": "Organization & projects",
+        "description": "Structure, settings, projects, and access administration."
+      },
+      "assistants": {
+        "label": "Assistants & conversations",
+        "description": "Build, run, and delegate AI assistants."
+      },
+      "platform": {
+        "label": "Models, tools & knowledge",
+        "description": "AI providers, tools, integrations, and knowledge bases."
+      },
+      "automation": {
+        "label": "Workflows",
+        "description": "Design, publish, and execute automated workflows."
+      },
+      "governance": {
+        "label": "Governance & credentials",
+        "description": "Usage, audit, marketplace publishing, and API credentials."
+      }
+    },
+    "permissions": {
+      "organization_get": {
+        "label": "View organization",
+        "description": "See organization settings and structure."
+      },
+      "organization_update": {
+        "label": "Manage organization",
+        "description": "Change organization settings."
+      },
+      "workspaces_get": {
+        "label": "View projects",
+        "description": "Open projects in the organization."
+      },
+      "workspaces_create": {
+        "label": "Create projects",
+        "description": "Create new projects inside the organization."
+      },
+      "workspaces_update": {
+        "label": "Manage projects",
+        "description": "Change project settings and lifecycle."
+      },
+      "members_manage": {
+        "label": "Manage members",
+        "description": "Add members and update their access."
+      },
+      "teams_manage": {
+        "label": "Manage teams",
+        "description": "Create teams and manage team membership."
+      },
+      "roles_manage": {
+        "label": "Manage access",
+        "description": "Create roles and assign them to members or teams."
+      },
+      "agents_view": {
+        "label": "View assistants",
+        "description": "List and inspect assistants."
+      },
+      "agents_chat": {
+        "label": "Use assistants",
+        "description": "Start conversations and run assistants."
+      },
+      "agents_create": {
+        "label": "Create assistants",
+        "description": "Create and configure assistants."
+      },
+      "agents_update": {
+        "label": "Edit assistants",
+        "description": "Update existing assistants."
+      },
+      "agents_delete": {
+        "label": "Delete assistants",
+        "description": "Permanently remove assistants."
+      },
+      "agents_delegate": {
+        "label": "Delegate to specialists",
+        "description": "Allow orchestrators to run specialist assistants."
+      },
+      "agentVersions_create": {
+        "label": "Create assistant versions",
+        "description": "Save new versions of assistants."
+      },
+      "agentVersions_manage": {
+        "label": "Manage assistant versions",
+        "description": "Administer all assistant versions."
+      },
+      "conversations_create": {
+        "label": "Create conversations",
+        "description": "Start new project conversations."
+      },
+      "conversations_viewOwn": {
+        "label": "View own conversations",
+        "description": "Read conversations created by the member."
+      },
+      "conversations_manage": {
+        "label": "Manage all conversations",
+        "description": "Administer conversations across the project."
+      },
+      "providers_viewMetadata": {
+        "label": "View AI connections",
+        "description": "See configured providers without secrets."
+      },
+      "providers_manage": {
+        "label": "Manage AI connections",
+        "description": "Create, test, update, and delete providers."
+      },
+      "models_view": {
+        "label": "View models",
+        "description": "See models available in the project."
+      },
+      "models_invoke": {
+        "label": "Use models",
+        "description": "Invoke configured models."
+      },
+      "models_manage": {
+        "label": "Manage models",
+        "description": "Sync and configure model availability."
+      },
+      "tools_view": {
+        "label": "View tools",
+        "description": "See tools and integrations."
+      },
+      "tools_configure": {
+        "label": "Configure tools",
+        "description": "Change tool and approval settings."
+      },
+      "tools_executeRestricted": {
+        "label": "Run restricted tools",
+        "description": "Execute tools that require elevated access."
+      },
+      "mcpServers_get": {
+        "label": "View integrations",
+        "description": "See configured MCP servers and connections."
+      },
+      "mcpServers_manage": {
+        "label": "Manage integrations",
+        "description": "Configure MCP servers and connections."
+      },
+      "knowledgeBases_viewAllowed": {
+        "label": "View allowed knowledge",
+        "description": "Read knowledge bases shared with the member."
+      },
+      "knowledgeBases_manage": {
+        "label": "Manage knowledge",
+        "description": "Create and update knowledge bases."
+      },
+      "workflows_view": {
+        "label": "View workflows",
+        "description": "List workflows and inspect their runs."
+      },
+      "workflows_create": {
+        "label": "Create workflows",
+        "description": "Create new workflow drafts."
+      },
+      "workflows_update": {
+        "label": "Edit workflows",
+        "description": "Edit and publish workflows."
+      },
+      "workflows_execute": {
+        "label": "Run workflows",
+        "description": "Start workflow executions."
+      },
+      "workflows_delete": {
+        "label": "Delete workflows",
+        "description": "Permanently remove workflows."
+      },
+      "usage_view": {
+        "label": "View usage",
+        "description": "See consumption and quota."
+      },
+      "audit_view": {
+        "label": "View audit log",
+        "description": "Review security-sensitive events."
+      },
+      "audit_export": {
+        "label": "Export audit log",
+        "description": "Download audit events."
+      },
+      "marketplaceItems_view": {
+        "label": "View marketplace items",
+        "description": "Browse resources available in the marketplace."
+      },
+      "marketplaceItems_install": {
+        "label": "Install marketplace items",
+        "description": "Add shared resources to the project."
+      },
+      "marketplaceItems_publish": {
+        "label": "Publish marketplace items",
+        "description": "Share project resources through the marketplace."
+      },
+      "apiKeys_manageOwn": {
+        "label": "Manage own API keys",
+        "description": "Create credentials limited to the member's access."
+      },
+      "apiKeys_manage": {
+        "label": "Manage all API keys",
+        "description": "Administer credentials for the project."
+      }
+    }
+  },
   "shell": {
     "skipToContent": "Skip to content",
     "returnToChat": "Back to chat",
@@ -2130,6 +2454,7 @@
     "signOut": "Sign out",
     "signOutFailed": "Unable to sign out",
     "navigation": "Navigation",
+    "activeProject": "Active project",
     "openNavigation": "Open navigation",
     "expandSidebar": "Expand sidebar",
     "collapseSidebar": "Collapse sidebar",

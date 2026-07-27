@@ -80,7 +80,11 @@ export async function ensureE2EMember() {
     );
     const userId = upserted.rows[0].id;
     const workspace = await client.query<{ id: string }>(
-      `select id from workspaces where slug = 'main' and archived_at is null limit 1`,
+      `select w.id
+       from workspaces w
+       join organizations o on o.id = w.organization_id
+       where w.slug = 'main' and o.slug = 'deodis' and w.archived_at is null
+       limit 1`,
     );
     const memberRole = await client.query<{ id: string }>(
       `select id from roles

@@ -128,7 +128,7 @@ test.describe("workspace navigation", () => {
     await expect(page).toHaveURL(/\/en\/members/);
 
     await expect(
-      page.getByRole("heading", { name: /Users|Platform accounts/i }).first(),
+      page.getByRole("heading", { name: "Access" }).first(),
     ).toBeVisible({ timeout: 10_000 });
   });
 

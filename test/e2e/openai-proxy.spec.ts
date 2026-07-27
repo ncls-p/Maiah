@@ -167,13 +167,17 @@ test.beforeAll(async () => {
     response.end(JSON.stringify(completionPayload(body)));
   });
   await new Promise<void>((resolve) =>
-    upstream.listen(0, "127.0.0.1", resolve),
+    upstream.listen(
+      0,
+      process.env.E2E_UPSTREAM_BIND_HOST ?? "127.0.0.1",
+      resolve,
+    ),
   );
   const address = upstream.address();
   if (!address || typeof address === "string") {
     throw new Error("Failed to start the E2E OpenAI upstream");
   }
-  upstreamBaseUrl = `http://127.0.0.1:${address.port}`;
+  upstreamBaseUrl = `http://${process.env.E2E_UPSTREAM_HOST ?? "127.0.0.1"}:${address.port}`;
 });
 
 test.afterAll(async () => {

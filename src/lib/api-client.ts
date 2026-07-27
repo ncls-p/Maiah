@@ -7,6 +7,7 @@ type WorkspaceRow = {
     slug?: string;
   };
   organization?: {
+    id?: string;
     name?: string;
   };
 };
@@ -15,6 +16,7 @@ export type WorkspaceSummary = {
   id: string;
   name: string;
   slug: string;
+  organizationId: string;
   organizationName: string;
 };
 
@@ -34,6 +36,7 @@ export async function fetchWorkspaces(): Promise<WorkspaceSummary[]> {
           id,
           name: row.workspace?.name ?? "Workspace",
           slug: row.workspace?.slug ?? "main",
+          organizationId: row.organization?.id ?? "",
           organizationName: row.organization?.name ?? "Organization",
         };
       })

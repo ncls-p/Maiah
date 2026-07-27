@@ -35,6 +35,7 @@
     "aiConnections": "Connexions IA",
     "apiKeys": "Clés API",
     "team": "Utilisateurs",
+    "access": "Accès",
     "usage": "Consommation",
     "activityLog": "Historique d’activité",
     "settings": "Paramètres",
@@ -2120,6 +2121,329 @@
       }
     }
   },
+  "access": {
+    "title": "Accès",
+    "description": "Gérez les organisations, projets, équipes, rôles et droits hérités depuis un seul endroit.",
+    "organizationAccess": "Accès de l’organisation",
+    "platformAccounts": "Comptes de la plateforme",
+    "platformAccountsDescription": "Créez les comptes de connexion et gérez les administrateurs de la plateforme. Les droits d’organisation et de projet sont attribués séparément.",
+    "loadFailed": "Impossible de charger les accès",
+    "loadError": "Impossible de charger les permissions et les attributions.",
+    "refreshFailed": "Les accès ne sont peut-être plus à jour",
+    "retry": "Réessayer",
+    "mutationError": "Impossible de modifier les accès.",
+    "inheritanceHint": "Les rôles d’organisation s’appliquent à tous les projets ; les rôles de projet restent locaux.",
+    "activeProject": "Projet actif",
+    "newOrganization": "Nouvelle organisation",
+    "newProject": "Nouveau projet",
+    "createOrganizationTitle": "Créer une organisation",
+    "createOrganizationDescription": "Créez une organisation indépendante avec son premier projet. Vous en devenez propriétaire.",
+    "organizationName": "Nom de l’organisation",
+    "firstProjectName": "Premier projet",
+    "createOrganization": "Créer l’organisation",
+    "organizationCreated": "Organisation créée",
+    "createProjectTitle": "Créer un projet",
+    "createProjectDescription": "Le projet appartiendra à {organization} et héritera de ses accès d’organisation.",
+    "projectName": "Nom du projet",
+    "createProject": "Créer le projet",
+    "projectCreated": "Projet créé",
+    "readOnlyTitle": "Accès en lecture seule",
+    "readOnlyDescription": "Vous pouvez consulter les accès effectifs, mais seul un administrateur des accès peut les modifier.",
+    "tabs": {
+      "access": "Attributions",
+      "members": "Membres",
+      "teams": "Équipes",
+      "roles": "Rôles"
+    },
+    "assignmentsTitle": "Qui a accès",
+    "assignmentsDescription": "Les attributions directes au projet et celles héritées de l’organisation sont réunies ici.",
+    "assignRole": "Attribuer un rôle",
+    "assignRoleTitle": "Donner un accès",
+    "assignRoleDescription": "Choisissez qui reçoit quel rôle et à quelle portée.",
+    "scope": "Portée",
+    "projectOnly": "Ce projet uniquement",
+    "wholeOrganization": "Toute l’organisation",
+    "principalType": "Attribuer à",
+    "member": "Membre",
+    "team": "Équipe",
+    "principal": "Membre ou équipe",
+    "choose": "Choisir…",
+    "role": "Rôle",
+    "saveAssignment": "Donner l’accès",
+    "roleAssigned": "Accès accordé",
+    "noAssignments": "Aucune attribution d’accès",
+    "noAssignmentsDescription": "Attribuez un rôle à un membre ou une équipe pour rendre l’accès explicite.",
+    "inherited": "Hérité",
+    "organizationScope": "Organisation",
+    "projectScope": "Projet",
+    "removeAssignment": "Retirer l’accès de {name}",
+    "removeAssignmentTitle": "Retirer l’accès de {name} ?",
+    "removeAssignmentDescription": "L’attribution {role} de portée {scope} sera retirée. Les autres accès hérités restent inchangés.",
+    "assignmentRemoved": "Accès retiré",
+    "membersTitle": "Membres de l’organisation",
+    "membersDescription": "{count, plural, =0 {Aucun membre actif} one {# membre actif} other {# membres actifs}} dans cette organisation.",
+    "addMember": "Ajouter un membre",
+    "addMemberTitle": "Ajouter un membre à l’organisation",
+    "addMemberDescription": "Le membre pourra ensuite recevoir des rôles d’organisation ou de projet, directement ou via une équipe.",
+    "email": "E-mail",
+    "accountRequired": "La personne doit déjà posséder un compte sur la plateforme.",
+    "memberAdded": "Membre ajouté",
+    "removeMember": "Retirer {name} de l’organisation",
+    "removeMemberTitle": "Retirer {name} ?",
+    "removeMemberDescription": "{name} perdra ses accès directs et via équipe à tous les projets de {organization}.",
+    "memberRemoved": "Membre retiré",
+    "cancel": "Conserver l’accès",
+    "confirmRemove": "Retirer l’accès",
+    "teamsTitle": "Équipes",
+    "teamsDescription": "Regroupez les membres une fois, puis attribuez des rôles à l’équipe sur plusieurs projets.",
+    "createTeam": "Créer une équipe",
+    "createTeamTitle": "Créer une équipe",
+    "createTeamDescription": "Les équipes appartiennent à l’organisation et peuvent recevoir des accès réutilisables.",
+    "teamName": "Nom de l’équipe",
+    "descriptionLabel": "Description",
+    "teamCreated": "Équipe créée",
+    "noTeams": "Aucune équipe",
+    "noTeamsDescription": "Créez une équipe pour gérer ensemble les accès de plusieurs membres.",
+    "noTeamDescription": "Aucune description",
+    "memberCount": "{count, plural, =0 {Aucun membre} one {# membre} other {# membres}}",
+    "emptyTeam": "Cette équipe ne contient aucun membre.",
+    "addTeamMember": "Ajouter un membre",
+    "chooseMember": "Choisir un membre…",
+    "add": "Ajouter",
+    "teamMemberAdded": "Membre ajouté à l’équipe",
+    "removeTeamMember": "Retirer {name} de l’équipe",
+    "removeTeamMemberTitle": "Retirer {name} de cette équipe ?",
+    "removeTeamMemberDescription": "Cette personne perdra les accès hérités via {team}. Ses accès directs et ceux reçus par d’autres équipes resteront inchangés.",
+    "teamMemberRemoved": "Membre retiré de l’équipe",
+    "deleteTeam": "Supprimer l’équipe {name}",
+    "deleteTeamTitle": "Supprimer {name} ?",
+    "deleteTeamDescription": "L’équipe et toutes ses attributions d’accès seront supprimées. Ses membres resteront dans l’organisation.",
+    "teamDeleted": "Équipe supprimée",
+    "rolesTitle": "Rôles",
+    "rolesDescription": "Les rôles intégrés couvrent les cas courants. Créez un rôle personnalisé seulement pour réduire précisément les droits.",
+    "createRole": "Créer un rôle personnalisé",
+    "createRoleTitle": "Créer un rôle personnalisé",
+    "createRoleDescription": "Donnez au rôle un nom orienté résultat, choisissez sa portée, puis sélectionnez uniquement les droits nécessaires.",
+    "roleName": "Nom du rôle",
+    "roleScope": "Portée du rôle",
+    "projectRole": "Rôle de projet",
+    "organizationRole": "Rôle d’organisation",
+    "roleCreated": "Rôle créé",
+    "deleteRole": "Supprimer le rôle {name}",
+    "deleteRoleTitle": "Supprimer {name} ?",
+    "deleteRoleDescription": "Seuls les rôles sans attribution active peuvent être supprimés.",
+    "roleDeleted": "Rôle supprimé",
+    "noRoleDescription": "Aucune description",
+    "permissionCount": "{count, plural, =0 {Aucun droit} one {# droit} other {# droits}}",
+    "builtInRoles": {
+      "owner": "Propriétaire de l’organisation",
+      "organizationAdmin": "Administrateur de l’organisation",
+      "organizationMember": "Membre de l’organisation",
+      "projectAdmin": "Administrateur du projet",
+      "projectEditor": "Éditeur du projet",
+      "projectViewer": "Lecteur du projet"
+    },
+    "permissionGroups": {
+      "organization": {
+        "label": "Organisation et projets",
+        "description": "Structure, paramètres, projets et administration des accès."
+      },
+      "assistants": {
+        "label": "Assistants et conversations",
+        "description": "Créer, exécuter et déléguer des assistants IA."
+      },
+      "platform": {
+        "label": "Modèles, outils et connaissances",
+        "description": "Fournisseurs IA, outils, intégrations et bases de connaissances."
+      },
+      "automation": {
+        "label": "Workflows",
+        "description": "Concevoir, publier et exécuter des automatisations."
+      },
+      "governance": {
+        "label": "Gouvernance et identifiants",
+        "description": "Usage, audit, publication et clés API."
+      }
+    },
+    "permissions": {
+      "organization_get": {
+        "label": "Voir l’organisation",
+        "description": "Consulter les paramètres et la structure."
+      },
+      "organization_update": {
+        "label": "Gérer l’organisation",
+        "description": "Modifier les paramètres de l’organisation."
+      },
+      "workspaces_get": {
+        "label": "Voir les projets",
+        "description": "Ouvrir les projets de l’organisation."
+      },
+      "workspaces_create": {
+        "label": "Créer des projets",
+        "description": "Créer de nouveaux projets dans l’organisation."
+      },
+      "workspaces_update": {
+        "label": "Gérer les projets",
+        "description": "Modifier les paramètres et le cycle de vie des projets."
+      },
+      "members_manage": {
+        "label": "Gérer les membres",
+        "description": "Ajouter des membres et modifier leurs accès."
+      },
+      "teams_manage": {
+        "label": "Gérer les équipes",
+        "description": "Créer des équipes et gérer leurs membres."
+      },
+      "roles_manage": {
+        "label": "Gérer les accès",
+        "description": "Créer des rôles et les attribuer aux membres ou équipes."
+      },
+      "agents_view": {
+        "label": "Voir les assistants",
+        "description": "Lister et consulter les assistants."
+      },
+      "agents_chat": {
+        "label": "Utiliser les assistants",
+        "description": "Démarrer des conversations et exécuter les assistants."
+      },
+      "agents_create": {
+        "label": "Créer des assistants",
+        "description": "Créer et configurer des assistants."
+      },
+      "agents_update": {
+        "label": "Modifier les assistants",
+        "description": "Modifier des assistants existants."
+      },
+      "agents_delete": {
+        "label": "Supprimer des assistants",
+        "description": "Supprimer définitivement des assistants."
+      },
+      "agents_delegate": {
+        "label": "Déléguer aux spécialistes",
+        "description": "Autoriser les orchestrateurs à lancer des assistants spécialistes."
+      },
+      "agentVersions_create": {
+        "label": "Créer des versions d’assistant",
+        "description": "Enregistrer de nouvelles versions d’assistants."
+      },
+      "agentVersions_manage": {
+        "label": "Gérer les versions d’assistant",
+        "description": "Administrer toutes les versions d’assistants."
+      },
+      "conversations_create": {
+        "label": "Créer des conversations",
+        "description": "Démarrer de nouvelles conversations dans le projet."
+      },
+      "conversations_viewOwn": {
+        "label": "Voir ses conversations",
+        "description": "Lire les conversations créées par le membre."
+      },
+      "conversations_manage": {
+        "label": "Gérer toutes les conversations",
+        "description": "Administrer les conversations du projet."
+      },
+      "providers_viewMetadata": {
+        "label": "Voir les connexions IA",
+        "description": "Voir les fournisseurs configurés sans leurs secrets."
+      },
+      "providers_manage": {
+        "label": "Gérer les connexions IA",
+        "description": "Créer, tester, modifier et supprimer les fournisseurs."
+      },
+      "models_view": {
+        "label": "Voir les modèles",
+        "description": "Voir les modèles disponibles dans le projet."
+      },
+      "models_invoke": {
+        "label": "Utiliser les modèles",
+        "description": "Invoquer les modèles configurés."
+      },
+      "models_manage": {
+        "label": "Gérer les modèles",
+        "description": "Synchroniser et configurer les modèles disponibles."
+      },
+      "tools_view": {
+        "label": "Voir les outils",
+        "description": "Voir les outils et intégrations."
+      },
+      "tools_configure": {
+        "label": "Configurer les outils",
+        "description": "Modifier les outils et leurs validations."
+      },
+      "tools_executeRestricted": {
+        "label": "Exécuter les outils restreints",
+        "description": "Exécuter les outils nécessitant un accès élevé."
+      },
+      "mcpServers_get": {
+        "label": "Voir les intégrations",
+        "description": "Voir les serveurs MCP et connexions configurés."
+      },
+      "mcpServers_manage": {
+        "label": "Gérer les intégrations",
+        "description": "Configurer les serveurs MCP et les connexions."
+      },
+      "knowledgeBases_viewAllowed": {
+        "label": "Voir les connaissances autorisées",
+        "description": "Lire les bases de connaissances partagées avec le membre."
+      },
+      "knowledgeBases_manage": {
+        "label": "Gérer les connaissances",
+        "description": "Créer et modifier les bases de connaissances."
+      },
+      "workflows_view": {
+        "label": "Voir les workflows",
+        "description": "Lister les workflows et consulter leurs exécutions."
+      },
+      "workflows_create": {
+        "label": "Créer des workflows",
+        "description": "Créer de nouveaux brouillons de workflow."
+      },
+      "workflows_update": {
+        "label": "Modifier les workflows",
+        "description": "Modifier et publier les workflows."
+      },
+      "workflows_execute": {
+        "label": "Exécuter les workflows",
+        "description": "Démarrer des exécutions de workflow."
+      },
+      "workflows_delete": {
+        "label": "Supprimer les workflows",
+        "description": "Supprimer définitivement des workflows."
+      },
+      "usage_view": {
+        "label": "Voir l’usage",
+        "description": "Consulter la consommation et les quotas."
+      },
+      "audit_view": {
+        "label": "Voir le journal d’audit",
+        "description": "Consulter les événements de sécurité."
+      },
+      "audit_export": {
+        "label": "Exporter l’audit",
+        "description": "Télécharger les événements d’audit."
+      },
+      "marketplaceItems_view": {
+        "label": "Voir les éléments de la marketplace",
+        "description": "Parcourir les ressources disponibles sur la marketplace."
+      },
+      "marketplaceItems_install": {
+        "label": "Installer depuis la marketplace",
+        "description": "Ajouter des ressources partagées au projet."
+      },
+      "marketplaceItems_publish": {
+        "label": "Publier sur la marketplace",
+        "description": "Partager les ressources du projet."
+      },
+      "apiKeys_manageOwn": {
+        "label": "Gérer ses clés API",
+        "description": "Créer des identifiants limités aux accès du membre."
+      },
+      "apiKeys_manage": {
+        "label": "Gérer toutes les clés API",
+        "description": "Administrer les identifiants du projet."
+      }
+    }
+  },
   "shell": {
     "skipToContent": "Aller au contenu",
     "returnToChat": "Retour au chat",
@@ -2129,6 +2453,7 @@
     "signOut": "Déconnexion",
     "signOutFailed": "Impossible de se déconnecter",
     "navigation": "Navigation",
+    "activeProject": "Projet actif",
     "openNavigation": "Ouvrir la navigation",
     "expandSidebar": "Développer la barre latérale",
     "collapseSidebar": "Réduire la barre latérale",

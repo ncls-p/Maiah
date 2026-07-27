@@ -172,7 +172,7 @@ function collectEligibleNavItems(shell: WorkspaceShellState): NavItem[] {
   const adminItems = adminNavItems.filter((item) => {
     if (item.href === "/usage") return permissions.canViewUsage;
     if (item.href === "/audit") return permissions.canViewAudit;
-    if (item.href === "/members") return shell.isAdmin;
+    if (item.href === "/members") return permissions.canManageAccess;
     if (item.href === "/admin/settings") return shell.isAdmin;
     return true;
   });

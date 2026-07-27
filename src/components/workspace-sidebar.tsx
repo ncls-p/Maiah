@@ -12,9 +12,12 @@ import {
   type ReactNode,
 } from "react";
 import {
+  CheckIcon,
   ChevronDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  ChevronsUpDownIcon,
+  FolderKanbanIcon,
   MenuIcon,
 } from "lucide-react";
 
@@ -28,6 +31,15 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Sheet,
   SheetContent,
   SheetHeader,
@@ -40,6 +52,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useWorkspace } from "@/hooks/use-workspace";
 import {
   DEFAULT_APP_SIDEBAR_WIDTH,
   MAX_APP_SIDEBAR_WIDTH,
@@ -277,12 +290,29 @@ function SidebarPanel({
 }) {
   const { toggleCollapsed } = useWorkspaceSidebar();
   const tShell = useTranslations("shell");
+  const { workspaceId, workspaces, setWorkspaceId } = useWorkspace();
   const groups = buildMenuGroups(shell);
+  const activeWorkspace = workspaces.find(
+    (workspace) => workspace.id === workspaceId,
+  );
+  const organizations = Array.from(
+    workspaces
+      .reduce((grouped, workspace) => {
+        const organization = grouped.get(workspace.organizationId) ?? {
+          name: workspace.organizationName,
+          projects: [],
+        };
+        organization.projects.push(workspace);
+        grouped.set(workspace.organizationId, organization);
+        return grouped;
+      }, new Map<string, { name: string; projects: typeof workspaces }>())
+      .entries(),
+  );
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-transparent text-sidebar-foreground">
       <SidebarHeader
-        contextLabel={tShell("navigation")}
+        contextLabel={activeWorkspace?.organizationName ?? tShell("navigation")}
         collapsed={collapsed}
         action={
           showCollapseControl ? (
@@ -305,6 +335,56 @@ function SidebarPanel({
           ) : null
         }
       />
+      {!collapsed && activeWorkspace ? (
+        <div className="border-b border-sidebar-border/60 p-2.5">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="flex min-h-11 w-full items-center gap-2.5 rounded-xl px-2.5 text-left text-sm outline-none transition-colors hover:bg-sidebar-accent/70 focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+              >
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <FolderKanbanIcon aria-hidden="true" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-medium">
+                    {activeWorkspace.name}
+                  </span>
+                  <span className="block truncate text-xs text-muted-foreground">
+                    {tShell("activeProject")}
+                  </span>
+                </span>
+                <ChevronsUpDownIcon
+                  className="shrink-0 text-muted-foreground"
+                  aria-hidden="true"
+                />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="bottom" align="start" className="w-72">
+              {organizations.map(([organizationId, organization], index) => (
+                <DropdownMenuGroup key={organizationId}>
+                  {index > 0 ? <DropdownMenuSeparator /> : null}
+                  <DropdownMenuLabel>{organization.name}</DropdownMenuLabel>
+                  {organization.projects.map((project) => (
+                    <DropdownMenuItem
+                      key={project.id}
+                      onSelect={() => setWorkspaceId(project.id)}
+                    >
+                      <FolderKanbanIcon aria-hidden="true" />
+                      <span className="min-w-0 flex-1 truncate">
+                        {project.name}
+                      </span>
+                      {project.id === workspaceId ? (
+                        <CheckIcon aria-hidden="true" />
+                      ) : null}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuGroup>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      ) : null}
       <div className="animate-in-fade flex min-h-0 flex-1 flex-col motion-reduce:animate-none">
         <SidebarNavGroups
           groups={groups}

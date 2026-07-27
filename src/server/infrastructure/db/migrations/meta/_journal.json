@@ -267,6 +267,13 @@
       "when": 1785140509443,
       "tag": "0037_preserve-openai-compatible-base-urls",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1785164772230,
+      "tag": "0038_hierarchical_iam",
+      "breakpoints": true
     }
   ]
 }

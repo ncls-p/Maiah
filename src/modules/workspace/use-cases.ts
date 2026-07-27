@@ -1,4 +1,4 @@
-import { and, count, eq, isNull } from "drizzle-orm";
+import { and, count, eq, isNull, or } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { SYSTEM_ROLES } from "@/server/domain/entities/iam";
 import { audit } from "@/server/domain/services/audit";
@@ -6,6 +6,7 @@ import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
 import {
   organizations,
+  organizationMembers,
   roleBindings,
   roles,
   workspaceMembers,
@@ -94,7 +95,8 @@ export async function createWorkspace(input: CreateWorkspaceInput) {
       .where(eq(organizations.slug, organizationSlug))
       .limit(1);
 
-    if (!organization) {
+    const organizationWasCreated = !organization;
+    if (organizationWasCreated) {
       [organization] = await tx
         .insert(organizations)
         .values({
@@ -102,6 +104,12 @@ export async function createWorkspace(input: CreateWorkspaceInput) {
           slug: organizationSlug,
         })
         .returning();
+
+      await tx.insert(organizationMembers).values({
+        organizationId: organization.id,
+        userId,
+        status: "active",
+      });
     }
 
     const [workspace] = await tx
@@ -122,9 +130,10 @@ export async function createWorkspace(input: CreateWorkspaceInput) {
 
     const seededRoles = await seedSystemRoles(tx, userId);
     const workspaceAdminRole = seededRoles.get("workspace.admin");
+    const organizationOwnerRole = seededRoles.get("organization.owner");
 
-    if (!workspaceAdminRole) {
-      throw new Error("Workspace admin system role is not available");
+    if (!workspaceAdminRole || !organizationOwnerRole) {
+      throw new Error("Required system roles are not available");
     }
 
     await tx.insert(roleBindings).values({
@@ -135,6 +144,17 @@ export async function createWorkspace(input: CreateWorkspaceInput) {
       resourceId: workspace.id,
       createdById: userId,
     });
+
+    if (organizationWasCreated) {
+      await tx.insert(roleBindings).values({
+        principalType: "user",
+        principalId: userId,
+        roleId: organizationOwnerRole.id,
+        resourceType: "organization",
+        resourceId: organization.id,
+        createdById: userId,
+      });
+    }
 
     return { workspace, organization };
   });
@@ -166,22 +186,51 @@ export async function getWorkspaceBySlug(slug: string) {
 }
 
 export async function getWorkspacesByUserId(userId: string) {
-  return db
+  const candidates = await db
     .select({
       workspace: workspaces,
       member: workspaceMembers,
+      organizationMember: organizationMembers,
       organization: organizations,
     })
-    .from(workspaceMembers)
-    .innerJoin(workspaces, eq(workspaceMembers.workspaceId, workspaces.id))
+    .from(workspaces)
     .innerJoin(organizations, eq(workspaces.organizationId, organizations.id))
+    .leftJoin(
+      workspaceMembers,
+      and(
+        eq(workspaceMembers.workspaceId, workspaces.id),
+        eq(workspaceMembers.userId, userId),
+      ),
+    )
+    .leftJoin(
+      organizationMembers,
+      and(
+        eq(organizationMembers.organizationId, organizations.id),
+        eq(organizationMembers.userId, userId),
+      ),
+    )
     .where(
       and(
-        eq(workspaceMembers.userId, userId),
-        eq(workspaceMembers.status, "active"),
         isNull(workspaces.archivedAt),
+        or(
+          eq(workspaceMembers.status, "active"),
+          eq(organizationMembers.status, "active"),
+        ),
       ),
     );
+
+  const visibility = await Promise.all(
+    candidates.map(({ workspace }) =>
+      authorization.hasPermission(
+        { principalType: "user", principalId: userId },
+        "workspaces.get",
+        "workspace",
+        workspace.id,
+      ),
+    ),
+  );
+
+  return candidates.filter((_, index) => visibility[index]);
 }
 
 export async function countWorkspaces() {
@@ -190,18 +239,20 @@ export async function countWorkspaces() {
 }
 
 async function getPrimaryWorkspace() {
-  const [workspace] = await db
-    .select()
+  const [row] = await db
+    .select({ workspace: workspaces })
     .from(workspaces)
+    .innerJoin(organizations, eq(workspaces.organizationId, organizations.id))
     .where(
       and(
         eq(workspaces.slug, PRIMARY_WORKSPACE_SLUG),
+        eq(organizations.slug, PRIMARY_ORGANIZATION_SLUG),
         isNull(workspaces.archivedAt),
       ),
     )
     .limit(1);
 
-  return workspace ?? null;
+  return row?.workspace ?? null;
 }
 
 function workspaceRoleForPlatformRole(role?: string | null): WorkspaceRoleName {
@@ -345,12 +396,36 @@ export async function addWorkspaceMember(input: {
       throw new Error("User is already a workspace member");
     }
 
+    const [existingOrganizationMember] = await db
+      .select()
+      .from(organizationMembers)
+      .where(
+        and(
+          eq(organizationMembers.organizationId, workspace.organizationId),
+          eq(organizationMembers.userId, userId),
+        ),
+      )
+      .limit(1);
+
     const role = await getSystemWorkspaceRole(roleName);
     if (!role) {
       throw new Error(`Role not found: ${roleName}`);
     }
 
     await db.transaction(async (tx) => {
+      if (existingOrganizationMember) {
+        await tx
+          .update(organizationMembers)
+          .set({ status: "active", updatedAt: new Date() })
+          .where(eq(organizationMembers.id, existingOrganizationMember.id));
+      } else {
+        await tx.insert(organizationMembers).values({
+          organizationId: workspace.organizationId,
+          userId,
+          status: "active",
+        });
+      }
+
       if (existingMember) {
         await tx
           .update(workspaceMembers)

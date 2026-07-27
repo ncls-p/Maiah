@@ -3,11 +3,15 @@ import { SYSTEM_ROLES } from "@/server/domain/entities/iam";
 import { cache } from "@/server/infrastructure/cache";
 import { db } from "@/server/infrastructure/db";
 import {
+  organizationMembers,
   roles,
   roleBindings,
+  teamMembers,
+  teams,
   workspaceMembers,
+  workspaces,
 } from "@/server/infrastructure/db/schema";
-import { and, eq, gte, isNull, or } from "drizzle-orm";
+import { and, eq, gte, inArray, isNull, or } from "drizzle-orm";
 
 const PERMISSION_CACHE_TTL = 60; // 60 seconds
 
@@ -68,7 +72,32 @@ export function matchesPermission(
 }
 
 async function isActiveWorkspaceMember(userId: string, workspaceId: string) {
-  const [member] = await db
+  const [workspace] = await db
+    .select({ organizationId: workspaces.organizationId })
+    .from(workspaces)
+    .where(eq(workspaces.id, workspaceId))
+    .limit(1);
+  if (!workspace) return false;
+
+  const [organizationMember] = await db
+    .select({
+      id: organizationMembers.id,
+      status: organizationMembers.status,
+    })
+    .from(organizationMembers)
+    .where(
+      and(
+        eq(organizationMembers.organizationId, workspace.organizationId),
+        eq(organizationMembers.userId, userId),
+      ),
+    )
+    .limit(1);
+
+  if (organizationMember) {
+    return organizationMember.status === "active";
+  }
+
+  const [workspaceMember] = await db
     .select({ id: workspaceMembers.id })
     .from(workspaceMembers)
     .where(
@@ -76,6 +105,25 @@ async function isActiveWorkspaceMember(userId: string, workspaceId: string) {
         eq(workspaceMembers.userId, userId),
         eq(workspaceMembers.workspaceId, workspaceId),
         eq(workspaceMembers.status, "active"),
+      ),
+    )
+    .limit(1);
+
+  return Boolean(workspaceMember);
+}
+
+async function isActiveOrganizationMember(
+  userId: string,
+  organizationId: string,
+) {
+  const [member] = await db
+    .select({ id: organizationMembers.id })
+    .from(organizationMembers)
+    .where(
+      and(
+        eq(organizationMembers.userId, userId),
+        eq(organizationMembers.organizationId, organizationId),
+        eq(organizationMembers.status, "active"),
       ),
     )
     .limit(1);
@@ -119,6 +167,73 @@ async function resolvePermissions(
     await cache.set(cacheKey, [], PERMISSION_CACHE_TTL);
     return [];
   }
+  if (
+    resourceType === "organization" &&
+    ctx.principalType === "user" &&
+    !(await isActiveOrganizationMember(ctx.principalId, resourceId))
+  ) {
+    await cache.set(cacheKey, [], PERMISSION_CACHE_TTL);
+    return [];
+  }
+
+  let organizationId: string | null =
+    resourceType === "organization" ? resourceId : null;
+  if (resourceType === "workspace") {
+    const [workspace] = await db
+      .select({ organizationId: workspaces.organizationId })
+      .from(workspaces)
+      .where(eq(workspaces.id, resourceId))
+      .limit(1);
+    organizationId = workspace?.organizationId ?? null;
+  }
+
+  let teamIds: string[] = [];
+  if (ctx.principalType === "user" && organizationId) {
+    const memberships = await db
+      .select({ teamId: teamMembers.teamId })
+      .from(teamMembers)
+      .innerJoin(teams, eq(teamMembers.teamId, teams.id))
+      .where(
+        and(
+          eq(teamMembers.userId, ctx.principalId),
+          eq(teams.organizationId, organizationId),
+        ),
+      );
+    teamIds = memberships.map(({ teamId }) => teamId);
+  }
+
+  const principalFilter =
+    ctx.principalType === "user" && teamIds.length > 0
+      ? or(
+          and(
+            eq(roleBindings.principalType, "user"),
+            eq(roleBindings.principalId, ctx.principalId),
+          ),
+          and(
+            eq(roleBindings.principalType, "group"),
+            inArray(roleBindings.principalId, teamIds),
+          ),
+        )
+      : and(
+          eq(roleBindings.principalType, ctx.principalType),
+          eq(roleBindings.principalId, ctx.principalId),
+        );
+  const resourceFilter =
+    resourceType === "workspace" && organizationId
+      ? or(
+          and(
+            eq(roleBindings.resourceType, "workspace"),
+            eq(roleBindings.resourceId, resourceId),
+          ),
+          and(
+            eq(roleBindings.resourceType, "organization"),
+            eq(roleBindings.resourceId, organizationId),
+          ),
+        )
+      : and(
+          eq(roleBindings.resourceType, resourceType),
+          eq(roleBindings.resourceId, resourceId),
+        );
 
   const bindings = await db
     .select()
@@ -126,10 +241,8 @@ async function resolvePermissions(
     .innerJoin(roles, eq(roleBindings.roleId, roles.id))
     .where(
       and(
-        eq(roleBindings.principalType, ctx.principalType),
-        eq(roleBindings.principalId, ctx.principalId),
-        eq(roleBindings.resourceType, resourceType),
-        eq(roleBindings.resourceId, resourceId),
+        principalFilter,
+        resourceFilter,
         or(
           isNull(roleBindings.expiresAt),
           gte(roleBindings.expiresAt, new Date()),

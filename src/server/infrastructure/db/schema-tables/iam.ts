@@ -54,6 +54,9 @@ export const roles = pgTable(
     uniqueIndex("roles_system_name_unique")
       .on(t.scopeType, t.name)
       .where(sql`${t.isSystem} = true`),
+    uniqueIndex("roles_owner_name_unique")
+      .on(t.ownerResourceType, t.ownerResourceId, t.name)
+      .where(sql`${t.isSystem} = false`),
   ],
 );
 
@@ -98,6 +101,13 @@ export const roleBindings = pgTable(
     index("role_bindings_principal_role_resource").on(
       t.principalType,
       t.principalId,
+      t.resourceType,
+      t.resourceId,
+    ),
+    uniqueIndex("role_bindings_unique_assignment").on(
+      t.principalType,
+      t.principalId,
+      t.roleId,
       t.resourceType,
       t.resourceId,
     ),

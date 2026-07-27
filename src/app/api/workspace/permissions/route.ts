@@ -25,6 +25,9 @@ const permissionNames = [
   "apiKeys.manageOwn",
   "workspaces.update",
   "roles.manage",
+  "members.manage",
+  "teams.manage",
+  "workspaces.create",
   "workflows.view",
 ] as const;
 
@@ -73,6 +76,9 @@ export async function GET(req: NextRequest) {
         canManageOwnApiKeys,
         canManageWorkspace,
         canManageTenantGlobals,
+        canManageMembers,
+        canManageTeams,
+        canCreateProjects,
         canViewWorkflows,
       ] = results;
 
@@ -91,6 +97,11 @@ export async function GET(req: NextRequest) {
         canManageApiKeys: canManageApiKeys || canManageOwnApiKeys,
         canManageWorkspace,
         canManageTenantGlobals,
+        canManageAccess:
+          canManageTenantGlobals ||
+          canManageMembers ||
+          canManageTeams ||
+          canCreateProjects,
         canViewWorkflows,
       });
     },

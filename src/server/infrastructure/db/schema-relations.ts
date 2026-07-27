@@ -17,7 +17,10 @@ const {
   messageParts,
   messages,
   organizations,
+  organizationMembers,
   sessions,
+  teamMembers,
+  teams,
   toolConnectionRequirements,
   toolConnections,
   toolConnectors,
@@ -34,7 +37,52 @@ export const userRelations = relations(users, ({ many }) => ({
   sessions: many(sessions),
   accounts: many(accounts),
   workspaceMembers: many(workspaceMembers),
+  organizationMembers: many(organizationMembers),
+  teamMembers: many(teamMembers),
   agentPreferences: many(userAgentPreferences),
+}));
+
+export const organizationRelations = relations(organizations, ({ many }) => ({
+  members: many(organizationMembers),
+  teams: many(teams),
+  workspaces: many(workspaces),
+}));
+
+export const organizationMemberRelations = relations(
+  organizationMembers,
+  ({ one }) => ({
+    organization: one(organizations, {
+      fields: [organizationMembers.organizationId],
+      references: [organizations.id],
+    }),
+    user: one(users, {
+      fields: [organizationMembers.userId],
+      references: [users.id],
+    }),
+  }),
+);
+
+export const teamRelations = relations(teams, ({ one, many }) => ({
+  organization: one(organizations, {
+    fields: [teams.organizationId],
+    references: [organizations.id],
+  }),
+  creator: one(users, {
+    fields: [teams.createdById],
+    references: [users.id],
+  }),
+  members: many(teamMembers),
+}));
+
+export const teamMemberRelations = relations(teamMembers, ({ one }) => ({
+  team: one(teams, {
+    fields: [teamMembers.teamId],
+    references: [teams.id],
+  }),
+  user: one(users, {
+    fields: [teamMembers.userId],
+    references: [users.id],
+  }),
 }));
 
 export const sessionRelations = relations(sessions, ({ one }) => ({
