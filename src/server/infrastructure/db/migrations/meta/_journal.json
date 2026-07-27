@@ -260,6 +260,13 @@
       "when": 1784815200000,
       "tag": "0036_workflow_agent_run_approvals",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1785140509443,
+      "tag": "0037_preserve-openai-compatible-base-urls",
+      "breakpoints": true
     }
   ]
 }
