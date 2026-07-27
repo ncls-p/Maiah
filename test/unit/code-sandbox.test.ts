@@ -48,6 +48,7 @@ type RunnerRequest = {
 	language: "python" | "node" | "bash";
 	code: string;
 	stdin?: string;
+	stdinFileBase64?: string;
 	timeoutMs?: number;
 	files?: Array<{ path: string; contentBase64?: string; content?: string }>;
 };
@@ -215,6 +216,38 @@ describe("code sandbox runner client", () => {
 		expect(result.ok).toBe(false);
 		expect(result.error).toMatch(/Path traversal/i);
 		expect(requests).toHaveLength(0);
+	});
+
+	it("transports large standard input through a sandbox file", async () => {
+		const largeInput = JSON.stringify({ body: "x".repeat(150_000) });
+		await startFakeRunner((request) => {
+			expect(request.stdin).toBeUndefined();
+			expect(
+				Buffer.from(request.stdinFileBase64 ?? "", "base64").toString("utf8"),
+			).toBe(largeInput);
+			return {
+				ok: true,
+				language: "node",
+				exitCode: 0,
+				signal: null,
+				timedOut: false,
+				durationMs: 5,
+				stdout: '{"received":true}',
+				stderr: "",
+				truncated: false,
+				files: [],
+			};
+		});
+		const { executeCodeSandbox } = await loadSandboxModule();
+
+		const result = await (executeCodeSandbox as ExecuteCodeSandbox)({
+			language: "node",
+			code: "console.log('{}')",
+			stdin: largeInput,
+		});
+
+		expect(result.ok).toBe(true);
+		expect(result.stdout).toContain("received");
 	});
 
 	it("returns an actionable error when the sandbox runner is unavailable", async () => {

@@ -15,11 +15,21 @@ export default defineConfig({
   },
   webServer: process.env.CI
     ? undefined
-    : {
-        command: "npm run dev",
-        url: "http://localhost:3000",
-        reuseExistingServer: false,
-        timeout: 120_000,
-      },
+    : [
+        {
+          command: "npm run dev",
+          url: "http://localhost:3000",
+          name: "app",
+          reuseExistingServer: false,
+          timeout: 120_000,
+        },
+        {
+          command: "npm run worker",
+          url: "http://localhost:3001/health",
+          name: "worker",
+          reuseExistingServer: false,
+          timeout: 120_000,
+        },
+      ],
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
 });

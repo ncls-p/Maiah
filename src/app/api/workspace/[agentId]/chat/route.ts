@@ -981,6 +981,9 @@ export async function POST(
             availableToolNames.includes("web_search")
               ? "For web or current-events searches, use web_search only."
               : null,
+            availableToolNames.includes("update_todo_list")
+              ? "For tasks with multiple meaningful steps, call update_todo_list early, keep the same item IDs, mark exactly one current item in_progress when possible, and call it again as items are completed. Do not create a checklist for a simple one-step answer."
+              : null,
             availableToolNames.includes("create_slide_deck")
               ? "When the user asks for slides, a deck, presentation, pitch deck, PDF slides, or follow-up edits to an existing deck, use create_slide_deck. It creates an interactive click-through HTML deck with print-to-PDF styling; explain briefly that PDF export is static because modern PDF viewers do not preserve JavaScript click animations."
               : null,

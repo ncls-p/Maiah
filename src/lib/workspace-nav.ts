@@ -2,7 +2,6 @@ import {
   ActivityIcon,
   BookOpenIcon,
   CalendarClockIcon,
-  CodeIcon,
   KeyRoundIcon,
   MessageSquareIcon,
   PlugZapIcon,
@@ -42,6 +41,7 @@ export type WorkspacePermissions = {
   canManageApiKeys: boolean;
   canManageWorkspace: boolean;
   canManageTenantGlobals: boolean;
+  canViewWorkflows: boolean;
 };
 
 export const DEFAULT_WORKSPACE_PERMISSIONS: WorkspacePermissions = {
@@ -59,6 +59,7 @@ export const DEFAULT_WORKSPACE_PERMISSIONS: WorkspacePermissions = {
   canManageApiKeys: false,
   canManageWorkspace: false,
   canManageTenantGlobals: false,
+  canViewWorkflows: false,
 };
 
 export type WorkspaceShellState = {
@@ -84,6 +85,11 @@ export const primaryNavItems: NavItem[] = [
 
 export const planningNavItems: NavItem[] = [
   {
+    href: "/workflows",
+    labelKey: "workflows",
+    icon: WorkflowIcon,
+  },
+  {
     href: "/scheduled-tasks",
     labelKey: "scheduledTasks",
     icon: CalendarClockIcon,
@@ -95,7 +101,6 @@ export const capabilitiesNavItems: NavItem[] = [
 ];
 
 export const advancedCapabilityNavItems: NavItem[] = [
-  { href: "/custom-tools", labelKey: "customTools", icon: CodeIcon },
   { href: "/marketplace", labelKey: "marketplace", icon: StoreIcon },
 ];
 
@@ -116,10 +121,10 @@ const routeTitleKeys: Record<string, string> = {
   "/chat": "chat",
   "/agents": "assistants",
   "/scheduled-tasks": "scheduledTasks",
+  "/workflows": "workflows",
   "/providers": "aiConnections",
   "/knowledge": "knowledge",
   "/tools": "toolsHub",
-  "/custom-tools": "customTools",
   "/marketplace": "marketplace",
   "/api-keys": "apiKeys",
   "/usage": "usage",
@@ -140,7 +145,7 @@ export function getRouteTitleKey(pathname: string): string {
   return match?.[1] ?? "workspace";
 }
 
-const toolsRelatedPaths = ["/tools", "/mcp", "/custom-tools"] as const;
+const toolsRelatedPaths = ["/tools", "/mcp"] as const;
 
 function isExactOrChildPath(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
@@ -168,6 +173,12 @@ export function getRouteBreadcrumbs(
     return [
       { labelKey: "assistants", href: "/agents" },
       { labelKey: "assistantConfig" },
+    ];
+  }
+  if (/^\/workflows\/[^/]+$/.test(pathname)) {
+    return [
+      { labelKey: "workflows", href: "/workflows" },
+      { labelKey: "workflowEditor" },
     ];
   }
   return undefined;

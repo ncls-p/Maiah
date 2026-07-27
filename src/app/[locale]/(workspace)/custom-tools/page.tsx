@@ -6,5 +6,5 @@ export default async function CustomToolsRedirectPage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
-  redirect({ href: "/tools?tab=custom", locale });
+  redirect({ href: "/workflows", locale });
 }

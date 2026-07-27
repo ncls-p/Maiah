@@ -25,6 +25,7 @@ const permissionNames = [
   "apiKeys.manageOwn",
   "workspaces.update",
   "roles.manage",
+  "workflows.view",
 ] as const;
 
 export async function GET(req: NextRequest) {
@@ -72,6 +73,7 @@ export async function GET(req: NextRequest) {
         canManageOwnApiKeys,
         canManageWorkspace,
         canManageTenantGlobals,
+        canViewWorkflows,
       ] = results;
 
       return NextResponse.json({
@@ -89,6 +91,7 @@ export async function GET(req: NextRequest) {
         canManageApiKeys: canManageApiKeys || canManageOwnApiKeys,
         canManageWorkspace,
         canManageTenantGlobals,
+        canViewWorkflows,
       });
     },
     { logLabel: "Failed to read workspace permissions" },

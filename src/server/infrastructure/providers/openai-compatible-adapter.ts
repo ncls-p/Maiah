@@ -20,8 +20,24 @@ const DEFAULT_CAPABILITIES: ModelCapability = {
 };
 
 function normalizeBaseUrl(baseUrl?: string): string {
-  const base = baseUrl?.replace(/\/+$/, "") || "https://api.openai.com";
-  return base.endsWith("/v1") ? base : `${base}/v1`;
+  return baseUrl?.replace(/\/+$/, "") || "https://api.openai.com/v1";
+}
+
+function parseRequestUrl(input: RequestInfo | URL): URL | undefined {
+  let value: string;
+  if (input instanceof URL) {
+    value = input.href;
+  } else if (typeof input === "string") {
+    value = input;
+  } else {
+    value = input.url;
+  }
+
+  try {
+    return new URL(value);
+  } catch {
+    return undefined;
+  }
 }
 
 function buildHeaders(config: ProviderRuntimeConfig): Record<string, string> {
@@ -41,6 +57,8 @@ function buildHeaders(config: ProviderRuntimeConfig): Record<string, string> {
     case "custom-header":
       // Custom headers already in config.headers
       break;
+    default:
+      break;
   }
 
   return headers;
@@ -52,15 +70,14 @@ function createResponsesFetch(config: ProviderRuntimeConfig) {
     (key) => key.toLowerCase() === "authorization",
   );
 
-  return async (input: RequestInfo | URL, init?: RequestInit) => {
+  return (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     const request = input instanceof Request ? input : undefined;
-    const url = new URL(
-      input instanceof URL
-        ? input
-        : typeof input === "string"
-          ? input
-          : input.url,
-    );
+    const url = parseRequestUrl(input);
+    if (!url) {
+      return Promise.reject(
+        new Error("The provider generated an invalid request URL."),
+      );
+    }
     for (const [key, value] of Object.entries(config.queryParams ?? {})) {
       url.searchParams.set(key, value);
     }

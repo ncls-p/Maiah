@@ -69,6 +69,24 @@ describe("openaiCompatibleAdapter.listModels", () => {
 		]);
 	});
 
+	it("preserves the exact API prefix when listing models", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(Response.json({ data: [] }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await openaiCompatibleAdapter.listModels?.({
+      kind: "openai-compatible",
+      name: "Custom API prefix",
+      baseUrl: "https://gateway.example.com/openai/",
+      authType: "bearer",
+      apiKey: "sk-test",
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://gateway.example.com/openai/models",
+      expect.any(Object),
+    );
+  });
+
 	it("keeps every model with an id, including embedding models", async () => {
 		vi.stubGlobal(
 			"fetch",
@@ -137,6 +155,27 @@ describe("openaiCompatibleAdapter.createChatModel", () => {
 		expect(requestBody).toHaveProperty("input");
 		expect(requestBody).not.toHaveProperty("messages");
 	});
+
+	it("preserves the exact API base URL prefix", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(apiErrorResponse());
+    vi.stubGlobal("fetch", fetchMock);
+    const model = openaiCompatibleAdapter.createChatModel(
+      {
+        kind: "openai-compatible",
+        name: "Custom API prefix",
+        baseUrl: "https://gateway.example.com/openai/",
+        authType: "bearer",
+        apiKey: "sk-test",
+        openaiCompatibleApiRoute: "responses",
+      },
+      "test-model",
+    );
+
+    await expect(model.doGenerate(generationCall)).rejects.toThrow();
+
+    const [input] = fetchMock.mock.calls[0] as [RequestInfo | URL, RequestInit];
+    expect(String(input)).toBe("https://gateway.example.com/openai/responses");
+  });
 
 	it("uses Chat Completions when explicitly selected", async () => {
 		const fetchMock = vi.fn().mockResolvedValue(apiErrorResponse());

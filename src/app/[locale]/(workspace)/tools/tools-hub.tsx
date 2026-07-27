@@ -5,14 +5,12 @@ import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   BookMarkedIcon,
-  CodeIcon,
   ServerIcon,
   ShieldIcon,
   WrenchIcon,
 } from "lucide-react";
 
 import { McpServerManager } from "@/components/mcp/mcp-server-manager";
-import { CustomToolBuilder } from "@/components/custom-tools/custom-tool-builder";
 import { PageLoading } from "@/components/page-loading";
 import { SkillManager } from "@/components/skills/skill-manager";
 import { WorkspacePage } from "@/components/workspace-page";
@@ -29,7 +27,7 @@ import {
 import { ToolApprovalsPanel } from "./approvals-panel";
 import { BuiltinToolsPanel } from "./builtin-tools-panel";
 
-type ToolsTab = "builtin" | "mcp" | "skills" | "custom" | "approvals";
+type ToolsTab = "builtin" | "mcp" | "skills" | "approvals";
 
 const TOOL_TAB_CONFIG = [
   {
@@ -58,15 +56,6 @@ const TOOL_TAB_CONFIG = [
     canView: (permissions: WorkspacePermissions) =>
       permissions.canConfigureTools,
     render: () => <SkillManager />,
-  },
-  {
-    value: "custom",
-    icon: CodeIcon,
-    labelKey: "tabs.custom",
-    helpKey: "customHelp",
-    canView: (permissions: WorkspacePermissions) =>
-      permissions.canConfigureTools,
-    render: () => <CustomToolBuilder />,
   },
   {
     value: "approvals",

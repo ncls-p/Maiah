@@ -13,3 +13,4 @@ export * from "./schema-tables/marketplace";
 export * from "./schema-tables/custom-tools";
 export * from "./schema-tables/tool-connections";
 export * from "./schema-tables/builtin-tool-policies";
+export * from "./schema-tables/workflows";

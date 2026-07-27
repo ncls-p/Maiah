@@ -35,7 +35,6 @@ import { cn } from "@/lib/utils";
 import { ConfigSection } from "./config-section";
 import type {
   BuiltinTool,
-  CustomTool,
   KnowledgeBase,
   AgentSkill,
   McpServer,
@@ -608,9 +607,6 @@ export function CapabilitiesTab({
   mcpTools,
   mcpBindings,
   setMcpBindingsAction: setMcpBindings,
-  customTools,
-  customBindings,
-  setCustomBindingsAction: setCustomBindings,
   knowledgeBases,
   selectedKnowledgeIds,
   setSelectedKnowledgeIdsAction: setSelectedKnowledgeIds,
@@ -631,11 +627,6 @@ export function CapabilitiesTab({
   mcpTools: McpTool[];
   mcpBindings: ToolBindingState;
   setMcpBindingsAction: (
-    fn: (prev: ToolBindingState) => ToolBindingState,
-  ) => void;
-  customTools: CustomTool[];
-  customBindings: ToolBindingState;
-  setCustomBindingsAction: (
     fn: (prev: ToolBindingState) => ToolBindingState,
   ) => void;
   knowledgeBases: KnowledgeBase[];
@@ -742,59 +733,6 @@ export function CapabilitiesTab({
             <Button variant="outline" size="sm" asChild className="w-fit">
               <Link href="/tools?tab=mcp">{t("manageMcp")}</Link>
             </Button>
-          </div>
-        )}
-      </ConfigSection>
-
-      <ConfigSection
-        title={tCap("customToolsTitle")}
-        description={tCap("customToolsHint")}
-        icon={WrenchIcon}
-        stagger="5"
-      >
-        {customTools.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 py-6 text-center">
-            <p className="text-sm text-muted-foreground">
-              {tCap("noCustomTools")}
-            </p>
-            <Button variant="outline" size="sm" asChild>
-              <Link href="/custom-tools">{tCap("createCustomTool")}</Link>
-            </Button>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {customTools.map((tool) => (
-              <ToolRow
-                key={tool.id}
-                name={tool.name}
-                description={tool.description ?? undefined}
-                enabled={customBindings[tool.id]?.enabled ?? false}
-                onEnabledChange={(enabled) =>
-                  setCustomBindings((current) => ({
-                    ...current,
-                    [tool.id]: {
-                      enabled,
-                      requireApproval:
-                        current[tool.id]?.requireApproval ?? true,
-                    },
-                  }))
-                }
-                requireApproval={
-                  customBindings[tool.id]?.requireApproval ?? true
-                }
-                approvalDisabled={!customBindings[tool.id]?.enabled}
-                onApprovalChange={(checked) =>
-                  setCustomBindings((current) => ({
-                    ...current,
-                    [tool.id]: {
-                      enabled: current[tool.id]?.enabled ?? false,
-                      requireApproval: checked,
-                    },
-                  }))
-                }
-                approvalLabel={t("approval")}
-              />
-            ))}
           </div>
         )}
       </ConfigSection>

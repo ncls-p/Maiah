@@ -136,6 +136,7 @@ function AddProviderBasicFields(props: AddProviderDialogProps) {
           onChange={(e) => props.onBaseUrlChange(e.target.value)}
           placeholder={t("serviceUrlPlaceholder")}
         />
+        <p className="text-xs text-muted-foreground">{t("serviceUrlHint")}</p>
       </div>
       <div className={FIELD_STACK_CLASS}>
         <Label htmlFor="add-provider-key">{t("apiKey")}</Label>
@@ -324,6 +325,9 @@ export function EditProviderDialog({
               value={editBaseUrl}
               onChange={(e) => onBaseUrlChange(e.target.value)}
             />
+            <p className="text-xs text-muted-foreground">
+              {t("serviceUrlHint")}
+            </p>
           </div>
           {editingProvider?.kind === "openai-compatible" ? (
             <div className={FIELD_STACK_CLASS}>

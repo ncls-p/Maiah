@@ -55,23 +55,17 @@ test.describe("tools hub page", () => {
   });
 });
 
-test.describe("custom tools page", () => {
-  test("loads custom tools page", async ({ page }) => {
+test.describe("retired custom tools builder", () => {
+  test("redirects old custom tools links to workflows", async ({ page }) => {
     await page.goto("/en/custom-tools");
-    await expect(page).toHaveURL(/\/en\/tools\?tab=custom/);
-
-    const customTab = page.getByRole("tab", { name: "Custom", exact: true });
-    await expect(customTab).toBeVisible({ timeout: 15_000 });
-    await expect(customTab).toHaveAttribute("data-state", "active");
+    await expect(page).toHaveURL(/\/en\/workflows/);
   });
 
-  test("shows custom tools empty state", async ({ page }) => {
-    await page.goto("/en/custom-tools");
-    await page.waitForTimeout(2000);
-
+  test("does not expose a custom tools tab", async ({ page }) => {
+    await page.goto("/en/tools");
     await expect(
-      page.getByRole("heading", { name: /Custom tool builder/i }).first(),
-    ).toBeVisible({ timeout: 15_000 });
+      page.getByRole("tab", { name: "Custom", exact: true }),
+    ).toHaveCount(0);
   });
 });
 

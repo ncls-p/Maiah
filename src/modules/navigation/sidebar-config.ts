@@ -17,6 +17,7 @@ const DEFAULT_SIDEBAR_NAV_IDS = [
   "/agents",
   "/knowledge",
   "/scheduled-tasks",
+  "/workflows",
   "/tools",
   "/marketplace",
   "/providers",
@@ -188,6 +189,7 @@ function collectEligibleNavItems(shell: WorkspaceShellState): NavItem[] {
     }
 
     if (id === "/providers" && !permissions.canManageProviders) continue;
+    if (id === "/workflows" && !permissions.canViewWorkflows) continue;
     if (id === "/api-keys" && !permissions.canManageApiKeys) continue;
 
     const template = NAV_ITEM_TEMPLATES.get(id);

@@ -14,6 +14,7 @@ type SandboxResponse = {
 	stderr?: string;
 	exitCode?: number | null;
 	timedOut?: boolean;
+	truncated?: boolean;
 	files?: Array<{
 		path: string;
 		textPreview?: string;
@@ -175,6 +176,88 @@ describe("sandbox-runner", () => {
 		expect(followUp.body.ok).toBe(true);
 		expect(followUp.body.stdout?.trim()).toBe("runner-alive");
 		expect(readdirSync(runRoot)).toEqual([]);
+	});
+
+	it("streams large standard input from a sandbox file without truncation", async () => {
+		const largeInput = JSON.stringify({ body: "x".repeat(150_000) });
+		const result = await requestRun({
+			language: "node",
+			code: [
+				"const chunks = [];",
+				"for await (const chunk of process.stdin) chunks.push(chunk);",
+				"const input = JSON.parse(Buffer.concat(chunks).toString());",
+				"console.log(JSON.stringify({ size: input.body.length }));",
+			].join("\n"),
+			stdinFileBase64: Buffer.from(largeInput).toString("base64"),
+		});
+
+		expect(result.status).toBe(200);
+		expect(result.body.ok).toBe(true);
+		expect(result.body.stdout?.trim()).toBe('{"size":150000}');
+		expect(result.body.files).not.toContainEqual(
+			expect.objectContaining({ path: ".stdin" }),
+		);
+		expect(readdirSync(runRoot)).toEqual([]);
+	});
+
+	it("captures large standard output through a sandbox file", async () => {
+		const result = await requestRun({
+			language: "node",
+			code: "console.log(JSON.stringify({ body: 'x'.repeat(150_000) }))",
+		});
+
+		expect(result.status).toBe(200);
+		expect(result.body.ok).toBe(true);
+		expect(result.body.truncated).toBe(false);
+		expect(
+			(JSON.parse(result.body.stdout ?? "{}") as { body?: string }).body,
+		).toHaveLength(150_000);
+		expect(result.body.files).not.toContainEqual(
+			expect.objectContaining({ path: ".stdout" }),
+		);
+		expect(readdirSync(runRoot)).toEqual([]);
+	});
+
+	it("fails explicitly when standard output exceeds the file limit", async () => {
+		const result = await requestRun({
+			language: "node",
+			code: "console.log('x'.repeat(1_600_000))",
+		});
+
+		expect(result.status).toBe(200);
+		expect(result.body.ok).toBe(false);
+		expect(result.body.truncated).toBe(true);
+		expect(result.body.error).toContain(
+			"standard output exceeded 1500000 bytes",
+		);
+		expect(readdirSync(runRoot)).toEqual([]);
+	});
+
+	it("rejects oversized inline standard input instead of truncating it", async () => {
+		const result = await requestRun({
+			language: "node",
+			code: "console.log('unreachable')",
+			stdin: "x".repeat(100_001),
+		});
+
+		expect(result.status).toBe(400);
+		expect(result.body.ok).toBe(false);
+		expect(result.body.error).toContain("use stdinFileBase64");
+		expect(readdirSync(runRoot)).toEqual([]);
+	});
+
+	it("keeps the actual exception when stderr exceeds its limit", async () => {
+		const result = await requestRun({
+			language: "node",
+			code: [
+				"console.error('x'.repeat(70_000));",
+				"throw new TypeError('real sandbox failure');",
+			].join("\n"),
+		});
+
+		expect(result.status).toBe(200);
+		expect(result.body.ok).toBe(false);
+		expect(result.body.stderr).toContain("TypeError: real sandbox failure");
 	});
 
 	it("rejects unsafe input file paths", async () => {

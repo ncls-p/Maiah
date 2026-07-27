@@ -19,6 +19,10 @@ services:
 
   dragonflydb:
     image: docker.dragonflydb.io/dragonflydb/dragonfly
+    command:
+      - "--cluster_mode=emulated"
+      - "--lock_on_hashtags"
+      - "--default_lua_flags=allow-undeclared-keys"
     ports:
       - "${AI_HUB_DEV_DRAGONFLY_PORT:-16379}:6379"
     volumes:

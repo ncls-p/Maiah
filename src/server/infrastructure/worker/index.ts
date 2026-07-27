@@ -1,4 +1,5 @@
 import http from "node:http";
+import { Worker } from "bullmq";
 import { env } from "@/lib/env";
 import { logger, logHandledError } from "@/lib/logger";
 import {
@@ -8,6 +9,16 @@ import {
 } from "@/modules/knowledge/use-cases";
 import { syncMcpTools } from "@/modules/mcp/use-cases";
 import { processDueScheduledTasks } from "@/modules/scheduled-tasks/use-cases";
+import {
+  failQueuedWorkflowRun,
+  listQueuedWorkflowRunIds,
+  processWorkflowRun,
+} from "@/modules/workflows/use-cases";
+import {
+  recoverWorkflowRunJob,
+  WORKFLOW_QUEUE_NAME,
+  workflowQueueConnection,
+} from "@/modules/workflows/queue";
 
 type WorkerJob =
   | {
@@ -83,8 +94,57 @@ async function drainQueues() {
   }
 }
 
-function main() {
+async function recoverQueuedWorkflowRuns() {
+  let runIds: string[];
+  try {
+    runIds = await listQueuedWorkflowRunIds();
+  } catch (error) {
+    logHandledError("Failed to list queued workflow runs", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return;
+  }
+  for (const runId of runIds) {
+    try {
+      const recovery = await recoverWorkflowRunJob(runId);
+      if (recovery === "completed") {
+        await failQueuedWorkflowRun(
+          runId,
+          "Workflow queue job completed without finalizing the run",
+        );
+      }
+    } catch (error) {
+      logHandledError("Failed to recover queued workflow run", {
+        runId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+}
+
+async function main() {
   logger.info("Worker starting...", { env: env.NODE_ENV });
+
+  const workflowWorker = new Worker<{ runId: string }>(
+    WORKFLOW_QUEUE_NAME,
+    async (job) => processWorkflowRun(job.data.runId),
+    {
+      connection: workflowQueueConnection(),
+      concurrency: 4,
+    },
+  );
+  workflowWorker.on("failed", (job, error) => {
+    logHandledError("Workflow run job failed", {
+      runId: job?.data.runId,
+      attemptsMade: job?.attemptsMade,
+      error: error.message,
+    });
+  });
+  workflowWorker.on("error", (error) => {
+    logHandledError("Workflow queue worker error", { error: error.message });
+  });
+
+  await recoverQueuedWorkflowRuns();
 
   const server = http.createServer((req, res) => {
     if (req.url === "/health") {
@@ -103,18 +163,32 @@ function main() {
   const interval = setInterval(() => {
     void drainQueues();
   }, 2_000);
+  const workflowRecoveryInterval = setInterval(() => {
+    void recoverQueuedWorkflowRuns();
+  }, 30_000);
 
   process.on("SIGTERM", () => {
     logger.info("Worker received SIGTERM, shutting down gracefully...");
     clearInterval(interval);
-    server.close(() => process.exit(0));
+    clearInterval(workflowRecoveryInterval);
+    server.close(() => {
+      void workflowWorker.close().finally(() => process.exit(0));
+    });
   });
 
   process.on("SIGINT", () => {
     logger.info("Worker received SIGINT, shutting down gracefully...");
     clearInterval(interval);
-    server.close(() => process.exit(0));
+    clearInterval(workflowRecoveryInterval);
+    server.close(() => {
+      void workflowWorker.close().finally(() => process.exit(0));
+    });
   });
 }
 
-main();
+void main().catch((error) => {
+  logHandledError("Worker failed to start", {
+    error: error instanceof Error ? error.message : String(error),
+  });
+  process.exit(1);
+});

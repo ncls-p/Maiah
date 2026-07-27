@@ -1,8 +1,10 @@
 import { expect, test } from "@playwright/test";
-import { loadEnvConfig } from "@next/env";
+import nextEnv from "@next/env";
 import { randomUUID, webcrypto } from "node:crypto";
 import { Client } from "pg";
 import { databaseUrl, e2eUser, ensureE2EUser, login } from "./fixtures";
+
+const { loadEnvConfig } = nextEnv;
 
 loadEnvConfig(process.cwd());
 
@@ -127,7 +129,8 @@ async function createRecoveredToolConversation() {
        values
          ($1, $2, 'tool-call', null, $3::jsonb, 0, now()),
          ($4, $2, 'tool-call', null, $5::jsonb, 1, now()),
-         ($6, $2, 'text', $7, null, 2, now())`,
+         ($6, $2, 'tool-call', null, $7::jsonb, 2, now()),
+         ($8, $2, 'text', $9, null, 3, now())`,
       [
         randomUUID(),
         assistantMessageId,
@@ -147,6 +150,30 @@ async function createRecoveredToolConversation() {
           toolName: "dynatrace_execute_dql",
           input: { query: "fetch logs" },
           output: { ok: true, result: [{ id: "problem-1" }] },
+        }),
+        randomUUID(),
+        JSON.stringify({
+          toolCallId: "todo-progress",
+          toolName: "update_todo_list",
+          input: {},
+          output: {
+            kind: "chat_todo_list",
+            title: "Investigation",
+            items: [
+              {
+                id: "research",
+                label: "Research the issue",
+                status: "completed",
+              },
+              {
+                id: "verify",
+                label: "Verify the fix",
+                status: "in_progress",
+              },
+            ],
+            completedCount: 1,
+            totalCount: 2,
+          },
         }),
         randomUUID(),
         await encryptFixtureText(finalText),
@@ -319,6 +346,50 @@ test.describe("chat page", () => {
       await expect(
         transcript.getByText("Completed", { exact: true }),
       ).toBeVisible();
+      await expect(
+        transcript.getByRole("region", {
+          name: "Investigation",
+          exact: true,
+        }),
+      ).toHaveCount(0);
+
+      const todoDock = page.getByRole("region", {
+        name: "Investigation",
+        exact: true,
+      });
+      await expect(todoDock).toBeVisible();
+      const todoProgress = todoDock.getByRole("progressbar", {
+        name: "Investigation progress",
+      });
+      await expect(todoProgress).toHaveAttribute("aria-valuenow", "1");
+      await expect(todoProgress).toHaveAttribute("aria-valuemax", "2");
+      await expect(todoDock.getByText("Verify the fix")).toBeVisible();
+
+      const composer = page.getByRole("textbox", { name: "Message" });
+      const [dockBox, composerBox] = await Promise.all([
+        todoDock.boundingBox(),
+        composer.boundingBox(),
+      ]);
+      expect(dockBox).not.toBeNull();
+      expect(composerBox).not.toBeNull();
+      expect(dockBox!.y + dockBox!.height).toBeLessThanOrEqual(composerBox!.y);
+
+      await todoDock.getByRole("button", { name: "Show task details" }).click();
+      await expect(
+        todoDock.getByText("1/2 tasks completed", { exact: true }),
+      ).toBeVisible();
+      const currentTask = todoDock.locator('[aria-current="step"]');
+      await expect(currentTask).toContainText("Verify the fix");
+      await expect(currentTask).toContainText("In progress");
+
+      await todoDock.getByRole("button", { name: "Hide task details" }).click();
+      await page.setViewportSize({ width: 390, height: 844 });
+      await expect(todoDock).toBeVisible();
+      await expect(composer).toBeVisible();
+      const mobileDockBox = await todoDock.boundingBox();
+      expect(mobileDockBox).not.toBeNull();
+      expect(mobileDockBox!.x).toBeGreaterThanOrEqual(0);
+      expect(mobileDockBox!.x + mobileDockBox!.width).toBeLessThanOrEqual(390);
     } finally {
       await fixture.cleanup();
     }

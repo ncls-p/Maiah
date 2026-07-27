@@ -4,10 +4,10 @@ import { getTranslations } from "next-intl/server";
 import { WorkspacePage } from "@/components/workspace-page";
 import { AssistantGovernanceSettings } from "@/components/admin/assistant-governance-settings";
 import { ChatAutomationSettings } from "@/components/admin/chat-automation-settings";
-import { CustomToolBuilderSettings } from "@/components/admin/custom-tool-builder-settings";
 import { RegistrationSettings } from "@/components/admin/registration-settings";
 import { SidebarNavigationSettings } from "@/components/admin/sidebar-navigation-settings";
 import { SystemHealthCard } from "@/components/admin/system-health-card";
+import { WorkflowBuilderSettings } from "@/components/admin/workflow-builder-settings";
 import {
   Empty,
   EmptyDescription,
@@ -56,7 +56,7 @@ export default async function AdminSettingsPage() {
         <SidebarNavigationSettings />
         <AssistantGovernanceSettings />
         <ChatAutomationSettings />
-        <CustomToolBuilderSettings />
+        <WorkflowBuilderSettings />
       </div>
     </WorkspacePage>
   );

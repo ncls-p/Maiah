@@ -752,11 +752,7 @@ export default function AgentConfigurePage() {
   const enabledMcpCount = mcpTools.filter(
     (tool) => tool.enabled && mcpBindings[tool.id]?.enabled,
   ).length;
-  const enabledCustomCount = customTools.filter(
-    (tool) => customBindings[tool.id]?.enabled,
-  ).length;
-  const totalEnabledTools =
-    enabledBuiltinCount + enabledMcpCount + enabledCustomCount;
+  const totalEnabledTools = enabledBuiltinCount + enabledMcpCount;
   const capabilitiesCount =
     totalEnabledTools + selectedKnowledgeIds.length + selectedSkillIds.length;
   const delegationCount = delegationConfig.bindings.length;
@@ -868,9 +864,6 @@ export default function AgentConfigurePage() {
                   mcpTools={mcpTools}
                   mcpBindings={mcpBindings}
                   setMcpBindingsAction={setMcpBindings}
-                  customTools={customTools}
-                  customBindings={customBindings}
-                  setCustomBindingsAction={setCustomBindings}
                   knowledgeBases={knowledgeBases}
                   selectedKnowledgeIds={selectedKnowledgeIds}
                   setSelectedKnowledgeIdsAction={setSelectedKnowledgeIds}

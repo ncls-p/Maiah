@@ -2,6 +2,10 @@ import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { decryptValue } from "@/lib/crypto";
 import { maxChatAttachments } from "@/modules/chat/attachments";
+import {
+  chatTodoListInputSchema,
+  createChatTodoList,
+} from "@/modules/chat/todo-list";
 import { loadBoundSkillContent } from "@/modules/skills/use-cases";
 import { executeCustomToolWorkflow } from "@/modules/custom-tools/use-cases";
 import { executeMcpTool } from "@/modules/mcp/executor";
@@ -603,6 +607,8 @@ export async function buildBoundTools(input: {
     };
   }
 
+  usedToolKeys.add("update_todo_list");
+
   async function gateToolExecution(inputArgs: {
     startedAt: number;
     toolSource: typeof BUILTIN_TOOL_SOURCE | "custom" | "mcp";
@@ -919,6 +925,16 @@ export async function buildBoundTools(input: {
       };
     }
   }
+
+  tools.update_todo_list = {
+    description:
+      "Create or replace the visible to-do list for this task. Use stable item IDs and call this tool again whenever an item starts or completes so the user can follow progress live.",
+    inputSchema: chatTodoListInputSchema,
+    execute: async (toolInput: unknown) => {
+      if (!reserveToolCall()) return toolLimitReachedResult();
+      return createChatTodoList(toolInput);
+    },
+  };
 
   const toolApproval: ToolApprovalConfiguration<
     ToolSet,
