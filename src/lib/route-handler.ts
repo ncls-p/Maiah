@@ -7,6 +7,7 @@ import {
 import { runWithRequestAuth } from "@/modules/auth/request-auth-context";
 import { getSession } from "@/modules/auth/session";
 import {
+  checkRequestPermissionScope,
   checkResourcePermissionForRequest,
   checkWorkspacePermissionForRequest,
   isWorkspaceMemberForRequest,
@@ -215,6 +216,25 @@ export async function requireWorkspacePermissionAsync(
   permission: string,
 ): Promise<NextResponse | null> {
   const result = await checkWorkspacePermissionForRequest(
+    sessionId,
+    workspaceId,
+    permission,
+  );
+  if (!result.granted) {
+    return NextResponse.json(
+      { error: "Forbidden", reason: result.reason },
+      { status: 403 },
+    );
+  }
+  return null;
+}
+
+export async function requireRequestPermissionScopeAsync(
+  sessionId: string,
+  workspaceId: string,
+  permission: string,
+): Promise<NextResponse | null> {
+  const result = checkRequestPermissionScope(
     sessionId,
     workspaceId,
     permission,

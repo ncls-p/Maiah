@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import {
   handleRoute,
+  requireRequestPermissionScopeAsync,
   requireWorkspacePermissionAsync,
 } from "@/lib/route-handler";
 import {
@@ -52,6 +53,12 @@ export async function GET(req: NextRequest) {
       if (!parsed.success) {
         return NextResponse.json({ error: "Invalid input" }, { status: 400 });
       }
+      const scopeForbidden = await requireRequestPermissionScopeAsync(
+        session.user.id,
+        parsed.data.workspaceId,
+        "agents.chat",
+      );
+      if (scopeForbidden) return scopeForbidden;
       if (
         !(await isWorkspaceMemberForRequest(
           session.user.id,

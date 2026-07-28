@@ -21,6 +21,7 @@ vi.mock("@/server/infrastructure/db/access-resource-repository", () => ({
 
 import { runWithRequestAuth } from "@/modules/auth/request-auth-context";
 import {
+  checkRequestPermissionScope,
   checkResourcePermissionForRequest,
   checkWorkspacePermissionForRequest,
   hasResourcePermissionForRequest,
@@ -71,6 +72,21 @@ describe("workspace API token access", () => {
       reason: "API token scope missing: agents.delete",
     });
     expect(checkPermission).not.toHaveBeenCalled();
+  });
+
+  it("exposes scope-only checks for resource-filtered collections", async () => {
+    const result = await runWithRequestAuth(apiKeyAuth, () =>
+      checkRequestPermissionScope(
+        "user-1",
+        "workspace-1",
+        "providers.viewMetadata",
+      ),
+    );
+
+    expect(result).toEqual({
+      granted: false,
+      reason: "API token scope missing: providers.viewMetadata",
+    });
   });
 
   it("denies use by a different actor before consulting RBAC", async () => {

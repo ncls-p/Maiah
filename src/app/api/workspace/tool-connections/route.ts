@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import {
   handleRoute,
+  requireRequestPermissionScopeAsync,
   requireWorkspaceMemberAsync,
   requireWorkspacePermissionAsync,
 } from "@/lib/route-handler";
@@ -40,6 +41,12 @@ export async function GET(req: NextRequest) {
         );
       }
 
+      const scopeForbidden = await requireRequestPermissionScopeAsync(
+        session.user.id,
+        parsed.data.workspaceId,
+        "tools.configure",
+      );
+      if (scopeForbidden) return scopeForbidden;
       const forbidden = await requireWorkspaceMemberAsync(
         session.user.id,
         parsed.data.workspaceId,

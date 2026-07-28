@@ -55,6 +55,7 @@ vi.mock("next/server", () => ({
 import { getSession } from "@/modules/auth/session";
 import { verifyWorkspaceApiKey } from "@/modules/api-keys/use-cases";
 import { isPlatformAdminSession } from "@/modules/admin/auth";
+import { runWithRequestAuth } from "@/modules/auth/request-auth-context";
 import * as authz from "@/server/domain/services/authorization";
 
 import type { NextRequest } from "next/server";
@@ -291,6 +292,45 @@ describe("route-handler – requireResourcePermissionAsync", async () => {
     expect(result!.body).toEqual({
       error: "Forbidden",
       reason: "Missing permission: agents.get",
+    });
+  });
+});
+
+describe("route-handler – requireRequestPermissionScopeAsync", async () => {
+  const { requireRequestPermissionScopeAsync } =
+    await import("@/lib/route-handler");
+
+  it("allows user sessions because their permissions are checked separately", async () => {
+    await expect(
+      requireRequestPermissionScopeAsync(
+        "user-1",
+        "workspace-1",
+        "agents.list",
+      ),
+    ).resolves.toBeNull();
+  });
+
+  it("returns the precise missing-scope reason for API tokens", async () => {
+    const result = await runWithRequestAuth(
+      {
+        type: "api_key",
+        apiKeyId: "key-1",
+        workspaceId: "workspace-1",
+        userId: "user-1",
+        scopes: ["agents.list"],
+      },
+      () =>
+        requireRequestPermissionScopeAsync(
+          "user-1",
+          "workspace-1",
+          "providers.viewMetadata",
+        ),
+    );
+
+    expect(result!.status).toBe(403);
+    expect(result!.body).toEqual({
+      error: "Forbidden",
+      reason: "API token scope missing: providers.viewMetadata",
     });
   });
 });

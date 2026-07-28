@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import {
   handleRoute,
+  requireRequestPermissionScopeAsync,
   requireWorkspaceMemberAsync,
   requireWorkspacePermissionAsync,
 } from "@/lib/route-handler";
@@ -63,6 +64,12 @@ export async function GET(req: NextRequest) {
           { status: 400 },
         );
       }
+      const scopeForbidden = await requireRequestPermissionScopeAsync(
+        session.user.id,
+        parsed.data.workspaceId,
+        "providers.viewMetadata",
+      );
+      if (scopeForbidden) return scopeForbidden;
       const forbidden = await requireWorkspaceMemberAsync(
         session.user.id,
         parsed.data.workspaceId,

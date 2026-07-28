@@ -34,6 +34,14 @@ function apiKeyScopeResult(
   return { granted: true };
 }
 
+export function checkRequestPermissionScope(
+  userId: string,
+  workspaceId: string,
+  permission: string,
+): PermissionCheckResult {
+  return apiKeyScopeResult(userId, workspaceId, permission);
+}
+
 export async function checkWorkspacePermissionForRequest(
   userId: string,
   workspaceId: string,

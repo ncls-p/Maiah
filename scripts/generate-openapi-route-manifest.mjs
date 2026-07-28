@@ -69,7 +69,7 @@ function methodChunks(source) {
 function permissionStrings(source) {
   const permissions = new Set();
   const callPattern =
-    /(?:require(?:Workspace|Resource)PermissionAsync|check(?:Workspace|Resource)PermissionForRequest|has(?:Workspace|Resource)PermissionForRequest|handleOpenAIProxyRoute|authorization\.(?:checkPermission|hasPermission))\([\s\S]{0,420}?"([A-Za-z][A-Za-z0-9]*\.[A-Za-z0-9*]+)"/g;
+    /(?:require(?:Workspace|Resource)PermissionAsync|requireRequestPermissionScopeAsync|check(?:Workspace|Resource)PermissionForRequest|has(?:Workspace|Resource)PermissionForRequest|handleOpenAIProxyRoute|authorization\.(?:checkPermission|hasPermission))\([\s\S]{0,420}?"([A-Za-z][A-Za-z0-9]*\.[A-Za-z0-9*]+)"/g;
   for (const match of source.matchAll(callPattern)) permissions.add(match[1]);
   return [...permissions].sort();
 }

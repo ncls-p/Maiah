@@ -13,7 +13,10 @@ import {
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { decryptValue } from "@/lib/crypto";
-import { handleRoute } from "@/lib/route-handler";
+import {
+  handleRoute,
+  requireRequestPermissionScopeAsync,
+} from "@/lib/route-handler";
 import {
   hasResourcePermissionForRequest,
   isWorkspaceMemberForRequest,
@@ -117,6 +120,12 @@ export async function GET(req: NextRequest) {
         );
       }
 
+      const scopeForbidden = await requireRequestPermissionScopeAsync(
+        session.user.id,
+        workspaceId,
+        "conversations.viewOwn",
+      );
+      if (scopeForbidden) return scopeForbidden;
       if (!(await isWorkspaceMemberForRequest(session.user.id, workspaceId))) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
