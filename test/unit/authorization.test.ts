@@ -222,6 +222,12 @@ describe("authorization.checkPermission", () => {
             permissionsJson: ["agents.create", "agents.create", "custom.do"],
           },
         },
+        {
+          roles: {
+            name: "custom.invalid",
+            permissionsJson: null,
+          },
+        },
       ]);
     dbModule._c.limit
       .mockResolvedValueOnce([{ organizationId: "org-1" }])
@@ -356,6 +362,20 @@ describe("authorization.requireWorkspaceMember", () => {
     const result = await authorization.requireWorkspaceMember("user-1", "ws-1");
 
     expect(result).toBe(false);
+  });
+
+  it("accepts an active legacy project member without an organization row", async () => {
+    dbModule.db.select.mockReturnValue(dbModule._c);
+    dbModule._c.from.mockReturnValue(dbModule._c);
+    dbModule._c.where.mockReturnValue(dbModule._c);
+    dbModule._c.limit
+      .mockResolvedValueOnce([{ organizationId: "org-1" }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ id: "workspace-member-1" }]);
+
+    const result = await authorization.requireWorkspaceMember("user-1", "ws-1");
+
+    expect(result).toBe(true);
   });
 
   it("returns false when user is not an active member", async () => {

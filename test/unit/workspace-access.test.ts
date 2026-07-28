@@ -23,6 +23,7 @@ import { runWithRequestAuth } from "@/modules/auth/request-auth-context";
 import {
   checkResourcePermissionForRequest,
   checkWorkspacePermissionForRequest,
+  hasResourcePermissionForRequest,
   isWorkspaceMemberForRequest,
 } from "@/modules/auth/workspace-access";
 
@@ -156,6 +157,27 @@ describe("workspace API token access", () => {
       "agent",
       "agent-1",
     );
+  });
+
+  it("returns the boolean form of a fine-grained resource check", async () => {
+    findAccessResource.mockResolvedValue({
+      id: "agent-1",
+      type: "agent",
+      name: "Support",
+      workspaceId: "workspace-1",
+      organizationId: "organization-1",
+    });
+    checkPermission.mockResolvedValue({ granted: true });
+
+    await expect(
+      hasResourcePermissionForRequest(
+        "user-1",
+        "workspace-1",
+        "agents.get",
+        "agent",
+        "agent-1",
+      ),
+    ).resolves.toBe(true);
   });
 
   it("rejects a resource from another project before RBAC", async () => {

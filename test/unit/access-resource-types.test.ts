@@ -4,6 +4,7 @@ import {
   ACCESS_RESOURCE_DEFINITIONS,
   ACCESS_RESOURCE_TYPES,
   isAccessResourceType,
+  resourceDefinition,
   ROLE_BINDING_RESOURCE_TYPES,
 } from "@/server/domain/entities/access-resource";
 
@@ -46,9 +47,8 @@ describe("access resource registry", () => {
     }
     expect(isAccessResourceType("workspace")).toBe(false);
     expect(isAccessResourceType("unknown")).toBe(false);
-    expect(
-      ACCESS_RESOURCE_DEFINITIONS.find(({ type }) => type === "scheduled_task")
-        ?.permissionDomains,
-    ).toEqual(expect.arrayContaining(["agents", "conversations"]));
+    expect(resourceDefinition("scheduled_task")?.permissionDomains).toEqual(
+      expect.arrayContaining(["agents", "conversations"]),
+    );
   });
 });

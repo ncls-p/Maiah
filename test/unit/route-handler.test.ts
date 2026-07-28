@@ -24,6 +24,14 @@ vi.mock("@/server/domain/services/authorization", () => ({
   },
 }));
 
+const { findAccessResource } = vi.hoisted(() => ({
+  findAccessResource: vi.fn(),
+}));
+
+vi.mock("@/server/infrastructure/db/access-resource-repository", () => ({
+  findAccessResource,
+}));
+
 vi.mock("@/lib/logger", () => ({
   logger: {
     info: vi.fn(),
@@ -224,6 +232,65 @@ describe("route-handler – requireWorkspacePermissionAsync", async () => {
     expect(result!.body).toEqual({
       error: "Forbidden",
       reason: "Not a member",
+    });
+  });
+});
+
+describe("route-handler – requireResourcePermissionAsync", async () => {
+  const { requireResourcePermissionAsync } =
+    await import("@/lib/route-handler");
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    findAccessResource.mockResolvedValue({
+      id: "agent-1",
+      type: "agent",
+      name: "Support",
+      workspaceId: "ws-1",
+      organizationId: "org-1",
+    });
+  });
+
+  it("returns null when the exact resource permission is granted", async () => {
+    vi.mocked(authz.authorization.checkPermission).mockResolvedValue({
+      granted: true,
+    });
+
+    const result = await requireResourcePermissionAsync(
+      "user-1",
+      "ws-1",
+      "agents.get",
+      "agent",
+      "agent-1",
+    );
+
+    expect(result).toBeNull();
+    expect(authz.authorization.checkPermission).toHaveBeenCalledWith(
+      { principalType: "user", principalId: "user-1" },
+      "agents.get",
+      "agent",
+      "agent-1",
+    );
+  });
+
+  it("returns 403 when the exact resource permission is denied", async () => {
+    vi.mocked(authz.authorization.checkPermission).mockResolvedValue({
+      granted: false,
+      reason: "Missing permission: agents.get",
+    });
+
+    const result = await requireResourcePermissionAsync(
+      "user-1",
+      "ws-1",
+      "agents.get",
+      "agent",
+      "agent-1",
+    );
+
+    expect(result!.status).toBe(403);
+    expect(result!.body).toEqual({
+      error: "Forbidden",
+      reason: "Missing permission: agents.get",
     });
   });
 });
