@@ -43,6 +43,7 @@ const CHAIN_KEYS = [
   "update",
   "delete",
   "from",
+  "innerJoin",
   "where",
   "orderBy",
   "values",
@@ -57,6 +58,7 @@ type Chain = {
 } & {
   limit: ChainFn;
   returning: ChainFn;
+  then: ChainFn;
 };
 
 type DbMock = {
@@ -83,6 +85,7 @@ vi.mock("@/server/infrastructure/db", () => {
       "update",
       "delete",
       "from",
+      "innerJoin",
       "where",
       "orderBy",
       "values",
@@ -94,6 +97,7 @@ vi.mock("@/server/infrastructure/db", () => {
     }
     c.limit = vi.fn().mockResolvedValue([]);
     c.returning = vi.fn().mockResolvedValue([]);
+    c.then = vi.fn((resolve) => Promise.resolve([]).then(resolve));
     return c as Chain;
   };
 
@@ -150,6 +154,9 @@ function reset() {
     }
     chain.limit.mockReset().mockResolvedValue([]);
     chain.returning.mockReset().mockResolvedValue([]);
+    chain.then
+      .mockReset()
+      .mockImplementation((resolve) => Promise.resolve([]).then(resolve));
   }
 }
 

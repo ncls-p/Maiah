@@ -5,6 +5,8 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { encryptValue } from "@/lib/crypto";
 import { claimAssistantContinuation } from "@/modules/chat/continuation";
+import { listAgents } from "@/modules/agent/use-cases";
+import { deleteProjectAccessResource } from "@/modules/iam/resource-deletion";
 import {
   executeResourceTransfer,
   listResourceTransferDestinations,
@@ -185,7 +187,40 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
         },
       ])
       .returning();
+    const [memberOwnedAgent] = await db
+      .insert(agents)
+      .values({
+        workspaceId: secondProjectId,
+        name: "Member private assistant",
+        slug: `member-private-${suffix}`,
+        createdById: memberId,
+      })
+      .returning();
     sharedAgentId = sharedAgent.id;
+    expect(
+      (await listAgents(secondProjectId, ownerId, true)).map(({ id }) => id),
+    ).not.toContain(memberOwnedAgent.id);
+    await assignResourceRole({
+      actorUserId: ownerId,
+      workspaceId: secondProjectId,
+      principalType: "user",
+      principalId: ownerId,
+      roleId: resourceRole.id,
+      resourceType: "agent",
+      resourceId: memberOwnedAgent.id,
+    });
+    expect(
+      (await listAgents(secondProjectId, ownerId, true)).map(({ id }) => id),
+    ).toContain(memberOwnedAgent.id);
+    await deleteProjectAccessResource({
+      actorUserId: ownerId,
+      workspaceId: secondProjectId,
+      resourceType: "agent",
+      resourceId: memberOwnedAgent.id,
+    });
+    expect(
+      (await listAgents(secondProjectId, ownerId, true)).map(({ id }) => id),
+    ).not.toContain(memberOwnedAgent.id);
     await assignResourceRole({
       actorUserId: ownerId,
       workspaceId: secondProjectId,

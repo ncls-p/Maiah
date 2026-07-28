@@ -1,5 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { ensureE2EUser, login } from "./fixtures";
+import {
+  ensureE2EPrivateMemberAssistant,
+  ensureE2EUser,
+  login,
+} from "./fixtures";
 
 const createAssistantButtonName =
   /New assistant|Create(?: your first)? assistant/i;
@@ -56,6 +60,17 @@ test.describe("agents list page", () => {
     if (await searchInput.isVisible()) {
       await expect(searchInput).toBeVisible();
     }
+  });
+
+  test("does not show another user's private assistant to an admin", async ({
+    page,
+  }) => {
+    await ensureE2EPrivateMemberAssistant();
+    await page.goto("/en/agents");
+
+    await expect(
+      page.getByText("Member private assistant", { exact: true }),
+    ).not.toBeVisible();
   });
 });
 

@@ -325,10 +325,12 @@ function ResourceAccessPanel({
   workspaceId,
   organizationId,
   definitions,
+  canManageResources,
 }: {
   workspaceId: string;
   organizationId: string;
   definitions: AccessResourceDefinition[];
+  canManageResources: boolean;
 }) {
   const t = useTranslations("access");
   const [resourceType, setResourceType] = useState(
@@ -363,6 +365,9 @@ function ResourceAccessPanel({
     useState<ResourceTransferPreview | null>(null);
   const [transferLoading, setTransferLoading] = useState(false);
   const [advancedTransfer, setAdvancedTransfer] = useState(false);
+  const [deletingResource, setDeletingResource] =
+    useState<AccessResource | null>(null);
+  const [deletionPending, setDeletionPending] = useState(false);
 
   const loadResources = useCallback(
     async (offset = 0) => {
@@ -636,6 +641,44 @@ function ResourceAccessPanel({
     }
   }
 
+  async function deleteResource() {
+    if (!deletingResource) return;
+    setDeletionPending(true);
+    try {
+      const params = new URLSearchParams({
+        workspaceId,
+        resourceType: deletingResource.type,
+        resourceId: deletingResource.id,
+      });
+      await fetchJson(`/api/workspace/iam/resources?${params}`, {
+        method: "DELETE",
+      });
+      toast.success(
+        t("resourceDeleted", {
+          name: deletingResource.name,
+        }),
+      );
+      setResources((current) =>
+        current.filter(({ id }) => id !== deletingResource.id),
+      );
+      if (selected?.id === deletingResource.id) {
+        setSelected(null);
+        setDetails(null);
+      }
+      if (transferResource?.id === deletingResource.id) {
+        setTransferResource(null);
+        setTransferPreview(null);
+      }
+      setDeletingResource(null);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : t("resourceDeleteFailed"),
+      );
+    } finally {
+      setDeletionPending(false);
+    }
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -722,18 +765,20 @@ function ResourceAccessPanel({
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex justify-end gap-2">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => void openTransfer(resource)}
-                        >
-                          <ArrowRightLeftIcon
-                            data-icon="inline-start"
-                            aria-hidden="true"
-                          />
-                          {t("transfer")}
-                        </Button>
+                        {canManageResources ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => void openTransfer(resource)}
+                          >
+                            <ArrowRightLeftIcon
+                              data-icon="inline-start"
+                              aria-hidden="true"
+                            />
+                            {t("transfer")}
+                          </Button>
+                        ) : null}
                         <Button
                           type="button"
                           size="sm"
@@ -753,6 +798,20 @@ function ResourceAccessPanel({
                           />
                           {t("manageResourceAccess")}
                         </Button>
+                        {canManageResources ? (
+                          <Button
+                            type="button"
+                            size="icon-sm"
+                            variant="ghost"
+                            className="text-destructive hover:text-destructive"
+                            aria-label={t("deleteResource", {
+                              name: resource.name,
+                            })}
+                            onClick={() => setDeletingResource(resource)}
+                          >
+                            <Trash2Icon aria-hidden="true" />
+                          </Button>
+                        ) : null}
                       </div>
                     </td>
                   </tr>
@@ -777,6 +836,48 @@ function ResourceAccessPanel({
           </div>
         )}
       </CardContent>
+
+      <AlertDialog
+        open={Boolean(deletingResource)}
+        onOpenChange={(open) => {
+          if (!open && !deletionPending) setDeletingResource(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {deletingResource
+                ? t("deleteResourceTitle", { name: deletingResource.name })
+                : t("deleteResourceFallbackTitle")}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("deleteResourceDescription")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletionPending}>
+              {t("cancel")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={deletionPending}
+              onClick={(event) => {
+                event.preventDefault();
+                void deleteResource();
+              }}
+            >
+              {deletionPending ? (
+                <Spinner data-icon="inline-start" />
+              ) : (
+                <Trash2Icon data-icon="inline-start" aria-hidden="true" />
+              )}
+              {deletionPending
+                ? t("deletingResource")
+                : t("confirmDeleteResource")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Dialog
         open={Boolean(selected)}
@@ -3001,6 +3102,7 @@ export function AccessConsole({
             workspaceId={workspaceId}
             organizationId={snapshot.organization.id}
             definitions={snapshot.resourceDefinitions}
+            canManageResources={snapshot.capabilities.canManageProjectAccess}
           />
         </TabsContent>
 

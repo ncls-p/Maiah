@@ -141,6 +141,46 @@ export async function ensureE2EMember() {
   }
 }
 
+export async function ensureE2EPrivateMemberAssistant() {
+  await ensureE2EMember();
+
+  const client = new Client({ connectionString: databaseUrl() });
+  await client.connect();
+  try {
+    const member = await client.query<{ id: string }>(
+      `select id from "user" where email = $1 limit 1`,
+      [e2eMember.email],
+    );
+    const workspace = await client.query<{ id: string }>(
+      `select w.id
+       from workspaces w
+       join organizations o on o.id = w.organization_id
+       where w.slug = 'main' and o.slug = 'deodis' and w.archived_at is null
+       limit 1`,
+    );
+    const memberId = member.rows[0]?.id;
+    const workspaceId = workspace.rows[0]?.id;
+    if (!memberId || !workspaceId) {
+      throw new Error("E2E private assistant owner is not initialized");
+    }
+
+    await client.query(
+      `insert into agents
+       (id, workspace_id, name, slug, visibility, created_by_user_id, created_at, updated_at)
+       values ($1, $2, 'Member private assistant', 'e2e-member-private', 'private', $3, now(), now())
+       on conflict (workspace_id, slug) do update
+       set name = excluded.name,
+           created_by_user_id = excluded.created_by_user_id,
+           visibility = 'private',
+           archived_at = null,
+           updated_at = now()`,
+      [randomUUID(), workspaceId, memberId],
+    );
+  } finally {
+    await client.end();
+  }
+}
+
 export async function ensureE2ETransferScenario() {
   const client = new Client({ connectionString: databaseUrl() });
   await client.connect();
@@ -205,6 +245,14 @@ export async function ensureE2ETransferScenario() {
       `insert into agents
        (id, workspace_id, name, slug, created_by_user_id, created_at, updated_at)
        values ($1, $2, 'Transfer preview assistant', 'e2e-transfer-preview', $3, now(), now())
+       on conflict (workspace_id, slug) do update
+       set name = excluded.name, archived_at = null, updated_at = now()`,
+      [randomUUID(), sourceWorkspaceId, userId],
+    );
+    await client.query(
+      `insert into agents
+       (id, workspace_id, name, slug, created_by_user_id, created_at, updated_at)
+       values ($1, $2, 'Removable assistant', 'e2e-delete-preview', $3, now(), now())
        on conflict (workspace_id, slug) do update
        set name = excluded.name, archived_at = null, updated_at = now()`,
       [randomUUID(), sourceWorkspaceId, userId],

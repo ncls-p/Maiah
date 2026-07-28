@@ -22,10 +22,8 @@ import {
 import { DelegationBindingValidationError } from "@/modules/agent/delegation-use-cases";
 import { ONBOARDING_TOOL_PRESET } from "@/modules/agent/onboarding-tools";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
-import {
-  hasResourcePermissionForRequest,
-  hasWorkspacePermissionForRequest,
-} from "@/modules/auth/workspace-access";
+import { hasWorkspacePermissionForRequest } from "@/modules/auth/workspace-access";
+import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
 import {
   agentVersions,
@@ -325,6 +323,14 @@ export async function GET(req: NextRequest) {
             string,
             { displayName: string | null; logoUrl: string | null }
           >();
+      const directlyEditableAgentIds =
+        await authorization.listDirectlyAuthorizedResourceIds(
+          { principalType: "user", principalId: session.user.id },
+          "agents.update",
+          "agent",
+          list.map(({ id }) => id),
+          workspaceId,
+        );
       const agentsWithAccess = await Promise.all(
         list.map(async (agent) => ({
           ...agent,
@@ -343,13 +349,7 @@ export async function GET(req: NextRequest) {
           canEdit:
             (canUpdateAgents &&
               canEditAgent(agent, session.user.id, canAdminCurate)) ||
-            (await hasResourcePermissionForRequest(
-              session.user.id,
-              workspaceId,
-              "agents.update",
-              "agent",
-              agent.id,
-            )),
+            directlyEditableAgentIds.has(agent.id),
           canClone: canCreateAgent,
         })),
       );

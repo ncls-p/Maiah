@@ -1,4 +1,4 @@
-import { and, asc, eq, ilike, inArray, isNull, or } from "drizzle-orm";
+import { and, asc, eq, ilike, inArray, isNull, ne, or } from "drizzle-orm";
 
 import type { AccessResourceType } from "@/server/domain/entities/access-resource";
 import { db } from "@/server/infrastructure/db";
@@ -238,7 +238,12 @@ export async function findAccessResource(
           workspaceId: marketplaceItems.publisherWorkspaceId,
         })
         .from(marketplaceItems)
-        .where(eq(marketplaceItems.id, resourceId))
+        .where(
+          and(
+            eq(marketplaceItems.id, resourceId),
+            ne(marketplaceItems.status, "archived"),
+          ),
+        )
         .limit(1)
         .then((rows) =>
           rows.flatMap((item) =>
@@ -497,6 +502,7 @@ export async function listAccessResources(input: {
         .where(
           and(
             eq(marketplaceItems.publisherWorkspaceId, input.workspaceId),
+            ne(marketplaceItems.status, "archived"),
             nameFilter(marketplaceItems.name),
           ),
         )
