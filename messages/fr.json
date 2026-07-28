@@ -223,7 +223,10 @@
       "editMessage": "Modifier le message",
       "deleteMessage": "Supprimer le message",
       "regenerateResponse": "Régénérer la réponse",
-      "regenerate": "Régénérer"
+      "regenerate": "Régénérer",
+      "continueResponse": "Continuer cette réponse",
+      "continue": "Continuer",
+      "continuePrompt": "Continue ta réponse précédente exactement là où tu t’es arrêté. Ne répète pas ce que tu as déjà écrit."
     },
     "rendering": {
       "externalLinkTitle": "Ouvrir un lien externe ?",

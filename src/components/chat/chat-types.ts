@@ -194,6 +194,18 @@ export function textFromMessage(message: ChatMessage) {
     .join("\n");
 }
 
+export function canContinueAssistantMessage(
+  message: ChatMessage,
+  lastAssistantMessageId: string | null | undefined,
+) {
+  return (
+    message.role === "assistant" &&
+    message.id === lastAssistantMessageId &&
+    message.status !== "streaming" &&
+    textFromMessage(message).trim().length > 0
+  );
+}
+
 export function preserveAssistantFailureParts(parts: ChatMessagePart[]) {
   return parts.length > 0
     ? parts
