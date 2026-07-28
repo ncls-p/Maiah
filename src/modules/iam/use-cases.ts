@@ -1,4 +1,4 @@
-import { and, asc, count, eq, inArray, isNull, or } from "drizzle-orm";
+import { and, asc, count, eq, inArray, isNull, ne, or } from "drizzle-orm";
 
 import { logger } from "@/lib/logger";
 import { audit } from "@/server/domain/services/audit";
@@ -19,6 +19,7 @@ import {
   workspaces,
 } from "@/server/infrastructure/db/schema";
 import {
+  expandPermissionGrants,
   isKnownPermission,
   isPermissionCompatibleWithScope,
   PERMISSION_CATALOG,
@@ -589,6 +590,141 @@ export async function createCustomRole(input: {
   return role;
 }
 
+export async function updateCustomRole(input: {
+  actorUserId: string;
+  workspaceId: string;
+  roleId: string;
+  displayName: string;
+  description?: string;
+  permissions: string[];
+}) {
+  const { organization } = await getWorkspaceScope(input.workspaceId);
+  const [role] = await db
+    .select()
+    .from(roles)
+    .where(eq(roles.id, input.roleId))
+    .limit(1);
+  if (
+    !role ||
+    role.isSystem ||
+    !(
+      (role.scopeType === "organization" &&
+        role.ownerResourceType === "organization" &&
+        role.ownerResourceId === organization.id) ||
+      (role.scopeType === "workspace" &&
+        role.ownerResourceType === "workspace" &&
+        role.ownerResourceId === input.workspaceId)
+    )
+  ) {
+    throw new IamOperationError("Custom role not found", 404);
+  }
+
+  const scopeType = role.scopeType as ScopeType;
+  await requirePermission({
+    userId: input.actorUserId,
+    permission: "roles.manage",
+    resourceType: scopeType,
+    resourceId:
+      scopeType === "organization" ? organization.id : input.workspaceId,
+    errorMessage: "You do not have permission to update this role",
+  });
+
+  const permissions = [...new Set(input.permissions)];
+  if (permissions.length === 0) {
+    throw new IamOperationError("Select at least one permission");
+  }
+  if (permissions.some((permission) => !isKnownPermission(permission))) {
+    throw new IamOperationError("The role contains an unsupported permission");
+  }
+  if (
+    permissions.some(
+      (permission) => !isPermissionCompatibleWithScope(permission, scopeType),
+    )
+  ) {
+    throw new IamOperationError(
+      "One or more permissions cannot be used in a project role",
+    );
+  }
+
+  const name = customRoleName(input.displayName);
+  const [existingRole] = await db
+    .select({ id: roles.id })
+    .from(roles)
+    .where(
+      and(
+        eq(roles.ownerResourceType, role.ownerResourceType),
+        eq(roles.ownerResourceId, role.ownerResourceId),
+        eq(roles.name, name),
+        ne(roles.id, role.id),
+      ),
+    )
+    .limit(1);
+  if (existingRole) {
+    throw new IamOperationError(
+      "A custom role with this name already exists",
+      409,
+    );
+  }
+
+  const bindings = await db
+    .select({
+      principalType: roleBindings.principalType,
+      principalId: roleBindings.principalId,
+    })
+    .from(roleBindings)
+    .where(eq(roleBindings.roleId, role.id));
+  const directUserIds = bindings
+    .filter(({ principalType }) => principalType === "user")
+    .map(({ principalId }) => principalId);
+  const teamIds = bindings
+    .filter(({ principalType }) => principalType === "group")
+    .map(({ principalId }) => principalId);
+  const teamUserIds =
+    teamIds.length === 0
+      ? []
+      : (
+          await db
+            .select({ userId: teamMembers.userId })
+            .from(teamMembers)
+            .where(inArray(teamMembers.teamId, teamIds))
+        ).map(({ userId }) => userId);
+
+  const [updated] = await db
+    .update(roles)
+    .set({
+      name,
+      displayName: input.displayName.trim(),
+      description: input.description?.trim() || null,
+      permissionsJson: permissions,
+      updatedAt: new Date(),
+    })
+    .where(eq(roles.id, role.id))
+    .returning();
+
+  await Promise.all(
+    [...new Set([...directUserIds, ...teamUserIds])].map((userId) =>
+      invalidateUserOrganizationAccess(userId, organization.id),
+    ),
+  );
+  await audit.emit({
+    organizationId: organization.id,
+    workspaceId: input.workspaceId,
+    actorPrincipalType: "user",
+    actorPrincipalId: input.actorUserId,
+    action: "iam.role.updated",
+    resourceType: scopeType,
+    resourceId:
+      scopeType === "organization" ? organization.id : input.workspaceId,
+    outcome: "success",
+    metadata: {
+      roleId: role.id,
+      scopeType,
+      permissionCount: permissions.length,
+    },
+  });
+  return updated;
+}
+
 export async function deleteCustomRole(input: {
   actorUserId: string;
   workspaceId: string;
@@ -1041,9 +1177,9 @@ export async function getAccessConsoleSnapshot(input: {
     })),
     roles: roleRows.map((role) => ({
       ...role,
-      permissions: Array.isArray(role.permissionsJson)
-        ? role.permissionsJson
-        : [],
+      permissions: expandPermissionGrants(
+        Array.isArray(role.permissionsJson) ? role.permissionsJson : [],
+      ),
     })),
     assignments: bindingRows.map(({ binding, role }) => {
       const memberPrincipal =

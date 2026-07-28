@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  expandPermissionGrants,
   isKnownPermission,
   isPermissionCompatibleWithScope,
   KNOWN_PERMISSIONS,
@@ -9,6 +10,16 @@ import {
 import { SYSTEM_ROLES } from "@/server/domain/entities/iam";
 
 describe("IAM permission catalog", () => {
+  it("expands built-in wildcard grants into editable catalog permissions", () => {
+    const permissions = expandPermissionGrants(["agents.*", "workflows.view"]);
+
+    expect(permissions).toContain("agents.view");
+    expect(permissions).toContain("agents.create");
+    expect(permissions).toContain("workflows.view");
+    expect(permissions).not.toContain("workflows.create");
+    expect(permissions).not.toContain("agents.*");
+  });
+
   it("contains unique permission identifiers", () => {
     const permissions = PERMISSION_CATALOG.flatMap((group) =>
       group.permissions.map((permission) => permission.id),
@@ -31,12 +42,12 @@ describe("IAM permission catalog", () => {
   });
 
   it("keeps organization-only permissions out of project roles", () => {
-    expect(
-      isPermissionCompatibleWithScope("members.manage", "workspace"),
-    ).toBe(false);
-    expect(
-      isPermissionCompatibleWithScope("agents.chat", "workspace"),
-    ).toBe(true);
+    expect(isPermissionCompatibleWithScope("members.manage", "workspace")).toBe(
+      false,
+    );
+    expect(isPermissionCompatibleWithScope("agents.chat", "workspace")).toBe(
+      true,
+    );
     expect(
       isPermissionCompatibleWithScope("members.manage", "organization"),
     ).toBe(true);

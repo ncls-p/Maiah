@@ -19,11 +19,14 @@ test.describe("members page", () => {
     ).toBeVisible({ timeout: 10_000 });
   });
 
-  test("shows organization access assignments", async ({ page }) => {
+  test("shows one unified access table", async ({ page }) => {
     await page.goto("/en/members");
     await expect(page.getByText("Who has access")).toBeVisible({
       timeout: 10_000,
     });
+    await expect(
+      page.getByPlaceholder("Search people, email, role, or team…"),
+    ).toBeVisible();
   });
 
   test("shows the organization to project inheritance path", async ({
@@ -43,11 +46,47 @@ test.describe("members page", () => {
     );
   });
 
-  test("shows members, teams, and roles tabs", async ({ page }) => {
+  test("shows people, teams, and roles tabs", async ({ page }) => {
     await page.goto("/en/members");
-    await expect(page.getByRole("tab", { name: "Members" })).toBeVisible();
+    await expect(
+      page.getByRole("tab", { name: "People & access" }),
+    ).toBeVisible();
     await expect(page.getByRole("tab", { name: "Teams" })).toBeVisible();
     await expect(page.getByRole("tab", { name: "Roles" })).toBeVisible();
+  });
+
+  test("shows each account once with all of its access", async ({ page }) => {
+    await ensureE2EMember();
+    await page.goto("/en/members");
+
+    await page
+      .getByPlaceholder("Search people, email, role, or team…")
+      .fill(e2eMember.email);
+    const matchingRows = page.locator("tbody tr").filter({
+      hasText: e2eMember.email,
+    });
+    await expect(matchingRows).toHaveCount(1);
+    await expect(matchingRows).toContainText("Organization Member");
+  });
+
+  test("opens built-in roles with their permission matrix", async ({
+    page,
+  }) => {
+    await page.goto("/en/members");
+    await page.getByRole("tab", { name: "Roles" }).click();
+
+    const roleRow = page.locator("tbody tr").filter({
+      hasText: "Project Viewer",
+    });
+    await roleRow.getByRole("button", { name: /permissions/i }).click();
+    const roleDialog = page.getByRole("dialog", {
+      name: /Project Viewer permissions/,
+    });
+    await expect(roleDialog.getByLabel("Role name")).toBeDisabled();
+    await expect(roleDialog.getByRole("checkbox").first()).toBeDisabled();
+    await expect(
+      roleDialog.getByRole("button", { name: "Duplicate and customize" }),
+    ).toBeVisible();
   });
 
   test("grants project access through an organization team", async ({
@@ -56,16 +95,6 @@ test.describe("members page", () => {
     const teamName = `E2E Access ${Date.now()}`;
     await ensureE2EMember();
     await page.goto("/en/members");
-
-    await page.getByRole("tab", { name: "Members" }).click();
-    await page.getByRole("button", { name: "Add member" }).click();
-    const memberDialog = page.getByRole("dialog", {
-      name: "Add an organization member",
-    });
-    await memberDialog.getByLabel("Email").fill(e2eMember.email);
-    await memberDialog.getByRole("button", { name: "Add member" }).click();
-    await expect(memberDialog).not.toBeVisible();
-    await expect(page.getByText(e2eMember.email)).toBeVisible();
 
     await page.getByRole("tab", { name: "Teams" }).click();
     await page.getByRole("button", { name: "Create team" }).click();
@@ -87,7 +116,7 @@ test.describe("members page", () => {
         .filter({ hasText: e2eMember.name }),
     ).toBeVisible();
 
-    await page.getByRole("tab", { name: "Assignments" }).click();
+    await page.getByRole("tab", { name: "People & access" }).click();
     await page.getByRole("button", { name: "Assign role" }).click();
     const accessDialog = page.getByRole("dialog", { name: "Grant access" });
     const accessSelects = accessDialog.getByRole("combobox");
@@ -99,11 +128,11 @@ test.describe("members page", () => {
     await page.getByRole("option", { name: "Project Viewer" }).click();
     await accessDialog.getByRole("button", { name: "Grant access" }).click();
     await expect(accessDialog).not.toBeVisible();
+    await page
+      .getByPlaceholder("Search people, email, role, or team…")
+      .fill(teamName);
     await expect(
-      page
-        .locator('[data-slot="card"]')
-        .filter({ hasText: "Who has access" })
-        .getByText(teamName),
-    ).toBeVisible();
+      page.locator("tbody tr").filter({ hasText: e2eMember.email }),
+    ).toHaveCount(1);
   });
 });

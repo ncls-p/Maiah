@@ -17,6 +17,7 @@ import {
   removeOrganizationMember,
   removeRoleAssignment,
   removeTeamMember,
+  updateCustomRole,
 } from "@/modules/iam/use-cases";
 import { db } from "@/server/infrastructure/db";
 import {
@@ -150,6 +151,18 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
       roleId: projectRole.id,
       scopeType: "workspace",
     });
+    const updatedProjectRole = await updateCustomRole({
+      actorUserId: ownerId,
+      workspaceId: secondProjectId,
+      roleId: projectRole.id,
+      displayName: "Support Operator",
+      description: "Read assistants and run workflows",
+      permissions: ["agents.view", "workflows.view", "workflows.execute"],
+    });
+    expect(updatedProjectRole).toMatchObject({
+      displayName: "Support Operator",
+      permissionsJson: ["agents.view", "workflows.view", "workflows.execute"],
+    });
 
     const snapshot = await getAccessConsoleSnapshot({
       userId: ownerId,
@@ -181,6 +194,12 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
         }),
       ]),
     );
+    expect(
+      snapshot.roles.find(({ id }) => id === projectRole.id),
+    ).toMatchObject({
+      displayName: "Support Operator",
+      permissions: ["agents.view", "workflows.view", "workflows.execute"],
+    });
 
     const [teamBinding] = await db
       .select({ id: roleBindings.id })
@@ -262,6 +281,21 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
         permissions: ["members.manage"],
       }),
     ).rejects.toMatchObject({ status: 400 });
+
+    const immutableSystemRole = await db
+      .select({ id: roles.id })
+      .from(roles)
+      .where(and(eq(roles.name, "workspace.viewer"), eq(roles.isSystem, true)))
+      .limit(1);
+    await expect(
+      updateCustomRole({
+        actorUserId: ownerId,
+        workspaceId: firstProjectId,
+        roleId: immutableSystemRole[0].id,
+        displayName: "Unsafe override",
+        permissions: ["workspaces.get"],
+      }),
+    ).rejects.toMatchObject({ status: 404 });
 
     await expect(
       addOrganizationMember({

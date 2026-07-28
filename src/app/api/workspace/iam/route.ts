@@ -17,6 +17,7 @@ import {
   removeOrganizationMember,
   removeRoleAssignment,
   removeTeamMember,
+  updateCustomRole,
 } from "@/modules/iam/use-cases";
 
 const workspaceQuerySchema = z.object({
@@ -87,6 +88,13 @@ const mutationSchema = z.discriminatedUnion("action", [
     scopeType: z.enum(["organization", "workspace"]),
   }),
   z.object({
+    action: z.literal("assignRoleBulk"),
+    workspaceId: z.uuid(),
+    principalIds: z.array(z.uuid()).min(1).max(100),
+    roleId: z.uuid(),
+    scopeType: z.enum(["organization", "workspace"]),
+  }),
+  z.object({
     action: z.literal("removeAssignment"),
     workspaceId: z.uuid(),
     bindingId: z.uuid(),
@@ -95,6 +103,14 @@ const mutationSchema = z.discriminatedUnion("action", [
     action: z.literal("deleteRole"),
     workspaceId: z.uuid(),
     roleId: z.uuid(),
+  }),
+  z.object({
+    action: z.literal("updateRole"),
+    workspaceId: z.uuid(),
+    roleId: z.uuid(),
+    displayName: z.string().trim().min(2).max(255),
+    description: z.string().trim().max(500).optional(),
+    permissions: z.array(z.string().trim().min(1)).min(1).max(100),
   }),
 ]);
 
@@ -234,6 +250,18 @@ export async function POST(req: NextRequest) {
             scopeType: input.scopeType,
           });
           break;
+        case "assignRoleBulk":
+          for (const principalId of [...new Set(input.principalIds)]) {
+            await assignRole({
+              actorUserId: session.user.id,
+              workspaceId: input.workspaceId,
+              principalType: "user",
+              principalId,
+              roleId: input.roleId,
+              scopeType: input.scopeType,
+            });
+          }
+          break;
         case "removeAssignment":
           await removeRoleAssignment({
             actorUserId: session.user.id,
@@ -246,6 +274,16 @@ export async function POST(req: NextRequest) {
             actorUserId: session.user.id,
             workspaceId: input.workspaceId,
             roleId: input.roleId,
+          });
+          break;
+        case "updateRole":
+          await updateCustomRole({
+            actorUserId: session.user.id,
+            workspaceId: input.workspaceId,
+            roleId: input.roleId,
+            displayName: input.displayName,
+            description: input.description,
+            permissions: input.permissions,
           });
           break;
       }
