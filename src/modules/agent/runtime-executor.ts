@@ -471,8 +471,8 @@ async function buildDelegationTools(input: {
           const permission = await authorization.checkPermission(
             { principalType: "user", principalId: input.execution.userId },
             "agents.delegate",
-            "workspace",
-            input.execution.workspaceId,
+            "agent",
+            binding.childAgentId,
           );
           if (!permission.granted) {
             throw new AgentExecutionError(
@@ -666,8 +666,7 @@ async function executeResolvedAgent(
   let inputTokens = 0;
   let outputTokens = 0;
   let usageProvider:
-    | Awaited<ReturnType<typeof resolveProviderForVersion>>
-    | undefined;
+    Awaited<ReturnType<typeof resolveProviderForVersion>> | undefined;
   const startedAt = Date.now();
   try {
     const provider = await resolveProviderForVersion(input.resolved.version);
@@ -1080,8 +1079,8 @@ export async function executeAgent(
   const permission = await authorization.checkPermission(
     { principalType: "user", principalId: input.userId },
     "agents.chat",
-    "workspace",
-    input.workspaceId,
+    "agent",
+    input.agentId,
   );
   if (!permission.granted) {
     throw new AgentExecutionError(

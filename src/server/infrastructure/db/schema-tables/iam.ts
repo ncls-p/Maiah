@@ -12,6 +12,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { users } from "./auth";
+import { ROLE_BINDING_RESOURCE_TYPES } from "@/server/domain/entities/access-resource";
 
 const CREATED_AT_COLUMN = "created_at";
 const UPDATED_AT_COLUMN = "updated_at";
@@ -68,15 +69,7 @@ export const principalTypeEnum = pgEnum("principal_type", [
 ]);
 export const roleBindingResourceTypeEnum = pgEnum(
   "role_binding_resource_type",
-  [
-    "organization",
-    "workspace",
-    "agent",
-    "provider",
-    "mcp_server",
-    "knowledge_base",
-    "marketplace_item",
-  ],
+  ROLE_BINDING_RESOURCE_TYPES,
 );
 
 export const roleBindings = pgTable(

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import {
   handleRoute,
-  requireWorkspacePermissionAsync,
+  requireResourcePermissionAsync,
 } from "@/lib/route-handler";
 import {
   archiveProvider,
@@ -48,10 +48,12 @@ export async function GET(
       }
       const { providerId } = parsedParams.data;
       const { workspaceId } = parsedQuery.data;
-      const forbidden = await requireWorkspacePermissionAsync(
+      const forbidden = await requireResourcePermissionAsync(
         session.user.id,
         workspaceId,
         "providers.viewMetadata",
+        "provider",
+        providerId,
       );
       if (forbidden) return forbidden;
       const provider = await getProviderById(providerId, workspaceId);
@@ -88,10 +90,12 @@ export async function PATCH(
       }
       const { providerId } = parsedParams.data;
       const { workspaceId, ...input } = parsedBody.data;
-      const forbidden = await requireWorkspacePermissionAsync(
+      const forbidden = await requireResourcePermissionAsync(
         session.user.id,
         workspaceId,
         "providers.update",
+        "provider",
+        providerId,
       );
       if (forbidden) return forbidden;
       const { modelRefresh } = await updateProviderWithModels({
@@ -140,10 +144,12 @@ export async function DELETE(
       }
       const { providerId } = parsedParams.data;
       const { workspaceId } = parsedQuery.data;
-      const forbidden = await requireWorkspacePermissionAsync(
+      const forbidden = await requireResourcePermissionAsync(
         session.user.id,
         workspaceId,
         "providers.delete",
+        "provider",
+        providerId,
       );
       if (forbidden) return forbidden;
       await archiveProvider(providerId, workspaceId, session.user.id);

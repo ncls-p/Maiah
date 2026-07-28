@@ -7,9 +7,11 @@ import {
 import { runWithRequestAuth } from "@/modules/auth/request-auth-context";
 import { getSession } from "@/modules/auth/session";
 import {
+  checkResourcePermissionForRequest,
   checkWorkspacePermissionForRequest,
   isWorkspaceMemberForRequest,
 } from "@/modules/auth/workspace-access";
+import type { AccessResourceType } from "@/server/domain/entities/access-resource";
 import { logger, logHandledError } from "@/lib/logger";
 
 /** Wrap an async handler with session authentication and consistent error handling. */
@@ -216,6 +218,29 @@ export async function requireWorkspacePermissionAsync(
     sessionId,
     workspaceId,
     permission,
+  );
+  if (!result.granted) {
+    return NextResponse.json(
+      { error: "Forbidden", reason: result.reason },
+      { status: 403 },
+    );
+  }
+  return null;
+}
+
+export async function requireResourcePermissionAsync(
+  sessionId: string,
+  workspaceId: string,
+  permission: string,
+  resourceType: AccessResourceType,
+  resourceId: string,
+): Promise<NextResponse | null> {
+  const result = await checkResourcePermissionForRequest(
+    sessionId,
+    workspaceId,
+    permission,
+    resourceType,
+    resourceId,
   );
   if (!result.granted) {
     return NextResponse.json(

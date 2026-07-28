@@ -1,4 +1,4 @@
-import { and, asc, eq, isNull, lte } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, lte, or } from "drizzle-orm";
 
 import { encryptValue } from "@/lib/crypto";
 import { logHandledError, logHandledWarning } from "@/lib/logger";
@@ -201,15 +201,22 @@ async function assertAgentInWorkspace(
   return agent;
 }
 
-export async function listScheduledTasks(workspaceId: string, userId: string) {
+export async function listScheduledTasks(
+  workspaceId: string,
+  userId: string,
+  directlyAccessibleIds: string[] = [],
+) {
+  const visibleTaskCondition = directlyAccessibleIds.length
+    ? or(
+        eq(scheduledTasks.userId, userId),
+        inArray(scheduledTasks.id, directlyAccessibleIds),
+      )
+    : eq(scheduledTasks.userId, userId);
   return db
     .select()
     .from(scheduledTasks)
     .where(
-      and(
-        eq(scheduledTasks.workspaceId, workspaceId),
-        eq(scheduledTasks.userId, userId),
-      ),
+      and(eq(scheduledTasks.workspaceId, workspaceId), visibleTaskCondition),
     )
     .orderBy(asc(scheduledTasks.nextRunAt));
 }
@@ -247,7 +254,11 @@ export async function updateScheduledTask(
   workspaceId: string,
   userId: string,
   input: UpdateScheduledTaskInput,
+  options: { allowShared?: boolean } = {},
 ) {
+  const ownerCondition = options.allowShared
+    ? undefined
+    : eq(scheduledTasks.userId, userId);
   const [existing] = await db
     .select()
     .from(scheduledTasks)
@@ -255,7 +266,7 @@ export async function updateScheduledTask(
       and(
         eq(scheduledTasks.id, taskId),
         eq(scheduledTasks.workspaceId, workspaceId),
-        eq(scheduledTasks.userId, userId),
+        ownerCondition,
       ),
     )
     .limit(1);
@@ -301,14 +312,18 @@ export async function deleteScheduledTask(
   taskId: string,
   workspaceId: string,
   userId: string,
+  options: { allowShared?: boolean } = {},
 ) {
+  const ownerCondition = options.allowShared
+    ? undefined
+    : eq(scheduledTasks.userId, userId);
   await db
     .delete(scheduledTasks)
     .where(
       and(
         eq(scheduledTasks.id, taskId),
         eq(scheduledTasks.workspaceId, workspaceId),
-        eq(scheduledTasks.userId, userId),
+        ownerCondition,
       ),
     );
 }

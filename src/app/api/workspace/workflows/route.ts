@@ -3,8 +3,10 @@ import { z } from "zod";
 
 import {
   handleRoute,
+  requireWorkspaceMemberAsync,
   requireWorkspacePermissionAsync,
 } from "@/lib/route-handler";
+import { hasResourcePermissionForRequest } from "@/modules/auth/workspace-access";
 import { createWorkflowSchema } from "@/modules/workflows/contracts";
 import { createWorkflow, listWorkflows } from "@/modules/workflows/use-cases";
 
@@ -25,14 +27,27 @@ export async function GET(req: NextRequest) {
           { status: 400 },
         );
       }
-      const forbidden = await requireWorkspacePermissionAsync(
+      const forbidden = await requireWorkspaceMemberAsync(
         session.user.id,
         parsed.data.workspaceId,
-        "workflows.view",
       );
       if (forbidden) return forbidden;
+      const workflows = await listWorkflows(parsed.data.workspaceId);
+      const visibleWorkflows = await Promise.all(
+        workflows.map(async (workflow) =>
+          (await hasResourcePermissionForRequest(
+            session.user.id,
+            parsed.data.workspaceId,
+            "workflows.view",
+            "workflow",
+            workflow.id,
+          ))
+            ? workflow
+            : null,
+        ),
+      );
       return NextResponse.json({
-        workflows: await listWorkflows(parsed.data.workspaceId),
+        workflows: visibleWorkflows.filter((workflow) => workflow !== null),
       });
     },
     {

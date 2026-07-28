@@ -1,12 +1,20 @@
 import { and, asc, count, eq, inArray, isNull, ne, or } from "drizzle-orm";
 
 import { logger } from "@/lib/logger";
+import {
+  ACCESS_RESOURCE_DEFINITIONS,
+  type AccessResourceType,
+} from "@/server/domain/entities/access-resource";
 import { audit } from "@/server/domain/services/audit";
 import {
   authorization,
   matchesPermission,
 } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
+import {
+  findAccessResource,
+  listAccessResources,
+} from "@/server/infrastructure/db/access-resource-repository";
 import {
   organizationMembers,
   organizations,
@@ -89,21 +97,8 @@ async function invalidateUserOrganizationAccess(
   userId: string,
   organizationId: string,
 ) {
-  const projectRows = await db
-    .select({ id: workspaces.id })
-    .from(workspaces)
-    .where(eq(workspaces.organizationId, organizationId));
-
-  await Promise.all([
-    authorization.invalidatePermissionCache(
-      userId,
-      "organization",
-      organizationId,
-    ),
-    ...projectRows.map(({ id }) =>
-      authorization.invalidatePermissionCache(userId, "workspace", id),
-    ),
-  ]);
+  void organizationId;
+  await authorization.invalidatePrincipalPermissionCache(userId);
 }
 
 async function findSystemRole(name: string) {
@@ -920,6 +915,109 @@ export async function assignRole(input: {
   });
 }
 
+export async function assignResourceRole(input: {
+  actorUserId: string;
+  workspaceId: string;
+  principalType: AssignmentPrincipalType;
+  principalId: string;
+  roleId: string;
+  resourceType: AccessResourceType;
+  resourceId: string;
+}) {
+  const { organization } = await getWorkspaceScope(input.workspaceId);
+  const resource = await findAccessResource(
+    input.resourceType,
+    input.resourceId,
+  );
+  if (!resource || resource.workspaceId !== input.workspaceId) {
+    throw new IamOperationError("Resource not found in this project", 404);
+  }
+
+  const [role] = await db
+    .select()
+    .from(roles)
+    .where(eq(roles.id, input.roleId))
+    .limit(1);
+  if (
+    !role ||
+    role.scopeType !== "workspace" ||
+    (!role.isSystem &&
+      !(
+        role.ownerResourceType === "workspace" &&
+        role.ownerResourceId === input.workspaceId
+      ))
+  ) {
+    throw new IamOperationError(
+      "Only a project role can be assigned to a resource",
+    );
+  }
+
+  await requirePermission({
+    userId: input.actorUserId,
+    permission: "roles.manage",
+    resourceType: "workspace",
+    resourceId: input.workspaceId,
+    errorMessage: "You do not have permission to share project resources",
+  });
+  if (
+    !(await validateAssignmentPrincipal({
+      organizationId: organization.id,
+      principalType: input.principalType,
+      principalId: input.principalId,
+    }))
+  ) {
+    throw new IamOperationError(
+      "The selected member or team is outside this organization",
+    );
+  }
+
+  await db
+    .insert(roleBindings)
+    .values({
+      principalType: input.principalType,
+      principalId: input.principalId,
+      roleId: role.id,
+      resourceType: input.resourceType,
+      resourceId: input.resourceId,
+      createdById: input.actorUserId,
+    })
+    .onConflictDoNothing();
+
+  const affectedUserIds =
+    input.principalType === "user"
+      ? [input.principalId]
+      : (
+          await db
+            .select({ userId: teamMembers.userId })
+            .from(teamMembers)
+            .where(eq(teamMembers.teamId, input.principalId))
+        ).map(({ userId }) => userId);
+  await Promise.all(
+    affectedUserIds.map((userId) =>
+      authorization.invalidatePermissionCache(
+        userId,
+        input.resourceType,
+        input.resourceId,
+      ),
+    ),
+  );
+  await audit.emit({
+    organizationId: organization.id,
+    workspaceId: input.workspaceId,
+    actorPrincipalType: "user",
+    actorPrincipalId: input.actorUserId,
+    action: "iam.resource_role.assigned",
+    resourceType: input.resourceType,
+    resourceId: input.resourceId,
+    outcome: "success",
+    metadata: {
+      roleId: role.id,
+      principalType: input.principalType,
+      principalId: input.principalId,
+    },
+  });
+}
+
 export async function removeRoleAssignment(input: {
   actorUserId: string;
   workspaceId: string;
@@ -932,13 +1030,23 @@ export async function removeRoleAssignment(input: {
     .innerJoin(roles, eq(roleBindings.roleId, roles.id))
     .where(eq(roleBindings.id, input.bindingId))
     .limit(1);
+  const resource =
+    binding &&
+    binding.binding.resourceType !== "organization" &&
+    binding.binding.resourceType !== "workspace"
+      ? await findAccessResource(
+          binding.binding.resourceType,
+          binding.binding.resourceId,
+        )
+      : null;
   if (
     !binding ||
     !(
       (binding.binding.resourceType === "organization" &&
         binding.binding.resourceId === organization.id) ||
       (binding.binding.resourceType === "workspace" &&
-        binding.binding.resourceId === input.workspaceId)
+        binding.binding.resourceId === input.workspaceId) ||
+      resource?.workspaceId === input.workspaceId
     )
   ) {
     throw new IamOperationError("Access assignment not found", 404);
@@ -950,11 +1058,14 @@ export async function removeRoleAssignment(input: {
       binding.binding.resourceType === "organization"
         ? "organization"
         : "workspace",
-    resourceId: binding.binding.resourceId,
+    resourceId:
+      binding.binding.resourceType === "organization"
+        ? binding.binding.resourceId
+        : input.workspaceId,
     errorMessage:
       binding.binding.resourceType === "organization"
         ? "You do not have permission to remove organization access"
-        : "You do not have permission to remove project access",
+        : "You do not have permission to remove project resource access",
   });
 
   if (binding.role.name === "organization.owner") {
@@ -991,7 +1102,14 @@ export async function removeRoleAssignment(input: {
         : [];
   await Promise.all(
     affectedUserIds.map((userId) =>
-      invalidateUserOrganizationAccess(userId, organization.id),
+      binding.binding.resourceType === "organization" ||
+      binding.binding.resourceType === "workspace"
+        ? invalidateUserOrganizationAccess(userId, organization.id)
+        : authorization.invalidatePermissionCache(
+            userId,
+            binding.binding.resourceType,
+            binding.binding.resourceId,
+          ),
     ),
   );
   await audit.emit({
@@ -1207,11 +1325,131 @@ export async function getAccessConsoleSnapshot(input: {
       };
     }),
     permissionCatalog: PERMISSION_CATALOG,
+    resourceDefinitions: ACCESS_RESOURCE_DEFINITIONS,
     effectivePermissions,
     capabilities,
     canManageAccess:
       capabilities.canManageProjectAccess ||
       capabilities.canManageOrganizationAccess,
+  };
+}
+
+export async function listProjectAccessResources(input: {
+  userId: string;
+  workspaceId: string;
+  resourceType: AccessResourceType;
+  search?: string;
+  offset?: number;
+  limit?: number;
+}) {
+  const access = await authorization.checkPermission(
+    { principalType: "user", principalId: input.userId },
+    "workspaces.get",
+    "workspace",
+    input.workspaceId,
+  );
+  if (!access.granted) {
+    throw new IamOperationError(
+      "You cannot view resources in this project",
+      403,
+    );
+  }
+  const result = await listAccessResources({
+    workspaceId: input.workspaceId,
+    type: input.resourceType,
+    search: input.search,
+    offset: input.offset,
+    limit: input.limit,
+  });
+  return {
+    ...result,
+    resourceDefinitions: ACCESS_RESOURCE_DEFINITIONS,
+  };
+}
+
+export async function getResourceAccessSnapshot(input: {
+  userId: string;
+  workspaceId: string;
+  resourceType: AccessResourceType;
+  resourceId: string;
+}) {
+  const [snapshot, resource] = await Promise.all([
+    getAccessConsoleSnapshot({
+      userId: input.userId,
+      workspaceId: input.workspaceId,
+    }),
+    findAccessResource(input.resourceType, input.resourceId),
+  ]);
+  if (!resource || resource.workspaceId !== input.workspaceId) {
+    throw new IamOperationError("Resource not found in this project", 404);
+  }
+
+  const directBindings = await db
+    .select({ binding: roleBindings, role: roles })
+    .from(roleBindings)
+    .innerJoin(roles, eq(roleBindings.roleId, roles.id))
+    .where(
+      and(
+        eq(roleBindings.resourceType, input.resourceType),
+        eq(roleBindings.resourceId, input.resourceId),
+      ),
+    );
+  const memberNames = new Map(
+    snapshot.members.map((member) => [
+      member.userId,
+      { name: member.name, email: member.email },
+    ]),
+  );
+  const teamNames = new Map(
+    snapshot.teams.map((team) => [team.id, { name: team.name }]),
+  );
+  const directAssignments = directBindings.map(({ binding, role }) => {
+    const member =
+      binding.principalType === "user"
+        ? memberNames.get(binding.principalId)
+        : undefined;
+    const team =
+      binding.principalType === "group"
+        ? teamNames.get(binding.principalId)
+        : undefined;
+    return {
+      id: binding.id,
+      principalType:
+        binding.principalType === "group"
+          ? ("team" as const)
+          : binding.principalType,
+      principalId: binding.principalId,
+      principalName: member?.name ?? team?.name ?? "Unknown principal",
+      principalDetail: member?.email,
+      roleId: role.id,
+      roleName: role.displayName,
+      roleKey: role.name,
+      scope: "resource" as const,
+      inherited: false,
+    };
+  });
+  const permissionDomains =
+    ACCESS_RESOURCE_DEFINITIONS.find(
+      (definition) => definition.type === input.resourceType,
+    )?.permissionDomains ?? [];
+
+  return {
+    resource,
+    organization: snapshot.organization,
+    activeProject: snapshot.activeProject,
+    members: snapshot.members,
+    teams: snapshot.teams,
+    roles: snapshot.roles.filter(
+      (role) =>
+        role.scopeType === "workspace" &&
+        role.permissions.some((permission) =>
+          permissionDomains.includes(permission.split(".")[0]),
+        ),
+    ),
+    assignments: [...snapshot.assignments, ...directAssignments],
+    capabilities: {
+      canManageResourceAccess: snapshot.capabilities.canManageProjectAccess,
+    },
   };
 }
 

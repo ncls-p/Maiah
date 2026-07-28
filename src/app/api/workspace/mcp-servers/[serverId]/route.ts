@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import {
   handleRoute,
-  requireWorkspacePermissionAsync,
+  requireResourcePermissionAsync,
 } from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
 import {
@@ -43,10 +43,12 @@ export async function GET(
           { error: "workspaceId must be a valid UUID" },
           { status: 400 },
         );
-      const forbidden = await requireWorkspacePermissionAsync(
+      const forbidden = await requireResourcePermissionAsync(
         session.user.id,
         parsed.data.workspaceId,
         "mcpServers.get",
+        "mcp_server",
+        (await params).serverId,
       );
       if (forbidden) return forbidden;
       const { serverId } = await params;
@@ -79,10 +81,12 @@ export async function PATCH(
           { error: "Invalid input", details: parsed.error.issues },
           { status: 400 },
         );
-      const forbidden = await requireWorkspacePermissionAsync(
+      const forbidden = await requireResourcePermissionAsync(
         session.user.id,
         parsed.data.workspaceId,
         "mcpServers.manage",
+        "mcp_server",
+        (await params).serverId,
       );
       if (forbidden) return forbidden;
       const { serverId } = await params;
@@ -138,10 +142,12 @@ export async function DELETE(
           { error: "workspaceId must be a valid UUID" },
           { status: 400 },
         );
-      const forbidden = await requireWorkspacePermissionAsync(
+      const forbidden = await requireResourcePermissionAsync(
         session.user.id,
         parsed.data.workspaceId,
         "mcpServers.manage",
+        "mcp_server",
+        (await params).serverId,
       );
       if (forbidden) return forbidden;
       const { serverId } = await params;

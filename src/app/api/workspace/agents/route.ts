@@ -3,6 +3,7 @@ import { eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import {
   handleRoute,
+  requireWorkspaceMemberAsync,
   requireWorkspacePermissionAsync,
 } from "@/lib/route-handler";
 import {
@@ -20,7 +21,10 @@ import {
 import { DelegationBindingValidationError } from "@/modules/agent/delegation-use-cases";
 import { ONBOARDING_TOOL_PRESET } from "@/modules/agent/onboarding-tools";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
-import { hasWorkspacePermissionForRequest } from "@/modules/auth/workspace-access";
+import {
+  hasResourcePermissionForRequest,
+  hasWorkspacePermissionForRequest,
+} from "@/modules/auth/workspace-access";
 import { db } from "@/server/infrastructure/db";
 import {
   agentVersions,
@@ -262,10 +266,9 @@ export async function GET(req: NextRequest) {
         );
       }
       const { workspaceId, includeModelMeta } = parsed.data;
-      const forbidden = await requireWorkspacePermissionAsync(
+      const forbidden = await requireWorkspaceMemberAsync(
         session.user.id,
         workspaceId,
-        "agents.list",
       );
       if (forbidden) return forbidden;
       const canAdminCurate = await canManageTenantGlobals(session, workspaceId);
@@ -315,24 +318,34 @@ export async function GET(req: NextRequest) {
             string,
             { displayName: string | null; logoUrl: string | null }
           >();
-      const agentsWithAccess = list.map((agent) => ({
-        ...agent,
-        promptSuggestions: normalizePromptSuggestions(
-          agent.promptSuggestionsJson,
-        ),
-        ...(agent.activeVersionId
-          ? {
-              modelDisplayName: modelMetaByVersionId.get(agent.activeVersionId)
-                ?.displayName,
-              modelLogoUrl: modelMetaByVersionId.get(agent.activeVersionId)
-                ?.logoUrl,
-            }
-          : {}),
-        canEdit:
-          canUpdateAgents &&
-          canEditAgent(agent, session.user.id, canAdminCurate),
-        canClone: canCreateAgent,
-      }));
+      const agentsWithAccess = await Promise.all(
+        list.map(async (agent) => ({
+          ...agent,
+          promptSuggestions: normalizePromptSuggestions(
+            agent.promptSuggestionsJson,
+          ),
+          ...(agent.activeVersionId
+            ? {
+                modelDisplayName: modelMetaByVersionId.get(
+                  agent.activeVersionId,
+                )?.displayName,
+                modelLogoUrl: modelMetaByVersionId.get(agent.activeVersionId)
+                  ?.logoUrl,
+              }
+            : {}),
+          canEdit:
+            (canUpdateAgents &&
+              canEditAgent(agent, session.user.id, canAdminCurate)) ||
+            (await hasResourcePermissionForRequest(
+              session.user.id,
+              workspaceId,
+              "agents.update",
+              "agent",
+              agent.id,
+            )),
+          canClone: canCreateAgent,
+        })),
+      );
       return NextResponse.json({
         agents: agentsWithAccess,
         canAdminCurate,

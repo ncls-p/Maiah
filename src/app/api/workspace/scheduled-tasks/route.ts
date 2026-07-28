@@ -5,9 +5,14 @@ import {
   requireWorkspacePermissionAsync,
 } from "@/lib/route-handler";
 import {
+  hasResourcePermissionForRequest,
+  isWorkspaceMemberForRequest,
+} from "@/modules/auth/workspace-access";
+import {
   createScheduledTask,
   listScheduledTasks,
 } from "@/modules/scheduled-tasks/use-cases";
+import { listDirectlyBoundResourceIds } from "@/server/infrastructure/db/access-resource-repository";
 
 const querySchema = z.object({ workspaceId: z.uuid() });
 
@@ -48,14 +53,38 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: "Invalid input" }, { status: 400 });
       }
       if (
-        !(await requireChatPermission(session.user.id, parsed.data.workspaceId))
+        !(await isWorkspaceMemberForRequest(
+          session.user.id,
+          parsed.data.workspaceId,
+        ))
       ) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
+      const directlyBoundIds = await listDirectlyBoundResourceIds(
+        session.user.id,
+        "scheduled_task",
+      );
+      const directlyAccessibleIds = (
+        await Promise.all(
+          directlyBoundIds.map(async (taskId) => ({
+            taskId,
+            granted: await hasResourcePermissionForRequest(
+              session.user.id,
+              parsed.data.workspaceId,
+              "agents.chat",
+              "scheduled_task",
+              taskId,
+            ),
+          })),
+        )
+      )
+        .filter(({ granted }) => granted)
+        .map(({ taskId }) => taskId);
       return NextResponse.json({
         tasks: await listScheduledTasks(
           parsed.data.workspaceId,
           session.user.id,
+          directlyAccessibleIds,
         ),
       });
     },

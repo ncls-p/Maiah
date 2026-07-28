@@ -337,7 +337,7 @@ describe("submitSecretRequest", () => {
 });
 
 describe("custom tool listing and deletion", () => {
-	it("adds canEdit for creator, manager-managed global tools, and non-editable rows", async () => {
+	it("lists only accessible tools and marks editable tools", async () => {
 		dbModule._c.orderBy.mockResolvedValueOnce([
 			{ id: "own", createdById: "user-1", isGlobal: false, name: "Own" },
 			{ id: "global", createdById: "other", isGlobal: true, name: "Global" },
@@ -346,7 +346,7 @@ describe("custom tool listing and deletion", () => {
 
 		const result = await listCustomTools("ws-1", "user-1", true);
 
-		expect(result.map((item) => item.canEdit)).toEqual([true, true, false]);
+		expect(result.map((item) => item.canEdit)).toEqual([true, true]);
 	});
 
 	it("throws when deleting an absent or unauthorized custom tool", async () => {

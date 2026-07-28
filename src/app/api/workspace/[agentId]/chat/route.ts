@@ -4,7 +4,7 @@ import { after, NextRequest, NextResponse } from "next/server";
 import { fallbackSystemPrompt } from "@/lib/copy-defaults";
 import { encryptValue } from "@/lib/crypto";
 import { logger, logHandledError, logHandledWarning } from "@/lib/logger";
-import { requireWorkspacePermissionAsync } from "@/lib/route-handler";
+import { requireResourcePermissionAsync } from "@/lib/route-handler";
 import {
   getActorUserId,
   resolveAuthContext,
@@ -182,10 +182,12 @@ export async function POST(
     }
 
     const forbidden = await runWithRequestAuth(auth, () =>
-      requireWorkspacePermissionAsync(
+      requireResourcePermissionAsync(
         actorUserId,
         agent.workspaceId,
         "agents.chat",
+        "agent",
+        agentId,
       ),
     );
     if (forbidden) {

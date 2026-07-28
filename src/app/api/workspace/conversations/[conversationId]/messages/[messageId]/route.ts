@@ -4,7 +4,7 @@ import { z } from "zod";
 import { encryptValue } from "@/lib/crypto";
 import {
   handleRoute,
-  requireWorkspacePermissionAsync,
+  requireResourcePermissionAsync,
 } from "@/lib/route-handler";
 import { db } from "@/server/infrastructure/db";
 import {
@@ -32,17 +32,18 @@ async function getAuthorizedConversation(input: {
     .where(
       and(
         eq(conversations.id, input.conversationId),
-        eq(conversations.userId, input.userId),
         eq(conversations.status, "active"),
         isNull(conversations.archivedAt),
       ),
     )
     .limit(1);
   if (!conversation) return null;
-  const permission = await requireWorkspacePermissionAsync(
+  const permission = await requireResourcePermissionAsync(
     input.userId,
     conversation.workspaceId,
     "conversations.viewOwn",
+    "conversation",
+    input.conversationId,
   );
   if (permission) return null;
   return conversation;

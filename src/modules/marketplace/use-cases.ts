@@ -1,6 +1,8 @@
-import { and, eq, ilike, or, sql, desc } from "drizzle-orm";
+import { and, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { logHandledError } from "@/lib/logger";
 import { audit } from "@/server/domain/services/audit";
+import { authorization } from "@/server/domain/services/authorization";
+import { listDirectlyBoundResourceIds } from "@/server/infrastructure/db/access-resource-repository";
 import { db } from "@/server/infrastructure/db";
 import {
   agents,
@@ -33,6 +35,20 @@ export { getPublishPreview } from "./publish-preview";
 export type { PublishPreviewResult } from "./publish-preview";
 
 type MarketplaceVisibility = "public" | "private";
+
+async function canManageMarketplaceItem(
+  item: NonNullable<Awaited<ReturnType<typeof getMarketplaceItem>>>,
+  userId: string,
+) {
+  if (item.publisherUserId === userId) return true;
+  if (!item.publisherWorkspaceId) return false;
+  return authorization.hasPermission(
+    { principalType: "user", principalId: userId },
+    "marketplaceItems.publish",
+    "marketplace_item",
+    item.id,
+  );
+}
 
 // ─── List / Search ─────────────────────────────────────────────────────
 
@@ -177,7 +193,7 @@ export async function getMarketplaceItemDetail(
     .innerJoin(users, eq(users.id, marketplaceItemShares.sharedWithUserId))
     .where(eq(marketplaceItemShares.itemId, itemId));
 
-  const isOwner = userId ? item.publisherUserId === userId : false;
+  const isOwner = userId ? await canManageMarketplaceItem(item, userId) : false;
   const canInstall = userId
     ? await canUserInstallMarketplaceItem(item, userId)
     : item.status === "published" && item.visibility === "public";
@@ -593,7 +609,7 @@ export async function publishMarketplaceItem(
     .where(eq(marketplaceItems.id, itemId))
     .limit(1);
   if (!item) throw new Error("Marketplace item not found");
-  if (item.publisherUserId !== userId)
+  if (!(await canManageMarketplaceItem(item, userId)))
     throw new Error("Not authorized to publish this item");
   if (item.status !== "draft") throw new Error("Only drafts can be published");
 
@@ -651,7 +667,7 @@ export async function shareMarketplaceItem(input: {
     .where(eq(marketplaceItems.id, input.itemId))
     .limit(1);
   if (!item) throw new Error("Marketplace item not found");
-  if (item.publisherUserId !== input.userId)
+  if (!(await canManageMarketplaceItem(item, input.userId)))
     throw new Error("Not authorized to share this item");
 
   const [targetUser] = await db
@@ -697,7 +713,7 @@ export async function unshareMarketplaceItem(input: {
     .where(eq(marketplaceItems.id, input.itemId))
     .limit(1);
   if (!item) throw new Error("Marketplace item not found");
-  if (item.publisherUserId !== input.userId)
+  if (!(await canManageMarketplaceItem(item, input.userId)))
     throw new Error("Not authorized to unshare this item");
 
   await db
@@ -739,10 +755,35 @@ export async function getSharedWithMe(userId: string) {
 }
 
 export async function getMyMarketplaceItems(userId: string) {
+  const directlyBoundIds = await listDirectlyBoundResourceIds(
+    userId,
+    "marketplace_item",
+  );
+  const directlyAccessibleIds = (
+    await Promise.all(
+      directlyBoundIds.map(async (itemId) => ({
+        itemId,
+        granted: await authorization.hasPermission(
+          { principalType: "user", principalId: userId },
+          "marketplaceItems.publish",
+          "marketplace_item",
+          itemId,
+        ),
+      })),
+    )
+  )
+    .filter(({ granted }) => granted)
+    .map(({ itemId }) => itemId);
+  const visibleItemCondition = directlyAccessibleIds.length
+    ? or(
+        eq(marketplaceItems.publisherUserId, userId),
+        inArray(marketplaceItems.id, directlyAccessibleIds),
+      )
+    : eq(marketplaceItems.publisherUserId, userId);
   return db
     .select()
     .from(marketplaceItems)
-    .where(eq(marketplaceItems.publisherUserId, userId))
+    .where(visibleItemCondition)
     .orderBy(desc(marketplaceItems.updatedAt));
 }
 
@@ -835,7 +876,7 @@ export async function updateMarketplaceItem(input: {
     .where(eq(marketplaceItems.id, input.itemId))
     .limit(1);
   if (!item) throw new Error("Marketplace item not found");
-  if (item.publisherUserId !== input.userId)
+  if (!(await canManageMarketplaceItem(item, input.userId)))
     throw new Error("Not authorized to update this item");
 
   const updates: Partial<typeof marketplaceItems.$inferInsert> = {
@@ -863,7 +904,7 @@ export async function deleteMarketplaceItem(itemId: string, userId: string) {
     .where(eq(marketplaceItems.id, itemId))
     .limit(1);
   if (!item) throw new Error("Marketplace item not found");
-  if (item.publisherUserId !== userId)
+  if (!(await canManageMarketplaceItem(item, userId)))
     throw new Error("Not authorized to delete this item");
 
   const [updated] = await db

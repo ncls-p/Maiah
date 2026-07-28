@@ -3,6 +3,7 @@ import {
   asc,
   desc,
   eq,
+  inArray,
   isNotNull,
   isNull,
   lt,
@@ -12,10 +13,11 @@ import {
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { decryptValue } from "@/lib/crypto";
+import { handleRoute } from "@/lib/route-handler";
 import {
-  handleRoute,
-  requireWorkspacePermissionAsync,
-} from "@/lib/route-handler";
+  hasResourcePermissionForRequest,
+  isWorkspaceMemberForRequest,
+} from "@/modules/auth/workspace-access";
 import {
   conversationSearchSnippet,
   conversationTextMatches,
@@ -28,6 +30,7 @@ import {
   messageParts,
   messages,
 } from "@/server/infrastructure/db/schema";
+import { listDirectlyBoundResourceIds } from "@/server/infrastructure/db/access-resource-repository";
 
 const DEFAULT_CONVERSATION_LIMIT = 50;
 const MAX_CONVERSATION_LIMIT = 100;
@@ -114,16 +117,40 @@ export async function GET(req: NextRequest) {
         );
       }
 
-      const forbidden = await requireWorkspacePermissionAsync(
+      if (!(await isWorkspaceMemberForRequest(session.user.id, workspaceId))) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+
+      const directlyBoundIds = await listDirectlyBoundResourceIds(
         session.user.id,
-        workspaceId,
-        "conversations.viewOwn",
+        "conversation",
       );
-      if (forbidden) return forbidden;
+      const directlyAccessibleIds = (
+        await Promise.all(
+          directlyBoundIds.map(async (conversationId) => ({
+            conversationId,
+            granted: await hasResourcePermissionForRequest(
+              session.user.id,
+              workspaceId,
+              "conversations.viewOwn",
+              "conversation",
+              conversationId,
+            ),
+          })),
+        )
+      )
+        .filter(({ granted }) => granted)
+        .map(({ conversationId }) => conversationId);
+      const visibleConversationCondition = directlyAccessibleIds.length
+        ? or(
+            eq(conversations.userId, session.user.id),
+            inArray(conversations.id, directlyAccessibleIds),
+          )
+        : eq(conversations.userId, session.user.id);
 
       const scopeConditions = [
         eq(conversations.workspaceId, workspaceId),
-        eq(conversations.userId, session.user.id),
+        visibleConversationCondition,
         eq(conversations.status, "active"),
         isNull(conversations.archivedAt),
       ];

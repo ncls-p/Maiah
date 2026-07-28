@@ -214,7 +214,6 @@ describe("authorization.checkPermission", () => {
     dbModule._c.where
       .mockReturnValueOnce(dbModule._c)
       .mockReturnValueOnce(dbModule._c)
-      .mockReturnValueOnce(dbModule._c)
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([
         {

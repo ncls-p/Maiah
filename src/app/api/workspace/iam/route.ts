@@ -6,6 +6,7 @@ import {
   addOrganizationMember,
   addTeamMember,
   assignRole,
+  assignResourceRole,
   createCustomRole,
   createOrganizationWithProject,
   createProject,
@@ -19,6 +20,7 @@ import {
   removeTeamMember,
   updateCustomRole,
 } from "@/modules/iam/use-cases";
+import { ACCESS_RESOURCE_TYPES } from "@/server/domain/entities/access-resource";
 
 const workspaceQuerySchema = z.object({
   workspaceId: z.uuid(),
@@ -93,6 +95,15 @@ const mutationSchema = z.discriminatedUnion("action", [
     principalIds: z.array(z.uuid()).min(1).max(100),
     roleId: z.uuid(),
     scopeType: z.enum(["organization", "workspace"]),
+  }),
+  z.object({
+    action: z.literal("assignResourceRole"),
+    workspaceId: z.uuid(),
+    principalType: z.enum(["user", "group"]),
+    principalId: z.uuid(),
+    roleId: z.uuid(),
+    resourceType: z.enum(ACCESS_RESOURCE_TYPES),
+    resourceId: z.uuid(),
   }),
   z.object({
     action: z.literal("removeAssignment"),
@@ -261,6 +272,17 @@ export async function POST(req: NextRequest) {
               scopeType: input.scopeType,
             });
           }
+          break;
+        case "assignResourceRole":
+          await assignResourceRole({
+            actorUserId: session.user.id,
+            workspaceId: input.workspaceId,
+            principalType: input.principalType,
+            principalId: input.principalId,
+            roleId: input.roleId,
+            resourceType: input.resourceType,
+            resourceId: input.resourceId,
+          });
           break;
         case "removeAssignment":
           await removeRoleAssignment({

@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import {
   handleRoute,
-  requireWorkspacePermissionAsync,
+  requireResourcePermissionAsync,
 } from "@/lib/route-handler";
 import { updateWorkflowSchema } from "@/modules/workflows/contracts";
 import {
@@ -31,10 +31,12 @@ export async function GET(
       if (!parsedParams.success || !parsedQuery.success) {
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
       }
-      const forbidden = await requireWorkspacePermissionAsync(
+      const forbidden = await requireResourcePermissionAsync(
         session.user.id,
         parsedQuery.data.workspaceId,
         "workflows.view",
+        "workflow",
+        (await params).workflowId,
       );
       if (forbidden) return forbidden;
       return NextResponse.json({
@@ -69,10 +71,12 @@ export async function PATCH(
           { status: 400 },
         );
       }
-      const forbidden = await requireWorkspacePermissionAsync(
+      const forbidden = await requireResourcePermissionAsync(
         session.user.id,
         parsedBody.data.workspaceId,
         "workflows.update",
+        "workflow",
+        (await params).workflowId,
       );
       if (forbidden) return forbidden;
       return NextResponse.json({
@@ -104,10 +108,12 @@ export async function DELETE(
       if (!parsedParams.success || !parsedQuery.success) {
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
       }
-      const forbidden = await requireWorkspacePermissionAsync(
+      const forbidden = await requireResourcePermissionAsync(
         session.user.id,
         parsedQuery.data.workspaceId,
         "workflows.delete",
+        "workflow",
+        (await params).workflowId,
       );
       if (forbidden) return forbidden;
       return NextResponse.json({

@@ -52,6 +52,12 @@ vi.mock("@/modules/marketplace/install-helpers", () => ({
 vi.mock("@/server/domain/services/audit", () => ({
 	audit: { emit: vi.fn().mockResolvedValue(undefined) },
 }));
+vi.mock("@/server/domain/services/authorization", () => ({
+	authorization: { hasPermission: vi.fn().mockResolvedValue(false) },
+}));
+vi.mock("@/server/infrastructure/db/access-resource-repository", () => ({
+	listDirectlyBoundResourceIds: vi.fn().mockResolvedValue([]),
+}));
 vi.mock("@/lib/logger", () => ({ logHandledError: vi.fn() }));
 
 type Chain = {
@@ -115,6 +121,7 @@ vi.mock("@/server/infrastructure/db", () => {
 });
 
 import { logHandledError } from "@/lib/logger";
+import { authorization } from "@/server/domain/services/authorization";
 import * as _dbModule from "@/server/infrastructure/db";
 import {
 	adminModerateItem,
@@ -350,6 +357,28 @@ describe("marketplace draft creation", () => {
 });
 
 describe("marketplace item management", () => {
+	it("allows a delegated resource manager to update an item", async () => {
+		vi.mocked(authorization.hasPermission).mockResolvedValueOnce(true);
+		dbModule._c.limit.mockResolvedValueOnce([published]);
+		dbModule._c.returning.mockResolvedValueOnce([
+			{ id: "item-1", name: "Delegated update" },
+		]);
+
+		await expect(
+			updateMarketplaceItem({
+				itemId: "item-1",
+				userId: ids.otherUserId,
+				name: "Delegated update",
+			}),
+		).resolves.toMatchObject({ name: "Delegated update" });
+		expect(authorization.hasPermission).toHaveBeenCalledWith(
+			{ principalType: "user", principalId: ids.otherUserId },
+			"marketplaceItems.publish",
+			"marketplace_item",
+			"item-1",
+		);
+	});
+
 	it("publishes, updates, deletes, features, unfeatures, and moderates items", async () => {
 		dbModule._c.limit
 			.mockResolvedValueOnce([item])

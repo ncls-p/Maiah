@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  BoxesIcon,
   Building2Icon,
   CheckIcon,
   ChevronRightIcon,
@@ -149,7 +150,7 @@ type AccessAssignment = {
   roleId: string;
   roleName: string;
   roleKey: string;
-  scope: "organization" | "project";
+  scope: "organization" | "project" | "resource";
   inherited: boolean;
 };
 
@@ -173,6 +174,7 @@ type AccessSnapshot = {
   roles: AccessRole[];
   assignments: AccessAssignment[];
   permissionCatalog: PermissionGroup[];
+  resourceDefinitions: AccessResourceDefinition[];
   effectivePermissions: string[];
   capabilities: {
     canManageProjectAccess: boolean;
@@ -182,6 +184,31 @@ type AccessSnapshot = {
     canManageTeams: boolean;
   };
   canManageAccess: boolean;
+};
+
+type AccessResourceDefinition = {
+  type: string;
+  label: string;
+  pluralLabel: string;
+  permissionDomains: string[];
+};
+
+type AccessResource = {
+  id: string;
+  type: string;
+  name: string;
+};
+
+type ResourceAccessSnapshot = {
+  resource: AccessResource & {
+    workspaceId: string;
+    organizationId: string;
+  };
+  members: AccessMember[];
+  teams: AccessTeam[];
+  roles: AccessRole[];
+  assignments: AccessAssignment[];
+  capabilities: { canManageResourceAccess: boolean };
 };
 
 type MutationPayload = Record<string, unknown> & { action: string };
@@ -253,6 +280,581 @@ function InitialError({
         {t("retry")}
       </Button>
     </Empty>
+  );
+}
+
+function ResourceAccessPanel({
+  workspaceId,
+  definitions,
+}: {
+  workspaceId: string;
+  definitions: AccessResourceDefinition[];
+}) {
+  const t = useTranslations("access");
+  const [resourceType, setResourceType] = useState(
+    definitions[0]?.type ?? "agent",
+  );
+  const [query, setQuery] = useState("");
+  const [resources, setResources] = useState<AccessResource[]>([]);
+  const [loadingResources, setLoadingResources] = useState(true);
+  const [loadingMoreResources, setLoadingMoreResources] = useState(false);
+  const [nextResourceOffset, setNextResourceOffset] = useState<number | null>(
+    null,
+  );
+  const [selected, setSelected] = useState<AccessResource | null>(null);
+  const [details, setDetails] = useState<ResourceAccessSnapshot | null>(null);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [pending, setPending] = useState<string | null>(null);
+  const [principalType, setPrincipalType] = useState<"user" | "group">("user");
+  const [principalId, setPrincipalId] = useState("");
+  const [roleId, setRoleId] = useState("");
+  const [principalQuery, setPrincipalQuery] = useState("");
+  const [assignmentQuery, setAssignmentQuery] = useState("");
+
+  const loadResources = useCallback(
+    async (offset = 0) => {
+      if (offset === 0) {
+        setLoadingResources(true);
+      } else {
+        setLoadingMoreResources(true);
+      }
+      try {
+        const params = new URLSearchParams({
+          workspaceId,
+          resourceType,
+          search: query,
+          limit: "50",
+          offset: String(offset),
+        });
+        const result = await fetchJson<{
+          resources: AccessResource[];
+          nextOffset: number | null;
+        }>(`/api/workspace/iam/resources?${params}`);
+        setResources((current) =>
+          offset === 0 ? result.resources : [...current, ...result.resources],
+        );
+        setNextResourceOffset(result.nextOffset);
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : t("resourcesLoadFailed"),
+        );
+      } finally {
+        setLoadingResources(false);
+        setLoadingMoreResources(false);
+      }
+    },
+    [query, resourceType, t, workspaceId],
+  );
+
+  const loadDetails = useCallback(
+    async (resource: AccessResource) => {
+      setDetailsLoading(true);
+      try {
+        const params = new URLSearchParams({
+          workspaceId,
+          resourceType: resource.type,
+          resourceId: resource.id,
+        });
+        setDetails(
+          await fetchJson<ResourceAccessSnapshot>(
+            `/api/workspace/iam/resources?${params}`,
+          ),
+        );
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : t("resourcesLoadFailed"),
+        );
+      } finally {
+        setDetailsLoading(false);
+      }
+    },
+    [t, workspaceId],
+  );
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => void loadResources(), 250);
+    return () => window.clearTimeout(timeout);
+  }, [loadResources]);
+
+  const principals =
+    principalType === "user"
+      ? (details?.members ?? [])
+      : (details?.teams ?? []);
+  const filteredPrincipals = principals.filter((principal) =>
+    [principal.name, "email" in principal ? principal.email : ""].some(
+      (value) =>
+        value
+          .toLocaleLowerCase()
+          .includes(principalQuery.trim().toLocaleLowerCase()),
+    ),
+  );
+  const groupedAssignments = useMemo(() => {
+    const groups = new Map<
+      string,
+      {
+        principalName: string;
+        principalDetail?: string;
+        assignments: AccessAssignment[];
+      }
+    >();
+    for (const assignment of details?.assignments ?? []) {
+      const key = `${assignment.principalType}:${assignment.principalId}`;
+      const group = groups.get(key);
+      if (group) {
+        group.assignments.push(assignment);
+      } else {
+        groups.set(key, {
+          principalName: assignment.principalName,
+          principalDetail: assignment.principalDetail,
+          assignments: [assignment],
+        });
+      }
+    }
+    return [...groups.entries()];
+  }, [details]);
+  const filteredGroupedAssignments = useMemo(() => {
+    const normalizedQuery = assignmentQuery.trim().toLocaleLowerCase();
+    if (!normalizedQuery) return groupedAssignments;
+    return groupedAssignments.filter(([, group]) =>
+      [
+        group.principalName,
+        group.principalDetail ?? "",
+        ...group.assignments.flatMap((assignment) => [
+          assignment.roleName,
+          assignment.scope,
+        ]),
+      ].some((value) => value.toLocaleLowerCase().includes(normalizedQuery)),
+    );
+  }, [assignmentQuery, groupedAssignments]);
+
+  async function assignResourceRole(event: FormEvent) {
+    event.preventDefault();
+    if (!selected || !principalId || !roleId) return;
+    setPending("assign");
+    try {
+      await fetchJson("/api/workspace/iam", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "assignResourceRole",
+          workspaceId,
+          principalType,
+          principalId,
+          roleId,
+          resourceType: selected.type,
+          resourceId: selected.id,
+        }),
+      });
+      toast.success(t("resourceAccessGranted"));
+      setPrincipalId("");
+      setRoleId("");
+      await loadDetails(selected);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("mutationError"));
+    } finally {
+      setPending(null);
+    }
+  }
+
+  async function removeResourceAssignment(bindingId: string) {
+    if (!selected) return;
+    setPending(bindingId);
+    try {
+      await fetchJson("/api/workspace/iam", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "removeAssignment",
+          workspaceId,
+          bindingId,
+        }),
+      });
+      toast.success(t("assignmentRemoved"));
+      await loadDetails(selected);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("mutationError"));
+    } finally {
+      setPending(null);
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{t("resourcesTitle")}</CardTitle>
+        <CardDescription>{t("resourcesDescription")}</CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        <div className="grid gap-3 sm:grid-cols-[15rem_minmax(16rem,1fr)]">
+          <Field>
+            <FieldLabel htmlFor="resource-type">{t("resourceType")}</FieldLabel>
+            <Select
+              value={resourceType}
+              onValueChange={(value) => {
+                setResourceType(value);
+                setResources([]);
+                setNextResourceOffset(null);
+              }}
+            >
+              <SelectTrigger id="resource-type" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {definitions.map((definition) => (
+                    <SelectItem key={definition.type} value={definition.type}>
+                      {t(`resourceTypes.${definition.type}`)}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="resource-search">
+              {t("searchResources")}
+            </FieldLabel>
+            <div className="relative">
+              <SearchIcon
+                className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+                aria-hidden="true"
+              />
+              <Input
+                id="resource-search"
+                className="pl-9"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder={t("searchResourcesPlaceholder")}
+              />
+            </div>
+          </Field>
+        </div>
+
+        {loadingResources ? (
+          <div className="flex min-h-40 items-center justify-center">
+            <Spinner />
+            <span className="sr-only">{t("loadingResources")}</span>
+          </div>
+        ) : resources.length === 0 ? (
+          <Empty className="min-h-48 border border-dashed">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <BoxesIcon aria-hidden="true" />
+              </EmptyMedia>
+              <EmptyTitle>{t("noResources")}</EmptyTitle>
+              <EmptyDescription>{t("noResourcesDescription")}</EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        ) : (
+          <div className="overflow-hidden rounded-xl border">
+            <table className="w-full text-left">
+              <thead className="bg-muted/45 text-xs text-muted-foreground">
+                <tr>
+                  <th className="px-4 py-3 font-medium">{t("resource")}</th>
+                  <th className="px-4 py-3 text-right font-medium">
+                    {t("actions")}
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {resources.map((resource) => (
+                  <tr key={resource.id} className="hover:bg-muted/25">
+                    <td className="px-4 py-3">
+                      <span className="font-medium">{resource.name}</span>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setSelected(resource);
+                          setDetails(null);
+                          setPrincipalId("");
+                          setRoleId("");
+                          setAssignmentQuery("");
+                          void loadDetails(resource);
+                        }}
+                      >
+                        <ShieldCheckIcon
+                          data-icon="inline-start"
+                          aria-hidden="true"
+                        />
+                        {t("manageResourceAccess")}
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {nextResourceOffset !== null ? (
+              <div className="flex justify-center border-t bg-muted/15 p-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={loadingMoreResources}
+                  onClick={() => void loadResources(nextResourceOffset)}
+                >
+                  {loadingMoreResources ? (
+                    <Spinner data-icon="inline-start" />
+                  ) : null}
+                  {t("loadMoreResources")}
+                </Button>
+              </div>
+            ) : null}
+          </div>
+        )}
+      </CardContent>
+
+      <Dialog
+        open={Boolean(selected)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelected(null);
+            setDetails(null);
+          }
+        }}
+      >
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>
+              {selected
+                ? t("resourceAccessTitle", { name: selected.name })
+                : t("resourceAccess")}
+            </DialogTitle>
+            <DialogDescription>
+              {t("resourceAccessDescription")}
+            </DialogDescription>
+          </DialogHeader>
+          {detailsLoading || !details ? (
+            <div className="flex min-h-48 items-center justify-center">
+              <Spinner />
+              <span className="sr-only">{t("loadingResources")}</span>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-5">
+              {details.capabilities.canManageResourceAccess ? (
+                <form
+                  className="grid gap-3 rounded-xl bg-muted/35 p-4 md:grid-cols-3"
+                  onSubmit={assignResourceRole}
+                >
+                  <Field>
+                    <FieldLabel htmlFor="resource-principal-type">
+                      {t("principalType")}
+                    </FieldLabel>
+                    <Select
+                      value={principalType}
+                      onValueChange={(value) => {
+                        setPrincipalType(value as "user" | "group");
+                        setPrincipalId("");
+                      }}
+                    >
+                      <SelectTrigger
+                        id="resource-principal-type"
+                        className="w-full"
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="user">{t("member")}</SelectItem>
+                        <SelectItem value="group">{t("team")}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="resource-principal">
+                      {t("principal")}
+                    </FieldLabel>
+                    <Input
+                      value={principalQuery}
+                      onChange={(event) =>
+                        setPrincipalQuery(event.target.value)
+                      }
+                      placeholder={t("searchPrincipal")}
+                      aria-label={t("searchPrincipal")}
+                      className="mb-2"
+                    />
+                    <Select value={principalId} onValueChange={setPrincipalId}>
+                      <SelectTrigger id="resource-principal" className="w-full">
+                        <SelectValue placeholder={t("choose")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {filteredPrincipals.map((principal) => (
+                          <SelectItem
+                            key={principal.id}
+                            value={
+                              "userId" in principal
+                                ? principal.userId
+                                : principal.id
+                            }
+                          >
+                            {principal.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="resource-role">{t("role")}</FieldLabel>
+                    <Select value={roleId} onValueChange={setRoleId}>
+                      <SelectTrigger id="resource-role" className="w-full">
+                        <SelectValue placeholder={t("choose")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {details.roles.map((role) => (
+                          <SelectItem key={role.id} value={role.id}>
+                            {role.displayName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  <Button
+                    className="md:col-span-3 md:justify-self-end"
+                    type="submit"
+                    disabled={!principalId || !roleId || pending === "assign"}
+                  >
+                    {pending === "assign" ? (
+                      <Spinner data-icon="inline-start" />
+                    ) : (
+                      <PlusIcon data-icon="inline-start" aria-hidden="true" />
+                    )}
+                    {t("grantResourceAccess")}
+                  </Button>
+                </form>
+              ) : null}
+
+              <div className="relative">
+                <SearchIcon
+                  className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+                  aria-hidden="true"
+                />
+                <Input
+                  className="pl-9"
+                  value={assignmentQuery}
+                  onChange={(event) => setAssignmentQuery(event.target.value)}
+                  placeholder={t("searchResourceAccess")}
+                  aria-label={t("searchResourceAccess")}
+                />
+              </div>
+
+              <div className="overflow-hidden rounded-xl border">
+                <table className="w-full text-left">
+                  <thead className="bg-muted/45 text-xs text-muted-foreground">
+                    <tr>
+                      <th className="px-4 py-3 font-medium">
+                        {t("principal")}
+                      </th>
+                      <th className="px-4 py-3 font-medium">{t("role")}</th>
+                      <th className="px-4 py-3 font-medium">{t("scope")}</th>
+                      <th className="px-4 py-3 text-right font-medium">
+                        {t("actions")}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {filteredGroupedAssignments.map(([principalKey, group]) => (
+                      <tr key={principalKey}>
+                        <td className="px-4 py-3">
+                          <div className="font-medium">
+                            {group.principalName}
+                          </div>
+                          {group.principalDetail ? (
+                            <div className="text-xs text-muted-foreground">
+                              {group.principalDetail}
+                            </div>
+                          ) : null}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-wrap gap-1.5">
+                            {group.assignments.map((assignment) => (
+                              <Badge key={assignment.id} variant="outline">
+                                {assignment.roleName}
+                              </Badge>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-wrap gap-1.5">
+                            {group.assignments.map((assignment) => (
+                              <Badge
+                                key={assignment.id}
+                                variant={
+                                  assignment.scope === "resource"
+                                    ? "default"
+                                    : "secondary"
+                                }
+                              >
+                                {assignment.scope === "resource"
+                                  ? t("resourceScope")
+                                  : assignment.scope === "organization"
+                                    ? t("organizationScope")
+                                    : t("projectScope")}
+                              </Badge>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          {group.assignments.some(
+                            (assignment) => assignment.scope === "resource",
+                          ) && details.capabilities.canManageResourceAccess ? (
+                            <div className="flex justify-end gap-1">
+                              {group.assignments
+                                .filter(
+                                  (assignment) =>
+                                    assignment.scope === "resource",
+                                )
+                                .map((assignment) => (
+                                  <Button
+                                    key={assignment.id}
+                                    type="button"
+                                    size="icon-sm"
+                                    variant="ghost"
+                                    aria-label={t("removeResourceRole", {
+                                      role: assignment.roleName,
+                                      name: assignment.principalName,
+                                    })}
+                                    disabled={pending === assignment.id}
+                                    onClick={() =>
+                                      void removeResourceAssignment(
+                                        assignment.id,
+                                      )
+                                    }
+                                  >
+                                    {pending === assignment.id ? (
+                                      <Spinner />
+                                    ) : (
+                                      <Trash2Icon aria-hidden="true" />
+                                    )}
+                                  </Button>
+                                ))}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">
+                              {t("inherited")}
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                    {filteredGroupedAssignments.length === 0 ? (
+                      <tr>
+                        <td
+                          className="px-4 py-8 text-center text-sm text-muted-foreground"
+                          colSpan={4}
+                        >
+                          {t("noResourceAccessResults")}
+                        </td>
+                      </tr>
+                    ) : null}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </Card>
   );
 }
 
@@ -849,6 +1451,10 @@ export function AccessConsole({
           <TabsTrigger value="access">
             <UsersIcon data-icon="inline-start" aria-hidden="true" />
             {t("tabs.people")}
+          </TabsTrigger>
+          <TabsTrigger value="resources">
+            <BoxesIcon data-icon="inline-start" aria-hidden="true" />
+            {t("tabs.resources")}
           </TabsTrigger>
           <TabsTrigger value="teams">{t("tabs.teams")}</TabsTrigger>
           <TabsTrigger value="roles">{t("tabs.roles")}</TabsTrigger>
@@ -1813,6 +2419,13 @@ export function AccessConsole({
               ) : null}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="resources">
+          <ResourceAccessPanel
+            workspaceId={workspaceId}
+            definitions={snapshot.resourceDefinitions}
+          />
         </TabsContent>
 
         <TabsContent value="teams">

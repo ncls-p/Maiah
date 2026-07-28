@@ -58,7 +58,7 @@ import {
 } from "@/modules/workflows/use-cases";
 import {
   handleRoute,
-  requireWorkspacePermissionAsync,
+  requireResourcePermissionAsync,
 } from "@/lib/route-handler";
 import { getAdapter } from "@/server/infrastructure/providers";
 
@@ -101,10 +101,12 @@ export async function GET(
       if (!parsedParams.success || !parsedWorkspaceId.success) {
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
       }
-      const forbidden = await requireWorkspacePermissionAsync(
+      const forbidden = await requireResourcePermissionAsync(
         session.user.id,
         parsedWorkspaceId.data,
         "workflows.view",
+        "workflow",
+        (await params).workflowId,
       );
       if (forbidden) return forbidden;
       await getWorkflowDetail(
@@ -164,10 +166,12 @@ export async function POST(
 
       const { workflowId } = parsedParams.data;
       const { workspaceId } = parsedBody.data;
-      const forbidden = await requireWorkspacePermissionAsync(
+      const forbidden = await requireResourcePermissionAsync(
         session.user.id,
         workspaceId,
         "workflows.update",
+        "workflow",
+        (await params).workflowId,
       );
       if (forbidden) return forbidden;
 

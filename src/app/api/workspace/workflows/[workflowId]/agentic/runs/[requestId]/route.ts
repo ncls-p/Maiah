@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import {
   handleRoute,
-  requireWorkspacePermissionAsync,
+  requireResourcePermissionAsync,
 } from "@/lib/route-handler";
 import {
   approveWorkflowAgentRunRequest,
@@ -36,10 +36,12 @@ export async function POST(
       if (!parsedParams.success || !parsedBody.success) {
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
       }
-      const forbidden = await requireWorkspacePermissionAsync(
+      const forbidden = await requireResourcePermissionAsync(
         session.user.id,
         parsedBody.data.workspaceId,
         "workflows.execute",
+        "workflow",
+        (await params).workflowId,
       );
       if (forbidden) return forbidden;
       const command = {

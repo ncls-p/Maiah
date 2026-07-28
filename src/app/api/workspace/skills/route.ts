@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import {
   handleRoute,
+  requireWorkspaceMemberAsync,
   requireWorkspacePermissionAsync,
 } from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
@@ -89,10 +90,9 @@ export async function GET(req: NextRequest) {
           { status: 400 },
         );
       }
-      const forbidden = await requireWorkspacePermissionAsync(
+      const forbidden = await requireWorkspaceMemberAsync(
         session.user.id,
         parsed.data.workspaceId,
-        "agents.get",
       );
       if (forbidden) return forbidden;
       const canManageGlobal = await canManageTenantGlobals(

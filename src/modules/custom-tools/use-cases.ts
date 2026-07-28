@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull, or, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { generateText, stepCountIs, tool } from "ai";
 import { z } from "zod";
 
@@ -18,6 +18,7 @@ import {
   type ProviderRuntimeConfig,
 } from "@/server/infrastructure/providers";
 import { audit } from "@/server/domain/services/audit";
+import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
 import {
   aiModels,
@@ -36,22 +37,20 @@ const CUSTOM_TOOL_BUILDER_SETTING_KEY = "customToolBuilder";
 
 type CustomToolRow = typeof customTools.$inferSelect;
 
-function visibleCustomToolCondition(workspaceId: string, userId: string) {
-  return and(
-    eq(customTools.workspaceId, workspaceId),
-    isNull(customTools.archivedAt),
-    or(eq(customTools.createdById, userId), eq(customTools.isGlobal, true)),
-  );
-}
-
-function canManageCustomTool(
+async function canManageCustomTool(
   customTool: CustomToolRow,
   userId: string,
   canManageGlobal = false,
 ) {
   return (
     customTool.createdById === userId ||
-    (customTool.isGlobal && canManageGlobal)
+    (customTool.isGlobal && canManageGlobal) ||
+    (await authorization.hasPermission(
+      { principalType: "user", principalId: userId },
+      "tools.configure",
+      "custom_tool",
+      customTool.id,
+    ))
   );
 }
 
@@ -744,16 +743,37 @@ export async function listCustomTools(
       updatedAt: customTools.updatedAt,
     })
     .from(customTools)
-    .where(visibleCustomToolCondition(workspaceId, userId))
+    .where(
+      and(
+        eq(customTools.workspaceId, workspaceId),
+        isNull(customTools.archivedAt),
+      ),
+    )
     .orderBy(desc(customTools.isGlobal), desc(customTools.createdAt));
-  return tools.map((tool) => ({
-    ...tool,
-    canEdit: canManageCustomTool(
-      tool as CustomToolRow,
-      userId,
-      canManageGlobal,
-    ),
-  }));
+  return (
+    await Promise.all(
+      tools.map(async (tool) => {
+        const visible =
+          tool.createdById === userId ||
+          tool.isGlobal ||
+          (await authorization.hasPermission(
+            { principalType: "user", principalId: userId },
+            "tools.view",
+            "custom_tool",
+            tool.id,
+          ));
+        if (!visible) return null;
+        return {
+          ...tool,
+          canEdit: await canManageCustomTool(
+            tool as CustomToolRow,
+            userId,
+            canManageGlobal,
+          ),
+        };
+      }),
+    )
+  ).filter((tool) => tool !== null);
 }
 
 export async function deleteCustomTool(input: {
@@ -775,7 +795,13 @@ export async function deleteCustomTool(input: {
     )
     .limit(1);
   if (!customTool) throw new Error("Custom tool not found");
-  if (!canManageCustomTool(customTool, input.userId, input.canManageGlobal)) {
+  if (
+    !(await canManageCustomTool(
+      customTool,
+      input.userId,
+      input.canManageGlobal,
+    ))
+  ) {
     throw new Error("Custom tool not found");
   }
 

@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import {
   handleRoute,
-  requireWorkspacePermissionAsync,
+  requireWorkspaceMemberAsync,
+  requireResourcePermissionAsync,
 } from "@/lib/route-handler";
+import { hasResourcePermissionForRequest } from "@/modules/auth/workspace-access";
 import {
   createModel,
   getProviderById,
@@ -48,10 +50,9 @@ export async function GET(
       }
       const { providerId } = parsedParams.data;
       const { workspaceId } = parsedQuery.data;
-      const forbidden = await requireWorkspacePermissionAsync(
+      const forbidden = await requireWorkspaceMemberAsync(
         session.user.id,
         workspaceId,
-        "models.view",
       );
       if (forbidden) return forbidden;
       const provider = await getProviderById(providerId, workspaceId);
@@ -62,7 +63,20 @@ export async function GET(
         );
       }
       const models = await listModels(providerId);
-      return NextResponse.json(models);
+      const visibleModels = await Promise.all(
+        models.map(async (model) =>
+          (await hasResourcePermissionForRequest(
+            session.user.id,
+            workspaceId,
+            "models.view",
+            "model",
+            model.id,
+          ))
+            ? model
+            : null,
+        ),
+      );
+      return NextResponse.json(visibleModels.filter((model) => model !== null));
     },
     { logLabel: "Failed to list provider models" },
   );
@@ -88,10 +102,12 @@ export async function POST(
       }
       const { providerId } = parsedParams.data;
       const { workspaceId, ...input } = parsedBody.data;
-      const forbidden = await requireWorkspacePermissionAsync(
+      const forbidden = await requireResourcePermissionAsync(
         session.user.id,
         workspaceId,
         "models.create",
+        "provider",
+        providerId,
       );
       if (forbidden) return forbidden;
       const provider = await getProviderById(providerId, workspaceId);

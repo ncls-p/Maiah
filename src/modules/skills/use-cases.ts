@@ -8,6 +8,7 @@ import { and, eq, isNull, or, sql } from "drizzle-orm";
 import { logHandledError } from "@/lib/logger";
 import { env } from "@/lib/env";
 import { audit } from "@/server/domain/services/audit";
+import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
 import {
   agentSkillBindings,
@@ -90,12 +91,20 @@ function canManageSkill(
   return skill.createdById === userId || (skill.isGlobal && canManageGlobal);
 }
 
-function assertCanManageSkill(
+async function assertCanManageSkill(
   skill: AgentSkillRow,
   userId: string,
   canManageGlobal = false,
 ) {
-  if (!canManageSkill(skill, userId, canManageGlobal)) {
+  if (
+    !canManageSkill(skill, userId, canManageGlobal) &&
+    !(await authorization.hasPermission(
+      { principalType: "user", principalId: userId },
+      "tools.configure",
+      "skill",
+      skill.id,
+    ))
+  ) {
     throw new Error("Skill not found");
   }
 }
@@ -669,21 +678,45 @@ export async function listAgentSkills(
     .select()
     .from(agentSkills)
     .where(
-      userId
-        ? visibleSkillCondition(workspaceId, userId)
-        : and(
-            eq(agentSkills.workspaceId, workspaceId),
-            isNull(agentSkills.archivedAt),
-          ),
+      and(
+        eq(agentSkills.workspaceId, workspaceId),
+        isNull(agentSkills.archivedAt),
+      ),
     )
     .orderBy(
       sql`${agentSkills.isGlobal} DESC`,
       sql`${agentSkills.createdAt} DESC`,
     );
-  return rows.map((skill) => ({
-    ...skill,
-    canEdit: userId ? canManageSkill(skill, userId, canManageGlobal) : true,
-  }));
+  if (!userId) {
+    return rows.map((skill) => ({ ...skill, canEdit: true }));
+  }
+  return (
+    await Promise.all(
+      rows.map(async (skill) => {
+        const visible =
+          skill.createdById === userId ||
+          skill.isGlobal ||
+          (await authorization.hasPermission(
+            { principalType: "user", principalId: userId },
+            "tools.view",
+            "skill",
+            skill.id,
+          ));
+        if (!visible) return null;
+        return {
+          ...skill,
+          canEdit:
+            canManageSkill(skill, userId, canManageGlobal) ||
+            (await authorization.hasPermission(
+              { principalType: "user", principalId: userId },
+              "tools.configure",
+              "skill",
+              skill.id,
+            )),
+        };
+      }),
+    )
+  ).filter((skill) => skill !== null);
 }
 
 export async function archiveAgentSkill(input: {
@@ -704,7 +737,7 @@ export async function archiveAgentSkill(input: {
     )
     .limit(1);
   if (!existing) throw new Error("Skill not found");
-  assertCanManageSkill(existing, input.userId, input.canManageGlobal);
+  await assertCanManageSkill(existing, input.userId, input.canManageGlobal);
 
   const [skill] = await db
     .update(agentSkills)
@@ -964,7 +997,7 @@ export async function updateSkillManually(input: {
     )
     .limit(1);
   if (!existing) throw new Error("Skill not found");
-  assertCanManageSkill(existing, input.userId, input.canManageGlobal);
+  await assertCanManageSkill(existing, input.userId, input.canManageGlobal);
   if (input.isGlobal && !input.canManageGlobal) {
     throw new Error("Only admins can make skills global");
   }

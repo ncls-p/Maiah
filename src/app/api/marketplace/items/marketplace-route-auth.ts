@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { requireWorkspacePermissionAsync } from "@/lib/route-handler";
+import { requireResourcePermissionAsync } from "@/lib/route-handler";
 import { getMarketplaceItem } from "@/modules/marketplace/use-cases";
 
 export async function requireMarketplaceItemMutationPermission(
@@ -14,9 +14,11 @@ export async function requireMarketplaceItemMutationPermission(
   if (!item.publisherWorkspaceId) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
-  return requireWorkspacePermissionAsync(
+  return requireResourcePermissionAsync(
     userId,
     item.publisherWorkspaceId,
     "marketplaceItems.publish",
+    "marketplace_item",
+    itemId,
   );
 }

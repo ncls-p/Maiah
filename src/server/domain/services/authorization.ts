@@ -1,6 +1,8 @@
 import { logHandledWarning } from "@/lib/logger";
+import type { AccessResourceType } from "@/server/domain/entities/access-resource";
 import { SYSTEM_ROLES } from "@/server/domain/entities/iam";
 import { cache } from "@/server/infrastructure/cache";
+import { findAccessResource } from "@/server/infrastructure/db/access-resource-repository";
 import { db } from "@/server/infrastructure/db";
 import {
   organizationMembers,
@@ -17,14 +19,7 @@ const PERMISSION_CACHE_TTL = 60; // 60 seconds
 
 export type Permission = string;
 export type PrincipalType = "user" | "group" | "service_account" | "api_key";
-export type ResourceType =
-  | "organization"
-  | "workspace"
-  | "agent"
-  | "provider"
-  | "mcp_server"
-  | "knowledge_base"
-  | "marketplace_item";
+export type ResourceType = "organization" | "workspace" | AccessResourceType;
 
 export interface AuthorizationContext {
   principalType: PrincipalType;
@@ -71,13 +66,21 @@ export function matchesPermission(
   return grantedAction === requiredAction;
 }
 
-async function isActiveWorkspaceMember(userId: string, workspaceId: string) {
-  const [workspace] = await db
-    .select({ organizationId: workspaces.organizationId })
-    .from(workspaces)
-    .where(eq(workspaces.id, workspaceId))
-    .limit(1);
-  if (!workspace) return false;
+async function isActiveWorkspaceMember(
+  userId: string,
+  workspaceId: string,
+  knownOrganizationId?: string,
+) {
+  let organizationId = knownOrganizationId;
+  if (!organizationId) {
+    const [workspace] = await db
+      .select({ organizationId: workspaces.organizationId })
+      .from(workspaces)
+      .where(eq(workspaces.id, workspaceId))
+      .limit(1);
+    if (!workspace) return false;
+    organizationId = workspace.organizationId;
+  }
 
   const [organizationMember] = await db
     .select({
@@ -87,7 +90,7 @@ async function isActiveWorkspaceMember(userId: string, workspaceId: string) {
     .from(organizationMembers)
     .where(
       and(
-        eq(organizationMembers.organizationId, workspace.organizationId),
+        eq(organizationMembers.organizationId, organizationId),
         eq(organizationMembers.userId, userId),
       ),
     )
@@ -159,32 +162,47 @@ async function resolvePermissions(
   const cached = await cache.get<Permission[]>(cacheKey);
   if (cached) return cached;
 
-  if (
-    resourceType === "workspace" &&
-    ctx.principalType === "user" &&
-    !(await isActiveWorkspaceMember(ctx.principalId, resourceId))
-  ) {
-    await cache.set(cacheKey, [], PERMISSION_CACHE_TTL);
-    return [];
-  }
-  if (
-    resourceType === "organization" &&
-    ctx.principalType === "user" &&
-    !(await isActiveOrganizationMember(ctx.principalId, resourceId))
-  ) {
-    await cache.set(cacheKey, [], PERMISSION_CACHE_TTL);
-    return [];
-  }
-
   let organizationId: string | null =
     resourceType === "organization" ? resourceId : null;
+  let workspaceId: string | null =
+    resourceType === "workspace" ? resourceId : null;
+  let parentResource: { type: AccessResourceType; id: string } | undefined;
   if (resourceType === "workspace") {
     const [workspace] = await db
       .select({ organizationId: workspaces.organizationId })
       .from(workspaces)
       .where(eq(workspaces.id, resourceId))
       .limit(1);
-    organizationId = workspace?.organizationId ?? null;
+    if (!workspace) {
+      await cache.set(cacheKey, [], PERMISSION_CACHE_TTL);
+      return [];
+    }
+    organizationId = workspace.organizationId;
+  } else if (resourceType !== "organization") {
+    const resource = await findAccessResource(resourceType, resourceId);
+    if (!resource) {
+      await cache.set(cacheKey, [], PERMISSION_CACHE_TTL);
+      return [];
+    }
+    workspaceId = resource.workspaceId;
+    organizationId = resource.organizationId;
+    parentResource = resource.parent;
+  }
+
+  if (
+    ctx.principalType === "user" &&
+    ((workspaceId &&
+      !(await isActiveWorkspaceMember(
+        ctx.principalId,
+        workspaceId,
+        organizationId ?? undefined,
+      ))) ||
+      (!workspaceId &&
+        organizationId &&
+        !(await isActiveOrganizationMember(ctx.principalId, organizationId))))
+  ) {
+    await cache.set(cacheKey, [], PERMISSION_CACHE_TTL);
+    return [];
   }
 
   let teamIds: string[] = [];
@@ -218,22 +236,40 @@ async function resolvePermissions(
           eq(roleBindings.principalType, ctx.principalType),
           eq(roleBindings.principalId, ctx.principalId),
         );
+  const inheritedResourceFilters = [
+    and(
+      eq(roleBindings.resourceType, resourceType),
+      eq(roleBindings.resourceId, resourceId),
+    ),
+  ];
+  if (workspaceId && resourceType !== "workspace") {
+    inheritedResourceFilters.push(
+      and(
+        eq(roleBindings.resourceType, "workspace"),
+        eq(roleBindings.resourceId, workspaceId),
+      ),
+    );
+  }
+  if (parentResource) {
+    inheritedResourceFilters.push(
+      and(
+        eq(roleBindings.resourceType, parentResource.type),
+        eq(roleBindings.resourceId, parentResource.id),
+      ),
+    );
+  }
+  if (organizationId && resourceType !== "organization") {
+    inheritedResourceFilters.push(
+      and(
+        eq(roleBindings.resourceType, "organization"),
+        eq(roleBindings.resourceId, organizationId),
+      ),
+    );
+  }
   const resourceFilter =
-    resourceType === "workspace" && organizationId
-      ? or(
-          and(
-            eq(roleBindings.resourceType, "workspace"),
-            eq(roleBindings.resourceId, resourceId),
-          ),
-          and(
-            eq(roleBindings.resourceType, "organization"),
-            eq(roleBindings.resourceId, organizationId),
-          ),
-        )
-      : and(
-          eq(roleBindings.resourceType, resourceType),
-          eq(roleBindings.resourceId, resourceId),
-        );
+    inheritedResourceFilters.length === 1
+      ? inheritedResourceFilters[0]
+      : or(...inheritedResourceFilters);
 
   const bindings = await db
     .select()
@@ -338,5 +374,9 @@ export const authorization = {
     resourceId: string,
   ): Promise<void> {
     await cache.del(`perm:user:${principalId}:${resourceType}:${resourceId}`);
+  },
+
+  async invalidatePrincipalPermissionCache(principalId: string): Promise<void> {
+    await cache.delByPrefix(`perm:user:${principalId}:`);
   },
 };

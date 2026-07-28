@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import {
   handleRoute,
+  requireWorkspaceMemberAsync,
   requireWorkspacePermissionAsync,
 } from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
@@ -39,10 +40,9 @@ export async function GET(req: NextRequest) {
         );
       }
 
-      const forbidden = await requireWorkspacePermissionAsync(
+      const forbidden = await requireWorkspaceMemberAsync(
         session.user.id,
         parsed.data.workspaceId,
-        "tools.configure",
       );
       if (forbidden) return forbidden;
 

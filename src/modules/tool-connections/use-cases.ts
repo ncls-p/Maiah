@@ -9,6 +9,7 @@ import { decryptValue, encryptValue } from "@/lib/crypto";
 import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
 import { audit } from "@/server/domain/services/audit";
+import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
 import {
   toolConnectionRequirements,
@@ -157,13 +158,23 @@ function visibleConnectorCondition(
   );
 }
 
-function canManageConnection(
+async function canManageConnection(
   connection: ToolConnection,
   userId: string,
   canManageWorkspaceConnections = false,
 ) {
-  if (connection.ownerType === "user") return connection.ownerUserId === userId;
-  return canManageWorkspaceConnections;
+  if (
+    (connection.ownerType === "user" && connection.ownerUserId === userId) ||
+    (connection.ownerType === "workspace" && canManageWorkspaceConnections)
+  ) {
+    return true;
+  }
+  return authorization.hasPermission(
+    { principalType: "user", principalId: userId },
+    "tools.configure",
+    "tool_connection",
+    connection.id,
+  );
 }
 
 async function clearDefaultConnections(
@@ -376,16 +387,21 @@ export async function listToolConnections(
       and(
         eq(toolConnections.workspaceId, workspaceId),
         isNull(toolConnections.archivedAt),
-        canManageWorkspaceConnections
-          ? undefined
-          : or(
-              eq(toolConnections.ownerUserId, userId),
-              eq(toolConnections.ownerType, "workspace"),
-            ),
       ),
     )
     .orderBy(desc(toolConnections.isDefault), desc(toolConnections.createdAt));
-  return connections.map(toSafeToolConnection);
+  const visibleConnections = await Promise.all(
+    connections.map(async (connection) =>
+      (await canManageConnection(
+        connection,
+        userId,
+        canManageWorkspaceConnections,
+      ))
+        ? toSafeToolConnection(connection)
+        : null,
+    ),
+  );
+  return visibleConnections.filter((connection) => connection !== null);
 }
 
 export async function updateToolConnection(input: UpdateToolConnectionInput) {
@@ -402,11 +418,11 @@ export async function updateToolConnection(input: UpdateToolConnectionInput) {
     .limit(1);
   if (!existing) throw new Error("Tool connection not found");
   if (
-    !canManageConnection(
+    !(await canManageConnection(
       existing,
       input.userId,
       input.canManageWorkspaceConnections,
-    )
+    ))
   ) {
     throw new Error("Not allowed to manage this tool connection");
   }
@@ -453,7 +469,13 @@ export async function archiveToolConnection(
     )
     .limit(1);
   if (!existing) throw new Error("Tool connection not found");
-  if (!canManageConnection(existing, userId, canManageWorkspaceConnections)) {
+  if (
+    !(await canManageConnection(
+      existing,
+      userId,
+      canManageWorkspaceConnections,
+    ))
+  ) {
     throw new Error("Not allowed to manage this tool connection");
   }
 

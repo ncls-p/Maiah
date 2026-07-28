@@ -2,13 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import {
   handleRoute,
+  requireWorkspaceMemberAsync,
   requireWorkspacePermissionAsync,
 } from "@/lib/route-handler";
 import {
   createProviderWithModels,
   listProviders,
+  listModels,
   toSafeProvider,
 } from "@/modules/provider/use-cases";
+import { hasResourcePermissionForRequest } from "@/modules/auth/workspace-access";
 import {
   DEFAULT_OPENAI_COMPATIBLE_API_ROUTE,
   OPENAI_COMPATIBLE_API_ROUTES,
@@ -60,14 +63,42 @@ export async function GET(req: NextRequest) {
           { status: 400 },
         );
       }
-      const forbidden = await requireWorkspacePermissionAsync(
+      const forbidden = await requireWorkspaceMemberAsync(
         session.user.id,
         parsed.data.workspaceId,
-        "providers.viewMetadata",
       );
       if (forbidden) return forbidden;
       const providers = await listProviders(parsed.data.workspaceId);
-      return NextResponse.json(providers.map(toSafeProvider));
+      const visibleProviders = await Promise.all(
+        providers.map(async (provider) => {
+          const canViewProvider = await hasResourcePermissionForRequest(
+            session.user.id,
+            parsed.data.workspaceId,
+            "providers.viewMetadata",
+            "provider",
+            provider.id,
+          );
+          if (canViewProvider) return toSafeProvider(provider);
+          const models = await listModels(provider.id);
+          const modelVisibility = await Promise.all(
+            models.map((model) =>
+              hasResourcePermissionForRequest(
+                session.user.id,
+                parsed.data.workspaceId,
+                "models.view",
+                "model",
+                model.id,
+              ),
+            ),
+          );
+          return modelVisibility.some(Boolean)
+            ? toSafeProvider(provider)
+            : null;
+        }),
+      );
+      return NextResponse.json(
+        visibleProviders.filter((provider) => provider !== null),
+      );
     },
     { logLabel: "Failed to list providers" },
   );

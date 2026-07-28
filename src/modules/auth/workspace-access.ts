@@ -4,6 +4,8 @@ import {
   matchesPermission,
   type PermissionCheckResult,
 } from "@/server/domain/services/authorization";
+import type { AccessResourceType } from "@/server/domain/entities/access-resource";
+import { findAccessResource } from "@/server/infrastructure/db/access-resource-repository";
 
 function apiKeyScopeResult(
   userId: string,
@@ -57,6 +59,46 @@ export async function hasWorkspacePermissionForRequest(
     userId,
     workspaceId,
     permission,
+  );
+  return result.granted;
+}
+
+export async function checkResourcePermissionForRequest(
+  userId: string,
+  workspaceId: string,
+  permission: string,
+  resourceType: AccessResourceType,
+  resourceId: string,
+): Promise<PermissionCheckResult> {
+  const scopeResult = apiKeyScopeResult(userId, workspaceId, permission);
+  if (!scopeResult.granted) return scopeResult;
+
+  const resource = await findAccessResource(resourceType, resourceId);
+  if (!resource || resource.workspaceId !== workspaceId) {
+    return { granted: false, reason: "Resource not found in this project" };
+  }
+
+  return authorization.checkPermission(
+    { principalType: "user", principalId: userId },
+    permission,
+    resourceType,
+    resourceId,
+  );
+}
+
+export async function hasResourcePermissionForRequest(
+  userId: string,
+  workspaceId: string,
+  permission: string,
+  resourceType: AccessResourceType,
+  resourceId: string,
+) {
+  const result = await checkResourcePermissionForRequest(
+    userId,
+    workspaceId,
+    permission,
+    resourceType,
+    resourceId,
   );
   return result.granted;
 }

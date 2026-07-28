@@ -989,8 +989,8 @@ describe("agent runtime executor", () => {
     expect(mocks.checkPermission).toHaveBeenCalledWith(
       { principalType: "user", principalId: rootAgent.createdById },
       "agents.delegate",
-      "workspace",
-      rootAgent.workspaceId,
+      "agent",
+      childAgent.id,
     );
     expect(mocks.getVersion).toHaveBeenCalledWith(childVersion.id);
     expect(mocks.createRun).toHaveBeenLastCalledWith(

@@ -53,6 +53,26 @@ export const cache = {
     }
   },
 
+  async delByPrefix(prefix: string): Promise<void> {
+    try {
+      const redis = getCache();
+      let cursor = "0";
+      do {
+        const [nextCursor, keys] = await redis.scan(
+          cursor,
+          "MATCH",
+          `${prefix}*`,
+          "COUNT",
+          200,
+        );
+        cursor = nextCursor;
+        if (keys.length > 0) await redis.del(...keys);
+      } while (cursor !== "0");
+    } catch {
+      // Cache deletes are best-effort
+    }
+  },
+
   async incr(key: string, ttlSeconds?: number): Promise<number> {
     try {
       const val = await getCache().incr(key);

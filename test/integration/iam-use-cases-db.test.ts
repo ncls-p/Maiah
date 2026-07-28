@@ -7,6 +7,7 @@ import {
   addOrganizationMember,
   addTeamMember,
   assignRole,
+  assignResourceRole,
   createCustomRole,
   createOrganizationWithProject,
   createProject,
@@ -21,6 +22,9 @@ import {
 } from "@/modules/iam/use-cases";
 import { db } from "@/server/infrastructure/db";
 import {
+  agents,
+  aiModels,
+  aiProviders,
   auditEvents,
   organizations,
   roleBindings,
@@ -28,6 +32,7 @@ import {
   users,
   workspaces,
 } from "@/server/infrastructure/db/schema";
+import { authorization } from "@/server/domain/services/authorization";
 
 const describeWithDatabase = process.env.IAM_INTEGRATION_DATABASE_URL
   ? describe.sequential
@@ -143,6 +148,99 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
       scopeType: "workspace",
       permissions: ["agents.view", "workflows.view"],
     });
+    const resourceRole = await createCustomRole({
+      actorUserId: ownerId,
+      workspaceId: secondProjectId,
+      displayName: "Assistant Reader",
+      description: "Read one selected assistant",
+      scopeType: "workspace",
+      permissions: ["agents.view"],
+    });
+    const [sharedAgent, privateAgent] = await db
+      .insert(agents)
+      .values([
+        {
+          workspaceId: secondProjectId,
+          name: "Shared assistant",
+          slug: `shared-${suffix}`,
+          createdById: ownerId,
+        },
+        {
+          workspaceId: secondProjectId,
+          name: "Private assistant",
+          slug: `private-${suffix}`,
+          createdById: ownerId,
+        },
+      ])
+      .returning();
+    await assignResourceRole({
+      actorUserId: ownerId,
+      workspaceId: secondProjectId,
+      principalType: "user",
+      principalId: memberId,
+      roleId: resourceRole.id,
+      resourceType: "agent",
+      resourceId: sharedAgent.id,
+    });
+    expect(
+      await authorization.hasPermission(
+        { principalType: "user", principalId: memberId },
+        "agents.get",
+        "agent",
+        sharedAgent.id,
+      ),
+    ).toBe(true);
+    expect(
+      await authorization.hasPermission(
+        { principalType: "user", principalId: memberId },
+        "agents.get",
+        "agent",
+        privateAgent.id,
+      ),
+    ).toBe(false);
+    const [provider] = await db
+      .insert(aiProviders)
+      .values({
+        workspaceId: secondProjectId,
+        kind: "openai-compatible",
+        name: "Scoped provider",
+        authType: "bearer",
+        createdById: ownerId,
+      })
+      .returning();
+    const [model] = await db
+      .insert(aiModels)
+      .values({
+        providerId: provider.id,
+        modelId: "scoped-model",
+        displayName: "Scoped model",
+      })
+      .returning();
+    const modelRole = await createCustomRole({
+      actorUserId: ownerId,
+      workspaceId: secondProjectId,
+      displayName: "Model User",
+      scopeType: "workspace",
+      permissions: ["models.view", "models.invoke"],
+    });
+    await assignResourceRole({
+      actorUserId: ownerId,
+      workspaceId: secondProjectId,
+      principalType: "user",
+      principalId: memberId,
+      roleId: modelRole.id,
+      resourceType: "provider",
+      resourceId: provider.id,
+    });
+    expect(
+      await authorization.hasPermission(
+        { principalType: "user", principalId: memberId },
+        "models.invoke",
+        "model",
+        model.id,
+      ),
+    ).toBe(true);
+
     await assignRole({
       actorUserId: ownerId,
       workspaceId: secondProjectId,
@@ -222,6 +320,52 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
       actorUserId: ownerId,
       workspaceId: secondProjectId,
       roleId: projectRole.id,
+    });
+    const [resourceBinding] = await db
+      .select({ id: roleBindings.id })
+      .from(roleBindings)
+      .where(
+        and(
+          eq(roleBindings.principalType, "user"),
+          eq(roleBindings.principalId, memberId),
+          eq(roleBindings.roleId, resourceRole.id),
+          eq(roleBindings.resourceType, "agent"),
+          eq(roleBindings.resourceId, sharedAgent.id),
+        ),
+      )
+      .limit(1);
+    await removeRoleAssignment({
+      actorUserId: ownerId,
+      workspaceId: secondProjectId,
+      bindingId: resourceBinding.id,
+    });
+    await deleteCustomRole({
+      actorUserId: ownerId,
+      workspaceId: secondProjectId,
+      roleId: resourceRole.id,
+    });
+    const [modelBinding] = await db
+      .select({ id: roleBindings.id })
+      .from(roleBindings)
+      .where(
+        and(
+          eq(roleBindings.principalType, "user"),
+          eq(roleBindings.principalId, memberId),
+          eq(roleBindings.roleId, modelRole.id),
+          eq(roleBindings.resourceType, "provider"),
+          eq(roleBindings.resourceId, provider.id),
+        ),
+      )
+      .limit(1);
+    await removeRoleAssignment({
+      actorUserId: ownerId,
+      workspaceId: secondProjectId,
+      bindingId: modelBinding.id,
+    });
+    await deleteCustomRole({
+      actorUserId: ownerId,
+      workspaceId: secondProjectId,
+      roleId: modelRole.id,
     });
     await removeTeamMember({
       actorUserId: ownerId,
