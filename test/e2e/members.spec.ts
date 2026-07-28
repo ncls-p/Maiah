@@ -97,6 +97,14 @@ test.describe("members page", () => {
     await ensureE2EMember();
     await page.goto("/en/members");
 
+    await page.getByRole("button", { name: "Add person" }).click();
+    const personDialog = page.getByRole("dialog", { name: "Add a person" });
+    await personDialog.getByLabel("Email").fill(e2eMember.email);
+    await personDialog
+      .getByRole("button", { name: "Add to organization" })
+      .click();
+    await expect(personDialog).not.toBeVisible();
+
     await page.getByRole("tab", { name: "Teams" }).click();
     await page.getByRole("button", { name: "Create team" }).click();
     const teamDialog = page.getByRole("dialog", { name: "Create a team" });
