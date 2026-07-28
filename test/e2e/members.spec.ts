@@ -1,5 +1,11 @@
 import { expect, test } from "@playwright/test";
-import { e2eMember, ensureE2EMember, ensureE2EUser, login } from "./fixtures";
+import {
+  e2eMember,
+  ensureE2EMember,
+  ensureE2ETransferScenario,
+  ensureE2EUser,
+  login,
+} from "./fixtures";
 
 test.beforeAll(async () => {
   await ensureE2EUser();
@@ -88,6 +94,48 @@ test.describe("members page", () => {
     await expect(
       roleDialog.getByRole("button", { name: "Duplicate and customize" }),
     ).toBeVisible();
+  });
+
+  test("previews a customizable resource transfer in one dialog", async ({
+    page,
+  }) => {
+    await ensureE2ETransferScenario();
+    await page.goto("/en/members");
+    const activeProject = page.getByRole("combobox", {
+      name: "Active project",
+    });
+    if (!(await activeProject.textContent())?.includes("Maiah")) {
+      await activeProject.click();
+      await page.getByRole("option", { name: "Maiah", exact: true }).click();
+    }
+    await page.getByRole("tab", { name: "Resources" }).click();
+
+    const resourceRow = page.locator("tbody tr").filter({
+      hasText: "Transfer preview assistant",
+    });
+    await expect(resourceRow).toBeVisible({ timeout: 10_000 });
+    await resourceRow.getByRole("button", { name: "Transfer" }).click();
+
+    const dialog = page.getByRole("dialog", {
+      name: "Transfer Transfer preview assistant",
+    });
+    const destinationName = "Transfer destination";
+    await dialog
+      .getByPlaceholder("Search an organization or project…")
+      .fill(destinationName);
+    await dialog.getByRole("combobox").click();
+    await page
+      .getByRole("option", { name: new RegExp(`Deodis · ${destinationName}`) })
+      .click();
+    await dialog.getByRole("button", { name: "Advanced options" }).click();
+    await expect(dialog.getByText("Secrets and connections")).toBeVisible();
+    await dialog.getByRole("button", { name: "Review transfer" }).click();
+    await expect(dialog.getByText(/resource ready/)).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(
+      dialog.getByRole("button", { name: "Transfer now" }),
+    ).toBeEnabled();
   });
 
   test("grants project access through an organization team", async ({

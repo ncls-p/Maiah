@@ -141,6 +141,79 @@ export async function ensureE2EMember() {
   }
 }
 
+export async function ensureE2ETransferScenario() {
+  const client = new Client({ connectionString: databaseUrl() });
+  await client.connect();
+  try {
+    const user = await client.query<{ id: string }>(
+      `select id from "user" where email = $1 limit 1`,
+      [e2eUser.email],
+    );
+    const source = await client.query<{
+      id: string;
+      organization_id: string;
+    }>(
+      `select w.id, w.organization_id
+       from workspaces w
+       join organizations o on o.id = w.organization_id
+       where w.slug = 'main' and o.slug = 'deodis'
+       limit 1`,
+    );
+    const userId = user.rows[0]?.id;
+    const sourceWorkspaceId = source.rows[0]?.id;
+    const organizationId = source.rows[0]?.organization_id;
+    if (!userId || !sourceWorkspaceId || !organizationId) {
+      throw new Error("E2E transfer source is not initialized");
+    }
+
+    const destination = await client.query<{ id: string }>(
+      `insert into workspaces
+       (id, organization_id, name, slug, created_by_user_id, created_at, updated_at)
+       values ($1, $2, 'Transfer destination', 'e2e-transfer', $3, now(), now())
+       on conflict (organization_id, slug) do update
+       set archived_at = null, updated_at = now()
+       returning id`,
+      [randomUUID(), organizationId, userId],
+    );
+    const targetWorkspaceId = destination.rows[0].id;
+    const adminRole = await client.query<{ id: string }>(
+      `select id from roles
+       where name = 'workspace.admin' and is_system = true
+       limit 1`,
+    );
+    await client.query(
+      `insert into workspace_members
+       (workspace_id, user_id, status, created_at, updated_at)
+       values ($1, $2, 'active', now(), now())
+       on conflict (workspace_id, user_id) do update
+       set status = 'active', updated_at = now()`,
+      [targetWorkspaceId, userId],
+    );
+    await client.query(
+      `insert into role_bindings
+       (principal_type, principal_id, role_id, resource_type, resource_id, created_by_user_id)
+       values ('user', $1, $2, 'workspace', $3, $1)
+       on conflict do nothing`,
+      [userId, adminRole.rows[0].id, targetWorkspaceId],
+    );
+    await client.query(
+      `delete from agents
+       where workspace_id = $1 and slug = 'e2e-transfer-preview'`,
+      [targetWorkspaceId],
+    );
+    await client.query(
+      `insert into agents
+       (id, workspace_id, name, slug, created_by_user_id, created_at, updated_at)
+       values ($1, $2, 'Transfer preview assistant', 'e2e-transfer-preview', $3, now(), now())
+       on conflict (workspace_id, slug) do update
+       set name = excluded.name, archived_at = null, updated_at = now()`,
+      [randomUUID(), sourceWorkspaceId, userId],
+    );
+  } finally {
+    await client.end();
+  }
+}
+
 export async function loginWithCredentials(
   page: Page,
   credentials: { email: string; password: string },

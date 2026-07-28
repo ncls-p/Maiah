@@ -1,6 +1,8 @@
 "use client";
 
 import {
+  AlertTriangleIcon,
+  ArrowRightLeftIcon,
   BoxesIcon,
   Building2Icon,
   CheckIcon,
@@ -211,6 +213,36 @@ type ResourceAccessSnapshot = {
   capabilities: { canManageResourceAccess: boolean };
 };
 
+type TransferDestination = {
+  workspaceId: string;
+  workspaceName: string;
+  organizationId: string;
+  organizationName: string;
+};
+
+type ResourceTransferPreview = {
+  source: TransferDestination;
+  destination: TransferDestination;
+  crossOrganization: boolean;
+  items: Array<
+    AccessResource & {
+      reason: "selected" | "parent" | "dependency" | "dependent" | "history";
+    }
+  >;
+  warnings: string[];
+  blockers: string[];
+  directAssignments: { kept: number; removed: number };
+  secrets: { affected: number; policy: "keep" | "disable" };
+  confirmationToken: string;
+};
+
+type ResourceTransferOptions = {
+  includeDependencies: boolean;
+  accessPolicy: "compatible" | "remove_all";
+  ownershipPolicy: "preserve" | "actor";
+  secretPolicy: "keep" | "disable";
+};
+
 type MutationPayload = Record<string, unknown> & { action: string };
 
 const INITIAL_ORGANIZATION_FORM = {
@@ -230,6 +262,12 @@ const INITIAL_ACCOUNT_FORM = {
   email: "",
   password: "",
   role: "user" as "user" | "admin",
+};
+const INITIAL_TRANSFER_OPTIONS: ResourceTransferOptions = {
+  includeDependencies: true,
+  accessPolicy: "compatible",
+  ownershipPolicy: "preserve",
+  secretPolicy: "keep",
 };
 
 const BUILT_IN_ROLE_KEYS = {
@@ -285,9 +323,11 @@ function InitialError({
 
 function ResourceAccessPanel({
   workspaceId,
+  organizationId,
   definitions,
 }: {
   workspaceId: string;
+  organizationId: string;
   definitions: AccessResourceDefinition[];
 }) {
   const t = useTranslations("access");
@@ -310,6 +350,19 @@ function ResourceAccessPanel({
   const [roleId, setRoleId] = useState("");
   const [principalQuery, setPrincipalQuery] = useState("");
   const [assignmentQuery, setAssignmentQuery] = useState("");
+  const [transferResource, setTransferResource] =
+    useState<AccessResource | null>(null);
+  const [transferDestinations, setTransferDestinations] = useState<
+    TransferDestination[]
+  >([]);
+  const [destinationQuery, setDestinationQuery] = useState("");
+  const [targetWorkspaceId, setTargetWorkspaceId] = useState("");
+  const [transferOptions, setTransferOptions] =
+    useState<ResourceTransferOptions>(INITIAL_TRANSFER_OPTIONS);
+  const [transferPreview, setTransferPreview] =
+    useState<ResourceTransferPreview | null>(null);
+  const [transferLoading, setTransferLoading] = useState(false);
+  const [advancedTransfer, setAdvancedTransfer] = useState(false);
 
   const loadResources = useCallback(
     async (offset = 0) => {
@@ -426,6 +479,22 @@ function ResourceAccessPanel({
       ].some((value) => value.toLocaleLowerCase().includes(normalizedQuery)),
     );
   }, [assignmentQuery, groupedAssignments]);
+  const filteredDestinations = useMemo(() => {
+    const normalizedQuery = destinationQuery.trim().toLocaleLowerCase();
+    if (!normalizedQuery) return transferDestinations;
+    return transferDestinations.filter((destination) =>
+      [destination.organizationName, destination.workspaceName].some((value) =>
+        value.toLocaleLowerCase().includes(normalizedQuery),
+      ),
+    );
+  }, [destinationQuery, transferDestinations]);
+  const transferItemsByType = useMemo(() => {
+    const groups = new Map<string, ResourceTransferPreview["items"]>();
+    for (const item of transferPreview?.items ?? []) {
+      groups.set(item.type, [...(groups.get(item.type) ?? []), item]);
+    }
+    return [...groups.entries()];
+  }, [transferPreview]);
 
   async function assignResourceRole(event: FormEvent) {
     event.preventDefault();
@@ -475,6 +544,95 @@ function ResourceAccessPanel({
       toast.error(error instanceof Error ? error.message : t("mutationError"));
     } finally {
       setPending(null);
+    }
+  }
+
+  async function openTransfer(resource: AccessResource) {
+    setTransferResource(resource);
+    setTargetWorkspaceId("");
+    setDestinationQuery("");
+    setTransferOptions(INITIAL_TRANSFER_OPTIONS);
+    setTransferPreview(null);
+    setAdvancedTransfer(false);
+    setTransferLoading(true);
+    try {
+      const params = new URLSearchParams({ sourceWorkspaceId: workspaceId });
+      const result = await fetchJson<{
+        destinations: TransferDestination[];
+      }>(`/api/workspace/iam/resources/transfer?${params}`);
+      setTransferDestinations(result.destinations);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : t("transferLoadFailed"),
+      );
+      setTransferResource(null);
+    } finally {
+      setTransferLoading(false);
+    }
+  }
+
+  async function previewTransfer() {
+    if (!transferResource || !targetWorkspaceId) return;
+    setTransferLoading(true);
+    setTransferPreview(null);
+    try {
+      setTransferPreview(
+        await fetchJson<ResourceTransferPreview>(
+          "/api/workspace/iam/resources/transfer",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "preview",
+              sourceWorkspaceId: workspaceId,
+              targetWorkspaceId,
+              resourceType: transferResource.type,
+              resourceId: transferResource.id,
+              options: transferOptions,
+            }),
+          },
+        ),
+      );
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : t("transferPreviewFailed"),
+      );
+    } finally {
+      setTransferLoading(false);
+    }
+  }
+
+  async function executeTransfer() {
+    if (!transferResource || !targetWorkspaceId || !transferPreview) return;
+    setTransferLoading(true);
+    try {
+      await fetchJson("/api/workspace/iam/resources/transfer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "execute",
+          sourceWorkspaceId: workspaceId,
+          targetWorkspaceId,
+          resourceType: transferResource.type,
+          resourceId: transferResource.id,
+          options: transferOptions,
+          confirmationToken: transferPreview.confirmationToken,
+        }),
+      });
+      toast.success(
+        t("transferCompleted", {
+          count: transferPreview.items.length,
+          project: transferPreview.destination.workspaceName,
+        }),
+      );
+      setTransferResource(null);
+      setTransferPreview(null);
+      await loadResources();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("transferFailed"));
+      setTransferPreview(null);
+    } finally {
+      setTransferLoading(false);
     }
   }
 
@@ -563,25 +721,39 @@ function ResourceAccessPanel({
                       <span className="font-medium">{resource.name}</span>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          setSelected(resource);
-                          setDetails(null);
-                          setPrincipalId("");
-                          setRoleId("");
-                          setAssignmentQuery("");
-                          void loadDetails(resource);
-                        }}
-                      >
-                        <ShieldCheckIcon
-                          data-icon="inline-start"
-                          aria-hidden="true"
-                        />
-                        {t("manageResourceAccess")}
-                      </Button>
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => void openTransfer(resource)}
+                        >
+                          <ArrowRightLeftIcon
+                            data-icon="inline-start"
+                            aria-hidden="true"
+                          />
+                          {t("transfer")}
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setSelected(resource);
+                            setDetails(null);
+                            setPrincipalId("");
+                            setRoleId("");
+                            setAssignmentQuery("");
+                            void loadDetails(resource);
+                          }}
+                        >
+                          <ShieldCheckIcon
+                            data-icon="inline-start"
+                            aria-hidden="true"
+                          />
+                          {t("manageResourceAccess")}
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -852,6 +1024,407 @@ function ResourceAccessPanel({
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(transferResource)}
+        onOpenChange={(open) => {
+          if (!open && !transferLoading) {
+            setTransferResource(null);
+            setTransferPreview(null);
+          }
+        }}
+      >
+        <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>
+              {transferResource
+                ? t("transferTitle", { name: transferResource.name })
+                : t("transfer")}
+            </DialogTitle>
+            <DialogDescription>{t("transferDescription")}</DialogDescription>
+          </DialogHeader>
+
+          {transferLoading && transferDestinations.length === 0 ? (
+            <div className="flex min-h-40 items-center justify-center">
+              <Spinner />
+              <span className="sr-only">{t("loadingDestinations")}</span>
+            </div>
+          ) : transferDestinations.length === 0 ? (
+            <Empty className="min-h-44 border border-dashed">
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <FolderKanbanIcon aria-hidden="true" />
+                </EmptyMedia>
+                <EmptyTitle>{t("noTransferDestination")}</EmptyTitle>
+                <EmptyDescription>
+                  {t("noTransferDestinationDescription")}
+                </EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          ) : (
+            <div className="flex flex-col gap-5">
+              <div className="grid gap-3 rounded-xl border bg-muted/20 p-4">
+                <Field>
+                  <FieldLabel htmlFor="transfer-destination-search">
+                    {t("destinationProject")}
+                  </FieldLabel>
+                  <div className="relative">
+                    <SearchIcon
+                      className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+                      aria-hidden="true"
+                    />
+                    <Input
+                      id="transfer-destination-search"
+                      className="pl-9"
+                      value={destinationQuery}
+                      onChange={(event) => {
+                        setDestinationQuery(event.target.value);
+                        setTransferPreview(null);
+                      }}
+                      placeholder={t("searchDestination")}
+                    />
+                  </div>
+                  <Select
+                    value={targetWorkspaceId}
+                    onValueChange={(value) => {
+                      setTargetWorkspaceId(value);
+                      const destination = transferDestinations.find(
+                        (candidate) => candidate.workspaceId === value,
+                      );
+                      const changesOrganization =
+                        destination?.organizationId !== organizationId;
+                      setTransferOptions((current) => ({
+                        ...current,
+                        ownershipPolicy: changesOrganization
+                          ? "actor"
+                          : "preserve",
+                        secretPolicy: changesOrganization ? "disable" : "keep",
+                      }));
+                      setTransferPreview(null);
+                    }}
+                  >
+                    <SelectTrigger
+                      id="transfer-destination"
+                      className="w-full"
+                      aria-label={t("destinationProject")}
+                    >
+                      <SelectValue placeholder={t("chooseDestination")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filteredDestinations.map((destination) => (
+                        <SelectItem
+                          key={destination.workspaceId}
+                          value={destination.workspaceId}
+                        >
+                          {destination.organizationName} ·{" "}
+                          {destination.workspaceName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
+
+                <label className="flex cursor-pointer items-start gap-3 rounded-lg border bg-background p-3">
+                  <Checkbox
+                    aria-label={t("includeDependencies")}
+                    checked={transferOptions.includeDependencies}
+                    onCheckedChange={(checked) => {
+                      setTransferOptions((current) => ({
+                        ...current,
+                        includeDependencies: checked === true,
+                      }));
+                      setTransferPreview(null);
+                    }}
+                  />
+                  <span className="grid gap-1">
+                    <span className="text-sm font-medium">
+                      {t("includeDependencies")}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {t("includeDependenciesDescription")}
+                    </span>
+                  </span>
+                </label>
+
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="justify-start"
+                  onClick={() => setAdvancedTransfer((value) => !value)}
+                >
+                  {advancedTransfer ? (
+                    <ChevronRightIcon
+                      className="rotate-90"
+                      data-icon="inline-start"
+                      aria-hidden="true"
+                    />
+                  ) : (
+                    <ChevronRightIcon
+                      data-icon="inline-start"
+                      aria-hidden="true"
+                    />
+                  )}
+                  {t("advancedTransferOptions")}
+                </Button>
+
+                {advancedTransfer ? (
+                  <div className="grid gap-3 border-t pt-4 md:grid-cols-3">
+                    <Field>
+                      <FieldLabel htmlFor="transfer-access-policy">
+                        {t("directAccessPolicy")}
+                      </FieldLabel>
+                      <Select
+                        value={transferOptions.accessPolicy}
+                        onValueChange={(value) => {
+                          setTransferOptions((current) => ({
+                            ...current,
+                            accessPolicy:
+                              value as ResourceTransferOptions["accessPolicy"],
+                          }));
+                          setTransferPreview(null);
+                        }}
+                      >
+                        <SelectTrigger
+                          id="transfer-access-policy"
+                          className="w-full"
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="compatible">
+                            {t("keepCompatibleAccess")}
+                          </SelectItem>
+                          <SelectItem value="remove_all">
+                            {t("removeAllDirectAccess")}
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </Field>
+                    <Field>
+                      <FieldLabel htmlFor="transfer-ownership-policy">
+                        {t("ownershipPolicy")}
+                      </FieldLabel>
+                      <Select
+                        value={transferOptions.ownershipPolicy}
+                        onValueChange={(value) => {
+                          setTransferOptions((current) => ({
+                            ...current,
+                            ownershipPolicy:
+                              value as ResourceTransferOptions["ownershipPolicy"],
+                          }));
+                          setTransferPreview(null);
+                        }}
+                      >
+                        <SelectTrigger
+                          id="transfer-ownership-policy"
+                          className="w-full"
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="actor">
+                            {t("reassignOwnership")}
+                          </SelectItem>
+                          <SelectItem value="preserve">
+                            {t("preserveOwnership")}
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </Field>
+                    <Field>
+                      <FieldLabel htmlFor="transfer-secret-policy">
+                        {t("secretPolicy")}
+                      </FieldLabel>
+                      <Select
+                        value={transferOptions.secretPolicy}
+                        onValueChange={(value) => {
+                          setTransferOptions((current) => ({
+                            ...current,
+                            secretPolicy:
+                              value as ResourceTransferOptions["secretPolicy"],
+                          }));
+                          setTransferPreview(null);
+                        }}
+                      >
+                        <SelectTrigger
+                          id="transfer-secret-policy"
+                          className="w-full"
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="disable">
+                            {t("disableSecrets")}
+                          </SelectItem>
+                          <SelectItem value="keep">
+                            {t("keepSecrets")}
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </Field>
+                  </div>
+                ) : null}
+              </div>
+
+              {transferPreview ? (
+                <div className="flex flex-col gap-4">
+                  <Alert
+                    variant={
+                      transferPreview.blockers.length > 0
+                        ? "destructive"
+                        : "default"
+                    }
+                  >
+                    {transferPreview.blockers.length > 0 ? (
+                      <AlertTriangleIcon aria-hidden="true" />
+                    ) : (
+                      <CheckIcon aria-hidden="true" />
+                    )}
+                    <AlertTitle>
+                      {transferPreview.blockers.length > 0
+                        ? t("transferBlocked")
+                        : t("transferReady", {
+                            count: transferPreview.items.length,
+                          })}
+                    </AlertTitle>
+                    <AlertDescription>
+                      {transferPreview.crossOrganization
+                        ? t("crossOrganizationTransfer")
+                        : t("sameOrganizationTransfer")}
+                    </AlertDescription>
+                  </Alert>
+
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="rounded-lg border p-3">
+                      <div className="text-xs text-muted-foreground">
+                        {t("resources")}
+                      </div>
+                      <div className="text-xl font-semibold">
+                        {transferPreview.items.length}
+                      </div>
+                    </div>
+                    <div className="rounded-lg border p-3">
+                      <div className="text-xs text-muted-foreground">
+                        {t("directAssignments")}
+                      </div>
+                      <div className="text-sm font-medium">
+                        {t("keptAndRemoved", {
+                          kept: transferPreview.directAssignments.kept,
+                          removed: transferPreview.directAssignments.removed,
+                        })}
+                      </div>
+                    </div>
+                    <div className="rounded-lg border p-3">
+                      <div className="text-xs text-muted-foreground">
+                        {t("connections")}
+                      </div>
+                      <div className="text-sm font-medium">
+                        {t("affectedConnections", {
+                          count: transferPreview.secrets.affected,
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="max-h-56 overflow-auto rounded-xl border">
+                    <table className="w-full text-left">
+                      <thead className="sticky top-0 bg-muted text-xs text-muted-foreground">
+                        <tr>
+                          <th className="px-4 py-3 font-medium">
+                            {t("resourceType")}
+                          </th>
+                          <th className="px-4 py-3 font-medium">
+                            {t("resource")}
+                          </th>
+                          <th className="px-4 py-3 font-medium">
+                            {t("transferReason")}
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y">
+                        {transferItemsByType.flatMap(([type, items]) =>
+                          items.map((item) => (
+                            <tr key={`${item.type}:${item.id}`}>
+                              <td className="px-4 py-3 text-sm">
+                                {t(`resourceTypes.${type}`)}
+                              </td>
+                              <td className="px-4 py-3 text-sm font-medium">
+                                {item.name}
+                              </td>
+                              <td className="px-4 py-3 text-sm text-muted-foreground">
+                                {t(`transferReasons.${item.reason}`)}
+                              </td>
+                            </tr>
+                          )),
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {[...transferPreview.blockers, ...transferPreview.warnings]
+                    .length > 0 ? (
+                    <ul className="grid gap-2 text-sm text-muted-foreground">
+                      {transferPreview.blockers.map((message) => (
+                        <li
+                          key={`blocker-${message}`}
+                          className="text-destructive"
+                        >
+                          • {message}
+                        </li>
+                      ))}
+                      {transferPreview.warnings.map((message) => (
+                        <li key={`warning-${message}`}>• {message}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          )}
+
+          <DialogFooter className="sticky -bottom-6 z-10 -mx-6 -mb-6 border-t bg-background px-6 pt-4 pb-6">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={transferLoading}
+              onClick={() => {
+                setTransferResource(null);
+                setTransferPreview(null);
+              }}
+            >
+              {t("cancelTransfer")}
+            </Button>
+            {transferPreview ? (
+              <Button
+                type="button"
+                disabled={
+                  transferLoading || transferPreview.blockers.length > 0
+                }
+                onClick={() => void executeTransfer()}
+              >
+                {transferLoading ? (
+                  <Spinner data-icon="inline-start" />
+                ) : (
+                  <ArrowRightLeftIcon
+                    data-icon="inline-start"
+                    aria-hidden="true"
+                  />
+                )}
+                {t("confirmTransfer")}
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                disabled={!targetWorkspaceId || transferLoading}
+                onClick={() => void previewTransfer()}
+              >
+                {transferLoading ? <Spinner data-icon="inline-start" /> : null}
+                {t("previewTransfer")}
+              </Button>
+            )}
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </Card>
@@ -1820,7 +2393,8 @@ export function AccessConsole({
                                       setAssignment({
                                         ...assignment,
                                         scopeType: value as
-                                          "organization" | "workspace",
+                                          | "organization"
+                                          | "workspace",
                                         roleId: "",
                                       })
                                     }
@@ -1855,7 +2429,8 @@ export function AccessConsole({
                                       setAssignment({
                                         ...assignment,
                                         principalType: value as
-                                          "user" | "group",
+                                          | "user"
+                                          | "group",
                                         principalId: "",
                                       })
                                     }
@@ -2424,6 +2999,7 @@ export function AccessConsole({
         <TabsContent value="resources">
           <ResourceAccessPanel
             workspaceId={workspaceId}
+            organizationId={snapshot.organization.id}
             definitions={snapshot.resourceDefinitions}
           />
         </TabsContent>
@@ -2756,7 +3332,8 @@ export function AccessConsole({
                                 setRoleForm({
                                   ...roleForm,
                                   scopeType: value as
-                                    "organization" | "workspace",
+                                    | "organization"
+                                    | "workspace",
                                   permissions: roleForm.permissions.filter(
                                     (permission) =>
                                       isPermissionCompatibleWithScope(
