@@ -95,7 +95,7 @@ jobs:
 
           if [[ -n "${public_host}" ]]; then
             public_url="https://${public_host}"
-            service_url="http://${public_host}:3000"
+            service_url="https://${public_host}:3000"
           fi
 
           {
