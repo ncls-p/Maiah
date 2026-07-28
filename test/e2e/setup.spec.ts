@@ -84,13 +84,16 @@ test.describe("setup wizard provider step", () => {
 });
 
 test.describe("access page", () => {
-  test("keeps platform account management separate from organization access", async ({
+  test("manages accounts and organization access in one interface", async ({
     page,
   }) => {
     await page.goto("/en/members");
-    await page.getByRole("tab", { name: "Platform accounts" }).click();
+    await expect(page.getByText("Who has access")).toBeVisible();
     await expect(
-      page.getByRole("heading", { name: "Platform accounts" }).first(),
-    ).toBeVisible();
+      page.getByRole("tab", { name: "Platform accounts" }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("tab", { name: "Organization access" }),
+    ).toHaveCount(0);
   });
 });
