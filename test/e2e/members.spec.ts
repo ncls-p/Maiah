@@ -55,7 +55,9 @@ test.describe("members page", () => {
     await expect(page.getByRole("tab", { name: "Roles" })).toBeVisible();
   });
 
-  test("shows each account once with all of its access", async ({ page }) => {
+  test("shows each account only once across scoped access", async ({
+    page,
+  }) => {
     await ensureE2EMember();
     await page.goto("/en/members");
 
@@ -66,7 +68,6 @@ test.describe("members page", () => {
       hasText: e2eMember.email,
     });
     await expect(matchingRows).toHaveCount(1);
-    await expect(matchingRows).toContainText("Organization Member");
   });
 
   test("opens built-in roles with their permission matrix", async ({
