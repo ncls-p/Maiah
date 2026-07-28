@@ -403,6 +403,7 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
     const conversationId = randomUUID();
     const userMessageId = randomUUID();
     const assistantMessageId = randomUUID();
+    const laterUserMessageId = randomUUID();
 
     try {
       await db.insert(conversations).values({
@@ -484,6 +485,40 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
         .from(messageParts)
         .where(eq(messageParts.messageId, assistantMessageId));
       expect(persistedParts).toEqual([{ type: "text" }]);
+
+      await expect(
+        claimAssistantContinuation({
+          conversationId,
+          messageId: assistantMessageId,
+          providerId: null,
+          modelId: "continuation-test-model",
+        }),
+      ).resolves.toEqual({ status: "already_streaming" });
+      await expect(
+        claimAssistantContinuation({
+          conversationId,
+          messageId: randomUUID(),
+          providerId: null,
+          modelId: "continuation-test-model",
+        }),
+      ).resolves.toEqual({ status: "not_found" });
+
+      await db.insert(messages).values({
+        id: laterUserMessageId,
+        conversationId,
+        role: "user",
+        status: "completed",
+        completedAt: new Date(),
+        createdAt: new Date(Date.now() + 1_000),
+      });
+      await expect(
+        claimAssistantContinuation({
+          conversationId,
+          messageId: assistantMessageId,
+          providerId: null,
+          modelId: "continuation-test-model",
+        }),
+      ).resolves.toEqual({ status: "not_latest" });
     } finally {
       await db
         .delete(messageParts)
@@ -491,6 +526,7 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
           inArray(messageParts.messageId, [
             userMessageId,
             assistantMessageId,
+            laterUserMessageId,
           ]),
         );
       await db
