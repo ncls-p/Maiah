@@ -95,7 +95,9 @@ jobs:
 
           if [[ -n "${public_host}" ]]; then
             public_url="https://${public_host}"
-            service_url="https://${public_host}:3000"
+            # Coolify uses the URL scheme for the proxy-to-container hop. Keep
+            # that hop on HTTP while exposing the browser-facing origin on HTTPS.
+            service_url="http://${public_host}:3000"
           fi
 
           {

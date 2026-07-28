@@ -72,7 +72,10 @@ describe("public HTTPS origin", () => {
     const workflow = readFileSync(".github/workflows/coolify.yml", "utf8");
 
     expect(workflow).toContain(
-      'public_url="https://${public_host}"\n            service_url="https://${public_host}:3000"',
+      'public_url="https://${public_host}"',
+    );
+    expect(workflow).toContain(
+      'service_url="http://${public_host}:3000"',
     );
     expect(workflow).toContain('BETTER_AUTH_URL="${AI_HUB_PUBLIC_URL}"');
     expect(workflow).toContain(
