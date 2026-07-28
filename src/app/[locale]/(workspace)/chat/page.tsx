@@ -1331,6 +1331,13 @@ export default function ChatPage() {
     });
   }
 
+  async function continueAssistantResponse(message: ChatMessage) {
+    if (!activeConversationId || sending) return;
+    await handleSubmit(t("messageList.continuePrompt"), {
+      continueFromMessageId: message.id,
+    });
+  }
+
   async function reloadActualLatestMessages() {
     if (!activeConversationId || sending) return;
     const data = await fetchJson<{ messages?: ChatMessage[] }>(
@@ -1631,6 +1638,7 @@ export default function ChatPage() {
                     onDeleteMessage={deleteMessage}
                     onResendMessage={resendMessage}
                     onRegenerateAssistant={resendMessage}
+                    onContinueAssistant={continueAssistantResponse}
                     onJumpLatest={reloadActualLatestMessages}
                     pendingApprovals={pendingApprovals}
                     onApproveTool={approveToolInvocation}
@@ -1706,6 +1714,7 @@ export default function ChatPage() {
                 onDeleteMessage={deleteMessage}
                 onResendMessage={resendMessage}
                 onRegenerateAssistant={resendMessage}
+                onContinueAssistant={continueAssistantResponse}
                 onJumpLatest={reloadActualLatestMessages}
                 pendingApprovals={pendingApprovals}
                 onApproveTool={approveToolInvocation}

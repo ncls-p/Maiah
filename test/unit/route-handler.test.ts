@@ -24,6 +24,14 @@ vi.mock("@/server/domain/services/authorization", () => ({
   },
 }));
 
+const { findAccessResource } = vi.hoisted(() => ({
+  findAccessResource: vi.fn(),
+}));
+
+vi.mock("@/server/infrastructure/db/access-resource-repository", () => ({
+  findAccessResource,
+}));
+
 vi.mock("@/lib/logger", () => ({
   logger: {
     info: vi.fn(),
@@ -47,6 +55,7 @@ vi.mock("next/server", () => ({
 import { getSession } from "@/modules/auth/session";
 import { verifyWorkspaceApiKey } from "@/modules/api-keys/use-cases";
 import { isPlatformAdminSession } from "@/modules/admin/auth";
+import { runWithRequestAuth } from "@/modules/auth/request-auth-context";
 import * as authz from "@/server/domain/services/authorization";
 
 import type { NextRequest } from "next/server";
@@ -224,6 +233,104 @@ describe("route-handler – requireWorkspacePermissionAsync", async () => {
     expect(result!.body).toEqual({
       error: "Forbidden",
       reason: "Not a member",
+    });
+  });
+});
+
+describe("route-handler – requireResourcePermissionAsync", async () => {
+  const { requireResourcePermissionAsync } =
+    await import("@/lib/route-handler");
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    findAccessResource.mockResolvedValue({
+      id: "agent-1",
+      type: "agent",
+      name: "Support",
+      workspaceId: "ws-1",
+      organizationId: "org-1",
+    });
+  });
+
+  it("returns null when the exact resource permission is granted", async () => {
+    vi.mocked(authz.authorization.checkPermission).mockResolvedValue({
+      granted: true,
+    });
+
+    const result = await requireResourcePermissionAsync(
+      "user-1",
+      "ws-1",
+      "agents.get",
+      "agent",
+      "agent-1",
+    );
+
+    expect(result).toBeNull();
+    expect(authz.authorization.checkPermission).toHaveBeenCalledWith(
+      { principalType: "user", principalId: "user-1" },
+      "agents.get",
+      "agent",
+      "agent-1",
+    );
+  });
+
+  it("returns 403 when the exact resource permission is denied", async () => {
+    vi.mocked(authz.authorization.checkPermission).mockResolvedValue({
+      granted: false,
+      reason: "Missing permission: agents.get",
+    });
+
+    const result = await requireResourcePermissionAsync(
+      "user-1",
+      "ws-1",
+      "agents.get",
+      "agent",
+      "agent-1",
+    );
+
+    expect(result!.status).toBe(403);
+    expect(result!.body).toEqual({
+      error: "Forbidden",
+      reason: "Missing permission: agents.get",
+    });
+  });
+});
+
+describe("route-handler – requireRequestPermissionScopeAsync", async () => {
+  const { requireRequestPermissionScopeAsync } =
+    await import("@/lib/route-handler");
+
+  it("allows user sessions because their permissions are checked separately", async () => {
+    await expect(
+      requireRequestPermissionScopeAsync(
+        "user-1",
+        "workspace-1",
+        "agents.list",
+      ),
+    ).resolves.toBeNull();
+  });
+
+  it("returns the precise missing-scope reason for API tokens", async () => {
+    const result = await runWithRequestAuth(
+      {
+        type: "api_key",
+        apiKeyId: "key-1",
+        workspaceId: "workspace-1",
+        userId: "user-1",
+        scopes: ["agents.list"],
+      },
+      () =>
+        requireRequestPermissionScopeAsync(
+          "user-1",
+          "workspace-1",
+          "providers.viewMetadata",
+        ),
+    );
+
+    expect(result!.status).toBe(403);
+    expect(result!.body).toEqual({
+      error: "Forbidden",
+      reason: "API token scope missing: providers.viewMetadata",
     });
   });
 });

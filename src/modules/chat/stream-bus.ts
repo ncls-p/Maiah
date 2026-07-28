@@ -93,7 +93,11 @@ export function registerChatStreamAbortController(
   messageId: string,
   abortController: AbortController,
 ) {
-  const run = getRun(messageId);
+  let run = runs.get(messageId);
+  if (!run || run.done) {
+    run = { events: [], done: false, subscribers: new Set() };
+    runs.set(messageId, run);
+  }
   run.abortController = abortController;
 }
 

@@ -58,6 +58,24 @@ Chaque ressource distante doit distinguer :
 | Premier assistant via setup      | Calcul, heure, aléatoire, UUID, dates et recherche web, sans approbation | Tests route/use case         |
 | Marqueur onboarding indisponible | Assistant utilisable, avertissement distinct                             | Code                         |
 
+## Organisations, projets et accès
+
+| Scénario                            | Attendu                                                                                         | Couverture                            |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------- | ------------------------------------- |
+| Plusieurs organisations             | Création indépendante, propriétaire initial et premier projet atomiques                         | Route + module + migration PostgreSQL |
+| Plusieurs projets                   | Sélecteur groupé par organisation, choix persistant, héritage visible                           | Code + navigateur                     |
+| Héritage organisation → projet      | Rôles utilisateur et équipe fusionnés avec les attributions locales                             | Tests IAM + CI PostgreSQL             |
+| Attribution membre ou équipe        | Principal, rôle et portée recroisés côté serveur avec l’organisation active                     | Module + validation de route          |
+| Rôle personnalisé                   | Catalogue fermé, au moins un droit, portée organisation ou projet                               | Tests catalogue + code                |
+| Équipe vide                         | État explicite et ajout de membre actif uniquement                                              | Code                                  |
+| Dernier propriétaire                | Retrait refusé en conflit jusqu’à attribution d’un autre propriétaire                           | Module + CI PostgreSQL                |
+| Erreur initiale                     | Explication persistante et relance ; aucune mutation disponible                                 | Code                                  |
+| Erreur de rafraîchissement          | Dernier snapshot conservé avec avertissement et relance                                         | Code                                  |
+| Permission insuffisante             | Navigation masquée ; API fail-closed ; état lecture seule si la consultation reste autorisée    | Tests sidebar + route                 |
+| Double soumission                   | Action initiatrice occupée, saisie conservée après rejet                                        | Code                                  |
+| Suppression membre ou attribution   | Ressource nommée, confirmation explicite, cache invalidé, audit et dernier propriétaire protégé | Module + code UI                      |
+| Mobile, clavier et traduction FR/EN | Onglets défilables, dialogues titrés, labels associés, aucune copie visible codée en dur        | Typecheck + navigateur à compléter    |
+
 ## Chat et conversations
 
 | Scénario                         | Attendu                                                                                          | Couverture                                  |

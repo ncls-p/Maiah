@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import {
   handleRoute,
-  requireWorkspacePermissionAsync,
+  requireResourcePermissionAsync,
 } from "@/lib/route-handler";
 import {
   deleteScheduledTask,
@@ -28,11 +28,17 @@ const updateSchema = z.object({
   enabled: z.boolean().optional(),
 });
 
-async function requireChatPermission(userId: string, workspaceId: string) {
-  const forbidden = await requireWorkspacePermissionAsync(
+async function requireChatPermission(
+  userId: string,
+  workspaceId: string,
+  taskId: string,
+) {
+  const forbidden = await requireResourcePermissionAsync(
     userId,
     workspaceId,
     "agents.chat",
+    "scheduled_task",
+    taskId,
   );
   return forbidden === null;
 }
@@ -50,7 +56,11 @@ export async function PATCH(
         return NextResponse.json({ error: "Invalid input" }, { status: 400 });
       }
       if (
-        !(await requireChatPermission(session.user.id, parsed.data.workspaceId))
+        !(await requireChatPermission(
+          session.user.id,
+          parsed.data.workspaceId,
+          parsedParams.data.taskId,
+        ))
       ) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
@@ -59,6 +69,7 @@ export async function PATCH(
         parsed.data.workspaceId,
         session.user.id,
         parsed.data,
+        { allowShared: true },
       );
       return NextResponse.json({ task });
     },
@@ -84,6 +95,7 @@ export async function DELETE(
         !(await requireChatPermission(
           session.user.id,
           parsedQuery.data.workspaceId,
+          parsedParams.data.taskId,
         ))
       ) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -92,6 +104,7 @@ export async function DELETE(
         parsedParams.data.taskId,
         parsedQuery.data.workspaceId,
         session.user.id,
+        { allowShared: true },
       );
       return NextResponse.json({ ok: true });
     },

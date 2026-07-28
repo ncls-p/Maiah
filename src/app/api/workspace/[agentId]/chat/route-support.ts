@@ -50,6 +50,7 @@ export const chatRequestSchema = z.object({
   content: z.string().trim().min(1).max(32_000),
   conversationId: z.uuid().nullable().optional(),
   resendFromMessageId: z.uuid().nullable().optional(),
+  continueFromMessageId: z.uuid().nullable().optional(),
   codeWorkspaceId: z.uuid().optional(),
   attachmentIds: z.array(z.uuid()).max(maxChatAttachments).optional(),
   imageAttachmentIds: z.array(z.uuid()).max(maxChatAttachments).optional(),

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import {
   handleRoute,
-  requireWorkspacePermissionAsync,
+  requireResourcePermissionAsync,
 } from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
 import {
@@ -10,7 +10,7 @@ import {
   getMcpServer,
   toMcpServerForEdit,
   toSafeMcpServer,
-  updateMcpServer,
+  updateMcpServerWithDiscovery,
 } from "@/modules/mcp/use-cases";
 
 const querySchema = z.object({ workspaceId: z.uuid() });
@@ -43,10 +43,12 @@ export async function GET(
           { error: "workspaceId must be a valid UUID" },
           { status: 400 },
         );
-      const forbidden = await requireWorkspacePermissionAsync(
+      const forbidden = await requireResourcePermissionAsync(
         session.user.id,
         parsed.data.workspaceId,
         "mcpServers.get",
+        "mcp_server",
+        (await params).serverId,
       );
       if (forbidden) return forbidden;
       const { serverId } = await params;
@@ -79,10 +81,12 @@ export async function PATCH(
           { error: "Invalid input", details: parsed.error.issues },
           { status: 400 },
         );
-      const forbidden = await requireWorkspacePermissionAsync(
+      const forbidden = await requireResourcePermissionAsync(
         session.user.id,
         parsed.data.workspaceId,
         "mcpServers.manage",
+        "mcp_server",
+        (await params).serverId,
       );
       if (forbidden) return forbidden;
       const { serverId } = await params;
@@ -96,14 +100,17 @@ export async function PATCH(
           { status: 403 },
         );
       }
-      const server = await updateMcpServer({
+      const { server, discovery } = await updateMcpServerWithDiscovery({
         serverId,
         userId: session.user.id,
         canManageGlobal,
         ...parsed.data,
         isGlobal: parsed.data.isGlobal,
       });
-      return NextResponse.json(toSafeMcpServer(server));
+      return NextResponse.json({
+        ...toSafeMcpServer(server),
+        discovery,
+      });
     },
     {
       logLabel: "Failed to update MCP server",
@@ -135,10 +142,12 @@ export async function DELETE(
           { error: "workspaceId must be a valid UUID" },
           { status: 400 },
         );
-      const forbidden = await requireWorkspacePermissionAsync(
+      const forbidden = await requireResourcePermissionAsync(
         session.user.id,
         parsed.data.workspaceId,
         "mcpServers.manage",
+        "mcp_server",
+        (await params).serverId,
       );
       if (forbidden) return forbidden;
       const { serverId } = await params;

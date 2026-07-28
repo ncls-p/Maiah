@@ -41,6 +41,7 @@ export type WorkspacePermissions = {
   canManageApiKeys: boolean;
   canManageWorkspace: boolean;
   canManageTenantGlobals: boolean;
+  canManageAccess: boolean;
   canViewWorkflows: boolean;
 };
 
@@ -59,6 +60,7 @@ export const DEFAULT_WORKSPACE_PERMISSIONS: WorkspacePermissions = {
   canManageApiKeys: false,
   canManageWorkspace: false,
   canManageTenantGlobals: false,
+  canManageAccess: false,
   canViewWorkflows: false,
 };
 
@@ -113,7 +115,7 @@ export const configNavItems: NavItem[] = [
 export const adminNavItems: NavItem[] = [
   { href: "/usage", labelKey: "usage", icon: ActivityIcon },
   { href: "/audit", labelKey: "activityLog", icon: ScrollTextIcon },
-  { href: "/members", labelKey: "team", icon: UsersIcon },
+  { href: "/members", labelKey: "access", icon: UsersIcon },
   { href: "/admin/settings", labelKey: "adminSettings", icon: SettingsIcon },
 ];
 
@@ -129,7 +131,7 @@ const routeTitleKeys: Record<string, string> = {
   "/api-keys": "apiKeys",
   "/usage": "usage",
   "/audit": "activityLog",
-  "/members": "team",
+  "/members": "access",
   "/settings": "settings",
   "/admin/settings": "adminSettings",
   "/setup": "setup",

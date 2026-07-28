@@ -2,6 +2,7 @@ import { and, eq, inArray, isNull, not, or, sql } from "drizzle-orm";
 import { encryptValue, decryptValue } from "@/lib/crypto";
 import { logger } from "@/lib/logger";
 import { audit } from "@/server/domain/services/audit";
+import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
 import {
   agentKnowledgeBindings,
@@ -43,12 +44,20 @@ function canManageKnowledgeBase(
   );
 }
 
-function assertCanManageKnowledgeBase(
+async function assertCanManageKnowledgeBase(
   knowledgeBase: KnowledgeBaseRow,
   userId: string,
   canManageGlobal = false,
 ) {
-  if (!canManageKnowledgeBase(knowledgeBase, userId, canManageGlobal)) {
+  if (
+    !canManageKnowledgeBase(knowledgeBase, userId, canManageGlobal) &&
+    !(await authorization.hasPermission(
+      { principalType: "user", principalId: userId },
+      "knowledgeBases.manage",
+      "knowledge_base",
+      knowledgeBase.id,
+    ))
+  ) {
     throw new Error("Knowledge base not found");
   }
 }
@@ -88,23 +97,43 @@ export async function listKnowledgeBases(
     .select()
     .from(knowledgeBases)
     .where(
-      userId
-        ? visibleKnowledgeBaseCondition(workspaceId, userId)
-        : and(
-            eq(knowledgeBases.workspaceId, workspaceId),
-            isNull(knowledgeBases.archivedAt),
-          ),
+      and(
+        eq(knowledgeBases.workspaceId, workspaceId),
+        isNull(knowledgeBases.archivedAt),
+      ),
     )
     .orderBy(
       sql`${knowledgeBases.isGlobal} DESC`,
       sql`${knowledgeBases.createdAt} DESC`,
     );
-  return rows.map((knowledgeBase) => ({
-    ...knowledgeBase,
-    canEdit: userId
-      ? canManageKnowledgeBase(knowledgeBase, userId, canManageGlobal)
-      : true,
-  }));
+  if (!userId) {
+    return rows.map((knowledgeBase) => ({ ...knowledgeBase, canEdit: true }));
+  }
+  return (
+    await Promise.all(
+      rows.map(async (knowledgeBase) => {
+        const visible =
+          knowledgeBase.createdById === userId ||
+          knowledgeBase.isGlobal ||
+          (await authorization.hasPermission(
+            { principalType: "user", principalId: userId },
+            "knowledgeBases.viewAllowed",
+            "knowledge_base",
+            knowledgeBase.id,
+          ));
+        if (!visible) return null;
+        const canEdit =
+          canManageKnowledgeBase(knowledgeBase, userId, canManageGlobal) ||
+          (await authorization.hasPermission(
+            { principalType: "user", principalId: userId },
+            "knowledgeBases.manage",
+            "knowledge_base",
+            knowledgeBase.id,
+          ));
+        return { ...knowledgeBase, canEdit };
+      }),
+    )
+  ).filter((knowledgeBase) => knowledgeBase !== null);
 }
 
 export async function getKnowledgeBase(
@@ -120,15 +149,23 @@ export async function getKnowledgeBase(
         eq(knowledgeBases.id, knowledgeBaseId),
         eq(knowledgeBases.workspaceId, workspaceId),
         isNull(knowledgeBases.archivedAt),
-        userId
-          ? or(
-              eq(knowledgeBases.createdById, userId),
-              eq(knowledgeBases.isGlobal, true),
-            )
-          : undefined,
       ),
     )
     .limit(1);
+  if (
+    knowledgeBase &&
+    userId &&
+    knowledgeBase.createdById !== userId &&
+    !knowledgeBase.isGlobal &&
+    !(await authorization.hasPermission(
+      { principalType: "user", principalId: userId },
+      "knowledgeBases.viewAllowed",
+      "knowledge_base",
+      knowledgeBase.id,
+    ))
+  ) {
+    return null;
+  }
   return knowledgeBase ?? null;
 }
 
@@ -146,7 +183,11 @@ export async function updateKnowledgeBase(input: {
     input.workspaceId,
   );
   if (!existing) throw new Error("Knowledge base not found");
-  assertCanManageKnowledgeBase(existing, input.userId, input.canManageGlobal);
+  await assertCanManageKnowledgeBase(
+    existing,
+    input.userId,
+    input.canManageGlobal,
+  );
   if (input.isGlobal && !input.canManageGlobal) {
     throw new Error("Only admins can make knowledge bases global");
   }
@@ -184,7 +225,7 @@ export async function archiveKnowledgeBase(
 ) {
   const existing = await getKnowledgeBase(knowledgeBaseId, workspaceId);
   if (!existing) throw new Error("Knowledge base not found");
-  assertCanManageKnowledgeBase(existing, userId, canManageGlobal);
+  await assertCanManageKnowledgeBase(existing, userId, canManageGlobal);
   await db
     .update(knowledgeBases)
     .set({ archivedAt: new Date(), updatedAt: new Date() })
@@ -239,7 +280,7 @@ export async function ingestTextDocument(input: {
     input.workspaceId,
   );
   if (!knowledgeBase) throw new Error("Knowledge base not found");
-  assertCanManageKnowledgeBase(
+  await assertCanManageKnowledgeBase(
     knowledgeBase,
     input.userId,
     input.canManageGlobal,
@@ -356,7 +397,7 @@ export async function archiveDocument(input: {
     input.workspaceId,
   );
   if (!knowledgeBase) throw new Error("Knowledge base not found");
-  assertCanManageKnowledgeBase(
+  await assertCanManageKnowledgeBase(
     knowledgeBase,
     input.userId,
     input.canManageGlobal,

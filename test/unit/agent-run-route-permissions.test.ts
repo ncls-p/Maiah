@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/route-handler", () => ({
   requireWorkspacePermissionAsync: mocks.requirePermission,
+  requireResourcePermissionAsync: mocks.requirePermission,
   handleRoute: async (
     request: Request,
     handler: (context: {
@@ -82,6 +83,8 @@ describe("direct agent run API permissions", () => {
       "11111111-1111-4111-8111-111111111111",
       workspaceId,
       "agents.chat",
+      "agent",
+      agentId,
     );
     expect(mocks.executeAgent).not.toHaveBeenCalled();
   });

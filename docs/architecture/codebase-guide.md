@@ -42,30 +42,31 @@ Une route ne doit pas réimplémenter une règle déjà portée par un module. U
 
 ## Surfaces produit
 
-| Surface             | Pages et composants                                          | API et module propriétaire                                                                          |
-| ------------------- | ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------- |
-| Authentification    | `src/app/[locale]/auth`, `src/components/auth`               | `src/app/api/auth`, `src/modules/auth`, Better Auth                                                 |
-| Setup               | `src/app/[locale]/(workspace)/setup`, `src/components/setup` | `src/app/api/onboarding`, `src/modules/onboarding`, providers et agents                             |
-| Chat                | `src/app/[locale]/(workspace)/chat`, `src/components/chat`   | `src/app/api/workspace/[agentId]/chat`, `src/modules/chat`, `src/modules/agent/runtime-executor.ts` |
-| Assistants          | `src/app/[locale]/(workspace)/agents`                        | `src/app/api/workspace/agents`, `src/modules/agent`                                                 |
-| Orchestrateurs      | onglet orchestration de l’éditeur agent                      | routes `delegations` et `runs`, modules `delegation-use-cases`, `run-use-cases`, `runtime-executor` |
-| Connaissances       | page `knowledge`                                             | routes `knowledge-bases`, `src/modules/knowledge`                                                   |
-| Fournisseurs IA     | page et composants `providers`                               | routes `providers`, `src/modules/provider`                                                          |
-| Outils intégrés     | hub `tools` et éditeur agent                                 | routes `tools`, `src/modules/tool`                                                                  |
-| MCP                 | hub `tools`, composants `mcp`                                | routes `mcp-servers`, `src/modules/mcp`                                                             |
-| Connexions d’outils | panneau MCP                                                  | routes `tool-connections`, `src/modules/tool-connections`                                           |
-| Skills              | hub `tools`, composants `skills`                             | routes `skills`, `src/modules/skills`                                                               |
-| Outils custom       | onglet custom du hub                                         | routes `custom-tools`, `src/modules/custom-tools`                                                   |
-| Approbations        | hub `tools` et messages chat                                 | routes `tool-invocations`, `src/modules/tool/invocation-*`                                          |
-| Marketplace         | page et composants `marketplace`                             | `src/app/api/marketplace`, `src/modules/marketplace`                                                |
-| GitHub              | dialogue de publication du workspace de code                 | routes `workspace/github`, `src/modules/github`                                                     |
-| Tâches planifiées   | page et composants `scheduled-tasks`                         | routes `scheduled-tasks`, `src/modules/scheduled-tasks`                                             |
-| Clés API            | page `api-keys`                                              | routes `api-keys`, `src/modules/api-keys`                                                           |
-| Usage et quota      | page `usage`                                                 | route `usage`, `src/modules/usage`                                                                  |
-| Audit               | page `audit`                                                 | route `audit`, service `domain/services/audit.ts`                                                   |
-| Administration      | pages et composants `admin`                                  | routes `admin`, `src/modules/admin`                                                                 |
-| Navigation          | shell workspace et réglage admin                             | `src/modules/navigation`                                                                            |
-| Workspace de code   | panneaux chat et page dédiée                                 | routes `code-projects`, `src/modules/code-workspace`                                                |
+| Surface              | Pages et composants                                          | API et module propriétaire                                                                          |
+| -------------------- | ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------- |
+| Authentification     | `src/app/[locale]/auth`, `src/components/auth`               | `src/app/api/auth`, `src/modules/auth`, Better Auth                                                 |
+| Setup                | `src/app/[locale]/(workspace)/setup`, `src/components/setup` | `src/app/api/onboarding`, `src/modules/onboarding`, providers et agents                             |
+| Chat                 | `src/app/[locale]/(workspace)/chat`, `src/components/chat`   | `src/app/api/workspace/[agentId]/chat`, `src/modules/chat`, `src/modules/agent/runtime-executor.ts` |
+| Assistants           | `src/app/[locale]/(workspace)/agents`                        | `src/app/api/workspace/agents`, `src/modules/agent`                                                 |
+| Orchestrateurs       | onglet orchestration de l’éditeur agent                      | routes `delegations` et `runs`, modules `delegation-use-cases`, `run-use-cases`, `runtime-executor` |
+| Connaissances        | page `knowledge`                                             | routes `knowledge-bases`, `src/modules/knowledge`                                                   |
+| Fournisseurs IA      | page et composants `providers`                               | routes `providers`, `src/modules/provider`                                                          |
+| Outils intégrés      | hub `tools` et éditeur agent                                 | routes `tools`, `src/modules/tool`                                                                  |
+| MCP                  | hub `tools`, composants `mcp`                                | routes `mcp-servers`, `src/modules/mcp`                                                             |
+| Connexions d’outils  | panneau MCP                                                  | routes `tool-connections`, `src/modules/tool-connections`                                           |
+| Skills               | hub `tools`, composants `skills`                             | routes `skills`, `src/modules/skills`                                                               |
+| Outils custom        | onglet custom du hub                                         | routes `custom-tools`, `src/modules/custom-tools`                                                   |
+| Approbations         | hub `tools` et messages chat                                 | routes `tool-invocations`, `src/modules/tool/invocation-*`                                          |
+| Marketplace          | page et composants `marketplace`                             | `src/app/api/marketplace`, `src/modules/marketplace`                                                |
+| GitHub               | dialogue de publication du workspace de code                 | routes `workspace/github`, `src/modules/github`                                                     |
+| Tâches planifiées    | page et composants `scheduled-tasks`                         | routes `scheduled-tasks`, `src/modules/scheduled-tasks`                                             |
+| Clés API             | page `api-keys`                                              | routes `api-keys`, `src/modules/api-keys`                                                           |
+| Usage et quota       | page `usage`                                                 | route `usage`, `src/modules/usage`                                                                  |
+| Audit                | page `audit`                                                 | route `audit`, service `domain/services/audit.ts`                                                   |
+| Administration       | pages et composants `admin`                                  | routes `admin`, `src/modules/admin`                                                                 |
+| Organisations et IAM | page `members`, composant `iam/access-console`               | route `workspace/iam`, `src/modules/iam`, service `domain/services/authorization.ts`                |
+| Navigation           | shell workspace et réglage admin                             | `src/modules/navigation`                                                                            |
+| Workspace de code    | panneaux chat et page dédiée                                 | routes `code-projects`, `src/modules/code-workspace`                                                |
 
 ## Modules métier
 
@@ -152,6 +153,10 @@ Les migrations SQL sont ordonnées dans `src/server/infrastructure/db/migrations
 
 Voir [le modèle de run](orchestrator-run-model.md), [le versioning agent](agent-configuration-versioning.md), [les limites runtime](agent-runtime-bounds.md) et [le cycle d’approbation](tool-approval-lifecycle.md).
 
+### Accès organisation et projet
+
+La console IAM utilise les scopes historiques `organization` et `workspace`, ce dernier étant présenté comme « projet ». Les rôles d’organisation sont hérités par les projets ; les rôles projet restent locaux. Les équipes sont représentées par le principal `group`. Voir [la hiérarchie IAM](iam-resource-hierarchy.md).
+
 ## Invariants de sécurité
 
 - Authentification et permissions sont vérifiées côté serveur ; masquer un bouton ne constitue pas une autorisation.
@@ -212,6 +217,7 @@ Les tests d’un changement doivent cibler le niveau où vit l’invariant. Un t
 - [Versioning des agents](agent-configuration-versioning.md)
 - [Bornes runtime](agent-runtime-bounds.md)
 - [Cycle d’approbation](tool-approval-lifecycle.md)
+- [Hiérarchie IAM](iam-resource-hierarchy.md)
 - [Credentials Marketplace](../security/marketplace-credentials.md)
 - [Installation des skills](../security/skill-installation.md)
 - [Stockage des payloads d’outils](../security/tool-payload-storage.md)

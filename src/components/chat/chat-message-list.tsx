@@ -5,6 +5,7 @@ import type * as React from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
 import {
+  ArrowRightIcon,
   CheckIcon,
   ChevronDownIcon,
   CircleDotDashedIcon,
@@ -25,6 +26,7 @@ import {
   shouldUseMessageScrollAnchor,
 } from "@/components/chat/chat-scroll";
 import {
+  canContinueAssistantMessage,
   textFromMessage,
   type ChatMessage,
   type PendingToolApproval,
@@ -83,6 +85,7 @@ interface ChatMessageListProps {
   onDeleteMessage?: (message: ChatMessage) => Promise<void> | void;
   onResendMessage?: (message: ChatMessage) => Promise<void> | void;
   onRegenerateAssistant?: (message: ChatMessage) => Promise<void> | void;
+  onContinueAssistant?: (message: ChatMessage) => Promise<void> | void;
   onJumpLatest?: () => Promise<void> | void;
   pendingApprovals?: PendingToolApproval[];
   onApproveTool?: (approval: PendingToolApproval) => void;
@@ -452,6 +455,7 @@ export function ChatMessageList({
   onDeleteMessage,
   onResendMessage,
   onRegenerateAssistant,
+  onContinueAssistant,
   onJumpLatest,
   pendingApprovals = [],
   onApproveTool,
@@ -682,6 +686,9 @@ export function ChatMessageList({
                 Boolean(onRegenerateAssistant) &&
                 isAssistant &&
                 message.status !== "streaming";
+              const canContinue =
+                Boolean(onContinueAssistant) &&
+                canContinueAssistantMessage(message, lastAssistantMessageId);
               const precedingUserMsg =
                 precedingUserByMessageId.get(message.id) ?? null;
               const isEditing = editingMessageId === message.id;
@@ -804,6 +811,7 @@ export function ChatMessageList({
                         canEdit={canEdit}
                         canDelete={canDelete}
                         canRegenerate={canRegenerate}
+                        canContinue={canContinue}
                         onCopy={async () => {
                           await copyRichHtml(markdownToHtml(content));
                         }}
@@ -816,6 +824,9 @@ export function ChatMessageList({
                           if (precedingUserMsg) {
                             void onResendMessage?.(precedingUserMsg);
                           }
+                        }}
+                        onContinue={() => {
+                          void onContinueAssistant?.(message);
                         }}
                       />
                     </MessagePrimitiveContent>
@@ -850,20 +861,24 @@ function MessageActionBar({
   canEdit,
   canDelete,
   canRegenerate,
+  canContinue,
   onCopy,
   onEdit,
   onDelete,
   onRegenerate,
+  onContinue,
 }: {
   message: ChatMessage;
   sending: boolean;
   canEdit: boolean;
   canDelete: boolean;
   canRegenerate: boolean;
+  canContinue: boolean;
   onCopy: () => Promise<void> | void;
   onEdit: () => void;
   onDelete: () => void;
   onRegenerate: () => void;
+  onContinue: () => void;
 }) {
   const t = useTranslations("chat.messageList");
   const [copied, setCopied] = useState(false);
@@ -938,6 +953,20 @@ function MessageActionBar({
         >
           <RefreshCcwIcon className={COMPACT_ICON_CLASS} aria-hidden="true" />
           {t("regenerate")}
+        </Button>
+      ) : null}
+      {canContinue ? (
+        <Button
+          type={BUTTON_TYPE}
+          size="sm"
+          variant={GHOST_VARIANT}
+          aria-label={t("continueResponse")}
+          className="h-6 gap-1 px-2 text-[11px]"
+          disabled={sending}
+          onClick={onContinue}
+        >
+          <ArrowRightIcon className={COMPACT_ICON_CLASS} aria-hidden="true" />
+          {t("continue")}
         </Button>
       ) : null}
     </div>

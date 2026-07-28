@@ -26,6 +26,10 @@ export type SafeProvider = {
   hasApiKey: boolean;
   hasCustomHeaders: boolean;
   createdAt: string;
+  modelRefresh?: {
+    status: "healthy" | "unhealthy" | "manual";
+    imported: number;
+  } | null;
 };
 
 export type ProviderModel = {

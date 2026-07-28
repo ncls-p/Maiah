@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import {
   handleRoute,
-  requireWorkspacePermissionAsync,
+  requireResourcePermissionAsync,
 } from "@/lib/route-handler";
 import {
   abortChatStream,
@@ -34,7 +34,6 @@ export async function POST(
         .where(
           and(
             eq(conversations.id, conversationId),
-            eq(conversations.userId, session.user.id),
             eq(conversations.status, "active"),
             isNull(conversations.archivedAt),
           ),
@@ -48,10 +47,12 @@ export async function POST(
         );
       }
 
-      const forbidden = await requireWorkspacePermissionAsync(
+      const forbidden = await requireResourcePermissionAsync(
         session.user.id,
         conversation.workspaceId,
         "conversations.viewOwn",
+        "conversation",
+        conversationId,
       );
       if (forbidden) return forbidden;
 

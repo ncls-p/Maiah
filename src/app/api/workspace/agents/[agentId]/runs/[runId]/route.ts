@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import {
   handleRoute,
-  requireWorkspacePermissionAsync,
+  requireResourcePermissionAsync,
 } from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
 import { abortActiveAgentRun } from "@/modules/agent/runtime-executor";
@@ -57,10 +57,12 @@ export async function GET(
       if (!request) {
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
       }
-      const forbidden = await requireWorkspacePermissionAsync(
+      const forbidden = await requireResourcePermissionAsync(
         session.user.id,
         request.workspaceId,
         "agents.get",
+        "agent",
+        (await params).agentId,
       );
       if (forbidden) return forbidden;
       const run = await resolveVisibleRun({
@@ -91,10 +93,12 @@ export async function DELETE(
       if (!request) {
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
       }
-      const forbidden = await requireWorkspacePermissionAsync(
+      const forbidden = await requireResourcePermissionAsync(
         session.user.id,
         request.workspaceId,
         "agents.chat",
+        "agent",
+        (await params).agentId,
       );
       if (forbidden) return forbidden;
       const run = await resolveVisibleRun({

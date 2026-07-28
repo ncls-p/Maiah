@@ -9,6 +9,8 @@ import {
 } from "@/hooks/use-workspace";
 import { fetchWorkspaces } from "@/lib/api-client";
 
+const ACTIVE_WORKSPACE_KEY = "active-workspace-id";
+
 export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const [workspaceId, setWorkspaceIdState] = useState<string | null>(null);
   const [workspaces, setWorkspaces] = useState<WorkspaceSummary[]>([]);
@@ -17,6 +19,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
 
   const setWorkspaceId = useCallback((nextWorkspaceId: string) => {
     setWorkspaceIdState(nextWorkspaceId);
+    window.localStorage.setItem(ACTIVE_WORKSPACE_KEY, nextWorkspaceId);
   }, []);
 
   const refresh = useCallback(async () => {
@@ -25,9 +28,16 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     try {
       const rows = await fetchWorkspaces();
       setWorkspaces(rows);
-      const active = rows[0]?.id ?? null;
+      const storedWorkspaceId =
+        window.localStorage.getItem(ACTIVE_WORKSPACE_KEY);
+      const active =
+        rows.find((row) => row.id === workspaceId)?.id ??
+        rows.find((row) => row.id === storedWorkspaceId)?.id ??
+        rows[0]?.id ??
+        null;
       if (active) {
         setWorkspaceIdState(active);
+        window.localStorage.setItem(ACTIVE_WORKSPACE_KEY, active);
       } else {
         setWorkspaceIdState(null);
         setError("Setup required");
@@ -37,7 +47,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [workspaceId]);
 
   useEffect(() => {
     if (workspaceId && workspaces.length > 0) return;

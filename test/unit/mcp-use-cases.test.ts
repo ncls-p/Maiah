@@ -95,7 +95,9 @@ import { listRemoteMcpTools } from "@/modules/mcp/client";
 import {
 	archiveMcpServer,
 	createMcpServer,
+	createMcpServerWithDiscovery,
 	getMcpServer,
+	hasMcpConnectionChanges,
 	listMcpServers,
 	listMcpTools,
 	syncMcpTools,
@@ -103,6 +105,7 @@ import {
 	toMcpServerForEdit,
 	toSafeMcpServer,
 	updateMcpServer,
+	updateMcpServerWithDiscovery,
 	updateMcpTool,
 } from "@/modules/mcp/use-cases";
 
@@ -307,6 +310,61 @@ describe("createMcpServer", () => {
 	});
 });
 
+describe("automatic MCP tool discovery", () => {
+	it("discovers tools as part of server creation", async () => {
+		dbModule._c.returning.mockResolvedValueOnce([fakeSseServer]);
+		dbModule._c.where
+			.mockReturnValueOnce(dbModule._c)
+			.mockResolvedValueOnce([]);
+		dbModule._c.limit.mockResolvedValueOnce([fakeSseServer]);
+		vi.mocked(listRemoteMcpTools).mockResolvedValueOnce([
+			{ name: "search", description: "Search" },
+		] as never);
+
+		const result = await createMcpServerWithDiscovery({
+			workspaceId: "ws-1",
+			userId: "user-1",
+			name: "Test",
+			transport: "sse",
+			url: "https://example.com",
+		});
+
+		expect(result.discovery).toEqual({ status: "healthy", discovered: 1 });
+	});
+
+	it("recognizes only connection fields as discovery triggers", () => {
+		const base = {
+			serverId: "srv-1",
+			workspaceId: "ws-1",
+			userId: "user-1",
+		};
+
+		expect(hasMcpConnectionChanges({ ...base, name: "Renamed" })).toBe(false);
+		expect(hasMcpConnectionChanges({ ...base, enabled: false })).toBe(false);
+		expect(hasMcpConnectionChanges({ ...base, url: "https://new.test" })).toBe(
+			true,
+		);
+		expect(hasMcpConnectionChanges({ ...base, headers: {} })).toBe(true);
+	});
+
+	it("does not rediscover tools for approval-only updates", async () => {
+		dbModule._c.limit.mockResolvedValueOnce([fakeSseServer]);
+		dbModule._c.returning.mockResolvedValueOnce([
+			{ ...fakeSseServer, requireApproval: true },
+		]);
+
+		const result = await updateMcpServerWithDiscovery({
+			serverId: "srv-1",
+			workspaceId: "ws-1",
+			userId: "user-1",
+			requireApproval: true,
+		});
+
+		expect(result.discovery).toBeNull();
+		expect(listRemoteMcpTools).not.toHaveBeenCalled();
+	});
+});
+
 // ─── updateMcpServer ──────────────────────────────────────────────────
 
 describe("updateMcpServer", () => {
@@ -466,6 +524,21 @@ describe("syncMcpTools", () => {
 		const result = await syncMcpTools("srv-1", "ws-1", "user-1");
 		expect(result.status).toBe("unhealthy");
 		expect(result.discovered).toBe(0);
+		expect(dbModule._tx.delete).not.toHaveBeenCalled();
+	});
+
+	it("removes stale tools when a healthy server returns an empty catalog", async () => {
+		dbModule._c.where
+			.mockReturnValueOnce(dbModule._c)
+			.mockResolvedValueOnce([{ name: "old-tool", requireApproval: false }]);
+		dbModule._c.limit.mockResolvedValueOnce([fakeSseServer]);
+		vi.mocked(listRemoteMcpTools).mockResolvedValueOnce([]);
+
+		const result = await syncMcpTools("srv-1", "ws-1", "user-1");
+
+		expect(result.status).toBe("healthy");
+		expect(dbModule._tx.delete).toHaveBeenCalledOnce();
+		expect(dbModule._tx.insert).not.toHaveBeenCalled();
 	});
 
 	it("preserves per-tool requireApproval from existing tools", async () => {

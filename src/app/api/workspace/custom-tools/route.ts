@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import {
   handleRoute,
-  requireWorkspacePermissionAsync,
+  requireRequestPermissionScopeAsync,
+  requireWorkspaceMemberAsync,
 } from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
 import { listCustomTools } from "@/modules/custom-tools/use-cases";
@@ -22,10 +23,15 @@ export async function GET(req: NextRequest) {
           { status: 400 },
         );
 
-      const forbidden = await requireWorkspacePermissionAsync(
+      const scopeForbidden = await requireRequestPermissionScopeAsync(
         session.user.id,
         parsed.data.workspaceId,
         "tools.view",
+      );
+      if (scopeForbidden) return scopeForbidden;
+      const forbidden = await requireWorkspaceMemberAsync(
+        session.user.id,
+        parsed.data.workspaceId,
       );
       if (forbidden) return forbidden;
 

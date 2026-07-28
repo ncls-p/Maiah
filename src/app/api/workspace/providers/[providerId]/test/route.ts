@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import {
   handleRoute,
-  requireWorkspacePermissionAsync,
+  requireResourcePermissionAsync,
 } from "@/lib/route-handler";
 import { testProviderConnection } from "@/modules/provider/use-cases";
 
@@ -23,10 +23,12 @@ export async function POST(
       }
       const { providerId } = parsedParams.data;
       const { workspaceId } = parsedBody.data;
-      const forbidden = await requireWorkspacePermissionAsync(
+      const forbidden = await requireResourcePermissionAsync(
         session.user.id,
         workspaceId,
         "providers.test",
+        "provider",
+        providerId,
       );
       if (forbidden) return forbidden;
       const health = await testProviderConnection(providerId, workspaceId);

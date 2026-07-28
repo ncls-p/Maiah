@@ -23,6 +23,10 @@ export interface McpServer {
   hasHeaders: boolean;
   hasEnv: boolean;
   authHint?: McpAuthHint;
+  discovery?: {
+    status: "healthy" | "unhealthy" | "manual";
+    discovered: number;
+  } | null;
 }
 
 export interface McpTool {

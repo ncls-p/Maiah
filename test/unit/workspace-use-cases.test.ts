@@ -8,6 +8,7 @@ vi.mock("@/server/domain/services/audit", () => ({
 
 vi.mock("@/server/domain/services/authorization", () => ({
   authorization: {
+    hasPermission: vi.fn().mockResolvedValue(true),
     invalidatePermissionCache: vi.fn().mockResolvedValue(undefined),
   },
 }));
@@ -26,6 +27,7 @@ const CHAIN_KEYS = [
   "from",
   "where",
   "innerJoin",
+  "leftJoin",
   "orderBy",
   "values",
   "set",
@@ -67,6 +69,7 @@ vi.mock("@/server/infrastructure/db", () => {
       "from",
       "where",
       "innerJoin",
+      "leftJoin",
       "orderBy",
       "values",
       "set",
@@ -220,10 +223,11 @@ describe("ensurePrimaryWorkspaceForUser", () => {
     };
 
     dbModule._chain.limit
-      .mockResolvedValueOnce([primaryWorkspace]) // getPrimaryWorkspace
+      .mockResolvedValueOnce([{ workspace: primaryWorkspace }]) // getPrimaryWorkspace
       .mockResolvedValueOnce([]) // getActiveWorkspaceMember
       .mockResolvedValueOnce([primaryWorkspace]) // addWorkspaceMember workspace lookup
       .mockResolvedValueOnce([]) // existing member lookup
+      .mockResolvedValueOnce([]) // existing organization member
       .mockResolvedValueOnce([adminRole]); // getSystemWorkspaceRole
     dbModule._tx.limit.mockResolvedValueOnce([]); // existing role binding lookup
 
@@ -246,7 +250,7 @@ describe("ensurePrimaryWorkspaceForUser", () => {
     };
 
     dbModule._chain.limit
-      .mockResolvedValueOnce([primaryWorkspace]) // getPrimaryWorkspace
+      .mockResolvedValueOnce([{ workspace: primaryWorkspace }]) // getPrimaryWorkspace
       .mockResolvedValueOnce([fakeMember]) // getActiveWorkspaceMember
       .mockResolvedValueOnce([{ roleName: "workspace.admin" }]) // getWorkspaceRoleName
       .mockResolvedValueOnce([primaryWorkspace]) // updateWorkspaceMemberRole workspace lookup
@@ -330,6 +334,7 @@ describe("addWorkspaceMember", () => {
     dbModule._chain.limit
       .mockResolvedValueOnce([fakeWorkspace])
       .mockResolvedValueOnce([]) // no existing member
+      .mockResolvedValueOnce([]) // no organization member
       .mockResolvedValueOnce([]); // role not found
 
     await expect(
@@ -346,6 +351,7 @@ describe("addWorkspaceMember", () => {
     dbModule._chain.limit
       .mockResolvedValueOnce([fakeWorkspace])
       .mockResolvedValueOnce([]) // no existing member
+      .mockResolvedValueOnce([]) // no organization member
       .mockResolvedValueOnce([fakeRole]);
 
     // tx: check existing binding
@@ -364,6 +370,7 @@ describe("addWorkspaceMember", () => {
     dbModule._chain.limit
       .mockResolvedValueOnce([fakeWorkspace])
       .mockResolvedValueOnce([{ ...fakeMember, status: "removed" }])
+      .mockResolvedValueOnce([]) // no organization member
       .mockResolvedValueOnce([fakeRole]);
 
     // tx: check existing binding

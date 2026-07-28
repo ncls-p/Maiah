@@ -194,6 +194,26 @@ export function textFromMessage(message: ChatMessage) {
     .join("\n");
 }
 
+export function canContinueAssistantMessage(
+  message: ChatMessage,
+  lastAssistantMessageId: string | null | undefined,
+) {
+  return (
+    message.role === "assistant" &&
+    message.id === lastAssistantMessageId &&
+    message.status !== "streaming" &&
+    textFromMessage(message).trim().length > 0
+  );
+}
+
+export function prepareAssistantMessageContinuation(message: ChatMessage) {
+  return {
+    ...message,
+    status: "streaming",
+    parts: message.parts.filter((part) => part.type !== "suggestions"),
+  };
+}
+
 export function preserveAssistantFailureParts(parts: ChatMessagePart[]) {
   return parts.length > 0
     ? parts

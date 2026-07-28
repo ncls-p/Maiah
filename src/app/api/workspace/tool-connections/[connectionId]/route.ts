@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import {
   handleRoute,
-  requireWorkspacePermissionAsync,
+  requireResourcePermissionAsync,
 } from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
 import {
@@ -39,10 +39,12 @@ export async function PATCH(
         );
       }
 
-      const forbidden = await requireWorkspacePermissionAsync(
+      const forbidden = await requireResourcePermissionAsync(
         session.user.id,
         parsed.data.workspaceId,
         "tools.configure",
+        "tool_connection",
+        (await params).connectionId,
       );
       if (forbidden) return forbidden;
 
@@ -92,10 +94,12 @@ export async function DELETE(
         );
       }
 
-      const forbidden = await requireWorkspacePermissionAsync(
+      const forbidden = await requireResourcePermissionAsync(
         session.user.id,
         parsed.data.workspaceId,
         "tools.configure",
+        "tool_connection",
+        (await params).connectionId,
       );
       if (forbidden) return forbidden;
 

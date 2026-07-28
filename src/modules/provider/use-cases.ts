@@ -134,6 +134,16 @@ export interface UpdateProviderInput {
   enabled?: boolean;
 }
 
+export function hasProviderConnectionChanges(input: UpdateProviderInput) {
+  return (
+    input.baseUrl !== undefined ||
+    input.apiKey !== undefined ||
+    input.headersJson !== undefined ||
+    input.queryParamsJson !== undefined ||
+    input.openaiCompatibleApiRoute !== undefined
+  );
+}
+
 export async function updateProvider(input: UpdateProviderInput) {
   const {
     providerId,
@@ -540,4 +550,91 @@ export async function discoverModels(
 
   const models = await adapter.listModels(runtimeConfig);
   return models;
+}
+
+export type ProviderModelRefreshResult = {
+  status: "healthy" | "unhealthy" | "manual";
+  imported: number;
+};
+
+export async function refreshProviderModels(
+  providerId: string,
+  workspaceId: string,
+): Promise<ProviderModelRefreshResult> {
+  try {
+    const models = await discoverModels(providerId, workspaceId);
+    if (models.length > 0) {
+      await db
+        .insert(aiModels)
+        .values(
+          models.map((model) => ({
+            providerId,
+            modelId: model.modelId,
+            displayName: model.displayName || model.modelId,
+            capabilitiesJson: model.capabilities || null,
+            contextWindow: model.contextWindow || null,
+            maxOutputTokens: model.maxOutputTokens || null,
+            inputTokenCost: model.inputTokenCost || null,
+            outputTokenCost: model.outputTokenCost || null,
+          })),
+        )
+        .onConflictDoUpdate({
+          target: [aiModels.providerId, aiModels.modelId],
+          set: {
+            displayName: sql`excluded.display_name`,
+            capabilitiesJson: sql`excluded.capabilities_json`,
+            contextWindow: sql`excluded.context_window`,
+            maxOutputTokens: sql`excluded.max_output_tokens`,
+            inputTokenCost: sql`excluded.input_token_cost`,
+            outputTokenCost: sql`excluded.output_token_cost`,
+            updatedAt: new Date(),
+          },
+        });
+    }
+    await db
+      .update(aiProviders)
+      .set({
+        healthStatus: "healthy",
+        lastCheckedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(aiProviders.id, providerId));
+    return { status: "healthy", imported: models.length };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const unsupported = message.includes("discovery not supported");
+    logger.warn("Automatic provider model loading failed", {
+      providerId,
+      error: message,
+    });
+    await db
+      .update(aiProviders)
+      .set({
+        healthStatus: unsupported ? "manual" : "unhealthy",
+        lastCheckedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(aiProviders.id, providerId));
+    return {
+      status: unsupported ? "manual" : "unhealthy",
+      imported: 0,
+    };
+  }
+}
+
+export async function createProviderWithModels(input: CreateProviderInput) {
+  const provider = await createProvider(input);
+  const modelRefresh = await refreshProviderModels(
+    provider.id,
+    input.workspaceId,
+  );
+  return { provider, modelRefresh };
+}
+
+export async function updateProviderWithModels(input: UpdateProviderInput) {
+  await updateProvider(input);
+  const modelRefresh = hasProviderConnectionChanges(input)
+    ? await refreshProviderModels(input.providerId, input.workspaceId)
+    : null;
+  return { modelRefresh };
 }

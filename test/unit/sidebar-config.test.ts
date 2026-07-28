@@ -2,146 +2,164 @@ import { MessageSquareIcon } from "lucide-react";
 import { describe, expect, it } from "vitest";
 
 import {
-	applySidebarNavConfig,
-	buildSidebarMenuGroups,
-	defaultSidebarNavConfig,
-	getDefaultSectionForNavId,
-	normalizeSidebarNavConfig,
+  applySidebarNavConfig,
+  buildSidebarMenuGroups,
+  defaultSidebarNavConfig,
+  getDefaultSectionForNavId,
+  normalizeSidebarNavConfig,
 } from "@/modules/navigation/sidebar-config";
 import {
-	DEFAULT_WORKSPACE_PERMISSIONS,
-	type NavItem,
+  DEFAULT_WORKSPACE_PERMISSIONS,
+  type NavItem,
 } from "@/lib/workspace-nav";
 
 const sampleItems: NavItem[] = [
-	{ href: "/chat", labelKey: "chat", icon: MessageSquareIcon },
-	{ href: "/agents", labelKey: "assistants", icon: MessageSquareIcon },
-	{ href: "/settings", labelKey: "settings", icon: MessageSquareIcon },
+  { href: "/chat", labelKey: "chat", icon: MessageSquareIcon },
+  { href: "/agents", labelKey: "assistants", icon: MessageSquareIcon },
+  { href: "/settings", labelKey: "settings", icon: MessageSquareIcon },
 ];
 
 describe("normalizeSidebarNavConfig", () => {
-	it("appends missing default items", () => {
-		const normalized = normalizeSidebarNavConfig({
-			items: [
-				{ id: "/chat", visible: true },
-				{ id: "/agents", visible: false },
-			],
-		});
-		expect(normalized.items[0]).toEqual({
-			id: "/chat",
-			visible: true,
-			section: "primary",
-		});
-		expect(normalized.items[1]).toEqual({
-			id: "/agents",
-			visible: false,
-			section: "primary",
-		});
-		expect(normalized.items.some((item) => item.id === "/tools")).toBe(true);
-	});
+  it("appends missing default items", () => {
+    const normalized = normalizeSidebarNavConfig({
+      items: [
+        { id: "/chat", visible: true },
+        { id: "/agents", visible: false },
+      ],
+    });
+    expect(normalized.items[0]).toEqual({
+      id: "/chat",
+      visible: true,
+      section: "primary",
+    });
+    expect(normalized.items[1]).toEqual({
+      id: "/agents",
+      visible: false,
+      section: "primary",
+    });
+    expect(normalized.items.some((item) => item.id === "/tools")).toBe(true);
+  });
 });
 
 describe("applySidebarNavConfig", () => {
-	it("reorders and hides items", () => {
-		const config = {
-			items: [
-				{ id: "/settings", visible: true },
-				{ id: "/chat", visible: true },
-				{ id: "/agents", visible: false },
-			],
-		};
-		const result = applySidebarNavConfig(sampleItems, config);
-		expect(result.map((item) => item.href)).toEqual(["/settings", "/chat"]);
-	});
+  it("reorders and hides items", () => {
+    const config = {
+      items: [
+        { id: "/settings", visible: true },
+        { id: "/chat", visible: true },
+        { id: "/agents", visible: false },
+      ],
+    };
+    const result = applySidebarNavConfig(sampleItems, config);
+    expect(result.map((item) => item.href)).toEqual(["/settings", "/chat"]);
+  });
 
-	it("falls back to default order when config matches defaults", () => {
-		const result = applySidebarNavConfig(
-			sampleItems,
-			defaultSidebarNavConfig(),
-		);
-		expect(result.map((item) => item.href)).toEqual([
-			"/chat",
-			"/agents",
-			"/settings",
-		]);
-	});
+  it("falls back to default order when config matches defaults", () => {
+    const result = applySidebarNavConfig(
+      sampleItems,
+      defaultSidebarNavConfig(),
+    );
+    expect(result.map((item) => item.href)).toEqual([
+      "/chat",
+      "/agents",
+      "/settings",
+    ]);
+  });
 });
 
 describe("buildSidebarMenuGroups", () => {
-	it("keeps primary, planning, and advanced sections when using custom config", () => {
-		const config = normalizeSidebarNavConfig({
-			items: [
-				{ id: "/settings", visible: true },
-				{ id: "/chat", visible: true },
-				{ id: "/marketplace", visible: true },
-				{ id: "/agents", visible: true },
-			],
-		});
-		const groups = buildSidebarMenuGroups(
-			{
-				pendingToolCount: 0,
-				permissions: {
-					...DEFAULT_WORKSPACE_PERMISSIONS,
-					canViewUsage: true,
-					canViewAudit: true,
-					canViewProviders: true,
-					canManageApiKeys: true,
-				},
-				isAdmin: true,
-				sidebarNavConfig: config,
-			},
-			config,
-		);
+  it("shows access management to scoped IAM managers", () => {
+    const groups = buildSidebarMenuGroups(
+      {
+        pendingToolCount: 0,
+        permissions: {
+          ...DEFAULT_WORKSPACE_PERMISSIONS,
+          canManageAccess: true,
+        },
+        isAdmin: false,
+      },
+      defaultSidebarNavConfig(),
+    );
 
-		expect(groups.map((group) => group.labelKey)).toEqual([
-			"primary",
-			"planning",
-			"advanced",
-		]);
-		expect(groups[0]?.items[0]?.href).toBe("/chat");
-		expect(groups[1]?.items[0]?.href).toBe("/scheduled-tasks");
-		expect(groups[2]?.items[0]?.href).toBe("/settings");
-		expect(groups[2]?.items[1]?.href).toBe("/marketplace");
-	});
+    expect(
+      groups.flatMap((group) => group.items.map((item) => item.href)),
+    ).toContain("/members");
+  });
 
-	it("respects custom section assignments from admin config", () => {
-		const config = normalizeSidebarNavConfig({
-			items: [
-				{ id: "/chat", visible: true, section: "advanced" },
-				{ id: "/settings", visible: true, section: "primary" },
-			],
-		});
-		const groups = buildSidebarMenuGroups(
-			{
-				pendingToolCount: 0,
-				permissions: {
-					...DEFAULT_WORKSPACE_PERMISSIONS,
-					canViewUsage: true,
-					canViewAudit: true,
-					canViewProviders: true,
-					canManageApiKeys: true,
-				},
-				isAdmin: true,
-				sidebarNavConfig: config,
-			},
-			config,
-		);
+  it("keeps primary, planning, and advanced sections when using custom config", () => {
+    const config = normalizeSidebarNavConfig({
+      items: [
+        { id: "/settings", visible: true },
+        { id: "/chat", visible: true },
+        { id: "/marketplace", visible: true },
+        { id: "/agents", visible: true },
+      ],
+    });
+    const groups = buildSidebarMenuGroups(
+      {
+        pendingToolCount: 0,
+        permissions: {
+          ...DEFAULT_WORKSPACE_PERMISSIONS,
+          canViewUsage: true,
+          canViewAudit: true,
+          canViewProviders: true,
+          canManageApiKeys: true,
+        },
+        isAdmin: true,
+        sidebarNavConfig: config,
+      },
+      config,
+    );
 
-		expect(groups.find((group) => group.labelKey === "primary")?.items).toEqual(
-			expect.arrayContaining([expect.objectContaining({ href: "/settings" })]),
-		);
-		expect(
-			groups.find((group) => group.labelKey === "advanced")?.items,
-		).toEqual(
-			expect.arrayContaining([expect.objectContaining({ href: "/chat" })]),
-		);
-	});
+    expect(groups.map((group) => group.labelKey)).toEqual([
+      "primary",
+      "planning",
+      "advanced",
+    ]);
+    expect(groups[0]?.items[0]?.href).toBe("/chat");
+    expect(groups[1]?.items[0]?.href).toBe("/scheduled-tasks");
+    expect(groups[2]?.items[0]?.href).toBe("/settings");
+    expect(groups[2]?.items[1]?.href).toBe("/marketplace");
+  });
+
+  it("respects custom section assignments from admin config", () => {
+    const config = normalizeSidebarNavConfig({
+      items: [
+        { id: "/chat", visible: true, section: "advanced" },
+        { id: "/settings", visible: true, section: "primary" },
+      ],
+    });
+    const groups = buildSidebarMenuGroups(
+      {
+        pendingToolCount: 0,
+        permissions: {
+          ...DEFAULT_WORKSPACE_PERMISSIONS,
+          canViewUsage: true,
+          canViewAudit: true,
+          canViewProviders: true,
+          canManageApiKeys: true,
+        },
+        isAdmin: true,
+        sidebarNavConfig: config,
+      },
+      config,
+    );
+
+    expect(groups.find((group) => group.labelKey === "primary")?.items).toEqual(
+      expect.arrayContaining([expect.objectContaining({ href: "/settings" })]),
+    );
+    expect(
+      groups.find((group) => group.labelKey === "advanced")?.items,
+    ).toEqual(
+      expect.arrayContaining([expect.objectContaining({ href: "/chat" })]),
+    );
+  });
 });
 
 describe("getDefaultSectionForNavId", () => {
-	it("maps default sections", () => {
-		expect(getDefaultSectionForNavId("/chat")).toBe("primary");
-		expect(getDefaultSectionForNavId("/scheduled-tasks")).toBe("planning");
-		expect(getDefaultSectionForNavId("/marketplace")).toBe("advanced");
-	});
+  it("maps default sections", () => {
+    expect(getDefaultSectionForNavId("/chat")).toBe("primary");
+    expect(getDefaultSectionForNavId("/scheduled-tasks")).toBe("planning");
+    expect(getDefaultSectionForNavId("/marketplace")).toBe("advanced");
+  });
 });

@@ -8,7 +8,6 @@ import {
   LockKeyholeIcon,
   PencilIcon,
   PlusIcon,
-  RefreshCwIcon,
   ServerIcon,
   Trash2Icon,
   UnplugIcon,
@@ -20,7 +19,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
-  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -125,7 +123,6 @@ interface ToolConnectionsPanelProps {
   toolsByServer: Record<string, McpTool[]>;
   canManageMcpServers: boolean;
   canManageWorkspaceConnections: boolean;
-  onSyncServerAction: (serverId: string) => Promise<void>;
 }
 
 const DEFAULT_STATUS: ToolConnectionStatus = "active";
@@ -188,7 +185,6 @@ export function ToolConnectionsPanel({
   toolsByServer,
   canManageMcpServers,
   canManageWorkspaceConnections,
-  onSyncServerAction,
 }: ToolConnectionsPanelProps) {
   const t = useTranslations("mcp.toolConnections");
   const [connectors, setConnectors] = useState<ToolConnector[]>([]);
@@ -310,12 +306,7 @@ export function ToolConnectionsPanel({
       });
       const data = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) throw new Error(data.error || t("provisionFailed"));
-      if ((toolsByServer[serverId]?.length ?? 0) === 0) {
-        toast.success(t("provisionedSyncing"));
-        await onSyncServerAction(serverId);
-      } else {
-        toast.success(t("provisioned"));
-      }
+      toast.success(t("provisioned"));
       await load();
     } catch (error) {
       toast.error(
@@ -400,17 +391,6 @@ export function ToolConnectionsPanel({
       <CardHeader>
         <CardTitle>{t("title")}</CardTitle>
         <CardDescription>{t("description")}</CardDescription>
-        <CardAction>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => void load()}
-            disabled={loading || busy || !workspaceId}
-          >
-            <RefreshCwIcon aria-hidden="true" />
-            {t("refresh")}
-          </Button>
-        </CardAction>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <Alert>
@@ -453,9 +433,6 @@ export function ToolConnectionsPanel({
                 onProvisionAction={(serverId) =>
                   void provisionServiceNowConnector(serverId)
                 }
-                onSyncServerAction={(serverId) =>
-                  void onSyncServerAction(serverId)
-                }
               />
             ) : null}
 
@@ -494,12 +471,8 @@ export function ToolConnectionsPanel({
                       }
                       toolCount={toolCount}
                       busy={busy}
-                      canManageMcpServers={canManageMcpServers}
                       canManageWorkspaceConnections={
                         canManageWorkspaceConnections
-                      }
-                      onSyncServerAction={(serverId) =>
-                        void onSyncServerAction(serverId)
                       }
                       onCreateAction={openCreate}
                       onEditAction={openEdit}
@@ -548,7 +521,6 @@ function ProvisionServiceNowConnectorCard({
   selectedToolCount,
   onServerChangeAction,
   onProvisionAction,
-  onSyncServerAction,
 }: {
   servers: McpServer[];
   busy: boolean;
@@ -557,7 +529,6 @@ function ProvisionServiceNowConnectorCard({
   selectedToolCount: number;
   onServerChangeAction: (serverId: string) => void;
   onProvisionAction: (serverId: string) => void;
-  onSyncServerAction: (serverId: string) => void;
 }) {
   const t = useTranslations("mcp.toolConnections");
   if (servers.length === 0) {
@@ -600,20 +571,9 @@ function ProvisionServiceNowConnectorCard({
       ) : null}
       {selectedServerId && selectedToolCount === 0 ? (
         <div className="rounded-lg border bg-muted/30 p-3 text-sm">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-muted-foreground">
-              {t("noSyncedToolsDescription")}
-            </p>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onSyncServerAction(selectedServerId)}
-              disabled={busy || !canManageMcpServers}
-            >
-              <RefreshCwIcon aria-hidden="true" />
-              {t("syncTools")}
-            </Button>
-          </div>
+          <p className="text-muted-foreground">
+            {t("noSyncedToolsDescription")}
+          </p>
         </div>
       ) : null}
       <div className="flex flex-col gap-3 sm:flex-row">
@@ -648,9 +608,7 @@ function ConnectorCard({
   server,
   toolCount,
   busy,
-  canManageMcpServers,
   canManageWorkspaceConnections,
-  onSyncServerAction,
   onCreateAction,
   onEditAction,
   onMakeDefaultAction,
@@ -661,9 +619,7 @@ function ConnectorCard({
   server?: McpServer;
   toolCount?: number;
   busy: boolean;
-  canManageMcpServers: boolean;
   canManageWorkspaceConnections: boolean;
-  onSyncServerAction: (serverId: string) => void;
   onCreateAction: (connector: ToolConnector) => void;
   onEditAction: (connector: ToolConnector, connection: ToolConnection) => void;
   onMakeDefaultAction: (connection: ToolConnection) => void;
@@ -709,20 +665,9 @@ function ConnectorCard({
 
       {server && toolCount === 0 ? (
         <div className="rounded-lg border bg-muted/30 p-3 text-sm">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-muted-foreground">
-              {t("connectorNoToolsDescription")}
-            </p>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onSyncServerAction(server.id)}
-              disabled={busy || !canManageMcpServers}
-            >
-              <RefreshCwIcon aria-hidden="true" />
-              {t("syncTools")}
-            </Button>
-          </div>
+          <p className="text-muted-foreground">
+            {t("connectorNoToolsDescription")}
+          </p>
         </div>
       ) : null}
 

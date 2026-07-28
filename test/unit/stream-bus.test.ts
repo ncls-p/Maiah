@@ -185,6 +185,24 @@ describe("stream-bus", () => {
 
       expect(controller.signal.aborted).toBe(true);
     });
+
+    it("starts a fresh stream when a completed message is continued", () => {
+      const id = crypto.randomUUID();
+      publishChatStreamEvent(id, { type: "text", delta: "old" });
+      completeChatStream(id);
+
+      registerChatStreamAbortController(id, new AbortController());
+      publishChatStreamEvent(id, { type: "text", delta: "continued" });
+
+      const received: Record<string, unknown>[] = [];
+      subscribeToChatStream(id, {
+        enqueue: (event) => received.push(event),
+        close: () => {},
+      });
+
+      expect(received).toEqual([{ type: "text", delta: "continued" }]);
+      expect(hasActiveChatStream(id)).toBe(true);
+    });
   });
 
   describe("AI SDK UI stream response", () => {

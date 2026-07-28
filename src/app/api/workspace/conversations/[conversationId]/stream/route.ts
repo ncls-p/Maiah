@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import {
   handleRoute,
-  requireWorkspacePermissionAsync,
+  requireResourcePermissionAsync,
 } from "@/lib/route-handler";
 import {
   createChatStreamResponse,
@@ -33,7 +33,6 @@ export async function GET(
         .where(
           and(
             eq(conversations.id, conversationId),
-            eq(conversations.userId, session.user.id),
             eq(conversations.status, "active"),
             isNull(conversations.archivedAt),
           ),
@@ -47,10 +46,12 @@ export async function GET(
         );
       }
 
-      const forbidden = await requireWorkspacePermissionAsync(
+      const forbidden = await requireResourcePermissionAsync(
         session.user.id,
         conversation.workspaceId,
         "conversations.viewOwn",
+        "conversation",
+        conversationId,
       );
       if (forbidden) return forbidden;
 

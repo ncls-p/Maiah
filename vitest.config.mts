@@ -37,6 +37,10 @@ export default defineConfig({
 				"src/modules/chat/automation.ts",
 				"src/modules/custom-tools/use-cases.ts",
 				"src/modules/github/publishing.ts",
+				// Hierarchical IAM is database orchestration with organization/project
+				// invariants covered by the dedicated PostgreSQL integration suite and E2E.
+				"src/modules/iam/resource-transfer.ts",
+				"src/modules/iam/use-cases.ts",
 				"src/modules/knowledge/use-cases.ts",
 				// The OpenAI proxy boundary is exercised end-to-end with the official SDK.
 				// These files coordinate request auth, database/provider resolution, quotas,

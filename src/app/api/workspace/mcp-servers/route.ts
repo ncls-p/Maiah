@@ -2,10 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import {
   handleRoute,
+  requireRequestPermissionScopeAsync,
+  requireWorkspaceMemberAsync,
   requireWorkspacePermissionAsync,
 } from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
-import { createMcpServer, listMcpServers } from "@/modules/mcp/use-cases";
+import {
+  createMcpServerWithDiscovery,
+  listMcpServers,
+  toSafeMcpServer,
+} from "@/modules/mcp/use-cases";
 
 const querySchema = z.object({ workspaceId: z.uuid() });
 const createSchema = z.object({
@@ -33,10 +39,15 @@ export async function GET(req: NextRequest) {
           { error: "workspaceId must be a valid UUID" },
           { status: 400 },
         );
-      const forbidden = await requireWorkspacePermissionAsync(
+      const scopeForbidden = await requireRequestPermissionScopeAsync(
         session.user.id,
         parsed.data.workspaceId,
         "mcpServers.get",
+      );
+      if (scopeForbidden) return scopeForbidden;
+      const forbidden = await requireWorkspaceMemberAsync(
+        session.user.id,
+        parsed.data.workspaceId,
       );
       if (forbidden) return forbidden;
       const canManageGlobal = await canManageTenantGlobals(
@@ -81,12 +92,18 @@ export async function POST(req: NextRequest) {
           { status: 403 },
         );
       }
-      const server = await createMcpServer({
-        ...parsed.data,
-        isGlobal: parsed.data.isGlobal && canManageGlobal,
-        userId: session.user.id,
-      });
-      return NextResponse.json(server, { status: 201 });
+      const { server, discovery } = await createMcpServerWithDiscovery(
+        {
+          ...parsed.data,
+          isGlobal: parsed.data.isGlobal && canManageGlobal,
+          userId: session.user.id,
+        },
+        canManageGlobal,
+      );
+      return NextResponse.json(
+        { ...toSafeMcpServer(server), canEdit: true, discovery },
+        { status: 201 },
+      );
     },
     { logLabel: "Failed to create MCP server" },
   );

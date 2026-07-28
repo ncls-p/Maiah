@@ -77,7 +77,32 @@ export function McpServerManager() {
         `/api/workspace/mcp-servers?workspaceId=${workspaceId}`,
       );
       if (!res.ok) throw new Error(t("loadFailed"));
-      const data = (await res.json()) as McpServer[];
+      let data = (await res.json()) as McpServer[];
+      const serversPendingInitialDiscovery = data.filter(
+        (server) =>
+          server.canEdit &&
+          server.transport !== "stdio" &&
+          (!server.healthStatus || server.healthStatus === "unknown"),
+      );
+      if (
+        permissions.canManageMcpServers &&
+        serversPendingInitialDiscovery.length > 0
+      ) {
+        await Promise.all(
+          serversPendingInitialDiscovery.map((server) =>
+            fetch(
+              `/api/workspace/mcp-servers/${server.id}/tools?workspaceId=${workspaceId}`,
+              { method: "POST" },
+            ),
+          ),
+        );
+        const refreshedRes = await fetch(
+          `/api/workspace/mcp-servers?workspaceId=${workspaceId}`,
+        );
+        if (refreshedRes.ok) {
+          data = (await refreshedRes.json()) as McpServer[];
+        }
+      }
       setServers(data);
       const entries = await Promise.all(
         data.map(async (server) => {
@@ -176,12 +201,15 @@ export function McpServerManager() {
           env: buildEnv(form),
         }),
       });
-      if (!res.ok)
-        throw new Error((await res.json()).error || t("createFailed"));
+      const data = (await res.json().catch(() => ({}))) as McpServer & {
+        error?: string;
+      };
+      if (!res.ok) throw new Error(data.error || t("createFailed"));
       setForm(emptyForm);
       setShowCreate(false);
       setShowAdvancedCreate(false);
-      toast.success(t("created"));
+      setExpandedServers((current) => ({ ...current, [data.id]: true }));
+      notifyDiscoveryResult(data.discovery, "created");
       await load();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t("createFailed"));
@@ -212,10 +240,12 @@ export function McpServerManager() {
           env: buildEnv(editForm),
         }),
       });
-      if (!res.ok)
-        throw new Error((await res.json()).error || t("updateFailed"));
+      const data = (await res.json().catch(() => ({}))) as McpServer & {
+        error?: string;
+      };
+      if (!res.ok) throw new Error(data.error || t("updateFailed"));
       closeEdit();
-      toast.success(t("updated"));
+      notifyDiscoveryResult(data.discovery, "updated");
       await load();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t("updateFailed"));
@@ -245,7 +275,7 @@ export function McpServerManager() {
     }
   }
 
-  async function sync(serverId: string) {
+  async function retryDiscovery(serverId: string) {
     if (!workspaceId) return;
     setBusy(true);
     try {
@@ -261,35 +291,34 @@ export function McpServerManager() {
       if (res.ok) {
         toast.success(
           data.discovered
-            ? t("syncSuccess", { count: data.discovered })
-            : t("syncEmpty"),
+            ? t("discoverySuccess", { count: data.discovered })
+            : t("discoveryEmpty"),
         );
         await load();
       } else {
-        toast.error(data.error || t("syncFailed"));
+        toast.error(data.error || t("discoveryFailed"));
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t("syncFailed"));
+      toast.error(
+        error instanceof Error ? error.message : t("discoveryFailed"),
+      );
     } finally {
       setBusy(false);
     }
   }
 
-  async function test(serverId: string) {
-    if (!workspaceId) return;
-    try {
-      const res = await fetch(
-        `/api/workspace/mcp-servers/${serverId}/test?workspaceId=${workspaceId}`,
-        { method: "POST" },
-      );
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || t("connectionFailed"));
-      toast.success(data.message || t("connectionOk"));
-      await load();
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : t("connectionFailed"),
-      );
+  function notifyDiscoveryResult(
+    discovery: McpServer["discovery"],
+    fallback: "created" | "updated",
+  ) {
+    if (!discovery || discovery.status === "manual") {
+      toast.success(t(fallback));
+    } else if (discovery.status === "unhealthy") {
+      toast.warning(t("savedDiscoveryFailed"));
+    } else if (discovery.discovered > 0) {
+      toast.success(t("savedWithTools", { count: discovery.discovered }));
+    } else {
+      toast.success(t("savedWithoutTools"));
     }
   }
 
@@ -388,7 +417,6 @@ export function McpServerManager() {
           toolsByServer={toolsByServer}
           canManageMcpServers={canManageMcpServers}
           canManageWorkspaceConnections={canManageTenantGlobals}
-          onSyncServerAction={(serverId) => sync(serverId)}
         />
       ) : null}
 
@@ -410,8 +438,7 @@ export function McpServerManager() {
           onToolSearchChangeAction={setToolSearch}
           onEditServerAction={(server) => void openEdit(server)}
           onDeleteServerAction={setDeleteId}
-          onTestServerAction={(serverId) => void test(serverId)}
-          onSyncServerAction={(serverId) => void sync(serverId)}
+          onRetryDiscoveryAction={(serverId) => void retryDiscovery(serverId)}
           onShareServerAction={(server) =>
             setShareResource({
               kind: "mcp_server",

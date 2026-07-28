@@ -6,6 +6,7 @@ export type WorkspaceSummary = {
   id: string;
   name: string;
   slug: string;
+  organizationId: string;
   organizationName: string;
 };
 

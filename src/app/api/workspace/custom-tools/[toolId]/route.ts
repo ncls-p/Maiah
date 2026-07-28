@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import {
   handleRoute,
-  requireWorkspacePermissionAsync,
+  requireResourcePermissionAsync,
 } from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
 import { deleteCustomTool } from "@/modules/custom-tools/use-cases";
@@ -25,10 +25,12 @@ export async function DELETE(
       if (!parsedParams.success || !parsedQuery.success) {
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
       }
-      const forbidden = await requireWorkspacePermissionAsync(
+      const forbidden = await requireResourcePermissionAsync(
         session.user.id,
         parsedQuery.data.workspaceId,
         "tools.configure",
+        "custom_tool",
+        (await params).toolId,
       );
       if (forbidden) return forbidden;
       const canManageGlobal = await canManageTenantGlobals(

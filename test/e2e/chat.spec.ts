@@ -56,6 +56,7 @@ async function createRecoveredToolConversation() {
     if (!row) throw new Error("No workspace available for chat E2E fixture");
 
     const conversationId = randomUUID();
+    const userMessageId = randomUUID();
     const assistantMessageId = randomUUID();
     let agentId: string;
     let agentVersionId: string;
@@ -120,8 +121,20 @@ async function createRecoveredToolConversation() {
     await client.query(
       `insert into messages
          (id, conversation_id, role, status, created_at, completed_at)
-       values ($1, $2, 'assistant', 'completed', now(), now())`,
-      [assistantMessageId, conversationId],
+       values
+         ($1, $3, 'user', 'completed', now() - interval '1 second', now() - interval '1 second'),
+         ($2, $3, 'assistant', 'completed', now(), now())`,
+      [userMessageId, assistantMessageId, conversationId],
+    );
+    await client.query(
+      `insert into message_parts
+         (id, message_id, type, content_encrypted, metadata_json, sort_order, created_at)
+       values ($1, $2, 'text', $3, null, 0, now() - interval '1 second')`,
+      [
+        randomUUID(),
+        userMessageId,
+        await encryptFixtureText("Investigate and summarize the failure."),
+      ],
     );
     await client.query(
       `insert into message_parts
@@ -187,12 +200,13 @@ async function createRecoveredToolConversation() {
       cleanup: async () => {
         try {
           await client.query(
-            "delete from message_parts where message_id = $1",
-            [assistantMessageId],
+            "delete from message_parts where message_id = any($1::uuid[])",
+            [[userMessageId, assistantMessageId]],
           );
-          await client.query("delete from messages where id = $1", [
-            assistantMessageId,
-          ]);
+          await client.query(
+            "delete from messages where id = any($1::uuid[])",
+            [[userMessageId, assistantMessageId]],
+          );
           await client.query("delete from conversations where id = $1", [
             conversationId,
           ]);
@@ -338,6 +352,17 @@ test.describe("chat page", () => {
       await expect(
         transcript.getByText("Work interrupted", { exact: true }),
       ).toHaveCount(0);
+      await expect(
+        transcript.getByRole("button", { name: "Regenerate response" }),
+      ).toBeVisible();
+      await expect(
+        transcript.getByRole("button", { name: "Continue this response" }),
+      ).toBeVisible();
+      await expect(
+        transcript.locator(
+          'button[aria-label="Regenerate response"] + button[aria-label="Continue this response"]',
+        ),
+      ).toHaveCount(1);
 
       await transcript.getByRole("button", { name: "Show work phase" }).click();
       await expect(

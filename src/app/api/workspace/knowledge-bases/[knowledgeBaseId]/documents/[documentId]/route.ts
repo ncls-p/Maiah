@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import {
   handleRoute,
-  requireWorkspacePermissionAsync,
+  requireResourcePermissionAsync,
 } from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
 import { archiveDocument } from "@/modules/knowledge/use-cases";
@@ -24,10 +24,12 @@ export async function DELETE(
       if (!parsed.success) {
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
       }
-      const forbidden = await requireWorkspacePermissionAsync(
+      const forbidden = await requireResourcePermissionAsync(
         session.user.id,
         parsed.data.workspaceId,
         "knowledgeBases.manage",
+        "knowledge_base",
+        (await params).knowledgeBaseId,
       );
       if (forbidden) return forbidden;
       const { knowledgeBaseId, documentId } = await params;

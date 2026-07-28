@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import {
   handleRoute,
-  requireWorkspacePermissionAsync,
+  requireResourcePermissionAsync,
 } from "@/lib/route-handler";
 import { db } from "@/server/infrastructure/db";
 import { users } from "@/server/infrastructure/db/schema";
@@ -149,10 +149,12 @@ export async function GET(
       }
       const { agentId } = parsedParams.data;
       const { workspaceId } = parsedQuery.data;
-      const forbidden = await requireWorkspacePermissionAsync(
+      const forbidden = await requireResourcePermissionAsync(
         session.user.id,
         workspaceId,
         "agents.get",
+        "agent",
+        (await params).agentId,
       );
       if (forbidden) return forbidden;
       const canAdminCurate = await canManageTenantGlobals(session, workspaceId);
@@ -225,10 +227,12 @@ export async function PATCH(
       const { agentId } = parsedParams.data;
       const { workspaceId, ...input } = parsedBody.data;
       const canAdminCurate = await canManageTenantGlobals(session, workspaceId);
-      const forbidden = await requireWorkspacePermissionAsync(
+      const forbidden = await requireResourcePermissionAsync(
         session.user.id,
         workspaceId,
         "agents.update",
+        "agent",
+        (await params).agentId,
       );
       if (forbidden) return forbidden;
       const { agent, version } = await updateAgent({
@@ -330,10 +334,12 @@ export async function DELETE(
       }
       const { agentId } = parsedParams.data;
       const { workspaceId } = parsedQuery.data;
-      const forbidden = await requireWorkspacePermissionAsync(
+      const forbidden = await requireResourcePermissionAsync(
         session.user.id,
         workspaceId,
         "agents.delete",
+        "agent",
+        (await params).agentId,
       );
       if (forbidden) return forbidden;
       await archiveAgent(

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import {
   handleRoute,
-  requireWorkspacePermissionAsync,
+  requireResourcePermissionAsync,
 } from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
 import {
@@ -115,10 +115,12 @@ export async function GET(
       if (!request) {
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
       }
-      const forbidden = await requireWorkspacePermissionAsync(
+      const forbidden = await requireResourcePermissionAsync(
         session.user.id,
         request.workspaceId,
         "agents.get",
+        "agent",
+        (await params).agentId,
       );
       if (forbidden) return forbidden;
       const canAdminCurate = await canManageTenantGlobals(
@@ -169,10 +171,12 @@ export async function PUT(
           { status: 400 },
         );
       }
-      const forbidden = await requireWorkspacePermissionAsync(
+      const forbidden = await requireResourcePermissionAsync(
         session.user.id,
         request.workspaceId,
         "agents.update",
+        "agent",
+        (await params).agentId,
       );
       if (forbidden) return forbidden;
       const canAdminCurate = await canManageTenantGlobals(

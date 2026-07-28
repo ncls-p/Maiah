@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import {
   handleRoute,
-  requireWorkspacePermissionAsync,
+  requireResourcePermissionAsync,
 } from "@/lib/route-handler";
 import {
   AgentVersionConflictError,
@@ -36,10 +36,12 @@ export async function GET(
       if (!parsedParams.success || !parsedQuery.success) {
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
       }
-      const forbidden = await requireWorkspacePermissionAsync(
+      const forbidden = await requireResourcePermissionAsync(
         session.user.id,
         parsedQuery.data.workspaceId,
         "agents.get",
+        "agent",
+        (await params).agentId,
       );
       if (forbidden) return forbidden;
       const agent = await getVisibleAgentById(
@@ -77,10 +79,12 @@ export async function PUT(
       }
       const { agentId } = parsedParams.data;
       const { workspaceId, skillIds } = parsedBody.data;
-      const forbidden = await requireWorkspacePermissionAsync(
+      const forbidden = await requireResourcePermissionAsync(
         session.user.id,
         workspaceId,
         "agents.update",
+        "agent",
+        (await params).agentId,
       );
       if (forbidden) return forbidden;
       const { version } = await updateAgent({

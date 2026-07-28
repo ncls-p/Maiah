@@ -31,6 +31,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/route-handler", () => ({
   requireWorkspacePermissionAsync: mocks.requirePermission,
+  requireResourcePermissionAsync: mocks.requirePermission,
   handleRoute: async (
     request: Request,
     handler: (context: {
@@ -71,6 +72,9 @@ vi.mock("@/modules/agent/runtime-policy", () => ({
 }));
 
 vi.mock("@/modules/workflows/use-cases", () => ({
+  WorkflowConflictError: class WorkflowConflictError extends Error {},
+  WorkflowNotFoundError: class WorkflowNotFoundError extends Error {},
+  WorkflowQueueError: class WorkflowQueueError extends Error {},
   getWorkflowDetail: mocks.getWorkflowDetail,
   updateWorkflow: mocks.updateWorkflow,
 }));
@@ -140,11 +144,7 @@ const modelUsage: LanguageModelV4Usage = {
   },
 };
 
-function toolCallStream(
-  toolCallId: string,
-  toolName: string,
-  input: unknown,
-) {
+function toolCallStream(toolCallId: string, toolName: string, input: unknown) {
   return {
     stream: simulateReadableStream({
       chunks: [
@@ -580,6 +580,8 @@ describe("workflow agentic route", () => {
       userId,
       workspaceId,
       "workflows.view",
+      "workflow",
+      workflowId,
     );
   });
 
@@ -623,6 +625,8 @@ describe("workflow agentic route", () => {
       userId,
       workspaceId,
       "workflows.update",
+      "workflow",
+      workflowId,
     );
     expect(mocks.updateWorkflow).toHaveBeenCalledTimes(1);
     expect(mocks.updateWorkflow).toHaveBeenCalledWith(
@@ -705,8 +709,7 @@ describe("workflow agentic route", () => {
 
     expect(
       events.find(
-        (event) =>
-          event.type === "tool_result" && event.id === "tool-bad-edge",
+        (event) => event.type === "tool_result" && event.id === "tool-bad-edge",
       ),
     ).toMatchObject({ status: "error" });
     expect(events.at(-1)).toEqual({ type: "done" });

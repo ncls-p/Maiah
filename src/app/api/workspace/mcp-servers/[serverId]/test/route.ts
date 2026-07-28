@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import {
   handleRoute,
-  requireWorkspacePermissionAsync,
+  requireResourcePermissionAsync,
 } from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
 import { testMcpConnection } from "@/modules/mcp/use-cases";
@@ -22,10 +22,12 @@ export async function POST(
       if (!parsed.success) {
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
       }
-      const forbidden = await requireWorkspacePermissionAsync(
+      const forbidden = await requireResourcePermissionAsync(
         session.user.id,
         parsed.data.workspaceId,
         "mcpServers.manage",
+        "mcp_server",
+        (await params).serverId,
       );
       if (forbidden) return forbidden;
       const { serverId } = await params;

@@ -53,6 +53,64 @@ test.describe("tools hub page", () => {
       await expect(pageContent).toBeVisible();
     }
   });
+
+  test("loads MCP tools automatically and only offers retry after failure", async ({
+    page,
+  }) => {
+    const workspacesResponse = await page.request.get("/api/workspaces");
+    expect(workspacesResponse.ok()).toBe(true);
+    const workspaces = (await workspacesResponse.json()) as Array<{
+      workspace: { id: string };
+    }>;
+    const workspaceId = workspaces[0]?.workspace.id;
+    if (!workspaceId) throw new Error("E2E workspace is missing");
+
+    let serverId: string | undefined;
+    const serverName = `Automatic MCP ${Date.now()}`;
+    try {
+      const createResponse = await page.request.post(
+        "/api/workspace/mcp-servers",
+        {
+          data: {
+            workspaceId,
+            name: serverName,
+            transport: "streamable-http",
+            url: "http://127.0.0.1:9/mcp",
+          },
+        },
+      );
+      expect(createResponse.status()).toBe(201);
+      const server = (await createResponse.json()) as {
+        id: string;
+        discovery: { status: string; discovered: number };
+      };
+      serverId = server.id;
+      expect(server.discovery).toEqual({
+        status: "unhealthy",
+        discovered: 0,
+      });
+
+      await page.goto("/en/tools?tab=mcp");
+      const serverRow = page.getByRole("button", {
+        name: new RegExp(serverName),
+      });
+      await expect(serverRow).toBeVisible({ timeout: 15_000 });
+      await serverRow.click();
+
+      await expect(
+        page.getByRole("button", { name: "Try loading tools again" }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("button", { name: /Sync tools|Test connection/i }),
+      ).toHaveCount(0);
+    } finally {
+      if (serverId) {
+        await page.request.delete(
+          `/api/workspace/mcp-servers/${serverId}?workspaceId=${workspaceId}`,
+        );
+      }
+    }
+  });
 });
 
 test.describe("retired custom tools builder", () => {

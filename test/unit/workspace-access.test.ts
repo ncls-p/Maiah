@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { checkPermission, requireWorkspaceMember } = vi.hoisted(() => ({
-  checkPermission: vi.fn(),
-  requireWorkspaceMember: vi.fn(),
-}));
+const { checkPermission, findAccessResource, requireWorkspaceMember } =
+  vi.hoisted(() => ({
+    checkPermission: vi.fn(),
+    findAccessResource: vi.fn(),
+    requireWorkspaceMember: vi.fn(),
+  }));
 
 vi.mock("@/server/domain/services/authorization", () => ({
   authorization: { checkPermission, requireWorkspaceMember },
@@ -13,9 +15,16 @@ vi.mock("@/server/domain/services/authorization", () => ({
     granted === `${required.split(".")[0]}.*`,
 }));
 
+vi.mock("@/server/infrastructure/db/access-resource-repository", () => ({
+  findAccessResource,
+}));
+
 import { runWithRequestAuth } from "@/modules/auth/request-auth-context";
 import {
+  checkRequestPermissionScope,
+  checkResourcePermissionForRequest,
   checkWorkspacePermissionForRequest,
+  hasResourcePermissionForRequest,
   isWorkspaceMemberForRequest,
 } from "@/modules/auth/workspace-access";
 
@@ -31,6 +40,7 @@ describe("workspace API token access", () => {
   beforeEach(() => {
     checkPermission.mockReset();
     requireWorkspaceMember.mockReset();
+    findAccessResource.mockReset();
   });
 
   it("grants only when token scope and current user permission both grant", async () => {
@@ -62,6 +72,21 @@ describe("workspace API token access", () => {
       reason: "API token scope missing: agents.delete",
     });
     expect(checkPermission).not.toHaveBeenCalled();
+  });
+
+  it("exposes scope-only checks for resource-filtered collections", async () => {
+    const result = await runWithRequestAuth(apiKeyAuth, () =>
+      checkRequestPermissionScope(
+        "user-1",
+        "workspace-1",
+        "providers.viewMetadata",
+      ),
+    );
+
+    expect(result).toEqual({
+      granted: false,
+      reason: "API token scope missing: providers.viewMetadata",
+    });
   });
 
   it("denies use by a different actor before consulting RBAC", async () => {
@@ -121,5 +146,77 @@ describe("workspace API token access", () => {
 
     expect(member).toBe(false);
     expect(requireWorkspaceMember).not.toHaveBeenCalled();
+  });
+
+  it("checks a fine-grained resource after verifying its project", async () => {
+    findAccessResource.mockResolvedValue({
+      id: "agent-1",
+      type: "agent",
+      name: "Support",
+      workspaceId: "workspace-1",
+      organizationId: "organization-1",
+    });
+    checkPermission.mockResolvedValue({ granted: true });
+
+    const result = await checkResourcePermissionForRequest(
+      "user-1",
+      "workspace-1",
+      "agents.get",
+      "agent",
+      "agent-1",
+    );
+
+    expect(result.granted).toBe(true);
+    expect(checkPermission).toHaveBeenCalledWith(
+      { principalType: "user", principalId: "user-1" },
+      "agents.get",
+      "agent",
+      "agent-1",
+    );
+  });
+
+  it("returns the boolean form of a fine-grained resource check", async () => {
+    findAccessResource.mockResolvedValue({
+      id: "agent-1",
+      type: "agent",
+      name: "Support",
+      workspaceId: "workspace-1",
+      organizationId: "organization-1",
+    });
+    checkPermission.mockResolvedValue({ granted: true });
+
+    await expect(
+      hasResourcePermissionForRequest(
+        "user-1",
+        "workspace-1",
+        "agents.get",
+        "agent",
+        "agent-1",
+      ),
+    ).resolves.toBe(true);
+  });
+
+  it("rejects a resource from another project before RBAC", async () => {
+    findAccessResource.mockResolvedValue({
+      id: "model-1",
+      type: "model",
+      name: "Restricted",
+      workspaceId: "workspace-2",
+      organizationId: "organization-1",
+    });
+
+    const result = await checkResourcePermissionForRequest(
+      "user-1",
+      "workspace-1",
+      "models.invoke",
+      "model",
+      "model-1",
+    );
+
+    expect(result).toEqual({
+      granted: false,
+      reason: "Resource not found in this project",
+    });
+    expect(checkPermission).not.toHaveBeenCalled();
   });
 });

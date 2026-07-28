@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import {
   handleRoute,
-  requireWorkspacePermissionAsync,
+  requireResourcePermissionAsync,
 } from "@/lib/route-handler";
 import {
   deleteModel,
@@ -65,10 +65,12 @@ export async function PATCH(
       }
       const { providerId, modelDbId } = parsedParams.data;
       const { workspaceId, ...input } = parsedBody.data;
-      const forbidden = await requireWorkspacePermissionAsync(
+      const forbidden = await requireResourcePermissionAsync(
         session.user.id,
         workspaceId,
         "models.update",
+        "model",
+        modelDbId,
       );
       if (forbidden) return forbidden;
       const provider = await getProviderById(providerId, workspaceId);
@@ -100,10 +102,12 @@ export async function DELETE(
       }
       const { providerId, modelDbId } = parsedParams.data;
       const { workspaceId } = parsedQuery.data;
-      const forbidden = await requireWorkspacePermissionAsync(
+      const forbidden = await requireResourcePermissionAsync(
         session.user.id,
         workspaceId,
         "models.delete",
+        "model",
+        modelDbId,
       );
       if (forbidden) return forbidden;
       const provider = await getProviderById(providerId, workspaceId);

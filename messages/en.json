@@ -35,6 +35,7 @@
     "aiConnections": "AI connections",
     "apiKeys": "API keys",
     "team": "Users",
+    "access": "Access",
     "usage": "Consumption",
     "activityLog": "Activity log",
     "settings": "Settings",
@@ -222,7 +223,10 @@
       "editMessage": "Edit message",
       "deleteMessage": "Delete message",
       "regenerateResponse": "Regenerate response",
-      "regenerate": "Regenerate"
+      "regenerate": "Regenerate",
+      "continueResponse": "Continue this response",
+      "continue": "Continue",
+      "continuePrompt": "Continue your previous response exactly where you stopped. Do not repeat what you have already written."
     },
     "rendering": {
       "externalLinkTitle": "Open external link?",
@@ -464,7 +468,7 @@
     "saveContinue": "Save and continue",
     "useExistingConnection": "Use existing connection",
     "modelTitle": "Pick a model",
-    "modelStepDescription": "Choose the model that will answer for this assistant.",
+    "modelStepDescription": "Models are loaded automatically. Choose the one that will answer for this assistant.",
     "connection": "Connection",
     "selectConnection": "Select connection",
     "testConnection": "Test",
@@ -476,9 +480,9 @@
     "useModel": "Use",
     "modelForAssistant": "Model for this assistant",
     "selectModel": "Select model",
-    "manualModelLabel": "Or enter a model ID",
+    "manualModelLabel": "No catalogue model found? Enter its ID",
     "addModel": "Add",
-    "noRegisteredModels": "No models registered yet. Discover models or enter an ID manually.",
+    "noRegisteredModels": "The connection returned no models. Check its settings later, or add a known model ID now.",
     "model": "Model",
     "agentTitle": "Last step",
     "agentStepDescription": "Name the assistant, then open chat.",
@@ -923,7 +927,7 @@
     "manager": {
       "heroEyebrow": "AI connection",
       "heroTitle": "Connect an AI in 3 steps",
-      "heroDescription": "Add the connection, discover models, then choose them in your assistants. Technical settings stay in Advanced.",
+      "heroDescription": "Add the connection and its models become available automatically. Technical settings stay in Advanced.",
       "heroStepConnect": "Connection",
       "heroStepModels": "Models",
       "heroStepAssistants": "Assistants",
@@ -945,21 +949,22 @@
       "disableProvider": "Disable connection",
       "providerActions": "Connection actions",
       "editConnection": "Edit connection",
-      "testConnection": "Test connection",
+      "retryConnection": "Try loading models again",
       "archiveProvider": "Archive connection",
       "models": "Models",
       "modelsForProvider": "Models available for {provider}",
+      "modelsLoadedAutomatically": "The catalogue is loaded automatically when you connect or update this provider.",
       "selectProvider": "Select a connection to manage its models.",
       "discoverModels": "Discover models",
       "manualModel": "Add a model manually",
-      "manualModelHint": "Use only if discovery does not find the model you need.",
+      "manualModelHint": "Use only when the provider does not expose this model in its catalogue.",
       "modelId": "Model ID",
       "displayName": "Display name",
       "addModel": "Add",
       "discoveredModels": "Discovered ({count})",
       "alreadyAdded": "Added",
       "filterModels": "Filter models…",
-      "noModels": "No models registered yet. Click Discover models to start.",
+      "noModels": "This connection did not return any models. Check its URL and credentials, or add a model manually in Advanced.",
       "noModelMatch": "No model matches “{query}”.",
       "assignModelLogo": "Add model logo",
       "removeModelLogo": "Remove model logo",
@@ -1018,6 +1023,8 @@
       "errorDeleteModel": "Failed to remove model",
       "toastProviderConnected": "Connection added",
       "toastConnectionUpdated": "Connection updated",
+      "toastProviderReady": "{count, plural, one {Connection ready with # model} other {Connection ready with # models}}",
+      "toastProviderSavedModelsFailed": "Connection saved, but its models could not be loaded",
       "toastProviderArchived": "Connection archived",
       "toastModelRegistered": "Model added",
       "toastDiscoveredModels": "{count, plural, one {# model discovered} other {# models discovered}}",
@@ -1285,7 +1292,7 @@
       "description": "Connect external MCP servers so your agents can use their tools.",
       "addServer": "Add server",
       "serverHealth": "Server health",
-      "serverHealthHint": "Status, enabled tools, and sync details",
+      "serverHealthHint": "Connection status and enabled tools",
       "loadFailed": "Unable to load MCP servers",
       "retry": "Try again",
       "loadServerFailed": "Unable to load the MCP server",
@@ -1295,9 +1302,12 @@
       "updated": "MCP server updated",
       "removeFailed": "Unable to remove the MCP server",
       "removed": "MCP server removed",
-      "syncSuccess": "{count, plural, one {# tool synchronized} other {# tools synchronized}}",
-      "syncEmpty": "Synchronization completed — no tools returned",
-      "syncFailed": "Tool synchronization failed",
+      "discoverySuccess": "{count, plural, one {# tool ready} other {# tools ready}}",
+      "discoveryEmpty": "Connection ready — no tools returned",
+      "discoveryFailed": "Unable to load tools",
+      "savedWithTools": "{count, plural, one {Connection saved and # tool is ready} other {Connection saved and # tools are ready}}",
+      "savedWithoutTools": "Connection saved — no tools returned",
+      "savedDiscoveryFailed": "Connection saved, but its tools could not be loaded",
       "connectionOk": "Connection successful",
       "connectionFailed": "Connection failed",
       "updateToolFailed": "Unable to update the tool",
@@ -1349,11 +1359,12 @@
       "enableNamed": "Enable {name}",
       "approvalNamed": "Require approval for {name}",
       "serverActions": "Server actions",
-      "testConnection": "Test connection",
-      "syncTools": "Sync tools",
+      "retryDiscovery": "Try loading tools again",
+      "discoveryFailedDescription": "The connection was saved, but its tools could not be loaded. Check the URL and credentials, then try again.",
       "editServer": "Edit server",
       "removeServer": "Remove server",
-      "noTools": "No tools discovered. Run synchronization after configuring credentials.",
+      "noTools": "This connection did not return any tools.",
+      "noToolsAfterFailure": "No tools are available until the connection succeeds.",
       "noToolMatch": "No tools match your search.",
       "searchTools": "Search tools",
       "searchToolsPlaceholder": "Search tools…",
@@ -1390,7 +1401,6 @@
     "toolConnections": {
       "title": "Tool connections",
       "description": "Store personal endpoints and credentials for shared MCP tools. Secrets are encrypted and never shown to the model.",
-      "refresh": "Refresh",
       "retry": "Try again",
       "privacyTitle": "Personal credentials stay private",
       "privacyDescription": "Only a short-lived encrypted gateway context is sent during tool execution. Existing passwords cannot be read back from this screen.",
@@ -1401,20 +1411,18 @@
       "updated": "Connection updated",
       "provisionFailed": "Unable to create the ServiceNow connector",
       "provisioned": "ServiceNow connector ready",
-      "provisionedSyncing": "ServiceNow connector ready — syncing MCP tools",
       "defaultFailed": "Unable to update the default connection",
       "defaultUpdated": "Default connection updated",
       "removeFailed": "Unable to remove the connection",
       "removed": "Connection removed",
       "emptyTitle": "No configurable tool connectors yet",
       "emptyDescription": "Create a connector for an MCP server to expose personal settings here.",
-      "serviceNowEmptyDescription": "Add and sync the ServiceNow MCP server first, then provision its connector here.",
+      "serviceNowEmptyDescription": "Add the ServiceNow MCP server first. Its tools will load automatically.",
       "provisionTitle": "Provision the ServiceNow connector",
       "provisionDescription": "Choose the MCP gateway server that exposes ServiceNow tools. This creates the connector used by personal credentials.",
       "adminRequiredTitle": "Admin action required",
-      "adminRequiredDescription": "Ask a workspace admin to provision the connector and sync the MCP tools. You can then add your private credentials.",
-      "noSyncedToolsDescription": "This server has no synced tools yet. Sync discovers the ServiceNow catalog without requiring or exposing your credentials.",
-      "syncTools": "Sync tools",
+      "adminRequiredDescription": "Ask a workspace admin to prepare the connector. You can then add your private credentials.",
+      "noSyncedToolsDescription": "This server returned no tools. Check its connection settings in the MCP server list.",
       "serverLabel": "ServiceNow MCP server",
       "serverPlaceholder": "Select MCP server",
       "provisionAction": "Provision connector",
@@ -1423,9 +1431,9 @@
       "global": "Organization",
       "connectorFallbackDescription": "Personal settings for this connector.",
       "mcpServer": "MCP server",
-      "syncedTools": "{count, plural, one {# synced tool} other {# synced tools}}",
+      "syncedTools": "{count, plural, one {# available tool} other {# available tools}}",
       "add": "Add",
-      "connectorNoToolsDescription": "No MCP tools are synced for this connector. Sync discovers the catalog without credentials; the endpoint and secrets are only used when a tool runs.",
+      "connectorNoToolsDescription": "No MCP tools are available for this connector. Check the MCP server connection settings.",
       "noConnectionTitle": "No connection configured",
       "noConnectionDescription": "Add your endpoint and credentials before agents can call this tool.",
       "default": "Default",
@@ -2121,6 +2129,478 @@
       }
     }
   },
+  "access": {
+    "title": "Access",
+    "description": "Manage organizations, projects, teams, roles, and inherited permissions from one place.",
+    "searchPlaceholder": "Type to search…",
+    "searchProjects": "Search projects",
+    "organizationAccess": "Organization access",
+    "platformAccounts": "Platform accounts",
+    "platformAccountsDescription": "Create sign-in accounts and manage platform administrators. Organization and project permissions are assigned separately.",
+    "loadFailed": "Access could not be loaded",
+    "loadError": "Unable to load permissions and assignments.",
+    "refreshFailed": "Access may be out of date",
+    "retry": "Try again",
+    "mutationError": "Unable to update access.",
+    "inheritanceHint": "Organization roles apply to every project; project roles stay local.",
+    "activeProject": "Active project",
+    "newOrganization": "New organization",
+    "newProject": "New project",
+    "createOrganizationTitle": "Create an organization",
+    "createOrganizationDescription": "Start an independent organization with its first project. You become its owner.",
+    "organizationName": "Organization name",
+    "firstProjectName": "First project",
+    "createOrganization": "Create organization",
+    "organizationCreated": "Organization created",
+    "createProjectTitle": "Create a project",
+    "createProjectDescription": "The project will belong to {organization} and inherit its organization access.",
+    "projectName": "Project name",
+    "createProject": "Create project",
+    "projectCreated": "Project created",
+    "readOnlyTitle": "Access is read-only",
+    "readOnlyDescription": "You can inspect effective access, but only an access administrator can change it.",
+    "tabs": {
+      "access": "Assignments",
+      "people": "People & access",
+      "resources": "Resources",
+      "members": "Members",
+      "teams": "Teams",
+      "roles": "Roles"
+    },
+    "assignmentsTitle": "Who has access",
+    "assignmentsDescription": "One row per person, with app, organization, project, and team access together.",
+    "searchPeople": "Search people, email, role, or team…",
+    "searchPrincipal": "Search members or teams",
+    "selectedCount": "{count, plural, one {# person selected} other {# people selected}}",
+    "grantSelected": "Grant access",
+    "selectVisiblePeople": "Select visible organization members",
+    "selectPerson": "Select {name}",
+    "personColumn": "Person",
+    "accessColumn": "Access",
+    "teamsColumn": "Teams",
+    "actions": "Actions",
+    "personActions": "Actions for {name}",
+    "you": "You",
+    "suspended": "Suspended",
+    "accountOnly": "Account only",
+    "appAdministrator": "App administrator",
+    "organizationShort": "Org",
+    "projectShort": "Project",
+    "noExplicitAccess": "No explicit access",
+    "notInOrganization": "Not in this organization",
+    "grantAccess": "Grant access",
+    "addToOrganization": "Add to organization",
+    "removeFromOrganization": "Remove from organization",
+    "makeAppAdmin": "Make app administrator",
+    "removeAppAdmin": "Remove app administrator",
+    "suspendAccount": "Suspend account",
+    "restoreAccount": "Restore account",
+    "accountUpdated": "Account updated",
+    "showMore": "Show {count} more",
+    "noSearchResults": "No matching results",
+    "noSearchResultsDescription": "Try another name, email, role, permission, or team.",
+    "addPerson": "Add person",
+    "addPersonTitle": "Add a person",
+    "addPersonDescription": "Create a sign-in account or add an existing account to this organization without leaving this screen.",
+    "existingAccount": "Existing account",
+    "createAccount": "Create account",
+    "name": "Name",
+    "temporaryPassword": "Temporary password",
+    "appRole": "App role",
+    "standardAccount": "Standard account",
+    "createAndAdd": "Create and add",
+    "accountAndMemberCreated": "Account created and added to the organization",
+    "assignRole": "Assign role",
+    "assignRoleTitle": "Grant access",
+    "assignRoleDescription": "Choose who receives which role and where it applies.",
+    "scope": "Scope",
+    "projectOnly": "This project only",
+    "wholeOrganization": "Whole organization",
+    "principalType": "Grant to",
+    "member": "Member",
+    "team": "Team",
+    "principal": "Member or team",
+    "choose": "Choose…",
+    "role": "Role",
+    "saveAssignment": "Grant access",
+    "roleAssigned": "Access granted",
+    "bulkGrantTitle": "{count, plural, one {Grant access to # person} other {Grant access to # people}}",
+    "bulkGrantDescription": "The same role and scope will be applied to every selected person.",
+    "noAssignments": "No access assignments",
+    "noAssignmentsDescription": "Grant a role to a member or team to make access explicit.",
+    "inherited": "Inherited",
+    "organizationScope": "Organization",
+    "projectScope": "Project",
+    "removeAssignment": "Remove access for {name}",
+    "removeAssignmentTitle": "Remove {name}’s access?",
+    "removeAssignmentDescription": "The {role} assignment at {scope} scope will be removed. Other inherited access remains unchanged.",
+    "assignmentRemoved": "Access removed",
+    "membersTitle": "Organization members",
+    "membersDescription": "{count, plural, =0 {No active member} one {# active member} other {# active members}} in this organization.",
+    "addMember": "Add member",
+    "addMemberTitle": "Add an organization member",
+    "addMemberDescription": "Members can then receive organization or project roles directly or through a team.",
+    "email": "Email",
+    "accountRequired": "The person needs an existing platform account.",
+    "memberAdded": "Member added",
+    "removeMember": "Remove {name} from the organization",
+    "removeMemberTitle": "Remove {name}?",
+    "removeMemberDescription": "{name} will lose direct and team access to every project in {organization}.",
+    "memberRemoved": "Member removed",
+    "cancel": "Keep access",
+    "confirmRemove": "Remove access",
+    "teamsTitle": "Teams",
+    "teamsDescription": "Group members once, then assign roles to the team across projects.",
+    "searchTeams": "Search teams or members…",
+    "createTeam": "Create team",
+    "createTeamTitle": "Create a team",
+    "createTeamDescription": "Teams belong to the organization and can receive reusable access assignments.",
+    "teamName": "Team name",
+    "descriptionLabel": "Description",
+    "teamCreated": "Team created",
+    "noTeams": "No teams yet",
+    "noTeamsDescription": "Create a team to manage access for several members together.",
+    "noTeamDescription": "No description",
+    "memberCount": "{count, plural, =0 {No members} one {# member} other {# members}}",
+    "emptyTeam": "This team has no members.",
+    "addTeamMember": "Add a member",
+    "chooseMember": "Choose a member…",
+    "add": "Add",
+    "teamMemberAdded": "Member added to team",
+    "removeTeamMember": "Remove {name} from the team",
+    "removeTeamMemberTitle": "Remove {name} from this team?",
+    "removeTeamMemberDescription": "They will lose access inherited through {team}. Direct and other team access remain unchanged.",
+    "teamMemberRemoved": "Member removed from team",
+    "deleteTeam": "Delete team {name}",
+    "deleteTeamTitle": "Delete {name}?",
+    "deleteTeamDescription": "The team and all of its access assignments will be removed. Its members remain in the organization.",
+    "teamDeleted": "Team deleted",
+    "rolesTitle": "Roles",
+    "rolesDescription": "Built-in roles cover common cases. Create a custom role only when a smaller permission set is needed.",
+    "createRole": "Create custom role",
+    "createRoleTitle": "Create a custom role",
+    "createRoleDescription": "Give the role a clear outcome-based name, choose its scope, then select only the permissions it needs.",
+    "roleName": "Role name",
+    "roleScope": "Role scope",
+    "projectRole": "Project role",
+    "organizationRole": "Organization role",
+    "roleCreated": "Role created",
+    "roleUpdated": "Role updated",
+    "editRoleTitle": "Edit {name}",
+    "editRoleDescription": "Change the role details and check or uncheck its permissions. Existing assignments update immediately.",
+    "viewRoleTitle": "{name} permissions",
+    "builtInRoleDescription": "Built-in roles are protected. Review every permission here or duplicate the role to customize it safely.",
+    "saveRole": "Save role",
+    "duplicateAndCustomize": "Duplicate and customize",
+    "roleCopyName": "{name} copy",
+    "searchPermissions": "Search permissions",
+    "selectGroup": "Select group",
+    "clearGroup": "Clear group",
+    "searchRoles": "Search roles or permissions…",
+    "roleColumn": "Role",
+    "permissionsColumn": "Permissions",
+    "assignmentsColumn": "Assigned",
+    "builtIn": "Built-in",
+    "custom": "Custom",
+    "assignmentCount": "{count, plural, =0 {Not assigned} one {# assignment} other {# assignments}}",
+    "edit": "Edit",
+    "view": "View",
+    "deleteRole": "Delete role {name}",
+    "deleteRoleTitle": "Delete {name}?",
+    "deleteRoleDescription": "Only roles with no active assignments can be deleted.",
+    "roleDeleted": "Role deleted",
+    "resourcesTitle": "Resource access",
+    "resourcesDescription": "Search any project resource and manage its direct and inherited access in one place.",
+    "resourceType": "Resource type",
+    "searchResources": "Search resources",
+    "searchResourcesPlaceholder": "Type a resource name…",
+    "resourcesLoadFailed": "Unable to load resource access.",
+    "loadingResources": "Loading resources",
+    "noResources": "No matching resources",
+    "noResourcesDescription": "Try another resource type or search term.",
+    "loadMoreResources": "Load more resources",
+    "resource": "Resource",
+    "manageResourceAccess": "Manage access",
+    "transfer": "Transfer",
+    "transferTitle": "Transfer {name}",
+    "transferDescription": "Move this resource to another project. A preview checks dependencies, access, and connections before anything changes.",
+    "transferLoadFailed": "Unable to load destination projects.",
+    "transferPreviewFailed": "Unable to prepare the transfer preview.",
+    "transferFailed": "The transfer could not be completed.",
+    "transferCompleted": "{count, plural, one {# resource transferred} other {# resources transferred}} to {project}.",
+    "loadingDestinations": "Loading destination projects",
+    "noTransferDestination": "No destination project",
+    "noTransferDestinationDescription": "You need access administration rights on another project before you can transfer a resource to it.",
+    "destinationProject": "Destination project",
+    "searchDestination": "Search an organization or project…",
+    "chooseDestination": "Choose a project…",
+    "includeDependencies": "Automatically include linked items",
+    "includeDependenciesDescription": "Moves the models, connections, tools, dependent assistants, and history required to keep everything working.",
+    "advancedTransferOptions": "Advanced options",
+    "directAccessPolicy": "Direct access",
+    "keepCompatibleAccess": "Keep compatible access",
+    "removeAllDirectAccess": "Remove everything",
+    "ownershipPolicy": "Owners",
+    "reassignOwnership": "Reassign to me",
+    "preserveOwnership": "Keep original creators",
+    "secretPolicy": "Secrets and connections",
+    "disableSecrets": "Disable and reconfigure",
+    "keepSecrets": "Keep encrypted",
+    "transferBlocked": "Transfer blocked",
+    "transferReady": "{count, plural, one {# resource ready} other {# resources ready}}",
+    "crossOrganizationTransfer": "This transfer changes organizations. The advanced rules above will be applied.",
+    "sameOrganizationTransfer": "The transfer stays in the same organization.",
+    "resources": "Resources",
+    "directAssignments": "Direct access",
+    "keptAndRemoved": "{kept} kept, {removed} removed",
+    "connections": "Connections",
+    "affectedConnections": "{count, plural, =0 {No affected connections} one {# affected connection} other {# affected connections}}",
+    "transferReason": "Why",
+    "transferReasons": {
+      "selected": "Selected",
+      "parent": "Required container",
+      "dependency": "Required dependency",
+      "dependent": "Dependent item",
+      "history": "Linked history"
+    },
+    "cancelTransfer": "Cancel",
+    "previewTransfer": "Review transfer",
+    "confirmTransfer": "Transfer now",
+    "resourceAccess": "Resource access",
+    "resourceAccessTitle": "Access to {name}",
+    "resourceAccessDescription": "Organization and project access is inherited. Direct access applies only to this resource.",
+    "searchResourceAccess": "Search effective access…",
+    "noResourceAccessResults": "No matching member, team, role, or scope.",
+    "grantResourceAccess": "Grant direct access",
+    "resourceAccessGranted": "Resource access granted",
+    "removeResourceRole": "Remove {role} from {name}",
+    "resourceScope": "This resource",
+    "resourceTypes": {
+      "agent": "Assistants",
+      "provider": "Provider connections",
+      "model": "Models",
+      "mcp_server": "MCP servers",
+      "tool_connector": "Connectors",
+      "tool_connection": "Connections",
+      "custom_tool": "Custom tools",
+      "knowledge_base": "Knowledge bases",
+      "skill": "Skills",
+      "workflow": "Workflows",
+      "scheduled_task": "Scheduled tasks",
+      "conversation": "Conversations",
+      "marketplace_item": "Marketplace items"
+    },
+    "noRoleDescription": "No description",
+    "permissionCount": "{count, plural, =0 {No permissions} one {# permission} other {# permissions}}",
+    "builtInRoles": {
+      "owner": "Organization Owner",
+      "organizationAdmin": "Organization Administrator",
+      "organizationMember": "Organization Member",
+      "projectAdmin": "Project Administrator",
+      "projectEditor": "Project Editor",
+      "projectViewer": "Project Viewer"
+    },
+    "permissionGroups": {
+      "organization": {
+        "label": "Organization & projects",
+        "description": "Structure, settings, projects, and access administration."
+      },
+      "assistants": {
+        "label": "Assistants & conversations",
+        "description": "Build, run, and delegate AI assistants."
+      },
+      "platform": {
+        "label": "Models, tools & knowledge",
+        "description": "AI providers, tools, integrations, and knowledge bases."
+      },
+      "automation": {
+        "label": "Workflows",
+        "description": "Design, publish, and execute automated workflows."
+      },
+      "governance": {
+        "label": "Governance & credentials",
+        "description": "Usage, audit, marketplace publishing, and API credentials."
+      }
+    },
+    "permissions": {
+      "organization_get": {
+        "label": "View organization",
+        "description": "See organization settings and structure."
+      },
+      "organization_update": {
+        "label": "Manage organization",
+        "description": "Change organization settings."
+      },
+      "workspaces_get": {
+        "label": "View projects",
+        "description": "Open projects in the organization."
+      },
+      "workspaces_create": {
+        "label": "Create projects",
+        "description": "Create new projects inside the organization."
+      },
+      "workspaces_update": {
+        "label": "Manage projects",
+        "description": "Change project settings and lifecycle."
+      },
+      "members_manage": {
+        "label": "Manage members",
+        "description": "Add members and update their access."
+      },
+      "teams_manage": {
+        "label": "Manage teams",
+        "description": "Create teams and manage team membership."
+      },
+      "roles_manage": {
+        "label": "Manage access",
+        "description": "Create roles and assign them to members or teams."
+      },
+      "agents_view": {
+        "label": "View assistants",
+        "description": "List and inspect assistants."
+      },
+      "agents_chat": {
+        "label": "Use assistants",
+        "description": "Start conversations and run assistants."
+      },
+      "agents_create": {
+        "label": "Create assistants",
+        "description": "Create and configure assistants."
+      },
+      "agents_update": {
+        "label": "Edit assistants",
+        "description": "Update existing assistants."
+      },
+      "agents_delete": {
+        "label": "Delete assistants",
+        "description": "Permanently remove assistants."
+      },
+      "agents_delegate": {
+        "label": "Delegate to specialists",
+        "description": "Allow orchestrators to run specialist assistants."
+      },
+      "agentVersions_create": {
+        "label": "Create assistant versions",
+        "description": "Save new versions of assistants."
+      },
+      "agentVersions_manage": {
+        "label": "Manage assistant versions",
+        "description": "Administer all assistant versions."
+      },
+      "conversations_create": {
+        "label": "Create conversations",
+        "description": "Start new project conversations."
+      },
+      "conversations_viewOwn": {
+        "label": "View own conversations",
+        "description": "Read conversations created by the member."
+      },
+      "conversations_manage": {
+        "label": "Manage all conversations",
+        "description": "Administer conversations across the project."
+      },
+      "providers_viewMetadata": {
+        "label": "View AI connections",
+        "description": "See configured providers without secrets."
+      },
+      "providers_manage": {
+        "label": "Manage AI connections",
+        "description": "Create, test, update, and delete providers."
+      },
+      "models_view": {
+        "label": "View models",
+        "description": "See models available in the project."
+      },
+      "models_invoke": {
+        "label": "Use models",
+        "description": "Invoke configured models."
+      },
+      "models_manage": {
+        "label": "Manage models",
+        "description": "Sync and configure model availability."
+      },
+      "tools_view": {
+        "label": "View tools",
+        "description": "See tools and integrations."
+      },
+      "tools_configure": {
+        "label": "Configure tools",
+        "description": "Change tool and approval settings."
+      },
+      "tools_executeRestricted": {
+        "label": "Run restricted tools",
+        "description": "Execute tools that require elevated access."
+      },
+      "mcpServers_get": {
+        "label": "View integrations",
+        "description": "See configured MCP servers and connections."
+      },
+      "mcpServers_manage": {
+        "label": "Manage integrations",
+        "description": "Configure MCP servers and connections."
+      },
+      "knowledgeBases_viewAllowed": {
+        "label": "View allowed knowledge",
+        "description": "Read knowledge bases shared with the member."
+      },
+      "knowledgeBases_manage": {
+        "label": "Manage knowledge",
+        "description": "Create and update knowledge bases."
+      },
+      "workflows_view": {
+        "label": "View workflows",
+        "description": "List workflows and inspect their runs."
+      },
+      "workflows_create": {
+        "label": "Create workflows",
+        "description": "Create new workflow drafts."
+      },
+      "workflows_update": {
+        "label": "Edit workflows",
+        "description": "Edit and publish workflows."
+      },
+      "workflows_execute": {
+        "label": "Run workflows",
+        "description": "Start workflow executions."
+      },
+      "workflows_delete": {
+        "label": "Delete workflows",
+        "description": "Permanently remove workflows."
+      },
+      "usage_view": {
+        "label": "View usage",
+        "description": "See consumption and quota."
+      },
+      "audit_view": {
+        "label": "View audit log",
+        "description": "Review security-sensitive events."
+      },
+      "audit_export": {
+        "label": "Export audit log",
+        "description": "Download audit events."
+      },
+      "marketplaceItems_view": {
+        "label": "View marketplace items",
+        "description": "Browse resources available in the marketplace."
+      },
+      "marketplaceItems_install": {
+        "label": "Install marketplace items",
+        "description": "Add shared resources to the project."
+      },
+      "marketplaceItems_publish": {
+        "label": "Publish marketplace items",
+        "description": "Share project resources through the marketplace."
+      },
+      "apiKeys_manageOwn": {
+        "label": "Manage own API keys",
+        "description": "Create credentials limited to the member's access."
+      },
+      "apiKeys_manage": {
+        "label": "Manage all API keys",
+        "description": "Administer credentials for the project."
+      }
+    }
+  },
   "shell": {
     "skipToContent": "Skip to content",
     "returnToChat": "Back to chat",
@@ -2130,6 +2610,7 @@
     "signOut": "Sign out",
     "signOutFailed": "Unable to sign out",
     "navigation": "Navigation",
+    "activeProject": "Active project",
     "openNavigation": "Open navigation",
     "expandSidebar": "Expand sidebar",
     "collapseSidebar": "Collapse sidebar",

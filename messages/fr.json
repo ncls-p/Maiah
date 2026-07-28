@@ -35,6 +35,7 @@
     "aiConnections": "Connexions IA",
     "apiKeys": "Clés API",
     "team": "Utilisateurs",
+    "access": "Accès",
     "usage": "Consommation",
     "activityLog": "Historique d’activité",
     "settings": "Paramètres",
@@ -222,7 +223,10 @@
       "editMessage": "Modifier le message",
       "deleteMessage": "Supprimer le message",
       "regenerateResponse": "Régénérer la réponse",
-      "regenerate": "Régénérer"
+      "regenerate": "Régénérer",
+      "continueResponse": "Continuer cette réponse",
+      "continue": "Continuer",
+      "continuePrompt": "Continue ta réponse précédente exactement là où tu t’es arrêté. Ne répète pas ce que tu as déjà écrit."
     },
     "rendering": {
       "externalLinkTitle": "Ouvrir un lien externe ?",
@@ -464,7 +468,7 @@
     "saveContinue": "Enregistrer et continuer",
     "useExistingConnection": "Utiliser une connexion existante",
     "modelTitle": "Choisir un modèle",
-    "modelStepDescription": "Choisissez le modèle qui répondra pour cet assistant.",
+    "modelStepDescription": "Les modèles sont chargés automatiquement. Choisissez celui qui répondra pour cet assistant.",
     "connection": "Connexion",
     "selectConnection": "Sélectionner une connexion",
     "testConnection": "Tester",
@@ -476,9 +480,9 @@
     "useModel": "Utiliser",
     "modelForAssistant": "Modèle de cet assistant",
     "selectModel": "Sélectionner un modèle",
-    "manualModelLabel": "Ou saisir un ID de modèle",
+    "manualModelLabel": "Aucun modèle trouvé dans le catalogue ? Saisissez son ID",
     "addModel": "Ajouter",
-    "noRegisteredModels": "Aucun modèle enregistré pour l’instant. Découvrez les modèles ou saisissez un ID manuellement.",
+    "noRegisteredModels": "La connexion n’a retourné aucun modèle. Vérifiez-la plus tard, ou ajoutez maintenant un ID de modèle connu.",
     "model": "Modèle",
     "agentTitle": "Dernière étape",
     "agentStepDescription": "Nommez l’assistant, puis ouvrez le chat.",
@@ -922,7 +926,7 @@
     "manager": {
       "heroEyebrow": "Connexion IA",
       "heroTitle": "Connecter une IA en 3 étapes",
-      "heroDescription": "Ajoutez la connexion, récupérez les modèles, puis choisissez-les dans vos assistants. Les réglages techniques restent dans Avancé.",
+      "heroDescription": "Ajoutez la connexion et ses modèles deviennent disponibles automatiquement. Les réglages techniques restent dans Avancé.",
       "heroStepConnect": "Connexion",
       "heroStepModels": "Modèles",
       "heroStepAssistants": "Assistants",
@@ -944,21 +948,22 @@
       "disableProvider": "Désactiver la connexion",
       "providerActions": "Actions de la connexion",
       "editConnection": "Modifier la connexion",
-      "testConnection": "Tester la connexion",
+      "retryConnection": "Réessayer de charger les modèles",
       "archiveProvider": "Archiver la connexion",
       "models": "Modèles",
       "modelsForProvider": "Modèles disponibles pour {provider}",
+      "modelsLoadedAutomatically": "Le catalogue est chargé automatiquement à la connexion et à chaque modification.",
       "selectProvider": "Sélectionnez une connexion pour gérer ses modèles.",
       "discoverModels": "Découvrir les modèles",
       "manualModel": "Ajouter un modèle manuellement",
-      "manualModelHint": "À utiliser seulement si la découverte ne trouve pas le modèle souhaité.",
+      "manualModelHint": "À utiliser seulement si le fournisseur n’expose pas ce modèle dans son catalogue.",
       "modelId": "ID du modèle",
       "displayName": "Nom affiché",
       "addModel": "Ajouter",
       "discoveredModels": "Découverts ({count})",
       "alreadyAdded": "Ajouté",
       "filterModels": "Filtrer les modèles…",
-      "noModels": "Aucun modèle enregistré. Cliquez sur Découvrir les modèles pour commencer.",
+      "noModels": "Cette connexion n’a retourné aucun modèle. Vérifiez son adresse et ses identifiants, ou ajoutez un modèle manuellement dans Avancé.",
       "noModelMatch": "Aucun modèle ne correspond à « {query} ».",
       "assignModelLogo": "Ajouter un logo de modèle",
       "removeModelLogo": "Retirer le logo du modèle",
@@ -1017,6 +1022,8 @@
       "errorDeleteModel": "Impossible de retirer le modèle",
       "toastProviderConnected": "Connexion ajoutée",
       "toastConnectionUpdated": "Connexion mise à jour",
+      "toastProviderReady": "{count, plural, one {Connexion prête avec # modèle} other {Connexion prête avec # modèles}}",
+      "toastProviderSavedModelsFailed": "Connexion enregistrée, mais ses modèles n’ont pas pu être chargés",
       "toastProviderArchived": "Connexion archivée",
       "toastModelRegistered": "Modèle ajouté",
       "toastDiscoveredModels": "{count, plural, one {# modèle découvert} other {# modèles découverts}}",
@@ -1284,7 +1291,7 @@
       "description": "Connectez des serveurs MCP externes pour permettre à vos agents d’utiliser leurs outils.",
       "addServer": "Ajouter un serveur",
       "serverHealth": "État des serveurs",
-      "serverHealthHint": "Statut, outils actifs et détails de synchronisation",
+      "serverHealthHint": "État de la connexion et outils actifs",
       "loadFailed": "Impossible de charger les serveurs MCP",
       "retry": "Réessayer",
       "loadServerFailed": "Impossible de charger le serveur MCP",
@@ -1294,9 +1301,12 @@
       "updated": "Serveur MCP modifié",
       "removeFailed": "Impossible de supprimer le serveur MCP",
       "removed": "Serveur MCP supprimé",
-      "syncSuccess": "{count, plural, one {# outil synchronisé} other {# outils synchronisés}}",
-      "syncEmpty": "Synchronisation terminée — aucun outil retourné",
-      "syncFailed": "La synchronisation des outils a échoué",
+      "discoverySuccess": "{count, plural, one {# outil prêt} other {# outils prêts}}",
+      "discoveryEmpty": "Connexion prête — aucun outil retourné",
+      "discoveryFailed": "Impossible de charger les outils",
+      "savedWithTools": "{count, plural, one {Connexion enregistrée et # outil est prêt} other {Connexion enregistrée et # outils sont prêts}}",
+      "savedWithoutTools": "Connexion enregistrée — aucun outil retourné",
+      "savedDiscoveryFailed": "Connexion enregistrée, mais ses outils n’ont pas pu être chargés",
       "connectionOk": "Connexion réussie",
       "connectionFailed": "La connexion a échoué",
       "updateToolFailed": "Impossible de modifier l’outil",
@@ -1348,11 +1358,12 @@
       "enableNamed": "Activer {name}",
       "approvalNamed": "Exiger une approbation pour {name}",
       "serverActions": "Actions du serveur",
-      "testConnection": "Tester la connexion",
-      "syncTools": "Synchroniser les outils",
+      "retryDiscovery": "Réessayer de charger les outils",
+      "discoveryFailedDescription": "La connexion a été enregistrée, mais ses outils n’ont pas pu être chargés. Vérifiez l’adresse et les identifiants, puis réessayez.",
       "editServer": "Modifier le serveur",
       "removeServer": "Supprimer le serveur",
-      "noTools": "Aucun outil découvert. Lancez la synchronisation après avoir configuré les identifiants.",
+      "noTools": "Cette connexion n’a retourné aucun outil.",
+      "noToolsAfterFailure": "Aucun outil n’est disponible tant que la connexion n’a pas abouti.",
       "noToolMatch": "Aucun outil ne correspond à votre recherche.",
       "searchTools": "Rechercher des outils",
       "searchToolsPlaceholder": "Rechercher des outils…",
@@ -1389,7 +1400,6 @@
     "toolConnections": {
       "title": "Connexions aux outils",
       "description": "Enregistrez vos adresses et identifiants personnels pour les outils MCP partagés. Les secrets sont chiffrés et ne sont jamais montrés au modèle.",
-      "refresh": "Actualiser",
       "retry": "Réessayer",
       "privacyTitle": "Vos identifiants personnels restent privés",
       "privacyDescription": "Seul un contexte de passerelle chiffré et temporaire est transmis pendant l’exécution. Les mots de passe existants ne peuvent pas être relus ici.",
@@ -1400,20 +1410,18 @@
       "updated": "Connexion mise à jour",
       "provisionFailed": "Impossible de créer le connecteur ServiceNow",
       "provisioned": "Connecteur ServiceNow prêt",
-      "provisionedSyncing": "Connecteur ServiceNow prêt — synchronisation des outils MCP",
       "defaultFailed": "Impossible de modifier la connexion par défaut",
       "defaultUpdated": "Connexion par défaut mise à jour",
       "removeFailed": "Impossible de supprimer la connexion",
       "removed": "Connexion supprimée",
       "emptyTitle": "Aucun connecteur d’outil configurable",
       "emptyDescription": "Créez un connecteur pour un serveur MCP afin d’exposer ici les réglages personnels.",
-      "serviceNowEmptyDescription": "Ajoutez et synchronisez d’abord le serveur MCP ServiceNow, puis préparez son connecteur ici.",
+      "serviceNowEmptyDescription": "Ajoutez d’abord le serveur MCP ServiceNow. Ses outils seront chargés automatiquement.",
       "provisionTitle": "Préparer le connecteur ServiceNow",
       "provisionDescription": "Choisissez la passerelle MCP qui expose les outils ServiceNow. Elle sera utilisée avec les identifiants personnels.",
       "adminRequiredTitle": "Action administrateur requise",
-      "adminRequiredDescription": "Demandez à un administrateur de préparer le connecteur et de synchroniser les outils MCP. Vous pourrez ensuite ajouter vos identifiants privés.",
-      "noSyncedToolsDescription": "Ce serveur n’a encore aucun outil synchronisé. La synchronisation découvre le catalogue ServiceNow sans demander ni exposer vos identifiants.",
-      "syncTools": "Synchroniser les outils",
+      "adminRequiredDescription": "Demandez à un administrateur de préparer le connecteur. Vous pourrez ensuite ajouter vos identifiants privés.",
+      "noSyncedToolsDescription": "Ce serveur n’a retourné aucun outil. Vérifiez sa connexion dans la liste des serveurs MCP.",
       "serverLabel": "Serveur MCP ServiceNow",
       "serverPlaceholder": "Choisir un serveur MCP",
       "provisionAction": "Préparer le connecteur",
@@ -1422,9 +1430,9 @@
       "global": "Organisation",
       "connectorFallbackDescription": "Réglages personnels de ce connecteur.",
       "mcpServer": "Serveur MCP",
-      "syncedTools": "{count, plural, one {# outil synchronisé} other {# outils synchronisés}}",
+      "syncedTools": "{count, plural, one {# outil disponible} other {# outils disponibles}}",
       "add": "Ajouter",
-      "connectorNoToolsDescription": "Aucun outil MCP n’est synchronisé pour ce connecteur. La synchronisation découvre le catalogue sans identifiants ; l’adresse et les secrets ne servent qu’à l’exécution.",
+      "connectorNoToolsDescription": "Aucun outil MCP n’est disponible pour ce connecteur. Vérifiez les réglages de connexion du serveur MCP.",
       "noConnectionTitle": "Aucune connexion configurée",
       "noConnectionDescription": "Ajoutez votre adresse et vos identifiants avant qu’un agent puisse appeler cet outil.",
       "default": "Par défaut",
@@ -2120,6 +2128,478 @@
       }
     }
   },
+  "access": {
+    "title": "Accès",
+    "description": "Gérez les organisations, projets, équipes, rôles et droits hérités depuis un seul endroit.",
+    "searchPlaceholder": "Écrivez pour rechercher…",
+    "searchProjects": "Rechercher un projet",
+    "organizationAccess": "Accès de l’organisation",
+    "platformAccounts": "Comptes de la plateforme",
+    "platformAccountsDescription": "Créez les comptes de connexion et gérez les administrateurs de la plateforme. Les droits d’organisation et de projet sont attribués séparément.",
+    "loadFailed": "Impossible de charger les accès",
+    "loadError": "Impossible de charger les permissions et les attributions.",
+    "refreshFailed": "Les accès ne sont peut-être plus à jour",
+    "retry": "Réessayer",
+    "mutationError": "Impossible de modifier les accès.",
+    "inheritanceHint": "Les rôles d’organisation s’appliquent à tous les projets ; les rôles de projet restent locaux.",
+    "activeProject": "Projet actif",
+    "newOrganization": "Nouvelle organisation",
+    "newProject": "Nouveau projet",
+    "createOrganizationTitle": "Créer une organisation",
+    "createOrganizationDescription": "Créez une organisation indépendante avec son premier projet. Vous en devenez propriétaire.",
+    "organizationName": "Nom de l’organisation",
+    "firstProjectName": "Premier projet",
+    "createOrganization": "Créer l’organisation",
+    "organizationCreated": "Organisation créée",
+    "createProjectTitle": "Créer un projet",
+    "createProjectDescription": "Le projet appartiendra à {organization} et héritera de ses accès d’organisation.",
+    "projectName": "Nom du projet",
+    "createProject": "Créer le projet",
+    "projectCreated": "Projet créé",
+    "readOnlyTitle": "Accès en lecture seule",
+    "readOnlyDescription": "Vous pouvez consulter les accès effectifs, mais seul un administrateur des accès peut les modifier.",
+    "tabs": {
+      "access": "Attributions",
+      "people": "Personnes et accès",
+      "resources": "Ressources",
+      "members": "Membres",
+      "teams": "Équipes",
+      "roles": "Rôles"
+    },
+    "assignmentsTitle": "Qui a accès",
+    "assignmentsDescription": "Une seule ligne par personne, avec ses accès à l’app, à l’organisation, au projet et via ses équipes.",
+    "searchPeople": "Rechercher une personne, un e-mail, un rôle ou une équipe…",
+    "searchPrincipal": "Rechercher un membre ou une équipe",
+    "selectedCount": "{count, plural, one {# personne sélectionnée} other {# personnes sélectionnées}}",
+    "grantSelected": "Donner un accès",
+    "selectVisiblePeople": "Sélectionner les membres visibles de l’organisation",
+    "selectPerson": "Sélectionner {name}",
+    "personColumn": "Personne",
+    "accessColumn": "Accès",
+    "teamsColumn": "Équipes",
+    "actions": "Actions",
+    "personActions": "Actions pour {name}",
+    "you": "Vous",
+    "suspended": "Suspendu",
+    "accountOnly": "Compte uniquement",
+    "appAdministrator": "Administrateur de l’app",
+    "organizationShort": "Orga",
+    "projectShort": "Projet",
+    "noExplicitAccess": "Aucun accès explicite",
+    "notInOrganization": "Absent de cette organisation",
+    "grantAccess": "Donner un accès",
+    "addToOrganization": "Ajouter à l’organisation",
+    "removeFromOrganization": "Retirer de l’organisation",
+    "makeAppAdmin": "Passer administrateur de l’app",
+    "removeAppAdmin": "Retirer le rôle d’administrateur de l’app",
+    "suspendAccount": "Suspendre le compte",
+    "restoreAccount": "Réactiver le compte",
+    "accountUpdated": "Compte mis à jour",
+    "showMore": "Afficher {count} de plus",
+    "noSearchResults": "Aucun résultat correspondant",
+    "noSearchResultsDescription": "Essayez un autre nom, e-mail, rôle, droit ou équipe.",
+    "addPerson": "Ajouter une personne",
+    "addPersonTitle": "Ajouter une personne",
+    "addPersonDescription": "Créez un compte de connexion ou ajoutez un compte existant à cette organisation sans quitter cet écran.",
+    "existingAccount": "Compte existant",
+    "createAccount": "Créer un compte",
+    "name": "Nom",
+    "temporaryPassword": "Mot de passe temporaire",
+    "appRole": "Rôle dans l’app",
+    "standardAccount": "Compte standard",
+    "createAndAdd": "Créer et ajouter",
+    "accountAndMemberCreated": "Compte créé et ajouté à l’organisation",
+    "assignRole": "Attribuer un rôle",
+    "assignRoleTitle": "Donner un accès",
+    "assignRoleDescription": "Choisissez qui reçoit quel rôle et à quelle portée.",
+    "scope": "Portée",
+    "projectOnly": "Ce projet uniquement",
+    "wholeOrganization": "Toute l’organisation",
+    "principalType": "Attribuer à",
+    "member": "Membre",
+    "team": "Équipe",
+    "principal": "Membre ou équipe",
+    "choose": "Choisir…",
+    "role": "Rôle",
+    "saveAssignment": "Donner l’accès",
+    "roleAssigned": "Accès accordé",
+    "bulkGrantTitle": "{count, plural, one {Donner un accès à # personne} other {Donner un accès à # personnes}}",
+    "bulkGrantDescription": "Le même rôle et la même portée seront appliqués à toutes les personnes sélectionnées.",
+    "noAssignments": "Aucune attribution d’accès",
+    "noAssignmentsDescription": "Attribuez un rôle à un membre ou une équipe pour rendre l’accès explicite.",
+    "inherited": "Hérité",
+    "organizationScope": "Organisation",
+    "projectScope": "Projet",
+    "removeAssignment": "Retirer l’accès de {name}",
+    "removeAssignmentTitle": "Retirer l’accès de {name} ?",
+    "removeAssignmentDescription": "L’attribution {role} de portée {scope} sera retirée. Les autres accès hérités restent inchangés.",
+    "assignmentRemoved": "Accès retiré",
+    "membersTitle": "Membres de l’organisation",
+    "membersDescription": "{count, plural, =0 {Aucun membre actif} one {# membre actif} other {# membres actifs}} dans cette organisation.",
+    "addMember": "Ajouter un membre",
+    "addMemberTitle": "Ajouter un membre à l’organisation",
+    "addMemberDescription": "Le membre pourra ensuite recevoir des rôles d’organisation ou de projet, directement ou via une équipe.",
+    "email": "E-mail",
+    "accountRequired": "La personne doit déjà posséder un compte sur la plateforme.",
+    "memberAdded": "Membre ajouté",
+    "removeMember": "Retirer {name} de l’organisation",
+    "removeMemberTitle": "Retirer {name} ?",
+    "removeMemberDescription": "{name} perdra ses accès directs et via équipe à tous les projets de {organization}.",
+    "memberRemoved": "Membre retiré",
+    "cancel": "Conserver l’accès",
+    "confirmRemove": "Retirer l’accès",
+    "teamsTitle": "Équipes",
+    "teamsDescription": "Regroupez les membres une fois, puis attribuez des rôles à l’équipe sur plusieurs projets.",
+    "searchTeams": "Rechercher une équipe ou un membre…",
+    "createTeam": "Créer une équipe",
+    "createTeamTitle": "Créer une équipe",
+    "createTeamDescription": "Les équipes appartiennent à l’organisation et peuvent recevoir des accès réutilisables.",
+    "teamName": "Nom de l’équipe",
+    "descriptionLabel": "Description",
+    "teamCreated": "Équipe créée",
+    "noTeams": "Aucune équipe",
+    "noTeamsDescription": "Créez une équipe pour gérer ensemble les accès de plusieurs membres.",
+    "noTeamDescription": "Aucune description",
+    "memberCount": "{count, plural, =0 {Aucun membre} one {# membre} other {# membres}}",
+    "emptyTeam": "Cette équipe ne contient aucun membre.",
+    "addTeamMember": "Ajouter un membre",
+    "chooseMember": "Choisir un membre…",
+    "add": "Ajouter",
+    "teamMemberAdded": "Membre ajouté à l’équipe",
+    "removeTeamMember": "Retirer {name} de l’équipe",
+    "removeTeamMemberTitle": "Retirer {name} de cette équipe ?",
+    "removeTeamMemberDescription": "Cette personne perdra les accès hérités via {team}. Ses accès directs et ceux reçus par d’autres équipes resteront inchangés.",
+    "teamMemberRemoved": "Membre retiré de l’équipe",
+    "deleteTeam": "Supprimer l’équipe {name}",
+    "deleteTeamTitle": "Supprimer {name} ?",
+    "deleteTeamDescription": "L’équipe et toutes ses attributions d’accès seront supprimées. Ses membres resteront dans l’organisation.",
+    "teamDeleted": "Équipe supprimée",
+    "rolesTitle": "Rôles",
+    "rolesDescription": "Les rôles intégrés couvrent les cas courants. Créez un rôle personnalisé seulement pour réduire précisément les droits.",
+    "createRole": "Créer un rôle personnalisé",
+    "createRoleTitle": "Créer un rôle personnalisé",
+    "createRoleDescription": "Donnez au rôle un nom orienté résultat, choisissez sa portée, puis sélectionnez uniquement les droits nécessaires.",
+    "roleName": "Nom du rôle",
+    "roleScope": "Portée du rôle",
+    "projectRole": "Rôle de projet",
+    "organizationRole": "Rôle d’organisation",
+    "roleCreated": "Rôle créé",
+    "roleUpdated": "Rôle mis à jour",
+    "editRoleTitle": "Modifier {name}",
+    "editRoleDescription": "Modifiez le rôle et cochez ou décochez ses droits. Les attributions existantes sont mises à jour immédiatement.",
+    "viewRoleTitle": "Droits de {name}",
+    "builtInRoleDescription": "Les rôles intégrés sont protégés. Consultez ici tous leurs droits ou dupliquez le rôle pour le personnaliser sans risque.",
+    "saveRole": "Enregistrer le rôle",
+    "duplicateAndCustomize": "Dupliquer et personnaliser",
+    "roleCopyName": "Copie de {name}",
+    "searchPermissions": "Rechercher un droit",
+    "selectGroup": "Tout cocher",
+    "clearGroup": "Tout décocher",
+    "searchRoles": "Rechercher un rôle ou un droit…",
+    "roleColumn": "Rôle",
+    "permissionsColumn": "Droits",
+    "assignmentsColumn": "Attributions",
+    "builtIn": "Intégré",
+    "custom": "Personnalisé",
+    "assignmentCount": "{count, plural, =0 {Aucune attribution} one {# attribution} other {# attributions}}",
+    "edit": "Modifier",
+    "view": "Voir",
+    "deleteRole": "Supprimer le rôle {name}",
+    "deleteRoleTitle": "Supprimer {name} ?",
+    "deleteRoleDescription": "Seuls les rôles sans attribution active peuvent être supprimés.",
+    "roleDeleted": "Rôle supprimé",
+    "resourcesTitle": "Accès aux ressources",
+    "resourcesDescription": "Recherchez n’importe quelle ressource du projet et gérez ses accès directs et hérités au même endroit.",
+    "resourceType": "Type de ressource",
+    "searchResources": "Rechercher une ressource",
+    "searchResourcesPlaceholder": "Écrivez le nom d’une ressource…",
+    "resourcesLoadFailed": "Impossible de charger les accès aux ressources.",
+    "loadingResources": "Chargement des ressources",
+    "noResources": "Aucune ressource correspondante",
+    "noResourcesDescription": "Essayez un autre type de ressource ou une autre recherche.",
+    "loadMoreResources": "Afficher plus de ressources",
+    "resource": "Ressource",
+    "manageResourceAccess": "Gérer les accès",
+    "transfer": "Transférer",
+    "transferTitle": "Transférer {name}",
+    "transferDescription": "Déplacez cette ressource vers un autre projet. Un aperçu vérifie les dépendances, les accès et les connexions avant toute modification.",
+    "transferLoadFailed": "Impossible de charger les projets de destination.",
+    "transferPreviewFailed": "Impossible de préparer l’aperçu du transfert.",
+    "transferFailed": "Le transfert n’a pas pu être effectué.",
+    "transferCompleted": "{count, plural, one {# ressource transférée} other {# ressources transférées}} vers {project}.",
+    "loadingDestinations": "Chargement des projets de destination",
+    "noTransferDestination": "Aucun projet de destination",
+    "noTransferDestinationDescription": "Vous devez administrer les accès d’au moins un autre projet pour y transférer une ressource.",
+    "destinationProject": "Projet de destination",
+    "searchDestination": "Rechercher une organisation ou un projet…",
+    "chooseDestination": "Choisir un projet…",
+    "includeDependencies": "Inclure automatiquement les éléments liés",
+    "includeDependenciesDescription": "Déplace les modèles, connexions, outils, assistants dépendants et historiques nécessaires pour ne rien casser.",
+    "advancedTransferOptions": "Options avancées",
+    "directAccessPolicy": "Accès directs",
+    "keepCompatibleAccess": "Conserver les accès compatibles",
+    "removeAllDirectAccess": "Tout retirer",
+    "ownershipPolicy": "Propriétaires",
+    "reassignOwnership": "Me réattribuer",
+    "preserveOwnership": "Conserver les créateurs",
+    "secretPolicy": "Secrets et connexions",
+    "disableSecrets": "Désactiver et reconfigurer",
+    "keepSecrets": "Conserver chiffrés",
+    "transferBlocked": "Transfert bloqué",
+    "transferReady": "{count, plural, one {# ressource prête} other {# ressources prêtes}}",
+    "crossOrganizationTransfer": "Ce transfert change d’organisation. Les règles avancées ci-dessus seront appliquées.",
+    "sameOrganizationTransfer": "Le transfert reste dans la même organisation.",
+    "resources": "Ressources",
+    "directAssignments": "Accès directs",
+    "keptAndRemoved": "{kept} conservé(s), {removed} retiré(s)",
+    "connections": "Connexions",
+    "affectedConnections": "{count, plural, =0 {Aucune connexion concernée} one {# connexion concernée} other {# connexions concernées}}",
+    "transferReason": "Pourquoi",
+    "transferReasons": {
+      "selected": "Sélectionnée",
+      "parent": "Conteneur requis",
+      "dependency": "Dépendance requise",
+      "dependent": "Élément dépendant",
+      "history": "Historique lié"
+    },
+    "cancelTransfer": "Annuler",
+    "previewTransfer": "Vérifier le transfert",
+    "confirmTransfer": "Transférer maintenant",
+    "resourceAccess": "Accès à la ressource",
+    "resourceAccessTitle": "Accès à {name}",
+    "resourceAccessDescription": "Les accès de l’organisation et du projet sont hérités. Un accès direct ne s’applique qu’à cette ressource.",
+    "searchResourceAccess": "Rechercher dans les accès effectifs…",
+    "noResourceAccessResults": "Aucun membre, équipe, rôle ou niveau correspondant.",
+    "grantResourceAccess": "Donner un accès direct",
+    "resourceAccessGranted": "Accès à la ressource accordé",
+    "removeResourceRole": "Retirer le rôle {role} de {name}",
+    "resourceScope": "Cette ressource",
+    "resourceTypes": {
+      "agent": "Assistants",
+      "provider": "Connexions aux fournisseurs",
+      "model": "Modèles",
+      "mcp_server": "Serveurs MCP",
+      "tool_connector": "Connecteurs",
+      "tool_connection": "Connexions",
+      "custom_tool": "Outils personnalisés",
+      "knowledge_base": "Bases documentaires",
+      "skill": "Compétences",
+      "workflow": "Workflows",
+      "scheduled_task": "Tâches planifiées",
+      "conversation": "Conversations",
+      "marketplace_item": "Éléments de la marketplace"
+    },
+    "noRoleDescription": "Aucune description",
+    "permissionCount": "{count, plural, =0 {Aucun droit} one {# droit} other {# droits}}",
+    "builtInRoles": {
+      "owner": "Propriétaire de l’organisation",
+      "organizationAdmin": "Administrateur de l’organisation",
+      "organizationMember": "Membre de l’organisation",
+      "projectAdmin": "Administrateur du projet",
+      "projectEditor": "Éditeur du projet",
+      "projectViewer": "Lecteur du projet"
+    },
+    "permissionGroups": {
+      "organization": {
+        "label": "Organisation et projets",
+        "description": "Structure, paramètres, projets et administration des accès."
+      },
+      "assistants": {
+        "label": "Assistants et conversations",
+        "description": "Créer, exécuter et déléguer des assistants IA."
+      },
+      "platform": {
+        "label": "Modèles, outils et connaissances",
+        "description": "Fournisseurs IA, outils, intégrations et bases de connaissances."
+      },
+      "automation": {
+        "label": "Workflows",
+        "description": "Concevoir, publier et exécuter des automatisations."
+      },
+      "governance": {
+        "label": "Gouvernance et identifiants",
+        "description": "Usage, audit, publication et clés API."
+      }
+    },
+    "permissions": {
+      "organization_get": {
+        "label": "Voir l’organisation",
+        "description": "Consulter les paramètres et la structure."
+      },
+      "organization_update": {
+        "label": "Gérer l’organisation",
+        "description": "Modifier les paramètres de l’organisation."
+      },
+      "workspaces_get": {
+        "label": "Voir les projets",
+        "description": "Ouvrir les projets de l’organisation."
+      },
+      "workspaces_create": {
+        "label": "Créer des projets",
+        "description": "Créer de nouveaux projets dans l’organisation."
+      },
+      "workspaces_update": {
+        "label": "Gérer les projets",
+        "description": "Modifier les paramètres et le cycle de vie des projets."
+      },
+      "members_manage": {
+        "label": "Gérer les membres",
+        "description": "Ajouter des membres et modifier leurs accès."
+      },
+      "teams_manage": {
+        "label": "Gérer les équipes",
+        "description": "Créer des équipes et gérer leurs membres."
+      },
+      "roles_manage": {
+        "label": "Gérer les accès",
+        "description": "Créer des rôles et les attribuer aux membres ou équipes."
+      },
+      "agents_view": {
+        "label": "Voir les assistants",
+        "description": "Lister et consulter les assistants."
+      },
+      "agents_chat": {
+        "label": "Utiliser les assistants",
+        "description": "Démarrer des conversations et exécuter les assistants."
+      },
+      "agents_create": {
+        "label": "Créer des assistants",
+        "description": "Créer et configurer des assistants."
+      },
+      "agents_update": {
+        "label": "Modifier les assistants",
+        "description": "Modifier des assistants existants."
+      },
+      "agents_delete": {
+        "label": "Supprimer des assistants",
+        "description": "Supprimer définitivement des assistants."
+      },
+      "agents_delegate": {
+        "label": "Déléguer aux spécialistes",
+        "description": "Autoriser les orchestrateurs à lancer des assistants spécialistes."
+      },
+      "agentVersions_create": {
+        "label": "Créer des versions d’assistant",
+        "description": "Enregistrer de nouvelles versions d’assistants."
+      },
+      "agentVersions_manage": {
+        "label": "Gérer les versions d’assistant",
+        "description": "Administrer toutes les versions d’assistants."
+      },
+      "conversations_create": {
+        "label": "Créer des conversations",
+        "description": "Démarrer de nouvelles conversations dans le projet."
+      },
+      "conversations_viewOwn": {
+        "label": "Voir ses conversations",
+        "description": "Lire les conversations créées par le membre."
+      },
+      "conversations_manage": {
+        "label": "Gérer toutes les conversations",
+        "description": "Administrer les conversations du projet."
+      },
+      "providers_viewMetadata": {
+        "label": "Voir les connexions IA",
+        "description": "Voir les fournisseurs configurés sans leurs secrets."
+      },
+      "providers_manage": {
+        "label": "Gérer les connexions IA",
+        "description": "Créer, tester, modifier et supprimer les fournisseurs."
+      },
+      "models_view": {
+        "label": "Voir les modèles",
+        "description": "Voir les modèles disponibles dans le projet."
+      },
+      "models_invoke": {
+        "label": "Utiliser les modèles",
+        "description": "Invoquer les modèles configurés."
+      },
+      "models_manage": {
+        "label": "Gérer les modèles",
+        "description": "Synchroniser et configurer les modèles disponibles."
+      },
+      "tools_view": {
+        "label": "Voir les outils",
+        "description": "Voir les outils et intégrations."
+      },
+      "tools_configure": {
+        "label": "Configurer les outils",
+        "description": "Modifier les outils et leurs validations."
+      },
+      "tools_executeRestricted": {
+        "label": "Exécuter les outils restreints",
+        "description": "Exécuter les outils nécessitant un accès élevé."
+      },
+      "mcpServers_get": {
+        "label": "Voir les intégrations",
+        "description": "Voir les serveurs MCP et connexions configurés."
+      },
+      "mcpServers_manage": {
+        "label": "Gérer les intégrations",
+        "description": "Configurer les serveurs MCP et les connexions."
+      },
+      "knowledgeBases_viewAllowed": {
+        "label": "Voir les connaissances autorisées",
+        "description": "Lire les bases de connaissances partagées avec le membre."
+      },
+      "knowledgeBases_manage": {
+        "label": "Gérer les connaissances",
+        "description": "Créer et modifier les bases de connaissances."
+      },
+      "workflows_view": {
+        "label": "Voir les workflows",
+        "description": "Lister les workflows et consulter leurs exécutions."
+      },
+      "workflows_create": {
+        "label": "Créer des workflows",
+        "description": "Créer de nouveaux brouillons de workflow."
+      },
+      "workflows_update": {
+        "label": "Modifier les workflows",
+        "description": "Modifier et publier les workflows."
+      },
+      "workflows_execute": {
+        "label": "Exécuter les workflows",
+        "description": "Démarrer des exécutions de workflow."
+      },
+      "workflows_delete": {
+        "label": "Supprimer les workflows",
+        "description": "Supprimer définitivement des workflows."
+      },
+      "usage_view": {
+        "label": "Voir l’usage",
+        "description": "Consulter la consommation et les quotas."
+      },
+      "audit_view": {
+        "label": "Voir le journal d’audit",
+        "description": "Consulter les événements de sécurité."
+      },
+      "audit_export": {
+        "label": "Exporter l’audit",
+        "description": "Télécharger les événements d’audit."
+      },
+      "marketplaceItems_view": {
+        "label": "Voir les éléments de la marketplace",
+        "description": "Parcourir les ressources disponibles sur la marketplace."
+      },
+      "marketplaceItems_install": {
+        "label": "Installer depuis la marketplace",
+        "description": "Ajouter des ressources partagées au projet."
+      },
+      "marketplaceItems_publish": {
+        "label": "Publier sur la marketplace",
+        "description": "Partager les ressources du projet."
+      },
+      "apiKeys_manageOwn": {
+        "label": "Gérer ses clés API",
+        "description": "Créer des identifiants limités aux accès du membre."
+      },
+      "apiKeys_manage": {
+        "label": "Gérer toutes les clés API",
+        "description": "Administrer les identifiants du projet."
+      }
+    }
+  },
   "shell": {
     "skipToContent": "Aller au contenu",
     "returnToChat": "Retour au chat",
@@ -2129,6 +2609,7 @@
     "signOut": "Déconnexion",
     "signOutFailed": "Impossible de se déconnecter",
     "navigation": "Navigation",
+    "activeProject": "Projet actif",
     "openNavigation": "Ouvrir la navigation",
     "expandSidebar": "Développer la barre latérale",
     "collapseSidebar": "Réduire la barre latérale",

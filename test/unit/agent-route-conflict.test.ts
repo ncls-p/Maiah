@@ -7,6 +7,7 @@ const routeMocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/route-handler", () => ({
 	requireWorkspacePermissionAsync: routeMocks.requireWorkspacePermissionAsync,
+	requireResourcePermissionAsync: routeMocks.requireWorkspacePermissionAsync,
 	handleRoute: async (
 		request: Request,
 		handler: (context: unknown) => Promise<Response>,

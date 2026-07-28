@@ -1,9 +1,10 @@
-import { and, eq, isNull, or, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { decryptValue, encryptValue } from "@/lib/crypto";
 import { inferMcpAuthHint } from "@/modules/mcp/auth-hint";
 import { listRemoteMcpTools } from "@/modules/mcp/client";
 import { logger } from "@/lib/logger";
 import { audit } from "@/server/domain/services/audit";
+import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
 import { mcpServers, mcpTools } from "@/server/infrastructure/db/schema";
 
@@ -48,6 +49,22 @@ export interface UpdateMcpServerInput {
   isGlobal?: boolean;
   headers?: Record<string, string>;
   env?: Record<string, string>;
+}
+
+export type McpToolDiscoveryResult = {
+  status: "healthy" | "unhealthy" | "manual";
+  discovered: number;
+};
+
+export function hasMcpConnectionChanges(input: UpdateMcpServerInput) {
+  return (
+    input.transport !== undefined ||
+    input.url !== undefined ||
+    input.command !== undefined ||
+    input.args !== undefined ||
+    input.headers !== undefined ||
+    input.env !== undefined
+  );
 }
 
 export function toSafeMcpServer(server: McpServer) {
@@ -128,14 +145,6 @@ function validateTransportConfig(
   }
 }
 
-function visibleMcpServerCondition(workspaceId: string, userId: string) {
-  return and(
-    eq(mcpServers.workspaceId, workspaceId),
-    isNull(mcpServers.archivedAt),
-    or(eq(mcpServers.createdById, userId), eq(mcpServers.isGlobal, true)),
-  );
-}
-
 function canManageMcpServer(
   server: McpServer,
   userId: string,
@@ -144,12 +153,20 @@ function canManageMcpServer(
   return server.createdById === userId || (server.isGlobal && canManageGlobal);
 }
 
-function assertCanManageMcpServer(
+async function assertCanManageMcpServer(
   server: McpServer,
   userId: string,
   canManageGlobal = false,
 ) {
-  if (!canManageMcpServer(server, userId, canManageGlobal)) {
+  if (
+    !canManageMcpServer(server, userId, canManageGlobal) &&
+    !(await authorization.hasPermission(
+      { principalType: "user", principalId: userId },
+      "mcpServers.manage",
+      "mcp_server",
+      server.id,
+    ))
+  ) {
     throw new Error("MCP server not found");
   }
 }
@@ -201,23 +218,43 @@ export async function listMcpServers(
     .select()
     .from(mcpServers)
     .where(
-      userId
-        ? visibleMcpServerCondition(workspaceId, userId)
-        : and(
-            eq(mcpServers.workspaceId, workspaceId),
-            isNull(mcpServers.archivedAt),
-          ),
+      and(
+        eq(mcpServers.workspaceId, workspaceId),
+        isNull(mcpServers.archivedAt),
+      ),
     )
     .orderBy(
       sql`${mcpServers.isGlobal} DESC`,
       sql`${mcpServers.createdAt} DESC`,
     );
-  return rows.map((server) => ({
-    ...toSafeMcpServer(server),
-    canEdit: userId
-      ? canManageMcpServer(server, userId, canManageGlobal)
-      : true,
-  }));
+  const visibleRows = userId
+    ? (
+        await Promise.all(
+          rows.map(async (server) => {
+            const visible =
+              server.createdById === userId ||
+              server.isGlobal ||
+              (await authorization.hasPermission(
+                { principalType: "user", principalId: userId },
+                "mcpServers.get",
+                "mcp_server",
+                server.id,
+              ));
+            if (!visible) return null;
+            const canEdit =
+              canManageMcpServer(server, userId, canManageGlobal) ||
+              (await authorization.hasPermission(
+                { principalType: "user", principalId: userId },
+                "mcpServers.manage",
+                "mcp_server",
+                server.id,
+              ));
+            return { ...toSafeMcpServer(server), canEdit };
+          }),
+        )
+      ).filter((server) => server !== null)
+    : rows.map((server) => ({ ...toSafeMcpServer(server), canEdit: true }));
+  return visibleRows;
 }
 
 export async function getMcpServer(
@@ -233,15 +270,23 @@ export async function getMcpServer(
         eq(mcpServers.id, serverId),
         eq(mcpServers.workspaceId, workspaceId),
         isNull(mcpServers.archivedAt),
-        userId
-          ? or(
-              eq(mcpServers.createdById, userId),
-              eq(mcpServers.isGlobal, true),
-            )
-          : undefined,
       ),
     )
     .limit(1);
+  if (
+    server &&
+    userId &&
+    server.createdById !== userId &&
+    !server.isGlobal &&
+    !(await authorization.hasPermission(
+      { principalType: "user", principalId: userId },
+      "mcpServers.get",
+      "mcp_server",
+      server.id,
+    ))
+  ) {
+    return null;
+  }
   return server ?? null;
 }
 
@@ -302,7 +347,7 @@ async function buildMcpServerUpdates(
 export async function updateMcpServer(input: UpdateMcpServerInput) {
   const existing = await getMcpServer(input.serverId, input.workspaceId);
   if (!existing) throw new Error("MCP server not found");
-  assertCanManageMcpServer(existing, input.userId, input.canManageGlobal);
+  await assertCanManageMcpServer(existing, input.userId, input.canManageGlobal);
   if (input.isGlobal && !input.canManageGlobal) {
     throw new Error("Only admins can make MCP servers global");
   }
@@ -337,7 +382,7 @@ export async function archiveMcpServer(
 ) {
   const existing = await getMcpServer(serverId, workspaceId);
   if (!existing) throw new Error("MCP server not found");
-  assertCanManageMcpServer(existing, userId, canManageGlobal);
+  await assertCanManageMcpServer(existing, userId, canManageGlobal);
 
   await db
     .update(mcpServers)
@@ -419,19 +464,21 @@ async function saveMcpToolSyncResult(
   healthStatus: string,
 ) {
   await db.transaction(async (tx) => {
-    if (discovered.length > 0) {
+    if (healthStatus === "healthy") {
       await tx.delete(mcpTools).where(eq(mcpTools.mcpServerId, serverId));
-      await tx.insert(mcpTools).values(
-        discovered.map((tool) => ({
-          mcpServerId: serverId,
-          name: tool.name,
-          description: tool.description,
-          inputSchemaJson: tool.inputSchemaJson,
-          outputSchemaJson: tool.outputSchemaJson,
-          enabled: true,
-          requireApproval: tool.requireApproval,
-        })),
-      );
+      if (discovered.length > 0) {
+        await tx.insert(mcpTools).values(
+          discovered.map((tool) => ({
+            mcpServerId: serverId,
+            name: tool.name,
+            description: tool.description,
+            inputSchemaJson: tool.inputSchemaJson,
+            outputSchemaJson: tool.outputSchemaJson,
+            enabled: true,
+            requireApproval: tool.requireApproval,
+          })),
+        );
+      }
     }
     await tx
       .update(mcpServers)
@@ -471,7 +518,7 @@ export async function syncMcpTools(
 ) {
   const server = await getMcpServer(serverId, workspaceId);
   if (!server) throw new Error("MCP server not found");
-  assertCanManageMcpServer(server, userId, canManageGlobal);
+  await assertCanManageMcpServer(server, userId, canManageGlobal);
   if (server.transport === "stdio" || !server.url) {
     await markMcpServerManual(serverId);
     return { status: "manual", discovered: 0 };
@@ -507,6 +554,35 @@ export async function syncMcpTools(
   return { status: healthStatus, discovered: discovered.length };
 }
 
+export async function createMcpServerWithDiscovery(
+  input: CreateMcpServerInput,
+  canManageGlobal = false,
+) {
+  const server = await createMcpServer(input);
+  const discovery = await syncMcpTools(
+    server.id,
+    input.workspaceId,
+    input.userId,
+    canManageGlobal,
+  );
+  return { server, discovery };
+}
+
+export async function updateMcpServerWithDiscovery(
+  input: UpdateMcpServerInput,
+) {
+  const server = await updateMcpServer(input);
+  const discovery = hasMcpConnectionChanges(input)
+    ? await syncMcpTools(
+        input.serverId,
+        input.workspaceId,
+        input.userId,
+        input.canManageGlobal,
+      )
+    : null;
+  return { server, discovery };
+}
+
 export async function testMcpConnection(
   serverId: string,
   workspaceId: string,
@@ -515,7 +591,7 @@ export async function testMcpConnection(
 ) {
   const server = await getMcpServer(serverId, workspaceId);
   if (!server) throw new Error("MCP server not found");
-  assertCanManageMcpServer(server, userId, canManageGlobal);
+  await assertCanManageMcpServer(server, userId, canManageGlobal);
 
   if (server.transport === "stdio" || !server.url) {
     await db
@@ -576,7 +652,7 @@ export async function updateMcpTool(input: {
 }) {
   const server = await getMcpServer(input.serverId, input.workspaceId);
   if (!server) throw new Error("MCP server not found");
-  assertCanManageMcpServer(server, input.userId, input.canManageGlobal);
+  await assertCanManageMcpServer(server, input.userId, input.canManageGlobal);
 
   const updates: Record<string, unknown> = {};
   if (input.enabled !== undefined) updates.enabled = input.enabled;

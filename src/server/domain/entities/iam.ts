@@ -42,6 +42,11 @@ const TENANT_USER_PERMISSIONS: Permission[] = [
   "marketplaceItems.install",
   "marketplaceItems.publish",
   "apiKeys.manageOwn",
+  "workflows.view",
+  "workflows.create",
+  "workflows.update",
+  "workflows.delete",
+  "workflows.execute",
 ];
 
 const TENANT_ADMIN_PERMISSIONS: Permission[] = [
@@ -90,11 +95,38 @@ const TENANT_ADMIN_PERMISSIONS: Permission[] = [
   "marketplaceItems.install",
   "marketplaceItems.publish",
   "apiKeys.manage",
+  "workflows.view",
+  "workflows.create",
+  "workflows.update",
+  "workflows.delete",
+  "workflows.execute",
 ];
 
 // ─── Built-in tenant role definitions ─────────────────────────────────
 
 export const SYSTEM_ROLES: Omit<Role, "createdAt" | "updatedAt">[] = [
+  {
+    id: "",
+    scopeType: "organization",
+    name: "organization.owner",
+    displayName: "Organization Owner",
+    description:
+      "Full control over the organization and every project it contains.",
+    permissions: [
+      ...new Set([
+        "organization.get",
+        "organization.update",
+        "workspaces.get",
+        "workspaces.create",
+        "workspaces.update",
+        "members.manage",
+        "teams.manage",
+        "roles.manage",
+        ...TENANT_ADMIN_PERMISSIONS,
+      ]),
+    ],
+    isSystem: true,
+  },
   {
     id: "", // assigned by DB
     scopeType: "organization",
@@ -104,8 +136,11 @@ export const SYSTEM_ROLES: Omit<Role, "createdAt" | "updatedAt">[] = [
     permissions: [
       "organization.get",
       "organization.update",
+      "workspaces.get",
       "workspaces.create",
       "workspaces.update",
+      "members.manage",
+      "teams.manage",
       "roles.manage",
       "audit.view",
     ],
@@ -115,18 +150,19 @@ export const SYSTEM_ROLES: Omit<Role, "createdAt" | "updatedAt">[] = [
     id: "",
     scopeType: "organization",
     name: "organization.user",
-    displayName: "Organization User",
-    description: "Can access organization resources they are a member of.",
-    permissions: ["organization.get", "workspaces.get"],
+    displayName: "Organization Member",
+    description:
+      "Can belong to organization teams and receive project-specific access.",
+    permissions: ["organization.get"],
     isSystem: true,
   },
   {
     id: "",
     scopeType: "workspace",
     name: "workspace.admin",
-    displayName: "Tenant Admin",
+    displayName: "Project Administrator",
     description:
-      "Can administer tenant-wide configuration and global resources.",
+      "Full control over one project, including its access assignments.",
     permissions: TENANT_ADMIN_PERMISSIONS,
     isSystem: true,
   },
@@ -134,10 +170,32 @@ export const SYSTEM_ROLES: Omit<Role, "createdAt" | "updatedAt">[] = [
     id: "",
     scopeType: "workspace",
     name: "workspace.member",
-    displayName: "Tenant User",
+    displayName: "Project Editor",
     description:
-      "Can use the tenant and manage only resources they own unless an admin makes a resource global.",
+      "Can build and use project resources without managing project access.",
     permissions: TENANT_USER_PERMISSIONS,
+    isSystem: true,
+  },
+  {
+    id: "",
+    scopeType: "workspace",
+    name: "workspace.viewer",
+    displayName: "Project Viewer",
+    description: "Read-only access to project resources and activity.",
+    permissions: [
+      "workspaces.get",
+      "providers.viewMetadata",
+      "models.view",
+      "agents.list",
+      "agents.get",
+      "tools.view",
+      "mcpServers.get",
+      "knowledgeBases.viewAllowed",
+      "marketplaceItems.view",
+      "usage.view",
+      "audit.view",
+      "workflows.view",
+    ],
     isSystem: true,
   },
 ];

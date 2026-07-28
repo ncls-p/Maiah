@@ -2,92 +2,98 @@ import { expect, test } from "@playwright/test";
 import { ensureE2EUser, login } from "./fixtures";
 
 test.beforeAll(async () => {
-	await ensureE2EUser();
+  await ensureE2EUser();
 });
 
 test.beforeEach(async ({ page }) => {
-	await login(page);
+  await login(page);
 });
 
 test.describe("setup wizard", () => {
-	test("shows welcome copy on the setup page", async ({ page }) => {
-		await page.goto("/en/setup");
-		await expect(
-			page.getByRole("heading", { name: /Get started/i }),
-		).toBeVisible();
-		await expect(
-			page.getByText("Connect AI", { exact: true }).first(),
-		).toBeVisible();
-		await expect(
-			page.getByText("Pick a model", { exact: true }).first(),
-		).toBeVisible();
-	});
+  test("shows welcome copy on the setup page", async ({ page }) => {
+    await page.goto("/en/setup");
+    await expect(
+      page.getByRole("heading", { name: /Get started/i }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Connect AI", { exact: true }).first(),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Pick a model", { exact: true }).first(),
+    ).toBeVisible();
+  });
 
-	test("setup wizard has 3 steps", async ({ page }) => {
-		await page.goto("/en/setup");
-		await page.waitForTimeout(2000);
+  test("setup wizard has 3 steps", async ({ page }) => {
+    await page.goto("/en/setup");
+    await page.waitForTimeout(2000);
 
-		// Step indicators should be visible
-		await expect(
-			page.getByText(/Connect AI|Pick a model|Start chatting/i).first(),
-		).toBeVisible({ timeout: 10_000 });
-	});
+    // Step indicators should be visible
+    await expect(
+      page.getByText(/Connect AI|Pick a model|Start chatting/i).first(),
+    ).toBeVisible({ timeout: 10_000 });
+  });
 
-	test("setup page navigation buttons exist", async ({ page }) => {
-		await page.goto("/en/setup");
-		await page.waitForTimeout(2000);
+  test("setup page navigation buttons exist", async ({ page }) => {
+    await page.goto("/en/setup");
+    await page.waitForTimeout(2000);
 
-		// Continue or navigation buttons should be present
-		const navBtn = page
-			.getByRole("button", { name: /Continue|Back|Skip|Start/i })
-			.first();
+    // Continue or navigation buttons should be present
+    const navBtn = page
+      .getByRole("button", { name: /Continue|Back|Skip|Start/i })
+      .first();
 
-		if (await navBtn.isVisible()) {
-			await expect(navBtn).toBeEnabled();
-		}
-	});
+    if (await navBtn.isVisible()) {
+      await expect(navBtn).toBeEnabled();
+    }
+  });
 
-	test("setup page shows provider configuration step", async ({ page }) => {
-		await page.goto("/en/setup");
-		await page.waitForTimeout(2000);
+  test("setup page shows provider configuration step", async ({ page }) => {
+    await page.goto("/en/setup");
+    await page.waitForTimeout(2000);
 
-		// Provider configuration should be visible
-		await expect(
-			page.getByText(/Provider|Connection|API key|Service URL/i).first(),
-		).toBeVisible({ timeout: 10_000 });
-	});
+    // Provider configuration should be visible
+    await expect(
+      page.getByText(/Provider|Connection|API key|Service URL/i).first(),
+    ).toBeVisible({ timeout: 10_000 });
+  });
 });
 
 test.describe("setup wizard provider step", () => {
-	test("provider form has required fields", async ({ page }) => {
-		await page.goto("/en/setup");
-		await page.waitForTimeout(2000);
+  test("provider form has required fields", async ({ page }) => {
+    await page.goto("/en/setup");
+    await page.waitForTimeout(2000);
 
-		// Connection name field
-		const nameInput = page.getByLabel(/Connection|Name/i).first();
-		if (await nameInput.isVisible()) {
-			await expect(nameInput).toBeVisible();
-		}
+    // Connection name field
+    const nameInput = page.getByLabel(/Connection|Name/i).first();
+    if (await nameInput.isVisible()) {
+      await expect(nameInput).toBeVisible();
+    }
 
-		// Service URL field
-		const urlInput = page.getByLabel(/Service|URL/i).first();
-		if (await urlInput.isVisible()) {
-			await expect(urlInput).toBeVisible();
-		}
+    // Service URL field
+    const urlInput = page.getByLabel(/Service|URL/i).first();
+    if (await urlInput.isVisible()) {
+      await expect(urlInput).toBeVisible();
+    }
 
-		// API key field
-		const apiKeyInput = page.getByLabel(/API key/i).first();
-		if (await apiKeyInput.isVisible()) {
-			await expect(apiKeyInput).toBeVisible();
-		}
-	});
+    // API key field
+    const apiKeyInput = page.getByLabel(/API key/i).first();
+    if (await apiKeyInput.isVisible()) {
+      await expect(apiKeyInput).toBeVisible();
+    }
+  });
 });
 
-test.describe("members page", () => {
-	test("shows platform accounts section", async ({ page }) => {
-		await page.goto("/en/members");
-		await expect(
-			page.getByRole("heading", { name: "Platform accounts" }).first(),
-		).toBeVisible();
-	});
+test.describe("access page", () => {
+  test("manages accounts and organization access in one interface", async ({
+    page,
+  }) => {
+    await page.goto("/en/members");
+    await expect(page.getByText("Who has access")).toBeVisible();
+    await expect(
+      page.getByRole("tab", { name: "Platform accounts" }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("tab", { name: "Organization access" }),
+    ).toHaveCount(0);
+  });
 });
