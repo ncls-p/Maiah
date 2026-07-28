@@ -60,6 +60,42 @@ describe("public HTTPS origin", () => {
     ).toBeNull();
   });
 
+  it("uses the original Cloudflare visitor scheme instead of the internal hop", () => {
+    const secureVisitorRequest = new NextRequest(
+      "http://app:3000/en/auth/signin",
+      {
+        headers: {
+          "x-forwarded-host": "maiah-pr-12.shiftify.eco",
+          "x-forwarded-proto": "http",
+          "cf-visitor": '{"scheme":"https"}',
+        },
+      },
+    );
+    const insecureVisitorRequest = new NextRequest(
+      "http://app:3000/en/auth/signin",
+      {
+        headers: {
+          "x-forwarded-host": "maiah-pr-12.shiftify.eco",
+          "x-forwarded-proto": "http",
+          "cf-visitor": '{"scheme":"http"}',
+        },
+      },
+    );
+
+    expect(
+      getConfiguredHttpsRedirect(
+        secureVisitorRequest,
+        "https://maiah-pr-12.shiftify.eco",
+      ),
+    ).toBeNull();
+    expect(
+      getConfiguredHttpsRedirect(
+        insecureVisitorRequest,
+        "https://maiah-pr-12.shiftify.eco",
+      )?.toString(),
+    ).toBe("https://maiah-pr-12.shiftify.eco/en/auth/signin");
+  });
+
   it("keeps local HTTP deployments available", () => {
     const request = new NextRequest("http://localhost:3300/en/auth/signin");
 
