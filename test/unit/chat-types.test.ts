@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   appendMessagePart,
   canContinueAssistantMessage,
+  prepareAssistantMessageContinuation,
   completeReasoningParts,
   getToolStatus,
   groupWorkPhaseParts,
@@ -48,6 +49,25 @@ describe("chat message parts", () => {
         "assistant-latest",
       ),
     ).toBe(false);
+  });
+
+  it("continues the existing assistant message without creating a new row", () => {
+    const message = {
+      id: "assistant-latest",
+      role: "assistant" as const,
+      status: "completed",
+      parts: [
+        { type: "text", content: "Existing answer" },
+        { type: "suggestions", content: '["Follow up"]' },
+      ],
+    };
+
+    expect(prepareAssistantMessageContinuation(message)).toEqual({
+      id: message.id,
+      role: "assistant",
+      status: "streaming",
+      parts: [{ type: "text", content: "Existing answer" }],
+    });
   });
 
   it("preserves the execution trace when an assistant request fails", () => {

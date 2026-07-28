@@ -41,6 +41,10 @@ import {
   type ChatAttachment,
 } from "@/modules/chat/attachments";
 import { generateChatAutomationArtifacts } from "@/modules/chat/automation";
+import {
+  claimAssistantContinuation,
+  type AssistantContinuationClaim,
+} from "@/modules/chat/continuation";
 import { consumeSkipNextChatSuggestions } from "@/modules/chat/suggestion-skip";
 import {
   codeWorkspaceArtifact,
@@ -89,6 +93,14 @@ import {
   streamToolInputDelta,
 } from "./route-support";
 import { loadConversationHistory } from "./route-history";
+
+function accumulateTokenCount(
+  previous: number | null,
+  current: number | undefined,
+) {
+  const total = (previous ?? 0) + (current ?? 0);
+  return total > 0 ? total : null;
+}
 
 export async function POST(
   req: NextRequest,
@@ -141,6 +153,7 @@ export async function POST(
       content,
       conversationId: existingConversationId,
       resendFromMessageId,
+      continueFromMessageId,
       codeWorkspaceId,
       attachmentIds = [],
       imageAttachmentIds = [],
@@ -149,6 +162,27 @@ export async function POST(
       req.headers.get("X-AI-Hub-Stream-Protocol") ??
       req.nextUrl.searchParams.get("streamProtocol");
     const useAiSdkUIStream = streamProtocol === "ai-sdk-ui";
+    if (resendFromMessageId && continueFromMessageId) {
+      return rejectChatRequest(
+        400,
+        "conflicting_message_actions",
+        { error: "Cannot regenerate and continue a response together" },
+        { agentId, userId: actorUserId },
+      );
+    }
+    if (
+      continueFromMessageId &&
+      (codeWorkspaceId ||
+        attachmentIds.length > 0 ||
+        imageAttachmentIds.length > 0)
+    ) {
+      return rejectChatRequest(
+        400,
+        "continuation_with_attachments",
+        { error: "Response continuation does not accept new attachments" },
+        { agentId, userId: actorUserId, continueFromMessageId },
+      );
+    }
 
     const [agent] = await db
       .select()
@@ -287,7 +321,7 @@ export async function POST(
         .limit(1);
       conversation = existing ?? null;
 
-      if (!conversation && resendFromMessageId) {
+      if (!conversation && (resendFromMessageId || continueFromMessageId)) {
         return rejectChatRequest(
           404,
           "conversation_not_found",
@@ -298,21 +332,23 @@ export async function POST(
             userId: actorUserId,
             conversationId: existingConversationId,
             resendFromMessageId,
+            continueFromMessageId,
           },
         );
       }
     }
 
-    if (!conversation && resendFromMessageId) {
+    if (!conversation && (resendFromMessageId || continueFromMessageId)) {
       return rejectChatRequest(
         400,
-        "resend_without_conversation",
-        { error: "Cannot resend without an existing conversation" },
+        "message_action_without_conversation",
+        { error: "Cannot modify a response without an existing conversation" },
         {
           agentId,
           workspaceId: agent.workspaceId,
           userId: actorUserId,
           resendFromMessageId,
+          continueFromMessageId,
         },
       );
     }
@@ -375,8 +411,45 @@ export async function POST(
       );
     }
 
-    let userMessage: typeof messages.$inferSelect;
-    if (resendFromMessageId) {
+    let continuationClaim: Extract<
+      AssistantContinuationClaim,
+      { status: "claimed" }
+    > | null = null;
+    if (continueFromMessageId) {
+      const claim = await claimAssistantContinuation({
+        conversationId: conversation.id,
+        messageId: continueFromMessageId,
+        providerId: providerConfig.providerId,
+        modelId: providerConfig.modelId,
+      });
+      if (claim.status !== "claimed") {
+        const status = claim.status === "already_streaming" ? 409 : 404;
+        return rejectChatRequest(
+          status,
+          `continuation_${claim.status}`,
+          {
+            error:
+              claim.status === "already_streaming"
+                ? "This response is already streaming"
+                : "Only the latest assistant response can be continued",
+          },
+          {
+            agentId,
+            workspaceId: agent.workspaceId,
+            userId: actorUserId,
+            conversationId: conversation.id,
+            continueFromMessageId,
+          },
+        );
+      }
+      continuationClaim = claim;
+    }
+
+    let userMessage: typeof messages.$inferSelect | null = null;
+    if (continueFromMessageId) {
+      // The continuation prompt is model-only context. It must never become a
+      // visible or persisted user message.
+    } else if (resendFromMessageId) {
       const existingUserMessage = await findUserMessageForResend({
         conversationId: conversation.id,
         messageId: resendFromMessageId,
@@ -491,30 +564,34 @@ export async function POST(
         });
       }
     }
-    userMessageId = userMessage.id;
+    userMessageId = userMessage?.id;
     await db
       .update(conversations)
       .set({ updatedAt: new Date(), sidebarOrder: null })
       .where(eq(conversations.id, conversation.id));
     const shouldRegenerateConversationTitle =
       createdConversation ||
-      (resendFromMessageId
+      (!continueFromMessageId && resendFromMessageId
         ? await isFirstUserMessageInConversation(
             conversation.id,
-            userMessage.id,
+            userMessage!.id,
           )
         : false);
 
-    const [assistantMessage] = await db
-      .insert(messages)
-      .values({
-        conversationId: conversation.id,
-        role: "assistant",
-        status: "streaming",
-        modelId: providerConfig.modelId,
-        providerId: providerConfig.providerId,
-      })
-      .returning();
+    const assistantMessage = continuationClaim
+      ? continuationClaim.message
+      : (
+          await db
+            .insert(messages)
+            .values({
+              conversationId: conversation.id,
+              role: "assistant",
+              status: "streaming",
+              modelId: providerConfig.modelId,
+              providerId: providerConfig.providerId,
+            })
+            .returning()
+        )[0];
     assistantMessageId = assistantMessage.id;
 
     const adapter = getAdapter(providerConfig.providerKind);
@@ -534,6 +611,9 @@ export async function POST(
       { workspaceId: agent.workspaceId, userId: actorUserId },
       memoryPolicy?.enabled ? memoryPolicy.maxMessages : undefined,
     );
+    const generationHistory = continueFromMessageId
+      ? [...history, { role: "user" as const, content }]
+      : history;
 
     const enqueueEvent = (event: Record<string, unknown>) =>
       publishChatStreamEvent(assistantMessage.id, event);
@@ -574,7 +654,9 @@ export async function POST(
         streamAbortController,
       );
       let completedRun: Awaited<ReturnType<typeof executeAgent>> | null = null;
-      let nextOrchestrationSortOrder = 0;
+      const initialOrchestrationSortOrder =
+        continuationClaim?.nextSortOrder ?? 0;
+      let nextOrchestrationSortOrder = initialOrchestrationSortOrder;
       let orchestrationProgressQueue = Promise.resolve();
       const durableDelegationProgress: Array<{
         progress: AgentToolProgressEvent;
@@ -792,7 +874,25 @@ export async function POST(
             if (durableDelegationParts.length > 0) {
               await tx.insert(messageParts).values(durableDelegationParts);
             }
-            if (encryptedText) {
+            if (
+              result.text &&
+              continuationClaim?.appendableTextPart &&
+              nextOrchestrationSortOrder === initialOrchestrationSortOrder
+            ) {
+              await tx
+                .update(messageParts)
+                .set({
+                  contentEncrypted: await encryptValue(
+                    `${continuationClaim.appendableTextPart.content}${result.text}`,
+                  ),
+                })
+                .where(
+                  eq(
+                    messageParts.id,
+                    continuationClaim.appendableTextPart.id,
+                  ),
+                );
+            } else if (encryptedText) {
               await tx.insert(messageParts).values({
                 messageId: assistantMessage.id,
                 type: "text",
@@ -804,8 +904,14 @@ export async function POST(
               .update(messages)
               .set({
                 status: "completed",
-                tokenInput: result.inputTokens,
-                tokenOutput: result.outputTokens,
+                tokenInput: accumulateTokenCount(
+                  continuationClaim?.message.tokenInput ?? null,
+                  result.inputTokens,
+                ),
+                tokenOutput: accumulateTokenCount(
+                  continuationClaim?.message.tokenOutput ?? null,
+                  result.outputTokens,
+                ),
                 completedAt,
               })
               .where(eq(messages.id, assistantMessage.id));
@@ -877,7 +983,9 @@ export async function POST(
       const streamHeaders = {
         "X-Conversation-Id": conversation.id,
         "X-Message-Id": assistantMessage.id,
-        "X-User-Message-Id": userMessage.id,
+        ...(userMessage
+          ? { "X-User-Message-Id": userMessage.id }
+          : {}),
         "X-Request-Id": requestId,
       };
       return useAiSdkUIStream
@@ -938,7 +1046,7 @@ export async function POST(
       userId: actorUserId,
       conversationId: conversation.id,
       assistantMessageId: assistantMessage.id,
-      userMessageId: userMessage.id,
+      userMessageId: userMessage?.id ?? null,
       createdConversation,
       streamProtocol: useAiSdkUIStream ? "ai-sdk-ui" : "data-stream",
       attachmentCount: messageAttachments.length,
@@ -1051,12 +1159,39 @@ export async function POST(
           metadata: unknown;
         };
     const streamedParts: StreamedAssistantPart[] = [];
-    let nextSortOrder = 0;
+    let nextSortOrder = continuationClaim?.nextSortOrder ?? 0;
+    let appendableContinuationTextPart =
+      citations.length === 0
+        ? (continuationClaim?.appendableTextPart ?? null)
+        : null;
 
     async function appendStreamedTextPart(
       type: "text" | "reasoning",
       content: string,
     ) {
+      if (
+        type === "text" &&
+        streamedParts.length === 0 &&
+        appendableContinuationTextPart
+      ) {
+        appendableContinuationTextPart.content += content;
+        await db
+          .update(messageParts)
+          .set({
+            contentEncrypted: await encryptValue(
+              appendableContinuationTextPart.content,
+            ),
+          })
+          .where(eq(messageParts.id, appendableContinuationTextPart.id));
+        streamedParts.push({
+          id: appendableContinuationTextPart.id,
+          type,
+          content: appendableContinuationTextPart.content,
+        });
+        appendableContinuationTextPart = null;
+        return;
+      }
+      if (type !== "text") appendableContinuationTextPart = null;
       const lastPart = streamedParts.at(-1);
       if (lastPart?.type === type) {
         lastPart.content += content;
@@ -1081,6 +1216,7 @@ export async function POST(
     }
 
     async function appendStreamedSuggestionsPart(suggestions: string[]) {
+      appendableContinuationTextPart = null;
       const content = JSON.stringify(suggestions);
       const [inserted] = await db
         .insert(messageParts)
@@ -1100,6 +1236,7 @@ export async function POST(
       type: "tool-call" | "tool-result" | "file",
       metadata: unknown,
     ) {
+      appendableContinuationTextPart = null;
       const safeMetadata =
         type === "file" ? metadata : projectToolMessagePayload(metadata);
       const [inserted] = await db
@@ -1213,7 +1350,7 @@ export async function POST(
     );
     const result = await runtimeAgent.stream({
       abortSignal: runtimeDeadline.signal,
-      messages: history,
+      messages: generationHistory,
     });
     const streamedToolInputs = new Map<string, string>();
     const streamedToolNames = new Map<string, string>();
@@ -1368,8 +1505,14 @@ export async function POST(
             .update(messages)
             .set({
               status: "completed",
-              tokenInput: totalUsage.inputTokens,
-              tokenOutput: totalUsage.outputTokens,
+              tokenInput: accumulateTokenCount(
+                continuationClaim?.message.tokenInput ?? null,
+                totalUsage.inputTokens,
+              ),
+              tokenOutput: accumulateTokenCount(
+                continuationClaim?.message.tokenOutput ?? null,
+                totalUsage.outputTokens,
+              ),
               completedAt,
             })
             .where(eq(messages.id, assistantMessage.id));
@@ -1480,7 +1623,7 @@ export async function POST(
     const streamHeaders = {
       "X-Conversation-Id": conversation.id,
       "X-Message-Id": assistantMessage.id,
-      "X-User-Message-Id": userMessage.id,
+      ...(userMessage ? { "X-User-Message-Id": userMessage.id } : {}),
       "X-Request-Id": requestId,
     };
 

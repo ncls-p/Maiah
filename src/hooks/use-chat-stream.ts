@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 import {
   createLocalMessage,
+  prepareAssistantMessageContinuation,
   preserveAssistantFailureParts,
   toolNameMatches,
   type ChatAttachment,
@@ -47,6 +48,7 @@ interface UseChatStreamOptions {
 type SubmitOptions = {
   resendFromMessageId?: string;
   reuseUserMessage?: boolean;
+  continueFromMessageId?: string;
   codeWorkspaceArtifact?: CodeWorkspaceArtifact;
   codeWorkspaceId?: string;
   attachments?: ChatAttachment[];
@@ -432,7 +434,17 @@ export function useChatStream({
       content,
       userMessageFileParts,
     );
-    const assistantMessage = createLocalMessage("assistant", "");
+    const continuedAssistantMessage = options.continueFromMessageId
+      ? messages.find(
+          (message) =>
+            message.id === options.continueFromMessageId &&
+            message.role === "assistant",
+        )
+      : null;
+    if (options.continueFromMessageId && !continuedAssistantMessage) return;
+    const assistantMessage = continuedAssistantMessage
+      ? prepareAssistantMessageContinuation(continuedAssistantMessage)
+      : createLocalMessage("assistant", "");
     let activeConversationId = conversationId;
     let assistantMessageId = assistantMessage.id;
     let assistantDraft = assistantMessage;
@@ -540,6 +552,13 @@ export function useChatStream({
 
     stopRequestedRef.current = false;
     setMessages((current) => {
+      if (options.continueFromMessageId) {
+        return current.map((message) =>
+          message.id === options.continueFromMessageId
+            ? assistantMessage
+            : message,
+        );
+      }
       if (options.reuseUserMessage && options.resendFromMessageId) {
         const messageIndex = current.findIndex(
           (message) => message.id === options.resendFromMessageId,
@@ -586,6 +605,7 @@ export function useChatStream({
           content,
           conversationId: conversationId ?? undefined,
           resendFromMessageId: options.resendFromMessageId,
+          continueFromMessageId: options.continueFromMessageId,
           codeWorkspaceId:
             options.codeWorkspaceId ?? options.codeWorkspaceArtifact?.projectId,
           attachmentIds: attachmentsToSend.flatMap((attachment) =>
@@ -655,8 +675,10 @@ export function useChatStream({
       toast.error(err instanceof Error ? err.message : "Chat request failed");
       updateAssistantDraft((message) => ({
         ...message,
-        status: "failed",
-        parts: preserveAssistantFailureParts(message.parts),
+        status: options.continueFromMessageId ? "completed" : "failed",
+        parts: options.continueFromMessageId
+          ? message.parts
+          : preserveAssistantFailureParts(message.parts),
       }));
       flushAssistantRender();
       clearPendingApprovals();

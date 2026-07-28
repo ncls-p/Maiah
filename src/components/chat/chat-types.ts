@@ -206,6 +206,14 @@ export function canContinueAssistantMessage(
   );
 }
 
+export function prepareAssistantMessageContinuation(message: ChatMessage) {
+  return {
+    ...message,
+    status: "streaming",
+    parts: message.parts.filter((part) => part.type !== "suggestions"),
+  };
+}
+
 export function preserveAssistantFailureParts(parts: ChatMessagePart[]) {
   return parts.length > 0
     ? parts

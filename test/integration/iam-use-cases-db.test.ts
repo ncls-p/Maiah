@@ -3,6 +3,8 @@ import { randomUUID } from "node:crypto";
 import { and, eq, inArray } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { encryptValue } from "@/lib/crypto";
+import { claimAssistantContinuation } from "@/modules/chat/continuation";
 import {
   addOrganizationMember,
   addTeamMember,
@@ -26,6 +28,9 @@ import {
   aiModels,
   aiProviders,
   auditEvents,
+  conversations,
+  messageParts,
+  messages,
   organizations,
   roleBindings,
   roles,
@@ -53,6 +58,7 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
   let organizationId = "";
   let firstProjectId = "";
   let secondProjectId = "";
+  let sharedAgentId = "";
 
   beforeAll(async () => {
     await db.insert(users).values([
@@ -173,6 +179,7 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
         },
       ])
       .returning();
+    sharedAgentId = sharedAgent.id;
     await assignResourceRole({
       actorUserId: ownerId,
       workspaceId: secondProjectId,
@@ -390,6 +397,109 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
         workspaceId: firstProjectId,
       }),
     ).rejects.toMatchObject({ status: 403 });
+  }, 60_000);
+
+  it("continues the latest assistant response in place in PostgreSQL", async () => {
+    const conversationId = randomUUID();
+    const userMessageId = randomUUID();
+    const assistantMessageId = randomUUID();
+
+    try {
+      await db.insert(conversations).values({
+        id: conversationId,
+        workspaceId: secondProjectId,
+        agentId: sharedAgentId,
+        userId: ownerId,
+        title: "Continuation persistence",
+      });
+      await db.insert(messages).values([
+        {
+          id: userMessageId,
+          conversationId,
+          role: "user",
+          status: "completed",
+          completedAt: new Date(),
+          createdAt: new Date(Date.now() - 1_000),
+        },
+        {
+          id: assistantMessageId,
+          conversationId,
+          role: "assistant",
+          status: "completed",
+          tokenInput: 10,
+          tokenOutput: 20,
+          completedAt: new Date(),
+        },
+      ]);
+      await db.insert(messageParts).values([
+        {
+          messageId: userMessageId,
+          type: "text",
+          contentEncrypted: await encryptValue("Explain the result."),
+          sortOrder: 0,
+        },
+        {
+          messageId: assistantMessageId,
+          type: "text",
+          contentEncrypted: await encryptValue("First half."),
+          sortOrder: 0,
+        },
+        {
+          messageId: assistantMessageId,
+          type: "suggestions",
+          contentEncrypted: await encryptValue('["Ask more"]'),
+          sortOrder: 1,
+        },
+      ]);
+
+      const claim = await claimAssistantContinuation({
+        conversationId,
+        messageId: assistantMessageId,
+        providerId: null,
+        modelId: "continuation-test-model",
+      });
+
+      expect(claim).toMatchObject({
+        status: "claimed",
+        message: {
+          id: assistantMessageId,
+          status: "streaming",
+          tokenInput: 10,
+          tokenOutput: 20,
+        },
+        nextSortOrder: 1,
+        appendableTextPart: { content: "First half." },
+      });
+      const persistedMessages = await db
+        .select({ id: messages.id, role: messages.role })
+        .from(messages)
+        .where(eq(messages.conversationId, conversationId));
+      expect(persistedMessages).toHaveLength(2);
+      expect(
+        persistedMessages.filter((message) => message.role === "assistant"),
+      ).toEqual([{ id: assistantMessageId, role: "assistant" }]);
+
+      const persistedParts = await db
+        .select({ type: messageParts.type })
+        .from(messageParts)
+        .where(eq(messageParts.messageId, assistantMessageId));
+      expect(persistedParts).toEqual([{ type: "text" }]);
+    } finally {
+      await db
+        .delete(messageParts)
+        .where(
+          inArray(messageParts.messageId, [
+            userMessageId,
+            assistantMessageId,
+          ]),
+        );
+      await db
+        .delete(messages)
+        .where(eq(messages.conversationId, conversationId));
+      await db
+        .delete(conversations)
+        .where(eq(conversations.id, conversationId));
+    }
   }, 60_000);
 
   it("rejects privilege escalation and cross-organization identifiers", async () => {

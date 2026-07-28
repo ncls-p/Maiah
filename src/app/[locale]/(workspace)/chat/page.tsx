@@ -1331,9 +1331,11 @@ export default function ChatPage() {
     });
   }
 
-  async function continueAssistantResponse() {
+  async function continueAssistantResponse(message: ChatMessage) {
     if (!activeConversationId || sending) return;
-    await handleSubmit(t("messageList.continuePrompt"));
+    await handleSubmit(t("messageList.continuePrompt"), {
+      continueFromMessageId: message.id,
+    });
   }
 
   async function reloadActualLatestMessages() {

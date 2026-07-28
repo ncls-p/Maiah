@@ -151,4 +151,37 @@ describe("AI SDK UI chat transport", () => {
       inputText: JSON.stringify({ query: "Maiah" }, null, 2),
     });
   });
+
+  it("sends continuation as request metadata instead of a chat message", async () => {
+    const messageId = crypto.randomUUID();
+    publishChatStreamEvent(messageId, { type: "done" });
+    completeChatStream(messageId);
+
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(createChatUIMessageStreamResponse(messageId));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await streamAiSdkUIChat({
+      api: "/api/chat",
+      chatId: "chat-1",
+      content: "Continue exactly where you stopped.",
+      localUserMessageId: "ephemeral-request-message",
+      body: {
+        content: "Continue exactly where you stopped.",
+        conversationId: "conversation-1",
+        continueFromMessageId: "assistant-message-1",
+      },
+      abortSignal: new AbortController().signal,
+      onStart: vi.fn(),
+      onEvent: vi.fn(),
+    });
+
+    const request = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    expect(JSON.parse(String(request.body))).toEqual({
+      content: "Continue exactly where you stopped.",
+      conversationId: "conversation-1",
+      continueFromMessageId: "assistant-message-1",
+    });
+  });
 });
