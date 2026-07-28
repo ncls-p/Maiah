@@ -7,6 +7,7 @@ import {
   IamOperationError,
   listProjectAccessResources,
 } from "@/modules/iam/use-cases";
+import { deleteProjectAccessResource } from "@/modules/iam/resource-deletion";
 import { ACCESS_RESOURCE_TYPES } from "@/server/domain/entities/access-resource";
 
 const querySchema = z.object({
@@ -70,6 +71,43 @@ export async function GET(req: NextRequest) {
     {
       allowApiKey: false,
       logLabel: "Failed to load resource access",
+      expectedError: expectedIamError,
+    },
+  );
+}
+
+export async function DELETE(req: NextRequest) {
+  return handleRoute(
+    req,
+    async ({ session }) => {
+      const parsed = querySchema
+        .pick({
+          workspaceId: true,
+          resourceType: true,
+          resourceId: true,
+        })
+        .required({ resourceId: true })
+        .safeParse({
+          workspaceId: req.nextUrl.searchParams.get("workspaceId"),
+          resourceType: req.nextUrl.searchParams.get("resourceType"),
+          resourceId: req.nextUrl.searchParams.get("resourceId"),
+        });
+      if (!parsed.success) {
+        return NextResponse.json(
+          { error: "Invalid resource deletion request" },
+          { status: 400 },
+        );
+      }
+      return NextResponse.json(
+        await deleteProjectAccessResource({
+          actorUserId: session.user.id,
+          ...parsed.data,
+        }),
+      );
+    },
+    {
+      allowApiKey: false,
+      logLabel: "Failed to delete project resource",
       expectedError: expectedIamError,
     },
   );

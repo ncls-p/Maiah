@@ -297,6 +297,105 @@ async function resolvePermissions(
 }
 
 export const authorization = {
+  async listDirectlyAuthorizedResourceIds(
+    ctx: AuthorizationContext,
+    permission: string,
+    resourceType: AccessResourceType,
+    resourceIds: string[],
+    workspaceId?: string,
+  ): Promise<Set<string>> {
+    const uniqueResourceIds = [...new Set(resourceIds)];
+    if (uniqueResourceIds.length === 0) return new Set();
+
+    let teamIds: string[] = [];
+    if (ctx.principalType === "user") {
+      const resolvedWorkspaceId =
+        workspaceId ??
+        (await findAccessResource(resourceType, uniqueResourceIds[0]))
+          ?.workspaceId;
+      if (
+        !resolvedWorkspaceId ||
+        !(await isActiveWorkspaceMember(ctx.principalId, resolvedWorkspaceId))
+      ) {
+        return new Set();
+      }
+      const memberships = await db
+        .select({ teamId: teamMembers.teamId })
+        .from(teamMembers)
+        .where(eq(teamMembers.userId, ctx.principalId));
+      teamIds = memberships.map(({ teamId }) => teamId);
+    }
+
+    const principalFilter =
+      ctx.principalType === "user" && teamIds.length > 0
+        ? or(
+            and(
+              eq(roleBindings.principalType, "user"),
+              eq(roleBindings.principalId, ctx.principalId),
+            ),
+            and(
+              eq(roleBindings.principalType, "group"),
+              inArray(roleBindings.principalId, teamIds),
+            ),
+          )
+        : and(
+            eq(roleBindings.principalType, ctx.principalType),
+            eq(roleBindings.principalId, ctx.principalId),
+          );
+    const bindings = await db
+      .select({
+        resourceId: roleBindings.resourceId,
+        roleName: roles.name,
+        permissionsJson: roles.permissionsJson,
+      })
+      .from(roleBindings)
+      .innerJoin(roles, eq(roleBindings.roleId, roles.id))
+      .where(
+        and(
+          principalFilter,
+          eq(roleBindings.resourceType, resourceType),
+          inArray(roleBindings.resourceId, uniqueResourceIds),
+          or(
+            isNull(roleBindings.expiresAt),
+            gte(roleBindings.expiresAt, new Date()),
+          ),
+        ),
+      );
+
+    return new Set(
+      bindings
+        .filter((binding) => {
+          const permissions: Permission[] = [];
+          addRolePermissions(permissions, {
+            name: binding.roleName,
+            permissionsJson: binding.permissionsJson,
+          });
+          return permissions.some((granted) =>
+            matchesPermission(granted, permission),
+          );
+        })
+        .map(({ resourceId }) => resourceId),
+    );
+  },
+
+  async hasDirectPermission(
+    ctx: AuthorizationContext,
+    permission: string,
+    resourceType: AccessResourceType,
+    resourceId: string,
+    workspaceId?: string,
+  ): Promise<boolean> {
+    return (
+      await this.listDirectlyAuthorizedResourceIds(
+        ctx,
+        permission,
+        resourceType,
+        [resourceId],
+        workspaceId,
+      )
+    ).has(resourceId);
+  },
+
   async listPermissions(
     ctx: AuthorizationContext,
     resourceType: ResourceType,

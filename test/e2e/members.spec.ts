@@ -114,7 +114,9 @@ test.describe("members page", () => {
       hasText: "Transfer preview assistant",
     });
     await expect(resourceRow).toBeVisible({ timeout: 10_000 });
-    await resourceRow.getByRole("button", { name: "Transfer" }).click();
+    await resourceRow
+      .getByRole("button", { name: "Transfer", exact: true })
+      .click();
 
     const dialog = page.getByRole("dialog", {
       name: "Transfer Transfer preview assistant",
@@ -136,6 +138,35 @@ test.describe("members page", () => {
     await expect(
       dialog.getByRole("button", { name: "Transfer now" }),
     ).toBeEnabled();
+  });
+
+  test("deletes any governed resource from the resource table", async ({
+    page,
+  }) => {
+    await ensureE2ETransferScenario();
+    await page.goto("/en/members");
+    const activeProject = page.getByRole("combobox", {
+      name: "Active project",
+    });
+    if (!(await activeProject.textContent())?.includes("Maiah")) {
+      await activeProject.click();
+      await page.getByRole("option", { name: "Maiah", exact: true }).click();
+    }
+    await page.getByRole("tab", { name: "Resources" }).click();
+
+    const resourceRow = page.locator("tbody tr").filter({
+      hasText: "Removable assistant",
+    });
+    await expect(resourceRow).toBeVisible({ timeout: 10_000 });
+    await resourceRow
+      .getByRole("button", { name: "Delete Removable assistant" })
+      .click();
+    const deleteDialog = page.getByRole("alertdialog");
+    await expect(
+      deleteDialog.getByText("Delete Removable assistant?"),
+    ).toBeVisible();
+    await deleteDialog.getByRole("button", { name: "Delete resource" }).click();
+    await expect(resourceRow).not.toBeVisible({ timeout: 10_000 });
   });
 
   test("grants project access through an organization team", async ({

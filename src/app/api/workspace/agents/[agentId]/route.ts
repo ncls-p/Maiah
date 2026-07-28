@@ -19,6 +19,7 @@ import { agentRuntimePolicy } from "@/modules/agent/runtime-policy";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
 import { hasWorkspacePermissionForRequest } from "@/modules/auth/workspace-access";
 import { toolBindingInputSchema } from "@/modules/tool/use-cases";
+import { authorization } from "@/server/domain/services/authorization";
 import {
   delegationBindingInputSchema,
   orchestrationPolicySchema,
@@ -188,6 +189,13 @@ export async function GET(
           "agents.update",
         ),
       ]);
+      const canDirectlyUpdate = await authorization.hasDirectPermission(
+        { principalType: "user", principalId: session.user.id },
+        "agents.update",
+        "agent",
+        agent.id,
+        workspaceId,
+      );
       return NextResponse.json({
         ...agent,
         promptSuggestions: normalizePromptSuggestions(
@@ -195,8 +203,9 @@ export async function GET(
         ),
         canAdminCurate,
         canEdit:
-          canUpdateAgents &&
-          canEditAgent(agent, session.user.id, canAdminCurate),
+          (canUpdateAgents &&
+            canEditAgent(agent, session.user.id, canAdminCurate)) ||
+          canDirectlyUpdate,
         canClone: canCreateAgent,
         shareTargetEmail,
       });

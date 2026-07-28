@@ -61,7 +61,9 @@ export type AgentVersionRow = typeof agentVersions.$inferSelect;
 type AgentSharingMode = "personal" | "marketplace" | "specific_user";
 type AgentKind = "assistant" | "orchestrator";
 export type AgentCurationLabel =
-  "recommended" | "organization_created" | "none";
+  | "recommended"
+  | "organization_created"
+  | "none";
 
 export interface CreateAgentInput {
   workspaceId: string;
@@ -538,11 +540,12 @@ export async function getVisibleAgentById(
   if (!agent) return null;
   if (canUseAgent(agent, userId)) return agent;
   if (
-    await authorization.hasPermission(
+    await authorization.hasDirectPermission(
       { principalType: "user", principalId: userId },
       "agents.get",
       "agent",
       agent.id,
+      workspaceId,
     )
   ) {
     return agent;
@@ -567,20 +570,17 @@ export async function listAgents(
       sql`${agents.isRecommended} DESC`,
       sql`${agents.updatedAt} DESC`,
     );
-  const visible = await Promise.all(
-    rows.map(async (agent) =>
-      canUseAgent(agent, userId) ||
-      (await authorization.hasPermission(
-        { principalType: "user", principalId: userId },
-        "agents.get",
-        "agent",
-        agent.id,
-      ))
-        ? agent
-        : null,
-    ),
+  const directlyVisibleIds =
+    await authorization.listDirectlyAuthorizedResourceIds(
+      { principalType: "user", principalId: userId },
+      "agents.get",
+      "agent",
+      rows.map(({ id }) => id),
+      workspaceId,
+    );
+  return rows.filter(
+    (agent) => canUseAgent(agent, userId) || directlyVisibleIds.has(agent.id),
   );
-  return visible.filter((agent) => agent !== null);
 }
 
 export function canUseAgent(agent: AgentRow, userId: string) {
@@ -1479,7 +1479,8 @@ export async function resolveProviderForVersion(
       apiKey,
       headers,
       queryParams: provider.queryParamsJson as
-        Record<string, string> | undefined,
+        | Record<string, string>
+        | undefined,
       openaiCompatibleApiRoute: normalizeOpenAICompatibleApiRoute(
         provider.openaiCompatibleApiRoute,
       ),
