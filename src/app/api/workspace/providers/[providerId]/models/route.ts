@@ -6,7 +6,6 @@ import {
 } from "@/lib/route-handler";
 import {
   createModel,
-  discoverModels,
   getProviderById,
   listModels,
 } from "@/modules/provider/use-cases";
@@ -32,7 +31,6 @@ const createModelSchema = z.object({
   inputTokenCost: z.string().optional(),
   outputTokenCost: z.string().optional(),
 });
-
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ providerId: string }> },
@@ -50,11 +48,10 @@ export async function GET(
       }
       const { providerId } = parsedParams.data;
       const { workspaceId } = parsedQuery.data;
-      const action = searchParams.get("action");
       const forbidden = await requireWorkspacePermissionAsync(
         session.user.id,
         workspaceId,
-        action === "discover" ? "models.sync" : "models.view",
+        "models.view",
       );
       if (forbidden) return forbidden;
       const provider = await getProviderById(providerId, workspaceId);
@@ -63,10 +60,6 @@ export async function GET(
           { error: "Provider not found" },
           { status: 404 },
         );
-      }
-      if (action === "discover") {
-        const discovered = await discoverModels(providerId, workspaceId);
-        return NextResponse.json(discovered);
       }
       const models = await listModels(providerId);
       return NextResponse.json(models);

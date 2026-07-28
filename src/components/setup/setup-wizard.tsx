@@ -8,8 +8,6 @@ import {
   Loader2,
   MessageSquareIcon,
   PlugZapIcon,
-  PlusIcon,
-  RefreshCwIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -76,18 +74,6 @@ type ProviderModel = {
   inputTokenCost?: string | null;
   outputTokenCost?: string | null;
   enabled?: boolean;
-};
-
-type DiscoveredModel = {
-  modelId: string;
-  displayName?: string;
-  description?: string;
-  hostedBy?: string;
-  capabilities?: Record<string, boolean>;
-  contextWindow?: number;
-  maxOutputTokens?: number;
-  inputTokenCost?: string;
-  outputTokenCost?: string;
 };
 
 function slugify(value: string) {
@@ -276,11 +262,7 @@ export function SetupWizard({
   const [loadingModels, setLoadingModels] = useState(false);
   const [modelsLoadError, setModelsLoadError] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
-  const [discoveringModels, setDiscoveringModels] = useState(false);
   const [models, setModels] = useState<ProviderModel[]>([]);
-  const [discoveredModels, setDiscoveredModels] = useState<DiscoveredModel[]>(
-    [],
-  );
   const [providerForm, setProviderForm] = useState<{
     name: string;
     kind: ProviderKind;
@@ -342,7 +324,6 @@ export function SetupWizard({
         );
         if (cancelled) return;
         setModels(rows);
-        setDiscoveredModels([]);
         setModelDbId((current) =>
           current && rows.some((model) => model.id === current)
             ? current
@@ -362,29 +343,6 @@ export function SetupWizard({
       cancelled = true;
     };
   }, [workspaceId, providerId, loadAttempt]);
-
-  async function discoverProviderModels() {
-    if (!workspaceId || !providerId) return;
-    setDiscoveringModels(true);
-    try {
-      const rows = await fetchJson<DiscoveredModel[]>(
-        `/api/workspace/providers/${providerId}/models?workspaceId=${workspaceId}&action=discover`,
-      );
-      setDiscoveredModels(rows);
-      if (rows.length === 0) {
-        toast.info(t("toasts.noModelsReturned"));
-      } else {
-        toast.success(t("toasts.modelsDiscovered", { count: rows.length }));
-      }
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : t("toasts.discoverFailed"),
-      );
-      return;
-    } finally {
-      setDiscoveringModels(false);
-    }
-  }
 
   async function createProvider() {
     if (!workspaceId) return;
@@ -427,39 +385,9 @@ export function SetupWizard({
     }
   }
 
-  async function testProvider() {
-    if (!workspaceId || !providerId) return;
-    setBusy(true);
-    try {
-      const data = await fetchJson<{ status?: string; message?: string }>(
-        `/api/workspace/providers/${providerId}/test`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ workspaceId }),
-        },
-      );
-      if (data.status === "healthy") {
-        toast.success(data.message || t("toasts.connectionVerified"));
-      } else {
-        toast.error(data.message || t("toasts.connectionIssue"));
-      }
-    } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : t("toasts.connectionTestFailed"),
-      );
-      return;
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function addAndSelectModel(discoveredModel?: DiscoveredModel) {
-    const modelId = discoveredModel?.modelId ?? manualModelId.trim();
-    const displayName =
-      discoveredModel?.displayName ?? discoveredModel?.modelId ?? modelId;
+  async function addAndSelectModel() {
+    const modelId = manualModelId.trim();
+    const displayName = modelId;
     if (!workspaceId) return;
     if (!providerId) return;
     if (!modelId) return;
@@ -474,11 +402,6 @@ export function SetupWizard({
             workspaceId,
             modelId,
             displayName,
-            capabilitiesJson: discoveredModel?.capabilities,
-            contextWindow: discoveredModel?.contextWindow,
-            maxOutputTokens: discoveredModel?.maxOutputTokens,
-            inputTokenCost: discoveredModel?.inputTokenCost,
-            outputTokenCost: discoveredModel?.outputTokenCost,
           }),
         },
       );
@@ -822,135 +745,12 @@ export function SetupWizard({
               <div className="flex flex-wrap gap-2">
                 <Button
                   type={BUTTON_TYPE}
-                  variant={OUTLINE_VARIANT}
-                  onClick={() => void testProvider()}
-                  disabled={busy || !providerId}
-                >
-                  {busy ? (
-                    <Loader2 className="animate-spin" aria-hidden="true" />
-                  ) : (
-                    <CheckCircle2Icon
-                      data-icon="inline-start"
-                      aria-hidden="true"
-                    />
-                  )}
-                  {t("testConnection")}
-                </Button>
-                <Button
-                  type={BUTTON_TYPE}
-                  variant={OUTLINE_VARIANT}
-                  onClick={() => void discoverProviderModels()}
-                  disabled={discoveringModels || !providerId}
-                >
-                  {discoveringModels ? (
-                    <Loader2 className="animate-spin" aria-hidden="true" />
-                  ) : (
-                    <RefreshCwIcon
-                      data-icon="inline-start"
-                      aria-hidden="true"
-                    />
-                  )}
-                  {t("discoverModels")}
-                </Button>
-                <Button
-                  type={BUTTON_TYPE}
                   variant="ghost"
                   onClick={() => setStep("provider")}
                 >
                   {t("changeConnection")}
                 </Button>
               </div>
-
-              {/* Discovered models */}
-              {discoveredModels.length > 0 && (
-                <div className="rounded-xl border border-border/70 overflow-hidden">
-                  <div className="border-b border-border/60 bg-muted/30 px-4 py-3">
-                    <p className="text-sm font-medium">
-                      {t("availableModels", { count: discoveredModels.length })}
-                    </p>
-                    <FieldDescription>
-                      {t("discoveredModelsHint")}
-                    </FieldDescription>
-                  </div>
-                  <div className="max-h-72 overflow-y-auto divide-y divide-border/40">
-                    {discoveredModels.map((model) => {
-                      const savedModel = models.find(
-                        (m) => m.modelId === model.modelId,
-                      );
-                      const isSelected = savedModel?.id === modelDbId;
-                      return (
-                        <div
-                          key={model.modelId}
-                          className={cn(
-                            "flex items-start justify-between gap-3 px-4 py-3 transition-[background-color] duration-150 ease-out hover:bg-muted/30",
-                            isSelected && "bg-primary/5",
-                          )}
-                        >
-                          <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <p className="text-sm font-medium">
-                                {model.displayName || model.modelId}
-                              </p>
-                              {isSelected && (
-                                <Badge
-                                  variant="secondary"
-                                  className="bg-primary/10 text-primary"
-                                >
-                                  {t("selected")}
-                                </Badge>
-                              )}
-                            </div>
-                            <p className="truncate text-xs text-muted-foreground">
-                              {model.modelId}
-                            </p>
-                            {model.description && (
-                              <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
-                                {model.description}
-                              </p>
-                            )}
-                            <ModelMetadata
-                              capabilities={model.capabilities}
-                              contextWindow={model.contextWindow}
-                              maxOutputTokens={model.maxOutputTokens}
-                              inputTokenCost={model.inputTokenCost}
-                              outputTokenCost={model.outputTokenCost}
-                              hostedBy={model.hostedBy}
-                            />
-                          </div>
-                          <Button
-                            type={BUTTON_TYPE}
-                            size="sm"
-                            variant={isSelected ? "secondary" : "outline"}
-                            disabled={busy || isSelected}
-                            onClick={() => {
-                              if (savedModel) {
-                                setModelDbId(savedModel.id);
-                                toast.success(t("toasts.modelSelected"));
-                                return;
-                              }
-                              void addAndSelectModel(model);
-                            }}
-                          >
-                            {isSelected ? (
-                              t("selected")
-                            ) : savedModel ? (
-                              t("useModel")
-                            ) : (
-                              <>
-                                <PlusIcon
-                                  data-icon="inline-start"
-                                  aria-hidden="true"
-                                />
-                                {t("useModel")}
-                              </>
-                            )}
-                          </Button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
 
               {/* Saved models selector */}
               {models.length > 0 && (
@@ -991,35 +791,37 @@ export function SetupWizard({
                 </Field>
               )}
 
-              {/* Manual model ID */}
-              <Field>
-                <FieldLabel htmlFor="manual-model">
-                  {t("manualModelLabel")}
-                </FieldLabel>
-                <FieldContent>
-                  <div className="flex gap-2">
-                    <Input
-                      id="manual-model"
-                      name="setup-manual-model"
-                      autoComplete="off"
-                      placeholder="gpt-4o-mini…"
-                      value={manualModelId}
-                      onChange={(event) => setManualModelId(event.target.value)}
-                    />
-                    <Button
-                      type={BUTTON_TYPE}
-                      variant={OUTLINE_VARIANT}
-                      disabled={busy || !providerId || !manualModelId.trim()}
-                      onClick={() => void addAndSelectModel()}
-                    >
-                      {t("addModel")}
-                    </Button>
-                  </div>
-                </FieldContent>
-              </Field>
-
               {models.length === 0 && (
-                <FieldDescription>{t("noRegisteredModels")}</FieldDescription>
+                <Field>
+                  <FieldLabel htmlFor="manual-model">
+                    {t("manualModelLabel")}
+                  </FieldLabel>
+                  <FieldContent>
+                    <div className="flex gap-2">
+                      <Input
+                        id="manual-model"
+                        name="setup-manual-model"
+                        autoComplete="off"
+                        placeholder="gpt-4o-mini…"
+                        value={manualModelId}
+                        onChange={(event) =>
+                          setManualModelId(event.target.value)
+                        }
+                      />
+                      <Button
+                        type={BUTTON_TYPE}
+                        variant={OUTLINE_VARIANT}
+                        disabled={busy || !providerId || !manualModelId.trim()}
+                        onClick={() => void addAndSelectModel()}
+                      >
+                        {t("addModel")}
+                      </Button>
+                    </div>
+                    <FieldDescription>
+                      {t("noRegisteredModels")}
+                    </FieldDescription>
+                  </FieldContent>
+                </Field>
               )}
 
               <Button

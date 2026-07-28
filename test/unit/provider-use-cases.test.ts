@@ -46,6 +46,7 @@ type Chain = {
   values: ReturnType<typeof vi.fn>;
   set: ReturnType<typeof vi.fn>;
   returning: ReturnType<typeof vi.fn>;
+  onConflictDoUpdate: ReturnType<typeof vi.fn>;
 };
 
 type DbMock = {
@@ -73,6 +74,7 @@ vi.mock("@/server/infrastructure/db", () => {
     values: vi.fn().mockReturnThis(),
     set: vi.fn().mockReturnThis(),
     returning: vi.fn().mockResolvedValue([]),
+    onConflictDoUpdate: vi.fn().mockResolvedValue(undefined),
   };
   return {
     db: {
@@ -91,16 +93,20 @@ import {
   archiveProvider,
   createModel,
   createProvider,
+  createProviderWithModels,
   deleteModel,
   discoverModels,
   getModelById,
   getProviderById,
+  hasProviderConnectionChanges,
   listModels,
   listProviders,
+  refreshProviderModels,
   testProviderConnection,
   toSafeProvider,
   updateModel,
   updateProvider,
+  updateProviderWithModels,
 } from "@/modules/provider/use-cases";
 
 function reset() {
@@ -110,6 +116,7 @@ function reset() {
   }
   c.limit.mockReset().mockResolvedValue([]);
   c.returning.mockReset().mockResolvedValue([]);
+  c.onConflictDoUpdate.mockReset().mockResolvedValue(undefined);
 }
 
 beforeEach(() => {
@@ -250,6 +257,70 @@ describe("createProvider", () => {
     expect(dbModule._c.values).toHaveBeenCalledWith(
       expect.objectContaining({ openaiCompatibleApiRoute: "responses" }),
     );
+  });
+});
+
+describe("automatic provider model loading", () => {
+  it("recognizes only connection fields as model refresh triggers", () => {
+    const base = {
+      providerId: "prov-1",
+      workspaceId: "ws-1",
+      userId: "user-1",
+    };
+
+    expect(hasProviderConnectionChanges({ ...base, name: "Renamed" })).toBe(
+      false,
+    );
+    expect(hasProviderConnectionChanges({ ...base, enabled: false })).toBe(
+      false,
+    );
+    expect(hasProviderConnectionChanges({ ...base, apiKey: "new-key" })).toBe(
+      true,
+    );
+    expect(
+      hasProviderConnectionChanges({
+        ...base,
+        openaiCompatibleApiRoute: "responses",
+      }),
+    ).toBe(true);
+  });
+
+  it("loads and upserts models automatically", async () => {
+    dbModule._c.limit.mockResolvedValueOnce([fakeProvider]);
+
+    const result = await refreshProviderModels("prov-1", "ws-1");
+
+    expect(result).toEqual({ status: "healthy", imported: 1 });
+    expect(dbModule._c.onConflictDoUpdate).toHaveBeenCalledOnce();
+  });
+
+  it("loads models as part of provider creation", async () => {
+    dbModule._c.returning.mockResolvedValueOnce([fakeProvider]);
+    dbModule._c.limit.mockResolvedValueOnce([fakeProvider]);
+
+    const result = await createProviderWithModels({
+      workspaceId: "ws-1",
+      userId: "user-1",
+      kind: "openai-compatible",
+      name: "Test",
+      authType: "bearer",
+    });
+
+    expect(result.modelRefresh).toEqual({ status: "healthy", imported: 1 });
+  });
+
+  it("does not reload models for enable-only updates", async () => {
+    dbModule._c.limit.mockResolvedValueOnce([fakeProvider]);
+
+    const result = await updateProviderWithModels({
+      providerId: "prov-1",
+      workspaceId: "ws-1",
+      userId: "user-1",
+      enabled: false,
+    });
+
+    expect(result.modelRefresh).toBeNull();
+    expect(mockAdapter.listModels).not.toHaveBeenCalled();
   });
 });
 

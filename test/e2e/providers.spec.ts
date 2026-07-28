@@ -39,6 +39,18 @@ test.describe("providers page", () => {
 		}
 	});
 
+	test("does not require separate test or discovery actions", async ({
+		page,
+	}) => {
+		await page.goto("/en/providers");
+
+		await expect(
+			page.getByRole("button", {
+				name: /Discover models|Test connection/i,
+			}),
+		).toHaveCount(0);
+	});
+
 	test("defaults OpenAI-compatible connections to the Responses API", async ({
 		page,
 	}) => {
@@ -92,9 +104,14 @@ test.describe("providers page", () => {
 			const provider = (await createResponse.json()) as {
 				id: string;
 				openaiCompatibleApiRoute: string;
+				modelRefresh: { status: string; imported: number };
 			};
 			providerId = provider.id;
 			expect(provider.openaiCompatibleApiRoute).toBe("chat-completions");
+			expect(provider.modelRefresh).toMatchObject({
+				status: expect.stringMatching(/healthy|unhealthy|manual/),
+				imported: expect.any(Number),
+			});
 
 			const updateResponse = await page.request.patch(
 				`/api/workspace/providers/${providerId}`,
@@ -108,6 +125,18 @@ test.describe("providers page", () => {
 			expect(updateResponse.ok()).toBe(true);
 			await expect(updateResponse.json()).resolves.toMatchObject({
 				openaiCompatibleApiRoute: "responses",
+			});
+
+			const refreshResponse = await page.request.post(
+				`/api/workspace/providers/${providerId}/models/refresh`,
+				{
+					data: { workspaceId },
+				},
+			);
+			expect(refreshResponse.ok()).toBe(true);
+			await expect(refreshResponse.json()).resolves.toMatchObject({
+				status: expect.stringMatching(/healthy|unhealthy|manual/),
+				imported: expect.any(Number),
 			});
 		} finally {
 			if (providerId) {

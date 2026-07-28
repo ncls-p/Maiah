@@ -39,7 +39,7 @@ type ProviderListProps = {
   onAddProvider: () => void;
   onSelectProvider: (providerId: string) => void;
   onToggleProvider: (provider: SafeProvider) => void;
-  onTestProvider: (providerId: string) => void;
+  onRetryProvider: (providerId: string) => void;
   onEditProvider: (provider: SafeProvider) => void;
   onDeleteProvider: (providerId: string) => void;
 };
@@ -142,7 +142,7 @@ function ProviderRow({
   busy,
   onSelectProvider,
   onToggleProvider,
-  onTestProvider,
+  onRetryProvider,
   onEditProvider,
   onDeleteProvider,
 }: ProviderListProps & { provider: SafeProvider }) {
@@ -209,7 +209,7 @@ function ProviderRow({
         busy={busy}
         provider={provider}
         onEditProvider={onEditProvider}
-        onTestProvider={onTestProvider}
+        onRetryProvider={onRetryProvider}
         onDeleteProvider={onDeleteProvider}
       />
     </div>
@@ -220,11 +220,11 @@ function ProviderActions({
   busy,
   provider,
   onEditProvider,
-  onTestProvider,
+  onRetryProvider,
   onDeleteProvider,
 }: Pick<
   ProviderListProps,
-  "busy" | "onEditProvider" | "onTestProvider" | "onDeleteProvider"
+  "busy" | "onEditProvider" | "onRetryProvider" | "onDeleteProvider"
 > & { provider: SafeProvider }) {
   const t = useTranslations("providers.manager");
   return (
@@ -244,13 +244,16 @@ function ProviderActions({
         <DropdownMenuItem onClick={() => onEditProvider(provider)}>
           {t("editConnection")}
         </DropdownMenuItem>
-        <DropdownMenuItem
-          disabled={busy}
-          onClick={() => onTestProvider(provider.id)}
-        >
-          <RefreshCwIcon className="size-4" aria-hidden="true" />
-          {t("testConnection")}
-        </DropdownMenuItem>
+        {provider.healthStatus !== "healthy" &&
+        provider.healthStatus !== "manual" ? (
+          <DropdownMenuItem
+            disabled={busy}
+            onClick={() => onRetryProvider(provider.id)}
+          >
+            <RefreshCwIcon className="size-4" aria-hidden="true" />
+            {t("retryConnection")}
+          </DropdownMenuItem>
+        ) : null}
         <DropdownMenuSeparator />
         <DropdownMenuItem
           variant="destructive"

@@ -23,7 +23,6 @@ import { ModelsPanel } from "./provider-manager/model-list";
 import { SystemStrip } from "./provider-manager/provider-stats";
 import { KIND_LABELS } from "./provider-manager/constants";
 import type {
-  DiscoveredModel,
   ProviderAuthType,
   ProviderKind,
   ProviderModel,
@@ -46,9 +45,6 @@ export function ProviderManager({
     initialProviders[0]?.id ?? null,
   );
   const [models, setModels] = useState<ProviderModel[]>(initialModels);
-  const [discoveredModels, setDiscoveredModels] = useState<DiscoveredModel[]>(
-    [],
-  );
   const [loadingProviders, setLoadingProviders] = useState(false);
   const [loadingModels, setLoadingModels] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -156,7 +152,6 @@ export function ProviderManager({
 
   function selectProvider(providerId: string) {
     setSelectedProviderId(providerId);
-    setDiscoveredModels([]);
     setModelSearch("");
     void loadModelsForProvider(providerId);
   }
@@ -210,7 +205,7 @@ export function ProviderManager({
       setSelectedProviderId(provider.id);
       setShowAddDialog(false);
       resetAddForm();
-      toast.success(t("toastProviderConnected"));
+      notifyModelRefresh(provider.modelRefresh, "toastProviderConnected");
       await loadModelsForProvider(provider.id);
     } catch (error) {
       toast.error((error as Error).message);
@@ -220,20 +215,28 @@ export function ProviderManager({
     }
   }
 
-  async function testProvider(providerId: string) {
+  async function retryProvider(providerId: string) {
     setBusy(true);
     try {
-      const res = await fetch(`/api/workspace/providers/${providerId}/test`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ workspaceId }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || t("errorProviderTest"));
-      toast[data.status === "healthy" ? "success" : "error"](
-        data.message || `Provider is ${data.status}`,
+      const res = await fetch(
+        `/api/workspace/providers/${providerId}/models/refresh`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ workspaceId }),
+        },
       );
+      const data = (await res.json().catch(() => ({}))) as {
+        status?: string;
+        imported?: number;
+        error?: string;
+      };
+      if (!res.ok || data.status === "unhealthy") {
+        throw new Error(data.error || t("errorDiscoverModels"));
+      }
+      toast.success(t("toastProviderReady", { count: data.imported ?? 0 }));
       await loadProviders();
+      await loadModelsForProvider(providerId);
     } catch (error) {
       toast.error((error as Error).message);
       return;
@@ -280,13 +283,15 @@ export function ProviderManager({
           }),
         },
       );
-      if (!res.ok) {
-        throw new Error((await res.json()).error || t("errorUpdateProvider"));
-      }
+      const data = (await res.json().catch(() => ({}))) as SafeProvider & {
+        error?: string;
+      };
+      if (!res.ok) throw new Error(data.error || t("errorUpdateProvider"));
       setEditingProvider(null);
       setEditApiKey("");
       await loadProviders();
-      toast.success(t("toastConnectionUpdated"));
+      notifyModelRefresh(data.modelRefresh, "toastConnectionUpdated");
+      await loadModelsForProvider(editingProvider.id);
     } catch (error) {
       toast.error((error as Error).message);
       return;
@@ -318,10 +323,10 @@ export function ProviderManager({
     }
   }
 
-  async function createManualModel(model?: DiscoveredModel) {
+  async function createManualModel() {
     if (!selectedProviderId) return;
-    const id = model?.modelId ?? manualModelId;
-    const displayName = model?.displayName ?? manualModelName ?? id;
+    const id = manualModelId;
+    const displayName = manualModelName || id;
     if (!id) return;
 
     setBusy(true);
@@ -335,7 +340,7 @@ export function ProviderManager({
             workspaceId,
             modelId: id,
             displayName,
-            capabilitiesJson: model?.capabilities ?? {
+            capabilitiesJson: {
               text: true,
               vision: false,
               tools: false,
@@ -343,10 +348,6 @@ export function ProviderManager({
               embeddings: false,
               audio: false,
             },
-            contextWindow: model?.contextWindow,
-            maxOutputTokens: model?.maxOutputTokens,
-            inputTokenCost: model?.inputTokenCost,
-            outputTokenCost: model?.outputTokenCost,
           }),
         },
       );
@@ -366,26 +367,16 @@ export function ProviderManager({
     }
   }
 
-  async function discoverProviderModels() {
-    if (!selectedProviderId) return;
-    setBusy(true);
-    try {
-      const res = await fetch(
-        `/api/workspace/providers/${selectedProviderId}/models?workspaceId=${workspaceId}&action=discover`,
-      );
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || t("errorDiscoverModels"));
-      setDiscoveredModels(data as DiscoveredModel[]);
-      toast.success(
-        t("toastDiscoveredModels", {
-          count: (data as DiscoveredModel[]).length,
-        }),
-      );
-    } catch (error) {
-      toast.error((error as Error).message);
-      return;
-    } finally {
-      setBusy(false);
+  function notifyModelRefresh(
+    refresh: SafeProvider["modelRefresh"],
+    fallbackKey: "toastProviderConnected" | "toastConnectionUpdated",
+  ) {
+    if (!refresh || refresh.status === "manual") {
+      toast.success(t(fallbackKey));
+    } else if (refresh.status === "unhealthy") {
+      toast.warning(t("toastProviderSavedModelsFailed"));
+    } else {
+      toast.success(t("toastProviderReady", { count: refresh.imported }));
     }
   }
 
@@ -463,7 +454,7 @@ export function ProviderManager({
           onAddProvider={openAddDialog}
           onSelectProvider={selectProvider}
           onToggleProvider={(provider) => void toggleProvider(provider)}
-          onTestProvider={(providerId) => void testProvider(providerId)}
+          onRetryProvider={(providerId) => void retryProvider(providerId)}
           onEditProvider={openEditDialog}
           onDeleteProvider={setDeleteProviderId}
         />
@@ -472,18 +463,16 @@ export function ProviderManager({
           providers={providers}
           models={models}
           filteredModels={filteredModels}
-          discoveredModels={discoveredModels}
           modelSearch={modelSearch}
           manualModelId={manualModelId}
           manualModelName={manualModelName}
           loadingModels={loadingModels}
           loadingProviders={loadingProviders}
           busy={busy}
-          onDiscoverModels={() => void discoverProviderModels()}
           onUpdateModelLogo={(modelId: string, logoUrl: string | null) =>
             void updateModelLogo(modelId, logoUrl)
           }
-          onCreateModel={(model) => void createManualModel(model)}
+          onCreateModel={() => void createManualModel()}
           onDeleteModel={setDeleteModelId}
           onModelSearchChange={setModelSearch}
           onManualModelIdChange={setManualModelId}

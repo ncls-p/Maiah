@@ -8,7 +8,7 @@ import {
   archiveProvider,
   getProviderById,
   toSafeProvider,
-  updateProvider,
+  updateProviderWithModels,
 } from "@/modules/provider/use-cases";
 import { OPENAI_COMPATIBLE_API_ROUTES } from "@/lib/openai-compatible-api";
 
@@ -94,14 +94,16 @@ export async function PATCH(
         "providers.update",
       );
       if (forbidden) return forbidden;
-      await updateProvider({
+      const { modelRefresh } = await updateProviderWithModels({
         providerId,
         workspaceId,
         userId: session.user.id,
         ...input,
       });
       const provider = await getProviderById(providerId, workspaceId);
-      return NextResponse.json(provider ? toSafeProvider(provider) : null);
+      return NextResponse.json(
+        provider ? { ...toSafeProvider(provider), modelRefresh } : null,
+      );
     },
     {
       logLabel: "Failed to update provider",

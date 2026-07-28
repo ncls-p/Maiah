@@ -10,7 +10,7 @@ import {
   getMcpServer,
   toMcpServerForEdit,
   toSafeMcpServer,
-  updateMcpServer,
+  updateMcpServerWithDiscovery,
 } from "@/modules/mcp/use-cases";
 
 const querySchema = z.object({ workspaceId: z.uuid() });
@@ -96,14 +96,17 @@ export async function PATCH(
           { status: 403 },
         );
       }
-      const server = await updateMcpServer({
+      const { server, discovery } = await updateMcpServerWithDiscovery({
         serverId,
         userId: session.user.id,
         canManageGlobal,
         ...parsed.data,
         isGlobal: parsed.data.isGlobal,
       });
-      return NextResponse.json(toSafeMcpServer(server));
+      return NextResponse.json({
+        ...toSafeMcpServer(server),
+        discovery,
+      });
     },
     {
       logLabel: "Failed to update MCP server",

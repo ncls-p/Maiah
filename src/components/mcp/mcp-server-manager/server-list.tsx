@@ -4,6 +4,7 @@ import { type Dispatch, type SetStateAction } from "react";
 import { useTranslations } from "next-intl";
 import {
   ChevronDownIcon,
+  CircleAlertIcon,
   MoreHorizontal,
   PencilIcon,
   RefreshCwIcon,
@@ -13,7 +14,6 @@ import {
   Trash2Icon,
   Wrench,
   XIcon,
-  ZapIcon,
   PlusIcon,
 } from "lucide-react";
 
@@ -70,8 +70,7 @@ type ServerListProps = {
   onToolSearchChangeAction: Dispatch<SetStateAction<Record<string, string>>>;
   onEditServerAction: (server: McpServer) => void;
   onDeleteServerAction: (serverId: string) => void;
-  onTestServerAction: (serverId: string) => void;
-  onSyncServerAction: (serverId: string) => void;
+  onRetryDiscoveryAction: (serverId: string) => void;
   onShareServerAction: (server: McpServer) => void;
   onShareToolAction: (server: McpServer, tool: McpTool) => void;
   onToggleEnabledAction: (server: McpServer, enabled: boolean) => void;
@@ -277,8 +276,7 @@ function ServerHeader({
   isExpanded,
   onEditServerAction,
   onDeleteServerAction,
-  onTestServerAction,
-  onSyncServerAction,
+  onRetryDiscoveryAction,
   onShareServerAction,
   onToggleEnabledAction,
   onToggleServerApprovalAction,
@@ -323,8 +321,7 @@ function ServerHeader({
         server={server}
         onEditServerAction={onEditServerAction}
         onDeleteServerAction={onDeleteServerAction}
-        onTestServerAction={onTestServerAction}
-        onSyncServerAction={onSyncServerAction}
+        onRetryDiscoveryAction={onRetryDiscoveryAction}
         onShareServerAction={onShareServerAction}
       />
     </div>
@@ -496,15 +493,13 @@ function ServerActions({
   server,
   onEditServerAction,
   onDeleteServerAction,
-  onTestServerAction,
-  onSyncServerAction,
+  onRetryDiscoveryAction,
   onShareServerAction,
 }: Pick<
   ServerListProps,
   | "onEditServerAction"
   | "onDeleteServerAction"
-  | "onTestServerAction"
-  | "onSyncServerAction"
+  | "onRetryDiscoveryAction"
   | "onShareServerAction"
 > & { server: McpServer }) {
   const tShare = useTranslations("marketplace.share");
@@ -524,20 +519,15 @@ function ServerActions({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem
-          disabled={!server.canEdit}
-          onClick={() => onTestServerAction(server.id)}
-        >
-          <ZapIcon className="size-4" />
-          {t("testConnection")}
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          disabled={!server.canEdit}
-          onClick={() => onSyncServerAction(server.id)}
-        >
-          <RefreshCwIcon className="size-4" />
-          {t("syncTools")}
-        </DropdownMenuItem>
+        {server.healthStatus === "unhealthy" ? (
+          <DropdownMenuItem
+            disabled={!server.canEdit}
+            onClick={() => onRetryDiscoveryAction(server.id)}
+          >
+            <RefreshCwIcon className="size-4" />
+            {t("retryDiscovery")}
+          </DropdownMenuItem>
+        ) : null}
         <DropdownMenuItem
           disabled={!server.canEdit}
           onClick={() => onShareServerAction(server)}
@@ -576,6 +566,7 @@ function ToolsPanel({
   onToggleToolAction,
   onToggleToolActionApproval,
   onShareToolAction,
+  onRetryDiscoveryAction,
 }: ServerListProps & {
   server: McpServer;
   tools: McpTool[];
@@ -583,9 +574,33 @@ function ToolsPanel({
   serverToolSearch: string;
 }) {
   const t = useTranslations("mcp.serverManager");
+  const discoveryFailed = server.healthStatus === "unhealthy";
   return (
     <CollapsibleContent>
       <div className="border-t border-border/60">
+        {discoveryFailed ? (
+          <div
+            className="flex flex-col gap-3 border-b border-destructive/20 bg-destructive/5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+            role="alert"
+          >
+            <div className="flex items-center gap-2 text-sm">
+              <CircleAlertIcon
+                className="size-4 shrink-0 text-destructive"
+                aria-hidden="true"
+              />
+              <span>{t("discoveryFailedDescription")}</span>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!server.canEdit}
+              onClick={() => onRetryDiscoveryAction(server.id)}
+            >
+              <RefreshCwIcon className="size-4" aria-hidden="true" />
+              {t("retryDiscovery")}
+            </Button>
+          </div>
+        ) : null}
         {tools.length > 3 ? (
           <ToolSearch
             serverId={server.id}
@@ -596,7 +611,11 @@ function ToolsPanel({
         <div className="max-h-96 overflow-y-auto">
           {filteredTools.length === 0 ? (
             <div className="px-4 py-6 text-center text-sm text-muted-foreground">
-              {tools.length === 0 ? t("noTools") : t("noToolMatch")}
+              {tools.length === 0
+                ? discoveryFailed
+                  ? t("noToolsAfterFailure")
+                  : t("noTools")
+                : t("noToolMatch")}
             </div>
           ) : (
             <div className="divide-y divide-border/30 px-4 py-2">

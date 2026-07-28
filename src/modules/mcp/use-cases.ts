@@ -50,6 +50,22 @@ export interface UpdateMcpServerInput {
   env?: Record<string, string>;
 }
 
+export type McpToolDiscoveryResult = {
+  status: "healthy" | "unhealthy" | "manual";
+  discovered: number;
+};
+
+export function hasMcpConnectionChanges(input: UpdateMcpServerInput) {
+  return (
+    input.transport !== undefined ||
+    input.url !== undefined ||
+    input.command !== undefined ||
+    input.args !== undefined ||
+    input.headers !== undefined ||
+    input.env !== undefined
+  );
+}
+
 export function toSafeMcpServer(server: McpServer) {
   return {
     id: server.id,
@@ -419,19 +435,21 @@ async function saveMcpToolSyncResult(
   healthStatus: string,
 ) {
   await db.transaction(async (tx) => {
-    if (discovered.length > 0) {
+    if (healthStatus === "healthy") {
       await tx.delete(mcpTools).where(eq(mcpTools.mcpServerId, serverId));
-      await tx.insert(mcpTools).values(
-        discovered.map((tool) => ({
-          mcpServerId: serverId,
-          name: tool.name,
-          description: tool.description,
-          inputSchemaJson: tool.inputSchemaJson,
-          outputSchemaJson: tool.outputSchemaJson,
-          enabled: true,
-          requireApproval: tool.requireApproval,
-        })),
-      );
+      if (discovered.length > 0) {
+        await tx.insert(mcpTools).values(
+          discovered.map((tool) => ({
+            mcpServerId: serverId,
+            name: tool.name,
+            description: tool.description,
+            inputSchemaJson: tool.inputSchemaJson,
+            outputSchemaJson: tool.outputSchemaJson,
+            enabled: true,
+            requireApproval: tool.requireApproval,
+          })),
+        );
+      }
     }
     await tx
       .update(mcpServers)
@@ -505,6 +523,35 @@ export async function syncMcpTools(
   });
 
   return { status: healthStatus, discovered: discovered.length };
+}
+
+export async function createMcpServerWithDiscovery(
+  input: CreateMcpServerInput,
+  canManageGlobal = false,
+) {
+  const server = await createMcpServer(input);
+  const discovery = await syncMcpTools(
+    server.id,
+    input.workspaceId,
+    input.userId,
+    canManageGlobal,
+  );
+  return { server, discovery };
+}
+
+export async function updateMcpServerWithDiscovery(
+  input: UpdateMcpServerInput,
+) {
+  const server = await updateMcpServer(input);
+  const discovery = hasMcpConnectionChanges(input)
+    ? await syncMcpTools(
+        input.serverId,
+        input.workspaceId,
+        input.userId,
+        input.canManageGlobal,
+      )
+    : null;
+  return { server, discovery };
 }
 
 export async function testMcpConnection(

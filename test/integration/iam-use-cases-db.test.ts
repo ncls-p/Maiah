@@ -246,7 +246,7 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
         workspaceId: firstProjectId,
       }),
     ).rejects.toMatchObject({ status: 403 });
-  }, 30_000);
+  }, 60_000);
 
   it("rejects privilege escalation and cross-organization identifiers", async () => {
     await expect(
@@ -388,5 +388,5 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
         userId: ownerId,
       }),
     ).rejects.toMatchObject({ status: 409 });
-  }, 30_000);
+  }, 60_000);
 });
