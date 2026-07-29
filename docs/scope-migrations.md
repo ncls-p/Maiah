@@ -5,6 +5,9 @@ project or organization. Every mutation is preceded by a server-generated
 preview and a confirmation fingerprint. Execution fails closed if permissions,
 counts, conflicts, or options changed after the preview.
 
+Destination search only returns projects and organizations the current
+administrator can manage, so unavailable scopes cannot be selected or inferred.
+
 ## Behaviour matrix
 
 | Action                 | Source       | Destination           | Included                                                                                                  | Intentionally retained in source                           |
