@@ -220,6 +220,28 @@ type TransferDestination = {
   organizationName: string;
 };
 
+type MemberTransferDestination = TransferDestination & {
+  crossOrganization: boolean;
+  roles: Array<{ id: string; name: string; displayName: string }>;
+};
+
+type MemberTransferPreview = {
+  destination: MemberTransferDestination;
+  mode: "add" | "move";
+  members: Array<{ userId: string; name: string; email: string }>;
+  changes: {
+    destinationMembershipsAdded: number;
+    destinationAssignmentsAdded: number;
+    sourceAssignmentsRemoved: number;
+    sourceTeamMembershipsRemoved: number;
+  };
+  warnings: Array<
+    "crossOrganizationMove" | "crossOrganizationAdd" | "sameOrganizationMove"
+  >;
+  blockers: string[];
+  confirmationToken: string;
+};
+
 type ResourceTransferPreview = {
   source: TransferDestination;
   destination: TransferDestination;
@@ -1680,6 +1702,19 @@ export function AccessConsole({
   const [permissionQuery, setPermissionQuery] = useState("");
   const [projectQuery, setProjectQuery] = useState("");
   const [selectedPeople, setSelectedPeople] = useState<string[]>([]);
+  const [memberTransferOpen, setMemberTransferOpen] = useState(false);
+  const [memberTransferDestinations, setMemberTransferDestinations] = useState<
+    MemberTransferDestination[]
+  >([]);
+  const [memberTransferLoading, setMemberTransferLoading] = useState(false);
+  const [memberTransferQuery, setMemberTransferQuery] = useState("");
+  const [memberTransferTargetId, setMemberTransferTargetId] = useState("");
+  const [memberTransferRoleId, setMemberTransferRoleId] = useState("");
+  const [memberTransferMode, setMemberTransferMode] = useState<"add" | "move">(
+    "add",
+  );
+  const [memberTransferPreview, setMemberTransferPreview] =
+    useState<MemberTransferPreview | null>(null);
   const [visiblePeopleCount, setVisiblePeopleCount] = useState(25);
   const [visibleTeamCount, setVisibleTeamCount] = useState(20);
   const [visibleRoleCount, setVisibleRoleCount] = useState(25);
@@ -1816,6 +1851,107 @@ export function AccessConsole({
     }
   }
 
+  async function openMemberTransfer() {
+    if (!workspaceId) return;
+    setMemberTransferOpen(true);
+    setMemberTransferLoading(true);
+    setMemberTransferPreview(null);
+    setMemberTransferTargetId("");
+    setMemberTransferRoleId("");
+    setMemberTransferQuery("");
+    try {
+      const result = await fetchJson<{
+        destinations: MemberTransferDestination[];
+      }>(
+        `/api/workspace/iam/members/transfer?sourceWorkspaceId=${workspaceId}`,
+      );
+      setMemberTransferDestinations(result.destinations);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : t("memberTransferLoadFailed"),
+      );
+      setMemberTransferOpen(false);
+    } finally {
+      setMemberTransferLoading(false);
+    }
+  }
+
+  async function previewSelectedMemberTransfer() {
+    if (!workspaceId || !memberTransferTargetId || !memberTransferRoleId)
+      return;
+    setPendingAction("previewMemberTransfer");
+    try {
+      const preview = await fetchJson<MemberTransferPreview>(
+        "/api/workspace/iam/members/transfer",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "preview",
+            sourceWorkspaceId: workspaceId,
+            targetWorkspaceId: memberTransferTargetId,
+            userIds: selectedPeople,
+            roleId: memberTransferRoleId,
+            mode: memberTransferMode,
+          }),
+        },
+      );
+      setMemberTransferPreview(preview);
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : t("memberTransferPreviewFailed"),
+      );
+    } finally {
+      setPendingAction(null);
+    }
+  }
+
+  async function confirmSelectedMemberTransfer() {
+    if (
+      !workspaceId ||
+      !memberTransferTargetId ||
+      !memberTransferRoleId ||
+      !memberTransferPreview
+    )
+      return;
+    setPendingAction("executeMemberTransfer");
+    try {
+      const result = await fetchJson<{ transferred: number }>(
+        "/api/workspace/iam/members/transfer",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "execute",
+            sourceWorkspaceId: workspaceId,
+            targetWorkspaceId: memberTransferTargetId,
+            userIds: selectedPeople,
+            roleId: memberTransferRoleId,
+            mode: memberTransferMode,
+            confirmationToken: memberTransferPreview.confirmationToken,
+          }),
+        },
+      );
+      toast.success(
+        t("memberTransferCompleted", { count: result.transferred }),
+      );
+      setSelectedPeople([]);
+      setMemberTransferOpen(false);
+      setMemberTransferPreview(null);
+      await refreshWorkspaces();
+      await load({ preserveData: true });
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : t("memberTransferFailed"),
+      );
+      setMemberTransferPreview(null);
+    } finally {
+      setPendingAction(null);
+    }
+  }
+
   const snapshotIsCurrent = snapshot?.activeProject.id === workspaceId;
   if (!snapshotIsCurrent && (loading || !refreshError)) {
     return <AccessConsoleSkeleton />;
@@ -1876,6 +2012,21 @@ export function AccessConsole({
     selectedVisiblePeople.every((person) =>
       selectedPeople.includes(person.userId),
     );
+  const selectedMemberTransferDestination = memberTransferDestinations.find(
+    (destination) => destination.workspaceId === memberTransferTargetId,
+  );
+  const filteredMemberTransferDestinations = memberTransferDestinations.filter(
+    (destination) =>
+      [
+        destination.organizationName,
+        destination.workspaceName,
+        ...destination.roles.flatMap((role) => [role.displayName, role.name]),
+      ].some((value) =>
+        value
+          .toLocaleLowerCase()
+          .includes(memberTransferQuery.trim().toLocaleLowerCase()),
+      ),
+  );
 
   const normalizedTeamQuery = teamQuery.trim().toLocaleLowerCase();
   const filteredTeams = snapshot.teams.filter((team) =>
@@ -2697,7 +2848,7 @@ export function AccessConsole({
                 </div>
                 {selectedPeople.length > 0 &&
                 (canManageProjectAccess || canManageOrganizationAccess) ? (
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center justify-end gap-2">
                     <span className="text-sm text-muted-foreground">
                       {t("selectedCount", { count: selectedPeople.length })}
                     </span>
@@ -2721,6 +2872,320 @@ export function AccessConsole({
                       />
                       {t("grantSelected")}
                     </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => void openMemberTransfer()}
+                    >
+                      <ArrowRightLeftIcon
+                        data-icon="inline-start"
+                        aria-hidden="true"
+                      />
+                      {t("transferSelected")}
+                    </Button>
+                    <Dialog
+                      open={memberTransferOpen}
+                      onOpenChange={(open) => {
+                        setMemberTransferOpen(open);
+                        if (!open) setMemberTransferPreview(null);
+                      }}
+                    >
+                      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+                        <DialogHeader>
+                          <DialogTitle>{t("memberTransferTitle")}</DialogTitle>
+                          <DialogDescription>
+                            {t("memberTransferDescription", {
+                              count: selectedPeople.length,
+                            })}
+                          </DialogDescription>
+                        </DialogHeader>
+
+                        {memberTransferLoading ? (
+                          <div className="flex min-h-48 items-center justify-center">
+                            <Spinner />
+                          </div>
+                        ) : memberTransferDestinations.length === 0 ? (
+                          <Empty className="min-h-48 border">
+                            <EmptyHeader>
+                              <EmptyMedia variant="icon">
+                                <FolderKanbanIcon aria-hidden="true" />
+                              </EmptyMedia>
+                              <EmptyTitle>
+                                {t("noMemberTransferDestination")}
+                              </EmptyTitle>
+                              <EmptyDescription>
+                                {t("noMemberTransferDestinationDescription")}
+                              </EmptyDescription>
+                            </EmptyHeader>
+                          </Empty>
+                        ) : memberTransferPreview ? (
+                          <div className="flex flex-col gap-4">
+                            <Alert
+                              variant={
+                                memberTransferPreview.blockers.length > 0
+                                  ? "destructive"
+                                  : "default"
+                              }
+                            >
+                              {memberTransferPreview.blockers.length > 0 ? (
+                                <AlertTriangleIcon aria-hidden="true" />
+                              ) : (
+                                <CheckIcon aria-hidden="true" />
+                              )}
+                              <AlertTitle>
+                                {memberTransferPreview.blockers.length > 0
+                                  ? t("memberTransferBlocked")
+                                  : t("memberTransferReady", {
+                                      count:
+                                        memberTransferPreview.members.length,
+                                    })}
+                              </AlertTitle>
+                              <AlertDescription>
+                                {memberTransferPreview.blockers.length > 0
+                                  ? memberTransferPreview.blockers.join(" ")
+                                  : t("memberTransferReadyDescription", {
+                                      project:
+                                        memberTransferPreview.destination
+                                          .workspaceName,
+                                      organization:
+                                        memberTransferPreview.destination
+                                          .organizationName,
+                                    })}
+                              </AlertDescription>
+                            </Alert>
+
+                            <div className="grid gap-3 sm:grid-cols-2">
+                              <div className="rounded-xl border p-4">
+                                <div className="text-2xl font-semibold">
+                                  {
+                                    memberTransferPreview.changes
+                                      .destinationAssignmentsAdded
+                                  }
+                                </div>
+                                <div className="text-sm text-muted-foreground">
+                                  {t("destinationAccessAdded")}
+                                </div>
+                              </div>
+                              <div className="rounded-xl border p-4">
+                                <div className="text-2xl font-semibold">
+                                  {
+                                    memberTransferPreview.changes
+                                      .sourceAssignmentsRemoved
+                                  }
+                                </div>
+                                <div className="text-sm text-muted-foreground">
+                                  {t("sourceAccessRemoved")}
+                                </div>
+                              </div>
+                              {memberTransferPreview.destination
+                                .crossOrganization ? (
+                                <>
+                                  <div className="rounded-xl border p-4">
+                                    <div className="text-2xl font-semibold">
+                                      {
+                                        memberTransferPreview.changes
+                                          .destinationMembershipsAdded
+                                      }
+                                    </div>
+                                    <div className="text-sm text-muted-foreground">
+                                      {t("organizationMembershipsAdded")}
+                                    </div>
+                                  </div>
+                                  <div className="rounded-xl border p-4">
+                                    <div className="text-2xl font-semibold">
+                                      {
+                                        memberTransferPreview.changes
+                                          .sourceTeamMembershipsRemoved
+                                      }
+                                    </div>
+                                    <div className="text-sm text-muted-foreground">
+                                      {t("teamMembershipsRemoved")}
+                                    </div>
+                                  </div>
+                                </>
+                              ) : null}
+                            </div>
+
+                            {memberTransferPreview.warnings.map((warning) => (
+                              <Alert key={warning}>
+                                <AlertTriangleIcon aria-hidden="true" />
+                                <AlertDescription>
+                                  {t(`memberTransferWarnings.${warning}`)}
+                                </AlertDescription>
+                              </Alert>
+                            ))}
+                          </div>
+                        ) : (
+                          <FieldGroup>
+                            <Field>
+                              <FieldLabel htmlFor="member-transfer-search">
+                                {t("destinationProject")}
+                              </FieldLabel>
+                              <div className="relative">
+                                <SearchIcon
+                                  className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+                                  aria-hidden="true"
+                                />
+                                <Input
+                                  id="member-transfer-search"
+                                  className="pl-9"
+                                  value={memberTransferQuery}
+                                  placeholder={t("searchProjects")}
+                                  onChange={(event) =>
+                                    setMemberTransferQuery(event.target.value)
+                                  }
+                                />
+                              </div>
+                              <Select
+                                value={memberTransferTargetId}
+                                onValueChange={(value) => {
+                                  setMemberTransferTargetId(value);
+                                  setMemberTransferRoleId("");
+                                }}
+                              >
+                                <SelectTrigger
+                                  className="w-full"
+                                  aria-label={t("destinationProject")}
+                                >
+                                  <SelectValue
+                                    placeholder={t("chooseDestination")}
+                                  />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {filteredMemberTransferDestinations.map(
+                                    (destination) => (
+                                      <SelectItem
+                                        key={destination.workspaceId}
+                                        value={destination.workspaceId}
+                                      >
+                                        {destination.organizationName} ·{" "}
+                                        {destination.workspaceName}
+                                      </SelectItem>
+                                    ),
+                                  )}
+                                </SelectContent>
+                              </Select>
+                            </Field>
+
+                            <Field>
+                              <FieldLabel>{t("transferMode")}</FieldLabel>
+                              <div className="grid gap-3 sm:grid-cols-2">
+                                {(["add", "move"] as const).map((mode) => (
+                                  <button
+                                    key={mode}
+                                    type="button"
+                                    className={`rounded-xl border p-4 text-left transition-colors ${
+                                      memberTransferMode === mode
+                                        ? "border-primary bg-primary/5"
+                                        : "hover:bg-muted/50"
+                                    }`}
+                                    onClick={() => setMemberTransferMode(mode)}
+                                  >
+                                    <span className="font-medium">
+                                      {t(
+                                        mode === "add"
+                                          ? "addToDestination"
+                                          : "moveToDestination",
+                                      )}
+                                    </span>
+                                    <span className="mt-1 block text-sm text-muted-foreground">
+                                      {t(
+                                        mode === "add"
+                                          ? "addToDestinationDescription"
+                                          : "moveToDestinationDescription",
+                                      )}
+                                    </span>
+                                  </button>
+                                ))}
+                              </div>
+                            </Field>
+
+                            <Field>
+                              <FieldLabel>{t("destinationRole")}</FieldLabel>
+                              <Select
+                                value={memberTransferRoleId}
+                                disabled={!selectedMemberTransferDestination}
+                                onValueChange={setMemberTransferRoleId}
+                              >
+                                <SelectTrigger
+                                  className="w-full"
+                                  aria-label={t("destinationRole")}
+                                >
+                                  <SelectValue placeholder={t("chooseRole")} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {selectedMemberTransferDestination?.roles.map(
+                                    (role) => (
+                                      <SelectItem key={role.id} value={role.id}>
+                                        {roleLabel(role.name, role.displayName)}
+                                      </SelectItem>
+                                    ),
+                                  )}
+                                </SelectContent>
+                              </Select>
+                              <FieldDescription>
+                                {t("destinationRoleDescription")}
+                              </FieldDescription>
+                            </Field>
+                          </FieldGroup>
+                        )}
+
+                        <DialogFooter>
+                          {memberTransferPreview ? (
+                            <>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setMemberTransferPreview(null)}
+                              >
+                                {t("back")}
+                              </Button>
+                              <Button
+                                type="button"
+                                disabled={
+                                  memberTransferPreview.blockers.length > 0 ||
+                                  pendingAction === "executeMemberTransfer"
+                                }
+                                onClick={() =>
+                                  void confirmSelectedMemberTransfer()
+                                }
+                              >
+                                {pendingAction === "executeMemberTransfer" ? (
+                                  <Spinner />
+                                ) : (
+                                  <ArrowRightLeftIcon aria-hidden="true" />
+                                )}
+                                {t(
+                                  memberTransferMode === "add"
+                                    ? "confirmAddMembers"
+                                    : "confirmMoveMembers",
+                                )}
+                              </Button>
+                            </>
+                          ) : memberTransferDestinations.length > 0 ? (
+                            <Button
+                              type="button"
+                              disabled={
+                                !memberTransferTargetId ||
+                                !memberTransferRoleId ||
+                                pendingAction === "previewMemberTransfer"
+                              }
+                              onClick={() =>
+                                void previewSelectedMemberTransfer()
+                              }
+                            >
+                              {pendingAction === "previewMemberTransfer" ? (
+                                <Spinner />
+                              ) : (
+                                <ShieldCheckIcon aria-hidden="true" />
+                              )}
+                              {t("reviewMemberTransfer")}
+                            </Button>
+                          ) : null}
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
                   </div>
                 ) : null}
               </div>
