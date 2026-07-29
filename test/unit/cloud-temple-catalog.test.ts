@@ -51,4 +51,28 @@ describe("Cloud Temple catalogue", () => {
     });
     expect(model.sustainability).not.toHaveProperty("co2GramsPerMillionTokens");
   });
+
+  it("keeps API metadata ahead of the documentation fallback", () => {
+    const model = enrichCloudTempleModel({
+      modelId: "gpt-oss:120b",
+      capabilities: baseCapabilities,
+      inputTokenCost: "2.2",
+      outputTokenCost: "9.1",
+      sustainability: {
+        energyKwhPerMillionTokens: 1.5,
+        co2GramsPerMillionTokens: 60,
+        source: "Provider API model metadata",
+        currency: "EUR",
+      },
+    });
+    expect(model).toMatchObject({
+      inputTokenCost: "2.2",
+      outputTokenCost: "9.1",
+      sustainability: {
+        energyKwhPerMillionTokens: 1.5,
+        co2GramsPerMillionTokens: 60,
+        source: "Provider API model metadata",
+      },
+    });
+  });
 });

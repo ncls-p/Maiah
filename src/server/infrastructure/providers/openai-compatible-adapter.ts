@@ -114,6 +114,22 @@ type OpenAICompatibleModel = {
   object?: "model" | string;
   created?: number;
   owned_by?: string;
+  max_model_len?: number;
+  input_token_cost_per_million?: number | string;
+  output_token_cost_per_million?: number | string;
+  energy_kwh_per_million_tokens?: number | string;
+  co2_grams_per_million_tokens?: number | string;
+  currency?: string;
+  pricing?: {
+    input_per_million?: number | string;
+    output_per_million?: number | string;
+    currency?: string;
+  };
+  sustainability?: {
+    energy_kwh_per_million_tokens?: number | string;
+    co2_grams_per_million_tokens?: number | string;
+    currency?: string;
+  };
 
   // Non-standard fields exposed by OpenAI-compatible proxies such as llama.cpp.
   architecture?: {
@@ -128,8 +144,18 @@ type OpenAICompatibleModel = {
   };
 };
 
-function toPositiveNumber(value: number | null | undefined) {
-  return typeof value === "number" && value > 0 ? value : undefined;
+function toPositiveNumber(value: number | string | null | undefined) {
+  const parsed = typeof value === "string" ? Number(value) : value;
+  return typeof parsed === "number" && parsed > 0 ? parsed : undefined;
+}
+
+function toNonNegativeCost(value: number | string | null | undefined) {
+  const parsed = typeof value === "string" ? Number(value) : value;
+  return typeof parsed === "number" &&
+    Number.isFinite(parsed) &&
+    parsed >= 0
+    ? String(parsed)
+    : undefined;
 }
 
 function normalizeModalities(values: string[] | undefined) {
@@ -157,6 +183,43 @@ function capabilitiesFromModel(model: OpenAICompatibleModel): ModelCapability {
   return capabilities;
 }
 
+function sustainabilityFromModel(model: OpenAICompatibleModel) {
+  const energyKwhPerMillionTokens = toPositiveNumber(
+    model.energy_kwh_per_million_tokens ??
+      model.sustainability?.energy_kwh_per_million_tokens,
+  );
+  const co2GramsPerMillionTokens = toPositiveNumber(
+    model.co2_grams_per_million_tokens ??
+      model.sustainability?.co2_grams_per_million_tokens,
+  );
+  const hasApiPricing =
+    toNonNegativeCost(
+      model.input_token_cost_per_million ??
+        model.pricing?.input_per_million,
+    ) !== undefined ||
+    toNonNegativeCost(
+      model.output_token_cost_per_million ??
+        model.pricing?.output_per_million,
+    ) !== undefined;
+  if (
+    energyKwhPerMillionTokens === undefined &&
+    co2GramsPerMillionTokens === undefined &&
+    !hasApiPricing
+  ) {
+    return undefined;
+  }
+  return {
+    energyKwhPerMillionTokens,
+    co2GramsPerMillionTokens,
+    source: "Provider API model metadata",
+    currency:
+      model.pricing?.currency ??
+      model.sustainability?.currency ??
+      model.currency ??
+      "EUR",
+  };
+}
+
 function parseModels(data: unknown): ModelDescriptor[] {
   if (typeof data !== "object") return [];
   if (data === null) return [];
@@ -170,8 +233,17 @@ function parseModels(data: unknown): ModelDescriptor[] {
       displayName: model.id,
       capabilities: capabilitiesFromModel(model),
       contextWindow: toPositiveNumber(
-        model.meta?.n_ctx ?? model.meta?.n_ctx_train,
+        model.max_model_len ?? model.meta?.n_ctx ?? model.meta?.n_ctx_train,
       ),
+      inputTokenCost: toNonNegativeCost(
+        model.input_token_cost_per_million ??
+          model.pricing?.input_per_million,
+      ),
+      outputTokenCost: toNonNegativeCost(
+        model.output_token_cost_per_million ??
+          model.pricing?.output_per_million,
+      ),
+      sustainability: sustainabilityFromModel(model),
     }));
 }
 

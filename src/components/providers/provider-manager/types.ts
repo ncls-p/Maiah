@@ -57,6 +57,7 @@ export type ProviderModel = {
     energyKwhPerMillionTokens?: number;
     co2GramsPerMillionTokens?: number;
     source?: string;
+    manualOverride?: boolean;
     currency?: string;
   } | null;
   enabled: boolean;

@@ -1041,6 +1041,7 @@
       "toastProviderArchived": "Connection archived",
       "toastModelRegistered": "Model added",
       "toastDiscoveredModels": "{count, plural, one {# model discovered} other {# models discovered}}",
+      "discoverModels": "Discover models",
       "toastLogoAssigned": "Logo added",
       "toastLogoRemoved": "Logo removed",
       "toastModelUpdated": "Model configuration saved",
@@ -1058,7 +1059,7 @@
       "co2PerImage": "CO₂ per image (gCO₂e)",
       "energyPerMillionTokens": "Energy / million tokens (kWh)",
       "co2PerMillionTokens": "CO₂ / million tokens (gCO₂e)",
-      "metricSource": "Initial value from: {source}. You can override it.",
+      "metricSource": "Current source: {source}. You can change these values.",
       "cancel": "Cancel",
       "saveModel": "Save model",
       "toastModelRemoved": "Model removed"
@@ -1791,6 +1792,24 @@
         "opened": "Registration is open",
         "closed": "Registration is closed",
         "updateFailed": "Unable to update registration"
+      },
+      "usageImpact": {
+        "title": "AI usage impact and cost",
+        "description": "Enable price, energy, and CO₂ display for every compatible model on the platform.",
+        "statusEnabled": "Enabled globally",
+        "statusDisabled": "Disabled",
+        "sourcePriority": "When enabled, Maiah rediscovers models. Values exposed by the API take priority, followed by the provider’s official catalog. Manual settings remain authoritative.",
+        "carbonIntensity": "Carbon intensity (gCO₂e / kWh)",
+        "carbonIntensityPlaceholder": "Your electricity provider’s value",
+        "carbonIntensityHint": "Optional. Used to estimate CO₂ when a provider publishes energy but not emissions. No value is invented when left empty.",
+        "enable": "Enable and enrich all models",
+        "refreshAndSave": "Save and refresh models",
+        "disable": "Disable impact display",
+        "enabledToast": "Impact enabled: refreshed {providers} connections and {models} models",
+        "disabledToast": "Impact display disabled",
+        "partialRefresh": "{count, plural, one {# connection could not be refreshed} other {# connections could not be refreshed}}",
+        "invalidCarbonIntensity": "Carbon intensity must be a positive number",
+        "saveFailed": "Unable to save impact settings"
       },
       "health": {
         "title": "System status",

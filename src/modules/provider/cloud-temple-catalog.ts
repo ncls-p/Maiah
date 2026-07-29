@@ -76,6 +76,18 @@ export function enrichCloudTempleModel(
   const energyKwhPerMillionTokens =
     ENERGY_KWH_PER_MILLION_TOKENS[model.modelId];
   const isImageModel = model.modelId === "z-image:16b";
+  const sustainability =
+    model.sustainability?.energyKwhPerMillionTokens !== undefined ||
+    model.sustainability?.co2GramsPerMillionTokens !== undefined
+      ? model.sustainability
+      : energyKwhPerMillionTokens === undefined
+        ? model.sustainability
+        : {
+            ...model.sustainability,
+            energyKwhPerMillionTokens,
+            source: CLOUD_TEMPLE_CATALOG_SOURCE,
+            currency: model.sustainability?.currency ?? "EUR",
+          };
   return {
     ...model,
     capabilities: {
@@ -83,16 +95,13 @@ export function enrichCloudTempleModel(
       imageGeneration: isImageModel,
       text: isImageModel ? false : model.capabilities.text,
     },
-    inputTokenCost: isImageModel ? undefined : "1.8",
-    outputTokenCost: isImageModel ? undefined : "8",
-    sustainability:
-      energyKwhPerMillionTokens === undefined
-        ? undefined
-        : {
-            energyKwhPerMillionTokens,
-            source: CLOUD_TEMPLE_CATALOG_SOURCE,
-            currency: "EUR",
-          },
+    inputTokenCost: isImageModel
+      ? model.inputTokenCost
+      : (model.inputTokenCost ?? "1.8"),
+    outputTokenCost: isImageModel
+      ? model.outputTokenCost
+      : (model.outputTokenCost ?? "8"),
+    sustainability,
     imageGeneration: isImageModel
       ? {
           enabled: true,

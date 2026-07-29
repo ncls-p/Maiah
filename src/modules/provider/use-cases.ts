@@ -605,10 +605,10 @@ export async function refreshProviderModels(
             capabilitiesJson: sql`COALESCE(excluded.capabilities_json, '{}'::jsonb) || COALESCE(${aiModels.capabilitiesJson}, '{}'::jsonb)`,
             contextWindow: sql`excluded.context_window`,
             maxOutputTokens: sql`excluded.max_output_tokens`,
-            inputTokenCost: sql`COALESCE(${aiModels.inputTokenCost}, excluded.input_token_cost)`,
-            outputTokenCost: sql`COALESCE(${aiModels.outputTokenCost}, excluded.output_token_cost)`,
-            imageGenerationConfigJson: sql`COALESCE(${aiModels.imageGenerationConfigJson}, excluded.image_generation_config_json)`,
-            sustainabilityConfigJson: sql`COALESCE(${aiModels.sustainabilityConfigJson}, excluded.sustainability_config_json)`,
+            inputTokenCost: sql`CASE WHEN COALESCE((${aiModels.sustainabilityConfigJson}->>'manualOverride')::boolean, false) THEN ${aiModels.inputTokenCost} ELSE COALESCE(excluded.input_token_cost, ${aiModels.inputTokenCost}) END`,
+            outputTokenCost: sql`CASE WHEN COALESCE((${aiModels.sustainabilityConfigJson}->>'manualOverride')::boolean, false) THEN ${aiModels.outputTokenCost} ELSE COALESCE(excluded.output_token_cost, ${aiModels.outputTokenCost}) END`,
+            imageGenerationConfigJson: sql`COALESCE(excluded.image_generation_config_json, '{}'::jsonb) || COALESCE(${aiModels.imageGenerationConfigJson}, '{}'::jsonb)`,
+            sustainabilityConfigJson: sql`CASE WHEN COALESCE((${aiModels.sustainabilityConfigJson}->>'manualOverride')::boolean, false) THEN COALESCE(excluded.sustainability_config_json, '{}'::jsonb) || COALESCE(${aiModels.sustainabilityConfigJson}, '{}'::jsonb) ELSE COALESCE(${aiModels.sustainabilityConfigJson}, '{}'::jsonb) || COALESCE(excluded.sustainability_config_json, '{}'::jsonb) END`,
             updatedAt: new Date(),
           },
         });
@@ -642,6 +642,45 @@ export async function refreshProviderModels(
       imported: 0,
     };
   }
+}
+
+export async function refreshAllProviderModels() {
+  const providers = await db
+    .select({
+      id: aiProviders.id,
+      workspaceId: aiProviders.workspaceId,
+    })
+    .from(aiProviders)
+    .where(
+      and(
+        eq(aiProviders.enabled, true),
+        isNull(aiProviders.archivedAt),
+      ),
+    );
+
+  const results: ProviderModelRefreshResult[] = [];
+  const concurrency = 4;
+  for (let index = 0; index < providers.length; index += concurrency) {
+    results.push(
+      ...(await Promise.all(
+        providers.slice(index, index + concurrency).map((provider) =>
+          refreshProviderModels(provider.id, provider.workspaceId),
+        ),
+      )),
+    );
+  }
+
+  return {
+    totalProviders: providers.length,
+    refreshedProviders: results.filter((result) => result.status === "healthy")
+      .length,
+    failedProviders: results.filter((result) => result.status !== "healthy")
+      .length,
+    importedModels: results.reduce(
+      (total, result) => total + result.imported,
+      0,
+    ),
+  };
 }
 
 export async function createProviderWithModels(input: CreateProviderInput) {

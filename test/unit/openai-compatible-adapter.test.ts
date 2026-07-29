@@ -113,6 +113,51 @@ describe("openaiCompatibleAdapter.listModels", () => {
       "embedding-model",
     ]);
   });
+
+  it("prefers explicit API pricing and sustainability metadata", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        Response.json({
+          data: [
+            {
+              id: "measured-model",
+              max_model_len: 120_000,
+              pricing: {
+                input_per_million: "2.5",
+                output_per_million: 9,
+                currency: "USD",
+              },
+              sustainability: {
+                energy_kwh_per_million_tokens: "1.25",
+                co2_grams_per_million_tokens: 42,
+              },
+            },
+          ],
+        }),
+      ),
+    );
+
+    const models = await openaiCompatibleAdapter.listModels?.({
+      kind: "openai-compatible",
+      name: "Measured API",
+      baseUrl: "https://models.example.com/v1",
+      authType: "bearer",
+      apiKey: "secret",
+    });
+
+    expect(models?.[0]).toMatchObject({
+      contextWindow: 120_000,
+      inputTokenCost: "2.5",
+      outputTokenCost: "9",
+      sustainability: {
+        energyKwhPerMillionTokens: 1.25,
+        co2GramsPerMillionTokens: 42,
+        currency: "USD",
+        source: "Provider API model metadata",
+      },
+    });
+  });
 });
 
 describe("openaiCompatibleAdapter.createChatModel", () => {

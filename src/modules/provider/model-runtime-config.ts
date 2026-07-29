@@ -24,6 +24,7 @@ export const sustainabilityConfigSchema = z.object({
   energyKwhPerMillionTokens: optionalNonNegativeNumber,
   co2GramsPerMillionTokens: optionalNonNegativeNumber,
   source: z.string().trim().max(255).optional(),
+  manualOverride: z.boolean().optional(),
   currency: z.string().trim().min(3).max(3).default("EUR"),
 });
 
@@ -62,6 +63,7 @@ export function calculateTokenUsageImpact(input: {
   outputCostPerMillion?: string | null;
   sustainability?: unknown;
   currency?: string;
+  co2GramsPerKwh?: number;
 }): UsageImpact {
   const inputTokens = Math.max(0, input.inputTokens);
   const outputTokens = Math.max(0, input.outputTokens);
@@ -69,6 +71,15 @@ export function calculateTokenUsageImpact(input: {
   const outputCost = configuredNumber(input.outputCostPerMillion);
   const sustainability = parseSustainabilityConfig(input.sustainability);
   const totalTokens = inputTokens + outputTokens;
+
+  const energyKwh =
+    sustainability.energyKwhPerMillionTokens === undefined
+      ? null
+      : (totalTokens * sustainability.energyKwhPerMillionTokens) / 1_000_000;
+  const configuredCo2Grams =
+    sustainability.co2GramsPerMillionTokens === undefined
+      ? null
+      : (totalTokens * sustainability.co2GramsPerMillionTokens) / 1_000_000;
 
   return {
     inputTokens,
@@ -79,23 +90,29 @@ export function calculateTokenUsageImpact(input: {
         : (inputTokens * (inputCost ?? 0) + outputTokens * (outputCost ?? 0)) /
           1_000_000,
     currency: input.currency ?? "EUR",
-    energyKwh:
-      sustainability.energyKwhPerMillionTokens === undefined
-        ? null
-        : (totalTokens * sustainability.energyKwhPerMillionTokens) / 1_000_000,
+    energyKwh,
     co2Grams:
-      sustainability.co2GramsPerMillionTokens === undefined
-        ? null
-        : (totalTokens * sustainability.co2GramsPerMillionTokens) / 1_000_000,
+      configuredCo2Grams ??
+      (energyKwh !== null && input.co2GramsPerKwh !== undefined
+        ? energyKwh * input.co2GramsPerKwh
+        : null),
   };
 }
 
-export function calculateImageUsageImpact(configValue: unknown) {
+export function calculateImageUsageImpact(
+  configValue: unknown,
+  co2GramsPerKwh?: number,
+) {
   const config = parseImageGenerationConfig(configValue);
+  const energyKwh = config.energyKwhPerImage ?? null;
   return {
     cost: config.costPerImage ?? null,
     currency: config.currency,
-    energyKwh: config.energyKwhPerImage ?? null,
-    co2Grams: config.co2GramsPerImage ?? null,
+    energyKwh,
+    co2Grams:
+      config.co2GramsPerImage ??
+      (energyKwh !== null && co2GramsPerKwh !== undefined
+        ? energyKwh * co2GramsPerKwh
+        : null),
   };
 }

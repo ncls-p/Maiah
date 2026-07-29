@@ -233,7 +233,7 @@ function ProviderActions({
         <Button
           size="icon-sm"
           variant="ghost"
-          className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
+          className="shrink-0 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
           onClick={(e) => e.stopPropagation()}
           aria-label={t("providerActions")}
         >
@@ -244,16 +244,13 @@ function ProviderActions({
         <DropdownMenuItem onClick={() => onEditProvider(provider)}>
           {t("editConnection")}
         </DropdownMenuItem>
-        {provider.healthStatus !== "healthy" &&
-        provider.healthStatus !== "manual" ? (
-          <DropdownMenuItem
-            disabled={busy}
-            onClick={() => onRetryProvider(provider.id)}
-          >
-            <RefreshCwIcon className="size-4" aria-hidden="true" />
-            {t("retryConnection")}
-          </DropdownMenuItem>
-        ) : null}
+        <DropdownMenuItem
+          disabled={busy}
+          onClick={() => onRetryProvider(provider.id)}
+        >
+          <RefreshCwIcon className="size-4" aria-hidden="true" />
+          {t("discoverModels")}
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           variant="destructive"

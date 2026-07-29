@@ -7,6 +7,7 @@ import { ChatAutomationSettings } from "@/components/admin/chat-automation-setti
 import { RegistrationSettings } from "@/components/admin/registration-settings";
 import { SidebarNavigationSettings } from "@/components/admin/sidebar-navigation-settings";
 import { SystemHealthCard } from "@/components/admin/system-health-card";
+import { UsageImpactSettings } from "@/components/admin/usage-impact-settings";
 import { WorkflowBuilderSettings } from "@/components/admin/workflow-builder-settings";
 import {
   Empty,
@@ -17,6 +18,7 @@ import {
 } from "@/components/ui/empty";
 import { isPlatformAdminSession } from "@/modules/admin/auth";
 import { getRegistrationSetting } from "@/modules/admin/use-cases";
+import { getUsageImpactSetting } from "@/modules/provider/usage-impact-settings";
 import { getSession } from "@/modules/auth/session";
 
 export default async function AdminSettingsPage() {
@@ -40,7 +42,10 @@ export default async function AdminSettingsPage() {
     );
   }
 
-  const registration = await getRegistrationSetting();
+  const [registration, usageImpact] = await Promise.all([
+    getRegistrationSetting(),
+    getUsageImpactSetting(),
+  ]);
 
   return (
     <WorkspacePage
@@ -52,6 +57,7 @@ export default async function AdminSettingsPage() {
         <div className="grid gap-6 lg:grid-cols-2">
           <RegistrationSettings initialState={registration} />
           <SystemHealthCard />
+          <UsageImpactSettings initialState={usageImpact} />
         </div>
         <SidebarNavigationSettings />
         <AssistantGovernanceSettings />

@@ -7,6 +7,7 @@ import {
   calculateImageUsageImpact,
   parseImageGenerationConfig,
 } from "@/modules/provider/model-runtime-config";
+import { getUsageImpactSetting } from "@/modules/provider/usage-impact-settings";
 import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
 import {
@@ -126,9 +127,19 @@ export async function generateWorkspaceImage(input: {
     fileName: `generated-${Date.now()}.png`,
     bytes: result.image.uint8Array,
   });
-  const impact = calculateImageUsageImpact(
+  const usageImpactSetting = await getUsageImpactSetting();
+  const calculatedImpact = calculateImageUsageImpact(
     selected.model.imageGenerationConfigJson,
+    usageImpactSetting.co2GramsPerKwh,
   );
+  const impact = usageImpactSetting.enabled
+    ? calculatedImpact
+    : {
+        cost: null,
+        currency: calculatedImpact.currency,
+        energyKwh: null,
+        co2Grams: null,
+      };
 
   await db.insert(usageEvents).values({
     workspaceId: input.workspaceId,
@@ -146,9 +157,9 @@ export async function generateWorkspaceImage(input: {
     metadataJson: {
       size: requestedSize,
       currency: impact.currency,
-      cost: impact.cost,
-      energyKwh: impact.energyKwh,
-      co2Grams: impact.co2Grams,
+      cost: calculatedImpact.cost,
+      energyKwh: calculatedImpact.energyKwh,
+      co2Grams: calculatedImpact.co2Grams,
     },
   });
 

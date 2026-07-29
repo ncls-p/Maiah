@@ -1040,6 +1040,7 @@
       "toastProviderArchived": "Connexion archivée",
       "toastModelRegistered": "Modèle ajouté",
       "toastDiscoveredModels": "{count, plural, one {# modèle découvert} other {# modèles découverts}}",
+      "discoverModels": "Découvrir les modèles",
       "toastLogoAssigned": "Logo ajouté",
       "toastLogoRemoved": "Logo retiré",
       "toastModelUpdated": "Configuration du modèle enregistrée",
@@ -1057,7 +1058,7 @@
       "co2PerImage": "CO₂ par image (gCO₂e)",
       "energyPerMillionTokens": "Énergie / million de tokens (kWh)",
       "co2PerMillionTokens": "CO₂ / million de tokens (gCO₂e)",
-      "metricSource": "Valeur initiale issue de : {source}. Vous pouvez la modifier.",
+      "metricSource": "Source actuelle : {source}. Vous pouvez modifier ces valeurs.",
       "cancel": "Annuler",
       "saveModel": "Enregistrer le modèle",
       "toastModelRemoved": "Modèle retiré"
@@ -1790,6 +1791,24 @@
         "opened": "L’inscription est ouverte",
         "closed": "L’inscription est fermée",
         "updateFailed": "Impossible de modifier les inscriptions"
+      },
+      "usageImpact": {
+        "title": "Impact et coût des usages IA",
+        "description": "Activez l’affichage du prix, de l’énergie et du CO₂ pour tous les modèles compatibles de la plateforme.",
+        "statusEnabled": "Activé globalement",
+        "statusDisabled": "Désactivé",
+        "sourcePriority": "Lors de l’activation, Maiah redécouvre les modèles. Les valeurs fournies par l’API sont prioritaires, puis le catalogue officiel du fournisseur est utilisé. Les réglages manuels restent prioritaires sur ces valeurs.",
+        "carbonIntensity": "Intensité carbone (gCO₂e / kWh)",
+        "carbonIntensityPlaceholder": "Valeur de votre fournisseur électrique",
+        "carbonIntensityHint": "Optionnel. Permet d’estimer le CO₂ lorsqu’un fournisseur publie l’énergie mais pas les émissions. Aucune valeur n’est inventée si ce champ reste vide.",
+        "enable": "Activer et enrichir tous les modèles",
+        "refreshAndSave": "Enregistrer et actualiser les modèles",
+        "disable": "Désactiver l’affichage",
+        "enabledToast": "Impact activé : {providers} connexions et {models} modèles actualisés",
+        "disabledToast": "Affichage de l’impact désactivé",
+        "partialRefresh": "{count, plural, one {# connexion n’a pas pu être actualisée} other {# connexions n’ont pas pu être actualisées}}",
+        "invalidCarbonIntensity": "L’intensité carbone doit être un nombre positif",
+        "saveFailed": "Impossible d’enregistrer les réglages d’impact"
       },
       "health": {
         "title": "État du système",

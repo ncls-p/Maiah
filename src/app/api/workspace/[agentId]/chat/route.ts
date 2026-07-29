@@ -57,6 +57,7 @@ import {
   calculateTokenUsageImpact,
   parseSustainabilityConfig,
 } from "@/modules/provider/model-runtime-config";
+import { getUsageImpactSetting } from "@/modules/provider/usage-impact-settings";
 import type { AiHubToolApprovalPolicy } from "@/modules/tool/approval-policy";
 import {
   projectToolMessagePayload,
@@ -1463,8 +1464,9 @@ export async function POST(
         }
 
         const totalUsage = await result.usage;
-        const [usageModel] = providerConfig.modelRecordId
-          ? await db
+        const [usageModel, usageImpactSetting] = await Promise.all([
+          providerConfig.modelRecordId
+            ? db
               .select({
                 inputTokenCost: aiModels.inputTokenCost,
                 outputTokenCost: aiModels.outputTokenCost,
@@ -1473,7 +1475,10 @@ export async function POST(
               .from(aiModels)
               .where(eq(aiModels.id, providerConfig.modelRecordId))
               .limit(1)
-          : [];
+              .then((rows) => rows[0])
+            : Promise.resolve(undefined),
+          getUsageImpactSetting(),
+        ]);
         const sustainability = parseSustainabilityConfig(
           usageModel?.sustainabilityConfigJson,
         );
@@ -1484,6 +1489,7 @@ export async function POST(
           outputCostPerMillion: usageModel?.outputTokenCost,
           sustainability,
           currency: sustainability.currency,
+          co2GramsPerKwh: usageImpactSetting.co2GramsPerKwh,
         });
         const displayedUsageImpact = calculateTokenUsageImpact({
           inputTokens:
@@ -1496,6 +1502,7 @@ export async function POST(
           outputCostPerMillion: usageModel?.outputTokenCost,
           sustainability,
           currency: sustainability.currency,
+          co2GramsPerKwh: usageImpactSetting.co2GramsPerKwh,
         });
         const assistantText = streamedParts
           .flatMap((part) =>
@@ -1585,15 +1592,17 @@ export async function POST(
               co2Grams: eventUsageImpact.co2Grams,
             },
           });
-          await tx.insert(messageParts).values({
-            messageId: assistantMessage.id,
-            type: "impact",
-            contentEncrypted: await encryptValue(
-              JSON.stringify(displayedUsageImpact),
-            ),
-            metadataJson: displayedUsageImpact,
-            sortOrder: nextSortOrder,
-          });
+          if (usageImpactSetting.enabled) {
+            await tx.insert(messageParts).values({
+              messageId: assistantMessage.id,
+              type: "impact",
+              contentEncrypted: await encryptValue(
+                JSON.stringify(displayedUsageImpact),
+              ),
+              metadataJson: displayedUsageImpact,
+              sortOrder: nextSortOrder,
+            });
+          }
         });
         logger.info("Chat stream completed", {
           requestId,
@@ -1607,7 +1616,9 @@ export async function POST(
           outputTokens: totalUsage.outputTokens,
           latencyMs: Date.now() - startedAt,
         });
-        enqueueEvent({ type: "impact", impact: displayedUsageImpact });
+        if (usageImpactSetting.enabled) {
+          enqueueEvent({ type: "impact", impact: displayedUsageImpact });
+        }
         enqueueEvent({ type: "done" });
       } catch (error) {
         if (streamAbortController.signal.aborted) {

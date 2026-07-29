@@ -42,6 +42,36 @@ describe("model runtime configuration", () => {
     });
   });
 
+  it("estimates carbon only when an admin configures carbon intensity", () => {
+    expect(
+      calculateTokenUsageImpact({
+        inputTokens: 500_000,
+        outputTokens: 500_000,
+        sustainability: {
+          energyKwhPerMillionTokens: 2,
+          currency: "EUR",
+        },
+        co2GramsPerKwh: 50,
+      }),
+    ).toMatchObject({
+      energyKwh: 2,
+      co2Grams: 100,
+    });
+    expect(
+      calculateImageUsageImpact(
+        {
+          enabled: true,
+          energyKwhPerImage: 0.25,
+          currency: "EUR",
+        },
+        40,
+      ),
+    ).toMatchObject({
+      energyKwh: 0.25,
+      co2Grams: 10,
+    });
+  });
+
   it("uses safe image defaults and configurable per-image impact", () => {
     expect(parseImageGenerationConfig({})).toMatchObject({
       enabled: false,

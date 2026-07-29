@@ -7,6 +7,7 @@ import {
 } from "@/lib/route-handler";
 import { getConversationMessages } from "@/modules/agent/use-cases";
 import { toAiSdkUIMessages } from "@/modules/chat/ai-sdk-ui-messages";
+import { getUsageImpactSetting } from "@/modules/provider/usage-impact-settings";
 import { db } from "@/server/infrastructure/db";
 import {
   conversationFolders,
@@ -71,12 +72,17 @@ export async function GET(
       );
       if (forbidden) return forbidden;
 
-      const messages = (await getConversationMessages(conversationId)).map(
-        (message) => ({
+      const [storedMessages, usageImpactSetting] = await Promise.all([
+        getConversationMessages(conversationId),
+        getUsageImpactSetting(),
+      ]);
+      const messages = storedMessages.map((message) => ({
           ...message,
+          parts: usageImpactSetting.enabled
+            ? message.parts
+            : message.parts.filter((part) => part.type !== "impact"),
           createdAt: new Date(message.createdAt).toISOString(),
-        }),
-      );
+        }));
       const uiMessages = toAiSdkUIMessages(messages);
 
       return NextResponse.json({

@@ -82,7 +82,8 @@ export function ModelConfigDialog({
                   form,
                   "co2GramsPerMillionTokens",
                 ),
-                source: sustainability.source,
+                source: "Administrator override",
+                manualOverride: true,
                 currency:
                   String(form.get("currency") ?? "")
                     .trim()

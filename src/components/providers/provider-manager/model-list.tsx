@@ -179,7 +179,7 @@ function RegisteredModelsList({
   const t = useTranslations("providers.manager");
   return (
     <div className="p-4">
-      {models.length > 3 ? (
+      {models.length > 0 ? (
         <div className="relative mb-3">
           <SearchIcon className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -341,7 +341,7 @@ function RegisteredModelRow({
           </div>
         </div>
       </div>
-      <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+      <div className="flex shrink-0 items-center gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100">
         <Button
           size="icon-xs"
           variant="ghost"
