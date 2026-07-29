@@ -20,6 +20,7 @@ import { canManageTenantGlobals } from "@/modules/admin/auth";
 import { hasWorkspacePermissionForRequest } from "@/modules/auth/workspace-access";
 import { toolBindingInputSchema } from "@/modules/tool/use-cases";
 import { authorization } from "@/server/domain/services/authorization";
+import { withResourceProvenance } from "@/modules/iam/resource-provenance";
 import {
   delegationBindingInputSchema,
   orchestrationPolicySchema,
@@ -196,8 +197,13 @@ export async function GET(
         agent.id,
         workspaceId,
       );
+      const [agentWithProvenance] = await withResourceProvenance(
+        [agent],
+        workspaceId,
+        session.user.id,
+      );
       return NextResponse.json({
-        ...agent,
+        ...agentWithProvenance,
         promptSuggestions: normalizePromptSuggestions(
           agent.promptSuggestionsJson,
         ),

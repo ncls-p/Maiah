@@ -43,6 +43,10 @@ import {
   ResourceShareDialog,
   type ShareableResource,
 } from "@/components/marketplace/resource-share-dialog";
+import {
+  ResourceProvenanceBadge,
+  type ResourceProvenance,
+} from "@/components/resource-provenance-badge";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { fetchWorkspacePermissions } from "@/lib/api-client";
 
@@ -60,6 +64,7 @@ export type AgentSkill = {
   isGlobal: boolean;
   canEdit: boolean;
   createdAt: string;
+  provenance: ResourceProvenance;
 };
 
 type SkillMarkdownFile = {
@@ -980,6 +985,10 @@ export function SkillManager() {
                     <CardTitle className="truncate text-base">
                       {skill.name}
                     </CardTitle>
+                    <ResourceProvenanceBadge
+                      provenance={skill.provenance}
+                      className="mt-1.5"
+                    />
                     <CardDescription className="line-clamp-2 mt-1">
                       {skill.description || t("noDescription")}
                     </CardDescription>

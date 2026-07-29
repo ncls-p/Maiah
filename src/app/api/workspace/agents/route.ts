@@ -24,6 +24,7 @@ import { ONBOARDING_TOOL_PRESET } from "@/modules/agent/onboarding-tools";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
 import { hasWorkspacePermissionForRequest } from "@/modules/auth/workspace-access";
 import { authorization } from "@/server/domain/services/authorization";
+import { withResourceProvenance } from "@/modules/iam/resource-provenance";
 import { db } from "@/server/infrastructure/db";
 import {
   agentVersions,
@@ -353,8 +354,13 @@ export async function GET(req: NextRequest) {
           canClone: canCreateAgent,
         })),
       );
+      const agentsWithProvenance = await withResourceProvenance(
+        agentsWithAccess,
+        workspaceId,
+        session.user.id,
+      );
       return NextResponse.json({
-        agents: agentsWithAccess,
+        agents: agentsWithProvenance,
         canAdminCurate,
         canCreateAgent,
         canManageProviders,

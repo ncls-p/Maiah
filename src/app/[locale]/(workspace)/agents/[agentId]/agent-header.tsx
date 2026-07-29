@@ -17,6 +17,7 @@ import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import { ModelLogo } from "@/components/providers/model-logo";
+import { ResourceProvenanceBadge } from "@/components/resource-provenance-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -161,6 +162,9 @@ function AgentHeaderTitle({
             <NetworkIcon className="size-3" aria-hidden="true" />
             {t("list.kindOrchestrator")}
           </Badge>
+        ) : null}
+        {agent?.provenance ? (
+          <ResourceProvenanceBadge provenance={agent.provenance} />
         ) : null}
       </div>
       {hasModel ? (

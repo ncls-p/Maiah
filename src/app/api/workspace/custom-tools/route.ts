@@ -7,6 +7,7 @@ import {
 } from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
 import { listCustomTools } from "@/modules/custom-tools/use-cases";
+import { withResourceProvenance } from "@/modules/iam/resource-provenance";
 
 const querySchema = z.object({ workspaceId: z.uuid() });
 
@@ -39,11 +40,16 @@ export async function GET(req: NextRequest) {
         session,
         parsed.data.workspaceId,
       );
+      const tools = await listCustomTools(
+        parsed.data.workspaceId,
+        session.user.id,
+        canManageGlobal,
+      );
       return NextResponse.json(
-        await listCustomTools(
+        await withResourceProvenance(
+          tools,
           parsed.data.workspaceId,
           session.user.id,
-          canManageGlobal,
         ),
       );
     },

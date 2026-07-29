@@ -12,6 +12,7 @@ import {
   listMcpServers,
   toSafeMcpServer,
 } from "@/modules/mcp/use-cases";
+import { withResourceProvenance } from "@/modules/iam/resource-provenance";
 
 const querySchema = z.object({ workspaceId: z.uuid() });
 const createSchema = z.object({
@@ -54,11 +55,16 @@ export async function GET(req: NextRequest) {
         session,
         parsed.data.workspaceId,
       );
+      const servers = await listMcpServers(
+        parsed.data.workspaceId,
+        session.user.id,
+        canManageGlobal,
+      );
       return NextResponse.json(
-        await listMcpServers(
+        await withResourceProvenance(
+          servers,
           parsed.data.workspaceId,
           session.user.id,
-          canManageGlobal,
         ),
       );
     },
@@ -100,10 +106,12 @@ export async function POST(req: NextRequest) {
         },
         canManageGlobal,
       );
-      return NextResponse.json(
-        { ...toSafeMcpServer(server), canEdit: true, discovery },
-        { status: 201 },
+      const [serverWithProvenance] = await withResourceProvenance(
+        [{ ...toSafeMcpServer(server), canEdit: true, discovery }],
+        parsed.data.workspaceId,
+        session.user.id,
       );
+      return NextResponse.json(serverWithProvenance, { status: 201 });
     },
     { logLabel: "Failed to create MCP server" },
   );

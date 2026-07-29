@@ -49,6 +49,10 @@ import {
   ResourceShareDialog,
   type ShareableResource,
 } from "@/components/marketplace/resource-share-dialog";
+import {
+  ResourceProvenanceBadge,
+  type ResourceProvenance,
+} from "@/components/resource-provenance-badge";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { fetchWorkspacePermissions } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
@@ -106,6 +110,7 @@ type CustomTool = {
   n8nWorkflowId: string | null;
   metadataJson?: { workflowPreview?: WorkflowPreview } | null;
   createdAt: string;
+  provenance: ResourceProvenance;
 };
 
 function userSafeText(value: string, automationEngine: string) {
@@ -375,6 +380,7 @@ export function CustomToolBuilder() {
     description?: string | null;
     isGlobal?: boolean;
     canEdit?: boolean;
+    provenance?: ResourceProvenance;
     metadataJson?: { workflowPreview?: WorkflowPreview } | null;
   }> = Array.from(
     new Map(
@@ -630,9 +636,9 @@ export function CustomToolBuilder() {
                   <div className="flex items-center justify-between gap-2">
                     <p className="truncate text-sm font-medium">{tool.name}</p>
                     <div className="flex items-center gap-1.5">
-                      <Badge variant={tool.isGlobal ? "secondary" : "outline"}>
-                        {tool.isGlobal ? t("tenant") : t("private")}
-                      </Badge>
+                      {tool.provenance ? (
+                        <ResourceProvenanceBadge provenance={tool.provenance} />
+                      ) : null}
                       <Badge variant="outline">
                         {displayToolStatus(tool.status)}
                       </Badge>

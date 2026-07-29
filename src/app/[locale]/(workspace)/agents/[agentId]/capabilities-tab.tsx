@@ -20,6 +20,7 @@ import {
 import { useTranslations } from "next-intl";
 
 import { ListRow } from "@/components/list-row";
+import { ResourceProvenanceBadge } from "@/components/resource-provenance-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardFooter } from "@/components/ui/card";
@@ -517,6 +518,7 @@ function McpServerCollapsible({
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <p className="font-medium">{server.name}</p>
+              <ResourceProvenanceBadge provenance={server.provenance} />
               <Badge variant="secondary">
                 {serverState.selectedCount}/{serverState.bindableTools.length}
               </Badge>
@@ -770,7 +772,7 @@ export function CapabilitiesTab({
                 )}
               >
                 <span className="min-w-0">
-                  <span className="flex items-center gap-3 font-medium">
+                  <span className="flex flex-wrap items-center gap-2 font-medium">
                     <span
                       className={cn(
                         "flex size-8 items-center justify-center rounded-lg",
@@ -781,7 +783,8 @@ export function CapabilitiesTab({
                     >
                       <BookMarkedIcon className="size-4" aria-hidden="true" />
                     </span>
-                    {skill.name}
+                    <span>{skill.name}</span>
+                    <ResourceProvenanceBadge provenance={skill.provenance} />
                   </span>
                   {skill.description ? (
                     <span className="mt-1 line-clamp-1 block text-xs text-muted-foreground">
@@ -838,7 +841,7 @@ export function CapabilitiesTab({
                     : "border-border/60",
                 )}
               >
-                <span className="flex items-center gap-3 font-medium">
+                <span className="flex flex-wrap items-center gap-2 font-medium">
                   <span
                     className={cn(
                       "flex size-8 items-center justify-center rounded-lg",
@@ -849,7 +852,8 @@ export function CapabilitiesTab({
                   >
                     <BookOpenIcon className="size-4" aria-hidden="true" />
                   </span>
-                  {kb.name}
+                  <span>{kb.name}</span>
+                  <ResourceProvenanceBadge provenance={kb.provenance} />
                 </span>
                 <Switch
                   aria-label={tCap("toggleKnowledge", { name: kb.name })}

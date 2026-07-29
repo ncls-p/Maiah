@@ -1,3 +1,5 @@
+import type { ResourceProvenance } from "@/components/resource-provenance-badge";
+
 type McpAuthHintMode = "none" | "bearer" | "api-key" | "env" | "custom";
 
 export interface McpAuthHint {
@@ -27,6 +29,7 @@ export interface McpServer {
     status: "healthy" | "unhealthy" | "manual";
     discovered: number;
   } | null;
+  provenance: ResourceProvenance;
 }
 
 export interface McpTool {

@@ -69,6 +69,10 @@ import {
   ResourceShareDialog,
   type ShareableResource,
 } from "@/components/marketplace/resource-share-dialog";
+import {
+  ResourceProvenanceBadge,
+  type ResourceProvenance,
+} from "@/components/resource-provenance-badge";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -164,6 +168,7 @@ interface Agent {
   canClone?: boolean;
   createdAt: string;
   updatedAt: string;
+  provenance: ResourceProvenance;
 }
 
 function slugifyAgentName(value: string) {
@@ -660,11 +665,9 @@ export default function AgentsPage() {
                             {tList("kindOrchestrator")}
                           </Badge>
                         ) : null}
-                        {agent.isGlobal ? (
-                          <Badge variant="secondary" className="text-xs">
-                            {tList("badgeGlobal")}
-                          </Badge>
-                        ) : null}
+                        <ResourceProvenanceBadge
+                          provenance={agent.provenance}
+                        />
                         {agent.isRecommended ? (
                           <Badge variant="outline" className="text-xs">
                             {tList("badgeRecommended")}

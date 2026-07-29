@@ -11,6 +11,7 @@ import {
   createKnowledgeBase,
   listKnowledgeBases,
 } from "@/modules/knowledge/use-cases";
+import { withResourceProvenance } from "@/modules/iam/resource-provenance";
 
 const querySchema = z.object({ workspaceId: z.uuid() });
 const createSchema = z.object({
@@ -47,11 +48,16 @@ export async function GET(req: NextRequest) {
         session,
         parsed.data.workspaceId,
       );
+      const knowledgeBases = await listKnowledgeBases(
+        parsed.data.workspaceId,
+        session.user.id,
+        canManageGlobal,
+      );
       return NextResponse.json(
-        await listKnowledgeBases(
+        await withResourceProvenance(
+          knowledgeBases,
           parsed.data.workspaceId,
           session.user.id,
-          canManageGlobal,
         ),
       );
     },
@@ -90,7 +96,12 @@ export async function POST(req: NextRequest) {
         isGlobal: parsed.data.isGlobal && canManageGlobal,
         userId: session.user.id,
       });
-      return NextResponse.json(knowledgeBase, { status: 201 });
+      const [knowledgeBaseWithProvenance] = await withResourceProvenance(
+        [knowledgeBase],
+        parsed.data.workspaceId,
+        session.user.id,
+      );
+      return NextResponse.json(knowledgeBaseWithProvenance, { status: 201 });
     },
     { logLabel: "Failed to create knowledge base" },
   );

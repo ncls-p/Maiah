@@ -13,6 +13,7 @@ import {
   listAgentSkills,
   SkillPreviewConflictError,
 } from "@/modules/skills/use-cases";
+import { withResourceProvenance } from "@/modules/iam/resource-provenance";
 
 const workspaceQuerySchema = z.object({ workspaceId: z.uuid() });
 const installSkillSchema = z.object({
@@ -106,11 +107,16 @@ export async function GET(req: NextRequest) {
         session,
         parsed.data.workspaceId,
       );
+      const skills = await listAgentSkills(
+        parsed.data.workspaceId,
+        session.user.id,
+        canManageGlobal,
+      );
       return NextResponse.json(
-        await listAgentSkills(
+        await withResourceProvenance(
+          skills,
           parsed.data.workspaceId,
           session.user.id,
-          canManageGlobal,
         ),
       );
     },
@@ -152,7 +158,16 @@ export async function POST(req: NextRequest) {
         previewToken: parsed.data.previewToken,
         isGlobal: parsed.data.isGlobal && canManageGlobal,
       });
-      return NextResponse.json({ skills }, { status: 201 });
+      return NextResponse.json(
+        {
+          skills: await withResourceProvenance(
+            skills,
+            parsed.data.workspaceId,
+            session.user.id,
+          ),
+        },
+        { status: 201 },
+      );
     },
     {
       logLabel: "Failed to install skill",
@@ -210,7 +225,12 @@ export async function PUT(req: NextRequest) {
         markdownFiles: parsed.data.markdownFiles,
         isGlobal: parsed.data.isGlobal && canManageGlobal,
       });
-      return NextResponse.json({ skill }, { status: 201 });
+      const [skillWithProvenance] = await withResourceProvenance(
+        [skill],
+        parsed.data.workspaceId,
+        session.user.id,
+      );
+      return NextResponse.json({ skill: skillWithProvenance }, { status: 201 });
     },
     {
       logLabel: "Failed to create skill",

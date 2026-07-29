@@ -46,6 +46,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  ResourceProvenanceBadge,
+  type ResourceProvenance,
+} from "@/components/resource-provenance-badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -61,6 +65,7 @@ interface KnowledgeBase {
   isGlobal: boolean;
   canEdit: boolean;
   createdAt: string;
+  provenance: ResourceProvenance;
 }
 interface DocumentRow {
   id: string;
@@ -616,9 +621,7 @@ export default function KnowledgePage() {
                       <span className="block truncate font-medium">
                         {base.name}
                       </span>
-                      <Badge variant={base.isGlobal ? "secondary" : "outline"}>
-                        {base.isGlobal ? t("scopeGlobal") : t("scopePrivate")}
-                      </Badge>
+                      <ResourceProvenanceBadge provenance={base.provenance} />
                     </span>
                     {base.description ? (
                       <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
@@ -683,15 +686,9 @@ export default function KnowledgePage() {
                         {selectedBase?.name ?? t("documents")}
                       </p>
                       {selectedBase ? (
-                        <Badge
-                          variant={
-                            selectedBase.isGlobal ? "secondary" : "outline"
-                          }
-                        >
-                          {selectedBase.isGlobal
-                            ? t("scopeGlobal")
-                            : t("scopePrivate")}
-                        </Badge>
+                        <ResourceProvenanceBadge
+                          provenance={selectedBase.provenance}
+                        />
                       ) : null}
                     </div>
                     <p className="mt-1 text-sm text-muted-foreground">

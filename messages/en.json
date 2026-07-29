@@ -18,6 +18,12 @@
     "english": "English",
     "french": "French"
   },
+  "resourceProvenance": {
+    "user": "Personal",
+    "workspace": "Project",
+    "organization": "Organization",
+    "title": "{scope}: {name}. Created by {owner}."
+  },
   "nav": {
     "groups": {
       "primary": "Main",

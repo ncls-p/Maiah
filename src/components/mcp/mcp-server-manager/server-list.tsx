@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { ResourceProvenanceBadge } from "@/components/resource-provenance-badge";
 import { Button } from "@/components/ui/button";
 import {
   Collapsible,
@@ -340,6 +341,7 @@ function ServerSummary({
     <div className="min-w-0 flex-1">
       <div className="flex items-center gap-2">
         <p className="truncate text-sm font-medium">{server.name}</p>
+        <ResourceProvenanceBadge provenance={server.provenance} />
         <Badge
           variant="outline"
           className={cn(
@@ -369,12 +371,6 @@ function ServerBadges({ server }: { server: McpServer }) {
   const t = useTranslations("mcp.serverManager");
   return (
     <>
-      <Badge
-        variant={server.isGlobal ? "secondary" : "outline"}
-        className="hidden lg:inline-flex"
-      >
-        {server.isGlobal ? t("organization") : t("private")}
-      </Badge>
       {server.requireApproval ? (
         <Badge variant="secondary" className="hidden lg:inline-flex">
           <ShieldAlert className="size-3" aria-hidden="true" />

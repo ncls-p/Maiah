@@ -1,5 +1,6 @@
-/* ─── Types ─────────────────────────────────────────────────────────── */
+import type { ResourceProvenance } from "@/components/resource-provenance-badge";
 
+/* ─── Types ─────────────────────────────────────────────────────────── */
 export type Agent = {
   id: string;
   kind: "assistant" | "orchestrator";
@@ -19,6 +20,7 @@ export type Agent = {
   canAdminCurate: boolean;
   canEdit?: boolean;
   canClone?: boolean;
+  provenance?: ResourceProvenance;
 };
 
 export type Provider = { id: string; name: string; kind: string };
@@ -39,7 +41,12 @@ export type BuiltinTool = {
   enabled?: boolean;
   requireApproval?: boolean;
 };
-export type McpServer = { id: string; name: string; requireApproval: boolean };
+export type McpServer = {
+  id: string;
+  name: string;
+  requireApproval: boolean;
+  provenance: ResourceProvenance;
+};
 export type McpTool = {
   id: string;
   name: string;
@@ -54,11 +61,16 @@ export type CustomTool = {
   description: string | null;
   status: string;
 };
-export type KnowledgeBase = { id: string; name: string };
+export type KnowledgeBase = {
+  id: string;
+  name: string;
+  provenance: ResourceProvenance;
+};
 export type AgentSkill = {
   id: string;
   name: string;
   description: string | null;
+  provenance: ResourceProvenance;
 };
 export type ToolBinding = {
   toolSource: string;
