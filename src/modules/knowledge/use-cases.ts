@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNull, not, or, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, not, sql } from "drizzle-orm";
 import { encryptValue, decryptValue } from "@/lib/crypto";
 import { logger } from "@/lib/logger";
 import { audit } from "@/server/domain/services/audit";
@@ -22,17 +22,6 @@ export interface CreateKnowledgeBaseInput {
 
 type KnowledgeBaseRow = typeof knowledgeBases.$inferSelect;
 
-function visibleKnowledgeBaseCondition(workspaceId: string, userId: string) {
-  return and(
-    eq(knowledgeBases.workspaceId, workspaceId),
-    isNull(knowledgeBases.archivedAt),
-    or(
-      eq(knowledgeBases.createdById, userId),
-      eq(knowledgeBases.isGlobal, true),
-    ),
-  );
-}
-
 function canManageKnowledgeBase(
   knowledgeBase: KnowledgeBaseRow,
   userId: string,
@@ -41,6 +30,22 @@ function canManageKnowledgeBase(
   return (
     knowledgeBase.createdById === userId ||
     (knowledgeBase.isGlobal && canManageGlobal)
+  );
+}
+
+async function canViewKnowledgeBase(
+  knowledgeBase: Pick<KnowledgeBaseRow, "id" | "createdById" | "isGlobal">,
+  userId: string,
+) {
+  return (
+    knowledgeBase.createdById === userId ||
+    knowledgeBase.isGlobal ||
+    authorization.hasPermission(
+      { principalType: "user", principalId: userId },
+      "knowledgeBases.viewAllowed",
+      "knowledge_base",
+      knowledgeBase.id,
+    )
   );
 }
 
@@ -112,15 +117,7 @@ export async function listKnowledgeBases(
   return (
     await Promise.all(
       rows.map(async (knowledgeBase) => {
-        const visible =
-          knowledgeBase.createdById === userId ||
-          knowledgeBase.isGlobal ||
-          (await authorization.hasPermission(
-            { principalType: "user", principalId: userId },
-            "knowledgeBases.viewAllowed",
-            "knowledge_base",
-            knowledgeBase.id,
-          ));
+        const visible = await canViewKnowledgeBase(knowledgeBase, userId);
         if (!visible) return null;
         const canEdit =
           canManageKnowledgeBase(knowledgeBase, userId, canManageGlobal) ||
@@ -619,6 +616,8 @@ export async function getKnowledgeBindingsForVersion(
       id: agentKnowledgeBindings.id,
       knowledgeBaseId: agentKnowledgeBindings.knowledgeBaseId,
       name: knowledgeBases.name,
+      createdById: knowledgeBases.createdById,
+      isGlobal: knowledgeBases.isGlobal,
     })
     .from(agentKnowledgeBindings)
     .innerJoin(
@@ -629,14 +628,25 @@ export async function getKnowledgeBindingsForVersion(
       visibility
         ? and(
             eq(agentKnowledgeBindings.agentVersionId, agentVersionId),
-            visibleKnowledgeBaseCondition(
-              visibility.workspaceId,
-              visibility.userId,
-            ),
+            eq(knowledgeBases.workspaceId, visibility.workspaceId),
+            isNull(knowledgeBases.archivedAt),
           )
         : eq(agentKnowledgeBindings.agentVersionId, agentVersionId),
     );
-  return rows;
+  const visibleRows = visibility
+    ? (
+        await Promise.all(
+          rows.map(async (row) =>
+            (await canViewKnowledgeBase(row, visibility.userId)) ? row : null,
+          ),
+        )
+      ).filter((row) => row !== null)
+    : rows;
+  return visibleRows.map(({ id, knowledgeBaseId, name }) => ({
+    id,
+    knowledgeBaseId,
+    name,
+  }));
 }
 
 type BindingDb = Pick<typeof db, "select" | "insert" | "delete">;
@@ -651,23 +661,32 @@ export async function replaceKnowledgeBindingsForVersion(
   const uniqueKnowledgeBaseIds = [...new Set(knowledgeBaseIds)];
   if (workspaceId && uniqueKnowledgeBaseIds.length > 0) {
     const availableKnowledgeBases = await executor
-      .select({ id: knowledgeBases.id })
+      .select({
+        id: knowledgeBases.id,
+        createdById: knowledgeBases.createdById,
+        isGlobal: knowledgeBases.isGlobal,
+      })
       .from(knowledgeBases)
       .where(
         and(
           eq(knowledgeBases.workspaceId, workspaceId),
           isNull(knowledgeBases.archivedAt),
           inArray(knowledgeBases.id, uniqueKnowledgeBaseIds),
-          options?.userId
-            ? or(
-                eq(knowledgeBases.createdById, options.userId),
-                eq(knowledgeBases.isGlobal, true),
-              )
-            : undefined,
         ),
       );
+    const visibleKnowledgeBases = options?.userId
+      ? (
+          await Promise.all(
+            availableKnowledgeBases.map(async (knowledgeBase) =>
+              (await canViewKnowledgeBase(knowledgeBase, options.userId!))
+                ? knowledgeBase
+                : null,
+            ),
+          )
+        ).filter((knowledgeBase) => knowledgeBase !== null)
+      : availableKnowledgeBases;
     const availableIds = new Set(
-      availableKnowledgeBases.map((knowledgeBase) => knowledgeBase.id),
+      visibleKnowledgeBases.map((knowledgeBase) => knowledgeBase.id),
     );
     const invalidKnowledgeBaseId = uniqueKnowledgeBaseIds.find(
       (knowledgeBaseId) => !availableIds.has(knowledgeBaseId),
@@ -698,7 +717,12 @@ export async function cloneKnowledgeBindings(
 ) {
   if (!fromAgentVersionId) return;
   const existing = await executor
-    .select({ knowledgeBaseId: agentKnowledgeBindings.knowledgeBaseId })
+    .select({
+      knowledgeBaseId: agentKnowledgeBindings.knowledgeBaseId,
+      id: knowledgeBases.id,
+      createdById: knowledgeBases.createdById,
+      isGlobal: knowledgeBases.isGlobal,
+    })
     .from(agentKnowledgeBindings)
     .innerJoin(
       knowledgeBases,
@@ -708,15 +732,28 @@ export async function cloneKnowledgeBindings(
       workspaceId && options?.userId
         ? and(
             eq(agentKnowledgeBindings.agentVersionId, fromAgentVersionId),
-            visibleKnowledgeBaseCondition(workspaceId, options.userId),
+            eq(knowledgeBases.workspaceId, workspaceId),
+            isNull(knowledgeBases.archivedAt),
           )
         : eq(agentKnowledgeBindings.agentVersionId, fromAgentVersionId),
     );
 
-  if (existing.length === 0) return;
+  const visibleBindings =
+    workspaceId && options?.userId
+      ? (
+          await Promise.all(
+            existing.map(async (binding) =>
+              (await canViewKnowledgeBase(binding, options.userId!))
+                ? binding
+                : null,
+            ),
+          )
+        ).filter((binding) => binding !== null)
+      : existing;
+  if (visibleBindings.length === 0) return;
 
   await executor.insert(agentKnowledgeBindings).values(
-    existing.map((row) => ({
+    visibleBindings.map((row) => ({
       agentVersionId: toAgentVersionId,
       knowledgeBaseId: row.knowledgeBaseId,
     })),

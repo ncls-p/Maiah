@@ -100,4 +100,22 @@ describe("agent configuration route conflicts", () => {
 		expect(response.status).toBe(400);
 		expect(updateAgent).not.toHaveBeenCalled();
 	});
+
+	it("returns a useful error when a skill is no longer accessible", async () => {
+		vi.mocked(updateAgent).mockRejectedValueOnce(new Error("Skill not found"));
+
+		const response = await PATCH(
+			patchRequest({
+				workspaceId,
+				baseVersionId,
+				skillBindings: ["66666666-6666-4666-8666-666666666666"],
+			}) as never,
+			{ params: Promise.resolve({ agentId }) },
+		);
+
+		expect(response.status).toBe(400);
+		await expect(response.json()).resolves.toEqual({
+			error: "Skill not found",
+		});
+	});
 });

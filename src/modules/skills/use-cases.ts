@@ -4,7 +4,7 @@ import { mkdtemp, mkdir, readdir, readFile, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
-import { and, eq, isNull, or, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { logHandledError } from "@/lib/logger";
 import { env } from "@/lib/env";
 import { audit } from "@/server/domain/services/audit";
@@ -75,20 +75,28 @@ export class SkillPreviewConflictError extends Error {
   }
 }
 
-function visibleSkillCondition(workspaceId: string, userId: string) {
-  return and(
-    eq(agentSkills.workspaceId, workspaceId),
-    isNull(agentSkills.archivedAt),
-    or(eq(agentSkills.createdById, userId), eq(agentSkills.isGlobal, true)),
-  );
-}
-
 function canManageSkill(
   skill: AgentSkillRow,
   userId: string,
   canManageGlobal = false,
 ) {
   return skill.createdById === userId || (skill.isGlobal && canManageGlobal);
+}
+
+async function canViewSkill(
+  skill: Pick<AgentSkillRow, "id" | "createdById" | "isGlobal">,
+  userId: string,
+) {
+  return (
+    skill.createdById === userId ||
+    skill.isGlobal ||
+    authorization.hasPermission(
+      { principalType: "user", principalId: userId },
+      "tools.view",
+      "skill",
+      skill.id,
+    )
+  );
 }
 
 async function assertCanManageSkill(
@@ -693,15 +701,7 @@ export async function listAgentSkills(
   return (
     await Promise.all(
       rows.map(async (skill) => {
-        const visible =
-          skill.createdById === userId ||
-          skill.isGlobal ||
-          (await authorization.hasPermission(
-            { principalType: "user", principalId: userId },
-            "tools.view",
-            "skill",
-            skill.id,
-          ));
+        const visible = await canViewSkill(skill, userId);
         if (!visible) return null;
         return {
           ...skill,
@@ -763,12 +763,14 @@ export async function getSkillBindingsForVersion(
   agentVersionId: string,
   visibility?: { workspaceId: string; userId: string },
 ) {
-  return db
+  const rows = await db
     .select({
       id: agentSkillBindings.id,
       skillId: agentSkillBindings.skillId,
       name: agentSkills.name,
       description: agentSkills.description,
+      createdById: agentSkills.createdById,
+      isGlobal: agentSkills.isGlobal,
     })
     .from(agentSkillBindings)
     .innerJoin(agentSkills, eq(agentSkillBindings.skillId, agentSkills.id))
@@ -776,13 +778,29 @@ export async function getSkillBindingsForVersion(
       visibility
         ? and(
             eq(agentSkillBindings.agentVersionId, agentVersionId),
-            visibleSkillCondition(visibility.workspaceId, visibility.userId),
+            eq(agentSkills.workspaceId, visibility.workspaceId),
+            isNull(agentSkills.archivedAt),
           )
         : and(
             eq(agentSkillBindings.agentVersionId, agentVersionId),
             isNull(agentSkills.archivedAt),
           ),
     );
+  const visibleRows = visibility
+    ? (
+        await Promise.all(
+          rows.map(async (row) =>
+            (await canViewSkill(row, visibility.userId)) ? row : null,
+          ),
+        )
+      ).filter((row) => row !== null)
+    : rows;
+  return visibleRows.map(({ id, skillId, name, description }) => ({
+    id,
+    skillId,
+    name,
+    description,
+  }));
 }
 
 type BindingDb = Pick<typeof db, "select" | "insert" | "delete">;
@@ -803,17 +821,29 @@ export async function replaceSkillBindingsForVersion(
   }
 
   const availableSkills = await executor
-    .select({ id: agentSkills.id })
+    .select({
+      id: agentSkills.id,
+      createdById: agentSkills.createdById,
+      isGlobal: agentSkills.isGlobal,
+    })
     .from(agentSkills)
     .where(
-      options?.userId
-        ? visibleSkillCondition(workspaceId, options.userId)
-        : and(
-            eq(agentSkills.workspaceId, workspaceId),
-            isNull(agentSkills.archivedAt),
-          ),
+      and(
+        eq(agentSkills.workspaceId, workspaceId),
+        inArray(agentSkills.id, uniqueSkillIds),
+        isNull(agentSkills.archivedAt),
+      ),
     );
-  const availableIds = new Set(availableSkills.map((skill) => skill.id));
+  const visibleSkills = options?.userId
+    ? (
+        await Promise.all(
+          availableSkills.map(async (skill) =>
+            (await canViewSkill(skill, options.userId!)) ? skill : null,
+          ),
+        )
+      ).filter((skill) => skill !== null)
+    : availableSkills;
+  const availableIds = new Set(visibleSkills.map((skill) => skill.id));
   const invalidSkillId = uniqueSkillIds.find(
     (skillId) => !availableIds.has(skillId),
   );
@@ -840,22 +870,38 @@ export async function cloneSkillBindings(
 ) {
   if (!fromAgentVersionId) return;
   const existing = await executor
-    .select({ skillId: agentSkillBindings.skillId })
+    .select({
+      skillId: agentSkillBindings.skillId,
+      id: agentSkills.id,
+      createdById: agentSkills.createdById,
+      isGlobal: agentSkills.isGlobal,
+    })
     .from(agentSkillBindings)
     .innerJoin(agentSkills, eq(agentSkillBindings.skillId, agentSkills.id))
     .where(
       workspaceId && options?.userId
         ? and(
             eq(agentSkillBindings.agentVersionId, fromAgentVersionId),
-            visibleSkillCondition(workspaceId, options.userId),
+            eq(agentSkills.workspaceId, workspaceId),
+            isNull(agentSkills.archivedAt),
           )
         : eq(agentSkillBindings.agentVersionId, fromAgentVersionId),
     );
 
-  if (existing.length === 0) return;
+  const visibleBindings =
+    workspaceId && options?.userId
+      ? (
+          await Promise.all(
+            existing.map(async (binding) =>
+              (await canViewSkill(binding, options.userId!)) ? binding : null,
+            ),
+          )
+        ).filter((binding) => binding !== null)
+      : existing;
+  if (visibleBindings.length === 0) return;
 
   await executor.insert(agentSkillBindings).values(
-    existing.map((row) => ({
+    visibleBindings.map((row) => ({
       agentVersionId: toAgentVersionId,
       skillId: row.skillId,
     })),

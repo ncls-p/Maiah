@@ -37,6 +37,38 @@ export const toolBindingInputSchema = z.discriminatedUnion("toolSource", [
 export type ToolBindingInput = z.infer<typeof toolBindingInputSchema>;
 type BindingDb = Pick<typeof db, "select" | "insert" | "delete">;
 
+async function canViewCustomTool(
+  tool: { id: string; createdById: string; isGlobal: boolean },
+  userId: string,
+) {
+  return (
+    tool.createdById === userId ||
+    tool.isGlobal ||
+    authorization.hasPermission(
+      { principalType: "user", principalId: userId },
+      "tools.view",
+      "custom_tool",
+      tool.id,
+    )
+  );
+}
+
+async function canViewMcpServer(
+  server: { id: string; createdById: string; isGlobal: boolean },
+  userId: string,
+) {
+  return (
+    server.createdById === userId ||
+    server.isGlobal ||
+    authorization.hasPermission(
+      { principalType: "user", principalId: userId },
+      "mcpServers.get",
+      "mcp_server",
+      server.id,
+    )
+  );
+}
+
 export async function getToolBindingsForVersion(
   agentVersionId: string,
   visibility?: { workspaceId: string; userId: string },
@@ -58,23 +90,28 @@ export async function getToolBindingsForVersion(
   const [visibleCustomTools, visibleMcpTools] = await Promise.all([
     customToolIds.length > 0
       ? executor
-          .select({ id: customTools.id })
+          .select({
+            id: customTools.id,
+            createdById: customTools.createdById,
+            isGlobal: customTools.isGlobal,
+          })
           .from(customTools)
           .where(
             and(
               inArray(customTools.id, customToolIds),
               eq(customTools.workspaceId, visibility.workspaceId),
               isNull(customTools.archivedAt),
-              or(
-                eq(customTools.createdById, visibility.userId),
-                eq(customTools.isGlobal, true),
-              ),
             ),
           )
       : Promise.resolve([]),
     mcpToolIds.length > 0
       ? executor
-          .select({ id: mcpTools.id })
+          .select({
+            id: mcpTools.id,
+            serverId: mcpServers.id,
+            createdById: mcpServers.createdById,
+            isGlobal: mcpServers.isGlobal,
+          })
           .from(mcpTools)
           .innerJoin(mcpServers, eq(mcpTools.mcpServerId, mcpServers.id))
           .where(
@@ -82,19 +119,38 @@ export async function getToolBindingsForVersion(
               inArray(mcpTools.id, mcpToolIds),
               eq(mcpServers.workspaceId, visibility.workspaceId),
               isNull(mcpServers.archivedAt),
-              or(
-                eq(mcpServers.createdById, visibility.userId),
-                eq(mcpServers.isGlobal, true),
-              ),
             ),
           )
       : Promise.resolve([]),
   ]);
 
   const visibleCustomToolIds = new Set(
-    visibleCustomTools.map((tool) => tool.id),
+    (
+      await Promise.all(
+        visibleCustomTools.map(async (tool) =>
+          (await canViewCustomTool(tool, visibility.userId)) ? tool.id : null,
+        ),
+      )
+    ).filter((id) => id !== null),
   );
-  const visibleMcpToolIds = new Set(visibleMcpTools.map((tool) => tool.id));
+  const visibleMcpToolIds = new Set(
+    (
+      await Promise.all(
+        visibleMcpTools.map(async (tool) =>
+          (await canViewMcpServer(
+            {
+              id: tool.serverId,
+              createdById: tool.createdById,
+              isGlobal: tool.isGlobal,
+            },
+            visibility.userId,
+          ))
+            ? tool.id
+            : null,
+        ),
+      )
+    ).filter((id) => id !== null),
+  );
 
   return bindings.filter((binding) => {
     if (binding.toolSource === "builtin") return true;
@@ -145,12 +201,6 @@ export async function insertToolBindingsForVersion(
                 eq(customTools.id, binding.toolId),
                 eq(customTools.workspaceId, workspaceId),
                 isNull(customTools.archivedAt),
-                options?.userId
-                  ? or(
-                      eq(customTools.createdById, options.userId),
-                      eq(customTools.isGlobal, true),
-                    )
-                  : undefined,
               )
             : eq(customTools.id, binding.toolId);
           const [customTool] = await executor
@@ -159,6 +209,12 @@ export async function insertToolBindingsForVersion(
             .where(customToolFilters)
             .limit(1);
           if (!customTool) throw new Error("Custom tool not found");
+          if (
+            options?.userId &&
+            !(await canViewCustomTool(customTool, options.userId))
+          ) {
+            throw new Error("Custom tool not found");
+          }
 
           return {
             agentVersionId,
@@ -172,7 +228,12 @@ export async function insertToolBindingsForVersion(
         if (binding.toolSource === "mcp") {
           const [tool] = workspaceId
             ? await executor
-                .select({ requireApproval: mcpTools.requireApproval })
+                .select({
+                  requireApproval: mcpTools.requireApproval,
+                  serverId: mcpServers.id,
+                  createdById: mcpServers.createdById,
+                  isGlobal: mcpServers.isGlobal,
+                })
                 .from(mcpTools)
                 .innerJoin(mcpServers, eq(mcpTools.mcpServerId, mcpServers.id))
                 .where(
@@ -182,12 +243,6 @@ export async function insertToolBindingsForVersion(
                     eq(mcpServers.workspaceId, workspaceId),
                     eq(mcpServers.enabled, true),
                     isNull(mcpServers.archivedAt),
-                    options?.userId
-                      ? or(
-                          eq(mcpServers.createdById, options.userId),
-                          eq(mcpServers.isGlobal, true),
-                        )
-                      : undefined,
                   ),
                 )
                 .limit(1)
@@ -202,6 +257,20 @@ export async function insertToolBindingsForVersion(
                 )
                 .limit(1);
           if (!tool) throw new Error("MCP tool not found");
+          if (
+            options?.userId &&
+            "serverId" in tool &&
+            !(await canViewMcpServer(
+              {
+                id: tool.serverId,
+                createdById: tool.createdById,
+                isGlobal: tool.isGlobal,
+              },
+              options.userId,
+            ))
+          ) {
+            throw new Error("MCP tool not found");
+          }
 
           return {
             agentVersionId,

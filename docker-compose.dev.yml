@@ -108,15 +108,19 @@ services:
     network_mode: none
     read_only: true
     tmpfs:
-      - /tmp:rw,nosuid,nodev,size=128m,mode=1777
-      - /sandbox-runs:rw,nosuid,nodev,size=512m,exec,mode=700
+      - /tmp:rw,nosuid,nodev,size=32m,mode=1777
+      - /sandbox-runs:rw,nosuid,nodev,size=192m,exec,mode=700
     volumes:
       - ./.data/sandbox-runner:/run/sandbox
     environment:
       SANDBOX_RUNNER_SOCKET: /run/sandbox/sandbox.sock
       SANDBOX_RUN_ROOT: /sandbox-runs
       SANDBOX_DEFAULT_TIMEOUT_MS: 15000
-      SANDBOX_MAX_TIMEOUT_MS: 120000
+      SANDBOX_MAX_TIMEOUT_MS: 30000
+      SANDBOX_MAX_PROCESSES: 32
+      SANDBOX_MAX_CPU_SECONDS: 20
+      SANDBOX_MAX_OUTPUT_FILE_SIZE_BYTES: 2000000
+      SANDBOX_MAX_DOWNLOAD_TOTAL_BYTES: 3000000
       SANDBOX_SOCKET_GID: ${SANDBOX_SOCKET_GID:-1000}
     security_opt:
       - no-new-privileges:true
@@ -129,7 +133,10 @@ services:
       - DAC_OVERRIDE
       - FOWNER
       - KILL
-    pids_limit: 128
+    cpus: "0.50"
+    mem_limit: 768m
+    memswap_limit: 768m
+    pids_limit: 64
     healthcheck:
       test:
         [

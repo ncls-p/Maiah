@@ -123,6 +123,22 @@ export default function AgentConfigurePage() {
     [],
   );
   const [selectedSkillIds, setSelectedSkillIds] = useState<string[]>([]);
+
+  function showCopyableError(error: unknown, fallback: string) {
+    const message = error instanceof Error ? error.message : fallback;
+    toast.error(message, {
+      duration: 12_000,
+      action: {
+        label: t("configurePage.copyError"),
+        onClick: () => {
+          void navigator.clipboard
+            .writeText(message)
+            .then(() => toast.success(t("configurePage.errorCopied")))
+            .catch(() => toast.error(t("configurePage.errorCopyFailed")));
+        },
+      },
+    });
+  }
   const [delegationConfig, setDelegationConfig] = useState<DelegationConfig>(
     defaultDelegationConfig,
   );
@@ -488,9 +504,7 @@ export default function AgentConfigurePage() {
       }
       toast.success(t("configurePage.saved"));
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Unable to save agent",
-      );
+      showCopyableError(error, "Unable to save agent");
       return;
     } finally {
       setSaving(false);
@@ -559,9 +573,7 @@ export default function AgentConfigurePage() {
       }
       toast.success(t("configurePage.capabilitiesSaved"));
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Unable to save capabilities",
-      );
+      showCopyableError(error, "Unable to save capabilities");
       return;
     } finally {
       setSaving(false);
@@ -609,9 +621,7 @@ export default function AgentConfigurePage() {
       }
       toast.success(t("orchestration.saved"));
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : t("orchestration.saveFailed"),
-      );
+      showCopyableError(error, t("orchestration.saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -649,11 +659,7 @@ export default function AgentConfigurePage() {
         logoUrl ? "Assistant logo updated" : "Assistant logo removed",
       );
     } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Unable to update assistant logo",
-      );
+      showCopyableError(error, "Unable to update assistant logo");
       return;
     }
   }
@@ -678,9 +684,7 @@ export default function AgentConfigurePage() {
         router.push(`/agents/${encodeURIComponent(data.agent.id)}`);
       }
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : t("list.toastCloneFailed"),
-      );
+      showCopyableError(error, t("list.toastCloneFailed"));
       return;
     }
   }
@@ -703,11 +707,7 @@ export default function AgentConfigurePage() {
       toast.success(t("configurePage.deleted"));
       router.push("/agents");
     } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : t("configurePage.deleteFailed"),
-      );
+      showCopyableError(error, t("configurePage.deleteFailed"));
       return;
     } finally {
       setDeleting(false);

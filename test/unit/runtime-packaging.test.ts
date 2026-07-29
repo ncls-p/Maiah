@@ -28,4 +28,22 @@ describe("runtime packaging guardrails", () => {
 
 		expect(sandboxStage).toMatch(/^\s*ripgrep\s*\\$/m);
 	});
+
+	it("keeps the sandbox container under strict resource ceilings", () => {
+		for (const composeFile of [
+			"docker-compose.dev.yml",
+			"docker-compose.prod.yml",
+		]) {
+			const sandbox = projectFile(composeFile).slice(
+				projectFile(composeFile).indexOf("  sandbox-runner:"),
+			);
+			expect(sandbox).toContain('cpus: "0.50"');
+			expect(sandbox).toContain("mem_limit: 768m");
+			expect(sandbox).toContain("memswap_limit: 768m");
+			expect(sandbox).toContain("pids_limit: 64");
+			expect(sandbox).toContain("SANDBOX_MAX_TIMEOUT_MS: 30000");
+			expect(sandbox).toContain("SANDBOX_MAX_PROCESSES: 32");
+			expect(sandbox).toContain("SANDBOX_MAX_CPU_SECONDS: 20");
+		}
+	});
 });

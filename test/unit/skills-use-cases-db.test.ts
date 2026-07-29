@@ -8,6 +8,14 @@ vi.mock("@/lib/logger", () => ({
 	logHandledError: vi.fn(),
 }));
 
+const authorizationMocks = vi.hoisted(() => ({
+	hasPermission: vi.fn().mockResolvedValue(false),
+}));
+
+vi.mock("@/server/domain/services/authorization", () => ({
+	authorization: { hasPermission: authorizationMocks.hasPermission },
+}));
+
 type Chain = {
 	select: ReturnType<typeof vi.fn>;
 	insert: ReturnType<typeof vi.fn>;
@@ -107,6 +115,7 @@ function resetDb() {
 
 beforeEach(() => {
 	vi.clearAllMocks();
+	authorizationMocks.hasPermission.mockResolvedValue(false);
 	resetDb();
 });
 
@@ -190,7 +199,13 @@ describe("skill listing and archiving", () => {
 describe("skill bindings", () => {
 	it("loads visible bindings", async () => {
 		dbModule._c.where.mockResolvedValueOnce([
-			{ id: "binding-1", skillId: "skill-1", name: "research" },
+			{
+				id: "binding-1",
+				skillId: "skill-1",
+				name: "research",
+				createdById: "user-1",
+				isGlobal: false,
+			},
 		]);
 		await expect(
 			getSkillBindingsForVersion("version-1", {
@@ -207,7 +222,9 @@ describe("skill bindings", () => {
 		expect(dbModule.db.delete).toHaveBeenCalled();
 
 		resetDb();
-		dbModule._c.where.mockResolvedValueOnce([{ id: "skill-1" }]);
+		dbModule._c.where.mockResolvedValueOnce([
+			{ id: "skill-1", createdById: "user-1", isGlobal: false },
+		]);
 		await expect(
 			replaceSkillBindingsForVersion(
 				"version-1",
@@ -234,8 +251,18 @@ describe("skill bindings", () => {
 
 		resetDb();
 		dbModule._c.where.mockResolvedValueOnce([
-			{ skillId: "skill-1" },
-			{ skillId: "skill-2" },
+			{
+				id: "skill-1",
+				skillId: "skill-1",
+				createdById: "user-1",
+				isGlobal: false,
+			},
+			{
+				id: "skill-2",
+				skillId: "skill-2",
+				createdById: "other",
+				isGlobal: true,
+			},
 		]);
 		await cloneSkillBindings("version-1", "version-2", "ws-1", {
 			userId: "user-1",
@@ -244,6 +271,32 @@ describe("skill bindings", () => {
 			{ agentVersionId: "version-2", skillId: "skill-1" },
 			{ agentVersionId: "version-2", skillId: "skill-2" },
 		]);
+	});
+
+	it("binds a skill shared through IAM", async () => {
+		authorizationMocks.hasPermission.mockResolvedValue(true);
+		dbModule._c.where.mockResolvedValueOnce([
+			{
+				id: "skill-shared",
+				createdById: "another-user",
+				isGlobal: false,
+			},
+		]);
+
+		await expect(
+			replaceSkillBindingsForVersion(
+				"version-2",
+				"ws-1",
+				["skill-shared"],
+				{ userId: "existing-user" },
+			),
+		).resolves.toBeUndefined();
+		expect(authorizationMocks.hasPermission).toHaveBeenCalledWith(
+			{ principalType: "user", principalId: "existing-user" },
+			"tools.view",
+			"skill",
+			"skill-shared",
+		);
 	});
 });
 

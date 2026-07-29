@@ -309,6 +309,7 @@ export async function PATCH(
             "Custom tool not found",
             "MCP tool not found",
             "Knowledge base not found",
+            "Skill not found",
             "Share target user not found",
             "Share target user is required",
             "Only orchestrators can configure delegation",
