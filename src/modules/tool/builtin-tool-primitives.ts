@@ -32,6 +32,14 @@ export const htmlArtifactInputSchema = z.object({
   height: z.number().int().min(160).max(900).default(420),
 });
 
+export const imageGenerationInputSchema = z.object({
+  prompt: z.string().trim().min(1).max(4_000),
+  size: z
+    .string()
+    .regex(/^\d{2,5}x\d{2,5}$/)
+    .optional(),
+});
+
 function runtimeLimitedString(
   maxChars: number,
   label: string,

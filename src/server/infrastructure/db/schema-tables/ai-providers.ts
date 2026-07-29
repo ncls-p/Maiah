@@ -86,6 +86,8 @@ export const aiModels = pgTable(
     maxOutputTokens: integer("max_output_tokens"),
     inputTokenCost: text("input_token_cost"),
     outputTokenCost: text("output_token_cost"),
+    imageGenerationConfigJson: jsonb("image_generation_config_json"),
+    sustainabilityConfigJson: jsonb("sustainability_config_json"),
     enabled: boolean("enabled").notNull().default(true),
     createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
       .notNull()

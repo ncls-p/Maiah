@@ -364,6 +364,8 @@ export interface CreateModelInput {
   maxOutputTokens?: number;
   inputTokenCost?: string;
   outputTokenCost?: string;
+  imageGenerationConfigJson?: Record<string, unknown>;
+  sustainabilityConfigJson?: Record<string, unknown>;
 }
 
 export async function createModel(providerId: string, input: CreateModelInput) {
@@ -376,6 +378,8 @@ export async function createModel(providerId: string, input: CreateModelInput) {
     maxOutputTokens,
     inputTokenCost,
     outputTokenCost,
+    imageGenerationConfigJson,
+    sustainabilityConfigJson,
   } = input;
 
   const [model] = await db
@@ -390,6 +394,8 @@ export async function createModel(providerId: string, input: CreateModelInput) {
       maxOutputTokens: maxOutputTokens || null,
       inputTokenCost: inputTokenCost || null,
       outputTokenCost: outputTokenCost || null,
+      imageGenerationConfigJson: imageGenerationConfigJson || null,
+      sustainabilityConfigJson: sustainabilityConfigJson || null,
       enabled: true,
     })
     .returning();
@@ -405,6 +411,8 @@ export interface UpdateModelInput {
   maxOutputTokens?: number;
   inputTokenCost?: string;
   outputTokenCost?: string;
+  imageGenerationConfigJson?: Record<string, unknown> | null;
+  sustainabilityConfigJson?: Record<string, unknown> | null;
   enabled?: boolean;
 }
 
@@ -440,6 +448,16 @@ const MODEL_UPDATE_RULES: ModelUpdateRule[] = [
   {
     key: "outputTokenCost",
     column: "outputTokenCost",
+    normalize: (value) => value || null,
+  },
+  {
+    key: "imageGenerationConfigJson",
+    column: "imageGenerationConfigJson",
+    normalize: (value) => value || null,
+  },
+  {
+    key: "sustainabilityConfigJson",
+    column: "sustainabilityConfigJson",
     normalize: (value) => value || null,
   },
   { key: "enabled", column: "enabled" },
@@ -576,17 +594,21 @@ export async function refreshProviderModels(
             maxOutputTokens: model.maxOutputTokens || null,
             inputTokenCost: model.inputTokenCost || null,
             outputTokenCost: model.outputTokenCost || null,
+            imageGenerationConfigJson: model.imageGeneration || null,
+            sustainabilityConfigJson: model.sustainability || null,
           })),
         )
         .onConflictDoUpdate({
           target: [aiModels.providerId, aiModels.modelId],
           set: {
-            displayName: sql`excluded.display_name`,
-            capabilitiesJson: sql`excluded.capabilities_json`,
+            displayName: sql`COALESCE(${aiModels.displayName}, excluded.display_name)`,
+            capabilitiesJson: sql`COALESCE(excluded.capabilities_json, '{}'::jsonb) || COALESCE(${aiModels.capabilitiesJson}, '{}'::jsonb)`,
             contextWindow: sql`excluded.context_window`,
             maxOutputTokens: sql`excluded.max_output_tokens`,
-            inputTokenCost: sql`excluded.input_token_cost`,
-            outputTokenCost: sql`excluded.output_token_cost`,
+            inputTokenCost: sql`COALESCE(${aiModels.inputTokenCost}, excluded.input_token_cost)`,
+            outputTokenCost: sql`COALESCE(${aiModels.outputTokenCost}, excluded.output_token_cost)`,
+            imageGenerationConfigJson: sql`COALESCE(${aiModels.imageGenerationConfigJson}, excluded.image_generation_config_json)`,
+            sustainabilityConfigJson: sql`COALESCE(${aiModels.sustainabilityConfigJson}, excluded.sustainability_config_json)`,
             updatedAt: new Date(),
           },
         });

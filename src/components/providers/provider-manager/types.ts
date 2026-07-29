@@ -43,8 +43,37 @@ export type ProviderModel = {
   maxOutputTokens: number | null;
   inputTokenCost: string | null;
   outputTokenCost: string | null;
+  imageGenerationConfigJson: {
+    enabled?: boolean;
+    isDefault?: boolean;
+    defaultSize?: string;
+    allowedSizes?: string[];
+    costPerImage?: number;
+    energyKwhPerImage?: number;
+    co2GramsPerImage?: number;
+    currency?: string;
+  } | null;
+  sustainabilityConfigJson: {
+    energyKwhPerMillionTokens?: number;
+    co2GramsPerMillionTokens?: number;
+    source?: string;
+    currency?: string;
+  } | null;
   enabled: boolean;
 };
+
+export type ProviderModelUpdate = Partial<
+  Pick<
+    ProviderModel,
+    | "displayName"
+    | "capabilitiesJson"
+    | "inputTokenCost"
+    | "outputTokenCost"
+    | "imageGenerationConfigJson"
+    | "sustainabilityConfigJson"
+    | "enabled"
+  >
+>;
 
 export type DiscoveredModel = {
   modelId: string;

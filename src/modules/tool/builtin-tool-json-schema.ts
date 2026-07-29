@@ -52,6 +52,22 @@ const commonSchemas: Record<string, unknown> = {
     },
     required: ["html"],
   },
+  generate_image: {
+    type: "object",
+    properties: {
+      prompt: {
+        type: "string",
+        description: "Detailed description of the image to generate.",
+      },
+      size: {
+        type: "string",
+        description:
+          "Optional size such as 1024x1024. Omit it to use the administrator default.",
+        pattern: "^\\d{2,5}x\\d{2,5}$",
+      },
+    },
+    required: ["prompt"],
+  },
   run_code_sandbox: {
     type: "object",
     properties: {

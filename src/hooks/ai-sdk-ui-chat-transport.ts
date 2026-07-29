@@ -279,6 +279,15 @@ export async function streamAiSdkUIChat(options: StreamAiSdkUIChatOptions) {
           options.onEvent({ type: "suggestions", suggestions: chunk.data });
         }
         break;
+      case "data-impact":
+        if (typeof chunk.data === "object" && chunk.data !== null) {
+          options.onEvent({
+            type: "impact",
+            impact:
+              chunk.data as import("@/components/chat/chat-types").ChatUsageImpact,
+          });
+        }
+        break;
       case "data-conversation-title": {
         const title = titleFromData(chunk.data);
         if (title) options.onEvent({ type: "conversation_title", title });

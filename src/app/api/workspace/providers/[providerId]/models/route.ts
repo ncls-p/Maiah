@@ -12,6 +12,10 @@ import {
   getProviderById,
   listModels,
 } from "@/modules/provider/use-cases";
+import {
+  imageGenerationConfigSchema,
+  sustainabilityConfigSchema,
+} from "@/modules/provider/model-runtime-config";
 
 const paramsSchema = z.object({ providerId: z.uuid() });
 const workspaceQuerySchema = z.object({ workspaceId: z.uuid() });
@@ -33,6 +37,8 @@ const createModelSchema = z.object({
   maxOutputTokens: z.number().int().positive().optional(),
   inputTokenCost: z.string().optional(),
   outputTokenCost: z.string().optional(),
+  imageGenerationConfigJson: imageGenerationConfigSchema.optional(),
+  sustainabilityConfigJson: sustainabilityConfigSchema.optional(),
 });
 export async function GET(
   req: NextRequest,

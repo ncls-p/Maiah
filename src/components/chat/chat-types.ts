@@ -119,6 +119,15 @@ export interface ChatCitation {
   knowledgeBaseName?: string;
 }
 
+export type ChatUsageImpact = {
+  inputTokens: number;
+  outputTokens: number;
+  cost: number | null;
+  currency: string;
+  energyKwh: number | null;
+  co2Grams: number | null;
+};
+
 function sanitizeToolName(name: string) {
   return name.replace(/[^a-zA-Z0-9_]/g, "_").replace(/^_+|_+$/g, "");
 }
@@ -144,6 +153,7 @@ export type ChatStreamEvent =
   | { type: "error"; error: string }
   | { type: "conversation_title"; title: string }
   | { type: "suggestions"; suggestions: string[] }
+  | { type: "impact"; impact: ChatUsageImpact }
   | {
       type: "tool_approval_required";
       invocationId: string;
@@ -210,7 +220,9 @@ export function prepareAssistantMessageContinuation(message: ChatMessage) {
   return {
     ...message,
     status: "streaming",
-    parts: message.parts.filter((part) => part.type !== "suggestions"),
+    parts: message.parts.filter(
+      (part) => part.type !== "suggestions" && part.type !== "impact",
+    ),
   };
 }
 
@@ -284,6 +296,7 @@ export function renderablePartsFromMessage(message: ChatMessage) {
       "tool-call",
       "tool-result",
       "suggestions",
+      "impact",
     ].includes(part.type),
   );
 }
@@ -632,6 +645,7 @@ const STREAM_EVENT_VALIDATORS: Record<string, StreamEventValidator> = {
   suggestions: (event) =>
     Array.isArray(event.suggestions) &&
     event.suggestions.every((item) => typeof item === "string"),
+  impact: (event) => typeof event.impact === "object" && event.impact !== null,
   citations: (event) =>
     Array.isArray(event.citations) || Array.isArray(event.sources),
 };

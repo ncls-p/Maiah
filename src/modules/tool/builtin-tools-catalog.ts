@@ -55,6 +55,15 @@ export const BUILTIN_TOOL_SUMMARIES: BuiltInToolSummary[] = [
     category: "Create",
   },
   {
+    id: "00000000-0000-4000-8000-000000000038",
+    name: "generate_image",
+    displayName: "Generate image",
+    description:
+      "Generate an image with the administrator-configured image model.",
+    riskLevel: MEDIUM_RISK_LEVEL,
+    category: "Create",
+  },
+  {
     id: "00000000-0000-4000-8000-000000000037",
     name: "run_code_sandbox",
     displayName: "Code sandbox",

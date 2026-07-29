@@ -38,6 +38,7 @@ import { AUTH_TYPE_LABELS, KIND_LABELS } from "./constants";
 import type { ProviderAuthType, ProviderKind, SafeProvider } from "./types";
 import { defaultAuthType } from "./utils";
 import type { OpenAICompatibleApiRoute } from "@/lib/openai-compatible-api";
+import { CLOUD_TEMPLE_BASE_URL } from "@/modules/provider/cloud-temple-catalog";
 
 const FIELD_STACK_CLASS = "grid gap-2";
 
@@ -113,6 +114,30 @@ function AddProviderBasicFields(props: AddProviderDialogProps) {
   const t = useTranslations("providers.manager");
   return (
     <>
+      <div className="rounded-xl border bg-muted/20 p-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium">{t("cloudTemplePreset")}</p>
+            <p className="text-xs text-muted-foreground">
+              {t("cloudTemplePresetHint")}
+            </p>
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              props.onKindChange("openai-compatible");
+              props.onAuthTypeChange("bearer");
+              props.onNameChange("Cloud Temple");
+              props.onBaseUrlChange(CLOUD_TEMPLE_BASE_URL);
+              props.onApiRouteChange("chat-completions");
+            }}
+          >
+            {t("usePreset")}
+          </Button>
+        </div>
+      </div>
       <div className={FIELD_STACK_CLASS}>
         <Label htmlFor="add-provider-name">{t("providerName")}</Label>
         <Input

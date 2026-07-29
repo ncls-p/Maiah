@@ -49,6 +49,7 @@ import {
   htmlArtifactFromInputText,
   htmlArtifactFromToolInput,
   isCodeSandboxToolName,
+  isGeneratedImageOutput,
   isGitHubPublishOutput,
   isHtmlArtifactOutput,
   summarizeToolBody,
@@ -391,6 +392,30 @@ const ToolPartCard = memo(function ToolPartCard({
     );
   } else if (isHtmlArtifactOutput(parsed.output)) {
     specializedContent = <HtmlArtifactCard artifact={parsed.output} />;
+  } else if (isGeneratedImageOutput(parsed.output)) {
+    const impact = parsed.output.impact;
+    const metrics = [
+      impact.cost === null
+        ? null
+        : `${impact.cost.toFixed(4)} ${impact.currency}`,
+      impact.energyKwh === null ? null : `${impact.energyKwh.toFixed(4)} kWh`,
+      impact.co2Grams === null ? null : `${impact.co2Grams.toFixed(2)} gCO₂e`,
+    ].filter((metric): metric is string => Boolean(metric));
+    specializedContent = (
+      <div className="space-y-2">
+        <ChatImageAttachmentCard attachment={parsed.output.attachment} />
+        <div className="flex flex-wrap items-center gap-1.5 px-1 text-[11px] text-muted-foreground">
+          <span>
+            {parsed.output.provider} · {parsed.output.model}
+          </span>
+          {metrics.map((metric) => (
+            <span key={metric} className="rounded-full bg-muted px-2 py-0.5">
+              {metric}
+            </span>
+          ))}
+        </div>
+      </div>
+    );
   } else if (isCodeWorkspaceArtifactOutput(parsed.output)) {
     specializedContent =
       workspaceArtifactDisplay === "summary" ? (
@@ -1048,6 +1073,44 @@ export const MessageContent = memo(function MessageContent({
     partIndex: number,
   ): React.ReactNode => {
     const key = `${message.id}-${part.type}-${partIndex}`;
+    if (part.type === "impact") {
+      try {
+        const impact = JSON.parse(part.content) as {
+          cost: number | null;
+          currency: string;
+          energyKwh: number | null;
+          co2Grams: number | null;
+          inputTokens: number;
+          outputTokens: number;
+        };
+        const metrics = [
+          impact.cost === null
+            ? null
+            : `${impact.cost.toFixed(4)} ${impact.currency}`,
+          impact.energyKwh === null
+            ? null
+            : `${impact.energyKwh.toFixed(4)} kWh`,
+          impact.co2Grams === null
+            ? null
+            : `${impact.co2Grams.toFixed(2)} gCO₂e`,
+        ].filter((metric): metric is string => Boolean(metric));
+        if (metrics.length === 0) return null;
+        return (
+          <div
+            key={key}
+            className="flex flex-wrap gap-1.5 text-[11px] text-muted-foreground"
+          >
+            {metrics.map((metric) => (
+              <span key={metric} className="rounded-full bg-muted px-2 py-0.5">
+                {metric}
+              </span>
+            ))}
+          </div>
+        );
+      } catch {
+        return null;
+      }
+    }
     if (part.type === "suggestions") {
       if (!showSuggestions) return null;
       return (

@@ -15,6 +15,7 @@ const DEFAULT_CAPABILITIES: ModelCapability = {
   reasoning: false,
   embeddings: false,
   audio: false,
+  imageGeneration: false,
 };
 
 function normalizeBaseUrl(baseUrl?: string): string {

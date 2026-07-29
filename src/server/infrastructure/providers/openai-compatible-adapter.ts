@@ -9,6 +9,10 @@ import type {
   ModelDescriptor,
   ModelCapability,
 } from "./adapter";
+import {
+  enrichCloudTempleModel,
+  isCloudTempleBaseUrl,
+} from "@/modules/provider/cloud-temple-catalog";
 
 const DEFAULT_CAPABILITIES: ModelCapability = {
   text: true,
@@ -17,6 +21,7 @@ const DEFAULT_CAPABILITIES: ModelCapability = {
   reasoning: false,
   embeddings: false,
   audio: false,
+  imageGeneration: false,
 };
 
 function normalizeBaseUrl(baseUrl?: string): string {
@@ -222,7 +227,10 @@ export const openaiCompatibleAdapter: ProviderAdapter = {
     }
 
     const data = (await res.json()) as unknown;
-    return parseModels(data);
+    const models = parseModels(data);
+    return isCloudTempleBaseUrl(config.baseUrl)
+      ? models.map(enrichCloudTempleModel)
+      : models;
   },
 
   createChatModel(
@@ -257,5 +265,16 @@ export const openaiCompatibleAdapter: ProviderAdapter = {
     });
 
     return provider.chatModel(modelId);
+  },
+
+  createImageModel(config: ProviderRuntimeConfig, modelId: string) {
+    const provider = createOpenAICompatible({
+      name: config.name || "openai-compatible",
+      apiKey: config.authType === "bearer" ? config.apiKey : undefined,
+      baseURL: normalizeBaseUrl(config.baseUrl),
+      headers: buildHeaders(config),
+      queryParams: config.queryParams,
+    });
+    return provider.imageModel(modelId);
   },
 };

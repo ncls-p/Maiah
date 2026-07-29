@@ -15,6 +15,7 @@ import {
   publishCodeWorkspaceToGitHub,
 } from "@/modules/github/publishing";
 import { executeCodeSandbox } from "@/modules/tool/code-sandbox";
+import { generateWorkspaceImage } from "@/modules/provider/image-generation";
 import type { ToolRiskLevel } from "./builtin-tools-catalog";
 import { builtInToolInputSchemaJson } from "./builtin-tool-json-schema";
 import {
@@ -23,6 +24,7 @@ import {
   httpFetchInputSchema,
   webSearchInputSchema,
   htmlArtifactInputSchema,
+  imageGenerationInputSchema,
   codeSandboxInputSchema,
   codeWorkspaceCreateInputSchema,
   codeWorkspaceProjectInputSchema,
@@ -230,6 +232,26 @@ export const builtInTools = [
       js,
       height,
     }),
+  },
+  {
+    id: "00000000-0000-4000-8000-000000000038",
+    name: "generate_image",
+    displayName: "Generate image",
+    description:
+      "Generate one image from a text prompt using the project image model configured by an administrator. Omit size to use the administrator default.",
+    riskLevel: MEDIUM_RISK_LEVEL,
+    category: "Create",
+    inputSchema: imageGenerationInputSchema,
+    execute: async ({ prompt, size }, context) => {
+      const workspaceContext = requireCodeWorkspaceContext(context);
+      return generateWorkspaceImage({
+        workspaceId: workspaceContext.workspaceId,
+        userId: workspaceContext.userId,
+        conversationId: workspaceContext.conversationId,
+        prompt,
+        size,
+      });
+    },
   },
   {
     id: "00000000-0000-4000-8000-000000000037",

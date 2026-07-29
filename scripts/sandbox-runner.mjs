@@ -333,8 +333,13 @@ function appendTailLimited(current, chunk, limit) {
 			truncated: current.truncated,
 		};
 	}
+	const headBytes = Math.floor(limit / 2);
+	const tailBytes = limit - headBytes;
 	return {
-		buffer: combined.subarray(combined.byteLength - limit),
+		buffer: Buffer.concat([
+			combined.subarray(0, headBytes),
+			combined.subarray(combined.byteLength - tailBytes),
+		]),
 		truncated: true,
 	};
 }

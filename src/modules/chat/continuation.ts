@@ -1,11 +1,8 @@
-import { and, desc, eq, ne } from "drizzle-orm";
+import { and, desc, eq, inArray, ne } from "drizzle-orm";
 
 import { decryptValue } from "@/lib/crypto";
 import { db } from "@/server/infrastructure/db";
-import {
-  messageParts,
-  messages,
-} from "@/server/infrastructure/db/schema";
+import { messageParts, messages } from "@/server/infrastructure/db/schema";
 
 export type AssistantContinuationClaim =
   | {
@@ -62,10 +59,7 @@ export async function claimAssistantContinuation(input: {
       completedAt: null,
     })
     .where(
-      and(
-        eq(messages.id, input.messageId),
-        ne(messages.status, "streaming"),
-      ),
+      and(eq(messages.id, input.messageId), ne(messages.status, "streaming")),
     )
     .returning();
   if (!claimedMessage) return { status: "already_streaming" };
@@ -75,7 +69,7 @@ export async function claimAssistantContinuation(input: {
     .where(
       and(
         eq(messageParts.messageId, claimedMessage.id),
-        eq(messageParts.type, "suggestions"),
+        inArray(messageParts.type, ["suggestions", "impact"]),
       ),
     );
 

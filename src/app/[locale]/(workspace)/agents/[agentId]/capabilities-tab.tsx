@@ -121,7 +121,12 @@ const BUILTIN_TOOL_PACKAGES: BuiltinToolPackageDefinition[] = [
   {
     id: "visuals",
     icon: PaletteIcon,
-    toolNames: ["render_html_artifact", "create_slide_deck", "color_converter"],
+    toolNames: [
+      "generate_image",
+      "render_html_artifact",
+      "create_slide_deck",
+      "color_converter",
+    ],
   },
 ];
 

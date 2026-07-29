@@ -673,7 +673,7 @@
         },
         "visuals": {
           "title": "Sorties visuelles",
-          "description": "Produire des aperçus HTML, des présentations et des conversions de couleurs."
+          "description": "Générer des images, des aperçus HTML, des présentations et des conversions de couleurs."
         },
         "other": {
           "title": "Autres outils",
@@ -993,6 +993,9 @@
       "addDialogDescription": "Renseignez uniquement le nom, l’adresse et la clé API. Le reste est optionnel.",
       "providerName": "Nom",
       "providerNamePlaceholder": "OpenAI production…",
+      "cloudTemplePreset": "Cloud Temple",
+      "cloudTemplePresetHint": "Adresse officielle et réglages compatibles en un clic.",
+      "usePreset": "Utiliser",
       "serviceUrl": "Adresse du service",
       "serviceUrlPlaceholder": "https://api.openai.com/v1…",
       "serviceUrlHint": "Préfixe API complet ; les chemins personnalisés comme /v1 ou /openai sont conservés.",
@@ -1028,6 +1031,7 @@
       "errorCreateModel": "Impossible d’ajouter le modèle",
       "errorDiscoverModels": "Impossible de découvrir les modèles",
       "errorUpdateModelLogo": "Impossible de mettre à jour le logo du modèle",
+      "errorUpdateModel": "Impossible de mettre à jour la configuration du modèle",
       "errorDeleteModel": "Impossible de retirer le modèle",
       "toastProviderConnected": "Connexion ajoutée",
       "toastConnectionUpdated": "Connexion mise à jour",
@@ -1038,6 +1042,24 @@
       "toastDiscoveredModels": "{count, plural, one {# modèle découvert} other {# modèles découverts}}",
       "toastLogoAssigned": "Logo ajouté",
       "toastLogoRemoved": "Logo retiré",
+      "toastModelUpdated": "Configuration du modèle enregistrée",
+      "editModel": "Configurer le modèle",
+      "currency": "Devise",
+      "inputCost": "Prix entrée / million de tokens",
+      "outputCost": "Prix sortie / million de tokens",
+      "modelEnabled": "Modèle actif",
+      "imageGeneration": "Génération d’image",
+      "defaultImageModel": "Modèle d’image par défaut",
+      "defaultImageSize": "Taille par défaut",
+      "allowedImageSizes": "Tailles autorisées (séparées par des virgules)",
+      "costPerImage": "Prix par image",
+      "energyPerImage": "Énergie par image (kWh)",
+      "co2PerImage": "CO₂ par image (gCO₂e)",
+      "energyPerMillionTokens": "Énergie / million de tokens (kWh)",
+      "co2PerMillionTokens": "CO₂ / million de tokens (gCO₂e)",
+      "metricSource": "Valeur initiale issue de : {source}. Vous pouvez la modifier.",
+      "cancel": "Annuler",
+      "saveModel": "Enregistrer le modèle",
       "toastModelRemoved": "Modèle retiré"
     }
   },

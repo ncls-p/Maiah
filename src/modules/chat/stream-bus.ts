@@ -466,6 +466,15 @@ export function createChatUIMessageStreamResponse(
                 return;
               }
 
+              if (type === "impact" && event.impact) {
+                writer.write({
+                  type: "data-impact",
+                  id: "impact",
+                  data: event.impact,
+                });
+                return;
+              }
+
               if (type === "file") {
                 writer.write({
                   type: "data-code-workspace-artifact",

@@ -1,4 +1,8 @@
-import type { LanguageModelV4 } from "@ai-sdk/provider";
+import type { ImageModelV4, LanguageModelV4 } from "@ai-sdk/provider";
+import type {
+  ImageGenerationConfig,
+  SustainabilityConfig,
+} from "@/modules/provider/model-runtime-config";
 import type { OpenAICompatibleApiRoute } from "@/lib/openai-compatible-api";
 
 export type ProviderKind =
@@ -16,6 +20,7 @@ export interface ModelCapability {
   reasoning: boolean;
   embeddings: boolean;
   audio: boolean;
+  imageGeneration: boolean;
 }
 
 export interface ModelDescriptor {
@@ -28,6 +33,8 @@ export interface ModelDescriptor {
   maxOutputTokens?: number;
   inputTokenCost?: string;
   outputTokenCost?: string;
+  imageGeneration?: ImageGenerationConfig;
+  sustainability?: SustainabilityConfig;
 }
 
 export interface ProviderHealth {
@@ -55,4 +62,8 @@ export interface ProviderAdapter {
     config: ProviderRuntimeConfig,
     modelId: string,
   ): LanguageModelV4;
+  createImageModel?(
+    config: ProviderRuntimeConfig,
+    modelId: string,
+  ): ImageModelV4;
 }

@@ -441,6 +441,17 @@ export function applyStreamEvent(
     return;
   }
 
+  if (parsed.type === "impact") {
+    handlers.updateAssistant((message) => ({
+      ...message,
+      parts: [
+        ...message.parts.filter((part) => part.type !== "impact"),
+        { type: "impact", content: JSON.stringify(parsed.impact) },
+      ],
+    }));
+    return;
+  }
+
   if (parsed.type === "citations") {
     const citationList =
       "citations" in parsed

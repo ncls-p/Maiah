@@ -16,6 +16,7 @@ const DEFAULT_CAPABILITIES: ModelCapability = {
   reasoning: false,
   embeddings: false,
   audio: false,
+  imageGeneration: false,
 };
 
 const GATEWAY_BASE_URL = "https://ai-gateway.vercel.sh/v1";

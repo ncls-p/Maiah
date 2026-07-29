@@ -53,6 +53,10 @@ import {
 import { searchBoundKnowledgeBases } from "@/modules/knowledge/use-cases";
 import { buildSkillsRegistryPrompt } from "@/modules/skills/use-cases";
 import { assertWorkspaceWithinTokenQuota } from "@/modules/usage/quota";
+import {
+  calculateTokenUsageImpact,
+  parseSustainabilityConfig,
+} from "@/modules/provider/model-runtime-config";
 import type { AiHubToolApprovalPolicy } from "@/modules/tool/approval-policy";
 import {
   projectToolMessagePayload,
@@ -61,6 +65,7 @@ import {
 import { db } from "@/server/infrastructure/db";
 import {
   agents,
+  aiModels,
   conversations,
   messageParts,
   messages,
@@ -887,10 +892,7 @@ export async function POST(
                   ),
                 })
                 .where(
-                  eq(
-                    messageParts.id,
-                    continuationClaim.appendableTextPart.id,
-                  ),
+                  eq(messageParts.id, continuationClaim.appendableTextPart.id),
                 );
             } else if (encryptedText) {
               await tx.insert(messageParts).values({
@@ -983,9 +985,7 @@ export async function POST(
       const streamHeaders = {
         "X-Conversation-Id": conversation.id,
         "X-Message-Id": assistantMessage.id,
-        ...(userMessage
-          ? { "X-User-Message-Id": userMessage.id }
-          : {}),
+        ...(userMessage ? { "X-User-Message-Id": userMessage.id } : {}),
         "X-Request-Id": requestId,
       };
       return useAiSdkUIStream
@@ -1463,6 +1463,40 @@ export async function POST(
         }
 
         const totalUsage = await result.usage;
+        const [usageModel] = providerConfig.modelRecordId
+          ? await db
+              .select({
+                inputTokenCost: aiModels.inputTokenCost,
+                outputTokenCost: aiModels.outputTokenCost,
+                sustainabilityConfigJson: aiModels.sustainabilityConfigJson,
+              })
+              .from(aiModels)
+              .where(eq(aiModels.id, providerConfig.modelRecordId))
+              .limit(1)
+          : [];
+        const sustainability = parseSustainabilityConfig(
+          usageModel?.sustainabilityConfigJson,
+        );
+        const eventUsageImpact = calculateTokenUsageImpact({
+          inputTokens: totalUsage.inputTokens ?? 0,
+          outputTokens: totalUsage.outputTokens ?? 0,
+          inputCostPerMillion: usageModel?.inputTokenCost,
+          outputCostPerMillion: usageModel?.outputTokenCost,
+          sustainability,
+          currency: sustainability.currency,
+        });
+        const displayedUsageImpact = calculateTokenUsageImpact({
+          inputTokens:
+            (continuationClaim?.message.tokenInput ?? 0) +
+            (totalUsage.inputTokens ?? 0),
+          outputTokens:
+            (continuationClaim?.message.tokenOutput ?? 0) +
+            (totalUsage.outputTokens ?? 0),
+          inputCostPerMillion: usageModel?.inputTokenCost,
+          outputCostPerMillion: usageModel?.outputTokenCost,
+          sustainability,
+          currency: sustainability.currency,
+        });
         const assistantText = streamedParts
           .flatMap((part) =>
             part.type === "text" && "content" in part ? [part.content] : [],
@@ -1537,8 +1571,28 @@ export async function POST(
             operation: "chat",
             inputTokens: totalUsage.inputTokens || null,
             outputTokens: totalUsage.outputTokens || null,
+            costUsd:
+              eventUsageImpact.cost === null ||
+              eventUsageImpact.currency !== "USD"
+                ? null
+                : String(eventUsageImpact.cost),
             latencyMs: Date.now() - startedAt,
             status: "success",
+            metadataJson: {
+              currency: eventUsageImpact.currency,
+              cost: eventUsageImpact.cost,
+              energyKwh: eventUsageImpact.energyKwh,
+              co2Grams: eventUsageImpact.co2Grams,
+            },
+          });
+          await tx.insert(messageParts).values({
+            messageId: assistantMessage.id,
+            type: "impact",
+            contentEncrypted: await encryptValue(
+              JSON.stringify(displayedUsageImpact),
+            ),
+            metadataJson: displayedUsageImpact,
+            sortOrder: nextSortOrder,
           });
         });
         logger.info("Chat stream completed", {
@@ -1553,6 +1607,7 @@ export async function POST(
           outputTokens: totalUsage.outputTokens,
           latencyMs: Date.now() - startedAt,
         });
+        enqueueEvent({ type: "impact", impact: displayedUsageImpact });
         enqueueEvent({ type: "done" });
       } catch (error) {
         if (streamAbortController.signal.aborted) {

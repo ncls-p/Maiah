@@ -175,6 +175,7 @@ export const messagePartTypeEnum = pgEnum("message_part_type", [
   "citation",
   "citations",
   "suggestions",
+  "impact",
 ]);
 
 export const scheduledTasks = pgTable(

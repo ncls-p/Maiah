@@ -59,6 +59,10 @@ describe("chat message parts", () => {
       parts: [
         { type: "text", content: "Existing answer" },
         { type: "suggestions", content: '["Follow up"]' },
+        {
+          type: "impact",
+          content: '{"cost":0.1,"currency":"EUR"}',
+        },
       ],
     };
 

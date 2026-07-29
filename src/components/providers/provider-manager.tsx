@@ -26,6 +26,7 @@ import type {
   ProviderAuthType,
   ProviderKind,
   ProviderModel,
+  ProviderModelUpdate,
   SafeProvider,
 } from "./provider-manager/types";
 import { defaultAuthType, parsePairs } from "./provider-manager/utils";
@@ -403,6 +404,29 @@ export function ProviderManager({
     }
   }
 
+  async function updateModel(modelId: string, update: ProviderModelUpdate) {
+    if (!selectedProviderId) return;
+    setBusy(true);
+    try {
+      const res = await fetch(
+        `/api/workspace/providers/${selectedProviderId}/models/${modelId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ workspaceId, ...update }),
+        },
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || t("errorUpdateModel"));
+      toast.success(t("toastModelUpdated"));
+      await loadModelsForProvider(selectedProviderId);
+    } catch (error) {
+      toast.error((error as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function deleteModel(modelId: string) {
     if (!selectedProviderId) return;
     setBusy(true);
@@ -472,6 +496,7 @@ export function ProviderManager({
           onUpdateModelLogo={(modelId: string, logoUrl: string | null) =>
             void updateModelLogo(modelId, logoUrl)
           }
+          onUpdateModel={(modelId, update) => void updateModel(modelId, update)}
           onCreateModel={() => void createManualModel()}
           onDeleteModel={setDeleteModelId}
           onModelSearchChange={setModelSearch}

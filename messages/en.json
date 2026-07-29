@@ -673,7 +673,7 @@
         },
         "visuals": {
           "title": "Visual outputs",
-          "description": "Render HTML previews, slide decks, and color conversions for polished deliverables."
+          "description": "Generate images, render HTML previews, build slide decks, and convert colors."
         },
         "other": {
           "title": "Other tools",
@@ -994,6 +994,9 @@
       "addDialogDescription": "Enter only the name, URL, and API key. Everything else is optional.",
       "providerName": "Name",
       "providerNamePlaceholder": "Production OpenAI…",
+      "cloudTemplePreset": "Cloud Temple",
+      "cloudTemplePresetHint": "Official URL and compatible API settings in one click.",
+      "usePreset": "Use preset",
       "serviceUrl": "Service URL",
       "serviceUrlPlaceholder": "https://api.openai.com/v1…",
       "serviceUrlHint": "Complete API prefix; custom paths such as /v1 or /openai are preserved.",
@@ -1029,6 +1032,7 @@
       "errorCreateModel": "Failed to add model",
       "errorDiscoverModels": "Failed to discover models",
       "errorUpdateModelLogo": "Failed to update model logo",
+      "errorUpdateModel": "Failed to update model configuration",
       "errorDeleteModel": "Failed to remove model",
       "toastProviderConnected": "Connection added",
       "toastConnectionUpdated": "Connection updated",
@@ -1039,6 +1043,24 @@
       "toastDiscoveredModels": "{count, plural, one {# model discovered} other {# models discovered}}",
       "toastLogoAssigned": "Logo added",
       "toastLogoRemoved": "Logo removed",
+      "toastModelUpdated": "Model configuration saved",
+      "editModel": "Configure model",
+      "currency": "Currency",
+      "inputCost": "Input cost / million tokens",
+      "outputCost": "Output cost / million tokens",
+      "modelEnabled": "Model enabled",
+      "imageGeneration": "Image generation",
+      "defaultImageModel": "Default image model",
+      "defaultImageSize": "Default size",
+      "allowedImageSizes": "Allowed sizes (comma separated)",
+      "costPerImage": "Cost per image",
+      "energyPerImage": "Energy per image (kWh)",
+      "co2PerImage": "CO₂ per image (gCO₂e)",
+      "energyPerMillionTokens": "Energy / million tokens (kWh)",
+      "co2PerMillionTokens": "CO₂ / million tokens (gCO₂e)",
+      "metricSource": "Initial value from: {source}. You can override it.",
+      "cancel": "Cancel",
+      "saveModel": "Save model",
       "toastModelRemoved": "Model removed"
     }
   },

@@ -1,10 +1,12 @@
 import {
   ImagePlusIcon,
+  PencilIcon,
   PlusIcon,
   SearchIcon,
   Trash2Icon,
   XIcon,
 } from "lucide-react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
@@ -16,8 +18,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
 import { ModelLogo } from "@/components/providers/model-logo";
+import { ModelConfigDialog } from "./model-config-dialog";
 import { ModelCapabilities } from "./provider-shared";
-import type { ProviderModel, SafeProvider } from "./types";
+import type { ProviderModel, ProviderModelUpdate, SafeProvider } from "./types";
 
 const MAX_LOGO_BYTES = 256 * 1024;
 
@@ -52,6 +55,7 @@ type ModelsPanelProps = {
   loadingProviders: boolean;
   busy: boolean;
   onUpdateModelLogo: (modelId: string, logoUrl: string | null) => void;
+  onUpdateModel: (modelId: string, update: ProviderModelUpdate) => void;
   onCreateModel: () => void;
   onDeleteModel: (modelId: string) => void;
   onModelSearchChange: (value: string) => void;
@@ -169,6 +173,7 @@ function RegisteredModelsList({
   busy,
   onModelSearchChange,
   onUpdateModelLogo,
+  onUpdateModel,
   onDeleteModel,
 }: ModelsPanelProps) {
   const t = useTranslations("providers.manager");
@@ -195,6 +200,7 @@ function RegisteredModelsList({
         loadingModels={loadingModels}
         busy={busy}
         onUpdateModelLogo={onUpdateModelLogo}
+        onUpdateModel={onUpdateModel}
         onDeleteModel={onDeleteModel}
       />
     </div>
@@ -208,6 +214,7 @@ function RegisteredModelsBody({
   loadingModels,
   busy,
   onUpdateModelLogo,
+  onUpdateModel,
   onDeleteModel,
 }: Pick<
   ModelsPanelProps,
@@ -217,6 +224,7 @@ function RegisteredModelsBody({
   | "loadingModels"
   | "busy"
   | "onUpdateModelLogo"
+  | "onUpdateModel"
   | "onDeleteModel"
 >) {
   const t = useTranslations("providers.manager");
@@ -253,6 +261,7 @@ function RegisteredModelsBody({
           model={model}
           busy={busy}
           onUpdateModelLogo={onUpdateModelLogo}
+          onUpdateModel={onUpdateModel}
           onDeleteModel={onDeleteModel}
         />
       ))}
@@ -264,15 +273,18 @@ function RegisteredModelRow({
   model,
   busy,
   onUpdateModelLogo,
+  onUpdateModel,
   onDeleteModel,
 }: {
   model: ProviderModel;
   busy: boolean;
   onUpdateModelLogo: (modelId: string, logoUrl: string | null) => void;
+  onUpdateModel: (modelId: string, update: ProviderModelUpdate) => void;
   onDeleteModel: (modelId: string) => void;
 }) {
   const t = useTranslations("providers.manager");
   const modelLabel = model.displayName || model.modelId;
+  const [editing, setEditing] = useState(false);
 
   async function handleLogoChange(file: File | undefined) {
     if (!file) return;
@@ -302,9 +314,43 @@ function RegisteredModelRow({
             outputTokenCost={model.outputTokenCost}
             enabled={model.enabled}
           />
+          <div className="mt-1 flex flex-wrap gap-1 text-[10px] text-muted-foreground">
+            {model.imageGenerationConfigJson?.enabled ||
+            model.capabilitiesJson?.imageGeneration ? (
+              <span className="rounded bg-muted px-1.5 py-0.5">
+                {t("imageGeneration")}
+                {model.imageGenerationConfigJson?.isDefault
+                  ? ` · ${t("defaultImageModel")}`
+                  : ""}
+              </span>
+            ) : null}
+            {model.sustainabilityConfigJson?.energyKwhPerMillionTokens !==
+            undefined ? (
+              <span className="rounded bg-muted px-1.5 py-0.5">
+                {model.sustainabilityConfigJson.energyKwhPerMillionTokens} kWh/M
+                tokens
+              </span>
+            ) : null}
+            {model.sustainabilityConfigJson?.co2GramsPerMillionTokens !==
+            undefined ? (
+              <span className="rounded bg-muted px-1.5 py-0.5">
+                {model.sustainabilityConfigJson.co2GramsPerMillionTokens}{" "}
+                gCO₂e/M tokens
+              </span>
+            ) : null}
+          </div>
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+        <Button
+          size="icon-xs"
+          variant="ghost"
+          aria-label={t("editModel")}
+          disabled={busy}
+          onClick={() => setEditing(true)}
+        >
+          <PencilIcon className="size-3.5" aria-hidden="true" />
+        </Button>
         <input
           id={`model-logo-${model.id}`}
           type="file"
@@ -350,6 +396,17 @@ function RegisteredModelRow({
           <Trash2Icon className="size-3.5" aria-hidden="true" />
         </Button>
       </div>
+      <ModelConfigDialog
+        key={`${model.id}:${editing}`}
+        model={model}
+        open={editing}
+        busy={busy}
+        onOpenChange={setEditing}
+        onSave={(update) => {
+          onUpdateModel(model.id, update);
+          setEditing(false);
+        }}
+      />
     </div>
   );
 }

@@ -10,6 +10,10 @@ import {
   getProviderById,
   updateModel,
 } from "@/modules/provider/use-cases";
+import {
+  imageGenerationConfigSchema,
+  sustainabilityConfigSchema,
+} from "@/modules/provider/model-runtime-config";
 
 const paramsSchema = z.object({
   providerId: z.uuid(),
@@ -34,6 +38,8 @@ const updateModelSchema = z.object({
   maxOutputTokens: z.number().int().positive().optional(),
   inputTokenCost: z.string().optional(),
   outputTokenCost: z.string().optional(),
+  imageGenerationConfigJson: imageGenerationConfigSchema.nullable().optional(),
+  sustainabilityConfigJson: sustainabilityConfigSchema.nullable().optional(),
   enabled: z.boolean().optional(),
 });
 

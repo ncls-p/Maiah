@@ -67,6 +67,34 @@ export type HtmlArtifactOutput = {
   height: number;
 };
 
+export type GeneratedImageOutput = {
+  kind: "generated_image";
+  attachment: ChatImageAttachment;
+  prompt: string;
+  size: string;
+  provider: string;
+  model: string;
+  impact: {
+    cost: number | null;
+    currency: string;
+    energyKwh: number | null;
+    co2Grams: number | null;
+  };
+};
+
+export function isGeneratedImageOutput(
+  value: unknown,
+): value is GeneratedImageOutput {
+  if (typeof value !== "object" || value === null) return false;
+  const record = value as Record<string, unknown>;
+  return (
+    record.kind === "generated_image" &&
+    isChatImageAttachmentOutput(record.attachment) &&
+    typeof record.prompt === "string" &&
+    typeof record.model === "string"
+  );
+}
+
 export function isHtmlArtifactOutput(
   value: unknown,
 ): value is HtmlArtifactOutput {
@@ -112,6 +140,7 @@ export function toolPartHasStandaloneRendering(part: ChatMessagePart) {
   return Boolean(
     codeSandboxOutputFromUnknown(parsed.output) ||
     isHtmlArtifactOutput(parsed.output) ||
+    isGeneratedImageOutput(parsed.output) ||
     isCodeWorkspaceArtifactOutput(parsed.output) ||
     isGitHubPublishOutput(parsed.output) ||
     htmlArtifactFromToolInput(parsed.input) ||
