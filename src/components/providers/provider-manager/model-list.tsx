@@ -2,6 +2,7 @@ import {
   ImagePlusIcon,
   PencilIcon,
   PlusIcon,
+  RefreshCwIcon,
   SearchIcon,
   Trash2Icon,
   XIcon,
@@ -20,7 +21,12 @@ import { cn } from "@/lib/utils";
 import { ModelLogo } from "@/components/providers/model-logo";
 import { ModelConfigDialog } from "./model-config-dialog";
 import { ModelCapabilities } from "./provider-shared";
-import type { ProviderModel, ProviderModelUpdate, SafeProvider } from "./types";
+import type {
+  DiscoveredModel,
+  ProviderModel,
+  ProviderModelUpdate,
+  SafeProvider,
+} from "./types";
 
 const MAX_LOGO_BYTES = 256 * 1024;
 
@@ -48,15 +54,18 @@ type ModelsPanelProps = {
   providers: SafeProvider[];
   models: ProviderModel[];
   filteredModels: ProviderModel[];
+  discoveredModels: DiscoveredModel[];
   modelSearch: string;
   manualModelId: string;
   manualModelName: string;
   loadingModels: boolean;
   loadingProviders: boolean;
   busy: boolean;
+  onDiscoverModels: () => void;
   onUpdateModelLogo: (modelId: string, logoUrl: string | null) => void;
   onUpdateModel: (modelId: string, update: ProviderModelUpdate) => void;
-  onCreateModel: () => void;
+  onCreateModel: (model?: DiscoveredModel) => void;
+  onCreateAllModels: (models: DiscoveredModel[]) => void;
   onDeleteModel: (modelId: string) => void;
   onModelSearchChange: (value: string) => void;
   onManualModelIdChange: (value: string) => void;
@@ -77,6 +86,7 @@ export function ModelsPanel(props: ModelsPanelProps) {
         >
           <ManualModelForm {...props} />
         </AdvancedSection>
+        <DiscoveredModelsList {...props} />
         <RegisteredModelsList {...props} />
       </section>
     );
@@ -93,10 +103,14 @@ export function ModelsPanel(props: ModelsPanelProps) {
   return null;
 }
 
-function ModelsHeader({ selectedProvider }: ModelsPanelProps) {
+function ModelsHeader({
+  selectedProvider,
+  busy,
+  onDiscoverModels,
+}: ModelsPanelProps) {
   const t = useTranslations("providers.manager");
   return (
-    <div className="border-b px-5 py-4">
+    <div className="flex flex-col gap-3 border-b px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
       <div>
         <h3 className="text-base font-semibold">{t("models")}</h3>
         <p className="text-sm text-muted-foreground">
@@ -108,6 +122,15 @@ function ModelsHeader({ selectedProvider }: ModelsPanelProps) {
           {t("modelsLoadedAutomatically")}
         </p>
       </div>
+      <Button
+        size="sm"
+        variant="outline"
+        disabled={busy}
+        onClick={onDiscoverModels}
+      >
+        <RefreshCwIcon aria-hidden="true" />
+        {t("discoverModels")}
+      </Button>
     </div>
   );
 }
@@ -155,12 +178,127 @@ function ManualModelForm({
         <Button
           size="sm"
           disabled={busy || !manualModelId}
-          onClick={onCreateModel}
+          onClick={() => onCreateModel()}
         >
           <PlusIcon className="size-4" aria-hidden="true" />
           {t("addModel")}
         </Button>
       </div>
+    </div>
+  );
+}
+
+function DiscoveredModelsList({
+  discoveredModels,
+  models,
+  busy,
+  onCreateModel,
+  onCreateAllModels,
+}: ModelsPanelProps) {
+  const t = useTranslations("providers.manager");
+  const [search, setSearch] = useState("");
+  if (discoveredModels.length === 0) return null;
+
+  const registeredIds = new Set(models.map((model) => model.modelId));
+  const availableModels = discoveredModels.filter(
+    (model) => !registeredIds.has(model.modelId),
+  );
+  const query = search.trim().toLowerCase();
+  const filtered = discoveredModels.filter(
+    (model) =>
+      !query ||
+      model.modelId.toLowerCase().includes(query) ||
+      (model.displayName ?? "").toLowerCase().includes(query),
+  );
+
+  return (
+    <div className="border-b bg-muted/15 p-4">
+      <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-sm font-medium">
+            {t("discoveredModels", { count: discoveredModels.length })}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {t("discoveredModelsHint")}
+          </p>
+        </div>
+        <Button
+          size="sm"
+          disabled={busy || availableModels.length === 0}
+          onClick={() => onCreateAllModels(availableModels)}
+        >
+          <PlusIcon aria-hidden="true" />
+          {t("addAllModels", { count: availableModels.length })}
+        </Button>
+      </div>
+      <div className="relative mb-3">
+        <SearchIcon className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          aria-label={t("filterDiscoveredModels")}
+          name="discovered-model-search"
+          autoComplete="off"
+          placeholder={t("filterDiscoveredModels")}
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          className="h-8 pl-9 text-sm"
+        />
+      </div>
+      <div className="max-h-80 overflow-y-auto rounded-lg border bg-background">
+        {filtered.length === 0 ? (
+          <p className="p-6 text-center text-sm text-muted-foreground">
+            {t("noModelMatch", { query: search })}
+          </p>
+        ) : (
+          filtered.map((model) => {
+            const alreadyRegistered = registeredIds.has(model.modelId);
+            return (
+              <div
+                key={model.modelId}
+                className={cn(
+                  "flex items-start justify-between gap-3 border-b px-3 py-2.5 last:border-b-0",
+                  alreadyRegistered ? "opacity-60" : "hover:bg-muted/30",
+                )}
+              >
+                <DiscoveredModelInfo model={model} />
+                <Button
+                  size="xs"
+                  variant="outline"
+                  disabled={busy || alreadyRegistered}
+                  onClick={() => onCreateModel(model)}
+                >
+                  {alreadyRegistered ? t("alreadyAdded") : t("addModel")}
+                </Button>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
+function DiscoveredModelInfo({ model }: { model: DiscoveredModel }) {
+  return (
+    <div className="min-w-0">
+      <p className="truncate text-sm font-medium">
+        {model.displayName || model.modelId}
+      </p>
+      <p className="truncate font-mono text-xs text-muted-foreground">
+        {model.modelId}
+      </p>
+      {model.description ? (
+        <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+          {model.description}
+        </p>
+      ) : null}
+      <ModelCapabilities
+        capabilities={model.capabilities}
+        contextWindow={model.contextWindow}
+        maxOutputTokens={model.maxOutputTokens}
+        inputTokenCost={model.inputTokenCost}
+        outputTokenCost={model.outputTokenCost}
+        hostedBy={model.hostedBy}
+      />
     </div>
   );
 }

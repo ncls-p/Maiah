@@ -86,4 +86,6 @@ export type DiscoveredModel = {
   maxOutputTokens?: number;
   inputTokenCost?: string;
   outputTokenCost?: string;
+  imageGeneration?: ProviderModel["imageGenerationConfigJson"];
+  sustainability?: ProviderModel["sustainabilityConfigJson"];
 };

@@ -39,16 +39,91 @@ test.describe("providers page", () => {
 		}
 	});
 
-	test("does not require separate test or discovery actions", async ({
-		page,
-	}) => {
-		await page.goto("/en/providers");
+	test("discovers and adds provider models after setup", async ({ page }) => {
+		const workspacesResponse = await page.request.get("/api/workspaces");
+		expect(workspacesResponse.ok()).toBe(true);
+		const workspaces = (await workspacesResponse.json()) as Array<{
+			workspace: { id: string };
+		}>;
+		const workspaceId = workspaces[0]?.workspace.id;
+		if (!workspaceId) throw new Error("E2E workspace is missing");
 
-		await expect(
-			page.getByRole("button", {
-				name: /Discover models|Test connection/i,
-			}),
-		).toHaveCount(0);
+		let providerId: string | undefined;
+		try {
+			const createResponse = await page.request.post(
+				"/api/workspace/providers",
+				{
+					data: {
+						workspaceId,
+						kind: "native",
+						name: `Discovery E2E ${Date.now()}`,
+						authType: "bearer",
+					},
+				},
+			);
+			expect(createResponse.status()).toBe(201);
+			providerId = ((await createResponse.json()) as { id: string }).id;
+
+			await page.route(
+				(url) =>
+					url.pathname === `/api/workspace/providers/${providerId}/models` &&
+					url.searchParams.get("action") === "discover",
+				async (route) => {
+					await route.fulfill({
+						status: 200,
+						contentType: "application/json",
+						body: JSON.stringify([
+							{
+								modelId: "e2e-discovered-text",
+								displayName: "Discovered text model",
+								capabilities: { text: true },
+							},
+							{
+								modelId: "e2e-discovered-image",
+								displayName: "Discovered image model",
+								capabilities: { text: true, imageGeneration: true },
+							},
+						]),
+					});
+				},
+			);
+
+			await page.goto("/en/providers");
+			await page
+				.getByText(/Discovery E2E/)
+				.first()
+				.click();
+			await page
+				.getByRole("button", { name: "Discover models", exact: true })
+				.click();
+
+			await expect(
+				page.getByText("Discovered (2)", { exact: true }),
+			).toBeVisible();
+			await page
+				.getByRole("button", { name: "Add all (2)", exact: true })
+				.click();
+
+			await expect(
+				page.getByRole("button", { name: "Add all (0)", exact: true }),
+			).toBeDisabled();
+			const modelsResponse = await page.request.get(
+				`/api/workspace/providers/${providerId}/models?workspaceId=${workspaceId}`,
+			);
+			expect(modelsResponse.ok()).toBe(true);
+			const models = (await modelsResponse.json()) as Array<{
+				modelId: string;
+			}>;
+			expect(models.map((model) => model.modelId)).toEqual(
+				expect.arrayContaining(["e2e-discovered-text", "e2e-discovered-image"]),
+			);
+		} finally {
+			if (providerId) {
+				await page.request.delete(
+					`/api/workspace/providers/${providerId}?workspaceId=${workspaceId}`,
+				);
+			}
+		}
 	});
 
 	test("defaults OpenAI-compatible connections to the Responses API", async ({

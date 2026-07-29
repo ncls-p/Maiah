@@ -9,6 +9,7 @@ import {
 import { hasResourcePermissionForRequest } from "@/modules/auth/workspace-access";
 import {
   createModel,
+  discoverModels,
   getProviderById,
   listModels,
 } from "@/modules/provider/use-cases";
@@ -57,6 +58,25 @@ export async function GET(
       }
       const { providerId } = parsedParams.data;
       const { workspaceId } = parsedQuery.data;
+      const action = searchParams.get("action");
+      if (action === "discover") {
+        const forbidden = await requireResourcePermissionAsync(
+          session.user.id,
+          workspaceId,
+          "models.sync",
+          "provider",
+          providerId,
+        );
+        if (forbidden) return forbidden;
+        const provider = await getProviderById(providerId, workspaceId);
+        if (!provider) {
+          return NextResponse.json(
+            { error: "Provider not found" },
+            { status: 404 },
+          );
+        }
+        return NextResponse.json(await discoverModels(providerId, workspaceId));
+      }
       const scopeForbidden = await requireRequestPermissionScopeAsync(
         session.user.id,
         workspaceId,
