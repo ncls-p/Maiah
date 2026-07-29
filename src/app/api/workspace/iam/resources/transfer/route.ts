@@ -6,12 +6,16 @@ import {
   executeResourceTransfer,
   listResourceTransferDestinations,
   previewResourceTransfer,
+  RESOURCE_TRANSFER_ROOT_TYPES,
   TRANSFER_ACCESS_POLICIES,
   TRANSFER_OWNERSHIP_POLICIES,
   TRANSFER_SECRET_POLICIES,
 } from "@/modules/iam/resource-transfer";
 import { IamOperationError } from "@/modules/iam/use-cases";
-import { ACCESS_RESOURCE_TYPES } from "@/server/domain/entities/access-resource";
+import {
+  executeWorkspaceClone,
+  previewWorkspaceClone,
+} from "@/modules/iam/workspace-clone";
 
 const optionsSchema = z.object({
   includeDependencies: z.boolean(),
@@ -25,16 +29,18 @@ const transferSchema = z.discriminatedUnion("action", [
     action: z.literal("preview"),
     sourceWorkspaceId: z.uuid(),
     targetWorkspaceId: z.uuid(),
-    resourceType: z.enum(ACCESS_RESOURCE_TYPES),
+    resourceType: z.enum(RESOURCE_TRANSFER_ROOT_TYPES),
     resourceId: z.uuid(),
+    mode: z.enum(["move", "clone"]).default("move"),
     options: optionsSchema,
   }),
   z.object({
     action: z.literal("execute"),
     sourceWorkspaceId: z.uuid(),
     targetWorkspaceId: z.uuid(),
-    resourceType: z.enum(ACCESS_RESOURCE_TYPES),
+    resourceType: z.enum(RESOURCE_TRANSFER_ROOT_TYPES),
     resourceId: z.uuid(),
+    mode: z.enum(["move", "clone"]).default("move"),
     options: optionsSchema,
     confirmationToken: z.string().length(64),
   }),
@@ -90,11 +96,50 @@ export async function POST(req: NextRequest) {
         );
       }
       if (parsed.data.action === "preview") {
+        if (
+          parsed.data.mode === "clone" &&
+          parsed.data.resourceType === "workspace"
+        ) {
+          return NextResponse.json(
+            await previewWorkspaceClone({
+              actorUserId: session.user.id,
+              sourceWorkspaceId: parsed.data.sourceWorkspaceId,
+              targetWorkspaceId: parsed.data.targetWorkspaceId,
+              secretPolicy: parsed.data.options.secretPolicy,
+            }),
+          );
+        }
+        if (parsed.data.mode === "clone") {
+          return NextResponse.json(
+            { error: "Cloning is available for a complete project" },
+            { status: 400 },
+          );
+        }
         return NextResponse.json(
           await previewResourceTransfer({
             actorUserId: session.user.id,
             ...parsed.data,
           }),
+        );
+      }
+      if (
+        parsed.data.mode === "clone" &&
+        parsed.data.resourceType === "workspace"
+      ) {
+        return NextResponse.json(
+          await executeWorkspaceClone({
+            actorUserId: session.user.id,
+            sourceWorkspaceId: parsed.data.sourceWorkspaceId,
+            targetWorkspaceId: parsed.data.targetWorkspaceId,
+            secretPolicy: parsed.data.options.secretPolicy,
+            confirmationToken: parsed.data.confirmationToken,
+          }),
+        );
+      }
+      if (parsed.data.mode === "clone") {
+        return NextResponse.json(
+          { error: "Cloning is available for a complete project" },
+          { status: 400 },
         );
       }
       return NextResponse.json(

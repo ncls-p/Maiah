@@ -250,7 +250,7 @@ describe("sandbox-runner", () => {
 		const result = await requestRun({
 			language: "node",
 			code: [
-				"console.error('x'.repeat(70_000));",
+				"require('node:fs').writeSync(2, 'x'.repeat(70_000));",
 				"throw new TypeError('real sandbox failure');",
 			].join("\n"),
 		});

@@ -13,10 +13,20 @@ import {
   previewMemberTransfer,
 } from "@/modules/iam/member-transfer";
 import {
+  executeOrganizationClone,
+  executeOrganizationTransfer,
+  previewOrganizationClone,
+  previewOrganizationTransfer,
+} from "@/modules/iam/organization-transfer";
+import {
   executeResourceTransfer,
   listResourceTransferDestinations,
   previewResourceTransfer,
 } from "@/modules/iam/resource-transfer";
+import {
+  executeWorkspaceClone,
+  previewWorkspaceClone,
+} from "@/modules/iam/workspace-clone";
 import {
   addOrganizationMember,
   addTeamMember,
@@ -605,6 +615,158 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
     await db.delete(aiProviders).where(eq(aiProviders.id, provider.id));
   }, 60_000);
 
+  it("clones a complete project configuration without moving the source", async () => {
+    const cloneTarget = await createProject({
+      userId: ownerId,
+      workspaceId: firstProjectId,
+      name: `Clone target ${suffix}`,
+      slug: `clone-target-${suffix}`,
+    });
+    const [provider] = await db
+      .insert(aiProviders)
+      .values({
+        workspaceId: secondProjectId,
+        kind: "openai-compatible",
+        name: `Clone provider ${suffix}`,
+        authType: "bearer",
+        encryptedApiKey: await encryptValue("clone-secret"),
+        createdById: ownerId,
+      })
+      .returning();
+    const [model] = await db
+      .insert(aiModels)
+      .values({
+        providerId: provider.id,
+        modelId: `clone-model-${suffix}`,
+      })
+      .returning();
+    const [agent] = await db
+      .insert(agents)
+      .values({
+        workspaceId: secondProjectId,
+        name: `Clone assistant ${suffix}`,
+        slug: `clone-assistant-${suffix}`,
+        createdById: ownerId,
+      })
+      .returning();
+    const [version] = await db
+      .insert(agentVersions)
+      .values({
+        agentId: agent.id,
+        versionNumber: 1,
+        providerId: provider.id,
+        modelId: model.id,
+        createdById: ownerId,
+      })
+      .returning();
+    await db
+      .update(agents)
+      .set({ activeVersionId: version.id })
+      .where(eq(agents.id, agent.id));
+
+    const [simulationSourceBefore, simulationTargetBefore] = await Promise.all([
+      db
+        .select({ id: agents.id, workspaceId: agents.workspaceId })
+        .from(agents)
+        .where(eq(agents.workspaceId, secondProjectId)),
+      db
+        .select({ id: agents.id, workspaceId: agents.workspaceId })
+        .from(agents)
+        .where(eq(agents.workspaceId, cloneTarget.id)),
+    ]);
+    const preview = await previewWorkspaceClone({
+      actorUserId: ownerId,
+      sourceWorkspaceId: secondProjectId,
+      targetWorkspaceId: cloneTarget.id,
+      secretPolicy: "disable",
+    });
+    const [simulationSourceAfter, simulationTargetAfter] = await Promise.all([
+      db
+        .select({ id: agents.id, workspaceId: agents.workspaceId })
+        .from(agents)
+        .where(eq(agents.workspaceId, secondProjectId)),
+      db
+        .select({ id: agents.id, workspaceId: agents.workspaceId })
+        .from(agents)
+        .where(eq(agents.workspaceId, cloneTarget.id)),
+    ]);
+    expect(simulationSourceAfter).toEqual(simulationSourceBefore);
+    expect(simulationTargetAfter).toEqual(simulationTargetBefore);
+    expect(preview.counts.providers).toBeGreaterThanOrEqual(1);
+    expect(preview.counts.models).toBeGreaterThanOrEqual(1);
+    expect(preview.counts.assistants).toBeGreaterThanOrEqual(1);
+    await expect(
+      executeWorkspaceClone({
+        actorUserId: ownerId,
+        sourceWorkspaceId: secondProjectId,
+        targetWorkspaceId: cloneTarget.id,
+        secretPolicy: "keep",
+        confirmationToken: preview.confirmationToken,
+      }),
+    ).rejects.toMatchObject({
+      status: 409,
+      message: expect.stringContaining("changed"),
+    });
+    const targetAfterRejectedSimulation = await db
+      .select({ id: agents.id })
+      .from(agents)
+      .where(eq(agents.workspaceId, cloneTarget.id));
+    expect(targetAfterRejectedSimulation).toEqual(simulationTargetBefore);
+    await executeWorkspaceClone({
+      actorUserId: ownerId,
+      sourceWorkspaceId: secondProjectId,
+      targetWorkspaceId: cloneTarget.id,
+      secretPolicy: "disable",
+      confirmationToken: preview.confirmationToken,
+    });
+
+    const [sourceAgent] = await db
+      .select()
+      .from(agents)
+      .where(eq(agents.id, agent.id));
+    const [clonedAgent] = await db
+      .select()
+      .from(agents)
+      .where(
+        and(
+          eq(agents.workspaceId, cloneTarget.id),
+          eq(agents.forkedFromAgentId, agent.id),
+        ),
+      );
+    const [clonedProvider] = await db
+      .select()
+      .from(aiProviders)
+      .where(
+        and(
+          eq(aiProviders.workspaceId, cloneTarget.id),
+          eq(aiProviders.name, provider.name),
+        ),
+      );
+    expect(sourceAgent.workspaceId).toBe(secondProjectId);
+    expect(clonedAgent).toBeDefined();
+    expect(clonedProvider).toMatchObject({
+      enabled: false,
+      encryptedApiKey: null,
+    });
+
+    const targetAgents = await db
+      .select({ id: agents.id })
+      .from(agents)
+      .where(eq(agents.workspaceId, cloneTarget.id));
+    if (targetAgents.length > 0) {
+      await db.delete(agentVersions).where(
+        inArray(
+          agentVersions.agentId,
+          targetAgents.map(({ id }) => id),
+        ),
+      );
+    }
+    await db.delete(workspaces).where(eq(workspaces.id, cloneTarget.id));
+    await db.delete(agentVersions).where(eq(agentVersions.id, version.id));
+    await db.delete(agents).where(eq(agents.id, agent.id));
+    await db.delete(aiProviders).where(eq(aiProviders.id, provider.id));
+  }, 60_000);
+
   it("previews and atomically adds or moves members in bulk", async () => {
     await addOrganizationMember({
       actorUserId: ownerId,
@@ -997,6 +1159,112 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
         .delete(conversations)
         .where(eq(conversations.id, conversationId));
     }
+  }, 60_000);
+
+  it("clones and then moves a complete organization atomically", async () => {
+    const sourceProject = await createOrganizationWithProject({
+      userId: ownerId,
+      organizationName: `Migration source ${suffix}`,
+      organizationSlug: `migration-source-${suffix}`,
+      projectName: "Source project",
+      projectSlug: "source-project",
+    });
+    const targetProject = await createOrganizationWithProject({
+      userId: ownerId,
+      organizationName: `Migration target ${suffix}`,
+      organizationSlug: `migration-target-${suffix}`,
+      projectName: "Target project",
+      projectSlug: "target-project",
+    });
+    const [sourceScope, targetScope] = await Promise.all([
+      db
+        .select({ organizationId: workspaces.organizationId })
+        .from(workspaces)
+        .where(eq(workspaces.id, sourceProject.id))
+        .then((rows) => rows[0]),
+      db
+        .select({ organizationId: workspaces.organizationId })
+        .from(workspaces)
+        .where(eq(workspaces.id, targetProject.id))
+        .then((rows) => rows[0]),
+    ]);
+    organizationIds.push(
+      sourceScope.organizationId,
+      targetScope.organizationId,
+    );
+
+    const [sourceProjectsBeforeSimulation, targetProjectsBeforeSimulation] =
+      await Promise.all([
+        db
+          .select({ id: workspaces.id })
+          .from(workspaces)
+          .where(eq(workspaces.organizationId, sourceScope.organizationId)),
+        db
+          .select({ id: workspaces.id })
+          .from(workspaces)
+          .where(eq(workspaces.organizationId, targetScope.organizationId)),
+      ]);
+    const clonePreview = await previewOrganizationClone({
+      actorUserId: ownerId,
+      sourceWorkspaceId: sourceProject.id,
+      targetOrganizationId: targetScope.organizationId,
+      secretPolicy: "disable",
+    });
+    const [sourceProjectsAfterSimulation, targetProjectsAfterSimulation] =
+      await Promise.all([
+        db
+          .select({ id: workspaces.id })
+          .from(workspaces)
+          .where(eq(workspaces.organizationId, sourceScope.organizationId)),
+        db
+          .select({ id: workspaces.id })
+          .from(workspaces)
+          .where(eq(workspaces.organizationId, targetScope.organizationId)),
+      ]);
+    expect(sourceProjectsAfterSimulation).toEqual(
+      sourceProjectsBeforeSimulation,
+    );
+    expect(targetProjectsAfterSimulation).toEqual(
+      targetProjectsBeforeSimulation,
+    );
+    expect(clonePreview.counts.projects).toBe(1);
+    await executeOrganizationClone({
+      actorUserId: ownerId,
+      sourceWorkspaceId: sourceProject.id,
+      targetOrganizationId: targetScope.organizationId,
+      secretPolicy: "disable",
+      confirmationToken: clonePreview.confirmationToken,
+    });
+    const clonedProjects = await db
+      .select({ name: workspaces.name })
+      .from(workspaces)
+      .where(eq(workspaces.organizationId, targetScope.organizationId));
+    expect(clonedProjects.map(({ name }) => name)).toContain(
+      "Source project (copy)",
+    );
+
+    const movePreview = await previewOrganizationTransfer({
+      actorUserId: ownerId,
+      sourceWorkspaceId: sourceProject.id,
+      targetOrganizationId: targetScope.organizationId,
+    });
+    expect(movePreview.blockers).toEqual([]);
+    await executeOrganizationTransfer({
+      actorUserId: ownerId,
+      sourceWorkspaceId: sourceProject.id,
+      targetOrganizationId: targetScope.organizationId,
+      confirmationToken: movePreview.confirmationToken,
+    });
+    const remainingSourceProjects = await db
+      .select({ id: workspaces.id })
+      .from(workspaces)
+      .where(eq(workspaces.organizationId, sourceScope.organizationId));
+    const [movedSourceProject] = await db
+      .select({ organizationId: workspaces.organizationId })
+      .from(workspaces)
+      .where(eq(workspaces.id, sourceProject.id));
+    expect(remainingSourceProjects).toHaveLength(0);
+    expect(movedSourceProject.organizationId).toBe(targetScope.organizationId);
   }, 60_000);
 
   it("rejects privilege escalation and cross-organization identifiers", async () => {

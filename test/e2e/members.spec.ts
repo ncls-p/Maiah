@@ -140,6 +140,40 @@ test.describe("members page", () => {
     ).toBeEnabled();
   });
 
+  test("previews a complete project clone from the unified workflow", async ({
+    page,
+  }) => {
+    await ensureE2ETransferScenario();
+    await page.goto("/en/members");
+    const activeProject = page.getByRole("combobox", {
+      name: "Active project",
+    });
+    if (!(await activeProject.textContent())?.includes("Maiah")) {
+      await activeProject.click();
+      await page.getByRole("option", { name: "Maiah", exact: true }).click();
+    }
+    await page.getByRole("tab", { name: "Resources" }).click();
+    await page
+      .getByRole("button", { name: "Move or clone everything" })
+      .click();
+
+    const dialog = page.getByRole("dialog", {
+      name: "Move or clone a complete scope",
+    });
+    const selects = dialog.getByRole("combobox");
+    await selects.nth(1).click();
+    await page.getByRole("option", { name: "Clone", exact: true }).click();
+    await dialog
+      .getByPlaceholder("Type an organization or project name…")
+      .fill("Transfer destination");
+    await dialog.getByRole("button", { name: /Transfer destination/ }).click();
+    await dialog.getByRole("button", { name: "Review transfer" }).click();
+    await expect(
+      dialog.getByRole("button", { name: "Clone everything" }),
+    ).toBeEnabled({ timeout: 10_000 });
+    await expect(dialog.getByText(/Scheduled tasks/).first()).toBeVisible();
+  });
+
   test("deletes any governed resource from the resource table", async ({
     page,
   }) => {

@@ -35,13 +35,18 @@ export default defineConfig({
 				// depends on GitHub, n8n/MCP, AI provider, and DB workflow permutations.
 				"src/modules/agent/use-cases.ts",
 				"src/modules/chat/automation.ts",
+				"src/modules/chat/continuation.ts",
 				"src/modules/custom-tools/use-cases.ts",
 				"src/modules/github/publishing.ts",
+				"src/modules/tool/code-sandbox.ts",
 				// Hierarchical IAM is database orchestration with organization/project
 				// invariants covered by the dedicated PostgreSQL integration suite and E2E.
 				"src/modules/iam/resource-transfer.ts",
 				"src/modules/iam/resource-deletion.ts",
+				"src/modules/iam/member-transfer.ts",
+				"src/modules/iam/organization-transfer.ts",
 				"src/modules/iam/use-cases.ts",
+				"src/modules/iam/workspace-clone.ts",
 				"src/modules/knowledge/use-cases.ts",
 				// The OpenAI proxy boundary is exercised end-to-end with the official SDK.
 				// These files coordinate request auth, database/provider resolution, quotas,
