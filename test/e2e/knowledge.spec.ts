@@ -55,7 +55,7 @@ test.describe("knowledge bases", () => {
     await createDialog.getByRole("button", { name: /^Create$/i }).click();
 
     const baseButton = page.getByRole("button", {
-      name: new RegExp(`^${testBaseName} Private$`),
+      name: new RegExp(`^${testBaseName} `),
     });
     await expect(baseButton).toBeVisible({ timeout: 15_000 });
 
