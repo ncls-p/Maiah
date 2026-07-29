@@ -98,6 +98,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { ScopeMigrationDialog } from "@/components/iam/scope-migration-dialog";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { fetchJson } from "@/lib/api-client";
 import { buildAccessPeople } from "@/modules/iam/access-view-model";
@@ -706,6 +707,11 @@ function ResourceAccessPanel({
       <CardHeader>
         <CardTitle>{t("resourcesTitle")}</CardTitle>
         <CardDescription>{t("resourcesDescription")}</CardDescription>
+        {canManageResources ? (
+          <CardAction>
+            <ScopeMigrationDialog workspaceId={workspaceId} />
+          </CardAction>
+        ) : null}
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <div className="grid gap-3 sm:grid-cols-[15rem_minmax(16rem,1fr)]">

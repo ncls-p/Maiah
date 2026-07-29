@@ -4,7 +4,10 @@ import { and, eq, inArray, isNull } from "drizzle-orm";
 
 import { audit } from "@/server/domain/services/audit";
 import { authorization } from "@/server/domain/services/authorization";
-import type { AccessResourceType } from "@/server/domain/entities/access-resource";
+import {
+  ACCESS_RESOURCE_TYPES,
+  type AccessResourceType,
+} from "@/server/domain/entities/access-resource";
 import { db } from "@/server/infrastructure/db";
 import { findAccessResource } from "@/server/infrastructure/db/access-resource-repository";
 import {
@@ -47,6 +50,7 @@ import {
   workflowRuns,
   workflows,
   workspaces,
+  workspaceMembers,
 } from "@/server/infrastructure/db/schema";
 import { getWorkspacesByUserId } from "@/modules/workspace/use-cases";
 
@@ -60,6 +64,12 @@ export type TransferAccessPolicy = (typeof TRANSFER_ACCESS_POLICIES)[number];
 export type TransferOwnershipPolicy =
   (typeof TRANSFER_OWNERSHIP_POLICIES)[number];
 export type TransferSecretPolicy = (typeof TRANSFER_SECRET_POLICIES)[number];
+export const RESOURCE_TRANSFER_ROOT_TYPES = [
+  ...ACCESS_RESOURCE_TYPES,
+  "workspace",
+] as const;
+export type ResourceTransferRootType =
+  (typeof RESOURCE_TRANSFER_ROOT_TYPES)[number];
 
 export type ResourceTransferOptions = {
   includeDependencies: boolean;
@@ -93,6 +103,7 @@ export type ResourceTransferPreview = {
   warnings: string[];
   blockers: string[];
   directAssignments: { kept: number; removed: number };
+  members: { moved: number };
   secrets: { affected: number; policy: TransferSecretPolicy };
   confirmationToken: string;
 };
@@ -200,10 +211,81 @@ export async function listResourceTransferDestinations(input: {
 
 async function expandTransferGraph(
   sourceWorkspaceId: string,
-  root: TransferSeed,
+  root: Omit<TransferSeed, "type"> & { type: ResourceTransferRootType },
 ) {
   const sets = emptyTransferSets();
-  addResource(sets, root.type, root.id, "selected");
+  if (root.type === "workspace") {
+    const roots = await Promise.all([
+      db
+        .select({ id: agents.id })
+        .from(agents)
+        .where(eq(agents.workspaceId, sourceWorkspaceId)),
+      db
+        .select({ id: aiProviders.id })
+        .from(aiProviders)
+        .where(eq(aiProviders.workspaceId, sourceWorkspaceId)),
+      db
+        .select({ id: mcpServers.id })
+        .from(mcpServers)
+        .where(eq(mcpServers.workspaceId, sourceWorkspaceId)),
+      db
+        .select({ id: toolConnectors.id })
+        .from(toolConnectors)
+        .where(eq(toolConnectors.workspaceId, sourceWorkspaceId)),
+      db
+        .select({ id: toolConnections.id })
+        .from(toolConnections)
+        .where(eq(toolConnections.workspaceId, sourceWorkspaceId)),
+      db
+        .select({ id: customTools.id })
+        .from(customTools)
+        .where(eq(customTools.workspaceId, sourceWorkspaceId)),
+      db
+        .select({ id: knowledgeBases.id })
+        .from(knowledgeBases)
+        .where(eq(knowledgeBases.workspaceId, sourceWorkspaceId)),
+      db
+        .select({ id: agentSkills.id })
+        .from(agentSkills)
+        .where(eq(agentSkills.workspaceId, sourceWorkspaceId)),
+      db
+        .select({ id: workflows.id })
+        .from(workflows)
+        .where(eq(workflows.workspaceId, sourceWorkspaceId)),
+      db
+        .select({ id: scheduledTasks.id })
+        .from(scheduledTasks)
+        .where(eq(scheduledTasks.workspaceId, sourceWorkspaceId)),
+      db
+        .select({ id: conversations.id })
+        .from(conversations)
+        .where(eq(conversations.workspaceId, sourceWorkspaceId)),
+      db
+        .select({ id: marketplaceItems.id })
+        .from(marketplaceItems)
+        .where(eq(marketplaceItems.publisherWorkspaceId, sourceWorkspaceId)),
+    ]);
+    const rootTypes: AccessResourceType[] = [
+      "agent",
+      "provider",
+      "mcp_server",
+      "tool_connector",
+      "tool_connection",
+      "custom_tool",
+      "knowledge_base",
+      "skill",
+      "workflow",
+      "scheduled_task",
+      "conversation",
+      "marketplace_item",
+    ];
+    roots.forEach((rows, index) => {
+      const type = rootTypes[index];
+      for (const row of rows) addResource(sets, type, row.id, "selected");
+    });
+  } else {
+    addResource(sets, root.type, root.id, "selected");
+  }
 
   for (let iteration = 0; iteration < 20; iteration += 1) {
     let changed = false;
@@ -688,22 +770,26 @@ export async function previewResourceTransfer(input: {
   actorUserId: string;
   sourceWorkspaceId: string;
   targetWorkspaceId: string;
-  resourceType: AccessResourceType;
+  resourceType: ResourceTransferRootType;
   resourceId: string;
   options: ResourceTransferOptions;
 }): Promise<ResourceTransferPreview> {
   if (input.sourceWorkspaceId === input.targetWorkspaceId) {
     throw new IamOperationError("Choose a different destination project", 400);
   }
-  const resource = await findAccessResource(
-    input.resourceType,
-    input.resourceId,
-  );
-  if (!resource || resource.workspaceId !== input.sourceWorkspaceId) {
-    throw new IamOperationError(
-      "Resource not found in the source project",
-      404,
+  if (input.resourceType !== "workspace") {
+    const resource = await findAccessResource(
+      input.resourceType,
+      input.resourceId,
     );
+    if (!resource || resource.workspaceId !== input.sourceWorkspaceId) {
+      throw new IamOperationError(
+        "Resource not found in the source project",
+        404,
+      );
+    }
+  } else if (input.resourceId !== input.sourceWorkspaceId) {
+    throw new IamOperationError("Invalid source project", 400);
   }
   await Promise.all([
     requireTransferPermission(input.actorUserId, input.sourceWorkspaceId),
@@ -752,6 +838,37 @@ export async function previewResourceTransfer(input: {
   const crossOrganization =
     sourceScope.organizationId !== targetScope.organizationId;
   const blockers = await targetConflicts(sets, input.targetWorkspaceId);
+  if (input.resourceType === "workspace") {
+    const [sourceRoles, targetRoles] = await Promise.all([
+      db
+        .select({ name: roles.name })
+        .from(roles)
+        .where(
+          and(
+            eq(roles.isSystem, false),
+            eq(roles.ownerResourceType, "workspace"),
+            eq(roles.ownerResourceId, input.sourceWorkspaceId),
+          ),
+        ),
+      db
+        .select({ name: roles.name })
+        .from(roles)
+        .where(
+          and(
+            eq(roles.isSystem, false),
+            eq(roles.ownerResourceType, "workspace"),
+            eq(roles.ownerResourceId, input.targetWorkspaceId),
+          ),
+        ),
+    ]);
+    const targetRoleNames = new Set(targetRoles.map(({ name }) => name));
+    const conflicts = sourceRoles
+      .map(({ name }) => name)
+      .filter((name) => targetRoleNames.has(name));
+    if (conflicts.length > 0) {
+      blockers.push(`Project role conflict: ${conflicts.join(", ")}`);
+    }
+  }
   const relatedItems = items.filter((item) => item.reason !== "selected");
   if (!input.options.includeDependencies && relatedItems.length > 0) {
     blockers.push(
@@ -770,6 +887,18 @@ export async function previewResourceTransfer(input: {
     "tool_connection",
   ]);
   const secretCount = items.filter((item) => secretTypes.has(item.type)).length;
+  const memberRows =
+    input.resourceType === "workspace"
+      ? await db
+          .select({ userId: workspaceMembers.userId })
+          .from(workspaceMembers)
+          .where(
+            and(
+              eq(workspaceMembers.workspaceId, input.sourceWorkspaceId),
+              eq(workspaceMembers.status, "active"),
+            ),
+          )
+      : [];
   const warnings = [
     "Conversation and execution history linked to transferred assistants follows the transfer.",
   ];
@@ -799,6 +928,7 @@ export async function previewResourceTransfer(input: {
     warnings,
     blockers,
     directAssignments,
+    members: { moved: memberRows.length },
     secrets: { affected: secretCount, policy: input.options.secretPolicy },
     confirmationToken: transferFingerprint({
       sourceWorkspaceId: input.sourceWorkspaceId,
@@ -885,7 +1015,7 @@ export async function executeResourceTransfer(input: {
   actorUserId: string;
   sourceWorkspaceId: string;
   targetWorkspaceId: string;
-  resourceType: AccessResourceType;
+  resourceType: ResourceTransferRootType;
   resourceId: string;
   options: ResourceTransferOptions;
   confirmationToken: string;
@@ -960,6 +1090,64 @@ export async function executeResourceTransfer(input: {
       .map(({ principalId }) => principalId),
     ...directTeamMemberRows.map(({ userId }) => userId),
   ]);
+  const projectMemberRows =
+    input.resourceType === "workspace"
+      ? await db
+          .select({ userId: workspaceMembers.userId })
+          .from(workspaceMembers)
+          .where(
+            and(
+              eq(workspaceMembers.workspaceId, input.sourceWorkspaceId),
+              eq(workspaceMembers.status, "active"),
+            ),
+          )
+      : [];
+  for (const { userId } of projectMemberRows) affectedUserIds.add(userId);
+  const [organizationMemberRole, workspaceMemberRole] =
+    input.resourceType === "workspace"
+      ? await Promise.all([
+          db
+            .select({ id: roles.id })
+            .from(roles)
+            .where(
+              and(
+                eq(roles.isSystem, true),
+                eq(roles.name, "organization.user"),
+              ),
+            )
+            .limit(1)
+            .then((rows) => rows[0]),
+          db
+            .select({ id: roles.id })
+            .from(roles)
+            .where(
+              and(eq(roles.isSystem, true), eq(roles.name, "workspace.member")),
+            )
+            .limit(1)
+            .then((rows) => rows[0]),
+        ])
+      : [undefined, undefined];
+  if (
+    input.resourceType === "workspace" &&
+    (!organizationMemberRole || !workspaceMemberRole)
+  ) {
+    throw new IamOperationError("System member roles are unavailable", 409);
+  }
+  const workspaceBindings =
+    input.resourceType === "workspace"
+      ? await db
+          .select()
+          .from(roleBindings)
+          .where(
+            and(
+              eq(roleBindings.resourceType, "workspace"),
+              eq(roleBindings.resourceId, input.sourceWorkspaceId),
+            ),
+          )
+      : [];
+  const transferableWorkspaceBindings = workspaceBindings.filter(
+    ({ principalType }) => !crossOrganization || principalType !== "group",
+  );
 
   await db.transaction(async (tx) => {
     if (assignmentIdsToRemove.length > 0) {
@@ -979,6 +1167,107 @@ export async function executeResourceTransfer(input: {
     const taskIds = byType("scheduled_task");
     const conversationIds = byType("conversation");
     const marketplaceIds = byType("marketplace_item");
+
+    if (input.resourceType === "workspace") {
+      await tx
+        .update(roles)
+        .set({ ownerResourceId: targetWorkspaceId, updatedAt: now })
+        .where(
+          and(
+            eq(roles.isSystem, false),
+            eq(roles.ownerResourceType, "workspace"),
+            eq(roles.ownerResourceId, input.sourceWorkspaceId),
+          ),
+        );
+      if (transferableWorkspaceBindings.length > 0) {
+        await tx
+          .insert(roleBindings)
+          .values(
+            transferableWorkspaceBindings.map((binding) => ({
+              principalType: binding.principalType,
+              principalId: binding.principalId,
+              roleId: binding.roleId,
+              resourceType: "workspace" as const,
+              resourceId: targetWorkspaceId,
+              conditionJson: binding.conditionJson,
+              expiresAt: binding.expiresAt,
+              createdById: binding.createdById,
+            })),
+          )
+          .onConflictDoNothing();
+      }
+      if (workspaceBindings.length > 0) {
+        await tx
+          .delete(roleBindings)
+          .where(
+            inArray(
+              roleBindings.id,
+              workspaceBindings.map(({ id }) => id),
+            ),
+          );
+      }
+      for (const { userId } of projectMemberRows) {
+        if (crossOrganization) {
+          await tx
+            .insert(organizationMembers)
+            .values({
+              organizationId: preview.destination.organizationId,
+              userId,
+              status: "active",
+            })
+            .onConflictDoUpdate({
+              target: [
+                organizationMembers.organizationId,
+                organizationMembers.userId,
+              ],
+              set: { status: "active", updatedAt: now },
+            });
+          await tx
+            .insert(roleBindings)
+            .values({
+              principalType: "user",
+              principalId: userId,
+              roleId: organizationMemberRole!.id,
+              resourceType: "organization",
+              resourceId: preview.destination.organizationId,
+              createdById: input.actorUserId,
+            })
+            .onConflictDoNothing();
+        }
+        await tx
+          .insert(workspaceMembers)
+          .values({ workspaceId: targetWorkspaceId, userId, status: "active" })
+          .onConflictDoUpdate({
+            target: [workspaceMembers.workspaceId, workspaceMembers.userId],
+            set: { status: "active", updatedAt: now },
+          });
+        await tx
+          .insert(roleBindings)
+          .values({
+            principalType: "user",
+            principalId: userId,
+            roleId: workspaceMemberRole!.id,
+            resourceType: "workspace",
+            resourceId: targetWorkspaceId,
+            createdById: input.actorUserId,
+          })
+          .onConflictDoNothing();
+      }
+      if (projectMemberRows.length > 0) {
+        await tx
+          .update(workspaceMembers)
+          .set({ status: "removed", updatedAt: now })
+          .where(
+            and(
+              eq(workspaceMembers.workspaceId, input.sourceWorkspaceId),
+              inArray(
+                workspaceMembers.userId,
+                projectMemberRows.map(({ userId }) => userId),
+              ),
+            ),
+          );
+      }
+    }
 
     if (conversationIds.length > 0) {
       await tx
