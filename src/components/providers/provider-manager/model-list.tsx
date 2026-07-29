@@ -13,6 +13,7 @@ import { toast } from "sonner";
 
 import { AdvancedSection } from "@/components/ui/advanced-section";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -65,7 +66,7 @@ type ModelsPanelProps = {
   onUpdateModelLogo: (modelId: string, logoUrl: string | null) => void;
   onUpdateModel: (modelId: string, update: ProviderModelUpdate) => void;
   onCreateModel: (model?: DiscoveredModel) => void;
-  onCreateAllModels: (models: DiscoveredModel[]) => void;
+  onCreateSelectedModels: (models: DiscoveredModel[]) => Promise<boolean>;
   onDeleteModel: (modelId: string) => void;
   onModelSearchChange: (value: string) => void;
   onManualModelIdChange: (value: string) => void;
@@ -86,7 +87,7 @@ export function ModelsPanel(props: ModelsPanelProps) {
         >
           <ManualModelForm {...props} />
         </AdvancedSection>
-        <DiscoveredModelsList {...props} />
+        <DiscoveredModelsList key={props.selectedProvider.id} {...props} />
         <RegisteredModelsList {...props} />
       </section>
     );
@@ -193,10 +194,13 @@ function DiscoveredModelsList({
   models,
   busy,
   onCreateModel,
-  onCreateAllModels,
+  onCreateSelectedModels,
 }: ModelsPanelProps) {
   const t = useTranslations("providers.manager");
   const [search, setSearch] = useState("");
+  const [selectedModelIds, setSelectedModelIds] = useState<Set<string>>(
+    () => new Set(),
+  );
   if (discoveredModels.length === 0) return null;
 
   const registeredIds = new Set(models.map((model) => model.modelId));
@@ -210,6 +214,46 @@ function DiscoveredModelsList({
       model.modelId.toLowerCase().includes(query) ||
       (model.displayName ?? "").toLowerCase().includes(query),
   );
+  const visibleAvailableModels = filtered.filter(
+    (model) => !registeredIds.has(model.modelId),
+  );
+  const selectedModels = availableModels.filter((model) =>
+    selectedModelIds.has(model.modelId),
+  );
+  const allVisibleSelected =
+    visibleAvailableModels.length > 0 &&
+    visibleAvailableModels.every((model) =>
+      selectedModelIds.has(model.modelId),
+    );
+  const someVisibleSelected = visibleAvailableModels.some((model) =>
+    selectedModelIds.has(model.modelId),
+  );
+
+  function setModelSelected(modelId: string, selected: boolean) {
+    setSelectedModelIds((current) => {
+      const next = new Set(current);
+      if (selected) next.add(modelId);
+      else next.delete(modelId);
+      return next;
+    });
+  }
+
+  function setVisibleModelsSelected(selected: boolean) {
+    setSelectedModelIds((current) => {
+      const next = new Set(current);
+      for (const model of visibleAvailableModels) {
+        if (selected) next.add(model.modelId);
+        else next.delete(model.modelId);
+      }
+      return next;
+    });
+  }
+
+  async function addSelectedModels() {
+    if (await onCreateSelectedModels(selectedModels)) {
+      setSelectedModelIds(new Set());
+    }
+  }
 
   return (
     <div className="border-b bg-muted/15 p-4">
@@ -222,14 +266,36 @@ function DiscoveredModelsList({
             {t("discoveredModelsHint")}
           </p>
         </div>
-        <Button
-          size="sm"
-          disabled={busy || availableModels.length === 0}
-          onClick={() => onCreateAllModels(availableModels)}
-        >
-          <PlusIcon aria-hidden="true" />
-          {t("addAllModels", { count: availableModels.length })}
-        </Button>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="select-visible-models"
+              aria-label={t("selectVisibleModels")}
+              disabled={busy || visibleAvailableModels.length === 0}
+              checked={
+                allVisibleSelected
+                  ? true
+                  : someVisibleSelected
+                    ? "indeterminate"
+                    : false
+              }
+              onCheckedChange={(checked) =>
+                setVisibleModelsSelected(checked === true)
+              }
+            />
+            <Label htmlFor="select-visible-models" className="text-xs">
+              {t("selectVisibleModels")}
+            </Label>
+          </div>
+          <Button
+            size="sm"
+            disabled={busy || selectedModels.length === 0}
+            onClick={() => void addSelectedModels()}
+          >
+            <PlusIcon data-icon="inline-start" aria-hidden="true" />
+            {t("addSelectedModels", { count: selectedModels.length })}
+          </Button>
+        </div>
       </div>
       <div className="relative mb-3">
         <SearchIcon className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -259,7 +325,21 @@ function DiscoveredModelsList({
                   alreadyRegistered ? "opacity-60" : "hover:bg-muted/30",
                 )}
               >
-                <DiscoveredModelInfo model={model} />
+                <div className="flex min-w-0 items-start gap-3">
+                  <Checkbox
+                    aria-label={t("selectModel", {
+                      model: model.displayName || model.modelId,
+                    })}
+                    disabled={busy || alreadyRegistered}
+                    checked={
+                      alreadyRegistered || selectedModelIds.has(model.modelId)
+                    }
+                    onCheckedChange={(checked) =>
+                      setModelSelected(model.modelId, checked === true)
+                    }
+                  />
+                  <DiscoveredModelInfo model={model} />
+                </div>
                 <Button
                   size="xs"
                   variant="outline"
@@ -317,6 +397,12 @@ function RegisteredModelsList({
   const t = useTranslations("providers.manager");
   return (
     <div className="p-4">
+      <div className="mb-3">
+        <p className="text-sm font-medium">{t("registeredModels")}</p>
+        <p className="text-xs text-muted-foreground">
+          {t("registeredModelsHint")}
+        </p>
+      </div>
       {models.length > 0 ? (
         <div className="relative mb-3">
           <SearchIcon className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -479,7 +565,7 @@ function RegisteredModelRow({
           </div>
         </div>
       </div>
-      <div className="flex shrink-0 items-center gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100">
+      <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
         <Button
           size="icon-xs"
           variant="ghost"
@@ -525,13 +611,14 @@ function RegisteredModelRow({
           </Button>
         ) : null}
         <Button
-          size="icon-xs"
+          size="xs"
           variant="ghost"
           aria-label={t("removeModel")}
           disabled={busy}
           onClick={() => onDeleteModel(model.id)}
         >
-          <Trash2Icon className="size-3.5" aria-hidden="true" />
+          <Trash2Icon data-icon="inline-start" aria-hidden="true" />
+          {t("remove")}
         </Button>
       </div>
       <ModelConfigDialog

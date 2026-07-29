@@ -93,12 +93,10 @@ import {
   archiveProvider,
   createModel,
   createProvider,
-  createProviderWithModels,
   deleteModel,
   discoverModels,
   getModelById,
   getProviderById,
-  hasProviderConnectionChanges,
   listModels,
   listProviders,
   refreshProviderModels,
@@ -106,7 +104,6 @@ import {
   toSafeProvider,
   updateModel,
   updateProvider,
-  updateProviderWithModels,
 } from "@/modules/provider/use-cases";
 
 function reset() {
@@ -260,33 +257,12 @@ describe("createProvider", () => {
   });
 });
 
-describe("automatic provider model loading", () => {
-  it("recognizes only connection fields as model refresh triggers", () => {
-    const base = {
-      providerId: "prov-1",
-      workspaceId: "ws-1",
-      userId: "user-1",
-    };
-
-    expect(hasProviderConnectionChanges({ ...base, name: "Renamed" })).toBe(
-      false,
-    );
-    expect(hasProviderConnectionChanges({ ...base, enabled: false })).toBe(
-      false,
-    );
-    expect(hasProviderConnectionChanges({ ...base, apiKey: "new-key" })).toBe(
-      true,
-    );
-    expect(
-      hasProviderConnectionChanges({
-        ...base,
-        openaiCompatibleApiRoute: "responses",
-      }),
-    ).toBe(true);
-  });
-
-  it("loads and upserts models automatically", async () => {
+describe("registered provider model synchronization", () => {
+  it("updates metadata only for models that were already added", async () => {
     dbModule._c.limit.mockResolvedValueOnce([fakeProvider]);
+    dbModule._c.orderBy.mockResolvedValueOnce([
+      { ...fakeModel, modelId: "model-1" },
+    ]);
 
     const result = await refreshProviderModels("prov-1", "ws-1");
 
@@ -294,33 +270,14 @@ describe("automatic provider model loading", () => {
     expect(dbModule._c.onConflictDoUpdate).toHaveBeenCalledOnce();
   });
 
-  it("loads models as part of provider creation", async () => {
-    dbModule._c.returning.mockResolvedValueOnce([fakeProvider]);
+  it("does not add newly discovered models", async () => {
     dbModule._c.limit.mockResolvedValueOnce([fakeProvider]);
+    dbModule._c.orderBy.mockResolvedValueOnce([]);
 
-    const result = await createProviderWithModels({
-      workspaceId: "ws-1",
-      userId: "user-1",
-      kind: "openai-compatible",
-      name: "Test",
-      authType: "bearer",
-    });
+    const result = await refreshProviderModels("prov-1", "ws-1");
 
-    expect(result.modelRefresh).toEqual({ status: "healthy", imported: 1 });
-  });
-
-  it("does not reload models for enable-only updates", async () => {
-    dbModule._c.limit.mockResolvedValueOnce([fakeProvider]);
-
-    const result = await updateProviderWithModels({
-      providerId: "prov-1",
-      workspaceId: "ws-1",
-      userId: "user-1",
-      enabled: false,
-    });
-
-    expect(result.modelRefresh).toBeNull();
-    expect(mockAdapter.listModels).not.toHaveBeenCalled();
+    expect(result).toEqual({ status: "healthy", imported: 0 });
+    expect(dbModule.db.insert).not.toHaveBeenCalled();
   });
 });
 

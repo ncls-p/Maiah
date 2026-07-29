@@ -134,16 +134,6 @@ export interface UpdateProviderInput {
   enabled?: boolean;
 }
 
-export function hasProviderConnectionChanges(input: UpdateProviderInput) {
-  return (
-    input.baseUrl !== undefined ||
-    input.apiKey !== undefined ||
-    input.headersJson !== undefined ||
-    input.queryParamsJson !== undefined ||
-    input.openaiCompatibleApiRoute !== undefined
-  );
-}
-
 export async function updateProvider(input: UpdateProviderInput) {
   const {
     providerId,
@@ -581,11 +571,18 @@ export async function refreshProviderModels(
 ): Promise<ProviderModelRefreshResult> {
   try {
     const models = await discoverModels(providerId, workspaceId);
-    if (models.length > 0) {
+    const registeredModels = await listModels(providerId);
+    const registeredModelIds = new Set(
+      registeredModels.map((model) => model.modelId),
+    );
+    const modelsToSync = models.filter((model) =>
+      registeredModelIds.has(model.modelId),
+    );
+    if (modelsToSync.length > 0) {
       await db
         .insert(aiModels)
         .values(
-          models.map((model) => ({
+          modelsToSync.map((model) => ({
             providerId,
             modelId: model.modelId,
             displayName: model.displayName || model.modelId,
@@ -621,7 +618,7 @@ export async function refreshProviderModels(
         updatedAt: new Date(),
       })
       .where(eq(aiProviders.id, providerId));
-    return { status: "healthy", imported: models.length };
+    return { status: "healthy", imported: modelsToSync.length };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     const unsupported = message.includes("discovery not supported");
@@ -651,21 +648,18 @@ export async function refreshAllProviderModels() {
       workspaceId: aiProviders.workspaceId,
     })
     .from(aiProviders)
-    .where(
-      and(
-        eq(aiProviders.enabled, true),
-        isNull(aiProviders.archivedAt),
-      ),
-    );
+    .where(and(eq(aiProviders.enabled, true), isNull(aiProviders.archivedAt)));
 
   const results: ProviderModelRefreshResult[] = [];
   const concurrency = 4;
   for (let index = 0; index < providers.length; index += concurrency) {
     results.push(
       ...(await Promise.all(
-        providers.slice(index, index + concurrency).map((provider) =>
-          refreshProviderModels(provider.id, provider.workspaceId),
-        ),
+        providers
+          .slice(index, index + concurrency)
+          .map((provider) =>
+            refreshProviderModels(provider.id, provider.workspaceId),
+          ),
       )),
     );
   }
@@ -681,21 +675,4 @@ export async function refreshAllProviderModels() {
       0,
     ),
   };
-}
-
-export async function createProviderWithModels(input: CreateProviderInput) {
-  const provider = await createProvider(input);
-  const modelRefresh = await refreshProviderModels(
-    provider.id,
-    input.workspaceId,
-  );
-  return { provider, modelRefresh };
-}
-
-export async function updateProviderWithModels(input: UpdateProviderInput) {
-  await updateProvider(input);
-  const modelRefresh = hasProviderConnectionChanges(input)
-    ? await refreshProviderModels(input.providerId, input.workspaceId)
-    : null;
-  return { modelRefresh };
 }

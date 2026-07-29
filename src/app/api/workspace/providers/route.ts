@@ -7,7 +7,7 @@ import {
   requireWorkspacePermissionAsync,
 } from "@/lib/route-handler";
 import {
-  createProviderWithModels,
+  createProvider,
   listProviders,
   listModels,
   toSafeProvider,
@@ -129,15 +129,12 @@ export async function POST(req: NextRequest) {
         "providers.create",
       );
       if (forbidden) return forbidden;
-      const { provider, modelRefresh } = await createProviderWithModels({
+      const provider = await createProvider({
         workspaceId,
         userId: session.user.id,
         ...input,
       });
-      return NextResponse.json(
-        { ...toSafeProvider(provider), modelRefresh },
-        { status: 201 },
-      );
+      return NextResponse.json(toSafeProvider(provider), { status: 201 });
     },
     { logLabel: "Failed to create provider" },
   );

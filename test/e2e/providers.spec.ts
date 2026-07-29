@@ -40,6 +40,7 @@ test.describe("providers page", () => {
 	});
 
 	test("discovers and adds provider models after setup", async ({ page }) => {
+		test.setTimeout(60_000);
 		const workspacesResponse = await page.request.get("/api/workspaces");
 		expect(workspacesResponse.ok()).toBe(true);
 		const workspaces = (await workspacesResponse.json()) as Array<{
@@ -63,6 +64,11 @@ test.describe("providers page", () => {
 			);
 			expect(createResponse.status()).toBe(201);
 			providerId = ((await createResponse.json()) as { id: string }).id;
+			const initialModelsResponse = await page.request.get(
+				`/api/workspace/providers/${providerId}/models?workspaceId=${workspaceId}`,
+			);
+			expect(initialModelsResponse.ok()).toBe(true);
+			expect(await initialModelsResponse.json()).toEqual([]);
 
 			await page.route(
 				(url) =>
@@ -100,13 +106,31 @@ test.describe("providers page", () => {
 			await expect(
 				page.getByText("Discovered (2)", { exact: true }),
 			).toBeVisible();
-			await page
-				.getByRole("button", { name: "Add all (2)", exact: true })
-				.click();
-
+			const afterDiscoveryResponse = await page.request.get(
+				`/api/workspace/providers/${providerId}/models?workspaceId=${workspaceId}`,
+			);
+			expect(afterDiscoveryResponse.ok()).toBe(true);
+			expect(await afterDiscoveryResponse.json()).toEqual([]);
 			await expect(
-				page.getByRole("button", { name: "Add all (0)", exact: true }),
+				page.getByRole("button", { name: "Add selected (0)", exact: true }),
 			).toBeDisabled();
+
+			await page
+				.getByRole("checkbox", {
+					name: "Select Discovered text model",
+					exact: true,
+				})
+				.click();
+			await expect(
+				page.getByRole("button", { name: "Add selected (1)", exact: true }),
+			).toBeEnabled();
+			await page
+				.getByRole("button", { name: "Add selected (1)", exact: true })
+				.click();
+			await expect(
+				page.getByRole("button", { name: "Add selected (0)", exact: true }),
+			).toBeDisabled({ timeout: 15_000 });
+
 			const modelsResponse = await page.request.get(
 				`/api/workspace/providers/${providerId}/models?workspaceId=${workspaceId}`,
 			);
@@ -114,9 +138,25 @@ test.describe("providers page", () => {
 			const models = (await modelsResponse.json()) as Array<{
 				modelId: string;
 			}>;
-			expect(models.map((model) => model.modelId)).toEqual(
-				expect.arrayContaining(["e2e-discovered-text", "e2e-discovered-image"]),
+			expect(models.map((model) => model.modelId)).toEqual([
+				"e2e-discovered-text",
+			]);
+
+			await page
+				.getByRole("button", { name: "Remove model", exact: true })
+				.click();
+			await page
+				.getByRole("alertdialog")
+				.getByRole("button", { name: "Remove", exact: true })
+				.click();
+			await expect(
+				page.getByText("No model is available yet.", { exact: false }),
+			).toBeVisible();
+			const afterRemovalResponse = await page.request.get(
+				`/api/workspace/providers/${providerId}/models?workspaceId=${workspaceId}`,
 			);
+			expect(afterRemovalResponse.ok()).toBe(true);
+			expect(await afterRemovalResponse.json()).toEqual([]);
 		} finally {
 			if (providerId) {
 				await page.request.delete(
@@ -179,14 +219,9 @@ test.describe("providers page", () => {
 			const provider = (await createResponse.json()) as {
 				id: string;
 				openaiCompatibleApiRoute: string;
-				modelRefresh: { status: string; imported: number };
 			};
 			providerId = provider.id;
 			expect(provider.openaiCompatibleApiRoute).toBe("chat-completions");
-			expect(provider.modelRefresh).toMatchObject({
-				status: expect.stringMatching(/healthy|unhealthy|manual/),
-				imported: expect.any(Number),
-			});
 
 			const updateResponse = await page.request.patch(
 				`/api/workspace/providers/${providerId}`,

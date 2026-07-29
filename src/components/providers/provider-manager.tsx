@@ -211,7 +211,7 @@ export function ProviderManager({
       setSelectedProviderId(provider.id);
       setShowAddDialog(false);
       resetAddForm();
-      notifyModelRefresh(provider.modelRefresh, "toastProviderConnected");
+      toast.success(t("toastProviderConnected"));
       await loadModelsForProvider(provider.id);
     } catch (error) {
       toast.error((error as Error).message);
@@ -294,7 +294,7 @@ export function ProviderManager({
       setEditingProvider(null);
       setEditApiKey("");
       await loadProviders();
-      notifyModelRefresh(data.modelRefresh, "toastConnectionUpdated");
+      toast.success(t("toastConnectionUpdated"));
       await loadModelsForProvider(editingProvider.id);
     } catch (error) {
       toast.error((error as Error).message);
@@ -382,7 +382,7 @@ export function ProviderManager({
   }
 
   async function createDiscoveredModels(toCreate: DiscoveredModel[]) {
-    if (!selectedProviderId || toCreate.length === 0) return;
+    if (!selectedProviderId || toCreate.length === 0) return false;
     setBusy(true);
     try {
       for (const model of toCreate) {
@@ -390,23 +390,12 @@ export function ProviderManager({
       }
       toast.success(t("toastModelsRegistered", { count: toCreate.length }));
       await loadModelsForProvider(selectedProviderId);
+      return true;
     } catch (error) {
       toast.error((error as Error).message);
+      return false;
     } finally {
       setBusy(false);
-    }
-  }
-
-  function notifyModelRefresh(
-    refresh: SafeProvider["modelRefresh"],
-    fallbackKey: "toastProviderConnected" | "toastConnectionUpdated",
-  ) {
-    if (!refresh || refresh.status === "manual") {
-      toast.success(t(fallbackKey));
-    } else if (refresh.status === "unhealthy") {
-      toast.warning(t("toastProviderSavedModelsFailed"));
-    } else {
-      toast.success(t("toastProviderReady", { count: refresh.imported }));
     }
   }
 
@@ -531,9 +520,7 @@ export function ProviderManager({
           }
           onUpdateModel={(modelId, update) => void updateModel(modelId, update)}
           onCreateModel={(model) => void createManualModel(model)}
-          onCreateAllModels={(toCreate) =>
-            void createDiscoveredModels(toCreate)
-          }
+          onCreateSelectedModels={createDiscoveredModels}
           onDeleteModel={setDeleteModelId}
           onModelSearchChange={setModelSearch}
           onManualModelIdChange={setManualModelId}
@@ -590,6 +577,11 @@ export function ProviderManager({
       />
       <DeleteModelDialog
         deleteModelId={deleteModelId}
+        deleteModelLabel={
+          models.find((model) => model.id === deleteModelId)?.displayName ??
+          models.find((model) => model.id === deleteModelId)?.modelId ??
+          null
+        }
         busy={busy}
         onClose={() => setDeleteModelId(null)}
         onDelete={(id) => void deleteModel(id)}

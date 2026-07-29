@@ -451,11 +451,13 @@ export function DeleteProviderDialog({
 
 export function DeleteModelDialog({
   deleteModelId,
+  deleteModelLabel,
   busy,
   onClose,
   onDelete,
 }: {
   deleteModelId: string | null;
+  deleteModelLabel: string | null;
   busy: boolean;
   onClose: () => void;
   onDelete: (id: string) => void;
@@ -466,7 +468,9 @@ export function DeleteModelDialog({
     <AlertDialog open={Boolean(deleteModelId)} onOpenChange={onClose}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>{t("removeModelTitle")}</AlertDialogTitle>
+          <AlertDialogTitle>
+            {t("removeModelTitle", { name: deleteModelLabel ?? "—" })}
+          </AlertDialogTitle>
           <AlertDialogDescription>
             {t("removeModelDescription")}
           </AlertDialogDescription>
