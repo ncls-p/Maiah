@@ -664,15 +664,54 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
       .set({ activeVersionId: version.id })
       .where(eq(agents.id, agent.id));
 
+    const [simulationSourceBefore, simulationTargetBefore] = await Promise.all([
+      db
+        .select({ id: agents.id, workspaceId: agents.workspaceId })
+        .from(agents)
+        .where(eq(agents.workspaceId, secondProjectId)),
+      db
+        .select({ id: agents.id, workspaceId: agents.workspaceId })
+        .from(agents)
+        .where(eq(agents.workspaceId, cloneTarget.id)),
+    ]);
     const preview = await previewWorkspaceClone({
       actorUserId: ownerId,
       sourceWorkspaceId: secondProjectId,
       targetWorkspaceId: cloneTarget.id,
       secretPolicy: "disable",
     });
+    const [simulationSourceAfter, simulationTargetAfter] = await Promise.all([
+      db
+        .select({ id: agents.id, workspaceId: agents.workspaceId })
+        .from(agents)
+        .where(eq(agents.workspaceId, secondProjectId)),
+      db
+        .select({ id: agents.id, workspaceId: agents.workspaceId })
+        .from(agents)
+        .where(eq(agents.workspaceId, cloneTarget.id)),
+    ]);
+    expect(simulationSourceAfter).toEqual(simulationSourceBefore);
+    expect(simulationTargetAfter).toEqual(simulationTargetBefore);
     expect(preview.counts.providers).toBeGreaterThanOrEqual(1);
     expect(preview.counts.models).toBeGreaterThanOrEqual(1);
     expect(preview.counts.assistants).toBeGreaterThanOrEqual(1);
+    await expect(
+      executeWorkspaceClone({
+        actorUserId: ownerId,
+        sourceWorkspaceId: secondProjectId,
+        targetWorkspaceId: cloneTarget.id,
+        secretPolicy: "keep",
+        confirmationToken: preview.confirmationToken,
+      }),
+    ).rejects.toMatchObject({
+      status: 409,
+      message: expect.stringContaining("changed"),
+    });
+    const targetAfterRejectedSimulation = await db
+      .select({ id: agents.id })
+      .from(agents)
+      .where(eq(agents.workspaceId, cloneTarget.id));
+    expect(targetAfterRejectedSimulation).toEqual(simulationTargetBefore);
     await executeWorkspaceClone({
       actorUserId: ownerId,
       sourceWorkspaceId: secondProjectId,
@@ -1154,12 +1193,40 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
       targetScope.organizationId,
     );
 
+    const [sourceProjectsBeforeSimulation, targetProjectsBeforeSimulation] =
+      await Promise.all([
+        db
+          .select({ id: workspaces.id })
+          .from(workspaces)
+          .where(eq(workspaces.organizationId, sourceScope.organizationId)),
+        db
+          .select({ id: workspaces.id })
+          .from(workspaces)
+          .where(eq(workspaces.organizationId, targetScope.organizationId)),
+      ]);
     const clonePreview = await previewOrganizationClone({
       actorUserId: ownerId,
       sourceWorkspaceId: sourceProject.id,
       targetOrganizationId: targetScope.organizationId,
       secretPolicy: "disable",
     });
+    const [sourceProjectsAfterSimulation, targetProjectsAfterSimulation] =
+      await Promise.all([
+        db
+          .select({ id: workspaces.id })
+          .from(workspaces)
+          .where(eq(workspaces.organizationId, sourceScope.organizationId)),
+        db
+          .select({ id: workspaces.id })
+          .from(workspaces)
+          .where(eq(workspaces.organizationId, targetScope.organizationId)),
+      ]);
+    expect(sourceProjectsAfterSimulation).toEqual(
+      sourceProjectsBeforeSimulation,
+    );
+    expect(targetProjectsAfterSimulation).toEqual(
+      targetProjectsBeforeSimulation,
+    );
     expect(clonePreview.counts.projects).toBe(1);
     await executeOrganizationClone({
       actorUserId: ownerId,
