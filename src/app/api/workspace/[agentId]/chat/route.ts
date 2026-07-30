@@ -1364,6 +1364,7 @@ export async function POST(
             await appendStreamedTextPart("text", part.text);
             enqueueEvent({ type: "text", delta: part.text });
           } else if (part.type === "reasoning-start") {
+            await appendStreamedTextPart("reasoning", "");
             enqueueEvent({ type: "reasoning_start" });
           } else if (part.type === "reasoning-delta") {
             await appendStreamedTextPart("reasoning", part.text);

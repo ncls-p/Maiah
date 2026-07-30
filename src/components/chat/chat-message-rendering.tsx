@@ -17,6 +17,7 @@ import {
   citationsFromMessage,
   groupWorkPhaseParts,
   parseToolPart,
+  reasoningPartHasDetails,
   renderablePartsFromMessage,
   resolveWorkPhaseOutcome,
   resolveToolDisplayStatus,
@@ -700,11 +701,13 @@ function ThinkingPart({ part }: { part: ChatMessagePart }) {
   const [open, setOpen] = useState(false);
   const content = part.content.trim();
   const isStreaming = part.state === "streaming";
+  const hasDetails = reasoningPartHasDetails(part);
 
   return (
     <Collapsible
       open={open}
       onOpenChange={setOpen}
+      data-reasoning-details={hasDetails ? "available" : "unavailable"}
       className={cn(
         "group/reasoning overflow-hidden rounded-2xl text-xs transition-[background-color,box-shadow] duration-200 ease-out",
         isStreaming
@@ -758,35 +761,39 @@ function ThinkingPart({ part }: { part: ChatMessagePart }) {
             ) : null}
           </div>
         </div>
-        <CollapsibleTrigger asChild>
-          <Button
-            type={BUTTON_TYPE}
-            variant={GHOST_VARIANT}
-            size="sm"
-            className="h-10 shrink-0 rounded-xl pl-3 pr-2.5 text-xs text-muted-foreground hover:text-foreground"
-          >
-            <ChevronDownIcon
-              className={cn(
-                "size-3 transition-transform duration-200 ease-out",
-                open && "rotate-180",
-              )}
-              aria-hidden="true"
-            />
-            {open ? t("reasoningHide") : t("reasoningView")}
-          </Button>
-        </CollapsibleTrigger>
-      </div>
-      <CollapsibleContent>
-        {content ? (
-          <ChatMarkdown className="border-t border-border/40 bg-background/45 px-4 py-3 text-pretty text-xs leading-5 text-muted-foreground">
-            {content}
-          </ChatMarkdown>
-        ) : isStreaming ? (
-          <div className="border-t border-border/40 bg-background/45 px-4 py-3 text-pretty text-xs leading-5 text-muted-foreground">
-            {t("reasoningStarting")}
-          </div>
+        {hasDetails ? (
+          <CollapsibleTrigger asChild>
+            <Button
+              type={BUTTON_TYPE}
+              variant={GHOST_VARIANT}
+              size="sm"
+              className="h-10 shrink-0 rounded-xl pl-3 pr-2.5 text-xs text-muted-foreground hover:text-foreground"
+            >
+              <ChevronDownIcon
+                className={cn(
+                  "size-3 transition-transform duration-200 ease-out",
+                  open && "rotate-180",
+                )}
+                aria-hidden="true"
+              />
+              {open ? t("reasoningHide") : t("reasoningView")}
+            </Button>
+          </CollapsibleTrigger>
         ) : null}
-      </CollapsibleContent>
+      </div>
+      {hasDetails ? (
+        <CollapsibleContent>
+          {content ? (
+            <ChatMarkdown className="border-t border-border/40 bg-background/45 px-4 py-3 text-pretty text-xs leading-5 text-muted-foreground">
+              {content}
+            </ChatMarkdown>
+          ) : isStreaming ? (
+            <div className="border-t border-border/40 bg-background/45 px-4 py-3 text-pretty text-xs leading-5 text-muted-foreground">
+              {t("reasoningStarting")}
+            </div>
+          ) : null}
+        </CollapsibleContent>
+      ) : null}
     </Collapsible>
   );
 }

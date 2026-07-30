@@ -919,6 +919,33 @@ describe("getConversationMessages", () => {
     expect(decryptValue).toHaveBeenCalledWith("enc:text");
   });
 
+  it("keeps an empty reasoning part as a durable lifecycle indicator", async () => {
+    const { decryptValue } = await import("@/lib/crypto");
+    vi.mocked(decryptValue).mockResolvedValueOnce("");
+    const msg = {
+      id: "msg-1",
+      role: "assistant",
+      status: "completed",
+      createdAt: new Date(),
+    };
+    const part = {
+      id: "part-1",
+      messageId: "msg-1",
+      type: "reasoning",
+      contentEncrypted: "enc:empty",
+      sortOrder: 0,
+      metadataJson: null,
+    };
+    dbModule._c.orderBy
+      .mockResolvedValueOnce([msg])
+      .mockResolvedValueOnce([part]);
+
+    const result = await getConversationMessages("conv-1");
+
+    expect(result[0].parts).toEqual([{ type: "reasoning", content: "" }]);
+    expect(decryptValue).toHaveBeenCalledWith("enc:empty");
+  });
+
   it("handles decryption failure gracefully", async () => {
     const { decryptValue } = await import("@/lib/crypto");
     vi.mocked(decryptValue).mockRejectedValueOnce(new Error("Key error"));

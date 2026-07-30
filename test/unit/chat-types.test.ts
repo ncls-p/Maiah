@@ -8,6 +8,7 @@ import {
   groupWorkPhaseParts,
   parseToolPart,
   preserveAssistantFailureParts,
+  reasoningPartHasDetails,
   renderablePartsFromMessage,
   resolveWorkPhaseOutcome,
   resolveToolDisplayStatus,
@@ -155,22 +156,28 @@ describe("chat message parts", () => {
     ).toEqual(["reasoning", "tool-call", "tool-result", "text"]);
   });
 
-  it("keeps empty reasoning visible only while it is starting", () => {
-    const message: ChatMessage = {
-      id: "message",
-      role: "assistant",
-      status: "streaming",
-      parts: [
-        { type: "reasoning", content: "", state: "done" },
-        { type: "reasoning", content: "", state: "streaming" },
-        { type: "reasoning", content: "Visible summary", state: "done" },
-      ],
-    };
-
-    expect(renderablePartsFromMessage(message)).toEqual([
-      { type: "reasoning", content: "", state: "streaming" },
-      { type: "reasoning", content: "Visible summary", state: "done" },
-    ]);
+  it("exposes reasoning details only while active or when text exists", () => {
+    expect(
+      reasoningPartHasDetails({
+        type: "reasoning",
+        content: "",
+        state: "done",
+      }),
+    ).toBe(false);
+    expect(
+      reasoningPartHasDetails({
+        type: "reasoning",
+        content: "",
+        state: "streaming",
+      }),
+    ).toBe(true);
+    expect(
+      reasoningPartHasDetails({
+        type: "reasoning",
+        content: "Visible summary",
+        state: "done",
+      }),
+    ).toBe(true);
   });
 
   it("merges matching tool calls and results into one renderable card", () => {

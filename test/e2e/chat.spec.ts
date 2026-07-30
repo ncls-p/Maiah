@@ -139,11 +139,17 @@ async function createRecoveredToolConversation() {
     await client.query(
       `insert into message_parts
          (id, message_id, type, content_encrypted, metadata_json, sort_order, created_at)
+       values ($1, $2, 'reasoning', $3, null, 0, now())`,
+      [randomUUID(), assistantMessageId, await encryptFixtureText("")],
+    );
+    await client.query(
+      `insert into message_parts
+         (id, message_id, type, content_encrypted, metadata_json, sort_order, created_at)
        values
-         ($1, $2, 'tool-call', null, $3::jsonb, 0, now()),
-         ($4, $2, 'tool-call', null, $5::jsonb, 1, now()),
-         ($6, $2, 'tool-call', null, $7::jsonb, 2, now()),
-         ($8, $2, 'text', $9, null, 3, now())`,
+         ($1, $2, 'tool-call', null, $3::jsonb, 1, now()),
+         ($4, $2, 'tool-call', null, $5::jsonb, 2, now()),
+         ($6, $2, 'tool-call', null, $7::jsonb, 3, now()),
+         ($8, $2, 'text', $9, null, 4, now())`,
       [
         randomUUID(),
         assistantMessageId,
@@ -371,6 +377,16 @@ test.describe("chat page", () => {
       await expect(
         transcript.getByText("Completed", { exact: true }),
       ).toBeVisible();
+      const compactReasoning = transcript.locator(
+        '[data-reasoning-details="unavailable"]',
+      );
+      await expect(compactReasoning).toBeVisible();
+      await expect(
+        compactReasoning.getByText("Reasoning complete", { exact: true }),
+      ).toBeVisible();
+      await expect(
+        compactReasoning.getByRole("button", { name: "Show", exact: true }),
+      ).toHaveCount(0);
       await expect(
         transcript.getByRole("region", {
           name: "Investigation",
