@@ -329,9 +329,9 @@ function ConversationItem({
       onDragOver={(event) => event.preventDefault()}
       onDrop={onDropBefore}
       className={cn(
-        "group/conversation relative overflow-hidden rounded-xl transition-[background-color,opacity]",
+        "group/conversation relative overflow-hidden rounded-xl border border-transparent transition-[background-color,border-color,opacity]",
         isActive
-          ? "bg-sidebar-accent text-sidebar-accent-foreground"
+          ? "border-sidebar-border/35 bg-card/70 text-sidebar-accent-foreground shadow-[0_10px_28px_-24px_color-mix(in_oklch,var(--foreground)_35%,transparent)]"
           : "hover:bg-muted/70",
         isDragging && "opacity-45",
       )}
@@ -382,7 +382,14 @@ function ConversationItem({
           </Button>
         </div>
       ) : (
-        <div className="flex min-h-12 items-center gap-0.5 px-2 py-1">
+        <div className="flex min-h-12 items-center gap-1 px-2 py-1">
+          <i
+            className={cn(
+              "size-1.5 shrink-0 rounded-full transition-colors",
+              isActive ? "bg-primary" : "bg-muted-foreground/45",
+            )}
+            aria-hidden="true"
+          />
           <button
             type={BUTTON_TYPE}
             onClick={onSelect}
@@ -390,7 +397,7 @@ function ConversationItem({
           >
             <span
               className={cn(
-                "block truncate text-[13px] leading-tight transition-[color]",
+                "block truncate text-[12px] leading-tight transition-[color]",
                 isActive ? "font-semibold text-foreground" : "font-medium",
               )}
             >
@@ -408,7 +415,7 @@ function ConversationItem({
                   : null}
               </span>
             ) : null}
-            <span className="mt-1 flex items-center gap-1 text-[11px] leading-none text-muted-foreground/75">
+            <span className="mt-1 flex items-center gap-1 text-[10px] leading-none text-muted-foreground/70">
               <span className="truncate">{agentName}</span>
               <span className="shrink-0 text-muted-foreground/25">·</span>
               <span className="shrink-0">
@@ -431,7 +438,7 @@ function ConversationItem({
                   variant={GHOST_VARIANT}
                   aria-label={t("conversationActions")}
                   className={cn(
-                    "size-10 shrink-0 rounded-xl transition-[background-color,opacity] hover:bg-background/80 md:opacity-0 md:group-hover/conversation:opacity-100 md:group-focus-within/conversation:opacity-100 data-[state=open]:opacity-100",
+                    "size-8 shrink-0 rounded-lg transition-[background-color,opacity] hover:bg-background/80 md:opacity-0 md:group-hover/conversation:opacity-100 md:group-focus-within/conversation:opacity-100 data-[state=open]:opacity-100",
                     isActive && "opacity-100",
                   )}
                 >
@@ -596,6 +603,19 @@ export function ChatSidebar({
       ),
     }));
   }, [conversationFolders, unpinnedConversations]);
+  const activeConversation = useMemo(
+    () =>
+      activeConversationId
+        ? (sortedConversations.find(
+            (conversation) => conversation.id === activeConversationId,
+          ) ?? null)
+        : null,
+    [activeConversationId, sortedConversations],
+  );
+  const currentAgentName =
+    (activeConversation
+      ? agentNameById.get(activeConversation.agentId)
+      : agents[0]?.name) ?? t("assistant");
 
   function orderedIdsWithInsertion(
     items: ChatConversation[],
@@ -889,11 +909,11 @@ export function ChatSidebar({
 
       <div className="animate-in-fade flex min-h-0 flex-1 flex-col motion-reduce:animate-none">
         <div className="flex min-h-0 flex-1 flex-col">
-          <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto px-2 py-2">
+          <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto px-3 py-3">
             {showConversationTools ? (
-              <div className="flex items-center gap-2 px-1 pb-1">
+              <div className="relative mb-2 flex items-center">
                 <SearchIcon
-                  className="size-4 shrink-0 text-muted-foreground"
+                  className="pointer-events-none absolute left-3 size-3.5 shrink-0 text-muted-foreground"
                   aria-hidden="true"
                 />
                 <Input
@@ -910,14 +930,14 @@ export function ChatSidebar({
                   onChange={(event) =>
                     onSearchQueryChange?.(event.target.value)
                   }
-                  className="h-10 min-w-0 rounded-xl px-3 text-xs"
+                  className="h-11 min-w-0 rounded-xl border-sidebar-border/60 bg-card/60 pl-9 pr-9 text-xs shadow-none"
                 />
                 {searchActive ? (
                   <Button
                     type={BUTTON_TYPE}
                     size="icon-sm"
                     variant={GHOST_VARIANT}
-                    className="size-10 shrink-0 rounded-xl"
+                    className="absolute right-1 size-9 shrink-0 rounded-lg"
                     aria-label={t("clearSearch")}
                     onClick={() => onSearchQueryChange?.("")}
                   >
@@ -1098,7 +1118,48 @@ export function ChatSidebar({
                   </Empty>
                 </div>
               ) : (
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-3">
+                  <section className="flex flex-col gap-1">
+                    <div className="px-2 pb-1 font-mono text-[9px] font-medium uppercase tracking-[0.16em] text-muted-foreground/70">
+                      {t("current")}
+                    </div>
+                    <button
+                      type={BUTTON_TYPE}
+                      onClick={onNewConversation}
+                      className={cn(
+                        "group/new flex min-h-12 w-full items-center gap-2 rounded-xl border px-2.5 py-2 text-left transition-[background-color,border-color,box-shadow,scale] active:scale-[0.99]",
+                        activeConversationId
+                          ? "border-transparent hover:bg-muted/70"
+                          : "border-sidebar-border/35 bg-card/70 shadow-[0_10px_28px_-24px_color-mix(in_oklch,var(--foreground)_35%,transparent)]",
+                      )}
+                    >
+                      <i
+                        className={cn(
+                          "size-1.5 shrink-0 rounded-full",
+                          activeConversationId
+                            ? "bg-muted-foreground/45"
+                            : "bg-primary",
+                        )}
+                        aria-hidden="true"
+                      />
+                      <span className="min-w-0 flex-1">
+                        <strong className="block truncate text-[12px] font-semibold text-foreground">
+                          {t("newConversation")}
+                        </strong>
+                        <small className="mt-1 block truncate text-[10px] text-muted-foreground/70">
+                          {currentAgentName}
+                        </small>
+                      </span>
+                      <PlusIcon
+                        className="size-3.5 text-muted-foreground opacity-0 transition-opacity group-hover/new:opacity-100"
+                        aria-hidden="true"
+                      />
+                    </button>
+                    {activeConversation
+                      ? renderConversation(activeConversation)
+                      : null}
+                  </section>
+
                   {pinnedConversations.length > 0 ? (
                     <section
                       className="flex flex-col gap-px"
@@ -1115,9 +1176,14 @@ export function ChatSidebar({
                         <PinIcon className="size-3" aria-hidden="true" />
                         {t("pinned")}
                       </div>
-                      {pinnedConversations.map((conversation) =>
-                        renderConversation(conversation),
-                      )}
+                      {pinnedConversations
+                        .filter(
+                          (conversation) =>
+                            conversation.id !== activeConversationId,
+                        )
+                        .map((conversation) =>
+                          renderConversation(conversation),
+                        )}
                     </section>
                   ) : null}
 
@@ -1244,9 +1310,14 @@ export function ChatSidebar({
                           {open ? (
                             <div className="flex flex-col gap-px pl-3">
                               {folderConversations.length > 0 ? (
-                                folderConversations.map((conversation) =>
-                                  renderConversation(conversation),
-                                )
+                                folderConversations
+                                  .filter(
+                                    (conversation) =>
+                                      conversation.id !== activeConversationId,
+                                  )
+                                  .map((conversation) =>
+                                    renderConversation(conversation),
+                                  )
                               ) : (
                                 <div
                                   className="rounded-lg border border-dashed px-3 py-2 text-xs text-muted-foreground/60"
@@ -1282,12 +1353,17 @@ export function ChatSidebar({
                   >
                     {topLevelConversations.length > 0 ? (
                       <>
-                        <div className="px-2 pb-1 text-[11px] font-medium text-muted-foreground">
+                        <div className="px-2 pb-1 font-mono text-[9px] font-medium uppercase tracking-[0.16em] text-muted-foreground/70">
                           {t("recent")}
                         </div>
-                        {topLevelConversations.map((conversation) =>
-                          renderConversation(conversation),
-                        )}
+                        {topLevelConversations
+                          .filter(
+                            (conversation) =>
+                              conversation.id !== activeConversationId,
+                          )
+                          .map((conversation) =>
+                            renderConversation(conversation),
+                          )}
                       </>
                     ) : folderSections.length === 0 ? (
                       <div className="rounded-lg border border-dashed px-3 py-2 text-xs text-muted-foreground/60">

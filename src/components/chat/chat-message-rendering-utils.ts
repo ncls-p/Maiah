@@ -137,7 +137,13 @@ export function isGitHubPublishOutput(
 export function toolPartHasStandaloneRendering(part: ChatMessagePart) {
   if (part.type !== "tool-call" && part.type !== "tool-result") return false;
   const parsed = parseToolPart(part.content);
+  const visualToolName = parsed.toolName ?? "";
   return Boolean(
+    visualToolName === "render_html_artifact" ||
+    visualToolName === "generate_image" ||
+    visualToolName === "run_code_sandbox" ||
+    visualToolName === "github_publish_code_workspace" ||
+    visualToolName.startsWith("code_workspace_") ||
     codeSandboxOutputFromUnknown(parsed.output) ||
     isHtmlArtifactOutput(parsed.output) ||
     isGeneratedImageOutput(parsed.output) ||
