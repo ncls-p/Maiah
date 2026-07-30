@@ -61,6 +61,7 @@ import { getUsageImpactSetting } from "@/modules/provider/usage-impact-settings"
 import type { AiHubToolApprovalPolicy } from "@/modules/tool/approval-policy";
 import {
   projectToolMessagePayload,
+  safeChatErrorMessage,
   safeToolErrorMessage,
 } from "@/modules/tool/safe-payload";
 import { db } from "@/server/infrastructure/db";
@@ -1463,14 +1464,10 @@ export async function POST(
               part.error instanceof Error
                 ? part.error
                 : new Error(String(part.error));
-            const errorMessage = safeToolErrorMessage(
+            const errorMessage = safeChatErrorMessage(
               error,
-              "Tool execution failed",
+              "Assistant generation failed",
             );
-            enqueueEvent({
-              type: "error",
-              error: errorMessage,
-            });
             throw new Error(errorMessage);
           }
         }
@@ -1655,11 +1652,22 @@ export async function POST(
                 "Assistant run timed out before it could finish. Try again with a narrower request.",
               )
             : error;
+          const errorMessage = safeChatErrorMessage(
+            streamError,
+            "Assistant generation failed",
+          );
           // Chat stream failed — message already marked failed below
           await db
             .update(messages)
             .set({ status: "failed", completedAt: new Date() })
             .where(eq(messages.id, assistantMessage.id));
+          await db.insert(messageParts).values({
+            messageId: assistantMessage.id,
+            type: "error",
+            contentEncrypted: await encryptValue(errorMessage),
+            metadataJson: null,
+            sortOrder: nextSortOrder,
+          });
           await recordUsageEvent({
             workspaceId: agent.workspaceId,
             userId: actorUserId,
@@ -1687,10 +1695,7 @@ export async function POST(
           );
           enqueueEvent({
             type: "error",
-            error:
-              streamError instanceof Error
-                ? streamError.message
-                : String(streamError),
+            error: errorMessage,
           });
         }
       } finally {

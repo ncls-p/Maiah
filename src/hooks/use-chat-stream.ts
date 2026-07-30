@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import {
   createLocalMessage,
   prepareAssistantMessageContinuation,
-  preserveAssistantFailureParts,
   toolNameMatches,
   type ChatAttachment,
   type ChatCitation,
@@ -20,6 +19,23 @@ import {
   migrateDraftCapabilityOverrides,
   readChatCapabilityOverrides,
 } from "@/components/chat/chat-capability-overrides";
+
+function compactErrorMessage(message: string) {
+  const firstLine = message.split("\n", 1)[0]?.trim() || "Chat request failed";
+  return firstLine.length > 180 ? `${firstLine.slice(0, 180)}…` : firstLine;
+}
+
+function appendErrorPart(message: ChatMessage, error: string): ChatMessage {
+  const previousPart = message.parts.at(-1);
+  if (previousPart?.type === "error" && previousPart.content === error) {
+    return { ...message, status: "failed" };
+  }
+  return {
+    ...message,
+    status: "failed",
+    parts: [...message.parts, { type: "error", content: error }],
+  };
+}
 
 import {
   STREAM_DRAFT_EVENT,
@@ -375,15 +391,10 @@ export function useChatStream({
         }
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") return;
-        toast.error(err instanceof Error ? err.message : "Chat stream failed");
-        updateAssistant((message) => ({
-          ...message,
-          status: "failed",
-          parts:
-            message.parts.length > 0
-              ? message.parts
-              : [{ type: "text", content: "The assistant failed to respond." }],
-        }));
+        const errorMessage =
+          err instanceof Error ? err.message : "Chat stream failed";
+        toast.error(compactErrorMessage(errorMessage));
+        updateAssistant((message) => appendErrorPart(message, errorMessage));
         clearPendingApprovals();
         clearStoredChatStreamDraft(activeConversationId);
       } finally {
@@ -681,14 +692,14 @@ export function useChatStream({
           clearStoredChatStreamDraft(activeConversationId);
         return;
       }
-      toast.error(err instanceof Error ? err.message : "Chat request failed");
-      updateAssistantDraft((message) => ({
-        ...message,
-        status: options.continueFromMessageId ? "completed" : "failed",
-        parts: options.continueFromMessageId
-          ? message.parts
-          : preserveAssistantFailureParts(message.parts),
-      }));
+      const errorMessage =
+        err instanceof Error ? err.message : "Chat request failed";
+      toast.error(compactErrorMessage(errorMessage));
+      updateAssistantDraft((message) =>
+        options.continueFromMessageId
+          ? { ...message, status: "completed" }
+          : appendErrorPart(message, errorMessage),
+      );
       flushAssistantRender();
       clearPendingApprovals();
       if (activeConversationId)

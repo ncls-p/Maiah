@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  normalizeResponsesInputForCompatibleProvider,
   normalizeResponsesReasoningSseLine,
   openaiCompatibleAdapter,
   stripUnsupportedResponsesItemReferences,
@@ -267,6 +268,53 @@ describe("openaiCompatibleAdapter.createChatModel", () => {
     });
   });
 
+  it("normalizes assistant output text only in the compatibility fallback", () => {
+    const body = JSON.stringify({
+      model: "test-model",
+      input: [
+        { role: "system", content: "Be concise." },
+        { role: "user", content: "Hello" },
+        {
+          role: "assistant",
+          content: [{ type: "output_text", text: "Hello there." }],
+        },
+        {
+          type: "function_call",
+          call_id: "call_1",
+          name: "calculator",
+          arguments: '{"expression":"1+1"}',
+        },
+        {
+          type: "function_call_output",
+          call_id: "call_1",
+          output: "2",
+        },
+      ],
+    });
+
+    expect(
+      JSON.parse(String(normalizeResponsesInputForCompatibleProvider(body))),
+    ).toEqual({
+      model: "test-model",
+      input: [
+        { role: "system", content: "Be concise." },
+        { role: "user", content: "Hello" },
+        { role: "assistant", content: "Hello there." },
+        {
+          type: "function_call",
+          call_id: "call_1",
+          name: "calculator",
+          arguments: '{"expression":"1+1"}',
+        },
+        {
+          type: "function_call_output",
+          call_id: "call_1",
+          output: "2",
+        },
+      ],
+    });
+  });
+
   it("retries validation errors without unsupported item references", async () => {
     const fetchMock = vi
       .fn()
@@ -296,7 +344,9 @@ describe("openaiCompatibleAdapter.createChatModel", () => {
       "test-model",
     );
 
-    await expect(model.doGenerate(referencedContinuationCall)).rejects.toThrow();
+    await expect(
+      model.doGenerate(referencedContinuationCall),
+    ).rejects.toThrow();
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
     const firstBody = JSON.parse(
@@ -337,7 +387,9 @@ describe("openaiCompatibleAdapter.createChatModel", () => {
       "test-model",
     );
 
-    await expect(model.doGenerate(referencedContinuationCall)).rejects.toThrow();
+    await expect(
+      model.doGenerate(referencedContinuationCall),
+    ).rejects.toThrow();
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });

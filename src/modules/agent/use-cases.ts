@@ -1549,7 +1549,8 @@ export async function getConversationMessages(conversationId: string) {
       (part.type === "text" ||
         part.type === "reasoning" ||
         part.type === "suggestions" ||
-        part.type === "citations") &&
+        part.type === "citations" ||
+        part.type === "error") &&
       part.contentEncrypted
     ) {
       try {

@@ -5,10 +5,12 @@ import { memo, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import type * as React from "react";
 import {
+  AlertTriangleIcon,
   BrainIcon,
   CheckCircle2Icon,
   CheckIcon,
   ChevronDownIcon,
+  CopyIcon,
   XIcon,
 } from "lucide-react";
 import { CitationBlock } from "@/components/chat/citation-block";
@@ -99,6 +101,73 @@ function StreamingThinking() {
         <span />
       </span>
     </div>
+  );
+}
+
+function ErrorPart({ part }: { part: ChatMessagePart }) {
+  const t = useTranslations("chat.rendering");
+  const [copied, setCopied] = useState(false);
+  const [open, setOpen] = useState(false);
+  const summary = part.content.split("\n", 1)[0]?.trim() || t("errorFallback");
+
+  async function copyError() {
+    try {
+      await navigator.clipboard.writeText(part.content);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2_000);
+    } catch {
+      setCopied(false);
+    }
+  }
+
+  return (
+    <Collapsible
+      open={open}
+      onOpenChange={setOpen}
+      className="overflow-hidden rounded-2xl border border-destructive/20 bg-destructive/[0.035]"
+    >
+      <div className="flex min-w-0 items-center gap-3 px-4 py-3">
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+          <AlertTriangleIcon className="size-4" aria-hidden="true" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium text-foreground">
+            {t("errorTitle")}
+          </p>
+          <p className="truncate text-xs text-muted-foreground">{summary}</p>
+        </div>
+        <CollapsibleTrigger asChild>
+          <Button type={BUTTON_TYPE} size="sm" variant={GHOST_VARIANT}>
+            {open ? t("errorHide") : t("errorView")}
+            <ChevronDownIcon
+              className={cn(
+                "size-3.5 transition-transform duration-200",
+                open && "rotate-180",
+              )}
+              aria-hidden="true"
+            />
+          </Button>
+        </CollapsibleTrigger>
+        <Button
+          type={BUTTON_TYPE}
+          size="sm"
+          variant={OUTLINE_VARIANT}
+          onClick={() => void copyError()}
+        >
+          {copied ? (
+            <CheckIcon className="size-3.5 text-success" aria-hidden="true" />
+          ) : (
+            <CopyIcon className="size-3.5" aria-hidden="true" />
+          )}
+          {copied ? t("errorCopied") : t("errorCopy")}
+        </Button>
+      </div>
+      <CollapsibleContent>
+        <pre className="max-h-72 overflow-auto border-t border-destructive/10 px-4 py-3 font-mono text-[11px] leading-relaxed whitespace-pre-wrap break-words text-muted-foreground">
+          {part.content}
+        </pre>
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
 
@@ -1170,6 +1239,9 @@ export const MessageContent = memo(function MessageContent({
     }
     if (part.type === "reasoning") {
       return <ThinkingPart key={key} part={part} />;
+    }
+    if (part.type === "error") {
+      return <ErrorPart key={key} part={part} />;
     }
     if (part.type === "file") {
       const imageAttachment = chatImageAttachmentFromPartContent(part.content);

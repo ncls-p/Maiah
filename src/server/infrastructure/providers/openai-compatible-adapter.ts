@@ -69,25 +69,51 @@ function buildHeaders(config: ProviderRuntimeConfig): Record<string, string> {
   return headers;
 }
 
-export function stripUnsupportedResponsesItemReferences(
+function compatibleResponsesMessage(item: unknown) {
+  if (typeof item !== "object" || item === null) return item;
+  const record = item as Record<string, unknown>;
+  if (record.type === "item_reference") return null;
+  if (
+    record.role !== "assistant" ||
+    !Array.isArray(record.content) ||
+    !record.content.every(
+      (part) =>
+        typeof part === "object" &&
+        part !== null &&
+        (part as { type?: unknown }).type === "output_text" &&
+        typeof (part as { text?: unknown }).text === "string",
+    )
+  ) {
+    return item;
+  }
+
+  return {
+    ...record,
+    content: record.content
+      .map((part) => (part as { text: string }).text)
+      .join(""),
+  };
+}
+
+export function normalizeResponsesInputForCompatibleProvider(
   body: BodyInit | null | undefined,
 ) {
   if (typeof body !== "string") return body;
   try {
     const payload = JSON.parse(body) as Record<string, unknown>;
     if (!Array.isArray(payload.input)) return body;
-    const input = payload.input.filter(
-      (item) =>
-        typeof item !== "object" ||
-        item === null ||
-        (item as { type?: unknown }).type !== "item_reference",
-    );
-    if (input.length === payload.input.length) return body;
+    const input = payload.input
+      .map(compatibleResponsesMessage)
+      .filter((item) => item !== null);
+    if (JSON.stringify(input) === JSON.stringify(payload.input)) return body;
     return JSON.stringify({ ...payload, input });
   } catch {
     return body;
   }
 }
+
+export const stripUnsupportedResponsesItemReferences =
+  normalizeResponsesInputForCompatibleProvider;
 
 function isUnsupportedItemReferenceResponse(
   response: Response,
@@ -225,7 +251,7 @@ function createResponsesFetch(config: ProviderRuntimeConfig) {
       return normalizeResponsesReasoningStream(response);
     }
 
-    const fallbackBody = stripUnsupportedResponsesItemReferences(
+    const fallbackBody = normalizeResponsesInputForCompatibleProvider(
       requestInit.body,
     );
     if (fallbackBody === requestInit.body) return response;
