@@ -114,12 +114,6 @@ export default function ChatPage() {
     null,
   );
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
-  const [latestConversationId, setLatestConversationId] = useState<
-    string | null
-  >(null);
-  const [latestConversationAgentId, setLatestConversationAgentId] = useState<
-    string | null
-  >(null);
   const [conversationFolders, setConversationFolders] = useState<
     ChatConversationFolder[]
   >([]);
@@ -366,8 +360,6 @@ export default function ChatPage() {
     const data = await fetchConversationPage();
     setConversations(data.conversations);
     setConversationFolders(data.folders);
-    setLatestConversationId(data.latestConversationId);
-    setLatestConversationAgentId(data.latestConversationAgentId);
     setHasMoreConversations(data.hasMore);
     setConversationCursor(data.nextCursor);
   }, [fetchConversationPage]);
@@ -517,8 +509,6 @@ export default function ChatPage() {
     onConversationCreated: (conversationId, firstMessage) => {
       skipNextMessageLoadRef.current = true;
       setActiveConversationId(conversationId);
-      setLatestConversationId(conversationId);
-      setLatestConversationAgentId(selectedAgentId);
       if (selectedAgentId) {
         const now = new Date().toISOString();
         setConversations((current) =>
@@ -671,10 +661,6 @@ export default function ChatPage() {
         if (cancelled) return;
         setConversations(conversationData.conversations);
         setConversationFolders(conversationData.folders);
-        setLatestConversationId(conversationData.latestConversationId);
-        setLatestConversationAgentId(
-          conversationData.latestConversationAgentId,
-        );
         setHasMoreConversations(conversationData.hasMore);
         setConversationCursor(conversationData.nextCursor);
       } catch (err) {
@@ -1109,8 +1095,6 @@ export default function ChatPage() {
     const attachmentsToSend = attachments;
     setInput("");
     setAttachments([]);
-    if (activeConversationId) setLatestConversationId(activeConversationId);
-    if (activeConversationId) setLatestConversationAgentId(selectedAgentId);
     if (sending) {
       queueMessage(content);
       return;
@@ -1689,17 +1673,7 @@ export default function ChatPage() {
         ) : (
           <section className="min-h-0 flex-1 overflow-hidden">
             {!loadingMessages && messages.length === 0 ? (
-              <EmptyConversationState
-                canChat={canChat}
-                selectedAgent={selectedAgent}
-                latestConversationId={latestConversationId}
-                emptyPromptSuggestions={emptyPromptSuggestions}
-                onSelectConversation={(conversationId) =>
-                  selectConversation(conversationId, latestConversationAgentId)
-                }
-                onSubmitSuggestion={submitSuggestion}
-                t={t}
-              />
+              <EmptyConversationState canChat={canChat} t={t} />
             ) : null}
             <div className="size-full min-h-0">
               <ChatMessageList
@@ -1741,6 +1715,8 @@ export default function ChatPage() {
             attachments={attachments}
             todoList={latestTodoList}
             centered={!loadingMessages && messages.length === 0}
+            promptSuggestions={emptyPromptSuggestions}
+            onPromptSuggestionClick={submitSuggestion}
             onRemoveAttachment={(attachmentId) =>
               setAttachments((current) =>
                 current.filter((attachment) => attachment.id !== attachmentId),

@@ -1,11 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
 import { AdvancedSection } from "@/components/ui/advanced-section";
 import {
-  CheckCircle2Icon,
   CopyIcon,
   PlusIcon,
   SearchIcon,
@@ -13,13 +12,15 @@ import {
   MoreHorizontal,
   PencilIcon,
   Trash2Icon,
-  ClockIcon,
   Store,
   XIcon,
   Share2,
   StarIcon,
   BotIcon,
   NetworkIcon,
+  ArrowRightIcon,
+  Grid2X2Icon,
+  ListIcon,
 } from "lucide-react";
 
 import { PageLoading } from "@/components/page-loading";
@@ -156,6 +157,7 @@ interface Agent {
   logoUrl?: string | null;
   activeVersionId: string | null;
   modelDisplayName?: string | null;
+  toolCount?: number;
   promptSuggestions?: string[];
   organizationDisplayOrder?: number;
   isOrganizationDefault?: boolean;
@@ -181,27 +183,7 @@ function slugifyAgentName(value: string) {
   );
 }
 
-function timeAgo(
-  dateString: string,
-  tList: (key: string, values?: { count: number }) => string,
-  locale: string,
-): string {
-  const now = new Date();
-  const date = new Date(dateString);
-  const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-
-  if (seconds < 60) return tList("timeJustNow");
-  if (seconds < 3600)
-    return tList("timeMinutesAgo", { count: Math.floor(seconds / 60) });
-  if (seconds < 86400)
-    return tList("timeHoursAgo", { count: Math.floor(seconds / 3600) });
-  if (seconds < 604800)
-    return tList("timeDaysAgo", { count: Math.floor(seconds / 86400) });
-  return date.toLocaleDateString(locale);
-}
-
 export default function AgentsPage() {
-  const locale = useLocale();
   const t = useTranslations("agents");
   const tList = useTranslations("agents.list");
   const tCommon = useTranslations("common");
@@ -225,6 +207,7 @@ export default function AgentsPage() {
   const [agentKindFilter, setAgentKindFilter] = useState<
     "all" | "assistant" | "orchestrator"
   >("all");
+  const [displayMode, setDisplayMode] = useState<"grid" | "list">("grid");
   const [form, setForm] = useState({
     kind: "assistant" as Agent["kind"],
     templateId: "blank",
@@ -537,7 +520,7 @@ export default function AgentsPage() {
         >
           {/* Toolbar */}
           {!loading && !loadError && agents.length > 0 ? (
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <div className="relative w-full sm:w-72">
                 <SearchIcon className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
@@ -560,7 +543,7 @@ export default function AgentsPage() {
                 ) : null}
               </div>
               <div
-                className="flex w-full items-center rounded-xl bg-muted/60 p-1 sm:w-auto"
+                className="flex w-full items-center rounded-xl bg-muted/60 p-1 sm:ml-auto sm:w-auto"
                 role="group"
                 aria-label={tList("filterPlaceholder")}
               >
@@ -606,6 +589,28 @@ export default function AgentsPage() {
                   </button>
                 ))}
               </div>
+              <Button
+                type="button"
+                size="icon"
+                variant="outline"
+                className="size-11 shrink-0 rounded-xl bg-card/70"
+                aria-label={
+                  displayMode === "grid"
+                    ? tList("showAsList")
+                    : tList("showAsGrid")
+                }
+                onClick={() =>
+                  setDisplayMode((current) =>
+                    current === "grid" ? "list" : "grid",
+                  )
+                }
+              >
+                {displayMode === "grid" ? (
+                  <Grid2X2Icon className="size-4" aria-hidden="true" />
+                ) : (
+                  <ListIcon className="size-4" aria-hidden="true" />
+                )}
+              </Button>
             </div>
           ) : null}
 
@@ -650,7 +655,12 @@ export default function AgentsPage() {
               {tList("noMatch", { query: searchQuery })}
             </div>
           ) : (
-            <div className="grid gap-4 pt-4 sm:grid-cols-2">
+            <div
+              className={cn(
+                "grid gap-3 pt-4",
+                displayMode === "grid" && "sm:grid-cols-2",
+              )}
+            >
               {filteredAgents.map((agent) => {
                 const isReady = Boolean(
                   agent.activeVersionId && agent.modelDisplayName,
@@ -664,173 +674,189 @@ export default function AgentsPage() {
                   <div
                     key={agent.id}
                     className={cn(
-                      "group grid min-h-52 grid-cols-[auto_minmax(0,1fr)_auto] grid-rows-[1fr_auto] items-start gap-4 rounded-2xl border border-border/70 bg-card/92 p-5 shadow-[var(--surface-shadow)] transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-[var(--surface-shadow-hover)]",
+                      "group flex min-h-48 min-w-0 flex-col rounded-2xl border border-border/70 bg-card/82 p-4 shadow-[var(--surface-shadow)] transition-[border-color,background-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:bg-card hover:shadow-[var(--surface-shadow-hover)]",
+                      isOrganizationDefault &&
+                        "border-primary/20 bg-primary/[0.025]",
                     )}
                   >
-                    <ModelLogo
-                      logoUrl={agent.logoUrl}
-                      label={agent.name}
-                      size="md"
-                      imageFit="cover"
-                      className="rounded-full"
-                    />
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <p className="truncate text-sm font-medium">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <ModelLogo
+                        logoUrl={agent.logoUrl}
+                        label={agent.name}
+                        size="md"
+                        imageFit="cover"
+                        className={cn(
+                          "rounded-xl",
+                          agent.kind === "orchestrator" &&
+                            "border border-primary/25 bg-primary/5 text-primary",
+                        )}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold tracking-[-0.015em]">
                           {agent.name}
                         </p>
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            "gap-1 text-xs",
-                            isReady
-                              ? "border-success/30 bg-success/10 text-success"
-                              : "",
-                          )}
-                        >
-                          {isReady ? (
-                            <CheckCircle2Icon
-                              className="size-3"
-                              aria-hidden="true"
-                            />
-                          ) : (
-                            <ClockIcon className="size-3" aria-hidden="true" />
-                          )}
-                          {isReady
-                            ? t("statusReady")
-                            : tList("statusNeedsSetup")}
-                        </Badge>
-                        {agent.kind === "orchestrator" ? (
-                          <Badge variant="secondary" className="gap-1 text-xs">
-                            <NetworkIcon
-                              className="size-3"
-                              aria-hidden="true"
-                            />
-                            {tList("kindOrchestrator")}
-                          </Badge>
-                        ) : null}
-                        <ResourceProvenanceBadge
-                          provenance={agent.provenance}
-                        />
-                        {agent.isRecommended ? (
-                          <Badge variant="outline" className="text-xs">
-                            {tList("badgeRecommended")}
-                          </Badge>
-                        ) : null}
-                        {isOrganizationDefault ? (
-                          <Badge variant="secondary" className="gap-1 text-xs">
-                            <StarIcon className="size-3" aria-hidden="true" />
-                            {tList("badgeOrganizationDefault")}
-                          </Badge>
-                        ) : null}
-                        {isUserDefault ? (
-                          <Badge variant="outline" className="gap-1 text-xs">
-                            <StarIcon className="size-3" aria-hidden="true" />
-                            {tList("badgeMyDefault")}
-                          </Badge>
-                        ) : null}
+                        <p className="mt-0.5 truncate text-[0.7rem] text-muted-foreground">
+                          {agent.kind === "orchestrator"
+                            ? tList("kindOrchestrator")
+                            : tList("kindAssistant")}
+                          {" · "}
+                          {agent.isGlobal
+                            ? tList("scopeOrganization")
+                            : tList("scopePersonal")}
+                        </p>
                       </div>
-                      <p className="mt-3 line-clamp-3 text-sm leading-5 text-muted-foreground">
-                        {agent.description
-                          ? agent.description
-                          : tList("metaSlugCreated", {
-                              slug: agent.slug,
-                              date: timeAgo(agent.createdAt, tList, locale),
-                            })}
-                      </p>
-                    </div>
-
-                    {/* Quick actions */}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="col-span-2 col-start-2 row-start-2 ml-auto shrink-0 text-xs text-primary hover:bg-accent"
-                      onClick={() =>
-                        router.push(
-                          isReady
-                            ? `/chat?agentId=${agent.id}`
-                            : `/agents/${agent.id}`,
-                        )
-                      }
-                    >
-                      {isReady ? t("chat") : tList("setup")}
-                    </Button>
-
-                    {/* Dropdown actions */}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          size="icon-sm"
-                          variant="ghost"
-                          className="shrink-0 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
-                          aria-label={tList("agentActions")}
-                        >
-                          <MoreHorizontal
-                            className={ICON_SIZE_CLASS}
-                            aria-hidden="true"
-                          />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={() => router.push(`/agents/${agent.id}`)}
-                        >
-                          <PencilIcon className={ICON_SIZE_CLASS} />
-                          {agent.canEdit ? t("configure") : tList("view")}
-                        </DropdownMenuItem>
-                        {agent.canClone !== false ? (
-                          <DropdownMenuItem
-                            onClick={() => void cloneAgent(agent)}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            size="icon-sm"
+                            variant="ghost"
+                            className="shrink-0 rounded-lg text-muted-foreground"
+                            aria-label={tList("agentActions")}
                           >
-                            <CopyIcon className={ICON_SIZE_CLASS} />
-                            {tList("clone")}
+                            <MoreHorizontal
+                              className={ICON_SIZE_CLASS}
+                              aria-hidden="true"
+                            />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => router.push(`/agents/${agent.id}`)}
+                          >
+                            <PencilIcon className={ICON_SIZE_CLASS} />
+                            {agent.canEdit ? t("configure") : tList("view")}
                           </DropdownMenuItem>
-                        ) : null}
-                        <DropdownMenuItem
-                          onClick={() => void setDefaultAgent("user", agent.id)}
-                        >
-                          <StarIcon className={ICON_SIZE_CLASS} />
-                          {isUserDefault
-                            ? tList("myDefaultCurrent")
-                            : tList("setMyDefault")}
-                        </DropdownMenuItem>
-                        {agent.canEdit && agent.kind !== "orchestrator" ? (
+                          {agent.canClone !== false ? (
+                            <DropdownMenuItem
+                              onClick={() => void cloneAgent(agent)}
+                            >
+                              <CopyIcon className={ICON_SIZE_CLASS} />
+                              {tList("clone")}
+                            </DropdownMenuItem>
+                          ) : null}
                           <DropdownMenuItem
                             onClick={() =>
-                              setShareResource({
-                                kind: "agent",
-                                id: agent.id,
-                                name: agent.name,
-                                description: agent.description,
-                              })
+                              void setDefaultAgent("user", agent.id)
                             }
                           >
-                            <Share2 className={ICON_SIZE_CLASS} />
-                            {tShare("action")}
+                            <StarIcon className={ICON_SIZE_CLASS} />
+                            {isUserDefault
+                              ? tList("myDefaultCurrent")
+                              : tList("setMyDefault")}
                           </DropdownMenuItem>
-                        ) : null}
-                        {agent.canEdit && agent.kind !== "orchestrator" ? (
-                          <DropdownMenuItem
-                            onClick={() => void publishAgent(agent)}
-                          >
-                            <Store className={ICON_SIZE_CLASS} />
-                            {tShare("publish")}
-                          </DropdownMenuItem>
-                        ) : null}
-                        {agent.canEdit ? (
-                          <>
-                            <DropdownMenuSeparator />
+                          {agent.canEdit && agent.kind !== "orchestrator" ? (
                             <DropdownMenuItem
-                              variant="destructive"
-                              onClick={() => setDeleteAgentId(agent.id)}
+                              onClick={() =>
+                                setShareResource({
+                                  kind: "agent",
+                                  id: agent.id,
+                                  name: agent.name,
+                                  description: agent.description,
+                                })
+                              }
                             >
-                              <Trash2Icon className={ICON_SIZE_CLASS} />
-                              {t("configurePage.delete")}
+                              <Share2 className={ICON_SIZE_CLASS} />
+                              {tShare("action")}
                             </DropdownMenuItem>
-                          </>
-                        ) : null}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                          ) : null}
+                          {agent.canEdit && agent.kind !== "orchestrator" ? (
+                            <DropdownMenuItem
+                              onClick={() => void publishAgent(agent)}
+                            >
+                              <Store className={ICON_SIZE_CLASS} />
+                              {tShare("publish")}
+                            </DropdownMenuItem>
+                          ) : null}
+                          {agent.canEdit ? (
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                variant="destructive"
+                                onClick={() => setDeleteAgentId(agent.id)}
+                              >
+                                <Trash2Icon className={ICON_SIZE_CLASS} />
+                                {t("configurePage.delete")}
+                              </DropdownMenuItem>
+                            </>
+                          ) : null}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+
+                    <p className="mt-4 min-h-10 line-clamp-2 text-xs leading-5 text-muted-foreground">
+                      {agent.description || tList("descriptionFallback")}
+                    </p>
+
+                    <div className="mt-4 flex min-h-7 flex-wrap items-center gap-1.5">
+                      {agent.modelDisplayName ? (
+                        <Badge
+                          variant="outline"
+                          className="rounded-lg border-transparent bg-muted/55 px-2 py-1 text-[0.62rem] font-normal text-muted-foreground"
+                        >
+                          {agent.modelDisplayName}
+                        </Badge>
+                      ) : null}
+                      {typeof agent.toolCount === "number" ? (
+                        <Badge
+                          variant="outline"
+                          className="rounded-lg border-transparent bg-muted/55 px-2 py-1 text-[0.62rem] font-normal text-muted-foreground"
+                        >
+                          {tList("toolCount", { count: agent.toolCount })}
+                        </Badge>
+                      ) : null}
+                      <ResourceProvenanceBadge provenance={agent.provenance} />
+                      {agent.isRecommended ? (
+                        <Badge
+                          variant="outline"
+                          className="rounded-lg border-transparent bg-primary/8 px-2 py-1 text-[0.62rem] font-normal text-primary"
+                        >
+                          {tList("badgeRecommended")}
+                        </Badge>
+                      ) : null}
+                      {isOrganizationDefault || isUserDefault ? (
+                        <Badge
+                          variant="outline"
+                          className="rounded-lg border-transparent bg-primary/8 px-2 py-1 text-[0.62rem] font-normal text-primary"
+                        >
+                          {isUserDefault
+                            ? tList("badgeMyDefault")
+                            : tList("badgeOrganizationDefault")}
+                        </Badge>
+                      ) : null}
+                    </div>
+
+                    <div className="mt-auto flex items-center border-t border-border/60 pt-3">
+                      <span
+                        className={cn(
+                          "flex items-center gap-1.5 text-[0.7rem]",
+                          isReady ? "text-success" : "text-muted-foreground",
+                        )}
+                      >
+                        <i
+                          className={cn(
+                            "size-1.5 rounded-full",
+                            isReady ? "bg-success" : "bg-muted-foreground/60",
+                          )}
+                          aria-hidden="true"
+                        />
+                        {isReady ? t("statusReady") : tList("statusNeedsSetup")}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="ml-auto h-8 gap-1 px-2 text-xs font-normal text-muted-foreground hover:text-foreground"
+                        onClick={() =>
+                          router.push(
+                            isReady
+                              ? `/chat?agentId=${agent.id}`
+                              : `/agents/${agent.id}`,
+                          )
+                        }
+                      >
+                        {isReady ? t("chat") : tList("setup")}
+                        <ArrowRightIcon className="size-3" aria-hidden="true" />
+                      </Button>
+                    </div>
                   </div>
                 );
               })}

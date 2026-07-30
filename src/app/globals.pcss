@@ -518,7 +518,69 @@
   }
 
   .composer-dock[data-centered="true"] {
-    transform: translateY(clamp(-8rem, -10vh, -4rem));
+    transform: translateY(clamp(-7rem, -9vh, -3.5rem));
+  }
+
+  .orbit-hero-mark {
+    position: relative;
+    display: grid;
+    width: 4.5rem;
+    height: 4.5rem;
+    place-items: center;
+    border: 1px solid color-mix(in oklch, var(--primary) 34%, transparent);
+    border-radius: 999px;
+    color: var(--primary);
+  }
+
+  .orbit-hero-mark::before,
+  .orbit-hero-mark::after {
+    position: absolute;
+    width: 6rem;
+    height: 2rem;
+    border: 1px solid color-mix(in oklch, var(--primary) 28%, transparent);
+    border-radius: 999px;
+    content: "";
+    transform: rotate(-24deg);
+  }
+
+  .orbit-hero-mark::after {
+    width: 5.4rem;
+    height: 5.4rem;
+    border-style: dashed;
+    transform: rotate(32deg);
+    animation: orbit-hero-turn 14s linear infinite;
+  }
+
+  .orbit-hero-mark > span,
+  .orbit-hero-mark > i,
+  .orbit-hero-mark > b {
+    position: absolute;
+    width: 0.35rem;
+    height: 0.35rem;
+    border-radius: 999px;
+    background: var(--primary);
+    box-shadow: 0 0 0.8rem color-mix(in oklch, var(--primary) 80%, transparent);
+  }
+
+  .orbit-hero-mark > span {
+    right: 0.2rem;
+    top: 0.2rem;
+  }
+
+  .orbit-hero-mark > i {
+    bottom: 0.25rem;
+    left: 0.3rem;
+  }
+
+  .orbit-hero-mark > b {
+    left: -0.45rem;
+    top: 0.8rem;
+  }
+
+  @keyframes orbit-hero-turn {
+    to {
+      transform: rotate(392deg);
+    }
   }
 
   .composer-box {

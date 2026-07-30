@@ -1,6 +1,10 @@
-import { Loader2, MessageSquareIcon, PlusIcon } from "lucide-react";
+import {
+  CommandIcon,
+  Loader2,
+  MessageSquareIcon,
+  PlusIcon,
+} from "lucide-react";
 
-import { ModelLogo } from "@/components/providers/model-logo";
 import { Button } from "@/components/ui/button";
 import {
   Empty,
@@ -10,10 +14,7 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { Link } from "@/i18n/navigation";
-import type {
-  ChatAgent,
-  CodeWorkspaceArtifact,
-} from "@/components/chat/chat-types";
+import type { CodeWorkspaceArtifact } from "@/components/chat/chat-types";
 import {
   CHAT_INTERFACE_MODE,
   CODING_INTERFACE_MODE,
@@ -124,71 +125,36 @@ export function CodeWorkspaceModeBar({
 
 export function EmptyConversationState({
   canChat,
-  selectedAgent,
-  latestConversationId,
-  emptyPromptSuggestions,
-  onSelectConversation,
-  onSubmitSuggestion,
   t,
 }: {
   canChat: boolean;
-  selectedAgent: ChatAgent | null;
-  latestConversationId: string | null;
-  emptyPromptSuggestions: string[];
-  onSelectConversation: (conversationId: string) => void;
-  onSubmitSuggestion: (suggestion: string) => void;
   t: ChatTranslator;
 }) {
   return (
-    <div className="mx-auto flex h-full w-full max-w-3xl flex-col items-center justify-start px-4 pt-[clamp(6rem,24vh,13rem)] pb-12 animate-in-fade">
-      <div className="relative flex w-full flex-col items-center gap-5">
-        <div className="flex max-w-xl flex-col items-center text-center">
-          {selectedAgent ? (
-            <ModelLogo
-              logoUrl={selectedAgent.logoUrl}
-              label={selectedAgent.name}
-              size="lg"
-              imageFit="cover"
-              className="mb-4 rounded-full"
-            />
-          ) : null}
-          <h2 className="workspace-page-heading text-3xl font-medium leading-none tracking-[-0.04em] text-foreground sm:text-4xl">
-            {canChat
-              ? selectedAgent
-                ? t("emptyTitleNamed", { name: selectedAgent.name })
-                : t("emptyTitle")
-              : t("finishSetup")}
-          </h2>
-          <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-            {canChat
-              ? selectedAgent?.description || t("emptyDescription")
-              : t("emptySetup")}
-          </p>
+    <div className="mx-auto flex h-full w-full max-w-4xl flex-col items-center justify-start px-4 pt-[clamp(4rem,14vh,7.5rem)] pb-12 animate-in-fade">
+      <div className="flex max-w-3xl flex-col items-center text-center">
+        <div className="orbit-hero-mark mb-7" aria-hidden="true">
+          <span />
+          <i />
+          <b />
+          <CommandIcon className="size-5" />
         </div>
-
-        {canChat &&
-        (latestConversationId || emptyPromptSuggestions.length > 0) ? (
-          <div className="flex flex-wrap justify-center gap-2">
-            {latestConversationId ? (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onSelectConversation(latestConversationId)}
-              >
-                {t("continueLast")}
-              </Button>
-            ) : null}
-            {emptyPromptSuggestions.map((suggestion) => (
-              <Button
-                key={suggestion}
-                type="button"
-                variant="outline"
-                onClick={() => onSubmitSuggestion(suggestion)}
-              >
-                {suggestion}
-              </Button>
-            ))}
-          </div>
+        <p className="workspace-page-kicker mb-4 text-[0.62rem]">
+          {t("heroKicker")}
+        </p>
+        <h1 className="text-balance font-sans text-[clamp(2.4rem,5vw,4.4rem)] font-medium leading-[0.98] tracking-[-0.06em] text-foreground">
+          {t("heroLineOne")}
+          <br />
+          Maiah{" "}
+          <em className="font-editorial font-normal text-primary">
+            {t("heroAccent")}
+          </em>{" "}
+          {t("heroLineTwo")}
+        </h1>
+        {!canChat ? (
+          <p className="mt-5 max-w-md text-sm text-muted-foreground">
+            {t("emptySetup")}
+          </p>
         ) : null}
       </div>
     </div>

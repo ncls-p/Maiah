@@ -25,6 +25,7 @@ import { canManageTenantGlobals } from "@/modules/admin/auth";
 import { hasWorkspacePermissionForRequest } from "@/modules/auth/workspace-access";
 import { authorization } from "@/server/domain/services/authorization";
 import { withResourceProvenance } from "@/modules/iam/resource-provenance";
+import { getToolBindingsForVersion } from "@/modules/tool/use-cases";
 import { db } from "@/server/infrastructure/db";
 import {
   agentVersions,
@@ -324,6 +325,21 @@ export async function GET(req: NextRequest) {
             string,
             { displayName: string | null; logoUrl: string | null }
           >();
+      const toolCountByVersionId = new Map<string, number>();
+      if (includeModelMeta) {
+        await Promise.all(
+          list
+            .map((agent) => agent.activeVersionId)
+            .filter((versionId): versionId is string => Boolean(versionId))
+            .map(async (versionId) => {
+              const bindings = await getToolBindingsForVersion(versionId, {
+                workspaceId,
+                userId: session.user.id,
+              });
+              toolCountByVersionId.set(versionId, bindings.length);
+            }),
+        );
+      }
       const directlyEditableAgentIds =
         await authorization.listDirectlyAuthorizedResourceIds(
           { principalType: "user", principalId: session.user.id },
@@ -345,6 +361,7 @@ export async function GET(req: NextRequest) {
                 )?.displayName,
                 modelLogoUrl: modelMetaByVersionId.get(agent.activeVersionId)
                   ?.logoUrl,
+                toolCount: toolCountByVersionId.get(agent.activeVersionId) ?? 0,
               }
             : {}),
           canEdit:

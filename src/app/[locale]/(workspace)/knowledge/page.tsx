@@ -1,20 +1,26 @@
 "use client";
 
-import { useCallback, useEffect, useState, type DragEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type DragEvent,
+} from "react";
 import { useTranslations } from "next-intl";
 import {
   BookOpenIcon,
+  FileTextIcon,
   Loader2,
   PencilIcon,
   PlusIcon,
   SearchIcon,
   Trash2Icon,
+  UploadIcon,
 } from "lucide-react";
 import { toast } from "sonner";
-import { ListRow } from "@/components/list-row";
 import { PageEmptyState } from "@/components/page-empty-state";
 import { PageLoading } from "@/components/page-loading";
-import { SectionHeader } from "@/components/section-header";
 import { ModelLogo } from "@/components/providers/model-logo";
 import { WorkspacePage } from "@/components/workspace-page";
 import { AdvancedSection } from "@/components/ui/advanced-section";
@@ -38,14 +44,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import {
   ResourceProvenanceBadge,
   type ResourceProvenance,
@@ -120,6 +118,7 @@ export default function KnowledgePage() {
   const [docForm, setDocForm] = useState({ title: "", content: "" });
   const [query, setQuery] = useState("");
   const [dragActive, setDragActive] = useState(false);
+  const documentInputRef = useRef<HTMLInputElement>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editingBase, setEditingBase] = useState<KnowledgeBase | null>(null);
   const [editBaseForm, setEditBaseForm] = useState({
@@ -182,8 +181,7 @@ export default function KnowledgePage() {
       );
       if (!res.ok) throw new Error(t("errorLoadAgents"));
       const data = (await res.json()) as
-        | { agents?: KnowledgeAgent[] }
-        | KnowledgeAgent[];
+        { agents?: KnowledgeAgent[] } | KnowledgeAgent[];
       setAttachAgents(Array.isArray(data) ? data : (data.agents ?? []));
     } catch (error) {
       setAttachAgentsError(true);
@@ -276,6 +274,13 @@ export default function KnowledgePage() {
     event.preventDefault();
     setDragActive(false);
     const file = event.dataTransfer.files[0];
+    if (!selectedBaseCanEdit || !file) return;
+    void file.text().then((content) => {
+      void ingestFromContent(file.name, content);
+    });
+  }
+
+  function ingestSelectedFile(file: File | undefined) {
     if (!selectedBaseCanEdit || !file) return;
     void file.text().then((content) => {
       void ingestFromContent(file.name, content);
@@ -589,49 +594,81 @@ export default function KnowledgePage() {
       {loading ? (
         <PageLoading label={tCommon("loading")} />
       ) : bases.length === 0 ? (
-        <PageEmptyState
-          icon={BookOpenIcon}
-          title={t("emptyTitle")}
-          description={t("emptyBasesDescription")}
-          className="min-h-[22rem]"
-        >
-          {canManageKnowledgeBases ? (
-            <Button type="button" onClick={() => setShowCreateDialog(true)}>
-              <PlusIcon data-icon="inline-start" aria-hidden="true" />
-              {t("createBaseCta")}
-            </Button>
-          ) : null}
-        </PageEmptyState>
+        <div className="grid min-h-[22rem] gap-3 lg:grid-cols-[16rem_1fr]">
+          <aside className="overflow-hidden rounded-2xl border border-border/70 bg-card/55 p-3">
+            <div className="flex items-center justify-between px-2 py-2">
+              <p className="text-sm font-semibold">{t("basesTitle")}</p>
+              <span className="text-xs text-muted-foreground">
+                {t("basesCount", { count: 0 })}
+              </span>
+            </div>
+            <div className="mt-2 rounded-xl border border-dashed border-border/70 px-4 py-8 text-center text-xs leading-5 text-muted-foreground">
+              {t("emptyTitle")}
+            </div>
+          </aside>
+          <section className="flex min-h-[22rem] flex-col items-center justify-center rounded-2xl border border-border/70 bg-card/55 p-8 text-center">
+            <span className="flex size-12 items-center justify-center rounded-2xl bg-primary/8 text-primary">
+              <BookOpenIcon className="size-5" aria-hidden="true" />
+            </span>
+            <h2 className="mt-4 text-lg font-semibold tracking-[-0.03em]">
+              {t("emptyTitle")}
+            </h2>
+            <p className="mt-2 max-w-sm text-sm leading-6 text-muted-foreground">
+              {t("emptyBasesDescription")}
+            </p>
+            {canManageKnowledgeBases ? (
+              <Button
+                type="button"
+                size="sm"
+                className="mt-5"
+                onClick={() => setShowCreateDialog(true)}
+              >
+                <PlusIcon data-icon="inline-start" aria-hidden="true" />
+                {t("createBaseCta")}
+              </Button>
+            ) : null}
+          </section>
+        </div>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-[20rem_1fr]">
-          <section className="flex flex-col gap-4">
-            <SectionHeader
-              title={t("basesTitle")}
-              description={t("basesDescription")}
-            />
-            <div className="flex flex-col gap-2">
+        <div className="grid gap-3 lg:grid-cols-[16rem_1fr]">
+          <aside className="overflow-hidden rounded-2xl border border-border/70 bg-card/55 p-2.5">
+            <div className="flex items-center justify-between px-2 py-2.5">
+              <p className="text-sm font-semibold">{t("basesTitle")}</p>
+              <span className="text-[0.7rem] text-muted-foreground">
+                {t("basesCount", { count: bases.length })}
+              </span>
+            </div>
+            <div className="flex flex-col gap-1">
               {bases.map((base) => (
-                <ListRow
+                <div
                   key={base.id}
-                  selected={selectedId === base.id}
-                  className="group items-start gap-2"
+                  className={cn(
+                    "group flex items-center gap-2 rounded-xl border border-transparent p-2 transition-colors",
+                    selectedId === base.id
+                      ? "border-primary/15 bg-primary/6"
+                      : "hover:bg-muted/45",
+                  )}
                 >
                   <button
                     type="button"
                     onClick={() => setSelectedId(base.id)}
-                    className="min-w-0 flex-1 border-0 bg-transparent p-0 text-left text-sm shadow-none outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                    className="flex min-w-0 flex-1 items-center gap-2.5 border-0 bg-transparent p-0 text-left text-sm shadow-none outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
                   >
-                    <span className="flex min-w-0 items-center gap-2">
-                      <span className="block truncate font-medium">
+                    <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/8 font-mono text-[0.62rem] font-medium uppercase text-primary">
+                      {base.name
+                        .split(/\s+/)
+                        .map((part) => part[0])
+                        .join("")
+                        .slice(0, 2)}
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block truncate text-xs font-medium">
                         {base.name}
                       </span>
-                      <ResourceProvenanceBadge provenance={base.provenance} />
+                      <span className="mt-1 block truncate text-[0.68rem] text-muted-foreground">
+                        {base.isGlobal ? t("scopeGlobal") : t("scopePrivate")}
+                      </span>
                     </span>
-                    {base.description ? (
-                      <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-                        {base.description}
-                      </p>
-                    ) : null}
                   </button>
                   {canManageKnowledgeBases ? (
                     <div className="flex shrink-0 gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100">
@@ -670,11 +707,11 @@ export default function KnowledgePage() {
                       </Button>
                     </div>
                   ) : null}
-                </ListRow>
+                </div>
               ))}
             </div>
-          </section>
-          <section className="flex flex-col gap-4">
+          </aside>
+          <section className="min-w-0">
             {!selectedId ? (
               <PageEmptyState
                 icon={BookOpenIcon}
@@ -683,50 +720,60 @@ export default function KnowledgePage() {
               />
             ) : (
               <>
-                <div className="flex flex-col gap-3 rounded-2xl border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="min-w-0">
-                    <div className="flex min-w-0 items-center gap-2">
-                      <p className="truncate text-base font-semibold">
-                        {selectedBase?.name ?? t("documents")}
+                <div className="overflow-hidden rounded-2xl border border-border/70 bg-card/55">
+                  <header className="flex flex-col gap-3 border-b border-border/60 p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <div className="min-w-0">
+                          <p className="workspace-page-kicker text-[0.58rem]">
+                            {selectedBase?.isGlobal
+                              ? t("scopeGlobal")
+                              : t("scopePrivate")}
+                          </p>
+                          <h2 className="mt-1 truncate text-lg font-semibold tracking-[-0.03em]">
+                            {selectedBase?.name ?? t("documents")}
+                          </h2>
+                        </div>
+                        {selectedBase ? (
+                          <ResourceProvenanceBadge
+                            provenance={selectedBase.provenance}
+                          />
+                        ) : null}
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {selectedBase?.description || t("documentsHint")}
                       </p>
-                      {selectedBase ? (
-                        <ResourceProvenanceBadge
-                          provenance={selectedBase.provenance}
-                        />
-                      ) : null}
                     </div>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {selectedBase?.description || t("documentsHint")}
-                    </p>
-                  </div>
-                  {selectedBaseCanEdit ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => void openAttachDialog()}
-                    >
-                      {t("attachAssistant")}
-                    </Button>
-                  ) : null}
-                </div>
+                    {selectedBaseCanEdit ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => void openAttachDialog()}
+                      >
+                        {t("attachAssistant")}
+                      </Button>
+                    ) : null}
+                  </header>
 
-                {selectedBaseCanEdit ? (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <BookOpenIcon className="size-5" aria-hidden="true" />
-                        {t("documents")}
-                      </CardTitle>
-                      <CardDescription>{t("documentsHint")}</CardDescription>
-                    </CardHeader>
-                    <CardContent className="grid gap-3">
+                  {selectedBaseCanEdit ? (
+                    <div className="p-3">
+                      <input
+                        ref={documentInputRef}
+                        type="file"
+                        accept=".txt,.md,.csv,.json,text/*"
+                        className="hidden"
+                        onChange={(event) => {
+                          ingestSelectedFile(event.target.files?.[0]);
+                          event.target.value = "";
+                        }}
+                      />
                       <div
                         className={cn(
-                          "rounded-xl border border-dashed p-6 text-center text-sm transition-colors",
+                          "flex min-h-32 flex-col items-center justify-center rounded-xl border border-dashed px-5 py-5 text-center transition-colors",
                           dragActive
-                            ? "border-primary bg-primary/5"
-                            : "border-border text-muted-foreground",
+                            ? "border-primary bg-primary/6"
+                            : "border-primary/20 bg-primary/[0.025]",
                         )}
                         onDragOver={(event) => {
                           event.preventDefault();
@@ -735,82 +782,122 @@ export default function KnowledgePage() {
                         onDragLeave={() => setDragActive(false)}
                         onDrop={handleFileDrop}
                       >
-                        {t("dropHint")}
+                        <UploadIcon
+                          className="size-5 text-primary"
+                          aria-hidden="true"
+                        />
+                        <p className="mt-2 text-xs font-semibold">
+                          {t("dropTitle")}
+                        </p>
+                        <p className="mt-1 text-[0.7rem] text-muted-foreground">
+                          {t("dropFormats")}
+                        </p>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="mt-3 h-8"
+                          onClick={() => documentInputRef.current?.click()}
+                        >
+                          {t("browse")}
+                        </Button>
                       </div>
-                      <Input
-                        aria-label={t("documentTitle")}
-                        name="document-title"
-                        autoComplete="off"
-                        placeholder={t("documentTitlePlaceholder")}
-                        value={docForm.title}
-                        onChange={(e) =>
-                          setDocForm({ ...docForm, title: e.target.value })
-                        }
-                      />
-                      <Textarea
-                        aria-label={t("documentContent")}
-                        name="document-content"
-                        autoComplete="off"
-                        className="min-h-40"
-                        placeholder={t("documentContentPlaceholder")}
-                        value={docForm.content}
-                        onChange={(e) =>
-                          setDocForm({ ...docForm, content: e.target.value })
-                        }
-                      />
-                    </CardContent>
-                    <CardFooter className="justify-end">
-                      <Button
-                        onClick={() => void ingestDocument()}
-                        disabled={
-                          !selectedBaseCanEdit ||
-                          !docForm.title.trim() ||
-                          !docForm.content.trim()
-                        }
-                      >
-                        {t("ingestDocument")}
-                      </Button>
-                    </CardFooter>
-                  </Card>
-                ) : null}
-                <div className="grid gap-2">
-                  {documentsError ? (
-                    <div
-                      className="rounded-xl border border-destructive/25 bg-destructive/5 p-4"
-                      role="alert"
-                    >
-                      <p className="text-sm font-medium">
-                        {t("documentsLoadError")}
-                      </p>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
+                      <AdvancedSection
+                        label={t("pasteContent")}
+                        hint={t("pasteContentHint")}
+                        storageKey="advanced:knowledge-paste-content"
                         className="mt-3"
-                        onClick={() => {
-                          setDocumentsError(false);
-                          void loadDocuments().catch(() =>
-                            setDocumentsError(true),
-                          );
-                        }}
                       >
-                        {t("retry")}
-                      </Button>
+                        <div className="grid gap-3">
+                          <Input
+                            aria-label={t("documentTitle")}
+                            name="document-title"
+                            autoComplete="off"
+                            placeholder={t("documentTitlePlaceholder")}
+                            value={docForm.title}
+                            onChange={(e) =>
+                              setDocForm({ ...docForm, title: e.target.value })
+                            }
+                          />
+                          <Textarea
+                            aria-label={t("documentContent")}
+                            name="document-content"
+                            autoComplete="off"
+                            className="min-h-32"
+                            placeholder={t("documentContentPlaceholder")}
+                            value={docForm.content}
+                            onChange={(e) =>
+                              setDocForm({
+                                ...docForm,
+                                content: e.target.value,
+                              })
+                            }
+                          />
+                          <Button
+                            className="justify-self-end"
+                            onClick={() => void ingestDocument()}
+                            disabled={
+                              !docForm.title.trim() || !docForm.content.trim()
+                            }
+                          >
+                            {t("ingestDocument")}
+                          </Button>
+                        </div>
+                      </AdvancedSection>
                     </div>
                   ) : null}
-                  {!documentsError && documents.length === 0 ? (
-                    <p className="rounded-xl border border-dashed p-5 text-center text-sm text-muted-foreground">
-                      {t("documentsEmpty")}
-                    </p>
-                  ) : null}
-                  {documents.map((doc) => (
-                    <Card key={doc.id} size="sm">
-                      <CardContent className="flex items-center justify-between gap-2 p-4">
-                        <span className="min-w-0 truncate font-medium">
-                          {doc.title}
+
+                  <div className="grid gap-1.5 border-t border-border/55 p-3">
+                    {documentsError ? (
+                      <div
+                        className="rounded-xl border border-destructive/25 bg-destructive/5 p-4"
+                        role="alert"
+                      >
+                        <p className="text-sm font-medium">
+                          {t("documentsLoadError")}
+                        </p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="mt-3"
+                          onClick={() => {
+                            setDocumentsError(false);
+                            void loadDocuments().catch(() =>
+                              setDocumentsError(true),
+                            );
+                          }}
+                        >
+                          {t("retry")}
+                        </Button>
+                      </div>
+                    ) : null}
+                    {!documentsError && documents.length === 0 ? (
+                      <p className="rounded-xl border border-dashed p-5 text-center text-xs text-muted-foreground">
+                        {t("documentsEmpty")}
+                      </p>
+                    ) : null}
+                    {documents.map((doc) => (
+                      <article
+                        key={doc.id}
+                        className="flex min-h-14 items-center gap-3 rounded-xl border border-border/65 bg-background/45 p-2"
+                      >
+                        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/8 font-mono text-[0.58rem] text-primary">
+                          <FileTextIcon className="size-4" aria-hidden="true" />
                         </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-xs font-medium">
+                            {doc.title}
+                          </p>
+                          <p className="mt-1 text-[0.68rem] text-muted-foreground">
+                            {new Date(doc.createdAt).toLocaleDateString()}
+                          </p>
+                        </div>
                         <div className="flex shrink-0 items-center gap-2">
-                          <Badge variant={statusVariant(doc.status)}>
+                          <Badge
+                            variant={statusVariant(doc.status)}
+                            className="text-[0.65rem]"
+                          >
                             {statusLabel(doc.status, t)}
                           </Badge>
                           {selectedBaseCanEdit ? (
@@ -831,9 +918,9 @@ export default function KnowledgePage() {
                             </Button>
                           ) : null}
                         </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                      </article>
+                    ))}
+                  </div>
                 </div>
                 <AdvancedSection
                   label={t("optionalSearch")}

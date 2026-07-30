@@ -11,6 +11,7 @@ export interface ChatAgent {
   isOrganizationDefault?: boolean;
   promptSuggestions?: string[];
   modelLogoUrl?: string | null;
+  toolCount?: number;
 }
 
 export interface ChatConversation {
@@ -394,10 +395,7 @@ function workPhaseHasRecoveredToolError(
 }
 
 export type WorkPhaseOutcome =
-  | "pending"
-  | "completed"
-  | "completed-with-issues"
-  | "interrupted";
+  "pending" | "completed" | "completed-with-issues" | "interrupted";
 
 export function resolveWorkPhaseOutcome(input: {
   parts: ChatMessagePart[];
@@ -437,7 +435,7 @@ export function groupWorkPhaseParts(
   const canGroupPart = (part: ChatMessagePart) =>
     isWorkPhasePart(part) && !options.isStandalonePart?.(part);
 
-  for (let partIndex = 0; partIndex < parts.length; ) {
+  for (let partIndex = 0; partIndex < parts.length;) {
     const part = parts[partIndex];
     if (!canGroupPart(part)) {
       groups.push({ type: "part", part, partIndex });

@@ -59,6 +59,8 @@ interface ChatComposerProps {
   onRemoveAttachment?: (attachmentId: string) => void;
   todoList?: ChatTodoList | null;
   centered?: boolean;
+  promptSuggestions?: string[];
+  onPromptSuggestionClick?: (suggestion: string) => void;
 }
 
 const maxChatAttachments = 8;
@@ -252,6 +254,8 @@ export function ChatComposer({
   onRemoveAttachment,
   todoList,
   centered = false,
+  promptSuggestions = [],
+  onPromptSuggestionClick,
 }: ChatComposerProps) {
   const t = useTranslations("chat.composer");
   const composerControls = useChatComposerControls();
@@ -492,13 +496,8 @@ export function ChatComposer({
             ))}
           </AttachmentGroup>
         ) : null}
-        <div className={cn("composer-box rounded-3xl")}>
-          {composerControls ? (
-            <div className="flex min-h-11 items-center gap-2 border-b border-border/55 px-2.5 py-1.5 sm:px-3">
-              {composerControls}
-            </div>
-          ) : null}
-          <div className="flex items-end gap-1.5 p-2 sm:p-2.5">
+        <div className="composer-box overflow-hidden rounded-3xl">
+          <div className="px-3 pt-2.5 sm:px-4 sm:pt-3">
             <input
               ref={fileInputRef}
               type="file"
@@ -506,25 +505,6 @@ export function ChatComposer({
               multiple
               onChange={(event) => void handleFileChange(event)}
             />
-            <Button
-              type="button"
-              size="icon"
-              variant="ghost"
-              className="size-10 shrink-0 rounded-2xl text-muted-foreground hover:bg-muted hover:text-foreground"
-              aria-label={t("uploadFiles")}
-              disabled={uploadingAttachment || sending || !canChat}
-              onClick={() => fileInputRef.current?.click()}
-            >
-              {uploadingAttachment ? (
-                <Loader2Icon
-                  className="size-4 animate-spin"
-                  aria-hidden="true"
-                />
-              ) : (
-                <PaperclipIcon className="size-4" aria-hidden="true" />
-              )}
-            </Button>
-
             <Textarea
               ref={textareaRef}
               aria-label={t("messageLabel")}
@@ -548,16 +528,41 @@ export function ChatComposer({
               }
               disabled={!canChat}
               rows={1}
-              className="max-h-40 min-h-10 flex-1 resize-none border-0 bg-transparent px-2 py-2 text-base shadow-none hover:border-transparent focus-visible:bg-transparent focus-visible:ring-0 sm:min-h-12 sm:px-3 sm:py-3 sm:text-sm placeholder:text-muted-foreground"
+              className="max-h-40 min-h-14 w-full resize-none border-0 bg-transparent px-1 py-2 text-base shadow-none hover:border-transparent focus-visible:bg-transparent focus-visible:ring-0 sm:min-h-16 sm:py-2.5 sm:text-sm placeholder:text-muted-foreground"
             />
+          </div>
 
+          <div className="flex min-h-14 items-center gap-1.5 border-t border-border/55 px-2 py-1.5 sm:gap-2 sm:px-3">
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="size-10 shrink-0 rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"
+              aria-label={t("uploadFiles")}
+              disabled={uploadingAttachment || sending || !canChat}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {uploadingAttachment ? (
+                <Loader2Icon
+                  className="size-4 animate-spin"
+                  aria-hidden="true"
+                />
+              ) : (
+                <PaperclipIcon className="size-4" aria-hidden="true" />
+              )}
+            </Button>
+            {composerControls}
+            <span className="min-w-0 flex-1" />
+            <span className="hidden shrink-0 text-[0.65rem] text-muted-foreground lg:inline">
+              {sending ? t("queueHint") : t("sendHint")}
+            </span>
             <Button
               type="submit"
               size="icon"
               disabled={!canChat || (!input.trim() && attachments.length === 0)}
               aria-label={sending ? t("queueMessage") : t("sendMessage")}
               className={cn(
-                "size-10 shrink-0 rounded-2xl transition-[background-color,color,box-shadow,opacity]",
+                "size-10 shrink-0 rounded-xl transition-[background-color,color,box-shadow,opacity]",
                 canChat && (input.trim() || attachments.length > 0)
                   ? "bg-primary text-primary-foreground hover:bg-primary/90"
                   : "opacity-60",
@@ -583,6 +588,24 @@ export function ChatComposer({
           </div>
         </div>
 
+        {centered && canChat && promptSuggestions.length > 0 ? (
+          <div className="mt-2 grid gap-2 sm:grid-cols-3 animate-in-fade">
+            {promptSuggestions.slice(0, 3).map((suggestion, index) => (
+              <button
+                key={suggestion}
+                type="button"
+                className="group min-h-10 truncate rounded-xl border border-border/70 bg-card/55 px-3 text-left text-xs text-muted-foreground transition-[border-color,background-color,color,transform] hover:-translate-y-0.5 hover:border-primary/25 hover:bg-card hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                onClick={() => onPromptSuggestionClick?.(suggestion)}
+              >
+                <span className="mr-2 font-mono text-[0.62rem] text-primary">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                {suggestion}
+              </button>
+            ))}
+          </div>
+        ) : null}
+
         <div className="mt-1.5 min-h-5 px-1">
           {!canChat ? (
             <p className="text-xs text-muted-foreground animate-in-fade">
@@ -594,11 +617,7 @@ export function ChatComposer({
                 {t("configureAssistant")}
               </Link>
             </p>
-          ) : (
-            <p className="hidden text-[11px] text-muted-foreground sm:block">
-              {sending ? t("queueHint") : t("sendHint")}
-            </p>
-          )}
+          ) : null}
         </div>
       </div>
     </form>
