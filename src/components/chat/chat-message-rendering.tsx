@@ -130,7 +130,7 @@ function PendingApprovalCard({
   const summary = summarizeToolInput(friendlyName, pendingApproval.input);
 
   return (
-    <div className="overflow-hidden rounded-[15px] border border-warning/25 bg-warning/[0.025] text-xs shadow-[0_12px_35px_-24px_color-mix(in_oklch,var(--warning)_45%,transparent)]">
+    <div className="w-full overflow-hidden rounded-[15px] border border-warning/25 bg-warning/[0.025] text-xs shadow-[0_12px_35px_-24px_color-mix(in_oklch,var(--warning)_45%,transparent)]">
       <ToolCardHeader
         sequence={sequence}
         title={t("needsApproval")}
@@ -471,7 +471,7 @@ const ToolPartCard = memo(function ToolPartCard({
     return (
       <section
         className={cn(
-          "overflow-hidden rounded-[15px] border border-border/60 bg-card/75 text-xs shadow-[0_12px_35px_-24px_color-mix(in_oklch,var(--foreground)_35%,transparent)]",
+          "w-full overflow-hidden rounded-[15px] border border-border/60 bg-card/75 text-xs shadow-[0_12px_35px_-24px_color-mix(in_oklch,var(--foreground)_35%,transparent)]",
           agentContext &&
             agentContext.depth > 0 &&
             "ml-4 border-l-2 border-l-primary/35 sm:ml-6",
@@ -511,7 +511,7 @@ const ToolPartCard = memo(function ToolPartCard({
       onOpenChange={setOpen}
       data-open={String(detailsOpen)}
       className={cn(
-        "t-acc group/tool relative overflow-hidden rounded-[15px] border border-border/60 bg-card/75 text-xs shadow-[0_12px_35px_-24px_color-mix(in_oklch,var(--foreground)_35%,transparent)] transition-[background-color,border-color,box-shadow] duration-200 ease-out",
+        "t-acc group/tool relative w-full overflow-hidden rounded-[15px] border border-border/60 bg-card/75 text-xs shadow-[0_12px_35px_-24px_color-mix(in_oklch,var(--foreground)_35%,transparent)] transition-[background-color,border-color,box-shadow] duration-200 ease-out",
         agentContext &&
           agentContext.depth > 0 &&
           "ml-4 border-l-2 border-l-primary/35 sm:ml-6",
@@ -867,7 +867,7 @@ function WorkPhase({
       onOpenChange={setManualOpen}
       data-open={String(open)}
       className={cn(
-        "t-acc group/work-phase overflow-hidden rounded-[15px] border border-border/60 bg-card/75 text-xs shadow-[0_12px_35px_-24px_color-mix(in_oklch,var(--foreground)_35%,transparent)] transition-[background-color,border-color,box-shadow] duration-200 ease-out",
+        "t-acc group/work-phase w-full overflow-hidden rounded-[15px] border border-border/60 bg-card/75 text-xs shadow-[0_12px_35px_-24px_color-mix(in_oklch,var(--foreground)_35%,transparent)] transition-[background-color,border-color,box-shadow] duration-200 ease-out",
         visualState === "approval" && "border-warning/25 bg-warning/[0.025]",
         visualState === "pending" && "border-primary/20 bg-primary/[0.025]",
         visualState === "warning" && "border-warning/25 bg-warning/[0.02]",

@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { openaiCompatibleAdapter } from "@/server/infrastructure/providers/openai-compatible-adapter";
+import {
+  openaiCompatibleAdapter,
+  stripUnsupportedResponsesItemReferences,
+} from "@/server/infrastructure/providers/openai-compatible-adapter";
 
 const generationCall = {
   prompt: [
@@ -199,6 +202,47 @@ describe("openaiCompatibleAdapter.createChatModel", () => {
     expect(requestBody).toMatchObject({ model: "test-model" });
     expect(requestBody).toHaveProperty("input");
     expect(requestBody).not.toHaveProperty("messages");
+  });
+
+  it("removes only unsupported reasoning item references from a Responses continuation", () => {
+    const body = JSON.stringify({
+      model: "test-model",
+      input: [
+        { role: "user", content: "Create a project" },
+        { type: "item_reference", id: "rs_1" },
+        {
+          type: "function_call",
+          call_id: "call_1",
+          name: "create_project",
+          arguments: '{"name":"Demo"}',
+        },
+        {
+          type: "function_call_output",
+          call_id: "call_1",
+          output: '{"ok":true}',
+        },
+      ],
+    });
+
+    expect(
+      JSON.parse(String(stripUnsupportedResponsesItemReferences(body))),
+    ).toEqual({
+      model: "test-model",
+      input: [
+        { role: "user", content: "Create a project" },
+        {
+          type: "function_call",
+          call_id: "call_1",
+          name: "create_project",
+          arguments: '{"name":"Demo"}',
+        },
+        {
+          type: "function_call_output",
+          call_id: "call_1",
+          output: '{"ok":true}',
+        },
+      ],
+    });
   });
 
   it("preserves the exact API base URL prefix", async () => {

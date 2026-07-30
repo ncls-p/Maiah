@@ -69,13 +69,36 @@ function buildHeaders(config: ProviderRuntimeConfig): Record<string, string> {
   return headers;
 }
 
+export function stripUnsupportedResponsesItemReferences(
+  body: BodyInit | null | undefined,
+) {
+  if (typeof body !== "string") return body;
+  try {
+    const payload = JSON.parse(body) as Record<string, unknown>;
+    if (!Array.isArray(payload.input)) return body;
+    const input = payload.input.filter(
+      (item) =>
+        typeof item !== "object" ||
+        item === null ||
+        (item as { type?: unknown }).type !== "item_reference",
+    );
+    if (input.length === payload.input.length) return body;
+    return JSON.stringify({ ...payload, input });
+  } catch {
+    return body;
+  }
+}
+
 function createResponsesFetch(config: ProviderRuntimeConfig) {
   const fetchImplementation = globalThis.fetch;
   const hasExplicitAuthorizationHeader = Object.keys(config.headers ?? {}).some(
     (key) => key.toLowerCase() === "authorization",
   );
 
-  return (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+  return async (
+    input: RequestInfo | URL,
+    init?: RequestInit,
+  ): Promise<Response> => {
     const request = input instanceof Request ? input : undefined;
     const url = parseRequestUrl(input);
     if (!url) {
@@ -98,12 +121,27 @@ function createResponsesFetch(config: ProviderRuntimeConfig) {
       headers.delete("authorization");
     }
 
-    return fetchImplementation(url, {
+    const requestInit: RequestInit = {
       ...init,
       method: init?.method ?? request?.method,
       body: init?.body ?? request?.body,
       signal: init?.signal ?? request?.signal,
       headers,
+    };
+    const response = await fetchImplementation(url, requestInit);
+    if (response.ok || response.status < 500) return response;
+
+    const fallbackBody = stripUnsupportedResponsesItemReferences(
+      requestInit.body,
+    );
+    if (fallbackBody === requestInit.body) return response;
+
+    const errorBody = await response.clone().text();
+    if (!errorBody.includes("'role'")) return response;
+
+    return fetchImplementation(url, {
+      ...requestInit,
+      body: fallbackBody,
     });
   };
 }
@@ -151,9 +189,7 @@ function toPositiveNumber(value: number | string | null | undefined) {
 
 function toNonNegativeCost(value: number | string | null | undefined) {
   const parsed = typeof value === "string" ? Number(value) : value;
-  return typeof parsed === "number" &&
-    Number.isFinite(parsed) &&
-    parsed >= 0
+  return typeof parsed === "number" && Number.isFinite(parsed) && parsed >= 0
     ? String(parsed)
     : undefined;
 }
@@ -194,12 +230,10 @@ function sustainabilityFromModel(model: OpenAICompatibleModel) {
   );
   const hasApiPricing =
     toNonNegativeCost(
-      model.input_token_cost_per_million ??
-        model.pricing?.input_per_million,
+      model.input_token_cost_per_million ?? model.pricing?.input_per_million,
     ) !== undefined ||
     toNonNegativeCost(
-      model.output_token_cost_per_million ??
-        model.pricing?.output_per_million,
+      model.output_token_cost_per_million ?? model.pricing?.output_per_million,
     ) !== undefined;
   if (
     energyKwhPerMillionTokens === undefined &&
@@ -236,8 +270,7 @@ function parseModels(data: unknown): ModelDescriptor[] {
         model.max_model_len ?? model.meta?.n_ctx ?? model.meta?.n_ctx_train,
       ),
       inputTokenCost: toNonNegativeCost(
-        model.input_token_cost_per_million ??
-          model.pricing?.input_per_million,
+        model.input_token_cost_per_million ?? model.pricing?.input_per_million,
       ),
       outputTokenCost: toNonNegativeCost(
         model.output_token_cost_per_million ??
