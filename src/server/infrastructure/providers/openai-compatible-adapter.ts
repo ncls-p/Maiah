@@ -89,6 +89,20 @@ export function stripUnsupportedResponsesItemReferences(
   }
 }
 
+function isUnsupportedItemReferenceResponse(
+  response: Response,
+  errorBody: string,
+) {
+  if (![400, 422, 500].includes(response.status)) return false;
+  const normalizedError = errorBody.toLowerCase();
+  return (
+    normalizedError.includes("item_reference") ||
+    (normalizedError.includes("input should be a valid string") &&
+      normalizedError.includes("string_type")) ||
+    normalizedError.includes("'role'")
+  );
+}
+
 const RESPONSES_REASONING_EVENT_ALIASES = {
   "response.reasoning_part.added": "response.reasoning_summary_part.added",
   "response.reasoning_text.delta": "response.reasoning_summary_text.delta",
@@ -207,7 +221,7 @@ function createResponsesFetch(config: ProviderRuntimeConfig) {
       headers,
     };
     const response = await fetchImplementation(url, requestInit);
-    if (response.ok || response.status < 500) {
+    if (response.ok) {
       return normalizeResponsesReasoningStream(response);
     }
 
@@ -217,7 +231,9 @@ function createResponsesFetch(config: ProviderRuntimeConfig) {
     if (fallbackBody === requestInit.body) return response;
 
     const errorBody = await response.clone().text();
-    if (!errorBody.includes("'role'")) return response;
+    if (!isUnsupportedItemReferenceResponse(response, errorBody)) {
+      return response;
+    }
 
     const fallbackResponse = await fetchImplementation(url, {
       ...requestInit,

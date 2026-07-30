@@ -15,6 +15,27 @@ const generationCall = {
   ],
 } as never;
 
+const referencedContinuationCall = {
+  prompt: [
+    {
+      role: "assistant",
+      content: [
+        {
+          type: "text",
+          text: "I inspected the project.",
+          providerOptions: {
+            openai: { itemId: "msg_previous_response" },
+          },
+        },
+      ],
+    },
+    {
+      role: "user",
+      content: [{ type: "text", text: "Continue" }],
+    },
+  ],
+} as never;
+
 function apiErrorResponse() {
   return new Response(
     JSON.stringify({
@@ -244,6 +265,81 @@ describe("openaiCompatibleAdapter.createChatModel", () => {
         },
       ],
     });
+  });
+
+  it("retries validation errors without unsupported item references", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        Response.json(
+          {
+            detail: [
+              {
+                type: "string_type",
+                loc: ["body", "input", "str"],
+                msg: "Input should be a valid string",
+              },
+            ],
+          },
+          { status: 422 },
+        ),
+      )
+      .mockResolvedValueOnce(apiErrorResponse());
+    vi.stubGlobal("fetch", fetchMock);
+    const model = openaiCompatibleAdapter.createChatModel(
+      {
+        kind: "openai-compatible",
+        name: "Responses provider",
+        baseUrl: "http://localhost:8081/v1",
+        authType: "custom-header",
+      },
+      "test-model",
+    );
+
+    await expect(model.doGenerate(referencedContinuationCall)).rejects.toThrow();
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const firstBody = JSON.parse(
+      String((fetchMock.mock.calls[0]?.[1] as RequestInit).body),
+    ) as { input: Array<{ type?: string }> };
+    const secondBody = JSON.parse(
+      String((fetchMock.mock.calls[1]?.[1] as RequestInit).body),
+    ) as { input: Array<{ type?: string }> };
+    expect(firstBody.input).toContainEqual({
+      type: "item_reference",
+      id: "msg_previous_response",
+    });
+    expect(secondBody.input).not.toContainEqual(
+      expect.objectContaining({ type: "item_reference" }),
+    );
+  });
+
+  it("keeps the OpenAI Responses payload unchanged for unrelated errors", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      Response.json(
+        {
+          error: {
+            message: "The model is temporarily unavailable",
+            type: "server_error",
+          },
+        },
+        { status: 500 },
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const model = openaiCompatibleAdapter.createChatModel(
+      {
+        kind: "openai-compatible",
+        name: "Responses provider",
+        baseUrl: "http://localhost:8081/v1",
+        authType: "custom-header",
+      },
+      "test-model",
+    );
+
+    await expect(model.doGenerate(referencedContinuationCall)).rejects.toThrow();
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("maps preserved reasoning text events to the Responses summary protocol", () => {
