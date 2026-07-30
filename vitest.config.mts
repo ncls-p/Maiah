@@ -45,6 +45,7 @@ export default defineConfig({
 				"src/modules/iam/resource-deletion.ts",
 				"src/modules/iam/member-transfer.ts",
 				"src/modules/iam/organization-transfer.ts",
+				"src/modules/iam/scope-lifecycle.ts",
 				"src/modules/iam/use-cases.ts",
 				"src/modules/iam/workspace-clone.ts",
 				"src/modules/knowledge/use-cases.ts",

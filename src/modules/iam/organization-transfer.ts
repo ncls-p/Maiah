@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 
-import { and, count, eq, inArray, isNull } from "drizzle-orm";
+import { and, asc, count, eq, inArray, isNull } from "drizzle-orm";
 
 import { audit } from "@/server/domain/services/audit";
 import { authorization } from "@/server/domain/services/authorization";
@@ -51,6 +51,13 @@ export type OrganizationTransferPreview = {
     roles: number;
     resources: number;
   };
+  conflictResolutions: Array<{
+    resourceType: "project" | "team" | "role";
+    resourceId: string;
+    label: string;
+    from: string;
+    to: string;
+  }>;
   blockers: string[];
   warnings: string[];
   confirmationToken: string;
@@ -176,6 +183,7 @@ function transferFingerprint(input: {
   targetOrganizationId: string;
   counts: OrganizationTransferPreview["counts"];
   blockers: string[];
+  conflictResolutions: OrganizationTransferPreview["conflictResolutions"];
 }) {
   return createHash("sha256")
     .update(
@@ -184,9 +192,58 @@ function transferFingerprint(input: {
         targetOrganizationId: input.targetOrganizationId,
         counts: input.counts,
         blockers: [...input.blockers].sort(),
+        conflictResolutions: [...input.conflictResolutions].sort((a, b) =>
+          `${a.resourceType}:${a.resourceId}`.localeCompare(
+            `${b.resourceType}:${b.resourceId}`,
+          ),
+        ),
       }),
     )
     .digest("hex");
+}
+
+function withNumericSuffix(value: string, suffix: number, maxLength: number) {
+  const ending = `-${suffix}`;
+  return `${value.slice(0, Math.max(1, maxLength - ending.length))}${ending}`;
+}
+
+function planConflictResolutions(input: {
+  resourceType: "project" | "team" | "role";
+  maxLength: number;
+  source: Array<{ id: string; value: string; label: string }>;
+  targetValues: string[];
+}) {
+  const targetValues = new Set(input.targetValues);
+  const usedValues = new Set([
+    ...input.targetValues,
+    ...input.source
+      .filter(({ value }) => !targetValues.has(value))
+      .map(({ value }) => value),
+  ]);
+
+  return [...input.source]
+    .filter(({ value }) => targetValues.has(value))
+    .sort((a, b) => a.id.localeCompare(b.id))
+    .map((resource) => {
+      let suffix = 2;
+      let nextValue = withNumericSuffix(
+        resource.value,
+        suffix,
+        input.maxLength,
+      );
+      while (usedValues.has(nextValue)) {
+        suffix += 1;
+        nextValue = withNumericSuffix(resource.value, suffix, input.maxLength);
+      }
+      usedValues.add(nextValue);
+      return {
+        resourceType: input.resourceType,
+        resourceId: resource.id,
+        label: resource.label,
+        from: resource.value,
+        to: nextValue,
+      };
+    });
 }
 
 async function resourceCount(workspaceIds: string[]) {
@@ -246,17 +303,23 @@ export async function previewOrganizationTransfer(input: {
   const [sourceProjects, targetProjects, sourceTeams, targetTeams] =
     await Promise.all([
       db
-        .select({ id: workspaces.id, slug: workspaces.slug })
+        .select({
+          id: workspaces.id,
+          name: workspaces.name,
+          slug: workspaces.slug,
+        })
         .from(workspaces)
-        .where(eq(workspaces.organizationId, source.organizationId)),
+        .where(eq(workspaces.organizationId, source.organizationId))
+        .orderBy(asc(workspaces.id)),
       db
         .select({ slug: workspaces.slug })
         .from(workspaces)
         .where(eq(workspaces.organizationId, destination.organizationId)),
       db
-        .select({ id: teams.id, slug: teams.slug })
+        .select({ id: teams.id, name: teams.name, slug: teams.slug })
         .from(teams)
-        .where(eq(teams.organizationId, source.organizationId)),
+        .where(eq(teams.organizationId, source.organizationId))
+        .orderBy(asc(teams.id)),
       db
         .select({ slug: teams.slug })
         .from(teams)
@@ -273,7 +336,11 @@ export async function previewOrganizationTransfer(input: {
         ),
       ),
     db
-      .select({ name: roles.name })
+      .select({
+        id: roles.id,
+        name: roles.name,
+        displayName: roles.displayName,
+      })
       .from(roles)
       .where(
         and(
@@ -281,7 +348,8 @@ export async function previewOrganizationTransfer(input: {
           eq(roles.ownerResourceType, "organization"),
           eq(roles.ownerResourceId, source.organizationId),
         ),
-      ),
+      )
+      .orderBy(asc(roles.id)),
     db
       .select({ name: roles.name })
       .from(roles)
@@ -295,27 +363,38 @@ export async function previewOrganizationTransfer(input: {
   ]);
 
   const blockers: string[] = [];
-  const targetProjectSlugs = new Set(targetProjects.map(({ slug }) => slug));
-  const projectConflicts = sourceProjects
-    .map(({ slug }) => slug)
-    .filter((slug) => targetProjectSlugs.has(slug));
-  if (projectConflicts.length > 0) {
-    blockers.push(`Project URL conflict: ${projectConflicts.join(", ")}`);
-  }
-  const targetTeamSlugs = new Set(targetTeams.map(({ slug }) => slug));
-  const teamConflicts = sourceTeams
-    .map(({ slug }) => slug)
-    .filter((slug) => targetTeamSlugs.has(slug));
-  if (teamConflicts.length > 0) {
-    blockers.push(`Team URL conflict: ${teamConflicts.join(", ")}`);
-  }
-  const targetRoleNames = new Set(targetRoles.map(({ name }) => name));
-  const roleConflicts = sourceRoles
-    .map(({ name }) => name)
-    .filter((name) => targetRoleNames.has(name));
-  if (roleConflicts.length > 0) {
-    blockers.push(`Organization role conflict: ${roleConflicts.join(", ")}`);
-  }
+  const conflictResolutions = [
+    ...planConflictResolutions({
+      resourceType: "project",
+      maxLength: 128,
+      source: sourceProjects.map(({ id, name, slug }) => ({
+        id,
+        value: slug,
+        label: name,
+      })),
+      targetValues: targetProjects.map(({ slug }) => slug),
+    }),
+    ...planConflictResolutions({
+      resourceType: "team",
+      maxLength: 128,
+      source: sourceTeams.map(({ id, name, slug }) => ({
+        id,
+        value: slug,
+        label: name,
+      })),
+      targetValues: targetTeams.map(({ slug }) => slug),
+    }),
+    ...planConflictResolutions({
+      resourceType: "role",
+      maxLength: 128,
+      source: sourceRoles.map(({ id, name, displayName }) => ({
+        id,
+        value: name,
+        label: displayName,
+      })),
+      targetValues: targetRoles.map(({ name }) => name),
+    }),
+  ];
 
   const counts = {
     projects: sourceProjects.length,
@@ -331,6 +410,7 @@ export async function previewOrganizationTransfer(input: {
     },
     destination,
     counts,
+    conflictResolutions,
     blockers,
     warnings: [
       "All projects, members, teams, custom organization roles, and tool policies will move together.",
@@ -341,6 +421,7 @@ export async function previewOrganizationTransfer(input: {
       targetOrganizationId: destination.organizationId,
       counts,
       blockers,
+      conflictResolutions,
     }),
   };
 }
@@ -389,6 +470,24 @@ export async function executeOrganizationTransfer(
     );
 
   await db.transaction(async (tx) => {
+    for (const resolution of preview.conflictResolutions) {
+      if (resolution.resourceType === "project") {
+        await tx
+          .update(workspaces)
+          .set({ slug: resolution.to, updatedAt: now })
+          .where(eq(workspaces.id, resolution.resourceId));
+      } else if (resolution.resourceType === "team") {
+        await tx
+          .update(teams)
+          .set({ slug: resolution.to, updatedAt: now })
+          .where(eq(teams.id, resolution.resourceId));
+      } else {
+        await tx
+          .update(roles)
+          .set({ name: resolution.to, updatedAt: now })
+          .where(eq(roles.id, resolution.resourceId));
+      }
+    }
     for (const { userId } of memberRows) {
       await tx
         .insert(organizationMembers)
@@ -517,6 +616,7 @@ export async function previewOrganizationClone(input: {
   const transferPreview = await previewOrganizationTransfer(input);
   const preview = {
     ...transferPreview,
+    conflictResolutions: [],
     blockers: [] as string[],
     warnings: [
       "Each source project will be created as a new project in the destination organization.",

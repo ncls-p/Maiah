@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import {
   e2eMember,
+  ensureE2ELifecycleProject,
   ensureE2EMember,
   ensureE2ETransferScenario,
   ensureE2EUser,
@@ -172,6 +173,88 @@ test.describe("members page", () => {
       dialog.getByRole("button", { name: "Clone everything" }),
     ).toBeEnabled({ timeout: 10_000 });
     await expect(dialog.getByText(/Scheduled tasks/).first()).toBeVisible();
+  });
+
+  test("simulates an organization transfer and resolves project URL conflicts", async ({
+    page,
+  }) => {
+    await ensureE2ETransferScenario();
+    await page.goto("/en/members");
+    const activeProject = page.getByRole("combobox", {
+      name: "Active project",
+    });
+    if (!(await activeProject.textContent())?.includes("Maiah")) {
+      await activeProject.click();
+      await page.getByRole("option", { name: "Maiah", exact: true }).click();
+    }
+    await page.getByRole("tab", { name: "Resources" }).click();
+    await page
+      .getByRole("button", { name: "Move or clone everything" })
+      .click();
+
+    const dialog = page.getByRole("dialog", {
+      name: "Move or clone a complete scope",
+    });
+    await dialog.getByRole("combobox").first().click();
+    await page
+      .getByRole("option", { name: "The complete organization" })
+      .click();
+    await dialog
+      .getByPlaceholder("Type an organization or project name…")
+      .fill("Transfer organization");
+    await dialog.getByRole("button", { name: /Transfer organization/ }).click();
+    await dialog.getByRole("button", { name: "Review transfer" }).click();
+
+    await expect(
+      dialog.getByText("Conflicts resolved automatically"),
+    ).toBeVisible({ timeout: 10_000 });
+    await expect(dialog.getByText("main-2", { exact: true })).toBeVisible();
+    await expect(
+      dialog.getByRole("button", { name: "Move everything" }),
+    ).toBeEnabled();
+  });
+
+  test("renames and deletes a project from the unified manage menu", async ({
+    page,
+  }) => {
+    await ensureE2ELifecycleProject();
+    await page.goto("/en/members");
+    const activeProject = page.getByRole("combobox", {
+      name: "Active project",
+    });
+    await activeProject.click();
+    await page
+      .getByRole("option", { name: "Lifecycle browser project", exact: true })
+      .click();
+
+    await page.getByRole("button", { name: "Manage", exact: true }).click();
+    await page.getByRole("menuitem", { name: "Rename project" }).click();
+    const renameDialog = page.getByRole("dialog", { name: "Rename project" });
+    await renameDialog
+      .getByLabel("Project name")
+      .fill("Lifecycle browser project renamed");
+    await renameDialog.getByLabel("URL identifier").fill("e2e-lifecycle");
+    await renameDialog.getByRole("button", { name: "Save changes" }).click();
+    await expect(renameDialog).not.toBeVisible({ timeout: 10_000 });
+    await expect(activeProject).toContainText(
+      "Lifecycle browser project renamed",
+    );
+
+    await page.getByRole("button", { name: "Manage", exact: true }).click();
+    await page.getByRole("menuitem", { name: "Delete project" }).click();
+    const deleteDialog = page.getByRole("dialog", {
+      name: "Permanently delete project",
+    });
+    await deleteDialog
+      .getByLabel(/Type “Lifecycle browser project renamed” exactly/)
+      .fill("Lifecycle browser project renamed");
+    await deleteDialog
+      .getByRole("button", { name: "Delete permanently" })
+      .click();
+    await expect(deleteDialog).not.toBeVisible({ timeout: 10_000 });
+    await expect(activeProject).not.toContainText(
+      "Lifecycle browser project renamed",
+    );
   });
 
   test("deletes any governed resource from the resource table", async ({

@@ -99,6 +99,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { ScopeMigrationDialog } from "@/components/iam/scope-migration-dialog";
+import { ScopeLifecycleDialog } from "@/components/iam/scope-lifecycle-dialog";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { fetchJson } from "@/lib/api-client";
 import { buildAccessPeople } from "@/modules/iam/access-view-model";
@@ -183,6 +184,8 @@ type AccessSnapshot = {
     canManageProjectAccess: boolean;
     canManageOrganizationAccess: boolean;
     canCreateProjects: boolean;
+    canManageProjectLifecycle: boolean;
+    canManageOrganizationLifecycle: boolean;
     canManageMembers: boolean;
     canManageTeams: boolean;
   };
@@ -1975,12 +1978,16 @@ export function AccessConsole({
     canManageProjectAccess,
     canManageOrganizationAccess,
     canCreateProjects,
+    canManageProjectLifecycle,
+    canManageOrganizationLifecycle,
     canManageMembers,
     canManageTeams,
   } = snapshot.capabilities;
   const canManageAnything =
     snapshot.canManageAccess ||
     canCreateProjects ||
+    canManageProjectLifecycle ||
+    canManageOrganizationLifecycle ||
     canManageMembers ||
     canManageTeams;
   const canCustomizeViewedRole =
@@ -2132,6 +2139,15 @@ export function AccessConsole({
         </div>
 
         <div className="flex flex-col gap-2 sm:flex-row">
+          {canManageProjectLifecycle || canManageOrganizationLifecycle ? (
+            <ScopeLifecycleDialog
+              organization={snapshot.organization}
+              project={snapshot.activeProject}
+              canManageProject={canManageProjectLifecycle}
+              canManageOrganization={canManageOrganizationLifecycle}
+              onRenamed={() => load({ preserveData: true })}
+            />
+          ) : null}
           <Dialog open={organizationOpen} onOpenChange={setOrganizationOpen}>
             <DialogTrigger asChild>
               <Button type="button" variant="outline">

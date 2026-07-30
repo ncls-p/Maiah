@@ -1266,6 +1266,9 @@ export async function getAccessConsoleSnapshot(input: {
     canManageProjectAccess: hasWorkspacePermission("roles.manage"),
     canManageOrganizationAccess: hasOrganizationPermission("roles.manage"),
     canCreateProjects: hasOrganizationPermission("workspaces.create"),
+    canManageProjectLifecycle: hasWorkspacePermission("workspaces.update"),
+    canManageOrganizationLifecycle:
+      hasOrganizationPermission("organization.update"),
     canManageMembers: hasOrganizationPermission("members.manage"),
     canManageTeams: hasOrganizationPermission("teams.manage"),
   };
