@@ -20,6 +20,7 @@ export function WorkspacePage({
   actions,
   children,
   className,
+  headerVariant = "editorial",
 }: {
   title: string;
   accentTitle?: string;
@@ -29,21 +30,37 @@ export function WorkspacePage({
   actions?: ReactNode;
   children: ReactNode;
   className?: string;
+  headerVariant?: "editorial" | "compact";
 }) {
+  const compact = headerVariant === "compact";
+
   return (
     <div
       className={cn(
-        "page-content mx-auto flex min-h-full w-full flex-col gap-8 px-4 py-7 sm:px-7 sm:py-10 lg:px-10 lg:py-12",
+        "page-content mx-auto flex min-h-full w-full flex-col px-4 sm:px-7 lg:px-10",
+        compact ? "gap-5 py-5 sm:py-7 lg:py-8" : "gap-8 py-7 sm:py-10 lg:py-12",
         widthClass[width],
         className,
       )}
     >
-      <header className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+      <header
+        className={cn(
+          "flex flex-col sm:flex-row sm:justify-between",
+          compact ? "gap-3 sm:items-center" : "gap-5 sm:items-end",
+        )}
+      >
         <div className="flex min-w-0 flex-1 flex-col gap-2">
           <span className="workspace-page-kicker" aria-hidden="true">
             {eyebrow ?? `Maiah / ${title}`}
           </span>
-          <h1 className="workspace-page-heading text-pretty text-[2.35rem] leading-[0.98] text-foreground sm:text-[3.15rem]">
+          <h1
+            className={cn(
+              "workspace-page-heading text-pretty text-foreground",
+              compact
+                ? "text-[2rem] leading-none sm:text-[2.4rem]"
+                : "text-[2.35rem] leading-[0.98] sm:text-[3.15rem]",
+            )}
+          >
             {title}
             {accentTitle ? (
               <>

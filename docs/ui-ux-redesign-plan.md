@@ -36,6 +36,12 @@ La refonte doit surtout améliorer :
 - Les pages sont très centrées sur des listes, formulaires et tableaux.
 - Les états vides ne guident pas assez vers la prochaine action.
 - La configuration assistant semble dense et intimidante.
+- La configuration d’un assistant adopte désormais un parcours compact en trois
+  espaces explicites (essentiel, capacités, orchestration), avec un résumé d’état,
+  une édition du logo directement sur l’avatar et des réglages avancés repliés.
+- L’aide de mise en route conduit vers l’action réellement manquante : choix du
+  modèle ou ajout de spécialistes pour un orchestrateur. Les assistants gérés par
+  l’organisation proposent directement de créer une copie modifiable.
 
 ### Problème principal
 

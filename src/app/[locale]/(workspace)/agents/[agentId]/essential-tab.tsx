@@ -7,7 +7,6 @@ import type { SyntheticEvent } from "react";
 import { ModelLogo } from "@/components/providers/model-logo";
 import { AdvancedSection } from "@/components/ui/advanced-section";
 import { Button } from "@/components/ui/button";
-import { CardFooter } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Field,
@@ -60,7 +59,7 @@ export function EssentialTab({
   return (
     <form
       onSubmit={readOnly ? (event) => event.preventDefault() : onSave}
-      className="flex flex-col gap-4"
+      className="flex flex-col gap-3"
     >
       <fieldset disabled={readOnly} className="contents">
         <ConfigSection
@@ -360,7 +359,7 @@ export function EssentialTab({
       </fieldset>
 
       {readOnly ? null : (
-        <CardFooter className="justify-end px-0 pb-0">
+        <div className="flex justify-end rounded-2xl border border-border/60 bg-card/75 p-3 shadow-[var(--surface-shadow)]">
           <Button type="submit" disabled={saving}>
             {saving ? (
               <Spinner data-icon="inline-start" />
@@ -369,7 +368,7 @@ export function EssentialTab({
             )}
             {tCommon("save")}
           </Button>
-        </CardFooter>
+        </div>
       )}
     </form>
   );

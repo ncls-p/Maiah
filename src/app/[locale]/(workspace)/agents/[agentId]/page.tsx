@@ -207,8 +207,7 @@ export default function AgentConfigurePage() {
         "policy"
       > & { policy: DelegationConfig["policy"] | null };
       const agentsPayload = (await agentsResponse.json()) as
-        | Agent[]
-        | { agents?: Agent[] };
+        Agent[] | { agents?: Agent[] };
       setDelegationConfig({
         ...defaultDelegationConfig,
         ...delegationPayload,
@@ -762,16 +761,30 @@ export default function AgentConfigurePage() {
   return (
     <WorkspacePage
       title={agent?.name ?? t("configure")}
-      description={t("configureDescription")}
+      description={agent.description || t("configureDescription")}
       width="default"
+      headerVariant="compact"
     >
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-4">
         {!canEdit ? (
-          <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 text-sm text-muted-foreground">
-            <p className="font-medium text-foreground">
-              {t("configurePage.lockedTitle")}
-            </p>
-            <p className="mt-1">{t("configurePage.lockedDescription")}</p>
+          <div className="flex flex-col gap-3 rounded-2xl border border-primary/20 bg-primary/5 p-4 text-sm sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0 text-muted-foreground">
+              <p className="font-medium text-foreground">
+                {t("configurePage.lockedTitle")}
+              </p>
+              <p className="mt-1">{t("configurePage.lockedDescription")}</p>
+            </div>
+            {agent.canClone !== false ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="shrink-0"
+                onClick={() => void handleClone()}
+              >
+                {t("configurePage.cloneToEdit")}
+              </Button>
+            ) : null}
           </div>
         ) : null}
 
@@ -789,42 +802,46 @@ export default function AgentConfigurePage() {
         {canEdit &&
         (!hasModel ||
           (agent.kind === "orchestrator" && delegationCount === 0)) ? (
-          <div className="rounded-xl bg-muted/45 p-4 animate-in-fade stagger-2">
+          <div className="rounded-2xl border border-primary/15 bg-primary/5 p-4 animate-in-fade stagger-2">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h3 className="text-base font-semibold">
-                  {t("configurePage.setupTitle")}
+                  {!hasModel
+                    ? t("configurePage.setupTitle")
+                    : t("configurePage.orchestrationSetupTitle")}
                 </h3>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  {t("configurePage.setupDescription")}
+                  {!hasModel
+                    ? t("configurePage.setupDescription")
+                    : t("configurePage.orchestrationSetupDescription")}
                 </p>
               </div>
-              {hasModel && agent?.id ? (
-                <Button asChild size="sm">
-                  <Link href={`/chat?agentId=${agent.id}`}>
-                    {t("configurePage.openChatCta")}
-                  </Link>
-                </Button>
-              ) : (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setActiveTab("essential")}
-                >
-                  {t("configurePage.chooseModelCta")}
-                </Button>
-              )}
+              <Button
+                type="button"
+                size="sm"
+                variant={hasModel ? "default" : "outline"}
+                onClick={() =>
+                  setActiveTab(hasModel ? "orchestration" : "essential")
+                }
+              >
+                {hasModel
+                  ? t("configurePage.chooseSpecialistsCta")
+                  : t("configurePage.chooseModelCta")}
+              </Button>
             </div>
           </div>
         ) : null}
 
         {canEdit ? (
           <div className="animate-in-fade stagger-3">
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <Tabs
+              value={activeTab}
+              onValueChange={setActiveTab}
+              className="gap-4"
+            >
               <TabsList
-                variant="line"
-                className="w-full justify-start overflow-x-auto border-b border-border/70"
+                aria-label={t("configurePage.settingsNavigation")}
+                className="max-w-full justify-start overflow-x-auto"
               >
                 <TabsTrigger value="essential" className="gap-2">
                   {t("tabs.essential")}
@@ -841,7 +858,7 @@ export default function AgentConfigurePage() {
                 ) : null}
               </TabsList>
 
-              <TabsContent value="essential" className="mt-4">
+              <TabsContent value="essential">
                 <EssentialTab
                   form={form}
                   setFormAction={setForm}
@@ -855,7 +872,7 @@ export default function AgentConfigurePage() {
                 />
               </TabsContent>
 
-              <TabsContent value="capabilities" className="mt-4">
+              <TabsContent value="capabilities">
                 <CapabilitiesTab
                   builtinTools={builtinTools}
                   builtinBindings={builtinBindings}
@@ -878,7 +895,7 @@ export default function AgentConfigurePage() {
               </TabsContent>
 
               {agent?.kind === "orchestrator" ? (
-                <TabsContent value="orchestration" className="mt-4">
+                <TabsContent value="orchestration">
                   <OrchestrationTab
                     agent={agent}
                     availableAgents={delegationCandidates}

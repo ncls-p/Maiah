@@ -127,6 +127,18 @@ test.describe("agent CRUD", () => {
       { timeout: 15_000 },
     );
     await expect(page.getByText(testAgentName).first()).toBeVisible();
+    await expect(
+      page.getByRole("tablist", { name: /Assistant settings/i }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("tab", { name: /Essentials/i }),
+    ).toHaveAttribute("data-state", "active");
+    await expect(
+      page.getByRole("button", { name: /Choose a model/i }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /Change assistant logo/i }),
+    ).toBeVisible();
 
     await page.getByRole("button", { name: /Assistant actions/i }).click();
     await page.getByRole("menuitem", { name: /Delete assistant/i }).click();
