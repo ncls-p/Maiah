@@ -362,14 +362,74 @@ test.describe("chat page", () => {
     }
   });
 
+  test("keeps every queued attachment visible in a responsive grid", async ({
+    page,
+  }) => {
+    let uploadIndex = 0;
+    await page.route(
+      "**/api/workspace/chat-attachments/upload",
+      async (route) => {
+        uploadIndex += 1;
+        const fileNumber = String(uploadIndex).padStart(2, "0");
+        await route.fulfill({
+          json: {
+            attachment: {
+              kind: "chat_file",
+              id: `20000000-0000-4000-8000-${String(uploadIndex).padStart(12, "0")}`,
+              fileName: `Reference document ${fileNumber}.txt`,
+              mimeType: "text/plain",
+              size: 128,
+              hash: `hash-${fileNumber}`,
+              url: `/api/workspace/chat-attachments/mock-${fileNumber}`,
+              category: "text",
+              extractionStatus: "readable",
+              extractedTextChars: 128,
+            },
+          },
+        });
+      },
+    );
+
+    await page.goto("/en/chat");
+    await expect(
+      page.getByRole("textbox", { name: "Message", exact: true }),
+    ).toBeEnabled({ timeout: 15_000 });
+    const fileInput = page.locator('input[type="file"]');
+    await expect(fileInput).toHaveCount(1);
+    await fileInput.setInputFiles(
+      Array.from({ length: 8 }, (_, index) => ({
+        name: `Reference document ${String(index + 1).padStart(2, "0")}.txt`,
+        mimeType: "text/plain",
+        buffer: Buffer.from(`Reference ${index + 1}`),
+      })),
+    );
+
+    await expect(
+      page.getByText("8 attached files", { exact: true }),
+    ).toBeVisible({ timeout: 15_000 });
+    const attachmentTray = page.locator('[data-slot="attachment-group"]');
+    await expect(
+      attachmentTray.locator('[data-slot="attachment"]'),
+    ).toHaveCount(8);
+    await expect(
+      page.getByRole("button", {
+        name: "Remove Reference document 08.txt",
+        exact: true,
+      }),
+    ).toBeVisible();
+    expect(
+      await attachmentTray.evaluate(
+        (element) => element.scrollWidth <= element.clientWidth,
+      ),
+    ).toBe(true);
+  });
+
   test("navigate between chat and other pages", async ({ page }) => {
     await page.goto("/en/chat");
     await expect(page).toHaveURL(/\/en\/chat/);
 
     // Navigate to agents from the shared Orbit product navigation.
-    await page
-      .getByRole("link", { name: "Assistants", exact: true })
-      .click();
+    await page.getByRole("link", { name: "Assistants", exact: true }).click();
     await expect(page).toHaveURL(/\/en\/agents/);
 
     // Navigate back to chat

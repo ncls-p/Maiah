@@ -163,7 +163,10 @@ function AttachmentPreview({
 
   if (attachment.kind === "chat_image") {
     return (
-      <Attachment orientation="vertical" className="w-24">
+      <Attachment
+        size="sm"
+        className="w-full border-border/55 bg-background/78 shadow-[0_1px_2px_rgba(9,30,36,0.035)]"
+      >
         <AttachmentMedia
           variant="image"
           role="img"
@@ -181,8 +184,7 @@ function AttachmentPreview({
         <AttachmentActions>
           <AttachmentAction
             type="button"
-            variant="secondary"
-            className="size-10 rounded-xl"
+            className="size-10 rounded-lg text-muted-foreground hover:text-foreground"
             aria-label={t("removeFile", { name: attachment.fileName })}
             onClick={() => onRemove?.(attachment.id)}
           >
@@ -195,7 +197,10 @@ function AttachmentPreview({
 
   return (
     <>
-      <Attachment className="w-72 max-w-full">
+      <Attachment
+        size="sm"
+        className="w-full border-border/55 bg-background/78 shadow-[0_1px_2px_rgba(9,30,36,0.035)]"
+      >
         <AttachmentMedia>
           <FileIcon aria-hidden="true" />
         </AttachmentMedia>
@@ -207,7 +212,7 @@ function AttachmentPreview({
           {canPreview ? (
             <AttachmentAction
               type="button"
-              className="size-10 rounded-xl"
+              className="size-10 rounded-lg text-muted-foreground hover:text-foreground"
               aria-label={t("viewExtractedText", { name: attachment.fileName })}
               onClick={preview.openPreview}
             >
@@ -216,7 +221,7 @@ function AttachmentPreview({
           ) : null}
           <AttachmentAction
             type="button"
-            className="size-10 rounded-xl"
+            className="size-10 rounded-lg text-muted-foreground hover:text-foreground"
             aria-label={t("removeFile", { name: attachment.fileName })}
             onClick={() => onRemove?.(attachment.id)}
           >
@@ -486,15 +491,35 @@ export function ChatComposer({
           </div>
         ) : null}
         {attachments.length > 0 ? (
-          <AttachmentGroup className="mb-2">
-            {attachments.map((attachment) => (
-              <AttachmentPreview
-                key={attachment.id}
-                attachment={attachment}
-                onRemove={onRemoveAttachment}
+          <div className="mb-2 rounded-2xl border border-border/55 bg-card/72 p-2 shadow-[var(--surface-shadow)]">
+            <div className="flex min-h-8 items-center gap-2 px-1 pb-1.5">
+              <PaperclipIcon
+                className="size-3.5 text-primary"
+                aria-hidden="true"
               />
-            ))}
-          </AttachmentGroup>
+              <span
+                className="text-xs font-medium text-foreground"
+                aria-live="polite"
+              >
+                {t("attachedFiles", { count: attachments.length })}
+              </span>
+              <span className="ml-auto text-[0.65rem] text-muted-foreground">
+                {t("attachmentLimit", {
+                  current: attachments.length,
+                  max: maxChatAttachments,
+                })}
+              </span>
+            </div>
+            <AttachmentGroup className="grid snap-none grid-cols-[repeat(auto-fit,minmax(min(18rem,100%),1fr))] gap-2 overflow-visible overscroll-auto py-0">
+              {attachments.map((attachment) => (
+                <AttachmentPreview
+                  key={attachment.id}
+                  attachment={attachment}
+                  onRemove={onRemoveAttachment}
+                />
+              ))}
+            </AttachmentGroup>
+          </div>
         ) : null}
         <div className="composer-box overflow-hidden rounded-3xl">
           <div className="px-3 pt-2.5 sm:px-4 sm:pt-3">

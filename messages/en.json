@@ -160,6 +160,8 @@
       "fileSummary": "{status} · {count} chars · {size}",
       "removeFile": "Remove {name}",
       "viewExtractedText": "View extracted text for {name}",
+      "attachedFiles": "{count, plural, one {# attached file} other {# attached files}}",
+      "attachmentLimit": "{current}/{max}",
       "waitForResponse": "Wait for the current response before attaching files.",
       "singleZip": "Upload one ZIP or attach other files separately.",
       "unavailable": "File attachments are not available for this chat.",

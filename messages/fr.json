@@ -160,6 +160,8 @@
       "fileSummary": "{status} · {count} caractères · {size}",
       "removeFile": "Retirer {name}",
       "viewExtractedText": "Voir le texte extrait de {name}",
+      "attachedFiles": "{count, plural, one {# fichier joint} other {# fichiers joints}}",
+      "attachmentLimit": "{current}/{max}",
       "waitForResponse": "Attendez la réponse en cours avant de joindre des fichiers.",
       "singleZip": "Importez un ZIP ou joignez les autres fichiers séparément.",
       "unavailable": "Les pièces jointes ne sont pas disponibles dans ce chat.",
