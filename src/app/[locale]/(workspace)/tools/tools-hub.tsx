@@ -46,7 +46,7 @@ const TOOL_TAB_CONFIG = [
     value: "skills",
     icon: BookMarkedIcon,
     labelKey: "tabs.skills",
-    helpKey: "skillsHelp",
+    helpKey: null,
     canView: (permissions: WorkspacePermissions) =>
       permissions.canConfigureTools,
     render: () => <SkillManager />,

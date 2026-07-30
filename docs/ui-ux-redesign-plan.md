@@ -46,6 +46,10 @@ La refonte doit surtout améliorer :
   dossiers, épinglage, renommage, suppression confirmée et réordonnancement par
   glisser-déposer avec actions clavier équivalentes. Les erreurs de mutation
   préservent la liste et relancent la synchronisation si nécessaire.
+- La bibliothèque de compétences privilégie désormais la consultation :
+  recherche, filtres de visibilité et de source, lignes compactes et affichage
+  progressif par lots de 24. Installation et création manuelle sont regroupées
+  derrière une seule action, avec un seul éditeur chargé à la demande.
 
 ### Problème principal
 
