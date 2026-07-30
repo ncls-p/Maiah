@@ -495,3 +495,25 @@ Commencer par la Phase 1, car elle a le plus gros impact immédiat sur la percep
 - pages mieux structurées ;
 - première impression plus professionnelle ;
 - workflow utilisateur plus naturel.
+
+---
+
+## Suivi — Bibliothèque MCP
+
+La page des serveurs MCP reprend désormais le même modèle que la bibliothèque
+de compétences :
+
+- recherche disponible dès le premier serveur ;
+- filtre d’état compact ;
+- une seule action principale « Ajouter » ;
+- connexions et identifiants privés ouverts à la demande ;
+- serveurs présentés dans une liste dense, avec détail des outils dépliable ;
+- diagnostic et relance conservés au niveau du serveur concerné ;
+- chargement progressif par lots de 24 pour les espaces volumineux ;
+- états de chargement, erreur initiale, liste vide et filtre sans résultat
+  distincts ;
+- actions d’administration masquées ou désactivées selon les droits réels.
+
+Les formulaires de création, de modification, de suppression, de partage et de
+connexion restent inchangés fonctionnellement : seule leur entrée dans le
+parcours a été simplifiée.

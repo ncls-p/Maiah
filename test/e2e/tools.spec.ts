@@ -139,6 +139,75 @@ test.describe("tools hub page", () => {
     await expect(page.getByRole("textbox", { name: /^Name$/i })).toBeFocused();
   });
 
+  test("keeps a large MCP server library compact and searchable", async ({
+    page,
+  }) => {
+    const servers = Array.from({ length: 55 }, (_, index) => {
+      const number = String(index + 1).padStart(3, "0");
+      return {
+        id: `10000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
+        name: `MCP server ${number}`,
+        transport: "streamable-http",
+        url: `https://mcp-${number}.example.test/mcp`,
+        command: null,
+        healthStatus: "healthy",
+        enabled: index % 5 !== 0,
+        requireApproval: false,
+        isGlobal: index % 3 === 0,
+        canEdit: true,
+        hasHeaders: false,
+        hasEnv: false,
+        provenance: {
+          scope: index % 3 === 0 ? "organization" : "user",
+          scopeName: index % 3 === 0 ? "E2E organization" : "E2E Admin",
+          ownerName: "E2E Admin",
+        },
+      };
+    });
+
+    await page.route(/\/api\/workspace\/mcp-servers\?/, async (route) => {
+      await route.fulfill({ json: servers });
+    });
+    await page.route(
+      /\/api\/workspace\/mcp-servers\/[^/]+\/tools\?/,
+      async (route) => {
+        await route.fulfill({ json: [] });
+      },
+    );
+
+    await page.goto("/en/tools?tab=mcp");
+    await expect(
+      page.getByText(/24 of 55 shown · 55 servers configured/i),
+    ).toBeVisible();
+    await expect(page.getByText(/^MCP server \d{3}$/)).toHaveCount(24);
+
+    await page.getByRole("button", { name: /Show 24 more/i }).click();
+    await expect(page.getByText(/^MCP server \d{3}$/)).toHaveCount(48);
+
+    const search = page.getByRole("searchbox", {
+      name: /Filter servers/i,
+    });
+    await search.fill("MCP server 053");
+    await expect(page.getByText(/^MCP server \d{3}$/)).toHaveCount(1);
+    await expect(
+      page.getByText("MCP server 053", { exact: true }),
+    ).toBeVisible();
+  });
+
+  test("opens private MCP connections only on request", async ({ page }) => {
+    await page.goto("/en/tools?tab=mcp");
+
+    await page
+      .getByRole("button", { name: "Connections", exact: true })
+      .click();
+    await expect(
+      page.getByRole("dialog", { name: "Connections", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByText(/Personal credentials stay private/i),
+    ).toBeVisible();
+  });
+
   test("loads MCP tools automatically and only offers retry after failure", async ({
     page,
   }) => {

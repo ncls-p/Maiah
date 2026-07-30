@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import {
   ChevronDownIcon,
   CircleAlertIcon,
+  KeyRoundIcon,
   MoreHorizontal,
   PencilIcon,
   RefreshCwIcon,
@@ -56,6 +57,8 @@ type ServerListProps = {
   canManageServers: boolean;
   servers: McpServer[];
   filteredServers: McpServer[];
+  filteredServerCount: number;
+  visibleCount: number;
   toolsByServer: Record<string, McpTool[]>;
   loading: boolean;
   search: string;
@@ -65,6 +68,8 @@ type ServerListProps = {
   onSearchChangeAction: (value: string) => void;
   onFilterChangeAction: (value: ServerStatusFilter) => void;
   onAddServerAction: () => void;
+  onOpenConnectionsAction: () => void;
+  onShowMoreAction: () => void;
   onExpandedServersChangeAction: Dispatch<
     SetStateAction<Record<string, boolean>>
   >;
@@ -93,7 +98,7 @@ type ServerListProps = {
 
 export function ServerList(props: ServerListProps) {
   return (
-    <section className="rounded-xl border bg-card">
+    <section className="space-y-3">
       <ServerListToolbar {...props} />
       <ServerListContent {...props} />
     </section>
@@ -102,49 +107,45 @@ export function ServerList(props: ServerListProps) {
 
 function ServerListToolbar({
   servers,
+  filteredServerCount,
+  visibleCount,
+  loading,
+  canManageServers,
   search,
   filterStatus,
   onSearchChangeAction,
   onFilterChangeAction,
+  onAddServerAction,
+  onOpenConnectionsAction,
 }: ServerListProps) {
   const t = useTranslations("mcp.serverManager");
   return (
-    <div className="flex flex-col gap-3 border-b px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <h3 className="text-base font-semibold">{t("servers")}</h3>
-        <p className="text-sm text-muted-foreground">
-          {t("serverCount", { count: servers.length })}
-        </p>
-      </div>
-      <div className="flex items-center gap-2">
-        {servers.length > 2 ? (
-          <div className="relative w-48 sm:w-56">
-            <SearchIcon className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              aria-label={t("filterServers")}
-              placeholder={t("filterPlaceholder")}
-              value={search}
-              onChange={(e) => onSearchChangeAction(e.target.value)}
-              className="h-8 pl-9 text-sm"
-            />
-            {search ? (
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="absolute right-1 top-1/2 size-6 -translate-y-1/2"
-                onClick={() => onSearchChangeAction("")}
-                aria-label={t("clearSearch")}
-              >
-                <XIcon className="size-3" aria-hidden="true" />
-              </Button>
-            ) : null}
-          </div>
-        ) : null}
+    <div className="rounded-2xl border border-border/65 bg-card/85 p-3 shadow-[var(--surface-shadow)]">
+      <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
+        <div className="relative min-w-0 flex-1">
+          <SearchIcon
+            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+            aria-hidden="true"
+          />
+          <Input
+            type="search"
+            aria-label={t("filterServers")}
+            placeholder={t("searchPlaceholder")}
+            value={search}
+            onChange={(event) => onSearchChangeAction(event.target.value)}
+            className="h-10 pl-9"
+          />
+        </div>
         <Select
           value={filterStatus}
-          onValueChange={(v) => onFilterChangeAction(v as ServerStatusFilter)}
+          onValueChange={(value) =>
+            onFilterChangeAction(value as ServerStatusFilter)
+          }
         >
-          <SelectTrigger className="w-32" aria-label={t("filterStatus")}>
+          <SelectTrigger
+            className="h-10 w-full lg:w-44"
+            aria-label={t("filterStatus")}
+          >
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -153,7 +154,33 @@ function ServerListToolbar({
             <SelectItem value="disabled">{t("disabled")}</SelectItem>
           </SelectContent>
         </Select>
+        <Button
+          type="button"
+          variant="outline"
+          className="h-10 shrink-0"
+          disabled={loading}
+          onClick={onOpenConnectionsAction}
+        >
+          <KeyRoundIcon aria-hidden="true" />
+          {t("connections")}
+        </Button>
+        <Button
+          type="button"
+          className="h-10 shrink-0"
+          disabled={loading || !canManageServers}
+          onClick={onAddServerAction}
+        >
+          <PlusIcon aria-hidden="true" />
+          {t("add")}
+        </Button>
       </div>
+      <p className="mt-2 px-1 text-xs text-muted-foreground" aria-live="polite">
+        {t("resultsCount", {
+          visible: Math.min(visibleCount, filteredServerCount),
+          total: filteredServerCount,
+          configured: servers.length,
+        })}
+      </p>
     </div>
   );
 }
@@ -162,7 +189,8 @@ function ServerListContent(props: ServerListProps) {
   const t = useTranslations("mcp.serverManager");
   if (props.loading) {
     return (
-      <div className="space-y-1 p-2">
+      <div className="overflow-hidden rounded-2xl border border-border/65 bg-card">
+        <ServerCardSkeleton />
         <ServerCardSkeleton />
         <ServerCardSkeleton />
       </div>
@@ -170,51 +198,48 @@ function ServerListContent(props: ServerListProps) {
   }
 
   if (props.filteredServers.length === 0 && props.servers.length === 0) {
-    return (
-      <EmptyServers
-        canManageServers={props.canManageServers}
-        onAddServerAction={props.onAddServerAction}
-      />
-    );
+    return <EmptyServers />;
   }
 
   if (props.filteredServers.length === 0) {
     return (
-      <div className="px-5 py-8 text-center text-sm text-muted-foreground">
+      <div className="rounded-2xl border border-dashed border-border/70 px-5 py-8 text-center text-sm text-muted-foreground">
         {t("noMatch", { query: props.search })}
       </div>
     );
   }
 
   return (
-    <div className="divide-y">
-      {props.filteredServers.map((server) => (
-        <ServerItem key={server.id} server={server} {...props} />
-      ))}
-    </div>
+    <>
+      <div className="divide-y overflow-hidden rounded-2xl border border-border/65 bg-card/85 shadow-[var(--surface-shadow)]">
+        {props.filteredServers.map((server) => (
+          <ServerItem key={server.id} server={server} {...props} />
+        ))}
+      </div>
+      {props.visibleCount < props.filteredServerCount ? (
+        <div className="flex justify-center">
+          <Button variant="outline" onClick={props.onShowMoreAction}>
+            {t("showMore", {
+              count: Math.min(
+                24,
+                props.filteredServerCount - props.visibleCount,
+              ),
+            })}
+          </Button>
+        </div>
+      ) : null}
+    </>
   );
 }
 
-function EmptyServers({
-  canManageServers,
-  onAddServerAction,
-}: {
-  canManageServers: boolean;
-  onAddServerAction: () => void;
-}) {
+function EmptyServers() {
   const t = useTranslations("mcp.serverManager");
   return (
-    <div className="px-5 py-12 text-center">
+    <div className="rounded-2xl border border-dashed border-border/70 px-5 py-12 text-center">
       <p className="text-sm font-medium">{t("emptyTitle")}</p>
       <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
         {t("emptyDescription")}
       </p>
-      {canManageServers ? (
-        <Button size="sm" className="mt-4" onClick={onAddServerAction}>
-          <PlusIcon className="size-4" aria-hidden="true" />
-          {t("emptyAction")}
-        </Button>
-      ) : null}
     </div>
   );
 }
@@ -507,7 +532,7 @@ function ServerActions({
         <Button
           size="icon-sm"
           variant="ghost"
-          className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
+          className="shrink-0 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
           onClick={(e) => e.stopPropagation()}
           aria-label={t("serverActions")}
         >

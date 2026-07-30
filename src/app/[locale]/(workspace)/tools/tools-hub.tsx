@@ -37,7 +37,7 @@ const TOOL_TAB_CONFIG = [
     value: "mcp",
     icon: ServerIcon,
     labelKey: "tabs.mcp",
-    helpKey: "mcpHelp",
+    helpKey: null,
     canView: (permissions: WorkspacePermissions) =>
       permissions.canGetMcpServers,
     render: () => <McpServerManager />,

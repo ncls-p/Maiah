@@ -1,12 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { PlusIcon } from "lucide-react";
+import { KeyRoundIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
-import { AdvancedSection } from "@/components/ui/advanced-section";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { fetchWorkspacePermissions } from "@/lib/api-client";
 
@@ -27,13 +32,14 @@ import {
   type ShareableResource,
 } from "@/components/marketplace/resource-share-dialog";
 import { ServerList } from "./mcp-server-manager/server-list";
-import { SystemStrip } from "./mcp-server-manager/stats";
 import { ToolConnectionsPanel } from "./mcp-server-manager/tool-connections-panel";
 import type {
   McpServer,
   McpTool,
   ServerStatusFilter,
 } from "./mcp-server-manager/types";
+
+const SERVERS_PAGE_SIZE = 24;
 
 export function McpServerManager() {
   const t = useTranslations("mcp.serverManager");
@@ -47,7 +53,9 @@ export function McpServerManager() {
   const [busy, setBusy] = useState(false);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<ServerStatusFilter>("all");
+  const [visibleCount, setVisibleCount] = useState(SERVERS_PAGE_SIZE);
   const [showCreate, setShowCreate] = useState(false);
+  const [showConnections, setShowConnections] = useState(false);
   const [showAdvancedCreate, setShowAdvancedCreate] = useState(false);
   const [showAdvancedEdit, setShowAdvancedEdit] = useState(false);
   const [form, setForm] = useState<McpServerForm>(emptyForm);
@@ -144,6 +152,7 @@ export function McpServerManager() {
     if (filterStatus === "disabled") result = result.filter((s) => !s.enabled);
     return result;
   }, [servers, search, filterStatus]);
+  const visibleServers = filteredServers.slice(0, visibleCount);
 
   async function openEdit(server: McpServer) {
     if (!workspaceId || !server.canEdit) return;
@@ -362,36 +371,7 @@ export function McpServerManager() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-xl border bg-card p-5 sm:p-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h2 className="text-xl font-semibold tracking-tight">
-              {t("title")}
-            </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {t("description")}
-            </p>
-          </div>
-          <Button
-            size="sm"
-            disabled={loading || loadError || !canManageMcpServers}
-            onClick={() => setShowCreate(true)}
-          >
-            <PlusIcon className="size-4" aria-hidden="true" />
-            {t("addServer")}
-          </Button>
-        </div>
-        <AdvancedSection
-          label={t("serverHealth")}
-          hint={t("serverHealthHint")}
-          storageKey="advanced:mcp-health"
-          className="mt-5 border-border/50 bg-muted/20"
-        >
-          <SystemStrip servers={servers} toolsByServer={toolsByServer} />
-        </AdvancedSection>
-      </div>
-
+    <div className="space-y-3">
       {loadError ? (
         <div
           className="rounded-xl border border-destructive/25 bg-destructive/5 p-4"
@@ -411,29 +391,31 @@ export function McpServerManager() {
       ) : null}
 
       {!loadError ? (
-        <ToolConnectionsPanel
-          workspaceId={workspaceId}
-          servers={servers}
-          toolsByServer={toolsByServer}
-          canManageMcpServers={canManageMcpServers}
-          canManageWorkspaceConnections={canManageTenantGlobals}
-        />
-      ) : null}
-
-      {!loadError ? (
         <ServerList
           canManageServers={canManageMcpServers}
           servers={servers}
-          filteredServers={filteredServers}
+          filteredServers={visibleServers}
+          filteredServerCount={filteredServers.length}
+          visibleCount={visibleCount}
           toolsByServer={toolsByServer}
           loading={loading}
           search={search}
           filterStatus={filterStatus}
           expandedServers={expandedServers}
           toolSearch={toolSearch}
-          onSearchChangeAction={setSearch}
-          onFilterChangeAction={setFilterStatus}
+          onSearchChangeAction={(value) => {
+            setSearch(value);
+            setVisibleCount(SERVERS_PAGE_SIZE);
+          }}
+          onFilterChangeAction={(value) => {
+            setFilterStatus(value);
+            setVisibleCount(SERVERS_PAGE_SIZE);
+          }}
           onAddServerAction={() => setShowCreate(true)}
+          onOpenConnectionsAction={() => setShowConnections(true)}
+          onShowMoreAction={() =>
+            setVisibleCount((current) => current + SERVERS_PAGE_SIZE)
+          }
           onExpandedServersChangeAction={setExpandedServers}
           onToolSearchChangeAction={setToolSearch}
           onEditServerAction={(server) => void openEdit(server)}
@@ -469,6 +451,33 @@ export function McpServerManager() {
           }
         />
       ) : null}
+
+      <Dialog open={showConnections} onOpenChange={setShowConnections}>
+        <DialogContent className="top-0 left-0 h-dvh w-screen max-w-none translate-x-0 translate-y-0 overflow-y-auto rounded-none border-0 p-4 sm:top-1/2 sm:left-1/2 sm:h-auto sm:max-h-[min(88dvh,820px)] sm:w-[calc(100vw-2rem)] sm:max-w-5xl sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl sm:border sm:p-6">
+          <div className="pr-10">
+            <div className="flex items-center gap-2">
+              <KeyRoundIcon
+                className="size-4 text-primary"
+                aria-hidden="true"
+              />
+              <DialogTitle>{t("connections")}</DialogTitle>
+            </div>
+            <DialogDescription className="mt-1">
+              {t("connectionsDescription")}
+            </DialogDescription>
+          </div>
+          {showConnections ? (
+            <ToolConnectionsPanel
+              workspaceId={workspaceId}
+              servers={servers}
+              toolsByServer={toolsByServer}
+              canManageMcpServers={canManageMcpServers}
+              canManageWorkspaceConnections={canManageTenantGlobals}
+              embedded
+            />
+          ) : null}
+        </DialogContent>
+      </Dialog>
 
       <CreateServerDialog
         open={showCreate}
