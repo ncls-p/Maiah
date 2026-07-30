@@ -5,14 +5,11 @@ import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
 import { AdvancedSection } from "@/components/ui/advanced-section";
 import {
-  CopyIcon,
   PlusIcon,
   SearchIcon,
   Loader2,
   MoreHorizontal,
   PencilIcon,
-  Trash2Icon,
-  Store,
   XIcon,
   Share2,
   StarIcon,
@@ -27,16 +24,6 @@ import { PageLoading } from "@/components/page-loading";
 import { PageEmptyState } from "@/components/page-empty-state";
 import { ModelLogo } from "@/components/providers/model-logo";
 import { WorkspacePage } from "@/components/workspace-page";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -44,7 +31,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -225,8 +211,9 @@ export default function AgentsPage() {
   const [shareResource, setShareResource] = useState<ShareableResource | null>(
     null,
   );
-  const [deleteAgentId, setDeleteAgentId] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState(false);
+  const [updatingDefaultAgentId, setUpdatingDefaultAgentId] = useState<
+    string | null
+  >(null);
   const abortRef = useRef<AbortController | null>(null);
 
   const refreshAgents = useCallback(async () => {
@@ -352,93 +339,13 @@ export default function AgentsPage() {
     }
   };
 
-  const handleDelete = async () => {
-    if (!workspaceId || !deleteAgentId) return;
-    setDeleting(true);
-    try {
-      const res = await fetch(
-        `/api/workspace/agents/${deleteAgentId}?workspaceId=${workspaceId}`,
-        {
-          method: "DELETE",
-        },
-      );
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || tList("toastDeleteFailed"));
-      }
-
-      toast.success(tList("toastDeleted"));
-      setDeleteAgentId(null);
-      await refreshAgents();
-    } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : tList("toastDeleteFailed"),
-      );
-      return;
-    } finally {
-      setDeleting(false);
-    }
-  };
-
-  async function cloneAgent(agent: Agent) {
-    if (!workspaceId) return;
-    try {
-      const res = await fetch(`/api/workspace/agents/${agent.id}/clone`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ workspaceId }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => null);
-        throw new Error(err?.error || tList("toastCloneFailed"));
-      }
-      const data = (await res.json()) as { agent?: Agent };
-      toast.success(tList("toastCloned"));
-      await refreshAgents();
-      if (data.agent?.id) router.push(`/agents/${data.agent.id}`);
-    } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : tList("toastCloneFailed"),
-      );
-      return;
-    }
-  }
-
-  async function publishAgent(agent: Agent) {
-    if (!workspaceId) return;
-    try {
-      const res = await fetch("/api/marketplace/items", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          workspaceId,
-          agentId: agent.id,
-          version: "1.0.0",
-          name: agent.name,
-          description: agent.description || "",
-          draftOnly: true,
-        }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => null);
-        throw new Error(err?.error || "Publication échouée");
-      }
-      toast.success(tShare("publishedDraft"));
-      await refreshAgents();
-    } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Une erreur est survenue",
-      );
-      return;
-    }
-  }
-
   async function setDefaultAgent(
     scope: "organization" | "user",
     agentId: string | null,
+    actionAgentId: string,
   ) {
-    if (!workspaceId) return;
+    if (!workspaceId || updatingDefaultAgentId) return;
+    setUpdatingDefaultAgentId(actionAgentId);
     try {
       const res = await fetch("/api/workspace/agents/preferences", {
         method: "PATCH",
@@ -471,6 +378,8 @@ export default function AgentsPage() {
         err instanceof Error ? err.message : tList("toastDefaultFailed"),
       );
       return;
+    } finally {
+      setUpdatingDefaultAgentId(null);
     }
   }
 
@@ -708,10 +617,12 @@ export default function AgentsPage() {
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
-                            size="icon-sm"
+                            size="icon"
                             variant="ghost"
-                            className="shrink-0 rounded-lg text-muted-foreground"
-                            aria-label={tList("agentActions")}
+                            className="size-10 shrink-0 rounded-full text-muted-foreground transition-[background-color,color,scale] hover:text-foreground active:scale-[0.96]"
+                            aria-label={tList("agentActionsNamed", {
+                              name: agent.name,
+                            })}
                           >
                             <MoreHorizontal
                               className={ICON_SIZE_CLASS}
@@ -719,33 +630,46 @@ export default function AgentsPage() {
                             />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => router.push(`/agents/${agent.id}`)}
-                          >
-                            <PencilIcon className={ICON_SIZE_CLASS} />
-                            {agent.canEdit ? t("configure") : tList("view")}
-                          </DropdownMenuItem>
-                          {agent.canClone !== false ? (
+                        <DropdownMenuContent align="end" className="w-56">
+                          {isReady ? (
                             <DropdownMenuItem
-                              onClick={() => void cloneAgent(agent)}
+                              className="min-h-10"
+                              onClick={() => router.push(`/agents/${agent.id}`)}
                             >
-                              <CopyIcon className={ICON_SIZE_CLASS} />
-                              {tList("clone")}
+                              <PencilIcon
+                                className={ICON_SIZE_CLASS}
+                                aria-hidden="true"
+                              />
+                              {agent.canEdit
+                                ? tList("customize")
+                                : tList("viewDetails")}
                             </DropdownMenuItem>
                           ) : null}
                           <DropdownMenuItem
+                            className="min-h-10"
+                            disabled={updatingDefaultAgentId !== null}
                             onClick={() =>
-                              void setDefaultAgent("user", agent.id)
+                              void setDefaultAgent(
+                                "user",
+                                isUserDefault ? null : agent.id,
+                                agent.id,
+                              )
                             }
                           >
-                            <StarIcon className={ICON_SIZE_CLASS} />
+                            <StarIcon
+                              className={cn(
+                                ICON_SIZE_CLASS,
+                                isUserDefault && "fill-current text-primary",
+                              )}
+                              aria-hidden="true"
+                            />
                             {isUserDefault
-                              ? tList("myDefaultCurrent")
+                              ? tList("clearMyDefault")
                               : tList("setMyDefault")}
                           </DropdownMenuItem>
                           {agent.canEdit && agent.kind !== "orchestrator" ? (
                             <DropdownMenuItem
+                              className="min-h-10"
                               onClick={() =>
                                 setShareResource({
                                   kind: "agent",
@@ -755,29 +679,12 @@ export default function AgentsPage() {
                                 })
                               }
                             >
-                              <Share2 className={ICON_SIZE_CLASS} />
+                              <Share2
+                                className={ICON_SIZE_CLASS}
+                                aria-hidden="true"
+                              />
                               {tShare("action")}
                             </DropdownMenuItem>
-                          ) : null}
-                          {agent.canEdit && agent.kind !== "orchestrator" ? (
-                            <DropdownMenuItem
-                              onClick={() => void publishAgent(agent)}
-                            >
-                              <Store className={ICON_SIZE_CLASS} />
-                              {tShare("publish")}
-                            </DropdownMenuItem>
-                          ) : null}
-                          {agent.canEdit ? (
-                            <>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                variant="destructive"
-                                onClick={() => setDeleteAgentId(agent.id)}
-                              >
-                                <Trash2Icon className={ICON_SIZE_CLASS} />
-                                {t("configurePage.delete")}
-                              </DropdownMenuItem>
-                            </>
                           ) : null}
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -844,7 +751,7 @@ export default function AgentsPage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="ml-auto h-8 gap-1 px-2 text-xs font-normal text-muted-foreground hover:text-foreground"
+                        className="ml-auto min-h-10 gap-1 rounded-xl px-3 text-xs font-medium text-muted-foreground transition-[background-color,color,scale] hover:text-foreground active:scale-[0.96]"
                         onClick={() =>
                           router.push(
                             isReady
@@ -853,7 +760,11 @@ export default function AgentsPage() {
                           )
                         }
                       >
-                        {isReady ? t("chat") : tList("setup")}
+                        {isReady
+                          ? t("chat")
+                          : agent.canEdit
+                            ? tList("setup")
+                            : tList("view")}
                         <ArrowRightIcon className="size-3" aria-hidden="true" />
                       </Button>
                     </div>
@@ -1157,35 +1068,6 @@ export default function AgentsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Delete confirmation */}
-      <AlertDialog
-        open={deleteAgentId !== null}
-        onOpenChange={(open) => {
-          if (!open) setDeleteAgentId(null);
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{tList("deleteTitle")}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {tList("deleteDescription")}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>
-              {tCommon("cancel")}
-            </AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              disabled={deleting}
-              onClick={() => void handleDelete()}
-            >
-              {deleting ? tList("deleting") : t("configurePage.delete")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       <ResourceShareDialog
         resource={shareResource}

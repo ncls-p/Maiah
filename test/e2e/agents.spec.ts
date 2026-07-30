@@ -64,6 +64,29 @@ test.describe("agents list page", () => {
     }
   });
 
+  test("keeps assistant card menus focused on secondary actions", async ({
+    page,
+  }) => {
+    await page.goto("/en/agents");
+
+    const actionsButton = page
+      .getByRole("button", { name: /More actions for/i })
+      .first();
+    await expect(actionsButton).toBeVisible({ timeout: 15_000 });
+    await actionsButton.click();
+
+    const menu = page.getByRole("menu");
+    await expect(
+      menu.getByRole("menuitem", {
+        name: /preferred assistant/i,
+      }),
+    ).toBeVisible();
+    expect(await menu.getByRole("menuitem").count()).toBeLessThanOrEqual(3);
+    await expect(
+      menu.getByRole("menuitem", { name: /Duplicate|Delete|Publish/i }),
+    ).toHaveCount(0);
+  });
+
   test("does not show another user's private assistant to an admin", async ({
     page,
   }) => {

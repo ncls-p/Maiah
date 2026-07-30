@@ -239,10 +239,13 @@ Transformer la page en galerie claire et actionnable.
   - missing model ;
   - no tools ;
   - knowledge attached.
-- Ajouter des actions rapides :
-  - Chat ;
-  - Configure ;
-  - Duplicate.
+- Donner à chaque carte une seule action principale :
+  - Chat lorsque l’assistant est prêt ;
+  - Configurer lorsqu’une intervention est requise ;
+  - Voir pour les assistants en lecture seule.
+- Réserver le menu secondaire aux préférences et au partage.
+- Garder la duplication et la suppression dans la fiche détaillée, avec le
+  contexte et les confirmations appropriés.
 - Simplifier la création d’assistant :
   - nom ;
   - modèle ;
