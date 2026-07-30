@@ -289,8 +289,15 @@ function mergeToolParts(parts: ChatMessagePart[]): ChatMessagePart[] {
 }
 
 export function renderablePartsFromMessage(message: ChatMessage) {
-  return mergeToolParts(message.parts).filter((part) =>
-    [
+  return mergeToolParts(message.parts).filter((part) => {
+    if (
+      part.type === "reasoning" &&
+      part.state !== "streaming" &&
+      part.content.trim().length === 0
+    ) {
+      return false;
+    }
+    return [
       "text",
       "file",
       "reasoning",
@@ -298,8 +305,8 @@ export function renderablePartsFromMessage(message: ChatMessage) {
       "tool-result",
       "suggestions",
       "impact",
-    ].includes(part.type),
-  );
+    ].includes(part.type);
+  });
 }
 
 export type IndexedChatMessagePart = {

@@ -781,11 +781,11 @@ function ThinkingPart({ part }: { part: ChatMessagePart }) {
           <ChatMarkdown className="border-t border-border/40 bg-background/45 px-4 py-3 text-pretty text-xs leading-5 text-muted-foreground">
             {content}
           </ChatMarkdown>
-        ) : (
+        ) : isStreaming ? (
           <div className="border-t border-border/40 bg-background/45 px-4 py-3 text-pretty text-xs leading-5 text-muted-foreground">
             {t("reasoningStarting")}
           </div>
-        )}
+        ) : null}
       </CollapsibleContent>
     </Collapsible>
   );

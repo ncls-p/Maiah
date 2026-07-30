@@ -155,6 +155,24 @@ describe("chat message parts", () => {
     ).toEqual(["reasoning", "tool-call", "tool-result", "text"]);
   });
 
+  it("keeps empty reasoning visible only while it is starting", () => {
+    const message: ChatMessage = {
+      id: "message",
+      role: "assistant",
+      status: "streaming",
+      parts: [
+        { type: "reasoning", content: "", state: "done" },
+        { type: "reasoning", content: "", state: "streaming" },
+        { type: "reasoning", content: "Visible summary", state: "done" },
+      ],
+    };
+
+    expect(renderablePartsFromMessage(message)).toEqual([
+      { type: "reasoning", content: "", state: "streaming" },
+      { type: "reasoning", content: "Visible summary", state: "done" },
+    ]);
+  });
+
   it("merges matching tool calls and results into one renderable card", () => {
     const completedAgentContext = {
       agentId: "agent-1",
