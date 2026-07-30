@@ -252,6 +252,9 @@ test.describe("chat page", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/en/chat");
 
+    await page
+      .getByRole("button", { name: "Open conversations", exact: true })
+      .click();
     const logo = page.locator('img[alt="Deodis"]:visible').first();
     await expect(logo).toBeVisible({ timeout: 15_000 });
     await expect(logo).toHaveAttribute("data-no-outline", "true");
@@ -322,12 +325,9 @@ test.describe("chat page", () => {
     await page.goto("/en/chat");
     await expect(page).toHaveURL(/\/en\/chat/);
 
-    // Navigate to agents
+    // Navigate to agents from the shared Orbit product navigation.
     await page
-      .getByRole("link", {
-        name: /Create an assistant|Configure assistant/i,
-      })
-      .first()
+      .getByRole("link", { name: "Assistants", exact: true })
       .click();
     await expect(page).toHaveURL(/\/en\/agents/);
 

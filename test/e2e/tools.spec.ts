@@ -15,7 +15,9 @@ test.describe("tools hub page", () => {
     await expect(page).toHaveURL(/\/en\/tools/);
 
     await expect(
-      page.getByRole("heading", { name: /Tools & integrations/i }).first(),
+      page.getByRole("heading", {
+        name: /Capabilities and connections\./i,
+      }),
     ).toBeVisible({ timeout: 15_000 });
   });
 
@@ -33,9 +35,9 @@ test.describe("tools hub page", () => {
     await page.goto("/en/tools");
     await page.waitForTimeout(2000);
 
-    // Built-in tools section
+    // The compact Orbit list should expose the built-in tools directly.
     await expect(
-      page.getByRole("heading", { name: "Built-in tools", exact: true }),
+      page.getByRole("heading", { name: "Calculator", exact: true }),
     ).toBeVisible({ timeout: 15_000 });
   });
 
@@ -133,7 +135,9 @@ test.describe("scheduled tasks page", () => {
     await expect(page).toHaveURL(/\/en\/scheduled-tasks/);
 
     await expect(
-      page.getByRole("heading", { name: /Scheduled tasks/i }).first(),
+      page.getByRole("heading", {
+        name: /Automate, without losing control\./i,
+      }),
     ).toBeVisible({ timeout: 10_000 });
   });
 

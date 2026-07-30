@@ -22,7 +22,9 @@ test.describe("agents list page", () => {
     await expect(page).toHaveURL(/\/en\/agents/);
 
     await expect(
-      page.getByRole("heading", { name: /Assistants/i }).first(),
+      page.getByRole("heading", {
+        name: /Your intelligences, beautifully organized\./i,
+      }),
     ).toBeVisible({ timeout: 10_000 });
   });
 
