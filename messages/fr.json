@@ -108,6 +108,25 @@
     "defaultSaveFailed": "Impossible d’enregistrer l’assistant par défaut",
     "configureProvider": "Connecter l’IA",
     "enabledTools": "Outils activés {count}",
+    "toolsMenu": {
+      "trigger": "Outils activés",
+      "kicker": "Capacités",
+      "title": "Outils de cette conversation",
+      "description": "Ces outils sont disponibles pour les prochains messages envoyés à cet assistant.",
+      "groups": {
+        "builtin": "Outils natifs",
+        "mcp": "Connecteurs",
+        "custom": "Outils personnalisés"
+      },
+      "ready": "Prêt à être utilisé",
+      "active": "Outil actif",
+      "approvalRequired": "Autorisation requise avant utilisation",
+      "activeCount": "{count, plural, =0 {Aucun outil actif} one {# outil actif} other {# outils actifs}}",
+      "customize": "Personnaliser",
+      "empty": "Aucun outil n’est activé pour cet assistant.",
+      "loadError": "Impossible de charger les outils activés.",
+      "retry": "Réessayer"
+    },
     "addKnowledge": "Ajouter des documents",
     "createAgent": "Créer un assistant",
     "errors": {

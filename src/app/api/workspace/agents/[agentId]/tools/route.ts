@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import {
   handleRoute,
@@ -16,13 +17,138 @@ import {
   getToolBindingsForVersion,
   toolBindingInputSchema,
 } from "@/modules/tool/use-cases";
+import { getBuiltInTool } from "@/modules/tool/builtin-tools";
 import { audit } from "@/server/domain/services/audit";
+import { db } from "@/server/infrastructure/db";
+import {
+  customTools,
+  mcpServers,
+  mcpTools,
+} from "@/server/infrastructure/db/schema";
 
 const routeParamsSchema = z.object({ agentId: z.uuid() });
 const querySchema = z.object({
   workspaceId: z.uuid(),
   versionId: z.uuid().optional(),
+  includeDetails: z.literal("true").optional(),
 });
+
+type ToolBinding = Awaited<
+  ReturnType<typeof getToolBindingsForVersion>
+>[number];
+
+type ToolSummary = {
+  id: string;
+  source: "builtin" | "mcp" | "custom";
+  name: string;
+  description: string | null;
+  group: string | null;
+  requireApproval: boolean;
+};
+
+async function describeToolBindings(
+  bindings: ToolBinding[],
+  workspaceId: string,
+) {
+  const customToolIds = bindings
+    .filter((binding) => binding.toolSource === "custom")
+    .map((binding) => binding.toolId);
+  const mcpToolIds = bindings
+    .filter((binding) => binding.toolSource === "mcp")
+    .map((binding) => binding.toolId);
+
+  const [customToolRows, mcpToolRows] = await Promise.all([
+    customToolIds.length > 0
+      ? db
+          .select({
+            id: customTools.id,
+            name: customTools.name,
+            description: customTools.description,
+          })
+          .from(customTools)
+          .where(
+            and(
+              inArray(customTools.id, customToolIds),
+              eq(customTools.workspaceId, workspaceId),
+            ),
+          )
+      : Promise.resolve([]),
+    mcpToolIds.length > 0
+      ? db
+          .select({
+            id: mcpTools.id,
+            name: mcpTools.name,
+            description: mcpTools.description,
+            group: mcpServers.name,
+          })
+          .from(mcpTools)
+          .innerJoin(mcpServers, eq(mcpTools.mcpServerId, mcpServers.id))
+          .where(
+            and(
+              inArray(mcpTools.id, mcpToolIds),
+              eq(mcpServers.workspaceId, workspaceId),
+            ),
+          )
+      : Promise.resolve([]),
+  ]);
+
+  const customToolsById = new Map(
+    customToolRows.map((tool) => [tool.id, tool]),
+  );
+  const mcpToolsById = new Map(mcpToolRows.map((tool) => [tool.id, tool]));
+
+  return bindings.flatMap<ToolSummary>((binding) => {
+    if (binding.toolSource === "builtin") {
+      const tool = getBuiltInTool(binding.toolId);
+      return tool
+        ? [
+            {
+              id: binding.toolId,
+              source: "builtin" as const,
+              name: tool.displayName,
+              description: tool.description,
+              group: tool.category,
+              requireApproval: binding.requireApproval,
+            },
+          ]
+        : [];
+    }
+
+    if (binding.toolSource === "mcp") {
+      const tool = mcpToolsById.get(binding.toolId);
+      return tool
+        ? [
+            {
+              id: binding.toolId,
+              source: "mcp" as const,
+              name: tool.name,
+              description: tool.description,
+              group: tool.group,
+              requireApproval: binding.requireApproval,
+            },
+          ]
+        : [];
+    }
+
+    if (binding.toolSource === "custom") {
+      const tool = customToolsById.get(binding.toolId);
+      return tool
+        ? [
+            {
+              id: binding.toolId,
+              source: "custom" as const,
+              name: tool.name,
+              description: tool.description,
+              group: null,
+              requireApproval: binding.requireApproval,
+            },
+          ]
+        : [];
+    }
+
+    return [];
+  });
+}
 
 export async function GET(
   req: NextRequest,
@@ -36,12 +162,13 @@ export async function GET(
       const parsedQuery = querySchema.safeParse({
         workspaceId: searchParams.get("workspaceId"),
         versionId: searchParams.get("versionId") ?? undefined,
+        includeDetails: searchParams.get("includeDetails") ?? undefined,
       });
       if (!parsedParams.success || !parsedQuery.success) {
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
       }
       const { agentId } = parsedParams.data;
-      const { workspaceId, versionId } = parsedQuery.data;
+      const { workspaceId, versionId, includeDetails } = parsedQuery.data;
       const forbidden = await requireResourcePermissionAsync(
         session.user.id,
         workspaceId,
@@ -70,12 +197,20 @@ export async function GET(
       }
       const targetVersionId = targetVersion?.id;
       if (!targetVersionId) {
-        return NextResponse.json([]);
+        return NextResponse.json(
+          includeDetails === "true" ? { bindings: [], tools: [] } : [],
+        );
       }
       const bindings = await getToolBindingsForVersion(targetVersionId, {
         workspaceId,
         userId: session.user.id,
       });
+      if (includeDetails === "true") {
+        return NextResponse.json({
+          bindings,
+          tools: await describeToolBindings(bindings, workspaceId),
+        });
+      }
       return NextResponse.json(bindings);
     },
     { logLabel: "Failed to list agent tools" },

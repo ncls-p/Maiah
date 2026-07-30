@@ -16,7 +16,6 @@ import {
   PanelLeftOpenIcon,
   SearchIcon,
   Settings2Icon,
-  SparklesIcon,
   StarIcon,
 } from "lucide-react";
 
@@ -34,6 +33,7 @@ import {
   OrbitWordmark,
 } from "@/components/orbit-product-navigation";
 import { ChatSidebar } from "@/components/chat/chat-sidebar";
+import { ChatToolsMenu } from "@/components/chat/chat-tools-menu";
 import type {
   ChatAgent,
   ChatConversation,
@@ -514,18 +514,7 @@ export function ChatLayout({
         </DropdownMenuContent>
       </DropdownMenu>
       {selectedAgent ? (
-        <Button
-          asChild
-          type="button"
-          variant="outline"
-          size="sm"
-          className="hidden min-h-9 shrink-0 gap-1.5 rounded-xl border-primary/15 bg-primary/6 px-2.5 text-[0.7rem] font-normal text-primary hover:bg-primary/10 sm:inline-flex"
-        >
-          <Link href={`/agents/${selectedAgent.id}`}>
-            <SparklesIcon className="size-3.5" aria-hidden="true" />
-            {t("enabledTools", { count: selectedAgent.toolCount ?? 0 })}
-          </Link>
-        </Button>
+        <ChatToolsMenu agent={selectedAgent} workspaceId={workspaceId} />
       ) : null}
       {!canChat ? (
         <Badge

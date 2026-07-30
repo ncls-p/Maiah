@@ -326,6 +326,29 @@ test.describe("chat page", () => {
     await expect(newConversationBtn).toBeEnabled({ timeout: 15_000 });
   });
 
+  test("enabled tools menu opens and links to assistant customization", async ({
+    page,
+  }) => {
+    await page.goto("/en/chat");
+
+    const toolsTrigger = page
+      .getByRole("button", { name: /tools enabled|enabled tools/i })
+      .first();
+    await expect(toolsTrigger).toBeVisible({ timeout: 15_000 });
+    await toolsTrigger.click();
+
+    await expect(
+      page.getByRole("heading", { name: "Tools in this conversation" }),
+    ).toBeVisible();
+    const customizeLink = page.getByRole("menuitem", {
+      name: "Customize",
+    });
+    await expect(customizeLink).toHaveAttribute(
+      "href",
+      /\/en\/agents\/[0-9a-f-]+$/,
+    );
+  });
+
   test("agent selector is present when agents exist", async ({ page }) => {
     await page.goto("/en/chat");
     await page.waitForTimeout(2000);
