@@ -28,6 +28,12 @@ import {
   previewWorkspaceClone,
 } from "@/modules/iam/workspace-clone";
 import {
+  deleteOrganization,
+  deleteProject,
+  renameOrganization,
+  renameProject,
+} from "@/modules/iam/scope-lifecycle";
+import {
   addOrganizationMember,
   addTeamMember,
   assignRole,
@@ -59,6 +65,7 @@ import {
   roleBindings,
   roles,
   teamMembers,
+  teams,
   users,
   workspaces,
 } from "@/server/infrastructure/db/schema";
@@ -340,6 +347,8 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
       canManageProjectAccess: true,
       canManageOrganizationAccess: true,
       canCreateProjects: true,
+      canManageProjectLifecycle: true,
+      canManageOrganizationLifecycle: true,
       canManageMembers: true,
       canManageTeams: true,
     });
@@ -1192,6 +1201,12 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
       sourceScope.organizationId,
       targetScope.organizationId,
     );
+    const conflictingSourceProject = await createProject({
+      userId: ownerId,
+      workspaceId: sourceProject.id,
+      name: "Conflicting source project",
+      slug: "target-project",
+    });
 
     const [sourceProjectsBeforeSimulation, targetProjectsBeforeSimulation] =
       await Promise.all([
@@ -1227,7 +1242,8 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
     expect(targetProjectsAfterSimulation).toEqual(
       targetProjectsBeforeSimulation,
     );
-    expect(clonePreview.counts.projects).toBe(1);
+    expect(clonePreview.counts.projects).toBe(2);
+    expect(clonePreview.conflictResolutions).toEqual([]);
     await executeOrganizationClone({
       actorUserId: ownerId,
       sourceWorkspaceId: sourceProject.id,
@@ -1249,6 +1265,13 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
       targetOrganizationId: targetScope.organizationId,
     });
     expect(movePreview.blockers).toEqual([]);
+    expect(movePreview.conflictResolutions).toContainEqual({
+      resourceType: "project",
+      resourceId: conflictingSourceProject.id,
+      label: "Conflicting source project",
+      from: "target-project",
+      to: "target-project-2",
+    });
     await executeOrganizationTransfer({
       actorUserId: ownerId,
       sourceWorkspaceId: sourceProject.id,
@@ -1259,12 +1282,202 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
       .select({ id: workspaces.id })
       .from(workspaces)
       .where(eq(workspaces.organizationId, sourceScope.organizationId));
-    const [movedSourceProject] = await db
-      .select({ organizationId: workspaces.organizationId })
-      .from(workspaces)
-      .where(eq(workspaces.id, sourceProject.id));
+    const [movedSourceProject, renamedConflictingProject] = await Promise.all([
+      db
+        .select({ organizationId: workspaces.organizationId })
+        .from(workspaces)
+        .where(eq(workspaces.id, sourceProject.id))
+        .then((rows) => rows[0]),
+      db
+        .select({ slug: workspaces.slug })
+        .from(workspaces)
+        .where(eq(workspaces.id, conflictingSourceProject.id))
+        .then((rows) => rows[0]),
+    ]);
     expect(remainingSourceProjects).toHaveLength(0);
     expect(movedSourceProject.organizationId).toBe(targetScope.organizationId);
+    expect(renamedConflictingProject.slug).toBe("target-project-2");
+  }, 60_000);
+
+  it("renames and permanently deletes projects and organizations safely", async () => {
+    const lifecycleProject = await createOrganizationWithProject({
+      userId: ownerId,
+      organizationName: `Lifecycle source ${suffix}`,
+      organizationSlug: `lifecycle-source-${suffix}`,
+      projectName: "Lifecycle main",
+      projectSlug: "lifecycle-main",
+    });
+    const removableProject = await createProject({
+      userId: ownerId,
+      workspaceId: lifecycleProject.id,
+      name: "Removable project",
+      slug: "removable-project",
+    });
+    const fallbackProject = await createOrganizationWithProject({
+      userId: ownerId,
+      organizationName: `Lifecycle fallback ${suffix}`,
+      organizationSlug: `lifecycle-fallback-${suffix}`,
+      projectName: "Fallback project",
+      projectSlug: "fallback-project",
+    });
+    const [lifecycleScope, fallbackScope] = await Promise.all([
+      db
+        .select({ organizationId: workspaces.organizationId })
+        .from(workspaces)
+        .where(eq(workspaces.id, lifecycleProject.id))
+        .then((rows) => rows[0]),
+      db
+        .select({ organizationId: workspaces.organizationId })
+        .from(workspaces)
+        .where(eq(workspaces.id, fallbackProject.id))
+        .then((rows) => rows[0]),
+    ]);
+    organizationIds.push(
+      lifecycleScope.organizationId,
+      fallbackScope.organizationId,
+    );
+
+    await renameOrganization({
+      actorUserId: ownerId,
+      workspaceId: lifecycleProject.id,
+      name: "Renamed organization",
+      slug: `renamed-organization-${suffix}`,
+    });
+    await renameProject({
+      actorUserId: ownerId,
+      workspaceId: removableProject.id,
+      name: "Renamed removable project",
+      slug: "renamed-removable-project",
+    });
+    const removableRole = await createCustomRole({
+      actorUserId: ownerId,
+      workspaceId: removableProject.id,
+      displayName: "Removable project role",
+      scopeType: "workspace",
+      permissions: ["agents.view"],
+    });
+    const [removableAgent] = await db
+      .insert(agents)
+      .values({
+        workspaceId: removableProject.id,
+        name: "Removable project assistant",
+        slug: `removable-project-assistant-${suffix}`,
+        createdById: ownerId,
+      })
+      .returning();
+    await assignResourceRole({
+      actorUserId: ownerId,
+      workspaceId: removableProject.id,
+      principalType: "user",
+      principalId: ownerId,
+      roleId: removableRole.id,
+      resourceType: "agent",
+      resourceId: removableAgent.id,
+    });
+    await expect(
+      deleteProject({
+        actorUserId: ownerId,
+        workspaceId: removableProject.id,
+        confirmationName: "wrong name",
+      }),
+    ).rejects.toMatchObject({ status: 400 });
+    const projectDeletion = await deleteProject({
+      actorUserId: ownerId,
+      workspaceId: removableProject.id,
+      confirmationName: "Renamed removable project",
+    });
+    expect(projectDeletion.nextWorkspaceId).toBe(lifecycleProject.id);
+    expect(
+      await db
+        .select({ id: workspaces.id })
+        .from(workspaces)
+        .where(eq(workspaces.id, removableProject.id)),
+    ).toEqual([]);
+    expect(
+      await db
+        .select({ id: roles.id })
+        .from(roles)
+        .where(eq(roles.id, removableRole.id)),
+    ).toEqual([]);
+    expect(
+      await db
+        .select({ id: roleBindings.id })
+        .from(roleBindings)
+        .where(eq(roleBindings.resourceId, removableAgent.id)),
+    ).toEqual([]);
+
+    const organizationTeam = await createTeam({
+      actorUserId: ownerId,
+      workspaceId: lifecycleProject.id,
+      name: "Removable organization team",
+    });
+    const organizationRole = await createCustomRole({
+      actorUserId: ownerId,
+      workspaceId: lifecycleProject.id,
+      displayName: "Removable organization role",
+      scopeType: "organization",
+      permissions: ["organization.get"],
+    });
+    await assignRole({
+      actorUserId: ownerId,
+      workspaceId: lifecycleProject.id,
+      principalType: "user",
+      principalId: ownerId,
+      roleId: organizationRole.id,
+      scopeType: "organization",
+    });
+
+    const organizationDeletion = await deleteOrganization({
+      actorUserId: ownerId,
+      workspaceId: lifecycleProject.id,
+      confirmationName: "Renamed organization",
+    });
+    expect(organizationDeletion.nextWorkspaceId).toBeTruthy();
+    const [fallbackAfterDeletion] = await db
+      .select({ organizationId: workspaces.organizationId })
+      .from(workspaces)
+      .where(eq(workspaces.id, organizationDeletion.nextWorkspaceId!));
+    expect(fallbackAfterDeletion.organizationId).not.toBe(
+      lifecycleScope.organizationId,
+    );
+    expect(
+      await db
+        .select({ id: organizations.id })
+        .from(organizations)
+        .where(eq(organizations.id, lifecycleScope.organizationId)),
+    ).toEqual([]);
+    expect(
+      await db
+        .select({ id: teams.id })
+        .from(teams)
+        .where(eq(teams.id, organizationTeam.id)),
+    ).toEqual([]);
+    expect(
+      await db
+        .select({ id: roles.id })
+        .from(roles)
+        .where(eq(roles.id, organizationRole.id)),
+    ).toEqual([]);
+
+    const onlyProject = await createOrganizationWithProject({
+      userId: outsiderId,
+      organizationName: `Only organization ${suffix}`,
+      organizationSlug: `only-organization-${suffix}`,
+      projectName: "Only project",
+      projectSlug: "only-project",
+    });
+    const [onlyScope] = await db
+      .select({ organizationId: workspaces.organizationId })
+      .from(workspaces)
+      .where(eq(workspaces.id, onlyProject.id));
+    organizationIds.push(onlyScope.organizationId);
+    await expect(
+      deleteOrganization({
+        actorUserId: outsiderId,
+        workspaceId: onlyProject.id,
+        confirmationName: `Only organization ${suffix}`,
+      }),
+    ).resolves.toEqual({ nextWorkspaceId: null });
   }, 60_000);
 
   it("rejects privilege escalation and cross-organization identifiers", async () => {

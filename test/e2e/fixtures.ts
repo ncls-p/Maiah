@@ -257,6 +257,111 @@ export async function ensureE2ETransferScenario() {
        set name = excluded.name, archived_at = null, updated_at = now()`,
       [randomUUID(), sourceWorkspaceId, userId],
     );
+
+    const destinationOrganization = await client.query<{ id: string }>(
+      `insert into organizations (id, name, slug, created_at, updated_at)
+       values ($1, 'Transfer organization', 'e2e-transfer-organization', now(), now())
+       on conflict (slug) do update
+       set name = excluded.name, updated_at = now()
+       returning id`,
+      [randomUUID()],
+    );
+    const destinationOrganizationId = destinationOrganization.rows[0].id;
+    const destinationOrganizationProject = await client.query<{ id: string }>(
+      `insert into workspaces
+       (id, organization_id, name, slug, created_by_user_id, created_at, updated_at)
+       values ($1, $2, 'Destination main', 'main', $3, now(), now())
+       on conflict (organization_id, slug) do update
+       set name = excluded.name, archived_at = null, updated_at = now()
+       returning id`,
+      [randomUUID(), destinationOrganizationId, userId],
+    );
+    await client.query(
+      `insert into organization_members
+       (organization_id, user_id, status, created_at, updated_at)
+       values ($1, $2, 'active', now(), now())
+       on conflict (organization_id, user_id) do update
+       set status = 'active', updated_at = now()`,
+      [destinationOrganizationId, userId],
+    );
+    await client.query(
+      `insert into workspace_members
+       (workspace_id, user_id, status, created_at, updated_at)
+       values ($1, $2, 'active', now(), now())
+       on conflict (workspace_id, user_id) do update
+       set status = 'active', updated_at = now()`,
+      [destinationOrganizationProject.rows[0].id, userId],
+    );
+    const ownerRole = await client.query<{ id: string }>(
+      `select id from roles
+       where name = 'organization.owner' and is_system = true
+       limit 1`,
+    );
+    await client.query(
+      `insert into role_bindings
+       (principal_type, principal_id, role_id, resource_type, resource_id, created_by_user_id)
+       values
+       ('user', $1, $2, 'organization', $3, $1),
+       ('user', $1, $4, 'workspace', $5, $1)
+       on conflict do nothing`,
+      [
+        userId,
+        ownerRole.rows[0].id,
+        destinationOrganizationId,
+        adminRole.rows[0].id,
+        destinationOrganizationProject.rows[0].id,
+      ],
+    );
+  } finally {
+    await client.end();
+  }
+}
+
+export async function ensureE2ELifecycleProject() {
+  const client = new Client({ connectionString: databaseUrl() });
+  await client.connect();
+  try {
+    const user = await client.query<{ id: string }>(
+      `select id from "user" where email = $1 limit 1`,
+      [e2eUser.email],
+    );
+    const organization = await client.query<{ id: string }>(
+      `select id from organizations where slug = 'deodis' limit 1`,
+    );
+    const adminRole = await client.query<{ id: string }>(
+      `select id from roles
+       where name = 'workspace.admin' and is_system = true
+       limit 1`,
+    );
+    const userId = user.rows[0]?.id;
+    const organizationId = organization.rows[0]?.id;
+    if (!userId || !organizationId || !adminRole.rows[0]?.id) {
+      throw new Error("E2E lifecycle scope is not initialized");
+    }
+    const project = await client.query<{ id: string }>(
+      `insert into workspaces
+       (id, organization_id, name, slug, created_by_user_id, created_at, updated_at)
+       values ($1, $2, 'Lifecycle browser project', 'e2e-lifecycle', $3, now(), now())
+       on conflict (organization_id, slug) do update
+       set name = excluded.name, archived_at = null, updated_at = now()
+       returning id`,
+      [randomUUID(), organizationId, userId],
+    );
+    await client.query(
+      `insert into workspace_members
+       (workspace_id, user_id, status, created_at, updated_at)
+       values ($1, $2, 'active', now(), now())
+       on conflict (workspace_id, user_id) do update
+       set status = 'active', updated_at = now()`,
+      [project.rows[0].id, userId],
+    );
+    await client.query(
+      `insert into role_bindings
+       (principal_type, principal_id, role_id, resource_type, resource_id, created_by_user_id)
+       values ('user', $1, $2, 'workspace', $3, $1)
+       on conflict do nothing`,
+      [userId, adminRole.rows[0].id, project.rows[0].id],
+    );
   } finally {
     await client.end();
   }

@@ -20,6 +20,12 @@ import {
   removeTeamMember,
   updateCustomRole,
 } from "@/modules/iam/use-cases";
+import {
+  deleteOrganization,
+  deleteProject,
+  renameOrganization,
+  renameProject,
+} from "@/modules/iam/scope-lifecycle";
 import { ACCESS_RESOURCE_TYPES } from "@/server/domain/entities/access-resource";
 
 const workspaceQuerySchema = z.object({
@@ -39,6 +45,28 @@ const mutationSchema = z.discriminatedUnion("action", [
     workspaceId: z.uuid(),
     name: z.string().trim().min(2).max(255),
     slug: z.string().trim().max(128).optional(),
+  }),
+  z.object({
+    action: z.literal("renameProject"),
+    workspaceId: z.uuid(),
+    name: z.string().trim().min(2).max(255),
+    slug: z.string().trim().min(1).max(128).optional(),
+  }),
+  z.object({
+    action: z.literal("renameOrganization"),
+    workspaceId: z.uuid(),
+    name: z.string().trim().min(2).max(255),
+    slug: z.string().trim().min(1).max(128).optional(),
+  }),
+  z.object({
+    action: z.literal("deleteProject"),
+    workspaceId: z.uuid(),
+    confirmationName: z.string().trim().min(1).max(255),
+  }),
+  z.object({
+    action: z.literal("deleteOrganization"),
+    workspaceId: z.uuid(),
+    confirmationName: z.string().trim().min(1).max(255),
   }),
   z.object({
     action: z.literal("addMember"),
@@ -196,6 +224,40 @@ export async function POST(req: NextRequest) {
           });
           return NextResponse.json({ project }, { status: 201 });
         }
+        case "renameProject": {
+          const project = await renameProject({
+            actorUserId: session.user.id,
+            workspaceId: input.workspaceId,
+            name: input.name,
+            slug: input.slug,
+          });
+          return NextResponse.json({ project });
+        }
+        case "renameOrganization": {
+          const organization = await renameOrganization({
+            actorUserId: session.user.id,
+            workspaceId: input.workspaceId,
+            name: input.name,
+            slug: input.slug,
+          });
+          return NextResponse.json({ organization });
+        }
+        case "deleteProject":
+          return NextResponse.json(
+            await deleteProject({
+              actorUserId: session.user.id,
+              workspaceId: input.workspaceId,
+              confirmationName: input.confirmationName,
+            }),
+          );
+        case "deleteOrganization":
+          return NextResponse.json(
+            await deleteOrganization({
+              actorUserId: session.user.id,
+              workspaceId: input.workspaceId,
+              confirmationName: input.confirmationName,
+            }),
+          );
         case "addMember":
           await addOrganizationMember({
             actorUserId: session.user.id,

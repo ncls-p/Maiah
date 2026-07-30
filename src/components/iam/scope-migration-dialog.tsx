@@ -50,6 +50,13 @@ type Preview = {
   items?: { id: string }[];
   members?: { moved: number };
   counts?: Record<string, number>;
+  conflictResolutions?: Array<{
+    resourceType: "project" | "team" | "role";
+    resourceId: string;
+    label: string;
+    from: string;
+    to: string;
+  }>;
   blockers?: string[];
   warnings: string[];
   confirmationToken: string;
@@ -430,6 +437,37 @@ export function ScopeMigrationDialog({ workspaceId }: { workspaceId: string }) {
                     <ul className="list-disc pl-4">
                       {preview.blockers?.map((blocker) => (
                         <li key={blocker}>{blocker}</li>
+                      ))}
+                    </ul>
+                  </AlertDescription>
+                </Alert>
+              ) : null}
+              {(preview.conflictResolutions?.length ?? 0) > 0 ? (
+                <Alert>
+                  <AlertTitle>{t("conflictsResolved")}</AlertTitle>
+                  <AlertDescription className="grid gap-2">
+                    <p>{t("conflictsResolvedDescription")}</p>
+                    <ul className="grid gap-2">
+                      {preview.conflictResolutions?.map((resolution) => (
+                        <li
+                          key={`${resolution.resourceType}:${resolution.resourceId}`}
+                          className="grid gap-1 rounded-md border bg-background p-2"
+                        >
+                          <span className="text-xs text-muted-foreground">
+                            {t(
+                              `conflictResourceTypes.${resolution.resourceType}`,
+                            )}{" "}
+                            · {resolution.label}
+                          </span>
+                          <span className="flex flex-wrap items-center gap-2">
+                            <code>{resolution.from}</code>
+                            <ArrowRightIcon
+                              className="size-3.5"
+                              aria-hidden="true"
+                            />
+                            <code>{resolution.to}</code>
+                          </span>
+                        </li>
                       ))}
                     </ul>
                   </AlertDescription>
