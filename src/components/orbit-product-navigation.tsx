@@ -79,10 +79,10 @@ export function OrbitProductNavigation({
               href={item.href}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "inline-flex h-9 shrink-0 items-center rounded-xl border px-2.5 text-[0.68rem] font-medium transition-[background-color,border-color,color,box-shadow] duration-180",
+                "relative inline-flex h-10 shrink-0 items-center rounded-lg px-3 text-xs font-medium outline-none transition-[background-color,color,box-shadow,scale] duration-180 ease-out after:absolute after:right-3 after:bottom-0 after:left-3 after:h-px after:origin-center after:scale-x-0 after:rounded-full after:bg-primary after:opacity-0 after:transition-[scale,opacity] after:duration-180 focus-visible:ring-2 focus-visible:ring-ring/45 active:scale-[0.96]",
                 active
-                  ? "border-primary/70 bg-card text-foreground shadow-[0_0_0_1px_color-mix(in_oklch,var(--primary)_22%,transparent),var(--control-shadow)]"
-                  : "border-transparent text-muted-foreground hover:bg-muted/65 hover:text-foreground",
+                  ? "bg-primary/[0.055] text-primary shadow-[inset_0_-1px_0_color-mix(in_oklch,var(--primary)_12%,transparent)] after:scale-x-100 after:opacity-100"
+                  : "text-muted-foreground hover:bg-muted/55 hover:text-foreground",
               )}
             >
               {productLabel(item.href, item.labelKey)}
@@ -100,7 +100,7 @@ export function OrbitProductNavigation({
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              className="inline-flex h-9 items-center gap-1.5 rounded-xl px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              className="inline-flex h-10 items-center gap-1.5 rounded-lg px-3 text-xs font-medium text-muted-foreground outline-none transition-[background-color,color,scale] duration-180 ease-out hover:bg-muted/55 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/45 active:scale-[0.96]"
             >
               <SlidersHorizontalIcon className="size-3.5" aria-hidden="true" />
               <span className="hidden lg:inline">{t("groups.advanced")}</span>
