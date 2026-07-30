@@ -72,6 +72,8 @@ export async function ensureE2EAssistant() {
   const client = new Client({ connectionString: databaseUrl() });
   await client.connect();
   try {
+    const providerId = "10000000-0000-4000-8000-000000000001";
+    const modelId = "10000000-0000-4000-8000-000000000002";
     const user = await client.query<{ id: string }>(
       `select id from "user" where email = $1 limit 1`,
       [e2eUser.email],
@@ -90,6 +92,29 @@ export async function ensureE2EAssistant() {
     }
 
     await client.query(
+      `insert into ai_providers
+       (id, workspace_id, kind, name, base_url, auth_type, enabled,
+        created_by_user_id, created_at, updated_at)
+       values ($1, $2, 'openai-compatible', 'E2E provider',
+               'http://127.0.0.1:9/v1', 'bearer', true, $3, now(), now())
+       on conflict (id) do update
+       set workspace_id = excluded.workspace_id,
+           enabled = true,
+           archived_at = null,
+           updated_at = now()`,
+      [providerId, workspaceId, userId],
+    );
+    await client.query(
+      `insert into ai_models
+       (id, provider_id, model_id, display_name, enabled, created_at, updated_at)
+       values ($1, $2, 'e2e-model', 'E2E model', true, now(), now())
+       on conflict (provider_id, model_id) do update
+       set display_name = excluded.display_name,
+           enabled = true,
+           updated_at = now()`,
+      [modelId, providerId],
+    );
+    const assistant = await client.query<{ id: string }>(
       `insert into agents
        (id, workspace_id, name, slug, created_by_user_id, created_at, updated_at)
        values ($1, $2, 'E2E menu assistant', 'e2e-menu-assistant', $3, now(), now())
@@ -97,8 +122,33 @@ export async function ensureE2EAssistant() {
        set name = excluded.name,
            created_by_user_id = excluded.created_by_user_id,
            archived_at = null,
-           updated_at = now()`,
+           updated_at = now()
+       returning id`,
       [randomUUID(), workspaceId, userId],
+    );
+    const agentId = assistant.rows[0]?.id;
+    if (!agentId) {
+      throw new Error("E2E assistant could not be initialized");
+    }
+    const version = await client.query<{ id: string }>(
+      `insert into agent_versions
+       (id, agent_id, version_number, name, system_prompt, provider_id, model_id,
+        created_by_user_id, created_at)
+       values ($1, $2, 1, 'E2E version', 'You are an E2E test assistant.',
+               $3, $4, $5, now())
+       on conflict (agent_id, version_number) do update
+       set name = excluded.name,
+           system_prompt = excluded.system_prompt,
+           provider_id = excluded.provider_id,
+           model_id = excluded.model_id
+       returning id`,
+      [randomUUID(), agentId, providerId, modelId, userId],
+    );
+    await client.query(
+      `update agents
+       set active_version_id = $1, updated_at = now()
+       where id = $2`,
+      [version.rows[0].id, agentId],
     );
   } finally {
     await client.end();

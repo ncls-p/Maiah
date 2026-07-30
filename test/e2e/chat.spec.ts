@@ -2,7 +2,13 @@ import { expect, test } from "@playwright/test";
 import nextEnv from "@next/env";
 import { randomUUID, webcrypto } from "node:crypto";
 import { Client } from "pg";
-import { databaseUrl, e2eUser, ensureE2EUser, login } from "./fixtures";
+import {
+  databaseUrl,
+  e2eUser,
+  ensureE2EAssistant,
+  ensureE2EUser,
+  login,
+} from "./fixtures";
 
 const { loadEnvConfig } = nextEnv;
 
@@ -365,6 +371,7 @@ test.describe("chat page", () => {
   test("keeps every queued attachment visible in a responsive grid", async ({
     page,
   }) => {
+    await ensureE2EAssistant();
     let uploadIndex = 0;
     await page.route(
       "**/api/workspace/chat-attachments/upload",
