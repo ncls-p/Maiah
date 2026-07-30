@@ -16,6 +16,10 @@ import {
   type PendingToolApproval,
 } from "@/components/chat/chat-types";
 import { streamAiSdkUIChat } from "@/hooks/ai-sdk-ui-chat-transport";
+import {
+  migrateDraftCapabilityOverrides,
+  readChatCapabilityOverrides,
+} from "@/components/chat/chat-capability-overrides";
 
 import {
   STREAM_DRAFT_EVENT,
@@ -614,6 +618,10 @@ export function useChatStream({
           imageAttachmentIds: attachmentsToSend.flatMap((attachment) =>
             attachment.kind === "chat_image" ? [attachment.id] : [],
           ),
+          capabilityOverrides: readChatCapabilityOverrides(
+            agentId,
+            conversationId,
+          ),
         },
         abortSignal: controller.signal,
         onStart: (metadata) => {
@@ -641,6 +649,7 @@ export function useChatStream({
             );
           }
           if (metadata.conversationId && !conversationId) {
+            migrateDraftCapabilityOverrides(agentId, metadata.conversationId);
             onConversationCreated(metadata.conversationId, content);
           }
         },

@@ -54,6 +54,19 @@ export const chatRequestSchema = z.object({
   codeWorkspaceId: z.uuid().optional(),
   attachmentIds: z.array(z.uuid()).max(maxChatAttachments).optional(),
   imageAttachmentIds: z.array(z.uuid()).max(maxChatAttachments).optional(),
+  capabilityOverrides: z
+    .object({
+      disabledTools: z
+        .array(
+          z.object({
+            source: z.enum(["builtin", "mcp", "custom"]),
+            id: z.string().trim().min(1).max(255),
+          }),
+        )
+        .max(256),
+      disabledSkillIds: z.array(z.uuid()).max(128),
+    })
+    .optional(),
 });
 
 export const defaultMaxToolCalls = 20;
@@ -574,6 +587,8 @@ export async function buildBoundTools(input: {
   nonInteractive?: boolean;
   approvalPolicy?: AiHubToolApprovalPolicy | null;
   hasSkills?: boolean;
+  disabledToolKeys?: ReadonlySet<string>;
+  disabledSkillIds?: ReadonlySet<string>;
   enableDocumentExplorer?: boolean;
   emitEvent?: (event: Record<string, unknown>) => void;
   onApprovalRequired?: (event: ToolApprovalRequiredEvent) => void;
@@ -759,12 +774,18 @@ export async function buildBoundTools(input: {
         return loadBoundSkillContent({
           agentVersionId: input.agentVersionId,
           skillName: parsed.data.skillName,
+          disabledSkillIds: input.disabledSkillIds,
         });
       },
     };
   }
 
   for (const binding of bindings) {
+    if (
+      input.disabledToolKeys?.has(`${binding.toolSource}:${binding.toolId}`)
+    ) {
+      continue;
+    }
     if (binding.toolSource === "custom") {
       const customContext = await getCustomBindingContext(
         input.agentVersionId,
@@ -899,7 +920,11 @@ export async function buildBoundTools(input: {
   if (input.enableDocumentExplorer && !tools.run_code_sandbox) {
     const definition = getBuiltInToolByName("run_code_sandbox");
     const organizationPolicy = builtInPolicies.get("run_code_sandbox");
-    if (definition && organizationPolicy?.enabled !== false) {
+    if (
+      definition &&
+      organizationPolicy?.enabled !== false &&
+      !input.disabledToolKeys?.has(`${BUILTIN_TOOL_SOURCE}:${definition.id}`)
+    ) {
       const requireApproval =
         organizationPolicy?.requireApproval ??
         requiresApproval(definition.riskLevel);

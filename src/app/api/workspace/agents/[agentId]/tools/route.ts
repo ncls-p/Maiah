@@ -19,6 +19,7 @@ import {
 } from "@/modules/tool/use-cases";
 import { getBuiltInTool } from "@/modules/tool/builtin-tools";
 import { audit } from "@/server/domain/services/audit";
+import { getBoundSkillCatalog } from "@/modules/skills/use-cases";
 import { db } from "@/server/infrastructure/db";
 import {
   customTools,
@@ -198,7 +199,9 @@ export async function GET(
       const targetVersionId = targetVersion?.id;
       if (!targetVersionId) {
         return NextResponse.json(
-          includeDetails === "true" ? { bindings: [], tools: [] } : [],
+          includeDetails === "true"
+            ? { bindings: [], tools: [], skills: [] }
+            : [],
         );
       }
       const bindings = await getToolBindingsForVersion(targetVersionId, {
@@ -206,9 +209,14 @@ export async function GET(
         userId: session.user.id,
       });
       if (includeDetails === "true") {
+        const [tools, skills] = await Promise.all([
+          describeToolBindings(bindings, workspaceId),
+          getBoundSkillCatalog(targetVersionId),
+        ]);
         return NextResponse.json({
           bindings,
-          tools: await describeToolBindings(bindings, workspaceId),
+          tools,
+          skills,
         });
       }
       return NextResponse.json(bindings);

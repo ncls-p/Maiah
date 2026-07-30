@@ -514,7 +514,12 @@ export function ChatLayout({
         </DropdownMenuContent>
       </DropdownMenu>
       {selectedAgent ? (
-        <ChatToolsMenu agent={selectedAgent} workspaceId={workspaceId} />
+        <ChatToolsMenu
+          key={`${selectedAgent.id}:${activeConversationId ?? "draft"}`}
+          agent={selectedAgent}
+          workspaceId={workspaceId}
+          conversationId={activeConversationId}
+        />
       ) : null}
       {!canChat ? (
         <Badge

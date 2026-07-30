@@ -1149,8 +1149,11 @@ export function normalizeSkillMarkdownFiles(input: {
   return normalized;
 }
 
-async function getBoundSkillCatalog(agentVersionId: string) {
-  return db
+export async function getBoundSkillCatalog(
+  agentVersionId: string,
+  disabledSkillIds: ReadonlySet<string> = new Set(),
+) {
+  const skills = await db
     .select({
       id: agentSkills.id,
       name: agentSkills.name,
@@ -1165,10 +1168,14 @@ async function getBoundSkillCatalog(agentVersionId: string) {
       ),
     )
     .orderBy(sql`${agentSkills.name} ASC`);
+  return skills.filter((skill) => !disabledSkillIds.has(skill.id));
 }
 
-export async function buildSkillsRegistryPrompt(agentVersionId: string) {
-  const skills = await getBoundSkillCatalog(agentVersionId);
+export async function buildSkillsRegistryPrompt(
+  agentVersionId: string,
+  disabledSkillIds: ReadonlySet<string> = new Set(),
+) {
+  const skills = await getBoundSkillCatalog(agentVersionId, disabledSkillIds);
   if (skills.length === 0) return null;
 
   const skillList = skills
@@ -1190,6 +1197,7 @@ export async function buildSkillsRegistryPrompt(agentVersionId: string) {
 export async function loadBoundSkillContent(input: {
   agentVersionId: string;
   skillName: string;
+  disabledSkillIds?: ReadonlySet<string>;
 }) {
   const rows = await db
     .select({ skill: agentSkills })
@@ -1204,7 +1212,9 @@ export async function loadBoundSkillContent(input: {
 
   const normalizedName = input.skillName.trim().toLowerCase();
   const row = rows.find(
-    (item) => item.skill.name.toLowerCase() === normalizedName,
+    (item) =>
+      item.skill.name.toLowerCase() === normalizedName &&
+      !input.disabledSkillIds?.has(item.skill.id),
   );
   if (!row) {
     return {

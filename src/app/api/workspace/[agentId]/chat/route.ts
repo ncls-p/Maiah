@@ -163,6 +163,7 @@ export async function POST(
       codeWorkspaceId,
       attachmentIds = [],
       imageAttachmentIds = [],
+      capabilityOverrides,
     } = parsed.data;
     const streamProtocol =
       req.headers.get("X-AI-Hub-Stream-Protocol") ??
@@ -1000,8 +1001,16 @@ export async function POST(
     });
     const { maxToolCalls, maxOutputTokens, maxSteps } = runtimeLimits;
     const shouldUseToolCalling = maxToolCalls > 0;
+    const disabledToolKeys = new Set(
+      capabilityOverrides?.disabledTools.map(
+        (tool) => `${tool.source}:${tool.id}`,
+      ) ?? [],
+    );
+    const disabledSkillIds = new Set(
+      capabilityOverrides?.disabledSkillIds ?? [],
+    );
     const skillsPrompt = shouldUseToolCalling
-      ? await buildSkillsRegistryPrompt(version.id)
+      ? await buildSkillsRegistryPrompt(version.id, disabledSkillIds)
       : null;
     const approvalPolicy =
       (version.approvalPolicyJson as AiHubToolApprovalPolicy | null) ?? null;
@@ -1014,6 +1023,8 @@ export async function POST(
           userId: actorUserId,
           maxToolCalls,
           hasSkills: Boolean(skillsPrompt),
+          disabledToolKeys,
+          disabledSkillIds,
           enableDocumentExplorer:
             messageAttachments.some(
               (attachment) =>
