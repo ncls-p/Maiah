@@ -1034,8 +1034,12 @@ export function SkillManager() {
               className="min-h-20 font-mono text-sm"
             />
             {canManageTenantGlobals ? (
-              <label className="flex items-start gap-3 rounded-xl border border-border/65 bg-muted/20 p-3">
+              <label
+                htmlFor="skill-install-global"
+                className="flex items-start gap-3 rounded-xl border border-border/65 bg-muted/20 p-3"
+              >
                 <Checkbox
+                  id="skill-install-global"
                   checked={installGlobal}
                   onCheckedChange={(checked) =>
                     setInstallGlobal(checked === true)
