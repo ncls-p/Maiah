@@ -138,8 +138,10 @@ export function ToolsHub() {
   if (permissionsError) {
     return (
       <WorkspacePage
-        title={t("title")}
-        description={t("description")}
+        title={t("orbitTitle")}
+        accentTitle={t("orbitAccent")}
+        eyebrow={t("orbitEyebrow")}
+        description={t("orbitDescription")}
         width="wide"
       >
         <div
@@ -167,8 +169,10 @@ export function ToolsHub() {
   if (allowedTabs.length === 0) {
     return (
       <WorkspacePage
-        title={t("title")}
-        description={t("description")}
+        title={t("orbitTitle")}
+        accentTitle={t("orbitAccent")}
+        eyebrow={t("orbitEyebrow")}
+        description={t("orbitDescription")}
         width="wide"
       >
         <div className="rounded-2xl border bg-card p-5">
@@ -183,8 +187,10 @@ export function ToolsHub() {
 
   return (
     <WorkspacePage
-      title={t("title")}
-      description={t("description")}
+      title={t("orbitTitle")}
+      accentTitle={t("orbitAccent")}
+      eyebrow={t("orbitEyebrow")}
+      description={t("orbitDescription")}
       width="wide"
     >
       <Tabs value={tab} onValueChange={setTab}>

@@ -54,8 +54,10 @@ export default function ScheduledTasksPage() {
 
   return (
     <WorkspacePage
-      title={t("title")}
-      description={t("description")}
+      title={t("orbitTitle")}
+      accentTitle={t("orbitAccent")}
+      eyebrow={t("orbitEyebrow")}
+      description={t("orbitDescription")}
       width="wide"
     >
       {loading ? (

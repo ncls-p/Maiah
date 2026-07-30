@@ -222,6 +222,9 @@ export default function AgentsPage() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [creating, setCreating] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [agentKindFilter, setAgentKindFilter] = useState<
+    "all" | "assistant" | "orchestrator"
+  >("all");
   const [form, setForm] = useState({
     kind: "assistant" as Agent["kind"],
     templateId: "blank",
@@ -489,6 +492,12 @@ export default function AgentsPage() {
   }
 
   const filteredAgents = agents.filter((agent) => {
+    if (agentKindFilter === "assistant" && agent.kind === "orchestrator") {
+      return false;
+    }
+    if (agentKindFilter === "orchestrator" && agent.kind !== "orchestrator") {
+      return false;
+    }
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
     return (
@@ -504,8 +513,10 @@ export default function AgentsPage() {
 
   return (
     <WorkspacePage
-      title={t("title")}
-      description={tList("pageDescription")}
+      title={t("orbitTitle")}
+      accentTitle={t("orbitAccent")}
+      eyebrow={t("orbitEyebrow")}
+      description={t("orbitDescription")}
       width="default"
       actions={
         canCreateAgent && !loading && agents.length > 0 ? (
@@ -526,37 +537,74 @@ export default function AgentsPage() {
         >
           {/* Toolbar */}
           {!loading && !loadError && agents.length > 0 ? (
-            <div className="flex flex-col gap-3 rounded-2xl border border-border/65 bg-card/85 px-5 py-4 shadow-[var(--surface-shadow)] backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h3 className="text-base font-semibold">{t("title")}</h3>
-                <p className="text-sm text-muted-foreground">
-                  {tList("configuredCount", { count: agents.length })}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                {agents.length > 2 ? (
-                  <div className="relative w-48 sm:w-56">
-                    <SearchIcon className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      aria-label={tList("filterPlaceholder")}
-                      placeholder={tList("filterPlaceholder")}
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="h-8 pl-9 text-sm"
-                    />
-                    {searchQuery ? (
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        className="absolute right-1 top-1/2 size-6 -translate-y-1/2"
-                        onClick={() => setSearchQuery("")}
-                        aria-label={tList("clearSearch")}
-                      >
-                        <XIcon className="size-3" aria-hidden="true" />
-                      </Button>
-                    ) : null}
-                  </div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="relative w-full sm:w-72">
+                <SearchIcon className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  aria-label={tList("filterPlaceholder")}
+                  placeholder={tList("filterPlaceholder")}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="h-11 bg-card/70 pl-9 text-sm"
+                />
+                {searchQuery ? (
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="absolute right-1.5 top-1/2 size-8 -translate-y-1/2"
+                    onClick={() => setSearchQuery("")}
+                    aria-label={tList("clearSearch")}
+                  >
+                    <XIcon className="size-3" aria-hidden="true" />
+                  </Button>
                 ) : null}
+              </div>
+              <div
+                className="flex w-full items-center rounded-xl bg-muted/60 p-1 sm:w-auto"
+                role="group"
+                aria-label={tList("filterPlaceholder")}
+              >
+                {(
+                  [
+                    {
+                      value: "all",
+                      label: tList("filterAll"),
+                      count: agents.length,
+                    },
+                    {
+                      value: "assistant",
+                      label: tList("filterAssistants"),
+                      count: agents.filter(
+                        (agent) => agent.kind !== "orchestrator",
+                      ).length,
+                    },
+                    {
+                      value: "orchestrator",
+                      label: tList("filterOrchestrators"),
+                      count: agents.filter(
+                        (agent) => agent.kind === "orchestrator",
+                      ).length,
+                    },
+                  ] as const
+                ).map((filter) => (
+                  <button
+                    key={filter.value}
+                    type="button"
+                    aria-pressed={agentKindFilter === filter.value}
+                    onClick={() => setAgentKindFilter(filter.value)}
+                    className={cn(
+                      "flex min-h-9 flex-1 items-center justify-center gap-1 rounded-lg px-3 text-xs font-medium transition-[background-color,color,box-shadow] sm:flex-none",
+                      agentKindFilter === filter.value
+                        ? "bg-card text-foreground shadow-[var(--control-shadow)]"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {filter.label}
+                    <span className="font-mono text-[0.6rem] text-primary">
+                      {filter.count}
+                    </span>
+                  </button>
+                ))}
               </div>
             </div>
           ) : null}

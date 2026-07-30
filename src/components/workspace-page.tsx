@@ -13,6 +13,8 @@ const widthClass: Record<WorkspacePageWidth, string> = {
 
 export function WorkspacePage({
   title,
+  accentTitle,
+  eyebrow,
   description,
   width = "default",
   actions,
@@ -20,6 +22,8 @@ export function WorkspacePage({
   className,
 }: {
   title: string;
+  accentTitle?: string;
+  eyebrow?: string;
   description?: string;
   width?: WorkspacePageWidth;
   actions?: ReactNode;
@@ -37,10 +41,16 @@ export function WorkspacePage({
       <header className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex min-w-0 flex-1 flex-col gap-2">
           <span className="workspace-page-kicker" aria-hidden="true">
-            Maiah / {title}
+            {eyebrow ?? `Maiah / ${title}`}
           </span>
           <h1 className="workspace-page-heading text-pretty text-[2.35rem] leading-[0.98] text-foreground sm:text-[3.15rem]">
             {title}
+            {accentTitle ? (
+              <>
+                <br />
+                <em className="font-normal text-primary">{accentTitle}</em>
+              </>
+            ) : null}
           </h1>
           {description ? (
             <p className="max-w-2xl text-pretty text-sm leading-6 text-muted-foreground sm:text-[0.95rem]">

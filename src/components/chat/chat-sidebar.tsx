@@ -20,7 +20,7 @@ import {
   Trash2Icon,
   XIcon,
 } from "lucide-react";
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useLocale, useTranslations } from "next-intl";
 
 import type {
@@ -138,6 +138,9 @@ interface ChatSidebarProps {
   className?: string;
   shell?: WorkspaceShellState;
   workspaceId?: string | null;
+  readOnly?: boolean;
+  showWorkspaceNavigation?: boolean;
+  footerContent?: ReactNode;
 }
 
 function formatRelativeTime(
@@ -288,6 +291,7 @@ function ConversationItem({
   onDropBefore,
   isDragging,
   searchMatch,
+  readOnly,
 }: {
   conversation: ChatConversation;
   isActive: boolean;
@@ -310,6 +314,7 @@ function ConversationItem({
   onDropBefore: (event: React.DragEvent<HTMLDivElement>) => void;
   isDragging: boolean;
   searchMatch?: ChatConversation["searchMatch"];
+  readOnly?: boolean;
 }) {
   const locale = useLocale();
   const t = useTranslations("chat.sidebar");
@@ -317,7 +322,7 @@ function ConversationItem({
 
   return (
     <div
-      draggable={!isEditing && !searchMatch}
+      draggable={!readOnly && !isEditing && !searchMatch}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       onDragOver={(event) => event.preventDefault()}
@@ -416,7 +421,7 @@ function ConversationItem({
               aria-hidden="true"
             />
           ) : null}
-          {!searchMatch ? (
+          {!readOnly && !searchMatch ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -514,6 +519,9 @@ export function ChatSidebar({
   className,
   shell,
   workspaceId,
+  readOnly = false,
+  showWorkspaceNavigation = true,
+  footerContent,
 }: ChatSidebarProps) {
   const t = useTranslations("chat.sidebar");
   const [editingConversationId, setEditingConversationId] = useState<
@@ -745,6 +753,7 @@ export function ChatSidebar({
         searchMatch={
           options?.searchResult ? conversation.searchMatch : undefined
         }
+        readOnly={readOnly}
       />
     );
   }
@@ -851,22 +860,24 @@ export function ChatSidebar({
       <div className="animate-in-fade flex min-h-0 flex-1 flex-col motion-reduce:animate-none">
         <div className="flex min-h-0 flex-1 flex-col">
           <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto px-2 py-2">
-            {showConversationTools ? (
+            {showConversationTools && !readOnly ? (
               <div className="flex min-h-10 items-center justify-between px-2">
                 <span className="text-[11px] font-medium text-muted-foreground">
                   {t("conversations")}
                 </span>
                 <div className="flex items-center">
-                  <Button
-                    type={BUTTON_TYPE}
-                    size="icon-sm"
-                    variant={GHOST_VARIANT}
-                    aria-label={t("createFolder")}
-                    className="size-10 rounded-xl text-muted-foreground"
-                    onClick={startFolderCreate}
-                  >
-                    <FolderPlusIcon className="size-3.5" aria-hidden="true" />
-                  </Button>
+                  {!readOnly && onCreateConversationFolder ? (
+                    <Button
+                      type={BUTTON_TYPE}
+                      size="icon-sm"
+                      variant={GHOST_VARIANT}
+                      aria-label={t("createFolder")}
+                      className="size-10 rounded-xl text-muted-foreground"
+                      onClick={startFolderCreate}
+                    >
+                      <FolderPlusIcon className="size-3.5" aria-hidden="true" />
+                    </Button>
+                  ) : null}
                 </div>
               </div>
             ) : null}
@@ -882,7 +893,11 @@ export function ChatSidebar({
                   name="conversation-search"
                   autoComplete="off"
                   aria-label={t("searchLabel")}
-                  placeholder={t("searchPlaceholder")}
+                  placeholder={
+                    readOnly
+                      ? t("searchCompactPlaceholder")
+                      : t("searchPlaceholder")
+                  }
                   value={searchQuery}
                   onChange={(event) =>
                     onSearchQueryChange?.(event.target.value)
@@ -910,7 +925,7 @@ export function ChatSidebar({
                 : null}
             </p>
 
-            {creatingFolder ? (
+            {!readOnly && creatingFolder ? (
               <div className="flex items-center gap-1 rounded-xl border border-sidebar-border/60 bg-background p-1">
                 <Input
                   aria-label={t("folderName")}
@@ -1171,50 +1186,52 @@ export function ChatSidebar({
                                 </span>
                               </button>
                             )}
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  type={BUTTON_TYPE}
-                                  size="icon-sm"
-                                  variant={GHOST_VARIANT}
-                                  className="size-10 rounded-xl transition-[background-color,opacity] md:opacity-0 md:group-hover/folder:opacity-100 md:group-focus-within/folder:opacity-100 data-[state=open]:opacity-100"
-                                  aria-label={t("folderActions")}
-                                >
-                                  <MoreHorizontalIcon
-                                    className="size-3"
-                                    aria-hidden="true"
-                                  />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem
-                                  onSelect={() => {
-                                    setEditingFolderId(folder.id);
-                                    setEditingFolderName(folder.name);
-                                  }}
-                                  className="min-h-10 gap-2"
-                                >
-                                  <PencilIcon
-                                    className="size-3.5"
-                                    aria-hidden="true"
-                                  />
-                                  {t("rename")}
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  variant="destructive"
-                                  onSelect={() =>
-                                    onDeleteConversationFolder?.(folder.id)
-                                  }
-                                  className="min-h-10 gap-2"
-                                >
-                                  <Trash2Icon
-                                    className="size-3.5"
-                                    aria-hidden="true"
-                                  />
-                                  {t("deleteFolder")}
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
+                            {!readOnly ? (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    type={BUTTON_TYPE}
+                                    size="icon-sm"
+                                    variant={GHOST_VARIANT}
+                                    className="size-10 rounded-xl transition-[background-color,opacity] md:opacity-0 md:group-hover/folder:opacity-100 md:group-focus-within/folder:opacity-100 data-[state=open]:opacity-100"
+                                    aria-label={t("folderActions")}
+                                  >
+                                    <MoreHorizontalIcon
+                                      className="size-3"
+                                      aria-hidden="true"
+                                    />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem
+                                    onSelect={() => {
+                                      setEditingFolderId(folder.id);
+                                      setEditingFolderName(folder.name);
+                                    }}
+                                    className="min-h-10 gap-2"
+                                  >
+                                    <PencilIcon
+                                      className="size-3.5"
+                                      aria-hidden="true"
+                                    />
+                                    {t("rename")}
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    variant="destructive"
+                                    onSelect={() =>
+                                      onDeleteConversationFolder?.(folder.id)
+                                    }
+                                    className="min-h-10 gap-2"
+                                  >
+                                    <Trash2Icon
+                                      className="size-3.5"
+                                      aria-hidden="true"
+                                    />
+                                    {t("deleteFolder")}
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            ) : null}
                           </div>
                           {open ? (
                             <div className="flex flex-col gap-px pl-3">
@@ -1288,12 +1305,12 @@ export function ChatSidebar({
             </div>
           </div>
 
-          {navGroups.length > 0 ? (
+          {showWorkspaceNavigation && navGroups.length > 0 ? (
             <ChatAppNavigation groups={navGroups} />
           ) : null}
         </div>
       </div>
-      <SidebarFooter displayName={shell?.displayName} />
+      {footerContent ?? <SidebarFooter displayName={shell?.displayName} />}
     </div>
   );
 }

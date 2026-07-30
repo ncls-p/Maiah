@@ -22,10 +22,17 @@ import {
 
 import { useWorkspaceShell } from "@/components/app-shell";
 import { useWorkspace } from "@/hooks/use-workspace";
-import { DeodisLogo } from "@/components/deodis-logo";
 import { ModelLogo } from "@/components/providers/model-logo";
-import { APP_SIDEBAR_SURFACE_CLASS } from "@/components/sidebar-chrome";
+import {
+  APP_SIDEBAR_SURFACE_CLASS,
+  WorkspaceStatusFooter,
+} from "@/components/sidebar-chrome";
 import { AppHeader } from "@/components/app-header";
+import {
+  OrbitAccountMenu,
+  OrbitProductNavigation,
+  OrbitWordmark,
+} from "@/components/orbit-product-navigation";
 import { ChatSidebar } from "@/components/chat/chat-sidebar";
 import type {
   ChatAgent,
@@ -189,7 +196,10 @@ export function ChatLayout({
 }: ChatLayoutProps) {
   const t = useTranslations("chat");
   const shell = useWorkspaceShell();
-  const { workspaceId } = useWorkspace();
+  const { workspaceId, workspaces } = useWorkspace();
+  const activeWorkspace = workspaces.find(
+    (workspace) => workspace.id === workspaceId,
+  );
   const [setupOpen, setSetupOpen] = useState(false);
   const [agentSearch, setAgentSearch] = useState("");
   const sidebarOpen = useSyncExternalStore(
@@ -269,6 +279,13 @@ export function ChatLayout({
     onCollapsedChange: undefined,
     shell,
     workspaceId,
+    showWorkspaceNavigation: false,
+    footerContent: (
+      <WorkspaceStatusFooter
+        name={activeWorkspace?.name ?? "Maiah"}
+        context={activeWorkspace?.organizationName}
+      />
+    ),
   };
   const handleDesktopSidebarCollapsedChange = ((collapsed) => {
     updateSidebarOpen({ open: !collapsed });
@@ -593,22 +610,10 @@ export function ChatLayout({
                     <ChatSidebar {...mobileSidebarProps} />
                   </SheetContent>
                 </Sheet>
-                {!sidebarOpen ? (
-                  <DeodisLogo
-                    href="/chat"
-                    className="hidden h-5 w-auto md:block"
-                    priority
-                    label="Deodis chat"
-                  />
-                ) : null}
-                <DeodisLogo
-                  href="/chat"
-                  className="h-5 w-auto md:hidden"
-                  priority
-                  label="Deodis chat"
-                />
+                <OrbitWordmark section={t("title")} />
               </>
             }
+            center={<OrbitProductNavigation shell={shell} />}
             actions={
               <div className="flex items-center gap-1">
                 {!sidebarOpen ? (
@@ -651,6 +656,7 @@ export function ChatLayout({
                     {t("finishSetup")}
                   </Button>
                 ) : null}
+                <OrbitAccountMenu displayName={shell.displayName} />
               </div>
             }
           />
