@@ -10,6 +10,7 @@ import {
   FolderPlusIcon,
   MoreHorizontalIcon,
   MessageSquareIcon,
+  PanelLeftCloseIcon,
   PanelLeftOpenIcon,
   PencilIcon,
   PinIcon,
@@ -548,11 +549,7 @@ export function ChatSidebar({
     [shell],
   );
   const searchActive = searchQuery.trim().length > 0;
-  const showConversationTools =
-    loading ||
-    searchActive ||
-    conversations.length > 0 ||
-    conversationFolders.length > 0;
+  const showConversationTools = true;
   const sortedConversations = useMemo(() => {
     return [...conversations].sort((a, b) => {
       const aPinned = a.pinnedAt ? 0 : 1;
@@ -844,44 +841,55 @@ export function ChatSidebar({
       <SidebarHeader
         contextLabel={t("conversations")}
         action={
-          <Button
-            type={BUTTON_TYPE}
-            size="sm"
-            variant="outline"
-            onClick={onNewConversation}
-            className="min-h-10 gap-1 rounded-xl px-3 text-xs font-medium"
-          >
-            <PlusIcon className="size-3.5" aria-hidden="true" />
-            {t("new")}
-          </Button>
+          <div className="flex items-center gap-1">
+            {!readOnly && (onCreateConversationFolder || onCollapsedChange) ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type={BUTTON_TYPE}
+                    size="icon"
+                    variant={GHOST_VARIANT}
+                    className="size-10 rounded-xl text-muted-foreground"
+                    aria-label={t("historyActions")}
+                  >
+                    <MoreHorizontalIcon className="size-4" aria-hidden="true" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-52">
+                  {onCreateConversationFolder ? (
+                    <DropdownMenuItem onSelect={startFolderCreate}>
+                      <FolderPlusIcon className="size-4" aria-hidden="true" />
+                      {t("createFolder")}
+                    </DropdownMenuItem>
+                  ) : null}
+                  {onCollapsedChange ? (
+                    <DropdownMenuItem onSelect={() => onCollapsedChange(true)}>
+                      <PanelLeftCloseIcon
+                        className="size-4"
+                        aria-hidden="true"
+                      />
+                      {t("collapseSidebar")}
+                    </DropdownMenuItem>
+                  ) : null}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : null}
+            <Button
+              type={BUTTON_TYPE}
+              size="icon"
+              onClick={onNewConversation}
+              className="size-10 rounded-xl"
+              aria-label={t("newConversation")}
+            >
+              <PlusIcon className="size-4" aria-hidden="true" />
+            </Button>
+          </div>
         }
       />
 
       <div className="animate-in-fade flex min-h-0 flex-1 flex-col motion-reduce:animate-none">
         <div className="flex min-h-0 flex-1 flex-col">
           <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto px-2 py-2">
-            {showConversationTools && !readOnly ? (
-              <div className="flex min-h-10 items-center justify-between px-2">
-                <span className="text-[11px] font-medium text-muted-foreground">
-                  {t("conversations")}
-                </span>
-                <div className="flex items-center">
-                  {!readOnly && onCreateConversationFolder ? (
-                    <Button
-                      type={BUTTON_TYPE}
-                      size="icon-sm"
-                      variant={GHOST_VARIANT}
-                      aria-label={t("createFolder")}
-                      className="size-10 rounded-xl text-muted-foreground"
-                      onClick={startFolderCreate}
-                    >
-                      <FolderPlusIcon className="size-3.5" aria-hidden="true" />
-                    </Button>
-                  ) : null}
-                </div>
-              </div>
-            ) : null}
-
             {showConversationTools ? (
               <div className="flex items-center gap-2 px-1 pb-1">
                 <SearchIcon

@@ -69,7 +69,7 @@ export function OrbitProductNavigation({
     <div className="flex min-w-0 items-center gap-1">
       <nav
         aria-label={t("groups.primary")}
-        className="scrollbar-none hidden min-w-0 items-center gap-0.5 overflow-x-auto rounded-xl bg-muted/55 p-1 md:flex"
+        className="scrollbar-none hidden min-w-0 items-center gap-0.5 overflow-x-auto md:flex"
       >
         {primaryItems.map((item) => {
           const active = isNavItemActive(pathname, item.href);
@@ -79,10 +79,10 @@ export function OrbitProductNavigation({
               href={item.href}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "inline-flex h-8 shrink-0 items-center rounded-lg px-3 text-[0.72rem] font-medium transition-[background-color,color,box-shadow] duration-180",
+                "inline-flex h-9 shrink-0 items-center rounded-xl border px-2.5 text-[0.68rem] font-medium transition-[background-color,border-color,color,box-shadow] duration-180",
                 active
-                  ? "bg-card text-foreground shadow-[var(--control-shadow)]"
-                  : "text-muted-foreground hover:bg-card/60 hover:text-foreground",
+                  ? "border-primary/70 bg-card text-foreground shadow-[0_0_0_1px_color-mix(in_oklch,var(--primary)_22%,transparent),var(--control-shadow)]"
+                  : "border-transparent text-muted-foreground hover:bg-muted/65 hover:text-foreground",
               )}
             >
               {productLabel(item.href, item.labelKey)}

@@ -13,7 +13,6 @@ import { useTranslations } from "next-intl";
 import {
   ChevronDownIcon,
   MessageSquarePlusIcon,
-  PanelLeftCloseIcon,
   PanelLeftOpenIcon,
   SearchIcon,
   Settings2Icon,
@@ -564,24 +563,18 @@ export function ChatLayout({
             className="relative z-30 border-border/60 bg-background px-2 sm:px-4"
             leading={
               <>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="hidden size-10 rounded-xl md:inline-flex"
-                  aria-label={
-                    sidebarOpen
-                      ? t("closeConversations")
-                      : t("openConversations")
-                  }
-                  onClick={() => updateSidebarOpen({ open: !sidebarOpen })}
-                >
-                  {sidebarOpen ? (
-                    <PanelLeftCloseIcon className="size-4" aria-hidden="true" />
-                  ) : (
+                {!sidebarOpen ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="hidden size-10 rounded-xl md:inline-flex"
+                    aria-label={t("openConversations")}
+                    onClick={() => updateSidebarOpen({ open: true })}
+                  >
                     <PanelLeftOpenIcon className="size-4" aria-hidden="true" />
-                  )}
-                </Button>
+                  </Button>
+                ) : null}
                 <Sheet
                   open={mobileSidebarOpen}
                   onOpenChange={setMobileSidebarOpen}

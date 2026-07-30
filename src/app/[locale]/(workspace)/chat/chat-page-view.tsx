@@ -140,7 +140,7 @@ export function EmptyConversationState({
   t: ChatTranslator;
 }) {
   return (
-    <div className="mx-auto flex h-full w-full max-w-3xl flex-col items-center justify-start px-4 pt-[clamp(4rem,14vh,9rem)] pb-12 animate-in-fade">
+    <div className="mx-auto flex h-full w-full max-w-3xl flex-col items-center justify-start px-4 pt-[clamp(6rem,24vh,13rem)] pb-12 animate-in-fade">
       <div className="relative flex w-full flex-col items-center gap-5">
         <div className="flex max-w-xl flex-col items-center text-center">
           {selectedAgent ? (

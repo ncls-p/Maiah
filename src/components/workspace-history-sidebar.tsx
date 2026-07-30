@@ -1,7 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
-import { MessageSquareWarningIcon, PanelLeftOpenIcon } from "lucide-react";
+import {
+  MessageSquareWarningIcon,
+  PanelLeftOpenIcon,
+  PlusIcon,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { ChatSidebar } from "@/components/chat/chat-sidebar";
@@ -227,14 +231,15 @@ function WorkspaceHistoryContent({
           action={
             <Button
               type="button"
-              variant="outline"
-              size="sm"
+              size="icon"
+              className="size-10 rounded-xl"
               onClick={() => {
                 router.push("/chat");
                 onNavigate?.();
               }}
+              aria-label={t("newConversation")}
             >
-              {t("new")}
+              <PlusIcon className="size-4" aria-hidden="true" />
             </Button>
           }
         />

@@ -178,6 +178,8 @@
       "rename": "Rename",
       "delete": "Delete",
       "expandSidebar": "Expand chat sidebar",
+      "collapseSidebar": "Collapse chat sidebar",
+      "historyActions": "History actions",
       "newConversation": "New conversation",
       "new": "New",
       "conversations": "Conversations",
@@ -3199,6 +3201,9 @@
       "title": "Tasks",
       "description": "{active, plural, =0 {No active tasks out of {total}} one {# active task out of {total}} other {# active tasks out of {total}}}.",
       "activeCount": "{count, plural, =0 {None active} one {# active} other {# active}}",
+      "activeLabel": "Active",
+      "successLabel": "Success",
+      "totalLabel": "Total",
       "nextRun": "Next run"
     },
     "empty": {

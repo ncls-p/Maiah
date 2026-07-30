@@ -269,13 +269,13 @@ function StatCard({
           : "text-foreground";
 
   return (
-    <div className="rounded-2xl border bg-card px-3.5 py-3">
-      <p className="text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+    <div className="rounded-xl border bg-background/55 px-3 py-2.5">
+      <p className="text-[0.56rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
         {label}
       </p>
       <p
         className={cn(
-          "mt-1 text-2xl font-semibold tabular-nums leading-none tracking-[-0.04em]",
+          "mt-1 text-xl font-semibold tabular-nums leading-none tracking-[-0.04em]",
           toneClass,
         )}
       >
@@ -450,29 +450,34 @@ export function BuiltinToolsPanel({
 
   return (
     <div className="flex flex-col gap-5 animate-in-fade">
-      <section className="rounded-2xl border bg-card p-5 sm:p-6">
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-end">
-          <div className="flex max-w-2xl flex-col gap-3">
-            <div className="inline-flex w-fit items-center gap-2 rounded-full border bg-background px-3 py-1 text-muted-foreground">
-              <WrenchIcon className="size-3.5" aria-hidden="true" />
-              <p className="text-[0.66rem] font-semibold uppercase tracking-[0.18em]">
+      <section className="rounded-2xl border bg-card p-4">
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_23rem] lg:items-center">
+          <div className="flex min-w-0 items-start gap-3">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/8 text-primary">
+              <WrenchIcon className="size-4" aria-hidden="true" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[0.58rem] font-semibold uppercase tracking-[0.18em] text-primary">
                 {t("eyebrow")}
               </p>
+              <h2 className="mt-1 text-lg font-semibold tracking-[-0.035em] text-foreground">
+                {t("title")}
+              </h2>
+              <p className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">
+                {t("description")}{" "}
+                {canManage ? t("adminHint") : t("readOnlyHint")}
+              </p>
+              <Button
+                variant="link"
+                size="sm"
+                className="mt-1 h-auto min-h-0 px-0 text-xs"
+                asChild
+              >
+                <Link href="/agents">{t("enableCta")}</Link>
+              </Button>
             </div>
-            <h2 className="max-w-xl text-2xl font-semibold tracking-[-0.045em] text-foreground sm:text-3xl">
-              {t("title")}
-            </h2>
-            <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
-              {t("description")}
-            </p>
-            <p className="max-w-xl text-xs leading-relaxed text-muted-foreground">
-              {canManage ? t("adminHint") : t("readOnlyHint")}
-            </p>
-            <Button variant="outline" size="sm" className="mt-1 w-fit" asChild>
-              <Link href="/agents">{t("enableCta")}</Link>
-            </Button>
           </div>
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-2 gap-2">
             <StatCard label={t("stats.total")} value={stats.total} />
             <StatCard
               label={t("stats.enabled")}

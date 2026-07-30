@@ -42,7 +42,7 @@ export function SidebarHeader({
           "flex shrink-0 items-center border-b border-sidebar-border/55 px-3",
           collapsed
             ? "h-24 flex-col justify-center gap-1.5 px-2"
-            : "h-20 justify-between gap-3",
+            : "h-16 justify-between gap-3",
         )}
       >
         <div

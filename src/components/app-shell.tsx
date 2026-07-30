@@ -109,8 +109,17 @@ function useWorkspacePermissions(workspaceId: string | null | undefined) {
 function useShellRouteMetadata(pathname: string) {
   const tNav = useTranslations("nav");
   const titleKey = getRouteTitleKey(pathname);
+  const currentTitle = titleKey === "workspace" ? tNav("chat") : tNav(titleKey);
+  const orbitSection =
+    titleKey === "toolsHub"
+      ? tNav("toolsShort")
+      : titleKey === "knowledge"
+        ? tNav("knowledgeShort")
+        : titleKey === "scheduledTasks"
+          ? tNav("planningShort")
+          : currentTitle;
   return {
-    currentTitle: titleKey === "workspace" ? tNav("chat") : tNav(titleKey),
+    orbitSection,
   };
 }
 
@@ -125,7 +134,7 @@ export function AppShell({
   const tShell = useTranslations("shell");
   const { workspaceId } = useWorkspace();
   const isChatRoute = pathname === "/chat" || pathname.startsWith("/chat/");
-  const { currentTitle } = useShellRouteMetadata(pathname);
+  const { orbitSection } = useShellRouteMetadata(pathname);
   const pendingToolCount = usePendingToolCount(workspaceId);
   const permissions = useWorkspacePermissions(workspaceId);
 
@@ -165,7 +174,7 @@ export function AppShell({
                 leading={
                   <>
                     <WorkspaceHistoryMobileTrigger shell={shellValue} />
-                    <OrbitWordmark section={currentTitle} />
+                    <OrbitWordmark section={orbitSection} />
                   </>
                 }
                 center={<OrbitProductNavigation shell={shellValue} />}

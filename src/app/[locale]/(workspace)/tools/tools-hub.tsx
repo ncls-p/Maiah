@@ -194,7 +194,7 @@ export function ToolsHub() {
       width="wide"
     >
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="w-full flex-wrap sm:w-auto">
+        <TabsList className="max-w-full flex-nowrap justify-start overflow-x-auto">
           {allowedTabs.map((item) => {
             const Icon = item.icon;
             return (

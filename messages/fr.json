@@ -178,6 +178,8 @@
       "rename": "Renommer",
       "delete": "Supprimer",
       "expandSidebar": "Déplier la barre du chat",
+      "collapseSidebar": "Réduire la barre du chat",
+      "historyActions": "Actions de l’historique",
       "newConversation": "Nouvelle conversation",
       "new": "Nouveau",
       "conversations": "Conversations",
@@ -3198,6 +3200,9 @@
       "title": "Tâches",
       "description": "{active, plural, =0 {Aucune tâche active sur {total}} one {# tâche active sur {total}} other {# tâches actives sur {total}}}.",
       "activeCount": "{count, plural, =0 {Aucune active} one {# active} other {# actives}}",
+      "activeLabel": "Actives",
+      "successLabel": "Réussite",
+      "totalLabel": "Total",
       "nextRun": "Prochain lancement"
     },
     "empty": {
