@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import {
+  ensureE2EAssistant,
   ensureE2EPrivateMemberAssistant,
   ensureE2EUser,
   login,
@@ -126,6 +127,7 @@ test.describe("agents list page", () => {
   test("keeps assistant card menus focused on secondary actions", async ({
     page,
   }) => {
+    await ensureE2EAssistant();
     await page.goto("/en/agents");
 
     const actionsButton = page

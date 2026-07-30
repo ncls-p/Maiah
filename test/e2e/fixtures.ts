@@ -66,6 +66,45 @@ export async function ensureE2EUser() {
   }
 }
 
+export async function ensureE2EAssistant() {
+  await ensureE2EUser();
+
+  const client = new Client({ connectionString: databaseUrl() });
+  await client.connect();
+  try {
+    const user = await client.query<{ id: string }>(
+      `select id from "user" where email = $1 limit 1`,
+      [e2eUser.email],
+    );
+    const workspace = await client.query<{ id: string }>(
+      `select w.id
+       from workspaces w
+       join organizations o on o.id = w.organization_id
+       where w.slug = 'main' and o.slug = 'deodis' and w.archived_at is null
+       limit 1`,
+    );
+    const userId = user.rows[0]?.id;
+    const workspaceId = workspace.rows[0]?.id;
+    if (!userId || !workspaceId) {
+      throw new Error("E2E assistant workspace is not initialized");
+    }
+
+    await client.query(
+      `insert into agents
+       (id, workspace_id, name, slug, created_by_user_id, created_at, updated_at)
+       values ($1, $2, 'E2E menu assistant', 'e2e-menu-assistant', $3, now(), now())
+       on conflict (workspace_id, slug) do update
+       set name = excluded.name,
+           created_by_user_id = excluded.created_by_user_id,
+           archived_at = null,
+           updated_at = now()`,
+      [randomUUID(), workspaceId, userId],
+    );
+  } finally {
+    await client.end();
+  }
+}
+
 export async function ensureE2EMember() {
   const client = new Client({ connectionString: databaseUrl() });
   await client.connect();
