@@ -13,6 +13,7 @@ import {
   chatTodoListFromUnknown,
   type ChatTodoList,
 } from "@/modules/chat/todo-list";
+import { projectToolPayloadForDisplay } from "@/modules/tool/safe-payload";
 
 function stringifyForMatch(value: unknown) {
   try {
@@ -591,6 +592,6 @@ export function toolPartMatchesApproval(
     toolNameMatches(parsed.toolName, pendingApproval.toolName) &&
     (parsed.input === undefined ||
       stringifyForMatch(pendingApproval.input) ===
-        stringifyForMatch(parsed.input))
+        stringifyForMatch(projectToolPayloadForDisplay(parsed.input)))
   );
 }
