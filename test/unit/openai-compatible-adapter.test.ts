@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  normalizeResponsesReasoningSseLine,
   openaiCompatibleAdapter,
   stripUnsupportedResponsesItemReferences,
 } from "@/server/infrastructure/providers/openai-compatible-adapter";
@@ -242,6 +243,30 @@ describe("openaiCompatibleAdapter.createChatModel", () => {
           output: '{"ok":true}',
         },
       ],
+    });
+  });
+
+  it("maps preserved reasoning text events to the Responses summary protocol", () => {
+    expect(
+      normalizeResponsesReasoningSseLine(
+        "event: response.reasoning_text.delta",
+      ),
+    ).toBe("event: response.reasoning_summary_text.delta");
+
+    const normalizedLine = normalizeResponsesReasoningSseLine(
+      `data: ${JSON.stringify({
+        type: "response.reasoning_text.delta",
+        item_id: "reasoning-1",
+        content_index: 2,
+        delta: "Inspect the request",
+      })}`,
+    );
+    expect(JSON.parse(normalizedLine.slice("data: ".length))).toEqual({
+      type: "response.reasoning_summary_text.delta",
+      item_id: "reasoning-1",
+      content_index: 2,
+      summary_index: 2,
+      delta: "Inspect the request",
     });
   });
 

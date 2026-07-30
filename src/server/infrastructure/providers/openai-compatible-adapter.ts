@@ -89,6 +89,84 @@ export function stripUnsupportedResponsesItemReferences(
   }
 }
 
+const RESPONSES_REASONING_EVENT_ALIASES = {
+  "response.reasoning_part.added": "response.reasoning_summary_part.added",
+  "response.reasoning_text.delta": "response.reasoning_summary_text.delta",
+  "response.reasoning_part.done": "response.reasoning_summary_part.done",
+} as const;
+
+export function normalizeResponsesReasoningSseLine(line: string) {
+  if (line.startsWith("event:")) {
+    const eventName = line.slice("event:".length).trim();
+    const normalizedEvent =
+      RESPONSES_REASONING_EVENT_ALIASES[
+        eventName as keyof typeof RESPONSES_REASONING_EVENT_ALIASES
+      ];
+    return normalizedEvent ? `event: ${normalizedEvent}` : line;
+  }
+  if (!line.startsWith("data:")) return line;
+
+  const data = line.slice("data:".length).trim();
+  try {
+    const payload = JSON.parse(data) as Record<string, unknown>;
+    const type = typeof payload.type === "string" ? payload.type : "";
+    const normalizedType =
+      RESPONSES_REASONING_EVENT_ALIASES[
+        type as keyof typeof RESPONSES_REASONING_EVENT_ALIASES
+      ];
+    if (!normalizedType) return line;
+    return `data: ${JSON.stringify({
+      ...payload,
+      type: normalizedType,
+      summary_index:
+        typeof payload.content_index === "number" ? payload.content_index : 0,
+    })}`;
+  } catch {
+    return line;
+  }
+}
+
+function normalizeResponsesReasoningStream(response: Response) {
+  if (
+    !response.body ||
+    !response.headers.get("content-type")?.includes("text/event-stream")
+  ) {
+    return response;
+  }
+
+  const decoder = new TextDecoder();
+  const encoder = new TextEncoder();
+  let buffer = "";
+  const body = response.body.pipeThrough(
+    new TransformStream<Uint8Array, Uint8Array>({
+      transform(chunk, controller) {
+        buffer += decoder.decode(chunk, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          controller.enqueue(
+            encoder.encode(`${normalizeResponsesReasoningSseLine(line)}\n`),
+          );
+        }
+      },
+      flush(controller) {
+        buffer += decoder.decode();
+        if (buffer) {
+          controller.enqueue(
+            encoder.encode(normalizeResponsesReasoningSseLine(buffer)),
+          );
+        }
+      },
+    }),
+  );
+
+  return new Response(body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers,
+  });
+}
+
 function createResponsesFetch(config: ProviderRuntimeConfig) {
   const fetchImplementation = globalThis.fetch;
   const hasExplicitAuthorizationHeader = Object.keys(config.headers ?? {}).some(
@@ -129,7 +207,9 @@ function createResponsesFetch(config: ProviderRuntimeConfig) {
       headers,
     };
     const response = await fetchImplementation(url, requestInit);
-    if (response.ok || response.status < 500) return response;
+    if (response.ok || response.status < 500) {
+      return normalizeResponsesReasoningStream(response);
+    }
 
     const fallbackBody = stripUnsupportedResponsesItemReferences(
       requestInit.body,
@@ -139,10 +219,11 @@ function createResponsesFetch(config: ProviderRuntimeConfig) {
     const errorBody = await response.clone().text();
     if (!errorBody.includes("'role'")) return response;
 
-    return fetchImplementation(url, {
+    const fallbackResponse = await fetchImplementation(url, {
       ...requestInit,
       body: fallbackBody,
     });
+    return normalizeResponsesReasoningStream(fallbackResponse);
   };
 }
 

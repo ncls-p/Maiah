@@ -140,6 +140,18 @@ async function createRecoveredToolConversation() {
       `insert into message_parts
          (id, message_id, type, content_encrypted, metadata_json, sort_order, created_at)
        values ($1, $2, 'reasoning', $3, null, 0, now())`,
+      [
+        randomUUID(),
+        assistantMessageId,
+        await encryptFixtureText(
+          "Inspect the failed query before preparing a corrected retry.",
+        ),
+      ],
+    );
+    await client.query(
+      `insert into message_parts
+         (id, message_id, type, content_encrypted, metadata_json, sort_order, created_at)
+       values ($1, $2, 'reasoning', $3, null, 2, now())`,
       [randomUUID(), assistantMessageId, await encryptFixtureText("")],
     );
     await client.query(
@@ -147,9 +159,9 @@ async function createRecoveredToolConversation() {
          (id, message_id, type, content_encrypted, metadata_json, sort_order, created_at)
        values
          ($1, $2, 'tool-call', null, $3::jsonb, 1, now()),
-         ($4, $2, 'tool-call', null, $5::jsonb, 2, now()),
-         ($6, $2, 'tool-call', null, $7::jsonb, 3, now()),
-         ($8, $2, 'text', $9, null, 4, now())`,
+         ($4, $2, 'tool-call', null, $5::jsonb, 3, now()),
+         ($6, $2, 'tool-call', null, $7::jsonb, 4, now()),
+         ($8, $2, 'text', $9, null, 5, now())`,
       [
         randomUUID(),
         assistantMessageId,
@@ -377,6 +389,19 @@ test.describe("chat page", () => {
       await expect(
         transcript.getByText("Completed", { exact: true }),
       ).toBeVisible();
+      const detailedReasoning = transcript.locator(
+        '[data-reasoning-details="available"]',
+      );
+      await expect(detailedReasoning).toBeVisible();
+      await detailedReasoning
+        .getByRole("button", { name: "View", exact: true })
+        .click();
+      await expect(
+        detailedReasoning.getByText(
+          "Inspect the failed query before preparing a corrected retry.",
+          { exact: true },
+        ),
+      ).toBeVisible();
       const compactReasoning = transcript.locator(
         '[data-reasoning-details="unavailable"]',
       );
@@ -385,7 +410,7 @@ test.describe("chat page", () => {
         compactReasoning.getByText("Reasoning complete", { exact: true }),
       ).toBeVisible();
       await expect(
-        compactReasoning.getByRole("button", { name: "Show", exact: true }),
+        compactReasoning.getByRole("button", { name: "View", exact: true }),
       ).toHaveCount(0);
       await expect(
         transcript.getByRole("region", {
