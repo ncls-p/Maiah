@@ -1740,6 +1740,7 @@ export default function ChatPage() {
             onUploadChatAttachment={uploadChatAttachment}
             attachments={attachments}
             todoList={latestTodoList}
+            centered={!loadingMessages && messages.length === 0}
             onRemoveAttachment={(attachmentId) =>
               setAttachments((current) =>
                 current.filter((attachment) => attachment.id !== attachmentId),

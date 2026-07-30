@@ -8,8 +8,7 @@
 
 @theme inline {
   --font-heading:
-    var(--font-body), ui-sans-serif, system-ui, -apple-system,
-    BlinkMacSystemFont, "Segoe UI", sans-serif;
+    var(--font-editorial), ui-serif, Georgia, Cambria, "Times New Roman", serif;
   --font-sans:
     var(--font-body), ui-sans-serif, system-ui, -apple-system,
     BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -66,18 +65,18 @@
   --brand-blanc: #ffffff;
   --brand-noir: #17222d;
 
-  /* Calm, cool surfaces with a concentrated Deodis azure accent. */
-  --background: oklch(0.985 0.004 230);
+  /* Orbit: quiet mineral surfaces with one concentrated azure accent. */
+  --background: oklch(0.982 0.006 220);
   --foreground: var(--brand-noir);
-  --card: oklch(1 0 0);
+  --card: oklch(0.998 0.002 220);
   --card-foreground: var(--brand-noir);
   --popover: oklch(1 0 0);
   --popover-foreground: var(--brand-noir);
   --primary: var(--brand-azur-strong);
   --primary-foreground: var(--brand-blanc);
-  --secondary: oklch(0.955 0.012 225);
+  --secondary: oklch(0.95 0.015 220);
   --secondary-foreground: var(--brand-noir);
-  --muted: oklch(0.955 0.01 225);
+  --muted: oklch(0.95 0.011 220);
   --muted-foreground: var(--brand-gris);
   --accent: var(--brand-azur-soft);
   --accent-foreground: var(--brand-noir);
@@ -86,17 +85,17 @@
   --success: oklch(0.52 0.12 155);
   --warning: oklch(0.52 0.13 78);
   --info: oklch(0.56 0.11 230);
-  --border: oklch(0.9 0.012 225);
-  --input: oklch(0.855 0.014 225);
+  --border: oklch(0.895 0.013 220);
+  --input: oklch(0.84 0.017 220);
   --ring: var(--brand-azur);
   --chart-1: var(--brand-azur-strong);
   --chart-2: var(--brand-azur);
   --chart-3: oklch(0.52 0.005 215);
   --chart-4: oklch(0.54 0.1 25);
   --chart-5: oklch(0.52 0.09 300);
-  --radius: 0.875rem;
+  --radius: 0.8rem;
 
-  --sidebar: oklch(0.978 0.007 225);
+  --sidebar: oklch(0.965 0.012 220);
   --sidebar-foreground: oklch(0.28 0.016 235);
   --sidebar-primary: var(--primary);
   --sidebar-primary-foreground: var(--primary-foreground);
@@ -106,9 +105,9 @@
   --sidebar-ring: var(--ring);
 
   --surface-shadow:
-    0 1px 2px rgba(16, 43, 56, 0.035), 0 8px 24px -20px rgba(16, 43, 56, 0.18);
+    0 1px 2px rgba(16, 43, 56, 0.028), 0 18px 55px -44px rgba(16, 43, 56, 0.3);
   --surface-shadow-hover:
-    0 1px 2px rgba(16, 43, 56, 0.05), 0 12px 30px -22px rgba(16, 43, 56, 0.22);
+    0 1px 2px rgba(16, 43, 56, 0.04), 0 24px 62px -44px rgba(16, 43, 56, 0.36);
   --control-shadow: 0 1px 2px rgba(16, 43, 56, 0.05);
   --control-shadow-hover: 0 1px 3px rgba(16, 43, 56, 0.08);
   --floating-shadow:
@@ -133,9 +132,9 @@
 }
 
 .dark {
-  --background: oklch(0.145 0.014 235);
+  --background: oklch(0.14 0.016 225);
   --foreground: oklch(0.94 0.006 225);
-  --card: oklch(0.185 0.016 235);
+  --card: oklch(0.18 0.017 225);
   --card-foreground: oklch(0.94 0.006 225);
   --popover: oklch(0.205 0.017 235);
   --popover-foreground: oklch(0.94 0.006 225);
@@ -161,7 +160,7 @@
   --chart-4: oklch(0.72 0.1 25);
   --chart-5: oklch(0.72 0.08 300);
 
-  --sidebar: oklch(0.165 0.016 235);
+  --sidebar: oklch(0.16 0.017 225);
   --sidebar-foreground: oklch(0.88 0.008 225);
   --sidebar-primary: var(--primary);
   --sidebar-primary-foreground: var(--primary-foreground);
@@ -458,14 +457,24 @@
 
   .app-shell {
     @apply flex h-svh min-h-svh flex-col overflow-hidden bg-background text-foreground;
-    background-image: none;
+    background-image:
+      radial-gradient(
+        circle at 86% 10%,
+        color-mix(in oklch, var(--brand-azur) 7%, transparent),
+        transparent 26rem
+      ),
+      radial-gradient(
+        circle at 62% 92%,
+        color-mix(in oklch, var(--brand-blue) 4%, transparent),
+        transparent 30rem
+      );
   }
 
   .app-shell__header {
-    @apply flex h-14 shrink-0 items-center justify-between border-b border-border/60 bg-background px-4;
+    @apply flex h-16 shrink-0 items-center justify-between border-b border-border/55 bg-background/88 px-4;
     padding-top: max(0rem, env(safe-area-inset-top));
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
+    backdrop-filter: blur(18px) saturate(1.1);
+    -webkit-backdrop-filter: blur(18px) saturate(1.1);
   }
 
   .app-shell__main {
@@ -479,7 +488,59 @@
 
   .chat-shell-brand {
     @apply bg-transparent;
-    background-image: none;
+    background-image: radial-gradient(
+      circle at 74% 22%,
+      color-mix(in oklch, var(--brand-azur) 6%, transparent),
+      transparent 24rem
+    );
+  }
+
+  [data-slot="workspace-sidebar"] {
+    box-shadow: inset -1px 0 0
+      color-mix(in oklch, var(--sidebar-border) 55%, transparent);
+  }
+
+  .workspace-page-heading {
+    font-family: var(--font-editorial), ui-serif, Georgia, serif;
+    font-weight: 450;
+    letter-spacing: -0.045em;
+  }
+
+  .workspace-page-kicker {
+    @apply text-[0.65rem] font-semibold uppercase text-primary;
+    letter-spacing: 0.19em;
+  }
+
+  .composer-dock {
+    transform: translateY(0);
+    transition: transform 560ms cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: transform;
+  }
+
+  .composer-dock[data-centered="true"] {
+    transform: translateY(clamp(-18rem, -30vh, -10rem));
+  }
+
+  .composer-box {
+    @apply border border-border/75 bg-card/96;
+    box-shadow:
+      0 0 0 1px color-mix(in oklch, var(--brand-azur) 3%, transparent),
+      0 26px 70px -42px
+        color-mix(in oklch, var(--brand-azur-strong) 42%, transparent);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    transition:
+      border-color 180ms ease-out,
+      box-shadow 180ms ease-out,
+      transform 180ms ease-out;
+  }
+
+  .composer-box:focus-within {
+    border-color: color-mix(in oklch, var(--primary) 48%, var(--border));
+    box-shadow:
+      0 0 0 3px color-mix(in oklch, var(--primary) 10%, transparent),
+      0 28px 76px -42px
+        color-mix(in oklch, var(--brand-azur-strong) 48%, transparent);
   }
 }
 
@@ -537,6 +598,18 @@
   .transition-spring,
   .transition-smooth {
     transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .composer-dock,
+    .animate-in-fade,
+    .animate-in-up,
+    .animate-in-scale,
+    .animate-in-slide-right,
+    .animate-in-slide-left {
+      animation: none;
+      transition-duration: 0.01ms;
+    }
   }
 
   .streaming-markdown {

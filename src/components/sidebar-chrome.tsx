@@ -24,7 +24,7 @@ import {
 import { cn } from "@/lib/utils";
 
 export const APP_SIDEBAR_SURFACE_CLASS =
-  "border-sidebar-border/70 bg-sidebar text-sidebar-foreground";
+  "border-sidebar-border/65 bg-sidebar/92 text-sidebar-foreground backdrop-blur-xl";
 
 export function SidebarHeader({
   contextLabel,
@@ -39,10 +39,10 @@ export function SidebarHeader({
     <>
       <div
         className={cn(
-          "flex shrink-0 items-center border-b border-sidebar-border/60 px-3",
+          "flex shrink-0 items-center border-b border-sidebar-border/55 px-3",
           collapsed
             ? "h-24 flex-col justify-center gap-1.5 px-2"
-            : "h-16 justify-between gap-3",
+            : "h-20 justify-between gap-3",
         )}
       >
         <div
@@ -57,12 +57,12 @@ export function SidebarHeader({
             href="/chat"
             className={cn(
               "shrink-0 object-contain",
-              collapsed ? "size-6" : "h-6 w-auto",
+              collapsed ? "size-6" : "h-7 w-auto",
             )}
             label="Deodis chat"
           />
           {!collapsed ? (
-            <span className="-mt-1 max-w-full truncate pl-0.5 text-[0.625rem] font-semibold uppercase tracking-[0.14em] text-primary/75">
+            <span className="-mt-0.5 max-w-full truncate pl-0.5 font-mono text-[0.58rem] font-medium uppercase tracking-[0.18em] text-primary/80">
               {contextLabel}
             </span>
           ) : null}
@@ -97,7 +97,7 @@ export function SidebarFooter({
               <button
                 type="button"
                 className={cn(
-                  "flex min-h-11 items-center rounded-xl text-left text-sm outline-none transition-[background-color,color] duration-200 hover:bg-sidebar-accent/70 focus-visible:ring-2 focus-visible:ring-sidebar-ring",
+                  "flex min-h-11 items-center rounded-xl text-left text-sm outline-none transition-[background-color,color,transform] duration-200 hover:bg-sidebar-accent/70 focus-visible:ring-2 focus-visible:ring-sidebar-ring active:scale-[0.985]",
                   collapsed ? "w-11 justify-center" : "w-full gap-2.5 px-2.5",
                 )}
                 aria-label={displayName || tShell("workspace")}
@@ -162,9 +162,9 @@ export function sidebarNavItemClassName({
   collapsed?: boolean;
 }) {
   return cn(
-    "group relative flex min-h-10 items-center gap-2.5 rounded-xl px-2 py-1.5 text-sm font-medium transition-[background-color,color,box-shadow,scale] duration-150 ease-out active:scale-[0.98]",
+    "group relative flex min-h-10 items-center gap-2.5 rounded-xl px-2 py-1.5 text-[0.82rem] font-medium transition-[background-color,color,box-shadow,scale] duration-180 ease-out active:scale-[0.98]",
     active
-      ? "nav-item-active bg-card text-sidebar-accent-foreground shadow-[var(--control-shadow)]"
+      ? "nav-item-active bg-card/88 text-sidebar-accent-foreground shadow-[var(--control-shadow)]"
       : "text-sidebar-foreground/68 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground",
     collapsed && "justify-center px-1.5",
   );

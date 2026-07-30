@@ -140,7 +140,7 @@ export function EmptyConversationState({
   t: ChatTranslator;
 }) {
   return (
-    <div className="mx-auto flex h-full w-full max-w-3xl flex-col items-center justify-center px-4 py-12 sm:py-16 animate-in-fade">
+    <div className="mx-auto flex h-full w-full max-w-3xl flex-col items-center justify-start px-4 pt-[clamp(4rem,14vh,9rem)] pb-12 animate-in-fade">
       <div className="relative flex w-full flex-col items-center gap-5">
         <div className="flex max-w-xl flex-col items-center text-center">
           {selectedAgent ? (
@@ -152,7 +152,7 @@ export function EmptyConversationState({
               className="mb-4 rounded-full"
             />
           ) : null}
-          <h2 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+          <h2 className="workspace-page-heading text-3xl font-medium leading-none tracking-[-0.04em] text-foreground sm:text-4xl">
             {canChat
               ? selectedAgent
                 ? t("emptyTitleNamed", { name: selectedAgent.name })

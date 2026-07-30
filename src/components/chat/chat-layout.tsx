@@ -1,7 +1,14 @@
 "use client";
 
 import { Link } from "@/i18n/navigation";
-import { useState, useSyncExternalStore, type ComponentProps } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useSyncExternalStore,
+  type ComponentProps,
+  type ReactNode,
+} from "react";
 import { useTranslations } from "next-intl";
 import {
   ChevronDownIcon,
@@ -64,6 +71,11 @@ import { cn } from "@/lib/utils";
 const HISTORY_OPEN_STORAGE_KEY = "chat-unified-sidebar-open";
 const HISTORY_OPEN_STORAGE_EVENT = "chat-unified-sidebar-open-change";
 const DEFAULT_HISTORY_OPEN = true;
+const ChatComposerControlsContext = createContext<ReactNode>(null);
+
+export function useChatComposerControls() {
+  return useContext(ChatComposerControlsContext);
+}
 
 function subscribeHistoryOpen(callback: () => void) {
   window.addEventListener("storage", callback);
@@ -314,7 +326,7 @@ export function ChatLayout({
             type="button"
             variant="ghost"
             size="sm"
-            className="min-h-10 min-w-0 max-w-[min(100%,13rem)] justify-between gap-2 rounded-xl px-3 font-medium hover:bg-muted sm:max-w-72 sm:min-w-56"
+            className="min-h-9 min-w-0 max-w-[min(100%,13rem)] justify-between gap-2 rounded-xl px-2.5 text-xs font-medium hover:bg-muted sm:max-w-64 sm:min-w-48"
             aria-label={t("currentAssistant")}
           >
             <span className="flex min-w-0 items-center gap-2">
@@ -449,6 +461,17 @@ export function ChatLayout({
               ) : null}
             </>
           ) : null}
+          {selectedAgent ? (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild className="min-h-10">
+                <Link href={`/agents/${selectedAgent.id}`} className="gap-2">
+                  <Settings2Icon className="size-4" aria-hidden="true" />
+                  {t("configureAssistant")}
+                </Link>
+              </DropdownMenuItem>
+            </>
+          ) : null}
           {canCreateAgent ? (
             <>
               <DropdownMenuSeparator />
@@ -478,188 +501,184 @@ export function ChatLayout({
   );
 
   return (
-    <div className="chat-shell-brand flex h-full min-h-0 overflow-hidden">
-      <div
-        className={cn(
-          "hidden ease-[cubic-bezier(0.2,0,0,1)] md:block",
-          !resizingSidebar && "transition-[opacity,width] duration-200",
-        )}
-        style={{
-          width: sidebarOpen ? `${sidebarWidth}px` : 0,
-          opacity: sidebarOpen ? 1 : 0,
-        }}
-      >
-        {sidebarOpen && (
-          <aside
-            className={cn(
-              "relative h-full w-full border-r",
-              APP_SIDEBAR_SURFACE_CLASS,
-            )}
-          >
-            <ChatSidebar {...desktopSidebarProps} className="w-full" />
-            <div
-              role="separator"
-              aria-label={t("resizeConversations")}
-              aria-orientation="vertical"
-              aria-valuemin={MIN_APP_SIDEBAR_WIDTH}
-              aria-valuemax={MAX_APP_SIDEBAR_WIDTH}
-              aria-valuenow={sidebarWidth}
-              tabIndex={0}
-              className="group absolute inset-y-0 right-0 z-20 w-4 translate-x-2 cursor-col-resize outline-none"
-              onPointerDown={startSidebarResize}
-              onKeyDown={(event) => {
-                if (event.key === "ArrowLeft") adjustSidebarWidth(-12);
-                if (event.key === "ArrowRight") adjustSidebarWidth(12);
-              }}
+    <ChatComposerControlsContext.Provider value={agentSelector}>
+      <div className="chat-shell-brand flex h-full min-h-0 overflow-hidden">
+        <div
+          className={cn(
+            "hidden ease-[cubic-bezier(0.2,0,0,1)] md:block",
+            !resizingSidebar && "transition-[opacity,width] duration-200",
+          )}
+          style={{
+            width: sidebarOpen ? `${sidebarWidth}px` : 0,
+            opacity: sidebarOpen ? 1 : 0,
+          }}
+        >
+          {sidebarOpen && (
+            <aside
+              className={cn(
+                "relative h-full w-full border-r",
+                APP_SIDEBAR_SURFACE_CLASS,
+              )}
             >
-              <div className="mx-auto h-full w-px bg-transparent transition-[background-color] group-hover:bg-border group-focus-visible:bg-ring" />
-            </div>
-          </aside>
-        )}
-      </div>
+              <ChatSidebar {...desktopSidebarProps} className="w-full" />
+              <div
+                role="separator"
+                aria-label={t("resizeConversations")}
+                aria-orientation="vertical"
+                aria-valuemin={MIN_APP_SIDEBAR_WIDTH}
+                aria-valuemax={MAX_APP_SIDEBAR_WIDTH}
+                aria-valuenow={sidebarWidth}
+                tabIndex={0}
+                className="group absolute inset-y-0 right-0 z-20 w-4 translate-x-2 cursor-col-resize outline-none"
+                onPointerDown={startSidebarResize}
+                onKeyDown={(event) => {
+                  if (event.key === "ArrowLeft") adjustSidebarWidth(-12);
+                  if (event.key === "ArrowRight") adjustSidebarWidth(12);
+                }}
+              >
+                <div className="mx-auto h-full w-px bg-transparent transition-[background-color] group-hover:bg-border group-focus-visible:bg-ring" />
+              </div>
+            </aside>
+          )}
+        </div>
 
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <AppHeader
-          className="relative z-30 border-border/60 bg-background px-2 sm:px-4"
-          leading={
-            <>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="hidden size-10 rounded-xl md:inline-flex"
-                aria-label={
-                  sidebarOpen ? t("closeConversations") : t("openConversations")
-                }
-                onClick={() => updateSidebarOpen({ open: !sidebarOpen })}
-              >
-                {sidebarOpen ? (
-                  <PanelLeftCloseIcon className="size-4" aria-hidden="true" />
-                ) : (
-                  <PanelLeftOpenIcon className="size-4" aria-hidden="true" />
-                )}
-              </Button>
-              <Sheet
-                open={mobileSidebarOpen}
-                onOpenChange={setMobileSidebarOpen}
-              >
-                <SheetTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="size-10 rounded-xl md:hidden"
-                    aria-label={t("openConversations")}
-                  >
-                    <PanelLeftOpenIcon className="size-4" aria-hidden="true" />
-                  </Button>
-                </SheetTrigger>
-                <SheetContent
-                  side="left"
-                  className="w-[min(100vw-2rem,22rem)] p-0"
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <AppHeader
+            className="relative z-30 border-border/60 bg-background px-2 sm:px-4"
+            leading={
+              <>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="hidden size-10 rounded-xl md:inline-flex"
+                  aria-label={
+                    sidebarOpen
+                      ? t("closeConversations")
+                      : t("openConversations")
+                  }
+                  onClick={() => updateSidebarOpen({ open: !sidebarOpen })}
                 >
-                  <SheetHeader className="sr-only">
-                    <SheetTitle>{t("conversations")}</SheetTitle>
-                  </SheetHeader>
-                  <ChatSidebar {...mobileSidebarProps} />
-                </SheetContent>
-              </Sheet>
-              {!sidebarOpen ? (
+                  {sidebarOpen ? (
+                    <PanelLeftCloseIcon className="size-4" aria-hidden="true" />
+                  ) : (
+                    <PanelLeftOpenIcon className="size-4" aria-hidden="true" />
+                  )}
+                </Button>
+                <Sheet
+                  open={mobileSidebarOpen}
+                  onOpenChange={setMobileSidebarOpen}
+                >
+                  <SheetTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="size-10 rounded-xl md:hidden"
+                      aria-label={t("openConversations")}
+                    >
+                      <PanelLeftOpenIcon
+                        className="size-4"
+                        aria-hidden="true"
+                      />
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent
+                    side="left"
+                    className="w-[min(100vw-2rem,22rem)] p-0"
+                  >
+                    <SheetHeader className="sr-only">
+                      <SheetTitle>{t("conversations")}</SheetTitle>
+                    </SheetHeader>
+                    <ChatSidebar {...mobileSidebarProps} />
+                  </SheetContent>
+                </Sheet>
+                {!sidebarOpen ? (
+                  <DeodisLogo
+                    href="/chat"
+                    className="hidden h-5 w-auto md:block"
+                    priority
+                    label="Deodis chat"
+                  />
+                ) : null}
                 <DeodisLogo
                   href="/chat"
-                  className="hidden h-5 w-auto md:block"
+                  className="h-5 w-auto md:hidden"
                   priority
                   label="Deodis chat"
                 />
-              ) : null}
-              <DeodisLogo
-                href="/chat"
-                className="h-5 w-auto md:hidden"
-                priority
-                label="Deodis chat"
-              />
-            </>
-          }
-          center={agentSelector}
-          actions={
-            <div className="flex items-center gap-1">
-              {!sidebarOpen ? (
+              </>
+            }
+            actions={
+              <div className="flex items-center gap-1">
+                {!sidebarOpen ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="hidden min-h-10 gap-1.5 rounded-xl border-border/60 px-3 text-xs font-medium sm:inline-flex"
+                    aria-label={t("newConversation")}
+                    onClick={onNewConversation}
+                  >
+                    <MessageSquarePlusIcon
+                      className="size-3.5"
+                      aria-hidden="true"
+                    />
+                    {t("newConversation")}
+                  </Button>
+                ) : null}
                 <Button
                   type="button"
-                  size="sm"
-                  variant="outline"
-                  className="hidden min-h-10 gap-1.5 rounded-xl border-border/60 px-3 text-xs font-medium sm:inline-flex"
+                  size="icon"
+                  variant="ghost"
+                  className="size-10 rounded-xl sm:hidden"
                   aria-label={t("newConversation")}
                   onClick={onNewConversation}
                 >
                   <MessageSquarePlusIcon
-                    className="size-3.5"
+                    className="size-4"
                     aria-hidden="true"
                   />
-                  {t("newConversation")}
                 </Button>
-              ) : null}
-              <Button
-                type="button"
-                size="icon"
-                variant="ghost"
-                className="size-10 rounded-xl sm:hidden"
-                aria-label={t("newConversation")}
-                onClick={onNewConversation}
-              >
-                <MessageSquarePlusIcon className="size-4" aria-hidden="true" />
-              </Button>
-              {!canChat && canRunSetup ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  className="min-h-10 gap-1.5 rounded-xl px-3 text-xs font-medium"
-                  onClick={() => setSetupOpen(true)}
-                >
-                  <Settings2Icon className="size-3.5" aria-hidden="true" />
-                  {t("finishSetup")}
-                </Button>
-              ) : null}
-              <Button
-                asChild
-                variant="ghost"
-                size="icon"
-                className="size-10 rounded-xl"
-                aria-label={t("configureAssistant")}
-              >
-                <Link
-                  href={
-                    selectedAgentId ? `/agents/${selectedAgentId}` : "/agents"
-                  }
-                >
-                  <Settings2Icon className="size-4" aria-hidden="true" />
-                </Link>
-              </Button>
-            </div>
-          }
-        />
-        <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-          {children}
-        </main>
-      </div>
-
-      <Dialog open={canRunSetup && setupOpen} onOpenChange={setSetupOpen}>
-        <DialogContent className="max-h-[calc(100svh-2rem)] max-w-2xl overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{t("finishSetup")}</DialogTitle>
-            <DialogDescription>{t("setupDialogDescription")}</DialogDescription>
-          </DialogHeader>
-          <SetupWizard
-            mode="dialog"
-            initialAgentId={selectedAgentId}
-            onCancelAction={() => setSetupOpen(false)}
-            onCompleteAction={() => {
-              setSetupOpen(false);
-              onSetupComplete?.();
-            }}
+                {!canChat && canRunSetup ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="min-h-10 gap-1.5 rounded-xl px-3 text-xs font-medium"
+                    onClick={() => setSetupOpen(true)}
+                  >
+                    <Settings2Icon className="size-3.5" aria-hidden="true" />
+                    {t("finishSetup")}
+                  </Button>
+                ) : null}
+              </div>
+            }
           />
-        </DialogContent>
-      </Dialog>
-    </div>
+          <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+            {children}
+          </main>
+        </div>
+
+        <Dialog open={canRunSetup && setupOpen} onOpenChange={setSetupOpen}>
+          <DialogContent className="max-h-[calc(100svh-2rem)] max-w-2xl overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{t("finishSetup")}</DialogTitle>
+              <DialogDescription>
+                {t("setupDialogDescription")}
+              </DialogDescription>
+            </DialogHeader>
+            <SetupWizard
+              mode="dialog"
+              initialAgentId={selectedAgentId}
+              onCancelAction={() => setSetupOpen(false)}
+              onCompleteAction={() => {
+                setSetupOpen(false);
+                onSetupComplete?.();
+              }}
+            />
+          </DialogContent>
+        </Dialog>
+      </div>
+    </ChatComposerControlsContext.Provider>
   );
 }

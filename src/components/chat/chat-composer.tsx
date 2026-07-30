@@ -15,6 +15,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
 
+import { useChatComposerControls } from "@/components/chat/chat-layout";
 import {
   useFilePreview,
   FilePreviewDialog,
@@ -57,6 +58,7 @@ interface ChatComposerProps {
   attachments?: ChatAttachment[];
   onRemoveAttachment?: (attachmentId: string) => void;
   todoList?: ChatTodoList | null;
+  centered?: boolean;
 }
 
 const maxChatAttachments = 8;
@@ -249,8 +251,10 @@ export function ChatComposer({
   attachments = [],
   onRemoveAttachment,
   todoList,
+  centered = false,
 }: ChatComposerProps) {
   const t = useTranslations("chat.composer");
+  const composerControls = useChatComposerControls();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingAttachment, setUploadingAttachment] = useState(false);
@@ -392,7 +396,8 @@ export function ChatComposer({
         event.preventDefault();
         onSubmit();
       }}
-      className="w-full min-w-0 shrink-0 bg-[linear-gradient(to_top,var(--background)_58%,transparent)] px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-5 sm:pt-4"
+      data-centered={centered}
+      className="composer-dock w-full min-w-0 shrink-0 bg-[linear-gradient(to_top,var(--background)_58%,transparent)] px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-5 sm:pt-4"
     >
       {draggingFiles ? (
         <div
@@ -488,6 +493,11 @@ export function ChatComposer({
           </AttachmentGroup>
         ) : null}
         <div className={cn("composer-box rounded-3xl")}>
+          {composerControls ? (
+            <div className="flex min-h-11 items-center gap-2 border-b border-border/55 px-2.5 py-1.5 sm:px-3">
+              {composerControls}
+            </div>
+          ) : null}
           <div className="flex items-end gap-1.5 p-2 sm:p-2.5">
             <input
               ref={fileInputRef}

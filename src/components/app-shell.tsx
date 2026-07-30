@@ -1,9 +1,8 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Link, usePathname } from "@/i18n/navigation";
+import { usePathname } from "@/i18n/navigation";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { MessageSquareIcon } from "lucide-react";
 
 import { AppHeader } from "@/components/app-header";
 import {
@@ -11,7 +10,6 @@ import {
   WorkspaceSidebarMobileTrigger,
   WorkspaceSidebarProvider,
 } from "@/components/workspace-sidebar";
-import { Button } from "@/components/ui/button";
 import { useWorkspace } from "@/hooks/use-workspace";
 import {
   fetchPendingToolCount,
@@ -167,25 +165,9 @@ export function AppShell({
             <div className="flex min-w-0 flex-1 flex-col">
               {!isChatRoute ? (
                 <AppHeader
-                  title={breadcrumbs ? currentTitle : tShell("workspace")}
+                  title={currentTitle}
                   breadcrumbs={breadcrumbs}
                   leading={<WorkspaceSidebarMobileTrigger shell={shellValue} />}
-                  actions={
-                    <Button
-                      asChild
-                      variant="ghost"
-                      size="sm"
-                      className="h-10 gap-2 rounded-xl px-3 text-muted-foreground hover:text-foreground"
-                    >
-                      <Link href="/chat">
-                        <MessageSquareIcon
-                          className="size-4"
-                          aria-hidden="true"
-                        />
-                        {tShell("returnToChat")}
-                      </Link>
-                    </Button>
-                  }
                 />
               ) : null}
               <main

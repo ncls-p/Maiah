@@ -32,7 +32,7 @@ export function AppHeader({
   const t = useTranslations("common");
   return (
     <header
-      className={cn("app-shell__header gap-3", className)}
+      className={cn("app-shell__header gap-4", className)}
       data-slot="app-header"
     >
       <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden sm:gap-3">
@@ -42,7 +42,7 @@ export function AppHeader({
             {breadcrumbs && breadcrumbs.length > 0 ? (
               <nav
                 aria-label={t("breadcrumb")}
-                className="flex min-w-0 flex-wrap items-center gap-1 text-[0.7rem] font-medium text-muted-foreground"
+                className="flex min-w-0 flex-wrap items-center gap-1 font-mono text-[0.62rem] font-medium uppercase tracking-[0.12em] text-muted-foreground"
               >
                 {breadcrumbs.map((crumb, index) => (
                   <span
@@ -71,7 +71,7 @@ export function AppHeader({
             ) : null}
             {title ? (
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold tracking-[-0.02em]">
+                <p className="truncate text-sm font-medium tracking-[-0.01em]">
                   {title}
                 </p>
                 {subtitle ? (

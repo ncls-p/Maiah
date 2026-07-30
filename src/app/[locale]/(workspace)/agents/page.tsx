@@ -7,7 +7,6 @@ import { AdvancedSection } from "@/components/ui/advanced-section";
 import {
   CheckCircle2Icon,
   CopyIcon,
-  MessageCircleIcon,
   PlusIcon,
   SearchIcon,
   Loader2,
@@ -207,7 +206,6 @@ export default function AgentsPage() {
   const tList = useTranslations("agents.list");
   const tCommon = useTranslations("common");
   const tShare = useTranslations("marketplace.share");
-  const tChat = useTranslations("chat");
   const router = useRouter();
   const { workspaceId, isLoading: workspaceLoading } = useWorkspace();
   const [agents, setAgents] = useState<Agent[]>([]);
@@ -523,13 +521,12 @@ export default function AgentsPage() {
         <section
           className={cn(
             "rounded-2xl",
-            (loading || loadError || agents.length > 0) &&
-              "border border-border/70 bg-card",
+            (loading || loadError || agents.length > 0) && "bg-transparent",
           )}
         >
           {/* Toolbar */}
           {!loading && !loadError && agents.length > 0 ? (
-            <div className="flex flex-col gap-3 border-b border-border/60 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-3 rounded-2xl border border-border/65 bg-card/85 px-5 py-4 shadow-[var(--surface-shadow)] backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h3 className="text-base font-semibold">{t("title")}</h3>
                 <p className="text-sm text-muted-foreground">
@@ -605,7 +602,7 @@ export default function AgentsPage() {
               {tList("noMatch", { query: searchQuery })}
             </div>
           ) : (
-            <div className="flex flex-col gap-1 p-2">
+            <div className="grid gap-4 pt-4 sm:grid-cols-2">
               {filteredAgents.map((agent) => {
                 const isReady = Boolean(
                   agent.activeVersionId && agent.modelDisplayName,
@@ -619,8 +616,7 @@ export default function AgentsPage() {
                   <div
                     key={agent.id}
                     className={cn(
-                      "group flex items-center gap-3 rounded-xl border border-transparent p-3 transition-colors hover:border-border hover:bg-muted/40",
-                      !isReady && "opacity-60",
+                      "group grid min-h-52 grid-cols-[auto_minmax(0,1fr)_auto] grid-rows-[1fr_auto] items-start gap-4 rounded-2xl border border-border/70 bg-card/92 p-5 shadow-[var(--surface-shadow)] transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-[var(--surface-shadow-hover)]",
                     )}
                   >
                     <ModelLogo
@@ -630,8 +626,8 @@ export default function AgentsPage() {
                       imageFit="cover"
                       className="rounded-full"
                     />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-1.5">
                         <p className="truncate text-sm font-medium">
                           {agent.name}
                         </p>
@@ -686,7 +682,7 @@ export default function AgentsPage() {
                           </Badge>
                         ) : null}
                       </div>
-                      <p className="truncate font-mono text-xs text-muted-foreground">
+                      <p className="mt-3 line-clamp-3 text-sm leading-5 text-muted-foreground">
                         {agent.description
                           ? agent.description
                           : tList("metaSlugCreated", {
@@ -700,7 +696,7 @@ export default function AgentsPage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="shrink-0 text-xs"
+                      className="col-span-2 col-start-2 row-start-2 ml-auto shrink-0 text-xs text-primary hover:bg-accent"
                       onClick={() =>
                         router.push(
                           isReady
@@ -728,18 +724,6 @@ export default function AgentsPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={() =>
-                            router.push(
-                              isReady
-                                ? `/chat?agentId=${agent.id}`
-                                : `/agents/${agent.id}`,
-                            )
-                          }
-                        >
-                          <MessageCircleIcon className={ICON_SIZE_CLASS} />
-                          {isReady ? tCommon("chatNow") : tChat("finishSetup")}
-                        </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => router.push(`/agents/${agent.id}`)}
                         >

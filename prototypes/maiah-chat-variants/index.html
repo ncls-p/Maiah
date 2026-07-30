@@ -1,0 +1,1722 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Trois explorations visuelles sobres et modernes pour l'interface de chat Maiah."
+    />
+    <title>Maiah — Explorations d’interface</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <svg class="svg-sprite" aria-hidden="true">
+      <symbol id="i-plus" viewBox="0 0 24 24">
+        <path d="M12 5v14M5 12h14" />
+      </symbol>
+      <symbol id="i-search" viewBox="0 0 24 24">
+        <circle cx="11" cy="11" r="6.5" />
+        <path d="m16 16 4 4" />
+      </symbol>
+      <symbol id="i-message" viewBox="0 0 24 24">
+        <path d="M5 18.5 3.5 21l4.2-1.1a9 9 0 1 0-2.7-1.4Z" />
+      </symbol>
+      <symbol id="i-grid" viewBox="0 0 24 24">
+        <rect x="4" y="4" width="6" height="6" rx="1" />
+        <rect x="14" y="4" width="6" height="6" rx="1" />
+        <rect x="4" y="14" width="6" height="6" rx="1" />
+        <rect x="14" y="14" width="6" height="6" rx="1" />
+      </symbol>
+      <symbol id="i-settings" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="3" />
+        <path
+          d="M19 13.5v-3l-2.1-.7a8 8 0 0 0-.7-1.7l1-2-2.1-2.1-2 1a8 8 0 0 0-1.7-.7l-.7-2.1h-3L7 4.3a8 8 0 0 0-1.7.7l-2-1-2.1 2.1 1 2a8 8 0 0 0-.7 1.7l-2.1.7v3l2.1.7a8 8 0 0 0 .7 1.7l-1 2L3.3 20l2-1a8 8 0 0 0 1.7.7l.7 2.1h3l.7-2.1a8 8 0 0 0 1.7-.7l2 1 2.1-2.1-1-2a8 8 0 0 0 .7-1.7Z"
+          transform="scale(.82) translate(2.6 2.6)"
+        />
+      </symbol>
+      <symbol id="i-paperclip" viewBox="0 0 24 24">
+        <path
+          d="m8 12.5 6.4-6.4a3.2 3.2 0 0 1 4.5 4.5l-8.3 8.3a5 5 0 0 1-7.1-7.1l8-8"
+        />
+      </symbol>
+      <symbol id="i-arrow" viewBox="0 0 24 24">
+        <path d="M5 12h14m-5-5 5 5-5 5" />
+      </symbol>
+      <symbol id="i-chevron" viewBox="0 0 24 24">
+        <path d="m8 10 4 4 4-4" />
+      </symbol>
+      <symbol id="i-panel" viewBox="0 0 24 24">
+        <rect x="3" y="4" width="18" height="16" rx="2" />
+        <path d="M9 4v16" />
+      </symbol>
+      <symbol id="i-spark" viewBox="0 0 24 24">
+        <path
+          d="m12 3 1.3 5.7L19 10l-5.7 1.3L12 17l-1.3-5.7L5 10l5.7-1.3L12 3Z"
+        />
+        <path
+          d="m19 16 .5 2.5L22 19l-2.5.5L19 22l-.5-2.5L16 19l2.5-.5L19 16Z"
+        />
+      </symbol>
+      <symbol id="i-clock" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="8.5" />
+        <path d="M12 7v5l3.5 2" />
+      </symbol>
+      <symbol id="i-folder" viewBox="0 0 24 24">
+        <path d="M3 7.5h7l2-2h9v13H3z" />
+      </symbol>
+      <symbol id="i-command" viewBox="0 0 24 24">
+        <path
+          d="M9 7.5V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3z"
+        />
+      </symbol>
+      <symbol id="i-sun" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="3.5" />
+        <path
+          d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"
+        />
+      </symbol>
+      <symbol id="i-moon" viewBox="0 0 24 24">
+        <path d="M20 15.5A8 8 0 0 1 8.5 4 8.5 8.5 0 1 0 20 15.5Z" />
+      </symbol>
+      <symbol id="i-check" viewBox="0 0 24 24">
+        <path d="m5 12 4 4L19 6" />
+      </symbol>
+      <symbol id="i-close" viewBox="0 0 24 24">
+        <path d="m6 6 12 12M18 6 6 18" />
+      </symbol>
+      <symbol id="i-more" viewBox="0 0 24 24">
+        <circle cx="5" cy="12" r="1" />
+        <circle cx="12" cy="12" r="1" />
+        <circle cx="19" cy="12" r="1" />
+      </symbol>
+      <symbol id="i-pin" viewBox="0 0 24 24">
+        <path
+          d="m9 4 6 6m-8 3 4 4m-7 3 5-5m7-12 5 5-5 5-2-1-4 4-3-3 4-4-1-2z"
+        />
+      </symbol>
+      <symbol id="i-trash" viewBox="0 0 24 24">
+        <path d="M4 7h16M9 3h6l1 4H8zM7 7l1 14h8l1-14M10 11v6m4-6v6" />
+      </symbol>
+      <symbol id="i-copy" viewBox="0 0 24 24">
+        <rect x="8" y="8" width="11" height="11" rx="2" />
+        <path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3" />
+      </symbol>
+      <symbol id="i-edit" viewBox="0 0 24 24">
+        <path d="m4 20 4.5-1 10-10-3.5-3.5-10 10zM13.5 7l3.5 3.5" />
+      </symbol>
+      <symbol id="i-stop" viewBox="0 0 24 24">
+        <rect x="7" y="7" width="10" height="10" rx="2" />
+      </symbol>
+      <symbol id="i-code" viewBox="0 0 24 24">
+        <path d="m8 7-5 5 5 5m8-10 5 5-5 5m-2-13-4 16" />
+      </symbol>
+    </svg>
+
+    <nav class="concept-switcher" aria-label="Choisir une direction visuelle">
+      <a class="concept-brand" href="#" aria-label="Maiah, explorations">
+        <span class="brand-orbit"><i></i></span>
+        <span>MAIAH <small>LAB / 01</small></span>
+      </a>
+      <div class="t-tabs" role="tablist" aria-label="Variantes">
+        <span class="t-tabs-pill" aria-hidden="true"></span>
+        <button
+          class="t-tab"
+          role="tab"
+          aria-selected="true"
+          data-concept="aether"
+        >
+          01 Aether
+        </button>
+        <button
+          class="t-tab"
+          role="tab"
+          aria-selected="false"
+          data-concept="nocturne"
+        >
+          02 Nocturne
+        </button>
+        <button
+          class="t-tab"
+          role="tab"
+          aria-selected="false"
+          data-concept="editorial"
+        >
+          03 Éditorial
+        </button>
+        <button
+          class="t-tab"
+          role="tab"
+          aria-selected="false"
+          data-concept="focus"
+        >
+          04 Focus
+        </button>
+        <button
+          class="t-tab"
+          role="tab"
+          aria-selected="false"
+          data-concept="orbit"
+        >
+          05 Orbit
+        </button>
+      </div>
+      <div class="concept-actions">
+        <div class="concept-meta">
+          <span>Prototype interactif</span>
+          <span class="live-dot">HTML / CSS / JS</span>
+        </div>
+        <button
+          class="theme-toggle"
+          type="button"
+          aria-label="Activer le mode sombre"
+          aria-pressed="false"
+        >
+          <svg class="theme-sun"><use href="#i-sun" /></svg>
+          <svg class="theme-moon"><use href="#i-moon" /></svg>
+        </button>
+      </div>
+    </nav>
+
+    <main class="prototype-stage">
+      <section
+        class="concept-screen concept-aether is-active"
+        data-screen="aether"
+      >
+        <aside class="aether-rail">
+          <button class="orbit-logo" aria-label="Accueil Maiah">
+            <span></span>
+          </button>
+          <div class="rail-stack">
+            <button class="rail-action is-current" aria-label="Conversations">
+              <svg><use href="#i-message" /></svg>
+            </button>
+            <button class="rail-action" aria-label="Agents">
+              <svg><use href="#i-grid" /></svg>
+            </button>
+            <button class="rail-action" aria-label="Rechercher">
+              <svg><use href="#i-search" /></svg>
+            </button>
+          </div>
+          <div class="rail-stack rail-bottom">
+            <button class="rail-action" aria-label="Réglages">
+              <svg><use href="#i-settings" /></svg>
+            </button>
+            <button class="avatar-button" aria-label="Profil de Nicolas">
+              NP
+            </button>
+          </div>
+        </aside>
+
+        <aside class="aether-history">
+          <header>
+            <div>
+              <p class="eyebrow">Espace de travail</p>
+              <h2>Conversations</h2>
+            </div>
+            <button
+              class="icon-button new-chat"
+              aria-label="Nouvelle conversation"
+            >
+              <svg><use href="#i-plus" /></svg>
+            </button>
+          </header>
+          <label class="search-field">
+            <svg><use href="#i-search" /></svg>
+            <input type="search" placeholder="Rechercher" />
+            <kbd>⌘ K</kbd>
+          </label>
+          <div class="history-scroll">
+            <div class="history-label">
+              <span>Épinglées</span><span>4</span>
+            </div>
+            <button class="conversation-row is-selected">
+              <span class="conversation-mark"></span>
+              <span
+                ><strong>Site vitrine IA Atelier Neural</strong
+                ><small>GPT 5.5 · 20 juil.</small></span
+              >
+              <i></i>
+            </button>
+            <button class="conversation-row">
+              <span class="conversation-mark"></span>
+              <span
+                ><strong>Résolution bug CRM Nacre</strong
+                ><small>Démo Dynatrace · 16 juil.</small></span
+              >
+              <i></i>
+            </button>
+            <button class="conversation-row">
+              <span class="conversation-mark"></span>
+              <span
+                ><strong>Dernières MAJ ServiceNow</strong
+                ><small>Master Agent · 15 juil.</small></span
+              >
+              <i></i>
+            </button>
+            <div class="folder-row">
+              <svg><use href="#i-folder" /></svg><span>Dynatrace</span
+              ><small>2</small><svg><use href="#i-chevron" /></svg>
+            </div>
+            <div class="history-label">
+              <span>Récentes</span><span>Aujourd’hui</span>
+            </div>
+            <button class="conversation-row">
+              <span class="conversation-mark"></span>
+              <span
+                ><strong>Site web moderne et interactif</strong
+                ><small>Maiah Code · il y a 17 h</small></span
+              >
+              <i></i>
+            </button>
+            <button class="conversation-row">
+              <span class="conversation-mark"></span>
+              <span
+                ><strong>Schémas d’architecture Maiah</strong
+                ><small>Maiah Code · il y a 17 h</small></span
+              >
+              <i></i>
+            </button>
+          </div>
+          <button class="workspace-card">
+            <span class="avatar-button">NP</span>
+            <span><strong>Nicolas Pierrot</strong><small>Deodis</small></span>
+            <svg><use href="#i-chevron" /></svg>
+          </button>
+        </aside>
+
+        <article class="aether-chat">
+          <header class="chat-topbar">
+            <button
+              class="mobile-history icon-button"
+              aria-label="Ouvrir les conversations"
+            >
+              <svg><use href="#i-panel" /></svg>
+            </button>
+            <button class="agent-trigger" aria-expanded="false">
+              <span class="agent-glyph"
+                ><svg><use href="#i-command" /></svg
+              ></span>
+              <span><strong>Maiah Code</strong><small>Prêt</small></span>
+              <svg><use href="#i-chevron" /></svg>
+            </button>
+            <div class="topbar-actions">
+              <span class="secure-label">Environnement sécurisé</span>
+              <button
+                class="icon-button"
+                aria-label="Réglages de la conversation"
+              >
+                <svg><use href="#i-settings" /></svg>
+              </button>
+            </div>
+          </header>
+          <div class="agent-menu t-dropdown" data-origin="top-left">
+            <p>Changer d’assistant</p>
+            <button>
+              <span class="agent-glyph"
+                ><svg><use href="#i-command" /></svg></span
+              ><span
+                ><strong>Maiah Code</strong
+                ><small>Développement sécurisé</small></span
+              >
+            </button>
+            <button>
+              <span class="agent-glyph pale"
+                ><svg><use href="#i-spark" /></svg></span
+              ><span
+                ><strong>Maiah Généraliste</strong
+                ><small>Recherche & rédaction</small></span
+              >
+            </button>
+          </div>
+          <div class="chat-thread" aria-live="polite"></div>
+          <div class="aether-center empty-state">
+            <div class="t-stagger is-shown">
+              <span class="status-orbit t-stagger-line t-stagger-line--1"
+                ><i></i><svg><use href="#i-command" /></svg
+              ></span>
+              <h1 class="t-stagger-line t-stagger-line--2">
+                Que souhaitez-vous créer&nbsp;?
+              </h1>
+              <p class="t-stagger-line t-stagger-line--3">
+                Maiah Code analyse, conçoit et exécute dans un espace contrôlé.
+              </p>
+            </div>
+            <div class="prompt-grid">
+              <button
+                class="prompt-card"
+                data-prompt="Analyse cette architecture et propose des améliorations."
+              >
+                <svg><use href="#i-spark" /></svg
+                ><span
+                  ><strong>Analyser</strong
+                  ><small>une architecture technique</small></span
+                ><svg><use href="#i-arrow" /></svg>
+              </button>
+              <button
+                class="prompt-card"
+                data-prompt="Crée un prototype d’interface moderne en HTML, CSS et JavaScript."
+              >
+                <svg><use href="#i-grid" /></svg
+                ><span
+                  ><strong>Prototyper</strong
+                  ><small>une interface fonctionnelle</small></span
+                ><svg><use href="#i-arrow" /></svg>
+              </button>
+              <button
+                class="prompt-card"
+                data-prompt="Reprends ma dernière conversation et résume les prochaines étapes."
+              >
+                <svg><use href="#i-clock" /></svg
+                ><span
+                  ><strong>Reprendre</strong
+                  ><small>la dernière conversation</small></span
+                ><svg><use href="#i-arrow" /></svg>
+              </button>
+            </div>
+          </div>
+          <form class="composer aether-composer t-resize">
+            <textarea
+              rows="1"
+              aria-label="Message"
+              placeholder="Écrivez votre demande…"
+            ></textarea>
+            <div class="composer-controls">
+              <button
+                type="button"
+                class="composer-tool"
+                aria-label="Joindre des fichiers"
+              >
+                <svg><use href="#i-paperclip" /></svg>
+                <span>Joindre</span>
+              </button>
+              <label class="model-control">
+                <svg><use href="#i-command" /></svg>
+                <select aria-label="Choisir le modèle">
+                  <option>Qwen 3.6 27B</option>
+                  <option>GPT 5.5</option>
+                  <option>Cloud Temple Qwen</option>
+                </select>
+                <svg><use href="#i-chevron" /></svg>
+              </label>
+              <button type="button" class="tools-control is-active">
+                <svg><use href="#i-spark" /></svg>
+                Outils activés
+                <span>4</span>
+              </button>
+              <span class="composer-hint">Entrée pour envoyer</span>
+              <button class="send-button" type="submit" aria-label="Envoyer">
+                <svg><use href="#i-arrow" /></svg>
+              </button>
+            </div>
+          </form>
+          <p class="composer-caption">
+            Les réponses peuvent contenir des erreurs. Vérifiez les informations
+            importantes.
+          </p>
+        </article>
+      </section>
+
+      <section
+        class="concept-screen concept-nocturne"
+        data-screen="nocturne"
+        hidden
+      >
+        <aside class="night-dock">
+          <button class="night-logo" aria-label="Maiah"><span></span></button>
+          <nav>
+            <button class="night-nav is-current">
+              <svg><use href="#i-message" /></svg><span>Chat</span>
+            </button>
+            <button class="night-nav">
+              <svg><use href="#i-grid" /></svg><span>Agents</span>
+            </button>
+            <button class="night-nav">
+              <svg><use href="#i-folder" /></svg><span>Fichiers</span>
+            </button>
+          </nav>
+          <button class="night-profile">NP</button>
+        </aside>
+        <article class="night-main">
+          <header class="night-header">
+            <div class="night-wordmark">MAIAH<span>/</span></div>
+            <div class="night-breadcrumb">
+              <span>Workspace</span><i></i><strong>Nouvelle session</strong>
+            </div>
+            <button class="night-agent agent-trigger" aria-expanded="false">
+              <span class="pulse-dot"></span> Maiah Code
+              <svg><use href="#i-chevron" /></svg>
+            </button>
+          </header>
+          <div
+            class="night-agent-menu agent-menu t-dropdown"
+            data-origin="top-right"
+          >
+            <p>Agents disponibles</p>
+            <button>
+              <span class="pulse-dot"></span
+              ><span><strong>Maiah Code</strong><small>Actif</small></span>
+            </button>
+            <button>
+              <span class="pulse-dot muted"></span
+              ><span
+                ><strong>Maiah Généraliste</strong
+                ><small>Disponible</small></span
+              >
+            </button>
+          </div>
+          <div class="chat-thread" aria-live="polite"></div>
+          <div class="night-canvas empty-state">
+            <div class="night-intro t-stagger is-shown">
+              <p class="night-kicker t-stagger-line t-stagger-line--1">
+                <span>01</span> Session sécurisée
+              </p>
+              <h1 class="t-stagger-line t-stagger-line--2">
+                L’idée d’abord.<br /><em>Le reste suit.</em>
+              </h1>
+              <p class="t-stagger-line t-stagger-line--3">
+                Décrivez un problème, joignez un contexte ou démarrez depuis une
+                action.
+              </p>
+            </div>
+            <div class="night-actions">
+              <button
+                data-prompt="Construis une première version fonctionnelle de cette idée."
+              >
+                <span>01</span><strong>Construire</strong
+                ><small>Du brief au prototype</small
+                ><svg><use href="#i-arrow" /></svg>
+              </button>
+              <button
+                data-prompt="Explore plusieurs pistes et compare leurs compromis."
+              >
+                <span>02</span><strong>Explorer</strong
+                ><small>Plusieurs scénarios</small
+                ><svg><use href="#i-arrow" /></svg>
+              </button>
+              <button
+                data-prompt="Audite ce projet et donne-moi les priorités."
+              >
+                <span>03</span><strong>Auditer</strong
+                ><small>Risques et priorités</small
+                ><svg><use href="#i-arrow" /></svg>
+              </button>
+            </div>
+          </div>
+          <form class="night-composer composer">
+            <div class="night-composer-top">
+              <textarea
+                rows="2"
+                aria-label="Message"
+                placeholder="Dites à Maiah ce que vous voulez accomplir…"
+              ></textarea>
+              <button class="send-button" type="submit" aria-label="Envoyer">
+                <svg><use href="#i-arrow" /></svg>
+              </button>
+            </div>
+            <div class="night-composer-bottom">
+              <button type="button">
+                <svg><use href="#i-paperclip" /></svg> Joindre
+              </button>
+              <label class="model-control">
+                <svg><use href="#i-command" /></svg>
+                <select aria-label="Choisir le modèle">
+                  <option>Qwen 3.6 27B</option>
+                  <option>GPT 5.5</option>
+                  <option>Cloud Temple Qwen</option>
+                </select>
+                <svg><use href="#i-chevron" /></svg>
+              </label>
+              <button type="button" class="tools-control is-active">
+                <svg><use href="#i-spark" /></svg> Outils activés
+                <span>4</span>
+              </button>
+              <span>Entrée pour envoyer</span>
+            </div>
+          </form>
+        </article>
+        <aside class="night-context">
+          <header>
+            <span>Historique</span
+            ><button class="icon-button">
+              <svg><use href="#i-plus" /></svg>
+            </button>
+          </header>
+          <div class="context-section">
+            <p>AUJOURD’HUI</p>
+            <button class="context-conversation is-current">
+              <i></i
+              ><span
+                ><strong>Nouvelle session</strong
+                ><small>À l’instant</small></span
+              >
+            </button>
+            <button class="context-conversation">
+              <i></i
+              ><span
+                ><strong>Site web moderne</strong><small>17:24</small></span
+              >
+            </button>
+            <button class="context-conversation">
+              <i></i
+              ><span
+                ><strong>Architecture Maiah</strong><small>16:08</small></span
+              >
+            </button>
+          </div>
+          <div class="context-section">
+            <p>ÉPINGLÉ</p>
+            <button class="context-conversation">
+              <i></i
+              ><span
+                ><strong>Atelier Neural</strong><small>20 juil.</small></span
+              >
+            </button>
+            <button class="context-conversation">
+              <i></i
+              ><span><strong>CRM Nacre</strong><small>16 juil.</small></span>
+            </button>
+          </div>
+          <div class="night-status">
+            <span><i></i> Systèmes opérationnels</span
+            ><small>Infrastructure européenne</small>
+          </div>
+        </aside>
+      </section>
+
+      <section
+        class="concept-screen concept-editorial"
+        data-screen="editorial"
+        hidden
+      >
+        <header class="editorial-header">
+          <a href="#" class="editorial-logo"
+            ><span class="brand-orbit"><i></i></span><strong>Maiah</strong></a
+          >
+          <nav>
+            <button class="is-current">Conversation</button>
+            <button>Agents <span>12</span></button>
+            <button>Bibliothèque</button>
+          </nav>
+          <div class="editorial-user">
+            <button class="search-circle" aria-label="Rechercher">
+              <svg><use href="#i-search" /></svg>
+            </button>
+            <button class="user-chip">
+              <span>NP</span>Nicolas<svg><use href="#i-chevron" /></svg>
+            </button>
+          </div>
+        </header>
+        <div class="editorial-body">
+          <aside class="editorial-index">
+            <div class="index-top">
+              <p>INDEX / 07</p>
+              <button aria-label="Nouvelle conversation">
+                <svg><use href="#i-plus" /></svg>
+              </button>
+            </div>
+            <h2>Vos dernières<br />conversations</h2>
+            <ol>
+              <li class="is-current">
+                <button>
+                  <span>01</span><strong>Site vitrine IA Atelier Neural</strong
+                  ><small>20.07</small>
+                </button>
+              </li>
+              <li>
+                <button>
+                  <span>02</span><strong>Résolution bug CRM Nacre</strong
+                  ><small>16.07</small>
+                </button>
+              </li>
+              <li>
+                <button>
+                  <span>03</span><strong>Dernières MAJ ServiceNow</strong
+                  ><small>15.07</small>
+                </button>
+              </li>
+              <li>
+                <button>
+                  <span>04</span><strong>Architecture pour Maiah</strong
+                  ><small>12.07</small>
+                </button>
+              </li>
+            </ol>
+            <button class="all-conversations">
+              Toutes les conversations <svg><use href="#i-arrow" /></svg>
+            </button>
+          </aside>
+          <article class="editorial-chat">
+            <div class="editorial-agent">
+              <span>AGENT ACTIF</span>
+              <button class="agent-trigger" aria-expanded="false">
+                <i></i> Maiah Code <svg><use href="#i-chevron" /></svg>
+              </button>
+            </div>
+            <div
+              class="editorial-agent-menu agent-menu t-dropdown"
+              data-origin="top-right"
+            >
+              <p>Sélectionner un agent</p>
+              <button>
+                <i></i
+                ><span
+                  ><strong>Maiah Code</strong
+                  ><small>Code & architecture</small></span
+                >
+              </button>
+              <button>
+                <i class="soft"></i
+                ><span
+                  ><strong>Maiah Généraliste</strong
+                  ><small>Recherche & synthèse</small></span
+                >
+              </button>
+            </div>
+            <div class="chat-thread" aria-live="polite"></div>
+            <div class="editorial-intro t-stagger is-shown empty-state">
+              <p class="t-stagger-line t-stagger-line--1">
+                BONJOUR NICOLAS — 09:42
+              </p>
+              <h1 class="t-stagger-line t-stagger-line--2">
+                Sur quoi allons-nous<br /><em>avancer aujourd’hui&nbsp;?</em>
+              </h1>
+              <div class="editorial-rule t-stagger-line t-stagger-line--3">
+                <span></span><small>Maiah Code est prêt</small>
+              </div>
+            </div>
+            <form class="editorial-composer composer">
+              <label for="editorial-message">VOTRE DEMANDE</label>
+              <textarea
+                id="editorial-message"
+                rows="3"
+                placeholder="Commencez à écrire ici…"
+              ></textarea>
+              <div>
+                <div class="editorial-controls">
+                  <button type="button" class="attach-text">
+                    <svg><use href="#i-paperclip" /></svg> Contexte
+                  </button>
+                  <label class="model-control">
+                    <svg><use href="#i-command" /></svg>
+                    <select aria-label="Choisir le modèle">
+                      <option>Qwen 3.6 27B</option>
+                      <option>GPT 5.5</option>
+                      <option>Cloud Temple Qwen</option>
+                    </select>
+                    <svg><use href="#i-chevron" /></svg>
+                  </label>
+                  <button type="button" class="tools-control is-active">
+                    <svg><use href="#i-spark" /></svg> Outils activés
+                    <span>4</span>
+                  </button>
+                </div>
+                <button type="submit" class="editorial-send">
+                  Envoyer <svg><use href="#i-arrow" /></svg>
+                </button>
+              </div>
+            </form>
+            <div class="editorial-suggestions">
+              <span>OU COMMENCER PAR</span>
+              <button
+                data-prompt="Analyse un document et résume les décisions à prendre."
+              >
+                Analyser un document <svg><use href="#i-arrow" /></svg>
+              </button>
+              <button
+                data-prompt="Créer une première version d’un produit numérique."
+              >
+                Créer un prototype <svg><use href="#i-arrow" /></svg>
+              </button>
+              <button
+                data-prompt="Reprendre la dernière conversation là où nous nous sommes arrêtés."
+              >
+                Reprendre le travail <svg><use href="#i-arrow" /></svg>
+              </button>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="concept-screen concept-focus" data-screen="focus" hidden>
+        <aside class="focus-history shared-history">
+          <header>
+            <a href="#" class="focus-logo"
+              ><span class="brand-orbit"><i></i></span><strong>Maiah</strong></a
+            >
+            <button class="history-new" aria-label="Nouvelle conversation">
+              <svg><use href="#i-plus" /></svg><span>Nouveau</span>
+            </button>
+          </header>
+          <label class="shared-search"
+            ><svg><use href="#i-search" /></svg
+            ><input type="search" placeholder="Rechercher dans l’historique"
+          /></label>
+          <nav>
+            <p>AUJOURD’HUI</p>
+            <button class="is-current">
+              <i></i
+              ><span
+                ><strong>Nouvelle conversation</strong
+                ><small>À l’instant</small></span
+              >
+            </button>
+            <button>
+              <i></i
+              ><span
+                ><strong>Site moderne et interactif</strong
+                ><small>Maiah Code · 17:24</small></span
+              >
+            </button>
+            <button>
+              <i></i
+              ><span
+                ><strong>Architecture pour Maiah</strong
+                ><small>Maiah Code · 16:08</small></span
+              >
+            </button>
+            <p>ÉPINGLÉES</p>
+            <button>
+              <i></i
+              ><span
+                ><strong>Atelier Neural</strong
+                ><small>GPT 5.5 · 20 juil.</small></span
+              >
+            </button>
+            <button>
+              <i></i
+              ><span
+                ><strong>CRM Nacre</strong
+                ><small>Dynatrace · 16 juil.</small></span
+              >
+            </button>
+          </nav>
+          <button class="shared-profile">
+            <span>NP</span><strong>Nicolas Pierrot</strong
+            ><svg><use href="#i-chevron" /></svg>
+          </button>
+        </aside>
+        <article class="focus-main">
+          <header class="focus-header">
+            <div><span>Maiah Code</span><i></i><small>Prêt</small></div>
+            <div>
+              <button>
+                <svg><use href="#i-grid" /></svg> Agents</button
+              ><button aria-label="Réglages">
+                <svg><use href="#i-settings" /></svg>
+              </button>
+            </div>
+          </header>
+          <div class="chat-thread" aria-live="polite"></div>
+          <div class="focus-empty empty-state t-stagger is-shown">
+            <span class="focus-index t-stagger-line t-stagger-line--1"
+              >NOUVELLE CONVERSATION / 01</span
+            >
+            <h1 class="t-stagger-line t-stagger-line--2">
+              Un espace calme<br />pour aller à <em>l’essentiel.</em>
+            </h1>
+            <p class="t-stagger-line t-stagger-line--3">
+              Décrivez le résultat attendu. Le modèle, les outils et le contexte
+              sont regroupés juste au-dessous.
+            </p>
+          </div>
+          <form class="focus-composer composer t-resize">
+            <textarea
+              rows="2"
+              aria-label="Message"
+              placeholder="Que voulez-vous accomplir ?"
+            ></textarea>
+            <div class="composer-controls">
+              <button type="button" class="composer-tool">
+                <svg><use href="#i-paperclip" /></svg><span>Contexte</span>
+              </button>
+              <label class="model-control"
+                ><svg><use href="#i-command" /></svg
+                ><select aria-label="Choisir le modèle">
+                  <option>Qwen 3.6 27B</option>
+                  <option>GPT 5.5</option>
+                  <option>Cloud Temple Qwen</option></select
+                ><svg><use href="#i-chevron" /></svg
+              ></label>
+              <button type="button" class="tools-control is-active">
+                <svg><use href="#i-spark" /></svg>Outils activés<span>4</span>
+              </button>
+              <span class="composer-hint">Entrée pour envoyer</span>
+              <button class="send-button" type="submit" aria-label="Envoyer">
+                <svg><use href="#i-arrow" /></svg>
+              </button>
+            </div>
+          </form>
+          <div class="focus-prompts empty-state">
+            <button data-prompt="Construis une première version fonctionnelle.">
+              Construire <svg><use href="#i-arrow" /></svg>
+            </button>
+            <button data-prompt="Analyse les risques et propose des priorités.">
+              Analyser <svg><use href="#i-arrow" /></svg>
+            </button>
+            <button data-prompt="Reprends le contexte de ma dernière session.">
+              Reprendre <svg><use href="#i-arrow" /></svg>
+            </button>
+          </div>
+        </article>
+      </section>
+
+      <section
+        class="concept-screen concept-orbit"
+        data-screen="orbit"
+        data-orbit-page="chat"
+        hidden
+      >
+        <aside class="orbit-history shared-history">
+          <header>
+            <a href="#" class="focus-logo"
+              ><span class="brand-orbit"><i></i></span><strong>Maiah</strong></a
+            >
+            <div class="orbit-history-actions">
+              <button class="history-manage" aria-label="Gérer l’historique">
+                <svg><use href="#i-more" /></svg>
+              </button>
+              <button class="history-new" aria-label="Nouvelle conversation">
+                <svg><use href="#i-plus" /></svg>
+              </button>
+            </div>
+          </header>
+          <nav class="orbit-app-navigation" aria-label="Navigation principale">
+            <p>PRINCIPAL</p>
+            <button type="button" data-orbit-page="chat">
+              <svg><use href="#i-message" /></svg><span>Chat</span>
+            </button>
+            <button type="button" data-orbit-page="agents">
+              <svg><use href="#i-command" /></svg><span>Assistants</span
+              ><small>10</small>
+            </button>
+            <button type="button" data-orbit-page="tools">
+              <svg><use href="#i-spark" /></svg><span>Outils</span
+              ><small>24</small>
+            </button>
+            <button type="button" data-orbit-page="knowledge">
+              <svg><use href="#i-folder" /></svg><span>Connaissances</span>
+            </button>
+            <p>AUTOMATISATION</p>
+            <button type="button" data-orbit-page="planning">
+              <svg><use href="#i-clock" /></svg><span>Planification</span
+              ><small>3</small>
+            </button>
+          </nav>
+          <label class="shared-search"
+            ><svg><use href="#i-search" /></svg
+            ><input type="search" placeholder="Rechercher"
+          /></label>
+          <nav>
+            <p>EN COURS</p>
+            <button class="is-current" data-conversation-id="new">
+              <i></i
+              ><span
+                ><strong>Nouveau chat</strong><small>Maiah Code</small></span
+              >
+            </button>
+            <button
+              class="orbit-showcase-link"
+              data-conversation-id="tool-showcase"
+            >
+              <i></i
+              ><span
+                ><strong>Démo · outils & états</strong
+                ><small>Tous les rendus Maiah</small></span
+              >
+            </button>
+            <p>RÉCENTES</p>
+            <button data-conversation-id="site">
+              <i></i
+              ><span
+                ><strong>Site moderne</strong><small>il y a 17 h</small></span
+              >
+            </button>
+            <button data-conversation-id="schemas">
+              <i></i
+              ><span
+                ><strong>Schémas Maiah</strong><small>il y a 17 h</small></span
+              >
+            </button>
+            <p class="orbit-folder-title">
+              <button type="button" aria-expanded="true">
+                <svg><use href="#i-chevron" /></svg> PROJETS <span>2</span>
+              </button>
+            </p>
+            <button data-conversation-id="atelier">
+              <i></i
+              ><span
+                ><strong>Atelier Neural</strong><small>20 juil.</small></span
+              >
+            </button>
+          </nav>
+          <div class="orbit-workspace">
+            <span><i></i> Maiah</span><small>Zone sécurisée EU</small>
+          </div>
+        </aside>
+        <article class="orbit-main">
+          <header class="orbit-header">
+            <button type="button" class="orbit-wordmark" data-orbit-page="chat">
+              MAIAH <span>ORBIT</span>
+            </button>
+            <nav class="orbit-header-nav" aria-label="Sections Orbit">
+              <button type="button" class="is-active" data-orbit-page="chat">
+                Chat
+              </button>
+              <button type="button" data-orbit-page="agents">Assistants</button>
+              <button type="button" data-orbit-page="tools">Outils</button>
+              <button type="button" data-orbit-page="knowledge">
+                Connaissances
+              </button>
+              <button type="button" data-orbit-page="planning">
+                Planification
+              </button>
+            </nav>
+            <button
+              class="history-manage orbit-mobile-manage"
+              aria-label="Gérer l’historique"
+            >
+              <svg><use href="#i-message" /></svg>
+            </button>
+            <button class="avatar-button">NP</button>
+          </header>
+          <div class="orbit-product-pages">
+            <section
+              class="orbit-product-page agents-page"
+              data-product-page="agents"
+            >
+              <header class="product-page-heading">
+                <div>
+                  <span>ESPACE / ASSISTANTS</span>
+                  <h1>Vos intelligences,<br /><em>bien organisées.</em></h1>
+                  <p>
+                    Configurez des assistants spécialisés et des orchestrateurs
+                    capables de coordonner plusieurs expertises.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  class="product-primary"
+                  data-demo-action="new-agent"
+                >
+                  <svg><use href="#i-plus" /></svg>Nouvel assistant
+                </button>
+              </header>
+              <div class="product-toolbar">
+                <label
+                  ><svg><use href="#i-search" /></svg
+                  ><input
+                    type="search"
+                    placeholder="Rechercher un assistant"
+                    data-product-search="agent"
+                /></label>
+                <div class="product-filter-tabs" data-filter-group="agent-kind">
+                  <button class="is-active" data-filter="all">
+                    Tous <span>10</span></button
+                  ><button data-filter="assistant">
+                    Assistants <span>9</span></button
+                  ><button data-filter="orchestrator">
+                    Orchestrateurs <span>1</span>
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  class="product-view-toggle"
+                  aria-label="Changer l’affichage"
+                >
+                  <svg><use href="#i-grid" /></svg>
+                </button>
+              </div>
+              <div class="agent-card-grid">
+                <article
+                  class="product-agent-card is-featured"
+                  data-kind="assistant"
+                >
+                  <header>
+                    <span class="agent-monogram">MC</span>
+                    <div>
+                      <strong>Maiah Code</strong
+                      ><small>Assistant · Organisation</small>
+                    </div>
+                    <button aria-label="Actions">
+                      <svg><use href="#i-more" /></svg>
+                    </button>
+                  </header>
+                  <p>
+                    Conçoit, développe et vérifie des interfaces et
+                    architectures applicatives.
+                  </p>
+                  <div class="agent-badges">
+                    <span>Qwen 3.6 27B</span><span>4 outils</span
+                    ><em>Par défaut</em>
+                  </div>
+                  <footer>
+                    <span><i></i>Prêt</span
+                    ><button data-demo-action="chat-agent">
+                      Discuter <svg><use href="#i-arrow" /></svg>
+                    </button>
+                  </footer>
+                </article>
+                <article class="product-agent-card" data-kind="orchestrator">
+                  <header>
+                    <span class="agent-monogram is-orchestrator">MO</span>
+                    <div>
+                      <strong>Maiah Orchestrateur</strong
+                      ><small>Orchestrateur · Personnel</small>
+                    </div>
+                    <button aria-label="Actions">
+                      <svg><use href="#i-more" /></svg>
+                    </button>
+                  </header>
+                  <p>
+                    Décompose les missions complexes et coordonne UX, code et
+                    recherche.
+                  </p>
+                  <div class="agent-badges">
+                    <span>GPT 5.5</span><span>3 spécialistes</span
+                    ><em>Orchestrateur</em>
+                  </div>
+                  <footer>
+                    <span><i></i>Prêt</span
+                    ><button data-demo-action="configure-agent">
+                      Configurer <svg><use href="#i-arrow" /></svg>
+                    </button>
+                  </footer>
+                </article>
+                <article class="product-agent-card" data-kind="assistant">
+                  <header>
+                    <span class="agent-monogram">MG</span>
+                    <div>
+                      <strong>Maiah Généraliste</strong
+                      ><small>Assistant · Organisation</small>
+                    </div>
+                    <button aria-label="Actions">
+                      <svg><use href="#i-more" /></svg>
+                    </button>
+                  </header>
+                  <p>
+                    Recherche, analyse et transforme des sources en réponses
+                    structurées.
+                  </p>
+                  <div class="agent-badges">
+                    <span>GPT 5.5</span><span>6 outils</span><em>Recommandé</em>
+                  </div>
+                  <footer>
+                    <span><i></i>Prêt</span
+                    ><button data-demo-action="chat-agent">
+                      Discuter <svg><use href="#i-arrow" /></svg>
+                    </button>
+                  </footer>
+                </article>
+                <article class="product-agent-card" data-kind="assistant">
+                  <header>
+                    <span class="agent-monogram">DS</span>
+                    <div>
+                      <strong>Diagnostic Service</strong
+                      ><small>Assistant · Personnel</small>
+                    </div>
+                    <button aria-label="Actions">
+                      <svg><use href="#i-more" /></svg>
+                    </button>
+                  </header>
+                  <p>
+                    Analyse les incidents et rassemble les signaux issus des
+                    connecteurs.
+                  </p>
+                  <div class="agent-badges">
+                    <span>Qwen 3.6 27B</span><span>3 outils</span>
+                  </div>
+                  <footer>
+                    <span><i></i>Prêt</span
+                    ><button data-demo-action="chat-agent">
+                      Discuter <svg><use href="#i-arrow" /></svg>
+                    </button>
+                  </footer>
+                </article>
+              </div>
+            </section>
+
+            <section
+              class="orbit-product-page tools-page"
+              data-product-page="tools"
+            >
+              <header class="product-page-heading">
+                <div>
+                  <span>ESPACE / OUTILS</span>
+                  <h1>Capacités et<br /><em>connexions.</em></h1>
+                  <p>
+                    Centralisez les outils natifs, connecteurs MCP, skills et
+                    demandes d’autorisation.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  class="product-primary"
+                  data-demo-action="connect-tool"
+                >
+                  <svg><use href="#i-plus" /></svg>Ajouter
+                </button>
+              </header>
+              <div class="product-section-tabs" data-product-tabs>
+                <button class="is-active" data-product-tab="builtin">
+                  Intégrés <span>18</span></button
+                ><button data-product-tab="mcp">
+                  Connecteurs <span>3</span></button
+                ><button data-product-tab="skills">Skills <span>6</span></button
+                ><button data-product-tab="approvals">
+                  Autorisations <span>2</span>
+                </button>
+              </div>
+              <div class="tool-catalog" data-product-panel="builtin">
+                <article>
+                  <span
+                    ><svg><use href="#i-search" /></svg
+                  ></span>
+                  <div>
+                    <strong>Recherche web</strong
+                    ><small>Sources publiques récentes</small>
+                  </div>
+                  <label class="mini-switch"
+                    ><input type="checkbox" checked /><i></i
+                  ></label>
+                </article>
+                <article>
+                  <span
+                    ><svg><use href="#i-code" /></svg
+                  ></span>
+                  <div>
+                    <strong>Code sécurisé</strong
+                    ><small>Python, Node et Bash isolés</small>
+                  </div>
+                  <label class="mini-switch"
+                    ><input type="checkbox" checked /><i></i
+                  ></label>
+                </article>
+                <article>
+                  <span
+                    ><svg><use href="#i-spark" /></svg
+                  ></span>
+                  <div>
+                    <strong>Génération visuelle</strong
+                    ><small>Images et aperçus interactifs</small>
+                  </div>
+                  <label class="mini-switch"
+                    ><input type="checkbox" checked /><i></i
+                  ></label>
+                </article>
+                <article>
+                  <span
+                    ><svg><use href="#i-folder" /></svg
+                  ></span>
+                  <div>
+                    <strong>Documents métier</strong
+                    ><small>12 formats structurés</small>
+                  </div>
+                  <label class="mini-switch"
+                    ><input type="checkbox" checked /><i></i
+                  ></label>
+                </article>
+              </div>
+              <div class="tool-catalog" data-product-panel="mcp" hidden>
+                <article>
+                  <span class="status-ring"></span>
+                  <div>
+                    <strong>Service Management</strong
+                    ><small>12 tools · connecté</small>
+                  </div>
+                  <button data-demo-action="configure-tool">Configurer</button>
+                </article>
+                <article>
+                  <span class="status-ring"></span>
+                  <div>
+                    <strong>Observabilité</strong
+                    ><small>8 tools · connecté</small>
+                  </div>
+                  <button data-demo-action="configure-tool">Configurer</button>
+                </article>
+                <article>
+                  <span class="status-ring is-muted"></span>
+                  <div>
+                    <strong>Dépôt documentaire</strong
+                    ><small>Authentification requise</small>
+                  </div>
+                  <button data-demo-action="connect-tool">Connecter</button>
+                </article>
+              </div>
+              <div class="skill-grid" data-product-panel="skills" hidden>
+                <article>
+                  <span>01</span><strong>Conception frontend</strong
+                  ><small>Interfaces sobres et distinctives</small>
+                </article>
+                <article>
+                  <span>02</span><strong>Audit de parcours</strong
+                  ><small>États, permissions et erreurs</small>
+                </article>
+                <article>
+                  <span>03</span><strong>Orchestration</strong
+                  ><small>Runs et délégations bornées</small>
+                </article>
+              </div>
+              <div class="approval-list" data-product-panel="approvals" hidden>
+                <article>
+                  <span class="approval-mark">!</span>
+                  <div>
+                    <strong>Accès à une URL externe</strong
+                    ><small>Maiah Généraliste · il y a 2 min</small>
+                  </div>
+                  <button data-demo-action="reject">Refuser</button
+                  ><button class="is-primary" data-demo-action="approve">
+                    Autoriser
+                  </button>
+                </article>
+                <article>
+                  <span class="approval-mark">!</span>
+                  <div>
+                    <strong>Publier une branche</strong
+                    ><small>Maiah Code · il y a 8 min</small>
+                  </div>
+                  <button data-demo-action="reject">Refuser</button
+                  ><button class="is-primary" data-demo-action="approve">
+                    Autoriser
+                  </button>
+                </article>
+              </div>
+            </section>
+
+            <section
+              class="orbit-product-page knowledge-page"
+              data-product-page="knowledge"
+            >
+              <header class="product-page-heading">
+                <div>
+                  <span>ESPACE / CONNAISSANCES</span>
+                  <h1>Le contexte,<br /><em>sans le bruit.</em></h1>
+                  <p>
+                    Organisez les sources utilisées par vos assistants et suivez
+                    leur indexation.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  class="product-primary"
+                  data-demo-action="new-base"
+                >
+                  <svg><use href="#i-plus" /></svg>Nouvelle base
+                </button>
+              </header>
+              <div class="knowledge-layout">
+                <aside>
+                  <header>
+                    <strong>Bases</strong><small>3 collections</small>
+                  </header>
+                  <button class="is-active">
+                    <span>DS</span>
+                    <div>
+                      <strong>Design system</strong><small>18 documents</small>
+                    </div></button
+                  ><button>
+                    <span>PR</span>
+                    <div>
+                      <strong>Produit</strong><small>32 documents</small>
+                    </div></button
+                  ><button>
+                    <span>OP</span>
+                    <div>
+                      <strong>Opérations</strong><small>11 documents</small>
+                    </div>
+                  </button>
+                </aside>
+                <section>
+                  <header>
+                    <div>
+                      <span>ORGANISATION</span>
+                      <h2>Design system</h2>
+                      <p>
+                        Références visuelles, composants et règles d’interface.
+                      </p>
+                    </div>
+                    <button data-demo-action="attach-agent">
+                      Lier un assistant
+                    </button>
+                  </header>
+                  <div class="knowledge-dropzone">
+                    <svg><use href="#i-paperclip" /></svg
+                    ><strong>Déposez des documents</strong
+                    ><small>PDF, DOCX, TXT ou contenu collé</small
+                    ><button data-demo-action="upload-doc">Parcourir</button>
+                  </div>
+                  <div class="document-list">
+                    <article>
+                      <span>PDF</span>
+                      <div>
+                        <strong>Principes UI.pdf</strong
+                        ><small>42 pages · indexé il y a 3 h</small>
+                      </div>
+                      <em>Prêt</em
+                      ><button aria-label="Actions">
+                        <svg><use href="#i-more" /></svg>
+                      </button>
+                    </article>
+                    <article>
+                      <span>DOC</span>
+                      <div>
+                        <strong>Guide rédactionnel.docx</strong
+                        ><small>18 pages · indexé hier</small>
+                      </div>
+                      <em>Prêt</em
+                      ><button aria-label="Actions">
+                        <svg><use href="#i-more" /></svg>
+                      </button>
+                    </article>
+                    <article class="is-indexing">
+                      <span>PDF</span>
+                      <div>
+                        <strong>Composants 2026.pdf</strong
+                        ><small>Extraction et indexation…</small>
+                      </div>
+                      <em>62%</em
+                      ><button aria-label="Annuler">
+                        <svg><use href="#i-close" /></svg>
+                      </button>
+                    </article>
+                  </div>
+                </section>
+              </div>
+            </section>
+
+            <section
+              class="orbit-product-page planning-page"
+              data-product-page="planning"
+            >
+              <header class="product-page-heading">
+                <div>
+                  <span>ESPACE / PLANIFICATION</span>
+                  <h1>Automatiser,<br /><em>sans perdre le contrôle.</em></h1>
+                  <p>
+                    Programmez des missions récurrentes et gardez une lecture
+                    nette de chaque exécution.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  class="product-primary"
+                  data-demo-action="new-task"
+                >
+                  <svg><use href="#i-plus" /></svg>Nouvelle tâche
+                </button>
+              </header>
+              <div class="planning-summary">
+                <article>
+                  <span>ACTIVES</span><strong>03</strong
+                  ><small>prochain run dans 42 min</small>
+                </article>
+                <article>
+                  <span>RÉUSSITE</span><strong>98%</strong
+                  ><small>sur les 30 derniers jours</small>
+                </article>
+                <article>
+                  <span>CONSOMMATION</span><strong>184k</strong
+                  ><small>tokens ce mois</small>
+                </article>
+              </div>
+              <div class="scheduled-list">
+                <header>
+                  <strong>Tâches planifiées</strong>
+                  <div class="product-filter-tabs">
+                    <button class="is-active">Toutes</button
+                    ><button>Actives</button><button>En pause</button>
+                  </div>
+                </header>
+                <article>
+                  <span class="schedule-icon"
+                    ><svg><use href="#i-clock" /></svg
+                  ></span>
+                  <div>
+                    <strong>Veille produit quotidienne</strong
+                    ><small>Maiah Généraliste · chaque jour à 08:30</small>
+                  </div>
+                  <em><i></i>Active</em><span class="next-run">Dans 42 min</span
+                  ><button aria-label="Actions">
+                    <svg><use href="#i-more" /></svg>
+                  </button>
+                </article>
+                <article>
+                  <span class="schedule-icon"
+                    ><svg><use href="#i-clock" /></svg
+                  ></span>
+                  <div>
+                    <strong>Rapport incidents hebdomadaire</strong
+                    ><small>Maiah Orchestrateur · lundi à 09:00</small>
+                  </div>
+                  <em><i></i>Active</em><span class="next-run">Dans 3 j</span
+                  ><button aria-label="Actions">
+                    <svg><use href="#i-more" /></svg>
+                  </button>
+                </article>
+                <article class="is-paused">
+                  <span class="schedule-icon"
+                    ><svg><use href="#i-clock" /></svg
+                  ></span>
+                  <div>
+                    <strong>Synthèse documentaire</strong
+                    ><small>Maiah Code · le 1er du mois</small>
+                  </div>
+                  <em>En pause</em><span class="next-run">—</span
+                  ><button aria-label="Actions">
+                    <svg><use href="#i-more" /></svg>
+                  </button>
+                </article>
+              </div>
+            </section>
+          </div>
+          <div class="chat-thread" aria-live="polite"></div>
+          <div class="orbit-empty empty-state t-stagger is-shown">
+            <div class="orbit-visual t-stagger-line t-stagger-line--1">
+              <span></span><i></i><b></b><svg><use href="#i-command" /></svg>
+            </div>
+            <p class="t-stagger-line t-stagger-line--2">
+              VOTRE ESPACE DE CRÉATION ASSISTÉE
+            </p>
+            <h1 class="t-stagger-line t-stagger-line--3">
+              Donnez une direction.<br />Maiah <em>orchestre</em> le reste.
+            </h1>
+          </div>
+          <form class="orbit-composer composer t-resize">
+            <div class="attachment-strip" aria-live="polite"></div>
+            <textarea
+              rows="2"
+              aria-label="Message"
+              placeholder="Décrivez votre objectif…"
+            ></textarea>
+            <div class="composer-controls">
+              <button type="button" class="composer-tool orbit-attach">
+                <svg><use href="#i-paperclip" /></svg><span>Joindre</span>
+              </button>
+              <input class="orbit-file-input" type="file" multiple hidden />
+              <label class="model-control orbit-assistant-control"
+                ><svg><use href="#i-command" /></svg
+                ><select aria-label="Choisir l’assistant et le modèle">
+                  <option>Maiah Code · Qwen 3.6 27B</option>
+                  <option>Maiah Code · GPT 5.5</option>
+                  <option>Maiah Généraliste · Qwen 3.6 27B</option>
+                  <option>Maiah Généraliste · GPT 5.5</option></select
+                ><svg><use href="#i-chevron" /></svg
+              ></label>
+              <button type="button" class="tools-control is-active">
+                <svg><use href="#i-spark" /></svg>Outils activés<span>4</span>
+              </button>
+              <span class="composer-hint">Entrée pour envoyer</span>
+              <button class="send-button" type="submit" aria-label="Envoyer">
+                <svg><use href="#i-arrow" /></svg>
+              </button>
+            </div>
+          </form>
+          <div class="orbit-prompts empty-state">
+            <button data-prompt="Crée une interface à partir de ce brief.">
+              <span>01</span>Créer une interface
+            </button>
+            <button
+              data-prompt="Analyse ce document et synthétise les décisions."
+            >
+              <span>02</span>Analyser un document
+            </button>
+            <button data-prompt="Planifie les prochaines étapes de ce projet.">
+              <span>03</span>Planifier un projet
+            </button>
+          </div>
+          <aside class="artifact-drawer" aria-hidden="true">
+            <header>
+              <div><span>ARTEFACT</span><strong>Interface générée</strong></div>
+              <button
+                type="button"
+                class="artifact-close"
+                aria-label="Fermer l’artefact"
+              >
+                <svg><use href="#i-close" /></svg>
+              </button>
+            </header>
+            <div class="artifact-tabs">
+              <button class="is-active" data-artifact-tab="preview">
+                Aperçu
+              </button>
+              <button data-artifact-tab="code">Code</button>
+            </div>
+            <div
+              class="artifact-preview is-active"
+              data-artifact-view="preview"
+            >
+              <div class="mini-window"><i></i><i></i><i></i></div>
+              <div class="mini-hero">
+                <span>MAIAH / PROJET</span>
+                <h3>Une interface nette,<br />prête à évoluer.</h3>
+                <button>Commencer</button>
+              </div>
+            </div>
+            <pre
+              class="artifact-code"
+              data-artifact-view="code"
+            ><code>&lt;main class="workspace"&gt;
+  &lt;h1&gt;Votre prochain projet&lt;/h1&gt;
+  &lt;button&gt;Commencer&lt;/button&gt;
+&lt;/main&gt;</code></pre>
+            <footer>
+              <button type="button" class="artifact-copy">
+                <svg><use href="#i-copy" /></svg> Copier
+              </button>
+              <button type="button" class="artifact-download">
+                <svg><use href="#i-arrow" /></svg> Télécharger
+              </button>
+            </footer>
+          </aside>
+        </article>
+      </section>
+    </main>
+
+    <div class="prototype-toast" role="status" aria-live="polite">
+      <span
+        ><svg><use href="#i-spark" /></svg
+      ></span>
+      <div>
+        <strong>Message prêt</strong
+        ><small>Prototype visuel — aucun envoi réel</small>
+      </div>
+    </div>
+    <div class="tools-backdrop" aria-hidden="true"></div>
+    <section
+      class="tools-panel t-dropdown"
+      data-origin="bottom-right"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="tools-title"
+    >
+      <header>
+        <div>
+          <span>CAPACITÉS</span>
+          <h2 id="tools-title">Outils de cette conversation</h2>
+        </div>
+        <button class="tools-close" type="button" aria-label="Fermer">
+          <svg><use href="#i-close" /></svg>
+        </button>
+      </header>
+      <p>
+        Les outils sélectionnés seront disponibles pour les prochains messages.
+      </p>
+      <div class="tool-list">
+        <label>
+          <span class="tool-icon"
+            ><svg><use href="#i-search" /></svg
+          ></span>
+          <span
+            ><strong>Recherche web</strong
+            ><small>Sources publiques récentes</small></span
+          >
+          <input type="checkbox" checked />
+          <i
+            ><svg><use href="#i-check" /></svg
+          ></i>
+        </label>
+        <label>
+          <span class="tool-icon"
+            ><svg><use href="#i-folder" /></svg
+          ></span>
+          <span
+            ><strong>Documents</strong
+            ><small>Fichiers et base de connaissances</small></span
+          >
+          <input type="checkbox" checked />
+          <i
+            ><svg><use href="#i-check" /></svg
+          ></i>
+        </label>
+        <label>
+          <span class="tool-icon"
+            ><svg><use href="#i-command" /></svg
+          ></span>
+          <span
+            ><strong>Code sécurisé</strong
+            ><small>Exécution dans une sandbox</small></span
+          >
+          <input type="checkbox" checked />
+          <i
+            ><svg><use href="#i-check" /></svg
+          ></i>
+        </label>
+        <label>
+          <span class="tool-icon"
+            ><svg><use href="#i-grid" /></svg
+          ></span>
+          <span
+            ><strong>Connecteurs</strong
+            ><small>Applications autorisées</small></span
+          >
+          <input type="checkbox" checked />
+          <i
+            ><svg><use href="#i-check" /></svg
+          ></i>
+        </label>
+      </div>
+      <footer>
+        <small><span class="active-tools-count">4</span> outils actifs</small>
+        <button class="tools-done" type="button">Terminé</button>
+      </footer>
+    </section>
+    <section
+      class="history-panel t-dropdown"
+      data-origin="bottom-left"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="history-panel-title"
+    >
+      <header>
+        <div>
+          <span>CONVERSATION</span>
+          <h2 id="history-panel-title">Organiser l’historique</h2>
+        </div>
+        <button class="history-panel-close" type="button" aria-label="Fermer">
+          <svg><use href="#i-close" /></svg>
+        </button>
+      </header>
+      <label class="history-name-field"
+        >Nom<input type="text" value="Nouveau chat"
+      /></label>
+      <div class="history-panel-actions">
+        <button type="button" data-history-action="pin">
+          <svg><use href="#i-pin" /></svg
+          ><span><strong>Épingler</strong><small>Garder en haut</small></span>
+        </button>
+        <button type="button" data-history-action="folder">
+          <svg><use href="#i-folder" /></svg
+          ><span
+            ><strong>Déplacer</strong><small>Choisir un dossier</small></span
+          >
+        </button>
+        <button type="button" data-history-action="duplicate">
+          <svg><use href="#i-copy" /></svg
+          ><span><strong>Dupliquer</strong><small>Créer une copie</small></span>
+        </button>
+        <button type="button" data-history-action="delete" class="is-danger">
+          <svg><use href="#i-trash" /></svg
+          ><span><strong>Supprimer</strong><small>Action simulée</small></span>
+        </button>
+      </div>
+      <div class="folder-manager">
+        <span>DOSSIERS</span>
+        <button type="button"><i></i>Projets <small>2</small></button>
+        <button type="button"><i></i>Veille <small>4</small></button>
+        <button type="button" class="folder-add">
+          <svg><use href="#i-plus" /></svg>Nouveau dossier
+        </button>
+      </div>
+      <footer>
+        <button class="history-save" type="button">Enregistrer</button>
+      </footer>
+    </section>
+    <script src="./app.js"></script>
+  </body>
+</html>
