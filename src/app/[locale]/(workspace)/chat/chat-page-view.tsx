@@ -131,18 +131,18 @@ export function EmptyConversationState({
   t: ChatTranslator;
 }) {
   return (
-    <div className="mx-auto flex h-full w-full max-w-4xl flex-col items-center justify-start px-4 pt-[clamp(4rem,14vh,7.5rem)] pb-12 animate-in-fade">
+    <div className="empty-chat-hero mx-auto flex h-full w-full max-w-4xl flex-col items-center justify-start px-4 pb-12 animate-in-fade">
       <div className="flex max-w-3xl flex-col items-center text-center">
-        <div className="orbit-hero-mark mb-7" aria-hidden="true">
+        <div className="orbit-hero-mark empty-chat-hero__mark" aria-hidden="true">
           <span />
           <i />
           <b />
           <CommandIcon className="size-5" />
         </div>
-        <p className="workspace-page-kicker mb-4 text-[0.62rem]">
+        <p className="workspace-page-kicker empty-chat-hero__kicker text-[0.62rem]">
           {t("heroKicker")}
         </p>
-        <h1 className="text-balance font-sans text-[clamp(2.4rem,5vw,4.4rem)] font-medium leading-[0.98] tracking-[-0.06em] text-foreground">
+        <h1 className="empty-chat-hero__title text-balance font-sans font-medium leading-[0.98] tracking-[-0.06em] text-foreground">
           {t("heroLineOne")}
           <br />
           Maiah{" "}

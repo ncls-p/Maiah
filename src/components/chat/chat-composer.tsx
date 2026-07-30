@@ -409,7 +409,7 @@ export function ChatComposer({
       className={cn(
         "composer-dock relative z-20 w-full min-w-0 shrink-0 px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] transition-[transform,background] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] sm:px-5 sm:pt-4",
         centered
-          ? "-translate-y-[clamp(7rem,18vh,11rem)] bg-transparent sm:-translate-y-[clamp(12rem,28vh,19rem)]"
+          ? "bg-transparent"
           : "translate-y-0 bg-[linear-gradient(to_top,var(--background)_58%,transparent)]",
       )}
     >
