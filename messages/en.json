@@ -1226,8 +1226,8 @@
     "orbitTitle": "Capabilities and",
     "orbitAccent": "connections.",
     "orbitEyebrow": "SPACE / TOOLS",
-    "orbitDescription": "Centralize native tools, MCP connectors, skills, and approval requests.",
-    "description": "Built-in tools, MCP servers, and approval queue.",
+    "orbitDescription": "Centralize native tools, MCP connectors, and skills.",
+    "description": "Built-in tools, MCP servers, and skills.",
     "permissionsLoading": "Loading tool access…",
     "loadFailed": "Unable to load tools",
     "loadFailedDescription": "Your access rights could not be verified. No tool settings are shown until the check succeeds.",
@@ -1238,8 +1238,7 @@
       "builtin": "Built-in",
       "mcp": "MCP servers",
       "skills": "Skills",
-      "custom": "Custom",
-      "approvals": "Approvals"
+      "custom": "Custom"
     },
     "builtinHelp": "Capabilities shipped with Maiah.",
     "builtin": {
@@ -1292,7 +1291,6 @@
     "mcpHelp": "External tools connected via the Model Context Protocol.",
     "skillsHelp": "Install Markdown-only agent skills from skills.sh and attach them to assistants.",
     "customHelp": "Build a guided business capability, then attach it to your assistants.",
-    "approvalsHelp": "Review tool calls that need human approval.",
     "skills": {
       "view": "View",
       "manual": "Created here",

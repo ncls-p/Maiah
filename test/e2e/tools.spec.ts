@@ -31,6 +31,20 @@ test.describe("tools hub page", () => {
     ).toBeVisible({ timeout: 15_000 });
   });
 
+  test("retires the approvals tab and redirects old links", async ({
+    page,
+  }) => {
+    await page.goto("/en/tools?tab=approvals");
+
+    await expect(page).toHaveURL(/\/en\/tools\?tab=builtin$/, {
+      timeout: 15_000,
+    });
+    await expect(page.getByRole("tab", { name: /Approvals/i })).toHaveCount(0);
+    await expect(
+      page.getByRole("tab", { name: "Built-in", exact: true }),
+    ).toHaveAttribute("data-state", "active");
+  });
+
   test("shows built-in tools", async ({ page }) => {
     await page.goto("/en/tools");
     await page.waitForTimeout(2000);

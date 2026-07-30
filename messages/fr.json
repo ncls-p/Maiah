@@ -1225,8 +1225,8 @@
     "orbitTitle": "Capacités et",
     "orbitAccent": "connexions.",
     "orbitEyebrow": "ESPACE / OUTILS",
-    "orbitDescription": "Centralisez les outils natifs, connecteurs MCP, compétences et demandes d’autorisation.",
-    "description": "Outils intégrés, serveurs MCP et file d’approbation.",
+    "orbitDescription": "Centralisez les outils natifs, connecteurs MCP et compétences.",
+    "description": "Outils intégrés, serveurs MCP et compétences.",
     "permissionsLoading": "Vérification des accès aux outils…",
     "loadFailed": "Impossible de charger les outils",
     "loadFailedDescription": "Vos droits d’accès n’ont pas pu être vérifiés. Aucun réglage d’outil n’est affiché tant que cette vérification n’aboutit pas.",
@@ -1237,8 +1237,7 @@
       "builtin": "Intégrés",
       "mcp": "Serveurs MCP",
       "skills": "Compétences",
-      "custom": "Personnalisés",
-      "approvals": "Approbations"
+      "custom": "Personnalisés"
     },
     "builtinHelp": "Capacités fournies par Maiah.",
     "builtin": {
@@ -1291,7 +1290,6 @@
     "mcpHelp": "Outils externes via le Model Context Protocol.",
     "skillsHelp": "Ajoutez des instructions réutilisables depuis skills.sh, puis associez-les à vos assistants.",
     "customHelp": "Créez une capacité métier guidée, puis associez-la à vos assistants.",
-    "approvalsHelp": "Validez les appels d’outils sensibles.",
     "skills": {
       "view": "Voir",
       "manual": "Créée ici",
