@@ -7,6 +7,7 @@ import {
   PlusIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 
 import { ChatSidebar } from "@/components/chat/chat-sidebar";
 import type {
@@ -15,6 +16,7 @@ import type {
   ChatConversationFolder,
 } from "@/components/chat/chat-types";
 import { Button } from "@/components/ui/button";
+import { DestructiveConfirmationDialog } from "@/components/destructive-confirmation-dialog";
 import {
   SidebarHeader,
   WorkspaceStatusFooter,
@@ -60,6 +62,7 @@ function normalizeConversations(payload: ConversationPayload) {
 
 function useWorkspaceHistory() {
   const { workspaceId } = useWorkspace();
+  const tErrors = useTranslations("chat.errors");
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
   const [folders, setFolders] = useState<ChatConversationFolder[]>([]);
   const [agents, setAgents] = useState<ChatAgent[]>([]);
@@ -172,6 +175,185 @@ function useWorkspaceHistory() {
     };
   }, [query, revision, workspaceId]);
 
+  async function renameConversation(conversationId: string, title: string) {
+    try {
+      const data = await fetchJson<{ conversation: ChatConversation }>(
+        `/api/workspace/conversations/${conversationId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title }),
+        },
+      );
+      const applyRename = (current: ChatConversation[]) =>
+        current.map((conversation) =>
+          conversation.id === conversationId
+            ? {
+                ...conversation,
+                title: data.conversation.title,
+                updatedAt: data.conversation.updatedAt,
+              }
+            : conversation,
+        );
+      setConversations(applyRename);
+      setSearchResults(applyRename);
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : tErrors("renameConversationFailed"),
+      );
+    }
+  }
+
+  async function deleteConversation(conversationId: string) {
+    try {
+      await fetchJson(`/api/workspace/conversations/${conversationId}`, {
+        method: "DELETE",
+      });
+      const removeConversation = (current: ChatConversation[]) =>
+        current.filter((conversation) => conversation.id !== conversationId);
+      setConversations(removeConversation);
+      setSearchResults(removeConversation);
+      return true;
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : tErrors("deleteConversationFailed"),
+      );
+      return false;
+    }
+  }
+
+  async function createFolder(name: string) {
+    if (!workspaceId) return;
+    try {
+      const data = await fetchJson<{ folder: ChatConversationFolder }>(
+        "/api/workspace/conversation-folders",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ workspaceId, name }),
+        },
+      );
+      setFolders((current) => [...current, data.folder]);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : tErrors("createFolderFailed"),
+      );
+    }
+  }
+
+  async function renameFolder(folderId: string, name: string) {
+    try {
+      const data = await fetchJson<{ folder: ChatConversationFolder }>(
+        `/api/workspace/conversation-folders/${folderId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name }),
+        },
+      );
+      setFolders((current) =>
+        current.map((folder) =>
+          folder.id === folderId ? data.folder : folder,
+        ),
+      );
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : tErrors("renameFolderFailed"),
+      );
+    }
+  }
+
+  async function deleteFolder(folderId: string) {
+    try {
+      await fetchJson(`/api/workspace/conversation-folders/${folderId}`, {
+        method: "DELETE",
+      });
+      setFolders((current) =>
+        current.filter((folder) => folder.id !== folderId),
+      );
+      setConversations((current) =>
+        current.map((conversation) =>
+          conversation.folderId === folderId
+            ? { ...conversation, folderId: null }
+            : conversation,
+        ),
+      );
+      return true;
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : tErrors("deleteFolderFailed"),
+      );
+      return false;
+    }
+  }
+
+  async function togglePin(conversationId: string, pinned: boolean) {
+    try {
+      const data = await fetchJson<{ conversation: ChatConversation }>(
+        `/api/workspace/conversations/${conversationId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pinned }),
+        },
+      );
+      const applyPin = (current: ChatConversation[]) =>
+        current.map((conversation) =>
+          conversation.id === conversationId
+            ? { ...conversation, ...data.conversation }
+            : conversation,
+        );
+      setConversations(applyPin);
+      setSearchResults(applyPin);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : tErrors("updatePinFailed"),
+      );
+    }
+  }
+
+  async function reorderConversations(input: {
+    conversationIds: string[];
+    folderId: string | null;
+    pinned?: boolean;
+  }) {
+    if (!workspaceId) return;
+    const now = new Date().toISOString();
+    setConversations((current) =>
+      current.map((conversation) => {
+        const index = input.conversationIds.indexOf(conversation.id);
+        if (index === -1) return conversation;
+        return {
+          ...conversation,
+          folderId: input.folderId,
+          pinnedAt:
+            input.pinned === undefined
+              ? conversation.pinnedAt
+              : input.pinned
+                ? (conversation.pinnedAt ?? now)
+                : null,
+          sidebarOrder: (index + 1) * 1000,
+        };
+      }),
+    );
+    try {
+      await fetchJson("/api/workspace/conversations/reorder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workspaceId, ...input }),
+      });
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : tErrors("moveFailed"),
+      );
+      setRevision((current) => current + 1);
+    }
+  }
+
   return {
     agents,
     conversations,
@@ -195,6 +377,13 @@ function useWorkspaceHistory() {
       setSearchError(false);
       setRevision((current) => current + 1);
     },
+    renameConversation,
+    deleteConversation,
+    createFolder,
+    renameFolder,
+    deleteFolder,
+    togglePin,
+    reorderConversations,
   };
 }
 
@@ -209,6 +398,12 @@ function WorkspaceHistoryContent({
   const router = useRouter();
   const { workspaceId, workspaces } = useWorkspace();
   const history = useWorkspaceHistory();
+  const [pendingDelete, setPendingDelete] = useState<
+    | { kind: "conversation"; id: string; name: string }
+    | { kind: "folder"; id: string; name: string }
+    | null
+  >(null);
+  const [deleting, setDeleting] = useState(false);
   const activeWorkspace = workspaces.find(
     (workspace) => workspace.id === workspaceId,
   );
@@ -269,36 +464,107 @@ function WorkspaceHistoryContent({
     );
   }
 
+  async function confirmDelete() {
+    if (!pendingDelete) return;
+    setDeleting(true);
+    const deleted =
+      pendingDelete.kind === "folder"
+        ? await history.deleteFolder(pendingDelete.id)
+        : await history.deleteConversation(pendingDelete.id);
+    setDeleting(false);
+    if (deleted) setPendingDelete(null);
+  }
+
   return (
-    <ChatSidebar
-      agents={history.agents}
-      conversations={history.conversations}
-      conversationFolders={history.folders}
-      activeConversationId={null}
-      loading={history.loading}
-      searchQuery={history.query}
-      searchResults={history.searchResults}
-      searching={history.searching}
-      searchError={history.searchError}
-      onSearchQueryChange={history.setQuery}
-      onRetrySearch={history.retry}
-      onSelectConversation={openConversation}
-      onNewConversation={() => {
-        router.push("/chat");
-        onNavigate?.();
-      }}
-      readOnly
-      showWorkspaceNavigation={false}
-      shell={shell}
-      workspaceId={workspaceId}
-      className="workspace-history-panel"
-      footerContent={
-        <WorkspaceStatusFooter
-          name={activeWorkspace?.name ?? "Maiah"}
-          context={activeWorkspace?.organizationName}
-        />
-      }
-    />
+    <>
+      <ChatSidebar
+        agents={history.agents}
+        conversations={history.conversations}
+        conversationFolders={history.folders}
+        activeConversationId={null}
+        loading={history.loading}
+        searchQuery={history.query}
+        searchResults={history.searchResults}
+        searching={history.searching}
+        searchError={history.searchError}
+        onSearchQueryChange={history.setQuery}
+        onRetrySearch={history.retry}
+        onSelectConversation={openConversation}
+        onNewConversation={() => {
+          router.push("/chat");
+          onNavigate?.();
+        }}
+        onRenameConversation={(conversationId, title) =>
+          void history.renameConversation(conversationId, title)
+        }
+        onDeleteConversation={(conversationId) => {
+          const conversation = history.conversations.find(
+            (item) => item.id === conversationId,
+          );
+          if (conversation) {
+            setPendingDelete({
+              kind: "conversation",
+              id: conversation.id,
+              name: conversation.title,
+            });
+          }
+        }}
+        onCreateConversationFolder={(name) => void history.createFolder(name)}
+        onRenameConversationFolder={(folderId, name) =>
+          void history.renameFolder(folderId, name)
+        }
+        onDeleteConversationFolder={(folderId) => {
+          const folder = history.folders.find((item) => item.id === folderId);
+          if (folder) {
+            setPendingDelete({
+              kind: "folder",
+              id: folder.id,
+              name: folder.name,
+            });
+          }
+        }}
+        onToggleConversationPin={(conversationId, pinned) =>
+          void history.togglePin(conversationId, pinned)
+        }
+        onReorderConversations={(input) =>
+          void history.reorderConversations(input)
+        }
+        showWorkspaceNavigation={false}
+        shell={shell}
+        workspaceId={workspaceId}
+        className="workspace-history-panel"
+        footerContent={
+          <WorkspaceStatusFooter
+            name={activeWorkspace?.name ?? "Maiah"}
+            context={activeWorkspace?.organizationName}
+          />
+        }
+      />
+      <DestructiveConfirmationDialog
+        open={pendingDelete !== null}
+        title={
+          pendingDelete?.kind === "folder"
+            ? t("deleteFolderTitle")
+            : t("deleteConversationTitle")
+        }
+        description={
+          pendingDelete?.kind === "folder"
+            ? t("deleteFolderDescription", {
+                name: pendingDelete?.name ?? "",
+              })
+            : t("deleteConversationDescription", {
+                name: pendingDelete?.name ?? "",
+              })
+        }
+        cancelLabel={t("deleteCancel")}
+        confirmLabel={deleting ? t("deleting") : t("delete")}
+        busy={deleting}
+        onOpenChange={(open) => {
+          if (!open && !deleting) setPendingDelete(null);
+        }}
+        onConfirm={() => void confirmDelete()}
+      />
+    </>
   );
 }
 

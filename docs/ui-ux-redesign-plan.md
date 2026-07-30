@@ -42,6 +42,10 @@ La refonte doit surtout améliorer :
 - L’aide de mise en route conduit vers l’action réellement manquante : choix du
   modèle ou ajout de spécialistes pour un orchestrateur. Les assistants gérés par
   l’organisation proposent directement de créer une copie modifiable.
+- L’historique partagé conserve l’organisation avancée sur toutes les pages :
+  dossiers, épinglage, renommage, suppression confirmée et réordonnancement par
+  glisser-déposer avec actions clavier équivalentes. Les erreurs de mutation
+  préservent la liste et relancent la synchronisation si nécessaire.
 
 ### Problème principal
 

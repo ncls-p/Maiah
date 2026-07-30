@@ -134,6 +134,7 @@
       "reloadAgentFailed": "Impossible de recharger l’assistant",
       "loadOlderFailed": "Impossible de charger les anciennes conversations",
       "createFolderFailed": "Impossible de créer le dossier",
+      "renameConversationFailed": "Impossible de renommer la conversation",
       "renameFolderFailed": "Impossible de renommer le dossier",
       "deleteConversationFailed": "Impossible de supprimer la conversation",
       "deleteFolderFailed": "Impossible de supprimer le dossier",

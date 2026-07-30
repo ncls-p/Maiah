@@ -64,6 +64,65 @@ test.describe("agents list page", () => {
     }
   });
 
+  test("keeps conversation organization available across workspace pages", async ({
+    page,
+  }) => {
+    await page.goto("/en/agents");
+
+    const historyActions = page.getByRole("button", {
+      name: /History actions/i,
+    });
+    await expect(historyActions).toBeVisible({ timeout: 15_000 });
+    await historyActions.click();
+    await page.getByRole("menuitem", { name: /Create folder/i }).click();
+
+    const folderName = page.getByRole("textbox", { name: /Folder name/i });
+    await expect(folderName).toBeFocused();
+    await folderName.press("Escape");
+    await expect(folderName).toHaveCount(0);
+
+    const conversationActions = page
+      .getByRole("button", { name: /Conversation actions/i })
+      .first();
+    if (await conversationActions.isVisible()) {
+      await expect(
+        page
+          .locator('[data-slot="workspace-history-sidebar"] [draggable="true"]')
+          .first(),
+      ).toBeVisible();
+      await conversationActions.click();
+      await expect(
+        page.getByRole("menuitem", { name: /Pin to top|Unpin/i }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("menuitem", { name: /Rename/i }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("menuitem", { name: /Delete/i }),
+      ).toBeVisible();
+      await page.keyboard.press("Escape");
+
+      const draggableRows = page.locator(
+        '[data-slot="workspace-history-sidebar"] [draggable="true"]',
+      );
+      if ((await draggableRows.count()) >= 2) {
+        const firstTitle = (
+          await draggableRows.nth(0).getByRole("button").first().innerText()
+        ).split("\n")[0]!;
+        const secondTitle = (
+          await draggableRows.nth(1).getByRole("button").first().innerText()
+        ).split("\n")[0]!;
+
+        await draggableRows.nth(1).dragTo(draggableRows.nth(0));
+        await expect(draggableRows.nth(0)).toContainText(secondTitle);
+        await page.waitForTimeout(350);
+
+        await draggableRows.nth(1).dragTo(draggableRows.nth(0));
+        await expect(draggableRows.nth(0)).toContainText(firstTitle);
+      }
+    }
+  });
+
   test("keeps assistant card menus focused on secondary actions", async ({
     page,
   }) => {

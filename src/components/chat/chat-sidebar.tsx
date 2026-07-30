@@ -471,7 +471,7 @@ function ConversationItem({
                     {t("moveDown")}
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onSelect={onEditStart}
+                    onSelect={() => window.requestAnimationFrame(onEditStart)}
                     className="min-h-10 gap-2"
                   >
                     <PencilIcon className="size-3.5" aria-hidden="true" />
@@ -863,7 +863,11 @@ export function ChatSidebar({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-52">
                   {onCreateConversationFolder ? (
-                    <DropdownMenuItem onSelect={startFolderCreate}>
+                    <DropdownMenuItem
+                      onSelect={() =>
+                        window.requestAnimationFrame(startFolderCreate)
+                      }
+                    >
                       <FolderPlusIcon className="size-4" aria-hidden="true" />
                       {t("createFolder")}
                     </DropdownMenuItem>
@@ -1219,8 +1223,10 @@ export function ChatSidebar({
                                 <DropdownMenuContent align="end">
                                   <DropdownMenuItem
                                     onSelect={() => {
-                                      setEditingFolderId(folder.id);
-                                      setEditingFolderName(folder.name);
+                                      window.requestAnimationFrame(() => {
+                                        setEditingFolderId(folder.id);
+                                        setEditingFolderName(folder.name);
+                                      });
                                     }}
                                     className="min-h-10 gap-2"
                                   >

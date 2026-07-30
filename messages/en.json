@@ -134,6 +134,7 @@
       "reloadAgentFailed": "Unable to reload the assistant",
       "loadOlderFailed": "Unable to load older conversations",
       "createFolderFailed": "Unable to create the folder",
+      "renameConversationFailed": "Unable to rename the conversation",
       "renameFolderFailed": "Unable to rename the folder",
       "deleteConversationFailed": "Unable to delete the conversation",
       "deleteFolderFailed": "Unable to delete the folder",
