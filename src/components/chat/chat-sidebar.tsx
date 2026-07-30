@@ -603,20 +603,6 @@ export function ChatSidebar({
       ),
     }));
   }, [conversationFolders, unpinnedConversations]);
-  const activeConversation = useMemo(
-    () =>
-      activeConversationId
-        ? (sortedConversations.find(
-            (conversation) => conversation.id === activeConversationId,
-          ) ?? null)
-        : null,
-    [activeConversationId, sortedConversations],
-  );
-  const currentAgentName =
-    (activeConversation
-      ? agentNameById.get(activeConversation.agentId)
-      : agents[0]?.name) ?? t("assistant");
-
   function orderedIdsWithInsertion(
     items: ChatConversation[],
     draggedId: string,
@@ -1119,47 +1105,6 @@ export function ChatSidebar({
                 </div>
               ) : (
                 <div className="flex flex-col gap-3">
-                  <section className="flex flex-col gap-1">
-                    <div className="px-2 pb-1 font-mono text-[9px] font-medium uppercase tracking-[0.16em] text-muted-foreground/70">
-                      {t("current")}
-                    </div>
-                    <button
-                      type={BUTTON_TYPE}
-                      onClick={onNewConversation}
-                      className={cn(
-                        "group/new flex min-h-12 w-full items-center gap-2 rounded-xl border px-2.5 py-2 text-left transition-[background-color,border-color,box-shadow,scale] active:scale-[0.99]",
-                        activeConversationId
-                          ? "border-transparent hover:bg-muted/70"
-                          : "border-sidebar-border/35 bg-card/70 shadow-[0_10px_28px_-24px_color-mix(in_oklch,var(--foreground)_35%,transparent)]",
-                      )}
-                    >
-                      <i
-                        className={cn(
-                          "size-1.5 shrink-0 rounded-full",
-                          activeConversationId
-                            ? "bg-muted-foreground/45"
-                            : "bg-primary",
-                        )}
-                        aria-hidden="true"
-                      />
-                      <span className="min-w-0 flex-1">
-                        <strong className="block truncate text-[12px] font-semibold text-foreground">
-                          {t("newConversation")}
-                        </strong>
-                        <small className="mt-1 block truncate text-[10px] text-muted-foreground/70">
-                          {currentAgentName}
-                        </small>
-                      </span>
-                      <PlusIcon
-                        className="size-3.5 text-muted-foreground opacity-0 transition-opacity group-hover/new:opacity-100"
-                        aria-hidden="true"
-                      />
-                    </button>
-                    {activeConversation
-                      ? renderConversation(activeConversation)
-                      : null}
-                  </section>
-
                   {pinnedConversations.length > 0 ? (
                     <section
                       className="flex flex-col gap-px"
@@ -1176,14 +1121,9 @@ export function ChatSidebar({
                         <PinIcon className="size-3" aria-hidden="true" />
                         {t("pinned")}
                       </div>
-                      {pinnedConversations
-                        .filter(
-                          (conversation) =>
-                            conversation.id !== activeConversationId,
-                        )
-                        .map((conversation) =>
-                          renderConversation(conversation),
-                        )}
+                      {pinnedConversations.map((conversation) =>
+                        renderConversation(conversation),
+                      )}
                     </section>
                   ) : null}
 
@@ -1310,14 +1250,9 @@ export function ChatSidebar({
                           {open ? (
                             <div className="flex flex-col gap-px pl-3">
                               {folderConversations.length > 0 ? (
-                                folderConversations
-                                  .filter(
-                                    (conversation) =>
-                                      conversation.id !== activeConversationId,
-                                  )
-                                  .map((conversation) =>
-                                    renderConversation(conversation),
-                                  )
+                                folderConversations.map((conversation) =>
+                                  renderConversation(conversation),
+                                )
                               ) : (
                                 <div
                                   className="rounded-lg border border-dashed px-3 py-2 text-xs text-muted-foreground/60"
@@ -1356,14 +1291,9 @@ export function ChatSidebar({
                         <div className="px-2 pb-1 font-mono text-[9px] font-medium uppercase tracking-[0.16em] text-muted-foreground/70">
                           {t("recent")}
                         </div>
-                        {topLevelConversations
-                          .filter(
-                            (conversation) =>
-                              conversation.id !== activeConversationId,
-                          )
-                          .map((conversation) =>
-                            renderConversation(conversation),
-                          )}
+                        {topLevelConversations.map((conversation) =>
+                          renderConversation(conversation),
+                        )}
                       </>
                     ) : folderSections.length === 0 ? (
                       <div className="rounded-lg border border-dashed px-3 py-2 text-xs text-muted-foreground/60">
