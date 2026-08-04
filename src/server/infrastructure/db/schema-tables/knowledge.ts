@@ -34,6 +34,7 @@ export const knowledgeBases = pgTable(
       .references(() => workspaces.id, { onDelete: CASCADE_ACTION }),
     name: varchar("name", { length: 255 }).notNull(),
     description: text("description"),
+    ragConfigJson: jsonb("rag_config_json"),
     isGlobal: boolean("is_global").notNull().default(false),
     createdById: uuid(CREATED_BY_USER_ID_COLUMN)
       .notNull()
@@ -117,6 +118,8 @@ export const documentEmbeddings = pgTable(
       .notNull()
       .references(() => documentChunks.id, { onDelete: CASCADE_ACTION }),
     embedding: vector("embedding", { dimensions: 1536 }),
+    embeddingJson: jsonb("embedding_json").$type<number[]>(),
+    embeddingDimensions: integer("embedding_dimensions"),
     embeddingModelId: varchar("embedding_model_id", { length: 255 }),
     createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
       .notNull()

@@ -78,6 +78,21 @@ test.describe("admin settings page", () => {
     ).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText(/Custom tool builder/i)).toHaveCount(0);
   });
+
+  test("configures embedding and reranking defaults explicitly", async ({
+    page,
+  }) => {
+    await page.goto("/en/admin/settings");
+
+    await page.getByLabel("Embedding model").fill("qwen3-embedding:4b");
+    await page.getByLabel("Enable reranking").click();
+    await page
+      .getByLabel("Reranking model")
+      .fill("nvidia/llama-nemotron-rerank-vl-1b-v2");
+    await page.getByRole("button", { name: "Save platform defaults" }).click();
+
+    await expect(page.getByText("Default RAG settings saved")).toBeVisible();
+  });
 });
 
 test.describe("registration settings", () => {

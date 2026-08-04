@@ -1,4 +1,5 @@
-import { and, eq, inArray, isNull, not, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
+import { cosineSimilarity, embed, embedMany, rerank } from "ai";
 import { encryptValue, decryptValue } from "@/lib/crypto";
 import { logger } from "@/lib/logger";
 import { audit } from "@/server/domain/services/audit";
@@ -11,6 +12,14 @@ import {
   documents,
   knowledgeBases,
 } from "@/server/infrastructure/db/schema";
+import {
+  getDefaultRagConfig,
+  parseRagConfig,
+  ragConfigSchema,
+  resolveEmbeddingModel,
+  resolveRerankingModel,
+  type RagConfig,
+} from "@/modules/knowledge/rag-config";
 
 export interface CreateKnowledgeBaseInput {
   workspaceId: string;
@@ -18,9 +27,14 @@ export interface CreateKnowledgeBaseInput {
   name: string;
   description?: string;
   isGlobal?: boolean;
+  ragConfig?: RagConfig;
 }
 
 type KnowledgeBaseRow = typeof knowledgeBases.$inferSelect;
+
+async function effectiveRagConfig(value: unknown) {
+  return value === null ? getDefaultRagConfig() : parseRagConfig(value);
+}
 
 function canManageKnowledgeBase(
   knowledgeBase: KnowledgeBaseRow,
@@ -74,6 +88,7 @@ export async function createKnowledgeBase(input: CreateKnowledgeBaseInput) {
       workspaceId: input.workspaceId,
       name: input.name,
       description: input.description || null,
+      ragConfigJson: input.ragConfig ?? null,
       isGlobal: input.isGlobal ?? false,
       createdById: input.userId,
     })
@@ -91,6 +106,30 @@ export async function createKnowledgeBase(input: CreateKnowledgeBaseInput) {
   });
 
   return knowledgeBase;
+}
+
+export async function queueDefaultRagReindex() {
+  const inheritedBases = await db
+    .select({ id: knowledgeBases.id })
+    .from(knowledgeBases)
+    .where(
+      and(
+        isNull(knowledgeBases.ragConfigJson),
+        isNull(knowledgeBases.archivedAt),
+      ),
+    );
+  if (inheritedBases.length === 0) return 0;
+  const updated = await db
+    .update(documents)
+    .set({ status: "processing", errorMessage: null, updatedAt: new Date() })
+    .where(
+      inArray(
+        documents.knowledgeBaseId,
+        inheritedBases.map((base) => base.id),
+      ),
+    )
+    .returning({ id: documents.id });
+  return updated.length;
 }
 
 export async function listKnowledgeBases(
@@ -111,8 +150,25 @@ export async function listKnowledgeBases(
       sql`${knowledgeBases.isGlobal} DESC`,
       sql`${knowledgeBases.createdAt} DESC`,
     );
+  const defaultRagConfig = rows.some(
+    (knowledgeBase) => knowledgeBase.ragConfigJson === null,
+  )
+    ? await getDefaultRagConfig()
+    : null;
+  const withRagConfig = (knowledgeBase: KnowledgeBaseRow) => ({
+    ...knowledgeBase,
+    effectiveRagConfig: parseRagConfig(
+      knowledgeBase.ragConfigJson === null
+        ? defaultRagConfig
+        : knowledgeBase.ragConfigJson,
+    ),
+    usesDefaultRagConfig: knowledgeBase.ragConfigJson === null,
+  });
   if (!userId) {
-    return rows.map((knowledgeBase) => ({ ...knowledgeBase, canEdit: true }));
+    return rows.map((knowledgeBase) => ({
+      ...withRagConfig(knowledgeBase),
+      canEdit: true,
+    }));
   }
   return (
     await Promise.all(
@@ -127,7 +183,7 @@ export async function listKnowledgeBases(
             "knowledge_base",
             knowledgeBase.id,
           ));
-        return { ...knowledgeBase, canEdit };
+        return { ...withRagConfig(knowledgeBase), canEdit };
       }),
     )
   ).filter((knowledgeBase) => knowledgeBase !== null);
@@ -174,6 +230,7 @@ export async function updateKnowledgeBase(input: {
   name?: string;
   description?: string;
   isGlobal?: boolean;
+  ragConfig?: RagConfig | null;
 }) {
   const existing = await getKnowledgeBase(
     input.knowledgeBaseId,
@@ -194,6 +251,11 @@ export async function updateKnowledgeBase(input: {
   if (input.description !== undefined)
     updates.description = input.description || null;
   if (input.isGlobal !== undefined) updates.isGlobal = input.isGlobal;
+  if (input.ragConfig !== undefined) {
+    updates.ragConfigJson = input.ragConfig
+      ? ragConfigSchema.parse(input.ragConfig)
+      : null;
+  }
 
   const [knowledgeBase] = await db
     .update(knowledgeBases)
@@ -238,29 +300,37 @@ export async function archiveKnowledgeBase(
   });
 }
 
-function chunkText(text: string, maxChars = 1_200) {
+export function chunkText(
+  text: string,
+  options: { maxCharacters: number; overlapCharacters: number },
+) {
+  const maxChars = options.maxCharacters;
+  const overlap = Math.min(options.overlapCharacters, maxChars - 1);
   const normalized = text.replace(/\r\n/g, "\n").trim();
   if (!normalized) return [];
-  const paragraphs = normalized.split(/\n{2,}/);
   const chunks: string[] = [];
-  let current = "";
-  for (const paragraph of paragraphs) {
-    if (`${current}\n\n${paragraph}`.length > maxChars && current) {
-      chunks.push(current.trim());
-      current = paragraph;
-    } else {
-      current = current ? `${current}\n\n${paragraph}` : paragraph;
+  let start = 0;
+  while (start < normalized.length) {
+    let end = Math.min(start + maxChars, normalized.length);
+    if (end < normalized.length) {
+      const window = normalized.slice(start, end);
+      const paragraphBreak = window.lastIndexOf("\n\n");
+      const sentenceBreak = Math.max(
+        window.lastIndexOf(". "),
+        window.lastIndexOf("! "),
+        window.lastIndexOf("? "),
+      );
+      const naturalBreak = Math.max(paragraphBreak, sentenceBreak);
+      if (naturalBreak >= Math.floor(maxChars * 0.55)) {
+        end = start + naturalBreak + (naturalBreak === paragraphBreak ? 2 : 1);
+      }
     }
+    const chunk = normalized.slice(start, end).trim();
+    if (chunk) chunks.push(chunk);
+    if (end >= normalized.length) break;
+    start = Math.max(start + 1, end - overlap);
   }
-  if (current.trim()) chunks.push(current.trim());
-  return chunks.flatMap((chunk) => {
-    if (chunk.length <= maxChars) return [chunk];
-    const split: string[] = [];
-    for (let index = 0; index < chunk.length; index += maxChars) {
-      split.push(chunk.slice(index, index + maxChars));
-    }
-    return split;
-  });
+  return chunks;
 }
 
 export async function ingestTextDocument(input: {
@@ -283,7 +353,8 @@ export async function ingestTextDocument(input: {
     input.canManageGlobal,
   );
 
-  const chunks = chunkText(input.content);
+  const config = await effectiveRagConfig(knowledgeBase.ragConfigJson);
+  const chunks = chunkText(input.content, config.chunking);
   const document = await db.transaction(async (tx) => {
     const [document] = await tx
       .insert(documents)
@@ -446,28 +517,6 @@ type KnowledgeSearchHit = {
   score: number;
 };
 
-async function knowledgeBaseHasEmbeddings(
-  knowledgeBaseId: string,
-  workspaceId: string,
-) {
-  const [row] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(documentEmbeddings)
-    .innerJoin(
-      documentChunks,
-      eq(documentEmbeddings.chunkId, documentChunks.id),
-    )
-    .innerJoin(documents, eq(documentChunks.documentId, documents.id))
-    .where(
-      and(
-        eq(documents.knowledgeBaseId, knowledgeBaseId),
-        eq(documents.workspaceId, workspaceId),
-        eq(documents.status, "ready"),
-      ),
-    );
-  return (row?.count ?? 0) > 0;
-}
-
 async function searchKnowledgeBaseByKeyword(input: {
   workspaceId: string;
   knowledgeBaseId: string;
@@ -511,34 +560,32 @@ async function searchKnowledgeBaseByVector(input: {
   knowledgeBaseId: string;
   query: string;
   limit?: number;
+  config: RagConfig;
 }): Promise<KnowledgeSearchHit[] | null> {
-  const hasEmbeddings = await knowledgeBaseHasEmbeddings(
-    input.knowledgeBaseId,
+  const config = input.config;
+  const embeddingSelection = await resolveEmbeddingModel(
     input.workspaceId,
+    config,
   );
-  if (!hasEmbeddings) return null;
-
-  const seedHits = await searchKnowledgeBaseByKeyword({
-    ...input,
-    limit: Math.max(1, Math.min(3, input.limit ?? 5)),
+  if (!embeddingSelection) return null;
+  const queryResult = await embed({
+    model: embeddingSelection.model,
+    value: input.query,
+    maxRetries: 1,
+    abortSignal: AbortSignal.timeout(30_000),
+    providerOptions: config.embedding.dimensions
+      ? {
+          [embeddingSelection.model.provider]: {
+            dimensions: config.embedding.dimensions,
+          },
+        }
+      : undefined,
   });
-  if (seedHits.length === 0) return null;
-
-  const seedChunkIds = seedHits.map((hit) => hit.chunkId);
-  const limit = input.limit ?? 5;
-
   const rows = await db
     .select({
       chunk: documentChunks,
       document: documents,
-      similarity: sql<number>`1 - (${documentEmbeddings.embedding} <=> (
-				SELECT AVG(de.embedding)
-				FROM document_embeddings de
-				WHERE de.chunk_id IN (${sql.join(
-          seedChunkIds.map((chunkId) => sql`${chunkId}`),
-          sql`, `,
-        )})
-			))`,
+      embedding: documentEmbeddings,
     })
     .from(documentEmbeddings)
     .innerJoin(
@@ -551,26 +598,18 @@ async function searchKnowledgeBaseByVector(input: {
         eq(documents.knowledgeBaseId, input.knowledgeBaseId),
         eq(documents.workspaceId, input.workspaceId),
         eq(documents.status, "ready"),
-        not(isNull(documentEmbeddings.embedding)),
+        eq(documentEmbeddings.embeddingModelId, config.embedding.modelId),
       ),
-    )
-    .orderBy(
-      sql`${documentEmbeddings.embedding} <=> (
-				SELECT AVG(de.embedding)
-				FROM document_embeddings de
-				WHERE de.chunk_id IN (${sql.join(
-          seedChunkIds.map((chunkId) => sql`${chunkId}`),
-          sql`, `,
-        )})
-			)`,
-    )
-    .limit(limit);
+    );
 
   if (rows.length === 0) return null;
 
   const results: KnowledgeSearchHit[] = [];
   for (const row of rows) {
-    if (!row.chunk.contentEncrypted) continue;
+    if (!row.chunk.contentEncrypted || !row.embedding.embeddingJson) continue;
+    if (row.embedding.embeddingJson.length !== queryResult.embedding.length) {
+      continue;
+    }
     const content = await decryptValue(row.chunk.contentEncrypted);
     results.push({
       documentId: row.document.id,
@@ -578,11 +617,37 @@ async function searchKnowledgeBaseByVector(input: {
       chunkId: row.chunk.id,
       chunkIndex: row.chunk.chunkIndex,
       content,
-      score: Number(row.similarity) || 0,
+      score: cosineSimilarity(
+        queryResult.embedding,
+        row.embedding.embeddingJson,
+      ),
     });
   }
-
-  return results.length > 0 ? results : null;
+  let ranked = results
+    .filter((hit) => hit.score >= config.retrieval.minimumScore)
+    .sort((left, right) => right.score - left.score)
+    .slice(0, config.retrieval.candidateCount);
+  const rerankingModel = await resolveRerankingModel(input.workspaceId, config);
+  if (rerankingModel && ranked.length > 0) {
+    const reranked = await rerank({
+      model: rerankingModel,
+      query: input.query,
+      documents: ranked.map((hit) => hit.content),
+      topN: Math.min(
+        input.limit ?? config.retrieval.resultCount,
+        ranked.length,
+      ),
+      maxRetries: 1,
+      abortSignal: AbortSignal.timeout(30_000),
+    });
+    ranked = reranked.ranking.map((entry) => ({
+      ...ranked[entry.originalIndex],
+      score: entry.score,
+    }));
+  }
+  return ranked.length > 0
+    ? ranked.slice(0, input.limit ?? config.retrieval.resultCount)
+    : null;
 }
 
 export async function searchKnowledgeBase(input: {
@@ -599,7 +664,18 @@ export async function searchKnowledgeBase(input: {
   );
   if (!knowledgeBase) throw new Error("Knowledge base not found");
 
-  const vectorHits = await searchKnowledgeBaseByVector(input);
+  let vectorHits: KnowledgeSearchHit[] | null = null;
+  try {
+    vectorHits = await searchKnowledgeBaseByVector({
+      ...input,
+      config: await effectiveRagConfig(knowledgeBase.ragConfigJson),
+    });
+  } catch (error) {
+    logger.warn("Vector knowledge search failed; using lexical fallback", {
+      knowledgeBaseId: input.knowledgeBaseId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
   if (vectorHits && vectorHits.length > 0) {
     return vectorHits;
   }
@@ -848,6 +924,57 @@ export async function processDocumentIngestion(documentId: string) {
     .select()
     .from(documentChunks)
     .where(eq(documentChunks.documentId, documentId));
+
+  const [knowledgeBase] = await db
+    .select()
+    .from(knowledgeBases)
+    .where(eq(knowledgeBases.id, document.knowledgeBaseId))
+    .limit(1);
+  const config = await effectiveRagConfig(knowledgeBase?.ragConfigJson);
+  const embeddingSelection = await resolveEmbeddingModel(
+    document.workspaceId,
+    config,
+  );
+
+  if (chunks.length > 0 && embeddingSelection) {
+    const values = await Promise.all(
+      chunks.map((chunk) =>
+        chunk.contentEncrypted
+          ? decryptValue(chunk.contentEncrypted)
+          : Promise.resolve(""),
+      ),
+    );
+    const result = await embedMany({
+      model: embeddingSelection.model,
+      values,
+      maxParallelCalls: 2,
+      maxRetries: 2,
+      abortSignal: AbortSignal.timeout(120_000),
+      providerOptions: config.embedding.dimensions
+        ? {
+            [embeddingSelection.model.provider]: {
+              dimensions: config.embedding.dimensions,
+            },
+          }
+        : undefined,
+    });
+    await db.transaction(async (tx) => {
+      await tx.delete(documentEmbeddings).where(
+        inArray(
+          documentEmbeddings.chunkId,
+          chunks.map((chunk) => chunk.id),
+        ),
+      );
+      await tx.insert(documentEmbeddings).values(
+        chunks.map((chunk, index) => ({
+          chunkId: chunk.id,
+          embeddingJson: result.embeddings[index],
+          embeddingDimensions: result.embeddings[index]?.length ?? null,
+          embeddingModelId: config.embedding.modelId,
+        })),
+      );
+    });
+  }
 
   await db
     .update(documents)

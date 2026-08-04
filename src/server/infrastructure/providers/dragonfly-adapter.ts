@@ -1,5 +1,5 @@
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-import type { LanguageModelV4 } from "@ai-sdk/provider";
+import type { EmbeddingModelV4, LanguageModelV4 } from "@ai-sdk/provider";
 import type {
   ProviderAdapter,
   ProviderRuntimeConfig,
@@ -398,5 +398,19 @@ export const dragonflyAdapter: ProviderAdapter = {
     });
 
     return provider.chatModel(modelId);
+  },
+
+  createEmbeddingModel(
+    config: ProviderRuntimeConfig,
+    modelId: string,
+  ): EmbeddingModelV4 {
+    const provider = createOpenAICompatible({
+      name: config.name || "dragonfly",
+      apiKey: getBearerApiKey(config),
+      baseURL: normalizeBaseUrl(config.baseUrl),
+      headers: buildHeaders(config),
+      queryParams: config.queryParams,
+    });
+    return provider.embeddingModel(modelId);
   },
 };

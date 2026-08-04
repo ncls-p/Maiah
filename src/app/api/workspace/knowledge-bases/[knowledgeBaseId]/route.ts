@@ -10,6 +10,7 @@ import {
   getKnowledgeBase,
   updateKnowledgeBase,
 } from "@/modules/knowledge/use-cases";
+import { ragConfigSchema } from "@/modules/knowledge/rag-config";
 
 const querySchema = z.object({ workspaceId: z.uuid() });
 const updateSchema = z.object({
@@ -17,6 +18,7 @@ const updateSchema = z.object({
   name: z.string().min(1).max(255).optional(),
   description: z.string().max(2048).optional(),
   isGlobal: z.boolean().optional(),
+  ragConfig: ragConfigSchema.nullable().optional(),
 });
 
 export async function GET(

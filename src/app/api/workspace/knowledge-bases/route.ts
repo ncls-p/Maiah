@@ -12,6 +12,7 @@ import {
   listKnowledgeBases,
 } from "@/modules/knowledge/use-cases";
 import { withResourceProvenance } from "@/modules/iam/resource-provenance";
+import { ragConfigSchema } from "@/modules/knowledge/rag-config";
 
 const querySchema = z.object({ workspaceId: z.uuid() });
 const createSchema = z.object({
@@ -19,6 +20,7 @@ const createSchema = z.object({
   name: z.string().min(1).max(255),
   description: z.string().max(2048).optional(),
   isGlobal: z.boolean().optional(),
+  ragConfig: ragConfigSchema.optional(),
 });
 
 export async function GET(req: NextRequest) {

@@ -415,11 +415,9 @@ describe("searchKnowledgeBase", () => {
 		// Q1: getKnowledgeBase → limit
 		dbModule._c.limit.mockResolvedValueOnce([fakeKb]);
 
-		// knowledgeBaseHasEmbeddings: innerJoin.innerJoin.where() → where terminal
 		// searchKnowledgeBaseByKeyword: innerJoin.where() → where terminal
 		dbModule._c.where
 			.mockReturnValueOnce(dbModule._c) // getKb .where → chains to limit
-			.mockResolvedValueOnce([{ count: 0 }]) // hasEmbeddings (where terminal)
 			.mockResolvedValueOnce([]); // keyword search rows (where terminal)
 
 		const result = await searchKnowledgeBase({
@@ -444,7 +442,6 @@ describe("searchKnowledgeBase", () => {
 
 		dbModule._c.where
 			.mockReturnValueOnce(dbModule._c) // getKb where → chains to limit
-			.mockResolvedValueOnce([{ count: 0 }]) // no embeddings
 			.mockResolvedValueOnce([row]); // keyword search results
 
 		const result = await searchKnowledgeBase({

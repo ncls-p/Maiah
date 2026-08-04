@@ -55,6 +55,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { fetchWorkspacePermissions } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
+import type { RagConfig } from "@/modules/knowledge/rag-config";
 
 interface KnowledgeBase {
   id: string;
@@ -64,6 +65,8 @@ interface KnowledgeBase {
   canEdit: boolean;
   createdAt: string;
   provenance: ResourceProvenance;
+  effectiveRagConfig: RagConfig;
+  usesDefaultRagConfig: boolean;
 }
 interface DocumentRow {
   id: string;
@@ -125,6 +128,8 @@ export default function KnowledgePage() {
     name: "",
     description: "",
     isGlobal: false,
+    customizeRag: false,
+    ragConfig: null as RagConfig | null,
   });
   const [attachOpen, setAttachOpen] = useState(false);
   const [attachAgents, setAttachAgents] = useState<KnowledgeAgent[]>([]);
@@ -407,6 +412,9 @@ export default function KnowledgePage() {
             isGlobal: canManageTenantGlobals
               ? editBaseForm.isGlobal
               : undefined,
+            ragConfig: editBaseForm.customizeRag
+              ? editBaseForm.ragConfig
+              : null,
           }),
         },
       );
@@ -684,6 +692,8 @@ export default function KnowledgePage() {
                             name: base.name,
                             description: base.description ?? "",
                             isGlobal: base.isGlobal,
+                            customizeRag: !base.usesDefaultRagConfig,
+                            ragConfig: base.effectiveRagConfig,
                           });
                         }}
                       >
@@ -1020,6 +1030,198 @@ export default function KnowledgePage() {
                     </div>
                   </div>
                 ) : null}
+                <AdvancedSection
+                  label={t("ragAdvanced")}
+                  hint={t("ragAdvancedHint")}
+                  storageKey="advanced:knowledge-rag-config"
+                >
+                  <div className="grid gap-4">
+                    <div className="flex items-start gap-3 rounded-lg border bg-muted/20 p-3">
+                      <Checkbox
+                        id="edit-knowledge-custom-rag"
+                        checked={editBaseForm.customizeRag}
+                        onCheckedChange={(checked) =>
+                          setEditBaseForm({
+                            ...editBaseForm,
+                            customizeRag: checked === true,
+                          })
+                        }
+                      />
+                      <div className="grid gap-1.5">
+                        <Label htmlFor="edit-knowledge-custom-rag">
+                          {t("ragCustomLabel")}
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          {t("ragCustomHint")}
+                        </p>
+                      </div>
+                    </div>
+                    {editBaseForm.customizeRag && editBaseForm.ragConfig ? (
+                      <div className="grid gap-4">
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div className="grid gap-1.5">
+                            <Label htmlFor="edit-rag-embedding-model">
+                              {t("ragEmbeddingModel")}
+                            </Label>
+                            <Input
+                              id="edit-rag-embedding-model"
+                              value={editBaseForm.ragConfig.embedding.modelId}
+                              onChange={(event) =>
+                                setEditBaseForm({
+                                  ...editBaseForm,
+                                  ragConfig: {
+                                    ...editBaseForm.ragConfig!,
+                                    embedding: {
+                                      ...editBaseForm.ragConfig!.embedding,
+                                      modelId: event.target.value,
+                                    },
+                                  },
+                                })
+                              }
+                            />
+                          </div>
+                          <div className="grid gap-1.5">
+                            <Label htmlFor="edit-rag-provider">
+                              {t("ragProvider")}
+                            </Label>
+                            <Input
+                              id="edit-rag-provider"
+                              value={
+                                editBaseForm.ragConfig.embedding.providerId ??
+                                ""
+                              }
+                              onChange={(event) =>
+                                setEditBaseForm({
+                                  ...editBaseForm,
+                                  ragConfig: {
+                                    ...editBaseForm.ragConfig!,
+                                    embedding: {
+                                      ...editBaseForm.ragConfig!.embedding,
+                                      providerId: event.target.value || null,
+                                    },
+                                  },
+                                })
+                              }
+                              placeholder={t("ragAutoProvider")}
+                            />
+                          </div>
+                        </div>
+                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                          {(
+                            [
+                              [
+                                "ragChunkSize",
+                                "maxCharacters",
+                                editBaseForm.ragConfig.chunking.maxCharacters,
+                              ],
+                              [
+                                "ragChunkOverlap",
+                                "overlapCharacters",
+                                editBaseForm.ragConfig.chunking
+                                  .overlapCharacters,
+                              ],
+                              [
+                                "ragCandidates",
+                                "candidateCount",
+                                editBaseForm.ragConfig.retrieval.candidateCount,
+                              ],
+                              [
+                                "ragResults",
+                                "resultCount",
+                                editBaseForm.ragConfig.retrieval.resultCount,
+                              ],
+                            ] as const
+                          ).map(([label, key, value]) => (
+                            <div className="grid gap-1.5" key={key}>
+                              <Label htmlFor={`edit-rag-${key}`}>
+                                {t(label)}
+                              </Label>
+                              <Input
+                                id={`edit-rag-${key}`}
+                                type="number"
+                                value={value}
+                                onChange={(event) => {
+                                  const next = Number(event.target.value);
+                                  if (!Number.isFinite(next)) return;
+                                  const ragConfig = editBaseForm.ragConfig!;
+                                  setEditBaseForm({
+                                    ...editBaseForm,
+                                    ragConfig:
+                                      key === "maxCharacters" ||
+                                      key === "overlapCharacters"
+                                        ? {
+                                            ...ragConfig,
+                                            chunking: {
+                                              ...ragConfig.chunking,
+                                              [key]: next,
+                                            },
+                                          }
+                                        : {
+                                            ...ragConfig,
+                                            retrieval: {
+                                              ...ragConfig.retrieval,
+                                              [key]: next,
+                                            },
+                                          },
+                                  });
+                                }}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                        <div className="grid gap-3 rounded-lg border p-3 sm:grid-cols-[auto_1fr] sm:items-end">
+                          <div className="flex items-center gap-2 pb-2">
+                            <Checkbox
+                              id="edit-rag-reranking"
+                              checked={editBaseForm.ragConfig.reranking.enabled}
+                              onCheckedChange={(checked) => {
+                                const ragConfig = editBaseForm.ragConfig!;
+                                setEditBaseForm({
+                                  ...editBaseForm,
+                                  ragConfig: {
+                                    ...ragConfig,
+                                    reranking: {
+                                      ...ragConfig.reranking,
+                                      enabled: checked === true,
+                                    },
+                                  },
+                                });
+                              }}
+                            />
+                            <Label htmlFor="edit-rag-reranking">
+                              {t("ragReranking")}
+                            </Label>
+                          </div>
+                          <div className="grid gap-1.5">
+                            <Label htmlFor="edit-rag-reranking-model">
+                              {t("ragRerankingModel")}
+                            </Label>
+                            <Input
+                              id="edit-rag-reranking-model"
+                              disabled={
+                                !editBaseForm.ragConfig.reranking.enabled
+                              }
+                              value={editBaseForm.ragConfig.reranking.modelId}
+                              onChange={(event) => {
+                                const ragConfig = editBaseForm.ragConfig!;
+                                setEditBaseForm({
+                                  ...editBaseForm,
+                                  ragConfig: {
+                                    ...ragConfig,
+                                    reranking: {
+                                      ...ragConfig.reranking,
+                                      modelId: event.target.value,
+                                    },
+                                  },
+                                });
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                </AdvancedSection>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setEditingBase(null)}>

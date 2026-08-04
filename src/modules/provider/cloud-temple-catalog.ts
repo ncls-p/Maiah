@@ -76,6 +76,8 @@ export function enrichCloudTempleModel(
   const energyKwhPerMillionTokens =
     ENERGY_KWH_PER_MILLION_TOKENS[model.modelId];
   const isImageModel = model.modelId === "z-image:16b";
+  const isEmbeddingModel =
+    model.modelId.includes("embedding") || model.modelId === "bge-m3:567m";
   const sustainability =
     model.sustainability?.energyKwhPerMillionTokens !== undefined ||
     model.sustainability?.co2GramsPerMillionTokens !== undefined
@@ -93,7 +95,8 @@ export function enrichCloudTempleModel(
     capabilities: {
       ...model.capabilities,
       imageGeneration: isImageModel,
-      text: isImageModel ? false : model.capabilities.text,
+      embeddings: isEmbeddingModel,
+      text: isImageModel || isEmbeddingModel ? false : model.capabilities.text,
     },
     inputTokenCost: isImageModel
       ? model.inputTokenCost
