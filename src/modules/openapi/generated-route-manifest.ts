@@ -1607,6 +1607,20 @@ export const OPENAPI_ROUTE_MANIFEST = [
   },
   {
     path: "/api/workspace/knowledge-bases/{knowledgeBaseId}/documents/{documentId}",
+    method: "GET",
+    operationId: "getWorkspaceKnowledgeBasesKnowledgeBaseIdDocumentsDocumentId",
+    summary:
+      "Read workspace · knowledge-bases · {knowledgeBaseId} · documents · {documentId}",
+    tag: "knowledge-bases",
+    auth: ["session", "apiKey"],
+    permissions: ["knowledgeBases.manage"],
+    pathParameters: ["knowledgeBaseId", "documentId"],
+    queryParameters: ["workspaceId"],
+    bodyKind: "none",
+    responseKind: "json",
+  },
+  {
+    path: "/api/workspace/knowledge-bases/{knowledgeBaseId}/documents/{documentId}",
     method: "PATCH",
     operationId:
       "patchWorkspaceKnowledgeBasesKnowledgeBaseIdDocumentsDocumentId",
