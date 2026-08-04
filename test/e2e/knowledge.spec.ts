@@ -69,4 +69,55 @@ test.describe("knowledge bases", () => {
     await deleteDialog.getByRole("button", { name: /^Delete$/i }).click();
     await expect(baseButton).not.toBeVisible({ timeout: 15_000 });
   });
+
+  test("uploads several RAG files and displays per-document progress", async ({
+    page,
+  }) => {
+    await page.goto("/en/knowledge");
+    const testBaseName = `E2E uploads ${Date.now()}`;
+    const createBtn = page
+      .getByRole("button", {
+        name: /^(?:New collection|Create a collection)$/i,
+      })
+      .first();
+    await createBtn.click();
+    const createDialog = page.getByRole("dialog");
+    await createDialog.getByLabel(/^Name$/i).fill(testBaseName);
+    await createDialog.getByRole("button", { name: /^Create$/i }).click();
+
+    await page.locator("#knowledge-file-upload").setInputFiles([
+      {
+        name: "people.csv",
+        mimeType: "text/csv",
+        buffer: Buffer.from("name,role\nAda,Engineer"),
+      },
+      {
+        name: "notes.md",
+        mimeType: "text/markdown",
+        buffer: Buffer.from("# Notes\n\nKnowledge context"),
+      },
+    ]);
+
+    await expect(page.getByText("people.csv", { exact: true })).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(page.getByText("notes.md", { exact: true })).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(
+      page.getByRole("progressbar", {
+        name: "Processing progress for people.csv",
+      }),
+    ).toHaveAttribute("aria-valuenow", /(?:20|[3-9]\d|100)/);
+
+    const baseButton = page.getByRole("button", {
+      name: new RegExp(`${testBaseName} Private$`),
+    });
+    await baseButton.hover();
+    await page.getByRole("button", { name: `Delete ${testBaseName}` }).click();
+    await page
+      .getByRole("alertdialog")
+      .getByRole("button", { name: /^Delete$/i })
+      .click();
+  });
 });

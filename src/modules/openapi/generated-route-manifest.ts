@@ -1587,7 +1587,7 @@ export const OPENAPI_ROUTE_MANIFEST = [
     permissions: ["knowledgeBases.manage", "roles.manage"],
     pathParameters: ["knowledgeBaseId"],
     queryParameters: [],
-    bodyKind: "json",
+    bodyKind: "multipart",
     responseKind: "json",
   },
   {
@@ -1597,6 +1597,21 @@ export const OPENAPI_ROUTE_MANIFEST = [
       "deleteWorkspaceKnowledgeBasesKnowledgeBaseIdDocumentsDocumentId",
     summary:
       "Delete workspace · knowledge-bases · {knowledgeBaseId} · documents · {documentId}",
+    tag: "knowledge-bases",
+    auth: ["session", "apiKey"],
+    permissions: ["knowledgeBases.manage", "roles.manage"],
+    pathParameters: ["knowledgeBaseId", "documentId"],
+    queryParameters: ["workspaceId"],
+    bodyKind: "none",
+    responseKind: "json",
+  },
+  {
+    path: "/api/workspace/knowledge-bases/{knowledgeBaseId}/documents/{documentId}",
+    method: "PATCH",
+    operationId:
+      "patchWorkspaceKnowledgeBasesKnowledgeBaseIdDocumentsDocumentId",
+    summary:
+      "Update workspace · knowledge-bases · {knowledgeBaseId} · documents · {documentId}",
     tag: "knowledge-bases",
     auth: ["session", "apiKey"],
     permissions: ["knowledgeBases.manage", "roles.manage"],

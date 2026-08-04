@@ -1093,7 +1093,43 @@ jobs:
           echo "Using SearXNG image ${AI_HUB_SEARXNG_IMAGE}"
           echo "Using sandbox runner image ${AI_HUB_SANDBOX_IMAGE}"
           echo "Using ServiceNow MCP gateway image ${AI_HUB_SERVICENOW_MCP_GATEWAY_IMAGE}"
-          api GET "/deploy?uuid=${SERVICE_UUID}&force=true" >/dev/null
+          DEPLOY_RESPONSE="$(api GET "/deploy?uuid=${SERVICE_UUID}&force=true")"
+          DEPLOYMENT_UUID="$(
+            jq -r '.deployment_uuid // .deployments[0].deployment_uuid // empty' \
+              <<<"${DEPLOY_RESPONSE}"
+          )"
+          if [[ -z "${DEPLOYMENT_UUID}" ]]; then
+            echo "Coolify did not return a deployment UUID." >&2
+            jq . <<<"${DEPLOY_RESPONSE}" >&2
+            exit 1
+          fi
+
+          echo "Waiting for Coolify deployment ${DEPLOYMENT_UUID}"
+          deployment_finished=false
+          for attempt in $(seq 1 120); do
+            DEPLOYMENT_JSON="$(api GET "/deployments/${DEPLOYMENT_UUID}")"
+            DEPLOYMENT_STATUS="$(jq -r '.status // "unknown"' <<<"${DEPLOYMENT_JSON}")"
+            case "${DEPLOYMENT_STATUS}" in
+              finished)
+                deployment_finished=true
+                break
+                ;;
+              failed|cancelled|canceled)
+                echo "Coolify deployment ${DEPLOYMENT_UUID} ended with ${DEPLOYMENT_STATUS}." >&2
+                jq -r '.logs // empty' <<<"${DEPLOYMENT_JSON}" >&2
+                exit 1
+                ;;
+            esac
+            if (( attempt == 1 || attempt % 6 == 0 )); then
+              echo "Coolify deployment status: ${DEPLOYMENT_STATUS}" >&2
+            fi
+            sleep 10
+          done
+          if [[ "${deployment_finished}" != "true" ]]; then
+            echo "Coolify deployment ${DEPLOYMENT_UUID} did not finish in time." >&2
+            jq -r '.logs // empty' <<<"${DEPLOYMENT_JSON}" >&2
+            exit 1
+          fi
 
           long_running='["app", "worker", "rustfs", "dragonflydb", "searxng", "sandbox-runner", "servicenow-mcp-gateway"]'
           success=false
@@ -1145,6 +1181,7 @@ jobs:
             echo "- Environment: \`${TARGET_ENV_NAME}\`"
             echo "- Service: \`${COOLIFY_SERVICE_NAME}\`"
             echo "- Service UUID: \`${SERVICE_UUID}\`"
+            echo "- Deployment UUID: \`${DEPLOYMENT_UUID}\`"
             echo "- Public URL: ${AI_HUB_PUBLIC_URL}"
             echo "- App image: \`${AI_HUB_APP_IMAGE}\`"
             echo "- Worker image: \`${AI_HUB_WORKER_IMAGE}\`"

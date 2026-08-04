@@ -47,22 +47,14 @@ type ChatImageAttachmentMetadata = ChatImageAttachment &
 export type ChatFileAttachmentMetadata = ChatFileAttachment &
   ChatAttachmentMetadataFields;
 export type ChatAttachmentMetadata =
-  | ChatImageAttachmentMetadata
-  | ChatFileAttachmentMetadata;
+  ChatImageAttachmentMetadata | ChatFileAttachmentMetadata;
 
 type AttachmentDetection = {
   mimeType: string;
   extension: string;
   category: ChatFileAttachment["category"];
   textKind:
-    | "text"
-    | "markdown"
-    | "pdf"
-    | "docx"
-    | "pptx"
-    | "xlsx"
-    | "rtf"
-    | "none";
+    "text" | "markdown" | "pdf" | "docx" | "pptx" | "xlsx" | "rtf" | "none";
 };
 
 type ExtractedText = {
@@ -1130,6 +1122,40 @@ async function extractAttachmentText(input: {
     status: "unreadable",
     message:
       "This file type was uploaded safely, but no text reader is available for it yet.",
+  };
+}
+
+export type ExtractedUploadedFile = {
+  text: string;
+  mimeType: string;
+  extension: string;
+  status: ChatFileAttachment["extractionStatus"];
+  message?: string;
+};
+
+/** Extract a supported upload without persisting it as a chat attachment. */
+export async function extractUploadedFileText(input: {
+  fileName: string;
+  mimeType?: string;
+  bytes: Uint8Array;
+}): Promise<ExtractedUploadedFile> {
+  assertAttachmentHasContent(input.bytes);
+  if (input.bytes.byteLength > maxChatAttachmentBytes) {
+    throw new Error("File is too large. Maximum size is 25 MB.");
+  }
+  const detection = detectAttachment({
+    fileName: input.fileName,
+    declaredMimeType: input.mimeType,
+    bytes: input.bytes,
+  });
+  const extracted = await extractAttachmentText({
+    bytes: input.bytes,
+    detection,
+  });
+  return {
+    ...extracted,
+    mimeType: detection.mimeType,
+    extension: detection.extension,
   };
 }
 

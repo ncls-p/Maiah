@@ -9,6 +9,7 @@ import {
   ingestTextDocument,
   listDocuments,
 } from "@/modules/knowledge/use-cases";
+import { extractKnowledgeUploads } from "@/modules/knowledge/file-ingestion";
 
 const querySchema = z.object({ workspaceId: z.uuid() });
 const createSchema = z.object({
@@ -72,6 +73,76 @@ export async function POST(
   return handleRoute(
     req,
     async ({ session }) => {
+      const { knowledgeBaseId } = await params;
+      const isMultipart = req.headers
+        .get("content-type")
+        ?.toLowerCase()
+        .startsWith("multipart/form-data");
+      if (isMultipart) {
+        const form = await req.formData();
+        const workspaceId = z.uuid().safeParse(form.get("workspaceId"));
+        const uploads = form
+          .getAll("files")
+          .filter((value): value is File => value instanceof File);
+        if (!workspaceId.success || uploads.length === 0) {
+          return NextResponse.json(
+            { error: "Invalid upload" },
+            { status: 400 },
+          );
+        }
+        const forbidden = await requireResourcePermissionAsync(
+          session.user.id,
+          workspaceId.data,
+          "knowledgeBases.manage",
+          "knowledge_base",
+          knowledgeBaseId,
+        );
+        if (forbidden) return forbidden;
+        const canManageGlobal = await canManageTenantGlobals(
+          session,
+          workspaceId.data,
+        );
+        let extracted: Awaited<ReturnType<typeof extractKnowledgeUploads>>;
+        try {
+          extracted = await extractKnowledgeUploads(
+            await Promise.all(
+              uploads.map(async (file) => ({
+                fileName: file.name,
+                mimeType: file.type || undefined,
+                bytes: new Uint8Array(await file.arrayBuffer()),
+              })),
+            ),
+          );
+        } catch (error) {
+          return NextResponse.json(
+            {
+              error:
+                error instanceof Error ? error.message : "Invalid upload batch",
+            },
+            { status: 400 },
+          );
+        }
+        const documents = [];
+        for (const file of extracted.files) {
+          documents.push(
+            await ingestTextDocument({
+              workspaceId: workspaceId.data,
+              knowledgeBaseId,
+              userId: session.user.id,
+              canManageGlobal,
+              title: file.title,
+              content: file.content,
+              sourceType: "upload",
+              mimeType: file.mimeType,
+            }),
+          );
+        }
+        return NextResponse.json(
+          { documents, rejected: extracted.rejected },
+          { status: extracted.rejected.length > 0 ? 207 : 201 },
+        );
+      }
+
       const parsed = createSchema.safeParse(await req.json());
       if (!parsed.success)
         return NextResponse.json(
@@ -83,10 +154,9 @@ export async function POST(
         parsed.data.workspaceId,
         "knowledgeBases.manage",
         "knowledge_base",
-        (await params).knowledgeBaseId,
+        knowledgeBaseId,
       );
       if (forbidden) return forbidden;
-      const { knowledgeBaseId } = await params;
       const canManageGlobal = await canManageTenantGlobals(
         session,
         parsed.data.workspaceId,

@@ -3,10 +3,16 @@ import { Worker } from "bullmq";
 import { env } from "@/lib/env";
 import { logger, logHandledError } from "@/lib/logger";
 import {
-  dequeueDocumentIngestionJob,
   listProcessingDocuments,
+  markDocumentIngestionFailed,
   processDocumentIngestion,
+  recordDocumentIngestionAttemptFailure,
 } from "@/modules/knowledge/use-cases";
+import {
+  DOCUMENT_INGESTION_QUEUE_NAME,
+  recoverDocumentIngestionJob,
+  type DocumentIngestionJob,
+} from "@/modules/knowledge/queue";
 import { syncMcpTools } from "@/modules/mcp/use-cases";
 import { processDueScheduledTasks } from "@/modules/scheduled-tasks/use-cases";
 import {
@@ -61,36 +67,39 @@ async function drainQueues() {
     }
   }
 
-  const ingestionJob = dequeueDocumentIngestionJob();
-  if (ingestionJob) {
-    try {
-      await processDocumentIngestion(ingestionJob.documentId);
-    } catch (error) {
-      logHandledError("Document ingestion failed", {
-        documentId: ingestionJob.documentId,
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
-  }
-
-  const pendingDocuments = await listProcessingDocuments();
-  for (const document of pendingDocuments) {
-    try {
-      await processDocumentIngestion(document.id);
-    } catch (error) {
-      logHandledError("Document ingestion failed", {
-        documentId: document.id,
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
-  }
-
   try {
     await processDueScheduledTasks();
   } catch (error) {
     logHandledError("Scheduled task drain failed", {
       error: error instanceof Error ? error.message : String(error),
     });
+  }
+}
+
+async function recoverDocumentIngestionJobs() {
+  let pendingDocuments: Awaited<ReturnType<typeof listProcessingDocuments>>;
+  try {
+    pendingDocuments = await listProcessingDocuments(100);
+  } catch (error) {
+    logHandledError("Failed to list processing documents", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return;
+  }
+
+  for (const document of pendingDocuments) {
+    try {
+      await recoverDocumentIngestionJob({
+        documentId: document.id,
+        workspaceId: document.workspaceId,
+        knowledgeBaseId: document.knowledgeBaseId,
+      });
+    } catch (error) {
+      logHandledError("Failed to recover document ingestion job", {
+        documentId: document.id,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
   }
 }
 
@@ -133,6 +142,58 @@ async function main() {
       concurrency: 4,
     },
   );
+  const documentWorker = new Worker<DocumentIngestionJob>(
+    DOCUMENT_INGESTION_QUEUE_NAME,
+    async (job) => {
+      try {
+        await processDocumentIngestion(job.data.documentId);
+      } catch (error) {
+        const maxAttempts = job.opts.attempts ?? 1;
+        const isFinalAttempt = job.attemptsMade + 1 >= maxAttempts;
+        if (isFinalAttempt) {
+          await markDocumentIngestionFailed(job.data.documentId, error);
+        } else {
+          await recordDocumentIngestionAttemptFailure(
+            job.data.documentId,
+            error,
+          );
+        }
+        throw error;
+      }
+    },
+    {
+      connection: workflowQueueConnection(),
+      concurrency: 2,
+      maxStalledCount: 2,
+    },
+  );
+  documentWorker.on("failed", (job, error) => {
+    const maxAttempts = job?.opts.attempts ?? 1;
+    if (job && job.attemptsMade >= maxAttempts) {
+      void markDocumentIngestionFailed(job.data.documentId, error).catch(
+        (updateError) => {
+          logHandledError("Failed to persist document ingestion failure", {
+            documentId: job.data.documentId,
+            error:
+              updateError instanceof Error
+                ? updateError.message
+                : String(updateError),
+          });
+        },
+      );
+    }
+    logHandledError("Document ingestion attempt failed", {
+      documentId: job?.data.documentId,
+      attemptsMade: job?.attemptsMade,
+      maxAttempts,
+      error: error.message,
+    });
+  });
+  documentWorker.on("error", (error) => {
+    logHandledError("Document ingestion queue worker error", {
+      error: error.message,
+    });
+  });
   workflowWorker.on("failed", (job, error) => {
     logHandledError("Workflow run job failed", {
       runId: job?.data.runId,
@@ -145,6 +206,7 @@ async function main() {
   });
 
   await recoverQueuedWorkflowRuns();
+  await recoverDocumentIngestionJobs();
 
   const server = http.createServer((req, res) => {
     if (req.url === "/health") {
@@ -166,13 +228,20 @@ async function main() {
   const workflowRecoveryInterval = setInterval(() => {
     void recoverQueuedWorkflowRuns();
   }, 30_000);
+  const documentRecoveryInterval = setInterval(() => {
+    void recoverDocumentIngestionJobs();
+  }, 30_000);
 
   process.on("SIGTERM", () => {
     logger.info("Worker received SIGTERM, shutting down gracefully...");
     clearInterval(interval);
     clearInterval(workflowRecoveryInterval);
+    clearInterval(documentRecoveryInterval);
     server.close(() => {
-      void workflowWorker.close().finally(() => process.exit(0));
+      void Promise.all([
+        workflowWorker.close(),
+        documentWorker.close(),
+      ]).finally(() => process.exit(0));
     });
   });
 
@@ -180,8 +249,12 @@ async function main() {
     logger.info("Worker received SIGINT, shutting down gracefully...");
     clearInterval(interval);
     clearInterval(workflowRecoveryInterval);
+    clearInterval(documentRecoveryInterval);
     server.close(() => {
-      void workflowWorker.close().finally(() => process.exit(0));
+      void Promise.all([
+        workflowWorker.close(),
+        documentWorker.close(),
+      ]).finally(() => process.exit(0));
     });
   });
 }

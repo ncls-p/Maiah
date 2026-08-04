@@ -78,6 +78,10 @@ export const documents = pgTable(
     objectStorageKey: text("object_storage_key"),
     mimeType: varchar("mime_type", { length: 128 }),
     status: documentStatusEnum(STATUS_COLUMN).notNull().default("pending"),
+    processingProgress: integer("processing_progress").notNull().default(0),
+    processingStage: varchar("processing_stage", { length: 32 })
+      .notNull()
+      .default("queued"),
     errorMessage: text("error_message"),
     createdById: uuid(CREATED_BY_USER_ID_COLUMN)
       .notNull()

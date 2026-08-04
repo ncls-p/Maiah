@@ -2,6 +2,10 @@ import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { cosineSimilarity, embed, embedMany, rerank } from "ai";
 import { encryptValue, decryptValue } from "@/lib/crypto";
 import { logger } from "@/lib/logger";
+import {
+  enqueueDocumentIngestion,
+  recoverDocumentIngestionJob,
+} from "@/modules/knowledge/queue";
 import { audit } from "@/server/domain/services/audit";
 import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
@@ -339,7 +343,8 @@ export async function ingestTextDocument(input: {
   userId: string;
   title: string;
   content: string;
-  sourceType?: "text" | "url";
+  sourceType?: "text" | "url" | "upload";
+  mimeType?: string;
   canManageGlobal?: boolean;
 }) {
   const knowledgeBase = await getKnowledgeBase(
@@ -363,8 +368,10 @@ export async function ingestTextDocument(input: {
         knowledgeBaseId: input.knowledgeBaseId,
         title: input.title,
         sourceType: input.sourceType ?? "text",
-        mimeType: "text/plain",
+        mimeType: input.mimeType ?? "text/plain",
         status: "processing",
+        processingProgress: 20,
+        processingStage: "chunked",
         createdById: input.userId,
       })
       .returning();
@@ -388,6 +395,8 @@ export async function ingestTextDocument(input: {
         .update(documents)
         .set({
           status: "failed",
+          processingProgress: 100,
+          processingStage: "failed",
           errorMessage: "Document was empty",
           updatedAt: new Date(),
         })
@@ -411,16 +420,16 @@ export async function ingestTextDocument(input: {
   });
 
   if (document.status === "processing") {
-    enqueueDocumentIngestion({
-      documentId: document.id,
-      workspaceId: input.workspaceId,
-      knowledgeBaseId: input.knowledgeBaseId,
-    });
     try {
-      await processDocumentIngestion(document.id);
+      await enqueueDocumentIngestion({
+        documentId: document.id,
+        workspaceId: input.workspaceId,
+        knowledgeBaseId: input.knowledgeBaseId,
+      });
     } catch (error) {
-      // Queue state remains processing so the worker can retry ingestion later.
-      logger.warn("Document ingestion will be retried by the worker", {
+      // PostgreSQL remains the source of truth. The worker periodically
+      // reconciles processing rows, so a temporary Redis outage loses no job.
+      logger.warn("Document ingestion will be recovered by the worker", {
         documentId: document.id,
         error: error instanceof Error ? error.message : String(error),
       });
@@ -442,15 +451,39 @@ export async function listDocuments(
   );
   if (!knowledgeBase) throw new Error("Knowledge base not found");
   return db
-    .select()
+    .select({
+      document: documents,
+      chunkCount: sql<number>`count(distinct ${documentChunks.id})::int`,
+      embeddingCount: sql<number>`count(distinct ${documentEmbeddings.id})::int`,
+    })
     .from(documents)
+    .leftJoin(documentChunks, eq(documentChunks.documentId, documents.id))
+    .leftJoin(
+      documentEmbeddings,
+      eq(documentEmbeddings.chunkId, documentChunks.id),
+    )
     .where(
       and(
         eq(documents.knowledgeBaseId, knowledgeBaseId),
         eq(documents.workspaceId, workspaceId),
       ),
     )
-    .orderBy(sql`${documents.createdAt} DESC`);
+    .groupBy(documents.id)
+    .orderBy(sql`${documents.createdAt} DESC`)
+    .then((rows) =>
+      rows.map(({ document, chunkCount, embeddingCount }) => ({
+        ...document,
+        processingProgress:
+          document.status === "ready" || document.status === "failed"
+            ? 100
+            : chunkCount > 0 && embeddingCount > 0
+              ? Math.max(
+                  document.processingProgress,
+                  20 + Math.round((embeddingCount / chunkCount) * 75),
+                )
+              : document.processingProgress,
+      })),
+    );
 }
 
 export async function archiveDocument(input: {
@@ -497,6 +530,65 @@ export async function archiveDocument(input: {
     outcome: "success",
     metadata: { documentId: input.documentId, title: document.title },
   });
+}
+
+export async function retryDocumentIngestion(input: {
+  documentId: string;
+  knowledgeBaseId: string;
+  workspaceId: string;
+  userId: string;
+  canManageGlobal?: boolean;
+}) {
+  const knowledgeBase = await getKnowledgeBase(
+    input.knowledgeBaseId,
+    input.workspaceId,
+  );
+  if (!knowledgeBase) throw new Error("Knowledge base not found");
+  await assertCanManageKnowledgeBase(
+    knowledgeBase,
+    input.userId,
+    input.canManageGlobal,
+  );
+
+  const [document] = await db
+    .select()
+    .from(documents)
+    .where(
+      and(
+        eq(documents.id, input.documentId),
+        eq(documents.knowledgeBaseId, input.knowledgeBaseId),
+        eq(documents.workspaceId, input.workspaceId),
+      ),
+    )
+    .limit(1);
+  if (!document) throw new Error("Document not found");
+  if (document.status !== "failed") {
+    throw new Error("Only failed documents can be retried");
+  }
+
+  await db
+    .update(documents)
+    .set({
+      status: "processing",
+      processingProgress: Math.min(document.processingProgress, 20),
+      processingStage: "queued",
+      errorMessage: null,
+      updatedAt: new Date(),
+    })
+    .where(eq(documents.id, input.documentId));
+
+  try {
+    await recoverDocumentIngestionJob({
+      documentId: document.id,
+      workspaceId: document.workspaceId,
+      knowledgeBaseId: document.knowledgeBaseId,
+    });
+  } catch (error) {
+    logger.warn("Document retry will be recovered by the worker", {
+      documentId: document.id,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
 }
 
 export function scoreContent(content: string, query: string) {
@@ -883,32 +975,53 @@ export async function searchBoundKnowledgeBases(input: {
     .slice(0, input.limit ?? 5);
 }
 
-const ingestionQueue: Array<{
-  documentId: string;
-  workspaceId: string;
-  knowledgeBaseId: string;
-}> = [];
-
-export function enqueueDocumentIngestion(input: {
-  documentId: string;
-  workspaceId: string;
-  knowledgeBaseId: string;
-}) {
-  ingestionQueue.push(input);
-  return { queued: true, documentId: input.documentId };
-}
-
-export function dequeueDocumentIngestionJob() {
-  return ingestionQueue.shift() ?? null;
-}
-
 export async function listProcessingDocuments(limit = 5) {
   const processingDocuments = await db
-    .select({ id: documents.id })
+    .select({
+      id: documents.id,
+      workspaceId: documents.workspaceId,
+      knowledgeBaseId: documents.knowledgeBaseId,
+    })
     .from(documents)
     .where(eq(documents.status, "processing"))
     .limit(limit);
   return processingDocuments;
+}
+
+export async function recordDocumentIngestionAttemptFailure(
+  documentId: string,
+  error: unknown,
+) {
+  const message = error instanceof Error ? error.message : String(error);
+  await db
+    .update(documents)
+    .set({
+      processingStage: "retrying",
+      errorMessage: message.slice(0, 4_000),
+      updatedAt: new Date(),
+    })
+    .where(
+      and(eq(documents.id, documentId), eq(documents.status, "processing")),
+    );
+}
+
+export async function markDocumentIngestionFailed(
+  documentId: string,
+  error: unknown,
+) {
+  const message = error instanceof Error ? error.message : String(error);
+  await db
+    .update(documents)
+    .set({
+      status: "failed",
+      processingProgress: 100,
+      processingStage: "failed",
+      errorMessage: message.slice(0, 4_000),
+      updatedAt: new Date(),
+    })
+    .where(
+      and(eq(documents.id, documentId), eq(documents.status, "processing")),
+    );
 }
 
 export async function processDocumentIngestion(documentId: string) {
@@ -937,49 +1050,66 @@ export async function processDocumentIngestion(documentId: string) {
   );
 
   if (chunks.length > 0 && embeddingSelection) {
-    const values = await Promise.all(
-      chunks.map((chunk) =>
-        chunk.contentEncrypted
-          ? decryptValue(chunk.contentEncrypted)
-          : Promise.resolve(""),
+    await db
+      .update(documents)
+      .set({ processingStage: "embedding", processingProgress: 20 })
+      .where(eq(documents.id, documentId));
+    await db.delete(documentEmbeddings).where(
+      inArray(
+        documentEmbeddings.chunkId,
+        chunks.map((chunk) => chunk.id),
       ),
     );
-    const result = await embedMany({
-      model: embeddingSelection.model,
-      values,
-      maxParallelCalls: 2,
-      maxRetries: 2,
-      abortSignal: AbortSignal.timeout(120_000),
-      providerOptions: config.embedding.dimensions
-        ? {
-            [embeddingSelection.model.provider]: {
-              dimensions: config.embedding.dimensions,
-            },
-          }
-        : undefined,
-    });
-    await db.transaction(async (tx) => {
-      await tx.delete(documentEmbeddings).where(
-        inArray(
-          documentEmbeddings.chunkId,
-          chunks.map((chunk) => chunk.id),
+
+    const batchSize = 16;
+    for (let offset = 0; offset < chunks.length; offset += batchSize) {
+      const batch = chunks.slice(offset, offset + batchSize);
+      const values = await Promise.all(
+        batch.map((chunk) =>
+          chunk.contentEncrypted
+            ? decryptValue(chunk.contentEncrypted)
+            : Promise.resolve(""),
         ),
       );
-      await tx.insert(documentEmbeddings).values(
-        chunks.map((chunk, index) => ({
+      const result = await embedMany({
+        model: embeddingSelection.model,
+        values,
+        maxParallelCalls: 2,
+        maxRetries: 2,
+        abortSignal: AbortSignal.timeout(120_000),
+        providerOptions: config.embedding.dimensions
+          ? {
+              [embeddingSelection.model.provider]: {
+                dimensions: config.embedding.dimensions,
+              },
+            }
+          : undefined,
+      });
+      await db.insert(documentEmbeddings).values(
+        batch.map((chunk, index) => ({
           chunkId: chunk.id,
           embeddingJson: result.embeddings[index],
           embeddingDimensions: result.embeddings[index]?.length ?? null,
           embeddingModelId: config.embedding.modelId,
         })),
       );
-    });
+      const completed = Math.min(offset + batch.length, chunks.length);
+      await db
+        .update(documents)
+        .set({
+          processingProgress: 20 + Math.round((completed / chunks.length) * 75),
+          updatedAt: new Date(),
+        })
+        .where(eq(documents.id, documentId));
+    }
   }
 
   await db
     .update(documents)
     .set({
       status: chunks.length > 0 ? "ready" : "failed",
+      processingProgress: 100,
+      processingStage: chunks.length > 0 ? "ready" : "failed",
       errorMessage: chunks.length > 0 ? null : "No chunks generated",
       updatedAt: new Date(),
     })

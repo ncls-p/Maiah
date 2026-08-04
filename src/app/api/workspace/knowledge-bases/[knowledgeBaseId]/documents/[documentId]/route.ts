@@ -5,7 +5,10 @@ import {
   requireResourcePermissionAsync,
 } from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
-import { archiveDocument } from "@/modules/knowledge/use-cases";
+import {
+  archiveDocument,
+  retryDocumentIngestion,
+} from "@/modules/knowledge/use-cases";
 
 const querySchema = z.object({ workspaceId: z.uuid() });
 
@@ -48,6 +51,54 @@ export async function DELETE(
     },
     {
       logLabel: "Failed to archive document",
+      expectedError: (error) => {
+        const msg =
+          error instanceof Error ? error.message : "Internal server error";
+        return NextResponse.json({ error: msg }, { status: 400 });
+      },
+    },
+  );
+}
+
+export async function PATCH(
+  req: NextRequest,
+  {
+    params,
+  }: { params: Promise<{ knowledgeBaseId: string; documentId: string }> },
+) {
+  return handleRoute(
+    req,
+    async ({ session }) => {
+      const parsed = querySchema.safeParse({
+        workspaceId: req.nextUrl.searchParams.get("workspaceId"),
+      });
+      if (!parsed.success) {
+        return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+      }
+      const { knowledgeBaseId, documentId } = await params;
+      const forbidden = await requireResourcePermissionAsync(
+        session.user.id,
+        parsed.data.workspaceId,
+        "knowledgeBases.manage",
+        "knowledge_base",
+        knowledgeBaseId,
+      );
+      if (forbidden) return forbidden;
+      const canManageGlobal = await canManageTenantGlobals(
+        session,
+        parsed.data.workspaceId,
+      );
+      await retryDocumentIngestion({
+        documentId,
+        knowledgeBaseId,
+        workspaceId: parsed.data.workspaceId,
+        userId: session.user.id,
+        canManageGlobal,
+      });
+      return NextResponse.json({ ok: true });
+    },
+    {
+      logLabel: "Failed to retry document",
       expectedError: (error) => {
         const msg =
           error instanceof Error ? error.message : "Internal server error";

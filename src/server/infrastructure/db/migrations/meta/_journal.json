@@ -295,6 +295,13 @@
       "when": 1785846111551,
       "tag": "0041_needy_nightshade",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1785849456534,
+      "tag": "0042_volatile_hellion",
+      "breakpoints": true
     }
   ]
 }

@@ -14,6 +14,7 @@ import {
   Loader2,
   PencilIcon,
   PlusIcon,
+  RefreshCwIcon,
   SearchIcon,
   Trash2Icon,
   UploadIcon,
@@ -72,6 +73,9 @@ interface DocumentRow {
   id: string;
   title: string;
   status: string;
+  processingProgress: number;
+  processingStage: string;
+  errorMessage: string | null;
   createdAt: string;
 }
 interface SearchResult {
@@ -122,6 +126,12 @@ export default function KnowledgePage() {
   const [query, setQuery] = useState("");
   const [dragActive, setDragActive] = useState(false);
   const documentInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingCount, setUploadingCount] = useState(0);
+  const [lastUpload, setLastUpload] = useState<{
+    accepted: number;
+    rejected: Array<{ title: string; error: string }>;
+  } | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editingBase, setEditingBase] = useState<KnowledgeBase | null>(null);
   const [editBaseForm, setEditBaseForm] = useState({
@@ -275,21 +285,56 @@ export default function KnowledgePage() {
     toast.success(t("toastDocumentQueued"));
   }
 
+  async function ingestFiles(files: File[]) {
+    if (
+      !selectedBaseCanEdit ||
+      !workspaceId ||
+      !selectedId ||
+      files.length === 0
+    )
+      return;
+    setUploadingCount(files.length);
+    setLastUpload(null);
+    try {
+      const form = new FormData();
+      form.set("workspaceId", workspaceId);
+      for (const file of files) {
+        form.append("files", file, file.webkitRelativePath || file.name);
+      }
+      const response = await fetch(
+        `/api/workspace/knowledge-bases/${selectedId}/documents`,
+        { method: "POST", body: form },
+      );
+      const result = (await response.json().catch(() => null)) as {
+        documents?: DocumentRow[];
+        rejected?: Array<{ title: string; error: string }>;
+        error?: string;
+      } | null;
+      if (!response.ok && response.status !== 207) {
+        throw new Error(result?.error || t("errorIngest"));
+      }
+      const accepted = result?.documents?.length ?? 0;
+      const rejected = result?.rejected ?? [];
+      setLastUpload({ accepted, rejected });
+      await loadDocuments();
+      toast.success(
+        t("toastBatchQueued", { accepted, rejected: rejected.length }),
+      );
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("errorIngest"));
+    } finally {
+      setUploadingCount(0);
+    }
+  }
+
   function handleFileDrop(event: DragEvent<HTMLDivElement>) {
     event.preventDefault();
     setDragActive(false);
-    const file = event.dataTransfer.files[0];
-    if (!selectedBaseCanEdit || !file) return;
-    void file.text().then((content) => {
-      void ingestFromContent(file.name, content);
-    });
+    void ingestFiles(Array.from(event.dataTransfer.files));
   }
 
-  function ingestSelectedFile(file: File | undefined) {
-    if (!selectedBaseCanEdit || !file) return;
-    void file.text().then((content) => {
-      void ingestFromContent(file.name, content);
-    });
+  function ingestSelectedFiles(files: FileList | null) {
+    void ingestFiles(files ? Array.from(files) : []);
   }
 
   useEffect(() => {
@@ -470,6 +515,21 @@ export default function KnowledgePage() {
       return;
     } finally {
       setDeleting(false);
+    }
+  }
+
+  async function retryDocument(documentId: string) {
+    if (!selectedBaseCanEdit || !workspaceId || !selectedId) return;
+    try {
+      const res = await fetch(
+        `/api/workspace/knowledge-bases/${selectedId}/documents/${documentId}?workspaceId=${workspaceId}`,
+        { method: "PATCH" },
+      );
+      if (!res.ok) return toast.error(t("errorRetryDocument"));
+      await loadDocuments();
+      toast.success(t("toastDocumentRetried"));
+    } catch {
+      toast.error(t("errorRetryDocument"));
     }
   }
 
@@ -769,12 +829,28 @@ export default function KnowledgePage() {
                   {selectedBaseCanEdit ? (
                     <div className="p-3">
                       <input
+                        id="knowledge-file-upload"
                         ref={documentInputRef}
                         type="file"
-                        accept=".txt,.md,.csv,.json,text/*"
+                        multiple
+                        accept=".txt,.md,.markdown,.csv,.tsv,.json,.jsonl,.pdf,.docx,.pptx,.xlsx,.xlsm,.rtf,.html,.xml,.yaml,.yml,.zip,text/*"
                         className="hidden"
                         onChange={(event) => {
-                          ingestSelectedFile(event.target.files?.[0]);
+                          ingestSelectedFiles(event.target.files);
+                          event.target.value = "";
+                        }}
+                      />
+                      <input
+                        id="knowledge-folder-upload"
+                        ref={(node) => {
+                          folderInputRef.current = node;
+                          node?.setAttribute("webkitdirectory", "");
+                        }}
+                        type="file"
+                        multiple
+                        className="hidden"
+                        onChange={(event) => {
+                          ingestSelectedFiles(event.target.files);
                           event.target.value = "";
                         }}
                       />
@@ -802,16 +878,62 @@ export default function KnowledgePage() {
                         <p className="mt-1 text-[0.7rem] text-muted-foreground">
                           {t("dropFormats")}
                         </p>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          className="mt-3 h-8"
-                          onClick={() => documentInputRef.current?.click()}
-                        >
-                          {t("browse")}
-                        </Button>
+                        <div className="mt-3 flex flex-wrap justify-center gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="h-8"
+                            disabled={uploadingCount > 0}
+                            onClick={() => documentInputRef.current?.click()}
+                          >
+                            {t("browseFiles")}
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="h-8"
+                            disabled={uploadingCount > 0}
+                            onClick={() => folderInputRef.current?.click()}
+                          >
+                            {t("browseFolder")}
+                          </Button>
+                        </div>
                       </div>
+                      {uploadingCount > 0 ? (
+                        <div className="mt-3 rounded-xl border bg-muted/25 p-3 text-xs">
+                          <div className="flex items-center gap-2 font-medium">
+                            <Loader2
+                              className="size-3.5 animate-spin"
+                              aria-hidden="true"
+                            />
+                            {t("extractingBatch", { count: uploadingCount })}
+                          </div>
+                          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+                            <div className="h-full w-1/3 animate-pulse rounded-full bg-primary" />
+                          </div>
+                        </div>
+                      ) : null}
+                      {lastUpload ? (
+                        <div className="mt-3 rounded-xl border bg-muted/20 p-3 text-xs">
+                          <p className="font-medium">
+                            {t("batchSummary", {
+                              accepted: lastUpload.accepted,
+                              rejected: lastUpload.rejected.length,
+                            })}
+                          </p>
+                          {lastUpload.rejected.length > 0 ? (
+                            <ul className="mt-2 space-y-1 text-destructive">
+                              {lastUpload.rejected.slice(0, 5).map((item) => (
+                                <li key={`${item.title}:${item.error}`}>
+                                  {item.title}: {item.error}
+                                </li>
+                              ))}
+                            </ul>
+                          ) : null}
+                        </div>
+                      ) : null}
                       <AdvancedSection
                         label={t("pasteContent")}
                         hint={t("pasteContentHint")}
@@ -900,8 +1022,37 @@ export default function KnowledgePage() {
                             {doc.title}
                           </p>
                           <p className="mt-1 text-[0.68rem] text-muted-foreground">
-                            {new Date(doc.createdAt).toLocaleDateString()}
+                            {new Date(doc.createdAt).toLocaleDateString()} ·{" "}
+                            {doc.processingProgress}%
                           </p>
+                          <div
+                            className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted"
+                            role="progressbar"
+                            aria-label={t("documentProgress", {
+                              name: doc.title,
+                            })}
+                            aria-valuemin={0}
+                            aria-valuemax={100}
+                            aria-valuenow={doc.processingProgress}
+                          >
+                            <div
+                              className={cn(
+                                "h-full rounded-full transition-[width] duration-500",
+                                doc.status === "failed"
+                                  ? "bg-destructive"
+                                  : "bg-primary",
+                              )}
+                              style={{ width: `${doc.processingProgress}%` }}
+                            />
+                          </div>
+                          <p className="mt-1 text-[0.62rem] text-muted-foreground">
+                            {t(`processingStage.${doc.processingStage}`)}
+                          </p>
+                          {doc.errorMessage ? (
+                            <p className="mt-1 text-[0.62rem] text-destructive">
+                              {doc.errorMessage}
+                            </p>
+                          ) : null}
                         </div>
                         <div className="flex shrink-0 items-center gap-2">
                           <Badge
@@ -910,6 +1061,19 @@ export default function KnowledgePage() {
                           >
                             {statusLabel(doc.status, t)}
                           </Badge>
+                          {selectedBaseCanEdit ? (
+                            doc.status === "failed" ? (
+                              <Button
+                                type="button"
+                                size="icon-sm"
+                                variant="ghost"
+                                aria-label={t("retryAria", { name: doc.title })}
+                                onClick={() => void retryDocument(doc.id)}
+                              >
+                                <RefreshCwIcon aria-hidden="true" />
+                              </Button>
+                            ) : null
+                          ) : null}
                           {selectedBaseCanEdit ? (
                             <Button
                               type="button"

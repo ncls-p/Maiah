@@ -1,0 +1,2 @@
+ALTER TABLE "documents" ADD COLUMN "processing_progress" integer DEFAULT 0 NOT NULL;--> statement-breakpoint
+ALTER TABLE "documents" ADD COLUMN "processing_stage" varchar(32) DEFAULT 'queued' NOT NULL;
