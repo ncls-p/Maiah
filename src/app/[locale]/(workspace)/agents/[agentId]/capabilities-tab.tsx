@@ -23,7 +23,6 @@ import { ListRow } from "@/components/list-row";
 import { ResourceProvenanceBadge } from "@/components/resource-provenance-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CardFooter } from "@/components/ui/card";
 import {
   Collapsible,
   CollapsibleContent,
@@ -654,7 +653,7 @@ export function CapabilitiesTab({
 
   return (
     <div
-      className={cn("space-y-4", readOnly && "pointer-events-none opacity-75")}
+      className={cn("space-y-3", readOnly && "pointer-events-none opacity-75")}
     >
       <ConfigSection
         title={t("builtinTools")}
@@ -878,7 +877,7 @@ export function CapabilitiesTab({
       </ConfigSection>
 
       {readOnly ? null : (
-        <CardFooter className="justify-end px-0 pb-0">
+        <div className="flex justify-end rounded-2xl border border-border/60 bg-card/75 p-3 shadow-[var(--surface-shadow)]">
           <Button type="button" disabled={saving} onClick={onSave}>
             {saving ? (
               <Spinner data-icon="inline-start" />
@@ -887,7 +886,7 @@ export function CapabilitiesTab({
             )}
             {tCommon("save")}
           </Button>
-        </CardFooter>
+        </div>
       )}
     </div>
   );

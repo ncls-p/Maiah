@@ -12,7 +12,10 @@ import {
   listModels,
   toSafeProvider,
 } from "@/modules/provider/use-cases";
-import { hasResourcePermissionForRequest } from "@/modules/auth/workspace-access";
+import {
+  hasResourcePermissionForRequest,
+  hasWorkspacePermissionForRequest,
+} from "@/modules/auth/workspace-access";
 import {
   DEFAULT_OPENAI_COMPATIBLE_API_ROUTE,
   OPENAI_COMPATIBLE_API_ROUTES,
@@ -48,6 +51,7 @@ const createProviderSchema = z.object({
 
 const listProvidersSchema = z.object({
   workspaceId: z.uuid(),
+  includeModels: z.enum(["true", "false"]).optional(),
 });
 
 export async function GET(req: NextRequest) {
@@ -57,6 +61,7 @@ export async function GET(req: NextRequest) {
       const { searchParams } = req.nextUrl;
       const parsed = listProvidersSchema.safeParse({
         workspaceId: searchParams.get("workspaceId"),
+        includeModels: searchParams.get("includeModels") ?? undefined,
       });
       if (!parsed.success) {
         return NextResponse.json(
@@ -75,36 +80,72 @@ export async function GET(req: NextRequest) {
         parsed.data.workspaceId,
       );
       if (forbidden) return forbidden;
-      const providers = await listProviders(parsed.data.workspaceId);
-      const visibleProviders = await Promise.all(
-        providers.map(async (provider) => {
-          const canViewProvider = await hasResourcePermissionForRequest(
+      const workspaceId = parsed.data.workspaceId;
+      const includeModels = parsed.data.includeModels === "true";
+      const [providers, canViewAllProviders, canViewAllModels] =
+        await Promise.all([
+          listProviders(workspaceId),
+          hasWorkspacePermissionForRequest(
             session.user.id,
-            parsed.data.workspaceId,
+            workspaceId,
             "providers.viewMetadata",
-            "provider",
-            provider.id,
-          );
-          if (canViewProvider) return toSafeProvider(provider);
+          ),
+          hasWorkspacePermissionForRequest(
+            session.user.id,
+            workspaceId,
+            "models.view",
+          ),
+        ]);
+
+      const catalog = await Promise.all(
+        providers.map(async (provider) => {
           const models = await listModels(provider.id);
-          const modelVisibility = await Promise.all(
-            models.map((model) =>
-              hasResourcePermissionForRequest(
-                session.user.id,
-                parsed.data.workspaceId,
-                "models.view",
-                "model",
-                model.id,
-              ),
-            ),
-          );
-          return modelVisibility.some(Boolean)
-            ? toSafeProvider(provider)
-            : null;
+          const [canViewProvider, visibleModels] = await Promise.all([
+            canViewAllProviders
+              ? Promise.resolve(true)
+              : hasResourcePermissionForRequest(
+                  session.user.id,
+                  workspaceId,
+                  "providers.viewMetadata",
+                  "provider",
+                  provider.id,
+                ),
+            canViewAllModels
+              ? Promise.resolve(models)
+              : Promise.all(
+                  models.map(async (model) =>
+                    (await hasResourcePermissionForRequest(
+                      session.user.id,
+                      workspaceId,
+                      "models.view",
+                      "model",
+                      model.id,
+                    ))
+                      ? model
+                      : null,
+                  ),
+                ).then((rows) => rows.filter((model) => model !== null)),
+          ]);
+
+          return {
+            provider: canViewProvider || visibleModels.length > 0
+              ? toSafeProvider(provider)
+              : null,
+            models: visibleModels,
+          };
         }),
       );
+      const visibleProviders = catalog
+        .map(({ provider }) => provider)
+        .filter((provider) => provider !== null);
+
       return NextResponse.json(
-        visibleProviders.filter((provider) => provider !== null),
+        includeModels
+          ? {
+              providers: visibleProviders,
+              models: catalog.flatMap(({ models }) => models),
+            }
+          : visibleProviders,
       );
     },
     { logLabel: "Failed to list providers" },

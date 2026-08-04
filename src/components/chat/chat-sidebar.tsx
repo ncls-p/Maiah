@@ -8,8 +8,10 @@ import {
   CheckIcon,
   FolderIcon,
   FolderPlusIcon,
+  MessageSquarePlusIcon,
   MoreHorizontalIcon,
   MessageSquareIcon,
+  PanelLeftCloseIcon,
   PanelLeftOpenIcon,
   PencilIcon,
   PinIcon,
@@ -20,7 +22,7 @@ import {
   Trash2Icon,
   XIcon,
 } from "lucide-react";
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useLocale, useTranslations } from "next-intl";
 
 import type {
@@ -138,6 +140,9 @@ interface ChatSidebarProps {
   className?: string;
   shell?: WorkspaceShellState;
   workspaceId?: string | null;
+  readOnly?: boolean;
+  showWorkspaceNavigation?: boolean;
+  footerContent?: ReactNode;
 }
 
 function formatRelativeTime(
@@ -288,6 +293,7 @@ function ConversationItem({
   onDropBefore,
   isDragging,
   searchMatch,
+  readOnly,
 }: {
   conversation: ChatConversation;
   isActive: boolean;
@@ -310,6 +316,7 @@ function ConversationItem({
   onDropBefore: (event: React.DragEvent<HTMLDivElement>) => void;
   isDragging: boolean;
   searchMatch?: ChatConversation["searchMatch"];
+  readOnly?: boolean;
 }) {
   const locale = useLocale();
   const t = useTranslations("chat.sidebar");
@@ -317,15 +324,15 @@ function ConversationItem({
 
   return (
     <div
-      draggable={!isEditing && !searchMatch}
+      draggable={!readOnly && !isEditing && !searchMatch}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       onDragOver={(event) => event.preventDefault()}
       onDrop={onDropBefore}
       className={cn(
-        "group/conversation relative overflow-hidden rounded-xl transition-[background-color,opacity]",
+        "group/conversation relative overflow-hidden rounded-xl border border-transparent transition-[background-color,border-color,opacity]",
         isActive
-          ? "bg-sidebar-accent text-sidebar-accent-foreground"
+          ? "border-sidebar-border/35 bg-card/70 text-sidebar-accent-foreground shadow-[0_10px_28px_-24px_color-mix(in_oklch,var(--foreground)_35%,transparent)]"
           : "hover:bg-muted/70",
         isDragging && "opacity-45",
       )}
@@ -376,7 +383,14 @@ function ConversationItem({
           </Button>
         </div>
       ) : (
-        <div className="flex min-h-12 items-center gap-0.5 px-2 py-1">
+        <div className="flex min-h-12 items-center gap-1 px-2 py-1">
+          <i
+            className={cn(
+              "size-1.5 shrink-0 rounded-full transition-colors",
+              isActive ? "bg-primary" : "bg-muted-foreground/45",
+            )}
+            aria-hidden="true"
+          />
           <button
             type={BUTTON_TYPE}
             onClick={onSelect}
@@ -384,7 +398,7 @@ function ConversationItem({
           >
             <span
               className={cn(
-                "block truncate text-[13px] leading-tight transition-[color]",
+                "block truncate text-[12px] leading-tight transition-[color]",
                 isActive ? "font-semibold text-foreground" : "font-medium",
               )}
             >
@@ -402,7 +416,7 @@ function ConversationItem({
                   : null}
               </span>
             ) : null}
-            <span className="mt-1 flex items-center gap-1 text-[11px] leading-none text-muted-foreground/75">
+            <span className="mt-1 flex items-center gap-1 text-[10px] leading-none text-muted-foreground/70">
               <span className="truncate">{agentName}</span>
               <span className="shrink-0 text-muted-foreground/25">·</span>
               <span className="shrink-0">
@@ -416,7 +430,7 @@ function ConversationItem({
               aria-hidden="true"
             />
           ) : null}
-          {!searchMatch ? (
+          {!readOnly && !searchMatch ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -429,7 +443,7 @@ function ConversationItem({
                     isActive && "opacity-100",
                   )}
                 >
-                  <MoreHorizontalIcon className="size-3" aria-hidden="true" />
+                  <MoreHorizontalIcon className="size-3.5" aria-hidden="true" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -458,7 +472,7 @@ function ConversationItem({
                     {t("moveDown")}
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onSelect={onEditStart}
+                    onSelect={() => window.requestAnimationFrame(onEditStart)}
                     className="min-h-10 gap-2"
                   >
                     <PencilIcon className="size-3.5" aria-hidden="true" />
@@ -514,6 +528,9 @@ export function ChatSidebar({
   className,
   shell,
   workspaceId,
+  readOnly = false,
+  showWorkspaceNavigation = true,
+  footerContent,
 }: ChatSidebarProps) {
   const t = useTranslations("chat.sidebar");
   const [editingConversationId, setEditingConversationId] = useState<
@@ -540,11 +557,6 @@ export function ChatSidebar({
     [shell],
   );
   const searchActive = searchQuery.trim().length > 0;
-  const showConversationTools =
-    loading ||
-    searchActive ||
-    conversations.length > 0 ||
-    conversationFolders.length > 0;
   const sortedConversations = useMemo(() => {
     return [...conversations].sort((a, b) => {
       const aPinned = a.pinnedAt ? 0 : 1;
@@ -591,7 +603,6 @@ export function ChatSidebar({
       ),
     }));
   }, [conversationFolders, unpinnedConversations]);
-
   function orderedIdsWithInsertion(
     items: ChatConversation[],
     draggedId: string,
@@ -697,6 +708,30 @@ export function ChatSidebar({
     setNewFolderName("");
   }
 
+  function renderHistoryActions() {
+    if (readOnly || !onCreateConversationFolder) return null;
+
+    return (
+      <div
+        role="toolbar"
+        aria-label={t("historyActions")}
+        className="flex min-h-10 shrink-0 items-center justify-end gap-1"
+      >
+        <Button
+          type={BUTTON_TYPE}
+          size="icon-sm"
+          variant={GHOST_VARIANT}
+          className="size-10 rounded-xl text-muted-foreground transition-[background-color,color,scale] active:scale-[0.96]"
+          aria-label={t("createFolder")}
+          title={t("createFolder")}
+          onClick={startFolderCreate}
+        >
+          <FolderPlusIcon className="size-4" aria-hidden="true" />
+        </Button>
+      </div>
+    );
+  }
+
   function renderConversation(
     conversation: ChatConversation,
     options?: { searchResult?: boolean },
@@ -745,6 +780,7 @@ export function ChatSidebar({
         searchMatch={
           options?.searchResult ? conversation.searchMatch : undefined
         }
+        readOnly={readOnly}
       />
     );
   }
@@ -835,74 +871,70 @@ export function ChatSidebar({
       <SidebarHeader
         contextLabel={t("conversations")}
         action={
-          <Button
-            type={BUTTON_TYPE}
-            size="sm"
-            variant="outline"
-            onClick={onNewConversation}
-            className="min-h-10 gap-1 rounded-xl px-3 text-xs font-medium"
-          >
-            <PlusIcon className="size-3.5" aria-hidden="true" />
-            {t("new")}
-          </Button>
+          !readOnly && onCollapsedChange ? (
+            <Button
+              type={BUTTON_TYPE}
+              size="icon-sm"
+              variant={GHOST_VARIANT}
+              className="size-10 shrink-0 rounded-xl text-muted-foreground transition-[background-color,color,scale] hover:bg-sidebar-accent/70 hover:text-sidebar-foreground active:scale-[0.96]"
+              aria-label={t("collapseSidebar")}
+              title={t("collapseSidebar")}
+              onClick={() => onCollapsedChange(true)}
+            >
+              <PanelLeftCloseIcon className="size-4" aria-hidden="true" />
+            </Button>
+          ) : null
         }
       />
 
       <div className="animate-in-fade flex min-h-0 flex-1 flex-col motion-reduce:animate-none">
         <div className="flex min-h-0 flex-1 flex-col">
-          <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto px-2 py-2">
-            {showConversationTools ? (
-              <div className="flex min-h-10 items-center justify-between px-2">
-                <span className="text-[11px] font-medium text-muted-foreground">
-                  {t("conversations")}
-                </span>
-                <div className="flex items-center">
-                  <Button
-                    type={BUTTON_TYPE}
-                    size="icon-sm"
-                    variant={GHOST_VARIANT}
-                    aria-label={t("createFolder")}
-                    className="size-10 rounded-xl text-muted-foreground"
-                    onClick={startFolderCreate}
-                  >
-                    <FolderPlusIcon className="size-3.5" aria-hidden="true" />
-                  </Button>
-                </div>
-              </div>
-            ) : null}
+          <div className="flex shrink-0 flex-col gap-2 px-3 pb-2 pt-3">
+            <Button
+              type={BUTTON_TYPE}
+              onClick={onNewConversation}
+              className="h-11 w-full justify-start gap-2.5 rounded-xl px-3.5 text-sm shadow-[0_8px_22px_-16px_color-mix(in_oklch,var(--primary)_70%,transparent)]"
+              aria-label={t("newConversation")}
+            >
+              <MessageSquarePlusIcon
+                className="size-4 shrink-0"
+                aria-hidden="true"
+              />
+              <span className="min-w-0 truncate">{t("newConversation")}</span>
+            </Button>
 
-            {showConversationTools ? (
-              <div className="flex items-center gap-2 px-1 pb-1">
-                <SearchIcon
-                  className="size-4 shrink-0 text-muted-foreground"
-                  aria-hidden="true"
-                />
-                <Input
-                  type="search"
-                  name="conversation-search"
-                  autoComplete="off"
-                  aria-label={t("searchLabel")}
-                  placeholder={t("searchPlaceholder")}
-                  value={searchQuery}
-                  onChange={(event) =>
-                    onSearchQueryChange?.(event.target.value)
-                  }
-                  className="h-10 min-w-0 rounded-xl px-3 text-xs"
-                />
-                {searchActive ? (
-                  <Button
-                    type={BUTTON_TYPE}
-                    size="icon-sm"
-                    variant={GHOST_VARIANT}
-                    className="size-10 shrink-0 rounded-xl"
-                    aria-label={t("clearSearch")}
-                    onClick={() => onSearchQueryChange?.("")}
-                  >
-                    <XIcon data-icon="inline-start" aria-hidden="true" />
-                  </Button>
-                ) : null}
-              </div>
-            ) : null}
+            <div className="relative flex items-center">
+              <SearchIcon
+                className="pointer-events-none absolute left-3 size-3.5 shrink-0 text-muted-foreground"
+                aria-hidden="true"
+              />
+              <Input
+                type="search"
+                name="conversation-search"
+                autoComplete="off"
+                aria-label={t("searchLabel")}
+                placeholder={
+                  readOnly
+                    ? t("searchCompactPlaceholder")
+                    : t("searchPlaceholder")
+                }
+                value={searchQuery}
+                onChange={(event) => onSearchQueryChange?.(event.target.value)}
+                className="h-11 min-w-0 rounded-xl border-sidebar-border/60 bg-card/60 pl-9 pr-11 text-xs shadow-none"
+              />
+              {searchActive ? (
+                <Button
+                  type={BUTTON_TYPE}
+                  size="icon-sm"
+                  variant={GHOST_VARIANT}
+                  className="absolute right-0.5 size-10 shrink-0 rounded-[10px]"
+                  aria-label={t("clearSearch")}
+                  onClick={() => onSearchQueryChange?.("")}
+                >
+                  <XIcon data-icon="inline-start" aria-hidden="true" />
+                </Button>
+              ) : null}
+            </div>
 
             <p className="sr-only" aria-live="polite">
               {searchActive && !searching && !searchError
@@ -910,7 +942,7 @@ export function ChatSidebar({
                 : null}
             </p>
 
-            {creatingFolder ? (
+            {!readOnly && creatingFolder ? (
               <div className="flex items-center gap-1 rounded-xl border border-sidebar-border/60 bg-background p-1">
                 <Input
                   aria-label={t("folderName")}
@@ -946,7 +978,17 @@ export function ChatSidebar({
                 </Button>
               </div>
             ) : null}
+          </div>
 
+          <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto px-3 pb-3 pt-1">
+            {!searchActive ? (
+              <div className="flex min-h-10 items-center justify-between gap-2 px-2">
+                <span className="min-w-0 truncate font-mono text-[9px] font-medium uppercase tracking-[0.16em] text-muted-foreground/70">
+                  {t("recent")}
+                </span>
+                {renderHistoryActions()}
+              </div>
+            ) : null}
             <div className="flex min-h-0 flex-col gap-1">
               {searchActive ? (
                 searching && searchResults.length === 0 ? (
@@ -1075,7 +1117,7 @@ export function ChatSidebar({
                   </Empty>
                 </div>
               ) : (
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-3">
                   {pinnedConversations.length > 0 ? (
                     <section
                       className="flex flex-col gap-px"
@@ -1171,50 +1213,54 @@ export function ChatSidebar({
                                 </span>
                               </button>
                             )}
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  type={BUTTON_TYPE}
-                                  size="icon-sm"
-                                  variant={GHOST_VARIANT}
-                                  className="size-10 rounded-xl transition-[background-color,opacity] md:opacity-0 md:group-hover/folder:opacity-100 md:group-focus-within/folder:opacity-100 data-[state=open]:opacity-100"
-                                  aria-label={t("folderActions")}
-                                >
-                                  <MoreHorizontalIcon
-                                    className="size-3"
-                                    aria-hidden="true"
-                                  />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem
-                                  onSelect={() => {
-                                    setEditingFolderId(folder.id);
-                                    setEditingFolderName(folder.name);
-                                  }}
-                                  className="min-h-10 gap-2"
-                                >
-                                  <PencilIcon
-                                    className="size-3.5"
-                                    aria-hidden="true"
-                                  />
-                                  {t("rename")}
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  variant="destructive"
-                                  onSelect={() =>
-                                    onDeleteConversationFolder?.(folder.id)
-                                  }
-                                  className="min-h-10 gap-2"
-                                >
-                                  <Trash2Icon
-                                    className="size-3.5"
-                                    aria-hidden="true"
-                                  />
-                                  {t("deleteFolder")}
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
+                            {!readOnly ? (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    type={BUTTON_TYPE}
+                                    size="icon-sm"
+                                    variant={GHOST_VARIANT}
+                                    className="size-10 rounded-xl transition-[background-color,opacity] md:opacity-0 md:group-hover/folder:opacity-100 md:group-focus-within/folder:opacity-100 data-[state=open]:opacity-100"
+                                    aria-label={t("folderActions")}
+                                  >
+                                    <MoreHorizontalIcon
+                                      className="size-3"
+                                      aria-hidden="true"
+                                    />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem
+                                    onSelect={() => {
+                                      window.requestAnimationFrame(() => {
+                                        setEditingFolderId(folder.id);
+                                        setEditingFolderName(folder.name);
+                                      });
+                                    }}
+                                    className="min-h-10 gap-2"
+                                  >
+                                    <PencilIcon
+                                      className="size-3.5"
+                                      aria-hidden="true"
+                                    />
+                                    {t("rename")}
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    variant="destructive"
+                                    onSelect={() =>
+                                      onDeleteConversationFolder?.(folder.id)
+                                    }
+                                    className="min-h-10 gap-2"
+                                  >
+                                    <Trash2Icon
+                                      className="size-3.5"
+                                      aria-hidden="true"
+                                    />
+                                    {t("deleteFolder")}
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            ) : null}
                           </div>
                           {open ? (
                             <div className="flex flex-col gap-px pl-3">
@@ -1257,9 +1303,6 @@ export function ChatSidebar({
                   >
                     {topLevelConversations.length > 0 ? (
                       <>
-                        <div className="px-2 pb-1 text-[11px] font-medium text-muted-foreground">
-                          {t("recent")}
-                        </div>
                         {topLevelConversations.map((conversation) =>
                           renderConversation(conversation),
                         )}
@@ -1288,12 +1331,12 @@ export function ChatSidebar({
             </div>
           </div>
 
-          {navGroups.length > 0 ? (
+          {showWorkspaceNavigation && navGroups.length > 0 ? (
             <ChatAppNavigation groups={navGroups} />
           ) : null}
         </div>
       </div>
-      <SidebarFooter displayName={shell?.displayName} />
+      {footerContent ?? <SidebarFooter displayName={shell?.displayName} />}
     </div>
   );
 }

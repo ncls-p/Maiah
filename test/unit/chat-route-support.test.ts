@@ -218,6 +218,32 @@ describe("chat route tool gating", () => {
     expect(Object.keys(tools)).not.toContain("code_workspace_write_file");
   });
 
+  it("removes a tool disabled for the current conversation", async () => {
+    const { buildBoundTools, getBuiltInToolByName } = await loadModules();
+    const createProjectTool = getBuiltInToolByName(
+      "code_workspace_create_project",
+    );
+    expect(createProjectTool).toBeTruthy();
+    toolUseCasesMock.getToolBindingsForVersion.mockResolvedValue([
+      {
+        id: "binding-1",
+        agentVersionId: "version-1",
+        toolSource: "builtin",
+        toolId: createProjectTool?.id,
+        requireApproval: false,
+        riskLevel: createProjectTool?.riskLevel,
+        createdAt: new Date(),
+      },
+    ]);
+
+    const { tools } = await buildBoundTools({
+      ...buildInput(),
+      disabledToolKeys: new Set([`builtin:${createProjectTool?.id}`]),
+    });
+
+    expect(Object.keys(tools)).not.toContain("code_workspace_create_project");
+  });
+
   it("aliases long custom tool keys to OpenAI-compatible names", async () => {
     const { buildBoundTools } = await loadModules();
     const longToolName =

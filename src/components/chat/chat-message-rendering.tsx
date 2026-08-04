@@ -5,11 +5,12 @@ import { memo, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import type * as React from "react";
 import {
-  BotIcon,
+  AlertTriangleIcon,
   BrainIcon,
   CheckCircle2Icon,
   CheckIcon,
   ChevronDownIcon,
+  CopyIcon,
   XIcon,
 } from "lucide-react";
 import { CitationBlock } from "@/components/chat/citation-block";
@@ -18,6 +19,7 @@ import {
   citationsFromMessage,
   groupWorkPhaseParts,
   parseToolPart,
+  reasoningPartHasDetails,
   renderablePartsFromMessage,
   resolveWorkPhaseOutcome,
   resolveToolDisplayStatus,
@@ -45,6 +47,7 @@ import {
   codeSandboxInputFromUnknown,
   codeSandboxOutputFromUnknown,
   codeWorkspaceArtifactFromPartContent,
+  delegationFailureDetails,
   formatToolName,
   htmlArtifactFromInputText,
   htmlArtifactFromToolInput,
@@ -61,10 +64,7 @@ import {
   HtmlArtifactCard,
   LiveToolInputCard,
 } from "@/components/chat/chat-artifact-renderers";
-import {
-  ToolStateIcon,
-  type ToolVisualState,
-} from "@/components/chat/tool-state-icon";
+import type { ToolVisualState } from "@/components/chat/tool-state-icon";
 import { Button } from "@/components/ui/button";
 import {
   Collapsible,
@@ -73,10 +73,7 @@ import {
 } from "@/components/ui/collapsible";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import {
-  parseAgentToolDisplayContext,
-  type AgentToolDisplayContext,
-} from "@/modules/agent/tool-progress-payload";
+import { parseAgentToolDisplayContext } from "@/modules/agent/tool-progress-payload";
 
 const RichEditor = dynamic<RichEditorProps>(
   () => import("@/components/chat/rich-editor").then((mod) => mod.RichEditor),
@@ -108,6 +105,73 @@ function StreamingThinking() {
   );
 }
 
+function ErrorPart({ part }: { part: ChatMessagePart }) {
+  const t = useTranslations("chat.rendering");
+  const [copied, setCopied] = useState(false);
+  const [open, setOpen] = useState(false);
+  const summary = part.content.split("\n", 1)[0]?.trim() || t("errorFallback");
+
+  async function copyError() {
+    try {
+      await navigator.clipboard.writeText(part.content);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2_000);
+    } catch {
+      setCopied(false);
+    }
+  }
+
+  return (
+    <Collapsible
+      open={open}
+      onOpenChange={setOpen}
+      className="overflow-hidden rounded-2xl border border-destructive/20 bg-destructive/[0.035]"
+    >
+      <div className="flex min-w-0 items-center gap-3 px-4 py-3">
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+          <AlertTriangleIcon className="size-4" aria-hidden="true" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium text-foreground">
+            {t("errorTitle")}
+          </p>
+          <p className="truncate text-xs text-muted-foreground">{summary}</p>
+        </div>
+        <CollapsibleTrigger asChild>
+          <Button type={BUTTON_TYPE} size="sm" variant={GHOST_VARIANT}>
+            {open ? t("errorHide") : t("errorView")}
+            <ChevronDownIcon
+              className={cn(
+                "size-3.5 transition-transform duration-200",
+                open && "rotate-180",
+              )}
+              aria-hidden="true"
+            />
+          </Button>
+        </CollapsibleTrigger>
+        <Button
+          type={BUTTON_TYPE}
+          size="sm"
+          variant={OUTLINE_VARIANT}
+          onClick={() => void copyError()}
+        >
+          {copied ? (
+            <CheckIcon className="size-3.5 text-success" aria-hidden="true" />
+          ) : (
+            <CopyIcon className="size-3.5" aria-hidden="true" />
+          )}
+          {copied ? t("errorCopied") : t("errorCopy")}
+        </Button>
+      </div>
+      <CollapsibleContent>
+        <pre className="max-h-72 overflow-auto border-t border-destructive/10 px-4 py-3 font-mono text-[11px] leading-relaxed whitespace-pre-wrap break-words text-muted-foreground">
+          {part.content}
+        </pre>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
 export function StreamingStatus() {
   const t = useTranslations("chat.rendering");
   const label = t("generating");
@@ -123,10 +187,12 @@ export function StreamingStatus() {
 
 function PendingApprovalCard({
   pendingApproval,
+  sequence,
   onApprove,
   onReject,
 }: {
   pendingApproval: PendingToolApproval;
+  sequence: number;
   onApprove?: (approval: PendingToolApproval) => void;
   onReject?: (approval: PendingToolApproval) => void;
 }) {
@@ -135,24 +201,29 @@ function PendingApprovalCard({
   const summary = summarizeToolInput(friendlyName, pendingApproval.input);
 
   return (
-    <div className="overflow-hidden rounded-2xl bg-warning/[0.055] text-xs shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--warning)_22%,transparent),0_14px_28px_-24px_color-mix(in_oklch,var(--warning)_55%,transparent)]">
-      <div className="flex items-start gap-3 px-3 py-2.5">
-        <ToolStateIcon state="approval" className="mt-0.5" />
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="font-medium text-foreground">
-              {t("needsApproval")}
-            </span>
-            <span className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-[11px] leading-4 text-muted-foreground">
-              {friendlyName}
-            </span>
-          </div>
-          <p className="mt-1 line-clamp-2 text-muted-foreground">{summary}</p>
-        </div>
-      </div>
-      <div className="border-t border-warning/25 bg-warning/10 px-3 py-2.5">
+    <div className="w-full overflow-hidden rounded-[15px] border border-warning/25 bg-warning/[0.025] text-xs shadow-[0_12px_35px_-24px_color-mix(in_oklch,var(--warning)_45%,transparent)]">
+      <ToolCardHeader
+        sequence={sequence}
+        title={t("needsApproval")}
+        subtitle={
+          <>
+            <span className="truncate">{pendingApproval.toolName}</span>
+            <span aria-hidden="true">·</span>
+            <span className="shrink-0">{t("actionApproval")}</span>
+          </>
+        }
+        state="approval"
+      />
+      <div className="bg-warning/[0.035] px-3 py-3">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xs text-foreground">{t("approvalWaiting")}</p>
+          <div className="min-w-0">
+            <p className="line-clamp-2 text-[11px] text-muted-foreground">
+              {summary}
+            </p>
+            <p className="mt-1 text-xs text-foreground">
+              {t("approvalWaiting")}
+            </p>
+          </div>
           <div className="flex shrink-0 justify-end gap-2">
             <Button
               type={BUTTON_TYPE}
@@ -187,6 +258,7 @@ function formatExpandedToolValue(value: unknown, isOpen: boolean) {
 
 type ToolPartCardProps = {
   part: ChatMessagePart;
+  sequence: number;
   messageStatus?: ChatMessage["status"];
   approval?: PendingToolApproval;
   workspaceId?: string;
@@ -195,50 +267,65 @@ type ToolPartCardProps = {
   onReject?: (approval: PendingToolApproval) => void;
 };
 
-function AgentActionAttribution({
-  context,
-  status,
-  toolName,
-  children,
-}: {
-  context: AgentToolDisplayContext | null;
-  status: "pending" | "completed" | "error";
-  toolName: string;
-  children: React.ReactNode;
-}) {
-  const t = useTranslations("chat.rendering");
-  if (!context) return children;
-
+function ToolSequenceBadge({ sequence }: { sequence: number }) {
   return (
-    <div className="space-y-2">
-      <div className="flex min-h-12 items-center gap-2.5 rounded-2xl bg-card px-2.5 py-1.5 text-xs shadow-[var(--surface-shadow)] transition-[background-color,box-shadow] duration-200 ease-out">
-        <ToolStateIcon state={status} />
-        <BotIcon
-          className="size-3.5 shrink-0 text-muted-foreground"
-          aria-hidden="true"
-        />
-        <span className="min-w-0 truncate font-medium">
-          {context.agentName}
-        </span>
-        <span className="text-muted-foreground" aria-hidden="true">
-          ·
-        </span>
-        <span className="truncate text-muted-foreground">{toolName}</span>
-        <span className="sr-only" aria-live="polite">
-          {status === "pending"
-            ? t("agentActionRunning", { name: context.agentName })
-            : status === "error"
-              ? t("agentActionFailed", { name: context.agentName })
-              : t("agentActionCompleted", { name: context.agentName })}
-        </span>
+    <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-primary/[0.08] font-mono text-[10px] font-medium tabular-nums text-primary">
+      {String(sequence).padStart(2, "0")}
+    </span>
+  );
+}
+
+function ToolStatusDot({ state }: { state: ToolVisualState }) {
+  return (
+    <span
+      className={cn(
+        "size-2 shrink-0 rounded-full border-2 border-current",
+        state === "pending" &&
+          "animate-spin border-r-transparent text-primary motion-reduce:animate-pulse",
+        state === "approval" &&
+          "text-warning shadow-[0_0_0_4px_color-mix(in_oklch,var(--warning)_10%,transparent)]",
+        state === "completed" && "bg-success text-success",
+        state === "warning" && "bg-warning text-warning",
+        state === "error" && "bg-destructive text-destructive",
+      )}
+      aria-hidden="true"
+    />
+  );
+}
+
+function ToolCardHeader({
+  sequence,
+  title,
+  subtitle,
+  state,
+  action,
+}: {
+  sequence: number;
+  title: string;
+  subtitle: React.ReactNode;
+  state: ToolVisualState;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="flex min-h-12 items-center gap-2.5 border-b border-border/45 px-3 py-2">
+      <ToolSequenceBadge sequence={sequence} />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-xs font-semibold tracking-[-0.01em] text-foreground">
+          {title}
+        </p>
+        <p className="flex min-w-0 items-center gap-1 truncate text-[10px] leading-4 text-muted-foreground">
+          {subtitle}
+        </p>
       </div>
-      {children}
+      {action}
+      <ToolStatusDot state={state} />
     </div>
   );
 }
 
 const ToolPartCard = memo(function ToolPartCard({
   part,
+  sequence,
   messageStatus,
   approval,
   workspaceId,
@@ -294,6 +381,10 @@ const ToolPartCard = memo(function ToolPartCard({
           ? t("actionFailed")
           : t("actionCompleted");
   const displayInput = approvalMatches ? approval?.input : parsed.input;
+  const delegationFailure = useMemo(
+    () => delegationFailureDetails(parsed.output),
+    [parsed.output],
+  );
 
   const inputArtifact = useMemo(
     () => (approvalMatches ? null : htmlArtifactFromToolInput(parsed.input)),
@@ -336,7 +427,39 @@ const ToolPartCard = memo(function ToolPartCard({
         : t("delegationCompleted");
     }
     if (isDelegation && status === "error") {
-      return t("delegationFailed");
+      const reason = (() => {
+        switch (delegationFailure.errorCode) {
+          case "AGENT_TOKEN_BUDGET_EXCEEDED":
+            return t("delegationFailureTokenBudget");
+          case "AGENT_DELEGATION_FORBIDDEN":
+          case "AGENT_RUN_FORBIDDEN":
+            return t("delegationFailurePermission");
+          case "AGENT_DELEGATION_DEPTH_EXCEEDED":
+            return t("delegationFailureDepth");
+          case "AGENT_DELEGATION_CYCLE":
+            return t("delegationFailureCycle");
+          case "AGENT_DELEGATION_PARALLEL_LIMIT":
+            return t("delegationFailureParallelLimit");
+          case "AGENT_DELEGATION_LIMIT":
+            return t("delegationFailureDelegationLimit");
+          case "AGENT_DELEGATION_DEADLINE_EXCEEDED":
+            return t("delegationFailureDeadline");
+          case "AGENT_MODEL_NOT_CONFIGURED":
+            return t("delegationFailureModelConfiguration");
+          case "AGENT_EMPTY_RESPONSE":
+            return t("delegationFailureEmptyResponse");
+          case "AGENT_NOT_FOUND":
+          case "AGENT_VERSION_NOT_FOUND":
+            return t("delegationFailureSpecialistUnavailable");
+          case "AGENT_RUN_CANCELLED":
+            return t("delegationFailureCancelled");
+          default:
+            return delegationFailure.reason;
+        }
+      })();
+      return reason
+        ? t("delegationFailedWithReason", { reason })
+        : t("delegationFailed");
     }
     if (status === "error" && (parsed.invalid || parsed.error != null)) {
       return t("actionUnavailable");
@@ -353,6 +476,7 @@ const ToolPartCard = memo(function ToolPartCard({
     hasResult,
     isDelegation,
     displayInput,
+    delegationFailure,
     parsed.error,
     parsed.invalid,
     parsed.output,
@@ -388,10 +512,14 @@ const ToolPartCard = memo(function ToolPartCard({
     specializedContent = <ChatFileAttachmentCard attachment={fileAttachment} />;
   } else if (sandboxOutput) {
     specializedContent = (
-      <CodeSandboxResultCard result={sandboxOutput} input={sandboxInput} />
+      <CodeSandboxResultCard
+        result={sandboxOutput}
+        input={sandboxInput}
+        embedded
+      />
     );
   } else if (isHtmlArtifactOutput(parsed.output)) {
-    specializedContent = <HtmlArtifactCard artifact={parsed.output} />;
+    specializedContent = <HtmlArtifactCard artifact={parsed.output} embedded />;
   } else if (isGeneratedImageOutput(parsed.output)) {
     const impact = parsed.output.impact;
     const metrics = [
@@ -429,128 +557,130 @@ const ToolPartCard = memo(function ToolPartCard({
   } else if (isGitHubPublishOutput(parsed.output)) {
     specializedContent = <GitHubPublishResultCard result={parsed.output} />;
   } else if (inputArtifact) {
-    specializedContent = <HtmlArtifactCard artifact={inputArtifact} isLive />;
+    specializedContent = (
+      <HtmlArtifactCard artifact={inputArtifact} isLive embedded />
+    );
   } else if (parsed.streamingInput && parsed.inputText !== undefined) {
     specializedContent = (
       <LiveToolInputCard
         toolName={friendlyName}
         inputText={parsed.inputText}
         sandboxInput={liveSandboxInput}
+        embedded
       />
     );
   } else if (streamingInputArtifact) {
     specializedContent = (
-      <HtmlArtifactCard artifact={streamingInputArtifact} isLive />
+      <HtmlArtifactCard artifact={streamingInputArtifact} isLive embedded />
     );
   }
 
   if (specializedContent) {
     return (
-      <AgentActionAttribution
-        context={agentContext}
-        status={status}
-        toolName={friendlyName}
+      <section
+        className={cn(
+          "w-full overflow-hidden rounded-[15px] border border-border/60 bg-card/75 text-xs shadow-[0_12px_35px_-24px_color-mix(in_oklch,var(--foreground)_35%,transparent)]",
+          agentContext &&
+            agentContext.depth > 0 &&
+            "ml-4 border-l-2 border-l-primary/35 sm:ml-6",
+        )}
       >
-        {specializedContent}
-      </AgentActionAttribution>
+        <ToolCardHeader
+          sequence={sequence}
+          title={friendlyName}
+          subtitle={
+            <>
+              {agentContext?.agentName ? (
+                <>
+                  <span className="truncate">{agentContext.agentName}</span>
+                  <span aria-hidden="true">·</span>
+                </>
+              ) : null}
+              <span className="truncate">
+                {parsed.toolName ?? friendlyName}
+              </span>
+              <span aria-hidden="true">·</span>
+              <span className="shrink-0">{statusLabel}</span>
+            </>
+          }
+          state={visualState}
+        />
+        <div className="bg-background/20 p-2.5">{specializedContent}</div>
+      </section>
     );
   }
 
+  const detailsOpen =
+    open || visualState === "pending" || visualState === "approval";
+
   return (
     <Collapsible
-      open={open}
+      open={detailsOpen}
       onOpenChange={setOpen}
-      data-open={String(open)}
+      data-open={String(detailsOpen)}
       className={cn(
-        "t-acc group/tool relative overflow-hidden rounded-2xl text-xs transition-[background-color,box-shadow] duration-200 ease-out",
+        "t-acc group/tool relative w-full overflow-hidden rounded-[15px] border border-border/60 bg-card/75 text-xs shadow-[0_12px_35px_-24px_color-mix(in_oklch,var(--foreground)_35%,transparent)] transition-[background-color,border-color,box-shadow] duration-200 ease-out",
         agentContext &&
           agentContext.depth > 0 &&
-          "ml-4 rounded-xl before:absolute before:inset-y-2.5 before:left-0 before:w-0.5 before:rounded-full before:bg-primary/25 sm:ml-6",
-        visualState === "approval" &&
-          "bg-warning/[0.055] shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--warning)_22%,transparent),0_14px_28px_-24px_color-mix(in_oklch,var(--warning)_55%,transparent)]",
-        visualState === "pending" &&
-          "bg-primary/[0.055] shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--primary)_18%,transparent),0_14px_28px_-24px_color-mix(in_oklch,var(--primary)_55%,transparent)]",
-        visualState === "completed" &&
-          "bg-muted/25 shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--border)_72%,transparent),0_12px_24px_-24px_color-mix(in_oklch,var(--foreground)_30%,transparent)] hover:bg-primary/[0.025] hover:shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--primary)_18%,transparent),0_14px_28px_-22px_color-mix(in_oklch,var(--primary)_42%,transparent)]",
+          "ml-4 border-l-2 border-l-primary/35 sm:ml-6",
+        visualState === "approval" && "border-warning/25 bg-warning/[0.025]",
+        visualState === "pending" && "border-primary/20 bg-primary/[0.025]",
         visualState === "error" &&
-          "bg-destructive/[0.045] shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--destructive)_22%,transparent),0_14px_28px_-24px_color-mix(in_oklch,var(--destructive)_45%,transparent)]",
+          "border-destructive/25 bg-destructive/[0.02]",
       )}
     >
-      <div className="flex min-h-11 items-center gap-2.5 px-2.5 py-0.5">
-        <ToolStateIcon state={visualState} />
-        <div className="min-w-0 flex-1">
-          <div className="flex min-w-0 items-center gap-1.5">
-            {agentContext ? (
-              <span className="inline-flex min-w-0 items-center gap-1 font-medium text-foreground">
-                <BotIcon className="size-3.5 shrink-0" aria-hidden="true" />
+      <ToolCardHeader
+        sequence={sequence}
+        title={friendlyName}
+        subtitle={
+          <>
+            {agentContext?.agentName ? (
+              <>
                 <span className="truncate">{agentContext.agentName}</span>
-              </span>
+                <span aria-hidden="true">·</span>
+              </>
             ) : null}
-            {agentContext ? (
-              <span className="text-muted-foreground" aria-hidden="true">
-                ·
-              </span>
-            ) : null}
-            <span className="shrink-0 font-medium text-foreground/80">
-              {friendlyName}
-            </span>
-            <span
-              className={cn(
-                "ml-1 truncate text-[10px] font-medium",
-                visualState === "pending" && "t-shimmer",
-                visualState === "approval" && "text-warning",
-                visualState === "completed" && "text-success",
-                visualState === "error" && "text-destructive",
-              )}
-              data-text={visualState === "pending" ? statusLabel : undefined}
-              aria-live="polite"
-            >
-              {statusLabel}
-            </span>
-            {visualState === "pending" ? (
-              <span
-                className="streaming-thinking__dots text-primary"
-                aria-hidden="true"
+            <span className="truncate">{parsed.toolName ?? friendlyName}</span>
+            <span aria-hidden="true">·</span>
+            <span className="shrink-0">{statusLabel}</span>
+          </>
+        }
+        state={visualState}
+        action={
+          visualState === "completed" || visualState === "error" ? (
+            <CollapsibleTrigger asChild>
+              <Button
+                type={BUTTON_TYPE}
+                variant={GHOST_VARIANT}
+                size="icon-sm"
+                className="size-8 shrink-0 rounded-lg text-muted-foreground"
+                aria-label={
+                  detailsOpen ? t("hideActionDetails") : t("showActionDetails")
+                }
               >
-                <span />
-                <span />
-                <span />
-              </span>
-            ) : null}
-          </div>
-          {summaryText ? (
-            <p className="truncate text-[11px] text-muted-foreground">
-              {summaryText}
-            </p>
-          ) : null}
-          {agentContext ? (
-            <span className="sr-only" aria-live="polite">
-              {status === "pending"
-                ? t("agentActionRunning", { name: agentContext.agentName })
-                : status === "error"
-                  ? t("agentActionFailed", { name: agentContext.agentName })
-                  : t("agentActionCompleted", {
-                      name: agentContext.agentName,
-                    })}
-            </span>
-          ) : null}
-        </div>
-        <CollapsibleTrigger asChild>
-          <Button
-            type={BUTTON_TYPE}
-            variant={GHOST_VARIANT}
-            size="icon-sm"
-            className="ml-auto size-10 shrink-0 rounded-xl text-muted-foreground opacity-70 transition-[background-color,opacity,scale] duration-150 ease-out hover:opacity-100"
-            aria-label={open ? t("hideActionDetails") : t("showActionDetails")}
-          >
-            <span className="t-acc-chevron">
-              <ChevronDownIcon aria-hidden="true" />
-            </span>
-          </Button>
-        </CollapsibleTrigger>
-      </div>
+                <ChevronDownIcon
+                  className={cn(
+                    "size-3.5 transition-transform duration-200",
+                    detailsOpen && "rotate-180",
+                  )}
+                  aria-hidden="true"
+                />
+              </Button>
+            </CollapsibleTrigger>
+          ) : null
+        }
+      />
+      {agentContext ? (
+        <span className="sr-only" aria-live="polite">
+          {status === "pending"
+            ? t("agentActionRunning", { name: agentContext.agentName })
+            : status === "error"
+              ? t("agentActionFailed", { name: agentContext.agentName })
+              : t("agentActionCompleted", { name: agentContext.agentName })}
+        </span>
+      ) : null}
       {approval ? (
-        <div className="border-t border-warning/20 bg-warning/[0.06] px-3 py-2">
+        <div className="bg-warning/[0.035] px-3 py-3">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-[11px] text-muted-foreground">
               {t("approvalWaiting")}
@@ -582,11 +712,16 @@ const ToolPartCard = memo(function ToolPartCard({
       <CollapsibleContent
         forceMount
         className="t-acc-panel"
-        aria-hidden={!open}
-        inert={!open ? true : undefined}
+        aria-hidden={!detailsOpen}
+        inert={!detailsOpen ? true : undefined}
       >
         <div className="t-acc-panel-inner">
-          <div className="border-t border-border/30 bg-background/45 px-4 py-3">
+          <div className="bg-background/25 px-3 py-3">
+            {summaryText ? (
+              <p className="mb-2 text-[11px] leading-4 text-muted-foreground">
+                {summaryText}
+              </p>
+            ) : null}
             {inputText ? (
               <div className="mb-2">
                 <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
@@ -620,6 +755,7 @@ function areToolPartCardPropsEqual(
 ) {
   return (
     previous.part === next.part &&
+    previous.sequence === next.sequence &&
     previous.messageStatus === next.messageStatus &&
     previous.approval === next.approval &&
     previous.workspaceId === next.workspaceId &&
@@ -672,11 +808,13 @@ function ThinkingPart({ part }: { part: ChatMessagePart }) {
   const [open, setOpen] = useState(false);
   const content = part.content.trim();
   const isStreaming = part.state === "streaming";
+  const hasDetails = reasoningPartHasDetails(part);
 
   return (
     <Collapsible
       open={open}
       onOpenChange={setOpen}
+      data-reasoning-details={hasDetails ? "available" : "unavailable"}
       className={cn(
         "group/reasoning overflow-hidden rounded-2xl text-xs transition-[background-color,box-shadow] duration-200 ease-out",
         isStreaming
@@ -730,47 +868,53 @@ function ThinkingPart({ part }: { part: ChatMessagePart }) {
             ) : null}
           </div>
         </div>
-        <CollapsibleTrigger asChild>
-          <Button
-            type={BUTTON_TYPE}
-            variant={GHOST_VARIANT}
-            size="sm"
-            className="h-10 shrink-0 rounded-xl pl-3 pr-2.5 text-xs text-muted-foreground hover:text-foreground"
-          >
-            <ChevronDownIcon
-              className={cn(
-                "size-3 transition-transform duration-200 ease-out",
-                open && "rotate-180",
-              )}
-              aria-hidden="true"
-            />
-            {open ? t("reasoningHide") : t("reasoningView")}
-          </Button>
-        </CollapsibleTrigger>
+        {hasDetails ? (
+          <CollapsibleTrigger asChild>
+            <Button
+              type={BUTTON_TYPE}
+              variant={GHOST_VARIANT}
+              size="sm"
+              className="h-10 shrink-0 rounded-xl pl-3 pr-2.5 text-xs text-muted-foreground hover:text-foreground"
+            >
+              <ChevronDownIcon
+                className={cn(
+                  "size-3 transition-transform duration-200 ease-out",
+                  open && "rotate-180",
+                )}
+                aria-hidden="true"
+              />
+              {open ? t("reasoningHide") : t("reasoningView")}
+            </Button>
+          </CollapsibleTrigger>
+        ) : null}
       </div>
-      <CollapsibleContent>
-        {content ? (
-          <ChatMarkdown className="border-t border-border/40 bg-background/45 px-4 py-3 text-pretty text-xs leading-5 text-muted-foreground">
-            {content}
-          </ChatMarkdown>
-        ) : (
-          <div className="border-t border-border/40 bg-background/45 px-4 py-3 text-pretty text-xs leading-5 text-muted-foreground">
-            {t("reasoningStarting")}
-          </div>
-        )}
-      </CollapsibleContent>
+      {hasDetails ? (
+        <CollapsibleContent>
+          {content ? (
+            <ChatMarkdown className="border-t border-border/40 bg-background/45 px-4 py-3 text-pretty text-xs leading-5 text-muted-foreground">
+              {content}
+            </ChatMarkdown>
+          ) : isStreaming ? (
+            <div className="border-t border-border/40 bg-background/45 px-4 py-3 text-pretty text-xs leading-5 text-muted-foreground">
+              {t("reasoningStarting")}
+            </div>
+          ) : null}
+        </CollapsibleContent>
+      ) : null}
     </Collapsible>
   );
 }
 
 function WorkPhase({
   parts,
+  sequence,
   hasVisibleResponseAfter,
   hasPendingApproval,
   messageStatus,
   children,
 }: {
   parts: Array<{ part: ChatMessagePart; partIndex: number }>;
+  sequence: number;
   hasVisibleResponseAfter: boolean;
   hasPendingApproval: boolean;
   messageStatus?: ChatMessage["status"];
@@ -837,21 +981,16 @@ function WorkPhase({
       onOpenChange={setManualOpen}
       data-open={String(open)}
       className={cn(
-        "t-acc group/work-phase overflow-hidden rounded-2xl text-xs transition-[background-color,box-shadow] duration-200 ease-out",
-        visualState === "approval" &&
-          "bg-warning/[0.055] shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--warning)_22%,transparent),0_14px_28px_-24px_color-mix(in_oklch,var(--warning)_55%,transparent)]",
-        visualState === "pending" &&
-          "bg-primary/[0.055] shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--primary)_18%,transparent),0_14px_28px_-24px_color-mix(in_oklch,var(--primary)_55%,transparent)]",
-        visualState === "completed" &&
-          "bg-muted/20 shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--border)_72%,transparent),0_12px_24px_-24px_color-mix(in_oklch,var(--foreground)_30%,transparent)] hover:bg-primary/[0.025] hover:shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--primary)_18%,transparent),0_14px_28px_-22px_color-mix(in_oklch,var(--primary)_42%,transparent)]",
-        visualState === "warning" &&
-          "bg-warning/[0.045] shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--warning)_22%,transparent),0_14px_28px_-24px_color-mix(in_oklch,var(--warning)_45%,transparent)]",
+        "t-acc group/work-phase w-full overflow-hidden rounded-[15px] border border-border/60 bg-card/75 text-xs shadow-[0_12px_35px_-24px_color-mix(in_oklch,var(--foreground)_35%,transparent)] transition-[background-color,border-color,box-shadow] duration-200 ease-out",
+        visualState === "approval" && "border-warning/25 bg-warning/[0.025]",
+        visualState === "pending" && "border-primary/20 bg-primary/[0.025]",
+        visualState === "warning" && "border-warning/25 bg-warning/[0.02]",
         visualState === "error" &&
-          "bg-destructive/[0.045] shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--destructive)_22%,transparent),0_14px_28px_-24px_color-mix(in_oklch,var(--destructive)_45%,transparent)]",
+          "border-destructive/25 bg-destructive/[0.02]",
       )}
     >
-      <div className="flex min-h-14 items-center gap-2.5 px-2.5 py-1">
-        <ToolStateIcon state={visualState} />
+      <div className="flex min-h-12 items-center gap-2.5 border-b border-border/45 px-3 py-2">
+        <ToolSequenceBadge sequence={sequence} />
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-center gap-2">
             <span
@@ -910,6 +1049,7 @@ function WorkPhase({
             {open ? t("reasoningHide") : t("reasoningView")}
           </Button>
         </CollapsibleTrigger>
+        <ToolStatusDot state={visualState} />
       </div>
       <CollapsibleContent
         forceMount
@@ -918,9 +1058,7 @@ function WorkPhase({
         inert={!open ? true : undefined}
       >
         <div className="t-acc-panel-inner">
-          <div className="space-y-2 border-t border-border/35 bg-background/40 p-2.5">
-            {children}
-          </div>
+          <div className="space-y-2 bg-background/20 p-2.5">{children}</div>
         </div>
       </CollapsibleContent>
     </Collapsible>
@@ -981,6 +1119,22 @@ export const MessageContent = memo(function MessageContent({
       }),
     [renderableParts],
   );
+  const stepSequenceByPartIndex = useMemo(() => {
+    const sequenceByIndex = new Map<number, number>();
+    let sequence = 1;
+    renderableParts.forEach((part, partIndex) => {
+      if (
+        part.type !== "reasoning" &&
+        part.type !== "tool-call" &&
+        part.type !== "tool-result"
+      ) {
+        return;
+      }
+      sequenceByIndex.set(partIndex, sequence);
+      sequence += 1;
+    });
+    return sequenceByIndex;
+  }, [renderableParts]);
   const { approvalByPartIndex, standaloneApprovals } = useMemo(() => {
     const approvalByIndex = new Map<number, PendingToolApproval>();
     const matchedApprovalIds = new Set<string>();
@@ -1124,6 +1278,9 @@ export const MessageContent = memo(function MessageContent({
     if (part.type === "reasoning") {
       return <ThinkingPart key={key} part={part} />;
     }
+    if (part.type === "error") {
+      return <ErrorPart key={key} part={part} />;
+    }
     if (part.type === "file") {
       const imageAttachment = chatImageAttachmentFromPartContent(part.content);
       if (imageAttachment) {
@@ -1152,6 +1309,7 @@ export const MessageContent = memo(function MessageContent({
         <ToolPartCard
           key={key}
           part={part}
+          sequence={stepSequenceByPartIndex.get(partIndex) ?? 1}
           messageStatus={message.status}
           approval={approvalByPartIndex.get(partIndex)}
           workspaceId={workspaceId}
@@ -1168,10 +1326,11 @@ export const MessageContent = memo(function MessageContent({
     <div className="flex flex-col gap-2">
       {citations.length > 0 ? <CitationBlock citations={citations} /> : null}
       {standaloneApprovals.length > 0
-        ? standaloneApprovals.map((approval) => (
+        ? standaloneApprovals.map((approval, approvalIndex) => (
             <PendingApprovalCard
               key={approval.invocationId}
               pendingApproval={approval}
+              sequence={approvalIndex + 1}
               onApprove={onApproveTool}
               onReject={onRejectTool}
             />
@@ -1187,6 +1346,7 @@ export const MessageContent = memo(function MessageContent({
             <WorkPhase
               key={`${message.id}-work-phase-${firstPartIndex}`}
               parts={group.parts}
+              sequence={stepSequenceByPartIndex.get(firstPartIndex) ?? 1}
               hasVisibleResponseAfter={group.hasVisibleResponseAfter}
               hasPendingApproval={group.parts.some(({ partIndex }) =>
                 approvalByPartIndex.has(partIndex),

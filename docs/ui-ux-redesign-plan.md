@@ -36,6 +36,20 @@ La refonte doit surtout améliorer :
 - Les pages sont très centrées sur des listes, formulaires et tableaux.
 - Les états vides ne guident pas assez vers la prochaine action.
 - La configuration assistant semble dense et intimidante.
+- La configuration d’un assistant adopte désormais un parcours compact en trois
+  espaces explicites (essentiel, capacités, orchestration), avec un résumé d’état,
+  une édition du logo directement sur l’avatar et des réglages avancés repliés.
+- L’aide de mise en route conduit vers l’action réellement manquante : choix du
+  modèle ou ajout de spécialistes pour un orchestrateur. Les assistants gérés par
+  l’organisation proposent directement de créer une copie modifiable.
+- L’historique partagé conserve l’organisation avancée sur toutes les pages :
+  dossiers, épinglage, renommage, suppression confirmée et réordonnancement par
+  glisser-déposer avec actions clavier équivalentes. Les erreurs de mutation
+  préservent la liste et relancent la synchronisation si nécessaire.
+- La bibliothèque de compétences privilégie désormais la consultation :
+  recherche, filtres de visibilité et de source, lignes compactes et affichage
+  progressif par lots de 24. Installation et création manuelle sont regroupées
+  derrière une seule action, avec un seul éditeur chargé à la demande.
 
 ### Problème principal
 
@@ -239,10 +253,13 @@ Transformer la page en galerie claire et actionnable.
   - missing model ;
   - no tools ;
   - knowledge attached.
-- Ajouter des actions rapides :
-  - Chat ;
-  - Configure ;
-  - Duplicate.
+- Donner à chaque carte une seule action principale :
+  - Chat lorsque l’assistant est prêt ;
+  - Configurer lorsqu’une intervention est requise ;
+  - Voir pour les assistants en lecture seule.
+- Réserver le menu secondaire aux préférences et au partage.
+- Garder la duplication et la suppression dans la fiche détaillée, avec le
+  contexte et les confirmations appropriés.
 - Simplifier la création d’assistant :
   - nom ;
   - modèle ;
@@ -478,3 +495,25 @@ Commencer par la Phase 1, car elle a le plus gros impact immédiat sur la percep
 - pages mieux structurées ;
 - première impression plus professionnelle ;
 - workflow utilisateur plus naturel.
+
+---
+
+## Suivi — Bibliothèque MCP
+
+La page des serveurs MCP reprend désormais le même modèle que la bibliothèque
+de compétences :
+
+- recherche disponible dès le premier serveur ;
+- filtre d’état compact ;
+- une seule action principale « Ajouter » ;
+- connexions et identifiants privés ouverts à la demande ;
+- serveurs présentés dans une liste dense, avec détail des outils dépliable ;
+- diagnostic et relance conservés au niveau du serveur concerné ;
+- chargement progressif par lots de 24 pour les espaces volumineux ;
+- états de chargement, erreur initiale, liste vide et filtre sans résultat
+  distincts ;
+- actions d’administration masquées ou désactivées selon les droits réels.
+
+Les formulaires de création, de modification, de suppression, de partage et de
+connexion restent inchangés fonctionnellement : seule leur entrée dans le
+parcours a été simplifiée.

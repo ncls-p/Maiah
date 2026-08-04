@@ -61,6 +61,7 @@ import { getUsageImpactSetting } from "@/modules/provider/usage-impact-settings"
 import type { AiHubToolApprovalPolicy } from "@/modules/tool/approval-policy";
 import {
   projectToolMessagePayload,
+  safeChatErrorMessage,
   safeToolErrorMessage,
 } from "@/modules/tool/safe-payload";
 import { db } from "@/server/infrastructure/db";
@@ -163,6 +164,7 @@ export async function POST(
       codeWorkspaceId,
       attachmentIds = [],
       imageAttachmentIds = [],
+      capabilityOverrides,
     } = parsed.data;
     const streamProtocol =
       req.headers.get("X-AI-Hub-Stream-Protocol") ??
@@ -685,7 +687,12 @@ export async function POST(
         const value = isStart
           ? progress.input
           : "error" in progress
-            ? { error: progress.error }
+            ? {
+                error: progress.error,
+                ...(progress.errorCode
+                  ? { errorCode: progress.errorCode }
+                  : {}),
+              }
             : progress.output;
         const agentContext = {
           agentId: progress.agentId,
@@ -1000,8 +1007,16 @@ export async function POST(
     });
     const { maxToolCalls, maxOutputTokens, maxSteps } = runtimeLimits;
     const shouldUseToolCalling = maxToolCalls > 0;
+    const disabledToolKeys = new Set(
+      capabilityOverrides?.disabledTools.map(
+        (tool) => `${tool.source}:${tool.id}`,
+      ) ?? [],
+    );
+    const disabledSkillIds = new Set(
+      capabilityOverrides?.disabledSkillIds ?? [],
+    );
     const skillsPrompt = shouldUseToolCalling
-      ? await buildSkillsRegistryPrompt(version.id)
+      ? await buildSkillsRegistryPrompt(version.id, disabledSkillIds)
       : null;
     const approvalPolicy =
       (version.approvalPolicyJson as AiHubToolApprovalPolicy | null) ?? null;
@@ -1014,6 +1029,8 @@ export async function POST(
           userId: actorUserId,
           maxToolCalls,
           hasSkills: Boolean(skillsPrompt),
+          disabledToolKeys,
+          disabledSkillIds,
           enableDocumentExplorer:
             messageAttachments.some(
               (attachment) =>
@@ -1364,6 +1381,7 @@ export async function POST(
             await appendStreamedTextPart("text", part.text);
             enqueueEvent({ type: "text", delta: part.text });
           } else if (part.type === "reasoning-start") {
+            await appendStreamedTextPart("reasoning", "");
             enqueueEvent({ type: "reasoning_start" });
           } else if (part.type === "reasoning-delta") {
             await appendStreamedTextPart("reasoning", part.text);
@@ -1451,14 +1469,10 @@ export async function POST(
               part.error instanceof Error
                 ? part.error
                 : new Error(String(part.error));
-            const errorMessage = safeToolErrorMessage(
+            const errorMessage = safeChatErrorMessage(
               error,
-              "Tool execution failed",
+              "Assistant generation failed",
             );
-            enqueueEvent({
-              type: "error",
-              error: errorMessage,
-            });
             throw new Error(errorMessage);
           }
         }
@@ -1467,15 +1481,15 @@ export async function POST(
         const [usageModel, usageImpactSetting] = await Promise.all([
           providerConfig.modelRecordId
             ? db
-              .select({
-                inputTokenCost: aiModels.inputTokenCost,
-                outputTokenCost: aiModels.outputTokenCost,
-                sustainabilityConfigJson: aiModels.sustainabilityConfigJson,
-              })
-              .from(aiModels)
-              .where(eq(aiModels.id, providerConfig.modelRecordId))
-              .limit(1)
-              .then((rows) => rows[0])
+                .select({
+                  inputTokenCost: aiModels.inputTokenCost,
+                  outputTokenCost: aiModels.outputTokenCost,
+                  sustainabilityConfigJson: aiModels.sustainabilityConfigJson,
+                })
+                .from(aiModels)
+                .where(eq(aiModels.id, providerConfig.modelRecordId))
+                .limit(1)
+                .then((rows) => rows[0])
             : Promise.resolve(undefined),
           getUsageImpactSetting(),
         ]);
@@ -1643,11 +1657,22 @@ export async function POST(
                 "Assistant run timed out before it could finish. Try again with a narrower request.",
               )
             : error;
+          const errorMessage = safeChatErrorMessage(
+            streamError,
+            "Assistant generation failed",
+          );
           // Chat stream failed — message already marked failed below
           await db
             .update(messages)
             .set({ status: "failed", completedAt: new Date() })
             .where(eq(messages.id, assistantMessage.id));
+          await db.insert(messageParts).values({
+            messageId: assistantMessage.id,
+            type: "error",
+            contentEncrypted: await encryptValue(errorMessage),
+            metadataJson: null,
+            sortOrder: nextSortOrder,
+          });
           await recordUsageEvent({
             workspaceId: agent.workspaceId,
             userId: actorUserId,
@@ -1675,10 +1700,7 @@ export async function POST(
           );
           enqueueEvent({
             type: "error",
-            error:
-              streamError instanceof Error
-                ? streamError.message
-                : String(streamError),
+            error: errorMessage,
           });
         }
       } finally {

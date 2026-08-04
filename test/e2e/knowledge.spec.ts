@@ -15,7 +15,10 @@ test.describe("knowledge bases", () => {
     await expect(page).toHaveURL(/\/en\/knowledge/);
 
     await expect(
-      page.getByRole("heading", { name: "Documents", exact: true }),
+      page.getByRole("heading", {
+        name: "Context, without the noise.",
+        exact: true,
+      }),
     ).toBeVisible({ timeout: 10_000 });
   });
 
@@ -23,7 +26,7 @@ test.describe("knowledge bases", () => {
     await page.goto("/en/knowledge");
 
     await expect(
-      page.getByText("No document collections yet", { exact: true }),
+      page.getByRole("main").getByText("Collections", { exact: true }),
     ).toBeVisible({ timeout: 10_000 });
   });
 
@@ -55,7 +58,7 @@ test.describe("knowledge bases", () => {
     await createDialog.getByRole("button", { name: /^Create$/i }).click();
 
     const baseButton = page.getByRole("button", {
-      name: new RegExp(`^${testBaseName} `),
+      name: new RegExp(`${testBaseName} Private$`),
     });
     await expect(baseButton).toBeVisible({ timeout: 15_000 });
 

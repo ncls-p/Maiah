@@ -13,6 +13,7 @@ import {
   chatTodoListFromUnknown,
   type ChatTodoList,
 } from "@/modules/chat/todo-list";
+import { projectToolPayloadForDisplay } from "@/modules/tool/safe-payload";
 
 function stringifyForMatch(value: unknown) {
   try {
@@ -56,6 +57,20 @@ export function summarizeToolBody(
       : "The tool finished.";
   }
   return String(body).slice(0, 180);
+}
+
+export function delegationFailureDetails(output: unknown): {
+  errorCode: string | null;
+  reason: string | null;
+} {
+  if (typeof output !== "object" || output === null) {
+    return { errorCode: null, reason: null };
+  }
+  const record = output as Record<string, unknown>;
+  return {
+    errorCode: typeof record.errorCode === "string" ? record.errorCode : null,
+    reason: typeof record.error === "string" ? record.error : null,
+  };
 }
 
 export type HtmlArtifactOutput = {
@@ -137,7 +152,13 @@ export function isGitHubPublishOutput(
 export function toolPartHasStandaloneRendering(part: ChatMessagePart) {
   if (part.type !== "tool-call" && part.type !== "tool-result") return false;
   const parsed = parseToolPart(part.content);
+  const visualToolName = parsed.toolName ?? "";
   return Boolean(
+    visualToolName === "render_html_artifact" ||
+    visualToolName === "generate_image" ||
+    visualToolName === "run_code_sandbox" ||
+    visualToolName === "github_publish_code_workspace" ||
+    visualToolName.startsWith("code_workspace_") ||
     codeSandboxOutputFromUnknown(parsed.output) ||
     isHtmlArtifactOutput(parsed.output) ||
     isGeneratedImageOutput(parsed.output) ||
@@ -585,6 +606,6 @@ export function toolPartMatchesApproval(
     toolNameMatches(parsed.toolName, pendingApproval.toolName) &&
     (parsed.input === undefined ||
       stringifyForMatch(pendingApproval.input) ===
-        stringifyForMatch(parsed.input))
+        stringifyForMatch(projectToolPayloadForDisplay(parsed.input)))
   );
 }

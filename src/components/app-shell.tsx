@@ -1,17 +1,19 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Link, usePathname } from "@/i18n/navigation";
+import { usePathname } from "@/i18n/navigation";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { MessageSquareIcon } from "lucide-react";
 
 import { AppHeader } from "@/components/app-header";
 import {
-  WorkspaceSidebar,
-  WorkspaceSidebarMobileTrigger,
-  WorkspaceSidebarProvider,
-} from "@/components/workspace-sidebar";
-import { Button } from "@/components/ui/button";
+  OrbitAccountMenu,
+  OrbitProductNavigation,
+  OrbitWordmark,
+} from "@/components/orbit-product-navigation";
+import {
+  WorkspaceHistoryMobileTrigger,
+  WorkspaceHistorySidebar,
+} from "@/components/workspace-history-sidebar";
 import { useWorkspace } from "@/hooks/use-workspace";
 import {
   fetchPendingToolCount,
@@ -19,7 +21,6 @@ import {
 } from "@/lib/api-client";
 import {
   DEFAULT_WORKSPACE_PERMISSIONS,
-  getRouteBreadcrumbs,
   getRouteTitleKey,
   type WorkspacePermissions,
   type WorkspaceShellState,
@@ -108,13 +109,17 @@ function useWorkspacePermissions(workspaceId: string | null | undefined) {
 function useShellRouteMetadata(pathname: string) {
   const tNav = useTranslations("nav");
   const titleKey = getRouteTitleKey(pathname);
-  const rawBreadcrumbs = getRouteBreadcrumbs(pathname);
+  const currentTitle = titleKey === "workspace" ? tNav("chat") : tNav(titleKey);
+  const orbitSection =
+    titleKey === "toolsHub"
+      ? tNav("toolsShort")
+      : titleKey === "knowledge"
+        ? tNav("knowledgeShort")
+        : titleKey === "scheduledTasks"
+          ? tNav("planningShort")
+          : currentTitle;
   return {
-    currentTitle: titleKey === "workspace" ? tNav("chat") : tNav(titleKey),
-    breadcrumbs: rawBreadcrumbs?.map((crumb) => ({
-      label: tNav(crumb.labelKey),
-      href: crumb.href,
-    })),
+    orbitSection,
   };
 }
 
@@ -129,7 +134,7 @@ export function AppShell({
   const tShell = useTranslations("shell");
   const { workspaceId } = useWorkspace();
   const isChatRoute = pathname === "/chat" || pathname.startsWith("/chat/");
-  const { currentTitle, breadcrumbs } = useShellRouteMetadata(pathname);
+  const { orbitSection } = useShellRouteMetadata(pathname);
   const pendingToolCount = usePendingToolCount(workspaceId);
   const permissions = useWorkspacePermissions(workspaceId);
 
@@ -154,54 +159,41 @@ export function AppShell({
 
   return (
     <WorkspaceShellContext.Provider value={shellValue}>
-      <WorkspaceSidebarProvider defaultCollapsed={isChatRoute}>
-        <div data-page="app-shell" className="app-shell">
-          <a
-            href="#workspace-main"
-            className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-full focus:border focus:border-border/70 focus:bg-background focus:px-3 focus:py-2 focus:text-sm focus:shadow-lg"
-          >
-            {tShell("skipToContent")}
-          </a>
-          <div className="flex min-h-0 flex-1 flex-row">
-            {!isChatRoute ? <WorkspaceSidebar shell={shellValue} /> : null}
-            <div className="flex min-w-0 flex-1 flex-col">
-              {!isChatRoute ? (
-                <AppHeader
-                  title={breadcrumbs ? currentTitle : tShell("workspace")}
-                  breadcrumbs={breadcrumbs}
-                  leading={<WorkspaceSidebarMobileTrigger shell={shellValue} />}
-                  actions={
-                    <Button
-                      asChild
-                      variant="ghost"
-                      size="sm"
-                      className="h-10 gap-2 rounded-xl px-3 text-muted-foreground hover:text-foreground"
-                    >
-                      <Link href="/chat">
-                        <MessageSquareIcon
-                          className="size-4"
-                          aria-hidden="true"
-                        />
-                        {tShell("returnToChat")}
-                      </Link>
-                    </Button>
-                  }
-                />
-              ) : null}
-              <main
-                id="workspace-main"
-                tabIndex={-1}
-                className={cn(
-                  "app-shell__main",
-                  isChatRoute && "app-shell__main--chat",
-                )}
-              >
-                {children}
-              </main>
-            </div>
+      <div data-page="app-shell" className="app-shell">
+        <a
+          href="#workspace-main"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-full focus:border focus:border-border/70 focus:bg-background focus:px-3 focus:py-2 focus:text-sm focus:shadow-lg"
+        >
+          {tShell("skipToContent")}
+        </a>
+        <div className="flex min-h-0 flex-1 flex-row">
+          {!isChatRoute ? <WorkspaceHistorySidebar shell={shellValue} /> : null}
+          <div className="flex min-w-0 flex-1 flex-col">
+            {!isChatRoute ? (
+              <AppHeader
+                leading={
+                  <>
+                    <WorkspaceHistoryMobileTrigger shell={shellValue} />
+                    <OrbitWordmark section={orbitSection} />
+                  </>
+                }
+                center={<OrbitProductNavigation shell={shellValue} />}
+                actions={<OrbitAccountMenu displayName={displayName} />}
+              />
+            ) : null}
+            <main
+              id="workspace-main"
+              tabIndex={-1}
+              className={cn(
+                "app-shell__main",
+                isChatRoute && "app-shell__main--chat",
+              )}
+            >
+              {children}
+            </main>
           </div>
         </div>
-      </WorkspaceSidebarProvider>
+      </div>
     </WorkspaceShellContext.Provider>
   );
 }

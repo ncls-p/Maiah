@@ -115,9 +115,11 @@ function LazyArtifactFrame({
 export function HtmlArtifactCard({
   artifact,
   isLive = false,
+  embedded = false,
 }: {
   artifact: HtmlArtifactOutput;
   isLive?: boolean;
+  embedded?: boolean;
 }) {
   const t = useTranslations("chat.artifacts");
   const [codeOpen, setCodeOpen] = useState(false);
@@ -145,14 +147,29 @@ export function HtmlArtifactCard({
     <div
       className={cn(
         "overflow-hidden rounded-2xl text-xs transition-[background-color,box-shadow] duration-200 ease-out",
-        isLive
-          ? "bg-primary/[0.055] shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--primary)_18%,transparent),0_14px_28px_-24px_color-mix(in_oklch,var(--primary)_55%,transparent)]"
-          : "bg-card shadow-[var(--surface-shadow)]",
+        embedded
+          ? "rounded-xl border border-border/55 bg-background/45"
+          : isLive
+            ? "bg-primary/[0.055] shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--primary)_18%,transparent),0_14px_28px_-24px_color-mix(in_oklch,var(--primary)_55%,transparent)]"
+            : "bg-card shadow-[var(--surface-shadow)]",
       )}
     >
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/40 px-2.5 py-1.5">
+      <div
+        className={cn(
+          "flex flex-wrap items-center justify-between gap-2 border-b border-border/40 px-2.5 py-1.5",
+          embedded && "min-h-10 bg-muted/20",
+        )}
+      >
         <div className="flex min-w-0 items-center gap-2.5">
-          <ToolStateIcon state={isLive ? "pending" : "completed"} />
+          {embedded ? (
+            <span className="flex items-center gap-1" aria-hidden="true">
+              <i className="size-1.5 rounded-full bg-muted-foreground/35" />
+              <i className="size-1.5 rounded-full bg-muted-foreground/35" />
+              <i className="size-1.5 rounded-full bg-muted-foreground/35" />
+            </span>
+          ) : (
+            <ToolStateIcon state={isLive ? "pending" : "completed"} />
+          )}
           <div className="min-w-0">
             <p className="truncate font-medium text-foreground">
               {artifact.title}
@@ -329,9 +346,11 @@ function SandboxOutputFileCard({ file }: { file: CodeSandboxFileOutput }) {
 export function CodeSandboxResultCard({
   result,
   input,
+  embedded = false,
 }: {
   result: CodeSandboxOutput;
   input?: CodeSandboxInputPreview | null;
+  embedded?: boolean;
 }) {
   const t = useTranslations("chat.artifacts");
   const [sourceOpen, setSourceOpen] = useState(false);
@@ -348,14 +367,18 @@ export function CodeSandboxResultCard({
       data-open={String(sourceOpen)}
       className={cn(
         "t-acc overflow-hidden rounded-2xl text-xs transition-[background-color,box-shadow] duration-200 ease-out",
-        result.ok
-          ? "bg-card shadow-[var(--surface-shadow)]"
-          : "bg-destructive/[0.045] shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--destructive)_22%,transparent),0_14px_28px_-24px_color-mix(in_oklch,var(--destructive)_45%,transparent)]",
+        embedded
+          ? "rounded-xl border border-border/55 bg-background/45"
+          : result.ok
+            ? "bg-card shadow-[var(--surface-shadow)]"
+            : "bg-destructive/[0.045] shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--destructive)_22%,transparent),0_14px_28px_-24px_color-mix(in_oklch,var(--destructive)_45%,transparent)]",
       )}
     >
       <div className="flex items-center justify-between gap-3 border-b border-border/40 px-2.5 py-1.5">
         <div className="flex min-w-0 items-center gap-2.5">
-          <ToolStateIcon state={result.ok ? "completed" : "error"} />
+          {!embedded ? (
+            <ToolStateIcon state={result.ok ? "completed" : "error"} />
+          ) : null}
           <div className="min-w-0">
             <p className="font-medium text-foreground">{t("codeSandbox")}</p>
             <p className="truncate text-[11px] text-muted-foreground tabular-nums">
@@ -510,10 +533,12 @@ export function LiveToolInputCard({
   toolName,
   inputText,
   sandboxInput,
+  embedded = false,
 }: {
   toolName: string;
   inputText: string;
   sandboxInput?: CodeSandboxInputPreview | null;
+  embedded?: boolean;
 }) {
   const t = useTranslations("chat.artifacts");
   const visibleInputText = useMemo(() => {
@@ -529,9 +554,15 @@ export function LiveToolInputCard({
   const displayText = visibleCode || visibleInputText;
 
   return (
-    <div className="overflow-hidden rounded-2xl bg-primary/[0.055] text-xs shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--primary)_18%,transparent),0_14px_28px_-24px_color-mix(in_oklch,var(--primary)_55%,transparent)]">
+    <div
+      className={cn(
+        "overflow-hidden rounded-2xl bg-primary/[0.055] text-xs shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--primary)_18%,transparent),0_14px_28px_-24px_color-mix(in_oklch,var(--primary)_55%,transparent)]",
+        embedded &&
+          "rounded-xl border border-border/55 bg-background/45 shadow-none",
+      )}
+    >
       <div className="flex items-center gap-2.5 border-b border-border/40 px-2.5 py-1.5">
-        <ToolStateIcon state="pending" />
+        {!embedded ? <ToolStateIcon state="pending" /> : null}
         <div className="min-w-0 flex-1">
           <p className="truncate font-medium text-foreground">{toolName}</p>
           <p

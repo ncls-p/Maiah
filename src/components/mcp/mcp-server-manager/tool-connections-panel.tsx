@@ -123,6 +123,7 @@ interface ToolConnectionsPanelProps {
   toolsByServer: Record<string, McpTool[]>;
   canManageMcpServers: boolean;
   canManageWorkspaceConnections: boolean;
+  embedded?: boolean;
 }
 
 const DEFAULT_STATUS: ToolConnectionStatus = "active";
@@ -185,6 +186,7 @@ export function ToolConnectionsPanel({
   toolsByServer,
   canManageMcpServers,
   canManageWorkspaceConnections,
+  embedded = false,
 }: ToolConnectionsPanelProps) {
   const t = useTranslations("mcp.toolConnections");
   const [connectors, setConnectors] = useState<ToolConnector[]>([]);
@@ -386,14 +388,16 @@ export function ToolConnectionsPanel({
     (connectorsWithServers.length === 0 ||
       provisionCandidateServers.length > 0);
 
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{t("title")}</CardTitle>
-        <CardDescription>{t("description")}</CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4">
-        <Alert>
+  const content = (
+    <>
+      {!embedded ? (
+        <CardHeader>
+          <CardTitle>{t("title")}</CardTitle>
+          <CardDescription>{t("description")}</CardDescription>
+        </CardHeader>
+      ) : null}
+      <CardContent className={cn("flex flex-col gap-4", embedded && "p-4")}>
+        <Alert className={cn(embedded && "py-3")}>
           <LockKeyholeIcon aria-hidden="true" />
           <AlertTitle>{t("privacyTitle")}</AlertTitle>
           <AlertDescription>{t("privacyDescription")}</AlertDescription>
@@ -509,8 +513,18 @@ export function ToolConnectionsPanel({
         onFormChangeAction={setActiveForm}
         onSaveAction={() => void saveConnection()}
       />
-    </Card>
+    </>
   );
+
+  if (embedded) {
+    return (
+      <div className="overflow-hidden rounded-2xl border border-border/65 bg-card/85">
+        {content}
+      </div>
+    );
+  }
+
+  return <Card>{content}</Card>;
 }
 
 function ProvisionServiceNowConnectorCard({

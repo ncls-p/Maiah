@@ -1,11 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  APP_SIDEBAR_OPEN_STORAGE_EVENT,
+  APP_SIDEBAR_OPEN_STORAGE_KEY,
   APP_SIDEBAR_WIDTH_STORAGE_EVENT,
   APP_SIDEBAR_WIDTH_STORAGE_KEY,
   clampAppSidebarWidth,
+  getStoredAppSidebarOpen,
   getStoredAppSidebarWidth,
+  setStoredAppSidebarOpen,
   setStoredAppSidebarWidth,
+  subscribeAppSidebarOpen,
   subscribeAppSidebarWidth,
 } from "@/lib/sidebar-layout";
 
@@ -70,6 +75,36 @@ describe("sidebar layout persistence", () => {
     expect(setItem).toHaveBeenCalledWith(APP_SIDEBAR_WIDTH_STORAGE_KEY, "400");
     expect(dispatchEvent).toHaveBeenCalledWith(
       expect.objectContaining({ type: APP_SIDEBAR_WIDTH_STORAGE_EVENT }),
+    );
+  });
+
+  it("persists one shared open state across app sections", () => {
+    expect(getStoredAppSidebarOpen()).toBe(true);
+
+    setStoredAppSidebarOpen(false);
+
+    expect(setItem).toHaveBeenCalledWith(APP_SIDEBAR_OPEN_STORAGE_KEY, "false");
+    expect(getStoredAppSidebarOpen()).toBe(false);
+    expect(dispatchEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ type: APP_SIDEBAR_OPEN_STORAGE_EVENT }),
+    );
+  });
+
+  it("subscribes to shared sidebar visibility changes", () => {
+    const callback = vi.fn();
+    const unsubscribe = subscribeAppSidebarOpen(callback);
+
+    expect(addEventListener).toHaveBeenCalledWith("storage", callback);
+    expect(addEventListener).toHaveBeenCalledWith(
+      APP_SIDEBAR_OPEN_STORAGE_EVENT,
+      callback,
+    );
+
+    unsubscribe();
+    expect(removeEventListener).toHaveBeenCalledWith("storage", callback);
+    expect(removeEventListener).toHaveBeenCalledWith(
+      APP_SIDEBAR_OPEN_STORAGE_EVENT,
+      callback,
     );
   });
 });

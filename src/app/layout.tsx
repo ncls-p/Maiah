@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist_Mono, Instrument_Sans } from "next/font/google";
+import { Geist_Mono, Instrument_Sans, Newsreader } from "next/font/google";
 import { cookies } from "next/headers";
 
 import "./globals.css";
@@ -18,6 +18,12 @@ const fontBody = Instrument_Sans({
 const fontMono = Geist_Mono({
   subsets: ["latin"],
   variable: "--font-mono",
+  display: "swap",
+});
+
+const fontHeading = Newsreader({
+  subsets: ["latin"],
+  variable: "--font-editorial",
   display: "swap",
 });
 
@@ -48,6 +54,7 @@ export default async function RootLayout({
         "min-h-full bg-background text-foreground antialiased",
         fontMono.variable,
         fontBody.variable,
+        fontHeading.variable,
       )}
     >
       <body className="min-h-svh" suppressHydrationWarning>

@@ -87,7 +87,10 @@ vi.mock("@/server/infrastructure/cache", () => ({
 import * as _dbModule from "@/server/infrastructure/db";
 const dbModule = _dbModule as unknown as DbModule;
 import { cache } from "@/server/infrastructure/cache";
-import { matchesPermission } from "@/server/domain/services/authorization";
+import {
+  canDelegatePermissionSet,
+  matchesPermission,
+} from "@/server/domain/services/authorization";
 import { authorization } from "@/server/domain/services/authorization";
 
 function resetDb() {
@@ -159,9 +162,54 @@ describe("matchesPermission", () => {
   });
 });
 
+describe("canDelegatePermissionSet", () => {
+  it("allows only permissions held by the actor", () => {
+    expect(
+      canDelegatePermissionSet(
+        ["workspaces.get", "roles.manage"],
+        ["workspaces.get"],
+      ),
+    ).toBe(true);
+    expect(
+      canDelegatePermissionSet(
+        ["workspaces.get", "roles.manage"],
+        ["workspaces.get", "agents.manage"],
+      ),
+    ).toBe(false);
+  });
+
+  it("honors wildcard and manage grants without crossing domains", () => {
+    expect(canDelegatePermissionSet(["agents.manage"], ["agents.get"])).toBe(
+      true,
+    );
+    expect(
+      canDelegatePermissionSet(["agents.manage"], ["providers.manage"]),
+    ).toBe(false);
+  });
+});
+
 // ─── authorization.checkPermission ──────────────────────────────────
 
 describe("authorization.checkPermission", () => {
+  it("coalesces concurrent permission resolutions for the same resource", async () => {
+    vi.mocked(cache.get).mockResolvedValue(null);
+    dbModule.db.select.mockReturnValue(dbModule._c);
+    dbModule._c.from.mockReturnValue(dbModule._c);
+    dbModule._c.where.mockReturnValue(dbModule._c);
+    dbModule._c.limit.mockResolvedValueOnce([]);
+
+    const context = { principalType: "user" as const, principalId: "user-1" };
+    const [first, second] = await Promise.all([
+      authorization.listPermissions(context, "workspace", "ws-shared"),
+      authorization.listPermissions(context, "workspace", "ws-shared"),
+    ]);
+
+    expect(first).toEqual([]);
+    expect(second).toEqual([]);
+    expect(dbModule.db.select).toHaveBeenCalledTimes(1);
+    expect(cache.set).toHaveBeenCalledTimes(1);
+  });
+
   it("returns granted=false when no permissions", async () => {
     vi.mocked(cache.get).mockResolvedValue(null);
     dbModule.db.select.mockReturnValue(dbModule._c);

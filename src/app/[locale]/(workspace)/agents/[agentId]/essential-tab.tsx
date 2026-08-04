@@ -4,10 +4,10 @@ import { MessageSquareIcon, SaveIcon, SettingsIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { SyntheticEvent } from "react";
 
+import { Link } from "@/i18n/navigation";
 import { ModelLogo } from "@/components/providers/model-logo";
 import { AdvancedSection } from "@/components/ui/advanced-section";
 import { Button } from "@/components/ui/button";
-import { CardFooter } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Field,
@@ -38,6 +38,7 @@ export function EssentialTab({
   models,
   saving,
   canAdminCurate,
+  canManageProviders,
   agentKind,
   readOnly = false,
   onSaveAction: onSave,
@@ -48,6 +49,7 @@ export function EssentialTab({
   models: Model[];
   saving: boolean;
   canAdminCurate: boolean;
+  canManageProviders: boolean;
   agentKind: Agent["kind"];
   readOnly?: boolean;
   onSaveAction: (e: SyntheticEvent<HTMLFormElement>) => void;
@@ -56,11 +58,14 @@ export function EssentialTab({
   const tModel = useTranslations("agents.model");
   const tCommon = useTranslations("common");
   const filteredModels = models.filter((m) => m.providerId === form.providerId);
+  const hasProviders = providers.length > 0;
+  const selectedProviderHasModels =
+    !form.providerId || filteredModels.length > 0;
 
   return (
     <form
       onSubmit={readOnly ? (event) => event.preventDefault() : onSave}
-      className="flex flex-col gap-4"
+      className="flex flex-col gap-3"
     >
       <fieldset disabled={readOnly} className="contents">
         <ConfigSection
@@ -127,6 +132,7 @@ export function EssentialTab({
                         modelId: "",
                       }))
                     }
+                    disabled={!hasProviders}
                   >
                     <SelectTrigger id="agent-provider" className="w-full">
                       <SelectValue placeholder="—" />
@@ -185,6 +191,44 @@ export function EssentialTab({
                 </FieldContent>
               </Field>
             </div>
+            {!hasProviders ? (
+              <div
+                role="status"
+                className="flex flex-col gap-3 rounded-2xl border border-dashed border-border/80 bg-muted/35 p-4 text-sm sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="min-w-0">
+                  <p className="font-medium text-foreground">
+                    {t("configurePage.noModelConnectionTitle")}
+                  </p>
+                  <p className="mt-1 text-muted-foreground">
+                    {canManageProviders
+                      ? t("configurePage.noModelConnectionAdmin")
+                      : t("configurePage.noModelConnectionMember")}
+                  </p>
+                </div>
+                {canManageProviders ? (
+                  <Button asChild type="button" variant="outline" size="sm">
+                    <Link href="/providers">
+                      {t("configurePage.configureModels")}
+                    </Link>
+                  </Button>
+                ) : null}
+              </div>
+            ) : !selectedProviderHasModels ? (
+              <div
+                role="status"
+                className="rounded-2xl border border-dashed border-border/80 bg-muted/35 p-4 text-sm"
+              >
+                <p className="font-medium text-foreground">
+                  {t("configurePage.noModelsForProviderTitle")}
+                </p>
+                <p className="mt-1 text-muted-foreground">
+                  {canManageProviders
+                    ? t("configurePage.noModelsForProviderAdmin")
+                    : t("configurePage.noModelsForProviderMember")}
+                </p>
+              </div>
+            ) : null}
             <Field>
               <FieldLabel htmlFor="agent-prompt">
                 {tModel("systemPrompt")}
@@ -360,7 +404,7 @@ export function EssentialTab({
       </fieldset>
 
       {readOnly ? null : (
-        <CardFooter className="justify-end px-0 pb-0">
+        <div className="flex justify-end rounded-2xl border border-border/60 bg-card/75 p-3 shadow-[var(--surface-shadow)]">
           <Button type="submit" disabled={saving}>
             {saving ? (
               <Spinner data-icon="inline-start" />
@@ -369,7 +413,7 @@ export function EssentialTab({
             )}
             {tCommon("save")}
           </Button>
-        </CardFooter>
+        </div>
       )}
     </form>
   );

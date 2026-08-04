@@ -6,12 +6,12 @@ import {
   CheckCircle2Icon,
   ClockIcon,
   CopyIcon,
+  ImageOffIcon,
   ImagePlusIcon,
   MessageCircleIcon,
   MoreHorizontalIcon,
   NetworkIcon,
   Trash2Icon,
-  XIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -81,16 +81,16 @@ function AgentLogoControls({
   }
 
   return (
-    <div className="flex shrink-0 flex-col items-center gap-2">
+    <div className="relative flex size-12 shrink-0 items-center justify-center">
       <ModelLogo
         logoUrl={agent?.logoUrl}
         label={agentLabel}
         size="lg"
         imageFit="cover"
-        className="rounded-full"
+        className="rounded-full ring-1 ring-border/70"
       />
       {canEdit && agent?.id ? (
-        <div className="flex items-center gap-1">
+        <>
           <input
             id={`agent-logo-${agent.id}`}
             type="file"
@@ -101,27 +101,21 @@ function AgentLogoControls({
               event.currentTarget.value = "";
             }}
           />
-          <Button size="sm" variant="outline" asChild>
+          <Button
+            size="icon-sm"
+            variant="outline"
+            className="absolute -right-1 -bottom-1 size-7 rounded-full bg-background shadow-sm"
+            asChild
+          >
             <label
               htmlFor={`agent-logo-${agent.id}`}
               aria-label={t("changeLogo")}
               className="cursor-pointer"
             >
-              <ImagePlusIcon data-icon="inline-start" aria-hidden="true" />
-              Logo
+              <ImagePlusIcon className="size-3.5" aria-hidden="true" />
             </label>
           </Button>
-          {agent.logoUrl ? (
-            <Button
-              size="icon-sm"
-              variant="ghost"
-              aria-label={t("removeLogo")}
-              onClick={() => onLogoChange(null)}
-            >
-              <XIcon aria-hidden="true" />
-            </Button>
-          ) : null}
-        </div>
+        </>
       ) : null}
     </div>
   );
@@ -168,8 +162,8 @@ function AgentHeaderTitle({
         ) : null}
       </div>
       {hasModel ? (
-        <p className="mt-2 text-sm text-muted-foreground">
-          {providerName}
+        <p className="mt-1.5 text-xs text-muted-foreground">
+          {providerName || t("configurePage.modelConfigured")}
           {modelLabel ? (
             <span className="ml-1 opacity-70">· {modelLabel}</span>
           ) : null}
@@ -189,6 +183,7 @@ function AgentHeaderActions({
   hasModel,
   onClone,
   onShowDeleteDialog,
+  onRemoveLogo,
   t,
 }: {
   agent: Agent | null;
@@ -196,6 +191,7 @@ function AgentHeaderActions({
   hasModel: boolean;
   onClone: () => void;
   onShowDeleteDialog: () => void;
+  onRemoveLogo: () => void;
   t: ReturnType<typeof useTranslations<"agents">>;
 }) {
   return (
@@ -213,7 +209,7 @@ function AgentHeaderActions({
           </Link>
         </Button>
       ) : null}
-      {canEdit || (agent?.id && agent.canClone !== false) ? (
+      {canEdit ? (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -227,11 +223,19 @@ function AgentHeaderActions({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuGroup>
-              {agent?.id && agent.canClone !== false ? (
+              {canEdit && agent?.id && agent.canClone !== false ? (
                 <DropdownMenuItem onClick={onClone}>
                   <CopyIcon aria-hidden="true" />
                   {t("list.clone")}
                 </DropdownMenuItem>
+              ) : null}
+              {canEdit ? (
+                agent?.logoUrl ? (
+                  <DropdownMenuItem onClick={onRemoveLogo}>
+                    <ImageOffIcon aria-hidden="true" />
+                    {t("configurePage.removeLogo")}
+                  </DropdownMenuItem>
+                ) : null
               ) : null}
               {canEdit ? (
                 <DropdownMenuItem
@@ -278,8 +282,8 @@ export function AgentHeader({
   const hasModel = Boolean(form.providerId && form.modelId);
 
   return (
-    <div className="rounded-2xl bg-card p-4 shadow-[var(--surface-shadow)] sm:p-5">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-5">
+    <div className="rounded-[1.125rem] border border-border/65 bg-card/85 p-3.5 shadow-[var(--surface-shadow)] sm:p-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <AgentLogoControls
           agent={agent}
           agentLabel={agentLabel}
@@ -299,6 +303,7 @@ export function AgentHeader({
           hasModel={hasModel}
           onClone={onClone}
           onShowDeleteDialog={onShowDeleteDialog}
+          onRemoveLogo={() => onLogoChange(null)}
           t={t}
         />
       </div>

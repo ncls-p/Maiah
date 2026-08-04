@@ -13,7 +13,8 @@ describe("IAM permission catalog", () => {
   it("expands built-in wildcard grants into editable catalog permissions", () => {
     const permissions = expandPermissionGrants(["agents.*", "workflows.view"]);
 
-    expect(permissions).toContain("agents.view");
+    expect(permissions).toContain("agents.list");
+    expect(permissions).toContain("agents.get");
     expect(permissions).toContain("agents.create");
     expect(permissions).toContain("workflows.view");
     expect(permissions).not.toContain("workflows.create");
@@ -27,6 +28,12 @@ describe("IAM permission catalog", () => {
 
     expect(new Set(permissions).size).toBe(permissions.length);
     expect(KNOWN_PERMISSIONS.size).toBe(permissions.length);
+  });
+
+  it("uses the assistant permissions enforced by the API", () => {
+    expect(KNOWN_PERMISSIONS).toContain("agents.list");
+    expect(KNOWN_PERMISSIONS).toContain("agents.get");
+    expect(KNOWN_PERMISSIONS).not.toContain("agents.view");
   });
 
   it("contains the permissions required to administer the hierarchy", () => {

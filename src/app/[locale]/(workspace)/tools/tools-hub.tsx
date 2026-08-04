@@ -3,12 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  BookMarkedIcon,
-  ServerIcon,
-  ShieldIcon,
-  WrenchIcon,
-} from "lucide-react";
+import { BookMarkedIcon, ServerIcon, WrenchIcon } from "lucide-react";
 
 import { McpServerManager } from "@/components/mcp/mcp-server-manager";
 import { PageLoading } from "@/components/page-loading";
@@ -24,10 +19,9 @@ import {
   type WorkspacePermissions,
 } from "@/lib/workspace-nav";
 
-import { ToolApprovalsPanel } from "./approvals-panel";
 import { BuiltinToolsPanel } from "./builtin-tools-panel";
 
-type ToolsTab = "builtin" | "mcp" | "skills" | "approvals";
+type ToolsTab = "builtin" | "mcp" | "skills";
 
 const TOOL_TAB_CONFIG = [
   {
@@ -43,7 +37,7 @@ const TOOL_TAB_CONFIG = [
     value: "mcp",
     icon: ServerIcon,
     labelKey: "tabs.mcp",
-    helpKey: "mcpHelp",
+    helpKey: null,
     canView: (permissions: WorkspacePermissions) =>
       permissions.canGetMcpServers,
     render: () => <McpServerManager />,
@@ -52,19 +46,10 @@ const TOOL_TAB_CONFIG = [
     value: "skills",
     icon: BookMarkedIcon,
     labelKey: "tabs.skills",
-    helpKey: "skillsHelp",
+    helpKey: null,
     canView: (permissions: WorkspacePermissions) =>
       permissions.canConfigureTools,
     render: () => <SkillManager />,
-  },
-  {
-    value: "approvals",
-    icon: ShieldIcon,
-    labelKey: "tabs.approvals",
-    helpKey: "approvalsHelp",
-    canView: (permissions: WorkspacePermissions) =>
-      permissions.canViewTools || permissions.canConfigureTools,
-    render: () => <ToolApprovalsPanel />,
   },
 ] as const;
 
@@ -138,8 +123,10 @@ export function ToolsHub() {
   if (permissionsError) {
     return (
       <WorkspacePage
-        title={t("title")}
-        description={t("description")}
+        title={t("orbitTitle")}
+        accentTitle={t("orbitAccent")}
+        eyebrow={t("orbitEyebrow")}
+        description={t("orbitDescription")}
         width="wide"
       >
         <div
@@ -167,8 +154,10 @@ export function ToolsHub() {
   if (allowedTabs.length === 0) {
     return (
       <WorkspacePage
-        title={t("title")}
-        description={t("description")}
+        title={t("orbitTitle")}
+        accentTitle={t("orbitAccent")}
+        eyebrow={t("orbitEyebrow")}
+        description={t("orbitDescription")}
         width="wide"
       >
         <div className="rounded-2xl border bg-card p-5">
@@ -183,12 +172,14 @@ export function ToolsHub() {
 
   return (
     <WorkspacePage
-      title={t("title")}
-      description={t("description")}
+      title={t("orbitTitle")}
+      accentTitle={t("orbitAccent")}
+      eyebrow={t("orbitEyebrow")}
+      description={t("orbitDescription")}
       width="wide"
     >
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="w-full flex-wrap sm:w-auto">
+        <TabsList className="max-w-full flex-nowrap justify-start overflow-x-auto">
           {allowedTabs.map((item) => {
             const Icon = item.icon;
             return (

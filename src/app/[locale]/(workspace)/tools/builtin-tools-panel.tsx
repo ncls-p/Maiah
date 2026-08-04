@@ -24,6 +24,7 @@ import {
   LinkIcon,
   ListChecksIcon,
   MailIcon,
+  MoreHorizontalIcon,
   PaletteIcon,
   PenLineIcon,
   PresentationIcon,
@@ -41,7 +42,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import {
   type BuiltInToolSummary,
@@ -165,6 +165,7 @@ function BuiltinToolCard({
   approvalLabel,
   enabledLabel,
   disabledLabel,
+  detailsLabel,
   canManage,
   pending,
   onEnabledChange,
@@ -176,6 +177,7 @@ function BuiltinToolCard({
   approvalLabel: string;
   enabledLabel: string;
   disabledLabel: string;
+  detailsLabel: string;
   canManage: boolean;
   pending: boolean;
   onEnabledChange: (enabled: boolean) => void;
@@ -183,105 +185,82 @@ function BuiltinToolCard({
   categoryLabel: string;
 }) {
   const ToolIcon = TOOL_ICONS[tool.name] ?? WrenchIcon;
+  const [expanded, setExpanded] = useState(false);
 
   return (
     <article
       className={cn(
-        "group flex min-h-full flex-col rounded-2xl border bg-card p-4 transition-colors duration-150 hover:border-input hover:bg-muted/30",
-        !tool.enabled && "bg-muted/20",
+        "group overflow-hidden rounded-2xl border border-border/70 bg-card/72 transition-[border-color,background-color,transform] duration-200 hover:-translate-y-0.5 hover:border-primary/20 hover:bg-card",
+        !tool.enabled && "bg-muted/18",
       )}
     >
-      <div className="flex items-start gap-3.5">
-        <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border bg-background text-muted-foreground">
+      <div className="flex min-h-[4.5rem] items-center gap-3 p-3">
+        <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/8 text-primary">
           <ToolIcon className="size-4" aria-hidden="true" />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="mb-1 text-[0.64rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                {categoryLabel}
-              </p>
-              <h4 className="truncate text-sm font-semibold leading-tight tracking-[-0.015em] text-foreground">
-                {tool.displayName}
-              </h4>
-            </div>
-            <RiskBadge riskLevel={tool.riskLevel} label={riskLabel} />
-          </div>
-          <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+          <h4 className="truncate text-sm font-semibold tracking-[-0.015em] text-foreground">
+            {tool.displayName}
+          </h4>
+          <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
             {tool.description}
           </p>
-          <div className="mt-3 flex items-center justify-between gap-3">
-            <code className="truncate text-[0.68rem] text-muted-foreground">
+        </div>
+        <Switch
+          checked={tool.enabled}
+          disabled={!canManage || pending}
+          onCheckedChange={onEnabledChange}
+          aria-label={`${enabledLabel} — ${tool.displayName}`}
+        />
+        <Button
+          type="button"
+          size="icon-sm"
+          variant="ghost"
+          className="rounded-lg text-muted-foreground"
+          aria-label={detailsLabel}
+          aria-expanded={expanded}
+          onClick={() => setExpanded((current) => !current)}
+        >
+          <MoreHorizontalIcon className="size-4" aria-hidden="true" />
+        </Button>
+      </div>
+      {expanded ? (
+        <div className="grid gap-3 border-t border-border/60 bg-muted/18 px-3 py-3 animate-in-fade sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                {categoryLabel}
+              </span>
+              <RiskBadge riskLevel={tool.riskLevel} label={riskLabel} />
+              <Badge
+                variant={tool.enabled ? "secondary" : "outline"}
+                className="rounded-full text-[0.62rem]"
+              >
+                {tool.enabled ? enabledLabel : disabledLabel}
+              </Badge>
+            </div>
+            <code className="mt-2 block truncate text-[0.68rem] text-muted-foreground">
               {tool.name}
             </code>
-            <Badge variant={tool.enabled ? "secondary" : "outline"}>
-              {tool.enabled ? enabledLabel : disabledLabel}
-            </Badge>
           </div>
-        </div>
-      </div>
-      <div className="mt-auto grid gap-2 border-t pt-3 sm:grid-cols-2">
-        <label className="flex min-h-10 items-center justify-between gap-3 rounded-xl bg-muted/30 px-3 py-2 text-xs font-medium">
-          <span>{enabledLabel}</span>
-          <Switch
-            checked={tool.enabled}
-            disabled={!canManage || pending}
-            onCheckedChange={onEnabledChange}
-            aria-label={`${enabledLabel} — ${tool.displayName}`}
-          />
-        </label>
-        <label className="flex min-h-10 items-center justify-between gap-3 rounded-xl bg-muted/30 px-3 py-2 text-xs font-medium">
-          <span className="flex items-center gap-1.5">
-            <ShieldCheckIcon
-              className="size-3.5 text-muted-foreground"
-              aria-hidden="true"
+          <label className="flex min-h-10 items-center justify-between gap-3 rounded-xl border border-border/60 bg-background/60 px-3 py-2 text-xs font-medium">
+            <span className="flex items-center gap-1.5">
+              <ShieldCheckIcon
+                className="size-3.5 text-muted-foreground"
+                aria-hidden="true"
+              />
+              {approvalLabel}
+            </span>
+            <Switch
+              checked={tool.requireApproval}
+              disabled={!canManage || pending}
+              onCheckedChange={onApprovalChange}
+              aria-label={`${approvalLabel} — ${tool.displayName}`}
             />
-            {approvalLabel}
-          </span>
-          <Switch
-            checked={tool.requireApproval}
-            disabled={!canManage || pending}
-            onCheckedChange={onApprovalChange}
-            aria-label={`${approvalLabel} — ${tool.displayName}`}
-          />
-        </label>
-      </div>
+          </label>
+        </div>
+      ) : null}
     </article>
-  );
-}
-
-function StatCard({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: number;
-  tone?: "default" | "low" | "medium" | "high";
-}) {
-  const toneClass =
-    tone === "high"
-      ? "text-destructive"
-      : tone === "medium"
-        ? "text-amber-700 dark:text-amber-300"
-        : tone === "low"
-          ? "text-emerald-700 dark:text-emerald-300"
-          : "text-foreground";
-
-  return (
-    <div className="rounded-2xl border bg-card px-3.5 py-3">
-      <p className="text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-        {label}
-      </p>
-      <p
-        className={cn(
-          "mt-1 text-2xl font-semibold tabular-nums leading-none tracking-[-0.04em]",
-          toneClass,
-        )}
-      >
-        {value}
-      </p>
-    </div>
   );
 }
 
@@ -404,24 +383,6 @@ export function BuiltinToolsPanel({
     });
   }, [builtinTools, search, categoryFilter]);
 
-  const groupedTools = useMemo(() => {
-    if (categoryFilter !== "all") {
-      return [{ category: categoryFilter, tools: filteredTools }];
-    }
-    const groups = new Map<string, BuiltInToolPolicy[]>();
-    for (const tool of filteredTools) {
-      const list = groups.get(tool.category) ?? [];
-      list.push(tool);
-      groups.set(tool.category, list);
-    }
-    return CATEGORY_ORDER.filter((category) => groups.has(category)).map(
-      (category) => ({
-        category,
-        tools: groups.get(category) ?? [],
-      }),
-    );
-  }, [filteredTools, categoryFilter]);
-
   function categoryLabel(category: string) {
     return isToolCategory(category) ? t(`categories.${category}`) : category;
   }
@@ -450,50 +411,7 @@ export function BuiltinToolsPanel({
 
   return (
     <div className="flex flex-col gap-5 animate-in-fade">
-      <section className="rounded-2xl border bg-card p-5 sm:p-6">
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-end">
-          <div className="flex max-w-2xl flex-col gap-3">
-            <div className="inline-flex w-fit items-center gap-2 rounded-full border bg-background px-3 py-1 text-muted-foreground">
-              <WrenchIcon className="size-3.5" aria-hidden="true" />
-              <p className="text-[0.66rem] font-semibold uppercase tracking-[0.18em]">
-                {t("eyebrow")}
-              </p>
-            </div>
-            <h2 className="max-w-xl text-2xl font-semibold tracking-[-0.045em] text-foreground sm:text-3xl">
-              {t("title")}
-            </h2>
-            <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
-              {t("description")}
-            </p>
-            <p className="max-w-xl text-xs leading-relaxed text-muted-foreground">
-              {canManage ? t("adminHint") : t("readOnlyHint")}
-            </p>
-            <Button variant="outline" size="sm" className="mt-1 w-fit" asChild>
-              <Link href="/agents">{t("enableCta")}</Link>
-            </Button>
-          </div>
-          <div className="grid grid-cols-2 gap-2.5">
-            <StatCard label={t("stats.total")} value={stats.total} />
-            <StatCard
-              label={t("stats.enabled")}
-              value={stats.enabled}
-              tone="low"
-            />
-            <StatCard
-              label={t("stats.approval")}
-              value={stats.approval}
-              tone="medium"
-            />
-            <StatCard
-              label={t("stats.disabled")}
-              value={stats.disabled}
-              tone="high"
-            />
-          </div>
-        </div>
-      </section>
-
-      <section className="rounded-2xl border bg-card p-3.5 sm:p-4">
+      <section className="rounded-2xl border border-border/70 bg-card/55 p-2.5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
           <div className="relative min-w-0 flex-1">
             <SearchIcon
@@ -508,16 +426,21 @@ export function BuiltinToolsPanel({
               aria-label={t("searchPlaceholder")}
             />
           </div>
-          <p className="shrink-0 px-1 text-xs text-muted-foreground lg:text-right">
-            {t("resultsCount", { count: filteredTools.length })}
-          </p>
+          <div className="flex shrink-0 items-center gap-1.5 text-[0.68rem] text-muted-foreground">
+            <span className="rounded-full bg-success/10 px-2 py-1 text-success">
+              {t("stats.enabled")} {stats.enabled}
+            </span>
+            <span className="rounded-full bg-muted px-2 py-1">
+              {t("resultsCount", { count: filteredTools.length })}
+            </span>
+          </div>
         </div>
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className="mt-2 flex flex-nowrap gap-1.5 overflow-x-auto pb-0.5">
           <Button
             type="button"
             size="sm"
             variant={categoryFilter === "all" ? "default" : "outline"}
-            className="h-8 rounded-full px-3 text-xs"
+            className="h-8 shrink-0 rounded-full px-3 text-xs"
             onClick={() => setCategoryFilter("all")}
           >
             {t("allCategories")}
@@ -532,7 +455,7 @@ export function BuiltinToolsPanel({
                 size="sm"
                 variant="outline"
                 className={cn(
-                  "h-8 gap-1.5 rounded-full border px-3 text-xs",
+                  "h-8 shrink-0 gap-1.5 rounded-full border px-3 text-xs",
                   active
                     ? "border-input bg-muted text-foreground"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground",
@@ -554,55 +477,31 @@ export function BuiltinToolsPanel({
           description={t("noResultsHint")}
         />
       ) : (
-        <div className="flex flex-col gap-7">
-          {groupedTools.map((group) => {
-            const CategoryIcon = isToolCategory(group.category)
-              ? CATEGORY_STYLES[group.category].icon
-              : CATEGORY_STYLES.Think.icon;
-            const showHeader = categoryFilter === "all";
-            const label = categoryLabel(group.category);
-
-            return (
-              <section key={group.category} className="flex flex-col gap-3">
-                {showHeader ? (
-                  <div className="flex items-center gap-2.5 px-1">
-                    <div className="flex size-7 items-center justify-center rounded-xl border bg-background text-muted-foreground">
-                      <CategoryIcon className="size-3.5" aria-hidden="true" />
-                    </div>
-                    <h3 className="text-sm font-semibold tracking-[-0.02em] text-foreground">
-                      {label}
-                    </h3>
-                    <span className="rounded-full bg-muted/42 px-2 py-0.5 text-[0.68rem] text-muted-foreground">
-                      {group.tools.length}
-                    </span>
-                  </div>
-                ) : null}
-                <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                  {group.tools.map((tool) => (
-                    <li key={tool.id}>
-                      <BuiltinToolCard
-                        tool={tool}
-                        riskLabel={riskLabels[tool.riskLevel]}
-                        approvalLabel={t("approval")}
-                        enabledLabel={t("enabled")}
-                        disabledLabel={t("disabled")}
-                        canManage={canManage}
-                        pending={pendingToolNames.has(tool.name)}
-                        onEnabledChange={(enabled) =>
-                          void updatePolicy(tool, { enabled })
-                        }
-                        onApprovalChange={(requireApproval) =>
-                          void updatePolicy(tool, { requireApproval })
-                        }
-                        categoryLabel={label}
-                      />
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            );
-          })}
-        </div>
+        <ul className="grid gap-2 sm:grid-cols-2">
+          {filteredTools.map((tool) => (
+            <li key={tool.id}>
+              <BuiltinToolCard
+                tool={tool}
+                riskLabel={riskLabels[tool.riskLevel]}
+                approvalLabel={t("approval")}
+                enabledLabel={t("enabled")}
+                disabledLabel={t("disabled")}
+                detailsLabel={t("details", {
+                  name: tool.displayName,
+                })}
+                canManage={canManage}
+                pending={pendingToolNames.has(tool.name)}
+                onEnabledChange={(enabled) =>
+                  void updatePolicy(tool, { enabled })
+                }
+                onApprovalChange={(requireApproval) =>
+                  void updatePolicy(tool, { requireApproval })
+                }
+                categoryLabel={categoryLabel(tool.category)}
+              />
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );

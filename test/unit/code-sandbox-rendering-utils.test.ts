@@ -4,6 +4,7 @@ import {
   codeSandboxOutputFromUnknown,
   partitionCodeSandboxFiles,
   summarizeToolBody,
+  toolPartHasStandaloneRendering,
 } from "@/components/chat/chat-message-rendering-utils";
 
 describe("code sandbox result rendering", () => {
@@ -71,5 +72,29 @@ describe("code sandbox result rendering", () => {
       "summary.md",
       "attachments/report.document/README.md",
     ]);
+  });
+
+  it("keeps visual tools outside the collapsible work trace for their whole lifecycle", () => {
+    for (const toolName of [
+      "render_html_artifact",
+      "generate_image",
+      "run_code_sandbox",
+      "code_workspace_write_file",
+      "github_publish_code_workspace",
+    ]) {
+      expect(
+        toolPartHasStandaloneRendering({
+          type: "tool-call",
+          content: JSON.stringify({ toolName }),
+        }),
+      ).toBe(true);
+    }
+
+    expect(
+      toolPartHasStandaloneRendering({
+        type: "tool-call",
+        content: JSON.stringify({ toolName: "web_search" }),
+      }),
+    ).toBe(false);
   });
 });

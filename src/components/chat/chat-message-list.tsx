@@ -680,6 +680,9 @@ export function ChatMessageList({
               const hasFilePart = message.parts.some(
                 (part) => part.type === "file",
               );
+              const hasWorkPart = message.parts.some((part) =>
+                ["reasoning", "tool-call", "tool-result"].includes(part.type),
+              );
               const canEdit = Boolean(onEditMessage) && (isUser || isAssistant);
               const canDelete = Boolean(onDeleteMessage);
               const canRegenerate =
@@ -721,17 +724,22 @@ export function ChatMessageList({
                         isUser && !hasFilePart
                           ? "max-w-[82%]"
                           : "max-w-[min(100%,48rem)]",
+                        isAssistant && hasWorkPart && "w-full",
                         isLast && isAnimating && "animate-in-fade",
                       )}
                     >
                       <Bubble
                         align={align}
                         variant={isUser ? "muted" : "ghost"}
-                        className={cn(isEditing && "ring-2 ring-primary/25")}
+                        className={cn(
+                          isAssistant && hasWorkPart && "w-full",
+                          isEditing && "ring-2 ring-primary/25",
+                        )}
                       >
                         <BubbleContent
                           className={cn(
                             "transition-[background-color,box-shadow,color] duration-150 ease-out",
+                            isAssistant && hasWorkPart && "w-full",
                             isUser
                               ? "msg-bubble--user"
                               : "msg-bubble--assistant",

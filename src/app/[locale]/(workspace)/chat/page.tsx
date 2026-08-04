@@ -15,6 +15,13 @@ import {
   ChatComposer,
   type QueuedChatMessage,
 } from "@/components/chat/chat-composer";
+import {
+  chatComposerDraftKey,
+  migrateNewChatComposerDraft,
+  readChatComposerDraft,
+  removeChatComposerDraft,
+  writeChatComposerDraft,
+} from "@/components/chat/chat-composer-draft";
 import { ChatLayout } from "@/components/chat/chat-layout";
 import { DestructiveConfirmationDialog } from "@/components/destructive-confirmation-dialog";
 import {
@@ -114,12 +121,6 @@ export default function ChatPage() {
     null,
   );
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
-  const [latestConversationId, setLatestConversationId] = useState<
-    string | null
-  >(null);
-  const [latestConversationAgentId, setLatestConversationAgentId] = useState<
-    string | null
-  >(null);
   const [conversationFolders, setConversationFolders] = useState<
     ChatConversationFolder[]
   >([]);
@@ -163,6 +164,75 @@ export default function ChatPage() {
   const processingQueuedMessageRef = useRef(false);
   const lastAutoOpenedWorkspaceRef = useRef<string | null>(null);
   const userSelectedInterfaceModeRef = useRef<InterfaceMode | null>(null);
+  const composerDraftScopeRef = useRef<{
+    workspaceId: string;
+    agentId: string;
+    conversationId: string | null;
+  } | null>(null);
+  const newConversationAgentIdRef = useRef<string | null>(null);
+
+  const saveCurrentComposerDraft = useCallback(() => {
+    const scope = composerDraftScopeRef.current;
+    if (!scope) return;
+    writeChatComposerDraft(
+      scope.workspaceId,
+      scope.agentId,
+      scope.conversationId,
+      { input, attachments },
+    );
+  }, [attachments, input]);
+
+  const restoreComposerDraft = useCallback(
+    (nextAgentId: string, nextConversationId: string | null) => {
+      if (!workspaceId || !nextAgentId) return;
+      saveCurrentComposerDraft();
+      const nextDraft = readChatComposerDraft(
+        workspaceId,
+        nextAgentId,
+        nextConversationId,
+      );
+      composerDraftScopeRef.current = {
+        workspaceId,
+        agentId: nextAgentId,
+        conversationId: nextConversationId,
+      };
+      setInput(nextDraft.input);
+      setAttachments(nextDraft.attachments);
+    },
+    [saveCurrentComposerDraft, workspaceId],
+  );
+
+  useEffect(() => {
+    if (!workspaceId || !selectedAgentId) return;
+    if (!activeConversationId && !newConversationAgentIdRef.current) {
+      newConversationAgentIdRef.current = selectedAgentId;
+    }
+    const expectedKey = chatComposerDraftKey(
+      workspaceId,
+      selectedAgentId,
+      activeConversationId,
+    );
+    const current = composerDraftScopeRef.current;
+    const currentKey = current
+      ? chatComposerDraftKey(
+          current.workspaceId,
+          current.agentId,
+          current.conversationId,
+        )
+      : null;
+    if (currentKey !== expectedKey) {
+      restoreComposerDraft(selectedAgentId, activeConversationId);
+    }
+  }, [
+    activeConversationId,
+    restoreComposerDraft,
+    selectedAgentId,
+    workspaceId,
+  ]);
+
+  useEffect(() => {
+    saveCurrentComposerDraft();
+  }, [saveCurrentComposerDraft]);
 
   function chooseInterfaceMode(mode: InterfaceMode) {
     userSelectedInterfaceModeRef.current = mode;
@@ -366,8 +436,6 @@ export default function ChatPage() {
     const data = await fetchConversationPage();
     setConversations(data.conversations);
     setConversationFolders(data.folders);
-    setLatestConversationId(data.latestConversationId);
-    setLatestConversationAgentId(data.latestConversationAgentId);
     setHasMoreConversations(data.hasMore);
     setConversationCursor(data.nextCursor);
   }, [fetchConversationPage]);
@@ -516,9 +584,20 @@ export default function ChatPage() {
     canChat,
     onConversationCreated: (conversationId, firstMessage) => {
       skipNextMessageLoadRef.current = true;
+      if (workspaceId && selectedAgentId) {
+        saveCurrentComposerDraft();
+        migrateNewChatComposerDraft(
+          workspaceId,
+          selectedAgentId,
+          conversationId,
+        );
+        composerDraftScopeRef.current = {
+          workspaceId,
+          agentId: selectedAgentId,
+          conversationId,
+        };
+      }
       setActiveConversationId(conversationId);
-      setLatestConversationId(conversationId);
-      setLatestConversationAgentId(selectedAgentId);
       if (selectedAgentId) {
         const now = new Date().toISOString();
         setConversations((current) =>
@@ -671,10 +750,6 @@ export default function ChatPage() {
         if (cancelled) return;
         setConversations(conversationData.conversations);
         setConversationFolders(conversationData.folders);
-        setLatestConversationId(conversationData.latestConversationId);
-        setLatestConversationAgentId(
-          conversationData.latestConversationAgentId,
-        );
         setHasMoreConversations(conversationData.hasMore);
         setConversationCursor(conversationData.nextCursor);
       } catch (err) {
@@ -752,7 +827,6 @@ export default function ChatPage() {
       queueMicrotask(() => {
         setMessages([]);
         setCodeWorkspaceArtifact(null);
-        setAttachments([]);
         resetInterfaceMode();
       });
       return;
@@ -818,9 +892,10 @@ export default function ChatPage() {
     if (activeConversationId) {
       params.set("conversationId", activeConversationId);
     } else {
+      newConversationAgentIdRef.current = agentId;
+      restoreComposerDraft(agentId, null);
       setMessages([]);
       setCodeWorkspaceArtifact(null);
-      setAttachments([]);
       resetInterfaceMode();
     }
     window.history.replaceState(null, "", `/chat?${params.toString()}`);
@@ -841,6 +916,7 @@ export default function ChatPage() {
       (item) => item.id === conversationId,
     );
     const nextAgentId = conversation?.agentId ?? conversationAgentId;
+    restoreComposerDraft(nextAgentId ?? selectedAgentId ?? "", conversationId);
     if (nextAgentId) setSelectedAgentId(nextAgentId);
     setActiveConversationId(conversationId);
     const params = new URLSearchParams();
@@ -850,17 +926,22 @@ export default function ChatPage() {
   }
 
   function startNewConversation() {
+    const nextAgentId = newConversationAgentIdRef.current ?? selectedAgentId;
     detachActiveStream();
     setQueuedMessages([]);
     setActiveConversationId(null);
+    if (nextAgentId && nextAgentId !== selectedAgentId) {
+      setSelectedAgentId(nextAgentId);
+      setActiveVersion(null);
+    }
     setMessages([]);
     setCodeWorkspaceArtifact(null);
-    setAttachments([]);
+    if (nextAgentId) restoreComposerDraft(nextAgentId, null);
     resetInterfaceMode();
     window.history.replaceState(
       null,
       "",
-      selectedAgentId ? `/chat?agentId=${selectedAgentId}` : "/chat",
+      nextAgentId ? `/chat?agentId=${nextAgentId}` : "/chat",
     );
   }
 
@@ -892,6 +973,9 @@ export default function ChatPage() {
       await fetchJson(`/api/workspace/conversations/${conversationId}`, {
         method: "DELETE",
       });
+      if (workspaceId && selectedAgentId) {
+        removeChatComposerDraft(workspaceId, selectedAgentId, conversationId);
+      }
       setConversations((current) =>
         current.filter((conversation) => conversation.id !== conversationId),
       );
@@ -902,7 +986,16 @@ export default function ChatPage() {
         setActiveConversationId(null);
         setMessages([]);
         setCodeWorkspaceArtifact(null);
-        setAttachments([]);
+        if (workspaceId && selectedAgentId) {
+          const nextAgentId =
+            newConversationAgentIdRef.current ?? selectedAgentId;
+          composerDraftScopeRef.current = null;
+          if (nextAgentId !== selectedAgentId) {
+            setSelectedAgentId(nextAgentId);
+            setActiveVersion(null);
+          }
+          restoreComposerDraft(nextAgentId, null);
+        }
         resetInterfaceMode();
         window.history.replaceState(
           null,
@@ -1109,8 +1202,6 @@ export default function ChatPage() {
     const attachmentsToSend = attachments;
     setInput("");
     setAttachments([]);
-    if (activeConversationId) setLatestConversationId(activeConversationId);
-    if (activeConversationId) setLatestConversationAgentId(selectedAgentId);
     if (sending) {
       queueMessage(content);
       return;
@@ -1689,17 +1780,7 @@ export default function ChatPage() {
         ) : (
           <section className="min-h-0 flex-1 overflow-hidden">
             {!loadingMessages && messages.length === 0 ? (
-              <EmptyConversationState
-                canChat={canChat}
-                selectedAgent={selectedAgent}
-                latestConversationId={latestConversationId}
-                emptyPromptSuggestions={emptyPromptSuggestions}
-                onSelectConversation={(conversationId) =>
-                  selectConversation(conversationId, latestConversationAgentId)
-                }
-                onSubmitSuggestion={submitSuggestion}
-                t={t}
-              />
+              <EmptyConversationState canChat={canChat} t={t} />
             ) : null}
             <div className="size-full min-h-0">
               <ChatMessageList
@@ -1740,6 +1821,9 @@ export default function ChatPage() {
             onUploadChatAttachment={uploadChatAttachment}
             attachments={attachments}
             todoList={latestTodoList}
+            centered={!loadingMessages && messages.length === 0}
+            promptSuggestions={emptyPromptSuggestions}
+            onPromptSuggestionClick={submitSuggestion}
             onRemoveAttachment={(attachmentId) =>
               setAttachments((current) =>
                 current.filter((attachment) => attachment.id !== attachmentId),

@@ -34,7 +34,9 @@ test.describe("workspace navigation", () => {
 
     // Page should load without errors
     await expect(
-      page.getByRole("heading", { name: /Assistants/i }).first(),
+      page.getByRole("heading", {
+        name: /Your intelligences, beautifully organized\./i,
+      }),
     ).toBeVisible({ timeout: 10_000 });
   });
 
@@ -43,7 +45,10 @@ test.describe("workspace navigation", () => {
     await expect(page).toHaveURL(/\/en\/knowledge/);
 
     await expect(
-      page.getByRole("heading", { name: "Documents", exact: true }),
+      page.getByRole("heading", {
+        name: "Context, without the noise.",
+        exact: true,
+      }),
     ).toBeVisible({ timeout: 10_000 });
   });
 
@@ -54,7 +59,9 @@ test.describe("workspace navigation", () => {
     await expect(page).toHaveURL(/\/en\/scheduled-tasks/);
 
     await expect(
-      page.getByRole("heading", { name: /Scheduled tasks/i }).first(),
+      page.getByRole("heading", {
+        name: /Automate, without losing control\./i,
+      }),
     ).toBeVisible({ timeout: 10_000 });
   });
 
@@ -63,7 +70,9 @@ test.describe("workspace navigation", () => {
     await expect(page).toHaveURL(/\/en\/tools/);
 
     await expect(
-      page.getByRole("heading", { name: /Tools & integrations/i }).first(),
+      page.getByRole("heading", {
+        name: /Capabilities and connections\./i,
+      }),
     ).toBeVisible({ timeout: 15_000 });
   });
 
@@ -167,19 +176,19 @@ test.describe("sidebar interactions", () => {
 
     // Find the collapse/expand button
     const toggleBtn = page.getByRole("button", {
-      name: /Collapse|Expand sidebar/i,
+      name: /Collapse chat sidebar/i,
     });
 
     if (await toggleBtn.isVisible()) {
       const initialWidth = await page
-        .locator('[data-slot="workspace-sidebar"]')
+        .locator('[data-slot="workspace-history-sidebar"]')
         .boundingBox();
 
       await toggleBtn.click();
       await page.waitForTimeout(300);
 
       const collapsedWidth = await page
-        .locator('[data-slot="workspace-sidebar"]')
+        .locator('[data-slot="workspace-history-sidebar"]')
         .boundingBox();
 
       // Sidebar should be narrower when collapsed
@@ -199,13 +208,14 @@ test.describe("sidebar interactions", () => {
     expect(ariaCurrent).toBe("page");
   });
 
-  test("user name is displayed in sidebar footer", async ({ page }) => {
+  test("user name is available from the Orbit account menu", async ({
+    page,
+  }) => {
     await page.goto("/en/agents");
 
-    // User name "E2E Admin" should be visible in the sidebar
-    await expect(page.getByText("E2E Admin")).toBeVisible({
-      timeout: 15_000,
-    });
+    await expect(
+      page.getByRole("button", { name: "E2E Admin", exact: true }),
+    ).toBeVisible({ timeout: 15_000 });
   });
 });
 

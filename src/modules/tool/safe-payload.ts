@@ -171,6 +171,15 @@ export function safeToolErrorMessage(error: unknown, fallback: string) {
   return projected === REDACTED_VALUE ? fallback : projected;
 }
 
+export function safeChatErrorMessage(error: unknown, fallback: string) {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  const projected = projectString(
+    message || fallback,
+    Number.POSITIVE_INFINITY,
+  );
+  return projected === REDACTED_VALUE ? fallback : projected;
+}
+
 export function projectToolMessagePayload(value: unknown) {
   return projectToolPayloadForDisplay(value, {
     maxArrayItems: 200,

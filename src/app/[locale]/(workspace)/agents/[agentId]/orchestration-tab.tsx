@@ -342,8 +342,8 @@ export function OrchestrationTab({
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <section className="rounded-2xl border bg-card p-4 sm:p-5">
+    <div className="flex flex-col gap-3">
+      <section className="rounded-[1.125rem] border border-border/65 bg-card/85 p-4 shadow-[var(--surface-shadow)] sm:p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
@@ -390,7 +390,7 @@ export function OrchestrationTab({
                 <div
                   key={candidate.id}
                   className={cn(
-                    "rounded-xl border p-3 transition-[background-color,border-color]",
+                    "rounded-xl border p-3 transition-[background-color,border-color] duration-150 ease-out",
                     selected && "border-primary/35 bg-primary/5",
                   )}
                 >
@@ -533,7 +533,7 @@ export function OrchestrationTab({
           </div>
         </AdvancedSection>
 
-        <div className="mt-4 flex justify-end border-t pt-4">
+        <div className="mt-4 flex justify-end border-t border-border/55 pt-4">
           <Button type="button" disabled={saving} onClick={onSave}>
             {saving ? (
               <Spinner data-icon="inline-start" />

@@ -1,9 +1,13 @@
 export const APP_SIDEBAR_WIDTH_STORAGE_KEY = "app-sidebar-width";
 export const APP_SIDEBAR_WIDTH_STORAGE_EVENT = "app-sidebar-width-change";
+export const APP_SIDEBAR_OPEN_STORAGE_KEY = "chat-unified-sidebar-open";
+export const APP_SIDEBAR_OPEN_STORAGE_EVENT =
+  "chat-unified-sidebar-open-change";
 
 export const DEFAULT_APP_SIDEBAR_WIDTH = 288;
 export const MIN_APP_SIDEBAR_WIDTH = 240;
 export const MAX_APP_SIDEBAR_WIDTH = 400;
+export const DEFAULT_APP_SIDEBAR_OPEN = true;
 
 const LEGACY_WIDTH_STORAGE_KEYS = [
   "chat-unified-sidebar-width",
@@ -46,4 +50,24 @@ export function setStoredAppSidebarWidth(width: number) {
     String(clampAppSidebarWidth(width)),
   );
   window.dispatchEvent(new Event(APP_SIDEBAR_WIDTH_STORAGE_EVENT));
+}
+
+export function subscribeAppSidebarOpen(callback: () => void) {
+  window.addEventListener("storage", callback);
+  window.addEventListener(APP_SIDEBAR_OPEN_STORAGE_EVENT, callback);
+  return () => {
+    window.removeEventListener("storage", callback);
+    window.removeEventListener(APP_SIDEBAR_OPEN_STORAGE_EVENT, callback);
+  };
+}
+
+export function getStoredAppSidebarOpen(): boolean {
+  const stored = window.localStorage.getItem(APP_SIDEBAR_OPEN_STORAGE_KEY);
+  if (stored === null) return DEFAULT_APP_SIDEBAR_OPEN;
+  return stored === "true";
+}
+
+export function setStoredAppSidebarOpen(open: boolean) {
+  window.localStorage.setItem(APP_SIDEBAR_OPEN_STORAGE_KEY, String(open));
+  window.dispatchEvent(new Event(APP_SIDEBAR_OPEN_STORAGE_EVENT));
 }

@@ -8,6 +8,7 @@ import {
 import { audit } from "@/server/domain/services/audit";
 import {
   authorization,
+  canDelegatePermissionSet,
   matchesPermission,
 } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
@@ -30,6 +31,7 @@ import {
   expandPermissionGrants,
   isKnownPermission,
   isPermissionCompatibleWithScope,
+  KNOWN_PERMISSIONS,
   PERMISSION_CATALOG,
 } from "./permission-catalog";
 import { createWorkspace } from "@/modules/workspace/use-cases";
@@ -61,6 +63,31 @@ function normalizedSlug(value: string) {
 function customRoleName(displayName: string) {
   const slug = normalizedSlug(displayName);
   return `custom.${slug || crypto.randomUUID().slice(0, 8)}`;
+}
+
+function rolePermissions(role: { permissionsJson: unknown }) {
+  return Array.isArray(role.permissionsJson)
+    ? (role.permissionsJson as string[])
+    : [];
+}
+
+async function requireDelegablePermissions(input: {
+  actorUserId: string;
+  resourceType: ScopeType;
+  resourceId: string;
+  permissions: string[];
+}) {
+  const actorPermissions = await authorization.listPermissions(
+    { principalType: "user", principalId: input.actorUserId },
+    input.resourceType,
+    input.resourceId,
+  );
+  if (!canDelegatePermissionSet(actorPermissions, input.permissions)) {
+    throw new IamOperationError(
+      "You cannot grant permissions that you do not hold at this scope",
+      403,
+    );
+  }
 }
 
 async function getWorkspaceScope(workspaceId: string) {
@@ -529,6 +556,13 @@ export async function createCustomRole(input: {
       "One or more permissions cannot be used in a project role",
     );
   }
+  await requireDelegablePermissions({
+    actorUserId: input.actorUserId,
+    resourceType: input.scopeType,
+    resourceId:
+      input.scopeType === "organization" ? organization.id : input.workspaceId,
+    permissions,
+  });
 
   const name = customRoleName(input.displayName);
   const ownerResourceType = input.scopeType;
@@ -613,7 +647,6 @@ export async function updateCustomRole(input: {
   ) {
     throw new IamOperationError("Custom role not found", 404);
   }
-
   const scopeType = role.scopeType as ScopeType;
   await requirePermission({
     userId: input.actorUserId,
@@ -623,7 +656,6 @@ export async function updateCustomRole(input: {
       scopeType === "organization" ? organization.id : input.workspaceId,
     errorMessage: "You do not have permission to update this role",
   });
-
   const permissions = [...new Set(input.permissions)];
   if (permissions.length === 0) {
     throw new IamOperationError("Select at least one permission");
@@ -640,6 +672,13 @@ export async function updateCustomRole(input: {
       "One or more permissions cannot be used in a project role",
     );
   }
+  await requireDelegablePermissions({
+    actorUserId: input.actorUserId,
+    resourceType: scopeType,
+    resourceId:
+      scopeType === "organization" ? organization.id : input.workspaceId,
+    permissions,
+  });
 
   const name = customRoleName(input.displayName);
   const [existingRole] = await db
@@ -754,6 +793,13 @@ export async function deleteCustomRole(input: {
       role.scopeType === "organization" ? organization.id : input.workspaceId,
     errorMessage: "You do not have permission to delete this role",
   });
+  await requireDelegablePermissions({
+    actorUserId: input.actorUserId,
+    resourceType: role.scopeType as ScopeType,
+    resourceId:
+      role.scopeType === "organization" ? organization.id : input.workspaceId,
+    permissions: rolePermissions(role),
+  });
   const [{ value: assignmentCount }] = await db
     .select({ value: count() })
     .from(roleBindings)
@@ -852,6 +898,13 @@ export async function assignRole(input: {
       input.scopeType === "organization"
         ? "You do not have permission to assign organization roles"
         : "You do not have permission to assign project roles",
+  });
+  await requireDelegablePermissions({
+    actorUserId: input.actorUserId,
+    resourceType: input.scopeType,
+    resourceId:
+      input.scopeType === "organization" ? organization.id : input.workspaceId,
+    permissions: rolePermissions(role),
   });
   if (role.name === "organization.owner" && input.principalType !== "user") {
     throw new IamOperationError(
@@ -958,6 +1011,12 @@ export async function assignResourceRole(input: {
     resourceType: "workspace",
     resourceId: input.workspaceId,
     errorMessage: "You do not have permission to share project resources",
+  });
+  await requireDelegablePermissions({
+    actorUserId: input.actorUserId,
+    resourceType: "workspace",
+    resourceId: input.workspaceId,
+    permissions: rolePermissions(role),
   });
   if (
     !(await validateAssignmentPrincipal({
@@ -1267,8 +1326,9 @@ export async function getAccessConsoleSnapshot(input: {
     canManageOrganizationAccess: hasOrganizationPermission("roles.manage"),
     canCreateProjects: hasOrganizationPermission("workspaces.create"),
     canManageProjectLifecycle: hasWorkspacePermission("workspaces.update"),
-    canManageOrganizationLifecycle:
-      hasOrganizationPermission("organization.update"),
+    canManageOrganizationLifecycle: hasOrganizationPermission(
+      "organization.update",
+    ),
     canManageMembers: hasOrganizationPermission("members.manage"),
     canManageTeams: hasOrganizationPermission("teams.manage"),
   };
@@ -1278,6 +1338,28 @@ export async function getAccessConsoleSnapshot(input: {
       403,
     );
   }
+
+  const grantablePermissions = {
+    organization: [...KNOWN_PERMISSIONS].filter(
+      (permission) =>
+        isPermissionCompatibleWithScope(permission, "organization") &&
+        canDelegatePermissionSet(organizationPermissions, [permission]),
+    ),
+    workspace: [...KNOWN_PERMISSIONS].filter(
+      (permission) =>
+        isPermissionCompatibleWithScope(permission, "workspace") &&
+        canDelegatePermissionSet(effectivePermissions, [permission]),
+    ),
+  };
+  const assignableRoleIds = roleRows
+    .filter((role) => {
+      const actorPermissions =
+        role.scopeType === "organization"
+          ? organizationPermissions
+          : effectivePermissions;
+      return canDelegatePermissionSet(actorPermissions, rolePermissions(role));
+    })
+    .map((role) => role.id);
 
   return {
     organization: {
@@ -1330,6 +1412,8 @@ export async function getAccessConsoleSnapshot(input: {
     permissionCatalog: PERMISSION_CATALOG,
     resourceDefinitions: ACCESS_RESOURCE_DEFINITIONS,
     effectivePermissions,
+    grantablePermissions,
+    assignableRoleIds,
     capabilities,
     canManageAccess:
       capabilities.canManageProjectAccess ||
@@ -1445,6 +1529,7 @@ export async function getResourceAccessSnapshot(input: {
     roles: snapshot.roles.filter(
       (role) =>
         role.scopeType === "workspace" &&
+        snapshot.assignableRoleIds.includes(role.id) &&
         role.permissions.some((permission) =>
           permissionDomains.includes(permission.split(".")[0]),
         ),
