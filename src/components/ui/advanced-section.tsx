@@ -16,6 +16,7 @@ export function AdvancedSection({
   hint,
   icon: Icon,
   className,
+  defaultOpen = false,
 }: {
   children: ReactNode;
   label: string;
@@ -23,11 +24,11 @@ export function AdvancedSection({
   icon?: ElementType;
   /** Kept for API compatibility; advanced sections are intentionally closed by default. */
   storageKey?: string;
-  /** Kept for API compatibility; advanced sections are intentionally closed by default. */
+  /** Opens this disclosure on first render. */
   defaultOpen?: boolean;
   className?: string;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
 
   function handleOpenChange(shouldOpen: boolean) {
     setOpen(shouldOpen);
