@@ -129,6 +129,74 @@ export type ChatUsageImpact = {
   co2Grams: number | null;
 };
 
+export function aggregateChatUsageImpact(
+  messages: ChatMessage[],
+): ChatUsageImpact | null {
+  let found = false;
+  let inputTokens = 0;
+  let outputTokens = 0;
+  let cost = 0;
+  let hasCost = false;
+  let currency: string | null = null;
+  let currenciesMatch = true;
+  let energyKwh = 0;
+  let hasEnergy = false;
+  let co2Grams = 0;
+  let hasCo2 = false;
+
+  for (const message of messages) {
+    if (message.role !== "assistant") continue;
+    for (const part of message.parts) {
+      if (part.type !== "impact") continue;
+      try {
+        const impact = JSON.parse(part.content) as Partial<ChatUsageImpact>;
+        found = true;
+        if (Number.isFinite(impact.inputTokens)) {
+          inputTokens += impact.inputTokens ?? 0;
+        }
+        if (Number.isFinite(impact.outputTokens)) {
+          outputTokens += impact.outputTokens ?? 0;
+        }
+        if (typeof impact.cost === "number" && Number.isFinite(impact.cost)) {
+          const nextCurrency = impact.currency?.trim();
+          if (nextCurrency) {
+            currency ??= nextCurrency;
+            currenciesMatch &&= currency === nextCurrency;
+          }
+          cost += impact.cost;
+          hasCost = true;
+        }
+        if (
+          typeof impact.energyKwh === "number" &&
+          Number.isFinite(impact.energyKwh)
+        ) {
+          energyKwh += impact.energyKwh;
+          hasEnergy = true;
+        }
+        if (
+          typeof impact.co2Grams === "number" &&
+          Number.isFinite(impact.co2Grams)
+        ) {
+          co2Grams += impact.co2Grams;
+          hasCo2 = true;
+        }
+      } catch {
+        // Ignore malformed historical parts without hiding valid metrics.
+      }
+    }
+  }
+
+  if (!found) return null;
+  return {
+    inputTokens,
+    outputTokens,
+    cost: hasCost && currenciesMatch ? cost : null,
+    currency: currency ?? "EUR",
+    energyKwh: hasEnergy ? energyKwh : null,
+    co2Grams: hasCo2 ? co2Grams : null,
+  };
+}
+
 function sanitizeToolName(name: string) {
   return name.replace(/[^a-zA-Z0-9_]/g, "_").replace(/^_+|_+$/g, "");
 }

@@ -59,6 +59,49 @@ export function summarizeToolBody(
   return String(body).slice(0, 180);
 }
 
+export type KnowledgeSearchResult = {
+  chunkId: string;
+  documentId: string;
+  documentTitle: string;
+  content: string;
+  knowledgeBaseName: string;
+  score: number;
+};
+
+export function knowledgeSearchResultsFromUnknown(
+  value: unknown,
+): KnowledgeSearchResult[] | null {
+  if (typeof value !== "object" || value === null) return null;
+  const record = value as Record<string, unknown>;
+  if (
+    record.kind !== "knowledge_search_results" ||
+    !Array.isArray(record.results)
+  ) {
+    return null;
+  }
+  return record.results.filter((result): result is KnowledgeSearchResult => {
+    if (typeof result !== "object" || result === null) return false;
+    const row = result as Partial<KnowledgeSearchResult>;
+    return (
+      typeof row.chunkId === "string" &&
+      typeof row.documentId === "string" &&
+      typeof row.documentTitle === "string" &&
+      typeof row.content === "string" &&
+      typeof row.knowledgeBaseName === "string" &&
+      typeof row.score === "number"
+    );
+  });
+}
+
+export function knowledgeContextChunkCount(value: unknown) {
+  if (typeof value !== "object" || value === null) return null;
+  const record = value as Record<string, unknown>;
+  if (record.kind !== "knowledge_context" || record.found !== true) {
+    return null;
+  }
+  return Array.isArray(record.chunks) ? record.chunks.length : 0;
+}
+
 export function delegationFailureDetails(output: unknown): {
   errorCode: string | null;
   reason: string | null;

@@ -108,6 +108,13 @@
     "defaultSaveFailed": "Failed to save default assistant",
     "configureProvider": "Connect AI",
     "enabledTools": "{count} tools enabled",
+    "impact": {
+      "conversationLabel": "Conversation impact",
+      "costLabel": "Estimated cost",
+      "costDescription": "Cumulative estimated AI model cost for this conversation.",
+      "energyLabel": "Estimated energy use",
+      "energyDescription": "Cumulative estimated electricity use for this conversation."
+    },
     "toolsMenu": {
       "trigger": "Capabilities",
       "triggerLabel": "Chat capabilities, {active} active out of {total}",
@@ -309,6 +316,13 @@
       "workPhaseMore": "+{count}",
       "workPhaseView": "Show work phase",
       "workPhaseHide": "Hide work phase",
+      "knowledgeSearch": "Search data sources",
+      "knowledgeContext": "Read surrounding chunks",
+      "knowledgeSearching": "Searching connected documents…",
+      "knowledgeSearchedDocuments": "Searched {count, plural, one {# document} other {# documents}}",
+      "knowledgeNoResults": "No matching document found",
+      "knowledgeReadingContext": "Reading surrounding document context…",
+      "knowledgeReadChunks": "Read {count, plural, one {# surrounding chunk} other {# surrounding chunks}}",
       "generating": "Generating",
       "assistantGenerating": "Assistant is generating",
       "needsApproval": "Needs approval",
@@ -363,7 +377,21 @@
       "save": "Save"
     },
     "citations": {
-      "title": "Sources"
+      "title": "Sources",
+      "documents": "{count, plural, one {# document consulted} other {# documents consulted}}",
+      "showSources": "Show consulted sources",
+      "hideSources": "Hide consulted sources",
+      "showExcerpt": "Show excerpt from {title}",
+      "hideExcerpt": "Hide excerpt from {title}",
+      "excerpt": "Matching excerpt",
+      "relevance": "{value}% relevance",
+      "viewFullDocument": "View full document",
+      "fullDocument": "Full document",
+      "loadingDocument": "Loading document…",
+      "documentLoadFailed": "Unable to load the document.",
+      "chunks": "{count, plural, one {# section} other {# sections}}",
+      "chunk": "Section {count}",
+      "citedPassage": "Cited passage"
     },
     "artifacts": {
       "previewWhenVisible": "Preview loads when visible.",

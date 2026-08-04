@@ -108,6 +108,13 @@
     "defaultSaveFailed": "Impossible d’enregistrer l’assistant par défaut",
     "configureProvider": "Connecter l’IA",
     "enabledTools": "Outils activés {count}",
+    "impact": {
+      "conversationLabel": "Impact de la conversation",
+      "costLabel": "Coût estimé",
+      "costDescription": "Coût cumulé estimé des modèles d’IA pour cette conversation.",
+      "energyLabel": "Énergie estimée",
+      "energyDescription": "Consommation électrique cumulée estimée pour cette conversation."
+    },
     "toolsMenu": {
       "trigger": "Capacités",
       "triggerLabel": "Capacités du chat, {active} actives sur {total}",
@@ -309,6 +316,13 @@
       "workPhaseMore": "+{count}",
       "workPhaseView": "Afficher la phase de travail",
       "workPhaseHide": "Masquer la phase de travail",
+      "knowledgeSearch": "Rechercher dans les sources",
+      "knowledgeContext": "Lire les chunks voisins",
+      "knowledgeSearching": "Recherche dans les documents connectés…",
+      "knowledgeSearchedDocuments": "Recherche effectuée dans {count, plural, one {# document} other {# documents}}",
+      "knowledgeNoResults": "Aucun document correspondant trouvé",
+      "knowledgeReadingContext": "Lecture du contexte voisin dans le document…",
+      "knowledgeReadChunks": "Lecture de {count, plural, one {# chunk voisin} other {# chunks voisins}}",
       "generating": "Génération",
       "assistantGenerating": "L’assistant génère sa réponse",
       "needsApproval": "Validation requise",
@@ -363,7 +377,21 @@
       "save": "Enregistrer"
     },
     "citations": {
-      "title": "Sources"
+      "title": "Sources",
+      "documents": "{count, plural, one {# document consulté} other {# documents consultés}}",
+      "showSources": "Afficher les sources consultées",
+      "hideSources": "Masquer les sources consultées",
+      "showExcerpt": "Afficher l’extrait de {title}",
+      "hideExcerpt": "Masquer l’extrait de {title}",
+      "excerpt": "Extrait correspondant",
+      "relevance": "Pertinence {value} %",
+      "viewFullDocument": "Voir le document complet",
+      "fullDocument": "Document complet",
+      "loadingDocument": "Chargement du document…",
+      "documentLoadFailed": "Impossible de charger le document.",
+      "chunks": "{count, plural, one {# section} other {# sections}}",
+      "chunk": "Section {count}",
+      "citedPassage": "Passage cité"
     },
     "artifacts": {
       "previewWhenVisible": "L’aperçu se charge lorsqu’il devient visible.",

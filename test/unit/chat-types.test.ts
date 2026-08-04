@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   appendMessagePart,
+  aggregateChatUsageImpact,
   canContinueAssistantMessage,
   prepareAssistantMessageContinuation,
   completeReasoningParts,
@@ -18,6 +19,78 @@ import {
 } from "@/components/chat/chat-types";
 
 describe("chat message parts", () => {
+  it("aggregates usage impact across assistant messages", () => {
+    const messages: ChatMessage[] = [
+      {
+        id: "assistant-1",
+        role: "assistant",
+        parts: [
+          {
+            type: "impact",
+            content: JSON.stringify({
+              inputTokens: 100,
+              outputTokens: 50,
+              cost: 0.0086,
+              currency: "EUR",
+              energyKwh: 0.0125,
+              co2Grams: 0.8,
+            }),
+          },
+        ],
+      },
+      {
+        id: "assistant-2",
+        role: "assistant",
+        parts: [
+          {
+            type: "impact",
+            content: JSON.stringify({
+              inputTokens: 200,
+              outputTokens: 75,
+              cost: 0.0014,
+              currency: "EUR",
+              energyKwh: 0.0025,
+              co2Grams: 0.2,
+            }),
+          },
+        ],
+      },
+    ];
+
+    const impact = aggregateChatUsageImpact(messages);
+    expect(impact).toMatchObject({
+      inputTokens: 300,
+      outputTokens: 125,
+      cost: 0.01,
+      currency: "EUR",
+      co2Grams: 1,
+    });
+    expect(impact?.energyKwh).toBeCloseTo(0.015);
+  });
+
+  it("ignores malformed impacts and does not combine different currencies", () => {
+    const messages: ChatMessage[] = [
+      {
+        id: "assistant",
+        role: "assistant",
+        parts: [
+          { type: "impact", content: "invalid" },
+          {
+            type: "impact",
+            content: JSON.stringify({ cost: 1, currency: "EUR" }),
+          },
+          {
+            type: "impact",
+            content: JSON.stringify({ cost: 1, currency: "USD" }),
+          },
+        ],
+      },
+    ];
+
+    expect(aggregateChatUsageImpact(messages)?.cost).toBeNull();
+    expect(aggregateChatUsageImpact([])).toBeNull();
+  });
+
   it("only continues the latest completed assistant response with text", () => {
     const completedAssistant: ChatMessage = {
       id: "assistant-latest",

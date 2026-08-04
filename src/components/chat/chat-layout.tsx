@@ -12,11 +12,13 @@ import {
 import { useTranslations } from "next-intl";
 import {
   ChevronDownIcon,
+  CircleDollarSignIcon,
   MessageSquarePlusIcon,
   PanelLeftOpenIcon,
   SearchIcon,
   Settings2Icon,
   StarIcon,
+  ZapIcon,
 } from "lucide-react";
 
 import { useWorkspaceShell } from "@/components/app-shell";
@@ -38,6 +40,7 @@ import type {
   ChatAgent,
   ChatConversation,
   ChatConversationFolder,
+  ChatUsageImpact,
 } from "@/components/chat/chat-types";
 import { SetupWizard } from "@/components/setup/setup-wizard";
 import { Badge } from "@/components/ui/badge";
@@ -65,6 +68,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   DEFAULT_APP_SIDEBAR_OPEN,
   DEFAULT_APP_SIDEBAR_WIDTH,
@@ -96,6 +105,7 @@ interface ChatLayoutProps {
   selectedAgent: ChatAgent | null;
   selectedAgentId: string | null;
   activeConversationId: string | null;
+  conversationImpact?: ChatUsageImpact | null;
   organizationDefaultAgentId?: string | null;
   userDefaultAgentId?: string | null;
   canChat: boolean;
@@ -143,6 +153,7 @@ export function ChatLayout({
   selectedAgent,
   selectedAgentId,
   activeConversationId,
+  conversationImpact,
   organizationDefaultAgentId,
   userDefaultAgentId,
   canChat,
@@ -316,6 +327,30 @@ export function ChatLayout({
     }
     return null;
   };
+  const impactMetrics = conversationImpact
+    ? [
+        conversationImpact.cost === null
+          ? null
+          : {
+              key: "cost",
+              icon: CircleDollarSignIcon,
+              value: `${conversationImpact.cost.toFixed(4)} ${conversationImpact.currency}`,
+              label: t("impact.costLabel"),
+              description: t("impact.costDescription"),
+            },
+        conversationImpact.energyKwh === null
+          ? null
+          : {
+              key: "energy",
+              icon: ZapIcon,
+              value: `${conversationImpact.energyKwh.toFixed(4)} kWh`,
+              label: t("impact.energyLabel"),
+              description: t("impact.energyDescription"),
+            },
+      ].filter(
+        (metric): metric is NonNullable<typeof metric> => metric !== null,
+      )
+    : [];
   const agentSelector = (
     <div className="relative z-10 flex min-w-0 flex-1 items-center gap-1.5 sm:flex-none sm:gap-2">
       <DropdownMenu onOpenChange={(open) => !open && setAgentSearch("")}>
@@ -501,6 +536,43 @@ export function ChatLayout({
           workspaceId={workspaceId}
           conversationId={activeConversationId}
         />
+      ) : null}
+      {impactMetrics.length > 0 ? (
+        <TooltipProvider>
+          <div
+            className="flex h-10 shrink-0 flex-col items-stretch overflow-hidden rounded-xl border border-border/55 bg-background/72 shadow-[0_1px_2px_rgba(9,30,36,0.035)] sm:flex-row"
+            aria-label={t("impact.conversationLabel")}
+          >
+            {impactMetrics.map((metric) => {
+              const Icon = metric.icon;
+              return (
+                <Tooltip key={metric.key}>
+                  <TooltipTrigger asChild>
+                    <span
+                      tabIndex={0}
+                      className="flex h-1/2 min-w-0 items-center gap-1 border-t border-border/45 px-1 text-[9px] font-medium tabular-nums text-muted-foreground first:border-t-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 sm:h-auto sm:border-l sm:border-t-0 sm:px-2 sm:text-[11px] sm:first:border-l-0"
+                      aria-label={`${metric.label}: ${metric.value}`}
+                    >
+                      <Icon
+                        className="size-3 shrink-0 text-primary/75"
+                        aria-hidden="true"
+                      />
+                      <span className="whitespace-nowrap">{metric.value}</span>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" sideOffset={8}>
+                    <span className="max-w-64">
+                      <span className="font-medium">{metric.label}</span>
+                      <span className="block opacity-80">
+                        {metric.description}
+                      </span>
+                    </span>
+                  </TooltipContent>
+                </Tooltip>
+              );
+            })}
+          </div>
+        </TooltipProvider>
       ) : null}
       {!canChat ? (
         <Badge

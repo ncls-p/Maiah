@@ -55,6 +55,8 @@ import {
   isGeneratedImageOutput,
   isGitHubPublishOutput,
   isHtmlArtifactOutput,
+  knowledgeContextChunkCount,
+  knowledgeSearchResultsFromUnknown,
   summarizeToolBody,
   toolPartHasStandaloneRendering,
   toolPartMatchesApproval,
@@ -362,9 +364,18 @@ const ToolPartCard = memo(function ToolPartCard({
     [part.content, part.type],
   );
   const isDelegation = parsed.toolName?.startsWith("delegate_") ?? false;
+  const isKnowledgeSearch = parsed.toolName === "search_knowledge";
+  const isKnowledgeContext = parsed.toolName === "read_knowledge_context";
   const friendlyName = useMemo(
-    () => (isDelegation ? t("delegation") : formatToolName(parsed.toolName)),
-    [isDelegation, parsed.toolName, t],
+    () =>
+      isDelegation
+        ? t("delegation")
+        : isKnowledgeSearch
+          ? t("knowledgeSearch")
+          : isKnowledgeContext
+            ? t("knowledgeContext")
+            : formatToolName(parsed.toolName),
+    [isDelegation, isKnowledgeContext, isKnowledgeSearch, parsed.toolName, t],
   );
   const status = useMemo(() => {
     return resolveToolDisplayStatus(parsed, messageStatus);
@@ -464,6 +475,25 @@ const ToolPartCard = memo(function ToolPartCard({
     if (status === "error" && (parsed.invalid || parsed.error != null)) {
       return t("actionUnavailable");
     }
+    if (isKnowledgeSearch) {
+      if (status === "pending") return t("knowledgeSearching");
+      const results = knowledgeSearchResultsFromUnknown(parsed.output);
+      if (results) {
+        const documentCount = new Set(
+          results.map((result) => result.documentId),
+        ).size;
+        return documentCount > 0
+          ? t("knowledgeSearchedDocuments", { count: documentCount })
+          : t("knowledgeNoResults");
+      }
+    }
+    if (isKnowledgeContext) {
+      if (status === "pending") return t("knowledgeReadingContext");
+      const chunkCount = knowledgeContextChunkCount(parsed.output);
+      if (chunkCount !== null) {
+        return t("knowledgeReadChunks", { count: chunkCount });
+      }
+    }
     if (status === "pending") {
       return summarizeToolInput(friendlyName, displayInput);
     }
@@ -475,6 +505,8 @@ const ToolPartCard = memo(function ToolPartCard({
     friendlyName,
     hasResult,
     isDelegation,
+    isKnowledgeContext,
+    isKnowledgeSearch,
     displayInput,
     delegationFailure,
     parsed.error,
@@ -949,6 +981,12 @@ function WorkPhase({
         if (part.type === "reasoning") return t("workPhaseReasoning");
         const parsed = parseToolPart(part.content);
         if (parsed.toolName?.startsWith("delegate_")) return t("delegation");
+        if (parsed.toolName === "search_knowledge") {
+          return t("knowledgeSearch");
+        }
+        if (parsed.toolName === "read_knowledge_context") {
+          return t("knowledgeContext");
+        }
         const toolName = parsed.toolName
           ? formatToolName(parsed.toolName)
           : t("workPhaseTool");
@@ -965,7 +1003,33 @@ function WorkPhase({
   const visibleActivities = activityLabels.slice(0, 3);
   const hiddenActivityCount = activityLabels.length - visibleActivities.length;
   const statusLabel =
-    visualState === "approval"
+    (() => {
+      const knowledgeResults = parts.flatMap(({ part }) => {
+        if (part.type !== "tool-call" && part.type !== "tool-result") return [];
+        const parsed = parseToolPart(part.content);
+        return parsed.toolName === "search_knowledge"
+          ? (knowledgeSearchResultsFromUnknown(parsed.output) ?? [])
+          : [];
+      });
+      const knowledgeOnly = parts.every(({ part }) => {
+        if (part.type === "reasoning") return true;
+        const toolName = parseToolPart(part.content).toolName;
+        return (
+          toolName === "search_knowledge" ||
+          toolName === "read_knowledge_context"
+        );
+      });
+      if (!knowledgeOnly) return null;
+      if (visualState === "pending") return t("knowledgeSearching");
+      if (visualState !== "completed") return null;
+      const documentCount = new Set(
+        knowledgeResults.map((result) => result.documentId),
+      ).size;
+      return documentCount > 0
+        ? t("knowledgeSearchedDocuments", { count: documentCount })
+        : t("knowledgeNoResults");
+    })() ??
+    (visualState === "approval"
       ? t("actionApproval")
       : visualState === "pending"
         ? t("workPhaseActive")
@@ -973,7 +1037,7 @@ function WorkPhase({
           ? t("workPhaseFailed")
           : visualState === "warning"
             ? t("workPhaseCompleteWithIssues")
-            : t("workPhaseComplete");
+            : t("workPhaseComplete"));
 
   return (
     <Collapsible
@@ -1227,44 +1291,7 @@ export const MessageContent = memo(function MessageContent({
     partIndex: number,
   ): React.ReactNode => {
     const key = `${message.id}-${part.type}-${partIndex}`;
-    if (part.type === "impact") {
-      try {
-        const impact = JSON.parse(part.content) as {
-          cost: number | null;
-          currency: string;
-          energyKwh: number | null;
-          co2Grams: number | null;
-          inputTokens: number;
-          outputTokens: number;
-        };
-        const metrics = [
-          impact.cost === null
-            ? null
-            : `${impact.cost.toFixed(4)} ${impact.currency}`,
-          impact.energyKwh === null
-            ? null
-            : `${impact.energyKwh.toFixed(4)} kWh`,
-          impact.co2Grams === null
-            ? null
-            : `${impact.co2Grams.toFixed(2)} gCO₂e`,
-        ].filter((metric): metric is string => Boolean(metric));
-        if (metrics.length === 0) return null;
-        return (
-          <div
-            key={key}
-            className="flex flex-wrap gap-1.5 text-[11px] text-muted-foreground"
-          >
-            {metrics.map((metric) => (
-              <span key={metric} className="rounded-full bg-muted px-2 py-0.5">
-                {metric}
-              </span>
-            ))}
-          </div>
-        );
-      } catch {
-        return null;
-      }
-    }
+    if (part.type === "impact") return null;
     if (part.type === "suggestions") {
       if (!showSuggestions) return null;
       return (
@@ -1324,7 +1351,9 @@ export const MessageContent = memo(function MessageContent({
 
   return (
     <div className="flex flex-col gap-2">
-      {citations.length > 0 ? <CitationBlock citations={citations} /> : null}
+      {citations.length > 0 ? (
+        <CitationBlock citations={citations} workspaceId={workspaceId} />
+      ) : null}
       {standaloneApprovals.length > 0
         ? standaloneApprovals.map((approval, approvalIndex) => (
             <PendingApprovalCard

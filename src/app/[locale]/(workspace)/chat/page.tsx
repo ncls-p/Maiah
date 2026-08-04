@@ -30,7 +30,10 @@ import {
   CodeWorkspaceArtifactCard,
 } from "@/components/chat/chat-message-list";
 import { latestChatTodoListFromMessages } from "@/components/chat/chat-message-rendering-utils";
-import { textFromMessage } from "@/components/chat/chat-types";
+import {
+  aggregateChatUsageImpact,
+  textFromMessage,
+} from "@/components/chat/chat-types";
 import { CodeWorkspaceResizeHandle } from "@/components/chat/code-workspace-artifact-card";
 import {
   CODE_WORKSPACE_CHAT_WIDTH_STORAGE_KEY,
@@ -641,6 +644,10 @@ export default function ChatPage() {
   });
   const latestTodoList = useMemo(
     () => latestChatTodoListFromMessages(messages),
+    [messages],
+  );
+  const conversationImpact = useMemo(
+    () => aggregateChatUsageImpact(messages),
     [messages],
   );
 
@@ -1652,6 +1659,7 @@ export default function ChatPage() {
         selectedAgent={selectedAgent}
         selectedAgentId={selectedAgentId}
         activeConversationId={activeConversationId}
+        conversationImpact={conversationImpact}
         organizationDefaultAgentId={organizationDefaultAgentId}
         userDefaultAgentId={userDefaultAgentId}
         canChat={canChat}

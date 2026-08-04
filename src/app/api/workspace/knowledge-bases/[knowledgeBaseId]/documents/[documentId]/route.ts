@@ -3,14 +3,57 @@ import { z } from "zod";
 import {
   handleRoute,
   requireResourcePermissionAsync,
+  requireWorkspaceMemberAsync,
 } from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
 import {
   archiveDocument,
+  readKnowledgeDocument,
   retryDocumentIngestion,
 } from "@/modules/knowledge/use-cases";
 
 const querySchema = z.object({ workspaceId: z.uuid() });
+
+export async function GET(
+  req: NextRequest,
+  {
+    params,
+  }: { params: Promise<{ knowledgeBaseId: string; documentId: string }> },
+) {
+  return handleRoute(
+    req,
+    async ({ session }) => {
+      const parsed = querySchema.safeParse({
+        workspaceId: req.nextUrl.searchParams.get("workspaceId"),
+      });
+      const parsedParams = z
+        .object({ knowledgeBaseId: z.uuid(), documentId: z.uuid() })
+        .safeParse(await params);
+      if (!parsed.success || !parsedParams.success) {
+        return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+      }
+      const forbidden = await requireWorkspaceMemberAsync(
+        session.user.id,
+        parsed.data.workspaceId,
+      );
+      if (forbidden) return forbidden;
+
+      const document = await readKnowledgeDocument({
+        ...parsedParams.data,
+        workspaceId: parsed.data.workspaceId,
+        userId: session.user.id,
+      });
+      if (!document) {
+        return NextResponse.json(
+          { error: "Document not found" },
+          { status: 404 },
+        );
+      }
+      return NextResponse.json({ document });
+    },
+    { logLabel: "Failed to read knowledge document" },
+  );
+}
 
 export async function DELETE(
   req: NextRequest,

@@ -542,6 +542,7 @@ describe("searchBoundKnowledgeBases", () => {
 		const result = await searchBoundKnowledgeBases({
 			agentVersionId: "v1",
 			workspaceId: "ws-1",
+			knowledgeBaseIds: ["kb-1"],
 			query: "test",
 		});
 
