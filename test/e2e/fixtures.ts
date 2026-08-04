@@ -104,11 +104,8 @@ export async function ensureE2EAssistant() {
       `select id from "user" where email = $1 limit 1`,
       [e2eUser.email],
     );
-    const workspace = await client.query<{
-      id: string;
-      organization_id: string;
-    }>(
-      `select w.id, w.organization_id
+    const workspace = await client.query<{ id: string }>(
+      `select w.id
        from workspaces w
        join organizations o on o.id = w.organization_id
        where w.slug = 'main' and o.slug = 'deodis' and w.archived_at is null
