@@ -184,7 +184,7 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
       displayName: "Support Reader",
       description: "Read assistants and workflows",
       scopeType: "workspace",
-      permissions: ["agents.view", "workflows.view"],
+      permissions: ["agents.get", "workflows.view"],
     });
     const resourceRole = await createCustomRole({
       actorUserId: ownerId,
@@ -192,7 +192,7 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
       displayName: "Assistant Reader",
       description: "Read one selected assistant",
       scopeType: "workspace",
-      permissions: ["agents.view"],
+      permissions: ["agents.get"],
     });
     const [sharedAgent, privateAgent] = await db
       .insert(agents)
@@ -327,11 +327,11 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
       roleId: projectRole.id,
       displayName: "Support Operator",
       description: "Read assistants and run workflows",
-      permissions: ["agents.view", "workflows.view", "workflows.execute"],
+      permissions: ["agents.get", "workflows.view", "workflows.execute"],
     });
     expect(updatedProjectRole).toMatchObject({
       displayName: "Support Operator",
-      permissionsJson: ["agents.view", "workflows.view", "workflows.execute"],
+      permissionsJson: ["agents.get", "workflows.view", "workflows.execute"],
     });
 
     const snapshot = await getAccessConsoleSnapshot({
@@ -370,7 +370,7 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
       snapshot.roles.find(({ id }) => id === projectRole.id),
     ).toMatchObject({
       displayName: "Support Operator",
-      permissions: ["agents.view", "workflows.view", "workflows.execute"],
+      permissions: ["agents.get", "workflows.view", "workflows.execute"],
     });
 
     const [teamBinding] = await db
@@ -837,7 +837,7 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
       workspaceId: firstProjectId,
       displayName: `Transfer resource reader ${suffix}`,
       scopeType: "workspace",
-      permissions: ["agents.view"],
+      permissions: ["agents.get"],
     });
     const [sourceAgent] = await db
       .insert(agents)
@@ -1354,7 +1354,7 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
       workspaceId: removableProject.id,
       displayName: "Removable project role",
       scopeType: "workspace",
-      permissions: ["agents.view"],
+      permissions: ["agents.get"],
     });
     const [removableAgent] = await db
       .insert(agents)
