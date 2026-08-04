@@ -47,6 +47,7 @@ import {
   codeSandboxInputFromUnknown,
   codeSandboxOutputFromUnknown,
   codeWorkspaceArtifactFromPartContent,
+  delegationFailureDetails,
   formatToolName,
   htmlArtifactFromInputText,
   htmlArtifactFromToolInput,
@@ -380,6 +381,10 @@ const ToolPartCard = memo(function ToolPartCard({
           ? t("actionFailed")
           : t("actionCompleted");
   const displayInput = approvalMatches ? approval?.input : parsed.input;
+  const delegationFailure = useMemo(
+    () => delegationFailureDetails(parsed.output),
+    [parsed.output],
+  );
 
   const inputArtifact = useMemo(
     () => (approvalMatches ? null : htmlArtifactFromToolInput(parsed.input)),
@@ -422,7 +427,39 @@ const ToolPartCard = memo(function ToolPartCard({
         : t("delegationCompleted");
     }
     if (isDelegation && status === "error") {
-      return t("delegationFailed");
+      const reason = (() => {
+        switch (delegationFailure.errorCode) {
+          case "AGENT_TOKEN_BUDGET_EXCEEDED":
+            return t("delegationFailureTokenBudget");
+          case "AGENT_DELEGATION_FORBIDDEN":
+          case "AGENT_RUN_FORBIDDEN":
+            return t("delegationFailurePermission");
+          case "AGENT_DELEGATION_DEPTH_EXCEEDED":
+            return t("delegationFailureDepth");
+          case "AGENT_DELEGATION_CYCLE":
+            return t("delegationFailureCycle");
+          case "AGENT_DELEGATION_PARALLEL_LIMIT":
+            return t("delegationFailureParallelLimit");
+          case "AGENT_DELEGATION_LIMIT":
+            return t("delegationFailureDelegationLimit");
+          case "AGENT_DELEGATION_DEADLINE_EXCEEDED":
+            return t("delegationFailureDeadline");
+          case "AGENT_MODEL_NOT_CONFIGURED":
+            return t("delegationFailureModelConfiguration");
+          case "AGENT_EMPTY_RESPONSE":
+            return t("delegationFailureEmptyResponse");
+          case "AGENT_NOT_FOUND":
+          case "AGENT_VERSION_NOT_FOUND":
+            return t("delegationFailureSpecialistUnavailable");
+          case "AGENT_RUN_CANCELLED":
+            return t("delegationFailureCancelled");
+          default:
+            return delegationFailure.reason;
+        }
+      })();
+      return reason
+        ? t("delegationFailedWithReason", { reason })
+        : t("delegationFailed");
     }
     if (status === "error" && (parsed.invalid || parsed.error != null)) {
       return t("actionUnavailable");
@@ -439,6 +476,7 @@ const ToolPartCard = memo(function ToolPartCard({
     hasResult,
     isDelegation,
     displayInput,
+    delegationFailure,
     parsed.error,
     parsed.invalid,
     parsed.output,

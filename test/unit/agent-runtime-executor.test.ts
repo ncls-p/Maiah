@@ -1180,6 +1180,7 @@ describe("agent runtime executor", () => {
   });
 
   it("fails closed when delegation permission is revoked at call time", async () => {
+    const onProgress = vi.fn();
     mocks.getVisibleAgent.mockResolvedValueOnce({
       ...rootAgent,
       kind: "orchestrator",
@@ -1210,10 +1211,33 @@ describe("agent runtime executor", () => {
         reason: "Missing permission: agents.delegate",
       });
     mocks.generateText.mockImplementationOnce(async (options) => {
-      const delegate = Object.entries(options.tools).find(([name]) =>
-        name.startsWith("delegate_"),
-      )?.[1] as { execute: (input: { task: string }) => Promise<unknown> };
-      await delegate.execute({ task: "Blocked" });
+      const [toolName, delegate] = Object.entries(options.tools).find(
+        ([name]) => name.startsWith("delegate_"),
+      ) as [string, { execute: (input: { task: string }) => Promise<unknown> }];
+      const toolCall = {
+        type: "tool-call" as const,
+        toolCallId: "delegate-call",
+        toolName,
+        input: { task: "Blocked" },
+        dynamic: false,
+      };
+      try {
+        await delegate.execute(toolCall.input);
+      } catch (error) {
+        await options.onToolExecutionEnd?.({
+          callId: "model-call",
+          messages: [],
+          toolCall,
+          toolContext: undefined,
+          toolExecutionMs: 9,
+          toolOutput: {
+            ...toolCall,
+            type: "tool-error",
+            error,
+          },
+        });
+        throw error;
+      }
       throw new Error("unreachable");
     });
 
@@ -1224,6 +1248,7 @@ describe("agent runtime executor", () => {
         agentId: rootAgent.id,
         prompt: "Coordinate",
         trigger: "api",
+        onProgress,
       }),
     ).rejects.toMatchObject({
       code: "AGENT_DELEGATION_FORBIDDEN",
@@ -1238,6 +1263,14 @@ describe("agent runtime executor", () => {
       expect.objectContaining({
         errorCode: "AGENT_DELEGATION_FORBIDDEN",
         errorDetail: "Missing permission: agents.delegate",
+      }),
+    );
+    expect(onProgress).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "tool-end",
+        toolName: "delegate_specialist_1",
+        error: "Missing permission: agents.delegate",
+        errorCode: "AGENT_DELEGATION_FORBIDDEN",
       }),
     );
   });

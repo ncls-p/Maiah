@@ -9,10 +9,19 @@ const databaseSsl =
     ? { rejectUnauthorized: env.DATABASE_SSL_REJECT_UNAUTHORIZED !== "false" }
     : undefined;
 
-const pool = new Pool({
-  connectionString: env.DATABASE_URL,
-  ssl: databaseSsl,
-});
+const globalDatabase = globalThis as typeof globalThis & {
+  __maiahPostgresPool?: Pool;
+};
+const pool =
+  globalDatabase.__maiahPostgresPool ??
+  new Pool({
+    connectionString: env.DATABASE_URL,
+    ssl: databaseSsl,
+    application_name: "maiah-web",
+    idleTimeoutMillis: 30_000,
+  });
+
+globalDatabase.__maiahPostgresPool = pool;
 
 export const db = drizzle(pool, { schema });
 export { schema };

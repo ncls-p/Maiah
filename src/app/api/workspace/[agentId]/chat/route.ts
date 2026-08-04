@@ -687,7 +687,12 @@ export async function POST(
         const value = isStart
           ? progress.input
           : "error" in progress
-            ? { error: progress.error }
+            ? {
+                error: progress.error,
+                ...(progress.errorCode
+                  ? { errorCode: progress.errorCode }
+                  : {}),
+              }
             : progress.output;
         const agentContext = {
           agentId: progress.agentId,
@@ -1476,15 +1481,15 @@ export async function POST(
         const [usageModel, usageImpactSetting] = await Promise.all([
           providerConfig.modelRecordId
             ? db
-              .select({
-                inputTokenCost: aiModels.inputTokenCost,
-                outputTokenCost: aiModels.outputTokenCost,
-                sustainabilityConfigJson: aiModels.sustainabilityConfigJson,
-              })
-              .from(aiModels)
-              .where(eq(aiModels.id, providerConfig.modelRecordId))
-              .limit(1)
-              .then((rows) => rows[0])
+                .select({
+                  inputTokenCost: aiModels.inputTokenCost,
+                  outputTokenCost: aiModels.outputTokenCost,
+                  sustainabilityConfigJson: aiModels.sustainabilityConfigJson,
+                })
+                .from(aiModels)
+                .where(eq(aiModels.id, providerConfig.modelRecordId))
+                .limit(1)
+                .then((rows) => rows[0])
             : Promise.resolve(undefined),
           getUsageImpactSetting(),
         ]);

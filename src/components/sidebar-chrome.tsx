@@ -24,7 +24,7 @@ import {
 import { cn } from "@/lib/utils";
 
 export const APP_SIDEBAR_SURFACE_CLASS =
-  "border-sidebar-border/65 bg-sidebar/92 text-sidebar-foreground backdrop-blur-xl";
+  "border-sidebar-border/65 bg-sidebar text-sidebar-foreground";
 
 export function SidebarHeader({
   contextLabel,

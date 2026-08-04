@@ -180,6 +180,11 @@ type AccessSnapshot = {
   permissionCatalog: PermissionGroup[];
   resourceDefinitions: AccessResourceDefinition[];
   effectivePermissions: string[];
+  grantablePermissions: {
+    organization: string[];
+    workspace: string[];
+  };
+  assignableRoleIds: string[];
   capabilities: {
     canManageProjectAccess: boolean;
     canManageOrganizationAccess: boolean;
@@ -1704,12 +1709,9 @@ export function AccessConsole({
     scopeType: "workspace" as "organization" | "workspace",
   });
   const [peopleQuery, setPeopleQuery] = useState("");
-  const [assignmentPrincipalQuery, setAssignmentPrincipalQuery] = useState("");
-  const [assignmentRoleQuery, setAssignmentRoleQuery] = useState("");
   const [teamQuery, setTeamQuery] = useState("");
   const [roleQuery, setRoleQuery] = useState("");
   const [permissionQuery, setPermissionQuery] = useState("");
-  const [projectQuery, setProjectQuery] = useState("");
   const [selectedPeople, setSelectedPeople] = useState<string[]>([]);
   const [memberTransferOpen, setMemberTransferOpen] = useState(false);
   const [memberTransferDestinations, setMemberTransferDestinations] = useState<
@@ -1807,29 +1809,16 @@ export function AccessConsole({
       snapshot?.roles.filter(
         (role) =>
           role.scopeType === assignment.scopeType &&
-          [role.displayName, role.name, ...role.permissions].some((value) =>
-            value
-              .toLocaleLowerCase()
-              .includes(assignmentRoleQuery.trim().toLocaleLowerCase()),
-          ),
+          snapshot.assignableRoleIds.includes(role.id),
       ) ?? [],
-    [assignment.scopeType, assignmentRoleQuery, snapshot],
+    [assignment.scopeType, snapshot],
   );
-  const principalOptions = (
+  const principalOptions =
     assignment.principalType === "user"
       ? activeMembers
-      : (snapshot?.teams ?? [])
-  ).filter((principal) =>
-    [
-      "name" in principal ? principal.name : "",
-      "email" in principal ? principal.email : "",
-    ]
-      .filter(Boolean)
-      .some((value) =>
-        value
-          .toLocaleLowerCase()
-          .includes(assignmentPrincipalQuery.trim().toLocaleLowerCase()),
-      ),
+      : (snapshot?.teams ?? []);
+  const selectedAssignmentRole = snapshot?.roles.find(
+    (role) => role.id === assignment.roleId,
   );
 
   async function refreshPlatformAccounts() {
@@ -1994,9 +1983,16 @@ export function AccessConsole({
     roleForm.scopeType === "organization"
       ? canManageOrganizationAccess
       : canManageProjectAccess;
+  const canDelegateViewedRole =
+    !editingRoleId || snapshot.assignableRoleIds.includes(editingRoleId);
+  const grantablePermissionSet = new Set(
+    snapshot.grantablePermissions[roleForm.scopeType],
+  );
   const accessPeople = buildAccessPeople({
     members: activeMembers,
-    accounts: platformAccounts,
+    accounts: platformAccounts.filter((account) =>
+      activeMembers.some((member) => member.userId === account.id),
+    ),
     assignments: snapshot.assignments,
     teams: snapshot.teams,
   });
@@ -2064,16 +2060,6 @@ export function AccessConsole({
           value?.toLocaleLowerCase().includes(normalizedRoleQuery),
         ),
     );
-  const filteredProjects = snapshot.projects.filter(
-    (project) =>
-      project.id === workspaceId ||
-      [project.name, project.slug].some((value) =>
-        value
-          .toLocaleLowerCase()
-          .includes(projectQuery.trim().toLocaleLowerCase()),
-      ),
-  );
-
   return (
     <div className="flex flex-col gap-5">
       {refreshError ? (
@@ -2097,26 +2083,8 @@ export function AccessConsole({
 
       <ScopePath snapshot={snapshot} />
 
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="grid w-full max-w-2xl gap-2 sm:grid-cols-[minmax(12rem,1fr)_minmax(14rem,1.4fr)] sm:items-end">
-          <Field>
-            <FieldLabel htmlFor="project-search">
-              {t("searchProjects")}
-            </FieldLabel>
-            <div className="relative">
-              <SearchIcon
-                className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
-                aria-hidden="true"
-              />
-              <Input
-                id="project-search"
-                className="pl-9"
-                value={projectQuery}
-                placeholder={t("searchPlaceholder")}
-                onChange={(event) => setProjectQuery(event.target.value)}
-              />
-            </div>
-          </Field>
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div className="w-full max-w-md">
           <Field>
             <FieldLabel htmlFor="access-project">
               {t("activeProject")}
@@ -2127,7 +2095,7 @@ export function AccessConsole({
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
-                  {filteredProjects.map((project) => (
+                  {snapshot.projects.map((project) => (
                     <SelectItem key={project.id} value={project.id}>
                       {project.name}
                     </SelectItem>
@@ -2293,18 +2261,18 @@ export function AccessConsole({
         </Alert>
       ) : null}
 
-      <Tabs defaultValue="access">
-        <TabsList className="w-full justify-start overflow-x-auto sm:w-fit">
+      <Tabs defaultValue="access" className="min-w-0">
+        <TabsList className="flex h-auto w-full justify-start overflow-x-auto sm:w-fit">
           <TabsTrigger value="access">
             <UsersIcon data-icon="inline-start" aria-hidden="true" />
             {t("tabs.people")}
           </TabsTrigger>
+          <TabsTrigger value="teams">{t("tabs.teams")}</TabsTrigger>
+          <TabsTrigger value="roles">{t("tabs.roles")}</TabsTrigger>
           <TabsTrigger value="resources">
             <BoxesIcon data-icon="inline-start" aria-hidden="true" />
             {t("tabs.resources")}
           </TabsTrigger>
-          <TabsTrigger value="teams">{t("tabs.teams")}</TabsTrigger>
-          <TabsTrigger value="roles">{t("tabs.roles")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="access" className="flex flex-col gap-4">
@@ -2655,79 +2623,74 @@ export function AccessConsole({
                           }}
                         >
                           <FieldGroup>
+                            <Field>
+                              <FieldLabel htmlFor="assignment-scope">
+                                {t("scope")}
+                              </FieldLabel>
+                              <Select
+                                value={assignment.scopeType}
+                                onValueChange={(value) =>
+                                  setAssignment({
+                                    ...assignment,
+                                    scopeType: value as
+                                      "organization" | "workspace",
+                                    roleId: "",
+                                  })
+                                }
+                              >
+                                <SelectTrigger
+                                  id="assignment-scope"
+                                  className="w-full"
+                                >
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectGroup>
+                                    <SelectItem value="workspace">
+                                      {t("projectOnly")}
+                                    </SelectItem>
+                                    {canManageOrganizationAccess ? (
+                                      <SelectItem value="organization">
+                                        {t("wholeOrganization")}
+                                      </SelectItem>
+                                    ) : null}
+                                  </SelectGroup>
+                                </SelectContent>
+                              </Select>
+                            </Field>
                             {bulkAssignmentIds.length === 0 ? (
-                              <>
-                                <Field>
-                                  <FieldLabel htmlFor="assignment-scope">
-                                    {t("scope")}
-                                  </FieldLabel>
-                                  <Select
-                                    value={assignment.scopeType}
-                                    onValueChange={(value) =>
-                                      setAssignment({
-                                        ...assignment,
-                                        scopeType: value as
-                                          | "organization"
-                                          | "workspace",
-                                        roleId: "",
-                                      })
-                                    }
+                              <Field>
+                                <FieldLabel htmlFor="assignment-principal-type">
+                                  {t("principalType")}
+                                </FieldLabel>
+                                <Select
+                                  value={assignment.principalType}
+                                  onValueChange={(value) =>
+                                    setAssignment({
+                                      ...assignment,
+                                      principalType: value as "user" | "group",
+                                      principalId: "",
+                                    })
+                                  }
+                                >
+                                  <SelectTrigger
+                                    id="assignment-principal-type"
+                                    className="w-full"
                                   >
-                                    <SelectTrigger
-                                      id="assignment-scope"
-                                      className="w-full"
-                                    >
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectGroup>
-                                        <SelectItem value="workspace">
-                                          {t("projectOnly")}
-                                        </SelectItem>
-                                        {canManageOrganizationAccess ? (
-                                          <SelectItem value="organization">
-                                            {t("wholeOrganization")}
-                                          </SelectItem>
-                                        ) : null}
-                                      </SelectGroup>
-                                    </SelectContent>
-                                  </Select>
-                                </Field>
-                                <Field>
-                                  <FieldLabel htmlFor="assignment-principal-type">
-                                    {t("principalType")}
-                                  </FieldLabel>
-                                  <Select
-                                    value={assignment.principalType}
-                                    onValueChange={(value) =>
-                                      setAssignment({
-                                        ...assignment,
-                                        principalType: value as
-                                          | "user"
-                                          | "group",
-                                        principalId: "",
-                                      })
-                                    }
-                                  >
-                                    <SelectTrigger
-                                      id="assignment-principal-type"
-                                      className="w-full"
-                                    >
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectGroup>
-                                        <SelectItem value="user">
-                                          {t("member")}
-                                        </SelectItem>
-                                        <SelectItem value="group">
-                                          {t("team")}
-                                        </SelectItem>
-                                      </SelectGroup>
-                                    </SelectContent>
-                                  </Select>
-                                </Field>
-                              </>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectGroup>
+                                      <SelectItem value="user">
+                                        {t("member")}
+                                      </SelectItem>
+                                      <SelectItem value="group">
+                                        {t("team")}
+                                      </SelectItem>
+                                    </SelectGroup>
+                                  </SelectContent>
+                                </Select>
+                              </Field>
                             ) : (
                               <Alert>
                                 <UsersIcon aria-hidden="true" />
@@ -2741,72 +2704,54 @@ export function AccessConsole({
                                 </AlertDescription>
                               </Alert>
                             )}
-                            <Field>
-                              <FieldLabel htmlFor="assignment-principal">
-                                {t("principal")}
-                              </FieldLabel>
-                              <Input
-                                id="assignment-principal-search"
-                                value={assignmentPrincipalQuery}
-                                placeholder={t("searchPeople")}
-                                aria-label={t("searchPrincipal")}
-                                onChange={(event) =>
-                                  setAssignmentPrincipalQuery(
-                                    event.target.value,
-                                  )
-                                }
-                              />
-                              <Select
-                                required
-                                value={assignment.principalId}
-                                onValueChange={(value) =>
-                                  setAssignment({
-                                    ...assignment,
-                                    principalId: value,
-                                  })
-                                }
-                              >
-                                <SelectTrigger
-                                  id="assignment-principal"
-                                  className="w-full"
+                            {bulkAssignmentIds.length === 0 ? (
+                              <Field>
+                                <FieldLabel htmlFor="assignment-principal">
+                                  {t("principal")}
+                                </FieldLabel>
+                                <Select
+                                  required
+                                  value={assignment.principalId}
+                                  onValueChange={(value) =>
+                                    setAssignment({
+                                      ...assignment,
+                                      principalId: value,
+                                    })
+                                  }
                                 >
-                                  <SelectValue placeholder={t("choose")} />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectGroup>
-                                    {principalOptions.map((principal) => (
-                                      <SelectItem
-                                        key={
-                                          "userId" in principal
-                                            ? principal.userId
-                                            : principal.id
-                                        }
-                                        value={
-                                          "userId" in principal
-                                            ? principal.userId
-                                            : principal.id
-                                        }
-                                      >
-                                        {principal.name}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectGroup>
-                                </SelectContent>
-                              </Select>
-                            </Field>
+                                  <SelectTrigger
+                                    id="assignment-principal"
+                                    className="w-full"
+                                  >
+                                    <SelectValue placeholder={t("choose")} />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectGroup>
+                                      {principalOptions.map((principal) => (
+                                        <SelectItem
+                                          key={
+                                            "userId" in principal
+                                              ? principal.userId
+                                              : principal.id
+                                          }
+                                          value={
+                                            "userId" in principal
+                                              ? principal.userId
+                                              : principal.id
+                                          }
+                                        >
+                                          {principal.name}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectGroup>
+                                  </SelectContent>
+                                </Select>
+                              </Field>
+                            ) : null}
                             <Field>
                               <FieldLabel htmlFor="assignment-role">
                                 {t("role")}
                               </FieldLabel>
-                              <Input
-                                id="assignment-role-search"
-                                value={assignmentRoleQuery}
-                                placeholder={t("searchRoles")}
-                                aria-label={t("searchRoles")}
-                                onChange={(event) =>
-                                  setAssignmentRoleQuery(event.target.value)
-                                }
-                              />
                               <Select
                                 required
                                 value={assignment.roleId}
@@ -2833,6 +2778,16 @@ export function AccessConsole({
                                   </SelectGroup>
                                 </SelectContent>
                               </Select>
+                              {selectedAssignmentRole ? (
+                                <FieldDescription>
+                                  {selectedAssignmentRole.description ||
+                                    t("permissionCount", {
+                                      count:
+                                        selectedAssignmentRole.permissions
+                                          .length,
+                                    })}
+                                </FieldDescription>
+                              ) : null}
                             </Field>
                           </FieldGroup>
                           <DialogFooter>
@@ -3229,9 +3184,9 @@ export function AccessConsole({
                   </EmptyHeader>
                 </Empty>
               ) : (
-                <div className="overflow-x-auto border-y border-border/60">
-                  <table className="w-full min-w-[58rem] text-left">
-                    <thead className="bg-muted/35 text-xs font-medium text-muted-foreground">
+                <div className="border-y border-border/60">
+                  <table className="w-full text-left max-md:block">
+                    <thead className="bg-muted/35 text-xs font-medium text-muted-foreground max-md:sr-only">
                       <tr>
                         <th className="w-12 px-6 py-3">
                           <Checkbox
@@ -3260,16 +3215,16 @@ export function AccessConsole({
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-border/60">
+                    <tbody className="divide-y divide-border/60 max-md:grid max-md:gap-3 max-md:divide-y-0 max-md:bg-muted/15 max-md:p-3">
                       {visiblePeople.map((person) => {
                         const isMember = person.memberStatus === "active";
                         const isCurrentUser = person.userId === currentUserId;
                         return (
                           <tr
                             key={person.userId}
-                            className="align-top transition-colors hover:bg-muted/20"
+                            className="align-top transition-colors hover:bg-muted/20 max-md:grid max-md:grid-cols-[auto_minmax(0,1fr)_auto] max-md:overflow-hidden max-md:rounded-2xl max-md:border max-md:border-border/70 max-md:bg-background max-md:shadow-sm"
                           >
-                            <td className="px-6 py-4">
+                            <td className="px-6 py-4 max-md:px-3">
                               <Checkbox
                                 id={`select-person-${person.userId}`}
                                 aria-label={t("selectPerson", {
@@ -3293,7 +3248,7 @@ export function AccessConsole({
                                 }
                               />
                             </td>
-                            <td className="px-3 py-4">
+                            <td className="px-3 py-4 max-md:px-0">
                               <div className="flex min-w-52 items-start gap-3">
                                 <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
                                   {person.name
@@ -3329,7 +3284,10 @@ export function AccessConsole({
                                 </div>
                               </div>
                             </td>
-                            <td className="px-3 py-4">
+                            <td className="px-3 py-4 max-md:col-span-3 max-md:border-t max-md:border-border/60 max-md:px-4 max-md:py-3">
+                              <span className="mb-2 hidden text-xs font-medium text-muted-foreground max-md:block">
+                                {t("accessColumn")}
+                              </span>
                               <div className="flex max-w-xl flex-wrap gap-1.5">
                                 {person.platformRole === "admin" ? (
                                   <Badge>
@@ -3407,7 +3365,10 @@ export function AccessConsole({
                                 ) : null}
                               </div>
                             </td>
-                            <td className="px-3 py-4">
+                            <td className="px-3 py-4 max-md:col-span-3 max-md:border-t max-md:border-border/60 max-md:px-4 max-md:py-3">
+                              <span className="mb-2 hidden text-xs font-medium text-muted-foreground max-md:block">
+                                {t("teamsColumn")}
+                              </span>
                               <div className="flex max-w-xs flex-wrap gap-1">
                                 {person.teams.length === 0 ? (
                                   <span className="text-xs text-muted-foreground">
@@ -3427,7 +3388,7 @@ export function AccessConsole({
                                 ) : null}
                               </div>
                             </td>
-                            <td className="px-6 py-4 text-right">
+                            <td className="px-6 py-4 text-right max-md:col-start-3 max-md:row-start-1 max-md:px-3">
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                   <Button
@@ -3921,14 +3882,16 @@ export function AccessConsole({
                                 setRoleForm({
                                   ...roleForm,
                                   scopeType: value as
-                                    | "organization"
-                                    | "workspace",
+                                    "organization" | "workspace",
                                   permissions: roleForm.permissions.filter(
                                     (permission) =>
                                       isPermissionCompatibleWithScope(
                                         permission,
                                         value as "organization" | "workspace",
-                                      ),
+                                      ) &&
+                                      snapshot.grantablePermissions[
+                                        value as "organization" | "workspace"
+                                      ].includes(permission),
                                   ),
                                 })
                               }
@@ -3997,11 +3960,13 @@ export function AccessConsole({
                                 );
                               if (visiblePermissions.length === 0) return null;
                               const compatiblePermissions =
-                                visiblePermissions.filter((permission) =>
-                                  isPermissionCompatibleWithScope(
-                                    permission.id,
-                                    roleForm.scopeType,
-                                  ),
+                                visiblePermissions.filter(
+                                  (permission) =>
+                                    isPermissionCompatibleWithScope(
+                                      permission.id,
+                                      roleForm.scopeType,
+                                    ) &&
+                                    grantablePermissionSet.has(permission.id),
                                 );
                               const allSelected =
                                 compatiblePermissions.length > 0 &&
@@ -4066,6 +4031,10 @@ export function AccessConsole({
                                           permission.id,
                                           roleForm.scopeType,
                                         );
+                                      const grantable =
+                                        grantablePermissionSet.has(
+                                          permission.id,
+                                        );
                                       return (
                                         <Field
                                           key={permission.id}
@@ -4076,7 +4045,9 @@ export function AccessConsole({
                                             id={`permission-${permission.id}`}
                                             checked={checked}
                                             disabled={
-                                              !compatible || roleEditorReadOnly
+                                              roleEditorReadOnly ||
+                                              !compatible ||
+                                              (!checked && !grantable)
                                             }
                                             onCheckedChange={(nextChecked) =>
                                               setRoleForm((current) => ({
@@ -4117,7 +4088,9 @@ export function AccessConsole({
                           </div>
                         </FieldGroup>
                         <DialogFooter className="sticky bottom-0">
-                          {roleEditorReadOnly && canCustomizeViewedRole ? (
+                          {roleEditorReadOnly &&
+                          canCustomizeViewedRole &&
+                          canDelegateViewedRole ? (
                             <Button
                               type="button"
                               onClick={() => {
@@ -4205,6 +4178,7 @@ export function AccessConsole({
                         ).length;
                         const canManageRole =
                           !role.isSystem &&
+                          snapshot.assignableRoleIds.includes(role.id) &&
                           (role.scopeType === "organization"
                             ? canManageOrganizationAccess
                             : canManageProjectAccess);

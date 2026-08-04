@@ -169,6 +169,7 @@ See `.env.example` for the full reference. Key categories:
 | `GITHUB_APP_*`                                                               | GitHub App credentials for agent publishing                |
 | `SEARXNG_URL`                                                                | SearXNG endpoint for web search tool                       |
 | `SANDBOX_RUNNER_SOCKET`                                                      | Unix socket path for code execution sandbox                |
+| `SANDBOX_PYTHON_COMMAND`                                                     | Optional Python executable used by a local sandbox runner  |
 | `AI_HUB_TOOL_POLICY_OPA_URL`                                                 | OPA endpoint for tool approval policies                    |
 | `WORKSPACE_MONTHLY_TOKEN_LIMIT`                                              | Per-workspace monthly token quota                          |
 | `ALLOW_PERSONAL_WORKSPACES`                                                  | Set to `false` to disable personal workspaces              |

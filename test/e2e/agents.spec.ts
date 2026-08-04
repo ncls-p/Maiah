@@ -1,9 +1,14 @@
 import { expect, test } from "@playwright/test";
 import {
+  e2eOrganizationProjectEditor,
+  e2eViewer,
   ensureE2EAssistant,
+  ensureE2EOrganizationProjectEditor,
+  ensureE2EViewer,
   ensureE2EPrivateMemberAssistant,
   ensureE2EUser,
   login,
+  loginWithCredentials,
 } from "./fixtures";
 
 const createAssistantButtonName =
@@ -70,12 +75,13 @@ test.describe("agents list page", () => {
   }) => {
     await page.goto("/en/agents");
 
-    const historyActions = page.getByRole("button", {
+    const historyActions = page.getByRole("toolbar", {
       name: /History actions/i,
     });
     await expect(historyActions).toBeVisible({ timeout: 15_000 });
-    await historyActions.click();
-    await page.getByRole("menuitem", { name: /Create folder/i }).click();
+    await historyActions
+      .getByRole("button", { name: /Create folder/i })
+      .click();
 
     const folderName = page.getByRole("textbox", { name: /Folder name/i });
     await expect(folderName).toBeFocused();
@@ -161,6 +167,62 @@ test.describe("agents list page", () => {
 });
 
 test.describe("agent CRUD", () => {
+  test("lets an organization member who is project editor choose an available model", async ({
+    page,
+  }) => {
+    await ensureE2EAssistant();
+    await ensureE2EOrganizationProjectEditor();
+    await page.context().clearCookies();
+    await loginWithCredentials(page, e2eOrganizationProjectEditor);
+    await page.goto("/en/agents");
+
+    await page
+      .getByRole("button", { name: createAssistantButtonName })
+      .first()
+      .click();
+    const assistantName = `Editor model selection ${Date.now()}`;
+    await page.getByLabel(/^Name$/i).fill(assistantName);
+    await page.getByRole("button", { name: /Create and configure/i }).click();
+
+    await expect(page).toHaveURL(/\/en\/agents\/[0-9a-f-]+$/, {
+      timeout: 15_000,
+    });
+    const providerSelect = page.getByRole("combobox", { name: "Provider" });
+    await expect(providerSelect).toBeEnabled({ timeout: 15_000 });
+    await providerSelect.click();
+    await expect(
+      page.getByRole("option", { name: "E2E provider", exact: true }),
+    ).toBeVisible();
+    await page
+      .getByRole("option", { name: "E2E provider", exact: true })
+      .click();
+
+    const modelSelect = page.getByRole("combobox", { name: "Model" });
+    await expect(modelSelect).toBeEnabled();
+    await modelSelect.click();
+    await expect(
+      page.getByRole("option", { name: "E2E model", exact: true }),
+    ).toBeVisible();
+  });
+
+  test("keeps configured provider and model visible to a project viewer", async ({
+    page,
+  }) => {
+    const { agentId } = await ensureE2EAssistant();
+    await ensureE2EViewer();
+    await page.context().clearCookies();
+    await loginWithCredentials(page, e2eViewer);
+    await page.goto(`/en/agents/${agentId}`);
+
+    await expect(page.getByText("E2E provider", { exact: false })).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(page.getByText("E2E model", { exact: false })).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /Save changes/i }),
+    ).toHaveCount(0);
+  });
+
   test("create, configure, and delete an orchestrator", async ({ page }) => {
     await page.goto("/en/agents");
 

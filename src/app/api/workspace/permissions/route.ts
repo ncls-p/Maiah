@@ -4,7 +4,11 @@ import {
   handleRoute,
   requireWorkspacePermissionAsync,
 } from "@/lib/route-handler";
-import { hasWorkspacePermissionForRequest } from "@/modules/auth/workspace-access";
+import { isPermissionAllowedByRequestScope } from "@/modules/auth/workspace-access";
+import {
+  authorization,
+  matchesPermission,
+} from "@/server/domain/services/authorization";
 
 const querySchema = z.object({ workspaceId: z.uuid() });
 
@@ -53,10 +57,17 @@ export async function GET(req: NextRequest) {
       );
       if (forbidden) return forbidden;
 
-      const results = await Promise.all(
-        permissionNames.map((name) =>
-          hasWorkspacePermissionForRequest(session.user.id, workspaceId, name),
-        ),
+      const permissions = await authorization.listPermissions(
+        { principalType: "user", principalId: session.user.id },
+        "workspace",
+        workspaceId,
+      );
+      const results = permissionNames.map(
+        (name) =>
+          isPermissionAllowedByRequestScope(workspaceId, name) &&
+          permissions.some((permission) =>
+            matchesPermission(permission, name),
+          ),
       );
 
       const [

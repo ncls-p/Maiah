@@ -59,6 +59,20 @@ export function summarizeToolBody(
   return String(body).slice(0, 180);
 }
 
+export function delegationFailureDetails(output: unknown): {
+  errorCode: string | null;
+  reason: string | null;
+} {
+  if (typeof output !== "object" || output === null) {
+    return { errorCode: null, reason: null };
+  }
+  const record = output as Record<string, unknown>;
+  return {
+    errorCode: typeof record.errorCode === "string" ? record.errorCode : null,
+    reason: typeof record.error === "string" ? record.error : null,
+  };
+}
+
 export type HtmlArtifactOutput = {
   kind: "html_artifact";
   title: string;

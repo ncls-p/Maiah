@@ -275,8 +275,27 @@ async function getActiveWorkspaceMember(workspaceId: string, userId: string) {
   return member ?? null;
 }
 
-async function getWorkspaceRoleName(workspaceId: string, userId: string) {
-  const [binding] = await db
+async function getActiveOrganizationMember(
+  organizationId: string,
+  userId: string,
+) {
+  const [member] = await db
+    .select({ id: organizationMembers.id })
+    .from(organizationMembers)
+    .where(
+      and(
+        eq(organizationMembers.organizationId, organizationId),
+        eq(organizationMembers.userId, userId),
+        eq(organizationMembers.status, "active"),
+      ),
+    )
+    .limit(1);
+
+  return member ?? null;
+}
+
+async function getWorkspaceRoleNames(workspaceId: string, userId: string) {
+  const bindings = await db
     .select({ roleName: roles.name })
     .from(roleBindings)
     .innerJoin(roles, eq(roleBindings.roleId, roles.id))
@@ -288,9 +307,8 @@ async function getWorkspaceRoleName(workspaceId: string, userId: string) {
         eq(roleBindings.resourceId, workspaceId),
       ),
     )
-    .limit(1);
-
-  return binding?.roleName ?? null;
+    .limit(2);
+  return bindings.map(({ roleName }) => roleName);
 }
 
 export async function ensurePrimaryWorkspaceForUser(input: {
@@ -321,6 +339,12 @@ export async function ensurePrimaryWorkspaceForUser(input: {
   );
 
   if (!existingMember) {
+    const organizationMember = await getActiveOrganizationMember(
+      workspace.organizationId,
+      input.userId,
+    );
+    if (organizationMember) return workspace;
+
     await addWorkspaceMember({
       workspaceId: workspace.id,
       userId: input.userId,
@@ -330,10 +354,13 @@ export async function ensurePrimaryWorkspaceForUser(input: {
     return workspace;
   }
 
-  const currentRole = await getWorkspaceRoleName(workspace.id, input.userId);
-  const roleIsCurrent = currentRole === desiredRole;
+  const currentRoles = await getWorkspaceRoleNames(workspace.id, input.userId);
+  const platformManagedRole =
+    currentRoles.length === 1 &&
+    (currentRoles[0] === "workspace.admin" ||
+      currentRoles[0] === "workspace.member");
 
-  if (!roleIsCurrent) {
+  if (platformManagedRole && currentRoles[0] !== desiredRole) {
     await updateWorkspaceMemberRole({
       workspaceId: workspace.id,
       userId: input.userId,

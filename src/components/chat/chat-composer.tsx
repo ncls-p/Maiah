@@ -562,7 +562,7 @@ export function ChatComposer({
             />
           </div>
 
-          <div className="flex min-h-14 items-center gap-1.5 border-t border-border/55 px-2 py-1.5 sm:gap-2 sm:px-3">
+          <div className="flex min-h-14 min-w-0 items-center gap-1.5 border-t border-border/55 px-2 py-1.5 sm:gap-2 sm:px-3">
             <Button
               type="button"
               size="icon"
@@ -582,7 +582,7 @@ export function ChatComposer({
               )}
             </Button>
             {composerControls}
-            <span className="min-w-0 flex-1" />
+            <span className="hidden min-w-0 flex-1 sm:block" />
             <span className="hidden shrink-0 text-[0.65rem] text-muted-foreground lg:inline">
               {sending ? t("queueHint") : t("sendHint")}
             </span>

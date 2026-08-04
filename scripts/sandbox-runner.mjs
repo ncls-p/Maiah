@@ -25,6 +25,8 @@ import path from "node:path";
 const socketPath =
 	process.env.SANDBOX_RUNNER_SOCKET ?? "/run/sandbox/sandbox.sock";
 const runRoot = process.env.SANDBOX_RUN_ROOT ?? "/sandbox-runs";
+const pythonCommand =
+	process.env.SANDBOX_PYTHON_COMMAND?.trim() || "python3";
 const sandboxUid = Number(process.env.SANDBOX_RUN_UID ?? "10001");
 const sandboxGid = Number(process.env.SANDBOX_RUN_GID ?? "10001");
 const socketGid = Number(process.env.SANDBOX_SOCKET_GID ?? "1001");
@@ -347,7 +349,7 @@ function appendTailLimited(current, chunk, limit) {
 function commandForLanguage(language) {
 	if (language === "python") {
 		return {
-			command: "python3",
+			command: pythonCommand,
 			args: ["-I", "main.py"],
 			entryFile: "main.py",
 		};

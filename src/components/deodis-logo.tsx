@@ -23,9 +23,10 @@ export function DeodisLogo({
       data-no-outline="true"
       width={857}
       height={320}
+      unoptimized
       loading={priority ? "eager" : "lazy"}
       fetchPriority={priority ? "high" : "auto"}
-      className={cn("h-8 w-auto sm:h-9", className)}
+      className={cn("h-8 w-auto bg-transparent sm:h-9", className)}
     />
   );
 

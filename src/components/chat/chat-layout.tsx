@@ -66,42 +66,23 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import {
+  DEFAULT_APP_SIDEBAR_OPEN,
   DEFAULT_APP_SIDEBAR_WIDTH,
   MAX_APP_SIDEBAR_WIDTH,
   MIN_APP_SIDEBAR_WIDTH,
+  getStoredAppSidebarOpen,
   getStoredAppSidebarWidth,
+  setStoredAppSidebarOpen,
   setStoredAppSidebarWidth,
+  subscribeAppSidebarOpen,
   subscribeAppSidebarWidth,
 } from "@/lib/sidebar-layout";
 import { cn } from "@/lib/utils";
 
-const HISTORY_OPEN_STORAGE_KEY = "chat-unified-sidebar-open";
-const HISTORY_OPEN_STORAGE_EVENT = "chat-unified-sidebar-open-change";
-const DEFAULT_HISTORY_OPEN = true;
 const ChatComposerControlsContext = createContext<ReactNode>(null);
 
 export function useChatComposerControls() {
   return useContext(ChatComposerControlsContext);
-}
-
-function subscribeHistoryOpen(callback: () => void) {
-  window.addEventListener("storage", callback);
-  window.addEventListener(HISTORY_OPEN_STORAGE_EVENT, callback);
-  return () => {
-    window.removeEventListener("storage", callback);
-    window.removeEventListener(HISTORY_OPEN_STORAGE_EVENT, callback);
-  };
-}
-
-function getStoredHistoryOpen(): boolean {
-  const stored = window.localStorage.getItem(HISTORY_OPEN_STORAGE_KEY);
-  if (stored === null) return DEFAULT_HISTORY_OPEN;
-  return stored === "true";
-}
-
-function setStoredHistoryOpen({ open }: { open: boolean }) {
-  window.localStorage.setItem(HISTORY_OPEN_STORAGE_KEY, String(open));
-  window.dispatchEvent(new Event(HISTORY_OPEN_STORAGE_EVENT));
 }
 
 type ChatSidebarCollapsedChangeHandler = NonNullable<
@@ -203,9 +184,9 @@ export function ChatLayout({
   const [setupOpen, setSetupOpen] = useState(false);
   const [agentSearch, setAgentSearch] = useState("");
   const sidebarOpen = useSyncExternalStore(
-    subscribeHistoryOpen,
-    getStoredHistoryOpen,
-    () => DEFAULT_HISTORY_OPEN,
+    subscribeAppSidebarOpen,
+    getStoredAppSidebarOpen,
+    () => DEFAULT_APP_SIDEBAR_OPEN,
   );
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [resizingSidebar, setResizingSidebar] = useState(false);
@@ -216,7 +197,7 @@ export function ChatLayout({
   );
 
   function updateSidebarOpen({ open }: { open: boolean }) {
-    setStoredHistoryOpen({ open });
+    setStoredAppSidebarOpen(open);
   }
 
   function startSidebarResize(event: React.PointerEvent<HTMLDivElement>) {
@@ -336,14 +317,14 @@ export function ChatLayout({
     return null;
   };
   const agentSelector = (
-    <div className="relative z-10 flex min-w-0 items-center gap-2">
+    <div className="relative z-10 flex min-w-0 flex-1 items-center gap-1.5 sm:flex-none sm:gap-2">
       <DropdownMenu onOpenChange={(open) => !open && setAgentSearch("")}>
         <DropdownMenuTrigger asChild>
           <Button
             type="button"
-            variant="ghost"
+            variant="outline"
             size="sm"
-            className="min-h-9 min-w-0 max-w-[min(100%,13rem)] justify-between gap-2 rounded-xl px-2.5 text-xs font-medium hover:bg-muted sm:max-w-64 sm:min-w-48"
+            className="min-h-10 min-w-0 flex-1 justify-between gap-2 rounded-xl border-border/65 bg-background/72 px-2.5 text-xs font-medium shadow-[0_1px_2px_rgba(9,30,36,0.035)] transition-[background-color,border-color,box-shadow,scale] hover:border-primary/20 hover:bg-primary/5 active:scale-[0.98] sm:max-w-64 sm:min-w-48"
             aria-label={t("currentAssistant")}
           >
             <span className="flex min-w-0 items-center gap-2">
@@ -356,10 +337,10 @@ export function ChatLayout({
                   className="rounded-full"
                 />
               ) : null}
-              <span className="truncate">
-                {selectedAgentLabel}
+              <span className="min-w-0 truncate text-left">
+                <span className="truncate">{selectedAgentLabel}</span>
                 {selectedAgent?.modelDisplayName ? (
-                  <span className="text-muted-foreground">
+                  <span className="hidden text-muted-foreground md:inline">
                     {" · "}
                     {selectedAgent.modelDisplayName}
                   </span>
@@ -537,6 +518,7 @@ export function ChatLayout({
     <ChatComposerControlsContext.Provider value={agentSelector}>
       <div className="chat-shell-brand flex h-full min-h-0 overflow-hidden">
         <div
+          data-slot="workspace-history-sidebar"
           className={cn(
             "hidden ease-[cubic-bezier(0.2,0,0,1)] md:block",
             !resizingSidebar && "transition-[opacity,width] duration-200",

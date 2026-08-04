@@ -63,9 +63,14 @@ export const PERMISSION_CATALOG = [
     description: "Build, run, and delegate AI assistants.",
     permissions: [
       {
-        id: "agents.view",
-        label: "View assistants",
-        description: "List and inspect assistants.",
+        id: "agents.list",
+        label: "List assistants",
+        description: "See assistants available in the project.",
+      },
+      {
+        id: "agents.get",
+        label: "View assistant details",
+        description: "Open an assistant and inspect its configuration.",
       },
       {
         id: "agents.chat",

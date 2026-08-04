@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import { PageLoading } from "@/components/page-loading";
+import { useWorkspaceShell } from "@/components/app-shell";
 import { WorkspacePage } from "@/components/workspace-page";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -98,6 +99,7 @@ export default function AgentConfigurePage() {
   const agentId = params.agentId;
   const router = useRouter();
   const { workspaceId, isLoading: workspaceLoading } = useWorkspace();
+  const { permissions } = useWorkspaceShell();
   const t = useTranslations("agents");
 
   const [agent, setAgent] = useState<Agent | null>(null);
@@ -224,8 +226,18 @@ export default function AgentConfigurePage() {
     }
 
     if (!nextAgent.canEdit) {
-      setProviders([]);
-      setModels([]);
+      const providerCatalogRes = await fetch(
+        `/api/workspace/providers?workspaceId=${workspaceId}&includeModels=true`,
+      );
+      if (!providerCatalogRes.ok) {
+        throw new Error("Unable to load agent model settings");
+      }
+      const providerCatalog = (await providerCatalogRes.json()) as {
+        providers: Provider[];
+        models: Model[];
+      };
+      setProviders(providerCatalog.providers);
+      setModels(providerCatalog.models);
       setBuiltinTools([]);
       setMcpServers([]);
       setMcpTools([]);
@@ -251,7 +263,9 @@ export default function AgentConfigurePage() {
       knowledgeBindingsRes,
       skillBindingsRes,
     ] = await Promise.all([
-      fetch(`/api/workspace/providers?workspaceId=${workspaceId}`),
+      fetch(
+        `/api/workspace/providers?workspaceId=${workspaceId}&includeModels=true`,
+      ),
       fetch(`/api/workspace/tools?workspaceId=${workspaceId}`),
       fetch(`/api/workspace/mcp-servers?workspaceId=${workspaceId}`),
       fetch(`/api/workspace/custom-tools?workspaceId=${workspaceId}`),
@@ -282,7 +296,11 @@ export default function AgentConfigurePage() {
       throw new Error("Unable to load agent settings");
     }
 
-    const providerRows = (await providersRes.json()) as Provider[];
+    const providerCatalog = (await providersRes.json()) as {
+      providers: Provider[];
+      models: Model[];
+    };
+    const providerRows = providerCatalog.providers;
     const builtinRows = ((await toolsRes.json()) as BuiltinTool[]).filter(
       (tool) => tool.enabled !== false,
     );
@@ -302,16 +320,7 @@ export default function AgentConfigurePage() {
       }
     ).bindings;
 
-    const modelRows = (
-      await Promise.all(
-        providerRows.map(async (provider) => {
-          const res = await fetch(
-            `/api/workspace/providers/${provider.id}/models?workspaceId=${workspaceId}`,
-          );
-          return res.ok ? ((await res.json()) as Model[]) : [];
-        }),
-      )
-    ).flat();
+    const modelRows = providerCatalog.models;
 
     const mcpToolRows = (
       await Promise.all(
@@ -866,6 +875,7 @@ export default function AgentConfigurePage() {
                   models={models}
                   saving={saving}
                   canAdminCurate={agent?.canAdminCurate ?? false}
+                  canManageProviders={permissions.canManageProviders}
                   agentKind={agent?.kind ?? "assistant"}
                   readOnly={!canEdit}
                   onSaveAction={saveEssential}

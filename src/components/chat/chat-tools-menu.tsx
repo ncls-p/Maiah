@@ -200,6 +200,16 @@ export function ChatToolsMenu({
   const displayedActiveCount = loaded ? activeCount : fallbackCount;
   const displayedTotal = loaded ? capabilities.length : fallbackCount;
   const disabledCount = loaded ? displayedTotal - displayedActiveCount : 0;
+  const categoryCounts = useMemo(
+    () =>
+      (["tools", "skills", "mcp"] as const).map((category) => ({
+        category,
+        count: capabilities.filter(
+          (capability) => capability.category === category,
+        ).length,
+      })),
+    [capabilities],
+  );
 
   function persistOverrides(nextOverrides: ChatCapabilityOverrides) {
     setOverrides(nextOverrides);
@@ -274,7 +284,7 @@ export function ChatToolsMenu({
           type="button"
           variant="outline"
           size="sm"
-          className="min-h-9 shrink-0 gap-1.5 rounded-xl border-primary/15 bg-primary/6 px-2.5 text-[0.7rem] font-normal text-primary transition-[background-color,border-color,color,box-shadow,scale] hover:border-primary/25 hover:bg-primary/10 active:scale-[0.96]"
+          className="min-h-10 shrink-0 gap-1.5 rounded-xl border-primary/15 bg-primary/6 px-2.5 text-[0.7rem] font-medium text-primary shadow-[0_1px_2px_rgba(9,30,36,0.035)] transition-[background-color,border-color,color,box-shadow,scale] hover:border-primary/25 hover:bg-primary/10 active:scale-[0.96]"
           aria-label={t("toolsMenu.triggerLabel", {
             active: displayedActiveCount,
             total: displayedTotal,
@@ -305,6 +315,27 @@ export function ChatToolsMenu({
                 total: capabilities.length,
               })}
             </p>
+            {loaded ? (
+              <div
+                role="list"
+                aria-label={t("toolsMenu.title")}
+                className="mt-2 flex flex-wrap gap-1.5"
+              >
+                {categoryCounts.map(({ category, count }) => (
+                  <span
+                    key={category}
+                    role="listitem"
+                    aria-label={`${groupLabel(category)} ${count}`}
+                    className="inline-flex min-h-6 items-center rounded-lg border border-border/55 bg-muted/45 px-2 text-[0.62rem] font-medium text-muted-foreground"
+                  >
+                    {groupLabel(category)}
+                    <span className="ml-1 font-mono tabular-nums text-foreground">
+                      {count}
+                    </span>
+                  </span>
+                ))}
+              </div>
+            ) : null}
           </div>
           {disabledCount > 0 ? (
             <Button

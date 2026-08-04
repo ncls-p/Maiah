@@ -1,25 +1,44 @@
 import { Redis } from "ioredis";
 import { env } from "@/lib/env";
 
-let redisInstance: Redis | null = null;
+type CacheRuntime = {
+  redis: Redis | null;
+  retryAfter: number;
+};
+
+const CACHE_CONNECT_TIMEOUT_MS = 250;
+const CACHE_RETRY_DELAY_MS = 5_000;
+const globalCache = globalThis as typeof globalThis & {
+  __maiahCacheRuntime?: CacheRuntime;
+};
+const runtime = (globalCache.__maiahCacheRuntime ??= {
+  redis: null,
+  retryAfter: 0,
+});
 
 function getCache(): Redis {
-  if (redisInstance) return redisInstance;
+  if (runtime.redis && runtime.redis.status !== "end") return runtime.redis;
+  if (Date.now() < runtime.retryAfter) {
+    throw new Error("Cache temporarily unavailable");
+  }
 
-  redisInstance = new Redis(env.DRAGONFLY_URL, {
+  const redis = new Redis(env.DRAGONFLY_URL, {
     password: env.DRAGONFLY_PASSWORD || undefined,
-    maxRetriesPerRequest: 0,
-    lazyConnect: true,
-    retryStrategy: (times) => {
-      const delay = Math.min(times * 50, 2000);
-      return delay;
-    },
+    connectTimeout: CACHE_CONNECT_TIMEOUT_MS,
+    enableOfflineQueue: false,
+    maxRetriesPerRequest: 1,
+    retryStrategy: () => null,
   });
-  // Cache access is best-effort. Handle connection failures here so an
-  // unavailable cache does not emit process-level "unhandled error" events.
-  redisInstance.on("error", () => undefined);
+  runtime.redis = redis;
+  redis.on("error", () => {
+    runtime.retryAfter = Date.now() + CACHE_RETRY_DELAY_MS;
+  });
+  redis.on("end", () => {
+    if (runtime.redis === redis) runtime.redis = null;
+    runtime.retryAfter = Date.now() + CACHE_RETRY_DELAY_MS;
+  });
 
-  return redisInstance;
+  return redis;
 }
 
 export const cache = {

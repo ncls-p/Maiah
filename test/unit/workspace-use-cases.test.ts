@@ -225,6 +225,7 @@ describe("ensurePrimaryWorkspaceForUser", () => {
     dbModule._chain.limit
       .mockResolvedValueOnce([{ workspace: primaryWorkspace }]) // getPrimaryWorkspace
       .mockResolvedValueOnce([]) // getActiveWorkspaceMember
+      .mockResolvedValueOnce([]) // getActiveOrganizationMember
       .mockResolvedValueOnce([primaryWorkspace]) // addWorkspaceMember workspace lookup
       .mockResolvedValueOnce([]) // existing member lookup
       .mockResolvedValueOnce([]) // existing organization member
@@ -264,6 +265,61 @@ describe("ensurePrimaryWorkspaceForUser", () => {
     });
 
     expect(dbModule.db.transaction).toHaveBeenCalledOnce();
+  });
+
+  it("does not grant default project access to an organization member", async () => {
+    const primaryWorkspace = { ...fakeWorkspace, slug: "main", name: "Maiah" };
+
+    dbModule._chain.limit
+      .mockResolvedValueOnce([{ workspace: primaryWorkspace }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ id: "organization-member-1" }]);
+
+    const result = await ensurePrimaryWorkspaceForUser({
+      userId: "user-2",
+      role: "user",
+      invitedBy: "admin-1",
+    });
+
+    expect(result).toEqual(primaryWorkspace);
+    expect(dbModule.db.transaction).not.toHaveBeenCalled();
+  });
+
+  it("preserves explicit custom IAM roles during platform synchronization", async () => {
+    const primaryWorkspace = { ...fakeWorkspace, slug: "main", name: "Maiah" };
+
+    dbModule._chain.limit
+      .mockResolvedValueOnce([{ workspace: primaryWorkspace }])
+      .mockResolvedValueOnce([fakeMember])
+      .mockResolvedValueOnce([{ roleName: "custom.access-manager" }]);
+
+    await ensurePrimaryWorkspaceForUser({
+      userId: "user-2",
+      role: "user",
+      invitedBy: "admin-1",
+    });
+
+    expect(dbModule.db.transaction).not.toHaveBeenCalled();
+  });
+
+  it("preserves multiple explicit assignments during platform synchronization", async () => {
+    const primaryWorkspace = { ...fakeWorkspace, slug: "main", name: "Maiah" };
+
+    dbModule._chain.limit
+      .mockResolvedValueOnce([{ workspace: primaryWorkspace }])
+      .mockResolvedValueOnce([fakeMember])
+      .mockResolvedValueOnce([
+        { roleName: "workspace.member" },
+        { roleName: "custom.audit-reader" },
+      ]);
+
+    await ensurePrimaryWorkspaceForUser({
+      userId: "user-2",
+      role: "admin",
+      invitedBy: "admin-1",
+    });
+
+    expect(dbModule.db.transaction).not.toHaveBeenCalled();
   });
 });
 

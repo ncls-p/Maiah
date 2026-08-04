@@ -55,7 +55,9 @@ artifact context extraction; a successful root delegation contributes only its
 tools use opaque specialist aliases instead of agent IDs, and failures expose
 only a generic control message to the active parent model. Child run IDs, agent
 identity, task input, intermediate tools, artifacts and detailed errors
-therefore remain visual-only.
+therefore remain visual-only. The visual progress event may include a stable
+error code and a redacted safe detail so the UI can explain the failure to the
+user without exposing that detail to the parent model.
 
 Successful root delegation results are removed from the best-effort progress
 write path and committed in the same final database transaction as the parent

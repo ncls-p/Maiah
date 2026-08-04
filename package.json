@@ -33,6 +33,7 @@
     "swagger:assets": "node scripts/copy-swagger-assets.mjs",
     "analyze": "ANALYZE=true next build",
     "sandbox:build": "bash scripts/build-sandbox-runner-image.sh",
+    "sandbox:dev": "bash scripts/start-local-sandbox-runner.sh",
     "lockfile:check": "node scripts/check-lockfile.mjs",
     "video": "remotion studio remotion/index.ts",
     "video:render": "remotion render remotion/index.ts MaiahLaunchFilm out/maiah-launch.mp4 --codec=h264 --crf=16",

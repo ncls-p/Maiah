@@ -16,6 +16,11 @@ import {
 import { and, eq, gte, inArray, isNull, or } from "drizzle-orm";
 
 const PERMISSION_CACHE_TTL = 60; // 60 seconds
+const globalAuthorization = globalThis as typeof globalThis & {
+  __maiahPermissionResolutions?: Map<string, Promise<Permission[]>>;
+};
+const permissionResolutions =
+  (globalAuthorization.__maiahPermissionResolutions ??= new Map());
 
 export type Permission = string;
 export type PrincipalType = "user" | "group" | "service_account" | "api_key";
@@ -64,6 +69,15 @@ export function matchesPermission(
   if (grantedAction === "*" || grantedAction === "manage") return true;
   if (grantedAction === "view" && VIEW_ACTIONS.has(requiredAction)) return true;
   return grantedAction === requiredAction;
+}
+
+export function canDelegatePermissionSet(
+  actorPermissions: readonly Permission[],
+  delegatedPermissions: readonly Permission[],
+): boolean {
+  return delegatedPermissions.every((permission) =>
+    actorPermissions.some((granted) => matchesPermission(granted, permission)),
+  );
 }
 
 async function isActiveWorkspaceMember(
@@ -153,15 +167,12 @@ function uniquePermissions(permissions: Permission[]) {
   return [...new Set(permissions)];
 }
 
-async function resolvePermissions(
+async function resolvePermissionsUncached(
   ctx: AuthorizationContext,
   resourceType: ResourceType,
   resourceId: string,
+  cacheKey: string,
 ): Promise<Permission[]> {
-  const cacheKey = `perm:${ctx.principalType}:${ctx.principalId}:${resourceType}:${resourceId}`;
-  const cached = await cache.get<Permission[]>(cacheKey);
-  if (cached) return cached;
-
   let organizationId: string | null =
     resourceType === "organization" ? resourceId : null;
   let workspaceId: string | null =
@@ -294,6 +305,34 @@ async function resolvePermissions(
   const resolvedPermissions = uniquePermissions(permissions);
   await cache.set(cacheKey, resolvedPermissions, PERMISSION_CACHE_TTL);
   return resolvedPermissions;
+}
+
+async function resolvePermissions(
+  ctx: AuthorizationContext,
+  resourceType: ResourceType,
+  resourceId: string,
+): Promise<Permission[]> {
+  const cacheKey = `perm:${ctx.principalType}:${ctx.principalId}:${resourceType}:${resourceId}`;
+  const cached = await cache.get<Permission[]>(cacheKey);
+  if (cached) return cached;
+
+  const pending = permissionResolutions.get(cacheKey);
+  if (pending) return pending;
+
+  const resolution = resolvePermissionsUncached(
+    ctx,
+    resourceType,
+    resourceId,
+    cacheKey,
+  );
+  permissionResolutions.set(cacheKey, resolution);
+  try {
+    return await resolution;
+  } finally {
+    if (permissionResolutions.get(cacheKey) === resolution) {
+      permissionResolutions.delete(cacheKey);
+    }
+  }
 }
 
 export const authorization = {
@@ -472,10 +511,17 @@ export const authorization = {
     resourceType: ResourceType,
     resourceId: string,
   ): Promise<void> {
+    permissionResolutions.delete(
+      `perm:user:${principalId}:${resourceType}:${resourceId}`,
+    );
     await cache.del(`perm:user:${principalId}:${resourceType}:${resourceId}`);
   },
 
   async invalidatePrincipalPermissionCache(principalId: string): Promise<void> {
+    const prefix = `perm:user:${principalId}:`;
+    for (const key of permissionResolutions.keys()) {
+      if (key.startsWith(prefix)) permissionResolutions.delete(key);
+    }
     await cache.delByPrefix(`perm:user:${principalId}:`);
   },
 };

@@ -124,6 +124,7 @@ export type AgentToolProgressEvent =
       type: "tool-end";
       durationMs: number;
       error: string;
+      errorCode?: string;
     });
 
 type AgentToolProgressCallback = (
@@ -847,14 +848,26 @@ async function executeResolvedAgent(
             }),
           } satisfies AgentToolProgressContext;
           if (toolOutput.type === "tool-error") {
+            const executionError =
+              toolOutput.error instanceof AgentExecutionError
+                ? toolOutput.error
+                : null;
             emitToolProgress(input.onProgress, {
               ...context,
               type: "tool-end",
               durationMs: toolExecutionMs,
-              error: safeToolErrorMessage(
-                toolOutput.error,
-                "Tool execution failed",
-              ),
+              error: executionError?.safeDetail
+                ? safeToolErrorMessage(
+                    new Error(executionError.safeDetail),
+                    "Tool execution failed",
+                  )
+                : safeToolErrorMessage(
+                    toolOutput.error,
+                    "Tool execution failed",
+                  ),
+              ...(executionError?.code
+                ? { errorCode: executionError.code }
+                : {}),
             });
             return;
           }

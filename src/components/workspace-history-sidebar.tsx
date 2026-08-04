@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import {
   MessageSquareWarningIcon,
+  PanelLeftCloseIcon,
   PanelLeftOpenIcon,
   PlusIcon,
 } from "lucide-react";
@@ -32,11 +33,15 @@ import { useWorkspace } from "@/hooks/use-workspace";
 import { useRouter } from "@/i18n/navigation";
 import { fetchJson } from "@/lib/api-client";
 import {
+  DEFAULT_APP_SIDEBAR_OPEN,
   DEFAULT_APP_SIDEBAR_WIDTH,
   MAX_APP_SIDEBAR_WIDTH,
   MIN_APP_SIDEBAR_WIDTH,
+  getStoredAppSidebarOpen,
   getStoredAppSidebarWidth,
+  setStoredAppSidebarOpen,
   setStoredAppSidebarWidth,
+  subscribeAppSidebarOpen,
   subscribeAppSidebarWidth,
 } from "@/lib/sidebar-layout";
 import type { WorkspaceShellState } from "@/lib/workspace-nav";
@@ -390,9 +395,11 @@ function useWorkspaceHistory() {
 function WorkspaceHistoryContent({
   shell,
   onNavigate,
+  onCollapsedChange,
 }: {
   shell: WorkspaceShellState;
   onNavigate?: () => void;
+  onCollapsedChange?: (collapsed: boolean) => void;
 }) {
   const t = useTranslations("chat.sidebar");
   const router = useRouter();
@@ -424,18 +431,32 @@ function WorkspaceHistoryContent({
         <SidebarHeader
           contextLabel={t("conversations")}
           action={
-            <Button
-              type="button"
-              size="icon"
-              className="size-10 rounded-xl"
-              onClick={() => {
-                router.push("/chat");
-                onNavigate?.();
-              }}
-              aria-label={t("newConversation")}
-            >
-              <PlusIcon className="size-4" aria-hidden="true" />
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button
+                type="button"
+                size="icon"
+                className="size-10 rounded-xl"
+                onClick={() => {
+                  router.push("/chat");
+                  onNavigate?.();
+                }}
+                aria-label={t("newConversation")}
+              >
+                <PlusIcon className="size-4" aria-hidden="true" />
+              </Button>
+              {onCollapsedChange ? (
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className="size-10 rounded-xl active:scale-[0.96]"
+                  onClick={() => onCollapsedChange(true)}
+                  aria-label={t("collapseSidebar")}
+                >
+                  <PanelLeftCloseIcon className="size-4" aria-hidden="true" />
+                </Button>
+              ) : null}
+            </div>
           }
         />
         <div className="flex flex-1 flex-col items-center justify-center px-7 text-center">
@@ -539,6 +560,7 @@ function WorkspaceHistoryContent({
             context={activeWorkspace?.organizationName}
           />
         }
+        onCollapsedChange={onCollapsedChange}
       />
       <DestructiveConfirmationDialog
         open={pendingDelete !== null}
@@ -579,6 +601,11 @@ export function WorkspaceHistorySidebar({
     getStoredAppSidebarWidth,
     () => DEFAULT_APP_SIDEBAR_WIDTH,
   );
+  const open = useSyncExternalStore(
+    subscribeAppSidebarOpen,
+    getStoredAppSidebarOpen,
+    () => DEFAULT_APP_SIDEBAR_OPEN,
+  );
   const [resizing, setResizing] = useState(false);
 
   function startResize(event: React.PointerEvent<HTMLDivElement>) {
@@ -608,33 +635,46 @@ export function WorkspaceHistorySidebar({
   return (
     <aside
       data-slot="workspace-history-sidebar"
-      className="relative hidden h-full shrink-0 border-r border-sidebar-border/65 bg-sidebar/92 text-sidebar-foreground backdrop-blur-xl md:flex md:flex-col"
-      style={{ width: `${width}px` }}
+      aria-hidden={!open}
+      className={`relative hidden h-full shrink-0 overflow-hidden bg-sidebar/92 text-sidebar-foreground opacity-100 backdrop-blur-xl transition-[opacity,width] duration-200 ease-[cubic-bezier(0.2,0,0,1)] md:flex md:flex-col ${
+        open
+          ? "border-r border-sidebar-border/65"
+          : "pointer-events-none border-r-0"
+      }`}
+      style={{ width: open ? `${width}px` : 0, opacity: open ? 1 : 0 }}
     >
-      <WorkspaceHistoryContent shell={shell} />
-      <div
-        role="separator"
-        aria-label={tShell("resizeNavigation")}
-        aria-orientation="vertical"
-        aria-valuemin={MIN_APP_SIDEBAR_WIDTH}
-        aria-valuemax={MAX_APP_SIDEBAR_WIDTH}
-        aria-valuenow={width}
-        tabIndex={0}
-        className="group absolute inset-y-0 right-0 z-20 w-3 translate-x-1.5 cursor-col-resize outline-none"
-        onPointerDown={startResize}
-        onKeyDown={(event) => {
-          if (event.key === "ArrowLeft") setStoredAppSidebarWidth(width - 12);
-          if (event.key === "ArrowRight") setStoredAppSidebarWidth(width + 12);
-        }}
-      >
-        <div
-          className={`mx-auto h-full w-px transition-colors ${
-            resizing
-              ? "bg-ring"
-              : "bg-transparent group-hover:bg-border group-focus-visible:bg-ring"
-          }`}
+      {open ? (
+        <WorkspaceHistoryContent
+          shell={shell}
+          onCollapsedChange={(collapsed) => setStoredAppSidebarOpen(!collapsed)}
         />
-      </div>
+      ) : null}
+      {open ? (
+        <div
+          role="separator"
+          aria-label={tShell("resizeNavigation")}
+          aria-orientation="vertical"
+          aria-valuemin={MIN_APP_SIDEBAR_WIDTH}
+          aria-valuemax={MAX_APP_SIDEBAR_WIDTH}
+          aria-valuenow={width}
+          tabIndex={0}
+          className="group absolute inset-y-0 right-0 z-20 w-3 translate-x-1.5 cursor-col-resize outline-none"
+          onPointerDown={startResize}
+          onKeyDown={(event) => {
+            if (event.key === "ArrowLeft") setStoredAppSidebarWidth(width - 12);
+            if (event.key === "ArrowRight")
+              setStoredAppSidebarWidth(width + 12);
+          }}
+        >
+          <div
+            className={`mx-auto h-full w-px transition-colors ${
+              resizing
+                ? "bg-ring"
+                : "bg-transparent group-hover:bg-border group-focus-visible:bg-ring"
+            }`}
+          />
+        </div>
+      ) : null}
     </aside>
   );
 }
@@ -646,29 +686,48 @@ export function WorkspaceHistoryMobileTrigger({
 }) {
   const t = useTranslations("chat");
   const [open, setOpen] = useState(false);
+  const desktopSidebarOpen = useSyncExternalStore(
+    subscribeAppSidebarOpen,
+    getStoredAppSidebarOpen,
+    () => DEFAULT_APP_SIDEBAR_OPEN,
+  );
 
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>
+    <>
+      {!desktopSidebarOpen ? (
         <Button
           type="button"
           variant="ghost"
           size="icon"
-          className="size-10 md:hidden"
+          className="hidden size-10 rounded-xl active:scale-[0.96] md:inline-flex"
           aria-label={t("openConversations")}
+          onClick={() => setStoredAppSidebarOpen(true)}
         >
           <PanelLeftOpenIcon className="size-4" aria-hidden="true" />
         </Button>
-      </SheetTrigger>
-      <SheetContent side="left" className="w-[min(100vw-1rem,20rem)] p-0">
-        <SheetHeader className="sr-only">
-          <SheetTitle>{t("conversations")}</SheetTitle>
-        </SheetHeader>
-        <WorkspaceHistoryContent
-          shell={shell}
-          onNavigate={() => setOpen(false)}
-        />
-      </SheetContent>
-    </Sheet>
+      ) : null}
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-10 md:hidden"
+            aria-label={t("openConversations")}
+          >
+            <PanelLeftOpenIcon className="size-4" aria-hidden="true" />
+          </Button>
+        </SheetTrigger>
+        <SheetContent side="left" className="w-[min(100vw-1rem,20rem)] p-0">
+          <SheetHeader className="sr-only">
+            <SheetTitle>{t("conversations")}</SheetTitle>
+          </SheetHeader>
+          <WorkspaceHistoryContent
+            shell={shell}
+            onNavigate={() => setOpen(false)}
+          />
+        </SheetContent>
+      </Sheet>
+    </>
   );
 }

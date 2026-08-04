@@ -176,19 +176,19 @@ test.describe("sidebar interactions", () => {
 
     // Find the collapse/expand button
     const toggleBtn = page.getByRole("button", {
-      name: /Collapse|Expand sidebar/i,
+      name: /Collapse chat sidebar/i,
     });
 
     if (await toggleBtn.isVisible()) {
       const initialWidth = await page
-        .locator('[data-slot="workspace-sidebar"]')
+        .locator('[data-slot="workspace-history-sidebar"]')
         .boundingBox();
 
       await toggleBtn.click();
       await page.waitForTimeout(300);
 
       const collapsedWidth = await page
-        .locator('[data-slot="workspace-sidebar"]')
+        .locator('[data-slot="workspace-history-sidebar"]')
         .boundingBox();
 
       // Sidebar should be narrower when collapsed

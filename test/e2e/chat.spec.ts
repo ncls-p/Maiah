@@ -332,6 +332,127 @@ test.describe("chat page", () => {
     await expect(newConversationBtn).toBeEnabled({ timeout: 15_000 });
   });
 
+  test("keeps history controls ordered, reachable, and responsive", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto("/en/chat");
+
+    const desktopSidebar = page.getByRole("complementary").first();
+    await expect(desktopSidebar).toBeVisible({ timeout: 15_000 });
+
+    const newConversation = desktopSidebar.getByRole("button", {
+      name: "New conversation",
+      exact: true,
+    });
+    const historySearch = desktopSidebar.getByRole("searchbox", {
+      name: "Search chat history",
+    });
+    const createFolder = desktopSidebar.getByRole("button", {
+      name: "Create folder",
+      exact: true,
+    });
+    const collapseSidebar = desktopSidebar.getByRole("button", {
+      name: "Collapse chat sidebar",
+      exact: true,
+    });
+
+    await expect(newConversation).toBeVisible();
+    await expect(historySearch).toBeVisible();
+    await expect(createFolder).toBeVisible();
+    await expect(collapseSidebar).toBeVisible();
+
+    const desktopBoxes = await Promise.all([
+      newConversation.boundingBox(),
+      historySearch.boundingBox(),
+      createFolder.boundingBox(),
+      collapseSidebar.boundingBox(),
+    ]);
+    for (const box of desktopBoxes) {
+      expect(box).not.toBeNull();
+      expect(box!.width).toBeGreaterThanOrEqual(40);
+      expect(box!.height).toBeGreaterThanOrEqual(40);
+    }
+    expect(desktopBoxes[0]!.y).toBeLessThan(desktopBoxes[1]!.y);
+    expect(desktopBoxes[1]!.y).toBeLessThan(desktopBoxes[2]!.y);
+    expect(desktopBoxes[3]!.y).toBeLessThan(desktopBoxes[0]!.y);
+
+    await createFolder.click();
+    const folderName = desktopSidebar.getByRole("textbox", {
+      name: "Folder name",
+    });
+    await expect(folderName).toBeFocused();
+    await folderName.press("Escape");
+    await expect(folderName).toBeHidden();
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page
+      .getByRole("button", { name: "Open conversations", exact: true })
+      .click();
+
+    const mobileSidebar = page.locator('[data-slot="sheet-content"]');
+    await expect(mobileSidebar).toBeVisible();
+    const mobileNewConversation = mobileSidebar.getByRole("button", {
+      name: "New conversation",
+      exact: true,
+    });
+    const mobileSearch = mobileSidebar.getByRole("searchbox", {
+      name: "Search chat history",
+    });
+    const mobileFolder = mobileSidebar.getByRole("button", {
+      name: "Create folder",
+      exact: true,
+    });
+    const mobileBoxes = await Promise.all([
+      mobileNewConversation.boundingBox(),
+      mobileSearch.boundingBox(),
+      mobileFolder.boundingBox(),
+    ]);
+    expect(mobileBoxes[0]!.y).toBeLessThan(mobileBoxes[1]!.y);
+    expect(mobileBoxes[1]!.y).toBeLessThan(mobileBoxes[2]!.y);
+    expect(
+      await mobileSidebar.evaluate(
+        (element) => element.scrollWidth <= element.clientWidth,
+      ),
+    ).toBe(true);
+  });
+
+  test("keeps chat history collapse available across workspace pages", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto("/en/members");
+
+    const membersSidebar = page.getByRole("complementary").first();
+    await expect(membersSidebar).toBeVisible({ timeout: 15_000 });
+    await membersSidebar
+      .getByRole("button", {
+        name: "Collapse chat sidebar",
+        exact: true,
+      })
+      .click();
+
+    await expect(membersSidebar).toBeHidden();
+    await expect(
+      page.getByRole("button", { name: "Open conversations", exact: true }),
+    ).toBeVisible();
+
+    await page.goto("/en/chat");
+    await expect(page.getByRole("complementary")).toBeHidden();
+    await page
+      .getByRole("button", { name: "Open conversations", exact: true })
+      .click();
+    await expect(page.getByRole("complementary").first()).toBeVisible();
+
+    await page.goto("/en/agents");
+    await expect(
+      page.getByRole("complementary").first().getByRole("button", {
+        name: "Collapse chat sidebar",
+        exact: true,
+      }),
+    ).toBeVisible();
+  });
+
   test("enabled tools menu opens and links to assistant customization", async ({
     page,
   }) => {
@@ -345,6 +466,18 @@ test.describe("chat page", () => {
 
     await expect(
       page.getByRole("heading", { name: "Chat capabilities" }),
+    ).toBeVisible();
+    const capabilitiesMenu = page.getByRole("menu", {
+      name: /Chat capabilities/i,
+    });
+    await expect(
+      capabilitiesMenu.getByRole("listitem", { name: /^Tools/ }),
+    ).toBeVisible({ timeout: 15_000 });
+    await expect(
+      capabilitiesMenu.getByRole("listitem", { name: /^Skills/ }),
+    ).toBeVisible();
+    await expect(
+      capabilitiesMenu.getByRole("listitem", { name: /^MCP/ }),
     ).toBeVisible();
     const customizeLink = page.getByRole("menuitem", {
       name: "Customize",
@@ -401,6 +534,11 @@ test.describe("chat page", () => {
     await expect(
       page.getByRole("textbox", { name: "Message", exact: true }),
     ).toBeEnabled({ timeout: 15_000 });
+    const messageInput = page.getByRole("textbox", {
+      name: "Message",
+      exact: true,
+    });
+    await messageInput.fill("Keep this unsent draft with every attachment.");
     const fileInput = page.locator('input[type="file"]');
     await expect(fileInput).toHaveCount(1);
     await fileInput.setInputFiles(
@@ -429,6 +567,18 @@ test.describe("chat page", () => {
         (element) => element.scrollWidth <= element.clientWidth,
       ),
     ).toBe(true);
+
+    await page.reload();
+    await expect(messageInput).toHaveValue(
+      "Keep this unsent draft with every attachment.",
+      { timeout: 15_000 },
+    );
+    await expect(
+      page.getByText("8 attached files", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.locator('[data-slot="attachment-group"] [data-slot="attachment"]'),
+    ).toHaveCount(8);
   });
 
   test("navigate between chat and other pages", async ({ page }) => {

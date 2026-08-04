@@ -8,6 +8,7 @@ import {
   CheckIcon,
   FolderIcon,
   FolderPlusIcon,
+  MessageSquarePlusIcon,
   MoreHorizontalIcon,
   MessageSquareIcon,
   PanelLeftCloseIcon,
@@ -438,11 +439,11 @@ function ConversationItem({
                   variant={GHOST_VARIANT}
                   aria-label={t("conversationActions")}
                   className={cn(
-                    "size-8 shrink-0 rounded-lg transition-[background-color,opacity] hover:bg-background/80 md:opacity-0 md:group-hover/conversation:opacity-100 md:group-focus-within/conversation:opacity-100 data-[state=open]:opacity-100",
+                    "size-10 shrink-0 rounded-xl transition-[background-color,opacity] hover:bg-background/80 md:opacity-0 md:group-hover/conversation:opacity-100 md:group-focus-within/conversation:opacity-100 data-[state=open]:opacity-100",
                     isActive && "opacity-100",
                   )}
                 >
-                  <MoreHorizontalIcon className="size-3" aria-hidden="true" />
+                  <MoreHorizontalIcon className="size-3.5" aria-hidden="true" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -556,7 +557,6 @@ export function ChatSidebar({
     [shell],
   );
   const searchActive = searchQuery.trim().length > 0;
-  const showConversationTools = true;
   const sortedConversations = useMemo(() => {
     return [...conversations].sort((a, b) => {
       const aPinned = a.pinnedAt ? 0 : 1;
@@ -708,6 +708,30 @@ export function ChatSidebar({
     setNewFolderName("");
   }
 
+  function renderHistoryActions() {
+    if (readOnly || !onCreateConversationFolder) return null;
+
+    return (
+      <div
+        role="toolbar"
+        aria-label={t("historyActions")}
+        className="flex min-h-10 shrink-0 items-center justify-end gap-1"
+      >
+        <Button
+          type={BUTTON_TYPE}
+          size="icon-sm"
+          variant={GHOST_VARIANT}
+          className="size-10 rounded-xl text-muted-foreground transition-[background-color,color,scale] active:scale-[0.96]"
+          aria-label={t("createFolder")}
+          title={t("createFolder")}
+          onClick={startFolderCreate}
+        >
+          <FolderPlusIcon className="size-4" aria-hidden="true" />
+        </Button>
+      </div>
+    );
+  }
+
   function renderConversation(
     conversation: ChatConversation,
     options?: { searchResult?: boolean },
@@ -847,95 +871,70 @@ export function ChatSidebar({
       <SidebarHeader
         contextLabel={t("conversations")}
         action={
-          <div className="flex items-center gap-1">
-            {!readOnly && (onCreateConversationFolder || onCollapsedChange) ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    type={BUTTON_TYPE}
-                    size="icon"
-                    variant={GHOST_VARIANT}
-                    className="size-10 rounded-xl text-muted-foreground"
-                    aria-label={t("historyActions")}
-                  >
-                    <MoreHorizontalIcon className="size-4" aria-hidden="true" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-52">
-                  {onCreateConversationFolder ? (
-                    <DropdownMenuItem
-                      onSelect={() =>
-                        window.requestAnimationFrame(startFolderCreate)
-                      }
-                    >
-                      <FolderPlusIcon className="size-4" aria-hidden="true" />
-                      {t("createFolder")}
-                    </DropdownMenuItem>
-                  ) : null}
-                  {onCollapsedChange ? (
-                    <DropdownMenuItem onSelect={() => onCollapsedChange(true)}>
-                      <PanelLeftCloseIcon
-                        className="size-4"
-                        aria-hidden="true"
-                      />
-                      {t("collapseSidebar")}
-                    </DropdownMenuItem>
-                  ) : null}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : null}
+          !readOnly && onCollapsedChange ? (
             <Button
               type={BUTTON_TYPE}
-              size="icon"
-              onClick={onNewConversation}
-              className="size-10 rounded-xl"
-              aria-label={t("newConversation")}
+              size="icon-sm"
+              variant={GHOST_VARIANT}
+              className="size-10 shrink-0 rounded-xl text-muted-foreground transition-[background-color,color,scale] hover:bg-sidebar-accent/70 hover:text-sidebar-foreground active:scale-[0.96]"
+              aria-label={t("collapseSidebar")}
+              title={t("collapseSidebar")}
+              onClick={() => onCollapsedChange(true)}
             >
-              <PlusIcon className="size-4" aria-hidden="true" />
+              <PanelLeftCloseIcon className="size-4" aria-hidden="true" />
             </Button>
-          </div>
+          ) : null
         }
       />
 
       <div className="animate-in-fade flex min-h-0 flex-1 flex-col motion-reduce:animate-none">
         <div className="flex min-h-0 flex-1 flex-col">
-          <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto px-3 py-3">
-            {showConversationTools ? (
-              <div className="relative mb-2 flex items-center">
-                <SearchIcon
-                  className="pointer-events-none absolute left-3 size-3.5 shrink-0 text-muted-foreground"
-                  aria-hidden="true"
-                />
-                <Input
-                  type="search"
-                  name="conversation-search"
-                  autoComplete="off"
-                  aria-label={t("searchLabel")}
-                  placeholder={
-                    readOnly
-                      ? t("searchCompactPlaceholder")
-                      : t("searchPlaceholder")
-                  }
-                  value={searchQuery}
-                  onChange={(event) =>
-                    onSearchQueryChange?.(event.target.value)
-                  }
-                  className="h-11 min-w-0 rounded-xl border-sidebar-border/60 bg-card/60 pl-9 pr-9 text-xs shadow-none"
-                />
-                {searchActive ? (
-                  <Button
-                    type={BUTTON_TYPE}
-                    size="icon-sm"
-                    variant={GHOST_VARIANT}
-                    className="absolute right-1 size-9 shrink-0 rounded-lg"
-                    aria-label={t("clearSearch")}
-                    onClick={() => onSearchQueryChange?.("")}
-                  >
-                    <XIcon data-icon="inline-start" aria-hidden="true" />
-                  </Button>
-                ) : null}
-              </div>
-            ) : null}
+          <div className="flex shrink-0 flex-col gap-2 px-3 pb-2 pt-3">
+            <Button
+              type={BUTTON_TYPE}
+              onClick={onNewConversation}
+              className="h-11 w-full justify-start gap-2.5 rounded-xl px-3.5 text-sm shadow-[0_8px_22px_-16px_color-mix(in_oklch,var(--primary)_70%,transparent)]"
+              aria-label={t("newConversation")}
+            >
+              <MessageSquarePlusIcon
+                className="size-4 shrink-0"
+                aria-hidden="true"
+              />
+              <span className="min-w-0 truncate">{t("newConversation")}</span>
+            </Button>
+
+            <div className="relative flex items-center">
+              <SearchIcon
+                className="pointer-events-none absolute left-3 size-3.5 shrink-0 text-muted-foreground"
+                aria-hidden="true"
+              />
+              <Input
+                type="search"
+                name="conversation-search"
+                autoComplete="off"
+                aria-label={t("searchLabel")}
+                placeholder={
+                  readOnly
+                    ? t("searchCompactPlaceholder")
+                    : t("searchPlaceholder")
+                }
+                value={searchQuery}
+                onChange={(event) => onSearchQueryChange?.(event.target.value)}
+                className="h-11 min-w-0 rounded-xl border-sidebar-border/60 bg-card/60 pl-9 pr-11 text-xs shadow-none"
+              />
+              {searchActive ? (
+                <Button
+                  type={BUTTON_TYPE}
+                  size="icon-sm"
+                  variant={GHOST_VARIANT}
+                  className="absolute right-0.5 size-10 shrink-0 rounded-[10px]"
+                  aria-label={t("clearSearch")}
+                  onClick={() => onSearchQueryChange?.("")}
+                >
+                  <XIcon data-icon="inline-start" aria-hidden="true" />
+                </Button>
+              ) : null}
+            </div>
 
             <p className="sr-only" aria-live="polite">
               {searchActive && !searching && !searchError
@@ -979,7 +978,17 @@ export function ChatSidebar({
                 </Button>
               </div>
             ) : null}
+          </div>
 
+          <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto px-3 pb-3 pt-1">
+            {!searchActive ? (
+              <div className="flex min-h-10 items-center justify-between gap-2 px-2">
+                <span className="min-w-0 truncate font-mono text-[9px] font-medium uppercase tracking-[0.16em] text-muted-foreground/70">
+                  {t("recent")}
+                </span>
+                {renderHistoryActions()}
+              </div>
+            ) : null}
             <div className="flex min-h-0 flex-col gap-1">
               {searchActive ? (
                 searching && searchResults.length === 0 ? (
@@ -1294,9 +1303,6 @@ export function ChatSidebar({
                   >
                     {topLevelConversations.length > 0 ? (
                       <>
-                        <div className="px-2 pb-1 font-mono text-[9px] font-medium uppercase tracking-[0.16em] text-muted-foreground/70">
-                          {t("recent")}
-                        </div>
                         {topLevelConversations.map((conversation) =>
                           renderConversation(conversation),
                         )}
