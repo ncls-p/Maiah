@@ -104,8 +104,11 @@ export async function ensureE2EAssistant() {
       `select id from "user" where email = $1 limit 1`,
       [e2eUser.email],
     );
-    const workspace = await client.query<{ id: string }>(
-      `select w.id
+    const workspace = await client.query<{
+      id: string;
+      organization_id: string;
+    }>(
+      `select w.id, w.organization_id
        from workspaces w
        join organizations o on o.id = w.organization_id
        where w.slug = 'main' and o.slug = 'deodis' and w.archived_at is null
@@ -197,8 +200,11 @@ export async function ensureE2EMember() {
       [randomUUID(), e2eMember.name, e2eMember.email],
     );
     const userId = upserted.rows[0].id;
-    const workspace = await client.query<{ id: string }>(
-      `select w.id
+    const workspace = await client.query<{
+      id: string;
+      organization_id: string;
+    }>(
+      `select w.id, w.organization_id
        from workspaces w
        join organizations o on o.id = w.organization_id
        where w.slug = 'main' and o.slug = 'deodis' and w.archived_at is null
@@ -210,8 +216,9 @@ export async function ensureE2EMember() {
        limit 1`,
     );
     const workspaceId = workspace.rows[0]?.id;
+    const organizationId = workspace.rows[0]?.organization_id;
     const roleId = memberRole.rows[0]?.id;
-    if (!workspaceId || !roleId) {
+    if (!workspaceId || !organizationId || !roleId) {
       throw new Error("E2E workspace member role is not initialized");
     }
 
@@ -225,10 +232,15 @@ export async function ensureE2EMember() {
       [userId, userId, password],
     );
     await client.query(
-      `insert into workspace_members (workspace_id, user_id, status, created_at, updated_at)
+      `insert into organization_members
+       (organization_id, user_id, status, created_at, updated_at)
        values ($1, $2, 'active', now(), now())
-       on conflict (workspace_id, user_id) do update
+       on conflict (organization_id, user_id) do update
        set status = 'active', updated_at = now()`,
+      [organizationId, userId],
+    );
+    await client.query(
+      `delete from workspace_members where workspace_id = $1 and user_id = $2`,
       [workspaceId, userId],
     );
     await client.query(
