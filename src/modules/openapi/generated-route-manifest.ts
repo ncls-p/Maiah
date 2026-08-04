@@ -1732,7 +1732,7 @@ export const OPENAPI_ROUTE_MANIFEST = [
     auth: ["session", "apiKey"],
     permissions: ["models.view", "providers.viewMetadata"],
     pathParameters: [],
-    queryParameters: ["workspaceId"],
+    queryParameters: ["includeModels", "workspaceId"],
     bodyKind: "none",
     responseKind: "json",
   },
