@@ -85,7 +85,8 @@ test.describe("admin settings page", () => {
     await page.goto("/en/admin/settings");
 
     await page.getByLabel("Embedding model").fill("qwen3-embedding:4b");
-    await page.getByLabel("Enable reranking").click();
+    const reranking = page.getByLabel("Enable reranking");
+    if (!(await reranking.isChecked())) await reranking.click();
     await page
       .getByLabel("Reranking model")
       .fill("nvidia/llama-nemotron-rerank-vl-1b-v2");

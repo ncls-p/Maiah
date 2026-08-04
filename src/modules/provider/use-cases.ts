@@ -560,6 +560,56 @@ export async function discoverModels(
   return models;
 }
 
+export type DiscoveredProviderModels = {
+  provider: {
+    id: string;
+    name: string;
+    kind: ProviderRuntimeConfig["kind"];
+  };
+  models: ModelDescriptor[];
+  error: string | null;
+};
+
+/**
+ * Reads the live model catalog exposed by every enabled provider. OpenAI-
+ * compatible adapters implement this through GET /models; one unavailable
+ * provider must not prevent the other catalogs from being used.
+ */
+export async function discoverWorkspaceModels(
+  workspaceId: string,
+): Promise<DiscoveredProviderModels[]> {
+  const providers = (await listProviders(workspaceId)).filter(
+    (provider) => provider.enabled,
+  );
+
+  return Promise.all(
+    providers.map(async (provider) => {
+      try {
+        return {
+          provider: {
+            id: provider.id,
+            name: provider.name,
+            kind: provider.kind,
+          },
+          models: await discoverModels(provider.id, workspaceId),
+          error: null,
+        };
+      } catch (error) {
+        return {
+          provider: {
+            id: provider.id,
+            name: provider.name,
+            kind: provider.kind,
+          },
+          models: [],
+          error:
+            error instanceof Error ? error.message : "Model discovery failed",
+        };
+      }
+    }),
+  );
+}
+
 export type ProviderModelRefreshResult = {
   status: "healthy" | "unhealthy" | "manual";
   imported: number;

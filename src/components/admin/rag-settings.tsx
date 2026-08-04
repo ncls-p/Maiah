@@ -1,7 +1,7 @@
 "use client";
 
 import { DatabaseZapIcon, SaveIcon } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
@@ -12,15 +12,118 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
+import { useWorkspace } from "@/hooks/use-workspace";
 import type { RagConfig } from "@/modules/knowledge/rag-config";
+
+type DiscoveredModel = {
+  providerId: string;
+  providerName: string;
+  modelId: string;
+  displayName?: string;
+  embeddings: boolean;
+};
 
 export function RagSettings({ initialState }: { initialState: RagConfig }) {
   const t = useTranslations("admin.settingsPage.rag");
+  const { workspaceId } = useWorkspace();
   const [settings, setSettings] = useState(initialState);
   const [saving, setSaving] = useState(false);
+  const [models, setModels] = useState<DiscoveredModel[]>([]);
+  const [discovering, setDiscovering] = useState(true);
   const configured = Boolean(settings.embedding.modelId);
+
+  useEffect(() => {
+    if (!workspaceId) return;
+    const controller = new AbortController();
+    fetch(`/api/workspace/rag-models?workspaceId=${workspaceId}`, {
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Model discovery failed");
+        return response.json() as Promise<{
+          providers: Array<{
+            provider: { id: string; name: string };
+            models: Array<{
+              modelId: string;
+              displayName?: string;
+              capabilities?: { embeddings?: boolean };
+            }>;
+          }>;
+        }>;
+      })
+      .then((catalog) => {
+        setModels(
+          catalog.providers.flatMap(({ provider, models: providerModels }) =>
+            providerModels.map((model) => ({
+              providerId: provider.id,
+              providerName: provider.name,
+              modelId: model.modelId,
+              displayName: model.displayName,
+              embeddings: model.capabilities?.embeddings === true,
+            })),
+          ),
+        );
+      })
+      .catch((error) => {
+        if (error instanceof Error && error.name === "AbortError") return;
+        setModels([]);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setDiscovering(false);
+      });
+    return () => controller.abort();
+  }, [workspaceId]);
+
+  const embeddingModels = useMemo(() => {
+    const explicitlySupported = models.filter((model) => model.embeddings);
+    return explicitlySupported.length > 0 ? explicitlySupported : models;
+  }, [models]);
+  const rerankingModels = useMemo(() => {
+    const likelyRerankers = models.filter((model) =>
+      model.modelId.toLowerCase().includes("rerank"),
+    );
+    return likelyRerankers.length > 0 ? likelyRerankers : models;
+  }, [models]);
+
+  function modelValue(model: DiscoveredModel) {
+    return `${model.providerId}:${model.modelId}`;
+  }
+
+  function selectModel(value: string, target: "embedding" | "reranking") {
+    const model = models.find((candidate) => modelValue(candidate) === value);
+    if (!model) return;
+    setSettings(
+      target === "embedding"
+        ? {
+            ...settings,
+            embedding: {
+              ...settings.embedding,
+              // Platform defaults stay portable between workspaces. Runtime
+              // resolution selects a compatible provider for this model ID.
+              providerId: null,
+              modelId: model.modelId,
+            },
+          }
+        : {
+            ...settings,
+            reranking: {
+              ...settings.reranking,
+              providerId: null,
+              modelId: model.modelId,
+            },
+          },
+    );
+  }
 
   function numberValue(value: string, fallback: number) {
     const parsed = Number(value);
@@ -66,6 +169,31 @@ export function RagSettings({ initialState }: { initialState: RagConfig }) {
         </div>
         <div className="grid gap-4 lg:grid-cols-2">
           <div className="grid gap-1.5">
+            <Label htmlFor="rag-discovered-embedding-model">
+              {t("discoveredEmbeddingModel")}
+            </Label>
+            <Select onValueChange={(value) => selectModel(value, "embedding")}>
+              <SelectTrigger id="rag-discovered-embedding-model">
+                <SelectValue
+                  placeholder={
+                    discovering ? t("discoveringModels") : t("selectModel")
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {embeddingModels.map((model) => (
+                    <SelectItem
+                      key={modelValue(model)}
+                      value={modelValue(model)}
+                    >
+                      {model.providerName} ·{" "}
+                      {model.displayName || model.modelId}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
             <Label htmlFor="rag-embedding-model">{t("embeddingModel")}</Label>
             <Input
               id="rag-embedding-model"
@@ -170,6 +298,33 @@ export function RagSettings({ initialState }: { initialState: RagConfig }) {
           </div>
           {settings.reranking.enabled ? (
             <div className="mt-4 grid gap-1.5">
+              <Label htmlFor="rag-discovered-reranking-model">
+                {t("discoveredRerankingModel")}
+              </Label>
+              <Select
+                onValueChange={(value) => selectModel(value, "reranking")}
+              >
+                <SelectTrigger id="rag-discovered-reranking-model">
+                  <SelectValue
+                    placeholder={
+                      discovering ? t("discoveringModels") : t("selectModel")
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {rerankingModels.map((model) => (
+                      <SelectItem
+                        key={modelValue(model)}
+                        value={modelValue(model)}
+                      >
+                        {model.providerName} ·{" "}
+                        {model.displayName || model.modelId}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
               <Label htmlFor="rag-reranking-model">{t("rerankingModel")}</Label>
               <Input
                 id="rag-reranking-model"
