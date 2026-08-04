@@ -18,6 +18,7 @@ import {
 } from "@/server/infrastructure/db/schema";
 import {
   getDefaultRagConfig,
+  hasSameRagModelSelection,
   parseRagConfig,
   ragConfigSchema,
   resolveEmbeddingModel,
@@ -32,6 +33,14 @@ export interface CreateKnowledgeBaseInput {
   description?: string;
   isGlobal?: boolean;
   ragConfig?: RagConfig;
+  canManageModels?: boolean;
+}
+
+export class RagModelConfigurationPermissionError extends Error {
+  constructor() {
+    super("Changing RAG models requires the models.manage permission");
+    this.name = "RagModelConfigurationPermissionError";
+  }
 }
 
 type KnowledgeBaseRow = typeof knowledgeBases.$inferSelect;
@@ -86,6 +95,12 @@ async function assertCanManageKnowledgeBase(
 }
 
 export async function createKnowledgeBase(input: CreateKnowledgeBaseInput) {
+  if (input.ragConfig && !input.canManageModels) {
+    const defaults = await getDefaultRagConfig();
+    if (!hasSameRagModelSelection(input.ragConfig, defaults)) {
+      throw new RagModelConfigurationPermissionError();
+    }
+  }
   const [knowledgeBase] = await db
     .insert(knowledgeBases)
     .values({
@@ -235,6 +250,7 @@ export async function updateKnowledgeBase(input: {
   description?: string;
   isGlobal?: boolean;
   ragConfig?: RagConfig | null;
+  canManageModels?: boolean;
 }) {
   const existing = await getKnowledgeBase(
     input.knowledgeBaseId,
@@ -248,6 +264,12 @@ export async function updateKnowledgeBase(input: {
   );
   if (input.isGlobal && !input.canManageGlobal) {
     throw new Error("Only admins can make knowledge bases global");
+  }
+  if (input.ragConfig && !input.canManageModels) {
+    const currentConfig = await effectiveRagConfig(existing.ragConfigJson);
+    if (!hasSameRagModelSelection(input.ragConfig, currentConfig)) {
+      throw new RagModelConfigurationPermissionError();
+    }
   }
 
   const updates: Record<string, unknown> = { updatedAt: new Date() };

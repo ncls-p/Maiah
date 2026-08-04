@@ -151,6 +151,11 @@ Chaque ressource distante doit distinguer :
 | Attachement assistant      | GET bindings obligatoire avant PUT                       | Tests versioning + code |
 | Liste assistants en erreur | Erreur distincte de « aucun assistant »                  | Code                    |
 | Portée organisation/privée | Libellés localisés, permission fail-closed               | Code + tests IAM        |
+| Création simple            | Nom et description visibles ; valeurs administrateur héritées sans surcharge | Navigateur local        |
+| Création avancée           | Chunking, candidats, résultats, score et reranking derrière un panneau replié | Navigateur + tests RAG  |
+| Choix des modèles          | Catalogue issu de `/models`; modification refusée sans `models.manage`         | Module + navigateur     |
+| Plusieurs Data Sources     | L'agent choisit explicitement une ou plusieurs sources liées par nom/description | Tests runtime RAG       |
+| Reprise après restart      | Les documents `processing` sont réconciliés avec la queue persistante          | Tests queue + worker    |
 
 ## Workflows no-code
 

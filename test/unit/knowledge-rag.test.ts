@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { chunkText } from "@/modules/knowledge/use-cases";
 import {
   DEFAULT_RAG_CONFIG,
+  hasSameRagModelSelection,
   parseRagConfig,
   ragConfigSchema,
 } from "@/modules/knowledge/rag-config";
@@ -41,6 +42,34 @@ describe("knowledge RAG configuration", () => {
         reranking: { enabled: true, modelId: "" },
       }),
     ).toThrow();
+  });
+
+  it("separates model permissions from retrieval customization", () => {
+    const retrievalOverride = {
+      ...DEFAULT_RAG_CONFIG,
+      embedding: { ...DEFAULT_RAG_CONFIG.embedding },
+      chunking: { ...DEFAULT_RAG_CONFIG.chunking },
+      retrieval: {
+        ...DEFAULT_RAG_CONFIG.retrieval,
+        candidateCount: 40,
+        resultCount: 8,
+      },
+      reranking: { ...DEFAULT_RAG_CONFIG.reranking },
+    };
+    expect(
+      hasSameRagModelSelection(retrievalOverride, DEFAULT_RAG_CONFIG),
+    ).toBe(true);
+
+    const modelOverride = {
+      ...retrievalOverride,
+      embedding: {
+        ...retrievalOverride.embedding,
+        modelId: "qwen3-embedding:4b",
+      },
+    };
+    expect(hasSameRagModelSelection(modelOverride, DEFAULT_RAG_CONFIG)).toBe(
+      false,
+    );
   });
 });
 

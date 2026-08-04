@@ -97,6 +97,7 @@ export async function GET(req: NextRequest) {
         canViewUsage,
         canViewAudit,
         canViewProviders,
+        canManageModels,
         canManageProviders: canManageProviderSettings && canManageModels,
         canConfigureTools,
         canViewTools,

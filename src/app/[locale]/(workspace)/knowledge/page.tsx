@@ -53,10 +53,21 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { fetchWorkspacePermissions } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
-import type { RagConfig } from "@/modules/knowledge/rag-config";
+import {
+  DEFAULT_RAG_CONFIG,
+  type RagConfig,
+} from "@/modules/knowledge/rag-config-schema";
 
 interface KnowledgeBase {
   id: string;
@@ -94,6 +105,279 @@ interface KnowledgeAgent {
   canEdit?: boolean;
 }
 
+interface RagModelOption {
+  providerId: string;
+  providerName: string;
+  modelId: string;
+  displayName?: string;
+  embeddings: boolean;
+}
+
+function cloneRagConfig(config: RagConfig): RagConfig {
+  return {
+    embedding: { ...config.embedding },
+    chunking: { ...config.chunking },
+    retrieval: { ...config.retrieval },
+    reranking: { ...config.reranking },
+  };
+}
+
+function RagConfigFields({
+  idPrefix,
+  config,
+  onChange,
+  canManageModels,
+  models,
+  discoveringModels,
+}: {
+  idPrefix: string;
+  config: RagConfig;
+  onChange: (config: RagConfig) => void;
+  canManageModels: boolean;
+  models: RagModelOption[];
+  discoveringModels: boolean;
+}) {
+  const t = useTranslations("knowledge");
+  const embeddingModels = models.some((model) => model.embeddings)
+    ? models.filter((model) => model.embeddings)
+    : models;
+  const rerankingModels = models.some((model) =>
+    model.modelId.toLowerCase().includes("rerank"),
+  )
+    ? models.filter((model) =>
+        model.modelId.toLowerCase().includes("rerank"),
+      )
+    : models;
+  const modelValue = (model: RagModelOption) =>
+    `${model.providerId}:${model.modelId}`;
+
+  function selectModel(value: string, target: "embedding" | "reranking") {
+    const model = models.find((candidate) => modelValue(candidate) === value);
+    if (!model) return;
+    onChange(
+      target === "embedding"
+        ? {
+            ...config,
+            embedding: {
+              ...config.embedding,
+              providerId: model.providerId,
+              modelId: model.modelId,
+            },
+          }
+        : {
+            ...config,
+            reranking: {
+              ...config.reranking,
+              providerId: model.providerId,
+              modelId: model.modelId,
+            },
+          },
+    );
+  }
+
+  return (
+    <div className="grid gap-4">
+      {canManageModels ? (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-1.5">
+            <Label htmlFor={`${idPrefix}-embedding-discovered`}>
+              {t("ragEmbeddingModel")}
+            </Label>
+            <Select
+              onValueChange={(value) => selectModel(value, "embedding")}
+            >
+              <SelectTrigger id={`${idPrefix}-embedding-discovered`}>
+                <SelectValue
+                  placeholder={
+                    discoveringModels
+                      ? t("ragDiscoveringModels")
+                      : t("ragSelectModel")
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {embeddingModels.map((model) => (
+                    <SelectItem
+                      key={`embedding-${modelValue(model)}`}
+                      value={modelValue(model)}
+                    >
+                      {model.providerName} · {model.displayName || model.modelId}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+            <Input
+              aria-label={t("ragExactModelId")}
+              value={config.embedding.modelId}
+              onChange={(event) =>
+                onChange({
+                  ...config,
+                  embedding: {
+                    ...config.embedding,
+                    providerId: null,
+                    modelId: event.target.value,
+                  },
+                })
+              }
+              placeholder={t("ragExactModelId")}
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor={`${idPrefix}-dimensions`}>
+              {t("ragDimensions")}
+            </Label>
+            <Input
+              id={`${idPrefix}-dimensions`}
+              type="number"
+              min={1}
+              value={config.embedding.dimensions ?? ""}
+              onChange={(event) =>
+                onChange({
+                  ...config,
+                  embedding: {
+                    ...config.embedding,
+                    dimensions: event.target.value
+                      ? Number(event.target.value)
+                      : null,
+                  },
+                })
+              }
+              placeholder={t("ragNativeDimensions")}
+            />
+          </div>
+        </div>
+      ) : (
+        <div className="rounded-lg border border-border/70 bg-muted/20 p-3 text-xs leading-5 text-muted-foreground">
+          {t("ragModelsPermissionHint")}
+        </div>
+      )}
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        {(
+          [
+            ["ragChunkSize", "maxCharacters", config.chunking.maxCharacters],
+            [
+              "ragChunkOverlap",
+              "overlapCharacters",
+              config.chunking.overlapCharacters,
+            ],
+            [
+              "ragCandidates",
+              "candidateCount",
+              config.retrieval.candidateCount,
+            ],
+            ["ragResults", "resultCount", config.retrieval.resultCount],
+            ["ragMinimumScore", "minimumScore", config.retrieval.minimumScore],
+          ] as const
+        ).map(([label, key, value]) => (
+          <div className="grid gap-1.5" key={key}>
+            <Label htmlFor={`${idPrefix}-${key}`}>{t(label)}</Label>
+            <Input
+              id={`${idPrefix}-${key}`}
+              type="number"
+              min={key === "minimumScore" ? -1 : key === "overlapCharacters" ? 0 : 1}
+              max={key === "minimumScore" ? 1 : undefined}
+              step={key === "minimumScore" ? 0.01 : 1}
+              value={value}
+              onChange={(event) => {
+                const next = Number(event.target.value);
+                if (!Number.isFinite(next)) return;
+                onChange(
+                  key === "maxCharacters" || key === "overlapCharacters"
+                    ? {
+                        ...config,
+                        chunking: { ...config.chunking, [key]: next },
+                      }
+                    : {
+                        ...config,
+                        retrieval: { ...config.retrieval, [key]: next },
+                      },
+                );
+              }}
+            />
+          </div>
+        ))}
+      </div>
+
+      <div className="grid gap-3 rounded-lg border p-3 sm:grid-cols-[auto_1fr] sm:items-end">
+        <div className="flex items-center gap-2 pb-2">
+          <Checkbox
+            id={`${idPrefix}-reranking`}
+            checked={config.reranking.enabled}
+            onCheckedChange={(checked) =>
+              onChange({
+                ...config,
+                reranking: {
+                  ...config.reranking,
+                  enabled: checked === true,
+                },
+              })
+            }
+          />
+          <Label htmlFor={`${idPrefix}-reranking`}>
+            {t("ragReranking")}
+          </Label>
+        </div>
+        {canManageModels ? (
+          <div className="grid gap-1.5">
+            <Label htmlFor={`${idPrefix}-reranking-model`}>
+              {t("ragRerankingModel")}
+            </Label>
+            <Select
+              disabled={!config.reranking.enabled}
+              onValueChange={(value) => selectModel(value, "reranking")}
+            >
+              <SelectTrigger id={`${idPrefix}-reranking-model`}>
+                <SelectValue
+                  placeholder={
+                    discoveringModels
+                      ? t("ragDiscoveringModels")
+                      : t("ragSelectModel")
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {rerankingModels.map((model) => (
+                    <SelectItem
+                      key={`reranking-${modelValue(model)}`}
+                      value={modelValue(model)}
+                    >
+                      {model.providerName} · {model.displayName || model.modelId}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+            <Input
+              aria-label={t("ragExactRerankingModelId")}
+              disabled={!config.reranking.enabled}
+              value={config.reranking.modelId}
+              onChange={(event) =>
+                onChange({
+                  ...config,
+                  reranking: {
+                    ...config.reranking,
+                    providerId: null,
+                    modelId: event.target.value,
+                  },
+                })
+              }
+              placeholder={t("ragExactRerankingModelId")}
+            />
+          </div>
+        ) : (
+          <p className="pb-2 text-xs text-muted-foreground">
+            {config.reranking.modelId || t("ragInheritedModel")}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function statusVariant(status: string) {
   if (status === "ready") return "secondary" as const;
   if (status === "processing") return "outline" as const;
@@ -121,7 +405,14 @@ export default function KnowledgePage() {
     name: "",
     description: "",
     isGlobal: false,
+    customizeRag: false,
+    ragConfig: cloneRagConfig(DEFAULT_RAG_CONFIG),
   });
+  const [defaultRagConfig, setDefaultRagConfig] = useState(() =>
+    cloneRagConfig(DEFAULT_RAG_CONFIG),
+  );
+  const [ragModels, setRagModels] = useState<RagModelOption[]>([]);
+  const [discoveringRagModels, setDiscoveringRagModels] = useState(true);
   const [docForm, setDocForm] = useState({ title: "", content: "" });
   const [query, setQuery] = useState("");
   const [dragActive, setDragActive] = useState(false);
@@ -147,6 +438,7 @@ export default function KnowledgePage() {
   const [attachAgentsError, setAttachAgentsError] = useState(false);
   const [attachingAgentId, setAttachingAgentId] = useState<string | null>(null);
   const [canManageKnowledgeBases, setCanManageKnowledgeBases] = useState(false);
+  const [canManageModels, setCanManageModels] = useState(false);
   const [canManageTenantGlobals, setCanManageTenantGlobals] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<
     | { kind: "base"; id: string; name: string }
@@ -168,6 +460,22 @@ export default function KnowledgePage() {
         ? current
         : (data[0]?.id ?? null),
     );
+  }, [workspaceId]);
+
+  const loadDefaultRagConfig = useCallback(async () => {
+    if (!workspaceId) return;
+    const res = await fetch(
+      `/api/workspace/knowledge-bases/default-rag-config?workspaceId=${workspaceId}`,
+    );
+    if (!res.ok) throw new Error("Failed to load default RAG configuration");
+    const config = (await res.json()) as RagConfig;
+    setDefaultRagConfig(config);
+    setBaseForm((current) => ({
+      ...current,
+      ragConfig: current.customizeRag
+        ? current.ragConfig
+        : cloneRagConfig(config),
+    }));
   }, [workspaceId]);
 
   const loadDocuments = useCallback(async () => {
@@ -347,8 +655,9 @@ export default function KnowledgePage() {
         if (!cancelled) {
           setCanManageKnowledgeBases(permissions.canManageKnowledgeBases);
           setCanManageTenantGlobals(permissions.canManageTenantGlobals);
+          setCanManageModels(permissions.canManageModels);
         }
-        await loadBases();
+        await Promise.all([loadBases(), loadDefaultRagConfig()]);
       } catch {
         if (!cancelled) setLoadError(true);
         return;
@@ -360,7 +669,49 @@ export default function KnowledgePage() {
     return () => {
       cancelled = true;
     };
-  }, [loadBases, workspaceId]);
+  }, [loadBases, loadDefaultRagConfig, workspaceId]);
+
+  useEffect(() => {
+    if (!workspaceId || !canManageModels) return;
+    const controller = new AbortController();
+    fetch(`/api/workspace/rag-models?workspaceId=${workspaceId}`, {
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Model discovery failed");
+        return response.json() as Promise<{
+          providers: Array<{
+            provider: { id: string; name: string };
+            models: Array<{
+              modelId: string;
+              displayName?: string;
+              capabilities?: { embeddings?: boolean };
+            }>;
+          }>;
+        }>;
+      })
+      .then((catalog) =>
+        setRagModels(
+          catalog.providers.flatMap(({ provider, models }) =>
+            models.map((model) => ({
+              providerId: provider.id,
+              providerName: provider.name,
+              modelId: model.modelId,
+              displayName: model.displayName,
+              embeddings: model.capabilities?.embeddings === true,
+            })),
+          ),
+        ),
+      )
+      .catch((error) => {
+        if (error instanceof Error && error.name === "AbortError") return;
+        setRagModels([]);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setDiscoveringRagModels(false);
+      });
+    return () => controller.abort();
+  }, [canManageModels, workspaceId]);
 
   useEffect(() => {
     if (!workspaceId || !selectedId) return;
@@ -405,11 +756,18 @@ export default function KnowledgePage() {
           name: baseForm.name.trim(),
           description: baseForm.description.trim() || undefined,
           isGlobal: canManageTenantGlobals ? baseForm.isGlobal : undefined,
+          ragConfig: baseForm.customizeRag ? baseForm.ragConfig : undefined,
         }),
       });
       if (!res.ok) return toast.error(t("errorCreate"));
       const created = (await res.json()) as KnowledgeBase;
-      setBaseForm({ name: "", description: "", isGlobal: false });
+      setBaseForm({
+        name: "",
+        description: "",
+        isGlobal: false,
+        customizeRag: false,
+        ragConfig: cloneRagConfig(defaultRagConfig),
+      });
       setShowCreateDialog(false);
       setSelectedId(created.id);
       await loadBases();
@@ -642,6 +1000,49 @@ export default function KnowledgePage() {
                 </div>
               </div>
             ) : null}
+            <AdvancedSection
+              label={t("ragAdvanced")}
+              hint={t("ragCreateAdvancedHint")}
+              storageKey="advanced:knowledge-create-rag-config"
+            >
+              <div className="grid gap-4">
+                <div className="flex items-start gap-3 rounded-lg border bg-muted/20 p-3">
+                  <Checkbox
+                    id="knowledge-custom-rag"
+                    checked={baseForm.customizeRag}
+                    onCheckedChange={(checked) =>
+                      setBaseForm({
+                        ...baseForm,
+                        customizeRag: checked === true,
+                        ragConfig: checked
+                          ? cloneRagConfig(baseForm.ragConfig)
+                          : cloneRagConfig(defaultRagConfig),
+                      })
+                    }
+                  />
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="knowledge-custom-rag">
+                      {t("ragCustomLabel")}
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      {t("ragCreateCustomHint")}
+                    </p>
+                  </div>
+                </div>
+                {baseForm.customizeRag ? (
+                  <RagConfigFields
+                    idPrefix="create-rag"
+                    config={baseForm.ragConfig}
+                    onChange={(ragConfig) =>
+                      setBaseForm({ ...baseForm, ragConfig })
+                    }
+                    canManageModels={canManageModels}
+                    models={ragModels}
+                    discoveringModels={discoveringRagModels}
+                  />
+                ) : null}
+              </div>
+            </AdvancedSection>
           </div>
           <DialogFooter>
             <Button
@@ -1221,168 +1622,16 @@ export default function KnowledgePage() {
                       </div>
                     </div>
                     {editBaseForm.customizeRag && editBaseForm.ragConfig ? (
-                      <div className="grid gap-4">
-                        <div className="grid gap-3 sm:grid-cols-2">
-                          <div className="grid gap-1.5">
-                            <Label htmlFor="edit-rag-embedding-model">
-                              {t("ragEmbeddingModel")}
-                            </Label>
-                            <Input
-                              id="edit-rag-embedding-model"
-                              value={editBaseForm.ragConfig.embedding.modelId}
-                              onChange={(event) =>
-                                setEditBaseForm({
-                                  ...editBaseForm,
-                                  ragConfig: {
-                                    ...editBaseForm.ragConfig!,
-                                    embedding: {
-                                      ...editBaseForm.ragConfig!.embedding,
-                                      modelId: event.target.value,
-                                    },
-                                  },
-                                })
-                              }
-                            />
-                          </div>
-                          <div className="grid gap-1.5">
-                            <Label htmlFor="edit-rag-provider">
-                              {t("ragProvider")}
-                            </Label>
-                            <Input
-                              id="edit-rag-provider"
-                              value={
-                                editBaseForm.ragConfig.embedding.providerId ??
-                                ""
-                              }
-                              onChange={(event) =>
-                                setEditBaseForm({
-                                  ...editBaseForm,
-                                  ragConfig: {
-                                    ...editBaseForm.ragConfig!,
-                                    embedding: {
-                                      ...editBaseForm.ragConfig!.embedding,
-                                      providerId: event.target.value || null,
-                                    },
-                                  },
-                                })
-                              }
-                              placeholder={t("ragAutoProvider")}
-                            />
-                          </div>
-                        </div>
-                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                          {(
-                            [
-                              [
-                                "ragChunkSize",
-                                "maxCharacters",
-                                editBaseForm.ragConfig.chunking.maxCharacters,
-                              ],
-                              [
-                                "ragChunkOverlap",
-                                "overlapCharacters",
-                                editBaseForm.ragConfig.chunking
-                                  .overlapCharacters,
-                              ],
-                              [
-                                "ragCandidates",
-                                "candidateCount",
-                                editBaseForm.ragConfig.retrieval.candidateCount,
-                              ],
-                              [
-                                "ragResults",
-                                "resultCount",
-                                editBaseForm.ragConfig.retrieval.resultCount,
-                              ],
-                            ] as const
-                          ).map(([label, key, value]) => (
-                            <div className="grid gap-1.5" key={key}>
-                              <Label htmlFor={`edit-rag-${key}`}>
-                                {t(label)}
-                              </Label>
-                              <Input
-                                id={`edit-rag-${key}`}
-                                type="number"
-                                value={value}
-                                onChange={(event) => {
-                                  const next = Number(event.target.value);
-                                  if (!Number.isFinite(next)) return;
-                                  const ragConfig = editBaseForm.ragConfig!;
-                                  setEditBaseForm({
-                                    ...editBaseForm,
-                                    ragConfig:
-                                      key === "maxCharacters" ||
-                                      key === "overlapCharacters"
-                                        ? {
-                                            ...ragConfig,
-                                            chunking: {
-                                              ...ragConfig.chunking,
-                                              [key]: next,
-                                            },
-                                          }
-                                        : {
-                                            ...ragConfig,
-                                            retrieval: {
-                                              ...ragConfig.retrieval,
-                                              [key]: next,
-                                            },
-                                          },
-                                  });
-                                }}
-                              />
-                            </div>
-                          ))}
-                        </div>
-                        <div className="grid gap-3 rounded-lg border p-3 sm:grid-cols-[auto_1fr] sm:items-end">
-                          <div className="flex items-center gap-2 pb-2">
-                            <Checkbox
-                              id="edit-rag-reranking"
-                              checked={editBaseForm.ragConfig.reranking.enabled}
-                              onCheckedChange={(checked) => {
-                                const ragConfig = editBaseForm.ragConfig!;
-                                setEditBaseForm({
-                                  ...editBaseForm,
-                                  ragConfig: {
-                                    ...ragConfig,
-                                    reranking: {
-                                      ...ragConfig.reranking,
-                                      enabled: checked === true,
-                                    },
-                                  },
-                                });
-                              }}
-                            />
-                            <Label htmlFor="edit-rag-reranking">
-                              {t("ragReranking")}
-                            </Label>
-                          </div>
-                          <div className="grid gap-1.5">
-                            <Label htmlFor="edit-rag-reranking-model">
-                              {t("ragRerankingModel")}
-                            </Label>
-                            <Input
-                              id="edit-rag-reranking-model"
-                              disabled={
-                                !editBaseForm.ragConfig.reranking.enabled
-                              }
-                              value={editBaseForm.ragConfig.reranking.modelId}
-                              onChange={(event) => {
-                                const ragConfig = editBaseForm.ragConfig!;
-                                setEditBaseForm({
-                                  ...editBaseForm,
-                                  ragConfig: {
-                                    ...ragConfig,
-                                    reranking: {
-                                      ...ragConfig.reranking,
-                                      modelId: event.target.value,
-                                    },
-                                  },
-                                });
-                              }}
-                            />
-                          </div>
-                        </div>
-                      </div>
+                      <RagConfigFields
+                        idPrefix="edit-rag"
+                        config={editBaseForm.ragConfig}
+                        onChange={(ragConfig) =>
+                          setEditBaseForm({ ...editBaseForm, ragConfig })
+                        }
+                        canManageModels={canManageModels}
+                        models={ragModels}
+                        discoveringModels={discoveringRagModels}
+                      />
                     ) : null}
                   </div>
                 </AdvancedSection>

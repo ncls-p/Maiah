@@ -7,9 +7,11 @@ import {
   requireWorkspacePermissionAsync,
 } from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
+import { hasWorkspacePermissionForRequest } from "@/modules/auth/workspace-access";
 import {
   createKnowledgeBase,
   listKnowledgeBases,
+  RagModelConfigurationPermissionError,
 } from "@/modules/knowledge/use-cases";
 import { withResourceProvenance } from "@/modules/iam/resource-provenance";
 import { ragConfigSchema } from "@/modules/knowledge/rag-config";
@@ -87,6 +89,11 @@ export async function POST(req: NextRequest) {
         session,
         parsed.data.workspaceId,
       );
+      const canManageModels = await hasWorkspacePermissionForRequest(
+        session.user.id,
+        parsed.data.workspaceId,
+        "models.manage",
+      );
       if (parsed.data.isGlobal && !canManageGlobal) {
         return NextResponse.json(
           { error: "Only admins can make knowledge bases global" },
@@ -96,6 +103,7 @@ export async function POST(req: NextRequest) {
       const knowledgeBase = await createKnowledgeBase({
         ...parsed.data,
         isGlobal: parsed.data.isGlobal && canManageGlobal,
+        canManageModels,
         userId: session.user.id,
       });
       const [knowledgeBaseWithProvenance] = await withResourceProvenance(
@@ -105,6 +113,15 @@ export async function POST(req: NextRequest) {
       );
       return NextResponse.json(knowledgeBaseWithProvenance, { status: 201 });
     },
-    { logLabel: "Failed to create knowledge base" },
+    {
+      logLabel: "Failed to create knowledge base",
+      expectedError: (error) =>
+        error instanceof RagModelConfigurationPermissionError
+          ? NextResponse.json({ error: error.message }, { status: 403 })
+          : NextResponse.json(
+              { error: "Failed to create knowledge base" },
+              { status: 500 },
+            ),
+    },
   );
 }

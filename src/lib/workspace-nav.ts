@@ -30,6 +30,7 @@ export type WorkspacePermissions = {
   canViewUsage: boolean;
   canViewAudit: boolean;
   canViewProviders: boolean;
+  canManageModels: boolean;
   canManageProviders: boolean;
   canConfigureTools: boolean;
   canViewTools: boolean;
@@ -49,6 +50,7 @@ export const DEFAULT_WORKSPACE_PERMISSIONS: WorkspacePermissions = {
   canViewUsage: false,
   canViewAudit: false,
   canViewProviders: false,
+  canManageModels: false,
   canManageProviders: false,
   canConfigureTools: false,
   canViewTools: false,
