@@ -118,6 +118,29 @@ describe("resolveAuthContext", () => {
     expect(sessionMod.getSession).not.toHaveBeenCalled();
   });
 
+  it("accepts the Anthropic x-api-key header", async () => {
+    vi.mocked(sessionMod.getSession).mockResolvedValue(null);
+    vi.mocked(headersMod.headers).mockResolvedValue(
+      new Headers({ "x-api-key": "anthropic-compatible-key" }),
+    );
+    vi.mocked(apiKeyMod.verifyWorkspaceApiKey).mockResolvedValue({
+      id: "key-anthropic",
+      workspaceId: "ws-123",
+      createdById: "user-456",
+      name: "anthropic-key",
+      scopes: ["models.invoke"],
+    });
+
+    await expect(resolveAuthContext()).resolves.toMatchObject({
+      type: "api_key",
+      apiKeyId: "key-anthropic",
+      workspaceId: "ws-123",
+    });
+    expect(apiKeyMod.verifyWorkspaceApiKey).toHaveBeenCalledWith(
+      "anthropic-compatible-key",
+    );
+  });
+
   it("returns null when Bearer token is empty", async () => {
     vi.mocked(sessionMod.getSession).mockResolvedValue(null);
     const hdrs = new Headers();

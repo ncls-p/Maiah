@@ -301,7 +301,7 @@ export async function listToolConnectors(
   return connectors.map(toSafeToolConnector);
 }
 
-export async function getToolConnector(
+async function getToolConnector(
   connectorId: string,
   workspaceId: string,
   userId: string,

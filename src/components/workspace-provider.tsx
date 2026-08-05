@@ -59,11 +59,18 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     (workspace) => workspace.id === workspaceId,
   );
 
+  useEffect(() => {
+    document.documentElement.dataset.brandTheme =
+      activeWorkspace?.organizationTheme ?? "ocean";
+  }, [activeWorkspace?.organizationTheme]);
+
   const value = useMemo<WorkspaceContextValue>(
     () => ({
       workspaceId,
       workspaces,
       organizationName: activeWorkspace?.organizationName ?? null,
+      organizationLogoUrl: activeWorkspace?.organizationLogoUrl ?? null,
+      organizationTheme: activeWorkspace?.organizationTheme ?? "ocean",
       isLoading,
       error,
       setWorkspaceId,
@@ -73,6 +80,8 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       workspaceId,
       workspaces,
       activeWorkspace?.organizationName,
+      activeWorkspace?.organizationLogoUrl,
+      activeWorkspace?.organizationTheme,
       isLoading,
       error,
       setWorkspaceId,

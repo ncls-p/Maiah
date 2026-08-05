@@ -26,7 +26,7 @@ export {
   type RagConfig,
 } from "@/modules/knowledge/rag-config-schema";
 
-export const RAG_SETTING_KEY = "rag-defaults";
+const RAG_SETTING_KEY = "rag-defaults";
 
 export async function getDefaultRagConfig(): Promise<RagConfig> {
   const [row] = await db

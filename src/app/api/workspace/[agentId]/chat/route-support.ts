@@ -143,7 +143,7 @@ const githubPublishToolNames = [
   "github_publish_code_workspace",
 ];
 
-export const codeWorkspaceEditToolNames = [
+const codeWorkspaceEditToolNames = [
   "code_workspace_list_files",
   "code_workspace_read_file",
   "code_workspace_write_file",

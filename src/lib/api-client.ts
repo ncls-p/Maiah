@@ -9,6 +9,8 @@ type WorkspaceRow = {
   organization?: {
     id?: string;
     name?: string;
+    logoUrl?: string | null;
+    theme?: string;
   };
 };
 
@@ -18,6 +20,8 @@ export type WorkspaceSummary = {
   slug: string;
   organizationId: string;
   organizationName: string;
+  organizationLogoUrl: string | null;
+  organizationTheme: string;
 };
 
 export async function fetchWorkspaces(): Promise<WorkspaceSummary[]> {
@@ -38,6 +42,8 @@ export async function fetchWorkspaces(): Promise<WorkspaceSummary[]> {
           slug: row.workspace?.slug ?? "main",
           organizationId: row.organization?.id ?? "",
           organizationName: row.organization?.name ?? "Organization",
+          organizationLogoUrl: row.organization?.logoUrl ?? null,
+          organizationTheme: row.organization?.theme ?? "ocean",
         };
       })
       .filter((row): row is WorkspaceSummary => row !== null);

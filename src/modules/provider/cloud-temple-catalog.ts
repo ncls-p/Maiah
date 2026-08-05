@@ -1,7 +1,7 @@
 import type { ModelDescriptor } from "@/server/infrastructure/providers";
 
 export const CLOUD_TEMPLE_BASE_URL = "https://api.ai.cloud-temple.com/v1";
-export const CLOUD_TEMPLE_CATALOG_SOURCE =
+const CLOUD_TEMPLE_CATALOG_SOURCE =
   "Cloud Temple model catalog (docs.cloud-temple.com)";
 
 const ENERGY_KWH_PER_MILLION_TOKENS: Record<string, number> = {

@@ -314,7 +314,7 @@ function installCommandHash(command: string) {
   );
 }
 
-export function checksumSkillPreview(skills: SkillPreviewResult[]) {
+function checksumSkillPreview(skills: SkillPreviewResult[]) {
   const canonical = [...skills]
     .map((skill) => ({
       name: skill.name,
@@ -1103,7 +1103,7 @@ export function assertSkillMetadata(name: string, description: string | null) {
   }
 }
 
-export function normalizeSkillMarkdownFiles(input: {
+function normalizeSkillMarkdownFiles(input: {
   name: string;
   description: string | null;
   files: { path: string; content: string }[];

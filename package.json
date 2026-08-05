@@ -35,6 +35,9 @@
     "sandbox:build": "bash scripts/build-sandbox-runner-image.sh",
     "sandbox:dev": "bash scripts/start-local-sandbox-runner.sh",
     "lockfile:check": "node scripts/check-lockfile.mjs",
+    "quality:dead-code": "knip --include files,dependencies,devDependencies,unlisted,unresolved",
+    "quality:duplicates": "jscpd src --min-lines 20 --min-tokens 100 --threshold 1 --ignore '**/generated-route-manifest.ts,**/migrations/**'",
+    "quality": "npm run quality:dead-code && npm run quality:duplicates",
     "video": "remotion studio remotion/index.ts",
     "video:render": "remotion render remotion/index.ts MaiahLaunchFilm out/maiah-launch.mp4 --codec=h264 --crf=16",
     "video:still": "remotion still remotion/index.ts MaiahLaunchFilm out/maiah-cover.png --frame=960",
@@ -91,6 +94,7 @@
     "zod": "4.3.6"
   },
   "devDependencies": {
+    "@anthropic-ai/sdk": "^0.115.0",
     "@playwright/test": "^1.52.0",
     "@remotion/cli": "4.0.487",
     "@remotion/google-fonts": "4.0.487",
@@ -103,8 +107,11 @@
     "drizzle-kit": "^0.31.4",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
+    "jscpd": "^5.0.14",
+    "knip": "^6.31.0",
     "openai": "^6.47.0",
     "pg": "^8.16.3",
+    "postcss": "^8.5.25",
     "prettier": "^3.8.3",
     "remotion": "4.0.487",
     "tailwindcss": "^4",
@@ -119,7 +126,9 @@
   "packageManager": "npm@11.18.0",
   "knip": {
     "entry": [
-      "remotion/index.ts"
+      "remotion/index.ts",
+      "scripts/migrate-standalone.mjs",
+      "scripts/sandbox-runner.mjs"
     ]
   }
 }

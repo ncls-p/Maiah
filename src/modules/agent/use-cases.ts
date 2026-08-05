@@ -1606,6 +1606,7 @@ export async function recordUsageEvent(input: {
   costUsd?: string;
   latencyMs?: number;
   status?: string;
+  metadataJson?: Record<string, unknown>;
 }) {
   try {
     await db.insert(usageEvents).values({
@@ -1621,6 +1622,7 @@ export async function recordUsageEvent(input: {
       costUsd: input.costUsd || null,
       latencyMs: input.latencyMs || null,
       status: input.status || null,
+      metadataJson: input.metadataJson ?? null,
     });
   } catch (error) {
     logHandledError("Failed to record usage event", {}, error as Error);

@@ -38,6 +38,9 @@ export type ResolvedProxyModel = {
   upstreamModelId: string;
   runtimeConfig: ProviderRuntimeConfig;
   providerKind: ProviderKind;
+  inputTokenCost: string | null;
+  outputTokenCost: string | null;
+  sustainabilityConfig: unknown;
   languageModel: ReturnType<ReturnType<typeof getAdapter>["createChatModel"]>;
 };
 
@@ -173,6 +176,9 @@ export async function resolveOpenAIProxyModel(
     upstreamModelId: row.model.modelId,
     runtimeConfig,
     providerKind: row.provider.kind,
+    inputTokenCost: row.model.inputTokenCost,
+    outputTokenCost: row.model.outputTokenCost,
+    sustainabilityConfig: row.model.sustainabilityConfigJson,
     languageModel: adapter.createChatModel(runtimeConfig, row.model.modelId),
   };
 }

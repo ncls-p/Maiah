@@ -36,7 +36,7 @@ type AgentRunUsageEvent = {
   latencyMs?: number;
 };
 
-export class AgentRunConflictError extends Error {
+class AgentRunConflictError extends Error {
   readonly code = "AGENT_RUN_CONFLICT";
 }
 

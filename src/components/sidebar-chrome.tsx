@@ -22,6 +22,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { useWorkspace } from "@/hooks/use-workspace";
 
 export const APP_SIDEBAR_SURFACE_CLASS =
   "border-sidebar-border/65 bg-sidebar text-sidebar-foreground";
@@ -35,6 +36,7 @@ export function SidebarHeader({
   action?: ReactNode;
   collapsed?: boolean;
 }) {
+  const { organizationLogoUrl, organizationName } = useWorkspace();
   return (
     <>
       <div
@@ -61,6 +63,12 @@ export function SidebarHeader({
               collapsed ? "size-6" : "h-7 w-auto",
             )}
             label="Deodis chat"
+            src={organizationLogoUrl ?? undefined}
+            alt={
+              organizationLogoUrl
+                ? (organizationName ?? "Organization")
+                : undefined
+            }
           />
           {!collapsed ? (
             <span className="-mt-0.5 max-w-full truncate pl-0.5 font-mono text-[0.58rem] font-medium uppercase tracking-[0.18em] text-primary/80">

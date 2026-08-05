@@ -31,6 +31,7 @@ export type PreparedProxyGeneration = {
   maxOutputTokens: number | undefined;
   temperature: number | undefined;
   topP: number | undefined;
+  topK: number | undefined;
   presencePenalty: number | undefined;
   frequencyPenalty: number | undefined;
   seed: number | undefined;
@@ -455,6 +456,7 @@ function commonPreparation(input: {
   maxOutputTokens?: number;
   temperature?: number;
   topP?: number;
+  topK?: number;
   presencePenalty?: number;
   frequencyPenalty?: number;
   seed?: number;
@@ -483,6 +485,7 @@ function commonPreparation(input: {
     maxOutputTokens: input.maxOutputTokens,
     temperature: input.temperature,
     topP: input.topP,
+    topK: input.topK,
     presencePenalty: input.presencePenalty,
     frequencyPenalty: input.frequencyPenalty,
     seed: input.seed,

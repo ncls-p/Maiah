@@ -28,7 +28,7 @@ function normalizeAnydocMarkdown(markdown: string, format: Format) {
   return markdown;
 }
 
-export function detectAnydocFormat(fileName: string, bytes: Uint8Array) {
+function detectAnydocFormat(fileName: string, bytes: Uint8Array) {
   return (
     formatFromBytes(bytes) ??
     formatFromExtension(path.extname(fileName).toLowerCase())

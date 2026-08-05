@@ -26,6 +26,8 @@ export const organizations = pgTable("organizations", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: varchar("name", { length: 255 }).notNull(),
   slug: varchar("slug", { length: 128 }).notNull().unique(),
+  logoUrl: text("logo_url"),
+  theme: varchar("theme", { length: 32 }).notNull().default("ocean"),
   createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
     .notNull()
     .defaultNow(),

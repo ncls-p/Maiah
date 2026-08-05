@@ -292,6 +292,8 @@ Workspace API tokens are created from the API keys screen with explicit scopes. 
 
 Maiah can also be used as an OpenAI-compatible model proxy with `baseURL = https://<deployment>/api/v1`. It exposes the enabled workspace models through Models, Chat Completions and Responses, with OpenAI-shaped errors and streaming. See [OpenAI-compatible proxy](docs/openai-compatible-proxy.md) for SDK examples, scopes and the compatibility matrix.
 
+The Anthropic-compatible Messages API, multi-currency usage analytics, and organization branding are documented in [API compatibility and usage analytics](docs/architecture/api-compatibility-and-usage.md).
+
 | Method       | Path                                         | Description                                                            |
 | ------------ | -------------------------------------------- | ---------------------------------------------------------------------- |
 | `GET`        | `/api/health`                                | Health check (app + database)                                          |

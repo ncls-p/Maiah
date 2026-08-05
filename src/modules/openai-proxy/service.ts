@@ -21,6 +21,10 @@ import {
   createResponsesStream,
 } from "@/modules/openai-proxy/streams";
 import { recordUsageEvent } from "@/modules/agent/use-cases";
+import {
+  calculateTokenUsageImpact,
+  parseSustainabilityConfig,
+} from "@/modules/provider/model-runtime-config";
 import { assertWorkspaceWithinTokenQuota } from "@/modules/usage/quota";
 
 type ProxyExecutionContext = {
@@ -57,7 +61,7 @@ function providerOptionsFor(
   });
 }
 
-function generationOptions(input: {
+export function generationOptions(input: {
   prepared: PreparedProxyGeneration;
   model: Awaited<ReturnType<typeof resolveOpenAIProxyModel>>;
   signal: AbortSignal;
@@ -77,6 +81,7 @@ function generationOptions(input: {
     maxOutputTokens: prepared.maxOutputTokens,
     temperature: prepared.temperature,
     topP: prepared.topP,
+    topK: prepared.topK,
     presencePenalty: prepared.presencePenalty,
     frequencyPenalty: prepared.frequencyPenalty,
     seed: prepared.seed,
@@ -89,7 +94,7 @@ function generationOptions(input: {
   };
 }
 
-async function prepareExecution(
+export async function prepareExecution(
   context: ProxyExecutionContext,
   requestedModel: string,
 ) {
@@ -105,10 +110,13 @@ async function prepareExecution(
   return resolveOpenAIProxyModel(context.workspaceId, requestedModel);
 }
 
-function usageRecorder(input: {
+export function usageRecorder(input: {
   context: ProxyExecutionContext;
   model: Awaited<ReturnType<typeof resolveOpenAIProxyModel>>;
-  operation: "openai.chat.completions" | "openai.responses";
+  operation:
+    | "openai.chat.completions"
+    | "openai.responses"
+    | "anthropic.messages";
   startedAt: number;
 }) {
   let recorded = false;
@@ -119,6 +127,17 @@ function usageRecorder(input: {
     }) {
       if (recorded) return;
       recorded = true;
+      const sustainability = parseSustainabilityConfig(
+        input.model.sustainabilityConfig,
+      );
+      const impact = calculateTokenUsageImpact({
+        inputTokens: usage.inputTokens ?? 0,
+        outputTokens: usage.outputTokens ?? 0,
+        inputCostPerMillion: input.model.inputTokenCost,
+        outputCostPerMillion: input.model.outputTokenCost,
+        sustainability,
+        currency: sustainability.currency,
+      });
       await recordUsageEvent({
         workspaceId: input.context.workspaceId,
         userId: input.context.userId,
@@ -127,6 +146,16 @@ function usageRecorder(input: {
         operation: input.operation,
         inputTokens: usage.inputTokens,
         outputTokens: usage.outputTokens,
+        costUsd:
+          impact.cost !== null && impact.currency === "USD"
+            ? String(impact.cost)
+            : undefined,
+        metadataJson: {
+          currency: impact.currency,
+          cost: impact.cost,
+          energyKwh: impact.energyKwh,
+          co2Grams: impact.co2Grams,
+        },
         latencyMs: Date.now() - input.startedAt,
         status: "success",
       });

@@ -8,6 +8,7 @@ import { ensureBootstrapAdmin, isAdminRole } from "@/modules/admin/use-cases";
 import { getSession } from "@/modules/auth/session";
 
 import { SettingsPasswordCard } from "./settings-password-card";
+import { OrganizationBrandingCard } from "./organization-branding-card";
 
 export default async function SettingsPage() {
   const t = await getTranslations("settings");
@@ -25,6 +26,7 @@ export default async function SettingsPage() {
     >
       <div className="flex max-w-4xl flex-col gap-4">
         <SettingsPasswordCard />
+        <OrganizationBrandingCard />
 
         {isAdmin ? (
           <section className="overflow-hidden rounded-2xl border border-border/70 bg-card p-0">

@@ -1,5 +1,6 @@
 import { createServer, type Server } from "node:http";
 import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 import { expect, test } from "@playwright/test";
 
 import { ensureE2EUser, login } from "./fixtures";
@@ -190,7 +191,7 @@ test.beforeEach(async ({ page }) => {
   await login(page);
 });
 
-test("official OpenAI SDK uses Maiah as a scoped model proxy end to end", async ({
+test("official OpenAI and Anthropic SDKs use Maiah as a scoped model proxy", async ({
   page,
 }) => {
   const workspacesResponse = await page.request.get("/api/workspaces");
@@ -231,6 +232,8 @@ test("official OpenAI SDK uses Maiah as a scoped model proxy end to end", async 
           capabilitiesJson: { text: true, tools: true, vision: true },
           contextWindow: 32_000,
           maxOutputTokens: 4_096,
+          inputTokenCost: "1",
+          outputTokenCost: "2",
         },
       },
     );
@@ -361,6 +364,66 @@ test("official OpenAI SDK uses Maiah as a scoped model proxy end to end", async 
     }
     expect(responseText).toBe("proxy-stream");
     expect(completed).toBe(true);
+
+    const anthropic = new Anthropic({
+      apiKey: token.rawKey,
+      baseURL: `${appBaseUrl}/api/anthropic`,
+      maxRetries: 0,
+    });
+    const anthropicModels = await anthropic.models.list();
+    expect(anthropicModels.data.map((model) => model.id)).toContain(modelName);
+    const anthropicMessage = await anthropic.messages.create({
+      model: modelName,
+      max_tokens: 256,
+      messages: [{ role: "user", content: "Say proxy-ok" }],
+    });
+    expect(anthropicMessage.content[0]).toEqual({
+      type: "text",
+      text: "proxy-ok",
+    });
+    expect(anthropicMessage.usage.input_tokens).toBe(8);
+
+    const anthropicStream = await anthropic.messages.create({
+      model: modelName,
+      max_tokens: 256,
+      messages: [{ role: "user", content: "Stream" }],
+      stream: true,
+    });
+    let anthropicText = "";
+    for await (const event of anthropicStream) {
+      if (
+        event.type === "content_block_delta" &&
+        event.delta.type === "text_delta"
+      ) {
+        anthropicText += event.delta.text;
+      }
+    }
+    expect(anthropicText).toBe("proxy-stream");
+
+    const usageResponse = await page.request.get(
+      `/api/workspace/usage?workspaceId=${workspaceId}&operation=anthropic.messages`,
+    );
+    expect(usageResponse.ok()).toBe(true);
+    const usage = (await usageResponse.json()) as {
+      totals: {
+        events: number;
+        costs: Array<{ currency: string; amount: number }>;
+      };
+      operations: Array<{ operation: string; events: number }>;
+    };
+    expect(usage.totals.events).toBeGreaterThanOrEqual(2);
+    expect(usage.totals.costs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          currency: expect.any(String),
+          amount: expect.any(Number),
+        }),
+      ]),
+    );
+    expect(usage.totals.costs[0]?.amount).toBeGreaterThan(0);
+    expect(usage.operations).toContainEqual(
+      expect.objectContaining({ operation: "anthropic.messages" }),
+    );
   } finally {
     if (tokenId) {
       await page.request.delete(

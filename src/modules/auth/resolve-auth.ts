@@ -21,8 +21,10 @@ export type AuthContext =
 
 function bearerTokenFrom(headersList: Headers) {
   const authorization = headersList.get("authorization");
-  if (!authorization?.startsWith("Bearer ")) return null;
-  return authorization.slice("Bearer ".length).trim() || null;
+  if (authorization?.startsWith("Bearer ")) {
+    return authorization.slice("Bearer ".length).trim() || null;
+  }
+  return headersList.get("x-api-key")?.trim() || null;
 }
 
 export async function resolveAuthContext(

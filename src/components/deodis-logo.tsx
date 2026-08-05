@@ -8,6 +8,8 @@ interface DeodisLogoProps {
   href?: string;
   priority?: boolean;
   label?: string;
+  src?: string;
+  alt?: string;
 }
 
 export function DeodisLogo({
@@ -15,11 +17,13 @@ export function DeodisLogo({
   href = "/",
   priority = true,
   label = "Deodis home",
+  src = "/deodis-logo.png",
+  alt = "Deodis",
 }: DeodisLogoProps) {
   const image = (
     <Image
-      src="/deodis-logo.png"
-      alt="Deodis"
+      src={src}
+      alt={alt}
       data-no-outline="true"
       width={857}
       height={320}

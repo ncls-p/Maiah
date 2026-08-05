@@ -14,7 +14,7 @@ let queue: Queue<DocumentIngestionJob> | null = null;
 
 type DocumentQueueClient = Pick<Queue<DocumentIngestionJob>, "add" | "getJob">;
 
-export function getDocumentIngestionQueue() {
+function getDocumentIngestionQueue() {
   queue ??= new Queue<DocumentIngestionJob>(DOCUMENT_INGESTION_QUEUE_NAME, {
     connection: workflowQueueConnection(),
     defaultJobOptions: {

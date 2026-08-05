@@ -1,6 +1,6 @@
 import type { ChatMessage } from "@/components/chat/chat-types";
 
-export const CHAT_SCROLL_END_THRESHOLD = 32;
+const CHAT_SCROLL_END_THRESHOLD = 32;
 
 export function isChatViewportAtEnd(
   viewport: Pick<HTMLElement, "scrollTop" | "scrollHeight" | "clientHeight">,

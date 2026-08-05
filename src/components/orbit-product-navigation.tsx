@@ -18,6 +18,8 @@ import { Link, usePathname } from "@/i18n/navigation";
 import { isNavItemActive, type WorkspaceShellState } from "@/lib/workspace-nav";
 import { buildMenuGroups } from "@/modules/navigation/sidebar-config";
 import { cn } from "@/lib/utils";
+import { useWorkspace } from "@/hooks/use-workspace";
+import Image from "next/image";
 
 const primaryDestinations = [
   "/chat",
@@ -28,11 +30,23 @@ const primaryDestinations = [
 ] as const;
 
 export function OrbitWordmark({ section }: { section: string }) {
+  const { organizationLogoUrl, organizationName } = useWorkspace();
   return (
     <div className="hidden min-w-32 items-baseline gap-2 sm:flex">
-      <span className="text-[0.72rem] font-extrabold uppercase tracking-[0.16em] text-foreground">
-        Maiah
-      </span>
+      {organizationLogoUrl ? (
+        <Image
+          src={organizationLogoUrl}
+          alt={organizationName ?? "Organization"}
+          width={120}
+          height={40}
+          unoptimized
+          className="h-6 w-auto max-w-28 object-contain"
+        />
+      ) : (
+        <span className="text-[0.72rem] font-extrabold uppercase tracking-[0.16em] text-foreground">
+          Maiah
+        </span>
+      )}
       <span className="font-mono text-[0.58rem] uppercase tracking-[0.18em] text-primary">
         {section}
       </span>

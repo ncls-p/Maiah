@@ -1,5 +1,3 @@
-export const agentToolContextKey = "agentContext" as const;
-
 export type AgentToolDisplayContext = {
   agentId: string;
   agentName: string;

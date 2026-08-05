@@ -8,12 +8,16 @@ export type WorkspaceSummary = {
   slug: string;
   organizationId: string;
   organizationName: string;
+  organizationLogoUrl: string | null;
+  organizationTheme: string;
 };
 
 export type WorkspaceContextValue = {
   workspaceId: string | null;
   workspaces: WorkspaceSummary[];
   organizationName: string | null;
+  organizationLogoUrl: string | null;
+  organizationTheme: string;
   isLoading: boolean;
   error: string | null;
   setWorkspaceId: (workspaceId: string) => void;

@@ -26,7 +26,12 @@ describe("api-client", () => {
         json: async () => [
           {
             workspace: { id: "1", name: "WS1", slug: "ws1" },
-            organization: { id: "org-1", name: "Org1" },
+            organization: {
+              id: "org-1",
+              name: "Org1",
+              logoUrl: "data:image/png;base64,logo",
+              theme: "forest",
+            },
           },
           {
             workspace: { id: "2", name: "WS2", slug: "ws2" },
@@ -43,6 +48,8 @@ describe("api-client", () => {
         slug: "ws1",
         organizationId: "org-1",
         organizationName: "Org1",
+        organizationLogoUrl: "data:image/png;base64,logo",
+        organizationTheme: "forest",
       });
     });
 
@@ -95,6 +102,8 @@ describe("api-client", () => {
         slug: "main",
         organizationId: "",
         organizationName: "Organization",
+        organizationLogoUrl: null,
+        organizationTheme: "ocean",
       });
     });
 

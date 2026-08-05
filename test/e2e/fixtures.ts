@@ -1,5 +1,5 @@
 // Shared fixtures and helpers for all e2e tests
-import { expect, type Cookie, type Page } from "@playwright/test";
+import type { Cookie, Page } from "@playwright/test";
 import { hashPassword } from "better-auth/crypto";
 import { randomUUID } from "node:crypto";
 import { Client } from "pg";
@@ -680,5 +680,3 @@ export async function login(page: Page) {
   await page.waitForURL(/\/en\/(chat|setup)/, { timeout: 15_000 });
   authenticatedCookies = await page.context().cookies();
 }
-
-export { expect };

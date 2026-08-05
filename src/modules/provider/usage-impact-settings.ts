@@ -4,7 +4,7 @@ import { z } from "zod";
 import { db } from "@/server/infrastructure/db";
 import { appSettings } from "@/server/infrastructure/db/schema";
 
-export const USAGE_IMPACT_SETTING_KEY = "usage-impact";
+const USAGE_IMPACT_SETTING_KEY = "usage-impact";
 
 export const usageImpactSettingSchema = z.object({
   enabled: z.boolean().default(false),
@@ -44,6 +44,6 @@ export async function setUsageImpactSetting(
         updatedById,
         updatedAt: new Date(),
       },
-  });
+    });
   return valueJson;
 }
