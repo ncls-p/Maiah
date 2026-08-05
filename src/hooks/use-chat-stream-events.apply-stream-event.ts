@@ -1,5 +1,5 @@
 "use client";
-import { appendMessagePart,completeReasoningParts,startReasoningPart,type ChatCitation,type ChatMessage,type ChatStreamEvent,type PendingToolApproval } from "@/components/chat/chat-types";
+import { appendMessagePart, completeReasoningParts, startReasoningPart, type ChatCitation, type ChatMessage, type ChatStreamEvent, type PendingToolApproval } from "@/components/chat/chat-types";
 import { TOOL_CALL_PART_TYPE } from "./use-chat-stream-events.stored-chat-stream-draft";
 export function applyStreamEvent(
   parsed: ChatStreamEvent,

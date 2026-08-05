@@ -1,6 +1,6 @@
 "use client";
 
-import { isChatStreamEvent,type ChatMessage,type ChatStreamEvent,type PendingToolApproval } from "@/components/chat/chat-types";
+import { isChatStreamEvent, type ChatMessage, type ChatStreamEvent, type PendingToolApproval } from "@/components/chat/chat-types";
 
 export type StoredChatStreamDraft = {
   conversationId: string;
