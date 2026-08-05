@@ -22,11 +22,7 @@ const publishSchema = z.object({
   confirmDirectPush: z.boolean().default(false),
 });
 
-function githubPublishRouteLog(
-  stage: string,
-  metadata: Record<string, unknown>,
-  level: "info" | "error" = "info",
-) {
+function githubPublishRouteLog(stage: string, metadata: Record<string, unknown>, level: "info" | "error" = "info") {
   logger[level]("GitHub publish route", { stage, ...metadata });
 }
 
@@ -59,21 +55,10 @@ export async function POST(req: NextRequest) {
         targetDirectory: parsed.data.targetDirectory || null,
       };
       githubPublishRouteLog("request", routeLogContext);
-      const permission = await checkWorkspacePermissionForRequest(
-        session.user.id,
-        parsed.data.workspaceId,
-        "agents.chat",
-      );
+      const permission = await checkWorkspacePermissionForRequest(session.user.id, parsed.data.workspaceId, "agents.chat");
       if (!permission.granted) {
-        githubPublishRouteLog(
-          "forbidden",
-          { ...routeLogContext, reason: permission.reason },
-          "error",
-        );
-        return NextResponse.json(
-          { error: "Forbidden", reason: permission.reason },
-          { status: 403 },
-        );
+        githubPublishRouteLog("forbidden", { ...routeLogContext, reason: permission.reason }, "error");
+        return NextResponse.json({ error: "Forbidden", reason: permission.reason }, { status: 403 });
       }
       const result = await publishCodeWorkspaceToGitHub({
         ...parsed.data,
@@ -92,8 +77,7 @@ export async function POST(req: NextRequest) {
       );
       return NextResponse.json(
         {
-          error:
-            error instanceof Error ? error.message : "GitHub publish failed",
+          error: error instanceof Error ? error.message : "GitHub publish failed",
         },
         { status: 400 },
       );

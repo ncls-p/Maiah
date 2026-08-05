@@ -1,11 +1,7 @@
 import { describe,expect,it,vi } from "vitest";
 
-import {
-getConversationMessages,
-recordUsageEvent
-} from "@/modules/agent/use-cases";
+import { getConversationMessages,recordUsageEvent } from "@/modules/agent/use-cases";
 import { dbModule } from "./agent-use-cases.test.chain";
-
 
 // ─── getConversationMessages ──────────────────────────────────────────
 
@@ -63,9 +59,7 @@ describe("getConversationMessages", () => {
       sortOrder: 0,
       metadataJson: null,
     };
-    dbModule._c.orderBy
-      .mockResolvedValueOnce([msg])
-      .mockResolvedValueOnce([part]);
+    dbModule._c.orderBy.mockResolvedValueOnce([msg]).mockResolvedValueOnce([part]);
 
     const result = await getConversationMessages("conv-1");
 
@@ -92,9 +86,7 @@ describe("getConversationMessages", () => {
       metadataJson: null,
     };
 
-    dbModule._c.orderBy
-      .mockResolvedValueOnce([msg])
-      .mockResolvedValueOnce([part]);
+    dbModule._c.orderBy.mockResolvedValueOnce([msg]).mockResolvedValueOnce([part]);
 
     const result = await getConversationMessages("conv-1");
     expect(result[0].parts[0].content).toBe("[decryption failed]");
@@ -117,9 +109,7 @@ describe("getConversationMessages", () => {
       metadataJson: meta,
     };
 
-    dbModule._c.orderBy
-      .mockResolvedValueOnce([msg])
-      .mockResolvedValueOnce([part]);
+    dbModule._c.orderBy.mockResolvedValueOnce([msg]).mockResolvedValueOnce([part]);
 
     const result = await getConversationMessages("conv-1");
     expect(result[0].parts[0].content).toBe(JSON.stringify(meta));
@@ -143,9 +133,7 @@ describe("getConversationMessages", () => {
         input: { apiKey: "hidden", maxOutputTokens: 256 },
       },
     };
-    dbModule._c.orderBy
-      .mockResolvedValueOnce([msg])
-      .mockResolvedValueOnce([part]);
+    dbModule._c.orderBy.mockResolvedValueOnce([msg]).mockResolvedValueOnce([part]);
 
     const result = await getConversationMessages("conv-1");
 
@@ -186,9 +174,7 @@ describe("recordUsageEvent", () => {
   });
 
   it("does not break a completed workflow when telemetry is unavailable", async () => {
-    dbModule._c.values.mockRejectedValueOnce(
-      new Error("telemetry unavailable"),
-    );
+    dbModule._c.values.mockRejectedValueOnce(new Error("telemetry unavailable"));
 
     await expect(
       recordUsageEvent({

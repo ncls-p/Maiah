@@ -1,6 +1,5 @@
 "use client";
 
-
 import type { SidebarNavSection } from "@/modules/navigation/sidebar-config";
 
 export type SidebarNavItem = {

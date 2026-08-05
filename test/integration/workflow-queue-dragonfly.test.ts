@@ -3,10 +3,7 @@ import { randomUUID } from "node:crypto";
 import { Queue,QueueEvents,Worker,type ConnectionOptions } from "bullmq";
 import { describe,expect,it } from "vitest";
 
-import {
-WORKFLOW_QUEUE_NAME,
-recoverWorkflowRunJob,
-} from "@/modules/workflows/queue";
+import { WORKFLOW_QUEUE_NAME,recoverWorkflowRunJob } from "@/modules/workflows/queue";
 
 const dragonflyUrl = process.env.DRAGONFLY_INTEGRATION_URL;
 const describeWithDragonfly = dragonflyUrl ? describe : describe.skip;
@@ -68,28 +65,16 @@ describeWithDragonfly("BullMQ workflow queue on Dragonfly", () => {
     );
 
     try {
-      await Promise.all([
-        queue.waitUntilReady(),
-        events.waitUntilReady(),
-        worker.waitUntilReady(),
-      ]);
+      await Promise.all([queue.waitUntilReady(), events.waitUntilReady(), worker.waitUntilReady()]);
       const runId = randomUUID();
       const job = await queue.add("execute", { runId }, { jobId: runId });
-      await expect(job.waitUntilFinished(events, 5_000)).rejects.toThrow(
-        "simulated worker failure",
-      );
+      await expect(job.waitUntilFinished(events, 5_000)).rejects.toThrow("simulated worker failure");
 
-      const duplicate = await queue.add(
-        "execute",
-        { runId },
-        { jobId: runId },
-      );
+      const duplicate = await queue.add("execute", { runId }, { jobId: runId });
       expect(await duplicate.getState()).toBe("failed");
       expect(executions).toBe(1);
 
-      await expect(recoverWorkflowRunJob(runId, queue)).resolves.toBe(
-        "retried",
-      );
+      await expect(recoverWorkflowRunJob(runId, queue)).resolves.toBe("retried");
       await expect(job.waitUntilFinished(events, 5_000)).resolves.toEqual({
         recovered: true,
       });

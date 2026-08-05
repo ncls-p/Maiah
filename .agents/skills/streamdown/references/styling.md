@@ -16,13 +16,13 @@ Streamdown uses shadcn/ui CSS variables. Override in `globals.css`:
 ```css
 @layer base {
   :root {
-    --primary: 222.2 47.4% 11.2%;        /* Links, accents */
-    --primary-foreground: 210 40% 98%;    /* Text on primary */
-    --muted: 210 40% 96.1%;              /* Code blocks, table headers */
+    --primary: 222.2 47.4% 11.2%; /* Links, accents */
+    --primary-foreground: 210 40% 98%; /* Text on primary */
+    --muted: 210 40% 96.1%; /* Code blocks, table headers */
     --muted-foreground: 215.4 16.3% 46.9%; /* Blockquote text */
-    --border: 214.3 31.8% 91.4%;         /* Tables, rules, code blocks */
-    --ring: 222.2 84% 4.9%;              /* Focus rings */
-    --radius: 0.5rem;                     /* Border radius */
+    --border: 214.3 31.8% 91.4%; /* Tables, rules, code blocks */
+    --ring: 222.2 84% 4.9%; /* Focus rings */
+    --radius: 0.5rem; /* Border radius */
   }
 
   .dark {
@@ -42,44 +42,70 @@ Target specific elements via `[data-streamdown="..."]`:
 
 ```css
 /* Headings */
-[data-streamdown="heading-1"] { }
-[data-streamdown="heading-2"] { }
-[data-streamdown="heading-3"] { }
-[data-streamdown="heading-4"] { }
-[data-streamdown="heading-5"] { }
-[data-streamdown="heading-6"] { }
+[data-streamdown="heading-1"] {
+}
+[data-streamdown="heading-2"] {
+}
+[data-streamdown="heading-3"] {
+}
+[data-streamdown="heading-4"] {
+}
+[data-streamdown="heading-5"] {
+}
+[data-streamdown="heading-6"] {
+}
 
 /* Text */
-[data-streamdown="strong"] { }
-[data-streamdown="link"] { }
-[data-streamdown="inline-code"] { }
+[data-streamdown="strong"] {
+}
+[data-streamdown="link"] {
+}
+[data-streamdown="inline-code"] {
+}
 
 /* Lists */
-[data-streamdown="ordered-list"] { }
-[data-streamdown="unordered-list"] { }
-[data-streamdown="list-item"] { }
+[data-streamdown="ordered-list"] {
+}
+[data-streamdown="unordered-list"] {
+}
+[data-streamdown="list-item"] {
+}
 
 /* Blocks */
-[data-streamdown="blockquote"] { }
-[data-streamdown="horizontal-rule"] { }
+[data-streamdown="blockquote"] {
+}
+[data-streamdown="horizontal-rule"] {
+}
 
 /* Code */
-[data-streamdown="code-block"] { }
-[data-streamdown="mermaid-block"] { }
+[data-streamdown="code-block"] {
+}
+[data-streamdown="mermaid-block"] {
+}
 
 /* Tables */
-[data-streamdown="table-wrapper"] { }
-[data-streamdown="table"] { }
-[data-streamdown="table-header"] { }
-[data-streamdown="table-body"] { }
-[data-streamdown="table-row"] { }
-[data-streamdown="table-header-cell"] { }
-[data-streamdown="table-cell"] { }
-[data-streamdown="table-fullscreen"] { }
+[data-streamdown="table-wrapper"] {
+}
+[data-streamdown="table"] {
+}
+[data-streamdown="table-header"] {
+}
+[data-streamdown="table-body"] {
+}
+[data-streamdown="table-row"] {
+}
+[data-streamdown="table-header-cell"] {
+}
+[data-streamdown="table-cell"] {
+}
+[data-streamdown="table-fullscreen"] {
+}
 
 /* Other */
-[data-streamdown="superscript"] { }
-[data-streamdown="subscript"] { }
+[data-streamdown="superscript"] {
+}
+[data-streamdown="subscript"] {
+}
 ```
 
 ## Custom Components
@@ -90,7 +116,9 @@ Override any Markdown element via the `components` prop:
 <Streamdown
   components={{
     h1: ({ children, ...props }) => (
-      <h1 className="text-4xl font-bold" {...props}>{children}</h1>
+      <h1 className="text-4xl font-bold" {...props}>
+        {children}
+      </h1>
     ),
     a: ({ children, href, ...props }) => (
       <a href={href} className="text-blue-500 hover:underline" {...props}>
@@ -100,9 +128,17 @@ Override any Markdown element via the `components` prop:
     code: ({ children, className, ...props }) => {
       const isInline = !className;
       if (isInline) {
-        return <code className="bg-gray-100 rounded px-1" {...props}>{children}</code>;
+        return (
+          <code className="bg-gray-100 rounded px-1" {...props}>
+            {children}
+          </code>
+        );
       }
-      return <code className={className} {...props}>{children}</code>;
+      return (
+        <code className={className} {...props}>
+          {children}
+        </code>
+      );
     },
   }}
 >
@@ -122,16 +158,17 @@ Use `className` prop for instance-specific styles:
 
 ```css
 .docs-content [data-streamdown="heading-1"] {
-  font-family: 'Inter', sans-serif;
+  font-family: "Inter", sans-serif;
 }
 .docs-content [data-streamdown="code-block"] {
-  font-family: 'Fira Code', monospace;
+  font-family: "Fira Code", monospace;
 }
 ```
 
 ## Theme Examples
 
 **Minimal Gray:**
+
 ```css
 :root {
   --primary: 0 0% 20%;
@@ -142,6 +179,7 @@ Use `className` prop for instance-specific styles:
 ```
 
 **Vibrant Blue:**
+
 ```css
 :root {
   --primary: 217 91% 60%;
@@ -152,6 +190,7 @@ Use `className` prop for instance-specific styles:
 ```
 
 **No Borders:**
+
 ```css
 :root {
   --border: transparent;

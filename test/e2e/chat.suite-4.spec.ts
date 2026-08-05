@@ -1,9 +1,6 @@
 import nextEnv from "@next/env";
 import { expect,test } from "@playwright/test";
-import {
-ensureE2EUser,
-login
-} from "./fixtures";
+import { ensureE2EUser,login } from "./fixtures";
 
 const { loadEnvConfig } = nextEnv;
 

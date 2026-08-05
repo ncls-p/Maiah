@@ -17,9 +17,7 @@ export interface PublishPreviewResult {
   resourceType: SourceResourceType | "marketplace_item";
 }
 
-export function manifestSummary(
-  manifest: MarketplaceManifest,
-): Record<string, unknown> {
+export function manifestSummary(manifest: MarketplaceManifest): Record<string, unknown> {
   switch (manifest.type) {
     case "agent":
       return {
@@ -37,8 +35,7 @@ export function manifestSummary(
     case "skill":
       return {
         type: "skill",
-        fileCount:
-          manifest.skill.fileCount ?? manifest.skill.markdownFiles.length,
+        fileCount: manifest.skill.fileCount ?? manifest.skill.markdownFiles.length,
         totalBytes: manifest.skill.totalBytes,
         sourcePackage: manifest.skill.sourcePackage,
       };
@@ -63,9 +60,7 @@ export function manifestSummary(
   }
 }
 
-export function extractCredentialFields(
-  manifest: MarketplaceManifest,
-): PublishPreviewResult["credentialFields"] {
+export function extractCredentialFields(manifest: MarketplaceManifest): PublishPreviewResult["credentialFields"] {
   if (manifest.type === "custom_tool") {
     return (manifest.tool.credentialSchema ?? []).map((f) => ({
       key: f.key,

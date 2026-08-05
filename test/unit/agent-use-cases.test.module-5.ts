@@ -1,14 +1,8 @@
 import { describe,expect,it } from "vitest";
 
-import {
-getActiveVersion,
-getAgentVersions,
-getConversationsByAgent,
-resolveProviderForVersion
-} from "@/modules/agent/use-cases";
+import { getActiveVersion,getAgentVersions,getConversationsByAgent,resolveProviderForVersion } from "@/modules/agent/use-cases";
 import { dbModule,fakeVersion } from "./agent-use-cases.test.chain";
 import { fakeModel,fakeProvider } from "./agent-use-cases.test.fake-provider";
-
 
 // ─── getAgentVersions ─────────────────────────────────────────────────
 
@@ -36,9 +30,7 @@ describe("getActiveVersion", () => {
   });
 
   it("returns version when found", async () => {
-    dbModule._c.limit
-      .mockResolvedValueOnce([{ activeVersionId: "v1" }])
-      .mockResolvedValueOnce([fakeVersion]);
+    dbModule._c.limit.mockResolvedValueOnce([{ activeVersionId: "v1" }]).mockResolvedValueOnce([fakeVersion]);
     const result = await getActiveVersion("agent-1");
     expect(result).toEqual(fakeVersion);
   });
@@ -87,9 +79,7 @@ describe("resolveProviderForVersion", () => {
 
   it("decrypts headers when encryptedHeadersJson present", async () => {
     const { decryptValue } = await import("@/lib/crypto");
-    dbModule._c.limit.mockResolvedValueOnce([
-      { ...fakeProvider, encryptedHeadersJson: { "X-Key": "enc:header" } },
-    ]);
+    dbModule._c.limit.mockResolvedValueOnce([{ ...fakeProvider, encryptedHeadersJson: { "X-Key": "enc:header" } }]);
 
     await resolveProviderForVersion({ ...fakeVersion, modelId: null } as never);
 

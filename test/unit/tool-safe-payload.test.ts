@@ -1,10 +1,5 @@
 import { summarizeToolInput } from "@/components/chat/tool-approval-banner";
-import {
-projectToolPayloadForDisplay,
-REDACTED_VALUE,
-safeChatErrorMessage,
-safeToolErrorMessage,
-} from "@/modules/tool/safe-payload";
+import { projectToolPayloadForDisplay,REDACTED_VALUE,safeChatErrorMessage,safeToolErrorMessage } from "@/modules/tool/safe-payload";
 import { describe,expect,it } from "vitest";
 
 describe("tool payload display projection", () => {
@@ -57,18 +52,14 @@ describe("tool payload display projection", () => {
     };
     circular.self = circular;
 
-    expect(
-      projectToolPayloadForDisplay(circular, { maxStringLength: 10 }),
-    ).toEqual({
+    expect(projectToolPayloadForDisplay(circular, { maxStringLength: 10 })).toEqual({
       message: "xxxxxxxxxx… [TRUNCATED]",
       self: "[CIRCULAR]",
     });
   });
 
   it("keeps approval summaries useful while redacting single secret fields", () => {
-    expect(summarizeToolInput("Webhook", { apiKey: "hidden" })).toBe(
-      `Webhook: apiKey = ${REDACTED_VALUE}`,
-    );
+    expect(summarizeToolInput("Webhook", { apiKey: "hidden" })).toBe(`Webhook: apiKey = ${REDACTED_VALUE}`);
     expect(
       summarizeToolInput("Fetch", {
         url: "https://example.com/path?token=hidden",
@@ -84,23 +75,13 @@ describe("tool payload display projection", () => {
   });
 
   it("does not expose an error that is itself a credential", () => {
-    expect(
-      safeToolErrorMessage(new Error("Bearer top-secret"), "Execution failed"),
-    ).toBe("Execution failed");
-    expect(
-      safeToolErrorMessage(
-        new Error("Request failed at https://example.com?sig=hidden"),
-        "Execution failed",
-      ),
-    ).not.toContain("hidden");
+    expect(safeToolErrorMessage(new Error("Bearer top-secret"), "Execution failed")).toBe("Execution failed");
+    expect(safeToolErrorMessage(new Error("Request failed at https://example.com?sig=hidden"), "Execution failed")).not.toContain("hidden");
   });
 
   it("keeps complete chat validation errors while redacting credentials", () => {
     const validationError = `${"validation error\n".repeat(100)}Bearer hidden`;
-    const projected = safeChatErrorMessage(
-      new Error(validationError),
-      "Generation failed",
-    );
+    const projected = safeChatErrorMessage(new Error(validationError), "Generation failed");
 
     expect(projected).not.toContain("[TRUNCATED]");
     expect(projected).not.toContain("Bearer hidden");

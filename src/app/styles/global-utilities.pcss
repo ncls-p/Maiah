@@ -22,12 +22,7 @@
 
   .scrollbar-thin {
     scrollbar-width: thin;
-    scrollbar-color: color-mix(
-        in oklch,
-        var(--muted-foreground) 28%,
-        transparent
-      )
-      transparent;
+    scrollbar-color: color-mix(in oklch, var(--muted-foreground) 28%, transparent) transparent;
   }
 
   .scrollbar-thin::-webkit-scrollbar {
@@ -43,32 +38,15 @@
   }
 
   .scroll-fade-b {
-    mask-image: linear-gradient(
-      to bottom,
-      transparent 0,
-      black 1.5rem,
-      black calc(100% - 2.5rem),
-      transparent 100%
-    );
+    mask-image: linear-gradient(to bottom, transparent 0, black 1.5rem, black calc(100% - 2.5rem), transparent 100%);
   }
 
   .scroll-fade-x {
-    mask-image: linear-gradient(
-      to right,
-      transparent 0,
-      black 1rem,
-      black calc(100% - 1rem),
-      transparent 100%
-    );
+    mask-image: linear-gradient(to right, transparent 0, black 1rem, black calc(100% - 1rem), transparent 100%);
   }
 
   .shimmer {
-    background: linear-gradient(
-      110deg,
-      var(--muted-foreground) 0%,
-      color-mix(in oklch, var(--foreground) 45%, transparent) 35%,
-      var(--muted-foreground) 70%
-    );
+    background: linear-gradient(110deg, var(--muted-foreground) 0%, color-mix(in oklch, var(--foreground) 45%, transparent) 35%, var(--muted-foreground) 70%);
     background-size: 220% 100%;
     background-clip: text;
     color: transparent;
@@ -87,4 +65,3 @@
     }
   }
 }
-

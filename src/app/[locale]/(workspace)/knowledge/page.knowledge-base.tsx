@@ -1,11 +1,7 @@
 "use client";
 
-import {
-type ResourceProvenance
-} from "@/components/resource-provenance-badge";
-import {
-type RagConfig
-} from "@/modules/knowledge/rag-config-schema";
+import { type ResourceProvenance } from "@/components/resource-provenance-badge";
+import { type RagConfig } from "@/modules/knowledge/rag-config-schema";
 
 export interface KnowledgeBase {
   id: string;

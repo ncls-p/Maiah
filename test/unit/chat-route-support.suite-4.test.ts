@@ -34,10 +34,7 @@ vi.mock("@/server/infrastructure/ai-sdk/devtools", () => ({
 
 vi.mock("@/modules/tool/invocation-state", () => invocationStateMock);
 
-vi.mock(
-  "@/modules/tool/organization-builtin-tool-policies",
-  () => organizationToolPolicyMock,
-);
+vi.mock("@/modules/tool/organization-builtin-tool-policies", () => organizationToolPolicyMock);
 
 vi.mock("@/modules/knowledge/use-cases", () => knowledgeUseCasesMock);
 
@@ -45,27 +42,20 @@ vi.mock("@/modules/tool/opa-approval-policy", () => ({
   evaluateOpaToolApprovalPolicy: vi.fn(async () => null),
 }));
 
-type BuildBoundTools =
-  (typeof import("@/app/api/workspace/[agentId]/chat/route-support"))["buildBoundTools"];
+type BuildBoundTools = (typeof import("@/app/api/workspace/[agentId]/chat/route-support"))["buildBoundTools"];
 
-type BuiltInToolLookup =
-  (typeof import("@/modules/tool/builtin-tools"))["getBuiltInToolByName"];
+type BuiltInToolLookup = (typeof import("@/modules/tool/builtin-tools"))["getBuiltInToolByName"];
 
 async function loadModules() {
   vi.resetModules();
-  const [routeSupport, builtinTools] = await Promise.all([
-    import("@/app/api/workspace/[agentId]/chat/route-support"),
-    import("@/modules/tool/builtin-tools"),
-  ]);
+  const [routeSupport, builtinTools] = await Promise.all([import("@/app/api/workspace/[agentId]/chat/route-support"), import("@/modules/tool/builtin-tools")]);
   return {
     buildBoundTools: routeSupport.buildBoundTools as BuildBoundTools,
     projectStreamedToolInput: routeSupport.projectStreamedToolInput,
     streamToolErrorOutput: routeSupport.streamToolErrorOutput,
     mergeUserFilePartMetadata: routeSupport.mergeUserFilePartMetadata,
-    knowledgeCitationsFromToolOutput:
-      routeSupport.knowledgeCitationsFromToolOutput,
-    getBuiltInToolByName:
-      builtinTools.getBuiltInToolByName as BuiltInToolLookup,
+    knowledgeCitationsFromToolOutput: routeSupport.knowledgeCitationsFromToolOutput,
+    getBuiltInToolByName: builtinTools.getBuiltInToolByName as BuiltInToolLookup,
     waitForApproval: invocationStateMock.waitForApproval,
   };
 }
@@ -85,9 +75,7 @@ describe("chat route tool gating", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     toolUseCasesMock.getToolBindingsForVersion.mockResolvedValue([]);
-    organizationToolPolicyMock.getOrganizationBuiltInToolPolicyMap.mockResolvedValue(
-      new Map(),
-    );
+    organizationToolPolicyMock.getOrganizationBuiltInToolPolicyMap.mockResolvedValue(new Map());
     knowledgeUseCasesMock.getKnowledgeBindingsForVersion.mockResolvedValue([]);
     knowledgeUseCasesMock.searchBoundKnowledgeBases.mockResolvedValue([]);
     knowledgeUseCasesMock.readBoundKnowledgeChunkWindow.mockResolvedValue(null);

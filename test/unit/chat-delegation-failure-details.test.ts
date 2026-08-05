@@ -16,8 +16,6 @@ describe("delegation failure display details", () => {
   });
 
   it("ignores malformed failure details", () => {
-    expect(
-      delegationFailureDetails({ errorCode: 42, error: { secret: true } }),
-    ).toEqual({ errorCode: null, reason: null });
+    expect(delegationFailureDetails({ errorCode: 42, error: { secret: true } })).toEqual({ errorCode: null, reason: null });
   });
 });

@@ -27,9 +27,7 @@ export type WorkspaceContextValue = {
   refresh: () => Promise<void>;
 };
 
-export const WorkspaceContext = createContext<WorkspaceContextValue | null>(
-  null,
-);
+export const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
 
 export function useWorkspace(): WorkspaceContextValue {
   const context = useContext(WorkspaceContext);

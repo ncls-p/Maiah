@@ -62,9 +62,7 @@ vi.mock("@/lib/logger", () => ({
   logger: { warn: mocks.logWarning },
 }));
 
-import {
-executeAgent
-} from "@/modules/agent/runtime-executor";
+import { executeAgent } from "@/modules/agent/runtime-executor";
 
 const rootAgent = {
   id: "11111111-1111-4111-8111-111111111111",
@@ -120,7 +118,6 @@ beforeEach(() => {
 });
 
 describe("agent runtime executor", () => {
-
   it("recovers an empty final turn from successful tool results without calling another tool", async () => {
     mocks.getActiveVersion.mockResolvedValueOnce({
       ...rootVersion,
@@ -208,9 +205,7 @@ describe("agent runtime executor", () => {
     expect(recoveryCall).not.toHaveProperty("messages");
     expect(recoveryCall).not.toHaveProperty("tools");
     expect(recoveryCall.prompt).toContain("[REDACTED]");
-    expect(recoveryCall.prompt).not.toContain(
-      "must-not-cross-the-recovery-boundary",
-    );
+    expect(recoveryCall.prompt).not.toContain("must-not-cross-the-recovery-boundary");
     expect(mocks.completeRun).toHaveBeenCalledWith(
       expect.objectContaining({
         inputTokens: 30,

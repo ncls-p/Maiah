@@ -1,29 +1,8 @@
-
 import { and,eq,inArray } from "drizzle-orm";
 
 import { type AccessResourceType } from "@/server/domain/entities/access-resource";
 import { db } from "@/server/infrastructure/db";
-import {
-agentDelegationBindings,
-agentKnowledgeBindings,
-agentSkillBindings,
-agentSkills,
-agentToolBindings,
-agentVersions,
-agents,
-aiModels,
-aiProviders,
-conversations,
-customTools,
-knowledgeBases,
-marketplaceItems,
-mcpServers,
-mcpTools,
-scheduledTasks,
-toolConnections,
-toolConnectors,
-workflows
-} from "@/server/infrastructure/db/schema";
+import { agentDelegationBindings,agentKnowledgeBindings,agentSkillBindings,agentSkills,agentToolBindings,agentVersions,agents,aiModels,aiProviders,conversations,customTools,knowledgeBases,marketplaceItems,mcpServers,mcpTools,scheduledTasks,toolConnections,toolConnectors,workflows } from "@/server/infrastructure/db/schema";
 
 import { ResourceTransferRootType,TransferSeed,addResource,emptyTransferSets,ids } from "./resource-transfer.transfer-access-policies";
 import { IamOperationError } from "./use-cases";
@@ -119,10 +98,7 @@ export async function expandTransferGraph(sourceWorkspaceId: string, root: Omit<
 
     const modelIds = ids(sets, "model");
     if (modelIds.length > 0) {
-      const [modelRows, consumers] = await Promise.all([
-        db.select({ providerId: aiModels.providerId }).from(aiModels).where(inArray(aiModels.id, modelIds)),
-        db.select({ agentId: agentVersions.agentId }).from(agentVersions).where(inArray(agentVersions.modelId, modelIds)),
-      ]);
+      const [modelRows, consumers] = await Promise.all([db.select({ providerId: aiModels.providerId }).from(aiModels).where(inArray(aiModels.id, modelIds)), db.select({ agentId: agentVersions.agentId }).from(agentVersions).where(inArray(agentVersions.modelId, modelIds))]);
       for (const model of modelRows) changed = addResource(sets, "provider", model.providerId, "parent") || changed;
       for (const consumer of consumers) changed = addResource(sets, "agent", consumer.agentId, "dependent") || changed;
     }
@@ -134,10 +110,7 @@ export async function expandTransferGraph(sourceWorkspaceId: string, root: Omit<
 
     const mcpServerIds = ids(sets, "mcp_server");
     if (mcpServerIds.length > 0) {
-      const [tools, connectors] = await Promise.all([
-        db.select({ id: mcpTools.id }).from(mcpTools).where(inArray(mcpTools.mcpServerId, mcpServerIds)),
-        db.select({ id: toolConnectors.id }).from(toolConnectors).where(inArray(toolConnectors.mcpServerId, mcpServerIds)),
-      ]);
+      const [tools, connectors] = await Promise.all([db.select({ id: mcpTools.id }).from(mcpTools).where(inArray(mcpTools.mcpServerId, mcpServerIds)), db.select({ id: toolConnectors.id }).from(toolConnectors).where(inArray(toolConnectors.mcpServerId, mcpServerIds))]);
       const toolIds = tools.map(({ id }) => id);
       if (toolIds.length > 0) {
         const bindings = await db
@@ -155,10 +128,7 @@ export async function expandTransferGraph(sourceWorkspaceId: string, root: Omit<
 
     const connectorIds = ids(sets, "tool_connector");
     if (connectorIds.length > 0) {
-      const [connectorRows, connections] = await Promise.all([
-        db.select({ mcpServerId: toolConnectors.mcpServerId }).from(toolConnectors).where(inArray(toolConnectors.id, connectorIds)),
-        db.select({ id: toolConnections.id }).from(toolConnections).where(inArray(toolConnections.connectorId, connectorIds)),
-      ]);
+      const [connectorRows, connections] = await Promise.all([db.select({ mcpServerId: toolConnectors.mcpServerId }).from(toolConnectors).where(inArray(toolConnectors.id, connectorIds)), db.select({ id: toolConnections.id }).from(toolConnections).where(inArray(toolConnections.connectorId, connectorIds))]);
       for (const connector of connectorRows) changed = addResource(sets, "mcp_server", connector.mcpServerId, "dependency") || changed;
       for (const connection of connections) changed = addResource(sets, "tool_connection", connection.id, "dependent") || changed;
     }
@@ -204,10 +174,7 @@ export async function expandTransferGraph(sourceWorkspaceId: string, root: Omit<
 
     const conversationIds = ids(sets, "conversation");
     if (conversationIds.length > 0) {
-      const [rows, tasks] = await Promise.all([
-        db.select({ agentId: conversations.agentId }).from(conversations).where(inArray(conversations.id, conversationIds)),
-        db.select({ id: scheduledTasks.id }).from(scheduledTasks).where(inArray(scheduledTasks.conversationId, conversationIds)),
-      ]);
+      const [rows, tasks] = await Promise.all([db.select({ agentId: conversations.agentId }).from(conversations).where(inArray(conversations.id, conversationIds)), db.select({ id: scheduledTasks.id }).from(scheduledTasks).where(inArray(scheduledTasks.conversationId, conversationIds))]);
       for (const row of rows) changed = addResource(sets, "agent", row.agentId, "dependency") || changed;
       for (const task of tasks) changed = addResource(sets, "scheduled_task", task.id, "dependent") || changed;
     }

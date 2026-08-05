@@ -3,15 +3,8 @@ import { z } from "zod";
 
 import { registerAiSdkDevTools } from "@/server/infrastructure/ai-sdk/devtools";
 import { db } from "@/server/infrastructure/db";
-import {
-aiModels,
-aiProviders,
-appSettings,
-} from "@/server/infrastructure/db/schema";
-import {
-type ProviderKind,
-type ProviderRuntimeConfig
-} from "@/server/infrastructure/providers";
+import { aiModels,aiProviders,appSettings } from "@/server/infrastructure/db/schema";
+import { type ProviderKind,type ProviderRuntimeConfig } from "@/server/infrastructure/providers";
 import { resolveRuntimeModel } from "./automation.resolve-runtime-model";
 
 registerAiSdkDevTools();
@@ -39,9 +32,7 @@ export type RuntimeModel = {
   modelId: string;
 };
 
-export type ResolveRuntimeResult =
-  | { ok: true; runtime: RuntimeModel }
-  | { ok: false; reason: string };
+export type ResolveRuntimeResult = { ok: true; runtime: RuntimeModel } | { ok: false; reason: string };
 
 function defaultChatAutomationConfig(): ChatAutomationConfig {
   return {
@@ -57,18 +48,11 @@ function parseChatAutomationConfig(value: unknown): ChatAutomationConfig {
 }
 
 export async function getChatAutomationConfig() {
-  const [row] = await db
-    .select({ valueJson: appSettings.valueJson })
-    .from(appSettings)
-    .where(eq(appSettings.key, CHAT_AUTOMATION_SETTING_KEY))
-    .limit(1);
+  const [row] = await db.select({ valueJson: appSettings.valueJson }).from(appSettings).where(eq(appSettings.key, CHAT_AUTOMATION_SETTING_KEY)).limit(1);
   return parseChatAutomationConfig(row?.valueJson);
 }
 
-export async function setChatAutomationConfig(
-  input: ChatAutomationConfig,
-  updatedById: string,
-) {
+export async function setChatAutomationConfig(input: ChatAutomationConfig, updatedById: string) {
   const value = chatAutomationConfigSchema.parse(input);
   await db
     .insert(appSettings)
@@ -115,9 +99,7 @@ export async function getChatAutomationAdminState() {
   return { config, providers, models };
 }
 
-export function validateChatAutomationConfigShape(
-  config: ChatAutomationConfig,
-): ChatAutomationValidationIssue[] {
+export function validateChatAutomationConfigShape(config: ChatAutomationConfig): ChatAutomationValidationIssue[] {
   const issues: ChatAutomationValidationIssue[] = [];
   if (config.enabled && !config.providerId) {
     issues.push({
@@ -134,9 +116,7 @@ export function validateChatAutomationConfigShape(
   return issues;
 }
 
-export async function validateChatAutomationConfig(
-  config: ChatAutomationConfig,
-): Promise<{ ok: boolean; issues: ChatAutomationValidationIssue[] }> {
+export async function validateChatAutomationConfig(config: ChatAutomationConfig): Promise<{ ok: boolean; issues: ChatAutomationValidationIssue[] }> {
   const issues = validateChatAutomationConfigShape(config);
   if (issues.length > 0) {
     return { ok: false, issues };

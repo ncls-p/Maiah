@@ -20,10 +20,7 @@ function upstreamUsage() {
 function completionPayload(body: Record<string, unknown>) {
   const model = typeof body.model === "string" ? body.model : "proxy-model";
   const tools = Array.isArray(body.tools) ? body.tools : [];
-  const responseFormat = body.response_format as
-    | { type?: string }
-    | null
-    | undefined;
+  const responseFormat = body.response_format as { type?: string } | null | undefined;
 
   if (tools.length > 0) {
     return {
@@ -65,11 +62,7 @@ function completionPayload(body: Record<string, unknown>) {
         index: 0,
         message: {
           role: "assistant",
-          content:
-            responseFormat?.type === "json_schema" ||
-            responseFormat?.type === "json_object"
-              ? '{"answer":"proxy-ok"}'
-              : "proxy-ok",
+          content: responseFormat?.type === "json_schema" || responseFormat?.type === "json_object" ? '{"answer":"proxy-ok"}' : "proxy-ok",
         },
         finish_reason: "stop",
       },
@@ -81,10 +74,7 @@ function completionPayload(body: Record<string, unknown>) {
 async function readBody(request: import("node:http").IncomingMessage) {
   const chunks: Buffer[] = [];
   for await (const chunk of request) chunks.push(Buffer.from(chunk));
-  return JSON.parse(Buffer.concat(chunks).toString("utf8")) as Record<
-    string,
-    unknown
-  >;
+  return JSON.parse(Buffer.concat(chunks).toString("utf8")) as Record<string, unknown>;
 }
 
 test.beforeAll(async () => {
@@ -130,18 +120,14 @@ test.beforeAll(async () => {
           object: "chat.completion.chunk",
           created,
           model,
-          choices: [
-            { index: 0, delta: { content: "proxy" }, finish_reason: null },
-          ],
+          choices: [{ index: 0, delta: { content: "proxy" }, finish_reason: null }],
         },
         {
           id: "chatcmpl-upstream-stream",
           object: "chat.completion.chunk",
           created,
           model,
-          choices: [
-            { index: 0, delta: { content: "-stream" }, finish_reason: null },
-          ],
+          choices: [{ index: 0, delta: { content: "-stream" }, finish_reason: null }],
         },
         {
           id: "chatcmpl-upstream-stream",
@@ -156,8 +142,7 @@ test.beforeAll(async () => {
         "content-type": "text/event-stream; charset=utf-8",
         "cache-control": "no-cache",
       });
-      for (const chunk of chunks)
-        response.write(`data: ${JSON.stringify(chunk)}\n\n`);
+      for (const chunk of chunks) response.write(`data: ${JSON.stringify(chunk)}\n\n`);
       response.end("data: [DONE]\n\n");
       return;
     }
@@ -165,13 +150,7 @@ test.beforeAll(async () => {
     response.setHeader("content-type", "application/json");
     response.end(JSON.stringify(completionPayload(body)));
   });
-  await new Promise<void>((resolve) =>
-    upstream.listen(
-      0,
-      process.env.E2E_UPSTREAM_BIND_HOST ?? "127.0.0.1",
-      resolve,
-    ),
-  );
+  await new Promise<void>((resolve) => upstream.listen(0, process.env.E2E_UPSTREAM_BIND_HOST ?? "127.0.0.1", resolve));
   const address = upstream.address();
   if (!address || typeof address === "string") {
     throw new Error("Failed to start the E2E OpenAI upstream");
@@ -180,9 +159,7 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
-  await new Promise<void>((resolve, reject) =>
-    upstream.close((error) => (error ? reject(error) : resolve())),
-  );
+  await new Promise<void>((resolve, reject) => upstream.close((error) => (error ? reject(error) : resolve())));
 });
 
 test.beforeEach(async ({ page }) => {

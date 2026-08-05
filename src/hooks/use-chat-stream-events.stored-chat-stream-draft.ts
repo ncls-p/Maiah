@@ -1,11 +1,6 @@
 "use client";
 
-import {
-isChatStreamEvent,
-type ChatMessage,
-type ChatStreamEvent,
-type PendingToolApproval
-} from "@/components/chat/chat-types";
+import { isChatStreamEvent,type ChatMessage,type ChatStreamEvent,type PendingToolApproval } from "@/components/chat/chat-types";
 
 export type StoredChatStreamDraft = {
   conversationId: string;
@@ -26,18 +21,13 @@ function draftKey(conversationId: string) {
   return `${STREAM_DRAFT_PREFIX}${conversationId}`;
 }
 
-export function getStoredChatStreamDraft(
-  conversationId: string,
-): StoredChatStreamDraft | null {
+export function getStoredChatStreamDraft(conversationId: string): StoredChatStreamDraft | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = window.localStorage.getItem(draftKey(conversationId));
     if (!raw) return null;
     const draft = JSON.parse(raw) as StoredChatStreamDraft;
-    if (
-      !draft?.assistantMessage ||
-      Date.now() - draft.updatedAt > STREAM_DRAFT_TTL_MS
-    ) {
+    if (!draft?.assistantMessage || Date.now() - draft.updatedAt > STREAM_DRAFT_TTL_MS) {
       window.localStorage.removeItem(draftKey(conversationId));
       return null;
     }
@@ -57,15 +47,9 @@ export function clearStoredChatStreamDraft(conversationId: string) {
   );
 }
 
-export function storeChatStreamDraft(
-  draft: StoredChatStreamDraft,
-  options: { notify?: boolean } = {},
-) {
+export function storeChatStreamDraft(draft: StoredChatStreamDraft, options: { notify?: boolean } = {}) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(
-    draftKey(draft.conversationId),
-    JSON.stringify(draft),
-  );
+  window.localStorage.setItem(draftKey(draft.conversationId), JSON.stringify(draft));
   if (options.notify === false) return;
   window.dispatchEvent(
     new CustomEvent(STREAM_DRAFT_EVENT, {
@@ -74,14 +58,9 @@ export function storeChatStreamDraft(
   );
 }
 
-export function mergeStoredDraft(
-  messages: ChatMessage[],
-  draft: StoredChatStreamDraft | null,
-) {
+export function mergeStoredDraft(messages: ChatMessage[], draft: StoredChatStreamDraft | null) {
   if (!draft) return messages;
-  const existingIndex = messages.findIndex(
-    (message) => message.id === draft.assistantMessage.id,
-  );
+  const existingIndex = messages.findIndex((message) => message.id === draft.assistantMessage.id);
   if (existingIndex === -1) {
     return [...messages, draft.assistantMessage];
   }
@@ -96,10 +75,7 @@ export function mergeStoredDraft(
   next[existingIndex] = {
     ...existing,
     ...draft.assistantMessage,
-    parts:
-      draft.assistantMessage.parts.length > 0
-        ? draft.assistantMessage.parts
-        : existing.parts,
+    parts: draft.assistantMessage.parts.length > 0 ? draft.assistantMessage.parts : existing.parts,
   };
   return next;
 }
@@ -110,38 +86,23 @@ export function approvalsFromDraft(draft: StoredChatStreamDraft | null) {
   return draft.pendingApproval ? [draft.pendingApproval] : [];
 }
 
-export function upsertPendingApproval(
-  approvals: PendingToolApproval[],
-  approval: PendingToolApproval,
-) {
-  const existingIndex = approvals.findIndex(
-    (item) => item.invocationId === approval.invocationId,
-  );
+export function upsertPendingApproval(approvals: PendingToolApproval[], approval: PendingToolApproval) {
+  const existingIndex = approvals.findIndex((item) => item.invocationId === approval.invocationId);
   if (existingIndex === -1) return [...approvals, approval];
   const next = [...approvals];
   next[existingIndex] = approval;
   return next;
 }
 
-export function removePendingApproval(
-  approvals: PendingToolApproval[],
-  invocationId: string,
-) {
+export function removePendingApproval(approvals: PendingToolApproval[], invocationId: string) {
   return approvals.filter((approval) => approval.invocationId !== invocationId);
 }
 
-export function filterResolvedApprovals(
-  approvals: PendingToolApproval[],
-  resolvedApprovalIds: Set<string>,
-) {
-  return approvals.filter(
-    (approval) => !resolvedApprovalIds.has(approval.invocationId),
-  );
+export function filterResolvedApprovals(approvals: PendingToolApproval[], resolvedApprovalIds: Set<string>) {
+  return approvals.filter((approval) => !resolvedApprovalIds.has(approval.invocationId));
 }
 
-export function parseStreamEventText(
-  eventText: string,
-): ChatStreamEvent | null {
+export function parseStreamEventText(eventText: string): ChatStreamEvent | null {
   if (!eventText.trim()) return null;
 
   const data = eventText

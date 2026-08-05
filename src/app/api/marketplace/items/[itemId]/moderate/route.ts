@@ -9,17 +9,12 @@ const moderateSchema = z.object({
 });
 
 function handleMarketplaceError(error: unknown): NextResponse {
-  const message =
-    error instanceof Error ? error.message : "Internal server error";
-  const status =
-    error instanceof Error && error.message.includes("not found") ? 404 : 500;
+  const message = error instanceof Error ? error.message : "Internal server error";
+  const status = error instanceof Error && error.message.includes("not found") ? 404 : 500;
   return NextResponse.json({ error: message }, { status });
 }
 
-export async function PUT(
-  req: NextRequest,
-  { params }: { params: Promise<{ itemId: string }> },
-) {
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ itemId: string }> }) {
   return handleRoute(
     req,
     async ({ session }) => {
@@ -28,11 +23,7 @@ export async function PUT(
       }
       const { itemId } = await params;
       const parsed = moderateSchema.safeParse(await req.json());
-      if (!parsed.success)
-        return NextResponse.json(
-          { error: "Invalid input", details: parsed.error.issues },
-          { status: 400 },
-        );
+      if (!parsed.success) return NextResponse.json({ error: "Invalid input", details: parsed.error.issues }, { status: 400 });
 
       const updated = await adminModerateItem({
         itemId,

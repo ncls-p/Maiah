@@ -38,13 +38,13 @@ No user secrets are sent as plaintext headers or persisted by the gateway.
 
 ## Environment
 
-| Variable | Required | Description |
-| --- | --- | --- |
-| `MAIAH_MCP_GATEWAY_SHARED_SECRET` or `MCP_GATEWAY_SHARED_SECRET` | yes | Shared HMAC secret. Must match Maiah `MCP_GATEWAY_SHARED_SECRET`. |
-| `SERVICENOW_ALLOWED_HOST_SUFFIXES` | no | Comma-separated allowed host suffixes. Default: `service-now.com`. Use `*` only in trusted dev. |
-| `SERVICENOW_GATEWAY_RESOLVE_HOSTS` | no | Resolve hostnames and block private IPs. Default: `true`. |
-| `SERVICENOW_MCP_TOOL_PACKAGE` | no | Default upstream tool package. Default: `full`. |
-| `HOST` / `PORT` | no | Bind address. Defaults `0.0.0.0:8080`. |
+| Variable                                                         | Required | Description                                                                                     |
+| ---------------------------------------------------------------- | -------- | ----------------------------------------------------------------------------------------------- |
+| `MAIAH_MCP_GATEWAY_SHARED_SECRET` or `MCP_GATEWAY_SHARED_SECRET` | yes      | Shared HMAC secret. Must match Maiah `MCP_GATEWAY_SHARED_SECRET`.                               |
+| `SERVICENOW_ALLOWED_HOST_SUFFIXES`                               | no       | Comma-separated allowed host suffixes. Default: `service-now.com`. Use `*` only in trusted dev. |
+| `SERVICENOW_GATEWAY_RESOLVE_HOSTS`                               | no       | Resolve hostnames and block private IPs. Default: `true`.                                       |
+| `SERVICENOW_MCP_TOOL_PACKAGE`                                    | no       | Default upstream tool package. Default: `full`.                                                 |
+| `HOST` / `PORT`                                                  | no       | Bind address. Defaults `0.0.0.0:8080`.                                                          |
 
 ## Local run
 

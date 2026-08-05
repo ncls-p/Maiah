@@ -1,16 +1,4 @@
-import {
-boolean,
-index,
-integer,
-jsonb,
-pgEnum,
-pgTable,
-text,
-timestamp,
-uniqueIndex,
-uuid,
-varchar,
-} from "drizzle-orm/pg-core";
+import { boolean,index,integer,jsonb,pgEnum,pgTable,text,timestamp,uniqueIndex,uuid,varchar } from "drizzle-orm/pg-core";
 import { agentVersions } from "./agents";
 import { users } from "./auth";
 import { conversations,messages } from "./conversations";
@@ -25,11 +13,7 @@ const STATUS_COLUMN = "status";
 
 // ─── MCP Servers ───────────────────────────────────────────────────────
 
-export const mcpTransportEnum = pgEnum("mcp_transport", [
-  "stdio",
-  "sse",
-  "streamable-http",
-]);
+export const mcpTransportEnum = pgEnum("mcp_transport", ["stdio", "sse", "streamable-http"]);
 
 export const mcpServers = pgTable(
   "mcp_servers",
@@ -53,12 +37,8 @@ export const mcpServers = pgTable(
     createdById: uuid(CREATED_BY_USER_ID_COLUMN)
       .notNull()
       .references(() => users.id),
-    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
     archivedAt: timestamp("archived_at", { withTimezone: true }),
   },
   (t) => [index("mcp_servers_workspace").on(t.workspaceId)],
@@ -75,9 +55,7 @@ export const mcpTools = pgTable(
     description: text("description"),
     inputSchemaJson: jsonb("input_schema_json"),
     outputSchemaJson: jsonb("output_schema_json"),
-    discoveredAt: timestamp("discovered_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    discoveredAt: timestamp("discovered_at", { withTimezone: true }).notNull().defaultNow(),
     enabled: boolean("enabled").notNull().default(true),
     requireApproval: boolean("require_approval").notNull().default(false),
   },
@@ -101,17 +79,10 @@ export const workspaceApiKeys = pgTable(
     lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
     expiresAt: timestamp("expires_at", { withTimezone: true }),
     revokedAt: timestamp("revoked_at", { withTimezone: true }),
-    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [
-    index("workspace_api_keys_workspace").on(t.workspaceId),
-    uniqueIndex("workspace_api_keys_hash_unique").on(t.keyHash),
-  ],
+  (t) => [index("workspace_api_keys_workspace").on(t.workspaceId), uniqueIndex("workspace_api_keys_hash_unique").on(t.keyHash)],
 );
 
 export const agentToolBindings = pgTable(
@@ -125,17 +96,9 @@ export const agentToolBindings = pgTable(
     toolId: uuid("tool_id").notNull(),
     requireApproval: boolean("require_approval").notNull().default(false),
     riskLevel: varchar("risk_level", { length: 16 }),
-    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [
-    uniqueIndex("agent_tool_bindings_version_tool_unique").on(
-      t.agentVersionId,
-      t.toolSource,
-      t.toolId,
-    ),
-  ],
+  (t) => [uniqueIndex("agent_tool_bindings_version_tool_unique").on(t.agentVersionId, t.toolSource, t.toolId)],
 );
 
 export const toolInvocations = pgTable(
@@ -157,13 +120,8 @@ export const toolInvocations = pgTable(
     latencyMs: integer("latency_ms"),
     errorMessage: text("error_message"),
     approvedByUserId: uuid("approved_by_user_id"),
-    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
     completedAt: timestamp("completed_at", { withTimezone: true }),
   },
-  (t) => [
-    index("tool_invocations_workspace").on(t.workspaceId),
-    index("tool_invocations_conversation").on(t.conversationId),
-  ],
+  (t) => [index("tool_invocations_workspace").on(t.workspaceId), index("tool_invocations_conversation").on(t.conversationId)],
 );

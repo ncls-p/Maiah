@@ -23,6 +23,7 @@ npm install streamdown
 ```
 
 Optional plugins (install only what's needed):
+
 ```bash
 npm install @streamdown/code @streamdown/mermaid @streamdown/math @streamdown/cjk
 ```
@@ -32,42 +33,41 @@ npm install @streamdown/code @streamdown/mermaid @streamdown/math @streamdown/cj
 **This is the most commonly missed step.** Streamdown uses Tailwind for styling and the dist files must be scanned.
 
 **Tailwind v4** — add to `globals.css`:
+
 ```css
 @source "../node_modules/streamdown/dist/*.js";
 ```
 
 Add plugin `@source` lines **only for packages you have installed** (omitting uninstalled plugins avoids Tailwind errors). See plugin pages for exact paths:
+
 - Code: `@source "../node_modules/@streamdown/code/dist/*.js";`
 - CJK: `@source "../node_modules/@streamdown/cjk/dist/*.js";`
 - Math: `@source "../node_modules/@streamdown/math/dist/*.js";`
 - Mermaid: `@source "../node_modules/@streamdown/mermaid/dist/*.js";`
 
-
 **Tailwind v3** — add to `tailwind.config.js`:
+
 ```js
 module.exports = {
-  content: [
-    "./app/**/*.{js,ts,jsx,tsx,mdx}",
-    "./node_modules/streamdown/dist/*.js",
-  ],
+  content: ["./app/**/*.{js,ts,jsx,tsx,mdx}", "./node_modules/streamdown/dist/*.js"],
 };
 ```
 
 ### 3. Basic Usage
 
 ```tsx
-import { Streamdown } from 'streamdown';
+import { Streamdown } from "streamdown";
 
-<Streamdown>{markdown}</Streamdown>
+<Streamdown>{markdown}</Streamdown>;
 ```
 
 ### 4. With AI Streaming (Vercel AI SDK)
 
 ```tsx
-'use client';
-import { useChat } from '@ai-sdk/react';
-import { Streamdown } from 'streamdown';
-import { code } from '@streamdown/code';
+"use client";
+import { useChat } from "@ai-sdk/react";
+import { Streamdown } from "streamdown";
+import { code } from "@streamdown/code";
 
 export default function Chat() {
   const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat();
@@ -75,12 +75,7 @@ export default function Chat() {
   return (
     <>
       {messages.map((msg, i) => (
-        <Streamdown
-          key={msg.id}
-          plugins={{ code }}
-          caret="block"
-          isAnimating={isLoading && i === messages.length - 1 && msg.role === 'assistant'}
-        >
+        <Streamdown key={msg.id} plugins={{ code }} caret="block" isAnimating={isLoading && i === messages.length - 1 && msg.role === "assistant"}>
           {msg.content}
         </Streamdown>
       ))}
@@ -102,39 +97,40 @@ export default function Chat() {
 
 ## Key Props
 
-| Prop | Type | Default | Purpose |
-|------|------|---------|---------|
-| `children` | `string` | — | Markdown content |
-| `mode` | `"streaming" \| "static"` | `"streaming"` | Rendering mode |
-| `plugins` | `{ code?, mermaid?, math?, cjk? }` | — | Feature plugins |
-| `isAnimating` | `boolean` | `false` | Streaming indicator |
-| `caret` | `"block" \| "circle"` | — | Cursor style |
-| `components` | `Components` | — | Custom element overrides |
-| `controls` | `boolean \| object` | `true` | Interactive buttons |
-| `linkSafety` | `LinkSafetyConfig` | `{ enabled: true }` | Link confirmation modal |
-| `shikiTheme` | `[light, dark]` | `['github-light', 'github-dark']` | Code themes |
-| `className` | `string` | — | Container class |
-| `allowedElements` | `string[]` | all | Tag names to allow |
-| `disallowedElements` | `string[]` | `[]` | Tag names to disallow |
-| `allowElement` | `AllowElement` | — | Custom element filter |
-| `unwrapDisallowed` | `boolean` | `false` | Keep children of disallowed elements |
-| `skipHtml` | `boolean` | `false` | Ignore raw HTML |
-| `urlTransform` | `UrlTransform` | `defaultUrlTransform` | Transform/sanitize URLs |
+| Prop                 | Type                               | Default                           | Purpose                              |
+| -------------------- | ---------------------------------- | --------------------------------- | ------------------------------------ |
+| `children`           | `string`                           | —                                 | Markdown content                     |
+| `mode`               | `"streaming" \| "static"`          | `"streaming"`                     | Rendering mode                       |
+| `plugins`            | `{ code?, mermaid?, math?, cjk? }` | —                                 | Feature plugins                      |
+| `isAnimating`        | `boolean`                          | `false`                           | Streaming indicator                  |
+| `caret`              | `"block" \| "circle"`              | —                                 | Cursor style                         |
+| `components`         | `Components`                       | —                                 | Custom element overrides             |
+| `controls`           | `boolean \| object`                | `true`                            | Interactive buttons                  |
+| `linkSafety`         | `LinkSafetyConfig`                 | `{ enabled: true }`               | Link confirmation modal              |
+| `shikiTheme`         | `[light, dark]`                    | `['github-light', 'github-dark']` | Code themes                          |
+| `className`          | `string`                           | —                                 | Container class                      |
+| `allowedElements`    | `string[]`                         | all                               | Tag names to allow                   |
+| `disallowedElements` | `string[]`                         | `[]`                              | Tag names to disallow                |
+| `allowElement`       | `AllowElement`                     | —                                 | Custom element filter                |
+| `unwrapDisallowed`   | `boolean`                          | `false`                           | Keep children of disallowed elements |
+| `skipHtml`           | `boolean`                          | `false`                           | Ignore raw HTML                      |
+| `urlTransform`       | `UrlTransform`                     | `defaultUrlTransform`             | Transform/sanitize URLs              |
 
 For full API reference, see [references/api.md](references/api.md).
 
 ## Plugin Quick Reference
 
-| Plugin | Package | Purpose |
-|--------|---------|---------|
-| Code | `@streamdown/code` | Syntax highlighting (Shiki, 200+ languages) |
-| Mermaid | `@streamdown/mermaid` | Diagrams (flowcharts, sequence, etc.) |
-| Math | `@streamdown/math` | LaTeX via KaTeX (requires CSS import) |
-| CJK | `@streamdown/cjk` | Chinese/Japanese/Korean text support |
+| Plugin  | Package               | Purpose                                     |
+| ------- | --------------------- | ------------------------------------------- |
+| Code    | `@streamdown/code`    | Syntax highlighting (Shiki, 200+ languages) |
+| Mermaid | `@streamdown/mermaid` | Diagrams (flowcharts, sequence, etc.)       |
+| Math    | `@streamdown/math`    | LaTeX via KaTeX (requires CSS import)       |
+| CJK     | `@streamdown/cjk`     | Chinese/Japanese/Korean text support        |
 
 **Math requires CSS:**
+
 ```tsx
-import 'katex/dist/katex.min.css';
+import "katex/dist/katex.min.css";
 ```
 
 For plugin configuration details, see [references/plugins.md](references/plugins.md).

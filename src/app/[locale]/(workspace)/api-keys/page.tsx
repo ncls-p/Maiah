@@ -10,11 +10,7 @@ export default function ApiKeysPage() {
 
   return (
     <RequireWorkspaceAccess required="canManageApiKeys">
-      <WorkspacePage
-        title={t("apiKeysTitle")}
-        description={t("apiKeysDescription")}
-        width="narrow"
-      >
+      <WorkspacePage title={t("apiKeysTitle")} description={t("apiKeysDescription")} width="narrow">
         <WorkspaceApiKeys />
       </WorkspacePage>
     </RequireWorkspaceAccess>

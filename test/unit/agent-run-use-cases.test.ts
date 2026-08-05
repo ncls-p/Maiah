@@ -15,16 +15,7 @@ type Chain = {
 
 const dbMock = vi.hoisted(() => {
   const chain = {} as Chain;
-  for (const method of [
-    "select",
-    "insert",
-    "update",
-    "from",
-    "where",
-    "values",
-    "set",
-    "orderBy",
-  ] as const) {
+  for (const method of ["select", "insert", "update", "from", "where", "values", "set", "orderBy"] as const) {
     chain[method] = vi.fn().mockReturnValue(chain);
   }
   chain.limit = vi.fn().mockResolvedValue([]);
@@ -58,11 +49,7 @@ vi.mock("@/modules/usage/quota-reservations", () => ({
   expireWorkspaceTokenReservations: quotaMocks.expire,
 }));
 
-import {
-claimAgentRun,
-createAgentRun,
-heartbeatAgentRun
-} from "@/modules/agent/run-use-cases";
+import { claimAgentRun,createAgentRun,heartbeatAgentRun } from "@/modules/agent/run-use-cases";
 
 const run = {
   id: "11111111-1111-4111-8111-111111111111",
@@ -73,16 +60,7 @@ const run = {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  for (const method of [
-    "select",
-    "insert",
-    "update",
-    "from",
-    "where",
-    "values",
-    "set",
-    "orderBy",
-  ] as const) {
+  for (const method of ["select", "insert", "update", "from", "where", "values", "set", "orderBy"] as const) {
     dbMock.chain[method].mockReset().mockReturnValue(dbMock.chain);
   }
   dbMock.chain.limit.mockReset().mockResolvedValue([]);
@@ -141,15 +119,11 @@ describe("agent run lifecycle", () => {
         inputPreviewJson: { prompt: "use Bearer [REDACTED]" },
       }),
     );
-    expect(quotaMocks.reserve).toHaveBeenCalledWith(
-      expect.objectContaining({ requestedTokens: 2_000 }),
-    );
+    expect(quotaMocks.reserve).toHaveBeenCalledWith(expect.objectContaining({ requestedTokens: 2_000 }));
   });
 
   it("creates child runs without reserving the root workspace budget", async () => {
-    dbMock.chain.returning.mockResolvedValueOnce([
-      { ...run, parentRunId: "parent-run" },
-    ]);
+    dbMock.chain.returning.mockResolvedValueOnce([{ ...run, parentRunId: "parent-run" }]);
 
     const result = await createAgentRun({
       workspaceId: run.workspaceId,
@@ -179,9 +153,7 @@ describe("agent run lifecycle", () => {
 
   it("recovers a concurrent idempotent insert", async () => {
     const conflict = Object.assign(new Error("duplicate"), { code: "23505" });
-    dbMock.chain.limit
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([{ ...run, idempotencyKey: "request-1" }]);
+    dbMock.chain.limit.mockResolvedValueOnce([]).mockResolvedValueOnce([{ ...run, idempotencyKey: "request-1" }]);
     dbMock.chain.returning.mockRejectedValueOnce(conflict);
 
     await expect(
@@ -229,16 +201,10 @@ describe("agent run lifecycle", () => {
   });
 
   it("claims queued work with an expiring lease", async () => {
-    dbMock.chain.returning.mockResolvedValueOnce([
-      { ...run, status: "running", leaseOwner: "worker-1" },
-    ]);
+    dbMock.chain.returning.mockResolvedValueOnce([{ ...run, status: "running", leaseOwner: "worker-1" }]);
 
-    await expect(
-      claimAgentRun({ runId: run.id, leaseOwner: "worker-1" }),
-    ).resolves.toMatchObject({ status: "running", leaseOwner: "worker-1" });
-    expect(dbMock.chain.set).toHaveBeenCalledWith(
-      expect.objectContaining({ status: "running", leaseOwner: "worker-1" }),
-    );
+    await expect(claimAgentRun({ runId: run.id, leaseOwner: "worker-1" })).resolves.toMatchObject({ status: "running", leaseOwner: "worker-1" });
+    expect(dbMock.chain.set).toHaveBeenCalledWith(expect.objectContaining({ status: "running", leaseOwner: "worker-1" }));
   });
 
   it("returns null for unclaimable work and heartbeats only its lease owner", async () => {
@@ -247,14 +213,8 @@ describe("agent run lifecycle", () => {
       .mockResolvedValueOnce([{ id: run.id }])
       .mockResolvedValueOnce([]);
 
-    await expect(
-      claimAgentRun({ runId: run.id, leaseOwner: "worker-1" }),
-    ).resolves.toBeNull();
-    await expect(
-      heartbeatAgentRun({ runId: run.id, leaseOwner: "worker-1" }),
-    ).resolves.toBe(true);
-    await expect(
-      heartbeatAgentRun({ runId: run.id, leaseOwner: "worker-2" }),
-    ).resolves.toBe(false);
+    await expect(claimAgentRun({ runId: run.id, leaseOwner: "worker-1" })).resolves.toBeNull();
+    await expect(heartbeatAgentRun({ runId: run.id, leaseOwner: "worker-1" })).resolves.toBe(true);
+    await expect(heartbeatAgentRun({ runId: run.id, leaseOwner: "worker-2" })).resolves.toBe(false);
   });
 });

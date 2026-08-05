@@ -36,13 +36,7 @@ vi.mock("@/server/infrastructure/db", () => ({
   },
 }));
 
-import {
-builtInToolRequiresApprovalByDefault,
-getOrganizationBuiltInToolPolicyMap,
-listOrganizationBuiltInToolPolicies,
-resolveOrganizationBuiltInToolPolicies,
-updateOrganizationBuiltInToolPolicy,
-} from "@/modules/tool/organization-builtin-tool-policies";
+import { builtInToolRequiresApprovalByDefault,getOrganizationBuiltInToolPolicyMap,listOrganizationBuiltInToolPolicies,resolveOrganizationBuiltInToolPolicies,updateOrganizationBuiltInToolPolicy } from "@/modules/tool/organization-builtin-tool-policies";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -78,9 +72,7 @@ describe("organization built-in tool policies", () => {
       },
     ]);
 
-    expect(
-      policies.find((tool) => tool.name === "run_code_sandbox"),
-    ).toMatchObject({
+    expect(policies.find((tool) => tool.name === "run_code_sandbox")).toMatchObject({
       enabled: false,
       requireApproval: false,
       configured: true,
@@ -97,9 +89,7 @@ describe("organization built-in tool policies", () => {
   it("returns no policies when the workspace has no organization", async () => {
     database.selections.push({ terminal: "limit", value: [] });
 
-    await expect(
-      listOrganizationBuiltInToolPolicies("workspace-1"),
-    ).resolves.toEqual([]);
+    await expect(listOrganizationBuiltInToolPolicies("workspace-1")).resolves.toEqual([]);
   });
 
   it("loads configured policies and exposes an effective lookup map", async () => {
@@ -121,9 +111,7 @@ describe("organization built-in tool policies", () => {
     );
 
     const policies = await listOrganizationBuiltInToolPolicies("workspace-1");
-    expect(
-      policies.find((policy) => policy.name === "calculator"),
-    ).toMatchObject({
+    expect(policies.find((policy) => policy.name === "calculator")).toMatchObject({
       enabled: false,
       requireApproval: true,
       configured: true,

@@ -32,8 +32,6 @@ export function anthropicRequest(overrides: Record<string, unknown> = {}) {
   });
 }
 
-export async function* anthropicStreamParts(
-  values: Array<TextStreamPart<ToolSet>>,
-) {
+export async function* anthropicStreamParts(values: Array<TextStreamPart<ToolSet>>) {
   for (const value of values) yield value;
 }

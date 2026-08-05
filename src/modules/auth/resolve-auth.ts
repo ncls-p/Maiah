@@ -27,9 +27,7 @@ function bearerTokenFrom(headersList: Headers) {
   return headersList.get("x-api-key")?.trim() || null;
 }
 
-export async function resolveAuthContext(
-  request?: Request,
-): Promise<AuthContext | null> {
+export async function resolveAuthContext(request?: Request): Promise<AuthContext | null> {
   const headerList = request?.headers ?? (await headers());
   const rawKey = bearerTokenFrom(headerList);
   if (rawKey) {

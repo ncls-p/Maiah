@@ -196,13 +196,7 @@ export function ChatAutomationSettings() {
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <SettingsFeatureToggle icon={MessageSquareTextIcon} label={t("titles")} description={t("titlesDescription")} checked={config.generateTitles} onCheckedChange={(generateTitles) => setConfig({ ...config, generateTitles })} />
-              <SettingsFeatureToggle
-                icon={MessageSquareTextIcon}
-                label={t("suggestions")}
-                description={t("suggestionsDescription")}
-                checked={config.generateSuggestions}
-                onCheckedChange={(generateSuggestions) => setConfig({ ...config, generateSuggestions })}
-              />
+              <SettingsFeatureToggle icon={MessageSquareTextIcon} label={t("suggestions")} description={t("suggestionsDescription")} checked={config.generateSuggestions} onCheckedChange={(generateSuggestions) => setConfig({ ...config, generateSuggestions })} />
             </div>
           </>
         ) : null}

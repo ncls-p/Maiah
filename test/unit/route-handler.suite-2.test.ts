@@ -14,8 +14,7 @@ vi.mock("@/modules/admin/auth", () => ({
 }));
 
 vi.mock("@/server/domain/services/authorization", () => ({
-  matchesPermission: (granted: string, required: string) =>
-    granted === required,
+  matchesPermission: (granted: string, required: string) => granted === required,
   authorization: {
     checkPermission: vi.fn(),
     listPermissions: vi.fn(),
@@ -54,10 +53,8 @@ vi.mock("next/server", () => ({
 
 import * as authz from "@/server/domain/services/authorization";
 
-
 describe("route-handler – requireWorkspacePermissionAsync", async () => {
-  const { requireWorkspacePermissionAsync } =
-    await import("@/lib/route-handler");
+  const { requireWorkspacePermissionAsync } = await import("@/lib/route-handler");
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -67,18 +64,9 @@ describe("route-handler – requireWorkspacePermissionAsync", async () => {
     vi.mocked(authz.authorization.checkPermission).mockResolvedValue({
       granted: true,
     });
-    const result = await requireWorkspacePermissionAsync(
-      "session-1",
-      "ws-1",
-      "read",
-    );
+    const result = await requireWorkspacePermissionAsync("session-1", "ws-1", "read");
     expect(result).toBeNull();
-    expect(authz.authorization.checkPermission).toHaveBeenCalledWith(
-      { principalType: "user", principalId: "session-1" },
-      "read",
-      "workspace",
-      "ws-1",
-    );
+    expect(authz.authorization.checkPermission).toHaveBeenCalledWith({ principalType: "user", principalId: "session-1" }, "read", "workspace", "ws-1");
   });
 
   it("returns 403 when permission is denied", async () => {
@@ -86,11 +74,7 @@ describe("route-handler – requireWorkspacePermissionAsync", async () => {
       granted: false,
       reason: "Not a member",
     });
-    const result = await requireWorkspacePermissionAsync(
-      "session-1",
-      "ws-1",
-      "write",
-    );
+    const result = await requireWorkspacePermissionAsync("session-1", "ws-1", "write");
     expect(result!.status).toBe(403);
     expect(result!.body).toEqual({
       error: "Forbidden",

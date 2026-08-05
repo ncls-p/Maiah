@@ -197,17 +197,7 @@ export function ToolConnectionsPanel({ workspaceId, servers, toolsByServer, canM
           </div>
         ) : (
           <div className="flex flex-col gap-4">
-            {shouldShowServiceNowProvision ? (
-              <ProvisionServiceNowConnectorCard
-                servers={provisionCandidateServers}
-                busy={busy}
-                canManageMcpServers={canManageMcpServers}
-                selectedServerId={selectedProvisioningServerId}
-                selectedToolCount={selectedProvisioningToolCount}
-                onServerChangeAction={setProvisioningServerId}
-                onProvisionAction={(serverId) => void provisionServiceNowConnector(serverId)}
-              />
-            ) : null}
+            {shouldShowServiceNowProvision ? <ProvisionServiceNowConnectorCard servers={provisionCandidateServers} busy={busy} canManageMcpServers={canManageMcpServers} selectedServerId={selectedProvisioningServerId} selectedToolCount={selectedProvisioningToolCount} onServerChangeAction={setProvisioningServerId} onProvisionAction={(serverId) => void provisionServiceNowConnector(serverId)} /> : null}
 
             {connectorsWithServers.length === 0 && !shouldShowServiceNowProvision ? (
               <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed p-6 text-center">
@@ -222,21 +212,7 @@ export function ToolConnectionsPanel({ workspaceId, servers, toolsByServer, canM
                 {connectorsWithServers.map((connector) => {
                   const connectorConnections = connections.filter((connection) => connection.connectorId === connector.id);
                   const toolCount = connector.mcpServerId ? (toolsByServer[connector.mcpServerId]?.length ?? 0) : undefined;
-                  return (
-                    <ConnectorCard
-                      key={connector.id}
-                      connector={connector}
-                      connections={connectorConnections}
-                      server={connector.mcpServerId ? serverById.get(connector.mcpServerId) : undefined}
-                      toolCount={toolCount}
-                      busy={busy}
-                      canManageWorkspaceConnections={canManageWorkspaceConnections}
-                      onCreateAction={openCreate}
-                      onEditAction={openEdit}
-                      onMakeDefaultAction={(connection) => void makeDefault(connection)}
-                      onRemoveAction={(connection) => void removeConnection(connection)}
-                    />
-                  );
+                  return <ConnectorCard key={connector.id} connector={connector} connections={connectorConnections} server={connector.mcpServerId ? serverById.get(connector.mcpServerId) : undefined} toolCount={toolCount} busy={busy} canManageWorkspaceConnections={canManageWorkspaceConnections} onCreateAction={openCreate} onEditAction={openEdit} onMakeDefaultAction={(connection) => void makeDefault(connection)} onRemoveAction={(connection) => void removeConnection(connection)} />;
                 })}
               </div>
             ) : null}

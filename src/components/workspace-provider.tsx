@@ -2,17 +2,9 @@
 
 import { useCallback,useEffect,useMemo,useState } from "react";
 
-import {
-WorkspaceContext,
-type WorkspaceContextValue,
-type WorkspaceSummary,
-} from "@/hooks/use-workspace";
+import { WorkspaceContext,type WorkspaceContextValue,type WorkspaceSummary } from "@/hooks/use-workspace";
 import { fetchWorkspaces } from "@/lib/api-client";
-import {
-resolveOrganizationTheme,
-themeCss,
-type OrganizationTheme,
-} from "@/modules/organization/themes";
+import { resolveOrganizationTheme,themeCss,type OrganizationTheme } from "@/modules/organization/themes";
 
 const ACTIVE_WORKSPACE_KEY = "active-workspace-id";
 
@@ -33,13 +25,8 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     try {
       const rows = await fetchWorkspaces();
       setWorkspaces(rows);
-      const storedWorkspaceId =
-        window.localStorage.getItem(ACTIVE_WORKSPACE_KEY);
-      const active =
-        rows.find((row) => row.id === workspaceId)?.id ??
-        rows.find((row) => row.id === storedWorkspaceId)?.id ??
-        rows[0]?.id ??
-        null;
+      const storedWorkspaceId = window.localStorage.getItem(ACTIVE_WORKSPACE_KEY);
+      const active = rows.find((row) => row.id === workspaceId)?.id ?? rows.find((row) => row.id === storedWorkspaceId)?.id ?? rows[0]?.id ?? null;
       if (active) {
         setWorkspaceIdState(active);
         window.localStorage.setItem(ACTIVE_WORKSPACE_KEY, active);
@@ -60,32 +47,19 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     void refresh();
   }, [workspaceId, workspaces.length, refresh]);
 
-  const activeWorkspace = workspaces.find(
-    (workspace) => workspace.id === workspaceId,
-  );
+  const activeWorkspace = workspaces.find((workspace) => workspace.id === workspaceId);
 
   useEffect(() => {
-    const themeName = (activeWorkspace?.organizationTheme ??
-      "ocean") as OrganizationTheme;
+    const themeName = (activeWorkspace?.organizationTheme ?? "ocean") as OrganizationTheme;
     document.documentElement.dataset.brandTheme = themeName;
-    let style = document.querySelector<HTMLStyleElement>(
-      "style[data-organization-theme]",
-    );
+    let style = document.querySelector<HTMLStyleElement>("style[data-organization-theme]");
     if (!style) {
       style = document.createElement("style");
       style.dataset.organizationTheme = "true";
       document.head.append(style);
     }
-    style.textContent = themeCss(
-      resolveOrganizationTheme(
-        themeName,
-        activeWorkspace?.organizationThemeConfig,
-      ),
-    );
-  }, [
-    activeWorkspace?.organizationTheme,
-    activeWorkspace?.organizationThemeConfig,
-  ]);
+    style.textContent = themeCss(resolveOrganizationTheme(themeName, activeWorkspace?.organizationThemeConfig));
+  }, [activeWorkspace?.organizationTheme, activeWorkspace?.organizationThemeConfig]);
 
   const value = useMemo<WorkspaceContextValue>(
     () => ({
@@ -100,23 +74,8 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       setWorkspaceId,
       refresh,
     }),
-    [
-      workspaceId,
-      workspaces,
-      activeWorkspace?.organizationName,
-      activeWorkspace?.organizationLogoUrl,
-      activeWorkspace?.organizationTheme,
-      activeWorkspace?.organizationThemeConfig,
-      isLoading,
-      error,
-      setWorkspaceId,
-      refresh,
-    ],
+    [workspaceId, workspaces, activeWorkspace?.organizationName, activeWorkspace?.organizationLogoUrl, activeWorkspace?.organizationTheme, activeWorkspace?.organizationThemeConfig, isLoading, error, setWorkspaceId, refresh],
   );
 
-  return (
-    <WorkspaceContext.Provider value={value}>
-      {children}
-    </WorkspaceContext.Provider>
-  );
+  return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;
 }

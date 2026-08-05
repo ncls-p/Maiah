@@ -1,6 +1,4 @@
-import type {
-AgentMarketplaceManifest
-} from "@/modules/marketplace/manifest-types";
+import type { AgentMarketplaceManifest } from "@/modules/marketplace/manifest-types";
 import { beforeEach,describe,expect,it,vi } from "vitest";
 
 // ─── DB mock ────────────────────────────────────────────────────────────
@@ -52,9 +50,7 @@ import * as _dbModule from "@/server/infrastructure/db";
 const dbModule = _dbModule as unknown as DbModule;
 
 const mockBuildAgent = vi.mocked(manifestBuilders.buildAgentManifest);
-const mockFindDraft = vi.mocked(draftHelpers.findExistingDraft) as ReturnType<
-  typeof vi.fn<() => Promise<unknown>>
->;
+const mockFindDraft = vi.mocked(draftHelpers.findExistingDraft) as ReturnType<typeof vi.fn<() => Promise<unknown>>>;
 
 function resetChains() {
   dbModule._selectChain.from.mockReset().mockReturnThis();
@@ -82,16 +78,13 @@ const agentManifest: AgentMarketplaceManifest = {
     providerName: "OpenAI",
     modelName: "gpt-4",
   },
-  toolBindings: [
-    { source: "builtin", ref: "web_search", requireApproval: false },
-  ],
+  toolBindings: [{ source: "builtin", ref: "web_search", requireApproval: false }],
   skillBindings: [{ ref: "my-skill" }],
   knowledgeBindings: [{ name: "kb-1" }],
   bundledResources: { skills: [], mcpPresets: [], customTools: [] },
 };
 
 describe("getPublishPreview", () => {
-
   describe("existing draft detection", () => {
     it("marks hasExistingDraft true when a draft exists", async () => {
       const agentId = crypto.randomUUID();
@@ -147,9 +140,7 @@ describe("getPublishPreview", () => {
 
   describe("throws when no resource id provided", () => {
     it("throws when no resource id is given", async () => {
-      await expect(
-        getPublishPreview({ workspaceId: "ws-1", userId: "user-1" }),
-      ).rejects.toThrow("No resource id provided");
+      await expect(getPublishPreview({ workspaceId: "ws-1", userId: "user-1" })).rejects.toThrow("No resource id provided");
     });
   });
 });

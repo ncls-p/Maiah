@@ -1,9 +1,4 @@
-import {
-fetchJson,
-fetchPendingToolCount,
-fetchWorkspacePermissions,
-fetchWorkspaces,
-} from "@/lib/api-client";
+import { fetchJson,fetchPendingToolCount,fetchWorkspacePermissions,fetchWorkspaces } from "@/lib/api-client";
 import type { Mock } from "vitest";
 import { afterEach,beforeEach,describe,expect,it,vi } from "vitest";
 
@@ -49,8 +44,8 @@ describe("api-client", () => {
         organizationId: "org-1",
         organizationName: "Org1",
         organizationLogoUrl: "data:image/png;base64,logo",
-		organizationTheme: "forest",
-		organizationThemeConfig: null,
+        organizationTheme: "forest",
+        organizationThemeConfig: null,
       });
     });
 
@@ -104,8 +99,8 @@ describe("api-client", () => {
         organizationId: "",
         organizationName: "Organization",
         organizationLogoUrl: null,
-		organizationTheme: "ocean",
-		organizationThemeConfig: null,
+        organizationTheme: "ocean",
+        organizationThemeConfig: null,
       });
     });
 
@@ -145,9 +140,7 @@ describe("api-client", () => {
         json: async () => ({}),
       });
 
-      await expect(fetchJson("/api/test")).rejects.toThrow(
-        "Request failed: 500",
-      );
+      await expect(fetchJson("/api/test")).rejects.toThrow("Request failed: 500");
     });
 
     it("accepts request init", async () => {
@@ -203,10 +196,7 @@ describe("api-client", () => {
 
       const result = await fetchWorkspacePermissions("ws-1");
       expect(result).toEqual({ canManage: true });
-      expect(mockFetch).toHaveBeenCalledWith(
-        "/api/workspace/permissions?workspaceId=ws-1",
-        undefined,
-      );
+      expect(mockFetch).toHaveBeenCalledWith("/api/workspace/permissions?workspaceId=ws-1", undefined);
     });
   });
 });

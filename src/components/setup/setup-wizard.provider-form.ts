@@ -1,7 +1,4 @@
-import {
-  DEFAULT_OPENAI_COMPATIBLE_API_ROUTE,
-  type OpenAICompatibleApiRoute,
-} from "@/lib/openai-compatible-api";
+import { DEFAULT_OPENAI_COMPATIBLE_API_ROUTE,type OpenAICompatibleApiRoute } from "@/lib/openai-compatible-api";
 
 import type { ProviderKind } from "./setup-wizard.button-type";
 

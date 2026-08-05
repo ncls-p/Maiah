@@ -1,20 +1,7 @@
+import type { ProxyResponseFormat,ResponsesRequest } from "@/modules/openai-proxy/contracts";
+import { responsesUsage,responseTextConfig,type ResponsesOutputItem } from "@/modules/openai-proxy/response-builders";
 
-import type {
-ProxyResponseFormat,
-ResponsesRequest
-} from "@/modules/openai-proxy/contracts";
-import {
-responsesUsage,
-responseTextConfig,
-type ResponsesOutputItem
-} from "@/modules/openai-proxy/response-builders";
-
-export function initialResponse(input: {
-  id: string;
-  createdAt: number;
-  request: ResponsesRequest;
-  responseFormat: ProxyResponseFormat;
-}) {
+export function initialResponse(input: { id: string; createdAt: number; request: ResponsesRequest; responseFormat: ProxyResponseFormat }) {
   const { id, createdAt, request, responseFormat } = input;
   return {
     id,

@@ -1,30 +1,9 @@
 import { NextRequest,NextResponse } from "next/server";
 
 import { handleRoute } from "@/lib/route-handler";
-import {
-deleteOrganization,
-deleteProject,
-renameOrganization,
-renameProject,
-} from "@/modules/iam/scope-lifecycle";
-import {
-addOrganizationMember,
-addTeamMember,
-assignResourceRole,
-assignRole,
-createCustomRole,
-createOrganizationWithProject,
-createProject,
-createTeam,
-deleteCustomRole,
-deleteTeam,
-removeOrganizationMember,
-removeRoleAssignment,
-removeTeamMember,
-updateCustomRole
-} from "@/modules/iam/use-cases";
+import { deleteOrganization,deleteProject,renameOrganization,renameProject } from "@/modules/iam/scope-lifecycle";
+import { addOrganizationMember,addTeamMember,assignResourceRole,assignRole,createCustomRole,createOrganizationWithProject,createProject,createTeam,deleteCustomRole,deleteTeam,removeOrganizationMember,removeRoleAssignment,removeTeamMember,updateCustomRole } from "@/modules/iam/use-cases";
 import { expectedIamError,mutationSchema } from "./route.mutation-schema";
-
 
 export async function POST(req: NextRequest) {
   return handleRoute(
@@ -32,10 +11,7 @@ export async function POST(req: NextRequest) {
     async ({ session }) => {
       const parsed = mutationSchema.safeParse(await req.json());
       if (!parsed.success) {
-        return NextResponse.json(
-          { error: "Invalid input", details: parsed.error.issues },
-          { status: 400 },
-        );
+        return NextResponse.json({ error: "Invalid input", details: parsed.error.issues }, { status: 400 });
       }
 
       const input = parsed.data;

@@ -1,15 +1,6 @@
-import {
-handleRoute,
-requireResourcePermissionAsync,
-} from "@/lib/route-handler";
+import { handleRoute,requireResourcePermissionAsync } from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
-import {
-archiveMcpServer,
-getMcpServer,
-toMcpServerForEdit,
-toSafeMcpServer,
-updateMcpServerWithDiscovery,
-} from "@/modules/mcp/use-cases";
+import { archiveMcpServer,getMcpServer,toMcpServerForEdit,toSafeMcpServer,updateMcpServerWithDiscovery } from "@/modules/mcp/use-cases";
 import { NextRequest,NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -28,77 +19,37 @@ const updateSchema = z.object({
   env: z.record(z.string(), z.string()).optional(),
 });
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ serverId: string }> },
-) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ serverId: string }> }) {
   return handleRoute(
     req,
     async ({ session }) => {
       const parsed = querySchema.safeParse({
         workspaceId: req.nextUrl.searchParams.get("workspaceId"),
       });
-      if (!parsed.success)
-        return NextResponse.json(
-          { error: "workspaceId must be a valid UUID" },
-          { status: 400 },
-        );
-      const forbidden = await requireResourcePermissionAsync(
-        session.user.id,
-        parsed.data.workspaceId,
-        "mcpServers.get",
-        "mcp_server",
-        (await params).serverId,
-      );
+      if (!parsed.success) return NextResponse.json({ error: "workspaceId must be a valid UUID" }, { status: 400 });
+      const forbidden = await requireResourcePermissionAsync(session.user.id, parsed.data.workspaceId, "mcpServers.get", "mcp_server", (await params).serverId);
       if (forbidden) return forbidden;
       const { serverId } = await params;
-      const server = await getMcpServer(
-        serverId,
-        parsed.data.workspaceId,
-        session.user.id,
-      );
-      if (!server)
-        return NextResponse.json(
-          { error: "MCP server not found" },
-          { status: 404 },
-        );
+      const server = await getMcpServer(serverId, parsed.data.workspaceId, session.user.id);
+      if (!server) return NextResponse.json({ error: "MCP server not found" }, { status: 404 });
       return NextResponse.json(toMcpServerForEdit(server));
     },
     { logLabel: "Failed to get MCP server" },
   );
 }
 
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: Promise<{ serverId: string }> },
-) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ serverId: string }> }) {
   return handleRoute(
     req,
     async ({ session }) => {
       const parsed = updateSchema.safeParse(await req.json());
-      if (!parsed.success)
-        return NextResponse.json(
-          { error: "Invalid input", details: parsed.error.issues },
-          { status: 400 },
-        );
-      const forbidden = await requireResourcePermissionAsync(
-        session.user.id,
-        parsed.data.workspaceId,
-        "mcpServers.manage",
-        "mcp_server",
-        (await params).serverId,
-      );
+      if (!parsed.success) return NextResponse.json({ error: "Invalid input", details: parsed.error.issues }, { status: 400 });
+      const forbidden = await requireResourcePermissionAsync(session.user.id, parsed.data.workspaceId, "mcpServers.manage", "mcp_server", (await params).serverId);
       if (forbidden) return forbidden;
       const { serverId } = await params;
-      const canManageGlobal = await canManageTenantGlobals(
-        session,
-        parsed.data.workspaceId,
-      );
+      const canManageGlobal = await canManageTenantGlobals(session, parsed.data.workspaceId);
       if (parsed.data.isGlobal && !canManageGlobal) {
-        return NextResponse.json(
-          { error: "Only admins can make MCP servers global" },
-          { status: 403 },
-        );
+        return NextResponse.json({ error: "Only admins can make MCP servers global" }, { status: 403 });
       }
       const { server, discovery } = await updateMcpServerWithDiscovery({
         serverId,
@@ -115,63 +66,34 @@ export async function PATCH(
     {
       logLabel: "Failed to update MCP server",
       expectedError: (error) => {
-        const msg =
-          error instanceof Error ? error.message : "Internal server error";
-        const status =
-          error instanceof Error && error.message.includes("not found")
-            ? 404
-            : 500;
+        const msg = error instanceof Error ? error.message : "Internal server error";
+        const status = error instanceof Error && error.message.includes("not found") ? 404 : 500;
         return NextResponse.json({ error: msg }, { status });
       },
     },
   );
 }
 
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: Promise<{ serverId: string }> },
-) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ serverId: string }> }) {
   return handleRoute(
     req,
     async ({ session }) => {
       const parsed = querySchema.safeParse({
         workspaceId: req.nextUrl.searchParams.get("workspaceId"),
       });
-      if (!parsed.success)
-        return NextResponse.json(
-          { error: "workspaceId must be a valid UUID" },
-          { status: 400 },
-        );
-      const forbidden = await requireResourcePermissionAsync(
-        session.user.id,
-        parsed.data.workspaceId,
-        "mcpServers.manage",
-        "mcp_server",
-        (await params).serverId,
-      );
+      if (!parsed.success) return NextResponse.json({ error: "workspaceId must be a valid UUID" }, { status: 400 });
+      const forbidden = await requireResourcePermissionAsync(session.user.id, parsed.data.workspaceId, "mcpServers.manage", "mcp_server", (await params).serverId);
       if (forbidden) return forbidden;
       const { serverId } = await params;
-      const canManageGlobal = await canManageTenantGlobals(
-        session,
-        parsed.data.workspaceId,
-      );
-      await archiveMcpServer(
-        serverId,
-        parsed.data.workspaceId,
-        session.user.id,
-        canManageGlobal,
-      );
+      const canManageGlobal = await canManageTenantGlobals(session, parsed.data.workspaceId);
+      await archiveMcpServer(serverId, parsed.data.workspaceId, session.user.id, canManageGlobal);
       return NextResponse.json({ ok: true });
     },
     {
       logLabel: "Failed to archive MCP server",
       expectedError: (error) => {
-        const msg =
-          error instanceof Error ? error.message : "Internal server error";
-        const status =
-          error instanceof Error && error.message.includes("not found")
-            ? 404
-            : 500;
+        const msg = error instanceof Error ? error.message : "Internal server error";
+        const status = error instanceof Error && error.message.includes("not found") ? 404 : 500;
         return NextResponse.json({ error: msg }, { status });
       },
     },

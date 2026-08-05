@@ -24,11 +24,7 @@ export const storage = {
     return env.OBJECT_STORAGE_BUCKET;
   },
 
-  async upload(
-    key: string,
-    body: Buffer | Uint8Array | string,
-    contentType?: string,
-  ): Promise<string> {
+  async upload(key: string, body: Buffer | Uint8Array | string, contentType?: string): Promise<string> {
     const { PutObjectCommand } = await import("@aws-sdk/client-s3");
     const client = getS3Client();
 

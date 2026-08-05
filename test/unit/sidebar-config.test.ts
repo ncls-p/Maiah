@@ -1,17 +1,8 @@
 import { MessageSquareIcon } from "lucide-react";
 import { describe,expect,it } from "vitest";
 
-import {
-DEFAULT_WORKSPACE_PERMISSIONS,
-type NavItem,
-} from "@/lib/workspace-nav";
-import {
-applySidebarNavConfig,
-buildSidebarMenuGroups,
-defaultSidebarNavConfig,
-getDefaultSectionForNavId,
-normalizeSidebarNavConfig,
-} from "@/modules/navigation/sidebar-config";
+import { DEFAULT_WORKSPACE_PERMISSIONS,type NavItem } from "@/lib/workspace-nav";
+import { applySidebarNavConfig,buildSidebarMenuGroups,defaultSidebarNavConfig,getDefaultSectionForNavId,normalizeSidebarNavConfig } from "@/modules/navigation/sidebar-config";
 
 const sampleItems: NavItem[] = [
   { href: "/chat", labelKey: "chat", icon: MessageSquareIcon },
@@ -55,15 +46,8 @@ describe("applySidebarNavConfig", () => {
   });
 
   it("falls back to default order when config matches defaults", () => {
-    const result = applySidebarNavConfig(
-      sampleItems,
-      defaultSidebarNavConfig(),
-    );
-    expect(result.map((item) => item.href)).toEqual([
-      "/chat",
-      "/agents",
-      "/settings",
-    ]);
+    const result = applySidebarNavConfig(sampleItems, defaultSidebarNavConfig());
+    expect(result.map((item) => item.href)).toEqual(["/chat", "/agents", "/settings"]);
   });
 });
 
@@ -81,9 +65,7 @@ describe("buildSidebarMenuGroups", () => {
       defaultSidebarNavConfig(),
     );
 
-    expect(
-      groups.flatMap((group) => group.items.map((item) => item.href)),
-    ).toContain("/members");
+    expect(groups.flatMap((group) => group.items.map((item) => item.href))).toContain("/members");
   });
 
   it("keeps primary, planning, and advanced sections when using custom config", () => {
@@ -111,11 +93,7 @@ describe("buildSidebarMenuGroups", () => {
       config,
     );
 
-    expect(groups.map((group) => group.labelKey)).toEqual([
-      "primary",
-      "planning",
-      "advanced",
-    ]);
+    expect(groups.map((group) => group.labelKey)).toEqual(["primary", "planning", "advanced"]);
     expect(groups[0]?.items[0]?.href).toBe("/chat");
     expect(groups[1]?.items[0]?.href).toBe("/scheduled-tasks");
     expect(groups[2]?.items[0]?.href).toBe("/settings");
@@ -145,14 +123,8 @@ describe("buildSidebarMenuGroups", () => {
       config,
     );
 
-    expect(groups.find((group) => group.labelKey === "primary")?.items).toEqual(
-      expect.arrayContaining([expect.objectContaining({ href: "/settings" })]),
-    );
-    expect(
-      groups.find((group) => group.labelKey === "advanced")?.items,
-    ).toEqual(
-      expect.arrayContaining([expect.objectContaining({ href: "/chat" })]),
-    );
+    expect(groups.find((group) => group.labelKey === "primary")?.items).toEqual(expect.arrayContaining([expect.objectContaining({ href: "/settings" })]));
+    expect(groups.find((group) => group.labelKey === "advanced")?.items).toEqual(expect.arrayContaining([expect.objectContaining({ href: "/chat" })]));
   });
 });
 

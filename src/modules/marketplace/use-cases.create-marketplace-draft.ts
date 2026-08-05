@@ -1,16 +1,8 @@
 import { db } from "@/server/infrastructure/db";
-import {
-agents,
-agentSkills,
-customTools
-} from "@/server/infrastructure/db/schema";
+import { agents,agentSkills,customTools } from "@/server/infrastructure/db/schema";
 import { and,eq } from "drizzle-orm";
 import { upsertMarketplaceDraft } from "./draft-helpers";
-import {
-buildAgentManifest,
-buildCustomToolManifest,
-buildSkillManifest
-} from "./manifest-builders";
+import { buildAgentManifest,buildCustomToolManifest,buildSkillManifest } from "./manifest-builders";
 import { DraftInputExtras } from "./use-cases.get-marketplace-item-detail";
 import { MarketplaceVisibility } from "./use-cases.marketplace-visibility";
 
@@ -28,24 +20,14 @@ export async function createMarketplaceDraft(
   const [agent] = await db
     .select()
     .from(agents)
-    .where(
-      and(
-        eq(agents.id, input.agentId),
-        eq(agents.workspaceId, input.workspaceId),
-      ),
-    )
+    .where(and(eq(agents.id, input.agentId), eq(agents.workspaceId, input.workspaceId)))
     .limit(1);
   if (!agent || agent.createdById !== input.userId) {
     throw new Error("Agent not found");
   }
 
   const name = input.name || agent.name;
-  const manifest = await buildAgentManifest(
-    input.agentId,
-    input.workspaceId,
-    name,
-    input.description ?? agent.description,
-  );
+  const manifest = await buildAgentManifest(input.agentId, input.workspaceId, name, input.description ?? agent.description);
 
   return upsertMarketplaceDraft({
     workspaceId: input.workspaceId,
@@ -78,23 +60,14 @@ export async function createSkillMarketplaceDraft(
   const [skill] = await db
     .select()
     .from(agentSkills)
-    .where(
-      and(
-        eq(agentSkills.id, input.skillId),
-        eq(agentSkills.workspaceId, input.workspaceId),
-      ),
-    )
+    .where(and(eq(agentSkills.id, input.skillId), eq(agentSkills.workspaceId, input.workspaceId)))
     .limit(1);
   if (!skill || skill.createdById !== input.userId) {
     throw new Error("Skill not found");
   }
 
   const name = input.name || skill.name;
-  const manifest = buildSkillManifest(
-    skill,
-    name,
-    input.description ?? skill.description,
-  );
+  const manifest = buildSkillManifest(skill, name, input.description ?? skill.description);
 
   return upsertMarketplaceDraft({
     workspaceId: input.workspaceId,
@@ -127,23 +100,14 @@ export async function createCustomToolMarketplaceDraft(
   const [tool] = await db
     .select()
     .from(customTools)
-    .where(
-      and(
-        eq(customTools.id, input.customToolId),
-        eq(customTools.workspaceId, input.workspaceId),
-      ),
-    )
+    .where(and(eq(customTools.id, input.customToolId), eq(customTools.workspaceId, input.workspaceId)))
     .limit(1);
   if (!tool || tool.createdById !== input.userId) {
     throw new Error("Custom tool not found");
   }
 
   const name = input.name || tool.name;
-  const manifest = await buildCustomToolManifest(
-    tool,
-    name,
-    input.description ?? tool.description,
-  );
+  const manifest = await buildCustomToolManifest(tool, name, input.description ?? tool.description);
 
   return upsertMarketplaceDraft({
     workspaceId: input.workspaceId,

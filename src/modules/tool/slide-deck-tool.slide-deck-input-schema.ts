@@ -18,25 +18,13 @@ export const slideDeckInputSchema = z.object({
   slides: z
     .array(
       z.object({
-        layout: z
-          .enum([
-            "title",
-            "section",
-            "bullets",
-            "two_column",
-            "quote",
-            "closing",
-          ])
-          .default("bullets"),
+        layout: z.enum(["title", "section", "bullets", "two_column", "quote", "closing"]).default("bullets"),
         kicker: z.string().trim().max(80).optional(),
         title: z.string().trim().min(1).max(140),
         body: z.string().trim().max(900).optional(),
         bullets: z.array(z.string().trim().min(1).max(280)).max(8).default([]),
         secondaryTitle: z.string().trim().max(100).optional(),
-        secondaryBullets: z
-          .array(z.string().trim().min(1).max(240))
-          .max(6)
-          .default([]),
+        secondaryBullets: z.array(z.string().trim().min(1).max(240)).max(6).default([]),
         quote: z.string().trim().max(700).optional(),
         attribution: z.string().trim().max(120).optional(),
         metricValue: z.string().trim().max(80).optional(),
@@ -106,18 +94,10 @@ export function renderBody(value: string | undefined) {
 export function renderBullets(bullets: string[], variant = "") {
   if (bullets.length === 0) return "";
   const className = variant ? `slide-bullets ${variant}` : "slide-bullets";
-  return `<ul class="${className}">${bullets
-    .map(
-      (bullet, index) =>
-        `<li class="fragment" data-fragment="${index}">${escapeHtml(bullet)}</li>`,
-    )
-    .join("")}</ul>`;
+  return `<ul class="${className}">${bullets.map((bullet, index) => `<li class="fragment" data-fragment="${index}">${escapeHtml(bullet)}</li>`).join("")}</ul>`;
 }
 
-export function renderMetric(input: {
-  metricValue?: string;
-  metricLabel?: string;
-}) {
+export function renderMetric(input: { metricValue?: string; metricLabel?: string }) {
   if (!input.metricValue) return "";
   return `<div class="metric-card fragment" data-fragment="metric">
 		<div class="metric-value">${escapeHtml(input.metricValue)}</div>
@@ -136,12 +116,8 @@ export function createSlideFrame(slide: DeckSlide): SlideFrame {
   return {
     bullets: slide.bullets ?? [],
     secondaryBullets: slide.secondaryBullets ?? [],
-    footer: slide.footer
-      ? `<p class="slide-footer">${escapeHtml(slide.footer)}</p>`
-      : "",
-    note: slide.notes
-      ? `<aside class="speaker-notes">${escapeHtml(slide.notes)}</aside>`
-      : "",
+    footer: slide.footer ? `<p class="slide-footer">${escapeHtml(slide.footer)}</p>` : "",
+    note: slide.notes ? `<aside class="speaker-notes">${escapeHtml(slide.notes)}</aside>` : "",
   };
 }
 
@@ -156,11 +132,7 @@ export function renderTitleSlide(slide: DeckSlide, frame: SlideFrame) {
 	</div>`;
 }
 
-export function renderSectionSlide(
-  slide: DeckSlide,
-  frame: SlideFrame,
-  index: number,
-) {
+export function renderSectionSlide(slide: DeckSlide, frame: SlideFrame, index: number) {
   return `<div class="slide-content section-layout">
 		${renderKicker(slide.kicker ?? `Section ${index + 1}`)}
 		<h2>${escapeHtml(slide.title)}</h2>

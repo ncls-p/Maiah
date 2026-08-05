@@ -15,15 +15,10 @@ export default async function SettingsPage() {
   const tAdmin = await getTranslations("admin");
   const session = await getSession();
   const bootstrappedAdminId = await ensureBootstrapAdmin();
-  const isAdmin =
-    isAdminRole(session?.user.role) || bootstrappedAdminId === session?.user.id;
+  const isAdmin = isAdminRole(session?.user.role) || bootstrappedAdminId === session?.user.id;
 
   return (
-    <WorkspacePage
-      title={t("title")}
-      description={t("description")}
-      width="default"
-    >
+    <WorkspacePage title={t("title")} description={t("description")} width="default">
       <div className="flex max-w-4xl flex-col gap-4">
         <SettingsPasswordCard />
         <OrganizationBrandingCard />
@@ -37,14 +32,10 @@ export default async function SettingsPage() {
                 </span>
                 <h2 className="text-sm font-semibold">{t("adminLinkTitle")}</h2>
               </div>
-              <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-                {t("adminLinkDescription")}
-              </p>
+              <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{t("adminLinkDescription")}</p>
             </div>
             <div className="flex flex-col gap-3 border-t border-border/60 bg-muted/25 p-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-              <p className="text-sm text-muted-foreground">
-                {tAdmin("platformSettingsDescription")}
-              </p>
+              <p className="text-sm text-muted-foreground">{tAdmin("platformSettingsDescription")}</p>
               <Button asChild variant="outline">
                 <Link href="/admin/settings">
                   {t("goToAdminSettings")}

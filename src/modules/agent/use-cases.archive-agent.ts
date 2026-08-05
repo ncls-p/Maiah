@@ -3,28 +3,13 @@ import { logger } from "@/lib/logger";
 import { normalizeOpenAICompatibleApiRoute } from "@/lib/openai-compatible-api";
 import { audit } from "@/server/domain/services/audit";
 import { db } from "@/server/infrastructure/db";
-import {
-agents,
-agentVersions,
-aiModels,
-aiProviders,
-conversations
-} from "@/server/infrastructure/db/schema";
-import type {
-ProviderKind,
-ProviderRuntimeConfig,
-} from "@/server/infrastructure/providers";
+import { agents,agentVersions,aiModels,aiProviders,conversations } from "@/server/infrastructure/db/schema";
+import type { ProviderKind,ProviderRuntimeConfig } from "@/server/infrastructure/providers";
 import { and,eq,isNull,sql } from "drizzle-orm";
 import { AgentVersionRow } from "./use-cases.agent-row";
 import { canEditAgent } from "./use-cases.get-visible-agent-by-id";
 
-
-export async function archiveAgent(
-  agentId: string,
-  workspaceId: string,
-  userId: string,
-  canAdminCurate = false,
-) {
+export async function archiveAgent(agentId: string, workspaceId: string, userId: string, canAdminCurate = false) {
   const [existing] = await db
     .select()
     .from(agents)
@@ -39,10 +24,7 @@ export async function archiveAgent(
     throw new Error("Only the creator or an admin can delete this agent");
   }
 
-  await db
-    .update(agents)
-    .set({ archivedAt: new Date(), updatedAt: new Date() })
-    .where(eq(agents.id, agentId));
+  await db.update(agents).set({ archivedAt: new Date(), updatedAt: new Date() }).where(eq(agents.id, agentId));
 
   await audit.emit({
     workspaceId,
@@ -59,14 +41,8 @@ export async function archiveAgent(
 
 // ─── Agent Versions ────────────────────────────────────────────────────
 
-export async function getAgentVersionById(
-  versionId: string,
-): Promise<AgentVersionRow | null> {
-  const [version] = await db
-    .select()
-    .from(agentVersions)
-    .where(eq(agentVersions.id, versionId))
-    .limit(1);
+export async function getAgentVersionById(versionId: string): Promise<AgentVersionRow | null> {
+  const [version] = await db.select().from(agentVersions).where(eq(agentVersions.id, versionId)).limit(1);
 
   return version || null;
 }
@@ -79,14 +55,8 @@ export async function getAgentVersions(agentId: string) {
     .orderBy(sql`${agentVersions.versionNumber} DESC`);
 }
 
-export async function getActiveVersion(
-  agentId: string,
-): Promise<AgentVersionRow | null> {
-  const [agent] = await db
-    .select({ activeVersionId: agents.activeVersionId })
-    .from(agents)
-    .where(eq(agents.id, agentId))
-    .limit(1);
+export async function getActiveVersion(agentId: string): Promise<AgentVersionRow | null> {
+  const [agent] = await db.select({ activeVersionId: agents.activeVersionId }).from(agents).where(eq(agents.id, agentId)).limit(1);
 
   if (!agent?.activeVersionId) return null;
 
@@ -103,21 +73,13 @@ export interface ResolvedProviderConfig {
   providerId: string;
 }
 
-export async function resolveProviderForVersion(
-  version: AgentVersionRow,
-): Promise<ResolvedProviderConfig | null> {
+export async function resolveProviderForVersion(version: AgentVersionRow): Promise<ResolvedProviderConfig | null> {
   if (!version.providerId) return null;
 
   const [provider] = await db
     .select()
     .from(aiProviders)
-    .where(
-      and(
-        eq(aiProviders.id, version.providerId),
-        eq(aiProviders.enabled, true),
-        isNull(aiProviders.archivedAt),
-      ),
-    )
+    .where(and(eq(aiProviders.id, version.providerId), eq(aiProviders.enabled, true), isNull(aiProviders.archivedAt)))
     .limit(1);
 
   if (!provider) return null;
@@ -131,9 +93,7 @@ export async function resolveProviderForVersion(
   let headers: Record<string, string> | undefined;
   if (provider.encryptedHeadersJson) {
     headers = {};
-    for (const [k, v] of Object.entries(
-      provider.encryptedHeadersJson as Record<string, string>,
-    )) {
+    for (const [k, v] of Object.entries(provider.encryptedHeadersJson as Record<string, string>)) {
       headers[k] = await decryptValue(v);
     }
   }
@@ -144,13 +104,7 @@ export async function resolveProviderForVersion(
     const [model] = await db
       .select()
       .from(aiModels)
-      .where(
-        and(
-          eq(aiModels.id, version.modelId),
-          eq(aiModels.providerId, provider.id),
-          eq(aiModels.enabled, true),
-        ),
-      )
+      .where(and(eq(aiModels.id, version.modelId), eq(aiModels.providerId, provider.id), eq(aiModels.enabled, true)))
       .limit(1);
 
     if (model) {
@@ -167,12 +121,8 @@ export async function resolveProviderForVersion(
       authType: provider.authType,
       apiKey,
       headers,
-      queryParams: provider.queryParamsJson as
-        | Record<string, string>
-        | undefined,
-      openaiCompatibleApiRoute: normalizeOpenAICompatibleApiRoute(
-        provider.openaiCompatibleApiRoute,
-      ),
+      queryParams: provider.queryParamsJson as Record<string, string> | undefined,
+      openaiCompatibleApiRoute: normalizeOpenAICompatibleApiRoute(provider.openaiCompatibleApiRoute),
     },
     modelId: runtimeModelId,
     modelRecordId,
@@ -187,13 +137,6 @@ export async function getConversationsByAgent(agentId: string, userId: string) {
   return db
     .select()
     .from(conversations)
-    .where(
-      and(
-        eq(conversations.agentId, agentId),
-        eq(conversations.userId, userId),
-        eq(conversations.status, "active"),
-        isNull(conversations.archivedAt),
-      ),
-    )
+    .where(and(eq(conversations.agentId, agentId), eq(conversations.userId, userId), eq(conversations.status, "active"), isNull(conversations.archivedAt)))
     .orderBy(sql`${conversations.updatedAt} DESC`);
 }

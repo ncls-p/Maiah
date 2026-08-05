@@ -3,24 +3,8 @@ import path from "node:path";
 
 const MAX_LINES = 300;
 const SOURCE_ROOTS = ["src", "test", "scripts", "remotion", "services"];
-const SOURCE_EXTENSIONS = new Set([
-  ".cjs",
-  ".css",
-  ".js",
-  ".jsx",
-  ".mjs",
-  ".pcss",
-  ".py",
-  ".sh",
-  ".ts",
-  ".tsx",
-]);
-const EXCLUDED_SEGMENTS = new Set([
-  ".next",
-  "coverage",
-  "migrations",
-  "node_modules",
-]);
+const SOURCE_EXTENSIONS = new Set([".cjs", ".css", ".js", ".jsx", ".mjs", ".pcss", ".py", ".sh", ".ts", ".tsx"]);
+const EXCLUDED_SEGMENTS = new Set([".next", "coverage", "migrations", "node_modules"]);
 
 function isGeneratedFile(filePath) {
   const name = path.basename(filePath);
@@ -36,10 +20,7 @@ async function collectSourceFiles(directory) {
     const entryPath = path.join(directory, entry.name);
     if (entry.isDirectory()) {
       files.push(...(await collectSourceFiles(entryPath)));
-    } else if (
-      SOURCE_EXTENSIONS.has(path.extname(entry.name)) &&
-      !isGeneratedFile(entryPath)
-    ) {
+    } else if (SOURCE_EXTENSIONS.has(path.extname(entry.name)) && !isGeneratedFile(entryPath)) {
       files.push(entryPath);
     }
   }
@@ -52,9 +33,7 @@ async function countLines(filePath) {
   return content === "" ? 0 : content.split(/\r?\n/u).length;
 }
 
-const files = (
-  await Promise.all(SOURCE_ROOTS.map((root) => collectSourceFiles(root)))
-).flat();
+const files = (await Promise.all(SOURCE_ROOTS.map((root) => collectSourceFiles(root)))).flat();
 const violations = [];
 
 for (const filePath of files) {

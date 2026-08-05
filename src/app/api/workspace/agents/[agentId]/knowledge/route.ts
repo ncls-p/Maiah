@@ -1,14 +1,6 @@
-import {
-handleRoute,
-requireResourcePermissionAsync,
-} from "@/lib/route-handler";
+import { handleRoute,requireResourcePermissionAsync } from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
-import {
-AgentVersionConflictError,
-getActiveVersion,
-getVisibleAgentById,
-updateAgent,
-} from "@/modules/agent/use-cases";
+import { AgentVersionConflictError,getActiveVersion,getVisibleAgentById,updateAgent } from "@/modules/agent/use-cases";
 import { getKnowledgeBindingsForVersion } from "@/modules/knowledge/use-cases";
 import { NextRequest,NextResponse } from "next/server";
 import { z } from "zod";
@@ -21,10 +13,7 @@ const putSchema = z.object({
   knowledgeBaseIds: z.array(z.uuid()),
 });
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ agentId: string }> },
-) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ agentId: string }> }) {
   return handleRoute(
     req,
     async ({ session }) => {
@@ -38,20 +27,9 @@ export async function GET(
       }
       const { agentId } = parsedParams.data;
       const { workspaceId } = parsedQuery.data;
-      const forbidden = await requireResourcePermissionAsync(
-        session.user.id,
-        workspaceId,
-        "agents.get",
-        "agent",
-        (await params).agentId,
-      );
+      const forbidden = await requireResourcePermissionAsync(session.user.id, workspaceId, "agents.get", "agent", (await params).agentId);
       if (forbidden) return forbidden;
-      const agent = await getVisibleAgentById(
-        agentId,
-        workspaceId,
-        session.user.id,
-        await canManageTenantGlobals(session, workspaceId),
-      );
+      const agent = await getVisibleAgentById(agentId, workspaceId, session.user.id, await canManageTenantGlobals(session, workspaceId));
       if (!agent) {
         return NextResponse.json({ error: "Agent not found" }, { status: 404 });
       }
@@ -69,10 +47,7 @@ export async function GET(
   );
 }
 
-export async function PUT(
-  req: NextRequest,
-  { params }: { params: Promise<{ agentId: string }> },
-) {
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ agentId: string }> }) {
   return handleRoute(
     req,
     async ({ session }) => {
@@ -84,13 +59,7 @@ export async function PUT(
       }
       const { agentId } = parsedParams.data;
       const { workspaceId, knowledgeBaseIds } = parsedBody.data;
-      const forbidden = await requireResourcePermissionAsync(
-        session.user.id,
-        workspaceId,
-        "agents.update",
-        "agent",
-        (await params).agentId,
-      );
+      const forbidden = await requireResourcePermissionAsync(session.user.id, workspaceId, "agents.update", "agent", (await params).agentId);
       if (forbidden) return forbidden;
       const { version } = await updateAgent({
         agentId,
@@ -117,30 +86,15 @@ export async function PUT(
           );
         }
         if (error instanceof Error && error.message === "Agent not found") {
-          return NextResponse.json(
-            { error: "Agent not found" },
-            { status: 404 },
-          );
+          return NextResponse.json({ error: "Agent not found" }, { status: 404 });
         }
-        if (
-          error instanceof Error &&
-          error.message === "Knowledge base not found"
-        ) {
-          return NextResponse.json(
-            { error: "Knowledge base not found" },
-            { status: 400 },
-          );
+        if (error instanceof Error && error.message === "Knowledge base not found") {
+          return NextResponse.json({ error: "Knowledge base not found" }, { status: 400 });
         }
-        if (
-          error instanceof Error &&
-          error.message === "Only the creator or an admin can update this agent"
-        ) {
+        if (error instanceof Error && error.message === "Only the creator or an admin can update this agent") {
           return NextResponse.json({ error: error.message }, { status: 403 });
         }
-        return NextResponse.json(
-          { error: "Internal server error" },
-          { status: 500 },
-        );
+        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
       },
     },
   );

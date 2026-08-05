@@ -1,31 +1,13 @@
+import { FlowRuntime,lintBlueprint,type FlowcraftEvent,type IEventBus,type NodeFunction,type WorkflowBlueprint } from "flowcraft";
 
-import {
-FlowRuntime,
-lintBlueprint,
-type FlowcraftEvent,
-type IEventBus,
-type NodeFunction,
-type WorkflowBlueprint,
-} from "flowcraft";
-
-
-import {
-workflowDefinitionSchema,
-type WorkflowDefinition,
-type WorkflowNode,
-} from "./contracts";
-import {
-WORKFLOW_NODE_REGISTRY,
-assertNodeParameters,
-hasCycle,
-} from "./runtime.workflow-node-registry";
+import { workflowDefinitionSchema,type WorkflowDefinition,type WorkflowNode } from "./contracts";
+import { WORKFLOW_NODE_REGISTRY,assertNodeParameters,hasCycle } from "./runtime.workflow-node-registry";
 import { RuntimeContext,WorkflowRuntimeDependencies } from "./runtime.workflow-runtime-dependencies";
 
-export function compileWorkflowDefinition(input: {
-  workflowId: string;
-  version: number;
-  definition: unknown;
-}): { definition: WorkflowDefinition; blueprint: WorkflowBlueprint } {
+export function compileWorkflowDefinition(input: { workflowId: string; version: number; definition: unknown }): {
+  definition: WorkflowDefinition;
+  blueprint: WorkflowBlueprint;
+} {
   const definition = workflowDefinitionSchema.parse(input.definition);
   for (const node of definition.nodes) assertNodeParameters(node);
   if (hasCycle(definition)) {
@@ -57,10 +39,7 @@ export function compileWorkflowDefinition(input: {
       action: edge.sourceHandle ?? undefined,
     })),
   };
-  const registry = WORKFLOW_NODE_REGISTRY as unknown as Record<
-    string,
-    NodeFunction
-  >;
+  const registry = WORKFLOW_NODE_REGISTRY as unknown as Record<string, NodeFunction>;
   const lint = lintBlueprint(blueprint, registry);
   if (!lint.isValid) {
     throw new Error(lint.issues.map((issue) => issue.message).join(" "));
@@ -68,10 +47,7 @@ export function compileWorkflowDefinition(input: {
   return { definition, blueprint };
 }
 
-export function createWorkflowRuntime(input: {
-  dependencies: WorkflowRuntimeDependencies;
-  eventBus?: IEventBus;
-}) {
+export function createWorkflowRuntime(input: { dependencies: WorkflowRuntimeDependencies; eventBus?: IEventBus }) {
   return new FlowRuntime<RuntimeContext, WorkflowRuntimeDependencies>({
     registry: WORKFLOW_NODE_REGISTRY as unknown as Record<string, NodeFunction>,
     dependencies: input.dependencies,
@@ -80,15 +56,10 @@ export function createWorkflowRuntime(input: {
   });
 }
 
-export function createWorkflowEventBus(
-  emit: (event: FlowcraftEvent) => void | Promise<void>,
-): IEventBus {
+export function createWorkflowEventBus(emit: (event: FlowcraftEvent) => void | Promise<void>): IEventBus {
   return { emit };
 }
 
-export function workflowNodeById(
-  definition: WorkflowDefinition,
-  nodeId: string,
-): WorkflowNode | undefined {
+export function workflowNodeById(definition: WorkflowDefinition, nodeId: string): WorkflowNode | undefined {
   return definition.nodes.find((node) => node.id === nodeId);
 }

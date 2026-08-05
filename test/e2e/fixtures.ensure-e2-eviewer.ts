@@ -4,7 +4,6 @@ import { Client } from "pg";
 import { databaseUrl,e2eMember,e2eUser,e2eViewer } from "./fixtures.e2e-user";
 import { ensureE2EMember,ensureE2EPermissionUser } from "./fixtures.ensure-e2-emember";
 
-
 export async function ensureE2EViewer() {
   await ensureE2EPermissionUser({
     user: e2eViewer,
@@ -19,10 +18,7 @@ export async function ensureE2EPrivateMemberAssistant() {
   const client = new Client({ connectionString: databaseUrl() });
   await client.connect();
   try {
-    const member = await client.query<{ id: string }>(
-      `select id from "user" where email = $1 limit 1`,
-      [e2eMember.email],
-    );
+    const member = await client.query<{ id: string }>(`select id from "user" where email = $1 limit 1`, [e2eMember.email]);
     const workspace = await client.query<{ id: string }>(
       `select w.id
        from workspaces w
@@ -57,10 +53,7 @@ export async function ensureE2ETransferScenario() {
   const client = new Client({ connectionString: databaseUrl() });
   await client.connect();
   try {
-    const user = await client.query<{ id: string }>(
-      `select id from "user" where email = $1 limit 1`,
-      [e2eUser.email],
-    );
+    const user = await client.query<{ id: string }>(`select id from "user" where email = $1 limit 1`, [e2eUser.email]);
     const source = await client.query<{
       id: string;
       organization_id: string;
@@ -176,13 +169,7 @@ export async function ensureE2ETransferScenario() {
        ('user', $1, $2, 'organization', $3, $1),
        ('user', $1, $4, 'workspace', $5, $1)
        on conflict do nothing`,
-      [
-        userId,
-        ownerRole.rows[0].id,
-        destinationOrganizationId,
-        adminRole.rows[0].id,
-        destinationOrganizationProject.rows[0].id,
-      ],
+      [userId, ownerRole.rows[0].id, destinationOrganizationId, adminRole.rows[0].id, destinationOrganizationProject.rows[0].id],
     );
   } finally {
     await client.end();
@@ -193,13 +180,8 @@ export async function ensureE2ELifecycleProject() {
   const client = new Client({ connectionString: databaseUrl() });
   await client.connect();
   try {
-    const user = await client.query<{ id: string }>(
-      `select id from "user" where email = $1 limit 1`,
-      [e2eUser.email],
-    );
-    const organization = await client.query<{ id: string }>(
-      `select id from organizations where slug = 'deodis' limit 1`,
-    );
+    const user = await client.query<{ id: string }>(`select id from "user" where email = $1 limit 1`, [e2eUser.email]);
+    const organization = await client.query<{ id: string }>(`select id from organizations where slug = 'deodis' limit 1`);
     const adminRole = await client.query<{ id: string }>(
       `select id from roles
        where name = 'workspace.admin' and is_system = true

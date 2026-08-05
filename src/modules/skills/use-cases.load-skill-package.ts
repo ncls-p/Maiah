@@ -1,36 +1,15 @@
 import { logHandledError } from "@/lib/logger";
 import { audit } from "@/server/domain/services/audit";
 import { db } from "@/server/infrastructure/db";
-import {
-agentSkills
-} from "@/server/infrastructure/db/schema";
+import { agentSkills } from "@/server/infrastructure/db/schema";
 import { mkdir,mkdtemp,readdir,readFile,rm,stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import {
-parseFrontmatter,
-runSkillsCli,
-verifySkillInstallPreviewToken,
-walkFiles,
-} from "./use-cases.create-skill-install-preview-token";
-import {
-AgentSkillRow,
-LoadedSkillPackage,
-maxMarkdownFileBytes,
-maxSkillMarkdownBytes,
-SkillMarkdownFile,
-SkillPreviewConflictError,
-SkillPreviewResult,
-stripAnsi,
-} from "./use-cases.exec-file-async";
-import {
-checksumSkillPreview,
-parseSkillsInstallCommand,
-} from "./use-cases.parse-skills-install-command";
+import { parseFrontmatter,runSkillsCli,verifySkillInstallPreviewToken,walkFiles } from "./use-cases.create-skill-install-preview-token";
+import { AgentSkillRow,LoadedSkillPackage,maxMarkdownFileBytes,maxSkillMarkdownBytes,SkillMarkdownFile,SkillPreviewConflictError,SkillPreviewResult,stripAnsi } from "./use-cases.exec-file-async";
+import { checksumSkillPreview,parseSkillsInstallCommand } from "./use-cases.parse-skills-install-command";
 
-async function extractMarkdownFiles(
-  skillDir: string,
-): Promise<SkillMarkdownFile[]> {
+async function extractMarkdownFiles(skillDir: string): Promise<SkillMarkdownFile[]> {
   try {
     const allFiles = await walkFiles(skillDir);
     const markdownFiles: SkillMarkdownFile[] = [];
@@ -56,35 +35,19 @@ async function extractMarkdownFiles(
     });
     return markdownFiles;
   } catch (error) {
-    logHandledError(
-      "Failed to extract skill markdown files",
-      { skillDir },
-      error as Error,
-    );
+    logHandledError("Failed to extract skill markdown files", { skillDir }, error as Error);
     throw error;
   }
 }
 
-export async function loadSkillPackage(
-  installCommand: string,
-  tempPrefix: string,
-): Promise<LoadedSkillPackage> {
+export async function loadSkillPackage(installCommand: string, tempPrefix: string): Promise<LoadedSkillPackage> {
   const parsed = parseSkillsInstallCommand(installCommand);
   const tempDir = await mkdtemp(path.join(tmpdir(), tempPrefix));
   const tempHome = path.join(tempDir, "home");
   await mkdir(tempHome, { recursive: true });
 
   try {
-    const args = [
-      "--yes",
-      "skills",
-      "add",
-      parsed.sourcePackage,
-      "--copy",
-      "-y",
-      "--agent",
-      "claude-code",
-    ];
+    const args = ["--yes", "skills", "add", parsed.sourcePackage, "--copy", "-y", "--agent", "claude-code"];
     for (const skillName of parsed.skillNames) {
       args.push("--skill", skillName);
     }
@@ -100,9 +63,7 @@ export async function loadSkillPackage(
       .sort((a, b) => path.basename(a).localeCompare(path.basename(b)));
 
     if (skillDirs.length === 0) {
-      throw new Error(
-        "The install command did not produce any skill directory",
-      );
+      throw new Error("The install command did not produce any skill directory");
     }
 
     const results: SkillPreviewResult[] = [];
@@ -134,20 +95,11 @@ export async function loadSkillPackage(
   }
 }
 
-export async function installSkillsFromCommand(input: {
-  workspaceId: string;
-  userId: string;
-  installCommand: string;
-  previewToken: string;
-  isGlobal?: boolean;
-}) {
+export async function installSkillsFromCommand(input: { workspaceId: string; userId: string; installCommand: string; previewToken: string; isGlobal?: boolean }) {
   const preview = verifySkillInstallPreviewToken(input);
 
   try {
-    const loaded = await loadSkillPackage(
-      input.installCommand,
-      "ai-hub-skills-install-",
-    );
+    const loaded = await loadSkillPackage(input.installCommand, "ai-hub-skills-install-");
     const contentChecksum = checksumSkillPreview(loaded.results);
     if (contentChecksum !== preview.contentChecksum) {
       throw new SkillPreviewConflictError();
@@ -201,11 +153,7 @@ export async function installSkillsFromCommand(input: {
     return created;
   } catch (error) {
     const parsed = parseSkillsInstallCommand(input.installCommand);
-    logHandledError(
-      "Failed to install skills from command",
-      { sourcePackage: parsed.sourcePackage },
-      error as Error,
-    );
+    logHandledError("Failed to install skills from command", { sourcePackage: parsed.sourcePackage }, error as Error);
     throw error;
   }
 }

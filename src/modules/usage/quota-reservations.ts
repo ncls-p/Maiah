@@ -1,10 +1,6 @@
 import { getWorkspaceMonthlyTokenLimit } from "@/modules/usage/quota-config";
 import { db } from "@/server/infrastructure/db";
-import {
-agentRuns,
-usageEvents,
-workspaceTokenReservations,
-} from "@/server/infrastructure/db/schema";
+import { agentRuns,usageEvents,workspaceTokenReservations } from "@/server/infrastructure/db/schema";
 import { and,eq,gte,inArray,lt,sql } from "drizzle-orm";
 
 export class WorkspaceQuotaReservationError extends Error {
@@ -16,9 +12,7 @@ export class WorkspaceQuotaReservationError extends Error {
     readonly requested: number,
     readonly limit: number,
   ) {
-    super(
-      `Monthly token limit would be exceeded (${(used + reserved).toLocaleString()} used or reserved + ${requested.toLocaleString()} requested / ${limit.toLocaleString()}).`,
-    );
+    super(`Monthly token limit would be exceeded (${(used + reserved).toLocaleString()} used or reserved + ${requested.toLocaleString()} requested / ${limit.toLocaleString()}).`);
     this.name = "WorkspaceQuotaReservationError";
   }
 }
@@ -30,60 +24,32 @@ export function startOfQuotaMonth(now = new Date()) {
   return date;
 }
 
-export function evaluateQuotaReservation(input: {
-  limit: number | null;
-  used: number;
-  reserved: number;
-  requested: number;
-}) {
+export function evaluateQuotaReservation(input: { limit: number | null; used: number; reserved: number; requested: number }) {
   const requested = Math.max(1, Math.floor(input.requested));
-  const allowed =
-    input.limit === null ||
-    input.used + input.reserved + requested <= input.limit;
+  const allowed = input.limit === null || input.used + input.reserved + requested <= input.limit;
   return { ...input, requested, allowed };
 }
 
-export async function getActiveWorkspaceReservationTokens(
-  workspaceId: string,
-  now = new Date(),
-) {
+export async function getActiveWorkspaceReservationTokens(workspaceId: string, now = new Date()) {
   const [result] = await db
     .select({
       total: sql<number>`coalesce(sum(${workspaceTokenReservations.reservedTokens}), 0)`,
     })
     .from(workspaceTokenReservations)
-    .where(
-      and(
-        eq(workspaceTokenReservations.workspaceId, workspaceId),
-        eq(workspaceTokenReservations.status, "active"),
-        gte(workspaceTokenReservations.expiresAt, now),
-      ),
-    );
+    .where(and(eq(workspaceTokenReservations.workspaceId, workspaceId), eq(workspaceTokenReservations.status, "active"), gte(workspaceTokenReservations.expiresAt, now)));
   return Number(result?.total ?? 0);
 }
 
-export async function reserveWorkspaceTokens(input: {
-  workspaceId: string;
-  runId: string;
-  requestedTokens: number;
-  expiresAt: Date;
-  now?: Date;
-}) {
+export async function reserveWorkspaceTokens(input: { workspaceId: string; runId: string; requestedTokens: number; expiresAt: Date; now?: Date }) {
   const now = input.now ?? new Date();
   const periodStart = startOfQuotaMonth(now);
   const requestedTokens = Math.max(1, Math.floor(input.requestedTokens));
   const limit = getWorkspaceMonthlyTokenLimit();
 
   return db.transaction(async (tx) => {
-    await tx.execute(
-      sql`select pg_advisory_xact_lock(hashtext(${input.workspaceId}))`,
-    );
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${input.workspaceId}))`);
 
-    const [existing] = await tx
-      .select()
-      .from(workspaceTokenReservations)
-      .where(eq(workspaceTokenReservations.runId, input.runId))
-      .limit(1);
+    const [existing] = await tx.select().from(workspaceTokenReservations).where(eq(workspaceTokenReservations.runId, input.runId)).limit(1);
     if (existing) return existing;
 
     const [[usage], [reservations]] = await Promise.all([
@@ -92,24 +58,13 @@ export async function reserveWorkspaceTokens(input: {
           total: sql<number>`coalesce(sum(coalesce(${usageEvents.inputTokens}, 0) + coalesce(${usageEvents.outputTokens}, 0)), 0)`,
         })
         .from(usageEvents)
-        .where(
-          and(
-            eq(usageEvents.workspaceId, input.workspaceId),
-            gte(usageEvents.createdAt, periodStart),
-          ),
-        ),
+        .where(and(eq(usageEvents.workspaceId, input.workspaceId), gte(usageEvents.createdAt, periodStart))),
       tx
         .select({
           total: sql<number>`coalesce(sum(${workspaceTokenReservations.reservedTokens}), 0)`,
         })
         .from(workspaceTokenReservations)
-        .where(
-          and(
-            eq(workspaceTokenReservations.workspaceId, input.workspaceId),
-            eq(workspaceTokenReservations.status, "active"),
-            gte(workspaceTokenReservations.expiresAt, now),
-          ),
-        ),
+        .where(and(eq(workspaceTokenReservations.workspaceId, input.workspaceId), eq(workspaceTokenReservations.status, "active"), gte(workspaceTokenReservations.expiresAt, now))),
     ]);
     const used = Number(usage?.total ?? 0);
     const reserved = Number(reservations?.total ?? 0);
@@ -120,12 +75,7 @@ export async function reserveWorkspaceTokens(input: {
       requested: requestedTokens,
     });
     if (!admission.allowed && limit !== null) {
-      throw new WorkspaceQuotaReservationError(
-        used,
-        reserved,
-        requestedTokens,
-        limit,
-      );
+      throw new WorkspaceQuotaReservationError(used, reserved, requestedTokens, limit);
     }
 
     const [reservation] = await tx
@@ -138,56 +88,30 @@ export async function reserveWorkspaceTokens(input: {
         expiresAt: input.expiresAt,
       })
       .returning();
-    await tx
-      .update(agentRuns)
-      .set({ reservedTokens: requestedTokens, updatedAt: now })
-      .where(eq(agentRuns.id, input.runId));
+    await tx.update(agentRuns).set({ reservedTokens: requestedTokens, updatedAt: now }).where(eq(agentRuns.id, input.runId));
     return reservation;
   });
 }
 
-export async function settleWorkspaceTokenReservation(input: {
-  runId: string;
-  actualTokens: number;
-  now?: Date;
-}) {
+export async function settleWorkspaceTokenReservation(input: { runId: string; actualTokens: number; now?: Date }) {
   const now = input.now ?? new Date();
   const actualTokens = Math.max(0, Math.floor(input.actualTokens));
   await db.transaction(async (tx) => {
     await tx
       .update(workspaceTokenReservations)
       .set({ status: "settled", actualTokens, updatedAt: now })
-      .where(
-        and(
-          eq(workspaceTokenReservations.runId, input.runId),
-          eq(workspaceTokenReservations.status, "active"),
-        ),
-      );
-    await tx
-      .update(agentRuns)
-      .set({ reservedTokens: 0, updatedAt: now })
-      .where(eq(agentRuns.id, input.runId));
+      .where(and(eq(workspaceTokenReservations.runId, input.runId), eq(workspaceTokenReservations.status, "active")));
+    await tx.update(agentRuns).set({ reservedTokens: 0, updatedAt: now }).where(eq(agentRuns.id, input.runId));
   });
 }
 
-export async function releaseWorkspaceTokenReservation(
-  runId: string,
-  now = new Date(),
-) {
+export async function releaseWorkspaceTokenReservation(runId: string, now = new Date()) {
   await db.transaction(async (tx) => {
     await tx
       .update(workspaceTokenReservations)
       .set({ status: "released", updatedAt: now })
-      .where(
-        and(
-          eq(workspaceTokenReservations.runId, runId),
-          eq(workspaceTokenReservations.status, "active"),
-        ),
-      );
-    await tx
-      .update(agentRuns)
-      .set({ reservedTokens: 0, updatedAt: now })
-      .where(eq(agentRuns.id, runId));
+      .where(and(eq(workspaceTokenReservations.runId, runId), eq(workspaceTokenReservations.status, "active")));
+    await tx.update(agentRuns).set({ reservedTokens: 0, updatedAt: now }).where(eq(agentRuns.id, runId));
   });
 }
 
@@ -195,12 +119,7 @@ export async function expireWorkspaceTokenReservations(now = new Date()) {
   const expired = await db
     .update(workspaceTokenReservations)
     .set({ status: "expired", updatedAt: now })
-    .where(
-      and(
-        eq(workspaceTokenReservations.status, "active"),
-        lt(workspaceTokenReservations.expiresAt, now),
-      ),
-    )
+    .where(and(eq(workspaceTokenReservations.status, "active"), lt(workspaceTokenReservations.expiresAt, now)))
     .returning({ runId: workspaceTokenReservations.runId });
   if (expired.length > 0) {
     await db

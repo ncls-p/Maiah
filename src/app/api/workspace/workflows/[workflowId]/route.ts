@@ -1,26 +1,16 @@
 import { NextRequest,NextResponse } from "next/server";
 import { z } from "zod";
 
-import {
-handleRoute,
-requireResourcePermissionAsync,
-} from "@/lib/route-handler";
+import { handleRoute,requireResourcePermissionAsync } from "@/lib/route-handler";
 import { updateWorkflowSchema } from "@/modules/workflows/contracts";
-import {
-archiveWorkflow,
-getWorkflowDetail,
-updateWorkflow,
-} from "@/modules/workflows/use-cases";
+import { archiveWorkflow,getWorkflowDetail,updateWorkflow } from "@/modules/workflows/use-cases";
 
 import { workflowErrorResponse } from "../route-support";
 
 const paramsSchema = z.object({ workflowId: z.uuid() });
 const querySchema = z.object({ workspaceId: z.uuid() });
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ workflowId: string }> },
-) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ workflowId: string }> }) {
   return handleRoute(
     req,
     async ({ session }) => {
@@ -31,19 +21,10 @@ export async function GET(
       if (!parsedParams.success || !parsedQuery.success) {
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
       }
-      const forbidden = await requireResourcePermissionAsync(
-        session.user.id,
-        parsedQuery.data.workspaceId,
-        "workflows.view",
-        "workflow",
-        (await params).workflowId,
-      );
+      const forbidden = await requireResourcePermissionAsync(session.user.id, parsedQuery.data.workspaceId, "workflows.view", "workflow", (await params).workflowId);
       if (forbidden) return forbidden;
       return NextResponse.json({
-        workflow: await getWorkflowDetail(
-          parsedParams.data.workflowId,
-          parsedQuery.data.workspaceId,
-        ),
+        workflow: await getWorkflowDetail(parsedParams.data.workflowId, parsedQuery.data.workspaceId),
       });
     },
     {
@@ -53,10 +34,7 @@ export async function GET(
   );
 }
 
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: Promise<{ workflowId: string }> },
-) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ workflowId: string }> }) {
   return handleRoute(
     req,
     async ({ session }) => {
@@ -71,13 +49,7 @@ export async function PATCH(
           { status: 400 },
         );
       }
-      const forbidden = await requireResourcePermissionAsync(
-        session.user.id,
-        parsedBody.data.workspaceId,
-        "workflows.update",
-        "workflow",
-        (await params).workflowId,
-      );
+      const forbidden = await requireResourcePermissionAsync(session.user.id, parsedBody.data.workspaceId, "workflows.update", "workflow", (await params).workflowId);
       if (forbidden) return forbidden;
       return NextResponse.json({
         workflow: await updateWorkflow({
@@ -94,10 +66,7 @@ export async function PATCH(
   );
 }
 
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: Promise<{ workflowId: string }> },
-) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ workflowId: string }> }) {
   return handleRoute(
     req,
     async ({ session }) => {
@@ -108,19 +77,10 @@ export async function DELETE(
       if (!parsedParams.success || !parsedQuery.success) {
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
       }
-      const forbidden = await requireResourcePermissionAsync(
-        session.user.id,
-        parsedQuery.data.workspaceId,
-        "workflows.delete",
-        "workflow",
-        (await params).workflowId,
-      );
+      const forbidden = await requireResourcePermissionAsync(session.user.id, parsedQuery.data.workspaceId, "workflows.delete", "workflow", (await params).workflowId);
       if (forbidden) return forbidden;
       return NextResponse.json({
-        workflow: await archiveWorkflow(
-          parsedParams.data.workflowId,
-          parsedQuery.data.workspaceId,
-        ),
+        workflow: await archiveWorkflow(parsedParams.data.workflowId, parsedQuery.data.workspaceId),
       });
     },
     {

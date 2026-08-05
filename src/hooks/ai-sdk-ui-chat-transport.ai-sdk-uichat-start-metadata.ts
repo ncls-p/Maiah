@@ -1,10 +1,6 @@
 import { type UIMessageChunk } from "ai";
 
-import type {
-ChatCitation,
-ChatStreamEvent,
-CodeWorkspaceArtifact,
-} from "@/components/chat/chat-types";
+import type { ChatCitation,ChatStreamEvent,CodeWorkspaceArtifact } from "@/components/chat/chat-types";
 
 export type AiSdkUIChatStartMetadata = {
   conversationId?: string;
@@ -28,30 +24,16 @@ export function readMetadata(value: unknown): AiSdkUIChatStartMetadata {
   if (typeof value !== "object" || value === null) return {};
   const record = value as Record<string, unknown>;
   return {
-    conversationId:
-      typeof record.conversationId === "string"
-        ? record.conversationId
-        : undefined,
-    messageId:
-      typeof record.messageId === "string" ? record.messageId : undefined,
-    userMessageId:
-      typeof record.userMessageId === "string"
-        ? record.userMessageId
-        : undefined,
+    conversationId: typeof record.conversationId === "string" ? record.conversationId : undefined,
+    messageId: typeof record.messageId === "string" ? record.messageId : undefined,
+    userMessageId: typeof record.userMessageId === "string" ? record.userMessageId : undefined,
   };
 }
 
-export function isCodeWorkspaceArtifact(
-  value: unknown,
-): value is CodeWorkspaceArtifact {
+export function isCodeWorkspaceArtifact(value: unknown): value is CodeWorkspaceArtifact {
   if (typeof value !== "object" || value === null) return false;
   const record = value as Record<string, unknown>;
-  return (
-    record.kind === "code_workspace_artifact" &&
-    typeof record.projectId === "string" &&
-    typeof record.version === "number" &&
-    Array.isArray(record.files)
-  );
+  return record.kind === "code_workspace_artifact" && typeof record.projectId === "string" && typeof record.version === "number" && Array.isArray(record.files);
 }
 
 export function isCitationArray(value: unknown): value is ChatCitation[] {
@@ -60,13 +42,7 @@ export function isCitationArray(value: unknown): value is ChatCitation[] {
     value.every((item) => {
       if (typeof item !== "object" || item === null) return false;
       const record = item as Record<string, unknown>;
-      return (
-        typeof record.chunkId === "string" &&
-        typeof record.documentId === "string" &&
-        typeof record.documentTitle === "string" &&
-        typeof record.content === "string" &&
-        typeof record.score === "number"
-      );
+      return typeof record.chunkId === "string" && typeof record.documentId === "string" && typeof record.documentTitle === "string" && typeof record.content === "string" && typeof record.score === "number";
     })
   );
 }
@@ -74,10 +50,7 @@ export function isCitationArray(value: unknown): value is ChatCitation[] {
 export function toolApprovalFromData(data: unknown): ChatStreamEvent | null {
   if (typeof data !== "object" || data === null) return null;
   const record = data as Record<string, unknown>;
-  if (
-    typeof record.invocationId !== "string" ||
-    typeof record.toolName !== "string"
-  ) {
+  if (typeof record.invocationId !== "string" || typeof record.toolName !== "string") {
     return null;
   }
   return {
@@ -107,16 +80,10 @@ export function agentToolContextFromData(data: unknown): {
   };
 }
 
-export function toolInputProgressFromData(
-  data: unknown,
-): ChatStreamEvent | null {
+export function toolInputProgressFromData(data: unknown): ChatStreamEvent | null {
   if (typeof data !== "object" || data === null) return null;
   const record = data as Record<string, unknown>;
-  if (
-    typeof record.toolCallId !== "string" ||
-    typeof record.toolName !== "string" ||
-    typeof record.inputText !== "string"
-  ) {
+  if (typeof record.toolCallId !== "string" || typeof record.toolName !== "string" || typeof record.inputText !== "string") {
     return null;
   }
   return {

@@ -1,8 +1,6 @@
 import { describe,expect,it } from "vitest";
 
-
 import { invokeNode } from "./workflow-runtime-coverage.test.dependencies";
-
 
 describe("workflow list and logic nodes", () => {
   it.each([
@@ -13,10 +11,7 @@ describe("workflow list and logic nodes", () => {
     ["contains", "alp", ["alpha"]],
     ["startsWith", "be", ["beta"]],
   ])("filters scalar lists with %s", async (operator, value, expected) => {
-    const list =
-      operator === "contains" || operator === "startsWith"
-        ? ["alpha", "beta", "gamma"]
-        : [1, 2, 3];
+    const list = operator === "contains" || operator === "startsWith" ? ["alpha", "beta", "gamma"] : [1, 2, 3];
     await expect(
       invokeNode(
         "list.filter",
@@ -33,14 +28,7 @@ describe("workflow list and logic nodes", () => {
   });
 
   it("filters arrays, presence, and all empty value shapes", async () => {
-    const items = [
-      { value: ["tag"] },
-      { value: [] },
-      { value: {} },
-      { value: "" },
-      { value: null },
-      {},
-    ];
+    const items = [{ value: ["tag"] }, { value: [] }, { value: {} }, { value: "" }, { value: null }, {}];
     await expect(
       invokeNode(
         "list.filter",
@@ -81,13 +69,7 @@ describe("workflow list and logic nodes", () => {
   });
 
   it("sorts and slices lists while handling missing values", async () => {
-    const items = [
-      { score: 2 },
-      { score: null },
-      { score: 10 },
-      {},
-      { score: 2 },
-    ];
+    const items = [{ score: 2 }, { score: null }, { score: 10 }, {}, { score: 2 }];
     const ascending = await invokeNode(
       "list.sort",
       { items },
@@ -100,13 +82,7 @@ describe("workflow list and logic nodes", () => {
     );
     expect(ascending).toMatchObject({
       output: {
-        result: [
-          { score: 2 },
-          { score: 2 },
-          { score: 10 },
-          { score: null },
-          {},
-        ],
+        result: [{ score: 2 }, { score: 2 }, { score: 10 }, { score: null }, {}],
       },
     });
     const descending = await invokeNode(
@@ -121,13 +97,7 @@ describe("workflow list and logic nodes", () => {
     );
     expect(descending).toMatchObject({
       output: {
-        result: [
-          { score: 10 },
-          { score: 2 },
-          { score: 2 },
-          { score: null },
-          {},
-        ],
+        result: [{ score: 10 }, { score: 2 }, { score: 2 }, { score: null }, {}],
       },
     });
     await expect(
@@ -177,12 +147,8 @@ describe("workflow list and logic nodes", () => {
         },
       ),
     ).resolves.toEqual({ output: { amount: 1 }, action: "false" });
-    await expect(
-      invokeNode("logic.delay", { done: false }, { delayMs: -1 }),
-    ).resolves.toEqual({ output: { done: false } });
-    await expect(
-      invokeNode("logic.stop", "primitive", { message: "Done {{input}}" }),
-    ).resolves.toEqual({ output: { workflowResult: "Done primitive" } });
+    await expect(invokeNode("logic.delay", { done: false }, { delayMs: -1 })).resolves.toEqual({ output: { done: false } });
+    await expect(invokeNode("logic.stop", "primitive", { message: "Done {{input}}" })).resolves.toEqual({ output: { workflowResult: "Done primitive" } });
 
     for (const format of ["iso", "date", "timestamp"]) {
       const result = await invokeNode(

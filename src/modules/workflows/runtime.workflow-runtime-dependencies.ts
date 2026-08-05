@@ -1,9 +1,4 @@
-
-
-import {
-type CodeSandboxResult
-} from "@/modules/tool/code-sandbox";
-
+import { type CodeSandboxResult } from "@/modules/tool/code-sandbox";
 
 export type WorkflowRuntimeDependencies = {
   workspaceId: string;
@@ -14,9 +9,7 @@ export type WorkflowRuntimeDependencies = {
 
 export type RuntimeContext = Record<string, unknown>;
 export function objectValue(value: unknown): Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : {};
+  return typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
 }
 
 export function configuredEntries(value: unknown) {
@@ -44,32 +37,17 @@ export function sandboxFailureMessage(result: CodeSandboxResult) {
   const lines = stderr.split(/\r?\n/);
   let errorLine = -1;
   for (let index = lines.length - 1; index >= 0; index -= 1) {
-    if (
-      /^\s*(?:[A-Za-z_$][\w.$]*(?:Error|Exception)|Error):\s+\S/.test(
-        lines[index] ?? "",
-      )
-    ) {
+    if (/^\s*(?:[A-Za-z_$][\w.$]*(?:Error|Exception)|Error):\s+\S/.test(lines[index] ?? "")) {
       errorLine = index;
       break;
     }
   }
-  const diagnostic =
-    errorLine >= 0 ? lines.slice(errorLine).join("\n") : stderr || result.error;
-  const exitDetail =
-    typeof result.exitCode === "number"
-      ? ` (exit code ${result.exitCode})`
-      : result.signal
-        ? ` (signal ${result.signal})`
-        : "";
-  return `Sandbox execution failed${exitDetail}: ${boundedDiagnostic(
-    diagnostic || "No error details were returned.",
-  )}`;
+  const diagnostic = errorLine >= 0 ? lines.slice(errorLine).join("\n") : stderr || result.error;
+  const exitDetail = typeof result.exitCode === "number" ? ` (exit code ${result.exitCode})` : result.signal ? ` (signal ${result.signal})` : "";
+  return `Sandbox execution failed${exitDetail}: ${boundedDiagnostic(diagnostic || "No error details were returned.")}`;
 }
 
-export function nodeAbortSignal(
-  signal: AbortSignal | undefined,
-  timeoutMs: unknown,
-) {
+export function nodeAbortSignal(signal: AbortSignal | undefined, timeoutMs: unknown) {
   const timeout = Math.max(250, Math.min(120_000, Number(timeoutMs) || 30_000));
   const timeoutSignal = AbortSignal.timeout(timeout);
   return signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal;
@@ -92,11 +70,7 @@ export function readPath(value: unknown, path: string) {
   }, value);
 }
 
-export function writePath(
-  input: unknown,
-  path: string,
-  value: unknown,
-): unknown {
+export function writePath(input: unknown, path: string, value: unknown): unknown {
   const segments = pathSegments(path);
   if (segments.length === 0) return value;
   const root = { ...objectValue(input) };
@@ -146,15 +120,9 @@ export function interpolateTemplate(template: string, input: unknown): unknown {
 
 export function resolveTemplates(value: unknown, input: unknown): unknown {
   if (typeof value === "string") return interpolateTemplate(value, input);
-  if (Array.isArray(value))
-    return value.map((item) => resolveTemplates(item, input));
+  if (Array.isArray(value)) return value.map((item) => resolveTemplates(item, input));
   if (typeof value === "object" && value !== null) {
-    return Object.fromEntries(
-      Object.entries(value).map(([key, item]) => [
-        key,
-        resolveTemplates(item, input),
-      ]),
-    );
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, resolveTemplates(item, input)]));
   }
   return value;
 }

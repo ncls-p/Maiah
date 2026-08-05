@@ -84,13 +84,13 @@ code.getThemes(): [BundledTheme, BundledTheme];
 ### DiagramPlugin (@streamdown/mermaid)
 
 ```tsx
-import { mermaid } from '@streamdown/mermaid';
-import { createMermaidPlugin } from '@streamdown/mermaid';
+import { mermaid } from "@streamdown/mermaid";
+import { createMermaidPlugin } from "@streamdown/mermaid";
 
 const mermaid = createMermaidPlugin({
   config: {
-    theme: 'dark', // 'default' | 'dark' | 'forest' | 'neutral' | 'base'
-    fontFamily: 'monospace',
+    theme: "dark", // 'default' | 'dark' | 'forest' | 'neutral' | 'base'
+    fontFamily: "monospace",
   },
 });
 ```
@@ -98,27 +98,28 @@ const mermaid = createMermaidPlugin({
 ### MathPlugin (@streamdown/math)
 
 ```tsx
-import { math } from '@streamdown/math';
-import { createMathPlugin } from '@streamdown/math';
+import { math } from "@streamdown/math";
+import { createMathPlugin } from "@streamdown/math";
 
 const math = createMathPlugin({
   singleDollarTextMath: true, // default: false
-  errorColor: '#ff0000',
+  errorColor: "#ff0000",
 });
 
 math.getStyles(); // Returns "katex/dist/katex.min.css"
 ```
 
 **Math requires CSS import:**
+
 ```tsx
-import 'katex/dist/katex.min.css';
+import "katex/dist/katex.min.css";
 ```
 
 ### CjkPlugin (@streamdown/cjk)
 
 ```tsx
-import { cjk } from '@streamdown/cjk';
-import { createCjkPlugin } from '@streamdown/cjk';
+import { cjk } from "@streamdown/cjk";
+import { createCjkPlugin } from "@streamdown/cjk";
 
 const cjk = createCjkPlugin();
 // Provides remarkPluginsBefore and remarkPluginsAfter
@@ -139,7 +140,7 @@ interface RemendOptions {
   strikethrough?: boolean; // default: true
   katex?: boolean; // default: true
   setextHeadings?: boolean; // default: true
-  linkMode?: 'protocol' | 'text-only'; // default: 'protocol'
+  linkMode?: "protocol" | "text-only"; // default: 'protocol'
   handlers?: RemendHandler[]; // Custom handlers
 }
 ```
@@ -147,16 +148,20 @@ interface RemendOptions {
 ## ControlsConfig
 
 ```tsx
-type ControlsConfig = boolean | {
-  table?: boolean;
-  code?: boolean;
-  mermaid?: boolean | {
-    download?: boolean;
-    copy?: boolean;
-    fullscreen?: boolean;
-    panZoom?: boolean;
-  };
-};
+type ControlsConfig =
+  | boolean
+  | {
+      table?: boolean;
+      code?: boolean;
+      mermaid?:
+        | boolean
+        | {
+            download?: boolean;
+            copy?: boolean;
+            fullscreen?: boolean;
+            panZoom?: boolean;
+          };
+    };
 ```
 
 ## LinkSafetyConfig
@@ -194,17 +199,9 @@ interface MermaidErrorComponentProps {
 ## Element Filtering Types
 
 ```tsx
-type AllowElement = (
-  element: Readonly<Element>,
-  index: number,
-  parent: Readonly<Parents> | undefined
-) => boolean | null | undefined;
+type AllowElement = (element: Readonly<Element>, index: number, parent: Readonly<Parents> | undefined) => boolean | null | undefined;
 
-type UrlTransform = (
-  url: string,
-  key: string,
-  node: Readonly<Element>
-) => string | null | undefined;
+type UrlTransform = (url: string, key: string, node: Readonly<Element>) => string | null | undefined;
 ```
 
 ### defaultUrlTransform
@@ -212,10 +209,10 @@ type UrlTransform = (
 Passthrough function that returns URLs unchanged. URL security is handled by `rehype-sanitize` and `rehype-harden` instead. Use `urlTransform` when you need custom URL rewriting.
 
 ```tsx
-import { defaultUrlTransform } from 'streamdown';
+import { defaultUrlTransform } from "streamdown";
 
-defaultUrlTransform('https://example.com', 'href', node); // 'https://example.com'
-defaultUrlTransform('/relative/path', 'href', node);      // '/relative/path'
+defaultUrlTransform("https://example.com", "href", node); // 'https://example.com'
+defaultUrlTransform("/relative/path", "href", node); // '/relative/path'
 ```
 
 ## Default Exports
@@ -223,39 +220,34 @@ defaultUrlTransform('/relative/path', 'href', node);      // '/relative/path'
 ```tsx
 import {
   Streamdown,
-  defaultUrlTransform,    // URL passthrough (security handled by rehype plugins)
-  defaultRemarkPlugins,   // { gfm: [remarkGfm, {}] }
-  defaultRehypePlugins,   // { raw: rehypeRaw, sanitize: [rehypeSanitize, {}], harden: [harden, {...}] }
-} from 'streamdown';
+  defaultUrlTransform, // URL passthrough (security handled by rehype plugins)
+  defaultRemarkPlugins, // { gfm: [remarkGfm, {}] }
+  defaultRehypePlugins, // { raw: rehypeRaw, sanitize: [rehypeSanitize, {}], harden: [harden, {...}] }
+} from "streamdown";
 
 // Types
-import type {
-  AllowElement,
-  Components,
-  ExtraProps,
-  UrlTransform,
-} from 'streamdown';
+import type { AllowElement, Components, ExtraProps, UrlTransform } from "streamdown";
 ```
 
 ## Overridable Components
 
 Pass via `components` prop:
 
-| Element | Props |
-|---------|-------|
-| `h1`-`h6` | children, className, node |
-| `p` | children, className, node |
-| `strong`, `em` | children, className, node |
-| `ul`, `ol` | children, className, node |
-| `li` | children, className, node |
-| `a` | children, className, href, node |
-| `code`, `pre` | children, className, node |
-| `blockquote` | children, className, node |
-| `table`, `thead`, `tbody`, `tr`, `th`, `td` | children, className, node |
-| `img` | src, alt, className, node |
-| `hr` | className, node |
-| `sup`, `sub` | children, className, node |
-| `section` | children, className, node |
+| Element                                     | Props                           |
+| ------------------------------------------- | ------------------------------- |
+| `h1`-`h6`                                   | children, className, node       |
+| `p`                                         | children, className, node       |
+| `strong`, `em`                              | children, className, node       |
+| `ul`, `ol`                                  | children, className, node       |
+| `li`                                        | children, className, node       |
+| `a`                                         | children, className, href, node |
+| `code`, `pre`                               | children, className, node       |
+| `blockquote`                                | children, className, node       |
+| `table`, `thead`, `tbody`, `tr`, `th`, `td` | children, className, node       |
+| `img`                                       | src, alt, className, node       |
+| `hr`                                        | className, node                 |
+| `sup`, `sub`                                | children, className, node       |
+| `section`                                   | children, className, node       |
 
 ## Custom HTML Tags
 

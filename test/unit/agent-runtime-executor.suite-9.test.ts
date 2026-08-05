@@ -62,9 +62,7 @@ vi.mock("@/lib/logger", () => ({
   logger: { warn: mocks.logWarning },
 }));
 
-import {
-executeAgent
-} from "@/modules/agent/runtime-executor";
+import { executeAgent } from "@/modules/agent/runtime-executor";
 
 const rootAgent = {
   id: "11111111-1111-4111-8111-111111111111",
@@ -120,7 +118,6 @@ beforeEach(() => {
 });
 
 describe("agent runtime executor", () => {
-
   it("retains the parent recovery after a specialist exceeds the tree token budget", async () => {
     const childAgent = {
       ...rootAgent,
@@ -132,9 +129,7 @@ describe("agent runtime executor", () => {
       id: "99999999-9999-4999-8999-999999999999",
       agentId: childAgent.id,
     };
-    mocks.getVisibleAgent
-      .mockResolvedValueOnce({ ...rootAgent, kind: "orchestrator" })
-      .mockResolvedValueOnce(childAgent);
+    mocks.getVisibleAgent.mockResolvedValueOnce({ ...rootAgent, kind: "orchestrator" }).mockResolvedValueOnce(childAgent);
     mocks.getActiveVersion.mockResolvedValueOnce({
       ...rootVersion,
       maxToolCalls: 2,
@@ -174,12 +169,10 @@ describe("agent runtime executor", () => {
     mocks.generateText.mockImplementation(async (options) => {
       call += 1;
       if (call === 1) {
-        const delegate = Object.entries(options.tools).find(([name]) =>
-          name.startsWith("delegate_"),
-        )?.[1] as { execute: (input: { task: string }) => Promise<unknown> };
-        await expect(
-          delegate.execute({ task: "Research" }),
-        ).rejects.toMatchObject({ code: "AGENT_TOKEN_BUDGET_EXCEEDED" });
+        const delegate = Object.entries(options.tools).find(([name]) => name.startsWith("delegate_"))?.[1] as {
+          execute: (input: { task: string }) => Promise<unknown>;
+        };
+        await expect(delegate.execute({ task: "Research" })).rejects.toMatchObject({ code: "AGENT_TOKEN_BUDGET_EXCEEDED" });
         return {
           text: "The specialist exceeded its budget; retry with a narrower task.",
           usage: { inputTokens: 10, outputTokens: 12 },

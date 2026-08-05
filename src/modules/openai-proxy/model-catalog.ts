@@ -6,11 +6,7 @@ import { OpenAIProxyError } from "@/modules/openai-proxy/errors";
 import { db } from "@/server/infrastructure/db";
 import { aiModels,aiProviders } from "@/server/infrastructure/db/schema";
 import { getAdapter } from "@/server/infrastructure/providers";
-import type {
-ModelCapability,
-ProviderKind,
-ProviderRuntimeConfig,
-} from "@/server/infrastructure/providers/adapter";
+import type { ModelCapability,ProviderKind,ProviderRuntimeConfig } from "@/server/infrastructure/providers/adapter";
 
 type CatalogRow = {
   model: typeof aiModels.$inferSelect;
@@ -46,9 +42,7 @@ export type ResolvedProxyModel = {
 
 function capabilitiesFrom(row: CatalogRow) {
   const capabilities = row.model.capabilitiesJson;
-  return capabilities && typeof capabilities === "object"
-    ? (capabilities as Partial<ModelCapability>)
-    : {};
+  return capabilities && typeof capabilities === "object" ? (capabilities as Partial<ModelCapability>) : {};
 }
 
 function isTextGenerationModel(row: CatalogRow) {
@@ -61,14 +55,7 @@ async function catalogRows(workspaceId: string): Promise<CatalogRow[]> {
     .select({ model: aiModels, provider: aiProviders })
     .from(aiModels)
     .innerJoin(aiProviders, eq(aiModels.providerId, aiProviders.id))
-    .where(
-      and(
-        eq(aiProviders.workspaceId, workspaceId),
-        eq(aiProviders.enabled, true),
-        isNull(aiProviders.archivedAt),
-        eq(aiModels.enabled, true),
-      ),
-    );
+    .where(and(eq(aiProviders.workspaceId, workspaceId), eq(aiProviders.enabled, true), isNull(aiProviders.archivedAt), eq(aiModels.enabled, true)));
   return rows.filter(isTextGenerationModel);
 }
 
@@ -77,14 +64,7 @@ function publicIds(rows: CatalogRow[]) {
   for (const { model } of rows) {
     occurrences.set(model.modelId, (occurrences.get(model.modelId) ?? 0) + 1);
   }
-  return new Map(
-    rows.map((row) => [
-      row.model.id,
-      occurrences.get(row.model.modelId) === 1
-        ? row.model.modelId
-        : `${row.provider.id}/${row.model.modelId}`,
-    ]),
-  );
+  return new Map(rows.map((row) => [row.model.id, occurrences.get(row.model.modelId) === 1 ? row.model.modelId : `${row.provider.id}/${row.model.modelId}`]));
 }
 
 function toPublicModel(row: CatalogRow, id: string): OpenAIProxyModel {
@@ -106,9 +86,7 @@ function toPublicModel(row: CatalogRow, id: string): OpenAIProxyModel {
 export async function listOpenAIProxyModels(workspaceId: string) {
   const rows = await catalogRows(workspaceId);
   const ids = publicIds(rows);
-  return rows
-    .map((row) => toPublicModel(row, ids.get(row.model.id) ?? row.model.id))
-    .sort((left, right) => left.id.localeCompare(right.id));
+  return rows.map((row) => toPublicModel(row, ids.get(row.model.id) ?? row.model.id)).sort((left, right) => left.id.localeCompare(right.id));
 }
 
 async function runtimeConfigFor(row: CatalogRow) {
@@ -120,9 +98,7 @@ async function runtimeConfigFor(row: CatalogRow) {
   let headers: Record<string, string> | undefined;
   if (row.provider.encryptedHeadersJson) {
     headers = {};
-    for (const [key, encryptedValue] of Object.entries(
-      row.provider.encryptedHeadersJson as Record<string, string>,
-    )) {
+    for (const [key, encryptedValue] of Object.entries(row.provider.encryptedHeadersJson as Record<string, string>)) {
       headers[key] = await decryptValue(encryptedValue);
     }
   }
@@ -134,34 +110,18 @@ async function runtimeConfigFor(row: CatalogRow) {
     authType: row.provider.authType,
     apiKey,
     headers,
-    queryParams:
-      (row.provider.queryParamsJson as Record<string, string>) || undefined,
-    openaiCompatibleApiRoute: normalizeOpenAICompatibleApiRoute(
-      row.provider.openaiCompatibleApiRoute,
-    ),
+    queryParams: (row.provider.queryParamsJson as Record<string, string>) || undefined,
+    openaiCompatibleApiRoute: normalizeOpenAICompatibleApiRoute(row.provider.openaiCompatibleApiRoute),
   } satisfies ProviderRuntimeConfig;
 }
 
-export async function resolveOpenAIProxyModel(
-  workspaceId: string,
-  requestedModel: string,
-): Promise<ResolvedProxyModel> {
+export async function resolveOpenAIProxyModel(workspaceId: string, requestedModel: string): Promise<ResolvedProxyModel> {
   const rows = await catalogRows(workspaceId);
   const ids = publicIds(rows);
-  const matches = rows.filter(
-    (row) =>
-      row.model.id === requestedModel ||
-      ids.get(row.model.id) === requestedModel,
-  );
+  const matches = rows.filter((row) => row.model.id === requestedModel || ids.get(row.model.id) === requestedModel);
 
   if (matches.length !== 1) {
-    throw new OpenAIProxyError(
-      `The model '${requestedModel}' does not exist or is not enabled in this workspace.`,
-      404,
-      "invalid_request_error",
-      "model_not_found",
-      "model",
-    );
+    throw new OpenAIProxyError(`The model '${requestedModel}' does not exist or is not enabled in this workspace.`, 404, "invalid_request_error", "model_not_found", "model");
   }
 
   const row = matches[0];

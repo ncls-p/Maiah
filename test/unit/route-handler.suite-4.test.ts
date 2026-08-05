@@ -14,8 +14,7 @@ vi.mock("@/modules/admin/auth", () => ({
 }));
 
 vi.mock("@/server/domain/services/authorization", () => ({
-  matchesPermission: (granted: string, required: string) =>
-    granted === required,
+  matchesPermission: (granted: string, required: string) => granted === required,
   authorization: {
     checkPermission: vi.fn(),
     listPermissions: vi.fn(),
@@ -54,19 +53,11 @@ vi.mock("next/server", () => ({
 
 import { runWithRequestAuth } from "@/modules/auth/request-auth-context";
 
-
 describe("route-handler – requireRequestPermissionScopeAsync", async () => {
-  const { requireRequestPermissionScopeAsync } =
-    await import("@/lib/route-handler");
+  const { requireRequestPermissionScopeAsync } = await import("@/lib/route-handler");
 
   it("allows user sessions because their permissions are checked separately", async () => {
-    await expect(
-      requireRequestPermissionScopeAsync(
-        "user-1",
-        "workspace-1",
-        "agents.list",
-      ),
-    ).resolves.toBeNull();
+    await expect(requireRequestPermissionScopeAsync("user-1", "workspace-1", "agents.list")).resolves.toBeNull();
   });
 
   it("returns the precise missing-scope reason for API tokens", async () => {
@@ -78,12 +69,7 @@ describe("route-handler – requireRequestPermissionScopeAsync", async () => {
         userId: "user-1",
         scopes: ["agents.list"],
       },
-      () =>
-        requireRequestPermissionScopeAsync(
-          "user-1",
-          "workspace-1",
-          "providers.viewMetadata",
-        ),
+      () => requireRequestPermissionScopeAsync("user-1", "workspace-1", "providers.viewMetadata"),
     );
 
     expect(result!.status).toBe(403);

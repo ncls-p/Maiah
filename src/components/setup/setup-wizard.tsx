@@ -4,9 +4,7 @@ import { SetupWizardView } from "./setup-wizard.setup-wizard.view";
 
 export type { SetupWizardProps } from "./setup-wizard.button-type";
 
-export function SetupWizard(
-  ...args: Parameters<typeof useSetupWizardController>
-) {
+export function SetupWizard(...args: Parameters<typeof useSetupWizardController>) {
   const model = useSetupWizardController(...args);
   if (!("kind" in model)) return model;
   return <SetupWizardView model={model} />;

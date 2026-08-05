@@ -1,7 +1,6 @@
 import { describe,expect,it } from "vitest";
 import { abortChatStream,completeChatStream,createChatUIMessageStreamResponse,hasActiveChatStream,publishChatStreamEvent,registerChatStreamAbortController,subscribeToChatStream } from "./stream-bus.test.publish-chat-stream-event";
 
-
 describe("stream-bus", () => {
   describe("hasActiveChatStream", () => {
     it("returns false for unknown message", () => {
@@ -49,11 +48,7 @@ describe("stream-bus", () => {
       publishChatStreamEvent(id, { type: "text", content: "old" });
 
       const received: Record<string, unknown>[] = [];
-      subscribeToChatStream(
-        id,
-        { enqueue: (e) => received.push(e), close: () => {} },
-        { replay: false },
-      );
+      subscribeToChatStream(id, { enqueue: (e) => received.push(e), close: () => {} }, { replay: false });
 
       expect(received).toHaveLength(0);
     });
@@ -237,11 +232,7 @@ describe("stream-bus", () => {
       publishChatStreamEvent(id, { type: "done" });
 
       const received: Record<string, unknown>[] = [];
-      subscribeToChatStream(
-        id,
-        { enqueue: (e) => received.push(e), close: () => {} },
-        { replay: true },
-      );
+      subscribeToChatStream(id, { enqueue: (e) => received.push(e), close: () => {} }, { replay: true });
 
       expect(received).toHaveLength(2);
     });
@@ -256,11 +247,7 @@ describe("stream-bus", () => {
       });
 
       const received: Record<string, unknown>[] = [];
-      subscribeToChatStream(
-        id,
-        { enqueue: (event) => received.push(event), close: () => {} },
-        { replay: true },
-      );
+      subscribeToChatStream(id, { enqueue: (event) => received.push(event), close: () => {} }, { replay: true });
 
       expect(received).toEqual([
         expect.objectContaining({

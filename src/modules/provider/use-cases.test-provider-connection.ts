@@ -1,34 +1,18 @@
 import { decryptValue } from "@/lib/crypto";
-import {
-normalizeOpenAICompatibleApiRoute
-} from "@/lib/openai-compatible-api";
+import { normalizeOpenAICompatibleApiRoute } from "@/lib/openai-compatible-api";
 import { db } from "@/server/infrastructure/db";
-import {
-aiModels,
-aiProviders
-} from "@/server/infrastructure/db/schema";
-import type {
-ProviderHealth,
-ProviderRuntimeConfig
-} from "@/server/infrastructure/providers";
+import { aiModels,aiProviders } from "@/server/infrastructure/db/schema";
+import type { ProviderHealth,ProviderRuntimeConfig } from "@/server/infrastructure/providers";
 import { getAdapter } from "@/server/infrastructure/providers";
 import { and,eq } from "drizzle-orm";
 
 // ─── Provider connection test ──────────────────────────────────────────
 
-export async function testProviderConnection(
-  providerId: string,
-  workspaceId: string,
-): Promise<ProviderHealth> {
+export async function testProviderConnection(providerId: string, workspaceId: string): Promise<ProviderHealth> {
   const [provider] = await db
     .select()
     .from(aiProviders)
-    .where(
-      and(
-        eq(aiProviders.id, providerId),
-        eq(aiProviders.workspaceId, workspaceId),
-      ),
-    )
+    .where(and(eq(aiProviders.id, providerId), eq(aiProviders.workspaceId, workspaceId)))
     .limit(1);
 
   if (!provider) {
@@ -44,9 +28,7 @@ export async function testProviderConnection(
   let headers: Record<string, string> | undefined;
   if (provider.encryptedHeadersJson) {
     headers = {};
-    for (const [k, v] of Object.entries(
-      provider.encryptedHeadersJson as Record<string, string>,
-    )) {
+    for (const [k, v] of Object.entries(provider.encryptedHeadersJson as Record<string, string>)) {
       headers[k] = await decryptValue(v);
     }
   }
@@ -58,11 +40,8 @@ export async function testProviderConnection(
     authType: provider.authType,
     apiKey,
     headers,
-    queryParams:
-      (provider.queryParamsJson as Record<string, string>) || undefined,
-    openaiCompatibleApiRoute: normalizeOpenAICompatibleApiRoute(
-      provider.openaiCompatibleApiRoute,
-    ),
+    queryParams: (provider.queryParamsJson as Record<string, string>) || undefined,
+    openaiCompatibleApiRoute: normalizeOpenAICompatibleApiRoute(provider.openaiCompatibleApiRoute),
   };
 
   const adapter = getAdapter(provider.kind);
@@ -98,18 +77,7 @@ export interface CreateModelInput {
 }
 
 export async function createModel(providerId: string, input: CreateModelInput) {
-  const {
-    modelId,
-    displayName,
-    logoUrl,
-    capabilitiesJson,
-    contextWindow,
-    maxOutputTokens,
-    inputTokenCost,
-    outputTokenCost,
-    imageGenerationConfigJson,
-    sustainabilityConfigJson,
-  } = input;
+  const { modelId, displayName, logoUrl, capabilitiesJson, contextWindow, maxOutputTokens, inputTokenCost, outputTokenCost, imageGenerationConfigJson, sustainabilityConfigJson } = input;
 
   const [model] = await db
     .insert(aiModels)

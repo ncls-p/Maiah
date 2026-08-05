@@ -51,13 +51,7 @@ export function SwaggerDocs() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Script
-        id="swagger-ui-bundle"
-        src="/vendor/swagger-ui-bundle.js"
-        strategy="afterInteractive"
-        onLoad={() => setBundleReady(true)}
-        onError={() => setLoadError(true)}
-      />
+      <Script id="swagger-ui-bundle" src="/vendor/swagger-ui-bundle.js" strategy="afterInteractive" onLoad={() => setBundleReady(true)} onError={() => setLoadError(true)} />
       {loadError ? (
         <p className="p-8 text-sm text-destructive" role="alert">
           Unable to load the interactive API documentation.

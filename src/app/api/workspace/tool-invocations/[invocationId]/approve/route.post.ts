@@ -1,33 +1,19 @@
 import { encryptValue } from "@/lib/crypto";
 import { logger,logHandledError } from "@/lib/logger";
-import {
-handleRoute,
-requireWorkspacePermissionAsync,
-} from "@/lib/route-handler";
+import { handleRoute,requireWorkspacePermissionAsync } from "@/lib/route-handler";
 import { getBuiltInTool } from "@/modules/tool/builtin-tools";
-import {
-claimToolInvocationForExecution,
-completeToolInvocationFailure,
-completeToolInvocationSuccess,
-} from "@/modules/tool/invocation-approval";
+import { claimToolInvocationForExecution,completeToolInvocationFailure,completeToolInvocationSuccess } from "@/modules/tool/invocation-approval";
 import { safeToolErrorMessage } from "@/modules/tool/safe-payload";
 import { audit } from "@/server/domain/services/audit";
 import { db } from "@/server/infrastructure/db";
-import {
-conversations,
-toolInvocations
-} from "@/server/infrastructure/db/schema";
+import { conversations,toolInvocations } from "@/server/infrastructure/db/schema";
 import { and,eq } from "drizzle-orm";
 import { NextRequest,NextResponse } from "next/server";
 
 import { invocationParamsSchema } from "../../invocation-shared";
 import { alreadyResolvedResponse,executeInvocation,InvocationExecutionError } from "./route.invocation-execution-error";
 
-
-export async function POST(
-  req: Request,
-  { params }: { params: Promise<{ invocationId: string }> },
-) {
+export async function POST(req: Request, { params }: { params: Promise<{ invocationId: string }> }) {
   return handleRoute(req as NextRequest, async ({ session, requestId }) => {
     const startedAt = Date.now();
     try {
@@ -45,16 +31,8 @@ export async function POST(
       const [row] = await db
         .select({ invocation: toolInvocations, conversation: conversations })
         .from(toolInvocations)
-        .innerJoin(
-          conversations,
-          eq(toolInvocations.conversationId, conversations.id),
-        )
-        .where(
-          and(
-            eq(toolInvocations.id, parsed.data.invocationId),
-            eq(conversations.userId, session.user.id),
-          ),
-        )
+        .innerJoin(conversations, eq(toolInvocations.conversationId, conversations.id))
+        .where(and(eq(toolInvocations.id, parsed.data.invocationId), eq(conversations.userId, session.user.id)))
         .limit(1);
       const invocation = row?.invocation;
 
@@ -66,23 +44,11 @@ export async function POST(
           reason: "not_found",
           durationMs: Date.now() - startedAt,
         });
-        return NextResponse.json(
-          { error: "Invocation not found" },
-          { status: 404 },
-        );
+        return NextResponse.json({ error: "Invocation not found" }, { status: 404 });
       }
 
-      const approvalPermission =
-        invocation.toolSource === "builtin" &&
-        getBuiltInTool(invocation.toolId)?.name ===
-          "github_publish_code_workspace"
-          ? "agents.chat"
-          : "tools.executeRestricted";
-      const forbidden = await requireWorkspacePermissionAsync(
-        session.user.id,
-        invocation.workspaceId,
-        approvalPermission,
-      );
+      const approvalPermission = invocation.toolSource === "builtin" && getBuiltInTool(invocation.toolId)?.name === "github_publish_code_workspace" ? "agents.chat" : "tools.executeRestricted";
+      const forbidden = await requireWorkspacePermissionAsync(session.user.id, invocation.workspaceId, approvalPermission);
       if (forbidden) {
         logger.warn("Tool invocation approval rejected", {
           requestId,
@@ -95,15 +61,9 @@ export async function POST(
         return forbidden;
       }
 
-      const claim = await claimToolInvocationForExecution(
-        invocation.id,
-        session.user.id,
-      );
+      const claim = await claimToolInvocationForExecution(invocation.id, session.user.id);
       if (claim.kind === "missing") {
-        return NextResponse.json(
-          { error: "Invocation not found" },
-          { status: 404 },
-        );
+        return NextResponse.json({ error: "Invocation not found" }, { status: 404 });
       }
       if (claim.kind === "unchanged") {
         logger.info("Tool invocation approval already resolved", {
@@ -129,23 +89,14 @@ export async function POST(
 
       const execStartedAt = Date.now();
       try {
-        const result = await executeInvocation(
-          claimedInvocation,
-          session.user.id,
-        );
+        const result = await executeInvocation(claimedInvocation, session.user.id);
         const latencyMs = Date.now() - execStartedAt;
-        const completed = await completeToolInvocationSuccess(
-          claimedInvocation.id,
-          {
-            encryptedOutput: await encryptValue(JSON.stringify(result ?? null)),
-            latencyMs,
-          },
-        );
+        const completed = await completeToolInvocationSuccess(claimedInvocation.id, {
+          encryptedOutput: await encryptValue(JSON.stringify(result ?? null)),
+          latencyMs,
+        });
         if (!completed) {
-          return NextResponse.json(
-            { error: "Invocation state changed during execution" },
-            { status: 409 },
-          );
+          return NextResponse.json({ error: "Invocation state changed during execution" }, { status: 409 });
         }
 
         try {
@@ -164,11 +115,7 @@ export async function POST(
             },
           });
         } catch (auditError) {
-          logHandledError(
-            "Tool invocation approval audit failed",
-            { requestId, invocationId: claimedInvocation.id },
-            auditError as Error,
-          );
+          logHandledError("Tool invocation approval audit failed", { requestId, invocationId: claimedInvocation.id }, auditError as Error);
         }
 
         logger.info("Tool invocation approval completed", {
@@ -185,10 +132,7 @@ export async function POST(
         return NextResponse.json({ ok: true, status: "success" });
       } catch (error) {
         const latencyMs = Date.now() - execStartedAt;
-        const errorMessage = safeToolErrorMessage(
-          error,
-          "Tool execution failed",
-        );
+        const errorMessage = safeToolErrorMessage(error, "Tool execution failed");
         await completeToolInvocationFailure(claimedInvocation.id, {
           errorMessage,
           latencyMs,
@@ -209,11 +153,7 @@ export async function POST(
             },
           });
         } catch (auditError) {
-          logHandledError(
-            "Tool invocation approval failure audit failed",
-            { requestId, invocationId: claimedInvocation.id },
-            auditError as Error,
-          );
+          logHandledError("Tool invocation approval failure audit failed", { requestId, invocationId: claimedInvocation.id }, auditError as Error);
         }
         logHandledError(
           "Approved tool execution failed",
@@ -227,21 +167,13 @@ export async function POST(
         return NextResponse.json(
           { error: errorMessage },
           {
-            status:
-              error instanceof InvocationExecutionError ? error.status : 500,
+            status: error instanceof InvocationExecutionError ? error.status : 500,
           },
         );
       }
     } catch (error) {
-      logHandledError(
-        "Tool invocation approval failed",
-        { requestId, durationMs: Date.now() - startedAt },
-        error as Error,
-      );
-      return NextResponse.json(
-        { error: "Internal server error" },
-        { status: 500 },
-      );
+      logHandledError("Tool invocation approval failed", { requestId, durationMs: Date.now() - startedAt }, error as Error);
+      return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }
   });
 }

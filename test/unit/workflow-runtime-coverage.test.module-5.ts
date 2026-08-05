@@ -6,7 +6,6 @@ import { executeAgent } from "@/modules/agent/runtime-executor";
 import { executeCodeSandbox } from "@/modules/tool/code-sandbox";
 import { invokeNode } from "./workflow-runtime-coverage.test.dependencies";
 
-
 describe("workflow integration and expert nodes", () => {
   it("executes templated HTTPS requests and parses JSON responses", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
@@ -54,9 +53,7 @@ describe("workflow integration and expert nodes", () => {
   it("handles text, empty, HTTP error, redirect, and invalid method responses", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
-    fetchMock.mockResolvedValueOnce(
-      new Response("plain text", { status: 200 }),
-    );
+    fetchMock.mockResolvedValueOnce(new Response("plain text", { status: 200 }));
     await expect(
       invokeNode(
         "http.request",
@@ -91,9 +88,7 @@ describe("workflow integration and expert nodes", () => {
       ),
     ).rejects.toThrow("redirects");
 
-    fetchMock.mockResolvedValueOnce(
-      new Response("bad request", { status: 400 }),
-    );
+    fetchMock.mockResolvedValueOnce(new Response("bad request", { status: 400 }));
     await expect(
       invokeNode(
         "http.request",
@@ -117,9 +112,7 @@ describe("workflow integration and expert nodes", () => {
   });
 
   it("blocks unsafe HTTP destinations", async () => {
-    await expect(
-      invokeNode("http.request", {}, { url: "http://example.test" }),
-    ).rejects.toThrow("only allow HTTPS");
+    await expect(invokeNode("http.request", {}, { url: "http://example.test" })).rejects.toThrow("only allow HTTPS");
     await expect(
       invokeNode(
         "http.request",
@@ -131,28 +124,11 @@ describe("workflow integration and expert nodes", () => {
     ).rejects.toThrow("Credentials are not allowed");
 
     vi.mocked(lookup).mockResolvedValueOnce([] as never);
-    await expect(
-      invokeNode("http.request", {}, { url: "https://empty.example.test" }),
-    ).rejects.toThrow("private or reserved");
+    await expect(invokeNode("http.request", {}, { url: "https://empty.example.test" })).rejects.toThrow("private or reserved");
 
-    for (const address of [
-      "127.0.0.1",
-      "10.0.0.1",
-      "169.254.1.1",
-      "172.16.0.1",
-      "192.168.0.1",
-      "224.0.0.1",
-      "::1",
-      "fd00::1",
-      "fe80::1",
-      "::ffff:127.0.0.1",
-    ]) {
-      vi.mocked(lookup).mockResolvedValueOnce([
-        { address, family: address.includes(":") ? 6 : 4 },
-      ] as never);
-      await expect(
-        invokeNode("http.request", {}, { url: "https://private.example.test" }),
-      ).rejects.toThrow("private or reserved");
+    for (const address of ["127.0.0.1", "10.0.0.1", "169.254.1.1", "172.16.0.1", "192.168.0.1", "224.0.0.1", "::1", "fd00::1", "fe80::1", "::ffff:127.0.0.1"]) {
+      vi.mocked(lookup).mockResolvedValueOnce([{ address, family: address.includes(":") ? 6 : 4 }] as never);
+      await expect(invokeNode("http.request", {}, { url: "https://private.example.test" })).rejects.toThrow("private or reserved");
     }
   });
 
@@ -174,27 +150,21 @@ describe("workflow integration and expert nodes", () => {
       stdout: "plain output",
       stderr: "",
     } as never);
-    await expect(
-      invokeNode("code.execute", "input", { language: "node", code: "code" }),
-    ).resolves.toEqual({ output: "plain output" });
+    await expect(invokeNode("code.execute", "input", { language: "node", code: "code" })).resolves.toEqual({ output: "plain output" });
 
     vi.mocked(executeCodeSandbox).mockResolvedValueOnce({
       ok: true,
       stdout: "",
       stderr: "",
     } as never);
-    await expect(
-      invokeNode("code.execute", null, { language: "node", code: "code" }),
-    ).resolves.toEqual({ output: null });
+    await expect(invokeNode("code.execute", null, { language: "node", code: "code" })).resolves.toEqual({ output: null });
 
     vi.mocked(executeCodeSandbox).mockResolvedValueOnce({
       ok: false,
       stdout: "",
       stderr: "sandbox failed",
     } as never);
-    await expect(
-      invokeNode("code.execute", {}, { language: "node", code: "code" }),
-    ).rejects.toThrow("sandbox failed");
+    await expect(invokeNode("code.execute", {}, { language: "node", code: "code" })).rejects.toThrow("sandbox failed");
 
     vi.mocked(executeCodeSandbox).mockResolvedValueOnce({
       ok: false,
@@ -205,17 +175,11 @@ describe("workflow integration and expert nodes", () => {
       stdout: "",
       stderr: `${"rss payload ".repeat(1_000)}\nSyntaxError: invalid formatter code\n    at main.mjs:12:3`,
     } as never);
-    await expect(
-      invokeNode("code.execute", {}, { language: "node", code: "code" }),
-    ).rejects.toThrow(
-      "Sandbox execution failed (exit code 1): SyntaxError: invalid formatter code",
-    );
+    await expect(invokeNode("code.execute", {}, { language: "node", code: "code" })).rejects.toThrow("Sandbox execution failed (exit code 1): SyntaxError: invalid formatter code");
   });
 
   it("runs assistants with stable idempotency and validates selection", async () => {
-    await expect(invokeNode("agent.run", {}, { agentId: "" })).rejects.toThrow(
-      "must be selected",
-    );
+    await expect(invokeNode("agent.run", {}, { agentId: "" })).rejects.toThrow("must be selected");
 
     const signal = new AbortController().signal;
     await expect(

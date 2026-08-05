@@ -1,16 +1,7 @@
-import {
-handleRoute,
-requireRequestPermissionScopeAsync,
-requireWorkspaceMemberAsync,
-requireWorkspacePermissionAsync,
-} from "@/lib/route-handler";
+import { handleRoute,requireRequestPermissionScopeAsync,requireWorkspaceMemberAsync,requireWorkspacePermissionAsync } from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
 import { withResourceProvenance } from "@/modules/iam/resource-provenance";
-import {
-createMcpServerWithDiscovery,
-listMcpServers,
-toSafeMcpServer,
-} from "@/modules/mcp/use-cases";
+import { createMcpServerWithDiscovery,listMcpServers,toSafeMcpServer } from "@/modules/mcp/use-cases";
 import { NextRequest,NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -35,38 +26,14 @@ export async function GET(req: NextRequest) {
       const parsed = querySchema.safeParse({
         workspaceId: req.nextUrl.searchParams.get("workspaceId"),
       });
-      if (!parsed.success)
-        return NextResponse.json(
-          { error: "workspaceId must be a valid UUID" },
-          { status: 400 },
-        );
-      const scopeForbidden = await requireRequestPermissionScopeAsync(
-        session.user.id,
-        parsed.data.workspaceId,
-        "mcpServers.get",
-      );
+      if (!parsed.success) return NextResponse.json({ error: "workspaceId must be a valid UUID" }, { status: 400 });
+      const scopeForbidden = await requireRequestPermissionScopeAsync(session.user.id, parsed.data.workspaceId, "mcpServers.get");
       if (scopeForbidden) return scopeForbidden;
-      const forbidden = await requireWorkspaceMemberAsync(
-        session.user.id,
-        parsed.data.workspaceId,
-      );
+      const forbidden = await requireWorkspaceMemberAsync(session.user.id, parsed.data.workspaceId);
       if (forbidden) return forbidden;
-      const canManageGlobal = await canManageTenantGlobals(
-        session,
-        parsed.data.workspaceId,
-      );
-      const servers = await listMcpServers(
-        parsed.data.workspaceId,
-        session.user.id,
-        canManageGlobal,
-      );
-      return NextResponse.json(
-        await withResourceProvenance(
-          servers,
-          parsed.data.workspaceId,
-          session.user.id,
-        ),
-      );
+      const canManageGlobal = await canManageTenantGlobals(session, parsed.data.workspaceId);
+      const servers = await listMcpServers(parsed.data.workspaceId, session.user.id, canManageGlobal);
+      return NextResponse.json(await withResourceProvenance(servers, parsed.data.workspaceId, session.user.id));
     },
     { logLabel: "Failed to list MCP servers" },
   );
@@ -77,26 +44,12 @@ export async function POST(req: NextRequest) {
     req,
     async ({ session }) => {
       const parsed = createSchema.safeParse(await req.json());
-      if (!parsed.success)
-        return NextResponse.json(
-          { error: "Invalid input", details: parsed.error.issues },
-          { status: 400 },
-        );
-      const forbidden = await requireWorkspacePermissionAsync(
-        session.user.id,
-        parsed.data.workspaceId,
-        "mcpServers.manage",
-      );
+      if (!parsed.success) return NextResponse.json({ error: "Invalid input", details: parsed.error.issues }, { status: 400 });
+      const forbidden = await requireWorkspacePermissionAsync(session.user.id, parsed.data.workspaceId, "mcpServers.manage");
       if (forbidden) return forbidden;
-      const canManageGlobal = await canManageTenantGlobals(
-        session,
-        parsed.data.workspaceId,
-      );
+      const canManageGlobal = await canManageTenantGlobals(session, parsed.data.workspaceId);
       if (parsed.data.isGlobal && !canManageGlobal) {
-        return NextResponse.json(
-          { error: "Only admins can make MCP servers global" },
-          { status: 403 },
-        );
+        return NextResponse.json({ error: "Only admins can make MCP servers global" }, { status: 403 });
       }
       const { server, discovery } = await createMcpServerWithDiscovery(
         {
@@ -106,11 +59,7 @@ export async function POST(req: NextRequest) {
         },
         canManageGlobal,
       );
-      const [serverWithProvenance] = await withResourceProvenance(
-        [{ ...toSafeMcpServer(server), canEdit: true, discovery }],
-        parsed.data.workspaceId,
-        session.user.id,
-      );
+      const [serverWithProvenance] = await withResourceProvenance([{ ...toSafeMcpServer(server), canEdit: true, discovery }], parsed.data.workspaceId, session.user.id);
       return NextResponse.json(serverWithProvenance, { status: 201 });
     },
     { logLabel: "Failed to create MCP server" },

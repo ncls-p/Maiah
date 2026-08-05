@@ -19,19 +19,13 @@ test.describe("authentication", () => {
       await expect(page.getByLabel("Password")).toBeVisible();
 
       // Sign in button
-      await expect(
-        page.getByRole("button", { name: /Sign In/i }),
-      ).toBeVisible();
+      await expect(page.getByRole("button", { name: /Sign In/i })).toBeVisible();
 
       // Sign up link
-      await expect(
-        page.getByRole("link", { name: /Create Account/i }),
-      ).toBeVisible();
+      await expect(page.getByRole("link", { name: /Create Account/i })).toBeVisible();
     });
 
-    test("sign in with valid credentials redirects to workspace", async ({
-      page,
-    }) => {
+    test("sign in with valid credentials redirects to workspace", async ({ page }) => {
       await login(page);
       await expect(page).toHaveURL(/\/en\/(chat|setup)/);
     });
@@ -45,9 +39,7 @@ test.describe("authentication", () => {
       await expect(page.getByRole("alert")).toBeVisible({ timeout: 10_000 });
     });
 
-    test("sign in with empty fields shows validation error", async ({
-      page,
-    }) => {
+    test("sign in with empty fields shows validation error", async ({ page }) => {
       await page.goto("/en/auth/signin");
       await page.getByRole("button", { name: /Sign In/i }).click();
 
@@ -66,9 +58,7 @@ test.describe("authentication", () => {
       await expect(page.getByLabel("Password")).toBeVisible();
 
       // Create account button or registration closed message
-      await expect(
-        page.getByRole("button", { name: /Create Account|Go to Sign In/i }),
-      ).toBeVisible();
+      await expect(page.getByRole("button", { name: /Create Account|Go to Sign In/i })).toBeVisible();
 
       // Sign in link
       await expect(page.getByRole("link", { name: /Sign In/i })).toBeVisible();
@@ -102,17 +92,13 @@ test.describe("authentication", () => {
 
       await expect(async () => {
         await accountMenu.click();
-        await expect(
-          page.getByRole("menuitem", { name: /Sign out/i }),
-        ).toBeVisible();
+        await expect(page.getByRole("menuitem", { name: /Sign out/i })).toBeVisible();
       }).toPass({ timeout: 10_000 });
     });
   });
 
   test.describe("auth redirects", () => {
-    test("unauthenticated users are redirected to sign in", async ({
-      page,
-    }) => {
+    test("unauthenticated users are redirected to sign in", async ({ page }) => {
       // Clear cookies to ensure unauthenticated state
       await page.context().clearCookies();
       await page.goto("/en/chat");

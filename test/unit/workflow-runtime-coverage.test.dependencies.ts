@@ -4,15 +4,8 @@ import { lookup } from "node:dns/promises";
 
 import { executeAgent } from "@/modules/agent/runtime-executor";
 import { executeCodeSandbox } from "@/modules/tool/code-sandbox";
-import {
-createStarterDefinition,
-type WorkflowDefinition,
-type WorkflowNode,
-type WorkflowNodeType,
-} from "@/modules/workflows/contracts";
-import {
-WORKFLOW_NODE_REGISTRY
-} from "@/modules/workflows/runtime";
+import { createStarterDefinition,type WorkflowDefinition,type WorkflowNode,type WorkflowNodeType } from "@/modules/workflows/contracts";
+import { WORKFLOW_NODE_REGISTRY } from "@/modules/workflows/runtime";
 
 vi.mock("node:dns/promises", () => ({ lookup: vi.fn() }));
 
@@ -37,15 +30,8 @@ const settings = {
   retryDelayMs: 1_000,
 };
 
-export async function invokeNode(
-  type: WorkflowNodeType,
-  input: unknown,
-  params: Record<string, unknown> = {},
-  extras: Record<string, unknown> = {},
-) {
-  const handler = WORKFLOW_NODE_REGISTRY[type] as unknown as (
-    args: Record<string, unknown>,
-  ) => Promise<unknown>;
+export async function invokeNode(type: WorkflowNodeType, input: unknown, params: Record<string, unknown> = {}, extras: Record<string, unknown> = {}) {
+  const handler = WORKFLOW_NODE_REGISTRY[type] as unknown as (args: Record<string, unknown>) => Promise<unknown>;
   return handler({
     input,
     params,
@@ -64,10 +50,7 @@ export function definitionWith(node: WorkflowNode): WorkflowDefinition {
   };
 }
 
-export function node(
-  type: WorkflowNodeType,
-  parameters: Record<string, unknown>,
-): WorkflowNode {
+export function node(type: WorkflowNodeType, parameters: Record<string, unknown>): WorkflowNode {
   return {
     id: `node-${type.replace(".", "-")}`,
     type,

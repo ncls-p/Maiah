@@ -2,18 +2,11 @@ import { NextRequest,NextResponse } from "next/server";
 import { z } from "zod";
 
 import { handleRoute } from "@/lib/route-handler";
-import {
-getOrganizationBranding,
-ORGANIZATION_THEMES,
-updateOrganizationBranding,
-} from "@/modules/organization/branding";
+import { getOrganizationBranding,ORGANIZATION_THEMES,updateOrganizationBranding } from "@/modules/organization/branding";
 import { THEME_TOKEN_KEYS } from "@/modules/organization/themes";
 
 const querySchema = z.object({ workspaceId: z.uuid() });
-const paletteSchema = z.record(
-  z.enum(THEME_TOKEN_KEYS),
-  z.string().regex(/^#[0-9a-fA-F]{6}$/),
-);
+const paletteSchema = z.record(z.enum(THEME_TOKEN_KEYS), z.string().regex(/^#[0-9a-fA-F]{6}$/));
 const themeConfigSchema = z.strictObject({
   light: paletteSchema,
   dark: paletteSchema,
@@ -50,9 +43,7 @@ export async function GET(request: NextRequest) {
         workspaceId: parsed.data.workspaceId,
         userId: session.user.id,
       });
-      return branding
-        ? NextResponse.json(branding)
-        : NextResponse.json({ error: "Not found" }, { status: 404 });
+      return branding ? NextResponse.json(branding) : NextResponse.json({ error: "Not found" }, { status: 404 });
     },
     { allowApiKey: false, logLabel: "Failed to load organization branding" },
   );
@@ -64,10 +55,7 @@ export async function PUT(request: NextRequest) {
     async ({ session }) => {
       const parsed = updateSchema.safeParse(await request.json());
       if (!parsed.success) {
-        return NextResponse.json(
-          { error: "Invalid input", details: parsed.error.issues },
-          { status: 400 },
-        );
+        return NextResponse.json({ error: "Invalid input", details: parsed.error.issues }, { status: 400 });
       }
       const result = await updateOrganizationBranding({
         ...parsed.data,

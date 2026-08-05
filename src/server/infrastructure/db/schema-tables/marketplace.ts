@@ -1,16 +1,4 @@
-import {
-boolean,
-index,
-integer,
-jsonb,
-pgEnum,
-pgTable,
-text,
-timestamp,
-uniqueIndex,
-uuid,
-varchar,
-} from "drizzle-orm/pg-core";
+import { boolean,index,integer,jsonb,pgEnum,pgTable,text,timestamp,uniqueIndex,uuid,varchar } from "drizzle-orm/pg-core";
 import { users } from "./auth";
 import { workspaces } from "./workspace";
 
@@ -24,38 +12,13 @@ const STATUS_COLUMN = "status";
 
 // ─── Marketplace ───────────────────────────────────────────────────────
 
-export const marketplaceItemTypeEnum = pgEnum("marketplace_item_type", [
-  "agent",
-  "prompt_template",
-  "tool_pack",
-  "mcp_preset",
-  "workflow_template",
-  "knowledge_template",
-  "provider_preset",
-  "skill",
-  "custom_tool",
-]);
+export const marketplaceItemTypeEnum = pgEnum("marketplace_item_type", ["agent", "prompt_template", "tool_pack", "mcp_preset", "workflow_template", "knowledge_template", "provider_preset", "skill", "custom_tool"]);
 
-export const marketplaceItemStatusEnum = pgEnum("marketplace_item_status", [
-  "draft",
-  "pending_review",
-  "published",
-  "rejected",
-  "suspended",
-  "archived",
-]);
+export const marketplaceItemStatusEnum = pgEnum("marketplace_item_status", ["draft", "pending_review", "published", "rejected", "suspended", "archived"]);
 
-export const marketplaceItemVisibilityEnum = pgEnum(
-  "marketplace_item_visibility",
-  ["public", "private"],
-);
+export const marketplaceItemVisibilityEnum = pgEnum("marketplace_item_visibility", ["public", "private"]);
 
-export const marketplacePricingModelEnum = pgEnum("marketplace_pricing_model", [
-  "free",
-  "one_time",
-  "subscription",
-  "usage_based",
-]);
+export const marketplacePricingModelEnum = pgEnum("marketplace_pricing_model", ["free", "one_time", "subscription", "usage_based"]);
 
 export const marketplaceItems = pgTable(
   "marketplace_items",
@@ -64,23 +27,17 @@ export const marketplaceItems = pgTable(
     publisherUserId: uuid("publisher_user_id")
       .notNull()
       .references(() => users.id),
-    publisherWorkspaceId: uuid("publisher_workspace_id").references(
-      () => workspaces.id,
-    ),
+    publisherWorkspaceId: uuid("publisher_workspace_id").references(() => workspaces.id),
     type: marketplaceItemTypeEnum("type").notNull(),
     slug: varchar("slug", { length: 128 }).notNull().unique(),
     name: varchar("name", { length: 255 }).notNull(),
     description: text("description"),
-    visibility: marketplaceItemVisibilityEnum("visibility")
-      .notNull()
-      .default("private"),
+    visibility: marketplaceItemVisibilityEnum("visibility").notNull().default("private"),
     status: marketplaceItemStatusEnum(STATUS_COLUMN).notNull().default("draft"),
     latestVersionId: uuid("latest_version_id"),
     installCount: integer("install_count").notNull().default(0),
     ratingAverage: text("rating_average"),
-    pricingModel: marketplacePricingModelEnum("pricing_model")
-      .notNull()
-      .default("free"),
+    pricingModel: marketplacePricingModelEnum("pricing_model").notNull().default("free"),
     verifiedPublisher: boolean("verified_publisher").notNull().default(false),
     isFeatured: boolean("is_featured").notNull().default(false),
     featuredOrder: integer("featured_order"),
@@ -90,26 +47,10 @@ export const marketplaceItems = pgTable(
     tagsJson: jsonb("tags_json"),
     sourceResourceType: varchar("source_resource_type", { length: 32 }),
     sourceResourceId: uuid("source_resource_id"),
-    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [
-    index("marketplace_items_featured").on(t.isFeatured, t.featuredOrder),
-    index("marketplace_items_type").on(t.type),
-    index("marketplace_items_published").on(
-      t.status,
-      t.visibility,
-      t.publishedAt,
-    ),
-    index("marketplace_items_source_resource").on(
-      t.sourceResourceType,
-      t.sourceResourceId,
-    ),
-  ],
+  (t) => [index("marketplace_items_featured").on(t.isFeatured, t.featuredOrder), index("marketplace_items_type").on(t.type), index("marketplace_items_published").on(t.status, t.visibility, t.publishedAt), index("marketplace_items_source_resource").on(t.sourceResourceType, t.sourceResourceId)],
 );
 
 export const marketplaceItemVersions = pgTable(
@@ -128,16 +69,9 @@ export const marketplaceItemVersions = pgTable(
     createdById: uuid(CREATED_BY_USER_ID_COLUMN)
       .notNull()
       .references(() => users.id),
-    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [
-    uniqueIndex("marketplace_item_versions_item_version_unique").on(
-      t.itemId,
-      t.version,
-    ),
-  ],
+  (t) => [uniqueIndex("marketplace_item_versions_item_version_unique").on(t.itemId, t.version)],
 );
 
 export const marketplaceInstalls = pgTable(
@@ -160,13 +94,9 @@ export const marketplaceInstalls = pgTable(
       length: 32,
     }),
     installedResourceId: uuid("installed_resource_id"),
-    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [
-    index("marketplace_installs_workspace_item").on(t.workspaceId, t.itemId),
-  ],
+  (t) => [index("marketplace_installs_workspace_item").on(t.workspaceId, t.itemId)],
 );
 
 export const marketplaceReviews = pgTable("marketplace_reviews", {
@@ -180,9 +110,7 @@ export const marketplaceReviews = pgTable("marketplace_reviews", {
     .references(() => users.id),
   status: varchar(STATUS_COLUMN, { length: 24 }).notNull(),
   notes: text("notes"),
-  createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const marketplaceRatings = pgTable(
@@ -197,13 +125,9 @@ export const marketplaceRatings = pgTable(
       .references(() => users.id),
     rating: integer("rating").notNull(),
     review: text("review"),
-    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [
-    uniqueIndex("marketplace_ratings_item_user_unique").on(t.itemId, t.userId),
-  ],
+  (t) => [uniqueIndex("marketplace_ratings_item_user_unique").on(t.itemId, t.userId)],
 );
 
 export const marketplaceReports = pgTable("marketplace_reports", {
@@ -216,9 +140,7 @@ export const marketplaceReports = pgTable("marketplace_reports", {
     .references(() => users.id),
   reason: text("reason").notNull(),
   status: varchar(STATUS_COLUMN, { length: 16 }).notNull().default("pending"),
-  createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
 });
 
 // ─── Marketplace Shares ────────────────────────────────────────────────
@@ -233,14 +155,7 @@ export const marketplaceItemShares = pgTable(
     sharedWithUserId: uuid("shared_with_user_id")
       .notNull()
       .references(() => users.id),
-    sharedAt: timestamp("shared_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    sharedAt: timestamp("shared_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [
-    uniqueIndex("marketplace_item_shares_item_user_unique").on(
-      t.itemId,
-      t.sharedWithUserId,
-    ),
-  ],
+  (t) => [uniqueIndex("marketplace_item_shares_item_user_unique").on(t.itemId, t.sharedWithUserId)],
 );

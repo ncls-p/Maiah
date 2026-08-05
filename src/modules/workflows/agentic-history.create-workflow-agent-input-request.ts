@@ -4,23 +4,10 @@ import { z } from "zod";
 import { decryptValue,encryptValue } from "@/lib/crypto";
 import { audit } from "@/server/domain/services/audit";
 import { db } from "@/server/infrastructure/db";
-import {
-workflowAgentInputRequests
-} from "@/server/infrastructure/db/schema";
-import {
-WorkflowAgentInputField,
-WorkflowAgentInputRequest,
-parsedFields,
-} from "./agentic-history.secret-reference-pattern";
+import { workflowAgentInputRequests } from "@/server/infrastructure/db/schema";
+import { WorkflowAgentInputField,WorkflowAgentInputRequest,parsedFields } from "./agentic-history.secret-reference-pattern";
 
-export async function createWorkflowAgentInputRequest(input: {
-  workflowId: string;
-  workspaceId: string;
-  userId: string;
-  title: string;
-  description?: string;
-  fields: WorkflowAgentInputField[];
-}) {
+export async function createWorkflowAgentInputRequest(input: { workflowId: string; workspaceId: string; userId: string; title: string; description?: string; fields: WorkflowAgentInputField[] }) {
   const fields = parsedFields(input.fields);
   const [request] = await db
     .insert(workflowAgentInputRequests)
@@ -61,30 +48,15 @@ export async function createWorkflowAgentInputRequest(input: {
   } satisfies WorkflowAgentInputRequest;
 }
 
-export async function submitWorkflowAgentInputRequest(input: {
-  requestId: string;
-  workflowId: string;
-  workspaceId: string;
-  userId: string;
-  values: Record<string, string>;
-}) {
+export async function submitWorkflowAgentInputRequest(input: { requestId: string; workflowId: string; workspaceId: string; userId: string; values: Record<string, string> }) {
   const [request] = await db
     .select()
     .from(workflowAgentInputRequests)
-    .where(
-      and(
-        eq(workflowAgentInputRequests.id, input.requestId),
-        eq(workflowAgentInputRequests.workflowId, input.workflowId),
-        eq(workflowAgentInputRequests.workspaceId, input.workspaceId),
-        eq(workflowAgentInputRequests.userId, input.userId),
-      ),
-    )
+    .where(and(eq(workflowAgentInputRequests.id, input.requestId), eq(workflowAgentInputRequests.workflowId, input.workflowId), eq(workflowAgentInputRequests.workspaceId, input.workspaceId), eq(workflowAgentInputRequests.userId, input.userId)))
     .limit(1);
   if (!request) throw new Error("Information request not found");
-  if (request.status !== "pending")
-    throw new Error("Information request is no longer pending");
-  if (request.expiresAt.getTime() < Date.now())
-    throw new Error("Information request expired");
+  if (request.status !== "pending") throw new Error("Information request is no longer pending");
+  if (request.expiresAt.getTime() < Date.now()) throw new Error("Information request expired");
 
   const fields = parsedFields(request.fieldsJson);
   const values: Record<string, string> = {};
@@ -130,60 +102,29 @@ export async function submitWorkflowAgentInputRequest(input: {
 
   return {
     id: request.id,
-    displayMessage: fields.some((field) => field.sensitive)
-      ? "Les informations demandées ont été fournies. Les valeurs sensibles sont enregistrées en sécurité."
-      : "Les informations demandées ont été fournies.",
+    displayMessage: fields.some((field) => field.sensitive) ? "Les informations demandées ont été fournies. Les valeurs sensibles sont enregistrées en sécurité." : "Les informations demandées ont été fournies.",
   };
 }
 
-export async function consumeWorkflowAgentInputRequest(input: {
-  requestId: string;
-  workflowId: string;
-  workspaceId: string;
-  userId: string;
-}) {
+export async function consumeWorkflowAgentInputRequest(input: { requestId: string; workflowId: string; workspaceId: string; userId: string }) {
   const [request] = await db
     .select()
     .from(workflowAgentInputRequests)
-    .where(
-      and(
-        eq(workflowAgentInputRequests.id, input.requestId),
-        eq(workflowAgentInputRequests.workflowId, input.workflowId),
-        eq(workflowAgentInputRequests.workspaceId, input.workspaceId),
-        eq(workflowAgentInputRequests.userId, input.userId),
-      ),
-    )
+    .where(and(eq(workflowAgentInputRequests.id, input.requestId), eq(workflowAgentInputRequests.workflowId, input.workflowId), eq(workflowAgentInputRequests.workspaceId, input.workspaceId), eq(workflowAgentInputRequests.userId, input.userId)))
     .limit(1);
   if (!request || request.status !== "submitted" || !request.valuesEncrypted) {
     throw new Error("Submitted information is unavailable");
   }
 
   const fields = parsedFields(request.fieldsJson);
-  const values = z
-    .record(z.string(), z.string())
-    .parse(JSON.parse(await decryptValue(request.valuesEncrypted)));
-  const displayLines = fields.map((field) =>
-    field.sensitive
-      ? `- ${field.label}: enregistrée en sécurité`
-      : `- ${field.label}: ${values[field.name] ?? ""}`,
-  );
-  const modelLines = fields.map((field) =>
-    field.sensitive
-      ? `- ${field.label}: __WORKFLOW_SECRET:${request.id}:${field.name}__`
-      : `- ${field.label}: ${values[field.name] ?? ""}`,
-  );
+  const values = z.record(z.string(), z.string()).parse(JSON.parse(await decryptValue(request.valuesEncrypted)));
+  const displayLines = fields.map((field) => (field.sensitive ? `- ${field.label}: enregistrée en sécurité` : `- ${field.label}: ${values[field.name] ?? ""}`));
+  const modelLines = fields.map((field) => (field.sensitive ? `- ${field.label}: __WORKFLOW_SECRET:${request.id}:${field.name}__` : `- ${field.label}: ${values[field.name] ?? ""}`));
 
-  await db
-    .update(workflowAgentInputRequests)
-    .set({ status: "consumed", consumedAt: new Date() })
-    .where(eq(workflowAgentInputRequests.id, request.id));
+  await db.update(workflowAgentInputRequests).set({ status: "consumed", consumedAt: new Date() }).where(eq(workflowAgentInputRequests.id, request.id));
 
   return {
     displayContent: `Informations fournies :\n${displayLines.join("\n")}`,
-    modelContent: [
-      "The user submitted the requested information.",
-      ...modelLines,
-      "Use each opaque __WORKFLOW_SECRET reference exactly as provided in workflow parameters. Never ask to reveal or repeat its value.",
-    ].join("\n"),
+    modelContent: ["The user submitted the requested information.", ...modelLines, "Use each opaque __WORKFLOW_SECRET reference exactly as provided in workflow parameters. Never ask to reveal or repeat its value."].join("\n"),
   };
 }

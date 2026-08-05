@@ -3,24 +3,13 @@
 import { useLocale,useTranslations } from "next-intl";
 import { useLayoutEffect,useMemo,useRef,useState } from "react";
 
-import { MessageContent,StreamingStatus } from "@/components/chat/chat-message-rendering";
-import { cancelsChatStreamFollow,getChatStreamFollowKey,isChatViewportAtEnd,shouldUseMessageScrollAnchor } from "@/components/chat/chat-scroll";
-import { canContinueAssistantMessage,textFromMessage,type ChatMessage } from "@/components/chat/chat-types";
-import { Bubble,BubbleContent } from "@/components/ui/bubble";
-import { Button } from "@/components/ui/button";
-import { Marker,MarkerContent } from "@/components/ui/marker";
-import { MessageFooter,Message as MessagePrimitive,MessageContent as MessagePrimitiveContent } from "@/components/ui/message";
-import { MessageScroller,MessageScrollerContent,MessageScrollerItem,MessageScrollerProvider,MessageScrollerViewport } from "@/components/ui/message-scroller";
+import { cancelsChatStreamFollow,getChatStreamFollowKey,isChatViewportAtEnd } from "@/components/chat/chat-scroll";
+import { type ChatMessage } from "@/components/chat/chat-types";
 import { Skeleton } from "@/components/ui/skeleton";
-import { markdownToHtml } from "@/lib/markdown-to-html";
-import { copyRichHtml } from "@/lib/rich-clipboard";
-import { cn } from "@/lib/utils";
-import { ChatScrollControls } from "./chat-message-list.chat-scroll-controls";
-import { BUTTON_TYPE,ChatMessageListProps,EMPTY_PENDING_APPROVALS,INITIAL_VISIBLE_MESSAGES,LOAD_MORE_MESSAGES,MessageVisibilityPersistence,OUTLINE_VARIANT,SavedMessageAnchorRestorer,userMessageFullText,userMessagePreview } from "./chat-message-list.initial-visible-messages";
-import { MessageActionBar } from "./chat-message-list.message-action-bar";
-import { UserMessageRail } from "./chat-message-list.user-message-rail";
+import { ChatMessageListView } from "./chat-message-list.chat-message-list.view";
+import { ChatMessageListProps,INITIAL_VISIBLE_MESSAGES,userMessageFullText,userMessagePreview } from "./chat-message-list.initial-visible-messages";
 
-export function ChatMessageList({ messages, sending, loading, workspaceId, workspaceArtifactDisplay = "full", conversationId, bottomRef, onEditMessage, onDeleteMessage, onResendMessage, onRegenerateAssistant, onContinueAssistant, onJumpLatest, pendingApprovals = [], onApproveTool, onRejectTool, onSuggestionClick }: ChatMessageListProps) {
+export function useChatMessageListController({ messages, sending, loading, workspaceId, workspaceArtifactDisplay = "full", conversationId, bottomRef, onEditMessage, onDeleteMessage, onResendMessage, onRegenerateAssistant, onContinueAssistant, onJumpLatest, pendingApprovals = [], onApproveTool, onRejectTool, onSuggestionClick }: ChatMessageListProps) {
   const locale = useLocale();
   const t = useTranslations("chat.messageList");
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
@@ -175,141 +164,48 @@ export function ChatMessageList({ messages, sending, loading, workspaceId, works
 
   const viewportClassName = workspaceArtifactDisplay === "summary" ? "px-2 py-3" : "px-3 py-4 sm:px-4 sm:py-8";
 
-  return (
-    <MessageScrollerProvider defaultScrollPosition="start" scrollMargin={24} scrollPreviousItemPeek={96}>
-      <SavedMessageAnchorRestorer conversationId={conversationId} />
-      <MessageVisibilityPersistence conversationId={conversationId} />
-      <MessageScroller className="min-h-0 flex-1">
-        <MessageScrollerViewport ref={viewportRef} preserveScrollOnPrepend className={viewportClassName} aria-label={t("transcript")}>
-          <MessageScrollerContent ref={contentRef} className="mx-auto w-full max-w-4xl gap-5 pb-24">
-            {hiddenMessageCount > 0 ? (
-              <MessageScrollerItem className="flex justify-center">
-                <Marker variant="separator" className="max-w-lg">
-                  <MarkerContent>
-                    <Button type={BUTTON_TYPE} variant={OUTLINE_VARIANT} size="sm" className="rounded-full text-xs text-muted-foreground" onClick={() => setVisibleMessageCount((count) => count + LOAD_MORE_MESSAGES)}>
-                      {t("showOlder", {
-                        count: Math.min(LOAD_MORE_MESSAGES, hiddenMessageCount),
-                      })}
-                    </Button>
-                  </MarkerContent>
-                </Marker>
-              </MessageScrollerItem>
-            ) : null}
-            {visibleMessages.map((message) => {
-              const content = textFromMessage(message);
-              const isAssistant = message.role === "assistant";
-              const isUser = message.role === "user";
-              const hasFilePart = message.parts.some((part) => part.type === "file");
-              const hasWorkPart = message.parts.some((part) => ["reasoning", "tool-call", "tool-result"].includes(part.type));
-              const canEdit = Boolean(onEditMessage) && (isUser || isAssistant);
-              const canDelete = Boolean(onDeleteMessage);
-              const canRegenerate = Boolean(onRegenerateAssistant) && isAssistant && message.status !== "streaming";
-              const canContinue = Boolean(onContinueAssistant) && canContinueAssistantMessage(message, lastAssistantMessageId);
-              const precedingUserMsg = precedingUserByMessageId.get(message.id) ?? null;
-              const isEditing = editingMessageId === message.id;
-              const isLast = message.id === lastMessageId;
-              const isStreamingAssistant = isAssistant && message.status === "streaming";
-              const shouldScrollAnchor = shouldUseMessageScrollAnchor({
-                message,
-                sending,
-              });
-              const isAnimating = sending && isLast && isStreamingAssistant;
-              const messagePendingApprovals = isStreamingAssistant ? pendingApprovals : EMPTY_PENDING_APPROVALS;
-              const align = isUser ? "end" : "start";
+  return {
+    kind: "ready",
+    bottomRef,
+    contentRef,
+    conversationId,
+    editingContent,
+    editingMessageId,
+    hiddenMessageCount,
+    lastAssistantMessageId,
+    lastMessageId,
+    locale,
+    messageIndexById,
+    messages,
+    onApproveTool,
+    onContinueAssistant,
+    onDeleteMessage,
+    onEditMessage,
+    onJumpLatest,
+    onRegenerateAssistant,
+    onRejectTool,
+    onResendMessage,
+    onSuggestionClick,
+    pendingApprovals,
+    precedingUserByMessageId,
+    savingMessageId,
+    sending,
+    setEditingContent,
+    setEditingMessageId,
+    setSavingMessageId,
+    setVisibleMessageCount,
+    t,
+    userMessageShortcuts,
+    viewportClassName,
+    viewportRef,
+    visibleMessages,
+    workspaceArtifactDisplay,
+    workspaceId,
+  } as const;
+}
 
-              return (
-                <MessageScrollerItem key={message.id} messageId={message.id} scrollAnchor={shouldScrollAnchor} id={`message-${message.id}`} className="scroll-mt-6 animate-in-up" style={{ animationDelay: isLast ? "0s" : undefined }}>
-                  <MessagePrimitive align={align}>
-                    <MessagePrimitiveContent className={cn("transition-opacity duration-150", isUser && !hasFilePart ? "max-w-[82%]" : "max-w-[min(100%,48rem)]", isAssistant && hasWorkPart && "w-full", isLast && isAnimating && "animate-in-fade")}>
-                      <Bubble align={align} variant={isUser ? "muted" : "ghost"} className={cn(isAssistant && hasWorkPart && "w-full", isEditing && "ring-2 ring-primary/25")}>
-                        <BubbleContent className={cn("transition-[background-color,box-shadow,color] duration-150 ease-out", isAssistant && hasWorkPart && "w-full", isUser ? "msg-bubble--user" : "msg-bubble--assistant")}>
-                          <MessageContent
-                            message={message}
-                            showSuggestions={message.id === lastAssistantMessageId}
-                            isEditing={isEditing}
-                            editingContent={isEditing ? editingContent : ""}
-                            isSaving={savingMessageId === message.id}
-                            isAnimating={isAnimating}
-                            workspaceId={workspaceId}
-                            workspaceArtifactDisplay={workspaceArtifactDisplay}
-                            onEditingContentChange={isEditing ? setEditingContent : undefined}
-                            onCancelEdit={
-                              isEditing
-                                ? () => {
-                                    setEditingMessageId(null);
-                                    setEditingContent("");
-                                  }
-                                : undefined
-                            }
-                            onSaveEdit={
-                              isEditing
-                                ? async () => {
-                                    setSavingMessageId(message.id);
-                                    try {
-                                      await onEditMessage?.(message, editingContent.trim());
-                                      setEditingMessageId(null);
-                                      setEditingContent("");
-                                    } finally {
-                                      setSavingMessageId(null);
-                                    }
-                                  }
-                                : undefined
-                            }
-                            pendingApprovals={messagePendingApprovals}
-                            onApproveTool={onApproveTool}
-                            onRejectTool={onRejectTool}
-                            onSuggestionClick={onSuggestionClick}
-                          />
-                        </BubbleContent>
-                      </Bubble>
-
-                      {message.createdAt ? (
-                        <MessageFooter className="mt-1.5 gap-2 text-[11px] text-muted-foreground/60">
-                          <a href={`#message-${message.id}`} className="rounded-sm underline-offset-2 hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30" aria-label={t("directLink")}>
-                            {new Date(message.createdAt).toLocaleTimeString(locale, {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </a>
-                          {message.status === "streaming" ? <StreamingStatus /> : null}
-                        </MessageFooter>
-                      ) : null}
-
-                      <MessageActionBar
-                        message={message}
-                        sending={sending}
-                        canEdit={canEdit}
-                        canDelete={canDelete}
-                        canRegenerate={canRegenerate}
-                        canContinue={canContinue}
-                        onCopy={async () => {
-                          await copyRichHtml(markdownToHtml(content));
-                        }}
-                        onEdit={() => {
-                          setEditingMessageId(message.id);
-                          setEditingContent(content);
-                        }}
-                        onDelete={() => void onDeleteMessage?.(message)}
-                        onRegenerate={() => {
-                          if (precedingUserMsg) {
-                            void onResendMessage?.(precedingUserMsg);
-                          }
-                        }}
-                        onContinue={() => {
-                          void onContinueAssistant?.(message);
-                        }}
-                      />
-                    </MessagePrimitiveContent>
-                  </MessagePrimitive>
-                </MessageScrollerItem>
-              );
-            })}
-            <div ref={bottomRef} aria-hidden="true" />
-          </MessageScrollerContent>
-        </MessageScrollerViewport>
-        <UserMessageRail shortcuts={userMessageShortcuts} hiddenMessageCount={hiddenMessageCount} totalMessageCount={messages.length} conversationId={conversationId} messageIndexById={messageIndexById} setVisibleMessageCount={setVisibleMessageCount} />
-        <ChatScrollControls sending={sending} conversationId={conversationId} onJumpLatest={onJumpLatest} />
-      </MessageScroller>
-    </MessageScrollerProvider>
-  );
+export function ChatMessageList(...args: Parameters<typeof useChatMessageListController>) {
+  const model = useChatMessageListController(...args);
+  if (!("kind" in model)) return model;
+  return <ChatMessageListView model={model} />;
 }

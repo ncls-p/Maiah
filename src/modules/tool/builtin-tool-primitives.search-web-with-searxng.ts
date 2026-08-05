@@ -1,29 +1,10 @@
 import { randomInt } from "node:crypto";
 import { z } from "zod";
-import {
-fetchSearxngResults,
-normalizeSearxngResults,
-summarizeSearchResults,
-todaySearchSuffix,
-} from "./builtin-tool-primitives.calculate-expression";
-import {
-base64ToolInputSchema,
-dateMathInputSchema,
-jsonToolInputSchema,
-randomNumberInputSchema,
-textStatsInputSchema,
-webSearchInputSchema,
-} from "./builtin-tool-primitives.calculator-input-schema";
-import {
-NormalizedSearxngResult,
-slugifyTextInputSchema,
-unitConverterInputSchema,
-unitFactors,
-} from "./builtin-tool-primitives.unit-converter-input-schema";
+import { fetchSearxngResults,normalizeSearxngResults,summarizeSearchResults,todaySearchSuffix } from "./builtin-tool-primitives.calculate-expression";
+import { base64ToolInputSchema,dateMathInputSchema,jsonToolInputSchema,randomNumberInputSchema,textStatsInputSchema,webSearchInputSchema } from "./builtin-tool-primitives.calculator-input-schema";
+import { NormalizedSearxngResult,slugifyTextInputSchema,unitConverterInputSchema,unitFactors } from "./builtin-tool-primitives.unit-converter-input-schema";
 
-export async function searchWebWithSearxng(
-  input: z.infer<typeof webSearchInputSchema>,
-) {
+export async function searchWebWithSearxng(input: z.infer<typeof webSearchInputSchema>) {
   const { env } = await import("@/lib/env");
   const limit = input.limit ?? 5;
   const searchedQuery = `${input.query} ${todaySearchSuffix()}`.trim();
@@ -62,12 +43,7 @@ export async function searchWebWithSearxng(
   };
 }
 
-export function randomNumbers({
-  min,
-  max,
-  count,
-  integer,
-}: z.infer<typeof randomNumberInputSchema>) {
+export function randomNumbers({ min, max, count, integer }: z.infer<typeof randomNumberInputSchema>) {
   if (max <= min) throw new Error("max must be greater than min");
   const values = Array.from({ length: count }, () => {
     if (!integer) return min + Math.random() * (max - min);
@@ -112,10 +88,7 @@ export function dateMath(input: z.infer<typeof dateMathInputSchema>) {
   return { inputDate: date.toISOString(), result: result.toISOString() };
 }
 
-export function jsonTool({
-  action,
-  json,
-}: z.infer<typeof jsonToolInputSchema>) {
+export function jsonTool({ action, json }: z.infer<typeof jsonToolInputSchema>) {
   try {
     const parsed = JSON.parse(json) as unknown;
     if (action === "validate") return { valid: true };
@@ -124,10 +97,7 @@ export function jsonTool({
       return {
         valid: true,
         type: Array.isArray(parsed) ? "array" : typeof parsed,
-        keys:
-          parsed && typeof parsed === "object" && !Array.isArray(parsed)
-            ? Object.keys(parsed as Record<string, unknown>)
-            : [],
+        keys: parsed && typeof parsed === "object" && !Array.isArray(parsed) ? Object.keys(parsed as Record<string, unknown>) : [],
         items: Array.isArray(parsed) ? parsed.length : undefined,
       };
     }
@@ -140,10 +110,7 @@ export function jsonTool({
   }
 }
 
-export function textStats({
-  text,
-  wordsPerMinute,
-}: z.infer<typeof textStatsInputSchema>) {
+export function textStats({ text, wordsPerMinute }: z.infer<typeof textStatsInputSchema>) {
   const words = text.trim() ? text.trim().split(/\s+/).length : 0;
   return {
     characters: text.length,
@@ -155,10 +122,7 @@ export function textStats({
   };
 }
 
-export function base64Tool({
-  action,
-  value,
-}: z.infer<typeof base64ToolInputSchema>) {
+export function base64Tool({ action, value }: z.infer<typeof base64ToolInputSchema>) {
   if (action === "encode") {
     return { result: Buffer.from(value, "utf8").toString("base64") };
   }
@@ -166,31 +130,19 @@ export function base64Tool({
 }
 
 function convertTemperature(value: number, from: string, to: string) {
-  const celsius =
-    from === "c"
-      ? value
-      : from === "f"
-        ? (value - 32) * (5 / 9)
-        : value - 273.15;
+  const celsius = from === "c" ? value : from === "f" ? (value - 32) * (5 / 9) : value - 273.15;
   if (to === "c") return celsius;
   if (to === "f") return celsius * (9 / 5) + 32;
   return celsius + 273.15;
 }
 
-export function unitConverter({
-  value,
-  from,
-  to,
-}: z.infer<typeof unitConverterInputSchema>) {
+export function unitConverter({ value, from, to }: z.infer<typeof unitConverterInputSchema>) {
   const fromUnit = unitFactors[from];
   const toUnit = unitFactors[to];
   if (fromUnit.kind !== toUnit.kind) {
     throw new Error(`Cannot convert ${from} to ${to}`);
   }
-  const result =
-    fromUnit.kind === "temperature"
-      ? convertTemperature(value, from, to)
-      : (value * fromUnit.factor) / toUnit.factor;
+  const result = fromUnit.kind === "temperature" ? convertTemperature(value, from, to) : (value * fromUnit.factor) / toUnit.factor;
   return { value, from, to, result };
 }
 
@@ -202,10 +154,7 @@ function trimSlugSeparator(value: string, separator: "-" | "_") {
   return value.slice(start, end);
 }
 
-export function slugifyText({
-  text,
-  separator,
-}: z.infer<typeof slugifyTextInputSchema>) {
+export function slugifyText({ text, separator }: z.infer<typeof slugifyTextInputSchema>) {
   const slug = text
     .normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "")

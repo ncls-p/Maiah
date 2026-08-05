@@ -5,10 +5,7 @@ import { and,eq,isNull } from "drizzle-orm";
 import { getWorkspacesByUserId } from "@/modules/workspace/use-cases";
 import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
-import {
-organizations,
-workspaces
-} from "@/server/infrastructure/db/schema";
+import { organizations,workspaces } from "@/server/infrastructure/db/schema";
 
 import { IamOperationError } from "./use-cases";
 
@@ -60,91 +57,26 @@ export async function scopeForWorkspace(workspaceId: string) {
   return scope;
 }
 
-async function hasPermission(
-  userId: string,
-  permission: string,
-  resourceType: "organization" | "workspace",
-  resourceId: string,
-) {
-  return (
-    await authorization.checkPermission(
-      { principalType: "user", principalId: userId },
-      permission,
-      resourceType,
-      resourceId,
-    )
-  ).granted;
+async function hasPermission(userId: string, permission: string, resourceType: "organization" | "workspace", resourceId: string) {
+  return (await authorization.checkPermission({ principalType: "user", principalId: userId }, permission, resourceType, resourceId)).granted;
 }
 
-export async function requireOrganizationTransferPermissions(input: {
-  actorUserId: string;
-  sourceWorkspaceId: string;
-  sourceOrganizationId: string;
-  targetWorkspaceId: string;
-  targetOrganizationId: string;
-}) {
-  const checks = await Promise.all([
-    hasPermission(
-      input.actorUserId,
-      "roles.manage",
-      "workspace",
-      input.sourceWorkspaceId,
-    ),
-    hasPermission(
-      input.actorUserId,
-      "members.manage",
-      "organization",
-      input.sourceOrganizationId,
-    ),
-    hasPermission(
-      input.actorUserId,
-      "roles.manage",
-      "workspace",
-      input.targetWorkspaceId,
-    ),
-    hasPermission(
-      input.actorUserId,
-      "members.manage",
-      "organization",
-      input.targetOrganizationId,
-    ),
-  ]);
+export async function requireOrganizationTransferPermissions(input: { actorUserId: string; sourceWorkspaceId: string; sourceOrganizationId: string; targetWorkspaceId: string; targetOrganizationId: string }) {
+  const checks = await Promise.all([hasPermission(input.actorUserId, "roles.manage", "workspace", input.sourceWorkspaceId), hasPermission(input.actorUserId, "members.manage", "organization", input.sourceOrganizationId), hasPermission(input.actorUserId, "roles.manage", "workspace", input.targetWorkspaceId), hasPermission(input.actorUserId, "members.manage", "organization", input.targetOrganizationId)]);
   if (checks.some((allowed) => !allowed)) {
-    throw new IamOperationError(
-      "You need organization and project access administration rights on both sides",
-      403,
-    );
+    throw new IamOperationError("You need organization and project access administration rights on both sides", 403);
   }
 }
 
-export async function listOrganizationTransferDestinations(input: {
-  actorUserId: string;
-  sourceWorkspaceId: string;
-}) {
+export async function listOrganizationTransferDestinations(input: { actorUserId: string; sourceWorkspaceId: string }) {
   const source = await scopeForWorkspace(input.sourceWorkspaceId);
   const candidates = await getWorkspacesByUserId(input.actorUserId);
   const byOrganization = new Map<string, OrganizationTransferDestination>();
   for (const { workspace, organization } of candidates) {
-    if (
-      organization.id === source.organizationId ||
-      byOrganization.has(organization.id)
-    ) {
+    if (organization.id === source.organizationId || byOrganization.has(organization.id)) {
       continue;
     }
-    const allowed = await Promise.all([
-      hasPermission(
-        input.actorUserId,
-        "roles.manage",
-        "workspace",
-        workspace.id,
-      ),
-      hasPermission(
-        input.actorUserId,
-        "members.manage",
-        "organization",
-        organization.id,
-      ),
-    ]);
+    const allowed = await Promise.all([hasPermission(input.actorUserId, "roles.manage", "workspace", workspace.id), hasPermission(input.actorUserId, "members.manage", "organization", organization.id)]);
     if (allowed.every(Boolean)) {
       byOrganization.set(organization.id, {
         organizationId: organization.id,
@@ -154,18 +86,10 @@ export async function listOrganizationTransferDestinations(input: {
       });
     }
   }
-  return [...byOrganization.values()].sort((a, b) =>
-    a.organizationName.localeCompare(b.organizationName),
-  );
+  return [...byOrganization.values()].sort((a, b) => a.organizationName.localeCompare(b.organizationName));
 }
 
-export function transferFingerprint(input: {
-  sourceOrganizationId: string;
-  targetOrganizationId: string;
-  counts: OrganizationTransferPreview["counts"];
-  blockers: string[];
-  conflictResolutions: OrganizationTransferPreview["conflictResolutions"];
-}) {
+export function transferFingerprint(input: { sourceOrganizationId: string; targetOrganizationId: string; counts: OrganizationTransferPreview["counts"]; blockers: string[]; conflictResolutions: OrganizationTransferPreview["conflictResolutions"] }) {
   return createHash("sha256")
     .update(
       JSON.stringify({
@@ -173,11 +97,7 @@ export function transferFingerprint(input: {
         targetOrganizationId: input.targetOrganizationId,
         counts: input.counts,
         blockers: [...input.blockers].sort(),
-        conflictResolutions: [...input.conflictResolutions].sort((a, b) =>
-          `${a.resourceType}:${a.resourceId}`.localeCompare(
-            `${b.resourceType}:${b.resourceId}`,
-          ),
-        ),
+        conflictResolutions: [...input.conflictResolutions].sort((a, b) => `${a.resourceType}:${a.resourceId}`.localeCompare(`${b.resourceType}:${b.resourceId}`)),
       }),
     )
     .digest("hex");

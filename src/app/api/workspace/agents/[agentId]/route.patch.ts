@@ -1,23 +1,11 @@
-import {
-handleRoute,
-requireResourcePermissionAsync,
-} from "@/lib/route-handler";
+import { handleRoute,requireResourcePermissionAsync } from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
 import { DelegationBindingValidationError } from "@/modules/agent/delegation-use-cases";
-import {
-AgentVersionConflictError,
-archiveAgent,
-normalizePromptSuggestions,
-updateAgent
-} from "@/modules/agent/use-cases";
+import { AgentVersionConflictError,archiveAgent,normalizePromptSuggestions,updateAgent } from "@/modules/agent/use-cases";
 import { NextRequest,NextResponse } from "next/server";
 import { isUniqueConstraintError,routeParamsSchema,updateAgentSchema,workspaceQuerySchema } from "./route.route-params-schema";
 
-
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: Promise<{ agentId: string }> },
-) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ agentId: string }> }) {
   return handleRoute(
     req,
     async ({ session }) => {
@@ -36,13 +24,7 @@ export async function PATCH(
       const { agentId } = parsedParams.data;
       const { workspaceId, ...input } = parsedBody.data;
       const canAdminCurate = await canManageTenantGlobals(session, workspaceId);
-      const forbidden = await requireResourcePermissionAsync(
-        session.user.id,
-        workspaceId,
-        "agents.update",
-        "agent",
-        (await params).agentId,
-      );
+      const forbidden = await requireResourcePermissionAsync(session.user.id, workspaceId, "agents.update", "agent", (await params).agentId);
       if (forbidden) return forbidden;
       const { agent, version } = await updateAgent({
         agentId,
@@ -55,9 +37,7 @@ export async function PATCH(
       return NextResponse.json({
         agent: {
           ...agent,
-          promptSuggestions: normalizePromptSuggestions(
-            agent.promptSuggestionsJson,
-          ),
+          promptSuggestions: normalizePromptSuggestions(agent.promptSuggestionsJson),
         },
         version,
       });
@@ -66,10 +46,7 @@ export async function PATCH(
       logLabel: "Failed to update agent",
       expectedError: (error) => {
         if (error instanceof DelegationBindingValidationError) {
-          return NextResponse.json(
-            { error: error.message, code: error.code },
-            { status: 400 },
-          );
+          return NextResponse.json({ error: error.message, code: error.code }, { status: 400 });
         }
         if (error instanceof AgentVersionConflictError) {
           return NextResponse.json(
@@ -82,55 +59,24 @@ export async function PATCH(
           );
         }
         if (isUniqueConstraintError(error)) {
-          return NextResponse.json(
-            { error: "Agent slug already exists in this workspace" },
-            { status: 409 },
-          );
+          return NextResponse.json({ error: "Agent slug already exists in this workspace" }, { status: 409 });
         }
         if ((error as Error).message === "Agent not found") {
-          return NextResponse.json(
-            { error: "Agent not found" },
-            { status: 404 },
-          );
+          return NextResponse.json({ error: "Agent not found" }, { status: 404 });
         }
-        if (
-          error instanceof Error &&
-          error.message === "Only the creator or an admin can update this agent"
-        ) {
+        if (error instanceof Error && error.message === "Only the creator or an admin can update this agent") {
           return NextResponse.json({ error: error.message }, { status: 403 });
         }
-        if (
-          error instanceof Error &&
-          [
-            "Provider not found",
-            "Model not found",
-            "Model requires a provider",
-            "Tool not found",
-            "Custom tool not found",
-            "MCP tool not found",
-            "Knowledge base not found",
-            "Skill not found",
-            "Share target user not found",
-            "Share target user is required",
-            "Only orchestrators can configure delegation",
-            "Orchestrators cannot be published to the marketplace yet",
-          ].includes(error.message)
-        ) {
+        if (error instanceof Error && ["Provider not found", "Model not found", "Model requires a provider", "Tool not found", "Custom tool not found", "MCP tool not found", "Knowledge base not found", "Skill not found", "Share target user not found", "Share target user is required", "Only orchestrators can configure delegation", "Orchestrators cannot be published to the marketplace yet"].includes(error.message)) {
           return NextResponse.json({ error: error.message }, { status: 400 });
         }
-        return NextResponse.json(
-          { error: "Internal server error" },
-          { status: 500 },
-        );
+        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
       },
     },
   );
 }
 
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: Promise<{ agentId: string }> },
-) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ agentId: string }> }) {
   return handleRoute(
     req,
     async ({ session }) => {
@@ -144,44 +90,21 @@ export async function DELETE(
       }
       const { agentId } = parsedParams.data;
       const { workspaceId } = parsedQuery.data;
-      const forbidden = await requireResourcePermissionAsync(
-        session.user.id,
-        workspaceId,
-        "agents.delete",
-        "agent",
-        (await params).agentId,
-      );
+      const forbidden = await requireResourcePermissionAsync(session.user.id, workspaceId, "agents.delete", "agent", (await params).agentId);
       if (forbidden) return forbidden;
-      await archiveAgent(
-        agentId,
-        workspaceId,
-        session.user.id,
-        await canManageTenantGlobals(session, workspaceId),
-      );
+      await archiveAgent(agentId, workspaceId, session.user.id, await canManageTenantGlobals(session, workspaceId));
       return NextResponse.json({ ok: true });
     },
     {
       logLabel: "Failed to archive agent",
       expectedError: (error) => {
         if ((error as Error).message === "Agent not found") {
-          return NextResponse.json(
-            { error: "Agent not found" },
-            { status: 404 },
-          );
+          return NextResponse.json({ error: "Agent not found" }, { status: 404 });
         }
-        if (
-          (error as Error).message ===
-          "Only the creator or an admin can delete this agent"
-        ) {
-          return NextResponse.json(
-            { error: (error as Error).message },
-            { status: 403 },
-          );
+        if ((error as Error).message === "Only the creator or an admin can delete this agent") {
+          return NextResponse.json({ error: (error as Error).message }, { status: 403 });
         }
-        return NextResponse.json(
-          { error: "Internal server error" },
-          { status: 500 },
-        );
+        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
       },
     },
   );

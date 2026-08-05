@@ -34,33 +34,16 @@ const visualRegionsSchema = z.object({
 });
 
 export function isSupportedOcrImage(mimeType: string) {
-  return ["image/png", "image/jpeg", "image/webp", "image/gif"].includes(
-    mimeType.toLowerCase().split(";", 1)[0],
-  );
+  return ["image/png", "image/jpeg", "image/webp", "image/gif"].includes(mimeType.toLowerCase().split(";", 1)[0]);
 }
 
-export async function inspectPdfVisualCandidates(input: {
-  bytes: Uint8Array;
-  minimumTextCharactersPerPage: number;
-  maxVisualPages: number;
-}) {
+export async function inspectPdfVisualCandidates(input: { bytes: Uint8Array; minimumTextCharactersPerPage: number; maxVisualPages: number }) {
   const parser = new PDFParse({ data: Buffer.from(input.bytes) });
   try {
-    const [text, images] = await Promise.all([
-      parser.getText({ first: 500 }),
-      parser.getImage({ first: 500, imageThreshold: 120 }),
-    ]);
-    const pagesWithImages = new Set(
-      images.pages
-        .filter((page) => page.images.length > 0)
-        .map((page) => page.pageNumber),
-    );
+    const [text, images] = await Promise.all([parser.getText({ first: 500 }), parser.getImage({ first: 500, imageThreshold: 120 })]);
+    const pagesWithImages = new Set(images.pages.filter((page) => page.images.length > 0).map((page) => page.pageNumber));
     const selectedPages = text.pages
-      .filter(
-        (page) =>
-          page.text.replace(/\s/g, "").length <
-            input.minimumTextCharactersPerPage || pagesWithImages.has(page.num),
-      )
+      .filter((page) => page.text.replace(/\s/g, "").length < input.minimumTextCharactersPerPage || pagesWithImages.has(page.num))
       .slice(0, input.maxVisualPages)
       .map((page) => page.num);
     if (selectedPages.length === 0) return [];
@@ -83,11 +66,7 @@ export async function inspectPdfVisualCandidates(input: {
   }
 }
 
-export async function runVisualOcr(input: {
-  workspaceId: string;
-  config: RagConfig;
-  candidates: VisualCandidate[];
-}) {
+export async function runVisualOcr(input: { workspaceId: string; config: RagConfig; candidates: VisualCandidate[] }) {
   const resolved = await resolveOcrModel(input.workspaceId, input.config);
   if (!resolved) {
     return {
@@ -98,10 +77,7 @@ export async function runVisualOcr(input: {
 
   const regions: VisualRegion[] = [];
   const warnings: string[] = [];
-  for (const candidate of input.candidates.slice(
-    0,
-    input.config.extraction.ocr.maxVisualPages,
-  )) {
+  for (const candidate of input.candidates.slice(0, input.config.extraction.ocr.maxVisualPages)) {
     try {
       const result = await generateText({
         model: resolved.model,
@@ -112,16 +88,7 @@ export async function runVisualOcr(input: {
             content: [
               {
                 type: "text",
-                text: [
-                  "Extract only information that requires visual understanding.",
-                  "Return text embedded in pixels and describe diagrams, schemas, charts, and meaningful images.",
-                  "Do not recreate ordinary document tables or prose already handled by AnyDoc.",
-                  input.config.extraction.ocr.describeDiagrams
-                    ? "For diagrams, explain nodes, arrows, labels, grouping, and reading order."
-                    : "Do not describe diagrams unless they contain otherwise unreadable text.",
-                  "Coordinates use a 0..1000 plane relative to this image. Tight boxes are preferred.",
-                  "Return no regions when the image adds no useful information.",
-                ].join("\n"),
+                text: ["Extract only information that requires visual understanding.", "Return text embedded in pixels and describe diagrams, schemas, charts, and meaningful images.", "Do not recreate ordinary document tables or prose already handled by AnyDoc.", input.config.extraction.ocr.describeDiagrams ? "For diagrams, explain nodes, arrows, labels, grouping, and reading order." : "Do not describe diagrams unless they contain otherwise unreadable text.", "Coordinates use a 0..1000 plane relative to this image. Tight boxes are preferred.", "Return no regions when the image adds no useful information."].join("\n"),
               },
               {
                 type: "file",
@@ -142,9 +109,7 @@ export async function runVisualOcr(input: {
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      warnings.push(
-        `Visual extraction failed for ${candidate.sourceRef}: ${message}`,
-      );
+      warnings.push(`Visual extraction failed for ${candidate.sourceRef}: ${message}`);
       logHandledWarning("Visual OCR region extraction failed", {
         sourceKind: candidate.sourceKind,
         sourceRef: candidate.sourceRef,
@@ -162,9 +127,7 @@ export function visualRegionsMarkdown(regions: VisualRegion[]) {
     ...regions.map((region) => {
       const box = region.boundingBox;
       const coordinates = `x=${box.x}, y=${box.y}, width=${box.width}, height=${box.height}`;
-      const body = [region.text.trim(), region.description.trim()]
-        .filter(Boolean)
-        .join("\n\n");
+      const body = [region.text.trim(), region.description.trim()].filter(Boolean).join("\n\n");
       return `### ${region.sourceRef} · ${region.kind}\n\n<!-- visual-region ${coordinates}; confidence=${region.confidence.toFixed(2)} -->\n\n${body}`;
     }),
   ].join("\n\n");

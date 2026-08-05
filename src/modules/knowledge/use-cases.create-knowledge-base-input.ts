@@ -1,16 +1,8 @@
-import {
-getDefaultRagConfig,
-hasSameRagModelSelection,
-parseRagConfig,
-type RagConfig
-} from "@/modules/knowledge/rag-config";
+import { getDefaultRagConfig,hasSameRagModelSelection,parseRagConfig,type RagConfig } from "@/modules/knowledge/rag-config";
 import { audit } from "@/server/domain/services/audit";
 import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
-import {
-documents,
-knowledgeBases
-} from "@/server/infrastructure/db/schema";
+import { documents,knowledgeBases } from "@/server/infrastructure/db/schema";
 import { and,inArray,isNull } from "drizzle-orm";
 
 export interface CreateKnowledgeBaseInput {
@@ -36,47 +28,16 @@ export async function effectiveRagConfig(value: unknown) {
   return value === null ? getDefaultRagConfig() : parseRagConfig(value);
 }
 
-export function canManageKnowledgeBase(
-  knowledgeBase: KnowledgeBaseRow,
-  userId: string,
-  canManageGlobal = false,
-) {
-  return (
-    knowledgeBase.createdById === userId ||
-    (knowledgeBase.isGlobal && canManageGlobal)
-  );
+export function canManageKnowledgeBase(knowledgeBase: KnowledgeBaseRow, userId: string, canManageGlobal = false) {
+  return knowledgeBase.createdById === userId || (knowledgeBase.isGlobal && canManageGlobal);
 }
 
-export async function canViewKnowledgeBase(
-  knowledgeBase: Pick<KnowledgeBaseRow, "id" | "createdById" | "isGlobal">,
-  userId: string,
-) {
-  return (
-    knowledgeBase.createdById === userId ||
-    knowledgeBase.isGlobal ||
-    authorization.hasPermission(
-      { principalType: "user", principalId: userId },
-      "knowledgeBases.viewAllowed",
-      "knowledge_base",
-      knowledgeBase.id,
-    )
-  );
+export async function canViewKnowledgeBase(knowledgeBase: Pick<KnowledgeBaseRow, "id" | "createdById" | "isGlobal">, userId: string) {
+  return knowledgeBase.createdById === userId || knowledgeBase.isGlobal || authorization.hasPermission({ principalType: "user", principalId: userId }, "knowledgeBases.viewAllowed", "knowledge_base", knowledgeBase.id);
 }
 
-export async function assertCanManageKnowledgeBase(
-  knowledgeBase: KnowledgeBaseRow,
-  userId: string,
-  canManageGlobal = false,
-) {
-  if (
-    !canManageKnowledgeBase(knowledgeBase, userId, canManageGlobal) &&
-    !(await authorization.hasPermission(
-      { principalType: "user", principalId: userId },
-      "knowledgeBases.manage",
-      "knowledge_base",
-      knowledgeBase.id,
-    ))
-  ) {
+export async function assertCanManageKnowledgeBase(knowledgeBase: KnowledgeBaseRow, userId: string, canManageGlobal = false) {
+  if (!canManageKnowledgeBase(knowledgeBase, userId, canManageGlobal) && !(await authorization.hasPermission({ principalType: "user", principalId: userId }, "knowledgeBases.manage", "knowledge_base", knowledgeBase.id))) {
     throw new Error("Knowledge base not found");
   }
 }
@@ -118,12 +79,7 @@ export async function queueDefaultRagReindex() {
   const inheritedBases = await db
     .select({ id: knowledgeBases.id })
     .from(knowledgeBases)
-    .where(
-      and(
-        isNull(knowledgeBases.ragConfigJson),
-        isNull(knowledgeBases.archivedAt),
-      ),
-    );
+    .where(and(isNull(knowledgeBases.ragConfigJson), isNull(knowledgeBases.archivedAt)));
   if (inheritedBases.length === 0) return 0;
   const updated = await db
     .update(documents)

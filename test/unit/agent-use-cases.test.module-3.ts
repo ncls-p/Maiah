@@ -1,17 +1,10 @@
 import { describe,expect,it,vi } from "vitest";
 
-import {
-insertDelegationBindingsForVersion
-} from "@/modules/agent/delegation-use-cases";
-import {
-createAgent
-} from "@/modules/agent/use-cases";
-import {
-insertToolBindingsForVersion
-} from "@/modules/tool/use-cases";
+import { insertDelegationBindingsForVersion } from "@/modules/agent/delegation-use-cases";
+import { createAgent } from "@/modules/agent/use-cases";
+import { insertToolBindingsForVersion } from "@/modules/tool/use-cases";
 import { dbModule,fakeAgent,fakeVersion } from "./agent-use-cases.test.chain";
 import { fakeProvider } from "./agent-use-cases.test.fake-provider";
-
 
 // ─── createAgent ──────────────────────────────────────────────────────
 
@@ -78,25 +71,15 @@ describe("createAgent", () => {
       activeVersionId: version.id,
     });
     expect(result.version).toEqual(version);
-    expect(dbModule._tx.values).toHaveBeenCalledWith(
-      expect.objectContaining({ maxToolCalls: 20 }),
-    );
+    expect(dbModule._tx.values).toHaveBeenCalledWith(expect.objectContaining({ maxToolCalls: 20 }));
     expect(dbModule.db.transaction).toHaveBeenCalledOnce();
-    expect(vi.mocked(insertToolBindingsForVersion)).toHaveBeenCalledWith(
-      version.id,
-      [],
-      "ws-1",
-      { userId: "user-1" },
-      dbModule._tx,
-    );
+    expect(vi.mocked(insertToolBindingsForVersion)).toHaveBeenCalledWith(version.id, [], "ws-1", { userId: "user-1" }, dbModule._tx);
   });
 
   it("applies the exact approval-free onboarding tool preset", async () => {
     const insertedAgent = { ...fakeAgent, activeVersionId: null };
     const version = { ...fakeVersion };
-    dbModule._tx.returning
-      .mockResolvedValueOnce([insertedAgent])
-      .mockResolvedValueOnce([version]);
+    dbModule._tx.returning.mockResolvedValueOnce([insertedAgent]).mockResolvedValueOnce([version]);
 
     await createAgent({
       workspaceId: "ws-1",
@@ -164,9 +147,7 @@ describe("createAgent", () => {
   it("creates an orchestrator with versioned policy and bindings", async () => {
     const agent = { ...fakeAgent, kind: "orchestrator" as const };
     const version = { ...fakeVersion };
-    dbModule._tx.returning
-      .mockResolvedValueOnce([agent])
-      .mockResolvedValueOnce([version]);
+    dbModule._tx.returning.mockResolvedValueOnce([agent]).mockResolvedValueOnce([version]);
 
     await createAgent({
       workspaceId: "ws-1",

@@ -1,106 +1,53 @@
 import { logger } from "@/lib/logger";
 import { getDelegationBindingsForVersion } from "@/modules/agent/delegation-use-cases";
-import {
-delegationFinalTextFromOutput
-} from "@/modules/agent/progress-model-history";
-import {
-appendAgentRunStep,
-consumeAgentRunDelegationBudget
-} from "@/modules/agent/run-use-cases";
-import {
-safeToolErrorMessage
-} from "@/modules/tool/safe-payload";
+import { delegationFinalTextFromOutput } from "@/modules/agent/progress-model-history";
+import { appendAgentRunStep,consumeAgentRunDelegationBudget } from "@/modules/agent/run-use-cases";
+import { safeToolErrorMessage } from "@/modules/tool/safe-payload";
 import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
-import {
-tool,
-type ToolSet
-} from "ai";
+import { tool,type ToolSet } from "ai";
 import { z } from "zod";
 import { executeResolvedAgent } from "./runtime-executor.execute-resolved-agent";
 import { AgentExecutionError,InternalExecutionInput,ResolvedAgent,SuccessfulToolResult,maximumParentSynthesisReserveMs,minimumDelegationWindowMs,resolveAgent } from "./runtime-executor.heartbeat-ms";
 import { modelSafeDelegationError,safeAgentExecutionDetail,truncateDelegationResult } from "./runtime-executor.instrument-tools";
 
-
-export async function buildDelegationTools(input: {
-  runId: string;
-  resolved: ResolvedAgent;
-  execution: InternalExecutionInput;
-  allocateSequence: () => number;
-  onToolSuccess?: (result: SuccessfulToolResult) => void;
-}) {
+export async function buildDelegationTools(input: { runId: string; resolved: ResolvedAgent; execution: InternalExecutionInput; allocateSequence: () => number; onToolSuccess?: (result: SuccessfulToolResult) => void }) {
   if (input.resolved.agent.kind !== "orchestrator" || input.execution.dryRun) {
     return {} satisfies ToolSet;
   }
-  const bindings = await getDelegationBindingsForVersion(
-    input.resolved.version.id,
-    db,
-  );
+  const bindings = await getDelegationBindingsForVersion(input.resolved.version.id, db);
   const delegationTools: ToolSet = {};
 
-  const orderedBindings = [...bindings].sort((left, right) =>
-    left.childAgentId.localeCompare(right.childAgentId),
-  );
+  const orderedBindings = [...bindings].sort((left, right) => left.childAgentId.localeCompare(right.childAgentId));
   for (const [bindingIndex, binding] of orderedBindings.entries()) {
     const specialistNumber = bindingIndex + 1;
     const toolName = `delegate_specialist_${specialistNumber}`;
     delegationTools[toolName] = tool({
-      description: [
-        `Delegate one bounded task to configured specialist ${specialistNumber}.`,
-        binding.instructions?.trim(),
-        "Return the child result to the orchestrator and continue the parent plan.",
-      ]
-        .filter(Boolean)
-        .join(" "),
+      description: [`Delegate one bounded task to configured specialist ${specialistNumber}.`, binding.instructions?.trim(), "Return the child result to the orchestrator and continue the parent plan."].filter(Boolean).join(" "),
       inputSchema: z.object({
         task: z.string().trim().min(1).max(32_000),
       }),
       toModelOutput: ({ output }) => ({
         type: "text",
-        value:
-          delegationFinalTextFromOutput(output) ??
-          "The specialist completed without a final text response.",
+        value: delegationFinalTextFromOutput(output) ?? "The specialist completed without a final text response.",
       }),
       execute: async ({ task }) => {
         const sequence = input.allocateSequence();
         let childRunId: string | undefined;
         let activeSlotReserved = false;
         try {
-          const permission = await authorization.checkPermission(
-            { principalType: "user", principalId: input.execution.userId },
-            "agents.delegate",
-            "agent",
-            binding.childAgentId,
-          );
+          const permission = await authorization.checkPermission({ principalType: "user", principalId: input.execution.userId }, "agents.delegate", "agent", binding.childAgentId);
           if (!permission.granted) {
-            throw new AgentExecutionError(
-              permission.reason ?? "Delegation is not allowed",
-              "AGENT_DELEGATION_FORBIDDEN",
-            );
+            throw new AgentExecutionError(permission.reason ?? "Delegation is not allowed", "AGENT_DELEGATION_FORBIDDEN");
           }
-          if (
-            input.execution.depth + 1 >
-            input.execution.budget.policy.maxDepth
-          ) {
-            throw new AgentExecutionError(
-              "Delegation depth limit reached",
-              "AGENT_DELEGATION_DEPTH_EXCEEDED",
-            );
+          if (input.execution.depth + 1 > input.execution.budget.policy.maxDepth) {
+            throw new AgentExecutionError("Delegation depth limit reached", "AGENT_DELEGATION_DEPTH_EXCEEDED");
           }
           if (input.execution.ancestry.includes(binding.childAgentId)) {
-            throw new AgentExecutionError(
-              "Delegation cycle blocked at runtime",
-              "AGENT_DELEGATION_CYCLE",
-            );
+            throw new AgentExecutionError("Delegation cycle blocked at runtime", "AGENT_DELEGATION_CYCLE");
           }
-          if (
-            input.execution.budget.activeDelegations >=
-            input.execution.budget.policy.maxParallel
-          ) {
-            throw new AgentExecutionError(
-              "Parallel delegation limit reached",
-              "AGENT_DELEGATION_PARALLEL_LIMIT",
-            );
+          if (input.execution.budget.activeDelegations >= input.execution.budget.policy.maxParallel) {
+            throw new AgentExecutionError("Parallel delegation limit reached", "AGENT_DELEGATION_PARALLEL_LIMIT");
           }
 
           input.execution.budget.activeDelegations += 1;
@@ -110,10 +57,7 @@ export async function buildDelegationTools(input: {
             maxDelegations: input.execution.budget.policy.maxDelegations,
           });
           if (delegationNumber === null) {
-            throw new AgentExecutionError(
-              "Delegation call limit reached",
-              "AGENT_DELEGATION_LIMIT",
-            );
+            throw new AgentExecutionError("Delegation call limit reached", "AGENT_DELEGATION_LIMIT");
           }
 
           const child = await resolveAgent({
@@ -123,19 +67,10 @@ export async function buildDelegationTools(input: {
             userId: input.execution.userId,
           });
           const parentDeadlineMs = input.execution.deadlineAt.getTime();
-          const synthesisReserveMs = Math.min(
-            maximumParentSynthesisReserveMs,
-            Math.max(
-              minimumDelegationWindowMs,
-              Math.floor(input.execution.budget.policy.timeoutMs / 4),
-            ),
-          );
+          const synthesisReserveMs = Math.min(maximumParentSynthesisReserveMs, Math.max(minimumDelegationWindowMs, Math.floor(input.execution.budget.policy.timeoutMs / 4)));
           const childDeadlineMs = parentDeadlineMs - synthesisReserveMs;
           if (childDeadlineMs - Date.now() < minimumDelegationWindowMs) {
-            throw new AgentExecutionError(
-              "Not enough execution time remains to start a specialist safely",
-              "AGENT_DELEGATION_DEADLINE_EXCEEDED",
-            );
+            throw new AgentExecutionError("Not enough execution time remains to start a specialist safely", "AGENT_DELEGATION_DEADLINE_EXCEEDED");
           }
           const result = await executeResolvedAgent({
             resolved: child,
@@ -153,10 +88,7 @@ export async function buildDelegationTools(input: {
             onProgress: input.execution.onProgress,
           });
           childRunId = result.runId;
-          const output = truncateDelegationResult(
-            result.text,
-            input.execution.budget.policy.resultMaxChars,
-          );
+          const output = truncateDelegationResult(result.text, input.execution.budget.policy.resultMaxChars);
           await appendAgentRunStep({
             runId: input.runId,
             sequence,
@@ -198,22 +130,13 @@ export async function buildDelegationTools(input: {
             rootRunId: input.execution.budget.rootRunId,
             parentRunId: input.runId,
             childRunId: childRunId ?? null,
-            errorCode:
-              error instanceof AgentExecutionError
-                ? error.code
-                : "AGENT_DELEGATION_FAILED",
-            errorDetail: safeAgentExecutionDetail(
-              error,
-              "Delegated task failed",
-            ),
+            errorCode: error instanceof AgentExecutionError ? error.code : "AGENT_DELEGATION_FAILED",
+            errorDetail: safeAgentExecutionDetail(error, "Delegated task failed"),
           });
           throw modelSafeDelegationError(error, childRunId);
         } finally {
           if (activeSlotReserved) {
-            input.execution.budget.activeDelegations = Math.max(
-              0,
-              input.execution.budget.activeDelegations - 1,
-            );
+            input.execution.budget.activeDelegations = Math.max(0, input.execution.budget.activeDelegations - 1);
           }
         }
       },

@@ -32,8 +32,7 @@ export const metadata: Metadata = {
     default: "Maiah",
     template: "%s · Maiah",
   },
-  description:
-    "Build, configure, and run AI agents with multi-provider support and team collaboration.",
+  description: "Build, configure, and run AI agents with multi-provider support and team collaboration.",
 };
 
 export default async function RootLayout({
@@ -42,21 +41,10 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const localeCookie = (await cookies()).get("NEXT_LOCALE")?.value;
-  const documentLanguage =
-    locales.find((locale) => locale === localeCookie) ?? defaultLocale;
+  const documentLanguage = locales.find((locale) => locale === localeCookie) ?? defaultLocale;
 
   return (
-    <html
-      lang={documentLanguage}
-      data-scroll-behavior="smooth"
-      suppressHydrationWarning
-      className={cn(
-        "min-h-full bg-background text-foreground antialiased",
-        fontMono.variable,
-        fontBody.variable,
-        fontHeading.variable,
-      )}
-    >
+    <html lang={documentLanguage} data-scroll-behavior="smooth" suppressHydrationWarning className={cn("min-h-full bg-background text-foreground antialiased", fontMono.variable, fontBody.variable, fontHeading.variable)}>
       <body className="min-h-svh" suppressHydrationWarning>
         <ThemeProvider>
           <TooltipProvider>

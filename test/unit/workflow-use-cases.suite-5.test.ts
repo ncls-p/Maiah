@@ -2,21 +2,7 @@ import { beforeEach,describe,expect,it,vi } from "vitest";
 
 const database = vi.hoisted(() => {
   const chain: Record<string, ReturnType<typeof vi.fn>> = {};
-  for (const method of [
-    "select",
-    "insert",
-    "update",
-    "from",
-    "where",
-    "orderBy",
-    "limit",
-    "values",
-    "set",
-    "returning",
-    "innerJoin",
-    "onConflictDoUpdate",
-    "onConflictDoNothing",
-  ]) {
+  for (const method of ["select", "insert", "update", "from", "where", "orderBy", "limit", "values", "set", "returning", "innerJoin", "onConflictDoUpdate", "onConflictDoNothing"]) {
     chain[method] = vi.fn();
   }
   const db = {
@@ -49,18 +35,7 @@ vi.mock("@/modules/workflows/runtime", () => ({
 
 import type { WorkflowDefinition } from "@/modules/workflows/contracts";
 import { createStarterDefinition } from "@/modules/workflows/contracts";
-import {
-WorkflowConflictError,
-WorkflowNotFoundError,
-WorkflowQueueError,
-createWorkflowRun,
-failQueuedWorkflowRun,
-getWorkflowRun,
-listQueuedWorkflowRunIds,
-listWorkflowRuns,
-processWorkflowRun,
-updateWorkflow
-} from "@/modules/workflows/use-cases";
+import { WorkflowConflictError,WorkflowNotFoundError,WorkflowQueueError,createWorkflowRun,failQueuedWorkflowRun,getWorkflowRun,listQueuedWorkflowRunIds,listWorkflowRuns,processWorkflowRun,updateWorkflow } from "@/modules/workflows/use-cases";
 
 const definition = createStarterDefinition();
 const workflow = {
@@ -93,9 +68,7 @@ function resetDatabase() {
   for (const method of ["select", "insert", "update"] as const) {
     database.db[method].mockReset().mockReturnValue(database.chain);
   }
-  database.db.transaction
-    .mockReset()
-    .mockImplementation(async (callback) => callback(database.db));
+  database.db.transaction.mockReset().mockImplementation(async (callback) => callback(database.db));
   for (const [method, mock] of Object.entries(database.chain)) {
     mock.mockReset();
     if (method === "limit" || method === "returning") {
@@ -122,17 +95,12 @@ beforeEach(() => {
       errors: [],
     }),
   });
-  workflowMocks.nodeById.mockImplementation(
-    (currentDefinition: WorkflowDefinition, nodeId: string) =>
-      currentDefinition.nodes.find((item) => item.id === nodeId),
-  );
+  workflowMocks.nodeById.mockImplementation((currentDefinition: WorkflowDefinition, nodeId: string) => currentDefinition.nodes.find((item) => item.id === nodeId));
 });
 
 describe("workflow run use cases", () => {
   it("requires a published version for API runs", async () => {
-    database.chain.limit.mockResolvedValueOnce([
-      { ...workflow, activeVersion: null },
-    ]);
+    database.chain.limit.mockResolvedValueOnce([{ ...workflow, activeVersion: null }]);
     await expect(
       createWorkflowRun({
         workflowId: workflow.id,
@@ -143,9 +111,7 @@ describe("workflow run use cases", () => {
   });
 
   it("returns an idempotent run without enqueueing again", async () => {
-    database.chain.limit
-      .mockResolvedValueOnce([workflow])
-      .mockResolvedValueOnce([run]);
+    database.chain.limit.mockResolvedValueOnce([workflow]).mockResolvedValueOnce([run]);
     await expect(
       createWorkflowRun({
         workflowId: workflow.id,
@@ -159,11 +125,7 @@ describe("workflow run use cases", () => {
 
   it("recovers a concurrent idempotent run insert without enqueueing twice", async () => {
     const concurrentRun = { ...run, idempotencyKey: "same-request" };
-    database.chain.limit
-      .mockResolvedValueOnce([workflow])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([version])
-      .mockResolvedValueOnce([concurrentRun]);
+    database.chain.limit.mockResolvedValueOnce([workflow]).mockResolvedValueOnce([]).mockResolvedValueOnce([version]).mockResolvedValueOnce([concurrentRun]);
     database.chain.returning.mockResolvedValueOnce([]);
 
     await expect(
@@ -178,9 +140,7 @@ describe("workflow run use cases", () => {
   });
 
   it("creates and enqueues published and draft runs", async () => {
-    database.chain.limit
-      .mockResolvedValueOnce([workflow])
-      .mockResolvedValueOnce([version]);
+    database.chain.limit.mockResolvedValueOnce([workflow]).mockResolvedValueOnce([version]);
     database.chain.returning.mockResolvedValueOnce([run]);
     await expect(
       createWorkflowRun({
@@ -207,10 +167,7 @@ describe("workflow run use cases", () => {
       workflowVersionId: testedVersion.id,
       trigger: "agent",
     };
-    database.chain.limit
-      .mockResolvedValueOnce([workflow])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([testedVersion]);
+    database.chain.limit.mockResolvedValueOnce([workflow]).mockResolvedValueOnce([]).mockResolvedValueOnce([testedVersion]);
     database.chain.returning.mockResolvedValueOnce([agentRun]);
 
     await expect(
@@ -234,9 +191,7 @@ describe("workflow run use cases", () => {
   });
 
   it("handles missing versions, failed inserts, and queue outages", async () => {
-    database.chain.limit
-      .mockResolvedValueOnce([workflow])
-      .mockResolvedValueOnce([]);
+    database.chain.limit.mockResolvedValueOnce([workflow]).mockResolvedValueOnce([]);
     await expect(
       createWorkflowRun({
         workflowId: workflow.id,
@@ -245,9 +200,7 @@ describe("workflow run use cases", () => {
       }),
     ).rejects.toBeInstanceOf(WorkflowConflictError);
 
-    database.chain.limit
-      .mockResolvedValueOnce([workflow])
-      .mockResolvedValueOnce([version]);
+    database.chain.limit.mockResolvedValueOnce([workflow]).mockResolvedValueOnce([version]);
     database.chain.returning.mockResolvedValueOnce([]);
     await expect(
       createWorkflowRun({
@@ -257,13 +210,9 @@ describe("workflow run use cases", () => {
       }),
     ).rejects.toThrow("Failed to create workflow run");
 
-    database.chain.limit
-      .mockResolvedValueOnce([workflow])
-      .mockResolvedValueOnce([version]);
+    database.chain.limit.mockResolvedValueOnce([workflow]).mockResolvedValueOnce([version]);
     database.chain.returning.mockResolvedValueOnce([run]);
-    workflowMocks.enqueue.mockRejectedValueOnce(
-      new Error("queue unavailable".repeat(1_000)),
-    );
+    workflowMocks.enqueue.mockRejectedValueOnce(new Error("queue unavailable".repeat(1_000)));
     await expect(
       createWorkflowRun({
         workflowId: workflow.id,
@@ -280,27 +229,19 @@ describe("workflow run use cases", () => {
   });
 
   it("lists runs and returns their ordered steps", async () => {
-    database.chain.limit
-      .mockResolvedValueOnce([workflow])
-      .mockResolvedValueOnce([run]);
-    await expect(
-      listWorkflowRuns(workflow.id, workflow.workspaceId),
-    ).resolves.toEqual([run]);
+    database.chain.limit.mockResolvedValueOnce([workflow]).mockResolvedValueOnce([run]);
+    await expect(listWorkflowRuns(workflow.id, workflow.workspaceId)).resolves.toEqual([run]);
 
     const steps = [{ nodeId: "trigger", status: "completed" }];
     database.chain.limit.mockResolvedValueOnce([run]);
     database.chain.orderBy.mockResolvedValueOnce(steps);
-    await expect(getWorkflowRun(run.id, workflow.workspaceId)).resolves.toEqual(
-      {
-        ...run,
-        steps,
-      },
-    );
+    await expect(getWorkflowRun(run.id, workflow.workspaceId)).resolves.toEqual({
+      ...run,
+      steps,
+    });
 
     database.chain.limit.mockResolvedValueOnce([]);
-    await expect(
-      getWorkflowRun("missing", workflow.workspaceId),
-    ).rejects.toBeInstanceOf(WorkflowNotFoundError);
+    await expect(getWorkflowRun("missing", workflow.workspaceId)).rejects.toBeInstanceOf(WorkflowNotFoundError);
   });
 });
 
@@ -314,9 +255,7 @@ describe("workflow worker processing", () => {
 
   it("rejects missing records and skips terminal runs", async () => {
     database.chain.limit.mockResolvedValueOnce([]);
-    await expect(processWorkflowRun("missing")).rejects.toBeInstanceOf(
-      WorkflowNotFoundError,
-    );
+    await expect(processWorkflowRun("missing")).rejects.toBeInstanceOf(WorkflowNotFoundError);
 
     database.chain.limit.mockResolvedValueOnce([record("completed")]);
     await expect(processWorkflowRun(run.id)).resolves.toMatchObject({
@@ -332,9 +271,7 @@ describe("workflow worker processing", () => {
 
   it("persists every relevant node event and completes the run", async () => {
     database.chain.limit.mockResolvedValueOnce([record()]);
-    database.chain.returning.mockResolvedValueOnce([
-      { ...run, status: "completed", outputJson: { result: true } },
-    ]);
+    database.chain.returning.mockResolvedValueOnce([{ ...run, status: "completed", outputJson: { result: true } }]);
     workflowMocks.createRuntime.mockImplementation(({ eventBus }) => ({
       run: vi.fn().mockImplementation(async () => {
         await eventBus.emit({
@@ -374,16 +311,12 @@ describe("workflow worker processing", () => {
     });
     expect(database.db.insert).toHaveBeenCalled();
     expect(database.chain.onConflictDoUpdate).toHaveBeenCalled();
-    expect(database.chain.set).toHaveBeenCalledWith(
-      expect.objectContaining({ status: "completed", error: null }),
-    );
+    expect(database.chain.set).toHaveBeenCalledWith(expect.objectContaining({ status: "completed", error: null }));
   });
 
   it("persists runtime failure results and thrown errors", async () => {
     database.chain.limit.mockResolvedValueOnce([record()]);
-    database.chain.returning.mockResolvedValueOnce([
-      { ...run, status: "failed", error: "node failed" },
-    ]);
+    database.chain.returning.mockResolvedValueOnce([{ ...run, status: "failed", error: "node failed" }]);
     workflowMocks.createRuntime.mockReturnValueOnce({
       run: vi.fn().mockResolvedValue({
         status: "failed",
@@ -394,30 +327,20 @@ describe("workflow worker processing", () => {
     await expect(processWorkflowRun(run.id)).resolves.toMatchObject({
       status: "failed",
     });
-    expect(database.chain.set).toHaveBeenCalledWith(
-      expect.objectContaining({ status: "failed", error: "node failed" }),
-    );
+    expect(database.chain.set).toHaveBeenCalledWith(expect.objectContaining({ status: "failed", error: "node failed" }));
 
     database.chain.limit.mockResolvedValueOnce([record()]);
     workflowMocks.createRuntime.mockReturnValueOnce({
       run: vi.fn().mockRejectedValue(new Error("runtime exploded")),
     });
-    await expect(processWorkflowRun(run.id)).rejects.toThrow(
-      "runtime exploded",
-    );
-    expect(database.chain.set).toHaveBeenCalledWith(
-      expect.objectContaining({ status: "failed", error: "runtime exploded" }),
-    );
+    await expect(processWorkflowRun(run.id)).rejects.toThrow("runtime exploded");
+    expect(database.chain.set).toHaveBeenCalledWith(expect.objectContaining({ status: "failed", error: "runtime exploded" }));
   });
 
   it("persists the underlying node error instead of only the runtime wrapper", async () => {
     database.chain.limit.mockResolvedValueOnce([record()]);
-    database.chain.returning.mockResolvedValueOnce([
-      { ...run, status: "failed" },
-    ]);
-    const sandboxError = new Error(
-      "Sandbox execution failed (exit code 1): SyntaxError: Unexpected token",
-    );
+    database.chain.returning.mockResolvedValueOnce([{ ...run, status: "failed" }]);
+    const sandboxError = new Error("Sandbox execution failed (exit code 1): SyntaxError: Unexpected token");
     const wrappedError = new Error("Node 'trigger' execution failed", {
       cause: sandboxError,
     });
@@ -442,19 +365,9 @@ describe("workflow worker processing", () => {
     await expect(processWorkflowRun(run.id)).resolves.toMatchObject({
       status: "failed",
     });
-    const storedErrors = database.chain.set.mock.calls
-      .map(([value]) => (value as { error?: string }).error)
-      .filter(Boolean);
-    expect(storedErrors).toEqual(
-      expect.arrayContaining([
-        expect.stringContaining("SyntaxError: Unexpected token"),
-      ]),
-    );
-    expect(storedErrors).toEqual(
-      expect.arrayContaining([
-        expect.stringContaining("Node 'trigger' execution failed"),
-      ]),
-    );
+    const storedErrors = database.chain.set.mock.calls.map(([value]) => (value as { error?: string }).error).filter(Boolean);
+    expect(storedErrors).toEqual(expect.arrayContaining([expect.stringContaining("SyntaxError: Unexpected token")]));
+    expect(storedErrors).toEqual(expect.arrayContaining([expect.stringContaining("Node 'trigger' execution failed")]));
   });
 
   it("persists compilation failures before the runtime starts", async () => {
@@ -463,9 +376,7 @@ describe("workflow worker processing", () => {
       throw new Error("invalid workflow graph");
     });
 
-    await expect(processWorkflowRun(run.id)).rejects.toThrow(
-      "invalid workflow graph",
-    );
+    await expect(processWorkflowRun(run.id)).rejects.toThrow("invalid workflow graph");
     expect(database.chain.set).toHaveBeenCalledWith(
       expect.objectContaining({
         status: "failed",
@@ -476,13 +387,9 @@ describe("workflow worker processing", () => {
   });
 
   it("fails only workflow runs that are still queued", async () => {
-    database.chain.returning.mockResolvedValueOnce([
-      { ...run, status: "failed", error: "queue mismatch" },
-    ]);
+    database.chain.returning.mockResolvedValueOnce([{ ...run, status: "failed", error: "queue mismatch" }]);
 
-    await expect(
-      failQueuedWorkflowRun(run.id, "queue mismatch"),
-    ).resolves.toMatchObject({
+    await expect(failQueuedWorkflowRun(run.id, "queue mismatch")).resolves.toMatchObject({
       status: "failed",
       error: "queue mismatch",
     });
@@ -496,14 +403,8 @@ describe("workflow worker processing", () => {
   });
 
   it("lists queued identifiers for worker recovery", async () => {
-    database.chain.limit.mockResolvedValueOnce([
-      { id: "run-1" },
-      { id: "run-2" },
-    ]);
-    await expect(listQueuedWorkflowRunIds()).resolves.toEqual([
-      "run-1",
-      "run-2",
-    ]);
+    database.chain.limit.mockResolvedValueOnce([{ id: "run-1" }, { id: "run-2" }]);
+    await expect(listQueuedWorkflowRunIds()).resolves.toEqual(["run-1", "run-2"]);
   });
 });
 describe("workflow CRUD use cases", () => {
@@ -525,9 +426,7 @@ describe("workflow CRUD use cases", () => {
       version: 3,
       definition,
     });
-    expect(database.db.update.mock.invocationCallOrder[0]).toBeLessThan(
-      database.db.insert.mock.invocationCallOrder[0]!,
-    );
+    expect(database.db.update.mock.invocationCallOrder[0]).toBeLessThan(database.db.insert.mock.invocationCallOrder[0]!);
     expect(database.chain.set).toHaveBeenCalledWith(
       expect.objectContaining({
         name: "Updated",
@@ -537,9 +436,7 @@ describe("workflow CRUD use cases", () => {
       }),
     );
 
-    database.chain.limit
-      .mockResolvedValueOnce([workflow])
-      .mockResolvedValueOnce([{ definitionJson: version.definitionJson }]);
+    database.chain.limit.mockResolvedValueOnce([workflow]).mockResolvedValueOnce([{ definitionJson: version.definitionJson }]);
     database.chain.returning.mockResolvedValueOnce([workflow]);
     await expect(
       updateWorkflow({

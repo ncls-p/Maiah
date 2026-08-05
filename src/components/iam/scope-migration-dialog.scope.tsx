@@ -1,7 +1,5 @@
 "use client";
 
-
-
 export type Scope = "project" | "organization";
 export type Mode = "move" | "clone";
 export type Destination = {

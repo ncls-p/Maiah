@@ -1,7 +1,6 @@
 import { describe,expect,it } from "vitest";
 import { completeChatStream,createChatUIMessageStreamResponse,publishChatStreamEvent } from "./stream-bus.test.publish-chat-stream-event";
 
-
 describe("additional stream response event mappings", () => {
   async function readResponseText(response: Response) {
     const reader = response.body?.getReader();
@@ -17,8 +16,7 @@ describe("additional stream response event mappings", () => {
   }
 
   it("creates a raw SSE response with replay and custom headers", async () => {
-    const { createChatStreamResponse } =
-      await import("@/modules/chat/stream-bus");
+    const { createChatStreamResponse } = await import("@/modules/chat/stream-bus");
     const id = crypto.randomUUID();
     publishChatStreamEvent(id, { type: "text", delta: "old" });
     const response = createChatStreamResponse(id, { "X-Test": "yes" });
@@ -69,10 +67,7 @@ describe("additional stream response event mappings", () => {
     });
     publishChatStreamEvent(id, {
       type: "citations",
-      citations: [
-        { chunkId: "chunk-1", documentTitle: "Doc" },
-        { other: true },
-      ],
+      citations: [{ chunkId: "chunk-1", documentTitle: "Doc" }, { other: true }],
     });
     publishChatStreamEvent(id, {
       type: "file",
@@ -90,9 +85,7 @@ describe("additional stream response event mappings", () => {
     expect(text).toContain('"type":"reasoning-start"');
     expect(text).toContain('"type":"reasoning-delta"');
     expect(text).toContain('"type":"reasoning-end"');
-    expect(text.indexOf('"type":"reasoning-end"')).toBeLessThan(
-      text.indexOf('"type":"tool-input-start"'),
-    );
+    expect(text.indexOf('"type":"reasoning-end"')).toBeLessThan(text.indexOf('"type":"tool-input-start"'));
     expect(text).toContain('"type":"tool-input-start"');
     expect(text).not.toContain('"type":"tool-input-delta"');
     expect(text).not.toContain('{"q"');

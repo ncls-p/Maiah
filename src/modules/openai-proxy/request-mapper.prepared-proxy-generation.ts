@@ -1,20 +1,10 @@
 import type { JSONValue } from "@ai-sdk/provider";
-import {
-Output,
-type ModelMessage,
-type ToolChoice,
-type ToolSet
-} from "ai";
+import { Output,type ModelMessage,type ToolChoice,type ToolSet } from "ai";
 
-import type {
-ProxyResponseFormat
-} from "@/modules/openai-proxy/contracts";
+import type { ProxyResponseFormat } from "@/modules/openai-proxy/contracts";
 import { invalidRequest } from "@/modules/openai-proxy/errors";
 
-type PreparedOutput =
-  | ReturnType<typeof Output.text>
-  | ReturnType<typeof Output.json>
-  | ReturnType<typeof Output.object>;
+type PreparedOutput = ReturnType<typeof Output.text> | ReturnType<typeof Output.json> | ReturnType<typeof Output.object>;
 
 export type PreparedProxyGeneration = {
   messages: ModelMessage[];
@@ -72,16 +62,8 @@ export function textContent(value: unknown, param: string) {
   return value
     .map((part, index) => {
       const item = objectValue(part, `${param}.${index}`);
-      if (
-        item.type !== "text" &&
-        item.type !== "input_text" &&
-        item.type !== "output_text"
-      ) {
-        throw invalidRequest(
-          `Unsupported content type '${String(item.type)}' in '${param}'.`,
-          `${param}.${index}.type`,
-          "unsupported_content_type",
-        );
+      if (item.type !== "text" && item.type !== "input_text" && item.type !== "output_text") {
+        throw invalidRequest(`Unsupported content type '${String(item.type)}' in '${param}'.`, `${param}.${index}.type`, "unsupported_content_type");
       }
       return stringValue(item.text, `${param}.${index}.text`);
     })
@@ -103,10 +85,7 @@ export function userContent(value: unknown, param: string) {
       };
     }
     if (item.type === "image_url") {
-      const image =
-        typeof item.image_url === "string"
-          ? item.image_url
-          : objectValue(item.image_url, `${param}.${index}.image_url`).url;
+      const image = typeof item.image_url === "string" ? item.image_url : objectValue(item.image_url, `${param}.${index}.image_url`).url;
       return {
         type: "file" as const,
         mediaType: "image",
@@ -136,11 +115,7 @@ export function userContent(value: unknown, param: string) {
         filename: typeof item.filename === "string" ? item.filename : undefined,
       };
     }
-    throw invalidRequest(
-      `Unsupported content type '${String(item.type)}' in '${param}'.`,
-      `${param}.${index}.type`,
-      "unsupported_content_type",
-    );
+    throw invalidRequest(`Unsupported content type '${String(item.type)}' in '${param}'.`, `${param}.${index}.type`, "unsupported_content_type");
   });
 }
 

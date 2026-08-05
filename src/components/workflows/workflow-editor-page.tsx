@@ -30,18 +30,9 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
     setLoading(true);
     setError(false);
     try {
-      const [workflowPayload, agentPayload] = await Promise.all([
-        fetchJson<{ workflow: WorkflowDetail }>(
-          `/api/workspace/workflows/${workflowId}?workspaceId=${workspaceId}`,
-        ),
-        fetchJson<AgentPayload>(
-          `/api/workspace/agents?workspaceId=${workspaceId}`,
-        ),
-      ]);
+      const [workflowPayload, agentPayload] = await Promise.all([fetchJson<{ workflow: WorkflowDetail }>(`/api/workspace/workflows/${workflowId}?workspaceId=${workspaceId}`), fetchJson<AgentPayload>(`/api/workspace/agents?workspaceId=${workspaceId}`)]);
       setWorkflow(workflowPayload.workflow);
-      setAgents(
-        Array.isArray(agentPayload) ? agentPayload : agentPayload.agents,
-      );
+      setAgents(Array.isArray(agentPayload) ? agentPayload : agentPayload.agents);
     } catch {
       setError(true);
     } finally {
@@ -78,12 +69,7 @@ export function WorkflowEditorPage({ workflowId }: { workflowId: string }) {
           </Button>
         </PageEmptyState>
       ) : (
-        <WorkflowBuilder
-          key={`${workflow.id}:${workflow.version}`}
-          workspaceId={workspaceId}
-          initialWorkflow={workflow}
-          agents={agents}
-        />
+        <WorkflowBuilder key={`${workflow.id}:${workflow.version}`} workspaceId={workspaceId} initialWorkflow={workflow} agents={agents} />
       )}
     </WorkspacePage>
   );

@@ -1,6 +1,4 @@
-import {
-adminModerateItem
-} from "@/modules/marketplace/use-cases";
+import { adminModerateItem } from "@/modules/marketplace/use-cases";
 import { beforeEach,describe,expect,it,vi } from "vitest";
 
 // ─── Mocks ─────────────────────────────────────────────────────────────

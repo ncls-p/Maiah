@@ -1,7 +1,4 @@
-import {
-createPrivateKey,
-createSign
-} from "node:crypto";
+import { createPrivateKey,createSign } from "node:crypto";
 import { z } from "zod";
 
 import { env } from "@/lib/env";
@@ -49,25 +46,10 @@ export const githubRepositorySyncPageSize = 100;
 export const githubRepositorySyncMaxPages = 30;
 export const maxCommitFiles = 500;
 export const maxCommitBytes = 50 * 1024 * 1024;
-export const blockedPublishPathPatterns = [
-  /(^|\/)\.env(?:\.|$)/i,
-  /(^|\/)\.github\/workflows\//i,
-  /(^|\/)id_rsa$/i,
-  /\.(?:pem|key|p12|pfx)$/i,
-];
-export const secretPatterns = [
-  /GH[PSU]_[A-Za-z0-9_]{20,}/,
-  /github_pat_[A-Za-z0-9_]{20,}/,
-  /sk-[A-Za-z0-9]{20,}/,
-  /-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----/,
-  /(?:api[_-]?key|secret|token|password)\s*[:=]\s*["'][^"']{16,}["']/i,
-];
+export const blockedPublishPathPatterns = [/(^|\/)\.env(?:\.|$)/i, /(^|\/)\.github\/workflows\//i, /(^|\/)id_rsa$/i, /\.(?:pem|key|p12|pfx)$/i];
+export const secretPatterns = [/GH[PSU]_[A-Za-z0-9_]{20,}/, /github_pat_[A-Za-z0-9_]{20,}/, /sk-[A-Za-z0-9]{20,}/, /-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----/, /(?:api[_-]?key|secret|token|password)\s*[:=]\s*["'][^"']{16,}["']/i];
 
-export function githubPublishLog(
-  stage: string,
-  metadata: Record<string, unknown>,
-  level: "info" | "error" = "info",
-) {
+export function githubPublishLog(stage: string, metadata: Record<string, unknown>, level: "info" | "error" = "info") {
   console[level]("[github-publish]", { stage, ...metadata });
 }
 
@@ -91,23 +73,17 @@ export const publishInputSchema = z.object({
 export type PublishCodeWorkspaceInput = z.input<typeof publishInputSchema>;
 
 export function githubAppConfigured() {
-  return Boolean(
-    env.GITHUB_APP_ID && env.GITHUB_APP_SLUG && env.GITHUB_APP_PRIVATE_KEY,
-  );
+  return Boolean(env.GITHUB_APP_ID && env.GITHUB_APP_SLUG && env.GITHUB_APP_PRIVATE_KEY);
 }
 
 export function normalizeGitHubPrivateKey(rawValue: string) {
   let privateKey = rawValue.trim();
-  privateKey = privateKey.replace(
-    /^export\s+GITHUB_APP_PRIVATE_KEY\s*=\s*/i,
-    "",
-  );
+  privateKey = privateKey.replace(/^export\s+GITHUB_APP_PRIVATE_KEY\s*=\s*/i, "");
   privateKey = privateKey.replace(/^GITHUB_APP_PRIVATE_KEY\s*=\s*/i, "");
   privateKey = privateKey.replace(/%$/, "").trim();
   const firstChar = privateKey[0];
   const lastChar = privateKey[privateKey.length - 1];
-  const isQuoted =
-    firstChar === lastChar && ['"', "'", "`"].includes(firstChar);
+  const isQuoted = firstChar === lastChar && ['"', "'", "`"].includes(firstChar);
   if (isQuoted) {
     privateKey = privateKey.slice(1, -1).trim();
   }
@@ -127,9 +103,7 @@ export function normalizeGitHubPrivateKey(rawValue: string) {
     }
   }
 
-  const pemMatch = privateKey.match(
-    /-----BEGIN ([^-]+)-----\s*([A-Za-z0-9+/=\s]+)\s*-----END \1-----/,
-  );
+  const pemMatch = privateKey.match(/-----BEGIN ([^-]+)-----\s*([A-Za-z0-9+/=\s]+)\s*-----END \1-----/);
   if (pemMatch) {
     const label = pemMatch[1];
     const body = pemMatch[2].replace(/\s+/g, "");
@@ -142,50 +116,34 @@ export function normalizeGitHubPrivateKey(rawValue: string) {
 
 export function requireGitHubAppConfig() {
   if (!githubAppConfigured()) {
-    throw new Error(
-      "GitHub publishing is not configured. Set GITHUB_APP_ID, GITHUB_APP_SLUG, and GITHUB_APP_PRIVATE_KEY.",
-    );
+    throw new Error("GitHub publishing is not configured. Set GITHUB_APP_ID, GITHUB_APP_SLUG, and GITHUB_APP_PRIVATE_KEY.");
   }
   try {
     return {
       appId: env.GITHUB_APP_ID!,
       appSlug: env.GITHUB_APP_SLUG!,
-      privateKey: createPrivateKey(
-        normalizeGitHubPrivateKey(env.GITHUB_APP_PRIVATE_KEY!),
-      ),
+      privateKey: createPrivateKey(normalizeGitHubPrivateKey(env.GITHUB_APP_PRIVATE_KEY!)),
     };
   } catch {
-    throw new Error(
-      "Invalid GITHUB_APP_PRIVATE_KEY. Paste the full GitHub App PEM private key, using escaped \\n newlines in env managers and no literal wrapping quotes.",
-    );
+    throw new Error("Invalid GITHUB_APP_PRIVATE_KEY. Paste the full GitHub App PEM private key, using escaped \\n newlines in env managers and no literal wrapping quotes.");
   }
 }
 
 export function base64Url(value: Buffer | string) {
-  return Buffer.from(value)
-    .toString("base64")
-    .replace(/=/g, "")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_");
+  return Buffer.from(value).toString("base64").replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
 }
 
 export function signGitHubAppJwt() {
   const { appId, privateKey } = requireGitHubAppConfig();
   const now = Math.floor(Date.now() / 1000);
   const header = base64Url(JSON.stringify({ alg: "RS256", typ: "JWT" }));
-  const payload = base64Url(
-    JSON.stringify({ iat: now - 60, exp: now + 540, iss: appId }),
-  );
+  const payload = base64Url(JSON.stringify({ iat: now - 60, exp: now + 540, iss: appId }));
   const unsigned = `${header}.${payload}`;
   const signature = createSign("RSA-SHA256").update(unsigned).sign(privateKey);
   return `${unsigned}.${base64Url(signature)}`;
 }
 
-export async function githubRequest<T>(
-  path: string,
-  token: string,
-  options: RequestInit = {},
-): Promise<T> {
+export async function githubRequest<T>(path: string, token: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(`${githubApiBaseUrl}${path}`, {
     ...options,
     headers: {
@@ -207,13 +165,7 @@ export async function githubRequest<T>(
       })()
     : null;
   if (!response.ok) {
-    const message =
-      typeof body === "object" &&
-      body !== null &&
-      "message" in body &&
-      typeof (body as { message?: unknown }).message === "string"
-        ? (body as { message: string }).message
-        : response.statusText;
+    const message = typeof body === "object" && body !== null && "message" in body && typeof (body as { message?: unknown }).message === "string" ? (body as { message: string }).message : response.statusText;
     githubPublishLog(
       "github-api-error",
       {
@@ -231,10 +183,9 @@ export async function githubRequest<T>(
 
 export async function getInstallationToken(installationId: string) {
   const appJwt = signGitHubAppJwt();
-  const result = await githubRequest<{ token: string; expires_at: string }>(
-    `/app/installations/${encodeURIComponent(installationId)}/access_tokens`,
-    appJwt,
-    { method: "POST", body: JSON.stringify({}) },
-  );
+  const result = await githubRequest<{ token: string; expires_at: string }>(`/app/installations/${encodeURIComponent(installationId)}/access_tokens`, appJwt, {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
   return result.token;
 }

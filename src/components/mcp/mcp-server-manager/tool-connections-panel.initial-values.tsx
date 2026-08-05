@@ -1,14 +1,8 @@
 "use client";
 
-
-
 import { ConnectionFormState,FieldValue,JsonRecord,JsonSchemaObject,SchemaProperty,ToolConnector } from "./tool-connections-panel.json-record";
 
-
-export function initialValues(
-  schema: JsonSchemaObject | null,
-  existing: JsonRecord | null,
-): Record<string, FieldValue> {
+export function initialValues(schema: JsonSchemaObject | null, existing: JsonRecord | null): Record<string, FieldValue> {
   const values: Record<string, FieldValue> = {};
   for (const { key, property } of schemaFields(schema)) {
     const candidate = existing?.[key] ?? property.default;
@@ -29,9 +23,7 @@ export function initialValues(
   return values;
 }
 
-export function initialSecretValues(
-  schema: JsonSchemaObject | null,
-): Record<string, string> {
+export function initialSecretValues(schema: JsonSchemaObject | null): Record<string, string> {
   return Object.fromEntries(schemaFields(schema).map(({ key }) => [key, ""]));
 }
 
@@ -47,9 +39,7 @@ export function schemaFields(schema: JsonSchemaObject | null) {
 
 export function validateForm(connector: ToolConnector, form: ConnectionFormState) {
   if (!form.label.trim()) return "Add a connection label";
-  for (const { key, required, property } of schemaFields(
-    connector.configSchema,
-  )) {
+  for (const { key, required, property } of schemaFields(connector.configSchema)) {
     if (!required) continue;
     const value = form.config[key];
     if (property.type === "boolean") continue;
@@ -58,12 +48,9 @@ export function validateForm(connector: ToolConnector, form: ConnectionFormState
     }
   }
 
-  const secretValues = Object.fromEntries(
-    Object.entries(form.secrets).filter(([, value]) => value.trim()),
-  );
+  const secretValues = Object.fromEntries(Object.entries(form.secrets).filter(([, value]) => value.trim()));
   const isRotatingSecrets = Object.keys(secretValues).length > 0;
-  const mustProvideSecrets =
-    !form.id || !form.hasExistingSecrets || isRotatingSecrets;
+  const mustProvideSecrets = !form.id || !form.hasExistingSecrets || isRotatingSecrets;
   if (!mustProvideSecrets) return null;
 
   for (const { key, required } of schemaFields(connector.secretSchema)) {
@@ -73,11 +60,7 @@ export function validateForm(connector: ToolConnector, form: ConnectionFormState
   return null;
 }
 
-export function buildConnectionPayload(
-  workspaceId: string,
-  connector: ToolConnector,
-  form: ConnectionFormState,
-) {
+export function buildConnectionPayload(workspaceId: string, connector: ToolConnector, form: ConnectionFormState) {
   const config = serializeConfig(connector.configSchema, form.config);
   const secretValues = Object.fromEntries(
     Object.entries(form.secrets)
@@ -96,10 +79,7 @@ export function buildConnectionPayload(
   };
 }
 
-function serializeConfig(
-  schema: JsonSchemaObject | null,
-  values: Record<string, FieldValue>,
-) {
+function serializeConfig(schema: JsonSchemaObject | null, values: Record<string, FieldValue>) {
   const config: JsonRecord = {};
   for (const { key, property } of schemaFields(schema)) {
     const value = values[key];

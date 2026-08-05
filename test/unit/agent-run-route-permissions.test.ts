@@ -8,12 +8,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/lib/route-handler", () => ({
   requireWorkspacePermissionAsync: mocks.requirePermission,
   requireResourcePermissionAsync: mocks.requirePermission,
-  handleRoute: async (
-    request: Request,
-    handler: (context: {
-      session: { user: { id: string } };
-    }) => Promise<Response>,
-  ) =>
+  handleRoute: async (request: Request, handler: (context: { session: { user: { id: string } } }) => Promise<Response>) =>
     handler({
       session: { user: { id: "11111111-1111-4111-8111-111111111111" } },
     }),
@@ -79,13 +74,7 @@ describe("direct agent run API permissions", () => {
     );
 
     expect(response.status).toBe(403);
-    expect(mocks.requirePermission).toHaveBeenCalledWith(
-      "11111111-1111-4111-8111-111111111111",
-      workspaceId,
-      "agents.chat",
-      "agent",
-      agentId,
-    );
+    expect(mocks.requirePermission).toHaveBeenCalledWith("11111111-1111-4111-8111-111111111111", workspaceId, "agents.chat", "agent", agentId);
     expect(mocks.executeAgent).not.toHaveBeenCalled();
   });
 });

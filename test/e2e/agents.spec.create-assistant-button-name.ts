@@ -1,13 +1,7 @@
 import { expect,test } from "@playwright/test";
-import {
-ensureE2EAssistant,
-ensureE2EPrivateMemberAssistant,
-ensureE2EUser,
-login
-} from "./fixtures";
+import { ensureE2EAssistant,ensureE2EPrivateMemberAssistant,ensureE2EUser,login } from "./fixtures";
 
-export const createAssistantButtonName =
-  /New assistant|Create(?: your first)? assistant/i;
+export const createAssistantButtonName = /New assistant|Create(?: your first)? assistant/i;
 
 test.beforeAll(async () => {
   await ensureE2EUser();
@@ -34,20 +28,14 @@ test.describe("agents list page", () => {
     await page.waitForTimeout(2000);
 
     // Should show either the agents list or empty state
-    await expect(
-      page
-        .getByText(/No assistants|Create your first assistant|Assistants/i)
-        .first(),
-    ).toBeVisible();
+    await expect(page.getByText(/No assistants|Create your first assistant|Assistants/i).first()).toBeVisible();
   });
 
   test("create agent button exists", async ({ page }) => {
     await page.goto("/en/agents");
     await page.waitForTimeout(2000);
 
-    const createBtn = page
-      .getByRole("button", { name: createAssistantButtonName })
-      .first();
+    const createBtn = page.getByRole("button", { name: createAssistantButtonName }).first();
 
     if (await createBtn.isVisible()) {
       await expect(createBtn).toBeEnabled();
@@ -65,55 +53,33 @@ test.describe("agents list page", () => {
     }
   });
 
-  test("keeps conversation organization available across workspace pages", async ({
-    page,
-  }) => {
+  test("keeps conversation organization available across workspace pages", async ({ page }) => {
     await page.goto("/en/agents");
 
     const historyActions = page.getByRole("toolbar", {
       name: /History actions/i,
     });
     await expect(historyActions).toBeVisible({ timeout: 15_000 });
-    await historyActions
-      .getByRole("button", { name: /Create folder/i })
-      .click();
+    await historyActions.getByRole("button", { name: /Create folder/i }).click();
 
     const folderName = page.getByRole("textbox", { name: /Folder name/i });
     await expect(folderName).toBeFocused();
     await folderName.press("Escape");
     await expect(folderName).toHaveCount(0);
 
-    const conversationActions = page
-      .getByRole("button", { name: /Conversation actions/i })
-      .first();
+    const conversationActions = page.getByRole("button", { name: /Conversation actions/i }).first();
     if (await conversationActions.isVisible()) {
-      await expect(
-        page
-          .locator('[data-slot="workspace-history-sidebar"] [draggable="true"]')
-          .first(),
-      ).toBeVisible();
+      await expect(page.locator('[data-slot="workspace-history-sidebar"] [draggable="true"]').first()).toBeVisible();
       await conversationActions.click();
-      await expect(
-        page.getByRole("menuitem", { name: /Pin to top|Unpin/i }),
-      ).toBeVisible();
-      await expect(
-        page.getByRole("menuitem", { name: /Rename/i }),
-      ).toBeVisible();
-      await expect(
-        page.getByRole("menuitem", { name: /Delete/i }),
-      ).toBeVisible();
+      await expect(page.getByRole("menuitem", { name: /Pin to top|Unpin/i })).toBeVisible();
+      await expect(page.getByRole("menuitem", { name: /Rename/i })).toBeVisible();
+      await expect(page.getByRole("menuitem", { name: /Delete/i })).toBeVisible();
       await page.keyboard.press("Escape");
 
-      const draggableRows = page.locator(
-        '[data-slot="workspace-history-sidebar"] [draggable="true"]',
-      );
+      const draggableRows = page.locator('[data-slot="workspace-history-sidebar"] [draggable="true"]');
       if ((await draggableRows.count()) >= 2) {
-        const firstTitle = (
-          await draggableRows.nth(0).getByRole("button").first().innerText()
-        ).split("\n")[0]!;
-        const secondTitle = (
-          await draggableRows.nth(1).getByRole("button").first().innerText()
-        ).split("\n")[0]!;
+        const firstTitle = (await draggableRows.nth(0).getByRole("button").first().innerText()).split("\n")[0]!;
+        const secondTitle = (await draggableRows.nth(1).getByRole("button").first().innerText()).split("\n")[0]!;
 
         await draggableRows.nth(1).dragTo(draggableRows.nth(0));
         await expect(draggableRows.nth(0)).toContainText(secondTitle);
@@ -125,15 +91,11 @@ test.describe("agents list page", () => {
     }
   });
 
-  test("keeps assistant card menus focused on secondary actions", async ({
-    page,
-  }) => {
+  test("keeps assistant card menus focused on secondary actions", async ({ page }) => {
     await ensureE2EAssistant();
     await page.goto("/en/agents");
 
-    const actionsButton = page
-      .getByRole("button", { name: /More actions for/i })
-      .first();
+    const actionsButton = page.getByRole("button", { name: /More actions for/i }).first();
     await expect(actionsButton).toBeVisible({ timeout: 15_000 });
     await actionsButton.click();
 
@@ -144,19 +106,13 @@ test.describe("agents list page", () => {
       }),
     ).toBeVisible();
     expect(await menu.getByRole("menuitem").count()).toBeLessThanOrEqual(3);
-    await expect(
-      menu.getByRole("menuitem", { name: /Duplicate|Delete|Publish/i }),
-    ).toHaveCount(0);
+    await expect(menu.getByRole("menuitem", { name: /Duplicate|Delete|Publish/i })).toHaveCount(0);
   });
 
-  test("does not show another user's private assistant to an admin", async ({
-    page,
-  }) => {
+  test("does not show another user's private assistant to an admin", async ({ page }) => {
     await ensureE2EPrivateMemberAssistant();
     await page.goto("/en/agents");
 
-    await expect(
-      page.getByText("Member private assistant", { exact: true }),
-    ).not.toBeVisible();
+    await expect(page.getByText("Member private assistant", { exact: true })).not.toBeVisible();
   });
 });

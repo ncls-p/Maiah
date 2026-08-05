@@ -102,22 +102,7 @@ export function CapabilitiesTab({
         ) : (
           <div className="space-y-3">
             {mcpServers.map((server) => (
-              <McpServerCollapsible
-                key={server.id}
-                server={server}
-                mcpTools={mcpTools}
-                mcpServers={mcpServers}
-                mcpBindings={mcpBindings}
-                setMcpBindings={setMcpBindings}
-                noMcpToolsSyncedLabel={t("noMcpToolsSynced")}
-                disabledInMcpLabel={t("disabledInMcp")}
-                allToolsLabel={t("allTools")}
-                extraApprovalLabel={t("extraApproval")}
-                approvalLabel={t("approval")}
-                partialLabel={t("partial")}
-                mixedApprovalLabel={t("mixedApproval")}
-                forcedLabel={t("forced")}
-              />
+              <McpServerCollapsible key={server.id} server={server} mcpTools={mcpTools} mcpServers={mcpServers} mcpBindings={mcpBindings} setMcpBindings={setMcpBindings} noMcpToolsSyncedLabel={t("noMcpToolsSynced")} disabledInMcpLabel={t("disabledInMcp")} allToolsLabel={t("allTools")} extraApprovalLabel={t("extraApproval")} approvalLabel={t("approval")} partialLabel={t("partial")} mixedApprovalLabel={t("mixedApproval")} forcedLabel={t("forced")} />
             ))}
             <Button variant="outline" size="sm" asChild className="w-fit">
               <Link href="/tools?tab=mcp">{t("manageMcp")}</Link>
@@ -140,13 +125,7 @@ export function CapabilitiesTab({
         ) : (
           <div className="flex flex-col gap-2">
             {skills.map((skill) => (
-              <label
-                key={skill.id}
-                className={cn(
-                  "ui-list-row flex cursor-pointer items-center justify-between gap-4 rounded-xl border p-4 transition-[background-color,border-color,box-shadow] duration-150 ease-out hover:border-primary/25 hover:bg-card/65 hover:shadow-[var(--surface-shadow-hover)]",
-                  selectedSkillIds.includes(skill.id) ? "border-primary/30 bg-primary/5" : "border-border/60",
-                )}
-              >
+              <label key={skill.id} className={cn("ui-list-row flex cursor-pointer items-center justify-between gap-4 rounded-xl border p-4 transition-[background-color,border-color,box-shadow] duration-150 ease-out hover:border-primary/25 hover:bg-card/65 hover:shadow-[var(--surface-shadow-hover)]", selectedSkillIds.includes(skill.id) ? "border-primary/30 bg-primary/5" : "border-border/60")}>
                 <span className="min-w-0">
                   <span className="flex flex-wrap items-center gap-2 font-medium">
                     <span className={cn("flex size-8 items-center justify-center rounded-lg", selectedSkillIds.includes(skill.id) ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
@@ -157,11 +136,7 @@ export function CapabilitiesTab({
                   </span>
                   {skill.description ? <span className="mt-1 line-clamp-1 block text-xs text-muted-foreground">{skill.description}</span> : null}
                 </span>
-                <Switch
-                  aria-label={tCap("toggleSkill", { name: skill.name })}
-                  checked={selectedSkillIds.includes(skill.id)}
-                  onCheckedChange={(checked) => setSelectedSkillIds((current) => (checked ? [...current, skill.id] : current.filter((id) => id !== skill.id)))}
-                />
+                <Switch aria-label={tCap("toggleSkill", { name: skill.name })} checked={selectedSkillIds.includes(skill.id)} onCheckedChange={(checked) => setSelectedSkillIds((current) => (checked ? [...current, skill.id] : current.filter((id) => id !== skill.id)))} />
               </label>
             ))}
           </div>
@@ -182,13 +157,7 @@ export function CapabilitiesTab({
         ) : (
           <div className="flex flex-col gap-2">
             {knowledgeBases.map((kb) => (
-              <label
-                key={kb.id}
-                className={cn(
-                  "ui-list-row flex cursor-pointer items-center justify-between rounded-xl border p-4 transition-[background-color,border-color,box-shadow] duration-150 ease-out hover:border-primary/25 hover:bg-card/65 hover:shadow-[var(--surface-shadow-hover)]",
-                  selectedKnowledgeIds.includes(kb.id) ? "border-primary/30 bg-primary/5" : "border-border/60",
-                )}
-              >
+              <label key={kb.id} className={cn("ui-list-row flex cursor-pointer items-center justify-between rounded-xl border p-4 transition-[background-color,border-color,box-shadow] duration-150 ease-out hover:border-primary/25 hover:bg-card/65 hover:shadow-[var(--surface-shadow-hover)]", selectedKnowledgeIds.includes(kb.id) ? "border-primary/30 bg-primary/5" : "border-border/60")}>
                 <span className="flex flex-wrap items-center gap-2 font-medium">
                   <span className={cn("flex size-8 items-center justify-center rounded-lg", selectedKnowledgeIds.includes(kb.id) ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
                     <BookOpenIcon className="size-4" aria-hidden="true" />
@@ -196,11 +165,7 @@ export function CapabilitiesTab({
                   <span>{kb.name}</span>
                   <ResourceProvenanceBadge provenance={kb.provenance} />
                 </span>
-                <Switch
-                  aria-label={tCap("toggleKnowledge", { name: kb.name })}
-                  checked={selectedKnowledgeIds.includes(kb.id)}
-                  onCheckedChange={(checked) => setSelectedKnowledgeIds((current) => (checked ? [...current, kb.id] : current.filter((id) => id !== kb.id)))}
-                />
+                <Switch aria-label={tCap("toggleKnowledge", { name: kb.name })} checked={selectedKnowledgeIds.includes(kb.id)} onCheckedChange={(checked) => setSelectedKnowledgeIds((current) => (checked ? [...current, kb.id] : current.filter((id) => id !== kb.id)))} />
               </label>
             ))}
           </div>

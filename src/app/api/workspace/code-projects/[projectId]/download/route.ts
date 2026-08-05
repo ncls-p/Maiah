@@ -1,14 +1,8 @@
 import { NextRequest,NextResponse } from "next/server";
 import { z } from "zod";
 
-import {
-handleRoute,
-requireWorkspacePermissionAsync,
-} from "@/lib/route-handler";
-import {
-createCodeWorkspaceZip,
-getCodeWorkspace,
-} from "@/modules/code-workspace/storage";
+import { handleRoute,requireWorkspacePermissionAsync } from "@/lib/route-handler";
+import { createCodeWorkspaceZip,getCodeWorkspace } from "@/modules/code-workspace/storage";
 
 const paramsSchema = z.object({ projectId: z.uuid() });
 
@@ -18,10 +12,7 @@ function arrayBufferFromBytes(bytes: Uint8Array) {
   return buffer;
 }
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ projectId: string }> },
-) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ projectId: string }> }) {
   return handleRoute(
     req,
     async ({ session }) => {
@@ -33,11 +24,7 @@ export async function GET(
       if (metadata.createdByUserId !== session.user.id) {
         return NextResponse.json({ error: "Not found" }, { status: 404 });
       }
-      const forbidden = await requireWorkspacePermissionAsync(
-        session.user.id,
-        metadata.workspaceId,
-        "agents.chat",
-      );
+      const forbidden = await requireWorkspacePermissionAsync(session.user.id, metadata.workspaceId, "agents.chat");
       if (forbidden) return forbidden;
       const zip = await createCodeWorkspaceZip({
         projectId: metadata.id,
@@ -59,10 +46,7 @@ export async function GET(
         if (/not found|workspace/i.test(message)) {
           return NextResponse.json({ error: message }, { status: 404 });
         }
-        return NextResponse.json(
-          { error: "Internal server error" },
-          { status: 500 },
-        );
+        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
       },
     },
   );

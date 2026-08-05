@@ -1,17 +1,7 @@
-
 import { createRepositoryFile } from "./publishing.common-workspace-directory";
 import { githubPublishLog } from "./publishing.git-hub-repository-summary";
 
-
-export async function publishEmptyRepositoryDirectPush(input: {
-  token: string;
-  owner: string;
-  repo: string;
-  branch: string;
-  files: Array<{ path: string; bytes: Uint8Array; size: number }>;
-  commitMessage: string;
-  logContext: Record<string, unknown>;
-}) {
+export async function publishEmptyRepositoryDirectPush(input: { token: string; owner: string; repo: string; branch: string; files: Array<{ path: string; bytes: Uint8Array; size: number }>; commitMessage: string; logContext: Record<string, unknown> }) {
   let commitSha = "";
   const publishedFiles: Array<{ path: string; size: number }> = [];
   for (const [index, file] of input.files.entries()) {

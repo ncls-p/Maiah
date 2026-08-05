@@ -1,13 +1,8 @@
 "use client";
 
-import {
-type LucideIcon
-} from "lucide-react";
+import { type LucideIcon } from "lucide-react";
 
-import {
-type ChatCapabilityOverrides,
-type ChatToolSource
-} from "@/components/chat/chat-capability-overrides";
+import { type ChatCapabilityOverrides,type ChatToolSource } from "@/components/chat/chat-capability-overrides";
 
 export type EnabledToolSummary = {
   id: string;
@@ -48,14 +43,9 @@ export function toolKey(source: ChatToolSource, id: string) {
   return `${source}:${id}`;
 }
 
-export function isCapabilityActive(
-  capability: Capability,
-  overrides: ChatCapabilityOverrides,
-) {
+export function isCapabilityActive(capability: Capability, overrides: ChatCapabilityOverrides) {
   if (capability.source === "skill") {
     return !overrides.disabledSkillIds.includes(capability.id);
   }
-  return !overrides.disabledTools.some(
-    (tool) => tool.source === capability.source && tool.id === capability.id,
-  );
+  return !overrides.disabledTools.some((tool) => tool.source === capability.source && tool.id === capability.id);
 }

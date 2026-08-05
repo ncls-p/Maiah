@@ -1,8 +1,6 @@
 import { describe,expect,it,vi } from "vitest";
 
-
 import { invokeNode } from "./workflow-runtime-coverage.test.dependencies";
-
 
 describe("workflow data nodes", () => {
   it("reads the trigger and resolves nested data templates", async () => {
@@ -53,17 +51,11 @@ describe("workflow data nodes", () => {
         paths: ["profile.name", "missing"],
       }),
     ).resolves.toEqual({ output: { profile: { name: "Ada" } } });
-    await expect(
-      invokeNode("data.pick", input, { paths: "invalid" }),
-    ).resolves.toEqual({ output: {} });
-    await expect(
-      invokeNode("data.remove", input, { paths: ["profile.secret"] }),
-    ).resolves.toEqual({
+    await expect(invokeNode("data.pick", input, { paths: "invalid" })).resolves.toEqual({ output: {} });
+    await expect(invokeNode("data.remove", input, { paths: ["profile.secret"] })).resolves.toEqual({
       output: { profile: { name: "Ada" }, untouched: 1 },
     });
-    await expect(
-      invokeNode("data.remove", input, { paths: null }),
-    ).resolves.toEqual({ output: input });
+    await expect(invokeNode("data.remove", input, { paths: null })).resolves.toEqual({ output: input });
     await expect(
       invokeNode("data.rename", input, {
         from: "profile.name",
@@ -76,9 +68,7 @@ describe("workflow data nodes", () => {
         untouched: 1,
       },
     });
-    await expect(
-      invokeNode("data.rename", input, { from: "missing", to: "new" }),
-    ).resolves.toEqual({ output: input });
+    await expect(invokeNode("data.rename", input, { from: "missing", to: "new" })).resolves.toEqual({ output: input });
     await expect(
       invokeNode("data.template", input, {
         template: "{{input}}",
@@ -107,9 +97,7 @@ describe("workflow data nodes", () => {
         },
       ),
     ).rejects.toThrow("cannot access object prototypes");
-    expect(
-      (Object.prototype as Record<string, unknown>).polluted,
-    ).toBeUndefined();
+    expect((Object.prototype as Record<string, unknown>).polluted).toBeUndefined();
   });
 
   it("parses and serializes JSON with useful failures", async () => {

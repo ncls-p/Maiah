@@ -2,15 +2,7 @@
 
 import { EditorContent,useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import {
-BoldIcon,
-CodeIcon,
-ItalicIcon,
-ListIcon,
-ListOrderedIcon,
-QuoteIcon,
-StrikethroughIcon,
-} from "lucide-react";
+import { BoldIcon,CodeIcon,ItalicIcon,ListIcon,ListOrderedIcon,QuoteIcon,StrikethroughIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect,useMemo,useRef } from "react";
 import TurndownService from "turndown";
@@ -34,14 +26,7 @@ const editorExtensions = [
   }),
 ];
 
-export function RichEditor({
-  value,
-  onChange,
-  onSave,
-  onCancel,
-  disabled,
-  className,
-}: RichEditorProps) {
+export function RichEditor({ value, onChange, onSave, onCancel, disabled, className }: RichEditorProps) {
   const t = useTranslations("chat.richEditor");
   const prevValue = useRef(value);
   const initialized = useRef(false);
@@ -60,8 +45,7 @@ export function RichEditor({
     content: markdownToHtml(value),
     editorProps: {
       attributes: {
-        class:
-          "tiptap-content min-h-[6rem] max-h-64 overflow-y-auto rounded-lg border border-border/50 bg-background/80 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none",
+        class: "tiptap-content min-h-[6rem] max-h-64 overflow-y-auto rounded-lg border border-border/50 bg-background/80 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none",
       },
     },
     onUpdate: ({ editor }) => {
@@ -89,94 +73,37 @@ export function RichEditor({
 
   if (!editor) return null;
 
-  const toolbarButtonClass =
-    "size-7 rounded-md p-0 text-muted-foreground transition-transform duration-150 ease-out hover:bg-muted hover:text-foreground active:scale-[0.96]";
+  const toolbarButtonClass = "size-7 rounded-md p-0 text-muted-foreground transition-transform duration-150 ease-out hover:bg-muted hover:text-foreground active:scale-[0.96]";
 
   return (
     <div className={cn("flex min-w-72 flex-col gap-2", className)}>
       {/* Toolbar */}
       <div className="flex items-center gap-0.5 rounded-lg border border-border/50 bg-muted/40 p-1">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          className={toolbarButtonClass}
-          onClick={() => editor.chain().focus().toggleBold().run()}
-          disabled={disabled}
-          aria-label={t("bold")}
-        >
+        <Button type="button" variant="ghost" size="icon-sm" className={toolbarButtonClass} onClick={() => editor.chain().focus().toggleBold().run()} disabled={disabled} aria-label={t("bold")}>
           <BoldIcon className="size-3.5" aria-hidden="true" />
         </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          className={toolbarButtonClass}
-          onClick={() => editor.chain().focus().toggleItalic().run()}
-          disabled={disabled}
-          aria-label={t("italic")}
-        >
+        <Button type="button" variant="ghost" size="icon-sm" className={toolbarButtonClass} onClick={() => editor.chain().focus().toggleItalic().run()} disabled={disabled} aria-label={t("italic")}>
           <ItalicIcon className="size-3.5" aria-hidden="true" />
         </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          className={toolbarButtonClass}
-          onClick={() => editor.chain().focus().toggleStrike().run()}
-          disabled={disabled}
-          aria-label={t("strikethrough")}
-        >
+        <Button type="button" variant="ghost" size="icon-sm" className={toolbarButtonClass} onClick={() => editor.chain().focus().toggleStrike().run()} disabled={disabled} aria-label={t("strikethrough")}>
           <StrikethroughIcon className="size-3.5" aria-hidden="true" />
         </Button>
 
         <div className="mx-1 h-5 w-px bg-border/60" />
 
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          className={toolbarButtonClass}
-          onClick={() => editor.chain().focus().toggleCode().run()}
-          disabled={disabled}
-          aria-label={t("inlineCode")}
-        >
+        <Button type="button" variant="ghost" size="icon-sm" className={toolbarButtonClass} onClick={() => editor.chain().focus().toggleCode().run()} disabled={disabled} aria-label={t("inlineCode")}>
           <CodeIcon className="size-3.5" aria-hidden="true" />
         </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          className={toolbarButtonClass}
-          onClick={() => editor.chain().focus().toggleBlockquote().run()}
-          disabled={disabled}
-          aria-label={t("blockquote")}
-        >
+        <Button type="button" variant="ghost" size="icon-sm" className={toolbarButtonClass} onClick={() => editor.chain().focus().toggleBlockquote().run()} disabled={disabled} aria-label={t("blockquote")}>
           <QuoteIcon className="size-3.5" aria-hidden="true" />
         </Button>
 
         <div className="mx-1 h-5 w-px bg-border/60" />
 
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          className={toolbarButtonClass}
-          onClick={() => editor.chain().focus().toggleBulletList().run()}
-          disabled={disabled}
-          aria-label={t("bulletList")}
-        >
+        <Button type="button" variant="ghost" size="icon-sm" className={toolbarButtonClass} onClick={() => editor.chain().focus().toggleBulletList().run()} disabled={disabled} aria-label={t("bulletList")}>
           <ListIcon className="size-3.5" aria-hidden="true" />
         </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          className={toolbarButtonClass}
-          onClick={() => editor.chain().focus().toggleOrderedList().run()}
-          disabled={disabled}
-          aria-label={t("orderedList")}
-        >
+        <Button type="button" variant="ghost" size="icon-sm" className={toolbarButtonClass} onClick={() => editor.chain().focus().toggleOrderedList().run()} disabled={disabled} aria-label={t("orderedList")}>
           <ListOrderedIcon className="size-3.5" aria-hidden="true" />
         </Button>
       </div>
@@ -186,13 +113,7 @@ export function RichEditor({
 
       {/* Actions */}
       <div className="flex justify-end gap-2">
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          disabled={disabled}
-          onClick={onCancel}
-        >
+        <Button type="button" size="sm" variant="ghost" disabled={disabled} onClick={onCancel}>
           {t("cancel")}
         </Button>
         <Button type="button" size="sm" disabled={disabled} onClick={onSave}>

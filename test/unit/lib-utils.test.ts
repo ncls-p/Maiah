@@ -2,12 +2,7 @@ import { beforeAll,describe,expect,it,vi } from "vitest";
 
 // ─── lib/copy-defaults.ts ──────────────────────────────────────────────
 
-import {
-DEFAULT_SYSTEM_PROMPT,
-FALLBACK_SYSTEM_PROMPT_EN,
-FALLBACK_SYSTEM_PROMPT_FR,
-fallbackSystemPrompt,
-} from "@/lib/copy-defaults";
+import { DEFAULT_SYSTEM_PROMPT,FALLBACK_SYSTEM_PROMPT_EN,FALLBACK_SYSTEM_PROMPT_FR,fallbackSystemPrompt } from "@/lib/copy-defaults";
 
 describe("copy-defaults", () => {
   it("DEFAULT_SYSTEM_PROMPT is empty string", () => {
@@ -70,8 +65,7 @@ describe("logger", () => {
   let logger: typeof import("@/lib/logger").logger;
 
   beforeAll(async () => {
-    process.env.APP_ENCRYPTION_KEY =
-      "0000000000000000000000000000000000000000000000000000000000000000";
+    process.env.APP_ENCRYPTION_KEY = "0000000000000000000000000000000000000000000000000000000000000000";
     process.env.APP_ENCRYPTION_KEY_ID = "default";
     process.env.BETTER_AUTH_SECRET = "test-secret-min-32-chars-long";
     process.env.BETTER_AUTH_URL = "http://localhost:3000";
@@ -84,36 +78,28 @@ describe("logger", () => {
   });
 
   it("info writes to stdout", () => {
-    const spy = vi
-      .spyOn(process.stdout, "write")
-      .mockImplementation(() => true);
+    const spy = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
     logger.info("test info message");
     expect(spy).toHaveBeenCalled();
     spy.mockRestore();
   });
 
   it("warn writes to stderr", () => {
-    const spy = vi
-      .spyOn(process.stderr, "write")
-      .mockImplementation(() => true);
+    const spy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
     logger.warn("test warn message");
     expect(spy).toHaveBeenCalled();
     spy.mockRestore();
   });
 
   it("error writes to stderr", () => {
-    const spy = vi
-      .spyOn(process.stderr, "write")
-      .mockImplementation(() => true);
+    const spy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
     logger.error("test error message", { key: "value" });
     expect(spy).toHaveBeenCalled();
     spy.mockRestore();
   });
 
   it("debug writes to stdout in test env", () => {
-    const spy = vi
-      .spyOn(process.stdout, "write")
-      .mockImplementation(() => true);
+    const spy = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
     logger.debug("test debug message", { data: 1 });
     // NODE_ENV=test so debug should log
     expect(spy).toHaveBeenCalled();
@@ -121,9 +107,7 @@ describe("logger", () => {
   });
 
   it("info includes the message in output", () => {
-    const spy = vi
-      .spyOn(process.stdout, "write")
-      .mockImplementation(() => true);
+    const spy = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
     logger.info("unique message 12345");
     const callArg = spy.mock.calls[0][0] as string;
     expect(callArg).toContain("unique message 12345");
@@ -133,16 +117,7 @@ describe("logger", () => {
 
 // ─── lib/workspace-nav.ts (pure parts) ────────────────────────────────
 
-import {
-adminNavItems,
-advancedCapabilityNavItems,
-capabilitiesNavItems,
-configNavItems,
-getRouteBreadcrumbs,
-getRouteTitleKey,
-isNavItemActive,
-primaryNavItems,
-} from "@/lib/workspace-nav";
+import { adminNavItems,advancedCapabilityNavItems,capabilitiesNavItems,configNavItems,getRouteBreadcrumbs,getRouteTitleKey,isNavItemActive,primaryNavItems } from "@/lib/workspace-nav";
 
 describe("workspace-nav pure functions", () => {
   describe("getRouteTitleKey", () => {

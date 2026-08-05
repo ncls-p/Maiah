@@ -14,41 +14,7 @@ import { canEditAgent } from "./use-cases.get-visible-agent-by-id";
 import { getActiveVersionConfig } from "./use-cases.reorder-organization-agents";
 
 export async function updateAgentUnlocked(input: UpdateAgentInput) {
-  const {
-    agentId,
-    workspaceId,
-    userId,
-    baseVersionId,
-    name,
-    slug,
-    description,
-    logoUrl,
-    systemPrompt,
-    providerId,
-    modelId,
-    temperature,
-    topP,
-    maxOutputTokens,
-    maxToolCalls,
-    toolBindings,
-    knowledgeBindings,
-    skillBindings,
-    orchestrationPolicy,
-    delegationBindings,
-    sharingMode,
-    shareTargetEmail,
-    isGlobal,
-    isRecommended,
-    curationLabel,
-    canAdminCurate,
-    toolChoice,
-    generationSettings,
-    responseFormat,
-    memoryPolicy,
-    guardrails,
-    approvalPolicy,
-    promptSuggestions,
-  } = input;
+  const { agentId, workspaceId, userId, baseVersionId, name, slug, description, logoUrl, systemPrompt, providerId, modelId, temperature, topP, maxOutputTokens, maxToolCalls, toolBindings, knowledgeBindings, skillBindings, orchestrationPolicy, delegationBindings, sharingMode, shareTargetEmail, isGlobal, isRecommended, curationLabel, canAdminCurate, toolChoice, generationSettings, responseFormat, memoryPolicy, guardrails, approvalPolicy, promptSuggestions } = input;
 
   const [existing] = await db
     .select()

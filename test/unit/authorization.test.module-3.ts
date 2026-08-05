@@ -4,7 +4,6 @@ import { authorization } from "@/server/domain/services/authorization";
 import { cache } from "@/server/infrastructure/cache";
 import { dbModule } from "./authorization.test.db-module";
 
-
 // ─── authorization.requireWorkspaceMember ────────────────────────────
 
 describe("authorization.requireWorkspaceMember", () => {
@@ -12,9 +11,7 @@ describe("authorization.requireWorkspaceMember", () => {
     dbModule.db.select.mockReturnValue(dbModule._c);
     dbModule._c.from.mockReturnValue(dbModule._c);
     dbModule._c.where.mockReturnValue(dbModule._c);
-    dbModule._c.limit
-      .mockResolvedValueOnce([{ organizationId: "org-1" }])
-      .mockResolvedValueOnce([{ id: "member-1", status: "active" }]);
+    dbModule._c.limit.mockResolvedValueOnce([{ organizationId: "org-1" }]).mockResolvedValueOnce([{ id: "member-1", status: "active" }]);
 
     const result = await authorization.requireWorkspaceMember("user-1", "ws-1");
 
@@ -25,9 +22,7 @@ describe("authorization.requireWorkspaceMember", () => {
     dbModule.db.select.mockReturnValue(dbModule._c);
     dbModule._c.from.mockReturnValue(dbModule._c);
     dbModule._c.where.mockReturnValue(dbModule._c);
-    dbModule._c.limit
-      .mockResolvedValueOnce([{ organizationId: "org-1" }])
-      .mockResolvedValueOnce([{ id: "member-1", status: "suspended" }]);
+    dbModule._c.limit.mockResolvedValueOnce([{ organizationId: "org-1" }]).mockResolvedValueOnce([{ id: "member-1", status: "suspended" }]);
 
     const result = await authorization.requireWorkspaceMember("user-1", "ws-1");
 
@@ -64,14 +59,8 @@ describe("authorization.requireWorkspaceMember", () => {
 
 describe("authorization.invalidatePermissionCache", () => {
   it("deletes cache entry", async () => {
-    await authorization.invalidatePermissionCache(
-      "user-1",
-      "workspace",
-      "ws-1",
-    );
+    await authorization.invalidatePermissionCache("user-1", "workspace", "ws-1");
 
-    expect(vi.mocked(cache.del)).toHaveBeenCalledWith(
-      "perm:user:user-1:workspace:ws-1",
-    );
+    expect(vi.mocked(cache.del)).toHaveBeenCalledWith("perm:user:user-1:workspace:ws-1");
   });
 });

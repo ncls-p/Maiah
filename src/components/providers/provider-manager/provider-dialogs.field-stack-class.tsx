@@ -4,14 +4,7 @@ import { useTranslations } from "next-intl";
 import { AdvancedSection } from "@/components/ui/advanced-section";
 
 import { Button } from "@/components/ui/button";
-import {
-Dialog,
-DialogContent,
-DialogDescription,
-DialogFooter,
-DialogHeader,
-DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog,DialogContent,DialogDescription,DialogFooter,DialogHeader,DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -19,7 +12,6 @@ import type { OpenAICompatibleApiRoute } from "@/lib/openai-compatible-api";
 import { CLOUD_TEMPLE_BASE_URL } from "@/modules/provider/cloud-temple-catalog";
 import { AddProviderAdvancedFields } from "./provider-dialogs.add-provider-advanced-fields";
 import type { ProviderAuthType,ProviderKind } from "./types";
-
 
 export const FIELD_STACK_CLASS = "grid gap-2";
 
@@ -61,12 +53,7 @@ export function AddProviderDialog(props: AddProviderDialogProps) {
         </DialogHeader>
         <div className="grid gap-4">
           <AddProviderBasicFields {...props} />
-          <AdvancedSection
-            label={tCommon("advanced")}
-            hint={t("advancedHint")}
-            storageKey="advanced:provider-add"
-            defaultOpen={props.addAdvanced}
-          >
+          <AdvancedSection label={tCommon("advanced")} hint={t("advancedHint")} storageKey="advanced:provider-add" defaultOpen={props.addAdvanced}>
             <AddProviderAdvancedFields {...props} />
           </AdvancedSection>
         </div>
@@ -74,15 +61,8 @@ export function AddProviderDialog(props: AddProviderDialogProps) {
           <Button variant="outline" onClick={() => props.onOpenChange(false)}>
             {tCommon("cancel")}
           </Button>
-          <Button
-            disabled={props.busy || !props.addName.trim()}
-            onClick={props.onCreateProvider}
-          >
-            {props.busy ? (
-              <Loader2Icon className="animate-spin" aria-hidden="true" />
-            ) : (
-              <PlusIcon className="size-4" aria-hidden="true" />
-            )}
+          <Button disabled={props.busy || !props.addName.trim()} onClick={props.onCreateProvider}>
+            {props.busy ? <Loader2Icon className="animate-spin" aria-hidden="true" /> : <PlusIcon className="size-4" aria-hidden="true" />}
             {tm("connectProvider")}
           </Button>
         </DialogFooter>
@@ -99,9 +79,7 @@ function AddProviderBasicFields(props: AddProviderDialogProps) {
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-sm font-medium">{t("cloudTemplePreset")}</p>
-            <p className="text-xs text-muted-foreground">
-              {t("cloudTemplePresetHint")}
-            </p>
+            <p className="text-xs text-muted-foreground">{t("cloudTemplePresetHint")}</p>
           </div>
           <Button
             type="button"
@@ -121,43 +99,18 @@ function AddProviderBasicFields(props: AddProviderDialogProps) {
       </div>
       <div className={FIELD_STACK_CLASS}>
         <Label htmlFor="add-provider-name">{t("providerName")}</Label>
-        <Input
-          id="add-provider-name"
-          name="add-provider-name"
-          autoComplete="off"
-          value={props.addName}
-          onChange={(e) => props.onNameChange(e.target.value)}
-          placeholder={t("providerNamePlaceholder")}
-        />
+        <Input id="add-provider-name" name="add-provider-name" autoComplete="off" value={props.addName} onChange={(e) => props.onNameChange(e.target.value)} placeholder={t("providerNamePlaceholder")} />
       </div>
       <div className={FIELD_STACK_CLASS}>
         <Label htmlFor="add-provider-url" help={t("serviceUrlHint")}>
           {t("serviceUrl")}
         </Label>
-        <Input
-          id="add-provider-url"
-          name="add-provider-url"
-          type="url"
-          inputMode="url"
-          autoComplete="off"
-          value={props.addBaseUrl}
-          onChange={(e) => props.onBaseUrlChange(e.target.value)}
-          placeholder={t("serviceUrlPlaceholder")}
-        />
+        <Input id="add-provider-url" name="add-provider-url" type="url" inputMode="url" autoComplete="off" value={props.addBaseUrl} onChange={(e) => props.onBaseUrlChange(e.target.value)} placeholder={t("serviceUrlPlaceholder")} />
         <p className="text-xs text-muted-foreground">{t("serviceUrlHint")}</p>
       </div>
       <div className={FIELD_STACK_CLASS}>
         <Label htmlFor="add-provider-key">{t("apiKey")}</Label>
-        <Input
-          id="add-provider-key"
-          name="add-provider-key"
-          type="password"
-          autoComplete="off"
-          spellCheck={false}
-          value={props.addApiKey}
-          onChange={(e) => props.onApiKeyChange(e.target.value)}
-          placeholder="sk-…"
-        />
+        <Input id="add-provider-key" name="add-provider-key" type="password" autoComplete="off" spellCheck={false} value={props.addApiKey} onChange={(e) => props.onApiKeyChange(e.target.value)} placeholder="sk-…" />
       </div>
     </>
   );

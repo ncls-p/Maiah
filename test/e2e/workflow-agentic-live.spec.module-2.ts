@@ -3,14 +3,7 @@ import { createServer } from "node:http";
 import { test } from "@playwright/test";
 
 import { ensureE2EUser,login } from "./fixtures";
-import {
-generatedDefinition,
-requestBody,
-upstreamState,
-usage,
-writeStream,
-writeToolCall,
-} from "./workflow-agentic-live.spec.upstream";
+import { generatedDefinition,requestBody,upstreamState,usage,writeStream,writeToolCall } from "./workflow-agentic-live.spec.upstream";
 
 test.beforeAll(async () => {
   await ensureE2EUser();
@@ -77,9 +70,7 @@ test.beforeAll(async () => {
         name: "upsert_workflow_nodes",
         arguments: {
           summary: "Added a summary step",
-          nodes: generatedDefinition.nodes.filter(
-            (node) => node.id === "summary",
-          ),
+          nodes: generatedDefinition.nodes.filter((node) => node.id === "summary"),
         },
       });
       return;
@@ -152,13 +143,7 @@ test.beforeAll(async () => {
       return;
     }
   });
-  await new Promise<void>((resolve) =>
-    upstreamState.server?.listen(
-      0,
-      process.env.E2E_UPSTREAM_BIND_HOST ?? "127.0.0.1",
-      resolve,
-    ),
-  );
+  await new Promise<void>((resolve) => upstreamState.server?.listen(0, process.env.E2E_UPSTREAM_BIND_HOST ?? "127.0.0.1", resolve));
   const address = upstreamState.server?.address();
   if (!address || typeof address === "string") {
     throw new Error("Failed to start the workflow agentic E2E upstream");
@@ -167,9 +152,7 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
-  await new Promise<void>((resolve, reject) =>
-    upstreamState.server?.close((error) => (error ? reject(error) : resolve())),
-  );
+  await new Promise<void>((resolve, reject) => upstreamState.server?.close((error) => (error ? reject(error) : resolve())));
 });
 
 test.beforeEach(async ({ page }) => {

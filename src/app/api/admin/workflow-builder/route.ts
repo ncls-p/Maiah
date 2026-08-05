@@ -3,10 +3,7 @@ import { z } from "zod";
 
 import { handleRoute } from "@/lib/route-handler";
 import { requireAdminApiSession } from "@/modules/admin/auth";
-import {
-getWorkflowBuilderAdminState,
-setWorkflowBuilderConfig,
-} from "@/modules/workflows/builder-settings";
+import { getWorkflowBuilderAdminState,setWorkflowBuilderConfig } from "@/modules/workflows/builder-settings";
 
 const querySchema = z.object({
   workspaceId: z.uuid(),
@@ -29,14 +26,9 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Invalid request" }, { status: 400 });
     }
 
-    return NextResponse.json(
-      await getWorkflowBuilderAdminState(parsed.data.workspaceId),
-    );
+    return NextResponse.json(await getWorkflowBuilderAdminState(parsed.data.workspaceId));
   } catch {
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
 
@@ -49,10 +41,7 @@ export async function PATCH(req: NextRequest) {
 
       const parsed = updateSchema.safeParse(await req.json());
       if (!parsed.success) {
-        return NextResponse.json(
-          { error: "Invalid input", details: parsed.error.issues },
-          { status: 400 },
-        );
+        return NextResponse.json({ error: "Invalid input", details: parsed.error.issues }, { status: 400 });
       }
 
       return NextResponse.json(

@@ -1,28 +1,14 @@
 import { logger } from "@/lib/logger";
-import {
-recoverDocumentIngestionJob
-} from "@/modules/knowledge/queue";
+import { recoverDocumentIngestionJob } from "@/modules/knowledge/queue";
 import { audit } from "@/server/domain/services/audit";
 import { db } from "@/server/infrastructure/db";
-import {
-documentChunks,
-documentEmbeddings,
-documents
-} from "@/server/infrastructure/db/schema";
+import { documentChunks,documentEmbeddings,documents } from "@/server/infrastructure/db/schema";
 import { and,eq,sql } from "drizzle-orm";
 import { assertCanManageKnowledgeBase } from "./use-cases.create-knowledge-base-input";
 import { getKnowledgeBase } from "./use-cases.list-knowledge-bases";
 
-export async function listDocuments(
-  knowledgeBaseId: string,
-  workspaceId: string,
-  userId?: string,
-) {
-  const knowledgeBase = await getKnowledgeBase(
-    knowledgeBaseId,
-    workspaceId,
-    userId,
-  );
+export async function listDocuments(knowledgeBaseId: string, workspaceId: string, userId?: string) {
+  const knowledgeBase = await getKnowledgeBase(knowledgeBaseId, workspaceId, userId);
   if (!knowledgeBase) throw new Error("Knowledge base not found");
   return db
     .select({
@@ -32,62 +18,27 @@ export async function listDocuments(
     })
     .from(documents)
     .leftJoin(documentChunks, eq(documentChunks.documentId, documents.id))
-    .leftJoin(
-      documentEmbeddings,
-      eq(documentEmbeddings.chunkId, documentChunks.id),
-    )
-    .where(
-      and(
-        eq(documents.knowledgeBaseId, knowledgeBaseId),
-        eq(documents.workspaceId, workspaceId),
-      ),
-    )
+    .leftJoin(documentEmbeddings, eq(documentEmbeddings.chunkId, documentChunks.id))
+    .where(and(eq(documents.knowledgeBaseId, knowledgeBaseId), eq(documents.workspaceId, workspaceId)))
     .groupBy(documents.id)
     .orderBy(sql`${documents.createdAt} DESC`)
     .then((rows) =>
       rows.map(({ document, chunkCount, embeddingCount }) => ({
         ...document,
-        processingProgress:
-          document.status === "ready" || document.status === "failed"
-            ? 100
-            : chunkCount > 0 && embeddingCount > 0
-              ? Math.max(
-                  document.processingProgress,
-                  20 + Math.round((embeddingCount / chunkCount) * 75),
-                )
-              : document.processingProgress,
+        processingProgress: document.status === "ready" || document.status === "failed" ? 100 : chunkCount > 0 && embeddingCount > 0 ? Math.max(document.processingProgress, 20 + Math.round((embeddingCount / chunkCount) * 75)) : document.processingProgress,
       })),
     );
 }
 
-export async function archiveDocument(input: {
-  documentId: string;
-  knowledgeBaseId: string;
-  workspaceId: string;
-  userId: string;
-  canManageGlobal?: boolean;
-}) {
-  const knowledgeBase = await getKnowledgeBase(
-    input.knowledgeBaseId,
-    input.workspaceId,
-  );
+export async function archiveDocument(input: { documentId: string; knowledgeBaseId: string; workspaceId: string; userId: string; canManageGlobal?: boolean }) {
+  const knowledgeBase = await getKnowledgeBase(input.knowledgeBaseId, input.workspaceId);
   if (!knowledgeBase) throw new Error("Knowledge base not found");
-  await assertCanManageKnowledgeBase(
-    knowledgeBase,
-    input.userId,
-    input.canManageGlobal,
-  );
+  await assertCanManageKnowledgeBase(knowledgeBase, input.userId, input.canManageGlobal);
 
   const [document] = await db
     .select()
     .from(documents)
-    .where(
-      and(
-        eq(documents.id, input.documentId),
-        eq(documents.knowledgeBaseId, input.knowledgeBaseId),
-        eq(documents.workspaceId, input.workspaceId),
-      ),
-    )
+    .where(and(eq(documents.id, input.documentId), eq(documents.knowledgeBaseId, input.knowledgeBaseId), eq(documents.workspaceId, input.workspaceId)))
     .limit(1);
 
   if (!document) throw new Error("Document not found");
@@ -106,34 +57,15 @@ export async function archiveDocument(input: {
   });
 }
 
-export async function retryDocumentIngestion(input: {
-  documentId: string;
-  knowledgeBaseId: string;
-  workspaceId: string;
-  userId: string;
-  canManageGlobal?: boolean;
-}) {
-  const knowledgeBase = await getKnowledgeBase(
-    input.knowledgeBaseId,
-    input.workspaceId,
-  );
+export async function retryDocumentIngestion(input: { documentId: string; knowledgeBaseId: string; workspaceId: string; userId: string; canManageGlobal?: boolean }) {
+  const knowledgeBase = await getKnowledgeBase(input.knowledgeBaseId, input.workspaceId);
   if (!knowledgeBase) throw new Error("Knowledge base not found");
-  await assertCanManageKnowledgeBase(
-    knowledgeBase,
-    input.userId,
-    input.canManageGlobal,
-  );
+  await assertCanManageKnowledgeBase(knowledgeBase, input.userId, input.canManageGlobal);
 
   const [document] = await db
     .select()
     .from(documents)
-    .where(
-      and(
-        eq(documents.id, input.documentId),
-        eq(documents.knowledgeBaseId, input.knowledgeBaseId),
-        eq(documents.workspaceId, input.workspaceId),
-      ),
-    )
+    .where(and(eq(documents.id, input.documentId), eq(documents.knowledgeBaseId, input.knowledgeBaseId), eq(documents.workspaceId, input.workspaceId)))
     .limit(1);
   if (!document) throw new Error("Document not found");
   if (document.status !== "failed") {
@@ -168,10 +100,7 @@ export async function retryDocumentIngestion(input: {
 export function scoreContent(content: string, query: string) {
   const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
   const lower = content.toLowerCase();
-  return terms.reduce(
-    (score, term) => score + (lower.includes(term) ? 1 : 0),
-    0,
-  );
+  return terms.reduce((score, term) => score + (lower.includes(term) ? 1 : 0), 0);
 }
 
 export type KnowledgeSearchHit = {

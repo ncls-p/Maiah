@@ -1,17 +1,10 @@
 import { and,eq } from "drizzle-orm";
 
-import type {
-OrganizationTheme,
-OrganizationThemeConfig,
-} from "@/modules/organization/themes";
+import type { OrganizationTheme,OrganizationThemeConfig } from "@/modules/organization/themes";
 import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
 import { organizations,workspaces } from "@/server/infrastructure/db/schema";
-export {
-ORGANIZATION_THEMES,
-type OrganizationTheme,
-type OrganizationThemeConfig
-} from "@/modules/organization/themes";
+export { ORGANIZATION_THEMES,type OrganizationTheme,type OrganizationThemeConfig } from "@/modules/organization/themes";
 
 async function organizationForWorkspace(workspaceId: string) {
   const [row] = await db
@@ -23,30 +16,14 @@ async function organizationForWorkspace(workspaceId: string) {
   return row?.organization ?? null;
 }
 
-export async function getOrganizationBranding(input: {
-  workspaceId: string;
-  userId: string;
-}) {
+export async function getOrganizationBranding(input: { workspaceId: string; userId: string }) {
   const organization = await organizationForWorkspace(input.workspaceId);
   if (!organization) return null;
   const principal = {
     principalType: "user" as const,
     principalId: input.userId,
   };
-  const [readPermission, managePermission] = await Promise.all([
-    authorization.checkPermission(
-      principal,
-      "organization.get",
-      "organization",
-      organization.id,
-    ),
-    authorization.checkPermission(
-      principal,
-      "organization.update",
-      "organization",
-      organization.id,
-    ),
-  ]);
+  const [readPermission, managePermission] = await Promise.all([authorization.checkPermission(principal, "organization.get", "organization", organization.id), authorization.checkPermission(principal, "organization.update", "organization", organization.id)]);
   if (!readPermission.granted) return null;
   return {
     organizationId: organization.id,
@@ -58,13 +35,7 @@ export async function getOrganizationBranding(input: {
   };
 }
 
-export async function updateOrganizationBranding(input: {
-  workspaceId: string;
-  userId: string;
-  logoUrl: string | null;
-  theme: OrganizationTheme;
-  themeConfig: OrganizationThemeConfig | null;
-}) {
+export async function updateOrganizationBranding(input: { workspaceId: string; userId: string; logoUrl: string | null; theme: OrganizationTheme; themeConfig: OrganizationThemeConfig | null }) {
   const current = await getOrganizationBranding(input);
   if (!current) return { status: "not_found" as const };
   if (!current.canManage) return { status: "forbidden" as const };

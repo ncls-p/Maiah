@@ -1,14 +1,8 @@
 import type { LanguageModelUsage,TextStreamPart,ToolSet } from "ai";
 import { describe,expect,it,vi } from "vitest";
 
-import {
-chatCompletionRequestSchema,
-responsesRequestSchema,
-} from "@/modules/openai-proxy/contracts";
-import {
-createChatCompletionStream,
-createResponsesStream,
-} from "@/modules/openai-proxy/streams";
+import { chatCompletionRequestSchema,responsesRequestSchema } from "@/modules/openai-proxy/contracts";
+import { createChatCompletionStream,createResponsesStream } from "@/modules/openai-proxy/streams";
 
 const usage: LanguageModelUsage = {
   inputTokens: 6,
@@ -38,9 +32,7 @@ function responses(body: Record<string, unknown>) {
   });
 }
 
-async function* parts(
-  values: Array<TextStreamPart<ToolSet>>,
-): AsyncIterable<TextStreamPart<ToolSet>> {
+async function* parts(values: Array<TextStreamPart<ToolSet>>): AsyncIterable<TextStreamPart<ToolSet>> {
   for (const value of values) yield value;
 }
 

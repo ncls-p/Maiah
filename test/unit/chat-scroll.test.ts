@@ -1,11 +1,6 @@
 import { describe,expect,it } from "vitest";
 
-import {
-cancelsChatStreamFollow,
-getChatStreamFollowKey,
-isChatViewportAtEnd,
-shouldUseMessageScrollAnchor,
-} from "@/components/chat/chat-scroll";
+import { cancelsChatStreamFollow,getChatStreamFollowKey,isChatViewportAtEnd,shouldUseMessageScrollAnchor } from "@/components/chat/chat-scroll";
 import type { ChatMessage } from "@/components/chat/chat-types";
 
 function message(role: ChatMessage["role"]): ChatMessage {
@@ -100,15 +95,9 @@ describe("stream following", () => {
       },
     ];
 
-    expect(getChatStreamFollowKey(reasoningDelta)).not.toBe(
-      getChatStreamFollowKey(initial),
-    );
-    expect(getChatStreamFollowKey(toolDelta)).not.toBe(
-      getChatStreamFollowKey(reasoningDelta),
-    );
-    expect(getChatStreamFollowKey(nextToolDelta)).not.toBe(
-      getChatStreamFollowKey(toolDelta),
-    );
+    expect(getChatStreamFollowKey(reasoningDelta)).not.toBe(getChatStreamFollowKey(initial));
+    expect(getChatStreamFollowKey(toolDelta)).not.toBe(getChatStreamFollowKey(reasoningDelta));
+    expect(getChatStreamFollowKey(nextToolDelta)).not.toBe(getChatStreamFollowKey(toolDelta));
   });
 
   it("only cancels following for interactions that move toward older content", () => {

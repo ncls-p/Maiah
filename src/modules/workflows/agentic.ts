@@ -3,12 +3,7 @@ import { z } from "zod";
 import type { ChatTodoList } from "@/modules/chat/todo-list";
 import type { WorkflowAgentRunRequest } from "./agentic-run-approvals";
 import { WORKFLOW_NODE_CATALOG } from "./catalog";
-import {
-workflowDefinitionSchema,
-workflowEdgeSchema,
-workflowNodeSchema,
-type WorkflowDefinition,
-} from "./contracts";
+import { workflowDefinitionSchema,workflowEdgeSchema,workflowNodeSchema,type WorkflowDefinition } from "./contracts";
 import { compileWorkflowDefinition } from "./runtime";
 
 export const workflowAgenticMessageSchema = z.object({
@@ -40,14 +35,9 @@ export const workflowAgenticRequestSchema = z
       definition: workflowAgenticDraftDefinitionSchema,
     }),
   })
-  .refine(
-    (value) => Boolean(value.message) !== Boolean(value.inputRequestId),
-    "Provide either a message or a submitted information request.",
-  );
+  .refine((value) => Boolean(value.message) !== Boolean(value.inputRequestId), "Provide either a message or a submitted information request.");
 
-export type WorkflowAgenticMessage = z.infer<
-  typeof workflowAgenticMessageSchema
->;
+export type WorkflowAgenticMessage = z.infer<typeof workflowAgenticMessageSchema>;
 
 export type WorkflowAgenticHistoryMessage = WorkflowAgenticMessage & {
   id: string;
@@ -165,26 +155,14 @@ export function workflowAgentCatalogPrompt() {
   }));
 }
 
-export function validateWorkflowAgentDraft(input: {
-  workflowId: string;
-  version: number;
-  definition: unknown;
-  availableAgentIds: Set<string>;
-}) {
+export function validateWorkflowAgentDraft(input: { workflowId: string; version: number; definition: unknown; availableAgentIds: Set<string> }) {
   const definition = workflowDefinitionSchema.parse(input.definition);
   for (const node of definition.nodes) {
-    if (
-      node.type === "agent.run" &&
-      !input.availableAgentIds.has(String(node.parameters.agentId ?? ""))
-    ) {
-      throw new Error(
-        `Node '${node.label}' references an unavailable assistant.`,
-      );
+    if (node.type === "agent.run" && !input.availableAgentIds.has(String(node.parameters.agentId ?? ""))) {
+      throw new Error(`Node '${node.label}' references an unavailable assistant.`);
     }
   }
-  const trigger = definition.nodes.find(
-    (node) => node.type === "trigger.manual",
-  );
+  const trigger = definition.nodes.find((node) => node.type === "trigger.manual");
   if (trigger) {
     const outgoing = new Map<string, string[]>();
     for (const node of definition.nodes) outgoing.set(node.id, []);
@@ -199,15 +177,9 @@ export function validateWorkflowAgentDraft(input: {
       reachable.add(nodeId);
       pending.push(...(outgoing.get(nodeId) ?? []));
     }
-    const disconnected = definition.nodes.filter(
-      (node) => !reachable.has(node.id),
-    );
+    const disconnected = definition.nodes.filter((node) => !reachable.has(node.id));
     if (disconnected.length > 0) {
-      throw new Error(
-        `Connect every workflow step to the manual trigger. Disconnected steps: ${disconnected
-          .map((node) => node.id)
-          .join(", ")}.`,
-      );
+      throw new Error(`Connect every workflow step to the manual trigger. Disconnected steps: ${disconnected.map((node) => node.id).join(", ")}.`);
     }
   }
   return compileWorkflowDefinition({

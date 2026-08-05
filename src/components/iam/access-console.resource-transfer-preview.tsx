@@ -1,22 +1,12 @@
 "use client";
 
-import {
-RefreshCwIcon,
-ShieldIcon
-} from "lucide-react";
+import { RefreshCwIcon,ShieldIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
-import {
-Empty,
-EmptyDescription,
-EmptyHeader,
-EmptyMedia,
-EmptyTitle,
-} from "@/components/ui/empty";
+import { Empty,EmptyDescription,EmptyHeader,EmptyMedia,EmptyTitle } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AccessResource,TransferDestination } from "./access-console.access-member";
-
 
 export type ResourceTransferPreview = {
   source: TransferDestination;
@@ -94,13 +84,7 @@ export function AccessConsoleSkeleton() {
   );
 }
 
-export function InitialError({
-  message,
-  onRetry,
-}: {
-  message: string;
-  onRetry: () => void;
-}) {
+export function InitialError({ message, onRetry }: { message: string; onRetry: () => void }) {
   const t = useTranslations("access");
   return (
     <Empty className="min-h-80 border border-border/70 bg-card">

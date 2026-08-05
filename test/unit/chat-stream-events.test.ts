@@ -21,10 +21,7 @@ describe("chat stream reasoning lifecycle", () => {
     };
 
     applyStreamEvent({ type: "reasoning_start" }, handlers);
-    applyStreamEvent(
-      { type: "reasoning", delta: "Inspecting the request" },
-      handlers,
-    );
+    applyStreamEvent({ type: "reasoning", delta: "Inspecting the request" }, handlers);
 
     expect(assistant.parts).toEqual([
       {

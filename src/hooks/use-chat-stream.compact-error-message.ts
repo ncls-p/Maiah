@@ -1,12 +1,6 @@
 "use client";
 
-
-import {
-type ChatAttachment,
-type ChatMessage,
-type CodeWorkspaceArtifact
-} from "@/components/chat/chat-types";
-
+import { type ChatAttachment,type ChatMessage,type CodeWorkspaceArtifact } from "@/components/chat/chat-types";
 
 export function compactErrorMessage(message: string) {
   const firstLine = message.split("\n", 1)[0]?.trim() || "Chat request failed";

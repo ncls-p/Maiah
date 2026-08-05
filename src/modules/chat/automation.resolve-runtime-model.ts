@@ -4,29 +4,13 @@ import { z } from "zod";
 
 import { decryptValue } from "@/lib/crypto";
 import { normalizeOpenAICompatibleApiRoute } from "@/lib/openai-compatible-api";
-import {
-agentRuntimePolicy,
-createRuntimeDeadline,
-} from "@/modules/agent/runtime-policy";
+import { agentRuntimePolicy,createRuntimeDeadline } from "@/modules/agent/runtime-policy";
 import { db } from "@/server/infrastructure/db";
-import {
-aiModels,
-aiProviders
-} from "@/server/infrastructure/db/schema";
-import {
-getAdapter,
-type ProviderKind
-} from "@/server/infrastructure/providers";
-import {
-ChatAutomationConfig,
-ResolveRuntimeResult,
-getChatAutomationConfig,
-validateChatAutomationConfig,
-} from "./automation.chat-automation-config";
+import { aiModels,aiProviders } from "@/server/infrastructure/db/schema";
+import { getAdapter,type ProviderKind } from "@/server/infrastructure/providers";
+import { ChatAutomationConfig,ResolveRuntimeResult,getChatAutomationConfig,validateChatAutomationConfig } from "./automation.chat-automation-config";
 
-export async function resolveRuntimeModel(
-  config: ChatAutomationConfig,
-): Promise<ResolveRuntimeResult> {
+export async function resolveRuntimeModel(config: ChatAutomationConfig): Promise<ResolveRuntimeResult> {
   if (!config.enabled) {
     return {
       ok: false,
@@ -50,13 +34,7 @@ export async function resolveRuntimeModel(
   const [provider] = await db
     .select()
     .from(aiProviders)
-    .where(
-      and(
-        eq(aiProviders.id, providerId),
-        eq(aiProviders.enabled, true),
-        isNull(aiProviders.archivedAt),
-      ),
-    )
+    .where(and(eq(aiProviders.id, providerId), eq(aiProviders.enabled, true), isNull(aiProviders.archivedAt)))
     .limit(1);
   if (!provider) {
     return {
@@ -68,19 +46,12 @@ export async function resolveRuntimeModel(
   const [model] = await db
     .select()
     .from(aiModels)
-    .where(
-      and(
-        eq(aiModels.id, modelId),
-        eq(aiModels.providerId, provider.id),
-        eq(aiModels.enabled, true),
-      ),
-    )
+    .where(and(eq(aiModels.id, modelId), eq(aiModels.providerId, provider.id), eq(aiModels.enabled, true)))
     .limit(1);
   if (!model) {
     return {
       ok: false,
-      reason:
-        "Selected model was not found, is disabled, or does not belong to the provider.",
+      reason: "Selected model was not found, is disabled, or does not belong to the provider.",
     };
   }
 
@@ -92,9 +63,7 @@ export async function resolveRuntimeModel(
   let headers: Record<string, string> | undefined;
   if (provider.encryptedHeadersJson) {
     headers = {};
-    for (const [key, value] of Object.entries(
-      provider.encryptedHeadersJson as Record<string, string>,
-    )) {
+    for (const [key, value] of Object.entries(provider.encryptedHeadersJson as Record<string, string>)) {
       headers[key] = await decryptValue(value);
     }
   }
@@ -111,19 +80,14 @@ export async function resolveRuntimeModel(
         authType: provider.authType,
         apiKey,
         headers,
-        queryParams:
-          (provider.queryParamsJson as Record<string, string>) || undefined,
-        openaiCompatibleApiRoute: normalizeOpenAICompatibleApiRoute(
-          provider.openaiCompatibleApiRoute,
-        ),
+        queryParams: (provider.queryParamsJson as Record<string, string>) || undefined,
+        openaiCompatibleApiRoute: normalizeOpenAICompatibleApiRoute(provider.openaiCompatibleApiRoute),
       },
     },
   };
 }
 
-export async function testChatAutomationConnection(): Promise<
-  { ok: true } | { ok: false; error: string }
-> {
+export async function testChatAutomationConnection(): Promise<{ ok: true } | { ok: false; error: string }> {
   const config = await getChatAutomationConfig();
   const validation = await validateChatAutomationConfig(config);
   if (!validation.ok) {
@@ -140,21 +104,15 @@ export async function testChatAutomationConnection(): Promise<
 
   try {
     const adapter = getAdapter(resolved.runtime.providerKind);
-    const runtimeDeadline = createRuntimeDeadline(
-      agentRuntimePolicy.automationTimeoutMs,
-    );
+    const runtimeDeadline = createRuntimeDeadline(agentRuntimePolicy.automationTimeoutMs);
     const result = await generateText({
-      model: adapter.createChatModel(
-        resolved.runtime.runtimeConfig,
-        resolved.runtime.modelId,
-      ),
+      model: adapter.createChatModel(resolved.runtime.runtimeConfig, resolved.runtime.modelId),
       prompt: 'Reply with only the JSON object {"ok":true}.',
       temperature: 0,
       maxOutputTokens: 64,
       abortSignal: runtimeDeadline.signal,
     });
-    const output =
-      `${result.text}${reasoningTextFromParts(result.finalStep.reasoning)}`.trim();
+    const output = `${result.text}${reasoningTextFromParts(result.finalStep.reasoning)}`.trim();
     if (!output) {
       return {
         ok: false,
@@ -180,16 +138,10 @@ export type ReasoningLikePart = {
   text?: string;
 };
 
-export function reasoningTextFromParts(
-  reasoning: ReasoningLikePart[] | undefined,
-) {
+export function reasoningTextFromParts(reasoning: ReasoningLikePart[] | undefined) {
   return (
     reasoning
-      ?.map((part) =>
-        part.type === "reasoning" && typeof part.text === "string"
-          ? part.text
-          : "",
-      )
+      ?.map((part) => (part.type === "reasoning" && typeof part.text === "string" ? part.text : ""))
       .join("\n")
       .trim() ?? ""
   );

@@ -1,7 +1,5 @@
 "use client";
 
-
-
 export const NONE = "__none__";
 
 export type Agent = {

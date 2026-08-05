@@ -29,18 +29,7 @@ export function UsageDashboardSkeleton() {
   );
 }
 
-export function UsageDashboard(props: {
-  data: UsageResponse;
-  busy: boolean;
-  operationFilter: string;
-  fromDate: string;
-  toDate: string;
-  onOperationChangeAction: (value: string) => void;
-  onFromChangeAction: (value: string) => void;
-  onToChangeAction: (value: string) => void;
-  onApplyAction: () => void;
-  onResetAction: () => void;
-}) {
+export function UsageDashboard(props: { data: UsageResponse; busy: boolean; operationFilter: string; fromDate: string; toDate: string; onOperationChangeAction: (value: string) => void; onFromChangeAction: (value: string) => void; onToChangeAction: (value: string) => void; onApplyAction: () => void; onResetAction: () => void }) {
   const locale = useLocale();
   const t = useTranslations("admin.usage");
   return (

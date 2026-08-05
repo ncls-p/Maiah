@@ -1,29 +1,12 @@
 import { and,eq,sql } from "drizzle-orm";
 
 import { db } from "@/server/infrastructure/db";
-import {
-workflowRuns,
-workflows,
-workflowVersions
-} from "@/server/infrastructure/db/schema";
+import { workflowRuns,workflows,workflowVersions } from "@/server/infrastructure/db/schema";
 
-import {
-workflowDefinitionSchema
-} from "./contracts";
+import { workflowDefinitionSchema } from "./contracts";
 import { enqueueWorkflowRun } from "./queue";
-import {
-compileWorkflowDefinition
-} from "./runtime";
-import {
-errorMessage,
-findIdempotentWorkflowRun,
-getWorkflowDetail,
-requireWorkflow,
-UpdateWorkflowInput,
-WorkflowConflictError,
-WorkflowNotFoundError,
-WorkflowQueueError,
-} from "./use-cases.workflow-not-found-error";
+import { compileWorkflowDefinition } from "./runtime";
+import { errorMessage,findIdempotentWorkflowRun,getWorkflowDetail,requireWorkflow,UpdateWorkflowInput,WorkflowConflictError,WorkflowNotFoundError,WorkflowQueueError } from "./use-cases.workflow-not-found-error";
 
 export async function updateWorkflow(input: UpdateWorkflowInput) {
   const existing = await requireWorkflow(input.workflowId, input.workspaceId);
@@ -32,9 +15,7 @@ export async function updateWorkflow(input: UpdateWorkflowInput) {
       .update(workflows)
       .set({
         ...(input.name !== undefined ? { name: input.name } : {}),
-        ...(input.description !== undefined
-          ? { description: input.description }
-          : {}),
+        ...(input.description !== undefined ? { description: input.description } : {}),
         ...(input.definition ? { status: "draft" as const } : {}),
         ...(input.definition
           ? {
@@ -43,13 +24,7 @@ export async function updateWorkflow(input: UpdateWorkflowInput) {
           : {}),
         updatedAt: new Date(),
       })
-      .where(
-        and(
-          eq(workflows.id, existing.id),
-          eq(workflows.workspaceId, input.workspaceId),
-          sql`${workflows.status} <> 'archived'`,
-        ),
-      )
+      .where(and(eq(workflows.id, existing.id), eq(workflows.workspaceId, input.workspaceId), sql`${workflows.status} <> 'archived'`))
       .returning();
     if (!workflow) throw new WorkflowNotFoundError("Workflow not found");
 
@@ -67,12 +42,7 @@ export async function updateWorkflow(input: UpdateWorkflowInput) {
       const [version] = await tx
         .select({ definitionJson: workflowVersions.definitionJson })
         .from(workflowVersions)
-        .where(
-          and(
-            eq(workflowVersions.workflowId, existing.id),
-            eq(workflowVersions.version, workflow.latestVersion),
-          ),
-        )
+        .where(and(eq(workflowVersions.workflowId, existing.id), eq(workflowVersions.version, workflow.latestVersion)))
         .limit(1);
       if (!version) {
         throw new WorkflowConflictError("Workflow version is missing");
@@ -109,32 +79,15 @@ export async function publishWorkflow(workflowId: string, workspaceId: string) {
 
 export async function archiveWorkflow(workflowId: string, workspaceId: string) {
   const existing = await requireWorkflow(workflowId, workspaceId);
-  const [workflow] = await db
-    .update(workflows)
-    .set({ status: "archived", archivedAt: new Date(), updatedAt: new Date() })
-    .where(eq(workflows.id, existing.id))
-    .returning();
+  const [workflow] = await db.update(workflows).set({ status: "archived", archivedAt: new Date(), updatedAt: new Date() }).where(eq(workflows.id, existing.id)).returning();
   return workflow;
 }
 
-export async function createWorkflowRun(input: {
-  workflowId: string;
-  workspaceId: string;
-  userId: string;
-  payload?: unknown;
-  useLatestDraft?: boolean;
-  versionNumber?: number;
-  idempotencyKey?: string;
-  trigger?: "api" | "agent";
-}) {
+export async function createWorkflowRun(input: { workflowId: string; workspaceId: string; userId: string; payload?: unknown; useLatestDraft?: boolean; versionNumber?: number; idempotencyKey?: string; trigger?: "api" | "agent" }) {
   const workflow = await requireWorkflow(input.workflowId, input.workspaceId);
-  const versionNumber =
-    input.versionNumber ??
-    (input.useLatestDraft ? workflow.latestVersion : workflow.activeVersion);
+  const versionNumber = input.versionNumber ?? (input.useLatestDraft ? workflow.latestVersion : workflow.activeVersion);
   if (!versionNumber) {
-    throw new WorkflowConflictError(
-      "Publish the workflow before executing it through the API.",
-    );
+    throw new WorkflowConflictError("Publish the workflow before executing it through the API.");
   }
   const existingRun = await findIdempotentWorkflowRun({
     workflowId: workflow.id,
@@ -144,12 +97,7 @@ export async function createWorkflowRun(input: {
   const [version] = await db
     .select()
     .from(workflowVersions)
-    .where(
-      and(
-        eq(workflowVersions.workflowId, workflow.id),
-        eq(workflowVersions.version, versionNumber),
-      ),
-    )
+    .where(and(eq(workflowVersions.workflowId, workflow.id), eq(workflowVersions.version, versionNumber)))
     .limit(1);
   if (!version) throw new WorkflowConflictError("Workflow version is missing");
   const [run] = await db

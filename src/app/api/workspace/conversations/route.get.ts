@@ -1,37 +1,11 @@
 import { decryptValue } from "@/lib/crypto";
-import {
-handleRoute,
-requireRequestPermissionScopeAsync,
-} from "@/lib/route-handler";
-import {
-hasResourcePermissionForRequest,
-isWorkspaceMemberForRequest,
-} from "@/modules/auth/workspace-access";
-import {
-conversationSearchSnippet,
-conversationTextMatches,
-} from "@/modules/chat/conversation-search";
+import { handleRoute,requireRequestPermissionScopeAsync } from "@/lib/route-handler";
+import { hasResourcePermissionForRequest,isWorkspaceMemberForRequest } from "@/modules/auth/workspace-access";
+import { conversationSearchSnippet,conversationTextMatches } from "@/modules/chat/conversation-search";
 import { db } from "@/server/infrastructure/db";
 import { listDirectlyBoundResourceIds } from "@/server/infrastructure/db/access-resource-repository";
-import {
-agents,
-conversationFolders,
-conversations,
-messageParts,
-messages,
-} from "@/server/infrastructure/db/schema";
-import {
-and,
-asc,
-desc,
-eq,
-inArray,
-isNotNull,
-isNull,
-lt,
-or,
-sql,
-} from "drizzle-orm";
+import { agents,conversationFolders,conversations,messageParts,messages } from "@/server/infrastructure/db/schema";
+import { and,asc,desc,eq,inArray,isNotNull,isNull,lt,or,sql } from "drizzle-orm";
 import { NextRequest,NextResponse } from "next/server";
 import { createConversationCursor,querySchema } from "./route.query-schema";
 export async function GET(req: NextRequest) {
@@ -47,24 +21,16 @@ export async function GET(req: NextRequest) {
         includeMeta: searchParams.get("includeMeta") ?? undefined,
         limit: searchParams.get("limit") ?? undefined,
       });
-      const hasConversationScope =
-        parsed.success &&
-        Boolean(parsed.data.workspaceId || parsed.data.agentId);
+      const hasConversationScope = parsed.success && Boolean(parsed.data.workspaceId || parsed.data.agentId);
       if (!hasConversationScope) {
-        return NextResponse.json(
-          { error: "workspaceId or agentId must be a valid UUID" },
-          { status: 400 },
-        );
+        return NextResponse.json({ error: "workspaceId or agentId must be a valid UUID" }, { status: 400 });
       }
       const { agentId, includeMeta, limit, q } = parsed.data;
       let workspaceId = parsed.data.workspaceId ?? null;
       const [beforeDateValue, beforeId] = parsed.data.before?.split("|") ?? [];
       const before = beforeDateValue ? new Date(beforeDateValue) : null;
       if (beforeDateValue && (!before || Number.isNaN(before.getTime()))) {
-        return NextResponse.json(
-          { error: "before must be a valid conversation cursor" },
-          { status: 400 },
-        );
+        return NextResponse.json({ error: "before must be a valid conversation cursor" }, { status: 400 });
       }
       if (!workspaceId && agentId) {
         const [agent] = await db
@@ -73,74 +39,37 @@ export async function GET(req: NextRequest) {
           .where(and(eq(agents.id, agentId), isNull(agents.archivedAt)))
           .limit(1);
         if (!agent) {
-          return NextResponse.json(
-            { error: "Agent not found" },
-            { status: 404 },
-          );
+          return NextResponse.json({ error: "Agent not found" }, { status: 404 });
         }
         workspaceId = agent.workspaceId;
       }
       if (!workspaceId) {
-        return NextResponse.json(
-          { error: "workspaceId or agentId must be a valid UUID" },
-          { status: 400 },
-        );
+        return NextResponse.json({ error: "workspaceId or agentId must be a valid UUID" }, { status: 400 });
       }
-      const scopeForbidden = await requireRequestPermissionScopeAsync(
-        session.user.id,
-        workspaceId,
-        "conversations.viewOwn",
-      );
+      const scopeForbidden = await requireRequestPermissionScopeAsync(session.user.id, workspaceId, "conversations.viewOwn");
       if (scopeForbidden) return scopeForbidden;
       if (!(await isWorkspaceMemberForRequest(session.user.id, workspaceId))) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
-      const directlyBoundIds = await listDirectlyBoundResourceIds(
-        session.user.id,
-        "conversation",
-      );
+      const directlyBoundIds = await listDirectlyBoundResourceIds(session.user.id, "conversation");
       const directlyAccessibleIds = (
         await Promise.all(
           directlyBoundIds.map(async (conversationId) => ({
             conversationId,
-            granted: await hasResourcePermissionForRequest(
-              session.user.id,
-              workspaceId,
-              "conversations.viewOwn",
-              "conversation",
-              conversationId,
-            ),
+            granted: await hasResourcePermissionForRequest(session.user.id, workspaceId, "conversations.viewOwn", "conversation", conversationId),
           })),
         )
       )
         .filter(({ granted }) => granted)
         .map(({ conversationId }) => conversationId);
-      const visibleConversationCondition = directlyAccessibleIds.length
-        ? or(
-            eq(conversations.userId, session.user.id),
-            inArray(conversations.id, directlyAccessibleIds),
-          )
-        : eq(conversations.userId, session.user.id);
-      const scopeConditions = [
-        eq(conversations.workspaceId, workspaceId),
-        visibleConversationCondition,
-        eq(conversations.status, "active"),
-        isNull(conversations.archivedAt),
-      ];
+      const visibleConversationCondition = directlyAccessibleIds.length ? or(eq(conversations.userId, session.user.id), inArray(conversations.id, directlyAccessibleIds)) : eq(conversations.userId, session.user.id);
+      const scopeConditions = [eq(conversations.workspaceId, workspaceId), visibleConversationCondition, eq(conversations.status, "active"), isNull(conversations.archivedAt)];
       if (agentId) {
         scopeConditions.push(eq(conversations.agentId, agentId));
       }
       const conditions = [...scopeConditions];
       if (before) {
-        const cursorCondition = beforeId
-          ? or(
-              lt(conversations.updatedAt, before),
-              and(
-                eq(conversations.updatedAt, before),
-                lt(conversations.id, beforeId),
-              ),
-            )
-          : lt(conversations.updatedAt, before);
+        const cursorCondition = beforeId ? or(lt(conversations.updatedAt, before), and(eq(conversations.updatedAt, before), lt(conversations.id, beforeId))) : lt(conversations.updatedAt, before);
         if (cursorCondition) conditions.push(cursorCondition);
       }
       const conversationSelection = {
@@ -169,32 +98,15 @@ export async function GET(req: NextRequest) {
           })
           .from(messageParts)
           .innerJoin(messages, eq(messages.id, messageParts.messageId))
-          .innerJoin(
-            conversations,
-            eq(conversations.id, messages.conversationId),
-          )
-          .where(
-            and(
-              ...conditions,
-              eq(messageParts.type, "text"),
-              isNotNull(messageParts.contentEncrypted),
-            ),
-          )
-          .orderBy(
-            desc(conversations.updatedAt),
-            desc(conversations.id),
-            asc(messages.createdAt),
-            asc(messageParts.sortOrder),
-          );
+          .innerJoin(conversations, eq(conversations.id, messages.conversationId))
+          .where(and(...conditions, eq(messageParts.type, "text"), isNotNull(messageParts.contentEncrypted)))
+          .orderBy(desc(conversations.updatedAt), desc(conversations.id), asc(messages.createdAt), asc(messageParts.sortOrder));
         const partsByConversation = new Map<string, string[]>();
         for (const part of encryptedParts) {
           if (!part.contentEncrypted) continue;
           const existing = partsByConversation.get(part.conversationId);
           if (existing) existing.push(part.contentEncrypted);
-          else
-            partsByConversation.set(part.conversationId, [
-              part.contentEncrypted,
-            ]);
+          else partsByConversation.set(part.conversationId, [part.contentEncrypted]);
         }
         const matches = [];
         for (const conversation of candidateConversations) {
@@ -207,9 +119,7 @@ export async function GET(req: NextRequest) {
               },
             });
           } else {
-            for (const encryptedPart of partsByConversation.get(
-              conversation.id,
-            ) ?? []) {
+            for (const encryptedPart of partsByConversation.get(conversation.id) ?? []) {
               try {
                 const content = await decryptValue(encryptedPart);
                 if (!conversationTextMatches(content, q)) continue;
@@ -235,13 +145,7 @@ export async function GET(req: NextRequest) {
           .select(conversationSelection)
           .from(conversations)
           .where(and(...conditions))
-          .orderBy(
-            sql`${conversations.pinnedAt} IS NULL`,
-            desc(sql`${conversations.sidebarOrder} IS NULL`),
-            asc(conversations.sidebarOrder),
-            desc(conversations.updatedAt),
-            desc(conversations.id),
-          )
+          .orderBy(sql`${conversations.pinnedAt} IS NULL`, desc(sql`${conversations.sidebarOrder} IS NULL`), asc(conversations.sidebarOrder), desc(conversations.updatedAt), desc(conversations.id))
           .limit(limit + 1);
         hasMore = rows.length > limit;
         list = hasMore ? rows.slice(0, limit) : rows;
@@ -257,18 +161,8 @@ export async function GET(req: NextRequest) {
               updatedAt: conversationFolders.updatedAt,
             })
             .from(conversationFolders)
-            .where(
-              and(
-                eq(conversationFolders.workspaceId, workspaceId),
-                eq(conversationFolders.userId, session.user.id),
-                isNull(conversationFolders.archivedAt),
-              ),
-            )
-            .orderBy(
-              asc(conversationFolders.sortOrder),
-              asc(conversationFolders.createdAt),
-              asc(conversationFolders.id),
-            ),
+            .where(and(eq(conversationFolders.workspaceId, workspaceId), eq(conversationFolders.userId, session.user.id), isNull(conversationFolders.archivedAt)))
+            .orderBy(asc(conversationFolders.sortOrder), asc(conversationFolders.createdAt), asc(conversationFolders.id)),
           db
             .select({
               id: conversations.id,

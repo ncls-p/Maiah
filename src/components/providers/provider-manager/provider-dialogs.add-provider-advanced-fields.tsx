@@ -1,15 +1,7 @@
 import { useTranslations } from "next-intl";
 
-
 import { Label } from "@/components/ui/label";
-import {
-Select,
-SelectContent,
-SelectGroup,
-SelectItem,
-SelectTrigger,
-SelectValue,
-} from "@/components/ui/select";
+import { Select,SelectContent,SelectGroup,SelectItem,SelectTrigger,SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
 import type { OpenAICompatibleApiRoute } from "@/lib/openai-compatible-api";
@@ -17,7 +9,6 @@ import { AUTH_TYPE_LABELS,KIND_LABELS } from "./constants";
 import { AddProviderDialogProps,FIELD_STACK_CLASS } from "./provider-dialogs.field-stack-class";
 import type { ProviderAuthType,ProviderKind,SafeProvider } from "./types";
 import { defaultAuthType } from "./utils";
-
 
 export function AddProviderAdvancedFields(props: AddProviderDialogProps) {
   const t = useTranslations("providers.manager");
@@ -50,12 +41,7 @@ export function AddProviderAdvancedFields(props: AddProviderDialogProps) {
         </div>
         <div className={FIELD_STACK_CLASS}>
           <Label htmlFor="add-provider-auth">{t("authentication")}</Label>
-          <Select
-            value={props.addAuthType}
-            onValueChange={(value) =>
-              props.onAuthTypeChange(value as ProviderAuthType)
-            }
-          >
+          <Select value={props.addAuthType} onValueChange={(value) => props.onAuthTypeChange(value as ProviderAuthType)}>
             <SelectTrigger id="add-provider-auth">
               <SelectValue />
             </SelectTrigger>
@@ -76,23 +62,14 @@ export function AddProviderAdvancedFields(props: AddProviderDialogProps) {
           <Label htmlFor="add-provider-api-route" help={t("apiRouteHint")}>
             {t("apiRoute")}
           </Label>
-          <Select
-            value={props.addApiRoute}
-            onValueChange={(value) =>
-              props.onApiRouteChange(value as OpenAICompatibleApiRoute)
-            }
-          >
+          <Select value={props.addApiRoute} onValueChange={(value) => props.onApiRouteChange(value as OpenAICompatibleApiRoute)}>
             <SelectTrigger id="add-provider-api-route">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
-                <SelectItem value="responses">
-                  {t("apiRouteResponses")}
-                </SelectItem>
-                <SelectItem value="chat-completions">
-                  {t("apiRouteChatCompletions")}
-                </SelectItem>
+                <SelectItem value="responses">{t("apiRouteResponses")}</SelectItem>
+                <SelectItem value="chat-completions">{t("apiRouteChatCompletions")}</SelectItem>
               </SelectGroup>
             </SelectContent>
           </Select>
@@ -102,27 +79,11 @@ export function AddProviderAdvancedFields(props: AddProviderDialogProps) {
       <div className="grid gap-3 sm:grid-cols-2">
         <div className={FIELD_STACK_CLASS}>
           <Label htmlFor="add-headers">{t("customHeaders")}</Label>
-          <Textarea
-            id="add-headers"
-            name="add-headers"
-            autoComplete="off"
-            value={props.addCustomHeaders}
-            onChange={(e) => props.onCustomHeadersChange(e.target.value)}
-            placeholder="X-Team=ai-platform…"
-            className="min-h-20 font-mono text-xs"
-          />
+          <Textarea id="add-headers" name="add-headers" autoComplete="off" value={props.addCustomHeaders} onChange={(e) => props.onCustomHeadersChange(e.target.value)} placeholder="X-Team=ai-platform…" className="min-h-20 font-mono text-xs" />
         </div>
         <div className={FIELD_STACK_CLASS}>
           <Label htmlFor="add-query">{t("queryParams")}</Label>
-          <Textarea
-            id="add-query"
-            name="add-query"
-            autoComplete="off"
-            value={props.addQueryParams}
-            onChange={(e) => props.onQueryParamsChange(e.target.value)}
-            placeholder="api-version=2024-10-21…"
-            className="min-h-20 font-mono text-xs"
-          />
+          <Textarea id="add-query" name="add-query" autoComplete="off" value={props.addQueryParams} onChange={(e) => props.onQueryParamsChange(e.target.value)} placeholder="api-version=2024-10-21…" className="min-h-20 font-mono text-xs" />
         </div>
       </div>
     </div>

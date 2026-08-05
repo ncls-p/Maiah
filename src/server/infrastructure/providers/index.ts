@@ -14,7 +14,4 @@ export function getAdapter(kind: ProviderKind): ProviderAdapter {
   return ADAPTERS[kind] ?? openaiCompatibleAdapter;
 }
 
-export type {
-ModelDescriptor,ProviderAdapter,ProviderHealth,ProviderKind,
-ProviderRuntimeConfig
-} from "./adapter";
+export type { ModelDescriptor,ProviderAdapter,ProviderHealth,ProviderKind,ProviderRuntimeConfig } from "./adapter";

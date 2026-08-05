@@ -1,10 +1,7 @@
 import { NextRequest,NextResponse } from "next/server";
 import { z } from "zod";
 
-import {
-handleRoute,
-requireWorkspacePermissionAsync,
-} from "@/lib/route-handler";
+import { handleRoute,requireWorkspacePermissionAsync } from "@/lib/route-handler";
 import { submitSecretRequest } from "@/modules/custom-tools/use-cases";
 
 const submitSchema = z.object({
@@ -14,33 +11,19 @@ const submitSchema = z.object({
   label: z.string().trim().max(255).optional(),
 });
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ requestId: string }> },
-) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ requestId: string }> }) {
   return handleRoute(
     req,
     async ({ session }) => {
       const { requestId } = await params;
       const idParse = z.uuid().safeParse(requestId);
-      if (!idParse.success)
-        return NextResponse.json(
-          { error: "Invalid request id" },
-          { status: 400 },
-        );
+      if (!idParse.success) return NextResponse.json({ error: "Invalid request id" }, { status: 400 });
 
       const parsed = submitSchema.safeParse(await req.json());
       if (!parsed.success) {
-        return NextResponse.json(
-          { error: "Invalid input", details: parsed.error.issues },
-          { status: 400 },
-        );
+        return NextResponse.json({ error: "Invalid input", details: parsed.error.issues }, { status: 400 });
       }
-      const forbidden = await requireWorkspacePermissionAsync(
-        session.user.id,
-        parsed.data.workspaceId,
-        "tools.configure",
-      );
+      const forbidden = await requireWorkspacePermissionAsync(session.user.id, parsed.data.workspaceId, "tools.configure");
       if (forbidden) return forbidden;
       return NextResponse.json(
         await submitSecretRequest({
@@ -56,8 +39,7 @@ export async function POST(
     {
       logLabel: "Custom tool secret submission failed",
       expectedError: (error) => {
-        const message =
-          error instanceof Error ? error.message : "Unable to submit secrets";
+        const message = error instanceof Error ? error.message : "Unable to submit secrets";
         return NextResponse.json({ error: message }, { status: 500 });
       },
     },

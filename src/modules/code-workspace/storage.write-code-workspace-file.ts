@@ -1,42 +1,12 @@
-
 import { logHandledError } from "@/lib/logger";
 import { storage } from "@/server/infrastructure/storage";
-import {
-isAllowedPath,
-isTextWorkspacePath,
-normalizeWorkspacePath,
-totalWorkspaceBytes,
-} from "./storage.assert-safe-project-id";
-import {
-CodeWorkspaceFileSummary,
-CodeWorkspaceMetadata,
-fileObjectKey,
-maxExtractedBytes,
-maxFiles,
-maxTextFileBytes,
-} from "./storage.code-workspace-file-summary";
-import {
-codeWorkspaceArtifact,
-contentTypeForPath,
-findRootFile,
-getCodeWorkspace,
-hashBytes,
-saveMetadata,
-} from "./storage.content-type-for-path";
-import {
-assertCodeWorkspaceAccess,
-encodeWorkspaceTextContent,
-fileSummaryForTextContent,
-writableWorkspaceFilePath,
-} from "./storage.create-code-workspace-from-zip";
+import { isAllowedPath,isTextWorkspacePath,normalizeWorkspacePath,totalWorkspaceBytes } from "./storage.assert-safe-project-id";
+import { CodeWorkspaceFileSummary,CodeWorkspaceMetadata,fileObjectKey,maxExtractedBytes,maxFiles,maxTextFileBytes } from "./storage.code-workspace-file-summary";
+import { codeWorkspaceArtifact,contentTypeForPath,findRootFile,getCodeWorkspace,hashBytes,saveMetadata } from "./storage.content-type-for-path";
+import { assertCodeWorkspaceAccess,encodeWorkspaceTextContent,fileSummaryForTextContent,writableWorkspaceFilePath } from "./storage.create-code-workspace-from-zip";
 
-function upsertWorkspaceFileSummary(
-  files: CodeWorkspaceFileSummary[],
-  nextSummary: CodeWorkspaceFileSummary,
-) {
-  const existingIndex = files.findIndex(
-    (file) => file.path === nextSummary.path,
-  );
+function upsertWorkspaceFileSummary(files: CodeWorkspaceFileSummary[], nextSummary: CodeWorkspaceFileSummary) {
+  const existingIndex = files.findIndex((file) => file.path === nextSummary.path);
   const nextFiles = [...files];
   if (existingIndex >= 0) {
     nextFiles[existingIndex] = nextSummary;
@@ -48,18 +18,12 @@ function upsertWorkspaceFileSummary(
   return [...nextFiles, nextSummary];
 }
 
-function updatedCodeWorkspaceMetadata(
-  metadata: CodeWorkspaceMetadata,
-  nextSummary: CodeWorkspaceFileSummary,
-  updatedAt: string,
-): CodeWorkspaceMetadata {
+function updatedCodeWorkspaceMetadata(metadata: CodeWorkspaceMetadata, nextSummary: CodeWorkspaceFileSummary, updatedAt: string): CodeWorkspaceMetadata {
   const nextFiles = upsertWorkspaceFileSummary(metadata.files, nextSummary);
   if (totalWorkspaceBytes(nextFiles) > maxExtractedBytes) {
     throw new Error("Code workspace contents are too large. Maximum is 50 MB.");
   }
-  const rootFile = nextFiles.some((file) => file.path === metadata.rootFile)
-    ? metadata.rootFile
-    : findRootFile(nextFiles);
+  const rootFile = nextFiles.some((file) => file.path === metadata.rootFile) ? metadata.rootFile : findRootFile(nextFiles);
   return {
     ...metadata,
     rootFile,
@@ -69,35 +33,17 @@ function updatedCodeWorkspaceMetadata(
   };
 }
 
-export async function writeCodeWorkspaceFile(input: {
-  projectId: string;
-  workspaceId: string;
-  userId?: string;
-  filePath: string;
-  content: string;
-}) {
+export async function writeCodeWorkspaceFile(input: { projectId: string; workspaceId: string; userId?: string; filePath: string; content: string }) {
   try {
     const metadata = await getCodeWorkspace(input.projectId);
     assertCodeWorkspaceAccess(metadata, input.workspaceId, input.userId);
     const projectPath = writableWorkspaceFilePath(input.filePath);
     const bytes = encodeWorkspaceTextContent(input.content);
     const updatedAt = new Date().toISOString();
-    const nextSummary = fileSummaryForTextContent(
-      projectPath,
-      bytes,
-      updatedAt,
-    );
-    const nextMetadata = updatedCodeWorkspaceMetadata(
-      metadata,
-      nextSummary,
-      updatedAt,
-    );
+    const nextSummary = fileSummaryForTextContent(projectPath, bytes, updatedAt);
+    const nextMetadata = updatedCodeWorkspaceMetadata(metadata, nextSummary, updatedAt);
 
-    await storage.upload(
-      fileObjectKey(metadata.id, projectPath),
-      bytes,
-      nextSummary.mimeType,
-    );
+    await storage.upload(fileObjectKey(metadata.id, projectPath), bytes, nextSummary.mimeType);
     await saveMetadata(nextMetadata);
     return codeWorkspaceArtifact(nextMetadata, `Updated ${projectPath}.`);
   } catch (error) {
@@ -106,13 +52,7 @@ export async function writeCodeWorkspaceFile(input: {
   }
 }
 
-export async function importCodeWorkspaceFile(input: {
-  projectId: string;
-  workspaceId: string;
-  userId?: string;
-  filePath: string;
-  bytes: Uint8Array;
-}) {
+export async function importCodeWorkspaceFile(input: { projectId: string; workspaceId: string; userId?: string; filePath: string; bytes: Uint8Array }) {
   try {
     const metadata = await getCodeWorkspace(input.projectId);
     assertCodeWorkspaceAccess(metadata, input.workspaceId, input.userId);
@@ -120,10 +60,7 @@ export async function importCodeWorkspaceFile(input: {
     if (!isAllowedPath(projectPath)) {
       throw new Error("Only supported web files can be imported.");
     }
-    if (
-      isTextWorkspacePath(projectPath) &&
-      input.bytes.byteLength > maxTextFileBytes
-    ) {
+    if (isTextWorkspacePath(projectPath) && input.bytes.byteLength > maxTextFileBytes) {
       throw new Error("File content is too large.");
     }
 
@@ -137,17 +74,9 @@ export async function importCodeWorkspaceFile(input: {
       hash: hashBytes(bytes),
       updatedAt,
     };
-    const nextMetadata = updatedCodeWorkspaceMetadata(
-      metadata,
-      nextSummary,
-      updatedAt,
-    );
+    const nextMetadata = updatedCodeWorkspaceMetadata(metadata, nextSummary, updatedAt);
 
-    await storage.upload(
-      fileObjectKey(metadata.id, projectPath),
-      bytes,
-      nextSummary.mimeType,
-    );
+    await storage.upload(fileObjectKey(metadata.id, projectPath), bytes, nextSummary.mimeType);
     await saveMetadata(nextMetadata);
     return codeWorkspaceArtifact(nextMetadata, `Imported ${projectPath}.`);
   } catch (error) {
@@ -156,12 +85,7 @@ export async function importCodeWorkspaceFile(input: {
   }
 }
 
-export async function deleteCodeWorkspaceFile(input: {
-  projectId: string;
-  workspaceId: string;
-  userId?: string;
-  filePath: string;
-}) {
+export async function deleteCodeWorkspaceFile(input: { projectId: string; workspaceId: string; userId?: string; filePath: string }) {
   const metadata = await getCodeWorkspace(input.projectId);
   assertCodeWorkspaceAccess(metadata, input.workspaceId, input.userId);
   const projectPath = normalizeWorkspacePath(input.filePath);
@@ -173,10 +97,7 @@ export async function deleteCodeWorkspaceFile(input: {
   const nextFiles = metadata.files.filter((file) => file.path !== projectPath);
   const nextMetadata: CodeWorkspaceMetadata = {
     ...metadata,
-    rootFile:
-      metadata.rootFile === projectPath
-        ? findRootFile(nextFiles)
-        : metadata.rootFile,
+    rootFile: metadata.rootFile === projectPath ? findRootFile(nextFiles) : metadata.rootFile,
     version: metadata.version + 1,
     updatedAt: now,
     files: nextFiles,
@@ -185,25 +106,16 @@ export async function deleteCodeWorkspaceFile(input: {
   return codeWorkspaceArtifact(nextMetadata, `Deleted ${projectPath}.`);
 }
 
-export async function getCodeWorkspaceFileBytes(input: {
-  projectId: string;
-  filePath: string;
-}) {
+export async function getCodeWorkspaceFileBytes(input: { projectId: string; filePath: string }) {
   const metadata = await getCodeWorkspace(input.projectId);
-  const projectPath = normalizeWorkspacePath(
-    input.filePath || metadata.rootFile || "index.html",
-  );
+  const projectPath = normalizeWorkspacePath(input.filePath || metadata.rootFile || "index.html");
   const summary = metadata.files.find((file) => file.path === projectPath);
   if (!summary) throw new Error("File not found in code workspace.");
   const bytes = await storage.download(fileObjectKey(metadata.id, projectPath));
   return { metadata, summary, bytes };
 }
 
-export async function getCodeWorkspaceFilesForPublish(input: {
-  projectId: string;
-  workspaceId: string;
-  userId?: string;
-}) {
+export async function getCodeWorkspaceFilesForPublish(input: { projectId: string; workspaceId: string; userId?: string }) {
   const metadata = await getCodeWorkspace(input.projectId);
   assertCodeWorkspaceAccess(metadata, input.workspaceId, input.userId);
   const files = await Promise.all(

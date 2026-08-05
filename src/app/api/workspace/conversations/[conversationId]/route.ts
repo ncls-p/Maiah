@@ -1,15 +1,9 @@
-import {
-handleRoute,
-requireResourcePermissionAsync,
-} from "@/lib/route-handler";
+import { handleRoute,requireResourcePermissionAsync } from "@/lib/route-handler";
 import { getConversationMessages } from "@/modules/agent/use-cases";
 import { toAiSdkUIMessages } from "@/modules/chat/ai-sdk-ui-messages";
 import { getUsageImpactSetting } from "@/modules/provider/usage-impact-settings";
 import { db } from "@/server/infrastructure/db";
-import {
-conversationFolders,
-conversations,
-} from "@/server/infrastructure/db/schema";
+import { conversationFolders,conversations } from "@/server/infrastructure/db/schema";
 import { and,eq,isNull } from "drizzle-orm";
 import { NextRequest,NextResponse } from "next/server";
 import { z } from "zod";
@@ -22,19 +16,11 @@ const updateConversationSchema = z
     pinned: z.boolean().optional(),
     sidebarOrder: z.number().int().nullable().optional(),
   })
-  .refine(
-    (value) =>
-      value.title !== undefined ||
-      value.folderId !== undefined ||
-      value.pinned !== undefined ||
-      value.sidebarOrder !== undefined,
-    { message: "At least one field is required" },
-  );
+  .refine((value) => value.title !== undefined || value.folderId !== undefined || value.pinned !== undefined || value.sidebarOrder !== undefined, {
+    message: "At least one field is required",
+  });
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ conversationId: string }> },
-) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ conversationId: string }> }) {
   return handleRoute(
     req,
     async ({ session }) => {
@@ -47,42 +33,22 @@ export async function GET(
       const [conversation] = await db
         .select()
         .from(conversations)
-        .where(
-          and(
-            eq(conversations.id, conversationId),
-            eq(conversations.status, "active"),
-            isNull(conversations.archivedAt),
-          ),
-        )
+        .where(and(eq(conversations.id, conversationId), eq(conversations.status, "active"), isNull(conversations.archivedAt)))
         .limit(1);
 
       if (!conversation) {
-        return NextResponse.json(
-          { error: "Conversation not found" },
-          { status: 404 },
-        );
+        return NextResponse.json({ error: "Conversation not found" }, { status: 404 });
       }
 
-      const forbidden = await requireResourcePermissionAsync(
-        session.user.id,
-        conversation.workspaceId,
-        "conversations.viewOwn",
-        "conversation",
-        conversationId,
-      );
+      const forbidden = await requireResourcePermissionAsync(session.user.id, conversation.workspaceId, "conversations.viewOwn", "conversation", conversationId);
       if (forbidden) return forbidden;
 
-      const [storedMessages, usageImpactSetting] = await Promise.all([
-        getConversationMessages(conversationId),
-        getUsageImpactSetting(),
-      ]);
+      const [storedMessages, usageImpactSetting] = await Promise.all([getConversationMessages(conversationId), getUsageImpactSetting()]);
       const messages = storedMessages.map((message) => ({
-          ...message,
-          parts: usageImpactSetting.enabled
-            ? message.parts
-            : message.parts.filter((part) => part.type !== "impact"),
-          createdAt: new Date(message.createdAt).toISOString(),
-        }));
+        ...message,
+        parts: usageImpactSetting.enabled ? message.parts : message.parts.filter((part) => part.type !== "impact"),
+        createdAt: new Date(message.createdAt).toISOString(),
+      }));
       const uiMessages = toAiSdkUIMessages(messages);
 
       return NextResponse.json({
@@ -104,10 +70,7 @@ export async function GET(
   );
 }
 
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: Promise<{ conversationId: string }> },
-) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ conversationId: string }> }) {
   return handleRoute(
     req,
     async ({ session }) => {
@@ -121,49 +84,24 @@ export async function PATCH(
       const [conversation] = await db
         .select()
         .from(conversations)
-        .where(
-          and(
-            eq(conversations.id, conversationId),
-            eq(conversations.status, "active"),
-            isNull(conversations.archivedAt),
-          ),
-        )
+        .where(and(eq(conversations.id, conversationId), eq(conversations.status, "active"), isNull(conversations.archivedAt)))
         .limit(1);
 
       if (!conversation) {
-        return NextResponse.json(
-          { error: "Conversation not found" },
-          { status: 404 },
-        );
+        return NextResponse.json({ error: "Conversation not found" }, { status: 404 });
       }
 
-      const forbidden = await requireResourcePermissionAsync(
-        session.user.id,
-        conversation.workspaceId,
-        "conversations.viewOwn",
-        "conversation",
-        conversationId,
-      );
+      const forbidden = await requireResourcePermissionAsync(session.user.id, conversation.workspaceId, "conversations.viewOwn", "conversation", conversationId);
       if (forbidden) return forbidden;
 
       if (parsedBody.data.folderId) {
         const [folder] = await db
           .select({ id: conversationFolders.id })
           .from(conversationFolders)
-          .where(
-            and(
-              eq(conversationFolders.id, parsedBody.data.folderId),
-              eq(conversationFolders.workspaceId, conversation.workspaceId),
-              eq(conversationFolders.userId, session.user.id),
-              isNull(conversationFolders.archivedAt),
-            ),
-          )
+          .where(and(eq(conversationFolders.id, parsedBody.data.folderId), eq(conversationFolders.workspaceId, conversation.workspaceId), eq(conversationFolders.userId, session.user.id), isNull(conversationFolders.archivedAt)))
           .limit(1);
         if (!folder) {
-          return NextResponse.json(
-            { error: "Folder not found" },
-            { status: 404 },
-          );
+          return NextResponse.json({ error: "Folder not found" }, { status: 404 });
         }
       }
 
@@ -182,11 +120,7 @@ export async function PATCH(
         patch.sidebarOrder = parsedBody.data.sidebarOrder;
       }
 
-      const [updated] = await db
-        .update(conversations)
-        .set(patch)
-        .where(eq(conversations.id, conversationId))
-        .returning();
+      const [updated] = await db.update(conversations).set(patch).where(eq(conversations.id, conversationId)).returning();
 
       return NextResponse.json({ conversation: updated });
     },
@@ -194,10 +128,7 @@ export async function PATCH(
   );
 }
 
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: Promise<{ conversationId: string }> },
-) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ conversationId: string }> }) {
   return handleRoute(
     req,
     async ({ session }) => {
@@ -210,29 +141,14 @@ export async function DELETE(
       const [conversation] = await db
         .select()
         .from(conversations)
-        .where(
-          and(
-            eq(conversations.id, conversationId),
-            eq(conversations.status, "active"),
-            isNull(conversations.archivedAt),
-          ),
-        )
+        .where(and(eq(conversations.id, conversationId), eq(conversations.status, "active"), isNull(conversations.archivedAt)))
         .limit(1);
 
       if (!conversation) {
-        return NextResponse.json(
-          { error: "Conversation not found" },
-          { status: 404 },
-        );
+        return NextResponse.json({ error: "Conversation not found" }, { status: 404 });
       }
 
-      const forbidden = await requireResourcePermissionAsync(
-        session.user.id,
-        conversation.workspaceId,
-        "conversations.viewOwn",
-        "conversation",
-        conversationId,
-      );
+      const forbidden = await requireResourcePermissionAsync(session.user.id, conversation.workspaceId, "conversations.viewOwn", "conversation", conversationId);
       if (forbidden) return forbidden;
 
       await db

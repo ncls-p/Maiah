@@ -3,13 +3,9 @@ import { executeCustomToolWorkflow } from "@/modules/custom-tools/use-cases";
 import { executeMcpTool } from "@/modules/mcp/executor";
 import { getBuiltInTool } from "@/modules/tool/builtin-tools";
 import { db } from "@/server/infrastructure/db";
-import {
-mcpTools,
-toolInvocations
-} from "@/server/infrastructure/db/schema";
+import { mcpTools,toolInvocations } from "@/server/infrastructure/db/schema";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
-
 
 export class InvocationExecutionError extends Error {
   constructor(
@@ -21,13 +17,8 @@ export class InvocationExecutionError extends Error {
   }
 }
 
-export async function executeInvocation(
-  invocation: typeof toolInvocations.$inferSelect,
-  userId: string,
-) {
-  const input = invocation.inputJsonEncrypted
-    ? JSON.parse(await decryptValue(invocation.inputJsonEncrypted))
-    : undefined;
+export async function executeInvocation(invocation: typeof toolInvocations.$inferSelect, userId: string) {
+  const input = invocation.inputJsonEncrypted ? JSON.parse(await decryptValue(invocation.inputJsonEncrypted)) : undefined;
 
   let output: unknown;
   if (invocation.toolSource === "builtin") {
@@ -47,11 +38,7 @@ export async function executeInvocation(
       toolInput: input,
     });
   } else if (invocation.toolSource === "mcp") {
-    const [tool] = await db
-      .select({ mcpServerId: mcpTools.mcpServerId })
-      .from(mcpTools)
-      .where(eq(mcpTools.id, invocation.toolId))
-      .limit(1);
+    const [tool] = await db.select({ mcpServerId: mcpTools.mcpServerId }).from(mcpTools).where(eq(mcpTools.id, invocation.toolId)).limit(1);
     if (!tool) {
       throw new InvocationExecutionError("MCP tool not found", 404);
     }
@@ -73,13 +60,7 @@ export function alreadyResolvedResponse(status: string) {
     return NextResponse.json({ ok: true, status, alreadyResolved: true });
   }
   if (status === "running") {
-    return NextResponse.json(
-      { ok: true, status, alreadyResolved: true },
-      { status: 202 },
-    );
+    return NextResponse.json({ ok: true, status, alreadyResolved: true }, { status: 202 });
   }
-  return NextResponse.json(
-    { error: `Invocation can no longer be approved (status: ${status})` },
-    { status: 409 },
-  );
+  return NextResponse.json({ error: `Invocation can no longer be approved (status: ${status})` }, { status: 409 });
 }

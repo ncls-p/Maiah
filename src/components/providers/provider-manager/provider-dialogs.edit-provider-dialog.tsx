@@ -1,55 +1,17 @@
 import { useTranslations } from "next-intl";
 
-
-import {
-AlertDialog,
-AlertDialogAction,
-AlertDialogCancel,
-AlertDialogContent,
-AlertDialogDescription,
-AlertDialogFooter,
-AlertDialogHeader,
-AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { AlertDialog,AlertDialogAction,AlertDialogCancel,AlertDialogContent,AlertDialogDescription,AlertDialogFooter,AlertDialogHeader,AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import {
-Dialog,
-DialogContent,
-DialogDescription,
-DialogFooter,
-DialogHeader,
-DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog,DialogContent,DialogDescription,DialogFooter,DialogHeader,DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-Select,
-SelectContent,
-SelectGroup,
-SelectItem,
-SelectTrigger,
-SelectValue,
-} from "@/components/ui/select";
+import { Select,SelectContent,SelectGroup,SelectItem,SelectTrigger,SelectValue } from "@/components/ui/select";
 
 import type { OpenAICompatibleApiRoute } from "@/lib/openai-compatible-api";
 import { EditProviderDialogProps } from "./provider-dialogs.add-provider-advanced-fields";
 import { FIELD_STACK_CLASS } from "./provider-dialogs.field-stack-class";
 
-
-export function EditProviderDialog({
-  editingProvider,
-  busy,
-  editName,
-  editBaseUrl,
-  editApiKey,
-  editApiRoute,
-  onClose,
-  onNameChange,
-  onBaseUrlChange,
-  onApiKeyChange,
-  onApiRouteChange,
-  onSave,
-}: EditProviderDialogProps) {
+export function EditProviderDialog({ editingProvider, busy, editName, editBaseUrl, editApiKey, editApiRoute, onClose, onNameChange, onBaseUrlChange, onApiKeyChange, onApiRouteChange, onSave }: EditProviderDialogProps) {
   const t = useTranslations("providers.manager");
   const tCommon = useTranslations("common");
   return (
@@ -57,83 +19,44 @@ export function EditProviderDialog({
       <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{t("editDialogTitle")}</DialogTitle>
-          <DialogDescription>
-            {t("editDialogDescription", { name: editingProvider?.name ?? "" })}
-          </DialogDescription>
+          <DialogDescription>{t("editDialogDescription", { name: editingProvider?.name ?? "" })}</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4">
           <div className={FIELD_STACK_CLASS}>
             <Label htmlFor="edit-provider-name">{t("providerName")}</Label>
-            <Input
-              id="edit-provider-name"
-              name="edit-provider-name"
-              autoComplete="off"
-              value={editName}
-              onChange={(e) => onNameChange(e.target.value)}
-            />
+            <Input id="edit-provider-name" name="edit-provider-name" autoComplete="off" value={editName} onChange={(e) => onNameChange(e.target.value)} />
           </div>
           <div className={FIELD_STACK_CLASS}>
             <Label htmlFor="edit-provider-url" help={t("serviceUrlHint")}>
               {t("serviceUrl")}
             </Label>
-            <Input
-              id="edit-provider-url"
-              name="edit-provider-url"
-              type="url"
-              inputMode="url"
-              autoComplete="off"
-              value={editBaseUrl}
-              onChange={(e) => onBaseUrlChange(e.target.value)}
-            />
-            <p className="text-xs text-muted-foreground">
-              {t("serviceUrlHint")}
-            </p>
+            <Input id="edit-provider-url" name="edit-provider-url" type="url" inputMode="url" autoComplete="off" value={editBaseUrl} onChange={(e) => onBaseUrlChange(e.target.value)} />
+            <p className="text-xs text-muted-foreground">{t("serviceUrlHint")}</p>
           </div>
           {editingProvider?.kind === "openai-compatible" ? (
             <div className={FIELD_STACK_CLASS}>
               <Label htmlFor="edit-provider-api-route" help={t("apiRouteHint")}>
                 {t("apiRoute")}
               </Label>
-              <Select
-                value={editApiRoute}
-                onValueChange={(value) =>
-                  onApiRouteChange(value as OpenAICompatibleApiRoute)
-                }
-              >
+              <Select value={editApiRoute} onValueChange={(value) => onApiRouteChange(value as OpenAICompatibleApiRoute)}>
                 <SelectTrigger id="edit-provider-api-route">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
-                    <SelectItem value="responses">
-                      {t("apiRouteResponses")}
-                    </SelectItem>
-                    <SelectItem value="chat-completions">
-                      {t("apiRouteChatCompletions")}
-                    </SelectItem>
+                    <SelectItem value="responses">{t("apiRouteResponses")}</SelectItem>
+                    <SelectItem value="chat-completions">{t("apiRouteChatCompletions")}</SelectItem>
                   </SelectGroup>
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground">
-                {t("apiRouteHint")}
-              </p>
+              <p className="text-xs text-muted-foreground">{t("apiRouteHint")}</p>
             </div>
           ) : null}
           <div className={FIELD_STACK_CLASS}>
             <Label htmlFor="edit-provider-key">
-              {t("newApiKey")}{" "}
-              <span className="text-muted-foreground">({t("optional")})</span>
+              {t("newApiKey")} <span className="text-muted-foreground">({t("optional")})</span>
             </Label>
-            <Input
-              id="edit-provider-key"
-              name="edit-provider-key"
-              type="password"
-              autoComplete="off"
-              spellCheck={false}
-              value={editApiKey}
-              onChange={(e) => onApiKeyChange(e.target.value)}
-              placeholder={t("keepCurrentKey")}
-            />
+            <Input id="edit-provider-key" name="edit-provider-key" type="password" autoComplete="off" spellCheck={false} value={editApiKey} onChange={(e) => onApiKeyChange(e.target.value)} placeholder={t("keepCurrentKey")} />
           </div>
         </div>
         <DialogFooter>
@@ -149,17 +72,7 @@ export function EditProviderDialog({
   );
 }
 
-export function DeleteProviderDialog({
-  deleteProviderId,
-  busy,
-  onClose,
-  onDelete,
-}: {
-  deleteProviderId: string | null;
-  busy: boolean;
-  onClose: () => void;
-  onDelete: (id: string) => void;
-}) {
+export function DeleteProviderDialog({ deleteProviderId, busy, onClose, onDelete }: { deleteProviderId: string | null; busy: boolean; onClose: () => void; onDelete: (id: string) => void }) {
   const t = useTranslations("providers.manager");
   const tCommon = useTranslations("common");
   return (
@@ -167,17 +80,11 @@ export function DeleteProviderDialog({
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{t("archiveTitle")}</AlertDialogTitle>
-          <AlertDialogDescription>
-            {t("archiveDescription")}
-          </AlertDialogDescription>
+          <AlertDialogDescription>{t("archiveDescription")}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>{tCommon("cancel")}</AlertDialogCancel>
-          <AlertDialogAction
-            variant="destructive"
-            disabled={busy}
-            onClick={() => deleteProviderId && onDelete(deleteProviderId)}
-          >
+          <AlertDialogAction variant="destructive" disabled={busy} onClick={() => deleteProviderId && onDelete(deleteProviderId)}>
             {t("archive")}
           </AlertDialogAction>
         </AlertDialogFooter>
@@ -186,39 +93,19 @@ export function DeleteProviderDialog({
   );
 }
 
-export function DeleteModelDialog({
-  deleteModelId,
-  deleteModelLabel,
-  busy,
-  onClose,
-  onDelete,
-}: {
-  deleteModelId: string | null;
-  deleteModelLabel: string | null;
-  busy: boolean;
-  onClose: () => void;
-  onDelete: (id: string) => void;
-}) {
+export function DeleteModelDialog({ deleteModelId, deleteModelLabel, busy, onClose, onDelete }: { deleteModelId: string | null; deleteModelLabel: string | null; busy: boolean; onClose: () => void; onDelete: (id: string) => void }) {
   const t = useTranslations("providers.manager");
   const tCommon = useTranslations("common");
   return (
     <AlertDialog open={Boolean(deleteModelId)} onOpenChange={onClose}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>
-            {t("removeModelTitle", { name: deleteModelLabel ?? "—" })}
-          </AlertDialogTitle>
-          <AlertDialogDescription>
-            {t("removeModelDescription")}
-          </AlertDialogDescription>
+          <AlertDialogTitle>{t("removeModelTitle", { name: deleteModelLabel ?? "—" })}</AlertDialogTitle>
+          <AlertDialogDescription>{t("removeModelDescription")}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>{tCommon("cancel")}</AlertDialogCancel>
-          <AlertDialogAction
-            variant="destructive"
-            disabled={busy}
-            onClick={() => deleteModelId && onDelete(deleteModelId)}
-          >
+          <AlertDialogAction variant="destructive" disabled={busy} onClick={() => deleteModelId && onDelete(deleteModelId)}>
             {t("remove")}
           </AlertDialogAction>
         </AlertDialogFooter>

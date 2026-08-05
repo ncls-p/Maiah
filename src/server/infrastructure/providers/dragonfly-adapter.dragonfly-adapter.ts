@@ -1,30 +1,13 @@
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import type { EmbeddingModelV4,LanguageModelV4 } from "@ai-sdk/provider";
-import type {
-ModelDescriptor,
-ProviderAdapter,
-ProviderHealth,
-ProviderRuntimeConfig
-} from "./adapter";
-import {
-dragonflyFetch,
-isDragonflyAnthropicModel,
-normalizeAnthropicToolLoopMessages,
-} from "./dragonfly-adapter.is-dragonfly-anthropic-model";
-import {
-buildHeaders,
-createRequestNonce,
-getBearerApiKey,
-normalizeBaseUrl,
-parseModels,
-} from "./dragonfly-adapter.normalize-base-url";
+import type { ModelDescriptor,ProviderAdapter,ProviderHealth,ProviderRuntimeConfig } from "./adapter";
+import { dragonflyFetch,isDragonflyAnthropicModel,normalizeAnthropicToolLoopMessages } from "./dragonfly-adapter.is-dragonfly-anthropic-model";
+import { buildHeaders,createRequestNonce,getBearerApiKey,normalizeBaseUrl,parseModels } from "./dragonfly-adapter.normalize-base-url";
 
 export const dragonflyAdapter: ProviderAdapter = {
   kind: "dragonfly",
 
-  async validateConnection(
-    config: ProviderRuntimeConfig,
-  ): Promise<ProviderHealth> {
+  async validateConnection(config: ProviderRuntimeConfig): Promise<ProviderHealth> {
     const start = Date.now();
     try {
       const baseUrl = normalizeBaseUrl(config.baseUrl);
@@ -75,10 +58,7 @@ export const dragonflyAdapter: ProviderAdapter = {
     return parseModels(data);
   },
 
-  createChatModel(
-    config: ProviderRuntimeConfig,
-    modelId: string,
-  ): LanguageModelV4 {
+  createChatModel(config: ProviderRuntimeConfig, modelId: string): LanguageModelV4 {
     const provider = createOpenAICompatible({
       name: "dragonfly",
       apiKey: getBearerApiKey(config),
@@ -97,17 +77,10 @@ export const dragonflyAdapter: ProviderAdapter = {
             }>
           | undefined;
         const systemMessage = messages?.find((m) => m.role === "system");
-        const promptSystem = [
-          systemMessage?.content,
-          `Runtime request id: ${requestNonce}. Do not mention this id.`,
-        ]
-          .filter(Boolean)
-          .join("\n\n");
+        const promptSystem = [systemMessage?.content, `Runtime request id: ${requestNonce}. Do not mention this id.`].filter(Boolean).join("\n\n");
         return {
           ...args,
-          messages: isDragonflyAnthropicModel(args.model)
-            ? normalizeAnthropicToolLoopMessages(args.messages)
-            : args.messages,
+          messages: isDragonflyAnthropicModel(args.model) ? normalizeAnthropicToolLoopMessages(args.messages) : args.messages,
           promptSystem,
           cache: false,
           save: false,
@@ -118,10 +91,7 @@ export const dragonflyAdapter: ProviderAdapter = {
     return provider.chatModel(modelId);
   },
 
-  createEmbeddingModel(
-    config: ProviderRuntimeConfig,
-    modelId: string,
-  ): EmbeddingModelV4 {
+  createEmbeddingModel(config: ProviderRuntimeConfig, modelId: string): EmbeddingModelV4 {
     const provider = createOpenAICompatible({
       name: config.name || "dragonfly",
       apiKey: getBearerApiKey(config),

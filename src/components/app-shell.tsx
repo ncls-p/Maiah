@@ -5,27 +5,12 @@ import { useTranslations } from "next-intl";
 import { createContext,useContext,useEffect,useMemo,useState } from "react";
 
 import { AppHeader } from "@/components/app-header";
-import {
-OrbitAccountMenu,
-OrbitProductNavigation,
-OrbitWordmark,
-} from "@/components/orbit-product-navigation";
-import {
-WorkspaceHistoryMobileTrigger,
-WorkspaceHistorySidebar,
-} from "@/components/workspace-history-sidebar";
+import { OrbitAccountMenu,OrbitProductNavigation,OrbitWordmark } from "@/components/orbit-product-navigation";
+import { WorkspaceHistoryMobileTrigger,WorkspaceHistorySidebar } from "@/components/workspace-history-sidebar";
 import { useWorkspace } from "@/hooks/use-workspace";
-import {
-fetchPendingToolCount,
-fetchWorkspacePermissions,
-} from "@/lib/api-client";
+import { fetchPendingToolCount,fetchWorkspacePermissions } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
-import {
-DEFAULT_WORKSPACE_PERMISSIONS,
-getRouteTitleKey,
-type WorkspacePermissions,
-type WorkspaceShellState,
-} from "@/lib/workspace-nav";
+import { DEFAULT_WORKSPACE_PERMISSIONS,getRouteTitleKey,type WorkspacePermissions,type WorkspaceShellState } from "@/lib/workspace-nav";
 import type { SidebarNavConfig } from "@/modules/navigation/sidebar-config";
 
 interface AppShellProps {
@@ -77,9 +62,7 @@ function usePendingToolCount(workspaceId: string | null | undefined) {
 }
 
 function useWorkspacePermissions(workspaceId: string | null | undefined) {
-  const [permissions, setPermissions] = useState<WorkspacePermissions>(
-    DEFAULT_WORKSPACE_PERMISSIONS,
-  );
+  const [permissions, setPermissions] = useState<WorkspacePermissions>(DEFAULT_WORKSPACE_PERMISSIONS);
 
   useEffect(() => {
     const currentWorkspaceId = workspaceId ?? "";
@@ -110,26 +93,13 @@ function useShellRouteMetadata(pathname: string) {
   const tNav = useTranslations("nav");
   const titleKey = getRouteTitleKey(pathname);
   const currentTitle = titleKey === "workspace" ? tNav("chat") : tNav(titleKey);
-  const orbitSection =
-    titleKey === "toolsHub"
-      ? tNav("toolsShort")
-      : titleKey === "knowledge"
-        ? tNav("knowledgeShort")
-        : titleKey === "scheduledTasks"
-          ? tNav("planningShort")
-          : currentTitle;
+  const orbitSection = titleKey === "toolsHub" ? tNav("toolsShort") : titleKey === "knowledge" ? tNav("knowledgeShort") : titleKey === "scheduledTasks" ? tNav("planningShort") : currentTitle;
   return {
     orbitSection,
   };
 }
 
-export function AppShell({
-  children,
-  displayName,
-  currentUserId,
-  isAdmin,
-  sidebarNavConfig,
-}: AppShellProps) {
+export function AppShell({ children, displayName, currentUserId, isAdmin, sidebarNavConfig }: AppShellProps) {
   const pathname = usePathname();
   const tShell = useTranslations("shell");
   const { workspaceId } = useWorkspace();
@@ -147,23 +117,13 @@ export function AppShell({
       permissions,
       sidebarNavConfig,
     }),
-    [
-      displayName,
-      currentUserId,
-      isAdmin,
-      pendingToolCount,
-      permissions,
-      sidebarNavConfig,
-    ],
+    [displayName, currentUserId, isAdmin, pendingToolCount, permissions, sidebarNavConfig],
   );
 
   return (
     <WorkspaceShellContext.Provider value={shellValue}>
       <div data-page="app-shell" className="app-shell">
-        <a
-          href="#workspace-main"
-          className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-full focus:border focus:border-border/70 focus:bg-background focus:px-3 focus:py-2 focus:text-sm focus:shadow-lg"
-        >
+        <a href="#workspace-main" className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-full focus:border focus:border-border/70 focus:bg-background focus:px-3 focus:py-2 focus:text-sm focus:shadow-lg">
           {tShell("skipToContent")}
         </a>
         <div className="flex min-h-0 flex-1 flex-row">
@@ -181,14 +141,7 @@ export function AppShell({
                 actions={<OrbitAccountMenu displayName={displayName} />}
               />
             ) : null}
-            <main
-              id="workspace-main"
-              tabIndex={-1}
-              className={cn(
-                "app-shell__main",
-                isChatRoute && "app-shell__main--chat",
-              )}
-            >
+            <main id="workspace-main" tabIndex={-1} className={cn("app-shell__main", isChatRoute && "app-shell__main--chat")}>
               {children}
             </main>
           </div>

@@ -12,10 +12,7 @@ const updateUserSchema = z.object({
   banReason: z.string().max(500).optional(),
 });
 
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: Promise<{ userId: string }> },
-) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ userId: string }> }) {
   return handleRoute(
     req,
     async () => {
@@ -48,8 +45,7 @@ export async function PATCH(
     {
       logLabel: "Failed to update user",
       expectedError: (error) => {
-        const message =
-          error instanceof Error ? error.message : "Internal server error";
+        const message = error instanceof Error ? error.message : "Internal server error";
         return NextResponse.json({ error: message }, { status: 400 });
       },
     },

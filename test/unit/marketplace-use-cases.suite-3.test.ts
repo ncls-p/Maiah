@@ -1,7 +1,4 @@
-import {
-publishMarketplaceItem,
-shareMarketplaceItem
-} from "@/modules/marketplace/use-cases";
+import { publishMarketplaceItem,shareMarketplaceItem } from "@/modules/marketplace/use-cases";
 import { beforeEach,describe,expect,it,vi } from "vitest";
 
 // ─── Mocks ─────────────────────────────────────────────────────────────
@@ -181,9 +178,7 @@ describe("marketplace use-cases", () => {
 
     it("should throw when item not found", async () => {
       givenSelectLimit([]);
-      await expect(
-        publishMarketplaceItem("nonexistent", "user1", {}),
-      ).rejects.toThrow("Marketplace item not found");
+      await expect(publishMarketplaceItem("nonexistent", "user1", {})).rejects.toThrow("Marketplace item not found");
     });
 
     it("should throw when not authorized", async () => {
@@ -193,9 +188,7 @@ describe("marketplace use-cases", () => {
         status: "draft",
       };
       givenSelectLimit([item]);
-      await expect(publishMarketplaceItem("1", "user1", {})).rejects.toThrow(
-        "Not authorized to publish this item",
-      );
+      await expect(publishMarketplaceItem("1", "user1", {})).rejects.toThrow("Not authorized to publish this item");
     });
 
     it("should throw when item is not a draft", async () => {
@@ -205,9 +198,7 @@ describe("marketplace use-cases", () => {
         status: "published",
       };
       givenSelectLimit([item]);
-      await expect(publishMarketplaceItem("1", "user1", {})).rejects.toThrow(
-        "Only drafts can be published",
-      );
+      await expect(publishMarketplaceItem("1", "user1", {})).rejects.toThrow("Only drafts can be published");
     });
   });
 

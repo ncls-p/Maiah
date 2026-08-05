@@ -14,9 +14,7 @@ test.describe("admin settings page", () => {
     await page.goto("/en/admin/settings");
     await expect(page).toHaveURL(/\/en\/admin\/settings/);
 
-    await expect(
-      page.getByRole("heading", { name: /Platform settings/i }).first(),
-    ).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole("heading", { name: /Platform settings/i }).first()).toBeVisible({ timeout: 10_000 });
   });
 
   test("shows registration settings", async ({ page }) => {
@@ -34,9 +32,7 @@ test.describe("admin settings page", () => {
     await page.waitForTimeout(2000);
 
     // System health section
-    await expect(
-      page.getByText(/System status|System health|Health/i).first(),
-    ).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(/System status|System health|Health/i).first()).toBeVisible({ timeout: 10_000 });
   });
 
   test("shows sidebar navigation settings", async ({ page }) => {
@@ -44,9 +40,7 @@ test.describe("admin settings page", () => {
     await page.waitForTimeout(2000);
 
     // Sidebar navigation section
-    await expect(
-      page.getByText(/Sidebar navigation|Navigation/i).first(),
-    ).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(/Sidebar navigation|Navigation/i).first()).toBeVisible({ timeout: 10_000 });
   });
 
   test("shows assistant governance settings", async ({ page }) => {
@@ -54,9 +48,7 @@ test.describe("admin settings page", () => {
     await page.waitForTimeout(2000);
 
     // Assistant governance section
-    await expect(
-      page.getByText(/Assistant governance|governance/i).first(),
-    ).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText(/Assistant governance|governance/i).first()).toBeVisible({ timeout: 15_000 });
   });
 
   test("shows chat automation settings", async ({ page }) => {
@@ -64,32 +56,24 @@ test.describe("admin settings page", () => {
     await page.waitForTimeout(2000);
 
     // Chat automation section
-    await expect(
-      page.getByText(/Chat automation|automation/i).first(),
-    ).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText(/Chat automation|automation/i).first()).toBeVisible({ timeout: 15_000 });
   });
 
   test("shows workflow builder assistant settings", async ({ page }) => {
     await page.goto("/en/admin/settings");
     await page.waitForTimeout(2000);
 
-    await expect(
-      page.getByText(/Workflow builder assistant/i).first(),
-    ).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText(/Workflow builder assistant/i).first()).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText(/Custom tool builder/i)).toHaveCount(0);
   });
 
-  test("configures embedding and reranking defaults explicitly", async ({
-    page,
-  }) => {
+  test("configures embedding and reranking defaults explicitly", async ({ page }) => {
     await page.goto("/en/admin/settings");
 
     await page.locator("#rag-embedding-model").fill("qwen3-embedding:4b");
     const reranking = page.getByLabel("Improve result ranking");
     if (!(await reranking.isChecked())) await reranking.click();
-    await page
-      .locator("#rag-reranking-model")
-      .fill("nvidia/llama-nemotron-rerank-vl-1b-v2");
+    await page.locator("#rag-reranking-model").fill("nvidia/llama-nemotron-rerank-vl-1b-v2");
     await page.getByRole("button", { name: "Save platform defaults" }).click();
 
     await expect(page.getByText("Default RAG settings saved")).toBeVisible();
@@ -104,9 +88,7 @@ test.describe("admin settings page", () => {
     });
     await help.hover();
 
-    await expect(page.getByRole("tooltip")).toContainText(
-      "Short passages are more precise",
-    );
+    await expect(page.getByRole("tooltip")).toContainText("Short passages are more precise");
   });
 });
 
@@ -116,12 +98,8 @@ test.describe("registration settings", () => {
     await page.waitForTimeout(2000);
 
     // Registration toggle buttons should exist
-    const openBtn = page
-      .getByRole("button", { name: /Open registration/i })
-      .first();
-    const closeBtn = page
-      .getByRole("button", { name: /Close registration/i })
-      .first();
+    const openBtn = page.getByRole("button", { name: /Open registration/i }).first();
+    const closeBtn = page.getByRole("button", { name: /Close registration/i }).first();
 
     const hasOpenBtn = await openBtn.isVisible().catch(() => false);
     const hasCloseBtn = await closeBtn.isVisible().catch(() => false);

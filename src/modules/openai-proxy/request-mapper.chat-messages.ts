@@ -1,19 +1,8 @@
-import {
-type ModelMessage
-} from "ai";
+import { type ModelMessage } from "ai";
 
-import type {
-ChatCompletionRequest
-} from "@/modules/openai-proxy/contracts";
+import type { ChatCompletionRequest } from "@/modules/openai-proxy/contracts";
 import { invalidRequest } from "@/modules/openai-proxy/errors";
-import {
-objectValue,
-parseJson,
-stringValue,
-textContent,
-toolResultOutput,
-userContent,
-} from "./request-mapper.prepared-proxy-generation";
+import { objectValue,parseJson,stringValue,textContent,toolResultOutput,userContent } from "./request-mapper.prepared-proxy-generation";
 
 export function chatMessages(request: ChatCompletionRequest): ModelMessage[] {
   const toolNames = new Map<string, string>();
@@ -49,40 +38,19 @@ export function chatMessages(request: ChatCompletionRequest): ModelMessage[] {
       }
       if (message.tool_calls != null) {
         if (!Array.isArray(message.tool_calls)) {
-          throw invalidRequest(
-            `Expected an array for '${param}.tool_calls'.`,
-            `${param}.tool_calls`,
-          );
+          throw invalidRequest(`Expected an array for '${param}.tool_calls'.`, `${param}.tool_calls`);
         }
         for (const [toolIndex, value] of message.tool_calls.entries()) {
-          const toolCall = objectValue(
-            value,
-            `${param}.tool_calls.${toolIndex}`,
-          );
-          const fn = objectValue(
-            toolCall.function,
-            `${param}.tool_calls.${toolIndex}.function`,
-          );
-          const id = stringValue(
-            toolCall.id,
-            `${param}.tool_calls.${toolIndex}.id`,
-          );
-          const name = stringValue(
-            fn.name,
-            `${param}.tool_calls.${toolIndex}.function.name`,
-          );
+          const toolCall = objectValue(value, `${param}.tool_calls.${toolIndex}`);
+          const fn = objectValue(toolCall.function, `${param}.tool_calls.${toolIndex}.function`);
+          const id = stringValue(toolCall.id, `${param}.tool_calls.${toolIndex}.id`);
+          const name = stringValue(fn.name, `${param}.tool_calls.${toolIndex}.function.name`);
           toolNames.set(id, name);
           content.push({
             type: "tool-call",
             toolCallId: id,
             toolName: name,
-            input: parseJson(
-              stringValue(
-                fn.arguments,
-                `${param}.tool_calls.${toolIndex}.function.arguments`,
-              ),
-              `${param}.tool_calls.${toolIndex}.function.arguments`,
-            ),
+            input: parseJson(stringValue(fn.arguments, `${param}.tool_calls.${toolIndex}.function.arguments`), `${param}.tool_calls.${toolIndex}.function.arguments`),
           });
         }
       }
@@ -96,20 +64,14 @@ export function chatMessages(request: ChatCompletionRequest): ModelMessage[] {
           type: "tool-call",
           toolCallId: id,
           toolName: name,
-          input: parseJson(
-            stringValue(fn.arguments, `${param}.function_call.arguments`),
-            `${param}.function_call.arguments`,
-          ),
+          input: parseJson(stringValue(fn.arguments, `${param}.function_call.arguments`), `${param}.function_call.arguments`),
         });
       }
       return { role: "assistant", content };
     }
     if (message.role === "function") {
       if (!lastLegacyFunctionCallId || !message.name) {
-        throw invalidRequest(
-          "A legacy function result must follow an assistant function_call and include a name.",
-          param,
-        );
+        throw invalidRequest("A legacy function result must follow an assistant function_call and include a name.", param);
       }
       return {
         role: "tool",
@@ -124,16 +86,10 @@ export function chatMessages(request: ChatCompletionRequest): ModelMessage[] {
       };
     }
 
-    const toolCallId = stringValue(
-      message.tool_call_id,
-      `${param}.tool_call_id`,
-    );
+    const toolCallId = stringValue(message.tool_call_id, `${param}.tool_call_id`);
     const toolName = toolNames.get(toolCallId);
     if (!toolName) {
-      throw invalidRequest(
-        `No matching assistant tool call was found for '${toolCallId}'.`,
-        `${param}.tool_call_id`,
-      );
+      throw invalidRequest(`No matching assistant tool call was found for '${toolCallId}'.`, `${param}.tool_call_id`);
     }
     return {
       role: "tool",
@@ -142,9 +98,7 @@ export function chatMessages(request: ChatCompletionRequest): ModelMessage[] {
           type: "tool-result",
           toolCallId,
           toolName,
-          output: toolResultOutput(
-            textContent(message.content, `${param}.content`),
-          ),
+          output: toolResultOutput(textContent(message.content, `${param}.content`)),
         },
       ],
     };

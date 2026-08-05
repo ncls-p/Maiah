@@ -1,33 +1,11 @@
 import http from "node:http";
 
-import {
-createChatAttachment
-} from "@/modules/chat/attachments";
-import {
-CodeSandboxExecutionContext,
-CodeSandboxOutputFile,
-CodeSandboxResult,
-maxResponseBytes,
-normalizeSandboxResponse,
-PreparedSandboxRunnerInput,
-requestTimeoutMs,
-} from "./code-sandbox.code-sandbox-output-file";
-import {
-resolveSandboxRunnerSocket,
-sandboxUnavailableMessage,
-} from "./code-sandbox.failed-sandbox-result";
-import {
-parseJsonResponse,
-sandboxOutputFileName,
-serializeSandboxRunnerRequest,
-shouldPersistSandboxFile,
-stripEmbeddedContent,
-} from "./code-sandbox.prepare-sandbox-runner-request";
+import { createChatAttachment } from "@/modules/chat/attachments";
+import { CodeSandboxExecutionContext,CodeSandboxOutputFile,CodeSandboxResult,maxResponseBytes,normalizeSandboxResponse,PreparedSandboxRunnerInput,requestTimeoutMs } from "./code-sandbox.code-sandbox-output-file";
+import { resolveSandboxRunnerSocket,sandboxUnavailableMessage } from "./code-sandbox.failed-sandbox-result";
+import { parseJsonResponse,sandboxOutputFileName,serializeSandboxRunnerRequest,shouldPersistSandboxFile,stripEmbeddedContent } from "./code-sandbox.prepare-sandbox-runner-request";
 
-async function persistSandboxFile(
-  file: CodeSandboxOutputFile,
-  context: CodeSandboxExecutionContext,
-): Promise<CodeSandboxOutputFile> {
+async function persistSandboxFile(file: CodeSandboxOutputFile, context: CodeSandboxExecutionContext): Promise<CodeSandboxOutputFile> {
   if (!shouldPersistSandboxFile(file)) return stripEmbeddedContent(file);
   try {
     const bytes = Buffer.from(file.contentBase64 ?? "", "base64");
@@ -46,18 +24,12 @@ async function persistSandboxFile(
   } catch (error) {
     return {
       ...stripEmbeddedContent(file),
-      downloadError:
-        error instanceof Error
-          ? error.message
-          : "Failed to persist sandbox output file.",
+      downloadError: error instanceof Error ? error.message : "Failed to persist sandbox output file.",
     };
   }
 }
 
-export async function persistSandboxFiles(
-  result: CodeSandboxResult,
-  context?: CodeSandboxExecutionContext,
-): Promise<CodeSandboxResult> {
+export async function persistSandboxFiles(result: CodeSandboxResult, context?: CodeSandboxExecutionContext): Promise<CodeSandboxResult> {
   if (!context || result.files.length === 0) {
     return {
       ...result,
@@ -66,16 +38,11 @@ export async function persistSandboxFiles(
   }
   return {
     ...result,
-    files: await Promise.all(
-      result.files.map((file) => persistSandboxFile(file, context)),
-    ),
+    files: await Promise.all(result.files.map((file) => persistSandboxFile(file, context))),
   };
 }
 
-export async function runSandboxRunner(
-  input: PreparedSandboxRunnerInput,
-  executionId: string,
-): Promise<CodeSandboxResult> {
+export async function runSandboxRunner(input: PreparedSandboxRunnerInput, executionId: string): Promise<CodeSandboxResult> {
   const body = serializeSandboxRunnerRequest(input);
   const socketPath = resolveSandboxRunnerSocket();
   return new Promise((resolve) => {
@@ -103,18 +70,13 @@ export async function runSandboxRunner(
             return;
           }
           responseTruncated = true;
-          const currentBytes = chunks.reduce(
-            (total, item) => total + item.byteLength,
-            0,
-          );
+          const currentBytes = chunks.reduce((total, item) => total + item.byteLength, 0);
           const remaining = Math.max(0, maxResponseBytes - currentBytes);
           if (remaining > 0) chunks.push(chunk.subarray(0, remaining));
         });
 
         response.on("end", () => {
-          const payload = parseJsonResponse(
-            Buffer.concat(chunks).toString("utf8"),
-          );
+          const payload = parseJsonResponse(Buffer.concat(chunks).toString("utf8"));
           if (!payload) {
             resolve({
               kind: "code_sandbox_result",
@@ -131,9 +93,7 @@ export async function runSandboxRunner(
             });
             return;
           }
-          resolve(
-            normalizeSandboxResponse(payload, input, { responseTruncated }),
-          );
+          resolve(normalizeSandboxResponse(payload, input, { responseTruncated }));
         });
       },
     );

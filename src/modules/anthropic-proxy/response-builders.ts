@@ -23,11 +23,7 @@ export function anthropicUsage(usage: LanguageModelUsage) {
   };
 }
 
-export function buildAnthropicMessageResponse(input: {
-  request: AnthropicMessagesRequest;
-  result: ProxyGenerationResult;
-  id?: string;
-}) {
+export function buildAnthropicMessageResponse(input: { request: AnthropicMessagesRequest; result: ProxyGenerationResult; id?: string }) {
   const content: Array<Record<string, unknown>> = [];
   if (input.result.text) {
     content.push({ type: "text", text: input.result.text });

@@ -1,23 +1,10 @@
-import type {
-ProviderRuntimeConfig
-} from "./adapter";
-import {
-normalizeResponsesInputForCompatibleProvider,
-parseRequestUrl,
-} from "./openai-compatible-adapter.default-capabilities";
+import type { ProviderRuntimeConfig } from "./adapter";
+import { normalizeResponsesInputForCompatibleProvider,parseRequestUrl } from "./openai-compatible-adapter.default-capabilities";
 
-function isUnsupportedItemReferenceResponse(
-  response: Response,
-  errorBody: string,
-) {
+function isUnsupportedItemReferenceResponse(response: Response, errorBody: string) {
   if (![400, 422, 500].includes(response.status)) return false;
   const normalizedError = errorBody.toLowerCase();
-  return (
-    normalizedError.includes("item_reference") ||
-    (normalizedError.includes("input should be a valid string") &&
-      normalizedError.includes("string_type")) ||
-    normalizedError.includes("'role'")
-  );
+  return normalizedError.includes("item_reference") || (normalizedError.includes("input should be a valid string") && normalizedError.includes("string_type")) || normalizedError.includes("'role'");
 }
 
 const RESPONSES_REASONING_EVENT_ALIASES = {
@@ -29,10 +16,7 @@ const RESPONSES_REASONING_EVENT_ALIASES = {
 export function normalizeResponsesReasoningSseLine(line: string) {
   if (line.startsWith("event:")) {
     const eventName = line.slice("event:".length).trim();
-    const normalizedEvent =
-      RESPONSES_REASONING_EVENT_ALIASES[
-        eventName as keyof typeof RESPONSES_REASONING_EVENT_ALIASES
-      ];
+    const normalizedEvent = RESPONSES_REASONING_EVENT_ALIASES[eventName as keyof typeof RESPONSES_REASONING_EVENT_ALIASES];
     return normalizedEvent ? `event: ${normalizedEvent}` : line;
   }
   if (!line.startsWith("data:")) return line;
@@ -41,16 +25,12 @@ export function normalizeResponsesReasoningSseLine(line: string) {
   try {
     const payload = JSON.parse(data) as Record<string, unknown>;
     const type = typeof payload.type === "string" ? payload.type : "";
-    const normalizedType =
-      RESPONSES_REASONING_EVENT_ALIASES[
-        type as keyof typeof RESPONSES_REASONING_EVENT_ALIASES
-      ];
+    const normalizedType = RESPONSES_REASONING_EVENT_ALIASES[type as keyof typeof RESPONSES_REASONING_EVENT_ALIASES];
     if (!normalizedType) return line;
     return `data: ${JSON.stringify({
       ...payload,
       type: normalizedType,
-      summary_index:
-        typeof payload.content_index === "number" ? payload.content_index : 0,
+      summary_index: typeof payload.content_index === "number" ? payload.content_index : 0,
     })}`;
   } catch {
     return line;
@@ -58,10 +38,7 @@ export function normalizeResponsesReasoningSseLine(line: string) {
 }
 
 function normalizeResponsesReasoningStream(response: Response) {
-  if (
-    !response.body ||
-    !response.headers.get("content-type")?.includes("text/event-stream")
-  ) {
+  if (!response.body || !response.headers.get("content-type")?.includes("text/event-stream")) {
     return response;
   }
 
@@ -75,17 +52,13 @@ function normalizeResponsesReasoningStream(response: Response) {
         const lines = buffer.split("\n");
         buffer = lines.pop() ?? "";
         for (const line of lines) {
-          controller.enqueue(
-            encoder.encode(`${normalizeResponsesReasoningSseLine(line)}\n`),
-          );
+          controller.enqueue(encoder.encode(`${normalizeResponsesReasoningSseLine(line)}\n`));
         }
       },
       flush(controller) {
         buffer += decoder.decode();
         if (buffer) {
-          controller.enqueue(
-            encoder.encode(normalizeResponsesReasoningSseLine(buffer)),
-          );
+          controller.enqueue(encoder.encode(normalizeResponsesReasoningSseLine(buffer)));
         }
       },
     }),
@@ -100,20 +73,13 @@ function normalizeResponsesReasoningStream(response: Response) {
 
 export function createResponsesFetch(config: ProviderRuntimeConfig) {
   const fetchImplementation = globalThis.fetch;
-  const hasExplicitAuthorizationHeader = Object.keys(config.headers ?? {}).some(
-    (key) => key.toLowerCase() === "authorization",
-  );
+  const hasExplicitAuthorizationHeader = Object.keys(config.headers ?? {}).some((key) => key.toLowerCase() === "authorization");
 
-  return async (
-    input: RequestInfo | URL,
-    init?: RequestInit,
-  ): Promise<Response> => {
+  return async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     const request = input instanceof Request ? input : undefined;
     const url = parseRequestUrl(input);
     if (!url) {
-      return Promise.reject(
-        new Error("The provider generated an invalid request URL."),
-      );
+      return Promise.reject(new Error("The provider generated an invalid request URL."));
     }
     for (const [key, value] of Object.entries(config.queryParams ?? {})) {
       url.searchParams.set(key, value);
@@ -123,10 +89,7 @@ export function createResponsesFetch(config: ProviderRuntimeConfig) {
     new Headers(init?.headers).forEach((value, key) => {
       headers.set(key, value);
     });
-    if (
-      !hasExplicitAuthorizationHeader &&
-      (config.authType !== "bearer" || !config.apiKey)
-    ) {
+    if (!hasExplicitAuthorizationHeader && (config.authType !== "bearer" || !config.apiKey)) {
       headers.delete("authorization");
     }
 
@@ -142,9 +105,7 @@ export function createResponsesFetch(config: ProviderRuntimeConfig) {
       return normalizeResponsesReasoningStream(response);
     }
 
-    const fallbackBody = normalizeResponsesInputForCompatibleProvider(
-      requestInit.body,
-    );
+    const fallbackBody = normalizeResponsesInputForCompatibleProvider(requestInit.body);
     if (fallbackBody === requestInit.body) return response;
 
     const errorBody = await response.clone().text();

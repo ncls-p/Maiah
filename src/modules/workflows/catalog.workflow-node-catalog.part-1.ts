@@ -1,7 +1,4 @@
-import {
-outputPathField,
-pathField,
-} from "./catalog.workflow-node-field-option";
+import { outputPathField,pathField } from "./catalog.workflow-node-field-option";
 export const WORKFLOW_NODE_CATALOGPart1 = [
   {
     type: "trigger.manual",

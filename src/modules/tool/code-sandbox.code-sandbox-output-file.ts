@@ -1,8 +1,6 @@
 import path from "node:path";
 
-import {
-type ChatAttachment
-} from "@/modules/chat/attachments";
+import { type ChatAttachment } from "@/modules/chat/attachments";
 
 type CodeSandboxLanguage = "python" | "node" | "bash";
 
@@ -64,10 +62,7 @@ export type CodeSandboxExecutionContext = {
   userId: string;
 };
 
-export type PreparedSandboxRunnerInput = Omit<
-  CodeSandboxRequest,
-  "files" | "stdin"
-> & {
+export type PreparedSandboxRunnerInput = Omit<CodeSandboxRequest, "files" | "stdin"> & {
   language: CodeSandboxLanguage;
   stdin?: string;
   stdinFile?: Buffer;
@@ -81,10 +76,7 @@ type NormalizeSandboxResponseOptions = {
 const requestTimeoutBufferMs = 30_000;
 export const maxResponseBytes = 8_000_000;
 export const defaultSocketPath = "/run/sandbox/sandbox.sock";
-export const localDevSocketPath = path.resolve(
-  /*turbopackIgnore: true*/ process.cwd(),
-  ".data/sandbox-runner/sandbox.sock",
-);
+export const localDevSocketPath = path.resolve(/*turbopackIgnore: true*/ process.cwd(), ".data/sandbox-runner/sandbox.sock");
 export const maxSandboxInputFiles = 40;
 export const maxSandboxInputFileBytes = 1_500_000;
 export const maxSandboxInputTotalBytes = 5_000_000;
@@ -94,25 +86,14 @@ const defaultSandboxTimeoutMs = 15_000;
 const maxSandboxTimeoutMs = 120_000;
 
 export function normalizeLanguage(input: CodeSandboxRequest) {
-  if (
-    input.language === "python" ||
-    input.language === "node" ||
-    input.language === "bash"
-  ) {
+  if (input.language === "python" || input.language === "node" || input.language === "bash") {
     return input.language;
   }
   throw new Error("language must be 'python', 'node', or 'bash'.");
 }
 
-function languageFromPayload(
-  payload: Partial<CodeSandboxResult>,
-  input: PreparedSandboxRunnerInput,
-) {
-  if (
-    payload.language === "python" ||
-    payload.language === "node" ||
-    payload.language === "bash"
-  ) {
+function languageFromPayload(payload: Partial<CodeSandboxResult>, input: PreparedSandboxRunnerInput) {
+  if (payload.language === "python" || payload.language === "node" || payload.language === "bash") {
     return payload.language;
   }
   return input.language;
@@ -138,18 +119,12 @@ function normalizeStderr(payload: Partial<CodeSandboxResult>) {
     return payload.stderr;
   }
   if (payload.ok === false) {
-    return typeof payload.error === "string" && payload.error.length > 0
-      ? payload.error
-      : "Sandbox runner returned an incomplete response.";
+    return typeof payload.error === "string" && payload.error.length > 0 ? payload.error : "Sandbox runner returned an incomplete response.";
   }
   return "";
 }
 
-export function normalizeSandboxResponse(
-  payload: Partial<CodeSandboxResult>,
-  input: PreparedSandboxRunnerInput,
-  options: NormalizeSandboxResponseOptions,
-): CodeSandboxResult {
+export function normalizeSandboxResponse(payload: Partial<CodeSandboxResult>, input: PreparedSandboxRunnerInput, options: NormalizeSandboxResponseOptions): CodeSandboxResult {
   return {
     kind: "code_sandbox_result",
     ok: payload.ok === true,

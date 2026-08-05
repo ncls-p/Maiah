@@ -14,10 +14,7 @@ function requestIdFrom(request: NextRequest) {
 }
 
 function requestsPerMinute() {
-  const configured = Number.parseInt(
-    process.env.ANTHROPIC_PROXY_RPM ?? process.env.OPENAI_PROXY_RPM ?? "120",
-    10,
-  );
+  const configured = Number.parseInt(process.env.ANTHROPIC_PROXY_RPM ?? process.env.OPENAI_PROXY_RPM ?? "120", 10);
   return Number.isFinite(configured) && configured > 0 ? configured : 120;
 }
 
@@ -30,25 +27,13 @@ function errorResponse(error: OpenAIProxyError, requestId: string) {
   return response;
 }
 
-export async function handleAnthropicProxyRoute(
-  request: NextRequest,
-  permission: "models.view" | "models.invoke",
-  handler: (context: OpenAIProxyContext) => Promise<Response>,
-) {
+export async function handleAnthropicProxyRoute(request: NextRequest, permission: "models.view" | "models.invoke", handler: (context: OpenAIProxyContext) => Promise<Response>) {
   const requestId = requestIdFrom(request);
   const startedAt = Date.now();
   try {
     const auth = await resolveAuthContext(request);
     if (!auth || auth.type !== "api_key") {
-      return errorResponse(
-        new OpenAIProxyError(
-          "Invalid API key. Create a scoped workspace API token and send it with x-api-key or Authorization: Bearer.",
-          401,
-          "authentication_error",
-          "invalid_api_key",
-        ),
-        requestId,
-      );
+      return errorResponse(new OpenAIProxyError("Invalid API key. Create a scoped workspace API token and send it with x-api-key or Authorization: Bearer.", 401, "authentication_error", "invalid_api_key"), requestId);
     }
     return await runWithRequestAuth(auth, async () => {
       const rateLimit = await checkRateLimit(request, {
@@ -57,36 +42,13 @@ export async function handleAnthropicProxyRoute(
         windowSeconds: 60,
       });
       if (!rateLimit.allowed) {
-        const response = errorResponse(
-          new OpenAIProxyError(
-            "Rate limit reached for this workspace API token.",
-            429,
-            "rate_limit_error",
-            "rate_limit_exceeded",
-          ),
-          requestId,
-        );
-        response.headers.set(
-          "retry-after",
-          String(Math.max(0, rateLimit.reset - Math.floor(Date.now() / 1000))),
-        );
+        const response = errorResponse(new OpenAIProxyError("Rate limit reached for this workspace API token.", 429, "rate_limit_error", "rate_limit_exceeded"), requestId);
+        response.headers.set("retry-after", String(Math.max(0, rateLimit.reset - Math.floor(Date.now() / 1000))));
         return response;
       }
-      const access = await checkWorkspacePermissionForRequest(
-        auth.userId,
-        auth.workspaceId,
-        permission,
-      );
+      const access = await checkWorkspacePermissionForRequest(auth.userId, auth.workspaceId, permission);
       if (!access.granted) {
-        return errorResponse(
-          new OpenAIProxyError(
-            access.reason ?? `Missing permission: ${permission}`,
-            403,
-            "permission_error",
-            "insufficient_permissions",
-          ),
-          requestId,
-        );
+        return errorResponse(new OpenAIProxyError(access.reason ?? `Missing permission: ${permission}`, 403, "permission_error", "insufficient_permissions"), requestId);
       }
       const response = await handler({
         workspaceId: auth.workspaceId,
@@ -110,11 +72,7 @@ export async function handleAnthropicProxyRoute(
     });
   } catch (error) {
     const normalized = providerError(error);
-    logHandledError(
-      "Anthropic-compatible proxy request failed",
-      { requestId, path: request.nextUrl.pathname, status: normalized.status },
-      error as Error,
-    );
+    logHandledError("Anthropic-compatible proxy request failed", { requestId, path: request.nextUrl.pathname, status: normalized.status }, error as Error);
     return errorResponse(normalized, requestId);
   }
 }

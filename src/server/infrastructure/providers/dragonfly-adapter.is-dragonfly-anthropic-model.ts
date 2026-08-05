@@ -30,15 +30,10 @@ type OpenAiCompatibleMessage = Record<string, unknown> & {
 };
 
 export function isDragonflyAnthropicModel(model: unknown) {
-  return (
-    typeof model === "string" &&
-    (model.includes("claude") || model.includes("anthropic"))
-  );
+  return typeof model === "string" && (model.includes("claude") || model.includes("anthropic"));
 }
 
-export function normalizeAnthropicToolLoopMessages(
-  messages: unknown,
-): OpenAiCompatibleMessage[] | unknown {
+export function normalizeAnthropicToolLoopMessages(messages: unknown): OpenAiCompatibleMessage[] | unknown {
   if (!Array.isArray(messages)) return messages;
 
   return (messages as OpenAiCompatibleMessage[]).map((message) => {
@@ -58,13 +53,7 @@ export function normalizeAnthropicToolLoopMessages(
     if (message.role === "tool") {
       return {
         role: "user",
-        content: [
-          `Tool result for ${String(message.tool_call_id ?? "unknown")}:`,
-          typeof message.content === "string"
-            ? message.content
-            : JSON.stringify(message.content ?? null),
-          "Use this result to answer the user's request. Do not call the same tool again unless the result is insufficient.",
-        ].join("\n"),
+        content: [`Tool result for ${String(message.tool_call_id ?? "unknown")}:`, typeof message.content === "string" ? message.content : JSON.stringify(message.content ?? null), "Use this result to answer the user's request. Do not call the same tool again unless the result is insufficient."].join("\n"),
       };
     }
 
@@ -72,10 +61,7 @@ export function normalizeAnthropicToolLoopMessages(
   });
 }
 
-export async function dragonflyFetch(
-  input: RequestInfo | URL,
-  init?: RequestInit,
-): Promise<Response> {
+export async function dragonflyFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   const response = await fetch(input, init);
   const contentType = response.headers.get("content-type") ?? "";
   if (!response.body || !contentType.includes("text/event-stream")) {
@@ -92,9 +78,7 @@ export async function dragonflyFetch(
       const events = buffer.split("\n\n");
       buffer = events.pop() ?? "";
       for (const event of events) {
-        controller.enqueue(
-          encoder.encode(`${sanitizeDragonflySseEvent(event)}\n\n`),
-        );
+        controller.enqueue(encoder.encode(`${sanitizeDragonflySseEvent(event)}\n\n`));
       }
     },
     flush(controller) {

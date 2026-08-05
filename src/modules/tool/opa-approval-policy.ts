@@ -1,11 +1,7 @@
 import { normalizeOpaDecision } from "@ai-sdk/policy-opa";
 
 import { logHandledWarning } from "@/lib/logger";
-import {
-allowToolDecision,
-type ToolApprovalDecision,
-type ToolSource,
-} from "./approval-policy";
+import { allowToolDecision,type ToolApprovalDecision,type ToolSource } from "./approval-policy";
 
 export type OpaToolApprovalInput = {
   toolName: string;
@@ -31,14 +27,10 @@ function opaDataUrl(baseUrl: string, path: string) {
   return `${baseUrl}/v1/data/${path.replace(/^\/+/, "")}`;
 }
 
-function toToolApprovalDecision(
-  decision: ReturnType<typeof normalizeOpaDecision>,
-): ToolApprovalDecision | null {
+function toToolApprovalDecision(decision: ReturnType<typeof normalizeOpaDecision>): ToolApprovalDecision | null {
   switch (decision.type) {
     case "approved":
-      return allowToolDecision(
-        decision.reason ?? "OPA policy approved tool execution",
-      );
+      return allowToolDecision(decision.reason ?? "OPA policy approved tool execution");
     case "denied":
       return {
         status: "deny",
@@ -63,9 +55,7 @@ function toToolApprovalDecision(
  * Optional OPA-backed AI SDK approval policy. When configured, OPA gets first
  * refusal/approval and local Maiah policy handles `not-applicable` decisions.
  */
-export async function evaluateOpaToolApprovalPolicy(
-  input: OpaToolApprovalInput,
-): Promise<ToolApprovalDecision | null> {
+export async function evaluateOpaToolApprovalPolicy(input: OpaToolApprovalInput): Promise<ToolApprovalDecision | null> {
   const baseUrl = configuredOpaUrl();
   if (!baseUrl) return null;
 

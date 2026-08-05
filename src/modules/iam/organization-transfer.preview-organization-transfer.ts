@@ -1,24 +1,13 @@
-
 import { and,asc,eq } from "drizzle-orm";
 
 import { db } from "@/server/infrastructure/db";
-import {
-organizationMembers,
-roles,
-teams,
-workspaces
-} from "@/server/infrastructure/db/schema";
+import { organizationMembers,roles,teams,workspaces } from "@/server/infrastructure/db/schema";
 
 import { OrganizationTransferPreview,listOrganizationTransferDestinations,requireOrganizationTransferPermissions,scopeForWorkspace,transferFingerprint } from "./organization-transfer.organization-transfer-destination";
 import { planConflictResolutions,resourceCount } from "./organization-transfer.plan-conflict-resolutions";
 import { IamOperationError } from "./use-cases";
 
-
-export async function previewOrganizationTransfer(input: {
-  actorUserId: string;
-  sourceWorkspaceId: string;
-  targetOrganizationId: string;
-}): Promise<OrganizationTransferPreview> {
+export async function previewOrganizationTransfer(input: { actorUserId: string; sourceWorkspaceId: string; targetOrganizationId: string }): Promise<OrganizationTransferPreview> {
   const source = await scopeForWorkspace(input.sourceWorkspaceId);
   if (source.organizationId === input.targetOrganizationId) {
     throw new IamOperationError("Choose another organization", 400);
@@ -28,9 +17,7 @@ export async function previewOrganizationTransfer(input: {
       actorUserId: input.actorUserId,
       sourceWorkspaceId: input.sourceWorkspaceId,
     })
-  ).filter(
-    ({ organizationId }) => organizationId === input.targetOrganizationId,
-  );
+  ).filter(({ organizationId }) => organizationId === input.targetOrganizationId);
   if (!destination) {
     throw new IamOperationError("Destination organization is unavailable", 403);
   }
@@ -42,41 +29,25 @@ export async function previewOrganizationTransfer(input: {
     targetOrganizationId: destination.organizationId,
   });
 
-  const [sourceProjects, targetProjects, sourceTeams, targetTeams] =
-    await Promise.all([
-      db
-        .select({
-          id: workspaces.id,
-          name: workspaces.name,
-          slug: workspaces.slug,
-        })
-        .from(workspaces)
-        .where(eq(workspaces.organizationId, source.organizationId))
-        .orderBy(asc(workspaces.id)),
-      db
-        .select({ slug: workspaces.slug })
-        .from(workspaces)
-        .where(eq(workspaces.organizationId, destination.organizationId)),
-      db
-        .select({ id: teams.id, name: teams.name, slug: teams.slug })
-        .from(teams)
-        .where(eq(teams.organizationId, source.organizationId))
-        .orderBy(asc(teams.id)),
-      db
-        .select({ slug: teams.slug })
-        .from(teams)
-        .where(eq(teams.organizationId, destination.organizationId)),
-    ]);
+  const [sourceProjects, targetProjects, sourceTeams, targetTeams] = await Promise.all([
+    db
+      .select({
+        id: workspaces.id,
+        name: workspaces.name,
+        slug: workspaces.slug,
+      })
+      .from(workspaces)
+      .where(eq(workspaces.organizationId, source.organizationId))
+      .orderBy(asc(workspaces.id)),
+    db.select({ slug: workspaces.slug }).from(workspaces).where(eq(workspaces.organizationId, destination.organizationId)),
+    db.select({ id: teams.id, name: teams.name, slug: teams.slug }).from(teams).where(eq(teams.organizationId, source.organizationId)).orderBy(asc(teams.id)),
+    db.select({ slug: teams.slug }).from(teams).where(eq(teams.organizationId, destination.organizationId)),
+  ]);
   const [sourceMembers, sourceRoles, targetRoles] = await Promise.all([
     db
       .select({ userId: organizationMembers.userId })
       .from(organizationMembers)
-      .where(
-        and(
-          eq(organizationMembers.organizationId, source.organizationId),
-          eq(organizationMembers.status, "active"),
-        ),
-      ),
+      .where(and(eq(organizationMembers.organizationId, source.organizationId), eq(organizationMembers.status, "active"))),
     db
       .select({
         id: roles.id,
@@ -84,24 +55,12 @@ export async function previewOrganizationTransfer(input: {
         displayName: roles.displayName,
       })
       .from(roles)
-      .where(
-        and(
-          eq(roles.isSystem, false),
-          eq(roles.ownerResourceType, "organization"),
-          eq(roles.ownerResourceId, source.organizationId),
-        ),
-      )
+      .where(and(eq(roles.isSystem, false), eq(roles.ownerResourceType, "organization"), eq(roles.ownerResourceId, source.organizationId)))
       .orderBy(asc(roles.id)),
     db
       .select({ name: roles.name })
       .from(roles)
-      .where(
-        and(
-          eq(roles.isSystem, false),
-          eq(roles.ownerResourceType, "organization"),
-          eq(roles.ownerResourceId, destination.organizationId),
-        ),
-      ),
+      .where(and(eq(roles.isSystem, false), eq(roles.ownerResourceType, "organization"), eq(roles.ownerResourceId, destination.organizationId))),
   ]);
 
   const blockers: string[] = [];
@@ -154,10 +113,7 @@ export async function previewOrganizationTransfer(input: {
     counts,
     conflictResolutions,
     blockers,
-    warnings: [
-      "All projects, members, teams, custom organization roles, and tool policies will move together.",
-      "The source organization will remain empty so it can be reviewed before deletion.",
-    ],
+    warnings: ["All projects, members, teams, custom organization roles, and tool policies will move together.", "The source organization will remain empty so it can be reviewed before deletion."],
     confirmationToken: transferFingerprint({
       sourceOrganizationId: source.organizationId,
       targetOrganizationId: destination.organizationId,

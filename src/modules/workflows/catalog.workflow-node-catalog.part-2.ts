@@ -1,8 +1,4 @@
-import {
-comparisonOptions,
-outputPathField,
-pathField,
-} from "./catalog.workflow-node-field-option";
+import { comparisonOptions,outputPathField,pathField } from "./catalog.workflow-node-field-option";
 export const WORKFLOW_NODE_CATALOGPart2 = [
   {
     type: "number.calculate",
@@ -21,14 +17,7 @@ export const WORKFLOW_NODE_CATALOGPart2 = [
         key: "operation",
         control: "select",
         label: "operation",
-        options: [
-          "add",
-          "subtract",
-          "multiply",
-          "divide",
-          "modulo",
-          "round",
-        ].map((value) => ({ value, label: value })),
+        options: ["add", "subtract", "multiply", "divide", "modulo", "round"].map((value) => ({ value, label: value })),
       },
       { key: "operand", control: "number", label: "operand" },
       outputPathField,
@@ -96,12 +85,7 @@ export const WORKFLOW_NODE_CATALOGPart2 = [
       limit: 10,
       outputPath: "items",
     },
-    fields: [
-      pathField(),
-      { key: "start", control: "number", label: "start", min: 0 },
-      { key: "limit", control: "number", label: "limit", min: 1, max: 10_000 },
-      outputPathField,
-    ],
+    fields: [pathField(), { key: "start", control: "number", label: "start", min: 0 }, { key: "limit", control: "number", label: "limit", min: 1, max: 10_000 }, outputPathField],
   },
   {
     type: "logic.condition",
@@ -148,8 +132,7 @@ export const WORKFLOW_NODE_CATALOGPart2 = [
   {
     type: "debug.snapshot",
     label: "Inspecter les données",
-    description:
-      "Capture l’entrée de cette étape dans le détail du run sans la modifier.",
+    description: "Capture l’entrée de cette étape dans le détail du run sans la modifier.",
     category: "code",
     defaultParameters: {
       note: "Vérifier les données à cet endroit",

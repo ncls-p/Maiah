@@ -8,11 +8,7 @@ let queue: Queue<{ runId: string }> | null = null;
 
 type WorkflowQueueClient = Pick<Queue<{ runId: string }>, "add" | "getJob">;
 
-export type WorkflowRunRecoveryResult =
-  | "enqueued"
-  | "retried"
-  | "scheduled"
-  | "completed";
+export type WorkflowRunRecoveryResult = "enqueued" | "retried" | "scheduled" | "completed";
 
 export function workflowQueueConnection(): ConnectionOptions {
   const url = new URL(env.DRAGONFLY_URL);
@@ -44,10 +40,7 @@ export async function enqueueWorkflowRun(runId: string) {
   await getWorkflowQueue().add("execute", { runId }, { jobId: runId });
 }
 
-export async function recoverWorkflowRunJob(
-  runId: string,
-  targetQueue: WorkflowQueueClient = getWorkflowQueue(),
-): Promise<WorkflowRunRecoveryResult> {
+export async function recoverWorkflowRunJob(runId: string, targetQueue: WorkflowQueueClient = getWorkflowQueue()): Promise<WorkflowRunRecoveryResult> {
   const existingJob = await targetQueue.getJob(runId);
   if (!existingJob) {
     await targetQueue.add("execute", { runId }, { jobId: runId });

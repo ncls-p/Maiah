@@ -56,27 +56,15 @@ export default function SignInPage() {
       footer={
         <>
           {t("noAccount")}{" "}
-          <Link
-            href="/auth/signup"
-            className="font-medium text-primary underline-offset-4 hover:underline"
-          >
+          <Link href="/auth/signup" className="font-medium text-primary underline-offset-4 hover:underline">
             {t("signUp")}
           </Link>
         </>
       }
     >
-      <form
-        onSubmit={handleSubmit}
-        className="flex flex-col gap-4"
-        aria-busy={loading}
-      >
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4" aria-busy={loading}>
         {error ? (
-          <Alert
-            ref={errorRef}
-            id={errorId}
-            variant="destructive"
-            tabIndex={-1}
-          >
+          <Alert ref={errorRef} id={errorId} variant="destructive" tabIndex={-1}>
             <AlertTitle>{t("signInErrorTitle")}</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
           </Alert>
@@ -85,52 +73,19 @@ export default function SignInPage() {
         <Field>
           <FieldLabel htmlFor="email">{t("email")}</FieldLabel>
           <FieldContent>
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              spellCheck={false}
-              required
-              aria-invalid={error ? true : undefined}
-              aria-describedby={error ? errorId : undefined}
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder={t("emailPlaceholder")}
-            />
+            <Input id="email" name="email" type="email" autoComplete="email" spellCheck={false} required aria-invalid={error ? true : undefined} aria-describedby={error ? errorId : undefined} value={email} onChange={(event) => setEmail(event.target.value)} placeholder={t("emailPlaceholder")} />
           </FieldContent>
         </Field>
 
         <Field>
           <FieldLabel htmlFor="password">{t("password")}</FieldLabel>
           <FieldContent>
-            <Input
-              id="password"
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              required
-              aria-invalid={error ? true : undefined}
-              aria-describedby={error ? errorId : undefined}
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder={t("passwordPlaceholder")}
-            />
+            <Input id="password" name="password" type="password" autoComplete="current-password" required aria-invalid={error ? true : undefined} aria-describedby={error ? errorId : undefined} value={password} onChange={(event) => setPassword(event.target.value)} placeholder={t("passwordPlaceholder")} />
           </FieldContent>
         </Field>
 
-        <Button
-          type="submit"
-          size="lg"
-          className="w-full"
-          disabled={loading}
-          aria-busy={loading}
-        >
-          {loading ? (
-            <Spinner data-icon="inline-start" />
-          ) : (
-            <LogInIcon data-icon="inline-start" aria-hidden="true" />
-          )}
+        <Button type="submit" size="lg" className="w-full" disabled={loading} aria-busy={loading}>
+          {loading ? <Spinner data-icon="inline-start" /> : <LogInIcon data-icon="inline-start" aria-hidden="true" />}
           {loading ? t("signingIn") : t("signIn")}
         </Button>
       </form>

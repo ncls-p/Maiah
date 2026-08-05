@@ -1,35 +1,14 @@
 import path from "node:path";
 
 import { maxSandboxInputFileBytes } from "./code-sandbox.code-sandbox-output-file";
-import {
-DocumentExplorerFile,
-documentExplorerMetadataReserveBytes,
-documentExplorerRootPath,
-safeRelativePath,
-} from "./code-sandbox.failed-sandbox-result";
-import {
-groupDocumentUnits,
-groupTitle,
-safeDocumentChunkSlug,
-utf8Prefix,
-} from "./code-sandbox.group-document-units";
+import { DocumentExplorerFile,documentExplorerMetadataReserveBytes,documentExplorerRootPath,safeRelativePath } from "./code-sandbox.failed-sandbox-result";
+import { groupDocumentUnits,groupTitle,safeDocumentChunkSlug,utf8Prefix } from "./code-sandbox.group-document-units";
 
-export function buildDocumentExplorerFiles(input: {
-  filePath: string;
-  fileName: string;
-  mimeType: string;
-  markdown: string;
-  maxFiles: number;
-  maxBytes: number;
-  originalIncluded: boolean;
-}): DocumentExplorerFile[] {
+export function buildDocumentExplorerFiles(input: { filePath: string; fileName: string; mimeType: string; markdown: string; maxFiles: number; maxBytes: number; originalIncluded: boolean }): DocumentExplorerFile[] {
   const root = documentExplorerRootPath(input.filePath);
   const maxChunks = Math.max(1, input.maxFiles - 2);
   const grouped = groupDocumentUnits(input.markdown, maxChunks);
-  const segmentBudget = Math.max(
-    0,
-    input.maxBytes - documentExplorerMetadataReserveBytes,
-  );
+  const segmentBudget = Math.max(0, input.maxBytes - documentExplorerMetadataReserveBytes);
   const chunks: Array<{
     path: string;
     title: string;
@@ -53,30 +32,20 @@ export function buildDocumentExplorerFiles(input: {
     }
     const firstPage = group.find((unit) => unit.page !== undefined)?.page;
     const lastPage = group.findLast((unit) => unit.page !== undefined)?.page;
-    const folder =
-      firstPage !== undefined
-        ? group.length === 1
-          ? "pages"
-          : "volumes"
-        : "sections";
+    const folder = firstPage !== undefined ? (group.length === 1 ? "pages" : "volumes") : "sections";
     const fileName = `${String(index + 1).padStart(3, "0")}-${safeDocumentChunkSlug(title)}.md`;
     chunks.push({
       path: `${root}/${folder}/${fileName}`,
       title,
       chars: boundedText.length,
-      ...(firstPage !== undefined && lastPage !== undefined
-        ? { pages: { start: firstPage, end: lastPage } }
-        : {}),
+      ...(firstPage !== undefined && lastPage !== undefined ? { pages: { start: firstPage, end: lastPage } } : {}),
       bytes,
     });
     usedSegmentBytes += bytes.byteLength;
     includedChars += boundedText.length;
   }
 
-  const complete =
-    grouped.complete &&
-    allChunksComplete &&
-    chunks.length === grouped.groups.length;
+  const complete = grouped.complete && allChunksComplete && chunks.length === grouped.groups.length;
   const manifest = {
     version: 1,
     fileName: input.fileName,
@@ -92,26 +61,7 @@ export function buildDocumentExplorerFiles(input: {
       ...(chunk.pages ? { pages: chunk.pages } : {}),
     })),
   };
-  const readme = [
-    `# Document explorer: ${input.fileName}`,
-    "",
-    "This directory is a deterministic, embedding-free index for agentic document exploration.",
-    "",
-    "## Recommended workflow",
-    "",
-    "1. Read `manifest.json` to see the available pages, sections, or volumes.",
-    "2. Search all chunks with `rg -n -i 'term|synonym' .`.",
-    "3. Open only relevant ranges with `sed -n 'START,ENDp' <path>` or a short Python script.",
-    "4. Follow adjacent page or section files when more context is needed.",
-    "5. Combine discovery, search, and relevant reads in one run whenever practical; the sandbox is wiped after every run.",
-    "",
-    complete
-      ? "The complete stored Markdown extraction is present."
-      : "The explorer is partial because sandbox safety limits were reached.",
-    input.originalIncluded
-      ? `The original file is available at \`${input.filePath}\`.`
-      : "The original file was omitted from this sandbox run to prioritize the searchable extraction.",
-  ].join("\n");
+  const readme = [`# Document explorer: ${input.fileName}`, "", "This directory is a deterministic, embedding-free index for agentic document exploration.", "", "## Recommended workflow", "", "1. Read `manifest.json` to see the available pages, sections, or volumes.", "2. Search all chunks with `rg -n -i 'term|synonym' .`.", "3. Open only relevant ranges with `sed -n 'START,ENDp' <path>` or a short Python script.", "4. Follow adjacent page or section files when more context is needed.", "5. Combine discovery, search, and relevant reads in one run whenever practical; the sandbox is wiped after every run.", "", complete ? "The complete stored Markdown extraction is present." : "The explorer is partial because sandbox safety limits were reached.", input.originalIncluded ? `The original file is available at \`${input.filePath}\`.` : "The original file was omitted from this sandbox run to prioritize the searchable extraction."].join("\n");
 
   return [
     { path: `${root}/README.md`, bytes: Buffer.from(readme, "utf8") },
@@ -134,10 +84,7 @@ export function uniqueSandboxPath(filePath: string, usedPaths: Set<string>) {
   }
   const parsed = path.posix.parse(normalized);
   for (let index = 2; index < 100; index += 1) {
-    const candidate = path.posix.join(
-      parsed.dir,
-      `${parsed.name}-${index}${parsed.ext}`,
-    );
+    const candidate = path.posix.join(parsed.dir, `${parsed.name}-${index}${parsed.ext}`);
     if (!usedPaths.has(candidate)) {
       usedPaths.add(candidate);
       return candidate;

@@ -1,7 +1,4 @@
-import {
-handleRoute,
-requireWorkspacePermissionAsync,
-} from "@/lib/route-handler";
+import { handleRoute,requireWorkspacePermissionAsync } from "@/lib/route-handler";
 import { db } from "@/server/infrastructure/db";
 import { auditEvents,users } from "@/server/infrastructure/db/schema";
 import { and,desc,eq,gte,inArray,lte } from "drizzle-orm";
@@ -30,28 +27,16 @@ export async function GET(req: NextRequest) {
         from: searchParams.get("from") ?? undefined,
         to: searchParams.get("to") ?? undefined,
       });
-      if (!parsed.success)
-        return NextResponse.json(
-          { error: "Invalid input", details: parsed.error.issues },
-          { status: 400 },
-        );
+      if (!parsed.success) return NextResponse.json({ error: "Invalid input", details: parsed.error.issues }, { status: 400 });
 
-      const forbidden = await requireWorkspacePermissionAsync(
-        session.user.id,
-        parsed.data.workspaceId,
-        "audit.view",
-      );
+      const forbidden = await requireWorkspacePermissionAsync(session.user.id, parsed.data.workspaceId, "audit.view");
       if (forbidden) return forbidden;
 
       const filters = [eq(auditEvents.workspaceId, parsed.data.workspaceId)];
-      if (parsed.data.action)
-        filters.push(eq(auditEvents.action, parsed.data.action));
-      if (parsed.data.outcome)
-        filters.push(eq(auditEvents.outcome, parsed.data.outcome));
-      if (parsed.data.from)
-        filters.push(gte(auditEvents.createdAt, new Date(parsed.data.from)));
-      if (parsed.data.to)
-        filters.push(lte(auditEvents.createdAt, new Date(parsed.data.to)));
+      if (parsed.data.action) filters.push(eq(auditEvents.action, parsed.data.action));
+      if (parsed.data.outcome) filters.push(eq(auditEvents.outcome, parsed.data.outcome));
+      if (parsed.data.from) filters.push(gte(auditEvents.createdAt, new Date(parsed.data.from)));
+      if (parsed.data.to) filters.push(lte(auditEvents.createdAt, new Date(parsed.data.to)));
 
       const events = await db
         .select()
@@ -60,29 +45,15 @@ export async function GET(req: NextRequest) {
         .orderBy(desc(auditEvents.createdAt))
         .limit(parsed.data.limit);
 
-      const actorIds = [
-        ...new Set(
-          events
-            .map((event) => event.actorPrincipalId)
-            .filter((id): id is string => Boolean(id)),
-        ),
-      ];
+      const actorIds = [...new Set(events.map((event) => event.actorPrincipalId).filter((id): id is string => Boolean(id)))];
 
-      const actorRows =
-        actorIds.length > 0
-          ? await db
-              .select({ id: users.id, name: users.name, email: users.email })
-              .from(users)
-              .where(inArray(users.id, actorIds))
-          : [];
+      const actorRows = actorIds.length > 0 ? await db.select({ id: users.id, name: users.name, email: users.email }).from(users).where(inArray(users.id, actorIds)) : [];
 
       const actorsById = new Map(actorRows.map((row) => [row.id, row]));
 
       return NextResponse.json(
         events.map((event) => {
-          const actor = event.actorPrincipalId
-            ? actorsById.get(event.actorPrincipalId)
-            : null;
+          const actor = event.actorPrincipalId ? actorsById.get(event.actorPrincipalId) : null;
           return {
             ...event,
             actorName: actor?.name ?? null,

@@ -1,15 +1,7 @@
 import { and,desc,eq,gte,lte,sql,type SQL } from "drizzle-orm";
 
 import { db } from "@/server/infrastructure/db";
-import {
-aiModels,
-aiProviders,
-teamMembers,
-teams,
-usageEvents,
-users,
-workspaces,
-} from "@/server/infrastructure/db/schema";
+import { aiModels,aiProviders,teamMembers,teams,usageEvents,users,workspaces } from "@/server/infrastructure/db/schema";
 
 type UsageAnalyticsInput = {
   workspaceId: string;
@@ -41,13 +33,7 @@ function number(value: string | number | null | undefined) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function metric(row: {
-  events: string;
-  inputTokens: string;
-  outputTokens: string;
-  failedEvents?: string;
-  averageLatencyMs?: string;
-}) {
+function metric(row: { events: string; inputTokens: string; outputTokens: string; failedEvents?: string; averageLatencyMs?: string }) {
   return {
     events: number(row.events),
     inputTokens: number(row.inputTokens),
@@ -71,30 +57,13 @@ function costsById(rows: CostRow[]) {
 }
 
 function costQueryFilters(filters: SQL[]) {
-  return and(
-    ...filters,
-    sql`${costValue} is not null`,
-    sql`${costCurrency} is not null`,
-  );
+  return and(...filters, sql`${costValue} is not null`, sql`${costCurrency} is not null`);
 }
 
 export async function getWorkspaceUsageAnalytics(input: UsageAnalyticsInput) {
   const filters = filtersFor(input);
   const where = and(...filters);
-  const [
-    recentEvents,
-    [totals],
-    daily,
-    userMetrics,
-    teamMetrics,
-    modelMetrics,
-    operationMetrics,
-    globalCosts,
-    userCostRows,
-    teamCostRows,
-    modelCostRows,
-    operationCostRows,
-  ] = await Promise.all([
+  const [recentEvents, [totals], daily, userMetrics, teamMetrics, modelMetrics, operationMetrics, globalCosts, userCostRows, teamCostRows, modelCostRows, operationCostRows] = await Promise.all([
     db
       .select({
         id: usageEvents.id,
@@ -152,11 +121,7 @@ export async function getWorkspaceUsageAnalytics(input: UsageAnalyticsInput) {
       .leftJoin(users, eq(usageEvents.userId, users.id))
       .where(where)
       .groupBy(usageEvents.userId, users.name, users.email)
-      .orderBy(
-        desc(
-          sql`sum(coalesce(${usageEvents.inputTokens}, 0) + coalesce(${usageEvents.outputTokens}, 0))`,
-        ),
-      ),
+      .orderBy(desc(sql`sum(coalesce(${usageEvents.inputTokens}, 0) + coalesce(${usageEvents.outputTokens}, 0))`)),
     db
       .select({
         id: teams.id,
@@ -169,15 +134,9 @@ export async function getWorkspaceUsageAnalytics(input: UsageAnalyticsInput) {
       .innerJoin(teamMembers, eq(usageEvents.userId, teamMembers.userId))
       .innerJoin(teams, eq(teamMembers.teamId, teams.id))
       .innerJoin(workspaces, eq(workspaces.id, input.workspaceId))
-      .where(
-        and(...filters, eq(teams.organizationId, workspaces.organizationId)),
-      )
+      .where(and(...filters, eq(teams.organizationId, workspaces.organizationId)))
       .groupBy(teams.id, teams.name)
-      .orderBy(
-        desc(
-          sql`sum(coalesce(${usageEvents.inputTokens}, 0) + coalesce(${usageEvents.outputTokens}, 0))`,
-        ),
-      ),
+      .orderBy(desc(sql`sum(coalesce(${usageEvents.inputTokens}, 0) + coalesce(${usageEvents.outputTokens}, 0))`)),
     db
       .select({
         id: usageEvents.modelId,
@@ -192,17 +151,8 @@ export async function getWorkspaceUsageAnalytics(input: UsageAnalyticsInput) {
       .leftJoin(aiModels, eq(usageEvents.modelId, aiModels.id))
       .leftJoin(aiProviders, eq(usageEvents.providerId, aiProviders.id))
       .where(where)
-      .groupBy(
-        usageEvents.modelId,
-        aiModels.displayName,
-        aiModels.modelId,
-        aiProviders.name,
-      )
-      .orderBy(
-        desc(
-          sql`sum(coalesce(${usageEvents.inputTokens}, 0) + coalesce(${usageEvents.outputTokens}, 0))`,
-        ),
-      ),
+      .groupBy(usageEvents.modelId, aiModels.displayName, aiModels.modelId, aiProviders.name)
+      .orderBy(desc(sql`sum(coalesce(${usageEvents.inputTokens}, 0) + coalesce(${usageEvents.outputTokens}, 0))`)),
     db
       .select({
         operation: usageEvents.operation,
@@ -214,11 +164,7 @@ export async function getWorkspaceUsageAnalytics(input: UsageAnalyticsInput) {
       .where(where)
       .groupBy(usageEvents.operation)
       .orderBy(desc(eventCount)),
-    db
-      .select({ currency: costCurrency, cost: costTotal })
-      .from(usageEvents)
-      .where(costQueryFilters(filters))
-      .groupBy(costCurrency),
+    db.select({ currency: costCurrency, cost: costTotal }).from(usageEvents).where(costQueryFilters(filters)).groupBy(costCurrency),
     groupedCosts(filters, usageEvents.userId),
     groupedTeamCosts(input, filters),
     groupedCosts(filters, usageEvents.modelId),
@@ -260,18 +206,8 @@ function costRow(row: { currency: string; cost: string }) {
   return { currency: row.currency, amount: number(row.cost) };
 }
 
-function groupedCosts(
-  filters: SQL[],
-  column:
-    | typeof usageEvents.userId
-    | typeof usageEvents.modelId
-    | typeof usageEvents.operation,
-) {
-  return db
-    .select({ id: column, currency: costCurrency, cost: costTotal })
-    .from(usageEvents)
-    .where(costQueryFilters(filters))
-    .groupBy(column, costCurrency) as Promise<CostRow[]>;
+function groupedCosts(filters: SQL[], column: typeof usageEvents.userId | typeof usageEvents.modelId | typeof usageEvents.operation) {
+  return db.select({ id: column, currency: costCurrency, cost: costTotal }).from(usageEvents).where(costQueryFilters(filters)).groupBy(column, costCurrency) as Promise<CostRow[]>;
 }
 
 function groupedTeamCosts(input: UsageAnalyticsInput, filters: SQL[]) {
@@ -281,13 +217,6 @@ function groupedTeamCosts(input: UsageAnalyticsInput, filters: SQL[]) {
     .innerJoin(teamMembers, eq(usageEvents.userId, teamMembers.userId))
     .innerJoin(teams, eq(teamMembers.teamId, teams.id))
     .innerJoin(workspaces, eq(workspaces.id, input.workspaceId))
-    .where(
-      and(
-        ...filters,
-        eq(teams.organizationId, workspaces.organizationId),
-        sql`${costValue} is not null`,
-        sql`${costCurrency} is not null`,
-      ),
-    )
+    .where(and(...filters, eq(teams.organizationId, workspaces.organizationId), sql`${costValue} is not null`, sql`${costCurrency} is not null`))
     .groupBy(teams.id, costCurrency) as Promise<CostRow[]>;
 }

@@ -9,19 +9,13 @@ async function requestBody(request: NextRequest) {
   try {
     return await request.json();
   } catch {
-    throw invalidRequest(
-      "The request body is not valid JSON.",
-      null,
-      "invalid_json",
-    );
+    throw invalidRequest("The request body is not valid JSON.", null, "invalid_json");
   }
 }
 
 export async function POST(request: NextRequest) {
   return handleOpenAIProxyRoute(request, "models.invoke", async (context) => {
-    const parsed = chatCompletionRequestSchema.safeParse(
-      await requestBody(request),
-    );
+    const parsed = chatCompletionRequestSchema.safeParse(await requestBody(request));
     if (!parsed.success) throw validationError(parsed.error);
     return executeChatCompletion({
       context,

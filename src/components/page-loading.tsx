@@ -1,22 +1,9 @@
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
-export function PageLoading({
-  className,
-  label = "Loading",
-}: {
-  className?: string;
-  label?: string;
-}) {
+export function PageLoading({ className, label = "Loading" }: { className?: string; label?: string }) {
   return (
-    <div
-      className={cn(
-        "flex min-h-[18rem] w-full flex-col gap-6 rounded-2xl border border-border/60 bg-card p-6 shadow-[var(--surface-shadow)]",
-        className,
-      )}
-      aria-live="polite"
-      aria-busy="true"
-    >
+    <div className={cn("flex min-h-[18rem] w-full flex-col gap-6 rounded-2xl border border-border/60 bg-card p-6 shadow-[var(--surface-shadow)]", className)} aria-live="polite" aria-busy="true">
       <span className="sr-only">{label}</span>
       <div className="flex items-center gap-3">
         <Skeleton className="size-10 shrink-0 rounded-xl" />

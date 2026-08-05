@@ -1,17 +1,9 @@
 import { audit } from "@/server/domain/services/audit";
 import { db } from "@/server/infrastructure/db";
-import {
-marketplaceItems,
-marketplaceItemShares,
-marketplaceItemVersions,
-users
-} from "@/server/infrastructure/db/schema";
+import { marketplaceItems,marketplaceItemShares,marketplaceItemVersions,users } from "@/server/infrastructure/db/schema";
 import { and,desc,eq } from "drizzle-orm";
 import { sanitizeMarketplaceManifest } from "./manifest-sanitizer";
-import {
-canManageMarketplaceItem,
-MarketplaceVisibility,
-} from "./use-cases.marketplace-visibility";
+import { canManageMarketplaceItem,MarketplaceVisibility } from "./use-cases.marketplace-visibility";
 
 // ─── Publish (draft → published directly) ──────────────────────────────
 
@@ -23,24 +15,15 @@ export async function publishMarketplaceItem(
     tags?: string[];
   },
 ) {
-  const [item] = await db
-    .select()
-    .from(marketplaceItems)
-    .where(eq(marketplaceItems.id, itemId))
-    .limit(1);
+  const [item] = await db.select().from(marketplaceItems).where(eq(marketplaceItems.id, itemId)).limit(1);
   if (!item) throw new Error("Marketplace item not found");
-  if (!(await canManageMarketplaceItem(item, userId)))
-    throw new Error("Not authorized to publish this item");
+  if (!(await canManageMarketplaceItem(item, userId))) throw new Error("Not authorized to publish this item");
   if (item.status !== "draft") throw new Error("Only drafts can be published");
 
   if (!item.latestVersionId) {
     throw new Error("Marketplace item has no version");
   }
-  const [version] = await db
-    .select()
-    .from(marketplaceItemVersions)
-    .where(eq(marketplaceItemVersions.id, item.latestVersionId))
-    .limit(1);
+  const [version] = await db.select().from(marketplaceItemVersions).where(eq(marketplaceItemVersions.id, item.latestVersionId)).limit(1);
   if (!version) throw new Error("Marketplace item has no version");
 
   await db
@@ -76,25 +59,12 @@ export async function publishMarketplaceItem(
 
 // ─── Share / Unshare ───────────────────────────────────────────────────
 
-export async function shareMarketplaceItem(input: {
-  itemId: string;
-  userId: string;
-  targetUserId: string;
-}) {
-  const [item] = await db
-    .select()
-    .from(marketplaceItems)
-    .where(eq(marketplaceItems.id, input.itemId))
-    .limit(1);
+export async function shareMarketplaceItem(input: { itemId: string; userId: string; targetUserId: string }) {
+  const [item] = await db.select().from(marketplaceItems).where(eq(marketplaceItems.id, input.itemId)).limit(1);
   if (!item) throw new Error("Marketplace item not found");
-  if (!(await canManageMarketplaceItem(item, input.userId)))
-    throw new Error("Not authorized to share this item");
+  if (!(await canManageMarketplaceItem(item, input.userId))) throw new Error("Not authorized to share this item");
 
-  const [targetUser] = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, input.targetUserId))
-    .limit(1);
+  const [targetUser] = await db.select().from(users).where(eq(users.id, input.targetUserId)).limit(1);
   if (!targetUser) throw new Error("Target user not found");
 
   const [share] = await db
@@ -122,28 +92,12 @@ export async function shareMarketplaceItem(input: {
   return share;
 }
 
-export async function unshareMarketplaceItem(input: {
-  itemId: string;
-  userId: string;
-  targetUserId: string;
-}) {
-  const [item] = await db
-    .select()
-    .from(marketplaceItems)
-    .where(eq(marketplaceItems.id, input.itemId))
-    .limit(1);
+export async function unshareMarketplaceItem(input: { itemId: string; userId: string; targetUserId: string }) {
+  const [item] = await db.select().from(marketplaceItems).where(eq(marketplaceItems.id, input.itemId)).limit(1);
   if (!item) throw new Error("Marketplace item not found");
-  if (!(await canManageMarketplaceItem(item, input.userId)))
-    throw new Error("Not authorized to unshare this item");
+  if (!(await canManageMarketplaceItem(item, input.userId))) throw new Error("Not authorized to unshare this item");
 
-  await db
-    .delete(marketplaceItemShares)
-    .where(
-      and(
-        eq(marketplaceItemShares.itemId, input.itemId),
-        eq(marketplaceItemShares.sharedWithUserId, input.targetUserId),
-      ),
-    );
+  await db.delete(marketplaceItemShares).where(and(eq(marketplaceItemShares.itemId, input.itemId), eq(marketplaceItemShares.sharedWithUserId, input.targetUserId)));
 
   await audit.emit({
     workspaceId: item.publisherWorkspaceId ?? undefined,
@@ -164,10 +118,7 @@ export async function getSharedWithMe(userId: string) {
       sharedAt: marketplaceItemShares.sharedAt,
     })
     .from(marketplaceItemShares)
-    .innerJoin(
-      marketplaceItems,
-      eq(marketplaceItemShares.itemId, marketplaceItems.id),
-    )
+    .innerJoin(marketplaceItems, eq(marketplaceItemShares.itemId, marketplaceItems.id))
     .where(eq(marketplaceItemShares.sharedWithUserId, userId))
     .orderBy(desc(marketplaceItemShares.sharedAt));
 

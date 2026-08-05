@@ -1,26 +1,12 @@
-import {
-createAgentRun,
-readAgentRunPayload
-} from "@/modules/agent/run-use-cases";
+import { createAgentRun,readAgentRunPayload } from "@/modules/agent/run-use-cases";
 import { authorization } from "@/server/domain/services/authorization";
 import { executeResolvedAgent } from "./runtime-executor.execute-resolved-agent";
 import { AgentExecutionError,AgentExecutionResult,AgentRunStateError,ExecuteAgentInput,activeRunControllers,executionPolicy,resolveAgent } from "./runtime-executor.heartbeat-ms";
 
-
-export async function executeAgent(
-  input: ExecuteAgentInput,
-): Promise<AgentExecutionResult> {
-  const permission = await authorization.checkPermission(
-    { principalType: "user", principalId: input.userId },
-    "agents.chat",
-    "agent",
-    input.agentId,
-  );
+export async function executeAgent(input: ExecuteAgentInput): Promise<AgentExecutionResult> {
+  const permission = await authorization.checkPermission({ principalType: "user", principalId: input.userId }, "agents.chat", "agent", input.agentId);
   if (!permission.granted) {
-    throw new AgentExecutionError(
-      permission.reason ?? "Agent execution is not allowed",
-      "AGENT_RUN_FORBIDDEN",
-    );
+    throw new AgentExecutionError(permission.reason ?? "Agent execution is not allowed", "AGENT_RUN_FORBIDDEN");
   }
   const resolved = await resolveAgent(input);
   const policy = executionPolicy(resolved);
@@ -43,19 +29,13 @@ export async function executeAgent(
   if (created.reused) {
     if (created.run.status === "success") {
       const payload = await readAgentRunPayload(created.run.id);
-      const text =
-        payload?.output &&
-        typeof payload.output === "object" &&
-        "text" in payload.output
-          ? String(payload.output.text)
-          : "";
+      const text = payload?.output && typeof payload.output === "object" && "text" in payload.output ? String(payload.output.text) : "";
       return {
         runId: created.run.id,
         text,
         inputTokens: created.run.inputTokens ?? 0,
         outputTokens: created.run.outputTokens ?? 0,
-        totalTreeTokens:
-          (created.run.inputTokens ?? 0) + (created.run.outputTokens ?? 0),
+        totalTreeTokens: (created.run.inputTokens ?? 0) + (created.run.outputTokens ?? 0),
         reused: true,
       };
     }
@@ -67,11 +47,7 @@ export async function executeAgent(
     if (input.abortSignal.aborted) {
       controller.abort(input.abortSignal.reason);
     } else {
-      input.abortSignal.addEventListener(
-        "abort",
-        () => controller.abort(input.abortSignal?.reason),
-        { once: true },
-      );
+      input.abortSignal.addEventListener("abort", () => controller.abort(input.abortSignal?.reason), { once: true });
     }
   }
   return executeResolvedAgent({

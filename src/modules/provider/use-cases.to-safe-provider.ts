@@ -1,17 +1,9 @@
 import { encryptValue } from "@/lib/crypto";
 import { logger } from "@/lib/logger";
-import {
-DEFAULT_OPENAI_COMPATIBLE_API_ROUTE,
-normalizeOpenAICompatibleApiRoute,
-type OpenAICompatibleApiRoute,
-} from "@/lib/openai-compatible-api";
+import { DEFAULT_OPENAI_COMPATIBLE_API_ROUTE,normalizeOpenAICompatibleApiRoute,type OpenAICompatibleApiRoute } from "@/lib/openai-compatible-api";
 import { audit } from "@/server/domain/services/audit";
 import { db } from "@/server/infrastructure/db";
-import {
-aiProviders,
-providerAuthTypeEnum,
-providerKindEnum
-} from "@/server/infrastructure/db/schema";
+import { aiProviders,providerAuthTypeEnum,providerKindEnum } from "@/server/infrastructure/db/schema";
 
 // ─── Provider CRUD ─────────────────────────────────────────────────────
 
@@ -28,9 +20,7 @@ export function toSafeProvider(provider: ProviderRow) {
     baseUrl: provider.baseUrl,
     authType: provider.authType,
     queryParamsJson: provider.queryParamsJson,
-    openaiCompatibleApiRoute: normalizeOpenAICompatibleApiRoute(
-      provider.openaiCompatibleApiRoute,
-    ),
+    openaiCompatibleApiRoute: normalizeOpenAICompatibleApiRoute(provider.openaiCompatibleApiRoute),
     enabled: provider.enabled,
     healthStatus: provider.healthStatus,
     lastCheckedAt: provider.lastCheckedAt,
@@ -57,18 +47,7 @@ export interface CreateProviderInput {
 }
 
 export async function createProvider(input: CreateProviderInput) {
-  const {
-    workspaceId,
-    userId,
-    kind,
-    name,
-    baseUrl,
-    authType,
-    apiKey,
-    headersJson,
-    queryParamsJson,
-    openaiCompatibleApiRoute = DEFAULT_OPENAI_COMPATIBLE_API_ROUTE,
-  } = input;
+  const { workspaceId, userId, kind, name, baseUrl, authType, apiKey, headersJson, queryParamsJson, openaiCompatibleApiRoute = DEFAULT_OPENAI_COMPATIBLE_API_ROUTE } = input;
 
   const encryptedApiKey = apiKey ? await encryptValue(apiKey) : null;
 

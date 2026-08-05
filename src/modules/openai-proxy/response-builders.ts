@@ -1,10 +1,6 @@
 import type { FinishReason,LanguageModelUsage } from "ai";
 
-import type {
-ChatCompletionRequest,
-ProxyResponseFormat,
-ResponsesRequest,
-} from "@/modules/openai-proxy/contracts";
+import type { ChatCompletionRequest,ProxyResponseFormat,ResponsesRequest } from "@/modules/openai-proxy/contracts";
 
 export function createChatCompletionId() {
   return `chatcmpl-${crypto.randomUUID().replaceAll("-", "")}`;
@@ -91,12 +87,7 @@ function serializedToolCalls(result: ProxyGenerationResult) {
   }));
 }
 
-export function buildChatCompletionResponse(input: {
-  request: ChatCompletionRequest;
-  result: ProxyGenerationResult;
-  id?: string;
-  created?: number;
-}) {
+export function buildChatCompletionResponse(input: { request: ChatCompletionRequest; result: ProxyGenerationResult; id?: string; created?: number }) {
   const { request, result } = input;
   const toolCalls = serializedToolCalls(result);
   return {
@@ -145,9 +136,7 @@ export type ResponsesOutputItem =
       name: string;
     };
 
-function resultOutputItems(
-  result: ProxyGenerationResult,
-): ResponsesOutputItem[] {
+function resultOutputItems(result: ProxyGenerationResult): ResponsesOutputItem[] {
   const output: ResponsesOutputItem[] = [];
   if (result.text) {
     output.push({
@@ -179,9 +168,7 @@ function resultOutputItems(
 }
 
 function responseStatus(reason: FinishReason) {
-  return reason === "length" || reason === "content-filter"
-    ? "incomplete"
-    : "completed";
+  return reason === "length" || reason === "content-filter" ? "incomplete" : "completed";
 }
 
 function incompleteDetails(reason: FinishReason) {
@@ -205,13 +192,7 @@ export function responseTextConfig(format: ProxyResponseFormat) {
   return { format: { type: format.type } };
 }
 
-export function buildResponsesResponse(input: {
-  request: ResponsesRequest;
-  responseFormat: ProxyResponseFormat;
-  result: ProxyGenerationResult;
-  id?: string;
-  createdAt?: number;
-}) {
+export function buildResponsesResponse(input: { request: ResponsesRequest; responseFormat: ProxyResponseFormat; result: ProxyGenerationResult; id?: string; createdAt?: number }) {
   const { request, responseFormat, result } = input;
   return {
     id: input.id ?? createResponseId(),

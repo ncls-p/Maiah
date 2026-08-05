@@ -1,17 +1,8 @@
 import { NextRequest,NextResponse } from "next/server";
 import { z } from "zod";
 
-import {
-handleRoute,
-requireWorkspacePermissionAsync,
-} from "@/lib/route-handler";
-import {
-deleteCodeWorkspaceFile,
-getCodeWorkspace,
-listCodeWorkspaceFiles,
-readCodeWorkspaceFile,
-writeCodeWorkspaceFile,
-} from "@/modules/code-workspace/storage";
+import { handleRoute,requireWorkspacePermissionAsync } from "@/lib/route-handler";
+import { deleteCodeWorkspaceFile,getCodeWorkspace,listCodeWorkspaceFiles,readCodeWorkspaceFile,writeCodeWorkspaceFile } from "@/modules/code-workspace/storage";
 
 const paramsSchema = z.object({ projectId: z.uuid() });
 const writeFileSchema = z.object({
@@ -29,11 +20,7 @@ async function authorizeProject(projectId: string, userId: string) {
       response: NextResponse.json({ error: "Not found" }, { status: 404 }),
     };
   }
-  const forbidden = await requireWorkspacePermissionAsync(
-    userId,
-    metadata.workspaceId,
-    "agents.chat",
-  );
+  const forbidden = await requireWorkspacePermissionAsync(userId, metadata.workspaceId, "agents.chat");
   if (forbidden) {
     return {
       response: forbidden,
@@ -42,10 +29,7 @@ async function authorizeProject(projectId: string, userId: string) {
   return { metadata };
 }
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ projectId: string }> },
-) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ projectId: string }> }) {
   return handleRoute(
     req,
     async ({ session }) => {
@@ -53,10 +37,7 @@ export async function GET(
       if (!parsed.success) {
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
       }
-      const auth = await authorizeProject(
-        parsed.data.projectId,
-        session.user.id,
-      );
+      const auth = await authorizeProject(parsed.data.projectId, session.user.id);
       if (auth.response) return auth.response;
       const metadata = auth.metadata;
       if (!metadata) {
@@ -89,19 +70,13 @@ export async function GET(
         if (/not found|path|binary/i.test(message)) {
           return NextResponse.json({ error: message }, { status: 400 });
         }
-        return NextResponse.json(
-          { error: "Internal server error" },
-          { status: 500 },
-        );
+        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
       },
     },
   );
 }
 
-export async function PUT(
-  req: NextRequest,
-  { params }: { params: Promise<{ projectId: string }> },
-) {
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ projectId: string }> }) {
   return handleRoute(
     req,
     async ({ session }) => {
@@ -110,10 +85,7 @@ export async function PUT(
       if (!parsedParams.success || !parsedBody.success) {
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
       }
-      const auth = await authorizeProject(
-        parsedParams.data.projectId,
-        session.user.id,
-      );
+      const auth = await authorizeProject(parsedParams.data.projectId, session.user.id);
       if (auth.response) return auth.response;
       const metadata = auth.metadata;
       if (!metadata) {
@@ -136,19 +108,13 @@ export async function PUT(
         if (/file|path|too large|unsupported|workspace/i.test(message)) {
           return NextResponse.json({ error: message }, { status: 400 });
         }
-        return NextResponse.json(
-          { error: "Internal server error" },
-          { status: 500 },
-        );
+        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
       },
     },
   );
 }
 
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: Promise<{ projectId: string }> },
-) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ projectId: string }> }) {
   return handleRoute(
     req,
     async ({ session }) => {
@@ -157,10 +123,7 @@ export async function DELETE(
       if (!parsedParams.success || !parsedBody.success) {
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
       }
-      const auth = await authorizeProject(
-        parsedParams.data.projectId,
-        session.user.id,
-      );
+      const auth = await authorizeProject(parsedParams.data.projectId, session.user.id);
       if (auth.response) return auth.response;
       const metadata = auth.metadata;
       if (!metadata) {
@@ -182,10 +145,7 @@ export async function DELETE(
         if (/file|path|workspace/i.test(message)) {
           return NextResponse.json({ error: message }, { status: 400 });
         }
-        return NextResponse.json(
-          { error: "Internal server error" },
-          { status: 500 },
-        );
+        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
       },
     },
   );

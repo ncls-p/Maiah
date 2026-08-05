@@ -3,19 +3,10 @@ import { describe,expect,it,vi } from "vitest";
 
 import { anthropicErrorBody } from "@/modules/anthropic-proxy/errors";
 import { prepareAnthropicMessages } from "@/modules/anthropic-proxy/request-mapper";
-import {
-anthropicStopReason,
-anthropicUsage,
-buildAnthropicMessageResponse,
-} from "@/modules/anthropic-proxy/response-builders";
+import { anthropicStopReason,anthropicUsage,buildAnthropicMessageResponse } from "@/modules/anthropic-proxy/response-builders";
 import { createAnthropicMessagesStream } from "@/modules/anthropic-proxy/streams";
 import { OpenAIProxyError } from "@/modules/openai-proxy/errors";
-import {
-anthropicErrorCases,
-anthropicStreamParts as parts,
-anthropicRequest as request,
-anthropicUsageFixture as usage,
-} from "./anthropic-proxy-fixtures";
+import { anthropicErrorCases,anthropicStreamParts as parts,anthropicRequest as request,anthropicUsageFixture as usage } from "./anthropic-proxy-fixtures";
 
 describe("Anthropic-compatible protocol", () => {
   it("maps system prompts, images, tools, and tool results", () => {
@@ -69,12 +60,7 @@ describe("Anthropic-compatible protocol", () => {
         top_k: 20,
       }),
     );
-    expect(prepared.messages.map((message) => message.role)).toEqual([
-      "system",
-      "user",
-      "assistant",
-      "tool",
-    ]);
+    expect(prepared.messages.map((message) => message.role)).toEqual(["system", "user", "assistant", "tool"]);
     expect(prepared.toolChoice).toEqual({ type: "tool", toolName: "lookup" });
     expect(prepared.topK).toBe(20);
   });
@@ -93,9 +79,7 @@ describe("Anthropic-compatible protocol", () => {
       },
       {
         role: "assistant",
-        content: [
-          { type: "tool_use", id: "toolu_2", name: "lookup", input: {} },
-        ],
+        content: [{ type: "tool_use", id: "toolu_2", name: "lookup", input: {} }],
       },
       {
         role: "user",
@@ -126,11 +110,7 @@ describe("Anthropic-compatible protocol", () => {
       parallelToolCalls: false,
     });
     expect(prepareAnthropicMessages(request()).toolChoice).toBe("auto");
-    expect(
-      prepareAnthropicMessages(
-        request({ tool_choice: { type: "none" }, tools: [] }),
-      ).toolChoice,
-    ).toBe("none");
+    expect(prepareAnthropicMessages(request({ tool_choice: { type: "none" }, tools: [] })).toolChoice).toBe("none");
   });
 
   it("rejects unmatched tool results and unknown explicit tools", () => {
@@ -167,9 +147,7 @@ describe("Anthropic-compatible protocol", () => {
       request: request(),
       result: {
         text: "Hello",
-        toolCalls: [
-          { toolCallId: "toolu_1", toolName: "lookup", input: { id: 42 } },
-        ],
+        toolCalls: [{ toolCallId: "toolu_1", toolName: "lookup", input: { id: 42 } }],
         finishReason: "tool-calls",
         usage,
       },
@@ -276,22 +254,14 @@ describe("Anthropic-compatible protocol", () => {
   });
 
   it("uses Anthropic error envelopes", () => {
-    const body = anthropicErrorBody(
-      new OpenAIProxyError("Bad key", 401, "authentication_error"),
-      "req_test",
-    );
+    const body = anthropicErrorBody(new OpenAIProxyError("Bad key", 401, "authentication_error"), "req_test");
     expect(body).toEqual({
       type: "error",
       error: { type: "authentication_error", message: "Bad key" },
       request_id: "req_test",
     });
     for (const [status, type] of anthropicErrorCases) {
-      expect(
-        anthropicErrorBody(
-          new OpenAIProxyError("error", status, "invalid_request_error"),
-          "req_test",
-        ).error.type,
-      ).toBe(type);
+      expect(anthropicErrorBody(new OpenAIProxyError("error", status, "invalid_request_error"), "req_test").error.type).toBe(type);
     }
   });
 });

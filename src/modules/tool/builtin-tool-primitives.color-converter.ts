@@ -1,12 +1,7 @@
 import { z } from "zod";
-import {
-colorConverterInputSchema,
-markdownTableInputSchema,
-} from "./builtin-tool-primitives.unit-converter-input-schema";
+import { colorConverterInputSchema,markdownTableInputSchema } from "./builtin-tool-primitives.unit-converter-input-schema";
 
-export function colorConverter({
-  hex,
-}: z.infer<typeof colorConverterInputSchema>) {
+export function colorConverter({ hex }: z.infer<typeof colorConverterInputSchema>) {
   const normalized = hex.replace("#", "").toLowerCase();
   const r = Number.parseInt(normalized.slice(0, 2), 16);
   const g = Number.parseInt(normalized.slice(2, 4), 16);
@@ -37,15 +32,9 @@ export function colorConverter({
   };
 }
 
-export function markdownTable({
-  columns,
-  rows,
-}: z.infer<typeof markdownTableInputSchema>) {
-  const escapeCell = (value: string) =>
-    value.replace(/\|/g, "\\|").replace(/\n/g, " ");
-  const normalizedRows = rows.map((row) =>
-    columns.map((_, index) => escapeCell(row[index] ?? "")),
-  );
+export function markdownTable({ columns, rows }: z.infer<typeof markdownTableInputSchema>) {
+  const escapeCell = (value: string) => value.replace(/\|/g, "\\|").replace(/\n/g, " ");
+  const normalizedRows = rows.map((row) => columns.map((_, index) => escapeCell(row[index] ?? "")));
   const header = `| ${columns.map(escapeCell).join(" | ")} |`;
   const separator = `| ${columns.map(() => "---").join(" | ")} |`;
   const body = normalizedRows.map((row) => `| ${row.join(" | ")} |`);

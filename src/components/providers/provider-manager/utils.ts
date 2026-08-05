@@ -24,9 +24,7 @@ export function parsePairs(input: string): Record<string, string> | undefined {
 }
 
 export function formatNumber(value: number | null | undefined) {
-  return typeof value === "number" && value > 0
-    ? new Intl.NumberFormat().format(value)
-    : null;
+  return typeof value === "number" && value > 0 ? new Intl.NumberFormat().format(value) : null;
 }
 
 export function timeAgo(dateStr: string | null) {

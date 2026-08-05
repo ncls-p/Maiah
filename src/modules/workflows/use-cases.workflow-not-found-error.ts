@@ -1,17 +1,9 @@
 import { and,desc,eq,sql } from "drizzle-orm";
 
 import { db } from "@/server/infrastructure/db";
-import {
-workflowRuns,
-workflows,
-workflowVersions
-} from "@/server/infrastructure/db/schema";
+import { workflowRuns,workflows,workflowVersions } from "@/server/infrastructure/db/schema";
 
-import {
-createStarterDefinition,
-workflowDefinitionSchema,
-type WorkflowDefinition,
-} from "./contracts";
+import { createStarterDefinition,workflowDefinitionSchema,type WorkflowDefinition } from "./contracts";
 
 export class WorkflowNotFoundError extends Error {}
 export class WorkflowConflictError extends Error {}
@@ -47,31 +39,19 @@ export function errorMessage(error: unknown) {
   let current: unknown = error;
   while (current !== undefined && current !== null && !seen.has(current)) {
     seen.add(current);
-    const message =
-      current instanceof Error ? current.message : String(current);
+    const message = current instanceof Error ? current.message : String(current);
     if (message && !messages.includes(message)) messages.push(message);
-    current =
-      typeof current === "object" && "cause" in current
-        ? (current as { cause?: unknown }).cause
-        : undefined;
+    current = typeof current === "object" && "cause" in current ? (current as { cause?: unknown }).cause : undefined;
   }
   return boundedErrorMessage(messages.join("\nCaused by: "));
 }
 
-export async function findIdempotentWorkflowRun(input: {
-  workflowId: string;
-  idempotencyKey?: string;
-}) {
+export async function findIdempotentWorkflowRun(input: { workflowId: string; idempotencyKey?: string }) {
   if (!input.idempotencyKey) return null;
   const [run] = await db
     .select()
     .from(workflowRuns)
-    .where(
-      and(
-        eq(workflowRuns.workflowId, input.workflowId),
-        eq(workflowRuns.idempotencyKey, input.idempotencyKey),
-      ),
-    )
+    .where(and(eq(workflowRuns.workflowId, input.workflowId), eq(workflowRuns.idempotencyKey, input.idempotencyKey)))
     .limit(1);
   return run ?? null;
 }
@@ -80,9 +60,7 @@ export async function requireWorkflow(workflowId: string, workspaceId: string) {
   const [workflow] = await db
     .select()
     .from(workflows)
-    .where(
-      and(eq(workflows.id, workflowId), eq(workflows.workspaceId, workspaceId)),
-    )
+    .where(and(eq(workflows.id, workflowId), eq(workflows.workspaceId, workspaceId)))
     .limit(1);
   if (!workflow || workflow.status === "archived") {
     throw new WorkflowNotFoundError("Workflow not found");
@@ -94,29 +72,16 @@ export async function listWorkflows(workspaceId: string) {
   return db
     .select()
     .from(workflows)
-    .where(
-      and(
-        eq(workflows.workspaceId, workspaceId),
-        sql`${workflows.status} <> 'archived'`,
-      ),
-    )
+    .where(and(eq(workflows.workspaceId, workspaceId), sql`${workflows.status} <> 'archived'`))
     .orderBy(desc(workflows.updatedAt));
 }
 
-export async function getWorkflowDetail(
-  workflowId: string,
-  workspaceId: string,
-) {
+export async function getWorkflowDetail(workflowId: string, workspaceId: string) {
   const workflow = await requireWorkflow(workflowId, workspaceId);
   const [version] = await db
     .select()
     .from(workflowVersions)
-    .where(
-      and(
-        eq(workflowVersions.workflowId, workflow.id),
-        eq(workflowVersions.version, workflow.latestVersion),
-      ),
-    )
+    .where(and(eq(workflowVersions.workflowId, workflow.id), eq(workflowVersions.version, workflow.latestVersion)))
     .limit(1);
   if (!version) throw new WorkflowConflictError("Workflow version is missing");
   return {

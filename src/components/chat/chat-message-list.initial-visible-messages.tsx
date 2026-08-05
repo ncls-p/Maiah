@@ -4,16 +4,9 @@ import { useTranslations } from "next-intl";
 import type * as React from "react";
 import { useEffect,useRef } from "react";
 
-import {
-textFromMessage,
-type ChatMessage,
-type PendingToolApproval
-} from "@/components/chat/chat-types";
+import { textFromMessage,type ChatMessage,type PendingToolApproval } from "@/components/chat/chat-types";
 import type { WorkspaceArtifactDisplay } from "@/components/chat/code-workspace-artifact-card";
-import {
-useMessageScroller,
-useMessageScrollerVisibility
-} from "@/components/ui/message-scroller";
+import { useMessageScroller,useMessageScrollerVisibility } from "@/components/ui/message-scroller";
 
 export const INITIAL_VISIBLE_MESSAGES = 60;
 export const LOAD_MORE_MESSAGES = 30;
@@ -33,10 +26,7 @@ export interface ChatMessageListProps {
   workspaceArtifactDisplay?: WorkspaceArtifactDisplay;
   conversationId?: string | null;
   bottomRef: React.RefObject<HTMLDivElement | null>;
-  onEditMessage?: (
-    message: ChatMessage,
-    content: string,
-  ) => Promise<void> | void;
+  onEditMessage?: (message: ChatMessage, content: string) => Promise<void> | void;
   onDeleteMessage?: (message: ChatMessage) => Promise<void> | void;
   onResendMessage?: (message: ChatMessage) => Promise<void> | void;
   onRegenerateAssistant?: (message: ChatMessage) => Promise<void> | void;
@@ -52,28 +42,17 @@ export function chatAnchorStorageKey(conversationId: string) {
   return `ai-hub-chat-anchor:${conversationId}`;
 }
 
-export function SavedMessageAnchorRestorer({
-  conversationId,
-}: {
-  conversationId?: string | null;
-}) {
+export function SavedMessageAnchorRestorer({ conversationId }: { conversationId?: string | null }) {
   const { scrollToMessage } = useMessageScroller();
   const restoredConversationIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (
-      !conversationId ||
-      restoredConversationIdRef.current === conversationId
-    ) {
+    if (!conversationId || restoredConversationIdRef.current === conversationId) {
       return;
     }
     restoredConversationIdRef.current = conversationId;
-    const hashMessageId = window.location.hash.startsWith("#message-")
-      ? window.location.hash.slice("#message-".length)
-      : null;
-    const savedMessageId =
-      hashMessageId ??
-      window.localStorage.getItem(chatAnchorStorageKey(conversationId));
+    const hashMessageId = window.location.hash.startsWith("#message-") ? window.location.hash.slice("#message-".length) : null;
+    const savedMessageId = hashMessageId ?? window.localStorage.getItem(chatAnchorStorageKey(conversationId));
     if (!savedMessageId) return;
     const frame = window.requestAnimationFrame(() => {
       scrollToMessage(savedMessageId, {
@@ -88,19 +67,12 @@ export function SavedMessageAnchorRestorer({
   return null;
 }
 
-export function MessageVisibilityPersistence({
-  conversationId,
-}: {
-  conversationId?: string | null;
-}) {
+export function MessageVisibilityPersistence({ conversationId }: { conversationId?: string | null }) {
   const { currentAnchorId } = useMessageScrollerVisibility();
 
   useEffect(() => {
     if (!conversationId || !currentAnchorId) return;
-    window.localStorage.setItem(
-      chatAnchorStorageKey(conversationId),
-      currentAnchorId,
-    );
+    window.localStorage.setItem(chatAnchorStorageKey(conversationId), currentAnchorId);
   }, [conversationId, currentAnchorId]);
 
   return null;
@@ -114,19 +86,11 @@ export interface UserMessageShortcut {
   fullText: string;
 }
 
-type MessageListTranslator = ReturnType<
-  typeof useTranslations<"chat.messageList">
->;
+type MessageListTranslator = ReturnType<typeof useTranslations<"chat.messageList">>;
 
-function fallbackUserMessageText(
-  message: ChatMessage,
-  t: MessageListTranslator,
-) {
-  const attachmentCount = message.parts.filter(
-    (part) => part.type === "file" || part.type === "image",
-  ).length;
-  if (attachmentCount > 0)
-    return t("messageWithAttachments", { count: attachmentCount });
+function fallbackUserMessageText(message: ChatMessage, t: MessageListTranslator) {
+  const attachmentCount = message.parts.filter((part) => part.type === "file" || part.type === "image").length;
+  if (attachmentCount > 0) return t("messageWithAttachments", { count: attachmentCount });
 
   return t("emptyUserMessage");
 }
@@ -136,9 +100,7 @@ export function userMessageFullText(message: ChatMessage, t: MessageListTranslat
 }
 
 export function userMessagePreview(message: ChatMessage, t: MessageListTranslator) {
-  const normalizedText = userMessageFullText(message, t)
-    .replace(/\s+/g, " ")
-    .trim();
+  const normalizedText = userMessageFullText(message, t).replace(/\s+/g, " ").trim();
   if (normalizedText.length > USER_MESSAGE_PREVIEW_LENGTH) {
     return `${normalizedText.slice(0, USER_MESSAGE_PREVIEW_LENGTH).trimEnd()}…`;
   }
@@ -147,15 +109,10 @@ export function userMessagePreview(message: ChatMessage, t: MessageListTranslato
 }
 
 export function preferredScrollBehavior(): ScrollBehavior {
-  return window.matchMedia("(prefers-reduced-motion: reduce)").matches
-    ? "auto"
-    : "smooth";
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
 }
 
-export function rememberUserMessageAnchor(
-  conversationId: string | null | undefined,
-  messageId: string,
-) {
+export function rememberUserMessageAnchor(conversationId: string | null | undefined, messageId: string) {
   window.history.replaceState(null, "", `#message-${messageId}`);
   if (!conversationId) return;
   window.localStorage.setItem(chatAnchorStorageKey(conversationId), messageId);

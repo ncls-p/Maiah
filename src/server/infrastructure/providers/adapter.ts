@@ -1,20 +1,8 @@
 import type { OpenAICompatibleApiRoute } from "@/lib/openai-compatible-api";
-import type {
-ImageGenerationConfig,
-SustainabilityConfig,
-} from "@/modules/provider/model-runtime-config";
-import type {
-EmbeddingModelV4,
-ImageModelV4,
-LanguageModelV4,
-RerankingModelV4,
-} from "@ai-sdk/provider";
+import type { ImageGenerationConfig,SustainabilityConfig } from "@/modules/provider/model-runtime-config";
+import type { EmbeddingModelV4,ImageModelV4,LanguageModelV4,RerankingModelV4 } from "@ai-sdk/provider";
 
-export type ProviderKind =
-  | "openai-compatible"
-  | "dragonfly"
-  | "vercel-ai-gateway"
-  | "native";
+export type ProviderKind = "openai-compatible" | "dragonfly" | "vercel-ai-gateway" | "native";
 
 type ProviderAuthType = "bearer" | "x-api-key" | "custom-header" | "gateway";
 
@@ -63,20 +51,8 @@ export interface ProviderAdapter {
   kind: ProviderKind;
   validateConnection(config: ProviderRuntimeConfig): Promise<ProviderHealth>;
   listModels?(config: ProviderRuntimeConfig): Promise<ModelDescriptor[]>;
-  createChatModel(
-    config: ProviderRuntimeConfig,
-    modelId: string,
-  ): LanguageModelV4;
-  createEmbeddingModel(
-    config: ProviderRuntimeConfig,
-    modelId: string,
-  ): EmbeddingModelV4;
-  createRerankingModel?(
-    config: ProviderRuntimeConfig,
-    modelId: string,
-  ): RerankingModelV4;
-  createImageModel?(
-    config: ProviderRuntimeConfig,
-    modelId: string,
-  ): ImageModelV4;
+  createChatModel(config: ProviderRuntimeConfig, modelId: string): LanguageModelV4;
+  createEmbeddingModel(config: ProviderRuntimeConfig, modelId: string): EmbeddingModelV4;
+  createRerankingModel?(config: ProviderRuntimeConfig, modelId: string): RerankingModelV4;
+  createImageModel?(config: ProviderRuntimeConfig, modelId: string): ImageModelV4;
 }

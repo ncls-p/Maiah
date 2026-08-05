@@ -1,7 +1,5 @@
 "use client";
 
-
-
 export type AccessMember = {
   id: string;
   userId: string;
@@ -141,9 +139,7 @@ export type MemberTransferPreview = {
     sourceAssignmentsRemoved: number;
     sourceTeamMembershipsRemoved: number;
   };
-  warnings: Array<
-    "crossOrganizationMove" | "crossOrganizationAdd" | "sameOrganizationMove"
-  >;
+  warnings: Array<"crossOrganizationMove" | "crossOrganizationAdd" | "sameOrganizationMove">;
   blockers: string[];
   confirmationToken: string;
 };

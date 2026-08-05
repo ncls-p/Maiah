@@ -223,7 +223,7 @@ betterAuth({
     enabled: true,
   },
   plugins: [admin(), nextCookies()],
-})
+});
 ```
 
 Production requirements:
@@ -281,7 +281,7 @@ await authorization.requirePermission({
   principal,
   permission: "agents.update",
   resource: agent,
-})
+});
 ```
 
 Never implement this pattern:
@@ -692,7 +692,7 @@ createOpenAICompatible({
   headers,
   queryParams,
   includeUsage: true,
-})
+});
 ```
 
 Features:
@@ -779,12 +779,12 @@ ai_models
 
 ```ts
 export interface ProviderAdapter {
-  kind: ProviderKind
-  validateConnection(config: ProviderRuntimeConfig): Promise<ProviderHealth>
-  listModels?(config: ProviderRuntimeConfig): Promise<ModelDescriptor[]>
-  createChatModel(config: ProviderRuntimeConfig, modelId: string): LanguageModel
-  stream?(options: ProviderStreamOptions): Promise<ProviderStreamResult>
-  generate?(options: ProviderGenerateOptions): Promise<ProviderGenerateResult>
+  kind: ProviderKind;
+  validateConnection(config: ProviderRuntimeConfig): Promise<ProviderHealth>;
+  listModels?(config: ProviderRuntimeConfig): Promise<ModelDescriptor[]>;
+  createChatModel(config: ProviderRuntimeConfig, modelId: string): LanguageModel;
+  stream?(options: ProviderStreamOptions): Promise<ProviderStreamResult>;
+  generate?(options: ProviderGenerateOptions): Promise<ProviderGenerateResult>;
 }
 ```
 
@@ -921,14 +921,14 @@ Unified tool registry for built-in and MCP tools.
 
 ```ts
 export interface ToolDefinition {
-  id: string
-  source: "builtin" | "mcp"
-  name: string
-  description: string
-  inputSchema: z.ZodSchema
-  riskLevel: "safe" | "moderate" | "dangerous" | "critical"
-  requiredPermissions: string[]
-  execute(ctx: ToolExecutionContext, input: unknown): Promise<unknown>
+  id: string;
+  source: "builtin" | "mcp";
+  name: string;
+  description: string;
+  inputSchema: z.ZodSchema;
+  riskLevel: "safe" | "moderate" | "dangerous" | "critical";
+  requiredPermissions: string[];
+  execute(ctx: ToolExecutionContext, input: unknown): Promise<unknown>;
 }
 ```
 
@@ -1208,10 +1208,7 @@ marketplace_reports
   "description": "Reviews code for bugs, security, and maintainability.",
   "agent": {
     "systemPrompt": "You are a senior software engineer...",
-    "recommendedModels": [
-      "openai-compatible/gpt-4o",
-      "dragonfly/chatgpt-4o-latest"
-    ],
+    "recommendedModels": ["openai-compatible/gpt-4o", "dragonfly/chatgpt-4o-latest"],
     "tools": ["github.read", "files.read"],
     "mcpRequirements": []
   },

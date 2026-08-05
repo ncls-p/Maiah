@@ -1,8 +1,7 @@
 import type { ModelDescriptor } from "@/server/infrastructure/providers";
 
 export const CLOUD_TEMPLE_BASE_URL = "https://api.ai.cloud-temple.com/v1";
-const CLOUD_TEMPLE_CATALOG_SOURCE =
-  "Cloud Temple model catalog (docs.cloud-temple.com)";
+const CLOUD_TEMPLE_CATALOG_SOURCE = "Cloud Temple model catalog (docs.cloud-temple.com)";
 
 const ENERGY_KWH_PER_MILLION_TOKENS: Record<string, number> = {
   "cogito:32b": 6.32,
@@ -62,25 +61,18 @@ const ENERGY_KWH_PER_MILLION_TOKENS: Record<string, number> = {
 export function isCloudTempleBaseUrl(baseUrl?: string | null) {
   if (!baseUrl) return false;
   try {
-    return (
-      new URL(baseUrl).hostname.toLowerCase() === "api.ai.cloud-temple.com"
-    );
+    return new URL(baseUrl).hostname.toLowerCase() === "api.ai.cloud-temple.com";
   } catch {
     return false;
   }
 }
 
-export function enrichCloudTempleModel(
-  model: ModelDescriptor,
-): ModelDescriptor {
-  const energyKwhPerMillionTokens =
-    ENERGY_KWH_PER_MILLION_TOKENS[model.modelId];
+export function enrichCloudTempleModel(model: ModelDescriptor): ModelDescriptor {
+  const energyKwhPerMillionTokens = ENERGY_KWH_PER_MILLION_TOKENS[model.modelId];
   const isImageModel = model.modelId === "z-image:16b";
-  const isEmbeddingModel =
-    model.modelId.includes("embedding") || model.modelId === "bge-m3:567m";
+  const isEmbeddingModel = model.modelId.includes("embedding") || model.modelId === "bge-m3:567m";
   const sustainability =
-    model.sustainability?.energyKwhPerMillionTokens !== undefined ||
-    model.sustainability?.co2GramsPerMillionTokens !== undefined
+    model.sustainability?.energyKwhPerMillionTokens !== undefined || model.sustainability?.co2GramsPerMillionTokens !== undefined
       ? model.sustainability
       : energyKwhPerMillionTokens === undefined
         ? model.sustainability
@@ -98,12 +90,8 @@ export function enrichCloudTempleModel(
       embeddings: isEmbeddingModel,
       text: isImageModel || isEmbeddingModel ? false : model.capabilities.text,
     },
-    inputTokenCost: isImageModel
-      ? model.inputTokenCost
-      : (model.inputTokenCost ?? "1.8"),
-    outputTokenCost: isImageModel
-      ? model.outputTokenCost
-      : (model.outputTokenCost ?? "8"),
+    inputTokenCost: isImageModel ? model.inputTokenCost : (model.inputTokenCost ?? "1.8"),
+    outputTokenCost: isImageModel ? model.outputTokenCost : (model.outputTokenCost ?? "8"),
     sustainability,
     imageGeneration: isImageModel
       ? {

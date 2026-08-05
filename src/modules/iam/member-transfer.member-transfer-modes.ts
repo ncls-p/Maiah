@@ -1,13 +1,8 @@
-
 import { and,eq,isNull,or } from "drizzle-orm";
 
 import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
-import {
-organizations,
-roles,
-workspaces
-} from "@/server/infrastructure/db/schema";
+import { organizations,roles,workspaces } from "@/server/infrastructure/db/schema";
 import { IamOperationError } from "./use-cases";
 
 export const MEMBER_TRANSFER_MODES = ["add", "move"] as const;
@@ -33,9 +28,7 @@ export type MemberTransferPreview = {
     sourceAssignmentsRemoved: number;
     sourceTeamMembershipsRemoved: number;
   };
-  warnings: Array<
-    "crossOrganizationMove" | "crossOrganizationAdd" | "sameOrganizationMove"
-  >;
+  warnings: Array<"crossOrganizationMove" | "crossOrganizationAdd" | "sameOrganizationMove">;
   blockers: string[];
   confirmationToken: string;
 };
@@ -51,74 +44,19 @@ export async function getProjectScope(workspaceId: string) {
   return scope;
 }
 
-export async function hasPermission(
-  userId: string,
-  permission: string,
-  resourceType: "organization" | "workspace",
-  resourceId: string,
-) {
-  return (
-    await authorization.checkPermission(
-      { principalType: "user", principalId: userId },
-      permission,
-      resourceType,
-      resourceId,
-    )
-  ).granted;
+export async function hasPermission(userId: string, permission: string, resourceType: "organization" | "workspace", resourceId: string) {
+  return (await authorization.checkPermission({ principalType: "user", principalId: userId }, permission, resourceType, resourceId)).granted;
 }
 
-export async function requireTransferPermissions(input: {
-  actorUserId: string;
-  sourceWorkspaceId: string;
-  sourceOrganizationId: string;
-  targetWorkspaceId: string;
-  targetOrganizationId: string;
-  mode: MemberTransferMode;
-}) {
-  const crossOrganization =
-    input.sourceOrganizationId !== input.targetOrganizationId;
-  const checks = await Promise.all([
-    hasPermission(
-      input.actorUserId,
-      "roles.manage",
-      "workspace",
-      input.sourceWorkspaceId,
-    ),
-    hasPermission(
-      input.actorUserId,
-      "roles.manage",
-      "workspace",
-      input.targetWorkspaceId,
-    ),
-    crossOrganization
-      ? hasPermission(
-          input.actorUserId,
-          "members.manage",
-          "organization",
-          input.targetOrganizationId,
-        )
-      : Promise.resolve(true),
-    crossOrganization && input.mode === "move"
-      ? hasPermission(
-          input.actorUserId,
-          "members.manage",
-          "organization",
-          input.sourceOrganizationId,
-        )
-      : Promise.resolve(true),
-  ]);
+export async function requireTransferPermissions(input: { actorUserId: string; sourceWorkspaceId: string; sourceOrganizationId: string; targetWorkspaceId: string; targetOrganizationId: string; mode: MemberTransferMode }) {
+  const crossOrganization = input.sourceOrganizationId !== input.targetOrganizationId;
+  const checks = await Promise.all([hasPermission(input.actorUserId, "roles.manage", "workspace", input.sourceWorkspaceId), hasPermission(input.actorUserId, "roles.manage", "workspace", input.targetWorkspaceId), crossOrganization ? hasPermission(input.actorUserId, "members.manage", "organization", input.targetOrganizationId) : Promise.resolve(true), crossOrganization && input.mode === "move" ? hasPermission(input.actorUserId, "members.manage", "organization", input.sourceOrganizationId) : Promise.resolve(true)]);
   if (checks.some((allowed) => !allowed)) {
-    throw new IamOperationError(
-      "You need access administration rights on both the source and destination",
-      403,
-    );
+    throw new IamOperationError("You need access administration rights on both the source and destination", 403);
   }
 }
 
-export async function listDestinationRoles(
-  workspaceId: string,
-  organizationId: string,
-) {
+export async function listDestinationRoles(workspaceId: string, organizationId: string) {
   return db
     .select({
       id: roles.id,
@@ -126,22 +64,5 @@ export async function listDestinationRoles(
       displayName: roles.displayName,
     })
     .from(roles)
-    .where(
-      and(
-        eq(roles.scopeType, "workspace"),
-        or(
-          eq(roles.isSystem, true),
-          and(
-            eq(roles.isSystem, false),
-            eq(roles.ownerResourceType, "workspace"),
-            eq(roles.ownerResourceId, workspaceId),
-          ),
-          and(
-            eq(roles.isSystem, false),
-            eq(roles.ownerResourceType, "organization"),
-            eq(roles.ownerResourceId, organizationId),
-          ),
-        ),
-      ),
-    );
+    .where(and(eq(roles.scopeType, "workspace"), or(eq(roles.isSystem, true), and(eq(roles.isSystem, false), eq(roles.ownerResourceType, "workspace"), eq(roles.ownerResourceId, workspaceId)), and(eq(roles.isSystem, false), eq(roles.ownerResourceType, "organization"), eq(roles.ownerResourceId, organizationId)))));
 }

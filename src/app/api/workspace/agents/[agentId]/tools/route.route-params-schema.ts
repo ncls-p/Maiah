@@ -1,24 +1,11 @@
-import {
-handleRoute,
-requireResourcePermissionAsync,
-} from "@/lib/route-handler";
+import { handleRoute,requireResourcePermissionAsync } from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
-import {
-getActiveVersion,
-getAgentVersionById,
-getVisibleAgentById
-} from "@/modules/agent/use-cases";
+import { getActiveVersion,getAgentVersionById,getVisibleAgentById } from "@/modules/agent/use-cases";
 import { getBoundSkillCatalog } from "@/modules/skills/use-cases";
 import { getBuiltInTool } from "@/modules/tool/builtin-tools";
-import {
-getToolBindingsForVersion
-} from "@/modules/tool/use-cases";
+import { getToolBindingsForVersion } from "@/modules/tool/use-cases";
 import { db } from "@/server/infrastructure/db";
-import {
-customTools,
-mcpServers,
-mcpTools,
-} from "@/server/infrastructure/db/schema";
+import { customTools,mcpServers,mcpTools } from "@/server/infrastructure/db/schema";
 import { and,eq,inArray } from "drizzle-orm";
 import { NextRequest,NextResponse } from "next/server";
 import { z } from "zod";
@@ -30,9 +17,7 @@ export const querySchema = z.object({
   includeDetails: z.literal("true").optional(),
 });
 
-type ToolBinding = Awaited<
-  ReturnType<typeof getToolBindingsForVersion>
->[number];
+type ToolBinding = Awaited<ReturnType<typeof getToolBindingsForVersion>>[number];
 
 type ToolSummary = {
   id: string;
@@ -43,16 +28,9 @@ type ToolSummary = {
   requireApproval: boolean;
 };
 
-async function describeToolBindings(
-  bindings: ToolBinding[],
-  workspaceId: string,
-) {
-  const customToolIds = bindings
-    .filter((binding) => binding.toolSource === "custom")
-    .map((binding) => binding.toolId);
-  const mcpToolIds = bindings
-    .filter((binding) => binding.toolSource === "mcp")
-    .map((binding) => binding.toolId);
+async function describeToolBindings(bindings: ToolBinding[], workspaceId: string) {
+  const customToolIds = bindings.filter((binding) => binding.toolSource === "custom").map((binding) => binding.toolId);
+  const mcpToolIds = bindings.filter((binding) => binding.toolSource === "mcp").map((binding) => binding.toolId);
 
   const [customToolRows, mcpToolRows] = await Promise.all([
     customToolIds.length > 0
@@ -63,12 +41,7 @@ async function describeToolBindings(
             description: customTools.description,
           })
           .from(customTools)
-          .where(
-            and(
-              inArray(customTools.id, customToolIds),
-              eq(customTools.workspaceId, workspaceId),
-            ),
-          )
+          .where(and(inArray(customTools.id, customToolIds), eq(customTools.workspaceId, workspaceId)))
       : Promise.resolve([]),
     mcpToolIds.length > 0
       ? db
@@ -80,18 +53,11 @@ async function describeToolBindings(
           })
           .from(mcpTools)
           .innerJoin(mcpServers, eq(mcpTools.mcpServerId, mcpServers.id))
-          .where(
-            and(
-              inArray(mcpTools.id, mcpToolIds),
-              eq(mcpServers.workspaceId, workspaceId),
-            ),
-          )
+          .where(and(inArray(mcpTools.id, mcpToolIds), eq(mcpServers.workspaceId, workspaceId)))
       : Promise.resolve([]),
   ]);
 
-  const customToolsById = new Map(
-    customToolRows.map((tool) => [tool.id, tool]),
-  );
+  const customToolsById = new Map(customToolRows.map((tool) => [tool.id, tool]));
   const mcpToolsById = new Map(mcpToolRows.map((tool) => [tool.id, tool]));
 
   return bindings.flatMap<ToolSummary>((binding) => {
@@ -147,10 +113,7 @@ async function describeToolBindings(
   });
 }
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ agentId: string }> },
-) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ agentId: string }> }) {
   return handleRoute(
     req,
     async ({ session }) => {
@@ -166,49 +129,26 @@ export async function GET(
       }
       const { agentId } = parsedParams.data;
       const { workspaceId, versionId, includeDetails } = parsedQuery.data;
-      const forbidden = await requireResourcePermissionAsync(
-        session.user.id,
-        workspaceId,
-        "agents.get",
-        "agent",
-        (await params).agentId,
-      );
+      const forbidden = await requireResourcePermissionAsync(session.user.id, workspaceId, "agents.get", "agent", (await params).agentId);
       if (forbidden) return forbidden;
-      const agent = await getVisibleAgentById(
-        agentId,
-        workspaceId,
-        session.user.id,
-        await canManageTenantGlobals(session, workspaceId),
-      );
+      const agent = await getVisibleAgentById(agentId, workspaceId, session.user.id, await canManageTenantGlobals(session, workspaceId));
       if (!agent) {
         return NextResponse.json({ error: "Agent not found" }, { status: 404 });
       }
-      const targetVersion = versionId
-        ? await getAgentVersionById(versionId)
-        : await getActiveVersion(agentId);
+      const targetVersion = versionId ? await getAgentVersionById(versionId) : await getActiveVersion(agentId);
       if (targetVersion && targetVersion.agentId !== agentId) {
-        return NextResponse.json(
-          { error: "Version not found" },
-          { status: 404 },
-        );
+        return NextResponse.json({ error: "Version not found" }, { status: 404 });
       }
       const targetVersionId = targetVersion?.id;
       if (!targetVersionId) {
-        return NextResponse.json(
-          includeDetails === "true"
-            ? { bindings: [], tools: [], skills: [] }
-            : [],
-        );
+        return NextResponse.json(includeDetails === "true" ? { bindings: [], tools: [], skills: [] } : []);
       }
       const bindings = await getToolBindingsForVersion(targetVersionId, {
         workspaceId,
         userId: session.user.id,
       });
       if (includeDetails === "true") {
-        const [tools, skills] = await Promise.all([
-          describeToolBindings(bindings, workspaceId),
-          getBoundSkillCatalog(targetVersionId),
-        ]);
+        const [tools, skills] = await Promise.all([describeToolBindings(bindings, workspaceId), getBoundSkillCatalog(targetVersionId)]);
         return NextResponse.json({
           bindings,
           tools,

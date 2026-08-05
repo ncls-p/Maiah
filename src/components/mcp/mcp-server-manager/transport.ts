@@ -57,16 +57,6 @@ export function transportLabel(transport: string) {
   }
 }
 
-export function serverEndpointLabel(server: {
-  transport: string;
-  url: string | null;
-  command: string | null;
-  argsJson?: string[] | null;
-}) {
-  return (
-    server.url ||
-    (server.command
-      ? [server.command, ...(server.argsJson ?? [])].filter(Boolean).join(" ")
-      : server.transport)
-  );
+export function serverEndpointLabel(server: { transport: string; url: string | null; command: string | null; argsJson?: string[] | null }) {
+  return server.url || (server.command ? [server.command, ...(server.argsJson ?? [])].filter(Boolean).join(" ") : server.transport);
 }

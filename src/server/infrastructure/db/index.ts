@@ -3,11 +3,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import * as schema from "./schema";
 
-const databaseSsl =
-  env.NODE_ENV === "production" &&
-  env.DATABASE_SSL_REJECT_UNAUTHORIZED !== "disable"
-    ? { rejectUnauthorized: env.DATABASE_SSL_REJECT_UNAUTHORIZED !== "false" }
-    : undefined;
+const databaseSsl = env.NODE_ENV === "production" && env.DATABASE_SSL_REJECT_UNAUTHORIZED !== "disable" ? { rejectUnauthorized: env.DATABASE_SSL_REJECT_UNAUTHORIZED !== "false" } : undefined;
 
 const globalDatabase = globalThis as typeof globalThis & {
   __maiahPostgresPool?: Pool;

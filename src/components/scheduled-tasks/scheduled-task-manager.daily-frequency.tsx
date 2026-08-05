@@ -1,7 +1,5 @@
 "use client";
 
-
-
 export const DAILY_FREQUENCY = "daily";
 export type ScheduleFrequency = typeof DAILY_FREQUENCY | "interval";
 
@@ -40,7 +38,6 @@ export function statusVariant(status: string) {
 }
 
 export function statusToneClass(status: string) {
-  if (status === "running")
-    return "border-primary/20 bg-primary/10 text-primary";
+  if (status === "running") return "border-primary/20 bg-primary/10 text-primary";
   return undefined;
 }

@@ -3,9 +3,7 @@
 import { useTranslations } from "next-intl";
 import { useEffect,useRef,useState } from "react";
 
-import {
-type HtmlArtifactOutput
-} from "@/components/chat/chat-message-rendering-utils";
+import { type HtmlArtifactOutput } from "@/components/chat/chat-message-rendering-utils";
 
 export const MAX_LIVE_TOOL_INPUT_CHARS = 8000;
 export const BUTTON_TYPE = "button";
@@ -22,27 +20,15 @@ export function ArtifactCodeBlocks({ artifact }: { artifact: HtmlArtifactOutput 
         ["JavaScript", artifact.js],
       ].map(([label, source]) => (
         <div key={label}>
-          <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
-            {label}
-          </div>
-          <pre className="max-h-64 overflow-auto rounded-md border border-border/50 bg-background/80 p-2 font-mono text-[11px] leading-4 text-muted-foreground">
-            {source || "// empty"}
-          </pre>
+          <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">{label}</div>
+          <pre className="max-h-64 overflow-auto rounded-md border border-border/50 bg-background/80 p-2 font-mono text-[11px] leading-4 text-muted-foreground">{source || "// empty"}</pre>
         </div>
       ))}
     </div>
   );
 }
 
-export function LazyArtifactFrame({
-  title,
-  srcDoc,
-  height,
-}: {
-  title: string;
-  srcDoc: string;
-  height: number;
-}) {
+export function LazyArtifactFrame({ title, srcDoc, height }: { title: string; srcDoc: string; height: number }) {
   const t = useTranslations("chat.artifacts");
   const frameRootRef = useRef<HTMLDivElement | null>(null);
   const [isReady, setIsReady] = useState(false);
@@ -69,22 +55,8 @@ export function LazyArtifactFrame({
   }, [isReady]);
 
   return (
-    <div
-      ref={frameRootRef}
-      className="flex w-full items-center justify-center bg-white text-xs text-muted-foreground"
-      style={{ height }}
-    >
-      {isReady ? (
-        <iframe
-          title={title}
-          srcDoc={srcDoc}
-          sandbox="allow-scripts allow-modals"
-          loading="lazy"
-          className="h-full w-full bg-white"
-        />
-      ) : (
-        <span>{t("previewWhenVisible")}</span>
-      )}
+    <div ref={frameRootRef} className="flex w-full items-center justify-center bg-white text-xs text-muted-foreground" style={{ height }}>
+      {isReady ? <iframe title={title} srcDoc={srcDoc} sandbox="allow-scripts allow-modals" loading="lazy" className="h-full w-full bg-white" /> : <span>{t("previewWhenVisible")}</span>}
     </div>
   );
 }

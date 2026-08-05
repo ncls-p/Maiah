@@ -1,17 +1,12 @@
 import { describe,expect,it } from "vitest";
 
-import {
-buildAgentManifest
-} from "@/modules/marketplace/manifest-builders";
+import { buildAgentManifest } from "@/modules/marketplace/manifest-builders";
 import { customToolRow,dbModule,resetDb } from "./marketplace-manifest-builders-db.test.db-module";
-
 
 describe("buildAgentManifest", () => {
   it("throws for missing agents and agents without versions", async () => {
     dbModule._c.limit.mockResolvedValueOnce([]);
-    await expect(
-      buildAgentManifest("agent-1", "ws-1", "Agent"),
-    ).rejects.toThrow("Agent not found");
+    await expect(buildAgentManifest("agent-1", "ws-1", "Agent")).rejects.toThrow("Agent not found");
 
     resetDb();
     dbModule._c.limit
@@ -24,9 +19,7 @@ describe("buildAgentManifest", () => {
         },
       ])
       .mockResolvedValueOnce([]);
-    await expect(
-      buildAgentManifest("agent-1", "ws-1", "Agent"),
-    ).rejects.toThrow("Agent has no version");
+    await expect(buildAgentManifest("agent-1", "ws-1", "Agent")).rejects.toThrow("Agent has no version");
   });
 
   it("rejects orchestrators instead of publishing an incomplete graph", async () => {
@@ -41,11 +34,7 @@ describe("buildAgentManifest", () => {
       ])
       .mockResolvedValueOnce([{ id: "version-1", agentId: "agent-1" }]);
 
-    await expect(
-      buildAgentManifest("agent-1", "ws-1", "Coordinator"),
-    ).rejects.toThrow(
-      "Orchestrators cannot be published to the marketplace yet",
-    );
+    await expect(buildAgentManifest("agent-1", "ws-1", "Coordinator")).rejects.toThrow("Orchestrators cannot be published to the marketplace yet");
   });
 
   it("bundles portable tool, skill, knowledge, MCP, and custom tool references", async () => {
@@ -104,15 +93,11 @@ describe("buildAgentManifest", () => {
       .mockResolvedValueOnce([agent])
       .mockResolvedValueOnce([version])
       .mockResolvedValueOnce([{ name: "Provider Name" }])
-      .mockResolvedValueOnce([
-        { displayName: "Model Name", modelId: "model-api" },
-      ])
+      .mockResolvedValueOnce([{ displayName: "Model Name", modelId: "model-api" }])
       .mockResolvedValueOnce([{ name: "search", serverId: "server-1" }])
       .mockResolvedValueOnce([{ name: "Remote Server" }])
       .mockResolvedValueOnce([{ name: "Discord notifier" }])
-      .mockResolvedValueOnce([
-        { id: "mcp-tool-1", name: "search", mcpServerId: "server-1" },
-      ])
+      .mockResolvedValueOnce([{ id: "mcp-tool-1", name: "search", mcpServerId: "server-1" }])
       .mockResolvedValueOnce([
         {
           id: "server-1",
@@ -157,35 +142,20 @@ describe("buildAgentManifest", () => {
       .mockReturnValueOnce(dbModule._c)
       .mockResolvedValueOnce([]);
 
-    const manifest = await buildAgentManifest(
-      "agent-1",
-      "ws-1",
-      "Portable agent",
-      null,
-    );
+    const manifest = await buildAgentManifest("agent-1", "ws-1", "Portable agent", null);
 
     expect(manifest.type).toBe("agent");
     expect(manifest.description).toBe("Agent desc");
     expect(manifest.agent.providerName).toBe("Provider Name");
     expect(manifest.agent.modelName).toBe("Model Name");
-    expect(manifest.toolBindings).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ source: "mcp", ref: "Remote Server/search" }),
-        expect.objectContaining({ source: "custom", ref: "Discord notifier" }),
-        expect.objectContaining({ source: "builtin", ref: "web_search" }),
-      ]),
-    );
+    expect(manifest.toolBindings).toEqual(expect.arrayContaining([expect.objectContaining({ source: "mcp", ref: "Remote Server/search" }), expect.objectContaining({ source: "custom", ref: "Discord notifier" }), expect.objectContaining({ source: "builtin", ref: "web_search" })]));
     expect(manifest.skillBindings ?? []).toHaveLength(1);
     expect(manifest.skillBindings?.[0]).toMatchObject({ ref: "Research" });
     expect(manifest.knowledgeBindings?.[0]).toEqual({
       name: "Docs",
       description: "Knowledge docs",
     });
-    expect(manifest.bundledResources?.mcpPresets[0].preset.serverName).toBe(
-      "Remote Server",
-    );
-    expect(manifest.bundledResources?.customTools[0].name).toBe(
-      "Discord notifier",
-    );
+    expect(manifest.bundledResources?.mcpPresets[0].preset.serverName).toBe("Remote Server");
+    expect(manifest.bundledResources?.customTools[0].name).toBe("Discord notifier");
   });
 });

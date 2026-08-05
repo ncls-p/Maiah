@@ -2,20 +2,9 @@ import { NextRequest,NextResponse } from "next/server";
 import { z } from "zod";
 
 import { handleRoute } from "@/lib/route-handler";
-import {
-executeResourceTransfer,
-listResourceTransferDestinations,
-previewResourceTransfer,
-RESOURCE_TRANSFER_ROOT_TYPES,
-TRANSFER_ACCESS_POLICIES,
-TRANSFER_OWNERSHIP_POLICIES,
-TRANSFER_SECRET_POLICIES,
-} from "@/modules/iam/resource-transfer";
+import { executeResourceTransfer,listResourceTransferDestinations,previewResourceTransfer,RESOURCE_TRANSFER_ROOT_TYPES,TRANSFER_ACCESS_POLICIES,TRANSFER_OWNERSHIP_POLICIES,TRANSFER_SECRET_POLICIES } from "@/modules/iam/resource-transfer";
 import { IamOperationError } from "@/modules/iam/use-cases";
-import {
-executeWorkspaceClone,
-previewWorkspaceClone,
-} from "@/modules/iam/workspace-clone";
+import { executeWorkspaceClone,previewWorkspaceClone } from "@/modules/iam/workspace-clone";
 
 const optionsSchema = z.object({
   includeDependencies: z.boolean(),
@@ -48,10 +37,7 @@ const transferSchema = z.discriminatedUnion("action", [
 
 function expectedIamError(error: unknown) {
   if (error instanceof IamOperationError) {
-    return NextResponse.json(
-      { error: error.message },
-      { status: error.status },
-    );
+    return NextResponse.json({ error: error.message }, { status: error.status });
   }
   return null;
 }
@@ -64,10 +50,7 @@ export async function GET(req: NextRequest) {
         sourceWorkspaceId: req.nextUrl.searchParams.get("sourceWorkspaceId"),
       });
       if (!parsed.success) {
-        return NextResponse.json(
-          { error: "Invalid source project" },
-          { status: 400 },
-        );
+        return NextResponse.json({ error: "Invalid source project" }, { status: 400 });
       }
       return NextResponse.json({
         destinations: await listResourceTransferDestinations({
@@ -90,16 +73,10 @@ export async function POST(req: NextRequest) {
     async ({ session }) => {
       const parsed = transferSchema.safeParse(await req.json());
       if (!parsed.success) {
-        return NextResponse.json(
-          { error: "Invalid transfer request", details: parsed.error.issues },
-          { status: 400 },
-        );
+        return NextResponse.json({ error: "Invalid transfer request", details: parsed.error.issues }, { status: 400 });
       }
       if (parsed.data.action === "preview") {
-        if (
-          parsed.data.mode === "clone" &&
-          parsed.data.resourceType === "workspace"
-        ) {
+        if (parsed.data.mode === "clone" && parsed.data.resourceType === "workspace") {
           return NextResponse.json(
             await previewWorkspaceClone({
               actorUserId: session.user.id,
@@ -110,10 +87,7 @@ export async function POST(req: NextRequest) {
           );
         }
         if (parsed.data.mode === "clone") {
-          return NextResponse.json(
-            { error: "Cloning is available for a complete project" },
-            { status: 400 },
-          );
+          return NextResponse.json({ error: "Cloning is available for a complete project" }, { status: 400 });
         }
         return NextResponse.json(
           await previewResourceTransfer({
@@ -122,10 +96,7 @@ export async function POST(req: NextRequest) {
           }),
         );
       }
-      if (
-        parsed.data.mode === "clone" &&
-        parsed.data.resourceType === "workspace"
-      ) {
+      if (parsed.data.mode === "clone" && parsed.data.resourceType === "workspace") {
         return NextResponse.json(
           await executeWorkspaceClone({
             actorUserId: session.user.id,
@@ -137,10 +108,7 @@ export async function POST(req: NextRequest) {
         );
       }
       if (parsed.data.mode === "clone") {
-        return NextResponse.json(
-          { error: "Cloning is available for a complete project" },
-          { status: 400 },
-        );
+        return NextResponse.json({ error: "Cloning is available for a complete project" }, { status: 400 });
       }
       return NextResponse.json(
         await executeResourceTransfer({

@@ -15,21 +15,7 @@ import { useState,type ReactNode } from "react";
 import { toast } from "sonner";
 import { AgentSkill,BUTTON_TYPE,FileEntry } from "./skill-manager.button-type";
 
-export function SkillEditorDialog({
-  skill,
-  onSaved,
-  trigger,
-  canManageGlobal,
-  open: controlledOpen,
-  onOpenChange,
-}: {
-  skill?: AgentSkill;
-  onSaved: () => void;
-  trigger?: ReactNode;
-  canManageGlobal: boolean;
-  open?: boolean;
-  onOpenChange?: (open: boolean) => void;
-}) {
+export function SkillEditorDialog({ skill, onSaved, trigger, canManageGlobal, open: controlledOpen, onOpenChange }: { skill?: AgentSkill; onSaved: () => void; trigger?: ReactNode; canManageGlobal: boolean; open?: boolean; onOpenChange?: (open: boolean) => void }) {
   const t = useTranslations("tools.skills");
   const { workspaceId } = useWorkspace();
   const isEditing = Boolean(skill);
@@ -172,14 +158,7 @@ export function SkillEditorDialog({
                 <ScrollArea className="w-full whitespace-nowrap">
                   <div className="flex gap-2 pb-2">
                     {files.map((file, i) => (
-                      <button
-                        key={i}
-                        type={BUTTON_TYPE}
-                        className={`max-w-56 shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-[background-color,border-color,color,scale] duration-150 ease-out active:scale-[0.96] ${
-                          i === activeFile ? "border-primary/40 bg-primary/10 text-foreground" : "border-border/70 bg-background text-muted-foreground"
-                        }`}
-                        onClick={() => setActiveFile(i)}
-                      >
+                      <button key={i} type={BUTTON_TYPE} className={`max-w-56 shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-[background-color,border-color,color,scale] duration-150 ease-out active:scale-[0.96] ${i === activeFile ? "border-primary/40 bg-primary/10 text-foreground" : "border-border/70 bg-background text-muted-foreground"}`} onClick={() => setActiveFile(i)}>
                         <span className="block truncate font-mono">{file.path || "untitled.md"}</span>
                       </button>
                     ))}
@@ -199,14 +178,7 @@ export function SkillEditorDialog({
                   <ScrollArea className="min-h-0 flex-1">
                     <div className="space-y-1 p-3">
                       {files.map((file, i) => (
-                        <button
-                          key={i}
-                          type={BUTTON_TYPE}
-                          className={`w-full rounded-lg px-2.5 py-2 text-left text-xs leading-snug transition-[background-color,box-shadow,color,scale] duration-150 ease-out active:scale-[0.96] ${
-                            i === activeFile ? "bg-background font-medium shadow-sm ring-1 ring-border/70" : "text-muted-foreground hover:bg-background/70 hover:text-foreground"
-                          }`}
-                          onClick={() => setActiveFile(i)}
-                        >
+                        <button key={i} type={BUTTON_TYPE} className={`w-full rounded-lg px-2.5 py-2 text-left text-xs leading-snug transition-[background-color,box-shadow,color,scale] duration-150 ease-out active:scale-[0.96] ${i === activeFile ? "bg-background font-medium shadow-sm ring-1 ring-border/70" : "text-muted-foreground hover:bg-background/70 hover:text-foreground"}`} onClick={() => setActiveFile(i)}>
                           <span className="block truncate font-mono">{file.path || "untitled.md"}</span>
                         </button>
                       ))}
@@ -228,13 +200,7 @@ export function SkillEditorDialog({
                       )}
                     </div>
                     <div className="min-h-0 flex-1 p-3 sm:p-4">
-                      <Textarea
-                        aria-label={t("fileContent")}
-                        value={currentFile.content}
-                        onChange={(e) => updateFile(activeFile, "content", e.target.value)}
-                        placeholder={t("fileContentPlaceholder")}
-                        className="h-full min-h-[42dvh] resize-none font-mono text-xs leading-relaxed md:min-h-0"
-                      />
+                      <Textarea aria-label={t("fileContent")} value={currentFile.content} onChange={(e) => updateFile(activeFile, "content", e.target.value)} placeholder={t("fileContentPlaceholder")} className="h-full min-h-[42dvh] resize-none font-mono text-xs leading-relaxed md:min-h-0" />
                     </div>
                   </>
                 ) : (

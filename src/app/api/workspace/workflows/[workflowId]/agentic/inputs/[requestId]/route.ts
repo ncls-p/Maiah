@@ -1,10 +1,7 @@
 import { NextRequest,NextResponse } from "next/server";
 import { z } from "zod";
 
-import {
-handleRoute,
-requireResourcePermissionAsync,
-} from "@/lib/route-handler";
+import { handleRoute,requireResourcePermissionAsync } from "@/lib/route-handler";
 import { submitWorkflowAgentInputRequest } from "@/modules/workflows/agentic-history";
 
 const paramsSchema = z.object({
@@ -33,13 +30,7 @@ export async function POST(
       if (!parsedParams.success || !parsedBody.success) {
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
       }
-      const forbidden = await requireResourcePermissionAsync(
-        session.user.id,
-        parsedBody.data.workspaceId,
-        "workflows.update",
-        "workflow",
-        (await params).workflowId,
-      );
+      const forbidden = await requireResourcePermissionAsync(session.user.id, parsedBody.data.workspaceId, "workflows.update", "workflow", (await params).workflowId);
       if (forbidden) return forbidden;
 
       return NextResponse.json(
@@ -56,10 +47,7 @@ export async function POST(
       expectedError: (error) =>
         NextResponse.json(
           {
-            error:
-              error instanceof Error
-                ? error.message
-                : "Unable to submit information",
+            error: error instanceof Error ? error.message : "Unable to submit information",
           },
           { status: 400 },
         ),

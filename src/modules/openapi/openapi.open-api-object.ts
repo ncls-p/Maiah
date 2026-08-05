@@ -1,4 +1,3 @@
-
 export type OpenApiObject = Record<string, unknown>;
 
 export const operationOverrides: Record<
@@ -14,8 +13,7 @@ export const operationOverrides: Record<
 > = {
   "GET /api/v1/models": {
     summary: "List enabled OpenAI-compatible models",
-    description:
-      "OpenAI-compatible model catalog for the workspace bound to the Bearer token. Only enabled text-generation models are returned.",
+    description: "OpenAI-compatible model catalog for the workspace bound to the Bearer token. Only enabled text-generation models are returned.",
     auth: ["apiKey"],
     permissions: ["models.view"],
     responses: {
@@ -46,8 +44,7 @@ export const operationOverrides: Record<
   },
   "POST /api/v1/chat/completions": {
     summary: "Create an OpenAI-compatible chat completion",
-    description:
-      "Drop-in Chat Completions endpoint. Supports text and image inputs, function tools, tool results, structured output, token usage and SSE streaming. n must be 1; audio and log probabilities are rejected explicitly.",
+    description: "Drop-in Chat Completions endpoint. Supports text and image inputs, function tools, tool results, structured output, token usage and SSE streaming. n must be 1; audio and log probabilities are rejected explicitly.",
     auth: ["apiKey"],
     permissions: ["models.invoke"],
     requestBody: {
@@ -60,8 +57,7 @@ export const operationOverrides: Record<
     },
     responses: {
       "200": {
-        description:
-          "Chat completion JSON, or OpenAI data-only SSE chunks ending with data: [DONE] when stream=true.",
+        description: "Chat completion JSON, or OpenAI data-only SSE chunks ending with data: [DONE] when stream=true.",
         content: {
           "application/json": {
             schema: { $ref: "#/components/schemas/OpenAIChatCompletion" },
@@ -75,8 +71,7 @@ export const operationOverrides: Record<
   },
   "POST /api/v1/responses": {
     summary: "Create an OpenAI-compatible response",
-    description:
-      "Drop-in Responses endpoint for stateless text generation. Supports text and image inputs, function calls and outputs, structured output, usage and named SSE events. Stateful previous_response_id, background mode and hosted OpenAI tools are rejected explicitly.",
+    description: "Drop-in Responses endpoint for stateless text generation. Supports text and image inputs, function calls and outputs, structured output, usage and named SSE events. Stateful previous_response_id, background mode and hosted OpenAI tools are rejected explicitly.",
     auth: ["apiKey"],
     permissions: ["models.invoke"],
     requestBody: {
@@ -89,8 +84,7 @@ export const operationOverrides: Record<
     },
     responses: {
       "200": {
-        description:
-          "Response object, or OpenAI named SSE events through response.completed/response.incomplete when stream=true.",
+        description: "Response object, or OpenAI named SSE events through response.completed/response.incomplete when stream=true.",
         content: {
           "application/json": {
             schema: { $ref: "#/components/schemas/OpenAIResponse" },
@@ -106,14 +100,12 @@ export const operationOverrides: Record<
   },
   "GET /api/workspace/api-keys": {
     summary: "List API tokens and grantable scopes",
-    description:
-      "Returns active tokens visible to the caller and the precise scopes the caller may grant. API-token callers only see scopes already held by that token.",
+    description: "Returns active tokens visible to the caller and the precise scopes the caller may grant. API-token callers only see scopes already held by that token.",
     permissions: ["apiKeys.manageOwn"],
   },
   "POST /api/workspace/api-keys": {
     summary: "Create a scoped workspace API token",
-    description:
-      "The requested scopes must be known, must belong to the user's current effective permissions, and—when called by another token—must be included in the caller token's scopes.",
+    description: "The requested scopes must be known, must belong to the user's current effective permissions, and—when called by another token—must be included in the caller token's scopes.",
     permissions: ["apiKeys.manageOwn"],
     requestBody: {
       required: true,
@@ -125,8 +117,7 @@ export const operationOverrides: Record<
     },
     responses: {
       "201": {
-        description:
-          "Token created. The rawKey value is returned once and is never stored in plaintext.",
+        description: "Token created. The rawKey value is returned once and is never stored in plaintext.",
         content: {
           "application/json": {
             schema: { $ref: "#/components/schemas/CreateApiTokenResponse" },
@@ -226,8 +217,7 @@ export function openAICompatibleResponses(): OpenApiObject {
 
 export function genericRequestBody(bodyKind: "none" | "json" | "multipart") {
   if (bodyKind === "none") return undefined;
-  const mediaType =
-    bodyKind === "multipart" ? "multipart/form-data" : "application/json";
+  const mediaType = bodyKind === "multipart" ? "multipart/form-data" : "application/json";
   return {
     required: true,
     content: {

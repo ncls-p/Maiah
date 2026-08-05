@@ -1,5 +1,3 @@
-
-
 export type ScheduledTaskFrequency = "daily" | "interval";
 
 export type ScheduledTaskInput = {
@@ -16,20 +14,7 @@ export type ScheduledTaskInput = {
   enabled?: boolean;
 };
 
-export type UpdateScheduledTaskInput = Partial<
-  Pick<
-    ScheduledTaskInput,
-    | "agentId"
-    | "conversationId"
-    | "title"
-    | "prompt"
-    | "frequency"
-    | "timezone"
-    | "timeOfDay"
-    | "intervalMinutes"
-    | "enabled"
-  >
->;
+export type UpdateScheduledTaskInput = Partial<Pick<ScheduledTaskInput, "agentId" | "conversationId" | "title" | "prompt" | "frequency" | "timezone" | "timeOfDay" | "intervalMinutes" | "enabled">>;
 
 export const MAX_DUE_TASKS_PER_TICK = 10;
 
@@ -84,9 +69,7 @@ function getZonedParts(date: Date, timeZone: string) {
     minute: "2-digit",
     second: "2-digit",
   });
-  const parts = Object.fromEntries(
-    formatter.formatToParts(date).map((part) => [part.type, part.value]),
-  );
+  const parts = Object.fromEntries(formatter.formatToParts(date).map((part) => [part.type, part.value]));
   return {
     year: Number(parts.year),
     month: Number(parts.month),
@@ -99,43 +82,17 @@ function getZonedParts(date: Date, timeZone: string) {
 
 function getTimeZoneOffsetMs(date: Date, timeZone: string) {
   const parts = getZonedParts(date, timeZone);
-  const asUtc = Date.UTC(
-    parts.year,
-    parts.month - 1,
-    parts.day,
-    parts.hour,
-    parts.minute,
-    parts.second,
-  );
+  const asUtc = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second);
   return asUtc - date.getTime();
 }
 
-function zonedTimeToUtc(input: {
-  timeZone: string;
-  year: number;
-  month: number;
-  day: number;
-  hour: number;
-  minute: number;
-}) {
-  const guessedUtc = new Date(
-    Date.UTC(input.year, input.month - 1, input.day, input.hour, input.minute),
-  );
-  const firstPass = new Date(
-    guessedUtc.getTime() - getTimeZoneOffsetMs(guessedUtc, input.timeZone),
-  );
-  return new Date(
-    guessedUtc.getTime() - getTimeZoneOffsetMs(firstPass, input.timeZone),
-  );
+function zonedTimeToUtc(input: { timeZone: string; year: number; month: number; day: number; hour: number; minute: number }) {
+  const guessedUtc = new Date(Date.UTC(input.year, input.month - 1, input.day, input.hour, input.minute));
+  const firstPass = new Date(guessedUtc.getTime() - getTimeZoneOffsetMs(guessedUtc, input.timeZone));
+  return new Date(guessedUtc.getTime() - getTimeZoneOffsetMs(firstPass, input.timeZone));
 }
 
-export function computeNextRunAt(input: {
-  frequency: ScheduledTaskFrequency;
-  timezone?: string;
-  timeOfDay?: string | null;
-  intervalMinutes?: number | null;
-  from?: Date;
-}) {
+export function computeNextRunAt(input: { frequency: ScheduledTaskFrequency; timezone?: string; timeOfDay?: string | null; intervalMinutes?: number | null; from?: Date }) {
   const from = input.from ?? new Date();
   if (input.frequency === "interval") {
     const intervalMinutes = input.intervalMinutes ?? 0;
@@ -156,9 +113,7 @@ export function computeNextRunAt(input: {
   });
 
   if (candidate <= from) {
-    const tomorrowNoonUtc = new Date(
-      Date.UTC(localNow.year, localNow.month - 1, localNow.day + 1, 12),
-    );
+    const tomorrowNoonUtc = new Date(Date.UTC(localNow.year, localNow.month - 1, localNow.day + 1, 12));
     const tomorrow = getZonedParts(tomorrowNoonUtc, timezone);
     candidate = zonedTimeToUtc({
       timeZone: timezone,

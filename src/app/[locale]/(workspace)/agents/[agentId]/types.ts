@@ -176,10 +176,7 @@ export type AgentForm = {
   curationLabel: string;
 };
 
-export type ToolBindingState = Record<
-  string,
-  { enabled: boolean; requireApproval: boolean }
->;
+export type ToolBindingState = Record<string, { enabled: boolean; requireApproval: boolean }>;
 
 /* ─── Constants ─────────────────────────────────────────────────────── */
 

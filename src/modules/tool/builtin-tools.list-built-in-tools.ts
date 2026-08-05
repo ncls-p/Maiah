@@ -1,8 +1,6 @@
-
 import { builtInToolInputSchemaJson } from "./builtin-tool-json-schema";
 import type { ToolRiskLevel } from "./builtin-tools-catalog";
 import { builtInTools } from "./builtin-tools.built-in-tools";
-
 
 export function listBuiltInTools() {
   return builtInTools.map((tool) => ({
@@ -25,9 +23,7 @@ export function getBuiltInToolByName(name: string) {
   return builtInTools.find((tool) => tool.name === name) ?? null;
 }
 
-export function requiresApproval(
-  riskLevel: ToolRiskLevel | string | null | undefined,
-) {
+export function requiresApproval(riskLevel: ToolRiskLevel | string | null | undefined) {
   return riskLevel === "high" || riskLevel === "critical";
 }
 

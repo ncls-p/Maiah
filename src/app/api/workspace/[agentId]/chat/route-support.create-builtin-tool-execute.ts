@@ -1,12 +1,7 @@
-import {
-requiresApproval
-} from "@/modules/tool/builtin-tools";
-import {
-logToolInvocation
-} from "@/modules/tool/use-cases";
+import { requiresApproval } from "@/modules/tool/builtin-tools";
+import { logToolInvocation } from "@/modules/tool/use-cases";
 import { authorization } from "@/server/domain/services/authorization";
 import { BUILTIN_TOOL_SOURCE,TOOL_GATE_RETURN,ToolGateResult } from "./route-support.chat-request-schema";
-
 
 export function createBuiltinToolExecute(
   input: {
@@ -26,19 +21,8 @@ export function createBuiltinToolExecute(
   binding: { riskLevel: string | null; requireApproval: boolean },
   reserveToolCall: () => boolean,
   toolLimitReachedResult: () => unknown,
-  gateToolExecution: (args: {
-    startedAt: number;
-    toolSource: "builtin";
-    toolId: string;
-    toolName: string;
-    riskLevel: string | null;
-    toolInput: unknown;
-    bindingRequiresApproval: boolean;
-  }) => Promise<ToolGateResult>,
-  canExecuteRestrictedToolFn: (
-    userId: string,
-    workspaceId: string,
-  ) => Promise<boolean>,
+  gateToolExecution: (args: { startedAt: number; toolSource: "builtin"; toolId: string; toolName: string; riskLevel: string | null; toolInput: unknown; bindingRequiresApproval: boolean }) => Promise<ToolGateResult>,
+  canExecuteRestrictedToolFn: (userId: string, workspaceId: string) => Promise<boolean>,
 ): (toolInput: unknown) => Promise<unknown> {
   return async (toolInput: unknown) => {
     const startedAt = Date.now();
@@ -61,15 +45,7 @@ export function createBuiltinToolExecute(
     const restricted = requiresApproval(definition.riskLevel);
 
     if (restricted) {
-      const canExecute =
-        definition.name === "github_publish_code_workspace"
-          ? await authorization.hasPermission(
-              { principalType: "user", principalId: input.userId },
-              "agents.chat",
-              "workspace",
-              input.workspaceId,
-            )
-          : await canExecuteRestrictedToolFn(input.userId, input.workspaceId);
+      const canExecute = definition.name === "github_publish_code_workspace" ? await authorization.hasPermission({ principalType: "user", principalId: input.userId }, "agents.chat", "workspace", input.workspaceId) : await canExecuteRestrictedToolFn(input.userId, input.workspaceId);
       if (!canExecute) {
         await logToolInvocation({
           workspaceId: input.workspaceId,
@@ -86,8 +62,7 @@ export function createBuiltinToolExecute(
         });
         return {
           denied: true,
-          message:
-            "You do not have permission to execute this restricted tool.",
+          message: "You do not have permission to execute this restricted tool.",
         };
       }
     }

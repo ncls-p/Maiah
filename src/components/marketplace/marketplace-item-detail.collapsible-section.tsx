@@ -1,57 +1,26 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import {
-Card,
-CardContent,
-CardDescription,
-CardHeader,
-CardTitle,
-} from "@/components/ui/card";
-import {
-Collapsible,
-CollapsibleContent,
-CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Card,CardContent,CardDescription,CardHeader,CardTitle } from "@/components/ui/card";
+import { Collapsible,CollapsibleContent,CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
-import {
-ChevronDown
-} from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { AgentManifestSection,MarketplaceItemDetailData,SkillManifestSection } from "./marketplace-item-detail.marketplace-item-detail-data";
 import { CustomToolManifestSection,McpManifestSection } from "./marketplace-item-detail.skill-manifest-details";
 
-
-export function CollapsibleSection({
-  title,
-  icon: Icon,
-  children,
-  defaultOpen = false,
-}: {
-  title: string;
-  icon?: React.ComponentType<{ className?: string }>;
-  children: React.ReactNode;
-  defaultOpen?: boolean;
-}) {
+export function CollapsibleSection({ title, icon: Icon, children, defaultOpen = false }: { title: string; icon?: React.ComponentType<{ className?: string }>; children: React.ReactNode; defaultOpen?: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
       <CollapsibleTrigger asChild>
-        <button
-          type="button"
-          className="flex w-full items-center justify-between rounded-lg border border-border/60 px-3 py-2 text-left text-sm font-medium hover:bg-muted/50"
-        >
+        <button type="button" className="flex w-full items-center justify-between rounded-lg border border-border/60 px-3 py-2 text-left text-sm font-medium hover:bg-muted/50">
           <span className="flex items-center gap-2">
             {Icon ? <Icon className="size-4 text-muted-foreground" /> : null}
             {title}
           </span>
-          <ChevronDown
-            className={cn(
-              "size-4 text-muted-foreground transition-transform",
-              open && "rotate-180",
-            )}
-          />
+          <ChevronDown className={cn("size-4 text-muted-foreground transition-transform", open && "rotate-180")} />
         </button>
       </CollapsibleTrigger>
       <CollapsibleContent className="pt-3">{children}</CollapsibleContent>
@@ -59,13 +28,7 @@ export function CollapsibleSection({
   );
 }
 
-export function MarketplaceItemDetailSections({
-  item,
-  onUnshareAction,
-}: {
-  item: MarketplaceItemDetailData;
-  onUnshareAction?: (userId: string) => void;
-}) {
+export function MarketplaceItemDetailSections({ item, onUnshareAction }: { item: MarketplaceItemDetailData; onUnshareAction?: (userId: string) => void }) {
   const t = useTranslations("marketplace.detail");
   const manifest = item.latestVersion?.manifestJson;
 
@@ -74,12 +37,8 @@ export function MarketplaceItemDetailSections({
       {item.latestVersion ? (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">
-              {t("version", { version: item.latestVersion.version })}
-            </CardTitle>
-            {item.latestVersion.changelog ? (
-              <CardDescription>{item.latestVersion.changelog}</CardDescription>
-            ) : null}
+            <CardTitle className="text-base">{t("version", { version: item.latestVersion.version })}</CardTitle>
+            {item.latestVersion.changelog ? <CardDescription>{item.latestVersion.changelog}</CardDescription> : null}
           </CardHeader>
           <CardContent>
             {manifest ? (
@@ -116,22 +75,13 @@ export function MarketplaceItemDetailSections({
           <CardContent>
             <ul className="space-y-2">
               {item.shares.map((share) => (
-                <li
-                  key={share.userId}
-                  className="flex items-center justify-between gap-2 text-sm"
-                >
+                <li key={share.userId} className="flex items-center justify-between gap-2 text-sm">
                   <div>
                     <p className="font-medium">{share.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {share.email}
-                    </p>
+                    <p className="text-xs text-muted-foreground">{share.email}</p>
                   </div>
                   {onUnshareAction ? (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => onUnshareAction(share.userId)}
-                    >
+                    <Button size="sm" variant="ghost" onClick={() => onUnshareAction(share.userId)}>
                       {t("removeShare")}
                     </Button>
                   ) : null}

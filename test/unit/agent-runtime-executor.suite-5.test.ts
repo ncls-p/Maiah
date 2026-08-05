@@ -62,10 +62,7 @@ vi.mock("@/lib/logger", () => ({
   logger: { warn: mocks.logWarning },
 }));
 
-import {
-abortActiveAgentRun,
-executeAgent,
-} from "@/modules/agent/runtime-executor";
+import { abortActiveAgentRun,executeAgent } from "@/modules/agent/runtime-executor";
 
 const rootAgent = {
   id: "11111111-1111-4111-8111-111111111111",
@@ -121,7 +118,6 @@ beforeEach(() => {
 });
 
 describe("agent runtime executor", () => {
-
   it("fails when a new run cannot be claimed", async () => {
     mocks.claimRun.mockResolvedValueOnce(null);
 

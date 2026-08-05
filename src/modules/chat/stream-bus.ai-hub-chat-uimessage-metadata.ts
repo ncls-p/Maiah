@@ -35,16 +35,14 @@ function safeStreamEvent(event: StreamEvent): StreamEvent {
     return {
       ...event,
       input: projectToolMessagePayload(event.input),
-      agentContext:
-        parseAgentToolDisplayContext(event.agentContext) ?? undefined,
+      agentContext: parseAgentToolDisplayContext(event.agentContext) ?? undefined,
     };
   }
   if (event.type === "tool_result") {
     return {
       ...event,
       output: projectToolMessagePayload(event.output),
-      agentContext:
-        parseAgentToolDisplayContext(event.agentContext) ?? undefined,
+      agentContext: parseAgentToolDisplayContext(event.agentContext) ?? undefined,
     };
   }
   if (event.type === "tool_approval_required") {
@@ -57,11 +55,7 @@ function safeStreamEvent(event: StreamEvent): StreamEvent {
     try {
       return {
         ...event,
-        inputText: JSON.stringify(
-          projectToolMessagePayload(JSON.parse(String(event.inputText))),
-          null,
-          2,
-        ),
+        inputText: JSON.stringify(projectToolMessagePayload(JSON.parse(String(event.inputText))), null, 2),
       };
     } catch {
       return { ...event, inputText: "" };
@@ -88,10 +82,7 @@ export function publishChatStreamEvent(messageId: string, event: StreamEvent) {
   }
 }
 
-export function registerChatStreamAbortController(
-  messageId: string,
-  abortController: AbortController,
-) {
+export function registerChatStreamAbortController(messageId: string, abortController: AbortController) {
   let run = runs.get(messageId);
   if (!run || run.done) {
     run = { events: [], done: false, subscribers: new Set() };
@@ -125,11 +116,7 @@ export function hasActiveChatStream(messageId: string) {
   return Boolean(run && !run.done);
 }
 
-export function subscribeToChatStream(
-  messageId: string,
-  subscriber: Subscriber,
-  options: { replay?: boolean } = {},
-) {
+export function subscribeToChatStream(messageId: string, subscriber: Subscriber, options: { replay?: boolean } = {}) {
   const run = getRun(messageId);
   if (options.replay ?? true) {
     for (const event of run.events) {
@@ -146,11 +133,7 @@ export function subscribeToChatStream(
   };
 }
 
-export function createChatStreamResponse(
-  messageId: string,
-  headers: Record<string, string> = {},
-  options: { replay?: boolean } = {},
-) {
+export function createChatStreamResponse(messageId: string, headers: Record<string, string> = {}, options: { replay?: boolean } = {}) {
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream<Uint8Array>({
@@ -161,9 +144,7 @@ export function createChatStreamResponse(
         {
           enqueue(event) {
             try {
-              controller.enqueue(
-                encoder.encode(`data: ${JSON.stringify(event)}\n\n`),
-              );
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
             } catch {
               unsubscribe();
             }
@@ -197,11 +178,7 @@ export function stringValue(value: unknown) {
 }
 
 export function outputIsDenied(output: unknown) {
-  return (
-    typeof output === "object" &&
-    output !== null &&
-    (output as { denied?: unknown }).denied === true
-  );
+  return typeof output === "object" && output !== null && (output as { denied?: unknown }).denied === true;
 }
 
 export function metadataFromHeaders(headers: Record<string, string>) {

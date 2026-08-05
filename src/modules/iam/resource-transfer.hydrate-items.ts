@@ -4,17 +4,9 @@ import { and,eq,inArray } from "drizzle-orm";
 
 import { db } from "@/server/infrastructure/db";
 import { findAccessResource } from "@/server/infrastructure/db/access-resource-repository";
-import {
-agents,
-organizationMembers,
-roleBindings,
-roles,
-teams,
-toolConnectors
-} from "@/server/infrastructure/db/schema";
+import { agents,organizationMembers,roleBindings,roles,teams,toolConnectors } from "@/server/infrastructure/db/schema";
 
 import { RESOURCE_TYPES,ResourceTransferItem,ResourceTransferOptions,TransferAccessPolicy,TransferSets,ids } from "./resource-transfer.transfer-access-policies";
-
 
 export async function hydrateItems(sets: TransferSets, sourceWorkspaceId: string) {
   const items: ResourceTransferItem[] = [];
@@ -26,17 +18,10 @@ export async function hydrateItems(sets: TransferSets, sourceWorkspaceId: string
       }
     }
   }
-  return items.sort(
-    (a, b) => a.type.localeCompare(b.type) || a.name.localeCompare(b.name),
-  );
+  return items.sort((a, b) => a.type.localeCompare(b.type) || a.name.localeCompare(b.name));
 }
 
-export function transferFingerprint(input: {
-  sourceWorkspaceId: string;
-  targetWorkspaceId: string;
-  options: ResourceTransferOptions;
-  items: ResourceTransferItem[];
-}) {
+export function transferFingerprint(input: { sourceWorkspaceId: string; targetWorkspaceId: string; options: ResourceTransferOptions; items: ResourceTransferItem[] }) {
   return createHash("sha256")
     .update(
       JSON.stringify({
@@ -49,18 +34,11 @@ export function transferFingerprint(input: {
     .digest("hex");
 }
 
-export async function compatibleAssignmentCounts(
-  items: ResourceTransferItem[],
-  targetWorkspaceId: string,
-  targetOrganizationId: string,
-  policy: TransferAccessPolicy,
-) {
+export async function compatibleAssignmentCounts(items: ResourceTransferItem[], targetWorkspaceId: string, targetOrganizationId: string, policy: TransferAccessPolicy) {
   const bindings = (
     await Promise.all(
       RESOURCE_TYPES.map(async (type) => {
-        const resourceIds = items
-          .filter((item) => item.type === type)
-          .map((item) => item.id);
+        const resourceIds = items.filter((item) => item.type === type).map((item) => item.id);
         if (resourceIds.length === 0) return [];
         return db
           .select({
@@ -73,12 +51,7 @@ export async function compatibleAssignmentCounts(
           })
           .from(roleBindings)
           .innerJoin(roles, eq(roleBindings.roleId, roles.id))
-          .where(
-            and(
-              eq(roleBindings.resourceType, type),
-              inArray(roleBindings.resourceId, resourceIds),
-            ),
-          );
+          .where(and(eq(roleBindings.resourceType, type), inArray(roleBindings.resourceId, resourceIds)));
       }),
     )
   ).flat();
@@ -88,31 +61,12 @@ export async function compatibleAssignmentCounts(
     db
       .select({ userId: organizationMembers.userId })
       .from(organizationMembers)
-      .where(
-        and(
-          eq(organizationMembers.organizationId, targetOrganizationId),
-          eq(organizationMembers.status, "active"),
-        ),
-      ),
-    db
-      .select({ id: teams.id })
-      .from(teams)
-      .where(eq(teams.organizationId, targetOrganizationId)),
+      .where(and(eq(organizationMembers.organizationId, targetOrganizationId), eq(organizationMembers.status, "active"))),
+    db.select({ id: teams.id }).from(teams).where(eq(teams.organizationId, targetOrganizationId)),
   ]);
   const memberIds = new Set(memberRows.map(({ userId }) => userId));
   const teamIds = new Set(teamRows.map(({ id }) => id));
-  const kept = bindings.filter(
-    (binding) =>
-      ((binding.principalType === "user" &&
-        memberIds.has(binding.principalId)) ||
-        (binding.principalType === "group" &&
-          teamIds.has(binding.principalId))) &&
-      (binding.roleIsSystem ||
-        (binding.roleOwnerType === "organization" &&
-          binding.roleOwnerId === targetOrganizationId) ||
-        (binding.roleOwnerType === "workspace" &&
-          binding.roleOwnerId === targetWorkspaceId)),
-  ).length;
+  const kept = bindings.filter((binding) => ((binding.principalType === "user" && memberIds.has(binding.principalId)) || (binding.principalType === "group" && teamIds.has(binding.principalId))) && (binding.roleIsSystem || (binding.roleOwnerType === "organization" && binding.roleOwnerId === targetOrganizationId) || (binding.roleOwnerType === "workspace" && binding.roleOwnerId === targetWorkspaceId))).length;
   return { kept, removed: bindings.length - kept };
 }
 
@@ -120,10 +74,7 @@ export async function targetConflicts(sets: TransferSets, targetWorkspaceId: str
   const blockers: string[] = [];
   const agentIds = ids(sets, "agent");
   if (agentIds.length > 0) {
-    const source = await db
-      .select({ slug: agents.slug })
-      .from(agents)
-      .where(inArray(agents.id, agentIds));
+    const source = await db.select({ slug: agents.slug }).from(agents).where(inArray(agents.id, agentIds));
     if (source.length > 0) {
       const conflicts = await db
         .select({ slug: agents.slug })
@@ -137,18 +88,12 @@ export async function targetConflicts(sets: TransferSets, targetWorkspaceId: str
             ),
           ),
         );
-      if (conflicts.length > 0)
-        blockers.push(
-          `Assistant URL conflict: ${conflicts.map(({ slug }) => slug).join(", ")}`,
-        );
+      if (conflicts.length > 0) blockers.push(`Assistant URL conflict: ${conflicts.map(({ slug }) => slug).join(", ")}`);
     }
   }
   const connectorIds = ids(sets, "tool_connector");
   if (connectorIds.length > 0) {
-    const source = await db
-      .select({ key: toolConnectors.key })
-      .from(toolConnectors)
-      .where(inArray(toolConnectors.id, connectorIds));
+    const source = await db.select({ key: toolConnectors.key }).from(toolConnectors).where(inArray(toolConnectors.id, connectorIds));
     if (source.length > 0) {
       const conflicts = await db
         .select({ key: toolConnectors.key })
@@ -162,10 +107,7 @@ export async function targetConflicts(sets: TransferSets, targetWorkspaceId: str
             ),
           ),
         );
-      if (conflicts.length > 0)
-        blockers.push(
-          `Connector key conflict: ${conflicts.map(({ key }) => key).join(", ")}`,
-        );
+      if (conflicts.length > 0) blockers.push(`Connector key conflict: ${conflicts.map(({ key }) => key).join(", ")}`);
     }
   }
   return blockers;

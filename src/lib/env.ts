@@ -7,14 +7,7 @@ const encryptionKeySchema = z
 
 const placeholderSecret = (value: string) => {
   const normalized = value.toLowerCase();
-  return [
-    "dev-secret",
-    "change-in-production",
-    "test-secret",
-    "minioadmin",
-    "rustfsadmin",
-    "changeme",
-  ].some((placeholder) => normalized.includes(placeholder));
+  return ["dev-secret", "change-in-production", "test-secret", "minioadmin", "rustfsadmin", "changeme"].some((placeholder) => normalized.includes(placeholder));
 };
 
 const runtimeEnvSchema = z.enum(["development", "production", "test"]);
@@ -51,35 +44,20 @@ export const productionEnvSchema = baseEnvSchema.extend({
   BETTER_AUTH_SECRET: z
     .string()
     .min(32)
-    .refine(
-      (value) => !placeholderSecret(value),
-      "must not use development or placeholder secrets",
-    ),
-  APP_ENCRYPTION_KEY: encryptionKeySchema.refine(
-    (value) => !/^0+$/.test(value),
-    "must not use the all-zero development encryption key",
-  ),
+    .refine((value) => !placeholderSecret(value), "must not use development or placeholder secrets"),
+  APP_ENCRYPTION_KEY: encryptionKeySchema.refine((value) => !/^0+$/.test(value), "must not use the all-zero development encryption key"),
   DRAGONFLY_PASSWORD: z
     .string()
     .min(16)
-    .refine(
-      (value) => !placeholderSecret(value),
-      "must not use development or placeholder secrets",
-    ),
+    .refine((value) => !placeholderSecret(value), "must not use development or placeholder secrets"),
   OBJECT_STORAGE_ACCESS_KEY_ID: z
     .string()
     .min(1)
-    .refine(
-      (value) => !placeholderSecret(value),
-      "must not use development or placeholder access keys",
-    ),
+    .refine((value) => !placeholderSecret(value), "must not use development or placeholder access keys"),
   OBJECT_STORAGE_SECRET_ACCESS_KEY: z
     .string()
     .min(16)
-    .refine(
-      (value) => !placeholderSecret(value),
-      "must not use development or placeholder secrets",
-    ),
+    .refine((value) => !placeholderSecret(value), "must not use development or placeholder secrets"),
 });
 
 export type AppEnv = z.infer<typeof baseEnvSchema>;
@@ -115,39 +93,25 @@ const ENV_DEFAULTS: EnvSource = {
 };
 
 function readEnv(source: EnvSource): EnvSource {
-  return Object.fromEntries(
-    Object.entries(ENV_DEFAULTS).map(([key, fallback]) => [
-      key,
-      source[key] || fallback,
-    ]),
-  );
+  return Object.fromEntries(Object.entries(ENV_DEFAULTS).map(([key, fallback]) => [key, source[key] || fallback]));
 }
 
 function shouldUseProductionValidation(env: EnvSource) {
   if (env.APP_ENV === "production") return true;
 
-  const isNextProductionBuild =
-    process.env.NEXT_PHASE === "phase-production-build";
+  const isNextProductionBuild = process.env.NEXT_PHASE === "phase-production-build";
 
   return env.NODE_ENV === "production" && !isNextProductionBuild;
 }
 
 export function validateEnvValues(source: EnvSource = process.env): AppEnv {
   const env = readEnv(source);
-  const result = shouldUseProductionValidation(env)
-    ? productionEnvSchema.safeParse(env)
-    : baseEnvSchema.safeParse(env);
+  const result = shouldUseProductionValidation(env) ? productionEnvSchema.safeParse(env) : baseEnvSchema.safeParse(env);
 
   if (!result.success) {
-    const issues = result.error.issues
-      .map((issue) => `  - ${issue.path.join(".")}: ${issue.message}`)
-      .join("\n");
-    const prefix = shouldUseProductionValidation(env)
-      ? "Production environment validation failed"
-      : "Environment validation failed";
-    throw new Error(
-      `${prefix}. Missing or invalid required env vars:\n${issues}`,
-    );
+    const issues = result.error.issues.map((issue) => `  - ${issue.path.join(".")}: ${issue.message}`).join("\n");
+    const prefix = shouldUseProductionValidation(env) ? "Production environment validation failed" : "Environment validation failed";
+    throw new Error(`${prefix}. Missing or invalid required env vars:\n${issues}`);
   }
 
   return result.data;

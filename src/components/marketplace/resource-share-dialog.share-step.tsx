@@ -73,39 +73,10 @@ export function previewQueryParams(resource: ShareableResource, workspaceId: str
   return params;
 }
 
-export function ShareOptionCard({
-  icon: Icon,
-  title,
-  description,
-  onClick,
-  disabled,
-  loading,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  title: string;
-  description: string;
-  onClick: () => void;
-  disabled?: boolean;
-  loading?: boolean;
-}) {
+export function ShareOptionCard({ icon: Icon, title, description, onClick, disabled, loading }: { icon: React.ComponentType<{ className?: string }>; title: string; description: string; onClick: () => void; disabled?: boolean; loading?: boolean }) {
   return (
-    <button
-      type="button"
-      disabled={disabled || loading}
-      onClick={onClick}
-      className={cn(
-        "flex w-full items-start gap-3 rounded-xl border border-border/80 p-4 text-left transition-colors",
-        "hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-        (disabled || loading) && "opacity-60 cursor-not-allowed",
-      )}
-    >
-      <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted">
-        {loading ? (
-          <Spinner className="size-4" />
-        ) : (
-          <Icon className="size-5 text-muted-foreground" />
-        )}
-      </div>
+    <button type="button" disabled={disabled || loading} onClick={onClick} className={cn("flex w-full items-start gap-3 rounded-xl border border-border/80 p-4 text-left transition-colors", "hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", (disabled || loading) && "opacity-60 cursor-not-allowed")}>
+      <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted">{loading ? <Spinner className="size-4" /> : <Icon className="size-5 text-muted-foreground" />}</div>
       <div className="min-w-0">
         <p className="font-medium text-sm">{title}</p>
         <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>

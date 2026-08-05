@@ -3,13 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
-import {
-Card,
-CardContent,
-CardDescription,
-CardHeader,
-CardTitle,
-} from "@/components/ui/card";
+import { Card,CardContent,CardDescription,CardHeader,CardTitle } from "@/components/ui/card";
 import { defaultLocale,locales } from "@/i18n/routing";
 
 import enMessages from "../../messages/en.json";
@@ -25,26 +19,11 @@ export default async function NotFound() {
   const copy = locale === "fr" ? frMessages.notFound : enMessages.notFound;
 
   return (
-    <main
-      data-page="auth"
-      className="flex min-h-svh items-center justify-center bg-background p-4"
-    >
+    <main data-page="auth" className="flex min-h-svh items-center justify-center bg-background p-4">
       <div className="flex w-full max-w-md flex-col gap-5">
         <div className="flex justify-center">
-          <Link
-            href={`/${locale}/chat`}
-            className="inline-flex shrink-0 items-center"
-            aria-label="Deodis"
-          >
-            <Image
-              src="/deodis-logo.png"
-              alt="Deodis"
-              width={857}
-              height={320}
-              loading="eager"
-              fetchPriority="high"
-              className="h-8 w-auto"
-            />
+          <Link href={`/${locale}/chat`} className="inline-flex shrink-0 items-center" aria-label="Deodis">
+            <Image src="/deodis-logo.png" alt="Deodis" width={857} height={320} loading="eager" fetchPriority="high" className="h-8 w-auto" />
           </Link>
         </div>
         <Card>

@@ -19,13 +19,8 @@ vi.mock("@/modules/tool/code-sandbox", () => ({
   })),
 }));
 
-import {
-createStarterDefinition,
-workflowDefinitionSchema,
-} from "@/modules/workflows/contracts";
-import {
-compileWorkflowDefinition
-} from "@/modules/workflows/runtime";
+import { createStarterDefinition,workflowDefinitionSchema } from "@/modules/workflows/contracts";
+import { compileWorkflowDefinition } from "@/modules/workflows/runtime";
 
 const settings = {
   timeoutMs: 30_000,
@@ -35,17 +30,13 @@ const settings = {
 
 describe("workflow contracts", () => {
   it("creates a valid starter definition", () => {
-    expect(workflowDefinitionSchema.parse(createStarterDefinition())).toEqual(
-      createStarterDefinition(),
-    );
+    expect(workflowDefinitionSchema.parse(createStarterDefinition())).toEqual(createStarterDefinition());
   });
 
   it("requires exactly one trigger", () => {
     const definition = createStarterDefinition();
     definition.nodes.push({ ...definition.nodes[0]!, id: "trigger-two" });
-    expect(() => workflowDefinitionSchema.parse(definition)).toThrow(
-      "exactly one manual trigger",
-    );
+    expect(() => workflowDefinitionSchema.parse(definition)).toThrow("exactly one manual trigger");
   });
 
   it("rejects graph cycles before execution", () => {

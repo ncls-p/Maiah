@@ -118,22 +118,11 @@ export interface McpPresetMarketplaceManifest {
   };
 }
 
-export type MarketplaceManifest =
-  | AgentMarketplaceManifest
-  | SkillMarketplaceManifest
-  | ToolMarketplaceManifest
-  | McpPresetMarketplaceManifest;
+export type MarketplaceManifest = AgentMarketplaceManifest | SkillMarketplaceManifest | ToolMarketplaceManifest | McpPresetMarketplaceManifest;
 
-export type SourceResourceType =
-  | "agent"
-  | "skill"
-  | "custom_tool"
-  | "mcp_server"
-  | "mcp_tool";
+export type SourceResourceType = "agent" | "skill" | "custom_tool" | "mcp_server" | "mcp_tool";
 
-export function skillFileStats(
-  files: Array<{ path: string; content: string }>,
-) {
+export function skillFileStats(files: Array<{ path: string; content: string }>) {
   return {
     fileCount: files.length,
     totalBytes: files.reduce((sum, f) => sum + f.content.length, 0),

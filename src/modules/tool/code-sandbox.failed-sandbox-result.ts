@@ -3,32 +3,14 @@ import path from "node:path";
 
 import { env } from "@/lib/env";
 import { isPathTraversal } from "@/lib/path-utils";
-import {
-type ChatAttachment
-} from "@/modules/chat/attachments";
-import {
-CodeSandboxRequest,
-CodeSandboxResult,
-defaultSocketPath,
-localDevSocketPath,
-maxSandboxInputFileBytes,
-maxSandboxInputFiles,
-maxSandboxInputTotalBytes,
-} from "./code-sandbox.code-sandbox-output-file";
+import { type ChatAttachment } from "@/modules/chat/attachments";
+import { CodeSandboxRequest,CodeSandboxResult,defaultSocketPath,localDevSocketPath,maxSandboxInputFileBytes,maxSandboxInputFiles,maxSandboxInputTotalBytes } from "./code-sandbox.code-sandbox-output-file";
 
-export function failedSandboxResult(
-  input: CodeSandboxRequest,
-  message: string,
-): CodeSandboxResult {
+export function failedSandboxResult(input: CodeSandboxRequest, message: string): CodeSandboxResult {
   return {
     kind: "code_sandbox_result",
     ok: false,
-    language:
-      input.language === "python" ||
-      input.language === "node" ||
-      input.language === "bash"
-        ? input.language
-        : "python",
+    language: input.language === "python" || input.language === "node" || input.language === "bash" ? input.language : "python",
     exitCode: null,
     signal: null,
     timedOut: false,
@@ -42,19 +24,14 @@ export function failedSandboxResult(
 }
 
 function absoluteSocketPath(socketPath: string) {
-  return path.isAbsolute(socketPath)
-    ? socketPath
-    : path.resolve(/*turbopackIgnore: true*/ process.cwd(), socketPath);
+  return path.isAbsolute(socketPath) ? socketPath : path.resolve(/*turbopackIgnore: true*/ process.cwd(), socketPath);
 }
 
 export function resolveSandboxRunnerSocket() {
   if (process.env.SANDBOX_RUNNER_SOCKET) {
     return absoluteSocketPath(env.SANDBOX_RUNNER_SOCKET);
   }
-  if (
-    env.SANDBOX_RUNNER_SOCKET === defaultSocketPath &&
-    existsSync(localDevSocketPath)
-  ) {
+  if (env.SANDBOX_RUNNER_SOCKET === defaultSocketPath && existsSync(localDevSocketPath)) {
     return localDevSocketPath;
   }
   return absoluteSocketPath(env.SANDBOX_RUNNER_SOCKET);
@@ -62,10 +39,7 @@ export function resolveSandboxRunnerSocket() {
 
 export function sandboxUnavailableMessage(error: unknown, socketPath: string) {
   const message = error instanceof Error ? error.message : String(error);
-  const localHint =
-    socketPath === defaultSocketPath && !existsSync(defaultSocketPath)
-      ? " For local development, start the runner with `docker compose -f docker-compose.dev.yml up -d sandbox-runner` and set SANDBOX_RUNNER_SOCKET=.data/sandbox-runner/sandbox.sock."
-      : "";
+  const localHint = socketPath === defaultSocketPath && !existsSync(defaultSocketPath) ? " For local development, start the runner with `docker compose -f docker-compose.dev.yml up -d sandbox-runner` and set SANDBOX_RUNNER_SOCKET=.data/sandbox-runner/sandbox.sock." : "";
   return `Sandbox runner unavailable at ${socketPath}: ${message}${localHint}`;
 }
 
@@ -86,17 +60,8 @@ export function safeRelativePath(rawPath: string) {
     throw new Error("File path is too long or too deep.");
   }
   const [firstSegment] = normalized.split("/");
-  const reservedSandboxFile = [
-    "main.py",
-    "main.mjs",
-    "main.sh",
-    "package.json",
-    ".stdin",
-    ".stdout",
-  ].includes(normalized);
-  const reservedSandboxDirectory = ["node_modules", "home", "tmp"].includes(
-    firstSegment ?? "",
-  );
+  const reservedSandboxFile = ["main.py", "main.mjs", "main.sh", "package.json", ".stdin", ".stdout"].includes(normalized);
+  const reservedSandboxDirectory = ["node_modules", "home", "tmp"].includes(firstSegment ?? "");
   if (reservedSandboxFile || reservedSandboxDirectory) {
     throw new Error("Reserved sandbox file path.");
   }
@@ -105,10 +70,7 @@ export function safeRelativePath(rawPath: string) {
 
 function bytesFromBase64(value: string, filePath: string) {
   const normalized = value.replace(/\s/g, "");
-  if (
-    normalized.length % 4 !== 0 ||
-    !/^[A-Za-z0-9+/]*={0,2}$/.test(normalized)
-  ) {
+  if (normalized.length % 4 !== 0 || !/^[A-Za-z0-9+/]*={0,2}$/.test(normalized)) {
     throw new Error(`Input file is not valid base64: ${filePath}`);
   }
   return Buffer.from(normalized, "base64");
@@ -117,9 +79,7 @@ function bytesFromBase64(value: string, filePath: string) {
 export function normalizeInputFiles(input: CodeSandboxRequest) {
   const files = Array.isArray(input.files) ? input.files : [];
   if (files.length > maxSandboxInputFiles) {
-    throw new Error(
-      `Too many input files. Maximum is ${maxSandboxInputFiles}.`,
-    );
+    throw new Error(`Too many input files. Maximum is ${maxSandboxInputFiles}.`);
   }
 
   let totalInputBytes = 0;
@@ -127,17 +87,13 @@ export function normalizeInputFiles(input: CodeSandboxRequest) {
     const filePath = safeRelativePath(file.path);
     const hasBase64 = typeof file.contentBase64 === "string";
     const textContent = typeof file.content === "string" ? file.content : "";
-    const bytes = hasBase64
-      ? bytesFromBase64(file.contentBase64 ?? "", filePath)
-      : Buffer.from(textContent, "utf8");
+    const bytes = hasBase64 ? bytesFromBase64(file.contentBase64 ?? "", filePath) : Buffer.from(textContent, "utf8");
     if (bytes.byteLength > maxSandboxInputFileBytes) {
       throw new Error(`Input file is too large: ${filePath}`);
     }
     totalInputBytes += bytes.byteLength;
     if (totalInputBytes > maxSandboxInputTotalBytes) {
-      throw new Error(
-        `Input files are too large. Maximum total is ${maxSandboxInputTotalBytes} bytes.`,
-      );
+      throw new Error(`Input files are too large. Maximum total is ${maxSandboxInputTotalBytes} bytes.`);
     }
     return { path: filePath, bytes };
   });

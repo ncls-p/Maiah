@@ -1,7 +1,5 @@
 "use client";
 
-
-
 import type { McpServer,McpTool } from "./types";
 
 export type JsonRecord = Record<string, unknown>;

@@ -1,29 +1,16 @@
 import { expect,test } from "@playwright/test";
 import { createAssistantButtonName } from "./agents.spec.create-assistant-button-name";
-import {
-e2eOrganizationProjectEditor,
-e2eViewer,
-ensureE2EAssistant,
-ensureE2EOrganizationProjectEditor,
-ensureE2EViewer,
-loginWithCredentials
-} from "./fixtures";
-
+import { e2eOrganizationProjectEditor,e2eViewer,ensureE2EAssistant,ensureE2EOrganizationProjectEditor,ensureE2EViewer,loginWithCredentials } from "./fixtures";
 
 test.describe("agent CRUD", () => {
-  test("lets an organization member who is project editor choose an available model", async ({
-    page,
-  }) => {
+  test("lets an organization member who is project editor choose an available model", async ({ page }) => {
     await ensureE2EAssistant();
     await ensureE2EOrganizationProjectEditor();
     await page.context().clearCookies();
     await loginWithCredentials(page, e2eOrganizationProjectEditor);
     await page.goto("/en/agents");
 
-    await page
-      .getByRole("button", { name: createAssistantButtonName })
-      .first()
-      .click();
+    await page.getByRole("button", { name: createAssistantButtonName }).first().click();
     const assistantName = `Editor model selection ${Date.now()}`;
     await page.getByLabel(/^Name$/i).fill(assistantName);
     await page.getByRole("button", { name: /Create and configure/i }).click();
@@ -34,24 +21,16 @@ test.describe("agent CRUD", () => {
     const providerSelect = page.getByRole("combobox", { name: "Provider" });
     await expect(providerSelect).toBeEnabled({ timeout: 15_000 });
     await providerSelect.click();
-    await expect(
-      page.getByRole("option", { name: "E2E provider", exact: true }),
-    ).toBeVisible();
-    await page
-      .getByRole("option", { name: "E2E provider", exact: true })
-      .click();
+    await expect(page.getByRole("option", { name: "E2E provider", exact: true })).toBeVisible();
+    await page.getByRole("option", { name: "E2E provider", exact: true }).click();
 
     const modelSelect = page.getByRole("combobox", { name: "Model" });
     await expect(modelSelect).toBeEnabled();
     await modelSelect.click();
-    await expect(
-      page.getByRole("option", { name: "E2E model", exact: true }),
-    ).toBeVisible();
+    await expect(page.getByRole("option", { name: "E2E model", exact: true })).toBeVisible();
   });
 
-  test("keeps configured provider and model visible to a project viewer", async ({
-    page,
-  }) => {
+  test("keeps configured provider and model visible to a project viewer", async ({ page }) => {
     const { agentId } = await ensureE2EAssistant();
     await ensureE2EViewer();
     await page.context().clearCookies();
@@ -62,17 +41,13 @@ test.describe("agent CRUD", () => {
       timeout: 15_000,
     });
     await expect(page.getByText("E2E model", { exact: false })).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: /Save changes/i }),
-    ).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /Save changes/i })).toHaveCount(0);
   });
 
   test("create, configure, and delete an orchestrator", async ({ page }) => {
     await page.goto("/en/agents");
 
-    const createBtn = page
-      .getByRole("button", { name: createAssistantButtonName })
-      .first();
+    const createBtn = page.getByRole("button", { name: createAssistantButtonName }).first();
     await expect(createBtn).toBeVisible({ timeout: 15_000 });
     await createBtn.click();
 
@@ -90,22 +65,12 @@ test.describe("agent CRUD", () => {
     await expect(page).toHaveURL(/\/en\/agents\/[0-9a-f-]+$/, {
       timeout: 15_000,
     });
-    await expect(page.getByRole("tab", { name: /Orchestration/i })).toBeVisible(
-      { timeout: 15_000 },
-    );
+    await expect(page.getByRole("tab", { name: /Orchestration/i })).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText(testAgentName).first()).toBeVisible();
-    await expect(
-      page.getByRole("tablist", { name: /Assistant settings/i }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("tab", { name: /Essentials/i }),
-    ).toHaveAttribute("data-state", "active");
-    await expect(
-      page.getByRole("button", { name: /Choose a model/i }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: /Change assistant logo/i }),
-    ).toBeVisible();
+    await expect(page.getByRole("tablist", { name: /Assistant settings/i })).toBeVisible();
+    await expect(page.getByRole("tab", { name: /Essentials/i })).toHaveAttribute("data-state", "active");
+    await expect(page.getByRole("button", { name: /Choose a model/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Change assistant logo/i })).toBeVisible();
 
     await page.getByRole("button", { name: /Assistant actions/i }).click();
     await page.getByRole("menuitem", { name: /Delete assistant/i }).click();
@@ -118,16 +83,12 @@ test.describe("agent CRUD", () => {
 
   test("agent templates are available", async ({ page }) => {
     await page.goto("/en/agents");
-    const createBtn = page
-      .getByRole("button", { name: createAssistantButtonName })
-      .first();
+    const createBtn = page.getByRole("button", { name: createAssistantButtonName }).first();
     await expect(createBtn).toBeVisible({ timeout: 15_000 });
     await createBtn.click();
 
     // At least one template or form field should be visible
-    await expect(
-      page.getByText(/assistant|template|Name/i).first(),
-    ).toBeVisible({
+    await expect(page.getByText(/assistant|template|Name/i).first()).toBeVisible({
       timeout: 5000,
     });
   });
@@ -139,9 +100,7 @@ test.describe("agent detail page", () => {
     await page.waitForTimeout(2000);
 
     // Click on the first agent if any exist
-    const firstAgentLink = page
-      .getByRole("link", { name: /Configure/i })
-      .first();
+    const firstAgentLink = page.getByRole("link", { name: /Configure/i }).first();
 
     if (await firstAgentLink.isVisible()) {
       await firstAgentLink.click();

@@ -104,12 +104,7 @@ describe("admin/auth – canManageTenantGlobals", () => {
     });
     const session = { user: { id: "user-1", role: "user" } };
     await testManage(session, "custom-ws");
-    expect(authzMod.authorization.checkPermission).toHaveBeenCalledWith(
-      { principalType: "user", principalId: "user-1" },
-      "roles.manage",
-      "workspace",
-      "custom-ws",
-    );
+    expect(authzMod.authorization.checkPermission).toHaveBeenCalledWith({ principalType: "user", principalId: "user-1" }, "roles.manage", "workspace", "custom-ws");
   });
 });
 

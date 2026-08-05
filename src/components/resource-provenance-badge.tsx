@@ -11,20 +11,9 @@ export type ResourceProvenance = {
   ownerName: string;
 };
 
-export function ResourceProvenanceBadge({
-  provenance,
-  className,
-}: {
-  provenance: ResourceProvenance;
-  className?: string;
-}) {
+export function ResourceProvenanceBadge({ provenance, className }: { provenance: ResourceProvenance; className?: string }) {
   const t = useTranslations("resourceProvenance");
-  const Icon =
-    provenance.scope === "user"
-      ? UserIcon
-      : provenance.scope === "organization"
-        ? Building2Icon
-        : FolderKanbanIcon;
+  const Icon = provenance.scope === "user" ? UserIcon : provenance.scope === "organization" ? Building2Icon : FolderKanbanIcon;
   const scopeLabel = t(provenance.scope);
 
   return (

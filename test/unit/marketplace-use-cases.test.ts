@@ -1,8 +1,4 @@
-import {
-getMarketplaceItem,
-getMarketplaceItemWithShares,
-listMarketplaceItems
-} from "@/modules/marketplace/use-cases";
+import { getMarketplaceItem,getMarketplaceItemWithShares,listMarketplaceItems } from "@/modules/marketplace/use-cases";
 import { beforeEach,describe,expect,it,vi } from "vitest";
 
 // ─── Mocks ─────────────────────────────────────────────────────────────

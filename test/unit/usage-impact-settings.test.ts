@@ -25,11 +25,7 @@ vi.mock("@/server/infrastructure/db", () => ({
   },
 }));
 
-import {
-getUsageImpactSetting,
-setUsageImpactSetting,
-usageImpactSettingSchema,
-} from "@/modules/provider/usage-impact-settings";
+import { getUsageImpactSetting,setUsageImpactSetting,usageImpactSettingSchema } from "@/modules/provider/usage-impact-settings";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -52,12 +48,10 @@ describe("global usage impact settings", () => {
   });
 
   it("persists the global setting", async () => {
-    await expect(
-      setUsageImpactSetting(
-        { enabled: true, co2GramsPerKwh: 42 },
-        "11111111-1111-4111-8111-111111111111",
-      ),
-    ).resolves.toEqual({ enabled: true, co2GramsPerKwh: 42 });
+    await expect(setUsageImpactSetting({ enabled: true, co2GramsPerKwh: 42 }, "11111111-1111-4111-8111-111111111111")).resolves.toEqual({
+      enabled: true,
+      co2GramsPerKwh: 42,
+    });
     expect(chain.values).toHaveBeenCalledWith(
       expect.objectContaining({
         key: "usage-impact",

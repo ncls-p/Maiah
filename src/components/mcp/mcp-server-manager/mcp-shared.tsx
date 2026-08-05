@@ -5,24 +5,11 @@ import { cn } from "@/lib/utils";
 
 import { TRANSPORT_ICONS,transportAccent } from "./transport";
 
-export function TransportTypeIcon({
-  transport,
-  className,
-}: {
-  transport: string;
-  className?: string;
-}) {
+export function TransportTypeIcon({ transport, className }: { transport: string; className?: string }) {
   const Icon = TRANSPORT_ICONS[transport] ?? Wrench;
   const colors = transportAccent(transport);
   return (
-    <div
-      className={cn(
-        "flex size-8 shrink-0 items-center justify-center rounded-lg",
-        colors.iconBg,
-        colors.text,
-        className,
-      )}
-    >
+    <div className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg", colors.iconBg, colors.text, className)}>
       <Icon className="size-4" />
     </div>
   );

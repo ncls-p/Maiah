@@ -1,7 +1,5 @@
 "use client";
 
-
-
 export type DiscoveredModel = {
   providerId: string;
   providerName: string;

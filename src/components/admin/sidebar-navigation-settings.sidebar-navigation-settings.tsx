@@ -142,13 +142,7 @@ export function SidebarNavigationSettings() {
   }
   const visibleCount = items.filter((item) => item.visible).length;
   return (
-    <SettingsSection
-      icon={PanelLeftIcon}
-      title={t("title")}
-      description={t("description")}
-      stagger="stagger-2"
-      badge={<SettingsStatusBadge label={state.isCustomized ? t("statusCustom") : t("statusDefault")} tone={state.isCustomized ? "primary" : "muted"} />}
-    >
+    <SettingsSection icon={PanelLeftIcon} title={t("title")} description={t("description")} stagger="stagger-2" badge={<SettingsStatusBadge label={state.isCustomized ? t("statusCustom") : t("statusDefault")} tone={state.isCustomized ? "primary" : "muted"} />}>
       <div className="space-y-4">
         <p className="text-sm text-muted-foreground">{t("hint")}</p>
         <ul className="space-y-2">
@@ -156,15 +150,7 @@ export function SidebarNavigationSettings() {
             const labelKey = labelById.get(item.id) ?? item.id;
             const section = resolveItemSection(item);
             return (
-              <li
-                key={item.id}
-                draggable
-                onDragStart={() => setDraggingId(item.id)}
-                onDragEnd={() => setDraggingId(null)}
-                onDragOver={(event) => event.preventDefault()}
-                onDrop={() => reorderByDrop(item.id)}
-                className={cn("flex items-center gap-2 rounded-xl border border-border/70 bg-background/55 px-3 py-2.5 transition-colors", draggingId === item.id && "border-primary/40 bg-primary/5", !item.visible && "opacity-60")}
-              >
+              <li key={item.id} draggable onDragStart={() => setDraggingId(item.id)} onDragEnd={() => setDraggingId(null)} onDragOver={(event) => event.preventDefault()} onDrop={() => reorderByDrop(item.id)} className={cn("flex items-center gap-2 rounded-xl border border-border/70 bg-background/55 px-3 py-2.5 transition-colors", draggingId === item.id && "border-primary/40 bg-primary/5", !item.visible && "opacity-60")}>
                 <GripVerticalIcon className="size-4 shrink-0 cursor-grab text-muted-foreground active:cursor-grabbing" aria-hidden="true" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{tNav(labelKey)}</p>

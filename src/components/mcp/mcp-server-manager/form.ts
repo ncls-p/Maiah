@@ -37,9 +37,7 @@ function parsePairs(input: string) {
   return Object.keys(result).length > 0 ? result : undefined;
 }
 
-function mergeRecords(
-  ...records: Array<Record<string, string> | undefined>
-): Record<string, string> | undefined {
+function mergeRecords(...records: Array<Record<string, string> | undefined>): Record<string, string> | undefined {
   const merged: Record<string, string> = {};
   for (const record of records) {
     if (!record) continue;
@@ -48,15 +46,10 @@ function mergeRecords(
   return Object.keys(merged).length > 0 ? merged : undefined;
 }
 
-function singleTrimmedRecord(
-  key: string,
-  value: string,
-): Record<string, string> | undefined {
+function singleTrimmedRecord(key: string, value: string): Record<string, string> | undefined {
   const trimmedKey = key.trim();
   const trimmedValue = value.trim();
-  return trimmedKey && trimmedValue
-    ? { [trimmedKey]: trimmedValue }
-    : undefined;
+  return trimmedKey && trimmedValue ? { [trimmedKey]: trimmedValue } : undefined;
 }
 
 function buildSimpleAuthHeaders(form: McpServerForm) {

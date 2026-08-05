@@ -1,23 +1,12 @@
 import { NextRequest,NextResponse } from "next/server";
 import { z } from "zod";
 
-import {
-handleRoute,
-requireWorkspacePermissionAsync,
-} from "@/lib/route-handler";
-import {
-getChatAttachment,
-getChatAttachmentExtractedText,
-maxChatAttachmentPreviewChars,
-publicChatAttachment,
-} from "@/modules/chat/attachments";
+import { handleRoute,requireWorkspacePermissionAsync } from "@/lib/route-handler";
+import { getChatAttachment,getChatAttachmentExtractedText,maxChatAttachmentPreviewChars,publicChatAttachment } from "@/modules/chat/attachments";
 
 const paramsSchema = z.object({ attachmentId: z.uuid() });
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ attachmentId: string }> },
-) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ attachmentId: string }> }) {
   return handleRoute(
     req,
     async ({ session }) => {
@@ -30,27 +19,17 @@ export async function GET(
         return NextResponse.json({ error: "Not found" }, { status: 404 });
       }
       if (metadata.kind !== "chat_file") {
-        return NextResponse.json(
-          { error: "Attachment has no extracted text" },
-          { status: 400 },
-        );
+        return NextResponse.json({ error: "Attachment has no extracted text" }, { status: 400 });
       }
-      const forbidden = await requireWorkspacePermissionAsync(
-        session.user.id,
-        metadata.workspaceId,
-        "agents.chat",
-      );
+      const forbidden = await requireWorkspacePermissionAsync(session.user.id, metadata.workspaceId, "agents.chat");
       if (forbidden) return forbidden;
       const extracted = await getChatAttachmentExtractedText({
         attachmentId: metadata.id,
         workspaceId: metadata.workspaceId,
         userId: session.user.id,
       });
-      const previewTruncated =
-        extracted.text.length > maxChatAttachmentPreviewChars;
-      const previewText = previewTruncated
-        ? `${extracted.text.slice(0, maxChatAttachmentPreviewChars)}\n\n> Preview truncated. Use the document explorer in the code sandbox to navigate the complete extraction.`
-        : extracted.text;
+      const previewTruncated = extracted.text.length > maxChatAttachmentPreviewChars;
+      const previewText = previewTruncated ? `${extracted.text.slice(0, maxChatAttachmentPreviewChars)}\n\n> Preview truncated. Use the document explorer in the code sandbox to navigate the complete extraction.` : extracted.text;
       return NextResponse.json(
         {
           attachment: publicChatAttachment(extracted.metadata),
@@ -72,10 +51,7 @@ export async function GET(
         if (/not found|attachment|invalid/i.test(message)) {
           return NextResponse.json({ error: "Not found" }, { status: 404 });
         }
-        return NextResponse.json(
-          { error: "Internal server error" },
-          { status: 500 },
-        );
+        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
       },
     },
   );

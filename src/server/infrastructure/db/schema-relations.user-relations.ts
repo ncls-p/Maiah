@@ -1,35 +1,7 @@
 import { relations } from "drizzle-orm";
 import * as schema from "./schema-tables";
 
-export const {
-  accounts,
-  agentKnowledgeBindings,
-  agentSkillBindings,
-  agentSkills,
-  agentToolBindings,
-  agentVersions,
-  agents,
-  aiProviders,
-  conversationFolders,
-  conversations,
-  knowledgeBases,
-  mcpServers,
-  messageParts,
-  messages,
-  organizations,
-  organizationMembers,
-  sessions,
-  teamMembers,
-  teams,
-  toolConnectionRequirements,
-  toolConnections,
-  toolConnectors,
-  userAgentPreferences,
-  userToolSettings,
-  users,
-  workspaceMembers,
-  workspaces,
-} = schema;
+export const { accounts, agentKnowledgeBindings, agentSkillBindings, agentSkills, agentToolBindings, agentVersions, agents, aiProviders, conversationFolders, conversations, knowledgeBases, mcpServers, messageParts, messages, organizations, organizationMembers, sessions, teamMembers, teams, toolConnectionRequirements, toolConnections, toolConnectors, userAgentPreferences, userToolSettings, users, workspaceMembers, workspaces } = schema;
 
 // ─── Relations ─────────────────────────────────────────────────────────
 
@@ -48,19 +20,16 @@ export const organizationRelations = relations(organizations, ({ many }) => ({
   workspaces: many(workspaces),
 }));
 
-export const organizationMemberRelations = relations(
-  organizationMembers,
-  ({ one }) => ({
-    organization: one(organizations, {
-      fields: [organizationMembers.organizationId],
-      references: [organizations.id],
-    }),
-    user: one(users, {
-      fields: [organizationMembers.userId],
-      references: [users.id],
-    }),
+export const organizationMemberRelations = relations(organizationMembers, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [organizationMembers.organizationId],
+    references: [organizations.id],
   }),
-);
+  user: one(users, {
+    fields: [organizationMembers.userId],
+    references: [users.id],
+  }),
+}));
 
 export const teamRelations = relations(teams, ({ one, many }) => ({
   organization: one(organizations, {
@@ -127,52 +96,43 @@ export const agentRelations = relations(agents, ({ one, many }) => ({
   userPreferences: many(userAgentPreferences),
 }));
 
-export const userAgentPreferenceRelations = relations(
-  userAgentPreferences,
-  ({ one }) => ({
-    workspace: one(workspaces, {
-      fields: [userAgentPreferences.workspaceId],
-      references: [workspaces.id],
-    }),
-    user: one(users, {
-      fields: [userAgentPreferences.userId],
-      references: [users.id],
-    }),
-    defaultAgent: one(agents, {
-      fields: [userAgentPreferences.defaultAgentId],
-      references: [agents.id],
-    }),
+export const userAgentPreferenceRelations = relations(userAgentPreferences, ({ one }) => ({
+  workspace: one(workspaces, {
+    fields: [userAgentPreferences.workspaceId],
+    references: [workspaces.id],
   }),
-);
+  user: one(users, {
+    fields: [userAgentPreferences.userId],
+    references: [users.id],
+  }),
+  defaultAgent: one(agents, {
+    fields: [userAgentPreferences.defaultAgentId],
+    references: [agents.id],
+  }),
+}));
 
-export const agentVersionRelations = relations(
-  agentVersions,
-  ({ one, many }) => ({
-    agent: one(agents, {
-      fields: [agentVersions.agentId],
-      references: [agents.id],
-    }),
-    creator: one(users, {
-      fields: [agentVersions.createdById],
-      references: [users.id],
-    }),
-    toolBindings: many(agentToolBindings),
-    knowledgeBindings: many(agentKnowledgeBindings),
-    skillBindings: many(agentSkillBindings),
+export const agentVersionRelations = relations(agentVersions, ({ one, many }) => ({
+  agent: one(agents, {
+    fields: [agentVersions.agentId],
+    references: [agents.id],
   }),
-);
+  creator: one(users, {
+    fields: [agentVersions.createdById],
+    references: [users.id],
+  }),
+  toolBindings: many(agentToolBindings),
+  knowledgeBindings: many(agentKnowledgeBindings),
+  skillBindings: many(agentSkillBindings),
+}));
 
-export const conversationFolderRelations = relations(
-  conversationFolders,
-  ({ one, many }) => ({
-    workspace: one(workspaces, {
-      fields: [conversationFolders.workspaceId],
-      references: [workspaces.id],
-    }),
-    user: one(users, {
-      fields: [conversationFolders.userId],
-      references: [users.id],
-    }),
-    conversations: many(conversations),
+export const conversationFolderRelations = relations(conversationFolders, ({ one, many }) => ({
+  workspace: one(workspaces, {
+    fields: [conversationFolders.workspaceId],
+    references: [workspaces.id],
   }),
-);
+  user: one(users, {
+    fields: [conversationFolders.userId],
+    references: [users.id],
+  }),
+  conversations: many(conversations),
+}));

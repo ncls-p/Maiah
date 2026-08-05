@@ -14,9 +14,7 @@ export const actionItemSchema = z.object({
 
 export const businessDocumentInputSchema = z.object({
   title: shortText,
-  documentType: z
-    .enum(["brief", "memo", "report", "proposal", "policy", "sop"])
-    .default("brief"),
+  documentType: z.enum(["brief", "memo", "report", "proposal", "policy", "sop"]).default("brief"),
   audience: z.string().trim().max(160).optional(),
   executiveSummary: optionalText,
   sections: z
@@ -103,9 +101,7 @@ export const emailPackInputSchema = z.object({
   title: shortText,
   goal: optionalText,
   audience: z.string().trim().max(180).optional(),
-  tone: z
-    .enum(["direct", "friendly", "executive", "sales", "support"])
-    .default("friendly"),
+  tone: z.enum(["direct", "friendly", "executive", "sales", "support"]).default("friendly"),
   emails: z
     .array(
       z.object({
@@ -152,10 +148,7 @@ export const projectStatusReportInputSchema = z.object({
     .max(12)
     .default([]),
   blockers: z.array(z.string().trim().min(1).max(280)).max(10).default([]),
-  decisionsNeeded: z
-    .array(z.string().trim().min(1).max(280))
-    .max(10)
-    .default([]),
+  decisionsNeeded: z.array(z.string().trim().min(1).max(280)).max(10).default([]),
   nextSteps: z.array(actionItemSchema).max(16).default([]),
   height: artifactHeight,
 });
@@ -173,9 +166,7 @@ export const riskRegisterInputSchema = z.object({
         owner: z.string().trim().max(120).optional(),
         mitigation: z.string().trim().max(500).optional(),
         contingency: z.string().trim().max(500).optional(),
-        status: z
-          .enum(["open", "monitoring", "mitigating", "closed"])
-          .default("open"),
+        status: z.enum(["open", "monitoring", "mitigating", "closed"]).default("open"),
       }),
     )
     .min(1)

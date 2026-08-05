@@ -62,9 +62,7 @@ vi.mock("@/lib/logger", () => ({
   logger: { warn: mocks.logWarning },
 }));
 
-import {
-executeAgent
-} from "@/modules/agent/runtime-executor";
+import { executeAgent } from "@/modules/agent/runtime-executor";
 
 const rootAgent = {
   id: "11111111-1111-4111-8111-111111111111",
@@ -120,7 +118,6 @@ beforeEach(() => {
 });
 
 describe("agent runtime executor", () => {
-
   it("fails closed when delegation permission is revoked at call time", async () => {
     const onProgress = vi.fn();
     mocks.getVisibleAgent.mockResolvedValueOnce({
@@ -146,16 +143,12 @@ describe("agent runtime executor", () => {
         childAgentVersionId: "99999999-9999-4999-8999-999999999999",
       },
     ]);
-    mocks.checkPermission
-      .mockResolvedValueOnce({ granted: true })
-      .mockResolvedValueOnce({
-        granted: false,
-        reason: "Missing permission: agents.delegate",
-      });
+    mocks.checkPermission.mockResolvedValueOnce({ granted: true }).mockResolvedValueOnce({
+      granted: false,
+      reason: "Missing permission: agents.delegate",
+    });
     mocks.generateText.mockImplementationOnce(async (options) => {
-      const [toolName, delegate] = Object.entries(options.tools).find(
-        ([name]) => name.startsWith("delegate_"),
-      ) as [string, { execute: (input: { task: string }) => Promise<unknown> }];
+      const [toolName, delegate] = Object.entries(options.tools).find(([name]) => name.startsWith("delegate_")) as [string, { execute: (input: { task: string }) => Promise<unknown> }];
       const toolCall = {
         type: "tool-call" as const,
         toolCallId: "delegate-call",
@@ -197,9 +190,7 @@ describe("agent runtime executor", () => {
       message: "The specialist could not complete the delegated task.",
     });
     expect(mocks.getVersion).not.toHaveBeenCalled();
-    expect(mocks.failRun).toHaveBeenCalledWith(
-      expect.objectContaining({ errorCode: "AGENT_DELEGATION_FORBIDDEN" }),
-    );
+    expect(mocks.failRun).toHaveBeenCalledWith(expect.objectContaining({ errorCode: "AGENT_DELEGATION_FORBIDDEN" }));
     expect(mocks.logWarning).toHaveBeenCalledWith(
       "Specialist delegation failed",
       expect.objectContaining({

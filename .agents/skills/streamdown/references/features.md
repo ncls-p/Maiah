@@ -41,16 +41,15 @@ Visual cursor at end of streaming content.
 **Requirements:** Both `caret` prop AND `isAnimating={true}` must be set. Caret disappears when streaming stops.
 
 **Per-message in chat:**
+
 ```tsx
-{messages.map((msg, i) => (
-  <Streamdown
-    key={msg.id}
-    caret="block"
-    isAnimating={isLoading && i === messages.length - 1 && msg.role === 'assistant'}
-  >
-    {msg.content}
-  </Streamdown>
-))}
+{
+  messages.map((msg, i) => (
+    <Streamdown key={msg.id} caret="block" isAnimating={isLoading && i === messages.length - 1 && msg.role === "assistant"}>
+      {msg.content}
+    </Streamdown>
+  ));
+}
 ```
 
 ## Remend
@@ -69,11 +68,13 @@ Preprocessor that completes incomplete Markdown during streaming.
 | `$$\n math` | `$$\n math $$` |
 
 **Disable:**
+
 ```tsx
 <Streamdown parseIncompleteMarkdown={false}>{content}</Streamdown>
 ```
 
 **Configure:**
+
 ```tsx
 <Streamdown
   remend={{
@@ -90,6 +91,7 @@ Preprocessor that completes incomplete Markdown during streaming.
 ```
 
 **Custom handlers:**
+
 ```tsx
 <Streamdown
   remend={{
@@ -110,11 +112,13 @@ Preprocessor that completes incomplete Markdown during streaming.
 Auto-added buttons for images, tables, code, and Mermaid.
 
 **Disable all:**
+
 ```tsx
 <Streamdown controls={false}>{markdown}</Streamdown>
 ```
 
 **Selective:**
+
 ```tsx
 <Streamdown
   controls={{
@@ -131,6 +135,7 @@ Auto-added buttons for images, tables, code, and Mermaid.
 ```
 
 **Button types by element:**
+
 - **Images:** Download (auto-detected format, alt text as filename)
 - **Tables:** Copy (CSV/TSV/HTML), Download (CSV/Markdown)
 - **Code blocks:** Copy (raw code), Download (with correct extension)
@@ -143,13 +148,15 @@ All buttons disabled during streaming when `isAnimating={true}`.
 Included by default via `remark-gfm`:
 
 **Tables:**
+
 ```markdown
 | Left | Center | Right |
-|:-----|:------:|------:|
-| A    | B      | C     |
+| :--- | :----: | ----: |
+| A    |   B    |     C |
 ```
 
 **Task lists:**
+
 ```markdown
 - [x] Completed
 - [ ] Pending
@@ -171,21 +178,31 @@ Included by default via `remark-gfm`:
 ## Troubleshooting
 
 ### Shiki external package warning (Next.js)
+
 ```bash
 npm install shiki
 ```
+
 ```js
 // next.config.js
-{ transpilePackages: ['shiki'] }
+{
+  transpilePackages: ["shiki"];
+}
 ```
 
 ### Vite SSR CSS loading error
+
 ```js
 // vite.config.js
-{ ssr: { noExternal: ['streamdown'] } }
+{
+  ssr: {
+    noExternal: ["streamdown"];
+  }
+}
 ```
 
 ### vscode-jsonrpc bundling errors (Next.js)
+
 ```js
 // next.config.js
 {
@@ -198,4 +215,5 @@ npm install shiki
 ```
 
 ### Tailwind styles not applied
+
 Ensure Streamdown dist files are included in Tailwind content scanning. See the Tailwind setup in SKILL.md.

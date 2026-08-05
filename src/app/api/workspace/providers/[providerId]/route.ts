@@ -1,14 +1,6 @@
 import { OPENAI_COMPATIBLE_API_ROUTES } from "@/lib/openai-compatible-api";
-import {
-handleRoute,
-requireResourcePermissionAsync,
-} from "@/lib/route-handler";
-import {
-archiveProvider,
-getProviderById,
-toSafeProvider,
-updateProvider,
-} from "@/modules/provider/use-cases";
+import { handleRoute,requireResourcePermissionAsync } from "@/lib/route-handler";
+import { archiveProvider,getProviderById,toSafeProvider,updateProvider } from "@/modules/provider/use-cases";
 import { NextRequest,NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -31,10 +23,7 @@ const updateProviderSchema = z.object({
   enabled: z.boolean().optional(),
 });
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ providerId: string }> },
-) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ providerId: string }> }) {
   return handleRoute(
     req,
     async ({ session }) => {
@@ -48,20 +37,11 @@ export async function GET(
       }
       const { providerId } = parsedParams.data;
       const { workspaceId } = parsedQuery.data;
-      const forbidden = await requireResourcePermissionAsync(
-        session.user.id,
-        workspaceId,
-        "providers.viewMetadata",
-        "provider",
-        providerId,
-      );
+      const forbidden = await requireResourcePermissionAsync(session.user.id, workspaceId, "providers.viewMetadata", "provider", providerId);
       if (forbidden) return forbidden;
       const provider = await getProviderById(providerId, workspaceId);
       if (!provider) {
-        return NextResponse.json(
-          { error: "Provider not found" },
-          { status: 404 },
-        );
+        return NextResponse.json({ error: "Provider not found" }, { status: 404 });
       }
       return NextResponse.json(toSafeProvider(provider));
     },
@@ -69,10 +49,7 @@ export async function GET(
   );
 }
 
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: Promise<{ providerId: string }> },
-) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ providerId: string }> }) {
   return handleRoute(
     req,
     async ({ session }) => {
@@ -90,13 +67,7 @@ export async function PATCH(
       }
       const { providerId } = parsedParams.data;
       const { workspaceId, ...input } = parsedBody.data;
-      const forbidden = await requireResourcePermissionAsync(
-        session.user.id,
-        workspaceId,
-        "providers.update",
-        "provider",
-        providerId,
-      );
+      const forbidden = await requireResourcePermissionAsync(session.user.id, workspaceId, "providers.update", "provider", providerId);
       if (forbidden) return forbidden;
       await updateProvider({
         providerId,
@@ -111,24 +82,15 @@ export async function PATCH(
       logLabel: "Failed to update provider",
       expectedError: (error) => {
         if (error instanceof Error && error.message === "Provider not found") {
-          return NextResponse.json(
-            { error: "Provider not found" },
-            { status: 404 },
-          );
+          return NextResponse.json({ error: "Provider not found" }, { status: 404 });
         }
-        return NextResponse.json(
-          { error: "Internal server error" },
-          { status: 500 },
-        );
+        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
       },
     },
   );
 }
 
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: Promise<{ providerId: string }> },
-) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ providerId: string }> }) {
   return handleRoute(
     req,
     async ({ session }) => {
@@ -142,13 +104,7 @@ export async function DELETE(
       }
       const { providerId } = parsedParams.data;
       const { workspaceId } = parsedQuery.data;
-      const forbidden = await requireResourcePermissionAsync(
-        session.user.id,
-        workspaceId,
-        "providers.delete",
-        "provider",
-        providerId,
-      );
+      const forbidden = await requireResourcePermissionAsync(session.user.id, workspaceId, "providers.delete", "provider", providerId);
       if (forbidden) return forbidden;
       await archiveProvider(providerId, workspaceId, session.user.id);
       return NextResponse.json({ ok: true });
@@ -157,15 +113,9 @@ export async function DELETE(
       logLabel: "Failed to delete provider",
       expectedError: (error) => {
         if (error instanceof Error && error.message === "Provider not found") {
-          return NextResponse.json(
-            { error: "Provider not found" },
-            { status: 404 },
-          );
+          return NextResponse.json({ error: "Provider not found" }, { status: 404 });
         }
-        return NextResponse.json(
-          { error: "Internal server error" },
-          { status: 500 },
-        );
+        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
       },
     },
   );

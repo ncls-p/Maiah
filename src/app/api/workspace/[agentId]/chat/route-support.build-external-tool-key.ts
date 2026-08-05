@@ -1,9 +1,6 @@
 import { executeCustomToolWorkflow } from "@/modules/custom-tools/use-cases";
-import {
-logToolInvocation
-} from "@/modules/tool/use-cases";
+import { logToolInvocation } from "@/modules/tool/use-cases";
 import { MAX_OPENAI_TOOL_NAME_LENGTH,TOOL_GATE_RETURN,ToolGateResult,sanitizeToolKeyPart } from "./route-support.chat-request-schema";
-
 
 function stableToolKeyHash(value: string) {
   let hash = 0x811c9dc5;
@@ -14,17 +11,7 @@ function stableToolKeyHash(value: string) {
   return hash.toString(36).padStart(7, "0").slice(0, 8);
 }
 
-export function buildExternalToolKey({
-  source,
-  toolId,
-  toolName,
-  usedKeys,
-}: {
-  source: "custom" | "mcp";
-  toolId: string;
-  toolName: string;
-  usedKeys: Set<string>;
-}) {
+export function buildExternalToolKey({ source, toolId, toolName, usedKeys }: { source: "custom" | "mcp"; toolId: string; toolName: string; usedKeys: Set<string> }) {
   const sanitizedName = sanitizeToolKeyPart(toolName) || "tool";
   const fullKey = `${source}_${toolId.replace(/-/g, "_")}_${sanitizedName}`;
   if (fullKey.length <= MAX_OPENAI_TOOL_NAME_LENGTH && !usedKeys.has(fullKey)) {
@@ -35,16 +22,12 @@ export function buildExternalToolKey({
   const hash = stableToolKeyHash(`${source}:${toolId}:${toolName}`);
   const prefix = `${source}_${hash}_`;
   const suffixLimit = MAX_OPENAI_TOOL_NAME_LENGTH - prefix.length;
-  const baseSuffix =
-    sanitizedName.slice(0, suffixLimit).replace(/_+$/g, "") || "tool";
+  const baseSuffix = sanitizedName.slice(0, suffixLimit).replace(/_+$/g, "") || "tool";
   let key = `${prefix}${baseSuffix}`;
   let counter = 2;
   while (usedKeys.has(key)) {
     const counterSuffix = `_${counter.toString(36)}`;
-    const adjustedSuffix =
-      baseSuffix
-        .slice(0, Math.max(1, suffixLimit - counterSuffix.length))
-        .replace(/_+$/g, "") || "tool";
+    const adjustedSuffix = baseSuffix.slice(0, Math.max(1, suffixLimit - counterSuffix.length)).replace(/_+$/g, "") || "tool";
     key = `${prefix}${adjustedSuffix}${counterSuffix}`;
     counter += 1;
   }
@@ -66,15 +49,7 @@ export function createCustomToolExecute(
   binding: { riskLevel: string | null; requireApproval: boolean },
   reserveToolCall: () => boolean,
   toolLimitReachedResult: () => unknown,
-  gateToolExecution: (args: {
-    startedAt: number;
-    toolSource: "custom";
-    toolId: string;
-    toolName: string;
-    riskLevel: string | null;
-    toolInput: unknown;
-    bindingRequiresApproval: boolean;
-  }) => Promise<ToolGateResult>,
+  gateToolExecution: (args: { startedAt: number; toolSource: "custom"; toolId: string; toolName: string; riskLevel: string | null; toolInput: unknown; bindingRequiresApproval: boolean }) => Promise<ToolGateResult>,
 ): (toolInput: unknown) => Promise<unknown> {
   return async (toolInput: unknown) => {
     const startedAt = Date.now();

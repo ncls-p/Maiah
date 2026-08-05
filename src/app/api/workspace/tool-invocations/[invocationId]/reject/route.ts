@@ -1,23 +1,14 @@
-import {
-handleRoute,
-requireWorkspacePermissionAsync,
-} from "@/lib/route-handler";
+import { handleRoute,requireWorkspacePermissionAsync } from "@/lib/route-handler";
 import { getBuiltInTool } from "@/modules/tool/builtin-tools";
 import { rejectPendingToolInvocation } from "@/modules/tool/invocation-approval";
 import { audit } from "@/server/domain/services/audit";
 import { db } from "@/server/infrastructure/db";
-import {
-conversations,
-toolInvocations,
-} from "@/server/infrastructure/db/schema";
+import { conversations,toolInvocations } from "@/server/infrastructure/db/schema";
 import { and,eq } from "drizzle-orm";
 import { NextRequest,NextResponse } from "next/server";
 import { invocationParamsSchema } from "../../invocation-shared";
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ invocationId: string }> },
-) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ invocationId: string }> }) {
   return handleRoute(
     req,
     async ({ session }) => {
@@ -28,45 +19,19 @@ export async function POST(
       const [row] = await db
         .select({ invocation: toolInvocations, conversation: conversations })
         .from(toolInvocations)
-        .innerJoin(
-          conversations,
-          eq(toolInvocations.conversationId, conversations.id),
-        )
-        .where(
-          and(
-            eq(toolInvocations.id, parsed.data.invocationId),
-            eq(conversations.userId, session.user.id),
-          ),
-        )
+        .innerJoin(conversations, eq(toolInvocations.conversationId, conversations.id))
+        .where(and(eq(toolInvocations.id, parsed.data.invocationId), eq(conversations.userId, session.user.id)))
         .limit(1);
       const invocation = row?.invocation;
       if (!invocation) {
-        return NextResponse.json(
-          { error: "Invocation not found" },
-          { status: 404 },
-        );
+        return NextResponse.json({ error: "Invocation not found" }, { status: 404 });
       }
-      const rejectionPermission =
-        invocation.toolSource === "builtin" &&
-        getBuiltInTool(invocation.toolId)?.name ===
-          "github_publish_code_workspace"
-          ? "agents.chat"
-          : "tools.executeRestricted";
-      const forbidden = await requireWorkspacePermissionAsync(
-        session.user.id,
-        invocation.workspaceId,
-        rejectionPermission,
-      );
+      const rejectionPermission = invocation.toolSource === "builtin" && getBuiltInTool(invocation.toolId)?.name === "github_publish_code_workspace" ? "agents.chat" : "tools.executeRestricted";
+      const forbidden = await requireWorkspacePermissionAsync(session.user.id, invocation.workspaceId, rejectionPermission);
       if (forbidden) return forbidden;
-      const transition = await rejectPendingToolInvocation(
-        invocation.id,
-        session.user.id,
-      );
+      const transition = await rejectPendingToolInvocation(invocation.id, session.user.id);
       if (transition.kind === "missing") {
-        return NextResponse.json(
-          { error: "Invocation not found" },
-          { status: 404 },
-        );
+        return NextResponse.json({ error: "Invocation not found" }, { status: 404 });
       }
       if (transition.kind === "unchanged") {
         if (transition.invocation.status === "rejected") {

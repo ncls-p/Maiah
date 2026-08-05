@@ -1,6 +1,4 @@
-import type {
-MarketplaceManifest
-} from "./manifest-types";
+import type { MarketplaceManifest } from "./manifest-types";
 
 export function installPostInstallFlags(manifest: MarketplaceManifest) {
   if (manifest.type === "mcp_preset") {

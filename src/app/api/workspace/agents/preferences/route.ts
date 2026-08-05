@@ -1,16 +1,9 @@
 import { NextRequest,NextResponse } from "next/server";
 import { z } from "zod";
 
-import {
-handleRoute,
-requireWorkspacePermissionAsync,
-} from "@/lib/route-handler";
+import { handleRoute,requireWorkspacePermissionAsync } from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
-import {
-getAgentDefaultPreferences,
-setOrganizationDefaultAgent,
-setUserDefaultAgent,
-} from "@/modules/agent/use-cases";
+import { getAgentDefaultPreferences,setOrganizationDefaultAgent,setUserDefaultAgent } from "@/modules/agent/use-cases";
 
 const querySchema = z.object({ workspaceId: z.uuid() });
 const patchSchema = z.object({
@@ -30,18 +23,9 @@ export async function GET(req: NextRequest) {
       if (!parsed.success) {
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
       }
-      const forbidden = await requireWorkspacePermissionAsync(
-        session.user.id,
-        parsed.data.workspaceId,
-        "agents.list",
-      );
+      const forbidden = await requireWorkspacePermissionAsync(session.user.id, parsed.data.workspaceId, "agents.list");
       if (forbidden) return forbidden;
-      return NextResponse.json(
-        await getAgentDefaultPreferences(
-          parsed.data.workspaceId,
-          session.user.id,
-        ),
-      );
+      return NextResponse.json(await getAgentDefaultPreferences(parsed.data.workspaceId, session.user.id));
     },
     { logLabel: "Failed to read agent preferences" },
   );
@@ -54,17 +38,10 @@ export async function PATCH(req: NextRequest) {
       const body = await req.json();
       const parsed = patchSchema.safeParse(body);
       if (!parsed.success) {
-        return NextResponse.json(
-          { error: "Invalid input", details: parsed.error.issues },
-          { status: 400 },
-        );
+        return NextResponse.json({ error: "Invalid input", details: parsed.error.issues }, { status: 400 });
       }
       const { workspaceId, scope, defaultAgentId } = parsed.data;
-      const forbidden = await requireWorkspacePermissionAsync(
-        session.user.id,
-        workspaceId,
-        scope === "organization" ? "agents.update" : "agents.list",
-      );
+      const forbidden = await requireWorkspacePermissionAsync(session.user.id, workspaceId, scope === "organization" ? "agents.update" : "agents.list");
       if (forbidden) return forbidden;
       const canAdminCurate = await canManageTenantGlobals(session, workspaceId);
       if (scope === "organization") {
@@ -91,18 +68,10 @@ export async function PATCH(req: NextRequest) {
     {
       logLabel: "Failed to update agent preferences",
       expectedError: (error) => {
-        if (
-          error instanceof Error &&
-          ["Agent not found", "Organization assistant not found"].includes(
-            error.message,
-          )
-        ) {
+        if (error instanceof Error && ["Agent not found", "Organization assistant not found"].includes(error.message)) {
           return NextResponse.json({ error: error.message }, { status: 404 });
         }
-        return NextResponse.json(
-          { error: "Internal server error" },
-          { status: 500 },
-        );
+        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
       },
     },
   );

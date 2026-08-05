@@ -5,10 +5,7 @@ import { SetupWizardModelStep } from "./setup-wizard.setup-wizard.view.model";
 import { SetupWizardPart1Step } from "./setup-wizard.setup-wizard.view.part-1";
 import { SetupWizardProviderStep } from "./setup-wizard.setup-wizard.view.provider";
 
-export type SetupWizardViewModel = Extract<
-  ReturnType<typeof useSetupWizardController>,
-  { kind: "ready" }
->;
+export type SetupWizardViewModel = Extract<ReturnType<typeof useSetupWizardController>, { kind: "ready" }>;
 export function SetupWizardView({ model }: { model: SetupWizardViewModel }) {
   const { onCancelAction, step } = model;
   return (

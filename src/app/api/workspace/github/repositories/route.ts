@@ -15,16 +15,9 @@ export async function GET(req: NextRequest) {
     if (!parsed.success) {
       return NextResponse.json({ error: "Invalid request" }, { status: 400 });
     }
-    const permission = await checkWorkspacePermissionForRequest(
-      session.user.id,
-      parsed.data.workspaceId,
-      "agents.chat",
-    );
+    const permission = await checkWorkspacePermissionForRequest(session.user.id, parsed.data.workspaceId, "agents.chat");
     if (!permission.granted) {
-      return NextResponse.json(
-        { error: "Forbidden", reason: permission.reason },
-        { status: 403 },
-      );
+      return NextResponse.json({ error: "Forbidden", reason: permission.reason }, { status: 403 });
     }
     const status = await getUserGitHubStatus({
       userId: session.user.id,

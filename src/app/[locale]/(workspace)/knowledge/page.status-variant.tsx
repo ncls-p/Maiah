@@ -1,6 +1,5 @@
 "use client";
 
-
 export function statusVariant(status: string) {
   if (status === "ready") return "secondary" as const;
   if (status === "processing") return "outline" as const;

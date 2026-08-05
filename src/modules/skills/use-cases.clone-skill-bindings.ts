@@ -1,32 +1,15 @@
 import { logHandledError } from "@/lib/logger";
 import { audit } from "@/server/domain/services/audit";
 import { db } from "@/server/infrastructure/db";
-import {
-agentSkillBindings,
-agentSkills,
-} from "@/server/infrastructure/db/schema";
+import { agentSkillBindings,agentSkills } from "@/server/infrastructure/db/schema";
 import { and,eq,isNull } from "drizzle-orm";
-import {
-AgentSkillRow,
-canViewSkill,
-SkillMarkdownFile,
-SkillPreviewResult,
-} from "./use-cases.exec-file-async";
+import { AgentSkillRow,canViewSkill,SkillMarkdownFile,SkillPreviewResult } from "./use-cases.exec-file-async";
 import { BindingDb } from "./use-cases.list-agent-skills";
 import { loadSkillPackage } from "./use-cases.load-skill-package";
 import { parseSkillsInstallCommand } from "./use-cases.parse-skills-install-command";
-import {
-assertSkillMetadata,
-normalizeSkillMarkdownFiles,
-} from "./use-cases.update-skill-manually";
+import { assertSkillMetadata,normalizeSkillMarkdownFiles } from "./use-cases.update-skill-manually";
 
-export async function cloneSkillBindings(
-  fromAgentVersionId: string | null,
-  toAgentVersionId: string,
-  workspaceId?: string,
-  options?: { userId?: string },
-  executor: BindingDb = db,
-) {
+export async function cloneSkillBindings(fromAgentVersionId: string | null, toAgentVersionId: string, workspaceId?: string, options?: { userId?: string }, executor: BindingDb = db) {
   if (!fromAgentVersionId) return;
   const existing = await executor
     .select({
@@ -37,26 +20,9 @@ export async function cloneSkillBindings(
     })
     .from(agentSkillBindings)
     .innerJoin(agentSkills, eq(agentSkillBindings.skillId, agentSkills.id))
-    .where(
-      workspaceId && options?.userId
-        ? and(
-            eq(agentSkillBindings.agentVersionId, fromAgentVersionId),
-            eq(agentSkills.workspaceId, workspaceId),
-            isNull(agentSkills.archivedAt),
-          )
-        : eq(agentSkillBindings.agentVersionId, fromAgentVersionId),
-    );
+    .where(workspaceId && options?.userId ? and(eq(agentSkillBindings.agentVersionId, fromAgentVersionId), eq(agentSkills.workspaceId, workspaceId), isNull(agentSkills.archivedAt)) : eq(agentSkillBindings.agentVersionId, fromAgentVersionId));
 
-  const visibleBindings =
-    workspaceId && options?.userId
-      ? (
-          await Promise.all(
-            existing.map(async (binding) =>
-              (await canViewSkill(binding, options.userId!)) ? binding : null,
-            ),
-          )
-        ).filter((binding) => binding !== null)
-      : existing;
+  const visibleBindings = workspaceId && options?.userId ? (await Promise.all(existing.map(async (binding) => ((await canViewSkill(binding, options.userId!)) ? binding : null)))).filter((binding) => binding !== null) : existing;
   if (visibleBindings.length === 0) return;
 
   await executor.insert(agentSkillBindings).values(
@@ -67,55 +33,27 @@ export async function cloneSkillBindings(
   );
 }
 
-function isSkillMarkdownFile(
-  file: unknown,
-): file is { path: string; content: string } {
-  return (
-    typeof file === "object" &&
-    file !== null &&
-    "path" in file &&
-    "content" in file &&
-    typeof file.path === "string" &&
-    typeof file.content === "string" &&
-    file.path.toLowerCase().endsWith(".md")
-  );
+function isSkillMarkdownFile(file: unknown): file is { path: string; content: string } {
+  return typeof file === "object" && file !== null && "path" in file && "content" in file && typeof file.path === "string" && typeof file.content === "string" && file.path.toLowerCase().endsWith(".md");
 }
 
 export function toMarkdownFiles(value: unknown): SkillMarkdownFile[] {
   if (!Array.isArray(value)) return [];
-  return value.flatMap((file) =>
-    isSkillMarkdownFile(file)
-      ? [{ path: file.path, content: file.content }]
-      : [],
-  );
+  return value.flatMap((file) => (isSkillMarkdownFile(file) ? [{ path: file.path, content: file.content }] : []));
 }
 
-export async function previewSkillInstall(
-  installCommand: string,
-): Promise<SkillPreviewResult[]> {
+export async function previewSkillInstall(installCommand: string): Promise<SkillPreviewResult[]> {
   const parsed = parseSkillsInstallCommand(installCommand);
 
   try {
-    return (await loadSkillPackage(installCommand, "ai-hub-skills-preview-"))
-      .results;
+    return (await loadSkillPackage(installCommand, "ai-hub-skills-preview-")).results;
   } catch (error) {
-    logHandledError(
-      "Failed to preview skill install",
-      { sourcePackage: parsed.sourcePackage },
-      error as Error,
-    );
+    logHandledError("Failed to preview skill install", { sourcePackage: parsed.sourcePackage }, error as Error);
     throw error;
   }
 }
 
-export async function createSkillManually(input: {
-  workspaceId: string;
-  userId: string;
-  name: string;
-  description: string | null;
-  markdownFiles: { path: string; content: string }[];
-  isGlobal?: boolean;
-}): Promise<AgentSkillRow> {
+export async function createSkillManually(input: { workspaceId: string; userId: string; name: string; description: string | null; markdownFiles: { path: string; content: string }[]; isGlobal?: boolean }): Promise<AgentSkillRow> {
   if (input.markdownFiles.length === 0) {
     throw new Error("At least one Markdown file is required");
   }

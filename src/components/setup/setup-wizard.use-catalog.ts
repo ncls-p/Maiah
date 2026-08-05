@@ -1,10 +1,7 @@
 import type { DiscoveredModel } from "@/components/providers/provider-manager/types";
 import { fetchJson } from "@/lib/api-client";
-import { useEffect, type Dispatch, type SetStateAction } from "react";
-import type {
-  ProviderModel,
-  ProviderSummary,
-} from "./setup-wizard.button-type";
+import { useEffect,type Dispatch,type SetStateAction } from "react";
+import type { ProviderModel,ProviderSummary } from "./setup-wizard.button-type";
 
 type CatalogOptions = {
   workspaceId: string | null;
@@ -23,21 +20,7 @@ type CatalogOptions = {
 };
 
 export function useSetupWizardCatalog(options: CatalogOptions) {
-  const {
-    workspaceId,
-    providerId,
-    loadAttempt,
-    setLoadingProviders,
-    setProvidersLoadError,
-    setProviders,
-    setProviderId,
-    setStep,
-    setLoadingModels,
-    setModelsLoadError,
-    setModels,
-    setDiscoveredModels,
-    setModelDbId,
-  } = options;
+  const { workspaceId, providerId, loadAttempt, setLoadingProviders, setProvidersLoadError, setProviders, setProviderId, setStep, setLoadingModels, setModelsLoadError, setModels, setDiscoveredModels, setModelDbId } = options;
   useEffect(() => {
     if (!workspaceId) return;
     let cancelled = false;
@@ -46,9 +29,7 @@ export function useSetupWizardCatalog(options: CatalogOptions) {
       setLoadingProviders(true);
       setProvidersLoadError(false);
       try {
-        const rows = await fetchJson<ProviderSummary[]>(
-          `/api/workspace/providers?workspaceId=${workspaceId}`,
-        );
+        const rows = await fetchJson<ProviderSummary[]>(`/api/workspace/providers?workspaceId=${workspaceId}`);
         if (cancelled) return;
         setProviders(rows);
         if (rows[0]) {
@@ -66,15 +47,7 @@ export function useSetupWizardCatalog(options: CatalogOptions) {
     return () => {
       cancelled = true;
     };
-  }, [
-    workspaceId,
-    loadAttempt,
-    setLoadingProviders,
-    setProviderId,
-    setProviders,
-    setProvidersLoadError,
-    setStep,
-  ]);
+  }, [workspaceId, loadAttempt, setLoadingProviders, setProviderId, setProviders, setProvidersLoadError, setStep]);
 
   useEffect(() => {
     if (!workspaceId || !providerId) return;
@@ -86,21 +59,13 @@ export function useSetupWizardCatalog(options: CatalogOptions) {
       setModels([]);
       setDiscoveredModels([]);
       try {
-        const rows = await fetchJson<ProviderModel[]>(
-          `/api/workspace/providers/${providerId}/models?workspaceId=${workspaceId}`,
-        );
+        const rows = await fetchJson<ProviderModel[]>(`/api/workspace/providers/${providerId}/models?workspaceId=${workspaceId}`);
         if (cancelled) return;
         setModels(rows);
-        setModelDbId((current) =>
-          current && rows.some((model) => model.id === current)
-            ? current
-            : (rows[0]?.id ?? null),
-        );
+        setModelDbId((current) => (current && rows.some((model) => model.id === current) ? current : (rows[0]?.id ?? null)));
         if (rows.length === 0) {
           try {
-            const catalog = await fetchJson<DiscoveredModel[]>(
-              `/api/workspace/providers/${providerId}/models?workspaceId=${workspaceId}&action=discover`,
-            );
+            const catalog = await fetchJson<DiscoveredModel[]>(`/api/workspace/providers/${providerId}/models?workspaceId=${workspaceId}&action=discover`);
             if (!cancelled) setDiscoveredModels(catalog);
           } catch {
             if (!cancelled) setDiscoveredModels([]);
@@ -119,14 +84,5 @@ export function useSetupWizardCatalog(options: CatalogOptions) {
     return () => {
       cancelled = true;
     };
-  }, [
-    workspaceId,
-    providerId,
-    loadAttempt,
-    setDiscoveredModels,
-    setLoadingModels,
-    setModelDbId,
-    setModels,
-    setModelsLoadError,
-  ]);
+  }, [workspaceId, providerId, loadAttempt, setDiscoveredModels, setLoadingModels, setModelDbId, setModels, setModelsLoadError]);
 }

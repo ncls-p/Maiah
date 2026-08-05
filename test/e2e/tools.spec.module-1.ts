@@ -26,23 +26,17 @@ test.describe("tools hub page", () => {
     await page.waitForTimeout(2000);
 
     // Tabs or at least some tools content should be visible
-    await expect(
-      page.getByRole("tab", { name: "Built-in", exact: true }),
-    ).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole("tab", { name: "Built-in", exact: true })).toBeVisible({ timeout: 15_000 });
   });
 
-  test("retires the approvals tab and redirects old links", async ({
-    page,
-  }) => {
+  test("retires the approvals tab and redirects old links", async ({ page }) => {
     await page.goto("/en/tools?tab=approvals");
 
     await expect(page).toHaveURL(/\/en\/tools\?tab=builtin$/, {
       timeout: 15_000,
     });
     await expect(page.getByRole("tab", { name: /Approvals/i })).toHaveCount(0);
-    await expect(
-      page.getByRole("tab", { name: "Built-in", exact: true }),
-    ).toHaveAttribute("data-state", "active");
+    await expect(page.getByRole("tab", { name: "Built-in", exact: true })).toHaveAttribute("data-state", "active");
   });
 
   test("shows built-in tools", async ({ page }) => {
@@ -50,9 +44,7 @@ test.describe("tools hub page", () => {
     await page.waitForTimeout(2000);
 
     // The compact Orbit list should expose the built-in tools directly.
-    await expect(
-      page.getByRole("heading", { name: "Calculator", exact: true }),
-    ).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole("heading", { name: "Calculator", exact: true })).toBeVisible({ timeout: 15_000 });
   });
 
   test("tools search works", async ({ page }) => {
@@ -70,9 +62,7 @@ test.describe("tools hub page", () => {
     }
   });
 
-  test("keeps a large skills library compact and searchable", async ({
-    page,
-  }) => {
+  test("keeps a large skills library compact and searchable", async ({ page }) => {
     const skills = Array.from({ length: 55 }, (_, index) => {
       const number = String(index + 1).padStart(3, "0");
       return {
@@ -109,39 +99,25 @@ test.describe("tools hub page", () => {
     const search = page.getByRole("searchbox", { name: /Search skills/i });
     await search.fill("Skill 053");
     await expect(skillRows).toHaveCount(1);
-    await expect(
-      page.getByRole("heading", { name: "Skill 053", exact: true }),
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Skill 053", exact: true })).toBeVisible();
   });
 
-  test("groups skill installation and manual creation under one action", async ({
-    page,
-  }) => {
+  test("groups skill installation and manual creation under one action", async ({ page }) => {
     await page.goto("/en/tools?tab=skills");
 
     await page.getByRole("button", { name: /^Add$/i }).click();
-    await expect(
-      page.getByRole("menuitem", { name: /Install from skills\.sh/i }),
-    ).toBeVisible();
-    await page
-      .getByRole("menuitem", { name: /Install from skills\.sh/i })
-      .click();
-    await expect(
-      page.getByRole("dialog", { name: /Install from skills\.sh/i }),
-    ).toBeVisible();
+    await expect(page.getByRole("menuitem", { name: /Install from skills\.sh/i })).toBeVisible();
+    await page.getByRole("menuitem", { name: /Install from skills\.sh/i }).click();
+    await expect(page.getByRole("dialog", { name: /Install from skills\.sh/i })).toBeVisible();
     await page.getByRole("button", { name: /Close/i }).click();
 
     await page.getByRole("button", { name: /^Add$/i }).click();
     await page.getByRole("menuitem", { name: /Create manually/i }).click();
-    await expect(
-      page.getByRole("dialog", { name: /Create skill/i }),
-    ).toBeVisible();
+    await expect(page.getByRole("dialog", { name: /Create skill/i })).toBeVisible();
     await expect(page.getByRole("textbox", { name: /^Name$/i })).toBeFocused();
   });
 
-  test("keeps a large MCP server library compact and searchable", async ({
-    page,
-  }) => {
+  test("keeps a large MCP server library compact and searchable", async ({ page }) => {
     const servers = Array.from({ length: 55 }, (_, index) => {
       const number = String(index + 1).padStart(3, "0");
       return {
@@ -168,17 +144,12 @@ test.describe("tools hub page", () => {
     await page.route(/\/api\/workspace\/mcp-servers\?/, async (route) => {
       await route.fulfill({ json: servers });
     });
-    await page.route(
-      /\/api\/workspace\/mcp-servers\/[^/]+\/tools\?/,
-      async (route) => {
-        await route.fulfill({ json: [] });
-      },
-    );
+    await page.route(/\/api\/workspace\/mcp-servers\/[^/]+\/tools\?/, async (route) => {
+      await route.fulfill({ json: [] });
+    });
 
     await page.goto("/en/tools?tab=mcp");
-    await expect(
-      page.getByText(/24 of 55 shown · 55 servers configured/i),
-    ).toBeVisible();
+    await expect(page.getByText(/24 of 55 shown · 55 servers configured/i)).toBeVisible();
     await expect(page.getByText(/^MCP server \d{3}$/)).toHaveCount(24);
 
     await page.getByRole("button", { name: /Show 24 more/i }).click();
@@ -189,28 +160,18 @@ test.describe("tools hub page", () => {
     });
     await search.fill("MCP server 053");
     await expect(page.getByText(/^MCP server \d{3}$/)).toHaveCount(1);
-    await expect(
-      page.getByText("MCP server 053", { exact: true }),
-    ).toBeVisible();
+    await expect(page.getByText("MCP server 053", { exact: true })).toBeVisible();
   });
 
   test("opens private MCP connections only on request", async ({ page }) => {
     await page.goto("/en/tools?tab=mcp");
 
-    await page
-      .getByRole("button", { name: "Connections", exact: true })
-      .click();
-    await expect(
-      page.getByRole("dialog", { name: "Connections", exact: true }),
-    ).toBeVisible();
-    await expect(
-      page.getByText(/Personal credentials stay private/i),
-    ).toBeVisible();
+    await page.getByRole("button", { name: "Connections", exact: true }).click();
+    await expect(page.getByRole("dialog", { name: "Connections", exact: true })).toBeVisible();
+    await expect(page.getByText(/Personal credentials stay private/i)).toBeVisible();
   });
 
-  test("loads MCP tools automatically and only offers retry after failure", async ({
-    page,
-  }) => {
+  test("loads MCP tools automatically and only offers retry after failure", async ({ page }) => {
     const workspacesResponse = await page.request.get("/api/workspaces");
     expect(workspacesResponse.ok()).toBe(true);
     const workspaces = (await workspacesResponse.json()) as Array<{
@@ -222,17 +183,14 @@ test.describe("tools hub page", () => {
     let serverId: string | undefined;
     const serverName = `Automatic MCP ${Date.now()}`;
     try {
-      const createResponse = await page.request.post(
-        "/api/workspace/mcp-servers",
-        {
-          data: {
-            workspaceId,
-            name: serverName,
-            transport: "streamable-http",
-            url: "http://127.0.0.1:9/mcp",
-          },
+      const createResponse = await page.request.post("/api/workspace/mcp-servers", {
+        data: {
+          workspaceId,
+          name: serverName,
+          transport: "streamable-http",
+          url: "http://127.0.0.1:9/mcp",
         },
-      );
+      });
       expect(createResponse.status()).toBe(201);
       const server = (await createResponse.json()) as {
         id: string;
@@ -251,17 +209,11 @@ test.describe("tools hub page", () => {
       await expect(serverRow).toBeVisible({ timeout: 15_000 });
       await serverRow.click();
 
-      await expect(
-        page.getByRole("button", { name: "Try loading tools again" }),
-      ).toBeVisible();
-      await expect(
-        page.getByRole("button", { name: /Sync tools|Test connection/i }),
-      ).toHaveCount(0);
+      await expect(page.getByRole("button", { name: "Try loading tools again" })).toBeVisible();
+      await expect(page.getByRole("button", { name: /Sync tools|Test connection/i })).toHaveCount(0);
     } finally {
       if (serverId) {
-        await page.request.delete(
-          `/api/workspace/mcp-servers/${serverId}?workspaceId=${workspaceId}`,
-        );
+        await page.request.delete(`/api/workspace/mcp-servers/${serverId}?workspaceId=${workspaceId}`);
       }
     }
   });

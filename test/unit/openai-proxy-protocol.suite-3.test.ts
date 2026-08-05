@@ -1,25 +1,9 @@
 import type { LanguageModelUsage } from "ai";
 import { describe,expect,it } from "vitest";
 
-import {
-chatCompletionRequestSchema,
-responsesRequestSchema,
-} from "@/modules/openai-proxy/contracts";
-import {
-invalidRequest,
-openAIErrorBody,
-providerError,
-validationError
-} from "@/modules/openai-proxy/errors";
-import {
-buildChatCompletionResponse,
-buildResponsesResponse,
-chatFinishReason,
-chatUsage,
-responseCompletionState,
-responsesUsage,
-responseTextConfig,
-} from "@/modules/openai-proxy/response-builders";
+import { chatCompletionRequestSchema,responsesRequestSchema } from "@/modules/openai-proxy/contracts";
+import { invalidRequest,openAIErrorBody,providerError,validationError } from "@/modules/openai-proxy/errors";
+import { buildChatCompletionResponse,buildResponsesResponse,chatFinishReason,chatUsage,responseCompletionState,responsesUsage,responseTextConfig } from "@/modules/openai-proxy/response-builders";
 
 const usage: LanguageModelUsage = {
   inputTokens: 6,
@@ -72,9 +56,7 @@ describe("OpenAI proxy errors and response objects", () => {
       type: "invalid_request_error",
     });
 
-    expect(
-      providerError({ statusCode: 429, message: "slow down" }),
-    ).toMatchObject({
+    expect(providerError({ statusCode: 429, message: "slow down" })).toMatchObject({
       status: 429,
       code: "upstream_rate_limit",
     });
@@ -82,9 +64,7 @@ describe("OpenAI proxy errors and response objects", () => {
       status: 404,
       code: "upstream_request_error",
     });
-    expect(
-      providerError({ status: 500, message: "private detail" }),
-    ).toMatchObject({
+    expect(providerError({ status: 500, message: "private detail" })).toMatchObject({
       status: 502,
       code: "upstream_error",
     });
@@ -95,12 +75,7 @@ describe("OpenAI proxy errors and response objects", () => {
   });
 
   it("maps finish reasons, token details and structured response formats", () => {
-    expect(
-      ["stop", "length", "content-filter", "tool-calls", "other"].map(
-        (reason) =>
-          chatFinishReason(reason as Parameters<typeof chatFinishReason>[0]),
-      ),
-    ).toEqual(["stop", "length", "content_filter", "tool_calls", "stop"]);
+    expect(["stop", "length", "content-filter", "tool-calls", "other"].map((reason) => chatFinishReason(reason as Parameters<typeof chatFinishReason>[0]))).toEqual(["stop", "length", "content_filter", "tool_calls", "stop"]);
     expect(chatUsage(usage)).toMatchObject({
       prompt_tokens: 6,
       completion_tokens: 3,
@@ -142,9 +117,7 @@ describe("OpenAI proxy errors and response objects", () => {
       request: chat({}),
       result: {
         text: "",
-        toolCalls: [
-          { toolCallId: "call_1", toolName: "lookup", input: { id: 1 } },
-        ],
+        toolCalls: [{ toolCallId: "call_1", toolName: "lookup", input: { id: 1 } }],
         finishReason: "tool-calls",
         usage,
       },
@@ -160,9 +133,7 @@ describe("OpenAI proxy errors and response objects", () => {
       responseFormat: { type: "json_object" },
       result: {
         text: "partial",
-        toolCalls: [
-          { toolCallId: "call_2", toolName: "lookup", input: undefined },
-        ],
+        toolCalls: [{ toolCallId: "call_2", toolName: "lookup", input: undefined }],
         finishReason: "length",
         usage,
       },
@@ -172,9 +143,6 @@ describe("OpenAI proxy errors and response objects", () => {
     expect(response.incomplete_details).toEqual({
       reason: "max_output_tokens",
     });
-    expect(response.output.map((item) => item.type)).toEqual([
-      "message",
-      "function_call",
-    ]);
+    expect(response.output.map((item) => item.type)).toEqual(["message", "function_call"]);
   });
 });

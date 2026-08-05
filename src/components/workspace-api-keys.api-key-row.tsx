@@ -1,8 +1,6 @@
 "use client";
 
-import {
-Trash2Icon
-} from "lucide-react";
+import { Trash2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Badge } from "@/components/ui/badge";
@@ -40,12 +38,7 @@ export async function fetchApiKeys(workspaceId: string, t: ApiKeysTranslator) {
   return (await res.json()) as ApiKeyResponse;
 }
 
-export async function createApiKey(
-  workspaceId: string,
-  name: string,
-  scopes: string[],
-  t: ApiKeysTranslator,
-) {
+export async function createApiKey(workspaceId: string, name: string, scopes: string[], t: ApiKeysTranslator) {
   const res = await fetch("/api/workspace/api-keys", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -61,17 +54,7 @@ export async function revokeApiKey(workspaceId: string, keyId: string) {
   });
 }
 
-export function ApiKeyListItem({
-  apiKey,
-  locale,
-  onRevokeAction,
-  t,
-}: {
-  apiKey: ApiKeyRow;
-  locale: string;
-  onRevokeAction: (apiKey: ApiKeyRow) => void;
-  t: ApiKeysTranslator;
-}) {
+export function ApiKeyListItem({ apiKey, locale, onRevokeAction, t }: { apiKey: ApiKeyRow; locale: string; onRevokeAction: (apiKey: ApiKeyRow) => void; t: ApiKeysTranslator }) {
   const lastUsedLabel = apiKey.lastUsedAt
     ? t("lastUsed", {
         date: new Intl.DateTimeFormat(locale, {
@@ -88,18 +71,11 @@ export function ApiKeyListItem({
         <p className="text-xs text-muted-foreground">
           {apiKey.keyPrefix}… · {lastUsedLabel}
         </p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          {t("scopeCount", { count: apiKey.scopes.length })}
-        </p>
+        <p className="mt-1 text-xs text-muted-foreground">{t("scopeCount", { count: apiKey.scopes.length })}</p>
       </div>
       <div className="flex items-center gap-2">
         <Badge variant="outline">{t("active")}</Badge>
-        <Button
-          size="icon-sm"
-          variant="ghost"
-          onClick={() => onRevokeAction(apiKey)}
-          aria-label={t("revokeLabel", { name: apiKey.name })}
-        >
+        <Button size="icon-sm" variant="ghost" onClick={() => onRevokeAction(apiKey)} aria-label={t("revokeLabel", { name: apiKey.name })}>
           <Trash2Icon aria-hidden="true" />
         </Button>
       </div>

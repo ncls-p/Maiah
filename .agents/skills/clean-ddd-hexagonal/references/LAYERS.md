@@ -1,18 +1,19 @@
 # Layer Structure - Complete Reference
 
 > Sources:
+>
 > - [The Clean Architecture](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html) — Robert C. Martin
 > - [Designing a DDD-oriented Microservice](https://learn.microsoft.com/en-us/dotnet/architecture/microservices/microservice-ddd-cqrs-patterns/ddd-oriented-microservice) — Microsoft
 > - [Clean Architecture: Standing on the Shoulders of Giants](https://herbertograca.com/2017/09/28/clean-architecture-standing-on-the-shoulders-of-giants/) — Herberto Graça
 
 ## The Four Layers
 
-| Layer | Responsibility | Dependencies |
-|-------|---------------|--------------|
-| **Domain** | Business logic, entities, rules | None (pure) |
-| **Application** | Use cases, orchestration | Domain |
-| **Infrastructure** | External systems, frameworks | Application, Domain |
-| **Presentation** | API/UI entry points | Application |
+| Layer              | Responsibility                  | Dependencies        |
+| ------------------ | ------------------------------- | ------------------- |
+| **Domain**         | Business logic, entities, rules | None (pure)         |
+| **Application**    | Use cases, orchestration        | Domain              |
+| **Infrastructure** | External systems, frameworks    | Application, Domain |
+| **Presentation**   | API/UI entry points             | Application         |
 
 ---
 
@@ -55,11 +56,11 @@ domain/
 
 ```typescript
 // domain/order/order.ts
-import { AggregateRoot } from '../shared/aggregate_root';
-import { OrderItem } from './order_item';
-import { Money } from './value_objects';
-import { OrderPlaced, OrderShipped } from './events';
-import { InsufficientStockError } from './errors';
+import { AggregateRoot } from "../shared/aggregate_root";
+import { OrderItem } from "./order_item";
+import { Money } from "./value_objects";
+import { OrderPlaced, OrderShipped } from "./events";
+import { InsufficientStockError } from "./errors";
 
 export class Order extends AggregateRoot<OrderId> {
   private items: OrderItem[] = [];
@@ -85,7 +86,7 @@ export class Order extends AggregateRoot<OrderId> {
       throw new InsufficientStockError(product.id, quantity);
     }
 
-    const existingItem = this.items.find(i => i.productId.equals(product.id));
+    const existingItem = this.items.find((i) => i.productId.equals(product.id));
     if (existingItem) {
       existingItem.increaseQuantity(quantity);
     } else {
@@ -95,17 +96,14 @@ export class Order extends AggregateRoot<OrderId> {
 
   ship(): void {
     if (this.status !== OrderStatus.Confirmed) {
-      throw new InvalidOrderStateError('Cannot ship unconfirmed order');
+      throw new InvalidOrderStateError("Cannot ship unconfirmed order");
     }
     this.status = OrderStatus.Shipped;
     this.addDomainEvent(new OrderShipped(this.id));
   }
 
   get total(): Money {
-    return this.items.reduce(
-      (sum, item) => sum.add(item.subtotal),
-      Money.zero()
-    );
+    return this.items.reduce((sum, item) => sum.add(item.subtotal), Money.zero());
   }
 }
 ```
@@ -149,13 +147,13 @@ application/
 
 ```typescript
 // application/orders/place_order/handler.ts
-import { Order } from '@/domain/order/order';
-import { IOrderRepository } from '@/domain/order/repository';
-import { IProductRepository } from '@/domain/product/repository';
-import { IUnitOfWork } from '@/application/shared/unit_of_work';
-import { IEventPublisher } from '@/application/shared/event_publisher';
-import { PlaceOrderCommand } from './command';
-import { OrderNotFoundError, ProductNotFoundError } from '@/application/shared/errors';
+import { Order } from "@/domain/order/order";
+import { IOrderRepository } from "@/domain/order/repository";
+import { IProductRepository } from "@/domain/product/repository";
+import { IUnitOfWork } from "@/application/shared/unit_of_work";
+import { IEventPublisher } from "@/application/shared/event_publisher";
+import { PlaceOrderCommand } from "./command";
+import { OrderNotFoundError, ProductNotFoundError } from "@/application/shared/errors";
 
 export interface IPlaceOrderUseCase {
   execute(command: PlaceOrderCommand): Promise<OrderId>;
@@ -343,10 +341,10 @@ presentation/
 
 ```typescript
 // presentation/rest/controllers/order_controller.ts
-import { Request, Response, NextFunction } from 'express';
-import { IPlaceOrderUseCase } from '@/application/orders/place_order/port';
-import { IGetOrderUseCase } from '@/application/orders/get_order/port';
-import { PlaceOrderRequest } from '../dto/requests/place_order_request';
+import { Request, Response, NextFunction } from "express";
+import { IPlaceOrderUseCase } from "@/application/orders/place_order/port";
+import { IGetOrderUseCase } from "@/application/orders/get_order/port";
+import { PlaceOrderRequest } from "../dto/requests/place_order_request";
 
 export class OrderController {
   constructor(
@@ -360,7 +358,7 @@ export class OrderController {
 
       const orderId = await this.placeOrder.execute({
         customerId: req.user.id,
-        items: request.items.map(item => ({
+        items: request.items.map((item) => ({
           productId: item.product_id,
           quantity: item.quantity,
         })),
@@ -377,7 +375,7 @@ export class OrderController {
       const order = await this.getOrder.execute({ orderId: req.params.id });
 
       if (!order) {
-        res.status(404).json({ error: 'Order not found' });
+        res.status(404).json({ error: "Order not found" });
         return;
       }
 
@@ -436,30 +434,30 @@ flowchart TB
 All dependencies are wired together at the application entry point.
 
 ```typescript
-import { Pool } from 'pg';
-import { Container } from 'inversify';
-import { IOrderRepository } from '@/domain/order/repository';
-import { IProductRepository } from '@/domain/product/repository';
-import { IPlaceOrderUseCase } from '@/application/orders/place_order/port';
-import { IUnitOfWork } from '@/application/shared/unit_of_work';
-import { IEventPublisher } from '@/application/shared/event_publisher';
-import { PlaceOrderHandler } from '@/application/orders/place_order/handler';
-import { PostgresOrderRepository } from '@/infrastructure/persistence/postgres/order_repository';
-import { PostgresProductRepository } from '@/infrastructure/persistence/postgres/product_repository';
-import { PostgresUnitOfWork } from '@/infrastructure/persistence/postgres/unit_of_work';
-import { RabbitMQEventPublisher } from '@/infrastructure/messaging/rabbitmq/event_publisher';
-import { OrderController } from '@/presentation/rest/controllers/order_controller';
+import { Pool } from "pg";
+import { Container } from "inversify";
+import { IOrderRepository } from "@/domain/order/repository";
+import { IProductRepository } from "@/domain/product/repository";
+import { IPlaceOrderUseCase } from "@/application/orders/place_order/port";
+import { IUnitOfWork } from "@/application/shared/unit_of_work";
+import { IEventPublisher } from "@/application/shared/event_publisher";
+import { PlaceOrderHandler } from "@/application/orders/place_order/handler";
+import { PostgresOrderRepository } from "@/infrastructure/persistence/postgres/order_repository";
+import { PostgresProductRepository } from "@/infrastructure/persistence/postgres/product_repository";
+import { PostgresUnitOfWork } from "@/infrastructure/persistence/postgres/unit_of_work";
+import { RabbitMQEventPublisher } from "@/infrastructure/messaging/rabbitmq/event_publisher";
+import { OrderController } from "@/presentation/rest/controllers/order_controller";
 
 export function configureContainer(): Container {
   const container = new Container();
   const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
-  container.bind<Pool>('Pool').toConstantValue(pool);
-  container.bind<IOrderRepository>('IOrderRepository').to(PostgresOrderRepository);
-  container.bind<IProductRepository>('IProductRepository').to(PostgresProductRepository);
-  container.bind<IUnitOfWork>('IUnitOfWork').to(PostgresUnitOfWork);
-  container.bind<IEventPublisher>('IEventPublisher').to(RabbitMQEventPublisher);
-  container.bind<IPlaceOrderUseCase>('IPlaceOrderUseCase').to(PlaceOrderHandler);
+  container.bind<Pool>("Pool").toConstantValue(pool);
+  container.bind<IOrderRepository>("IOrderRepository").to(PostgresOrderRepository);
+  container.bind<IProductRepository>("IProductRepository").to(PostgresProductRepository);
+  container.bind<IUnitOfWork>("IUnitOfWork").to(PostgresUnitOfWork);
+  container.bind<IEventPublisher>("IEventPublisher").to(RabbitMQEventPublisher);
+  container.bind<IPlaceOrderUseCase>("IPlaceOrderUseCase").to(PlaceOrderHandler);
   container.bind<OrderController>(OrderController).toSelf();
 
   return container;
@@ -473,6 +471,7 @@ export function configureContainer(): Container {
 The same layered structure applies to any language:
 
 ### Go
+
 ```
 internal/
 ├── domain/
@@ -482,6 +481,7 @@ internal/
 ```
 
 ### Rust
+
 ```
 src/
 ├── domain/
@@ -491,6 +491,7 @@ src/
 ```
 
 ### Python
+
 ```
 src/
 ├── domain/

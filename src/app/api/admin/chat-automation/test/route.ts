@@ -17,11 +17,7 @@ export async function POST(req: NextRequest) {
     },
     {
       logLabel: "Failed to test chat automation",
-      expectedError: () =>
-        NextResponse.json(
-          { ok: false, error: "Internal server error" },
-          { status: 500 },
-        ),
+      expectedError: () => NextResponse.json({ ok: false, error: "Internal server error" }, { status: 500 }),
     },
   );
 }

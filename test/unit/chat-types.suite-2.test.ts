@@ -1,13 +1,4 @@
-import {
-appendMessagePart,
-completeReasoningParts,
-groupWorkPhaseParts,
-parseToolPart,
-reasoningPartHasDetails,
-renderablePartsFromMessage,
-startReasoningPart,
-type ChatMessage
-} from "@/components/chat/chat-types";
+import { appendMessagePart,completeReasoningParts,groupWorkPhaseParts,parseToolPart,reasoningPartHasDetails,renderablePartsFromMessage,startReasoningPart,type ChatMessage } from "@/components/chat/chat-types";
 import { describe,expect,it } from "vitest";
 
 describe("chat message parts", () => {
@@ -16,14 +7,10 @@ describe("chat message parts", () => {
 
     parts = startReasoningPart(parts);
     parts = appendMessagePart(parts, "reasoning", "thinking");
-    expect(parts).toEqual([
-      { type: "reasoning", content: "thinking", state: "streaming" },
-    ]);
+    expect(parts).toEqual([{ type: "reasoning", content: "thinking", state: "streaming" }]);
 
     parts = completeReasoningParts(parts);
-    expect(parts).toEqual([
-      { type: "reasoning", content: "thinking", state: "done" },
-    ]);
+    expect(parts).toEqual([{ type: "reasoning", content: "thinking", state: "done" }]);
   });
 
   it("returns renderable parts in message order", () => {
@@ -39,9 +26,7 @@ describe("chat message parts", () => {
       ],
     };
 
-    expect(
-      renderablePartsFromMessage(message).map((part) => part.type),
-    ).toEqual(["reasoning", "tool-call", "tool-result", "text"]);
+    expect(renderablePartsFromMessage(message).map((part) => part.type)).toEqual(["reasoning", "tool-call", "tool-result", "text"]);
   });
 
   it("exposes reasoning details only while active or when text exists", () => {
@@ -133,9 +118,7 @@ describe("chat message parts", () => {
       ],
     };
 
-    expect(
-      renderablePartsFromMessage(message).map((part) => part.type),
-    ).toEqual(["tool-result"]);
+    expect(renderablePartsFromMessage(message).map((part) => part.type)).toEqual(["tool-result"]);
   });
 
   it("groups consecutive reasoning and tool work before meaningful text", () => {
@@ -184,11 +167,6 @@ describe("chat message parts", () => {
       { type: "text", content: "Second answer" },
     ]);
 
-    expect(groups.map((group) => group.type)).toEqual([
-      "part",
-      "part",
-      "part",
-      "part",
-    ]);
+    expect(groups.map((group) => group.type)).toEqual(["part", "part", "part", "part"]);
   });
 });

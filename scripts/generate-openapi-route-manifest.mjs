@@ -5,20 +5,9 @@ import { format } from "prettier";
 const ROOT = process.cwd();
 const API_ROOT = path.join(ROOT, "src/app/api");
 const ROUTE_ROOTS = [{ directory: API_ROOT, prefix: "/api" }];
-const OUTPUT = path.join(
-  ROOT,
-  "src/modules/openapi/generated-route-manifest.ts",
-);
+const OUTPUT = path.join(ROOT, "src/modules/openapi/generated-route-manifest.ts");
 const CHECK_ONLY = process.argv.includes("--check");
-const HTTP_METHODS = new Set([
-  "GET",
-  "POST",
-  "PUT",
-  "PATCH",
-  "DELETE",
-  "HEAD",
-  "OPTIONS",
-]);
+const HTTP_METHODS = new Set(["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]);
 
 async function routeFiles(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
@@ -46,9 +35,7 @@ function openApiPath(file, routeRoot) {
 }
 
 function exportedMethods(source) {
-  const matches = source.matchAll(
-    /^export\s+(?:(?:async\s+)?function|const)\s+(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\b/gm,
-  );
+  const matches = source.matchAll(/^export\s+(?:(?:async\s+)?function|const)\s+(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\b/gm);
   return [...matches].map((match) => ({
     method: match[1],
     index: match.index ?? 0,
@@ -59,29 +46,19 @@ function methodChunks(source) {
   const methods = exportedMethods(source);
   return methods.map((entry, index) => ({
     method: entry.method,
-    source: source.slice(
-      entry.index,
-      methods[index + 1]?.index ?? source.length,
-    ),
+    source: source.slice(entry.index, methods[index + 1]?.index ?? source.length),
   }));
 }
 
 function permissionStrings(source) {
   const permissions = new Set();
-  const callPattern =
-    /(?:require(?:Workspace|Resource)PermissionAsync|requireRequestPermissionScopeAsync|check(?:Workspace|Resource)PermissionForRequest|has(?:Workspace|Resource)PermissionForRequest|handleOpenAIProxyRoute|authorization\.(?:checkPermission|hasPermission))\([\s\S]{0,420}?"([A-Za-z][A-Za-z0-9]*\.[A-Za-z0-9*]+)"/g;
+  const callPattern = /(?:require(?:Workspace|Resource)PermissionAsync|requireRequestPermissionScopeAsync|check(?:Workspace|Resource)PermissionForRequest|has(?:Workspace|Resource)PermissionForRequest|handleOpenAIProxyRoute|authorization\.(?:checkPermission|hasPermission))\([\s\S]{0,420}?"([A-Za-z][A-Za-z0-9]*\.[A-Za-z0-9*]+)"/g;
   for (const match of source.matchAll(callPattern)) permissions.add(match[1]);
   return [...permissions].sort();
 }
 
 function queryParameters(source) {
-  return [
-    ...new Set(
-      [...source.matchAll(/searchParams\.get\("([A-Za-z0-9_-]+)"\)/g)].map(
-        (match) => match[1],
-      ),
-    ),
-  ].sort();
+  return [...new Set([...source.matchAll(/searchParams\.get\("([A-Za-z0-9_-]+)"\)/g)].map((match) => match[1]))].sort();
 }
 
 function pathParameters(apiPath) {
@@ -96,11 +73,7 @@ function routeTag(apiPath) {
 
 function authModes(apiPath, source) {
   if (apiPath.startsWith("/api/v1/")) return ["apiKey"];
-  if (
-    apiPath.startsWith("/api/auth/") ||
-    apiPath === "/api/health" ||
-    apiPath === "/api/openapi"
-  ) {
+  if (apiPath.startsWith("/api/auth/") || apiPath === "/api/health" || apiPath === "/api/openapi") {
     return [];
   }
   if (apiPath.startsWith("/api/admin/")) return ["session"];
@@ -119,12 +92,8 @@ function operationId(method, apiPath) {
     .replace(/^\/api\/(?:v1\/)?/, "")
     .replace(/[{}]/g, "")
     .split("/")
-    .map((part) =>
-      part.replace(/[^A-Za-z0-9]+(.)/g, (_, char) => char.toUpperCase()),
-    )
-    .map((part, index) =>
-      index === 0 ? part : part.charAt(0).toUpperCase() + part.slice(1),
-    )
+    .map((part) => part.replace(/[^A-Za-z0-9]+(.)/g, (_, char) => char.toUpperCase()))
+    .map((part, index) => (index === 0 ? part : part.charAt(0).toUpperCase() + part.slice(1)))
     .join("");
   return `${method.toLowerCase()}${suffix.charAt(0).toUpperCase()}${suffix.slice(1)}`;
 }
@@ -154,10 +123,7 @@ for (const routeRoot of ROUTE_ROOTS) {
     for (const chunk of methodChunks(source)) {
       if (!HTTP_METHODS.has(chunk.method)) continue;
       const methodPermissions = permissionStrings(chunk.source);
-      if (
-        chunk.source.includes("canManageTenantGlobals") &&
-        !methodPermissions.includes("roles.manage")
-      ) {
+      if (chunk.source.includes("canManageTenantGlobals") && !methodPermissions.includes("roles.manage")) {
         methodPermissions.push("roles.manage");
       }
       operations.push({
@@ -167,47 +133,25 @@ for (const routeRoot of ROUTE_ROOTS) {
         summary: summary(chunk.method, apiPath),
         tag: routeTag(apiPath),
         auth,
-        permissions:
-          methodPermissions.length > 0 ? methodPermissions : filePermissions,
+        permissions: methodPermissions.length > 0 ? methodPermissions : filePermissions,
         pathParameters: pathParameters(apiPath),
         queryParameters: queryParameters(chunk.source),
-        bodyKind: /(?:req|request)\.formData\(\)/.test(chunk.source)
-          ? "multipart"
-          : !["GET", "HEAD", "OPTIONS"].includes(chunk.method) &&
-              /(?:req|request)\.json\(\)/.test(chunk.source)
-            ? "json"
-            : "none",
-        responseKind:
-          /text\/event-stream|createDataStreamResponse|ReadableStream|application\/zip|application\/pdf/.test(
-            chunk.source,
-          )
-            ? "stream"
-            : "json",
+        bodyKind: /(?:req|request)\.formData\(\)/.test(chunk.source) ? "multipart" : !["GET", "HEAD", "OPTIONS"].includes(chunk.method) && /(?:req|request)\.json\(\)/.test(chunk.source) ? "json" : "none",
+        responseKind: /text\/event-stream|createDataStreamResponse|ReadableStream|application\/zip|application\/pdf/.test(chunk.source) ? "stream" : "json",
       });
     }
   }
 }
 
-operations.sort((left, right) =>
-  `${left.path}:${left.method}`.localeCompare(`${right.path}:${right.method}`),
-);
+operations.sort((left, right) => `${left.path}:${left.method}`.localeCompare(`${right.path}:${right.method}`));
 
 const header = `// This file is generated by scripts/generate-openapi-route-manifest.mjs.\n// Do not edit it by hand.\n\n`;
-const contents = await format(
-  `${header}export const OPENAPI_ROUTE_MANIFEST = ${JSON.stringify(
-    operations,
-    null,
-    2,
-  )} as const;\n`,
-  { parser: "typescript" },
-);
+const contents = await format(`${header}export const OPENAPI_ROUTE_MANIFEST = ${JSON.stringify(operations, null, 2)} as const;\n`, { parser: "typescript" });
 
 if (CHECK_ONLY) {
   const existing = await readFile(OUTPUT, "utf8").catch(() => "");
   if (existing !== contents) {
-    console.error(
-      "OpenAPI route manifest is stale. Run npm run openapi:generate and commit the result.",
-    );
+    console.error("OpenAPI route manifest is stale. Run npm run openapi:generate and commit the result.");
     process.exitCode = 1;
   } else {
     console.log(`OpenAPI manifest covers ${operations.length} operations.`);

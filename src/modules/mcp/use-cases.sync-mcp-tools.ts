@@ -5,27 +5,10 @@ import { db } from "@/server/infrastructure/db";
 import { mcpServers,mcpTools } from "@/server/infrastructure/db/schema";
 import { and,eq } from "drizzle-orm";
 import { createMcpServer,getMcpServer } from "./use-cases.create-mcp-server";
-import {
-CreateMcpServerInput,
-DiscoveredMcpTool,
-UpdateMcpServerInput,
-assertCanManageMcpServer,
-hasMcpConnectionChanges,
-} from "./use-cases.mcp-server";
-import {
-discoverMcpTools,
-emitMcpToolsSyncedAudit,
-markMcpServerManual,
-saveMcpToolSyncResult,
-updateMcpServer,
-} from "./use-cases.update-mcp-server";
+import { CreateMcpServerInput,DiscoveredMcpTool,UpdateMcpServerInput,assertCanManageMcpServer,hasMcpConnectionChanges } from "./use-cases.mcp-server";
+import { discoverMcpTools,emitMcpToolsSyncedAudit,markMcpServerManual,saveMcpToolSyncResult,updateMcpServer } from "./use-cases.update-mcp-server";
 
-export async function syncMcpTools(
-  serverId: string,
-  workspaceId: string,
-  userId: string,
-  canManageGlobal = false,
-) {
+export async function syncMcpTools(serverId: string, workspaceId: string, userId: string, canManageGlobal = false) {
   const server = await getMcpServer(serverId, workspaceId);
   if (!server) throw new Error("MCP server not found");
   await assertCanManageMcpServer(server, userId, canManageGlobal);
@@ -64,50 +47,25 @@ export async function syncMcpTools(
   return { status: healthStatus, discovered: discovered.length };
 }
 
-export async function createMcpServerWithDiscovery(
-  input: CreateMcpServerInput,
-  canManageGlobal = false,
-) {
+export async function createMcpServerWithDiscovery(input: CreateMcpServerInput, canManageGlobal = false) {
   const server = await createMcpServer(input);
-  const discovery = await syncMcpTools(
-    server.id,
-    input.workspaceId,
-    input.userId,
-    canManageGlobal,
-  );
+  const discovery = await syncMcpTools(server.id, input.workspaceId, input.userId, canManageGlobal);
   return { server, discovery };
 }
 
-export async function updateMcpServerWithDiscovery(
-  input: UpdateMcpServerInput,
-) {
+export async function updateMcpServerWithDiscovery(input: UpdateMcpServerInput) {
   const server = await updateMcpServer(input);
-  const discovery = hasMcpConnectionChanges(input)
-    ? await syncMcpTools(
-        input.serverId,
-        input.workspaceId,
-        input.userId,
-        input.canManageGlobal,
-      )
-    : null;
+  const discovery = hasMcpConnectionChanges(input) ? await syncMcpTools(input.serverId, input.workspaceId, input.userId, input.canManageGlobal) : null;
   return { server, discovery };
 }
 
-export async function testMcpConnection(
-  serverId: string,
-  workspaceId: string,
-  userId: string,
-  canManageGlobal = false,
-) {
+export async function testMcpConnection(serverId: string, workspaceId: string, userId: string, canManageGlobal = false) {
   const server = await getMcpServer(serverId, workspaceId);
   if (!server) throw new Error("MCP server not found");
   await assertCanManageMcpServer(server, userId, canManageGlobal);
 
   if (server.transport === "stdio" || !server.url) {
-    await db
-      .update(mcpServers)
-      .set({ healthStatus: "manual", lastCheckedAt: new Date() })
-      .where(eq(mcpServers.id, serverId));
+    await db.update(mcpServers).set({ healthStatus: "manual", lastCheckedAt: new Date() }).where(eq(mcpServers.id, serverId));
     return {
       status: "manual",
       message: "stdio servers require manual tool registration",
@@ -119,14 +77,10 @@ export async function testMcpConnection(
 
   try {
     const tools = await listRemoteMcpTools(server);
-    message =
-      tools.length > 0
-        ? `Connected — ${tools.length} tools available`
-        : "Connected — no tools returned";
+    message = tools.length > 0 ? `Connected — ${tools.length} tools available` : "Connected — no tools returned";
   } catch (error) {
     healthStatus = "unhealthy";
-    message =
-      error instanceof Error ? error.message : "Unable to reach MCP server";
+    message = error instanceof Error ? error.message : "Unable to reach MCP server";
   }
 
   await db
@@ -151,23 +105,14 @@ export async function testMcpConnection(
   return { status: healthStatus, message };
 }
 
-export async function updateMcpTool(input: {
-  toolId: string;
-  serverId: string;
-  workspaceId: string;
-  userId: string;
-  enabled?: boolean;
-  requireApproval?: boolean;
-  canManageGlobal?: boolean;
-}) {
+export async function updateMcpTool(input: { toolId: string; serverId: string; workspaceId: string; userId: string; enabled?: boolean; requireApproval?: boolean; canManageGlobal?: boolean }) {
   const server = await getMcpServer(input.serverId, input.workspaceId);
   if (!server) throw new Error("MCP server not found");
   await assertCanManageMcpServer(server, input.userId, input.canManageGlobal);
 
   const updates: Record<string, unknown> = {};
   if (input.enabled !== undefined) updates.enabled = input.enabled;
-  if (input.requireApproval !== undefined)
-    updates.requireApproval = input.requireApproval;
+  if (input.requireApproval !== undefined) updates.requireApproval = input.requireApproval;
   if (Object.keys(updates).length === 0) {
     throw new Error("No updates provided");
   }
@@ -175,12 +120,7 @@ export async function updateMcpTool(input: {
   const [tool] = await db
     .update(mcpTools)
     .set(updates)
-    .where(
-      and(
-        eq(mcpTools.id, input.toolId),
-        eq(mcpTools.mcpServerId, input.serverId),
-      ),
-    )
+    .where(and(eq(mcpTools.id, input.toolId), eq(mcpTools.mcpServerId, input.serverId)))
     .returning();
 
   if (!tool) throw new Error("MCP tool not found");

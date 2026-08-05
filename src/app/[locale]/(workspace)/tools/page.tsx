@@ -4,10 +4,7 @@ import { ToolsHub } from "./tools-hub";
 
 export default function ToolsPage() {
   return (
-    <RequireWorkspaceAccess
-      required={["canConfigureTools", "canViewTools", "canGetMcpServers"]}
-      mode="any"
-    >
+    <RequireWorkspaceAccess required={["canConfigureTools", "canViewTools", "canGetMcpServers"]} mode="any">
       <ToolsHub />
     </RequireWorkspaceAccess>
   );

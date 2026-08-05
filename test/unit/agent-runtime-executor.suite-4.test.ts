@@ -1,6 +1,4 @@
-import {
-executeAgent
-} from "@/modules/agent/runtime-executor";
+import { executeAgent } from "@/modules/agent/runtime-executor";
 import { beforeEach,describe,expect,it,vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   generateText: vi.fn(),
@@ -134,16 +132,9 @@ describe("agent runtime executor", () => {
       toolApproval: undefined,
     });
     mocks.generateText.mockImplementationOnce(async (options) => {
-      const tools = options.tools as Record<
-        string,
-        { execute?: (input: unknown) => Promise<unknown> }
-      >;
-      await expect(
-        tools.lookup.execute?.({ query: "status" }),
-      ).resolves.toEqual({ answer: 42 });
-      await expect(
-        tools.unstable.execute?.({ query: "status" }),
-      ).rejects.toThrow("upstream unavailable");
+      const tools = options.tools as Record<string, { execute?: (input: unknown) => Promise<unknown> }>;
+      await expect(tools.lookup.execute?.({ query: "status" })).resolves.toEqual({ answer: 42 });
+      await expect(tools.unstable.execute?.({ query: "status" })).rejects.toThrow("upstream unavailable");
       expect(tools.metadata_only).toEqual({
         description: "No executable handler",
       });

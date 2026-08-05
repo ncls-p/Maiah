@@ -5,19 +5,11 @@ import { Button } from "@/components/ui/button";
 
 import type { useProviderManagerController } from "./provider-manager";
 import { ModelsPanel } from "./provider-manager/model-list";
-import {
-  AddProviderDialog,
-  DeleteModelDialog,
-  DeleteProviderDialog,
-  EditProviderDialog,
-} from "./provider-manager/provider-dialogs";
+import { AddProviderDialog,DeleteModelDialog,DeleteProviderDialog,EditProviderDialog } from "./provider-manager/provider-dialogs";
 import { ProviderList } from "./provider-manager/provider-list";
 import { SystemStrip } from "./provider-manager/provider-stats";
 
-type Model = Extract<
-  ReturnType<typeof useProviderManagerController>,
-  { kind: "ready" }
->;
+type Model = Extract<ReturnType<typeof useProviderManagerController>, { kind: "ready" }>;
 export function ProviderManagerView({ model }: { model: Model }) {
   const {
     addAdvanced,
@@ -97,58 +89,14 @@ export function ProviderManagerView({ model }: { model: Model }) {
         </Button>
       </div>
       <div>
-        <AdvancedSection
-          label={t("systemHealth")}
-          hint={t("systemHealthHint")}
-          storageKey="advanced:providers-health"
-          className="border-border/50 bg-muted/20"
-        >
+        <AdvancedSection label={t("systemHealth")} hint={t("systemHealthHint")} storageKey="advanced:providers-health" className="border-border/50 bg-muted/20">
           <SystemStrip providers={providers} models={models} />
         </AdvancedSection>
       </div>
 
       <div className="space-y-6">
-        <ProviderList
-          providers={providers}
-          filteredProviders={filteredProviders}
-          selectedProviderId={selectedProviderId}
-          providerSearch={providerSearch}
-          loadingProviders={loadingProviders}
-          busy={busy}
-          onSearchChange={setProviderSearch}
-          onAddProvider={openAddDialog}
-          onSelectProvider={selectProvider}
-          onToggleProvider={(provider) => void toggleProvider(provider)}
-          onRetryProvider={(providerId) =>
-            void discoverProviderModels(providerId)
-          }
-          onEditProvider={openEditDialog}
-          onDeleteProvider={setDeleteProviderId}
-        />
-        <ModelsPanel
-          selectedProvider={selectedProvider}
-          providers={providers}
-          models={models}
-          filteredModels={filteredModels}
-          discoveredModels={discoveredModels}
-          modelSearch={modelSearch}
-          manualModelId={manualModelId}
-          manualModelName={manualModelName}
-          loadingModels={loadingModels}
-          loadingProviders={loadingProviders}
-          busy={busy}
-          onDiscoverModels={() => void discoverProviderModels()}
-          onUpdateModelLogo={(modelId: string, logoUrl: string | null) =>
-            void updateModelLogo(modelId, logoUrl)
-          }
-          onUpdateModel={(modelId, update) => void updateModel(modelId, update)}
-          onCreateModel={(model) => void createManualModel(model)}
-          onCreateSelectedModels={createDiscoveredModels}
-          onDeleteModel={setDeleteModelId}
-          onModelSearchChange={setModelSearch}
-          onManualModelIdChange={setManualModelId}
-          onManualModelNameChange={setManualModelName}
-        />
+        <ProviderList providers={providers} filteredProviders={filteredProviders} selectedProviderId={selectedProviderId} providerSearch={providerSearch} loadingProviders={loadingProviders} busy={busy} onSearchChange={setProviderSearch} onAddProvider={openAddDialog} onSelectProvider={selectProvider} onToggleProvider={(provider) => void toggleProvider(provider)} onRetryProvider={(providerId) => void discoverProviderModels(providerId)} onEditProvider={openEditDialog} onDeleteProvider={setDeleteProviderId} />
+        <ModelsPanel selectedProvider={selectedProvider} providers={providers} models={models} filteredModels={filteredModels} discoveredModels={discoveredModels} modelSearch={modelSearch} manualModelId={manualModelId} manualModelName={manualModelName} loadingModels={loadingModels} loadingProviders={loadingProviders} busy={busy} onDiscoverModels={() => void discoverProviderModels()} onUpdateModelLogo={(modelId: string, logoUrl: string | null) => void updateModelLogo(modelId, logoUrl)} onUpdateModel={(modelId, update) => void updateModel(modelId, update)} onCreateModel={(model) => void createManualModel(model)} onCreateSelectedModels={createDiscoveredModels} onDeleteModel={setDeleteModelId} onModelSearchChange={setModelSearch} onManualModelIdChange={setManualModelId} onManualModelNameChange={setManualModelName} />
       </div>
 
       <AddProviderDialog
@@ -178,37 +126,9 @@ export function ProviderManagerView({ model }: { model: Model }) {
         onAdvancedChange={setAddAdvanced}
         onCreateProvider={() => void createNewProvider()}
       />
-      <EditProviderDialog
-        editingProvider={editingProvider}
-        busy={busy}
-        editName={editName}
-        editBaseUrl={editBaseUrl}
-        editApiKey={editApiKey}
-        editApiRoute={editApiRoute}
-        onClose={() => setEditingProvider(null)}
-        onNameChange={setEditName}
-        onBaseUrlChange={setEditBaseUrl}
-        onApiKeyChange={setEditApiKey}
-        onApiRouteChange={setEditApiRoute}
-        onSave={() => void saveProviderEdit()}
-      />
-      <DeleteProviderDialog
-        deleteProviderId={deleteProviderId}
-        busy={busy}
-        onClose={() => setDeleteProviderId(null)}
-        onDelete={(id) => void deleteProvider(id)}
-      />
-      <DeleteModelDialog
-        deleteModelId={deleteModelId}
-        deleteModelLabel={
-          models.find((model) => model.id === deleteModelId)?.displayName ??
-          models.find((model) => model.id === deleteModelId)?.modelId ??
-          null
-        }
-        busy={busy}
-        onClose={() => setDeleteModelId(null)}
-        onDelete={(id) => void deleteModel(id)}
-      />
+      <EditProviderDialog editingProvider={editingProvider} busy={busy} editName={editName} editBaseUrl={editBaseUrl} editApiKey={editApiKey} editApiRoute={editApiRoute} onClose={() => setEditingProvider(null)} onNameChange={setEditName} onBaseUrlChange={setEditBaseUrl} onApiKeyChange={setEditApiKey} onApiRouteChange={setEditApiRoute} onSave={() => void saveProviderEdit()} />
+      <DeleteProviderDialog deleteProviderId={deleteProviderId} busy={busy} onClose={() => setDeleteProviderId(null)} onDelete={(id) => void deleteProvider(id)} />
+      <DeleteModelDialog deleteModelId={deleteModelId} deleteModelLabel={models.find((model) => model.id === deleteModelId)?.displayName ?? models.find((model) => model.id === deleteModelId)?.modelId ?? null} busy={busy} onClose={() => setDeleteModelId(null)} onDelete={(id) => void deleteModel(id)} />
     </div>
   );
 }

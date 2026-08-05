@@ -21,12 +21,7 @@ export type AdminUser = {
 };
 
 function isRegistrationSetting(value: unknown): value is RegistrationSetting {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "enabled" in value &&
-    typeof value.enabled === "boolean"
-  );
+  return typeof value === "object" && value !== null && "enabled" in value && typeof value.enabled === "boolean";
 }
 
 export function isAdminRole(role?: string | null) {
@@ -34,42 +29,24 @@ export function isAdminRole(role?: string | null) {
 }
 
 export async function ensureBootstrapAdmin() {
-  const [{ value: adminCount }] = await db
-    .select({ value: count() })
-    .from(users)
-    .where(eq(users.role, "admin"));
+  const [{ value: adminCount }] = await db.select({ value: count() }).from(users).where(eq(users.role, "admin"));
 
   if (adminCount > 0) return null;
 
-  const [firstUser] = await db
-    .select({ id: users.id })
-    .from(users)
-    .orderBy(users.createdAt)
-    .limit(1);
+  const [firstUser] = await db.select({ id: users.id }).from(users).orderBy(users.createdAt).limit(1);
 
   if (!firstUser) return null;
 
-  await db
-    .update(users)
-    .set({ role: "admin", updatedAt: new Date() })
-    .where(eq(users.id, firstUser.id));
+  await db.update(users).set({ role: "admin", updatedAt: new Date() }).where(eq(users.id, firstUser.id));
 
   return firstUser.id;
 }
 
 export async function getRegistrationSetting() {
-  const [row] = await db
-    .select({ valueJson: appSettings.valueJson })
-    .from(appSettings)
-    .where(eq(appSettings.key, REGISTRATION_SETTING_KEY))
-    .limit(1);
+  const [row] = await db.select({ valueJson: appSettings.valueJson }).from(appSettings).where(eq(appSettings.key, REGISTRATION_SETTING_KEY)).limit(1);
 
-  const setting = isRegistrationSetting(row?.valueJson)
-    ? row.valueJson
-    : { enabled: true };
-  const [{ value: userCount }] = await db
-    .select({ value: count() })
-    .from(users);
+  const setting = isRegistrationSetting(row?.valueJson) ? row.valueJson : { enabled: true };
+  const [{ value: userCount }] = await db.select({ value: count() }).from(users);
 
   return {
     registrationEnabled: setting.enabled,
@@ -78,10 +55,7 @@ export async function getRegistrationSetting() {
   };
 }
 
-export async function setRegistrationEnabled(
-  enabled: boolean,
-  updatedById: string,
-) {
+export async function setRegistrationEnabled(enabled: boolean, updatedById: string) {
   await db
     .insert(appSettings)
     .values({
@@ -123,13 +97,7 @@ export async function listAdminUsers(): Promise<AdminUser[]> {
     );
 }
 
-export async function createAdminManagedUser(input: {
-  name: string;
-  email: string;
-  password: string;
-  role: "user" | "admin";
-  headers: Headers;
-}) {
+export async function createAdminManagedUser(input: { name: string; email: string; password: string; role: "user" | "admin"; headers: Headers }) {
   const result = await auth.api.createUser({
     headers: input.headers,
     body: {
@@ -155,18 +123,8 @@ async function getActiveAdminCount(exceptUserId?: string) {
   return value;
 }
 
-export async function updateManagedUser(input: {
-  actorUserId: string;
-  userId: string;
-  role?: "user" | "admin";
-  banned?: boolean;
-  banReason?: string;
-}) {
-  const [target] = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, input.userId))
-    .limit(1);
+export async function updateManagedUser(input: { actorUserId: string; userId: string; role?: "user" | "admin"; banned?: boolean; banReason?: string }) {
+  const [target] = await db.select().from(users).where(eq(users.id, input.userId)).limit(1);
 
   if (!target) throw new Error("User not found");
   if (input.actorUserId === input.userId && input.role === "user") {
@@ -176,10 +134,7 @@ export async function updateManagedUser(input: {
     throw new Error("You cannot suspend your own account");
   }
 
-  const wouldRemoveActiveAdmin =
-    target.role === "admin" &&
-    !target.banned &&
-    (input.role === "user" || input.banned === true);
+  const wouldRemoveActiveAdmin = target.role === "admin" && !target.banned && (input.role === "user" || input.banned === true);
 
   if (wouldRemoveActiveAdmin) {
     const remainingAdmins = await getActiveAdminCount(input.userId);
@@ -192,25 +147,19 @@ export async function updateManagedUser(input: {
   if (input.role) updates.role = input.role;
   if (input.banned !== undefined) {
     updates.banned = input.banned;
-    updates.banReason = input.banned
-      ? input.banReason || "Suspended by an admin"
-      : null;
+    updates.banReason = input.banned ? input.banReason || "Suspended by an admin" : null;
     updates.banExpires = null;
   }
 
-  const [updated] = await db
-    .update(users)
-    .set(updates)
-    .where(eq(users.id, input.userId))
-    .returning({
-      id: users.id,
-      name: users.name,
-      email: users.email,
-      role: users.role,
-      banned: users.banned,
-      banReason: users.banReason,
-      createdAt: users.createdAt,
-    });
+  const [updated] = await db.update(users).set(updates).where(eq(users.id, input.userId)).returning({
+    id: users.id,
+    name: users.name,
+    email: users.email,
+    role: users.role,
+    banned: users.banned,
+    banReason: users.banReason,
+    createdAt: users.createdAt,
+  });
 
   return { ...updated, role: updated.role ?? "user" };
 }

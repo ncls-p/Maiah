@@ -39,19 +39,7 @@ vi.mock("@/modules/agent/delegation-use-cases", () => ({
   insertDelegationBindingsForVersion: vi.fn().mockResolvedValue(undefined),
 }));
 
-const CHAIN_KEYS = [
-  "select",
-  "insert",
-  "update",
-  "delete",
-  "from",
-  "innerJoin",
-  "where",
-  "orderBy",
-  "values",
-  "set",
-  "onConflictDoUpdate",
-] as const;
+const CHAIN_KEYS = ["select", "insert", "update", "delete", "from", "innerJoin", "where", "orderBy", "values", "set", "onConflictDoUpdate"] as const;
 
 type ChainFn = ReturnType<typeof vi.fn>;
 
@@ -81,19 +69,7 @@ type DbModule = {
 vi.mock("@/server/infrastructure/db", () => {
   const buildChain = (): Chain => {
     const c = {} as Record<string, ChainFn>;
-    const keys = [
-      "select",
-      "insert",
-      "update",
-      "delete",
-      "from",
-      "innerJoin",
-      "where",
-      "orderBy",
-      "values",
-      "set",
-      "onConflictDoUpdate",
-    ] as const;
+    const keys = ["select", "insert", "update", "delete", "from", "innerJoin", "where", "orderBy", "values", "set", "onConflictDoUpdate"] as const;
     for (const k of keys) {
       c[k] = vi.fn().mockReturnThis();
     }
@@ -123,9 +99,7 @@ export function reset() {
     }
     chain.limit.mockReset().mockResolvedValue([]);
     chain.returning.mockReset().mockResolvedValue([]);
-    chain.then
-      .mockReset()
-      .mockImplementation((resolve) => Promise.resolve([]).then(resolve));
+    chain.then.mockReset().mockImplementation((resolve) => Promise.resolve([]).then(resolve));
   }
 }
 
@@ -136,9 +110,7 @@ beforeEach(() => {
   dbModule.db.insert.mockReturnValue(dbModule._c);
   dbModule.db.update.mockReturnValue(dbModule._c);
   dbModule.db.delete.mockReturnValue(dbModule._c);
-  dbModule.db.transaction.mockImplementation(
-    (cb: (tx: Chain) => Promise<unknown>) => cb(dbModule._tx),
-  );
+  dbModule.db.transaction.mockImplementation((cb: (tx: Chain) => Promise<unknown>) => cb(dbModule._tx));
 });
 
 // ─── Fixtures ────────────────────────────────────────────────────────

@@ -1,13 +1,7 @@
 import { describe,expect,it } from "vitest";
 
-
-import {
-addWorkspaceMember,
-createWorkspace,
-ensurePrimaryWorkspaceForUser
-} from "@/modules/workspace/use-cases";
+import { addWorkspaceMember,createWorkspace,ensurePrimaryWorkspaceForUser } from "@/modules/workspace/use-cases";
 import { dbModule,fakeMember,fakeRole,fakeWorkspace } from "./workspace-use-cases.test.db-module";
-
 
 describe("ensurePrimaryWorkspaceForUser", () => {
   it("joins the hidden primary workspace with the role derived from platform role", async () => {
@@ -104,10 +98,7 @@ describe("ensurePrimaryWorkspaceForUser", () => {
     dbModule._chain.limit
       .mockResolvedValueOnce([{ workspace: primaryWorkspace }])
       .mockResolvedValueOnce([fakeMember])
-      .mockResolvedValueOnce([
-        { roleName: "workspace.member" },
-        { roleName: "custom.audit-reader" },
-      ]);
+      .mockResolvedValueOnce([{ roleName: "workspace.member" }, { roleName: "custom.audit-reader" }]);
 
     await ensurePrimaryWorkspaceForUser({
       userId: "user-2",
@@ -169,9 +160,7 @@ describe("addWorkspaceMember", () => {
   });
 
   it("throws when user is already an active member", async () => {
-    dbModule._chain.limit
-      .mockResolvedValueOnce([fakeWorkspace])
-      .mockResolvedValueOnce([{ ...fakeMember, status: "active" }]);
+    dbModule._chain.limit.mockResolvedValueOnce([fakeWorkspace]).mockResolvedValueOnce([{ ...fakeMember, status: "active" }]);
 
     await expect(
       addWorkspaceMember({

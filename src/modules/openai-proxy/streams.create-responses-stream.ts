@@ -1,27 +1,9 @@
-import type {
-ProxyResponseFormat,
-ResponsesRequest
-} from "@/modules/openai-proxy/contracts";
-import {
-OpenAIProxyError,
-providerError
-} from "@/modules/openai-proxy/errors";
-import {
-createFunctionItemId,
-createMessageId,
-createResponseId,
-responseCompletionState,
-responsesUsage,
-type ResponsesOutputItem
-} from "@/modules/openai-proxy/response-builders";
+import type { ProxyResponseFormat,ResponsesRequest } from "@/modules/openai-proxy/contracts";
+import { OpenAIProxyError,providerError } from "@/modules/openai-proxy/errors";
+import { createFunctionItemId,createMessageId,createResponseId,responseCompletionState,responsesUsage,type ResponsesOutputItem } from "@/modules/openai-proxy/response-builders";
 import { initialResponse } from "./streams.initial-response";
 import { ProxyStreamResult,StreamCallbacks,sseEvent,streamHeaders } from "./streams.proxy-stream-result";
-export function createResponsesStream(input: {
-  request: ResponsesRequest;
-  responseFormat: ProxyResponseFormat;
-  result: ProxyStreamResult;
-  callbacks: StreamCallbacks;
-}) {
+export function createResponsesStream(input: { request: ResponsesRequest; responseFormat: ProxyResponseFormat; result: ProxyStreamResult; callbacks: StreamCallbacks }) {
   const id = createResponseId();
   const createdAt = Math.floor(Date.now() / 1000);
   const response = initialResponse({
@@ -32,9 +14,7 @@ export function createResponsesStream(input: {
   });
   let sequenceNumber = 0;
   let nextOutputIndex = 0;
-  let textState:
-    | { itemId: string; outputIndex: number; text: string; done: boolean }
-    | undefined;
+  let textState: { itemId: string; outputIndex: number; text: string; done: boolean } | undefined;
   const functionStates = new Map<
     string,
     {
@@ -45,18 +25,10 @@ export function createResponsesStream(input: {
       done: boolean;
     }
   >();
-  const emit = (
-    controller: ReadableStreamDefaultController<Uint8Array>,
-    type: string,
-    payload: Record<string, unknown>,
-  ) => {
-    controller.enqueue(
-      sseEvent(type, { type, sequence_number: sequenceNumber++, ...payload }),
-    );
+  const emit = (controller: ReadableStreamDefaultController<Uint8Array>, type: string, payload: Record<string, unknown>) => {
+    controller.enqueue(sseEvent(type, { type, sequence_number: sequenceNumber++, ...payload }));
   };
-  const ensureTextStarted = (
-    controller: ReadableStreamDefaultController<Uint8Array>,
-  ) => {
+  const ensureTextStarted = (controller: ReadableStreamDefaultController<Uint8Array>) => {
     if (textState) return textState;
     textState = {
       itemId: createMessageId(),
@@ -82,9 +54,7 @@ export function createResponsesStream(input: {
     });
     return textState;
   };
-  const finishText = (
-    controller: ReadableStreamDefaultController<Uint8Array>,
-  ) => {
+  const finishText = (controller: ReadableStreamDefaultController<Uint8Array>) => {
     if (!textState || textState.done) return;
     textState.done = true;
     const content = {
@@ -119,15 +89,10 @@ export function createResponsesStream(input: {
       item,
     });
   };
-  const finishFunction = (
-    controller: ReadableStreamDefaultController<Uint8Array>,
-    callId: string,
-    fallbackArguments?: string,
-  ) => {
+  const finishFunction = (controller: ReadableStreamDefaultController<Uint8Array>, callId: string, fallbackArguments?: string) => {
     const state = functionStates.get(callId);
     if (!state || state.done) return;
-    if (!state.arguments && fallbackArguments)
-      state.arguments = fallbackArguments;
+    if (!state.arguments && fallbackArguments) state.arguments = fallbackArguments;
     state.done = true;
     emit(controller, "response.function_call_arguments.done", {
       item_id: state.itemId,
@@ -243,12 +208,7 @@ export function createResponsesStream(input: {
             case "error":
               throw part.error;
             case "abort":
-              throw new OpenAIProxyError(
-                part.reason || "The request was cancelled.",
-                499,
-                "invalid_request_error",
-                "request_cancelled",
-              );
+              throw new OpenAIProxyError(part.reason || "The request was cancelled.", 499, "invalid_request_error", "request_cancelled");
             case "finish": {
               finishText(controller);
               for (const callId of functionStates.keys()) {
@@ -258,10 +218,7 @@ export function createResponsesStream(input: {
               response.status = completion.status;
               response.incomplete_details = completion.incompleteDetails;
               response.usage = responsesUsage(part.totalUsage);
-              const eventType =
-                completion.status === "completed"
-                  ? "response.completed"
-                  : "response.incomplete";
+              const eventType = completion.status === "completed" ? "response.completed" : "response.incomplete";
               emit(controller, eventType, { response });
               await input.callbacks.onComplete(part.totalUsage);
               controller.close();

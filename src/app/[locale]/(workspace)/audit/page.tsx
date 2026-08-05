@@ -9,11 +9,7 @@ import { Button } from "@/components/ui/button";
 import { WorkspacePage } from "@/components/workspace-page";
 import { useWorkspace } from "@/hooks/use-workspace";
 
-import {
-AuditDashboard,
-AuditDashboardSkeleton,
-type AuditEvent,
-} from "./audit-dashboard";
+import { AuditDashboard,AuditDashboardSkeleton,type AuditEvent } from "./audit-dashboard";
 
 type AuditFilters = {
   action: string;
@@ -26,12 +22,7 @@ type LoadAuditEventsInput = AuditFilters & {
   workspaceId: string;
 };
 
-function auditFiltersFromState(input: {
-  actionFilter: string;
-  outcomeFilter: string;
-  fromDate: string;
-  toDate: string;
-}) {
+function auditFiltersFromState(input: { actionFilter: string; outcomeFilter: string; fromDate: string; toDate: string }) {
   return {
     action: input.actionFilter,
     outcome: input.outcomeFilter,
@@ -40,13 +31,7 @@ function auditFiltersFromState(input: {
   } satisfies AuditFilters;
 }
 
-function buildAuditQuery({
-  workspaceId,
-  action,
-  outcome,
-  from,
-  to,
-}: LoadAuditEventsInput) {
+function buildAuditQuery({ workspaceId, action, outcome, from, to }: LoadAuditEventsInput) {
   const params = new URLSearchParams({ workspaceId, limit: "100" });
   if (action.trim()) params.set("action", action.trim());
   if (outcome !== "all") params.set("outcome", outcome);
@@ -67,17 +52,7 @@ function csvEscape(value: unknown) {
 
 function downloadAuditCsv(events: AuditEvent[], workspaceId: string) {
   const header = ["createdAt", "action", "resourceType", "outcome", "actor"];
-  const rows = events.map((event) =>
-    [
-      event.createdAt,
-      event.action,
-      event.resourceType ?? "",
-      event.outcome,
-      event.actorName ?? event.actorEmail ?? event.actorPrincipalId ?? "",
-    ]
-      .map(csvEscape)
-      .join(","),
-  );
+  const rows = events.map((event) => [event.createdAt, event.action, event.resourceType ?? "", event.outcome, event.actorName ?? event.actorEmail ?? event.actorPrincipalId ?? ""].map(csvEscape).join(","));
   const blob = new Blob([[header.join(","), ...rows].join("\n")], {
     type: "text/csv;charset=utf-8;",
   });
@@ -150,27 +125,12 @@ function AuditPageContent() {
   }
 
   return (
-    <WorkspacePage
-      title={t("auditTitle")}
-      description={t("auditDescription")}
-      width="wide"
-    >
+    <WorkspacePage title={t("auditTitle")} description={t("auditDescription")} width="wide">
       {loadError ? (
-        <div
-          className="mb-5 rounded-2xl border border-destructive/25 bg-destructive/5 p-5"
-          role="alert"
-        >
+        <div className="mb-5 rounded-2xl border border-destructive/25 bg-destructive/5 p-5" role="alert">
           <h2 className="text-base font-semibold">{t("audit.loadFailed")}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {t("audit.loadFailedDescription")}
-          </p>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="mt-4"
-            onClick={() => void loadEvents()}
-          >
+          <p className="mt-1 text-sm text-muted-foreground">{t("audit.loadFailedDescription")}</p>
+          <Button type="button" variant="outline" size="sm" className="mt-4" onClick={() => void loadEvents()}>
             {t("audit.retry")}
           </Button>
         </div>

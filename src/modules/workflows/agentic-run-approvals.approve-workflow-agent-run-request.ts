@@ -5,18 +5,10 @@ import { audit } from "@/server/domain/services/audit";
 import { db } from "@/server/infrastructure/db";
 import { workflowAgentRunRequests } from "@/server/infrastructure/db/schema";
 
-import {
-WorkflowAgentRunDecisionError,
-loadRunRequest,
-} from "./agentic-run-approvals.workflow-agent-run-decision-error";
+import { WorkflowAgentRunDecisionError,loadRunRequest } from "./agentic-run-approvals.workflow-agent-run-decision-error";
 import { createWorkflowRun } from "./use-cases";
 
-export async function approveWorkflowAgentRunRequest(input: {
-  requestId: string;
-  workflowId: string;
-  workspaceId: string;
-  userId: string;
-}) {
+export async function approveWorkflowAgentRunRequest(input: { requestId: string; workflowId: string; workspaceId: string; userId: string }) {
   const request = await loadRunRequest(input);
   if (request.status === "approved" && request.runId) {
     return {
@@ -26,39 +18,23 @@ export async function approveWorkflowAgentRunRequest(input: {
     };
   }
   if (request.status !== "pending") {
-    throw new WorkflowAgentRunDecisionError(
-      "Workflow run request has already been decided.",
-    );
+    throw new WorkflowAgentRunDecisionError("Workflow run request has already been decided.");
   }
   if (request.expiresAt.getTime() <= Date.now()) {
     await db
       .update(workflowAgentRunRequests)
       .set({ status: "expired", decidedAt: new Date() })
-      .where(
-        and(
-          eq(workflowAgentRunRequests.id, request.id),
-          eq(workflowAgentRunRequests.status, "pending"),
-        ),
-      );
-    throw new WorkflowAgentRunDecisionError(
-      "Workflow run request has expired.",
-    );
+      .where(and(eq(workflowAgentRunRequests.id, request.id), eq(workflowAgentRunRequests.status, "pending")));
+    throw new WorkflowAgentRunDecisionError("Workflow run request has expired.");
   }
 
   const [claim] = await db
     .update(workflowAgentRunRequests)
     .set({ status: "approving", decidedAt: new Date() })
-    .where(
-      and(
-        eq(workflowAgentRunRequests.id, request.id),
-        eq(workflowAgentRunRequests.status, "pending"),
-      ),
-    )
+    .where(and(eq(workflowAgentRunRequests.id, request.id), eq(workflowAgentRunRequests.status, "pending")))
     .returning();
   if (!claim) {
-    throw new WorkflowAgentRunDecisionError(
-      "Workflow run request is already being processed.",
-    );
+    throw new WorkflowAgentRunDecisionError("Workflow run request is already being processed.");
   }
 
   try {
@@ -72,10 +48,7 @@ export async function approveWorkflowAgentRunRequest(input: {
       idempotencyKey: `workflow-agent-run:${request.id}`,
       trigger: "agent",
     });
-    await db
-      .update(workflowAgentRunRequests)
-      .set({ status: "approved", runId: run.id, error: null })
-      .where(eq(workflowAgentRunRequests.id, request.id));
+    await db.update(workflowAgentRunRequests).set({ status: "approved", runId: run.id, error: null }).where(eq(workflowAgentRunRequests.id, request.id));
     await audit.emit({
       workspaceId: request.workspaceId,
       actorPrincipalType: "user",
@@ -120,35 +93,21 @@ export async function approveWorkflowAgentRunRequest(input: {
   }
 }
 
-export async function rejectWorkflowAgentRunRequest(input: {
-  requestId: string;
-  workflowId: string;
-  workspaceId: string;
-  userId: string;
-}) {
+export async function rejectWorkflowAgentRunRequest(input: { requestId: string; workflowId: string; workspaceId: string; userId: string }) {
   const request = await loadRunRequest(input);
   if (request.status === "rejected") {
     return { requestId: request.id, status: "rejected" as const };
   }
   if (request.status !== "pending") {
-    throw new WorkflowAgentRunDecisionError(
-      "Workflow run request has already been decided.",
-    );
+    throw new WorkflowAgentRunDecisionError("Workflow run request has already been decided.");
   }
   const [rejected] = await db
     .update(workflowAgentRunRequests)
     .set({ status: "rejected", decidedAt: new Date() })
-    .where(
-      and(
-        eq(workflowAgentRunRequests.id, request.id),
-        eq(workflowAgentRunRequests.status, "pending"),
-      ),
-    )
+    .where(and(eq(workflowAgentRunRequests.id, request.id), eq(workflowAgentRunRequests.status, "pending")))
     .returning();
   if (!rejected) {
-    throw new WorkflowAgentRunDecisionError(
-      "Workflow run request is already being processed.",
-    );
+    throw new WorkflowAgentRunDecisionError("Workflow run request is already being processed.");
   }
   await audit.emit({
     workspaceId: request.workspaceId,

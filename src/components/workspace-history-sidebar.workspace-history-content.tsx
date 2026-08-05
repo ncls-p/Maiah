@@ -1,48 +1,26 @@
 "use client";
 
-import {
-MessageSquareWarningIcon,
-PanelLeftCloseIcon,
-PlusIcon
-} from "lucide-react";
+import { MessageSquareWarningIcon,PanelLeftCloseIcon,PlusIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback,useState } from "react";
 
 import { ChatSidebar } from "@/components/chat/chat-sidebar";
 import { DestructiveConfirmationDialog } from "@/components/destructive-confirmation-dialog";
-import {
-SidebarHeader,
-WorkspaceStatusFooter,
-} from "@/components/sidebar-chrome";
+import { SidebarHeader,WorkspaceStatusFooter } from "@/components/sidebar-chrome";
 import { Button } from "@/components/ui/button";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { useRouter } from "@/i18n/navigation";
 import type { WorkspaceShellState } from "@/lib/workspace-nav";
 import { useWorkspaceHistory } from "./workspace-history-sidebar.use-workspace-history";
 
-
-export function WorkspaceHistoryContent({
-  shell,
-  onNavigate,
-  onCollapsedChange,
-}: {
-  shell: WorkspaceShellState;
-  onNavigate?: () => void;
-  onCollapsedChange?: (collapsed: boolean) => void;
-}) {
+export function WorkspaceHistoryContent({ shell, onNavigate, onCollapsedChange }: { shell: WorkspaceShellState; onNavigate?: () => void; onCollapsedChange?: (collapsed: boolean) => void }) {
   const t = useTranslations("chat.sidebar");
   const router = useRouter();
   const { workspaceId, workspaces } = useWorkspace();
   const history = useWorkspaceHistory();
-  const [pendingDelete, setPendingDelete] = useState<
-    | { kind: "conversation"; id: string; name: string }
-    | { kind: "folder"; id: string; name: string }
-    | null
-  >(null);
+  const [pendingDelete, setPendingDelete] = useState<{ kind: "conversation"; id: string; name: string } | { kind: "folder"; id: string; name: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const activeWorkspace = workspaces.find(
-    (workspace) => workspace.id === workspaceId,
-  );
+  const activeWorkspace = workspaces.find((workspace) => workspace.id === workspaceId);
 
   const openConversation = useCallback(
     (conversationId: string, agentId?: string | null) => {
@@ -74,14 +52,7 @@ export function WorkspaceHistoryContent({
                 <PlusIcon className="size-4" aria-hidden="true" />
               </Button>
               {onCollapsedChange ? (
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="ghost"
-                  className="size-10 rounded-xl active:scale-[0.96]"
-                  onClick={() => onCollapsedChange(true)}
-                  aria-label={t("collapseSidebar")}
-                >
+                <Button type="button" size="icon" variant="ghost" className="size-10 rounded-xl active:scale-[0.96]" onClick={() => onCollapsedChange(true)} aria-label={t("collapseSidebar")}>
                   <PanelLeftCloseIcon className="size-4" aria-hidden="true" />
                 </Button>
               ) : null}
@@ -93,23 +64,12 @@ export function WorkspaceHistoryContent({
             <MessageSquareWarningIcon className="size-4" aria-hidden="true" />
           </span>
           <p className="text-sm font-medium">{t("historyLoadErrorTitle")}</p>
-          <p className="mt-1 text-xs leading-5 text-muted-foreground">
-            {t("historyLoadErrorDescription")}
-          </p>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="mt-4"
-            onClick={history.retry}
-          >
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">{t("historyLoadErrorDescription")}</p>
+          <Button type="button" variant="outline" size="sm" className="mt-4" onClick={history.retry}>
             {t("retrySearch")}
           </Button>
         </div>
-        <WorkspaceStatusFooter
-          name={activeWorkspace?.name ?? "Maiah"}
-          context={activeWorkspace?.organizationName}
-        />
+        <WorkspaceStatusFooter name={activeWorkspace?.name ?? "Maiah"} context={activeWorkspace?.organizationName} />
       </div>
     );
   }
@@ -117,10 +77,7 @@ export function WorkspaceHistoryContent({
   async function confirmDelete() {
     if (!pendingDelete) return;
     setDeleting(true);
-    const deleted =
-      pendingDelete.kind === "folder"
-        ? await history.deleteFolder(pendingDelete.id)
-        : await history.deleteConversation(pendingDelete.id);
+    const deleted = pendingDelete.kind === "folder" ? await history.deleteFolder(pendingDelete.id) : await history.deleteConversation(pendingDelete.id);
     setDeleting(false);
     if (deleted) setPendingDelete(null);
   }
@@ -144,13 +101,9 @@ export function WorkspaceHistoryContent({
           router.push("/chat");
           onNavigate?.();
         }}
-        onRenameConversation={(conversationId, title) =>
-          void history.renameConversation(conversationId, title)
-        }
+        onRenameConversation={(conversationId, title) => void history.renameConversation(conversationId, title)}
         onDeleteConversation={(conversationId) => {
-          const conversation = history.conversations.find(
-            (item) => item.id === conversationId,
-          );
+          const conversation = history.conversations.find((item) => item.id === conversationId);
           if (conversation) {
             setPendingDelete({
               kind: "conversation",
@@ -160,9 +113,7 @@ export function WorkspaceHistoryContent({
           }
         }}
         onCreateConversationFolder={(name) => void history.createFolder(name)}
-        onRenameConversationFolder={(folderId, name) =>
-          void history.renameFolder(folderId, name)
-        }
+        onRenameConversationFolder={(folderId, name) => void history.renameFolder(folderId, name)}
         onDeleteConversationFolder={(folderId) => {
           const folder = history.folders.find((item) => item.id === folderId);
           if (folder) {
@@ -173,31 +124,18 @@ export function WorkspaceHistoryContent({
             });
           }
         }}
-        onToggleConversationPin={(conversationId, pinned) =>
-          void history.togglePin(conversationId, pinned)
-        }
-        onReorderConversations={(input) =>
-          void history.reorderConversations(input)
-        }
+        onToggleConversationPin={(conversationId, pinned) => void history.togglePin(conversationId, pinned)}
+        onReorderConversations={(input) => void history.reorderConversations(input)}
         showWorkspaceNavigation={false}
         shell={shell}
         workspaceId={workspaceId}
         className="workspace-history-panel"
-        footerContent={
-          <WorkspaceStatusFooter
-            name={activeWorkspace?.name ?? "Maiah"}
-            context={activeWorkspace?.organizationName}
-          />
-        }
+        footerContent={<WorkspaceStatusFooter name={activeWorkspace?.name ?? "Maiah"} context={activeWorkspace?.organizationName} />}
         onCollapsedChange={onCollapsedChange}
       />
       <DestructiveConfirmationDialog
         open={pendingDelete !== null}
-        title={
-          pendingDelete?.kind === "folder"
-            ? t("deleteFolderTitle")
-            : t("deleteConversationTitle")
-        }
+        title={pendingDelete?.kind === "folder" ? t("deleteFolderTitle") : t("deleteConversationTitle")}
         description={
           pendingDelete?.kind === "folder"
             ? t("deleteFolderDescription", {

@@ -25,9 +25,7 @@ test.describe("knowledge bases", () => {
   test("shows the document collections state", async ({ page }) => {
     await page.goto("/en/knowledge");
 
-    await expect(
-      page.getByRole("main").getByText("Collections", { exact: true }),
-    ).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole("main").getByText("Collections", { exact: true })).toBeVisible({ timeout: 10_000 });
   });
 
   test("create collection button exists", async ({ page }) => {
@@ -70,9 +68,7 @@ test.describe("knowledge bases", () => {
     await expect(baseButton).not.toBeVisible({ timeout: 15_000 });
   });
 
-  test("uploads several RAG files and displays per-document progress", async ({
-    page,
-  }) => {
+  test("uploads several RAG files and displays per-document progress", async ({ page }) => {
     await page.goto("/en/knowledge");
     const testBaseName = `E2E uploads ${Date.now()}`;
     const createBtn = page
@@ -84,9 +80,7 @@ test.describe("knowledge bases", () => {
     const createDialog = page.getByRole("dialog");
     await createDialog.getByLabel(/^Name$/i).fill(testBaseName);
     await createDialog.getByRole("button", { name: /^Create$/i }).click();
-    await expect(
-      page.getByRole("heading", { name: testBaseName, exact: true }),
-    ).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole("heading", { name: testBaseName, exact: true })).toBeVisible({ timeout: 15_000 });
 
     await page.locator("#knowledge-file-upload").setInputFiles([
       {

@@ -1,16 +1,8 @@
-import {
-handleRoute,
-requireResourcePermissionAsync,
-} from "@/lib/route-handler";
+import { handleRoute,requireResourcePermissionAsync } from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
 import { hasWorkspacePermissionForRequest } from "@/modules/auth/workspace-access";
 import { ragConfigSchema } from "@/modules/knowledge/rag-config";
-import {
-archiveKnowledgeBase,
-getKnowledgeBase,
-RagModelConfigurationPermissionError,
-updateKnowledgeBase,
-} from "@/modules/knowledge/use-cases";
+import { archiveKnowledgeBase,getKnowledgeBase,RagModelConfigurationPermissionError,updateKnowledgeBase } from "@/modules/knowledge/use-cases";
 import { NextRequest,NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -23,82 +15,38 @@ const updateSchema = z.object({
   ragConfig: ragConfigSchema.nullable().optional(),
 });
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ knowledgeBaseId: string }> },
-) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ knowledgeBaseId: string }> }) {
   return handleRoute(
     req,
     async ({ session }) => {
       const parsed = querySchema.safeParse({
         workspaceId: req.nextUrl.searchParams.get("workspaceId"),
       });
-      if (!parsed.success)
-        return NextResponse.json(
-          { error: "workspaceId must be a valid UUID" },
-          { status: 400 },
-        );
-      const forbidden = await requireResourcePermissionAsync(
-        session.user.id,
-        parsed.data.workspaceId,
-        "knowledgeBases.viewAllowed",
-        "knowledge_base",
-        (await params).knowledgeBaseId,
-      );
+      if (!parsed.success) return NextResponse.json({ error: "workspaceId must be a valid UUID" }, { status: 400 });
+      const forbidden = await requireResourcePermissionAsync(session.user.id, parsed.data.workspaceId, "knowledgeBases.viewAllowed", "knowledge_base", (await params).knowledgeBaseId);
       if (forbidden) return forbidden;
       const { knowledgeBaseId } = await params;
-      const knowledgeBase = await getKnowledgeBase(
-        knowledgeBaseId,
-        parsed.data.workspaceId,
-        session.user.id,
-      );
-      if (!knowledgeBase)
-        return NextResponse.json(
-          { error: "Knowledge base not found" },
-          { status: 404 },
-        );
+      const knowledgeBase = await getKnowledgeBase(knowledgeBaseId, parsed.data.workspaceId, session.user.id);
+      if (!knowledgeBase) return NextResponse.json({ error: "Knowledge base not found" }, { status: 404 });
       return NextResponse.json(knowledgeBase);
     },
     { logLabel: "Failed to get knowledge base" },
   );
 }
 
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: Promise<{ knowledgeBaseId: string }> },
-) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ knowledgeBaseId: string }> }) {
   return handleRoute(
     req,
     async ({ session }) => {
       const parsed = updateSchema.safeParse(await req.json());
-      if (!parsed.success)
-        return NextResponse.json(
-          { error: "Invalid input", details: parsed.error.issues },
-          { status: 400 },
-        );
-      const forbidden = await requireResourcePermissionAsync(
-        session.user.id,
-        parsed.data.workspaceId,
-        "knowledgeBases.manage",
-        "knowledge_base",
-        (await params).knowledgeBaseId,
-      );
+      if (!parsed.success) return NextResponse.json({ error: "Invalid input", details: parsed.error.issues }, { status: 400 });
+      const forbidden = await requireResourcePermissionAsync(session.user.id, parsed.data.workspaceId, "knowledgeBases.manage", "knowledge_base", (await params).knowledgeBaseId);
       if (forbidden) return forbidden;
       const { knowledgeBaseId } = await params;
-      const canManageGlobal = await canManageTenantGlobals(
-        session,
-        parsed.data.workspaceId,
-      );
-      const canManageModels = await hasWorkspacePermissionForRequest(
-        session.user.id,
-        parsed.data.workspaceId,
-        "models.manage",
-      );
+      const canManageGlobal = await canManageTenantGlobals(session, parsed.data.workspaceId);
+      const canManageModels = await hasWorkspacePermissionForRequest(session.user.id, parsed.data.workspaceId, "models.manage");
       if (parsed.data.isGlobal && !canManageGlobal) {
-        return NextResponse.json(
-          { error: "Only admins can make knowledge bases global" },
-          { status: 403 },
-        );
+        return NextResponse.json({ error: "Only admins can make knowledge bases global" }, { status: 403 });
       }
       return NextResponse.json(
         await updateKnowledgeBase({
@@ -113,65 +61,34 @@ export async function PATCH(
     {
       logLabel: "Failed to update knowledge base",
       expectedError: (error) => {
-        const msg =
-          error instanceof Error ? error.message : "Internal server error";
-        const status =
-          error instanceof RagModelConfigurationPermissionError
-            ? 403
-            : error instanceof Error && error.message.includes("not found")
-              ? 404
-              : 500;
+        const msg = error instanceof Error ? error.message : "Internal server error";
+        const status = error instanceof RagModelConfigurationPermissionError ? 403 : error instanceof Error && error.message.includes("not found") ? 404 : 500;
         return NextResponse.json({ error: msg }, { status });
       },
     },
   );
 }
 
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: Promise<{ knowledgeBaseId: string }> },
-) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ knowledgeBaseId: string }> }) {
   return handleRoute(
     req,
     async ({ session }) => {
       const parsed = querySchema.safeParse({
         workspaceId: req.nextUrl.searchParams.get("workspaceId"),
       });
-      if (!parsed.success)
-        return NextResponse.json(
-          { error: "workspaceId must be a valid UUID" },
-          { status: 400 },
-        );
-      const forbidden = await requireResourcePermissionAsync(
-        session.user.id,
-        parsed.data.workspaceId,
-        "knowledgeBases.manage",
-        "knowledge_base",
-        (await params).knowledgeBaseId,
-      );
+      if (!parsed.success) return NextResponse.json({ error: "workspaceId must be a valid UUID" }, { status: 400 });
+      const forbidden = await requireResourcePermissionAsync(session.user.id, parsed.data.workspaceId, "knowledgeBases.manage", "knowledge_base", (await params).knowledgeBaseId);
       if (forbidden) return forbidden;
       const { knowledgeBaseId } = await params;
-      const canManageGlobal = await canManageTenantGlobals(
-        session,
-        parsed.data.workspaceId,
-      );
-      await archiveKnowledgeBase(
-        knowledgeBaseId,
-        parsed.data.workspaceId,
-        session.user.id,
-        canManageGlobal,
-      );
+      const canManageGlobal = await canManageTenantGlobals(session, parsed.data.workspaceId);
+      await archiveKnowledgeBase(knowledgeBaseId, parsed.data.workspaceId, session.user.id, canManageGlobal);
       return NextResponse.json({ ok: true });
     },
     {
       logLabel: "Failed to archive knowledge base",
       expectedError: (error) => {
-        const msg =
-          error instanceof Error ? error.message : "Internal server error";
-        const status =
-          error instanceof Error && error.message.includes("not found")
-            ? 404
-            : 500;
+        const msg = error instanceof Error ? error.message : "Internal server error";
+        const status = error instanceof Error && error.message.includes("not found") ? 404 : 500;
         return NextResponse.json({ error: msg }, { status });
       },
     },

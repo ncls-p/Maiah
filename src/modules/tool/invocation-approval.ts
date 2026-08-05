@@ -4,26 +4,14 @@ import { and,eq } from "drizzle-orm";
 
 type ToolInvocation = typeof toolInvocations.$inferSelect;
 
-export type InvocationTransition =
-  | { kind: "claimed"; invocation: ToolInvocation }
-  | { kind: "unchanged"; invocation: ToolInvocation }
-  | { kind: "missing" };
+export type InvocationTransition = { kind: "claimed"; invocation: ToolInvocation } | { kind: "unchanged"; invocation: ToolInvocation } | { kind: "missing" };
 
-async function currentInvocation(
-  invocationId: string,
-): Promise<InvocationTransition> {
-  const [invocation] = await db
-    .select()
-    .from(toolInvocations)
-    .where(eq(toolInvocations.id, invocationId))
-    .limit(1);
+async function currentInvocation(invocationId: string): Promise<InvocationTransition> {
+  const [invocation] = await db.select().from(toolInvocations).where(eq(toolInvocations.id, invocationId)).limit(1);
   return invocation ? { kind: "unchanged", invocation } : { kind: "missing" };
 }
 
-export async function claimToolInvocationForExecution(
-  invocationId: string,
-  userId: string,
-): Promise<InvocationTransition> {
+export async function claimToolInvocationForExecution(invocationId: string, userId: string): Promise<InvocationTransition> {
   const [invocation] = await db
     .update(toolInvocations)
     .set({
@@ -31,23 +19,13 @@ export async function claimToolInvocationForExecution(
       approvedByUserId: userId,
       errorMessage: null,
     })
-    .where(
-      and(
-        eq(toolInvocations.id, invocationId),
-        eq(toolInvocations.status, "awaiting_approval"),
-      ),
-    )
+    .where(and(eq(toolInvocations.id, invocationId), eq(toolInvocations.status, "awaiting_approval")))
     .returning();
 
-  return invocation
-    ? { kind: "claimed", invocation }
-    : currentInvocation(invocationId);
+  return invocation ? { kind: "claimed", invocation } : currentInvocation(invocationId);
 }
 
-export async function rejectPendingToolInvocation(
-  invocationId: string,
-  userId: string,
-): Promise<InvocationTransition> {
+export async function rejectPendingToolInvocation(invocationId: string, userId: string): Promise<InvocationTransition> {
   const [invocation] = await db
     .update(toolInvocations)
     .set({
@@ -56,23 +34,13 @@ export async function rejectPendingToolInvocation(
       approvedByUserId: userId,
       completedAt: new Date(),
     })
-    .where(
-      and(
-        eq(toolInvocations.id, invocationId),
-        eq(toolInvocations.status, "awaiting_approval"),
-      ),
-    )
+    .where(and(eq(toolInvocations.id, invocationId), eq(toolInvocations.status, "awaiting_approval")))
     .returning();
 
-  return invocation
-    ? { kind: "claimed", invocation }
-    : currentInvocation(invocationId);
+  return invocation ? { kind: "claimed", invocation } : currentInvocation(invocationId);
 }
 
-export async function completeToolInvocationSuccess(
-  invocationId: string,
-  input: { encryptedOutput: string; latencyMs: number },
-) {
+export async function completeToolInvocationSuccess(invocationId: string, input: { encryptedOutput: string; latencyMs: number }) {
   const [invocation] = await db
     .update(toolInvocations)
     .set({
@@ -81,20 +49,12 @@ export async function completeToolInvocationSuccess(
       latencyMs: input.latencyMs,
       completedAt: new Date(),
     })
-    .where(
-      and(
-        eq(toolInvocations.id, invocationId),
-        eq(toolInvocations.status, "running"),
-      ),
-    )
+    .where(and(eq(toolInvocations.id, invocationId), eq(toolInvocations.status, "running")))
     .returning({ id: toolInvocations.id });
   return Boolean(invocation);
 }
 
-export async function completeToolInvocationFailure(
-  invocationId: string,
-  input: { errorMessage: string; latencyMs: number },
-) {
+export async function completeToolInvocationFailure(invocationId: string, input: { errorMessage: string; latencyMs: number }) {
   const [invocation] = await db
     .update(toolInvocations)
     .set({
@@ -103,12 +63,7 @@ export async function completeToolInvocationFailure(
       latencyMs: input.latencyMs,
       completedAt: new Date(),
     })
-    .where(
-      and(
-        eq(toolInvocations.id, invocationId),
-        eq(toolInvocations.status, "running"),
-      ),
-    )
+    .where(and(eq(toolInvocations.id, invocationId), eq(toolInvocations.status, "running")))
     .returning({ id: toolInvocations.id });
   return Boolean(invocation);
 }

@@ -1,20 +1,10 @@
-
 import { logger,logHandledWarning } from "@/lib/logger";
-import {
-clampTimeoutMs,
-CodeSandboxExecutionContext,
-CodeSandboxRequest,
-CodeSandboxResult,
-PreparedSandboxRunnerInput,
-} from "./code-sandbox.code-sandbox-output-file";
+import { clampTimeoutMs,CodeSandboxExecutionContext,CodeSandboxRequest,CodeSandboxResult,PreparedSandboxRunnerInput } from "./code-sandbox.code-sandbox-output-file";
 import { failedSandboxResult } from "./code-sandbox.failed-sandbox-result";
 import { persistSandboxFiles,runSandboxRunner } from "./code-sandbox.persist-sandbox-files";
 import { prepareSandboxRunnerRequest } from "./code-sandbox.prepare-sandbox-runner-request";
 
-export async function executeCodeSandbox(
-  input: CodeSandboxRequest,
-  context?: CodeSandboxExecutionContext,
-): Promise<CodeSandboxResult> {
+export async function executeCodeSandbox(input: CodeSandboxRequest, context?: CodeSandboxExecutionContext): Promise<CodeSandboxResult> {
   const executionId = crypto.randomUUID();
   const startedAt = Date.now();
   let runnerInput: PreparedSandboxRunnerInput;
@@ -31,12 +21,7 @@ export async function executeCodeSandbox(
       durationMs: Date.now() - startedAt,
       error: error instanceof Error ? error.message : String(error),
     });
-    return failedSandboxResult(
-      input,
-      error instanceof Error
-        ? error.message
-        : "Failed to prepare sandbox inputs.",
-    );
+    return failedSandboxResult(input, error instanceof Error ? error.message : "Failed to prepare sandbox inputs.");
   }
 
   logger.info("Code sandbox execution started", {
@@ -63,8 +48,7 @@ export async function executeCodeSandbox(
     stdoutBytes: Buffer.byteLength(persisted.stdout),
     stderrBytes: Buffer.byteLength(persisted.stderr),
     fileCount: persisted.files.length,
-    persistedFileCount: persisted.files.filter((file) => file.attachment)
-      .length,
+    persistedFileCount: persisted.files.filter((file) => file.attachment).length,
     truncated: persisted.truncated,
   });
   return persisted;

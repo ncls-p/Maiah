@@ -1,24 +1,10 @@
 import { db } from "@/server/infrastructure/db";
-import {
-agentSkills,
-customTools,
-customToolSecretRequests,
-mcpServers,
-mcpTools
-} from "@/server/infrastructure/db/schema";
+import { agentSkills,customTools,customToolSecretRequests,mcpServers,mcpTools } from "@/server/infrastructure/db/schema";
 import { eq } from "drizzle-orm";
-import type {
-CredentialFieldSchema,
-McpPresetMarketplaceManifest,
-SkillContentManifest,
-SkillMarketplaceManifest,
-ToolMarketplaceManifest
-} from "./manifest-types";
+import type { CredentialFieldSchema,McpPresetMarketplaceManifest,SkillContentManifest,SkillMarketplaceManifest,ToolMarketplaceManifest } from "./manifest-types";
 import { skillFileStats } from "./manifest-types";
 
-export function jsonRecord(
-  value: unknown,
-): Record<string, unknown> | null | undefined {
+export function jsonRecord(value: unknown): Record<string, unknown> | null | undefined {
   if (value && typeof value === "object" && !Array.isArray(value)) {
     return value as Record<string, unknown>;
   }
@@ -36,16 +22,13 @@ function parseCredentialFields(fieldsJson: unknown): CredentialFieldSchema[] {
         label: String(field.label ?? field.key ?? field.name ?? ""),
         type: field.type ? String(field.type) : undefined,
         required: Boolean(field.required),
-        description:
-          typeof field.description === "string" ? field.description : null,
+        description: typeof field.description === "string" ? field.description : null,
       };
     })
     .filter((f) => f.key.length > 0);
 }
 
-function mcpCredentialSchema(
-  server: typeof mcpServers.$inferSelect,
-): CredentialFieldSchema[] {
+function mcpCredentialSchema(server: typeof mcpServers.$inferSelect): CredentialFieldSchema[] {
   const fields: CredentialFieldSchema[] = [];
   const headers = server.encryptedHeadersJson;
   const env = server.encryptedEnvJson;
@@ -66,12 +49,8 @@ function mcpCredentialSchema(
   return fields;
 }
 
-export function buildSkillContentManifest(
-  skill: typeof agentSkills.$inferSelect,
-): SkillContentManifest {
-  const markdownFiles = Array.isArray(skill.markdownFilesJson)
-    ? (skill.markdownFilesJson as Array<{ path: string; content: string }>)
-    : [];
+export function buildSkillContentManifest(skill: typeof agentSkills.$inferSelect): SkillContentManifest {
+  const markdownFiles = Array.isArray(skill.markdownFilesJson) ? (skill.markdownFilesJson as Array<{ path: string; content: string }>) : [];
   const stats = skillFileStats(markdownFiles);
   return {
     markdownFiles,
@@ -84,11 +63,7 @@ export function buildSkillContentManifest(
   };
 }
 
-export function buildSkillManifest(
-  skill: typeof agentSkills.$inferSelect,
-  name: string,
-  description?: string | null,
-): SkillMarketplaceManifest {
+export function buildSkillManifest(skill: typeof agentSkills.$inferSelect, name: string, description?: string | null): SkillMarketplaceManifest {
   return {
     type: "skill",
     name,
@@ -97,19 +72,10 @@ export function buildSkillManifest(
   };
 }
 
-export async function buildCustomToolManifest(
-  tool: typeof customTools.$inferSelect,
-  name: string,
-  description?: string | null,
-): Promise<ToolMarketplaceManifest> {
-  const secretRequests = await db
-    .select()
-    .from(customToolSecretRequests)
-    .where(eq(customToolSecretRequests.customToolId, tool.id));
+export async function buildCustomToolManifest(tool: typeof customTools.$inferSelect, name: string, description?: string | null): Promise<ToolMarketplaceManifest> {
+  const secretRequests = await db.select().from(customToolSecretRequests).where(eq(customToolSecretRequests.customToolId, tool.id));
 
-  const credentialSchema = secretRequests.flatMap((req) =>
-    parseCredentialFields(req.fieldsJson),
-  );
+  const credentialSchema = secretRequests.flatMap((req) => parseCredentialFields(req.fieldsJson));
 
   return {
     type: "custom_tool",
@@ -122,23 +88,14 @@ export async function buildCustomToolManifest(
       n8nWorkflowId: tool.n8nWorkflowId ?? undefined,
       n8nWorkflowUrl: tool.n8nWorkflowUrl ?? undefined,
       metadata: jsonRecord(tool.metadataJson) ?? undefined,
-      credentialSchema:
-        credentialSchema.length > 0 ? credentialSchema : undefined,
+      credentialSchema: credentialSchema.length > 0 ? credentialSchema : undefined,
       requiresCredentials: credentialSchema.length > 0,
     },
   };
 }
 
-export function buildMcpPresetManifest(
-  name: string,
-  description: string | null | undefined,
-  server: typeof mcpServers.$inferSelect,
-  tools: Array<typeof mcpTools.$inferSelect>,
-  scope: "server" | "tool",
-): McpPresetMarketplaceManifest {
-  const args = Array.isArray(server.argsJson)
-    ? (server.argsJson as string[])
-    : undefined;
+export function buildMcpPresetManifest(name: string, description: string | null | undefined, server: typeof mcpServers.$inferSelect, tools: Array<typeof mcpTools.$inferSelect>, scope: "server" | "tool"): McpPresetMarketplaceManifest {
+  const args = Array.isArray(server.argsJson) ? (server.argsJson as string[]) : undefined;
   const credentialSchema = mcpCredentialSchema(server);
   const hasCredentials = credentialSchema.length > 0;
 

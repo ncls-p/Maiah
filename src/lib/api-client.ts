@@ -56,36 +56,22 @@ export async function fetchWorkspaces(): Promise<WorkspaceSummary[]> {
   }
 }
 
-export async function fetchJson<T>(
-  url: string,
-  init?: RequestInit,
-): Promise<T> {
+export async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, init);
   if (!res.ok) {
     const error = await res.json().catch(() => null);
-    throw new Error(
-      (error as { error?: string } | null)?.error ??
-        `Request failed: ${res.status}`,
-    );
+    throw new Error((error as { error?: string } | null)?.error ?? `Request failed: ${res.status}`);
   }
   return res.json() as Promise<T>;
 }
 
-export async function fetchPendingToolCount(
-  workspaceId: string,
-): Promise<number> {
-  const res = await fetch(
-    `/api/workspace/tool-invocations?workspaceId=${workspaceId}&status=awaiting_approval`,
-  );
+export async function fetchPendingToolCount(workspaceId: string): Promise<number> {
+  const res = await fetch(`/api/workspace/tool-invocations?workspaceId=${workspaceId}&status=awaiting_approval`);
   if (!res.ok) return 0;
   const data = await res.json();
   return Array.isArray(data) ? data.length : 0;
 }
 
-export async function fetchWorkspacePermissions(
-  workspaceId: string,
-): Promise<WorkspacePermissions> {
-  return fetchJson<WorkspacePermissions>(
-    `/api/workspace/permissions?workspaceId=${workspaceId}`,
-  );
+export async function fetchWorkspacePermissions(workspaceId: string): Promise<WorkspacePermissions> {
+  return fetchJson<WorkspacePermissions>(`/api/workspace/permissions?workspaceId=${workspaceId}`);
 }

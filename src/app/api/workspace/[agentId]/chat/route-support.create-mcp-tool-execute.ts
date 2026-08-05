@@ -1,9 +1,6 @@
 import { executeMcpTool } from "@/modules/mcp/executor";
-import {
-logToolInvocation
-} from "@/modules/tool/use-cases";
+import { logToolInvocation } from "@/modules/tool/use-cases";
 import { TOOL_GATE_RETURN,ToolGateResult } from "./route-support.chat-request-schema";
-
 
 export function createMcpToolExecute(
   input: {
@@ -20,17 +17,7 @@ export function createMcpToolExecute(
   },
   reserveToolCall: () => boolean,
   toolLimitReachedResult: () => unknown,
-  gateToolExecution: (args: {
-    startedAt: number;
-    toolSource: "mcp";
-    toolId: string;
-    toolName: string;
-    riskLevel: string | null;
-    toolInput: unknown;
-    bindingRequiresApproval: boolean;
-    serverRequiresApproval: boolean;
-    toolRequiresApproval: boolean;
-  }) => Promise<ToolGateResult>,
+  gateToolExecution: (args: { startedAt: number; toolSource: "mcp"; toolId: string; toolName: string; riskLevel: string | null; toolInput: unknown; bindingRequiresApproval: boolean; serverRequiresApproval: boolean; toolRequiresApproval: boolean }) => Promise<ToolGateResult>,
 ): (toolInput: unknown) => Promise<unknown> {
   return async (toolInput: unknown) => {
     const startedAt = Date.now();

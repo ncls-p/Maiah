@@ -1,12 +1,9 @@
 "use client";
 
-
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-import type {
-OrchestrationPolicy
-} from "./types";
+import type { OrchestrationPolicy } from "./types";
 
 export type RunSummary = {
   id: string;
@@ -30,16 +27,7 @@ export const statusTone: Record<string, string> = {
   queued: "border-info/30 bg-info/10 text-info",
 };
 
-export function policyField(
-  policy: OrchestrationPolicy,
-  setPolicy: (policy: OrchestrationPolicy) => void,
-  key: keyof OrchestrationPolicy,
-  label: string,
-  min: number,
-  max: number,
-  step = 1,
-  description?: string,
-) {
+export function policyField(policy: OrchestrationPolicy, setPolicy: (policy: OrchestrationPolicy) => void, key: keyof OrchestrationPolicy, label: string, min: number, max: number, step = 1, description?: string) {
   return (
     <div className="flex flex-col gap-2">
       <Label htmlFor={`orchestration-${key}`}>{label}</Label>
@@ -59,9 +47,7 @@ export function policyField(
           })
         }
       />
-      {description ? (
-        <p className="text-xs text-muted-foreground">{description}</p>
-      ) : null}
+      {description ? <p className="text-xs text-muted-foreground">{description}</p> : null}
     </div>
   );
 }

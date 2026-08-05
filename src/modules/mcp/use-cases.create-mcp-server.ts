@@ -4,16 +4,7 @@ import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
 import { mcpServers } from "@/server/infrastructure/db/schema";
 import { and,eq,isNull,sql } from "drizzle-orm";
-import {
-CreateMcpServerInput,
-McpServer,
-UpdateMcpServerInput,
-canManageMcpServer,
-encryptRecord,
-mergeEncryptedRecord,
-toSafeMcpServer,
-validateTransportConfig,
-} from "./use-cases.mcp-server";
+import { CreateMcpServerInput,McpServer,UpdateMcpServerInput,canManageMcpServer,encryptRecord,mergeEncryptedRecord,toSafeMcpServer,validateTransportConfig } from "./use-cases.mcp-server";
 
 export async function createMcpServer(input: CreateMcpServerInput) {
   const [server] = await db
@@ -53,46 +44,19 @@ export async function createMcpServer(input: CreateMcpServerInput) {
   return server;
 }
 
-export async function listMcpServers(
-  workspaceId: string,
-  userId?: string,
-  canManageGlobal = false,
-) {
+export async function listMcpServers(workspaceId: string, userId?: string, canManageGlobal = false) {
   const rows = await db
     .select()
     .from(mcpServers)
-    .where(
-      and(
-        eq(mcpServers.workspaceId, workspaceId),
-        isNull(mcpServers.archivedAt),
-      ),
-    )
-    .orderBy(
-      sql`${mcpServers.isGlobal} DESC`,
-      sql`${mcpServers.createdAt} DESC`,
-    );
+    .where(and(eq(mcpServers.workspaceId, workspaceId), isNull(mcpServers.archivedAt)))
+    .orderBy(sql`${mcpServers.isGlobal} DESC`, sql`${mcpServers.createdAt} DESC`);
   const visibleRows = userId
     ? (
         await Promise.all(
           rows.map(async (server) => {
-            const visible =
-              server.createdById === userId ||
-              server.isGlobal ||
-              (await authorization.hasPermission(
-                { principalType: "user", principalId: userId },
-                "mcpServers.get",
-                "mcp_server",
-                server.id,
-              ));
+            const visible = server.createdById === userId || server.isGlobal || (await authorization.hasPermission({ principalType: "user", principalId: userId }, "mcpServers.get", "mcp_server", server.id));
             if (!visible) return null;
-            const canEdit =
-              canManageMcpServer(server, userId, canManageGlobal) ||
-              (await authorization.hasPermission(
-                { principalType: "user", principalId: userId },
-                "mcpServers.manage",
-                "mcp_server",
-                server.id,
-              ));
+            const canEdit = canManageMcpServer(server, userId, canManageGlobal) || (await authorization.hasPermission({ principalType: "user", principalId: userId }, "mcpServers.manage", "mcp_server", server.id));
             return { ...toSafeMcpServer(server), canEdit };
           }),
         )
@@ -101,34 +65,13 @@ export async function listMcpServers(
   return visibleRows;
 }
 
-export async function getMcpServer(
-  serverId: string,
-  workspaceId: string,
-  userId?: string,
-) {
+export async function getMcpServer(serverId: string, workspaceId: string, userId?: string) {
   const [server] = await db
     .select()
     .from(mcpServers)
-    .where(
-      and(
-        eq(mcpServers.id, serverId),
-        eq(mcpServers.workspaceId, workspaceId),
-        isNull(mcpServers.archivedAt),
-      ),
-    )
+    .where(and(eq(mcpServers.id, serverId), eq(mcpServers.workspaceId, workspaceId), isNull(mcpServers.archivedAt)))
     .limit(1);
-  if (
-    server &&
-    userId &&
-    server.createdById !== userId &&
-    !server.isGlobal &&
-    !(await authorization.hasPermission(
-      { principalType: "user", principalId: userId },
-      "mcpServers.get",
-      "mcp_server",
-      server.id,
-    ))
-  ) {
+  if (server && userId && server.createdById !== userId && !server.isGlobal && !(await authorization.hasPermission({ principalType: "user", principalId: userId }, "mcpServers.get", "mcp_server", server.id))) {
     return null;
   }
   return server ?? null;
@@ -142,21 +85,11 @@ function nextNullableText(value: string | undefined, current: string | null) {
   return value === undefined ? current : value || null;
 }
 
-export function validateMcpServerUpdate(
-  input: UpdateMcpServerInput,
-  existing: McpServer,
-) {
-  validateTransportConfig(
-    input.transport ?? existing.transport,
-    nextNullableText(input.url, existing.url),
-    nextNullableText(input.command, existing.command),
-  );
+export function validateMcpServerUpdate(input: UpdateMcpServerInput, existing: McpServer) {
+  validateTransportConfig(input.transport ?? existing.transport, nextNullableText(input.url, existing.url), nextNullableText(input.command, existing.command));
 }
 
-export async function buildMcpServerUpdates(
-  input: UpdateMcpServerInput,
-  existing: McpServer,
-) {
+export async function buildMcpServerUpdates(input: UpdateMcpServerInput, existing: McpServer) {
   const updates: Record<string, unknown> = { updatedAt: new Date() };
   const simpleUpdates: Array<[string, unknown]> = [
     ["name", input.name],
@@ -173,16 +106,10 @@ export async function buildMcpServerUpdates(
     if (value !== undefined) updates[field] = value;
   }
   if (input.headers !== undefined) {
-    updates.encryptedHeadersJson = await mergeEncryptedRecord(
-      existing.encryptedHeadersJson as Record<string, string> | null,
-      input.headers,
-    );
+    updates.encryptedHeadersJson = await mergeEncryptedRecord(existing.encryptedHeadersJson as Record<string, string> | null, input.headers);
   }
   if (input.env !== undefined) {
-    updates.encryptedEnvJson = await mergeEncryptedRecord(
-      existing.encryptedEnvJson as Record<string, string> | null,
-      input.env,
-    );
+    updates.encryptedEnvJson = await mergeEncryptedRecord(existing.encryptedEnvJson as Record<string, string> | null, input.env);
   }
 
   return updates;

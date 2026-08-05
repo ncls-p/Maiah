@@ -1,7 +1,4 @@
-import {
-BuiltInToolSummary,
-MEDIUM_RISK_LEVEL,
-} from "./builtin-tools-catalog.tool-risk-level";
+import { BuiltInToolSummary,MEDIUM_RISK_LEVEL } from "./builtin-tools-catalog.tool-risk-level";
 export const BUILTIN_TOOL_SUMMARIESPart1: BuiltInToolSummary[] = [
   {
     id: "00000000-0000-4000-8000-000000000001",
@@ -47,8 +44,7 @@ export const BUILTIN_TOOL_SUMMARIESPart1: BuiltInToolSummary[] = [
     id: "00000000-0000-4000-8000-000000000038",
     name: "generate_image",
     displayName: "Generate image",
-    description:
-      "Generate an image with the administrator-configured image model.",
+    description: "Generate an image with the administrator-configured image model.",
     riskLevel: MEDIUM_RISK_LEVEL,
     category: "Create",
   },
@@ -56,8 +52,7 @@ export const BUILTIN_TOOL_SUMMARIESPart1: BuiltInToolSummary[] = [
     id: "00000000-0000-4000-8000-000000000037",
     name: "run_code_sandbox",
     displayName: "Code sandbox",
-    description:
-      "Run Python, Node.js, or Bash in a wiped sandbox with broad data/science/document libraries.",
+    description: "Run Python, Node.js, or Bash in a wiped sandbox with broad data/science/document libraries.",
     riskLevel: "high",
     category: "Code",
   },
@@ -89,8 +84,7 @@ export const BUILTIN_TOOL_SUMMARIESPart1: BuiltInToolSummary[] = [
     id: "00000000-0000-4000-8000-000000000031",
     name: "code_workspace_write_file",
     displayName: "Write code file",
-    description:
-      "Create or replace text, or import an uploaded asset into a code workspace.",
+    description: "Create or replace text, or import an uploaded asset into a code workspace.",
     riskLevel: MEDIUM_RISK_LEVEL,
     category: "Code",
   },
@@ -122,8 +116,7 @@ export const BUILTIN_TOOL_SUMMARIESPart1: BuiltInToolSummary[] = [
     id: "00000000-0000-4000-8000-000000000036",
     name: "github_publish_code_workspace",
     displayName: "Publish to GitHub",
-    description:
-      "Publish a code workspace to a user-selected repo and branch via PR or direct push.",
+    description: "Publish a code workspace to a user-selected repo and branch via PR or direct push.",
     riskLevel: "critical",
     category: "Code",
   },
@@ -131,8 +124,7 @@ export const BUILTIN_TOOL_SUMMARIESPart1: BuiltInToolSummary[] = [
     id: "00000000-0000-4000-8000-000000000017",
     name: "create_slide_deck",
     displayName: "Slide deck",
-    description:
-      "Create interactive presentations with click reveals and PDF print/export styling.",
+    description: "Create interactive presentations with click reveals and PDF print/export styling.",
     riskLevel: MEDIUM_RISK_LEVEL,
     category: "Create",
   },
@@ -140,8 +132,7 @@ export const BUILTIN_TOOL_SUMMARIESPart1: BuiltInToolSummary[] = [
     id: "00000000-0000-4000-8000-000000000018",
     name: "create_business_document",
     displayName: "Business document",
-    description:
-      "Create printable briefs, reports, proposals, policies, SOPs, and memos.",
+    description: "Create printable briefs, reports, proposals, policies, SOPs, and memos.",
     riskLevel: MEDIUM_RISK_LEVEL,
     category: "Work",
   },
@@ -149,8 +140,7 @@ export const BUILTIN_TOOL_SUMMARIESPart1: BuiltInToolSummary[] = [
     id: "00000000-0000-4000-8000-000000000019",
     name: "create_spreadsheet",
     displayName: "Spreadsheet",
-    description:
-      "Create a clean printable table with insights and CSV export text.",
+    description: "Create a clean printable table with insights and CSV export text.",
     riskLevel: MEDIUM_RISK_LEVEL,
     category: "Data",
   },
@@ -158,8 +148,7 @@ export const BUILTIN_TOOL_SUMMARIESPart1: BuiltInToolSummary[] = [
     id: "00000000-0000-4000-8000-000000000020",
     name: "create_meeting_brief",
     displayName: "Meeting brief",
-    description:
-      "Turn meeting context into an agenda, decisions, and action-item brief.",
+    description: "Turn meeting context into an agenda, decisions, and action-item brief.",
     riskLevel: MEDIUM_RISK_LEVEL,
     category: "Work",
   },
@@ -167,8 +156,7 @@ export const BUILTIN_TOOL_SUMMARIESPart1: BuiltInToolSummary[] = [
     id: "00000000-0000-4000-8000-000000000021",
     name: "create_action_plan",
     displayName: "Action plan",
-    description:
-      "Create a phased project plan with owners, deadlines, and risks.",
+    description: "Create a phased project plan with owners, deadlines, and risks.",
     riskLevel: MEDIUM_RISK_LEVEL,
     category: "Work",
   },

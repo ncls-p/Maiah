@@ -10,8 +10,7 @@ const publishSchema = z.object({
 });
 
 function handleMarketplaceError(error: unknown): NextResponse {
-  const message =
-    error instanceof Error ? error.message : "Internal server error";
+  const message = error instanceof Error ? error.message : "Internal server error";
   let status = 500;
   if (error instanceof Error) {
     if (error.message.includes("not found")) status = 404;
@@ -20,31 +19,17 @@ function handleMarketplaceError(error: unknown): NextResponse {
   return NextResponse.json({ error: message }, { status });
 }
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ itemId: string }> },
-) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ itemId: string }> }) {
   return handleRoute(
     req,
     async ({ session }) => {
       const { itemId } = await params;
-      const forbidden = await requireMarketplaceItemMutationPermission(
-        session.user.id,
-        itemId,
-      );
+      const forbidden = await requireMarketplaceItemMutationPermission(session.user.id, itemId);
       if (forbidden) return forbidden;
       const parsed = publishSchema.safeParse(await req.json());
-      if (!parsed.success)
-        return NextResponse.json(
-          { error: "Invalid input", details: parsed.error.issues },
-          { status: 400 },
-        );
+      if (!parsed.success) return NextResponse.json({ error: "Invalid input", details: parsed.error.issues }, { status: 400 });
 
-      const published = await publishMarketplaceItem(
-        itemId,
-        session.user.id,
-        parsed.data,
-      );
+      const published = await publishMarketplaceItem(itemId, session.user.id, parsed.data);
       return NextResponse.json(published);
     },
     {

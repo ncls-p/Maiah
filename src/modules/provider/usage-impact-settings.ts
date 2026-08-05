@@ -14,20 +14,13 @@ export const usageImpactSettingSchema = z.object({
 export type UsageImpactSetting = z.infer<typeof usageImpactSettingSchema>;
 
 export async function getUsageImpactSetting(): Promise<UsageImpactSetting> {
-  const [row] = await db
-    .select({ valueJson: appSettings.valueJson })
-    .from(appSettings)
-    .where(eq(appSettings.key, USAGE_IMPACT_SETTING_KEY))
-    .limit(1);
+  const [row] = await db.select({ valueJson: appSettings.valueJson }).from(appSettings).where(eq(appSettings.key, USAGE_IMPACT_SETTING_KEY)).limit(1);
 
   const parsed = usageImpactSettingSchema.safeParse(row?.valueJson);
   return parsed.success ? parsed.data : usageImpactSettingSchema.parse({});
 }
 
-export async function setUsageImpactSetting(
-  setting: UsageImpactSetting,
-  updatedById: string,
-) {
+export async function setUsageImpactSetting(setting: UsageImpactSetting, updatedById: string) {
   const valueJson = usageImpactSettingSchema.parse(setting);
   await db
     .insert(appSettings)

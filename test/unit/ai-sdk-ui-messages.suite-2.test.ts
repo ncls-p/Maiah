@@ -3,11 +3,7 @@ import { describe,expect,it } from "vitest";
 import type { ChatMessage } from "@/components/chat/chat-types";
 import { toAiSdkUIMessages } from "@/modules/chat/ai-sdk-ui-messages";
 
-function makeChatMessage(
-  role: "user" | "assistant" | "system",
-  parts: Array<{ type: string; content: string }>,
-  id = "msg-1",
-): ChatMessage {
+function makeChatMessage(role: "user" | "assistant" | "system", parts: Array<{ type: string; content: string }>, id = "msg-1"): ChatMessage {
   return {
     id,
     role,
@@ -28,35 +24,21 @@ describe("toAiSdkUIMessages", () => {
         score: 0.95,
       },
     ];
-    const messages = [
-      makeChatMessage("assistant", [
-        { type: "citations", content: JSON.stringify(citations) },
-      ]),
-    ];
+    const messages = [makeChatMessage("assistant", [{ type: "citations", content: JSON.stringify(citations) }])];
     const result = toAiSdkUIMessages(messages);
 
-    const citationParts = result[0].parts.filter(
-      (p) => (p as { type: string }).type === "data-citations",
-    );
+    const citationParts = result[0].parts.filter((p) => (p as { type: string }).type === "data-citations");
     expect(citationParts).toHaveLength(1);
 
-    const sourceParts = result[0].parts.filter(
-      (p) => (p as { type: string }).type === "source-document",
-    );
+    const sourceParts = result[0].parts.filter((p) => (p as { type: string }).type === "source-document");
     expect(sourceParts).toHaveLength(1);
   });
 
   it("ignores invalid citations content", () => {
-    const messages = [
-      makeChatMessage("assistant", [
-        { type: "citations", content: JSON.stringify([{ notValid: true }]) },
-      ]),
-    ];
+    const messages = [makeChatMessage("assistant", [{ type: "citations", content: JSON.stringify([{ notValid: true }]) }])];
     const result = toAiSdkUIMessages(messages);
 
-    const citationParts = result[0].parts.filter(
-      (p) => (p as { type: string }).type === "data-citations",
-    );
+    const citationParts = result[0].parts.filter((p) => (p as { type: string }).type === "data-citations");
     expect(citationParts).toHaveLength(0);
   });
 
@@ -80,23 +62,15 @@ describe("toAiSdkUIMessages", () => {
         },
       ],
     };
-    const messages = [
-      makeChatMessage("assistant", [
-        { type: "file", content: JSON.stringify(artifact) },
-      ]),
-    ];
+    const messages = [makeChatMessage("assistant", [{ type: "file", content: JSON.stringify(artifact) }])];
     const result = toAiSdkUIMessages(messages);
 
-    const artifactParts = result[0].parts.filter(
-      (p) => (p as { type: string }).type === "data-code-workspace-artifact",
-    );
+    const artifactParts = result[0].parts.filter((p) => (p as { type: string }).type === "data-code-workspace-artifact");
     expect(artifactParts).toHaveLength(1);
   });
 
   it("ignores unknown part types", () => {
-    const messages = [
-      makeChatMessage("assistant", [{ type: "unknown-type", content: "data" }]),
-    ];
+    const messages = [makeChatMessage("assistant", [{ type: "unknown-type", content: "data" }])];
     const result = toAiSdkUIMessages(messages);
 
     // Only the message parts, no extra parts for unknown type
@@ -114,9 +88,7 @@ describe("toAiSdkUIMessages", () => {
     ];
     const result = toAiSdkUIMessages(messages);
 
-    const toolParts = result[0].parts.filter(
-      (p) => (p as { type: string }).type === "dynamic-tool",
-    );
+    const toolParts = result[0].parts.filter((p) => (p as { type: string }).type === "dynamic-tool");
     expect(toolParts).toHaveLength(0);
   });
 

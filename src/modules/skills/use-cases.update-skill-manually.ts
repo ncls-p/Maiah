@@ -1,29 +1,10 @@
 import { audit } from "@/server/domain/services/audit";
 import { db } from "@/server/infrastructure/db";
-import {
-agentSkillBindings,
-agentSkills,
-} from "@/server/infrastructure/db/schema";
+import { agentSkillBindings,agentSkills } from "@/server/infrastructure/db/schema";
 import { and,eq,isNull,sql } from "drizzle-orm";
-import {
-AgentSkillRow,
-assertCanManageSkill,
-maxSkillMarkdownBytes,
-skillDescriptionMaxLength,
-SkillMarkdownFile,
-skillNamePattern,
-} from "./use-cases.exec-file-async";
+import { AgentSkillRow,assertCanManageSkill,maxSkillMarkdownBytes,skillDescriptionMaxLength,SkillMarkdownFile,skillNamePattern } from "./use-cases.exec-file-async";
 
-export async function updateSkillManually(input: {
-  workspaceId: string;
-  userId: string;
-  skillId: string;
-  name: string;
-  description: string | null;
-  markdownFiles: { path: string; content: string }[];
-  isGlobal?: boolean;
-  canManageGlobal?: boolean;
-}): Promise<AgentSkillRow> {
+export async function updateSkillManually(input: { workspaceId: string; userId: string; skillId: string; name: string; description: string | null; markdownFiles: { path: string; content: string }[]; isGlobal?: boolean; canManageGlobal?: boolean }): Promise<AgentSkillRow> {
   if (input.markdownFiles.length === 0) {
     throw new Error("At least one Markdown file is required");
   }
@@ -41,13 +22,7 @@ export async function updateSkillManually(input: {
   const [existing] = await db
     .select()
     .from(agentSkills)
-    .where(
-      and(
-        eq(agentSkills.id, input.skillId),
-        eq(agentSkills.workspaceId, input.workspaceId),
-        isNull(agentSkills.archivedAt),
-      ),
-    )
+    .where(and(eq(agentSkills.id, input.skillId), eq(agentSkills.workspaceId, input.workspaceId), isNull(agentSkills.archivedAt)))
     .limit(1);
   if (!existing) throw new Error("Skill not found");
   await assertCanManageSkill(existing, input.userId, input.canManageGlobal);
@@ -67,11 +42,7 @@ export async function updateSkillManually(input: {
   };
   if (input.isGlobal !== undefined) updates.isGlobal = input.isGlobal;
 
-  const [row] = await db
-    .update(agentSkills)
-    .set(updates)
-    .where(eq(agentSkills.id, input.skillId))
-    .returning();
+  const [row] = await db.update(agentSkills).set(updates).where(eq(agentSkills.id, input.skillId)).returning();
 
   if (!row) throw new Error("Skill not found");
 
@@ -92,9 +63,7 @@ export async function updateSkillManually(input: {
 export function assertSkillMetadata(name: string, description: string | null) {
   const trimmedName = name.trim();
   if (!skillNamePattern.test(trimmedName)) {
-    throw new Error(
-      "Skill name must be 1-64 chars and contain only lowercase letters, numbers, and hyphens",
-    );
+    throw new Error("Skill name must be 1-64 chars and contain only lowercase letters, numbers, and hyphens");
   }
   if (/anthropic|claude/.test(trimmedName)) {
     throw new Error("Skill name cannot contain reserved words");
@@ -110,11 +79,7 @@ export function assertSkillMetadata(name: string, description: string | null) {
   }
 }
 
-export function normalizeSkillMarkdownFiles(input: {
-  name: string;
-  description: string | null;
-  files: { path: string; content: string }[];
-}): SkillMarkdownFile[] {
+export function normalizeSkillMarkdownFiles(input: { name: string; description: string | null; files: { path: string; content: string }[] }): SkillMarkdownFile[] {
   const normalized: SkillMarkdownFile[] = input.files
     .map((file) => ({
       path: file.path.replace(/\\/g, "/").replace(/^\//, ""),
@@ -126,18 +91,13 @@ export function normalizeSkillMarkdownFiles(input: {
     normalized.unshift({ path: "SKILL.md", content: "" });
   }
 
-  const skillFileIndex = normalized.findIndex(
-    (file) => file.path === "SKILL.md",
-  );
+  const skillFileIndex = normalized.findIndex((file) => file.path === "SKILL.md");
   const skillFile = normalized[skillFileIndex];
-  const body = skillFile.content
-    .replace(/^---\n[\s\S]*?\n---\n?/, "")
-    .trimStart();
+  const body = skillFile.content.replace(/^---\n[\s\S]*?\n---\n?/, "").trimStart();
   const description = input.description?.trim() ?? "";
   normalized[skillFileIndex] = {
     path: "SKILL.md",
-    content:
-      `---\nname: ${input.name.trim()}\ndescription: ${description}\n---\n\n${body}`.trimEnd(),
+    content: `---\nname: ${input.name.trim()}\ndescription: ${description}\n---\n\n${body}`.trimEnd(),
   };
 
   normalized.sort((a, b) => {
@@ -146,20 +106,14 @@ export function normalizeSkillMarkdownFiles(input: {
     return a.path.localeCompare(b.path);
   });
 
-  const totalBytes = normalized.reduce(
-    (sum, file) => sum + Buffer.byteLength(file.content),
-    0,
-  );
+  const totalBytes = normalized.reduce((sum, file) => sum + Buffer.byteLength(file.content), 0);
   if (totalBytes > maxSkillMarkdownBytes) {
     throw new Error("Total Markdown content exceeds size limit");
   }
   return normalized;
 }
 
-export async function getBoundSkillCatalog(
-  agentVersionId: string,
-  disabledSkillIds: ReadonlySet<string> = new Set(),
-) {
+export async function getBoundSkillCatalog(agentVersionId: string, disabledSkillIds: ReadonlySet<string> = new Set()) {
   const skills = await db
     .select({
       id: agentSkills.id,
@@ -168,35 +122,16 @@ export async function getBoundSkillCatalog(
     })
     .from(agentSkillBindings)
     .innerJoin(agentSkills, eq(agentSkillBindings.skillId, agentSkills.id))
-    .where(
-      and(
-        eq(agentSkillBindings.agentVersionId, agentVersionId),
-        isNull(agentSkills.archivedAt),
-      ),
-    )
+    .where(and(eq(agentSkillBindings.agentVersionId, agentVersionId), isNull(agentSkills.archivedAt)))
     .orderBy(sql`${agentSkills.name} ASC`);
   return skills.filter((skill) => !disabledSkillIds.has(skill.id));
 }
 
-export async function buildSkillsRegistryPrompt(
-  agentVersionId: string,
-  disabledSkillIds: ReadonlySet<string> = new Set(),
-) {
+export async function buildSkillsRegistryPrompt(agentVersionId: string, disabledSkillIds: ReadonlySet<string> = new Set()) {
   const skills = await getBoundSkillCatalog(agentVersionId, disabledSkillIds);
   if (skills.length === 0) return null;
 
-  const skillList = skills
-    .map(
-      (skill) =>
-        `- ${skill.name}: ${skill.description ?? "No description provided"}`,
-    )
-    .join("\n");
+  const skillList = skills.map((skill) => `- ${skill.name}: ${skill.description ?? "No description provided"}`).join("\n");
 
-  return [
-    "Agent skills are available via progressive disclosure. Only skill names and descriptions are listed here; full skill instructions are not in this prompt.",
-    "When a skill is relevant to the user's request, call the load_skill tool with the exact skill name before applying it.",
-    "Do not assume a skill's detailed workflow until load_skill returns its Markdown instructions.",
-    "Available skills:",
-    skillList,
-  ].join("\n");
+  return ["Agent skills are available via progressive disclosure. Only skill names and descriptions are listed here; full skill instructions are not in this prompt.", "When a skill is relevant to the user's request, call the load_skill tool with the exact skill name before applying it.", "Do not assume a skill's detailed workflow until load_skill returns its Markdown instructions.", "Available skills:", skillList].join("\n");
 }

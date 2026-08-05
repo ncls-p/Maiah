@@ -1,23 +1,4 @@
-import {
-DeckSlide,
-SlideDeckInput,
-SlideFrame,
-aspectRatioCss,
-createSlideFrame,
-escapeHtml,
-escapeJsonForHtml,
-normalizeAccentColor,
-printPageSize,
-renderBody,
-renderBullets,
-renderImage,
-renderKicker,
-renderMetric,
-renderQuoteSlide,
-renderSectionSlide,
-renderTitleSlide,
-themeClasses,
-} from "./slide-deck-tool.slide-deck-input-schema";
+import { DeckSlide,SlideDeckInput,SlideFrame,aspectRatioCss,createSlideFrame,escapeHtml,escapeJsonForHtml,normalizeAccentColor,printPageSize,renderBody,renderBullets,renderImage,renderKicker,renderMetric,renderQuoteSlide,renderSectionSlide,renderTitleSlide,themeClasses } from "./slide-deck-tool.slide-deck-input-schema";
 
 function renderTwoColumnSlide(slide: DeckSlide, frame: SlideFrame) {
   return `<div class="slide-content">
@@ -71,10 +52,7 @@ const slideRenderers = {
   two_column: renderTwoColumnSlide,
   quote: renderQuoteSlide,
   closing: renderClosingSlide,
-} satisfies Record<
-  DeckSlide["layout"],
-  (slide: DeckSlide, frame: SlideFrame, index: number) => string
->;
+} satisfies Record<DeckSlide["layout"], (slide: DeckSlide, frame: SlideFrame, index: number) => string>;
 
 function renderSlideContent(slide: DeckSlide, index: number) {
   return slideRenderers[slide.layout](slide, createSlideFrame(slide), index);
@@ -83,10 +61,7 @@ function renderSlideContent(slide: DeckSlide, index: number) {
 function renderSlides(input: SlideDeckInput) {
   return input.slides
     .map(
-      (
-        slide,
-        index,
-      ) => `<section class="deck-slide layout-${slide.layout}" data-slide="${index}" aria-label="Slide ${index + 1}: ${escapeHtml(slide.title)}">
+      (slide, index) => `<section class="deck-slide layout-${slide.layout}" data-slide="${index}" aria-label="Slide ${index + 1}: ${escapeHtml(slide.title)}">
 				<div class="slide-number">${String(index + 1).padStart(2, "0")}</div>
 				${renderSlideContent(slide, index)}
 			</section>`,

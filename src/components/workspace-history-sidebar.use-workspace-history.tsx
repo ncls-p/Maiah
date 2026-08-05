@@ -38,10 +38,7 @@ export function useWorkspaceHistory() {
       includeModelMeta: "true",
     });
 
-    void Promise.all([
-      fetchJson<ConversationPayload>(`/api/workspace/conversations?${params.toString()}`, { signal: controller.signal }),
-      fetchJson<AgentPayload>(`/api/workspace/agents?${agentParams.toString()}`, { signal: controller.signal }),
-    ])
+    void Promise.all([fetchJson<ConversationPayload>(`/api/workspace/conversations?${params.toString()}`, { signal: controller.signal }), fetchJson<AgentPayload>(`/api/workspace/agents?${agentParams.toString()}`, { signal: controller.signal })])
       .then(([conversationPayload, agentPayload]) => {
         if (!active) return;
         const normalized = normalizeConversations(conversationPayload);

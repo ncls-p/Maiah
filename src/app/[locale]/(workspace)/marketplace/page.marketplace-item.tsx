@@ -1,6 +1,5 @@
 "use client";
 
-
 export interface MarketplaceItem {
   id: string;
   name: string;
@@ -27,24 +26,15 @@ export type MarketplaceFilters = {
   sortBy: string;
 };
 
-type MarketplaceItemComparator = (
-  a: MarketplaceItem,
-  b: MarketplaceItem,
-) => number;
+type MarketplaceItemComparator = (a: MarketplaceItem, b: MarketplaceItem) => number;
 
 function matchesMarketplaceSearch(item: MarketplaceItem, query: string) {
-  const searchableValues = [
-    item.name,
-    item.description,
-    ...(item.tagsJson ?? []),
-  ];
+  const searchableValues = [item.name, item.description, ...(item.tagsJson ?? [])];
   return searchableValues.some((value) => value?.toLowerCase().includes(query));
 }
 
 const MARKETPLACE_SORTERS: Record<string, MarketplaceItemComparator> = {
-  newest: (a, b) =>
-    new Date(b.publishedAt ?? b.createdAt).getTime() -
-    new Date(a.publishedAt ?? a.createdAt).getTime(),
+  newest: (a, b) => new Date(b.publishedAt ?? b.createdAt).getTime() - new Date(a.publishedAt ?? a.createdAt).getTime(),
   downloads: (a, b) => b.totalDownloads - a.totalDownloads,
   featured: (a, b) => {
     if (a.isFeatured !== b.isFeatured) return a.isFeatured ? -1 : 1;
@@ -53,10 +43,7 @@ const MARKETPLACE_SORTERS: Record<string, MarketplaceItemComparator> = {
   },
 };
 
-function filterMarketplaceItems(
-  items: MarketplaceItem[],
-  { search, typeFilter }: MarketplaceFilters,
-) {
+function filterMarketplaceItems(items: MarketplaceItem[], { search, typeFilter }: MarketplaceFilters) {
   const query = search.trim().toLowerCase();
 
   return items.filter((item) => {
@@ -65,11 +52,7 @@ function filterMarketplaceItems(
   });
 }
 
-export function filterAndSortMarketplaceItems(
-  items: MarketplaceItem[],
-  filters: MarketplaceFilters,
-): MarketplaceItem[] {
-  const sorter =
-    MARKETPLACE_SORTERS[filters.sortBy] ?? MARKETPLACE_SORTERS.featured;
+export function filterAndSortMarketplaceItems(items: MarketplaceItem[], filters: MarketplaceFilters): MarketplaceItem[] {
+  const sorter = MARKETPLACE_SORTERS[filters.sortBy] ?? MARKETPLACE_SORTERS.featured;
   return [...filterMarketplaceItems(items, filters)].sort(sorter);
 }

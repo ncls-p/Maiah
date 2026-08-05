@@ -96,9 +96,7 @@ export const API_KEY_SCOPE_CATALOG = [
   { permission: "apiKeys.manage", group: "apiKeys", risk: "admin" },
 ] as const satisfies readonly ApiKeyScopeDefinition[];
 
-export const API_KEY_SCOPE_PERMISSIONS = API_KEY_SCOPE_CATALOG.map(
-  ({ permission }) => permission,
-);
+export const API_KEY_SCOPE_PERMISSIONS = API_KEY_SCOPE_CATALOG.map(({ permission }) => permission);
 
 const knownPermissions = new Set<string>(API_KEY_SCOPE_PERMISSIONS);
 
@@ -111,20 +109,6 @@ export function uniqueApiKeyScopes(scopes: readonly string[]) {
 }
 
 export const API_KEY_SCOPE_PRESETS = {
-  readOnly: API_KEY_SCOPE_CATALOG.filter(({ risk }) => risk === "read").map(
-    ({ permission }) => permission,
-  ),
-  agentRuntime: [
-    "workspaces.get",
-    "agents.list",
-    "agents.get",
-    "agents.chat",
-    "models.view",
-    "models.invoke",
-    "tools.view",
-    "tools.executeRestricted",
-    "knowledgeBases.viewAllowed",
-    "conversations.create",
-    "conversations.viewOwn",
-  ],
+  readOnly: API_KEY_SCOPE_CATALOG.filter(({ risk }) => risk === "read").map(({ permission }) => permission),
+  agentRuntime: ["workspaces.get", "agents.list", "agents.get", "agents.chat", "models.view", "models.invoke", "tools.view", "tools.executeRestricted", "knowledgeBases.viewAllowed", "conversations.create", "conversations.viewOwn"],
 } as const;

@@ -5,11 +5,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { runWithRequestAuth } from "@/modules/auth/request-auth-context";
 import { resolveAuthContext } from "@/modules/auth/resolve-auth";
 import { checkWorkspacePermissionForRequest } from "@/modules/auth/workspace-access";
-import {
-openAIErrorBody,
-OpenAIProxyError,
-providerError,
-} from "@/modules/openai-proxy/errors";
+import { openAIErrorBody,OpenAIProxyError,providerError } from "@/modules/openai-proxy/errors";
 
 export type OpenAIProxyContext = {
   workspaceId: string;
@@ -43,26 +39,14 @@ function errorResponse(error: OpenAIProxyError, requestId: string) {
   });
 }
 
-export async function handleOpenAIProxyRoute(
-  request: NextRequest,
-  permission: "models.view" | "models.invoke",
-  handler: (context: OpenAIProxyContext) => Promise<Response>,
-) {
+export async function handleOpenAIProxyRoute(request: NextRequest, permission: "models.view" | "models.invoke", handler: (context: OpenAIProxyContext) => Promise<Response>) {
   const requestId = requestIdFrom(request);
   const startedAt = Date.now();
 
   try {
     const auth = await resolveAuthContext(request);
     if (!auth || auth.type !== "api_key") {
-      return errorResponse(
-        new OpenAIProxyError(
-          "Incorrect API key provided. Create a scoped workspace API token in Maiah and send it as a Bearer token.",
-          401,
-          "authentication_error",
-          "invalid_api_key",
-        ),
-        requestId,
-      );
+      return errorResponse(new OpenAIProxyError("Incorrect API key provided. Create a scoped workspace API token in Maiah and send it as a Bearer token.", 401, "authentication_error", "invalid_api_key"), requestId);
     }
 
     return await runWithRequestAuth(auth, async () => {
@@ -72,36 +56,13 @@ export async function handleOpenAIProxyRoute(
         windowSeconds: 60,
       });
       if (!rateLimit.allowed) {
-        const limited = errorResponse(
-          new OpenAIProxyError(
-            "Rate limit reached for this workspace API token.",
-            429,
-            "rate_limit_error",
-            "rate_limit_exceeded",
-          ),
-          requestId,
-        );
-        limited.headers.set(
-          "retry-after",
-          String(Math.max(0, rateLimit.reset - Math.floor(Date.now() / 1000))),
-        );
+        const limited = errorResponse(new OpenAIProxyError("Rate limit reached for this workspace API token.", 429, "rate_limit_error", "rate_limit_exceeded"), requestId);
+        limited.headers.set("retry-after", String(Math.max(0, rateLimit.reset - Math.floor(Date.now() / 1000))));
         return limited;
       }
-      const access = await checkWorkspacePermissionForRequest(
-        auth.userId,
-        auth.workspaceId,
-        permission,
-      );
+      const access = await checkWorkspacePermissionForRequest(auth.userId, auth.workspaceId, permission);
       if (!access.granted) {
-        return errorResponse(
-          new OpenAIProxyError(
-            access.reason ?? `Missing permission: ${permission}`,
-            403,
-            "permission_error",
-            "insufficient_permissions",
-          ),
-          requestId,
-        );
+        return errorResponse(new OpenAIProxyError(access.reason ?? `Missing permission: ${permission}`, 403, "permission_error", "insufficient_permissions"), requestId);
       }
 
       const response = await handler({
@@ -112,18 +73,9 @@ export async function handleOpenAIProxyRoute(
       });
       response.headers.set("x-request-id", requestId);
       response.headers.set("openai-version", "2020-10-01");
-      response.headers.set(
-        "x-ratelimit-limit-requests",
-        String(requestsPerMinute()),
-      );
-      response.headers.set(
-        "x-ratelimit-remaining-requests",
-        String(rateLimit.remaining),
-      );
-      response.headers.set(
-        "x-ratelimit-reset-requests",
-        `${Math.max(0, rateLimit.reset - Math.floor(Date.now() / 1000))}s`,
-      );
+      response.headers.set("x-ratelimit-limit-requests", String(requestsPerMinute()));
+      response.headers.set("x-ratelimit-remaining-requests", String(rateLimit.remaining));
+      response.headers.set("x-ratelimit-reset-requests", `${Math.max(0, rateLimit.reset - Math.floor(Date.now() / 1000))}s`);
       logger.info("OpenAI-compatible proxy request completed", {
         requestId,
         apiKeyId: auth.apiKeyId,

@@ -1,7 +1,4 @@
-import {
-handleRoute,
-requireResourcePermissionAsync,
-} from "@/lib/route-handler";
+import { handleRoute,requireResourcePermissionAsync } from "@/lib/route-handler";
 import { searchKnowledgeBase } from "@/modules/knowledge/use-cases";
 import { NextRequest,NextResponse } from "next/server";
 import { z } from "zod";
@@ -12,26 +9,13 @@ const searchSchema = z.object({
   limit: z.number().int().min(1).max(20).optional(),
 });
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ knowledgeBaseId: string }> },
-) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ knowledgeBaseId: string }> }) {
   return handleRoute(
     req,
     async ({ session }) => {
       const parsed = searchSchema.safeParse(await req.json());
-      if (!parsed.success)
-        return NextResponse.json(
-          { error: "Invalid input", details: parsed.error.issues },
-          { status: 400 },
-        );
-      const forbidden = await requireResourcePermissionAsync(
-        session.user.id,
-        parsed.data.workspaceId,
-        "knowledgeBases.viewAllowed",
-        "knowledge_base",
-        (await params).knowledgeBaseId,
-      );
+      if (!parsed.success) return NextResponse.json({ error: "Invalid input", details: parsed.error.issues }, { status: 400 });
+      const forbidden = await requireResourcePermissionAsync(session.user.id, parsed.data.workspaceId, "knowledgeBases.viewAllowed", "knowledge_base", (await params).knowledgeBaseId);
       if (forbidden) return forbidden;
       const { knowledgeBaseId } = await params;
       return NextResponse.json(
@@ -45,12 +29,8 @@ export async function POST(
     {
       logLabel: "Failed to search knowledge base",
       expectedError: (error) => {
-        const msg =
-          error instanceof Error ? error.message : "Internal server error";
-        const status =
-          error instanceof Error && error.message.includes("not found")
-            ? 404
-            : 500;
+        const msg = error instanceof Error ? error.message : "Internal server error";
+        const status = error instanceof Error && error.message.includes("not found") ? 404 : 500;
         return NextResponse.json({ error: msg }, { status });
       },
     },

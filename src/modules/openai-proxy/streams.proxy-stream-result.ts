@@ -1,18 +1,8 @@
 import type { LanguageModelUsage,TextStreamPart,ToolSet } from "ai";
 
-import type {
-ChatCompletionRequest
-} from "@/modules/openai-proxy/contracts";
-import {
-openAIErrorBody,
-OpenAIProxyError,
-providerError,
-} from "@/modules/openai-proxy/errors";
-import {
-chatFinishReason,
-chatUsage,
-createChatCompletionId
-} from "@/modules/openai-proxy/response-builders";
+import type { ChatCompletionRequest } from "@/modules/openai-proxy/contracts";
+import { openAIErrorBody,OpenAIProxyError,providerError } from "@/modules/openai-proxy/errors";
+import { chatFinishReason,chatUsage,createChatCompletionId } from "@/modules/openai-proxy/response-builders";
 
 export type ProxyStreamResult = {
   stream: AsyncIterable<TextStreamPart<ToolSet>>;
@@ -46,24 +36,14 @@ export function streamHeaders() {
   };
 }
 
-export function createChatCompletionStream(input: {
-  request: ChatCompletionRequest;
-  result: ProxyStreamResult;
-  callbacks: StreamCallbacks;
-}) {
+export function createChatCompletionStream(input: { request: ChatCompletionRequest; result: ProxyStreamResult; callbacks: StreamCallbacks }) {
   const id = createChatCompletionId();
   const created = Math.floor(Date.now() / 1000);
   const includeUsage = input.request.stream_options?.include_usage === true;
-  const toolCalls = new Map<
-    string,
-    { index: number; name: string; arguments: string; started: boolean }
-  >();
+  const toolCalls = new Map<string, { index: number; name: string; arguments: string; started: boolean }>();
   let nextToolIndex = 0;
 
-  const chunk = (
-    delta: Record<string, unknown>,
-    finishReason: string | null,
-  ) => ({
+  const chunk = (delta: Record<string, unknown>, finishReason: string | null) => ({
     id,
     object: "chat.completion.chunk",
     created,
@@ -83,9 +63,7 @@ export function createChatCompletionStream(input: {
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
-      controller.enqueue(
-        sseData(chunk({ role: "assistant", content: "" }, null)),
-      );
+      controller.enqueue(sseData(chunk({ role: "assistant", content: "" }, null)));
       try {
         for await (const part of input.result.stream) {
           switch (part.type) {
@@ -194,16 +172,9 @@ export function createChatCompletionStream(input: {
             case "error":
               throw part.error;
             case "abort":
-              throw new OpenAIProxyError(
-                part.reason || "The request was cancelled.",
-                499,
-                "invalid_request_error",
-                "request_cancelled",
-              );
+              throw new OpenAIProxyError(part.reason || "The request was cancelled.", 499, "invalid_request_error", "request_cancelled");
             case "finish": {
-              controller.enqueue(
-                sseData(chunk({}, chatFinishReason(part.finishReason))),
-              );
+              controller.enqueue(sseData(chunk({}, chatFinishReason(part.finishReason))));
               if (includeUsage) {
                 controller.enqueue(
                   sseData({

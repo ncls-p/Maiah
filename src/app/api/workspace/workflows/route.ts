@@ -1,12 +1,7 @@
 import { NextRequest,NextResponse } from "next/server";
 import { z } from "zod";
 
-import {
-handleRoute,
-requireRequestPermissionScopeAsync,
-requireWorkspaceMemberAsync,
-requireWorkspacePermissionAsync,
-} from "@/lib/route-handler";
+import { handleRoute,requireRequestPermissionScopeAsync,requireWorkspaceMemberAsync,requireWorkspacePermissionAsync } from "@/lib/route-handler";
 import { hasResourcePermissionForRequest } from "@/modules/auth/workspace-access";
 import { createWorkflowSchema } from "@/modules/workflows/contracts";
 import { createWorkflow,listWorkflows } from "@/modules/workflows/use-cases";
@@ -23,36 +18,14 @@ export async function GET(req: NextRequest) {
         workspaceId: req.nextUrl.searchParams.get("workspaceId"),
       });
       if (!parsed.success) {
-        return NextResponse.json(
-          { error: "Invalid workspaceId" },
-          { status: 400 },
-        );
+        return NextResponse.json({ error: "Invalid workspaceId" }, { status: 400 });
       }
-      const scopeForbidden = await requireRequestPermissionScopeAsync(
-        session.user.id,
-        parsed.data.workspaceId,
-        "workflows.view",
-      );
+      const scopeForbidden = await requireRequestPermissionScopeAsync(session.user.id, parsed.data.workspaceId, "workflows.view");
       if (scopeForbidden) return scopeForbidden;
-      const forbidden = await requireWorkspaceMemberAsync(
-        session.user.id,
-        parsed.data.workspaceId,
-      );
+      const forbidden = await requireWorkspaceMemberAsync(session.user.id, parsed.data.workspaceId);
       if (forbidden) return forbidden;
       const workflows = await listWorkflows(parsed.data.workspaceId);
-      const visibleWorkflows = await Promise.all(
-        workflows.map(async (workflow) =>
-          (await hasResourcePermissionForRequest(
-            session.user.id,
-            parsed.data.workspaceId,
-            "workflows.view",
-            "workflow",
-            workflow.id,
-          ))
-            ? workflow
-            : null,
-        ),
-      );
+      const visibleWorkflows = await Promise.all(workflows.map(async (workflow) => ((await hasResourcePermissionForRequest(session.user.id, parsed.data.workspaceId, "workflows.view", "workflow", workflow.id)) ? workflow : null)));
       return NextResponse.json({
         workflows: visibleWorkflows.filter((workflow) => workflow !== null),
       });
@@ -70,16 +43,9 @@ export async function POST(req: NextRequest) {
     async ({ session }) => {
       const parsed = createWorkflowSchema.safeParse(await req.json());
       if (!parsed.success) {
-        return NextResponse.json(
-          { error: "Invalid input", details: parsed.error.issues },
-          { status: 400 },
-        );
+        return NextResponse.json({ error: "Invalid input", details: parsed.error.issues }, { status: 400 });
       }
-      const forbidden = await requireWorkspacePermissionAsync(
-        session.user.id,
-        parsed.data.workspaceId,
-        "workflows.create",
-      );
+      const forbidden = await requireWorkspacePermissionAsync(session.user.id, parsed.data.workspaceId, "workflows.create");
       if (forbidden) return forbidden;
       const workflow = await createWorkflow({
         ...parsed.data,

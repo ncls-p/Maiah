@@ -54,14 +54,7 @@ export const openApiSchemasPart2 = {
           properties: {
             role: {
               type: "string",
-              enum: [
-                "system",
-                "developer",
-                "user",
-                "assistant",
-                "tool",
-                "function",
-              ],
+              enum: ["system", "developer", "user", "assistant", "tool", "function"],
             },
             content: {},
             tool_call_id: { type: "string" },
@@ -82,10 +75,7 @@ export const openApiSchemasPart2 = {
       frequency_penalty: { type: "number", minimum: -2, maximum: 2 },
       seed: { type: "integer" },
       stop: {
-        oneOf: [
-          { type: "string" },
-          { type: "array", maxItems: 4, items: { type: "string" } },
-        ],
+        oneOf: [{ type: "string" }, { type: "array", maxItems: 4, items: { type: "string" } }],
       },
       tools: {
         type: "array",
@@ -116,10 +106,7 @@ export const openApiSchemasPart2 = {
     properties: {
       model: { type: "string" },
       input: {
-        oneOf: [
-          { type: "string" },
-          { type: "array", minItems: 1, items: { type: "object" } },
-        ],
+        oneOf: [{ type: "string" }, { type: "array", minItems: 1, items: { type: "object" } }],
       },
       instructions: { type: "string" },
       stream: { type: "boolean", default: false },
@@ -150,15 +137,7 @@ export const openApiSchemasPart2 = {
   },
   OpenAIResponse: {
     type: "object",
-    required: [
-      "id",
-      "object",
-      "created_at",
-      "status",
-      "model",
-      "output",
-      "usage",
-    ],
+    required: ["id", "object", "created_at", "status", "model", "output", "usage"],
     additionalProperties: true,
     properties: {
       id: { type: "string" },

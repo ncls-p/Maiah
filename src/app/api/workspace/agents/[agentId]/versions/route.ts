@@ -1,23 +1,13 @@
-import {
-handleRoute,
-requireResourcePermissionAsync,
-} from "@/lib/route-handler";
+import { handleRoute,requireResourcePermissionAsync } from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
-import {
-getAgentVersionById,
-getAgentVersions,
-getVisibleAgentById,
-} from "@/modules/agent/use-cases";
+import { getAgentVersionById,getAgentVersions,getVisibleAgentById } from "@/modules/agent/use-cases";
 import { NextRequest,NextResponse } from "next/server";
 import { z } from "zod";
 
 const routeParamsSchema = z.object({ agentId: z.uuid() });
 const workspaceQuerySchema = z.object({ workspaceId: z.uuid() });
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ agentId: string }> },
-) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ agentId: string }> }) {
   return handleRoute(
     req,
     async ({ session }) => {
@@ -31,20 +21,9 @@ export async function GET(
       }
       const { agentId } = parsedParams.data;
       const { workspaceId } = parsedQuery.data;
-      const forbidden = await requireResourcePermissionAsync(
-        session.user.id,
-        workspaceId,
-        "agents.get",
-        "agent",
-        (await params).agentId,
-      );
+      const forbidden = await requireResourcePermissionAsync(session.user.id, workspaceId, "agents.get", "agent", (await params).agentId);
       if (forbidden) return forbidden;
-      const agent = await getVisibleAgentById(
-        agentId,
-        workspaceId,
-        session.user.id,
-        await canManageTenantGlobals(session, workspaceId),
-      );
+      const agent = await getVisibleAgentById(agentId, workspaceId, session.user.id, await canManageTenantGlobals(session, workspaceId));
       if (!agent) {
         return NextResponse.json({ error: "Agent not found" }, { status: 404 });
       }
@@ -52,10 +31,7 @@ export async function GET(
       if (versionId) {
         const version = await getAgentVersionById(versionId);
         if (!version || version.agentId !== agentId) {
-          return NextResponse.json(
-            { error: "Version not found" },
-            { status: 404 },
-          );
+          return NextResponse.json({ error: "Version not found" }, { status: 404 });
         }
         return NextResponse.json({
           ...version,

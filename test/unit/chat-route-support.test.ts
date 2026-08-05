@@ -34,10 +34,7 @@ vi.mock("@/server/infrastructure/ai-sdk/devtools", () => ({
 
 vi.mock("@/modules/tool/invocation-state", () => invocationStateMock);
 
-vi.mock(
-  "@/modules/tool/organization-builtin-tool-policies",
-  () => organizationToolPolicyMock,
-);
+vi.mock("@/modules/tool/organization-builtin-tool-policies", () => organizationToolPolicyMock);
 
 vi.mock("@/modules/knowledge/use-cases", () => knowledgeUseCasesMock);
 
@@ -45,27 +42,20 @@ vi.mock("@/modules/tool/opa-approval-policy", () => ({
   evaluateOpaToolApprovalPolicy: vi.fn(async () => null),
 }));
 
-type BuildBoundTools =
-  (typeof import("@/app/api/workspace/[agentId]/chat/route-support"))["buildBoundTools"];
+type BuildBoundTools = (typeof import("@/app/api/workspace/[agentId]/chat/route-support"))["buildBoundTools"];
 
-type BuiltInToolLookup =
-  (typeof import("@/modules/tool/builtin-tools"))["getBuiltInToolByName"];
+type BuiltInToolLookup = (typeof import("@/modules/tool/builtin-tools"))["getBuiltInToolByName"];
 
 async function loadModules() {
   vi.resetModules();
-  const [routeSupport, builtinTools] = await Promise.all([
-    import("@/app/api/workspace/[agentId]/chat/route-support"),
-    import("@/modules/tool/builtin-tools"),
-  ]);
+  const [routeSupport, builtinTools] = await Promise.all([import("@/app/api/workspace/[agentId]/chat/route-support"), import("@/modules/tool/builtin-tools")]);
   return {
     buildBoundTools: routeSupport.buildBoundTools as BuildBoundTools,
     projectStreamedToolInput: routeSupport.projectStreamedToolInput,
     streamToolErrorOutput: routeSupport.streamToolErrorOutput,
     mergeUserFilePartMetadata: routeSupport.mergeUserFilePartMetadata,
-    knowledgeCitationsFromToolOutput:
-      routeSupport.knowledgeCitationsFromToolOutput,
-    getBuiltInToolByName:
-      builtinTools.getBuiltInToolByName as BuiltInToolLookup,
+    knowledgeCitationsFromToolOutput: routeSupport.knowledgeCitationsFromToolOutput,
+    getBuiltInToolByName: builtinTools.getBuiltInToolByName as BuiltInToolLookup,
     waitForApproval: invocationStateMock.waitForApproval,
   };
 }
@@ -85,9 +75,7 @@ describe("chat route tool gating", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     toolUseCasesMock.getToolBindingsForVersion.mockResolvedValue([]);
-    organizationToolPolicyMock.getOrganizationBuiltInToolPolicyMap.mockResolvedValue(
-      new Map(),
-    );
+    organizationToolPolicyMock.getOrganizationBuiltInToolPolicyMap.mockResolvedValue(new Map());
     knowledgeUseCasesMock.getKnowledgeBindingsForVersion.mockResolvedValue([]);
     knowledgeUseCasesMock.searchBoundKnowledgeBases.mockResolvedValue([]);
     knowledgeUseCasesMock.readBoundKnowledgeChunkWindow.mockResolvedValue(null);
@@ -161,21 +149,18 @@ describe("chat route tool gating", () => {
       ],
       truncated: false,
     });
-    const { buildBoundTools, knowledgeCitationsFromToolOutput } =
-      await loadModules();
+    const { buildBoundTools, knowledgeCitationsFromToolOutput } = await loadModules();
 
     const { tools } = await buildBoundTools(buildInput());
 
-    expect(Object.keys(tools)).toEqual(
-      expect.arrayContaining(["search_knowledge", "read_knowledge_context"]),
-    );
-    const searchOutput = await (
-      tools.search_knowledge.execute as (input: unknown) => Promise<unknown>
-    )({ query: "annual leave", knowledgeBaseIds: [knowledgeBaseId], limit: 3 });
+    expect(Object.keys(tools)).toEqual(expect.arrayContaining(["search_knowledge", "read_knowledge_context"]));
+    const searchOutput = await (tools.search_knowledge.execute as (input: unknown) => Promise<unknown>)({
+      query: "annual leave",
+      knowledgeBaseIds: [knowledgeBaseId],
+      limit: 3,
+    });
     expect(knowledgeCitationsFromToolOutput(searchOutput)).toHaveLength(1);
-    expect(
-      knowledgeUseCasesMock.searchBoundKnowledgeBases,
-    ).toHaveBeenCalledWith(
+    expect(knowledgeUseCasesMock.searchBoundKnowledgeBases).toHaveBeenCalledWith(
       expect.objectContaining({
         agentVersionId: "version-1",
         knowledgeBaseIds: [knowledgeBaseId],
@@ -184,14 +169,8 @@ describe("chat route tool gating", () => {
       }),
     );
 
-    await (
-      tools.read_knowledge_context.execute as (
-        input: unknown,
-      ) => Promise<unknown>
-    )({ chunkId, before: 1, after: 2 });
-    expect(
-      knowledgeUseCasesMock.readBoundKnowledgeChunkWindow,
-    ).toHaveBeenCalledWith({
+    await (tools.read_knowledge_context.execute as (input: unknown) => Promise<unknown>)({ chunkId, before: 1, after: 2 });
+    expect(knowledgeUseCasesMock.readBoundKnowledgeChunkWindow).toHaveBeenCalledWith({
       agentVersionId: "version-1",
       workspaceId: "workspace-1",
       userId: "user-1",
@@ -221,18 +200,12 @@ describe("chat route tool gating", () => {
     const { buildBoundTools } = await loadModules();
     const { tools } = await buildBoundTools(buildInput());
 
-    await (
-      tools.search_knowledge.execute as (input: unknown) => Promise<unknown>
-    )({
+    await (tools.search_knowledge.execute as (input: unknown) => Promise<unknown>)({
       query: "policy architecture",
       knowledgeBaseIds: [firstId, secondId],
     });
 
-    expect(
-      knowledgeUseCasesMock.searchBoundKnowledgeBases,
-    ).toHaveBeenCalledWith(
-      expect.objectContaining({ knowledgeBaseIds: [firstId, secondId] }),
-    );
+    expect(knowledgeUseCasesMock.searchBoundKnowledgeBases).toHaveBeenCalledWith(expect.objectContaining({ knowledgeBaseIds: [firstId, secondId] }));
   });
 
   it("does not expose knowledge tools when the agent has no data source binding", async () => {

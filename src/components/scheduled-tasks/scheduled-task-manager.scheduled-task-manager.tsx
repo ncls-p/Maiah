@@ -1,26 +1,15 @@
 "use client";
 
-import { CalendarClockIcon,Loader2Icon,PlusIcon,Trash2Icon } from "lucide-react";
 import { useLocale,useTranslations } from "next-intl";
 import { useCallback,useEffect,useMemo,useState } from "react";
 import { toast } from "sonner";
 
 import type { ChatAgent } from "@/components/chat/chat-types";
-import { DestructiveConfirmationDialog } from "@/components/destructive-confirmation-dialog";
-import { PageEmptyState } from "@/components/page-empty-state";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card,CardAction,CardContent,CardDescription,CardHeader,CardTitle } from "@/components/ui/card";
-import { Dialog,DialogContent,DialogDescription,DialogFooter,DialogHeader,DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select,SelectContent,SelectItem,SelectTrigger,SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
 import { fetchJson } from "@/lib/api-client";
-import { DAILY_FREQUENCY,ScheduleFrequency,ScheduledTask,formatNextRun,localTimeZone,statusToneClass,statusVariant } from "./scheduled-task-manager.daily-frequency";
+import { DAILY_FREQUENCY,ScheduleFrequency,ScheduledTask,localTimeZone } from "./scheduled-task-manager.daily-frequency";
+import { ScheduledTaskManagerView } from "./scheduled-task-manager.scheduled-task-manager.view";
 
-export function ScheduledTaskManager({ workspaceId, agents }: { workspaceId: string | null; agents: ChatAgent[] }) {
+export function useScheduledTaskManagerController({ workspaceId, agents }: { workspaceId: string | null; agents: ChatAgent[] }) {
   const locale = useLocale();
   const t = useTranslations("scheduledTasks");
   const tCommon = useTranslations("common");
@@ -149,189 +138,49 @@ export function ScheduledTaskManager({ workspaceId, agents }: { workspaceId: str
     return t("intervalEvery", { minutes: task.intervalMinutes ?? 0 });
   }
 
-  return (
-    <>
-      <div className="flex flex-col gap-4">
-        <div className="flex justify-end">
-          <Button type="button" onClick={() => setCreateOpen(true)}>
-            <PlusIcon className="size-4" aria-hidden="true" />
-            {t("create.submit")}
-          </Button>
-        </div>
+  return {
+    kind: "ready",
+    agents,
+    createOpen,
+    createTask,
+    currentAgentId,
+    deleteTask,
+    deletingTaskId,
+    enabledTasks,
+    formatFrequency,
+    frequency,
+    intervalMinutes,
+    loadError,
+    loadTasks,
+    loading,
+    locale,
+    nextTask,
+    pendingDeleteTask,
+    prompt,
+    saving,
+    setAgentId,
+    setCreateOpen,
+    setFrequency,
+    setIntervalMinutes,
+    setPendingDeleteTask,
+    setPrompt,
+    setTimeOfDay,
+    setTitle,
+    statusLabels,
+    successRate,
+    t,
+    tCommon,
+    tasks,
+    timeOfDay,
+    title,
+    toggleTask,
+    updatingTaskIds,
+    workspaceId,
+  } as const;
+}
 
-        <div className="grid gap-3 sm:grid-cols-3">
-          {[
-            {
-              label: t("overview.activeLabel"),
-              value: String(enabledTasks).padStart(2, "0"),
-            },
-            {
-              label: t("overview.successLabel"),
-              value: `${successRate}%`,
-            },
-            {
-              label: t("overview.totalLabel"),
-              value: String(tasks.length).padStart(2, "0"),
-            },
-          ].map((stat) => (
-            <div key={stat.label} className="rounded-2xl border bg-card px-4 py-3.5">
-              <p className="font-mono text-[0.58rem] uppercase tracking-[0.16em] text-muted-foreground">{stat.label}</p>
-              <p className="workspace-page-heading mt-1.5 text-3xl leading-none tabular-nums">{stat.value}</p>
-            </div>
-          ))}
-        </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("overview.title")}</CardTitle>
-            <CardDescription>
-              {t("overview.description", {
-                active: enabledTasks,
-                total: tasks.length,
-              })}
-            </CardDescription>
-            <CardAction>
-              <Badge variant="outline">{t("overview.activeCount", { count: enabledTasks })}</Badge>
-            </CardAction>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="flex min-h-48 items-center justify-center gap-2 text-sm text-muted-foreground">
-                <Loader2Icon className="size-4 animate-spin" aria-hidden="true" />
-                {t("loading")}
-              </div>
-            ) : loadError ? (
-              <div className="min-h-48 py-8 text-center" role="alert">
-                <p className="text-sm font-medium">{t("toasts.loadFailed")}</p>
-                <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">{t("tasksLoadErrorDescription")}</p>
-                <Button type="button" variant="outline" size="sm" className="mt-4" onClick={() => void loadTasks()}>
-                  {t("retry")}
-                </Button>
-              </div>
-            ) : tasks.length === 0 ? (
-              <PageEmptyState icon={CalendarClockIcon} title={t("empty.title")} description={t("empty.description")} className="border border-dashed border-border/70 bg-muted/20" />
-            ) : (
-              <div className="grid gap-3">
-                {nextTask ? (
-                  <div className="rounded-xl border border-primary/20 bg-primary/7 p-3 text-sm">
-                    <p className="font-medium text-primary">{t("overview.nextRun")}</p>
-                    <p className="mt-1 text-muted-foreground">
-                      {nextTask.title} · {formatNextRun(nextTask.nextRunAt, locale)}
-                    </p>
-                  </div>
-                ) : null}
-                {tasks.map((task) => (
-                  <div key={task.id} className="grid gap-3 rounded-xl border border-border/70 bg-background/55 p-3 sm:grid-cols-[minmax(0,1fr)_auto]">
-                    <div className="min-w-0">
-                      <div className="flex min-w-0 flex-wrap items-center gap-2">
-                        <p className="truncate text-sm font-medium">{task.title}</p>
-                        <Badge variant={statusVariant(task.lastStatus)} className={statusToneClass(task.lastStatus)}>
-                          {statusLabels[task.lastStatus as keyof typeof statusLabels] ?? task.lastStatus}
-                        </Badge>
-                      </div>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {formatFrequency(task)} ·{" "}
-                        {t("nextRun", {
-                          date: formatNextRun(task.nextRunAt, locale),
-                        })}
-                      </p>
-                      {task.lastError ? <p className="mt-2 rounded-lg bg-destructive/10 px-2 py-1 text-xs text-destructive">{task.lastError}</p> : null}
-                    </div>
-                    <div className="flex shrink-0 items-center justify-end gap-2">
-                      <Switch checked={task.enabled} onCheckedChange={(enabled) => void toggleTask(task, enabled)} aria-label={t("toggleTask", { title: task.title })} disabled={updatingTaskIds.has(task.id) || deletingTaskId === task.id} />
-                      <Button type="button" variant="ghost" size="icon-sm" onClick={() => setPendingDeleteTask(task)} aria-label={t("deleteTask", { title: task.title })} disabled={deletingTaskId === task.id}>
-                        <Trash2Icon className="size-4" aria-hidden="true" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      <Dialog
-        open={createOpen}
-        onOpenChange={(open) => {
-          if (!saving) setCreateOpen(open);
-        }}
-      >
-        <DialogContent className="max-h-[calc(100svh-2rem)] max-w-2xl overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{t("create.title")}</DialogTitle>
-            <DialogDescription>{t("create.description")}</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-1">
-            <div className="grid gap-2">
-              <Label htmlFor="scheduled-task-title">{t("fields.title")}</Label>
-              <Input id="scheduled-task-title" value={title} onChange={(event) => setTitle(event.target.value)} />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="scheduled-task-prompt">{t("fields.prompt")}</Label>
-              <Textarea id="scheduled-task-prompt" value={prompt} onChange={(event) => setPrompt(event.target.value)} rows={6} />
-            </div>
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div className="grid gap-2 sm:col-span-3 xl:col-span-1">
-                <Label>{t("fields.assistant")}</Label>
-                <Select value={currentAgentId} onValueChange={setAgentId}>
-                  <SelectTrigger aria-label={t("fields.assistant")}>
-                    <SelectValue placeholder={t("fields.assistantPlaceholder")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {agents.map((agent) => (
-                      <SelectItem key={agent.id} value={agent.id}>
-                        {agent.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label>{t("fields.frequency")}</Label>
-                <Select value={frequency} onValueChange={(value) => setFrequency(value as ScheduleFrequency)}>
-                  <SelectTrigger aria-label={t("fields.frequency")}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={DAILY_FREQUENCY}>{t("frequency.daily")}</SelectItem>
-                    <SelectItem value="interval">{t("frequency.interval")}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="scheduled-task-schedule">{frequency === DAILY_FREQUENCY ? t("fields.time") : t("fields.minutes")}</Label>
-                <Input id="scheduled-task-schedule" type={frequency === DAILY_FREQUENCY ? "time" : "number"} min={frequency === DAILY_FREQUENCY ? undefined : 5} value={frequency === DAILY_FREQUENCY ? timeOfDay : intervalMinutes} onChange={(event) => (frequency === DAILY_FREQUENCY ? setTimeOfDay(event.target.value) : setIntervalMinutes(event.target.value))} />
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setCreateOpen(false)} disabled={saving}>
-              {tCommon("cancel")}
-            </Button>
-            <Button type="button" onClick={() => void createTask()} disabled={saving || loadError || !workspaceId || !currentAgentId || !title.trim() || !prompt.trim()}>
-              {saving ? <Loader2Icon className="size-4 animate-spin" aria-hidden="true" /> : <PlusIcon className="size-4" aria-hidden="true" />}
-              {t("create.submit")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      <DestructiveConfirmationDialog
-        open={pendingDeleteTask !== null}
-        title={t("deleteTitle")}
-        description={t("deleteDescription", {
-          title: pendingDeleteTask?.title ?? "",
-        })}
-        cancelLabel={t("deleteCancel")}
-        confirmLabel={deletingTaskId ? t("deleting") : t("deleteConfirm")}
-        busy={deletingTaskId !== null}
-        onOpenChange={(open) => {
-          if (!open && !deletingTaskId) setPendingDeleteTask(null);
-        }}
-        onConfirm={() => {
-          if (pendingDeleteTask) void deleteTask(pendingDeleteTask);
-        }}
-      />
-    </>
-  );
+export function ScheduledTaskManager(...args: Parameters<typeof useScheduledTaskManagerController>) {
+  const model = useScheduledTaskManagerController(...args);
+  if (!("kind" in model)) return model;
+  return <ScheduledTaskManagerView model={model} />;
 }

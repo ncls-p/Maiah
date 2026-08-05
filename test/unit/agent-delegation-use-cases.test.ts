@@ -1,14 +1,8 @@
-import {
-findDelegationCycle,
-insertDelegationBindingsForVersion,
-validateDelegationBindings,
-} from "@/modules/agent/delegation-use-cases";
+import { findDelegationCycle,insertDelegationBindingsForVersion,validateDelegationBindings } from "@/modules/agent/delegation-use-cases";
 import { orchestrationPolicyDefaults } from "@/modules/agent/orchestration-policy";
 import { beforeEach,describe,expect,it,vi } from "vitest";
 
-type BindingExecutor = Parameters<
-  typeof validateDelegationBindings
->[0]["executor"];
+type BindingExecutor = Parameters<typeof validateDelegationBindings>[0]["executor"];
 
 function createExecutor(responses: unknown[][]) {
   const queue = [...responses];
@@ -60,19 +54,11 @@ describe("agent delegation bindings", () => {
         bindings: [binding],
         loadBindings,
       }),
-    ).resolves.toEqual([
-      parentAgentId,
-      childAgentId,
-      middleAgentId,
-      parentAgentId,
-    ]);
+    ).resolves.toEqual([parentAgentId, childAgentId, middleAgentId, parentAgentId]);
   });
 
   it("rejects child versions that do not belong to the selected agent", async () => {
-    const { executor } = createExecutor([
-      [{ id: childAgentId }],
-      [{ id: childVersionId, agentId: parentAgentId }],
-    ]);
+    const { executor } = createExecutor([[{ id: childAgentId }], [{ id: childVersionId, agentId: parentAgentId }]]);
 
     await expect(
       validateDelegationBindings({
@@ -102,11 +88,7 @@ describe("agent delegation bindings", () => {
   });
 
   it("validates and inserts a pinned binding", async () => {
-    const { executor, chain } = createExecutor([
-      [{ id: childAgentId }],
-      [{ id: childVersionId, agentId: childAgentId }],
-      [],
-    ]);
+    const { executor, chain } = createExecutor([[{ id: childAgentId }], [{ id: childVersionId, agentId: childAgentId }], []]);
 
     await insertDelegationBindingsForVersion({
       parentAgentId,

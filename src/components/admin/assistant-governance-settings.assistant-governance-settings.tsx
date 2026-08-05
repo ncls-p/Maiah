@@ -247,14 +247,7 @@ export function AssistantGovernanceSettings() {
                         <Button type="button" variant="ghost" size="icon-sm" disabled={index <= 0 || movingAgentId === agent.id} onClick={() => void moveOrganizationAgent(agent.id, -1)} aria-label={t("moveUp")}>
                           <ArrowUpIcon className="size-3.5" aria-hidden="true" />
                         </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon-sm"
-                          disabled={index === organizationAgents.length - 1 || movingAgentId === agent.id}
-                          onClick={() => void moveOrganizationAgent(agent.id, 1)}
-                          aria-label={t("moveDown")}
-                        >
+                        <Button type="button" variant="ghost" size="icon-sm" disabled={index === organizationAgents.length - 1 || movingAgentId === agent.id} onClick={() => void moveOrganizationAgent(agent.id, 1)} aria-label={t("moveDown")}>
                           <ArrowDownIcon className="size-3.5" aria-hidden="true" />
                         </Button>
                         <Button variant="ghost" size="sm" asChild>

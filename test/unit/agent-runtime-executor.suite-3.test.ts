@@ -62,9 +62,7 @@ vi.mock("@/lib/logger", () => ({
   logger: { warn: mocks.logWarning },
 }));
 
-import {
-executeAgent
-} from "@/modules/agent/runtime-executor";
+import { executeAgent } from "@/modules/agent/runtime-executor";
 
 const rootAgent = {
   id: "11111111-1111-4111-8111-111111111111",
@@ -120,7 +118,6 @@ beforeEach(() => {
 });
 
 describe("agent runtime executor", () => {
-
   it("returns a completed tool result when final synthesis times out", async () => {
     mocks.getActiveVersion.mockResolvedValueOnce({
       ...rootVersion,
@@ -140,10 +137,7 @@ describe("agent runtime executor", () => {
     });
     mocks.generateText.mockImplementationOnce(async (options) => {
       expect(options.toolChoice).toBe("required");
-      const tools = options.tools as Record<
-        string,
-        { execute: (input: unknown) => Promise<unknown> }
-      >;
+      const tools = options.tools as Record<string, { execute: (input: unknown) => Promise<unknown> }>;
       await tools.deepwiki.execute({
         repoName: "ServiceNow/ServiceNowDocs",
         question: "Latest ServiceNow updates",
@@ -179,9 +173,7 @@ describe("agent runtime executor", () => {
         reservationTokens: 13,
       }),
     );
-    const modelStep = mocks.appendStep.mock.calls.find(
-      ([step]) => step.kind === "model",
-    );
+    const modelStep = mocks.appendStep.mock.calls.find(([step]) => step.kind === "model");
     expect(JSON.stringify(modelStep)).not.toContain("must-remain-redacted");
     expect(mocks.appendStep).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -209,10 +201,7 @@ describe("agent runtime executor", () => {
       toolApproval: undefined,
     });
     mocks.generateText.mockImplementationOnce(async (options) => {
-      const tools = options.tools as Record<
-        string,
-        { execute: (input: unknown) => Promise<unknown> }
-      >;
+      const tools = options.tools as Record<string, { execute: (input: unknown) => Promise<unknown> }>;
       await tools.lookup.execute({ query: "value" });
       controller.abort("Cancelled by user");
       const timeout = new Error("The operation was aborted due to timeout");
@@ -240,9 +229,7 @@ describe("agent runtime executor", () => {
   });
 
   it("preserves a redacted provider detail for operational logs", async () => {
-    mocks.generateText.mockRejectedValueOnce(
-      new Error("Provider rejected Bearer super-secret"),
-    );
+    mocks.generateText.mockRejectedValueOnce(new Error("Provider rejected Bearer super-secret"));
 
     await expect(
       executeAgent({

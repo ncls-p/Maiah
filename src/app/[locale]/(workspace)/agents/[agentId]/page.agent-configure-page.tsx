@@ -9,24 +9,18 @@ import { toast } from "sonner";
 import { useWorkspaceShell } from "@/components/app-shell";
 import { PageLoading } from "@/components/page-loading";
 import { Button } from "@/components/ui/button";
-import { Tabs,TabsContent,TabsList,TabsTrigger } from "@/components/ui/tabs";
 import { WorkspacePage } from "@/components/workspace-page";
 import { useWorkspace } from "@/hooks/use-workspace";
 
 import { mergeAgentEditorState } from "./agent-editor-state";
 import { buildAgentFormFromVersion,type AgentVersionPayload } from "./agent-form-from-version";
-import { AgentHeader } from "./agent-header";
-import { CapabilitiesTab } from "./capabilities-tab";
-import { DeleteDialog } from "./delete-dialog";
-import { EssentialTab } from "./essential-tab";
-import { OrchestrationTab } from "./orchestration-tab";
+import { AgentConfigurePageView } from "./page.agent-configure-page.view";
 import { agentSaveError,buildToolBindingMap,defaultDelegationConfig } from "./page.build-tool-binding-map";
-import { TabBadge } from "./shared";
 import type { Agent,AgentForm,AgentSkill,BuiltinTool,CustomTool,DelegationConfig,KnowledgeBase,KnowledgeBinding,McpServer,McpTool,Model,Provider,SkillBinding,ToolBinding,ToolBindingState } from "./types";
 import { createEmptyForm } from "./types";
 import { isMcpToolApprovalForced } from "./utils";
 
-export default function AgentConfigurePage() {
+export function useAgentConfigurePageController() {
   const params = useParams<{ agentId: string }>();
   const agentId = params.agentId;
   const router = useRouter();
@@ -521,85 +515,52 @@ export default function AgentConfigurePage() {
   const canEdit = agent?.canEdit ?? false;
   const hasModel = Boolean(form.providerId && form.modelId);
 
-  return (
-    <WorkspacePage title={agent?.name ?? t("configure")} description={agent.description || t("configureDescription")} width="default" headerVariant="compact">
-      <div className="flex flex-col gap-4">
-        {!canEdit ? (
-          <div className="flex flex-col gap-3 rounded-2xl border border-primary/20 bg-primary/5 p-4 text-sm sm:flex-row sm:items-center sm:justify-between">
-            <div className="min-w-0 text-muted-foreground">
-              <p className="font-medium text-foreground">{t("configurePage.lockedTitle")}</p>
-              <p className="mt-1">{t("configurePage.lockedDescription")}</p>
-            </div>
-            {agent.canClone !== false ? (
-              <Button type="button" size="sm" variant="outline" className="shrink-0" onClick={() => void handleClone()}>
-                {t("configurePage.cloneToEdit")}
-              </Button>
-            ) : null}
-          </div>
-        ) : null}
+  return {
+    kind: "ready",
+    activeTab,
+    agent,
+    builtinBindings,
+    builtinTools,
+    canEdit,
+    capabilitiesCount,
+    delegationCandidates,
+    delegationConfig,
+    delegationCount,
+    deleting,
+    form,
+    handleClone,
+    handleDelete,
+    handleLogoChange,
+    hasModel,
+    knowledgeBases,
+    mcpBindings,
+    mcpServers,
+    mcpTools,
+    models,
+    permissions,
+    providers,
+    saveCapabilities,
+    saveEssential,
+    saveOrchestration,
+    saving,
+    selectedKnowledgeIds,
+    selectedSkillIds,
+    setActiveTab,
+    setBuiltinBindings,
+    setDelegationConfig,
+    setForm,
+    setMcpBindings,
+    setSelectedKnowledgeIds,
+    setSelectedSkillIds,
+    setShowDeleteDialog,
+    showDeleteDialog,
+    skills,
+    t,
+  } as const;
+}
 
-        <AgentHeader agent={agent} providers={providers} models={models} form={form} canEdit={canEdit} onLogoChangeAction={(logoUrl) => void handleLogoChange(logoUrl)} onCloneAction={() => void handleClone()} onShowDeleteDialogAction={() => setShowDeleteDialog(true)} />
-
-        {canEdit && (!hasModel || (agent.kind === "orchestrator" && delegationCount === 0)) ? (
-          <div className="rounded-2xl border border-primary/15 bg-primary/5 p-4 animate-in-fade stagger-2">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h3 className="text-base font-semibold">{!hasModel ? t("configurePage.setupTitle") : t("configurePage.orchestrationSetupTitle")}</h3>
-                <p className="mt-1 text-sm text-muted-foreground">{!hasModel ? t("configurePage.setupDescription") : t("configurePage.orchestrationSetupDescription")}</p>
-              </div>
-              <Button type="button" size="sm" variant={hasModel ? "default" : "outline"} onClick={() => setActiveTab(hasModel ? "orchestration" : "essential")}>
-                {hasModel ? t("configurePage.chooseSpecialistsCta") : t("configurePage.chooseModelCta")}
-              </Button>
-            </div>
-          </div>
-        ) : null}
-
-        {canEdit ? (
-          <div className="animate-in-fade stagger-3">
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="gap-4">
-              <TabsList aria-label={t("configurePage.settingsNavigation")} className="max-w-full justify-start overflow-x-auto">
-                <TabsTrigger value="essential" className="gap-2">
-                  {t("tabs.essential")}
-                </TabsTrigger>
-                <TabsTrigger value="capabilities" className="gap-2">
-                  {t("tabs.capabilities")}
-                  <TabBadge count={capabilitiesCount} />
-                </TabsTrigger>
-                {agent?.kind === "orchestrator" ? (
-                  <TabsTrigger value="orchestration" className="gap-2">
-                    {t("tabs.orchestration")}
-                    <TabBadge count={delegationCount} />
-                  </TabsTrigger>
-                ) : null}
-              </TabsList>
-
-              <TabsContent value="essential">
-                <EssentialTab form={form} setFormAction={setForm} providers={providers} models={models} saving={saving} canAdminCurate={agent?.canAdminCurate ?? false} canManageProviders={permissions.canManageProviders} agentKind={agent?.kind ?? "assistant"} readOnly={!canEdit} onSaveAction={saveEssential} />
-              </TabsContent>
-
-              <TabsContent value="capabilities">
-                <CapabilitiesTab builtinTools={builtinTools} builtinBindings={builtinBindings} setBuiltinBindingsAction={setBuiltinBindings} mcpServers={mcpServers} mcpTools={mcpTools} mcpBindings={mcpBindings} setMcpBindingsAction={setMcpBindings} knowledgeBases={knowledgeBases} selectedKnowledgeIds={selectedKnowledgeIds} setSelectedKnowledgeIdsAction={setSelectedKnowledgeIds} skills={skills} selectedSkillIds={selectedSkillIds} setSelectedSkillIdsAction={setSelectedSkillIds} saving={saving} readOnly={!canEdit} canConfigureBuiltinApproval={agent?.canAdminCurate ?? false} onSaveAction={() => void saveCapabilities()} />
-              </TabsContent>
-
-              {agent?.kind === "orchestrator" ? (
-                <TabsContent value="orchestration">
-                  <OrchestrationTab agent={agent} availableAgents={delegationCandidates} config={delegationConfig} setConfigAction={setDelegationConfig} saving={saving} onSaveAction={() => void saveOrchestration()} />
-                </TabsContent>
-              ) : null}
-            </Tabs>
-          </div>
-        ) : null}
-      </div>
-
-      <DeleteDialog
-        open={showDeleteDialog}
-        onOpenChange={(open) => {
-          if (!open) setShowDeleteDialog(false);
-        }}
-        agentName={agent?.name ?? null}
-        deleting={deleting}
-        onDelete={handleDelete}
-      />
-    </WorkspacePage>
-  );
+export default function AgentConfigurePage(...args: Parameters<typeof useAgentConfigurePageController>) {
+  const model = useAgentConfigurePageController(...args);
+  if (!("kind" in model)) return model;
+  return <AgentConfigurePageView model={model} />;
 }

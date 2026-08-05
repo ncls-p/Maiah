@@ -54,10 +54,7 @@ vi.mock("@/server/infrastructure/db", () => ({
 import { generateWorkspaceImage } from "@/modules/provider/image-generation";
 import { getAdapter } from "@/server/infrastructure/providers";
 
-function imageRow(overrides?: {
-  model?: Record<string, unknown>;
-  provider?: Record<string, unknown>;
-}) {
+function imageRow(overrides?: { model?: Record<string, unknown>; provider?: Record<string, unknown> }) {
   return {
     model: {
       id: "model-db-1",
@@ -99,9 +96,7 @@ function imageRow(overrides?: {
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.rows = [imageRow()];
-  mocks.decryptValue
-    .mockResolvedValueOnce("api-key")
-    .mockResolvedValueOnce("tenant");
+  mocks.decryptValue.mockResolvedValueOnce("api-key").mockResolvedValueOnce("tenant");
   mocks.checkPermission.mockResolvedValue({ granted: true });
   mocks.createImageModel.mockReturnValue({ specificationVersion: "v4" });
   mocks.generateImage.mockResolvedValue({
