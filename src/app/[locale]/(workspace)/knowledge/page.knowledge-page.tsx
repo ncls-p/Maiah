@@ -5,11 +5,11 @@ import { Button } from "@/components/ui/button";
 import { WorkspacePage } from "@/components/workspace-page";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { fetchWorkspacePermissions } from "@/lib/api-client";
-import { DEFAULT_RAG_CONFIG, type RagConfig } from "@/modules/knowledge/rag-config-schema";
+import { DEFAULT_RAG_CONFIG,type RagConfig } from "@/modules/knowledge/rag-config-schema";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback,useEffect,useState } from "react";
 import { toast } from "sonner";
-import { DocumentPreview, DocumentRow, KnowledgeAgent, KnowledgeBase, RagModelOption, SearchResult, cloneRagConfig } from "./page.knowledge-base";
+import { DocumentPreview,DocumentRow,KnowledgeAgent,KnowledgeBase,RagModelOption,SearchResult,cloneRagConfig } from "./page.knowledge-base";
 import { KnowledgePageView } from "./page.knowledge-page.view";
 import { useKnowledgeDocumentIngestion } from "./page.use-document-ingestion";
 
