@@ -288,30 +288,7 @@ export function useChatLayoutController({ agents, conversations, conversationFol
     </div>
   );
 
-  return {
-    kind: "ready",
-    adjustSidebarWidth,
-    agentSelector,
-    canChat,
-    canRunSetup,
-    children,
-    desktopSidebarProps,
-    mobileSidebarOpen,
-    mobileSidebarProps,
-    onNewConversation,
-    onSetupComplete,
-    resizingSidebar,
-    selectedAgentId,
-    setMobileSidebarOpen,
-    setSetupOpen,
-    setupOpen,
-    shell,
-    sidebarOpen,
-    sidebarWidth,
-    startSidebarResize,
-    t,
-    updateSidebarOpen,
-  } as const;
+  return { kind: "ready", adjustSidebarWidth, agentSelector, canChat, canRunSetup, children, desktopSidebarProps, mobileSidebarOpen, mobileSidebarProps, onNewConversation, onSetupComplete, resizingSidebar, selectedAgentId, setMobileSidebarOpen, setSetupOpen, setupOpen, shell, sidebarOpen, sidebarWidth, startSidebarResize, t, updateSidebarOpen } as const;
 }
 
 export function ChatLayout(...args: Parameters<typeof useChatLayoutController>) {
