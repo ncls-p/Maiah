@@ -5,6 +5,11 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
+const DropdownOpenContext = React.createContext<{
+  open: boolean;
+  setOpen: (open: boolean) => void;
+} | null>(null);
+
 function dropdownOrigin(side: string | undefined, align: string | undefined) {
   const verticalOrigin = side === "top" ? "bottom" : "top";
   const horizontalOrigin = align === "end" ? "right" : align === "center" ? "center" : "left";
@@ -12,12 +17,55 @@ function dropdownOrigin(side: string | undefined, align: string | undefined) {
   return `${verticalOrigin}-${horizontalOrigin}`;
 }
 
-function DropdownMenu({ ...props }: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
-  return <DropdownMenuPrimitive.Root data-slot="dropdown-menu" {...props} />;
+function DropdownMenu({ open, defaultOpen, onOpenChange, ...props }: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
+  const [internalOpen, setInternalOpen] = React.useState(defaultOpen ?? false);
+  const resolvedOpen = open ?? internalOpen;
+  const setOpen = React.useCallback(
+    (nextOpen: boolean) => {
+      if (open === undefined) setInternalOpen(nextOpen);
+      onOpenChange?.(nextOpen);
+    },
+    [onOpenChange, open],
+  );
+
+  return (
+    <DropdownOpenContext value={{ open: resolvedOpen, setOpen }}>
+      <DropdownMenuPrimitive.Root data-slot="dropdown-menu" modal={false} open={resolvedOpen} onOpenChange={setOpen} {...props} />
+    </DropdownOpenContext>
+  );
 }
 
-function DropdownMenuTrigger({ ...props }: React.ComponentProps<typeof DropdownMenuPrimitive.Trigger>) {
-  return <DropdownMenuPrimitive.Trigger data-slot="dropdown-menu-trigger" {...props} />;
+function assignRef<T>(ref: React.Ref<T> | undefined, value: T | null) {
+  if (typeof ref === "function") ref(value);
+  else if (ref) (ref as React.MutableRefObject<T | null>).current = value;
+}
+
+function DropdownMenuTrigger({ onClick, ref, ...props }: React.ComponentProps<typeof DropdownMenuPrimitive.Trigger>) {
+  const menu = React.useContext(DropdownOpenContext);
+  const composedRef = React.useCallback(
+    (node: HTMLElement | null) => {
+      assignRef(ref as React.Ref<HTMLElement> | undefined, node);
+      if (!node) return;
+      const preventPrimitivePointerToggle = (event: PointerEvent) => {
+        event.preventDefault();
+        event.stopPropagation();
+      };
+      node.addEventListener("pointerdown", preventPrimitivePointerToggle);
+      return () => node.removeEventListener("pointerdown", preventPrimitivePointerToggle);
+    },
+    [ref],
+  );
+  return (
+    <DropdownMenuPrimitive.Trigger
+      ref={composedRef}
+      data-slot="dropdown-menu-trigger"
+      onClick={(event) => {
+        onClick?.(event);
+        if (!event.defaultPrevented) menu?.setOpen(!menu.open);
+      }}
+      {...props}
+    />
+  );
 }
 
 function DropdownMenuContent({ className, align = "start", side = "bottom", sideOffset = 4, ...props }: React.ComponentProps<typeof DropdownMenuPrimitive.Content>) {

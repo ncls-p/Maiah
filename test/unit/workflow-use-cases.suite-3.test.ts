@@ -35,7 +35,7 @@ vi.mock("@/modules/workflows/runtime", () => ({
 
 import type { WorkflowDefinition } from "@/modules/workflows/contracts";
 import { createStarterDefinition } from "@/modules/workflows/contracts";
-import { WorkflowConflictError,WorkflowNotFoundError,WorkflowQueueError,createWorkflowRun,failQueuedWorkflowRun,getWorkflowDetail,getWorkflowRun,listQueuedWorkflowRunIds,listWorkflowRuns,processWorkflowRun } from "@/modules/workflows/use-cases";
+import { WorkflowConflictError,WorkflowNotFoundError,WorkflowQueueError,createWorkflowRun,getWorkflowDetail,getWorkflowRun,listQueuedWorkflowRunIds,listWorkflowRuns } from "@/modules/workflows/use-cases";
 
 const definition = createStarterDefinition();
 const workflow = {
@@ -156,13 +156,6 @@ describe("workflow run use cases", () => {
 });
 
 describe("workflow worker processing", () => {
-  function record(status = "queued") {
-    return {
-      run: { ...run, status },
-      version,
-    };
-  }
-
   it("lists queued identifiers for worker recovery", async () => {
     database.chain.limit.mockResolvedValueOnce([{ id: "run-1" }, { id: "run-2" }]);
     await expect(listQueuedWorkflowRunIds()).resolves.toEqual(["run-1", "run-2"]);

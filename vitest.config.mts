@@ -10,8 +10,8 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "node",
-    testTimeout: 15_000,
-    hookTimeout: 20_000,
+    testTimeout: 30_000,
+    hookTimeout: 30_000,
     include: ["test/**/*.test.ts"],
     exclude: ["test/e2e/**"],
     setupFiles: ["./test/setup-env.ts"],

@@ -10,7 +10,6 @@ import type { IamDatabaseScenarioContext } from "./iam-use-cases-db.context";
 
 export async function runIamDatabaseScenario6(context: IamDatabaseScenarioContext) {
   const { suffix, ownerId, organizationIds } = context;
-  const { organizationId } = context;
     const sourceProject = await createOrganizationWithProject({
       userId: ownerId,
       organizationName: `Migration source ${suffix}`,

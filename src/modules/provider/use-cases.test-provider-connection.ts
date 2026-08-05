@@ -1,10 +1,9 @@
-import { decryptValue } from "@/lib/crypto";
-import { normalizeOpenAICompatibleApiRoute } from "@/lib/openai-compatible-api";
 import { db } from "@/server/infrastructure/db";
 import { aiModels,aiProviders } from "@/server/infrastructure/db/schema";
-import type { ProviderHealth,ProviderRuntimeConfig } from "@/server/infrastructure/providers";
+import type { ProviderHealth } from "@/server/infrastructure/providers";
 import { getAdapter } from "@/server/infrastructure/providers";
 import { and,eq } from "drizzle-orm";
+import { buildProviderRuntimeConfig } from "./provider-runtime-config";
 
 // ─── Provider connection test ──────────────────────────────────────────
 
@@ -19,33 +18,8 @@ export async function testProviderConnection(providerId: string, workspaceId: st
     throw new Error("Provider not found");
   }
 
-  // Decrypt secrets for runtime config
-  let apiKey: string | undefined;
-  if (provider.encryptedApiKey) {
-    apiKey = await decryptValue(provider.encryptedApiKey);
-  }
-
-  let headers: Record<string, string> | undefined;
-  if (provider.encryptedHeadersJson) {
-    headers = {};
-    for (const [k, v] of Object.entries(provider.encryptedHeadersJson as Record<string, string>)) {
-      headers[k] = await decryptValue(v);
-    }
-  }
-
-  const runtimeConfig: ProviderRuntimeConfig = {
-    kind: provider.kind,
-    name: provider.name,
-    baseUrl: provider.baseUrl || undefined,
-    authType: provider.authType,
-    apiKey,
-    headers,
-    queryParams: (provider.queryParamsJson as Record<string, string>) || undefined,
-    openaiCompatibleApiRoute: normalizeOpenAICompatibleApiRoute(provider.openaiCompatibleApiRoute),
-  };
-
   const adapter = getAdapter(provider.kind);
-  const health = await adapter.validateConnection(runtimeConfig);
+  const health = await adapter.validateConnection(await buildProviderRuntimeConfig(provider));
 
   // Update health status in DB
   await db

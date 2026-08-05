@@ -1,12 +1,22 @@
 import { logHandledError } from "@/lib/logger";
 import { audit } from "@/server/domain/services/audit";
 import { db } from "@/server/infrastructure/db";
-import { marketplaceItems,marketplaceItemVersions } from "@/server/infrastructure/db/schema";
+import { agents,marketplaceItems,marketplaceItemVersions } from "@/server/infrastructure/db/schema";
 import { and,eq } from "drizzle-orm";
 import { sanitizeMarketplaceManifest } from "./manifest-sanitizer";
 import type { MarketplaceManifest,SourceResourceType } from "./manifest-types";
+import { buildAgentManifest } from "./manifest-builders";
 
 type MarketplaceVisibility = "public" | "private";
+
+export async function prepareAgentMarketplaceDraft(input: { agentId: string; workspaceId: string; userId: string; name?: string; description?: string }) {
+  const [agent] = await db.select().from(agents).where(and(eq(agents.id, input.agentId), eq(agents.workspaceId, input.workspaceId))).limit(1);
+  if (!agent || agent.createdById !== input.userId) throw new Error("Agent not found");
+  const name = input.name || agent.name;
+  const description = input.description ?? agent.description;
+  const manifest = await buildAgentManifest(input.agentId, input.workspaceId, name, description);
+  return { agent, description, manifest, name };
+}
 
 function slugify(value: string) {
   return value

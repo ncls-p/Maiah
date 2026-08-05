@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
 const helperMocks = vi.hoisted(() => ({
   upsertMarketplaceDraft: vi.fn(async (input: unknown) => ({ draft: input })),
   buildAgentManifest: vi.fn(async () => ({
@@ -34,7 +33,8 @@ const helperMocks = vi.hoisted(() => ({
   installPostInstallFlags: vi.fn(() => ({ requiresCredentials: false })),
 }));
 
-vi.mock("@/modules/marketplace/draft-helpers", () => ({
+vi.mock("@/modules/marketplace/draft-helpers", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/modules/marketplace/draft-helpers")>()),
   upsertMarketplaceDraft: helperMocks.upsertMarketplaceDraft,
 }));
 vi.mock("@/modules/marketplace/manifest-builders", () => ({

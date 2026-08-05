@@ -1,5 +1,5 @@
 import { expect,test } from "@playwright/test";
-import { ensureE2EUser,login } from "./fixtures";
+import { activate,ensureE2EUser,login } from "./fixtures";
 
 test.beforeAll(async () => {
   await ensureE2EUser();
@@ -154,7 +154,7 @@ test.describe("sidebar interactions", () => {
     if (await toggleBtn.isVisible()) {
       const initialWidth = await page.locator('[data-slot="workspace-history-sidebar"]').boundingBox();
 
-      await toggleBtn.click();
+      await activate(toggleBtn);
       await page.waitForTimeout(300);
 
       const collapsedWidth = await page.locator('[data-slot="workspace-history-sidebar"]').boundingBox();

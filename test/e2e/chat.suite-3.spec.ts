@@ -2,7 +2,7 @@ import nextEnv from "@next/env";
 import { expect,test } from "@playwright/test";
 import { randomUUID,webcrypto } from "node:crypto";
 import { Client } from "pg";
-import { databaseUrl,e2eUser,ensureE2EUser,login } from "./fixtures";
+import { activate,databaseUrl,e2eUser,ensureE2EUser,login } from "./fixtures";
 
 const { loadEnvConfig } = nextEnv;
 
@@ -227,12 +227,12 @@ test.describe("chat page", () => {
       await expect(transcript.getByRole("button", { name: "Continue this response" })).toBeVisible();
       await expect(transcript.locator('button[aria-label="Regenerate response"] + button[aria-label="Continue this response"]')).toHaveCount(1);
 
-      await transcript.getByRole("button", { name: "Show work phase" }).click();
+      await activate(transcript.getByRole("button", { name: "Show work phase" }));
       await expect(transcript.getByText("Failed", { exact: true })).toBeVisible();
       await expect(transcript.getByText("Completed", { exact: true })).toBeVisible();
       const detailedReasoning = transcript.locator('[data-reasoning-details="available"]');
       await expect(detailedReasoning).toBeVisible();
-      await detailedReasoning.getByRole("button", { name: "View", exact: true }).click();
+      await activate(detailedReasoning.getByRole("button", { name: "View", exact: true }));
       await expect(detailedReasoning.getByText("Inspect the failed query before preparing a corrected retry.", { exact: true })).toBeVisible();
       const compactReasoning = transcript.locator('[data-reasoning-details="unavailable"]');
       await expect(compactReasoning).toBeVisible();

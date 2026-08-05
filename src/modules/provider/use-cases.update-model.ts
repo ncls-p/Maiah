@@ -1,6 +1,4 @@
-import { decryptValue } from "@/lib/crypto";
 import { logHandledError } from "@/lib/logger";
-import { normalizeOpenAICompatibleApiRoute } from "@/lib/openai-compatible-api";
 import { db } from "@/server/infrastructure/db";
 import { aiModels,aiProviders } from "@/server/infrastructure/db/schema";
 import type { ModelDescriptor,ProviderRuntimeConfig } from "@/server/infrastructure/providers";
@@ -8,6 +6,7 @@ import { getAdapter } from "@/server/infrastructure/providers";
 import { and,eq,sql } from "drizzle-orm";
 import { MODEL_UPDATE_RULES,UpdateModelInput } from "./use-cases.test-provider-connection";
 import { listProviders } from "./use-cases.update-provider";
+import { buildProviderRuntimeConfig } from "./provider-runtime-config";
 
 function buildModelUpdates(input: UpdateModelInput) {
   const updates: Record<string, unknown> = { updatedAt: new Date() };
@@ -62,37 +61,12 @@ export async function discoverModels(providerId: string, workspaceId: string): P
     throw new Error("Provider not found");
   }
 
-  // Decrypt secrets
-  let apiKey: string | undefined;
-  if (provider.encryptedApiKey) {
-    apiKey = await decryptValue(provider.encryptedApiKey);
-  }
-
-  let headers: Record<string, string> | undefined;
-  if (provider.encryptedHeadersJson) {
-    headers = {};
-    for (const [k, v] of Object.entries(provider.encryptedHeadersJson as Record<string, string>)) {
-      headers[k] = await decryptValue(v);
-    }
-  }
-
-  const runtimeConfig: ProviderRuntimeConfig = {
-    kind: provider.kind,
-    name: provider.name,
-    baseUrl: provider.baseUrl || undefined,
-    authType: provider.authType,
-    apiKey,
-    headers,
-    queryParams: (provider.queryParamsJson as Record<string, string>) || undefined,
-    openaiCompatibleApiRoute: normalizeOpenAICompatibleApiRoute(provider.openaiCompatibleApiRoute),
-  };
-
   const adapter = getAdapter(provider.kind);
   if (!adapter.listModels) {
     throw new Error(`Model discovery not supported for kind: ${provider.kind}`);
   }
 
-  const models = await adapter.listModels(runtimeConfig);
+  const models = await adapter.listModels(await buildProviderRuntimeConfig(provider));
   return models;
 }
 

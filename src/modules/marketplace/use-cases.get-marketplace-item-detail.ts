@@ -1,8 +1,7 @@
 import { db } from "@/server/infrastructure/db";
-import { agents,marketplaceItemShares,marketplaceItemVersions,users } from "@/server/infrastructure/db/schema";
+import { marketplaceItemShares,marketplaceItemVersions,users } from "@/server/infrastructure/db/schema";
 import { and,desc,eq } from "drizzle-orm";
-import { upsertMarketplaceDraft } from "./draft-helpers";
-import { buildAgentManifest } from "./manifest-builders";
+import { prepareAgentMarketplaceDraft,upsertMarketplaceDraft } from "./draft-helpers";
 import { sanitizeMarketplaceManifest } from "./manifest-sanitizer";
 import { canManageMarketplaceItem,getMarketplaceItem,getMarketplaceItemWithShares,MarketplaceVisibility } from "./use-cases.marketplace-visibility";
 
@@ -111,17 +110,7 @@ export async function publishAgentDraft(
     visibility?: MarketplaceVisibility;
   } & DraftInputExtras,
 ) {
-  const [agent] = await db
-    .select()
-    .from(agents)
-    .where(and(eq(agents.id, input.agentId), eq(agents.workspaceId, input.workspaceId)))
-    .limit(1);
-  if (!agent || agent.createdById !== input.userId) {
-    throw new Error("Agent not found");
-  }
-
-  const name = input.name || agent.name;
-  const manifest = await buildAgentManifest(input.agentId, input.workspaceId, name, input.description ?? agent.description);
+  const { description, manifest, name } = await prepareAgentMarketplaceDraft(input);
 
   return upsertMarketplaceDraft({
     workspaceId: input.workspaceId,
@@ -132,7 +121,7 @@ export async function publishAgentDraft(
     version: input.version,
     changelog: input.changelog ?? "Initial marketplace publish",
     name,
-    description: input.description ?? agent.description,
+    description,
     visibility: input.visibility ?? "public",
     tags: input.tags,
     manifest,

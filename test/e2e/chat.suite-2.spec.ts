@@ -1,6 +1,6 @@
 import nextEnv from "@next/env";
 import { expect,test } from "@playwright/test";
-import { ensureE2EAssistant,ensureE2EUser,login } from "./fixtures";
+import { activate,ensureE2EAssistant,ensureE2EUser,fillControlled,login,openDropdown } from "./fixtures";
 
 const { loadEnvConfig } = nextEnv;
 
@@ -21,19 +21,19 @@ test.describe("chat page", () => {
 
     const membersSidebar = page.getByRole("complementary").first();
     await expect(membersSidebar).toBeVisible({ timeout: 15_000 });
-    await membersSidebar
-      .getByRole("button", {
+    await activate(
+      membersSidebar.getByRole("button", {
         name: "Collapse chat sidebar",
         exact: true,
-      })
-      .click();
+      }),
+    );
 
     await expect(membersSidebar).toBeHidden();
     await expect(page.getByRole("button", { name: "Open conversations", exact: true })).toBeVisible();
 
     await page.goto("/en/chat");
     await expect(page.getByRole("complementary")).toBeHidden();
-    await page.getByRole("button", { name: "Open conversations", exact: true }).click();
+    await activate(page.getByRole("button", { name: "Open conversations", exact: true }));
     await expect(page.getByRole("complementary").first()).toBeVisible();
 
     await page.goto("/en/agents");
@@ -50,7 +50,7 @@ test.describe("chat page", () => {
 
     const toolsTrigger = page.getByRole("button", { name: /chat capabilities/i }).first();
     await expect(toolsTrigger).toBeVisible({ timeout: 15_000 });
-    await toolsTrigger.click();
+    await openDropdown(toolsTrigger);
 
     await expect(page.getByRole("heading", { name: "Chat capabilities" })).toBeVisible();
     const capabilitiesMenu = page.getByRole("menu", {
@@ -110,7 +110,7 @@ test.describe("chat page", () => {
       name: "Message",
       exact: true,
     });
-    await messageInput.fill("Keep this unsent draft with every attachment.");
+    await fillControlled(messageInput, "Keep this unsent draft with every attachment.");
     const fileInput = page.locator('input[type="file"]');
     await expect(fileInput).toHaveCount(1);
     await fileInput.setInputFiles(
@@ -143,11 +143,11 @@ test.describe("chat page", () => {
     await expect(page).toHaveURL(/\/en\/chat/);
 
     // Navigate to agents from the shared Orbit product navigation.
-    await page.getByRole("link", { name: "Assistants", exact: true }).click();
+    await activate(page.getByRole("link", { name: "Assistants", exact: true }));
     await expect(page).toHaveURL(/\/en\/agents/);
 
     // Navigate back to chat
-    await page.getByRole("link", { name: "Chat", exact: true }).click();
+    await activate(page.getByRole("link", { name: "Chat", exact: true }));
     await expect(page).toHaveURL(/\/en\/chat/);
   });
 });

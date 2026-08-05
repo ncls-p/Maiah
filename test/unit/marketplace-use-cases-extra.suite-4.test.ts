@@ -34,7 +34,8 @@ const helperMocks = vi.hoisted(() => ({
   installPostInstallFlags: vi.fn(() => ({ requiresCredentials: false })),
 }));
 
-vi.mock("@/modules/marketplace/draft-helpers", () => ({
+vi.mock("@/modules/marketplace/draft-helpers", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/modules/marketplace/draft-helpers")>()),
   upsertMarketplaceDraft: helperMocks.upsertMarketplaceDraft,
 }));
 vi.mock("@/modules/marketplace/manifest-builders", () => ({

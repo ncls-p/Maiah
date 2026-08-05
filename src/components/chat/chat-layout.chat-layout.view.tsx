@@ -7,7 +7,7 @@ import { SetupWizard } from "@/components/setup/setup-wizard";
 import { APP_SIDEBAR_SURFACE_CLASS } from "@/components/sidebar-chrome";
 import { Button } from "@/components/ui/button";
 import { Dialog,DialogContent,DialogDescription,DialogHeader,DialogTitle } from "@/components/ui/dialog";
-import { Sheet,SheetContent,SheetHeader,SheetTitle,SheetTrigger } from "@/components/ui/sheet";
+import { Sheet,SheetContent,SheetDescription,SheetHeader,SheetTitle,SheetTrigger } from "@/components/ui/sheet";
 import { MAX_APP_SIDEBAR_WIDTH,MIN_APP_SIDEBAR_WIDTH } from "@/lib/sidebar-layout";
 import { cn } from "@/lib/utils";
 import { ChatComposerControlsContext } from "./chat-layout.chat-composer-controls-context";
@@ -70,6 +70,7 @@ export function ChatLayoutView({ model }: { model: Model }) {
                   <SheetContent side="left" className="w-[min(100vw-2rem,22rem)] p-0">
                     <SheetHeader className="sr-only">
                       <SheetTitle>{t("conversations")}</SheetTitle>
+                      <SheetDescription>{t("openConversations")}</SheetDescription>
                     </SheetHeader>
                     <ChatSidebar {...mobileSidebarProps} />
                   </SheetContent>

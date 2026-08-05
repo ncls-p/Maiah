@@ -10,7 +10,7 @@ import { agents,organizationMembers,roleBindings,roles,teamMembers,workspaces } 
 import type { IamDatabaseScenarioContext } from "./iam-use-cases-db.context";
 
 export async function runIamDatabaseScenario4(context: IamDatabaseScenarioContext) {
-  const { suffix, ownerId, memberId, userIds, organizationIds, memberEmail } = context;
+  const { suffix, ownerId, memberId, organizationIds, memberEmail } = context;
   const { organizationId, firstProjectId } = context;
     await addOrganizationMember({
       actorUserId: ownerId,

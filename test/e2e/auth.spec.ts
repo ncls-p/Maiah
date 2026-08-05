@@ -1,5 +1,5 @@
 import { expect,test } from "@playwright/test";
-import { e2eUser,ensureE2EUser,login } from "./fixtures";
+import { e2eUser,ensureE2EUser,login,openDropdown } from "./fixtures";
 
 test.beforeAll(async () => {
   await ensureE2EUser();
@@ -91,7 +91,7 @@ test.describe("authentication", () => {
       });
 
       await expect(async () => {
-        await accountMenu.click();
+        await openDropdown(accountMenu);
         await expect(page.getByRole("menuitem", { name: /Sign out/i })).toBeVisible();
       }).toPass({ timeout: 10_000 });
     });

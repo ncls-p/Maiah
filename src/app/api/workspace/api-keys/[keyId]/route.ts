@@ -1,8 +1,8 @@
-import { handleRoute,requireWorkspaceMemberAsync } from "@/lib/route-handler";
-import { getApiKeyAccessScope } from "@/modules/api-keys/permissions";
+import { handleRoute } from "@/lib/route-handler";
 import { revokeWorkspaceApiKey } from "@/modules/api-keys/use-cases";
 import { NextRequest,NextResponse } from "next/server";
 import { z } from "zod";
+import { getApiKeyRouteAccess } from "../api-key-route-access";
 
 const querySchema = z.object({ workspaceId: z.uuid() });
 
@@ -18,19 +18,9 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ k
         return NextResponse.json({ error: "Invalid input" }, { status: 400 });
       }
 
-      const forbidden = await requireWorkspaceMemberAsync(session.user.id, parsed.data.workspaceId);
-      if (forbidden) return forbidden;
-
-      const accessScope = await getApiKeyAccessScope(session.user.id, parsed.data.workspaceId);
-      if (!accessScope) {
-        return NextResponse.json(
-          {
-            error: "Forbidden",
-            reason: "Missing permission: apiKeys.manageOwn",
-          },
-          { status: 403 },
-        );
-      }
+      const access = await getApiKeyRouteAccess(session.user.id, parsed.data.workspaceId);
+      if (!access.ok) return access.response;
+      const { accessScope } = access;
 
       await revokeWorkspaceApiKey({
         keyId,

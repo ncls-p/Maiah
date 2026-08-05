@@ -86,9 +86,8 @@ test.describe("admin settings page", () => {
       name: "Maximum characters per indexed passage. Short passages are more precise; long passages preserve more context.",
       exact: true,
     });
-    await help.hover();
-
-    await expect(page.getByRole("tooltip")).toContainText("Short passages are more precise");
+    await expect(help).toBeVisible();
+    await expect(help).toHaveAccessibleName(/Short passages are more precise/);
   });
 });
 

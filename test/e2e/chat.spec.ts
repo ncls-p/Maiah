@@ -1,10 +1,32 @@
 import nextEnv from "@next/env";
-import { expect,test } from "@playwright/test";
-import { ensureE2EUser,login } from "./fixtures";
+import { expect,type Locator,type Page,test } from "@playwright/test";
+import { activate,ensureE2EUser,login } from "./fixtures";
 
 const { loadEnvConfig } = nextEnv;
 
 loadEnvConfig(process.cwd());
+
+async function expectReachable(locator: Locator) {
+  await expect(locator).toBeVisible();
+  let box: { height: number; width: number; x: number; y: number } | null = null;
+  await expect
+    .poll(async () => {
+      box = await locator.evaluate((element) => {
+        const rect = element.getBoundingClientRect();
+        return { height: rect.height, width: rect.width, x: rect.x, y: rect.y };
+      });
+      return box.width * box.height;
+    })
+    .toBeGreaterThan(0);
+  return box!;
+}
+
+async function openConversationSheet(page: Page) {
+  const trigger = page.getByRole("button", { name: "Open conversations", exact: true });
+  await expect(trigger).toBeVisible();
+  await activate(trigger);
+  await expect(page.locator('[data-slot="sheet-content"]')).toBeVisible();
+}
 
 test.beforeAll(async () => {
   await ensureE2EUser();
@@ -24,10 +46,11 @@ test.describe("chat page", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/en/chat");
 
-    await page.getByRole("button", { name: "Open conversations", exact: true }).click();
-    const logo = page.locator('img[alt="Deodis"]:visible').first();
-    await expect(logo).toBeVisible({ timeout: 15_000 });
-    await expect(logo).toHaveAttribute("data-no-outline", "true");
+    await expect(async () => {
+      await openConversationSheet(page);
+      await expect(page.locator('[data-slot="sheet-content"] img[data-no-outline="true"]')).toBeVisible();
+    }).toPass({ timeout: 15_000 });
+    const logo = page.locator('[data-slot="sheet-content"] img[data-no-outline="true"]');
     expect(await logo.evaluate((element) => getComputedStyle(element).outlineStyle)).toBe("none");
 
     const brandLink = logo.locator("xpath=..");
@@ -93,31 +116,25 @@ test.describe("chat page", () => {
       exact: true,
     });
 
-    await expect(newConversation).toBeVisible();
-    await expect(historySearch).toBeVisible();
-    await expect(createFolder).toBeVisible();
-    await expect(collapseSidebar).toBeVisible();
-
-    const desktopBoxes = await Promise.all([newConversation.boundingBox(), historySearch.boundingBox(), createFolder.boundingBox(), collapseSidebar.boundingBox()]);
+    const desktopBoxes = await Promise.all([expectReachable(newConversation), expectReachable(historySearch), expectReachable(createFolder), expectReachable(collapseSidebar)]);
     for (const box of desktopBoxes) {
-      expect(box).not.toBeNull();
-      expect(box!.width).toBeGreaterThanOrEqual(40);
-      expect(box!.height).toBeGreaterThanOrEqual(40);
+      expect(box.width).toBeGreaterThanOrEqual(40);
+      expect(box.height).toBeGreaterThanOrEqual(40);
     }
     expect(desktopBoxes[0]!.y).toBeLessThan(desktopBoxes[1]!.y);
     expect(desktopBoxes[1]!.y).toBeLessThan(desktopBoxes[2]!.y);
     expect(desktopBoxes[3]!.y).toBeLessThan(desktopBoxes[0]!.y);
 
-    await createFolder.click();
+    await activate(createFolder);
     const folderName = desktopSidebar.getByRole("textbox", {
       name: "Folder name",
     });
     await expect(folderName).toBeFocused();
-    await folderName.press("Escape");
+    await folderName.dispatchEvent("keydown", { key: "Escape" });
     await expect(folderName).toBeHidden();
 
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.getByRole("button", { name: "Open conversations", exact: true }).click();
+    await openConversationSheet(page);
 
     const mobileSidebar = page.locator('[data-slot="sheet-content"]');
     await expect(mobileSidebar).toBeVisible();

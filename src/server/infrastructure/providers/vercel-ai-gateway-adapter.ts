@@ -2,6 +2,7 @@ import { logger } from "@/lib/logger";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import type { EmbeddingModelV4,LanguageModelV4 } from "@ai-sdk/provider";
 import type { ModelCapability,ModelDescriptor,ProviderAdapter,ProviderHealth,ProviderRuntimeConfig } from "./adapter";
+import { validateModelsEndpoint } from "./adapter-health";
 
 const DEFAULT_CAPABILITIES: ModelCapability = {
   text: true,
@@ -35,44 +36,7 @@ export const vercelAiGatewayAdapter: ProviderAdapter = {
   kind: "vercel-ai-gateway",
 
   async validateConnection(config: ProviderRuntimeConfig): Promise<ProviderHealth> {
-    const start = Date.now();
-    try {
-      const baseUrl = normalizeBaseUrl(config.baseUrl);
-      const headers: Record<string, string> = {
-        ...config.headers,
-      };
-
-      if (config.authType === "gateway" && config.apiKey) {
-        headers["Authorization"] = `Bearer ${config.apiKey}`;
-      } else if (config.authType === "bearer" && config.apiKey) {
-        headers["Authorization"] = `Bearer ${config.apiKey}`;
-      }
-
-      const res = await fetch(`${baseUrl}/models`, {
-        headers,
-        signal: AbortSignal.timeout(10_000),
-      });
-
-      if (!res.ok) {
-        return {
-          status: "unhealthy",
-          message: `HTTP ${res.status}: ${res.statusText}`,
-          latencyMs: Date.now() - start,
-        };
-      }
-
-      return {
-        status: "healthy",
-        message: "Connected successfully",
-        latencyMs: Date.now() - start,
-      };
-    } catch (err) {
-      return {
-        status: "unhealthy",
-        message: (err as Error).message,
-        latencyMs: Date.now() - start,
-      };
-    }
+    return validateModelsEndpoint(config, normalizeBaseUrl(config.baseUrl), gatewayHeaders(config));
   },
 
   async listModels(config: ProviderRuntimeConfig): Promise<ModelDescriptor[]> {

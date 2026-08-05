@@ -88,10 +88,10 @@ export function useChatPageController() {
     setInterfaceMode(mode);
   }
 
-  function resetInterfaceMode() {
+  const resetInterfaceMode = useCallback(() => {
     userSelectedInterfaceModeRef.current = null;
     setInterfaceMode(CHAT_INTERFACE_MODE);
-  }
+  }, []);
 
   function updateCodingChatWidth(width: number) {
     const nextWidth = normalizeCodeWorkspaceChatWidth(width);

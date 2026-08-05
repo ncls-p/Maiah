@@ -1,33 +1,14 @@
 import { generateImage } from "ai";
 import { and,eq,isNull } from "drizzle-orm";
 
-import { decryptValue } from "@/lib/crypto";
 import { createChatImageAttachment } from "@/modules/chat/attachments";
 import { calculateImageUsageImpact,parseImageGenerationConfig } from "@/modules/provider/model-runtime-config";
 import { getUsageImpactSetting } from "@/modules/provider/usage-impact-settings";
 import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
 import { aiModels,aiProviders,usageEvents } from "@/server/infrastructure/db/schema";
-import type { ProviderRuntimeConfig } from "@/server/infrastructure/providers";
 import { getAdapter } from "@/server/infrastructure/providers";
-
-async function providerRuntimeConfig(provider: typeof aiProviders.$inferSelect): Promise<ProviderRuntimeConfig> {
-  const apiKey = provider.encryptedApiKey ? await decryptValue(provider.encryptedApiKey) : undefined;
-  const headers: Record<string, string> = {};
-  for (const [key, encryptedValue] of Object.entries((provider.encryptedHeadersJson as Record<string, string> | null) ?? {})) {
-    headers[key] = await decryptValue(encryptedValue);
-  }
-  return {
-    kind: provider.kind,
-    name: provider.name,
-    baseUrl: provider.baseUrl ?? undefined,
-    authType: provider.authType,
-    apiKey,
-    headers: Object.keys(headers).length > 0 ? headers : undefined,
-    queryParams: (provider.queryParamsJson as Record<string, string> | null) ?? undefined,
-    openaiCompatibleApiRoute: provider.openaiCompatibleApiRoute as "responses" | "chat-completions",
-  };
-}
+import { buildProviderRuntimeConfig } from "./provider-runtime-config";
 
 export async function generateWorkspaceImage(input: { workspaceId: string; userId: string; conversationId?: string; prompt: string; size?: string }) {
   const rows = await db
@@ -68,7 +49,7 @@ export async function generateWorkspaceImage(input: { workspaceId: string; userI
 
   const startedAt = Date.now();
   const result = await generateImage({
-    model: adapter.createImageModel(await providerRuntimeConfig(selected.provider), selected.model.modelId),
+    model: adapter.createImageModel(await buildProviderRuntimeConfig(selected.provider), selected.model.modelId),
     prompt: input.prompt,
     size: requestedSize as `${number}x${number}`,
     n: 1,

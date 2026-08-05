@@ -7,58 +7,17 @@ import type { ModelDescriptor,ProviderAdapter,ProviderHealth,ProviderRuntimeConf
 import { buildHeaders,createCompatibleRerankingModel,normalizeBaseUrl } from "./openai-compatible-adapter.default-capabilities";
 import { createResponsesFetch } from "./openai-compatible-adapter.normalize-responses-reasoning-sse-line";
 import { parseModels } from "./openai-compatible-adapter.parse-models";
+import { fetchModelCatalog,validateModelsEndpoint } from "./adapter-health";
 
 export const openaiCompatibleAdapter: ProviderAdapter = {
   kind: "openai-compatible",
 
   async validateConnection(config: ProviderRuntimeConfig): Promise<ProviderHealth> {
-    const start = Date.now();
-    try {
-      const baseUrl = normalizeBaseUrl(config.baseUrl);
-      const headers = buildHeaders(config);
-
-      const res = await fetch(`${baseUrl}/models`, {
-        headers,
-        signal: AbortSignal.timeout(10_000),
-      });
-
-      if (!res.ok) {
-        return {
-          status: "unhealthy",
-          message: `HTTP ${res.status}: ${res.statusText}`,
-          latencyMs: Date.now() - start,
-        };
-      }
-
-      return {
-        status: "healthy",
-        message: "Connected successfully",
-        latencyMs: Date.now() - start,
-      };
-    } catch (err) {
-      return {
-        status: "unhealthy",
-        message: (err as Error).message,
-        latencyMs: Date.now() - start,
-      };
-    }
+    return validateModelsEndpoint(config, normalizeBaseUrl(config.baseUrl), buildHeaders(config));
   },
 
   async listModels(config: ProviderRuntimeConfig): Promise<ModelDescriptor[]> {
-    const baseUrl = normalizeBaseUrl(config.baseUrl);
-    const headers = buildHeaders(config);
-
-    const res = await fetch(`${baseUrl}/models`, {
-      headers,
-      signal: AbortSignal.timeout(15_000),
-    });
-
-    if (!res.ok) {
-      throw new Error(`Failed to list models: HTTP ${res.status}`);
-    }
-
-    const data = (await res.json()) as unknown;
-    const models = parseModels(data);
+    const models = parseModels(await fetchModelCatalog(normalizeBaseUrl(config.baseUrl), buildHeaders(config)));
     return isCloudTempleBaseUrl(config.baseUrl) ? models.map(enrichCloudTempleModel) : models;
   },
 

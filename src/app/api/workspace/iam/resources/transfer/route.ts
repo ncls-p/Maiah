@@ -3,8 +3,8 @@ import { z } from "zod";
 
 import { handleRoute } from "@/lib/route-handler";
 import { executeResourceTransfer,listResourceTransferDestinations,previewResourceTransfer,RESOURCE_TRANSFER_ROOT_TYPES,TRANSFER_ACCESS_POLICIES,TRANSFER_OWNERSHIP_POLICIES,TRANSFER_SECRET_POLICIES } from "@/modules/iam/resource-transfer";
-import { IamOperationError } from "@/modules/iam/use-cases";
 import { executeWorkspaceClone,previewWorkspaceClone } from "@/modules/iam/workspace-clone";
+import { expectedIamError } from "../../transfer-route-support";
 
 const optionsSchema = z.object({
   includeDependencies: z.boolean(),
@@ -34,13 +34,6 @@ const transferSchema = z.discriminatedUnion("action", [
     confirmationToken: z.string().length(64),
   }),
 ]);
-
-function expectedIamError(error: unknown) {
-  if (error instanceof IamOperationError) {
-    return NextResponse.json({ error: error.message }, { status: error.status });
-  }
-  return null;
-}
 
 export async function GET(req: NextRequest) {
   return handleRoute(

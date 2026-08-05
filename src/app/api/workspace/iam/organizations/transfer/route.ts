@@ -4,7 +4,7 @@ import { z } from "zod";
 import { handleRoute } from "@/lib/route-handler";
 import { executeOrganizationClone,executeOrganizationTransfer,listOrganizationTransferDestinations,previewOrganizationClone,previewOrganizationTransfer } from "@/modules/iam/organization-transfer";
 import { TRANSFER_SECRET_POLICIES } from "@/modules/iam/resource-transfer";
-import { IamOperationError } from "@/modules/iam/use-cases";
+import { expectedIamError } from "../../transfer-route-support";
 
 const requestSchema = z.discriminatedUnion("action", [
   z.object({
@@ -23,13 +23,6 @@ const requestSchema = z.discriminatedUnion("action", [
     confirmationToken: z.string().length(64),
   }),
 ]);
-
-function expectedIamError(error: unknown) {
-  if (error instanceof IamOperationError) {
-    return NextResponse.json({ error: error.message }, { status: error.status });
-  }
-  return null;
-}
 
 export async function GET(req: NextRequest) {
   return handleRoute(
