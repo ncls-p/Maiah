@@ -1,10 +1,10 @@
-import { and,eq,inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 
 import { type AccessResourceType } from "@/server/domain/entities/access-resource";
 import { db } from "@/server/infrastructure/db";
-import { agentDelegationBindings,agentKnowledgeBindings,agentSkillBindings,agentSkills,agentToolBindings,agentVersions,agents,aiModels,aiProviders,conversations,customTools,knowledgeBases,marketplaceItems,mcpServers,mcpTools,scheduledTasks,toolConnections,toolConnectors,workflows } from "@/server/infrastructure/db/schema";
+import { agentDelegationBindings, agentKnowledgeBindings, agentSkillBindings, agentSkills, agentToolBindings, agentVersions, agents, aiModels, aiProviders, conversations, customTools, knowledgeBases, marketplaceItems, mcpServers, mcpTools, scheduledTasks, toolConnections, toolConnectors, workflows } from "@/server/infrastructure/db/schema";
 
-import { ResourceTransferRootType,TransferSeed,addResource,emptyTransferSets,ids } from "./resource-transfer.transfer-access-policies";
+import { ResourceTransferRootType, TransferSeed, addResource, emptyTransferSets, ids } from "./resource-transfer.transfer-access-policies";
 import { IamOperationError } from "./use-cases";
 
 export async function expandTransferGraph(sourceWorkspaceId: string, root: Omit<TransferSeed, "type"> & { type: ResourceTransferRootType }) {

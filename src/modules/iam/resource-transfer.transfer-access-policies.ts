@@ -1,5 +1,5 @@
 import { getWorkspacesByUserId } from "@/modules/workspace/use-cases";
-import { ACCESS_RESOURCE_TYPES,type AccessResourceType } from "@/server/domain/entities/access-resource";
+import { ACCESS_RESOURCE_TYPES, type AccessResourceType } from "@/server/domain/entities/access-resource";
 import { authorization } from "@/server/domain/services/authorization";
 
 import { IamOperationError } from "./use-cases";
