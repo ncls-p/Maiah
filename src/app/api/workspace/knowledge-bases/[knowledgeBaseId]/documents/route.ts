@@ -6,10 +6,13 @@ import {
 } from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
 import {
+  getKnowledgeBase,
   ingestTextDocument,
   listDocuments,
 } from "@/modules/knowledge/use-cases";
 import { extractKnowledgeUploads } from "@/modules/knowledge/file-ingestion";
+import { getDefaultRagConfig } from "@/modules/knowledge/rag-config";
+import { parseRagConfig } from "@/modules/knowledge/rag-config-schema";
 
 const querySchema = z.object({ workspaceId: z.uuid() });
 const createSchema = z.object({
@@ -104,6 +107,17 @@ export async function POST(
         );
         let extracted: Awaited<ReturnType<typeof extractKnowledgeUploads>>;
         try {
+          const knowledgeBase = await getKnowledgeBase(
+            knowledgeBaseId,
+            workspaceId.data,
+            session.user.id,
+          );
+          if (!knowledgeBase) {
+            return NextResponse.json(
+              { error: "Knowledge base not found" },
+              { status: 404 },
+            );
+          }
           extracted = await extractKnowledgeUploads(
             await Promise.all(
               uploads.map(async (file) => ({
@@ -112,6 +126,13 @@ export async function POST(
                 bytes: new Uint8Array(await file.arrayBuffer()),
               })),
             ),
+            {
+              workspaceId: workspaceId.data,
+              config:
+                knowledgeBase.ragConfigJson === null
+                  ? await getDefaultRagConfig()
+                  : parseRagConfig(knowledgeBase.ragConfigJson),
+            },
           );
         } catch (error) {
           return NextResponse.json(

@@ -27,6 +27,43 @@ export const ragConfigSchema = z
       providerId: z.uuid().nullable().default(null),
       modelId: z.string().trim().max(255).default(""),
     }),
+    extraction: z
+      .object({
+        engine: z.literal("anydoc").default("anydoc"),
+        ocr: z
+          .object({
+            enabled: z.boolean().default(false),
+            providerId: z.uuid().nullable().default(null),
+            modelId: z.string().trim().max(255).default(""),
+            minimumTextCharactersPerPage: z
+              .number()
+              .int()
+              .min(0)
+              .max(10_000)
+              .default(80),
+            maxVisualPages: z.number().int().min(1).max(500).default(50),
+            describeDiagrams: z.boolean().default(true),
+          })
+          .default({
+            enabled: false,
+            providerId: null,
+            modelId: "",
+            minimumTextCharactersPerPage: 80,
+            maxVisualPages: 50,
+            describeDiagrams: true,
+          }),
+      })
+      .default({
+        engine: "anydoc",
+        ocr: {
+          enabled: false,
+          providerId: null,
+          modelId: "",
+          minimumTextCharactersPerPage: 80,
+          maxVisualPages: 50,
+          describeDiagrams: true,
+        },
+      }),
   })
   .superRefine((config, context) => {
     if (config.chunking.overlapCharacters >= config.chunking.maxCharacters) {
@@ -41,6 +78,14 @@ export const ragConfigSchema = z
         code: "custom",
         path: ["reranking", "modelId"],
         message: "A reranking model is required when reranking is enabled",
+      });
+    }
+    if (config.extraction.ocr.enabled && !config.extraction.ocr.modelId) {
+      context.addIssue({
+        code: "custom",
+        path: ["extraction", "ocr", "modelId"],
+        message:
+          "An OCR/VLM model is required when visual extraction is enabled",
       });
     }
   });
@@ -59,15 +104,14 @@ export function parseRagConfig(value: unknown): RagConfig {
   return parsed.success ? parsed.data : DEFAULT_RAG_CONFIG;
 }
 
-export function hasSameRagModelSelection(
-  left: RagConfig,
-  right: RagConfig,
-) {
+export function hasSameRagModelSelection(left: RagConfig, right: RagConfig) {
   return (
     left.embedding.providerId === right.embedding.providerId &&
     left.embedding.modelId === right.embedding.modelId &&
     left.embedding.dimensions === right.embedding.dimensions &&
     left.reranking.providerId === right.reranking.providerId &&
-    left.reranking.modelId === right.reranking.modelId
+    left.reranking.modelId === right.reranking.modelId &&
+    left.extraction.ocr.providerId === right.extraction.ocr.providerId &&
+    left.extraction.ocr.modelId === right.extraction.ocr.modelId
   );
 }

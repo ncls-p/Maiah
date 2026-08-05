@@ -72,7 +72,8 @@ async function toRuntimeConfig(
     queryParams:
       (provider.queryParamsJson as Record<string, string> | null) ?? undefined,
     openaiCompatibleApiRoute: provider.openaiCompatibleApiRoute as
-      "responses" | "chat-completions",
+      | "responses"
+      | "chat-completions",
   };
 }
 
@@ -150,4 +151,23 @@ export async function resolveRerankingModel(
     resolved.runtime,
     config.reranking.modelId,
   );
+}
+
+export async function resolveOcrModel(workspaceId: string, config: RagConfig) {
+  if (!config.extraction.ocr.enabled || !config.extraction.ocr.modelId) {
+    return null;
+  }
+  const resolved = await resolveProvider({
+    workspaceId,
+    providerId: config.extraction.ocr.providerId,
+    modelId: config.extraction.ocr.modelId,
+  });
+  if (!resolved) return null;
+  return {
+    model: resolved.adapter.createChatModel(
+      resolved.runtime,
+      config.extraction.ocr.modelId,
+    ),
+    providerId: resolved.provider.id,
+  };
 }

@@ -249,6 +249,6 @@ describe("upload security", () => {
 				workspaceId: "11111111-1111-4111-8111-111111111111",
 				userId: "user-1",
 			}),
-		).resolves.toMatchObject({ text: "## Page 1\n\nHello PDF" });
+		).resolves.toMatchObject({ text: expect.stringContaining("Hello PDF") });
 	});
 });

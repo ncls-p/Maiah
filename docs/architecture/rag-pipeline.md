@@ -32,12 +32,13 @@ flowchart TD
   ADV --> UP
   UP --> RAW["Stockage source durable"]
   RAW --> Q["Job persistant par document"]
-  Q --> DET["Détection MIME et structure"]
-  DET --> EXT{"Extraction déterministe possible ?"}
-  EXT -- "Oui" --> TXT["Extraction texte et structure"]
-  EXT -- "Non" --> OCR["OCR / VLM configurable"]
-  TXT --> CH["Chunking versionné"]
-  OCR --> CH
+  Q --> ANY["AnyDoc · texte, structure et tableaux"]
+  ANY --> VIS{"Régions visuelles utiles ?"}
+  VIS -- "Non ou OCR désactivé" --> CH["Chunking versionné"]
+  VIS -- "Oui" --> CROP["Pages / assets ciblés uniquement"]
+  CROP --> OCR["OCR / VLM configurable · coordonnées 0..1000"]
+  OCR --> REBUILD["Fusion Markdown + provenance visuelle"]
+  REBUILD --> CH
   CH --> EMB["Embeddings configurables"]
   EMB --> IDX["Index vectoriel via adaptateur"]
 
@@ -57,10 +58,36 @@ Les PDF, DOCX, CSV et archives restent dans le stockage objet pour permettre une
 réextraction. PGVector est l'adaptateur initial ; Qdrant ou Chroma pourront être
 ajoutés derrière le même port sans changer le contrat des outils agent.
 
+## Extraction documentaire partagée
+
+L'extraction n'appartient pas au seul module RAG. Le service partagé est aussi
+utilisé par les pièces jointes documentaires du chat et constitue le point
+d'entrée pour les futurs imports de la plateforme.
+
+1. AnyDoc produit d'abord le Markdown déterministe pour les formats Office,
+   OpenDocument, PDF, CSV, RTF et EPUB. Sa structure, en particulier ses
+   tableaux et cellules fusionnées, reste la source de vérité.
+2. Si l'OCR est désactivé, le traitement s'arrête là : aucun modèle visuel
+   n'est appelé.
+3. S'il est activé, les PDF sont filtrés par densité de texte et présence
+   d'images. Seules les pages candidates sont rendues. Pour les documents
+   Office, seuls les assets images exposés par AnyDoc sont envoyés au VLM.
+4. Le VLM renvoie des régions typées avec leur texte, leur description et une
+   boîte normalisée sur un plan `0..1000`. Pour un PDF, la provenance conserve
+   aussi le numéro de page ; pour un asset Office, les coordonnées restent
+   relatives à l'image et la partie d'origine AnyDoc est conservée.
+
+L'OCR ne doit donc jamais reconstruire un tableau lisible qu'AnyDoc a déjà
+extrait. Il sert uniquement au texte pixelisé et à la compréhension des
+diagrammes, schémas, graphiques et images utiles.
+
 ## Invariants d'exécution
 
 - Chaque document possède un état et un pourcentage propres ; un lot n'efface
   jamais la progression individuelle.
+- L'OCR est désactivé par défaut. L'administrateur peut l'activer dans les
+  valeurs plateforme ; une Data Source peut reprendre ce défaut ou le
+  surcharger. Le choix du modèle OCR/VLM reste soumis à `models.manage`.
 - PostgreSQL reste la source de vérité des jobs. BullMQ accélère le traitement,
   et le worker réconcilie les lignes `processing` après une panne ou un restart.
 - Une Data Source liée ne déclenche aucune recherche automatique. Le modèle

@@ -120,6 +120,7 @@ interface RagModelOption {
   modelId: string;
   displayName?: string;
   embeddings: boolean;
+  vision: boolean;
 }
 
 function cloneRagConfig(config: RagConfig): RagConfig {
@@ -128,6 +129,10 @@ function cloneRagConfig(config: RagConfig): RagConfig {
     chunking: { ...config.chunking },
     retrieval: { ...config.retrieval },
     reranking: { ...config.reranking },
+    extraction: {
+      ...config.extraction,
+      ocr: { ...config.extraction.ocr },
+    },
   };
 }
 
@@ -155,10 +160,16 @@ function RagConfigFields({
   )
     ? models.filter((model) => model.modelId.toLowerCase().includes("rerank"))
     : models;
+  const visionModels = models.some((model) => model.vision)
+    ? models.filter((model) => model.vision)
+    : models;
   const modelValue = (model: RagModelOption) =>
     `${model.providerId}:${model.modelId}`;
 
-  function selectModel(value: string, target: "embedding" | "reranking") {
+  function selectModel(
+    value: string,
+    target: "embedding" | "reranking" | "ocr",
+  ) {
     const model = models.find((candidate) => modelValue(candidate) === value);
     if (!model) return;
     onChange(
@@ -171,14 +182,26 @@ function RagConfigFields({
               modelId: model.modelId,
             },
           }
-        : {
-            ...config,
-            reranking: {
-              ...config.reranking,
-              providerId: model.providerId,
-              modelId: model.modelId,
+        : target === "reranking"
+          ? {
+              ...config,
+              reranking: {
+                ...config.reranking,
+                providerId: model.providerId,
+                modelId: model.modelId,
+              },
+            }
+          : {
+              ...config,
+              extraction: {
+                ...config.extraction,
+                ocr: {
+                  ...config.extraction.ocr,
+                  providerId: model.providerId,
+                  modelId: model.modelId,
+                },
+              },
             },
-          },
     );
   }
 
@@ -385,6 +408,163 @@ function RagConfigFields({
           </p>
         )}
       </div>
+
+      <div className="grid gap-3 rounded-lg border p-3">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <Label htmlFor={`${idPrefix}-ocr-enabled`}>
+              {t("ragOcrEnabled")}
+            </Label>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {t("ragOcrHint")}
+            </p>
+          </div>
+          <Checkbox
+            id={`${idPrefix}-ocr-enabled`}
+            checked={config.extraction.ocr.enabled}
+            onCheckedChange={(checked) =>
+              onChange({
+                ...config,
+                extraction: {
+                  ...config.extraction,
+                  ocr: {
+                    ...config.extraction.ocr,
+                    enabled: checked === true,
+                  },
+                },
+              })
+            }
+          />
+        </div>
+        {config.extraction.ocr.enabled ? (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {canManageModels ? (
+              <div className="grid gap-1.5 sm:col-span-2">
+                <Label htmlFor={`${idPrefix}-ocr-model`}>
+                  {t("ragOcrModel")}
+                </Label>
+                <Select onValueChange={(value) => selectModel(value, "ocr")}>
+                  <SelectTrigger id={`${idPrefix}-ocr-model`}>
+                    <SelectValue
+                      placeholder={
+                        discoveringModels
+                          ? t("ragDiscoveringModels")
+                          : t("ragSelectVisionModel")
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {visionModels.map((model) => (
+                        <SelectItem
+                          key={`ocr-${modelValue(model)}`}
+                          value={modelValue(model)}
+                        >
+                          {model.providerName} ·{" "}
+                          {model.displayName || model.modelId}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+                <Input
+                  aria-label={t("ragExactOcrModelId")}
+                  value={config.extraction.ocr.modelId}
+                  onChange={(event) =>
+                    onChange({
+                      ...config,
+                      extraction: {
+                        ...config.extraction,
+                        ocr: {
+                          ...config.extraction.ocr,
+                          providerId: null,
+                          modelId: event.target.value,
+                        },
+                      },
+                    })
+                  }
+                  placeholder={t("ragExactOcrModelId")}
+                />
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground sm:col-span-2">
+                {config.extraction.ocr.modelId || t("ragInheritedModel")}
+              </p>
+            )}
+            <div className="grid gap-1.5">
+              <Label htmlFor={`${idPrefix}-ocr-min-text`}>
+                {t("ragOcrMinimumText")}
+              </Label>
+              <Input
+                id={`${idPrefix}-ocr-min-text`}
+                type="number"
+                min={0}
+                max={10000}
+                value={config.extraction.ocr.minimumTextCharactersPerPage}
+                onChange={(event) =>
+                  onChange({
+                    ...config,
+                    extraction: {
+                      ...config.extraction,
+                      ocr: {
+                        ...config.extraction.ocr,
+                        minimumTextCharactersPerPage: Number(
+                          event.target.value,
+                        ),
+                      },
+                    },
+                  })
+                }
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor={`${idPrefix}-ocr-max-pages`}>
+                {t("ragOcrMaxPages")}
+              </Label>
+              <Input
+                id={`${idPrefix}-ocr-max-pages`}
+                type="number"
+                min={1}
+                max={500}
+                value={config.extraction.ocr.maxVisualPages}
+                onChange={(event) =>
+                  onChange({
+                    ...config,
+                    extraction: {
+                      ...config.extraction,
+                      ocr: {
+                        ...config.extraction.ocr,
+                        maxVisualPages: Number(event.target.value),
+                      },
+                    },
+                  })
+                }
+              />
+            </div>
+            <div className="flex items-center justify-between gap-3 rounded-lg border p-3 sm:col-span-2 lg:col-span-4">
+              <Label htmlFor={`${idPrefix}-ocr-diagrams`}>
+                {t("ragOcrDescribeDiagrams")}
+              </Label>
+              <Checkbox
+                id={`${idPrefix}-ocr-diagrams`}
+                checked={config.extraction.ocr.describeDiagrams}
+                onCheckedChange={(checked) =>
+                  onChange({
+                    ...config,
+                    extraction: {
+                      ...config.extraction,
+                      ocr: {
+                        ...config.extraction.ocr,
+                        describeDiagrams: checked === true,
+                      },
+                    },
+                  })
+                }
+              />
+            </div>
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -524,7 +704,8 @@ export default function KnowledgePage() {
       );
       if (!res.ok) throw new Error(t("errorLoadAgents"));
       const data = (await res.json()) as
-        { agents?: KnowledgeAgent[] } | KnowledgeAgent[];
+        | { agents?: KnowledgeAgent[] }
+        | KnowledgeAgent[];
       setAttachAgents(Array.isArray(data) ? data : (data.agents ?? []));
     } catch (error) {
       setAttachAgentsError(true);
@@ -705,7 +886,7 @@ export default function KnowledgePage() {
             models: Array<{
               modelId: string;
               displayName?: string;
-              capabilities?: { embeddings?: boolean };
+              capabilities?: { embeddings?: boolean; vision?: boolean };
             }>;
           }>;
         }>;
@@ -719,6 +900,7 @@ export default function KnowledgePage() {
               modelId: model.modelId,
               displayName: model.displayName,
               embeddings: model.capabilities?.embeddings === true,
+              vision: model.capabilities?.vision === true,
             })),
           ),
         ),
@@ -1305,7 +1487,7 @@ export default function KnowledgePage() {
                           ref={documentInputRef}
                           type="file"
                           multiple
-                          accept=".txt,.md,.markdown,.csv,.tsv,.json,.jsonl,.pdf,.docx,.pptx,.xlsx,.xlsm,.rtf,.html,.xml,.yaml,.yml,.zip,text/*"
+                          accept=".txt,.md,.markdown,.csv,.tsv,.json,.jsonl,.pdf,.doc,.docx,.docm,.ppt,.pptx,.pptm,.pps,.ppsx,.ppsm,.pot,.xlsx,.xls,.xlsm,.xlsb,.rtf,.odt,.ods,.odp,.epub,.html,.xml,.yaml,.yml,.png,.jpg,.jpeg,.webp,.gif,.zip,text/*,image/png,image/jpeg,image/webp,image/gif"
                           className="hidden"
                           onChange={(event) => {
                             ingestSelectedFiles(event.target.files);

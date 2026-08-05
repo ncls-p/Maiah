@@ -31,6 +31,7 @@ type DiscoveredModel = {
   modelId: string;
   displayName?: string;
   embeddings: boolean;
+  vision: boolean;
 };
 
 export function RagSettings({ initialState }: { initialState: RagConfig }) {
@@ -56,7 +57,7 @@ export function RagSettings({ initialState }: { initialState: RagConfig }) {
             models: Array<{
               modelId: string;
               displayName?: string;
-              capabilities?: { embeddings?: boolean };
+              capabilities?: { embeddings?: boolean; vision?: boolean };
             }>;
           }>;
         }>;
@@ -70,6 +71,7 @@ export function RagSettings({ initialState }: { initialState: RagConfig }) {
               modelId: model.modelId,
               displayName: model.displayName,
               embeddings: model.capabilities?.embeddings === true,
+              vision: model.capabilities?.vision === true,
             })),
           ),
         );
@@ -94,12 +96,19 @@ export function RagSettings({ initialState }: { initialState: RagConfig }) {
     );
     return likelyRerankers.length > 0 ? likelyRerankers : models;
   }, [models]);
+  const visionModels = useMemo(() => {
+    const explicitlySupported = models.filter((model) => model.vision);
+    return explicitlySupported.length > 0 ? explicitlySupported : models;
+  }, [models]);
 
   function modelValue(model: DiscoveredModel) {
     return `${model.providerId}:${model.modelId}`;
   }
 
-  function selectModel(value: string, target: "embedding" | "reranking") {
+  function selectModel(
+    value: string,
+    target: "embedding" | "reranking" | "ocr",
+  ) {
     const model = models.find((candidate) => modelValue(candidate) === value);
     if (!model) return;
     setSettings(
@@ -114,14 +123,26 @@ export function RagSettings({ initialState }: { initialState: RagConfig }) {
               modelId: model.modelId,
             },
           }
-        : {
-            ...settings,
-            reranking: {
-              ...settings.reranking,
-              providerId: null,
-              modelId: model.modelId,
+        : target === "reranking"
+          ? {
+              ...settings,
+              reranking: {
+                ...settings.reranking,
+                providerId: null,
+                modelId: model.modelId,
+              },
+            }
+          : {
+              ...settings,
+              extraction: {
+                ...settings.extraction,
+                ocr: {
+                  ...settings.extraction.ocr,
+                  providerId: null,
+                  modelId: model.modelId,
+                },
+              },
             },
-          },
     );
   }
 
@@ -139,7 +160,8 @@ export function RagSettings({ initialState }: { initialState: RagConfig }) {
         body: JSON.stringify(settings),
       });
       const data = (await response.json().catch(() => null)) as
-        (RagConfig & { error?: string }) | null;
+        | (RagConfig & { error?: string })
+        | null;
       if (!response.ok || !data)
         throw new Error(data?.error || t("saveFailed"));
       setSettings(data);
@@ -340,6 +362,158 @@ export function RagSettings({ initialState }: { initialState: RagConfig }) {
                 }
                 placeholder={t("modelPlaceholder")}
               />
+            </div>
+          ) : null}
+        </div>
+        <div className="rounded-xl border bg-background p-4">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <Label htmlFor="rag-ocr">{t("ocr")}</Label>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {t("ocrHint")}
+              </p>
+            </div>
+            <Switch
+              id="rag-ocr"
+              checked={settings.extraction.ocr.enabled}
+              onCheckedChange={(enabled) =>
+                setSettings({
+                  ...settings,
+                  extraction: {
+                    ...settings.extraction,
+                    ocr: { ...settings.extraction.ocr, enabled },
+                  },
+                })
+              }
+            />
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            {t("anydocHint")}
+          </p>
+          {settings.extraction.ocr.enabled ? (
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-1.5 sm:col-span-2">
+                <Label htmlFor="rag-discovered-ocr-model">
+                  {t("discoveredOcrModel")}
+                </Label>
+                <Select onValueChange={(value) => selectModel(value, "ocr")}>
+                  <SelectTrigger id="rag-discovered-ocr-model">
+                    <SelectValue
+                      placeholder={
+                        discovering
+                          ? t("discoveringModels")
+                          : t("selectVisionModel")
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {visionModels.map((model) => (
+                        <SelectItem
+                          key={`ocr-${modelValue(model)}`}
+                          value={modelValue(model)}
+                        >
+                          {model.providerName} ·{" "}
+                          {model.displayName || model.modelId}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+                <Label htmlFor="rag-ocr-model">{t("ocrModel")}</Label>
+                <Input
+                  id="rag-ocr-model"
+                  value={settings.extraction.ocr.modelId}
+                  onChange={(event) =>
+                    setSettings({
+                      ...settings,
+                      extraction: {
+                        ...settings.extraction,
+                        ocr: {
+                          ...settings.extraction.ocr,
+                          providerId: null,
+                          modelId: event.target.value,
+                        },
+                      },
+                    })
+                  }
+                  placeholder={t("modelPlaceholder")}
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="rag-ocr-minimum-text">
+                  {t("ocrMinimumText")}
+                </Label>
+                <Input
+                  id="rag-ocr-minimum-text"
+                  type="number"
+                  min={0}
+                  max={10000}
+                  value={settings.extraction.ocr.minimumTextCharactersPerPage}
+                  onChange={(event) =>
+                    setSettings({
+                      ...settings,
+                      extraction: {
+                        ...settings.extraction,
+                        ocr: {
+                          ...settings.extraction.ocr,
+                          minimumTextCharactersPerPage: numberValue(
+                            event.target.value,
+                            settings.extraction.ocr
+                              .minimumTextCharactersPerPage,
+                          ),
+                        },
+                      },
+                    })
+                  }
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="rag-ocr-max-pages">{t("ocrMaxPages")}</Label>
+                <Input
+                  id="rag-ocr-max-pages"
+                  type="number"
+                  min={1}
+                  max={500}
+                  value={settings.extraction.ocr.maxVisualPages}
+                  onChange={(event) =>
+                    setSettings({
+                      ...settings,
+                      extraction: {
+                        ...settings.extraction,
+                        ocr: {
+                          ...settings.extraction.ocr,
+                          maxVisualPages: numberValue(
+                            event.target.value,
+                            settings.extraction.ocr.maxVisualPages,
+                          ),
+                        },
+                      },
+                    })
+                  }
+                />
+              </div>
+              <div className="flex items-center justify-between gap-4 rounded-lg border p-3 sm:col-span-2">
+                <Label htmlFor="rag-ocr-diagrams">
+                  {t("ocrDescribeDiagrams")}
+                </Label>
+                <Switch
+                  id="rag-ocr-diagrams"
+                  checked={settings.extraction.ocr.describeDiagrams}
+                  onCheckedChange={(describeDiagrams) =>
+                    setSettings({
+                      ...settings,
+                      extraction: {
+                        ...settings.extraction,
+                        ocr: {
+                          ...settings.extraction.ocr,
+                          describeDiagrams,
+                        },
+                      },
+                    })
+                  }
+                />
+              </div>
             </div>
           ) : null}
         </div>

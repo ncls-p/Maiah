@@ -5,6 +5,7 @@ import {
   extractUploadedFileText,
   maxChatAttachmentBytes,
 } from "@/modules/chat/attachments";
+import type { RagConfig } from "@/modules/knowledge/rag-config-schema";
 
 const MAX_FILES_PER_BATCH = 100;
 const MAX_EXPANDED_ZIP_BYTES = 50 * 1024 * 1024;
@@ -77,7 +78,10 @@ async function expandZip(upload: KnowledgeUpload): Promise<KnowledgeUpload[]> {
   return files;
 }
 
-export async function extractKnowledgeUploads(uploads: KnowledgeUpload[]) {
+export async function extractKnowledgeUploads(
+  uploads: KnowledgeUpload[],
+  context?: { workspaceId: string; config: RagConfig },
+) {
   if (uploads.length === 0) throw new Error("Select at least one file.");
   if (uploads.length > MAX_FILES_PER_BATCH) {
     throw new Error(`Uploads are limited to ${MAX_FILES_PER_BATCH} files.`);
@@ -110,9 +114,11 @@ export async function extractKnowledgeUploads(uploads: KnowledgeUpload[]) {
     const title = safeUploadName(upload.fileName) || "document";
     try {
       const extracted = await extractUploadedFileText({
+        workspaceId: context?.workspaceId,
         fileName: title,
         mimeType: upload.mimeType,
         bytes: upload.bytes,
+        ...(context ? { config: context.config } : {}),
       });
       if (!extracted.text || extracted.status === "unreadable") {
         rejected.push({
