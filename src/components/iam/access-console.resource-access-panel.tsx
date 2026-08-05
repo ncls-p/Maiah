@@ -1,11 +1,11 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { type FormEvent,useCallback,useEffect,useMemo,useState } from "react";
 import { toast } from "sonner";
 
 import { fetchJson } from "@/lib/api-client";
-import { AccessAssignment, AccessResource, AccessResourceDefinition, ResourceAccessSnapshot } from "./access-console.access-member";
+import { AccessAssignment,AccessResource,AccessResourceDefinition,ResourceAccessSnapshot } from "./access-console.access-member";
 import { ResourceAccessPanelView } from "./access-console.resource-access-panel.view";
 import { ResourceTransferPreview } from "./access-console.resource-transfer-preview";
 import { useResourceTransfer } from "./access-console.use-resource-transfer";

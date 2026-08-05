@@ -1,6 +1,6 @@
 import { Trash2Icon } from "lucide-react";
 
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { AlertDialog,AlertDialogAction,AlertDialogCancel,AlertDialogContent,AlertDialogDescription,AlertDialogFooter,AlertDialogHeader,AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Spinner } from "@/components/ui/spinner";
 import type { ResourceAccessPanelViewModel } from "./access-console.resource-access-panel.view";
 export function ResourceAccessPanelSection3({ model }: { model: ResourceAccessPanelViewModel }) {

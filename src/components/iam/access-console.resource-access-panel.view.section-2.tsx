@@ -1,11 +1,11 @@
-import { PlusIcon, SearchIcon, Trash2Icon } from "lucide-react";
+import { PlusIcon,SearchIcon,Trash2Icon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Field, FieldLabel } from "@/components/ui/field";
+import { Dialog,DialogContent,DialogDescription,DialogHeader,DialogTitle } from "@/components/ui/dialog";
+import { Field,FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select,SelectContent,SelectItem,SelectTrigger,SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import type { ResourceAccessPanelViewModel } from "./access-console.resource-access-panel.view";
 export function ResourceAccessPanelSection2({ model }: { model: ResourceAccessPanelViewModel }) {

@@ -3,8 +3,8 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { fetchJson } from "@/lib/api-client";
-import type { AccessResource, TransferDestination } from "./access-console.access-member";
-import { INITIAL_TRANSFER_OPTIONS, type ResourceTransferOptions, type ResourceTransferPreview } from "./access-console.resource-transfer-preview";
+import type { AccessResource,TransferDestination } from "./access-console.access-member";
+import { INITIAL_TRANSFER_OPTIONS,type ResourceTransferOptions,type ResourceTransferPreview } from "./access-console.resource-transfer-preview";
 
 export function useResourceTransfer(input: { workspaceId: string; loadResources: () => Promise<void> }) {
   const { workspaceId, loadResources } = input;

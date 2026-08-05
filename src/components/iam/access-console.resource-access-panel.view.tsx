@@ -1,5 +1,5 @@
 import { ScopeMigrationDialog } from "@/components/iam/scope-migration-dialog";
-import { Card, CardAction, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card,CardAction,CardDescription,CardHeader,CardTitle } from "@/components/ui/card";
 import type { useResourceAccessPanelController } from "./access-console.resource-access-panel";
 import { ResourceAccessPanelSection1 } from "./access-console.resource-access-panel.view.section-1";
 import { ResourceAccessPanelSection2 } from "./access-console.resource-access-panel.view.section-2";
