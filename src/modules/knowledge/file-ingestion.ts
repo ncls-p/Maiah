@@ -1,5 +1,5 @@
-import path from "node:path";
 import JSZip from "jszip";
+import path from "node:path";
 
 import { extractUploadedFileText } from "@/modules/chat/attachments";
 import type { RagConfig } from "@/modules/knowledge/rag-config-schema";

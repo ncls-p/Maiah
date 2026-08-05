@@ -1,8 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe,expect,it } from "vitest";
 
 import {
-  chatTodoListFromUnknown,
-  createChatTodoList,
+chatTodoListFromUnknown,
+createChatTodoList,
 } from "@/modules/chat/todo-list";
 
 describe("chat to-do lists", () => {

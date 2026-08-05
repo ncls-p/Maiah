@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach,describe,expect,it,vi } from "vitest";
 
 const database = vi.hoisted(() => ({
   selections: [] as Array<{
@@ -37,11 +37,11 @@ vi.mock("@/server/infrastructure/db", () => ({
 }));
 
 import {
-  builtInToolRequiresApprovalByDefault,
-  getOrganizationBuiltInToolPolicyMap,
-  listOrganizationBuiltInToolPolicies,
-  resolveOrganizationBuiltInToolPolicies,
-  updateOrganizationBuiltInToolPolicy,
+builtInToolRequiresApprovalByDefault,
+getOrganizationBuiltInToolPolicyMap,
+listOrganizationBuiltInToolPolicies,
+resolveOrganizationBuiltInToolPolicies,
+updateOrganizationBuiltInToolPolicy,
 } from "@/modules/tool/organization-builtin-tool-policies";
 
 beforeEach(() => {

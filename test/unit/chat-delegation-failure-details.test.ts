@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe,expect,it } from "vitest";
 
 import { delegationFailureDetails } from "@/components/chat/chat-message-rendering-utils";
 

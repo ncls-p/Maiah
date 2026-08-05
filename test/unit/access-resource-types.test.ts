@@ -1,11 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { describe,expect,it } from "vitest";
 
 import {
-  ACCESS_RESOURCE_DEFINITIONS,
-  ACCESS_RESOURCE_TYPES,
-  isAccessResourceType,
-  resourceDefinition,
-  ROLE_BINDING_RESOURCE_TYPES,
+ACCESS_RESOURCE_DEFINITIONS,
+ACCESS_RESOURCE_TYPES,
+isAccessResourceType,
+resourceDefinition,
+ROLE_BINDING_RESOURCE_TYPES,
 } from "@/server/domain/entities/access-resource";
 
 describe("access resource registry", () => {

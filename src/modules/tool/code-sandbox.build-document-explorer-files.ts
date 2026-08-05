@@ -1,30 +1,18 @@
-import { existsSync } from "node:fs";
-import http from "node:http";
 import path from "node:path";
 
-import { env } from "@/lib/env";
-import { logger, logHandledWarning } from "@/lib/logger";
-import { isPathTraversal } from "@/lib/path-utils";
+import { maxSandboxInputFileBytes } from "./code-sandbox.code-sandbox-output-file";
 import {
-  createChatAttachment,
-  getChatAttachmentBytes,
-  getChatAttachmentExtractedText,
-  isChatFileAttachment,
-  type ChatAttachment,
-} from "@/modules/chat/attachments";
-import {
-  DocumentExplorerFile,
-  documentExplorerMetadataReserveBytes,
-  documentExplorerRootPath,
-  safeRelativePath,
+DocumentExplorerFile,
+documentExplorerMetadataReserveBytes,
+documentExplorerRootPath,
+safeRelativePath,
 } from "./code-sandbox.failed-sandbox-result";
 import {
-  groupDocumentUnits,
-  groupTitle,
-  safeDocumentChunkSlug,
-  utf8Prefix,
+groupDocumentUnits,
+groupTitle,
+safeDocumentChunkSlug,
+utf8Prefix,
 } from "./code-sandbox.group-document-units";
-import { maxSandboxInputFileBytes } from "./code-sandbox.code-sandbox-output-file";
 
 export function buildDocumentExplorerFiles(input: {
   filePath: string;

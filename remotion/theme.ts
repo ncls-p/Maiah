@@ -1,7 +1,7 @@
 import { loadFont as loadInstrumentSerif } from "@remotion/google-fonts/InstrumentSerif";
 import { loadFont as loadManrope } from "@remotion/google-fonts/Manrope";
-import { Easing, interpolate } from "remotion";
 import type { CSSProperties } from "react";
+import { Easing,interpolate } from "remotion";
 
 const manrope = loadManrope("normal", {
 	weights: ["400", "500", "600", "700", "800"],

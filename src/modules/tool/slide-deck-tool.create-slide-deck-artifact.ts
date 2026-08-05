@@ -1,9 +1,8 @@
-import { z } from "zod";
-import { SlideDeckInput } from "./slide-deck-tool.slide-deck-input-schema";
 import {
-  createSlideDeckCss,
-  createSlideDeckHtml,
+createSlideDeckCss,
+createSlideDeckHtml,
 } from "./slide-deck-tool.create-slide-deck-html";
+import { SlideDeckInput } from "./slide-deck-tool.slide-deck-input-schema";
 
 function createSlideDeckJs() {
   return `(function () {

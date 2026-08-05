@@ -1,20 +1,20 @@
 import {
-  pgTable,
-  text,
-  integer,
-  timestamp,
-  boolean,
-  varchar,
-  uuid,
-  jsonb,
-  index,
-  uniqueIndex,
-  pgEnum,
+boolean,
+index,
+integer,
+jsonb,
+pgEnum,
+pgTable,
+text,
+timestamp,
+uniqueIndex,
+uuid,
+varchar,
 } from "drizzle-orm/pg-core";
-import { users } from "./auth";
-import { workspaces } from "./workspace";
 import { agentVersions } from "./agents";
-import { conversations, messages } from "./conversations";
+import { users } from "./auth";
+import { conversations,messages } from "./conversations";
+import { workspaces } from "./workspace";
 
 const CREATED_AT_COLUMN = "created_at";
 const UPDATED_AT_COLUMN = "updated_at";

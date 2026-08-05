@@ -1,38 +1,33 @@
-import { createHash, randomUUID } from "node:crypto";
-import { readFile, rm, stat } from "node:fs/promises";
-import os from "node:os";
-import path from "node:path";
 import JSZip from "jszip";
+import { randomUUID } from "node:crypto";
 
-import { logHandledError } from "@/lib/logger";
-import { isPathTraversal } from "@/lib/path-utils";
 import { storage } from "@/server/infrastructure/storage";
 import {
-  CodeWorkspaceFileSummary,
-  CodeWorkspaceMetadata,
-  CodeWorkspaceReadResult,
-  fileObjectKey,
-  maxExtractedBytes,
-  maxFiles,
-  maxTextFileBytes,
-  maxZipBytes,
-} from "./storage.code-workspace-file-summary";
-import {
-  declaredZipUncompressedSize,
-  deleteUploadedProject,
-  isAllowedPath,
-  isIgnoredPath,
-  isTextWorkspacePath,
-  normalizeWorkspacePath,
+declaredZipUncompressedSize,
+deleteUploadedProject,
+isAllowedPath,
+isIgnoredPath,
+isTextWorkspacePath,
+normalizeWorkspacePath,
 } from "./storage.assert-safe-project-id";
 import {
-  codeWorkspaceArtifact,
-  contentTypeForPath,
-  findRootFile,
-  getCodeWorkspace,
-  hashBytes,
-  saveMetadata,
-  titleFromFileName,
+CodeWorkspaceFileSummary,
+CodeWorkspaceMetadata,
+CodeWorkspaceReadResult,
+fileObjectKey,
+maxExtractedBytes,
+maxFiles,
+maxTextFileBytes,
+maxZipBytes,
+} from "./storage.code-workspace-file-summary";
+import {
+codeWorkspaceArtifact,
+contentTypeForPath,
+findRootFile,
+getCodeWorkspace,
+hashBytes,
+saveMetadata,
+titleFromFileName,
 } from "./storage.content-type-for-path";
 
 export async function createCodeWorkspaceFromZip(input: {

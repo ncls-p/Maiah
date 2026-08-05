@@ -1,6 +1,6 @@
 import type {
-  ChatConversation,
-  ChatConversationFolder,
+ChatConversation,
+ChatConversationFolder,
 } from "@/components/chat/chat-types";
 
 export type ConversationListPage = {

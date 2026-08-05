@@ -1,24 +1,16 @@
-import { createHash, randomUUID } from "node:crypto";
-import path from "node:path";
 import JSZip from "jszip";
 import "pdf-parse/worker";
-import { PDFParse } from "pdf-parse";
-import TurndownService from "turndown";
 
-import { logHandledWarning } from "@/lib/logger";
-import { extractDocument } from "@/modules/document-extraction/service";
-import type { RagConfig } from "@/modules/knowledge/rag-config-schema";
-import { storage } from "@/server/infrastructure/storage";
 import {
-  AttachmentDetection,
-  htmlToMarkdown,
-  maxMarkdownTableColumns,
-  maxMarkdownTableRows,
+AttachmentDetection,
+htmlToMarkdown,
+maxMarkdownTableColumns,
+maxMarkdownTableRows,
 } from "./attachments.chat-image-attachment";
 import {
-  decodeXmlEntities,
-  markdownLanguagesByExtension,
-  normalizeExtractedText,
+decodeXmlEntities,
+markdownLanguagesByExtension,
+normalizeExtractedText,
 } from "./attachments.detect-attachment";
 
 function fencedMarkdown(value: string, language = "text") {

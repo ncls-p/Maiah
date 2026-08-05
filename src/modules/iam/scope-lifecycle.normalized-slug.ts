@@ -1,19 +1,16 @@
-import { and, eq, inArray, isNull, ne, or } from "drizzle-orm";
+import { and,eq,isNull,ne } from "drizzle-orm";
 
+import { getWorkspacesByUserId } from "@/modules/workspace/use-cases";
 import { ACCESS_RESOURCE_TYPES } from "@/server/domain/entities/access-resource";
 import { audit } from "@/server/domain/services/audit";
 import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
 import { listAccessResources } from "@/server/infrastructure/db/access-resource-repository";
 import {
-  organizationMembers,
-  organizations,
-  roleBindings,
-  roles,
-  teams,
-  workspaces,
+organizationMembers,
+organizations,
+workspaces
 } from "@/server/infrastructure/db/schema";
-import { getWorkspacesByUserId } from "@/modules/workspace/use-cases";
 
 import { IamOperationError } from "./use-cases";
 

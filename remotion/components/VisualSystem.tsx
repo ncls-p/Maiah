@@ -1,7 +1,7 @@
-import type { CSSProperties, ReactNode } from "react";
-import { AbsoluteFill, interpolate, random, useCurrentFrame } from "remotion";
+import type { CSSProperties,ReactNode } from "react";
+import { AbsoluteFill,interpolate,random,useCurrentFrame } from "remotion";
 
-import { COLORS, BODY_FONT, sceneOpacity } from "../theme";
+import { BODY_FONT,COLORS,sceneOpacity } from "../theme";
 
 export function SceneLayer({
 	children,

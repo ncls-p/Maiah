@@ -1,15 +1,15 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest,NextResponse } from "next/server";
 import { z } from "zod";
 
 import {
-  handleRoute,
-  requireWorkspacePermissionAsync,
+handleRoute,
+requireWorkspacePermissionAsync,
 } from "@/lib/route-handler";
 import {
-  getChatAttachment,
-  getChatAttachmentExtractedText,
-  maxChatAttachmentPreviewChars,
-  publicChatAttachment,
+getChatAttachment,
+getChatAttachmentExtractedText,
+maxChatAttachmentPreviewChars,
+publicChatAttachment,
 } from "@/modules/chat/attachments";
 
 const paramsSchema = z.object({ attachmentId: z.uuid() });

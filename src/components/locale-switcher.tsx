@@ -1,12 +1,12 @@
 "use client";
 
-import type { ComponentProps } from "react";
-import { useLocale, useTranslations } from "next-intl";
-import { usePathname, useRouter } from "@/i18n/navigation";
-import { locales, type Locale } from "@/i18n/routing";
 import { Button } from "@/components/ui/button";
+import { usePathname,useRouter } from "@/i18n/navigation";
+import { locales,type Locale } from "@/i18n/routing";
 import { cn } from "@/lib/utils";
 import { LanguagesIcon } from "lucide-react";
+import { useLocale,useTranslations } from "next-intl";
+import type { ComponentProps } from "react";
 
 export function LocaleSwitcher({
   className,

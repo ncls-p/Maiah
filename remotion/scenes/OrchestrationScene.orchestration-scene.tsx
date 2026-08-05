@@ -1,23 +1,20 @@
-import type { LucideIcon } from "lucide-react";
 import {
-	BracesIcon,
-	ChartNoAxesCombinedIcon,
-	CheckIcon,
-	NetworkIcon,
-	ScanSearchIcon,
-	ShieldCheckIcon,
-	UserRoundCheckIcon,
+BracesIcon,
+ChartNoAxesCombinedIcon,
+ScanSearchIcon,
+ShieldCheckIcon,
+UserRoundCheckIcon
 } from "lucide-react";
-import { interpolate, useCurrentFrame } from "remotion";
+import { useCurrentFrame } from "remotion";
 
 import {
-	Hairline,
-	SceneLabel,
-	SceneLayer,
-	StatusPill,
+Hairline,
+SceneLabel,
+SceneLayer,
+StatusPill,
 } from "../components/VisualSystem";
-import { COLORS, DISPLAY_FONT, progress, rise, scaleIn } from "../theme";
-import { Connection, SpecialistNode } from "./OrchestrationScene.connection";
+import { COLORS,DISPLAY_FONT,rise,scaleIn } from "../theme";
+import { Connection,SpecialistNode } from "./OrchestrationScene.connection";
 import { OrchestratorCore } from "./OrchestrationScene.orchestrator-core";
 
 

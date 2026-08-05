@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 
-import { ensureBootstrapAdmin, isAdminRole } from "@/modules/admin/use-cases";
-import { getSession } from "@/modules/auth/session";
+import { ensureBootstrapAdmin,isAdminRole } from "@/modules/admin/use-cases";
 import { getRequestAuthContext } from "@/modules/auth/request-auth-context";
+import { getSession } from "@/modules/auth/session";
 import { hasWorkspacePermissionForRequest } from "@/modules/auth/workspace-access";
 
 type Session = NonNullable<Awaited<ReturnType<typeof getSession>>>;

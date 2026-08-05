@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
-import { Geist_Mono, Instrument_Sans, Newsreader } from "next/font/google";
+import { Geist_Mono,Instrument_Sans,Newsreader } from "next/font/google";
 import { cookies } from "next/headers";
 
-import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { defaultLocale,locales } from "@/i18n/routing";
 import { cn } from "@/lib/utils";
-import { defaultLocale, locales } from "@/i18n/routing";
+import "./globals.css";
 
 const fontBody = Instrument_Sans({
   subsets: ["latin"],

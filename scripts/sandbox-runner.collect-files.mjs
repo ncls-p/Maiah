@@ -1,29 +1,23 @@
 #!/usr/bin/env node
-import { spawn } from "node:child_process";
-import { createHash, randomUUID } from "node:crypto";
+import { createHash,randomUUID } from "node:crypto";
 import {
-	constants as fsConstants,
-	createReadStream,
-	createWriteStream,
+constants as fsConstants
 } from "node:fs";
 import {
-	access,
-	chmod,
-	chown,
-	lstat,
-	mkdir,
-	mkdtemp,
-	readFile,
-	readdir,
-	rm,
-	symlink,
-	writeFile,
+access,
+chmod,
+chown,
+lstat,
+mkdir,
+readFile,
+readdir,
+rm
 } from "node:fs/promises";
 import { createServer } from "node:http";
 import path from "node:path";
-import { canSwitchUser, jsonResponse, log, maxCollectedFileBytes, maxCollectedFiles, maxDownloadFileBytes, maxDownloadTotalBytes, maxFilePreviewBytes, maxStdoutFileBytes, runRoot, socketGid, socketPath } from "./sandbox-runner.socket-path";
-import { executeProcess, isProbablyText, mimeTypeForPath, prepareRun } from "./sandbox-runner.prepare-run";
-import { readJsonBody } from "./sandbox-runner.read-json-body";
+import { executeProcess,isProbablyText,mimeTypeForPath,prepareRun } from "./sandbox-runner.prepare-run.mjs";
+import { readJsonBody } from "./sandbox-runner.read-json-body.mjs";
+import { canSwitchUser,jsonResponse,log,maxCollectedFileBytes,maxCollectedFiles,maxDownloadFileBytes,maxDownloadTotalBytes,maxFilePreviewBytes,maxStdoutFileBytes,runRoot,socketGid,socketPath } from "./sandbox-runner.socket-path.mjs";
 
 
 async function collectFiles(root, inputHashes) {

@@ -1,33 +1,21 @@
-import { and, asc, eq, gte, inArray, isNull, lte, sql } from "drizzle-orm";
-import { cosineSimilarity, embed, embedMany, rerank } from "ai";
-import { encryptValue, decryptValue } from "@/lib/crypto";
+import { decryptValue } from "@/lib/crypto";
 import { logger } from "@/lib/logger";
 import {
-  enqueueDocumentIngestion,
-  recoverDocumentIngestionJob,
-} from "@/modules/knowledge/queue";
-import { audit } from "@/server/domain/services/audit";
-import { authorization } from "@/server/domain/services/authorization";
+resolveEmbeddingModel,
+resolveRerankingModel,
+type RagConfig
+} from "@/modules/knowledge/rag-config";
 import { db } from "@/server/infrastructure/db";
 import {
-  agentKnowledgeBindings,
-  documentChunks,
-  documentEmbeddings,
-  documents,
-  knowledgeBases,
+documentChunks,
+documentEmbeddings,
+documents
 } from "@/server/infrastructure/db/schema";
-import {
-  getDefaultRagConfig,
-  hasSameRagModelSelection,
-  parseRagConfig,
-  ragConfigSchema,
-  resolveEmbeddingModel,
-  resolveRerankingModel,
-  type RagConfig,
-} from "@/modules/knowledge/rag-config";
-import { KnowledgeSearchHit, scoreContent } from "./use-cases.list-documents";
-import { getKnowledgeBase } from "./use-cases.list-knowledge-bases";
+import { cosineSimilarity,embed,rerank } from "ai";
+import { and,eq } from "drizzle-orm";
 import { effectiveRagConfig } from "./use-cases.create-knowledge-base-input";
+import { KnowledgeSearchHit,scoreContent } from "./use-cases.list-documents";
+import { getKnowledgeBase } from "./use-cases.list-knowledge-bases";
 
 async function searchKnowledgeBaseByKeyword(input: {
   workspaceId: string;

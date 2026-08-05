@@ -1,9 +1,9 @@
-import { DefaultChatTransport, type UIMessage, type UIMessageChunk } from "ai";
+import { type UIMessageChunk } from "ai";
 
 import type {
-  ChatCitation,
-  ChatStreamEvent,
-  CodeWorkspaceArtifact,
+ChatCitation,
+ChatStreamEvent,
+CodeWorkspaceArtifact,
 } from "@/components/chat/chat-types";
 
 export type AiSdkUIChatStartMetadata = {

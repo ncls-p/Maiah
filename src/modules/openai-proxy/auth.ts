@@ -1,14 +1,14 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest,NextResponse } from "next/server";
 
-import { logger, logHandledError } from "@/lib/logger";
+import { logger,logHandledError } from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { resolveAuthContext } from "@/modules/auth/resolve-auth";
 import { runWithRequestAuth } from "@/modules/auth/request-auth-context";
+import { resolveAuthContext } from "@/modules/auth/resolve-auth";
 import { checkWorkspacePermissionForRequest } from "@/modules/auth/workspace-access";
 import {
-  OpenAIProxyError,
-  openAIErrorBody,
-  providerError,
+openAIErrorBody,
+OpenAIProxyError,
+providerError,
 } from "@/modules/openai-proxy/errors";
 
 export type OpenAIProxyContext = {

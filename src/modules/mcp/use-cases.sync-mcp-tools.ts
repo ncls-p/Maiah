@@ -1,26 +1,23 @@
-import { and, eq, isNull, sql } from "drizzle-orm";
-import { decryptValue, encryptValue } from "@/lib/crypto";
-import { inferMcpAuthHint } from "@/modules/mcp/auth-hint";
-import { listRemoteMcpTools } from "@/modules/mcp/client";
 import { logger } from "@/lib/logger";
+import { listRemoteMcpTools } from "@/modules/mcp/client";
 import { audit } from "@/server/domain/services/audit";
-import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
-import { mcpServers, mcpTools } from "@/server/infrastructure/db/schema";
-import { createMcpServer, getMcpServer } from "./use-cases.create-mcp-server";
+import { mcpServers,mcpTools } from "@/server/infrastructure/db/schema";
+import { and,eq } from "drizzle-orm";
+import { createMcpServer,getMcpServer } from "./use-cases.create-mcp-server";
 import {
-  CreateMcpServerInput,
-  DiscoveredMcpTool,
-  UpdateMcpServerInput,
-  assertCanManageMcpServer,
-  hasMcpConnectionChanges,
+CreateMcpServerInput,
+DiscoveredMcpTool,
+UpdateMcpServerInput,
+assertCanManageMcpServer,
+hasMcpConnectionChanges,
 } from "./use-cases.mcp-server";
 import {
-  discoverMcpTools,
-  emitMcpToolsSyncedAudit,
-  markMcpServerManual,
-  saveMcpToolSyncResult,
-  updateMcpServer,
+discoverMcpTools,
+emitMcpToolsSyncedAudit,
+markMcpServerManual,
+saveMcpToolSyncResult,
+updateMcpServer,
 } from "./use-cases.update-mcp-server";
 
 export async function syncMcpTools(

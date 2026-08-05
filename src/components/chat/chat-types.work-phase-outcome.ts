@@ -1,6 +1,6 @@
 
-import { ChatCitation, ChatMessage, ChatMessagePart } from "./chat-types.chat-agent";
-import { ChatMessagePartGroup, IndexedChatMessagePart, isMeaningfulTextPart, isWorkPhasePart, resolveToolDisplayStatus, workPhaseHasPendingWork } from "./chat-types.chat-stream-event";
+import { ChatCitation,ChatMessage,ChatMessagePart } from "./chat-types.chat-agent";
+import { ChatMessagePartGroup,IndexedChatMessagePart,isMeaningfulTextPart,isWorkPhasePart,resolveToolDisplayStatus,workPhaseHasPendingWork } from "./chat-types.chat-stream-event";
 
 
 function workPhaseHasToolErrors(

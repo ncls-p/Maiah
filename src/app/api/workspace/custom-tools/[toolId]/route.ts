@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest,NextResponse } from "next/server";
 import { z } from "zod";
 
 import {
-  handleRoute,
-  requireResourcePermissionAsync,
+handleRoute,
+requireResourcePermissionAsync,
 } from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
 import { deleteCustomTool } from "@/modules/custom-tools/use-cases";

@@ -1,29 +1,29 @@
 "use client";
 
-import type { Node, NodeProps } from "@xyflow/react";
-import { Handle, Position } from "@xyflow/react";
+import type { Node,NodeProps } from "@xyflow/react";
+import { Handle,Position } from "@xyflow/react";
 import {
-  ArrowDownUpIcon,
-  BotIcon,
-  BugIcon,
-  BracesIcon,
-  CalculatorIcon,
-  CalendarClockIcon,
-  CaseSensitiveIcon,
-  CircleStopIcon,
-  Code2Icon,
-  FileJsonIcon,
-  GitBranchIcon,
-  ListFilterIcon,
-  ListPlusIcon,
-  ListXIcon,
-  PlayIcon,
-  ReplaceIcon,
-  Rows3Icon,
-  TextCursorInputIcon,
-  TimerIcon,
-  WebhookIcon,
-  type LucideIcon,
+ArrowDownUpIcon,
+BotIcon,
+BracesIcon,
+BugIcon,
+CalculatorIcon,
+CalendarClockIcon,
+CaseSensitiveIcon,
+CircleStopIcon,
+Code2Icon,
+FileJsonIcon,
+GitBranchIcon,
+ListFilterIcon,
+ListPlusIcon,
+ListXIcon,
+PlayIcon,
+ReplaceIcon,
+Rows3Icon,
+TextCursorInputIcon,
+TimerIcon,
+WebhookIcon,
+type LucideIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 

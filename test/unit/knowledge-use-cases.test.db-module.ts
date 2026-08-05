@@ -1,24 +1,11 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach,describe,expect,it,vi } from "vitest";
 
-import * as _dbModule from "@/server/infrastructure/db";
 import {
-	archiveDocument,
-	archiveKnowledgeBase,
-	cloneKnowledgeBindings,
-	createKnowledgeBase,
-	getKnowledgeBase,
-	getKnowledgeBindingsForVersion,
-	ingestTextDocument,
-	listDocuments,
-	listKnowledgeBases,
-	listProcessingDocuments,
-	processDocumentIngestion,
-	replaceKnowledgeBindingsForVersion,
-	scoreContent,
-	searchBoundKnowledgeBases,
-	searchKnowledgeBase,
-	updateKnowledgeBase,
+createKnowledgeBase,
+getKnowledgeBase,
+listKnowledgeBases
 } from "@/modules/knowledge/use-cases";
+import * as _dbModule from "@/server/infrastructure/db";
 
 // ─── Mocks ────────────────────────────────────────────────────────────
 

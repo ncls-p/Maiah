@@ -1,37 +1,16 @@
-import { NextRequest, NextResponse } from "next/server";
-import { eq, inArray } from "drizzle-orm";
-import { z } from "zod";
-import {
-  handleRoute,
-  requireRequestPermissionScopeAsync,
-  requireWorkspaceMemberAsync,
-  requireWorkspacePermissionAsync,
-} from "@/lib/route-handler";
-import {
-  canEditAgent,
-  createAgent,
-  getAgentDefaultPreferences,
-  listAgents,
-  normalizePromptSuggestions,
-} from "@/modules/agent/use-cases";
-import { agentRuntimePolicy } from "@/modules/agent/runtime-policy";
-import {
-  delegationBindingInputSchema,
-  orchestrationPolicySchema,
-} from "@/modules/agent/orchestration-policy";
-import { DelegationBindingValidationError } from "@/modules/agent/delegation-use-cases";
 import { ONBOARDING_TOOL_PRESET } from "@/modules/agent/onboarding-tools";
-import { canManageTenantGlobals } from "@/modules/admin/auth";
-import { hasWorkspacePermissionForRequest } from "@/modules/auth/workspace-access";
-import { authorization } from "@/server/domain/services/authorization";
-import { withResourceProvenance } from "@/modules/iam/resource-provenance";
-import { getToolBindingsForVersion } from "@/modules/tool/use-cases";
+import {
+delegationBindingInputSchema,
+orchestrationPolicySchema,
+} from "@/modules/agent/orchestration-policy";
+import { agentRuntimePolicy } from "@/modules/agent/runtime-policy";
 import { db } from "@/server/infrastructure/db";
 import {
-  agentVersions,
-  aiModels,
-  workspaces,
+agentVersions,
+aiModels
 } from "@/server/infrastructure/db/schema";
+import { inArray } from "drizzle-orm";
+import { z } from "zod";
 
 const slugSchema = z
   .string()

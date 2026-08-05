@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
 import { handleRoute } from "@/lib/route-handler";
 import { requireAdminApiSession } from "@/modules/admin/auth";
 import { updateManagedUser } from "@/modules/admin/use-cases";
 import { ensurePrimaryWorkspaceForUser } from "@/modules/workspace/use-cases";
+import { NextRequest,NextResponse } from "next/server";
+import { z } from "zod";
 
 const paramsSchema = z.object({ userId: z.uuid() });
 const updateUserSchema = z.object({

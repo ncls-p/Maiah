@@ -1,8 +1,7 @@
-import { randomInt } from "node:crypto";
 import { z } from "zod";
 import {
-  colorConverterInputSchema,
-  markdownTableInputSchema,
+colorConverterInputSchema,
+markdownTableInputSchema,
 } from "./builtin-tool-primitives.unit-converter-input-schema";
 
 export function colorConverter({

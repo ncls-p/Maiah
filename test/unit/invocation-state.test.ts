@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach,beforeEach,describe,expect,it,vi } from "vitest";
 
 // ─── DB mock ────────────────────────────────────────────────────────────
 
@@ -48,10 +48,10 @@ vi.mock("@/lib/crypto", () => ({
 	decryptValue: vi.fn(),
 }));
 
-import * as _dbModule from "@/server/infrastructure/db";
-const dbModule = _dbModule as unknown as DbModule;
 import { decryptValue } from "@/lib/crypto";
 import { waitForApproval } from "@/modules/tool/invocation-state";
+import * as _dbModule from "@/server/infrastructure/db";
+const dbModule = _dbModule as unknown as DbModule;
 
 const mockDecrypt = vi.mocked(decryptValue);
 

@@ -1,28 +1,21 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import {
-	constants as fsConstants,
-	createReadStream,
-	createWriteStream,
+createReadStream,
+createWriteStream
 } from "node:fs";
 import {
-	access,
-	chmod,
-	chown,
-	lstat,
-	mkdir,
-	mkdtemp,
-	readFile,
-	readdir,
-	rm,
-	symlink,
-	writeFile,
+chmod,
+chown,
+mkdir,
+mkdtemp,
+symlink,
+writeFile
 } from "node:fs/promises";
-import { createServer } from "node:http";
 import path from "node:path";
-import { canSwitchUser, maxStderrBytes, maxStdoutBytes, maxStdoutFileBytes, runRoot, sandboxGid, sandboxUid, textExtensions } from "./sandbox-runner.socket-path";
-import { appendLimited, appendTailLimited, chownRecursive, commandForLanguage, executionCommandForLanguage, nodePrelude, writeInputFiles } from "./sandbox-runner.read-json-body";
+import { appendLimited,appendTailLimited,chownRecursive,commandForLanguage,executionCommandForLanguage,nodePrelude,writeInputFiles } from "./sandbox-runner.read-json-body.mjs";
+import { canSwitchUser,maxStderrBytes,maxStdoutBytes,maxStdoutFileBytes,runRoot,sandboxGid,sandboxUid,textExtensions } from "./sandbox-runner.socket-path.mjs";
 
 
 export async function prepareRun(input) {

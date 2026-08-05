@@ -1,10 +1,10 @@
 "use client";
 
-import * as React from "react";
 import { Select as SelectPrimitive } from "radix-ui";
+import * as React from "react";
 
 import { cn } from "@/lib/utils";
-import { ChevronDownIcon, CheckIcon, ChevronUpIcon } from "lucide-react";
+import { CheckIcon,ChevronDownIcon,ChevronUpIcon } from "lucide-react";
 
 function dropdownOrigin(side: string | undefined, align: string | undefined) {
   const verticalOrigin = side === "top" ? "bottom" : "top";
@@ -159,10 +159,10 @@ function SelectScrollDownButton({
 }
 
 export {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+Select,
+SelectContent,
+SelectGroup,
+SelectItem,
+SelectTrigger,
+SelectValue
 };

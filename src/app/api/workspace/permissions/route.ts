@@ -1,14 +1,14 @@
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
 import {
-  handleRoute,
-  requireWorkspacePermissionAsync,
+handleRoute,
+requireWorkspacePermissionAsync,
 } from "@/lib/route-handler";
 import { isPermissionAllowedByRequestScope } from "@/modules/auth/workspace-access";
 import {
-  authorization,
-  matchesPermission,
+authorization,
+matchesPermission,
 } from "@/server/domain/services/authorization";
+import { NextRequest,NextResponse } from "next/server";
+import { z } from "zod";
 
 const querySchema = z.object({ workspaceId: z.uuid() });
 

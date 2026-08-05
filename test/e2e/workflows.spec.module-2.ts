@@ -1,8 +1,6 @@
-import { existsSync } from "node:fs";
 
-import { expect, test } from "@playwright/test";
+import { expect,test } from "@playwright/test";
 
-import { ensureE2EUser, login } from "./fixtures";
 
 test("switches between visual and agentic editing while keeping live changes", async ({
   page,

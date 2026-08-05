@@ -1,1 +1,1 @@
-import "./sandbox-runner.collect-files";
+import "./sandbox-runner.collect-files.mjs";

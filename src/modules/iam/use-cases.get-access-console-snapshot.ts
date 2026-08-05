@@ -1,41 +1,30 @@
-import { and, asc, count, eq, inArray, isNull, ne, or } from "drizzle-orm";
+import { and,asc,eq,isNull,or } from "drizzle-orm";
 
-import { logger } from "@/lib/logger";
 import {
-  ACCESS_RESOURCE_DEFINITIONS,
-  type AccessResourceType,
+ACCESS_RESOURCE_DEFINITIONS
 } from "@/server/domain/entities/access-resource";
-import { audit } from "@/server/domain/services/audit";
 import {
-  authorization,
-  canDelegatePermissionSet,
-  matchesPermission,
+authorization,
+canDelegatePermissionSet,
+matchesPermission,
 } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
 import {
-  findAccessResource,
-  listAccessResources,
-} from "@/server/infrastructure/db/access-resource-repository";
-import {
-  organizationMembers,
-  organizations,
-  roleBindings,
-  roles,
-  teamMembers,
-  teams,
-  users,
-  workspaceMembers,
-  workspaces,
+organizationMembers,
+roleBindings,
+roles,
+teamMembers,
+teams,
+users,
+workspaces
 } from "@/server/infrastructure/db/schema";
 import {
-  expandPermissionGrants,
-  isKnownPermission,
-  isPermissionCompatibleWithScope,
-  KNOWN_PERMISSIONS,
-  PERMISSION_CATALOG,
+expandPermissionGrants,
+isPermissionCompatibleWithScope,
+KNOWN_PERMISSIONS,
+PERMISSION_CATALOG
 } from "./permission-catalog";
-import { createWorkspace } from "@/modules/workspace/use-cases";
-import { IamOperationError, getWorkspaceScope, rolePermissions } from "./use-cases.iam-operation-error";
+import { getWorkspaceScope,IamOperationError,rolePermissions } from "./use-cases.iam-operation-error";
 
 
 export async function getAccessConsoleSnapshot(input: {

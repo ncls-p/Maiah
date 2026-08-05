@@ -1,38 +1,20 @@
 "use client";
 
-import { useState } from "react";
-import { useTranslations } from "next-intl";
-import {
-  ChevronDown,
-  FileText,
-  KeyRound,
-  Plug,
-  Shield,
-  Wrench,
-} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import type {
-  MarketplaceManifest,
-  PortableToolBinding,
+MarketplaceManifest,
+PortableToolBinding,
 } from "@/modules/marketplace/manifest-types";
 import { BUILTIN_TOOL_SUMMARIES } from "@/modules/tool/builtin-tools-catalog";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import { cn } from "@/lib/utils";
+FileText,
+Shield,
+Wrench
+} from "lucide-react";
+import { useTranslations } from "next-intl";
 import { getToolSourceLabel } from "./marketplace-i18n-helpers";
-import { InfoRow, SkillManifestDetails } from "./marketplace-item-detail.skill-manifest-details";
 import { CollapsibleSection } from "./marketplace-item-detail.collapsible-section";
+import { InfoRow,SkillManifestDetails } from "./marketplace-item-detail.skill-manifest-details";
 
 
 export interface MarketplaceItemDetailData {

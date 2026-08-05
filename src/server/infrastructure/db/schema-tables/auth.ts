@@ -1,11 +1,11 @@
 import {
-  pgTable,
-  text,
-  timestamp,
-  boolean,
-  varchar,
-  uuid,
-  jsonb,
+boolean,
+jsonb,
+pgTable,
+text,
+timestamp,
+uuid,
+varchar,
 } from "drizzle-orm/pg-core";
 
 const CREATED_AT_COLUMN = "created_at";

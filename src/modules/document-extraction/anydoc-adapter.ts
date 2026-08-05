@@ -1,12 +1,12 @@
 import path from "node:path";
 
 import {
-  formatFromBytes,
-  formatFromExtension,
-  toDocument,
-  toMarkdownBytes,
-  type Asset,
-  type Format,
+formatFromBytes,
+formatFromExtension,
+toDocument,
+toMarkdownBytes,
+type Asset,
+type Format,
 } from "@firecrawl/anydoc";
 
 export type AnydocExtraction = {

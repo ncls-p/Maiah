@@ -1,31 +1,27 @@
-import { NextRequest, NextResponse } from "next/server";
-import { and, eq, inArray } from "drizzle-orm";
-import { z } from "zod";
 import {
-  handleRoute,
-  requireResourcePermissionAsync,
+handleRoute,
+requireResourcePermissionAsync,
 } from "@/lib/route-handler";
-import {
-  AgentVersionConflictError,
-  getVisibleAgentById,
-  getActiveVersion,
-  getAgentVersionById,
-  updateAgent,
-} from "@/modules/agent/use-cases";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
 import {
-  getToolBindingsForVersion,
-  toolBindingInputSchema,
-} from "@/modules/tool/use-cases";
-import { getBuiltInTool } from "@/modules/tool/builtin-tools";
-import { audit } from "@/server/domain/services/audit";
+getActiveVersion,
+getAgentVersionById,
+getVisibleAgentById
+} from "@/modules/agent/use-cases";
 import { getBoundSkillCatalog } from "@/modules/skills/use-cases";
+import { getBuiltInTool } from "@/modules/tool/builtin-tools";
+import {
+getToolBindingsForVersion
+} from "@/modules/tool/use-cases";
 import { db } from "@/server/infrastructure/db";
 import {
-  customTools,
-  mcpServers,
-  mcpTools,
+customTools,
+mcpServers,
+mcpTools,
 } from "@/server/infrastructure/db/schema";
+import { and,eq,inArray } from "drizzle-orm";
+import { NextRequest,NextResponse } from "next/server";
+import { z } from "zod";
 
 export const routeParamsSchema = z.object({ agentId: z.uuid() });
 export const querySchema = z.object({

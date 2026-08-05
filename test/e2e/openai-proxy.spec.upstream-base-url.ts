@@ -1,9 +1,7 @@
-import { createServer, type Server } from "node:http";
-import OpenAI from "openai";
-import Anthropic from "@anthropic-ai/sdk";
-import { expect, test } from "@playwright/test";
+import { test } from "@playwright/test";
+import { createServer,type Server } from "node:http";
 
-import { ensureE2EUser, login } from "./fixtures";
+import { ensureE2EUser,login } from "./fixtures";
 
 let upstream: Server;
 export let upstreamBaseUrl: string;

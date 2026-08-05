@@ -1,11 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe,expect,it } from "vitest";
 
-import * as _dbModule from "@/server/infrastructure/db";
 import {
-  buildAgentManifest,
-  buildCustomToolManifest,
+buildAgentManifest
 } from "@/modules/marketplace/manifest-builders";
-import { customToolRow, dbModule, resetDb } from "./marketplace-manifest-builders-db.test.db-module";
+import { customToolRow,dbModule,resetDb } from "./marketplace-manifest-builders-db.test.db-module";
 
 
 describe("buildAgentManifest", () => {

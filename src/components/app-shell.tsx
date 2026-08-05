@@ -1,32 +1,32 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import { usePathname } from "@/i18n/navigation";
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
+import { createContext,useContext,useEffect,useMemo,useState } from "react";
 
 import { AppHeader } from "@/components/app-header";
 import {
-  OrbitAccountMenu,
-  OrbitProductNavigation,
-  OrbitWordmark,
+OrbitAccountMenu,
+OrbitProductNavigation,
+OrbitWordmark,
 } from "@/components/orbit-product-navigation";
 import {
-  WorkspaceHistoryMobileTrigger,
-  WorkspaceHistorySidebar,
+WorkspaceHistoryMobileTrigger,
+WorkspaceHistorySidebar,
 } from "@/components/workspace-history-sidebar";
 import { useWorkspace } from "@/hooks/use-workspace";
 import {
-  fetchPendingToolCount,
-  fetchWorkspacePermissions,
+fetchPendingToolCount,
+fetchWorkspacePermissions,
 } from "@/lib/api-client";
+import { cn } from "@/lib/utils";
 import {
-  DEFAULT_WORKSPACE_PERMISSIONS,
-  getRouteTitleKey,
-  type WorkspacePermissions,
-  type WorkspaceShellState,
+DEFAULT_WORKSPACE_PERMISSIONS,
+getRouteTitleKey,
+type WorkspacePermissions,
+type WorkspaceShellState,
 } from "@/lib/workspace-nav";
 import type { SidebarNavConfig } from "@/modules/navigation/sidebar-config";
-import { cn } from "@/lib/utils";
 
 interface AppShellProps {
   children: React.ReactNode;

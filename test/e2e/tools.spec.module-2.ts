@@ -1,5 +1,4 @@
-import { expect, test } from "@playwright/test";
-import { ensureE2EUser, login } from "./fixtures";
+import { expect,test } from "@playwright/test";
 
 test.describe("retired custom tools builder", () => {
   test("redirects old custom tools links to workflows", async ({ page }) => {

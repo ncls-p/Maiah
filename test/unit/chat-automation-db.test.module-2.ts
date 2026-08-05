@@ -1,17 +1,14 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe,expect,it,vi } from "vitest";
 
-import { generateText } from "ai";
 import { decryptValue } from "@/lib/crypto";
 import { logHandledWarning } from "@/lib/logger";
-import * as _dbModule from "@/server/infrastructure/db";
 import {
-	generateChatAutomationArtifacts,
-	getChatAutomationAdminState,
-	setChatAutomationConfig,
-	testChatAutomationConnection,
-	validateChatAutomationConfig,
+generateChatAutomationArtifacts,
+testChatAutomationConnection,
+validateChatAutomationConfig
 } from "@/modules/chat/automation";
-import { dbModule, enabledConfig, model, provider, resetDb } from "./chat-automation-db.test.db-module";
+import { generateText } from "ai";
+import { dbModule,enabledConfig,model,provider,resetDb } from "./chat-automation-db.test.db-module";
 
 
 describe("chat automation runtime validation", () => {

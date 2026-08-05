@@ -1,38 +1,26 @@
 "use client";
 
-import { useState } from "react";
-import { useTranslations } from "next-intl";
-import {
-  ChevronDown,
-  FileText,
-  KeyRound,
-  Plug,
-  Shield,
-  Wrench,
-} from "lucide-react";
-import type {
-  MarketplaceManifest,
-  PortableToolBinding,
-} from "@/modules/marketplace/manifest-types";
-import { BUILTIN_TOOL_SUMMARIES } from "@/modules/tool/builtin-tools-catalog";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
+Card,
+CardContent,
+CardDescription,
+CardHeader,
+CardTitle,
 } from "@/components/ui/card";
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
+Collapsible,
+CollapsibleContent,
+CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
-import { getToolSourceLabel } from "./marketplace-i18n-helpers";
-import { AgentManifestSection, MarketplaceItemDetailData, SkillManifestSection } from "./marketplace-item-detail.marketplace-item-detail-data";
-import { CustomToolManifestSection, McpManifestSection } from "./marketplace-item-detail.skill-manifest-details";
+import {
+ChevronDown
+} from "lucide-react";
+import { useTranslations } from "next-intl";
+import { useState } from "react";
+import { AgentManifestSection,MarketplaceItemDetailData,SkillManifestSection } from "./marketplace-item-detail.marketplace-item-detail-data";
+import { CustomToolManifestSection,McpManifestSection } from "./marketplace-item-detail.skill-manifest-details";
 
 
 export function CollapsibleSection({

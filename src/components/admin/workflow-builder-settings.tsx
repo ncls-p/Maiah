@@ -1,25 +1,25 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { BotIcon, ExternalLinkIcon, WorkflowIcon } from "lucide-react";
+import { BotIcon,ExternalLinkIcon,WorkflowIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useCallback,useEffect,useMemo,useState } from "react";
 import { toast } from "sonner";
 
 import {
-  SettingsDisabledNotice,
-  SettingsLoadError,
-  SettingsSection,
-  SettingsSectionSkeleton,
-  SettingsStatusBadge,
+SettingsDisabledNotice,
+SettingsLoadError,
+SettingsSection,
+SettingsSectionSkeleton,
+SettingsStatusBadge,
 } from "@/components/admin/settings-panel";
 import { ModelLogo } from "@/components/providers/model-logo";
 import { Button } from "@/components/ui/button";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+Select,
+SelectContent,
+SelectItem,
+SelectTrigger,
+SelectValue,
 } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { useWorkspace } from "@/hooks/use-workspace";

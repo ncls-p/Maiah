@@ -1,4 +1,4 @@
-import { cva, type VariantProps } from "class-variance-authority";
+import { cva,type VariantProps } from "class-variance-authority";
 
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
@@ -95,4 +95,4 @@ function FieldDescription({ className, ...props }: React.ComponentProps<"p">) {
   );
 }
 
-export { Field, FieldLabel, FieldDescription, FieldGroup, FieldContent };
+export { Field,FieldContent,FieldDescription,FieldGroup,FieldLabel };

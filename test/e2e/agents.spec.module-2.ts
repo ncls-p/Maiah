@@ -1,16 +1,13 @@
-import { expect, test } from "@playwright/test";
-import {
-  e2eOrganizationProjectEditor,
-  e2eViewer,
-  ensureE2EAssistant,
-  ensureE2EOrganizationProjectEditor,
-  ensureE2EViewer,
-  ensureE2EPrivateMemberAssistant,
-  ensureE2EUser,
-  login,
-  loginWithCredentials,
-} from "./fixtures";
+import { expect,test } from "@playwright/test";
 import { createAssistantButtonName } from "./agents.spec.create-assistant-button-name";
+import {
+e2eOrganizationProjectEditor,
+e2eViewer,
+ensureE2EAssistant,
+ensureE2EOrganizationProjectEditor,
+ensureE2EViewer,
+loginWithCredentials
+} from "./fixtures";
 
 
 test.describe("agent CRUD", () => {

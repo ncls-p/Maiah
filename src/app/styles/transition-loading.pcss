@@ -1,0 +1,140 @@
+/* Skeleton loader and reveal */
+/* The wrap stacks two layers on the same coordinates. The
+   skeleton owns the cold pulse + the fade-out side of the
+   reveal; the content owns the fade-in side. They share the
+   same duration / ease so the swap reads as one motion. */
+.t-skel {
+  position: relative;
+}
+.t-skel-skeleton,
+.t-skel-content {
+  position: absolute;
+  inset: 0;
+}
+
+.t-skel-skeleton {
+  z-index: 1;
+  opacity: 1;
+  filter: blur(0);
+  transition:
+    opacity var(--reveal-dur) var(--reveal-ease),
+    filter var(--reveal-dur) var(--reveal-ease);
+}
+.t-skel-content {
+  z-index: 2;
+  opacity: 0;
+  filter: blur(var(--reveal-blur));
+  transition:
+    opacity var(--reveal-dur) var(--reveal-ease),
+    filter var(--reveal-dur) var(--reveal-ease);
+}
+.t-skel.is-revealed .t-skel-skeleton {
+  opacity: 0;
+  filter: blur(var(--reveal-blur));
+}
+.t-skel.is-revealed .t-skel-content {
+  opacity: 1;
+  filter: blur(0);
+}
+/* Snap-back when replaying: kill transitions so the reverse
+   (revealed → skeleton) is instant. Drop `.is-resetting`
+   after a forced reflow and the next reveal animates again. */
+.t-skel.is-resetting .t-skel-skeleton,
+.t-skel.is-resetting .t-skel-content {
+  transition: none !important;
+}
+
+/* Pulse: place the animation on the bar/avatar children, not
+   on the skeleton itself, so the skeleton's opacity / filter
+   stay free for the cross-fade transition above. */
+.t-skel-skeleton.is-pulsing > *,
+.t-skel-skeleton.is-pulsing[data-slot="skeleton"] {
+  animation: t-skel-pulse var(--pulse-dur) ease-in-out var(--pulse-count);
+}
+@keyframes t-skel-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: var(--pulse-min);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .t-skel-skeleton,
+  .t-skel-content {
+    transition: none !important;
+  }
+  .t-skel-skeleton.is-pulsing > *,
+  .t-skel-skeleton.is-pulsing[data-slot="skeleton"] {
+    animation: none !important;
+  }
+}
+
+/* Shimmer text */
+/* Two-layer construction:
+   1. The base text renders normally in --shimmer-base.
+   2. ::before duplicates it via content: attr(data-text),
+      paints a transparent → highlight → transparent gradient
+      onto it, and clips that gradient to the glyphs via
+      background-clip: text. Animating background-position
+      sweeps the band across the text. */
+.t-shimmer {
+  position: relative;
+  display: inline-block;
+  color: var(--shimmer-base);
+}
+.t-shimmer::before {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    transparent 40%,
+    var(--shimmer-highlight) 50%,
+    transparent 60%,
+    transparent 100%
+  );
+  background-size: var(--shimmer-band) 100%;
+  background-repeat: no-repeat;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: t-shimmer var(--shimmer-dur) var(--shimmer-ease) infinite;
+}
+@keyframes t-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: 0% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .t-shimmer::before {
+    animation: none !important;
+  }
+}
+
+/* Tooltip open/close timing for the shared Radix tooltip primitive. */
+.t-tt-radix[data-state="delayed-open"],
+.t-tt-radix[data-state="instant-open"] {
+  animation-duration: var(--tt-in-dur);
+  animation-timing-function: var(--tt-in-ease);
+}
+.t-tt-radix[data-state="closed"] {
+  animation-duration: var(--tt-out-dur);
+  animation-timing-function: var(--tt-out-ease);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .t-tt-radix {
+    animation: none !important;
+  }
+}
+

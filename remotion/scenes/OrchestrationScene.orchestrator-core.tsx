@@ -1,22 +1,9 @@
-import type { LucideIcon } from "lucide-react";
 import {
-	BracesIcon,
-	ChartNoAxesCombinedIcon,
-	CheckIcon,
-	NetworkIcon,
-	ScanSearchIcon,
-	ShieldCheckIcon,
-	UserRoundCheckIcon,
+NetworkIcon
 } from "lucide-react";
-import { interpolate, useCurrentFrame } from "remotion";
+import { useCurrentFrame } from "remotion";
 
-import {
-	Hairline,
-	SceneLabel,
-	SceneLayer,
-	StatusPill,
-} from "../components/VisualSystem";
-import { COLORS, DISPLAY_FONT, progress, rise, scaleIn } from "../theme";
+import { COLORS,progress } from "../theme";
 
 export function OrchestratorCore() {
 	const frame = useCurrentFrame();

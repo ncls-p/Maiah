@@ -1,7 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
 
 import type { CodeWorkspaceArtifact } from "@/components/chat/chat-types";
 

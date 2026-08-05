@@ -1,8 +1,8 @@
 import { ArrowUpRightIcon } from "lucide-react";
-import { Img, interpolate, staticFile, useCurrentFrame } from "remotion";
+import { Img,interpolate,staticFile,useCurrentFrame } from "remotion";
 
 import { SceneLayer } from "../components/VisualSystem";
-import { COLORS, DISPLAY_FONT, progress, rise, scaleIn } from "../theme";
+import { COLORS,DISPLAY_FONT,progress,rise,scaleIn } from "../theme";
 
 function ClosingRings() {
 	const frame = useCurrentFrame();

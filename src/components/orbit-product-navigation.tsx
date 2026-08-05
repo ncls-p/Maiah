@@ -1,24 +1,24 @@
 "use client";
 
+import { ChevronDownIcon,SlidersHorizontalIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { ChevronDownIcon, SlidersHorizontalIcon } from "lucide-react";
 
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { SignOutButton } from "@/components/sign-out-button";
 import { ThemeToggleButton } from "@/components/theme-toggle-button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
+DropdownMenu,
+DropdownMenuContent,
+DropdownMenuItem,
+DropdownMenuLabel,
+DropdownMenuSeparator,
+DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Link, usePathname } from "@/i18n/navigation";
-import { isNavItemActive, type WorkspaceShellState } from "@/lib/workspace-nav";
-import { buildMenuGroups } from "@/modules/navigation/sidebar-config";
-import { cn } from "@/lib/utils";
 import { useWorkspace } from "@/hooks/use-workspace";
+import { Link,usePathname } from "@/i18n/navigation";
+import { cn } from "@/lib/utils";
+import { isNavItemActive,type WorkspaceShellState } from "@/lib/workspace-nav";
+import { buildMenuGroups } from "@/modules/navigation/sidebar-config";
 import Image from "next/image";
 
 const primaryDestinations = [

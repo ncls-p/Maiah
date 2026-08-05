@@ -1,11 +1,7 @@
-import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-import type { EmbeddingModelV4, LanguageModelV4 } from "@ai-sdk/provider";
 import type {
-  ProviderAdapter,
-  ProviderRuntimeConfig,
-  ProviderHealth,
-  ModelDescriptor,
-  ModelCapability,
+ModelCapability,
+ModelDescriptor,
+ProviderRuntimeConfig
 } from "./adapter";
 
 const DEFAULT_CAPABILITIES: ModelCapability = {

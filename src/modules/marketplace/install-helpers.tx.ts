@@ -1,24 +1,15 @@
-import { and, eq, isNull, or } from "drizzle-orm";
 import { db } from "@/server/infrastructure/db";
 import {
-  agentKnowledgeBindings,
-  agents,
-  agentSkillBindings,
-  agentSkills,
-  agentToolBindings,
-  agentVersions,
-  aiModels,
-  aiProviders,
-  customTools,
-  knowledgeBases,
-  mcpServers,
-  mcpTools,
+aiModels,
+aiProviders,
+customTools,
+mcpServers,
+mcpTools
 } from "@/server/infrastructure/db/schema";
+import { and,eq,or } from "drizzle-orm";
 import type {
-  AgentMarketplaceManifest,
-  MarketplaceManifest,
-  McpPresetMarketplaceManifest,
-  ToolMarketplaceManifest,
+McpPresetMarketplaceManifest,
+ToolMarketplaceManifest
 } from "./manifest-types";
 
 export type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];

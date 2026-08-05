@@ -1,10 +1,9 @@
 // Shared fixtures and helpers for all e2e tests
-import type { Cookie, Page } from "@playwright/test";
+import { cache } from "@/server/infrastructure/cache";
 import { hashPassword } from "better-auth/crypto";
 import { randomUUID } from "node:crypto";
 import { Client } from "pg";
-import { cache } from "@/server/infrastructure/cache";
-import { databaseUrl, e2eAccessManager, e2eMember, e2eOrganizationAdmin, e2eOrganizationProjectEditor } from "./fixtures.e2e-user";
+import { databaseUrl,e2eAccessManager,e2eMember,e2eOrganizationAdmin,e2eOrganizationProjectEditor } from "./fixtures.e2e-user";
 
 
 export async function ensureE2EMember() {

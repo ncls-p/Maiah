@@ -1,17 +1,17 @@
-import { and, desc, eq, isNull } from "drizzle-orm";
-import { NextRequest, NextResponse } from "next/server";
+import { and,desc,eq,isNull } from "drizzle-orm";
+import { NextRequest,NextResponse } from "next/server";
 import { z } from "zod";
 
 import {
-  handleRoute,
-  requireResourcePermissionAsync,
+handleRoute,
+requireResourcePermissionAsync,
 } from "@/lib/route-handler";
 import {
-  abortChatStream,
-  hasActiveChatStream,
+abortChatStream,
+hasActiveChatStream,
 } from "@/modules/chat/stream-bus";
 import { db } from "@/server/infrastructure/db";
-import { conversations, messages } from "@/server/infrastructure/db/schema";
+import { conversations,messages } from "@/server/infrastructure/db/schema";
 
 const paramsSchema = z.object({ conversationId: z.uuid() });
 

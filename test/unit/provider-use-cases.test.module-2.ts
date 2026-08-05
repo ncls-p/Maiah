@@ -1,23 +1,14 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe,expect,it } from "vitest";
 
-import * as _dbModule from "@/server/infrastructure/db";
 import {
-  archiveProvider,
-  createModel,
-  createProvider,
-  deleteModel,
-  discoverModels,
-  getModelById,
-  getProviderById,
-  listModels,
-  listProviders,
-  refreshProviderModels,
-  testProviderConnection,
-  toSafeProvider,
-  updateModel,
-  updateProvider,
+archiveProvider,
+createProvider,
+getProviderById,
+listProviders,
+refreshProviderModels,
+updateProvider
 } from "@/modules/provider/use-cases";
-import { dbModule, fakeModel, fakeProvider } from "./provider-use-cases.test.mock-adapter";
+import { dbModule,fakeModel,fakeProvider } from "./provider-use-cases.test.mock-adapter";
 
 
 // ─── createProvider ───────────────────────────────────────────────────

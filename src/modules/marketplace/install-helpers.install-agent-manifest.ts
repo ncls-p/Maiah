@@ -1,26 +1,20 @@
-import { and, eq, isNull, or } from "drizzle-orm";
-import { db } from "@/server/infrastructure/db";
 import {
-  agentKnowledgeBindings,
-  agents,
-  agentSkillBindings,
-  agentSkills,
-  agentToolBindings,
-  agentVersions,
-  aiModels,
-  aiProviders,
-  customTools,
-  knowledgeBases,
-  mcpServers,
-  mcpTools,
+agentKnowledgeBindings,
+agents,
+agentSkillBindings,
+agentSkills,
+agentToolBindings,
+agentVersions,
+customTools,
+knowledgeBases,
+mcpServers,
+mcpTools
 } from "@/server/infrastructure/db/schema";
+import { and,eq,isNull,or } from "drizzle-orm";
+import { installCustomTool,installMcpPreset,resolveModelId,resolveProviderId,slugify,Tx } from "./install-helpers.tx";
 import type {
-  AgentMarketplaceManifest,
-  MarketplaceManifest,
-  McpPresetMarketplaceManifest,
-  ToolMarketplaceManifest,
+AgentMarketplaceManifest
 } from "./manifest-types";
-import { Tx, installCustomTool, installMcpPreset, resolveModelId, resolveProviderId, slugify } from "./install-helpers.tx";
 
 
 export async function installAgentManifest(

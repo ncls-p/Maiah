@@ -1,19 +1,13 @@
-import type { JSONSchema7, JSONValue } from "@ai-sdk/provider";
+import type { JSONValue } from "@ai-sdk/provider";
 import {
-  dynamicTool,
-  jsonSchema,
-  Output,
-  type ModelMessage,
-  type ToolChoice,
-  type ToolSet,
+Output,
+type ModelMessage,
+type ToolChoice,
+type ToolSet
 } from "ai";
 
 import type {
-  ChatCompletionRequest,
-  FunctionDefinition,
-  ProxyResponseFormat,
-  ProxyToolChoice,
-  ResponsesRequest,
+ProxyResponseFormat
 } from "@/modules/openai-proxy/contracts";
 import { invalidRequest } from "@/modules/openai-proxy/errors";
 

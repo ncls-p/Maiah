@@ -1,53 +1,19 @@
 "use client";
 
 import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  type ComponentType,
-  type SVGProps,
-} from "react";
-import {
-  BinaryIcon,
-  BracesIcon,
-  BriefcaseIcon,
-  CalculatorIcon,
-  CalendarIcon,
-  ClockIcon,
-  Code2Icon,
-  DicesIcon,
-  FileTextIcon,
-  FingerprintIcon,
-  GlobeIcon,
-  HashIcon,
-  LinkIcon,
-  ListChecksIcon,
-  MailIcon,
-  MoreHorizontalIcon,
-  PaletteIcon,
-  PenLineIcon,
-  PresentationIcon,
-  SearchIcon,
-  ShieldCheckIcon,
-  TableIcon,
-  WrenchIcon,
+MoreHorizontalIcon,
+ShieldCheckIcon,
+WrenchIcon
 } from "lucide-react";
-import { useTranslations } from "next-intl";
-import { toast } from "sonner";
+import {
+useState
+} from "react";
 
-import { PageEmptyState } from "@/components/page-empty-state";
-import { PageLoading } from "@/components/page-loading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
-import {
-  type BuiltInToolSummary,
-  type ToolRiskLevel,
-} from "@/modules/tool/builtin-tools-catalog";
-import { BuiltInToolPolicy, RiskBadge, TOOL_ICONS } from "./builtin-tools-panel.built-in-tool-policy";
+import { BuiltInToolPolicy,RiskBadge,TOOL_ICONS } from "./builtin-tools-panel.built-in-tool-policy";
 
 
 export function BuiltinToolCard({

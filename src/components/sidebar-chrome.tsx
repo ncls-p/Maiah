@@ -1,28 +1,28 @@
 "use client";
 
-import type { ReactNode } from "react";
-import { useTranslations } from "next-intl";
 import { ChevronsUpDownIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
+import type { ReactNode } from "react";
 
 import { DeodisLogo } from "@/components/deodis-logo";
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { SignOutButton } from "@/components/sign-out-button";
 import { ThemeToggleButton } from "@/components/theme-toggle-button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
+DropdownMenu,
+DropdownMenuContent,
+DropdownMenuItem,
+DropdownMenuLabel,
+DropdownMenuSeparator,
+DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
+Tooltip,
+TooltipContent,
+TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
 import { useWorkspace } from "@/hooks/use-workspace";
+import { cn } from "@/lib/utils";
 
 export const APP_SIDEBAR_SURFACE_CLASS =
   "border-sidebar-border/65 bg-sidebar text-sidebar-foreground";

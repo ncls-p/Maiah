@@ -1,11 +1,11 @@
-import { describe, expect, it } from "vitest";
 import {
-	tokenizeInstallCommand,
-	normalizePackageAndSkill,
-	parseSkillsInstallCommand,
-	parseFrontmatter,
-	assertSkillMetadata,
+assertSkillMetadata,
+normalizePackageAndSkill,
+parseFrontmatter,
+parseSkillsInstallCommand,
+tokenizeInstallCommand,
 } from "@/modules/skills/use-cases";
+import { describe,expect,it } from "vitest";
 
 describe("skills – install command parsing", () => {
 	describe("tokenizeInstallCommand", () => {

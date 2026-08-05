@@ -1,58 +1,25 @@
 "use client";
 
-import { type Dispatch, type SetStateAction } from "react";
-import { useTranslations } from "next-intl";
 import {
-  ChevronDownIcon,
-  CircleAlertIcon,
-  KeyRoundIcon,
-  MoreHorizontal,
-  PencilIcon,
-  RefreshCwIcon,
-  SearchIcon,
-  Share2,
-  ShieldAlert,
-  Trash2Icon,
-  Wrench,
-  XIcon,
-  PlusIcon,
+KeyRoundIcon,
+PlusIcon,
+SearchIcon
 } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { type Dispatch,type SetStateAction } from "react";
 
-import { Badge } from "@/components/ui/badge";
-import { ResourceProvenanceBadge } from "@/components/resource-provenance-badge";
 import { Button } from "@/components/ui/button";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+Select,
+SelectContent,
+SelectItem,
+SelectTrigger,
+SelectValue,
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { cn } from "@/lib/utils";
-import { ServerCardSkeleton, TransportTypeIcon } from "./mcp-shared";
-import {
-  getHealthColor,
-  healthDotClass,
-  serverEndpointLabel,
-  transportAccent,
-  transportLabel,
-} from "./transport";
-import type { McpServer, McpTool, ServerStatusFilter } from "./types";
-import { EmptyServers, ServerItem } from "./server-list.empty-servers";
+import { ServerCardSkeleton } from "./mcp-shared";
+import { EmptyServers,ServerItem } from "./server-list.empty-servers";
+import type { McpServer,McpTool,ServerStatusFilter } from "./types";
 
 
 export type ServerListProps = {

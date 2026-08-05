@@ -1,26 +1,23 @@
-import { and, asc, eq, ilike, inArray, isNull, ne, or } from "drizzle-orm";
+import { and,eq,isNull,ne } from "drizzle-orm";
 
 import type { AccessResourceType } from "@/server/domain/entities/access-resource";
 import { db } from "@/server/infrastructure/db";
 import {
-  agentSkills,
-  agents,
-  aiModels,
-  aiProviders,
-  conversations,
-  customTools,
-  knowledgeBases,
-  marketplaceItems,
-  mcpServers,
-  roleBindings,
-  scheduledTasks,
-  teamMembers,
-  toolConnections,
-  toolConnectors,
-  workflows,
-  workspaces,
+agentSkills,
+agents,
+aiModels,
+aiProviders,
+conversations,
+customTools,
+knowledgeBases,
+marketplaceItems,
+mcpServers,
+scheduledTasks,
+toolConnections,
+toolConnectors,
+workflows
 } from "@/server/infrastructure/db/schema";
-import { AccessResourceScope, ResourceRow, withOrganization } from "./access-resource-repository.access-resource-scope";
+import { AccessResourceScope,ResourceRow,withOrganization } from "./access-resource-repository.access-resource-scope";
 
 
 export async function findAccessResource(

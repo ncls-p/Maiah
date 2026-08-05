@@ -1,26 +1,11 @@
-import type { LucideIcon } from "lucide-react";
 import {
-	BlocksIcon,
-	BookOpenIcon,
-	BotIcon,
-	BoxIcon,
-	CalendarClockIcon,
-	CheckIcon,
-	Code2Icon,
-	DatabaseZapIcon,
-	PlugZapIcon,
-	StoreIcon,
+BoxIcon,
+CheckIcon
 } from "lucide-react";
-import { interpolate, useCurrentFrame } from "remotion";
+import { useCurrentFrame } from "remotion";
 
-import {
-	Hairline,
-	SceneLabel,
-	SceneLayer,
-	StatusPill,
-} from "../components/VisualSystem";
-import { COLORS, DISPLAY_FONT, progress, rise } from "../theme";
-import { Capability, KnowledgeVisual, MiniVisualProps, ModelsVisual, SandboxVisual, ToolsVisual } from "./CapabilitiesScene.capability";
+import { COLORS,progress } from "../theme";
+import { Capability,KnowledgeVisual,MiniVisualProps,ModelsVisual,SandboxVisual,ToolsVisual } from "./CapabilitiesScene.capability";
 
 
 function ScheduleVisual({ accent, frame }: MiniVisualProps) {

@@ -1,4 +1,4 @@
-import { Queue, type ConnectionOptions } from "bullmq";
+import { Queue,type ConnectionOptions } from "bullmq";
 
 import { env } from "@/lib/env";
 

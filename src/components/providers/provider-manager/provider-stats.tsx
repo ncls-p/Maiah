@@ -2,7 +2,7 @@ import { useTranslations } from "next-intl";
 
 import { MetricCell } from "@/components/ui/metric-cell";
 
-import type { ProviderModel, SafeProvider } from "./types";
+import type { ProviderModel,SafeProvider } from "./types";
 
 export function SystemStrip({
   providers,

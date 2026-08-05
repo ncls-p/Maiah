@@ -1,26 +1,12 @@
-import type { LanguageModelUsage, TextStreamPart, ToolSet } from "ai";
 
 import type {
-  ChatCompletionRequest,
-  ProxyResponseFormat,
-  ResponsesRequest,
+ProxyResponseFormat,
+ResponsesRequest
 } from "@/modules/openai-proxy/contracts";
 import {
-  OpenAIProxyError,
-  openAIErrorBody,
-  providerError,
-} from "@/modules/openai-proxy/errors";
-import {
-  chatFinishReason,
-  chatUsage,
-  createChatCompletionId,
-  createFunctionItemId,
-  createMessageId,
-  createResponseId,
-  responseCompletionState,
-  responsesUsage,
-  responseTextConfig,
-  type ResponsesOutputItem,
+responsesUsage,
+responseTextConfig,
+type ResponsesOutputItem
 } from "@/modules/openai-proxy/response-builders";
 
 export function initialResponse(input: {

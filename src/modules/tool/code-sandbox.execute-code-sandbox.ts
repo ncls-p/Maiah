@@ -1,27 +1,15 @@
-import { existsSync } from "node:fs";
-import http from "node:http";
-import path from "node:path";
 
-import { env } from "@/lib/env";
-import { logger, logHandledWarning } from "@/lib/logger";
-import { isPathTraversal } from "@/lib/path-utils";
+import { logger,logHandledWarning } from "@/lib/logger";
 import {
-  createChatAttachment,
-  getChatAttachmentBytes,
-  getChatAttachmentExtractedText,
-  isChatFileAttachment,
-  type ChatAttachment,
-} from "@/modules/chat/attachments";
-import {
-  CodeSandboxExecutionContext,
-  CodeSandboxRequest,
-  CodeSandboxResult,
-  PreparedSandboxRunnerInput,
-  clampTimeoutMs,
+clampTimeoutMs,
+CodeSandboxExecutionContext,
+CodeSandboxRequest,
+CodeSandboxResult,
+PreparedSandboxRunnerInput,
 } from "./code-sandbox.code-sandbox-output-file";
-import { prepareSandboxRunnerRequest } from "./code-sandbox.prepare-sandbox-runner-request";
 import { failedSandboxResult } from "./code-sandbox.failed-sandbox-result";
-import { persistSandboxFiles, runSandboxRunner } from "./code-sandbox.persist-sandbox-files";
+import { persistSandboxFiles,runSandboxRunner } from "./code-sandbox.persist-sandbox-files";
+import { prepareSandboxRunnerRequest } from "./code-sandbox.prepare-sandbox-runner-request";
 
 export async function executeCodeSandbox(
   input: CodeSandboxRequest,

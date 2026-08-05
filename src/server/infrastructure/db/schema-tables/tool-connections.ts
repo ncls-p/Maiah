@@ -1,14 +1,14 @@
 import {
-  pgTable,
-  text,
-  timestamp,
-  boolean,
-  varchar,
-  uuid,
-  jsonb,
-  index,
-  uniqueIndex,
-  pgEnum,
+boolean,
+index,
+jsonb,
+pgEnum,
+pgTable,
+text,
+timestamp,
+uniqueIndex,
+uuid,
+varchar,
 } from "drizzle-orm/pg-core";
 import { users } from "./auth";
 import { mcpServers } from "./mcp";

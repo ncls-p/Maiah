@@ -1,25 +1,15 @@
 import type { LucideIcon } from "lucide-react";
 import {
-	BlocksIcon,
-	BookOpenIcon,
-	BotIcon,
-	BoxIcon,
-	CalendarClockIcon,
-	CheckIcon,
-	Code2Icon,
-	DatabaseZapIcon,
-	PlugZapIcon,
-	StoreIcon,
+BlocksIcon,
+BookOpenIcon,
+BotIcon,
+CalendarClockIcon,
+Code2Icon,
+PlugZapIcon,
+StoreIcon
 } from "lucide-react";
-import { interpolate, useCurrentFrame } from "remotion";
 
-import {
-	Hairline,
-	SceneLabel,
-	SceneLayer,
-	StatusPill,
-} from "../components/VisualSystem";
-import { COLORS, DISPLAY_FONT, progress, rise } from "../theme";
+import { COLORS } from "../theme";
 
 export type Capability = {
 	title: string;

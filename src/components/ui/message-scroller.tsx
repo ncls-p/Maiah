@@ -1,15 +1,15 @@
 "use client";
 
-import * as React from "react";
 import {
-  MessageScroller as MessageScrollerPrimitive,
-  useMessageScroller,
-  useMessageScrollerScrollable,
-  useMessageScrollerVisibility,
+MessageScroller as MessageScrollerPrimitive,
+useMessageScroller,
+useMessageScrollerScrollable,
+useMessageScrollerVisibility,
 } from "@shadcn/react/message-scroller";
+import * as React from "react";
 
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { ArrowDownIcon } from "lucide-react";
 
 function MessageScrollerProvider(
@@ -118,13 +118,8 @@ function MessageScrollerButton({
 }
 
 export {
-  MessageScrollerProvider,
-  MessageScroller,
-  MessageScrollerViewport,
-  MessageScrollerContent,
-  MessageScrollerItem,
-  MessageScrollerButton,
-  useMessageScroller,
-  useMessageScrollerScrollable,
-  useMessageScrollerVisibility,
+MessageScroller,MessageScrollerButton,MessageScrollerContent,
+MessageScrollerItem,MessageScrollerProvider,MessageScrollerViewport,useMessageScroller,
+useMessageScrollerScrollable,
+useMessageScrollerVisibility
 };

@@ -1,9 +1,6 @@
-import { createServer, type Server } from "node:http";
+import { expect,test } from "@playwright/test";
 import OpenAI from "openai";
-import Anthropic from "@anthropic-ai/sdk";
-import { expect, test } from "@playwright/test";
 
-import { ensureE2EUser, login } from "./fixtures";
 
 test("proxy enforces authentication, invocation scope and model visibility", async ({
   page,

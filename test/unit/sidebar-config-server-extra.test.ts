@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach,describe,expect,it,vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
@@ -21,12 +21,12 @@ vi.mock("@/server/infrastructure/db", () => ({
 	},
 }));
 
-import {
-	deleteSidebarNavConfig,
-	getSidebarNavConfig,
-	setSidebarNavConfig,
-} from "@/modules/navigation/sidebar-config.server";
 import { defaultSidebarNavConfig } from "@/modules/navigation/sidebar-config";
+import {
+deleteSidebarNavConfig,
+getSidebarNavConfig,
+setSidebarNavConfig,
+} from "@/modules/navigation/sidebar-config.server";
 
 describe("sidebar config server persistence", () => {
 	beforeEach(() => {

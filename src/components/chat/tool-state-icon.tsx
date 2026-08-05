@@ -1,9 +1,9 @@
 import {
-  CheckCircle2Icon,
-  ShieldAlertIcon,
-  TriangleAlertIcon,
-  WrenchIcon,
-  XCircleIcon,
+CheckCircle2Icon,
+ShieldAlertIcon,
+TriangleAlertIcon,
+WrenchIcon,
+XCircleIcon,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";

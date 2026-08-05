@@ -1,34 +1,21 @@
 import {
-  ImagePlusIcon,
-  PencilIcon,
-  PlusIcon,
-  RefreshCwIcon,
-  SearchIcon,
-  Trash2Icon,
-  XIcon,
+PlusIcon,
+SearchIcon
 } from "lucide-react";
-import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { toast } from "sonner";
+import { useState } from "react";
 
-import { AdvancedSection } from "@/components/ui/advanced-section";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
-import { ModelLogo } from "@/components/providers/model-logo";
-import { ModelConfigDialog } from "./model-config-dialog";
+import { ModelsPanelProps } from "./model-list.read-logo-file";
 import { ModelCapabilities } from "./provider-shared";
 import type {
-  DiscoveredModel,
-  ProviderModel,
-  ProviderModelUpdate,
-  SafeProvider,
+DiscoveredModel
 } from "./types";
-import { ModelsPanelProps } from "./model-list.read-logo-file";
 
 
 export function DiscoveredModelsList({

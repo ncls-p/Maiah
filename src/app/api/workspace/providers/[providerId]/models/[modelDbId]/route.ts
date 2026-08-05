@@ -1,19 +1,19 @@
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
 import {
-  handleRoute,
-  requireResourcePermissionAsync,
+handleRoute,
+requireResourcePermissionAsync,
 } from "@/lib/route-handler";
 import {
-  deleteModel,
-  getModelById,
-  getProviderById,
-  updateModel,
-} from "@/modules/provider/use-cases";
-import {
-  imageGenerationConfigSchema,
-  sustainabilityConfigSchema,
+imageGenerationConfigSchema,
+sustainabilityConfigSchema,
 } from "@/modules/provider/model-runtime-config";
+import {
+deleteModel,
+getModelById,
+getProviderById,
+updateModel,
+} from "@/modules/provider/use-cases";
+import { NextRequest,NextResponse } from "next/server";
+import { z } from "zod";
 
 const paramsSchema = z.object({
   providerId: z.uuid(),

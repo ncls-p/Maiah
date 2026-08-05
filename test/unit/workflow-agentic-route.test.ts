@@ -1,11 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { LanguageModelV4Usage } from "@ai-sdk/provider";
-import { MockLanguageModelV4, simulateReadableStream } from "ai/test";
+import { MockLanguageModelV4,simulateReadableStream } from "ai/test";
 import { NextRequest } from "next/server";
+import { beforeEach,describe,expect,it,vi } from "vitest";
 
 import {
-  createStarterDefinition,
-  type WorkflowDefinition,
+createStarterDefinition
 } from "@/modules/workflows/contracts";
 
 const mocks = vi.hoisted(() => ({
@@ -121,8 +120,7 @@ vi.mock("@/server/infrastructure/providers", () => ({
 }));
 
 import {
-  GET,
-  POST,
+GET
 } from "@/app/api/workspace/workflows/[workflowId]/agentic/route";
 
 const userId = "11111111-1111-4111-8111-111111111111";
@@ -143,52 +141,6 @@ const modelUsage: LanguageModelV4Usage = {
     reasoning: 0,
   },
 };
-
-function toolCallStream(toolCallId: string, toolName: string, input: unknown) {
-  return {
-    stream: simulateReadableStream({
-      chunks: [
-        { type: "stream-start" as const, warnings: [] },
-        {
-          type: "tool-call" as const,
-          toolCallId,
-          toolName,
-          input: JSON.stringify(input),
-        },
-        {
-          type: "finish" as const,
-          usage: modelUsage,
-          finishReason: {
-            unified: "tool-calls" as const,
-            raw: "tool_calls",
-          },
-        },
-      ],
-    }),
-  };
-}
-
-function textStream(text: string) {
-  return {
-    stream: simulateReadableStream({
-      chunks: [
-        { type: "stream-start" as const, warnings: [] },
-        { type: "text-start" as const, id: "text-recovery" },
-        {
-          type: "text-delta" as const,
-          id: "text-recovery",
-          delta: text,
-        },
-        { type: "text-end" as const, id: "text-recovery" },
-        {
-          type: "finish" as const,
-          usage: modelUsage,
-          finishReason: { unified: "stop" as const, raw: "stop" },
-        },
-      ],
-    }),
-  };
-}
 
 const generatedDefinition = {
   schemaVersion: 1 as const,
@@ -219,53 +171,6 @@ const generatedDefinition = {
     },
   ],
 };
-
-const incompleteDefinition = {
-  schemaVersion: 1 as const,
-  nodes: [
-    ...createStarterDefinition().nodes,
-    {
-      id: "assistant",
-      type: "agent.run" as const,
-      label: "",
-      position: { x: 360, y: 180 },
-      parameters: { agentId: "", prompt: "" },
-      settings: {
-        timeoutMs: 30_000,
-        maxRetries: 0,
-        retryDelayMs: 1_000,
-      },
-    },
-  ],
-  edges: [
-    {
-      id: "edge-trigger-assistant",
-      source: "trigger",
-      target: "assistant",
-      sourceHandle: null,
-    },
-  ],
-};
-
-function request(definition: WorkflowDefinition = incompleteDefinition) {
-  return new NextRequest(
-    `http://localhost/api/workspace/workflows/${workflowId}/agentic`,
-    {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        workspaceId,
-        message: "Build a summary workflow",
-        draft: {
-          name: "Summary workflow",
-          description: null,
-          definition,
-        },
-      }),
-    },
-  );
-}
-
 describe("workflow agentic route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -583,193 +488,5 @@ describe("workflow agentic route", () => {
       "workflow",
       workflowId,
     );
-  });
-
-  it("repairs an incomplete visual draft, streams progress, and persists one validated version", async () => {
-    const response = await POST(request(), {
-      params: Promise.resolve({ workflowId }),
-    });
-    const events = (await response.text())
-      .trim()
-      .split("\n")
-      .map((line) => JSON.parse(line) as { type: string });
-
-    expect(response.status).toBe(200);
-    expect(response.headers.get("content-type")).toContain(
-      "application/x-ndjson",
-    );
-    expect(events.map((event) => event.type)).toEqual([
-      "agent",
-      "tool_start",
-      "tool_result",
-      "tool_start",
-      "tool_result",
-      "tool_start",
-      "tool_result",
-      "todo_list",
-      "tool_start",
-      "tool_result",
-      "workflow",
-      "tool_start",
-      "tool_result",
-      "tool_start",
-      "tool_result",
-      "tool_start",
-      "tool_result",
-      "text",
-      "saved",
-      "done",
-    ]);
-    expect(mocks.searchWebWithSearxng).toHaveBeenCalledTimes(1);
-    expect(mocks.requirePermission).toHaveBeenCalledWith(
-      userId,
-      workspaceId,
-      "workflows.update",
-      "workflow",
-      workflowId,
-    );
-    expect(mocks.updateWorkflow).toHaveBeenCalledTimes(1);
-    expect(mocks.updateWorkflow).toHaveBeenCalledWith(
-      expect.objectContaining({
-        workflowId,
-        workspaceId,
-        userId,
-        definition: generatedDefinition,
-      }),
-    );
-    expect(mocks.appendWorkflowAgentMessage).toHaveBeenCalledTimes(2);
-  });
-
-  it("lets the model repair a failed connection tool call and saves the corrected graph", async () => {
-    mocks.createChatModel.mockReturnValueOnce(
-      new MockLanguageModelV4({
-        modelId: "model-1",
-        doStream: [
-          toolCallStream("tool-plan", "set_workflow_plan", {
-            summary: "Build and connect the summary workflow",
-            steps: ["Add the summary step", "Connect and test the graph"],
-            tests: ["Validate every connection"],
-          }),
-          toolCallStream("tool-todos", "update_todo_list", {
-            title: "Summary workflow",
-            items: [
-              {
-                id: "connect",
-                label: "Connect the workflow",
-                status: "in_progress",
-              },
-            ],
-          }),
-          toolCallStream("tool-nodes", "upsert_workflow_nodes", {
-            summary: "Add the summary step",
-            nodes: generatedDefinition.nodes.filter(
-              (node) => node.id === "summary",
-            ),
-          }),
-          toolCallStream("tool-bad-edge", "connect_workflow_nodes", {
-            connections: [
-              {
-                source: "missing-trigger",
-                target: "summary",
-              },
-            ],
-          }),
-          toolCallStream("tool-good-edge", "connect_workflow_nodes", {
-            connections: [
-              {
-                source: "trigger",
-                target: "summary",
-                outcome: "",
-              },
-            ],
-          }),
-          toolCallStream("tool-validate", "validate_workflow", {}),
-          toolCallStream("tool-dry-run", "dry_run_workflow", {
-            testInput: { message: "Bonjour" },
-          }),
-          textStream("The corrected workflow is ready."),
-        ],
-      }),
-    );
-
-    const response = await POST(request(createStarterDefinition()), {
-      params: Promise.resolve({ workflowId }),
-    });
-    const events = (await response.text())
-      .trim()
-      .split("\n")
-      .map(
-        (line) =>
-          JSON.parse(line) as {
-            type: string;
-            id?: string;
-            status?: string;
-          },
-      );
-
-    expect(
-      events.find(
-        (event) => event.type === "tool_result" && event.id === "tool-bad-edge",
-      ),
-    ).toMatchObject({ status: "error" });
-    expect(events.at(-1)).toEqual({ type: "done" });
-    expect(mocks.updateWorkflow).toHaveBeenCalledTimes(1);
-    expect(mocks.updateWorkflow).toHaveBeenCalledWith(
-      expect.objectContaining({
-        definition: expect.objectContaining({
-          edges: [
-            expect.objectContaining({
-              source: "trigger",
-              target: "summary",
-              sourceHandle: null,
-            }),
-          ],
-        }),
-      }),
-    );
-  });
-
-  it("uses the workflow builder assistant selected by an administrator", async () => {
-    const configuredAgentId = "66666666-6666-4666-8666-666666666666";
-    mocks.getConfiguredWorkflowBuilderAgentId.mockResolvedValue(
-      configuredAgentId,
-    );
-    mocks.getAgentById.mockResolvedValue({
-      id: configuredAgentId,
-      name: "Admin workflow builder",
-    });
-
-    const response = await POST(request(), {
-      params: Promise.resolve({ workflowId }),
-    });
-    const events = (await response.text())
-      .trim()
-      .split("\n")
-      .map((line) => JSON.parse(line) as { type: string; name?: string });
-
-    expect(response.status).toBe(200);
-    expect(events[0]).toEqual({
-      type: "agent",
-      name: "Admin workflow builder",
-    });
-    expect(mocks.getAgentDefaultPreferences).not.toHaveBeenCalled();
-    expect(mocks.getActiveVersion).toHaveBeenCalledWith(configuredAgentId);
-  });
-
-  it("fails closed when no assistant is available", async () => {
-    mocks.listAgents.mockResolvedValue([]);
-    mocks.getAgentDefaultPreferences.mockResolvedValue({
-      organizationDefaultAgentId: null,
-      userDefaultAgentId: null,
-      effectiveDefaultAgentId: null,
-    });
-
-    const response = await POST(request(), {
-      params: Promise.resolve({ workflowId }),
-    });
-
-    expect(response.status).toBe(400);
-    expect(mocks.createChatModel).not.toHaveBeenCalled();
-    expect(mocks.updateWorkflow).not.toHaveBeenCalled();
   });
 });

@@ -1,18 +1,18 @@
-import {
-  ActivityIcon,
-  BookOpenIcon,
-  CalendarClockIcon,
-  KeyRoundIcon,
-  MessageSquareIcon,
-  PlugZapIcon,
-  ScrollTextIcon,
-  SettingsIcon,
-  StoreIcon,
-  UsersIcon,
-  WorkflowIcon,
-  WrenchIcon,
-} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import {
+ActivityIcon,
+BookOpenIcon,
+CalendarClockIcon,
+KeyRoundIcon,
+MessageSquareIcon,
+PlugZapIcon,
+ScrollTextIcon,
+SettingsIcon,
+StoreIcon,
+UsersIcon,
+WorkflowIcon,
+WrenchIcon,
+} from "lucide-react";
 
 export type NavItem = {
   href: string;

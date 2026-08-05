@@ -1,34 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { toast } from "sonner";
-import { ChevronDownIcon, DownloadIcon, Maximize2Icon } from "lucide-react";
+import { useEffect,useRef,useState } from "react";
 
 import {
-  artifactCombinedCode,
-  artifactSourceDocument,
-  partitionCodeSandboxFiles,
-  type CodeSandboxFileOutput,
-  type CodeSandboxInputPreview,
-  type CodeSandboxOutput,
-  type HtmlArtifactOutput,
+type HtmlArtifactOutput
 } from "@/components/chat/chat-message-rendering-utils";
-import { Button } from "@/components/ui/button";
-import { ToolStateIcon } from "@/components/chat/tool-state-icon";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { formatBytes } from "@/components/chat/code-workspace-artifact-card";
-import { cn } from "@/lib/utils";
 
 export const MAX_LIVE_TOOL_INPUT_CHARS = 8000;
 export const BUTTON_TYPE = "button";

@@ -1,26 +1,19 @@
-import { and, asc, eq, inArray, isNull, lte, or } from "drizzle-orm";
+import { and,asc,eq,inArray,isNull,or } from "drizzle-orm";
 
-import { encryptValue } from "@/lib/crypto";
-import { logHandledError, logHandledWarning } from "@/lib/logger";
 import {
-  canUseAgent,
-  getActiveVersion,
-  getAgentById,
+canUseAgent,
+getAgentById
 } from "@/modules/agent/use-cases";
-import { executeAgent } from "@/modules/agent/runtime-executor";
-import { getBuiltInToolByName } from "@/modules/tool/builtin-tools";
 import { db } from "@/server/infrastructure/db";
 import {
-  conversations,
-  messageParts,
-  messages,
-  scheduledTasks,
+conversations,
+scheduledTasks
 } from "@/server/infrastructure/db/schema";
 import {
-  ScheduledTaskInput,
-  UpdateScheduledTaskInput,
-  computeNextRunAt,
-  normalizeTaskInput,
+ScheduledTaskInput,
+UpdateScheduledTaskInput,
+computeNextRunAt,
+normalizeTaskInput,
 } from "./use-cases.scheduled-task-frequency";
 
 export async function assertAgentInWorkspace(

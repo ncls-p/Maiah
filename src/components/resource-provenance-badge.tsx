@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2Icon, FolderKanbanIcon, UserIcon } from "lucide-react";
+import { Building2Icon,FolderKanbanIcon,UserIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Badge } from "@/components/ui/badge";

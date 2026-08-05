@@ -1,8 +1,7 @@
-import { existsSync } from "node:fs";
 
-import { expect, test } from "@playwright/test";
+import { expect,test } from "@playwright/test";
 
-import { ensureE2EUser, login } from "./fixtures";
+import { ensureE2EUser,login } from "./fixtures";
 
 test.beforeAll(async () => {
   await ensureE2EUser();

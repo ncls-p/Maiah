@@ -1,22 +1,22 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
+import { BookMarkedIcon,ServerIcon,WrenchIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { BookMarkedIcon, ServerIcon, WrenchIcon } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { useCallback,useEffect,useMemo,useState } from "react";
 
 import { McpServerManager } from "@/components/mcp/mcp-server-manager";
 import { PageLoading } from "@/components/page-loading";
 import { SkillManager } from "@/components/skills/skill-manager";
-import { WorkspacePage } from "@/components/workspace-page";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs,TabsContent,TabsList,TabsTrigger } from "@/components/ui/tabs";
+import { WorkspacePage } from "@/components/workspace-page";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { useRouter } from "@/i18n/navigation";
 import { fetchWorkspacePermissions } from "@/lib/api-client";
 import {
-  DEFAULT_WORKSPACE_PERMISSIONS,
-  type WorkspacePermissions,
+DEFAULT_WORKSPACE_PERMISSIONS,
+type WorkspacePermissions,
 } from "@/lib/workspace-nav";
 
 import { BuiltinToolsPanel } from "./builtin-tools-panel";

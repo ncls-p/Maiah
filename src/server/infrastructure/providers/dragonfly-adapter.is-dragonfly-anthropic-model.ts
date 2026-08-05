@@ -1,12 +1,3 @@
-import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-import type { EmbeddingModelV4, LanguageModelV4 } from "@ai-sdk/provider";
-import type {
-  ProviderAdapter,
-  ProviderRuntimeConfig,
-  ProviderHealth,
-  ModelDescriptor,
-  ModelCapability,
-} from "./adapter";
 import { removeInvalidThinkingToolCalls } from "./dragonfly-adapter.normalize-base-url";
 
 function sanitizeDragonflySsePayload(payload: string) {

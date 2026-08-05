@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
 import {
-  handleRoute,
-  requireResourcePermissionAsync,
+handleRoute,
+requireResourcePermissionAsync,
 } from "@/lib/route-handler";
 import { searchKnowledgeBase } from "@/modules/knowledge/use-cases";
+import { NextRequest,NextResponse } from "next/server";
+import { z } from "zod";
 
 const searchSchema = z.object({
   workspaceId: z.uuid(),

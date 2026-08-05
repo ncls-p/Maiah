@@ -1,13 +1,13 @@
-import Image from "next/image";
 import { getTranslations } from "next-intl/server";
+import Image from "next/image";
 
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
+Card,
+CardContent,
+CardDescription,
+CardHeader,
+CardTitle,
 } from "@/components/ui/card";
 import { Link } from "@/i18n/navigation";
 

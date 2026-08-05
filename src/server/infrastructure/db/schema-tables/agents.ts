@@ -1,20 +1,20 @@
-import {
-  pgTable,
-  text,
-  integer,
-  timestamp,
-  boolean,
-  varchar,
-  uuid,
-  jsonb,
-  index,
-  uniqueIndex,
-  pgEnum,
-} from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
+import {
+boolean,
+index,
+integer,
+jsonb,
+pgEnum,
+pgTable,
+text,
+timestamp,
+uniqueIndex,
+uuid,
+varchar,
+} from "drizzle-orm/pg-core";
+import { aiProviders } from "./ai-providers";
 import { users } from "./auth";
 import { workspaces } from "./workspace";
-import { aiProviders } from "./ai-providers";
 
 const CREATED_AT_COLUMN = "created_at";
 const UPDATED_AT_COLUMN = "updated_at";

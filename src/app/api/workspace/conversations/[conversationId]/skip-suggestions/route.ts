@@ -1,10 +1,10 @@
-import { and, eq, isNull } from "drizzle-orm";
-import { NextRequest, NextResponse } from "next/server";
+import { and,eq,isNull } from "drizzle-orm";
+import { NextRequest,NextResponse } from "next/server";
 import { z } from "zod";
 
 import {
-  handleRoute,
-  requireResourcePermissionAsync,
+handleRoute,
+requireResourcePermissionAsync,
 } from "@/lib/route-handler";
 import { requestSkipNextChatSuggestions } from "@/modules/chat/suggestion-skip";
 import { db } from "@/server/infrastructure/db";

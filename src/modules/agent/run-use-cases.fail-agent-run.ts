@@ -1,20 +1,17 @@
-import { and, desc, eq, gt, inArray, isNull, lt, sql } from "drizzle-orm";
-import { decryptValue, encryptValue } from "@/lib/crypto";
 import {
-  projectToolMessagePayload,
-  safeToolErrorMessage,
+safeToolErrorMessage
 } from "@/modules/tool/safe-payload";
-import { reserveWorkspaceTokens } from "@/modules/usage/quota-reservations";
 import { db } from "@/server/infrastructure/db";
 import {
-  agentRuns,
-  agentRunSteps,
-  usageEvents,
-  workspaceTokenReservations,
+agentRuns,
+agentRunSteps,
+usageEvents,
+workspaceTokenReservations,
 } from "@/server/infrastructure/db/schema";
+import { and,desc,eq,inArray } from "drizzle-orm";
 import {
-  AgentRunTerminalStatus,
-  AgentRunUsageEvent,
+AgentRunTerminalStatus,
+AgentRunUsageEvent,
 } from "./run-use-cases.agent-run-trigger";
 
 export async function failAgentRun(input: {

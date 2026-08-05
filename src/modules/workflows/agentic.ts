@@ -1,15 +1,15 @@
 import { z } from "zod";
 
+import type { ChatTodoList } from "@/modules/chat/todo-list";
+import type { WorkflowAgentRunRequest } from "./agentic-run-approvals";
 import { WORKFLOW_NODE_CATALOG } from "./catalog";
 import {
-  workflowDefinitionSchema,
-  workflowEdgeSchema,
-  workflowNodeSchema,
-  type WorkflowDefinition,
+workflowDefinitionSchema,
+workflowEdgeSchema,
+workflowNodeSchema,
+type WorkflowDefinition,
 } from "./contracts";
 import { compileWorkflowDefinition } from "./runtime";
-import type { WorkflowAgentRunRequest } from "./agentic-run-approvals";
-import type { ChatTodoList } from "@/modules/chat/todo-list";
 
 export const workflowAgenticMessageSchema = z.object({
   role: z.enum(["user", "assistant"]),

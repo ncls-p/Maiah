@@ -1,10 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { describe,expect,it } from "vitest";
 
 import {
-  cancelsChatStreamFollow,
-  getChatStreamFollowKey,
-  isChatViewportAtEnd,
-  shouldUseMessageScrollAnchor,
+cancelsChatStreamFollow,
+getChatStreamFollowKey,
+isChatViewportAtEnd,
+shouldUseMessageScrollAnchor,
 } from "@/components/chat/chat-scroll";
 import type { ChatMessage } from "@/components/chat/chat-types";
 

@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
 import { formatManifestPreview } from "@/components/marketplace/marketplace-i18n-helpers";
+import { describe,expect,it } from "vitest";
 
 const t = (key: string, values?: Record<string, string | number>) => {
 	if (values) {

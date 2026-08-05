@@ -4,9 +4,9 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
-import { KIND_ICONS, kindAccent } from "./constants";
+import { KIND_ICONS,kindAccent } from "./constants";
 import type { ProviderKind } from "./types";
-import { formatNumber, timeAgo } from "./utils";
+import { formatNumber,timeAgo } from "./utils";
 
 function CapabilityBadge({ label }: { label: string }) {
   return (

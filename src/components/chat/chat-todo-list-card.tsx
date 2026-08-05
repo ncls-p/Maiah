@@ -1,20 +1,20 @@
 "use client";
 
 import {
-  CheckIcon,
-  ChevronDownIcon,
-  CircleIcon,
-  LoaderCircleIcon,
-  ListTodoIcon,
+CheckIcon,
+ChevronDownIcon,
+CircleIcon,
+ListTodoIcon,
+LoaderCircleIcon,
 } from "lucide-react";
-import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
+Collapsible,
+CollapsibleContent,
+CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import type { ChatTodoList } from "@/modules/chat/todo-list";

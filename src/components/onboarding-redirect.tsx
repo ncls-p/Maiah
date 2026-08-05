@@ -1,10 +1,10 @@
 "use client";
 
+import { usePathname,useRouter } from "@/i18n/navigation";
 import { useEffect } from "react";
-import { usePathname, useRouter } from "@/i18n/navigation";
 
 import { useWorkspace } from "@/hooks/use-workspace";
-import { fetchJson, fetchWorkspacePermissions } from "@/lib/api-client";
+import { fetchJson,fetchWorkspacePermissions } from "@/lib/api-client";
 
 export function OnboardingRedirect() {
   const router = useRouter();

@@ -1,15 +1,15 @@
 import { z } from "zod";
 
 import {
-  adminNavItems,
-  advancedCapabilityNavItems,
-  capabilitiesNavItems,
-  configNavItems,
-  planningNavItems,
-  primaryNavItems,
-  type NavGroup,
-  type NavItem,
-  type WorkspaceShellState,
+adminNavItems,
+advancedCapabilityNavItems,
+capabilitiesNavItems,
+configNavItems,
+planningNavItems,
+primaryNavItems,
+type NavGroup,
+type NavItem,
+type WorkspaceShellState,
 } from "@/lib/workspace-nav";
 
 const DEFAULT_SIDEBAR_NAV_IDS = [

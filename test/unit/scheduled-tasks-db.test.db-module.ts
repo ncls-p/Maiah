@@ -1,18 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach,vi } from "vitest";
 
-import { encryptValue } from "@/lib/crypto";
-import { logHandledError, logHandledWarning } from "@/lib/logger";
-import { getActiveVersion, getAgentById } from "@/modules/agent/use-cases";
 import { executeAgent } from "@/modules/agent/runtime-executor";
+import { getActiveVersion,getAgentById } from "@/modules/agent/use-cases";
 import { getBuiltInToolByName } from "@/modules/tool/builtin-tools";
 import * as _dbModule from "@/server/infrastructure/db";
-import {
-  createScheduledTask,
-  deleteScheduledTask,
-  listScheduledTasks,
-  processDueScheduledTasks,
-  updateScheduledTask,
-} from "@/modules/scheduled-tasks/use-cases";
 
 vi.mock("@/lib/crypto", () => ({
   encryptValue: vi.fn(async (value: string) => `enc:${value}`),

@@ -1,41 +1,28 @@
-import { and, eq, isNull } from "drizzle-orm";
 import { generateText } from "ai";
-import { z } from "zod";
 
-import { decryptValue } from "@/lib/crypto";
 import { logHandledWarning } from "@/lib/logger";
-import { normalizeOpenAICompatibleApiRoute } from "@/lib/openai-compatible-api";
 import {
-  agentRuntimePolicy,
-  createRuntimeDeadline,
+agentRuntimePolicy,
+createRuntimeDeadline,
 } from "@/modules/agent/runtime-policy";
-import { registerAiSdkDevTools } from "@/server/infrastructure/ai-sdk/devtools";
-import { db } from "@/server/infrastructure/db";
 import {
-  aiModels,
-  aiProviders,
-  appSettings,
-} from "@/server/infrastructure/db/schema";
-import {
-  getAdapter,
-  type ProviderKind,
-  type ProviderRuntimeConfig,
+getAdapter
 } from "@/server/infrastructure/providers";
+import { RuntimeModel,getChatAutomationConfig } from "./automation.chat-automation-config";
 import {
-  ReasoningLikePart,
-  chatArtifactsSchema,
-  extractJsonObjectCandidate,
-  reasoningTextFromParts,
-  resolveRuntimeModel,
-} from "./automation.resolve-runtime-model";
-import { RuntimeModel, getChatAutomationConfig } from "./automation.chat-automation-config";
-import {
-  createFallbackArtifacts,
-  ensureThreeSuggestions,
-  extractSuggestions,
-  extractTitle,
-  sanitizeTitle,
+createFallbackArtifacts,
+ensureThreeSuggestions,
+extractSuggestions,
+extractTitle,
+sanitizeTitle,
 } from "./automation.extract-title";
+import {
+ReasoningLikePart,
+chatArtifactsSchema,
+extractJsonObjectCandidate,
+reasoningTextFromParts,
+resolveRuntimeModel,
+} from "./automation.resolve-runtime-model";
 
 function parseArtifactsStrict(value: string) {
   const json = extractJsonObjectCandidate(value);

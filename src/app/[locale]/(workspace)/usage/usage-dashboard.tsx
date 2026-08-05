@@ -1,6 +1,6 @@
 "use client";
 
-import { useLocale, useTranslations } from "next-intl";
+import { useLocale,useTranslations } from "next-intl";
 
 import { Skeleton } from "@/components/ui/skeleton";
 

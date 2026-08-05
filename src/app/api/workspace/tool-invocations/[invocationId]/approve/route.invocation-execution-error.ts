@@ -1,29 +1,15 @@
-import { and, eq } from "drizzle-orm";
-import { NextRequest, NextResponse } from "next/server";
-import { decryptValue, encryptValue } from "@/lib/crypto";
-import { logger, logHandledError } from "@/lib/logger";
-import {
-  handleRoute,
-  requireWorkspacePermissionAsync,
-} from "@/lib/route-handler";
+import { decryptValue } from "@/lib/crypto";
 import { executeCustomToolWorkflow } from "@/modules/custom-tools/use-cases";
 import { executeMcpTool } from "@/modules/mcp/executor";
 import { getBuiltInTool } from "@/modules/tool/builtin-tools";
-import {
-  claimToolInvocationForExecution,
-  completeToolInvocationFailure,
-  completeToolInvocationSuccess,
-} from "@/modules/tool/invocation-approval";
-import { safeToolErrorMessage } from "@/modules/tool/safe-payload";
-import { audit } from "@/server/domain/services/audit";
 import { db } from "@/server/infrastructure/db";
 import {
-  conversations,
-  mcpTools,
-  toolInvocations,
+mcpTools,
+toolInvocations
 } from "@/server/infrastructure/db/schema";
+import { eq } from "drizzle-orm";
+import { NextResponse } from "next/server";
 
-import { invocationParamsSchema } from "../../invocation-shared";
 
 export class InvocationExecutionError extends Error {
   constructor(

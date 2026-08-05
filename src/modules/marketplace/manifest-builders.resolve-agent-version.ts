@@ -1,33 +1,19 @@
-import { and, desc, eq, inArray } from "drizzle-orm";
-import { db } from "@/server/infrastructure/db";
 import { BUILTIN_TOOL_SUMMARIES } from "@/modules/tool/builtin-tools-catalog";
+import { db } from "@/server/infrastructure/db";
 import {
-  agentKnowledgeBindings,
-  agents,
-  agentSkillBindings,
-  agentSkills,
-  agentToolBindings,
-  agentVersions,
-  aiModels,
-  aiProviders,
-  customToolSecretRequests,
-  customTools,
-  knowledgeBases,
-  mcpServers,
-  mcpTools,
+agents,
+agentToolBindings,
+agentVersions,
+aiModels,
+aiProviders,
+customTools,
+mcpServers,
+mcpTools
 } from "@/server/infrastructure/db/schema";
+import { and,desc,eq } from "drizzle-orm";
 import type {
-  AgentMarketplaceManifest,
-  CredentialFieldSchema,
-  McpPresetMarketplaceManifest,
-  PortableKnowledgeBinding,
-  PortableSkillBinding,
-  PortableToolBinding,
-  SkillContentManifest,
-  SkillMarketplaceManifest,
-  ToolMarketplaceManifest,
+PortableToolBinding
 } from "./manifest-types";
-import { skillFileStats } from "./manifest-types";
 
 export async function resolveAgentVersion(agentId: string) {
   const [agent] = await db

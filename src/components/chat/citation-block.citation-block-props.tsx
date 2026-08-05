@@ -1,29 +1,28 @@
 "use client";
 
 import {
-  BookOpenIcon,
-  ChevronDownIcon,
-  ExternalLinkIcon,
-  FileTextIcon,
-  Loader2Icon,
+ChevronDownIcon,
+ExternalLinkIcon,
+FileTextIcon,
+Loader2Icon
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import { useEffect,useRef,useState } from "react";
 
 import type { ChatCitation } from "@/components/chat/chat-types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
+Collapsible,
+CollapsibleContent,
+CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
+Dialog,
+DialogContent,
+DialogDescription,
+DialogHeader,
+DialogTitle,
 } from "@/components/ui/dialog";
 import { fetchJson } from "@/lib/api-client";
 import { cn } from "@/lib/utils";

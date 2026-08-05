@@ -1,11 +1,11 @@
-import { Composition, Folder } from "remotion";
+import { Composition,Folder } from "remotion";
 
 import { MaiahLaunchFilm } from "./MaiahLaunchFilm";
 import {
-	VIDEO_DURATION,
-	VIDEO_FPS,
-	VIDEO_HEIGHT,
-	VIDEO_WIDTH,
+VIDEO_DURATION,
+VIDEO_FPS,
+VIDEO_HEIGHT,
+VIDEO_WIDTH,
 } from "./constants";
 
 export function RemotionRoot() {

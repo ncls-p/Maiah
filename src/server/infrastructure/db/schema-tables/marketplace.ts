@@ -1,15 +1,15 @@
 import {
-  pgTable,
-  text,
-  integer,
-  timestamp,
-  boolean,
-  varchar,
-  uuid,
-  jsonb,
-  index,
-  uniqueIndex,
-  pgEnum,
+boolean,
+index,
+integer,
+jsonb,
+pgEnum,
+pgTable,
+text,
+timestamp,
+uniqueIndex,
+uuid,
+varchar,
 } from "drizzle-orm/pg-core";
 import { users } from "./auth";
 import { workspaces } from "./workspace";

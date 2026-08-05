@@ -1,18 +1,9 @@
 import {
-  parseToolPart,
-  toolNameMatches,
-  type ChatFileAttachment,
-  type ChatImageAttachment,
-  type ChatMessage,
-  type ChatMessagePart,
-  type PendingToolApproval,
+parseToolPart,
+toolNameMatches,
+type ChatMessagePart,
+type PendingToolApproval
 } from "@/components/chat/chat-types";
-import { isCodeWorkspaceArtifactOutput } from "@/components/chat/code-workspace-artifact-card";
-import { summarizeToolInput } from "@/components/chat/tool-approval-banner";
-import {
-  chatTodoListFromUnknown,
-  type ChatTodoList,
-} from "@/modules/chat/todo-list";
 import { projectToolPayloadForDisplay } from "@/modules/tool/safe-payload";
 import { stringifyForMatch } from "./chat-message-rendering-utils.stringify-for-match";
 

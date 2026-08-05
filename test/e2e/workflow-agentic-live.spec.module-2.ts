@@ -1,15 +1,15 @@
-import { createServer, type IncomingMessage, type Server } from "node:http";
+import { createServer } from "node:http";
 
-import { expect, test } from "@playwright/test";
+import { test } from "@playwright/test";
 
-import { ensureE2EUser, login } from "./fixtures";
+import { ensureE2EUser,login } from "./fixtures";
 import {
-  generatedDefinition,
-  requestBody,
-  upstreamState,
-  usage,
-  writeStream,
-  writeToolCall,
+generatedDefinition,
+requestBody,
+upstreamState,
+usage,
+writeStream,
+writeToolCall,
 } from "./workflow-agentic-live.spec.upstream";
 
 test.beforeAll(async () => {

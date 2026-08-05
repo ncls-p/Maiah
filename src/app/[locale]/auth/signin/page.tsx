@@ -1,15 +1,14 @@
 "use client";
 
-import { type SyntheticEvent, useRef, useState } from "react";
-import { Link } from "@/i18n/navigation";
-import { useRouter } from "@/i18n/navigation";
+import { Link,useRouter } from "@/i18n/navigation";
 import { LogInIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { type SyntheticEvent,useRef,useState } from "react";
 
 import { AuthShell } from "@/components/auth/auth-shell";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Alert,AlertDescription,AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Field, FieldContent, FieldLabel } from "@/components/ui/field";
+import { Field,FieldContent,FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 

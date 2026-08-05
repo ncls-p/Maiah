@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach,beforeEach,describe,expect,it,vi } from "vitest";
 
 // ─── DB mock ────────────────────────────────────────────────────────────
 
@@ -29,12 +29,12 @@ vi.mock("@/server/infrastructure/db", () => {
 	};
 });
 
+import {
+assertWorkspaceWithinTokenQuota,
+getWorkspaceMonthlyTokenUsage,
+} from "@/modules/usage/quota";
 import * as _dbModule from "@/server/infrastructure/db";
 const dbModule = _dbModule as unknown as DbModule;
-import {
-	assertWorkspaceWithinTokenQuota,
-	getWorkspaceMonthlyTokenUsage,
-} from "@/modules/usage/quota";
 
 beforeEach(() => {
 	vi.clearAllMocks();

@@ -1,30 +1,30 @@
 import {
-  MoreHorizontalIcon,
-  PlusIcon,
-  RefreshCwIcon,
-  SearchIcon,
-  Trash2Icon,
+MoreHorizontalIcon,
+PlusIcon,
+RefreshCwIcon,
+SearchIcon,
+Trash2Icon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
+DropdownMenu,
+DropdownMenuContent,
+DropdownMenuItem,
+DropdownMenuSeparator,
+DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 
-import { KIND_LABELS, kindAccent } from "./constants";
+import { KIND_LABELS,kindAccent } from "./constants";
 import {
-  HealthIndicator,
-  ProviderCardSkeleton,
-  ProviderTypeIcon,
+HealthIndicator,
+ProviderCardSkeleton,
+ProviderTypeIcon,
 } from "./provider-shared";
 import type { SafeProvider } from "./types";
 

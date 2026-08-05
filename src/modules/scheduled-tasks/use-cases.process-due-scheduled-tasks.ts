@@ -1,26 +1,24 @@
-import { and, asc, eq, inArray, isNull, lte, or } from "drizzle-orm";
+import { and,asc,eq,lte } from "drizzle-orm";
 
 import { encryptValue } from "@/lib/crypto";
-import { logHandledError, logHandledWarning } from "@/lib/logger";
-import {
-  canUseAgent,
-  getActiveVersion,
-  getAgentById,
-} from "@/modules/agent/use-cases";
+import { logHandledError,logHandledWarning } from "@/lib/logger";
 import { executeAgent } from "@/modules/agent/runtime-executor";
+import {
+getActiveVersion
+} from "@/modules/agent/use-cases";
 import { getBuiltInToolByName } from "@/modules/tool/builtin-tools";
 import { db } from "@/server/infrastructure/db";
 import {
-  conversations,
-  messageParts,
-  messages,
-  scheduledTasks,
+conversations,
+messageParts,
+messages,
+scheduledTasks,
 } from "@/server/infrastructure/db/schema";
 import {
-  assertAgentInWorkspace,
-  ensureConversationForTask,
+assertAgentInWorkspace,
+ensureConversationForTask,
 } from "./use-cases.assert-agent-in-workspace";
-import { MAX_DUE_TASKS_PER_TICK, computeNextRunAt } from "./use-cases.scheduled-task-frequency";
+import { MAX_DUE_TASKS_PER_TICK,computeNextRunAt } from "./use-cases.scheduled-task-frequency";
 
 async function buildSearchContext(prompt: string) {
   const webSearch = getBuiltInToolByName("web_search");

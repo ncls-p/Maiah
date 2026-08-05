@@ -3,7 +3,7 @@ import { Wrench } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
-import { TRANSPORT_ICONS, transportAccent } from "./transport";
+import { TRANSPORT_ICONS,transportAccent } from "./transport";
 
 export function TransportTypeIcon({
   transport,

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach,describe,expect,it,vi } from "vitest";
 
 const mocks = vi.hoisted(() => {
   const organization = {
@@ -36,8 +36,8 @@ vi.mock("@/server/domain/services/authorization", () => ({
 }));
 
 import {
-  getOrganizationBranding,
-  updateOrganizationBranding,
+getOrganizationBranding,
+updateOrganizationBranding,
 } from "@/modules/organization/branding";
 
 describe("organization branding authorization", () => {

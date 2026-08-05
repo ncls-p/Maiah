@@ -1,35 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { DownloadIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { toast } from "sonner";
-import { ChevronDownIcon, DownloadIcon, Maximize2Icon } from "lucide-react";
 
 import {
-  artifactCombinedCode,
-  artifactSourceDocument,
-  partitionCodeSandboxFiles,
-  type CodeSandboxFileOutput,
-  type CodeSandboxInputPreview,
-  type CodeSandboxOutput,
-  type HtmlArtifactOutput,
+type CodeSandboxFileOutput
 } from "@/components/chat/chat-message-rendering-utils";
-import { Button } from "@/components/ui/button";
-import { ToolStateIcon } from "@/components/chat/tool-state-icon";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { formatBytes } from "@/components/chat/code-workspace-artifact-card";
-import { cn } from "@/lib/utils";
-import { COMPACT_ICON_CLASS, OUTLINE_VARIANT } from "./chat-artifact-renderers.max-live-tool-input-chars";
+import { Button } from "@/components/ui/button";
+import { COMPACT_ICON_CLASS,OUTLINE_VARIANT } from "./chat-artifact-renderers.max-live-tool-input-chars";
 
 
 export function SandboxOutputFileCard({ file }: { file: CodeSandboxFileOutput }) {

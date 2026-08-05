@@ -6,9 +6,9 @@ import { useTranslations } from "next-intl";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import {
-  Streamdown,
-  type LinkSafetyConfig,
-  type LinkSafetyModalProps,
+Streamdown,
+type LinkSafetyConfig,
+type LinkSafetyModalProps,
 } from "streamdown";
 
 import { Button } from "@/components/ui/button";

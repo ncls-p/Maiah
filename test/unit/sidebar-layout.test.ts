@@ -1,17 +1,17 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach,describe,expect,it,vi } from "vitest";
 
 import {
-  APP_SIDEBAR_OPEN_STORAGE_EVENT,
-  APP_SIDEBAR_OPEN_STORAGE_KEY,
-  APP_SIDEBAR_WIDTH_STORAGE_EVENT,
-  APP_SIDEBAR_WIDTH_STORAGE_KEY,
-  clampAppSidebarWidth,
-  getStoredAppSidebarOpen,
-  getStoredAppSidebarWidth,
-  setStoredAppSidebarOpen,
-  setStoredAppSidebarWidth,
-  subscribeAppSidebarOpen,
-  subscribeAppSidebarWidth,
+APP_SIDEBAR_OPEN_STORAGE_EVENT,
+APP_SIDEBAR_OPEN_STORAGE_KEY,
+APP_SIDEBAR_WIDTH_STORAGE_EVENT,
+APP_SIDEBAR_WIDTH_STORAGE_KEY,
+clampAppSidebarWidth,
+getStoredAppSidebarOpen,
+getStoredAppSidebarWidth,
+setStoredAppSidebarOpen,
+setStoredAppSidebarWidth,
+subscribeAppSidebarOpen,
+subscribeAppSidebarWidth,
 } from "@/lib/sidebar-layout";
 
 const storedValues = new Map<string, string>();

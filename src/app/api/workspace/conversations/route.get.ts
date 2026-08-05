@@ -1,42 +1,39 @@
-import {
-  and,
-  asc,
-  desc,
-  eq,
-  inArray,
-  isNotNull,
-  isNull,
-  lt,
-  or,
-  sql,
-} from "drizzle-orm";
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
 import { decryptValue } from "@/lib/crypto";
 import {
-  handleRoute,
-  requireRequestPermissionScopeAsync,
+handleRoute,
+requireRequestPermissionScopeAsync,
 } from "@/lib/route-handler";
 import {
-  hasResourcePermissionForRequest,
-  isWorkspaceMemberForRequest,
+hasResourcePermissionForRequest,
+isWorkspaceMemberForRequest,
 } from "@/modules/auth/workspace-access";
 import {
-  conversationSearchSnippet,
-  conversationTextMatches,
+conversationSearchSnippet,
+conversationTextMatches,
 } from "@/modules/chat/conversation-search";
 import { db } from "@/server/infrastructure/db";
-import {
-  agents,
-  conversationFolders,
-  conversations,
-  messageParts,
-  messages,
-} from "@/server/infrastructure/db/schema";
 import { listDirectlyBoundResourceIds } from "@/server/infrastructure/db/access-resource-repository";
-import { createConversationCursor, querySchema } from "./route.query-schema";
-
-
+import {
+agents,
+conversationFolders,
+conversations,
+messageParts,
+messages,
+} from "@/server/infrastructure/db/schema";
+import {
+and,
+asc,
+desc,
+eq,
+inArray,
+isNotNull,
+isNull,
+lt,
+or,
+sql,
+} from "drizzle-orm";
+import { NextRequest,NextResponse } from "next/server";
+import { createConversationCursor,querySchema } from "./route.query-schema";
 export async function GET(req: NextRequest) {
   return handleRoute(
     req,
@@ -50,7 +47,6 @@ export async function GET(req: NextRequest) {
         includeMeta: searchParams.get("includeMeta") ?? undefined,
         limit: searchParams.get("limit") ?? undefined,
       });
-
       const hasConversationScope =
         parsed.success &&
         Boolean(parsed.data.workspaceId || parsed.data.agentId);
@@ -60,7 +56,6 @@ export async function GET(req: NextRequest) {
           { status: 400 },
         );
       }
-
       const { agentId, includeMeta, limit, q } = parsed.data;
       let workspaceId = parsed.data.workspaceId ?? null;
       const [beforeDateValue, beforeId] = parsed.data.before?.split("|") ?? [];
@@ -71,14 +66,12 @@ export async function GET(req: NextRequest) {
           { status: 400 },
         );
       }
-
       if (!workspaceId && agentId) {
         const [agent] = await db
           .select({ workspaceId: agents.workspaceId })
           .from(agents)
           .where(and(eq(agents.id, agentId), isNull(agents.archivedAt)))
           .limit(1);
-
         if (!agent) {
           return NextResponse.json(
             { error: "Agent not found" },
@@ -93,7 +86,6 @@ export async function GET(req: NextRequest) {
           { status: 400 },
         );
       }
-
       const scopeForbidden = await requireRequestPermissionScopeAsync(
         session.user.id,
         workspaceId,
@@ -103,7 +95,6 @@ export async function GET(req: NextRequest) {
       if (!(await isWorkspaceMemberForRequest(session.user.id, workspaceId))) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
-
       const directlyBoundIds = await listDirectlyBoundResourceIds(
         session.user.id,
         "conversation",
@@ -130,7 +121,6 @@ export async function GET(req: NextRequest) {
             inArray(conversations.id, directlyAccessibleIds),
           )
         : eq(conversations.userId, session.user.id);
-
       const scopeConditions = [
         eq(conversations.workspaceId, workspaceId),
         visibleConversationCondition,
@@ -153,7 +143,6 @@ export async function GET(req: NextRequest) {
           : lt(conversations.updatedAt, before);
         if (cursorCondition) conditions.push(cursorCondition);
       }
-
       const conversationSelection = {
         id: conversations.id,
         title: conversations.title,
@@ -165,17 +154,14 @@ export async function GET(req: NextRequest) {
         createdAt: conversations.createdAt,
         updatedAt: conversations.updatedAt,
       };
-
       let list;
       let hasMore;
-
       if (q) {
         const candidateConversations = await db
           .select(conversationSelection)
           .from(conversations)
           .where(and(...conditions))
           .orderBy(desc(conversations.updatedAt), desc(conversations.id));
-
         const encryptedParts = await db
           .select({
             conversationId: messages.conversationId,
@@ -200,7 +186,6 @@ export async function GET(req: NextRequest) {
             asc(messages.createdAt),
             asc(messageParts.sortOrder),
           );
-
         const partsByConversation = new Map<string, string[]>();
         for (const part of encryptedParts) {
           if (!part.contentEncrypted) continue;
@@ -211,7 +196,6 @@ export async function GET(req: NextRequest) {
               part.contentEncrypted,
             ]);
         }
-
         const matches = [];
         for (const conversation of candidateConversations) {
           if (conversationTextMatches(conversation.title, q)) {
@@ -242,10 +226,8 @@ export async function GET(req: NextRequest) {
               }
             }
           }
-
           if (matches.length > limit) break;
         }
-
         hasMore = matches.length > limit;
         list = hasMore ? matches.slice(0, limit) : matches;
       } else {
@@ -264,7 +246,6 @@ export async function GET(req: NextRequest) {
         hasMore = rows.length > limit;
         list = hasMore ? rows.slice(0, limit) : rows;
       }
-
       if (includeMeta === "true") {
         const [folders, latestConversation] = await Promise.all([
           db
@@ -298,7 +279,6 @@ export async function GET(req: NextRequest) {
             .orderBy(desc(conversations.updatedAt), desc(conversations.id))
             .limit(1),
         ]);
-
         return NextResponse.json({
           conversations: list,
           folders,
@@ -308,7 +288,6 @@ export async function GET(req: NextRequest) {
           nextCursor: hasMore ? createConversationCursor(list.at(-1)) : null,
         });
       }
-
       return NextResponse.json(list);
     },
     { logLabel: "Failed to list conversations" },

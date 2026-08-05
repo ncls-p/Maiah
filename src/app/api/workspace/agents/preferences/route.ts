@@ -1,16 +1,16 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest,NextResponse } from "next/server";
 import { z } from "zod";
 
+import {
+handleRoute,
+requireWorkspacePermissionAsync,
+} from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
 import {
-  getAgentDefaultPreferences,
-  setOrganizationDefaultAgent,
-  setUserDefaultAgent,
+getAgentDefaultPreferences,
+setOrganizationDefaultAgent,
+setUserDefaultAgent,
 } from "@/modules/agent/use-cases";
-import {
-  handleRoute,
-  requireWorkspacePermissionAsync,
-} from "@/lib/route-handler";
 
 const querySchema = z.object({ workspaceId: z.uuid() });
 const patchSchema = z.object({

@@ -1,11 +1,11 @@
 import { logHandledWarning } from "@/lib/logger";
 import { callRemoteMcpTool } from "@/modules/mcp/client";
 import { getMcpServer } from "@/modules/mcp/use-cases";
-import { projectToolPayloadForDisplay } from "@/modules/tool/safe-payload";
 import { resolveToolExecutionHeaders } from "@/modules/tool-connections/use-cases";
+import { projectToolPayloadForDisplay } from "@/modules/tool/safe-payload";
 import { db } from "@/server/infrastructure/db";
 import { mcpTools } from "@/server/infrastructure/db/schema";
-import { and, eq } from "drizzle-orm";
+import { and,eq } from "drizzle-orm";
 
 function mcpApplicationErrorMessage(
   result: Awaited<ReturnType<typeof callRemoteMcpTool>>,

@@ -1,31 +1,27 @@
+import { normalizeOpenAICompatibleApiRoute } from "@/lib/openai-compatible-api";
+import {
+enrichCloudTempleModel,
+isCloudTempleBaseUrl,
+} from "@/modules/provider/cloud-temple-catalog";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import type {
-  EmbeddingModelV4,
-  LanguageModelV4,
-  RerankingModelV4,
-  RerankingModelV4CallOptions,
-  RerankingModelV4Result,
+EmbeddingModelV4,
+LanguageModelV4
 } from "@ai-sdk/provider";
-import { normalizeOpenAICompatibleApiRoute } from "@/lib/openai-compatible-api";
 import type {
-  ProviderAdapter,
-  ProviderRuntimeConfig,
-  ProviderHealth,
-  ModelDescriptor,
-  ModelCapability,
+ModelDescriptor,
+ProviderAdapter,
+ProviderHealth,
+ProviderRuntimeConfig
 } from "./adapter";
 import {
-  enrichCloudTempleModel,
-  isCloudTempleBaseUrl,
-} from "@/modules/provider/cloud-temple-catalog";
-import {
-  buildHeaders,
-  createCompatibleRerankingModel,
-  normalizeBaseUrl,
+buildHeaders,
+createCompatibleRerankingModel,
+normalizeBaseUrl,
 } from "./openai-compatible-adapter.default-capabilities";
-import { parseModels } from "./openai-compatible-adapter.parse-models";
 import { createResponsesFetch } from "./openai-compatible-adapter.normalize-responses-reasoning-sse-line";
+import { parseModels } from "./openai-compatible-adapter.parse-models";
 
 export const openaiCompatibleAdapter: ProviderAdapter = {
   kind: "openai-compatible",

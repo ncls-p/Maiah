@@ -1,39 +1,26 @@
 "use client";
-
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useLocale, useTranslations } from "next-intl";
-import {
-  BracesIcon,
-  CircleStopIcon,
-  NetworkIcon,
-  PlayIcon,
-  RefreshCwIcon,
-  SaveIcon,
-} from "lucide-react";
-import { toast } from "sonner";
-
-import { Link } from "@/i18n/navigation";
-import { useWorkspace } from "@/hooks/use-workspace";
 import { AdvancedSection } from "@/components/ui/advanced-section";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
+import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
-
-import type {
-  Agent,
-  DelegationBinding,
-  DelegationConfig,
-  OrchestrationPolicy,
-} from "./types";
-import { policyField } from "./orchestration-tab.run-summary";
+import {
+NetworkIcon,
+SaveIcon
+} from "lucide-react";
+import { useTranslations } from "next-intl";
+import { useMemo } from "react";
 import { RunHistory } from "./orchestration-tab.run-history";
-
-
+import { policyField } from "./orchestration-tab.run-summary";
+import type {
+Agent,
+DelegationBinding,
+DelegationConfig
+} from "./types";
 export function OrchestrationTab({
   agent,
   availableAgents,
@@ -60,7 +47,6 @@ export function OrchestrationTab({
   const selectedById = new Map(
     config.bindings.map((binding) => [binding.childAgentId, binding]),
   );
-
   function toggleAgent(candidate: Agent, checked: boolean) {
     const nextBindings = checked
       ? [
@@ -82,7 +68,6 @@ export function OrchestrationTab({
         );
     setConfig({ ...config, bindings: nextBindings });
   }
-
   function updateInstructions(childAgentId: string, instructions: string) {
     setConfig({
       ...config,
@@ -93,7 +78,6 @@ export function OrchestrationTab({
       ),
     });
   }
-
   return (
     <div className="flex flex-col gap-3">
       <section className="rounded-[1.125rem] border border-border/65 bg-card/85 p-4 shadow-[var(--surface-shadow)] sm:p-5">
@@ -117,7 +101,6 @@ export function OrchestrationTab({
             {t("selectedCount", { count: config.bindings.length })}
           </Badge>
         </div>
-
         {candidates.length === 0 ? (
           <div className="mt-4 rounded-xl border border-dashed p-5 text-center">
             <p className="text-sm font-medium">{t("noSpecialists")}</p>
@@ -213,7 +196,6 @@ export function OrchestrationTab({
             })}
           </div>
         )}
-
         <AdvancedSection
           label={t("limitsTitle")}
           hint={t("limitsDescription")}
@@ -285,7 +267,6 @@ export function OrchestrationTab({
             )}
           </div>
         </AdvancedSection>
-
         <div className="mt-4 flex justify-end border-t border-border/55 pt-4">
           <Button type="button" disabled={saving} onClick={onSave}>
             {saving ? (
@@ -297,7 +278,6 @@ export function OrchestrationTab({
           </Button>
         </div>
       </section>
-
       <RunHistory agentId={agent.id} />
     </div>
   );

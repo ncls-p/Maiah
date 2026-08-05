@@ -1,8 +1,6 @@
-import { createServer, type IncomingMessage, type Server } from "node:http";
+import { type IncomingMessage,type Server } from "node:http";
 
-import { expect, test } from "@playwright/test";
 
-import { ensureE2EUser, login } from "./fixtures";
 
 export const upstreamState: {
   server: Server | null;

@@ -1,5 +1,5 @@
-import { expect, test, type Page } from "@playwright/test";
-import { ensureE2EAssistant, ensureE2EUser, login } from "./fixtures";
+import { expect,test,type Page } from "@playwright/test";
+import { ensureE2EAssistant,ensureE2EUser,login } from "./fixtures";
 
 const workspaceRoutes = [
   "/en/chat",

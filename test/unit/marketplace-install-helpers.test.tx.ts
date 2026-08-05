@@ -1,10 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
-	installAgentManifest,
-	installCustomTool,
-	installMcpPreset,
-	installPostInstallFlags,
+installCustomTool,
+installMcpPreset
 } from "@/modules/marketplace/install-helpers";
+import { beforeEach,describe,expect,it,vi } from "vitest";
 
 type TxChain = {
 	select: ReturnType<typeof vi.fn>;

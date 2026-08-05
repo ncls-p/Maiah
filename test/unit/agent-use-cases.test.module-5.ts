@@ -1,39 +1,13 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe,expect,it } from "vitest";
 
-import * as _dbModule from "@/server/infrastructure/db";
 import {
-  archiveAgent,
-  canUseAgent,
-  cloneAgent,
-  createAgent,
-  getAgentDefaultPreferences,
-  getActiveVersion,
-  getAgentById,
-  getAgentVersionById,
-  getAgentVersions,
-  getConversationMessages,
-  getConversationsByAgent,
-  getVisibleAgentById,
-  listAgents,
-  recordUsageEvent,
-  reorderOrganizationAgents,
-  resolveProviderForVersion,
-  setOrganizationDefaultAgent,
-  setUserDefaultAgent,
-  updateAgent,
+getActiveVersion,
+getAgentVersions,
+getConversationsByAgent,
+resolveProviderForVersion
 } from "@/modules/agent/use-cases";
-import { cloneKnowledgeBindings } from "@/modules/knowledge/use-cases";
-import { cloneSkillBindings } from "@/modules/skills/use-cases";
-import {
-  cloneToolBindings,
-  insertToolBindingsForVersion,
-} from "@/modules/tool/use-cases";
-import {
-  cloneDelegationBindings,
-  insertDelegationBindingsForVersion,
-} from "@/modules/agent/delegation-use-cases";
-import { dbModule, fakeVersion } from "./agent-use-cases.test.chain";
-import { fakeModel, fakeProvider } from "./agent-use-cases.test.fake-provider";
+import { dbModule,fakeVersion } from "./agent-use-cases.test.chain";
+import { fakeModel,fakeProvider } from "./agent-use-cases.test.fake-provider";
 
 
 // ─── getAgentVersions ─────────────────────────────────────────────────

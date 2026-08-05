@@ -1,7 +1,7 @@
 "use client";
 
+import { useEffect,useState } from "react";
 import "./globals.css";
-import { useEffect, useState } from "react";
 
 export default function GlobalError({
   error,

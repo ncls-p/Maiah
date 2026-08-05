@@ -1,10 +1,10 @@
 import {
-  boolean,
-  pgTable,
-  timestamp,
-  uniqueIndex,
-  uuid,
-  varchar,
+boolean,
+pgTable,
+timestamp,
+uniqueIndex,
+uuid,
+varchar,
 } from "drizzle-orm/pg-core";
 
 import { users } from "./auth";

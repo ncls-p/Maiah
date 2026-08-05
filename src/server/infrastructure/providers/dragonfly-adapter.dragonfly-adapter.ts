@@ -1,24 +1,23 @@
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-import type { EmbeddingModelV4, LanguageModelV4 } from "@ai-sdk/provider";
+import type { EmbeddingModelV4,LanguageModelV4 } from "@ai-sdk/provider";
 import type {
-  ProviderAdapter,
-  ProviderRuntimeConfig,
-  ProviderHealth,
-  ModelDescriptor,
-  ModelCapability,
+ModelDescriptor,
+ProviderAdapter,
+ProviderHealth,
+ProviderRuntimeConfig
 } from "./adapter";
 import {
-  buildHeaders,
-  createRequestNonce,
-  getBearerApiKey,
-  normalizeBaseUrl,
-  parseModels,
-} from "./dragonfly-adapter.normalize-base-url";
-import {
-  dragonflyFetch,
-  isDragonflyAnthropicModel,
-  normalizeAnthropicToolLoopMessages,
+dragonflyFetch,
+isDragonflyAnthropicModel,
+normalizeAnthropicToolLoopMessages,
 } from "./dragonfly-adapter.is-dragonfly-anthropic-model";
+import {
+buildHeaders,
+createRequestNonce,
+getBearerApiKey,
+normalizeBaseUrl,
+parseModels,
+} from "./dragonfly-adapter.normalize-base-url";
 
 export const dragonflyAdapter: ProviderAdapter = {
   kind: "dragonfly",

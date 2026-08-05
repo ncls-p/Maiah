@@ -1,38 +1,21 @@
-import { NextRequest, NextResponse } from "next/server";
-import { eq, inArray } from "drizzle-orm";
-import { z } from "zod";
 import {
-  handleRoute,
-  requireRequestPermissionScopeAsync,
-  requireWorkspaceMemberAsync,
-  requireWorkspacePermissionAsync,
+handleRoute,
+requireRequestPermissionScopeAsync,
+requireWorkspaceMemberAsync
 } from "@/lib/route-handler";
-import {
-  canEditAgent,
-  createAgent,
-  getAgentDefaultPreferences,
-  listAgents,
-  normalizePromptSuggestions,
-} from "@/modules/agent/use-cases";
-import { agentRuntimePolicy } from "@/modules/agent/runtime-policy";
-import {
-  delegationBindingInputSchema,
-  orchestrationPolicySchema,
-} from "@/modules/agent/orchestration-policy";
-import { DelegationBindingValidationError } from "@/modules/agent/delegation-use-cases";
-import { ONBOARDING_TOOL_PRESET } from "@/modules/agent/onboarding-tools";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
+import {
+canEditAgent,
+getAgentDefaultPreferences,
+listAgents,
+normalizePromptSuggestions
+} from "@/modules/agent/use-cases";
 import { hasWorkspacePermissionForRequest } from "@/modules/auth/workspace-access";
-import { authorization } from "@/server/domain/services/authorization";
 import { withResourceProvenance } from "@/modules/iam/resource-provenance";
 import { getToolBindingsForVersion } from "@/modules/tool/use-cases";
-import { db } from "@/server/infrastructure/db";
-import {
-  agentVersions,
-  aiModels,
-  workspaces,
-} from "@/server/infrastructure/db/schema";
-import { getModelMetaByVersionId, listAgentsSchema } from "./route.create-agent-schema";
+import { authorization } from "@/server/domain/services/authorization";
+import { NextRequest,NextResponse } from "next/server";
+import { getModelMetaByVersionId,listAgentsSchema } from "./route.create-agent-schema";
 
 
 export async function GET(req: NextRequest) {

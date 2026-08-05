@@ -3,7 +3,7 @@ import { NextRequest } from "next/server";
 import { handleAnthropicProxyRoute } from "@/modules/anthropic-proxy/auth";
 import { anthropicMessagesRequestSchema } from "@/modules/anthropic-proxy/contracts";
 import { executeAnthropicMessages } from "@/modules/anthropic-proxy/service";
-import { invalidRequest, validationError } from "@/modules/openai-proxy/errors";
+import { invalidRequest,validationError } from "@/modules/openai-proxy/errors";
 
 async function requestBody(request: NextRequest) {
   try {

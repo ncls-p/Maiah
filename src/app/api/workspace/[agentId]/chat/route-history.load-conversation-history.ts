@@ -1,17 +1,17 @@
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and,desc,eq,inArray } from "drizzle-orm";
 
-import {
-  getChatImageAttachmentBytes,
-  isChatFileAttachment,
-  isChatImageAttachment,
-} from "@/modules/chat/attachments";
 import { decryptValue } from "@/lib/crypto";
 import { logHandledWarning } from "@/lib/logger";
-import { db } from "@/server/infrastructure/db";
-import { messageParts, messages } from "@/server/infrastructure/db/schema";
 import { projectAgentProgressForModelHistory } from "@/modules/agent/progress-model-history";
+import {
+getChatImageAttachmentBytes,
+isChatFileAttachment,
+isChatImageAttachment,
+} from "@/modules/chat/attachments";
+import { db } from "@/server/infrastructure/db";
+import { messageParts,messages } from "@/server/infrastructure/db/schema";
 import type { ModelMessage } from "ai";
-import { codeSandboxContextFromToolMetadata, codeWorkspaceContextFromToolMetadata, htmlArtifactCodeFromToolMetadata, mergeHistoryWithAttachmentMessages, sandboxAttachmentExplorerPathHint, sandboxAttachmentPathHint, toolMetadataForModelHistory } from "./route-history.merge-history-with-attachment-messages";
+import { codeSandboxContextFromToolMetadata,codeWorkspaceContextFromToolMetadata,htmlArtifactCodeFromToolMetadata,mergeHistoryWithAttachmentMessages,sandboxAttachmentExplorerPathHint,sandboxAttachmentPathHint,toolMetadataForModelHistory } from "./route-history.merge-history-with-attachment-messages";
 
 
 export async function loadConversationHistory(

@@ -1,24 +1,24 @@
 import {
-  CommandIcon,
-  Loader2,
-  MessageSquareIcon,
-  PlusIcon,
+CommandIcon,
+Loader2,
+MessageSquareIcon,
+PlusIcon,
 } from "lucide-react";
 
+import type { CodeWorkspaceArtifact } from "@/components/chat/chat-types";
 import { Button } from "@/components/ui/button";
 import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
+Empty,
+EmptyDescription,
+EmptyHeader,
+EmptyMedia,
+EmptyTitle,
 } from "@/components/ui/empty";
 import { Link } from "@/i18n/navigation";
-import type { CodeWorkspaceArtifact } from "@/components/chat/chat-types";
 import {
-  CHAT_INTERFACE_MODE,
-  CODING_INTERFACE_MODE,
-  type InterfaceMode,
+CHAT_INTERFACE_MODE,
+CODING_INTERFACE_MODE,
+type InterfaceMode,
 } from "./chat-interface-mode";
 
 type ChatTranslator = (key: string, values?: Record<string, string>) => string;

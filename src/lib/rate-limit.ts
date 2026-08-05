@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
 import { cache } from "@/server/infrastructure/cache";
+import { NextResponse } from "next/server";
 
 export interface RateLimitOptions {
   /** Max requests per window */

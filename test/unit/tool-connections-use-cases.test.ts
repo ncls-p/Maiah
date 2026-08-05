@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe,expect,it,vi } from "vitest";
 
 vi.mock("@/server/infrastructure/db", () => ({
 	db: {},
@@ -13,10 +13,10 @@ vi.mock("@/lib/logger", () => ({
 }));
 
 import {
-	buildSignedToolContextHeaders,
-	toSafeToolConnection,
-	toSafeToolConnector,
-	toolContextHeaderNames,
+buildSignedToolContextHeaders,
+toSafeToolConnection,
+toSafeToolConnector,
+toolContextHeaderNames,
 } from "@/modules/tool-connections/use-cases";
 
 describe("tool connection DTOs", () => {

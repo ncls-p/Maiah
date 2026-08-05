@@ -1,12 +1,12 @@
-import { and, desc, eq, gte, inArray, lte } from "drizzle-orm";
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
 import {
-  handleRoute,
-  requireWorkspacePermissionAsync,
+handleRoute,
+requireWorkspacePermissionAsync,
 } from "@/lib/route-handler";
 import { db } from "@/server/infrastructure/db";
-import { auditEvents, users } from "@/server/infrastructure/db/schema";
+import { auditEvents,users } from "@/server/infrastructure/db/schema";
+import { and,desc,eq,gte,inArray,lte } from "drizzle-orm";
+import { NextRequest,NextResponse } from "next/server";
+import { z } from "zod";
 
 const querySchema = z.object({
   workspaceId: z.uuid(),

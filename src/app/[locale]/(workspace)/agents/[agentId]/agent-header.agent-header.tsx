@@ -2,34 +2,26 @@
 
 import { Link } from "@/i18n/navigation";
 import {
-  ArrowLeftIcon,
-  CheckCircle2Icon,
-  ClockIcon,
-  CopyIcon,
-  ImageOffIcon,
-  ImagePlusIcon,
-  MessageCircleIcon,
-  MoreHorizontalIcon,
-  NetworkIcon,
-  Trash2Icon,
+ArrowLeftIcon,
+CopyIcon,
+ImageOffIcon,
+MessageCircleIcon,
+MoreHorizontalIcon,
+Trash2Icon
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { toast } from "sonner";
 
-import { ModelLogo } from "@/components/providers/model-logo";
-import { ResourceProvenanceBadge } from "@/components/resource-provenance-badge";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
+DropdownMenu,
+DropdownMenuContent,
+DropdownMenuGroup,
+DropdownMenuItem,
+DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-import type { Agent, Model, Provider } from "./types";
-import { AgentHeaderTitle, AgentLogoControls } from "./agent-header.agent-logo-controls";
+import { AgentHeaderTitle,AgentLogoControls } from "./agent-header.agent-logo-controls";
+import type { Agent,Model,Provider } from "./types";
 
 
 function AgentHeaderActions({

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach,describe,expect,it,vi } from "vitest";
 
 type Chain = {
   select: ReturnType<typeof vi.fn>;
@@ -49,13 +49,13 @@ vi.mock("@/server/infrastructure/db", () => {
   };
 });
 
-import * as _dbModule from "@/server/infrastructure/db";
 import {
-  getConfiguredWorkflowBuilderAgentId,
-  getWorkflowBuilderAdminState,
-  getWorkflowBuilderConfig,
-  setWorkflowBuilderConfig,
+getConfiguredWorkflowBuilderAgentId,
+getWorkflowBuilderAdminState,
+getWorkflowBuilderConfig,
+setWorkflowBuilderConfig,
 } from "@/modules/workflows/builder-settings";
+import * as _dbModule from "@/server/infrastructure/db";
 
 const dbModule = _dbModule as unknown as DbModule;
 const workspaceId = "11111111-1111-4111-8111-111111111111";

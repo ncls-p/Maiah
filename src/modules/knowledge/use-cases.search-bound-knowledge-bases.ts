@@ -1,30 +1,11 @@
-import { and, asc, eq, gte, inArray, isNull, lte, sql } from "drizzle-orm";
-import { cosineSimilarity, embed, embedMany, rerank } from "ai";
-import { encryptValue, decryptValue } from "@/lib/crypto";
-import { logger } from "@/lib/logger";
-import {
-  enqueueDocumentIngestion,
-  recoverDocumentIngestionJob,
-} from "@/modules/knowledge/queue";
-import { audit } from "@/server/domain/services/audit";
-import { authorization } from "@/server/domain/services/authorization";
+import { decryptValue } from "@/lib/crypto";
 import { db } from "@/server/infrastructure/db";
 import {
-  agentKnowledgeBindings,
-  documentChunks,
-  documentEmbeddings,
-  documents,
-  knowledgeBases,
+documentChunks,
+documents,
+knowledgeBases
 } from "@/server/infrastructure/db/schema";
-import {
-  getDefaultRagConfig,
-  hasSameRagModelSelection,
-  parseRagConfig,
-  ragConfigSchema,
-  resolveEmbeddingModel,
-  resolveRerankingModel,
-  type RagConfig,
-} from "@/modules/knowledge/rag-config";
+import { and,asc,eq,gte,inArray,isNull,lte } from "drizzle-orm";
 import { getKnowledgeBindingsForVersion } from "./use-cases.get-knowledge-bindings-for-version";
 import { searchKnowledgeBase } from "./use-cases.search-knowledge-base";
 

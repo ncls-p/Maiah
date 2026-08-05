@@ -1,12 +1,12 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest,NextResponse } from "next/server";
 import { z } from "zod";
 
 import { logHandledError } from "@/lib/logger";
 import { handleRoute } from "@/lib/route-handler";
 import { checkWorkspacePermissionForRequest } from "@/modules/auth/workspace-access";
 import {
-  getUserGitHubStatus,
-  syncUserGitHubInstallations,
+getUserGitHubStatus,
+syncUserGitHubInstallations,
 } from "@/modules/github/publishing";
 
 const syncSchema = z.object({

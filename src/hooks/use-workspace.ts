@@ -1,7 +1,7 @@
 "use client";
 
-import { createContext, useContext } from "react";
 import type { OrganizationThemeConfig } from "@/modules/organization/themes";
+import { createContext,useContext } from "react";
 
 export type WorkspaceSummary = {
   id: string;

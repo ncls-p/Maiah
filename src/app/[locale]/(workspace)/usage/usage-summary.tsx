@@ -1,9 +1,9 @@
 import {
-  ActivityIcon,
-  CircleDollarSignIcon,
-  GaugeIcon,
-  LayersIcon,
-  TimerIcon,
+ActivityIcon,
+CircleDollarSignIcon,
+GaugeIcon,
+LayersIcon,
+TimerIcon,
 } from "lucide-react";
 import type { useTranslations } from "next-intl";
 
@@ -12,11 +12,11 @@ import { StatCard } from "@/components/ui/stat-card";
 import { cn } from "@/lib/utils";
 
 import {
-  formatCosts,
-  formatCount,
-  formatFullCount,
-  formatLatency,
-  successRate,
+formatCosts,
+formatCount,
+formatFullCount,
+formatLatency,
+successRate,
 } from "./usage-formatters";
 import type { UsageResponse } from "./usage-types";
 

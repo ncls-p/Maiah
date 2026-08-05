@@ -1,7 +1,7 @@
+import { CloudIcon,CpuIcon,NetworkIcon,PlugIcon } from "lucide-react";
 import type { ElementType } from "react";
-import { CloudIcon, CpuIcon, NetworkIcon, PlugIcon } from "lucide-react";
 
-import type { ProviderAuthType, ProviderKind } from "./types";
+import type { ProviderAuthType,ProviderKind } from "./types";
 
 export const KIND_LABELS: Record<ProviderKind, string> = {
   "openai-compatible": "OpenAI-compatible",

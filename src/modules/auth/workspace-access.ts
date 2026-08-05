@@ -1,10 +1,10 @@
 import { getRequestAuthContext } from "@/modules/auth/request-auth-context";
-import {
-  authorization,
-  matchesPermission,
-  type PermissionCheckResult,
-} from "@/server/domain/services/authorization";
 import type { AccessResourceType } from "@/server/domain/entities/access-resource";
+import {
+authorization,
+matchesPermission,
+type PermissionCheckResult,
+} from "@/server/domain/services/authorization";
 import { findAccessResource } from "@/server/infrastructure/db/access-resource-repository";
 
 function apiKeyScopeResult(

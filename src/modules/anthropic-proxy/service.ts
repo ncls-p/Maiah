@@ -1,4 +1,4 @@
-import { generateText, streamText } from "ai";
+import { generateText,streamText } from "ai";
 
 import type { AnthropicMessagesRequest } from "@/modules/anthropic-proxy/contracts";
 import { prepareAnthropicMessages } from "@/modules/anthropic-proxy/request-mapper";
@@ -6,9 +6,9 @@ import { buildAnthropicMessageResponse } from "@/modules/anthropic-proxy/respons
 import { createAnthropicMessagesStream } from "@/modules/anthropic-proxy/streams";
 import { providerError } from "@/modules/openai-proxy/errors";
 import {
-  generationOptions,
-  prepareExecution,
-  usageRecorder,
+generationOptions,
+prepareExecution,
+usageRecorder,
 } from "@/modules/openai-proxy/service";
 
 type AnthropicExecutionContext = {

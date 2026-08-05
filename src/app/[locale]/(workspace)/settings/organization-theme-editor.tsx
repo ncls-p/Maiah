@@ -5,12 +5,12 @@ import { useTranslations } from "next-intl";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import {
-  ORGANIZATION_THEME_PRESETS,
-  THEME_TOKEN_KEYS,
-  type OrganizationTheme,
-  type OrganizationThemeConfig,
-  type ThemePalette,
-  type ThemeToken,
+ORGANIZATION_THEME_PRESETS,
+THEME_TOKEN_KEYS,
+type OrganizationTheme,
+type OrganizationThemeConfig,
+type ThemePalette,
+type ThemeToken,
 } from "@/modules/organization/themes";
 
 const PRESET_NAMES = ["ocean", "forest", "ember", "violet", "slate"] as const;

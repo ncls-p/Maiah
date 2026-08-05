@@ -1,31 +1,25 @@
-import { createHash, randomUUID } from "node:crypto";
-import path from "node:path";
-import JSZip from "jszip";
 import "pdf-parse/worker";
-import { PDFParse } from "pdf-parse";
-import TurndownService from "turndown";
 
 import { logHandledWarning } from "@/lib/logger";
 import { extractDocument } from "@/modules/document-extraction/service";
 import type { RagConfig } from "@/modules/knowledge/rag-config-schema";
-import { storage } from "@/server/infrastructure/storage";
-import {
-  AttachmentDetection,
-  ChatAttachmentMetadata,
-  ChatFileAttachment,
-  ChatImageAttachment,
-  ExtractedText,
-  maxMarkdownConversionSourceChars,
-  utf8Decoder,
-} from "./attachments.chat-image-attachment";
-import { detectAttachment, limitExtractedText } from "./attachments.detect-attachment";
-import { textAttachmentToMarkdown } from "./attachments.markdown-table";
-import {
-  extractOfficeText,
-  extractPdfMarkdown,
-  stripRtf,
-} from "./attachments.extract-office-text";
 import { assertAttachmentHasContent } from "./attachments.assert-attachment-has-content";
+import {
+AttachmentDetection,
+ChatAttachmentMetadata,
+ChatFileAttachment,
+ChatImageAttachment,
+ExtractedText,
+maxMarkdownConversionSourceChars,
+utf8Decoder,
+} from "./attachments.chat-image-attachment";
+import { detectAttachment,limitExtractedText } from "./attachments.detect-attachment";
+import {
+extractOfficeText,
+extractPdfMarkdown,
+stripRtf,
+} from "./attachments.extract-office-text";
+import { textAttachmentToMarkdown } from "./attachments.markdown-table";
 
 export async function extractAttachmentText(input: {
   bytes: Uint8Array;

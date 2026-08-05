@@ -1,37 +1,24 @@
-import { and, asc, eq, gte, inArray, isNull, lte, sql } from "drizzle-orm";
-import { cosineSimilarity, embed, embedMany, rerank } from "ai";
-import { encryptValue, decryptValue } from "@/lib/crypto";
-import { logger } from "@/lib/logger";
 import {
-  enqueueDocumentIngestion,
-  recoverDocumentIngestionJob,
-} from "@/modules/knowledge/queue";
+getDefaultRagConfig,
+hasSameRagModelSelection,
+parseRagConfig,
+ragConfigSchema,
+type RagConfig
+} from "@/modules/knowledge/rag-config";
 import { audit } from "@/server/domain/services/audit";
 import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
 import {
-  agentKnowledgeBindings,
-  documentChunks,
-  documentEmbeddings,
-  documents,
-  knowledgeBases,
+knowledgeBases
 } from "@/server/infrastructure/db/schema";
+import { and,eq,isNull,sql } from "drizzle-orm";
 import {
-  getDefaultRagConfig,
-  hasSameRagModelSelection,
-  parseRagConfig,
-  ragConfigSchema,
-  resolveEmbeddingModel,
-  resolveRerankingModel,
-  type RagConfig,
-} from "@/modules/knowledge/rag-config";
-import {
-  KnowledgeBaseRow,
-  RagModelConfigurationPermissionError,
-  assertCanManageKnowledgeBase,
-  canManageKnowledgeBase,
-  canViewKnowledgeBase,
-  effectiveRagConfig,
+KnowledgeBaseRow,
+RagModelConfigurationPermissionError,
+assertCanManageKnowledgeBase,
+canManageKnowledgeBase,
+canViewKnowledgeBase,
+effectiveRagConfig,
 } from "./use-cases.create-knowledge-base-input";
 
 export async function listKnowledgeBases(

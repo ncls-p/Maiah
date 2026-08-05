@@ -1,15 +1,15 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and,eq,isNull } from "drizzle-orm";
 
 import { decryptValue } from "@/lib/crypto";
 import { normalizeOpenAICompatibleApiRoute } from "@/lib/openai-compatible-api";
 import { OpenAIProxyError } from "@/modules/openai-proxy/errors";
 import { db } from "@/server/infrastructure/db";
-import { aiModels, aiProviders } from "@/server/infrastructure/db/schema";
+import { aiModels,aiProviders } from "@/server/infrastructure/db/schema";
 import { getAdapter } from "@/server/infrastructure/providers";
 import type {
-  ModelCapability,
-  ProviderKind,
-  ProviderRuntimeConfig,
+ModelCapability,
+ProviderKind,
+ProviderRuntimeConfig,
 } from "@/server/infrastructure/providers/adapter";
 
 type CatalogRow = {

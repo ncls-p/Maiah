@@ -1,10 +1,10 @@
-import { describe, expect, it } from "vitest";
 import {
-  normalizeOrchestrationPolicy,
-  orchestrationPolicyCaps,
-  orchestrationPolicyDefaults,
-  orchestrationPolicySchema,
+normalizeOrchestrationPolicy,
+orchestrationPolicyCaps,
+orchestrationPolicyDefaults,
+orchestrationPolicySchema,
 } from "@/modules/agent/orchestration-policy";
+import { describe,expect,it } from "vitest";
 
 describe("orchestration policy", () => {
   it("uses conservative defaults", () => {

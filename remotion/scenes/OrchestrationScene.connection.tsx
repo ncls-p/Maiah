@@ -1,22 +1,10 @@
 import type { LucideIcon } from "lucide-react";
 import {
-	BracesIcon,
-	ChartNoAxesCombinedIcon,
-	CheckIcon,
-	NetworkIcon,
-	ScanSearchIcon,
-	ShieldCheckIcon,
-	UserRoundCheckIcon,
+CheckIcon
 } from "lucide-react";
-import { interpolate, useCurrentFrame } from "remotion";
+import { interpolate,useCurrentFrame } from "remotion";
 
-import {
-	Hairline,
-	SceneLabel,
-	SceneLayer,
-	StatusPill,
-} from "../components/VisualSystem";
-import { COLORS, DISPLAY_FONT, progress, rise, scaleIn } from "../theme";
+import { COLORS,progress } from "../theme";
 
 function quadraticPoint(
 	amount: number,

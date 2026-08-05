@@ -1,13 +1,13 @@
 import { eq } from "drizzle-orm";
 
 import {
-  listBuiltInToolSummaries,
-  type BuiltInToolSummary,
+listBuiltInToolSummaries,
+type BuiltInToolSummary,
 } from "@/modules/tool/builtin-tools-catalog";
 import { db } from "@/server/infrastructure/db";
 import {
-  organizationBuiltinToolPolicies,
-  workspaces,
+organizationBuiltinToolPolicies,
+workspaces,
 } from "@/server/infrastructure/db/schema";
 
 export type OrganizationBuiltInToolPolicy = BuiltInToolSummary & {

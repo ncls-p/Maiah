@@ -1,14 +1,14 @@
 "use client";
 
 import {
-  ImageIcon,
-  PaletteIcon,
-  RotateCcwIcon,
-  UploadIcon,
+ImageIcon,
+PaletteIcon,
+RotateCcwIcon,
+UploadIcon,
 } from "lucide-react";
-import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import Image from "next/image";
+import { useEffect,useRef,useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -16,10 +16,10 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useWorkspace } from "@/hooks/use-workspace";
 import {
-  resolveOrganizationTheme,
-  themeCss,
-  type OrganizationTheme,
-  type OrganizationThemeConfig,
+resolveOrganizationTheme,
+themeCss,
+type OrganizationTheme,
+type OrganizationThemeConfig,
 } from "@/modules/organization/themes";
 import { OrganizationThemeEditor } from "./organization-theme-editor";
 

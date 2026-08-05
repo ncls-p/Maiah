@@ -1,16 +1,9 @@
-import { and, desc, eq, inArray } from "drizzle-orm";
 
-import {
-  getChatImageAttachmentBytes,
-  isChatFileAttachment,
-  isChatImageAttachment,
-} from "@/modules/chat/attachments";
 import { decryptValue } from "@/lib/crypto";
-import { logHandledWarning } from "@/lib/logger";
-import { db } from "@/server/infrastructure/db";
-import { messageParts, messages } from "@/server/infrastructure/db/schema";
-import { projectAgentProgressForModelHistory } from "@/modules/agent/progress-model-history";
-import type { ModelMessage } from "ai";
+import {
+isChatFileAttachment,
+isChatImageAttachment
+} from "@/modules/chat/attachments";
 
 const previousToolTextContextChars = 4_000;
 

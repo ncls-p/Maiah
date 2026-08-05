@@ -1,15 +1,6 @@
-import { createHash, randomUUID } from "node:crypto";
-import path from "node:path";
-import JSZip from "jszip";
 import "pdf-parse/worker";
-import { PDFParse } from "pdf-parse";
 import TurndownService from "turndown";
 
-import { logHandledWarning } from "@/lib/logger";
-import { extractDocument } from "@/modules/document-extraction/service";
-import type { RagConfig } from "@/modules/knowledge/rag-config-schema";
-import { storage } from "@/server/infrastructure/storage";
-import { extractedTextObjectKey } from "./attachments.code-text-extensions";
 
 export type ChatImageAttachment = {
   kind: "chat_image";

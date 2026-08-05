@@ -1,13 +1,13 @@
 "use client";
 
-import { useCallback, useMemo, useSyncExternalStore } from "react";
+import { useCallback,useMemo,useSyncExternalStore } from "react";
 
 import {
-  conversationFolderOpenStorageKey,
-  EMPTY_CONVERSATION_FOLDER_OPEN_SNAPSHOT,
-  normalizeConversationFolderOpenSnapshot,
-  parseConversationFolderOpenSnapshot,
-  updateConversationFolderOpenSnapshot,
+conversationFolderOpenStorageKey,
+EMPTY_CONVERSATION_FOLDER_OPEN_SNAPSHOT,
+normalizeConversationFolderOpenSnapshot,
+parseConversationFolderOpenSnapshot,
+updateConversationFolderOpenSnapshot,
 } from "@/lib/conversation-folder-visibility";
 
 const STORAGE_CHANGE_EVENT = "chat-conversation-folder-open-change";

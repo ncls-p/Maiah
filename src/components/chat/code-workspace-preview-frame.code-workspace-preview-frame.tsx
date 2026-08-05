@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import { useEffect,useState } from "react";
 
 import type { CodeWorkspaceArtifact } from "@/components/chat/chat-types";
-import { buildPreviewSrcDoc, escapeClosingTags, escapeHtmlAttribute, fetchCodeWorkspaceTextFile, hasWorkspaceTextFile, htmlAttributeValue, metaRefreshTarget, normalizeWorkspaceHref, replacePreviewMatches } from "./code-workspace-preview-frame.escape-closing-tags";
+import { buildPreviewSrcDoc,escapeClosingTags,escapeHtmlAttribute,fetchCodeWorkspaceTextFile,hasWorkspaceTextFile,htmlAttributeValue,metaRefreshTarget,normalizeWorkspaceHref,replacePreviewMatches } from "./code-workspace-preview-frame.escape-closing-tags";
 
 
 async function inlineLocalPreviewStyles(

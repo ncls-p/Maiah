@@ -1,8 +1,8 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach,describe,expect,it } from "vitest";
 
 import {
-	getQuotaStatus,
-	getWorkspaceMonthlyTokenLimit,
+getQuotaStatus,
+getWorkspaceMonthlyTokenLimit,
 } from "@/modules/usage/quota-config";
 
 describe("workspace token quota", () => {

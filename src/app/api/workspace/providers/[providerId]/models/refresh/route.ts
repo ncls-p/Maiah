@@ -1,13 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
 import {
-  handleRoute,
-  requireResourcePermissionAsync,
+handleRoute,
+requireResourcePermissionAsync,
 } from "@/lib/route-handler";
 import {
-  getProviderById,
-  refreshProviderModels,
+getProviderById,
+refreshProviderModels,
 } from "@/modules/provider/use-cases";
+import { NextRequest,NextResponse } from "next/server";
+import { z } from "zod";
 
 const paramsSchema = z.object({ providerId: z.uuid() });
 const bodySchema = z.object({ workspaceId: z.uuid() });

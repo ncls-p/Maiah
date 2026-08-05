@@ -1,27 +1,14 @@
 #!/usr/bin/env node
-import { spawn } from "node:child_process";
-import { createHash, randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 import {
-	constants as fsConstants,
-	createReadStream,
-	createWriteStream,
-} from "node:fs";
-import {
-	access,
-	chmod,
-	chown,
-	lstat,
-	mkdir,
-	mkdtemp,
-	readFile,
-	readdir,
-	rm,
-	symlink,
-	writeFile,
+chown,
+lstat,
+mkdir,
+readdir,
+writeFile
 } from "node:fs/promises";
-import { createServer } from "node:http";
 import path from "node:path";
-import { bytesFromBase64, canSwitchUser, canUsePrlimit, clampTimeout, isPlainObject, maxCodeChars, maxCpuSeconds, maxInlineStdinChars, maxInputFileBytes, maxInputFileChars, maxInputFiles, maxInputTotalBytes, maxOutputFileSizeBytes, maxProcesses, maxRequestBytes, pythonCommand, safeRelativePath, sandboxGid, sandboxUid } from "./sandbox-runner.socket-path";
+import { bytesFromBase64,canSwitchUser,canUsePrlimit,clampTimeout,isPlainObject,maxCodeChars,maxCpuSeconds,maxInlineStdinChars,maxInputFileBytes,maxInputFileChars,maxInputFiles,maxInputTotalBytes,maxOutputFileSizeBytes,maxProcesses,maxRequestBytes,pythonCommand,safeRelativePath,sandboxGid,sandboxUid } from "./sandbox-runner.socket-path.mjs";
 
 
 function validateRunPayload(payload) {

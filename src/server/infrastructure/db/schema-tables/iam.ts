@@ -1,18 +1,18 @@
-import {
-  pgTable,
-  text,
-  timestamp,
-  boolean,
-  varchar,
-  uuid,
-  jsonb,
-  uniqueIndex,
-  pgEnum,
-  index,
-} from "drizzle-orm/pg-core";
-import { sql } from "drizzle-orm";
-import { users } from "./auth";
 import { ROLE_BINDING_RESOURCE_TYPES } from "@/server/domain/entities/access-resource";
+import { sql } from "drizzle-orm";
+import {
+boolean,
+index,
+jsonb,
+pgEnum,
+pgTable,
+text,
+timestamp,
+uniqueIndex,
+uuid,
+varchar,
+} from "drizzle-orm/pg-core";
+import { users } from "./auth";
 
 const CREATED_AT_COLUMN = "created_at";
 const UPDATED_AT_COLUMN = "updated_at";

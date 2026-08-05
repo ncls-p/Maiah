@@ -1,17 +1,16 @@
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and,eq } from "drizzle-orm";
 import { z } from "zod";
 
-import { decryptValue, encryptValue } from "@/lib/crypto";
+import { decryptValue,encryptValue } from "@/lib/crypto";
 import { audit } from "@/server/domain/services/audit";
 import { db } from "@/server/infrastructure/db";
 import {
-  workflowAgentInputRequests,
-  workflowAgentMessages,
+workflowAgentInputRequests
 } from "@/server/infrastructure/db/schema";
 import {
-  WorkflowAgentInputField,
-  WorkflowAgentInputRequest,
-  parsedFields,
+WorkflowAgentInputField,
+WorkflowAgentInputRequest,
+parsedFields,
 } from "./agentic-history.secret-reference-pattern";
 
 export async function createWorkflowAgentInputRequest(input: {

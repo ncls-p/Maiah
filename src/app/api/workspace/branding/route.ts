@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest,NextResponse } from "next/server";
 import { z } from "zod";
 
 import { handleRoute } from "@/lib/route-handler";
 import {
-  getOrganizationBranding,
-  ORGANIZATION_THEMES,
-  updateOrganizationBranding,
+getOrganizationBranding,
+ORGANIZATION_THEMES,
+updateOrganizationBranding,
 } from "@/modules/organization/branding";
 import { THEME_TOKEN_KEYS } from "@/modules/organization/themes";
 

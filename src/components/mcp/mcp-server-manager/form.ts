@@ -1,4 +1,4 @@
-import type { McpAuthHint, SimpleAuthMode } from "./types";
+import type { McpAuthHint,SimpleAuthMode } from "./types";
 
 export const emptyForm = {
   name: "",

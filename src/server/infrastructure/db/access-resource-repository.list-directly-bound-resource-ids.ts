@@ -1,24 +1,10 @@
-import { and, asc, eq, ilike, inArray, isNull, ne, or } from "drizzle-orm";
+import { and,eq,inArray,or } from "drizzle-orm";
 
 import type { AccessResourceType } from "@/server/domain/entities/access-resource";
 import { db } from "@/server/infrastructure/db";
 import {
-  agentSkills,
-  agents,
-  aiModels,
-  aiProviders,
-  conversations,
-  customTools,
-  knowledgeBases,
-  marketplaceItems,
-  mcpServers,
-  roleBindings,
-  scheduledTasks,
-  teamMembers,
-  toolConnections,
-  toolConnectors,
-  workflows,
-  workspaces,
+roleBindings,
+teamMembers
 } from "@/server/infrastructure/db/schema";
 
 export async function listDirectlyBoundResourceIds(

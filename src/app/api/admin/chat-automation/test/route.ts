@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
 import { handleRoute } from "@/lib/route-handler";
 import { requireAdminApiSession } from "@/modules/admin/auth";
 import { testChatAutomationConnection } from "@/modules/chat/automation";
+import { NextRequest,NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
   return handleRoute(

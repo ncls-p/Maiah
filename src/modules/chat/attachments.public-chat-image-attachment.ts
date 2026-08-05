@@ -1,24 +1,15 @@
-import { createHash, randomUUID } from "node:crypto";
-import path from "node:path";
-import JSZip from "jszip";
 import "pdf-parse/worker";
-import { PDFParse } from "pdf-parse";
-import TurndownService from "turndown";
 
-import { logHandledWarning } from "@/lib/logger";
-import { extractDocument } from "@/modules/document-extraction/service";
-import type { RagConfig } from "@/modules/knowledge/rag-config-schema";
 import { storage } from "@/server/infrastructure/storage";
 import {
-  ChatAttachmentMetadata,
-  ChatFileAttachmentMetadata,
-  ChatImageAttachment,
-  ChatImageAttachmentMetadata,
+ChatAttachmentMetadata,
+ChatFileAttachmentMetadata,
+ChatImageAttachment,
+ChatImageAttachmentMetadata,
 } from "./attachments.chat-image-attachment";
 import {
-  assertSafeAttachmentId,
-  extractedTextObjectKey,
-  metadataObjectKey,
+assertSafeAttachmentId,
+metadataObjectKey
 } from "./attachments.code-text-extensions";
 import { assertChatAttachmentAccess } from "./attachments.extract-attachment-text";
 

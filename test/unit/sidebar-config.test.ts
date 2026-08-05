@@ -1,17 +1,17 @@
 import { MessageSquareIcon } from "lucide-react";
-import { describe, expect, it } from "vitest";
+import { describe,expect,it } from "vitest";
 
 import {
-  applySidebarNavConfig,
-  buildSidebarMenuGroups,
-  defaultSidebarNavConfig,
-  getDefaultSectionForNavId,
-  normalizeSidebarNavConfig,
-} from "@/modules/navigation/sidebar-config";
-import {
-  DEFAULT_WORKSPACE_PERMISSIONS,
-  type NavItem,
+DEFAULT_WORKSPACE_PERMISSIONS,
+type NavItem,
 } from "@/lib/workspace-nav";
+import {
+applySidebarNavConfig,
+buildSidebarMenuGroups,
+defaultSidebarNavConfig,
+getDefaultSectionForNavId,
+normalizeSidebarNavConfig,
+} from "@/modules/navigation/sidebar-config";
 
 const sampleItems: NavItem[] = [
   { href: "/chat", labelKey: "chat", icon: MessageSquareIcon },

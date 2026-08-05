@@ -1,17 +1,17 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest,NextResponse } from "next/server";
 import { z } from "zod";
 
 import {
-  handleRoute,
-  requireRequestPermissionScopeAsync,
-  requireWorkspaceMemberAsync,
-  requireWorkspacePermissionAsync,
+handleRoute,
+requireRequestPermissionScopeAsync,
+requireWorkspaceMemberAsync,
+requireWorkspacePermissionAsync,
 } from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
 import {
-  createToolConnection,
-  listToolConnections,
-  toSafeToolConnection,
+createToolConnection,
+listToolConnections,
+toSafeToolConnection,
 } from "@/modules/tool-connections/use-cases";
 
 const jsonRecordSchema = z.record(z.string(), z.unknown());

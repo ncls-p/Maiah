@@ -1,36 +1,23 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useLocale, useTranslations } from "next-intl";
 import {
-  BracesIcon,
-  CircleStopIcon,
-  NetworkIcon,
-  PlayIcon,
-  RefreshCwIcon,
-  SaveIcon,
+BracesIcon,
+CircleStopIcon,
+PlayIcon,
+RefreshCwIcon
 } from "lucide-react";
+import { useLocale,useTranslations } from "next-intl";
+import { useCallback,useEffect,useState } from "react";
 import { toast } from "sonner";
 
-import { Link } from "@/i18n/navigation";
-import { useWorkspace } from "@/hooks/use-workspace";
-import { AdvancedSection } from "@/components/ui/advanced-section";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
+import { useWorkspace } from "@/hooks/use-workspace";
 import { cn } from "@/lib/utils";
 
-import type {
-  Agent,
-  DelegationBinding,
-  DelegationConfig,
-  OrchestrationPolicy,
-} from "./types";
-import { RunSummary, statusTone } from "./orchestration-tab.run-summary";
+import { RunSummary,statusTone } from "./orchestration-tab.run-summary";
 
 
 export function RunHistory({ agentId }: { agentId: string }) {

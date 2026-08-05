@@ -1,18 +1,11 @@
-import { createHash, randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 import path from "node:path";
-import JSZip from "jszip";
 import "pdf-parse/worker";
-import { PDFParse } from "pdf-parse";
-import TurndownService from "turndown";
 
-import { logHandledWarning } from "@/lib/logger";
-import { extractDocument } from "@/modules/document-extraction/service";
-import type { RagConfig } from "@/modules/knowledge/rag-config-schema";
-import { storage } from "@/server/infrastructure/storage";
 import {
-  AttachmentDetection,
-  chatAttachmentStoragePrefix,
-  imageTypes,
+AttachmentDetection,
+chatAttachmentStoragePrefix,
+imageTypes,
 } from "./attachments.chat-image-attachment";
 import { mimeTypesByExtension } from "./attachments.mime-types-by-extension";
 

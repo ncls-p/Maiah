@@ -1,32 +1,17 @@
-import { and, asc, eq, gte, inArray, isNull, lte, sql } from "drizzle-orm";
-import { cosineSimilarity, embed, embedMany, rerank } from "ai";
-import { encryptValue, decryptValue } from "@/lib/crypto";
 import { logger } from "@/lib/logger";
 import {
-  enqueueDocumentIngestion,
-  recoverDocumentIngestionJob,
+recoverDocumentIngestionJob
 } from "@/modules/knowledge/queue";
 import { audit } from "@/server/domain/services/audit";
-import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
 import {
-  agentKnowledgeBindings,
-  documentChunks,
-  documentEmbeddings,
-  documents,
-  knowledgeBases,
+documentChunks,
+documentEmbeddings,
+documents
 } from "@/server/infrastructure/db/schema";
-import {
-  getDefaultRagConfig,
-  hasSameRagModelSelection,
-  parseRagConfig,
-  ragConfigSchema,
-  resolveEmbeddingModel,
-  resolveRerankingModel,
-  type RagConfig,
-} from "@/modules/knowledge/rag-config";
-import { getKnowledgeBase } from "./use-cases.list-knowledge-bases";
+import { and,eq,sql } from "drizzle-orm";
 import { assertCanManageKnowledgeBase } from "./use-cases.create-knowledge-base-input";
+import { getKnowledgeBase } from "./use-cases.list-knowledge-bases";
 
 export async function listDocuments(
   knowledgeBaseId: string,

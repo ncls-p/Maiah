@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach,describe,expect,it,vi } from "vitest";
 
 // ─── Mocks ────────────────────────────────────────────────────────────
 
@@ -44,12 +44,12 @@ vi.mock("@/server/infrastructure/db", () => {
 	};
 });
 
+import {
+isOnboardingComplete,
+markOnboardingComplete,
+} from "@/modules/onboarding/use-cases";
 import * as _dbModule from "@/server/infrastructure/db";
 const dbModule = _dbModule as unknown as DbModule;
-import {
-	isOnboardingComplete,
-	markOnboardingComplete,
-} from "@/modules/onboarding/use-cases";
 
 beforeEach(() => {
 	vi.clearAllMocks();

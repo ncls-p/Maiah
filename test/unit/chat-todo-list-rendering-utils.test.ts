@@ -1,12 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { describe,expect,it } from "vitest";
 
 import {
-  chatTodoListFromToolPart,
-  latestChatTodoListFromMessages,
+chatTodoListFromToolPart,
+latestChatTodoListFromMessages,
 } from "@/components/chat/chat-message-rendering-utils";
 import type {
-  ChatMessage,
-  ChatMessagePart,
+ChatMessage,
+ChatMessagePart,
 } from "@/components/chat/chat-types";
 
 function todoPart(

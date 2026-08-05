@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe,expect,it } from "vitest";
 
 import { OPENAPI_ROUTE_MANIFEST } from "@/modules/openapi/generated-route-manifest";
 import { buildOpenApiDocument } from "@/modules/openapi/openapi";

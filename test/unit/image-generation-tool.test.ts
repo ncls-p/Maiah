@@ -1,7 +1,7 @@
-import { describe, expect, it } from "vitest";
-import { BUILTIN_TOOL_SUMMARIES } from "@/modules/tool/builtin-tools-catalog";
 import { builtInToolInputSchemaJson } from "@/modules/tool/builtin-tool-json-schema";
 import { imageGenerationInputSchema } from "@/modules/tool/builtin-tool-primitives";
+import { BUILTIN_TOOL_SUMMARIES } from "@/modules/tool/builtin-tools-catalog";
+import { describe,expect,it } from "vitest";
 
 describe("image generation tool", () => {
   it("is available as an administrator-bindable built-in tool", () => {

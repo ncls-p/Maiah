@@ -1,31 +1,18 @@
-import { and, desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/server/infrastructure/db";
-import { BUILTIN_TOOL_SUMMARIES } from "@/modules/tool/builtin-tools-catalog";
 import {
-  agentKnowledgeBindings,
-  agents,
-  agentSkillBindings,
-  agentSkills,
-  agentToolBindings,
-  agentVersions,
-  aiModels,
-  aiProviders,
-  customToolSecretRequests,
-  customTools,
-  knowledgeBases,
-  mcpServers,
-  mcpTools,
+agentSkills,
+customTools,
+customToolSecretRequests,
+mcpServers,
+mcpTools
 } from "@/server/infrastructure/db/schema";
+import { eq } from "drizzle-orm";
 import type {
-  AgentMarketplaceManifest,
-  CredentialFieldSchema,
-  McpPresetMarketplaceManifest,
-  PortableKnowledgeBinding,
-  PortableSkillBinding,
-  PortableToolBinding,
-  SkillContentManifest,
-  SkillMarketplaceManifest,
-  ToolMarketplaceManifest,
+CredentialFieldSchema,
+McpPresetMarketplaceManifest,
+SkillContentManifest,
+SkillMarketplaceManifest,
+ToolMarketplaceManifest
 } from "./manifest-types";
 import { skillFileStats } from "./manifest-types";
 

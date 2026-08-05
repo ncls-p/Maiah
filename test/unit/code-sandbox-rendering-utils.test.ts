@@ -1,10 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { describe,expect,it } from "vitest";
 
 import {
-  codeSandboxOutputFromUnknown,
-  partitionCodeSandboxFiles,
-  summarizeToolBody,
-  toolPartHasStandaloneRendering,
+codeSandboxOutputFromUnknown,
+partitionCodeSandboxFiles,
+summarizeToolBody,
+toolPartHasStandaloneRendering,
 } from "@/components/chat/chat-message-rendering-utils";
 
 describe("code sandbox result rendering", () => {

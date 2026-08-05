@@ -1,27 +1,24 @@
-import { createHash, randomUUID } from "node:crypto";
-import { readFile, rm, stat } from "node:fs/promises";
-import os from "node:os";
-import path from "node:path";
 import JSZip from "jszip";
+import { readFile,rm,stat } from "node:fs/promises";
+import path from "node:path";
 
-import { logHandledError } from "@/lib/logger";
 import { isPathTraversal } from "@/lib/path-utils";
 import { storage } from "@/server/infrastructure/storage";
 import {
-  CodeWorkspaceFileSummary,
-  CodeWorkspaceMetadata,
-  binaryExtensions,
-  fileObjectKey,
-  ignoredFileNames,
-  ignoredPathPrefixes,
-  legacyCodeWorkspaceRoots,
-  legacyMetadataPath,
-  legacyProjectDirectory,
-  legacyProjectFilesDirectory,
-  maxPathLength,
-  maxPathSegments,
-  metadataObjectKey,
-  textExtensions,
+CodeWorkspaceFileSummary,
+CodeWorkspaceMetadata,
+binaryExtensions,
+fileObjectKey,
+ignoredFileNames,
+ignoredPathPrefixes,
+legacyCodeWorkspaceRoots,
+legacyMetadataPath,
+legacyProjectDirectory,
+legacyProjectFilesDirectory,
+maxPathLength,
+maxPathSegments,
+metadataObjectKey,
+textExtensions,
 } from "./storage.code-workspace-file-summary";
 
 export function assertSafeProjectId(projectId: string) {

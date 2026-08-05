@@ -1,28 +1,18 @@
-import type { JSONSchema7, JSONValue } from "@ai-sdk/provider";
 import {
-  dynamicTool,
-  jsonSchema,
-  Output,
-  type ModelMessage,
-  type ToolChoice,
-  type ToolSet,
+type ModelMessage
 } from "ai";
 
 import type {
-  ChatCompletionRequest,
-  FunctionDefinition,
-  ProxyResponseFormat,
-  ProxyToolChoice,
-  ResponsesRequest,
+ChatCompletionRequest
 } from "@/modules/openai-proxy/contracts";
 import { invalidRequest } from "@/modules/openai-proxy/errors";
 import {
-  objectValue,
-  parseJson,
-  stringValue,
-  textContent,
-  toolResultOutput,
-  userContent,
+objectValue,
+parseJson,
+stringValue,
+textContent,
+toolResultOutput,
+userContent,
 } from "./request-mapper.prepared-proxy-generation";
 
 export function chatMessages(request: ChatCompletionRequest): ModelMessage[] {

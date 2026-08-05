@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach,describe,expect,it,vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   destroy: vi.fn(),
@@ -28,10 +28,10 @@ vi.mock("@/modules/knowledge/rag-config", () => ({
 }));
 
 import {
-  inspectPdfVisualCandidates,
-  isSupportedOcrImage,
-  runVisualOcr,
-  visualRegionsMarkdown,
+inspectPdfVisualCandidates,
+isSupportedOcrImage,
+runVisualOcr,
+visualRegionsMarkdown,
 } from "@/modules/document-extraction/visual-ocr";
 import { DEFAULT_RAG_CONFIG } from "@/modules/knowledge/rag-config-schema";
 

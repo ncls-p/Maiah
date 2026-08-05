@@ -1,20 +1,20 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
 import { PlugZapIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { useCallback,useEffect,useState } from "react";
 
 import { PageLoading } from "@/components/page-loading";
 import { ProviderManager } from "@/components/providers/provider-manager";
-import { WorkspacePage } from "@/components/workspace-page";
 import { Button } from "@/components/ui/button";
 import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
+Empty,
+EmptyDescription,
+EmptyHeader,
+EmptyMedia,
+EmptyTitle,
 } from "@/components/ui/empty";
+import { WorkspacePage } from "@/components/workspace-page";
 import { useWorkspace } from "@/hooks/use-workspace";
 
 type SafeProvider = Parameters<

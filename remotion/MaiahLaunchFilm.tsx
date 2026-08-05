@@ -1,14 +1,14 @@
 import { Audio } from "@remotion/media";
 import {
-	AbsoluteFill,
-	interpolate,
-	Sequence,
-	staticFile,
-	useCurrentFrame,
+AbsoluteFill,
+interpolate,
+Sequence,
+staticFile,
+useCurrentFrame,
 } from "remotion";
 
 import { AmbientBackground } from "./components/VisualSystem";
-import { SCENES, VIDEO_DURATION } from "./constants";
+import { SCENES,VIDEO_DURATION } from "./constants";
 import { CapabilitiesScene } from "./scenes/CapabilitiesScene";
 import { ChatScene } from "./scenes/ChatScene";
 import { ClosingScene } from "./scenes/ClosingScene";

@@ -1,14 +1,14 @@
-import type {
-  EmbeddingModelV4,
-  ImageModelV4,
-  LanguageModelV4,
-  RerankingModelV4,
-} from "@ai-sdk/provider";
-import type {
-  ImageGenerationConfig,
-  SustainabilityConfig,
-} from "@/modules/provider/model-runtime-config";
 import type { OpenAICompatibleApiRoute } from "@/lib/openai-compatible-api";
+import type {
+ImageGenerationConfig,
+SustainabilityConfig,
+} from "@/modules/provider/model-runtime-config";
+import type {
+EmbeddingModelV4,
+ImageModelV4,
+LanguageModelV4,
+RerankingModelV4,
+} from "@ai-sdk/provider";
 
 export type ProviderKind =
   | "openai-compatible"

@@ -1,20 +1,20 @@
-import type { TextStreamPart, ToolSet } from "ai";
-import { describe, expect, it, vi } from "vitest";
+import type { TextStreamPart,ToolSet } from "ai";
+import { describe,expect,it,vi } from "vitest";
 
 import { anthropicErrorBody } from "@/modules/anthropic-proxy/errors";
 import { prepareAnthropicMessages } from "@/modules/anthropic-proxy/request-mapper";
 import {
-  anthropicStopReason,
-  anthropicUsage,
-  buildAnthropicMessageResponse,
+anthropicStopReason,
+anthropicUsage,
+buildAnthropicMessageResponse,
 } from "@/modules/anthropic-proxy/response-builders";
 import { createAnthropicMessagesStream } from "@/modules/anthropic-proxy/streams";
 import { OpenAIProxyError } from "@/modules/openai-proxy/errors";
 import {
-  anthropicErrorCases,
-  anthropicRequest as request,
-  anthropicStreamParts as parts,
-  anthropicUsageFixture as usage,
+anthropicErrorCases,
+anthropicStreamParts as parts,
+anthropicRequest as request,
+anthropicUsageFixture as usage,
 } from "./anthropic-proxy-fixtures";
 
 describe("Anthropic-compatible protocol", () => {

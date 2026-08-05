@@ -1,10 +1,8 @@
-import { createServer, type Server } from "node:http";
-import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
-import { expect, test } from "@playwright/test";
+import { expect,test } from "@playwright/test";
+import OpenAI from "openai";
 
-import { ensureE2EUser, login } from "./fixtures";
-import { upstreamBaseUrl, upstreamBodies } from "./openai-proxy.spec.upstream-base-url";
+import { upstreamBaseUrl,upstreamBodies } from "./openai-proxy.spec.upstream-base-url";
 
 
 test("official OpenAI and Anthropic SDKs use Maiah as a scoped model proxy", async ({

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach,describe,expect,it,vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   createChatModel: vi.fn((runtime, modelId) => ({ runtime, modelId })),
@@ -44,12 +44,12 @@ vi.mock("@/server/infrastructure/db", () => ({
 }));
 
 import {
-  DEFAULT_RAG_CONFIG,
-  getDefaultRagConfig,
-  resolveEmbeddingModel,
-  resolveOcrModel,
-  resolveRerankingModel,
-  setDefaultRagConfig,
+DEFAULT_RAG_CONFIG,
+getDefaultRagConfig,
+resolveEmbeddingModel,
+resolveOcrModel,
+resolveRerankingModel,
+setDefaultRagConfig,
 } from "@/modules/knowledge/rag-config";
 
 const provider = {

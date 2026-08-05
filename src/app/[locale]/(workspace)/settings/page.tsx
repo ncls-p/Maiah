@@ -1,14 +1,14 @@
-import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
-import { ArrowRightIcon, ShieldCheckIcon } from "lucide-react";
+import { ArrowRightIcon,ShieldCheckIcon } from "lucide-react";
+import { getTranslations } from "next-intl/server";
 
-import { WorkspacePage } from "@/components/workspace-page";
 import { Button } from "@/components/ui/button";
-import { ensureBootstrapAdmin, isAdminRole } from "@/modules/admin/use-cases";
+import { WorkspacePage } from "@/components/workspace-page";
+import { ensureBootstrapAdmin,isAdminRole } from "@/modules/admin/use-cases";
 import { getSession } from "@/modules/auth/session";
 
-import { SettingsPasswordCard } from "./settings-password-card";
 import { OrganizationBrandingCard } from "./organization-branding-card";
+import { SettingsPasswordCard } from "./settings-password-card";
 
 export default async function SettingsPage() {
   const t = await getTranslations("settings");

@@ -1,16 +1,12 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach,describe,expect,it,vi } from "vitest";
 
-import { generateText } from "ai";
 import { decryptValue } from "@/lib/crypto";
-import { logHandledWarning } from "@/lib/logger";
-import * as _dbModule from "@/server/infrastructure/db";
 import {
-	generateChatAutomationArtifacts,
-	getChatAutomationAdminState,
-	setChatAutomationConfig,
-	testChatAutomationConnection,
-	validateChatAutomationConfig,
+getChatAutomationAdminState,
+setChatAutomationConfig
 } from "@/modules/chat/automation";
+import * as _dbModule from "@/server/infrastructure/db";
+import { generateText } from "ai";
 
 vi.mock("@/server/infrastructure/ai-sdk/devtools", () => ({
 	registerAiSdkDevTools: vi.fn(),

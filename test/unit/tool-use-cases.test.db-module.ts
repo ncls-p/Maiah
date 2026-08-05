@@ -1,19 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach,describe,expect,it,vi } from "vitest";
 
-import * as _dbModule from "@/server/infrastructure/db";
-import { authorization } from "@/server/domain/services/authorization";
 import {
-	canExecuteRestrictedTool,
-	cloneToolBindings,
-	getAgentVersionToolContext,
-	getCustomBindingContext,
-	getMcpBindingContext,
-	getToolBindingsForVersion,
-	insertToolBindingsForVersion,
-	logToolInvocation,
-	replaceToolBindingsForVersion,
-	toolBindingInputSchema,
+getToolBindingsForVersion,
+toolBindingInputSchema
 } from "@/modules/tool/use-cases";
+import * as _dbModule from "@/server/infrastructure/db";
 
 // ─── Mocks ────────────────────────────────────────────────────────────
 

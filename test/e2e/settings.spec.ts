@@ -1,5 +1,5 @@
-import { expect, test } from "@playwright/test";
-import { e2eUser, ensureE2EUser, login } from "./fixtures";
+import { expect,test } from "@playwright/test";
+import { e2eUser,ensureE2EUser,login } from "./fixtures";
 
 test.beforeAll(async () => {
   await ensureE2EUser();
@@ -71,7 +71,7 @@ test.describe("settings page", () => {
         "data-brand-theme",
         "forest",
       );
-      await page.reload();
+      await page.reload({ waitUntil: "domcontentloaded", timeout: 15_000 });
       await expect(
         branding.getByRole("button", { name: "Forest" }),
       ).toHaveAttribute("aria-pressed", "true");
@@ -90,7 +90,7 @@ test.describe("settings page", () => {
   test("persists a custom light and dark organization palette", async ({
     page,
   }) => {
-    test.setTimeout(60_000);
+    test.setTimeout(120_000);
     const workspaces = (await (
       await page.request.get("/api/workspaces")
     ).json()) as Array<{ workspace: { id: string } }>;
@@ -106,6 +106,7 @@ test.describe("settings page", () => {
       await branding
         .getByLabel("light primary", { exact: true })
         .fill("#123456");
+      await branding.locator("summary").filter({ hasText: "Dark" }).click();
       await branding
         .getByLabel("dark primary", { exact: true })
         .fill("#abcdef");

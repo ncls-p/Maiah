@@ -1,10 +1,6 @@
 // Shared fixtures and helpers for all e2e tests
-import type { Cookie, Page } from "@playwright/test";
-import { hashPassword } from "better-auth/crypto";
-import { randomUUID } from "node:crypto";
-import { Client } from "pg";
-import { cache } from "@/server/infrastructure/cache";
-import { authenticationState, e2eUser } from "./fixtures.e2e-user";
+import type { Page } from "@playwright/test";
+import { authenticationState,e2eUser } from "./fixtures.e2e-user";
 
 export async function loginWithCredentials(
   page: Page,

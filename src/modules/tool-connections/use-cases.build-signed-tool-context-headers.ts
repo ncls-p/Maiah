@@ -1,34 +1,27 @@
 import {
-  createCipheriv,
-  createHash,
-  createHmac,
-  randomBytes,
+createCipheriv,
+createHash,
+createHmac,
+randomBytes,
 } from "node:crypto";
 
-import { decryptValue, encryptValue } from "@/lib/crypto";
 import { env } from "@/lib/env";
-import { logger } from "@/lib/logger";
-import { audit } from "@/server/domain/services/audit";
-import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
 import {
-  toolConnectionRequirements,
-  toolConnections,
-  toolConnectors,
-  userToolSettings,
+toolConnections
 } from "@/server/infrastructure/db/schema";
-import { and, desc, eq, isNull, or } from "drizzle-orm";
+import { and,desc,eq,isNull,or } from "drizzle-orm";
 import {
-  CONTEXT_HEADER,
-  CONTEXT_TTL_MS,
-  JsonRecord,
-  ResolveToolExecutionHeadersInput,
-  SIGNATURE_HEADER,
-  UserToolSetting,
-  decryptRecord,
-  jsonRecord,
+CONTEXT_HEADER,
+CONTEXT_TTL_MS,
+JsonRecord,
+ResolveToolExecutionHeadersInput,
+SIGNATURE_HEADER,
+UserToolSetting,
+decryptRecord,
+jsonRecord,
 } from "./use-cases.mcp-tool-source";
-import { findConnectorForTool, findUserToolSettings } from "./use-cases.upsert-tool-connection-requirement";
+import { findConnectorForTool,findUserToolSettings } from "./use-cases.upsert-tool-connection-requirement";
 
 async function findVisibleConnection(
   connectionId: string,

@@ -1,14 +1,14 @@
 import { extractWithAnydoc } from "@/modules/document-extraction/anydoc-adapter";
 import type {
-  DocumentExtractionInput,
-  DocumentExtractionResult,
+DocumentExtractionInput,
+DocumentExtractionResult,
 } from "@/modules/document-extraction/types";
 import {
-  inspectPdfVisualCandidates,
-  isSupportedOcrImage,
-  runVisualOcr,
-  type VisualCandidate,
-  visualRegionsMarkdown,
+inspectPdfVisualCandidates,
+isSupportedOcrImage,
+runVisualOcr,
+type VisualCandidate,
+visualRegionsMarkdown,
 } from "@/modules/document-extraction/visual-ocr";
 import { getDefaultRagConfig } from "@/modules/knowledge/rag-config";
 import { DEFAULT_RAG_CONFIG } from "@/modules/knowledge/rag-config-schema";

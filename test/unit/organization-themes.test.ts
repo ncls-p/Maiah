@@ -1,10 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { describe,expect,it } from "vitest";
 
 import {
-  ORGANIZATION_THEME_PRESETS,
-  THEME_TOKEN_KEYS,
-  resolveOrganizationTheme,
-  themeCss,
+ORGANIZATION_THEME_PRESETS,
+THEME_TOKEN_KEYS,
+resolveOrganizationTheme,
+themeCss,
 } from "@/modules/organization/themes";
 
 describe("organization themes", () => {

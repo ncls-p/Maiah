@@ -1,34 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useLocale, useTranslations } from "next-intl";
-import {
-  BracesIcon,
-  CircleStopIcon,
-  NetworkIcon,
-  PlayIcon,
-  RefreshCwIcon,
-  SaveIcon,
-} from "lucide-react";
-import { toast } from "sonner";
 
-import { Link } from "@/i18n/navigation";
-import { useWorkspace } from "@/hooks/use-workspace";
-import { AdvancedSection } from "@/components/ui/advanced-section";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Spinner } from "@/components/ui/spinner";
-import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
 
 import type {
-  Agent,
-  DelegationBinding,
-  DelegationConfig,
-  OrchestrationPolicy,
+OrchestrationPolicy
 } from "./types";
 
 export type RunSummary = {

@@ -1,17 +1,8 @@
-export type { ChatImageAttachment } from "./attachments.chat-image-attachment";
-export type { ChatFileAttachment } from "./attachments.chat-image-attachment";
-export type { ChatAttachment } from "./attachments.chat-image-attachment";
-export type { ChatFileAttachmentMetadata } from "./attachments.chat-image-attachment";
-export type { ChatAttachmentMetadata } from "./attachments.chat-image-attachment";
+import "pdf-parse/worker";
+
+export { createChatAttachment,createChatImageAttachment,publicChatAttachment } from "./attachments.assert-attachment-has-content";
 export { maxChatAttachmentPreviewChars } from "./attachments.chat-image-attachment";
+export type { ChatAttachment,ChatAttachmentMetadata,ChatFileAttachment,ChatFileAttachmentMetadata,ChatImageAttachment } from "./attachments.chat-image-attachment";
+export { extractUploadedFileText,isChatFileAttachment,isChatImageAttachment } from "./attachments.extract-attachment-text";
 export type { ExtractedUploadedFile } from "./attachments.extract-attachment-text";
-export { extractUploadedFileText } from "./attachments.extract-attachment-text";
-export { isChatImageAttachment } from "./attachments.extract-attachment-text";
-export { isChatFileAttachment } from "./attachments.extract-attachment-text";
-export { createChatAttachment } from "./attachments.assert-attachment-has-content";
-export { createChatImageAttachment } from "./attachments.assert-attachment-has-content";
-export { publicChatAttachment } from "./attachments.assert-attachment-has-content";
-export { getChatAttachment } from "./attachments.public-chat-image-attachment";
-export { getChatAttachmentBytes } from "./attachments.public-chat-image-attachment";
-export { getChatImageAttachmentBytes } from "./attachments.public-chat-image-attachment";
-export { getChatAttachmentExtractedText } from "./attachments.public-chat-image-attachment";
+export { getChatAttachment,getChatAttachmentBytes,getChatAttachmentExtractedText,getChatImageAttachmentBytes } from "./attachments.public-chat-image-attachment";

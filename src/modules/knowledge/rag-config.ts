@@ -1,29 +1,29 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and,eq,isNull } from "drizzle-orm";
 
 import { decryptValue } from "@/lib/crypto";
+import {
+parseRagConfig,
+ragConfigSchema,
+type RagConfig,
+} from "@/modules/knowledge/rag-config-schema";
 import { isCloudTempleBaseUrl } from "@/modules/provider/cloud-temple-catalog";
 import { db } from "@/server/infrastructure/db";
 import {
-  aiModels,
-  aiProviders,
-  appSettings,
+aiModels,
+aiProviders,
+appSettings,
 } from "@/server/infrastructure/db/schema";
 import {
-  getAdapter,
-  type ProviderRuntimeConfig,
+getAdapter,
+type ProviderRuntimeConfig,
 } from "@/server/infrastructure/providers";
-import {
-  parseRagConfig,
-  ragConfigSchema,
-  type RagConfig,
-} from "@/modules/knowledge/rag-config-schema";
 
 export {
-  DEFAULT_RAG_CONFIG,
-  hasSameRagModelSelection,
-  parseRagConfig,
-  ragConfigSchema,
-  type RagConfig,
+DEFAULT_RAG_CONFIG,
+hasSameRagModelSelection,
+parseRagConfig,
+ragConfigSchema,
+type RagConfig
 } from "@/modules/knowledge/rag-config-schema";
 
 const RAG_SETTING_KEY = "rag-defaults";

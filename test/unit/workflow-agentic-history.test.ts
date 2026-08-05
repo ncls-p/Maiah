@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach,describe,expect,it,vi } from "vitest";
 
 const mocks = vi.hoisted(() => {
   const chain = {
@@ -40,13 +40,13 @@ vi.mock("@/server/domain/services/audit", () => ({
 }));
 
 import {
-  appendWorkflowAgentMessage,
-  consumeWorkflowAgentInputRequest,
-  createWorkflowAgentInputRequest,
-  getWorkflowAgentHistory,
-  isWorkflowSecretReference,
-  resolveWorkflowSecretReferences,
-  submitWorkflowAgentInputRequest,
+appendWorkflowAgentMessage,
+consumeWorkflowAgentInputRequest,
+createWorkflowAgentInputRequest,
+getWorkflowAgentHistory,
+isWorkflowSecretReference,
+resolveWorkflowSecretReferences,
+submitWorkflowAgentInputRequest,
 } from "@/modules/workflows/agentic-history";
 
 const workflowId = "11111111-1111-4111-8111-111111111111";

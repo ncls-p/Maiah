@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach,describe,expect,it,vi } from "vitest";
 
 // ─── Mocks ────────────────────────────────────────────────────────────
 
@@ -69,15 +69,15 @@ vi.mock("@/server/infrastructure/db", () => {
   };
 });
 
-import * as _dbModule from "@/server/infrastructure/db";
-const dbModule = _dbModule as unknown as DbModule;
 import * as apiKeyPermissions from "@/modules/api-keys/permissions";
 import {
-  createWorkspaceApiKey,
-  listWorkspaceApiKeys,
-  revokeWorkspaceApiKey,
-  verifyWorkspaceApiKey,
+createWorkspaceApiKey,
+listWorkspaceApiKeys,
+revokeWorkspaceApiKey,
+verifyWorkspaceApiKey,
 } from "@/modules/api-keys/use-cases";
+import * as _dbModule from "@/server/infrastructure/db";
+const dbModule = _dbModule as unknown as DbModule;
 
 function reset() {
   dbModule._sc.from.mockReturnThis();

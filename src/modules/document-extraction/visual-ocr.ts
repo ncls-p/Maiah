@@ -1,13 +1,13 @@
 import "pdf-parse/worker";
 
-import { generateText, Output } from "ai";
+import { generateText,Output } from "ai";
 import { PDFParse } from "pdf-parse";
 import { z } from "zod";
 
 import { logHandledWarning } from "@/lib/logger";
+import type { VisualRegion } from "@/modules/document-extraction/types";
 import { resolveOcrModel } from "@/modules/knowledge/rag-config";
 import type { RagConfig } from "@/modules/knowledge/rag-config-schema";
-import type { VisualRegion } from "@/modules/document-extraction/types";
 
 export type VisualCandidate = {
   sourceKind: VisualRegion["sourceKind"];

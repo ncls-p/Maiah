@@ -1,13 +1,13 @@
 import {
-  BookMarked,
-  BookOpen,
-  MessageCircle,
-  Package,
-  Plug,
-  Puzzle,
-  Settings,
-  Wrench,
-  Workflow,
+BookMarked,
+BookOpen,
+MessageCircle,
+Package,
+Plug,
+Puzzle,
+Settings,
+Workflow,
+Wrench,
 } from "lucide-react";
 import { getItemTypeLabel } from "./marketplace-i18n-helpers";
 

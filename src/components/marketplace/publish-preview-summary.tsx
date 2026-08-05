@@ -2,8 +2,8 @@
 
 import { useTranslations } from "next-intl";
 import {
-  formatManifestPreview,
-  type ManifestPreviewData,
+formatManifestPreview,
+type ManifestPreviewData,
 } from "./marketplace-i18n-helpers";
 
 export function PublishPreviewSummary({

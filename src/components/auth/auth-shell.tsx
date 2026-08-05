@@ -1,17 +1,17 @@
 "use client";
 
-import type { ReactNode } from "react";
-import { ShieldCheckIcon, SparklesIcon, WorkflowIcon } from "lucide-react";
+import { ShieldCheckIcon,SparklesIcon,WorkflowIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
+import type { ReactNode } from "react";
 
 import { DeodisLogo } from "@/components/deodis-logo";
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
+Card,
+CardContent,
+CardDescription,
+CardHeader,
+CardTitle,
 } from "@/components/ui/card";
 
 export function AuthShell({

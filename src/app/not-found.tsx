@@ -1,16 +1,16 @@
+import { cookies } from "next/headers";
 import Image from "next/image";
 import Link from "next/link";
-import { cookies } from "next/headers";
 
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
+Card,
+CardContent,
+CardDescription,
+CardHeader,
+CardTitle,
 } from "@/components/ui/card";
-import { defaultLocale, locales } from "@/i18n/routing";
+import { defaultLocale,locales } from "@/i18n/routing";
 
 import enMessages from "../../messages/en.json";
 import frMessages from "../../messages/fr.json";

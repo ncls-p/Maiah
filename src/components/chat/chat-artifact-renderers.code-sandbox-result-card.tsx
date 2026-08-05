@@ -1,35 +1,24 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { ChevronDownIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { toast } from "sonner";
-import { ChevronDownIcon, DownloadIcon, Maximize2Icon } from "lucide-react";
+import { useMemo,useState } from "react";
 
 import {
-  artifactCombinedCode,
-  artifactSourceDocument,
-  partitionCodeSandboxFiles,
-  type CodeSandboxFileOutput,
-  type CodeSandboxInputPreview,
-  type CodeSandboxOutput,
-  type HtmlArtifactOutput,
+partitionCodeSandboxFiles,
+type CodeSandboxInputPreview,
+type CodeSandboxOutput
 } from "@/components/chat/chat-message-rendering-utils";
-import { Button } from "@/components/ui/button";
-import { ToolStateIcon } from "@/components/chat/tool-state-icon";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { formatBytes } from "@/components/chat/code-workspace-artifact-card";
+import { ToolStateIcon } from "@/components/chat/tool-state-icon";
+import { Button } from "@/components/ui/button";
+import {
+Collapsible,
+CollapsibleContent,
+CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
-import { BUTTON_TYPE, COMPACT_ICON_CLASS, GHOST_VARIANT } from "./chat-artifact-renderers.max-live-tool-input-chars";
+import { BUTTON_TYPE,COMPACT_ICON_CLASS,GHOST_VARIANT } from "./chat-artifact-renderers.max-live-tool-input-chars";
 import { SandboxOutputFileCard } from "./chat-artifact-renderers.sandbox-output-file-card";
 
 

@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, type ElementType, type ReactNode } from "react";
 import { ChevronDownIcon } from "lucide-react";
+import { useState,type ElementType,type ReactNode } from "react";
 
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
+Collapsible,
+CollapsibleContent,
+CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 

@@ -1,8 +1,8 @@
-import { describe, expect, it } from "vitest";
 import {
-	createSlideDeckArtifact,
-	slideDeckInputSchema,
+createSlideDeckArtifact,
+slideDeckInputSchema,
 } from "@/modules/tool/slide-deck-tool";
+import { describe,expect,it } from "vitest";
 
 describe("slide deck tool", () => {
 	it("renders every slide layout with controls, CSS themes, JS navigation, and escaped JSON", () => {

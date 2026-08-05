@@ -1,9 +1,9 @@
-import { ActivityIcon, TimerIcon } from "lucide-react";
-import { useLocale, type useTranslations } from "next-intl";
+import { ActivityIcon,TimerIcon } from "lucide-react";
+import { useLocale,type useTranslations } from "next-intl";
 
 import { Badge } from "@/components/ui/badge";
 
-import { formatFullCount, formatLatency } from "./usage-formatters";
+import { formatFullCount,formatLatency } from "./usage-formatters";
 import type { UsageEvent } from "./usage-types";
 
 type T = ReturnType<typeof useTranslations<"admin.usage">>;

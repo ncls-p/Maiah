@@ -1,25 +1,15 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe,expect,it,vi } from "vitest";
 
-import * as _dbModule from "@/server/infrastructure/db";
 import {
-	archiveDocument,
-	archiveKnowledgeBase,
-	cloneKnowledgeBindings,
-	createKnowledgeBase,
-	getKnowledgeBase,
-	getKnowledgeBindingsForVersion,
-	ingestTextDocument,
-	listDocuments,
-	listKnowledgeBases,
-	listProcessingDocuments,
-	processDocumentIngestion,
-	replaceKnowledgeBindingsForVersion,
-	scoreContent,
-	searchBoundKnowledgeBases,
-	searchKnowledgeBase,
-	updateKnowledgeBase,
+cloneKnowledgeBindings,
+getKnowledgeBindingsForVersion,
+listProcessingDocuments,
+processDocumentIngestion,
+replaceKnowledgeBindingsForVersion,
+searchBoundKnowledgeBases,
+searchKnowledgeBase
 } from "@/modules/knowledge/use-cases";
-import { dbModule, fakeDoc, fakeKb } from "./knowledge-use-cases.test.db-module";
+import { dbModule,fakeDoc,fakeKb } from "./knowledge-use-cases.test.db-module";
 
 
 // ─── searchKnowledgeBase ──────────────────────────────────────────────

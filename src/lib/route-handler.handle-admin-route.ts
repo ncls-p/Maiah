@@ -1,27 +1,15 @@
-import { NextRequest, NextResponse } from "next/server";
+import { logger,logHandledError } from "@/lib/logger";
 import { isPlatformAdminSession } from "@/modules/admin/auth";
-import {
-  resolveAuthContext,
-  type AuthContext,
-} from "@/modules/auth/resolve-auth";
-import { runWithRequestAuth } from "@/modules/auth/request-auth-context";
 import { getSession } from "@/modules/auth/session";
+import { NextRequest,NextResponse } from "next/server";
 import {
-  checkRequestPermissionScope,
-  checkResourcePermissionForRequest,
-  checkWorkspacePermissionForRequest,
-  isWorkspaceMemberForRequest,
-} from "@/modules/auth/workspace-access";
-import type { AccessResourceType } from "@/server/domain/entities/access-resource";
-import { logger, logHandledError } from "@/lib/logger";
-import {
-  AuthSession,
-  RouteHandlerOptions,
-  attachRequestId,
-  logRouteCompleted,
-  logRouteRejected,
-  requestIdFrom,
-  routeLogData,
+attachRequestId,
+AuthSession,
+logRouteCompleted,
+logRouteRejected,
+requestIdFrom,
+RouteHandlerOptions,
+routeLogData,
 } from "./route-handler.route-handler-options";
 
 /**

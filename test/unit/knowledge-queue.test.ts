@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach,describe,expect,it,vi } from "vitest";
 
 const queueMocks = vi.hoisted(() => ({
   add: vi.fn(),
@@ -22,9 +22,9 @@ vi.mock("@/modules/workflows/queue", () => ({
 }));
 
 import {
-  DOCUMENT_INGESTION_QUEUE_NAME,
-  enqueueDocumentIngestion,
-  recoverDocumentIngestionJob,
+DOCUMENT_INGESTION_QUEUE_NAME,
+enqueueDocumentIngestion,
+recoverDocumentIngestionJob,
 } from "@/modules/knowledge/queue";
 
 const input = {

@@ -1,12 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { describe,expect,it } from "vitest";
 
 import {
-  conversationFolderOpenStorageKey,
-  EMPTY_CONVERSATION_FOLDER_OPEN_SNAPSHOT,
-  normalizeConversationFolderOpenSnapshot,
-  parseConversationFolderOpenSnapshot,
-  serializeConversationFolderOpenSnapshot,
-  updateConversationFolderOpenSnapshot,
+conversationFolderOpenStorageKey,
+EMPTY_CONVERSATION_FOLDER_OPEN_SNAPSHOT,
+normalizeConversationFolderOpenSnapshot,
+parseConversationFolderOpenSnapshot,
+serializeConversationFolderOpenSnapshot,
+updateConversationFolderOpenSnapshot,
 } from "@/lib/conversation-folder-visibility";
 
 describe("conversation folder visibility", () => {

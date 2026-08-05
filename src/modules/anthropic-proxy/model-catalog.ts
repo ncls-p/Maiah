@@ -1,6 +1,6 @@
 import {
-  listOpenAIProxyModels,
-  resolveOpenAIProxyModel,
+listOpenAIProxyModels,
+resolveOpenAIProxyModel,
 } from "@/modules/openai-proxy/model-catalog";
 
 function toAnthropicModel(

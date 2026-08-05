@@ -1,35 +1,23 @@
-import { createHash } from "node:crypto";
 
-import { and, count, eq, inArray, isNull, or } from "drizzle-orm";
+import { and,count,eq,inArray } from "drizzle-orm";
 
-import { audit } from "@/server/domain/services/audit";
-import { authorization } from "@/server/domain/services/authorization";
-import {
-  ACCESS_RESOURCE_TYPES,
-  type AccessResourceType,
-} from "@/server/domain/entities/access-resource";
 import { db } from "@/server/infrastructure/db";
-import { findAccessResource } from "@/server/infrastructure/db/access-resource-repository";
 import {
-  organizationMembers,
-  organizations,
-  roleBindings,
-  roles,
-  teamMembers,
-  teams,
-  users,
-  workspaceMembers,
-  workspaces,
+organizationMembers,
+roleBindings,
+roles,
+teamMembers,
+teams,
+users
 } from "@/server/infrastructure/db/schema";
-import { getWorkspacesByUserId } from "@/modules/workspace/use-cases";
-import { IamOperationError } from "./use-cases";
+import { fingerprint,listSourceBindings } from "./member-transfer.list-member-transfer-destinations";
 import {
-  MemberTransferMode,
-  MemberTransferPreview,
-  getProjectScope,
-  requireTransferPermissions,
+MemberTransferMode,
+MemberTransferPreview,
+getProjectScope,
+requireTransferPermissions,
 } from "./member-transfer.member-transfer-modes";
-import { fingerprint, listSourceBindings } from "./member-transfer.list-member-transfer-destinations";
+import { IamOperationError } from "./use-cases";
 
 export async function previewMemberTransfer(input: {
   actorUserId: string;

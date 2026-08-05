@@ -1,31 +1,27 @@
-import { NextRequest, NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
-import { z } from "zod";
 import {
-  handleRoute,
-  requireResourcePermissionAsync,
+handleRoute,
+requireResourcePermissionAsync,
 } from "@/lib/route-handler";
-import { db } from "@/server/infrastructure/db";
-import { users } from "@/server/infrastructure/db/schema";
-import {
-  archiveAgent,
-  AgentVersionConflictError,
-  canEditAgent,
-  getVisibleAgentById,
-  normalizePromptSuggestions,
-  updateAgent,
-} from "@/modules/agent/use-cases";
-import { agentRuntimePolicy } from "@/modules/agent/runtime-policy";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
+import {
+delegationBindingInputSchema,
+orchestrationPolicySchema,
+} from "@/modules/agent/orchestration-policy";
+import { agentRuntimePolicy } from "@/modules/agent/runtime-policy";
+import {
+canEditAgent,
+getVisibleAgentById,
+normalizePromptSuggestions
+} from "@/modules/agent/use-cases";
 import { hasWorkspacePermissionForRequest } from "@/modules/auth/workspace-access";
+import { withResourceProvenance } from "@/modules/iam/resource-provenance";
 import { toolBindingInputSchema } from "@/modules/tool/use-cases";
 import { authorization } from "@/server/domain/services/authorization";
-import { withResourceProvenance } from "@/modules/iam/resource-provenance";
-import {
-  delegationBindingInputSchema,
-  orchestrationPolicySchema,
-} from "@/modules/agent/orchestration-policy";
-import { DelegationBindingValidationError } from "@/modules/agent/delegation-use-cases";
+import { db } from "@/server/infrastructure/db";
+import { users } from "@/server/infrastructure/db/schema";
+import { eq } from "drizzle-orm";
+import { NextRequest,NextResponse } from "next/server";
+import { z } from "zod";
 
 export const routeParamsSchema = z.object({ agentId: z.uuid() });
 export const workspaceQuerySchema = z.object({ workspaceId: z.uuid() });

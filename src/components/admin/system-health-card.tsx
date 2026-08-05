@@ -1,14 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { ActivityIcon, DatabaseIcon, StoreIcon } from "lucide-react";
+import { ActivityIcon,DatabaseIcon,StoreIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useEffect,useState } from "react";
 
 import {
-  SettingsMetricRow,
-  SettingsSection,
-  SettingsSectionSkeleton,
-  SettingsStatusBadge,
+SettingsMetricRow,
+SettingsSection,
+SettingsSectionSkeleton,
+SettingsStatusBadge,
 } from "@/components/admin/settings-panel";
 
 type HealthResponse = {

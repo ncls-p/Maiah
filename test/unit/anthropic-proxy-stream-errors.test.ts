@@ -1,10 +1,10 @@
-import type { TextStreamPart, ToolSet } from "ai";
-import { describe, expect, it, vi } from "vitest";
+import type { TextStreamPart,ToolSet } from "ai";
+import { describe,expect,it,vi } from "vitest";
 
 import { createAnthropicMessagesStream } from "@/modules/anthropic-proxy/streams";
 import {
-  anthropicRequest,
-  anthropicStreamParts,
+anthropicRequest,
+anthropicStreamParts,
 } from "./anthropic-proxy-fixtures";
 
 function errorStream(parts: Array<TextStreamPart<ToolSet>>) {

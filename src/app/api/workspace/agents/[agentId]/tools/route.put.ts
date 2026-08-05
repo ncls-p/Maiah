@@ -1,32 +1,21 @@
-import { NextRequest, NextResponse } from "next/server";
-import { and, eq, inArray } from "drizzle-orm";
-import { z } from "zod";
 import {
-  handleRoute,
-  requireResourcePermissionAsync,
+handleRoute,
+requireResourcePermissionAsync,
 } from "@/lib/route-handler";
-import {
-  AgentVersionConflictError,
-  getVisibleAgentById,
-  getActiveVersion,
-  getAgentVersionById,
-  updateAgent,
-} from "@/modules/agent/use-cases";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
 import {
-  getToolBindingsForVersion,
-  toolBindingInputSchema,
-} from "@/modules/tool/use-cases";
-import { getBuiltInTool } from "@/modules/tool/builtin-tools";
-import { audit } from "@/server/domain/services/audit";
-import { getBoundSkillCatalog } from "@/modules/skills/use-cases";
-import { db } from "@/server/infrastructure/db";
+AgentVersionConflictError,
+getVisibleAgentById,
+updateAgent
+} from "@/modules/agent/use-cases";
 import {
-  customTools,
-  mcpServers,
-  mcpTools,
-} from "@/server/infrastructure/db/schema";
-import { querySchema, routeParamsSchema } from "./route.route-params-schema";
+getToolBindingsForVersion,
+toolBindingInputSchema,
+} from "@/modules/tool/use-cases";
+import { audit } from "@/server/domain/services/audit";
+import { NextRequest,NextResponse } from "next/server";
+import { z } from "zod";
+import { querySchema,routeParamsSchema } from "./route.route-params-schema";
 
 
 export async function PUT(

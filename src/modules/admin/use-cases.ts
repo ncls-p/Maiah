@@ -1,8 +1,8 @@
-import { and, count, desc, eq, ne } from "drizzle-orm";
+import { and,count,desc,eq,ne } from "drizzle-orm";
 
 import { auth } from "@/lib/auth";
 import { db } from "@/server/infrastructure/db";
-import { appSettings, users } from "@/server/infrastructure/db/schema";
+import { appSettings,users } from "@/server/infrastructure/db/schema";
 
 const REGISTRATION_SETTING_KEY = "registration";
 

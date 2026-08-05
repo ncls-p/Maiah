@@ -1,11 +1,11 @@
-import { createPrivateKey, generateKeyPairSync } from "node:crypto";
-import { describe, expect, it } from "vitest";
+import { createPrivateKey,generateKeyPairSync } from "node:crypto";
+import { describe,expect,it } from "vitest";
 
 import {
-	canAttemptGitHubRepositoryPublish,
-	describeGitHubRepositoryAccess,
-	describeGitHubRepositoryRelationship,
-	normalizeGitHubPrivateKey,
+canAttemptGitHubRepositoryPublish,
+describeGitHubRepositoryAccess,
+describeGitHubRepositoryRelationship,
+normalizeGitHubPrivateKey,
 } from "@/modules/github/publishing";
 
 function privateKeyPem() {

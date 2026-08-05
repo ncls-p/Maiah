@@ -1,9 +1,9 @@
 // Shared fixtures and helpers for all e2e tests
-import type { Cookie, Page } from "@playwright/test";
+import { cache } from "@/server/infrastructure/cache";
+import type { Cookie } from "@playwright/test";
 import { hashPassword } from "better-auth/crypto";
 import { randomUUID } from "node:crypto";
 import { Client } from "pg";
-import { cache } from "@/server/infrastructure/cache";
 
 export const e2eUser = {
   name: "E2E Admin",

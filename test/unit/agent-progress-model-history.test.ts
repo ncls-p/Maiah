@@ -1,8 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe,expect,it } from "vitest";
 
 import {
-  delegationFinalTextFromOutput,
-  projectAgentProgressForModelHistory,
+delegationFinalTextFromOutput,
+projectAgentProgressForModelHistory,
 } from "@/modules/agent/progress-model-history";
 
 const rootContext = {

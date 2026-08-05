@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach,describe,expect,it,vi } from "vitest";
 
 const sdkMocks = vi.hoisted(() => ({
 	connect: vi.fn(),
@@ -60,8 +60,8 @@ vi.mock("@/lib/crypto", () => ({
 }));
 
 import {
-	callRemoteMcpTool,
-	listRemoteMcpTools,
+callRemoteMcpTool,
+listRemoteMcpTools,
 } from "../../src/modules/mcp/client";
 
 function server(overrides: Record<string, unknown> = {}) {

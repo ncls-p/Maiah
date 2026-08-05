@@ -1,14 +1,14 @@
-import { describe, it, expect } from "vitest";
-import {
-	buildMcpPresetManifest,
-	buildSkillManifest,
-} from "@/modules/marketplace/manifest-builders";
-import { skillFileStats } from "@/modules/marketplace/manifest-types";
 import { installPostInstallFlags } from "@/modules/marketplace/install-helpers";
 import {
-	containsMarketplaceSecretMaterial,
-	sanitizeMarketplaceManifest,
+buildMcpPresetManifest,
+buildSkillManifest,
+} from "@/modules/marketplace/manifest-builders";
+import {
+containsMarketplaceSecretMaterial,
+sanitizeMarketplaceManifest,
 } from "@/modules/marketplace/manifest-sanitizer";
+import { skillFileStats } from "@/modules/marketplace/manifest-types";
+import { describe,expect,it } from "vitest";
 
 const baseServer = {
 	id: "srv-1",

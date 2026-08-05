@@ -1,36 +1,29 @@
-import { createHash, randomUUID } from "node:crypto";
-import path from "node:path";
-import JSZip from "jszip";
+import { randomUUID } from "node:crypto";
 import "pdf-parse/worker";
-import { PDFParse } from "pdf-parse";
-import TurndownService from "turndown";
 
-import { logHandledWarning } from "@/lib/logger";
-import { extractDocument } from "@/modules/document-extraction/service";
-import type { RagConfig } from "@/modules/knowledge/rag-config-schema";
 import { storage } from "@/server/infrastructure/storage";
 import {
-  ChatAttachment,
-  ChatAttachmentMetadata,
-  ChatFileAttachment,
-  ChatFileAttachmentMetadata,
-  ChatImageAttachment,
-  ChatImageAttachmentMetadata,
-  imageTypes,
-  unsupportedChatImageTypeMessage,
+ChatAttachment,
+ChatAttachmentMetadata,
+ChatFileAttachment,
+ChatFileAttachmentMetadata,
+ChatImageAttachment,
+ChatImageAttachmentMetadata,
+imageTypes,
+unsupportedChatImageTypeMessage,
 } from "./attachments.chat-image-attachment";
 import {
-  chatAttachmentObjectKey,
-  detectImageMimeType,
-  extractedTextObjectKey,
-  hashBytes,
-  metadataObjectKey,
-  safeExtension,
-  sanitizeFileName,
+chatAttachmentObjectKey,
+detectImageMimeType,
+extractedTextObjectKey,
+hashBytes,
+metadataObjectKey,
+safeExtension,
+sanitizeFileName,
 } from "./attachments.code-text-extensions";
-import { publicChatImageAttachment } from "./attachments.public-chat-image-attachment";
 import { detectAttachment } from "./attachments.detect-attachment";
 import { extractAttachmentText } from "./attachments.extract-attachment-text";
+import { publicChatImageAttachment } from "./attachments.public-chat-image-attachment";
 
 type CreateChatAttachmentInput = {
   workspaceId: string;

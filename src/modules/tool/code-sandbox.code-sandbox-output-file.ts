@@ -1,16 +1,7 @@
-import { existsSync } from "node:fs";
-import http from "node:http";
 import path from "node:path";
 
-import { env } from "@/lib/env";
-import { logger, logHandledWarning } from "@/lib/logger";
-import { isPathTraversal } from "@/lib/path-utils";
 import {
-  createChatAttachment,
-  getChatAttachmentBytes,
-  getChatAttachmentExtractedText,
-  isChatFileAttachment,
-  type ChatAttachment,
+type ChatAttachment
 } from "@/modules/chat/attachments";
 
 type CodeSandboxLanguage = "python" | "node" | "bash";

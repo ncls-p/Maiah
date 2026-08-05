@@ -1,4 +1,4 @@
-import { Queue, type Job } from "bullmq";
+import { Queue,type Job } from "bullmq";
 
 import { workflowQueueConnection } from "@/modules/workflows/queue";
 

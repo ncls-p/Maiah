@@ -1,21 +1,8 @@
-import { existsSync } from "node:fs";
-import http from "node:http";
-import path from "node:path";
 
-import { env } from "@/lib/env";
-import { logger, logHandledWarning } from "@/lib/logger";
-import { isPathTraversal } from "@/lib/path-utils";
 import {
-  createChatAttachment,
-  getChatAttachmentBytes,
-  getChatAttachmentExtractedText,
-  isChatFileAttachment,
-  type ChatAttachment,
-} from "@/modules/chat/attachments";
-import {
-  DocumentExplorerUnit,
-  maxDocumentExplorerChunkChars,
-  minDocumentExplorerChunkChars,
+DocumentExplorerUnit,
+maxDocumentExplorerChunkChars,
+minDocumentExplorerChunkChars,
 } from "./code-sandbox.failed-sandbox-result";
 
 function markdownHeadingUnits(markdown: string): DocumentExplorerUnit[] {

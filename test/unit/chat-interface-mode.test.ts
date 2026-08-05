@@ -1,9 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe,expect,it } from "vitest";
 
 import {
-  CHAT_INTERFACE_MODE,
-  CODING_INTERFACE_MODE,
-  shouldAutoActivateCoding,
+CHAT_INTERFACE_MODE,
+CODING_INTERFACE_MODE,
+shouldAutoActivateCoding,
 } from "@/app/[locale]/(workspace)/chat/chat-interface-mode";
 
 describe("chat interface mode ownership", () => {

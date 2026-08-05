@@ -1,16 +1,16 @@
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
 import {
-  handleRoute,
-  requireResourcePermissionAsync,
-  requireWorkspaceMemberAsync,
+handleRoute,
+requireResourcePermissionAsync,
+requireWorkspaceMemberAsync,
 } from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
 import {
-  archiveDocument,
-  readKnowledgeDocument,
-  retryDocumentIngestion,
+archiveDocument,
+readKnowledgeDocument,
+retryDocumentIngestion,
 } from "@/modules/knowledge/use-cases";
+import { NextRequest,NextResponse } from "next/server";
+import { z } from "zod";
 
 const querySchema = z.object({ workspaceId: z.uuid() });
 

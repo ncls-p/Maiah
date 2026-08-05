@@ -1,9 +1,9 @@
-import { describe, expect, it } from "vitest";
 import {
-	agentRuntimePolicy,
-	createRuntimeDeadline,
-	resolveAgentRuntimeLimits,
+agentRuntimePolicy,
+createRuntimeDeadline,
+resolveAgentRuntimeLimits,
 } from "@/modules/agent/runtime-policy";
+import { describe,expect,it } from "vitest";
 
 describe("agent runtime policy", () => {
 	it("bounds tool calls, steps, and output tokens", () => {

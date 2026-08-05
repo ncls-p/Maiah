@@ -1,17 +1,17 @@
+import type { OrganizationThemeConfig } from "@/modules/organization/themes";
 import {
-  boolean,
-  index,
-  pgTable,
-  text,
-  timestamp,
-  varchar,
-  uuid,
-  jsonb,
-  uniqueIndex,
-  pgEnum,
+boolean,
+index,
+jsonb,
+pgEnum,
+pgTable,
+text,
+timestamp,
+uniqueIndex,
+uuid,
+varchar,
 } from "drizzle-orm/pg-core";
 import { users } from "./auth";
-import type { OrganizationThemeConfig } from "@/modules/organization/themes";
 
 const CREATED_AT_COLUMN = "created_at";
 const UPDATED_AT_COLUMN = "updated_at";

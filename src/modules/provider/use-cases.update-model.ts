@@ -1,27 +1,20 @@
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { decryptValue } from "@/lib/crypto";
+import { logHandledError } from "@/lib/logger";
+import {
+normalizeOpenAICompatibleApiRoute
+} from "@/lib/openai-compatible-api";
 import { db } from "@/server/infrastructure/db";
 import {
-  aiProviders,
-  aiModels,
-  providerKindEnum,
-  providerAuthTypeEnum,
+aiModels,
+aiProviders
 } from "@/server/infrastructure/db/schema";
-import { encryptValue, decryptValue } from "@/lib/crypto";
-import { logHandledError } from "@/lib/logger";
-import { getAdapter } from "@/server/infrastructure/providers";
 import type {
-  ProviderRuntimeConfig,
-  ProviderHealth,
-  ModelDescriptor,
+ModelDescriptor,
+ProviderRuntimeConfig
 } from "@/server/infrastructure/providers";
-import { audit } from "@/server/domain/services/audit";
-import { logger } from "@/lib/logger";
-import {
-  DEFAULT_OPENAI_COMPATIBLE_API_ROUTE,
-  normalizeOpenAICompatibleApiRoute,
-  type OpenAICompatibleApiRoute,
-} from "@/lib/openai-compatible-api";
-import { MODEL_UPDATE_RULES, UpdateModelInput } from "./use-cases.test-provider-connection";
+import { getAdapter } from "@/server/infrastructure/providers";
+import { and,eq,sql } from "drizzle-orm";
+import { MODEL_UPDATE_RULES,UpdateModelInput } from "./use-cases.test-provider-connection";
 import { listProviders } from "./use-cases.update-provider";
 
 function buildModelUpdates(input: UpdateModelInput) {

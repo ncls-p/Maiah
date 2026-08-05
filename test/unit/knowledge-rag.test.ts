@@ -1,12 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { describe,expect,it } from "vitest";
 
-import { chunkText } from "@/modules/knowledge/use-cases";
 import {
-  DEFAULT_RAG_CONFIG,
-  hasSameRagModelSelection,
-  parseRagConfig,
-  ragConfigSchema,
+DEFAULT_RAG_CONFIG,
+hasSameRagModelSelection,
+parseRagConfig,
+ragConfigSchema,
 } from "@/modules/knowledge/rag-config";
+import { chunkText } from "@/modules/knowledge/use-cases";
 
 describe("knowledge RAG configuration", () => {
   it("starts unconfigured and preserves lexical fallback", () => {

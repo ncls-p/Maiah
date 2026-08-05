@@ -2,9 +2,9 @@ import { normalizeOpaDecision } from "@ai-sdk/policy-opa";
 
 import { logHandledWarning } from "@/lib/logger";
 import {
-  allowToolDecision,
-  type ToolApprovalDecision,
-  type ToolSource,
+allowToolDecision,
+type ToolApprovalDecision,
+type ToolSource,
 } from "./approval-policy";
 
 export type OpaToolApprovalInput = {

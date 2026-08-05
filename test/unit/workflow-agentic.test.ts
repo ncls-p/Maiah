@@ -1,13 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { describe,expect,it } from "vitest";
 
 import {
-  validateWorkflowAgentDraft,
-  workflowAgentCatalogPrompt,
-  workflowAgenticRequestSchema,
+validateWorkflowAgentDraft,
+workflowAgentCatalogPrompt,
+workflowAgenticRequestSchema,
 } from "@/modules/workflows/agentic";
 import {
-  createStarterDefinition,
-  type WorkflowDefinition,
+createStarterDefinition,
+type WorkflowDefinition,
 } from "@/modules/workflows/contracts";
 
 const workspaceId = "9df25190-0187-4fb8-96a7-7439debc1f93";

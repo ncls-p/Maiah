@@ -1,11 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { describe,expect,it } from "vitest";
 
 import {
-	createFallbackArtifacts,
-	ensureThreeSuggestions,
-	parseArtifacts,
-	parseArtifactsFromModelOutput,
-	validateChatAutomationConfigShape,
+createFallbackArtifacts,
+ensureThreeSuggestions,
+parseArtifacts,
+parseArtifactsFromModelOutput,
+validateChatAutomationConfigShape,
 } from "@/modules/chat/automation";
 
 describe("validateChatAutomationConfigShape", () => {

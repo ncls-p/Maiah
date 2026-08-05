@@ -1,33 +1,21 @@
 "use client";
 
 import {
-  BookOpenIcon,
-  ChevronDownIcon,
-  ExternalLinkIcon,
-  FileTextIcon,
-  Loader2Icon,
+BookOpenIcon,
+ChevronDownIcon
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import { useState } from "react";
 
-import type { ChatCitation } from "@/components/chat/chat-types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
+Collapsible,
+CollapsibleContent,
+CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { fetchJson } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
-import { CitationBlockProps, CitationItem } from "./citation-block.citation-block-props";
+import { CitationBlockProps,CitationItem } from "./citation-block.citation-block-props";
 
 
 export function CitationBlock({

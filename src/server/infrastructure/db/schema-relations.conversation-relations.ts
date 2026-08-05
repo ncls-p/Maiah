@@ -1,21 +1,20 @@
 import { relations } from "drizzle-orm";
-import * as schema from "./schema-tables";
 import {
-  agentSkillBindings,
-  agentSkills,
-  agentVersions,
-  agents,
-  conversationFolders,
-  conversations,
-  mcpServers,
-  messageParts,
-  messages,
-  toolConnectionRequirements,
-  toolConnections,
-  toolConnectors,
-  userToolSettings,
-  users,
-  workspaces,
+agentSkillBindings,
+agentSkills,
+agentVersions,
+agents,
+conversationFolders,
+conversations,
+mcpServers,
+messageParts,
+messages,
+toolConnectionRequirements,
+toolConnections,
+toolConnectors,
+userToolSettings,
+users,
+workspaces,
 } from "./schema-relations.user-relations";
 
 export const conversationRelations = relations(

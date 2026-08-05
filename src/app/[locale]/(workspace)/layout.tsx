@@ -1,6 +1,6 @@
+import { redirect } from "@/i18n/navigation";
 import type { Metadata } from "next";
 import { getLocale } from "next-intl/server";
-import { redirect } from "@/i18n/navigation";
 
 import { AppShell } from "@/components/app-shell";
 import { OnboardingRedirect } from "@/components/onboarding-redirect";

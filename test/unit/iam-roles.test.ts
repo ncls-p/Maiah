@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
 import { SYSTEM_ROLES } from "@/server/domain/entities/iam";
+import { describe,expect,it } from "vitest";
 
 describe("SYSTEM_ROLES", () => {
   it("defines at least one organization and workspace scope role", () => {

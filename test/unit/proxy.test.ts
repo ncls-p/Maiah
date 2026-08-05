@@ -1,7 +1,7 @@
-import { readFileSync } from "node:fs";
-import { NextRequest } from "next/server";
-import { describe, expect, it } from "vitest";
 import { getConfiguredHttpsRedirect } from "@/lib/public-https";
+import { NextRequest } from "next/server";
+import { readFileSync } from "node:fs";
+import { describe,expect,it } from "vitest";
 
 describe("public HTTPS origin", () => {
   it("redirects the configured public host from HTTP to HTTPS", () => {

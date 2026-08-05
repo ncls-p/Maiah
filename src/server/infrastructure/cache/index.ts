@@ -1,5 +1,5 @@
-import { Redis } from "ioredis";
 import { env } from "@/lib/env";
+import { Redis } from "ioredis";
 
 type CacheRuntime = {
   redis: Redis | null;

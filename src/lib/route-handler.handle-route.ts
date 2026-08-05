@@ -1,28 +1,26 @@
-import { NextRequest, NextResponse } from "next/server";
-import { isPlatformAdminSession } from "@/modules/admin/auth";
-import {
-  resolveAuthContext,
-  type AuthContext,
-} from "@/modules/auth/resolve-auth";
+import { logger,logHandledError } from "@/lib/logger";
 import { runWithRequestAuth } from "@/modules/auth/request-auth-context";
-import { getSession } from "@/modules/auth/session";
 import {
-  checkRequestPermissionScope,
-  checkResourcePermissionForRequest,
-  checkWorkspacePermissionForRequest,
-  isWorkspaceMemberForRequest,
+resolveAuthContext,
+type AuthContext,
+} from "@/modules/auth/resolve-auth";
+import {
+checkRequestPermissionScope,
+checkResourcePermissionForRequest,
+checkWorkspacePermissionForRequest,
+isWorkspaceMemberForRequest,
 } from "@/modules/auth/workspace-access";
 import type { AccessResourceType } from "@/server/domain/entities/access-resource";
-import { logger, logHandledError } from "@/lib/logger";
+import { NextRequest,NextResponse } from "next/server";
 import {
-  AuthSession,
-  RouteHandlerOptions,
-  attachRequestId,
-  logRouteCompleted,
-  logRouteRejected,
-  requestIdFrom,
-  routeLogData,
-  routePathFrom,
+attachRequestId,
+AuthSession,
+logRouteCompleted,
+logRouteRejected,
+requestIdFrom,
+RouteHandlerOptions,
+routeLogData,
+routePathFrom,
 } from "./route-handler.route-handler-options";
 
 /** Wrap an async handler with session authentication and consistent error handling. */

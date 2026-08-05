@@ -1,27 +1,24 @@
-import { and, eq, inArray, isNull, ne, or } from "drizzle-orm";
+import { and,eq,inArray,or } from "drizzle-orm";
 
-import { ACCESS_RESOURCE_TYPES } from "@/server/domain/entities/access-resource";
 import { audit } from "@/server/domain/services/audit";
 import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
-import { listAccessResources } from "@/server/infrastructure/db/access-resource-repository";
 import {
-  organizationMembers,
-  organizations,
-  roleBindings,
-  roles,
-  teams,
-  workspaces,
+organizationMembers,
+organizations,
+roleBindings,
+roles,
+teams,
+workspaces,
 } from "@/server/infrastructure/db/schema";
-import { getWorkspacesByUserId } from "@/modules/workspace/use-cases";
 
-import { IamOperationError } from "./use-cases";
 import {
-  listAllResourceIds,
-  nextWorkspaceOutsideOrganization,
-  requirePermission,
-  scopeForWorkspace,
+listAllResourceIds,
+nextWorkspaceOutsideOrganization,
+requirePermission,
+scopeForWorkspace,
 } from "./scope-lifecycle.normalized-slug";
+import { IamOperationError } from "./use-cases";
 
 export async function deleteOrganization(input: {
   actorUserId: string;

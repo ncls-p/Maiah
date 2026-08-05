@@ -1,4 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
+import { headers } from "next/headers";
+import { describe,expect,it,vi } from "vitest";
 
 vi.mock("next/headers", () => ({
 	headers: vi.fn().mockResolvedValue(new Headers({ "cookie": "session=test" })),
@@ -21,7 +22,6 @@ vi.mock("@/lib/auth", async () => {
 		auth: mockAuth,
 	};
 });
-import { headers } from "next/headers";
 
 describe("getSession", () => {
 	it("calls headers() and auth.api.getSession", async () => {

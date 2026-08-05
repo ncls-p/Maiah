@@ -1,29 +1,17 @@
-import {
-  createCipheriv,
-  createHash,
-  createHmac,
-  randomBytes,
-} from "node:crypto";
 
-import { decryptValue, encryptValue } from "@/lib/crypto";
-import { env } from "@/lib/env";
-import { logger } from "@/lib/logger";
-import { audit } from "@/server/domain/services/audit";
-import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
 import {
-  toolConnectionRequirements,
-  toolConnections,
-  toolConnectors,
-  userToolSettings,
+toolConnectionRequirements,
+toolConnectors,
+userToolSettings
 } from "@/server/infrastructure/db/schema";
-import { and, desc, eq, isNull, or } from "drizzle-orm";
+import { and,eq,isNull } from "drizzle-orm";
 import {
-  MCP_TOOL_SOURCE,
-  ResolveToolExecutionHeadersInput,
-  UpsertToolConnectionRequirementInput,
-  UpsertUserToolSettingsInput,
-  encryptRecord,
+MCP_TOOL_SOURCE,
+ResolveToolExecutionHeadersInput,
+UpsertToolConnectionRequirementInput,
+UpsertUserToolSettingsInput,
+encryptRecord,
 } from "./use-cases.mcp-tool-source";
 
 export async function upsertToolConnectionRequirement(

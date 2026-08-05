@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest,NextResponse } from "next/server";
 
 import { env } from "@/lib/env";
-import { logger, logHandledError } from "@/lib/logger";
+import { logger,logHandledError } from "@/lib/logger";
 import { getSession } from "@/modules/auth/session";
 import {
-  parseGitHubState,
-  syncGitHubInstallation,
+parseGitHubState,
+syncGitHubInstallation,
 } from "@/modules/github/publishing";
 import { authorization } from "@/server/domain/services/authorization";
 

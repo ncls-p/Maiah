@@ -1,19 +1,14 @@
-import { and, count, eq, isNull, or } from "drizzle-orm";
-import { logger } from "@/lib/logger";
-import { SYSTEM_ROLES } from "@/server/domain/entities/iam";
 import { audit } from "@/server/domain/services/audit";
 import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
 import {
-  organizations,
-  organizationMembers,
-  roleBindings,
-  roles,
-  workspaceMembers,
-  workspaces,
+roleBindings,
+workspaceMembers,
+workspaces
 } from "@/server/infrastructure/db/schema";
-import { WORKSPACE_SCOPE, WorkspaceRoleName } from "./use-cases.workspace-scope";
+import { and,eq } from "drizzle-orm";
 import { getSystemWorkspaceRole } from "./use-cases.get-system-workspace-role";
+import { WORKSPACE_SCOPE,WorkspaceRoleName } from "./use-cases.workspace-scope";
 
 export async function updateWorkspaceMemberRole(input: {
   workspaceId: string;

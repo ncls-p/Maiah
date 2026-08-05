@@ -1,8 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe,expect,it } from "vitest";
 
 import {
-  latestConversationIdFromList,
-  normalizeConversationList,
+latestConversationIdFromList,
+normalizeConversationList,
 } from "@/app/[locale]/(workspace)/chat/chat-conversation-list";
 
 const conversations = [

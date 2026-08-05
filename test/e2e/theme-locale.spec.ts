@@ -1,5 +1,5 @@
-import { expect, type Page, test } from "@playwright/test";
-import { e2eUser, ensureE2EUser, login } from "./fixtures";
+import { expect,type Page,test } from "@playwright/test";
+import { e2eUser,ensureE2EUser,login } from "./fixtures";
 
 test.beforeAll(async () => {
   await ensureE2EUser();

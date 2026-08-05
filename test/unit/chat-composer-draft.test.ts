@@ -1,9 +1,9 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach,beforeEach,describe,expect,it,vi } from "vitest";
 
 import {
-  migrateNewChatComposerDraft,
-  readChatComposerDraft,
-  writeChatComposerDraft,
+migrateNewChatComposerDraft,
+readChatComposerDraft,
+writeChatComposerDraft,
 } from "@/components/chat/chat-composer-draft";
 import type { ChatAttachment } from "@/components/chat/chat-types";
 

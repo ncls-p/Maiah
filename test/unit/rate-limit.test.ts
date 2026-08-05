@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe,expect,it } from "vitest";
 
 describe("rate-limit", async () => {
 	const { rateLimitExceededResponse } = await import("@/lib/rate-limit");

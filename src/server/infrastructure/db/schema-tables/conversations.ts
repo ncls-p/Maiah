@@ -1,18 +1,18 @@
 import {
-  pgTable,
-  text,
-  integer,
-  timestamp,
-  boolean,
-  varchar,
-  uuid,
-  jsonb,
-  index,
-  pgEnum,
+boolean,
+index,
+integer,
+jsonb,
+pgEnum,
+pgTable,
+text,
+timestamp,
+uuid,
+varchar,
 } from "drizzle-orm/pg-core";
+import { agents,agentVersions } from "./agents";
 import { users } from "./auth";
 import { workspaces } from "./workspace";
-import { agents, agentVersions } from "./agents";
 
 const CREATED_AT_COLUMN = "created_at";
 const UPDATED_AT_COLUMN = "updated_at";

@@ -1,23 +1,11 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach,describe,expect,it,vi } from "vitest";
 
-import * as _dbModule from "@/server/infrastructure/db";
 import { listRemoteMcpTools } from "@/modules/mcp/client";
 import {
-	archiveMcpServer,
-	createMcpServer,
-	createMcpServerWithDiscovery,
-	getMcpServer,
-	hasMcpConnectionChanges,
-	listMcpServers,
-	listMcpTools,
-	syncMcpTools,
-	testMcpConnection,
-	toMcpServerForEdit,
-	toSafeMcpServer,
-	updateMcpServer,
-	updateMcpServerWithDiscovery,
-	updateMcpTool,
+toMcpServerForEdit,
+toSafeMcpServer
 } from "@/modules/mcp/use-cases";
+import * as _dbModule from "@/server/infrastructure/db";
 
 // ─── Mocks ────────────────────────────────────────────────────────────
 

@@ -1,40 +1,33 @@
-import { existsSync } from "node:fs";
-import http from "node:http";
 import path from "node:path";
 
-import { env } from "@/lib/env";
-import { logger, logHandledWarning } from "@/lib/logger";
-import { isPathTraversal } from "@/lib/path-utils";
 import {
-  createChatAttachment,
-  getChatAttachmentBytes,
-  getChatAttachmentExtractedText,
-  isChatFileAttachment,
-  type ChatAttachment,
+getChatAttachmentBytes,
+getChatAttachmentExtractedText,
+isChatFileAttachment
 } from "@/modules/chat/attachments";
 import {
-  CodeSandboxExecutionContext,
-  CodeSandboxOutputFile,
-  CodeSandboxRequest,
-  CodeSandboxResult,
-  PreparedSandboxRunnerInput,
-  clampTimeoutMs,
-  maxSandboxCodeChars,
-  maxSandboxInlineStdinChars,
-  maxSandboxInputFileBytes,
-  maxSandboxInputFiles,
-  maxSandboxInputTotalBytes,
-  normalizeLanguage,
+buildDocumentExplorerFiles,
+uniqueSandboxPath,
+} from "./code-sandbox.build-document-explorer-files";
+import {
+clampTimeoutMs,
+CodeSandboxExecutionContext,
+CodeSandboxOutputFile,
+CodeSandboxRequest,
+CodeSandboxResult,
+maxSandboxCodeChars,
+maxSandboxInlineStdinChars,
+maxSandboxInputFileBytes,
+maxSandboxInputFiles,
+maxSandboxInputTotalBytes,
+normalizeLanguage,
+PreparedSandboxRunnerInput,
 } from "./code-sandbox.code-sandbox-output-file";
 import {
-  defaultAttachmentPath,
-  documentExplorerMetadataReserveBytes,
-  normalizeInputFiles,
+defaultAttachmentPath,
+documentExplorerMetadataReserveBytes,
+normalizeInputFiles,
 } from "./code-sandbox.failed-sandbox-result";
-import {
-  buildDocumentExplorerFiles,
-  uniqueSandboxPath,
-} from "./code-sandbox.build-document-explorer-files";
 
 export async function prepareSandboxRunnerRequest(
   input: CodeSandboxRequest,

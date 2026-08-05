@@ -1,15 +1,15 @@
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
 import {
-  handleRoute,
-  requireResourcePermissionAsync,
+handleRoute,
+requireResourcePermissionAsync,
 } from "@/lib/route-handler";
-import {
-  getVisibleAgentById,
-  getAgentVersions,
-  getAgentVersionById,
-} from "@/modules/agent/use-cases";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
+import {
+getAgentVersionById,
+getAgentVersions,
+getVisibleAgentById,
+} from "@/modules/agent/use-cases";
+import { NextRequest,NextResponse } from "next/server";
+import { z } from "zod";
 
 const routeParamsSchema = z.object({ agentId: z.uuid() });
 const workspaceQuerySchema = z.object({ workspaceId: z.uuid() });

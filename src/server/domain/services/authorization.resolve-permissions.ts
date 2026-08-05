@@ -1,29 +1,25 @@
-import { logHandledWarning } from "@/lib/logger";
 import type { AccessResourceType } from "@/server/domain/entities/access-resource";
-import { SYSTEM_ROLES } from "@/server/domain/entities/iam";
 import { cache } from "@/server/infrastructure/cache";
-import { findAccessResource } from "@/server/infrastructure/db/access-resource-repository";
 import { db } from "@/server/infrastructure/db";
+import { findAccessResource } from "@/server/infrastructure/db/access-resource-repository";
 import {
-  organizationMembers,
-  roles,
-  roleBindings,
-  teamMembers,
-  teams,
-  workspaceMembers,
-  workspaces,
+roleBindings,
+roles,
+teamMembers,
+teams,
+workspaces
 } from "@/server/infrastructure/db/schema";
-import { and, eq, gte, inArray, isNull, or } from "drizzle-orm";
+import { and,eq,gte,inArray,isNull,or } from "drizzle-orm";
 import {
-  AuthorizationContext,
-  PERMISSION_CACHE_TTL,
-  Permission,
-  ResourceType,
-  addRolePermissions,
-  isActiveOrganizationMember,
-  isActiveWorkspaceMember,
-  permissionResolutions,
-  uniquePermissions,
+AuthorizationContext,
+PERMISSION_CACHE_TTL,
+Permission,
+ResourceType,
+addRolePermissions,
+isActiveOrganizationMember,
+isActiveWorkspaceMember,
+permissionResolutions,
+uniquePermissions,
 } from "./authorization.permission-cache-ttl";
 
 async function resolvePermissionsUncached(

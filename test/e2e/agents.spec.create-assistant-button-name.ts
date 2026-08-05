@@ -1,14 +1,9 @@
-import { expect, test } from "@playwright/test";
+import { expect,test } from "@playwright/test";
 import {
-  e2eOrganizationProjectEditor,
-  e2eViewer,
-  ensureE2EAssistant,
-  ensureE2EOrganizationProjectEditor,
-  ensureE2EViewer,
-  ensureE2EPrivateMemberAssistant,
-  ensureE2EUser,
-  login,
-  loginWithCredentials,
+ensureE2EAssistant,
+ensureE2EPrivateMemberAssistant,
+ensureE2EUser,
+login
 } from "./fixtures";
 
 export const createAssistantButtonName =

@@ -1,30 +1,14 @@
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { logger } from "@/lib/logger";
 import { db } from "@/server/infrastructure/db";
 import {
-  aiProviders,
-  aiModels,
-  providerKindEnum,
-  providerAuthTypeEnum,
+aiModels,
+aiProviders
 } from "@/server/infrastructure/db/schema";
-import { encryptValue, decryptValue } from "@/lib/crypto";
-import { logHandledError } from "@/lib/logger";
-import { getAdapter } from "@/server/infrastructure/providers";
-import type {
-  ProviderRuntimeConfig,
-  ProviderHealth,
-  ModelDescriptor,
-} from "@/server/infrastructure/providers";
-import { audit } from "@/server/domain/services/audit";
-import { logger } from "@/lib/logger";
+import { and,eq,isNull,sql } from "drizzle-orm";
 import {
-  DEFAULT_OPENAI_COMPATIBLE_API_ROUTE,
-  normalizeOpenAICompatibleApiRoute,
-  type OpenAICompatibleApiRoute,
-} from "@/lib/openai-compatible-api";
-import {
-  ProviderModelRefreshResult,
-  discoverModels,
-  listModels,
+ProviderModelRefreshResult,
+discoverModels,
+listModels,
 } from "./use-cases.update-model";
 
 export async function refreshProviderModels(

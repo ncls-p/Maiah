@@ -1,10 +1,10 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach,describe,expect,it,vi } from "vitest";
 
 import { streamAiSdkUIChat } from "@/hooks/ai-sdk-ui-chat-transport";
 import {
-  completeChatStream,
-  createChatUIMessageStreamResponse,
-  publishChatStreamEvent,
+completeChatStream,
+createChatUIMessageStreamResponse,
+publishChatStreamEvent,
 } from "@/modules/chat/stream-bus";
 
 afterEach(() => {

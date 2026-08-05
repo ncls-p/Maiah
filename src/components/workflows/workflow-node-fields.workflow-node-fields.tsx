@@ -1,32 +1,30 @@
 "use client";
 
-import { useState } from "react";
-import { PlusIcon, SlidersHorizontalIcon, Trash2Icon } from "lucide-react";
+import { SlidersHorizontalIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { AdvancedSection } from "@/components/ui/advanced-section";
-import { Button } from "@/components/ui/button";
 import {
-  Field,
-  FieldDescription,
-  FieldGroup,
-  FieldLabel,
+Field,
+FieldDescription,
+FieldGroup,
+FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+Select,
+SelectContent,
+SelectGroup,
+SelectItem,
+SelectTrigger,
+SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type {
-  WorkflowNodeCatalogItem,
-  WorkflowNodeField,
+WorkflowNodeCatalogItem,
+WorkflowNodeField,
 } from "@/modules/workflows/catalog";
-import { AgentOption, JsonValueEditor, KeyValueEditor } from "./workflow-node-fields.agent-option";
+import { AgentOption,JsonValueEditor,KeyValueEditor } from "./workflow-node-fields.agent-option";
 
 
 function FieldControl({

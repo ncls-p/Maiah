@@ -1,11 +1,11 @@
-import { and, eq, inArray, isNull, or } from "drizzle-orm";
 import type { OrchestrationPolicy } from "@/modules/agent/orchestration-policy";
 import type { db } from "@/server/infrastructure/db";
 import {
-  agentDelegationBindings,
-  agents,
-  agentVersions,
+agentDelegationBindings,
+agents,
+agentVersions,
 } from "@/server/infrastructure/db/schema";
+import { and,eq,inArray,isNull,or } from "drizzle-orm";
 import type { DelegationBindingInput } from "./orchestration-policy";
 
 type BindingDb = Pick<typeof db, "select" | "insert">;

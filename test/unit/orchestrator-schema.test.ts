@@ -1,13 +1,13 @@
-import { getTableColumns } from "drizzle-orm";
-import { describe, expect, it } from "vitest";
 import {
-	agentDelegationBindings,
-	agentRuns,
-	agentRunSteps,
-	agentVersions,
-	agents,
-	workspaceTokenReservations,
+agentDelegationBindings,
+agentRuns,
+agentRunSteps,
+agents,
+agentVersions,
+workspaceTokenReservations,
 } from "@/server/infrastructure/db/schema";
+import { getTableColumns } from "drizzle-orm";
+import { describe,expect,it } from "vitest";
 
 describe("orchestrator persistence schema", () => {
 	it("versions agent kind and orchestration policy independently", () => {

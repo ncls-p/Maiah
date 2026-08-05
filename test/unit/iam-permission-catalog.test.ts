@@ -1,11 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { describe,expect,it } from "vitest";
 
 import {
-  expandPermissionGrants,
-  isKnownPermission,
-  isPermissionCompatibleWithScope,
-  KNOWN_PERMISSIONS,
-  PERMISSION_CATALOG,
+expandPermissionGrants,
+isKnownPermission,
+isPermissionCompatibleWithScope,
+KNOWN_PERMISSIONS,
+PERMISSION_CATALOG,
 } from "@/modules/iam/permission-catalog";
 import { SYSTEM_ROLES } from "@/server/domain/entities/iam";
 

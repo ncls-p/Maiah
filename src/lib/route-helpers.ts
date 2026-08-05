@@ -1,8 +1,8 @@
+import { logHandledError } from "@/lib/logger";
+import { getSession } from "@/modules/auth/session";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { logHandledError } from "@/lib/logger";
-import { getSession } from "@/modules/auth/session";
 
 // ─── Auth helpers ────────────────────────────────────────────────────────
 

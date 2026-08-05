@@ -1,15 +1,15 @@
 "use client";
 
-import * as React from "react";
-import { Label as LabelPrimitive } from "radix-ui";
 import { CircleHelpIcon } from "lucide-react";
+import { Label as LabelPrimitive } from "radix-ui";
+import * as React from "react";
 
-import { cn } from "@/lib/utils";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
+Tooltip,
+TooltipContent,
+TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 
 type LabelProps = React.ComponentProps<typeof LabelPrimitive.Root> & {
   /** Short, plain-language explanation shown on hover and keyboard focus. */

@@ -1,30 +1,19 @@
-import {
-  createCipheriv,
-  createHash,
-  createHmac,
-  randomBytes,
-} from "node:crypto";
 
-import { decryptValue, encryptValue } from "@/lib/crypto";
-import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
 import { audit } from "@/server/domain/services/audit";
-import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
 import {
-  toolConnectionRequirements,
-  toolConnections,
-  toolConnectors,
-  userToolSettings,
+toolConnections,
+toolConnectors
 } from "@/server/infrastructure/db/schema";
-import { and, desc, eq, isNull, or } from "drizzle-orm";
+import { and,eq,isNull } from "drizzle-orm";
 import {
-  CreateToolConnectorInput,
-  ToolConnection,
-  ToolConnector,
-  jsonRecord,
-  normalizeConnectorKey,
-  visibleConnectorCondition,
+CreateToolConnectorInput,
+ToolConnection,
+ToolConnector,
+jsonRecord,
+normalizeConnectorKey,
+visibleConnectorCondition,
 } from "./use-cases.mcp-tool-source";
 
 export async function clearDefaultConnections(

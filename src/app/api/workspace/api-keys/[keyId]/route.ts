@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
-import { handleRoute, requireWorkspaceMemberAsync } from "@/lib/route-handler";
+import { handleRoute,requireWorkspaceMemberAsync } from "@/lib/route-handler";
 import { getApiKeyAccessScope } from "@/modules/api-keys/permissions";
 import { revokeWorkspaceApiKey } from "@/modules/api-keys/use-cases";
+import { NextRequest,NextResponse } from "next/server";
+import { z } from "zod";
 
 const querySchema = z.object({ workspaceId: z.uuid() });
 

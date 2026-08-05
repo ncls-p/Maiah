@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach,describe,expect,it,vi } from "vitest";
 
 const routeMocks = vi.hoisted(() => ({
 	updateAgent: vi.fn(),
@@ -38,11 +38,11 @@ vi.mock("@/modules/agent/use-cases", async (importOriginal) => {
 	return { ...actual, updateAgent: routeMocks.updateAgent };
 });
 
-import {
-	AgentVersionConflictError,
-	updateAgent,
-} from "@/modules/agent/use-cases";
 import { PATCH } from "@/app/api/workspace/agents/[agentId]/route";
+import {
+AgentVersionConflictError,
+updateAgent,
+} from "@/modules/agent/use-cases";
 
 const agentId = "22222222-2222-4222-8222-222222222222";
 const workspaceId = "33333333-3333-4333-8333-333333333333";

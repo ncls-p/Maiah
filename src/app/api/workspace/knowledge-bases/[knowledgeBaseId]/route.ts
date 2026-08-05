@@ -1,18 +1,18 @@
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
 import {
-  handleRoute,
-  requireResourcePermissionAsync,
+handleRoute,
+requireResourcePermissionAsync,
 } from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
 import { hasWorkspacePermissionForRequest } from "@/modules/auth/workspace-access";
-import {
-  archiveKnowledgeBase,
-  getKnowledgeBase,
-  RagModelConfigurationPermissionError,
-  updateKnowledgeBase,
-} from "@/modules/knowledge/use-cases";
 import { ragConfigSchema } from "@/modules/knowledge/rag-config";
+import {
+archiveKnowledgeBase,
+getKnowledgeBase,
+RagModelConfigurationPermissionError,
+updateKnowledgeBase,
+} from "@/modules/knowledge/use-cases";
+import { NextRequest,NextResponse } from "next/server";
+import { z } from "zod";
 
 const querySchema = z.object({ workspaceId: z.uuid() });
 const updateSchema = z.object({

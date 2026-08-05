@@ -1,19 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
-import { isPlatformAdminSession } from "@/modules/admin/auth";
+import { logger } from "@/lib/logger";
 import {
-  resolveAuthContext,
-  type AuthContext,
+type AuthContext
 } from "@/modules/auth/resolve-auth";
-import { runWithRequestAuth } from "@/modules/auth/request-auth-context";
 import { getSession } from "@/modules/auth/session";
-import {
-  checkRequestPermissionScope,
-  checkResourcePermissionForRequest,
-  checkWorkspacePermissionForRequest,
-  isWorkspaceMemberForRequest,
-} from "@/modules/auth/workspace-access";
-import type { AccessResourceType } from "@/server/domain/entities/access-resource";
-import { logger, logHandledError } from "@/lib/logger";
+import { NextRequest,NextResponse } from "next/server";
 
 /** Wrap an async handler with session authentication and consistent error handling. */
 export type RouteHandlerOptions = {

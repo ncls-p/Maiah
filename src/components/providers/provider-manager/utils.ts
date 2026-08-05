@@ -1,4 +1,4 @@
-import type { ProviderAuthType, ProviderKind } from "./types";
+import type { ProviderAuthType,ProviderKind } from "./types";
 
 export function defaultAuthType(kind: ProviderKind): ProviderAuthType {
   if (kind === "dragonfly") return "x-api-key";

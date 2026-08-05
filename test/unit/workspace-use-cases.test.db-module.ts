@@ -1,15 +1,11 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach,describe,expect,it,vi } from "vitest";
 
 import * as _dbModule from "@/server/infrastructure/db";
 
 import {
-  addWorkspaceMember,
-  countWorkspaces,
-  createWorkspace,
-  getWorkspaceBySlug,
-  getWorkspacesByUserId,
-  ensurePrimaryWorkspaceForUser,
-  updateWorkspaceMemberRole,
+countWorkspaces,
+getWorkspaceBySlug,
+getWorkspacesByUserId
 } from "@/modules/workspace/use-cases";
 
 // ─── Mocks ────────────────────────────────────────────────────────────

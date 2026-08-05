@@ -1,31 +1,21 @@
-import type { LanguageModelUsage, TextStreamPart, ToolSet } from "ai";
-
 import type {
-  ChatCompletionRequest,
-  ProxyResponseFormat,
-  ResponsesRequest,
+ProxyResponseFormat,
+ResponsesRequest
 } from "@/modules/openai-proxy/contracts";
 import {
-  OpenAIProxyError,
-  openAIErrorBody,
-  providerError,
+OpenAIProxyError,
+providerError
 } from "@/modules/openai-proxy/errors";
 import {
-  chatFinishReason,
-  chatUsage,
-  createChatCompletionId,
-  createFunctionItemId,
-  createMessageId,
-  createResponseId,
-  responseCompletionState,
-  responsesUsage,
-  responseTextConfig,
-  type ResponsesOutputItem,
+createFunctionItemId,
+createMessageId,
+createResponseId,
+responseCompletionState,
+responsesUsage,
+type ResponsesOutputItem
 } from "@/modules/openai-proxy/response-builders";
-import { ProxyStreamResult, StreamCallbacks, sseEvent, streamHeaders } from "./streams.proxy-stream-result";
 import { initialResponse } from "./streams.initial-response";
-
-
+import { ProxyStreamResult,StreamCallbacks,sseEvent,streamHeaders } from "./streams.proxy-stream-result";
 export function createResponsesStream(input: {
   request: ResponsesRequest;
   responseFormat: ProxyResponseFormat;
@@ -55,7 +45,6 @@ export function createResponsesStream(input: {
       done: boolean;
     }
   >();
-
   const emit = (
     controller: ReadableStreamDefaultController<Uint8Array>,
     type: string,
@@ -65,7 +54,6 @@ export function createResponsesStream(input: {
       sseEvent(type, { type, sequence_number: sequenceNumber++, ...payload }),
     );
   };
-
   const ensureTextStarted = (
     controller: ReadableStreamDefaultController<Uint8Array>,
   ) => {
@@ -94,7 +82,6 @@ export function createResponsesStream(input: {
     });
     return textState;
   };
-
   const finishText = (
     controller: ReadableStreamDefaultController<Uint8Array>,
   ) => {
@@ -132,7 +119,6 @@ export function createResponsesStream(input: {
       item,
     });
   };
-
   const finishFunction = (
     controller: ReadableStreamDefaultController<Uint8Array>,
     callId: string,
@@ -162,7 +148,6 @@ export function createResponsesStream(input: {
       item,
     });
   };
-
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       emit(controller, "response.created", { response: { ...response } });
@@ -298,6 +283,5 @@ export function createResponsesStream(input: {
       }
     },
   });
-
   return new Response(stream, { headers: streamHeaders() });
 }

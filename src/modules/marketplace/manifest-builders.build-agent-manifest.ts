@@ -1,43 +1,33 @@
-import { and, desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/server/infrastructure/db";
-import { BUILTIN_TOOL_SUMMARIES } from "@/modules/tool/builtin-tools-catalog";
 import {
-  agentKnowledgeBindings,
-  agents,
-  agentSkillBindings,
-  agentSkills,
-  agentToolBindings,
-  agentVersions,
-  aiModels,
-  aiProviders,
-  customToolSecretRequests,
-  customTools,
-  knowledgeBases,
-  mcpServers,
-  mcpTools,
+agentKnowledgeBindings,
+agentSkillBindings,
+agentSkills,
+agentToolBindings,
+customTools,
+knowledgeBases,
+mcpServers,
+mcpTools
 } from "@/server/infrastructure/db/schema";
-import type {
-  AgentMarketplaceManifest,
-  CredentialFieldSchema,
-  McpPresetMarketplaceManifest,
-  PortableKnowledgeBinding,
-  PortableSkillBinding,
-  PortableToolBinding,
-  SkillContentManifest,
-  SkillMarketplaceManifest,
-  ToolMarketplaceManifest,
-} from "./manifest-types";
-import { skillFileStats } from "./manifest-types";
+import { and,eq,inArray } from "drizzle-orm";
 import {
-  resolveAgentVersion,
-  resolveToolBindingRef,
-} from "./manifest-builders.resolve-agent-version";
-import {
-  buildCustomToolManifest,
-  buildMcpPresetManifest,
-  buildSkillContentManifest,
-  jsonRecord,
+buildCustomToolManifest,
+buildMcpPresetManifest,
+buildSkillContentManifest,
+jsonRecord,
 } from "./manifest-builders.json-record";
+import {
+resolveAgentVersion,
+resolveToolBindingRef,
+} from "./manifest-builders.resolve-agent-version";
+import type {
+AgentMarketplaceManifest,
+McpPresetMarketplaceManifest,
+PortableKnowledgeBinding,
+PortableSkillBinding,
+PortableToolBinding,
+ToolMarketplaceManifest
+} from "./manifest-types";
 
 export async function buildAgentManifest(
   agentId: string,

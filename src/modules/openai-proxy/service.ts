@@ -1,29 +1,29 @@
 import type { JSONValue } from "@ai-sdk/provider";
-import { generateText, streamText } from "ai";
+import { generateText,streamText } from "ai";
 
+import { recordUsageEvent } from "@/modules/agent/use-cases";
 import type {
-  ChatCompletionRequest,
-  ResponsesRequest,
+ChatCompletionRequest,
+ResponsesRequest,
 } from "@/modules/openai-proxy/contracts";
-import { OpenAIProxyError, providerError } from "@/modules/openai-proxy/errors";
+import { OpenAIProxyError,providerError } from "@/modules/openai-proxy/errors";
 import { resolveOpenAIProxyModel } from "@/modules/openai-proxy/model-catalog";
 import {
-  prepareChatCompletion,
-  prepareResponsesRequest,
-  type PreparedProxyGeneration,
+prepareChatCompletion,
+prepareResponsesRequest,
+type PreparedProxyGeneration,
 } from "@/modules/openai-proxy/request-mapper";
 import {
-  buildChatCompletionResponse,
-  buildResponsesResponse,
+buildChatCompletionResponse,
+buildResponsesResponse,
 } from "@/modules/openai-proxy/response-builders";
 import {
-  createChatCompletionStream,
-  createResponsesStream,
+createChatCompletionStream,
+createResponsesStream,
 } from "@/modules/openai-proxy/streams";
-import { recordUsageEvent } from "@/modules/agent/use-cases";
 import {
-  calculateTokenUsageImpact,
-  parseSustainabilityConfig,
+calculateTokenUsageImpact,
+parseSustainabilityConfig,
 } from "@/modules/provider/model-runtime-config";
 import { assertWorkspaceWithinTokenQuota } from "@/modules/usage/quota";
 

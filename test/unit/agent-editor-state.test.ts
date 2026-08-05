@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe,expect,it } from "vitest";
 
 import { mergeAgentEditorState } from "@/app/[locale]/(workspace)/agents/[agentId]/agent-editor-state";
 import type { Agent } from "@/app/[locale]/(workspace)/agents/[agentId]/types";

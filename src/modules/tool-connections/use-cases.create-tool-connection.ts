@@ -1,34 +1,21 @@
-import {
-  createCipheriv,
-  createHash,
-  createHmac,
-  randomBytes,
-} from "node:crypto";
 
-import { decryptValue, encryptValue } from "@/lib/crypto";
-import { env } from "@/lib/env";
-import { logger } from "@/lib/logger";
 import { audit } from "@/server/domain/services/audit";
-import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
 import {
-  toolConnectionRequirements,
-  toolConnections,
-  toolConnectors,
-  userToolSettings,
+toolConnections
 } from "@/server/infrastructure/db/schema";
-import { and, desc, eq, isNull, or } from "drizzle-orm";
+import { and,desc,eq,isNull } from "drizzle-orm";
 import {
-  CreateToolConnectionInput,
-  UpdateToolConnectionInput,
-  canManageConnection,
-  encryptRecord,
-} from "./use-cases.mcp-tool-source";
-import {
-  clearDefaultConnections,
-  getToolConnector,
-  toSafeToolConnection,
+clearDefaultConnections,
+getToolConnector,
+toSafeToolConnection,
 } from "./use-cases.clear-default-connections";
+import {
+CreateToolConnectionInput,
+UpdateToolConnectionInput,
+canManageConnection,
+encryptRecord,
+} from "./use-cases.mcp-tool-source";
 
 export async function createToolConnection(input: CreateToolConnectionInput) {
   const ownerType = input.ownerType ?? "user";

@@ -1,12 +1,12 @@
-import { NextRequest, NextResponse } from "next/server";
 import {
-  handleRoute,
-  requireWorkspacePermissionAsync,
+handleRoute,
+requireWorkspacePermissionAsync,
 } from "@/lib/route-handler";
 import {
-  ensurePrimaryWorkspaceForUser,
-  getWorkspacesByUserId,
+ensurePrimaryWorkspaceForUser,
+getWorkspacesByUserId,
 } from "@/modules/workspace/use-cases";
+import { NextRequest,NextResponse } from "next/server";
 
 export async function GET(req: NextRequest) {
   return handleRoute(

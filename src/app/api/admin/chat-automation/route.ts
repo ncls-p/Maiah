@@ -1,12 +1,12 @@
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
 import { handleAdminRoute } from "@/lib/route-handler";
 import { requireAdminApiSession } from "@/modules/admin/auth";
 import {
-  getChatAutomationAdminState,
-  setChatAutomationConfig,
-  validateChatAutomationConfig,
+getChatAutomationAdminState,
+setChatAutomationConfig,
+validateChatAutomationConfig,
 } from "@/modules/chat/automation";
+import { NextRequest,NextResponse } from "next/server";
+import { z } from "zod";
 
 const updateSchema = z
   .object({

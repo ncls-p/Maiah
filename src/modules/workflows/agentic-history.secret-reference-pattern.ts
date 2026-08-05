@@ -1,12 +1,11 @@
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and,desc,eq } from "drizzle-orm";
 import { z } from "zod";
 
-import { decryptValue, encryptValue } from "@/lib/crypto";
-import { audit } from "@/server/domain/services/audit";
+import { decryptValue,encryptValue } from "@/lib/crypto";
 import { db } from "@/server/infrastructure/db";
 import {
-  workflowAgentInputRequests,
-  workflowAgentMessages,
+workflowAgentInputRequests,
+workflowAgentMessages,
 } from "@/server/infrastructure/db/schema";
 
 export const SECRET_REFERENCE_PATTERN =

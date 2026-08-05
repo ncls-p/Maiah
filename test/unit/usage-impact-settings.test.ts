@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach,describe,expect,it,vi } from "vitest";
 
 type Chain = {
   from: ReturnType<typeof vi.fn>;
@@ -26,9 +26,9 @@ vi.mock("@/server/infrastructure/db", () => ({
 }));
 
 import {
-  getUsageImpactSetting,
-  setUsageImpactSetting,
-  usageImpactSettingSchema,
+getUsageImpactSetting,
+setUsageImpactSetting,
+usageImpactSettingSchema,
 } from "@/modules/provider/usage-impact-settings";
 
 beforeEach(() => {

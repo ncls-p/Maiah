@@ -1,25 +1,16 @@
-import { and, eq, isNull } from "drizzle-orm";
-import { generateText } from "ai";
+import { and,eq,isNull } from "drizzle-orm";
 import { z } from "zod";
 
-import { decryptValue } from "@/lib/crypto";
-import { logHandledWarning } from "@/lib/logger";
-import { normalizeOpenAICompatibleApiRoute } from "@/lib/openai-compatible-api";
-import {
-  agentRuntimePolicy,
-  createRuntimeDeadline,
-} from "@/modules/agent/runtime-policy";
 import { registerAiSdkDevTools } from "@/server/infrastructure/ai-sdk/devtools";
 import { db } from "@/server/infrastructure/db";
 import {
-  aiModels,
-  aiProviders,
-  appSettings,
+aiModels,
+aiProviders,
+appSettings,
 } from "@/server/infrastructure/db/schema";
 import {
-  getAdapter,
-  type ProviderKind,
-  type ProviderRuntimeConfig,
+type ProviderKind,
+type ProviderRuntimeConfig
 } from "@/server/infrastructure/providers";
 import { resolveRuntimeModel } from "./automation.resolve-runtime-model";
 

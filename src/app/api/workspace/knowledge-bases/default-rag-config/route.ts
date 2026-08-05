@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest,NextResponse } from "next/server";
 import { z } from "zod";
 
 import {
-  handleRoute,
-  requireRequestPermissionScopeAsync,
-  requireWorkspaceMemberAsync,
+handleRoute,
+requireRequestPermissionScopeAsync,
+requireWorkspaceMemberAsync,
 } from "@/lib/route-handler";
 import { getDefaultRagConfig } from "@/modules/knowledge/rag-config";
 

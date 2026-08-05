@@ -1,44 +1,37 @@
-import { Loader2Icon, PlusIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { AdvancedSection } from "@/components/ui/advanced-section";
 
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+AlertDialog,
+AlertDialogAction,
+AlertDialogCancel,
+AlertDialogContent,
+AlertDialogDescription,
+AlertDialogFooter,
+AlertDialogHeader,
+AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+Dialog,
+DialogContent,
+DialogDescription,
+DialogFooter,
+DialogHeader,
+DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+Select,
+SelectContent,
+SelectGroup,
+SelectItem,
+SelectTrigger,
+SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 
-import { AUTH_TYPE_LABELS, KIND_LABELS } from "./constants";
-import type { ProviderAuthType, ProviderKind, SafeProvider } from "./types";
-import { defaultAuthType } from "./utils";
 import type { OpenAICompatibleApiRoute } from "@/lib/openai-compatible-api";
-import { CLOUD_TEMPLE_BASE_URL } from "@/modules/provider/cloud-temple-catalog";
 import { EditProviderDialogProps } from "./provider-dialogs.add-provider-advanced-fields";
 import { FIELD_STACK_CLASS } from "./provider-dialogs.field-stack-class";
 

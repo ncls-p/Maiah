@@ -1,17 +1,14 @@
-import { and, desc, eq, gt, inArray, isNull, lt, sql } from "drizzle-orm";
-import { decryptValue, encryptValue } from "@/lib/crypto";
+import { encryptValue } from "@/lib/crypto";
 import {
-  projectToolMessagePayload,
-  safeToolErrorMessage,
+projectToolMessagePayload,
+safeToolErrorMessage,
 } from "@/modules/tool/safe-payload";
 import { reserveWorkspaceTokens } from "@/modules/usage/quota-reservations";
 import { db } from "@/server/infrastructure/db";
 import {
-  agentRuns,
-  agentRunSteps,
-  usageEvents,
-  workspaceTokenReservations,
+agentRuns
 } from "@/server/infrastructure/db/schema";
+import { and,eq,gt,isNull } from "drizzle-orm";
 
 export type AgentRunTrigger =
   | "chat"

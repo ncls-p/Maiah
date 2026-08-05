@@ -1,17 +1,17 @@
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
 import {
-  handleRoute,
-  requireResourcePermissionAsync,
+handleRoute,
+requireResourcePermissionAsync,
 } from "@/lib/route-handler";
-import {
-  AgentVersionConflictError,
-  getActiveVersion,
-  getVisibleAgentById,
-  updateAgent,
-} from "@/modules/agent/use-cases";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
+import {
+AgentVersionConflictError,
+getActiveVersion,
+getVisibleAgentById,
+updateAgent,
+} from "@/modules/agent/use-cases";
 import { getSkillBindingsForVersion } from "@/modules/skills/use-cases";
+import { NextRequest,NextResponse } from "next/server";
+import { z } from "zod";
 
 const routeParamsSchema = z.object({ agentId: z.uuid() });
 const workspaceQuerySchema = z.object({ workspaceId: z.uuid() });

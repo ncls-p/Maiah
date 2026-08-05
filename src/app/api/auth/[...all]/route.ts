@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import {
-  ensureBootstrapAdmin,
-  getRegistrationSetting,
+ensureBootstrapAdmin,
+getRegistrationSetting,
 } from "@/modules/admin/use-cases";
 import { toNextJsHandler } from "better-auth/next-js";
 

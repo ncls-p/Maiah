@@ -1,24 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe,expect,it } from "vitest";
 
-import * as _dbModule from "@/server/infrastructure/db";
-import { listRemoteMcpTools } from "@/modules/mcp/client";
 import {
-	archiveMcpServer,
-	createMcpServer,
-	createMcpServerWithDiscovery,
-	getMcpServer,
-	hasMcpConnectionChanges,
-	listMcpServers,
-	listMcpTools,
-	syncMcpTools,
-	testMcpConnection,
-	toMcpServerForEdit,
-	toSafeMcpServer,
-	updateMcpServer,
-	updateMcpServerWithDiscovery,
-	updateMcpTool,
+updateMcpTool
 } from "@/modules/mcp/use-cases";
-import { dbModule, fakeSseServer, fakeTool } from "./mcp-use-cases.test.db-module";
+import { dbModule,fakeSseServer,fakeTool } from "./mcp-use-cases.test.db-module";
 
 
 // ─── updateMcpTool ────────────────────────────────────────────────────

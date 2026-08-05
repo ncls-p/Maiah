@@ -1,8 +1,6 @@
-import { existsSync } from "node:fs";
 
-import { expect, test } from "@playwright/test";
+import { expect,test } from "@playwright/test";
 
-import { ensureE2EUser, login } from "./fixtures";
 
 test("shows the live checklist, approves an agentic run, and opens debug details", async ({
   page,

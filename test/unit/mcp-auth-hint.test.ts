@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
 import { inferMcpAuthHint } from "@/modules/mcp/auth-hint";
+import { describe,expect,it } from "vitest";
 
 describe("inferMcpAuthHint", () => {
 	it("returns 'none' for stdio with no env or headers", () => {

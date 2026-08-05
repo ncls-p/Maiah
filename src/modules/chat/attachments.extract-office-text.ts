@@ -1,34 +1,27 @@
-import { createHash, randomUUID } from "node:crypto";
-import path from "node:path";
 import JSZip from "jszip";
-import "pdf-parse/worker";
 import { PDFParse } from "pdf-parse";
-import TurndownService from "turndown";
+import "pdf-parse/worker";
 
-import { logHandledWarning } from "@/lib/logger";
-import { extractDocument } from "@/modules/document-extraction/service";
-import type { RagConfig } from "@/modules/knowledge/rag-config-schema";
-import { storage } from "@/server/infrastructure/storage";
 import {
-  declaredZipUncompressedSize,
-  extractDocxMarkdown,
-  extractSharedStrings,
-  extractXmlText,
-  markdownTable,
-  spreadsheetColumnIndex,
-  zipEntryNumber,
-} from "./attachments.markdown-table";
+AttachmentDetection,
+maxOfficeXmlBytes,
+maxPdfPages,
+utf8Decoder,
+} from "./attachments.chat-image-attachment";
 import {
-  decodeXmlEntities,
-  limitExtractedText,
-  normalizeExtractedText,
+decodeXmlEntities,
+limitExtractedText,
+normalizeExtractedText,
 } from "./attachments.detect-attachment";
 import {
-  AttachmentDetection,
-  maxOfficeXmlBytes,
-  maxPdfPages,
-  utf8Decoder,
-} from "./attachments.chat-image-attachment";
+declaredZipUncompressedSize,
+extractDocxMarkdown,
+extractSharedStrings,
+extractXmlText,
+markdownTable,
+spreadsheetColumnIndex,
+zipEntryNumber,
+} from "./attachments.markdown-table";
 
 function extractWorksheetMarkdown(xml: string, sharedStrings: string[]) {
   const rows = new Map<number, Map<number, string>>();

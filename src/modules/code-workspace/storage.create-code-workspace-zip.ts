@@ -1,15 +1,9 @@
-import { createHash, randomUUID } from "node:crypto";
-import { readFile, rm, stat } from "node:fs/promises";
-import os from "node:os";
-import path from "node:path";
 import JSZip from "jszip";
 
-import { logHandledError } from "@/lib/logger";
-import { isPathTraversal } from "@/lib/path-utils";
 import { storage } from "@/server/infrastructure/storage";
+import { fileObjectKey } from "./storage.code-workspace-file-summary";
 import { getCodeWorkspace } from "./storage.content-type-for-path";
 import { assertCodeWorkspaceAccess } from "./storage.create-code-workspace-from-zip";
-import { fileObjectKey } from "./storage.code-workspace-file-summary";
 
 export async function createCodeWorkspaceZip(input: {
   projectId: string;

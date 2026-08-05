@@ -1,13 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest,NextResponse } from "next/server";
 
-import { logger, logHandledError } from "@/lib/logger";
+import { logger,logHandledError } from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { resolveAuthContext } from "@/modules/auth/resolve-auth";
-import { runWithRequestAuth } from "@/modules/auth/request-auth-context";
-import { checkWorkspacePermissionForRequest } from "@/modules/auth/workspace-access";
 import { anthropicErrorBody } from "@/modules/anthropic-proxy/errors";
-import { OpenAIProxyError, providerError } from "@/modules/openai-proxy/errors";
+import { runWithRequestAuth } from "@/modules/auth/request-auth-context";
+import { resolveAuthContext } from "@/modules/auth/resolve-auth";
+import { checkWorkspacePermissionForRequest } from "@/modules/auth/workspace-access";
 import type { OpenAIProxyContext } from "@/modules/openai-proxy/auth";
+import { OpenAIProxyError,providerError } from "@/modules/openai-proxy/errors";
 
 function requestIdFrom(request: NextRequest) {
   return request.headers.get("request-id") ?? crypto.randomUUID();

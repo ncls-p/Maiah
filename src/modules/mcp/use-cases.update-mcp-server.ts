@@ -1,23 +1,19 @@
-import { and, eq, isNull, sql } from "drizzle-orm";
-import { decryptValue, encryptValue } from "@/lib/crypto";
-import { inferMcpAuthHint } from "@/modules/mcp/auth-hint";
 import { listRemoteMcpTools } from "@/modules/mcp/client";
-import { logger } from "@/lib/logger";
 import { audit } from "@/server/domain/services/audit";
-import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
-import { mcpServers, mcpTools } from "@/server/infrastructure/db/schema";
+import { mcpServers,mcpTools } from "@/server/infrastructure/db/schema";
+import { eq } from "drizzle-orm";
 import {
-  DiscoveredMcpTool,
-  McpServer,
-  UpdateMcpServerInput,
-  assertCanManageMcpServer,
-} from "./use-cases.mcp-server";
-import {
-  buildMcpServerUpdates,
-  getMcpServer,
-  validateMcpServerUpdate,
+buildMcpServerUpdates,
+getMcpServer,
+validateMcpServerUpdate,
 } from "./use-cases.create-mcp-server";
+import {
+DiscoveredMcpTool,
+McpServer,
+UpdateMcpServerInput,
+assertCanManageMcpServer,
+} from "./use-cases.mcp-server";
 
 export async function updateMcpServer(input: UpdateMcpServerInput) {
   const existing = await getMcpServer(input.serverId, input.workspaceId);

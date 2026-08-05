@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server";
 import { logHandledWarning } from "@/lib/logger";
 import { db } from "@/server/infrastructure/db";
 import { users } from "@/server/infrastructure/db/schema-tables";
+import { NextResponse } from "next/server";
 
 export async function GET() {
   const result: Record<string, string> = {

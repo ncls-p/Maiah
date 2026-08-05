@@ -1,10 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  findDelegationCycle,
-  insertDelegationBindingsForVersion,
-  validateDelegationBindings,
+findDelegationCycle,
+insertDelegationBindingsForVersion,
+validateDelegationBindings,
 } from "@/modules/agent/delegation-use-cases";
 import { orchestrationPolicyDefaults } from "@/modules/agent/orchestration-policy";
+import { beforeEach,describe,expect,it,vi } from "vitest";
 
 type BindingExecutor = Parameters<
   typeof validateDelegationBindings

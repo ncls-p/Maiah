@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
 import {
-  handleRoute,
-  requireResourcePermissionAsync,
+handleRoute,
+requireResourcePermissionAsync,
 } from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
 import { updateMcpTool } from "@/modules/mcp/use-cases";
+import { NextRequest,NextResponse } from "next/server";
+import { z } from "zod";
 
 const updateSchema = z.object({
   workspaceId: z.uuid(),

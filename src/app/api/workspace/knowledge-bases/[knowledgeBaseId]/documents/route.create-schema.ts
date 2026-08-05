@@ -1,24 +1,12 @@
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
 import {
-  handleRoute,
-  requireResourcePermissionAsync,
+handleRoute,
+requireResourcePermissionAsync,
 } from "@/lib/route-handler";
-import { canManageTenantGlobals } from "@/modules/admin/auth";
 import {
-  getKnowledgeBase,
-  ingestTextDocument,
-  listDocuments,
+listDocuments
 } from "@/modules/knowledge/use-cases";
-import { extractKnowledgeUploads } from "@/modules/knowledge/file-ingestion";
-import { getDefaultRagConfig } from "@/modules/knowledge/rag-config";
-import { parseRagConfig } from "@/modules/knowledge/rag-config-schema";
-import {
-  assembleDocumentUpload,
-  parseChunkMetadata,
-  parseCompletionMetadata,
-  storeDocumentUploadChunk,
-} from "@/modules/document-upload/server";
+import { NextRequest,NextResponse } from "next/server";
+import { z } from "zod";
 
 const querySchema = z.object({ workspaceId: z.uuid() });
 export const createSchema = z.object({

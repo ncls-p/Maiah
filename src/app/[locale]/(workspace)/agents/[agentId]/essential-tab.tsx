@@ -1,97 +1,46 @@
 "use client";
 
-import { MessageSquareIcon, SaveIcon, SettingsIcon } from "lucide-react";
+import { MessageSquareIcon,SaveIcon,SettingsIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { SyntheticEvent } from "react";
 
-import { Link } from "@/i18n/navigation";
 import { ModelLogo } from "@/components/providers/model-logo";
 import { AdvancedSection } from "@/components/ui/advanced-section";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Field,
-  FieldContent,
-  FieldGroup,
-  FieldLabel,
-} from "@/components/ui/field";
+import { Field,FieldContent,FieldGroup,FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select,SelectContent,SelectItem,SelectTrigger,SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
+import { Link } from "@/i18n/navigation";
 
 import { ConfigSection } from "./config-section";
 import { ModelAdvancedFields } from "./model-advanced-fields";
-import type { Agent, AgentForm, Model, Provider } from "./types";
+import type { Agent,AgentForm,Model,Provider } from "./types";
 import { getProviderKindIcon } from "./utils";
 
-export function EssentialTab({
-  form,
-  setFormAction: setForm,
-  providers,
-  models,
-  saving,
-  canAdminCurate,
-  canManageProviders,
-  agentKind,
-  readOnly = false,
-  onSaveAction: onSave,
-}: {
-  form: AgentForm;
-  setFormAction: (fn: (prev: AgentForm) => AgentForm) => void;
-  providers: Provider[];
-  models: Model[];
-  saving: boolean;
-  canAdminCurate: boolean;
-  canManageProviders: boolean;
-  agentKind: Agent["kind"];
-  readOnly?: boolean;
-  onSaveAction: (e: SyntheticEvent<HTMLFormElement>) => void;
-}) {
+export function EssentialTab({ form, setFormAction: setForm, providers, models, saving, canAdminCurate, canManageProviders, agentKind, readOnly = false, onSaveAction: onSave }: { form: AgentForm; setFormAction: (fn: (prev: AgentForm) => AgentForm) => void; providers: Provider[]; models: Model[]; saving: boolean; canAdminCurate: boolean; canManageProviders: boolean; agentKind: Agent["kind"]; readOnly?: boolean; onSaveAction: (e: SyntheticEvent<HTMLFormElement>) => void }) {
   const t = useTranslations("agents");
   const tModel = useTranslations("agents.model");
   const tCommon = useTranslations("common");
   const filteredModels = models.filter((m) => m.providerId === form.providerId);
   const hasProviders = providers.length > 0;
-  const selectedProviderHasModels =
-    !form.providerId || filteredModels.length > 0;
+  const selectedProviderHasModels = !form.providerId || filteredModels.length > 0;
 
   return (
-    <form
-      onSubmit={readOnly ? (event) => event.preventDefault() : onSave}
-      className="flex flex-col gap-3"
-    >
+    <form onSubmit={readOnly ? (event) => event.preventDefault() : onSave} className="flex flex-col gap-3">
       <fieldset disabled={readOnly} className="contents">
-        <ConfigSection
-          title={t("name")}
-          description={t("configurePage.identityHint")}
-          icon={SettingsIcon}
-          stagger="3"
-        >
+        <ConfigSection title={t("name")} description={t("configurePage.identityHint")} icon={SettingsIcon} stagger="3">
           <FieldGroup className="gap-4">
             <Field>
               <FieldLabel htmlFor="agent-name">{t("name")}</FieldLabel>
               <FieldContent>
-                <Input
-                  id="agent-name"
-                  required
-                  value={form.name}
-                  onChange={(e) =>
-                    setForm((prev) => ({ ...prev, name: e.target.value }))
-                  }
-                />
+                <Input id="agent-name" required value={form.name} onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))} />
               </FieldContent>
             </Field>
             <Field>
-              <FieldLabel htmlFor="agent-description">
-                {t("descriptionLabel")}
-              </FieldLabel>
+              <FieldLabel htmlFor="agent-description">{t("descriptionLabel")}</FieldLabel>
               <FieldContent>
                 <Textarea
                   id="agent-description"
@@ -110,18 +59,11 @@ export function EssentialTab({
           </FieldGroup>
         </ConfigSection>
 
-        <ConfigSection
-          title={tModel("modelLabel")}
-          description={t("configurePage.modelHint")}
-          icon={MessageSquareIcon}
-          stagger="4"
-        >
+        <ConfigSection title={tModel("modelLabel")} description={t("configurePage.modelHint")} icon={MessageSquareIcon} stagger="4">
           <FieldGroup className="gap-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <Field>
-                <FieldLabel htmlFor="agent-provider">
-                  {tModel("provider")}
-                </FieldLabel>
+                <FieldLabel htmlFor="agent-provider">{tModel("provider")}</FieldLabel>
                 <FieldContent>
                   <Select
                     value={form.providerId || "__none__"}
@@ -152,9 +94,7 @@ export function EssentialTab({
                 </FieldContent>
               </Field>
               <Field>
-                <FieldLabel htmlFor="agent-model">
-                  {tModel("modelLabel")}
-                </FieldLabel>
+                <FieldLabel htmlFor="agent-model">{tModel("modelLabel")}</FieldLabel>
                 <FieldContent>
                   <Select
                     value={form.modelId || "__none__"}
@@ -176,11 +116,7 @@ export function EssentialTab({
                         return (
                           <SelectItem key={model.id} value={model.id}>
                             <span className="flex items-center gap-2">
-                              <ModelLogo
-                                logoUrl={model.logoUrl}
-                                label={modelLabel}
-                                size="sm"
-                              />
+                              <ModelLogo logoUrl={model.logoUrl} label={modelLabel} size="sm" />
                               {modelLabel}
                             </span>
                           </SelectItem>
@@ -192,47 +128,25 @@ export function EssentialTab({
               </Field>
             </div>
             {!hasProviders ? (
-              <div
-                role="status"
-                className="flex flex-col gap-3 rounded-2xl border border-dashed border-border/80 bg-muted/35 p-4 text-sm sm:flex-row sm:items-center sm:justify-between"
-              >
+              <div role="status" className="flex flex-col gap-3 rounded-2xl border border-dashed border-border/80 bg-muted/35 p-4 text-sm sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
-                  <p className="font-medium text-foreground">
-                    {t("configurePage.noModelConnectionTitle")}
-                  </p>
-                  <p className="mt-1 text-muted-foreground">
-                    {canManageProviders
-                      ? t("configurePage.noModelConnectionAdmin")
-                      : t("configurePage.noModelConnectionMember")}
-                  </p>
+                  <p className="font-medium text-foreground">{t("configurePage.noModelConnectionTitle")}</p>
+                  <p className="mt-1 text-muted-foreground">{canManageProviders ? t("configurePage.noModelConnectionAdmin") : t("configurePage.noModelConnectionMember")}</p>
                 </div>
                 {canManageProviders ? (
                   <Button asChild type="button" variant="outline" size="sm">
-                    <Link href="/providers">
-                      {t("configurePage.configureModels")}
-                    </Link>
+                    <Link href="/providers">{t("configurePage.configureModels")}</Link>
                   </Button>
                 ) : null}
               </div>
             ) : !selectedProviderHasModels ? (
-              <div
-                role="status"
-                className="rounded-2xl border border-dashed border-border/80 bg-muted/35 p-4 text-sm"
-              >
-                <p className="font-medium text-foreground">
-                  {t("configurePage.noModelsForProviderTitle")}
-                </p>
-                <p className="mt-1 text-muted-foreground">
-                  {canManageProviders
-                    ? t("configurePage.noModelsForProviderAdmin")
-                    : t("configurePage.noModelsForProviderMember")}
-                </p>
+              <div role="status" className="rounded-2xl border border-dashed border-border/80 bg-muted/35 p-4 text-sm">
+                <p className="font-medium text-foreground">{t("configurePage.noModelsForProviderTitle")}</p>
+                <p className="mt-1 text-muted-foreground">{canManageProviders ? t("configurePage.noModelsForProviderAdmin") : t("configurePage.noModelsForProviderMember")}</p>
               </div>
             ) : null}
             <Field>
-              <FieldLabel htmlFor="agent-prompt">
-                {tModel("systemPrompt")}
-              </FieldLabel>
+              <FieldLabel htmlFor="agent-prompt">{tModel("systemPrompt")}</FieldLabel>
               <FieldContent>
                 <Textarea
                   id="agent-prompt"
@@ -249,9 +163,7 @@ export function EssentialTab({
               </FieldContent>
             </Field>
             <Field>
-              <FieldLabel htmlFor="agent-prompt-suggestions">
-                {tModel("promptSuggestions")}
-              </FieldLabel>
+              <FieldLabel htmlFor="agent-prompt-suggestions">{tModel("promptSuggestions")}</FieldLabel>
               <FieldContent>
                 <Textarea
                   id="agent-prompt-suggestions"
@@ -265,26 +177,17 @@ export function EssentialTab({
                     }))
                   }
                 />
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {tModel("promptSuggestionsHint")}
-                </p>
+                <p className="mt-1 text-xs text-muted-foreground">{tModel("promptSuggestionsHint")}</p>
               </FieldContent>
             </Field>
           </FieldGroup>
         </ConfigSection>
 
-        <AdvancedSection
-          label={tCommon("advanced")}
-          hint={t("advancedHint")}
-          storageKey="advanced:agent-settings"
-          className="animate-in-up stagger-5"
-        >
+        <AdvancedSection label={tCommon("advanced")} hint={t("advancedHint")} storageKey="advanced:agent-settings" className="animate-in-up stagger-5">
           <div className="space-y-6">
             <FieldGroup className="gap-4">
               <Field>
-                <FieldLabel htmlFor="agent-slug">
-                  {t("configurePage.technicalId")}
-                </FieldLabel>
+                <FieldLabel htmlFor="agent-slug">{t("configurePage.technicalId")}</FieldLabel>
                 <FieldContent>
                   <Input
                     id="agent-slug"
@@ -298,15 +201,11 @@ export function EssentialTab({
                       }))
                     }
                   />
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {t("configurePage.technicalIdHint")}
-                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">{t("configurePage.technicalIdHint")}</p>
                 </FieldContent>
               </Field>
               <Field>
-                <FieldLabel htmlFor="agent-sharing">
-                  {t("configurePage.sharing")}
-                </FieldLabel>
+                <FieldLabel htmlFor="agent-sharing">{t("configurePage.sharing")}</FieldLabel>
                 <FieldContent>
                   <Select
                     value={form.sharingMode}
@@ -321,26 +220,16 @@ export function EssentialTab({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="personal">
-                        {t("configurePage.sharingPersonal")}
-                      </SelectItem>
-                      {agentKind === "assistant" ? (
-                        <SelectItem value="marketplace">
-                          {t("configurePage.sharingWorkspace")}
-                        </SelectItem>
-                      ) : null}
-                      <SelectItem value="specific_user">
-                        {t("configurePage.sharingUser")}
-                      </SelectItem>
+                      <SelectItem value="personal">{t("configurePage.sharingPersonal")}</SelectItem>
+                      {agentKind === "assistant" ? <SelectItem value="marketplace">{t("configurePage.sharingWorkspace")}</SelectItem> : null}
+                      <SelectItem value="specific_user">{t("configurePage.sharingUser")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </FieldContent>
               </Field>
               {form.sharingMode === "specific_user" ? (
                 <Field>
-                  <FieldLabel htmlFor="agent-share-email">
-                    {t("configurePage.email")}
-                  </FieldLabel>
+                  <FieldLabel htmlFor="agent-share-email">{t("configurePage.email")}</FieldLabel>
                   <FieldContent>
                     <Input
                       id="agent-share-email"
@@ -391,10 +280,7 @@ export function EssentialTab({
 
             <div className="border-t border-border/50 pt-4">
               <p className="mb-3 flex items-center gap-2 text-sm font-medium">
-                <MessageSquareIcon
-                  className="size-4 text-muted-foreground"
-                  aria-hidden="true"
-                />
+                <MessageSquareIcon className="size-4 text-muted-foreground" aria-hidden="true" />
                 {tModel("advancedHint")}
               </p>
               <ModelAdvancedFields form={form} setFormAction={setForm} />
@@ -406,11 +292,7 @@ export function EssentialTab({
       {readOnly ? null : (
         <div className="flex justify-end rounded-2xl border border-border/60 bg-card/75 p-3 shadow-[var(--surface-shadow)]">
           <Button type="submit" disabled={saving}>
-            {saving ? (
-              <Spinner data-icon="inline-start" />
-            ) : (
-              <SaveIcon data-icon="inline-start" aria-hidden="true" />
-            )}
+            {saving ? <Spinner data-icon="inline-start" /> : <SaveIcon data-icon="inline-start" aria-hidden="true" />}
             {tCommon("save")}
           </Button>
         </div>

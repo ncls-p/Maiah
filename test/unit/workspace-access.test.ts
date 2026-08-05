@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach,describe,expect,it,vi } from "vitest";
 
 const { checkPermission, findAccessResource, requireWorkspaceMember } =
   vi.hoisted(() => ({
@@ -21,11 +21,11 @@ vi.mock("@/server/infrastructure/db/access-resource-repository", () => ({
 
 import { runWithRequestAuth } from "@/modules/auth/request-auth-context";
 import {
-  checkRequestPermissionScope,
-  checkResourcePermissionForRequest,
-  checkWorkspacePermissionForRequest,
-  hasResourcePermissionForRequest,
-  isWorkspaceMemberForRequest,
+checkRequestPermissionScope,
+checkResourcePermissionForRequest,
+checkWorkspacePermissionForRequest,
+hasResourcePermissionForRequest,
+isWorkspaceMemberForRequest,
 } from "@/modules/auth/workspace-access";
 
 const apiKeyAuth = {

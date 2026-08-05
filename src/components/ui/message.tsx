@@ -46,4 +46,4 @@ function MessageFooter({ className, ...props }: React.ComponentProps<"div">) {
   );
 }
 
-export { Message, MessageContent, MessageFooter };
+export { Message,MessageContent,MessageFooter };

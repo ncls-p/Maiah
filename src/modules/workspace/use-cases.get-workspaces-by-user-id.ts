@@ -1,28 +1,25 @@
-import { and, count, eq, isNull, or } from "drizzle-orm";
-import { logger } from "@/lib/logger";
-import { SYSTEM_ROLES } from "@/server/domain/entities/iam";
-import { audit } from "@/server/domain/services/audit";
 import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
 import {
-  organizations,
-  organizationMembers,
-  roleBindings,
-  roles,
-  workspaceMembers,
-  workspaces,
+organizationMembers,
+organizations,
+roleBindings,
+roles,
+workspaceMembers,
+workspaces,
 } from "@/server/infrastructure/db/schema";
-import {
-  PRIMARY_ORGANIZATION_NAME,
-  PRIMARY_ORGANIZATION_SLUG,
-  PRIMARY_WORKSPACE_NAME,
-  PRIMARY_WORKSPACE_SLUG,
-  WORKSPACE_SCOPE,
-  WorkspaceRoleName,
-  createWorkspace,
-} from "./use-cases.workspace-scope";
+import { and,count,eq,isNull,or } from "drizzle-orm";
 import { addWorkspaceMember } from "./use-cases.get-system-workspace-role";
 import { updateWorkspaceMemberRole } from "./use-cases.update-workspace-member-role";
+import {
+PRIMARY_ORGANIZATION_NAME,
+PRIMARY_ORGANIZATION_SLUG,
+PRIMARY_WORKSPACE_NAME,
+PRIMARY_WORKSPACE_SLUG,
+WORKSPACE_SCOPE,
+WorkspaceRoleName,
+createWorkspace,
+} from "./use-cases.workspace-scope";
 
 export async function getWorkspacesByUserId(userId: string) {
   const candidates = await db

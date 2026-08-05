@@ -1,16 +1,16 @@
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
+import { OPENAI_COMPATIBLE_API_ROUTES } from "@/lib/openai-compatible-api";
 import {
-  handleRoute,
-  requireResourcePermissionAsync,
+handleRoute,
+requireResourcePermissionAsync,
 } from "@/lib/route-handler";
 import {
-  archiveProvider,
-  getProviderById,
-  toSafeProvider,
-  updateProvider,
+archiveProvider,
+getProviderById,
+toSafeProvider,
+updateProvider,
 } from "@/modules/provider/use-cases";
-import { OPENAI_COMPATIBLE_API_ROUTES } from "@/lib/openai-compatible-api";
+import { NextRequest,NextResponse } from "next/server";
+import { z } from "zod";
 
 const routeParamsSchema = z.object({
   providerId: z.uuid(),

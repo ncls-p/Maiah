@@ -1,17 +1,17 @@
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
 import { handleRoute } from "@/lib/route-handler";
 import { requireAdminApiSession } from "@/modules/admin/auth";
 import {
-  defaultSidebarNavConfig,
-  getSidebarNavCatalog,
-  normalizeSidebarNavConfig,
+defaultSidebarNavConfig,
+getSidebarNavCatalog,
+normalizeSidebarNavConfig,
 } from "@/modules/navigation/sidebar-config";
 import {
-  deleteSidebarNavConfig,
-  getSidebarNavConfig,
-  setSidebarNavConfig,
+deleteSidebarNavConfig,
+getSidebarNavConfig,
+setSidebarNavConfig,
 } from "@/modules/navigation/sidebar-config.server";
+import { NextRequest,NextResponse } from "next/server";
+import { z } from "zod";
 
 const updateSchema = z.object({
   items: z

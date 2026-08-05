@@ -1,20 +1,15 @@
-import { DefaultChatTransport, type UIMessage, type UIMessageChunk } from "ai";
+import { DefaultChatTransport,type UIMessage } from "ai";
 
-import type {
-  ChatCitation,
-  ChatStreamEvent,
-  CodeWorkspaceArtifact,
-} from "@/components/chat/chat-types";
 import {
-  StreamAiSdkUIChatOptions,
-  agentToolContextFromData,
-  isCitationArray,
-  isCodeWorkspaceArtifact,
-  iterateChunks,
-  readMetadata,
-  titleFromData,
-  toolApprovalFromData,
-  toolInputProgressFromData,
+StreamAiSdkUIChatOptions,
+agentToolContextFromData,
+isCitationArray,
+isCodeWorkspaceArtifact,
+iterateChunks,
+readMetadata,
+titleFromData,
+toolApprovalFromData,
+toolInputProgressFromData,
 } from "./ai-sdk-ui-chat-transport.ai-sdk-uichat-start-metadata";
 
 export async function streamAiSdkUIChat(options: StreamAiSdkUIChatOptions) {

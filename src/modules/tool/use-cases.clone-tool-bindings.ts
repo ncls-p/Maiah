@@ -1,25 +1,17 @@
-import { and, eq, inArray, isNull, or } from "drizzle-orm";
-import { z } from "zod";
-import { encryptValue } from "@/lib/crypto";
-import { logHandledError } from "@/lib/logger";
-import { safeToolErrorMessage } from "@/modules/tool/safe-payload";
-import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
 import {
-  agentToolBindings,
-  agentVersions,
-  customTools,
-  mcpServers,
-  mcpTools,
-  toolInvocations,
+agentToolBindings,
+customTools,
+mcpServers,
+mcpTools
 } from "@/server/infrastructure/db/schema";
-import { getBuiltInTool, requiresApproval } from "./builtin-tools";
-import {
-  BindingDb,
-  ToolBindingInput,
-  getToolBindingsForVersion,
-} from "./use-cases.tool-binding-input-schema";
+import { and,eq,isNull,or } from "drizzle-orm";
 import { insertToolBindingsForVersion } from "./use-cases.insert-tool-bindings-for-version";
+import {
+BindingDb,
+ToolBindingInput,
+getToolBindingsForVersion,
+} from "./use-cases.tool-binding-input-schema";
 
 export async function cloneToolBindings(
   fromAgentVersionId: string | null,

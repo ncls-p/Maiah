@@ -1,40 +1,21 @@
-import { and, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
-import { logHandledError } from "@/lib/logger";
-import { audit } from "@/server/domain/services/audit";
-import { authorization } from "@/server/domain/services/authorization";
-import { listDirectlyBoundResourceIds } from "@/server/infrastructure/db/access-resource-repository";
 import { db } from "@/server/infrastructure/db";
 import {
-  agents,
-  agentSkills,
-  customTools,
-  marketplaceInstalls,
-  marketplaceItems,
-  marketplaceItemVersions,
-  marketplaceItemShares,
-  mcpServers,
-  mcpTools,
-  users,
+agents,
+marketplaceItemShares,
+marketplaceItemVersions,
+users
 } from "@/server/infrastructure/db/schema";
+import { and,desc,eq } from "drizzle-orm";
 import { upsertMarketplaceDraft } from "./draft-helpers";
 import {
-  installAgentManifest,
-  installCustomTool,
-  installMcpPreset,
-  installPostInstallFlags,
-} from "./install-helpers";
-import {
-  buildAgentManifest,
-  buildCustomToolManifest,
-  buildMcpPresetManifest,
-  buildSkillManifest,
+buildAgentManifest
 } from "./manifest-builders";
 import { sanitizeMarketplaceManifest } from "./manifest-sanitizer";
 import {
-  MarketplaceVisibility,
-  canManageMarketplaceItem,
-  getMarketplaceItem,
-  getMarketplaceItemWithShares,
+canManageMarketplaceItem,
+getMarketplaceItem,
+getMarketplaceItemWithShares,
+MarketplaceVisibility,
 } from "./use-cases.marketplace-visibility";
 
 export async function getMarketplaceItemDetail(

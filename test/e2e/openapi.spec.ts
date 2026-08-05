@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect,test } from "@playwright/test";
 
 test.describe("OpenAPI documentation", () => {
   test("publishes the complete contract and interactive Swagger UI", async ({

@@ -1,25 +1,4 @@
 #!/usr/bin/env node
-import { spawn } from "node:child_process";
-import { createHash, randomUUID } from "node:crypto";
-import {
-	constants as fsConstants,
-	createReadStream,
-	createWriteStream,
-} from "node:fs";
-import {
-	access,
-	chmod,
-	chown,
-	lstat,
-	mkdir,
-	mkdtemp,
-	readFile,
-	readdir,
-	rm,
-	symlink,
-	writeFile,
-} from "node:fs/promises";
-import { createServer } from "node:http";
 import path from "node:path";
 
 export const socketPath =

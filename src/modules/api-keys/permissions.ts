@@ -1,12 +1,12 @@
-import {
-  authorization,
-  matchesPermission,
-} from "@/server/domain/services/authorization";
 import { API_KEY_SCOPE_CATALOG } from "@/modules/api-keys/scopes";
 import {
-  hasWorkspacePermissionForRequest,
-  isPermissionAllowedByRequestScope,
+hasWorkspacePermissionForRequest,
+isPermissionAllowedByRequestScope,
 } from "@/modules/auth/workspace-access";
+import {
+authorization,
+matchesPermission,
+} from "@/server/domain/services/authorization";
 
 const WORKSPACE_SCOPE = "workspace";
 

@@ -1,22 +1,17 @@
-import { createHash, randomUUID } from "node:crypto";
-import { readFile, rm, stat } from "node:fs/promises";
-import os from "node:os";
+import { createHash } from "node:crypto";
 import path from "node:path";
-import JSZip from "jszip";
 
-import { logHandledError } from "@/lib/logger";
-import { isPathTraversal } from "@/lib/path-utils";
 import { storage } from "@/server/infrastructure/storage";
 import {
-  CodeWorkspaceArtifact,
-  CodeWorkspaceFileSummary,
-  CodeWorkspaceMetadata,
-  metadataObjectKey,
-} from "./storage.code-workspace-file-summary";
-import {
-  assertSafeProjectId,
-  migrateLegacyProjectToObjectStorage,
+assertSafeProjectId,
+migrateLegacyProjectToObjectStorage,
 } from "./storage.assert-safe-project-id";
+import {
+CodeWorkspaceArtifact,
+CodeWorkspaceFileSummary,
+CodeWorkspaceMetadata,
+metadataObjectKey,
+} from "./storage.code-workspace-file-summary";
 
 const CONTENT_TYPES_BY_EXTENSION = new Map<string, string>([
   [".html", "text/html; charset=utf-8"],

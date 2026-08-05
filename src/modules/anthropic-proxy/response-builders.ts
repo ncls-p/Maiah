@@ -1,4 +1,4 @@
-import type { FinishReason, LanguageModelUsage } from "ai";
+import type { FinishReason,LanguageModelUsage } from "ai";
 
 import type { AnthropicMessagesRequest } from "@/modules/anthropic-proxy/contracts";
 import type { ProxyGenerationResult } from "@/modules/openai-proxy/response-builders";

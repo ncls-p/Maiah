@@ -1,15 +1,15 @@
-import { createHash, randomBytes } from "node:crypto";
-import { and, eq, isNull } from "drizzle-orm";
+import { and,eq,isNull } from "drizzle-orm";
+import { createHash,randomBytes } from "node:crypto";
 
+import { getAvailableApiKeyScopes } from "@/modules/api-keys/permissions";
+import {
+isKnownApiKeyScope,
+uniqueApiKeyScopes,
+} from "@/modules/api-keys/scopes";
+import { getRequestAuthContext } from "@/modules/auth/request-auth-context";
 import { audit } from "@/server/domain/services/audit";
 import { db } from "@/server/infrastructure/db";
 import { workspaceApiKeys } from "@/server/infrastructure/db/schema";
-import {
-  isKnownApiKeyScope,
-  uniqueApiKeyScopes,
-} from "@/modules/api-keys/scopes";
-import { getAvailableApiKeyScopes } from "@/modules/api-keys/permissions";
-import { getRequestAuthContext } from "@/modules/auth/request-auth-context";
 
 const KEY_PREFIX = "ahub_";
 

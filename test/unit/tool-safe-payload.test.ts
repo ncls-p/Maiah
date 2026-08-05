@@ -1,11 +1,11 @@
-import { describe, expect, it } from "vitest";
-import {
-  projectToolPayloadForDisplay,
-  REDACTED_VALUE,
-  safeChatErrorMessage,
-  safeToolErrorMessage,
-} from "@/modules/tool/safe-payload";
 import { summarizeToolInput } from "@/components/chat/tool-approval-banner";
+import {
+projectToolPayloadForDisplay,
+REDACTED_VALUE,
+safeChatErrorMessage,
+safeToolErrorMessage,
+} from "@/modules/tool/safe-payload";
+import { describe,expect,it } from "vitest";
 
 describe("tool payload display projection", () => {
   it("redacts nested credentials without hiding ordinary token limits", () => {

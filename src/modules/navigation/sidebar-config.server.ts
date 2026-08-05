@@ -6,9 +6,9 @@ import { db } from "@/server/infrastructure/db";
 import { appSettings } from "@/server/infrastructure/db/schema";
 
 import {
-  defaultSidebarNavConfig,
-  type SidebarNavConfig,
-  sidebarNavConfigSchema,
+defaultSidebarNavConfig,
+type SidebarNavConfig,
+sidebarNavConfigSchema,
 } from "./sidebar-config";
 
 const SIDEBAR_NAV_SETTING_KEY = "sidebarNavigation";

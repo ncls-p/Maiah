@@ -1,16 +1,16 @@
-import { describe, expect, it } from "vitest";
+import { describe,expect,it } from "vitest";
 
 import {
-  codeWorkspaceGridTemplate,
-  DEFAULT_CHAT_WIDTH,
-  DEFAULT_CODE_WORKSPACE_LAYOUT,
-  MAX_CHAT_WIDTH,
-  MIN_CHAT_WIDTH,
-  normalizeCodeWorkspaceChatWidth,
-  normalizeCodeWorkspaceLayout,
-  resizeCodeWorkspacePane,
-  toggleCodeWorkspacePane,
-  visibleCodeWorkspacePanes,
+codeWorkspaceGridTemplate,
+DEFAULT_CHAT_WIDTH,
+DEFAULT_CODE_WORKSPACE_LAYOUT,
+MAX_CHAT_WIDTH,
+MIN_CHAT_WIDTH,
+normalizeCodeWorkspaceChatWidth,
+normalizeCodeWorkspaceLayout,
+resizeCodeWorkspacePane,
+toggleCodeWorkspacePane,
+visibleCodeWorkspacePanes,
 } from "@/components/chat/code-workspace-layout";
 
 describe("code workspace layout", () => {

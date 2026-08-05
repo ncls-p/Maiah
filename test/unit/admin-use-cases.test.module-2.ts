@@ -1,14 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe,expect,it } from "vitest";
 
-import * as _dbModule from "@/server/infrastructure/db";
 
 import {
-	ensureBootstrapAdmin,
-	getRegistrationSetting,
-	isAdminRole,
-	listAdminUsers,
-	setRegistrationEnabled,
-	updateManagedUser,
+listAdminUsers,
+updateManagedUser
 } from "@/modules/admin/use-cases";
 import { dbModule } from "./admin-use-cases.test.db-module";
 

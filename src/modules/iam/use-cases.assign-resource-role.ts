@@ -1,41 +1,22 @@
-import { and, asc, count, eq, inArray, isNull, ne, or } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
-import { logger } from "@/lib/logger";
 import {
-  ACCESS_RESOURCE_DEFINITIONS,
-  type AccessResourceType,
+type AccessResourceType
 } from "@/server/domain/entities/access-resource";
 import { audit } from "@/server/domain/services/audit";
 import {
-  authorization,
-  canDelegatePermissionSet,
-  matchesPermission,
+authorization
 } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
 import {
-  findAccessResource,
-  listAccessResources,
+findAccessResource
 } from "@/server/infrastructure/db/access-resource-repository";
 import {
-  organizationMembers,
-  organizations,
-  roleBindings,
-  roles,
-  teamMembers,
-  teams,
-  users,
-  workspaceMembers,
-  workspaces,
+roleBindings,
+roles,
+teamMembers
 } from "@/server/infrastructure/db/schema";
-import {
-  expandPermissionGrants,
-  isKnownPermission,
-  isPermissionCompatibleWithScope,
-  KNOWN_PERMISSIONS,
-  PERMISSION_CATALOG,
-} from "./permission-catalog";
-import { createWorkspace } from "@/modules/workspace/use-cases";
-import { AssignmentPrincipalType, IamOperationError, getWorkspaceScope, requireDelegablePermissions, requirePermission, rolePermissions } from "./use-cases.iam-operation-error";
+import { AssignmentPrincipalType,getWorkspaceScope,IamOperationError,requireDelegablePermissions,requirePermission,rolePermissions } from "./use-cases.iam-operation-error";
 import { validateAssignmentPrincipal } from "./use-cases.validate-assignment-principal";
 
 

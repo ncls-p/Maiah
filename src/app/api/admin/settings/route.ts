@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
 import { handleRoute } from "@/lib/route-handler";
 import { requireAdminApiSession } from "@/modules/admin/auth";
 import {
-  getRegistrationSetting,
-  setRegistrationEnabled,
+getRegistrationSetting,
+setRegistrationEnabled,
 } from "@/modules/admin/use-cases";
+import { NextRequest,NextResponse } from "next/server";
+import { z } from "zod";
 
 const updateSettingsSchema = z.object({
   registrationEnabled: z.boolean(),

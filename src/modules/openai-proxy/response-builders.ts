@@ -1,9 +1,9 @@
-import type { FinishReason, LanguageModelUsage } from "ai";
+import type { FinishReason,LanguageModelUsage } from "ai";
 
 import type {
-  ChatCompletionRequest,
-  ProxyResponseFormat,
-  ResponsesRequest,
+ChatCompletionRequest,
+ProxyResponseFormat,
+ResponsesRequest,
 } from "@/modules/openai-proxy/contracts";
 
 export function createChatCompletionId() {

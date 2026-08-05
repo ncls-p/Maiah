@@ -1,29 +1,29 @@
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
 import {
-  handleRoute,
-  requireResourcePermissionAsync,
+handleRoute,
+requireResourcePermissionAsync,
 } from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
 import {
-  DelegationBindingValidationError,
-  getDelegationBindingsForVersion,
+DelegationBindingValidationError,
+getDelegationBindingsForVersion,
 } from "@/modules/agent/delegation-use-cases";
 import {
-  delegationBindingInputSchema,
-  normalizeOrchestrationPolicy,
-  orchestrationPolicySchema,
+delegationBindingInputSchema,
+normalizeOrchestrationPolicy,
+orchestrationPolicySchema,
 } from "@/modules/agent/orchestration-policy";
 import {
-  AgentVersionConflictError,
-  getActiveVersion,
-  getAgentVersionById,
-  getVisibleAgentById,
-  listAgents,
-  updateAgent,
+AgentVersionConflictError,
+getActiveVersion,
+getAgentVersionById,
+getVisibleAgentById,
+listAgents,
+updateAgent,
 } from "@/modules/agent/use-cases";
 import { audit } from "@/server/domain/services/audit";
 import { db } from "@/server/infrastructure/db";
+import { NextRequest,NextResponse } from "next/server";
+import { z } from "zod";
 
 const routeParamsSchema = z.object({ agentId: z.uuid() });
 const querySchema = z.object({

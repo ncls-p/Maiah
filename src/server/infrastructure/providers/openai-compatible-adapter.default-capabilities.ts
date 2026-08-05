@@ -1,24 +1,12 @@
-import { createOpenAI } from "@ai-sdk/openai";
-import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import type {
-  EmbeddingModelV4,
-  LanguageModelV4,
-  RerankingModelV4,
-  RerankingModelV4CallOptions,
-  RerankingModelV4Result,
+RerankingModelV4,
+RerankingModelV4CallOptions,
+RerankingModelV4Result
 } from "@ai-sdk/provider";
-import { normalizeOpenAICompatibleApiRoute } from "@/lib/openai-compatible-api";
 import type {
-  ProviderAdapter,
-  ProviderRuntimeConfig,
-  ProviderHealth,
-  ModelDescriptor,
-  ModelCapability,
+ModelCapability,
+ProviderRuntimeConfig
 } from "./adapter";
-import {
-  enrichCloudTempleModel,
-  isCloudTempleBaseUrl,
-} from "@/modules/provider/cloud-temple-catalog";
 
 export const DEFAULT_CAPABILITIES: ModelCapability = {
   text: true,

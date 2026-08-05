@@ -1,37 +1,28 @@
-import { existsSync } from "node:fs";
 import http from "node:http";
-import path from "node:path";
 
-import { env } from "@/lib/env";
-import { logger, logHandledWarning } from "@/lib/logger";
-import { isPathTraversal } from "@/lib/path-utils";
 import {
-  createChatAttachment,
-  getChatAttachmentBytes,
-  getChatAttachmentExtractedText,
-  isChatFileAttachment,
-  type ChatAttachment,
+createChatAttachment
 } from "@/modules/chat/attachments";
 import {
-  CodeSandboxExecutionContext,
-  CodeSandboxOutputFile,
-  CodeSandboxResult,
-  PreparedSandboxRunnerInput,
-  maxResponseBytes,
-  normalizeSandboxResponse,
-  requestTimeoutMs,
+CodeSandboxExecutionContext,
+CodeSandboxOutputFile,
+CodeSandboxResult,
+maxResponseBytes,
+normalizeSandboxResponse,
+PreparedSandboxRunnerInput,
+requestTimeoutMs,
 } from "./code-sandbox.code-sandbox-output-file";
 import {
-  parseJsonResponse,
-  sandboxOutputFileName,
-  serializeSandboxRunnerRequest,
-  shouldPersistSandboxFile,
-  stripEmbeddedContent,
-} from "./code-sandbox.prepare-sandbox-runner-request";
-import {
-  resolveSandboxRunnerSocket,
-  sandboxUnavailableMessage,
+resolveSandboxRunnerSocket,
+sandboxUnavailableMessage,
 } from "./code-sandbox.failed-sandbox-result";
+import {
+parseJsonResponse,
+sandboxOutputFileName,
+serializeSandboxRunnerRequest,
+shouldPersistSandboxFile,
+stripEmbeddedContent,
+} from "./code-sandbox.prepare-sandbox-runner-request";
 
 async function persistSandboxFile(
   file: CodeSandboxOutputFile,

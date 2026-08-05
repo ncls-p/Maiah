@@ -1,35 +1,22 @@
 import {
-  ImagePlusIcon,
-  PencilIcon,
-  PlusIcon,
-  RefreshCwIcon,
-  SearchIcon,
-  Trash2Icon,
-  XIcon,
+PlusIcon,
+RefreshCwIcon
 } from "lucide-react";
-import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { toast } from "sonner";
 
 import { AdvancedSection } from "@/components/ui/advanced-section";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
 
-import { ModelLogo } from "@/components/providers/model-logo";
-import { ModelConfigDialog } from "./model-config-dialog";
-import { ModelCapabilities } from "./provider-shared";
-import type {
-  DiscoveredModel,
-  ProviderModel,
-  ProviderModelUpdate,
-  SafeProvider,
-} from "./types";
 import { DiscoveredModelsList } from "./model-list.discovered-models-list";
 import { RegisteredModelsList } from "./model-list.registered-models-list";
+import type {
+DiscoveredModel,
+ProviderModel,
+ProviderModelUpdate,
+SafeProvider,
+} from "./types";
 
 
 const MAX_LOGO_BYTES = 256 * 1024;

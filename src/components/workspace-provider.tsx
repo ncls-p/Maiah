@@ -1,17 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback,useEffect,useMemo,useState } from "react";
 
 import {
-  WorkspaceContext,
-  type WorkspaceContextValue,
-  type WorkspaceSummary,
+WorkspaceContext,
+type WorkspaceContextValue,
+type WorkspaceSummary,
 } from "@/hooks/use-workspace";
 import { fetchWorkspaces } from "@/lib/api-client";
 import {
-  resolveOrganizationTheme,
-  themeCss,
-  type OrganizationTheme,
+resolveOrganizationTheme,
+themeCss,
+type OrganizationTheme,
 } from "@/modules/organization/themes";
 
 const ACTIVE_WORKSPACE_KEY = "active-workspace-id";

@@ -1,12 +1,12 @@
-import { interpolate, useCurrentFrame } from "remotion";
+import { interpolate,useCurrentFrame } from "remotion";
 
-import { COLORS, DISPLAY_FONT, progress, rise } from "../theme";
 import {
-	Hairline,
-	SceneLabel,
-	SceneLayer,
-	StatusPill,
+Hairline,
+SceneLabel,
+SceneLayer,
+StatusPill,
 } from "../components/VisualSystem";
+import { COLORS,DISPLAY_FONT,progress,rise } from "../theme";
 
 function cubicPoint(
 	amount: number,

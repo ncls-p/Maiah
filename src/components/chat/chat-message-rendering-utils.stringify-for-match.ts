@@ -1,21 +1,16 @@
 import {
-  parseToolPart,
-  toolNameMatches,
-  type ChatFileAttachment,
-  type ChatImageAttachment,
-  type ChatMessage,
-  type ChatMessagePart,
-  type PendingToolApproval,
+parseToolPart,
+type ChatImageAttachment,
+type ChatMessagePart
 } from "@/components/chat/chat-types";
 import { isCodeWorkspaceArtifactOutput } from "@/components/chat/code-workspace-artifact-card";
 import { summarizeToolInput } from "@/components/chat/tool-approval-banner";
 import {
-  chatTodoListFromUnknown,
-  type ChatTodoList,
+chatTodoListFromUnknown,
+type ChatTodoList,
 } from "@/modules/chat/todo-list";
-import { projectToolPayloadForDisplay } from "@/modules/tool/safe-payload";
-import { codeSandboxOutputFromUnknown, isChatImageAttachmentOutput } from "./chat-message-rendering-utils.latest-chat-todo-list-from-messages";
-import { htmlArtifactFromInputText, htmlArtifactFromToolInput } from "./chat-message-rendering-utils.code-sandbox-input-from-unknown";
+import { htmlArtifactFromInputText,htmlArtifactFromToolInput } from "./chat-message-rendering-utils.code-sandbox-input-from-unknown";
+import { codeSandboxOutputFromUnknown,isChatImageAttachmentOutput } from "./chat-message-rendering-utils.latest-chat-todo-list-from-messages";
 
 
 export function stringifyForMatch(value: unknown) {

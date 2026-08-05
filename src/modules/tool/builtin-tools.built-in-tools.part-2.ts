@@ -1,0 +1,258 @@
+import { z } from "zod";
+
+import { deleteCodeWorkspaceFile } from "@/modules/code-workspace/storage";
+import {
+getUserGitHubStatus,
+publishCodeWorkspaceToGitHub,
+} from "@/modules/github/publishing";
+import {
+codeWorkspaceReadFileInputSchema,
+githubPublishCodeWorkspaceInputSchema,
+githubPublishStatusInputSchema,
+randomNumberInputSchema,
+randomNumbers,
+} from "./builtin-tool-primitives";
+import {
+BuiltInToolDefinition,
+MEDIUM_RISK_LEVEL,
+requireCodeWorkspaceContext,
+} from "./builtin-tools.built-in-tool-execution-context";
+import {
+actionPlanInputSchema,
+businessDocumentInputSchema,
+competitiveBattlecardInputSchema,
+createActionPlanArtifact,
+createBusinessDocumentArtifact,
+createCompetitiveBattlecardArtifact,
+createCustomerAccountPlanArtifact,
+createDecisionMatrixArtifact,
+createEmailPackArtifact,
+createMeetingBriefArtifact,
+createProjectStatusReportArtifact,
+createRaciMatrixArtifact,
+createRiskRegisterArtifact,
+createSpreadsheetArtifact,
+customerAccountPlanInputSchema,
+decisionMatrixInputSchema,
+emailPackInputSchema,
+meetingBriefInputSchema,
+projectStatusReportInputSchema,
+raciMatrixInputSchema,
+riskRegisterInputSchema,
+spreadsheetInputSchema,
+} from "./business-artifact-tools";
+import {
+createSlideDeckArtifact,
+slideDeckInputSchema,
+} from "./slide-deck-tool";
+export const builtInToolsPart2 = [
+  {
+    id: "00000000-0000-4000-8000-000000000033",
+    name: "code_workspace_delete_file",
+    displayName: "Delete code file",
+    description:
+      "Delete a file from an uploaded code workspace, then return the updated live preview artifact.",
+    riskLevel: MEDIUM_RISK_LEVEL,
+    category: "Code",
+    inputSchema: codeWorkspaceReadFileInputSchema,
+    execute: async ({ projectId, path }, context) => {
+      const workspaceContext = requireCodeWorkspaceContext(context);
+      return deleteCodeWorkspaceFile({
+        projectId,
+        workspaceId: workspaceContext.workspaceId,
+        userId: workspaceContext.userId,
+        filePath: path,
+      });
+    },
+  },
+  {
+    id: "00000000-0000-4000-8000-000000000035",
+    name: "github_get_publish_status",
+    displayName: "GitHub status",
+    description:
+      "Check whether the current user connected GitHub and list repositories they can publish to. If not connected, return the chat-safe connect URL.",
+    riskLevel: "low",
+    category: "Code",
+    inputSchema: githubPublishStatusInputSchema,
+    execute: async (_input, context) => {
+      const workspaceContext = requireCodeWorkspaceContext(context);
+      return getUserGitHubStatus({
+        userId: workspaceContext.userId,
+        workspaceId: workspaceContext.workspaceId,
+      });
+    },
+  },
+  {
+    id: "00000000-0000-4000-8000-000000000036",
+    name: "github_publish_code_workspace",
+    displayName: "Publish code to GitHub",
+    description:
+      "Publish a code workspace to one of the current user's GitHub repositories. The user must choose PR vs direct push, repository, and branch; direct push requires explicit confirmation.",
+    riskLevel: "critical",
+    category: "Code",
+    inputSchema: githubPublishCodeWorkspaceInputSchema,
+    execute: async (
+      toolInput: z.infer<typeof githubPublishCodeWorkspaceInputSchema>,
+      context,
+    ) => {
+      const workspaceContext = requireCodeWorkspaceContext(context);
+      return publishCodeWorkspaceToGitHub({
+        projectId: toolInput.projectId,
+        repositoryId: toolInput.repositoryId,
+        mode: toolInput.mode,
+        targetBranch: toolInput.targetBranch,
+        sourceBranch: toolInput.sourceBranch,
+        targetDirectory: toolInput.targetDirectory,
+        commitMessage: toolInput.commitMessage,
+        pullRequestTitle: toolInput.pullRequestTitle,
+        pullRequestBody: toolInput.pullRequestBody,
+        confirmDirectPush: toolInput.confirmDirectPush,
+        workspaceId: workspaceContext.workspaceId,
+        userId: workspaceContext.userId,
+        conversationId: workspaceContext.conversationId,
+      });
+    },
+  },
+  {
+    id: "00000000-0000-4000-8000-000000000017",
+    name: "create_slide_deck",
+    displayName: "Slide deck",
+    description:
+      "Create or revise an interactive slide deck with click-to-reveal steps and PDF print/export styling.",
+    riskLevel: MEDIUM_RISK_LEVEL,
+    category: "Create",
+    inputSchema: slideDeckInputSchema,
+    execute: createSlideDeckArtifact,
+  },
+  {
+    id: "00000000-0000-4000-8000-000000000018",
+    name: "create_business_document",
+    displayName: "Business document",
+    description:
+      "Create printable briefs, reports, proposals, policies, SOPs, and memos.",
+    riskLevel: MEDIUM_RISK_LEVEL,
+    category: "Work",
+    inputSchema: businessDocumentInputSchema,
+    execute: createBusinessDocumentArtifact,
+  },
+  {
+    id: "00000000-0000-4000-8000-000000000019",
+    name: "create_spreadsheet",
+    displayName: "Spreadsheet",
+    description:
+      "Create a clean printable table with insights and CSV export text.",
+    riskLevel: MEDIUM_RISK_LEVEL,
+    category: "Data",
+    inputSchema: spreadsheetInputSchema,
+    execute: createSpreadsheetArtifact,
+  },
+  {
+    id: "00000000-0000-4000-8000-000000000020",
+    name: "create_meeting_brief",
+    displayName: "Meeting brief",
+    description:
+      "Turn meeting context into an agenda, decisions, and action-item brief.",
+    riskLevel: MEDIUM_RISK_LEVEL,
+    category: "Work",
+    inputSchema: meetingBriefInputSchema,
+    execute: createMeetingBriefArtifact,
+  },
+  {
+    id: "00000000-0000-4000-8000-000000000021",
+    name: "create_action_plan",
+    displayName: "Action plan",
+    description:
+      "Create a phased project plan with owners, deadlines, and risks.",
+    riskLevel: MEDIUM_RISK_LEVEL,
+    category: "Work",
+    inputSchema: actionPlanInputSchema,
+    execute: createActionPlanArtifact,
+  },
+  {
+    id: "00000000-0000-4000-8000-000000000022",
+    name: "create_decision_matrix",
+    displayName: "Decision matrix",
+    description:
+      "Compare options with weighted criteria and a clear recommendation.",
+    riskLevel: MEDIUM_RISK_LEVEL,
+    category: "Work",
+    inputSchema: decisionMatrixInputSchema,
+    execute: createDecisionMatrixArtifact,
+  },
+  {
+    id: "00000000-0000-4000-8000-000000000023",
+    name: "create_email_pack",
+    displayName: "Email pack",
+    description:
+      "Draft polished business emails, follow-ups, announcements, and outreach variants.",
+    riskLevel: MEDIUM_RISK_LEVEL,
+    category: "Write",
+    inputSchema: emailPackInputSchema,
+    execute: createEmailPackArtifact,
+  },
+  {
+    id: "00000000-0000-4000-8000-000000000024",
+    name: "create_project_status_report",
+    displayName: "Project status report",
+    description:
+      "Create executive-ready project updates with status, metrics, blockers, decisions, and next actions.",
+    riskLevel: MEDIUM_RISK_LEVEL,
+    category: "Work",
+    inputSchema: projectStatusReportInputSchema,
+    execute: createProjectStatusReportArtifact,
+  },
+  {
+    id: "00000000-0000-4000-8000-000000000025",
+    name: "create_risk_register",
+    displayName: "Risk register",
+    description:
+      "Create a structured risk register with likelihood, impact, owners, mitigations, and contingency plans.",
+    riskLevel: MEDIUM_RISK_LEVEL,
+    category: "Work",
+    inputSchema: riskRegisterInputSchema,
+    execute: createRiskRegisterArtifact,
+  },
+  {
+    id: "00000000-0000-4000-8000-000000000026",
+    name: "create_raci_matrix",
+    displayName: "RACI matrix",
+    description:
+      "Create a responsibility matrix that clarifies who is responsible, accountable, consulted, and informed.",
+    riskLevel: MEDIUM_RISK_LEVEL,
+    category: "Work",
+    inputSchema: raciMatrixInputSchema,
+    execute: createRaciMatrixArtifact,
+  },
+  {
+    id: "00000000-0000-4000-8000-000000000027",
+    name: "create_customer_account_plan",
+    displayName: "Customer account plan",
+    description:
+      "Create a strategic account plan with stakeholders, opportunities, risks, and a mutual action plan.",
+    riskLevel: MEDIUM_RISK_LEVEL,
+    category: "Work",
+    inputSchema: customerAccountPlanInputSchema,
+    execute: createCustomerAccountPlanArtifact,
+  },
+  {
+    id: "00000000-0000-4000-8000-000000000028",
+    name: "create_competitive_battlecard",
+    displayName: "Competitive battlecard",
+    description:
+      "Create a sales battlecard with positioning, win themes, landmines, objection handling, and discovery questions.",
+    riskLevel: MEDIUM_RISK_LEVEL,
+    category: "Work",
+    inputSchema: competitiveBattlecardInputSchema,
+    execute: createCompetitiveBattlecardArtifact,
+  },
+  {
+    id: "00000000-0000-4000-8000-000000000006",
+    name: "random_number",
+    displayName: "Random number",
+    description: "Generate one or more random numbers in a range.",
+    riskLevel: "low",
+    category: "Think",
+    inputSchema: randomNumberInputSchema,
+    execute: randomNumbers,
+  },
+] satisfies BuiltInToolDefinition[];

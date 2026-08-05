@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
 import {
-  handleRoute,
-  requireWorkspacePermissionAsync,
+handleRoute,
+requireWorkspacePermissionAsync,
 } from "@/lib/route-handler";
 import { installMarketplaceItem } from "@/modules/marketplace/use-cases";
+import { NextRequest,NextResponse } from "next/server";
+import { z } from "zod";
 
 const schema = z.object({ workspaceId: z.uuid() });
 

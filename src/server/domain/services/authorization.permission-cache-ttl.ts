@@ -1,19 +1,12 @@
-import { logHandledWarning } from "@/lib/logger";
 import type { AccessResourceType } from "@/server/domain/entities/access-resource";
 import { SYSTEM_ROLES } from "@/server/domain/entities/iam";
-import { cache } from "@/server/infrastructure/cache";
-import { findAccessResource } from "@/server/infrastructure/db/access-resource-repository";
 import { db } from "@/server/infrastructure/db";
 import {
-  organizationMembers,
-  roles,
-  roleBindings,
-  teamMembers,
-  teams,
-  workspaceMembers,
-  workspaces,
+organizationMembers,
+workspaceMembers,
+workspaces
 } from "@/server/infrastructure/db/schema";
-import { and, eq, gte, inArray, isNull, or } from "drizzle-orm";
+import { and,eq } from "drizzle-orm";
 
 export const PERMISSION_CACHE_TTL = 60; // 60 seconds
 const globalAuthorization = globalThis as typeof globalThis & {

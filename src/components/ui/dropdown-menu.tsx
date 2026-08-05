@@ -1,7 +1,7 @@
 "use client";
 
-import * as React from "react";
 import { DropdownMenu as DropdownMenuPrimitive } from "radix-ui";
+import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -120,11 +120,6 @@ function DropdownMenuSeparator({
 }
 
 export {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuLabel,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
+DropdownMenu,DropdownMenuContent,
+DropdownMenuGroup,DropdownMenuItem,DropdownMenuLabel,DropdownMenuSeparator,DropdownMenuTrigger
 };

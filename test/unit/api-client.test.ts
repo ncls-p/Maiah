@@ -1,11 +1,11 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import type { Mock } from "vitest";
 import {
-  fetchWorkspaces,
-  fetchJson,
-  fetchPendingToolCount,
-  fetchWorkspacePermissions,
+fetchJson,
+fetchPendingToolCount,
+fetchWorkspacePermissions,
+fetchWorkspaces,
 } from "@/lib/api-client";
+import type { Mock } from "vitest";
+import { afterEach,beforeEach,describe,expect,it,vi } from "vitest";
 
 describe("api-client", () => {
   const mockFetch = vi.fn() as Mock;
@@ -49,7 +49,8 @@ describe("api-client", () => {
         organizationId: "org-1",
         organizationName: "Org1",
         organizationLogoUrl: "data:image/png;base64,logo",
-        organizationTheme: "forest",
+		organizationTheme: "forest",
+		organizationThemeConfig: null,
       });
     });
 
@@ -103,7 +104,8 @@ describe("api-client", () => {
         organizationId: "",
         organizationName: "Organization",
         organizationLogoUrl: null,
-        organizationTheme: "ocean",
+		organizationTheme: "ocean",
+		organizationThemeConfig: null,
       });
     });
 

@@ -1,10 +1,10 @@
-import { eq, inArray } from "drizzle-orm";
+import { eq,inArray } from "drizzle-orm";
 
 import { db } from "@/server/infrastructure/db";
 import {
-  organizations,
-  users,
-  workspaces,
+organizations,
+users,
+workspaces,
 } from "@/server/infrastructure/db/schema";
 
 export type ResourceProvenance = {

@@ -1,33 +1,27 @@
-import { createHash, randomUUID } from "node:crypto";
-import { readFile, rm, stat } from "node:fs/promises";
-import os from "node:os";
-import path from "node:path";
-import JSZip from "jszip";
+import { randomUUID } from "node:crypto";
 
-import { logHandledError } from "@/lib/logger";
-import { isPathTraversal } from "@/lib/path-utils";
 import { storage } from "@/server/infrastructure/storage";
 import {
-  CodeWorkspaceCreateFileInput,
-  CodeWorkspaceFileSummary,
-  CodeWorkspaceMetadata,
-  fileObjectKey,
-  maxExtractedBytes,
-  maxFiles,
-  maxTextFileBytes,
-} from "./storage.code-workspace-file-summary";
-import {
-  deleteUploadedProject,
-  isAllowedPath,
-  isTextWorkspacePath,
-  normalizeWorkspacePath,
+deleteUploadedProject,
+isAllowedPath,
+isTextWorkspacePath,
+normalizeWorkspacePath,
 } from "./storage.assert-safe-project-id";
 import {
-  codeWorkspaceArtifact,
-  contentTypeForPath,
-  findRootFile,
-  hashBytes,
-  saveMetadata,
+CodeWorkspaceCreateFileInput,
+CodeWorkspaceFileSummary,
+CodeWorkspaceMetadata,
+fileObjectKey,
+maxExtractedBytes,
+maxFiles,
+maxTextFileBytes,
+} from "./storage.code-workspace-file-summary";
+import {
+codeWorkspaceArtifact,
+contentTypeForPath,
+findRootFile,
+hashBytes,
+saveMetadata,
 } from "./storage.content-type-for-path";
 
 export async function createCodeWorkspaceFromFiles(input: {

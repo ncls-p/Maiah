@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe,expect,it,vi } from "vitest";
 
 import type { ChatMessage } from "@/components/chat/chat-types";
 import { applyStreamEvent } from "@/hooks/use-chat-stream-events";

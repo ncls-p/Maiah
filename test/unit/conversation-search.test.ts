@@ -1,9 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe,expect,it } from "vitest";
 
 import {
-  conversationSearchSnippet,
-  conversationTextMatches,
-  normalizeConversationSearchText,
+conversationSearchSnippet,
+conversationTextMatches,
+normalizeConversationSearchText,
 } from "@/modules/chat/conversation-search";
 
 describe("conversation search", () => {

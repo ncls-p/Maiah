@@ -1,10 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach,describe,expect,it,vi } from "vitest";
 
-import * as _dbModule from "@/server/infrastructure/db";
 import { callRemoteMcpTool } from "@/modules/mcp/client";
 import { getMcpServer } from "@/modules/mcp/use-cases";
 import { resolveToolExecutionHeaders } from "@/modules/tool-connections/use-cases";
-import { dbModule, resetDb } from "./executor-and-sidebar.test.db-module";
+import { dbModule,resetDb } from "./executor-and-sidebar.test.db-module";
 
 
 // ─── MCP Executor ─────────────────────────────────────────────────────

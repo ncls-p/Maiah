@@ -1,79 +1,23 @@
 import { randomUUID } from "node:crypto";
 
-import { and, eq, inArray } from "drizzle-orm";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { and,eq,inArray } from "drizzle-orm";
+import { afterAll,beforeAll,describe,expect,it } from "vitest";
 
 import { encryptValue } from "@/lib/crypto";
-import { claimAssistantContinuation } from "@/modules/chat/continuation";
 import { listAgents } from "@/modules/agent/use-cases";
+import { claimAssistantContinuation } from "@/modules/chat/continuation";
+import { executeMemberTransfer,listMemberTransferDestinations,previewMemberTransfer } from "@/modules/iam/member-transfer";
+import { executeOrganizationClone,executeOrganizationTransfer,previewOrganizationClone,previewOrganizationTransfer } from "@/modules/iam/organization-transfer";
 import { deleteProjectAccessResource } from "@/modules/iam/resource-deletion";
-import {
-  executeMemberTransfer,
-  listMemberTransferDestinations,
-  previewMemberTransfer,
-} from "@/modules/iam/member-transfer";
-import {
-  executeOrganizationClone,
-  executeOrganizationTransfer,
-  previewOrganizationClone,
-  previewOrganizationTransfer,
-} from "@/modules/iam/organization-transfer";
-import {
-  executeResourceTransfer,
-  listResourceTransferDestinations,
-  previewResourceTransfer,
-} from "@/modules/iam/resource-transfer";
-import {
-  executeWorkspaceClone,
-  previewWorkspaceClone,
-} from "@/modules/iam/workspace-clone";
-import {
-  deleteOrganization,
-  deleteProject,
-  renameOrganization,
-  renameProject,
-} from "@/modules/iam/scope-lifecycle";
-import {
-  addOrganizationMember,
-  addTeamMember,
-  assignRole,
-  assignResourceRole,
-  createCustomRole,
-  createOrganizationWithProject,
-  createProject,
-  createTeam,
-  deleteCustomRole,
-  deleteTeam,
-  getAccessConsoleSnapshot,
-  removeOrganizationMember,
-  removeRoleAssignment,
-  removeTeamMember,
-  updateCustomRole,
-} from "@/modules/iam/use-cases";
-import { db } from "@/server/infrastructure/db";
-import {
-  agents,
-  agentVersions,
-  aiModels,
-  aiProviders,
-  auditEvents,
-  conversations,
-  messageParts,
-  messages,
-  organizations,
-  organizationMembers,
-  roleBindings,
-  roles,
-  teamMembers,
-  teams,
-  users,
-  workspaces,
-} from "@/server/infrastructure/db/schema";
+import { executeResourceTransfer,listResourceTransferDestinations,previewResourceTransfer } from "@/modules/iam/resource-transfer";
+import { deleteOrganization,deleteProject,renameOrganization,renameProject } from "@/modules/iam/scope-lifecycle";
+import { addOrganizationMember,addTeamMember,assignResourceRole,assignRole,createCustomRole,createOrganizationWithProject,createProject,createTeam,deleteCustomRole,deleteTeam,getAccessConsoleSnapshot,removeOrganizationMember,removeRoleAssignment,removeTeamMember,updateCustomRole } from "@/modules/iam/use-cases";
+import { executeWorkspaceClone,previewWorkspaceClone } from "@/modules/iam/workspace-clone";
 import { authorization } from "@/server/domain/services/authorization";
+import { db } from "@/server/infrastructure/db";
+import { agents,agentVersions,aiModels,aiProviders,auditEvents,conversations,messageParts,messages,organizationMembers,organizations,roleBindings,roles,teamMembers,teams,users,workspaces } from "@/server/infrastructure/db/schema";
 
-const describeWithDatabase = process.env.IAM_INTEGRATION_DATABASE_URL
-  ? describe.sequential
-  : describe.skip;
+const describeWithDatabase = process.env.IAM_INTEGRATION_DATABASE_URL ? describe.sequential : describe.skip;
 
 describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
   const suffix = randomUUID().slice(0, 8);
@@ -117,18 +61,12 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
 
   afterAll(async () => {
     if (organizationIds.length > 0) {
-      await db
-        .delete(auditEvents)
-        .where(inArray(auditEvents.organizationId, organizationIds));
+      await db.delete(auditEvents).where(inArray(auditEvents.organizationId, organizationIds));
     }
-    await db
-      .delete(roleBindings)
-      .where(inArray(roleBindings.createdById, userIds));
+    await db.delete(roleBindings).where(inArray(roleBindings.createdById, userIds));
     await db.delete(roles).where(inArray(roles.createdById, userIds));
     if (organizationIds.length > 0) {
-      await db
-        .delete(organizations)
-        .where(inArray(organizations.id, organizationIds));
+      await db.delete(organizations).where(inArray(organizations.id, organizationIds));
     }
     await db.delete(users).where(inArray(users.id, userIds));
   });
@@ -143,11 +81,7 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
     });
     firstProjectId = firstProject.id;
 
-    const [scope] = await db
-      .select({ organizationId: workspaces.organizationId })
-      .from(workspaces)
-      .where(eq(workspaces.id, firstProjectId))
-      .limit(1);
+    const [scope] = await db.select({ organizationId: workspaces.organizationId }).from(workspaces).where(eq(workspaces.id, firstProjectId)).limit(1);
     organizationId = scope.organizationId;
     organizationIds.push(organizationId);
 
@@ -221,9 +155,7 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
       })
       .returning();
     sharedAgentId = sharedAgent.id;
-    expect(
-      (await listAgents(secondProjectId, ownerId, true)).map(({ id }) => id),
-    ).not.toContain(memberOwnedAgent.id);
+    expect((await listAgents(secondProjectId, ownerId, true)).map(({ id }) => id)).not.toContain(memberOwnedAgent.id);
     await assignResourceRole({
       actorUserId: ownerId,
       workspaceId: secondProjectId,
@@ -233,18 +165,14 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
       resourceType: "agent",
       resourceId: memberOwnedAgent.id,
     });
-    expect(
-      (await listAgents(secondProjectId, ownerId, true)).map(({ id }) => id),
-    ).toContain(memberOwnedAgent.id);
+    expect((await listAgents(secondProjectId, ownerId, true)).map(({ id }) => id)).toContain(memberOwnedAgent.id);
     await deleteProjectAccessResource({
       actorUserId: ownerId,
       workspaceId: secondProjectId,
       resourceType: "agent",
       resourceId: memberOwnedAgent.id,
     });
-    expect(
-      (await listAgents(secondProjectId, ownerId, true)).map(({ id }) => id),
-    ).not.toContain(memberOwnedAgent.id);
+    expect((await listAgents(secondProjectId, ownerId, true)).map(({ id }) => id)).not.toContain(memberOwnedAgent.id);
     await assignResourceRole({
       actorUserId: ownerId,
       workspaceId: secondProjectId,
@@ -254,22 +182,8 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
       resourceType: "agent",
       resourceId: sharedAgent.id,
     });
-    expect(
-      await authorization.hasPermission(
-        { principalType: "user", principalId: memberId },
-        "agents.get",
-        "agent",
-        sharedAgent.id,
-      ),
-    ).toBe(true);
-    expect(
-      await authorization.hasPermission(
-        { principalType: "user", principalId: memberId },
-        "agents.get",
-        "agent",
-        privateAgent.id,
-      ),
-    ).toBe(false);
+    expect(await authorization.hasPermission({ principalType: "user", principalId: memberId }, "agents.get", "agent", sharedAgent.id)).toBe(true);
+    expect(await authorization.hasPermission({ principalType: "user", principalId: memberId }, "agents.get", "agent", privateAgent.id)).toBe(false);
     const [provider] = await db
       .insert(aiProviders)
       .values({
@@ -304,14 +218,7 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
       resourceType: "provider",
       resourceId: provider.id,
     });
-    expect(
-      await authorization.hasPermission(
-        { principalType: "user", principalId: memberId },
-        "models.invoke",
-        "model",
-        model.id,
-      ),
-    ).toBe(true);
+    expect(await authorization.hasPermission({ principalType: "user", principalId: memberId }, "models.invoke", "model", model.id)).toBe(true);
 
     await assignRole({
       actorUserId: ownerId,
@@ -340,9 +247,7 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
     });
 
     expect(snapshot.organization.id).toBe(organizationId);
-    expect(snapshot.projects.map(({ id }) => id)).toEqual(
-      expect.arrayContaining([firstProjectId, secondProjectId]),
-    );
+    expect(snapshot.projects.map(({ id }) => id)).toEqual(expect.arrayContaining([firstProjectId, secondProjectId]));
     expect(snapshot.capabilities).toEqual({
       canManageProjectAccess: true,
       canManageOrganizationAccess: true,
@@ -366,9 +271,7 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
         }),
       ]),
     );
-    expect(
-      snapshot.roles.find(({ id }) => id === projectRole.id),
-    ).toMatchObject({
+    expect(snapshot.roles.find(({ id }) => id === projectRole.id)).toMatchObject({
       displayName: "Support Operator",
       permissions: ["agents.get", "workflows.view", "workflows.execute"],
     });
@@ -376,13 +279,7 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
     const [teamBinding] = await db
       .select({ id: roleBindings.id })
       .from(roleBindings)
-      .where(
-        and(
-          eq(roleBindings.principalType, "group"),
-          eq(roleBindings.principalId, team.id),
-          eq(roleBindings.roleId, projectRole.id),
-        ),
-      )
+      .where(and(eq(roleBindings.principalType, "group"), eq(roleBindings.principalId, team.id), eq(roleBindings.roleId, projectRole.id)))
       .limit(1);
 
     await removeRoleAssignment({
@@ -398,15 +295,7 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
     const [resourceBinding] = await db
       .select({ id: roleBindings.id })
       .from(roleBindings)
-      .where(
-        and(
-          eq(roleBindings.principalType, "user"),
-          eq(roleBindings.principalId, memberId),
-          eq(roleBindings.roleId, resourceRole.id),
-          eq(roleBindings.resourceType, "agent"),
-          eq(roleBindings.resourceId, sharedAgent.id),
-        ),
-      )
+      .where(and(eq(roleBindings.principalType, "user"), eq(roleBindings.principalId, memberId), eq(roleBindings.roleId, resourceRole.id), eq(roleBindings.resourceType, "agent"), eq(roleBindings.resourceId, sharedAgent.id)))
       .limit(1);
     await removeRoleAssignment({
       actorUserId: ownerId,
@@ -421,15 +310,7 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
     const [modelBinding] = await db
       .select({ id: roleBindings.id })
       .from(roleBindings)
-      .where(
-        and(
-          eq(roleBindings.principalType, "user"),
-          eq(roleBindings.principalId, memberId),
-          eq(roleBindings.roleId, modelRole.id),
-          eq(roleBindings.resourceType, "provider"),
-          eq(roleBindings.resourceId, provider.id),
-        ),
-      )
+      .where(and(eq(roleBindings.principalType, "user"), eq(roleBindings.principalId, memberId), eq(roleBindings.roleId, modelRole.id), eq(roleBindings.resourceType, "provider"), eq(roleBindings.resourceId, provider.id)))
       .limit(1);
     await removeRoleAssignment({
       actorUserId: ownerId,
@@ -505,10 +386,7 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
         createdById: ownerId,
       })
       .returning();
-    await db
-      .update(agents)
-      .set({ activeVersionId: version.id })
-      .where(eq(agents.id, agent.id));
+    await db.update(agents).set({ activeVersionId: version.id }).where(eq(agents.id, agent.id));
     const [conversation] = await db
       .insert(conversations)
       .values({
@@ -524,11 +402,7 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
       userId: ownerId,
       sourceWorkspaceId: secondProjectId,
     });
-    expect(destinations).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ workspaceId: firstProjectId }),
-      ]),
-    );
+    expect(destinations).toEqual(expect.arrayContaining([expect.objectContaining({ workspaceId: firstProjectId })]));
 
     const options = {
       includeDependencies: true,
@@ -544,9 +418,7 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
       resourceId: agent.id,
       options: { ...options, includeDependencies: false },
     });
-    expect(blockedPreview.blockers).toEqual([
-      expect.stringContaining("linked resource"),
-    ]);
+    expect(blockedPreview.blockers).toEqual([expect.stringContaining("linked resource")]);
 
     const preview = await previewResourceTransfer({
       actorUserId: ownerId,
@@ -594,10 +466,7 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
       confirmationToken: preview.confirmationToken,
     });
 
-    const [movedAgent] = await db
-      .select({ workspaceId: agents.workspaceId })
-      .from(agents)
-      .where(eq(agents.id, agent.id));
+    const [movedAgent] = await db.select({ workspaceId: agents.workspaceId }).from(agents).where(eq(agents.id, agent.id));
     const [movedProvider] = await db
       .select({
         workspaceId: aiProviders.workspaceId,
@@ -606,10 +475,7 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
       })
       .from(aiProviders)
       .where(eq(aiProviders.id, provider.id));
-    const [movedConversation] = await db
-      .select({ workspaceId: conversations.workspaceId })
-      .from(conversations)
-      .where(eq(conversations.id, conversation.id));
+    const [movedConversation] = await db.select({ workspaceId: conversations.workspaceId }).from(conversations).where(eq(conversations.id, conversation.id));
     expect(movedAgent.workspaceId).toBe(firstProjectId);
     expect(movedProvider).toMatchObject({
       workspaceId: firstProjectId,
@@ -668,37 +534,16 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
         createdById: ownerId,
       })
       .returning();
-    await db
-      .update(agents)
-      .set({ activeVersionId: version.id })
-      .where(eq(agents.id, agent.id));
+    await db.update(agents).set({ activeVersionId: version.id }).where(eq(agents.id, agent.id));
 
-    const [simulationSourceBefore, simulationTargetBefore] = await Promise.all([
-      db
-        .select({ id: agents.id, workspaceId: agents.workspaceId })
-        .from(agents)
-        .where(eq(agents.workspaceId, secondProjectId)),
-      db
-        .select({ id: agents.id, workspaceId: agents.workspaceId })
-        .from(agents)
-        .where(eq(agents.workspaceId, cloneTarget.id)),
-    ]);
+    const [simulationSourceBefore, simulationTargetBefore] = await Promise.all([db.select({ id: agents.id, workspaceId: agents.workspaceId }).from(agents).where(eq(agents.workspaceId, secondProjectId)), db.select({ id: agents.id, workspaceId: agents.workspaceId }).from(agents).where(eq(agents.workspaceId, cloneTarget.id))]);
     const preview = await previewWorkspaceClone({
       actorUserId: ownerId,
       sourceWorkspaceId: secondProjectId,
       targetWorkspaceId: cloneTarget.id,
       secretPolicy: "disable",
     });
-    const [simulationSourceAfter, simulationTargetAfter] = await Promise.all([
-      db
-        .select({ id: agents.id, workspaceId: agents.workspaceId })
-        .from(agents)
-        .where(eq(agents.workspaceId, secondProjectId)),
-      db
-        .select({ id: agents.id, workspaceId: agents.workspaceId })
-        .from(agents)
-        .where(eq(agents.workspaceId, cloneTarget.id)),
-    ]);
+    const [simulationSourceAfter, simulationTargetAfter] = await Promise.all([db.select({ id: agents.id, workspaceId: agents.workspaceId }).from(agents).where(eq(agents.workspaceId, secondProjectId)), db.select({ id: agents.id, workspaceId: agents.workspaceId }).from(agents).where(eq(agents.workspaceId, cloneTarget.id))]);
     expect(simulationSourceAfter).toEqual(simulationSourceBefore);
     expect(simulationTargetAfter).toEqual(simulationTargetBefore);
     expect(preview.counts.providers).toBeGreaterThanOrEqual(1);
@@ -716,10 +561,7 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
       status: 409,
       message: expect.stringContaining("changed"),
     });
-    const targetAfterRejectedSimulation = await db
-      .select({ id: agents.id })
-      .from(agents)
-      .where(eq(agents.workspaceId, cloneTarget.id));
+    const targetAfterRejectedSimulation = await db.select({ id: agents.id }).from(agents).where(eq(agents.workspaceId, cloneTarget.id));
     expect(targetAfterRejectedSimulation).toEqual(simulationTargetBefore);
     await executeWorkspaceClone({
       actorUserId: ownerId,
@@ -729,28 +571,15 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
       confirmationToken: preview.confirmationToken,
     });
 
-    const [sourceAgent] = await db
-      .select()
-      .from(agents)
-      .where(eq(agents.id, agent.id));
+    const [sourceAgent] = await db.select().from(agents).where(eq(agents.id, agent.id));
     const [clonedAgent] = await db
       .select()
       .from(agents)
-      .where(
-        and(
-          eq(agents.workspaceId, cloneTarget.id),
-          eq(agents.forkedFromAgentId, agent.id),
-        ),
-      );
+      .where(and(eq(agents.workspaceId, cloneTarget.id), eq(agents.forkedFromAgentId, agent.id)));
     const [clonedProvider] = await db
       .select()
       .from(aiProviders)
-      .where(
-        and(
-          eq(aiProviders.workspaceId, cloneTarget.id),
-          eq(aiProviders.name, provider.name),
-        ),
-      );
+      .where(and(eq(aiProviders.workspaceId, cloneTarget.id), eq(aiProviders.name, provider.name)));
     expect(sourceAgent.workspaceId).toBe(secondProjectId);
     expect(clonedAgent).toBeDefined();
     expect(clonedProvider).toMatchObject({
@@ -758,10 +587,7 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
       encryptedApiKey: null,
     });
 
-    const targetAgents = await db
-      .select({ id: agents.id })
-      .from(agents)
-      .where(eq(agents.workspaceId, cloneTarget.id));
+    const targetAgents = await db.select({ id: agents.id }).from(agents).where(eq(agents.workspaceId, cloneTarget.id));
     if (targetAgents.length > 0) {
       await db.delete(agentVersions).where(
         inArray(
@@ -789,20 +615,14 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
       projectName: "Destination",
       projectSlug: "destination",
     });
-    const [destinationScope] = await db
-      .select({ organizationId: workspaces.organizationId })
-      .from(workspaces)
-      .where(eq(workspaces.id, destination.id))
-      .limit(1);
+    const [destinationScope] = await db.select({ organizationId: workspaces.organizationId }).from(workspaces).where(eq(workspaces.id, destination.id)).limit(1);
     organizationIds.push(destinationScope.organizationId);
 
     const [viewerRole, adminRole] = await Promise.all([
       db
         .select({ id: roles.id })
         .from(roles)
-        .where(
-          and(eq(roles.name, "workspace.viewer"), eq(roles.isSystem, true)),
-        )
+        .where(and(eq(roles.name, "workspace.viewer"), eq(roles.isSystem, true)))
         .limit(1),
       db
         .select({ id: roles.id })
@@ -818,12 +638,7 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
       roleId: viewerRole[0].id,
       mode: "move",
     });
-    expect(ownerMovePreview.blockers).toEqual(
-      expect.arrayContaining([
-        expect.stringContaining("own account"),
-        expect.stringContaining("last owner"),
-      ]),
-    );
+    expect(ownerMovePreview.blockers).toEqual(expect.arrayContaining([expect.stringContaining("own account"), expect.stringContaining("last owner")]));
     await assignRole({
       actorUserId: ownerId,
       workspaceId: firstProjectId,
@@ -908,22 +723,8 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
       mode: "add",
       confirmationToken: addPreview.confirmationToken,
     });
-    expect(
-      await authorization.hasPermission(
-        { principalType: "user", principalId: memberId },
-        "workspaces.get",
-        "workspace",
-        firstProjectId,
-      ),
-    ).toBe(true);
-    expect(
-      await authorization.hasPermission(
-        { principalType: "user", principalId: memberId },
-        "workspaces.get",
-        "workspace",
-        destination.id,
-      ),
-    ).toBe(true);
+    expect(await authorization.hasPermission({ principalType: "user", principalId: memberId }, "workspaces.get", "workspace", firstProjectId)).toBe(true);
+    expect(await authorization.hasPermission({ principalType: "user", principalId: memberId }, "workspaces.get", "workspace", destination.id)).toBe(true);
 
     const stalePreview = await previewMemberTransfer({
       actorUserId: ownerId,
@@ -975,55 +776,25 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
       confirmationToken: movePreview.confirmationToken,
     });
 
-    const [
-      sourceMembership,
-      destinationMembership,
-      remainingTeamMembership,
-      remainingResourceAccess,
-    ] = await Promise.all([
+    const [sourceMembership, destinationMembership, remainingTeamMembership, remainingResourceAccess] = await Promise.all([
       db
         .select({ status: organizationMembers.status })
         .from(organizationMembers)
-        .where(
-          and(
-            eq(organizationMembers.organizationId, organizationId),
-            eq(organizationMembers.userId, memberId),
-          ),
-        )
+        .where(and(eq(organizationMembers.organizationId, organizationId), eq(organizationMembers.userId, memberId)))
         .limit(1),
       db
         .select({ status: organizationMembers.status })
         .from(organizationMembers)
-        .where(
-          and(
-            eq(
-              organizationMembers.organizationId,
-              destinationScope.organizationId,
-            ),
-            eq(organizationMembers.userId, memberId),
-          ),
-        )
+        .where(and(eq(organizationMembers.organizationId, destinationScope.organizationId), eq(organizationMembers.userId, memberId)))
         .limit(1),
       db
         .select({ id: teamMembers.id })
         .from(teamMembers)
-        .where(
-          and(
-            eq(teamMembers.teamId, sourceTeam.id),
-            eq(teamMembers.userId, memberId),
-          ),
-        ),
+        .where(and(eq(teamMembers.teamId, sourceTeam.id), eq(teamMembers.userId, memberId))),
       db
         .select({ id: roleBindings.id })
         .from(roleBindings)
-        .where(
-          and(
-            eq(roleBindings.principalType, "user"),
-            eq(roleBindings.principalId, memberId),
-            eq(roleBindings.resourceType, "agent"),
-            eq(roleBindings.resourceId, sourceAgent.id),
-          ),
-        ),
+        .where(and(eq(roleBindings.principalType, "user"), eq(roleBindings.principalId, memberId), eq(roleBindings.resourceType, "agent"), eq(roleBindings.resourceId, sourceAgent.id))),
     ]);
     expect(sourceMembership[0]?.status).toBe("removed");
     expect(destinationMembership[0]?.status).toBe("active");
@@ -1103,19 +874,11 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
         nextSortOrder: 1,
         appendableTextPart: { content: "First half." },
       });
-      const persistedMessages = await db
-        .select({ id: messages.id, role: messages.role })
-        .from(messages)
-        .where(eq(messages.conversationId, conversationId));
+      const persistedMessages = await db.select({ id: messages.id, role: messages.role }).from(messages).where(eq(messages.conversationId, conversationId));
       expect(persistedMessages).toHaveLength(2);
-      expect(
-        persistedMessages.filter((message) => message.role === "assistant"),
-      ).toEqual([{ id: assistantMessageId, role: "assistant" }]);
+      expect(persistedMessages.filter((message) => message.role === "assistant")).toEqual([{ id: assistantMessageId, role: "assistant" }]);
 
-      const persistedParts = await db
-        .select({ type: messageParts.type })
-        .from(messageParts)
-        .where(eq(messageParts.messageId, assistantMessageId));
+      const persistedParts = await db.select({ type: messageParts.type }).from(messageParts).where(eq(messageParts.messageId, assistantMessageId));
       expect(persistedParts).toEqual([{ type: "text" }]);
 
       await expect(
@@ -1152,21 +915,9 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
         }),
       ).resolves.toEqual({ status: "not_latest" });
     } finally {
-      await db
-        .delete(messageParts)
-        .where(
-          inArray(messageParts.messageId, [
-            userMessageId,
-            assistantMessageId,
-            laterUserMessageId,
-          ]),
-        );
-      await db
-        .delete(messages)
-        .where(eq(messages.conversationId, conversationId));
-      await db
-        .delete(conversations)
-        .where(eq(conversations.id, conversationId));
+      await db.delete(messageParts).where(inArray(messageParts.messageId, [userMessageId, assistantMessageId, laterUserMessageId]));
+      await db.delete(messages).where(eq(messages.conversationId, conversationId));
+      await db.delete(conversations).where(eq(conversations.id, conversationId));
     }
   }, 60_000);
 
@@ -1197,10 +948,7 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
         .where(eq(workspaces.id, targetProject.id))
         .then((rows) => rows[0]),
     ]);
-    organizationIds.push(
-      sourceScope.organizationId,
-      targetScope.organizationId,
-    );
+    organizationIds.push(sourceScope.organizationId, targetScope.organizationId);
     const conflictingSourceProject = await createProject({
       userId: ownerId,
       workspaceId: sourceProject.id,
@@ -1208,40 +956,16 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
       slug: "target-project",
     });
 
-    const [sourceProjectsBeforeSimulation, targetProjectsBeforeSimulation] =
-      await Promise.all([
-        db
-          .select({ id: workspaces.id })
-          .from(workspaces)
-          .where(eq(workspaces.organizationId, sourceScope.organizationId)),
-        db
-          .select({ id: workspaces.id })
-          .from(workspaces)
-          .where(eq(workspaces.organizationId, targetScope.organizationId)),
-      ]);
+    const [sourceProjectsBeforeSimulation, targetProjectsBeforeSimulation] = await Promise.all([db.select({ id: workspaces.id }).from(workspaces).where(eq(workspaces.organizationId, sourceScope.organizationId)), db.select({ id: workspaces.id }).from(workspaces).where(eq(workspaces.organizationId, targetScope.organizationId))]);
     const clonePreview = await previewOrganizationClone({
       actorUserId: ownerId,
       sourceWorkspaceId: sourceProject.id,
       targetOrganizationId: targetScope.organizationId,
       secretPolicy: "disable",
     });
-    const [sourceProjectsAfterSimulation, targetProjectsAfterSimulation] =
-      await Promise.all([
-        db
-          .select({ id: workspaces.id })
-          .from(workspaces)
-          .where(eq(workspaces.organizationId, sourceScope.organizationId)),
-        db
-          .select({ id: workspaces.id })
-          .from(workspaces)
-          .where(eq(workspaces.organizationId, targetScope.organizationId)),
-      ]);
-    expect(sourceProjectsAfterSimulation).toEqual(
-      sourceProjectsBeforeSimulation,
-    );
-    expect(targetProjectsAfterSimulation).toEqual(
-      targetProjectsBeforeSimulation,
-    );
+    const [sourceProjectsAfterSimulation, targetProjectsAfterSimulation] = await Promise.all([db.select({ id: workspaces.id }).from(workspaces).where(eq(workspaces.organizationId, sourceScope.organizationId)), db.select({ id: workspaces.id }).from(workspaces).where(eq(workspaces.organizationId, targetScope.organizationId))]);
+    expect(sourceProjectsAfterSimulation).toEqual(sourceProjectsBeforeSimulation);
+    expect(targetProjectsAfterSimulation).toEqual(targetProjectsBeforeSimulation);
     expect(clonePreview.counts.projects).toBe(2);
     expect(clonePreview.conflictResolutions).toEqual([]);
     await executeOrganizationClone({
@@ -1251,13 +975,8 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
       secretPolicy: "disable",
       confirmationToken: clonePreview.confirmationToken,
     });
-    const clonedProjects = await db
-      .select({ name: workspaces.name })
-      .from(workspaces)
-      .where(eq(workspaces.organizationId, targetScope.organizationId));
-    expect(clonedProjects.map(({ name }) => name)).toContain(
-      "Source project (copy)",
-    );
+    const clonedProjects = await db.select({ name: workspaces.name }).from(workspaces).where(eq(workspaces.organizationId, targetScope.organizationId));
+    expect(clonedProjects.map(({ name }) => name)).toContain("Source project (copy)");
 
     const movePreview = await previewOrganizationTransfer({
       actorUserId: ownerId,
@@ -1278,10 +997,7 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
       targetOrganizationId: targetScope.organizationId,
       confirmationToken: movePreview.confirmationToken,
     });
-    const remainingSourceProjects = await db
-      .select({ id: workspaces.id })
-      .from(workspaces)
-      .where(eq(workspaces.organizationId, sourceScope.organizationId));
+    const remainingSourceProjects = await db.select({ id: workspaces.id }).from(workspaces).where(eq(workspaces.organizationId, sourceScope.organizationId));
     const [movedSourceProject, renamedConflictingProject] = await Promise.all([
       db
         .select({ organizationId: workspaces.organizationId })
@@ -1332,10 +1048,7 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
         .where(eq(workspaces.id, fallbackProject.id))
         .then((rows) => rows[0]),
     ]);
-    organizationIds.push(
-      lifecycleScope.organizationId,
-      fallbackScope.organizationId,
-    );
+    organizationIds.push(lifecycleScope.organizationId, fallbackScope.organizationId);
 
     await renameOrganization({
       actorUserId: ownerId,
@@ -1387,24 +1100,9 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
       confirmationName: "Renamed removable project",
     });
     expect(projectDeletion.nextWorkspaceId).toBe(lifecycleProject.id);
-    expect(
-      await db
-        .select({ id: workspaces.id })
-        .from(workspaces)
-        .where(eq(workspaces.id, removableProject.id)),
-    ).toEqual([]);
-    expect(
-      await db
-        .select({ id: roles.id })
-        .from(roles)
-        .where(eq(roles.id, removableRole.id)),
-    ).toEqual([]);
-    expect(
-      await db
-        .select({ id: roleBindings.id })
-        .from(roleBindings)
-        .where(eq(roleBindings.resourceId, removableAgent.id)),
-    ).toEqual([]);
+    expect(await db.select({ id: workspaces.id }).from(workspaces).where(eq(workspaces.id, removableProject.id))).toEqual([]);
+    expect(await db.select({ id: roles.id }).from(roles).where(eq(roles.id, removableRole.id))).toEqual([]);
+    expect(await db.select({ id: roleBindings.id }).from(roleBindings).where(eq(roleBindings.resourceId, removableAgent.id))).toEqual([]);
 
     const organizationTeam = await createTeam({
       actorUserId: ownerId,
@@ -1433,31 +1131,11 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
       confirmationName: "Renamed organization",
     });
     expect(organizationDeletion.nextWorkspaceId).toBeTruthy();
-    const [fallbackAfterDeletion] = await db
-      .select({ organizationId: workspaces.organizationId })
-      .from(workspaces)
-      .where(eq(workspaces.id, organizationDeletion.nextWorkspaceId!));
-    expect(fallbackAfterDeletion.organizationId).not.toBe(
-      lifecycleScope.organizationId,
-    );
-    expect(
-      await db
-        .select({ id: organizations.id })
-        .from(organizations)
-        .where(eq(organizations.id, lifecycleScope.organizationId)),
-    ).toEqual([]);
-    expect(
-      await db
-        .select({ id: teams.id })
-        .from(teams)
-        .where(eq(teams.id, organizationTeam.id)),
-    ).toEqual([]);
-    expect(
-      await db
-        .select({ id: roles.id })
-        .from(roles)
-        .where(eq(roles.id, organizationRole.id)),
-    ).toEqual([]);
+    const [fallbackAfterDeletion] = await db.select({ organizationId: workspaces.organizationId }).from(workspaces).where(eq(workspaces.id, organizationDeletion.nextWorkspaceId!));
+    expect(fallbackAfterDeletion.organizationId).not.toBe(lifecycleScope.organizationId);
+    expect(await db.select({ id: organizations.id }).from(organizations).where(eq(organizations.id, lifecycleScope.organizationId))).toEqual([]);
+    expect(await db.select({ id: teams.id }).from(teams).where(eq(teams.id, organizationTeam.id))).toEqual([]);
+    expect(await db.select({ id: roles.id }).from(roles).where(eq(roles.id, organizationRole.id))).toEqual([]);
 
     const onlyProject = await createOrganizationWithProject({
       userId: outsiderId,
@@ -1466,10 +1144,7 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
       projectName: "Only project",
       projectSlug: "only-project",
     });
-    const [onlyScope] = await db
-      .select({ organizationId: workspaces.organizationId })
-      .from(workspaces)
-      .where(eq(workspaces.id, onlyProject.id));
+    const [onlyScope] = await db.select({ organizationId: workspaces.organizationId }).from(workspaces).where(eq(workspaces.id, onlyProject.id));
     organizationIds.push(onlyScope.organizationId);
     await expect(
       deleteOrganization({
@@ -1544,11 +1219,7 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
       projectName: "External",
       projectSlug: "external",
     });
-    const [otherScope] = await db
-      .select({ organizationId: workspaces.organizationId })
-      .from(workspaces)
-      .where(eq(workspaces.id, otherProject.id))
-      .limit(1);
+    const [otherScope] = await db.select({ organizationId: workspaces.organizationId }).from(workspaces).where(eq(workspaces.id, otherProject.id)).limit(1);
     organizationIds.push(otherScope.organizationId);
 
     const externalTeam = await createTeam({
@@ -1596,13 +1267,7 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
       .select({ id: roleBindings.id })
       .from(roleBindings)
       .innerJoin(roles, eq(roleBindings.roleId, roles.id))
-      .where(
-        and(
-          eq(roles.name, "organization.owner"),
-          eq(roleBindings.resourceType, "organization"),
-          eq(roleBindings.resourceId, organizationId),
-        ),
-      )
+      .where(and(eq(roles.name, "organization.owner"), eq(roleBindings.resourceType, "organization"), eq(roleBindings.resourceId, organizationId)))
       .limit(1);
 
     await expect(

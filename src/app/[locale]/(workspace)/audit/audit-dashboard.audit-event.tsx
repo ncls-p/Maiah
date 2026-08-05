@@ -1,33 +1,27 @@
 "use client";
 
 import {
-  BanIcon,
-  CalendarRangeIcon,
-  CheckCircle2Icon,
-  ClipboardListIcon,
-  DownloadIcon,
-  FilterIcon,
-  RotateCcwIcon,
-  ShieldAlertIcon,
-  UserIcon,
-  XCircleIcon,
+BanIcon,
+CalendarRangeIcon,
+CheckCircle2Icon,
+DownloadIcon,
+FilterIcon,
+RotateCcwIcon,
+ShieldAlertIcon,
+XCircleIcon
 } from "lucide-react";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+Select,
+SelectContent,
+SelectItem,
+SelectTrigger,
+SelectValue,
 } from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
-import { StatCard } from "@/components/ui/stat-card";
-import { cn } from "@/lib/utils";
 
 export interface AuditEvent {
   id: string;

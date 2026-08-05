@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
 import type { AuthContext } from "@/modules/auth/resolve-auth";
+import { describe,expect,it,vi } from "vitest";
 
 const createMockSession = () => ({
   session: {
@@ -37,12 +37,12 @@ vi.mock("next/headers", () => ({
   headers: vi.fn(),
 }));
 
+import * as apiKeyMod from "@/modules/api-keys/use-cases";
 import {
-  resolveAuthContext,
-  getActorUserId,
+getActorUserId,
+resolveAuthContext,
 } from "@/modules/auth/resolve-auth";
 import * as sessionMod from "@/modules/auth/session";
-import * as apiKeyMod from "@/modules/api-keys/use-cases";
 import * as headersMod from "next/headers";
 
 describe("resolveAuthContext", () => {

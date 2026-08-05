@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach,describe,expect,it,vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   select: vi.fn(),
@@ -22,8 +22,8 @@ vi.mock("@/modules/chat/attachments", async (importOriginal) => {
 });
 
 import {
-  loadConversationHistory,
-  mergeHistoryWithAttachmentMessages,
+loadConversationHistory,
+mergeHistoryWithAttachmentMessages,
 } from "@/app/api/workspace/[agentId]/chat/route-history";
 
 function selectRows(rows: unknown[]) {

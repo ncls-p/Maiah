@@ -1,11 +1,11 @@
 import type { UIMessage } from "ai";
 
 import type {
-  ChatCitation,
-  ChatMessage,
-  ChatMessagePart,
-  CodeWorkspaceArtifact,
-  PendingToolApproval,
+ChatCitation,
+ChatMessage,
+ChatMessagePart,
+CodeWorkspaceArtifact,
+PendingToolApproval,
 } from "@/components/chat/chat-types";
 import { parseToolPart } from "@/components/chat/chat-types";
 

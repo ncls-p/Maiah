@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach,describe,expect,it,vi } from "vitest";
 
 // ─── DB mock ────────────────────────────────────────────────────────────
 
@@ -37,10 +37,10 @@ vi.mock("@/lib/logger", () => ({
   },
 }));
 
+import { logHandledError } from "@/lib/logger";
+import { audit } from "@/server/domain/services/audit";
 import * as _dbModule from "@/server/infrastructure/db";
 const dbModule = _dbModule as unknown as DbModule;
-import { audit } from "@/server/domain/services/audit";
-import { logHandledError } from "@/lib/logger";
 
 beforeEach(() => {
   vi.clearAllMocks();

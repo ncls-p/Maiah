@@ -1,15 +1,15 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest,NextResponse } from "next/server";
 import { z } from "zod";
 
 import {
-  handleRoute,
-  requireResourcePermissionAsync,
+handleRoute,
+requireResourcePermissionAsync,
 } from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
 import {
-  archiveToolConnection,
-  toSafeToolConnection,
-  updateToolConnection,
+archiveToolConnection,
+toSafeToolConnection,
+updateToolConnection,
 } from "@/modules/tool-connections/use-cases";
 
 const jsonRecordSchema = z.record(z.string(), z.unknown());

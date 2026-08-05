@@ -1,24 +1,23 @@
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
 import {
-  handleRoute,
-  requireResourcePermissionAsync,
+handleRoute,
+requireResourcePermissionAsync,
 } from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
 import {
-  getKnowledgeBase,
-  ingestTextDocument,
-  listDocuments,
-} from "@/modules/knowledge/use-cases";
+assembleDocumentUpload,
+parseChunkMetadata,
+parseCompletionMetadata,
+storeDocumentUploadChunk,
+} from "@/modules/document-upload/server";
 import { extractKnowledgeUploads } from "@/modules/knowledge/file-ingestion";
 import { getDefaultRagConfig } from "@/modules/knowledge/rag-config";
 import { parseRagConfig } from "@/modules/knowledge/rag-config-schema";
 import {
-  assembleDocumentUpload,
-  parseChunkMetadata,
-  parseCompletionMetadata,
-  storeDocumentUploadChunk,
-} from "@/modules/document-upload/server";
+getKnowledgeBase,
+ingestTextDocument
+} from "@/modules/knowledge/use-cases";
+import { NextRequest,NextResponse } from "next/server";
+import { z } from "zod";
 import { createSchema } from "./route.create-schema";
 
 

@@ -1,14 +1,14 @@
 "use client";
 
-import { useState } from "react";
-import { LockIcon, UnlockIcon, UserPlusIcon } from "lucide-react";
+import { LockIcon,UnlockIcon,UserPlusIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import {
-  SettingsMetricRow,
-  SettingsSection,
-  SettingsStatusBadge,
+SettingsMetricRow,
+SettingsSection,
+SettingsStatusBadge,
 } from "@/components/admin/settings-panel";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";

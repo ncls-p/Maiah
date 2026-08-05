@@ -1,12 +1,12 @@
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { beforeAll,describe,expect,it,vi } from "vitest";
 
 // ─── lib/copy-defaults.ts ──────────────────────────────────────────────
 
 import {
-  DEFAULT_SYSTEM_PROMPT,
-  FALLBACK_SYSTEM_PROMPT_EN,
-  FALLBACK_SYSTEM_PROMPT_FR,
-  fallbackSystemPrompt,
+DEFAULT_SYSTEM_PROMPT,
+FALLBACK_SYSTEM_PROMPT_EN,
+FALLBACK_SYSTEM_PROMPT_FR,
+fallbackSystemPrompt,
 } from "@/lib/copy-defaults";
 
 describe("copy-defaults", () => {
@@ -134,14 +134,14 @@ describe("logger", () => {
 // ─── lib/workspace-nav.ts (pure parts) ────────────────────────────────
 
 import {
-  getRouteBreadcrumbs,
-  getRouteTitleKey,
-  isNavItemActive,
-  primaryNavItems,
-  capabilitiesNavItems,
-  advancedCapabilityNavItems,
-  configNavItems,
-  adminNavItems,
+adminNavItems,
+advancedCapabilityNavItems,
+capabilitiesNavItems,
+configNavItems,
+getRouteBreadcrumbs,
+getRouteTitleKey,
+isNavItemActive,
+primaryNavItems,
 } from "@/lib/workspace-nav";
 
 describe("workspace-nav pure functions", () => {

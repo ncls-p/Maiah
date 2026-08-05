@@ -1,4 +1,4 @@
-import type { Agent, AgentForm } from "./types";
+import type { Agent,AgentForm } from "./types";
 import { defaultGenParams } from "./types";
 
 export type AgentVersionPayload = {

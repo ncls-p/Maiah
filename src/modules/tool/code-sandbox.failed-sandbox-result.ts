@@ -1,25 +1,19 @@
 import { existsSync } from "node:fs";
-import http from "node:http";
 import path from "node:path";
 
 import { env } from "@/lib/env";
-import { logger, logHandledWarning } from "@/lib/logger";
 import { isPathTraversal } from "@/lib/path-utils";
 import {
-  createChatAttachment,
-  getChatAttachmentBytes,
-  getChatAttachmentExtractedText,
-  isChatFileAttachment,
-  type ChatAttachment,
+type ChatAttachment
 } from "@/modules/chat/attachments";
 import {
-  CodeSandboxRequest,
-  CodeSandboxResult,
-  defaultSocketPath,
-  localDevSocketPath,
-  maxSandboxInputFileBytes,
-  maxSandboxInputFiles,
-  maxSandboxInputTotalBytes,
+CodeSandboxRequest,
+CodeSandboxResult,
+defaultSocketPath,
+localDevSocketPath,
+maxSandboxInputFileBytes,
+maxSandboxInputFiles,
+maxSandboxInputTotalBytes,
 } from "./code-sandbox.code-sandbox-output-file";
 
 export function failedSandboxResult(

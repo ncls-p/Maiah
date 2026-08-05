@@ -1,7 +1,7 @@
+import { BrainIcon,ServerIcon,ZapIcon } from "lucide-react";
 import type { ReactNode } from "react";
-import { BrainIcon, ServerIcon, ZapIcon } from "lucide-react";
 
-import type { McpServer, McpTool, ToolBindingState } from "./types";
+import type { McpServer,McpTool,ToolBindingState } from "./types";
 
 /* ─── Provider icon ───────────────────────────────────────────────── */
 

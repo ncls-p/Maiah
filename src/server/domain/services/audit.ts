@@ -1,6 +1,6 @@
+import { logHandledError } from "@/lib/logger";
 import { db } from "@/server/infrastructure/db";
 import { auditEvents } from "@/server/infrastructure/db/schema";
-import { logHandledError } from "@/lib/logger";
 
 export interface AuditEventInput {
   organizationId?: string;

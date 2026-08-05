@@ -2,12 +2,12 @@ import { useCurrentFrame } from "remotion";
 
 import { ProductWindow } from "../components/ProductWindow";
 import {
-	Hairline,
-	SceneLabel,
-	SceneLayer,
-	StatusPill,
+Hairline,
+SceneLabel,
+SceneLayer,
+StatusPill,
 } from "../components/VisualSystem";
-import { COLORS, DISPLAY_FONT, rise } from "../theme";
+import { COLORS,DISPLAY_FONT,rise } from "../theme";
 
 export function ChatScene({ duration }: { duration: number }) {
 	const frame = useCurrentFrame();

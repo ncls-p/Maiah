@@ -1,17 +1,17 @@
 import type { LucideIcon } from "lucide-react";
 import {
-	CheckIcon,
-	FingerprintIcon,
-	KeyRoundIcon,
-	LockKeyholeIcon,
-	ScrollTextIcon,
-	ShieldCheckIcon,
-	UsersRoundIcon,
+CheckIcon,
+FingerprintIcon,
+KeyRoundIcon,
+LockKeyholeIcon,
+ScrollTextIcon,
+ShieldCheckIcon,
+UsersRoundIcon,
 } from "lucide-react";
-import { interpolate, useCurrentFrame } from "remotion";
+import { interpolate,useCurrentFrame } from "remotion";
 
-import { Hairline, SceneLabel, SceneLayer } from "../components/VisualSystem";
-import { COLORS, DISPLAY_FONT, progress, rise } from "../theme";
+import { Hairline,SceneLabel,SceneLayer } from "../components/VisualSystem";
+import { COLORS,DISPLAY_FONT,progress,rise } from "../theme";
 
 const controls: Array<{
 	title: string;

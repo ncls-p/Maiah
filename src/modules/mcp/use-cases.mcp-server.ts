@@ -1,12 +1,7 @@
-import { and, eq, isNull, sql } from "drizzle-orm";
-import { decryptValue, encryptValue } from "@/lib/crypto";
+import { decryptValue,encryptValue } from "@/lib/crypto";
 import { inferMcpAuthHint } from "@/modules/mcp/auth-hint";
-import { listRemoteMcpTools } from "@/modules/mcp/client";
-import { logger } from "@/lib/logger";
-import { audit } from "@/server/domain/services/audit";
 import { authorization } from "@/server/domain/services/authorization";
-import { db } from "@/server/infrastructure/db";
-import { mcpServers, mcpTools } from "@/server/infrastructure/db/schema";
+import { mcpServers } from "@/server/infrastructure/db/schema";
 
 export type McpServer = typeof mcpServers.$inferSelect;
 
