@@ -1,4 +1,4 @@
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog,DialogContent,DialogDescription,DialogHeader,DialogTitle } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
 import type { KnowledgePageViewModel } from "./page.knowledge-page.view";
 export function KnowledgeMainSection3({ model }: { model: KnowledgePageViewModel }) {

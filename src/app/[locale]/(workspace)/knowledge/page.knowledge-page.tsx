@@ -5,13 +5,13 @@ import { Button } from "@/components/ui/button";
 import { WorkspacePage } from "@/components/workspace-page";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { fetchWorkspacePermissions } from "@/lib/api-client";
-import { uploadDocumentInChunks } from "@/modules/document-upload/chunked-upload";
 import { DEFAULT_RAG_CONFIG, type RagConfig } from "@/modules/knowledge/rag-config-schema";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useRef, useState, type DragEvent } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { DocumentPreview, DocumentRow, KnowledgeAgent, KnowledgeBase, RagModelOption, SearchResult, cloneRagConfig } from "./page.knowledge-base";
 import { KnowledgePageView } from "./page.knowledge-page.view";
+import { useKnowledgeDocumentIngestion } from "./page.use-document-ingestion";
 
 export function useKnowledgePageController() {
   const t = useTranslations("knowledge");
@@ -40,16 +40,7 @@ export function useKnowledgePageController() {
   const [defaultRagConfig, setDefaultRagConfig] = useState(() => cloneRagConfig(DEFAULT_RAG_CONFIG));
   const [ragModels, setRagModels] = useState<RagModelOption[]>([]);
   const [discoveringRagModels, setDiscoveringRagModels] = useState(true);
-  const [docForm, setDocForm] = useState({ title: "", content: "" });
   const [query, setQuery] = useState("");
-  const [dragActive, setDragActive] = useState(false);
-  const documentInputRef = useRef<HTMLInputElement>(null);
-  const folderInputRef = useRef<HTMLInputElement>(null);
-  const [uploadingCount, setUploadingCount] = useState(0);
-  const [lastUpload, setLastUpload] = useState<{
-    accepted: number;
-    rejected: Array<{ title: string; error: string }>;
-  } | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editingBase, setEditingBase] = useState<KnowledgeBase | null>(null);
   const [editBaseForm, setEditBaseForm] = useState({
@@ -69,6 +60,8 @@ export function useKnowledgePageController() {
   const [canManageTenantGlobals, setCanManageTenantGlobals] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<{ kind: "base"; id: string; name: string } | { kind: "document"; id: string; name: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const selectedBase = bases.find((base) => base.id === selectedId) ?? null;
+  const selectedBaseCanEdit = Boolean(canManageKnowledgeBases && selectedBase?.canEdit);
 
   const loadBases = useCallback(async () => {
     if (!workspaceId) return;
@@ -100,6 +93,8 @@ export function useKnowledgePageController() {
     if (!res.ok) throw new Error("Failed to load documents");
     setDocuments(await res.json());
   }, [workspaceId, selectedId]);
+
+  const { docForm, setDocForm, dragActive, setDragActive, documentInputRef, folderInputRef, uploadingCount, lastUpload, ingestFromContent, handleFileDrop, ingestSelectedFiles } = useKnowledgeDocumentIngestion({ workspaceId, selectedId, selectedBaseCanEdit, loadDocuments });
 
   async function openAttachDialog() {
     const canAttachKnowledgeBase = Boolean(selectedBaseCanEdit && workspaceId && selectedId);
@@ -155,90 +150,6 @@ export function useKnowledgePageController() {
     } finally {
       setAttachingAgentId(null);
     }
-  }
-
-  async function ingestFromContent(title: string, content: string) {
-    const trimmedTitle = title.trim();
-    const trimmedContent = content.trim();
-    const canIngestContent = Boolean(selectedBaseCanEdit && workspaceId && selectedId && trimmedTitle && trimmedContent);
-    if (!canIngestContent) return;
-    const res = await fetch(`/api/workspace/knowledge-bases/${selectedId}/documents`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        workspaceId,
-        title: trimmedTitle,
-        content,
-      }),
-    });
-    if (!res.ok) return toast.error(t("errorIngest"));
-    setDocForm({ title: "", content: "" });
-    await loadDocuments();
-    toast.success(t("toastDocumentQueued"));
-  }
-
-  async function ingestFiles(files: File[]) {
-    if (!selectedBaseCanEdit || !workspaceId || !selectedId || files.length === 0) return;
-    setUploadingCount(files.length);
-    setLastUpload(null);
-    try {
-      type UploadResult = {
-        documents?: DocumentRow[];
-        rejected?: Array<{ title: string; error: string }>;
-        error?: string;
-      };
-      const results: UploadResult[] = [];
-      let nextFileIndex = 0;
-      const worker = async () => {
-        while (nextFileIndex < files.length) {
-          const file = files[nextFileIndex++];
-          try {
-            results.push(
-              await uploadDocumentInChunks<UploadResult>({
-                workspaceId,
-                file,
-                chunkUrl: `/api/workspace/knowledge-bases/${selectedId}/documents?uploadPhase=chunk`,
-                completeUrl: `/api/workspace/knowledge-bases/${selectedId}/documents?uploadPhase=complete`,
-                completeMetadata: {
-                  fileName: file.webkitRelativePath || file.name,
-                },
-              }),
-            );
-          } catch (error) {
-            results.push({
-              rejected: [
-                {
-                  title: file.webkitRelativePath || file.name,
-                  error: error instanceof Error ? error.message : t("errorIngest"),
-                },
-              ],
-            });
-          } finally {
-            setUploadingCount((current) => Math.max(0, current - 1));
-          }
-        }
-      };
-      await Promise.all(Array.from({ length: Math.min(3, files.length) }, () => worker()));
-      const accepted = results.reduce((sum, result) => sum + (result.documents?.length ?? 0), 0);
-      const rejected = results.flatMap((result) => result.rejected ?? []);
-      setLastUpload({ accepted, rejected });
-      await loadDocuments();
-      toast.success(t("toastBatchQueued", { accepted, rejected: rejected.length }));
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t("errorIngest"));
-    } finally {
-      setUploadingCount(0);
-    }
-  }
-
-  function handleFileDrop(event: DragEvent<HTMLDivElement>) {
-    event.preventDefault();
-    setDragActive(false);
-    void ingestFiles(Array.from(event.dataTransfer.files));
-  }
-
-  function ingestSelectedFiles(files: FileList | null) {
-    void ingestFiles(files ? Array.from(files) : []);
   }
 
   useEffect(() => {
@@ -488,8 +399,6 @@ export function useKnowledgePageController() {
     return <PageLoading label={tCommon("loading")} />;
   }
 
-  const selectedBase = bases.find((base) => base.id === selectedId) ?? null;
-  const selectedBaseCanEdit = Boolean(canManageKnowledgeBases && selectedBase?.canEdit);
   const documentCounts = documents.reduce(
     (counts, document) => {
       if (document.status === "ready") counts.ready += 1;

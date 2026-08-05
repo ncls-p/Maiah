@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { PencilIcon, Trash2Icon } from "lucide-react";
+import { PencilIcon,Trash2Icon } from "lucide-react";
 import type { KnowledgePageViewModel } from "./page.knowledge-page.view";
 export function KnowledgeMainSection5({ model }: { model: KnowledgePageViewModel }) {
   const { bases, canManageKnowledgeBases, selectedId, setEditBaseForm, setEditingBase, setPendingDelete, setSelectedId, t } = model;

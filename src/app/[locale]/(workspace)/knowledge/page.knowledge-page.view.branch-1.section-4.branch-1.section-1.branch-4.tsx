@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { Loader2, UploadIcon } from "lucide-react";
+import { Loader2,UploadIcon } from "lucide-react";
 import type { KnowledgePageViewModel } from "./page.knowledge-page.view";
 export function KnowledgeDocumentTableBranch4({ model }: { model: KnowledgePageViewModel }) {
   const { docForm, documentInputRef, documents, dragActive, folderInputRef, handleFileDrop, ingestDocument, ingestSelectedFiles, lastUpload, selectedId, setDocForm, setDragActive, t, uploadingCount } = model;

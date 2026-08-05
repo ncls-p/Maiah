@@ -2,9 +2,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { ChevronLeftIcon, ChevronRightIcon, EyeIcon, FileTextIcon, RefreshCwIcon, SearchIcon, Trash2Icon } from "lucide-react";
+import { ChevronLeftIcon,ChevronRightIcon,EyeIcon,FileTextIcon,RefreshCwIcon,SearchIcon,Trash2Icon } from "lucide-react";
 import type { KnowledgePageViewModel } from "./page.knowledge-page.view";
-import { statusLabel, statusVariant } from "./page.status-variant";
+import { statusLabel,statusVariant } from "./page.status-variant";
 export function KnowledgeDocumentTableBranch1({ model }: { model: KnowledgePageViewModel }) {
   const { documentCounts, documentFilter, documentPageCount, documentSearch, documents, filteredDocuments, openDocumentPreview, retryDocument, safeDocumentPage, selectedBaseCanEdit, setDocumentFilter, setDocumentPage, setDocumentSearch, setPendingDelete, t, visibleDocuments } = model;
   return (

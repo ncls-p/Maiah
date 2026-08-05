@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { BookOpenIcon, PlusIcon } from "lucide-react";
+import { BookOpenIcon,PlusIcon } from "lucide-react";
 import type { KnowledgePageViewModel } from "./page.knowledge-page.view";
 export function KnowledgePageBranch2({ model }: { model: KnowledgePageViewModel }) {
   const { canManageKnowledgeBases, setShowCreateDialog, t } = model;

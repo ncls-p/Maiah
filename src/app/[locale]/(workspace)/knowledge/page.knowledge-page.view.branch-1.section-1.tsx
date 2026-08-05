@@ -1,6 +1,6 @@
 import { ModelLogo } from "@/components/providers/model-logo";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog,DialogContent,DialogDescription,DialogFooter,DialogHeader,DialogTitle } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
 import type { KnowledgePageViewModel } from "./page.knowledge-page.view";
 export function KnowledgeMainSection1({ model }: { model: KnowledgePageViewModel }) {
