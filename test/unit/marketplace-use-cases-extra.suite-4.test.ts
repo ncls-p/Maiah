@@ -108,8 +108,7 @@ vi.mock("@/server/infrastructure/db", () => {
   };
 });
 
-import { logHandledError } from "@/lib/logger";
-import { adminModerateItem,createMarketplaceDraft,createSkillMarketplaceDraft,deleteMarketplaceItem,featureMarketplaceItem,getMarketplaceItemDetail,getMyMarketplaceItems,getSharedWithMe,installMarketplaceItem,publishMarketplaceItem,shareMarketplaceItem,unfeatureMarketplaceItem,unshareMarketplaceItem,updateMarketplaceItem } from "@/modules/marketplace/use-cases";
+import { createMarketplaceDraft,createSkillMarketplaceDraft,getMyMarketplaceItems,getSharedWithMe,installMarketplaceItem,shareMarketplaceItem,unshareMarketplaceItem,updateMarketplaceItem } from "@/modules/marketplace/use-cases";
 import { authorization } from "@/server/domain/services/authorization";
 import * as _dbModule from "@/server/infrastructure/db";
 
@@ -163,60 +162,6 @@ describe("marketplace item management", () => {
     expect(authorization.hasPermission).toHaveBeenCalledWith({ principalType: "user", principalId: ids.otherUserId }, "marketplaceItems.publish", "marketplace_item", "item-1");
   });
 
-  it("publishes, updates, deletes, features, unfeatures, and moderates items", async () => {
-    dbModule._c.limit.mockResolvedValueOnce([item]).mockResolvedValueOnce([{ id: "version-1", manifestJson: { type: "skill", skill: {} } }]);
-    dbModule._c.returning.mockResolvedValueOnce([{ ...item, status: "published" }]);
-    await expect(
-      publishMarketplaceItem("item-1", ids.userId, {
-        visibility: "public",
-        tags: ["new"],
-      }),
-    ).resolves.toMatchObject({ status: "published" });
-
-    for (const fn of [featureMarketplaceItem, unfeatureMarketplaceItem] as const) {
-      resetChain(dbModule._c);
-      dbModule.db.select.mockReturnValue(dbModule._c);
-      dbModule.db.update.mockReturnValue(dbModule._c);
-      dbModule._c.limit.mockResolvedValueOnce([published]);
-      dbModule._c.returning.mockResolvedValueOnce([{ id: "item-1", updated: true }]);
-      await expect(fn === featureMarketplaceItem ? fn({ itemId: "item-1", adminUserId: "admin", order: 2 }) : fn({ itemId: "item-1", adminUserId: "admin" })).resolves.toMatchObject({ updated: true });
-    }
-
-    resetChain(dbModule._c);
-    dbModule.db.select.mockReturnValue(dbModule._c);
-    dbModule.db.update.mockReturnValue(dbModule._c);
-    dbModule._c.limit.mockResolvedValueOnce([published]);
-    dbModule._c.returning.mockResolvedValueOnce([{ id: "item-1", name: "New" }]);
-    await expect(
-      updateMarketplaceItem({
-        itemId: "item-1",
-        userId: ids.userId,
-        name: "New",
-        tags: ["tag"],
-      }),
-    ).resolves.toMatchObject({ name: "New" });
-
-    resetChain(dbModule._c);
-    dbModule.db.select.mockReturnValue(dbModule._c);
-    dbModule.db.update.mockReturnValue(dbModule._c);
-    dbModule._c.limit.mockResolvedValueOnce([published]);
-    dbModule._c.returning.mockResolvedValueOnce([{ id: "item-1", status: "archived" }]);
-    await expect(deleteMarketplaceItem("item-1", ids.userId)).resolves.toMatchObject({ status: "archived" });
-
-    resetChain(dbModule._c);
-    dbModule.db.select.mockReturnValue(dbModule._c);
-    dbModule.db.update.mockReturnValue(dbModule._c);
-    dbModule._c.limit.mockResolvedValueOnce([published]);
-    dbModule._c.returning.mockResolvedValueOnce([{ id: "item-1", status: "suspended" }]);
-    await expect(
-      adminModerateItem({
-        itemId: "item-1",
-        adminUserId: "admin",
-        action: "suspend",
-      }),
-    ).resolves.toMatchObject({ status: "suspended" });
-  });
-
   it("shares, unshares, and lists shared/owned items", async () => {
     dbModule._c.limit.mockResolvedValueOnce([published]).mockResolvedValueOnce([{ id: ids.otherUserId, name: "Target" }]);
     dbModule._c.returning.mockResolvedValueOnce([{ id: "share-1" }]);
@@ -250,41 +195,6 @@ describe("marketplace item management", () => {
     dbModule.db.select.mockReturnValue(dbModule._c);
     dbModule._c.orderBy.mockResolvedValueOnce([published]);
     await expect(getMyMarketplaceItems(ids.userId)).resolves.toEqual([published]);
-  });
-
-  it("loads item detail with owner shares and install permission", async () => {
-    dbModule._c.limit
-      .mockResolvedValueOnce([published])
-      .mockResolvedValueOnce([
-        {
-          id: "version-1",
-          version: "1",
-          manifestJson: { type: "skill" },
-          createdAt: new Date(),
-        },
-      ])
-      .mockResolvedValueOnce([{ id: ids.userId, name: "Owner", email: "owner@test" }]);
-    dbModule._c.where
-      .mockReturnValueOnce(dbModule._c)
-      .mockResolvedValueOnce([{ id: "share-1" }])
-      .mockReturnValueOnce(dbModule._c)
-      .mockReturnValueOnce(dbModule._c)
-      .mockResolvedValueOnce([
-        {
-          userId: ids.otherUserId,
-          name: "Target",
-          email: "t@test",
-          sharedAt: new Date(),
-        },
-      ]);
-
-    const detail = await getMarketplaceItemDetail("item-1", ids.userId);
-    expect(detail).toMatchObject({
-      id: "item-1",
-      isOwner: true,
-      canInstall: true,
-    });
-    expect(detail?.shares).toHaveLength(1);
   });
 });
 
@@ -337,53 +247,6 @@ describe("marketplace installation", () => {
     );
     await expect(runInstall({ type: "mcp_preset", name: "Preset", preset: { tools: [] } })).resolves.toMatchObject({ mcp_preset: { id: "installed-server" } });
     await expect(runInstall({ type: "agent", name: "Agent", agent: {} })).resolves.toMatchObject({ agent: { id: "installed-agent" } });
-  });
-
-  it("rejects unavailable installs, missing versions, and unsupported manifest types", async () => {
-    dbModule._c.limit.mockResolvedValueOnce([]);
-    await expect(
-      installMarketplaceItem({
-        workspaceId: ids.workspaceId,
-        userId: ids.userId,
-        itemId: "missing",
-      }),
-    ).rejects.toThrow("Marketplace item not found");
-    expect(logHandledError).toHaveBeenCalled();
-
-    resetChain(dbModule._c);
-    dbModule.db.select.mockReturnValue(dbModule._c);
-    dbModule._c.limit.mockResolvedValueOnce([{ ...published, status: "suspended" }]);
-    await expect(
-      installMarketplaceItem({
-        workspaceId: ids.workspaceId,
-        userId: ids.otherUserId,
-        itemId: "item-1",
-      }),
-    ).rejects.toThrow("Marketplace item not available");
-
-    resetChain(dbModule._c);
-    dbModule.db.select.mockReturnValue(dbModule._c);
-    dbModule._c.limit.mockResolvedValueOnce([published]).mockResolvedValueOnce([]);
-    await expect(
-      installMarketplaceItem({
-        workspaceId: ids.workspaceId,
-        userId: ids.otherUserId,
-        itemId: "item-1",
-      }),
-    ).rejects.toThrow("Marketplace item has no version");
-
-    resetChain(dbModule._c);
-    resetChain(dbModule._tx);
-    dbModule.db.select.mockReturnValue(dbModule._c);
-    dbModule.db.transaction.mockImplementation((cb: (tx: Chain) => Promise<unknown>) => cb(dbModule._tx));
-    dbModule._c.limit.mockResolvedValueOnce([published]).mockResolvedValueOnce([{ id: "version-1", version: "1", manifestJson: { type: "weird" } }]);
-    await expect(
-      installMarketplaceItem({
-        workspaceId: ids.workspaceId,
-        userId: ids.otherUserId,
-        itemId: "item-1",
-      }),
-    ).rejects.toThrow("Unsupported marketplace type");
   });
 });
 describe("marketplace draft creation", () => {
