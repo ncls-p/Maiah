@@ -1197,14 +1197,12 @@ export async function executeResourceTransfer(input: {
           .onConflictDoNothing();
       }
       if (workspaceBindings.length > 0) {
-        await tx
-          .delete(roleBindings)
-          .where(
-            inArray(
-              roleBindings.id,
-              workspaceBindings.map(({ id }) => id),
-            ),
-          );
+        await tx.delete(roleBindings).where(
+          inArray(
+            roleBindings.id,
+            workspaceBindings.map(({ id }) => id),
+          ),
+        );
       }
       for (const { userId } of projectMemberRows) {
         if (crossOrganization) {

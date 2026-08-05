@@ -1,0 +1,208 @@
+import { createHash, randomUUID } from "node:crypto";
+
+import { and, asc, count, eq, inArray, isNull } from "drizzle-orm";
+
+import { audit } from "@/server/domain/services/audit";
+import { authorization } from "@/server/domain/services/authorization";
+import { db } from "@/server/infrastructure/db";
+import {
+  agents,
+  aiProviders,
+  agentSkills,
+  conversations,
+  customTools,
+  knowledgeBases,
+  mcpServers,
+  organizationBuiltinToolPolicies,
+  organizationMembers,
+  organizations,
+  roleBindings,
+  roles,
+  scheduledTasks,
+  teamMembers,
+  teams,
+  toolConnections,
+  workflows,
+  workspaceMembers,
+  workspaces,
+} from "@/server/infrastructure/db/schema";
+import { getWorkspacesByUserId } from "@/modules/workspace/use-cases";
+
+import { IamOperationError } from "./use-cases";
+import { cloneWorkspaceConfiguration } from "./workspace-clone";
+
+export type OrganizationTransferDestination = {
+  organizationId: string;
+  organizationName: string;
+  workspaceId: string;
+  workspaceName: string;
+};
+
+export type OrganizationTransferPreview = {
+  source: {
+    organizationId: string;
+    organizationName: string;
+  };
+  destination: OrganizationTransferDestination;
+  counts: {
+    projects: number;
+    members: number;
+    teams: number;
+    roles: number;
+    resources: number;
+  };
+  conflictResolutions: Array<{
+    resourceType: "project" | "team" | "role";
+    resourceId: string;
+    label: string;
+    from: string;
+    to: string;
+  }>;
+  blockers: string[];
+  warnings: string[];
+  confirmationToken: string;
+};
+
+export async function scopeForWorkspace(workspaceId: string) {
+  const [scope] = await db
+    .select({
+      workspaceId: workspaces.id,
+      workspaceName: workspaces.name,
+      organizationId: organizations.id,
+      organizationName: organizations.name,
+    })
+    .from(workspaces)
+    .innerJoin(organizations, eq(workspaces.organizationId, organizations.id))
+    .where(and(eq(workspaces.id, workspaceId), isNull(workspaces.archivedAt)))
+    .limit(1);
+  if (!scope) throw new IamOperationError("Project not found", 404);
+  return scope;
+}
+
+async function hasPermission(
+  userId: string,
+  permission: string,
+  resourceType: "organization" | "workspace",
+  resourceId: string,
+) {
+  return (
+    await authorization.checkPermission(
+      { principalType: "user", principalId: userId },
+      permission,
+      resourceType,
+      resourceId,
+    )
+  ).granted;
+}
+
+export async function requireOrganizationTransferPermissions(input: {
+  actorUserId: string;
+  sourceWorkspaceId: string;
+  sourceOrganizationId: string;
+  targetWorkspaceId: string;
+  targetOrganizationId: string;
+}) {
+  const checks = await Promise.all([
+    hasPermission(
+      input.actorUserId,
+      "roles.manage",
+      "workspace",
+      input.sourceWorkspaceId,
+    ),
+    hasPermission(
+      input.actorUserId,
+      "members.manage",
+      "organization",
+      input.sourceOrganizationId,
+    ),
+    hasPermission(
+      input.actorUserId,
+      "roles.manage",
+      "workspace",
+      input.targetWorkspaceId,
+    ),
+    hasPermission(
+      input.actorUserId,
+      "members.manage",
+      "organization",
+      input.targetOrganizationId,
+    ),
+  ]);
+  if (checks.some((allowed) => !allowed)) {
+    throw new IamOperationError(
+      "You need organization and project access administration rights on both sides",
+      403,
+    );
+  }
+}
+
+export async function listOrganizationTransferDestinations(input: {
+  actorUserId: string;
+  sourceWorkspaceId: string;
+}) {
+  const source = await scopeForWorkspace(input.sourceWorkspaceId);
+  const candidates = await getWorkspacesByUserId(input.actorUserId);
+  const byOrganization = new Map<string, OrganizationTransferDestination>();
+  for (const { workspace, organization } of candidates) {
+    if (
+      organization.id === source.organizationId ||
+      byOrganization.has(organization.id)
+    ) {
+      continue;
+    }
+    const allowed = await Promise.all([
+      hasPermission(
+        input.actorUserId,
+        "roles.manage",
+        "workspace",
+        workspace.id,
+      ),
+      hasPermission(
+        input.actorUserId,
+        "members.manage",
+        "organization",
+        organization.id,
+      ),
+    ]);
+    if (allowed.every(Boolean)) {
+      byOrganization.set(organization.id, {
+        organizationId: organization.id,
+        organizationName: organization.name,
+        workspaceId: workspace.id,
+        workspaceName: workspace.name,
+      });
+    }
+  }
+  return [...byOrganization.values()].sort((a, b) =>
+    a.organizationName.localeCompare(b.organizationName),
+  );
+}
+
+export function transferFingerprint(input: {
+  sourceOrganizationId: string;
+  targetOrganizationId: string;
+  counts: OrganizationTransferPreview["counts"];
+  blockers: string[];
+  conflictResolutions: OrganizationTransferPreview["conflictResolutions"];
+}) {
+  return createHash("sha256")
+    .update(
+      JSON.stringify({
+        sourceOrganizationId: input.sourceOrganizationId,
+        targetOrganizationId: input.targetOrganizationId,
+        counts: input.counts,
+        blockers: [...input.blockers].sort(),
+        conflictResolutions: [...input.conflictResolutions].sort((a, b) =>
+          `${a.resourceType}:${a.resourceId}`.localeCompare(
+            `${b.resourceType}:${b.resourceId}`,
+          ),
+        ),
+      }),
+    )
+    .digest("hex");
+}
+
+export function withNumericSuffix(value: string, suffix: number, maxLength: number) {
+  const ending = `-${suffix}`;
+  return `${value.slice(0, Math.max(1, maxLength - ending.length))}${ending}`;
+}

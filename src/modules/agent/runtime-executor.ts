@@ -667,7 +667,8 @@ async function executeResolvedAgent(
   let inputTokens = 0;
   let outputTokens = 0;
   let usageProvider:
-    Awaited<ReturnType<typeof resolveProviderForVersion>> | undefined;
+    | Awaited<ReturnType<typeof resolveProviderForVersion>>
+    | undefined;
   const startedAt = Date.now();
   try {
     const provider = await resolveProviderForVersion(input.resolved.version);

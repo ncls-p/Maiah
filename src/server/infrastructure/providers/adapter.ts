@@ -11,7 +11,10 @@ import type {
 import type { OpenAICompatibleApiRoute } from "@/lib/openai-compatible-api";
 
 export type ProviderKind =
-  "openai-compatible" | "dragonfly" | "vercel-ai-gateway" | "native";
+  | "openai-compatible"
+  | "dragonfly"
+  | "vercel-ai-gateway"
+  | "native";
 
 type ProviderAuthType = "bearer" | "x-api-key" | "custom-header" | "gateway";
 

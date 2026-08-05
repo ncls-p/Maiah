@@ -5,7 +5,7 @@ import { getActiveWorkspaceReservationTokens } from "@/modules/usage/quota-reser
 import { db } from "@/server/infrastructure/db";
 import { usageEvents } from "@/server/infrastructure/db/schema";
 
-export { getWorkspaceMonthlyTokenLimit } from "@/modules/usage/quota-config";
+export { getWorkspaceMonthlyTokenLimit } from "./quota-config";
 
 function startOfCurrentMonth() {
   const date = new Date();

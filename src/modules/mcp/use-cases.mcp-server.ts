@@ -1,0 +1,172 @@
+import { and, eq, isNull, sql } from "drizzle-orm";
+import { decryptValue, encryptValue } from "@/lib/crypto";
+import { inferMcpAuthHint } from "@/modules/mcp/auth-hint";
+import { listRemoteMcpTools } from "@/modules/mcp/client";
+import { logger } from "@/lib/logger";
+import { audit } from "@/server/domain/services/audit";
+import { authorization } from "@/server/domain/services/authorization";
+import { db } from "@/server/infrastructure/db";
+import { mcpServers, mcpTools } from "@/server/infrastructure/db/schema";
+
+export type McpServer = typeof mcpServers.$inferSelect;
+
+type McpTransport = McpServer["transport"];
+
+export type DiscoveredMcpTool = {
+  name: string;
+  description: string | null;
+  inputSchemaJson: Record<string, unknown> | null;
+  outputSchemaJson: Record<string, unknown> | null;
+  requireApproval: boolean;
+};
+
+export interface CreateMcpServerInput {
+  workspaceId: string;
+  userId: string;
+  name: string;
+  transport: McpTransport;
+  command?: string;
+  args?: string[];
+  url?: string;
+  requireApproval?: boolean;
+  isGlobal?: boolean;
+  headers?: Record<string, string>;
+  env?: Record<string, string>;
+}
+
+export interface UpdateMcpServerInput {
+  serverId: string;
+  workspaceId: string;
+  userId: string;
+  canManageGlobal?: boolean;
+  name?: string;
+  transport?: McpTransport;
+  url?: string;
+  command?: string;
+  args?: string[];
+  enabled?: boolean;
+  requireApproval?: boolean;
+  isGlobal?: boolean;
+  headers?: Record<string, string>;
+  env?: Record<string, string>;
+}
+
+export type McpToolDiscoveryResult = {
+  status: "healthy" | "unhealthy" | "manual";
+  discovered: number;
+};
+
+export function hasMcpConnectionChanges(input: UpdateMcpServerInput) {
+  return (
+    input.transport !== undefined ||
+    input.url !== undefined ||
+    input.command !== undefined ||
+    input.args !== undefined ||
+    input.headers !== undefined ||
+    input.env !== undefined
+  );
+}
+
+export function toSafeMcpServer(server: McpServer) {
+  return {
+    id: server.id,
+    workspaceId: server.workspaceId,
+    name: server.name,
+    transport: server.transport,
+    command: server.command,
+    argsJson: server.argsJson,
+    url: server.url,
+    enabled: server.enabled,
+    requireApproval: server.requireApproval,
+    isGlobal: server.isGlobal,
+    createdById: server.createdById,
+    healthStatus: server.healthStatus,
+    lastCheckedAt: server.lastCheckedAt,
+    createdAt: server.createdAt,
+    updatedAt: server.updatedAt,
+    hasHeaders: Boolean(server.encryptedHeadersJson),
+    hasEnv: Boolean(server.encryptedEnvJson),
+  };
+}
+
+export function toMcpServerForEdit(server: McpServer) {
+  return {
+    ...toSafeMcpServer(server),
+    authHint: inferMcpAuthHint(server),
+  };
+}
+
+export async function encryptRecord(record?: Record<string, string>) {
+  if (!record || Object.keys(record).length === 0) return null;
+  const encrypted: Record<string, string> = {};
+  for (const [key, value] of Object.entries(record)) {
+    encrypted[key] = await encryptValue(value);
+  }
+  return encrypted;
+}
+
+async function decryptRecord(
+  encrypted?: Record<string, string> | null,
+): Promise<Record<string, string>> {
+  if (!encrypted) return {};
+  const decrypted: Record<string, string> = {};
+  for (const [key, value] of Object.entries(encrypted)) {
+    decrypted[key] = await decryptValue(value);
+  }
+  return decrypted;
+}
+
+export async function mergeEncryptedRecord(
+  existing: Record<string, string> | null | undefined,
+  incoming: Record<string, string>,
+) {
+  const merged = await decryptRecord(existing ?? null);
+  for (const [key, value] of Object.entries(incoming)) {
+    if (value.trim()) {
+      merged[key] = value;
+    }
+  }
+  return encryptRecord(merged);
+}
+
+export function validateTransportConfig(
+  transport: McpTransport,
+  url: string | null,
+  command: string | null,
+) {
+  if (transport === "stdio" && !command?.trim()) {
+    throw new Error("Command is required for stdio transport");
+  }
+  if (
+    (transport === "sse" || transport === "streamable-http") &&
+    !url?.trim()
+  ) {
+    throw new Error("URL is required for remote transport");
+  }
+}
+
+export function canManageMcpServer(
+  server: McpServer,
+  userId: string,
+  canManageGlobal = false,
+) {
+  return server.createdById === userId || (server.isGlobal && canManageGlobal);
+}
+
+export async function assertCanManageMcpServer(
+  server: McpServer,
+  userId: string,
+  canManageGlobal = false,
+) {
+  if (
+    !canManageMcpServer(server, userId, canManageGlobal) &&
+    !(await authorization.hasPermission(
+      { principalType: "user", principalId: userId },
+      "mcpServers.manage",
+      "mcp_server",
+      server.id,
+    ))
+  ) {
+    throw new Error("MCP server not found");
+  }
+}
