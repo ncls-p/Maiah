@@ -1,13 +1,13 @@
-import { Building2Icon, PlusIcon } from "lucide-react";
+import { Building2Icon,PlusIcon } from "lucide-react";
 
 import { ScopeLifecycleDialog } from "@/components/iam/scope-lifecycle-dialog";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Dialog,DialogContent,DialogDescription,DialogFooter,DialogHeader,DialogTitle,DialogTrigger } from "@/components/ui/dialog";
+import { Field,FieldGroup,FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select,SelectContent,SelectGroup,SelectItem,SelectTrigger,SelectValue } from "@/components/ui/select";
 import type { AccessConsoleViewModel } from "./access-console.access-console.view";
-import { INITIAL_ORGANIZATION_FORM, INITIAL_PROJECT_FORM } from "./access-console.resource-transfer-preview";
+import { INITIAL_ORGANIZATION_FORM,INITIAL_PROJECT_FORM } from "./access-console.resource-transfer-preview";
 import { MutatingButton } from "./access-console.scope-path";
 export function AccessConsoleSection2({ model }: { model: AccessConsoleViewModel }) {
   const { canCreateProjects, canManageOrganizationLifecycle, canManageProjectLifecycle, load, mutate, organizationForm, organizationOpen, pendingAction, projectForm, projectOpen, setOrganizationForm, setOrganizationOpen, setProjectForm, setProjectOpen, setWorkspaceId, snapshot, t, workspaceId } = model;

@@ -1,9 +1,9 @@
-import { EllipsisIcon, LockKeyholeIcon, ShieldCheckIcon, Trash2Icon, UserPlusIcon } from "lucide-react";
+import { EllipsisIcon,LockKeyholeIcon,ShieldCheckIcon,Trash2Icon,UserPlusIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu,DropdownMenuContent,DropdownMenuItem,DropdownMenuLabel,DropdownMenuSeparator,DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Spinner } from "@/components/ui/spinner";
 import type { AccessConsoleViewModel } from "./access-console.access-console.view";
 import { ConfirmRemovalButton } from "./access-console.scope-path";

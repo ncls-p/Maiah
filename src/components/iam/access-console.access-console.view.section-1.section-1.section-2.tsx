@@ -1,12 +1,12 @@
-import { CopyIcon, PlusIcon, SearchIcon } from "lucide-react";
+import { CopyIcon,PlusIcon,SearchIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { CardAction, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardAction,CardDescription,CardHeader,CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Dialog,DialogContent,DialogDescription,DialogFooter,DialogHeader,DialogTitle,DialogTrigger } from "@/components/ui/dialog";
+import { Field,FieldContent,FieldDescription,FieldGroup,FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select,SelectContent,SelectGroup,SelectItem,SelectTrigger,SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { isPermissionCompatibleWithScope } from "@/modules/iam/permission-catalog";
 import type { AccessConsoleViewModel } from "./access-console.access-console.view";

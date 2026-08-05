@@ -1,9 +1,9 @@
-import { LockKeyholeIcon, PencilIcon, SearchIcon, ShieldIcon } from "lucide-react";
+import { LockKeyholeIcon,PencilIcon,SearchIcon,ShieldIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { Empty,EmptyDescription,EmptyHeader,EmptyMedia,EmptyTitle } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
 import type { AccessConsoleViewModel } from "./access-console.access-console.view";
 import { ConfirmRemovalButton } from "./access-console.scope-path";

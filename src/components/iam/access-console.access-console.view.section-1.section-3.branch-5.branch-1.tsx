@@ -1,10 +1,10 @@
-import { PlusIcon, UsersIcon } from "lucide-react";
+import { PlusIcon,UsersIcon } from "lucide-react";
 
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Alert,AlertDescription,AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog,DialogContent,DialogDescription,DialogFooter,DialogHeader,DialogTitle,DialogTrigger } from "@/components/ui/dialog";
+import { Field,FieldDescription,FieldGroup,FieldLabel } from "@/components/ui/field";
+import { Select,SelectContent,SelectGroup,SelectItem,SelectTrigger,SelectValue } from "@/components/ui/select";
 import type { AccessConsoleViewModel } from "./access-console.access-console.view";
 import { MutatingButton } from "./access-console.scope-path";
 export function AccessPeopleTransferBranch1({ model }: { model: AccessConsoleViewModel }) {

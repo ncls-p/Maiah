@@ -1,15 +1,16 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback,useEffect,useMemo,useState } from "react";
 import { toast } from "sonner";
 
 import { useWorkspace } from "@/hooks/use-workspace";
 import { fetchJson } from "@/lib/api-client";
 import { buildAccessPeople } from "@/modules/iam/access-view-model";
 import { AccessConsoleView } from "./access-console.access-console.view";
-import { AccessSnapshot, MemberTransferDestination, MemberTransferPreview, PlatformAccessUser } from "./access-console.access-member";
-import { AccessConsoleSkeleton, INITIAL_ACCOUNT_FORM, INITIAL_ORGANIZATION_FORM, INITIAL_PROJECT_FORM, INITIAL_ROLE_FORM, INITIAL_TEAM_FORM, InitialError, MutationPayload, builtInRoleKey } from "./access-console.resource-transfer-preview";
+import { AccessSnapshot,PlatformAccessUser } from "./access-console.access-member";
+import { AccessConsoleSkeleton,INITIAL_ACCOUNT_FORM,INITIAL_ORGANIZATION_FORM,INITIAL_PROJECT_FORM,INITIAL_ROLE_FORM,INITIAL_TEAM_FORM,InitialError,MutationPayload,builtInRoleKey } from "./access-console.resource-transfer-preview";
+import { useAccessMemberTransfer } from "./access-console.use-member-transfer";
 
 export function useAccessConsoleController({ platformUsers, currentUserId }: { platformUsers?: PlatformAccessUser[]; currentUserId?: string }) {
   const t = useTranslations("access");
@@ -46,14 +47,6 @@ export function useAccessConsoleController({ platformUsers, currentUserId }: { p
   const [roleQuery, setRoleQuery] = useState("");
   const [permissionQuery, setPermissionQuery] = useState("");
   const [selectedPeople, setSelectedPeople] = useState<string[]>([]);
-  const [memberTransferOpen, setMemberTransferOpen] = useState(false);
-  const [memberTransferDestinations, setMemberTransferDestinations] = useState<MemberTransferDestination[]>([]);
-  const [memberTransferLoading, setMemberTransferLoading] = useState(false);
-  const [memberTransferQuery, setMemberTransferQuery] = useState("");
-  const [memberTransferTargetId, setMemberTransferTargetId] = useState("");
-  const [memberTransferRoleId, setMemberTransferRoleId] = useState("");
-  const [memberTransferMode, setMemberTransferMode] = useState<"add" | "move">("add");
-  const [memberTransferPreview, setMemberTransferPreview] = useState<MemberTransferPreview | null>(null);
   const [visiblePeopleCount, setVisiblePeopleCount] = useState(25);
   const [visibleTeamCount, setVisibleTeamCount] = useState(20);
   const [visibleRoleCount, setVisibleRoleCount] = useState(25);
@@ -113,6 +106,8 @@ export function useAccessConsoleController({ platformUsers, currentUserId }: { p
     }
   }
 
+  const { memberTransferOpen, setMemberTransferOpen, memberTransferDestinations, memberTransferLoading, memberTransferQuery, setMemberTransferQuery, memberTransferTargetId, setMemberTransferTargetId, memberTransferRoleId, setMemberTransferRoleId, memberTransferMode, setMemberTransferMode, memberTransferPreview, setMemberTransferPreview, openMemberTransfer, previewSelectedMemberTransfer, confirmSelectedMemberTransfer } = useAccessMemberTransfer({ workspaceId, selectedPeople, setSelectedPeople, setPendingAction, load, refreshWorkspaces });
+
   const activeMembers = useMemo(() => snapshot?.members.filter((member) => member.status === "active") ?? [], [snapshot]);
   const scopedRoles = useMemo(() => snapshot?.roles.filter((role) => role.scopeType === assignment.scopeType && snapshot.assignableRoleIds.includes(role.id)) ?? [], [assignment.scopeType, snapshot]);
   const principalOptions = assignment.principalType === "user" ? activeMembers : (snapshot?.teams ?? []);
@@ -138,82 +133,6 @@ export function useAccessConsoleController({ platformUsers, currentUserId }: { p
       toast.error(error instanceof Error ? error.message : t("mutationError"));
     } finally {
       setBusyPlatformUserId(null);
-    }
-  }
-
-  async function openMemberTransfer() {
-    if (!workspaceId) return;
-    setMemberTransferOpen(true);
-    setMemberTransferLoading(true);
-    setMemberTransferPreview(null);
-    setMemberTransferTargetId("");
-    setMemberTransferRoleId("");
-    setMemberTransferQuery("");
-    try {
-      const result = await fetchJson<{
-        destinations: MemberTransferDestination[];
-      }>(`/api/workspace/iam/members/transfer?sourceWorkspaceId=${workspaceId}`);
-      setMemberTransferDestinations(result.destinations);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t("memberTransferLoadFailed"));
-      setMemberTransferOpen(false);
-    } finally {
-      setMemberTransferLoading(false);
-    }
-  }
-
-  async function previewSelectedMemberTransfer() {
-    if (!workspaceId || !memberTransferTargetId || !memberTransferRoleId) return;
-    setPendingAction("previewMemberTransfer");
-    try {
-      const preview = await fetchJson<MemberTransferPreview>("/api/workspace/iam/members/transfer", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "preview",
-          sourceWorkspaceId: workspaceId,
-          targetWorkspaceId: memberTransferTargetId,
-          userIds: selectedPeople,
-          roleId: memberTransferRoleId,
-          mode: memberTransferMode,
-        }),
-      });
-      setMemberTransferPreview(preview);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t("memberTransferPreviewFailed"));
-    } finally {
-      setPendingAction(null);
-    }
-  }
-
-  async function confirmSelectedMemberTransfer() {
-    if (!workspaceId || !memberTransferTargetId || !memberTransferRoleId || !memberTransferPreview) return;
-    setPendingAction("executeMemberTransfer");
-    try {
-      const result = await fetchJson<{ transferred: number }>("/api/workspace/iam/members/transfer", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "execute",
-          sourceWorkspaceId: workspaceId,
-          targetWorkspaceId: memberTransferTargetId,
-          userIds: selectedPeople,
-          roleId: memberTransferRoleId,
-          mode: memberTransferMode,
-          confirmationToken: memberTransferPreview.confirmationToken,
-        }),
-      });
-      toast.success(t("memberTransferCompleted", { count: result.transferred }));
-      setSelectedPeople([]);
-      setMemberTransferOpen(false);
-      setMemberTransferPreview(null);
-      await refreshWorkspaces();
-      await load({ preserveData: true });
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t("memberTransferFailed"));
-      setMemberTransferPreview(null);
-    } finally {
-      setPendingAction(null);
     }
   }
 

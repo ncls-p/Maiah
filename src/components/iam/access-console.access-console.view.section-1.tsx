@@ -1,6 +1,6 @@
-import { BoxesIcon, UsersIcon } from "lucide-react";
+import { BoxesIcon,UsersIcon } from "lucide-react";
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs,TabsContent,TabsList,TabsTrigger } from "@/components/ui/tabs";
 import type { AccessConsoleViewModel } from "./access-console.access-console.view";
 import { AccessMainSection1 } from "./access-console.access-console.view.section-1.section-1";
 import { AccessMainSection2 } from "./access-console.access-console.view.section-1.section-2";

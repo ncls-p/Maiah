@@ -1,6 +1,6 @@
 import { ShieldIcon } from "lucide-react";
 
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { Empty,EmptyDescription,EmptyHeader,EmptyMedia,EmptyTitle } from "@/components/ui/empty";
 import type { AccessConsoleViewModel } from "./access-console.access-console.view";
 export function AccessPeopleBranch3({ model }: { model: AccessConsoleViewModel }) {
   const { peopleQuery, t } = model;
