@@ -100,6 +100,7 @@ export function OrbitProductNavigation({
           <DropdownMenuTrigger asChild>
             <button
               type="button"
+              aria-label={t("groups.advanced")}
               className="inline-flex h-10 items-center gap-1.5 rounded-lg px-3 text-xs font-medium text-muted-foreground outline-none transition-[background-color,color,scale] duration-180 ease-out hover:bg-muted/55 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/45 active:scale-[0.96]"
             >
               <SlidersHorizontalIcon className="size-3.5" aria-hidden="true" />

@@ -105,18 +105,21 @@ export function ModelConfigDialog({
               />
               <Field
                 label={t("currency")}
+                help={t("currencyHelp")}
                 name="currency"
                 defaultValue={image.currency ?? "EUR"}
                 maxLength={3}
               />
               <Field
                 label={t("inputCost")}
+                help={t("tokenCostHelp")}
                 name="inputTokenCost"
                 defaultValue={model.inputTokenCost ?? ""}
                 type="number"
               />
               <Field
                 label={t("outputCost")}
+                help={t("tokenCostHelp")}
                 name="outputTokenCost"
                 defaultValue={model.outputTokenCost ?? ""}
                 type="number"
@@ -142,40 +145,47 @@ export function ModelConfigDialog({
             <div className="grid gap-3 sm:grid-cols-2">
               <Field
                 label={t("defaultImageSize")}
+                help={t("defaultImageSizeHelp")}
                 name="defaultSize"
                 defaultValue={image.defaultSize ?? "1024x1024"}
               />
               <Field
                 label={t("allowedImageSizes")}
+                help={t("allowedImageSizesHelp")}
                 name="allowedSizes"
                 defaultValue={(image.allowedSizes ?? ["1024x1024"]).join(", ")}
               />
               <Field
                 label={t("costPerImage")}
+                help={t("impactMetricHelp")}
                 name="costPerImage"
                 defaultValue={image.costPerImage}
                 type="number"
               />
               <Field
                 label={t("energyPerImage")}
+                help={t("impactMetricHelp")}
                 name="energyKwhPerImage"
                 defaultValue={image.energyKwhPerImage}
                 type="number"
               />
               <Field
                 label={t("co2PerImage")}
+                help={t("impactMetricHelp")}
                 name="co2GramsPerImage"
                 defaultValue={image.co2GramsPerImage}
                 type="number"
               />
               <Field
                 label={t("energyPerMillionTokens")}
+                help={t("impactMetricHelp")}
                 name="energyKwhPerMillionTokens"
                 defaultValue={sustainability.energyKwhPerMillionTokens}
                 type="number"
               />
               <Field
                 label={t("co2PerMillionTokens")}
+                help={t("impactMetricHelp")}
                 name="co2GramsPerMillionTokens"
                 defaultValue={sustainability.co2GramsPerMillionTokens}
                 type="number"
@@ -207,12 +217,14 @@ export function ModelConfigDialog({
 
 function Field({
   label,
+  help,
   name,
   defaultValue,
   type = "text",
   maxLength,
 }: {
   label: string;
+  help?: string;
   name: string;
   defaultValue?: string | number;
   type?: string;
@@ -220,7 +232,9 @@ function Field({
 }) {
   return (
     <div className="grid gap-1.5">
-      <Label htmlFor={`model-${name}`}>{label}</Label>
+      <Label htmlFor={`model-${name}`} help={help}>
+        {label}
+      </Label>
       <Input
         id={`model-${name}`}
         name={name}

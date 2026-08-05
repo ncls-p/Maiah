@@ -209,13 +209,19 @@ function RagConfigFields({
   return (
     <div className="grid gap-4">
       {canManageModels ? (
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="grid gap-1.5">
-            <Label htmlFor={`${idPrefix}-embedding-discovered`}>
+        <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,14rem),1fr))]">
+          <div className="grid min-w-0 gap-1.5">
+            <Label
+              htmlFor={`${idPrefix}-embedding-discovered`}
+              help={t("ragEmbeddingModelHelp")}
+            >
               {t("ragEmbeddingModel")}
             </Label>
             <Select onValueChange={(value) => selectModel(value, "embedding")}>
-              <SelectTrigger id={`${idPrefix}-embedding-discovered`}>
+              <SelectTrigger
+                id={`${idPrefix}-embedding-discovered`}
+                className="min-w-0"
+              >
                 <SelectValue
                   placeholder={
                     discoveringModels
@@ -254,8 +260,11 @@ function RagConfigFields({
               placeholder={t("ragExactModelId")}
             />
           </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor={`${idPrefix}-dimensions`}>
+          <div className="grid min-w-0 gap-1.5">
+            <Label
+              htmlFor={`${idPrefix}-dimensions`}
+              help={t("ragDimensionsHelp")}
+            >
               {t("ragDimensions")}
             </Label>
             <Input
@@ -284,7 +293,7 @@ function RagConfigFields({
         </div>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,8rem),1fr))]">
         {(
           [
             ["ragChunkSize", "maxCharacters", config.chunking.maxCharacters],
@@ -302,8 +311,10 @@ function RagConfigFields({
             ["ragMinimumScore", "minimumScore", config.retrieval.minimumScore],
           ] as const
         ).map(([label, key, value]) => (
-          <div className="grid gap-1.5" key={key}>
-            <Label htmlFor={`${idPrefix}-${key}`}>{t(label)}</Label>
+          <div className="grid min-w-0 gap-1.5" key={key}>
+            <Label htmlFor={`${idPrefix}-${key}`} help={t(`${label}Help`)}>
+              {t(label)}
+            </Label>
             <Input
               id={`${idPrefix}-${key}`}
               type="number"
@@ -337,8 +348,8 @@ function RagConfigFields({
         ))}
       </div>
 
-      <div className="grid gap-3 rounded-lg border p-3 sm:grid-cols-[auto_1fr] sm:items-end">
-        <div className="flex items-center gap-2 pb-2">
+      <div className="grid gap-3 rounded-lg border p-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,14rem),1fr))]">
+        <div className="flex min-w-0 items-center gap-2">
           <Checkbox
             id={`${idPrefix}-reranking`}
             checked={config.reranking.enabled}
@@ -352,18 +363,26 @@ function RagConfigFields({
               })
             }
           />
-          <Label htmlFor={`${idPrefix}-reranking`}>{t("ragReranking")}</Label>
+          <Label htmlFor={`${idPrefix}-reranking`} help={t("ragRerankingHelp")}>
+            {t("ragReranking")}
+          </Label>
         </div>
         {canManageModels ? (
-          <div className="grid gap-1.5">
-            <Label htmlFor={`${idPrefix}-reranking-model`}>
+          <div className="grid min-w-0 gap-1.5">
+            <Label
+              htmlFor={`${idPrefix}-reranking-model`}
+              help={t("ragRerankingModelHelp")}
+            >
               {t("ragRerankingModel")}
             </Label>
             <Select
               disabled={!config.reranking.enabled}
               onValueChange={(value) => selectModel(value, "reranking")}
             >
-              <SelectTrigger id={`${idPrefix}-reranking-model`}>
+              <SelectTrigger
+                id={`${idPrefix}-reranking-model`}
+                className="min-w-0"
+              >
                 <SelectValue
                   placeholder={
                     discoveringModels
@@ -413,7 +432,7 @@ function RagConfigFields({
       <div className="grid gap-3 rounded-lg border p-3">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <Label htmlFor={`${idPrefix}-ocr-enabled`}>
+            <Label htmlFor={`${idPrefix}-ocr-enabled`} help={t("ragOcrHint")}>
               {t("ragOcrEnabled")}
             </Label>
             <p className="mt-1 text-xs text-muted-foreground">
@@ -438,14 +457,20 @@ function RagConfigFields({
           />
         </div>
         {config.extraction.ocr.enabled ? (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,12rem),1fr))]">
             {canManageModels ? (
-              <div className="grid gap-1.5 sm:col-span-2">
-                <Label htmlFor={`${idPrefix}-ocr-model`}>
+              <div className="col-span-full grid min-w-0 gap-1.5">
+                <Label
+                  htmlFor={`${idPrefix}-ocr-model`}
+                  help={t("ragOcrModelHelp")}
+                >
                   {t("ragOcrModel")}
                 </Label>
                 <Select onValueChange={(value) => selectModel(value, "ocr")}>
-                  <SelectTrigger id={`${idPrefix}-ocr-model`}>
+                  <SelectTrigger
+                    id={`${idPrefix}-ocr-model`}
+                    className="min-w-0"
+                  >
                     <SelectValue
                       placeholder={
                         discoveringModels
@@ -488,12 +513,15 @@ function RagConfigFields({
                 />
               </div>
             ) : (
-              <p className="text-xs text-muted-foreground sm:col-span-2">
+              <p className="col-span-full text-xs text-muted-foreground">
                 {config.extraction.ocr.modelId || t("ragInheritedModel")}
               </p>
             )}
-            <div className="grid gap-1.5">
-              <Label htmlFor={`${idPrefix}-ocr-min-text`}>
+            <div className="grid min-w-0 gap-1.5">
+              <Label
+                htmlFor={`${idPrefix}-ocr-min-text`}
+                help={t("ragOcrMinimumTextHelp")}
+              >
                 {t("ragOcrMinimumText")}
               </Label>
               <Input
@@ -518,8 +546,11 @@ function RagConfigFields({
                 }
               />
             </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor={`${idPrefix}-ocr-max-pages`}>
+            <div className="grid min-w-0 gap-1.5">
+              <Label
+                htmlFor={`${idPrefix}-ocr-max-pages`}
+                help={t("ragOcrMaxPagesHelp")}
+              >
                 {t("ragOcrMaxPages")}
               </Label>
               <Input
@@ -542,8 +573,11 @@ function RagConfigFields({
                 }
               />
             </div>
-            <div className="flex items-center justify-between gap-3 rounded-lg border p-3 sm:col-span-2 lg:col-span-4">
-              <Label htmlFor={`${idPrefix}-ocr-diagrams`}>
+            <div className="col-span-full flex min-w-0 items-center justify-between gap-3 rounded-lg border p-3">
+              <Label
+                htmlFor={`${idPrefix}-ocr-diagrams`}
+                help={t("ragOcrDescribeDiagramsHelp")}
+              >
                 {t("ragOcrDescribeDiagrams")}
               </Label>
               <Checkbox

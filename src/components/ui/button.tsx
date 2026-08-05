@@ -48,6 +48,8 @@ function Button({
   asChild = false,
   static: isStatic = false,
   type,
+  title,
+  "aria-label": ariaLabel,
   ...props
 }: React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
@@ -66,6 +68,8 @@ function Button({
         !isStatic && variant !== "link" && tapScale,
         className,
       )}
+      aria-label={ariaLabel}
+      title={title ?? (typeof ariaLabel === "string" ? ariaLabel : undefined)}
       {...(!asChild ? { type: type ?? "button" } : {})}
       {...props}
     />

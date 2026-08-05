@@ -150,7 +150,9 @@ function AddProviderBasicFields(props: AddProviderDialogProps) {
         />
       </div>
       <div className={FIELD_STACK_CLASS}>
-        <Label htmlFor="add-provider-url">{t("serviceUrl")}</Label>
+        <Label htmlFor="add-provider-url" help={t("serviceUrlHint")}>
+          {t("serviceUrl")}
+        </Label>
         <Input
           id="add-provider-url"
           name="add-provider-url"
@@ -234,7 +236,9 @@ function AddProviderAdvancedFields(props: AddProviderDialogProps) {
       </div>
       {props.addKind === "openai-compatible" ? (
         <div className={FIELD_STACK_CLASS}>
-          <Label htmlFor="add-provider-api-route">{t("apiRoute")}</Label>
+          <Label htmlFor="add-provider-api-route" help={t("apiRouteHint")}>
+            {t("apiRoute")}
+          </Label>
           <Select
             value={props.addApiRoute}
             onValueChange={(value) =>
@@ -340,7 +344,9 @@ export function EditProviderDialog({
             />
           </div>
           <div className={FIELD_STACK_CLASS}>
-            <Label htmlFor="edit-provider-url">{t("serviceUrl")}</Label>
+            <Label htmlFor="edit-provider-url" help={t("serviceUrlHint")}>
+              {t("serviceUrl")}
+            </Label>
             <Input
               id="edit-provider-url"
               name="edit-provider-url"
@@ -356,7 +362,9 @@ export function EditProviderDialog({
           </div>
           {editingProvider?.kind === "openai-compatible" ? (
             <div className={FIELD_STACK_CLASS}>
-              <Label htmlFor="edit-provider-api-route">{t("apiRoute")}</Label>
+              <Label htmlFor="edit-provider-api-route" help={t("apiRouteHint")}>
+                {t("apiRoute")}
+              </Label>
               <Select
                 value={editApiRoute}
                 onValueChange={(value) =>

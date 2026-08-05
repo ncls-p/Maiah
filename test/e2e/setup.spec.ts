@@ -33,7 +33,7 @@ test.describe("setup wizard", () => {
     ).toBeVisible({ timeout: 10_000 });
   });
 
-  test("setup page navigation buttons exist", async ({ page }) => {
+  test("setup page exposes its current navigation action", async ({ page }) => {
     await page.goto("/en/setup");
     await page.waitForTimeout(2000);
 
@@ -42,9 +42,7 @@ test.describe("setup wizard", () => {
       .getByRole("button", { name: /Continue|Back|Skip|Start/i })
       .first();
 
-    if (await navBtn.isVisible()) {
-      await expect(navBtn).toBeEnabled();
-    }
+    await expect(navBtn).toBeVisible();
   });
 
   test("setup page shows provider configuration step", async ({ page }) => {

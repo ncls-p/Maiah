@@ -191,7 +191,10 @@ export function RagSettings({ initialState }: { initialState: RagConfig }) {
         </div>
         <div className="grid gap-4 lg:grid-cols-2">
           <div className="grid gap-1.5">
-            <Label htmlFor="rag-discovered-embedding-model">
+            <Label
+              htmlFor="rag-discovered-embedding-model"
+              help={t("discoveredEmbeddingModelHelp")}
+            >
               {t("discoveredEmbeddingModel")}
             </Label>
             <Select onValueChange={(value) => selectModel(value, "embedding")}>
@@ -216,7 +219,9 @@ export function RagSettings({ initialState }: { initialState: RagConfig }) {
                 </SelectGroup>
               </SelectContent>
             </Select>
-            <Label htmlFor="rag-embedding-model">{t("embeddingModel")}</Label>
+            <Label htmlFor="rag-embedding-model" help={t("embeddingModelHelp")}>
+              {t("embeddingModel")}
+            </Label>
             <Input
               id="rag-embedding-model"
               value={settings.embedding.modelId}
@@ -236,7 +241,9 @@ export function RagSettings({ initialState }: { initialState: RagConfig }) {
             </p>
           </div>
           <div className="grid gap-1.5">
-            <Label htmlFor="rag-dimensions">{t("dimensions")}</Label>
+            <Label htmlFor="rag-dimensions" help={t("dimensionsHelp")}>
+              {t("dimensions")}
+            </Label>
             <Input
               id="rag-dimensions"
               type="number"
@@ -275,7 +282,9 @@ export function RagSettings({ initialState }: { initialState: RagConfig }) {
             ] as const
           ).map(([label, key, value]) => (
             <div className="grid gap-1.5" key={key}>
-              <Label htmlFor={`rag-${key}`}>{t(label)}</Label>
+              <Label htmlFor={`rag-${key}`} help={t(`${label}Help`)}>
+                {t(label)}
+              </Label>
               <Input
                 id={`rag-${key}`}
                 type="number"
@@ -302,7 +311,9 @@ export function RagSettings({ initialState }: { initialState: RagConfig }) {
         <div className="rounded-xl border bg-background p-4">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <Label htmlFor="rag-reranking">{t("reranking")}</Label>
+              <Label htmlFor="rag-reranking" help={t("rerankingHint")}>
+                {t("reranking")}
+              </Label>
               <p className="mt-1 text-xs text-muted-foreground">
                 {t("rerankingHint")}
               </p>
@@ -320,7 +331,10 @@ export function RagSettings({ initialState }: { initialState: RagConfig }) {
           </div>
           {settings.reranking.enabled ? (
             <div className="mt-4 grid gap-1.5">
-              <Label htmlFor="rag-discovered-reranking-model">
+              <Label
+                htmlFor="rag-discovered-reranking-model"
+                help={t("rerankingModelHelp")}
+              >
                 {t("discoveredRerankingModel")}
               </Label>
               <Select
@@ -347,7 +361,12 @@ export function RagSettings({ initialState }: { initialState: RagConfig }) {
                   </SelectGroup>
                 </SelectContent>
               </Select>
-              <Label htmlFor="rag-reranking-model">{t("rerankingModel")}</Label>
+              <Label
+                htmlFor="rag-reranking-model"
+                help={t("rerankingModelHelp")}
+              >
+                {t("rerankingModel")}
+              </Label>
               <Input
                 id="rag-reranking-model"
                 value={settings.reranking.modelId}
@@ -368,7 +387,9 @@ export function RagSettings({ initialState }: { initialState: RagConfig }) {
         <div className="rounded-xl border bg-background p-4">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <Label htmlFor="rag-ocr">{t("ocr")}</Label>
+              <Label htmlFor="rag-ocr" help={t("ocrHint")}>
+                {t("ocr")}
+              </Label>
               <p className="mt-1 text-xs text-muted-foreground">
                 {t("ocrHint")}
               </p>
@@ -393,7 +414,10 @@ export function RagSettings({ initialState }: { initialState: RagConfig }) {
           {settings.extraction.ocr.enabled ? (
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <div className="grid gap-1.5 sm:col-span-2">
-                <Label htmlFor="rag-discovered-ocr-model">
+                <Label
+                  htmlFor="rag-discovered-ocr-model"
+                  help={t("ocrModelHelp")}
+                >
                   {t("discoveredOcrModel")}
                 </Label>
                 <Select onValueChange={(value) => selectModel(value, "ocr")}>
@@ -420,7 +444,9 @@ export function RagSettings({ initialState }: { initialState: RagConfig }) {
                     </SelectGroup>
                   </SelectContent>
                 </Select>
-                <Label htmlFor="rag-ocr-model">{t("ocrModel")}</Label>
+                <Label htmlFor="rag-ocr-model" help={t("ocrModelHelp")}>
+                  {t("ocrModel")}
+                </Label>
                 <Input
                   id="rag-ocr-model"
                   value={settings.extraction.ocr.modelId}
@@ -441,7 +467,10 @@ export function RagSettings({ initialState }: { initialState: RagConfig }) {
                 />
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="rag-ocr-minimum-text">
+                <Label
+                  htmlFor="rag-ocr-minimum-text"
+                  help={t("ocrMinimumTextHelp")}
+                >
                   {t("ocrMinimumText")}
                 </Label>
                 <Input
@@ -469,7 +498,9 @@ export function RagSettings({ initialState }: { initialState: RagConfig }) {
                 />
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="rag-ocr-max-pages">{t("ocrMaxPages")}</Label>
+                <Label htmlFor="rag-ocr-max-pages" help={t("ocrMaxPagesHelp")}>
+                  {t("ocrMaxPages")}
+                </Label>
                 <Input
                   id="rag-ocr-max-pages"
                   type="number"
@@ -494,7 +525,10 @@ export function RagSettings({ initialState }: { initialState: RagConfig }) {
                 />
               </div>
               <div className="flex items-center justify-between gap-4 rounded-lg border p-3 sm:col-span-2">
-                <Label htmlFor="rag-ocr-diagrams">
+                <Label
+                  htmlFor="rag-ocr-diagrams"
+                  help={t("ocrDescribeDiagramsHelp")}
+                >
                   {t("ocrDescribeDiagrams")}
                 </Label>
                 <Switch
