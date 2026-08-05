@@ -117,6 +117,34 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
+      - name: Start object storage
+        run: |
+          docker run --detach --name ci-rustfs \
+            --publish 3900:9000 \
+            --env RUSTFS_ADDRESS=0.0.0.0:9000 \
+            --env RUSTFS_ACCESS_KEY=ci-runtime-access \
+            --env RUSTFS_SECRET_KEY=ci-runtime-object-secret-2026 \
+            rustfs/rustfs:latest /data
+          for attempt in {1..60}; do
+            code="$(curl --silent --output /dev/null --write-out '%{http_code}' http://localhost:3900/ || true)"
+            if [[ "$code" == "200" || "$code" == "403" ]]; then
+              break
+            fi
+            if [[ "$attempt" == "60" ]]; then
+              docker logs ci-rustfs
+              exit 1
+            fi
+            sleep 2
+          done
+          docker run --rm --network host \
+            --env AWS_ACCESS_KEY_ID=ci-runtime-access \
+            --env AWS_SECRET_ACCESS_KEY=ci-runtime-object-secret-2026 \
+            --env AWS_DEFAULT_REGION=us-east-1 \
+            --env AWS_EC2_METADATA_DISABLED=true \
+            amazon/aws-cli:2.32.3 \
+            --endpoint-url http://localhost:3900 \
+            s3api create-bucket --bucket test-bucket
+
       - name: Build
         run: npm run build
         env:

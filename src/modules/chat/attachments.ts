@@ -75,9 +75,6 @@ type ExtractedText = {
 
 const chatAttachmentStoragePrefix =
   process.env.CHAT_ATTACHMENT_STORAGE_PREFIX ?? "chat-attachments";
-const maxChatImageBytes = 8 * 1024 * 1024;
-export const maxChatAttachmentBytes = 25 * 1024 * 1024;
-export const maxChatAttachments = 8;
 const maxStoredChatAttachmentMarkdownChars = 4_000_000;
 export const maxChatAttachmentPreviewChars = 120_000;
 const maxMarkdownConversionSourceChars = maxStoredChatAttachmentMarkdownChars;
@@ -1184,9 +1181,6 @@ export async function extractUploadedFileText(input: {
   bytes: Uint8Array;
 }): Promise<ExtractedUploadedFile> {
   assertAttachmentHasContent(input.bytes);
-  if (input.bytes.byteLength > maxChatAttachmentBytes) {
-    throw new Error("File is too large. Maximum size is 25 MB.");
-  }
   const detection = detectAttachment({
     fileName: input.fileName,
     declaredMimeType: input.mimeType,
@@ -1283,10 +1277,6 @@ async function createStoredImageAttachment(
   input: CreateChatImageAttachmentInput,
   imageMimeType: keyof typeof imageTypes,
 ): Promise<ChatImageAttachment> {
-  if (input.bytes.byteLength > maxChatImageBytes) {
-    throw new Error("Image file is too large. Maximum size is 8 MB.");
-  }
-
   const attachmentId = randomUUID();
   const imageExtension = imageTypes[imageMimeType].extension;
   const objectKey = chatAttachmentObjectKey(
@@ -1325,10 +1315,6 @@ async function createStoredImageAttachment(
 async function createStoredFileAttachment(
   input: CreateChatAttachmentInput,
 ): Promise<ChatFileAttachment> {
-  if (input.bytes.byteLength > maxChatAttachmentBytes) {
-    throw new Error("Attachment file is too large. Maximum size is 25 MB.");
-  }
-
   const detection = detectAttachment({
     fileName: input.fileName,
     declaredMimeType: input.mimeType,

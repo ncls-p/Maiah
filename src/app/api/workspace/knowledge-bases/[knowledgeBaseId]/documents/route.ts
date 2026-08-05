@@ -13,6 +13,12 @@ import {
 import { extractKnowledgeUploads } from "@/modules/knowledge/file-ingestion";
 import { getDefaultRagConfig } from "@/modules/knowledge/rag-config";
 import { parseRagConfig } from "@/modules/knowledge/rag-config-schema";
+import {
+  assembleDocumentUpload,
+  parseChunkMetadata,
+  parseCompletionMetadata,
+  storeDocumentUploadChunk,
+} from "@/modules/document-upload/server";
 
 const querySchema = z.object({ workspaceId: z.uuid() });
 const createSchema = z.object({
@@ -77,6 +83,117 @@ export async function POST(
     req,
     async ({ session }) => {
       const { knowledgeBaseId } = await params;
+      const uploadPhase = req.nextUrl.searchParams.get("uploadPhase");
+      if (uploadPhase === "chunk") {
+        const form = await req.formData();
+        const chunk = parseChunkMetadata(form);
+        if (!chunk) {
+          return NextResponse.json(
+            { error: "Invalid document chunk" },
+            { status: 400 },
+          );
+        }
+        const forbidden = await requireResourcePermissionAsync(
+          session.user.id,
+          chunk.workspaceId,
+          "knowledgeBases.manage",
+          "knowledge_base",
+          knowledgeBaseId,
+        );
+        if (forbidden) return forbidden;
+        await storeDocumentUploadChunk({
+          workspaceId: chunk.workspaceId,
+          userId: session.user.id,
+          uploadId: chunk.uploadId,
+          chunkIndex: chunk.chunkIndex,
+          bytes: new Uint8Array(await chunk.chunk.arrayBuffer()),
+        });
+        return NextResponse.json(
+          { uploadId: chunk.uploadId, chunkIndex: chunk.chunkIndex },
+          { status: 202 },
+        );
+      }
+      if (uploadPhase === "complete") {
+        const payload = parseCompletionMetadata(
+          await req.json().catch(() => null),
+        );
+        if (!payload) {
+          return NextResponse.json(
+            { error: "Invalid upload completion" },
+            { status: 400 },
+          );
+        }
+        const forbidden = await requireResourcePermissionAsync(
+          session.user.id,
+          payload.workspaceId,
+          "knowledgeBases.manage",
+          "knowledge_base",
+          knowledgeBaseId,
+        );
+        if (forbidden) return forbidden;
+        const knowledgeBase = await getKnowledgeBase(
+          knowledgeBaseId,
+          payload.workspaceId,
+          session.user.id,
+        );
+        if (!knowledgeBase) {
+          return NextResponse.json(
+            { error: "Knowledge base not found" },
+            { status: 404 },
+          );
+        }
+        const assembled = await assembleDocumentUpload({
+          workspaceId: payload.workspaceId,
+          userId: session.user.id,
+          uploadId: payload.uploadId,
+          totalChunks: payload.totalChunks,
+        });
+        let completed = false;
+        try {
+          const extracted = await extractKnowledgeUploads(
+            [
+              {
+                fileName: payload.fileName,
+                mimeType: payload.mimeType || undefined,
+                bytes: await assembled.readBytes(),
+              },
+            ],
+            {
+              workspaceId: payload.workspaceId,
+              config:
+                knowledgeBase.ragConfigJson === null
+                  ? await getDefaultRagConfig()
+                  : parseRagConfig(knowledgeBase.ragConfigJson),
+            },
+          );
+          const canManageGlobal = await canManageTenantGlobals(
+            session,
+            payload.workspaceId,
+          );
+          const documents = [];
+          for (const file of extracted.files) {
+            documents.push(
+              await ingestTextDocument({
+                workspaceId: payload.workspaceId,
+                knowledgeBaseId,
+                userId: session.user.id,
+                canManageGlobal,
+                title: file.title,
+                content: file.content,
+                sourceType: "upload",
+                mimeType: file.mimeType,
+              }),
+            );
+          }
+          completed = true;
+          return NextResponse.json(
+            { documents, rejected: extracted.rejected },
+            { status: extracted.rejected.length > 0 ? 207 : 201 },
+          );
+        } finally {
+          await assembled.cleanup(completed);
+        }
+      }
       const isMultipart = req.headers
         .get("content-type")
         ?.toLowerCase()

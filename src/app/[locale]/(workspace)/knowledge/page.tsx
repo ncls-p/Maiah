@@ -23,6 +23,7 @@ import {
   UploadIcon,
 } from "lucide-react";
 import { toast } from "sonner";
+import { uploadDocumentInChunks } from "@/modules/document-upload/chunked-upload";
 import { PageEmptyState } from "@/components/page-empty-state";
 import { PageLoading } from "@/components/page-loading";
 import { ModelLogo } from "@/components/providers/model-logo";
@@ -805,25 +806,51 @@ export default function KnowledgePage() {
     setUploadingCount(files.length);
     setLastUpload(null);
     try {
-      const form = new FormData();
-      form.set("workspaceId", workspaceId);
-      for (const file of files) {
-        form.append("files", file, file.webkitRelativePath || file.name);
-      }
-      const response = await fetch(
-        `/api/workspace/knowledge-bases/${selectedId}/documents`,
-        { method: "POST", body: form },
-      );
-      const result = (await response.json().catch(() => null)) as {
+      type UploadResult = {
         documents?: DocumentRow[];
         rejected?: Array<{ title: string; error: string }>;
         error?: string;
-      } | null;
-      if (!response.ok && response.status !== 207) {
-        throw new Error(result?.error || t("errorIngest"));
-      }
-      const accepted = result?.documents?.length ?? 0;
-      const rejected = result?.rejected ?? [];
+      };
+      const results: UploadResult[] = [];
+      let nextFileIndex = 0;
+      const worker = async () => {
+        while (nextFileIndex < files.length) {
+          const file = files[nextFileIndex++];
+          try {
+            results.push(
+              await uploadDocumentInChunks<UploadResult>({
+                workspaceId,
+                file,
+                chunkUrl: `/api/workspace/knowledge-bases/${selectedId}/documents?uploadPhase=chunk`,
+                completeUrl: `/api/workspace/knowledge-bases/${selectedId}/documents?uploadPhase=complete`,
+                completeMetadata: {
+                  fileName: file.webkitRelativePath || file.name,
+                },
+              }),
+            );
+          } catch (error) {
+            results.push({
+              rejected: [
+                {
+                  title: file.webkitRelativePath || file.name,
+                  error:
+                    error instanceof Error ? error.message : t("errorIngest"),
+                },
+              ],
+            });
+          } finally {
+            setUploadingCount((current) => Math.max(0, current - 1));
+          }
+        }
+      };
+      await Promise.all(
+        Array.from({ length: Math.min(3, files.length) }, () => worker()),
+      );
+      const accepted = results.reduce(
+        (sum, result) => sum + (result.documents?.length ?? 0),
+        0,
+      );
+      const rejected = results.flatMap((result) => result.rejected ?? []);
       setLastUpload({ accepted, rejected });
       await loadDocuments();
       toast.success(
@@ -971,8 +998,8 @@ export default function KnowledgePage() {
         ragConfig: cloneRagConfig(defaultRagConfig),
       });
       setShowCreateDialog(false);
-      setSelectedId(created.id);
       await loadBases();
+      setSelectedId(created.id);
       toast.success(t("toastBaseCreated"));
     } catch {
       toast.error(t("errorCreate"));

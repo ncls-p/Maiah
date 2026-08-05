@@ -507,8 +507,14 @@ test.describe("chat page", () => {
     await ensureE2EAssistant();
     let uploadIndex = 0;
     await page.route(
-      "**/api/workspace/chat-attachments/upload",
+      "**/api/workspace/chat-attachments/upload?*",
       async (route) => {
+        if (
+          new URL(route.request().url()).searchParams.get("phase") === "chunk"
+        ) {
+          await route.fulfill({ status: 202, json: { accepted: true } });
+          return;
+        }
         uploadIndex += 1;
         const fileNumber = String(uploadIndex).padStart(2, "0");
         await route.fulfill({
@@ -542,7 +548,7 @@ test.describe("chat page", () => {
     const fileInput = page.locator('input[type="file"]');
     await expect(fileInput).toHaveCount(1);
     await fileInput.setInputFiles(
-      Array.from({ length: 8 }, (_, index) => ({
+      Array.from({ length: 12 }, (_, index) => ({
         name: `Reference document ${String(index + 1).padStart(2, "0")}.txt`,
         mimeType: "text/plain",
         buffer: Buffer.from(`Reference ${index + 1}`),
@@ -550,15 +556,15 @@ test.describe("chat page", () => {
     );
 
     await expect(
-      page.getByText("8 attached files", { exact: true }),
+      page.getByText("12 attached files", { exact: true }),
     ).toBeVisible({ timeout: 15_000 });
     const attachmentTray = page.locator('[data-slot="attachment-group"]');
     await expect(
       attachmentTray.locator('[data-slot="attachment"]'),
-    ).toHaveCount(8);
+    ).toHaveCount(12);
     await expect(
       page.getByRole("button", {
-        name: "Remove Reference document 08.txt",
+        name: "Remove Reference document 12.txt",
         exact: true,
       }),
     ).toBeVisible();

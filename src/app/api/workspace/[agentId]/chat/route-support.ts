@@ -1,7 +1,6 @@
 import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { decryptValue } from "@/lib/crypto";
-import { maxChatAttachments } from "@/modules/chat/attachments";
 import {
   chatTodoListInputSchema,
   createChatTodoList,
@@ -57,8 +56,8 @@ export const chatRequestSchema = z.object({
   resendFromMessageId: z.uuid().nullable().optional(),
   continueFromMessageId: z.uuid().nullable().optional(),
   codeWorkspaceId: z.uuid().optional(),
-  attachmentIds: z.array(z.uuid()).max(maxChatAttachments).optional(),
-  imageAttachmentIds: z.array(z.uuid()).max(maxChatAttachments).optional(),
+  attachmentIds: z.array(z.uuid()).optional(),
+  imageAttachmentIds: z.array(z.uuid()).optional(),
   capabilityOverrides: z
     .object({
       disabledTools: z
@@ -84,7 +83,8 @@ const KNOWLEDGE_CONTEXT_TOOL_ID = "00000000-0000-4000-8000-000000000102";
 const MAX_OPENAI_TOOL_NAME_LENGTH = 64;
 const TOOL_GATE_RETURN = "return" as const;
 type ToolGateResult =
-  { status: "continue" } | { status: typeof TOOL_GATE_RETURN; output: unknown };
+  | { status: "continue" }
+  | { status: typeof TOOL_GATE_RETURN; output: unknown };
 
 export type ToolApprovalRequiredEvent = {
   invocationId: string;

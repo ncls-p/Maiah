@@ -66,4 +66,28 @@ describe("knowledge file ingestion", () => {
 			]),
 		).rejects.toThrow("Nested ZIP archives are not supported");
 	});
+
+	it("reports unreadable and invalid files independently", async () => {
+		const result = await extractKnowledgeUploads([
+			{
+				fileName: "unknown.bin",
+				mimeType: "application/octet-stream",
+				bytes: new Uint8Array([0, 1, 2]),
+			},
+			{
+				fileName: "empty.txt",
+				mimeType: "text/plain",
+				bytes: new Uint8Array(),
+			},
+		]);
+
+		expect(result.files).toEqual([]);
+		expect(result.rejected).toEqual([
+			expect.objectContaining({ title: "unknown.bin" }),
+			expect.objectContaining({
+				title: "empty.txt",
+				error: "Attachment file is empty.",
+			}),
+		]);
+	});
 });
