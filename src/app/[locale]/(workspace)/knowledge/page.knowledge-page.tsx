@@ -1,16 +1,17 @@
 "use client";
 
 import { PageLoading } from "@/components/page-loading";
-import { Button } from "@/components/ui/button";
-import { WorkspacePage } from "@/components/workspace-page";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { fetchWorkspacePermissions } from "@/lib/api-client";
 import { DEFAULT_RAG_CONFIG,type RagConfig } from "@/modules/knowledge/rag-config-schema";
 import { useTranslations } from "next-intl";
 import { useCallback,useEffect,useState } from "react";
 import { toast } from "sonner";
-import { DocumentPreview,DocumentRow,KnowledgeAgent,KnowledgeBase,RagModelOption,SearchResult,cloneRagConfig } from "./page.knowledge-base";
+import { DocumentRow,KnowledgeBase,RagModelOption,SearchResult,cloneRagConfig } from "./page.knowledge-base";
+import { KnowledgeLoadError } from "./page.knowledge-load-error";
 import { KnowledgePageView } from "./page.knowledge-page.view";
+import { useKnowledgeAgentAttachment } from "./page.use-agent-attachment";
+import { useKnowledgeDocumentActions } from "./page.use-document-actions";
 import { useKnowledgeDocumentIngestion } from "./page.use-document-ingestion";
 
 export function useKnowledgePageController() {
@@ -27,9 +28,6 @@ export function useKnowledgePageController() {
   const [documentFilter, setDocumentFilter] = useState<"all" | "ready" | "processing" | "failed">("all");
   const [documentSearch, setDocumentSearch] = useState("");
   const [documentPage, setDocumentPage] = useState(1);
-  const [previewDocument, setPreviewDocument] = useState<DocumentPreview | null>(null);
-  const [previewLoading, setPreviewLoading] = useState(false);
-  const [previewError, setPreviewError] = useState(false);
   const [baseForm, setBaseForm] = useState({
     name: "",
     description: "",
@@ -50,16 +48,9 @@ export function useKnowledgePageController() {
     customizeRag: false,
     ragConfig: null as RagConfig | null,
   });
-  const [attachOpen, setAttachOpen] = useState(false);
-  const [attachAgents, setAttachAgents] = useState<KnowledgeAgent[]>([]);
-  const [loadingAttachAgents, setLoadingAttachAgents] = useState(false);
-  const [attachAgentsError, setAttachAgentsError] = useState(false);
-  const [attachingAgentId, setAttachingAgentId] = useState<string | null>(null);
   const [canManageKnowledgeBases, setCanManageKnowledgeBases] = useState(false);
   const [canManageModels, setCanManageModels] = useState(false);
   const [canManageTenantGlobals, setCanManageTenantGlobals] = useState(false);
-  const [pendingDelete, setPendingDelete] = useState<{ kind: "base"; id: string; name: string } | { kind: "document"; id: string; name: string } | null>(null);
-  const [deleting, setDeleting] = useState(false);
   const selectedBase = bases.find((base) => base.id === selectedId) ?? null;
   const selectedBaseCanEdit = Boolean(canManageKnowledgeBases && selectedBase?.canEdit);
 
@@ -95,62 +86,9 @@ export function useKnowledgePageController() {
   }, [workspaceId, selectedId]);
 
   const { docForm, setDocForm, dragActive, setDragActive, documentInputRef, folderInputRef, uploadingCount, lastUpload, ingestFromContent, handleFileDrop, ingestSelectedFiles } = useKnowledgeDocumentIngestion({ workspaceId, selectedId, selectedBaseCanEdit, loadDocuments });
+  const { previewDocument, setPreviewDocument, previewLoading, setPreviewLoading, previewError, setPreviewError, pendingDelete, setPendingDelete, deleting, deleteBase, deleteDocument, retryDocument, openDocumentPreview } = useKnowledgeDocumentActions({ workspaceId, selectedId, selectedBaseCanEdit, canManageKnowledgeBases, bases, loadBases, loadDocuments });
 
-  async function openAttachDialog() {
-    const canAttachKnowledgeBase = Boolean(selectedBaseCanEdit && workspaceId && selectedId);
-    if (!canAttachKnowledgeBase) return;
-    setAttachOpen(true);
-    setLoadingAttachAgents(true);
-    setAttachAgentsError(false);
-    try {
-      const res = await fetch(`/api/workspace/agents?workspaceId=${workspaceId}&includeModelMeta=true`);
-      if (!res.ok) throw new Error(t("errorLoadAgents"));
-      const data = (await res.json()) as { agents?: KnowledgeAgent[] } | KnowledgeAgent[];
-      setAttachAgents(Array.isArray(data) ? data : (data.agents ?? []));
-    } catch (error) {
-      setAttachAgentsError(true);
-      toast.error(error instanceof Error ? error.message : t("errorLoadAgents"));
-      return;
-    } finally {
-      setLoadingAttachAgents(false);
-    }
-  }
-
-  async function attachBaseToAgent(agentId: string) {
-    const canAttachKnowledgeBase = Boolean(selectedBaseCanEdit && workspaceId && selectedId);
-    if (!canAttachKnowledgeBase) return;
-    setAttachingAgentId(agentId);
-    try {
-      const targetAgent = attachAgents.find((agent) => agent.id === agentId);
-      if (!targetAgent) throw new Error(t("errorAttachAgent"));
-      const bindingsRes = await fetch(`/api/workspace/agents/${agentId}/knowledge?workspaceId=${workspaceId}`);
-      if (!bindingsRes.ok) throw new Error(t("errorAttachAgent"));
-      const currentBindings =
-        (
-          (await bindingsRes.json()) as {
-            bindings?: Array<{ knowledgeBaseId: string }>;
-          }
-        ).bindings ?? [];
-      const knowledgeBaseIds = Array.from(new Set([...currentBindings.map((binding) => binding.knowledgeBaseId), selectedId]));
-      const res = await fetch(`/api/workspace/agents/${agentId}/knowledge`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          workspaceId,
-          baseVersionId: targetAgent.activeVersionId,
-          knowledgeBaseIds,
-        }),
-      });
-      if (!res.ok) throw new Error(t("errorAttachAgent"));
-      toast.success(t("toastAttachedAgent"));
-      setAttachOpen(false);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t("errorAttachAgent"));
-      return;
-    } finally {
-      setAttachingAgentId(null);
-    }
-  }
+  const { attachOpen, setAttachOpen, attachAgents, loadingAttachAgents, attachAgentsError, attachingAgentId, openAttachDialog, attachBaseToAgent } = useKnowledgeAgentAttachment({ workspaceId, selectedId, selectedBaseCanEdit });
 
   useEffect(() => {
     if (!workspaceId) return;
@@ -329,72 +267,6 @@ export function useKnowledgePageController() {
     }
   }
 
-  async function deleteBase(baseId: string) {
-    if (!workspaceId) return;
-    const base = bases.find((item) => item.id === baseId);
-    if (!canManageKnowledgeBases || !base?.canEdit) return;
-    setDeleting(true);
-    try {
-      const res = await fetch(`/api/workspace/knowledge-bases/${baseId}?workspaceId=${workspaceId}`, { method: "DELETE" });
-      if (!res.ok) return toast.error(t("errorDeleteBase"));
-      setPendingDelete(null);
-      await loadBases();
-      toast.success(t("toastBaseRemoved"));
-    } catch {
-      toast.error(t("errorDeleteBase"));
-      return;
-    } finally {
-      setDeleting(false);
-    }
-  }
-
-  async function deleteDocument(documentId: string) {
-    const canDeleteDocument = Boolean(selectedBaseCanEdit && workspaceId && selectedId);
-    if (!canDeleteDocument) return;
-    setDeleting(true);
-    try {
-      const res = await fetch(`/api/workspace/knowledge-bases/${selectedId}/documents/${documentId}?workspaceId=${workspaceId}`, { method: "DELETE" });
-      if (!res.ok) return toast.error(t("errorDeleteDocument"));
-      setPendingDelete(null);
-      await loadDocuments();
-      toast.success(t("toastDocumentRemoved"));
-    } catch {
-      toast.error(t("errorDeleteDocument"));
-      return;
-    } finally {
-      setDeleting(false);
-    }
-  }
-
-  async function retryDocument(documentId: string) {
-    if (!selectedBaseCanEdit || !workspaceId || !selectedId) return;
-    try {
-      const res = await fetch(`/api/workspace/knowledge-bases/${selectedId}/documents/${documentId}?workspaceId=${workspaceId}`, { method: "PATCH" });
-      if (!res.ok) return toast.error(t("errorRetryDocument"));
-      await loadDocuments();
-      toast.success(t("toastDocumentRetried"));
-    } catch {
-      toast.error(t("errorRetryDocument"));
-    }
-  }
-
-  async function openDocumentPreview(documentId: string) {
-    if (!workspaceId || !selectedId) return;
-    setPreviewDocument(null);
-    setPreviewError(false);
-    setPreviewLoading(true);
-    try {
-      const res = await fetch(`/api/workspace/knowledge-bases/${selectedId}/documents/${documentId}?workspaceId=${workspaceId}`);
-      if (!res.ok) throw new Error("Failed to load document preview");
-      const payload = (await res.json()) as { document: DocumentPreview };
-      setPreviewDocument(payload.document);
-    } catch {
-      setPreviewError(true);
-    } finally {
-      setPreviewLoading(false);
-    }
-  }
-
   if (workspaceLoading || !workspaceId) {
     return <PageLoading label={tCommon("loading")} />;
   }
@@ -415,97 +287,9 @@ export function useKnowledgePageController() {
   const safeDocumentPage = Math.min(documentPage, documentPageCount);
   const visibleDocuments = filteredDocuments.slice((safeDocumentPage - 1) * documentsPerPage, safeDocumentPage * documentsPerPage);
 
-  if (loadError) {
-    return (
-      <WorkspacePage title={t("orbitTitle")} accentTitle={t("orbitAccent")} eyebrow={t("orbitEyebrow")} description={t("orbitDescription")} width="wide">
-        <div className="rounded-2xl border border-destructive/25 bg-destructive/5 p-5" role="alert">
-          <h2 className="text-base font-semibold">{t("loadErrorTitle")}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{t("loadErrorDescription")}</p>
-          <Button type="button" variant="outline" size="sm" className="mt-4" onClick={() => window.location.reload()}>
-            {t("retry")}
-          </Button>
-        </div>
-      </WorkspacePage>
-    );
-  }
+  if (loadError) return <KnowledgeLoadError />;
 
-  return {
-    kind: "ready",
-    attachAgents,
-    attachAgentsError,
-    attachBaseToAgent,
-    attachOpen,
-    attachingAgentId,
-    baseForm,
-    bases,
-    canManageKnowledgeBases,
-    canManageModels,
-    canManageTenantGlobals,
-    createBase,
-    defaultRagConfig,
-    deleteBase,
-    deleteDocument,
-    deleting,
-    discoveringRagModels,
-    docForm,
-    documentCounts,
-    documentFilter,
-    documentInputRef,
-    documentPageCount,
-    documentSearch,
-    documents,
-    documentsError,
-    dragActive,
-    editBaseForm,
-    editingBase,
-    filteredDocuments,
-    folderInputRef,
-    handleFileDrop,
-    ingestDocument,
-    ingestSelectedFiles,
-    lastUpload,
-    loadDocuments,
-    loading,
-    loadingAttachAgents,
-    openAttachDialog,
-    openDocumentPreview,
-    pendingDelete,
-    previewDocument,
-    previewError,
-    previewLoading,
-    query,
-    ragModels,
-    results,
-    retryDocument,
-    safeDocumentPage,
-    search,
-    selectedBase,
-    selectedBaseCanEdit,
-    selectedId,
-    setAttachOpen,
-    setBaseForm,
-    setDocForm,
-    setDocumentFilter,
-    setDocumentPage,
-    setDocumentSearch,
-    setDocumentsError,
-    setDragActive,
-    setEditBaseForm,
-    setEditingBase,
-    setPendingDelete,
-    setPreviewDocument,
-    setPreviewError,
-    setPreviewLoading,
-    setQuery,
-    setSelectedId,
-    setShowCreateDialog,
-    showCreateDialog,
-    t,
-    tCommon,
-    updateBase,
-    uploadingCount,
-    visibleDocuments,
-  } as const;
+  return { kind: "ready", attachAgents, attachAgentsError, attachBaseToAgent, attachOpen, attachingAgentId, baseForm, bases, canManageKnowledgeBases, canManageModels, canManageTenantGlobals, createBase, defaultRagConfig, deleteBase, deleteDocument, deleting, discoveringRagModels, docForm, documentCounts, documentFilter, documentInputRef, documentPageCount, documentSearch, documents, documentsError, dragActive, editBaseForm, editingBase, filteredDocuments, folderInputRef, handleFileDrop, ingestDocument, ingestSelectedFiles, lastUpload, loadDocuments, loading, loadingAttachAgents, openAttachDialog, openDocumentPreview, pendingDelete, previewDocument, previewError, previewLoading, query, ragModels, results, retryDocument, safeDocumentPage, search, selectedBase, selectedBaseCanEdit, selectedId, setAttachOpen, setBaseForm, setDocForm, setDocumentFilter, setDocumentPage, setDocumentSearch, setDocumentsError, setDragActive, setEditBaseForm, setEditingBase, setPendingDelete, setPreviewDocument, setPreviewError, setPreviewLoading, setQuery, setSelectedId, setShowCreateDialog, showCreateDialog, t, tCommon, updateBase, uploadingCount, visibleDocuments } as const;
 }
 
 export default function KnowledgePage(...args: Parameters<typeof useKnowledgePageController>) {

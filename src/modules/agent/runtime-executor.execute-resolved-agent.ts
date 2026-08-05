@@ -1,5 +1,5 @@
 import { buildBoundTools } from "@/app/api/workspace/[agentId]/chat/route-support";
-import { appendAgentRunStep,claimAgentRun,completeAgentRun,createAgentRun,failAgentRun,heartbeatAgentRun } from "@/modules/agent/run-use-cases";
+import { appendAgentRunStep,completeAgentRun,failAgentRun } from "@/modules/agent/run-use-cases";
 import { createRuntimeDeadline,resolveAgentRuntimeLimits } from "@/modules/agent/runtime-policy";
 import { resolveProviderForVersion } from "@/modules/agent/use-cases";
 import { buildSkillsRegistryPrompt } from "@/modules/skills/use-cases";
@@ -7,45 +7,12 @@ import { safeToolErrorMessage } from "@/modules/tool/safe-payload";
 import { getAdapter } from "@/server/infrastructure/providers";
 import { generateText,stepCountIs } from "ai";
 import { buildDelegationTools } from "./runtime-executor.build-delegation-tools";
-import { AgentExecutionError,AgentExecutionResult,AgentRunStateError,AgentToolProgressContext,HEARTBEAT_MS,InternalExecutionInput,SuccessfulToolResult,activeRunControllers,emitToolProgress,emptyResponseRecoveryInstruction,finalSynthesisInstruction,nextSequence } from "./runtime-executor.heartbeat-ms";
+import { AgentExecutionError,AgentExecutionResult,AgentToolProgressContext,InternalExecutionInput,SuccessfulToolResult,activeRunControllers,emitToolProgress,emptyResponseRecoveryInstruction,finalSynthesisInstruction,nextSequence } from "./runtime-executor.heartbeat-ms";
 import { deterministicToolResultFallback,instrumentTools,isTimeoutFailure,progressModelHistoryMetadata,toolResultRecoveryContext } from "./runtime-executor.instrument-tools";
+import { startResolvedAgentRun } from "./runtime-executor.start-run";
 
 export async function executeResolvedAgent(input: InternalExecutionInput): Promise<AgentExecutionResult> {
-  const created = input.existingRunId
-    ? { run: { id: input.existingRunId }, reused: false as const }
-    : await createAgentRun({
-        workspaceId: input.workspaceId,
-        agentId: input.resolved.agent.id,
-        agentVersionId: input.resolved.version.id,
-        actorPrincipalType: "user",
-        actorPrincipalId: input.userId,
-        trigger: input.trigger,
-        payload: { prompt: input.prompt },
-        requestedTokens: input.budget.policy.maxTotalTokens,
-        deadlineAt: input.deadlineAt,
-        rootRunId: input.budget.rootRunId,
-        parentRunId: input.parentRunId,
-        conversationId: input.conversationId,
-        messageId: input.messageId,
-        scheduledTaskId: input.scheduledTaskId,
-        idempotencyKey: input.idempotencyKey,
-        depth: input.depth,
-      });
-  const runId = created.run.id;
-  activeRunControllers.set(runId, input.budget.controller);
-  const leaseOwner = `${process.pid}:${crypto.randomUUID()}`;
-  const claimed = await claimAgentRun({ runId, leaseOwner });
-  if (!claimed) {
-    activeRunControllers.delete(runId);
-    throw new AgentRunStateError(runId, "not claimable");
-  }
-
-  const heartbeat = setInterval(() => {
-    void heartbeatAgentRun({ runId, leaseOwner }).then((alive) => {
-      if (!alive) input.budget.controller.abort("Agent run lease was lost");
-    });
-  }, HEARTBEAT_MS);
-  heartbeat.unref?.();
+  const { runId, heartbeat } = await startResolvedAgentRun(input);
 
   let inputTokens = 0;
   let outputTokens = 0;

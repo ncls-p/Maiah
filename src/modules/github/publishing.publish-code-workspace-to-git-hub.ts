@@ -1,63 +1,14 @@
-import { getCodeWorkspaceFilesForPublish } from "@/modules/code-workspace/storage";
 import { db } from "@/server/infrastructure/db";
 import { githubPublishEvents } from "@/server/infrastructure/db/schema";
-import { assertPublishPathAllowed,commonWorkspaceDirectory,createGitRef,getCommitTreeSha,getGitRef,gitRefExists,initializeEmptyRepository,isEmptyGitRepositoryError,scanTextForSecrets,workspaceContentPath } from "./publishing.common-workspace-directory";
-import { canAttemptGitHubRepositoryPublish,normalizePermissions } from "./publishing.create-git-hub-state";
-import { GitHubPublishResult,PublishCodeWorkspaceInput,getInstallationToken,githubPublishLog,githubRequest,maxCommitBytes,maxCommitFiles,publishInputSchema } from "./publishing.git-hub-repository-summary";
+import { createGitRef,getCommitTreeSha,getGitRef,gitRefExists,initializeEmptyRepository,isEmptyGitRepositoryError } from "./publishing.common-workspace-directory";
+import { GitHubPublishResult,PublishCodeWorkspaceInput,githubPublishLog,githubRequest } from "./publishing.git-hub-repository-summary";
+import { prepareCodeWorkspacePublish } from "./publishing.prepare-code-workspace-publish";
 import { publishEmptyRepositoryDirectPush } from "./publishing.publish-empty-repository-direct-push";
-import { assertSafeBranchName,encodeRefPath,getUserRepository,normalizeTargetDirectory,prefixedPath } from "./publishing.sync-git-hub-installation";
+import { encodeRefPath } from "./publishing.sync-git-hub-installation";
 
 export async function publishCodeWorkspaceToGitHub(input: PublishCodeWorkspaceInput): Promise<GitHubPublishResult> {
-  const parsed = publishInputSchema.parse(input);
-  if (parsed.mode === "direct_push" && !parsed.confirmDirectPush) {
-    throw new Error("Direct push requires explicit user confirmation.");
-  }
-  const targetBranch = assertSafeBranchName(parsed.targetBranch);
-  const targetDirectory = normalizeTargetDirectory(parsed.targetDirectory);
-  const { repo, connection } = await getUserRepository({
-    userId: parsed.userId,
-    repositoryId: parsed.repositoryId,
-  });
-  if (!canAttemptGitHubRepositoryPublish(normalizePermissions(repo.permissionsJson))) {
-    throw new Error("GitHub repository write access is required before publishing.");
-  }
-  const workspace = await getCodeWorkspaceFilesForPublish({
-    projectId: parsed.projectId,
-    workspaceId: parsed.workspaceId,
-    userId: parsed.userId,
-  });
-  if (workspace.files.length > maxCommitFiles) {
-    throw new Error(`Too many files to publish. Maximum is ${maxCommitFiles}.`);
-  }
-  const totalBytes = workspace.files.reduce((total, file) => total + file.bytes.byteLength, 0);
-  if (totalBytes > maxCommitBytes) {
-    throw new Error("Code workspace is too large to publish. Maximum is 50 MB.");
-  }
-  const workspaceDirectory = commonWorkspaceDirectory(workspace.files.map((file) => file.path));
-  const repositoryPath = (filePath: string) => prefixedPath(targetDirectory, workspaceContentPath(workspaceDirectory, filePath));
-  for (const file of workspace.files) {
-    const publishPath = repositoryPath(file.path);
-    assertPublishPathAllowed(publishPath);
-    scanTextForSecrets(publishPath, file.bytes);
-  }
-
-  const token = await getInstallationToken(connection.installationId);
-  let sourceBranch = parsed.mode === "pull_request" ? parsed.sourceBranch?.trim() || `ai-hub/${workspace.metadata.id.slice(0, 8)}-${Date.now().toString(36)}` : targetBranch;
-  sourceBranch = assertSafeBranchName(sourceBranch);
+  const { parsed, targetBranch, targetDirectory, repo, connection, workspace, repositoryPath, token, sourceBranch, logContext } = await prepareCodeWorkspacePublish(input);
   let eventId: string | null = null;
-  const logContext = {
-    workspaceId: parsed.workspaceId,
-    userId: parsed.userId,
-    codeWorkspaceId: workspace.metadata.id,
-    repository: repo.fullName,
-    mode: parsed.mode,
-    targetBranch,
-    sourceBranch,
-    targetDirectory: targetDirectory || null,
-    fileCount: workspace.files.length,
-    totalBytes,
-  };
-  githubPublishLog("start", logContext);
 
   try {
     let baseCommitSha: string | null = null;
