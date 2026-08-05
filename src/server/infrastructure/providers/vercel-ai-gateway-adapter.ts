@@ -1,6 +1,6 @@
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { logger } from "@/lib/logger";
-import type { LanguageModelV4 } from "@ai-sdk/provider";
+import type { EmbeddingModelV4, LanguageModelV4 } from "@ai-sdk/provider";
 import type {
   ProviderAdapter,
   ProviderRuntimeConfig,
@@ -138,5 +138,19 @@ export const vercelAiGatewayAdapter: ProviderAdapter = {
 
     // Model IDs in gateway format: openai/gpt-4o, anthropic/claude-3.5-sonnet, etc.
     return provider.chatModel(modelId);
+  },
+
+  createEmbeddingModel(
+    config: ProviderRuntimeConfig,
+    modelId: string,
+  ): EmbeddingModelV4 {
+    const provider = createOpenAICompatible({
+      name: "vercel-ai-gateway",
+      apiKey: config.apiKey,
+      baseURL: normalizeBaseUrl(config.baseUrl),
+      headers: gatewayHeaders(config),
+      queryParams: config.queryParams,
+    });
+    return provider.embeddingModel(modelId);
   },
 };

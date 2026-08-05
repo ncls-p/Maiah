@@ -5,11 +5,14 @@ import {
   requireResourcePermissionAsync,
 } from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
+import { hasWorkspacePermissionForRequest } from "@/modules/auth/workspace-access";
 import {
   archiveKnowledgeBase,
   getKnowledgeBase,
+  RagModelConfigurationPermissionError,
   updateKnowledgeBase,
 } from "@/modules/knowledge/use-cases";
+import { ragConfigSchema } from "@/modules/knowledge/rag-config";
 
 const querySchema = z.object({ workspaceId: z.uuid() });
 const updateSchema = z.object({
@@ -17,6 +20,7 @@ const updateSchema = z.object({
   name: z.string().min(1).max(255).optional(),
   description: z.string().max(2048).optional(),
   isGlobal: z.boolean().optional(),
+  ragConfig: ragConfigSchema.nullable().optional(),
 });
 
 export async function GET(
@@ -85,6 +89,11 @@ export async function PATCH(
         session,
         parsed.data.workspaceId,
       );
+      const canManageModels = await hasWorkspacePermissionForRequest(
+        session.user.id,
+        parsed.data.workspaceId,
+        "models.manage",
+      );
       if (parsed.data.isGlobal && !canManageGlobal) {
         return NextResponse.json(
           { error: "Only admins can make knowledge bases global" },
@@ -96,6 +105,7 @@ export async function PATCH(
           knowledgeBaseId,
           userId: session.user.id,
           canManageGlobal,
+          canManageModels,
           ...parsed.data,
         }),
       );
@@ -106,9 +116,11 @@ export async function PATCH(
         const msg =
           error instanceof Error ? error.message : "Internal server error";
         const status =
-          error instanceof Error && error.message.includes("not found")
-            ? 404
-            : 500;
+          error instanceof RagModelConfigurationPermissionError
+            ? 403
+            : error instanceof Error && error.message.includes("not found")
+              ? 404
+              : 500;
         return NextResponse.json({ error: msg }, { status });
       },
     },

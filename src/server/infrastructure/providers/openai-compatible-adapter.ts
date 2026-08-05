@@ -1,6 +1,12 @@
 import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-import type { LanguageModelV4 } from "@ai-sdk/provider";
+import type {
+  EmbeddingModelV4,
+  LanguageModelV4,
+  RerankingModelV4,
+  RerankingModelV4CallOptions,
+  RerankingModelV4Result,
+} from "@ai-sdk/provider";
 import { normalizeOpenAICompatibleApiRoute } from "@/lib/openai-compatible-api";
 import type {
   ProviderAdapter,
@@ -67,6 +73,74 @@ function buildHeaders(config: ProviderRuntimeConfig): Record<string, string> {
   }
 
   return headers;
+}
+
+function createCompatibleRerankingModel(
+  config: ProviderRuntimeConfig,
+  modelId: string,
+): RerankingModelV4 {
+  return {
+    specificationVersion: "v4",
+    provider: config.name,
+    modelId,
+    async doRerank(
+      options: RerankingModelV4CallOptions,
+    ): Promise<RerankingModelV4Result> {
+      const response = await fetch(
+        `${normalizeBaseUrl(config.baseUrl)}/rerank`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...buildHeaders(config),
+            ...options.headers,
+          },
+          body: JSON.stringify({
+            model: modelId,
+            query: options.query,
+            documents: options.documents.values,
+            top_n: options.topN,
+          }),
+          signal: options.abortSignal,
+        },
+      );
+      const body = (await response.json()) as {
+        id?: string;
+        results?: Array<{
+          index: number;
+          relevance_score?: number;
+          score?: number;
+        }>;
+        data?: Array<{
+          index: number;
+          relevance_score?: number;
+          score?: number;
+        }>;
+        error?: { message?: string } | string;
+      };
+      if (!response.ok) {
+        const message =
+          typeof body.error === "string" ? body.error : body.error?.message;
+        throw new Error(
+          message || `Reranking failed with HTTP ${response.status}`,
+        );
+      }
+      const results = body.results ?? body.data ?? [];
+      return {
+        ranking: results.map((result) => ({
+          index: result.index,
+          relevanceScore: result.relevance_score ?? result.score ?? 0,
+        })),
+        response: {
+          id: body.id,
+          timestamp: new Date(),
+          modelId,
+          headers: Object.fromEntries(response.headers.entries()),
+          body,
+        },
+      };
+    },
+  };
 }
 
 function compatibleResponsesMessage(item: unknown) {
@@ -504,5 +578,23 @@ export const openaiCompatibleAdapter: ProviderAdapter = {
       queryParams: config.queryParams,
     });
     return provider.imageModel(modelId);
+  },
+
+  createEmbeddingModel(
+    config: ProviderRuntimeConfig,
+    modelId: string,
+  ): EmbeddingModelV4 {
+    const provider = createOpenAICompatible({
+      name: config.name,
+      apiKey: config.apiKey,
+      baseURL: normalizeBaseUrl(config.baseUrl),
+      headers: buildHeaders(config),
+      queryParams: config.queryParams,
+    });
+    return provider.embeddingModel(modelId);
+  },
+
+  createRerankingModel(config, modelId) {
+    return createCompatibleRerankingModel(config, modelId);
   },
 };

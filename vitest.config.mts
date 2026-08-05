@@ -23,6 +23,9 @@ export default defineConfig({
 			],
 			exclude: [
 				"src/**/*.d.ts",
+				// Pure TypeScript contracts have no runtime behavior. V8 still maps
+				// their erased declarations as uncovered statements.
+				"src/modules/document-extraction/types.ts",
 				"src/server/infrastructure/**",
 				"src/app/**",
 				"src/components/**",

@@ -1,4 +1,9 @@
-import type { ImageModelV4, LanguageModelV4 } from "@ai-sdk/provider";
+import type {
+  EmbeddingModelV4,
+  ImageModelV4,
+  LanguageModelV4,
+  RerankingModelV4,
+} from "@ai-sdk/provider";
 import type {
   ImageGenerationConfig,
   SustainabilityConfig,
@@ -6,10 +11,7 @@ import type {
 import type { OpenAICompatibleApiRoute } from "@/lib/openai-compatible-api";
 
 export type ProviderKind =
-  | "openai-compatible"
-  | "dragonfly"
-  | "vercel-ai-gateway"
-  | "native";
+  "openai-compatible" | "dragonfly" | "vercel-ai-gateway" | "native";
 
 type ProviderAuthType = "bearer" | "x-api-key" | "custom-header" | "gateway";
 
@@ -62,6 +64,14 @@ export interface ProviderAdapter {
     config: ProviderRuntimeConfig,
     modelId: string,
   ): LanguageModelV4;
+  createEmbeddingModel(
+    config: ProviderRuntimeConfig,
+    modelId: string,
+  ): EmbeddingModelV4;
+  createRerankingModel?(
+    config: ProviderRuntimeConfig,
+    modelId: string,
+  ): RerankingModelV4;
   createImageModel?(
     config: ProviderRuntimeConfig,
     modelId: string,

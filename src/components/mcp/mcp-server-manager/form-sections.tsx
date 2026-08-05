@@ -46,7 +46,9 @@ export function AuthSection({
   return (
     <div className="grid min-w-0 gap-3 rounded-lg border border-border/70 bg-background/70 p-3">
       <div className="grid min-w-0 gap-2">
-        <Label htmlFor={`${prefix}-auth-mode`}>{t("authentication")}</Label>
+        <Label htmlFor={`${prefix}-auth-mode`} help={t("authenticationHelp")}>
+          {t("authentication")}
+        </Label>
         <Select
           value={form.authMode === "custom" ? "custom" : form.authMode}
           onValueChange={(value) =>
@@ -198,7 +200,10 @@ export function AdvancedSection({
         {showConnectionMode ? (
           <div className="grid gap-3 rounded-lg border border-border/60 bg-background/60 p-3">
             <div className={FIELD_STACK_CLASS}>
-              <Label htmlFor={`${prefix}-transport`}>
+              <Label
+                htmlFor={`${prefix}-transport`}
+                help={t("connectionModeHelp")}
+              >
                 {t("connectionMode")}
               </Label>
               <Select
@@ -266,7 +271,9 @@ export function AdvancedSection({
           />
         </div>
         <div className={FIELD_STACK_CLASS}>
-          <Label htmlFor={`${prefix}-headers`}>{t("httpHeaders")}</Label>
+          <Label htmlFor={`${prefix}-headers`} help={t("httpHeadersHint")}>
+            {t("httpHeaders")}
+          </Label>
           <Textarea
             id={`${prefix}-headers`}
             autoComplete="off"
@@ -279,7 +286,9 @@ export function AdvancedSection({
           </p>
         </div>
         <div className={FIELD_STACK_CLASS}>
-          <Label htmlFor={`${prefix}-env`}>{t("environmentVariables")}</Label>
+          <Label htmlFor={`${prefix}-env`} help={t("environmentVariablesHint")}>
+            {t("environmentVariables")}
+          </Label>
           <Textarea
             id={`${prefix}-env`}
             autoComplete="off"

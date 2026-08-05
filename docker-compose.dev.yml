@@ -20,6 +20,9 @@ services:
   dragonflydb:
     image: docker.dragonflydb.io/dragonflydb/dragonfly
     command:
+      - "--dir=/data"
+      - "--dbfilename=maiah-queue"
+      - "--snapshot_cron=*/1 * * * *"
       - "--cluster_mode=emulated"
       - "--lock_on_hashtags"
       - "--default_lua_flags=allow-undeclared-keys"

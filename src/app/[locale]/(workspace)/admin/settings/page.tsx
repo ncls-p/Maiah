@@ -5,6 +5,7 @@ import { WorkspacePage } from "@/components/workspace-page";
 import { AssistantGovernanceSettings } from "@/components/admin/assistant-governance-settings";
 import { ChatAutomationSettings } from "@/components/admin/chat-automation-settings";
 import { RegistrationSettings } from "@/components/admin/registration-settings";
+import { RagSettings } from "@/components/admin/rag-settings";
 import { SidebarNavigationSettings } from "@/components/admin/sidebar-navigation-settings";
 import { SystemHealthCard } from "@/components/admin/system-health-card";
 import { UsageImpactSettings } from "@/components/admin/usage-impact-settings";
@@ -19,6 +20,7 @@ import {
 import { isPlatformAdminSession } from "@/modules/admin/auth";
 import { getRegistrationSetting } from "@/modules/admin/use-cases";
 import { getUsageImpactSetting } from "@/modules/provider/usage-impact-settings";
+import { getDefaultRagConfig } from "@/modules/knowledge/rag-config";
 import { getSession } from "@/modules/auth/session";
 
 export default async function AdminSettingsPage() {
@@ -42,9 +44,10 @@ export default async function AdminSettingsPage() {
     );
   }
 
-  const [registration, usageImpact] = await Promise.all([
+  const [registration, usageImpact, ragDefaults] = await Promise.all([
     getRegistrationSetting(),
     getUsageImpactSetting(),
+    getDefaultRagConfig(),
   ]);
 
   return (
@@ -60,6 +63,7 @@ export default async function AdminSettingsPage() {
           <UsageImpactSettings initialState={usageImpact} />
         </div>
         <SidebarNavigationSettings />
+        <RagSettings initialState={ragDefaults} />
         <AssistantGovernanceSettings />
         <ChatAutomationSettings />
         <WorkflowBuilderSettings />

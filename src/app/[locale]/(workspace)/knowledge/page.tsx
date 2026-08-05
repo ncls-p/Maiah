@@ -10,15 +10,20 @@ import {
 import { useTranslations } from "next-intl";
 import {
   BookOpenIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  EyeIcon,
   FileTextIcon,
   Loader2,
   PencilIcon,
   PlusIcon,
+  RefreshCwIcon,
   SearchIcon,
   Trash2Icon,
   UploadIcon,
 } from "lucide-react";
 import { toast } from "sonner";
+import { uploadDocumentInChunks } from "@/modules/document-upload/chunked-upload";
 import { PageEmptyState } from "@/components/page-empty-state";
 import { PageLoading } from "@/components/page-loading";
 import { ModelLogo } from "@/components/providers/model-logo";
@@ -52,9 +57,21 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { fetchWorkspacePermissions } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
+import {
+  DEFAULT_RAG_CONFIG,
+  type RagConfig,
+} from "@/modules/knowledge/rag-config-schema";
 
 interface KnowledgeBase {
   id: string;
@@ -64,11 +81,16 @@ interface KnowledgeBase {
   canEdit: boolean;
   createdAt: string;
   provenance: ResourceProvenance;
+  effectiveRagConfig: RagConfig;
+  usesDefaultRagConfig: boolean;
 }
 interface DocumentRow {
   id: string;
   title: string;
   status: string;
+  processingProgress: number;
+  processingStage: string;
+  errorMessage: string | null;
   createdAt: string;
 }
 interface SearchResult {
@@ -76,6 +98,12 @@ interface SearchResult {
   documentTitle: string;
   content: string;
   score: number;
+}
+interface DocumentPreview {
+  documentId: string;
+  documentTitle: string;
+  mimeType: string | null;
+  chunks: Array<{ chunkId: string; chunkIndex: number; content: string }>;
 }
 interface KnowledgeAgent {
   id: string;
@@ -85,6 +113,495 @@ interface KnowledgeAgent {
   logoUrl?: string | null;
   modelDisplayName?: string | null;
   canEdit?: boolean;
+}
+
+interface RagModelOption {
+  providerId: string;
+  providerName: string;
+  modelId: string;
+  displayName?: string;
+  embeddings: boolean;
+  vision: boolean;
+}
+
+function cloneRagConfig(config: RagConfig): RagConfig {
+  return {
+    embedding: { ...config.embedding },
+    chunking: { ...config.chunking },
+    retrieval: { ...config.retrieval },
+    reranking: { ...config.reranking },
+    extraction: {
+      ...config.extraction,
+      ocr: { ...config.extraction.ocr },
+    },
+  };
+}
+
+function RagConfigFields({
+  idPrefix,
+  config,
+  onChange,
+  canManageModels,
+  models,
+  discoveringModels,
+}: {
+  idPrefix: string;
+  config: RagConfig;
+  onChange: (config: RagConfig) => void;
+  canManageModels: boolean;
+  models: RagModelOption[];
+  discoveringModels: boolean;
+}) {
+  const t = useTranslations("knowledge");
+  const embeddingModels = models.some((model) => model.embeddings)
+    ? models.filter((model) => model.embeddings)
+    : models;
+  const rerankingModels = models.some((model) =>
+    model.modelId.toLowerCase().includes("rerank"),
+  )
+    ? models.filter((model) => model.modelId.toLowerCase().includes("rerank"))
+    : models;
+  const visionModels = models.some((model) => model.vision)
+    ? models.filter((model) => model.vision)
+    : models;
+  const modelValue = (model: RagModelOption) =>
+    `${model.providerId}:${model.modelId}`;
+
+  function selectModel(
+    value: string,
+    target: "embedding" | "reranking" | "ocr",
+  ) {
+    const model = models.find((candidate) => modelValue(candidate) === value);
+    if (!model) return;
+    onChange(
+      target === "embedding"
+        ? {
+            ...config,
+            embedding: {
+              ...config.embedding,
+              providerId: model.providerId,
+              modelId: model.modelId,
+            },
+          }
+        : target === "reranking"
+          ? {
+              ...config,
+              reranking: {
+                ...config.reranking,
+                providerId: model.providerId,
+                modelId: model.modelId,
+              },
+            }
+          : {
+              ...config,
+              extraction: {
+                ...config.extraction,
+                ocr: {
+                  ...config.extraction.ocr,
+                  providerId: model.providerId,
+                  modelId: model.modelId,
+                },
+              },
+            },
+    );
+  }
+
+  return (
+    <div className="grid gap-4">
+      {canManageModels ? (
+        <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,14rem),1fr))]">
+          <div className="grid min-w-0 gap-1.5">
+            <Label
+              htmlFor={`${idPrefix}-embedding-discovered`}
+              help={t("ragEmbeddingModelHelp")}
+            >
+              {t("ragEmbeddingModel")}
+            </Label>
+            <Select onValueChange={(value) => selectModel(value, "embedding")}>
+              <SelectTrigger
+                id={`${idPrefix}-embedding-discovered`}
+                className="min-w-0"
+              >
+                <SelectValue
+                  placeholder={
+                    discoveringModels
+                      ? t("ragDiscoveringModels")
+                      : t("ragSelectModel")
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {embeddingModels.map((model) => (
+                    <SelectItem
+                      key={`embedding-${modelValue(model)}`}
+                      value={modelValue(model)}
+                    >
+                      {model.providerName} ·{" "}
+                      {model.displayName || model.modelId}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+            <Input
+              aria-label={t("ragExactModelId")}
+              value={config.embedding.modelId}
+              onChange={(event) =>
+                onChange({
+                  ...config,
+                  embedding: {
+                    ...config.embedding,
+                    providerId: null,
+                    modelId: event.target.value,
+                  },
+                })
+              }
+              placeholder={t("ragExactModelId")}
+            />
+          </div>
+          <div className="grid min-w-0 gap-1.5">
+            <Label
+              htmlFor={`${idPrefix}-dimensions`}
+              help={t("ragDimensionsHelp")}
+            >
+              {t("ragDimensions")}
+            </Label>
+            <Input
+              id={`${idPrefix}-dimensions`}
+              type="number"
+              min={1}
+              value={config.embedding.dimensions ?? ""}
+              onChange={(event) =>
+                onChange({
+                  ...config,
+                  embedding: {
+                    ...config.embedding,
+                    dimensions: event.target.value
+                      ? Number(event.target.value)
+                      : null,
+                  },
+                })
+              }
+              placeholder={t("ragNativeDimensions")}
+            />
+          </div>
+        </div>
+      ) : (
+        <div className="rounded-lg border border-border/70 bg-muted/20 p-3 text-xs leading-5 text-muted-foreground">
+          {t("ragModelsPermissionHint")}
+        </div>
+      )}
+
+      <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,8rem),1fr))]">
+        {(
+          [
+            ["ragChunkSize", "maxCharacters", config.chunking.maxCharacters],
+            [
+              "ragChunkOverlap",
+              "overlapCharacters",
+              config.chunking.overlapCharacters,
+            ],
+            [
+              "ragCandidates",
+              "candidateCount",
+              config.retrieval.candidateCount,
+            ],
+            ["ragResults", "resultCount", config.retrieval.resultCount],
+            ["ragMinimumScore", "minimumScore", config.retrieval.minimumScore],
+          ] as const
+        ).map(([label, key, value]) => (
+          <div className="grid min-w-0 gap-1.5" key={key}>
+            <Label htmlFor={`${idPrefix}-${key}`} help={t(`${label}Help`)}>
+              {t(label)}
+            </Label>
+            <Input
+              id={`${idPrefix}-${key}`}
+              type="number"
+              min={
+                key === "minimumScore"
+                  ? -1
+                  : key === "overlapCharacters"
+                    ? 0
+                    : 1
+              }
+              max={key === "minimumScore" ? 1 : undefined}
+              step={key === "minimumScore" ? 0.01 : 1}
+              value={value}
+              onChange={(event) => {
+                const next = Number(event.target.value);
+                if (!Number.isFinite(next)) return;
+                onChange(
+                  key === "maxCharacters" || key === "overlapCharacters"
+                    ? {
+                        ...config,
+                        chunking: { ...config.chunking, [key]: next },
+                      }
+                    : {
+                        ...config,
+                        retrieval: { ...config.retrieval, [key]: next },
+                      },
+                );
+              }}
+            />
+          </div>
+        ))}
+      </div>
+
+      <div className="grid gap-3 rounded-lg border p-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,14rem),1fr))]">
+        <div className="flex min-w-0 items-center gap-2">
+          <Checkbox
+            id={`${idPrefix}-reranking`}
+            checked={config.reranking.enabled}
+            onCheckedChange={(checked) =>
+              onChange({
+                ...config,
+                reranking: {
+                  ...config.reranking,
+                  enabled: checked === true,
+                },
+              })
+            }
+          />
+          <Label htmlFor={`${idPrefix}-reranking`} help={t("ragRerankingHelp")}>
+            {t("ragReranking")}
+          </Label>
+        </div>
+        {canManageModels ? (
+          <div className="grid min-w-0 gap-1.5">
+            <Label
+              htmlFor={`${idPrefix}-reranking-model`}
+              help={t("ragRerankingModelHelp")}
+            >
+              {t("ragRerankingModel")}
+            </Label>
+            <Select
+              disabled={!config.reranking.enabled}
+              onValueChange={(value) => selectModel(value, "reranking")}
+            >
+              <SelectTrigger
+                id={`${idPrefix}-reranking-model`}
+                className="min-w-0"
+              >
+                <SelectValue
+                  placeholder={
+                    discoveringModels
+                      ? t("ragDiscoveringModels")
+                      : t("ragSelectModel")
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {rerankingModels.map((model) => (
+                    <SelectItem
+                      key={`reranking-${modelValue(model)}`}
+                      value={modelValue(model)}
+                    >
+                      {model.providerName} ·{" "}
+                      {model.displayName || model.modelId}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+            <Input
+              aria-label={t("ragExactRerankingModelId")}
+              disabled={!config.reranking.enabled}
+              value={config.reranking.modelId}
+              onChange={(event) =>
+                onChange({
+                  ...config,
+                  reranking: {
+                    ...config.reranking,
+                    providerId: null,
+                    modelId: event.target.value,
+                  },
+                })
+              }
+              placeholder={t("ragExactRerankingModelId")}
+            />
+          </div>
+        ) : (
+          <p className="pb-2 text-xs text-muted-foreground">
+            {config.reranking.modelId || t("ragInheritedModel")}
+          </p>
+        )}
+      </div>
+
+      <div className="grid gap-3 rounded-lg border p-3">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <Label htmlFor={`${idPrefix}-ocr-enabled`} help={t("ragOcrHint")}>
+              {t("ragOcrEnabled")}
+            </Label>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {t("ragOcrHint")}
+            </p>
+          </div>
+          <Checkbox
+            id={`${idPrefix}-ocr-enabled`}
+            checked={config.extraction.ocr.enabled}
+            onCheckedChange={(checked) =>
+              onChange({
+                ...config,
+                extraction: {
+                  ...config.extraction,
+                  ocr: {
+                    ...config.extraction.ocr,
+                    enabled: checked === true,
+                  },
+                },
+              })
+            }
+          />
+        </div>
+        {config.extraction.ocr.enabled ? (
+          <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,12rem),1fr))]">
+            {canManageModels ? (
+              <div className="col-span-full grid min-w-0 gap-1.5">
+                <Label
+                  htmlFor={`${idPrefix}-ocr-model`}
+                  help={t("ragOcrModelHelp")}
+                >
+                  {t("ragOcrModel")}
+                </Label>
+                <Select onValueChange={(value) => selectModel(value, "ocr")}>
+                  <SelectTrigger
+                    id={`${idPrefix}-ocr-model`}
+                    className="min-w-0"
+                  >
+                    <SelectValue
+                      placeholder={
+                        discoveringModels
+                          ? t("ragDiscoveringModels")
+                          : t("ragSelectVisionModel")
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {visionModels.map((model) => (
+                        <SelectItem
+                          key={`ocr-${modelValue(model)}`}
+                          value={modelValue(model)}
+                        >
+                          {model.providerName} ·{" "}
+                          {model.displayName || model.modelId}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+                <Input
+                  aria-label={t("ragExactOcrModelId")}
+                  value={config.extraction.ocr.modelId}
+                  onChange={(event) =>
+                    onChange({
+                      ...config,
+                      extraction: {
+                        ...config.extraction,
+                        ocr: {
+                          ...config.extraction.ocr,
+                          providerId: null,
+                          modelId: event.target.value,
+                        },
+                      },
+                    })
+                  }
+                  placeholder={t("ragExactOcrModelId")}
+                />
+              </div>
+            ) : (
+              <p className="col-span-full text-xs text-muted-foreground">
+                {config.extraction.ocr.modelId || t("ragInheritedModel")}
+              </p>
+            )}
+            <div className="grid min-w-0 gap-1.5">
+              <Label
+                htmlFor={`${idPrefix}-ocr-min-text`}
+                help={t("ragOcrMinimumTextHelp")}
+              >
+                {t("ragOcrMinimumText")}
+              </Label>
+              <Input
+                id={`${idPrefix}-ocr-min-text`}
+                type="number"
+                min={0}
+                max={10000}
+                value={config.extraction.ocr.minimumTextCharactersPerPage}
+                onChange={(event) =>
+                  onChange({
+                    ...config,
+                    extraction: {
+                      ...config.extraction,
+                      ocr: {
+                        ...config.extraction.ocr,
+                        minimumTextCharactersPerPage: Number(
+                          event.target.value,
+                        ),
+                      },
+                    },
+                  })
+                }
+              />
+            </div>
+            <div className="grid min-w-0 gap-1.5">
+              <Label
+                htmlFor={`${idPrefix}-ocr-max-pages`}
+                help={t("ragOcrMaxPagesHelp")}
+              >
+                {t("ragOcrMaxPages")}
+              </Label>
+              <Input
+                id={`${idPrefix}-ocr-max-pages`}
+                type="number"
+                min={1}
+                max={500}
+                value={config.extraction.ocr.maxVisualPages}
+                onChange={(event) =>
+                  onChange({
+                    ...config,
+                    extraction: {
+                      ...config.extraction,
+                      ocr: {
+                        ...config.extraction.ocr,
+                        maxVisualPages: Number(event.target.value),
+                      },
+                    },
+                  })
+                }
+              />
+            </div>
+            <div className="col-span-full flex min-w-0 items-center justify-between gap-3 rounded-lg border p-3">
+              <Label
+                htmlFor={`${idPrefix}-ocr-diagrams`}
+                help={t("ragOcrDescribeDiagramsHelp")}
+              >
+                {t("ragOcrDescribeDiagrams")}
+              </Label>
+              <Checkbox
+                id={`${idPrefix}-ocr-diagrams`}
+                checked={config.extraction.ocr.describeDiagrams}
+                onCheckedChange={(checked) =>
+                  onChange({
+                    ...config,
+                    extraction: {
+                      ...config.extraction,
+                      ocr: {
+                        ...config.extraction.ocr,
+                        describeDiagrams: checked === true,
+                      },
+                    },
+                  })
+                }
+              />
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
 }
 
 function statusVariant(status: string) {
@@ -110,21 +627,45 @@ export default function KnowledgePage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [documentsError, setDocumentsError] = useState(false);
+  const [documentFilter, setDocumentFilter] = useState<
+    "all" | "ready" | "processing" | "failed"
+  >("all");
+  const [documentSearch, setDocumentSearch] = useState("");
+  const [documentPage, setDocumentPage] = useState(1);
+  const [previewDocument, setPreviewDocument] =
+    useState<DocumentPreview | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState(false);
   const [baseForm, setBaseForm] = useState({
     name: "",
     description: "",
     isGlobal: false,
+    customizeRag: false,
+    ragConfig: cloneRagConfig(DEFAULT_RAG_CONFIG),
   });
+  const [defaultRagConfig, setDefaultRagConfig] = useState(() =>
+    cloneRagConfig(DEFAULT_RAG_CONFIG),
+  );
+  const [ragModels, setRagModels] = useState<RagModelOption[]>([]);
+  const [discoveringRagModels, setDiscoveringRagModels] = useState(true);
   const [docForm, setDocForm] = useState({ title: "", content: "" });
   const [query, setQuery] = useState("");
   const [dragActive, setDragActive] = useState(false);
   const documentInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingCount, setUploadingCount] = useState(0);
+  const [lastUpload, setLastUpload] = useState<{
+    accepted: number;
+    rejected: Array<{ title: string; error: string }>;
+  } | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editingBase, setEditingBase] = useState<KnowledgeBase | null>(null);
   const [editBaseForm, setEditBaseForm] = useState({
     name: "",
     description: "",
     isGlobal: false,
+    customizeRag: false,
+    ragConfig: null as RagConfig | null,
   });
   const [attachOpen, setAttachOpen] = useState(false);
   const [attachAgents, setAttachAgents] = useState<KnowledgeAgent[]>([]);
@@ -132,6 +673,7 @@ export default function KnowledgePage() {
   const [attachAgentsError, setAttachAgentsError] = useState(false);
   const [attachingAgentId, setAttachingAgentId] = useState<string | null>(null);
   const [canManageKnowledgeBases, setCanManageKnowledgeBases] = useState(false);
+  const [canManageModels, setCanManageModels] = useState(false);
   const [canManageTenantGlobals, setCanManageTenantGlobals] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<
     | { kind: "base"; id: string; name: string }
@@ -153,6 +695,22 @@ export default function KnowledgePage() {
         ? current
         : (data[0]?.id ?? null),
     );
+  }, [workspaceId]);
+
+  const loadDefaultRagConfig = useCallback(async () => {
+    if (!workspaceId) return;
+    const res = await fetch(
+      `/api/workspace/knowledge-bases/default-rag-config?workspaceId=${workspaceId}`,
+    );
+    if (!res.ok) throw new Error("Failed to load default RAG configuration");
+    const config = (await res.json()) as RagConfig;
+    setDefaultRagConfig(config);
+    setBaseForm((current) => ({
+      ...current,
+      ragConfig: current.customizeRag
+        ? current.ragConfig
+        : cloneRagConfig(config),
+    }));
   }, [workspaceId]);
 
   const loadDocuments = useCallback(async () => {
@@ -181,7 +739,8 @@ export default function KnowledgePage() {
       );
       if (!res.ok) throw new Error(t("errorLoadAgents"));
       const data = (await res.json()) as
-        { agents?: KnowledgeAgent[] } | KnowledgeAgent[];
+        | { agents?: KnowledgeAgent[] }
+        | KnowledgeAgent[];
       setAttachAgents(Array.isArray(data) ? data : (data.agents ?? []));
     } catch (error) {
       setAttachAgentsError(true);
@@ -270,21 +829,82 @@ export default function KnowledgePage() {
     toast.success(t("toastDocumentQueued"));
   }
 
+  async function ingestFiles(files: File[]) {
+    if (
+      !selectedBaseCanEdit ||
+      !workspaceId ||
+      !selectedId ||
+      files.length === 0
+    )
+      return;
+    setUploadingCount(files.length);
+    setLastUpload(null);
+    try {
+      type UploadResult = {
+        documents?: DocumentRow[];
+        rejected?: Array<{ title: string; error: string }>;
+        error?: string;
+      };
+      const results: UploadResult[] = [];
+      let nextFileIndex = 0;
+      const worker = async () => {
+        while (nextFileIndex < files.length) {
+          const file = files[nextFileIndex++];
+          try {
+            results.push(
+              await uploadDocumentInChunks<UploadResult>({
+                workspaceId,
+                file,
+                chunkUrl: `/api/workspace/knowledge-bases/${selectedId}/documents?uploadPhase=chunk`,
+                completeUrl: `/api/workspace/knowledge-bases/${selectedId}/documents?uploadPhase=complete`,
+                completeMetadata: {
+                  fileName: file.webkitRelativePath || file.name,
+                },
+              }),
+            );
+          } catch (error) {
+            results.push({
+              rejected: [
+                {
+                  title: file.webkitRelativePath || file.name,
+                  error:
+                    error instanceof Error ? error.message : t("errorIngest"),
+                },
+              ],
+            });
+          } finally {
+            setUploadingCount((current) => Math.max(0, current - 1));
+          }
+        }
+      };
+      await Promise.all(
+        Array.from({ length: Math.min(3, files.length) }, () => worker()),
+      );
+      const accepted = results.reduce(
+        (sum, result) => sum + (result.documents?.length ?? 0),
+        0,
+      );
+      const rejected = results.flatMap((result) => result.rejected ?? []);
+      setLastUpload({ accepted, rejected });
+      await loadDocuments();
+      toast.success(
+        t("toastBatchQueued", { accepted, rejected: rejected.length }),
+      );
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("errorIngest"));
+    } finally {
+      setUploadingCount(0);
+    }
+  }
+
   function handleFileDrop(event: DragEvent<HTMLDivElement>) {
     event.preventDefault();
     setDragActive(false);
-    const file = event.dataTransfer.files[0];
-    if (!selectedBaseCanEdit || !file) return;
-    void file.text().then((content) => {
-      void ingestFromContent(file.name, content);
-    });
+    void ingestFiles(Array.from(event.dataTransfer.files));
   }
 
-  function ingestSelectedFile(file: File | undefined) {
-    if (!selectedBaseCanEdit || !file) return;
-    void file.text().then((content) => {
-      void ingestFromContent(file.name, content);
-    });
+  function ingestSelectedFiles(files: FileList | null) {
+    void ingestFiles(files ? Array.from(files) : []);
   }
 
   useEffect(() => {
@@ -297,8 +917,9 @@ export default function KnowledgePage() {
         if (!cancelled) {
           setCanManageKnowledgeBases(permissions.canManageKnowledgeBases);
           setCanManageTenantGlobals(permissions.canManageTenantGlobals);
+          setCanManageModels(permissions.canManageModels);
         }
-        await loadBases();
+        await Promise.all([loadBases(), loadDefaultRagConfig()]);
       } catch {
         if (!cancelled) setLoadError(true);
         return;
@@ -310,7 +931,50 @@ export default function KnowledgePage() {
     return () => {
       cancelled = true;
     };
-  }, [loadBases, workspaceId]);
+  }, [loadBases, loadDefaultRagConfig, workspaceId]);
+
+  useEffect(() => {
+    if (!workspaceId || !canManageModels) return;
+    const controller = new AbortController();
+    fetch(`/api/workspace/rag-models?workspaceId=${workspaceId}`, {
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Model discovery failed");
+        return response.json() as Promise<{
+          providers: Array<{
+            provider: { id: string; name: string };
+            models: Array<{
+              modelId: string;
+              displayName?: string;
+              capabilities?: { embeddings?: boolean; vision?: boolean };
+            }>;
+          }>;
+        }>;
+      })
+      .then((catalog) =>
+        setRagModels(
+          catalog.providers.flatMap(({ provider, models }) =>
+            models.map((model) => ({
+              providerId: provider.id,
+              providerName: provider.name,
+              modelId: model.modelId,
+              displayName: model.displayName,
+              embeddings: model.capabilities?.embeddings === true,
+              vision: model.capabilities?.vision === true,
+            })),
+          ),
+        ),
+      )
+      .catch((error) => {
+        if (error instanceof Error && error.name === "AbortError") return;
+        setRagModels([]);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setDiscoveringRagModels(false);
+      });
+    return () => controller.abort();
+  }, [canManageModels, workspaceId]);
 
   useEffect(() => {
     if (!workspaceId || !selectedId) return;
@@ -355,14 +1019,21 @@ export default function KnowledgePage() {
           name: baseForm.name.trim(),
           description: baseForm.description.trim() || undefined,
           isGlobal: canManageTenantGlobals ? baseForm.isGlobal : undefined,
+          ragConfig: baseForm.customizeRag ? baseForm.ragConfig : undefined,
         }),
       });
       if (!res.ok) return toast.error(t("errorCreate"));
       const created = (await res.json()) as KnowledgeBase;
-      setBaseForm({ name: "", description: "", isGlobal: false });
+      setBaseForm({
+        name: "",
+        description: "",
+        isGlobal: false,
+        customizeRag: false,
+        ragConfig: cloneRagConfig(defaultRagConfig),
+      });
       setShowCreateDialog(false);
-      setSelectedId(created.id);
       await loadBases();
+      setSelectedId(created.id);
       toast.success(t("toastBaseCreated"));
     } catch {
       toast.error(t("errorCreate"));
@@ -407,6 +1078,9 @@ export default function KnowledgePage() {
             isGlobal: canManageTenantGlobals
               ? editBaseForm.isGlobal
               : undefined,
+            ragConfig: editBaseForm.customizeRag
+              ? editBaseForm.ragConfig
+              : null,
           }),
         },
       );
@@ -465,6 +1139,40 @@ export default function KnowledgePage() {
     }
   }
 
+  async function retryDocument(documentId: string) {
+    if (!selectedBaseCanEdit || !workspaceId || !selectedId) return;
+    try {
+      const res = await fetch(
+        `/api/workspace/knowledge-bases/${selectedId}/documents/${documentId}?workspaceId=${workspaceId}`,
+        { method: "PATCH" },
+      );
+      if (!res.ok) return toast.error(t("errorRetryDocument"));
+      await loadDocuments();
+      toast.success(t("toastDocumentRetried"));
+    } catch {
+      toast.error(t("errorRetryDocument"));
+    }
+  }
+
+  async function openDocumentPreview(documentId: string) {
+    if (!workspaceId || !selectedId) return;
+    setPreviewDocument(null);
+    setPreviewError(false);
+    setPreviewLoading(true);
+    try {
+      const res = await fetch(
+        `/api/workspace/knowledge-bases/${selectedId}/documents/${documentId}?workspaceId=${workspaceId}`,
+      );
+      if (!res.ok) throw new Error("Failed to load document preview");
+      const payload = (await res.json()) as { document: DocumentPreview };
+      setPreviewDocument(payload.document);
+    } catch {
+      setPreviewError(true);
+    } finally {
+      setPreviewLoading(false);
+    }
+  }
+
   if (workspaceLoading || !workspaceId) {
     return <PageLoading label={tCommon("loading")} />;
   }
@@ -472,6 +1180,32 @@ export default function KnowledgePage() {
   const selectedBase = bases.find((base) => base.id === selectedId) ?? null;
   const selectedBaseCanEdit = Boolean(
     canManageKnowledgeBases && selectedBase?.canEdit,
+  );
+  const documentCounts = documents.reduce(
+    (counts, document) => {
+      if (document.status === "ready") counts.ready += 1;
+      else if (document.status === "processing") counts.processing += 1;
+      else counts.failed += 1;
+      return counts;
+    },
+    { ready: 0, processing: 0, failed: 0 },
+  );
+  const normalizedDocumentSearch = documentSearch.trim().toLocaleLowerCase();
+  const filteredDocuments = documents.filter(
+    (document) =>
+      (documentFilter === "all" || document.status === documentFilter) &&
+      (!normalizedDocumentSearch ||
+        document.title.toLocaleLowerCase().includes(normalizedDocumentSearch)),
+  );
+  const documentsPerPage = 12;
+  const documentPageCount = Math.max(
+    1,
+    Math.ceil(filteredDocuments.length / documentsPerPage),
+  );
+  const safeDocumentPage = Math.min(documentPage, documentPageCount);
+  const visibleDocuments = filteredDocuments.slice(
+    (safeDocumentPage - 1) * documentsPerPage,
+    safeDocumentPage * documentsPerPage,
   );
 
   if (loadError) {
@@ -574,6 +1308,49 @@ export default function KnowledgePage() {
                 </div>
               </div>
             ) : null}
+            <AdvancedSection
+              label={t("ragAdvanced")}
+              hint={t("ragCreateAdvancedHint")}
+              storageKey="advanced:knowledge-create-rag-config"
+            >
+              <div className="grid gap-4">
+                <div className="flex items-start gap-3 rounded-lg border bg-muted/20 p-3">
+                  <Checkbox
+                    id="knowledge-custom-rag"
+                    checked={baseForm.customizeRag}
+                    onCheckedChange={(checked) =>
+                      setBaseForm({
+                        ...baseForm,
+                        customizeRag: checked === true,
+                        ragConfig: checked
+                          ? cloneRagConfig(baseForm.ragConfig)
+                          : cloneRagConfig(defaultRagConfig),
+                      })
+                    }
+                  />
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="knowledge-custom-rag">
+                      {t("ragCustomLabel")}
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      {t("ragCreateCustomHint")}
+                    </p>
+                  </div>
+                </div>
+                {baseForm.customizeRag ? (
+                  <RagConfigFields
+                    idPrefix="create-rag"
+                    config={baseForm.ragConfig}
+                    onChange={(ragConfig) =>
+                      setBaseForm({ ...baseForm, ragConfig })
+                    }
+                    canManageModels={canManageModels}
+                    models={ragModels}
+                    discoveringModels={discoveringRagModels}
+                  />
+                ) : null}
+              </div>
+            </AdvancedSection>
           </div>
           <DialogFooter>
             <Button
@@ -684,6 +1461,8 @@ export default function KnowledgePage() {
                             name: base.name,
                             description: base.description ?? "",
                             isGlobal: base.isGlobal,
+                            customizeRag: !base.usesDefaultRagConfig,
+                            ragConfig: base.effectiveRagConfig,
                           });
                         }}
                       >
@@ -758,99 +1537,171 @@ export default function KnowledgePage() {
 
                   {selectedBaseCanEdit ? (
                     <div className="p-3">
-                      <input
-                        ref={documentInputRef}
-                        type="file"
-                        accept=".txt,.md,.csv,.json,text/*"
-                        className="hidden"
-                        onChange={(event) => {
-                          ingestSelectedFile(event.target.files?.[0]);
-                          event.target.value = "";
-                        }}
-                      />
-                      <div
-                        className={cn(
-                          "flex min-h-32 flex-col items-center justify-center rounded-xl border border-dashed px-5 py-5 text-center transition-colors",
-                          dragActive
-                            ? "border-primary bg-primary/6"
-                            : "border-primary/20 bg-primary/[0.025]",
-                        )}
-                        onDragOver={(event) => {
-                          event.preventDefault();
-                          setDragActive(true);
-                        }}
-                        onDragLeave={() => setDragActive(false)}
-                        onDrop={handleFileDrop}
-                      >
-                        <UploadIcon
-                          className="size-5 text-primary"
-                          aria-hidden="true"
-                        />
-                        <p className="mt-2 text-xs font-semibold">
-                          {t("dropTitle")}
-                        </p>
-                        <p className="mt-1 text-[0.7rem] text-muted-foreground">
-                          {t("dropFormats")}
-                        </p>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          className="mt-3 h-8"
-                          onClick={() => documentInputRef.current?.click()}
-                        >
-                          {t("browse")}
-                        </Button>
-                      </div>
                       <AdvancedSection
-                        label={t("pasteContent")}
-                        hint={t("pasteContentHint")}
-                        storageKey="advanced:knowledge-paste-content"
-                        className="mt-3"
+                        key={`${selectedId}:${documents.length === 0 ? "empty" : "populated"}`}
+                        label={t("addDocuments")}
+                        hint={t("addDocumentsHint")}
+                        defaultOpen={documents.length === 0}
                       >
-                        <div className="grid gap-3">
-                          <Input
-                            aria-label={t("documentTitle")}
-                            name="document-title"
-                            autoComplete="off"
-                            placeholder={t("documentTitlePlaceholder")}
-                            value={docForm.title}
-                            onChange={(e) =>
-                              setDocForm({ ...docForm, title: e.target.value })
-                            }
+                        <input
+                          id="knowledge-file-upload"
+                          ref={documentInputRef}
+                          type="file"
+                          multiple
+                          accept=".txt,.md,.markdown,.csv,.tsv,.json,.jsonl,.pdf,.doc,.docx,.docm,.ppt,.pptx,.pptm,.pps,.ppsx,.ppsm,.pot,.xlsx,.xls,.xlsm,.xlsb,.rtf,.odt,.ods,.odp,.epub,.html,.xml,.yaml,.yml,.png,.jpg,.jpeg,.webp,.gif,.zip,text/*,image/png,image/jpeg,image/webp,image/gif"
+                          className="hidden"
+                          onChange={(event) => {
+                            ingestSelectedFiles(event.target.files);
+                            event.target.value = "";
+                          }}
+                        />
+                        <input
+                          id="knowledge-folder-upload"
+                          ref={(node) => {
+                            folderInputRef.current = node;
+                            node?.setAttribute("webkitdirectory", "");
+                          }}
+                          type="file"
+                          multiple
+                          className="hidden"
+                          onChange={(event) => {
+                            ingestSelectedFiles(event.target.files);
+                            event.target.value = "";
+                          }}
+                        />
+                        <div
+                          className={cn(
+                            "flex min-h-32 flex-col items-center justify-center rounded-xl border border-dashed px-5 py-5 text-center transition-colors",
+                            dragActive
+                              ? "border-primary bg-primary/6"
+                              : "border-primary/20 bg-primary/[0.025]",
+                          )}
+                          onDragOver={(event) => {
+                            event.preventDefault();
+                            setDragActive(true);
+                          }}
+                          onDragLeave={() => setDragActive(false)}
+                          onDrop={handleFileDrop}
+                        >
+                          <UploadIcon
+                            className="size-5 text-primary"
+                            aria-hidden="true"
                           />
-                          <Textarea
-                            aria-label={t("documentContent")}
-                            name="document-content"
-                            autoComplete="off"
-                            className="min-h-32"
-                            placeholder={t("documentContentPlaceholder")}
-                            value={docForm.content}
-                            onChange={(e) =>
-                              setDocForm({
-                                ...docForm,
-                                content: e.target.value,
-                              })
-                            }
-                          />
-                          <Button
-                            className="justify-self-end"
-                            onClick={() => void ingestDocument()}
-                            disabled={
-                              !docForm.title.trim() || !docForm.content.trim()
-                            }
-                          >
-                            {t("ingestDocument")}
-                          </Button>
+                          <p className="mt-2 text-xs font-semibold">
+                            {t("dropTitle")}
+                          </p>
+                          <p className="mt-1 text-[0.7rem] text-muted-foreground">
+                            {t("dropFormats")}
+                          </p>
+                          <div className="mt-3 flex flex-wrap justify-center gap-2">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="h-8"
+                              disabled={uploadingCount > 0}
+                              onClick={() => documentInputRef.current?.click()}
+                            >
+                              {t("browseFiles")}
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="h-8"
+                              disabled={uploadingCount > 0}
+                              onClick={() => folderInputRef.current?.click()}
+                            >
+                              {t("browseFolder")}
+                            </Button>
+                          </div>
                         </div>
+                        {uploadingCount > 0 ? (
+                          <div className="mt-3 rounded-xl border bg-muted/25 p-3 text-xs">
+                            <div className="flex items-center gap-2 font-medium">
+                              <Loader2
+                                className="size-3.5 animate-spin"
+                                aria-hidden="true"
+                              />
+                              {t("extractingBatch", { count: uploadingCount })}
+                            </div>
+                            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+                              <div className="h-full w-1/3 animate-pulse rounded-full bg-primary" />
+                            </div>
+                          </div>
+                        ) : null}
+                        {lastUpload ? (
+                          <div className="mt-3 rounded-xl border bg-muted/20 p-3 text-xs">
+                            <p className="font-medium">
+                              {t("batchSummary", {
+                                accepted: lastUpload.accepted,
+                                rejected: lastUpload.rejected.length,
+                              })}
+                            </p>
+                            {lastUpload.rejected.length > 0 ? (
+                              <ul className="mt-2 space-y-1 text-destructive">
+                                {lastUpload.rejected.slice(0, 5).map((item) => (
+                                  <li key={`${item.title}:${item.error}`}>
+                                    {item.title}: {item.error}
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : null}
+                          </div>
+                        ) : null}
+                        <AdvancedSection
+                          label={t("pasteContent")}
+                          hint={t("pasteContentHint")}
+                          storageKey="advanced:knowledge-paste-content"
+                          className="mt-3"
+                        >
+                          <div className="grid gap-3">
+                            <Input
+                              aria-label={t("documentTitle")}
+                              name="document-title"
+                              autoComplete="off"
+                              placeholder={t("documentTitlePlaceholder")}
+                              value={docForm.title}
+                              onChange={(e) =>
+                                setDocForm({
+                                  ...docForm,
+                                  title: e.target.value,
+                                })
+                              }
+                            />
+                            <Textarea
+                              aria-label={t("documentContent")}
+                              name="document-content"
+                              autoComplete="off"
+                              className="min-h-32"
+                              placeholder={t("documentContentPlaceholder")}
+                              value={docForm.content}
+                              onChange={(e) =>
+                                setDocForm({
+                                  ...docForm,
+                                  content: e.target.value,
+                                })
+                              }
+                            />
+                            <Button
+                              className="justify-self-end"
+                              onClick={() => void ingestDocument()}
+                              disabled={
+                                !docForm.title.trim() || !docForm.content.trim()
+                              }
+                            >
+                              {t("ingestDocument")}
+                            </Button>
+                          </div>
+                        </AdvancedSection>
                       </AdvancedSection>
                     </div>
                   ) : null}
 
-                  <div className="grid gap-1.5 border-t border-border/55 p-3">
+                  <div className="border-t border-border/55">
                     {documentsError ? (
                       <div
-                        className="rounded-xl border border-destructive/25 bg-destructive/5 p-4"
+                        className="m-3 rounded-xl border border-destructive/25 bg-destructive/5 p-4"
                         role="alert"
                       >
                         <p className="text-sm font-medium">
@@ -873,53 +1724,266 @@ export default function KnowledgePage() {
                       </div>
                     ) : null}
                     {!documentsError && documents.length === 0 ? (
-                      <p className="rounded-xl border border-dashed p-5 text-center text-xs text-muted-foreground">
+                      <p className="m-3 rounded-xl border border-dashed p-5 text-center text-xs text-muted-foreground">
                         {t("documentsEmpty")}
                       </p>
                     ) : null}
-                    {documents.map((doc) => (
-                      <article
-                        key={doc.id}
-                        className="flex min-h-14 items-center gap-3 rounded-xl border border-border/65 bg-background/45 p-2"
-                      >
-                        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/8 font-mono text-[0.58rem] text-primary">
-                          <FileTextIcon className="size-4" aria-hidden="true" />
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-xs font-medium">
-                            {doc.title}
-                          </p>
-                          <p className="mt-1 text-[0.68rem] text-muted-foreground">
-                            {new Date(doc.createdAt).toLocaleDateString()}
-                          </p>
+                    {!documentsError && documents.length > 0 ? (
+                      <>
+                        <div className="grid gap-3 border-b border-border/55 bg-muted/[0.18] p-3">
+                          <div className="grid grid-cols-3 gap-2 sm:max-w-md">
+                            {(["ready", "processing", "failed"] as const).map(
+                              (status) => (
+                                <button
+                                  key={status}
+                                  type="button"
+                                  className={cn(
+                                    "rounded-lg border px-2.5 py-2 text-left transition-colors",
+                                    documentFilter === status
+                                      ? "border-primary/35 bg-primary/8"
+                                      : "border-border/60 bg-background/60 hover:bg-muted/60",
+                                  )}
+                                  onClick={() => {
+                                    setDocumentPage(1);
+                                    setDocumentFilter((current) =>
+                                      current === status ? "all" : status,
+                                    );
+                                  }}
+                                  aria-pressed={documentFilter === status}
+                                >
+                                  <span className="block text-base font-semibold tabular-nums">
+                                    {documentCounts[status]}
+                                  </span>
+                                  <span className="block truncate text-[0.65rem] text-muted-foreground">
+                                    {statusLabel(status, t)}
+                                  </span>
+                                </button>
+                              ),
+                            )}
+                          </div>
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="relative min-w-0 flex-1 sm:max-w-sm">
+                              <SearchIcon
+                                className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
+                                aria-hidden="true"
+                              />
+                              <Input
+                                className="h-9 pl-9"
+                                type="search"
+                                value={documentSearch}
+                                onChange={(event) => {
+                                  setDocumentPage(1);
+                                  setDocumentSearch(event.target.value);
+                                }}
+                                placeholder={t("documentListSearchPlaceholder")}
+                                aria-label={t("documentListSearchLabel")}
+                              />
+                            </div>
+                            <p
+                              className="shrink-0 text-xs text-muted-foreground"
+                              aria-live="polite"
+                            >
+                              {t("documentListCount", {
+                                visible: filteredDocuments.length,
+                                total: documents.length,
+                              })}
+                            </p>
+                          </div>
                         </div>
-                        <div className="flex shrink-0 items-center gap-2">
-                          <Badge
-                            variant={statusVariant(doc.status)}
-                            className="text-[0.65rem]"
-                          >
-                            {statusLabel(doc.status, t)}
-                          </Badge>
-                          {selectedBaseCanEdit ? (
+
+                        {visibleDocuments.length === 0 ? (
+                          <div className="p-8 text-center">
+                            <p className="text-sm font-medium">
+                              {t("documentsFilteredEmpty")}
+                            </p>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              {t("documentsFilteredEmptyHint")}
+                            </p>
                             <Button
                               type="button"
-                              size="icon-sm"
-                              variant="ghost"
-                              aria-label={t("deleteAria", { name: doc.title })}
-                              onClick={() =>
-                                setPendingDelete({
-                                  kind: "document",
-                                  id: doc.id,
-                                  name: doc.title,
-                                })
-                              }
+                              size="sm"
+                              variant="outline"
+                              className="mt-4"
+                              onClick={() => {
+                                setDocumentFilter("all");
+                                setDocumentSearch("");
+                              }}
                             >
-                              <Trash2Icon aria-hidden="true" />
+                              {t("clearDocumentFilters")}
                             </Button>
-                          ) : null}
-                        </div>
-                      </article>
-                    ))}
+                          </div>
+                        ) : (
+                          <div className="divide-y divide-border/55">
+                            {visibleDocuments.map((doc) => (
+                              <article
+                                key={doc.id}
+                                className="group grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2.5 px-3 py-2.5 transition-colors hover:bg-muted/25 sm:gap-3"
+                              >
+                                <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-border/55 bg-background text-muted-foreground">
+                                  <FileTextIcon
+                                    className="size-3.5"
+                                    aria-hidden="true"
+                                  />
+                                </span>
+                                <div className="min-w-0">
+                                  <div className="flex min-w-0 items-center gap-2">
+                                    <button
+                                      type="button"
+                                      className="min-w-0 truncate text-left text-xs font-medium hover:text-primary disabled:cursor-default disabled:hover:text-foreground"
+                                      disabled={doc.status !== "ready"}
+                                      onClick={() =>
+                                        void openDocumentPreview(doc.id)
+                                      }
+                                    >
+                                      {doc.title}
+                                    </button>
+                                    <span className="hidden shrink-0 text-[0.65rem] text-muted-foreground sm:inline">
+                                      {new Date(
+                                        doc.createdAt,
+                                      ).toLocaleDateString()}
+                                    </span>
+                                  </div>
+                                  <div className="mt-1.5 flex items-center gap-2">
+                                    <div
+                                      className="h-1.5 min-w-16 flex-1 overflow-hidden rounded-full bg-muted sm:max-w-44"
+                                      role="progressbar"
+                                      aria-label={t("documentProgress", {
+                                        name: doc.title,
+                                      })}
+                                      aria-valuemin={0}
+                                      aria-valuemax={100}
+                                      aria-valuenow={doc.processingProgress}
+                                    >
+                                      <div
+                                        className={cn(
+                                          "h-full rounded-full transition-[width] duration-500",
+                                          doc.status === "failed"
+                                            ? "bg-destructive"
+                                            : "bg-primary",
+                                        )}
+                                        style={{
+                                          width: `${doc.processingProgress}%`,
+                                        }}
+                                      />
+                                    </div>
+                                    <span className="w-8 text-right text-[0.65rem] tabular-nums text-muted-foreground">
+                                      {doc.processingProgress}%
+                                    </span>
+                                    <span className="hidden truncate text-[0.65rem] text-muted-foreground md:inline">
+                                      {t(
+                                        `processingStage.${doc.processingStage}`,
+                                      )}
+                                    </span>
+                                  </div>
+                                  {doc.errorMessage ? (
+                                    <p className="mt-1 truncate text-[0.65rem] text-destructive">
+                                      {doc.errorMessage}
+                                    </p>
+                                  ) : null}
+                                </div>
+                                <div className="flex shrink-0 items-center gap-1">
+                                  <Badge
+                                    variant={statusVariant(doc.status)}
+                                    className="hidden text-[0.62rem] sm:inline-flex"
+                                  >
+                                    {statusLabel(doc.status, t)}
+                                  </Badge>
+                                  {doc.status === "ready" ? (
+                                    <Button
+                                      type="button"
+                                      size="icon-sm"
+                                      variant="ghost"
+                                      aria-label={t("previewAria", {
+                                        name: doc.title,
+                                      })}
+                                      onClick={() =>
+                                        void openDocumentPreview(doc.id)
+                                      }
+                                    >
+                                      <EyeIcon aria-hidden="true" />
+                                    </Button>
+                                  ) : null}
+                                  {selectedBaseCanEdit &&
+                                  doc.status === "failed" ? (
+                                    <Button
+                                      type="button"
+                                      size="icon-sm"
+                                      variant="ghost"
+                                      aria-label={t("retryAria", {
+                                        name: doc.title,
+                                      })}
+                                      onClick={() => void retryDocument(doc.id)}
+                                    >
+                                      <RefreshCwIcon aria-hidden="true" />
+                                    </Button>
+                                  ) : null}
+                                  {selectedBaseCanEdit ? (
+                                    <Button
+                                      type="button"
+                                      size="icon-sm"
+                                      variant="ghost"
+                                      aria-label={t("deleteAria", {
+                                        name: doc.title,
+                                      })}
+                                      onClick={() =>
+                                        setPendingDelete({
+                                          kind: "document",
+                                          id: doc.id,
+                                          name: doc.title,
+                                        })
+                                      }
+                                    >
+                                      <Trash2Icon aria-hidden="true" />
+                                    </Button>
+                                  ) : null}
+                                </div>
+                              </article>
+                            ))}
+                          </div>
+                        )}
+
+                        {documentPageCount > 1 ? (
+                          <div className="flex items-center justify-between border-t border-border/55 px-3 py-2.5">
+                            <p className="text-xs text-muted-foreground">
+                              {t("documentPage", {
+                                page: safeDocumentPage,
+                                pages: documentPageCount,
+                              })}
+                            </p>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                type="button"
+                                size="icon-sm"
+                                variant="outline"
+                                disabled={safeDocumentPage <= 1}
+                                aria-label={t("previousDocumentPage")}
+                                onClick={() =>
+                                  setDocumentPage((current) =>
+                                    Math.max(1, current - 1),
+                                  )
+                                }
+                              >
+                                <ChevronLeftIcon aria-hidden="true" />
+                              </Button>
+                              <Button
+                                type="button"
+                                size="icon-sm"
+                                variant="outline"
+                                disabled={safeDocumentPage >= documentPageCount}
+                                aria-label={t("nextDocumentPage")}
+                                onClick={() =>
+                                  setDocumentPage((current) =>
+                                    Math.min(documentPageCount, current + 1),
+                                  )
+                                }
+                              >
+                                <ChevronRightIcon aria-hidden="true" />
+                              </Button>
+                            </div>
+                          </div>
+                        ) : null}
+                      </>
+                    ) : null}
                   </div>
                 </div>
                 <AdvancedSection
@@ -961,6 +2025,76 @@ export default function KnowledgePage() {
               </>
             )}
           </section>
+          <Dialog
+            open={previewLoading || previewError || previewDocument !== null}
+            onOpenChange={(open) => {
+              if (!open) {
+                setPreviewDocument(null);
+                setPreviewError(false);
+                setPreviewLoading(false);
+              }
+            }}
+          >
+            <DialogContent className="flex max-h-[calc(100svh-2rem)] max-w-3xl flex-col overflow-hidden p-0">
+              <DialogHeader className="shrink-0 border-b border-border/60 px-5 py-4 text-left">
+                <DialogTitle className="truncate pr-8">
+                  {previewDocument?.documentTitle ?? t("documentPreviewTitle")}
+                </DialogTitle>
+                <DialogDescription>
+                  {previewDocument
+                    ? t("documentPreviewDescription", {
+                        chunks: previewDocument.chunks.length,
+                      })
+                    : t("documentPreviewLoading")}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="min-h-0 flex-1 overflow-y-auto bg-muted/20 px-4 py-4 sm:px-6">
+                {previewLoading ? (
+                  <div
+                    className="flex min-h-64 items-center justify-center"
+                    aria-live="polite"
+                  >
+                    <Loader2
+                      className="size-5 animate-spin text-muted-foreground"
+                      aria-hidden="true"
+                    />
+                    <span className="sr-only">
+                      {t("documentPreviewLoading")}
+                    </span>
+                  </div>
+                ) : previewError ? (
+                  <div
+                    className="flex min-h-64 flex-col items-center justify-center text-center"
+                    role="alert"
+                  >
+                    <p className="text-sm font-medium">
+                      {t("documentPreviewError")}
+                    </p>
+                    <p className="mt-1 max-w-md text-xs text-muted-foreground">
+                      {t("documentPreviewErrorHint")}
+                    </p>
+                  </div>
+                ) : previewDocument ? (
+                  <article className="mx-auto max-w-2xl space-y-2">
+                    {previewDocument.chunks.map((chunk) => (
+                      <section
+                        key={chunk.chunkId}
+                        data-chunk-index={chunk.chunkIndex}
+                        className="rounded-xl border border-border/65 bg-background px-5 py-4 shadow-sm sm:px-6"
+                      >
+                        <p className="mb-2 font-mono text-[0.62rem] uppercase tracking-[0.14em] text-muted-foreground">
+                          {t("documentChunk", { number: chunk.chunkIndex + 1 })}
+                        </p>
+                        <p className="whitespace-pre-wrap break-words text-sm leading-7 text-foreground/90">
+                          {chunk.content}
+                        </p>
+                      </section>
+                    ))}
+                  </article>
+                ) : null}
+              </div>
+            </DialogContent>
+          </Dialog>
           <Dialog
             open={Boolean(editingBase?.canEdit) && canManageKnowledgeBases}
             onOpenChange={() => setEditingBase(null)}
@@ -1020,6 +2154,46 @@ export default function KnowledgePage() {
                     </div>
                   </div>
                 ) : null}
+                <AdvancedSection
+                  label={t("ragAdvanced")}
+                  hint={t("ragAdvancedHint")}
+                  storageKey="advanced:knowledge-rag-config"
+                >
+                  <div className="grid gap-4">
+                    <div className="flex items-start gap-3 rounded-lg border bg-muted/20 p-3">
+                      <Checkbox
+                        id="edit-knowledge-custom-rag"
+                        checked={editBaseForm.customizeRag}
+                        onCheckedChange={(checked) =>
+                          setEditBaseForm({
+                            ...editBaseForm,
+                            customizeRag: checked === true,
+                          })
+                        }
+                      />
+                      <div className="grid gap-1.5">
+                        <Label htmlFor="edit-knowledge-custom-rag">
+                          {t("ragCustomLabel")}
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          {t("ragCustomHint")}
+                        </p>
+                      </div>
+                    </div>
+                    {editBaseForm.customizeRag && editBaseForm.ragConfig ? (
+                      <RagConfigFields
+                        idPrefix="edit-rag"
+                        config={editBaseForm.ragConfig}
+                        onChange={(ragConfig) =>
+                          setEditBaseForm({ ...editBaseForm, ragConfig })
+                        }
+                        canManageModels={canManageModels}
+                        models={ragModels}
+                        discoveringModels={discoveringRagModels}
+                      />
+                    ) : null}
+                  </div>
+                </AdvancedSection>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setEditingBase(null)}>

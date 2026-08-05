@@ -15,8 +15,20 @@ const bullMqCompatibilityFlags = [
   "--default_lua_flags=allow-undeclared-keys",
 ] as const;
 
+const persistenceFlags = [
+  "--dir=/data",
+  "--dbfilename=maiah-queue",
+  "--snapshot_cron=*/1 * * * *",
+] as const;
+
 describe.each(composeFiles)("Dragonfly deployment configuration in %s", (file) => {
   it.each(bullMqCompatibilityFlags)("enables %s", async (flag) => {
+    const compose = await readFile(path.join(process.cwd(), file), "utf8");
+
+    expect(compose).toContain(flag);
+  });
+
+  it.each(persistenceFlags)("persists queues with %s", async (flag) => {
     const compose = await readFile(path.join(process.cwd(), file), "utf8");
 
     expect(compose).toContain(flag);

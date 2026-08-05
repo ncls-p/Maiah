@@ -16,6 +16,12 @@ const organizationToolPolicyMock = vi.hoisted(() => ({
   getOrganizationBuiltInToolPolicyMap: vi.fn(),
 }));
 
+const knowledgeUseCasesMock = vi.hoisted(() => ({
+  getKnowledgeBindingsForVersion: vi.fn(),
+  readBoundKnowledgeChunkWindow: vi.fn(),
+  searchBoundKnowledgeBases: vi.fn(),
+}));
+
 vi.mock("@/modules/tool/use-cases", () => toolUseCasesMock);
 
 vi.mock("@/server/infrastructure/db", () => ({
@@ -32,6 +38,8 @@ vi.mock(
   "@/modules/tool/organization-builtin-tool-policies",
   () => organizationToolPolicyMock,
 );
+
+vi.mock("@/modules/knowledge/use-cases", () => knowledgeUseCasesMock);
 
 vi.mock("@/modules/tool/opa-approval-policy", () => ({
   evaluateOpaToolApprovalPolicy: vi.fn(async () => null),
@@ -54,6 +62,8 @@ async function loadModules() {
     projectStreamedToolInput: routeSupport.projectStreamedToolInput,
     streamToolErrorOutput: routeSupport.streamToolErrorOutput,
     mergeUserFilePartMetadata: routeSupport.mergeUserFilePartMetadata,
+    knowledgeCitationsFromToolOutput:
+      routeSupport.knowledgeCitationsFromToolOutput,
     getBuiltInToolByName:
       builtinTools.getBuiltInToolByName as BuiltInToolLookup,
     waitForApproval: invocationStateMock.waitForApproval,
@@ -79,6 +89,9 @@ describe("chat route tool gating", () => {
     organizationToolPolicyMock.getOrganizationBuiltInToolPolicyMap.mockResolvedValue(
       new Map(),
     );
+    knowledgeUseCasesMock.getKnowledgeBindingsForVersion.mockResolvedValue([]);
+    knowledgeUseCasesMock.searchBoundKnowledgeBases.mockResolvedValue([]);
+    knowledgeUseCasesMock.readBoundKnowledgeChunkWindow.mockResolvedValue(null);
   });
 
   it("does not auto-enable code workspace tools without explicit bindings", async () => {
@@ -108,6 +121,128 @@ describe("chat route tool gating", () => {
       completedCount: 1,
       totalCount: 2,
     });
+  });
+
+  it("exposes on-demand search and neighboring chunk tools for connected data sources", async () => {
+    const chunkId = "10000000-0000-4000-8000-000000000001";
+    const documentId = "10000000-0000-4000-8000-000000000002";
+    const knowledgeBaseId = "10000000-0000-4000-8000-000000000003";
+    knowledgeUseCasesMock.getKnowledgeBindingsForVersion.mockResolvedValue([
+      {
+        id: "binding-1",
+        knowledgeBaseId,
+        name: "Policies",
+        description: "Human resources policies",
+      },
+    ]);
+    knowledgeUseCasesMock.searchBoundKnowledgeBases.mockResolvedValue([
+      {
+        chunkId,
+        documentId,
+        documentTitle: "Leave policy",
+        content: "Employees receive 25 days of leave.",
+        score: 0.91,
+        knowledgeBaseId,
+        knowledgeBaseName: "Policies",
+      },
+    ]);
+    knowledgeUseCasesMock.readBoundKnowledgeChunkWindow.mockResolvedValue({
+      anchorChunkId: chunkId,
+      documentId,
+      documentTitle: "Leave policy",
+      knowledgeBaseId,
+      knowledgeBaseName: "Policies",
+      chunks: [
+        {
+          chunkId,
+          chunkIndex: 3,
+          content: "Employees receive 25 days of leave.",
+          isAnchor: true,
+        },
+      ],
+      truncated: false,
+    });
+    const { buildBoundTools, knowledgeCitationsFromToolOutput } =
+      await loadModules();
+
+    const { tools } = await buildBoundTools(buildInput());
+
+    expect(Object.keys(tools)).toEqual(
+      expect.arrayContaining(["search_knowledge", "read_knowledge_context"]),
+    );
+    const searchOutput = await (
+      tools.search_knowledge.execute as (input: unknown) => Promise<unknown>
+    )({ query: "annual leave", knowledgeBaseIds: [knowledgeBaseId], limit: 3 });
+    expect(knowledgeCitationsFromToolOutput(searchOutput)).toHaveLength(1);
+    expect(
+      knowledgeUseCasesMock.searchBoundKnowledgeBases,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agentVersionId: "version-1",
+        knowledgeBaseIds: [knowledgeBaseId],
+        query: "annual leave",
+        limit: 3,
+      }),
+    );
+
+    await (
+      tools.read_knowledge_context.execute as (
+        input: unknown,
+      ) => Promise<unknown>
+    )({ chunkId, before: 1, after: 2 });
+    expect(
+      knowledgeUseCasesMock.readBoundKnowledgeChunkWindow,
+    ).toHaveBeenCalledWith({
+      agentVersionId: "version-1",
+      workspaceId: "workspace-1",
+      userId: "user-1",
+      chunkId,
+      before: 1,
+      after: 2,
+    });
+  });
+
+  it("lets the model explicitly select several connected data sources", async () => {
+    const firstId = "10000000-0000-4000-8000-000000000011";
+    const secondId = "10000000-0000-4000-8000-000000000012";
+    knowledgeUseCasesMock.getKnowledgeBindingsForVersion.mockResolvedValue([
+      {
+        id: "binding-1",
+        knowledgeBaseId: firstId,
+        name: "Policies",
+        description: "Human resources policies",
+      },
+      {
+        id: "binding-2",
+        knowledgeBaseId: secondId,
+        name: "Engineering",
+        description: "Architecture and operations",
+      },
+    ]);
+    const { buildBoundTools } = await loadModules();
+    const { tools } = await buildBoundTools(buildInput());
+
+    await (
+      tools.search_knowledge.execute as (input: unknown) => Promise<unknown>
+    )({
+      query: "policy architecture",
+      knowledgeBaseIds: [firstId, secondId],
+    });
+
+    expect(
+      knowledgeUseCasesMock.searchBoundKnowledgeBases,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({ knowledgeBaseIds: [firstId, secondId] }),
+    );
+  });
+
+  it("does not expose knowledge tools when the agent has no data source binding", async () => {
+    const { buildBoundTools } = await loadModules();
+
+    const { tools } = await buildBoundTools(buildInput());
+
+    expect(Object.keys(tools)).not.toContain("search_knowledge");
+    expect(Object.keys(tools)).not.toContain("read_knowledge_context");
   });
 
   it("auto-enables the governed sandbox for readable document exploration", async () => {

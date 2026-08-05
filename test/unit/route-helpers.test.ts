@@ -2,12 +2,18 @@ import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import type { NextRequest } from "next/server";
 
+const getSessionMock = vi.hoisted(() => vi.fn());
+
 vi.mock("@/lib/logger", () => ({
   logHandledError: vi.fn(),
   logHandledWarning: vi.fn(),
   logger: {
     error: vi.fn(),
   },
+}));
+
+vi.mock("@/modules/auth/session", () => ({
+  getSession: getSessionMock,
 }));
 
 describe("route-helpers", async () => {
@@ -22,7 +28,7 @@ describe("route-helpers", async () => {
     handleRouteError,
     parseSearchParams,
     parseJsonBody,
-    requireAuthSession: _requireAuthSession,
+    requireAuthSession,
   } = await import("@/lib/route-helpers");
 
   describe("response helpers", () => {
@@ -99,15 +105,20 @@ describe("route-helpers", async () => {
   });
 
   describe("requireAuthSession", () => {
-    it("is exported and callable", () => {
-      expect(typeof _requireAuthSession).toBe("function");
+    it("returns 401 when there is no session", async () => {
+      getSessionMock.mockResolvedValueOnce(null);
+      const result = await requireAuthSession();
+      expect(result).toBeInstanceOf(Response);
+      if (result instanceof Response) expect(result.status).toBe(401);
     });
 
-    it("delegates to unauthorizedResponse when no session", () => {
-      // The function calls getSession() internally; without mocking
-      // the auth module we verify the fallback path returns 401.
-      const res = unauthorizedResponse();
-      expect(res.status).toBe(401);
+    it("returns the authenticated session", async () => {
+      const session = { user: { id: "user" } };
+      getSessionMock.mockResolvedValueOnce(session);
+      await expect(requireAuthSession()).resolves.toEqual({
+        session,
+        ok: true,
+      });
     });
   });
 

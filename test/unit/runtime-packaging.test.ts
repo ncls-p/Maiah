@@ -13,9 +13,9 @@ describe("runtime packaging guardrails", () => {
 		const nextConfig = projectFile("next.config.ts");
 		const attachmentModule = projectFile("src/modules/chat/attachments.ts");
 
-		expect(nextConfig).toContain(
-			'serverExternalPackages: ["pdf-parse", "@napi-rs/canvas"]',
-		);
+		expect(nextConfig).toContain('"pdf-parse"');
+		expect(nextConfig).toContain('"@napi-rs/canvas"');
+		expect(nextConfig).toContain('"@firecrawl/anydoc"');
 		expect(attachmentModule).toContain('import "pdf-parse/worker";');
 	});
 

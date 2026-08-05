@@ -10,6 +10,7 @@ import {
   type CSSProperties,
 } from "react";
 import { toast } from "sonner";
+import { uploadDocumentInChunks } from "@/modules/document-upload/chunked-upload";
 
 import {
   ChatComposer,
@@ -30,7 +31,10 @@ import {
   CodeWorkspaceArtifactCard,
 } from "@/components/chat/chat-message-list";
 import { latestChatTodoListFromMessages } from "@/components/chat/chat-message-rendering-utils";
-import { textFromMessage } from "@/components/chat/chat-types";
+import {
+  aggregateChatUsageImpact,
+  textFromMessage,
+} from "@/components/chat/chat-types";
 import { CodeWorkspaceResizeHandle } from "@/components/chat/code-workspace-artifact-card";
 import {
   CODE_WORKSPACE_CHAT_WIDTH_STORAGE_KEY,
@@ -641,6 +645,10 @@ export default function ChatPage() {
   });
   const latestTodoList = useMemo(
     () => latestChatTodoListFromMessages(messages),
+    [messages],
+  );
+  const conversationImpact = useMemo(
+    () => aggregateChatUsageImpact(messages),
     [messages],
   );
 
@@ -1281,23 +1289,17 @@ export default function ChatPage() {
 
   async function uploadChatAttachment(file: File) {
     if (!workspaceId || !canChat) return;
-    if (attachments.length >= 8) {
-      toast.error(t("attachments.limit", { count: 8 }));
-      return;
-    }
     try {
-      const formData = new FormData();
-      formData.set("workspaceId", workspaceId);
-      formData.set("file", file);
-      const response = await fetch("/api/workspace/chat-attachments/upload", {
-        method: "POST",
-        body: formData,
-      });
-      const data = (await response.json().catch(() => null)) as {
+      const data = await uploadDocumentInChunks<{
         attachment?: ChatAttachment;
         error?: string;
-      } | null;
-      if (!response.ok || !data?.attachment) {
+      }>({
+        workspaceId,
+        file,
+        chunkUrl: "/api/workspace/chat-attachments/upload?phase=chunk",
+        completeUrl: "/api/workspace/chat-attachments/upload?phase=complete",
+      });
+      if (!data.attachment) {
         throw new Error(data?.error || t("attachments.uploadFailed"));
       }
       setAttachments((current) => [...current, data.attachment!]);
@@ -1652,6 +1654,7 @@ export default function ChatPage() {
         selectedAgent={selectedAgent}
         selectedAgentId={selectedAgentId}
         activeConversationId={activeConversationId}
+        conversationImpact={conversationImpact}
         organizationDefaultAgentId={organizationDefaultAgentId}
         userDefaultAgentId={userDefaultAgentId}
         canChat={canChat}

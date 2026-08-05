@@ -141,16 +141,23 @@ Chaque ressource distante doit distinguer :
 
 ## Connaissances
 
-| Scénario                   | Attendu                                                  | Couverture              |
-| -------------------------- | -------------------------------------------------------- | ----------------------- |
-| Erreur initiale            | Erreur relançable, aucune base factice                   | Code                    |
-| Base vide                  | CTA de création selon permission                         | Code                    |
-| Documents en erreur        | Erreur limitée à la base sélectionnée, relance           | Code                    |
-| Aucun document             | État vide explicite                                      | Code                    |
-| Ingestion                  | Bouton désactivé sans titre/contenu, statut d’indexation | Code + tests API        |
-| Attachement assistant      | GET bindings obligatoire avant PUT                       | Tests versioning + code |
-| Liste assistants en erreur | Erreur distincte de « aucun assistant »                  | Code                    |
-| Portée organisation/privée | Libellés localisés, permission fail-closed               | Code + tests IAM        |
+| Scénario                   | Attendu                                                                          | Couverture              |
+| -------------------------- | -------------------------------------------------------------------------------- | ----------------------- |
+| Erreur initiale            | Erreur relançable, aucune base factice                                           | Code                    |
+| Base vide                  | CTA de création selon permission                                                 | Code                    |
+| Documents en erreur        | Erreur limitée à la base sélectionnée, relance                                   | Code                    |
+| Aucun document             | État vide explicite                                                              | Code                    |
+| Ingestion                  | Bouton désactivé sans titre/contenu, statut d’indexation                         | Code + tests API        |
+| Attachement assistant      | GET bindings obligatoire avant PUT                                               | Tests versioning + code |
+| Liste assistants en erreur | Erreur distincte de « aucun assistant »                                          | Code                    |
+| Portée organisation/privée | Libellés localisés, permission fail-closed                                       | Code + tests IAM        |
+| Création simple            | Nom et description visibles ; valeurs administrateur héritées sans surcharge     | Navigateur local        |
+| Création avancée           | Chunking, candidats, résultats, score et reranking derrière un panneau replié    | Navigateur + tests RAG  |
+| Choix des modèles          | Catalogue issu de `/models`; modification refusée sans `models.manage`           | Module + navigateur     |
+| Plusieurs Data Sources     | L'agent choisit explicitement une ou plusieurs sources liées par nom/description | Tests runtime RAG       |
+| Reprise après restart      | Les documents `processing` sont réconciliés avec la queue persistante            | Tests queue + worker    |
+| Collection volumineuse     | Liste compacte, compteurs de statut, recherche, filtres et pagination par 12     | Navigateur local        |
+| Aperçu document            | Le contenu extrait complet est consultable par chunks sans quitter la collection | Navigateur local + API  |
 
 ## Workflows no-code
 

@@ -50,7 +50,6 @@ import {
   codeWorkspaceArtifact,
   getCodeWorkspace,
 } from "@/modules/code-workspace/storage";
-import { searchBoundKnowledgeBases } from "@/modules/knowledge/use-cases";
 import { buildSkillsRegistryPrompt } from "@/modules/skills/use-cases";
 import { assertWorkspaceWithinTokenQuota } from "@/modules/usage/quota";
 import {
@@ -93,6 +92,9 @@ import {
   defaultMaxToolCalls,
   findUserMessageForResend,
   isFirstUserMessageInConversation,
+  knowledgeCitationsFromToolOutput,
+  KNOWLEDGE_CONTEXT_TOOL_NAME,
+  KNOWLEDGE_SEARCH_TOOL_NAME,
   mergeUserFilePartMetadata,
   projectStreamedToolInput,
   streamToolCallId,
@@ -626,35 +628,6 @@ export async function POST(
     const enqueueEvent = (event: Record<string, unknown>) =>
       publishChatStreamEvent(assistantMessage.id, event);
 
-    const ragHits = await searchBoundKnowledgeBases({
-      agentVersionId: version.id,
-      workspaceId: agent.workspaceId,
-      query: content,
-      limit: 5,
-      userId: actorUserId,
-    });
-
-    const citations = ragHits.map((hit) => ({
-      chunkId: hit.chunkId,
-      documentId: hit.documentId,
-      documentTitle: hit.documentTitle,
-      content: hit.content.slice(0, 500),
-      score: hit.score,
-      knowledgeBaseId: hit.knowledgeBaseId,
-      knowledgeBaseName: hit.knowledgeBaseName,
-    }));
-
-    if (citations.length > 0) {
-      enqueueEvent({ type: "citations", citations });
-    }
-
-    const ragContext = ragHits
-      .map(
-        (hit, index) =>
-          `[${index + 1}] ${hit.documentTitle} (${hit.knowledgeBaseName}): ${hit.content}`,
-      )
-      .join("\n\n");
-
     if (agent.kind === "orchestrator") {
       const streamAbortController = new AbortController();
       registerChatStreamAbortController(
@@ -749,6 +722,7 @@ export async function POST(
       const persistOrchestrationProgress = async (
         progress: AgentToolProgressEvent,
         sortOrder: number,
+        citationSortOrder?: number,
       ) => {
         const projected = projectOrchestrationProgress(progress);
 
@@ -763,6 +737,25 @@ export async function POST(
               metadataJson: projected.safeMetadata,
               sortOrder,
             });
+          }
+          const knowledgeCitations =
+            progress.type === "tool-end" && "output" in progress
+              ? knowledgeCitationsFromToolOutput(progress.output)
+              : [];
+          if (
+            knowledgeCitations.length > 0 &&
+            citationSortOrder !== undefined
+          ) {
+            await db.insert(messageParts).values({
+              messageId: assistantMessage.id,
+              type: "citations",
+              contentEncrypted: await encryptValue(
+                JSON.stringify(knowledgeCitations),
+              ),
+              metadataJson: null,
+              sortOrder: citationSortOrder,
+            });
+            enqueueEvent({ type: "citations", citations: knowledgeCitations });
           }
           enqueueEvent(
             projected.isStart
@@ -793,11 +786,23 @@ export async function POST(
       };
       const queueOrchestrationProgress = (progress: AgentToolProgressEvent) => {
         const sortOrder = allocateOrchestrationSortOrder();
+        const citationSortOrder =
+          progress.type === "tool-end" &&
+          "output" in progress &&
+          knowledgeCitationsFromToolOutput(progress.output).length > 0
+            ? allocateOrchestrationSortOrder()
+            : undefined;
         if (progress.modelHistoryKind === "delegation-result") {
           durableDelegationProgress.push({ progress, sortOrder });
         }
         orchestrationProgressQueue = orchestrationProgressQueue
-          .then(() => persistOrchestrationProgress(progress, sortOrder))
+          .then(() =>
+            persistOrchestrationProgress(
+              progress,
+              sortOrder,
+              citationSortOrder,
+            ),
+          )
           .catch((error) => {
             logHandledWarning("Orchestrator progress queue failed", {
               requestId,
@@ -824,36 +829,15 @@ export async function POST(
           });
         }
       };
-      const orchestrationPrompt = [
-        content,
-        ragContext
-          ? `Use these knowledge base excerpts when relevant:\n\n${ragContext}`
-          : null,
-      ]
-        .filter(Boolean)
-        .join("\n\n");
-
       void (async () => {
         try {
-          if (citations.length > 0) {
-            await db.insert(messageParts).values({
-              messageId: assistantMessage.id,
-              type: "citations",
-              contentEncrypted: await encryptValue(JSON.stringify(citations)),
-              metadataJson: null,
-              sortOrder: allocateOrchestrationSortOrder(),
-            });
-          }
           const result = await executeAgent({
             workspaceId: agent.workspaceId,
             userId: actorUserId,
             agentId,
             agentVersionId: version.id,
-            prompt: orchestrationPrompt,
+            prompt: content,
             messages: history,
-            systemContext: ragContext
-              ? `Use these knowledge base excerpts when relevant:\n\n${ragContext}`
-              : undefined,
             trigger: "chat",
             conversationId: conversation.id,
             messageId: assistantMessage.id,
@@ -1069,7 +1053,9 @@ export async function POST(
       streamProtocol: useAiSdkUIStream ? "ai-sdk-ui" : "data-stream",
       attachmentCount: messageAttachments.length,
       hasCodeWorkspaceAttachment: Boolean(codeWorkspaceAttachment),
-      knowledgeHitCount: citations.length,
+      knowledgeToolsEnabled: availableToolNames.includes(
+        KNOWLEDGE_SEARCH_TOOL_NAME,
+      ),
       toolCount: availableToolNames.length,
       maxToolCalls,
       durationMs: Date.now() - requestStartedAt,
@@ -1108,6 +1094,9 @@ export async function POST(
             "Do not call tools that are not in that list. If you decide to call a tool, output only the tool call for that assistant turn: no prose, no markdown, no explanation, and no visible reasoning before or after the tool call.",
             availableToolNames.includes("web_search")
               ? "For web or current-events searches, use web_search only."
+              : null,
+            availableToolNames.includes(KNOWLEDGE_SEARCH_TOOL_NAME)
+              ? `Connected data sources are available through ${KNOWLEDGE_SEARCH_TOOL_NAME}. Call it only when the request may depend on those sources; do not query data sources automatically for every message. Choose one or more knowledgeBaseIds explicitly from the source names and descriptions exposed by the tool, using multiple sources only when useful. Search results include chunk IDs. When surrounding context is necessary, call ${KNOWLEDGE_CONTEXT_TOOL_NAME} with one of those IDs and a bounded number of chunks before or after.`
               : null,
             availableToolNames.includes("update_todo_list")
               ? "For tasks with multiple meaningful steps, call update_todo_list early, keep the same item IDs, mark exactly one current item in_progress when possible, and call it again as items are completed. Do not create a checklist for a simple one-step answer."
@@ -1156,14 +1145,11 @@ export async function POST(
       responseFormatGuidance,
       guardrailGuidance,
       toolGuidance,
-      ragContext
-        ? `Use the following knowledge base excerpts when relevant:\n\n${ragContext}`
-        : null,
     ]
       .filter(Boolean)
       .join("\n\n");
     const toolLimitFinalAnswerPrompt =
-      "Tool call limit reached. Do not call another tool. Answer the user now using the available conversation context, knowledge excerpts, and tool results. If the available information is incomplete, clearly say what is known and what is uncertain.";
+      "Tool call limit reached. Do not call another tool. Answer the user now using the available conversation context and tool results. If the available information is incomplete, clearly say what is known and what is uncertain.";
     const startedAt = Date.now();
     type StreamedAssistantPart =
       | {
@@ -1173,15 +1159,13 @@ export async function POST(
         }
       | {
           id: string;
-          type: "tool-call" | "tool-result" | "file";
+          type: "tool-call" | "tool-result" | "file" | "citations";
           metadata: unknown;
         };
     const streamedParts: StreamedAssistantPart[] = [];
     let nextSortOrder = continuationClaim?.nextSortOrder ?? 0;
     let appendableContinuationTextPart =
-      citations.length === 0
-        ? (continuationClaim?.appendableTextPart ?? null)
-        : null;
+      continuationClaim?.appendableTextPart ?? null;
 
     async function appendStreamedTextPart(
       type: "text" | "reasoning",
@@ -1248,6 +1232,26 @@ export async function POST(
         .returning({ id: messageParts.id });
       nextSortOrder += 1;
       streamedParts.push({ id: inserted.id, type: "suggestions", content });
+    }
+
+    async function appendKnowledgeCitationsPart(citations: unknown[]) {
+      appendableContinuationTextPart = null;
+      const [inserted] = await db
+        .insert(messageParts)
+        .values({
+          messageId: assistantMessage.id,
+          type: "citations",
+          contentEncrypted: await encryptValue(JSON.stringify(citations)),
+          metadataJson: null,
+          sortOrder: nextSortOrder,
+        })
+        .returning({ id: messageParts.id });
+      nextSortOrder += 1;
+      streamedParts.push({
+        id: inserted.id,
+        type: "citations",
+        metadata: { kind: "knowledge_citations", count: citations.length },
+      });
     }
 
     async function appendStreamedMetadataPart(
@@ -1444,6 +1448,18 @@ export async function POST(
               toolName: part.toolName,
               output: projectToolMessagePayload(part.output),
             });
+            if (part.toolName === KNOWLEDGE_SEARCH_TOOL_NAME) {
+              const knowledgeCitations = knowledgeCitationsFromToolOutput(
+                part.output,
+              );
+              if (knowledgeCitations.length > 0) {
+                await appendKnowledgeCitationsPart(knowledgeCitations);
+                enqueueEvent({
+                  type: "citations",
+                  citations: knowledgeCitations,
+                });
+              }
+            }
           } else if (part.type === "tool-error") {
             const output = streamToolErrorOutput(
               part,

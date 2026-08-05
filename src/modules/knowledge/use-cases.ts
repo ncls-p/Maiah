@@ -1,6 +1,11 @@
-import { and, eq, inArray, isNull, not, sql } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNull, lte, sql } from "drizzle-orm";
+import { cosineSimilarity, embed, embedMany, rerank } from "ai";
 import { encryptValue, decryptValue } from "@/lib/crypto";
 import { logger } from "@/lib/logger";
+import {
+  enqueueDocumentIngestion,
+  recoverDocumentIngestionJob,
+} from "@/modules/knowledge/queue";
 import { audit } from "@/server/domain/services/audit";
 import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
@@ -11,6 +16,15 @@ import {
   documents,
   knowledgeBases,
 } from "@/server/infrastructure/db/schema";
+import {
+  getDefaultRagConfig,
+  hasSameRagModelSelection,
+  parseRagConfig,
+  ragConfigSchema,
+  resolveEmbeddingModel,
+  resolveRerankingModel,
+  type RagConfig,
+} from "@/modules/knowledge/rag-config";
 
 export interface CreateKnowledgeBaseInput {
   workspaceId: string;
@@ -18,9 +32,22 @@ export interface CreateKnowledgeBaseInput {
   name: string;
   description?: string;
   isGlobal?: boolean;
+  ragConfig?: RagConfig;
+  canManageModels?: boolean;
+}
+
+export class RagModelConfigurationPermissionError extends Error {
+  constructor() {
+    super("Changing RAG models requires the models.manage permission");
+    this.name = "RagModelConfigurationPermissionError";
+  }
 }
 
 type KnowledgeBaseRow = typeof knowledgeBases.$inferSelect;
+
+async function effectiveRagConfig(value: unknown) {
+  return value === null ? getDefaultRagConfig() : parseRagConfig(value);
+}
 
 function canManageKnowledgeBase(
   knowledgeBase: KnowledgeBaseRow,
@@ -68,12 +95,19 @@ async function assertCanManageKnowledgeBase(
 }
 
 export async function createKnowledgeBase(input: CreateKnowledgeBaseInput) {
+  if (input.ragConfig && !input.canManageModels) {
+    const defaults = await getDefaultRagConfig();
+    if (!hasSameRagModelSelection(input.ragConfig, defaults)) {
+      throw new RagModelConfigurationPermissionError();
+    }
+  }
   const [knowledgeBase] = await db
     .insert(knowledgeBases)
     .values({
       workspaceId: input.workspaceId,
       name: input.name,
       description: input.description || null,
+      ragConfigJson: input.ragConfig ?? null,
       isGlobal: input.isGlobal ?? false,
       createdById: input.userId,
     })
@@ -91,6 +125,30 @@ export async function createKnowledgeBase(input: CreateKnowledgeBaseInput) {
   });
 
   return knowledgeBase;
+}
+
+export async function queueDefaultRagReindex() {
+  const inheritedBases = await db
+    .select({ id: knowledgeBases.id })
+    .from(knowledgeBases)
+    .where(
+      and(
+        isNull(knowledgeBases.ragConfigJson),
+        isNull(knowledgeBases.archivedAt),
+      ),
+    );
+  if (inheritedBases.length === 0) return 0;
+  const updated = await db
+    .update(documents)
+    .set({ status: "processing", errorMessage: null, updatedAt: new Date() })
+    .where(
+      inArray(
+        documents.knowledgeBaseId,
+        inheritedBases.map((base) => base.id),
+      ),
+    )
+    .returning({ id: documents.id });
+  return updated.length;
 }
 
 export async function listKnowledgeBases(
@@ -111,8 +169,25 @@ export async function listKnowledgeBases(
       sql`${knowledgeBases.isGlobal} DESC`,
       sql`${knowledgeBases.createdAt} DESC`,
     );
+  const defaultRagConfig = rows.some(
+    (knowledgeBase) => knowledgeBase.ragConfigJson === null,
+  )
+    ? await getDefaultRagConfig()
+    : null;
+  const withRagConfig = (knowledgeBase: KnowledgeBaseRow) => ({
+    ...knowledgeBase,
+    effectiveRagConfig: parseRagConfig(
+      knowledgeBase.ragConfigJson === null
+        ? defaultRagConfig
+        : knowledgeBase.ragConfigJson,
+    ),
+    usesDefaultRagConfig: knowledgeBase.ragConfigJson === null,
+  });
   if (!userId) {
-    return rows.map((knowledgeBase) => ({ ...knowledgeBase, canEdit: true }));
+    return rows.map((knowledgeBase) => ({
+      ...withRagConfig(knowledgeBase),
+      canEdit: true,
+    }));
   }
   return (
     await Promise.all(
@@ -127,7 +202,7 @@ export async function listKnowledgeBases(
             "knowledge_base",
             knowledgeBase.id,
           ));
-        return { ...knowledgeBase, canEdit };
+        return { ...withRagConfig(knowledgeBase), canEdit };
       }),
     )
   ).filter((knowledgeBase) => knowledgeBase !== null);
@@ -174,6 +249,8 @@ export async function updateKnowledgeBase(input: {
   name?: string;
   description?: string;
   isGlobal?: boolean;
+  ragConfig?: RagConfig | null;
+  canManageModels?: boolean;
 }) {
   const existing = await getKnowledgeBase(
     input.knowledgeBaseId,
@@ -188,12 +265,23 @@ export async function updateKnowledgeBase(input: {
   if (input.isGlobal && !input.canManageGlobal) {
     throw new Error("Only admins can make knowledge bases global");
   }
+  if (input.ragConfig && !input.canManageModels) {
+    const currentConfig = await effectiveRagConfig(existing.ragConfigJson);
+    if (!hasSameRagModelSelection(input.ragConfig, currentConfig)) {
+      throw new RagModelConfigurationPermissionError();
+    }
+  }
 
   const updates: Record<string, unknown> = { updatedAt: new Date() };
   if (input.name !== undefined) updates.name = input.name;
   if (input.description !== undefined)
     updates.description = input.description || null;
   if (input.isGlobal !== undefined) updates.isGlobal = input.isGlobal;
+  if (input.ragConfig !== undefined) {
+    updates.ragConfigJson = input.ragConfig
+      ? ragConfigSchema.parse(input.ragConfig)
+      : null;
+  }
 
   const [knowledgeBase] = await db
     .update(knowledgeBases)
@@ -238,29 +326,37 @@ export async function archiveKnowledgeBase(
   });
 }
 
-function chunkText(text: string, maxChars = 1_200) {
+export function chunkText(
+  text: string,
+  options: { maxCharacters: number; overlapCharacters: number },
+) {
+  const maxChars = options.maxCharacters;
+  const overlap = Math.min(options.overlapCharacters, maxChars - 1);
   const normalized = text.replace(/\r\n/g, "\n").trim();
   if (!normalized) return [];
-  const paragraphs = normalized.split(/\n{2,}/);
   const chunks: string[] = [];
-  let current = "";
-  for (const paragraph of paragraphs) {
-    if (`${current}\n\n${paragraph}`.length > maxChars && current) {
-      chunks.push(current.trim());
-      current = paragraph;
-    } else {
-      current = current ? `${current}\n\n${paragraph}` : paragraph;
+  let start = 0;
+  while (start < normalized.length) {
+    let end = Math.min(start + maxChars, normalized.length);
+    if (end < normalized.length) {
+      const window = normalized.slice(start, end);
+      const paragraphBreak = window.lastIndexOf("\n\n");
+      const sentenceBreak = Math.max(
+        window.lastIndexOf(". "),
+        window.lastIndexOf("! "),
+        window.lastIndexOf("? "),
+      );
+      const naturalBreak = Math.max(paragraphBreak, sentenceBreak);
+      if (naturalBreak >= Math.floor(maxChars * 0.55)) {
+        end = start + naturalBreak + (naturalBreak === paragraphBreak ? 2 : 1);
+      }
     }
+    const chunk = normalized.slice(start, end).trim();
+    if (chunk) chunks.push(chunk);
+    if (end >= normalized.length) break;
+    start = Math.max(start + 1, end - overlap);
   }
-  if (current.trim()) chunks.push(current.trim());
-  return chunks.flatMap((chunk) => {
-    if (chunk.length <= maxChars) return [chunk];
-    const split: string[] = [];
-    for (let index = 0; index < chunk.length; index += maxChars) {
-      split.push(chunk.slice(index, index + maxChars));
-    }
-    return split;
-  });
+  return chunks;
 }
 
 export async function ingestTextDocument(input: {
@@ -269,7 +365,8 @@ export async function ingestTextDocument(input: {
   userId: string;
   title: string;
   content: string;
-  sourceType?: "text" | "url";
+  sourceType?: "text" | "url" | "upload";
+  mimeType?: string;
   canManageGlobal?: boolean;
 }) {
   const knowledgeBase = await getKnowledgeBase(
@@ -283,7 +380,8 @@ export async function ingestTextDocument(input: {
     input.canManageGlobal,
   );
 
-  const chunks = chunkText(input.content);
+  const config = await effectiveRagConfig(knowledgeBase.ragConfigJson);
+  const chunks = chunkText(input.content, config.chunking);
   const document = await db.transaction(async (tx) => {
     const [document] = await tx
       .insert(documents)
@@ -292,8 +390,10 @@ export async function ingestTextDocument(input: {
         knowledgeBaseId: input.knowledgeBaseId,
         title: input.title,
         sourceType: input.sourceType ?? "text",
-        mimeType: "text/plain",
+        mimeType: input.mimeType ?? "text/plain",
         status: "processing",
+        processingProgress: 20,
+        processingStage: "chunked",
         createdById: input.userId,
       })
       .returning();
@@ -317,6 +417,8 @@ export async function ingestTextDocument(input: {
         .update(documents)
         .set({
           status: "failed",
+          processingProgress: 100,
+          processingStage: "failed",
           errorMessage: "Document was empty",
           updatedAt: new Date(),
         })
@@ -340,16 +442,16 @@ export async function ingestTextDocument(input: {
   });
 
   if (document.status === "processing") {
-    enqueueDocumentIngestion({
-      documentId: document.id,
-      workspaceId: input.workspaceId,
-      knowledgeBaseId: input.knowledgeBaseId,
-    });
     try {
-      await processDocumentIngestion(document.id);
+      await enqueueDocumentIngestion({
+        documentId: document.id,
+        workspaceId: input.workspaceId,
+        knowledgeBaseId: input.knowledgeBaseId,
+      });
     } catch (error) {
-      // Queue state remains processing so the worker can retry ingestion later.
-      logger.warn("Document ingestion will be retried by the worker", {
+      // PostgreSQL remains the source of truth. The worker periodically
+      // reconciles processing rows, so a temporary Redis outage loses no job.
+      logger.warn("Document ingestion will be recovered by the worker", {
         documentId: document.id,
         error: error instanceof Error ? error.message : String(error),
       });
@@ -371,15 +473,39 @@ export async function listDocuments(
   );
   if (!knowledgeBase) throw new Error("Knowledge base not found");
   return db
-    .select()
+    .select({
+      document: documents,
+      chunkCount: sql<number>`count(distinct ${documentChunks.id})::int`,
+      embeddingCount: sql<number>`count(distinct ${documentEmbeddings.id})::int`,
+    })
     .from(documents)
+    .leftJoin(documentChunks, eq(documentChunks.documentId, documents.id))
+    .leftJoin(
+      documentEmbeddings,
+      eq(documentEmbeddings.chunkId, documentChunks.id),
+    )
     .where(
       and(
         eq(documents.knowledgeBaseId, knowledgeBaseId),
         eq(documents.workspaceId, workspaceId),
       ),
     )
-    .orderBy(sql`${documents.createdAt} DESC`);
+    .groupBy(documents.id)
+    .orderBy(sql`${documents.createdAt} DESC`)
+    .then((rows) =>
+      rows.map(({ document, chunkCount, embeddingCount }) => ({
+        ...document,
+        processingProgress:
+          document.status === "ready" || document.status === "failed"
+            ? 100
+            : chunkCount > 0 && embeddingCount > 0
+              ? Math.max(
+                  document.processingProgress,
+                  20 + Math.round((embeddingCount / chunkCount) * 75),
+                )
+              : document.processingProgress,
+      })),
+    );
 }
 
 export async function archiveDocument(input: {
@@ -428,6 +554,65 @@ export async function archiveDocument(input: {
   });
 }
 
+export async function retryDocumentIngestion(input: {
+  documentId: string;
+  knowledgeBaseId: string;
+  workspaceId: string;
+  userId: string;
+  canManageGlobal?: boolean;
+}) {
+  const knowledgeBase = await getKnowledgeBase(
+    input.knowledgeBaseId,
+    input.workspaceId,
+  );
+  if (!knowledgeBase) throw new Error("Knowledge base not found");
+  await assertCanManageKnowledgeBase(
+    knowledgeBase,
+    input.userId,
+    input.canManageGlobal,
+  );
+
+  const [document] = await db
+    .select()
+    .from(documents)
+    .where(
+      and(
+        eq(documents.id, input.documentId),
+        eq(documents.knowledgeBaseId, input.knowledgeBaseId),
+        eq(documents.workspaceId, input.workspaceId),
+      ),
+    )
+    .limit(1);
+  if (!document) throw new Error("Document not found");
+  if (document.status !== "failed") {
+    throw new Error("Only failed documents can be retried");
+  }
+
+  await db
+    .update(documents)
+    .set({
+      status: "processing",
+      processingProgress: Math.min(document.processingProgress, 20),
+      processingStage: "queued",
+      errorMessage: null,
+      updatedAt: new Date(),
+    })
+    .where(eq(documents.id, input.documentId));
+
+  try {
+    await recoverDocumentIngestionJob({
+      documentId: document.id,
+      workspaceId: document.workspaceId,
+      knowledgeBaseId: document.knowledgeBaseId,
+    });
+  } catch (error) {
+    logger.warn("Document retry will be recovered by the worker", {
+      documentId: document.id,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
 export function scoreContent(content: string, query: string) {
   const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
   const lower = content.toLowerCase();
@@ -445,28 +630,6 @@ type KnowledgeSearchHit = {
   content: string;
   score: number;
 };
-
-async function knowledgeBaseHasEmbeddings(
-  knowledgeBaseId: string,
-  workspaceId: string,
-) {
-  const [row] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(documentEmbeddings)
-    .innerJoin(
-      documentChunks,
-      eq(documentEmbeddings.chunkId, documentChunks.id),
-    )
-    .innerJoin(documents, eq(documentChunks.documentId, documents.id))
-    .where(
-      and(
-        eq(documents.knowledgeBaseId, knowledgeBaseId),
-        eq(documents.workspaceId, workspaceId),
-        eq(documents.status, "ready"),
-      ),
-    );
-  return (row?.count ?? 0) > 0;
-}
 
 async function searchKnowledgeBaseByKeyword(input: {
   workspaceId: string;
@@ -511,34 +674,32 @@ async function searchKnowledgeBaseByVector(input: {
   knowledgeBaseId: string;
   query: string;
   limit?: number;
+  config: RagConfig;
 }): Promise<KnowledgeSearchHit[] | null> {
-  const hasEmbeddings = await knowledgeBaseHasEmbeddings(
-    input.knowledgeBaseId,
+  const config = input.config;
+  const embeddingSelection = await resolveEmbeddingModel(
     input.workspaceId,
+    config,
   );
-  if (!hasEmbeddings) return null;
-
-  const seedHits = await searchKnowledgeBaseByKeyword({
-    ...input,
-    limit: Math.max(1, Math.min(3, input.limit ?? 5)),
+  if (!embeddingSelection) return null;
+  const queryResult = await embed({
+    model: embeddingSelection.model,
+    value: input.query,
+    maxRetries: 1,
+    abortSignal: AbortSignal.timeout(30_000),
+    providerOptions: config.embedding.dimensions
+      ? {
+          [embeddingSelection.model.provider]: {
+            dimensions: config.embedding.dimensions,
+          },
+        }
+      : undefined,
   });
-  if (seedHits.length === 0) return null;
-
-  const seedChunkIds = seedHits.map((hit) => hit.chunkId);
-  const limit = input.limit ?? 5;
-
   const rows = await db
     .select({
       chunk: documentChunks,
       document: documents,
-      similarity: sql<number>`1 - (${documentEmbeddings.embedding} <=> (
-				SELECT AVG(de.embedding)
-				FROM document_embeddings de
-				WHERE de.chunk_id IN (${sql.join(
-          seedChunkIds.map((chunkId) => sql`${chunkId}`),
-          sql`, `,
-        )})
-			))`,
+      embedding: documentEmbeddings,
     })
     .from(documentEmbeddings)
     .innerJoin(
@@ -551,26 +712,18 @@ async function searchKnowledgeBaseByVector(input: {
         eq(documents.knowledgeBaseId, input.knowledgeBaseId),
         eq(documents.workspaceId, input.workspaceId),
         eq(documents.status, "ready"),
-        not(isNull(documentEmbeddings.embedding)),
+        eq(documentEmbeddings.embeddingModelId, config.embedding.modelId),
       ),
-    )
-    .orderBy(
-      sql`${documentEmbeddings.embedding} <=> (
-				SELECT AVG(de.embedding)
-				FROM document_embeddings de
-				WHERE de.chunk_id IN (${sql.join(
-          seedChunkIds.map((chunkId) => sql`${chunkId}`),
-          sql`, `,
-        )})
-			)`,
-    )
-    .limit(limit);
+    );
 
   if (rows.length === 0) return null;
 
   const results: KnowledgeSearchHit[] = [];
   for (const row of rows) {
-    if (!row.chunk.contentEncrypted) continue;
+    if (!row.chunk.contentEncrypted || !row.embedding.embeddingJson) continue;
+    if (row.embedding.embeddingJson.length !== queryResult.embedding.length) {
+      continue;
+    }
     const content = await decryptValue(row.chunk.contentEncrypted);
     results.push({
       documentId: row.document.id,
@@ -578,11 +731,37 @@ async function searchKnowledgeBaseByVector(input: {
       chunkId: row.chunk.id,
       chunkIndex: row.chunk.chunkIndex,
       content,
-      score: Number(row.similarity) || 0,
+      score: cosineSimilarity(
+        queryResult.embedding,
+        row.embedding.embeddingJson,
+      ),
     });
   }
-
-  return results.length > 0 ? results : null;
+  let ranked = results
+    .filter((hit) => hit.score >= config.retrieval.minimumScore)
+    .sort((left, right) => right.score - left.score)
+    .slice(0, config.retrieval.candidateCount);
+  const rerankingModel = await resolveRerankingModel(input.workspaceId, config);
+  if (rerankingModel && ranked.length > 0) {
+    const reranked = await rerank({
+      model: rerankingModel,
+      query: input.query,
+      documents: ranked.map((hit) => hit.content),
+      topN: Math.min(
+        input.limit ?? config.retrieval.resultCount,
+        ranked.length,
+      ),
+      maxRetries: 1,
+      abortSignal: AbortSignal.timeout(30_000),
+    });
+    ranked = reranked.ranking.map((entry) => ({
+      ...ranked[entry.originalIndex],
+      score: entry.score,
+    }));
+  }
+  return ranked.length > 0
+    ? ranked.slice(0, input.limit ?? config.retrieval.resultCount)
+    : null;
 }
 
 export async function searchKnowledgeBase(input: {
@@ -599,7 +778,18 @@ export async function searchKnowledgeBase(input: {
   );
   if (!knowledgeBase) throw new Error("Knowledge base not found");
 
-  const vectorHits = await searchKnowledgeBaseByVector(input);
+  let vectorHits: KnowledgeSearchHit[] | null = null;
+  try {
+    vectorHits = await searchKnowledgeBaseByVector({
+      ...input,
+      config: await effectiveRagConfig(knowledgeBase.ragConfigJson),
+    });
+  } catch (error) {
+    logger.warn("Vector knowledge search failed; using lexical fallback", {
+      knowledgeBaseId: input.knowledgeBaseId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
   if (vectorHits && vectorHits.length > 0) {
     return vectorHits;
   }
@@ -616,6 +806,7 @@ export async function getKnowledgeBindingsForVersion(
       id: agentKnowledgeBindings.id,
       knowledgeBaseId: agentKnowledgeBindings.knowledgeBaseId,
       name: knowledgeBases.name,
+      description: knowledgeBases.description,
       createdById: knowledgeBases.createdById,
       isGlobal: knowledgeBases.isGlobal,
     })
@@ -642,10 +833,11 @@ export async function getKnowledgeBindingsForVersion(
         )
       ).filter((row) => row !== null)
     : rows;
-  return visibleRows.map(({ id, knowledgeBaseId, name }) => ({
+  return visibleRows.map(({ id, knowledgeBaseId, name, description }) => ({
     id,
     knowledgeBaseId,
     name,
+    description,
   }));
 }
 
@@ -763,16 +955,30 @@ export async function cloneKnowledgeBindings(
 export async function searchBoundKnowledgeBases(input: {
   agentVersionId: string;
   workspaceId: string;
+  knowledgeBaseIds: string[];
   query: string;
   limit?: number;
   userId?: string;
 }) {
-  const bindings = await getKnowledgeBindingsForVersion(input.agentVersionId);
+  const bindings = await getKnowledgeBindingsForVersion(
+    input.agentVersionId,
+    input.userId
+      ? { workspaceId: input.workspaceId, userId: input.userId }
+      : undefined,
+  );
   if (bindings.length === 0) return [];
+
+  const requestedIds = new Set(input.knowledgeBaseIds);
+  const selectedBindings = bindings.filter((binding) =>
+    requestedIds.has(binding.knowledgeBaseId),
+  );
+  if (selectedBindings.length !== requestedIds.size) {
+    throw new Error("One or more selected data sources are not available");
+  }
 
   const perBaseLimit = Math.max(
     1,
-    Math.ceil((input.limit ?? 5) / bindings.length),
+    Math.ceil((input.limit ?? 5) / selectedBindings.length),
   );
   const allResults: Array<{
     documentId: string;
@@ -785,7 +991,7 @@ export async function searchBoundKnowledgeBases(input: {
     knowledgeBaseName: string;
   }> = [];
 
-  for (const binding of bindings) {
+  for (const binding of selectedBindings) {
     const hits = await searchKnowledgeBase({
       workspaceId: input.workspaceId,
       knowledgeBaseId: binding.knowledgeBaseId,
@@ -807,32 +1013,217 @@ export async function searchBoundKnowledgeBases(input: {
     .slice(0, input.limit ?? 5);
 }
 
-const ingestionQueue: Array<{
-  documentId: string;
-  workspaceId: string;
-  knowledgeBaseId: string;
-}> = [];
+const MAX_BOUND_CONTEXT_CHARS = 40_000;
 
-export function enqueueDocumentIngestion(input: {
-  documentId: string;
+/**
+ * Reads a bounded window around a chunk returned by the agent knowledge search.
+ * The active version binding and the initiating user's visibility are checked
+ * again at execution time so a stale chunk id cannot bypass knowledge access.
+ */
+export async function readBoundKnowledgeChunkWindow(input: {
+  agentVersionId: string;
   workspaceId: string;
-  knowledgeBaseId: string;
+  userId: string;
+  chunkId: string;
+  before?: number;
+  after?: number;
 }) {
-  ingestionQueue.push(input);
-  return { queued: true, documentId: input.documentId };
+  const bindings = await getKnowledgeBindingsForVersion(input.agentVersionId, {
+    workspaceId: input.workspaceId,
+    userId: input.userId,
+  });
+  if (bindings.length === 0) return null;
+
+  const [anchor] = await db
+    .select({
+      chunkId: documentChunks.id,
+      chunkIndex: documentChunks.chunkIndex,
+      documentId: documents.id,
+      documentTitle: documents.title,
+      knowledgeBaseId: knowledgeBases.id,
+      knowledgeBaseName: knowledgeBases.name,
+    })
+    .from(documentChunks)
+    .innerJoin(documents, eq(documentChunks.documentId, documents.id))
+    .innerJoin(knowledgeBases, eq(documents.knowledgeBaseId, knowledgeBases.id))
+    .where(
+      and(
+        eq(documentChunks.id, input.chunkId),
+        eq(documents.workspaceId, input.workspaceId),
+        eq(documents.status, "ready"),
+        inArray(
+          knowledgeBases.id,
+          bindings.map((binding) => binding.knowledgeBaseId),
+        ),
+        isNull(knowledgeBases.archivedAt),
+      ),
+    )
+    .limit(1);
+  if (!anchor) return null;
+
+  const before = Math.max(0, Math.min(5, input.before ?? 2));
+  const after = Math.max(0, Math.min(5, input.after ?? 2));
+  const rows = await db
+    .select({
+      chunkId: documentChunks.id,
+      chunkIndex: documentChunks.chunkIndex,
+      contentEncrypted: documentChunks.contentEncrypted,
+    })
+    .from(documentChunks)
+    .where(
+      and(
+        eq(documentChunks.documentId, anchor.documentId),
+        gte(documentChunks.chunkIndex, Math.max(0, anchor.chunkIndex - before)),
+        lte(documentChunks.chunkIndex, anchor.chunkIndex + after),
+      ),
+    )
+    .orderBy(asc(documentChunks.chunkIndex));
+
+  let remainingCharacters = MAX_BOUND_CONTEXT_CHARS;
+  let truncated = false;
+  const chunks: Array<{
+    chunkId: string;
+    chunkIndex: number;
+    content: string;
+    isAnchor: boolean;
+  }> = [];
+  for (const row of rows) {
+    if (!row.contentEncrypted) continue;
+    if (remainingCharacters <= 0) {
+      truncated = true;
+      break;
+    }
+    const decrypted = await decryptValue(row.contentEncrypted);
+    const content = decrypted.slice(0, remainingCharacters);
+    if (content.length < decrypted.length) truncated = true;
+    remainingCharacters -= content.length;
+    chunks.push({
+      chunkId: row.chunkId,
+      chunkIndex: row.chunkIndex,
+      content,
+      isAnchor: row.chunkId === anchor.chunkId,
+    });
+  }
+
+  return {
+    anchorChunkId: anchor.chunkId,
+    documentId: anchor.documentId,
+    documentTitle: anchor.documentTitle,
+    knowledgeBaseId: anchor.knowledgeBaseId,
+    knowledgeBaseName: anchor.knowledgeBaseName,
+    chunks,
+    truncated,
+  };
 }
 
-export function dequeueDocumentIngestionJob() {
-  return ingestionQueue.shift() ?? null;
+export async function readKnowledgeDocument(input: {
+  documentId: string;
+  knowledgeBaseId: string;
+  workspaceId: string;
+  userId: string;
+}) {
+  const knowledgeBase = await getKnowledgeBase(
+    input.knowledgeBaseId,
+    input.workspaceId,
+    input.userId,
+  );
+  if (!knowledgeBase) return null;
+
+  const [document] = await db
+    .select({
+      id: documents.id,
+      title: documents.title,
+      mimeType: documents.mimeType,
+    })
+    .from(documents)
+    .where(
+      and(
+        eq(documents.id, input.documentId),
+        eq(documents.knowledgeBaseId, input.knowledgeBaseId),
+        eq(documents.workspaceId, input.workspaceId),
+        eq(documents.status, "ready"),
+      ),
+    )
+    .limit(1);
+  if (!document) return null;
+
+  const rows = await db
+    .select({
+      chunkId: documentChunks.id,
+      chunkIndex: documentChunks.chunkIndex,
+      contentEncrypted: documentChunks.contentEncrypted,
+    })
+    .from(documentChunks)
+    .where(eq(documentChunks.documentId, document.id))
+    .orderBy(asc(documentChunks.chunkIndex));
+
+  const chunks = await Promise.all(
+    rows.map(async (row) => ({
+      chunkId: row.chunkId,
+      chunkIndex: row.chunkIndex,
+      content: row.contentEncrypted
+        ? await decryptValue(row.contentEncrypted)
+        : "",
+    })),
+  );
+
+  return {
+    documentId: document.id,
+    documentTitle: document.title,
+    mimeType: document.mimeType,
+    knowledgeBaseId: knowledgeBase.id,
+    knowledgeBaseName: knowledgeBase.name,
+    chunks,
+  };
 }
 
 export async function listProcessingDocuments(limit = 5) {
   const processingDocuments = await db
-    .select({ id: documents.id })
+    .select({
+      id: documents.id,
+      workspaceId: documents.workspaceId,
+      knowledgeBaseId: documents.knowledgeBaseId,
+    })
     .from(documents)
     .where(eq(documents.status, "processing"))
     .limit(limit);
   return processingDocuments;
+}
+
+export async function recordDocumentIngestionAttemptFailure(
+  documentId: string,
+  error: unknown,
+) {
+  const message = error instanceof Error ? error.message : String(error);
+  await db
+    .update(documents)
+    .set({
+      processingStage: "retrying",
+      errorMessage: message.slice(0, 4_000),
+      updatedAt: new Date(),
+    })
+    .where(
+      and(eq(documents.id, documentId), eq(documents.status, "processing")),
+    );
+}
+
+export async function markDocumentIngestionFailed(
+  documentId: string,
+  error: unknown,
+) {
+  const message = error instanceof Error ? error.message : String(error);
+  await db
+    .update(documents)
+    .set({
+      status: "failed",
+      processingProgress: 100,
+      processingStage: "failed",
+      errorMessage: message.slice(0, 4_000),
+      updatedAt: new Date(),
+    })
+    .where(
+      and(eq(documents.id, documentId), eq(documents.status, "processing")),
+    );
 }
 
 export async function processDocumentIngestion(documentId: string) {
@@ -849,10 +1240,78 @@ export async function processDocumentIngestion(documentId: string) {
     .from(documentChunks)
     .where(eq(documentChunks.documentId, documentId));
 
+  const [knowledgeBase] = await db
+    .select()
+    .from(knowledgeBases)
+    .where(eq(knowledgeBases.id, document.knowledgeBaseId))
+    .limit(1);
+  const config = await effectiveRagConfig(knowledgeBase?.ragConfigJson);
+  const embeddingSelection = await resolveEmbeddingModel(
+    document.workspaceId,
+    config,
+  );
+
+  if (chunks.length > 0 && embeddingSelection) {
+    await db
+      .update(documents)
+      .set({ processingStage: "embedding", processingProgress: 20 })
+      .where(eq(documents.id, documentId));
+    await db.delete(documentEmbeddings).where(
+      inArray(
+        documentEmbeddings.chunkId,
+        chunks.map((chunk) => chunk.id),
+      ),
+    );
+
+    const batchSize = 16;
+    for (let offset = 0; offset < chunks.length; offset += batchSize) {
+      const batch = chunks.slice(offset, offset + batchSize);
+      const values = await Promise.all(
+        batch.map((chunk) =>
+          chunk.contentEncrypted
+            ? decryptValue(chunk.contentEncrypted)
+            : Promise.resolve(""),
+        ),
+      );
+      const result = await embedMany({
+        model: embeddingSelection.model,
+        values,
+        maxParallelCalls: 2,
+        maxRetries: 2,
+        abortSignal: AbortSignal.timeout(120_000),
+        providerOptions: config.embedding.dimensions
+          ? {
+              [embeddingSelection.model.provider]: {
+                dimensions: config.embedding.dimensions,
+              },
+            }
+          : undefined,
+      });
+      await db.insert(documentEmbeddings).values(
+        batch.map((chunk, index) => ({
+          chunkId: chunk.id,
+          embeddingJson: result.embeddings[index],
+          embeddingDimensions: result.embeddings[index]?.length ?? null,
+          embeddingModelId: config.embedding.modelId,
+        })),
+      );
+      const completed = Math.min(offset + batch.length, chunks.length);
+      await db
+        .update(documents)
+        .set({
+          processingProgress: 20 + Math.round((completed / chunks.length) * 75),
+          updatedAt: new Date(),
+        })
+        .where(eq(documents.id, documentId));
+    }
+  }
+
   await db
     .update(documents)
     .set({
       status: chunks.length > 0 ? "ready" : "failed",
+      processingProgress: 100,
+      processingStage: chunks.length > 0 ? "ready" : "failed",
       errorMessage: chunks.length > 0 ? null : "No chunks generated",
       updatedAt: new Date(),
     })

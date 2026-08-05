@@ -63,7 +63,6 @@ interface ChatComposerProps {
   onPromptSuggestionClick?: (suggestion: string) => void;
 }
 
-const maxChatAttachments = 8;
 const codeFilePattern = /\.(?:html?|css|[cm]?js)$/i;
 
 function uploadedFilePath(file: File) {
@@ -312,10 +311,6 @@ export function ChatComposer({
           toast.error(t("unavailable"));
           return;
         }
-        if (attachments.length + uploadedFiles.length > maxChatAttachments) {
-          toast.error(t("limit", { count: maxChatAttachments }));
-          return;
-        }
         for (const file of uploadedFiles) {
           await onUploadChatAttachment(file);
         }
@@ -324,7 +319,6 @@ export function ChatComposer({
       }
     },
     [
-      attachments.length,
       canChat,
       onUploadChatAttachment,
       onUploadCodeWorkspace,
@@ -507,12 +501,6 @@ export function ChatComposer({
                 aria-live="polite"
               >
                 {t("attachedFiles", { count: attachments.length })}
-              </span>
-              <span className="ml-auto text-[0.65rem] text-muted-foreground">
-                {t("attachmentLimit", {
-                  current: attachments.length,
-                  max: maxChatAttachments,
-                })}
               </span>
             </div>
             <AttachmentGroup className="grid snap-none grid-cols-[repeat(auto-fit,minmax(min(18rem,100%),1fr))] gap-2 overflow-visible overscroll-auto py-0">

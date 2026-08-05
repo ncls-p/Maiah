@@ -11,6 +11,10 @@ vi.mock("@/lib/crypto", () => ({
 	decryptValue: vi.fn().mockResolvedValue("decrypted content"),
 }));
 
+vi.mock("@/modules/knowledge/queue", () => ({
+	enqueueDocumentIngestion: vi.fn().mockResolvedValue({ queued: true }),
+}));
+
 type Chain = {
 	select: ReturnType<typeof vi.fn>;
 	insert: ReturnType<typeof vi.fn>;
@@ -21,6 +25,8 @@ type Chain = {
 	orderBy: ReturnType<typeof vi.fn>;
 	limit: ReturnType<typeof vi.fn>;
 	innerJoin: ReturnType<typeof vi.fn>;
+	leftJoin: ReturnType<typeof vi.fn>;
+	groupBy: ReturnType<typeof vi.fn>;
 	values: ReturnType<typeof vi.fn>;
 	set: ReturnType<typeof vi.fn>;
 	returning: ReturnType<typeof vi.fn>;
@@ -37,6 +43,8 @@ function makeChain(): Chain {
 		"where",
 		"orderBy",
 		"innerJoin",
+		"leftJoin",
+		"groupBy",
 		"values",
 		"set",
 	] as const) {
@@ -84,8 +92,6 @@ import {
 	archiveKnowledgeBase,
 	cloneKnowledgeBindings,
 	createKnowledgeBase,
-	dequeueDocumentIngestionJob,
-	enqueueDocumentIngestion,
 	getKnowledgeBase,
 	getKnowledgeBindingsForVersion,
 	ingestTextDocument,
@@ -111,6 +117,8 @@ function reset() {
 			"where",
 			"orderBy",
 			"innerJoin",
+			"leftJoin",
+			"groupBy",
 			"values",
 			"set",
 		] as const) {
@@ -152,6 +160,9 @@ const fakeDoc = {
 	knowledgeBaseId: "kb-1",
 	title: "Test Doc",
 	status: "processing",
+	processingProgress: 20,
+	processingStage: "chunked",
+	errorMessage: null,
 	sourceType: "text",
 	mimeType: "text/plain",
 	createdById: "user-1",
@@ -328,10 +339,13 @@ describe("listDocuments", () => {
 
 	it("returns documents ordered by createdAt", async () => {
 		dbModule._c.limit.mockResolvedValueOnce([fakeKb]);
-		dbModule._c.orderBy.mockResolvedValueOnce([fakeDoc]);
+		dbModule._c.orderBy.mockResolvedValueOnce([
+			{ document: fakeDoc, chunkCount: 2, embeddingCount: 1 },
+		]);
 
 		const result = await listDocuments("kb-1", "ws-1");
 		expect(result).toHaveLength(1);
+		expect(result[0]?.processingProgress).toBe(58);
 	});
 });
 
@@ -415,11 +429,9 @@ describe("searchKnowledgeBase", () => {
 		// Q1: getKnowledgeBase → limit
 		dbModule._c.limit.mockResolvedValueOnce([fakeKb]);
 
-		// knowledgeBaseHasEmbeddings: innerJoin.innerJoin.where() → where terminal
 		// searchKnowledgeBaseByKeyword: innerJoin.where() → where terminal
 		dbModule._c.where
 			.mockReturnValueOnce(dbModule._c) // getKb .where → chains to limit
-			.mockResolvedValueOnce([{ count: 0 }]) // hasEmbeddings (where terminal)
 			.mockResolvedValueOnce([]); // keyword search rows (where terminal)
 
 		const result = await searchKnowledgeBase({
@@ -444,7 +456,6 @@ describe("searchKnowledgeBase", () => {
 
 		dbModule._c.where
 			.mockReturnValueOnce(dbModule._c) // getKb where → chains to limit
-			.mockResolvedValueOnce([{ count: 0 }]) // no embeddings
 			.mockResolvedValueOnce([row]); // keyword search results
 
 		const result = await searchKnowledgeBase({
@@ -531,46 +542,11 @@ describe("searchBoundKnowledgeBases", () => {
 		const result = await searchBoundKnowledgeBases({
 			agentVersionId: "v1",
 			workspaceId: "ws-1",
+			knowledgeBaseIds: ["kb-1"],
 			query: "test",
 		});
 
 		expect(result).toHaveLength(0);
-	});
-});
-
-// ─── enqueueDocumentIngestion & dequeueDocumentIngestionJob ───────────
-
-describe("enqueueDocumentIngestion", () => {
-	it("adds document to queue and returns queued=true", () => {
-		const result = enqueueDocumentIngestion({
-			documentId: "doc-1",
-			workspaceId: "ws-1",
-			knowledgeBaseId: "kb-1",
-		});
-		expect(result.queued).toBe(true);
-		expect(result.documentId).toBe("doc-1");
-	});
-});
-
-describe("dequeueDocumentIngestionJob", () => {
-	it("returns null when queue is empty (after any previous drains)", () => {
-		// Drain any queued items from previous tests
-		let item = dequeueDocumentIngestionJob();
-		while (item !== null) {
-			item = dequeueDocumentIngestionJob();
-		}
-		const result = dequeueDocumentIngestionJob();
-		expect(result).toBeNull();
-	});
-
-	it("returns and removes item from queue", () => {
-		enqueueDocumentIngestion({
-			documentId: "doc-x",
-			workspaceId: "ws-1",
-			knowledgeBaseId: "kb-1",
-		});
-		const result = dequeueDocumentIngestionJob();
-		expect(result?.documentId).toBe("doc-x");
 	});
 });
 

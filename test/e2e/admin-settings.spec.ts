@@ -78,6 +78,36 @@ test.describe("admin settings page", () => {
     ).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText(/Custom tool builder/i)).toHaveCount(0);
   });
+
+  test("configures embedding and reranking defaults explicitly", async ({
+    page,
+  }) => {
+    await page.goto("/en/admin/settings");
+
+    await page.locator("#rag-embedding-model").fill("qwen3-embedding:4b");
+    const reranking = page.getByLabel("Improve result ranking");
+    if (!(await reranking.isChecked())) await reranking.click();
+    await page
+      .locator("#rag-reranking-model")
+      .fill("nvidia/llama-nemotron-rerank-vl-1b-v2");
+    await page.getByRole("button", { name: "Save platform defaults" }).click();
+
+    await expect(page.getByText("Default RAG settings saved")).toBeVisible();
+  });
+
+  test("explains technical RAG settings in context", async ({ page }) => {
+    await page.goto("/en/admin/settings");
+
+    const help = page.getByRole("button", {
+      name: "Maximum characters per indexed passage. Short passages are more precise; long passages preserve more context.",
+      exact: true,
+    });
+    await help.hover();
+
+    await expect(page.getByRole("tooltip")).toContainText(
+      "Short passages are more precise",
+    );
+  });
 });
 
 test.describe("registration settings", () => {

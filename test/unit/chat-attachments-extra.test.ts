@@ -171,7 +171,7 @@ describe("chat attachments", () => {
 				userId,
 			}),
 		).resolves.toMatchObject({
-			text: "## Page 1\n\nHello PDF",
+			text: expect.stringContaining("Hello PDF"),
 		});
 		expect(
 			Array.from(storageMock.objects.entries()).some(
@@ -295,7 +295,7 @@ describe("chat attachments", () => {
 			workspaceId,
 			userId,
 		});
-		expect(binaryPdfText.text).toBe("## Page 1\n\nVisible PDF text");
+		expect(binaryPdfText.text).toContain("Visible PDF text");
 		expect(binaryPdfText.text).not.toContain("BINARY GARBAGE");
 		expect(binaryPdfText.text).not.toContain("endstream");
 	});

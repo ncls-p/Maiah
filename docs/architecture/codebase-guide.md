@@ -170,6 +170,10 @@ La console IAM utilise les scopes historiques `organization` et `workspace`, ce 
 
 Les détails se trouvent dans `docs/security`.
 
+Le pipeline d'ingestion, la hiérarchie des réglages RAG et la séparation entre
+stockage source et index vectoriel sont décrits dans
+[Pipeline RAG et Data Sources](rag-pipeline.md).
+
 ## Contrat UI/UX
 
 Chaque lecture distante distingue chargement initial, succès, succès vide, filtre vide, erreur initiale et erreur de rafraîchissement. Une erreur ne devient jamais un faux état vide. Les actions restent bloquées tant que permissions ou données sources ne sont pas vérifiées. Les mutations empêchent le double envoi, conservent la saisie en cas d’échec et expliquent les conflits.

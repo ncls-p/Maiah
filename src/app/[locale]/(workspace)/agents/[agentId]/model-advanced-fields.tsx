@@ -80,7 +80,7 @@ export function ModelAdvancedFields({
     <div className="space-y-4">
       <FieldGroup className="grid gap-4 sm:grid-cols-2">
         <Field>
-          <FieldLabel htmlFor="agent-temperature">
+          <FieldLabel htmlFor="agent-temperature" help={t("temperatureHelp")}>
             {t("temperature")}
           </FieldLabel>
           <FieldContent>
@@ -98,7 +98,9 @@ export function ModelAdvancedFields({
           </FieldContent>
         </Field>
         <Field>
-          <FieldLabel htmlFor="agent-top-p">{t("topP")}</FieldLabel>
+          <FieldLabel htmlFor="agent-top-p" help={t("topPHelp")}>
+            {t("topP")}
+          </FieldLabel>
           <FieldContent>
             <Input
               id="agent-top-p"
@@ -114,7 +116,10 @@ export function ModelAdvancedFields({
           </FieldContent>
         </Field>
         <Field>
-          <FieldLabel htmlFor="agent-max-output">
+          <FieldLabel
+            htmlFor="agent-max-output"
+            help={t("maxOutputTokensHelp")}
+          >
             {t("maxOutputTokens")}
           </FieldLabel>
           <FieldContent>
@@ -134,7 +139,10 @@ export function ModelAdvancedFields({
           </FieldContent>
         </Field>
         <Field>
-          <FieldLabel htmlFor="agent-max-tool-calls">
+          <FieldLabel
+            htmlFor="agent-max-tool-calls"
+            help={t("maxToolCallsHelp")}
+          >
             {t("maxToolCalls")}
           </FieldLabel>
           <FieldContent>
@@ -154,7 +162,9 @@ export function ModelAdvancedFields({
           </FieldContent>
         </Field>
         <Field>
-          <FieldLabel htmlFor="agent-tool-choice">{t("toolChoice")}</FieldLabel>
+          <FieldLabel htmlFor="agent-tool-choice" help={t("toolChoiceHelp")}>
+            {t("toolChoice")}
+          </FieldLabel>
           <FieldContent>
             <Select
               value={form.toolChoice}
@@ -179,7 +189,10 @@ export function ModelAdvancedFields({
           </FieldContent>
         </Field>
         <Field>
-          <FieldLabel htmlFor="agent-response-format">
+          <FieldLabel
+            htmlFor="agent-response-format"
+            help={t("responseFormatHelp")}
+          >
             {t("responseFormat")}
           </FieldLabel>
           <FieldContent>
@@ -203,7 +216,10 @@ export function ModelAdvancedFields({
           </FieldContent>
         </Field>
         <Field>
-          <FieldLabel htmlFor="agent-approval-mode">
+          <FieldLabel
+            htmlFor="agent-approval-mode"
+            help={t("approvalPolicyHelp")}
+          >
             {t("approvalPolicy")}
           </FieldLabel>
           <FieldContent>
@@ -244,7 +260,10 @@ export function ModelAdvancedFields({
           </FieldContent>
         </Field>
         <Field>
-          <FieldLabel htmlFor="agent-approval-risk-levels">
+          <FieldLabel
+            htmlFor="agent-approval-risk-levels"
+            help={t("approvalRiskLevelsHelp")}
+          >
             {t("approvalRiskLevels")}
           </FieldLabel>
           <FieldContent>
@@ -289,7 +308,10 @@ export function ModelAdvancedFields({
           </FieldContent>
         </Field>
         <Field>
-          <FieldLabel htmlFor="agent-approval-sources">
+          <FieldLabel
+            htmlFor="agent-approval-sources"
+            help={t("approvalSourcesHelp")}
+          >
             {t("approvalSources")}
           </FieldLabel>
           <FieldContent>
@@ -364,7 +386,9 @@ export function ModelAdvancedFields({
           </FieldContent>
         </Field>
         <Field>
-          <FieldLabel htmlFor="agent-memory-enabled">{t("memory")}</FieldLabel>
+          <FieldLabel htmlFor="agent-memory-enabled" help={t("memoryHelp")}>
+            {t("memory")}
+          </FieldLabel>
           <FieldContent>
             <Select
               value={form.memoryPolicy.enabled ? "enabled" : "disabled"}
@@ -389,7 +413,10 @@ export function ModelAdvancedFields({
           </FieldContent>
         </Field>
         <Field>
-          <FieldLabel htmlFor="agent-memory-max-messages">
+          <FieldLabel
+            htmlFor="agent-memory-max-messages"
+            help={t("memoryMaxMessagesHelp")}
+          >
             {t("memoryMaxMessages")}
           </FieldLabel>
           <FieldContent>
@@ -411,7 +438,9 @@ export function ModelAdvancedFields({
           </FieldContent>
         </Field>
         <Field>
-          <FieldLabel htmlFor="agent-top-k">{t("topK")}</FieldLabel>
+          <FieldLabel htmlFor="agent-top-k" help={t("topKHelp")}>
+            {t("topK")}
+          </FieldLabel>
           <FieldContent>
             <Input
               id="agent-top-k"
@@ -432,7 +461,10 @@ export function ModelAdvancedFields({
           </FieldContent>
         </Field>
         <Field>
-          <FieldLabel htmlFor="agent-presence-penalty">
+          <FieldLabel
+            htmlFor="agent-presence-penalty"
+            help={t("presencePenaltyHelp")}
+          >
             {t("presencePenalty")}
           </FieldLabel>
           <FieldContent>
@@ -457,7 +489,10 @@ export function ModelAdvancedFields({
           </FieldContent>
         </Field>
         <Field>
-          <FieldLabel htmlFor="agent-frequency-penalty">
+          <FieldLabel
+            htmlFor="agent-frequency-penalty"
+            help={t("frequencyPenaltyHelp")}
+          >
             {t("frequencyPenalty")}
           </FieldLabel>
           <FieldContent>
@@ -482,7 +517,10 @@ export function ModelAdvancedFields({
           </FieldContent>
         </Field>
         <Field>
-          <FieldLabel htmlFor="agent-guardrails-enabled">
+          <FieldLabel
+            htmlFor="agent-guardrails-enabled"
+            help={t("guardrailsHelp")}
+          >
             {t("guardrails")}
           </FieldLabel>
           <FieldContent>
@@ -537,7 +575,10 @@ export function ModelAdvancedFields({
           </FieldContent>
         </Field>
         <Field className="sm:col-span-2">
-          <FieldLabel htmlFor="agent-stop-sequences">
+          <FieldLabel
+            htmlFor="agent-stop-sequences"
+            help={t("stopSequencesHelp")}
+          >
             {t("stopSequences")}
           </FieldLabel>
           <FieldContent>

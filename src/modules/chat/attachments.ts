@@ -6,6 +6,8 @@ import { PDFParse } from "pdf-parse";
 import TurndownService from "turndown";
 
 import { logHandledWarning } from "@/lib/logger";
+import { extractDocument } from "@/modules/document-extraction/service";
+import type { RagConfig } from "@/modules/knowledge/rag-config-schema";
 import { storage } from "@/server/infrastructure/storage";
 
 export type ChatImageAttachment = {
@@ -73,9 +75,6 @@ type ExtractedText = {
 
 const chatAttachmentStoragePrefix =
   process.env.CHAT_ATTACHMENT_STORAGE_PREFIX ?? "chat-attachments";
-const maxChatImageBytes = 8 * 1024 * 1024;
-export const maxChatAttachmentBytes = 25 * 1024 * 1024;
-export const maxChatAttachments = 8;
 const maxStoredChatAttachmentMarkdownChars = 4_000_000;
 export const maxChatAttachmentPreviewChars = 120_000;
 const maxMarkdownConversionSourceChars = maxStoredChatAttachmentMarkdownChars;
@@ -1065,7 +1064,39 @@ function stripRtf(value: string) {
 async function extractAttachmentText(input: {
   bytes: Uint8Array;
   detection: AttachmentDetection;
+  fileName: string;
+  workspaceId?: string;
+  config?: RagConfig;
 }): Promise<ExtractedText> {
+  try {
+    const document = await extractDocument({
+      workspaceId: input.workspaceId,
+      fileName: input.fileName,
+      mimeType: input.detection.mimeType,
+      bytes: input.bytes,
+      config: input.config,
+    });
+    if (document) {
+      return limitExtractedText(
+        document.markdown,
+        document.warnings.length > 0
+          ? document.warnings.join(" ")
+          : document.markdown
+            ? undefined
+            : "AnyDoc found no deterministic text. Enable OCR to read scanned or visual regions.",
+      );
+    }
+  } catch (error) {
+    // Malformed but recoverable legacy office files can still be read by the
+    // bounded XML fallback. Valid supported documents always use AnyDoc.
+    logHandledWarning("AnyDoc extraction failed; trying safe legacy fallback", {
+      mimeType: input.detection.mimeType,
+      extension: input.detection.extension,
+      size: input.bytes.byteLength,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+
   try {
     if (
       input.detection.textKind === "text" ||
@@ -1130,6 +1161,42 @@ async function extractAttachmentText(input: {
     status: "unreadable",
     message:
       "This file type was uploaded safely, but no text reader is available for it yet.",
+  };
+}
+
+export type ExtractedUploadedFile = {
+  text: string;
+  mimeType: string;
+  extension: string;
+  status: ChatFileAttachment["extractionStatus"];
+  message?: string;
+};
+
+/** Extract a supported upload without persisting it as a chat attachment. */
+export async function extractUploadedFileText(input: {
+  workspaceId?: string;
+  config?: RagConfig;
+  fileName: string;
+  mimeType?: string;
+  bytes: Uint8Array;
+}): Promise<ExtractedUploadedFile> {
+  assertAttachmentHasContent(input.bytes);
+  const detection = detectAttachment({
+    fileName: input.fileName,
+    declaredMimeType: input.mimeType,
+    bytes: input.bytes,
+  });
+  const extracted = await extractAttachmentText({
+    bytes: input.bytes,
+    detection,
+    fileName: input.fileName,
+    workspaceId: input.workspaceId,
+    config: input.config,
+  });
+  return {
+    ...extracted,
+    mimeType: detection.mimeType,
+    extension: detection.extension,
   };
 }
 
@@ -1210,10 +1277,6 @@ async function createStoredImageAttachment(
   input: CreateChatImageAttachmentInput,
   imageMimeType: keyof typeof imageTypes,
 ): Promise<ChatImageAttachment> {
-  if (input.bytes.byteLength > maxChatImageBytes) {
-    throw new Error("Image file is too large. Maximum size is 8 MB.");
-  }
-
   const attachmentId = randomUUID();
   const imageExtension = imageTypes[imageMimeType].extension;
   const objectKey = chatAttachmentObjectKey(
@@ -1252,10 +1315,6 @@ async function createStoredImageAttachment(
 async function createStoredFileAttachment(
   input: CreateChatAttachmentInput,
 ): Promise<ChatFileAttachment> {
-  if (input.bytes.byteLength > maxChatAttachmentBytes) {
-    throw new Error("Attachment file is too large. Maximum size is 25 MB.");
-  }
-
   const detection = detectAttachment({
     fileName: input.fileName,
     declaredMimeType: input.mimeType,
@@ -1264,6 +1323,8 @@ async function createStoredFileAttachment(
   const extracted = await extractAttachmentText({
     bytes: input.bytes,
     detection,
+    fileName: input.fileName,
+    workspaceId: input.workspaceId,
   });
   const attachmentId = randomUUID();
   const objectKey = chatAttachmentObjectKey(
