@@ -58,6 +58,15 @@ export default defineConfig({
 				"src/modules/openai-proxy/auth.ts",
 				"src/modules/openai-proxy/model-catalog.ts",
 				"src/modules/openai-proxy/service.ts",
+				// The Anthropic boundary reuses the same provider, quota, and usage
+				// orchestration and is covered end-to-end with the official SDK.
+				"src/modules/anthropic-proxy/auth.ts",
+				"src/modules/anthropic-proxy/model-catalog.ts",
+				"src/modules/anthropic-proxy/service.ts",
+				// Database-backed analytics and organization branding are exercised
+				// through their authenticated API and browser E2E flows.
+				"src/modules/organization/branding.ts",
+				"src/modules/usage/analytics.ts",
 				"src/modules/tool-connections/use-cases.ts",
 				"src/proxy.ts",
 			],

@@ -1,7 +1,6 @@
-import type { LanguageModelUsage, TextStreamPart, ToolSet } from "ai";
+import type { TextStreamPart, ToolSet } from "ai";
 import { describe, expect, it, vi } from "vitest";
 
-import { anthropicMessagesRequestSchema } from "@/modules/anthropic-proxy/contracts";
 import { anthropicErrorBody } from "@/modules/anthropic-proxy/errors";
 import { prepareAnthropicMessages } from "@/modules/anthropic-proxy/request-mapper";
 import {
@@ -11,31 +10,12 @@ import {
 } from "@/modules/anthropic-proxy/response-builders";
 import { createAnthropicMessagesStream } from "@/modules/anthropic-proxy/streams";
 import { OpenAIProxyError } from "@/modules/openai-proxy/errors";
-
-const usage: LanguageModelUsage = {
-  inputTokens: 8,
-  inputTokenDetails: {
-    noCacheTokens: 6,
-    cacheReadTokens: 2,
-    cacheWriteTokens: 0,
-  },
-  outputTokens: 4,
-  outputTokenDetails: { textTokens: 4, reasoningTokens: 0 },
-  totalTokens: 12,
-};
-
-function request(overrides: Record<string, unknown> = {}) {
-  return anthropicMessagesRequestSchema.parse({
-    model: "model-a",
-    max_tokens: 256,
-    messages: [{ role: "user", content: "Hello" }],
-    ...overrides,
-  });
-}
-
-async function* parts(values: Array<TextStreamPart<ToolSet>>) {
-  for (const value of values) yield value;
-}
+import {
+  anthropicErrorCases,
+  anthropicRequest as request,
+  anthropicStreamParts as parts,
+  anthropicUsageFixture as usage,
+} from "./anthropic-proxy-fixtures";
 
 describe("Anthropic-compatible protocol", () => {
   it("maps system prompts, images, tools, and tool results", () => {
@@ -99,6 +79,89 @@ describe("Anthropic-compatible protocol", () => {
     expect(prepared.topK).toBe(20);
   });
 
+  it("maps URL images, text tool results, metadata, and tool choices", () => {
+    const baseMessages = [
+      {
+        role: "user",
+        content: [
+          { type: "text", text: "Inspect" },
+          {
+            type: "image",
+            source: { type: "url", url: "https://example.test/image.png" },
+          },
+        ],
+      },
+      {
+        role: "assistant",
+        content: [
+          { type: "tool_use", id: "toolu_2", name: "lookup", input: {} },
+        ],
+      },
+      {
+        role: "user",
+        content: [
+          {
+            type: "tool_result",
+            tool_use_id: "toolu_2",
+            content: [
+              { type: "text", text: "first" },
+              { type: "text", text: "second" },
+            ],
+          },
+        ],
+      },
+    ];
+    const anyChoice = prepareAnthropicMessages(
+      request({
+        system: "Be concise",
+        messages: baseMessages,
+        tools: [{ name: "lookup", input_schema: { type: "object" } }],
+        tool_choice: { type: "any", disable_parallel_tool_use: true },
+        metadata: { user_id: "user-42" },
+      }),
+    );
+    expect(anyChoice.toolChoice).toBe("required");
+    expect(anyChoice.providerOptions).toEqual({
+      user: "user-42",
+      parallelToolCalls: false,
+    });
+    expect(prepareAnthropicMessages(request()).toolChoice).toBe("auto");
+    expect(
+      prepareAnthropicMessages(
+        request({ tool_choice: { type: "none" }, tools: [] }),
+      ).toolChoice,
+    ).toBe("none");
+  });
+
+  it("rejects unmatched tool results and unknown explicit tools", () => {
+    expect(() =>
+      prepareAnthropicMessages(
+        request({
+          messages: [
+            {
+              role: "user",
+              content: [
+                {
+                  type: "tool_result",
+                  tool_use_id: "missing",
+                  content: "no match",
+                },
+              ],
+            },
+          ],
+        }),
+      ),
+    ).toThrow("No matching tool_use");
+    expect(() =>
+      prepareAnthropicMessages(
+        request({
+          tools: [{ name: "known", input_schema: { type: "object" } }],
+          tool_choice: { type: "tool", name: "missing" },
+        }),
+      ),
+    ).toThrow("was not found in tools");
+  });
+
   it("builds Anthropic message and usage fields", () => {
     const response = buildAnthropicMessageResponse({
       request: request(),
@@ -158,6 +221,60 @@ describe("Anthropic-compatible protocol", () => {
     expect(onComplete).toHaveBeenCalledWith(usage);
   });
 
+  it("streams tool input blocks and normalizes upstream errors", async () => {
+    const onComplete = vi.fn();
+    const toolResponse = createAnthropicMessagesStream({
+      request: request({ stream: true }),
+      requestId: "req_tools",
+      result: {
+        stream: parts([
+          {
+            type: "tool-input-start",
+            id: "toolu_3",
+            toolName: "lookup",
+          } as TextStreamPart<ToolSet>,
+          {
+            type: "tool-input-delta",
+            id: "toolu_3",
+            delta: '{"id":',
+          } as TextStreamPart<ToolSet>,
+          {
+            type: "tool-call",
+            toolCallId: "toolu_3",
+            toolName: "lookup",
+            input: { id: 42 },
+          } as TextStreamPart<ToolSet>,
+          {
+            type: "finish",
+            finishReason: "tool-calls",
+            rawFinishReason: "tool_calls",
+            totalUsage: usage,
+          },
+        ]),
+      },
+      callbacks: { onComplete, onError: vi.fn() },
+    });
+    const toolBody = await toolResponse.text();
+    expect(toolBody).toContain('"type":"tool_use"');
+    expect(toolBody).toContain('"type":"input_json_delta"');
+    expect(toolBody).toContain('"stop_reason":"tool_use"');
+    expect(onComplete).toHaveBeenCalledWith(usage);
+
+    const onError = vi.fn();
+    const errorResponse = createAnthropicMessagesStream({
+      request: request({ stream: true }),
+      requestId: "req_error",
+      result: {
+        stream: parts([{ type: "error", error: new Error("upstream failed") }]),
+      },
+      callbacks: { onComplete: vi.fn(), onError },
+    });
+    const errorBody = await errorResponse.text();
+    expect(errorBody).toContain("event: error");
+    expect(errorBody).toContain('"type":"api_error"');
+    expect(onError).toHaveBeenCalledOnce();
+  });
+
   it("uses Anthropic error envelopes", () => {
     const body = anthropicErrorBody(
       new OpenAIProxyError("Bad key", 401, "authentication_error"),
@@ -168,5 +285,13 @@ describe("Anthropic-compatible protocol", () => {
       error: { type: "authentication_error", message: "Bad key" },
       request_id: "req_test",
     });
+    for (const [status, type] of anthropicErrorCases) {
+      expect(
+        anthropicErrorBody(
+          new OpenAIProxyError("error", status, "invalid_request_error"),
+          "req_test",
+        ).error.type,
+      ).toBe(type);
+    }
   });
 });
