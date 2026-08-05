@@ -50,7 +50,12 @@ test.describe("settings page", () => {
 
     const resetBranding = () =>
       page.request.put("/api/workspace/branding", {
-        data: { workspaceId, logoUrl: null, theme: "ocean" },
+        data: {
+          workspaceId,
+          logoUrl: null,
+          theme: "ocean",
+          themeConfig: null,
+        },
       });
     await resetBranding();
     try {
@@ -79,6 +84,71 @@ test.describe("settings page", () => {
       await expect(branding.locator('img[src^="data:image/"]')).toBeVisible();
     } finally {
       await resetBranding();
+    }
+  });
+
+  test("persists a custom light and dark organization palette", async ({
+    page,
+  }) => {
+    test.setTimeout(60_000);
+    const workspaces = (await (
+      await page.request.get("/api/workspaces")
+    ).json()) as Array<{ workspace: { id: string } }>;
+    const workspaceId = workspaces[0]?.workspace.id;
+    if (!workspaceId) throw new Error("E2E workspace is missing");
+
+    try {
+      await page.goto("/en/settings");
+      const branding = page.locator("section").filter({
+        has: page.getByRole("heading", { name: "Organization branding" }),
+      });
+      await branding.getByRole("button", { name: "Custom" }).click();
+      await branding
+        .getByLabel("light primary", { exact: true })
+        .fill("#123456");
+      await branding
+        .getByLabel("dark primary", { exact: true })
+        .fill("#abcdef");
+      await branding.getByRole("button", { name: "Save branding" }).click();
+
+      await expect(page.locator("html")).toHaveAttribute(
+        "data-brand-theme",
+        "custom",
+      );
+      await expect
+        .poll(() =>
+          page.evaluate(() =>
+            getComputedStyle(document.documentElement)
+              .getPropertyValue("--primary")
+              .trim(),
+          ),
+        )
+        .toBe("#123456");
+      await page
+        .locator("html")
+        .evaluate((element) => element.classList.add("dark"));
+      await expect
+        .poll(() =>
+          page.evaluate(() =>
+            getComputedStyle(document.documentElement)
+              .getPropertyValue("--primary")
+              .trim(),
+          ),
+        )
+        .toBe("#abcdef");
+      await page.reload();
+      await expect(
+        branding.getByRole("button", { name: "Custom" }),
+      ).toHaveAttribute("aria-pressed", "true");
+    } finally {
+      await page.request.put("/api/workspace/branding", {
+        data: {
+          workspaceId,
+          logoUrl: null,
+          theme: "ocean",
+          themeConfig: null,
+        },
+      });
     }
   });
 

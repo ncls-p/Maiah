@@ -1,4 +1,5 @@
 import type { WorkspacePermissions } from "@/lib/workspace-nav";
+import type { OrganizationThemeConfig } from "@/modules/organization/themes";
 
 type WorkspaceRow = {
   workspace?: {
@@ -11,6 +12,7 @@ type WorkspaceRow = {
     name?: string;
     logoUrl?: string | null;
     theme?: string;
+    themeConfigJson?: OrganizationThemeConfig | null;
   };
 };
 
@@ -22,6 +24,7 @@ export type WorkspaceSummary = {
   organizationName: string;
   organizationLogoUrl: string | null;
   organizationTheme: string;
+  organizationThemeConfig: OrganizationThemeConfig | null;
 };
 
 export async function fetchWorkspaces(): Promise<WorkspaceSummary[]> {
@@ -44,6 +47,7 @@ export async function fetchWorkspaces(): Promise<WorkspaceSummary[]> {
           organizationName: row.organization?.name ?? "Organization",
           organizationLogoUrl: row.organization?.logoUrl ?? null,
           organizationTheme: row.organization?.theme ?? "ocean",
+          organizationThemeConfig: row.organization?.themeConfigJson ?? null,
         };
       })
       .filter((row): row is WorkspaceSummary => row !== null);

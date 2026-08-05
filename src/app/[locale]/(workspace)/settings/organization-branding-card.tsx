@@ -15,26 +15,21 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useWorkspace } from "@/hooks/use-workspace";
-import { cn } from "@/lib/utils";
-import type { OrganizationTheme } from "@/modules/organization/branding";
+import {
+  resolveOrganizationTheme,
+  themeCss,
+  type OrganizationTheme,
+  type OrganizationThemeConfig,
+} from "@/modules/organization/themes";
+import { OrganizationThemeEditor } from "./organization-theme-editor";
 
 type Branding = {
   organizationName: string;
   logoUrl: string | null;
   theme: OrganizationTheme;
+  themeConfig: OrganizationThemeConfig | null;
   canManage: boolean;
 };
-
-const themes: Array<{
-  id: OrganizationTheme;
-  colors: [string, string, string];
-}> = [
-  { id: "ocean", colors: ["#0f7f94", "#25adc5", "#e8f7f9"] },
-  { id: "forest", colors: ["#28765a", "#62a96f", "#edf8ef"] },
-  { id: "ember", colors: ["#bd4b20", "#db8b2c", "#fff2e6"] },
-  { id: "violet", colors: ["#6945a4", "#b2579a", "#f4eefb"] },
-  { id: "slate", colors: ["#435366", "#74869a", "#eef1f4"] },
-];
 
 async function readLogo(file: File) {
   if (!/^image\/(png|jpeg|webp|gif|avif)$/.test(file.type)) {
@@ -56,6 +51,8 @@ export function OrganizationBrandingCard() {
   const [branding, setBranding] = useState<Branding | null>(null);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [theme, setTheme] = useState<OrganizationTheme>("ocean");
+  const [themeConfig, setThemeConfig] =
+    useState<OrganizationThemeConfig | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -72,6 +69,7 @@ export function OrganizationBrandingCard() {
         setBranding(data);
         setLogoUrl(data.logoUrl);
         setTheme(data.theme);
+        setThemeConfig(data.themeConfig);
       })
       .catch((error: Error) => {
         if (error.name !== "AbortError") toast.error(t("loadFailed"));
@@ -104,12 +102,20 @@ export function OrganizationBrandingCard() {
       const response = await fetch("/api/workspace/branding", {
         method: "PUT",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ workspaceId, logoUrl, theme }),
+        body: JSON.stringify({ workspaceId, logoUrl, theme, themeConfig }),
       });
       if (!response.ok) throw new Error("save_failed");
       document.documentElement.dataset.brandTheme = theme;
+      const style = document.querySelector<HTMLStyleElement>(
+        "style[data-organization-theme]",
+      );
+      if (style) {
+        style.textContent = themeCss(
+          resolveOrganizationTheme(theme, themeConfig),
+        );
+      }
       await refresh();
-      setBranding({ ...branding, logoUrl, theme });
+      setBranding({ ...branding, logoUrl, theme, themeConfig });
       toast.success(t("saved"));
     } catch {
       toast.error(t("saveFailed"));
@@ -119,7 +125,10 @@ export function OrganizationBrandingCard() {
   }
 
   if (!branding) return <Skeleton className="h-80 rounded-2xl" />;
-  const dirty = logoUrl !== branding.logoUrl || theme !== branding.theme;
+  const dirty =
+    logoUrl !== branding.logoUrl ||
+    theme !== branding.theme ||
+    JSON.stringify(themeConfig) !== JSON.stringify(branding.themeConfig);
   return (
     <section className="overflow-hidden rounded-2xl border bg-card shadow-[var(--surface-shadow)]">
       <div className="border-b px-5 py-5 sm:px-6">
@@ -185,21 +194,13 @@ export function OrganizationBrandingCard() {
             </div>
           ) : null}
         </div>
-        <div>
-          <Label>{t("theme")}</Label>
-          <div className="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-            {themes.map((preset) => (
-              <ThemeChoice
-                key={preset.id}
-                preset={preset}
-                selected={theme === preset.id}
-                disabled={!branding.canManage}
-                label={t(`themes.${preset.id}`)}
-                onSelect={() => setTheme(preset.id)}
-              />
-            ))}
-          </div>
-        </div>
+        <OrganizationThemeEditor
+          theme={theme}
+          themeConfig={themeConfig}
+          disabled={!branding.canManage}
+          onThemeChange={setTheme}
+          onThemeConfigChange={setThemeConfig}
+        />
       </div>
       <div className="flex items-center justify-between gap-3 border-t bg-muted/20 px-5 py-4 sm:px-6">
         <p className="text-xs text-muted-foreground">
@@ -213,6 +214,7 @@ export function OrganizationBrandingCard() {
               onClick={() => {
                 setLogoUrl(branding.logoUrl);
                 setTheme(branding.theme);
+                setThemeConfig(branding.themeConfig);
               }}
             >
               <RotateCcwIcon className="size-4" aria-hidden="true" />
@@ -225,40 +227,5 @@ export function OrganizationBrandingCard() {
         ) : null}
       </div>
     </section>
-  );
-}
-
-function ThemeChoice(props: {
-  preset: (typeof themes)[number];
-  selected: boolean;
-  disabled: boolean;
-  label: string;
-  onSelect: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      disabled={props.disabled}
-      onClick={props.onSelect}
-      aria-pressed={props.selected}
-      className={cn(
-        "rounded-xl border p-3 text-left transition-[border-color,box-shadow,transform] hover:-translate-y-px",
-        props.selected
-          ? "border-primary ring-2 ring-primary/15"
-          : "border-border",
-        props.disabled && "cursor-not-allowed opacity-60",
-      )}
-    >
-      <span className="mb-2 flex h-8 overflow-hidden rounded-lg border">
-        {props.preset.colors.map((color) => (
-          <i
-            key={color}
-            className="flex-1"
-            style={{ backgroundColor: color }}
-          />
-        ))}
-      </span>
-      <span className="text-sm font-medium">{props.label}</span>
-    </button>
   );
 }

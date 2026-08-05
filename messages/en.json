@@ -2047,8 +2047,12 @@
         "forest": "Forest",
         "ember": "Ember",
         "violet": "Violet",
-        "slate": "Slate"
+        "slate": "Slate",
+        "custom": "Custom"
       },
+      "customHint": "Customize every platform color independently for light and dark mode.",
+      "light": "Light palette",
+      "dark": "Dark palette",
       "scopeHint": "Changes apply to every project in this organization.",
       "readOnly": "Only organization administrators can change branding.",
       "reset": "Reset",

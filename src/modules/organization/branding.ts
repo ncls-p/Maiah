@@ -3,16 +3,15 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/server/infrastructure/db";
 import { organizations, workspaces } from "@/server/infrastructure/db/schema";
 import { authorization } from "@/server/domain/services/authorization";
-
-export const ORGANIZATION_THEMES = [
-  "ocean",
-  "forest",
-  "ember",
-  "violet",
-  "slate",
-] as const;
-
-export type OrganizationTheme = (typeof ORGANIZATION_THEMES)[number];
+export {
+  ORGANIZATION_THEMES,
+  type OrganizationTheme,
+  type OrganizationThemeConfig,
+} from "@/modules/organization/themes";
+import type {
+  OrganizationTheme,
+  OrganizationThemeConfig,
+} from "@/modules/organization/themes";
 
 async function organizationForWorkspace(workspaceId: string) {
   const [row] = await db
@@ -30,18 +29,32 @@ export async function getOrganizationBranding(input: {
 }) {
   const organization = await organizationForWorkspace(input.workspaceId);
   if (!organization) return null;
-  const permission = await authorization.checkPermission(
-    { principalType: "user", principalId: input.userId },
-    "organization.update",
-    "organization",
-    organization.id,
-  );
+  const principal = {
+    principalType: "user" as const,
+    principalId: input.userId,
+  };
+  const [readPermission, managePermission] = await Promise.all([
+    authorization.checkPermission(
+      principal,
+      "organization.get",
+      "organization",
+      organization.id,
+    ),
+    authorization.checkPermission(
+      principal,
+      "organization.update",
+      "organization",
+      organization.id,
+    ),
+  ]);
+  if (!readPermission.granted) return null;
   return {
     organizationId: organization.id,
     organizationName: organization.name,
     logoUrl: organization.logoUrl,
     theme: organization.theme as OrganizationTheme,
-    canManage: permission.granted,
+    themeConfig: organization.themeConfigJson,
+    canManage: managePermission.granted,
   };
 }
 
@@ -50,13 +63,19 @@ export async function updateOrganizationBranding(input: {
   userId: string;
   logoUrl: string | null;
   theme: OrganizationTheme;
+  themeConfig: OrganizationThemeConfig | null;
 }) {
   const current = await getOrganizationBranding(input);
   if (!current) return { status: "not_found" as const };
   if (!current.canManage) return { status: "forbidden" as const };
   const [organization] = await db
     .update(organizations)
-    .set({ logoUrl: input.logoUrl, theme: input.theme, updatedAt: new Date() })
+    .set({
+      logoUrl: input.logoUrl,
+      theme: input.theme,
+      themeConfigJson: input.themeConfig,
+      updatedAt: new Date(),
+    })
     .where(eq(organizations.id, current.organizationId))
     .returning();
   return { status: "updated" as const, organization };

@@ -7,19 +7,34 @@ import {
   ORGANIZATION_THEMES,
   updateOrganizationBranding,
 } from "@/modules/organization/branding";
+import { THEME_TOKEN_KEYS } from "@/modules/organization/themes";
 
 const querySchema = z.object({ workspaceId: z.uuid() });
-const updateSchema = z.object({
-  workspaceId: z.uuid(),
-  theme: z.enum(ORGANIZATION_THEMES),
-  logoUrl: z.union([
-    z
-      .string()
-      .max(360_000)
-      .regex(/^data:image\/(png|jpeg|webp|gif|avif);base64,/),
-    z.null(),
-  ]),
+const paletteSchema = z.record(
+  z.enum(THEME_TOKEN_KEYS),
+  z.string().regex(/^#[0-9a-fA-F]{6}$/),
+);
+const themeConfigSchema = z.strictObject({
+  light: paletteSchema,
+  dark: paletteSchema,
 });
+const updateSchema = z
+  .strictObject({
+    workspaceId: z.uuid(),
+    theme: z.enum(ORGANIZATION_THEMES),
+    themeConfig: themeConfigSchema.nullable().optional().default(null),
+    logoUrl: z.union([
+      z
+        .string()
+        .max(360_000)
+        .regex(/^data:image\/(png|jpeg|webp|gif|avif);base64,/),
+      z.null(),
+    ]),
+  })
+  .refine((input) => input.theme !== "custom" || input.themeConfig !== null, {
+    message: "A custom theme requires light and dark palettes",
+    path: ["themeConfig"],
+  });
 
 export async function GET(request: NextRequest) {
   return handleRoute(
@@ -67,6 +82,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({
         logoUrl: result.organization.logoUrl,
         theme: result.organization.theme,
+        themeConfig: result.organization.themeConfigJson,
       });
     },
     { allowApiKey: false, logLabel: "Failed to update organization branding" },

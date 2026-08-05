@@ -44,6 +44,7 @@ import {
 } from "@/lib/openai-compatible-api";
 import { cn } from "@/lib/utils";
 import { ONBOARDING_TOOL_PRESET } from "@/modules/agent/onboarding-tools";
+import type { DiscoveredModel } from "@/components/providers/provider-manager/types";
 
 const BUTTON_TYPE = "button";
 const OUTLINE_VARIANT = "outline";
@@ -263,6 +264,9 @@ export function SetupWizard({
   const [modelsLoadError, setModelsLoadError] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
   const [models, setModels] = useState<ProviderModel[]>([]);
+  const [discoveredModels, setDiscoveredModels] = useState<DiscoveredModel[]>(
+    [],
+  );
   const [providerForm, setProviderForm] = useState<{
     name: string;
     kind: ProviderKind;
@@ -318,6 +322,8 @@ export function SetupWizard({
     async function loadModels() {
       setLoadingModels(true);
       setModelsLoadError(false);
+      setModels([]);
+      setDiscoveredModels([]);
       try {
         const rows = await fetchJson<ProviderModel[]>(
           `/api/workspace/providers/${providerId}/models?workspaceId=${workspaceId}`,
@@ -329,6 +335,16 @@ export function SetupWizard({
             ? current
             : (rows[0]?.id ?? null),
         );
+        if (rows.length === 0) {
+          try {
+            const catalog = await fetchJson<DiscoveredModel[]>(
+              `/api/workspace/providers/${providerId}/models?workspaceId=${workspaceId}&action=discover`,
+            );
+            if (!cancelled) setDiscoveredModels(catalog);
+          } catch {
+            if (!cancelled) setDiscoveredModels([]);
+          }
+        }
       } catch {
         if (!cancelled) {
           setModelsLoadError(true);
@@ -414,6 +430,45 @@ export function SetupWizard({
         error instanceof Error ? error.message : t("toasts.modelAddFailed"),
       );
       return;
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function addDiscoveredModel(modelId: string) {
+    if (!workspaceId || !providerId) return;
+    const candidate = discoveredModels.find(
+      (model) => model.modelId === modelId,
+    );
+    if (!candidate) return;
+    setBusy(true);
+    try {
+      const model = await fetchJson<ProviderModel>(
+        `/api/workspace/providers/${providerId}/models`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            workspaceId,
+            modelId: candidate.modelId,
+            displayName: candidate.displayName ?? candidate.modelId,
+            capabilitiesJson: candidate.capabilities,
+            contextWindow: candidate.contextWindow,
+            maxOutputTokens: candidate.maxOutputTokens,
+            inputTokenCost: candidate.inputTokenCost,
+            outputTokenCost: candidate.outputTokenCost,
+            imageGenerationConfigJson: candidate.imageGeneration,
+            sustainabilityConfigJson: candidate.sustainability,
+          }),
+        },
+      );
+      setModels([model]);
+      setModelDbId(model.id);
+      toast.success(t("toasts.modelSelected"));
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : t("toasts.modelAddFailed"),
+      );
     } finally {
       setBusy(false);
     }
@@ -791,7 +846,40 @@ export function SetupWizard({
                 </Field>
               )}
 
-              {models.length === 0 && (
+              {models.length === 0 && discoveredModels.length > 0 && (
+                <Field>
+                  <FieldLabel htmlFor="setup-discovered-model">
+                    {t("modelForAssistant")}
+                  </FieldLabel>
+                  <FieldContent>
+                    <Select
+                      onValueChange={(value) => void addDiscoveredModel(value)}
+                      disabled={loadingModels || busy}
+                    >
+                      <SelectTrigger
+                        id="setup-discovered-model"
+                        className="w-full"
+                      >
+                        <SelectValue placeholder={t("selectModel")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          {discoveredModels.map((model) => (
+                            <SelectItem
+                              key={model.modelId}
+                              value={model.modelId}
+                            >
+                              {model.displayName ?? model.modelId}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  </FieldContent>
+                </Field>
+              )}
+
+              {models.length === 0 && discoveredModels.length === 0 && (
                 <Field>
                   <FieldLabel htmlFor="manual-model">
                     {t("manualModelLabel")}

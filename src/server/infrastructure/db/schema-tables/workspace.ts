@@ -11,6 +11,7 @@ import {
   pgEnum,
 } from "drizzle-orm/pg-core";
 import { users } from "./auth";
+import type { OrganizationThemeConfig } from "@/modules/organization/themes";
 
 const CREATED_AT_COLUMN = "created_at";
 const UPDATED_AT_COLUMN = "updated_at";
@@ -28,6 +29,7 @@ export const organizations = pgTable("organizations", {
   slug: varchar("slug", { length: 128 }).notNull().unique(),
   logoUrl: text("logo_url"),
   theme: varchar("theme", { length: 32 }).notNull().default("ocean"),
+  themeConfigJson: jsonb("theme_config_json").$type<OrganizationThemeConfig>(),
   createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
     .notNull()
     .defaultNow(),

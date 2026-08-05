@@ -2046,8 +2046,12 @@
         "forest": "Forêt",
         "ember": "Braise",
         "violet": "Violet",
-        "slate": "Ardoise"
+        "slate": "Ardoise",
+        "custom": "Personnalisé"
       },
+      "customHint": "Personnalisez chaque couleur de la plateforme séparément pour les modes clair et sombre.",
+      "light": "Palette claire",
+      "dark": "Palette sombre",
       "scopeHint": "Les changements s’appliquent à tous les projets de cette organisation.",
       "readOnly": "Seuls les administrateurs de l’organisation peuvent modifier son identité.",
       "reset": "Réinitialiser",

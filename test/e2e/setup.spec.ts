@@ -79,6 +79,60 @@ test.describe("setup wizard provider step", () => {
       await expect(apiKeyInput).toBeVisible();
     }
   });
+
+  test("offers discovered models during the first setup", async ({ page }) => {
+    await page.route("**/api/workspace/providers?workspaceId=*", (route) =>
+      route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify([
+          {
+            id: "setup-provider",
+            name: "First connection",
+            kind: "openai-compatible",
+          },
+        ]),
+      }),
+    );
+    await page.route(
+      "**/api/workspace/providers/setup-provider/models**",
+      async (route) => {
+        const request = route.request();
+        const url = new URL(request.url());
+        if (request.method() === "POST") {
+          await route.fulfill({
+            contentType: "application/json",
+            body: JSON.stringify({
+              id: "registered-model",
+              modelId: "first-model",
+              displayName: "First model",
+            }),
+          });
+          return;
+        }
+        await route.fulfill({
+          contentType: "application/json",
+          body: JSON.stringify(
+            url.searchParams.get("action") === "discover"
+              ? [{ modelId: "first-model", displayName: "First model" }]
+              : [],
+          ),
+        });
+      },
+    );
+
+    await page.goto("/en/setup");
+    await page
+      .getByRole("combobox", { name: "Model for this assistant" })
+      .click();
+    await expect(
+      page.getByRole("option", { name: "First model" }),
+    ).toBeVisible();
+    await page.getByRole("option", { name: "First model" }).click();
+
+    await expect(
+      page.getByRole("button", { name: "Continue", exact: true }),
+    ).toBeEnabled();
+  });
 });
 
 test.describe("access page", () => {

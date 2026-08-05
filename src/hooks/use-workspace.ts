@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext } from "react";
+import type { OrganizationThemeConfig } from "@/modules/organization/themes";
 
 export type WorkspaceSummary = {
   id: string;
@@ -10,6 +11,7 @@ export type WorkspaceSummary = {
   organizationName: string;
   organizationLogoUrl: string | null;
   organizationTheme: string;
+  organizationThemeConfig: OrganizationThemeConfig | null;
 };
 
 export type WorkspaceContextValue = {
@@ -18,6 +20,7 @@ export type WorkspaceContextValue = {
   organizationName: string | null;
   organizationLogoUrl: string | null;
   organizationTheme: string;
+  organizationThemeConfig: OrganizationThemeConfig | null;
   isLoading: boolean;
   error: string | null;
   setWorkspaceId: (workspaceId: string) => void;

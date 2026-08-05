@@ -1,0 +1,1 @@
+ALTER TABLE "organizations" ADD COLUMN "theme_config_json" jsonb;
