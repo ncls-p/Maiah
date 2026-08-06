@@ -7,6 +7,7 @@ import hashlib
 import hmac
 import ipaddress
 import json
+import logging
 import os
 import socket
 import time
@@ -19,8 +20,6 @@ from pydantic import BaseModel, Field, ValidationError
 from servicenow_mcp.utils.config import ApiKeyConfig, AuthConfig, AuthType, BasicAuthConfig, OAuthConfig, ServerConfig
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
-
-from starlette.routing import Mount, Route
 
 logger = logging.getLogger("servicenow_mcp_gateway")
 
@@ -250,5 +249,4 @@ def server_config_from_context(context: Optional[GatewayContext]) -> ServerConfi
         auth=auth_config_from_context(context),
         debug=os.getenv("SERVICENOW_GATEWAY_DEBUG", "false").lower() == "true",
     )
-
 

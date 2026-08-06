@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { describe,expect,it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 const projectRoot = process.cwd();
 
@@ -21,14 +21,67 @@ describe("runtime packaging guardrails", () => {
 
   it("ships the document-search command used by the sandbox instructions", () => {
     const dockerfile = projectFile("Dockerfile");
-    const sandboxStage = dockerfile.slice(dockerfile.indexOf("FROM node:22-bookworm-slim AS sandbox-runner"), dockerfile.indexOf("FROM base AS deps"));
+    const sandboxStage = dockerfile.slice(
+      dockerfile.indexOf("FROM node:22-bookworm-slim AS sandbox-runner"),
+      dockerfile.indexOf("FROM base AS deps"),
+    );
 
     expect(sandboxStage).toMatch(/^\s*ripgrep\s*\\$/m);
   });
 
+  it("ships and validates every sandbox runner module", () => {
+    const dockerfile = projectFile("Dockerfile");
+    const sandboxStage = dockerfile.slice(
+      dockerfile.indexOf("FROM node:22-bookworm-slim AS sandbox-runner"),
+      dockerfile.indexOf("FROM base AS deps"),
+    );
+    const workflow = projectFile(".github/workflows/coolify.yml");
+
+    expect(sandboxStage).toContain(
+      "COPY scripts/sandbox-runner*.mjs /opt/sandbox/",
+    );
+    expect(sandboxStage).toContain("SANDBOX_RUNNER_VALIDATE_ONLY=true node");
+    expect(workflow).toContain("scripts/sandbox-runner[^/]*\\.mjs$");
+    expect(workflow).toContain("Verify pushed sandbox runner image");
+  });
+
+  it("loads the ServiceNow application while building and verifying its image", () => {
+    const dockerfile = projectFile(
+      "services/servicenow-mcp-gateway/Dockerfile",
+    );
+    const workflow = projectFile(".github/workflows/coolify.yml");
+
+    expect(dockerfile).toContain(
+      "from servicenow_mcp_gateway.app import create_app",
+    );
+    expect(workflow).toContain(
+      "from servicenow_mcp_gateway.app import create_app",
+    );
+    expect(workflow).toContain(
+      'docker run --rm -i --entrypoint python "${SERVICENOW_GATEWAY_IMAGE}"',
+    );
+  });
+
+  it("packages a complete SearXNG configuration without startup-only engines", () => {
+    const dockerfile = projectFile("Dockerfile");
+    const settings = projectFile("searxng/settings.yml");
+
+    expect(dockerfile).toContain(
+      "COPY searxng/limiter.toml /etc/searxng/limiter.toml",
+    );
+    for (const engine of ["ahmia", "torch", "wikidata"]) {
+      expect(settings).toMatch(new RegExp(`^\\s+- ${engine}$`, "m"));
+    }
+  });
+
   it("keeps the sandbox container under strict resource ceilings", () => {
-    for (const composeFile of ["docker-compose.dev.yml", "docker-compose.prod.yml"]) {
-      const sandbox = projectFile(composeFile).slice(projectFile(composeFile).indexOf("  sandbox-runner:"));
+    for (const composeFile of [
+      "docker-compose.dev.yml",
+      "docker-compose.prod.yml",
+    ]) {
+      const sandbox = projectFile(composeFile).slice(
+        projectFile(composeFile).indexOf("  sandbox-runner:"),
+      );
       expect(sandbox).toContain('cpus: "0.50"');
       expect(sandbox).toContain("mem_limit: 768m");
       expect(sandbox).toContain("memswap_limit: 768m");

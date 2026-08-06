@@ -1,5 +1,6 @@
 FROM searxng/searxng:latest AS searxng
 COPY searxng/settings.yml /etc/searxng/settings.yml
+COPY searxng/limiter.toml /etc/searxng/limiter.toml
 # SearXNG 2026.6.15 made EngineAbout strict while some packaged
 # disabled engines can still carry stale `about.language` metadata. Remove the
 # known-bad defaults from the image itself and fail the build if the effective
@@ -16,7 +17,7 @@ try:
 except ImportError:
     EngineAbout = None
 
-blocked_engines = {"woxikon.de synonyme", "wikimini"}
+blocked_engines = {"ahmia", "torch", "wikidata", "woxikon.de synonyme", "wikimini"}
 default_settings = load_yaml(DEFAULT_SETTINGS_FILE)
 default_settings["engines"] = [
     engine for engine in default_settings.get("engines", []) if engine.get("name") not in blocked_engines
@@ -118,9 +119,10 @@ RUN npm init -y \
   && rm -f /tmp/sandbox-node-packages.txt \
   && npm cache clean --force
 
-COPY scripts/sandbox-runner.mjs /opt/sandbox/sandbox-runner.mjs
+COPY scripts/sandbox-runner*.mjs /opt/sandbox/
 
-RUN chmod 0755 /opt/sandbox/sandbox-runner.mjs \
+RUN chmod 0755 /opt/sandbox/sandbox-runner*.mjs \
+  && SANDBOX_RUNNER_VALIDATE_ONLY=true node /opt/sandbox/sandbox-runner.mjs \
   && mkdir -p /run/sandbox /sandbox-runs \
   && chown root:1001 /run/sandbox \
   && chmod 0770 /run/sandbox \

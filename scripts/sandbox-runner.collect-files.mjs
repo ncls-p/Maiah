@@ -171,10 +171,12 @@ async function start() {
   }
 }
 
-start().catch((error) => {
-  log("error", "sandbox-runner failed to start", {
-    error: error instanceof Error ? error.message : String(error),
-    stack: error instanceof Error ? error.stack : undefined,
+if (process.env.SANDBOX_RUNNER_VALIDATE_ONLY !== "true") {
+  start().catch((error) => {
+    log("error", "sandbox-runner failed to start", {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    process.exit(1);
   });
-  process.exit(1);
-});
+}
