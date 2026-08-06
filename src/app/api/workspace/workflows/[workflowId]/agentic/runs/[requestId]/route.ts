@@ -1,15 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest,NextResponse } from "next/server";
 import { z } from "zod";
 
-import {
-  handleRoute,
-  requireResourcePermissionAsync,
-} from "@/lib/route-handler";
-import {
-  approveWorkflowAgentRunRequest,
-  rejectWorkflowAgentRunRequest,
-  WorkflowAgentRunDecisionError,
-} from "@/modules/workflows/agentic-run-approvals";
+import { handleRoute,requireResourcePermissionAsync } from "@/lib/route-handler";
+import { approveWorkflowAgentRunRequest,rejectWorkflowAgentRunRequest,WorkflowAgentRunDecisionError } from "@/modules/workflows/agentic-run-approvals";
 
 const paramsSchema = z.object({
   workflowId: z.uuid(),
@@ -36,34 +29,19 @@ export async function POST(
       if (!parsedParams.success || !parsedBody.success) {
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
       }
-      const forbidden = await requireResourcePermissionAsync(
-        session.user.id,
-        parsedBody.data.workspaceId,
-        "workflows.execute",
-        "workflow",
-        (await params).workflowId,
-      );
+      const forbidden = await requireResourcePermissionAsync(session.user.id, parsedBody.data.workspaceId, "workflows.execute", "workflow", (await params).workflowId);
       if (forbidden) return forbidden;
       const command = {
         ...parsedParams.data,
         workspaceId: parsedBody.data.workspaceId,
         userId: session.user.id,
       };
-      const result =
-        parsedBody.data.decision === "approve"
-          ? await approveWorkflowAgentRunRequest(command)
-          : await rejectWorkflowAgentRunRequest(command);
+      const result = parsedBody.data.decision === "approve" ? await approveWorkflowAgentRunRequest(command) : await rejectWorkflowAgentRunRequest(command);
       return NextResponse.json(result);
     },
     {
       logLabel: "Failed to decide workflow assistant run request",
-      expectedError: (error) =>
-        error instanceof WorkflowAgentRunDecisionError
-          ? NextResponse.json(
-              { error: error.message },
-              { status: error.status },
-            )
-          : null,
+      expectedError: (error) => (error instanceof WorkflowAgentRunDecisionError ? NextResponse.json({ error: error.message }, { status: error.status }) : null),
     },
   );
 }

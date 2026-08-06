@@ -1,20 +1,14 @@
-import { and, eq, isNull } from "drizzle-orm";
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
-import {
-  handleRoute,
-  requireResourcePermissionAsync,
-} from "@/lib/route-handler";
+import { handleRoute } from "@/lib/route-handler";
 import { getConversationMessages } from "@/modules/agent/use-cases";
 import { toAiSdkUIMessages } from "@/modules/chat/ai-sdk-ui-messages";
 import { getUsageImpactSetting } from "@/modules/provider/usage-impact-settings";
 import { db } from "@/server/infrastructure/db";
-import {
-  conversationFolders,
-  conversations,
-} from "@/server/infrastructure/db/schema";
+import { conversationFolders,conversations } from "@/server/infrastructure/db/schema";
+import { and,eq,isNull } from "drizzle-orm";
+import { NextRequest,NextResponse } from "next/server";
+import { z } from "zod";
 
-const paramsSchema = z.object({ conversationId: z.uuid() });
+import { getAuthorizedConversation } from "./conversation-route-access";
 const updateConversationSchema = z
   .object({
     title: z.string().trim().min(1).max(512).optional(),
@@ -22,67 +16,24 @@ const updateConversationSchema = z
     pinned: z.boolean().optional(),
     sidebarOrder: z.number().int().nullable().optional(),
   })
-  .refine(
-    (value) =>
-      value.title !== undefined ||
-      value.folderId !== undefined ||
-      value.pinned !== undefined ||
-      value.sidebarOrder !== undefined,
-    { message: "At least one field is required" },
-  );
+  .refine((value) => value.title !== undefined || value.folderId !== undefined || value.pinned !== undefined || value.sidebarOrder !== undefined, {
+    message: "At least one field is required",
+  });
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ conversationId: string }> },
-) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ conversationId: string }> }) {
   return handleRoute(
     req,
     async ({ session }) => {
-      const parsed = paramsSchema.safeParse(await params);
-      if (!parsed.success) {
-        return NextResponse.json({ error: "Invalid request" }, { status: 400 });
-      }
+      const access = await getAuthorizedConversation(session.user.id, params);
+      if (!access.ok) return access.response;
+      const { conversation, conversationId } = access;
 
-      const { conversationId } = parsed.data;
-      const [conversation] = await db
-        .select()
-        .from(conversations)
-        .where(
-          and(
-            eq(conversations.id, conversationId),
-            eq(conversations.status, "active"),
-            isNull(conversations.archivedAt),
-          ),
-        )
-        .limit(1);
-
-      if (!conversation) {
-        return NextResponse.json(
-          { error: "Conversation not found" },
-          { status: 404 },
-        );
-      }
-
-      const forbidden = await requireResourcePermissionAsync(
-        session.user.id,
-        conversation.workspaceId,
-        "conversations.viewOwn",
-        "conversation",
-        conversationId,
-      );
-      if (forbidden) return forbidden;
-
-      const [storedMessages, usageImpactSetting] = await Promise.all([
-        getConversationMessages(conversationId),
-        getUsageImpactSetting(),
-      ]);
+      const [storedMessages, usageImpactSetting] = await Promise.all([getConversationMessages(conversationId), getUsageImpactSetting()]);
       const messages = storedMessages.map((message) => ({
-          ...message,
-          parts: usageImpactSetting.enabled
-            ? message.parts
-            : message.parts.filter((part) => part.type !== "impact"),
-          createdAt: new Date(message.createdAt).toISOString(),
-        }));
+        ...message,
+        parts: usageImpactSetting.enabled ? message.parts : message.parts.filter((part) => part.type !== "impact"),
+        createdAt: new Date(message.createdAt).toISOString(),
+      }));
       const uiMessages = toAiSdkUIMessages(messages);
 
       return NextResponse.json({
@@ -104,66 +55,29 @@ export async function GET(
   );
 }
 
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: Promise<{ conversationId: string }> },
-) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ conversationId: string }> }) {
   return handleRoute(
     req,
     async ({ session }) => {
-      const parsedParams = paramsSchema.safeParse(await params);
+      const parsedParams = z.object({ conversationId: z.uuid() }).safeParse(await params);
       const parsedBody = updateConversationSchema.safeParse(await req.json());
       if (!parsedParams.success || !parsedBody.success) {
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
       }
 
       const { conversationId } = parsedParams.data;
-      const [conversation] = await db
-        .select()
-        .from(conversations)
-        .where(
-          and(
-            eq(conversations.id, conversationId),
-            eq(conversations.status, "active"),
-            isNull(conversations.archivedAt),
-          ),
-        )
-        .limit(1);
-
-      if (!conversation) {
-        return NextResponse.json(
-          { error: "Conversation not found" },
-          { status: 404 },
-        );
-      }
-
-      const forbidden = await requireResourcePermissionAsync(
-        session.user.id,
-        conversation.workspaceId,
-        "conversations.viewOwn",
-        "conversation",
-        conversationId,
-      );
-      if (forbidden) return forbidden;
+      const access = await getAuthorizedConversation(session.user.id, Promise.resolve({ conversationId }));
+      if (!access.ok) return access.response;
+      const { conversation } = access;
 
       if (parsedBody.data.folderId) {
         const [folder] = await db
           .select({ id: conversationFolders.id })
           .from(conversationFolders)
-          .where(
-            and(
-              eq(conversationFolders.id, parsedBody.data.folderId),
-              eq(conversationFolders.workspaceId, conversation.workspaceId),
-              eq(conversationFolders.userId, session.user.id),
-              isNull(conversationFolders.archivedAt),
-            ),
-          )
+          .where(and(eq(conversationFolders.id, parsedBody.data.folderId), eq(conversationFolders.workspaceId, conversation.workspaceId), eq(conversationFolders.userId, session.user.id), isNull(conversationFolders.archivedAt)))
           .limit(1);
         if (!folder) {
-          return NextResponse.json(
-            { error: "Folder not found" },
-            { status: 404 },
-          );
+          return NextResponse.json({ error: "Folder not found" }, { status: 404 });
         }
       }
 
@@ -182,11 +96,7 @@ export async function PATCH(
         patch.sidebarOrder = parsedBody.data.sidebarOrder;
       }
 
-      const [updated] = await db
-        .update(conversations)
-        .set(patch)
-        .where(eq(conversations.id, conversationId))
-        .returning();
+      const [updated] = await db.update(conversations).set(patch).where(eq(conversations.id, conversationId)).returning();
 
       return NextResponse.json({ conversation: updated });
     },
@@ -194,46 +104,13 @@ export async function PATCH(
   );
 }
 
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: Promise<{ conversationId: string }> },
-) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ conversationId: string }> }) {
   return handleRoute(
     req,
     async ({ session }) => {
-      const parsed = paramsSchema.safeParse(await params);
-      if (!parsed.success) {
-        return NextResponse.json({ error: "Invalid request" }, { status: 400 });
-      }
-
-      const { conversationId } = parsed.data;
-      const [conversation] = await db
-        .select()
-        .from(conversations)
-        .where(
-          and(
-            eq(conversations.id, conversationId),
-            eq(conversations.status, "active"),
-            isNull(conversations.archivedAt),
-          ),
-        )
-        .limit(1);
-
-      if (!conversation) {
-        return NextResponse.json(
-          { error: "Conversation not found" },
-          { status: 404 },
-        );
-      }
-
-      const forbidden = await requireResourcePermissionAsync(
-        session.user.id,
-        conversation.workspaceId,
-        "conversations.viewOwn",
-        "conversation",
-        conversationId,
-      );
-      if (forbidden) return forbidden;
+      const access = await getAuthorizedConversation(session.user.id, params);
+      if (!access.ok) return access.response;
+      const { conversationId } = access;
 
       await db
         .update(conversations)

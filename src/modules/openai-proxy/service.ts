@@ -1,26 +1,14 @@
 import type { JSONValue } from "@ai-sdk/provider";
-import { generateText, streamText } from "ai";
+import { generateText,streamText } from "ai";
 
-import type {
-  ChatCompletionRequest,
-  ResponsesRequest,
-} from "@/modules/openai-proxy/contracts";
-import { OpenAIProxyError, providerError } from "@/modules/openai-proxy/errors";
-import { resolveOpenAIProxyModel } from "@/modules/openai-proxy/model-catalog";
-import {
-  prepareChatCompletion,
-  prepareResponsesRequest,
-  type PreparedProxyGeneration,
-} from "@/modules/openai-proxy/request-mapper";
-import {
-  buildChatCompletionResponse,
-  buildResponsesResponse,
-} from "@/modules/openai-proxy/response-builders";
-import {
-  createChatCompletionStream,
-  createResponsesStream,
-} from "@/modules/openai-proxy/streams";
 import { recordUsageEvent } from "@/modules/agent/use-cases";
+import type { ChatCompletionRequest,ResponsesRequest } from "@/modules/openai-proxy/contracts";
+import { OpenAIProxyError,providerError } from "@/modules/openai-proxy/errors";
+import { resolveOpenAIProxyModel } from "@/modules/openai-proxy/model-catalog";
+import { prepareChatCompletion,prepareResponsesRequest,type PreparedProxyGeneration } from "@/modules/openai-proxy/request-mapper";
+import { buildChatCompletionResponse,buildResponsesResponse } from "@/modules/openai-proxy/response-builders";
+import { createChatCompletionStream,createResponsesStream } from "@/modules/openai-proxy/streams";
+import { calculateTokenUsageImpact,parseSustainabilityConfig } from "@/modules/provider/model-runtime-config";
 import { assertWorkspaceWithinTokenQuota } from "@/modules/usage/quota";
 
 type ProxyExecutionContext = {
@@ -29,25 +17,14 @@ type ProxyExecutionContext = {
 };
 
 function compactObject(values: Record<string, JSONValue | undefined>) {
-  return Object.fromEntries(
-    Object.entries(values).filter(([, value]) => value !== undefined),
-  ) as Record<string, JSONValue>;
+  return Object.fromEntries(Object.entries(values).filter(([, value]) => value !== undefined)) as Record<string, JSONValue>;
 }
 
-function providerOptionsFor(
-  provider: string,
-  values: Record<string, JSONValue | undefined>,
-) {
+function providerOptionsFor(provider: string, values: Record<string, JSONValue | undefined>) {
   const compact = compactObject(values);
   if (!provider.endsWith(".chat")) return compact;
 
-  const {
-    parallelToolCalls,
-    serviceTier,
-    safetyIdentifier,
-    promptCacheKey,
-    ...knownOptions
-  } = compact;
+  const { parallelToolCalls, serviceTier, safetyIdentifier, promptCacheKey, ...knownOptions } = compact;
   return compactObject({
     ...knownOptions,
     parallel_tool_calls: parallelToolCalls,
@@ -57,17 +34,11 @@ function providerOptionsFor(
   });
 }
 
-function generationOptions(input: {
-  prepared: PreparedProxyGeneration;
-  model: Awaited<ReturnType<typeof resolveOpenAIProxyModel>>;
-  signal: AbortSignal;
-}) {
+export function generationOptions(input: { prepared: PreparedProxyGeneration; model: Awaited<ReturnType<typeof resolveOpenAIProxyModel>>; signal: AbortSignal }) {
   const { prepared, model, signal } = input;
   const provider = model.languageModel.provider;
   const options = providerOptionsFor(provider, prepared.providerOptions);
-  const providerOptionsName = provider.endsWith(".responses")
-    ? "openai"
-    : provider.split(".")[0]?.trim();
+  const providerOptionsName = provider.endsWith(".responses") ? "openai" : provider.split(".")[0]?.trim();
   return {
     model: model.languageModel,
     messages: prepared.messages,
@@ -77,48 +48,40 @@ function generationOptions(input: {
     maxOutputTokens: prepared.maxOutputTokens,
     temperature: prepared.temperature,
     topP: prepared.topP,
+    topK: prepared.topK,
     presencePenalty: prepared.presencePenalty,
     frequencyPenalty: prepared.frequencyPenalty,
     seed: prepared.seed,
     stopSequences: prepared.stopSequences,
     maxRetries: 2,
     abortSignal: signal,
-    ...(Object.keys(options).length > 0 && providerOptionsName
-      ? { providerOptions: { [providerOptionsName]: options } }
-      : {}),
+    ...(Object.keys(options).length > 0 && providerOptionsName ? { providerOptions: { [providerOptionsName]: options } } : {}),
   };
 }
 
-async function prepareExecution(
-  context: ProxyExecutionContext,
-  requestedModel: string,
-) {
+export async function prepareExecution(context: ProxyExecutionContext, requestedModel: string) {
   const quota = await assertWorkspaceWithinTokenQuota(context.workspaceId);
   if (!quota.allowed) {
-    throw new OpenAIProxyError(
-      quota.message,
-      429,
-      "rate_limit_error",
-      "insufficient_quota",
-    );
+    throw new OpenAIProxyError(quota.message, 429, "rate_limit_error", "insufficient_quota");
   }
   return resolveOpenAIProxyModel(context.workspaceId, requestedModel);
 }
 
-function usageRecorder(input: {
-  context: ProxyExecutionContext;
-  model: Awaited<ReturnType<typeof resolveOpenAIProxyModel>>;
-  operation: "openai.chat.completions" | "openai.responses";
-  startedAt: number;
-}) {
+export function usageRecorder(input: { context: ProxyExecutionContext; model: Awaited<ReturnType<typeof resolveOpenAIProxyModel>>; operation: "openai.chat.completions" | "openai.responses" | "anthropic.messages"; startedAt: number }) {
   let recorded = false;
   return {
-    async success(usage: {
-      inputTokens: number | undefined;
-      outputTokens: number | undefined;
-    }) {
+    async success(usage: { inputTokens: number | undefined; outputTokens: number | undefined }) {
       if (recorded) return;
       recorded = true;
+      const sustainability = parseSustainabilityConfig(input.model.sustainabilityConfig);
+      const impact = calculateTokenUsageImpact({
+        inputTokens: usage.inputTokens ?? 0,
+        outputTokens: usage.outputTokens ?? 0,
+        inputCostPerMillion: input.model.inputTokenCost,
+        outputCostPerMillion: input.model.outputTokenCost,
+        sustainability,
+        currency: sustainability.currency,
+      });
       await recordUsageEvent({
         workspaceId: input.context.workspaceId,
         userId: input.context.userId,
@@ -127,6 +90,13 @@ function usageRecorder(input: {
         operation: input.operation,
         inputTokens: usage.inputTokens,
         outputTokens: usage.outputTokens,
+        costUsd: impact.cost !== null && impact.currency === "USD" ? String(impact.cost) : undefined,
+        metadataJson: {
+          currency: impact.currency,
+          cost: impact.cost,
+          energyKwh: impact.energyKwh,
+          co2Grams: impact.co2Grams,
+        },
         latencyMs: Date.now() - input.startedAt,
         status: "success",
       });
@@ -147,11 +117,7 @@ function usageRecorder(input: {
   };
 }
 
-export async function executeChatCompletion(input: {
-  context: ProxyExecutionContext;
-  request: ChatCompletionRequest;
-  signal: AbortSignal;
-}) {
+export async function executeChatCompletion(input: { context: ProxyExecutionContext; request: ChatCompletionRequest; signal: AbortSignal }) {
   const startedAt = Date.now();
   const prepared = prepareChatCompletion(input.request);
   const model = await prepareExecution(input.context, input.request.model);
@@ -183,20 +149,14 @@ export async function executeChatCompletion(input: {
   try {
     const result = await generateText(options);
     await recorder.success(result.usage);
-    return Response.json(
-      buildChatCompletionResponse({ request: input.request, result }),
-    );
+    return Response.json(buildChatCompletionResponse({ request: input.request, result }));
   } catch (error) {
     await recorder.failure();
     throw providerError(error);
   }
 }
 
-export async function executeResponses(input: {
-  context: ProxyExecutionContext;
-  request: ResponsesRequest;
-  signal: AbortSignal;
-}) {
+export async function executeResponses(input: { context: ProxyExecutionContext; request: ResponsesRequest; signal: AbortSignal }) {
   const startedAt = Date.now();
   const prepared = prepareResponsesRequest(input.request);
   const model = await prepareExecution(input.context, input.request.model);

@@ -1,26 +1,17 @@
-import { eq, and } from "drizzle-orm";
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
 import { decryptValue } from "@/lib/crypto";
+import { handleRoute,requireWorkspacePermissionAsync } from "@/lib/route-handler";
 import { projectToolPayloadForDisplay } from "@/modules/tool/safe-payload";
-import {
-  handleRoute,
-  requireWorkspacePermissionAsync,
-} from "@/lib/route-handler";
 import { db } from "@/server/infrastructure/db";
-import {
-  conversations,
-  toolInvocations,
-} from "@/server/infrastructure/db/schema";
+import { conversations,toolInvocations } from "@/server/infrastructure/db/schema";
+import { and,eq } from "drizzle-orm";
+import { NextRequest,NextResponse } from "next/server";
+import { z } from "zod";
 
 import { invocationParamsSchema } from "../invocation-shared";
 
 const querySchema = z.object({ workspaceId: z.uuid() });
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ invocationId: string }> },
-) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ invocationId: string }> }) {
   return handleRoute(
     req,
     async ({ session, request }) => {
@@ -33,35 +24,19 @@ export async function GET(
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
       }
 
-      const forbidden = await requireWorkspacePermissionAsync(
-        session.user.id,
-        parsedQuery.data.workspaceId,
-        "tools.view",
-      );
+      const forbidden = await requireWorkspacePermissionAsync(session.user.id, parsedQuery.data.workspaceId, "tools.view");
       if (forbidden) return forbidden;
 
       const [row] = await db
         .select({ invocation: toolInvocations, conversation: conversations })
         .from(toolInvocations)
-        .innerJoin(
-          conversations,
-          eq(toolInvocations.conversationId, conversations.id),
-        )
-        .where(
-          and(
-            eq(toolInvocations.id, parsedParams.data.invocationId),
-            eq(toolInvocations.workspaceId, parsedQuery.data.workspaceId),
-            eq(conversations.userId, session.user.id),
-          ),
-        )
+        .innerJoin(conversations, eq(toolInvocations.conversationId, conversations.id))
+        .where(and(eq(toolInvocations.id, parsedParams.data.invocationId), eq(toolInvocations.workspaceId, parsedQuery.data.workspaceId), eq(conversations.userId, session.user.id)))
         .limit(1);
       const invocation = row?.invocation;
 
       if (!invocation) {
-        return NextResponse.json(
-          { error: "Invocation not found" },
-          { status: 404 },
-        );
+        return NextResponse.json({ error: "Invocation not found" }, { status: 404 });
       }
 
       let inputDecrypted: unknown = null;
@@ -69,9 +44,7 @@ export async function GET(
 
       if (invocation.inputJsonEncrypted) {
         try {
-          inputDecrypted = JSON.parse(
-            await decryptValue(invocation.inputJsonEncrypted),
-          );
+          inputDecrypted = JSON.parse(await decryptValue(invocation.inputJsonEncrypted));
         } catch {
           inputDecrypted = "[decryption failed]";
         }
@@ -79,9 +52,7 @@ export async function GET(
 
       if (invocation.outputJsonEncrypted) {
         try {
-          outputDecrypted = JSON.parse(
-            await decryptValue(invocation.outputJsonEncrypted),
-          );
+          outputDecrypted = JSON.parse(await decryptValue(invocation.outputJsonEncrypted));
         } catch {
           outputDecrypted = "[decryption failed]";
         }

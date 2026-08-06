@@ -1,25 +1,13 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
-import { describe, expect, it } from "vitest";
+import { describe,expect,it } from "vitest";
 
-const composeFiles = [
-  ".coolify/stack.compose.yml",
-  "docker-compose.dev.yml",
-  "docker-compose.prod.yml",
-] as const;
+const composeFiles = [".coolify/stack.compose.yml", "docker-compose.dev.yml", "docker-compose.prod.yml"] as const;
 
-const bullMqCompatibilityFlags = [
-  "--cluster_mode=emulated",
-  "--lock_on_hashtags",
-  "--default_lua_flags=allow-undeclared-keys",
-] as const;
+const bullMqCompatibilityFlags = ["--cluster_mode=emulated", "--lock_on_hashtags", "--default_lua_flags=allow-undeclared-keys"] as const;
 
-const persistenceFlags = [
-  "--dir=/data",
-  "--dbfilename=maiah-queue",
-  "--snapshot_cron=*/1 * * * *",
-] as const;
+const persistenceFlags = ["--dir=/data", "--dbfilename=maiah-queue", "--snapshot_cron=*/1 * * * *"] as const;
 
 describe.each(composeFiles)("Dragonfly deployment configuration in %s", (file) => {
   it.each(bullMqCompatibilityFlags)("enables %s", async (flag) => {

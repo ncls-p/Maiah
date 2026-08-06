@@ -1,10 +1,6 @@
 import type { RagConfig } from "@/modules/knowledge/rag-config-schema";
 
-export type VisualRegionKind =
-  | "text"
-  | "diagram"
-  | "table"
-  | "image-description";
+export type VisualRegionKind = "text" | "diagram" | "table" | "image-description";
 
 export type VisualRegion = {
   kind: VisualRegionKind;

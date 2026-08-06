@@ -1,9 +1,9 @@
 "use client";
 
-import { type ComponentProps, useState } from "react";
-import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
 import { LogOutIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
+import { type ComponentProps,useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -51,10 +51,7 @@ export function SignOutButton({
       type="button"
       variant="ghost"
       size={iconOnly ? "icon" : "sm"}
-      className={cn(
-        "group justify-start rounded-xl transition-[background-color,color,scale] duration-150 ease-out hover:bg-destructive/10 hover:text-destructive",
-        className,
-      )}
+      className={cn("group justify-start rounded-xl transition-[background-color,color,scale] duration-150 ease-out hover:bg-destructive/10 hover:text-destructive", className)}
       onClick={(event) => {
         onClick?.(event);
         if (!event.defaultPrevented) void signOut();
@@ -63,20 +60,8 @@ export function SignOutButton({
       aria-label={t("signOut")}
       {...buttonProps}
     >
-      {pending ? (
-        <Spinner data-icon={iconOnly ? undefined : "inline-start"} />
-      ) : (
-        <LogOutIcon
-          data-icon={iconOnly ? undefined : "inline-start"}
-          aria-hidden="true"
-          className="transition-transform duration-200 group-hover:translate-x-0.5"
-        />
-      )}
-      {iconOnly ? (
-        <span className="sr-only">{t("signOut")}</span>
-      ) : (
-        t("signOut")
-      )}
+      {pending ? <Spinner data-icon={iconOnly ? undefined : "inline-start"} /> : <LogOutIcon data-icon={iconOnly ? undefined : "inline-start"} aria-hidden="true" className="transition-transform duration-200 group-hover:translate-x-0.5" />}
+      {iconOnly ? <span className="sr-only">{t("signOut")}</span> : t("signOut")}
     </Button>
   );
 }

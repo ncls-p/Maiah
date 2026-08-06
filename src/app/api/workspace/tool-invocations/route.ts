@@ -1,31 +1,15 @@
-import { and, desc, eq } from "drizzle-orm";
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
 import { decryptValue } from "@/lib/crypto";
+import { handleRoute,requireWorkspacePermissionAsync } from "@/lib/route-handler";
 import { projectToolPayloadForDisplay } from "@/modules/tool/safe-payload";
-import {
-  handleRoute,
-  requireWorkspacePermissionAsync,
-} from "@/lib/route-handler";
 import { db } from "@/server/infrastructure/db";
-import {
-  conversations,
-  toolInvocations,
-} from "@/server/infrastructure/db/schema";
+import { conversations,toolInvocations } from "@/server/infrastructure/db/schema";
+import { and,desc,eq } from "drizzle-orm";
+import { NextRequest,NextResponse } from "next/server";
+import { z } from "zod";
 
 const querySchema = z.object({
   workspaceId: z.uuid(),
-  status: z
-    .enum([
-      "awaiting_approval",
-      "denied",
-      "failed",
-      "pending_approval",
-      "rejected",
-      "running",
-      "success",
-    ])
-    .optional(),
+  status: z.enum(["awaiting_approval", "denied", "failed", "pending_approval", "rejected", "running", "success"]).optional(),
   limit: z.coerce.number().min(1).max(100).default(50),
   conversationId: z.uuid().optional(),
 });
@@ -45,19 +29,11 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
       }
 
-      const forbidden = await requireWorkspacePermissionAsync(
-        session.user.id,
-        parsed.data.workspaceId,
-        "tools.view",
-      );
+      const forbidden = await requireWorkspacePermissionAsync(session.user.id, parsed.data.workspaceId, "tools.view");
       if (forbidden) return forbidden;
 
-      const statusFilter = parsed.data.status
-        ? eq(toolInvocations.status, parsed.data.status)
-        : undefined;
-      const conversationFilter = parsed.data.conversationId
-        ? eq(toolInvocations.conversationId, parsed.data.conversationId)
-        : undefined;
+      const statusFilter = parsed.data.status ? eq(toolInvocations.status, parsed.data.status) : undefined;
+      const conversationFilter = parsed.data.conversationId ? eq(toolInvocations.conversationId, parsed.data.conversationId) : undefined;
       const invocations = await db
         .select({
           id: toolInvocations.id,
@@ -77,18 +53,8 @@ export async function GET(req: NextRequest) {
           completedAt: toolInvocations.completedAt,
         })
         .from(toolInvocations)
-        .innerJoin(
-          conversations,
-          eq(toolInvocations.conversationId, conversations.id),
-        )
-        .where(
-          and(
-            eq(toolInvocations.workspaceId, parsed.data.workspaceId),
-            eq(conversations.userId, session.user.id),
-            statusFilter,
-            conversationFilter,
-          ),
-        )
+        .innerJoin(conversations, eq(toolInvocations.conversationId, conversations.id))
+        .where(and(eq(toolInvocations.workspaceId, parsed.data.workspaceId), eq(conversations.userId, session.user.id), statusFilter, conversationFilter))
         .orderBy(desc(toolInvocations.createdAt))
         .limit(parsed.data.limit);
 

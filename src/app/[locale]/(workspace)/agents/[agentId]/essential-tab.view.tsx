@@ -1,0 +1,226 @@
+import { MessageSquareIcon,SettingsIcon } from "lucide-react";
+
+import { ModelLogo } from "@/components/providers/model-logo";
+import { AdvancedSection } from "@/components/ui/advanced-section";
+import { Field,FieldContent,FieldGroup,FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Select,SelectContent,SelectItem,SelectTrigger,SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+
+import { ConfigSection } from "./config-section";
+import type { useEssentialTabController } from "./essential-tab";
+import { EssentialTabBranch1 } from "./essential-tab.view.branch-1";
+import { EssentialTabBranch2 } from "./essential-tab.view.branch-2";
+import { EssentialTabBranch3 } from "./essential-tab.view.branch-3";
+import { EssentialTabBranch4 } from "./essential-tab.view.branch-4";
+import { EssentialTabBranch5 } from "./essential-tab.view.branch-5";
+import { EssentialTabBranch6 } from "./essential-tab.view.branch-6";
+import { ModelAdvancedFields } from "./model-advanced-fields";
+import type { Agent } from "./types";
+import { getProviderKindIcon } from "./utils";
+
+export type EssentialTabViewModel = Extract<ReturnType<typeof useEssentialTabController>, { kind: "ready" }>;
+export function EssentialTabView({ model }: { model: EssentialTabViewModel }) {
+  const { agentKind, canAdminCurate, filteredModels, form, hasProviders, onSave, providers, readOnly, selectedProviderHasModels, setForm, t, tCommon, tModel } = model;
+  return (
+    <form onSubmit={readOnly ? (event) => event.preventDefault() : onSave} className="flex flex-col gap-3">
+      <fieldset disabled={readOnly} className="contents">
+        <ConfigSection title={t("name")} description={t("configurePage.identityHint")} icon={SettingsIcon} stagger="3">
+          <FieldGroup className="gap-4">
+            <Field>
+              <FieldLabel htmlFor="agent-name">{t("name")}</FieldLabel>
+              <FieldContent>
+                <Input id="agent-name" required value={form.name} onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))} />
+              </FieldContent>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="agent-description">{t("descriptionLabel")}</FieldLabel>
+              <FieldContent>
+                <Textarea
+                  id="agent-description"
+                  rows={2}
+                  placeholder={t("descriptionPlaceholder")}
+                  value={form.description}
+                  onChange={(e) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      description: e.target.value,
+                    }))
+                  }
+                />
+              </FieldContent>
+            </Field>
+          </FieldGroup>
+        </ConfigSection>
+
+        <ConfigSection title={tModel("modelLabel")} description={t("configurePage.modelHint")} icon={MessageSquareIcon} stagger="4">
+          <FieldGroup className="gap-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field>
+                <FieldLabel htmlFor="agent-provider">{tModel("provider")}</FieldLabel>
+                <FieldContent>
+                  <Select
+                    value={form.providerId || "__none__"}
+                    onValueChange={(value) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        providerId: value === "__none__" ? "" : value,
+                        modelId: "",
+                      }))
+                    }
+                    disabled={!hasProviders}
+                  >
+                    <SelectTrigger id="agent-provider" className="w-full">
+                      <SelectValue placeholder="—" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">—</SelectItem>
+                      {providers.map((provider) => (
+                        <SelectItem key={provider.id} value={provider.id}>
+                          <span className="flex items-center gap-2">
+                            {getProviderKindIcon(provider.kind)}
+                            {provider.name}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FieldContent>
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="agent-model">{tModel("modelLabel")}</FieldLabel>
+                <FieldContent>
+                  <Select
+                    value={form.modelId || "__none__"}
+                    onValueChange={(value) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        modelId: value === "__none__" ? "" : value,
+                      }))
+                    }
+                    disabled={!form.providerId}
+                  >
+                    <SelectTrigger id="agent-model" className="w-full">
+                      <SelectValue placeholder="—" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">—</SelectItem>
+                      {filteredModels.map((model) => {
+                        const modelLabel = model.displayName || model.modelId;
+                        return (
+                          <SelectItem key={model.id} value={model.id}>
+                            <span className="flex items-center gap-2">
+                              <ModelLogo logoUrl={model.logoUrl} label={modelLabel} size="sm" />
+                              {modelLabel}
+                            </span>
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                </FieldContent>
+              </Field>
+            </div>
+            {!hasProviders ? <EssentialTabBranch6 model={model} /> : !selectedProviderHasModels ? <EssentialTabBranch5 model={model} /> : null}
+            <Field>
+              <FieldLabel htmlFor="agent-prompt">{tModel("systemPrompt")}</FieldLabel>
+              <FieldContent>
+                <Textarea
+                  id="agent-prompt"
+                  className="min-h-36 font-mono text-sm"
+                  placeholder={tModel("systemPromptPlaceholder")}
+                  value={form.systemPrompt}
+                  onChange={(e) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      systemPrompt: e.target.value,
+                    }))
+                  }
+                />
+              </FieldContent>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="agent-prompt-suggestions">{tModel("promptSuggestions")}</FieldLabel>
+              <FieldContent>
+                <Textarea
+                  id="agent-prompt-suggestions"
+                  className="min-h-24 text-sm"
+                  placeholder={tModel("promptSuggestionsPlaceholder")}
+                  value={form.promptSuggestions}
+                  onChange={(e) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      promptSuggestions: e.target.value,
+                    }))
+                  }
+                />
+                <p className="mt-1 text-xs text-muted-foreground">{tModel("promptSuggestionsHint")}</p>
+              </FieldContent>
+            </Field>
+          </FieldGroup>
+        </ConfigSection>
+
+        <AdvancedSection label={tCommon("advanced")} hint={t("advancedHint")} storageKey="advanced:agent-settings" className="animate-in-up stagger-5">
+          <div className="space-y-6">
+            <FieldGroup className="gap-4">
+              <Field>
+                <FieldLabel htmlFor="agent-slug">{t("configurePage.technicalId")}</FieldLabel>
+                <FieldContent>
+                  <Input
+                    id="agent-slug"
+                    required
+                    pattern="[a-z0-9-]+"
+                    value={form.slug}
+                    onChange={(e) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        slug: e.target.value.toLowerCase(),
+                      }))
+                    }
+                  />
+                  <p className="mt-1 text-xs text-muted-foreground">{t("configurePage.technicalIdHint")}</p>
+                </FieldContent>
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="agent-sharing">{t("configurePage.sharing")}</FieldLabel>
+                <FieldContent>
+                  <Select
+                    value={form.sharingMode}
+                    onValueChange={(value) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        sharingMode: value as Agent["sharingMode"],
+                      }))
+                    }
+                  >
+                    <SelectTrigger id="agent-sharing" className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="personal">{t("configurePage.sharingPersonal")}</SelectItem>
+                      {agentKind === "assistant" ? <EssentialTabBranch4 model={model} /> : null}
+                      <SelectItem value="specific_user">{t("configurePage.sharingUser")}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </FieldContent>
+              </Field>
+              {form.sharingMode === "specific_user" ? <EssentialTabBranch3 model={model} /> : null}
+            </FieldGroup>
+
+            {canAdminCurate ? <EssentialTabBranch2 model={model} /> : null}
+
+            <div className="border-t border-border/50 pt-4">
+              <p className="mb-3 flex items-center gap-2 text-sm font-medium">
+                <MessageSquareIcon className="size-4 text-muted-foreground" aria-hidden="true" />
+                {tModel("advancedHint")}
+              </p>
+              <ModelAdvancedFields form={form} setFormAction={setForm} />
+            </div>
+          </div>
+        </AdvancedSection>
+      </fieldset>
+
+      {readOnly ? null : <EssentialTabBranch1 model={model} />}
+    </form>
+  );
+}

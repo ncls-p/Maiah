@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach,describe,expect,it,vi } from "vitest";
 
 const routeMocks = vi.hoisted(() => ({
   canManageTenantGlobals: vi.fn().mockResolvedValue(false),
@@ -9,11 +9,7 @@ const routeMocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/route-handler", () => ({
   requireWorkspacePermissionAsync: routeMocks.requireWorkspacePermissionAsync,
-  handleRoute: async (
-    request: Request,
-    handler: (context: unknown) => Promise<Response>,
-    options?: { expectedError?: (error: unknown) => Response | null },
-  ) => {
+  handleRoute: async (request: Request, handler: (context: unknown) => Promise<Response>, options?: { expectedError?: (error: unknown) => Response | null }) => {
     try {
       return await handler({
         session: { user: { id: "11111111-1111-4111-8111-111111111111" } },
@@ -21,10 +17,7 @@ vi.mock("@/lib/route-handler", () => ({
         requestId: "request-1",
       });
     } catch (error) {
-      return (
-        options?.expectedError?.(error) ??
-        Response.json({ error: "Internal server error" }, { status: 500 })
-      );
+      return options?.expectedError?.(error) ?? Response.json({ error: "Internal server error" }, { status: 500 });
     }
   },
 }));

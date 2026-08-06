@@ -47,23 +47,12 @@ function normalizeToolName(name: string) {
 
 function includesToolName(values: string[] | undefined, toolName: string) {
   const normalizedToolName = normalizeToolName(toolName);
-  return (
-    values?.some((value) => normalizeToolName(value) === normalizedToolName) ??
-    false
-  );
+  return values?.some((value) => normalizeToolName(value) === normalizedToolName) ?? false;
 }
 
-function riskLevelRequiresApproval(
-  riskLevel: ToolApprovalInput["riskLevel"],
-  policy: AiHubToolApprovalPolicy | null | undefined,
-  skipDefaultRiskApproval: boolean,
-) {
+function riskLevelRequiresApproval(riskLevel: ToolApprovalInput["riskLevel"], policy: AiHubToolApprovalPolicy | null | undefined, skipDefaultRiskApproval: boolean) {
   if (!riskLevel) return false;
-  const configured = policy?.requireApprovalRiskLevels
-    ? new Set(policy.requireApprovalRiskLevels)
-    : skipDefaultRiskApproval
-      ? new Set<ToolRiskLevel>()
-      : defaultApprovalRiskLevels;
+  const configured = policy?.requireApprovalRiskLevels ? new Set(policy.requireApprovalRiskLevels) : skipDefaultRiskApproval ? new Set<ToolRiskLevel>() : defaultApprovalRiskLevels;
   return configured.has(riskLevel as ToolRiskLevel);
 }
 
@@ -83,9 +72,7 @@ function denyDecision(reason: string): ToolApprovalDecision {
   };
 }
 
-export function allowToolDecision(
-  reason = "Policy allowed tool execution",
-): ToolApprovalDecision {
+export function allowToolDecision(reason = "Policy allowed tool execution"): ToolApprovalDecision {
   return {
     status: "allow",
     reason,
@@ -97,9 +84,7 @@ export function allowToolDecision(
  * Central Maiah approval policy. It mirrors AI SDK 7 approval statuses while
  * remaining compatible with the existing DB-audited approval endpoints.
  */
-export function decideToolApproval(
-  input: ToolApprovalInput,
-): ToolApprovalDecision {
+export function decideToolApproval(input: ToolApprovalInput): ToolApprovalDecision {
   const policy = input.policy ?? null;
 
   if (includesToolName(policy?.denyToolNames, input.toolName)) {
@@ -115,9 +100,7 @@ export function decideToolApproval(
   }
 
   if (input.bindingRequiresApproval) {
-    return approvalDecision(
-      "This agent binding requires approval for the tool",
-    );
+    return approvalDecision("This agent binding requires approval for the tool");
   }
 
   if (input.serverRequiresApproval) {
@@ -129,31 +112,19 @@ export function decideToolApproval(
   }
 
   if (includesToolName(policy?.requireApprovalToolNames, input.toolName)) {
-    return approvalDecision(
-      `Tool ${input.toolName} is configured for approval`,
-    );
+    return approvalDecision(`Tool ${input.toolName} is configured for approval`);
   }
 
   if (policy?.requireApprovalSources?.includes(input.toolSource)) {
-    return approvalDecision(
-      `${input.toolSource} tools require approval by policy`,
-    );
+    return approvalDecision(`${input.toolSource} tools require approval by policy`);
   }
 
-  if (
-    riskLevelRequiresApproval(
-      input.riskLevel,
-      policy,
-      input.skipDefaultRiskApproval ?? false,
-    )
-  ) {
+  if (riskLevelRequiresApproval(input.riskLevel, policy, input.skipDefaultRiskApproval ?? false)) {
     return approvalDecision(`Risk level ${input.riskLevel} requires approval`);
   }
 
   if (policy?.defaultDecision === "require_approval") {
-    return approvalDecision(
-      "Agent approval policy requires approval by default",
-    );
+    return approvalDecision("Agent approval policy requires approval by default");
   }
 
   return allowToolDecision();

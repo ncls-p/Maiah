@@ -1,5 +1,5 @@
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import type { BuiltInToolDefinition } from "@/modules/tool/builtin-tools";
+import { afterEach,beforeAll,describe,expect,it,vi } from "vitest";
 
 let listBuiltInTools: () => unknown[];
 let getBuiltInTool: (id: string) => BuiltInToolDefinition | null;
@@ -7,283 +7,271 @@ let getBuiltInToolByName: (name: string) => BuiltInToolDefinition | null;
 let requiresApproval: (riskLevel: string | null | undefined) => boolean;
 
 beforeAll(async () => {
-	process.env.APP_ENCRYPTION_KEY =
-		"0000000000000000000000000000000000000000000000000000000000000000";
-	process.env.APP_ENCRYPTION_KEY_ID = "default";
+  process.env.APP_ENCRYPTION_KEY = "0000000000000000000000000000000000000000000000000000000000000000";
+  process.env.APP_ENCRYPTION_KEY_ID = "default";
 
-	({
-		listBuiltInTools,
-		getBuiltInTool,
-		getBuiltInToolByName,
-		requiresApproval,
-	} = await import("@/modules/tool/builtin-tools"));
+  ({ listBuiltInTools, getBuiltInTool, getBuiltInToolByName, requiresApproval } = await import("@/modules/tool/builtin-tools"));
 });
 
 afterEach(() => {
-	vi.unstubAllGlobals();
+  vi.unstubAllGlobals();
 });
 
 describe("built-in tool registry", () => {
-	it("returns all registered tools", () => {
-		const tools = listBuiltInTools();
-		expect(Array.isArray(tools)).toBe(true);
-		expect(tools.length).toBeGreaterThanOrEqual(3);
-	});
+  it("returns all registered tools", () => {
+    const tools = listBuiltInTools();
+    expect(Array.isArray(tools)).toBe(true);
+    expect(tools.length).toBeGreaterThanOrEqual(3);
+  });
 
-	it("each tool has required fields", () => {
-		const tools = listBuiltInTools();
-		for (const tool of tools) {
-			expect(tool).toHaveProperty("id");
-			expect(tool).toHaveProperty("name");
-			expect(tool).toHaveProperty("displayName");
-			expect(tool).toHaveProperty("description");
-			expect(tool).toHaveProperty("riskLevel");
-			expect(tool).toHaveProperty("requiresApprovalByDefault");
-		}
-	});
+  it("each tool has required fields", () => {
+    const tools = listBuiltInTools();
+    for (const tool of tools) {
+      expect(tool).toHaveProperty("id");
+      expect(tool).toHaveProperty("name");
+      expect(tool).toHaveProperty("displayName");
+      expect(tool).toHaveProperty("description");
+      expect(tool).toHaveProperty("riskLevel");
+      expect(tool).toHaveProperty("requiresApprovalByDefault");
+    }
+  });
 
-	it("finds tool by ID", () => {
-		const tools = listBuiltInTools();
-		const firstId = (tools[0] as { id: string }).id;
-		const tool = getBuiltInTool(firstId);
-		expect(tool).not.toBeNull();
-		expect(tool!.id).toBe(firstId);
-	});
+  it("finds tool by ID", () => {
+    const tools = listBuiltInTools();
+    const firstId = (tools[0] as { id: string }).id;
+    const tool = getBuiltInTool(firstId);
+    expect(tool).not.toBeNull();
+    expect(tool!.id).toBe(firstId);
+  });
 
-	it("returns null for unknown tool ID", () => {
-		expect(getBuiltInTool("nonexistent-id")).toBeNull();
-	});
+  it("returns null for unknown tool ID", () => {
+    expect(getBuiltInTool("nonexistent-id")).toBeNull();
+  });
 
-	it("finds tool by name", () => {
-		const calculator = getBuiltInToolByName("calculator");
-		expect(calculator).not.toBeNull();
-		expect(calculator!.name).toBe("calculator");
-	});
+  it("finds tool by name", () => {
+    const calculator = getBuiltInToolByName("calculator");
+    expect(calculator).not.toBeNull();
+    expect(calculator!.name).toBe("calculator");
+  });
 
-	it("includes web search", () => {
-		const webSearch = getBuiltInToolByName("web_search");
-		expect(webSearch).not.toBeNull();
-		expect(webSearch!.riskLevel).toBe("medium");
-	});
+  it("includes web search", () => {
+    const webSearch = getBuiltInToolByName("web_search");
+    expect(webSearch).not.toBeNull();
+    expect(webSearch!.riskLevel).toBe("medium");
+  });
 
-	it("supports Bash and attachment references in the code sandbox schema", () => {
-		const sandbox = getBuiltInToolByName("run_code_sandbox");
-		expect(sandbox).not.toBeNull();
-		expect(
-			sandbox!.inputSchema.safeParse({
-				language: "bash",
-				code: "echo ok",
-				attachments: [
-					{
-						id: "00000000-0000-4000-8000-000000000001",
-						path: "attachments/input.txt",
-					},
-				],
-			}).success,
-		).toBe(true);
-	});
+  it("supports Bash and attachment references in the code sandbox schema", () => {
+    const sandbox = getBuiltInToolByName("run_code_sandbox");
+    expect(sandbox).not.toBeNull();
+    expect(
+      sandbox!.inputSchema.safeParse({
+        language: "bash",
+        code: "echo ok",
+        attachments: [
+          {
+            id: "00000000-0000-4000-8000-000000000001",
+            path: "attachments/input.txt",
+          },
+        ],
+      }).success,
+    ).toBe(true);
+  });
 
-	it("returns null for unknown tool name", () => {
-		expect(getBuiltInToolByName("nonexistent-tool")).toBeNull();
-	});
+  it("returns null for unknown tool name", () => {
+    expect(getBuiltInToolByName("nonexistent-tool")).toBeNull();
+  });
 });
 
 describe("requiresApproval", () => {
-	it("returns true for high risk", () => {
-		expect(requiresApproval("high")).toBe(true);
-	});
+  it("returns true for high risk", () => {
+    expect(requiresApproval("high")).toBe(true);
+  });
 
-	it("returns true for critical risk", () => {
-		expect(requiresApproval("critical")).toBe(true);
-	});
+  it("returns true for critical risk", () => {
+    expect(requiresApproval("critical")).toBe(true);
+  });
 
-	it("returns false for low risk", () => {
-		expect(requiresApproval("low")).toBe(false);
-	});
+  it("returns false for low risk", () => {
+    expect(requiresApproval("low")).toBe(false);
+  });
 
-	it("returns false for medium risk", () => {
-		expect(requiresApproval("medium")).toBe(false);
-	});
+  it("returns false for medium risk", () => {
+    expect(requiresApproval("medium")).toBe(false);
+  });
 
-	it("returns false for null", () => {
-		expect(requiresApproval(null)).toBe(false);
-	});
+  it("returns false for null", () => {
+    expect(requiresApproval(null)).toBe(false);
+  });
 
-	it("returns false for undefined", () => {
-		expect(requiresApproval(undefined)).toBe(false);
-	});
+  it("returns false for undefined", () => {
+    expect(requiresApproval(undefined)).toBe(false);
+  });
 });
 
 describe("calculator tool", () => {
-	it("evaluates simple arithmetic", async () => {
-		const tool = getBuiltInToolByName("calculator");
-		expect(tool).not.toBeNull();
-		const result = await tool!.execute({ expression: "2 + 3" });
-		expect((result as { result: number }).result).toBe(5);
-	});
+  it("evaluates simple arithmetic", async () => {
+    const tool = getBuiltInToolByName("calculator");
+    expect(tool).not.toBeNull();
+    const result = await tool!.execute({ expression: "2 + 3" });
+    expect((result as { result: number }).result).toBe(5);
+  });
 
-	it("evaluates complex expressions", async () => {
-		const tool = getBuiltInToolByName("calculator");
-		const result = await tool!.execute({ expression: "(2 + 3) * 4" });
-		expect((result as { result: number }).result).toBe(20);
-	});
+  it("evaluates complex expressions", async () => {
+    const tool = getBuiltInToolByName("calculator");
+    const result = await tool!.execute({ expression: "(2 + 3) * 4" });
+    expect((result as { result: number }).result).toBe(20);
+  });
 
-	it("rejects non-finite results", () => {
-		const tool = getBuiltInToolByName("calculator");
-		expect(() => tool!.execute({ expression: "1 / 0" })).toThrow(
-			"Expression did not evaluate to a finite number",
-		);
-	});
+  it("rejects non-finite results", () => {
+    const tool = getBuiltInToolByName("calculator");
+    expect(() => tool!.execute({ expression: "1 / 0" })).toThrow("Expression did not evaluate to a finite number");
+  });
 });
 
 describe("current_time tool", () => {
-	it("returns time info", async () => {
-		const tool = getBuiltInToolByName("current_time");
-		expect(tool).not.toBeNull();
-		const result = await tool!.execute({ timezone: "UTC" });
-		const typed = result as {
-			timezone: string;
-			iso: string;
-			formatted: string;
-		};
-		expect(typed).toHaveProperty("iso");
-		expect(typed).toHaveProperty("formatted");
-		expect(typed.timezone).toBe("UTC");
-	});
+  it("returns time info", async () => {
+    const tool = getBuiltInToolByName("current_time");
+    expect(tool).not.toBeNull();
+    const result = await tool!.execute({ timezone: "UTC" });
+    const typed = result as {
+      timezone: string;
+      iso: string;
+      formatted: string;
+    };
+    expect(typed).toHaveProperty("iso");
+    expect(typed).toHaveProperty("formatted");
+    expect(typed.timezone).toBe("UTC");
+  });
 });
 
 describe("web_search tool", () => {
-	it("queries SearXNG and normalizes results", async () => {
-		const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
-			expect(String(url)).toContain("/search?");
-			expect(String(url)).toContain("format=json");
-			expect(String(url)).toContain("q=maiah");
-			expect(init?.headers).toMatchObject({
-				Accept: "application/json",
-				"X-Forwarded-For": "127.0.0.1",
-				"X-Real-IP": "127.0.0.1",
-				"User-Agent": "ai-hub-web-search/1.0",
-			});
-			return new Response(
-				JSON.stringify({
-					results: [
-						{
-							title: "Maiah",
-							url: "https://example.com/maiah",
-							content: "Workspace assistant platform",
-							score: 2.5,
-							engines: ["duckduckgo"],
-						},
-						{
-							title: "Ignored result without URL",
-							content: "Missing URL",
-						},
-					],
-				}),
-				{
-					status: 200,
-					headers: { "content-type": "application/json" },
-				},
-			);
-		});
-		vi.stubGlobal("fetch", fetchMock);
+  it("queries SearXNG and normalizes results", async () => {
+    const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
+      expect(String(url)).toContain("/search?");
+      expect(String(url)).toContain("format=json");
+      expect(String(url)).toContain("q=maiah");
+      expect(init?.headers).toMatchObject({
+        Accept: "application/json",
+        "X-Forwarded-For": "127.0.0.1",
+        "X-Real-IP": "127.0.0.1",
+        "User-Agent": "ai-hub-web-search/1.0",
+      });
+      return new Response(
+        JSON.stringify({
+          results: [
+            {
+              title: "Maiah",
+              url: "https://example.com/maiah",
+              content: "Workspace assistant platform",
+              score: 2.5,
+              engines: ["duckduckgo"],
+            },
+            {
+              title: "Ignored result without URL",
+              content: "Missing URL",
+            },
+          ],
+        }),
+        {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        },
+      );
+    });
+    vi.stubGlobal("fetch", fetchMock);
 
-		const tool = getBuiltInToolByName("web_search");
-		expect(tool).not.toBeNull();
-		const result = (await tool!.execute({
-			query: "maiah",
-			limit: 3,
-		})) as {
-			ok: boolean;
-			query: string;
-			searchedQuery: string;
-			successfulQuery: string;
-			resultCount: number;
-			error: string | null;
-			summary: string;
-			results: Array<{ title: string; url: string; engines: string[] }>;
-		};
+    const tool = getBuiltInToolByName("web_search");
+    expect(tool).not.toBeNull();
+    const result = (await tool!.execute({
+      query: "maiah",
+      limit: 3,
+    })) as {
+      ok: boolean;
+      query: string;
+      searchedQuery: string;
+      successfulQuery: string;
+      resultCount: number;
+      error: string | null;
+      summary: string;
+      results: Array<{ title: string; url: string; engines: string[] }>;
+    };
 
-		expect(result.ok).toBe(true);
-		expect(result.query).toBe("maiah");
-		expect(result.searchedQuery).toMatch(/^maiah today \d{4}-\d{2}-\d{2}$/);
-		expect(result.successfulQuery).toBe(result.searchedQuery);
-		expect(result.resultCount).toBe(1);
-		expect(result.error).toBeNull();
-		expect(result.summary).toContain("1. Maiah");
-		expect(result.summary).toContain("Workspace assistant platform");
-		expect(result.summary).toContain("https://example.com/maiah");
-		expect(result.results).toEqual([
-			{
-				title: "Maiah",
-				url: "https://example.com/maiah",
-				snippet: "Workspace assistant platform",
-				score: 2.5,
-				engines: ["duckduckgo"],
-			},
-		]);
-	});
+    expect(result.ok).toBe(true);
+    expect(result.query).toBe("maiah");
+    expect(result.searchedQuery).toMatch(/^maiah today \d{4}-\d{2}-\d{2}$/);
+    expect(result.successfulQuery).toBe(result.searchedQuery);
+    expect(result.resultCount).toBe(1);
+    expect(result.error).toBeNull();
+    expect(result.summary).toContain("1. Maiah");
+    expect(result.summary).toContain("Workspace assistant platform");
+    expect(result.summary).toContain("https://example.com/maiah");
+    expect(result.results).toEqual([
+      {
+        title: "Maiah",
+        url: "https://example.com/maiah",
+        snippet: "Workspace assistant platform",
+        score: 2.5,
+        engines: ["duckduckgo"],
+      },
+    ]);
+  });
 
-	it("falls back to the original query when the dated query is empty", async () => {
-		const fetchMock = vi
-			.fn()
-			.mockResolvedValueOnce(
-				new Response(JSON.stringify({ results: [] }), {
-					status: 200,
-					headers: { "content-type": "application/json" },
-				}),
-			)
-			.mockResolvedValueOnce(
-				new Response(
-					JSON.stringify({
-						results: [
-							{
-								title: "Fallback result",
-								url: "https://example.com/fallback",
-								content: "Result from the original query",
-								engine: "brave",
-							},
-						],
-					}),
-					{
-						status: 200,
-						headers: { "content-type": "application/json" },
-					},
-				),
-			);
-		vi.stubGlobal("fetch", fetchMock);
+  it("falls back to the original query when the dated query is empty", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ results: [] }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            results: [
+              {
+                title: "Fallback result",
+                url: "https://example.com/fallback",
+                content: "Result from the original query",
+                engine: "brave",
+              },
+            ],
+          }),
+          {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          },
+        ),
+      );
+    vi.stubGlobal("fetch", fetchMock);
 
-		const tool = getBuiltInToolByName("web_search");
-		expect(tool).not.toBeNull();
-		const result = (await tool!.execute({
-			query: "maiah",
-			limit: 3,
-		})) as {
-			ok: boolean;
-			searchedQuery: string;
-			successfulQuery: string;
-			resultCount: number;
-			results: Array<{ title: string; url: string; engines: string[] }>;
-		};
+    const tool = getBuiltInToolByName("web_search");
+    expect(tool).not.toBeNull();
+    const result = (await tool!.execute({
+      query: "maiah",
+      limit: 3,
+    })) as {
+      ok: boolean;
+      searchedQuery: string;
+      successfulQuery: string;
+      resultCount: number;
+      results: Array<{ title: string; url: string; engines: string[] }>;
+    };
 
-		expect(fetchMock).toHaveBeenCalledTimes(2);
-		expect(
-			new URL(String(fetchMock.mock.calls[0]?.[0])).searchParams.get("q"),
-		).toBe(result.searchedQuery);
-		expect(
-			new URL(String(fetchMock.mock.calls[1]?.[0])).searchParams.get("q"),
-		).toBe("maiah");
-		expect(result.ok).toBe(true);
-		expect(result.successfulQuery).toBe("maiah");
-		expect(result.resultCount).toBe(1);
-		expect(result.results).toEqual([
-			{
-				title: "Fallback result",
-				url: "https://example.com/fallback",
-				snippet: "Result from the original query",
-				score: null,
-				engines: ["brave"],
-			},
-		]);
-	});
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(new URL(String(fetchMock.mock.calls[0]?.[0])).searchParams.get("q")).toBe(result.searchedQuery);
+    expect(new URL(String(fetchMock.mock.calls[1]?.[0])).searchParams.get("q")).toBe("maiah");
+    expect(result.ok).toBe(true);
+    expect(result.successfulQuery).toBe("maiah");
+    expect(result.resultCount).toBe(1);
+    expect(result.results).toEqual([
+      {
+        title: "Fallback result",
+        url: "https://example.com/fallback",
+        snippet: "Result from the original query",
+        score: null,
+        engines: ["brave"],
+      },
+    ]);
+  });
 });

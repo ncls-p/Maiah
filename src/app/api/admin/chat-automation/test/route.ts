@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
 import { handleRoute } from "@/lib/route-handler";
 import { requireAdminApiSession } from "@/modules/admin/auth";
 import { testChatAutomationConnection } from "@/modules/chat/automation";
+import { NextRequest,NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
   return handleRoute(
@@ -17,11 +17,7 @@ export async function POST(req: NextRequest) {
     },
     {
       logLabel: "Failed to test chat automation",
-      expectedError: () =>
-        NextResponse.json(
-          { ok: false, error: "Internal server error" },
-          { status: 500 },
-        ),
+      expectedError: () => NextResponse.json({ ok: false, error: "Internal server error" }, { status: 500 }),
     },
   );
 }

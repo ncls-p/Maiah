@@ -1,10 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach,beforeEach,describe,expect,it,vi } from "vitest";
 
-import {
-  migrateNewChatComposerDraft,
-  readChatComposerDraft,
-  writeChatComposerDraft,
-} from "@/components/chat/chat-composer-draft";
+import { migrateNewChatComposerDraft,readChatComposerDraft,writeChatComposerDraft } from "@/components/chat/chat-composer-draft";
 import type { ChatAttachment } from "@/components/chat/chat-types";
 
 function memoryStorage() {
@@ -45,12 +41,8 @@ describe("chat composer drafts", () => {
       attachments: [],
     });
 
-    expect(
-      readChatComposerDraft("workspace-1", "agent-1", "conversation-1"),
-    ).toEqual({ input: "First draft", attachments: [attachment] });
-    expect(
-      readChatComposerDraft("workspace-1", "agent-1", "conversation-2"),
-    ).toEqual({ input: "Second draft", attachments: [] });
+    expect(readChatComposerDraft("workspace-1", "agent-1", "conversation-1")).toEqual({ input: "First draft", attachments: [attachment] });
+    expect(readChatComposerDraft("workspace-1", "agent-1", "conversation-2")).toEqual({ input: "Second draft", attachments: [] });
   });
 
   it("keeps unsent new-chat drafts isolated per assistant", () => {
@@ -63,12 +55,8 @@ describe("chat composer drafts", () => {
       attachments: [],
     });
 
-    expect(readChatComposerDraft("workspace-1", "agent-1", null).input).toBe(
-      "Agent one",
-    );
-    expect(readChatComposerDraft("workspace-1", "agent-2", null).input).toBe(
-      "Agent two",
-    );
+    expect(readChatComposerDraft("workspace-1", "agent-1", null).input).toBe("Agent one");
+    expect(readChatComposerDraft("workspace-1", "agent-2", null).input).toBe("Agent two");
   });
 
   it("moves the new-chat draft when the conversation is created", () => {
@@ -79,9 +67,7 @@ describe("chat composer drafts", () => {
 
     migrateNewChatComposerDraft("workspace-1", "agent-1", "conversation-1");
 
-    expect(
-      readChatComposerDraft("workspace-1", "agent-1", "conversation-1"),
-    ).toEqual({
+    expect(readChatComposerDraft("workspace-1", "agent-1", "conversation-1")).toEqual({
       input: "Follow-up while sending",
       attachments: [attachment],
     });
@@ -92,13 +78,8 @@ describe("chat composer drafts", () => {
   });
 
   it("drops malformed persisted attachment metadata", () => {
-    window.localStorage.setItem(
-      "maiah-chat-composer-draft:workspace-1:conversation-1",
-      JSON.stringify({ input: "Safe text", attachments: [{ id: 42 }] }),
-    );
+    window.localStorage.setItem("maiah-chat-composer-draft:workspace-1:conversation-1", JSON.stringify({ input: "Safe text", attachments: [{ id: 42 }] }));
 
-    expect(
-      readChatComposerDraft("workspace-1", "agent-1", "conversation-1"),
-    ).toEqual({ input: "Safe text", attachments: [] });
+    expect(readChatComposerDraft("workspace-1", "agent-1", "conversation-1")).toEqual({ input: "Safe text", attachments: [] });
   });
 });

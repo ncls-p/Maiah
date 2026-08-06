@@ -1,41 +1,23 @@
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
-import {
-  handleRoute,
-  requireResourcePermissionAsync,
-  requireWorkspaceMemberAsync,
-} from "@/lib/route-handler";
+import { handleRoute,requireResourcePermissionAsync,requireWorkspaceMemberAsync } from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
-import {
-  archiveDocument,
-  readKnowledgeDocument,
-  retryDocumentIngestion,
-} from "@/modules/knowledge/use-cases";
+import { archiveDocument,readKnowledgeDocument,retryDocumentIngestion } from "@/modules/knowledge/use-cases";
+import { NextRequest,NextResponse } from "next/server";
+import { z } from "zod";
 
 const querySchema = z.object({ workspaceId: z.uuid() });
 
-export async function GET(
-  req: NextRequest,
-  {
-    params,
-  }: { params: Promise<{ knowledgeBaseId: string; documentId: string }> },
-) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ knowledgeBaseId: string; documentId: string }> }) {
   return handleRoute(
     req,
     async ({ session }) => {
       const parsed = querySchema.safeParse({
         workspaceId: req.nextUrl.searchParams.get("workspaceId"),
       });
-      const parsedParams = z
-        .object({ knowledgeBaseId: z.uuid(), documentId: z.uuid() })
-        .safeParse(await params);
+      const parsedParams = z.object({ knowledgeBaseId: z.uuid(), documentId: z.uuid() }).safeParse(await params);
       if (!parsed.success || !parsedParams.success) {
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
       }
-      const forbidden = await requireWorkspaceMemberAsync(
-        session.user.id,
-        parsed.data.workspaceId,
-      );
+      const forbidden = await requireWorkspaceMemberAsync(session.user.id, parsed.data.workspaceId);
       if (forbidden) return forbidden;
 
       const document = await readKnowledgeDocument({
@@ -44,10 +26,7 @@ export async function GET(
         userId: session.user.id,
       });
       if (!document) {
-        return NextResponse.json(
-          { error: "Document not found" },
-          { status: 404 },
-        );
+        return NextResponse.json({ error: "Document not found" }, { status: 404 });
       }
       return NextResponse.json({ document });
     },
@@ -55,12 +34,7 @@ export async function GET(
   );
 }
 
-export async function DELETE(
-  req: NextRequest,
-  {
-    params,
-  }: { params: Promise<{ knowledgeBaseId: string; documentId: string }> },
-) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ knowledgeBaseId: string; documentId: string }> }) {
   return handleRoute(
     req,
     async ({ session }) => {
@@ -70,19 +44,10 @@ export async function DELETE(
       if (!parsed.success) {
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
       }
-      const forbidden = await requireResourcePermissionAsync(
-        session.user.id,
-        parsed.data.workspaceId,
-        "knowledgeBases.manage",
-        "knowledge_base",
-        (await params).knowledgeBaseId,
-      );
+      const forbidden = await requireResourcePermissionAsync(session.user.id, parsed.data.workspaceId, "knowledgeBases.manage", "knowledge_base", (await params).knowledgeBaseId);
       if (forbidden) return forbidden;
       const { knowledgeBaseId, documentId } = await params;
-      const canManageGlobal = await canManageTenantGlobals(
-        session,
-        parsed.data.workspaceId,
-      );
+      const canManageGlobal = await canManageTenantGlobals(session, parsed.data.workspaceId);
       await archiveDocument({
         documentId,
         knowledgeBaseId,
@@ -95,20 +60,14 @@ export async function DELETE(
     {
       logLabel: "Failed to archive document",
       expectedError: (error) => {
-        const msg =
-          error instanceof Error ? error.message : "Internal server error";
+        const msg = error instanceof Error ? error.message : "Internal server error";
         return NextResponse.json({ error: msg }, { status: 400 });
       },
     },
   );
 }
 
-export async function PATCH(
-  req: NextRequest,
-  {
-    params,
-  }: { params: Promise<{ knowledgeBaseId: string; documentId: string }> },
-) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ knowledgeBaseId: string; documentId: string }> }) {
   return handleRoute(
     req,
     async ({ session }) => {
@@ -119,18 +78,9 @@ export async function PATCH(
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
       }
       const { knowledgeBaseId, documentId } = await params;
-      const forbidden = await requireResourcePermissionAsync(
-        session.user.id,
-        parsed.data.workspaceId,
-        "knowledgeBases.manage",
-        "knowledge_base",
-        knowledgeBaseId,
-      );
+      const forbidden = await requireResourcePermissionAsync(session.user.id, parsed.data.workspaceId, "knowledgeBases.manage", "knowledge_base", knowledgeBaseId);
       if (forbidden) return forbidden;
-      const canManageGlobal = await canManageTenantGlobals(
-        session,
-        parsed.data.workspaceId,
-      );
+      const canManageGlobal = await canManageTenantGlobals(session, parsed.data.workspaceId);
       await retryDocumentIngestion({
         documentId,
         knowledgeBaseId,
@@ -143,8 +93,7 @@ export async function PATCH(
     {
       logLabel: "Failed to retry document",
       expectedError: (error) => {
-        const msg =
-          error instanceof Error ? error.message : "Internal server error";
+        const msg = error instanceof Error ? error.message : "Internal server error";
         return NextResponse.json({ error: msg }, { status: 400 });
       },
     },

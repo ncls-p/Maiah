@@ -1,5 +1,5 @@
-import path from "node:path";
 import JSZip from "jszip";
+import path from "node:path";
 
 import { extractUploadedFileText } from "@/modules/chat/attachments";
 import type { RagConfig } from "@/modules/knowledge/rag-config-schema";
@@ -21,20 +21,12 @@ function safeUploadName(value: string) {
 }
 
 function isZipUpload(file: KnowledgeUpload) {
-  return (
-    path.extname(file.fileName).toLowerCase() === ".zip" ||
-    file.mimeType?.split(";", 1)[0]?.toLowerCase() === "application/zip"
-  );
+  return path.extname(file.fileName).toLowerCase() === ".zip" || file.mimeType?.split(";", 1)[0]?.toLowerCase() === "application/zip";
 }
 
 async function expandZip(upload: KnowledgeUpload): Promise<KnowledgeUpload[]> {
   const archive = await JSZip.loadAsync(upload.bytes, { checkCRC32: true });
-  const entries = Object.values(archive.files).filter(
-    (entry) =>
-      !entry.dir &&
-      !entry.name.startsWith("__MACOSX/") &&
-      !entry.name.endsWith(".DS_Store"),
-  );
+  const entries = Object.values(archive.files).filter((entry) => !entry.dir && !entry.name.startsWith("__MACOSX/") && !entry.name.endsWith(".DS_Store"));
   const files: KnowledgeUpload[] = [];
   for (const entry of entries) {
     if (path.extname(entry.name).toLowerCase() === ".zip") {
@@ -46,16 +38,11 @@ async function expandZip(upload: KnowledgeUpload): Promise<KnowledgeUpload[]> {
   return files;
 }
 
-export async function extractKnowledgeUploads(
-  uploads: KnowledgeUpload[],
-  context?: { workspaceId: string; config: RagConfig },
-) {
+export async function extractKnowledgeUploads(uploads: KnowledgeUpload[], context?: { workspaceId: string; config: RagConfig }) {
   if (uploads.length === 0) throw new Error("Select at least one file.");
   const expanded: KnowledgeUpload[] = [];
   for (const upload of uploads) {
-    expanded.push(
-      ...(isZipUpload(upload) ? await expandZip(upload) : [upload]),
-    );
+    expanded.push(...(isZipUpload(upload) ? await expandZip(upload) : [upload]));
   }
 
   const files: Array<{
@@ -89,8 +76,7 @@ export async function extractKnowledgeUploads(
     } catch (error) {
       rejected.push({
         title,
-        error:
-          error instanceof Error ? error.message : "File extraction failed.",
+        error: error instanceof Error ? error.message : "File extraction failed.",
       });
     }
   }

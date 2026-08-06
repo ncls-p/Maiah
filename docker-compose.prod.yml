@@ -134,11 +134,7 @@ services:
           cpus: "0.25"
           memory: 256M
     healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          'node -e "fetch(''http://127.0.0.1:3001/health'').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"',
-        ]
+      test: ["CMD-SHELL", 'node -e "fetch(''http://127.0.0.1:3001/health'').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"']
       interval: 30s
       timeout: 5s
       start_period: 20s
@@ -221,11 +217,7 @@ services:
           cpus: "0.10"
           memory: 128M
     healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          'python -c "import urllib.request; urllib.request.urlopen(''http://127.0.0.1:8080/health'', timeout=5).read()"',
-        ]
+      test: ["CMD-SHELL", 'python -c "import urllib.request; urllib.request.urlopen(''http://127.0.0.1:8080/health'', timeout=5).read()"']
       interval: 30s
       timeout: 5s
       start_period: 20s
@@ -249,11 +241,7 @@ services:
           cpus: "0.25"
           memory: 256M
     healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "pg_isready -U $${POSTGRES_USER:-postgres} -d $${POSTGRES_DB:-ai_hub}",
-        ]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-postgres} -d $${POSTGRES_DB:-ai_hub}"]
       interval: 5s
       timeout: 5s
       retries: 20
@@ -285,11 +273,7 @@ services:
           cpus: "0.25"
           memory: 256M
     healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          'redis-cli -a "$${DRAGONFLY_PASSWORD}" ping | grep -q PONG',
-        ]
+      test: ["CMD-SHELL", 'redis-cli -a "$${DRAGONFLY_PASSWORD}" ping | grep -q PONG']
       interval: 5s
       timeout: 5s
       retries: 20
@@ -374,7 +358,7 @@ services:
 
         import yaml
 
-        blocked = {"woxikon.de synonyme", "wikimini"}
+        blocked = {"ahmia", "torch", "wikidata", "woxikon.de synonyme", "wikimini"}
         for settings_path in (Path("/usr/local/searxng/searx/settings.yml"), Path("/etc/searxng/settings.yml")):
             if not settings_path.exists():
                 continue

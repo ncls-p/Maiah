@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe,expect,it,vi } from "vitest";
 
 import type { ChatMessage } from "@/components/chat/chat-types";
 import { applyStreamEvent } from "@/hooks/use-chat-stream-events";
@@ -21,10 +21,7 @@ describe("chat stream reasoning lifecycle", () => {
     };
 
     applyStreamEvent({ type: "reasoning_start" }, handlers);
-    applyStreamEvent(
-      { type: "reasoning", delta: "Inspecting the request" },
-      handlers,
-    );
+    applyStreamEvent({ type: "reasoning", delta: "Inspecting the request" }, handlers);
 
     expect(assistant.parts).toEqual([
       {

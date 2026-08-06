@@ -1,5 +1,5 @@
-import { Redis } from "ioredis";
 import { env } from "@/lib/env";
+import { Redis } from "ioredis";
 
 type CacheRuntime = {
   redis: Redis | null;
@@ -77,13 +77,7 @@ export const cache = {
       const redis = getCache();
       let cursor = "0";
       do {
-        const [nextCursor, keys] = await redis.scan(
-          cursor,
-          "MATCH",
-          `${prefix}*`,
-          "COUNT",
-          200,
-        );
+        const [nextCursor, keys] = await redis.scan(cursor, "MATCH", `${prefix}*`, "COUNT", 200);
         cursor = nextCursor;
         if (keys.length > 0) await redis.del(...keys);
       } while (cursor !== "0");

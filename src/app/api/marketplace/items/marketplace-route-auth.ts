@@ -3,10 +3,7 @@ import { NextResponse } from "next/server";
 import { requireResourcePermissionAsync } from "@/lib/route-handler";
 import { getMarketplaceItem } from "@/modules/marketplace/use-cases";
 
-export async function requireMarketplaceItemMutationPermission(
-  userId: string,
-  itemId: string,
-) {
+export async function requireMarketplaceItemMutationPermission(userId: string, itemId: string) {
   const item = await getMarketplaceItem(itemId);
   if (!item) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -14,11 +11,5 @@ export async function requireMarketplaceItemMutationPermission(
   if (!item.publisherWorkspaceId) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
-  return requireResourcePermissionAsync(
-    userId,
-    item.publisherWorkspaceId,
-    "marketplaceItems.publish",
-    "marketplace_item",
-    itemId,
-  );
+  return requireResourcePermissionAsync(userId, item.publisherWorkspaceId, "marketplaceItems.publish", "marketplace_item", itemId);
 }

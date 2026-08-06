@@ -1,4 +1,4 @@
-import { defineConfig, devices } from "@playwright/test";
+import { defineConfig,devices } from "@playwright/test";
 
 export default defineConfig({
   testDir: "test/e2e",
@@ -11,6 +11,8 @@ export default defineConfig({
   reporter: "list",
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000",
+    actionTimeout: 15_000,
+    navigationTimeout: 30_000,
     trace: "on-first-retry",
   },
   webServer: process.env.CI

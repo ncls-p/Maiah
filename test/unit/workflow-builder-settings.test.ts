@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach,describe,expect,it,vi } from "vitest";
 
 type Chain = {
   select: ReturnType<typeof vi.fn>;
@@ -14,15 +14,7 @@ type Chain = {
 
 function makeChain(): Chain {
   const chain = {} as Chain;
-  for (const key of [
-    "select",
-    "insert",
-    "from",
-    "where",
-    "leftJoin",
-    "values",
-    "onConflictDoUpdate",
-  ] as const) {
+  for (const key of ["select", "insert", "from", "where", "leftJoin", "values", "onConflictDoUpdate"] as const) {
     chain[key] = vi.fn().mockReturnThis();
   }
   chain.orderBy = vi.fn().mockResolvedValue([]);
@@ -49,13 +41,8 @@ vi.mock("@/server/infrastructure/db", () => {
   };
 });
 
+import { getConfiguredWorkflowBuilderAgentId,getWorkflowBuilderAdminState,getWorkflowBuilderConfig,setWorkflowBuilderConfig } from "@/modules/workflows/builder-settings";
 import * as _dbModule from "@/server/infrastructure/db";
-import {
-  getConfiguredWorkflowBuilderAgentId,
-  getWorkflowBuilderAdminState,
-  getWorkflowBuilderConfig,
-  setWorkflowBuilderConfig,
-} from "@/modules/workflows/builder-settings";
 
 const dbModule = _dbModule as unknown as DbModule;
 const workspaceId = "11111111-1111-4111-8111-111111111111";
@@ -63,15 +50,7 @@ const readyAgentId = "22222222-2222-4222-8222-222222222222";
 const unavailableAgentId = "33333333-3333-4333-8333-333333333333";
 
 function resetDb() {
-  for (const key of [
-    "select",
-    "insert",
-    "from",
-    "where",
-    "leftJoin",
-    "values",
-    "onConflictDoUpdate",
-  ] as const) {
+  for (const key of ["select", "insert", "from", "where", "leftJoin", "values", "onConflictDoUpdate"] as const) {
     dbModule._chain[key].mockReset().mockReturnThis();
   }
   dbModule._chain.orderBy.mockReset().mockResolvedValue([]);
@@ -122,25 +101,17 @@ beforeEach(() => {
 
 describe("workflow builder settings", () => {
   it("loads a valid configured assistant and falls back on invalid data", async () => {
-    dbModule._chain.limit.mockResolvedValueOnce([
-      { valueJson: { agentId: readyAgentId } },
-    ]);
+    dbModule._chain.limit.mockResolvedValueOnce([{ valueJson: { agentId: readyAgentId } }]);
     await expect(getWorkflowBuilderConfig(workspaceId)).resolves.toEqual({
       agentId: readyAgentId,
     });
 
-    dbModule._chain.limit.mockResolvedValueOnce([
-      { valueJson: { agentId: "not-a-uuid" } },
-    ]);
-    await expect(
-      getConfiguredWorkflowBuilderAgentId(workspaceId),
-    ).resolves.toBeNull();
+    dbModule._chain.limit.mockResolvedValueOnce([{ valueJson: { agentId: "not-a-uuid" } }]);
+    await expect(getConfiguredWorkflowBuilderAgentId(workspaceId)).resolves.toBeNull();
   });
 
   it("reports ready and unavailable assistants in the admin state", async () => {
-    dbModule._chain.limit.mockResolvedValueOnce([
-      { valueJson: { agentId: readyAgentId } },
-    ]);
+    dbModule._chain.limit.mockResolvedValueOnce([{ valueJson: { agentId: readyAgentId } }]);
     dbModule._chain.orderBy.mockResolvedValueOnce([
       agentRow(),
       agentRow({
@@ -186,9 +157,7 @@ describe("workflow builder settings", () => {
   });
 
   it("persists automatic selection and returns the saved config", async () => {
-    dbModule._chain.limit.mockResolvedValueOnce([
-      { valueJson: { agentId: null } },
-    ]);
+    dbModule._chain.limit.mockResolvedValueOnce([{ valueJson: { agentId: null } }]);
 
     await expect(
       setWorkflowBuilderConfig({
@@ -204,9 +173,7 @@ describe("workflow builder settings", () => {
 
   it("persists a ready assistant", async () => {
     dbModule._chain.orderBy.mockResolvedValueOnce([agentRow()]);
-    dbModule._chain.limit.mockResolvedValueOnce([
-      { valueJson: { agentId: readyAgentId } },
-    ]);
+    dbModule._chain.limit.mockResolvedValueOnce([{ valueJson: { agentId: readyAgentId } }]);
 
     await expect(
       setWorkflowBuilderConfig({
@@ -241,8 +208,6 @@ describe("workflow builder settings", () => {
         agentId: unavailableAgentId,
         updatedById: "user-1",
       }),
-    ).rejects.toThrow(
-      "Workflow builder assistant requires an active tool-capable model",
-    );
+    ).rejects.toThrow("Workflow builder assistant requires an active tool-capable model");
   });
 });

@@ -56,15 +56,7 @@ function configuredNumber(value: string | null | undefined) {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 }
 
-export function calculateTokenUsageImpact(input: {
-  inputTokens: number;
-  outputTokens: number;
-  inputCostPerMillion?: string | null;
-  outputCostPerMillion?: string | null;
-  sustainability?: unknown;
-  currency?: string;
-  co2GramsPerKwh?: number;
-}): UsageImpact {
+export function calculateTokenUsageImpact(input: { inputTokens: number; outputTokens: number; inputCostPerMillion?: string | null; outputCostPerMillion?: string | null; sustainability?: unknown; currency?: string; co2GramsPerKwh?: number }): UsageImpact {
   const inputTokens = Math.max(0, input.inputTokens);
   const outputTokens = Math.max(0, input.outputTokens);
   const inputCost = configuredNumber(input.inputCostPerMillion);
@@ -72,47 +64,26 @@ export function calculateTokenUsageImpact(input: {
   const sustainability = parseSustainabilityConfig(input.sustainability);
   const totalTokens = inputTokens + outputTokens;
 
-  const energyKwh =
-    sustainability.energyKwhPerMillionTokens === undefined
-      ? null
-      : (totalTokens * sustainability.energyKwhPerMillionTokens) / 1_000_000;
-  const configuredCo2Grams =
-    sustainability.co2GramsPerMillionTokens === undefined
-      ? null
-      : (totalTokens * sustainability.co2GramsPerMillionTokens) / 1_000_000;
+  const energyKwh = sustainability.energyKwhPerMillionTokens === undefined ? null : (totalTokens * sustainability.energyKwhPerMillionTokens) / 1_000_000;
+  const configuredCo2Grams = sustainability.co2GramsPerMillionTokens === undefined ? null : (totalTokens * sustainability.co2GramsPerMillionTokens) / 1_000_000;
 
   return {
     inputTokens,
     outputTokens,
-    cost:
-      inputCost === null && outputCost === null
-        ? null
-        : (inputTokens * (inputCost ?? 0) + outputTokens * (outputCost ?? 0)) /
-          1_000_000,
+    cost: inputCost === null && outputCost === null ? null : (inputTokens * (inputCost ?? 0) + outputTokens * (outputCost ?? 0)) / 1_000_000,
     currency: input.currency ?? "EUR",
     energyKwh,
-    co2Grams:
-      configuredCo2Grams ??
-      (energyKwh !== null && input.co2GramsPerKwh !== undefined
-        ? energyKwh * input.co2GramsPerKwh
-        : null),
+    co2Grams: configuredCo2Grams ?? (energyKwh !== null && input.co2GramsPerKwh !== undefined ? energyKwh * input.co2GramsPerKwh : null),
   };
 }
 
-export function calculateImageUsageImpact(
-  configValue: unknown,
-  co2GramsPerKwh?: number,
-) {
+export function calculateImageUsageImpact(configValue: unknown, co2GramsPerKwh?: number) {
   const config = parseImageGenerationConfig(configValue);
   const energyKwh = config.energyKwhPerImage ?? null;
   return {
     cost: config.costPerImage ?? null,
     currency: config.currency,
     energyKwh,
-    co2Grams:
-      config.co2GramsPerImage ??
-      (energyKwh !== null && co2GramsPerKwh !== undefined
-        ? energyKwh * co2GramsPerKwh
-        : null),
+    co2Grams: config.co2GramsPerImage ?? (energyKwh !== null && co2GramsPerKwh !== undefined ? energyKwh * co2GramsPerKwh : null),
   };
 }

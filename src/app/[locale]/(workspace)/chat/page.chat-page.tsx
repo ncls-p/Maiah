@@ -1,0 +1,277 @@
+"use client";
+
+import { useTranslations } from "next-intl";
+import { useCallback,useEffect,useMemo,useRef,useState } from "react";
+
+import { type QueuedChatMessage } from "@/components/chat/chat-composer";
+import { chatComposerDraftKey,readChatComposerDraft,writeChatComposerDraft } from "@/components/chat/chat-composer-draft";
+import { CODE_WORKSPACE_ARTIFACT_EVENT } from "@/components/chat/chat-message-list";
+import type { ChatAttachment,CodeWorkspaceArtifact } from "@/components/chat/chat-types";
+import { CODE_WORKSPACE_CHAT_WIDTH_STORAGE_KEY,DEFAULT_CHAT_WIDTH,normalizeCodeWorkspaceChatWidth } from "@/components/chat/code-workspace-layout";
+import { DestructiveConfirmationDialog } from "@/components/destructive-confirmation-dialog";
+import { useWorkspace } from "@/hooks/use-workspace";
+import { CHAT_INTERFACE_MODE,CODING_INTERFACE_MODE,type InterfaceMode } from "./chat-interface-mode";
+import { rotatePromptSuggestions } from "./chat-page-helpers";
+import { useChatDirectory } from "./page.use-chat-directory";
+import { useConversationActions } from "./page.use-conversation-actions";
+import { useComposerActions } from "./page.use-composer-actions";
+import { useMessageActions } from "./page.use-message-actions";
+import { useChatSession } from "./page.use-chat-session";
+import { ChatPageView } from "./page.chat-page.view";
+import { ChatPageBoundary } from "./page.chat-page-boundary";
+
+export function useChatPageController() {
+  const t = useTranslations(CHAT_INTERFACE_MODE);
+  const { workspaceId, isLoading: workspaceLoading } = useWorkspace();
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [input, setInput] = useState("");
+  const [queuedMessages, setQueuedMessages] = useState<QueuedChatMessage[]>([]);
+  const [codeWorkspaceArtifact, setCodeWorkspaceArtifact] = useState<CodeWorkspaceArtifact | null>(null);
+  const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
+  const [interfaceMode, setInterfaceMode] = useState<InterfaceMode>(CHAT_INTERFACE_MODE);
+  const [codingChatWidth, setCodingChatWidth] = useState(DEFAULT_CHAT_WIDTH);
+  const [pendingDelete, setPendingDelete] = useState<{ kind: "conversation"; id: string; name: string } | { kind: "folder"; id: string; name: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const bottomRef = useRef<HTMLDivElement | null>(null);
+  const lastAutoOpenedWorkspaceRef = useRef<string | null>(null);
+  const userSelectedInterfaceModeRef = useRef<InterfaceMode | null>(null);
+  const composerDraftScopeRef = useRef<{
+    workspaceId: string;
+    agentId: string;
+    conversationId: string | null;
+  } | null>(null);
+  const newConversationAgentIdRef = useRef<string | null>(null);
+
+  const { agents, selectedAgentId, setSelectedAgentId, organizationDefaultAgentId, setOrganizationDefaultAgentId, canCreateAgent, canRunSetup, userDefaultAgentId, setUserDefaultAgentId, conversations, setConversations, conversationFolders, setConversationFolders, hasMoreConversations, conversationSearchQuery, setConversationSearchQuery, conversationSearchState, setConversationSearchRevision, loadingMoreConversations, loadingAgents, loadingContext, setLoadingContext, loadAgentDirectory, refreshConversations, loadMoreConversations, loadMoreConversationSearchResults } = useChatDirectory(workspaceId, t, setActiveConversationId);
+
+  const saveCurrentComposerDraft = useCallback(() => {
+    const scope = composerDraftScopeRef.current;
+    if (!scope) return;
+    writeChatComposerDraft(scope.workspaceId, scope.agentId, scope.conversationId, { input, attachments });
+  }, [attachments, input]);
+
+  const restoreComposerDraft = useCallback(
+    (nextAgentId: string, nextConversationId: string | null) => {
+      if (!workspaceId || !nextAgentId) return;
+      saveCurrentComposerDraft();
+      const nextDraft = readChatComposerDraft(workspaceId, nextAgentId, nextConversationId);
+      composerDraftScopeRef.current = {
+        workspaceId,
+        agentId: nextAgentId,
+        conversationId: nextConversationId,
+      };
+      setInput(nextDraft.input);
+      setAttachments(nextDraft.attachments);
+    },
+    [saveCurrentComposerDraft, workspaceId],
+  );
+
+  useEffect(() => {
+    if (!workspaceId || !selectedAgentId) return;
+    if (!activeConversationId && !newConversationAgentIdRef.current) {
+      newConversationAgentIdRef.current = selectedAgentId;
+    }
+    const expectedKey = chatComposerDraftKey(workspaceId, selectedAgentId, activeConversationId);
+    const current = composerDraftScopeRef.current;
+    const currentKey = current ? chatComposerDraftKey(current.workspaceId, current.agentId, current.conversationId) : null;
+    if (currentKey !== expectedKey) {
+      restoreComposerDraft(selectedAgentId, activeConversationId);
+    }
+  }, [activeConversationId, restoreComposerDraft, selectedAgentId, workspaceId]);
+
+  useEffect(() => {
+    saveCurrentComposerDraft();
+  }, [saveCurrentComposerDraft]);
+
+  function chooseInterfaceMode(mode: InterfaceMode) {
+    userSelectedInterfaceModeRef.current = mode;
+    setInterfaceMode(mode);
+  }
+
+  const resetInterfaceMode = useCallback(() => {
+    userSelectedInterfaceModeRef.current = null;
+    setInterfaceMode(CHAT_INTERFACE_MODE);
+  }, []);
+
+  function updateCodingChatWidth(width: number) {
+    const nextWidth = normalizeCodeWorkspaceChatWidth(width);
+    setCodingChatWidth(nextWidth);
+    try {
+      window.localStorage.setItem(CODE_WORKSPACE_CHAT_WIDTH_STORAGE_KEY, JSON.stringify(nextWidth));
+    } catch {
+      // Keep the resized width for this session when storage is unavailable.
+    }
+  }
+
+  useEffect(() => {
+    try {
+      const persisted = window.localStorage.getItem(CODE_WORKSPACE_CHAT_WIDTH_STORAGE_KEY);
+      if (!persisted) return;
+      const nextWidth = normalizeCodeWorkspaceChatWidth(JSON.parse(persisted));
+      queueMicrotask(() => setCodingChatWidth(nextWidth));
+    } catch {
+      // Ignore malformed or unavailable local storage and keep the default.
+    }
+  }, []);
+
+  const selectedAgent = useMemo(() => agents.find((agent) => agent.id === selectedAgentId) ?? null, [agents, selectedAgentId]);
+  const emptyPromptSuggestions = useMemo(() => (selectedAgent ? rotatePromptSuggestions(selectedAgent.promptSuggestions ?? [], `${selectedAgent.id}-${new Date().toISOString().slice(0, 10)}`) : []), [selectedAgent]);
+
+  useEffect(() => {
+    function handleCodeWorkspaceArtifact(event: Event) {
+      const detail = (
+        event as CustomEvent<{
+          artifact?: CodeWorkspaceArtifact;
+          activate?: boolean;
+        }>
+      ).detail;
+      const artifact = detail?.artifact;
+      if (!artifact?.projectId) return;
+      setCodeWorkspaceArtifact((current) => {
+        if (current?.projectId === artifact.projectId && artifact.version <= current.version) {
+          return current;
+        }
+        return artifact;
+      });
+      if (!detail.activate) return;
+      const artifactKey = `${artifact.projectId}:${artifact.version}`;
+      if (lastAutoOpenedWorkspaceRef.current === artifactKey) return;
+      lastAutoOpenedWorkspaceRef.current = artifactKey;
+      userSelectedInterfaceModeRef.current = CODING_INTERFACE_MODE;
+      setInterfaceMode(CODING_INTERFACE_MODE);
+    }
+    window.addEventListener(CODE_WORKSPACE_ARTIFACT_EVENT, handleCodeWorkspaceArtifact);
+    return () => {
+      window.removeEventListener(CODE_WORKSPACE_ARTIFACT_EVENT, handleCodeWorkspaceArtifact);
+    };
+  }, []);
+
+  const { messages, setMessages, sending, pendingApprovals, handleSubmit, resolveApproval, stopGeneration, detachActiveStream, setActiveVersion, loadingMessages, quota, canChat, latestTodoList, conversationImpact } = useChatSession({ workspaceId, selectedAgentId, activeConversationId, queuedMessages, interfaceMode, codeWorkspaceArtifact, lastAutoOpenedWorkspaceRef, userSelectedInterfaceModeRef, composerDraftScopeRef, saveCurrentComposerDraft, resetInterfaceMode, refreshConversations, setActiveConversationId, setSelectedAgentId, setConversations, setQueuedMessages, setCodeWorkspaceArtifact, setInterfaceMode, setLoadingContext });
+
+  const { selectAgent, selectConversation, startNewConversation, renameConversation, deleteConversation, requestConversationDelete, createConversationFolder, renameConversationFolder, deleteConversationFolder, requestFolderDelete, toggleConversationPin, reorderConversations } = useConversationActions({ workspaceId, selectedAgentId, activeConversationId, conversations, conversationFolders, newConversationAgentIdRef, composerDraftScopeRef, setSelectedAgentId, setActiveConversationId, setActiveVersion, setQueuedMessages, setMessages, setCodeWorkspaceArtifact, setAttachments, setConversations, setConversationFolders, setPendingDelete, setDeleting, detachActiveStream, restoreComposerDraft, resetInterfaceMode, refreshConversations, t });
+
+  const { submitMessage, uploadCodeWorkspace, uploadChatAttachment, submitSuggestion, setUserDefaultAgent, updateQueuedMessage, cancelQueuedMessage } = useComposerActions({ workspaceId, activeConversationId, input, attachments, canChat, sending, interfaceMode, codeWorkspaceArtifact, handleSubmit, setInput, setAttachments, setQueuedMessages, setCodeWorkspaceArtifact, setInterfaceMode, setOrganizationDefaultAgentId, setUserDefaultAgentId, userSelectedInterfaceModeRef, lastAutoOpenedWorkspaceRef, t });
+
+  const { editMessage, deleteMessage, resendMessage, continueAssistantResponse, reloadActualLatestMessages, reloadAgentContext, approveToolInvocation, rejectToolInvocation } = useMessageActions({ activeConversationId, workspaceId, selectedAgentId, messages, sending, setMessages, handleSubmit, resolveApproval, refreshConversations, loadAgentDirectory, setCodeWorkspaceArtifact, setActiveVersion, setLoadingContext, t });
+
+  const destructiveDialog = (
+    <DestructiveConfirmationDialog
+      open={pendingDelete !== null}
+      title={pendingDelete?.kind === "folder" ? t("sidebar.deleteFolderTitle") : t("sidebar.deleteConversationTitle")}
+      description={
+        pendingDelete?.kind === "folder"
+          ? t("sidebar.deleteFolderDescription", {
+              name: pendingDelete?.name ?? "",
+            })
+          : t("sidebar.deleteConversationDescription", {
+              name: pendingDelete?.name ?? "",
+            })
+      }
+      cancelLabel={t("sidebar.deleteCancel")}
+      confirmLabel={deleting ? t("sidebar.deleting") : t("sidebar.delete")}
+      busy={deleting}
+      onOpenChange={(open) => {
+        if (!open && !deleting) setPendingDelete(null);
+      }}
+      onConfirm={() => {
+        if (!pendingDelete) return;
+        if (pendingDelete.kind === "folder") {
+          void deleteConversationFolder(pendingDelete.id);
+        } else {
+          void deleteConversation(pendingDelete.id);
+        }
+      }}
+    />
+  );
+
+  const normalizedConversationSearchQuery = conversationSearchQuery.trim();
+  const conversationSearchIsCurrent = conversationSearchState.query === normalizedConversationSearchQuery;
+  const conversationSearchProps = {
+    conversationSearchQuery,
+    conversationSearchResults: conversationSearchIsCurrent ? conversationSearchState.conversations : [],
+    searchingConversations: Boolean(normalizedConversationSearchQuery) && (!conversationSearchIsCurrent || conversationSearchState.loading),
+    conversationSearchError: conversationSearchIsCurrent && conversationSearchState.error,
+    hasMoreConversationSearchResults: conversationSearchIsCurrent && conversationSearchState.hasMore,
+    loadingMoreConversationSearchResults: conversationSearchIsCurrent && conversationSearchState.loadingMore,
+    onConversationSearchQueryChange: setConversationSearchQuery,
+    onRetryConversationSearch: () => setConversationSearchRevision((current) => current + 1),
+    onLoadMoreConversationSearchResults: loadMoreConversationSearchResults,
+  };
+
+  const boundaryLayoutProps = { agents, conversations, conversationFolders, selectedAgent, selectedAgentId, activeConversationId, organizationDefaultAgentId, userDefaultAgentId, canChat, canCreateAgent, canRunSetup, ...conversationSearchProps, hasMoreConversations, loadingMoreConversations, onLoadMoreConversations: loadMoreConversations, onSelectAgent: selectAgent, onSelectConversation: selectConversation, onNewConversation: startNewConversation, onSetUserDefaultAgent: (agentId: string | null) => void setUserDefaultAgent(agentId), onRenameConversation: (conversationId: string, title: string) => void renameConversation(conversationId, title), onDeleteConversation: requestConversationDelete, onCreateConversationFolder: (name: string) => void createConversationFolder(name), onRenameConversationFolder: (folderId: string, name: string) => void renameConversationFolder(folderId, name), onDeleteConversationFolder: requestFolderDelete, onToggleConversationPin: (conversationId: string, pinned: boolean) => void toggleConversationPin(conversationId, pinned), onReorderConversations: (value: { conversationIds: string[]; folderId: string | null; pinned?: boolean }) => void reorderConversations(value), onSetupComplete: () => void reloadAgentContext() };
+  if (workspaceLoading || loadingAgents || agents.length === 0) return <ChatPageBoundary state={workspaceLoading || loadingAgents ? "loading" : "empty"} layoutProps={boundaryLayoutProps} loadingContext={loadingContext} destructiveDialog={destructiveDialog} emptyStateProps={{ canCreateAgent, canRunSetup, t }} loadingStateProps={{ t }} />;
+
+  return {
+    kind: "ready",
+    activeConversationId,
+    agents,
+    approveToolInvocation,
+    attachments,
+    bottomRef,
+    canChat,
+    canCreateAgent,
+    canRunSetup,
+    cancelQueuedMessage,
+    chooseInterfaceMode,
+    codeWorkspaceArtifact,
+    codingChatWidth,
+    continueAssistantResponse,
+    conversationFolders,
+    conversationImpact,
+    conversationSearchProps,
+    conversations,
+    createConversationFolder,
+    deleteMessage,
+    destructiveDialog,
+    editMessage,
+    emptyPromptSuggestions,
+    hasMoreConversations,
+    input,
+    interfaceMode,
+    latestTodoList,
+    loadMoreConversations,
+    loadingContext,
+    loadingMessages,
+    loadingMoreConversations,
+    messages,
+    organizationDefaultAgentId,
+    pendingApprovals,
+    queuedMessages,
+    quota,
+    rejectToolInvocation,
+    reloadActualLatestMessages,
+    reloadAgentContext,
+    renameConversation,
+    renameConversationFolder,
+    reorderConversations,
+    requestConversationDelete,
+    requestFolderDelete,
+    resendMessage,
+    selectAgent,
+    selectConversation,
+    selectedAgent,
+    selectedAgentId,
+    sending,
+    setAttachments,
+    setInput,
+    setUserDefaultAgent,
+    startNewConversation,
+    stopGeneration,
+    submitMessage,
+    submitSuggestion,
+    t,
+    toggleConversationPin,
+    updateCodingChatWidth,
+    updateQueuedMessage,
+    uploadChatAttachment,
+    uploadCodeWorkspace,
+    userDefaultAgentId,
+    workspaceId,
+  } as const;
+}
+
+export default function ChatPage(...args: Parameters<typeof useChatPageController>) {
+  const model = useChatPageController(...args);
+  if (!("kind" in model)) return model;
+  return <ChatPageView model={model} />;
+}

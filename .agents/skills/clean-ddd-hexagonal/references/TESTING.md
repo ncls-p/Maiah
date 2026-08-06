@@ -1,6 +1,7 @@
 # Testing Patterns
 
 > Sources:
+>
 > - [The Clean Architecture](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html) — Robert C. Martin
 > - [Hexagonal Architecture](https://alistair.cockburn.us/hexagonal-architecture/) — Alistair Cockburn
 > - [Unit Testing](https://martinfowler.com/bliki/UnitTest.html) — Martin Fowler
@@ -37,10 +38,10 @@ Test business logic in isolation. **No mocks needed**—domain has no dependenci
 
 ```typescript
 // tests/domain/order/order.test.ts
-describe('Order', () => {
-  describe('create', () => {
-    it('creates order with draft status', () => {
-      const customerId = CustomerId.from('cust-123');
+describe("Order", () => {
+  describe("create", () => {
+    it("creates order with draft status", () => {
+      const customerId = CustomerId.from("cust-123");
 
       const order = Order.create(customerId);
 
@@ -49,8 +50,8 @@ describe('Order', () => {
       expect(order.items).toHaveLength(0);
     });
 
-    it('emits OrderCreated event', () => {
-      const customerId = CustomerId.from('cust-123');
+    it("emits OrderCreated event", () => {
+      const customerId = CustomerId.from("cust-123");
 
       const order = Order.create(customerId);
 
@@ -59,12 +60,12 @@ describe('Order', () => {
     });
   });
 
-  describe('addItem', () => {
-    it('adds item to order', () => {
+  describe("addItem", () => {
+    it("adds item to order", () => {
       const order = createDraftOrder();
-      const productId = ProductId.from('prod-123');
+      const productId = ProductId.from("prod-123");
       const quantity = Quantity.create(2);
-      const price = Money.create(10.00, 'USD');
+      const price = Money.create(10.0, "USD");
 
       order.addItem(productId, quantity, price);
 
@@ -73,10 +74,10 @@ describe('Order', () => {
       expect(order.items[0].quantity).toEqual(quantity);
     });
 
-    it('increases quantity for existing product', () => {
+    it("increases quantity for existing product", () => {
       const order = createDraftOrder();
-      const productId = ProductId.from('prod-123');
-      const price = Money.create(10.00, 'USD');
+      const productId = ProductId.from("prod-123");
+      const price = Money.create(10.0, "USD");
 
       order.addItem(productId, Quantity.create(2), price);
       order.addItem(productId, Quantity.create(3), price);
@@ -85,25 +86,25 @@ describe('Order', () => {
       expect(order.items[0].quantity.value).toBe(5);
     });
 
-    it('throws when order is cancelled', () => {
+    it("throws when order is cancelled", () => {
       const order = createCancelledOrder();
 
       expect(() => {
-        order.addItem(ProductId.from('prod-123'), Quantity.create(1), Money.create(10, 'USD'));
+        order.addItem(ProductId.from("prod-123"), Quantity.create(1), Money.create(10, "USD"));
       }).toThrow(InvalidOrderStateError);
     });
 
-    it('throws when quantity is zero', () => {
+    it("throws when quantity is zero", () => {
       const order = createDraftOrder();
 
       expect(() => {
-        order.addItem(ProductId.from('prod-123'), Quantity.create(0), Money.create(10, 'USD'));
+        order.addItem(ProductId.from("prod-123"), Quantity.create(0), Money.create(10, "USD"));
       }).toThrow(InvalidQuantityError);
     });
   });
 
-  describe('confirm', () => {
-    it('changes status to confirmed', () => {
+  describe("confirm", () => {
+    it("changes status to confirmed", () => {
       const order = createOrderWithItems();
 
       order.confirm();
@@ -111,38 +112,38 @@ describe('Order', () => {
       expect(order.status).toBe(OrderStatus.Confirmed);
     });
 
-    it('emits OrderConfirmed event', () => {
+    it("emits OrderConfirmed event", () => {
       const order = createOrderWithItems();
 
       order.confirm();
 
-      const events = order.domainEvents.filter(e => e instanceof OrderConfirmed);
+      const events = order.domainEvents.filter((e) => e instanceof OrderConfirmed);
       expect(events).toHaveLength(1);
     });
 
-    it('throws when order is empty', () => {
+    it("throws when order is empty", () => {
       const order = createDraftOrder();
 
       expect(() => order.confirm()).toThrow(EmptyOrderError);
     });
 
-    it('throws when already confirmed', () => {
+    it("throws when already confirmed", () => {
       const order = createConfirmedOrder();
 
       expect(() => order.confirm()).toThrow(InvalidOrderStateError);
     });
   });
 
-  describe('total', () => {
-    it('calculates total from all items', () => {
+  describe("total", () => {
+    it("calculates total from all items", () => {
       const order = createDraftOrder();
-      order.addItem(ProductId.from('p1'), Quantity.create(2), Money.create(10, 'USD'));
-      order.addItem(ProductId.from('p2'), Quantity.create(1), Money.create(25, 'USD'));
+      order.addItem(ProductId.from("p1"), Quantity.create(2), Money.create(10, "USD"));
+      order.addItem(ProductId.from("p2"), Quantity.create(1), Money.create(25, "USD"));
 
       expect(order.total.amount).toBe(45); // 2*10 + 1*25
     });
 
-    it('returns zero for empty order', () => {
+    it("returns zero for empty order", () => {
       const order = createDraftOrder();
 
       expect(order.total.amount).toBe(0);
@@ -152,12 +153,12 @@ describe('Order', () => {
 
 // Test helpers (builders)
 function createDraftOrder(): Order {
-  return Order.create(CustomerId.from('cust-123'));
+  return Order.create(CustomerId.from("cust-123"));
 }
 
 function createOrderWithItems(): Order {
   const order = createDraftOrder();
-  order.addItem(ProductId.from('prod-123'), Quantity.create(1), Money.create(10, 'USD'));
+  order.addItem(ProductId.from("prod-123"), Quantity.create(1), Money.create(10, "USD"));
   return order;
 }
 
@@ -170,7 +171,7 @@ function createConfirmedOrder(): Order {
 
 function createCancelledOrder(): Order {
   const order = createOrderWithItems();
-  order.cancel('Test cancellation');
+  order.cancel("Test cancellation");
   return order;
 }
 ```
@@ -179,50 +180,50 @@ function createCancelledOrder(): Order {
 
 ```typescript
 // tests/domain/shared/money.test.ts
-describe('Money', () => {
-  describe('create', () => {
-    it('creates money with valid amount', () => {
-      const money = Money.create(10.50, 'USD');
+describe("Money", () => {
+  describe("create", () => {
+    it("creates money with valid amount", () => {
+      const money = Money.create(10.5, "USD");
 
-      expect(money.amount).toBe(10.50);
-      expect(money.currency).toBe('USD');
+      expect(money.amount).toBe(10.5);
+      expect(money.currency).toBe("USD");
     });
 
-    it('throws for negative amount', () => {
-      expect(() => Money.create(-1, 'USD')).toThrow(InvalidMoneyError);
+    it("throws for negative amount", () => {
+      expect(() => Money.create(-1, "USD")).toThrow(InvalidMoneyError);
     });
   });
 
-  describe('add', () => {
-    it('adds two money values with same currency', () => {
-      const a = Money.create(10, 'USD');
-      const b = Money.create(20, 'USD');
+  describe("add", () => {
+    it("adds two money values with same currency", () => {
+      const a = Money.create(10, "USD");
+      const b = Money.create(20, "USD");
 
       const result = a.add(b);
 
       expect(result.amount).toBe(30);
-      expect(result.currency).toBe('USD');
+      expect(result.currency).toBe("USD");
     });
 
-    it('throws for different currencies', () => {
-      const usd = Money.create(10, 'USD');
-      const eur = Money.create(10, 'EUR');
+    it("throws for different currencies", () => {
+      const usd = Money.create(10, "USD");
+      const eur = Money.create(10, "EUR");
 
       expect(() => usd.add(eur)).toThrow(CurrencyMismatchError);
     });
   });
 
-  describe('equality', () => {
-    it('equals money with same amount and currency', () => {
-      const a = Money.create(10, 'USD');
-      const b = Money.create(10, 'USD');
+  describe("equality", () => {
+    it("equals money with same amount and currency", () => {
+      const a = Money.create(10, "USD");
+      const b = Money.create(10, "USD");
 
       expect(a.equals(b)).toBe(true);
     });
 
-    it('not equal with different amount', () => {
-      const a = Money.create(10, 'USD');
-      const b = Money.create(20, 'USD');
+    it("not equal with different amount", () => {
+      const a = Money.create(10, "USD");
+      const b = Money.create(20, "USD");
 
       expect(a.equals(b)).toBe(false);
     });
@@ -236,7 +237,7 @@ Test use cases with mocked ports.
 
 ```typescript
 // tests/application/place_order/handler.test.ts
-describe('PlaceOrderHandler', () => {
+describe("PlaceOrderHandler", () => {
   let handler: PlaceOrderHandler;
   let orderRepo: MockOrderRepository;
   let productRepo: MockProductRepository;
@@ -250,15 +251,15 @@ describe('PlaceOrderHandler', () => {
     handler = new PlaceOrderHandler(orderRepo, productRepo, eventPublisher);
   });
 
-  it('creates order with items and saves', async () => {
-    productRepo.addProduct(createTestProduct('prod-1', 10.00));
-    productRepo.addProduct(createTestProduct('prod-2', 20.00));
+  it("creates order with items and saves", async () => {
+    productRepo.addProduct(createTestProduct("prod-1", 10.0));
+    productRepo.addProduct(createTestProduct("prod-2", 20.0));
 
     const command: PlaceOrderCommand = {
-      customerId: 'cust-123',
+      customerId: "cust-123",
       items: [
-        { productId: 'prod-1', quantity: 2 },
-        { productId: 'prod-2', quantity: 1 },
+        { productId: "prod-1", quantity: 2 },
+        { productId: "prod-2", quantity: 1 },
       ],
     };
 
@@ -272,12 +273,12 @@ describe('PlaceOrderHandler', () => {
     expect(savedOrder!.total.amount).toBe(40); // 2*10 + 1*20
   });
 
-  it('publishes domain events', async () => {
-    productRepo.addProduct(createTestProduct('prod-1', 10.00));
+  it("publishes domain events", async () => {
+    productRepo.addProduct(createTestProduct("prod-1", 10.0));
 
     const command: PlaceOrderCommand = {
-      customerId: 'cust-123',
-      items: [{ productId: 'prod-1', quantity: 1 }],
+      customerId: "cust-123",
+      items: [{ productId: "prod-1", quantity: 1 }],
     };
 
     await handler.handle(command);
@@ -286,22 +287,22 @@ describe('PlaceOrderHandler', () => {
     expect(eventPublisher.publishedEvents[0]).toBeInstanceOf(OrderCreated);
   });
 
-  it('throws when product not found', async () => {
+  it("throws when product not found", async () => {
     const command: PlaceOrderCommand = {
-      customerId: 'cust-123',
-      items: [{ productId: 'nonexistent', quantity: 1 }],
+      customerId: "cust-123",
+      items: [{ productId: "nonexistent", quantity: 1 }],
     };
 
     await expect(handler.handle(command)).rejects.toThrow(ProductNotFoundError);
   });
 
-  it('rolls back on error', async () => {
-    productRepo.addProduct(createTestProduct('prod-1', 10.00));
+  it("rolls back on error", async () => {
+    productRepo.addProduct(createTestProduct("prod-1", 10.0));
     orderRepo.simulateErrorOnSave();
 
     const command: PlaceOrderCommand = {
-      customerId: 'cust-123',
-      items: [{ productId: 'prod-1', quantity: 1 }],
+      customerId: "cust-123",
+      items: [{ productId: "prod-1", quantity: 1 }],
     };
 
     await expect(handler.handle(command)).rejects.toThrow();
@@ -315,18 +316,18 @@ class MockOrderRepository implements IOrderRepository {
   private shouldError = false;
 
   async findById(id: OrderId): Promise<Order | null> {
-    return this.savedOrders.find(o => o.id.equals(id)) ?? null;
+    return this.savedOrders.find((o) => o.id.equals(id)) ?? null;
   }
 
   async save(order: Order): Promise<void> {
     if (this.shouldError) {
-      throw new Error('Simulated save error');
+      throw new Error("Simulated save error");
     }
     this.savedOrders.push(order);
   }
 
   async delete(order: Order): Promise<void> {
-    const index = this.savedOrders.findIndex(o => o.id.equals(order.id));
+    const index = this.savedOrders.findIndex((o) => o.id.equals(order.id));
     if (index >= 0) {
       this.savedOrders.splice(index, 1);
     }
@@ -358,7 +359,7 @@ Test adapters with real infrastructure (databases, message brokers).
 
 ```typescript
 // tests/integration/postgres/order_repository.test.ts
-describe('PostgresOrderRepository', () => {
+describe("PostgresOrderRepository", () => {
   let pool: Pool;
   let repository: PostgresOrderRepository;
 
@@ -368,17 +369,17 @@ describe('PostgresOrderRepository', () => {
   });
 
   beforeEach(async () => {
-    await pool.query('TRUNCATE orders, order_items CASCADE');
+    await pool.query("TRUNCATE orders, order_items CASCADE");
   });
 
   afterAll(async () => {
     await pool.end();
   });
 
-  describe('save and findById', () => {
-    it('persists and retrieves order', async () => {
-      const order = Order.create(CustomerId.from('cust-123'));
-      order.addItem(ProductId.from('prod-1'), Quantity.create(2), Money.create(10, 'USD'));
+  describe("save and findById", () => {
+    it("persists and retrieves order", async () => {
+      const order = Order.create(CustomerId.from("cust-123"));
+      order.addItem(ProductId.from("prod-1"), Quantity.create(2), Money.create(10, "USD"));
 
       await repository.save(order);
       const retrieved = await repository.findById(order.id);
@@ -389,28 +390,28 @@ describe('PostgresOrderRepository', () => {
       expect(retrieved!.items[0].quantity.value).toBe(2);
     });
 
-    it('updates existing order', async () => {
-      const order = Order.create(CustomerId.from('cust-123'));
-      order.addItem(ProductId.from('prod-1'), Quantity.create(1), Money.create(10, 'USD'));
+    it("updates existing order", async () => {
+      const order = Order.create(CustomerId.from("cust-123"));
+      order.addItem(ProductId.from("prod-1"), Quantity.create(1), Money.create(10, "USD"));
       await repository.save(order);
 
-      order.addItem(ProductId.from('prod-2'), Quantity.create(3), Money.create(20, 'USD'));
+      order.addItem(ProductId.from("prod-2"), Quantity.create(3), Money.create(20, "USD"));
       await repository.save(order);
 
       const retrieved = await repository.findById(order.id);
       expect(retrieved!.items).toHaveLength(2);
     });
 
-    it('returns null for nonexistent order', async () => {
-      const result = await repository.findById(OrderId.from('nonexistent'));
+    it("returns null for nonexistent order", async () => {
+      const result = await repository.findById(OrderId.from("nonexistent"));
 
       expect(result).toBeNull();
     });
   });
 
-  describe('delete', () => {
-    it('removes order from database', async () => {
-      const order = Order.create(CustomerId.from('cust-123'));
+  describe("delete", () => {
+    it("removes order from database", async () => {
+      const order = Order.create(CustomerId.from("cust-123"));
       await repository.save(order);
 
       await repository.delete(order);
@@ -426,7 +427,7 @@ describe('PostgresOrderRepository', () => {
 
 ```typescript
 // tests/integration/http/orders_api.test.ts
-describe('Orders API', () => {
+describe("Orders API", () => {
   let app: Express;
   let pool: Pool;
 
@@ -439,7 +440,7 @@ describe('Orders API', () => {
     await db.truncate("orders", "order_items", "products");
     await db.products.insertMany([
       { id: "prod-1", name: "Product 1", price: 1000 },
-      { id: "prod-2", name: "Product 2", price: 2000 }
+      { id: "prod-2", name: "Product 2", price: 2000 },
     ]);
   });
 
@@ -447,15 +448,15 @@ describe('Orders API', () => {
     await pool.end();
   });
 
-  describe('POST /orders', () => {
-    it('creates order and returns 201', async () => {
+  describe("POST /orders", () => {
+    it("creates order and returns 201", async () => {
       const response = await request(app)
-        .post('/orders')
+        .post("/orders")
         .send({
-          customer_id: 'cust-123',
+          customer_id: "cust-123",
           items: [
-            { product_id: 'prod-1', quantity: 2 },
-            { product_id: 'prod-2', quantity: 1 },
+            { product_id: "prod-1", quantity: 2 },
+            { product_id: "prod-2", quantity: 1 },
           ],
         });
 
@@ -463,26 +464,26 @@ describe('Orders API', () => {
       expect(response.body.id).toBeDefined();
     });
 
-    it('returns 400 for invalid product', async () => {
+    it("returns 400 for invalid product", async () => {
       const response = await request(app)
-        .post('/orders')
+        .post("/orders")
         .send({
-          customer_id: 'cust-123',
-          items: [{ product_id: 'nonexistent', quantity: 1 }],
+          customer_id: "cust-123",
+          items: [{ product_id: "nonexistent", quantity: 1 }],
         });
 
       expect(response.status).toBe(400);
-      expect(response.body.error).toContain('Product not found');
+      expect(response.body.error).toContain("Product not found");
     });
   });
 
-  describe('GET /orders/:id', () => {
-    it('returns order details', async () => {
+  describe("GET /orders/:id", () => {
+    it("returns order details", async () => {
       const createResponse = await request(app)
-        .post('/orders')
+        .post("/orders")
         .send({
-          customer_id: 'cust-123',
-          items: [{ product_id: 'prod-1', quantity: 2 }],
+          customer_id: "cust-123",
+          items: [{ product_id: "prod-1", quantity: 2 }],
         });
 
       const orderId = createResponse.body.id;
@@ -493,8 +494,8 @@ describe('Orders API', () => {
       expect(response.body.items).toHaveLength(1);
     });
 
-    it('returns 404 for nonexistent order', async () => {
-      const response = await request(app).get('/orders/nonexistent');
+    it("returns 404 for nonexistent order", async () => {
+      const response = await request(app).get("/orders/nonexistent");
 
       expect(response.status).toBe(404);
     });
@@ -510,66 +511,44 @@ Verify architectural rules are followed.
 
 ```typescript
 // tests/architecture/dependency_rules.test.ts
-import { filesOfProject } from 'ts-arch';
+import { filesOfProject } from "ts-arch";
 
-describe('Architecture', () => {
-  describe('Dependency Rules', () => {
-    it('domain should not depend on application', async () => {
-      const rule = filesOfProject()
-        .inFolder('domain')
-        .shouldNot()
-        .dependOnFiles()
-        .inFolder('application');
+describe("Architecture", () => {
+  describe("Dependency Rules", () => {
+    it("domain should not depend on application", async () => {
+      const rule = filesOfProject().inFolder("domain").shouldNot().dependOnFiles().inFolder("application");
 
       await expect(rule).toPassAsync();
     });
 
-    it('domain should not depend on infrastructure', async () => {
-      const rule = filesOfProject()
-        .inFolder('domain')
-        .shouldNot()
-        .dependOnFiles()
-        .inFolder('infrastructure');
+    it("domain should not depend on infrastructure", async () => {
+      const rule = filesOfProject().inFolder("domain").shouldNot().dependOnFiles().inFolder("infrastructure");
 
       await expect(rule).toPassAsync();
     });
 
-    it('application should not depend on infrastructure', async () => {
-      const rule = filesOfProject()
-        .inFolder('application')
-        .shouldNot()
-        .dependOnFiles()
-        .inFolder('infrastructure');
+    it("application should not depend on infrastructure", async () => {
+      const rule = filesOfProject().inFolder("application").shouldNot().dependOnFiles().inFolder("infrastructure");
 
       await expect(rule).toPassAsync();
     });
 
-    it('domain should have no external framework dependencies', async () => {
-      const rule = filesOfProject()
-        .inFolder('domain')
-        .shouldNot()
-        .dependOnFiles()
-        .matchingPattern('node_modules/(express|pg|axios|typeorm)/');
+    it("domain should have no external framework dependencies", async () => {
+      const rule = filesOfProject().inFolder("domain").shouldNot().dependOnFiles().matchingPattern("node_modules/(express|pg|axios|typeorm)/");
 
       await expect(rule).toPassAsync();
     });
   });
 
-  describe('Naming Conventions', () => {
-    it('repositories should be named *Repository', async () => {
-      const rule = filesOfProject()
-        .inFolder('domain/**/repository')
-        .should()
-        .matchPattern('.*Repository\\.ts$');
+  describe("Naming Conventions", () => {
+    it("repositories should be named *Repository", async () => {
+      const rule = filesOfProject().inFolder("domain/**/repository").should().matchPattern(".*Repository\\.ts$");
 
       await expect(rule).toPassAsync();
     });
 
-    it('domain events should be named in past tense', async () => {
-      const rule = filesOfProject()
-        .inFolder('domain/**/events')
-        .should()
-        .matchPattern('.*(Created|Updated|Deleted|Confirmed|Shipped|Cancelled)\\.ts$');
+    it("domain events should be named in past tense", async () => {
+      const rule = filesOfProject().inFolder("domain/**/events").should().matchPattern(".*(Created|Updated|Deleted|Confirmed|Shipped|Cancelled)\\.ts$");
 
       await expect(rule).toPassAsync();
     });
@@ -623,9 +602,9 @@ tests/
 ```typescript
 // tests/fixtures/order_fixtures.ts
 export class OrderBuilder {
-  private customerId: CustomerId = CustomerId.from('default-customer');
+  private customerId: CustomerId = CustomerId.from("default-customer");
   private items: Array<{ productId: ProductId; quantity: Quantity; price: Money }> = [];
-  private status: 'draft' | 'confirmed' | 'shipped' | 'cancelled' = 'draft';
+  private status: "draft" | "confirmed" | "shipped" | "cancelled" = "draft";
 
   withCustomer(id: string): this {
     this.customerId = CustomerId.from(id);
@@ -636,13 +615,13 @@ export class OrderBuilder {
     this.items.push({
       productId: ProductId.from(productId),
       quantity: Quantity.create(quantity),
-      price: Money.create(price, 'USD'),
+      price: Money.create(price, "USD"),
     });
     return this;
   }
 
   confirmed(): this {
-    this.status = 'confirmed';
+    this.status = "confirmed";
     return this;
   }
 
@@ -653,7 +632,7 @@ export class OrderBuilder {
       order.addItem(item.productId, item.quantity, item.price);
     }
 
-    if (this.status === 'confirmed') {
+    if (this.status === "confirmed") {
       order.setShippingAddress(new AddressBuilder().build());
       order.confirm();
     }
@@ -664,12 +643,7 @@ export class OrderBuilder {
 }
 
 // Usage
-const order = new OrderBuilder()
-  .withCustomer('cust-123')
-  .withItem('prod-1', 2, 10.00)
-  .withItem('prod-2', 1, 25.00)
-  .confirmed()
-  .build();
+const order = new OrderBuilder().withCustomer("cust-123").withItem("prod-1", 2, 10.0).withItem("prod-2", 1, 25.0).confirmed().build();
 ```
 
 ---

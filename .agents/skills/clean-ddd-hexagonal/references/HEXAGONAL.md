@@ -1,6 +1,7 @@
 # Hexagonal Architecture (Ports & Adapters)
 
 > Sources:
+>
 > - [Hexagonal Architecture](https://alistair.cockburn.us/hexagonal-architecture/) — Alistair Cockburn (2005)
 > - [Hexagonal Architecture Explained](https://openlibrary.org/works/OL38388131W) — Alistair Cockburn & Juan Manuel Garrido de Paz (2024)
 > - [Interview with Alistair Cockburn](https://jmgarridopaz.github.io/content/interviewalistair.html) — Juan Manuel Garrido de Paz
@@ -128,9 +129,9 @@ Convert external inputs to port calls.
 
 ```typescript
 // infrastructure/adapters/driver/rest/order_controller.ts
-import { Router, Request, Response } from 'express';
-import { IPlaceOrderPort } from '@/application/ports/driver/place_order_port';
-import { IGetOrderPort } from '@/application/ports/driver/get_order_port';
+import { Router, Request, Response } from "express";
+import { IPlaceOrderPort } from "@/application/ports/driver/place_order_port";
+import { IGetOrderPort } from "@/application/ports/driver/get_order_port";
 
 export class OrderController {
   constructor(
@@ -155,7 +156,7 @@ export class OrderController {
     const order = await this.getOrder.execute({ orderId: req.params.id });
 
     if (!order) {
-      res.status(404).json({ error: 'Order not found' });
+      res.status(404).json({ error: "Order not found" });
       return;
     }
 
@@ -164,18 +165,16 @@ export class OrderController {
 }
 
 // infrastructure/adapters/driver/grpc/order_service.ts
-import { IPlaceOrderPort } from '@/application/ports/driver/place_order_port';
-import { OrderServiceServer, PlaceOrderRequest, PlaceOrderResponse } from './generated/order_pb';
+import { IPlaceOrderPort } from "@/application/ports/driver/place_order_port";
+import { OrderServiceServer, PlaceOrderRequest, PlaceOrderResponse } from "./generated/order_pb";
 
 export class GrpcOrderService implements OrderServiceServer {
   constructor(private readonly placeOrder: IPlaceOrderPort) {}
 
-  async placeOrder(
-    request: PlaceOrderRequest,
-  ): Promise<PlaceOrderResponse> {
+  async placeOrder(request: PlaceOrderRequest): Promise<PlaceOrderResponse> {
     const command: PlaceOrderCommand = {
       customerId: request.getCustomerId(),
-      items: request.getItemsList().map(item => ({
+      items: request.getItemsList().map((item) => ({
         productId: item.getProductId(),
         quantity: item.getQuantity(),
       })),
@@ -190,15 +189,15 @@ export class GrpcOrderService implements OrderServiceServer {
 }
 
 // infrastructure/adapters/driver/cli/place_order_command.ts
-import { Command } from 'commander';
-import { IPlaceOrderPort } from '@/application/ports/driver/place_order_port';
+import { Command } from "commander";
+import { IPlaceOrderPort } from "@/application/ports/driver/place_order_port";
 
 export function createPlaceOrderCommand(placeOrder: IPlaceOrderPort): Command {
-  return new Command('place-order')
-    .description('Place a new order')
-    .requiredOption('-c, --customer <id>', 'Customer ID')
-    .requiredOption('-p, --product <id>', 'Product ID')
-    .requiredOption('-q, --quantity <number>', 'Quantity', parseInt)
+  return new Command("place-order")
+    .description("Place a new order")
+    .requiredOption("-c, --customer <id>", "Customer ID")
+    .requiredOption("-p, --product <id>", "Product ID")
+    .requiredOption("-q, --quantity <number>", "Quantity", parseInt)
     .action(async (options) => {
       const orderId = await placeOrder.execute({
         customerId: options.customer,
@@ -210,7 +209,7 @@ export function createPlaceOrderCommand(placeOrder: IPlaceOrderPort): Command {
 }
 
 // infrastructure/adapters/driver/message/order_message_handler.ts
-import { IPlaceOrderPort } from '@/application/ports/driver/place_order_port';
+import { IPlaceOrderPort } from "@/application/ports/driver/place_order_port";
 
 export class OrderMessageHandler {
   constructor(private readonly placeOrder: IPlaceOrderPort) {}
@@ -314,21 +313,23 @@ class RabbitMQEventPublisher implements IEventPublisherPort:
 ### Alistair Cockburn's Recommended Pattern
 
 **Ports:** `For[Doing][Something]`
+
 - Driver: `ForPlacingOrders`, `ForConfiguringSettings`
 - Driven: `ForStoringUsers`, `ForNotifyingAlerts`
 
 **Adapters:** Reference the technology
+
 - `CliCommandForPlacingOrders`
 - `MysqlDatabaseForStoringUsers`
 - `SlackNotifierForAlerts`
 
 ### Alternative Patterns
 
-| Pattern | Port | Adapter |
-|---------|------|---------|
-| Interface/Impl | `IOrderRepository` | `PostgresOrderRepository` |
-| Port suffix | `OrderRepositoryPort` | `PostgresOrderAdapter` |
-| Using prefix | `IOrderStorage` | `OrderStorageUsingPostgres` |
+| Pattern        | Port                  | Adapter                     |
+| -------------- | --------------------- | --------------------------- |
+| Interface/Impl | `IOrderRepository`    | `PostgresOrderRepository`   |
+| Port suffix    | `OrderRepositoryPort` | `PostgresOrderAdapter`      |
+| Using prefix   | `IOrderStorage`       | `OrderStorageUsingPostgres` |
 
 ### Project Structure
 
@@ -411,35 +412,25 @@ The power of hexagonal architecture: swap adapters without changing the core.
 // infrastructure/config/container.ts
 
 function configureDevelopment(container: Container): void {
-  container.bind<IOrderRepositoryPort>('IOrderRepositoryPort')
-    .to(InMemoryOrderRepository);
-  container.bind<IEventPublisherPort>('IEventPublisherPort')
-    .to(InMemoryEventPublisher);
-  container.bind<IPaymentGatewayPort>('IPaymentGatewayPort')
-    .to(FakePaymentGateway);
+  container.bind<IOrderRepositoryPort>("IOrderRepositoryPort").to(InMemoryOrderRepository);
+  container.bind<IEventPublisherPort>("IEventPublisherPort").to(InMemoryEventPublisher);
+  container.bind<IPaymentGatewayPort>("IPaymentGatewayPort").to(FakePaymentGateway);
 }
 
 function configureTest(container: Container): void {
-  container.bind<IOrderRepositoryPort>('IOrderRepositoryPort')
-    .to(InMemoryOrderRepository);
-  container.bind<IEventPublisherPort>('IEventPublisherPort')
-    .to(SpyEventPublisher);
-  container.bind<IPaymentGatewayPort>('IPaymentGatewayPort')
-    .to(MockPaymentGateway);
+  container.bind<IOrderRepositoryPort>("IOrderRepositoryPort").to(InMemoryOrderRepository);
+  container.bind<IEventPublisherPort>("IEventPublisherPort").to(SpyEventPublisher);
+  container.bind<IPaymentGatewayPort>("IPaymentGatewayPort").to(MockPaymentGateway);
 }
 
 function configureProduction(container: Container): void {
-  container.bind<IOrderRepositoryPort>('IOrderRepositoryPort')
-    .to(PostgresOrderRepository);
-  container.bind<IEventPublisherPort>('IEventPublisherPort')
-    .to(RabbitMQEventPublisher);
-  container.bind<IPaymentGatewayPort>('IPaymentGatewayPort')
-    .to(StripePaymentGateway);
+  container.bind<IOrderRepositoryPort>("IOrderRepositoryPort").to(PostgresOrderRepository);
+  container.bind<IEventPublisherPort>("IEventPublisherPort").to(RabbitMQEventPublisher);
+  container.bind<IPaymentGatewayPort>("IPaymentGatewayPort").to(StripePaymentGateway);
 }
 
 function configureWithMongoDB(container: Container): void {
-  container.bind<IOrderRepositoryPort>('IOrderRepositoryPort')
-    .to(MongoDBOrderRepository);
+  container.bind<IOrderRepositoryPort>("IOrderRepositoryPort").to(MongoDBOrderRepository);
 }
 ```
 

@@ -1,27 +1,21 @@
 import { ShieldAlertIcon } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 
-import { WorkspacePage } from "@/components/workspace-page";
 import { AssistantGovernanceSettings } from "@/components/admin/assistant-governance-settings";
 import { ChatAutomationSettings } from "@/components/admin/chat-automation-settings";
-import { RegistrationSettings } from "@/components/admin/registration-settings";
 import { RagSettings } from "@/components/admin/rag-settings";
+import { RegistrationSettings } from "@/components/admin/registration-settings";
 import { SidebarNavigationSettings } from "@/components/admin/sidebar-navigation-settings";
 import { SystemHealthCard } from "@/components/admin/system-health-card";
 import { UsageImpactSettings } from "@/components/admin/usage-impact-settings";
 import { WorkflowBuilderSettings } from "@/components/admin/workflow-builder-settings";
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@/components/ui/empty";
+import { Empty,EmptyDescription,EmptyHeader,EmptyMedia,EmptyTitle } from "@/components/ui/empty";
+import { WorkspacePage } from "@/components/workspace-page";
 import { isPlatformAdminSession } from "@/modules/admin/auth";
 import { getRegistrationSetting } from "@/modules/admin/use-cases";
-import { getUsageImpactSetting } from "@/modules/provider/usage-impact-settings";
-import { getDefaultRagConfig } from "@/modules/knowledge/rag-config";
 import { getSession } from "@/modules/auth/session";
+import { getDefaultRagConfig } from "@/modules/knowledge/rag-config";
+import { getUsageImpactSetting } from "@/modules/provider/usage-impact-settings";
 
 export default async function AdminSettingsPage() {
   const t = await getTranslations("admin");
@@ -44,18 +38,10 @@ export default async function AdminSettingsPage() {
     );
   }
 
-  const [registration, usageImpact, ragDefaults] = await Promise.all([
-    getRegistrationSetting(),
-    getUsageImpactSetting(),
-    getDefaultRagConfig(),
-  ]);
+  const [registration, usageImpact, ragDefaults] = await Promise.all([getRegistrationSetting(), getUsageImpactSetting(), getDefaultRagConfig()]);
 
   return (
-    <WorkspacePage
-      title={t("platformSettingsTitle")}
-      description={t("platformSettingsDescription")}
-      width="default"
-    >
+    <WorkspacePage title={t("platformSettingsTitle")} description={t("platformSettingsDescription")} width="default">
       <div className="flex flex-col gap-6">
         <div className="grid gap-6 lg:grid-cols-2">
           <RegistrationSettings initialState={registration} />

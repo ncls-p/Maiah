@@ -1,6 +1,6 @@
-import type { ProviderAdapter, ProviderKind } from "./adapter";
-import { openaiCompatibleAdapter } from "./openai-compatible-adapter";
+import type { ProviderAdapter,ProviderKind } from "./adapter";
 import { dragonflyAdapter } from "./dragonfly-adapter";
+import { openaiCompatibleAdapter } from "./openai-compatible-adapter";
 import { vercelAiGatewayAdapter } from "./vercel-ai-gateway-adapter";
 
 const ADAPTERS: Record<ProviderKind, ProviderAdapter> = {
@@ -14,10 +14,4 @@ export function getAdapter(kind: ProviderKind): ProviderAdapter {
   return ADAPTERS[kind] ?? openaiCompatibleAdapter;
 }
 
-export type {
-  ProviderAdapter,
-  ProviderKind,
-  ProviderRuntimeConfig,
-  ProviderHealth,
-  ModelDescriptor,
-} from "./adapter";
+export type { ModelDescriptor,ProviderAdapter,ProviderHealth,ProviderKind,ProviderRuntimeConfig } from "./adapter";

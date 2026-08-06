@@ -1,11 +1,4 @@
-import {
-  boolean,
-  pgTable,
-  timestamp,
-  uniqueIndex,
-  uuid,
-  varchar,
-} from "drizzle-orm/pg-core";
+import { boolean,pgTable,timestamp,uniqueIndex,uuid,varchar } from "drizzle-orm/pg-core";
 
 import { users } from "./auth";
 import { organizations } from "./workspace";
@@ -23,17 +16,8 @@ export const organizationBuiltinToolPolicies = pgTable(
     updatedById: uuid("updated_by_user_id").references(() => users.id, {
       onDelete: "set null",
     }),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [
-    uniqueIndex("organization_builtin_tool_policies_org_tool_unique").on(
-      table.organizationId,
-      table.toolName,
-    ),
-  ],
+  (table) => [uniqueIndex("organization_builtin_tool_policies_org_tool_unique").on(table.organizationId, table.toolName)],
 );

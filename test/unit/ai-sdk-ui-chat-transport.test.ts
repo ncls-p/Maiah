@@ -1,11 +1,7 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach,describe,expect,it,vi } from "vitest";
 
 import { streamAiSdkUIChat } from "@/hooks/ai-sdk-ui-chat-transport";
-import {
-  completeChatStream,
-  createChatUIMessageStreamResponse,
-  publishChatStreamEvent,
-} from "@/modules/chat/stream-bus";
+import { completeChatStream,createChatUIMessageStreamResponse,publishChatStreamEvent } from "@/modules/chat/stream-bus";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -40,13 +36,7 @@ describe("AI SDK UI chat transport", () => {
       onEvent: (event) => events.push(event),
     });
 
-    expect(events.map((event) => event.type)).toEqual([
-      "reasoning_start",
-      "reasoning",
-      "reasoning_end",
-      "text",
-      "done",
-    ]);
+    expect(events.map((event) => event.type)).toEqual(["reasoning_start", "reasoning", "reasoning_end", "text", "done"]);
   });
 
   it("preserves server-owned agent attribution across tool lifecycle chunks", async () => {
@@ -157,9 +147,7 @@ describe("AI SDK UI chat transport", () => {
     publishChatStreamEvent(messageId, { type: "done" });
     completeChatStream(messageId);
 
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValue(createChatUIMessageStreamResponse(messageId));
+    const fetchMock = vi.fn().mockResolvedValue(createChatUIMessageStreamResponse(messageId));
     vi.stubGlobal("fetch", fetchMock);
 
     await streamAiSdkUIChat({

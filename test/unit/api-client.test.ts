@@ -1,11 +1,6 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import { fetchJson,fetchPendingToolCount,fetchWorkspacePermissions,fetchWorkspaces } from "@/lib/api-client";
 import type { Mock } from "vitest";
-import {
-  fetchWorkspaces,
-  fetchJson,
-  fetchPendingToolCount,
-  fetchWorkspacePermissions,
-} from "@/lib/api-client";
+import { afterEach,beforeEach,describe,expect,it,vi } from "vitest";
 
 describe("api-client", () => {
   const mockFetch = vi.fn() as Mock;
@@ -26,7 +21,12 @@ describe("api-client", () => {
         json: async () => [
           {
             workspace: { id: "1", name: "WS1", slug: "ws1" },
-            organization: { id: "org-1", name: "Org1" },
+            organization: {
+              id: "org-1",
+              name: "Org1",
+              logoUrl: "data:image/png;base64,logo",
+              theme: "forest",
+            },
           },
           {
             workspace: { id: "2", name: "WS2", slug: "ws2" },
@@ -43,6 +43,9 @@ describe("api-client", () => {
         slug: "ws1",
         organizationId: "org-1",
         organizationName: "Org1",
+        organizationLogoUrl: "data:image/png;base64,logo",
+        organizationTheme: "forest",
+        organizationThemeConfig: null,
       });
     });
 
@@ -95,6 +98,9 @@ describe("api-client", () => {
         slug: "main",
         organizationId: "",
         organizationName: "Organization",
+        organizationLogoUrl: null,
+        organizationTheme: "ocean",
+        organizationThemeConfig: null,
       });
     });
 
@@ -134,9 +140,7 @@ describe("api-client", () => {
         json: async () => ({}),
       });
 
-      await expect(fetchJson("/api/test")).rejects.toThrow(
-        "Request failed: 500",
-      );
+      await expect(fetchJson("/api/test")).rejects.toThrow("Request failed: 500");
     });
 
     it("accepts request init", async () => {
@@ -192,10 +196,7 @@ describe("api-client", () => {
 
       const result = await fetchWorkspacePermissions("ws-1");
       expect(result).toEqual({ canManage: true });
-      expect(mockFetch).toHaveBeenCalledWith(
-        "/api/workspace/permissions?workspaceId=ws-1",
-        undefined,
-      );
+      expect(mockFetch).toHaveBeenCalledWith("/api/workspace/permissions?workspaceId=ws-1", undefined);
     });
   });
 });

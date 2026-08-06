@@ -1,6 +1,7 @@
 # CQRS & Domain Events
 
 > Sources:
+>
 > - [CQRS](https://martinfowler.com/bliki/CQRS.html) — Martin Fowler
 > - [Event Sourcing](https://martinfowler.com/eaaDev/EventSourcing.html) — Martin Fowler
 > - [CQRS Pattern](https://learn.microsoft.com/en-us/azure/architecture/patterns/cqrs) — Microsoft Azure
@@ -59,7 +60,7 @@ Commands represent intent to change state. They **mutate** data.
 ```typescript
 // application/commands/place_order_command.ts
 export interface PlaceOrderCommand {
-  type: 'PlaceOrder';
+  type: "PlaceOrder";
   customerId: string;
   items: Array<{
     productId: string;
@@ -68,12 +69,12 @@ export interface PlaceOrderCommand {
 }
 
 export interface ConfirmOrderCommand {
-  type: 'ConfirmOrder';
+  type: "ConfirmOrder";
   orderId: string;
 }
 
 export interface CancelOrderCommand {
-  type: 'CancelOrder';
+  type: "CancelOrder";
   orderId: string;
   reason: string;
 }
@@ -141,12 +142,7 @@ export class GetOrdersByCustomerHandler {
   constructor(private readonly readDb: IOrderReadModel) {}
 
   async handle(query: GetOrdersByCustomerQuery): Promise<PaginatedResult<OrderDTO>> {
-    return this.readDb.findByCustomer(
-      query.customerId,
-      query.status,
-      query.page ?? 1,
-      query.pageSize ?? 20
-    );
+    return this.readDb.findByCustomer(query.customerId, query.status, query.page ?? 1, query.pageSize ?? 20);
   }
 }
 ```
@@ -183,6 +179,7 @@ Separate write and read databases (optional): write is normalized for transactio
 ## Domain Events
 
 Notifications that something happened in the domain. Used for:
+
 - Updating read models
 - Cross-aggregate communication
 - Integration with other bounded contexts
@@ -208,7 +205,7 @@ export abstract class DomainEvent {
 
 // domain/order/events.ts
 export class OrderCreated extends DomainEvent {
-  readonly eventType = 'order.created';
+  readonly eventType = "order.created";
 
   constructor(
     readonly orderId: OrderId,
@@ -226,7 +223,7 @@ export class OrderCreated extends DomainEvent {
 }
 
 export class OrderConfirmed extends DomainEvent {
-  readonly eventType = 'order.confirmed';
+  readonly eventType = "order.confirmed";
 
   constructor(
     readonly orderId: OrderId,
@@ -246,7 +243,7 @@ export class OrderConfirmed extends DomainEvent {
 }
 
 export class OrderShipped extends DomainEvent {
-  readonly eventType = 'order.shipped';
+  readonly eventType = "order.shipped";
 
   constructor(
     readonly orderId: OrderId,
@@ -332,7 +329,9 @@ class OrderItemQuantityIncreased extends DomainEvent {
     readonly productId: ProductId,
     readonly oldQuantity: number,
     readonly newQuantity: number,
-  ) { super(orderId.value); }
+  ) {
+    super(orderId.value);
+  }
 }
 ```
 
@@ -345,9 +344,9 @@ class OrderItemQuantityIncreased extends DomainEvent {
 
 ```typescript
 interface OrderConfirmedIntegrationEvent {
-  eventType: 'sales.order.confirmed';
+  eventType: "sales.order.confirmed";
   eventId: string;
-  version: '1.0';
+  version: "1.0";
   occurredAt: string;
   payload: {
     orderId: string;
@@ -383,9 +382,9 @@ export class PublishOrderConfirmedIntegrationEvent {
     if (!order) return;
 
     const integrationEvent: OrderConfirmedIntegrationEvent = {
-      eventType: 'sales.order.confirmed',
+      eventType: "sales.order.confirmed",
       eventId: crypto.randomUUID(),
-      version: '1.0',
+      version: "1.0",
       occurredAt: new Date().toISOString(),
       payload: {
         orderId: order.id.value,
@@ -394,7 +393,7 @@ export class PublishOrderConfirmedIntegrationEvent {
           amount: order.total.amount,
           currency: order.total.currency,
         },
-        items: order.items.map(item => ({
+        items: order.items.map((item) => ({
           productId: item.productId.value,
           quantity: item.quantity.value,
           unitPrice: item.unitPrice.amount,
@@ -410,7 +409,7 @@ export class PublishOrderConfirmedIntegrationEvent {
       },
     };
 
-    await this.messageBroker.publish('order-events', integrationEvent);
+    await this.messageBroker.publish("order-events", integrationEvent);
   }
 }
 ```
@@ -428,10 +427,7 @@ export interface IEventHandler<T extends DomainEvent> {
 export class EventDispatcher {
   private handlers: Map<string, IEventHandler<any>[]> = new Map();
 
-  register<T extends DomainEvent>(
-    eventType: string,
-    handler: IEventHandler<T>,
-  ): void {
+  register<T extends DomainEvent>(eventType: string, handler: IEventHandler<T>): void {
     const existing = this.handlers.get(eventType) ?? [];
     existing.push(handler);
     this.handlers.set(eventType, existing);
@@ -439,7 +435,7 @@ export class EventDispatcher {
 
   async dispatch(event: DomainEvent): Promise<void> {
     const handlers = this.handlers.get(event.eventType) ?? [];
-    await Promise.all(handlers.map(h => h.handle(event)));
+    await Promise.all(handlers.map((h) => h.handle(event)));
   }
 
   async dispatchAll(events: DomainEvent[]): Promise<void> {
@@ -450,10 +446,10 @@ export class EventDispatcher {
 }
 
 const dispatcher = new EventDispatcher();
-dispatcher.register('order.created', new OrderCreatedHandler(readDb));
-dispatcher.register('order.confirmed', new OrderConfirmedHandler(readDb));
-dispatcher.register('order.confirmed', new PublishOrderConfirmedIntegrationEvent(broker, orderRepo));
-dispatcher.register('order.shipped', new SendShippingNotificationHandler(orderRepo, notifier));
+dispatcher.register("order.created", new OrderCreatedHandler(readDb));
+dispatcher.register("order.confirmed", new OrderConfirmedHandler(readDb));
+dispatcher.register("order.confirmed", new PublishOrderConfirmedIntegrationEvent(broker, orderRepo));
+dispatcher.register("order.shipped", new SendShippingNotificationHandler(orderRepo, notifier));
 ```
 
 ---
@@ -612,6 +608,7 @@ Saga: PlaceOrderSaga
 ```
 
 **Saga types:**
+
 - **Choreography:** Each service listens/publishes events (simpler, harder to trace)
 - **Orchestration:** Central coordinator manages steps (explicit, easier to debug)
 
@@ -634,6 +631,7 @@ class OrderConfirmedHandler:
 ```
 
 **Implementation options:**
+
 - Store processed message IDs in database
 - Use message broker's deduplication features
 - Design handlers to be naturally idempotent

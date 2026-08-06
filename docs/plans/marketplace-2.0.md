@@ -254,28 +254,31 @@ APRÈS : draft → publish → published (immédiat, public)
 
 ## Résumé des livrables
 
-| # | Composant | Ce qui change | Statut |
-|---|-----------|---------------|--------|
-| 1 | `schema.ts` | Nouvelle table `marketplace_item_shares`, champs ajoutés sur `marketplace_items`, types ajoutés | ✅ Fait |
-| 2 | `use-cases.ts` | `publishMarketplaceItem`, `shareMarketplaceItem`, `featureMarketplaceItem`, `listMarketplaceItems` refondu | ✅ Fait |
-| 3 | API routes | Nouvelles routes publish/share/feature, submit supprimé | ✅ Fait |
-| 4 | Marketplace page | Refonte complète : recherche, filtres, onglets, cards, modal partage | ✅ Fait |
-| 5 | Page détail item | Nouvelle page `/marketplace/items/[itemId]` | ✅ Fait |
-| 6 | Skills & Tools → Marketplace | Support pour publier/installer skills et custom tools | ✅ Fait |
-| 7 | Migration DB | `drizzle-kit generate` → `0009_polite_ken_ellis.sql` | ✅ Générée |
-| 8 | Tests unitaires | 29 tests dans `test/unit/marketplace-use-cases.test.ts` | ✅ 29/29 passants |
+| #   | Composant                    | Ce qui change                                                                                              | Statut            |
+| --- | ---------------------------- | ---------------------------------------------------------------------------------------------------------- | ----------------- |
+| 1   | `schema.ts`                  | Nouvelle table `marketplace_item_shares`, champs ajoutés sur `marketplace_items`, types ajoutés            | ✅ Fait           |
+| 2   | `use-cases.ts`               | `publishMarketplaceItem`, `shareMarketplaceItem`, `featureMarketplaceItem`, `listMarketplaceItems` refondu | ✅ Fait           |
+| 3   | API routes                   | Nouvelles routes publish/share/feature, submit supprimé                                                    | ✅ Fait           |
+| 4   | Marketplace page             | Refonte complète : recherche, filtres, onglets, cards, modal partage                                       | ✅ Fait           |
+| 5   | Page détail item             | Nouvelle page `/marketplace/items/[itemId]`                                                                | ✅ Fait           |
+| 6   | Skills & Tools → Marketplace | Support pour publier/installer skills et custom tools                                                      | ✅ Fait           |
+| 7   | Migration DB                 | `drizzle-kit generate` → `0009_polite_ken_ellis.sql`                                                       | ✅ Générée        |
+| 8   | Tests unitaires              | 29 tests dans `test/unit/marketplace-use-cases.test.ts`                                                    | ✅ 29/29 passants |
 
 ---
 
 ## Fichiers modifiés
 
 ### Schema
+
 - `src/server/infrastructure/db/schema.ts` — champs `isFeatured`, `featuredOrder`, `featuredAt`, `publishedAt`, `totalDownloads`, `tagsJson` ; enum étendu ; table `marketplaceItemShares`
 
 ### Use Cases
+
 - `src/modules/marketplace/use-cases.ts` — `listMarketplaceItems`, `publishMarketplaceItem`, `shareMarketplaceItem`, `unshareMarketplaceItem`, `featureMarketplaceItem`, `unfeatureMarketplaceItem`, `updateMarketplaceItem`, `deleteMarketplaceItem`, `adminModerateItem`, `installMarketplaceItem` (étendu pour skills/tools)
 
 ### API Routes
+
 - `src/app/api/marketplace/items/route.ts` — GET liste + filtres, POST créer draft
 - `src/app/api/marketplace/items/[itemId]/route.ts` — GET détail, PUT update, DELETE archive
 - `src/app/api/marketplace/items/[itemId]/publish/route.ts` — POST publier
@@ -284,13 +287,16 @@ APRÈS : draft → publish → published (immédiat, public)
 - `src/app/api/marketplace/items/[itemId]/moderate/route.ts` — PUT modération admin
 
 ### UI
+
 - `src/app/[locale]/(workspace)/marketplace/page.tsx` — refonte complète : recherche, filtres, onglets, cards, modal partage
 - `src/app/[locale]/(workspace)/marketplace/items/[itemId]/page.tsx` — page détail item
 
 ### Migration
+
 - `src/server/infrastructure/db/migrations/0009_polite_ken_ellis.sql`
 
 ### Tests
+
 - `test/unit/marketplace-use-cases.test.ts` — 29 tests couvrant tous les use cases marketplace
 
 ---

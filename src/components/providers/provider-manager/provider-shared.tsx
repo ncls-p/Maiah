@@ -4,61 +4,25 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
-import { KIND_ICONS, kindAccent } from "./constants";
+import { KIND_ICONS,kindAccent } from "./constants";
 import type { ProviderKind } from "./types";
-import { formatNumber, timeAgo } from "./utils";
+import { formatNumber,timeAgo } from "./utils";
 
 function CapabilityBadge({ label }: { label: string }) {
-  return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-      {label}
-    </span>
-  );
+  return <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{label}</span>;
 }
 
-const MODEL_CAPABILITY_KEYS = [
-  "text",
-  "vision",
-  "tools",
-  "reasoning",
-  "embeddings",
-  "audio",
-] as const;
+const MODEL_CAPABILITY_KEYS = ["text", "vision", "tools", "reasoning", "embeddings", "audio"] as const;
 
-export function ModelCapabilities({
-  capabilities,
-  contextWindow,
-  maxOutputTokens,
-  inputTokenCost,
-  outputTokenCost,
-  hostedBy,
-  enabled,
-}: {
-  capabilities?: Record<string, boolean> | null;
-  contextWindow?: number | null;
-  maxOutputTokens?: number | null;
-  inputTokenCost?: string | null;
-  outputTokenCost?: string | null;
-  hostedBy?: string | null;
-  enabled?: boolean;
-}) {
+export function ModelCapabilities({ capabilities, contextWindow, maxOutputTokens, inputTokenCost, outputTokenCost, hostedBy, enabled }: { capabilities?: Record<string, boolean> | null; contextWindow?: number | null; maxOutputTokens?: number | null; inputTokenCost?: string | null; outputTokenCost?: string | null; hostedBy?: string | null; enabled?: boolean }) {
   const t = useTranslations("providers.manager");
   const caps = capabilities ?? {};
   const contextLabel = formatNumber(contextWindow);
   const maxOutLabel = formatNumber(maxOutputTokens);
 
-  const metadataItems = [
-    hostedBy,
-    contextLabel,
-    maxOutLabel,
-    inputTokenCost,
-    outputTokenCost,
-  ];
+  const metadataItems = [hostedBy, contextLabel, maxOutLabel, inputTokenCost, outputTokenCost];
   const visibleCapabilities = MODEL_CAPABILITY_KEYS.filter((key) => caps[key]);
-  const hasAny =
-    enabled === false ||
-    metadataItems.some(Boolean) ||
-    visibleCapabilities.length > 0;
+  const hasAny = enabled === false || metadataItems.some(Boolean) || visibleCapabilities.length > 0;
 
   if (!hasAny) return null;
 
@@ -74,26 +38,10 @@ export function ModelCapabilities({
           {hostedBy}
         </Badge>
       ) : null}
-      {contextLabel ? (
-        <span className="text-xs text-muted-foreground">
-          {t("contextWindow", { value: contextLabel })}
-        </span>
-      ) : null}
-      {maxOutLabel ? (
-        <span className="text-xs text-muted-foreground">
-          {t("maxOutput", { value: maxOutLabel })}
-        </span>
-      ) : null}
-      {inputTokenCost ? (
-        <span className="text-xs text-muted-foreground">
-          ↗ {inputTokenCost}
-        </span>
-      ) : null}
-      {outputTokenCost ? (
-        <span className="text-xs text-muted-foreground">
-          ↘ {outputTokenCost}
-        </span>
-      ) : null}
+      {contextLabel ? <span className="text-xs text-muted-foreground">{t("contextWindow", { value: contextLabel })}</span> : null}
+      {maxOutLabel ? <span className="text-xs text-muted-foreground">{t("maxOutput", { value: maxOutLabel })}</span> : null}
+      {inputTokenCost ? <span className="text-xs text-muted-foreground">↗ {inputTokenCost}</span> : null}
+      {outputTokenCost ? <span className="text-xs text-muted-foreground">↘ {outputTokenCost}</span> : null}
       {visibleCapabilities.map((capability) => (
         <CapabilityBadge key={capability} label={capability} />
       ))}
@@ -101,61 +49,25 @@ export function ModelCapabilities({
   );
 }
 
-export function HealthIndicator({
-  status,
-  lastChecked,
-}: {
-  status: string | null;
-  lastChecked: string | null;
-}) {
+export function HealthIndicator({ status, lastChecked }: { status: string | null; lastChecked: string | null }) {
   const t = useTranslations("providers.manager");
-  const dotColor =
-    status === "healthy"
-      ? "bg-success"
-      : status === "unhealthy"
-        ? "bg-destructive"
-        : "bg-muted-foreground/40";
-  const label =
-    status === "healthy"
-      ? t("healthOnline")
-      : status === "unhealthy"
-        ? t("healthFailed")
-        : t("healthUnknown");
+  const dotColor = status === "healthy" ? "bg-success" : status === "unhealthy" ? "bg-destructive" : "bg-muted-foreground/40";
+  const label = status === "healthy" ? t("healthOnline") : status === "unhealthy" ? t("healthFailed") : t("healthUnknown");
 
   return (
     <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-      <span
-        className={cn("size-2 shrink-0 rounded-full", dotColor)}
-        aria-hidden="true"
-      />
+      <span className={cn("size-2 shrink-0 rounded-full", dotColor)} aria-hidden="true" />
       {label}
-      {lastChecked ? (
-        <span className="hidden text-muted-foreground/70 sm:inline">
-          · {timeAgo(lastChecked)}
-        </span>
-      ) : null}
+      {lastChecked ? <span className="hidden text-muted-foreground/70 sm:inline">· {timeAgo(lastChecked)}</span> : null}
     </span>
   );
 }
 
-export function ProviderTypeIcon({
-  kind,
-  className,
-}: {
-  kind: ProviderKind;
-  className?: string;
-}) {
+export function ProviderTypeIcon({ kind, className }: { kind: ProviderKind; className?: string }) {
   const Icon = KIND_ICONS[kind];
   const colors = kindAccent(kind);
   return (
-    <div
-      className={cn(
-        "flex size-8 shrink-0 items-center justify-center rounded-lg",
-        colors.iconBg,
-        colors.text,
-        className,
-      )}
-    >
+    <div className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg", colors.iconBg, colors.text, className)}>
       <Icon className="size-4" aria-hidden="true" />
     </div>
   );

@@ -1,13 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest,NextResponse } from "next/server";
 import { z } from "zod";
 
 import { handleRoute } from "@/lib/route-handler";
-import {
-  getResourceAccessSnapshot,
-  IamOperationError,
-  listProjectAccessResources,
-} from "@/modules/iam/use-cases";
 import { deleteProjectAccessResource } from "@/modules/iam/resource-deletion";
+import { getResourceAccessSnapshot,IamOperationError,listProjectAccessResources } from "@/modules/iam/use-cases";
 import { ACCESS_RESOURCE_TYPES } from "@/server/domain/entities/access-resource";
 
 const querySchema = z.object({
@@ -21,10 +17,7 @@ const querySchema = z.object({
 
 function expectedIamError(error: unknown) {
   if (error instanceof IamOperationError) {
-    return NextResponse.json(
-      { error: error.message },
-      { status: error.status },
-    );
+    return NextResponse.json({ error: error.message }, { status: error.status });
   }
   return null;
 }
@@ -42,10 +35,7 @@ export async function GET(req: NextRequest) {
         limit: req.nextUrl.searchParams.get("limit") ?? undefined,
       });
       if (!parsed.success) {
-        return NextResponse.json(
-          { error: "Invalid resource query", details: parsed.error.issues },
-          { status: 400 },
-        );
+        return NextResponse.json({ error: "Invalid resource query", details: parsed.error.issues }, { status: 400 });
       }
 
       if (parsed.data.resourceId) {
@@ -93,10 +83,7 @@ export async function DELETE(req: NextRequest) {
           resourceId: req.nextUrl.searchParams.get("resourceId"),
         });
       if (!parsed.success) {
-        return NextResponse.json(
-          { error: "Invalid resource deletion request" },
-          { status: 400 },
-        );
+        return NextResponse.json({ error: "Invalid resource deletion request" }, { status: 400 });
       }
       return NextResponse.json(
         await deleteProjectAccessResource({

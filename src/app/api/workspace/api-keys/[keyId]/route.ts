@@ -1,15 +1,12 @@
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
-import { handleRoute, requireWorkspaceMemberAsync } from "@/lib/route-handler";
-import { getApiKeyAccessScope } from "@/modules/api-keys/permissions";
+import { handleRoute } from "@/lib/route-handler";
 import { revokeWorkspaceApiKey } from "@/modules/api-keys/use-cases";
+import { NextRequest,NextResponse } from "next/server";
+import { z } from "zod";
+import { getApiKeyRouteAccess } from "../api-key-route-access";
 
 const querySchema = z.object({ workspaceId: z.uuid() });
 
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: Promise<{ keyId: string }> },
-) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ keyId: string }> }) {
   return handleRoute(
     req,
     async ({ session }) => {
@@ -21,25 +18,9 @@ export async function DELETE(
         return NextResponse.json({ error: "Invalid input" }, { status: 400 });
       }
 
-      const forbidden = await requireWorkspaceMemberAsync(
-        session.user.id,
-        parsed.data.workspaceId,
-      );
-      if (forbidden) return forbidden;
-
-      const accessScope = await getApiKeyAccessScope(
-        session.user.id,
-        parsed.data.workspaceId,
-      );
-      if (!accessScope) {
-        return NextResponse.json(
-          {
-            error: "Forbidden",
-            reason: "Missing permission: apiKeys.manageOwn",
-          },
-          { status: 403 },
-        );
-      }
+      const access = await getApiKeyRouteAccess(session.user.id, parsed.data.workspaceId);
+      if (!access.ok) return access.response;
+      const { accessScope } = access;
 
       await revokeWorkspaceApiKey({
         keyId,
@@ -53,8 +34,7 @@ export async function DELETE(
     {
       logLabel: "Failed to revoke API key",
       expectedError: (error) => {
-        const message =
-          error instanceof Error ? error.message : "Internal server error";
+        const message = error instanceof Error ? error.message : "Internal server error";
         return NextResponse.json({ error: message }, { status: 400 });
       },
     },

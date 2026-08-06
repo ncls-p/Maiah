@@ -3,6 +3,11 @@ use_default_settings:
     remove:
       # SearXNG 2026.6.15 made EngineAbout strict while these default
       # disabled engines still ship `about.language`, which crashes startup.
+      - ahmia
+      - torch
+      # Wikidata performs a remote SPARQL request during initialization. The
+      # public endpoint rejects datacenter traffic and delays every startup.
+      - wikidata
       - woxikon.de synonyme
       - wikimini
 

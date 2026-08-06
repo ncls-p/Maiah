@@ -1,16 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
-import {
-  handleRoute,
-  requireWorkspacePermissionAsync,
-} from "@/lib/route-handler";
+import { handleRoute,requireWorkspacePermissionAsync } from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
 import { listBuiltInTools } from "@/modules/tool/builtin-tools";
-import {
-  listOrganizationBuiltInToolPolicies,
-  updateOrganizationBuiltInToolPolicy,
-} from "@/modules/tool/organization-builtin-tool-policies";
+import { listOrganizationBuiltInToolPolicies,updateOrganizationBuiltInToolPolicy } from "@/modules/tool/organization-builtin-tool-policies";
 import { audit } from "@/server/domain/services/audit";
+import { NextRequest,NextResponse } from "next/server";
+import { z } from "zod";
 
 const querySchema = z.object({ workspaceId: z.uuid() });
 const updateSchema = z
@@ -20,11 +14,7 @@ const updateSchema = z
     enabled: z.boolean().optional(),
     requireApproval: z.boolean().optional(),
   })
-  .refine(
-    (value) =>
-      value.enabled !== undefined || value.requireApproval !== undefined,
-    { message: "At least one policy field is required" },
-  );
+  .refine((value) => value.enabled !== undefined || value.requireApproval !== undefined, { message: "At least one policy field is required" });
 
 export async function GET(req: NextRequest) {
   return handleRoute(
@@ -38,27 +28,17 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
       }
 
-      const forbidden = await requireWorkspacePermissionAsync(
-        session.user.id,
-        parsed.data.workspaceId,
-        "tools.view",
-      );
+      const forbidden = await requireWorkspacePermissionAsync(session.user.id, parsed.data.workspaceId, "tools.view");
       if (forbidden) return forbidden;
 
-      const policies = await listOrganizationBuiltInToolPolicies(
-        parsed.data.workspaceId,
-      );
-      const policiesByName = new Map(
-        policies.map((policy) => [policy.name, policy]),
-      );
+      const policies = await listOrganizationBuiltInToolPolicies(parsed.data.workspaceId);
+      const policiesByName = new Map(policies.map((policy) => [policy.name, policy]));
 
       return NextResponse.json(
         listBuiltInTools().map((tool) => ({
           ...tool,
           enabled: policiesByName.get(tool.name)?.enabled ?? true,
-          requireApproval:
-            policiesByName.get(tool.name)?.requireApproval ??
-            tool.requiresApprovalByDefault,
+          requireApproval: policiesByName.get(tool.name)?.requireApproval ?? tool.requiresApprovalByDefault,
           configured: policiesByName.get(tool.name)?.configured ?? false,
         })),
       );
@@ -73,10 +53,7 @@ export async function PATCH(req: NextRequest) {
     async ({ session, request }) => {
       const parsed = updateSchema.safeParse(await req.json());
       if (!parsed.success) {
-        return NextResponse.json(
-          { error: "Invalid request", details: parsed.error.issues },
-          { status: 400 },
-        );
+        return NextResponse.json({ error: "Invalid request", details: parsed.error.issues }, { status: 400 });
       }
 
       if (!(await canManageTenantGlobals(session, parsed.data.workspaceId))) {

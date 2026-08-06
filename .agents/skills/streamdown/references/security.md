@@ -41,25 +41,25 @@ Streamdown is permissive by default (all prefixes, protocols, and data images al
 Only allow specific domains:
 
 ```tsx
-[harden, {
-  allowedLinkPrefixes: [
-    'https://example.com',
-    'https://docs.example.com',
-  ],
-  allowedProtocols: ['https'],
-}]
+[
+  harden,
+  {
+    allowedLinkPrefixes: ["https://example.com", "https://docs.example.com"],
+    allowedProtocols: ["https"],
+  },
+];
 ```
 
 ## Restricting Images
 
 ```tsx
-[harden, {
-  allowedImagePrefixes: [
-    'https://images.example.com',
-    'https://cdn.example.com',
-  ],
-  allowDataImages: false, // Disable data: URLs
-}]
+[
+  harden,
+  {
+    allowedImagePrefixes: ["https://images.example.com", "https://cdn.example.com"],
+    allowDataImages: false, // Disable data: URLs
+  },
+];
 ```
 
 ## Link Safety Modal
@@ -67,11 +67,13 @@ Only allow specific domains:
 **Default:** Enabled. Shows confirmation before opening links.
 
 **Disable:**
+
 ```tsx
 <Streamdown linkSafety={{ enabled: false }}>{markdown}</Streamdown>
 ```
 
 **Safelist trusted domains:**
+
 ```tsx
 <Streamdown
   linkSafety={{
@@ -86,6 +88,7 @@ Only allow specific domains:
 ```
 
 **Custom modal:**
+
 ```tsx
 <Streamdown
   linkSafety={{
@@ -128,19 +131,19 @@ Whitelist specific tags and attributes for AI-generated custom elements:
 Use the `urlTransform` prop for custom URL rewriting. The default `defaultUrlTransform` is a passthrough — URL security is handled by `rehype-sanitize` and `rehype-harden`.
 
 ```tsx
-import { Streamdown, defaultUrlTransform } from 'streamdown';
+import { Streamdown, defaultUrlTransform } from "streamdown";
 
 // Proxy images through your CDN
 <Streamdown
   urlTransform={(url, key, node) => {
-    if (key === 'src') {
+    if (key === "src") {
       return `https://your-cdn.com/proxy?url=${encodeURIComponent(url)}`;
     }
     return defaultUrlTransform(url, key, node);
   }}
 >
   {markdown}
-</Streamdown>
+</Streamdown>;
 ```
 
 ## Skipping HTML
@@ -156,11 +159,11 @@ Completely ignore raw HTML in Markdown with `skipHtml`:
 Remove `rehype-raw` to block all raw HTML:
 
 ```tsx
-import { defaultRehypePlugins } from 'streamdown';
+import { defaultRehypePlugins } from "streamdown";
 
 const { raw, ...rest } = defaultRehypePlugins;
 
-<Streamdown rehypePlugins={Object.values(rest)}>{markdown}</Streamdown>
+<Streamdown rehypePlugins={Object.values(rest)}>{markdown}</Streamdown>;
 ```
 
 ## Production Config Example
@@ -172,17 +175,20 @@ Strict config for AI-generated content:
   rehypePlugins={[
     rehypeRaw,
     [rehypeSanitize, {}],
-    [harden, {
-      allowedProtocols: ['https', 'mailto'],
-      allowedLinkPrefixes: ['https://your-domain.com'],
-      allowedImagePrefixes: ['https://your-cdn.com'],
-      allowDataImages: false,
-    }],
+    [
+      harden,
+      {
+        allowedProtocols: ["https", "mailto"],
+        allowedLinkPrefixes: ["https://your-domain.com"],
+        allowedImagePrefixes: ["https://your-cdn.com"],
+        allowDataImages: false,
+      },
+    ],
   ]}
   linkSafety={{
     enabled: true,
     onLinkCheck: async (url) => {
-      const trusted = ['your-domain.com'];
+      const trusted = ["your-domain.com"];
       return trusted.some((d) => new URL(url).hostname.endsWith(d));
     },
   }}

@@ -1,0 +1,32 @@
+import { ScopeMigrationDialog } from "@/components/iam/scope-migration-dialog";
+import { Card,CardAction,CardDescription,CardHeader,CardTitle } from "@/components/ui/card";
+import type { useResourceAccessPanelController } from "./access-console.resource-access-panel";
+import { ResourceAccessPanelSection1 } from "./access-console.resource-access-panel.view.section-1";
+import { ResourceAccessPanelSection2 } from "./access-console.resource-access-panel.view.section-2";
+import { ResourceAccessPanelSection3 } from "./access-console.resource-access-panel.view.section-3";
+import { ResourceAccessPanelSection4 } from "./access-console.resource-access-panel.view.section-4";
+
+export type ResourceAccessPanelViewModel = Extract<ReturnType<typeof useResourceAccessPanelController>, { kind: "ready" }>;
+export function ResourceAccessPanelView({ model }: { model: ResourceAccessPanelViewModel }) {
+  const { canManageResources, t, workspaceId } = model;
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{t("resourcesTitle")}</CardTitle>
+        <CardDescription>{t("resourcesDescription")}</CardDescription>
+        {canManageResources ? (
+          <CardAction>
+            <ScopeMigrationDialog workspaceId={workspaceId} />
+          </CardAction>
+        ) : null}
+      </CardHeader>
+      <ResourceAccessPanelSection4 model={model} />
+
+      <ResourceAccessPanelSection3 model={model} />
+
+      <ResourceAccessPanelSection2 model={model} />
+
+      <ResourceAccessPanelSection1 model={model} />
+    </Card>
+  );
+}

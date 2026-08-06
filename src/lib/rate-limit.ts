@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
 import { cache } from "@/server/infrastructure/cache";
+import { NextResponse } from "next/server";
 
 export interface RateLimitOptions {
   /** Max requests per window */
@@ -29,10 +29,7 @@ function secondsUntilReset(reset: number) {
   return Math.max(0, reset - now);
 }
 
-export async function checkRateLimit(
-  req: Request,
-  options: RateLimitOptions = {},
-): Promise<RateLimitResult> {
+export async function checkRateLimit(req: Request, options: RateLimitOptions = {}): Promise<RateLimitResult> {
   const limit = options.limit ?? DEFAULT_LIMIT;
   const windowSeconds = options.windowSeconds ?? DEFAULT_WINDOW;
   const key = getRateLimitKey(req, options.key);
@@ -57,11 +54,7 @@ export async function checkRateLimit(
   }
 }
 
-export function rateLimitExceededResponse(
-  reset: number,
-  remaining: number,
-  limit = DEFAULT_LIMIT,
-) {
+export function rateLimitExceededResponse(reset: number, remaining: number, limit = DEFAULT_LIMIT) {
   const retryAfter = secondsUntilReset(reset);
 
   return NextResponse.json(
@@ -82,18 +75,11 @@ export function rateLimitExceededResponse(
  * Middleware wrapper for route handlers.
  * Wrap a route handler with a per-window request budget.
  */
-export function withRateLimit(
-  handler: (req: Request) => Promise<NextResponse>,
-  options?: RateLimitOptions,
-) {
+export function withRateLimit(handler: (req: Request) => Promise<NextResponse>, options?: RateLimitOptions) {
   return async (req: Request) => {
     const result = await checkRateLimit(req, options);
     if (!result.allowed) {
-      return rateLimitExceededResponse(
-        result.reset,
-        result.remaining,
-        options?.limit ?? DEFAULT_LIMIT,
-      );
+      return rateLimitExceededResponse(result.reset, result.remaining, options?.limit ?? DEFAULT_LIMIT);
     }
     const response = await handler(req);
     return new NextResponse(response.body, {

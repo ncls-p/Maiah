@@ -1,15 +1,12 @@
-import { createHash, randomBytes } from "node:crypto";
-import { and, eq, isNull } from "drizzle-orm";
+import { and,eq,isNull } from "drizzle-orm";
+import { createHash,randomBytes } from "node:crypto";
 
+import { getAvailableApiKeyScopes } from "@/modules/api-keys/permissions";
+import { isKnownApiKeyScope,uniqueApiKeyScopes } from "@/modules/api-keys/scopes";
+import { getRequestAuthContext } from "@/modules/auth/request-auth-context";
 import { audit } from "@/server/domain/services/audit";
 import { db } from "@/server/infrastructure/db";
 import { workspaceApiKeys } from "@/server/infrastructure/db/schema";
-import {
-  isKnownApiKeyScope,
-  uniqueApiKeyScopes,
-} from "@/modules/api-keys/scopes";
-import { getAvailableApiKeyScopes } from "@/modules/api-keys/permissions";
-import { getRequestAuthContext } from "@/modules/auth/request-auth-context";
 
 const KEY_PREFIX = "ahub_";
 
@@ -59,13 +56,7 @@ function toSafeKey(row: typeof workspaceApiKeys.$inferSelect): SafeApiKey {
   };
 }
 
-export async function createWorkspaceApiKey(input: {
-  workspaceId: string;
-  userId: string;
-  name: string;
-  expiresAt?: Date | null;
-  scopes: string[];
-}) {
+export async function createWorkspaceApiKey(input: { workspaceId: string; userId: string; name: string; expiresAt?: Date | null; scopes: string[] }) {
   const scopes = uniqueApiKeyScopes(input.scopes);
   if (scopes.length === 0) {
     throw new Error("At least one API token scope is required");
@@ -75,20 +66,11 @@ export async function createWorkspaceApiKey(input: {
     throw new Error(`Unknown API token scopes: ${unknownScopes.join(", ")}`);
   }
 
-  const availableScopes = await getAvailableApiKeyScopes(
-    input.userId,
-    input.workspaceId,
-  );
-  const availablePermissions = new Set<string>(
-    availableScopes.map(({ permission }) => permission),
-  );
-  const forbiddenScopes = scopes.filter(
-    (scope) => !availablePermissions.has(scope),
-  );
+  const availableScopes = await getAvailableApiKeyScopes(input.userId, input.workspaceId);
+  const availablePermissions = new Set<string>(availableScopes.map(({ permission }) => permission));
+  const forbiddenScopes = scopes.filter((scope) => !availablePermissions.has(scope));
   if (forbiddenScopes.length > 0) {
-    throw new Error(
-      `API token scopes exceed current permissions: ${forbiddenScopes.join(", ")}`,
-    );
+    throw new Error(`API token scopes exceed current permissions: ${forbiddenScopes.join(", ")}`);
   }
 
   const rawKey = generateRawApiKey();
@@ -121,14 +103,8 @@ export async function createWorkspaceApiKey(input: {
   return { apiKey: toSafeKey(row), rawKey };
 }
 
-export async function listWorkspaceApiKeys(
-  workspaceId: string,
-  options: { createdById?: string } = {},
-) {
-  const conditions = [
-    eq(workspaceApiKeys.workspaceId, workspaceId),
-    isNull(workspaceApiKeys.revokedAt),
-  ];
+export async function listWorkspaceApiKeys(workspaceId: string, options: { createdById?: string } = {}) {
+  const conditions = [eq(workspaceApiKeys.workspaceId, workspaceId), isNull(workspaceApiKeys.revokedAt)];
   if (options.createdById) {
     conditions.push(eq(workspaceApiKeys.createdById, options.createdById));
   }
@@ -140,17 +116,8 @@ export async function listWorkspaceApiKeys(
   return rows.map(toSafeKey);
 }
 
-export async function revokeWorkspaceApiKey(input: {
-  keyId: string;
-  workspaceId: string;
-  userId: string;
-  createdById?: string;
-}) {
-  const conditions = [
-    eq(workspaceApiKeys.id, input.keyId),
-    eq(workspaceApiKeys.workspaceId, input.workspaceId),
-    isNull(workspaceApiKeys.revokedAt),
-  ];
+export async function revokeWorkspaceApiKey(input: { keyId: string; workspaceId: string; userId: string; createdById?: string }) {
+  const conditions = [eq(workspaceApiKeys.id, input.keyId), eq(workspaceApiKeys.workspaceId, input.workspaceId), isNull(workspaceApiKeys.revokedAt)];
   if (input.createdById) {
     conditions.push(eq(workspaceApiKeys.createdById, input.createdById));
   }
@@ -163,10 +130,7 @@ export async function revokeWorkspaceApiKey(input: {
 
   if (!row) throw new Error("API key not found");
 
-  await db
-    .update(workspaceApiKeys)
-    .set({ revokedAt: new Date(), updatedAt: new Date() })
-    .where(eq(workspaceApiKeys.id, input.keyId));
+  await db.update(workspaceApiKeys).set({ revokedAt: new Date(), updatedAt: new Date() }).where(eq(workspaceApiKeys.id, input.keyId));
 
   await audit.emit({
     workspaceId: input.workspaceId,
@@ -185,21 +149,13 @@ export async function verifyWorkspaceApiKey(rawKey: string) {
   const [row] = await db
     .select()
     .from(workspaceApiKeys)
-    .where(
-      and(
-        eq(workspaceApiKeys.keyHash, keyHash),
-        isNull(workspaceApiKeys.revokedAt),
-      ),
-    )
+    .where(and(eq(workspaceApiKeys.keyHash, keyHash), isNull(workspaceApiKeys.revokedAt)))
     .limit(1);
 
   if (!row) return null;
   if (row.expiresAt && row.expiresAt.getTime() < Date.now()) return null;
 
-  await db
-    .update(workspaceApiKeys)
-    .set({ lastUsedAt: new Date(), updatedAt: new Date() })
-    .where(eq(workspaceApiKeys.id, row.id));
+  await db.update(workspaceApiKeys).set({ lastUsedAt: new Date(), updatedAt: new Date() }).where(eq(workspaceApiKeys.id, row.id));
 
   return {
     id: row.id,

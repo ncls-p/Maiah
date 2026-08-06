@@ -1,10 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
-import {
-  handleRoute,
-  requireWorkspacePermissionAsync,
-} from "@/lib/route-handler";
+import { handleRoute,requireWorkspacePermissionAsync } from "@/lib/route-handler";
 import { getPublishPreview } from "@/modules/marketplace/use-cases";
+import { NextRequest,NextResponse } from "next/server";
+import { z } from "zod";
 
 const schema = z
   .object({
@@ -18,14 +15,7 @@ const schema = z
   })
   .refine(
     (data) => {
-      const ids = [
-        data.agentId,
-        data.skillId,
-        data.customToolId,
-        data.mcpServerId,
-        data.mcpToolId,
-        data.itemId,
-      ].filter(Boolean);
+      const ids = [data.agentId, data.skillId, data.customToolId, data.mcpServerId, data.mcpToolId, data.itemId].filter(Boolean);
       return ids.length === 1;
     },
     { message: "Exactly one resource id is required" },
@@ -45,16 +35,8 @@ export async function GET(req: NextRequest) {
         mcpToolId: searchParams.get("mcpToolId") ?? undefined,
         itemId: searchParams.get("itemId") ?? undefined,
       });
-      if (!parsed.success)
-        return NextResponse.json(
-          { error: "Invalid input", details: parsed.error.issues },
-          { status: 400 },
-        );
-      const forbidden = await requireWorkspacePermissionAsync(
-        session.user.id,
-        parsed.data.workspaceId,
-        "marketplaceItems.publish",
-      );
+      if (!parsed.success) return NextResponse.json({ error: "Invalid input", details: parsed.error.issues }, { status: 400 });
+      const forbidden = await requireWorkspacePermissionAsync(session.user.id, parsed.data.workspaceId, "marketplaceItems.publish");
       if (forbidden) return forbidden;
       return NextResponse.json(
         await getPublishPreview({
@@ -72,19 +54,11 @@ export async function GET(req: NextRequest) {
     {
       logLabel: "Failed to get publish preview",
       expectedError: (error) => {
-        const message =
-          error instanceof Error ? error.message : "Internal server error";
+        const message = error instanceof Error ? error.message : "Internal server error";
         return NextResponse.json(
           { error: message },
           {
-            status:
-              error instanceof Error && error.message.includes("not found")
-                ? 404
-                : error instanceof Error &&
-                    error.message ===
-                      "Orchestrators cannot be published to the marketplace yet"
-                  ? 400
-                  : 500,
+            status: error instanceof Error && error.message.includes("not found") ? 404 : error instanceof Error && error.message === "Orchestrators cannot be published to the marketplace yet" ? 400 : 500,
           },
         );
       },

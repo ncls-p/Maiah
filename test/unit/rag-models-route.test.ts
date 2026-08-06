@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
+import { beforeEach,describe,expect,it,vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   requireScope: vi.fn(),
@@ -10,13 +10,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/lib/route-handler", () => ({
   requireRequestPermissionScopeAsync: mocks.requireScope,
   requireWorkspaceMemberAsync: mocks.requireMember,
-  handleRoute: async (
-    request: Request,
-    handler: (context: {
-      session: { user: { id: string } };
-      request: Request;
-    }) => Promise<Response>,
-  ) =>
+  handleRoute: async (request: Request, handler: (context: { session: { user: { id: string } }; request: Request }) => Promise<Response>) =>
     handler({
       session: { user: { id: "11111111-1111-4111-8111-111111111111" } },
       request,
@@ -55,18 +49,10 @@ beforeEach(() => {
 
 describe("GET /api/workspace/rag-models", () => {
   it("returns the live provider catalogs for the selected workspace", async () => {
-    const response = await GET(
-      new NextRequest(
-        `http://localhost/api/workspace/rag-models?workspaceId=${workspaceId}`,
-      ),
-    );
+    const response = await GET(new NextRequest(`http://localhost/api/workspace/rag-models?workspaceId=${workspaceId}`));
 
     expect(response.status).toBe(200);
-    expect(mocks.requireScope).toHaveBeenCalledWith(
-      "11111111-1111-4111-8111-111111111111",
-      workspaceId,
-      "providers.viewMetadata",
-    );
+    expect(mocks.requireScope).toHaveBeenCalledWith("11111111-1111-4111-8111-111111111111", workspaceId, "providers.viewMetadata");
     expect(mocks.discoverWorkspaceModels).toHaveBeenCalledWith(workspaceId);
     await expect(response.json()).resolves.toMatchObject({
       providers: [
@@ -78,11 +64,7 @@ describe("GET /api/workspace/rag-models", () => {
   });
 
   it("rejects an invalid workspace identifier before discovery", async () => {
-    const response = await GET(
-      new NextRequest(
-        "http://localhost/api/workspace/rag-models?workspaceId=invalid",
-      ),
-    );
+    const response = await GET(new NextRequest("http://localhost/api/workspace/rag-models?workspaceId=invalid"));
 
     expect(response.status).toBe(400);
     expect(mocks.discoverWorkspaceModels).not.toHaveBeenCalled();

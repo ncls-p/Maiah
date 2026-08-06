@@ -302,6 +302,20 @@
       "when": 1785849456534,
       "tag": "0042_volatile_hellion",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1785941632472,
+      "tag": "0043_low_stick",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1785945221953,
+      "tag": "0044_flimsy_shiva",
+      "breakpoints": true
     }
   ]
 }

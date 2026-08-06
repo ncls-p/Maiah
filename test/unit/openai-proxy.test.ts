@@ -1,24 +1,12 @@
+import type { LanguageModelUsage,TextStreamPart,ToolSet } from "ai";
 import OpenAI from "openai";
-import { describe, expect, it, vi } from "vitest";
-import type { LanguageModelUsage, TextStreamPart, ToolSet } from "ai";
+import { describe,expect,it,vi } from "vitest";
 
-import {
-  chatCompletionRequestSchema,
-  responsesRequestSchema,
-} from "@/modules/openai-proxy/contracts";
+import { chatCompletionRequestSchema,responsesRequestSchema } from "@/modules/openai-proxy/contracts";
 import { OpenAIProxyError } from "@/modules/openai-proxy/errors";
-import {
-  prepareChatCompletion,
-  prepareResponsesRequest,
-} from "@/modules/openai-proxy/request-mapper";
-import {
-  buildChatCompletionResponse,
-  buildResponsesResponse,
-} from "@/modules/openai-proxy/response-builders";
-import {
-  createChatCompletionStream,
-  createResponsesStream,
-} from "@/modules/openai-proxy/streams";
+import { prepareChatCompletion,prepareResponsesRequest } from "@/modules/openai-proxy/request-mapper";
+import { buildChatCompletionResponse,buildResponsesResponse } from "@/modules/openai-proxy/response-builders";
+import { createChatCompletionStream,createResponsesStream } from "@/modules/openai-proxy/streams";
 
 const usage: LanguageModelUsage = {
   inputTokens: 7,
@@ -151,12 +139,7 @@ describe("OpenAI-compatible request mapping", () => {
       ],
     });
     const prepared = prepareResponsesRequest(request);
-    expect(prepared.messages.map((message) => message.role)).toEqual([
-      "system",
-      "user",
-      "assistant",
-      "tool",
-    ]);
+    expect(prepared.messages.map((message) => message.role)).toEqual(["system", "user", "assistant", "tool"]);
     expect(prepared.tools).toHaveProperty("find_order");
   });
 

@@ -1,0 +1,101 @@
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    @apply font-sans scroll-smooth;
+    color-scheme: light;
+    scroll-padding-block-start: 5rem;
+  }
+
+  :target,
+  :focus-visible {
+    scroll-margin-block: 5rem;
+  }
+
+  :where(a, button, input, textarea, select, summary, [tabindex]:not([tabindex="-1"])):focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply min-h-svh bg-background font-sans text-foreground antialiased;
+    text-rendering: geometricPrecision;
+  }
+
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+
+  body:has([data-page="marketing"]),
+  body:has([data-page="auth"]) {
+    @apply min-h-svh overflow-x-hidden overflow-y-auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  body:has([data-page="app-shell"]) {
+    @apply min-h-svh overflow-hidden;
+  }
+
+  [data-page="app-shell"],
+  [data-page="auth"],
+  [data-page="marketing"] {
+    background: var(--background);
+  }
+
+  [data-page="auth"] {
+    background-image: radial-gradient(circle at 92% 6%, color-mix(in oklch, var(--brand-azur) 11%, transparent), transparent 24rem), linear-gradient(145deg, color-mix(in oklch, var(--background) 96%, white), var(--background));
+  }
+
+  ::selection {
+    background: color-mix(in oklch, var(--primary) 22%, transparent);
+    color: var(--foreground);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-heading text-balance font-semibold;
+    letter-spacing: -0.025em;
+  }
+
+  p,
+  li,
+  figcaption,
+  blockquote {
+    @apply text-pretty;
+  }
+
+  time,
+  [data-number],
+  [data-slot="badge"] {
+    font-variant-numeric: tabular-nums;
+  }
+
+  img:not([data-no-outline="true"]) {
+    outline: 1px solid rgba(0, 0, 0, 0.1);
+    outline-offset: -1px;
+  }
+
+  .dark img:not([data-no-outline="true"]) {
+    outline-color: rgba(255, 255, 255, 0.1);
+  }
+
+  button,
+  [role="button"],
+  a,
+  input,
+  textarea,
+  select {
+    touch-action: manipulation;
+  }
+}

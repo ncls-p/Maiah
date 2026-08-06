@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
 import { SYSTEM_ROLES } from "@/server/domain/entities/iam";
+import { describe,expect,it } from "vitest";
 
 describe("SYSTEM_ROLES", () => {
   it("defines at least one organization and workspace scope role", () => {
@@ -26,14 +26,8 @@ describe("SYSTEM_ROLES", () => {
   });
 
   it("defines administrator, editor, and viewer project roles", () => {
-    const workspaceRoleNames = SYSTEM_ROLES.filter(
-      (r) => r.scopeType === "workspace",
-    ).map((role) => role.name);
-    expect(workspaceRoleNames.sort()).toEqual([
-      "workspace.admin",
-      "workspace.member",
-      "workspace.viewer",
-    ]);
+    const workspaceRoleNames = SYSTEM_ROLES.filter((r) => r.scopeType === "workspace").map((role) => role.name);
+    expect(workspaceRoleNames.sort()).toEqual(["workspace.admin", "workspace.member", "workspace.viewer"]);
   });
 
   it("workspace.member has restricted permissions", () => {
@@ -45,20 +39,12 @@ describe("SYSTEM_ROLES", () => {
   });
 
   it("defines owner, admin, and user organization roles", () => {
-    const organizationRoleNames = SYSTEM_ROLES.filter(
-      (r) => r.scopeType === "organization",
-    ).map((role) => role.name);
-    expect(organizationRoleNames.sort()).toEqual([
-      "organization.admin",
-      "organization.owner",
-      "organization.user",
-    ]);
+    const organizationRoleNames = SYSTEM_ROLES.filter((r) => r.scopeType === "organization").map((role) => role.name);
+    expect(organizationRoleNames.sort()).toEqual(["organization.admin", "organization.owner", "organization.user"]);
   });
 
   it("does not grant project access to organization members by default", () => {
-    const member = SYSTEM_ROLES.find(
-      (role) => role.name === "organization.user",
-    );
+    const member = SYSTEM_ROLES.find((role) => role.name === "organization.user");
 
     expect(member?.permissions).toEqual(["organization.get"]);
     expect(member?.permissions).not.toContain("workspaces.get");
@@ -71,21 +57,13 @@ describe("SYSTEM_ROLES", () => {
   });
 
   it("workspace roles do not include legacy owner or developer roles", () => {
-    const workspaceRoles = SYSTEM_ROLES.filter(
-      (role) => role.scopeType === "workspace",
-    );
-    expect(workspaceRoles.some((role) => role.name.includes("owner"))).toBe(
-      false,
-    );
-    expect(workspaceRoles.some((role) => role.name.includes("developer"))).toBe(
-      false,
-    );
+    const workspaceRoles = SYSTEM_ROLES.filter((role) => role.scopeType === "workspace");
+    expect(workspaceRoles.some((role) => role.name.includes("owner"))).toBe(false);
+    expect(workspaceRoles.some((role) => role.name.includes("developer"))).toBe(false);
   });
 
   it("workspace roles do not include member-management permissions", () => {
-    for (const role of SYSTEM_ROLES.filter(
-      (item) => item.scopeType === "workspace",
-    )) {
+    for (const role of SYSTEM_ROLES.filter((item) => item.scopeType === "workspace")) {
       expect(role.permissions).not.toContain("members.*");
       expect(role.permissions).not.toContain("members.invite");
       expect(role.permissions).not.toContain("members.manage");

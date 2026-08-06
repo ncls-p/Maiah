@@ -1,55 +1,23 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
-import { PlusIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useCallback,useMemo,useState } from "react";
 import { toast } from "sonner";
 
-import { AdvancedSection } from "@/components/ui/advanced-section";
-import { Button } from "@/components/ui/button";
-import {
-  DEFAULT_OPENAI_COMPATIBLE_API_ROUTE,
-  type OpenAICompatibleApiRoute,
-} from "@/lib/openai-compatible-api";
+import { DEFAULT_OPENAI_COMPATIBLE_API_ROUTE,type OpenAICompatibleApiRoute } from "@/lib/openai-compatible-api";
 
-import {
-  AddProviderDialog,
-  DeleteModelDialog,
-  DeleteProviderDialog,
-  EditProviderDialog,
-} from "./provider-manager/provider-dialogs";
-import { ProviderList } from "./provider-manager/provider-list";
-import { ModelsPanel } from "./provider-manager/model-list";
-import { SystemStrip } from "./provider-manager/provider-stats";
+import { ProviderManagerView } from "./provider-manager.view";
 import { KIND_LABELS } from "./provider-manager/constants";
-import type {
-  DiscoveredModel,
-  ProviderAuthType,
-  ProviderKind,
-  ProviderModel,
-  ProviderModelUpdate,
-  SafeProvider,
-} from "./provider-manager/types";
-import { defaultAuthType, parsePairs } from "./provider-manager/utils";
+import type { DiscoveredModel,ProviderAuthType,ProviderKind,ProviderModel,SafeProvider } from "./provider-manager/types";
+import { useProviderModelActions } from "./provider-manager/use-provider-model-actions";
+import { defaultAuthType,parsePairs } from "./provider-manager/utils";
 
-export function ProviderManager({
-  workspaceId,
-  initialProviders,
-  initialModels,
-}: {
-  workspaceId: string;
-  initialProviders: SafeProvider[];
-  initialModels: ProviderModel[];
-}) {
+export function useProviderManagerController({ workspaceId, initialProviders, initialModels }: { workspaceId: string; initialProviders: SafeProvider[]; initialModels: ProviderModel[] }) {
   const t = useTranslations("providers.manager");
   const [providers, setProviders] = useState<SafeProvider[]>(initialProviders);
-  const [selectedProviderId, setSelectedProviderId] = useState<string | null>(
-    initialProviders[0]?.id ?? null,
-  );
+  const [selectedProviderId, setSelectedProviderId] = useState<string | null>(initialProviders[0]?.id ?? null);
   const [models, setModels] = useState<ProviderModel[]>(initialModels);
-  const [discoveredModels, setDiscoveredModels] = useState<DiscoveredModel[]>(
-    [],
-  );
+  const [discoveredModels, setDiscoveredModels] = useState<DiscoveredModel[]>([]);
   const [loadingProviders, setLoadingProviders] = useState(false);
   const [loadingModels, setLoadingModels] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -57,63 +25,41 @@ export function ProviderManager({
   const [modelSearch, setModelSearch] = useState("");
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [addKind, setAddKind] = useState<ProviderKind>("openai-compatible");
-  const [addAuthType, setAddAuthType] = useState<ProviderAuthType>(
-    defaultAuthType("openai-compatible"),
-  );
+  const [addAuthType, setAddAuthType] = useState<ProviderAuthType>(defaultAuthType("openai-compatible"));
   const [addName, setAddName] = useState("");
   const [addBaseUrl, setAddBaseUrl] = useState("");
   const [addApiKey, setAddApiKey] = useState("");
   const [addCustomHeaders, setAddCustomHeaders] = useState("");
   const [addQueryParams, setAddQueryParams] = useState("");
-  const [addApiRoute, setAddApiRoute] = useState<OpenAICompatibleApiRoute>(
-    DEFAULT_OPENAI_COMPATIBLE_API_ROUTE,
-  );
+  const [addApiRoute, setAddApiRoute] = useState<OpenAICompatibleApiRoute>(DEFAULT_OPENAI_COMPATIBLE_API_ROUTE);
   const [addAdvanced, setAddAdvanced] = useState(false);
-  const [editingProvider, setEditingProvider] = useState<SafeProvider | null>(
-    null,
-  );
+  const [editingProvider, setEditingProvider] = useState<SafeProvider | null>(null);
   const [editName, setEditName] = useState("");
   const [editBaseUrl, setEditBaseUrl] = useState("");
   const [editApiKey, setEditApiKey] = useState("");
-  const [editApiRoute, setEditApiRoute] = useState<OpenAICompatibleApiRoute>(
-    DEFAULT_OPENAI_COMPATIBLE_API_ROUTE,
-  );
+  const [editApiRoute, setEditApiRoute] = useState<OpenAICompatibleApiRoute>(DEFAULT_OPENAI_COMPATIBLE_API_ROUTE);
   const [deleteProviderId, setDeleteProviderId] = useState<string | null>(null);
   const [deleteModelId, setDeleteModelId] = useState<string | null>(null);
   const [manualModelId, setManualModelId] = useState("");
   const [manualModelName, setManualModelName] = useState("");
 
-  const selectedProvider = useMemo(
-    () => providers.find((p) => p.id === selectedProviderId) ?? null,
-    [providers, selectedProviderId],
-  );
+  const selectedProvider = useMemo(() => providers.find((p) => p.id === selectedProviderId) ?? null, [providers, selectedProviderId]);
 
   const filteredProviders = useMemo(() => {
     if (!providerSearch.trim()) return providers;
     const q = providerSearch.toLowerCase();
-    return providers.filter(
-      (p) =>
-        p.name.toLowerCase().includes(q) ||
-        KIND_LABELS[p.kind].toLowerCase().includes(q) ||
-        (p.baseUrl ?? "").toLowerCase().includes(q),
-    );
+    return providers.filter((p) => p.name.toLowerCase().includes(q) || KIND_LABELS[p.kind].toLowerCase().includes(q) || (p.baseUrl ?? "").toLowerCase().includes(q));
   }, [providers, providerSearch]);
 
   const filteredModels = useMemo(() => {
     if (!modelSearch.trim()) return models;
     const q = modelSearch.toLowerCase();
-    return models.filter(
-      (m) =>
-        m.modelId.toLowerCase().includes(q) ||
-        (m.displayName ?? "").toLowerCase().includes(q),
-    );
+    return models.filter((m) => m.modelId.toLowerCase().includes(q) || (m.displayName ?? "").toLowerCase().includes(q));
   }, [models, modelSearch]);
   const loadProviders = useCallback(async () => {
     setLoadingProviders(true);
     try {
-      const res = await fetch(
-        `/api/workspace/providers?workspaceId=${workspaceId}`,
-      );
+      const res = await fetch(`/api/workspace/providers?workspaceId=${workspaceId}`);
       if (!res.ok) throw new Error(t("errorLoadProviders"));
       const data = (await res.json()) as SafeProvider[];
       setProviders(data);
@@ -134,9 +80,7 @@ export function ProviderManager({
       }
       setLoadingModels(true);
       try {
-        const res = await fetch(
-          `/api/workspace/providers/${providerId}/models?workspaceId=${workspaceId}`,
-        );
+        const res = await fetch(`/api/workspace/providers/${providerId}/models?workspaceId=${workspaceId}`);
         if (!res.ok) throw new Error(t("errorLoadModels"));
         setModels((await res.json()) as ProviderModel[]);
       } catch (error) {
@@ -197,9 +141,7 @@ export function ProviderManager({
           apiKey: addApiKey,
           headersJson: parsePairs(addCustomHeaders),
           queryParamsJson: parsePairs(addQueryParams),
-          ...(addKind === "openai-compatible"
-            ? { openaiCompatibleApiRoute: addApiRoute }
-            : {}),
+          ...(addKind === "openai-compatible" ? { openaiCompatibleApiRoute: addApiRoute } : {}),
         }),
       });
       if (!res.ok) {
@@ -221,20 +163,14 @@ export function ProviderManager({
     }
   }
 
-  async function discoverProviderModels(
-    providerId: string | null = selectedProviderId,
-  ) {
+  async function discoverProviderModels(providerId: string | null = selectedProviderId) {
     if (!providerId) return;
     setBusy(true);
     try {
       setSelectedProviderId(providerId);
       await loadModelsForProvider(providerId);
-      const res = await fetch(
-        `/api/workspace/providers/${providerId}/models?workspaceId=${workspaceId}&action=discover`,
-      );
-      const data = (await res.json().catch(() => ({}))) as
-        | DiscoveredModel[]
-        | { error?: string };
+      const res = await fetch(`/api/workspace/providers/${providerId}/models?workspaceId=${workspaceId}&action=discover`);
+      const data = (await res.json().catch(() => ({}))) as DiscoveredModel[] | { error?: string };
       if (!res.ok || !Array.isArray(data)) {
         const errorMessage = Array.isArray(data) ? undefined : data.error;
         throw new Error(errorMessage || t("errorDiscoverModels"));
@@ -271,22 +207,17 @@ export function ProviderManager({
     if (!editingProvider) return;
     setBusy(true);
     try {
-      const res = await fetch(
-        `/api/workspace/providers/${editingProvider.id}`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            workspaceId,
-            name: editName.trim(),
-            baseUrl: editBaseUrl.trim() || "",
-            ...(editApiKey.trim() ? { apiKey: editApiKey.trim() } : {}),
-            ...(editingProvider.kind === "openai-compatible"
-              ? { openaiCompatibleApiRoute: editApiRoute }
-              : {}),
-          }),
-        },
-      );
+      const res = await fetch(`/api/workspace/providers/${editingProvider.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          workspaceId,
+          name: editName.trim(),
+          baseUrl: editBaseUrl.trim() || "",
+          ...(editApiKey.trim() ? { apiKey: editApiKey.trim() } : {}),
+          ...(editingProvider.kind === "openai-compatible" ? { openaiCompatibleApiRoute: editApiRoute } : {}),
+        }),
+      });
       const data = (await res.json().catch(() => ({}))) as SafeProvider & {
         error?: string;
       };
@@ -307,10 +238,7 @@ export function ProviderManager({
   async function deleteProvider(id: string) {
     setBusy(true);
     try {
-      const res = await fetch(
-        `/api/workspace/providers/${id}?workspaceId=${workspaceId}`,
-        { method: "DELETE" },
-      );
+      const res = await fetch(`/api/workspace/providers/${id}?workspaceId=${workspaceId}`, { method: "DELETE" });
       if (!res.ok) throw new Error(t("errorArchiveProvider"));
       setProviders((prev) => prev.filter((p) => p.id !== id));
       if (selectedProviderId === id) {
@@ -327,265 +255,13 @@ export function ProviderManager({
     }
   }
 
-  async function registerModel(model?: DiscoveredModel) {
-    if (!selectedProviderId) return;
-    const id = model?.modelId ?? manualModelId;
-    const displayName = model?.displayName ?? (manualModelName || id);
-    if (!id) return;
+  const { createManualModel, createDiscoveredModels, updateModelLogo, updateModel, deleteModel } = useProviderModelActions({ workspaceId, selectedProviderId, manualModelId, manualModelName, setManualModelId, setManualModelName, setBusy, setDeleteModelId, loadModelsForProvider });
 
-    const res = await fetch(
-      `/api/workspace/providers/${selectedProviderId}/models`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          workspaceId,
-          modelId: id,
-          displayName,
-          capabilitiesJson: model?.capabilities ?? {
-            text: true,
-            vision: false,
-            tools: false,
-            reasoning: false,
-            embeddings: false,
-            audio: false,
-          },
-          contextWindow: model?.contextWindow,
-          maxOutputTokens: model?.maxOutputTokens,
-          inputTokenCost: model?.inputTokenCost,
-          outputTokenCost: model?.outputTokenCost,
-          imageGenerationConfigJson: model?.imageGeneration,
-          sustainabilityConfigJson: model?.sustainability,
-        }),
-      },
-    );
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      throw new Error(data.error || t("errorCreateModel"));
-    }
-  }
+  return { kind: "ready", addAdvanced, addApiKey, addApiRoute, addAuthType, addBaseUrl, addCustomHeaders, addKind, addName, addQueryParams, busy, createDiscoveredModels, createManualModel, createNewProvider, deleteModel, deleteModelId, deleteProvider, deleteProviderId, discoverProviderModels, discoveredModels, editApiKey, editApiRoute, editBaseUrl, editName, editingProvider, filteredModels, filteredProviders, loadingModels, loadingProviders, manualModelId, manualModelName, modelSearch, models, openAddDialog, openEditDialog, providerSearch, providers, resetAddForm, saveProviderEdit, selectProvider, selectedProvider, selectedProviderId, setAddAdvanced, setAddApiKey, setAddApiRoute, setAddAuthType, setAddBaseUrl, setAddCustomHeaders, setAddKind, setAddName, setAddQueryParams, setDeleteModelId, setDeleteProviderId, setEditApiKey, setEditApiRoute, setEditBaseUrl, setEditName, setEditingProvider, setManualModelId, setManualModelName, setModelSearch, setProviderSearch, setShowAddDialog, showAddDialog, t, toggleProvider, updateModel, updateModelLogo } as const;
+}
 
-  async function createManualModel(model?: DiscoveredModel) {
-    setBusy(true);
-    try {
-      await registerModel(model);
-      setManualModelId("");
-      setManualModelName("");
-      toast.success(t("toastModelRegistered"));
-      await loadModelsForProvider(selectedProviderId);
-    } catch (error) {
-      toast.error((error as Error).message);
-      return;
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function createDiscoveredModels(toCreate: DiscoveredModel[]) {
-    if (!selectedProviderId || toCreate.length === 0) return false;
-    setBusy(true);
-    try {
-      for (const model of toCreate) {
-        await registerModel(model);
-      }
-      toast.success(t("toastModelsRegistered", { count: toCreate.length }));
-      await loadModelsForProvider(selectedProviderId);
-      return true;
-    } catch (error) {
-      toast.error((error as Error).message);
-      return false;
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function updateModelLogo(modelId: string, logoUrl: string | null) {
-    if (!selectedProviderId) return;
-    setBusy(true);
-    try {
-      const res = await fetch(
-        `/api/workspace/providers/${selectedProviderId}/models/${modelId}`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ workspaceId, logoUrl }),
-        },
-      );
-      if (!res.ok) throw new Error(t("errorUpdateModelLogo"));
-      toast.success(logoUrl ? t("toastLogoAssigned") : t("toastLogoRemoved"));
-      await loadModelsForProvider(selectedProviderId);
-    } catch (error) {
-      toast.error((error as Error).message);
-      return;
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function updateModel(modelId: string, update: ProviderModelUpdate) {
-    if (!selectedProviderId) return;
-    setBusy(true);
-    try {
-      const res = await fetch(
-        `/api/workspace/providers/${selectedProviderId}/models/${modelId}`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ workspaceId, ...update }),
-        },
-      );
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || t("errorUpdateModel"));
-      toast.success(t("toastModelUpdated"));
-      await loadModelsForProvider(selectedProviderId);
-    } catch (error) {
-      toast.error((error as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function deleteModel(modelId: string) {
-    if (!selectedProviderId) return;
-    setBusy(true);
-    try {
-      const res = await fetch(
-        `/api/workspace/providers/${selectedProviderId}/models/${modelId}?workspaceId=${workspaceId}`,
-        { method: "DELETE" },
-      );
-      if (!res.ok) throw new Error(t("errorDeleteModel"));
-      setDeleteModelId(null);
-      toast.success(t("toastModelRemoved"));
-      await loadModelsForProvider(selectedProviderId);
-    } catch (error) {
-      toast.error((error as Error).message);
-      return;
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-end">
-        <Button size="sm" onClick={openAddDialog}>
-          <PlusIcon className="size-4" aria-hidden="true" />
-          {t("connectAi")}
-        </Button>
-      </div>
-      <div>
-        <AdvancedSection
-          label={t("systemHealth")}
-          hint={t("systemHealthHint")}
-          storageKey="advanced:providers-health"
-          className="border-border/50 bg-muted/20"
-        >
-          <SystemStrip providers={providers} models={models} />
-        </AdvancedSection>
-      </div>
-
-      <div className="space-y-6">
-        <ProviderList
-          providers={providers}
-          filteredProviders={filteredProviders}
-          selectedProviderId={selectedProviderId}
-          providerSearch={providerSearch}
-          loadingProviders={loadingProviders}
-          busy={busy}
-          onSearchChange={setProviderSearch}
-          onAddProvider={openAddDialog}
-          onSelectProvider={selectProvider}
-          onToggleProvider={(provider) => void toggleProvider(provider)}
-          onRetryProvider={(providerId) =>
-            void discoverProviderModels(providerId)
-          }
-          onEditProvider={openEditDialog}
-          onDeleteProvider={setDeleteProviderId}
-        />
-        <ModelsPanel
-          selectedProvider={selectedProvider}
-          providers={providers}
-          models={models}
-          filteredModels={filteredModels}
-          discoveredModels={discoveredModels}
-          modelSearch={modelSearch}
-          manualModelId={manualModelId}
-          manualModelName={manualModelName}
-          loadingModels={loadingModels}
-          loadingProviders={loadingProviders}
-          busy={busy}
-          onDiscoverModels={() => void discoverProviderModels()}
-          onUpdateModelLogo={(modelId: string, logoUrl: string | null) =>
-            void updateModelLogo(modelId, logoUrl)
-          }
-          onUpdateModel={(modelId, update) => void updateModel(modelId, update)}
-          onCreateModel={(model) => void createManualModel(model)}
-          onCreateSelectedModels={createDiscoveredModels}
-          onDeleteModel={setDeleteModelId}
-          onModelSearchChange={setModelSearch}
-          onManualModelIdChange={setManualModelId}
-          onManualModelNameChange={setManualModelName}
-        />
-      </div>
-
-      <AddProviderDialog
-        open={showAddDialog}
-        busy={busy}
-        addKind={addKind}
-        addAuthType={addAuthType}
-        addName={addName}
-        addBaseUrl={addBaseUrl}
-        addApiKey={addApiKey}
-        addCustomHeaders={addCustomHeaders}
-        addQueryParams={addQueryParams}
-        addApiRoute={addApiRoute}
-        addAdvanced={addAdvanced}
-        onOpenChange={(open) => {
-          setShowAddDialog(open);
-          if (!open) resetAddForm();
-        }}
-        onKindChange={setAddKind}
-        onAuthTypeChange={setAddAuthType}
-        onNameChange={setAddName}
-        onBaseUrlChange={setAddBaseUrl}
-        onApiKeyChange={setAddApiKey}
-        onCustomHeadersChange={setAddCustomHeaders}
-        onQueryParamsChange={setAddQueryParams}
-        onApiRouteChange={setAddApiRoute}
-        onAdvancedChange={setAddAdvanced}
-        onCreateProvider={() => void createNewProvider()}
-      />
-      <EditProviderDialog
-        editingProvider={editingProvider}
-        busy={busy}
-        editName={editName}
-        editBaseUrl={editBaseUrl}
-        editApiKey={editApiKey}
-        editApiRoute={editApiRoute}
-        onClose={() => setEditingProvider(null)}
-        onNameChange={setEditName}
-        onBaseUrlChange={setEditBaseUrl}
-        onApiKeyChange={setEditApiKey}
-        onApiRouteChange={setEditApiRoute}
-        onSave={() => void saveProviderEdit()}
-      />
-      <DeleteProviderDialog
-        deleteProviderId={deleteProviderId}
-        busy={busy}
-        onClose={() => setDeleteProviderId(null)}
-        onDelete={(id) => void deleteProvider(id)}
-      />
-      <DeleteModelDialog
-        deleteModelId={deleteModelId}
-        deleteModelLabel={
-          models.find((model) => model.id === deleteModelId)?.displayName ??
-          models.find((model) => model.id === deleteModelId)?.modelId ??
-          null
-        }
-        busy={busy}
-        onClose={() => setDeleteModelId(null)}
-        onDelete={(id) => void deleteModel(id)}
-      />
-    </div>
-  );
+export function ProviderManager(...args: Parameters<typeof useProviderManagerController>) {
+  const model = useProviderManagerController(...args);
+  if (!("kind" in model)) return model;
+  return <ProviderManagerView model={model} />;
 }

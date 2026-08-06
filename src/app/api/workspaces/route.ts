@@ -1,12 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
-import {
-  handleRoute,
-  requireWorkspacePermissionAsync,
-} from "@/lib/route-handler";
-import {
-  ensurePrimaryWorkspaceForUser,
-  getWorkspacesByUserId,
-} from "@/modules/workspace/use-cases";
+import { handleRoute,requireWorkspacePermissionAsync } from "@/lib/route-handler";
+import { ensurePrimaryWorkspaceForUser,getWorkspacesByUserId } from "@/modules/workspace/use-cases";
+import { NextRequest,NextResponse } from "next/server";
 
 export async function GET(req: NextRequest) {
   return handleRoute(
@@ -14,17 +8,9 @@ export async function GET(req: NextRequest) {
     async ({ session, auth }) => {
       const workspaces = await getWorkspacesByUserId(session.user.id);
       if (auth.type === "api_key") {
-        const forbidden = await requireWorkspacePermissionAsync(
-          session.user.id,
-          auth.workspaceId,
-          "workspaces.get",
-        );
+        const forbidden = await requireWorkspacePermissionAsync(session.user.id, auth.workspaceId, "workspaces.get");
         if (forbidden) return forbidden;
-        return NextResponse.json(
-          workspaces.filter(
-            ({ workspace }) => workspace.id === auth.workspaceId,
-          ),
-        );
+        return NextResponse.json(workspaces.filter(({ workspace }) => workspace.id === auth.workspaceId));
       }
       return NextResponse.json(workspaces);
     },
@@ -37,16 +23,10 @@ export async function POST(req: NextRequest) {
     req,
     async ({ session, auth }) => {
       if (auth.type === "api_key") {
-        const forbidden = await requireWorkspacePermissionAsync(
-          session.user.id,
-          auth.workspaceId,
-          "workspaces.get",
-        );
+        const forbidden = await requireWorkspacePermissionAsync(session.user.id, auth.workspaceId, "workspaces.get");
         if (forbidden) return forbidden;
         const workspaces = await getWorkspacesByUserId(session.user.id);
-        const selected = workspaces.find(
-          ({ workspace }) => workspace.id === auth.workspaceId,
-        );
+        const selected = workspaces.find(({ workspace }) => workspace.id === auth.workspaceId);
         if (!selected) {
           return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }

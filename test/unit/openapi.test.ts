@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe,expect,it } from "vitest";
 
 import { OPENAPI_ROUTE_MANIFEST } from "@/modules/openapi/generated-route-manifest";
 import { buildOpenApiDocument } from "@/modules/openapi/openapi";
@@ -20,9 +20,7 @@ describe("OpenAPI document", () => {
     for (const route of OPENAPI_ROUTE_MANIFEST) {
       const operation = paths[route.path]?.[route.method.toLowerCase()];
       expect(operation, `${route.method} ${route.path}`).toBeDefined();
-      expect(
-        operation.responses["200"] ?? operation.responses["201"],
-      ).toBeDefined();
+      expect(operation.responses["200"] ?? operation.responses["201"]).toBeDefined();
       documentedOperations += 1;
     }
 
@@ -47,23 +45,16 @@ describe("OpenAPI document", () => {
     expect(paths["/api/v1/models/{model}"].get).toBeDefined();
     expect(paths["/api/v1/chat/completions"].post).toBeDefined();
     expect(paths["/api/v1/responses"].post).toBeDefined();
-    expect(Object.keys(paths).some((path) => path.startsWith("/v1/"))).toBe(
-      false,
-    );
+    expect(Object.keys(paths).some((path) => path.startsWith("/v1/"))).toBe(false);
   });
 
   it("publishes the precise API-token creation schema", () => {
     const document = buildOpenApiDocument();
     const paths = document.paths as Record<string, Record<string, Operation>>;
     const operation = paths["/api/workspace/api-keys"].post;
-    const content = operation.requestBody?.content as Record<
-      string,
-      { schema: { $ref: string } }
-    >;
+    const content = operation.requestBody?.content as Record<string, { schema: { $ref: string } }>;
 
-    expect(content["application/json"].schema.$ref).toBe(
-      "#/components/schemas/CreateApiTokenRequest",
-    );
+    expect(content["application/json"].schema.$ref).toBe("#/components/schemas/CreateApiTokenRequest");
     expect(operation["x-maiah-permissions"]).toEqual(["apiKeys.manageOwn"]);
   });
 });

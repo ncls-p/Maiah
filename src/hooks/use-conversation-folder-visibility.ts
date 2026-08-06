@@ -1,14 +1,8 @@
 "use client";
 
-import { useCallback, useMemo, useSyncExternalStore } from "react";
+import { useCallback,useMemo,useSyncExternalStore } from "react";
 
-import {
-  conversationFolderOpenStorageKey,
-  EMPTY_CONVERSATION_FOLDER_OPEN_SNAPSHOT,
-  normalizeConversationFolderOpenSnapshot,
-  parseConversationFolderOpenSnapshot,
-  updateConversationFolderOpenSnapshot,
-} from "@/lib/conversation-folder-visibility";
+import { conversationFolderOpenStorageKey,EMPTY_CONVERSATION_FOLDER_OPEN_SNAPSHOT,normalizeConversationFolderOpenSnapshot,parseConversationFolderOpenSnapshot,updateConversationFolderOpenSnapshot } from "@/lib/conversation-folder-visibility";
 
 const STORAGE_CHANGE_EVENT = "chat-conversation-folder-open-change";
 const memorySnapshots = new Map<string, string>();
@@ -17,21 +11,15 @@ const memoryOnlyStorageKeys = new Set<string>();
 function readSnapshot(storageKey: string | null) {
   if (!storageKey) return EMPTY_CONVERSATION_FOLDER_OPEN_SNAPSHOT;
   if (memoryOnlyStorageKeys.has(storageKey)) {
-    return (
-      memorySnapshots.get(storageKey) ?? EMPTY_CONVERSATION_FOLDER_OPEN_SNAPSHOT
-    );
+    return memorySnapshots.get(storageKey) ?? EMPTY_CONVERSATION_FOLDER_OPEN_SNAPSHOT;
   }
 
   try {
-    const snapshot = normalizeConversationFolderOpenSnapshot(
-      window.localStorage.getItem(storageKey),
-    );
+    const snapshot = normalizeConversationFolderOpenSnapshot(window.localStorage.getItem(storageKey));
     memorySnapshots.set(storageKey, snapshot);
     return snapshot;
   } catch {
-    return (
-      memorySnapshots.get(storageKey) ?? EMPTY_CONVERSATION_FOLDER_OPEN_SNAPSHOT
-    );
+    return memorySnapshots.get(storageKey) ?? EMPTY_CONVERSATION_FOLDER_OPEN_SNAPSHOT;
   }
 }
 
@@ -44,9 +32,7 @@ function writeSnapshot(storageKey: string, snapshot: string) {
     // Keep the preference in memory when browser storage is unavailable.
     memoryOnlyStorageKeys.add(storageKey);
   }
-  window.dispatchEvent(
-    new CustomEvent(STORAGE_CHANGE_EVENT, { detail: storageKey }),
-  );
+  window.dispatchEvent(new CustomEvent(STORAGE_CHANGE_EVENT, { detail: storageKey }));
 }
 
 function subscribeToSnapshot(storageKey: string | null, callback: () => void) {
@@ -70,25 +56,12 @@ function subscribeToSnapshot(storageKey: string | null, callback: () => void) {
   };
 }
 
-export function useConversationFolderVisibility(input: {
-  workspaceId?: string | null;
-  userId?: string | null;
-}) {
+export function useConversationFolderVisibility(input: { workspaceId?: string | null; userId?: string | null }) {
   const storageKey = conversationFolderOpenStorageKey(input);
-  const subscribe = useCallback(
-    (callback: () => void) => subscribeToSnapshot(storageKey, callback),
-    [storageKey],
-  );
+  const subscribe = useCallback((callback: () => void) => subscribeToSnapshot(storageKey, callback), [storageKey]);
   const getSnapshot = useCallback(() => readSnapshot(storageKey), [storageKey]);
-  const snapshot = useSyncExternalStore(
-    subscribe,
-    getSnapshot,
-    () => EMPTY_CONVERSATION_FOLDER_OPEN_SNAPSHOT,
-  );
-  const openFolderIds = useMemo(
-    () => parseConversationFolderOpenSnapshot(snapshot),
-    [snapshot],
-  );
+  const snapshot = useSyncExternalStore(subscribe, getSnapshot, () => EMPTY_CONVERSATION_FOLDER_OPEN_SNAPSHOT);
+  const openFolderIds = useMemo(() => parseConversationFolderOpenSnapshot(snapshot), [snapshot]);
   const setFolderOpen = useCallback(
     (folderId: string, open: boolean) => {
       if (!storageKey) return;

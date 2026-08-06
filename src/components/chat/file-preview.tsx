@@ -1,19 +1,14 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
-import { useTranslations } from "next-intl";
 import { code } from "@streamdown/code";
+import { useTranslations } from "next-intl";
+import { useState,type ReactNode } from "react";
 import { Streamdown } from "streamdown";
 
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog,DialogContent,DialogDescription,DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CopyIcon, DownloadIcon } from "lucide-react";
+import { CopyIcon,DownloadIcon } from "lucide-react";
 
 const MARKDOWN_PLUGINS = { code };
 
@@ -23,9 +18,7 @@ interface FilePreviewOptions {
 }
 
 async function requestPreviewText(attachmentId: string) {
-  const response = await fetch(
-    `/api/workspace/chat-attachments/${attachmentId}/extracted`,
-  );
+  const response = await fetch(`/api/workspace/chat-attachments/${attachmentId}/extracted`);
   const data = (await response.json().catch(() => null)) as {
     text?: string;
     error?: string;
@@ -50,11 +43,7 @@ export function useFilePreview(options: FilePreviewOptions) {
     try {
       setPreviewText(await requestPreviewText(attachmentId));
     } catch (error) {
-      setPreviewError(
-        error instanceof Error
-          ? error.message
-          : "Failed to load extracted file text",
-      );
+      setPreviewError(error instanceof Error ? error.message : "Failed to load extracted file text");
     } finally {
       setLoadingPreview(false);
     }
@@ -91,16 +80,7 @@ interface FilePreviewDialogProps {
   loadingPreview: boolean;
 }
 
-export function FilePreviewDialog({
-  open,
-  onOpenChange,
-  fileName,
-  url,
-  subtitle,
-  previewText,
-  previewError,
-  loadingPreview,
-}: FilePreviewDialogProps) {
+export function FilePreviewDialog({ open, onOpenChange, fileName, url, subtitle, previewText, previewError, loadingPreview }: FilePreviewDialogProps) {
   const t = useTranslations("chat.artifacts");
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -108,9 +88,7 @@ export function FilePreviewDialog({
         <div className="flex min-w-0 items-start justify-between gap-3 border-b pb-3">
           <div className="min-w-0">
             <DialogTitle className="truncate text-base">{fileName}</DialogTitle>
-            <DialogDescription className="mt-1 text-xs text-muted-foreground">
-              {subtitle}
-            </DialogDescription>
+            <DialogDescription className="mt-1 text-xs text-muted-foreground">{subtitle}</DialogDescription>
           </div>
           <div className="flex shrink-0 items-center gap-1 pr-8">
             <Button
@@ -127,12 +105,7 @@ export function FilePreviewDialog({
               <CopyIcon className="size-3" aria-hidden="true" />
               {t("copy")}
             </Button>
-            <Button
-              asChild
-              variant="ghost"
-              size="sm"
-              className="h-8 gap-1.5 px-2 text-xs"
-            >
+            <Button asChild variant="ghost" size="sm" className="h-8 gap-1.5 px-2 text-xs">
               <a href={url} target="_blank" rel="noreferrer">
                 <DownloadIcon className="size-3" aria-hidden="true" />
                 {t("download")}
@@ -144,18 +117,9 @@ export function FilePreviewDialog({
           {loadingPreview ? (
             <Skeleton className="h-64 w-full rounded-xl" />
           ) : previewError ? (
-            <p className="rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">
-              {previewError}
-            </p>
+            <p className="rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">{previewError}</p>
           ) : (
-            <Streamdown
-              mode="static"
-              plugins={MARKDOWN_PLUGINS}
-              controls={false}
-              skipHtml
-              disallowedElements={["img"]}
-              className="min-h-0 flex-1 rounded-xl border bg-muted/20 p-4 text-sm leading-6 text-foreground"
-            >
+            <Streamdown mode="static" plugins={MARKDOWN_PLUGINS} controls={false} skipHtml disallowedElements={["img"]} className="min-h-0 flex-1 rounded-xl border bg-muted/20 p-4 text-sm leading-6 text-foreground">
               {previewText || t("noExtractedText")}
             </Streamdown>
           )}

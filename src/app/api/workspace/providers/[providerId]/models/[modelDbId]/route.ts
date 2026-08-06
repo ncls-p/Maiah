@@ -1,19 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { handleRoute,requireResourcePermissionAsync } from "@/lib/route-handler";
+import { imageGenerationConfigSchema,sustainabilityConfigSchema } from "@/modules/provider/model-runtime-config";
+import { deleteModel,getModelById,getProviderById,updateModel } from "@/modules/provider/use-cases";
+import { NextRequest,NextResponse } from "next/server";
 import { z } from "zod";
-import {
-  handleRoute,
-  requireResourcePermissionAsync,
-} from "@/lib/route-handler";
-import {
-  deleteModel,
-  getModelById,
-  getProviderById,
-  updateModel,
-} from "@/modules/provider/use-cases";
-import {
-  imageGenerationConfigSchema,
-  sustainabilityConfigSchema,
-} from "@/modules/provider/model-runtime-config";
 
 const paramsSchema = z.object({
   providerId: z.uuid(),
@@ -24,9 +13,7 @@ const workspaceQuerySchema = z.object({ workspaceId: z.uuid() });
 const modelLogoUrlSchema = z
   .string()
   .max(350_000)
-  .regex(
-    /^data:image\/(?!svg\+xml)[A-Za-z0-9.+-]+;base64,[A-Za-z0-9+/]+={0,2}$/,
-  )
+  .regex(/^data:image\/(?!svg\+xml)[A-Za-z0-9.+-]+;base64,[A-Za-z0-9+/]+={0,2}$/)
   .nullable();
 
 const updateModelSchema = z.object({
@@ -43,18 +30,12 @@ const updateModelSchema = z.object({
   enabled: z.boolean().optional(),
 });
 
-async function assertModelBelongsToProvider(
-  modelDbId: string,
-  providerId: string,
-) {
+async function assertModelBelongsToProvider(modelDbId: string, providerId: string) {
   const model = await getModelById(modelDbId);
   return model?.providerId === providerId ? model : null;
 }
 
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: Promise<{ providerId: string; modelDbId: string }> },
-) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ providerId: string; modelDbId: string }> }) {
   return handleRoute(
     req,
     async ({ session }) => {
@@ -71,13 +52,7 @@ export async function PATCH(
       }
       const { providerId, modelDbId } = parsedParams.data;
       const { workspaceId, ...input } = parsedBody.data;
-      const forbidden = await requireResourcePermissionAsync(
-        session.user.id,
-        workspaceId,
-        "models.update",
-        "model",
-        modelDbId,
-      );
+      const forbidden = await requireResourcePermissionAsync(session.user.id, workspaceId, "models.update", "model", modelDbId);
       if (forbidden) return forbidden;
       const provider = await getProviderById(providerId, workspaceId);
       const model = await assertModelBelongsToProvider(modelDbId, providerId);
@@ -91,10 +66,7 @@ export async function PATCH(
   );
 }
 
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: Promise<{ providerId: string; modelDbId: string }> },
-) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ providerId: string; modelDbId: string }> }) {
   return handleRoute(
     req,
     async ({ session }) => {
@@ -108,13 +80,7 @@ export async function DELETE(
       }
       const { providerId, modelDbId } = parsedParams.data;
       const { workspaceId } = parsedQuery.data;
-      const forbidden = await requireResourcePermissionAsync(
-        session.user.id,
-        workspaceId,
-        "models.delete",
-        "model",
-        modelDbId,
-      );
+      const forbidden = await requireResourcePermissionAsync(session.user.id, workspaceId, "models.delete", "model", modelDbId);
       if (forbidden) return forbidden;
       const provider = await getProviderById(providerId, workspaceId);
       const model = await assertModelBelongsToProvider(modelDbId, providerId);

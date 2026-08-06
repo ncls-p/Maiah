@@ -1,20 +1,7 @@
-import {
-  pgTable,
-  text,
-  integer,
-  timestamp,
-  boolean,
-  varchar,
-  uuid,
-  jsonb,
-  vector,
-  index,
-  uniqueIndex,
-  pgEnum,
-} from "drizzle-orm/pg-core";
+import { boolean,index,integer,jsonb,pgEnum,pgTable,text,timestamp,uniqueIndex,uuid,varchar,vector } from "drizzle-orm/pg-core";
+import { agentVersions } from "./agents";
 import { users } from "./auth";
 import { workspaces } from "./workspace";
-import { agentVersions } from "./agents";
 
 const CREATED_AT_COLUMN = "created_at";
 const UPDATED_AT_COLUMN = "updated_at";
@@ -39,29 +26,15 @@ export const knowledgeBases = pgTable(
     createdById: uuid(CREATED_BY_USER_ID_COLUMN)
       .notNull()
       .references(() => users.id),
-    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
     archivedAt: timestamp("archived_at", { withTimezone: true }),
   },
   (t) => [index("knowledge_bases_workspace").on(t.workspaceId)],
 );
 
-export const documentSourceEnum = pgEnum("document_source_type", [
-  "upload",
-  "url",
-  "text",
-  "integration",
-]);
-export const documentStatusEnum = pgEnum("document_status", [
-  "pending",
-  "processing",
-  "ready",
-  "failed",
-]);
+export const documentSourceEnum = pgEnum("document_source_type", ["upload", "url", "text", "integration"]);
+export const documentStatusEnum = pgEnum("document_status", ["pending", "processing", "ready", "failed"]);
 
 export const documents = pgTable(
   "documents",
@@ -79,19 +52,13 @@ export const documents = pgTable(
     mimeType: varchar("mime_type", { length: 128 }),
     status: documentStatusEnum(STATUS_COLUMN).notNull().default("pending"),
     processingProgress: integer("processing_progress").notNull().default(0),
-    processingStage: varchar("processing_stage", { length: 32 })
-      .notNull()
-      .default("queued"),
+    processingStage: varchar("processing_stage", { length: 32 }).notNull().default("queued"),
     errorMessage: text("error_message"),
     createdById: uuid(CREATED_BY_USER_ID_COLUMN)
       .notNull()
       .references(() => users.id),
-    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("documents_knowledge_base").on(t.knowledgeBaseId)],
 );
@@ -107,9 +74,7 @@ export const documentChunks = pgTable(
     contentEncrypted: text("content_encrypted"),
     tokenCount: integer("token_count"),
     metadataJson: jsonb("metadata_json"),
-    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("document_chunks_document").on(t.documentId, t.chunkIndex)],
 );
@@ -125,9 +90,7 @@ export const documentEmbeddings = pgTable(
     embeddingJson: jsonb("embedding_json").$type<number[]>(),
     embeddingDimensions: integer("embedding_dimensions"),
     embeddingModelId: varchar("embedding_model_id", { length: 255 }),
-    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("document_embeddings_chunk_unique").on(t.chunkId)],
 );
@@ -142,16 +105,9 @@ export const agentKnowledgeBindings = pgTable(
     knowledgeBaseId: uuid("knowledge_base_id")
       .notNull()
       .references(() => knowledgeBases.id, { onDelete: CASCADE_ACTION }),
-    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [
-    uniqueIndex("agent_knowledge_bindings_unique").on(
-      t.agentVersionId,
-      t.knowledgeBaseId,
-    ),
-  ],
+  (t) => [uniqueIndex("agent_knowledge_bindings_unique").on(t.agentVersionId, t.knowledgeBaseId)],
 );
 
 export const agentSkills = pgTable(
@@ -172,12 +128,8 @@ export const agentSkills = pgTable(
     installCommand: text("install_command"),
     markdownFilesJson: jsonb("markdown_files_json").notNull(),
     metadataJson: jsonb("metadata_json"),
-    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
     archivedAt: timestamp("archived_at", { withTimezone: true }),
   },
   (t) => [index("agent_skills_workspace").on(t.workspaceId)],
@@ -193,11 +145,7 @@ export const agentSkillBindings = pgTable(
     skillId: uuid("skill_id")
       .notNull()
       .references(() => agentSkills.id, { onDelete: CASCADE_ACTION }),
-    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [
-    uniqueIndex("agent_skill_bindings_unique").on(t.agentVersionId, t.skillId),
-  ],
+  (t) => [uniqueIndex("agent_skill_bindings_unique").on(t.agentVersionId, t.skillId)],
 );

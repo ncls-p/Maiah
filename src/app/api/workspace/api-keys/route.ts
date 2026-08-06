@@ -1,15 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
-import { handleRoute, requireWorkspaceMemberAsync } from "@/lib/route-handler";
-import {
-  getApiKeyAccessScope,
-  getAvailableApiKeyScopes,
-} from "@/modules/api-keys/permissions";
+import { handleRoute } from "@/lib/route-handler";
+import { getAvailableApiKeyScopes } from "@/modules/api-keys/permissions";
 import { API_KEY_SCOPE_PRESETS } from "@/modules/api-keys/scopes";
-import {
-  createWorkspaceApiKey,
-  listWorkspaceApiKeys,
-} from "@/modules/api-keys/use-cases";
+import { createWorkspaceApiKey,listWorkspaceApiKeys } from "@/modules/api-keys/use-cases";
+import { NextRequest,NextResponse } from "next/server";
+import { z } from "zod";
+import { getApiKeyRouteAccess } from "./api-key-route-access";
 
 const querySchema = z.object({ workspaceId: z.uuid() });
 const createSchema = z.object({
@@ -29,31 +24,10 @@ export async function GET(req: NextRequest) {
       if (!parsed.success) {
         return NextResponse.json({ error: "Invalid input" }, { status: 400 });
       }
-      const forbidden = await requireWorkspaceMemberAsync(
-        session.user.id,
-        parsed.data.workspaceId,
-      );
-      if (forbidden) return forbidden;
-      const accessScope = await getApiKeyAccessScope(
-        session.user.id,
-        parsed.data.workspaceId,
-      );
-      if (!accessScope) {
-        return NextResponse.json(
-          {
-            error: "Forbidden",
-            reason: "Missing permission: apiKeys.manageOwn",
-          },
-          { status: 403 },
-        );
-      }
-      const [keys, availableScopes] = await Promise.all([
-        listWorkspaceApiKeys(
-          parsed.data.workspaceId,
-          accessScope === "own" ? { createdById: session.user.id } : undefined,
-        ),
-        getAvailableApiKeyScopes(session.user.id, parsed.data.workspaceId),
-      ]);
+      const access = await getApiKeyRouteAccess(session.user.id, parsed.data.workspaceId);
+      if (!access.ok) return access.response;
+      const { accessScope } = access;
+      const [keys, availableScopes] = await Promise.all([listWorkspaceApiKeys(parsed.data.workspaceId, accessScope === "own" ? { createdById: session.user.id } : undefined), getAvailableApiKeyScopes(session.user.id, parsed.data.workspaceId)]);
       return NextResponse.json({
         keys,
         availableScopes,
@@ -70,36 +44,15 @@ export async function POST(req: NextRequest) {
     async ({ session }) => {
       const parsed = createSchema.safeParse(await req.json());
       if (!parsed.success) {
-        return NextResponse.json(
-          { error: "Invalid input", details: parsed.error.issues },
-          { status: 400 },
-        );
+        return NextResponse.json({ error: "Invalid input", details: parsed.error.issues }, { status: 400 });
       }
-      const forbidden = await requireWorkspaceMemberAsync(
-        session.user.id,
-        parsed.data.workspaceId,
-      );
-      if (forbidden) return forbidden;
-      const accessScope = await getApiKeyAccessScope(
-        session.user.id,
-        parsed.data.workspaceId,
-      );
-      if (!accessScope) {
-        return NextResponse.json(
-          {
-            error: "Forbidden",
-            reason: "Missing permission: apiKeys.manageOwn",
-          },
-          { status: 403 },
-        );
-      }
+      const access = await getApiKeyRouteAccess(session.user.id, parsed.data.workspaceId);
+      if (!access.ok) return access.response;
       const result = await createWorkspaceApiKey({
         workspaceId: parsed.data.workspaceId,
         userId: session.user.id,
         name: parsed.data.name,
-        expiresAt: parsed.data.expiresAt
-          ? new Date(parsed.data.expiresAt)
-          : null,
+        expiresAt: parsed.data.expiresAt ? new Date(parsed.data.expiresAt) : null,
         scopes: parsed.data.scopes,
       });
       return NextResponse.json(result, { status: 201 });
@@ -108,11 +61,7 @@ export async function POST(req: NextRequest) {
       logLabel: "Failed to create API key",
       expectedError: (error) => {
         const message = error instanceof Error ? error.message : null;
-        if (
-          message?.startsWith("At least one API token scope") ||
-          message?.startsWith("Unknown API token scopes") ||
-          message?.startsWith("API token scopes exceed")
-        ) {
+        if (message?.startsWith("At least one API token scope") || message?.startsWith("Unknown API token scopes") || message?.startsWith("API token scopes exceed")) {
           return NextResponse.json({ error: message }, { status: 400 });
         }
         return null;

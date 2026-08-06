@@ -71,19 +71,12 @@ export const logger = {
   },
 };
 
-export function logHandledWarning(
-  message: string,
-  data?: Record<string, unknown>,
-) {
+export function logHandledWarning(message: string, data?: Record<string, unknown>) {
   const details = data ?? {};
   logger.warn(message, details);
 }
 
-export function logHandledError(
-  message: string,
-  data?: Record<string, unknown>,
-  error?: Error,
-) {
+export function logHandledError(message: string, data?: Record<string, unknown>, error?: Error) {
   const details = data ?? {};
   logger.error(message, details, error);
 }

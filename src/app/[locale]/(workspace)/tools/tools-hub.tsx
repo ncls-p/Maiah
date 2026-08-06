@@ -1,16 +1,16 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
-import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useState } from "react";
 import { BookMarkedIcon, ServerIcon, WrenchIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { McpServerManager } from "@/components/mcp/mcp-server-manager";
 import { PageLoading } from "@/components/page-loading";
 import { SkillManager } from "@/components/skills/skill-manager";
-import { WorkspacePage } from "@/components/workspace-page";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { WorkspacePage } from "@/components/workspace-page";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { useRouter } from "@/i18n/navigation";
 import { fetchWorkspacePermissions } from "@/lib/api-client";
@@ -179,7 +179,7 @@ export function ToolsHub() {
       width="wide"
     >
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="max-w-full flex-nowrap justify-start overflow-x-auto">
+        <TabsList className="justify-start">
           {allowedTabs.map((item) => {
             const Icon = item.icon;
             return (

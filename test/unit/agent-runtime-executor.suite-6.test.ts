@@ -1,0 +1,290 @@
+import { beforeEach,describe,expect,it,vi } from "vitest";
+
+const mocks = vi.hoisted(() => ({
+  generateText: vi.fn(),
+  buildBoundTools: vi.fn(),
+  getDelegationBindings: vi.fn(),
+  createRun: vi.fn(),
+  claimRun: vi.fn(),
+  heartbeatRun: vi.fn(),
+  appendStep: vi.fn(),
+  completeRun: vi.fn(),
+  failRun: vi.fn(),
+  consumeDelegation: vi.fn(),
+  readPayload: vi.fn(),
+  getVisibleAgent: vi.fn(),
+  getActiveVersion: vi.fn(),
+  getVersion: vi.fn(),
+  resolveProvider: vi.fn(),
+  buildSkillsPrompt: vi.fn(),
+  checkPermission: vi.fn(),
+  createChatModel: vi.fn(),
+  logWarning: vi.fn(),
+}));
+
+vi.mock("ai", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("ai")>();
+  return { ...actual, generateText: mocks.generateText };
+});
+vi.mock("@/app/api/workspace/[agentId]/chat/route-support", () => ({
+  buildBoundTools: mocks.buildBoundTools,
+}));
+vi.mock("@/modules/agent/delegation-use-cases", () => ({
+  getDelegationBindingsForVersion: mocks.getDelegationBindings,
+}));
+vi.mock("@/modules/agent/run-use-cases", () => ({
+  createAgentRun: mocks.createRun,
+  claimAgentRun: mocks.claimRun,
+  heartbeatAgentRun: mocks.heartbeatRun,
+  appendAgentRunStep: mocks.appendStep,
+  completeAgentRun: mocks.completeRun,
+  failAgentRun: mocks.failRun,
+  consumeAgentRunDelegationBudget: mocks.consumeDelegation,
+  readAgentRunPayload: mocks.readPayload,
+}));
+vi.mock("@/modules/agent/use-cases", () => ({
+  getVisibleAgentById: mocks.getVisibleAgent,
+  getActiveVersion: mocks.getActiveVersion,
+  getAgentVersionById: mocks.getVersion,
+  resolveProviderForVersion: mocks.resolveProvider,
+}));
+vi.mock("@/modules/skills/use-cases", () => ({
+  buildSkillsRegistryPrompt: mocks.buildSkillsPrompt,
+}));
+vi.mock("@/server/domain/services/authorization", () => ({
+  authorization: { checkPermission: mocks.checkPermission },
+}));
+vi.mock("@/server/infrastructure/providers", () => ({
+  getAdapter: vi.fn(() => ({ createChatModel: mocks.createChatModel })),
+}));
+vi.mock("@/server/infrastructure/db", () => ({ db: {} }));
+vi.mock("@/lib/logger", () => ({
+  logger: { warn: mocks.logWarning },
+}));
+
+import { executeAgent } from "@/modules/agent/runtime-executor";
+
+import { childAgent,childVersion,orchestrator,orchestratorVersion,provider,rootAgent,rootVersion } from "./agent-runtime-executor.suite-6.fixture";
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  mocks.checkPermission.mockResolvedValue({ granted: true });
+  mocks.getVisibleAgent.mockResolvedValue(rootAgent);
+  mocks.getActiveVersion.mockResolvedValue(rootVersion);
+  mocks.getVersion.mockResolvedValue(rootVersion);
+  mocks.resolveProvider.mockResolvedValue(provider);
+  mocks.createChatModel.mockReturnValue({ modelId: "test-model" });
+  mocks.createRun.mockResolvedValue({
+    run: { id: "77777777-7777-4777-8777-777777777777", status: "queued" },
+    reused: false,
+  });
+  mocks.claimRun.mockResolvedValue({ id: "run", status: "running" });
+  mocks.heartbeatRun.mockResolvedValue(true);
+  mocks.buildBoundTools.mockResolvedValue({
+    tools: {},
+    toolApproval: undefined,
+  });
+  mocks.getDelegationBindings.mockResolvedValue([]);
+  mocks.buildSkillsPrompt.mockResolvedValue(null);
+  mocks.generateText.mockResolvedValue({
+    text: "Completed",
+    usage: { inputTokens: 10, outputTokens: 20 },
+  });
+  mocks.completeRun.mockResolvedValue({ status: "success" });
+  mocks.failRun.mockResolvedValue(null);
+  mocks.consumeDelegation.mockResolvedValue(1);
+});
+
+describe("agent runtime executor", () => {
+  it("rechecks delegation permission and executes the pinned child version", async () => {
+    const onProgress = vi.fn();
+    mocks.getVisibleAgent.mockResolvedValueOnce(orchestrator).mockResolvedValueOnce(childAgent);
+    mocks.getActiveVersion.mockResolvedValueOnce(orchestratorVersion);
+    mocks.getVersion.mockResolvedValueOnce(childVersion);
+    mocks.getDelegationBindings.mockResolvedValueOnce([
+      {
+        childAgentId: childAgent.id,
+        childAgentVersionId: childVersion.id,
+        instructions: "Research",
+      },
+    ]);
+    mocks.buildBoundTools.mockResolvedValueOnce({ tools: {}, toolApproval: undefined }).mockResolvedValueOnce({
+      tools: {
+        web_search: {
+          execute: vi.fn(async () => ({ sourceCount: 3 })),
+        },
+      },
+      toolApproval: undefined,
+    });
+    mocks.createRun
+      .mockResolvedValueOnce({
+        run: {
+          id: "77777777-7777-4777-8777-777777777777",
+          status: "queued",
+        },
+        reused: false,
+      })
+      .mockResolvedValueOnce({
+        run: {
+          id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          status: "queued",
+        },
+        reused: false,
+      });
+    let call = 0;
+    mocks.generateText.mockImplementation(async (options) => {
+      call += 1;
+      if (call === 1) {
+        const delegationEntry = Object.entries(options.tools).find(([name]) => name.startsWith("delegate_"));
+        expect(delegationEntry?.[0]).toBe("delegate_specialist_1");
+        const delegate = delegationEntry?.[1] as {
+          description: string;
+          execute: (input: { task: string }) => Promise<unknown>;
+          toModelOutput: (options: { toolCallId: string; input: { task: string }; output: unknown }) => unknown;
+        };
+        expect(delegate.description).not.toContain(childAgent.id);
+        const delegatedOutput = await delegate.execute({
+          task: "Investigate",
+        });
+        expect(delegatedOutput).toMatchObject({
+          childRunId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          childAgentId: childAgent.id,
+          childAgentName: childAgent.name,
+          result: "Child result",
+        });
+        const modelOutput = await delegate.toModelOutput({
+          toolCallId: "delegate-call",
+          input: { task: "Investigate" },
+          output: delegatedOutput,
+        });
+        expect(modelOutput).toEqual({ type: "text", value: "Child result" });
+        expect(JSON.stringify(modelOutput)).not.toContain(childAgent.id);
+        expect(JSON.stringify(modelOutput)).not.toContain(childAgent.name);
+        expect(JSON.stringify(modelOutput)).not.toContain("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
+        return {
+          text: "Synthesized",
+          usage: { inputTokens: 7, outputTokens: 8 },
+        };
+      }
+      if (call === 2) {
+        expect(options.system).toContain("Return only the final answer needed by the parent orchestrator.");
+        const prepareStep = options.prepareStep as (input: { stepNumber: number }) => unknown;
+        expect(await prepareStep({ stepNumber: 2 })).toBeUndefined();
+        expect(await prepareStep({ stepNumber: 3 })).toMatchObject({
+          activeTools: [],
+          toolChoice: "none",
+        });
+        const childToolCall = {
+          type: "tool-call" as const,
+          toolCallId: "child-tool-call",
+          toolName: "web_search",
+          input: { query: "Investigate" },
+          dynamic: false,
+        };
+        await options.onToolExecutionStart?.({
+          callId: "child-model-call",
+          messages: [],
+          toolCall: childToolCall,
+          toolContext: undefined,
+        });
+        await options.onToolExecutionEnd?.({
+          callId: "child-model-call",
+          messages: [],
+          toolCall: childToolCall,
+          toolContext: undefined,
+          toolExecutionMs: 31,
+          toolOutput: {
+            ...childToolCall,
+            type: "tool-result",
+            output: { sourceCount: 3 },
+          },
+        });
+        return {
+          text: "",
+          usage: { inputTokens: 2, outputTokens: 3 },
+          toolResults: [
+            {
+              type: "tool-result",
+              toolCallId: "child-tool-call",
+              toolName: "web_search",
+              output: { sourceCount: 3 },
+            },
+          ],
+          responseMessages: [
+            {
+              role: "tool",
+              content: [
+                {
+                  type: "tool-result",
+                  toolCallId: "child-tool-call",
+                  toolName: "web_search",
+                  output: { type: "json", value: { sourceCount: 3 } },
+                },
+              ],
+            },
+          ],
+        };
+      }
+      expect(options).not.toHaveProperty("tools");
+      expect(options).not.toHaveProperty("messages");
+      expect(options.prompt).toContain('"sourceCount":3');
+      expect(options.system).toContain("Your previous turn ended without a final text response");
+      return {
+        text: "Child result",
+        usage: { inputTokens: 4, outputTokens: 4 },
+      };
+    });
+
+    const result = await executeAgent({
+      workspaceId: rootAgent.workspaceId,
+      userId: rootAgent.createdById,
+      agentId: rootAgent.id,
+      prompt: "Coordinate",
+      trigger: "api",
+      onProgress,
+    });
+
+    expect(result.totalTreeTokens).toBe(28);
+    expect(mocks.checkPermission).toHaveBeenCalledWith({ principalType: "user", principalId: rootAgent.createdById }, "agents.delegate", "agent", childAgent.id);
+    expect(mocks.getVersion).toHaveBeenCalledWith(childVersion.id);
+    expect(mocks.createRun).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        agentId: childAgent.id,
+        agentVersionId: childVersion.id,
+        parentRunId: "77777777-7777-4777-8777-777777777777",
+        trigger: "delegation",
+      }),
+    );
+    const rootDeadline = mocks.createRun.mock.calls[0][0].deadlineAt as Date;
+    const childDeadline = mocks.createRun.mock.calls[1][0].deadlineAt as Date;
+    expect(rootDeadline.getTime() - childDeadline.getTime()).toBe(7_500);
+    expect(mocks.completeRun).toHaveBeenLastCalledWith(expect.objectContaining({ reservationTokens: 28 }));
+    expect(onProgress).toHaveBeenNthCalledWith(1, {
+      type: "tool-start",
+      id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa:child-tool-call",
+      toolCallId: "child-tool-call",
+      toolName: "web_search",
+      agentName: childAgent.name,
+      agentId: childAgent.id,
+      runId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      parentRunId: "77777777-7777-4777-8777-777777777777",
+      depth: 1,
+      modelHistoryKind: "visual-only",
+      input: { query: "Investigate" },
+    });
+    expect(onProgress).toHaveBeenNthCalledWith(2, {
+      type: "tool-end",
+      id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa:child-tool-call",
+      toolCallId: "child-tool-call",
+      toolName: "web_search",
+      agentName: childAgent.name,
+      agentId: childAgent.id,
+      runId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      parentRunId: "77777777-7777-4777-8777-777777777777",
+      depth: 1,
+      modelHistoryKind: "visual-only",
+      durationMs: 31,
+      output: { sourceCount: 3 },
+    });
+  });
+});

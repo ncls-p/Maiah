@@ -1,13 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest,NextResponse } from "next/server";
 import { z } from "zod";
 
 import { logHandledError } from "@/lib/logger";
 import { handleRoute } from "@/lib/route-handler";
 import { checkWorkspacePermissionForRequest } from "@/modules/auth/workspace-access";
-import {
-  getUserGitHubStatus,
-  syncUserGitHubInstallations,
-} from "@/modules/github/publishing";
+import { getUserGitHubStatus,syncUserGitHubInstallations } from "@/modules/github/publishing";
 
 const syncSchema = z.object({
   workspaceId: z.uuid(),
@@ -22,16 +19,9 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
       }
 
-      const permission = await checkWorkspacePermissionForRequest(
-        session.user.id,
-        parsed.data.workspaceId,
-        "agents.chat",
-      );
+      const permission = await checkWorkspacePermissionForRequest(session.user.id, parsed.data.workspaceId, "agents.chat");
       if (!permission.granted) {
-        return NextResponse.json(
-          { error: "Forbidden", reason: permission.reason },
-          { status: 403 },
-        );
+        return NextResponse.json({ error: "Forbidden", reason: permission.reason }, { status: 403 });
       }
 
       await syncUserGitHubInstallations({
@@ -46,17 +36,10 @@ export async function POST(req: NextRequest) {
 
       return NextResponse.json({ ...status, synced: true });
     } catch (error) {
-      logHandledError(
-        "GitHub repository sync failed",
-        { requestId, userId: session.user.id },
-        error as Error,
-      );
+      logHandledError("GitHub repository sync failed", { requestId, userId: session.user.id }, error as Error);
       return NextResponse.json(
         {
-          error:
-            error instanceof Error
-              ? error.message
-              : "Failed to sync GitHub repositories",
+          error: error instanceof Error ? error.message : "Failed to sync GitHub repositories",
         },
         { status: 400 },
       );

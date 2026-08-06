@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach,describe,expect,it,vi } from "vitest";
 
 // ─── DB mock ────────────────────────────────────────────────────────────
 
@@ -37,10 +37,10 @@ vi.mock("@/lib/logger", () => ({
   },
 }));
 
+import { logHandledError } from "@/lib/logger";
+import { audit } from "@/server/domain/services/audit";
 import * as _dbModule from "@/server/infrastructure/db";
 const dbModule = _dbModule as unknown as DbModule;
-import { audit } from "@/server/domain/services/audit";
-import { logHandledError } from "@/lib/logger";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -104,9 +104,7 @@ describe("audit.emit", () => {
   });
 
   it("does not throw when the database insert fails", async () => {
-    dbModule._insertChain.values.mockRejectedValueOnce(
-      new Error("DB connection lost"),
-    );
+    dbModule._insertChain.values.mockRejectedValueOnce(new Error("DB connection lost"));
 
     await expect(
       audit.emit({
@@ -115,10 +113,7 @@ describe("audit.emit", () => {
       }),
     ).resolves.toBeUndefined();
 
-    expect(logHandledError).toHaveBeenCalledWith(
-      "Failed to write audit event",
-      expect.objectContaining({ action: "agent.created" }),
-    );
+    expect(logHandledError).toHaveBeenCalledWith("Failed to write audit event", expect.objectContaining({ action: "agent.created" }));
   });
 
   it("logs the action and error message on failure", async () => {

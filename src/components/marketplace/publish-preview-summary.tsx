@@ -1,20 +1,11 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import {
-  formatManifestPreview,
-  type ManifestPreviewData,
-} from "./marketplace-i18n-helpers";
+import { formatManifestPreview,type ManifestPreviewData } from "./marketplace-i18n-helpers";
 
-export function PublishPreviewSummary({
-  preview,
-}: {
-  preview: ManifestPreviewData;
-}) {
+export function PublishPreviewSummary({ preview }: { preview: ManifestPreviewData }) {
   const t = useTranslations("marketplace.manifest");
-  const bullets = formatManifestPreview(preview, (key, values) =>
-    t(key as "preview.agentModel", values),
-  );
+  const bullets = formatManifestPreview(preview, (key, values) => t(key as "preview.agentModel", values));
 
   if (bullets.length === 0) return null;
 

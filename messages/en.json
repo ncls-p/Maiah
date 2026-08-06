@@ -2030,7 +2030,38 @@
     "passwordUpdatedDescription": "Use the new password the next time you sign in.",
     "passwordUpdateFailed": "Unable to update password",
     "updatePassword": "Update password",
-    "updatingPassword": "Updating password…"
+    "updatingPassword": "Updating password…",
+    "branding": {
+      "title": "Organization branding",
+      "description": "Customize the logo and color system used across {organization}.",
+      "logo": "Organization logo",
+      "logoEmpty": "Use the default Maiah logo",
+      "chooseLogo": "Choose logo",
+      "removeLogo": "Remove",
+      "logoInvalid": "Choose a PNG, JPG, WebP, GIF, or AVIF image.",
+      "logoTooLarge": "The logo must be smaller than 256 KB.",
+      "logoReadFailed": "Unable to read the selected image.",
+      "theme": "Color theme",
+      "themes": {
+        "ocean": "Ocean",
+        "forest": "Forest",
+        "ember": "Ember",
+        "violet": "Violet",
+        "slate": "Slate",
+        "custom": "Custom"
+      },
+      "customHint": "Customize every platform color independently for light and dark mode.",
+      "light": "Light palette",
+      "dark": "Dark palette",
+      "scopeHint": "Changes apply to every project in this organization.",
+      "readOnly": "Only organization administrators can change branding.",
+      "reset": "Reset",
+      "save": "Save branding",
+      "saving": "Saving…",
+      "saved": "Organization branding updated",
+      "loadFailed": "Unable to load organization branding",
+      "saveFailed": "Unable to save organization branding"
+    }
   },
   "admin": {
     "platformSettingsTitle": "Platform settings",
@@ -2321,6 +2352,21 @@
       "inputTokens": "Input tokens",
       "outputTokens": "Output tokens",
       "totalTokens": "Total tokens",
+      "spend": "Spend",
+      "successRate": "Success rate",
+      "averageLatency": "Avg. latency",
+      "dailyTrend": "Daily usage",
+      "dailyTrendDescription": "Input and output tokens over the last 30 active days.",
+      "breakdowns": "Usage breakdown",
+      "breakdownsDescription": "Compare consumption and spend across people, teams, models, and operations.",
+      "byUser": "People",
+      "byTeam": "Teams",
+      "byModel": "Models",
+      "byOperation": "Operations",
+      "dimension": "Name",
+      "unknown": "Unknown",
+      "unknownModel": "Unknown model",
+      "noBreakdownData": "No usage is available for this breakdown.",
       "tokenChart": "Token activity",
       "tokenChartDescription": "Input vs output for the last {count} events.",
       "inputLegend": "Input",
@@ -3466,6 +3512,18 @@
       "description": "Define the expected result, assistant, and run cadence.",
       "submit": "Create task"
     },
+    "edit": {
+      "title": "Task details",
+      "description": "Review the task configuration and update its instructions or schedule.",
+      "submit": "Save changes",
+      "enabledHint": "Paused tasks keep their configuration and execution history."
+    },
+    "details": {
+      "action": "Details",
+      "status": "Last status",
+      "nextRun": "Next run",
+      "timezone": "Time zone"
+    },
     "fields": {
       "title": "Title",
       "prompt": "Instructions",
@@ -3473,7 +3531,8 @@
       "assistantPlaceholder": "Choose an assistant",
       "frequency": "Frequency",
       "time": "Time",
-      "minutes": "Interval in minutes"
+      "minutes": "Interval in minutes",
+      "enabled": "Task enabled"
     },
     "frequency": {
       "daily": "Every day",
@@ -3507,6 +3566,7 @@
     "intervalEvery": "Every {minutes} minutes",
     "nextRun": "next run: {date}",
     "toggleTask": "Enable or disable {title}",
+    "editTask": "View and edit {title}",
     "deleteTask": "Delete {title}",
     "deleteTitle": "Delete this scheduled task?",
     "deleteDescription": "{title} will stop running. Existing conversations will be kept.",
@@ -3517,6 +3577,7 @@
       "loadAgentsFailed": "Unable to load assistants",
       "loadFailed": "Unable to load tasks",
       "created": "Scheduled task created",
+      "updated": "Scheduled task updated",
       "createFailed": "Unable to create task",
       "updateFailed": "Unable to update task",
       "deleted": "Task deleted",

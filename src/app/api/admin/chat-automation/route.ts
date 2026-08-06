@@ -1,12 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
 import { handleAdminRoute } from "@/lib/route-handler";
 import { requireAdminApiSession } from "@/modules/admin/auth";
-import {
-  getChatAutomationAdminState,
-  setChatAutomationConfig,
-  validateChatAutomationConfig,
-} from "@/modules/chat/automation";
+import { getChatAutomationAdminState,setChatAutomationConfig,validateChatAutomationConfig } from "@/modules/chat/automation";
+import { NextRequest,NextResponse } from "next/server";
+import { z } from "zod";
 
 const updateSchema = z
   .object({
@@ -39,10 +35,7 @@ export async function GET() {
     if (!auth.ok) return auth.response;
     return NextResponse.json(await getChatAutomationAdminState());
   } catch {
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
 
@@ -54,10 +47,7 @@ export async function PATCH(req: NextRequest) {
       if (!auth.ok) return auth.response;
       const parsed = updateSchema.safeParse(await req.json());
       if (!parsed.success) {
-        return NextResponse.json(
-          { error: "Invalid input", details: parsed.error.issues },
-          { status: 400 },
-        );
+        return NextResponse.json({ error: "Invalid input", details: parsed.error.issues }, { status: 400 });
       }
       const validation = await validateChatAutomationConfig(parsed.data);
       if (!validation.ok) {
@@ -69,10 +59,7 @@ export async function PATCH(req: NextRequest) {
           { status: 400 },
         );
       }
-      const config = await setChatAutomationConfig(
-        parsed.data,
-        session.user.id,
-      );
+      const config = await setChatAutomationConfig(parsed.data, session.user.id);
       return NextResponse.json(config);
     },
     { logLabel: "Failed to update chat automation config" },

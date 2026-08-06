@@ -7,20 +7,12 @@ export type ConversationSearchMatch = {
 };
 
 export function normalizeConversationSearchText(value: string) {
-  return value
-    .normalize("NFKD")
-    .replace(/\p{M}/gu, "")
-    .toLocaleLowerCase()
-    .replace(/\s+/g, " ")
-    .trim();
+  return value.normalize("NFKD").replace(/\p{M}/gu, "").toLocaleLowerCase().replace(/\s+/g, " ").trim();
 }
 
 export function conversationTextMatches(value: string, query: string) {
   const normalizedQuery = normalizeConversationSearchText(query);
-  return (
-    normalizedQuery.length > 0 &&
-    normalizeConversationSearchText(value).includes(normalizedQuery)
-  );
+  return normalizedQuery.length > 0 && normalizeConversationSearchText(value).includes(normalizedQuery);
 }
 
 export function conversationSearchSnippet(value: string, query: string) {
@@ -32,10 +24,7 @@ export function conversationSearchSnippet(value: string, query: string) {
   if (matchIndex < 0) return compactValue.slice(0, 140);
 
   let start = Math.max(0, matchIndex - SEARCH_SNIPPET_CONTEXT_BEFORE);
-  let end = Math.min(
-    compactValue.length,
-    matchIndex + normalizedQuery.length + SEARCH_SNIPPET_CONTEXT_AFTER,
-  );
+  let end = Math.min(compactValue.length, matchIndex + normalizedQuery.length + SEARCH_SNIPPET_CONTEXT_AFTER);
 
   if (start > 0) {
     const nextSpace = compactValue.indexOf(" ", start);
@@ -46,7 +35,5 @@ export function conversationSearchSnippet(value: string, query: string) {
     if (previousSpace > matchIndex) end = previousSpace;
   }
 
-  return `${start > 0 ? "…" : ""}${compactValue.slice(start, end)}${
-    end < compactValue.length ? "…" : ""
-  }`;
+  return `${start > 0 ? "…" : ""}${compactValue.slice(start, end)}${end < compactValue.length ? "…" : ""}`;
 }

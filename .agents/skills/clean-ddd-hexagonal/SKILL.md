@@ -9,14 +9,14 @@ Backend architecture combining DDD tactical patterns, Clean Architecture depende
 
 ## When to Use (and When NOT to)
 
-| Use When | Skip When |
-|----------|-----------|
-| Complex business domain with many rules | Simple CRUD, few business rules |
-| Long-lived system (years of maintenance) | Prototype, MVP, throwaway code |
-| Team of 5+ developers | Solo developer or small team (1-2) |
-| Multiple entry points (API, CLI, events) | Single entry point, simple API |
+| Use When                                 | Skip When                                |
+| ---------------------------------------- | ---------------------------------------- |
+| Complex business domain with many rules  | Simple CRUD, few business rules          |
+| Long-lived system (years of maintenance) | Prototype, MVP, throwaway code           |
+| Team of 5+ developers                    | Solo developer or small team (1-2)       |
+| Multiple entry points (API, CLI, events) | Single entry point, simple API           |
 | Need to swap infrastructure (DB, broker) | Fixed infrastructure, unlikely to change |
-| High test coverage required | Quick scripts, internal tools |
+| High test coverage required              | Quick scripts, internal tools            |
 
 **Start simple. Evolve complexity only when needed.** Most systems don't need full CQRS or Event Sourcing.
 
@@ -30,6 +30,7 @@ Infrastructure → Application → Domain
 ```
 
 **Violations to catch:**
+
 - Domain importing database/HTTP libraries
 - Controllers calling repositories directly (bypassing use cases)
 - Entities depending on application services
@@ -102,28 +103,28 @@ src/
 
 ## DDD Building Blocks
 
-| Pattern | Purpose | Layer | Key Rule |
-|---------|---------|-------|----------|
-| **Entity** | Identity + behavior | Domain | Equality by ID |
-| **Value Object** | Immutable data | Domain | Equality by value, no setters |
-| **Aggregate** | Consistency boundary | Domain | Only root is referenced externally |
-| **Domain Event** | Record of change | Domain | Past tense naming (`OrderPlaced`) |
-| **Repository** | Persistence abstraction | Domain (port) | Per aggregate, not per table |
-| **Domain Service** | Stateless logic | Domain | When logic doesn't fit an entity |
-| **Application Service** | Orchestration | Application | Coordinates domain + infra |
+| Pattern                 | Purpose                 | Layer         | Key Rule                           |
+| ----------------------- | ----------------------- | ------------- | ---------------------------------- |
+| **Entity**              | Identity + behavior     | Domain        | Equality by ID                     |
+| **Value Object**        | Immutable data          | Domain        | Equality by value, no setters      |
+| **Aggregate**           | Consistency boundary    | Domain        | Only root is referenced externally |
+| **Domain Event**        | Record of change        | Domain        | Past tense naming (`OrderPlaced`)  |
+| **Repository**          | Persistence abstraction | Domain (port) | Per aggregate, not per table       |
+| **Domain Service**      | Stateless logic         | Domain        | When logic doesn't fit an entity   |
+| **Application Service** | Orchestration           | Application   | Coordinates domain + infra         |
 
 ## Anti-Patterns (CRITICAL)
 
-| Anti-Pattern | Problem | Fix |
-|--------------|---------|-----|
-| **Anemic Domain Model** | Entities are data bags, logic in services | Move behavior INTO entities |
-| **Repository per Entity** | Breaks aggregate boundaries | One repository per AGGREGATE |
-| **Leaking Infrastructure** | Domain imports DB/HTTP libs | Domain has ZERO external deps |
-| **God Aggregate** | Too many entities, slow transactions | Split into smaller aggregates |
-| **Skipping Ports** | Controllers → Repositories directly | Always go through application layer |
-| **CRUD Thinking** | Modeling data, not behavior | Model business operations |
-| **Premature CQRS** | Adding complexity before needed | Start with simple read/write, evolve |
-| **Cross-Aggregate TX** | Multiple aggregates in one transaction | Use domain events for consistency |
+| Anti-Pattern               | Problem                                   | Fix                                  |
+| -------------------------- | ----------------------------------------- | ------------------------------------ |
+| **Anemic Domain Model**    | Entities are data bags, logic in services | Move behavior INTO entities          |
+| **Repository per Entity**  | Breaks aggregate boundaries               | One repository per AGGREGATE         |
+| **Leaking Infrastructure** | Domain imports DB/HTTP libs               | Domain has ZERO external deps        |
+| **God Aggregate**          | Too many entities, slow transactions      | Split into smaller aggregates        |
+| **Skipping Ports**         | Controllers → Repositories directly       | Always go through application layer  |
+| **CRUD Thinking**          | Modeling data, not behavior               | Model business operations            |
+| **Premature CQRS**         | Adding complexity before needed           | Start with simple read/write, evolve |
+| **Cross-Aggregate TX**     | Multiple aggregates in one transaction    | Use domain events for consistency    |
 
 ## Implementation Order
 
@@ -137,25 +138,27 @@ src/
 
 ## Reference Documentation
 
-| File | Purpose |
-|------|---------|
-| [references/LAYERS.md](references/LAYERS.md) | Complete layer specifications |
-| [references/DDD-STRATEGIC.md](references/DDD-STRATEGIC.md) | Bounded contexts, context mapping |
-| [references/DDD-TACTICAL.md](references/DDD-TACTICAL.md) | Entities, value objects, aggregates (pseudocode) |
-| [references/HEXAGONAL.md](references/HEXAGONAL.md) | Ports, adapters, naming |
-| [references/CQRS-EVENTS.md](references/CQRS-EVENTS.md) | Command/query separation, events |
-| [references/TESTING.md](references/TESTING.md) | Unit, integration, architecture tests |
-| [references/CHEATSHEET.md](references/CHEATSHEET.md) | Quick decision guide |
+| File                                                       | Purpose                                          |
+| ---------------------------------------------------------- | ------------------------------------------------ |
+| [references/LAYERS.md](references/LAYERS.md)               | Complete layer specifications                    |
+| [references/DDD-STRATEGIC.md](references/DDD-STRATEGIC.md) | Bounded contexts, context mapping                |
+| [references/DDD-TACTICAL.md](references/DDD-TACTICAL.md)   | Entities, value objects, aggregates (pseudocode) |
+| [references/HEXAGONAL.md](references/HEXAGONAL.md)         | Ports, adapters, naming                          |
+| [references/CQRS-EVENTS.md](references/CQRS-EVENTS.md)     | Command/query separation, events                 |
+| [references/TESTING.md](references/TESTING.md)             | Unit, integration, architecture tests            |
+| [references/CHEATSHEET.md](references/CHEATSHEET.md)       | Quick decision guide                             |
 
 ## Sources
 
 ### Primary Sources
+
 - [The Clean Architecture](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html) — Robert C. Martin (2012)
 - [Hexagonal Architecture](https://alistair.cockburn.us/hexagonal-architecture/) — Alistair Cockburn (2005)
 - [Domain-Driven Design: The Blue Book](https://www.domainlanguage.com/ddd/blue-book/) — Eric Evans (2003)
 - [Implementing Domain-Driven Design](https://openlibrary.org/works/OL17392277W) — Vaughn Vernon (2013)
 
 ### Pattern References
+
 - [CQRS](https://martinfowler.com/bliki/CQRS.html) — Martin Fowler
 - [Event Sourcing](https://martinfowler.com/eaaDev/EventSourcing.html) — Martin Fowler
 - [Repository Pattern](https://martinfowler.com/eaaCatalog/repository.html) — Martin Fowler (PoEAA)
@@ -165,5 +168,6 @@ src/
 - [Effective Aggregate Design](https://www.dddcommunity.org/library/vernon_2011/) — Vaughn Vernon
 
 ### Implementation Guides
+
 - [Microsoft: DDD + CQRS Microservices](https://learn.microsoft.com/en-us/dotnet/architecture/microservices/microservice-ddd-cqrs-patterns/)
 - [Domain Events](https://udidahan.com/2009/06/14/domain-events-salvation/) — Udi Dahan

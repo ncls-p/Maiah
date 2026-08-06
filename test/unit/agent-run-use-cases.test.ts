@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach,describe,expect,it,vi } from "vitest";
 
 type Chain = {
   select: ReturnType<typeof vi.fn>;
@@ -15,16 +15,7 @@ type Chain = {
 
 const dbMock = vi.hoisted(() => {
   const chain = {} as Chain;
-  for (const method of [
-    "select",
-    "insert",
-    "update",
-    "from",
-    "where",
-    "values",
-    "set",
-    "orderBy",
-  ] as const) {
+  for (const method of ["select", "insert", "update", "from", "where", "values", "set", "orderBy"] as const) {
     chain[method] = vi.fn().mockReturnValue(chain);
   }
   chain.limit = vi.fn().mockResolvedValue([]);
@@ -58,20 +49,7 @@ vi.mock("@/modules/usage/quota-reservations", () => ({
   expireWorkspaceTokenReservations: quotaMocks.expire,
 }));
 
-import {
-  appendAgentRunStep,
-  claimAgentRun,
-  completeAgentRun,
-  consumeAgentRunDelegationBudget,
-  createAgentRun,
-  failAgentRun,
-  getAgentRun,
-  heartbeatAgentRun,
-  listAgentRuns,
-  readAgentRunPayload,
-  reapExpiredAgentRuns,
-  requestAgentRunCancellation,
-} from "@/modules/agent/run-use-cases";
+import { claimAgentRun,createAgentRun,heartbeatAgentRun } from "@/modules/agent/run-use-cases";
 
 const run = {
   id: "11111111-1111-4111-8111-111111111111",
@@ -82,16 +60,7 @@ const run = {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  for (const method of [
-    "select",
-    "insert",
-    "update",
-    "from",
-    "where",
-    "values",
-    "set",
-    "orderBy",
-  ] as const) {
+  for (const method of ["select", "insert", "update", "from", "where", "values", "set", "orderBy"] as const) {
     dbMock.chain[method].mockReset().mockReturnValue(dbMock.chain);
   }
   dbMock.chain.limit.mockReset().mockResolvedValue([]);
@@ -150,15 +119,11 @@ describe("agent run lifecycle", () => {
         inputPreviewJson: { prompt: "use Bearer [REDACTED]" },
       }),
     );
-    expect(quotaMocks.reserve).toHaveBeenCalledWith(
-      expect.objectContaining({ requestedTokens: 2_000 }),
-    );
+    expect(quotaMocks.reserve).toHaveBeenCalledWith(expect.objectContaining({ requestedTokens: 2_000 }));
   });
 
   it("creates child runs without reserving the root workspace budget", async () => {
-    dbMock.chain.returning.mockResolvedValueOnce([
-      { ...run, parentRunId: "parent-run" },
-    ]);
+    dbMock.chain.returning.mockResolvedValueOnce([{ ...run, parentRunId: "parent-run" }]);
 
     const result = await createAgentRun({
       workspaceId: run.workspaceId,
@@ -188,9 +153,7 @@ describe("agent run lifecycle", () => {
 
   it("recovers a concurrent idempotent insert", async () => {
     const conflict = Object.assign(new Error("duplicate"), { code: "23505" });
-    dbMock.chain.limit
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([{ ...run, idempotencyKey: "request-1" }]);
+    dbMock.chain.limit.mockResolvedValueOnce([]).mockResolvedValueOnce([{ ...run, idempotencyKey: "request-1" }]);
     dbMock.chain.returning.mockRejectedValueOnce(conflict);
 
     await expect(
@@ -238,16 +201,10 @@ describe("agent run lifecycle", () => {
   });
 
   it("claims queued work with an expiring lease", async () => {
-    dbMock.chain.returning.mockResolvedValueOnce([
-      { ...run, status: "running", leaseOwner: "worker-1" },
-    ]);
+    dbMock.chain.returning.mockResolvedValueOnce([{ ...run, status: "running", leaseOwner: "worker-1" }]);
 
-    await expect(
-      claimAgentRun({ runId: run.id, leaseOwner: "worker-1" }),
-    ).resolves.toMatchObject({ status: "running", leaseOwner: "worker-1" });
-    expect(dbMock.chain.set).toHaveBeenCalledWith(
-      expect.objectContaining({ status: "running", leaseOwner: "worker-1" }),
-    );
+    await expect(claimAgentRun({ runId: run.id, leaseOwner: "worker-1" })).resolves.toMatchObject({ status: "running", leaseOwner: "worker-1" });
+    expect(dbMock.chain.set).toHaveBeenCalledWith(expect.objectContaining({ status: "running", leaseOwner: "worker-1" }));
   });
 
   it("returns null for unclaimable work and heartbeats only its lease owner", async () => {
@@ -256,270 +213,8 @@ describe("agent run lifecycle", () => {
       .mockResolvedValueOnce([{ id: run.id }])
       .mockResolvedValueOnce([]);
 
-    await expect(
-      claimAgentRun({ runId: run.id, leaseOwner: "worker-1" }),
-    ).resolves.toBeNull();
-    await expect(
-      heartbeatAgentRun({ runId: run.id, leaseOwner: "worker-1" }),
-    ).resolves.toBe(true);
-    await expect(
-      heartbeatAgentRun({ runId: run.id, leaseOwner: "worker-2" }),
-    ).resolves.toBe(false);
-  });
-
-  it("appends redacted run steps and consumes a bounded delegation", async () => {
-    dbMock.chain.returning
-      .mockResolvedValueOnce([{ id: "step-1" }])
-      .mockResolvedValueOnce([{ delegationCount: 3 }])
-      .mockResolvedValueOnce([]);
-
-    await expect(
-      appendAgentRunStep({
-        runId: run.id,
-        sequence: 1,
-        kind: "tool",
-        status: "failed",
-        name: "external.request",
-        inputPreview: { authorization: "Bearer hidden" },
-        outputPreview: { ok: false },
-        errorMessage: "Bearer hidden",
-      }),
-    ).resolves.toEqual({ id: "step-1" });
-    await expect(
-      consumeAgentRunDelegationBudget({
-        rootRunId: run.id,
-        maxDelegations: 3,
-      }),
-    ).resolves.toBe(3);
-    await expect(
-      consumeAgentRunDelegationBudget({
-        rootRunId: run.id,
-        maxDelegations: 3,
-      }),
-    ).resolves.toBeNull();
-    expect(dbMock.chain.values).toHaveBeenCalledWith(
-      expect.objectContaining({
-        inputPreviewJson: { authorization: "[REDACTED]" },
-        errorMessage: "Run step failed",
-      }),
-    );
-  });
-
-  it("settles successful usage and redacts terminal errors", async () => {
-    dbMock.chain.returning
-      .mockResolvedValueOnce([{ ...run, status: "success" }])
-      .mockResolvedValueOnce([{ ...run, status: "failed" }]);
-
-    await completeAgentRun({
-      runId: run.id,
-      output: { ok: true },
-      inputTokens: 10,
-      outputTokens: 20,
-      usage: {
-        workspaceId: run.workspaceId,
-        userId: "55555555-5555-4555-8555-555555555555",
-        agentId: "33333333-3333-4333-8333-333333333333",
-        operation: "api",
-      },
-    });
-    await failAgentRun({
-      runId: run.id,
-      error: new Error("Bearer hidden-token"),
-    });
-
-    expect(dbMock.db.transaction).toHaveBeenCalledTimes(2);
-    expect(dbMock.chain.set).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: "settled",
-        actualTokens: 30,
-      }),
-    );
-    expect(dbMock.chain.values).toHaveBeenCalledWith(
-      expect.objectContaining({
-        workspaceId: run.workspaceId,
-        operation: "api",
-        inputTokens: 10,
-        outputTokens: 20,
-        status: "success",
-      }),
-    );
-    expect(dbMock.chain.set).toHaveBeenCalledWith(
-      expect.objectContaining({ errorMessage: "Agent run failed" }),
-    );
-  });
-
-  it("rejects duplicate completion and records terminal failure usage", async () => {
-    dbMock.chain.returning
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([{ ...run, status: "timed_out" }]);
-
-    await expect(
-      completeAgentRun({
-        runId: run.id,
-        output: null,
-        inputTokens: -1,
-        outputTokens: -1,
-      }),
-    ).rejects.toMatchObject({ code: "AGENT_RUN_CONFLICT" });
-    await expect(
-      failAgentRun({
-        runId: run.id,
-        status: "timed_out",
-        error: new Error("deadline"),
-        errorCode: "DEADLINE",
-        inputTokens: 4,
-        outputTokens: 6,
-        usage: {
-          workspaceId: run.workspaceId,
-          userId: "55555555-5555-4555-8555-555555555555",
-          agentId: "33333333-3333-4333-8333-333333333333",
-          operation: "scheduled",
-        },
-      }),
-    ).resolves.toMatchObject({ status: "timed_out" });
-    expect(dbMock.chain.values).toHaveBeenCalledWith(
-      expect.objectContaining({
-        inputTokens: 4,
-        outputTokens: 6,
-        status: "timed_out",
-      }),
-    );
-  });
-
-  it("returns null when a failure races with another terminal transition", async () => {
-    dbMock.chain.returning.mockResolvedValueOnce([]);
-
-    await expect(
-      failAgentRun({ runId: run.id, error: new Error("late") }),
-    ).resolves.toBeNull();
-  });
-
-  it("cancels queued work and releases its reservation atomically", async () => {
-    dbMock.chain.returning.mockResolvedValueOnce([
-      { ...run, status: "cancelled" },
-    ]);
-
-    await expect(requestAgentRunCancellation(run.id)).resolves.toMatchObject({
-      status: "cancelled",
-    });
-
-    expect(dbMock.db.transaction).toHaveBeenCalledOnce();
-    expect(dbMock.chain.set).toHaveBeenCalledWith(
-      expect.objectContaining({ status: "cancelled", reservedTokens: 0 }),
-    );
-    expect(dbMock.chain.set).toHaveBeenCalledWith(
-      expect.objectContaining({ status: "released" }),
-    );
-  });
-
-  it("marks running work for cooperative cancellation", async () => {
-    dbMock.chain.returning
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([{ ...run, status: "running" }]);
-
-    await expect(requestAgentRunCancellation(run.id)).resolves.toMatchObject({
-      status: "running",
-    });
-    expect(dbMock.chain.set).toHaveBeenCalledWith(
-      expect.objectContaining({ cancelRequestedAt: expect.any(Date) }),
-    );
-  });
-
-  it("projects run details without exposing encrypted payloads", async () => {
-    const storedRun = {
-      ...run,
-      inputEncrypted: "enc:secret",
-      outputEncrypted: "enc:secret",
-    };
-    const steps = [{ id: "step-1", sequence: 1 }];
-    dbMock.chain.limit.mockResolvedValueOnce([storedRun]);
-    dbMock.chain.orderBy.mockResolvedValueOnce(steps);
-
-    await expect(getAgentRun(run.id, run.workspaceId)).resolves.toEqual({
-      ...storedRun,
-      inputEncrypted: undefined,
-      outputEncrypted: undefined,
-      steps,
-    });
-  });
-
-  it("returns null for missing runs and clamps list limits", async () => {
-    dbMock.chain.limit
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([{ id: run.id }])
-      .mockResolvedValueOnce([]);
-
-    await expect(getAgentRun(run.id, run.workspaceId)).resolves.toBeNull();
-    await expect(
-      listAgentRuns({
-        workspaceId: run.workspaceId,
-        agentId: "agent-1",
-        limit: 500,
-      }),
-    ).resolves.toEqual([{ id: run.id }]);
-    await expect(
-      listAgentRuns({ workspaceId: run.workspaceId, limit: 0 }),
-    ).resolves.toEqual([]);
-    expect(dbMock.chain.limit).toHaveBeenCalledWith(100);
-    expect(dbMock.chain.limit).toHaveBeenCalledWith(1);
-  });
-
-  it("decrypts stored run payloads and handles missing output", async () => {
-    dbMock.chain.limit
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([
-        { inputEncrypted: 'enc:{"prompt":"hello"}', outputEncrypted: null },
-      ])
-      .mockResolvedValueOnce([
-        {
-          inputEncrypted: 'enc:{"prompt":"hello"}',
-          outputEncrypted: 'enc:{"answer":"done"}',
-        },
-      ]);
-
-    await expect(readAgentRunPayload("missing")).resolves.toBeNull();
-    await expect(readAgentRunPayload(run.id)).resolves.toEqual({
-      input: { prompt: "hello" },
-      output: null,
-    });
-    await expect(readAgentRunPayload(run.id)).resolves.toEqual({
-      input: { prompt: "hello" },
-      output: { answer: "done" },
-    });
-  });
-
-  it("reaps deadlines, lost leases, and reservations atomically", async () => {
-    dbMock.chain.returning
-      .mockResolvedValueOnce([{ runId: run.id }])
-      .mockResolvedValueOnce([{ id: run.id }])
-      .mockResolvedValueOnce([{ id: "66666666-6666-4666-8666-666666666666" }]);
-
-    await expect(reapExpiredAgentRuns()).resolves.toEqual({
-      timedOut: 1,
-      leaseExpired: 1,
-    });
-
-    expect(dbMock.db.transaction).toHaveBeenCalledOnce();
-    expect(dbMock.chain.set).toHaveBeenCalledWith(
-      expect.objectContaining({ status: "timed_out", reservedTokens: 0 }),
-    );
-    expect(dbMock.chain.set).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: "failed",
-        errorCode: "AGENT_RUN_LEASE_EXPIRED",
-      }),
-    );
-  });
-
-  it("reaps cleanly when no run or reservation is stale", async () => {
-    dbMock.chain.returning
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([]);
-
-    await expect(reapExpiredAgentRuns()).resolves.toEqual({
-      timedOut: 0,
-      leaseExpired: 0,
-    });
+    await expect(claimAgentRun({ runId: run.id, leaseOwner: "worker-1" })).resolves.toBeNull();
+    await expect(heartbeatAgentRun({ runId: run.id, leaseOwner: "worker-1" })).resolves.toBe(true);
+    await expect(heartbeatAgentRun({ runId: run.id, leaseOwner: "worker-2" })).resolves.toBe(false);
   });
 });

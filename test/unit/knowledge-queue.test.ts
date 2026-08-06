@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach,describe,expect,it,vi } from "vitest";
 
 const queueMocks = vi.hoisted(() => ({
   add: vi.fn(),
@@ -21,11 +21,7 @@ vi.mock("@/modules/workflows/queue", () => ({
   workflowQueueConnection: () => ({ host: "redis.test", port: 6379 }),
 }));
 
-import {
-  DOCUMENT_INGESTION_QUEUE_NAME,
-  enqueueDocumentIngestion,
-  recoverDocumentIngestionJob,
-} from "@/modules/knowledge/queue";
+import { DOCUMENT_INGESTION_QUEUE_NAME,enqueueDocumentIngestion,recoverDocumentIngestionJob } from "@/modules/knowledge/queue";
 
 const input = {
   documentId: "doc-1",
@@ -65,9 +61,7 @@ describe("persistent document ingestion queue", () => {
       }),
     };
 
-    await expect(recoverDocumentIngestionJob(input, target)).resolves.toBe(
-      "scheduled",
-    );
+    await expect(recoverDocumentIngestionJob(input, target)).resolves.toBe("scheduled");
     expect(target.add).not.toHaveBeenCalled();
   });
 
@@ -81,9 +75,7 @@ describe("persistent document ingestion queue", () => {
       }),
     };
 
-    await expect(recoverDocumentIngestionJob(input, target)).resolves.toBe(
-      "reenqueued",
-    );
+    await expect(recoverDocumentIngestionJob(input, target)).resolves.toBe("reenqueued");
     expect(remove).toHaveBeenCalled();
     expect(target.add).toHaveBeenCalledWith("embed", input, {
       jobId: "doc-1",

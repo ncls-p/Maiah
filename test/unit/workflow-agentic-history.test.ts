@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach,describe,expect,it,vi } from "vitest";
 
 const mocks = vi.hoisted(() => {
   const chain = {
@@ -39,15 +39,7 @@ vi.mock("@/server/domain/services/audit", () => ({
   audit: { emit: mocks.auditEmit },
 }));
 
-import {
-  appendWorkflowAgentMessage,
-  consumeWorkflowAgentInputRequest,
-  createWorkflowAgentInputRequest,
-  getWorkflowAgentHistory,
-  isWorkflowSecretReference,
-  resolveWorkflowSecretReferences,
-  submitWorkflowAgentInputRequest,
-} from "@/modules/workflows/agentic-history";
+import { appendWorkflowAgentMessage,consumeWorkflowAgentInputRequest,createWorkflowAgentInputRequest,getWorkflowAgentHistory,isWorkflowSecretReference,resolveWorkflowSecretReferences,submitWorkflowAgentInputRequest } from "@/modules/workflows/agentic-history";
 
 const workflowId = "11111111-1111-4111-8111-111111111111";
 const workspaceId = "22222222-2222-4222-8222-222222222222";
@@ -82,10 +74,7 @@ function requestRow(status: "pending" | "submitted" | "consumed") {
     description: "Required to configure the HTTP step",
     fieldsJson: fields,
     status,
-    valuesEncrypted:
-      status === "pending"
-        ? null
-        : 'enc:{"api_key":"sk-private","base_url":"https://api.example.com"}',
+    valuesEncrypted: status === "pending" ? null : 'enc:{"api_key":"sk-private","base_url":"https://api.example.com"}',
     expiresAt: new Date("2099-07-23T11:00:00.000Z"),
     createdAt: now,
     submittedAt: status === "pending" ? null : now,
@@ -138,13 +127,9 @@ describe("workflow agentic history and secure inputs", () => {
         createdAt: now,
       },
     ]);
-    mocks.chain.orderBy
-      .mockReturnValueOnce(mocks.chain)
-      .mockResolvedValueOnce([requestRow("pending")]);
+    mocks.chain.orderBy.mockReturnValueOnce(mocks.chain).mockResolvedValueOnce([requestRow("pending")]);
 
-    await expect(
-      getWorkflowAgentHistory({ workflowId, workspaceId, userId }),
-    ).resolves.toEqual({
+    await expect(getWorkflowAgentHistory({ workflowId, workspaceId, userId })).resolves.toEqual({
       messages: [
         {
           id: requestId,
@@ -157,10 +142,7 @@ describe("workflow agentic history and secure inputs", () => {
       pendingRequests: [
         expect.objectContaining({
           id: requestId,
-          fields: [
-            expect.objectContaining({ name: "api_key", sensitive: true }),
-            expect.objectContaining({ name: "base_url", sensitive: false }),
-          ],
+          fields: [expect.objectContaining({ name: "api_key", sensitive: true }), expect.objectContaining({ name: "base_url", sensitive: false })],
         }),
       ],
     });
@@ -183,22 +165,15 @@ describe("workflow agentic history and secure inputs", () => {
     });
     expect(mocks.chain.values).toHaveBeenCalledWith(
       expect.objectContaining({
-        fieldsJson: [
-          expect.objectContaining({ name: "api_key", sensitive: true }),
-          expect.objectContaining({ name: "base_url", sensitive: false }),
-        ],
+        fieldsJson: [expect.objectContaining({ name: "api_key", sensitive: true }), expect.objectContaining({ name: "base_url", sensitive: false })],
       }),
     );
-    expect(mocks.auditEmit).toHaveBeenCalledWith(
-      expect.objectContaining({ action: "workflow.agentInputRequested" }),
-    );
+    expect(mocks.auditEmit).toHaveBeenCalledWith(expect.objectContaining({ action: "workflow.agentInputRequested" }));
   });
 
   it("validates, encrypts, and consumes submitted values without exposing secrets", async () => {
     mocks.chain.limit.mockResolvedValueOnce([requestRow("pending")]);
-    mocks.chain.where
-      .mockReturnValueOnce(mocks.chain)
-      .mockResolvedValueOnce([]);
+    mocks.chain.where.mockReturnValueOnce(mocks.chain).mockResolvedValueOnce([]);
 
     await expect(
       submitWorkflowAgentInputRequest({
@@ -216,9 +191,7 @@ describe("workflow agentic history and secure inputs", () => {
     });
 
     mocks.chain.limit.mockResolvedValueOnce([requestRow("submitted")]);
-    mocks.chain.where
-      .mockReturnValueOnce(mocks.chain)
-      .mockResolvedValueOnce([]);
+    mocks.chain.where.mockReturnValueOnce(mocks.chain).mockResolvedValueOnce([]);
     const consumed = await consumeWorkflowAgentInputRequest({
       requestId,
       workflowId,
@@ -228,13 +201,9 @@ describe("workflow agentic history and secure inputs", () => {
 
     expect(consumed.displayContent).not.toContain("sk-private");
     expect(consumed.modelContent).not.toContain("sk-private");
-    expect(consumed.modelContent).toContain(
-      `__WORKFLOW_SECRET:${requestId}:api_key__`,
-    );
+    expect(consumed.modelContent).toContain(`__WORKFLOW_SECRET:${requestId}:api_key__`);
     expect(consumed.modelContent).toContain("https://api.example.com");
-    expect(mocks.auditEmit).toHaveBeenCalledWith(
-      expect.objectContaining({ action: "workflow.agentInputSubmitted" }),
-    );
+    expect(mocks.auditEmit).toHaveBeenCalledWith(expect.objectContaining({ action: "workflow.agentInputSubmitted" }));
   });
 
   it("resolves opaque references only for sensitive fields at execution time", async () => {

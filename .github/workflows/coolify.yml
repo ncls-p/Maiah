@@ -354,7 +354,7 @@ jobs:
           fi
 
           sandbox_changed=false
-          if changes_match '^(Dockerfile$|sandbox-runner/|scripts/sandbox-runner\.mjs$|scripts/build-sandbox-runner-image\.sh$)'; then
+          if changes_match '^(Dockerfile$|sandbox-runner/|scripts/sandbox-runner[^/]*\.mjs$|scripts/build-sandbox-runner-image\.sh$)'; then
             sandbox_changed=true
           fi
 
@@ -559,7 +559,7 @@ jobs:
           except ImportError:
               EngineAbout = None
 
-          blocked_engines = {"woxikon.de synonyme", "wikimini"}
+          blocked_engines = {"ahmia", "torch", "wikidata", "woxikon.de synonyme", "wikimini"}
           effective_settings = update_settings(load_yaml(DEFAULT_SETTINGS_FILE), get_yaml_cfg("settings.yml"))
           remaining_blocked = sorted(
               engine.get("name")
@@ -626,6 +626,15 @@ jobs:
             --push \
             .
 
+      - name: Verify pushed sandbox runner image
+        env:
+          SANDBOX_IMAGE: ${{ needs.plan_images.outputs.sandbox_image }}
+        run: |
+          docker pull "${SANDBOX_IMAGE}"
+          docker run --rm \
+            --env SANDBOX_RUNNER_VALIDATE_ONLY=true \
+            "${SANDBOX_IMAGE}"
+
   build_servicenow_gateway_image:
     name: Build ServiceNow MCP gateway image
     runs-on: ubuntu-latest
@@ -675,7 +684,7 @@ jobs:
           SERVICENOW_GATEWAY_IMAGE: ${{ needs.plan_images.outputs.servicenow_gateway_image }}
         run: |
           docker pull "${SERVICENOW_GATEWAY_IMAGE}"
-          docker run --rm --entrypoint python "${SERVICENOW_GATEWAY_IMAGE}" - <<'PY'
+          docker run --rm -i --entrypoint python "${SERVICENOW_GATEWAY_IMAGE}" - <<'PY'
           import os
 
           expected = "/app/config/tool_packages.yaml"
@@ -683,6 +692,10 @@ jobs:
               raise SystemExit("TOOL_PACKAGE_CONFIG_PATH is not configured for bundled packages")
           if not os.path.exists(expected):
               raise SystemExit(f"missing bundled ServiceNow package config: {expected}")
+
+          from servicenow_mcp_gateway.app import create_app
+
+          create_app()
           PY
 
   deploy:

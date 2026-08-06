@@ -1,16 +1,8 @@
-import { and, desc, eq, gte, lte } from "drizzle-orm";
-import { NextRequest, NextResponse } from "next/server";
+import { handleRoute,requireWorkspacePermissionAsync } from "@/lib/route-handler";
+import { getWorkspaceUsageAnalytics } from "@/modules/usage/analytics";
+import { getWorkspaceMonthlyTokenLimit,getWorkspaceMonthlyTokenUsage } from "@/modules/usage/quota";
+import { NextRequest,NextResponse } from "next/server";
 import { z } from "zod";
-import {
-  handleRoute,
-  requireWorkspacePermissionAsync,
-} from "@/lib/route-handler";
-import {
-  getWorkspaceMonthlyTokenLimit,
-  getWorkspaceMonthlyTokenUsage,
-} from "@/modules/usage/quota";
-import { db } from "@/server/infrastructure/db";
-import { usageEvents } from "@/server/infrastructure/db/schema";
 
 const querySchema = z.object({
   workspaceId: z.uuid(),
@@ -32,51 +24,25 @@ export async function GET(req: NextRequest) {
         from: searchParams.get("from") ?? undefined,
         to: searchParams.get("to") ?? undefined,
       });
-      if (!parsed.success)
-        return NextResponse.json(
-          { error: "Invalid input", details: parsed.error.issues },
-          { status: 400 },
-        );
+      if (!parsed.success) return NextResponse.json({ error: "Invalid input", details: parsed.error.issues }, { status: 400 });
 
-      const forbidden = await requireWorkspacePermissionAsync(
-        session.user.id,
-        parsed.data.workspaceId,
-        "usage.view",
-      );
+      const forbidden = await requireWorkspacePermissionAsync(session.user.id, parsed.data.workspaceId, "usage.view");
       if (forbidden) return forbidden;
 
-      const filters = [eq(usageEvents.workspaceId, parsed.data.workspaceId)];
-      if (parsed.data.operation)
-        filters.push(eq(usageEvents.operation, parsed.data.operation));
-      if (parsed.data.from)
-        filters.push(gte(usageEvents.createdAt, new Date(parsed.data.from)));
-      if (parsed.data.to)
-        filters.push(lte(usageEvents.createdAt, new Date(parsed.data.to)));
-
-      const events = await db
-        .select()
-        .from(usageEvents)
-        .where(and(...filters))
-        .orderBy(desc(usageEvents.createdAt))
-        .limit(parsed.data.limit);
-
-      const totals = events.reduce(
-        (acc, event) => ({
-          inputTokens: acc.inputTokens + (event.inputTokens ?? 0),
-          outputTokens: acc.outputTokens + (event.outputTokens ?? 0),
-          events: acc.events + 1,
+      const [analytics, monthlyUsed] = await Promise.all([
+        getWorkspaceUsageAnalytics({
+          workspaceId: parsed.data.workspaceId,
+          limit: parsed.data.limit,
+          operation: parsed.data.operation,
+          from: parsed.data.from ? new Date(parsed.data.from) : undefined,
+          to: parsed.data.to ? new Date(parsed.data.to) : undefined,
         }),
-        { inputTokens: 0, outputTokens: 0, events: 0 },
-      );
-
+        getWorkspaceMonthlyTokenUsage(parsed.data.workspaceId),
+      ]);
       const monthlyLimit = getWorkspaceMonthlyTokenLimit();
-      const monthlyUsed = await getWorkspaceMonthlyTokenUsage(
-        parsed.data.workspaceId,
-      );
 
       return NextResponse.json({
-        totals,
-        events,
+        ...analytics,
         quota: monthlyLimit
           ? {
               limit: monthlyLimit,

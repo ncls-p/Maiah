@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
+import { beforeEach,describe,expect,it,vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   getWorkspace: vi.fn(),
@@ -9,24 +9,14 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/route-handler", () => ({
   requireWorkspacePermissionAsync: mocks.requirePermission,
-  handleRoute: async (
-    request: Request,
-    handler: (context: {
-      session: { user: { id: string } };
-      request: Request;
-    }) => Promise<Response>,
-    options?: { expectedError?: (error: unknown) => Response | null },
-  ) => {
+  handleRoute: async (request: Request, handler: (context: { session: { user: { id: string } }; request: Request }) => Promise<Response>, options?: { expectedError?: (error: unknown) => Response | null }) => {
     try {
       return await handler({
         session: { user: { id: "11111111-1111-4111-8111-111111111111" } },
         request,
       });
     } catch (error) {
-      return (
-        options?.expectedError?.(error) ??
-        Response.json({ error: "Internal server error" }, { status: 500 })
-      );
+      return options?.expectedError?.(error) ?? Response.json({ error: "Internal server error" }, { status: 500 });
     }
   },
 }));
@@ -49,10 +39,9 @@ const params = {
 const bytes = new Uint8Array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
 
 function request(range?: string) {
-  return new NextRequest(
-    `http://localhost/api/workspace/code-projects/${projectId}/preview/${previewToken}/assets/theme.mp3`,
-    { headers: range ? { Range: range } : undefined },
-  );
+  return new NextRequest(`http://localhost/api/workspace/code-projects/${projectId}/preview/${previewToken}/assets/theme.mp3`, {
+    headers: range ? { Range: range } : undefined,
+  });
 }
 
 async function responseBytes(response: Response) {

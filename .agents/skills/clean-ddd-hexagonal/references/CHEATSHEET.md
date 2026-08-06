@@ -43,7 +43,7 @@ flowchart TB
     style Domain fill:#10b981,stroke:#059669,color:white
 ```
 
-*Dependencies point inward*
+_Dependencies point inward_
 
 ---
 
@@ -119,7 +119,7 @@ export class Money {
   ) {}
 
   static create(amount: number, currency: string): Money {
-    if (amount < 0) throw new Error('Negative');
+    if (amount < 0) throw new Error("Negative");
     return new Money(amount, currency);
   }
 
@@ -127,8 +127,12 @@ export class Money {
     return Money.create(this._amount + other._amount, this._currency);
   }
 
-  get amount(): number { return this._amount; }
-  get currency(): string { return this._currency; }
+  get amount(): number {
+    return this._amount;
+  }
+  get currency(): string {
+    return this._currency;
+  }
 
   equals(other: Money): boolean {
     return this._amount === other._amount && this._currency === other._currency;
@@ -142,7 +146,11 @@ export class Money {
 export class OrderItem extends Entity<OrderItemId> {
   private _quantity: Quantity;
 
-  private constructor(id: OrderItemId, private readonly _productId: ProductId, quantity: Quantity) {
+  private constructor(
+    id: OrderItemId,
+    private readonly _productId: ProductId,
+    quantity: Quantity,
+  ) {
     super(id);
     this._quantity = quantity;
   }
@@ -155,8 +163,12 @@ export class OrderItem extends Entity<OrderItemId> {
     this._quantity = this._quantity.add(amount);
   }
 
-  get productId(): ProductId { return this._productId; }
-  get quantity(): Quantity { return this._quantity; }
+  get productId(): ProductId {
+    return this._productId;
+  }
+  get quantity(): Quantity {
+    return this._quantity;
+  }
 }
 ```
 
@@ -193,11 +205,13 @@ export class Order extends AggregateRoot<OrderId> {
 
   private assertCanModify(): void {
     if (this._status === OrderStatus.Cancelled) {
-      throw new InvalidOrderStateError('Order is cancelled');
+      throw new InvalidOrderStateError("Order is cancelled");
     }
   }
 
-  get total(): Money { /* ... */ }
+  get total(): Money {
+    /* ... */
+  }
 }
 ```
 
@@ -241,38 +255,38 @@ export class PlaceOrderHandler {
 
 ## Port Naming Conventions
 
-| Type | Pattern | Examples |
-|------|---------|----------|
-| Driver Port | `I{Action}UseCase` | `IPlaceOrderUseCase`, `IGetOrderUseCase` |
-| Driven Port | `I{Resource}Repository` | `IOrderRepository`, `IProductRepository` |
-| Driven Port | `I{Action}Service` | `IPaymentService`, `INotificationService` |
-| Driven Port | `I{Resource}Gateway` | `IPaymentGateway`, `IShippingGateway` |
+| Type        | Pattern                 | Examples                                  |
+| ----------- | ----------------------- | ----------------------------------------- |
+| Driver Port | `I{Action}UseCase`      | `IPlaceOrderUseCase`, `IGetOrderUseCase`  |
+| Driven Port | `I{Resource}Repository` | `IOrderRepository`, `IProductRepository`  |
+| Driven Port | `I{Action}Service`      | `IPaymentService`, `INotificationService` |
+| Driven Port | `I{Resource}Gateway`    | `IPaymentGateway`, `IShippingGateway`     |
 
 ---
 
 ## Common Anti-Patterns
 
-| Anti-Pattern | Problem | Solution |
-|--------------|---------|----------|
-| Anemic Domain | Entities are just data bags | Put behavior in entities |
-| Repository per table | One repo per DB table | One repo per aggregate |
-| Fat Use Cases | Business logic in handlers | Move to domain |
-| Leaky Abstraction | Domain depends on ORM | Keep domain pure |
-| God Aggregate | One massive aggregate | Split into smaller ones |
-| Cross-Aggregate TX | Modifying multiple in one TX | Use domain events |
-| Direct Layer Skip | Controller → Repository | Go through application layer |
-| Premature CQRS | Adding complexity early | Start simple, evolve |
-| Event Proliferation | Too many fine-grained events | May signal context boundary |
+| Anti-Pattern         | Problem                      | Solution                     |
+| -------------------- | ---------------------------- | ---------------------------- |
+| Anemic Domain        | Entities are just data bags  | Put behavior in entities     |
+| Repository per table | One repo per DB table        | One repo per aggregate       |
+| Fat Use Cases        | Business logic in handlers   | Move to domain               |
+| Leaky Abstraction    | Domain depends on ORM        | Keep domain pure             |
+| God Aggregate        | One massive aggregate        | Split into smaller ones      |
+| Cross-Aggregate TX   | Modifying multiple in one TX | Use domain events            |
+| Direct Layer Skip    | Controller → Repository      | Go through application layer |
+| Premature CQRS       | Adding complexity early      | Start simple, evolve         |
+| Event Proliferation  | Too many fine-grained events | May signal context boundary  |
 
 ---
 
 ## Dependency Rules Matrix
 
-|  | Domain | Application | Infrastructure |
-|--|--------|-------------|----------------|
-| **Domain** | ✅ | ❌ | ❌ |
-| **Application** | ✅ | ✅ | ❌ |
-| **Infrastructure** | ✅ | ✅ | ✅ |
+|                    | Domain | Application | Infrastructure |
+| ------------------ | ------ | ----------- | -------------- |
+| **Domain**         | ✅     | ❌          | ❌             |
+| **Application**    | ✅     | ✅          | ❌             |
+| **Infrastructure** | ✅     | ✅          | ✅             |
 
 ✅ = Can depend on
 ❌ = Cannot depend on
@@ -385,6 +399,7 @@ infrastructure/
 ## Resources
 
 ### Books
+
 - Clean Architecture (Robert C. Martin, 2017)
 - Domain-Driven Design (Eric Evans, 2003)
 - Implementing Domain-Driven Design (Vaughn Vernon, 2013)
@@ -392,6 +407,7 @@ infrastructure/
 - Get Your Hands Dirty on Clean Architecture (Tom Hombergs, 2019)
 
 ### Reference Implementations
+
 - Go: [bxcodec/go-clean-arch](https://github.com/bxcodec/go-clean-arch)
 - Rust: [flosse/clean-architecture-with-rust](https://github.com/flosse/clean-architecture-with-rust)
 - Python: [cdddg/py-clean-arch](https://github.com/cdddg/py-clean-arch)
@@ -400,6 +416,7 @@ infrastructure/
 - Java: [thombergs/buckpal](https://github.com/thombergs/buckpal)
 
 ### Official Documentation
+
 - https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html
 - https://alistair.cockburn.us/hexagonal-architecture/
 - https://www.domainlanguage.com/ddd/

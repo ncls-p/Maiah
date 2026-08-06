@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe,expect,it } from "vitest";
 
 import { extractDocument } from "@/modules/document-extraction/service";
 import { visualRegionsMarkdown } from "@/modules/document-extraction/visual-ocr";

@@ -1,12 +1,4 @@
-import {
-  pgTable,
-  text,
-  timestamp,
-  boolean,
-  varchar,
-  uuid,
-  jsonb,
-} from "drizzle-orm/pg-core";
+import { boolean,jsonb,pgTable,text,timestamp,uuid,varchar } from "drizzle-orm/pg-core";
 
 const CREATED_AT_COLUMN = "created_at";
 const UPDATED_AT_COLUMN = "updated_at";
@@ -26,24 +18,16 @@ export const users = pgTable("user", {
   banned: boolean("banned").notNull().default(false),
   banReason: text("ban_reason"),
   banExpires: timestamp("ban_expires", { withTimezone: true }),
-  createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const sessions = pgTable("session", {
   id: uuid("id").primaryKey().defaultRandom(),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   token: text("token").notNull().unique(),
-  createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
   ipAddress: varchar("ip_address", { length: 45 }),
   userAgent: text("user_agent"),
   impersonatedBy: uuid("impersonated_by").references(() => users.id, {
@@ -72,12 +56,8 @@ export const accounts = pgTable("account", {
   }),
   scope: text("scope"),
   password: text("password"),
-  createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const verifications = pgTable("verification", {
@@ -95,7 +75,5 @@ export const appSettings = pgTable("app_settings", {
   updatedById: uuid("updated_by_user_id").references(() => users.id, {
     onDelete: SET_NULL_ACTION,
   }),
-  updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
 });

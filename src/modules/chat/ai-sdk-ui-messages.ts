@@ -1,12 +1,6 @@
 import type { UIMessage } from "ai";
 
-import type {
-  ChatCitation,
-  ChatMessage,
-  ChatMessagePart,
-  CodeWorkspaceArtifact,
-  PendingToolApproval,
-} from "@/components/chat/chat-types";
+import type { ChatCitation,ChatMessage,ChatMessagePart,CodeWorkspaceArtifact,PendingToolApproval } from "@/components/chat/chat-types";
 import { parseToolPart } from "@/components/chat/chat-types";
 
 type AiHubUIMessageMetadata = {
@@ -27,10 +21,7 @@ type AiHubUIMessageData = {
   "conversation-title": { title: string };
 };
 
-export type AiHubUIMessage = UIMessage<
-  AiHubUIMessageMetadata,
-  AiHubUIMessageData
->;
+export type AiHubUIMessage = UIMessage<AiHubUIMessageMetadata, AiHubUIMessageData>;
 
 type MutableAiHubUIParts = AiHubUIMessage["parts"];
 type MutableAiHubUIPart = MutableAiHubUIParts[number];
@@ -47,16 +38,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
-function isCodeWorkspaceArtifact(
-  value: unknown,
-): value is CodeWorkspaceArtifact {
-  return (
-    isRecord(value) &&
-    value.kind === "code_workspace_artifact" &&
-    typeof value.projectId === "string" &&
-    typeof value.version === "number" &&
-    Array.isArray(value.files)
-  );
+function isCodeWorkspaceArtifact(value: unknown): value is CodeWorkspaceArtifact {
+  return isRecord(value) && value.kind === "code_workspace_artifact" && typeof value.projectId === "string" && typeof value.version === "number" && Array.isArray(value.files);
 }
 
 function isCitationArray(value: unknown): value is ChatCitation[] {
@@ -64,20 +47,12 @@ function isCitationArray(value: unknown): value is ChatCitation[] {
     Array.isArray(value) &&
     value.every((item) => {
       if (!isRecord(item)) return false;
-      return (
-        typeof item.chunkId === "string" &&
-        typeof item.documentId === "string" &&
-        typeof item.documentTitle === "string" &&
-        typeof item.content === "string" &&
-        typeof item.score === "number"
-      );
+      return typeof item.chunkId === "string" && typeof item.documentId === "string" && typeof item.documentTitle === "string" && typeof item.content === "string" && typeof item.score === "number";
     })
   );
 }
 
-function chatToolPartToUIPart(
-  part: ChatMessagePart,
-): MutableAiHubUIPart | null {
+function chatToolPartToUIPart(part: ChatMessagePart): MutableAiHubUIPart | null {
   const parsed = parseToolPart(part.content);
   const toolCallId = parsed.toolCallId;
   const toolName = parsed.toolName ?? "tool";
@@ -162,8 +137,7 @@ function partToUIParts(part: ChatMessagePart): MutableAiHubUIParts {
   }
   if (part.type === "suggestions") {
     const suggestions = parseJson(part.content);
-    return Array.isArray(suggestions) &&
-      suggestions.every((item) => typeof item === "string")
+    return Array.isArray(suggestions) && suggestions.every((item) => typeof item === "string")
       ? [
           {
             type: "data-suggestions",
@@ -205,12 +179,7 @@ function partToUIParts(part: ChatMessagePart): MutableAiHubUIParts {
 
 export function toAiSdkUIMessages(messages: ChatMessage[]): AiHubUIMessage[] {
   return messages
-    .filter(
-      (message) =>
-        message.role === "system" ||
-        message.role === "user" ||
-        message.role === "assistant",
-    )
+    .filter((message) => message.role === "system" || message.role === "user" || message.role === "assistant")
     .map((message) => ({
       id: message.id,
       role: message.role as "system" | "user" | "assistant",

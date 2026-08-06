@@ -1,18 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
-import {
-  handleRoute,
-  requireResourcePermissionAsync,
-} from "@/lib/route-handler";
+import { handleRoute,requireResourcePermissionAsync } from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
-import {
-  AgentExecutionError,
-  AgentRunStateError,
-  executeAgent,
-} from "@/modules/agent/runtime-executor";
 import { listAgentRuns } from "@/modules/agent/run-use-cases";
+import { AgentExecutionError,AgentRunStateError,executeAgent } from "@/modules/agent/runtime-executor";
 import { getVisibleAgentById } from "@/modules/agent/use-cases";
 import { WorkspaceQuotaReservationError } from "@/modules/usage/quota-reservations";
+import { NextRequest,NextResponse } from "next/server";
+import { z } from "zod";
 
 const paramsSchema = z.object({ agentId: z.uuid() });
 const listSchema = z.object({
@@ -29,10 +22,7 @@ const executeSchema = z.object({
 
 function executionErrorResponse(error: unknown) {
   if (error instanceof WorkspaceQuotaReservationError) {
-    return NextResponse.json(
-      { error: error.message, code: error.code },
-      { status: 429 },
-    );
+    return NextResponse.json({ error: error.message, code: error.code }, { status: 429 });
   }
   if (error instanceof AgentRunStateError) {
     return NextResponse.json(
@@ -46,27 +36,13 @@ function executionErrorResponse(error: unknown) {
     );
   }
   if (error instanceof AgentExecutionError) {
-    const status = error.code.endsWith("FORBIDDEN")
-      ? 403
-      : error.code.includes("NOT_FOUND")
-        ? 404
-        : error.code.includes("MODEL_NOT_CONFIGURED")
-          ? 400
-          : error.code.includes("LIMIT") || error.code.includes("BUDGET")
-            ? 422
-            : 500;
-    return NextResponse.json(
-      { error: error.message, code: error.code, runId: error.runId },
-      { status },
-    );
+    const status = error.code.endsWith("FORBIDDEN") ? 403 : error.code.includes("NOT_FOUND") ? 404 : error.code.includes("MODEL_NOT_CONFIGURED") ? 400 : error.code.includes("LIMIT") || error.code.includes("BUDGET") ? 422 : 500;
+    return NextResponse.json({ error: error.message, code: error.code, runId: error.runId }, { status });
   }
   return null;
 }
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ agentId: string }> },
-) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ agentId: string }> }) {
   return handleRoute(
     req,
     async ({ session }) => {
@@ -78,20 +54,9 @@ export async function GET(
       if (!parsedParams.success || !parsedQuery.success) {
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
       }
-      const forbidden = await requireResourcePermissionAsync(
-        session.user.id,
-        parsedQuery.data.workspaceId,
-        "agents.get",
-        "agent",
-        (await params).agentId,
-      );
+      const forbidden = await requireResourcePermissionAsync(session.user.id, parsedQuery.data.workspaceId, "agents.get", "agent", (await params).agentId);
       if (forbidden) return forbidden;
-      const agent = await getVisibleAgentById(
-        parsedParams.data.agentId,
-        parsedQuery.data.workspaceId,
-        session.user.id,
-        await canManageTenantGlobals(session, parsedQuery.data.workspaceId),
-      );
+      const agent = await getVisibleAgentById(parsedParams.data.agentId, parsedQuery.data.workspaceId, session.user.id, await canManageTenantGlobals(session, parsedQuery.data.workspaceId));
       if (!agent) {
         return NextResponse.json({ error: "Agent not found" }, { status: 404 });
       }
@@ -107,10 +72,7 @@ export async function GET(
   );
 }
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ agentId: string }> },
-) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ agentId: string }> }) {
   return handleRoute(
     req,
     async ({ session }) => {
@@ -125,13 +87,7 @@ export async function POST(
           { status: 400 },
         );
       }
-      const forbidden = await requireResourcePermissionAsync(
-        session.user.id,
-        parsedBody.data.workspaceId,
-        "agents.chat",
-        "agent",
-        (await params).agentId,
-      );
+      const forbidden = await requireResourcePermissionAsync(session.user.id, parsedBody.data.workspaceId, "agents.chat", "agent", (await params).agentId);
       if (forbidden) return forbidden;
       const result = await executeAgent({
         workspaceId: parsedBody.data.workspaceId,

@@ -6,10 +6,7 @@ const { loadEnvConfig } = nextEnv;
 loadEnvConfig(process.cwd());
 
 async function run() {
-  const [{ db }, { logger }] = await Promise.all([
-    import("../src/server/infrastructure/db"),
-    import("../src/lib/logger"),
-  ]);
+  const [{ db }, { logger }] = await Promise.all([import("../src/server/infrastructure/db"), import("../src/lib/logger")]);
 
   try {
     logger.info("Running migrations...");

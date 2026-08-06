@@ -1,19 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import { useCallback,useEffect,useState } from "react";
 
 import { PageLoading } from "@/components/page-loading";
 import { RequireWorkspaceAccess } from "@/components/require-workspace-access";
-import { WorkspacePage } from "@/components/workspace-page";
 import { Button } from "@/components/ui/button";
+import { WorkspacePage } from "@/components/workspace-page";
 import { useWorkspace } from "@/hooks/use-workspace";
 
-import {
-  UsageDashboard,
-  UsageDashboardSkeleton,
-  type UsageResponse,
-} from "./usage-dashboard";
+import { UsageDashboard,UsageDashboardSkeleton,type UsageResponse } from "./usage-dashboard";
 
 type UsageFilters = {
   operation: string;
@@ -92,27 +88,12 @@ function UsagePageContent() {
   }
 
   return (
-    <WorkspacePage
-      title={t("usageTitle")}
-      description={t("usageDescription")}
-      width="wide"
-    >
+    <WorkspacePage title={t("usageTitle")} description={t("usageDescription")} width="wide">
       {loadError ? (
-        <div
-          className="mb-5 rounded-2xl border border-destructive/25 bg-destructive/5 p-5"
-          role="alert"
-        >
+        <div className="mb-5 rounded-2xl border border-destructive/25 bg-destructive/5 p-5" role="alert">
           <h2 className="text-base font-semibold">{t("usage.loadFailed")}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {t("usage.loadFailedDescription")}
-          </p>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="mt-4"
-            onClick={() => void loadUsage()}
-          >
+          <p className="mt-1 text-sm text-muted-foreground">{t("usage.loadFailedDescription")}</p>
+          <Button type="button" variant="outline" size="sm" className="mt-4" onClick={() => void loadUsage()}>
             {t("usage.retry")}
           </Button>
         </div>

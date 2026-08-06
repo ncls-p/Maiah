@@ -1,12 +1,4 @@
-import {
-  pgTable,
-  text,
-  timestamp,
-  varchar,
-  uuid,
-  jsonb,
-  index,
-} from "drizzle-orm/pg-core";
+import { index,jsonb,pgTable,text,timestamp,uuid,varchar } from "drizzle-orm/pg-core";
 
 const CREATED_AT_COLUMN = "created_at";
 const WORKSPACE_ID_COLUMN = "workspace_id";
@@ -28,13 +20,7 @@ export const auditEvents = pgTable(
     ipAddress: varchar("ip_address", { length: 45 }),
     userAgent: text("user_agent"),
     metadataJson: jsonb("metadata_json"),
-    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [
-    index("audit_events_actor").on(t.actorPrincipalType, t.actorPrincipalId),
-    index("audit_events_resource").on(t.resourceType, t.resourceId),
-    index("audit_events_workspace").on(t.workspaceId),
-  ],
+  (t) => [index("audit_events_actor").on(t.actorPrincipalType, t.actorPrincipalId), index("audit_events_resource").on(t.resourceType, t.resourceId), index("audit_events_workspace").on(t.workspaceId)],
 );

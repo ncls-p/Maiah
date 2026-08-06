@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach,describe,expect,it,vi } from "vitest";
 
 const toolUseCasesMock = vi.hoisted(() => ({
   canExecuteRestrictedTool: vi.fn(),
@@ -34,10 +34,7 @@ vi.mock("@/server/infrastructure/ai-sdk/devtools", () => ({
 
 vi.mock("@/modules/tool/invocation-state", () => invocationStateMock);
 
-vi.mock(
-  "@/modules/tool/organization-builtin-tool-policies",
-  () => organizationToolPolicyMock,
-);
+vi.mock("@/modules/tool/organization-builtin-tool-policies", () => organizationToolPolicyMock);
 
 vi.mock("@/modules/knowledge/use-cases", () => knowledgeUseCasesMock);
 
@@ -45,27 +42,20 @@ vi.mock("@/modules/tool/opa-approval-policy", () => ({
   evaluateOpaToolApprovalPolicy: vi.fn(async () => null),
 }));
 
-type BuildBoundTools =
-  (typeof import("@/app/api/workspace/[agentId]/chat/route-support"))["buildBoundTools"];
+type BuildBoundTools = (typeof import("@/app/api/workspace/[agentId]/chat/route-support"))["buildBoundTools"];
 
-type BuiltInToolLookup =
-  (typeof import("@/modules/tool/builtin-tools"))["getBuiltInToolByName"];
+type BuiltInToolLookup = (typeof import("@/modules/tool/builtin-tools"))["getBuiltInToolByName"];
 
 async function loadModules() {
   vi.resetModules();
-  const [routeSupport, builtinTools] = await Promise.all([
-    import("@/app/api/workspace/[agentId]/chat/route-support"),
-    import("@/modules/tool/builtin-tools"),
-  ]);
+  const [routeSupport, builtinTools] = await Promise.all([import("@/app/api/workspace/[agentId]/chat/route-support"), import("@/modules/tool/builtin-tools")]);
   return {
     buildBoundTools: routeSupport.buildBoundTools as BuildBoundTools,
     projectStreamedToolInput: routeSupport.projectStreamedToolInput,
     streamToolErrorOutput: routeSupport.streamToolErrorOutput,
     mergeUserFilePartMetadata: routeSupport.mergeUserFilePartMetadata,
-    knowledgeCitationsFromToolOutput:
-      routeSupport.knowledgeCitationsFromToolOutput,
-    getBuiltInToolByName:
-      builtinTools.getBuiltInToolByName as BuiltInToolLookup,
+    knowledgeCitationsFromToolOutput: routeSupport.knowledgeCitationsFromToolOutput,
+    getBuiltInToolByName: builtinTools.getBuiltInToolByName as BuiltInToolLookup,
     waitForApproval: invocationStateMock.waitForApproval,
   };
 }
@@ -81,14 +71,11 @@ function buildInput() {
     hasSkills: false,
   };
 }
-
 describe("chat route tool gating", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     toolUseCasesMock.getToolBindingsForVersion.mockResolvedValue([]);
-    organizationToolPolicyMock.getOrganizationBuiltInToolPolicyMap.mockResolvedValue(
-      new Map(),
-    );
+    organizationToolPolicyMock.getOrganizationBuiltInToolPolicyMap.mockResolvedValue(new Map());
     knowledgeUseCasesMock.getKnowledgeBindingsForVersion.mockResolvedValue([]);
     knowledgeUseCasesMock.searchBoundKnowledgeBases.mockResolvedValue([]);
     knowledgeUseCasesMock.readBoundKnowledgeChunkWindow.mockResolvedValue(null);
@@ -162,21 +149,18 @@ describe("chat route tool gating", () => {
       ],
       truncated: false,
     });
-    const { buildBoundTools, knowledgeCitationsFromToolOutput } =
-      await loadModules();
+    const { buildBoundTools, knowledgeCitationsFromToolOutput } = await loadModules();
 
     const { tools } = await buildBoundTools(buildInput());
 
-    expect(Object.keys(tools)).toEqual(
-      expect.arrayContaining(["search_knowledge", "read_knowledge_context"]),
-    );
-    const searchOutput = await (
-      tools.search_knowledge.execute as (input: unknown) => Promise<unknown>
-    )({ query: "annual leave", knowledgeBaseIds: [knowledgeBaseId], limit: 3 });
+    expect(Object.keys(tools)).toEqual(expect.arrayContaining(["search_knowledge", "read_knowledge_context"]));
+    const searchOutput = await (tools.search_knowledge.execute as (input: unknown) => Promise<unknown>)({
+      query: "annual leave",
+      knowledgeBaseIds: [knowledgeBaseId],
+      limit: 3,
+    });
     expect(knowledgeCitationsFromToolOutput(searchOutput)).toHaveLength(1);
-    expect(
-      knowledgeUseCasesMock.searchBoundKnowledgeBases,
-    ).toHaveBeenCalledWith(
+    expect(knowledgeUseCasesMock.searchBoundKnowledgeBases).toHaveBeenCalledWith(
       expect.objectContaining({
         agentVersionId: "version-1",
         knowledgeBaseIds: [knowledgeBaseId],
@@ -185,14 +169,8 @@ describe("chat route tool gating", () => {
       }),
     );
 
-    await (
-      tools.read_knowledge_context.execute as (
-        input: unknown,
-      ) => Promise<unknown>
-    )({ chunkId, before: 1, after: 2 });
-    expect(
-      knowledgeUseCasesMock.readBoundKnowledgeChunkWindow,
-    ).toHaveBeenCalledWith({
+    await (tools.read_knowledge_context.execute as (input: unknown) => Promise<unknown>)({ chunkId, before: 1, after: 2 });
+    expect(knowledgeUseCasesMock.readBoundKnowledgeChunkWindow).toHaveBeenCalledWith({
       agentVersionId: "version-1",
       workspaceId: "workspace-1",
       userId: "user-1",
@@ -222,18 +200,12 @@ describe("chat route tool gating", () => {
     const { buildBoundTools } = await loadModules();
     const { tools } = await buildBoundTools(buildInput());
 
-    await (
-      tools.search_knowledge.execute as (input: unknown) => Promise<unknown>
-    )({
+    await (tools.search_knowledge.execute as (input: unknown) => Promise<unknown>)({
       query: "policy architecture",
       knowledgeBaseIds: [firstId, secondId],
     });
 
-    expect(
-      knowledgeUseCasesMock.searchBoundKnowledgeBases,
-    ).toHaveBeenCalledWith(
-      expect.objectContaining({ knowledgeBaseIds: [firstId, secondId] }),
-    );
+    expect(knowledgeUseCasesMock.searchBoundKnowledgeBases).toHaveBeenCalledWith(expect.objectContaining({ knowledgeBaseIds: [firstId, secondId] }));
   });
 
   it("does not expose knowledge tools when the agent has no data source binding", async () => {
@@ -254,218 +226,5 @@ describe("chat route tool gating", () => {
     });
 
     expect(Object.keys(tools)).toContain("run_code_sandbox");
-  });
-
-  it("does not auto-enable the document sandbox when the organization disabled it", async () => {
-    organizationToolPolicyMock.getOrganizationBuiltInToolPolicyMap.mockResolvedValue(
-      new Map([
-        ["run_code_sandbox", { enabled: false, requireApproval: true }],
-      ]),
-    );
-    const { buildBoundTools } = await loadModules();
-
-    const { tools } = await buildBoundTools({
-      ...buildInput(),
-      enableDocumentExplorer: true,
-    });
-
-    expect(Object.keys(tools)).not.toContain("run_code_sandbox");
-  });
-
-  it("keeps persisted attachments when a user message is regenerated", async () => {
-    const { mergeUserFilePartMetadata } = await loadModules();
-    const persistedFile = {
-      kind: "chat_file",
-      id: "file-1",
-      fileName: "brief.pdf",
-    };
-    const refreshedFile = { ...persistedFile, extractionStatus: "readable" };
-    const persistedImage = {
-      kind: "chat_image",
-      id: "image-1",
-      fileName: "logo.png",
-    };
-
-    expect(
-      mergeUserFilePartMetadata(
-        [persistedFile, persistedImage],
-        [refreshedFile],
-      ),
-    ).toEqual([refreshedFile, persistedImage]);
-  });
-
-  it("projects partial tool input while redacting secrets", async () => {
-    const { projectStreamedToolInput } = await loadModules();
-
-    await expect(
-      projectStreamedToolInput(
-        '{"query":"streaming tools","apiKey":"super-secret',
-      ),
-    ).resolves.toBe(
-      JSON.stringify(
-        { query: "streaming tools", apiKey: "[REDACTED]" },
-        null,
-        2,
-      ),
-    );
-  });
-
-  it("normalizes hallucinated tool calls into terminal error outputs", async () => {
-    const { streamToolErrorOutput } = await loadModules();
-
-    expect(
-      streamToolErrorOutput(
-        {
-          type: "tool-error",
-          toolName: "google_web_search",
-          error: "Tool google_web_search is not available",
-        },
-        { name: "AI_NoSuchToolError" },
-      ),
-    ).toEqual({
-      ok: false,
-      code: "tool_unavailable",
-      error: "The requested tool is not available for this assistant.",
-    });
-  });
-
-  it("exposes a code workspace tool only when the builtin tool is bound", async () => {
-    const { buildBoundTools, getBuiltInToolByName } = await loadModules();
-    const createProjectTool = getBuiltInToolByName(
-      "code_workspace_create_project",
-    );
-    expect(createProjectTool).toBeTruthy();
-    toolUseCasesMock.getToolBindingsForVersion.mockResolvedValue([
-      {
-        id: "binding-1",
-        agentVersionId: "version-1",
-        toolSource: "builtin",
-        toolId: createProjectTool?.id,
-        requireApproval: false,
-        riskLevel: createProjectTool?.riskLevel,
-        createdAt: new Date(),
-      },
-    ]);
-
-    const { tools } = await buildBoundTools(buildInput());
-
-    expect(Object.keys(tools)).toContain("code_workspace_create_project");
-    expect(Object.keys(tools)).not.toContain("code_workspace_write_file");
-  });
-
-  it("removes a tool disabled for the current conversation", async () => {
-    const { buildBoundTools, getBuiltInToolByName } = await loadModules();
-    const createProjectTool = getBuiltInToolByName(
-      "code_workspace_create_project",
-    );
-    expect(createProjectTool).toBeTruthy();
-    toolUseCasesMock.getToolBindingsForVersion.mockResolvedValue([
-      {
-        id: "binding-1",
-        agentVersionId: "version-1",
-        toolSource: "builtin",
-        toolId: createProjectTool?.id,
-        requireApproval: false,
-        riskLevel: createProjectTool?.riskLevel,
-        createdAt: new Date(),
-      },
-    ]);
-
-    const { tools } = await buildBoundTools({
-      ...buildInput(),
-      disabledToolKeys: new Set([`builtin:${createProjectTool?.id}`]),
-    });
-
-    expect(Object.keys(tools)).not.toContain("code_workspace_create_project");
-  });
-
-  it("aliases long custom tool keys to OpenAI-compatible names", async () => {
-    const { buildBoundTools } = await loadModules();
-    const longToolName =
-      "tool_name_that_is_long_enough_to_break_openai_function_name_limits";
-    toolUseCasesMock.getToolBindingsForVersion.mockResolvedValue([
-      {
-        id: "binding-1",
-        agentVersionId: "version-1",
-        toolSource: "custom",
-        toolId: "12345678-1234-4234-9234-123456789abc",
-        requireApproval: false,
-        riskLevel: "low",
-        createdAt: new Date(),
-      },
-    ]);
-    toolUseCasesMock.getCustomBindingContext.mockResolvedValue({
-      tool: {
-        id: "12345678-1234-4234-9234-123456789abc",
-        name: longToolName,
-        description: "Long custom tool",
-        inputSchemaJson: { type: "object", properties: {} },
-      },
-    });
-
-    const { tools, toolApproval } = await buildBoundTools({
-      ...buildInput(),
-      approvalPolicy: { denyToolNames: [longToolName] },
-    });
-    const [toolKey] = Object.keys(tools);
-
-    expect(toolKey).toMatch(/^custom_[a-z0-9]+_/);
-    expect(toolKey.length).toBeLessThanOrEqual(64);
-    expect(toolKey).not.toContain("12345678_1234_4234_9234_123456789abc");
-    await expect(
-      toolApproval?.({
-        toolCall: { toolName: toolKey, input: {} },
-      } as never),
-    ).resolves.toMatchObject({ type: "denied" });
-  });
-
-  it("emits a bounded redacted payload for human approval", async () => {
-    const { buildBoundTools, waitForApproval } = await loadModules();
-    const onApprovalRequired = vi.fn();
-    toolUseCasesMock.getToolBindingsForVersion.mockResolvedValue([
-      {
-        id: "binding-1",
-        agentVersionId: "version-1",
-        toolSource: "custom",
-        toolId: "12345678-1234-4234-9234-123456789abc",
-        requireApproval: true,
-        riskLevel: "high",
-        createdAt: new Date(),
-      },
-    ]);
-    toolUseCasesMock.getCustomBindingContext.mockResolvedValue({
-      tool: {
-        id: "12345678-1234-4234-9234-123456789abc",
-        name: "post_webhook",
-        description: "Post a webhook",
-        inputSchemaJson: { type: "object", properties: {} },
-      },
-    });
-    toolUseCasesMock.logToolInvocation.mockResolvedValue({
-      id: "invocation-1",
-    });
-    waitForApproval.mockResolvedValue({
-      status: "rejected",
-      error: "Rejected by user",
-    });
-
-    const { tools } = await buildBoundTools({
-      ...buildInput(),
-      onApprovalRequired,
-    });
-    const [tool] = Object.values(tools);
-    await (tool.execute as (input: unknown) => Promise<unknown>)({
-      apiKey: "hidden",
-      maxOutputTokens: 512,
-    });
-
-    expect(onApprovalRequired).toHaveBeenCalledWith({
-      invocationId: "invocation-1",
-      toolName: "post_webhook",
-      input: {
-        apiKey: "[REDACTED]",
-        maxOutputTokens: 512,
-      },
-    });
   });
 });

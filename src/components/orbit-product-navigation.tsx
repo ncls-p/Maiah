@@ -1,63 +1,39 @@
 "use client";
 
+import { ChevronDownIcon,SlidersHorizontalIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { ChevronDownIcon, SlidersHorizontalIcon } from "lucide-react";
 
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { SignOutButton } from "@/components/sign-out-button";
 import { ThemeToggleButton } from "@/components/theme-toggle-button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Link, usePathname } from "@/i18n/navigation";
-import { isNavItemActive, type WorkspaceShellState } from "@/lib/workspace-nav";
-import { buildMenuGroups } from "@/modules/navigation/sidebar-config";
+import { DropdownMenu,DropdownMenuContent,DropdownMenuItem,DropdownMenuLabel,DropdownMenuSeparator,DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useWorkspace } from "@/hooks/use-workspace";
+import { Link,usePathname } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
+import { isNavItemActive,type WorkspaceShellState } from "@/lib/workspace-nav";
+import { buildMenuGroups } from "@/modules/navigation/sidebar-config";
+import Image from "next/image";
 
-const primaryDestinations = [
-  "/chat",
-  "/agents",
-  "/tools",
-  "/knowledge",
-  "/scheduled-tasks",
-] as const;
+const primaryDestinations = ["/chat", "/agents", "/tools", "/knowledge", "/scheduled-tasks"] as const;
 
 export function OrbitWordmark({ section }: { section: string }) {
+  const { organizationLogoUrl, organizationName } = useWorkspace();
   return (
     <div className="hidden min-w-32 items-baseline gap-2 sm:flex">
-      <span className="text-[0.72rem] font-extrabold uppercase tracking-[0.16em] text-foreground">
-        Maiah
-      </span>
-      <span className="font-mono text-[0.58rem] uppercase tracking-[0.18em] text-primary">
-        {section}
-      </span>
+      {organizationLogoUrl ? <Image src={organizationLogoUrl} alt={organizationName ?? "Organization"} width={120} height={40} unoptimized className="h-6 w-auto max-w-28 object-contain" /> : <span className="text-[0.72rem] font-extrabold uppercase tracking-[0.16em] text-foreground">Maiah</span>}
+      <span className="font-mono text-[0.58rem] uppercase tracking-[0.18em] text-primary">{section}</span>
     </div>
   );
 }
 
-export function OrbitProductNavigation({
-  shell,
-}: {
-  shell: WorkspaceShellState;
-}) {
+export function OrbitProductNavigation({ shell }: { shell: WorkspaceShellState }) {
   const pathname = usePathname();
   const t = useTranslations("nav");
   const allItems = buildMenuGroups(shell).flatMap((group) => group.items);
   const itemByHref = new Map(allItems.map((item) => [item.href, item]));
-  const primaryItems = primaryDestinations
-    .map((href) => itemByHref.get(href))
-    .filter((item): item is NonNullable<typeof item> => Boolean(item));
+  const primaryItems = primaryDestinations.map((href) => itemByHref.get(href)).filter((item): item is NonNullable<typeof item> => Boolean(item));
   const primaryHrefs = new Set(primaryItems.map((item) => item.href));
-  const secondaryItems = allItems.filter(
-    (item, index) =>
-      !primaryHrefs.has(item.href) &&
-      allItems.findIndex((candidate) => candidate.href === item.href) === index,
-  );
+  const secondaryItems = allItems.filter((item, index) => !primaryHrefs.has(item.href) && allItems.findIndex((candidate) => candidate.href === item.href) === index);
   const productLabel = (href: string, labelKey: string) => {
     if (href === "/tools") return t("toolsShort");
     if (href === "/knowledge") return t("knowledgeShort");
@@ -67,30 +43,13 @@ export function OrbitProductNavigation({
 
   return (
     <div className="flex min-w-0 items-center gap-1">
-      <nav
-        aria-label={t("groups.primary")}
-        className="scrollbar-none hidden min-w-0 items-center gap-0.5 overflow-x-auto md:flex"
-      >
+      <nav aria-label={t("groups.primary")} className="scrollbar-none hidden min-w-0 items-center gap-0.5 overflow-x-auto md:flex">
         {primaryItems.map((item) => {
           const active = isNavItemActive(pathname, item.href);
           return (
-            <Link
-              key={item.href}
-              href={item.href}
-              aria-current={active ? "page" : undefined}
-              className={cn(
-                "relative inline-flex h-10 shrink-0 items-center rounded-lg px-3 text-xs font-medium outline-none transition-[background-color,color,box-shadow,scale] duration-180 ease-out after:absolute after:right-3 after:bottom-0 after:left-3 after:h-px after:origin-center after:scale-x-0 after:rounded-full after:bg-primary after:opacity-0 after:transition-[scale,opacity] after:duration-180 focus-visible:ring-2 focus-visible:ring-ring/45 active:scale-[0.96]",
-                active
-                  ? "bg-primary/[0.055] text-primary shadow-[inset_0_-1px_0_color-mix(in_oklch,var(--primary)_12%,transparent)] after:scale-x-100 after:opacity-100"
-                  : "text-muted-foreground hover:bg-muted/55 hover:text-foreground",
-              )}
-            >
+            <Link key={item.href} href={item.href} aria-current={active ? "page" : undefined} className={cn("relative inline-flex h-10 shrink-0 items-center rounded-lg px-3 text-xs font-medium outline-none transition-[background-color,color,box-shadow,scale] duration-180 ease-out after:absolute after:right-3 after:bottom-0 after:left-3 after:h-px after:origin-center after:scale-x-0 after:rounded-full after:bg-primary after:opacity-0 after:transition-[scale,opacity] after:duration-180 focus-visible:ring-2 focus-visible:ring-ring/45 active:scale-[0.96]", active ? "bg-primary/[0.055] text-primary shadow-[inset_0_-1px_0_color-mix(in_oklch,var(--primary)_12%,transparent)] after:scale-x-100 after:opacity-100" : "text-muted-foreground hover:bg-muted/55 hover:text-foreground")}>
               {productLabel(item.href, item.labelKey)}
-              {item.badge ? (
-                <span className="ml-1.5 font-mono text-[0.58rem] text-primary">
-                  {item.badge}
-                </span>
-              ) : null}
+              {item.badge ? <span className="ml-1.5 font-mono text-[0.58rem] text-primary">{item.badge}</span> : null}
             </Link>
           );
         })}
@@ -98,11 +57,7 @@ export function OrbitProductNavigation({
       {secondaryItems.length > 0 ? (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              aria-label={t("groups.advanced")}
-              className="inline-flex h-10 items-center gap-1.5 rounded-lg px-3 text-xs font-medium text-muted-foreground outline-none transition-[background-color,color,scale] duration-180 ease-out hover:bg-muted/55 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/45 active:scale-[0.96]"
-            >
+            <button type="button" aria-label={t("groups.advanced")} className="inline-flex h-10 items-center gap-1.5 rounded-lg px-3 text-xs font-medium text-muted-foreground outline-none transition-[background-color,color,scale] duration-180 ease-out hover:bg-muted/55 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/45 active:scale-[0.96]">
               <SlidersHorizontalIcon className="size-3.5" aria-hidden="true" />
               <span className="hidden lg:inline">{t("groups.advanced")}</span>
               <ChevronDownIcon className="size-3" aria-hidden="true" />
@@ -115,14 +70,8 @@ export function OrbitProductNavigation({
                 <DropdownMenuItem key={item.href} asChild>
                   <Link href={item.href} className="min-h-10 gap-2.5">
                     <Icon className="size-4" aria-hidden="true" />
-                    <span className="min-w-0 flex-1 truncate">
-                      {t(item.labelKey)}
-                    </span>
-                    {item.badge ? (
-                      <span className="font-mono text-[0.62rem] text-primary">
-                        {item.badge}
-                      </span>
-                    ) : null}
+                    <span className="min-w-0 flex-1 truncate">{t(item.labelKey)}</span>
+                    {item.badge ? <span className="font-mono text-[0.62rem] text-primary">{item.badge}</span> : null}
                   </Link>
                 </DropdownMenuItem>
               );
@@ -141,18 +90,12 @@ export function OrbitAccountMenu({ displayName }: { displayName?: string }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button
-          type="button"
-          className="flex size-10 shrink-0 items-center justify-center rounded-full bg-foreground text-xs font-semibold text-background outline-none transition-[transform,box-shadow] hover:scale-[1.03] focus-visible:ring-2 focus-visible:ring-ring"
-          aria-label={displayName || tShell("workspace")}
-        >
+        <button type="button" className="flex size-10 shrink-0 items-center justify-center rounded-full bg-foreground text-xs font-semibold text-background outline-none transition-[transform,box-shadow] hover:scale-[1.03] focus-visible:ring-2 focus-visible:ring-ring" aria-label={displayName || tShell("workspace")}>
           {initial}
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64 p-1.5">
-        <DropdownMenuLabel className="truncate px-2.5 py-2 text-sm font-medium">
-          {displayName || tShell("workspace")}
-        </DropdownMenuLabel>
+        <DropdownMenuLabel className="truncate px-2.5 py-2 text-sm font-medium">{displayName || tShell("workspace")}</DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild className="p-0">
           <LocaleSwitcher menu />

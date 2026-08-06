@@ -1,10 +1,10 @@
 "use client";
 
+import { usePathname,useRouter } from "@/i18n/navigation";
 import { useEffect } from "react";
-import { usePathname, useRouter } from "@/i18n/navigation";
 
 import { useWorkspace } from "@/hooks/use-workspace";
-import { fetchJson, fetchWorkspacePermissions } from "@/lib/api-client";
+import { fetchJson,fetchWorkspacePermissions } from "@/lib/api-client";
 
 export function OnboardingRedirect() {
   const router = useRouter();
@@ -19,17 +19,13 @@ export function OnboardingRedirect() {
 
     async function checkOnboarding() {
       try {
-        const { completed } = await fetchJson<{ completed: boolean }>(
-          "/api/onboarding",
-        );
+        const { completed } = await fetchJson<{ completed: boolean }>("/api/onboarding");
         if (cancelled || completed) return;
 
         const permissions = await fetchWorkspacePermissions(workspaceId!);
         if (cancelled || !permissions.canManageProviders) return;
 
-        const providers = await fetchJson<unknown[]>(
-          `/api/workspace/providers?workspaceId=${workspaceId}`,
-        );
+        const providers = await fetchJson<unknown[]>(`/api/workspace/providers?workspaceId=${workspaceId}`);
         if (cancelled) return;
         if (Array.isArray(providers) && providers.length === 0) {
           router.replace("/setup");

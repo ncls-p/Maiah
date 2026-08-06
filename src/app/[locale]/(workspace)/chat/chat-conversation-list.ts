@@ -1,7 +1,4 @@
-import type {
-  ChatConversation,
-  ChatConversationFolder,
-} from "@/components/chat/chat-types";
+import type { ChatConversation,ChatConversationFolder } from "@/components/chat/chat-types";
 
 export type ConversationListPage = {
   conversations: ChatConversation[];
@@ -14,9 +11,7 @@ export type ConversationListPage = {
 
 export type ConversationListPayload = ChatConversation[] | ConversationListPage;
 
-export function latestConversationIdFromList(
-  conversations: ChatConversation[],
-) {
+export function latestConversationIdFromList(conversations: ChatConversation[]) {
   return (
     conversations.reduce<ChatConversation | null>((latest, current) => {
       if (!latest) return current;
@@ -29,35 +24,25 @@ export function latestConversationIdFromList(
   );
 }
 
-export function normalizeConversationList(
-  payload: ConversationListPayload,
-): ConversationListPage {
+export function normalizeConversationList(payload: ConversationListPayload): ConversationListPage {
   if (Array.isArray(payload)) {
     const latestConversationId = latestConversationIdFromList(payload);
     return {
       conversations: payload,
       folders: [],
       latestConversationId,
-      latestConversationAgentId:
-        payload.find((conversation) => conversation.id === latestConversationId)
-          ?.agentId ?? null,
+      latestConversationAgentId: payload.find((conversation) => conversation.id === latestConversationId)?.agentId ?? null,
       hasMore: false,
       nextCursor: null,
     };
   }
   const conversations = payload.conversations ?? [];
-  const latestConversationId =
-    payload.latestConversationId ?? latestConversationIdFromList(conversations);
+  const latestConversationId = payload.latestConversationId ?? latestConversationIdFromList(conversations);
   return {
     conversations,
     folders: payload.folders ?? [],
     latestConversationId,
-    latestConversationAgentId:
-      payload.latestConversationAgentId ??
-      conversations.find(
-        (conversation) => conversation.id === latestConversationId,
-      )?.agentId ??
-      null,
+    latestConversationAgentId: payload.latestConversationAgentId ?? conversations.find((conversation) => conversation.id === latestConversationId)?.agentId ?? null,
     hasMore: payload.hasMore,
     nextCursor: payload.nextCursor,
   };

@@ -1,132 +1,125 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach,describe,expect,it,vi } from "vitest";
 
 // ─── Mocks ────────────────────────────────────────────────────────────
 
 type SelectChain = {
-	from: ReturnType<typeof vi.fn>;
-	where: ReturnType<typeof vi.fn>;
-	limit: ReturnType<typeof vi.fn>;
+  from: ReturnType<typeof vi.fn>;
+  where: ReturnType<typeof vi.fn>;
+  limit: ReturnType<typeof vi.fn>;
 };
 
 type InsertChain = {
-	values: ReturnType<typeof vi.fn>;
-	onConflictDoUpdate: ReturnType<typeof vi.fn>;
+  values: ReturnType<typeof vi.fn>;
+  onConflictDoUpdate: ReturnType<typeof vi.fn>;
 };
 
 type DbMock = {
-	select: ReturnType<typeof vi.fn>;
-	insert: ReturnType<typeof vi.fn>;
+  select: ReturnType<typeof vi.fn>;
+  insert: ReturnType<typeof vi.fn>;
 };
 
 type DbModule = {
-	db: DbMock;
-	_sc: SelectChain;
-	_ic: InsertChain;
+  db: DbMock;
+  _sc: SelectChain;
+  _ic: InsertChain;
 };
 
 vi.mock("@/server/infrastructure/db", () => {
-	const sc: SelectChain = {
-		from: vi.fn().mockReturnThis(),
-		where: vi.fn().mockReturnThis(),
-		limit: vi.fn().mockResolvedValue([]),
-	};
-	const ic: InsertChain = {
-		values: vi.fn().mockReturnThis(),
-		onConflictDoUpdate: vi.fn().mockResolvedValue(undefined),
-	};
-	return {
-		db: {
-			select: vi.fn(),
-			insert: vi.fn(),
-		},
-		_sc: sc,
-		_ic: ic,
-	};
+  const sc: SelectChain = {
+    from: vi.fn().mockReturnThis(),
+    where: vi.fn().mockReturnThis(),
+    limit: vi.fn().mockResolvedValue([]),
+  };
+  const ic: InsertChain = {
+    values: vi.fn().mockReturnThis(),
+    onConflictDoUpdate: vi.fn().mockResolvedValue(undefined),
+  };
+  return {
+    db: {
+      select: vi.fn(),
+      insert: vi.fn(),
+    },
+    _sc: sc,
+    _ic: ic,
+  };
 });
 
+import { isOnboardingComplete,markOnboardingComplete } from "@/modules/onboarding/use-cases";
 import * as _dbModule from "@/server/infrastructure/db";
 const dbModule = _dbModule as unknown as DbModule;
-import {
-	isOnboardingComplete,
-	markOnboardingComplete,
-} from "@/modules/onboarding/use-cases";
 
 beforeEach(() => {
-	vi.clearAllMocks();
-	dbModule.db.select.mockReturnValue(dbModule._sc);
-	dbModule.db.insert.mockReturnValue(dbModule._ic);
-	dbModule._sc.from.mockReturnThis();
-	dbModule._sc.where.mockReturnThis();
-	dbModule._sc.limit.mockResolvedValue([]);
-	dbModule._ic.values.mockReturnThis();
-	dbModule._ic.onConflictDoUpdate.mockResolvedValue(undefined);
+  vi.clearAllMocks();
+  dbModule.db.select.mockReturnValue(dbModule._sc);
+  dbModule.db.insert.mockReturnValue(dbModule._ic);
+  dbModule._sc.from.mockReturnThis();
+  dbModule._sc.where.mockReturnThis();
+  dbModule._sc.limit.mockResolvedValue([]);
+  dbModule._ic.values.mockReturnThis();
+  dbModule._ic.onConflictDoUpdate.mockResolvedValue(undefined);
 });
 
 describe("isOnboardingComplete", () => {
-	it("returns false when no setting exists", async () => {
-		dbModule._sc.limit.mockResolvedValueOnce([]);
+  it("returns false when no setting exists", async () => {
+    dbModule._sc.limit.mockResolvedValueOnce([]);
 
-		const result = await isOnboardingComplete("user-1");
-		expect(result).toBeFalsy();
-	});
+    const result = await isOnboardingComplete("user-1");
+    expect(result).toBeFalsy();
+  });
 
-	it("returns false when setting has no completed flag", async () => {
-		dbModule._sc.limit.mockResolvedValueOnce([{ valueJson: {} }]);
+  it("returns false when setting has no completed flag", async () => {
+    dbModule._sc.limit.mockResolvedValueOnce([{ valueJson: {} }]);
 
-		const result = await isOnboardingComplete("user-1");
-		expect(result).toBeFalsy();
-	});
+    const result = await isOnboardingComplete("user-1");
+    expect(result).toBeFalsy();
+  });
 
-	it("returns false when completed is false", async () => {
-		dbModule._sc.limit.mockResolvedValueOnce([
-			{ valueJson: { completed: false } },
-		]);
+  it("returns false when completed is false", async () => {
+    dbModule._sc.limit.mockResolvedValueOnce([{ valueJson: { completed: false } }]);
 
-		const result = await isOnboardingComplete("user-1");
-		expect(result).toBeFalsy();
-	});
+    const result = await isOnboardingComplete("user-1");
+    expect(result).toBeFalsy();
+  });
 
-	it("returns true when completed is true", async () => {
-		dbModule._sc.limit.mockResolvedValueOnce([
-			{ valueJson: { completed: true } },
-		]);
+  it("returns true when completed is true", async () => {
+    dbModule._sc.limit.mockResolvedValueOnce([{ valueJson: { completed: true } }]);
 
-		const result = await isOnboardingComplete("user-1");
-		expect(result).toBeTruthy();
-	});
+    const result = await isOnboardingComplete("user-1");
+    expect(result).toBeTruthy();
+  });
 
-	it("returns false when valueJson is not an object", async () => {
-		dbModule._sc.limit.mockResolvedValueOnce([{ valueJson: "invalid" }]);
+  it("returns false when valueJson is not an object", async () => {
+    dbModule._sc.limit.mockResolvedValueOnce([{ valueJson: "invalid" }]);
 
-		const result = await isOnboardingComplete("user-1");
-		expect(result).toBeFalsy();
-	});
+    const result = await isOnboardingComplete("user-1");
+    expect(result).toBeFalsy();
+  });
 
-	it("returns false when valueJson is null", async () => {
-		dbModule._sc.limit.mockResolvedValueOnce([{ valueJson: null }]);
+  it("returns false when valueJson is null", async () => {
+    dbModule._sc.limit.mockResolvedValueOnce([{ valueJson: null }]);
 
-		const result = await isOnboardingComplete("user-1");
-		expect(result).toBeFalsy();
-	});
+    const result = await isOnboardingComplete("user-1");
+    expect(result).toBeFalsy();
+  });
 });
 
 describe("markOnboardingComplete", () => {
-	it("inserts or updates onboarding setting", async () => {
-		await markOnboardingComplete("user-1");
+  it("inserts or updates onboarding setting", async () => {
+    await markOnboardingComplete("user-1");
 
-		expect(dbModule.db.insert).toHaveBeenCalledOnce();
-		expect(dbModule._ic.values).toHaveBeenCalledOnce();
-		expect(dbModule._ic.onConflictDoUpdate).toHaveBeenCalledOnce();
+    expect(dbModule.db.insert).toHaveBeenCalledOnce();
+    expect(dbModule._ic.values).toHaveBeenCalledOnce();
+    expect(dbModule._ic.onConflictDoUpdate).toHaveBeenCalledOnce();
 
-		const insertValues = dbModule._ic.values.mock.calls[0][0];
-		expect(insertValues.key).toContain("user-1");
-		expect(insertValues.valueJson).toMatchObject({ completed: true });
-	});
+    const insertValues = dbModule._ic.values.mock.calls[0][0];
+    expect(insertValues.key).toContain("user-1");
+    expect(insertValues.valueJson).toMatchObject({ completed: true });
+  });
 
-	it("uses the userId in the setting key", async () => {
-		await markOnboardingComplete("specific-user-id");
+  it("uses the userId in the setting key", async () => {
+    await markOnboardingComplete("specific-user-id");
 
-		const insertValues = dbModule._ic.values.mock.calls[0][0];
-		expect(insertValues.key).toContain("specific-user-id");
-	});
+    const insertValues = dbModule._ic.values.mock.calls[0][0];
+    expect(insertValues.key).toContain("specific-user-id");
+  });
 });

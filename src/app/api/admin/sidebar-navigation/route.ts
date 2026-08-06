@@ -1,17 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
 import { handleRoute } from "@/lib/route-handler";
 import { requireAdminApiSession } from "@/modules/admin/auth";
-import {
-  defaultSidebarNavConfig,
-  getSidebarNavCatalog,
-  normalizeSidebarNavConfig,
-} from "@/modules/navigation/sidebar-config";
-import {
-  deleteSidebarNavConfig,
-  getSidebarNavConfig,
-  setSidebarNavConfig,
-} from "@/modules/navigation/sidebar-config.server";
+import { defaultSidebarNavConfig,getSidebarNavCatalog,normalizeSidebarNavConfig } from "@/modules/navigation/sidebar-config";
+import { deleteSidebarNavConfig,getSidebarNavConfig,setSidebarNavConfig } from "@/modules/navigation/sidebar-config.server";
+import { NextRequest,NextResponse } from "next/server";
+import { z } from "zod";
 
 const updateSchema = z.object({
   items: z
@@ -37,10 +29,7 @@ export async function GET() {
       isCustomized: saved !== null,
     });
   } catch {
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
 
@@ -53,19 +42,13 @@ export async function PATCH(req: NextRequest) {
 
       const parsed = updateSchema.safeParse(await req.json());
       if (!parsed.success) {
-        return NextResponse.json(
-          { error: "Invalid input", details: parsed.error.issues },
-          { status: 400 },
-        );
+        return NextResponse.json({ error: "Invalid input", details: parsed.error.issues }, { status: 400 });
       }
 
       const config = normalizeSidebarNavConfig(parsed.data);
       const visibleCount = config.items.filter((item) => item.visible).length;
       if (visibleCount === 0) {
-        return NextResponse.json(
-          { error: "At least one navigation item must remain visible." },
-          { status: 400 },
-        );
+        return NextResponse.json({ error: "At least one navigation item must remain visible." }, { status: 400 });
       }
 
       const saved = await setSidebarNavConfig(config, session.user.id);
@@ -92,9 +75,6 @@ export async function DELETE() {
       isCustomized: false,
     });
   } catch {
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

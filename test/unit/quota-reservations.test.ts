@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach,describe,expect,it,vi } from "vitest";
 
 const database = vi.hoisted(() => {
   const selectResults: unknown[][] = [];
@@ -15,10 +15,7 @@ const database = vi.hoisted(() => {
       values: vi.fn(),
       set: vi.fn(),
       returning: vi.fn(),
-      then: (
-        resolve: (value: unknown[]) => unknown,
-        reject: (reason: unknown) => unknown,
-      ) => Promise.resolve(result).then(resolve, reject),
+      then: (resolve: (value: unknown[]) => unknown, reject: (reason: unknown) => unknown) => Promise.resolve(result).then(resolve, reject),
     };
     chain.from.mockReturnValue(chain);
     chain.where.mockReturnValue(chain);
@@ -40,9 +37,7 @@ const database = vi.hoisted(() => {
     insert: vi.fn(() => query(insertResults.shift() ?? [])),
     update: vi.fn(() => query(updateResults.shift() ?? [])),
     execute: vi.fn(),
-    transaction: vi.fn(async (callback: (tx: unknown) => unknown) =>
-      callback(db),
-    ),
+    transaction: vi.fn(async (callback: (tx: unknown) => unknown) => callback(db)),
   };
 
   return {
@@ -62,16 +57,7 @@ vi.mock("@/modules/usage/quota-config", () => ({
   getWorkspaceMonthlyTokenLimit: quotaConfig.limit,
 }));
 
-import {
-  evaluateQuotaReservation,
-  expireWorkspaceTokenReservations,
-  getActiveWorkspaceReservationTokens,
-  releaseWorkspaceTokenReservation,
-  reserveWorkspaceTokens,
-  settleWorkspaceTokenReservation,
-  startOfQuotaMonth,
-  WorkspaceQuotaReservationError,
-} from "@/modules/usage/quota-reservations";
+import { evaluateQuotaReservation,expireWorkspaceTokenReservations,getActiveWorkspaceReservationTokens,releaseWorkspaceTokenReservation,reserveWorkspaceTokens,settleWorkspaceTokenReservation,startOfQuotaMonth,WorkspaceQuotaReservationError } from "@/modules/usage/quota-reservations";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -113,18 +99,11 @@ describe("workspace token reservations", () => {
   });
 
   it("normalizes the UTC accounting period", () => {
-    expect(startOfQuotaMonth(new Date("2026-07-19T12:34:56Z"))).toEqual(
-      new Date("2026-07-01T00:00:00Z"),
-    );
+    expect(startOfQuotaMonth(new Date("2026-07-19T12:34:56Z"))).toEqual(new Date("2026-07-01T00:00:00Z"));
   });
 
   it("provides a machine-readable quota error", () => {
-    const error = new WorkspaceQuotaReservationError(
-      40_000,
-      50_000,
-      20_000,
-      100_000,
-    );
+    const error = new WorkspaceQuotaReservationError(40_000, 50_000, 20_000, 100_000);
     expect(error.code).toBe("WORKSPACE_TOKEN_QUOTA_EXCEEDED");
     expect(error.message).toContain("20,000 requested");
   });
@@ -132,12 +111,8 @@ describe("workspace token reservations", () => {
   it("reads active reservation totals defensively", async () => {
     database.selectResults.push([{ total: "42" }], []);
 
-    await expect(
-      getActiveWorkspaceReservationTokens("workspace-1"),
-    ).resolves.toBe(42);
-    await expect(
-      getActiveWorkspaceReservationTokens("workspace-1"),
-    ).resolves.toBe(0);
+    await expect(getActiveWorkspaceReservationTokens("workspace-1")).resolves.toBe(42);
+    await expect(getActiveWorkspaceReservationTokens("workspace-1")).resolves.toBe(0);
   });
 
   it("reuses an existing reservation for the same run", async () => {
@@ -179,9 +154,7 @@ describe("workspace token reservations", () => {
         reservedTokens: 30,
       }),
     );
-    expect(database.sets).toHaveBeenCalledWith(
-      expect.objectContaining({ reservedTokens: 30 }),
-    );
+    expect(database.sets).toHaveBeenCalledWith(expect.objectContaining({ reservedTokens: 30 }));
   });
 
   it("rejects a reservation that would overbook the workspace", async () => {
@@ -212,39 +185,20 @@ describe("workspace token reservations", () => {
       actualTokens: -10,
       now: new Date("2026-07-10T00:00:00Z"),
     });
-    await releaseWorkspaceTokenReservation(
-      "run-2",
-      new Date("2026-07-10T00:00:00Z"),
-    );
+    await releaseWorkspaceTokenReservation("run-2", new Date("2026-07-10T00:00:00Z"));
 
-    expect(database.sets).toHaveBeenCalledWith(
-      expect.objectContaining({ status: "settled", actualTokens: 0 }),
-    );
-    expect(database.sets).toHaveBeenCalledWith(
-      expect.objectContaining({ status: "released" }),
-    );
-    expect(database.sets).toHaveBeenCalledWith(
-      expect.objectContaining({ reservedTokens: 0 }),
-    );
+    expect(database.sets).toHaveBeenCalledWith(expect.objectContaining({ status: "settled", actualTokens: 0 }));
+    expect(database.sets).toHaveBeenCalledWith(expect.objectContaining({ status: "released" }));
+    expect(database.sets).toHaveBeenCalledWith(expect.objectContaining({ reservedTokens: 0 }));
   });
 
   it("expires holds and clears their run reservations", async () => {
-    database.updateResults.push(
-      [{ runId: "run-1" }, { runId: "run-2" }],
-      [],
-      [],
-    );
+    database.updateResults.push([{ runId: "run-1" }, { runId: "run-2" }], [], []);
 
-    await expect(
-      expireWorkspaceTokenReservations(new Date("2026-07-10T00:00:00Z")),
-    ).resolves.toBe(2);
+    await expect(expireWorkspaceTokenReservations(new Date("2026-07-10T00:00:00Z"))).resolves.toBe(2);
     await expect(expireWorkspaceTokenReservations()).resolves.toBe(0);
 
-    expect(database.sets).toHaveBeenCalledWith(
-      expect.objectContaining({ status: "expired" }),
-    );
-    expect(database.sets).toHaveBeenCalledWith(
-      expect.objectContaining({ reservedTokens: 0 }),
-    );
+    expect(database.sets).toHaveBeenCalledWith(expect.objectContaining({ status: "expired" }));
+    expect(database.sets).toHaveBeenCalledWith(expect.objectContaining({ reservedTokens: 0 }));
   });
 });

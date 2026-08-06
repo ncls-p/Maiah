@@ -9,18 +9,13 @@ function getCloudflareVisitorProtocol(value: string | null) {
 
   try {
     const visitor = JSON.parse(value) as { scheme?: unknown };
-    return visitor.scheme === "http" || visitor.scheme === "https"
-      ? visitor.scheme
-      : null;
+    return visitor.scheme === "http" || visitor.scheme === "https" ? visitor.scheme : null;
   } catch {
     return null;
   }
 }
 
-export function getConfiguredHttpsRedirect(
-  request: NextRequest,
-  configuredBaseUrl = process.env.BETTER_AUTH_URL,
-) {
+export function getConfiguredHttpsRedirect(request: NextRequest, configuredBaseUrl = process.env.BETTER_AUTH_URL) {
   if (!configuredBaseUrl) return null;
 
   let publicUrl: URL;
@@ -31,14 +26,8 @@ export function getConfiguredHttpsRedirect(
   }
   if (publicUrl.protocol !== "https:") return null;
 
-  const requestHost =
-    firstForwardedValue(request.headers.get("x-forwarded-host")) ??
-    firstForwardedValue(request.headers.get("host")) ??
-    request.nextUrl.host;
-  const requestProtocol =
-    getCloudflareVisitorProtocol(request.headers.get("cf-visitor")) ??
-    firstForwardedValue(request.headers.get("x-forwarded-proto")) ??
-    request.nextUrl.protocol.replace(":", "");
+  const requestHost = firstForwardedValue(request.headers.get("x-forwarded-host")) ?? firstForwardedValue(request.headers.get("host")) ?? request.nextUrl.host;
+  const requestProtocol = getCloudflareVisitorProtocol(request.headers.get("cf-visitor")) ?? firstForwardedValue(request.headers.get("x-forwarded-proto")) ?? request.nextUrl.protocol.replace(":", "");
 
   if (requestHost !== publicUrl.host || requestProtocol === "https") {
     return null;

@@ -202,7 +202,7 @@ Chaque ressource distante doit distinguer :
 | Surface           | Scénarios critiques                                                                                      | Couverture                     |
 | ----------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------ |
 | Fournisseurs      | erreur initiale, modèles périmés après changement, découverte, test, archive                             | Code + tests providers         |
-| Tâches planifiées | erreur assistants, erreur tâches, création bloquée si état inconnu, run orchestrateur                    | Code + tests scheduler/runtime |
+| Tâches planifiées | erreur assistants/tâches, création bloquée si état inconnu, détail et édition persistée, run orchestrateur | Code + Playwright + tests scheduler/runtime |
 | Clés API          | erreur liste, clé affichée une fois, copie en échec, confirmation d’impact avant révocation, permissions | Code + tests API keys          |
 | Marketplace       | erreur initiale, fiche indisponible sans redirection, preflight credentials, installation et partage     | Code + tests marketplace       |
 | Usage             | erreur initiale/refresh, filtres date locale, quota concurrent                                           | Code + tests quota             |

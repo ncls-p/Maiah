@@ -1,15 +1,4 @@
-import {
-  pgTable,
-  text,
-  timestamp,
-  boolean,
-  varchar,
-  uuid,
-  jsonb,
-  index,
-  uniqueIndex,
-  pgEnum,
-} from "drizzle-orm/pg-core";
+import { boolean,index,jsonb,pgEnum,pgTable,text,timestamp,uniqueIndex,uuid,varchar } from "drizzle-orm/pg-core";
 import { users } from "./auth";
 import { mcpServers } from "./mcp";
 import { workspaces } from "./workspace";
@@ -25,23 +14,11 @@ const STATUS_COLUMN = "status";
 
 // ─── Tool Connectors & Per-User Settings ───────────────────────────────
 
-export const toolConnectorKindEnum = pgEnum("tool_connector_kind", [
-  "mcp",
-  "builtin",
-  "custom",
-]);
+export const toolConnectorKindEnum = pgEnum("tool_connector_kind", ["mcp", "builtin", "custom"]);
 
-export const toolConnectionOwnerTypeEnum = pgEnum(
-  "tool_connection_owner_type",
-  ["user", "workspace"],
-);
+export const toolConnectionOwnerTypeEnum = pgEnum("tool_connection_owner_type", ["user", "workspace"]);
 
-export const toolConnectionStatusEnum = pgEnum("tool_connection_status", [
-  "active",
-  "invalid",
-  "expired",
-  "disabled",
-]);
+export const toolConnectionStatusEnum = pgEnum("tool_connection_status", ["active", "invalid", "expired", "disabled"]);
 
 export const toolConnectors = pgTable(
   "tool_connectors",
@@ -65,22 +42,11 @@ export const toolConnectors = pgTable(
     defaultConfigJson: jsonb("default_config_json"),
     enabled: boolean("enabled").notNull().default(true),
     isGlobal: boolean("is_global").notNull().default(false),
-    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
     archivedAt: timestamp("archived_at", { withTimezone: true }),
   },
-  (t) => [
-    index("tool_connectors_workspace").on(t.workspaceId),
-    index("tool_connectors_mcp_server").on(t.mcpServerId),
-    uniqueIndex("tool_connectors_workspace_key_unique").on(
-      t.workspaceId,
-      t.key,
-    ),
-  ],
+  (t) => [index("tool_connectors_workspace").on(t.workspaceId), index("tool_connectors_mcp_server").on(t.mcpServerId), uniqueIndex("tool_connectors_workspace_key_unique").on(t.workspaceId, t.key)],
 );
 
 export const toolConnections = pgTable(
@@ -103,19 +69,11 @@ export const toolConnections = pgTable(
     isDefault: boolean("is_default").notNull().default(false),
     status: toolConnectionStatusEnum(STATUS_COLUMN).notNull().default("active"),
     lastValidatedAt: timestamp("last_validated_at", { withTimezone: true }),
-    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
     archivedAt: timestamp("archived_at", { withTimezone: true }),
   },
-  (t) => [
-    index("tool_connections_workspace").on(t.workspaceId),
-    index("tool_connections_connector").on(t.connectorId),
-    index("tool_connections_owner_user").on(t.ownerUserId),
-  ],
+  (t) => [index("tool_connections_workspace").on(t.workspaceId), index("tool_connections_connector").on(t.connectorId), index("tool_connections_owner_user").on(t.ownerUserId)],
 );
 
 export const toolConnectionRequirements = pgTable(
@@ -132,23 +90,10 @@ export const toolConnectionRequirements = pgTable(
     toolId: varchar("tool_id", { length: 255 }).notNull(),
     required: boolean("required").notNull().default(true),
     configSchemaJson: jsonb("config_schema_json"),
-    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [
-    index("tool_connection_requirements_workspace").on(t.workspaceId),
-    index("tool_connection_requirements_connector").on(t.connectorId),
-    uniqueIndex("tool_connection_requirements_tool_unique").on(
-      t.workspaceId,
-      t.toolSource,
-      t.toolId,
-      t.connectorId,
-    ),
-  ],
+  (t) => [index("tool_connection_requirements_workspace").on(t.workspaceId), index("tool_connection_requirements_connector").on(t.connectorId), uniqueIndex("tool_connection_requirements_tool_unique").on(t.workspaceId, t.toolSource, t.toolId, t.connectorId)],
 );
 
 export const userToolSettings = pgTable(
@@ -169,22 +114,8 @@ export const userToolSettings = pgTable(
     configJson: jsonb("config_json"),
     encryptedSecretsJson: jsonb("encrypted_secrets_json"),
     enabled: boolean("enabled").notNull().default(true),
-    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [
-    index("user_tool_settings_workspace").on(t.workspaceId),
-    index("user_tool_settings_user").on(t.userId),
-    index("user_tool_settings_connection").on(t.connectionId),
-    uniqueIndex("user_tool_settings_tool_unique").on(
-      t.workspaceId,
-      t.userId,
-      t.toolSource,
-      t.toolId,
-    ),
-  ],
+  (t) => [index("user_tool_settings_workspace").on(t.workspaceId), index("user_tool_settings_user").on(t.userId), index("user_tool_settings_connection").on(t.connectionId), uniqueIndex("user_tool_settings_tool_unique").on(t.workspaceId, t.userId, t.toolSource, t.toolId)],
 );

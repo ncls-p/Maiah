@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach,describe,expect,it,vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   select: vi.fn(),
@@ -13,18 +13,14 @@ vi.mock("@/lib/crypto", () => ({
   decryptValue: mocks.decryptValue,
 }));
 vi.mock("@/modules/chat/attachments", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@/modules/chat/attachments")>();
+  const actual = await importOriginal<typeof import("@/modules/chat/attachments")>();
   return {
     ...actual,
     getChatImageAttachmentBytes: mocks.getChatImageAttachmentBytes,
   };
 });
 
-import {
-  loadConversationHistory,
-  mergeHistoryWithAttachmentMessages,
-} from "@/app/api/workspace/[agentId]/chat/route-history";
+import { loadConversationHistory,mergeHistoryWithAttachmentMessages } from "@/app/api/workspace/[agentId]/chat/route-history";
 
 function selectRows(rows: unknown[]) {
   const query = {
@@ -84,12 +80,7 @@ describe("orchestrator conversation history", () => {
       createdAt: new Date("2026-07-13T10:00:00Z"),
     };
 
-    expect(
-      mergeHistoryWithAttachmentMessages(
-        [recentTurn],
-        [oldAttachmentTurn, oldAttachmentTurn],
-      ).map((message) => message.id),
-    ).toEqual(["old-file-turn", "recent-turn"]);
+    expect(mergeHistoryWithAttachmentMessages([recentTurn], [oldAttachmentTurn, oldAttachmentTurn]).map((message) => message.id)).toEqual(["old-file-turn", "recent-turn"]);
   });
 
   it("reads an older attached file on a later bounded conversation turn", async () => {
@@ -144,19 +135,11 @@ describe("orchestrator conversation history", () => {
         ]),
       );
 
-    const history = await loadConversationHistory(
-      "conversation",
-      { workspaceId: "workspace", userId: "user" },
-      1,
-    );
+    const history = await loadConversationHistory("conversation", { workspaceId: "workspace", userId: "user" }, 1);
 
     expect(history).toHaveLength(2);
-    expect(JSON.stringify(history[0])).toContain(
-      "Embedding-free document explorer",
-    );
-    expect(JSON.stringify(history[0])).not.toContain(
-      "EXTRACTED OLD FILE CONTENT",
-    );
+    expect(JSON.stringify(history[0])).toContain("Embedding-free document explorer");
+    expect(JSON.stringify(history[0])).not.toContain("EXTRACTED OLD FILE CONTENT");
   });
 
   it("keeps child traces out and retains only their final response", async () => {
