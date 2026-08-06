@@ -1,17 +1,41 @@
 "use client";
 
-import { createContext,useContext,type ComponentProps,type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  type ComponentProps,
+  type ReactNode,
+} from "react";
 
 import { ChatSidebar } from "@/components/chat/chat-sidebar";
-import type { ChatAgent,ChatConversation,ChatConversationFolder,ChatUsageImpact } from "@/components/chat/chat-types";
+import type {
+  ChatAgent,
+  ChatConversation,
+  ChatConversationFolder,
+  ChatUsageImpact,
+} from "@/components/chat/chat-types";
 
-export const ChatComposerControlsContext = createContext<ReactNode>(null);
+export interface ChatComposerControls {
+  primary: ReactNode;
+  secondary: ReactNode;
+}
+
+const EMPTY_COMPOSER_CONTROLS: ChatComposerControls = {
+  primary: null,
+  secondary: null,
+};
+
+export const ChatComposerControlsContext = createContext<ChatComposerControls>(
+  EMPTY_COMPOSER_CONTROLS,
+);
 
 export function useChatComposerControls() {
   return useContext(ChatComposerControlsContext);
 }
 
-export type ChatSidebarCollapsedChangeHandler = NonNullable<ComponentProps<typeof ChatSidebar>["onCollapsedChange"]>;
+export type ChatSidebarCollapsedChangeHandler = NonNullable<
+  ComponentProps<typeof ChatSidebar>["onCollapsedChange"]
+>;
 
 export interface ChatLayoutProps {
   agents: ChatAgent[];
@@ -37,7 +61,10 @@ export interface ChatLayoutProps {
   onRetryConversationSearch?: () => void;
   onLoadMoreConversationSearchResults?: () => void;
   onSelectAgent: (agentId: string) => void;
-  onSelectConversation: (conversationId: string, conversationAgentId?: string | null) => void;
+  onSelectConversation: (
+    conversationId: string,
+    conversationAgentId?: string | null,
+  ) => void;
   onNewConversation: () => void;
   onSetUserDefaultAgent?: (agentId: string | null) => void;
   onRenameConversation?: (conversationId: string, title: string) => void;
@@ -46,7 +73,11 @@ export interface ChatLayoutProps {
   onRenameConversationFolder?: (folderId: string, name: string) => void;
   onDeleteConversationFolder?: (folderId: string) => void;
   onToggleConversationPin?: (conversationId: string, pinned: boolean) => void;
-  onReorderConversations?: (input: { conversationIds: string[]; folderId: string | null; pinned?: boolean }) => void;
+  onReorderConversations?: (input: {
+    conversationIds: string[];
+    folderId: string | null;
+    pinned?: boolean;
+  }) => void;
   hasMoreConversations?: boolean;
   loadingMoreConversations?: boolean;
   onLoadMoreConversations?: () => void;

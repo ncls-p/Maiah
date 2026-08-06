@@ -3512,6 +3512,18 @@
       "description": "Define the expected result, assistant, and run cadence.",
       "submit": "Create task"
     },
+    "edit": {
+      "title": "Task details",
+      "description": "Review the task configuration and update its instructions or schedule.",
+      "submit": "Save changes",
+      "enabledHint": "Paused tasks keep their configuration and execution history."
+    },
+    "details": {
+      "action": "Details",
+      "status": "Last status",
+      "nextRun": "Next run",
+      "timezone": "Time zone"
+    },
     "fields": {
       "title": "Title",
       "prompt": "Instructions",
@@ -3519,7 +3531,8 @@
       "assistantPlaceholder": "Choose an assistant",
       "frequency": "Frequency",
       "time": "Time",
-      "minutes": "Interval in minutes"
+      "minutes": "Interval in minutes",
+      "enabled": "Task enabled"
     },
     "frequency": {
       "daily": "Every day",
@@ -3553,6 +3566,7 @@
     "intervalEvery": "Every {minutes} minutes",
     "nextRun": "next run: {date}",
     "toggleTask": "Enable or disable {title}",
+    "editTask": "View and edit {title}",
     "deleteTask": "Delete {title}",
     "deleteTitle": "Delete this scheduled task?",
     "deleteDescription": "{title} will stop running. Existing conversations will be kept.",
@@ -3563,6 +3577,7 @@
       "loadAgentsFailed": "Unable to load assistants",
       "loadFailed": "Unable to load tasks",
       "created": "Scheduled task created",
+      "updated": "Scheduled task updated",
       "createFailed": "Unable to create task",
       "updateFailed": "Unable to update task",
       "deleted": "Task deleted",

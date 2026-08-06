@@ -162,11 +162,9 @@ The value vocabulary behind the twenty-one transitions. `transitions refine` map
 | 3px   | Medium | page slide, text reveal                                            |
 | 8px   | Large  | success check open                                                 |
 
-## Universal install
+## Install variables
 
-Copy [`_root.css`](./_root.css) into your project **once** and import it (or paste its `:root` block into your global stylesheet). It defines the semantic tunable variables for **all twenty-one** transitions. Every snippet reads from these names — `--resize-*`, `--badge-*`, `--dropdown-*`, `--clear-*`, `--shimmer-*`, `--tabs-*`, `--tt-*`, `--stagger-*`, `--tilt-*`, `--morph-*`, `--acc-*`, and the rest.
-
-Each reference file also restates just the variables that snippet needs, so you can install a single transition without pulling the whole block. Don't duplicate the block — if `_root.css` is already imported, skip re-pasting any per-snippet `:root`.
+Each reference file includes the semantic variables required by its transition. Copy that transition's `:root` block into the project's global stylesheet, and reuse an existing block instead of duplicating it.
 
 The `--pX-*` source tokens used by the live demo at [transitions.dev](https://transitions.dev) are intentionally **not** exported. Tunable values are renamed to semantic names so the user owns the design vocabulary. A few transitions (input clear, shimmer text, tabs, tooltip) carry **color** tokens that differ by theme — each reference file documents the `html[data-theme="dark"]` overrides.
 
@@ -174,7 +172,7 @@ The `--pX-*` source tokens used by the live demo at [transitions.dev](https://tr
 
 When inserting a transition into the user's project:
 
-1. **Install the variables from `_root.css`** into the user's global stylesheet, but only if they aren't already there — or just the per-snippet `:root` block from the reference file if installing a single transition. If the universal block is already imported, do **not** duplicate it.
+1. **Install the per-snippet `:root` variables** from the relevant reference file into the user's global stylesheet, but only if they are not already present.
 2. **Paste the chosen transition's CSS verbatim** from the relevant reference file. Do not rewrite selectors, do not collapse the transition into shorthand, do not strip `will-change`. The snippets are tuned and tested.
 3. **Wire the documented HTML hooks** — class names (`.t-dropdown`, `.t-modal`, `.t-success-check`, `.t-avatar`, `.t-clear`, `.t-skel`, `.t-shimmer`, `.t-tabs`, `.t-tt`, `.t-stagger`, `.t-tilt`, `.t-morph`, `.t-acc`, …) and state attributes (`data-open`, `data-state`, `data-page`, `data-origin`, `aria-selected`, `aria-expanded`, `.is-open`, `.is-closing`, `.is-error`, `.is-shaking`, `.has-value`, `.is-clearing`, `.is-pulsing`, `.is-revealed`, `.is-shown`, `.is-hiding`, `.is-hover`, `.is-tilting`).
 4. **Preserve the `@media (prefers-reduced-motion: reduce)` block.** Every snippet ships one. Removing it makes the component fail accessibility audits.
@@ -220,4 +218,3 @@ Keep the diff small: only edit the files needed to introduce the transition. Don
 - [19-card-tilt.md](./19-card-tilt.md) — Card hover tilt
 - [20-plus-menu-morph.md](./20-plus-menu-morph.md) — Plus to menu morph
 - [21-accordion.md](./21-accordion.md) — Accordion expand
-- [\_root.css](./_root.css) — the universal install block on its own, ready to import directly.

@@ -1,20 +1,23 @@
 "use client";
 
-import { BookMarkedIcon,ServerIcon,WrenchIcon } from "lucide-react";
+import { BookMarkedIcon, ServerIcon, WrenchIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
-import { useCallback,useEffect,useMemo,useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { McpServerManager } from "@/components/mcp/mcp-server-manager";
 import { PageLoading } from "@/components/page-loading";
 import { SkillManager } from "@/components/skills/skill-manager";
 import { Button } from "@/components/ui/button";
-import { Tabs,TabsContent,TabsList,TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { WorkspacePage } from "@/components/workspace-page";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { useRouter } from "@/i18n/navigation";
 import { fetchWorkspacePermissions } from "@/lib/api-client";
-import { DEFAULT_WORKSPACE_PERMISSIONS,type WorkspacePermissions } from "@/lib/workspace-nav";
+import {
+  DEFAULT_WORKSPACE_PERMISSIONS,
+  type WorkspacePermissions,
+} from "@/lib/workspace-nav";
 
 import { BuiltinToolsPanel } from "./builtin-tools-panel";
 
@@ -26,7 +29,8 @@ const TOOL_TAB_CONFIG = [
     icon: WrenchIcon,
     labelKey: "tabs.builtin",
     helpKey: null,
-    canView: (permissions: WorkspacePermissions) => permissions.canViewTools || permissions.canConfigureTools,
+    canView: (permissions: WorkspacePermissions) =>
+      permissions.canViewTools || permissions.canConfigureTools,
     render: null,
   },
   {
@@ -34,7 +38,8 @@ const TOOL_TAB_CONFIG = [
     icon: ServerIcon,
     labelKey: "tabs.mcp",
     helpKey: null,
-    canView: (permissions: WorkspacePermissions) => permissions.canGetMcpServers,
+    canView: (permissions: WorkspacePermissions) =>
+      permissions.canGetMcpServers,
     render: () => <McpServerManager />,
   },
   {
@@ -42,7 +47,8 @@ const TOOL_TAB_CONFIG = [
     icon: BookMarkedIcon,
     labelKey: "tabs.skills",
     helpKey: null,
-    canView: (permissions: WorkspacePermissions) => permissions.canConfigureTools,
+    canView: (permissions: WorkspacePermissions) =>
+      permissions.canConfigureTools,
     render: () => <SkillManager />,
   },
 ] as const;
@@ -56,13 +62,20 @@ export function ToolsHub() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { workspaceId, isLoading: workspaceLoading } = useWorkspace();
-  const [permissions, setPermissions] = useState<WorkspacePermissions>(DEFAULT_WORKSPACE_PERMISSIONS);
+  const [permissions, setPermissions] = useState<WorkspacePermissions>(
+    DEFAULT_WORKSPACE_PERMISSIONS,
+  );
   const [permissionsLoading, setPermissionsLoading] = useState(true);
   const [permissionsError, setPermissionsError] = useState(false);
-  const allowedTabs = useMemo(() => allowedToolTabs(permissions), [permissions]);
+  const allowedTabs = useMemo(
+    () => allowedToolTabs(permissions),
+    [permissions],
+  );
   const allowedTabValues = allowedTabs.map((item) => item.value);
   const requestedTab = searchParams.get("tab") ?? "builtin";
-  const tab = allowedTabValues.includes(requestedTab as ToolsTab) ? requestedTab : (allowedTabValues[0] ?? "builtin");
+  const tab = allowedTabValues.includes(requestedTab as ToolsTab)
+    ? requestedTab
+    : (allowedTabValues[0] ?? "builtin");
 
   const loadPermissions = useCallback(async () => {
     if (!workspaceId) return;
@@ -90,7 +103,11 @@ export function ToolsHub() {
   }, [loadPermissions]);
 
   useEffect(() => {
-    if (!permissionsLoading && allowedTabValues.length > 0 && requestedTab !== tab) {
+    if (
+      !permissionsLoading &&
+      allowedTabValues.length > 0 &&
+      requestedTab !== tab
+    ) {
       router.replace(`/tools?tab=${tab}`);
     }
   }, [allowedTabValues.length, permissionsLoading, requestedTab, router, tab]);
@@ -105,11 +122,28 @@ export function ToolsHub() {
 
   if (permissionsError) {
     return (
-      <WorkspacePage title={t("orbitTitle")} accentTitle={t("orbitAccent")} eyebrow={t("orbitEyebrow")} description={t("orbitDescription")} width="wide">
-        <div className="rounded-2xl border border-destructive/25 bg-destructive/5 p-5" role="alert">
+      <WorkspacePage
+        title={t("orbitTitle")}
+        accentTitle={t("orbitAccent")}
+        eyebrow={t("orbitEyebrow")}
+        description={t("orbitDescription")}
+        width="wide"
+      >
+        <div
+          className="rounded-2xl border border-destructive/25 bg-destructive/5 p-5"
+          role="alert"
+        >
           <h2 className="text-base font-semibold">{t("loadFailed")}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{t("loadFailedDescription")}</p>
-          <Button type="button" variant="outline" size="sm" className="mt-4" onClick={() => void loadPermissions()}>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {t("loadFailedDescription")}
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="mt-4"
+            onClick={() => void loadPermissions()}
+          >
             {t("retry")}
           </Button>
         </div>
@@ -119,23 +153,41 @@ export function ToolsHub() {
 
   if (allowedTabs.length === 0) {
     return (
-      <WorkspacePage title={t("orbitTitle")} accentTitle={t("orbitAccent")} eyebrow={t("orbitEyebrow")} description={t("orbitDescription")} width="wide">
+      <WorkspacePage
+        title={t("orbitTitle")}
+        accentTitle={t("orbitAccent")}
+        eyebrow={t("orbitEyebrow")}
+        description={t("orbitDescription")}
+        width="wide"
+      >
         <div className="rounded-2xl border bg-card p-5">
           <h2 className="text-base font-semibold">{t("noAccessTitle")}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{t("noAccessDescription")}</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {t("noAccessDescription")}
+          </p>
         </div>
       </WorkspacePage>
     );
   }
 
   return (
-    <WorkspacePage title={t("orbitTitle")} accentTitle={t("orbitAccent")} eyebrow={t("orbitEyebrow")} description={t("orbitDescription")} width="wide">
+    <WorkspacePage
+      title={t("orbitTitle")}
+      accentTitle={t("orbitAccent")}
+      eyebrow={t("orbitEyebrow")}
+      description={t("orbitDescription")}
+      width="wide"
+    >
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="max-w-full flex-nowrap justify-start overflow-x-auto">
+        <TabsList className="justify-start">
           {allowedTabs.map((item) => {
             const Icon = item.icon;
             return (
-              <TabsTrigger key={item.value} value={item.value} className="gap-1.5">
+              <TabsTrigger
+                key={item.value}
+                value={item.value}
+                className="gap-1.5"
+              >
                 <Icon className="size-3.5" aria-hidden="true" />
                 {t(item.labelKey)}
               </TabsTrigger>
@@ -144,9 +196,22 @@ export function ToolsHub() {
         </TabsList>
 
         {allowedTabs.map((item) => (
-          <TabsContent key={item.value} value={item.value} className={item.helpKey ? "mt-6 space-y-4" : "mt-6"}>
-            {item.helpKey ? <p className="text-sm text-muted-foreground">{t(item.helpKey)}</p> : null}
-            {item.value === "builtin" ? <BuiltinToolsPanel workspaceId={workspaceId} canManage={permissions.canManageTenantGlobals} /> : item.render?.()}
+          <TabsContent
+            key={item.value}
+            value={item.value}
+            className={item.helpKey ? "mt-6 space-y-4" : "mt-6"}
+          >
+            {item.helpKey ? (
+              <p className="text-sm text-muted-foreground">{t(item.helpKey)}</p>
+            ) : null}
+            {item.value === "builtin" ? (
+              <BuiltinToolsPanel
+                workspaceId={workspaceId}
+                canManage={permissions.canManageTenantGlobals}
+              />
+            ) : (
+              item.render?.()
+            )}
           </TabsContent>
         ))}
       </Tabs>

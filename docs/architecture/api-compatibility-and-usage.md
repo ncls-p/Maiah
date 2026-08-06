@@ -54,11 +54,13 @@ multiple teams.
 
 ## Organization branding
 
-Organizations can store a data-URL logo and one of five controlled color
-presets: Ocean, Forest, Ember, Violet, or Slate. The logo is limited to 256 KB
-and common browser image formats. The active workspace applies its
-organization branding to the header and sidebar, while the theme overrides
-semantic color tokens and remains compatible with light and dark mode.
+Organizations can store a data-URL logo and choose Ocean, Forest, Ember,
+Violet, Slate, or a custom theme. Every theme defines separate light and dark
+palettes for the complete semantic color system, so branding applies across
+navigation, surfaces, controls, feedback states, charts, and content instead
+of only tinting the header. The logo is limited to 256 KB and common browser
+image formats. The active workspace applies the branding of its own
+organization throughout the platform.
 
 Only principals with `organization.update` may change branding. All members
 can read it so the same identity is rendered consistently across projects.

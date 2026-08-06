@@ -38,11 +38,7 @@
     "quality:dead-code": "knip --include files,dependencies,devDependencies,unlisted,unresolved",
     "quality:duplicates": "jscpd src --min-lines 20 --min-tokens 100 --threshold 0 --ignore '**/generated-route-manifest.ts,**/migrations/**'",
     "quality:file-length": "node scripts/check-file-length.mjs",
-    "quality": "npm run quality:file-length && npm run quality:dead-code && npm run quality:duplicates",
-    "video": "remotion studio remotion/index.ts",
-    "video:render": "remotion render remotion/index.ts MaiahLaunchFilm out/maiah-launch.mp4 --codec=h264 --crf=16",
-    "video:still": "remotion still remotion/index.ts MaiahLaunchFilm out/maiah-cover.png --frame=960",
-    "video:audio": "python3 scripts/generate-remotion-soundtrack.py"
+    "quality": "npm run quality:file-length && npm run quality:dead-code && npm run quality:duplicates"
   },
   "dependencies": {
     "@ai-sdk/devtools": "^1.0.0",
@@ -98,9 +94,6 @@
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.115.0",
     "@playwright/test": "^1.52.0",
-    "@remotion/cli": "4.0.487",
-    "@remotion/google-fonts": "4.0.487",
-    "@remotion/media": "4.0.487",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^22",
     "@types/react": "^19",
@@ -115,7 +108,6 @@
     "pg": "^8.16.3",
     "postcss": "^8.5.25",
     "prettier": "^3.8.3",
-    "remotion": "4.0.487",
     "tailwindcss": "^4",
     "tsx": "^4.20.3",
     "typescript": "^5",
@@ -128,7 +120,6 @@
   "packageManager": "npm@11.18.0",
   "knip": {
     "entry": [
-      "remotion/index.ts",
       "scripts/migrate-standalone.mjs",
       "scripts/sandbox-runner.mjs"
     ]

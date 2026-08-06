@@ -1,6 +1,6 @@
 import nextEnv from "@next/env";
-import { expect,type Locator,type Page,test } from "@playwright/test";
-import { activate,ensureE2EUser,login } from "./fixtures";
+import { expect, type Locator, type Page, test } from "@playwright/test";
+import { activate, ensureE2EUser, login } from "./fixtures";
 
 const { loadEnvConfig } = nextEnv;
 
@@ -8,7 +8,8 @@ loadEnvConfig(process.cwd());
 
 async function expectReachable(locator: Locator) {
   await expect(locator).toBeVisible();
-  let box: { height: number; width: number; x: number; y: number } | null = null;
+  let box: { height: number; width: number; x: number; y: number } | null =
+    null;
   await expect
     .poll(async () => {
       box = await locator.evaluate((element) => {
@@ -22,7 +23,10 @@ async function expectReachable(locator: Locator) {
 }
 
 async function openConversationSheet(page: Page) {
-  const trigger = page.getByRole("button", { name: "Open conversations", exact: true });
+  const trigger = page.getByRole("button", {
+    name: "Open conversations",
+    exact: true,
+  });
   await expect(trigger).toBeVisible();
   await activate(trigger);
   await expect(page.locator('[data-slot="sheet-content"]')).toBeVisible();
@@ -42,22 +46,32 @@ test.describe("chat page", () => {
     await expect(page).toHaveURL(/\/en\/chat/);
   });
 
-  test("keeps the minimalist chat shell responsive and the brand logo unframed", async ({ page }) => {
+  test("keeps the minimalist chat shell responsive and the brand logo unframed", async ({
+    page,
+  }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/en/chat");
 
     await expect(async () => {
       await openConversationSheet(page);
-      await expect(page.locator('[data-slot="sheet-content"] img[data-no-outline="true"]')).toBeVisible();
+      await expect(
+        page.locator('[data-slot="sheet-content"] img[data-no-outline="true"]'),
+      ).toBeVisible();
     }).toPass({ timeout: 15_000 });
-    const logo = page.locator('[data-slot="sheet-content"] img[data-no-outline="true"]');
-    expect(await logo.evaluate((element) => getComputedStyle(element).outlineStyle)).toBe("none");
+    const logo = page.locator(
+      '[data-slot="sheet-content"] img[data-no-outline="true"]',
+    );
+    expect(
+      await logo.evaluate((element) => getComputedStyle(element).outlineStyle),
+    ).toBe("none");
 
     const brandLink = logo.locator("xpath=..");
     const brandLinkBox = await brandLink.boundingBox();
     expect(brandLinkBox?.height ?? 0).toBeGreaterThanOrEqual(40);
 
-    const hasHorizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
+    const hasHorizontalOverflow = await page.evaluate(
+      () => document.documentElement.scrollWidth > window.innerWidth,
+    );
     expect(hasHorizontalOverflow).toBe(false);
   });
 
@@ -70,7 +84,9 @@ test.describe("chat page", () => {
     await expect(content).toBeVisible();
 
     // Check for either the chat interface or the "no assistants" state
-    await expect(page.getByText(/No assistants|New conversation|Message|Chat/i).first()).toBeVisible({ timeout: 10_000 });
+    await expect(
+      page.getByText(/No assistants|New conversation|Message|Chat/i).first(),
+    ).toBeVisible({ timeout: 10_000 });
   });
 
   test("chat sidebar contains conversation list", async ({ page }) => {
@@ -89,11 +105,15 @@ test.describe("chat page", () => {
     await page.waitForTimeout(2000);
 
     // Look for new conversation button or similar
-    const newConversationBtn = page.getByRole("button", { name: /^New(?: conversation| chat)?$/i }).first();
+    const newConversationBtn = page
+      .getByRole("button", { name: /^New(?: conversation| chat)?$/i })
+      .first();
     await expect(newConversationBtn).toBeEnabled({ timeout: 15_000 });
   });
 
-  test("keeps history controls ordered, reachable, and responsive", async ({ page }) => {
+  test("keeps history controls ordered, reachable, and responsive", async ({
+    page,
+  }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto("/en/chat");
 
@@ -116,7 +136,12 @@ test.describe("chat page", () => {
       exact: true,
     });
 
-    const desktopBoxes = await Promise.all([expectReachable(newConversation), expectReachable(historySearch), expectReachable(createFolder), expectReachable(collapseSidebar)]);
+    const desktopBoxes = await Promise.all([
+      expectReachable(newConversation),
+      expectReachable(historySearch),
+      expectReachable(createFolder),
+      expectReachable(collapseSidebar),
+    ]);
     for (const box of desktopBoxes) {
       expect(box.width).toBeGreaterThanOrEqual(40);
       expect(box.height).toBeGreaterThanOrEqual(40);
@@ -124,6 +149,24 @@ test.describe("chat page", () => {
     expect(desktopBoxes[0]!.y).toBeLessThan(desktopBoxes[1]!.y);
     expect(desktopBoxes[1]!.y).toBeLessThan(desktopBoxes[2]!.y);
     expect(desktopBoxes[3]!.y).toBeLessThan(desktopBoxes[0]!.y);
+
+    expect(
+      await historySearch.evaluate(
+        (element) => getComputedStyle(element).paddingRight,
+      ),
+    ).toBe("12px");
+    await historySearch.fill("test");
+    expect(
+      await historySearch.evaluate(
+        (element) => getComputedStyle(element).paddingRight,
+      ),
+    ).toBe("44px");
+    await activate(
+      desktopSidebar.getByRole("button", {
+        name: "Clear chat history search",
+      }),
+    );
+    await expect(historySearch).toHaveValue("");
 
     await activate(createFolder);
     const folderName = desktopSidebar.getByRole("textbox", {
@@ -149,9 +192,17 @@ test.describe("chat page", () => {
       name: "Create folder",
       exact: true,
     });
-    const mobileBoxes = await Promise.all([mobileNewConversation.boundingBox(), mobileSearch.boundingBox(), mobileFolder.boundingBox()]);
+    const mobileBoxes = await Promise.all([
+      mobileNewConversation.boundingBox(),
+      mobileSearch.boundingBox(),
+      mobileFolder.boundingBox(),
+    ]);
     expect(mobileBoxes[0]!.y).toBeLessThan(mobileBoxes[1]!.y);
     expect(mobileBoxes[1]!.y).toBeLessThan(mobileBoxes[2]!.y);
-    expect(await mobileSidebar.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+    expect(
+      await mobileSidebar.evaluate(
+        (element) => element.scrollWidth <= element.clientWidth,
+      ),
+    ).toBe(true);
   });
 });

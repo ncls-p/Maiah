@@ -145,16 +145,6 @@ Use these for deeper implementation details:
 - **[references/security.md](references/security.md)** — Hardening, link safety, custom HTML tags, production config
 - **[references/features.md](references/features.md)** — Carets, remend, static mode, controls, GFM, memoization, troubleshooting
 
-## Example Configurations
-
-Copy and adapt from `assets/examples/`:
-
-- **[basic-streaming.tsx](assets/examples/basic-streaming.tsx)** — Minimal AI chat with Vercel AI SDK
-- **[with-caret.tsx](assets/examples/with-caret.tsx)** — Streaming with block caret cursor
-- **[full-featured.tsx](assets/examples/full-featured.tsx)** — All plugins, carets, link safety, controls
-- **[static-mode.tsx](assets/examples/static-mode.tsx)** — Blog/docs rendering
-- **[custom-security.tsx](assets/examples/custom-security.tsx)** — Strict security for AI content
-
 ## Common Gotchas
 
 1. **Tailwind styles missing** — Add `@source` directive or `content` entry for `node_modules/streamdown/dist/*.js`

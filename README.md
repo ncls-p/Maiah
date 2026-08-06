@@ -133,20 +133,6 @@ npm run analyze          # Next.js bundle analyzer
 npm run format           # Prettier
 ```
 
-### Product film (Remotion)
-
-The cinematic Maiah presentation lives in `remotion/` as the
-`MaiahLaunchFilm` composition (1920×1080, 30 fps, 34 seconds).
-
-```bash
-npm run video             # Open Remotion Studio
-npm run video:render      # Render out/maiah-launch.mp4
-npm run video:still       # Render out/maiah-cover.png
-npm run video:audio       # Regenerate the original ambient soundtrack
-```
-
----
-
 ## Environment variables
 
 See `.env.example` for the full reference. Key categories:

@@ -3511,6 +3511,18 @@
       "description": "Définissez le résultat attendu, l’assistant et le rythme d’exécution.",
       "submit": "Créer la tâche"
     },
+    "edit": {
+      "title": "Détail de la tâche",
+      "description": "Consultez la configuration puis modifiez ses instructions ou sa planification.",
+      "submit": "Enregistrer",
+      "enabledHint": "Une tâche en pause conserve sa configuration et son historique d’exécution."
+    },
+    "details": {
+      "action": "Détails",
+      "status": "Dernier statut",
+      "nextRun": "Prochain lancement",
+      "timezone": "Fuseau horaire"
+    },
     "fields": {
       "title": "Titre",
       "prompt": "Instructions",
@@ -3518,7 +3530,8 @@
       "assistantPlaceholder": "Choisir un assistant",
       "frequency": "Fréquence",
       "time": "Heure",
-      "minutes": "Intervalle en minutes"
+      "minutes": "Intervalle en minutes",
+      "enabled": "Tâche active"
     },
     "frequency": {
       "daily": "Tous les jours",
@@ -3552,6 +3565,7 @@
     "intervalEvery": "Toutes les {minutes} minutes",
     "nextRun": "prochain lancement : {date}",
     "toggleTask": "Activer ou désactiver {title}",
+    "editTask": "Voir et modifier {title}",
     "deleteTask": "Supprimer {title}",
     "deleteTitle": "Supprimer cette tâche planifiée ?",
     "deleteDescription": "{title} ne s’exécutera plus. Les conversations déjà créées seront conservées.",
@@ -3562,6 +3576,7 @@
       "loadAgentsFailed": "Impossible de charger les assistants",
       "loadFailed": "Impossible de charger les tâches",
       "created": "Tâche planifiée créée",
+      "updated": "Tâche planifiée mise à jour",
       "createFailed": "Impossible de créer la tâche",
       "updateFailed": "Impossible de mettre à jour la tâche",
       "deleted": "Tâche supprimée",

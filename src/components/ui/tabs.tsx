@@ -1,28 +1,51 @@
 "use client";
 
-import { cva,type VariantProps } from "class-variance-authority";
+import { cva, type VariantProps } from "class-variance-authority";
 import { Tabs as TabsPrimitive } from "radix-ui";
 import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-function Tabs({ className, orientation = "horizontal", ...props }: React.ComponentProps<typeof TabsPrimitive.Root>) {
-  return <TabsPrimitive.Root data-slot="tabs" data-orientation={orientation} className={cn("group/tabs flex gap-3 data-horizontal:flex-col", className)} {...props} />;
+function Tabs({
+  className,
+  orientation = "horizontal",
+  ...props
+}: React.ComponentProps<typeof TabsPrimitive.Root>) {
+  return (
+    <TabsPrimitive.Root
+      data-slot="tabs"
+      data-orientation={orientation}
+      className={cn(
+        "group/tabs flex gap-3 data-horizontal:flex-col",
+        className,
+      )}
+      {...props}
+    />
+  );
 }
 
-const tabsListVariants = cva("group/tabs-list inline-flex w-fit items-center justify-center rounded-xl border border-transparent bg-muted p-1 text-muted-foreground shadow-[var(--control-shadow)] group-data-horizontal/tabs:min-h-10 group-data-vertical/tabs:h-fit group-data-vertical/tabs:flex-col data-[variant=line]:rounded-none data-[variant=line]:border-0 data-[variant=line]:bg-transparent data-[variant=line]:p-0 data-[variant=line]:shadow-none", {
-  variants: {
-    variant: {
-      default: "",
-      line: "gap-1",
+const tabsListVariants = cva(
+  "group/tabs-list inline-flex h-auto w-fit max-w-full items-center justify-center rounded-xl border border-transparent bg-muted p-1 text-muted-foreground shadow-[var(--control-shadow)] group-data-horizontal/tabs:min-h-10 group-data-horizontal/tabs:flex-wrap group-data-vertical/tabs:h-fit group-data-vertical/tabs:flex-col data-[variant=line]:rounded-none data-[variant=line]:border-0 data-[variant=line]:bg-transparent data-[variant=line]:p-0 data-[variant=line]:shadow-none",
+  {
+    variants: {
+      variant: {
+        default: "",
+        line: "gap-1",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
     },
   },
-  defaultVariants: {
-    variant: "default",
-  },
-});
+);
 
-function TabsList({ className, variant = "default", children, ...props }: React.ComponentProps<typeof TabsPrimitive.List> & VariantProps<typeof tabsListVariants>) {
+function TabsList({
+  className,
+  variant = "default",
+  children,
+  ...props
+}: React.ComponentProps<typeof TabsPrimitive.List> &
+  VariantProps<typeof tabsListVariants>) {
   const listRef = React.useRef<HTMLDivElement | null>(null);
   const hasSlidingPill = variant === "default";
 
@@ -32,7 +55,9 @@ function TabsList({ className, variant = "default", children, ...props }: React.
     if (!list) return;
 
     const pill = list.querySelector<HTMLElement>(".t-tabs-pill");
-    const activeTab = list.querySelector<HTMLElement>('[data-slot="tabs-trigger"][data-state="active"], [data-slot="tabs-trigger"][aria-selected="true"], [data-slot="tabs-trigger"][data-active]');
+    const activeTab = list.querySelector<HTMLElement>(
+      '[data-slot="tabs-trigger"][data-state="active"], [data-slot="tabs-trigger"][aria-selected="true"], [data-slot="tabs-trigger"][data-active]',
+    );
 
     if (!pill || !activeTab) return;
 
@@ -60,7 +85,9 @@ function TabsList({ className, variant = "default", children, ...props }: React.
     const list = listRef.current;
     if (!list) return;
 
-    const firstPaint = window.requestAnimationFrame(() => movePill({ animate: false }));
+    const firstPaint = window.requestAnimationFrame(() =>
+      movePill({ animate: false }),
+    );
     const onResize = () => movePill({ animate: false });
     const onInteraction = () => {
       window.requestAnimationFrame(() => movePill({ animate: true }));
@@ -84,14 +111,29 @@ function TabsList({ className, variant = "default", children, ...props }: React.
   }, [hasSlidingPill, movePill]);
 
   return (
-    <TabsPrimitive.List ref={listRef} data-slot="tabs-list" data-variant={variant} className={cn(tabsListVariants({ variant }), hasSlidingPill && "t-tabs", className)} {...props}>
-      {hasSlidingPill ? <span className="t-tabs-pill" aria-hidden="true" /> : null}
+    <TabsPrimitive.List
+      ref={listRef}
+      data-slot="tabs-list"
+      data-variant={variant}
+      className={cn(
+        tabsListVariants({ variant }),
+        hasSlidingPill && "t-tabs",
+        className,
+      )}
+      {...props}
+    >
+      {hasSlidingPill ? (
+        <span className="t-tabs-pill" aria-hidden="true" />
+      ) : null}
       {children}
     </TabsPrimitive.List>
   );
 }
 
-function TabsTrigger({ className, ...props }: React.ComponentProps<typeof TabsPrimitive.Trigger>) {
+function TabsTrigger({
+  className,
+  ...props
+}: React.ComponentProps<typeof TabsPrimitive.Trigger>) {
   return (
     <TabsPrimitive.Trigger
       data-slot="tabs-trigger"
@@ -107,8 +149,17 @@ function TabsTrigger({ className, ...props }: React.ComponentProps<typeof TabsPr
   );
 }
 
-function TabsContent({ className, ...props }: React.ComponentProps<typeof TabsPrimitive.Content>) {
-  return <TabsPrimitive.Content data-slot="tabs-content" className={cn("min-h-0 flex-1 text-sm outline-none", className)} {...props} />;
+function TabsContent({
+  className,
+  ...props
+}: React.ComponentProps<typeof TabsPrimitive.Content>) {
+  return (
+    <TabsPrimitive.Content
+      data-slot="tabs-content"
+      className={cn("min-h-0 flex-1 text-sm outline-none", className)}
+      {...props}
+    />
+  );
 }
 
-export { Tabs,TabsContent,TabsList,TabsTrigger };
+export { Tabs, TabsContent, TabsList, TabsTrigger };
