@@ -409,6 +409,11 @@ prepare → validate → plan_images → build → deploy → cleanup
 5. **deploy** — patches the Coolify service with the new compose stack, env vars, and image references, then triggers a force deploy
 6. **cleanup** — on PR close, deletes the preview service and its environment
 
+The application image receives the commit SHA as `NEXT_DEPLOYMENT_ID`. Next.js
+uses it to identify one rollout, version static assets, and detect incompatible
+React Server Component payloads during rolling deployments. This prevents stale
+clients from repeatedly crossing deployment versions during navigation.
+
 #### Environments
 
 | Trigger              | Environment   | URL                                      | Auth               |

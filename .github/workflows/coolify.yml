@@ -482,6 +482,9 @@ jobs:
             inherits = ["_common"]
             target = "runner"
             tags = ${APP_TAGS}
+            args = {
+              NEXT_DEPLOYMENT_ID = "${GITHUB_SHA}"
+            }
           }
 
           target "worker" {

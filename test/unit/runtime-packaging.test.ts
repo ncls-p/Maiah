@@ -19,6 +19,16 @@ describe("runtime packaging guardrails", () => {
     expect(attachmentModule).toContain('import "pdf-parse/worker";');
   });
 
+  it("pins one Next.js deployment identity across every app container", () => {
+    const nextConfig = projectFile("next.config.ts");
+    const dockerfile = projectFile("Dockerfile");
+    const workflow = projectFile(".github/workflows/coolify.yml");
+
+    expect(nextConfig).toContain("deploymentId");
+    expect(dockerfile).toContain("ARG NEXT_DEPLOYMENT_ID");
+    expect(workflow).toContain('NEXT_DEPLOYMENT_ID = "${GITHUB_SHA}"');
+  });
+
   it("ships the document-search command used by the sandbox instructions", () => {
     const dockerfile = projectFile("Dockerfile");
     const sandboxStage = dockerfile.slice(

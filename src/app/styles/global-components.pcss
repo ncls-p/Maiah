@@ -94,7 +94,6 @@
   .workspace-route-content {
     min-width: 0;
     height: 100%;
-    animation: workspace-route-enter var(--page-slide-dur) var(--page-slide-ease) both;
   }
   .workspace-nav-pending {
     position: absolute;
@@ -114,14 +113,6 @@
   .chat-shell-brand {
     @apply bg-transparent;
     background-image: radial-gradient(circle at 74% 22%, color-mix(in oklch, var(--brand-azur) 6%, transparent), transparent 24rem);
-  }
-  @keyframes workspace-route-enter {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
   }
   @keyframes workspace-nav-pending {
     from {

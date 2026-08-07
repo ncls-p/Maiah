@@ -1,5 +1,5 @@
-import { expect,test } from "@playwright/test";
-import { activate,ensureE2EUser,login } from "./fixtures";
+import { expect, test } from "@playwright/test";
+import { activate, ensureE2EUser, login } from "./fixtures";
 
 test.beforeAll(async () => {
   await ensureE2EUser();
@@ -23,17 +23,25 @@ test.describe("workspace navigation", () => {
     await expect(nav).toBeVisible({ timeout: 15_000 });
 
     // Chat link
-    await expect(page.getByRole("link", { name: "Chat", exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Chat", exact: true }),
+    ).toBeVisible();
   });
 
-  test("keeps the workspace shell mounted during client navigation", async ({ page }) => {
+  test("keeps the workspace shell mounted during client navigation", async ({
+    page,
+  }) => {
     await page.goto("/en/agents");
     const sidebar = page.locator('[data-slot="workspace-history-sidebar"]');
     const header = page.locator('[data-slot="app-header"]');
     await expect(sidebar).toBeVisible({ timeout: 15_000 });
     await expect(header).toBeVisible();
-    await sidebar.evaluate((element) => element.setAttribute("data-persistence-check", "sidebar"));
-    await header.evaluate((element) => element.setAttribute("data-persistence-check", "header"));
+    await sidebar.evaluate((element) =>
+      element.setAttribute("data-persistence-check", "sidebar"),
+    );
+    await header.evaluate((element) =>
+      element.setAttribute("data-persistence-check", "header"),
+    );
 
     await page.getByRole("link", { name: "Tools", exact: true }).click();
     await expect(page).toHaveURL(/\/en\/tools/);
@@ -65,7 +73,9 @@ test.describe("workspace navigation", () => {
     ).toBeVisible({ timeout: 10_000 });
   });
 
-  test("navigating to /scheduled-tasks loads scheduled tasks page", async ({ page }) => {
+  test("navigating to /scheduled-tasks loads scheduled tasks page", async ({
+    page,
+  }) => {
     await page.goto("/en/scheduled-tasks");
     await expect(page).toHaveURL(/\/en\/scheduled-tasks/);
 
@@ -87,70 +97,94 @@ test.describe("workspace navigation", () => {
     ).toBeVisible({ timeout: 15_000 });
   });
 
-  test("navigating to /marketplace loads marketplace page", async ({ page }) => {
+  test("navigating to /marketplace loads marketplace page", async ({
+    page,
+  }) => {
     await page.goto("/en/marketplace");
     await expect(page).toHaveURL(/\/en\/marketplace/);
 
-    await expect(page.getByRole("heading", { name: /Marketplace/i }).first()).toBeVisible({ timeout: 15_000 });
+    await expect(
+      page.getByRole("heading", { name: /Marketplace/i }).first(),
+    ).toBeVisible({ timeout: 15_000 });
   });
 
   test("navigating to /providers loads providers page", async ({ page }) => {
     await page.goto("/en/providers");
     await expect(page).toHaveURL(/\/en\/providers/);
 
-    await expect(page.getByRole("heading", { name: /AI connections|Connect AI/i }).first()).toBeVisible({ timeout: 10_000 });
+    await expect(
+      page.getByRole("heading", { name: /AI connections|Connect AI/i }).first(),
+    ).toBeVisible({ timeout: 10_000 });
   });
 
   test("navigating to /api-keys loads api keys page", async ({ page }) => {
     await page.goto("/en/api-keys");
     await expect(page).toHaveURL(/\/en\/api-keys/);
 
-    await expect(page.getByRole("heading", { name: /API keys/i }).first()).toBeVisible({ timeout: 10_000 });
+    await expect(
+      page.getByRole("heading", { name: /API keys/i }).first(),
+    ).toBeVisible({ timeout: 10_000 });
   });
 
   test("navigating to /settings loads settings page", async ({ page }) => {
     await page.goto("/en/settings");
     await expect(page).toHaveURL(/\/en\/settings/);
 
-    await expect(page.getByRole("heading", { name: /Settings/i }).first()).toBeVisible({ timeout: 10_000 });
+    await expect(
+      page.getByRole("heading", { name: /Settings/i }).first(),
+    ).toBeVisible({ timeout: 10_000 });
   });
 
   test("navigating to /usage loads usage page", async ({ page }) => {
     await page.goto("/en/usage");
     await expect(page).toHaveURL(/\/en\/usage/);
 
-    await expect(page.getByRole("heading", { name: /Usage/i }).first()).toBeVisible({ timeout: 10_000 });
+    await expect(
+      page.getByRole("heading", { name: /Usage/i }).first(),
+    ).toBeVisible({ timeout: 10_000 });
   });
 
   test("navigating to /audit loads audit page", async ({ page }) => {
     await page.goto("/en/audit");
     await expect(page).toHaveURL(/\/en\/audit/);
 
-    await expect(page.getByRole("heading", { name: /Activity log/i }).first()).toBeVisible({ timeout: 10_000 });
+    await expect(
+      page.getByRole("heading", { name: /Activity log/i }).first(),
+    ).toBeVisible({ timeout: 10_000 });
   });
 
   test("navigating to /members loads members page", async ({ page }) => {
     await page.goto("/en/members");
     await expect(page).toHaveURL(/\/en\/members/);
 
-    await expect(page.getByRole("heading", { name: "Access" }).first()).toBeVisible({ timeout: 10_000 });
+    await expect(
+      page.getByRole("heading", { name: "Access" }).first(),
+    ).toBeVisible({ timeout: 10_000 });
   });
 
-  test("navigating to /admin/settings loads admin settings page", async ({ page }) => {
+  test("navigating to /admin/settings loads admin settings page", async ({
+    page,
+  }) => {
     await page.goto("/en/admin/settings");
     await expect(page).toHaveURL(/\/en\/admin\/settings/);
 
-    await expect(page.getByRole("heading", { name: /Platform settings/i }).first()).toBeVisible({ timeout: 10_000 });
+    await expect(
+      page.getByRole("heading", { name: /Platform settings/i }).first(),
+    ).toBeVisible({ timeout: 10_000 });
   });
 
   test("navigating to /setup loads setup page", async ({ page }) => {
     await page.goto("/en/setup");
     await expect(page).toHaveURL(/\/en\/setup/);
 
-    await expect(page.getByRole("heading", { name: /Get started/i })).toBeVisible({ timeout: 10_000 });
+    await expect(
+      page.getByRole("heading", { name: /Get started/i }),
+    ).toBeVisible({ timeout: 10_000 });
   });
 
-  test("navigating to /custom-tools redirects to workflows", async ({ page }) => {
+  test("navigating to /custom-tools redirects to workflows", async ({
+    page,
+  }) => {
     await page.goto("/en/custom-tools");
     await expect(page).toHaveURL(/\/en\/workflows/);
   });
@@ -167,12 +201,16 @@ test.describe("sidebar interactions", () => {
     });
 
     if (await toggleBtn.isVisible()) {
-      const initialWidth = await page.locator('[data-slot="workspace-history-sidebar"]').boundingBox();
+      const initialWidth = await page
+        .locator('[data-slot="workspace-history-sidebar"]')
+        .boundingBox();
 
       await activate(toggleBtn);
       await page.waitForTimeout(300);
 
-      const collapsedWidth = await page.locator('[data-slot="workspace-history-sidebar"]').boundingBox();
+      const collapsedWidth = await page
+        .locator('[data-slot="workspace-history-sidebar"]')
+        .boundingBox();
 
       // Sidebar should be narrower when collapsed
       expect(collapsedWidth?.width).toBeLessThan(initialWidth?.width ?? 999);
@@ -191,10 +229,14 @@ test.describe("sidebar interactions", () => {
     expect(ariaCurrent).toBe("page");
   });
 
-  test("user name is available from the Orbit account menu", async ({ page }) => {
+  test("user name is available from the Orbit account menu", async ({
+    page,
+  }) => {
     await page.goto("/en/agents");
 
-    await expect(page.getByRole("button", { name: "E2E Admin", exact: true })).toBeVisible({ timeout: 15_000 });
+    await expect(
+      page.getByRole("button", { name: "E2E Admin", exact: true }),
+    ).toBeVisible({ timeout: 15_000 });
   });
 });
 
@@ -221,7 +263,9 @@ test.describe("not found page", () => {
     const url = page.url();
     // If it doesn't redirect, there should be a 404 indicator
     if (!url.includes("chat") && !url.includes("signin")) {
-      await expect(page.getByRole("heading", { name: /Page not found/i })).toBeVisible({ timeout: 10_000 });
+      await expect(
+        page.getByRole("heading", { name: /Page not found/i }),
+      ).toBeVisible({ timeout: 10_000 });
     }
   });
 });

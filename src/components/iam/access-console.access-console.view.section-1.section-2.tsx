@@ -1,10 +1,31 @@
-import { PlusIcon,SearchIcon,UsersIcon } from "lucide-react";
+import { PlusIcon, SearchIcon, UsersIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Card,CardAction,CardContent,CardDescription,CardHeader,CardTitle } from "@/components/ui/card";
-import { Dialog,DialogContent,DialogDescription,DialogFooter,DialogHeader,DialogTitle,DialogTrigger } from "@/components/ui/dialog";
-import { Empty,EmptyDescription,EmptyHeader,EmptyMedia,EmptyTitle } from "@/components/ui/empty";
-import { Field,FieldGroup,FieldLabel } from "@/components/ui/field";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { TabsContent } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,8 +33,28 @@ import type { AccessConsoleViewModel } from "./access-console.access-console.vie
 import { INITIAL_TEAM_FORM } from "./access-console.resource-transfer-preview";
 import { MutatingButton } from "./access-console.scope-path";
 import { TeamCard } from "./access-console.team-card";
-export function AccessMainSection2({ model }: { model: AccessConsoleViewModel }) {
-  const { activeMembers, canManageTeams, filteredTeams, mutate, pendingAction, setTeamForm, setTeamOpen, setTeamQuery, setVisibleTeamCount, t, teamForm, teamOpen, teamQuery, visibleTeamCount, workspaceId } = model;
+export function AccessMainSection2({
+  model,
+}: {
+  model: AccessConsoleViewModel;
+}) {
+  const {
+    activeMembers,
+    canManageTeams,
+    filteredTeams,
+    mutate,
+    pendingAction,
+    setTeamForm,
+    setTeamOpen,
+    setTeamQuery,
+    setVisibleTeamCount,
+    t,
+    teamForm,
+    teamOpen,
+    teamQuery,
+    visibleTeamCount,
+    workspaceId,
+  } = model;
   return (
     <TabsContent value="teams">
       <div className="grid gap-4 lg:grid-cols-2">
@@ -33,7 +74,9 @@ export function AccessMainSection2({ model }: { model: AccessConsoleViewModel })
                   <DialogContent>
                     <DialogHeader>
                       <DialogTitle>{t("createTeamTitle")}</DialogTitle>
-                      <DialogDescription>{t("createTeamDescription")}</DialogDescription>
+                      <DialogDescription>
+                        {t("createTeamDescription")}
+                      </DialogDescription>
                     </DialogHeader>
                     <form
                       className="contents"
@@ -49,12 +92,18 @@ export function AccessMainSection2({ model }: { model: AccessConsoleViewModel })
                           t("teamCreated"),
                           { close: () => setTeamOpen(false) },
                         );
-                        if (saved) setTeamForm(INITIAL_TEAM_FORM);
+                        if (saved) {
+                          setTeamQuery(teamForm.name);
+                          setVisibleTeamCount(20);
+                          setTeamForm(INITIAL_TEAM_FORM);
+                        }
                       }}
                     >
                       <FieldGroup>
                         <Field>
-                          <FieldLabel htmlFor="team-name">{t("teamName")}</FieldLabel>
+                          <FieldLabel htmlFor="team-name">
+                            {t("teamName")}
+                          </FieldLabel>
                           <Input
                             id="team-name"
                             required
@@ -69,7 +118,9 @@ export function AccessMainSection2({ model }: { model: AccessConsoleViewModel })
                           />
                         </Field>
                         <Field>
-                          <FieldLabel htmlFor="team-description">{t("descriptionLabel")}</FieldLabel>
+                          <FieldLabel htmlFor="team-description">
+                            {t("descriptionLabel")}
+                          </FieldLabel>
                           <Textarea
                             id="team-description"
                             value={teamForm.description}
@@ -83,7 +134,11 @@ export function AccessMainSection2({ model }: { model: AccessConsoleViewModel })
                         </Field>
                       </FieldGroup>
                       <DialogFooter>
-                        <MutatingButton pending={pendingAction === "createTeam"}>{t("createTeam")}</MutatingButton>
+                        <MutatingButton
+                          pending={pendingAction === "createTeam"}
+                        >
+                          {t("createTeam")}
+                        </MutatingButton>
                       </DialogFooter>
                     </form>
                   </DialogContent>
@@ -93,7 +148,10 @@ export function AccessMainSection2({ model }: { model: AccessConsoleViewModel })
           </CardHeader>
           <CardContent>
             <div className="relative max-w-md">
-              <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+              <SearchIcon
+                className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+                aria-hidden="true"
+              />
               <Input
                 id="team-search"
                 className="pl-9"
@@ -115,8 +173,14 @@ export function AccessMainSection2({ model }: { model: AccessConsoleViewModel })
               <EmptyMedia variant="icon">
                 <UsersIcon aria-hidden="true" />
               </EmptyMedia>
-              <EmptyTitle>{teamQuery ? t("noSearchResults") : t("noTeams")}</EmptyTitle>
-              <EmptyDescription>{teamQuery ? t("noSearchResultsDescription") : t("noTeamsDescription")}</EmptyDescription>
+              <EmptyTitle>
+                {teamQuery ? t("noSearchResults") : t("noTeams")}
+              </EmptyTitle>
+              <EmptyDescription>
+                {teamQuery
+                  ? t("noSearchResultsDescription")
+                  : t("noTeamsDescription")}
+              </EmptyDescription>
             </EmptyHeader>
           </Empty>
         ) : (
@@ -167,7 +231,11 @@ export function AccessMainSection2({ model }: { model: AccessConsoleViewModel })
         )}
         {filteredTeams.length > visibleTeamCount ? (
           <div className="flex justify-center lg:col-span-2">
-            <Button type="button" variant="outline" onClick={() => setVisibleTeamCount((count) => count + 20)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setVisibleTeamCount((count) => count + 20)}
+            >
               {t("showMore", {
                 count: Math.min(20, filteredTeams.length - visibleTeamCount),
               })}

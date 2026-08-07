@@ -140,10 +140,13 @@ RUN npm ci --no-audit --no-fund
 FROM deps AS builder
 COPY . .
 
+ARG NEXT_DEPLOYMENT_ID
+
 # Build-time placeholders keep the standalone build reproducible without
 # leaking production secrets into the Docker build context. Runtime values are
 # injected by Compose/Coolify.
 ENV NODE_ENV=production \
+    NEXT_DEPLOYMENT_ID=${NEXT_DEPLOYMENT_ID} \
     APP_ENV=development \
     BETTER_AUTH_SECRET=buildtimeonlysecretvalue1234567890 \
     BETTER_AUTH_URL=http://localhost:3000 \
