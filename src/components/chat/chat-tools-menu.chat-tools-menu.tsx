@@ -187,8 +187,8 @@ export function ChatToolsMenu({ agent, workspaceId, conversationId }: { agent: C
         </Button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent side="top" align="start" sideOffset={12} className="w-[min(42rem,calc(100vw-1rem))] overflow-hidden rounded-[1.375rem] p-0">
-        <div className="flex items-start justify-between gap-4 px-4 pb-3 pt-4">
+      <DropdownMenuContent side="top" align="start" sideOffset={12} className="flex h-[min(42rem,calc(100dvh-1rem))] w-[min(42rem,calc(100vw-1rem))] flex-col overflow-hidden rounded-[1.375rem] p-0">
+        <div className="flex shrink-0 items-start justify-between gap-4 px-4 pb-3 pt-4">
           <div className="min-w-0">
             <h2 className="text-sm font-semibold tracking-[-0.02em]">{t("toolsMenu.title")}</h2>
             <p className="mt-1 text-[0.68rem] text-muted-foreground">
@@ -223,9 +223,9 @@ export function ChatToolsMenu({ agent, workspaceId, conversationId }: { agent: C
 
         <ChatCapabilitySearch value={search} onChange={setSearch} label={t("toolsMenu.search")} />
 
-        <div className="grid max-h-[min(25rem,60vh)] grid-cols-[8.5rem_minmax(0,1fr)] border-y border-border/55">
+        <div className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)] border-y border-border/55 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:grid-rows-1">
           <ChatCapabilitySidebar category={categoryFilter} setCategory={setCategoryFilter} capabilities={capabilities} label={t("toolsMenu.groups.all")} groupLabel={groupLabel} />
-          <div className="overflow-y-auto px-2 py-2">
+          <div data-slot="chat-capability-results" className="min-h-0 overflow-y-auto overscroll-contain px-2 py-2 [scrollbar-gutter:stable]">
           {loading ? (
             <div className="flex flex-col gap-1">
               {Array.from({ length: 5 }, (_, index) => (
