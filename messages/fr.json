@@ -730,6 +730,29 @@
     "configure": "Configurer",
     "configureDescription": "Nom, modèle, instructions, outils et documents.",
     "advancedHint": "Identifiant technique, partage, génération et sécurité",
+    "accessScope": {
+      "label": "Accès",
+      "hint": "Choisissez qui peut trouver et utiliser cet assistant. La modification reste limitée à son propriétaire et aux administrateurs autorisés.",
+      "private": {
+        "title": "Moi uniquement",
+        "description": "Gardez cet assistant privé pour votre compte."
+      },
+      "project": {
+        "title": "Ce projet",
+        "description": "Partagez-le avec les membres qui accèdent à {project}."
+      },
+      "organization": {
+        "title": "Organisation",
+        "description": "Partagez-le avec les membres autorisés de {organization} qui accèdent à ce projet."
+      },
+      "team": {
+        "title": "Une équipe",
+        "description": "Donnez le droit d’utilisation à une équipe de l’organisation.",
+        "select": "Équipe",
+        "placeholder": "Choisir une équipe",
+        "empty": "Aucune équipe n’est disponible dans cette organisation."
+      }
+    },
     "tabs": {
       "essential": "Essentiel",
       "capabilities": "Capacités",

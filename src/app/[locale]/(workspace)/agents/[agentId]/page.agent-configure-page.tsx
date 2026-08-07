@@ -57,6 +57,10 @@ export function useAgentConfigurePageController() {
       if (data.agent) {
         const updatedAgent = mergeAgentEditorState(agent, data.agent, {
           shareTargetEmail: data.agent.sharingMode === "specific_user" ? form.shareTargetEmail.trim() : null,
+          access: {
+            scope: form.accessScope,
+            teamId: form.accessScope === "team" ? form.accessTeamId : null,
+          },
         });
         setAgent(updatedAgent);
         if (data.version) {
@@ -86,7 +90,15 @@ export function useAgentConfigurePageController() {
     if (!agentId || !workspaceId) return;
     setSaving(true);
     try {
-      const bindings = buildCapabilityBindings({ builtinTools, builtinBindings, mcpTools, mcpServers, mcpBindings, customTools, customBindings });
+      const bindings = buildCapabilityBindings({
+        builtinTools,
+        builtinBindings,
+        mcpTools,
+        mcpServers,
+        mcpBindings,
+        customTools,
+        customBindings,
+      });
       const res = await fetch(`/api/workspace/agents/${agentId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },

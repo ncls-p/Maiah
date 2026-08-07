@@ -193,6 +193,14 @@ export function AgentConfigurePageView({ model }: { model: ViewModel }) {
                   canAdminCurate={agent?.canAdminCurate ?? false}
                   canManageProviders={permissions.canManageProviders}
                   agentKind={agent?.kind ?? "assistant"}
+                  accessOptions={
+                    agent?.accessOptions ?? {
+                      scopes: ["private"],
+                      teams: [],
+                      projectName: "",
+                      organizationName: "",
+                    }
+                  }
                   readOnly={!canEdit}
                   onSaveAction={saveEssential}
                 />

@@ -6,6 +6,7 @@ import {
   ensureE2EAssistant,
   ensureE2EOrganizationProjectEditor,
   ensureE2EViewer,
+  login,
   loginWithCredentials,
 } from "./fixtures";
 
@@ -23,6 +24,17 @@ test.describe("agent CRUD", () => {
       .getByRole("button", { name: createAssistantButtonName })
       .first()
       .click();
+    const accessPicker = page.locator(
+      '[data-slot="agent-access-scope-picker"]',
+    );
+    await expect(
+      accessPicker.getByRole("button", { name: /^Only me/i }),
+    ).toBeVisible();
+    await expect(
+      accessPicker.getByRole("button", {
+        name: /^This project|Organization|A team/i,
+      }),
+    ).toHaveCount(0);
     const assistantName = `Editor model selection ${Date.now()}`;
     await page.getByLabel(/^Name$/i).fill(assistantName);
     await page.getByRole("button", { name: /Create and configure/i }).click();
@@ -67,6 +79,7 @@ test.describe("agent CRUD", () => {
   });
 
   test("create, configure, and delete an orchestrator", async ({ page }) => {
+    await login(page);
     await page.goto("/en/agents");
 
     const createBtn = page
@@ -127,6 +140,7 @@ test.describe("agent CRUD", () => {
   });
 
   test("agent templates are available", async ({ page }) => {
+    await login(page);
     await page.goto("/en/agents");
     const createBtn = page
       .getByRole("button", { name: createAssistantButtonName })

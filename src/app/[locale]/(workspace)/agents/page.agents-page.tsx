@@ -2,14 +2,14 @@
 
 import { useRouter } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
-import { useCallback,useEffect,useRef,useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { type ShareableResource } from "@/components/marketplace/resource-share-dialog";
 import { PageLoading } from "@/components/page-loading";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { toast } from "sonner";
 import { AgentsPageView } from "./page.agents-page.view";
-import { AGENT_TEMPLATES,Agent,slugifyAgentName } from "./page.icon-size-class";
+import { AGENT_TEMPLATES, Agent, AgentAccessForm, AgentAccessOptions, slugifyAgentName } from "./page.icon-size-class";
 
 export function useAgentsPageController() {
   const t = useTranslations("agents");
@@ -23,6 +23,12 @@ export function useAgentsPageController() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [canAdminCurate, setCanAdminCurate] = useState(false);
   const [canCreateAgent, setCanCreateAgent] = useState(false);
+  const [accessOptions, setAccessOptions] = useState<AgentAccessOptions>({
+    scopes: ["private"],
+    teams: [],
+    projectName: "",
+    organizationName: "",
+  });
   const [organizationDefaultAgentId, setOrganizationDefaultAgentId] = useState<string | null>(null);
   const [userDefaultAgentId, setUserDefaultAgentId] = useState<string | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -40,6 +46,8 @@ export function useAgentsPageController() {
     promptSuggestions: "",
     sharingMode: "personal" as Agent["sharingMode"],
     shareTargetEmail: "",
+    accessScope: "private" as AgentAccessForm["accessScope"],
+    accessTeamId: "",
     isGlobal: false,
     isRecommended: false,
     curationLabel: "none",
@@ -66,6 +74,7 @@ export function useAgentsPageController() {
       setAgents(nextAgents);
       setCanAdminCurate(Boolean(data.canAdminCurate));
       setCanCreateAgent(Boolean(data.canCreateAgent));
+      if (data.accessOptions) setAccessOptions(data.accessOptions);
       setOrganizationDefaultAgentId(data.organizationDefaultAgentId ?? null);
       setUserDefaultAgentId(data.userDefaultAgentId ?? null);
     } catch (err) {
@@ -120,6 +129,8 @@ export function useAgentsPageController() {
           workspaceId,
           sharingMode: form.sharingMode,
           shareTargetEmail: form.sharingMode === "specific_user" ? form.shareTargetEmail.trim() : undefined,
+          accessScope: form.accessScope,
+          accessTeamId: form.accessScope === "team" ? form.accessTeamId : undefined,
           isGlobal: canAdminCurate ? form.isGlobal : undefined,
           isRecommended: canAdminCurate ? form.isRecommended : undefined,
           curationLabel: canAdminCurate ? form.curationLabel : undefined,
@@ -144,6 +155,8 @@ export function useAgentsPageController() {
         promptSuggestions: "",
         sharingMode: "personal",
         shareTargetEmail: "",
+        accessScope: "private",
+        accessTeamId: "",
         isGlobal: false,
         isRecommended: false,
         curationLabel: "none",
@@ -211,7 +224,42 @@ export function useAgentsPageController() {
     return <PageLoading label={tCommon("loading")} />;
   }
 
-  return { kind: "ready", agentKindFilter, agents, applyTemplate, canAdminCurate, canCreateAgent, creating, displayMode, filteredAgents, form, handleCreate, loadError, loading, organizationDefaultAgentId, refreshAgents, router, searchQuery, setAgentKindFilter, setDefaultAgent, setDisplayMode, setForm, setSearchQuery, setShareResource, setShowCreateDialog, shareResource, showCreateDialog, t, tCommon, tList, tShare, updatingDefaultAgentId, userDefaultAgentId, workspaceId } as const;
+  return {
+    kind: "ready",
+    accessOptions,
+    agentKindFilter,
+    agents,
+    applyTemplate,
+    canAdminCurate,
+    canCreateAgent,
+    creating,
+    displayMode,
+    filteredAgents,
+    form,
+    handleCreate,
+    loadError,
+    loading,
+    organizationDefaultAgentId,
+    refreshAgents,
+    router,
+    searchQuery,
+    setAgentKindFilter,
+    setDefaultAgent,
+    setDisplayMode,
+    setForm,
+    setSearchQuery,
+    setShareResource,
+    setShowCreateDialog,
+    shareResource,
+    showCreateDialog,
+    t,
+    tCommon,
+    tList,
+    tShare,
+    updatingDefaultAgentId,
+    userDefaultAgentId,
+    workspaceId,
+  } as const;
 }
 
 export default function AgentsPage(...args: Parameters<typeof useAgentsPageController>) {

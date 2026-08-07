@@ -5,6 +5,7 @@ import {
 } from "@/modules/agent/orchestration-policy";
 import type { AiHubToolApprovalPolicy } from "@/modules/tool/approval-policy";
 import { type ToolBindingInput } from "@/modules/tool/use-cases";
+import type { AgentAccessScope } from "./access-scope";
 import { db } from "@/server/infrastructure/db";
 import {
   agents,
@@ -47,6 +48,8 @@ export interface CreateAgentInput {
   delegationBindings?: DelegationBindingInput[];
   sharingMode?: AgentSharingMode;
   shareTargetEmail?: string;
+  accessScope?: AgentAccessScope;
+  accessTeamId?: string;
   isGlobal?: boolean;
   isRecommended?: boolean;
   curationLabel?: AgentCurationLabel;
@@ -116,6 +119,8 @@ export interface UpdateAgentInput {
   delegationBindings?: DelegationBindingInput[];
   sharingMode?: AgentSharingMode;
   shareTargetEmail?: string | null;
+  accessScope?: AgentAccessScope;
+  accessTeamId?: string | null;
   isGlobal?: boolean;
   isRecommended?: boolean;
   curationLabel?: AgentCurationLabel;

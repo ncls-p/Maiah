@@ -13,6 +13,11 @@ import {
   getVisibleAgentById,
   normalizePromptSuggestions,
 } from "@/modules/agent/use-cases";
+import {
+  AGENT_ACCESS_SCOPES,
+  getAgentAccessOptions,
+  getAgentAccessSelection,
+} from "@/modules/agent/access-scope";
 import { hasWorkspacePermissionForRequest } from "@/modules/auth/workspace-access";
 import { withResourceProvenance } from "@/modules/iam/resource-provenance";
 import { toolBindingInputSchema } from "@/modules/tool/use-cases";
@@ -25,6 +30,19 @@ import { z } from "zod";
 
 export const routeParamsSchema = z.object({ agentId: z.uuid() });
 export const workspaceQuerySchema = z.object({ workspaceId: z.uuid() });
+
+export async function parseAgentRouteQuery(
+  req: NextRequest,
+  params: Promise<{ agentId: string }>,
+) {
+  const { searchParams } = req.nextUrl;
+  return z
+    .object({ agentId: z.uuid(), workspaceId: z.uuid() })
+    .safeParse({
+      ...(await params),
+      workspaceId: searchParams.get("workspaceId"),
+    });
+}
 
 const slugSchema = z
   .string()
@@ -70,6 +88,8 @@ export const updateAgentSchema = z.object({
     .optional(),
   sharingMode: z.enum(["personal", "marketplace", "specific_user"]).optional(),
   shareTargetEmail: z.email().optional().or(z.literal("")),
+  accessScope: z.enum(AGENT_ACCESS_SCOPES).optional(),
+  accessTeamId: z.uuid().nullable().optional(),
   isGlobal: z.boolean().optional(),
   isRecommended: z.boolean().optional(),
   curationLabel: z
@@ -137,22 +157,17 @@ export async function GET(
   return handleRoute(
     req,
     async ({ session }) => {
-      const parsedParams = routeParamsSchema.safeParse(await params);
-      const { searchParams } = req.nextUrl;
-      const parsedQuery = workspaceQuerySchema.safeParse({
-        workspaceId: searchParams.get("workspaceId"),
-      });
-      if (!parsedParams.success || !parsedQuery.success) {
+      const parsedRequest = await parseAgentRouteQuery(req, params);
+      if (!parsedRequest.success) {
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
       }
-      const { agentId } = parsedParams.data;
-      const { workspaceId } = parsedQuery.data;
+      const { agentId, workspaceId } = parsedRequest.data;
       const forbidden = await requireResourcePermissionAsync(
         session.user.id,
         workspaceId,
         "agents.get",
         "agent",
-        (await params).agentId,
+        agentId,
       );
       if (forbidden) return forbidden;
       const canAdminCurate = await canManageTenantGlobals(session, workspaceId);
@@ -198,6 +213,13 @@ export async function GET(
         workspaceId,
         session.user.id,
       );
+      const [access, accessOptions] = await Promise.all([
+        getAgentAccessSelection(agent),
+        getAgentAccessOptions(session.user.id, workspaceId),
+      ]);
+      if (!accessOptions.scopes.includes(access.scope)) {
+        accessOptions.scopes.push(access.scope);
+      }
       return NextResponse.json({
         ...agentWithProvenance,
         promptSuggestions: normalizePromptSuggestions(
@@ -210,6 +232,8 @@ export async function GET(
           canDirectlyUpdate,
         canClone: canCreateAgent,
         shareTargetEmail,
+        access,
+        accessOptions,
       });
     },
     { logLabel: "Failed to get agent" },

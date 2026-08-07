@@ -7,15 +7,16 @@ import { replaceSkillBindingsForVersion } from "@/modules/skills/use-cases";
 import { insertToolBindingsForVersion } from "@/modules/tool/use-cases";
 import { audit } from "@/server/domain/services/audit";
 import { db } from "@/server/infrastructure/db";
-import { agents,agentVersions,aiModels,aiProviders } from "@/server/infrastructure/db/schema";
-import { and,eq,isNull } from "drizzle-orm";
-import { CreateAgentInput,normalizeCurationLabel,preparePromptSuggestions,requireShareTargetUserId } from "./use-cases.agent-row";
-import { getOnboardingToolBindings,stripBuiltinApprovalOverrides } from "./use-cases.create-available-agent-slug";
+import { agents, agentVersions, aiModels, aiProviders } from "@/server/infrastructure/db/schema";
+import { and, eq, isNull } from "drizzle-orm";
+import { CreateAgentInput, normalizeCurationLabel, preparePromptSuggestions, requireShareTargetUserId } from "./use-cases.agent-row";
+import { applyAgentAccessSelection, invalidateAgentAccessCache, validateAgentAccessSelection } from "./access-scope";
+import { getOnboardingToolBindings, stripBuiltinApprovalOverrides } from "./use-cases.create-available-agent-slug";
 
 // ─── Agent CRUD ────────────────────────────────────────────────────────
 
 export async function createAgent(input: CreateAgentInput) {
-  const { workspaceId, userId, name, slug, kind = "assistant", description, logoUrl, systemPrompt, providerId, modelId, temperature, topP, maxOutputTokens, maxToolCalls, toolPreset, toolBindings, knowledgeBindings, skillBindings, orchestrationPolicy, delegationBindings, promptSuggestions, sharingMode = "personal", shareTargetEmail, isGlobal, isRecommended, curationLabel, canAdminCurate } = input;
+  const { workspaceId, userId, name, slug, kind = "assistant", description, logoUrl, systemPrompt, providerId, modelId, temperature, topP, maxOutputTokens, maxToolCalls, toolPreset, toolBindings, knowledgeBindings, skillBindings, orchestrationPolicy, delegationBindings, promptSuggestions, sharingMode = "personal", shareTargetEmail, accessScope, accessTeamId, isGlobal, isRecommended, curationLabel, canAdminCurate } = input;
 
   if (kind === "assistant" && (orchestrationPolicy !== undefined || (delegationBindings?.length ?? 0) > 0)) {
     throw new Error("Only orchestrators can configure delegation");
@@ -45,6 +46,13 @@ export async function createAgent(input: CreateAgentInput) {
   }
 
   const shareTargetUserId = sharingMode === "specific_user" ? await requireShareTargetUserId(shareTargetEmail) : null;
+  if (accessScope) {
+    await validateAgentAccessSelection({
+      userId,
+      workspaceId,
+      selection: { scope: accessScope, teamId: accessTeamId },
+    });
+  }
 
   if (toolPreset && toolBindings !== undefined) {
     throw new Error("toolPreset cannot be combined with toolBindings");
@@ -63,7 +71,7 @@ export async function createAgent(input: CreateAgentInput) {
         curationLabel: null,
       };
 
-  const { agent, version } = await db.transaction(async (tx) => {
+  const { agent, version, accessAffectedUserIds } = await db.transaction(async (tx) => {
     const [agent] = await tx
       .insert(agents)
       .values({
@@ -103,6 +111,17 @@ export async function createAgent(input: CreateAgentInput) {
 
     await tx.update(agents).set({ activeVersionId: version.id }).where(eq(agents.id, agent.id));
 
+    const accessAffectedUserIds = accessScope
+      ? await applyAgentAccessSelection(
+          {
+            agentId: agent.id,
+            userId,
+            selection: { scope: accessScope, teamId: accessTeamId },
+          },
+          tx,
+        )
+      : [];
+
     await insertToolBindingsForVersion(version.id, normalizedToolBindings ?? [], workspaceId, { userId }, tx);
     await replaceKnowledgeBindingsForVersion(version.id, knowledgeBindings ?? [], workspaceId, { userId }, tx);
     await replaceSkillBindingsForVersion(version.id, workspaceId, skillBindings ?? [], { userId }, tx);
@@ -118,11 +137,11 @@ export async function createAgent(input: CreateAgentInput) {
       });
     }
 
-    return {
-      agent: { ...agent, activeVersionId: version.id },
-      version,
-    };
+    const savedAgent = accessScope ? (await tx.select().from(agents).where(eq(agents.id, agent.id)).limit(1))[0] : { ...agent, activeVersionId: version.id };
+    return { agent: savedAgent, version, accessAffectedUserIds };
   });
+
+  await invalidateAgentAccessCache(agent.id, accessAffectedUserIds);
 
   await audit.emit({
     workspaceId,
@@ -132,7 +151,7 @@ export async function createAgent(input: CreateAgentInput) {
     resourceType: "agent",
     resourceId: agent.id,
     outcome: "success",
-    metadata: { name, slug, kind, sharingMode },
+    metadata: { name, slug, kind, sharingMode, accessScope },
   });
 
   logger.info("Agent created", { agentId: agent.id, userId });

@@ -22,6 +22,7 @@ export function useEssentialTabController({
   canAdminCurate,
   canManageProviders,
   agentKind,
+  accessOptions,
   readOnly = false,
   onSaveAction: onSave,
 }: {
@@ -34,6 +35,7 @@ export function useEssentialTabController({
   canAdminCurate: boolean;
   canManageProviders: boolean;
   agentKind: Agent["kind"];
+  accessOptions: Agent["accessOptions"];
   readOnly?: boolean;
   onSaveAction: (e: SyntheticEvent<HTMLFormElement>) => void;
 }) {
@@ -49,6 +51,7 @@ export function useEssentialTabController({
   return {
     kind: "ready",
     agentKind,
+    accessOptions,
     canAdminCurate,
     canManageProviders,
     filteredModels,

@@ -1,4 +1,8 @@
 import type { ResourceProvenance } from "@/components/resource-provenance-badge";
+import type {
+  AgentAccessOptions,
+  AgentAccessScope,
+} from "@/modules/agent/access-scope";
 
 /* ─── Types ─────────────────────────────────────────────────────────── */
 export type Agent = {
@@ -21,6 +25,8 @@ export type Agent = {
   canEdit?: boolean;
   canClone?: boolean;
   provenance?: ResourceProvenance;
+  access: { scope: AgentAccessScope; teamId?: string | null };
+  accessOptions: AgentAccessOptions;
 };
 
 export type Provider = { id: string; name: string; kind: string };
@@ -179,6 +185,10 @@ export type AgentForm = {
   sharingMode: Agent["sharingMode"];
   shareTargetEmail: string;
   originalSharingMode: Agent["sharingMode"];
+  accessScope: AgentAccessScope;
+  accessTeamId: string;
+  originalAccessScope: AgentAccessScope;
+  originalAccessTeamId: string;
   isGlobal: boolean;
   isRecommended: boolean;
   curationLabel: string;
@@ -227,6 +237,10 @@ export function createEmptyForm(): AgentForm {
     sharingMode: "personal",
     shareTargetEmail: "",
     originalSharingMode: "personal",
+    accessScope: "private",
+    accessTeamId: "",
+    originalAccessScope: "private",
+    originalAccessTeamId: "",
     isGlobal: false,
     isRecommended: false,
     curationLabel: "none",

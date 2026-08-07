@@ -1,20 +1,21 @@
 import { logger } from "@/lib/logger";
-import { cloneDelegationBindings,insertDelegationBindingsForVersion } from "@/modules/agent/delegation-use-cases";
+import { cloneDelegationBindings, insertDelegationBindingsForVersion } from "@/modules/agent/delegation-use-cases";
 import { normalizeOrchestrationPolicy } from "@/modules/agent/orchestration-policy";
-import { cloneKnowledgeBindings,replaceKnowledgeBindingsForVersion } from "@/modules/knowledge/use-cases";
-import { cloneSkillBindings,replaceSkillBindingsForVersion } from "@/modules/skills/use-cases";
-import { cloneToolBindings,insertToolBindingsForVersion } from "@/modules/tool/use-cases";
+import { cloneKnowledgeBindings, replaceKnowledgeBindingsForVersion } from "@/modules/knowledge/use-cases";
+import { cloneSkillBindings, replaceSkillBindingsForVersion } from "@/modules/skills/use-cases";
+import { cloneToolBindings, insertToolBindingsForVersion } from "@/modules/tool/use-cases";
 import { audit } from "@/server/domain/services/audit";
 import { db } from "@/server/infrastructure/db";
-import { agents,agentVersions,aiModels,aiProviders } from "@/server/infrastructure/db/schema";
-import { and,eq,isNull,max,sql } from "drizzle-orm";
-import { AgentVersionConflictError,normalizeCurationLabel,preparePromptSuggestions,requireShareTargetUserId,UpdateAgentInput } from "./use-cases.agent-row";
+import { agents, agentVersions, aiModels, aiProviders } from "@/server/infrastructure/db/schema";
+import { and, eq, isNull, max, sql } from "drizzle-orm";
+import { AgentVersionConflictError, normalizeCurationLabel, preparePromptSuggestions, requireShareTargetUserId, UpdateAgentInput } from "./use-cases.agent-row";
 import { preserveBuiltinApprovalOverrides } from "./use-cases.create-available-agent-slug";
 import { canEditAgent } from "./use-cases.get-visible-agent-by-id";
 import { getActiveVersionConfig } from "./use-cases.reorder-organization-agents";
+import { applyAgentAccessSelection, invalidateAgentAccessCache, validateAgentAccessSelection } from "./access-scope";
 
 export async function updateAgentUnlocked(input: UpdateAgentInput) {
-  const { agentId, workspaceId, userId, baseVersionId, name, slug, description, logoUrl, systemPrompt, providerId, modelId, temperature, topP, maxOutputTokens, maxToolCalls, toolBindings, knowledgeBindings, skillBindings, orchestrationPolicy, delegationBindings, sharingMode, shareTargetEmail, isGlobal, isRecommended, curationLabel, canAdminCurate, toolChoice, generationSettings, responseFormat, memoryPolicy, guardrails, approvalPolicy, promptSuggestions } = input;
+  const { agentId, workspaceId, userId, baseVersionId, name, slug, description, logoUrl, systemPrompt, providerId, modelId, temperature, topP, maxOutputTokens, maxToolCalls, toolBindings, knowledgeBindings, skillBindings, orchestrationPolicy, delegationBindings, sharingMode, shareTargetEmail, accessScope, accessTeamId, isGlobal, isRecommended, curationLabel, canAdminCurate, toolChoice, generationSettings, responseFormat, memoryPolicy, guardrails, approvalPolicy, promptSuggestions } = input;
 
   const [existing] = await db
     .select()
@@ -38,6 +39,13 @@ export async function updateAgentUnlocked(input: UpdateAgentInput) {
   if (existing.kind === "orchestrator" && (sharingMode ?? existing.sharingMode) === "marketplace") {
     throw new Error("Orchestrators cannot be published to the marketplace yet");
   }
+  if (accessScope) {
+    await validateAgentAccessSelection({
+      userId,
+      workspaceId,
+      selection: { scope: accessScope, teamId: accessTeamId },
+    });
+  }
 
   const normalizedToolBindings = canAdminCurate
     ? toolBindings
@@ -48,7 +56,7 @@ export async function updateAgentUnlocked(input: UpdateAgentInput) {
 
   const nextShareTargetUserId = sharingMode === "specific_user" ? await requireShareTargetUserId(shareTargetEmail) : sharingMode ? null : existing.shareTargetUserId;
 
-  const { agent, version } = await db.transaction(async (tx) => {
+  const { agent, version, accessAffectedUserIds } = await db.transaction(async (tx) => {
     const activeVersionPredicate = baseVersionId ? eq(agents.activeVersionId, baseVersionId) : isNull(agents.activeVersionId);
     const [lockedAgent] = await tx
       .update(agents)
@@ -202,10 +210,23 @@ export async function updateAgentUnlocked(input: UpdateAgentInput) {
 
     await tx.update(agents).set({ activeVersionId: version.id, updatedAt: new Date() }).where(eq(agents.id, agentId));
 
+    const accessAffectedUserIds = accessScope
+      ? await applyAgentAccessSelection(
+          {
+            agentId,
+            userId,
+            selection: { scope: accessScope, teamId: accessTeamId },
+          },
+          tx,
+        )
+      : [];
+
     const [updatedAgent] = await tx.select().from(agents).where(eq(agents.id, agentId)).limit(1);
 
-    return { agent: updatedAgent, version };
+    return { agent: updatedAgent, version, accessAffectedUserIds };
   });
+
+  await invalidateAgentAccessCache(agentId, accessAffectedUserIds);
 
   await audit.emit({
     workspaceId,
@@ -218,6 +239,7 @@ export async function updateAgentUnlocked(input: UpdateAgentInput) {
     metadata: {
       versionNumber: version.versionNumber,
       sharingMode: sharingMode ?? existing.sharingMode,
+      accessScope,
     },
   });
 

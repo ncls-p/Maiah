@@ -1,10 +1,16 @@
 import { randomUUID } from "node:crypto";
 
 import { inArray } from "drizzle-orm";
-import { afterAll,beforeAll,describe,it } from "vitest";
+import { afterAll, beforeAll, describe, it } from "vitest";
 
 import { db } from "@/server/infrastructure/db";
-import { auditEvents,organizations,roleBindings,roles,users } from "@/server/infrastructure/db/schema";
+import {
+  auditEvents,
+  organizations,
+  roleBindings,
+  roles,
+  users,
+} from "@/server/infrastructure/db/schema";
 import { runIamDatabaseScenario1 } from "./iam-use-cases-db.scenario-1";
 import { runIamDatabaseScenario2 } from "./iam-use-cases-db.scenario-2";
 import { runIamDatabaseScenario3 } from "./iam-use-cases-db.scenario-3";
@@ -13,9 +19,11 @@ import { runIamDatabaseScenario5 } from "./iam-use-cases-db.scenario-5";
 import { runIamDatabaseScenario6 } from "./iam-use-cases-db.scenario-6";
 import { runIamDatabaseScenario7 } from "./iam-use-cases-db.scenario-7";
 import { runIamDatabaseScenario8 } from "./iam-use-cases-db.scenario-8";
+import { runIamDatabaseScenario9 } from "./iam-use-cases-db.scenario-9";
 
-
-const describeWithDatabase = process.env.IAM_INTEGRATION_DATABASE_URL ? describe.sequential : describe.skip;
+const describeWithDatabase = process.env.IAM_INTEGRATION_DATABASE_URL
+  ? describe.sequential
+  : describe.skip;
 
 describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
   const suffix = randomUUID().slice(0, 8);
@@ -34,7 +42,41 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
   let secondProjectId = "";
   let sharedAgentId = "";
 
-  const context = { suffix, ownerId, memberId, outsiderId, userIds, organizationIds, ownerEmail, memberEmail, outsiderEmail, get organizationId() { return organizationId; }, set organizationId(value: string) { organizationId = value; }, get firstProjectId() { return firstProjectId; }, set firstProjectId(value: string) { firstProjectId = value; }, get secondProjectId() { return secondProjectId; }, set secondProjectId(value: string) { secondProjectId = value; }, get sharedAgentId() { return sharedAgentId; }, set sharedAgentId(value: string) { sharedAgentId = value; } };
+  const context = {
+    suffix,
+    ownerId,
+    memberId,
+    outsiderId,
+    userIds,
+    organizationIds,
+    ownerEmail,
+    memberEmail,
+    outsiderEmail,
+    get organizationId() {
+      return organizationId;
+    },
+    set organizationId(value: string) {
+      organizationId = value;
+    },
+    get firstProjectId() {
+      return firstProjectId;
+    },
+    set firstProjectId(value: string) {
+      firstProjectId = value;
+    },
+    get secondProjectId() {
+      return secondProjectId;
+    },
+    set secondProjectId(value: string) {
+      secondProjectId = value;
+    },
+    get sharedAgentId() {
+      return sharedAgentId;
+    },
+    set sharedAgentId(value: string) {
+      sharedAgentId = value;
+    },
+  };
 
   beforeAll(async () => {
     await db.insert(users).values([
@@ -61,12 +103,18 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
 
   afterAll(async () => {
     if (organizationIds.length > 0) {
-      await db.delete(auditEvents).where(inArray(auditEvents.organizationId, organizationIds));
+      await db
+        .delete(auditEvents)
+        .where(inArray(auditEvents.organizationId, organizationIds));
     }
-    await db.delete(roleBindings).where(inArray(roleBindings.createdById, userIds));
+    await db
+      .delete(roleBindings)
+      .where(inArray(roleBindings.createdById, userIds));
     await db.delete(roles).where(inArray(roles.createdById, userIds));
     if (organizationIds.length > 0) {
-      await db.delete(organizations).where(inArray(organizations.id, organizationIds));
+      await db
+        .delete(organizations)
+        .where(inArray(organizations.id, organizationIds));
     }
     await db.delete(users).where(inArray(users.id, userIds));
   });
@@ -101,5 +149,9 @@ describeWithDatabase("hierarchical IAM use cases on PostgreSQL", () => {
 
   it("rejects privilege escalation and cross-organization identifiers", async () => {
     await runIamDatabaseScenario8(context);
+  }, 60_000);
+
+  it("shares assistants by team without granting edit permission", async () => {
+    await runIamDatabaseScenario9(context);
   }, 60_000);
 });

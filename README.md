@@ -186,6 +186,8 @@ Route handlers authenticate, validate input, delegate to use cases or domain ser
 
 For the full ownership map, persistence model, critical request flows, security invariants, test strategy, and extension checklist, see the [codebase guide](docs/architecture/codebase-guide.md).
 
+Assistant visibility and use can be scoped to the creator, project, organization, or a specific team. The permission model and assignment invariants are documented in [assistant access scopes](docs/architecture/assistant-access-scopes.md).
+
 ---
 
 ## Key features

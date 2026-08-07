@@ -1,5 +1,6 @@
-import { MessageSquareIcon, SettingsIcon } from "lucide-react";
+import { MessageSquareIcon, SettingsIcon, UsersIcon } from "lucide-react";
 
+import { AgentAccessScopePicker } from "@/components/agent-access-scope-picker";
 import { ModelLogo } from "@/components/providers/model-logo";
 import { AdvancedSection } from "@/components/ui/advanced-section";
 import { Field, FieldContent, FieldGroup, FieldLabel } from "@/components/ui/field";
@@ -11,17 +12,14 @@ import { ConfigSection } from "./config-section";
 import type { useEssentialTabController } from "./essential-tab";
 import { EssentialTabBranch1 } from "./essential-tab.view.branch-1";
 import { EssentialTabBranch2 } from "./essential-tab.view.branch-2";
-import { EssentialTabBranch3 } from "./essential-tab.view.branch-3";
-import { EssentialTabBranch4 } from "./essential-tab.view.branch-4";
 import { EssentialTabBranch5 } from "./essential-tab.view.branch-5";
 import { EssentialTabBranch6 } from "./essential-tab.view.branch-6";
 import { ModelAdvancedFields } from "./model-advanced-fields";
-import type { Agent } from "./types";
 import { getProviderKindIcon } from "./utils";
 
 export type EssentialTabViewModel = Extract<ReturnType<typeof useEssentialTabController>, { kind: "ready" }>;
 export function EssentialTabView({ model }: { model: EssentialTabViewModel }) {
-  const { agentKind, canAdminCurate, filteredModels, form, hasProviders, onSave, providers, readOnly, selectedModel, selectedProviderHasModels, setForm, t, tCommon, tModel, toolOptions } = model;
+  const { accessOptions, canAdminCurate, filteredModels, form, hasProviders, onSave, providers, readOnly, selectedModel, selectedProviderHasModels, setForm, t, tCommon, tModel, toolOptions } = model;
   return (
     <form onSubmit={readOnly ? (event) => event.preventDefault() : onSave} className="flex flex-col gap-3">
       <fieldset disabled={readOnly} className="contents">
@@ -53,7 +51,23 @@ export function EssentialTabView({ model }: { model: EssentialTabViewModel }) {
           </FieldGroup>
         </ConfigSection>
 
-        <ConfigSection title={tModel("modelLabel")} description={t("configurePage.modelHint")} icon={MessageSquareIcon} stagger="4">
+        <ConfigSection title={t("accessScope.label")} description={t("accessScope.hint")} icon={UsersIcon} stagger="4">
+          <AgentAccessScopePicker
+            value={form.accessScope}
+            teamId={form.accessTeamId}
+            options={accessOptions}
+            disabled={readOnly}
+            onChange={(accessScope, accessTeamId) =>
+              setForm((current) => ({
+                ...current,
+                accessScope,
+                accessTeamId: accessTeamId ?? "",
+              }))
+            }
+          />
+        </ConfigSection>
+
+        <ConfigSection title={tModel("modelLabel")} description={t("configurePage.modelHint")} icon={MessageSquareIcon} stagger="5">
           <FieldGroup className="gap-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <Field>
@@ -181,30 +195,6 @@ export function EssentialTabView({ model }: { model: EssentialTabViewModel }) {
                   <p className="mt-1 text-xs text-muted-foreground">{t("configurePage.technicalIdHint")}</p>
                 </FieldContent>
               </Field>
-              <Field>
-                <FieldLabel htmlFor="agent-sharing">{t("configurePage.sharing")}</FieldLabel>
-                <FieldContent>
-                  <Select
-                    value={form.sharingMode}
-                    onValueChange={(value) =>
-                      setForm((prev) => ({
-                        ...prev,
-                        sharingMode: value as Agent["sharingMode"],
-                      }))
-                    }
-                  >
-                    <SelectTrigger id="agent-sharing" className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="personal">{t("configurePage.sharingPersonal")}</SelectItem>
-                      {agentKind === "assistant" ? <EssentialTabBranch4 model={model} /> : null}
-                      <SelectItem value="specific_user">{t("configurePage.sharingUser")}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </FieldContent>
-              </Field>
-              {form.sharingMode === "specific_user" ? <EssentialTabBranch3 model={model} /> : null}
             </FieldGroup>
 
             {canAdminCurate ? <EssentialTabBranch2 model={model} /> : null}

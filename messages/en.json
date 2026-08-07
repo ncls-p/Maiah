@@ -730,6 +730,29 @@
     "configure": "Configure",
     "configureDescription": "Name, model, instructions, tools, and knowledge.",
     "advancedHint": "Technical ID, sharing, generation, and safety",
+    "accessScope": {
+      "label": "Access",
+      "hint": "Choose who can discover and use this assistant. Editing remains restricted to its owner and authorized administrators.",
+      "private": {
+        "title": "Only me",
+        "description": "Keep this assistant private to your account."
+      },
+      "project": {
+        "title": "This project",
+        "description": "Share with members who can access {project}."
+      },
+      "organization": {
+        "title": "Organization",
+        "description": "Share with authorized members of {organization} who can access this project."
+      },
+      "team": {
+        "title": "A team",
+        "description": "Grant use access to one organization team.",
+        "select": "Team",
+        "placeholder": "Choose a team",
+        "empty": "No team is available in this organization."
+      }
+    },
     "tabs": {
       "essential": "Essentials",
       "capabilities": "Capabilities",

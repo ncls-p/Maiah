@@ -1,8 +1,12 @@
 import { ONBOARDING_TOOL_PRESET } from "@/modules/agent/onboarding-tools";
-import { delegationBindingInputSchema,orchestrationPolicySchema } from "@/modules/agent/orchestration-policy";
+import { AGENT_ACCESS_SCOPES } from "@/modules/agent/access-scope";
+import {
+  delegationBindingInputSchema,
+  orchestrationPolicySchema,
+} from "@/modules/agent/orchestration-policy";
 import { agentRuntimePolicy } from "@/modules/agent/runtime-policy";
 import { db } from "@/server/infrastructure/db";
-import { agentVersions,aiModels } from "@/server/infrastructure/db/schema";
+import { agentVersions, aiModels } from "@/server/infrastructure/db/schema";
 import { inArray } from "drizzle-orm";
 import { z } from "zod";
 
@@ -14,10 +18,14 @@ const slugSchema = z
 const agentLogoUrlSchema = z
   .string()
   .max(350_000)
-  .regex(/^data:image\/(?!svg\+xml)[A-Za-z0-9.+-]+;base64,[A-Za-z0-9+/]+={0,2}$/)
+  .regex(
+    /^data:image\/(?!svg\+xml)[A-Za-z0-9.+-]+;base64,[A-Za-z0-9+/]+={0,2}$/,
+  )
   .nullable();
 
-const promptSuggestionsSchema = z.array(z.string().trim().min(1).max(240)).max(12);
+const promptSuggestionsSchema = z
+  .array(z.string().trim().min(1).max(240))
+  .max(12);
 
 export const createAgentSchema = z
   .object({
@@ -33,13 +41,29 @@ export const createAgentSchema = z
     modelId: z.uuid().optional(),
     temperature: z.string().optional(),
     topP: z.string().optional(),
-    maxOutputTokens: z.number().int().positive().max(agentRuntimePolicy.maxOutputTokens).optional(),
-    maxToolCalls: z.number().int().min(0).max(agentRuntimePolicy.maxToolCalls).optional(),
-    sharingMode: z.enum(["personal", "marketplace", "specific_user"]).default("personal"),
+    maxOutputTokens: z
+      .number()
+      .int()
+      .positive()
+      .max(agentRuntimePolicy.maxOutputTokens)
+      .optional(),
+    maxToolCalls: z
+      .number()
+      .int()
+      .min(0)
+      .max(agentRuntimePolicy.maxToolCalls)
+      .optional(),
+    sharingMode: z
+      .enum(["personal", "marketplace", "specific_user"])
+      .default("personal"),
     shareTargetEmail: z.email().optional(),
+    accessScope: z.enum(AGENT_ACCESS_SCOPES).optional(),
+    accessTeamId: z.uuid().optional(),
     isGlobal: z.boolean().optional(),
     isRecommended: z.boolean().optional(),
-    curationLabel: z.enum(["none", "recommended", "organization_created"]).optional(),
+    curationLabel: z
+      .enum(["none", "recommended", "organization_created"])
+      .optional(),
     toolPreset: z.literal(ONBOARDING_TOOL_PRESET).optional(),
     toolBindings: z
       .array(
@@ -63,6 +87,13 @@ export const createAgentSchema = z
         path: ["toolBindings"],
       });
     }
+    if (input.accessScope === "team" && !input.accessTeamId) {
+      context.addIssue({
+        code: "custom",
+        message: "A team is required",
+        path: ["accessTeamId"],
+      });
+    }
   });
 
 export const listAgentsSchema = z.object({
@@ -71,16 +102,37 @@ export const listAgentsSchema = z.object({
 });
 
 export function isUniqueConstraintError(error: unknown) {
-  return typeof error === "object" && error !== null && "code" in error && error.code === "23505";
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    error.code === "23505"
+  );
 }
 
-export async function getModelMetaByVersionId(versionIds: Array<string | null | undefined>) {
-  const ids = Array.from(new Set(versionIds.filter((id): id is string => Boolean(id))));
-  const meta = new Map<string, { displayName: string | null; logoUrl: string | null }>();
+export async function getModelMetaByVersionId(
+  versionIds: Array<string | null | undefined>,
+) {
+  const ids = Array.from(
+    new Set(versionIds.filter((id): id is string => Boolean(id))),
+  );
+  const meta = new Map<
+    string,
+    { displayName: string | null; logoUrl: string | null }
+  >();
   if (ids.length === 0) return meta;
 
-  const versions = await db.select({ id: agentVersions.id, modelId: agentVersions.modelId }).from(agentVersions).where(inArray(agentVersions.id, ids));
-  const modelIds = Array.from(new Set(versions.map((version) => version.modelId).filter((id): id is string => Boolean(id))));
+  const versions = await db
+    .select({ id: agentVersions.id, modelId: agentVersions.modelId })
+    .from(agentVersions)
+    .where(inArray(agentVersions.id, ids));
+  const modelIds = Array.from(
+    new Set(
+      versions
+        .map((version) => version.modelId)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  );
   const modelRows = modelIds.length
     ? await db
         .select({

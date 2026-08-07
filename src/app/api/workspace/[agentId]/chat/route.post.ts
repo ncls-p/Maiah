@@ -8,6 +8,7 @@ import { publishChatStreamEvent } from "@/modules/chat/stream-bus";
 import { codeWorkspaceArtifact, getCodeWorkspace } from "@/modules/code-workspace/storage";
 import { assertWorkspaceWithinTokenQuota } from "@/modules/usage/quota";
 import { db } from "@/server/infrastructure/db";
+import { authorization } from "@/server/domain/services/authorization";
 import { agents, messages } from "@/server/infrastructure/db/schema";
 import { getAdapter } from "@/server/infrastructure/providers";
 import { extractReasoningMiddleware, wrapLanguageModel } from "ai";
@@ -53,16 +54,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ age
       return rejectChatRequest(400, "invalid_input", { error: "Invalid input", details: parsed.error.issues }, { agentId, userId: actorUserId, issues: parsed.error.issues.length });
     }
 
-    const {
-      content,
-      conversationId: existingConversationId,
-      resendFromMessageId,
-      continueFromMessageId,
-      codeWorkspaceId,
-      attachmentIds = [],
-      imageAttachmentIds = [],
-      capabilityOverrides,
-    } = parsed.data;
+    const { content, conversationId: existingConversationId, resendFromMessageId, continueFromMessageId, codeWorkspaceId, attachmentIds = [], imageAttachmentIds = [], capabilityOverrides } = parsed.data;
     const streamProtocol = req.headers.get("X-AI-Hub-Stream-Protocol") ?? req.nextUrl.searchParams.get("streamProtocol");
     const useAiSdkUIStream = streamProtocol === "ai-sdk-ui";
     if (resendFromMessageId && continueFromMessageId) {
@@ -77,7 +69,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ age
     if (!agent) {
       return rejectChatRequest(404, "agent_not_found", { error: "Agent not found" }, { agentId, userId: actorUserId });
     }
-    if (!canUseAgent(agent, actorUserId)) {
+    const directlyShared = await authorization.hasDirectPermission({ principalType: "user", principalId: actorUserId }, "agents.get", "agent", agent.id, agent.workspaceId);
+    if (!canUseAgent(agent, actorUserId) && !directlyShared) {
       return rejectChatRequest(404, "agent_not_available_for_user", { error: "Agent not found" }, { agentId, userId: actorUserId, workspaceId: agent.workspaceId });
     }
     if (auth.type === "api_key" && auth.workspaceId !== agent.workspaceId) {

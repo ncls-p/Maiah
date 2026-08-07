@@ -330,6 +330,13 @@
       "when": 1786093811740,
       "tag": "0046_gray_mandroid",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1786118400000,
+      "tag": "0047_agent_access_scope",
+      "breakpoints": true
     }
   ]
 }
