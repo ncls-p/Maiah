@@ -223,9 +223,9 @@ export function ChatToolsMenu({ agent, workspaceId, conversationId }: { agent: C
 
         <ChatCapabilitySearch value={search} onChange={setSearch} label={t("toolsMenu.search")} />
 
-        <div className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)] border-y border-border/55 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:grid-rows-1">
+        <div className="grid min-h-0 min-w-0 flex-1 grid-rows-[auto_minmax(0,1fr)] overflow-hidden border-y border-border/55 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:grid-rows-1">
           <ChatCapabilitySidebar category={categoryFilter} setCategory={setCategoryFilter} capabilities={capabilities} label={t("toolsMenu.groups.all")} groupLabel={groupLabel} />
-          <div data-slot="chat-capability-results" className="min-h-0 overflow-y-auto overscroll-contain px-2 py-2 [scrollbar-gutter:stable]">
+          <div data-slot="chat-capability-results" className="min-h-0 min-w-0 overflow-x-hidden overflow-y-auto overscroll-contain px-2 py-2 [scrollbar-gutter:stable]">
           {loading ? (
             <div className="flex flex-col gap-1">
               {Array.from({ length: 5 }, (_, index) => (
@@ -248,13 +248,13 @@ export function ChatToolsMenu({ agent, workspaceId, conversationId }: { agent: C
               </Button>
             </div>
           ) : groups.length > 0 ? (
-            <div className={cn("grid gap-2", displayMode === "grid" && "sm:grid-cols-2")}>
+            <div className={cn("grid min-w-0 gap-2", displayMode === "grid" && "sm:grid-cols-2")}>
               {groups.map((group) => {
                 const GroupIcon = group.icon;
                 const groupActiveCount = group.capabilities.filter((capability) => isCapabilityActive(capability, overrides)).length;
                 const groupActive = groupActiveCount === group.capabilities.length;
                 return (
-                  <section key={group.category}>
+                  <section key={group.category} className="min-w-0 overflow-hidden">
                     <div className="flex min-h-10 items-center gap-2 px-2">
                       <GroupIcon className="size-3.5 text-primary" aria-hidden="true" />
                       <span className="text-[0.68rem] font-medium text-foreground">{groupLabel(group.category)}</span>
@@ -268,15 +268,15 @@ export function ChatToolsMenu({ agent, workspaceId, conversationId }: { agent: C
                       {group.capabilities.map((capability) => {
                         const active = isCapabilityActive(capability, overrides);
                         return (
-                          <label key={capability.key} className={cn("flex min-h-12 cursor-pointer items-center gap-3 rounded-xl px-2 py-2 transition-[background-color,color,opacity] hover:bg-muted/65", !active && "opacity-55")}>
+                          <label key={capability.key} className={cn("flex min-h-12 min-w-0 cursor-pointer items-center gap-2 overflow-hidden rounded-xl px-2 py-2 transition-[background-color,color,opacity] hover:bg-muted/65 sm:gap-3", !active && "opacity-55")}>
                             <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary/7 text-primary">
                               <GroupIcon className="size-3.5" aria-hidden="true" />
                             </span>
-                            <span className="min-w-0 flex-1">
-                              <strong className="block truncate text-xs font-medium">{capability.name}</strong>
-                              <small className="mt-0.5 block truncate text-[0.65rem] text-muted-foreground">{capability.description}</small>
+                            <span className="min-w-0 flex-1 overflow-hidden">
+                              <strong className="block truncate text-xs font-medium" title={capability.name}>{capability.name}</strong>
+                              <small className="mt-0.5 block truncate text-[0.65rem] text-muted-foreground" title={capability.description}>{capability.description}</small>
                             </span>
-                            <Switch size="sm" checked={active} onCheckedChange={(checked) => setCapabilityActive(capability, checked)} aria-label={capability.name} />
+                            <Switch size="sm" className="shrink-0" checked={active} onCheckedChange={(checked) => setCapabilityActive(capability, checked)} aria-label={capability.name} />
                           </label>
                         );
                       })}

@@ -51,9 +51,12 @@ describe("chat composer layout", () => {
     );
 
     expect(menuSource).toContain(
-      'data-slot="chat-capability-results" className="min-h-0 overflow-y-auto',
+      'data-slot="chat-capability-results" className="min-h-0 min-w-0 overflow-x-hidden overflow-y-auto',
     );
-    expect(menuSource).toContain("grid min-h-0 flex-1");
+    expect(menuSource).toContain("grid min-h-0 min-w-0 flex-1");
+    expect(menuSource).toContain('className="min-w-0 overflow-hidden"');
+    expect(menuSource).toContain('className="min-w-0 flex-1 overflow-hidden"');
+    expect(menuSource).toContain('title={capability.description}');
     expect(navigationSource).toContain("overflow-x-auto");
     expect(navigationSource).toContain("sm:flex-col");
   });
