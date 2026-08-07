@@ -5,6 +5,7 @@ import { usePathname,useRouter } from "@/i18n/navigation";
 import { locales,type Locale } from "@/i18n/routing";
 import { cn } from "@/lib/utils";
 import { LanguagesIcon } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import { useLocale,useTranslations } from "next-intl";
 import type { ComponentProps } from "react";
 
@@ -23,10 +24,14 @@ export function LocaleSwitcher({
   const locale = useLocale() as Locale;
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   function switchLocale(code: Locale) {
     if (code !== locale) {
-      router.replace(pathname, { locale: code });
+      const query = searchParams.toString();
+      const hash = window.location.hash;
+      const href = `${pathname}${query ? `?${query}` : ""}${hash}`;
+      router.replace(href, { locale: code, scroll: false });
     }
   }
 

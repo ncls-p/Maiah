@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
 import { useCallback,useEffect,useMemo,useRef,useState } from "react";
 
 import { type QueuedChatMessage } from "@/components/chat/chat-composer";
@@ -8,7 +9,6 @@ import { chatComposerDraftKey,readChatComposerDraft,writeChatComposerDraft } fro
 import { CODE_WORKSPACE_ARTIFACT_EVENT } from "@/components/chat/chat-message-list";
 import type { ChatAttachment,CodeWorkspaceArtifact } from "@/components/chat/chat-types";
 import { CODE_WORKSPACE_CHAT_WIDTH_STORAGE_KEY,DEFAULT_CHAT_WIDTH,normalizeCodeWorkspaceChatWidth } from "@/components/chat/code-workspace-layout";
-import { DestructiveConfirmationDialog } from "@/components/destructive-confirmation-dialog";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { CHAT_INTERFACE_MODE,CODING_INTERFACE_MODE,type InterfaceMode } from "./chat-interface-mode";
 import { rotatePromptSuggestions } from "./chat-page-helpers";
@@ -22,6 +22,7 @@ import { ChatPageBoundary } from "./page.chat-page-boundary";
 
 export function useChatPageController() {
   const t = useTranslations(CHAT_INTERFACE_MODE);
+  const searchParams = useSearchParams();
   const { workspaceId, isLoading: workspaceLoading } = useWorkspace();
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [input, setInput] = useState("");
@@ -30,8 +31,6 @@ export function useChatPageController() {
   const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
   const [interfaceMode, setInterfaceMode] = useState<InterfaceMode>(CHAT_INTERFACE_MODE);
   const [codingChatWidth, setCodingChatWidth] = useState(DEFAULT_CHAT_WIDTH);
-  const [pendingDelete, setPendingDelete] = useState<{ kind: "conversation"; id: string; name: string } | { kind: "folder"; id: string; name: string } | null>(null);
-  const [deleting, setDeleting] = useState(false);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const lastAutoOpenedWorkspaceRef = useRef<string | null>(null);
   const userSelectedInterfaceModeRef = useRef<InterfaceMode | null>(null);
@@ -42,7 +41,7 @@ export function useChatPageController() {
   } | null>(null);
   const newConversationAgentIdRef = useRef<string | null>(null);
 
-  const { agents, selectedAgentId, setSelectedAgentId, organizationDefaultAgentId, setOrganizationDefaultAgentId, canCreateAgent, canRunSetup, userDefaultAgentId, setUserDefaultAgentId, conversations, setConversations, conversationFolders, setConversationFolders, hasMoreConversations, conversationSearchQuery, setConversationSearchQuery, conversationSearchState, setConversationSearchRevision, loadingMoreConversations, loadingAgents, loadingContext, setLoadingContext, loadAgentDirectory, refreshConversations, loadMoreConversations, loadMoreConversationSearchResults } = useChatDirectory(workspaceId, t, setActiveConversationId);
+  const { agents, selectedAgentId, setSelectedAgentId, organizationDefaultAgentId, setOrganizationDefaultAgentId, canCreateAgent, canRunSetup, userDefaultAgentId, setUserDefaultAgentId, conversations, setConversations, loadingAgents, setLoadingContext, loadAgentDirectory, refreshConversations } = useChatDirectory(workspaceId, t, setActiveConversationId);
 
   const saveCurrentComposerDraft = useCallback(() => {
     const scope = composerDraftScopeRef.current;
@@ -148,58 +147,31 @@ export function useChatPageController() {
 
   const { messages, setMessages, sending, pendingApprovals, handleSubmit, resolveApproval, stopGeneration, detachActiveStream, setActiveVersion, loadingMessages, quota, canChat, latestTodoList, conversationImpact } = useChatSession({ workspaceId, selectedAgentId, activeConversationId, queuedMessages, interfaceMode, codeWorkspaceArtifact, lastAutoOpenedWorkspaceRef, userSelectedInterfaceModeRef, composerDraftScopeRef, saveCurrentComposerDraft, resetInterfaceMode, refreshConversations, setActiveConversationId, setSelectedAgentId, setConversations, setQueuedMessages, setCodeWorkspaceArtifact, setInterfaceMode, setLoadingContext });
 
-  const { selectAgent, selectConversation, startNewConversation, renameConversation, deleteConversation, requestConversationDelete, createConversationFolder, renameConversationFolder, deleteConversationFolder, requestFolderDelete, toggleConversationPin, reorderConversations } = useConversationActions({ workspaceId, selectedAgentId, activeConversationId, conversations, conversationFolders, newConversationAgentIdRef, composerDraftScopeRef, setSelectedAgentId, setActiveConversationId, setActiveVersion, setQueuedMessages, setMessages, setCodeWorkspaceArtifact, setAttachments, setConversations, setConversationFolders, setPendingDelete, setDeleting, detachActiveStream, restoreComposerDraft, resetInterfaceMode, refreshConversations, t });
+  const { selectAgent, selectConversation, startNewConversation } = useConversationActions({ selectedAgentId, activeConversationId, conversations, newConversationAgentIdRef, setSelectedAgentId, setActiveConversationId, setActiveVersion, setQueuedMessages, setMessages, setCodeWorkspaceArtifact, setAttachments, detachActiveStream, restoreComposerDraft, resetInterfaceMode });
+
+  const routeConversationId = searchParams.get("conversationId");
+  const routeAgentId = searchParams.get("agentId");
+  useEffect(() => {
+    if (loadingAgents) return;
+    if (routeConversationId && routeConversationId !== activeConversationId) {
+      selectConversation(routeConversationId, routeAgentId);
+      return;
+    }
+    if (!routeConversationId && activeConversationId) {
+      startNewConversation();
+      return;
+    }
+    if (!routeConversationId && routeAgentId && routeAgentId !== selectedAgentId) {
+      selectAgent(routeAgentId);
+    }
+  }, [activeConversationId, loadingAgents, routeAgentId, routeConversationId, selectAgent, selectConversation, selectedAgentId, startNewConversation]);
 
   const { submitMessage, uploadCodeWorkspace, uploadChatAttachment, submitSuggestion, setUserDefaultAgent, updateQueuedMessage, cancelQueuedMessage } = useComposerActions({ workspaceId, activeConversationId, input, attachments, canChat, sending, interfaceMode, codeWorkspaceArtifact, handleSubmit, setInput, setAttachments, setQueuedMessages, setCodeWorkspaceArtifact, setInterfaceMode, setOrganizationDefaultAgentId, setUserDefaultAgentId, userSelectedInterfaceModeRef, lastAutoOpenedWorkspaceRef, t });
 
   const { editMessage, deleteMessage, resendMessage, continueAssistantResponse, reloadActualLatestMessages, reloadAgentContext, approveToolInvocation, rejectToolInvocation } = useMessageActions({ activeConversationId, workspaceId, selectedAgentId, messages, sending, setMessages, handleSubmit, resolveApproval, refreshConversations, loadAgentDirectory, setCodeWorkspaceArtifact, setActiveVersion, setLoadingContext, t });
 
-  const destructiveDialog = (
-    <DestructiveConfirmationDialog
-      open={pendingDelete !== null}
-      title={pendingDelete?.kind === "folder" ? t("sidebar.deleteFolderTitle") : t("sidebar.deleteConversationTitle")}
-      description={
-        pendingDelete?.kind === "folder"
-          ? t("sidebar.deleteFolderDescription", {
-              name: pendingDelete?.name ?? "",
-            })
-          : t("sidebar.deleteConversationDescription", {
-              name: pendingDelete?.name ?? "",
-            })
-      }
-      cancelLabel={t("sidebar.deleteCancel")}
-      confirmLabel={deleting ? t("sidebar.deleting") : t("sidebar.delete")}
-      busy={deleting}
-      onOpenChange={(open) => {
-        if (!open && !deleting) setPendingDelete(null);
-      }}
-      onConfirm={() => {
-        if (!pendingDelete) return;
-        if (pendingDelete.kind === "folder") {
-          void deleteConversationFolder(pendingDelete.id);
-        } else {
-          void deleteConversation(pendingDelete.id);
-        }
-      }}
-    />
-  );
-
-  const normalizedConversationSearchQuery = conversationSearchQuery.trim();
-  const conversationSearchIsCurrent = conversationSearchState.query === normalizedConversationSearchQuery;
-  const conversationSearchProps = {
-    conversationSearchQuery,
-    conversationSearchResults: conversationSearchIsCurrent ? conversationSearchState.conversations : [],
-    searchingConversations: Boolean(normalizedConversationSearchQuery) && (!conversationSearchIsCurrent || conversationSearchState.loading),
-    conversationSearchError: conversationSearchIsCurrent && conversationSearchState.error,
-    hasMoreConversationSearchResults: conversationSearchIsCurrent && conversationSearchState.hasMore,
-    loadingMoreConversationSearchResults: conversationSearchIsCurrent && conversationSearchState.loadingMore,
-    onConversationSearchQueryChange: setConversationSearchQuery,
-    onRetryConversationSearch: () => setConversationSearchRevision((current) => current + 1),
-    onLoadMoreConversationSearchResults: loadMoreConversationSearchResults,
-  };
-
-  const boundaryLayoutProps = { agents, conversations, conversationFolders, selectedAgent, selectedAgentId, activeConversationId, organizationDefaultAgentId, userDefaultAgentId, canChat, canCreateAgent, canRunSetup, ...conversationSearchProps, hasMoreConversations, loadingMoreConversations, onLoadMoreConversations: loadMoreConversations, onSelectAgent: selectAgent, onSelectConversation: selectConversation, onNewConversation: startNewConversation, onSetUserDefaultAgent: (agentId: string | null) => void setUserDefaultAgent(agentId), onRenameConversation: (conversationId: string, title: string) => void renameConversation(conversationId, title), onDeleteConversation: requestConversationDelete, onCreateConversationFolder: (name: string) => void createConversationFolder(name), onRenameConversationFolder: (folderId: string, name: string) => void renameConversationFolder(folderId, name), onDeleteConversationFolder: requestFolderDelete, onToggleConversationPin: (conversationId: string, pinned: boolean) => void toggleConversationPin(conversationId, pinned), onReorderConversations: (value: { conversationIds: string[]; folderId: string | null; pinned?: boolean }) => void reorderConversations(value), onSetupComplete: () => void reloadAgentContext() };
-  if (workspaceLoading || loadingAgents || agents.length === 0) return <ChatPageBoundary state={workspaceLoading || loadingAgents ? "loading" : "empty"} layoutProps={boundaryLayoutProps} loadingContext={loadingContext} destructiveDialog={destructiveDialog} emptyStateProps={{ canCreateAgent, canRunSetup, t }} loadingStateProps={{ t }} />;
+  const boundaryLayoutProps = { agents, selectedAgent, selectedAgentId, activeConversationId, organizationDefaultAgentId, userDefaultAgentId, canChat, canCreateAgent, canRunSetup, onSelectAgent: selectAgent, onSetUserDefaultAgent: (agentId: string | null) => void setUserDefaultAgent(agentId), onSetupComplete: () => void reloadAgentContext() };
+  if (workspaceLoading || loadingAgents || agents.length === 0) return <ChatPageBoundary state={workspaceLoading || loadingAgents ? "loading" : "empty"} layoutProps={boundaryLayoutProps} emptyStateProps={{ canCreateAgent, canRunSetup, t }} loadingStateProps={{ t }} />;
 
   return {
     kind: "ready",
@@ -216,23 +188,14 @@ export function useChatPageController() {
     codeWorkspaceArtifact,
     codingChatWidth,
     continueAssistantResponse,
-    conversationFolders,
     conversationImpact,
-    conversationSearchProps,
-    conversations,
-    createConversationFolder,
     deleteMessage,
-    destructiveDialog,
     editMessage,
     emptyPromptSuggestions,
-    hasMoreConversations,
     input,
     interfaceMode,
     latestTodoList,
-    loadMoreConversations,
-    loadingContext,
     loadingMessages,
-    loadingMoreConversations,
     messages,
     organizationDefaultAgentId,
     pendingApprovals,
@@ -241,26 +204,18 @@ export function useChatPageController() {
     rejectToolInvocation,
     reloadActualLatestMessages,
     reloadAgentContext,
-    renameConversation,
-    renameConversationFolder,
-    reorderConversations,
-    requestConversationDelete,
-    requestFolderDelete,
     resendMessage,
     selectAgent,
-    selectConversation,
     selectedAgent,
     selectedAgentId,
     sending,
     setAttachments,
     setInput,
     setUserDefaultAgent,
-    startNewConversation,
     stopGeneration,
     submitMessage,
     submitSuggestion,
     t,
-    toggleConversationPin,
     updateCodingChatWidth,
     updateQueuedMessage,
     uploadChatAttachment,

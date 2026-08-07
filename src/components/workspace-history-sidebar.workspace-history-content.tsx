@@ -2,6 +2,7 @@
 
 import { MessageSquareWarningIcon,PanelLeftCloseIcon,PlusIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
 import { useCallback,useState } from "react";
 
 import { ChatSidebar } from "@/components/chat/chat-sidebar";
@@ -16,6 +17,7 @@ import { useWorkspaceHistory } from "./workspace-history-sidebar.use-workspace-h
 export function WorkspaceHistoryContent({ shell, onNavigate, onCollapsedChange }: { shell: WorkspaceShellState; onNavigate?: () => void; onCollapsedChange?: (collapsed: boolean) => void }) {
   const t = useTranslations("chat.sidebar");
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { workspaceId, workspaces } = useWorkspace();
   const history = useWorkspaceHistory();
   const [pendingDelete, setPendingDelete] = useState<{ kind: "conversation"; id: string; name: string } | { kind: "folder"; id: string; name: string } | null>(null);
@@ -88,7 +90,7 @@ export function WorkspaceHistoryContent({ shell, onNavigate, onCollapsedChange }
         agents={history.agents}
         conversations={history.conversations}
         conversationFolders={history.folders}
-        activeConversationId={null}
+        activeConversationId={searchParams.get("conversationId")}
         loading={history.loading}
         searchQuery={history.query}
         searchResults={history.searchResults}

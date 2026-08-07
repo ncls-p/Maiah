@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import type { ChatAgent,ChatConversation,ChatConversationFolder } from "@/components/chat/chat-types";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { fetchJson } from "@/lib/api-client";
+import { WORKSPACE_HISTORY_REFRESH_EVENT } from "@/lib/workspace-history-events";
 import { AgentPayload,ConversationPayload,normalizeConversations } from "./workspace-history-sidebar.conversation-payload";
 
 export function useWorkspaceHistory() {
@@ -23,6 +24,12 @@ export function useWorkspaceHistory() {
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState(false);
   const [revision, setRevision] = useState(0);
+
+  useEffect(() => {
+    const refresh = () => setRevision((current) => current + 1);
+    window.addEventListener(WORKSPACE_HISTORY_REFRESH_EVENT, refresh);
+    return () => window.removeEventListener(WORKSPACE_HISTORY_REFRESH_EVENT, refresh);
+  }, []);
 
   useEffect(() => {
     if (!workspaceId) return;

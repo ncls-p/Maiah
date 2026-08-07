@@ -7,6 +7,7 @@ import { createContext,useContext,useEffect,useMemo,useState } from "react";
 import { AppHeader } from "@/components/app-header";
 import { OrbitAccountMenu,OrbitProductNavigation,OrbitWordmark } from "@/components/orbit-product-navigation";
 import { WorkspaceHistoryMobileTrigger,WorkspaceHistorySidebar } from "@/components/workspace-history-sidebar";
+import { WorkspacePageTransition } from "@/components/workspace-page-transition";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { fetchPendingToolCount,fetchWorkspacePermissions } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
@@ -127,22 +128,20 @@ export function AppShell({ children, displayName, currentUserId, isAdmin, sideba
           {tShell("skipToContent")}
         </a>
         <div className="flex min-h-0 flex-1 flex-row">
-          {!isChatRoute ? <WorkspaceHistorySidebar shell={shellValue} /> : null}
+          <WorkspaceHistorySidebar shell={shellValue} />
           <div className="flex min-w-0 flex-1 flex-col">
-            {!isChatRoute ? (
-              <AppHeader
-                leading={
-                  <>
-                    <WorkspaceHistoryMobileTrigger shell={shellValue} />
-                    <OrbitWordmark section={orbitSection} />
-                  </>
-                }
-                center={<OrbitProductNavigation shell={shellValue} />}
-                actions={<OrbitAccountMenu displayName={displayName} />}
-              />
-            ) : null}
+            <AppHeader
+              leading={
+                <>
+                  <WorkspaceHistoryMobileTrigger shell={shellValue} />
+                  <OrbitWordmark section={orbitSection} />
+                </>
+              }
+              center={<OrbitProductNavigation shell={shellValue} />}
+              actions={<OrbitAccountMenu displayName={displayName} />}
+            />
             <main id="workspace-main" tabIndex={-1} className={cn("app-shell__main", isChatRoute && "app-shell__main--chat")}>
-              {children}
+              <WorkspacePageTransition>{children}</WorkspacePageTransition>
             </main>
           </div>
         </div>

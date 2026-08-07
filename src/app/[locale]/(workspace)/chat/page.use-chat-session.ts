@@ -11,6 +11,7 @@ import type { AgentVersion, ChatConversation, ChatMessage, CodeWorkspaceArtifact
 import { aggregateChatUsageImpact } from "@/components/chat/chat-types";
 import { useChatStream } from "@/hooks/use-chat-stream";
 import { fetchJson } from "@/lib/api-client";
+import { notifyWorkspaceHistoryChanged } from "@/lib/workspace-history-events";
 
 import { CHAT_INTERFACE_MODE, CODING_INTERFACE_MODE, shouldAutoActivateCoding, type InterfaceMode } from "./chat-interface-mode";
 import { conversationTitleFromFirstMessage, latestCodeWorkspaceArtifact, upsertConversation } from "./chat-page-helpers";
@@ -66,6 +67,7 @@ export function useChatSession(c: SessionContext) {
       if (selectedAgentId) params.set("agentId", selectedAgentId);
       params.set("conversationId", conversationId);
       window.history.replaceState(null, "", `/chat?${params.toString()}`);
+      notifyWorkspaceHistoryChanged();
     },
     onConversationTitle: (conversationId, title) => {
       setConversations((current) => {
@@ -77,6 +79,7 @@ export function useChatSession(c: SessionContext) {
         });
         return found || !selectedAgentId ? next : [{ id: conversationId, title, agentId: selectedAgentId, updatedAt: new Date().toISOString() }, ...next];
       });
+      notifyWorkspaceHistoryChanged();
     },
     onConversationsRefresh: refreshConversations,
   });

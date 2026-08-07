@@ -13,8 +13,14 @@ import { cn } from "@/lib/utils";
 import { isNavItemActive,type WorkspaceShellState } from "@/lib/workspace-nav";
 import { buildMenuGroups } from "@/modules/navigation/sidebar-config";
 import Image from "next/image";
+import { useLinkStatus } from "next/link";
 
 const primaryDestinations = ["/chat", "/agents", "/tools", "/knowledge", "/scheduled-tasks"] as const;
+
+function NavigationLinkFeedback() {
+  const { pending } = useLinkStatus();
+  return <span aria-hidden="true" className="workspace-nav-pending" data-pending={pending} />;
+}
 
 export function OrbitWordmark({ section }: { section: string }) {
   const { organizationLogoUrl, organizationName } = useWorkspace();
@@ -50,6 +56,7 @@ export function OrbitProductNavigation({ shell }: { shell: WorkspaceShellState }
             <Link key={item.href} href={item.href} aria-current={active ? "page" : undefined} className={cn("relative inline-flex h-10 shrink-0 items-center rounded-lg px-3 text-xs font-medium outline-none transition-[background-color,color,box-shadow,scale] duration-180 ease-out after:absolute after:right-3 after:bottom-0 after:left-3 after:h-px after:origin-center after:scale-x-0 after:rounded-full after:bg-primary after:opacity-0 after:transition-[scale,opacity] after:duration-180 focus-visible:ring-2 focus-visible:ring-ring/45 active:scale-[0.96]", active ? "bg-primary/[0.055] text-primary shadow-[inset_0_-1px_0_color-mix(in_oklch,var(--primary)_12%,transparent)] after:scale-x-100 after:opacity-100" : "text-muted-foreground hover:bg-muted/55 hover:text-foreground")}>
               {productLabel(item.href, item.labelKey)}
               {item.badge ? <span className="ml-1.5 font-mono text-[0.58rem] text-primary">{item.badge}</span> : null}
+              <NavigationLinkFeedback />
             </Link>
           );
         })}

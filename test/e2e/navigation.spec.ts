@@ -26,6 +26,21 @@ test.describe("workspace navigation", () => {
     await expect(page.getByRole("link", { name: "Chat", exact: true })).toBeVisible();
   });
 
+  test("keeps the workspace shell mounted during client navigation", async ({ page }) => {
+    await page.goto("/en/agents");
+    const sidebar = page.locator('[data-slot="workspace-history-sidebar"]');
+    const header = page.locator('[data-slot="app-header"]');
+    await expect(sidebar).toBeVisible({ timeout: 15_000 });
+    await expect(header).toBeVisible();
+    await sidebar.evaluate((element) => element.setAttribute("data-persistence-check", "sidebar"));
+    await header.evaluate((element) => element.setAttribute("data-persistence-check", "header"));
+
+    await page.getByRole("link", { name: "Tools", exact: true }).click();
+    await expect(page).toHaveURL(/\/en\/tools/);
+    await expect(sidebar).toHaveAttribute("data-persistence-check", "sidebar");
+    await expect(header).toHaveAttribute("data-persistence-check", "header");
+  });
+
   test("navigating to /agents loads agents page", async ({ page }) => {
     await page.goto("/en/agents");
     await expect(page).toHaveURL(/\/en\/agents/);

@@ -26,32 +26,25 @@ export function ChatPageView({ model }: { model: Model }) {
     codeWorkspaceArtifact,
     codingChatWidth,
     continueAssistantResponse,
-    conversationFolders, conversationImpact, conversationSearchProps, conversations,
+    conversationImpact,
   } = model;
   const {
-    createConversationFolder, deleteMessage, destructiveDialog, editMessage,
-    emptyPromptSuggestions, hasMoreConversations, input, interfaceMode,
-    latestTodoList, loadMoreConversations, loadingContext, loadingMessages,
-    loadingMoreConversations, messages, organizationDefaultAgentId, pendingApprovals,
+    deleteMessage, editMessage, emptyPromptSuggestions, input, interfaceMode,
+    latestTodoList, loadingMessages, messages, organizationDefaultAgentId, pendingApprovals,
   } = model;
   const {
     queuedMessages, quota, rejectToolInvocation, reloadActualLatestMessages,
-    reloadAgentContext, renameConversation, renameConversationFolder, reorderConversations,
-    requestConversationDelete, requestFolderDelete, resendMessage, selectAgent,
-    selectConversation, selectedAgent, selectedAgentId, sending, setAttachments,
+    reloadAgentContext, resendMessage, selectAgent, selectedAgent, selectedAgentId,
+    sending, setAttachments,
   } = model;
   const {
-    setInput, setUserDefaultAgent, startNewConversation, stopGeneration,
-    submitMessage, submitSuggestion, t, toggleConversationPin, updateCodingChatWidth,
+    setInput, setUserDefaultAgent, stopGeneration, submitMessage, submitSuggestion, t, updateCodingChatWidth,
     updateQueuedMessage, uploadChatAttachment, uploadCodeWorkspace, userDefaultAgentId,
     workspaceId,
   } = model;
   return (
-    <>
       <ChatLayout
         agents={agents}
-        conversations={conversations}
-        conversationFolders={conversationFolders}
         selectedAgent={selectedAgent}
         selectedAgentId={selectedAgentId}
         activeConversationId={activeConversationId}
@@ -61,22 +54,8 @@ export function ChatPageView({ model }: { model: Model }) {
         canChat={canChat}
         canCreateAgent={canCreateAgent}
         canRunSetup={canRunSetup}
-        loadingSidebar={loadingContext}
-        {...conversationSearchProps}
-        hasMoreConversations={hasMoreConversations}
-        loadingMoreConversations={loadingMoreConversations}
-        onLoadMoreConversations={loadMoreConversations}
         onSelectAgent={selectAgent}
-        onSelectConversation={selectConversation}
-        onNewConversation={startNewConversation}
         onSetUserDefaultAgent={(agentId: string | null) => void setUserDefaultAgent(agentId)}
-        onRenameConversation={(conversationId, title) => void renameConversation(conversationId, title)}
-        onDeleteConversation={requestConversationDelete}
-        onCreateConversationFolder={(name) => void createConversationFolder(name)}
-        onRenameConversationFolder={(folderId, name) => void renameConversationFolder(folderId, name)}
-        onDeleteConversationFolder={requestFolderDelete}
-        onToggleConversationPin={(conversationId, pinned) => void toggleConversationPin(conversationId, pinned)}
-        onReorderConversations={(input) => void reorderConversations(input)}
         onSetupComplete={() => void reloadAgentContext()}
       >
         <ChatContextBar quota={quota} />
@@ -117,7 +96,5 @@ export function ChatPageView({ model }: { model: Model }) {
         )}
         {interfaceMode === CODING_INTERFACE_MODE && codeWorkspaceArtifact ? null : <ChatComposer input={input} canChat={canChat} sending={sending} queuedMessages={queuedMessages} onInputChange={setInput} onSubmit={submitMessage} onStop={stopGeneration} onQueuedMessageChange={updateQueuedMessage} onQueuedMessageCancel={cancelQueuedMessage} onUploadCodeWorkspace={uploadCodeWorkspace} onUploadChatAttachment={uploadChatAttachment} attachments={attachments} todoList={latestTodoList} centered={!loadingMessages && messages.length === 0} promptSuggestions={emptyPromptSuggestions} onPromptSuggestionClick={submitSuggestion} onRemoveAttachment={(attachmentId) => setAttachments((current) => current.filter((attachment) => attachment.id !== attachmentId))} />}
       </ChatLayout>
-      {destructiveDialog}
-    </>
   );
 }

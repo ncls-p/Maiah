@@ -75,4 +75,12 @@ test.describe("locale switcher", () => {
     await languageButton.click();
     await expect(page).toHaveURL(/\/fr\/settings/, { timeout: 10_000 });
   });
+
+  test("keeps the current page, query, and hash when switching locale", async ({ page }) => {
+    await page.goto("/en/usage?operation=chat#filters");
+    await openAccountMenu(page);
+    await page.getByRole("menuitem", { name: /Language.*English/i }).click();
+
+    await expect(page).toHaveURL(/\/fr\/usage\?operation=chat#filters$/, { timeout: 10_000 });
+  });
 });
