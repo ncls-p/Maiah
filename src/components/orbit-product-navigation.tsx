@@ -25,11 +25,45 @@ function NavigationLinkFeedback() {
 export function OrbitWordmark({ section }: { section: string }) {
   const { organizationLogoUrl, organizationName } = useWorkspace();
   return (
-    <div className="hidden min-w-32 items-baseline gap-2 sm:flex">
-      {organizationLogoUrl ? <Image src={organizationLogoUrl} alt={organizationName ?? "Organization"} width={120} height={40} unoptimized className="h-6 w-auto max-w-28 object-contain" /> : <span className="text-[0.72rem] font-extrabold uppercase tracking-[0.16em] text-foreground">Maiah</span>}
-      <span className="font-mono text-[0.58rem] uppercase tracking-[0.18em] text-primary">{section}</span>
+    <div className="flex min-w-0 items-baseline gap-2 sm:min-w-32">
+      {organizationLogoUrl ? <Image src={organizationLogoUrl} alt={organizationName ?? "Organization"} width={120} height={40} unoptimized className="h-5 w-auto max-w-20 object-contain sm:h-6 sm:max-w-28" /> : <span className="text-[0.7rem] font-extrabold uppercase tracking-[0.14em] text-foreground sm:text-[0.72rem] sm:tracking-[0.16em]">Maiah</span>}
+      <span className="hidden font-mono text-[0.58rem] uppercase tracking-[0.18em] text-primary sm:inline">{section}</span>
     </div>
   );
+}
+
+export function OrbitMobileNavigation({ shell }: { shell: WorkspaceShellState }) {
+  const pathname = usePathname();
+  const t = useTranslations("nav");
+  const allItems = buildMenuGroups(shell).flatMap((group) => group.items);
+  const itemByHref = new Map(allItems.map((item) => [item.href, item]));
+  const items = primaryDestinations.map((href) => itemByHref.get(href)).filter((item): item is NonNullable<typeof item> => Boolean(item));
+
+  return (
+    <nav data-slot="mobile-app-navigation" aria-label={t("groups.primary")} className="mobile-app-navigation md:hidden">
+      {items.map((item) => {
+        const active = isNavItemActive(pathname, item.href);
+        const Icon = item.icon;
+        return (
+          <Link key={item.href} href={item.href} aria-current={active ? "page" : undefined} className={cn("mobile-app-navigation__item", active && "mobile-app-navigation__item--active")}>
+            <span className="mobile-app-navigation__icon">
+              <Icon aria-hidden="true" />
+            </span>
+            <span className="max-w-full truncate">{productLabelForMobile(t, item.href, item.labelKey)}</span>
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
+function productLabelForMobile(t: ReturnType<typeof useTranslations<"nav">>, href: string, labelKey: string) {
+  if (href === "/chat") return t("mobileChat");
+  if (href === "/agents") return t("mobileAgents");
+  if (href === "/tools") return t("mobileTools");
+  if (href === "/knowledge") return t("mobileKnowledge");
+  if (href === "/scheduled-tasks") return t("mobilePlanning");
+  return t(labelKey);
 }
 
 export function OrbitProductNavigation({ shell }: { shell: WorkspaceShellState }) {

@@ -71,6 +71,28 @@ test("every workspace screen remains usable on desktop and mobile", async ({ pag
   }
 });
 
+test("mobile workspace uses an app navigation instead of the desktop shell", async ({ page }) => {
+  await page.setViewportSize({ width: 412, height: 915 });
+  await page.goto("/en/tools");
+
+  const navigation = page.locator('[data-slot="mobile-app-navigation"]');
+  await expect(navigation).toBeVisible({ timeout: 15_000 });
+  await expect(navigation.getByRole("link")).toHaveCount(5);
+  await expect(page.locator('[data-slot="workspace-history-sidebar"]')).toBeHidden();
+
+  const bounds = await navigation.boundingBox();
+  expect(bounds).not.toBeNull();
+  expect(bounds!.x).toBeGreaterThanOrEqual(0);
+  expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(412);
+  expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(915);
+  await expect
+    .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1))
+    .toBe(true);
+
+  await navigation.getByRole("link", { name: "Assistants" }).click();
+  await expect(page).toHaveURL(/\/en\/agents$/);
+});
+
 test("secondary and legacy routes remain usable on a narrow viewport", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await expectUsableViewport(page, `/en/agents/${responsiveAgentId}`);

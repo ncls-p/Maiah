@@ -46,6 +46,31 @@ test.describe("authentication", () => {
       // HTML5 required validation should prevent submission
       await expect(page).toHaveURL(/signin/);
     });
+
+    test("uses a compact edge-to-edge mobile composition", async ({ page }) => {
+      await page.setViewportSize({ width: 412, height: 915 });
+      await page.goto("/fr/auth/signin");
+
+      const authPage = page.locator('[data-page="auth"]');
+      const form = page.getByRole("main").locator("form");
+      await expect(authPage).toBeVisible();
+      await expect(form).toBeVisible();
+      await expect(page.locator("aside")).toBeHidden();
+
+      const metrics = await page.evaluate(() => {
+        const form = document.querySelector("form")!.getBoundingClientRect();
+        const card = document.querySelector('[data-slot="card"]')!;
+        const cardStyle = getComputedStyle(card);
+        return {
+          formWidth: form.width,
+          scrollWidth: document.documentElement.scrollWidth,
+          cardBorderWidth: cardStyle.borderTopWidth,
+        };
+      });
+      expect(metrics.formWidth).toBeGreaterThanOrEqual(370);
+      expect(metrics.scrollWidth).toBeLessThanOrEqual(412);
+      expect(metrics.cardBorderWidth).toBe("0px");
+    });
   });
 
   test.describe("sign up page", () => {

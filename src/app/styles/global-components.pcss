@@ -57,8 +57,8 @@
     background-image: radial-gradient(circle at 86% 10%, color-mix(in oklch, var(--brand-azur) 7%, transparent), transparent 26rem), radial-gradient(circle at 62% 92%, color-mix(in oklch, var(--brand-blue) 4%, transparent), transparent 30rem);
   }
   .app-shell__header {
-    @apply flex h-16 shrink-0 items-center justify-between border-b border-border/55 bg-background/88 px-4;
-    padding-top: max(0rem, env(safe-area-inset-top));
+    @apply flex min-h-16 shrink-0 items-center justify-between border-b border-border/55 bg-background/88 px-3 py-2 sm:h-16 sm:px-4;
+    padding-top: max(0.5rem, env(safe-area-inset-top));
     backdrop-filter: blur(18px) saturate(1.1);
     -webkit-backdrop-filter: blur(18px) saturate(1.1);
   }
@@ -68,6 +68,28 @@
   }
   .app-shell__main--chat {
     @apply overflow-hidden;
+  }
+  .mobile-app-navigation {
+    @apply grid shrink-0 grid-cols-5 border-t border-border/60 bg-background/94 px-1 pt-1.5;
+    min-height: 4.25rem;
+    padding-bottom: max(0.4rem, env(safe-area-inset-bottom));
+    backdrop-filter: blur(18px) saturate(1.12);
+    -webkit-backdrop-filter: blur(18px) saturate(1.12);
+  }
+  .mobile-app-navigation__item {
+    @apply flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1 text-[0.6rem] font-medium leading-none text-muted-foreground outline-none transition-[background-color,color,scale] duration-150 active:scale-[0.94] focus-visible:ring-2 focus-visible:ring-ring/45;
+  }
+  .mobile-app-navigation__item--active {
+    @apply bg-primary/[0.07] text-primary;
+  }
+  .mobile-app-navigation__icon {
+    @apply flex size-7 items-center justify-center rounded-lg transition-colors;
+  }
+  .mobile-app-navigation__icon svg {
+    @apply size-[1.15rem];
+  }
+  .mobile-app-navigation__item--active .mobile-app-navigation__icon {
+    @apply bg-primary/10;
   }
   .workspace-route-content {
     min-width: 0;

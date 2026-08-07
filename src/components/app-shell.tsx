@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { createContext,useContext,useEffect,useMemo,useState } from "react";
 
 import { AppHeader } from "@/components/app-header";
-import { OrbitAccountMenu,OrbitProductNavigation,OrbitWordmark } from "@/components/orbit-product-navigation";
+import { OrbitAccountMenu,OrbitMobileNavigation,OrbitProductNavigation,OrbitWordmark } from "@/components/orbit-product-navigation";
 import { WorkspaceHistoryMobileTrigger,WorkspaceHistorySidebar } from "@/components/workspace-history-sidebar";
 import { WorkspacePageTransition } from "@/components/workspace-page-transition";
 import { useWorkspace } from "@/hooks/use-workspace";
@@ -143,6 +143,7 @@ export function AppShell({ children, displayName, currentUserId, isAdmin, sideba
             <main id="workspace-main" tabIndex={-1} className={cn("app-shell__main", isChatRoute && "app-shell__main--chat")}>
               <WorkspacePageTransition>{children}</WorkspacePageTransition>
             </main>
+            <OrbitMobileNavigation shell={shellValue} />
           </div>
         </div>
       </div>

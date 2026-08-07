@@ -52,29 +52,28 @@ export function AuthShell({ title, description, children, footer }: { title: str
         <p className="relative text-xs font-medium text-white/60">{t("brandFooter")}</p>
       </aside>
 
-      <section className="relative flex min-h-svh items-center justify-center overflow-hidden px-4 py-12 sm:px-8 lg:px-12">
+      <section className="relative flex min-h-svh items-start justify-center overflow-hidden px-5 pb-8 pt-[calc(5.75rem+env(safe-area-inset-top))] sm:items-center sm:px-8 sm:py-12 lg:px-12">
         <div className="pointer-events-none absolute -right-40 -top-40 size-[32rem] rounded-full bg-primary/8 blur-3xl" aria-hidden="true" />
-        <div className="absolute right-4 top-4 sm:right-6 sm:top-6">
+        <div className="absolute inset-x-5 top-[calc(1rem+env(safe-area-inset-top))] flex items-center justify-between lg:hidden">
+          <DeodisLogo href="/" priority className="h-7" />
+          <LocaleSwitcher compact />
+        </div>
+        <div className="absolute right-6 top-6 hidden lg:block">
           <LocaleSwitcher compact />
         </div>
         <div className="animate-in-up relative w-full max-w-lg">
-          <div className="mb-9 flex justify-center lg:hidden">
-            <span className="rounded-2xl bg-card px-4 py-3 shadow-[var(--control-shadow)]">
-              <DeodisLogo href="/" priority className="h-7" />
-            </span>
-          </div>
-          <Card className="rounded-[1.75rem] bg-card/92 py-7 shadow-[var(--floating-shadow)] backdrop-blur-xl hover:translate-y-0 hover:shadow-[var(--floating-shadow)]">
-            <CardHeader className="gap-2.5 px-7 pb-5 sm:px-8">
-              <CardTitle asChild className="text-balance text-2xl tracking-[-0.045em] sm:text-3xl">
+          <Card className="gap-6 rounded-none border-0 bg-transparent py-0 shadow-none backdrop-blur-none hover:translate-y-0 hover:shadow-none sm:rounded-[1.75rem] sm:border sm:bg-card/92 sm:py-7 sm:shadow-[var(--floating-shadow)] sm:backdrop-blur-xl sm:hover:shadow-[var(--floating-shadow)]">
+            <CardHeader className="gap-2.5 px-0 pb-1 sm:px-8 sm:pb-5">
+              <CardTitle asChild className="text-balance text-[2.15rem] leading-[0.98] tracking-[-0.05em] sm:text-3xl">
                 <h2>{title}</h2>
               </CardTitle>
-              <CardDescription asChild className="max-w-md text-pretty leading-6">
+              <CardDescription asChild className="max-w-md text-pretty text-[0.95rem] leading-6">
                 <p>{description}</p>
               </CardDescription>
             </CardHeader>
-            <CardContent className="px-7 sm:px-8">{children}</CardContent>
+            <CardContent className="px-0 sm:px-8">{children}</CardContent>
           </Card>
-          <div className="mt-7 text-center text-sm text-muted-foreground">{footer}</div>
+          <div className="mt-6 text-center text-sm text-muted-foreground sm:mt-7">{footer}</div>
         </div>
       </section>
     </main>
