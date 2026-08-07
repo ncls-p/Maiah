@@ -94,6 +94,7 @@ test("mobile workspace uses an app navigation instead of the desktop shell", asy
   await expect
     .poll(() => page.locator(".workspace-route-content").evaluate((element) => getComputedStyle(element).animationName))
     .toBe("none");
+  await expect(navigation.locator(".workspace-nav-pending")).toHaveCount(0);
   await page.locator(".workspace-route-content").evaluate((element) => {
     element.setAttribute("data-stability-probe", "preserved");
   });

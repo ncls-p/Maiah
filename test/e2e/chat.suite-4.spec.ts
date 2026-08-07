@@ -31,7 +31,7 @@ test.describe("chat composer", () => {
     page,
   }) => {
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto("/en/chat");
+    await page.goto("/fr/chat");
 
     const controls = page.locator(
       '[data-slot="chat-composer-primary-controls"]',
@@ -39,11 +39,22 @@ test.describe("chat composer", () => {
     await expect(controls).toBeVisible({ timeout: 15_000 });
     const dock = page.locator(".composer-dock");
     const composerBox = page.locator(".composer-box");
+    const textarea = composerBox.locator("textarea");
     const mobileNavigation = page.locator(
       '[data-slot="mobile-app-navigation"]',
     );
     await expect(dock).toBeVisible();
+    await expect(textarea).toBeVisible();
     await expect(mobileNavigation).toBeVisible();
+    const initialTextarea = await textarea.evaluate((element) => ({
+      clientHeight: element.clientHeight,
+      overflowY: getComputedStyle(element).overflowY,
+      scrollHeight: element.scrollHeight,
+    }));
+    expect(initialTextarea.overflowY).toBe("hidden");
+    expect(initialTextarea.scrollHeight).toBeLessThanOrEqual(
+      initialTextarea.clientHeight + 1,
+    );
     expect(
       await controls.evaluate(
         (element) => element.scrollWidth <= element.clientWidth,
@@ -64,6 +75,23 @@ test.describe("chat composer", () => {
     expect(navigationBox).not.toBeNull();
     expect(Math.abs(dockBox!.y + dockBox!.height - navigationBox!.y)).toBeLessThanOrEqual(1);
     expect(navigationBox!.y - (composerBounds!.y + composerBounds!.height)).toBeLessThanOrEqual(16);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollHeight <= window.innerHeight,
+      ),
+    ).toBe(true);
+
+    await textarea.fill("A long mobile message ".repeat(80));
+    const filledTextarea = await textarea.evaluate((element) => ({
+      clientHeight: element.clientHeight,
+      overflowY: getComputedStyle(element).overflowY,
+      scrollHeight: element.scrollHeight,
+    }));
+    expect(filledTextarea.clientHeight).toBeLessThanOrEqual(112);
+    expect(filledTextarea.scrollHeight).toBeGreaterThan(
+      filledTextarea.clientHeight,
+    );
+    expect(filledTextarea.overflowY).toBe("auto");
     expect(
       await page.evaluate(
         () => document.documentElement.scrollHeight <= window.innerHeight,

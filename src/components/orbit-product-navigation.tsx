@@ -2,13 +2,14 @@
 
 import { ChevronDownIcon,SlidersHorizontalIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useEffect } from "react";
 
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { SignOutButton } from "@/components/sign-out-button";
 import { ThemeToggleButton } from "@/components/theme-toggle-button";
 import { DropdownMenu,DropdownMenuContent,DropdownMenuItem,DropdownMenuLabel,DropdownMenuSeparator,DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useWorkspace } from "@/hooks/use-workspace";
-import { Link,usePathname } from "@/i18n/navigation";
+import { Link,usePathname,useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { isNavItemActive,type WorkspaceShellState } from "@/lib/workspace-nav";
 import { buildMenuGroups } from "@/modules/navigation/sidebar-config";
@@ -34,10 +35,17 @@ export function OrbitWordmark({ section }: { section: string }) {
 
 export function OrbitMobileNavigation({ shell }: { shell: WorkspaceShellState }) {
   const pathname = usePathname();
+  const router = useRouter();
   const t = useTranslations("nav");
   const allItems = buildMenuGroups(shell).flatMap((group) => group.items);
   const itemByHref = new Map(allItems.map((item) => [item.href, item]));
   const items = primaryDestinations.map((href) => itemByHref.get(href)).filter((item): item is NonNullable<typeof item> => Boolean(item));
+
+  useEffect(() => {
+    for (const destination of primaryDestinations) {
+      if (destination !== pathname) router.prefetch(destination);
+    }
+  }, [pathname, router]);
 
   return (
     <nav data-slot="mobile-app-navigation" aria-label={t("groups.primary")} className="mobile-app-navigation md:hidden">
@@ -50,7 +58,6 @@ export function OrbitMobileNavigation({ shell }: { shell: WorkspaceShellState })
               <Icon aria-hidden="true" />
             </span>
             <span className="max-w-full truncate">{productLabelForMobile(t, item.href, item.labelKey)}</span>
-            <NavigationLinkFeedback />
           </Link>
         );
       })}

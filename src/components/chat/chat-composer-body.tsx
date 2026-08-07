@@ -2,7 +2,7 @@
 
 import { Loader2Icon, PaperclipIcon, SendIcon, SquareIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useRef } from "react";
+import { useLayoutEffect, useRef } from "react";
 
 import { Link } from "@/i18n/navigation";
 import type { ChatComposerControls } from "@/components/chat/chat-layout.chat-composer-controls-context";
@@ -34,17 +34,34 @@ interface ChatComposerBodyProps {
   onPaste: (event: React.ClipboardEvent<HTMLTextAreaElement>) => void;
 }
 
+function resizeComposerTextarea(element: HTMLTextAreaElement) {
+  element.style.height = "0px";
+
+  const maxHeight = Number.parseFloat(getComputedStyle(element).maxHeight);
+  const contentHeight = element.scrollHeight;
+  const nextHeight = Number.isFinite(maxHeight)
+    ? Math.min(contentHeight, maxHeight)
+    : contentHeight;
+
+  element.style.height = `${nextHeight}px`;
+  element.style.overflowY = contentHeight > nextHeight ? "auto" : "hidden";
+}
+
 export function ChatComposerBody(props: ChatComposerBodyProps) {
   const t = useTranslations("chat.composer");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const element = textareaRef.current;
     if (!element) return;
-    element.style.height = "auto";
-    element.style.height = `${Math.min(element.scrollHeight, 160)}px`;
-  }, [props.input]);
+
+    const resize = () => resizeComposerTextarea(element);
+    resize();
+    window.addEventListener("resize", resize);
+
+    return () => window.removeEventListener("resize", resize);
+  }, [props.canChat, props.input, props.sending]);
   return (
     <div className="relative mx-auto w-full min-w-0 max-w-4xl">
       {props.todoList ? (
@@ -109,7 +126,7 @@ export function ChatComposerBody(props: ChatComposerBodyProps) {
             }
             disabled={!props.canChat}
             rows={1}
-            className="max-h-40 min-h-12 w-full resize-none border-0 bg-transparent px-1 py-1.5 text-base shadow-none hover:border-transparent focus-visible:bg-transparent focus-visible:ring-0 sm:text-sm placeholder:text-muted-foreground"
+            className="scrollbar-none max-h-28 min-h-12 w-full resize-none overscroll-contain border-0 bg-transparent px-1 py-1.5 text-base shadow-none hover:border-transparent focus-visible:bg-transparent focus-visible:ring-0 sm:max-h-40 sm:text-sm placeholder:text-muted-foreground"
           />
         </div>
         <div className="flex min-h-12 min-w-0 items-center gap-1.5 border-t border-border/55 px-2 py-1 sm:gap-2 sm:px-3">
