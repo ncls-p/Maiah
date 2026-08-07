@@ -89,8 +89,15 @@ test("mobile workspace uses an app navigation instead of the desktop shell", asy
     .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1))
     .toBe(true);
 
+  await expect
+    .poll(() => page.locator(".workspace-route-content").evaluate((element) => getComputedStyle(element).animationName))
+    .toBe("none");
+  await page.locator(".workspace-route-content").evaluate((element) => {
+    element.setAttribute("data-stability-probe", "preserved");
+  });
   await navigation.getByRole("link", { name: "Assistants" }).click();
   await expect(page).toHaveURL(/\/en\/agents$/);
+  await expect(page.locator('.workspace-route-content[data-stability-probe="preserved"]')).toHaveCount(1);
 });
 
 test("secondary and legacy routes remain usable on a narrow viewport", async ({ page }) => {

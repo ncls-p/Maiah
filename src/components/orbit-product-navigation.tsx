@@ -50,6 +50,7 @@ export function OrbitMobileNavigation({ shell }: { shell: WorkspaceShellState })
               <Icon aria-hidden="true" />
             </span>
             <span className="max-w-full truncate">{productLabelForMobile(t, item.href, item.labelKey)}</span>
+            <NavigationLinkFeedback />
           </Link>
         );
       })}
