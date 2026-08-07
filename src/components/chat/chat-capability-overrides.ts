@@ -5,6 +5,9 @@ export type ChatToolSource = "builtin" | "mcp" | "custom";
 export type ChatCapabilityOverrides = {
   disabledTools: Array<{ source: ChatToolSource; id: string }>;
   disabledSkillIds: string[];
+  enabledTools: Array<{ source: ChatToolSource; id: string }>;
+  enabledSkillIds: string[];
+  enabledKnowledgeIds: string[];
 };
 
 const STORAGE_PREFIX = "maiah-chat-capabilities";
@@ -14,7 +17,7 @@ function storageKey(agentId: string, conversationId: string | null) {
 }
 
 function emptyOverrides(): ChatCapabilityOverrides {
-  return { disabledTools: [], disabledSkillIds: [] };
+  return { disabledTools: [], disabledSkillIds: [], enabledTools: [], enabledSkillIds: [], enabledKnowledgeIds: [] };
 }
 
 export function readChatCapabilityOverrides(agentId: string | null, conversationId: string | null): ChatCapabilityOverrides {
@@ -24,6 +27,9 @@ export function readChatCapabilityOverrides(agentId: string | null, conversation
     return {
       disabledTools: Array.isArray(value.disabledTools) ? value.disabledTools.filter((tool): tool is { source: ChatToolSource; id: string } => Boolean(tool && ["builtin", "mcp", "custom"].includes(tool.source) && typeof tool.id === "string")) : [],
       disabledSkillIds: Array.isArray(value.disabledSkillIds) ? value.disabledSkillIds.filter((skillId): skillId is string => typeof skillId === "string") : [],
+      enabledTools: Array.isArray(value.enabledTools) ? value.enabledTools.filter((tool): tool is { source: ChatToolSource; id: string } => Boolean(tool && ["builtin", "mcp", "custom"].includes(tool.source) && typeof tool.id === "string")) : [],
+      enabledSkillIds: Array.isArray(value.enabledSkillIds) ? value.enabledSkillIds.filter((id): id is string => typeof id === "string") : [],
+      enabledKnowledgeIds: Array.isArray(value.enabledKnowledgeIds) ? value.enabledKnowledgeIds.filter((id): id is string => typeof id === "string") : [],
     };
   } catch {
     return emptyOverrides();

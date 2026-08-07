@@ -24,6 +24,9 @@ export const chatRequestSchema = z.object({
         )
         .max(256),
       disabledSkillIds: z.array(z.uuid()).max(128),
+      enabledTools: z.array(z.object({ source: z.enum(["builtin", "mcp", "custom"]), id: z.uuid() })).max(256).default([]),
+      enabledSkillIds: z.array(z.uuid()).max(128).default([]),
+      enabledKnowledgeIds: z.array(z.uuid()).max(128).default([]),
     })
     .optional(),
 });

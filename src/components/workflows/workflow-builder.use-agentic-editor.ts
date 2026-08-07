@@ -1,20 +1,18 @@
-import type { Edge,ReactFlowInstance } from "@xyflow/react";
+import type { Edge, ReactFlowInstance } from "@xyflow/react";
 import { useTranslations } from "next-intl";
-import type { Dispatch,SetStateAction } from "react";
-import { useCallback,useEffect,useRef,useState } from "react";
+import type { Dispatch, SetStateAction } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-
 import { fetchJson } from "@/lib/api-client";
 import type { ChatTodoList } from "@/modules/chat/todo-list";
-import type { WorkflowAgenticHistoryMessage,WorkflowAgenticStreamEvent } from "@/modules/workflows/agentic";
+import type { WorkflowAgenticHistoryMessage, WorkflowAgenticStreamEvent } from "@/modules/workflows/agentic";
 import type { WorkflowAgentInputRequest } from "@/modules/workflows/agentic-history";
 import type { WorkflowAgentRunRequest } from "@/modules/workflows/agentic-run-approvals";
 import type { WorkflowDefinition } from "@/modules/workflows/contracts";
 import type { WorkflowDetail } from "./types";
 import type { WorkflowAgenticActivity } from "./workflow-agentic-panel";
-import { canvasEdges,canvasNodes,workflowDefinition } from "./workflow-builder.node-types";
+import { canvasEdges, canvasNodes, workflowDefinition } from "./workflow-builder.node-types";
 import type { WorkflowCanvasNodeType } from "./workflow-canvas-node";
-
 export function useWorkflowAgenticEditor(input: { workspaceId: string; workflow: WorkflowDetail; setWorkflow: Dispatch<SetStateAction<WorkflowDetail>>; nodes: WorkflowCanvasNodeType[]; edges: Edge[]; setNodes: Dispatch<SetStateAction<WorkflowCanvasNodeType[]>>; setEdges: Dispatch<SetStateAction<Edge[]>>; setSelectedNodeId: Dispatch<SetStateAction<string | null>>; flow: ReactFlowInstance<WorkflowCanvasNodeType> | null; loadRuns: () => Promise<void>; loadRunDetail: (runId: string) => Promise<void> }) {
   const { workspaceId, workflow, setWorkflow, nodes, edges, setNodes, setEdges, setSelectedNodeId, flow, loadRuns, loadRunDetail } = input;
   const t = useTranslations("workflows");
@@ -30,7 +28,6 @@ export function useWorkflowAgenticEditor(input: { workspaceId: string; workflow:
   const [agenticRunning, setAgenticRunning] = useState(false);
   const [agenticAgentName, setAgenticAgentName] = useState<string | null>(null);
   const agenticAbortRef = useRef<AbortController | null>(null);
-
   const loadAgenticHistory = useCallback(async () => {
     setAgenticHistoryLoading(true);
     try {
@@ -60,19 +57,16 @@ export function useWorkflowAgenticEditor(input: { workspaceId: string; workflow:
       setAgenticHistoryLoading(false);
     }
   }, [t, workflow.id, workspaceId]);
-
   useEffect(() => {
     const timeout = window.setTimeout(() => void loadAgenticHistory(), 0);
     return () => window.clearTimeout(timeout);
   }, [loadAgenticHistory]);
-
   useEffect(
     () => () => {
       agenticAbortRef.current?.abort();
     },
     [],
   );
-
   function applyAgenticDraft(draft: { name: string; description: string | null; definition: WorkflowDefinition }) {
     setWorkflow((current) => ({
       ...current,
@@ -177,7 +171,7 @@ export function useWorkflowAgenticEditor(input: { workspaceId: string; workflow:
           draft: {
             name: workflow.name,
             description: workflow.description,
-            definition: workflowDefinition(nodes, edges),
+            definition: workflowDefinition(nodes, edges, workflow.definition.defaultInput),
           },
         }),
         signal: abortController.signal,
@@ -284,5 +278,22 @@ export function useWorkflowAgenticEditor(input: { workspaceId: string; workflow:
       setDecidingAgenticRunRequestId(null);
     }
   }
-  return { agenticMessages, agenticPendingRequests, agenticRunRequests, agenticTodoList, agenticHistoryLoading, submittingAgenticRequestId, decidingAgenticRunRequestId, agenticActivities, agenticInput, setAgenticInput, agenticRunning, agenticAgentName, agenticAbortRef, runAgenticBuilder, submitAgenticRequest, decideAgenticRunRequest };
+  return {
+    agenticMessages,
+    agenticPendingRequests,
+    agenticRunRequests,
+    agenticTodoList,
+    agenticHistoryLoading,
+    submittingAgenticRequestId,
+    decidingAgenticRunRequestId,
+    agenticActivities,
+    agenticInput,
+    setAgenticInput,
+    agenticRunning,
+    agenticAgentName,
+    agenticAbortRef,
+    runAgenticBuilder,
+    submitAgenticRequest,
+    decideAgenticRunRequest,
+  };
 }

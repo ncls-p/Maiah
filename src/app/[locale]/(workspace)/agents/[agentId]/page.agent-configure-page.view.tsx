@@ -22,6 +22,8 @@ export function AgentConfigurePageView({ model }: { model: ViewModel }) {
     builtinTools,
     canEdit,
     capabilitiesCount,
+    customBindings,
+    customTools,
     delegationCandidates,
     delegationConfig,
     delegationCount,
@@ -46,6 +48,7 @@ export function AgentConfigurePageView({ model }: { model: ViewModel }) {
     selectedSkillIds,
     setActiveTab,
     setBuiltinBindings,
+    setCustomBindings,
     setDelegationConfig,
     setForm,
     setMcpBindings,
@@ -56,6 +59,29 @@ export function AgentConfigurePageView({ model }: { model: ViewModel }) {
     skills,
     t,
   } = model;
+  const toolOptions = [
+    ...builtinTools
+      .filter((tool) => builtinBindings[tool.id]?.enabled)
+      .map((tool) => ({
+        name: tool.name,
+        label: tool.displayName,
+        source: "builtin" as const,
+      })),
+    ...mcpTools
+      .filter((tool) => tool.enabled && mcpBindings[tool.id]?.enabled)
+      .map((tool) => ({
+        name: tool.name,
+        label: tool.name,
+        source: "mcp" as const,
+      })),
+    ...customTools
+      .filter((tool) => customBindings[tool.id]?.enabled)
+      .map((tool) => ({
+        name: tool.name,
+        label: tool.name,
+        source: "custom" as const,
+      })),
+  ];
   return (
     <WorkspacePage
       title={agent?.name ?? t("configure")}
@@ -162,6 +188,7 @@ export function AgentConfigurePageView({ model }: { model: ViewModel }) {
                   setFormAction={setForm}
                   providers={providers}
                   models={models}
+                  toolOptions={toolOptions}
                   saving={saving}
                   canAdminCurate={agent?.canAdminCurate ?? false}
                   canManageProviders={permissions.canManageProviders}
@@ -180,6 +207,9 @@ export function AgentConfigurePageView({ model }: { model: ViewModel }) {
                   mcpTools={mcpTools}
                   mcpBindings={mcpBindings}
                   setMcpBindingsAction={setMcpBindings}
+                  customTools={customTools}
+                  customBindings={customBindings}
+                  setCustomBindingsAction={setCustomBindings}
                   knowledgeBases={knowledgeBases}
                   selectedKnowledgeIds={selectedKnowledgeIds}
                   setSelectedKnowledgeIdsAction={setSelectedKnowledgeIds}

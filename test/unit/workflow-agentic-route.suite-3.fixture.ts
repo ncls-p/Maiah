@@ -22,6 +22,7 @@ export const modelUsage: LanguageModelV4Usage = {
 
 export const generatedDefinition = {
   schemaVersion: 1 as const,
+  defaultInput: { message: "Bonjour" },
   nodes: [
     ...createStarterDefinition().nodes,
     {
@@ -52,6 +53,7 @@ export const generatedDefinition = {
 
 const incompleteDefinition = {
   schemaVersion: 1 as const,
+  defaultInput: { message: "Bonjour" },
   nodes: [
     ...createStarterDefinition().nodes,
     {

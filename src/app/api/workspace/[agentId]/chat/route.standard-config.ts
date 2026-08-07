@@ -3,7 +3,7 @@ import { logger } from "@/lib/logger";
 import { resolveAgentRuntimeLimits } from "@/modules/agent/runtime-policy";
 import type { ChatAttachment } from "@/modules/chat/attachments";
 import { isChatFileAttachment } from "@/modules/chat/attachments";
-import { buildSkillsRegistryPrompt } from "@/modules/skills/use-cases";
+import { buildSkillsRegistryPrompt, listAgentSkills } from "@/modules/skills/use-cases";
 import type { AiHubToolApprovalPolicy } from "@/modules/tool/approval-policy";
 import type { ToolSet } from "ai";
 import { cookies } from "next/headers";
@@ -25,7 +25,9 @@ export async function prepareStandardChatConfig(input: {
   const shouldUseToolCalling = maxToolCalls > 0;
   const disabledToolKeys = new Set(capabilityOverrides?.disabledTools.map((tool) => `${tool.source}:${tool.id}`) ?? []);
   const disabledSkillIds = new Set(capabilityOverrides?.disabledSkillIds ?? []);
-  const skillsPrompt = shouldUseToolCalling ? await buildSkillsRegistryPrompt(version.id, disabledSkillIds) : null;
+  const requestedSkillIds = new Set(capabilityOverrides?.enabledSkillIds ?? []);
+  const enabledSkills = requestedSkillIds.size > 0 ? (await listAgentSkills(agent.workspaceId, actorUserId)).filter((skill) => requestedSkillIds.has(skill.id)) : [];
+  const skillsPrompt = shouldUseToolCalling ? await buildSkillsRegistryPrompt(version.id, disabledSkillIds, enabledSkills) : null;
   const approvalPolicy = (version.approvalPolicyJson as AiHubToolApprovalPolicy | null) ?? null;
   const boundToolConfig = shouldUseToolCalling
     ? await buildBoundTools({
@@ -38,6 +40,9 @@ export async function prepareStandardChatConfig(input: {
         hasSkills: Boolean(skillsPrompt),
         disabledToolKeys,
         disabledSkillIds,
+        enabledTools: capabilityOverrides?.enabledTools,
+        enabledSkillIds: new Set(enabledSkills.map((skill) => skill.id)),
+        enabledKnowledgeIds: capabilityOverrides?.enabledKnowledgeIds,
         enableDocumentExplorer: input.messageAttachments.some((attachment) => isChatFileAttachment(attachment) && attachment.extractedTextChars > 0) || history.some((message) => JSON.stringify(message).includes("Embedding-free document explorer:")),
         approvalPolicy,
         emitEvent: input.enqueueEvent,

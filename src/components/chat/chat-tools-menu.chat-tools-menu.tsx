@@ -1,31 +1,33 @@
 "use client";
 
-import { Link } from "@/i18n/navigation";
-import { BookOpenIcon,PlugIcon,RefreshCwIcon,SearchIcon,Settings2Icon,SparklesIcon,WrenchIcon } from "lucide-react";
+import { BookMarkedIcon, BookOpenIcon, Grid2X2Icon, ListIcon, PlugIcon, RefreshCwIcon, SparklesIcon, WrenchIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback,useMemo,useState } from "react";
 
 import { readChatCapabilityOverrides,writeChatCapabilityOverrides,type ChatCapabilityOverrides } from "@/components/chat/chat-capability-overrides";
 import type { ChatAgent } from "@/components/chat/chat-types";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu,DropdownMenuContent,DropdownMenuGroup,DropdownMenuItem,DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
+import { DropdownMenu,DropdownMenuContent,DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { fetchJson } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
-import { Capability,CapabilityGroup,EnabledSkillSummary,EnabledToolSummary,EnabledToolsPayload,isCapabilityActive,toolKey } from "./chat-tools-menu.enabled-tool-summary";
+import { Capability,CapabilityGroup,EnabledKnowledgeSummary,EnabledSkillSummary,EnabledToolSummary,EnabledToolsPayload,isCapabilityActive,toolKey } from "./chat-tools-menu.enabled-tool-summary";
+import { ChatCapabilityFooter, ChatCapabilitySearch, ChatCapabilitySidebar, type ChatCapabilityCategory } from "./chat-tools-menu.catalog-navigation";
 
 export function ChatToolsMenu({ agent, workspaceId, conversationId }: { agent: ChatAgent; workspaceId: string | null; conversationId: string | null }) {
   const t = useTranslations("chat");
   const [open, setOpen] = useState(false);
   const [tools, setTools] = useState<EnabledToolSummary[]>([]);
   const [skills, setSkills] = useState<EnabledSkillSummary[]>([]);
+  const [knowledge, setKnowledge] = useState<EnabledKnowledgeSummary[]>([]);
   const [overrides, setOverrides] = useState<ChatCapabilityOverrides>(() => readChatCapabilityOverrides(agent.id, conversationId));
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState<ChatCapabilityCategory>("all");
+  const [displayMode, setDisplayMode] = useState<"grid" | "list">("list");
 
   const refreshOverrides = useCallback(() => {
     setOverrides(readChatCapabilityOverrides(agent.id, conversationId));
@@ -36,9 +38,10 @@ export function ChatToolsMenu({ agent, workspaceId, conversationId }: { agent: C
     setLoading(true);
     setLoadError(false);
     try {
-      const payload = await fetchJson<EnabledToolsPayload>(`/api/workspace/agents/${agent.id}/tools?workspaceId=${workspaceId}&includeDetails=true`);
+      const payload = await fetchJson<EnabledToolsPayload>(`/api/workspace/agents/${agent.id}/tools?workspaceId=${workspaceId}&includeDetails=true&includeAvailable=true`);
       setTools(payload.tools);
       setSkills(payload.skills ?? []);
+      setKnowledge(payload.knowledge ?? []);
       setLoaded(true);
     } catch {
       setLoadError(true);
@@ -66,6 +69,7 @@ export function ChatToolsMenu({ agent, workspaceId, conversationId }: { agent: C
         category: tool.source === "mcp" ? ("mcp" as const) : ("tools" as const),
         name: tool.name,
         description: tool.group || tool.description || (tool.requireApproval ? t("toolsMenu.approvalRequired") : t("toolsMenu.ready")),
+        attached: tool.attached ?? true,
       })),
       ...skills.map((skill) => ({
         key: `skill:${skill.id}`,
@@ -74,20 +78,23 @@ export function ChatToolsMenu({ agent, workspaceId, conversationId }: { agent: C
         category: "skills" as const,
         name: skill.name,
         description: skill.description || t("toolsMenu.skillReady"),
+        attached: skill.attached ?? true,
       })),
+      ...knowledge.map((item) => ({ key: `knowledge:${item.id}`, id: item.id, source: "knowledge" as const, category: "knowledge" as const, name: item.name, description: item.description || t("toolsMenu.knowledgeReady"), attached: item.attached ?? true })),
     ],
-    [skills, t, tools],
+    [knowledge, skills, t, tools],
   );
 
   const normalizedSearch = search.trim().toLocaleLowerCase();
-  const visibleCapabilities = normalizedSearch ? capabilities.filter((capability) => capability.name.toLocaleLowerCase().includes(normalizedSearch) || capability.description.toLocaleLowerCase().includes(normalizedSearch)) : capabilities;
+  const visibleCapabilities = capabilities.filter((capability) => (categoryFilter === "all" || capability.category === categoryFilter) && (!normalizedSearch || capability.name.toLocaleLowerCase().includes(normalizedSearch) || capability.description.toLocaleLowerCase().includes(normalizedSearch)));
 
   const groups = useMemo<CapabilityGroup[]>(
     () =>
       [
         { category: "tools" as const, icon: WrenchIcon },
-        { category: "skills" as const, icon: BookOpenIcon },
+        { category: "skills" as const, icon: BookMarkedIcon },
         { category: "mcp" as const, icon: PlugIcon },
+        { category: "knowledge" as const, icon: BookOpenIcon },
       ]
         .map(({ category, icon }) => ({
           category,
@@ -102,10 +109,9 @@ export function ChatToolsMenu({ agent, workspaceId, conversationId }: { agent: C
   const fallbackCount = agent.toolCount || 0;
   const displayedActiveCount = loaded ? activeCount : fallbackCount;
   const displayedTotal = loaded ? capabilities.length : fallbackCount;
-  const disabledCount = loaded ? displayedTotal - displayedActiveCount : 0;
   const categoryCounts = useMemo(
     () =>
-      (["tools", "skills", "mcp"] as const).map((category) => ({
+      (["tools", "skills", "mcp", "knowledge"] as const).map((category) => ({
         category,
         count: capabilities.filter((capability) => capability.category === category).length,
       })),
@@ -118,16 +124,24 @@ export function ChatToolsMenu({ agent, workspaceId, conversationId }: { agent: C
   }
 
   function setCapabilityActive(capability: Capability, active: boolean) {
+    if (capability.source === "knowledge") {
+      persistOverrides({ ...overrides, enabledKnowledgeIds: active ? Array.from(new Set([...overrides.enabledKnowledgeIds, capability.id])) : overrides.enabledKnowledgeIds.filter((id) => id !== capability.id) });
+      return;
+    }
     if (capability.source === "skill") {
       persistOverrides({
         ...overrides,
-        disabledSkillIds: active ? overrides.disabledSkillIds.filter((id) => id !== capability.id) : Array.from(new Set([...overrides.disabledSkillIds, capability.id])),
+        ...(capability.attached
+          ? { disabledSkillIds: active ? overrides.disabledSkillIds.filter((id) => id !== capability.id) : Array.from(new Set([...overrides.disabledSkillIds, capability.id])) }
+          : { enabledSkillIds: active ? Array.from(new Set([...overrides.enabledSkillIds, capability.id])) : overrides.enabledSkillIds.filter((id) => id !== capability.id) }),
       });
       return;
     }
     persistOverrides({
       ...overrides,
-      disabledTools: active ? overrides.disabledTools.filter((tool) => tool.source !== capability.source || tool.id !== capability.id) : [...overrides.disabledTools, { source: capability.source, id: capability.id }],
+      ...(capability.attached
+        ? { disabledTools: active ? overrides.disabledTools.filter((tool) => tool.source !== capability.source || tool.id !== capability.id) : [...overrides.disabledTools, { source: capability.source, id: capability.id }] }
+        : { enabledTools: active ? [...overrides.enabledTools, { source: capability.source, id: capability.id }] : overrides.enabledTools.filter((tool) => tool.source !== capability.source || tool.id !== capability.id) }),
     });
   }
 
@@ -135,23 +149,21 @@ export function ChatToolsMenu({ agent, workspaceId, conversationId }: { agent: C
     let next = overrides;
     for (const capability of group.capabilities) {
       if (isCapabilityActive(capability, next) === active) continue;
+      if (capability.source === "knowledge") {
+        next = { ...next, enabledKnowledgeIds: active ? Array.from(new Set([...next.enabledKnowledgeIds, capability.id])) : next.enabledKnowledgeIds.filter((id) => id !== capability.id) };
+        continue;
+      }
       if (capability.source === "skill") {
-        next = {
-          ...next,
-          disabledSkillIds: active ? next.disabledSkillIds.filter((id) => id !== capability.id) : Array.from(new Set([...next.disabledSkillIds, capability.id])),
-        };
+        next = capability.attached ? { ...next, disabledSkillIds: active ? next.disabledSkillIds.filter((id) => id !== capability.id) : Array.from(new Set([...next.disabledSkillIds, capability.id])) } : { ...next, enabledSkillIds: active ? Array.from(new Set([...next.enabledSkillIds, capability.id])) : next.enabledSkillIds.filter((id) => id !== capability.id) };
       } else {
-        next = {
-          ...next,
-          disabledTools: active ? next.disabledTools.filter((tool) => tool.source !== capability.source || tool.id !== capability.id) : [...next.disabledTools, { source: capability.source, id: capability.id }],
-        };
+        next = capability.attached ? { ...next, disabledTools: active ? next.disabledTools.filter((tool) => tool.source !== capability.source || tool.id !== capability.id) : [...next.disabledTools, { source: capability.source, id: capability.id }] } : { ...next, enabledTools: active ? [...next.enabledTools, { source: capability.source, id: capability.id }] : next.enabledTools.filter((tool) => tool.source !== capability.source || tool.id !== capability.id) };
       }
     }
     persistOverrides(next);
   }
 
   function resetOverrides() {
-    persistOverrides({ disabledTools: [], disabledSkillIds: [] });
+    persistOverrides({ disabledTools: [], disabledSkillIds: [], enabledTools: [], enabledSkillIds: [], enabledKnowledgeIds: [] });
   }
 
   const groupLabel = (category: Capability["category"]) => t(`toolsMenu.groups.${category}`);
@@ -175,7 +187,7 @@ export function ChatToolsMenu({ agent, workspaceId, conversationId }: { agent: C
         </Button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent side="top" align="start" sideOffset={12} className="w-[min(25rem,calc(100vw-1rem))] overflow-hidden rounded-[1.375rem] p-0">
+      <DropdownMenuContent side="top" align="start" sideOffset={12} className="w-[min(42rem,calc(100vw-1rem))] overflow-hidden rounded-[1.375rem] p-0">
         <div className="flex items-start justify-between gap-4 px-4 pb-3 pt-4">
           <div className="min-w-0">
             <h2 className="text-sm font-semibold tracking-[-0.02em]">{t("toolsMenu.title")}</h2>
@@ -196,22 +208,24 @@ export function ChatToolsMenu({ agent, workspaceId, conversationId }: { agent: C
               </div>
             ) : null}
           </div>
-          {disabledCount > 0 ? (
+          <div className="flex shrink-0 gap-1">
+          <Button type="button" variant="ghost" size="icon" className="size-9 rounded-xl" aria-label={t(displayMode === "grid" ? "toolsMenu.showList" : "toolsMenu.showGrid")} onClick={() => setDisplayMode((current) => current === "grid" ? "list" : "grid")}>
+            {displayMode === "grid" ? <ListIcon className="size-4" aria-hidden="true" /> : <Grid2X2Icon className="size-4" aria-hidden="true" />}
+          </Button>
+          {overrides.disabledTools.length + overrides.disabledSkillIds.length + overrides.enabledTools.length + overrides.enabledSkillIds.length + overrides.enabledKnowledgeIds.length > 0 ? (
             <Button type="button" variant="ghost" size="sm" className="min-h-9 shrink-0 rounded-xl px-2.5 text-xs" onClick={resetOverrides}>
               <RefreshCwIcon data-icon="inline-start" aria-hidden="true" />
               {t("toolsMenu.reset")}
             </Button>
           ) : null}
-        </div>
-
-        <div className="px-3 pb-3" onKeyDown={(event) => event.stopPropagation()}>
-          <div className="relative">
-            <SearchIcon className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-            <Input aria-label={t("toolsMenu.search")} value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("toolsMenu.search")} className="h-10 rounded-xl border-transparent bg-muted/65 pl-9 text-sm shadow-none" />
           </div>
         </div>
 
-        <div className="max-h-[min(23rem,55vh)] overflow-y-auto border-y border-border/55 px-2 py-2">
+        <ChatCapabilitySearch value={search} onChange={setSearch} label={t("toolsMenu.search")} />
+
+        <div className="grid max-h-[min(25rem,60vh)] grid-cols-[8.5rem_minmax(0,1fr)] border-y border-border/55">
+          <ChatCapabilitySidebar category={categoryFilter} setCategory={setCategoryFilter} capabilities={capabilities} label={t("toolsMenu.groups.all")} groupLabel={groupLabel} />
+          <div className="overflow-y-auto px-2 py-2">
           {loading ? (
             <div className="flex flex-col gap-1">
               {Array.from({ length: 5 }, (_, index) => (
@@ -234,7 +248,7 @@ export function ChatToolsMenu({ agent, workspaceId, conversationId }: { agent: C
               </Button>
             </div>
           ) : groups.length > 0 ? (
-            <div className="flex flex-col gap-2">
+            <div className={cn("grid gap-2", displayMode === "grid" && "sm:grid-cols-2")}>
               {groups.map((group) => {
                 const GroupIcon = group.icon;
                 const groupActiveCount = group.capabilities.filter((capability) => isCapabilityActive(capability, overrides)).length;
@@ -274,19 +288,10 @@ export function ChatToolsMenu({ agent, workspaceId, conversationId }: { agent: C
           ) : (
             <div className="flex min-h-32 items-center justify-center px-6 text-center text-xs text-muted-foreground">{normalizedSearch ? t("toolsMenu.noMatches") : t("toolsMenu.empty")}</div>
           )}
+          </div>
         </div>
 
-        <div className="flex items-center justify-between gap-3 px-3 py-3">
-          <p className="min-w-0 truncate pl-1 text-[0.66rem] text-muted-foreground">{t("toolsMenu.chatOnly")}</p>
-          <DropdownMenuGroup>
-            <DropdownMenuItem asChild className="min-h-10 cursor-pointer px-3 text-xs font-medium">
-              <Link href={`/agents/${agent.id}`} className="gap-2">
-                <Settings2Icon data-icon="inline-start" aria-hidden="true" />
-                {t("toolsMenu.customize")}
-              </Link>
-            </DropdownMenuItem>
-          </DropdownMenuGroup>
-        </div>
+        <ChatCapabilityFooter agentId={agent.id} chatOnly={t("toolsMenu.chatOnly")} customize={t("toolsMenu.customize")} />
       </DropdownMenuContent>
     </DropdownMenu>
   );

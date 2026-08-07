@@ -45,6 +45,7 @@ export async function invokeNode(type: WorkflowNodeType, input: unknown, params:
 export function definitionWith(node: WorkflowNode): WorkflowDefinition {
   return {
     schemaVersion: 1,
+    defaultInput: { message: "Bonjour" },
     nodes: [...createStarterDefinition().nodes, node],
     edges: [{ id: "edge", source: "trigger", target: node.id }],
   };

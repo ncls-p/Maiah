@@ -241,7 +241,15 @@ Avant merge :
 
 - PostgreSQL 16/pgvector et Dragonfly ont été démarrés avec Docker ; la migration `0028`, ses tables, contraintes et triggers ont été validés sur le moteur réel.
 - 92 fichiers de tests et 923 tests unitaires/intégration passent. La couverture atteint 95,09 % des statements/lignes, 80,08 % des branches et 96,93 % des fonctions, au-dessus des seuils configurés.
-- Les 104 scénarios Playwright Chromium passent sans retry sur le build de production. Ils couvrent notamment l’authentification, le setup, le chat, les assistants, la création/suppression d’un orchestrateur, les connaissances, les outils, les clés API, les paramètres, les langues, le thème, l’usage et l’audit.
+- La suite Playwright Chromium couvre notamment l’authentification, le setup, le chat, les assistants, la création/suppression d’un orchestrateur, les connaissances, les outils, les clés API, les paramètres, les langues, le thème, l’usage et l’audit. Le nombre exact de scénarios est fourni par chaque exécution CI afin que ce document ne devienne pas obsolète.
+
+## Capacités, mémoire et workflows
+
+- L’onglet Capacités d’un assistant permet la recherche globale, le filtrage latéral (outils, MCP, connaissances, skills) et les vues grille/liste, y compris pour les outils personnalisés.
+- Le sélecteur du chat présente aussi les capacités visibles mais non attachées à l’assistant ; leur activation reste limitée à la conversation et les permissions sont revérifiées côté serveur.
+- Les réglages avancés exposent uniquement des paramètres réellement transmis au runtime. Les règles par outil utilisent un sélecteur, et le résumé automatique est déclenché au seuil de tokens configuré puis affiché dans le fil.
+- Le test d’un workflow accepte un JSON personnalisé, indique les erreurs avant exécution, permet d’enregistrer l’entrée par défaut et conserve cette entrée après rechargement. Le mode agentique peut modifier la même valeur.
+- Le plein écran du workflow occupe le viewport, Échap le ferme, et la palette d’étapes conserve une zone de défilement native utilisable au clavier et à la souris.
 - Le build Next.js génère avec succès les 84 pages et routes. Le lockfile reproductible, Prettier, ESLint et TypeScript passent également.
 - Huit routes principales ont été contrôlées à 320, 375, 768 et 1440 px sans overflow horizontal. Axe ne remonte aucune violation critique ou sérieuse sur leur état stabilisé.
 - Les intégrations nécessitant des comptes tiers réels (fournisseurs IA, GitHub, MCP distant) restent validées par contrats, mocks et tests d’intégration ; leur smoke avec identifiants de production relève de la recette de déploiement.

@@ -1,4 +1,8 @@
-import { workflowAgentCatalogPrompt, workflowAgentPromptDraft, type WorkflowAgenticDraft } from "@/modules/workflows/agentic";
+import {
+  workflowAgentCatalogPrompt,
+  workflowAgentPromptDraft,
+  type WorkflowAgenticDraft,
+} from "@/modules/workflows/agentic";
 
 type PromptAgent = { id: string; name: string };
 
@@ -16,7 +20,7 @@ export function createWorkflowAgentSystemPrompt(input: {
     "For every workflow-building turn, follow this order: (1) research the live web, (2) call set_workflow_plan with a concise implementation and test plan, (3) call update_todo_list to show that plan to the user, (4) build or edit the workflow while updating the same to-do item IDs as work starts and completes, (5) call validate_workflow, (6) test relevant logic in run_code_sandbox when useful, (7) call dry_run_workflow, and only then (8) call request_workflow_run if a real execution is useful or requested.",
     "Never skip directly from a user request to workflow edits. The plan must explain the intended nodes, connections, required information, and how you will verify the result.",
     "Keep exactly one trigger.manual node. Build an acyclic graph and connect every useful step. Use clear, non-technical labels and lay nodes out from left to right with generous spacing.",
-    "Use update_workflow_details for the name or description. Prefer upsert_workflow_nodes, remove_workflow_nodes, and connect_workflow_nodes when editing an existing graph so unchanged configuration remains intact. connect_workflow_nodes replaces the complete connection set and generates safe edge IDs for you. Use replace_workflow only when rebuilding the entire graph. Then use validate_workflow before your concise final answer.",
+    "Use update_workflow_details for the name or description and update_workflow_input for the saved default JSON input. Prefer upsert_workflow_nodes, remove_workflow_nodes, and connect_workflow_nodes when editing an existing graph so unchanged configuration remains intact. connect_workflow_nodes replaces the complete connection set and generates safe edge IDs for you. Use replace_workflow only when rebuilding the entire graph. Then use validate_workflow before your concise final answer.",
     "Large existing parameter values may be truncated in your context. Preserve them with granular tools unless the user explicitly asks to replace them.",
     "Only use assistant IDs from the available assistant list. Never invent an ID.",
     "Never publish the workflow. Never execute it directly. A real workflow run requires request_workflow_run and explicit human approval in the interface. The user may reject it.",
@@ -29,6 +33,8 @@ export function createWorkflowAgentSystemPrompt(input: {
     `Available assistants: ${JSON.stringify(input.availableAgents.map(({ id, name }) => ({ id, name })))}`,
     `Supported workflow steps: ${JSON.stringify(workflowAgentCatalogPrompt())}`,
     `Current to-do list for this workflow: ${JSON.stringify(input.currentTodoList)}`,
-    input.initialWebResearchOk ? `Fresh web research for this turn: ${JSON.stringify(input.initialWebResearch).slice(0, 16_000)}` : `The automatic web search attempt failed: ${input.initialWebResearchError ?? "unknown error"}. Call web_search before making claims that need external information.`,
+    input.initialWebResearchOk
+      ? `Fresh web research for this turn: ${JSON.stringify(input.initialWebResearch).slice(0, 16_000)}`
+      : `The automatic web search attempt failed: ${input.initialWebResearchError ?? "unknown error"}. Call web_search before making claims that need external information.`,
   ].join("\n\n");
 }

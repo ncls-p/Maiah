@@ -280,6 +280,10 @@ Maiah can also be used as an OpenAI-compatible model proxy with `baseURL = https
 
 The Anthropic-compatible Messages API, multi-currency usage analytics, and organization branding are documented in [API compatibility and usage analytics](docs/architecture/api-compatibility-and-usage.md).
 
+Assistant configuration exposes provider-supported generation controls (temperature, top-p, top-k, penalties, seed, retries, stop sequences and output limits), searchable capability catalogs, and per-tool approval/block rules. Conversation memory can automatically create a visible summary after an assistant-defined token threshold. Chat users may temporarily add workspace-visible tools, MCP tools, skills, and knowledge sources to one conversation; server-side visibility and approval checks still apply.
+
+Workflow definitions persist a user-editable default JSON input. The visual test panel and workflow agent can both update it, and full-screen editing is rendered at the document root so it is not constrained by page animation containers.
+
 | Method       | Path                                         | Description                                                            |
 | ------------ | -------------------------------------------- | ---------------------------------------------------------------------- |
 | `GET`        | `/api/health`                                | Health check (app + database)                                          |

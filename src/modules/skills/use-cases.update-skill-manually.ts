@@ -113,7 +113,7 @@ export function normalizeSkillMarkdownFiles(input: { name: string; description: 
   return normalized;
 }
 
-export async function getBoundSkillCatalog(agentVersionId: string, disabledSkillIds: ReadonlySet<string> = new Set()) {
+export async function getBoundSkillCatalog(agentVersionId: string, disabledSkillIds: ReadonlySet<string> = new Set(), additionalSkills: Array<{ id: string; name: string; description: string | null }> = []) {
   const skills = await db
     .select({
       id: agentSkills.id,
@@ -124,11 +124,13 @@ export async function getBoundSkillCatalog(agentVersionId: string, disabledSkill
     .innerJoin(agentSkills, eq(agentSkillBindings.skillId, agentSkills.id))
     .where(and(eq(agentSkillBindings.agentVersionId, agentVersionId), isNull(agentSkills.archivedAt)))
     .orderBy(sql`${agentSkills.name} ASC`);
-  return skills.filter((skill) => !disabledSkillIds.has(skill.id));
+  const byId = new Map(skills.filter((skill) => !disabledSkillIds.has(skill.id)).map((skill) => [skill.id ?? `name:${skill.name}`, skill]));
+  for (const skill of additionalSkills) byId.set(skill.id, skill);
+  return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 
-export async function buildSkillsRegistryPrompt(agentVersionId: string, disabledSkillIds: ReadonlySet<string> = new Set()) {
-  const skills = await getBoundSkillCatalog(agentVersionId, disabledSkillIds);
+export async function buildSkillsRegistryPrompt(agentVersionId: string, disabledSkillIds: ReadonlySet<string> = new Set(), additionalSkills: Array<{ id: string; name: string; description: string | null }> = []) {
+  const skills = await getBoundSkillCatalog(agentVersionId, disabledSkillIds, additionalSkills);
   if (skills.length === 0) return null;
 
   const skillList = skills.map((skill) => `- ${skill.name}: ${skill.description ?? "No description provided"}`).join("\n");

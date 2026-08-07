@@ -2,6 +2,7 @@ import { handleRoute,requireResourcePermissionAsync } from "@/lib/route-handler"
 import { canManageTenantGlobals } from "@/modules/admin/auth";
 import { getActiveVersion,getAgentVersionById,getVisibleAgentById } from "@/modules/agent/use-cases";
 import { getBoundSkillCatalog } from "@/modules/skills/use-cases";
+import { getKnowledgeBindingsForVersion } from "@/modules/knowledge/use-cases";
 import { getBuiltInTool } from "@/modules/tool/builtin-tools";
 import { getToolBindingsForVersion } from "@/modules/tool/use-cases";
 import { db } from "@/server/infrastructure/db";
@@ -9,12 +10,14 @@ import { customTools,mcpServers,mcpTools } from "@/server/infrastructure/db/sche
 import { and,eq,inArray } from "drizzle-orm";
 import { NextRequest,NextResponse } from "next/server";
 import { z } from "zod";
+import { listAvailableCapabilities } from "./route.available-capabilities";
 
 export const routeParamsSchema = z.object({ agentId: z.uuid() });
 export const querySchema = z.object({
   workspaceId: z.uuid(),
   versionId: z.uuid().optional(),
   includeDetails: z.literal("true").optional(),
+  includeAvailable: z.literal("true").optional(),
 });
 
 type ToolBinding = Awaited<ReturnType<typeof getToolBindingsForVersion>>[number];
@@ -123,12 +126,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ agen
         workspaceId: searchParams.get("workspaceId"),
         versionId: searchParams.get("versionId") ?? undefined,
         includeDetails: searchParams.get("includeDetails") ?? undefined,
+        includeAvailable: searchParams.get("includeAvailable") ?? undefined,
       });
       if (!parsedParams.success || !parsedQuery.success) {
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
       }
       const { agentId } = parsedParams.data;
-      const { workspaceId, versionId, includeDetails } = parsedQuery.data;
+      const { workspaceId, versionId, includeDetails, includeAvailable } = parsedQuery.data;
       const forbidden = await requireResourcePermissionAsync(session.user.id, workspaceId, "agents.get", "agent", (await params).agentId);
       if (forbidden) return forbidden;
       const agent = await getVisibleAgentById(agentId, workspaceId, session.user.id, await canManageTenantGlobals(session, workspaceId));
@@ -148,7 +152,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ agen
         userId: session.user.id,
       });
       if (includeDetails === "true") {
-        const [tools, skills] = await Promise.all([describeToolBindings(bindings, workspaceId), getBoundSkillCatalog(targetVersionId)]);
+        const [tools, skills, knowledgeBindings] = await Promise.all([describeToolBindings(bindings, workspaceId), getBoundSkillCatalog(targetVersionId), getKnowledgeBindingsForVersion(targetVersionId, { workspaceId, userId: session.user.id })]);
+        if (includeAvailable === "true") {
+          return NextResponse.json(await listAvailableCapabilities({ workspaceId, userId: session.user.id, canManageGlobal: await canManageTenantGlobals(session, workspaceId), bindings, boundSkillIds: new Set(skills.map((skill) => skill.id)), boundKnowledgeIds: new Set(knowledgeBindings.map((item) => item.knowledgeBaseId)) }));
+        }
         return NextResponse.json({
           bindings,
           tools,

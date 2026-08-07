@@ -1,26 +1,34 @@
-import { Field,FieldContent,FieldLabel } from "@/components/ui/field";
+import { Field, FieldContent, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 
 import type { ModelAdvancedFieldsViewModel } from "./model-advanced-fields.model-advanced-fields.view";
-export function ModelAdvancedMainSection7({ model }: { model: ModelAdvancedFieldsViewModel }) {
+export function ModelAdvancedMainSection7({
+  model,
+}: {
+  model: ModelAdvancedFieldsViewModel;
+}) {
   const { form, setForm, t } = model;
   return (
     <Field>
-      <FieldLabel htmlFor="agent-memory-max-messages" help={t("memoryMaxMessagesHelp")}>
-        {t("memoryMaxMessages")}
+      <FieldLabel
+        htmlFor="agent-memory-summary-threshold"
+        help={t("memorySummaryThresholdHelp")}
+      >
+        {t("memorySummaryThreshold")}
       </FieldLabel>
       <FieldContent>
         <Input
-          id="agent-memory-max-messages"
+          id="agent-memory-summary-threshold"
           type="number"
-          min={1}
-          value={form.memoryPolicy.maxMessages}
+          min={1000}
+          step={1000}
+          value={form.memoryPolicy.summaryThresholdTokens}
           onChange={(e) =>
             setForm((prev) => ({
               ...prev,
               memoryPolicy: {
                 ...prev.memoryPolicy,
-                maxMessages: Number(e.target.value) || 1,
+                summaryThresholdTokens: Number(e.target.value) || 1_000,
               },
             }))
           }

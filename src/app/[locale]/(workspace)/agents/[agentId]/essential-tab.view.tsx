@@ -1,10 +1,10 @@
-import { MessageSquareIcon,SettingsIcon } from "lucide-react";
+import { MessageSquareIcon, SettingsIcon } from "lucide-react";
 
 import { ModelLogo } from "@/components/providers/model-logo";
 import { AdvancedSection } from "@/components/ui/advanced-section";
-import { Field,FieldContent,FieldGroup,FieldLabel } from "@/components/ui/field";
+import { Field, FieldContent, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Select,SelectContent,SelectItem,SelectTrigger,SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
 import { ConfigSection } from "./config-section";
@@ -21,7 +21,7 @@ import { getProviderKindIcon } from "./utils";
 
 export type EssentialTabViewModel = Extract<ReturnType<typeof useEssentialTabController>, { kind: "ready" }>;
 export function EssentialTabView({ model }: { model: EssentialTabViewModel }) {
-  const { agentKind, canAdminCurate, filteredModels, form, hasProviders, onSave, providers, readOnly, selectedProviderHasModels, setForm, t, tCommon, tModel } = model;
+  const { agentKind, canAdminCurate, filteredModels, form, hasProviders, onSave, providers, readOnly, selectedModel, selectedProviderHasModels, setForm, t, tCommon, tModel, toolOptions } = model;
   return (
     <form onSubmit={readOnly ? (event) => event.preventDefault() : onSave} className="flex flex-col gap-3">
       <fieldset disabled={readOnly} className="contents">
@@ -214,7 +214,7 @@ export function EssentialTabView({ model }: { model: EssentialTabViewModel }) {
                 <MessageSquareIcon className="size-4 text-muted-foreground" aria-hidden="true" />
                 {tModel("advancedHint")}
               </p>
-              <ModelAdvancedFields form={form} setFormAction={setForm} />
+              <ModelAdvancedFields form={form} setFormAction={setForm} selectedModel={selectedModel} toolOptions={toolOptions} />
             </div>
           </div>
         </AdvancedSection>

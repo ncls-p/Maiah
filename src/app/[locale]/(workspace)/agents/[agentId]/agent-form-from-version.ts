@@ -1,4 +1,4 @@
-import type { Agent,AgentForm } from "./types";
+import type { Agent, AgentForm } from "./types";
 import { defaultGenParams } from "./types";
 
 export type AgentVersionPayload = {
@@ -20,12 +20,19 @@ export type AgentVersionPayload = {
     stopSequences?: string[];
   } | null;
   responseFormatJson: { type?: "text" | "json_object" } | null;
-  memoryPolicyJson: { enabled?: boolean; maxMessages?: number } | null;
+  memoryPolicyJson: {
+    enabled?: boolean;
+    summaryThresholdTokens?: number;
+    maxMessages?: number;
+  } | null;
   guardrailsJson: { enabled?: boolean; blockedTopics?: string[] } | null;
   approvalPolicyJson: AgentForm["approvalPolicy"] | null;
 };
 
-function coerceNumericField(value: string | number | null | undefined, fallback: string): string {
+function coerceNumericField(
+  value: string | number | null | undefined,
+  fallback: string,
+): string {
   if (value === null || value === undefined || value === "") return fallback;
   return String(value);
 }
@@ -52,7 +59,8 @@ function buildPolicySettings(activeVersion: AgentVersionPayload | null) {
   return {
     memoryPolicy: {
       enabled: activeVersion?.memoryPolicyJson?.enabled ?? false,
-      maxMessages: activeVersion?.memoryPolicyJson?.maxMessages ?? 50,
+      summaryThresholdTokens:
+        activeVersion?.memoryPolicyJson?.summaryThresholdTokens ?? 24_000,
     },
     guardrails: {
       enabled: activeVersion?.guardrailsJson?.enabled ?? false,
@@ -60,7 +68,8 @@ function buildPolicySettings(activeVersion: AgentVersionPayload | null) {
     },
     approvalPolicy: {
       ...activeVersion?.approvalPolicyJson,
-      requireApprovalForAllTools: activeVersion?.approvalPolicyJson?.requireApprovalForAllTools ?? false,
+      requireApprovalForAllTools:
+        activeVersion?.approvalPolicyJson?.requireApprovalForAllTools ?? false,
     },
   };
 }
@@ -69,17 +78,44 @@ function buildModelSettings(activeVersion: AgentVersionPayload | null) {
   return {
     providerId: activeVersion?.providerId ?? "",
     modelId: activeVersion?.modelId ?? "",
-    temperature: coerceNumericField(activeVersion?.temperature, defaultGenParams.temperature),
+    temperature: coerceNumericField(
+      activeVersion?.temperature,
+      defaultGenParams.temperature,
+    ),
     topP: coerceNumericField(activeVersion?.topP, defaultGenParams.topP),
-    maxOutputTokens: coerceNumericField(activeVersion?.maxOutputTokens, defaultGenParams.maxOutputTokens),
-    maxToolCalls: coerceNumericField(activeVersion?.maxToolCalls, defaultGenParams.maxToolCalls),
+    maxOutputTokens: coerceNumericField(
+      activeVersion?.maxOutputTokens,
+      defaultGenParams.maxOutputTokens,
+    ),
+    maxToolCalls: coerceNumericField(
+      activeVersion?.maxToolCalls,
+      defaultGenParams.maxToolCalls,
+    ),
     toolChoice: activeVersion?.toolChoice ?? "auto",
     generationSettings: buildGenerationSettings(activeVersion),
-    responseFormat: activeVersion?.responseFormatJson?.type === "json_object" ? "json_object" : "text",
-  } satisfies Pick<AgentForm, "providerId" | "modelId" | "temperature" | "topP" | "maxOutputTokens" | "maxToolCalls" | "toolChoice" | "generationSettings" | "responseFormat">;
+    responseFormat:
+      activeVersion?.responseFormatJson?.type === "json_object"
+        ? "json_object"
+        : "text",
+  } satisfies Pick<
+    AgentForm,
+    | "providerId"
+    | "modelId"
+    | "temperature"
+    | "topP"
+    | "maxOutputTokens"
+    | "maxToolCalls"
+    | "toolChoice"
+    | "generationSettings"
+    | "responseFormat"
+  >;
 }
 
-export function buildAgentFormFromVersion(agent: Agent, activeVersion: AgentVersionPayload | null, shareTargetEmail?: string | null): AgentForm {
+export function buildAgentFormFromVersion(
+  agent: Agent,
+  activeVersion: AgentVersionPayload | null,
+  shareTargetEmail?: string | null,
+): AgentForm {
   return {
     name: agent.name,
     slug: agent.slug,

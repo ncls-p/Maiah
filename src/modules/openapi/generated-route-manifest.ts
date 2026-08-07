@@ -818,7 +818,12 @@ export const OPENAPI_ROUTE_MANIFEST = [
     auth: ["session", "apiKey"],
     permissions: ["agents.get", "roles.manage"],
     pathParameters: ["agentId"],
-    queryParameters: ["includeDetails", "versionId", "workspaceId"],
+    queryParameters: [
+      "includeAvailable",
+      "includeDetails",
+      "versionId",
+      "workspaceId",
+    ],
     bodyKind: "none",
     responseKind: "json",
   },

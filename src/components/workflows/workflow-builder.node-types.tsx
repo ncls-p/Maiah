@@ -1,17 +1,22 @@
 "use client";
 
-import { MarkerType,type Edge } from "@xyflow/react";
+import { MarkerType, type Edge } from "@xyflow/react";
 
 import type { WorkflowDefinition } from "@/modules/workflows/contracts";
 
 import type { WorkflowRun } from "./types";
-import { WorkflowCanvasNode,type WorkflowCanvasNodeType } from "./workflow-canvas-node";
+import {
+  WorkflowCanvasNode,
+  type WorkflowCanvasNodeType,
+} from "./workflow-canvas-node";
 
 export const nodeTypes = { workflow: WorkflowCanvasNode };
 
 export type AgentOption = { id: string; name: string };
 
-export function canvasNodes(definition: WorkflowDefinition): WorkflowCanvasNodeType[] {
+export function canvasNodes(
+  definition: WorkflowDefinition,
+): WorkflowCanvasNodeType[] {
   return definition.nodes.map((node) => ({
     id: node.id,
     type: "workflow",
@@ -37,9 +42,14 @@ export function canvasEdges(definition: WorkflowDefinition): Edge[] {
   }));
 }
 
-export function workflowDefinition(nodes: WorkflowCanvasNodeType[], edges: Edge[]): WorkflowDefinition {
+export function workflowDefinition(
+  nodes: WorkflowCanvasNodeType[],
+  edges: Edge[],
+  defaultInput: WorkflowDefinition["defaultInput"],
+): WorkflowDefinition {
   return {
     schemaVersion: 1,
+    defaultInput,
     nodes: nodes.map((node) => ({
       id: node.id,
       type: node.data.workflowType,
@@ -52,7 +62,10 @@ export function workflowDefinition(nodes: WorkflowCanvasNodeType[], edges: Edge[
       id: edge.id,
       source: edge.source,
       target: edge.target,
-      sourceHandle: edge.sourceHandle === "true" || edge.sourceHandle === "false" ? edge.sourceHandle : null,
+      sourceHandle:
+        edge.sourceHandle === "true" || edge.sourceHandle === "false"
+          ? edge.sourceHandle
+          : null,
     })),
   };
 }

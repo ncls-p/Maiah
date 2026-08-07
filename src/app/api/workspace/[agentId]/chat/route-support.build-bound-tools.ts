@@ -5,7 +5,7 @@ import { decideToolApproval,type AiHubToolApprovalPolicy } from "@/modules/tool/
 import { getBuiltInTool,getBuiltInToolByName,requiresApproval } from "@/modules/tool/builtin-tools";
 import { evaluateOpaToolApprovalPolicy } from "@/modules/tool/opa-approval-policy";
 import { getOrganizationBuiltInToolPolicyMap } from "@/modules/tool/organization-builtin-tool-policies";
-import { canExecuteRestrictedTool,getCustomBindingContext,getMcpBindingContext,getToolBindingsForVersion } from "@/modules/tool/use-cases";
+import { canExecuteRestrictedTool,getAvailableCustomToolContext,getAvailableMcpToolContext,getCustomBindingContext,getMcpBindingContext,getToolBindingsForVersion } from "@/modules/tool/use-cases";
 import { jsonSchema,type ToolApprovalConfiguration,type ToolSet } from "ai";
 import { z } from "zod";
 import { buildExternalToolKey,createCustomToolExecute } from "./route-support.build-external-tool-key";
@@ -27,6 +27,9 @@ export type BuildBoundToolsInput = {
   hasSkills?: boolean;
   disabledToolKeys?: ReadonlySet<string>;
   disabledSkillIds?: ReadonlySet<string>;
+  enabledTools?: Array<{ source: "builtin" | "mcp" | "custom"; id: string }>;
+  enabledSkillIds?: ReadonlySet<string>;
+  enabledKnowledgeIds?: string[];
   enableDocumentExplorer?: boolean;
   emitEvent?: (event: Record<string, unknown>) => void;
   onApprovalRequired?: (event: ToolApprovalRequiredEvent) => void;
@@ -39,8 +42,16 @@ export async function buildBoundTools(input: BuildBoundToolsInput) {
     getKnowledgeBindingsForVersion(input.agentVersionId, {
       workspaceId: input.workspaceId,
       userId: input.userId,
+      additionalKnowledgeBaseIds: input.enabledKnowledgeIds,
     }),
   ]);
+  const enabledToolKeys = new Set(input.enabledTools?.map((tool) => `${tool.source}:${tool.id}`) ?? []);
+  const boundKeys = new Set(bindings.map((binding) => `${binding.toolSource}:${binding.toolId}`));
+  const runtimeBindings = [...bindings];
+  for (const tool of input.enabledTools ?? []) {
+    if (boundKeys.has(`${tool.source}:${tool.id}`)) continue;
+    runtimeBindings.push({ id: crypto.randomUUID(), agentVersionId: input.agentVersionId, toolSource: tool.source, toolId: tool.id, requireApproval: true, riskLevel: null, createdAt: new Date() });
+  }
   const tools: ToolSet = {};
   const usedToolKeys = new Set<string>();
   const toolApprovalMetadata = new Map<string, BoundToolApprovalMetadata>();
@@ -90,17 +101,20 @@ export async function buildBoundTools(input: BuildBoundToolsInput) {
           agentVersionId: input.agentVersionId,
           skillName: parsed.data.skillName,
           disabledSkillIds: input.disabledSkillIds,
+          enabledSkillIds: input.enabledSkillIds,
+          workspaceId: input.workspaceId,
+          userId: input.userId,
         });
       },
     };
   }
 
-  for (const binding of bindings) {
+  for (const binding of runtimeBindings) {
     if (input.disabledToolKeys?.has(`${binding.toolSource}:${binding.toolId}`)) {
       continue;
     }
     if (binding.toolSource === "custom") {
-      const customContext = await getCustomBindingContext(input.agentVersionId, binding.toolId, input.userId, input.workspaceId);
+      const customContext = enabledToolKeys.has(`custom:${binding.toolId}`) && !boundKeys.has(`custom:${binding.toolId}`) ? await getAvailableCustomToolContext(binding.toolId, input.userId, input.workspaceId) : await getCustomBindingContext(input.agentVersionId, binding.toolId, input.userId, input.workspaceId);
       if (!customContext) continue;
       const customTool = customContext.tool;
       const toolKey = buildExternalToolKey({
@@ -126,7 +140,7 @@ export async function buildBoundTools(input: BuildBoundToolsInput) {
     }
 
     if (binding.toolSource === "mcp") {
-      const mcpContext = await getMcpBindingContext(input.agentVersionId, binding.toolId, input.userId, input.workspaceId);
+      const mcpContext = enabledToolKeys.has(`mcp:${binding.toolId}`) && !boundKeys.has(`mcp:${binding.toolId}`) ? await getAvailableMcpToolContext(binding.toolId, input.userId, input.workspaceId) : await getMcpBindingContext(input.agentVersionId, binding.toolId, input.userId, input.workspaceId);
       if (!mcpContext) continue;
       const mcpTool = mcpContext.tool;
 

@@ -1,16 +1,18 @@
 "use client";
 
-import { addEdge,MarkerType,useEdgesState,useNodesState,type Connection,type ReactFlowInstance } from "@xyflow/react";
+import { addEdge, MarkerType, useEdgesState, useNodesState, type Connection, type ReactFlowInstance } from "@xyflow/react";
 import { useTranslations } from "next-intl";
-import { useCallback,useEffect,useMemo,useRef,useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { fetchJson } from "@/lib/api-client";
-import { WORKFLOW_NODE_CATALOG,workflowNodeCatalogItem,type WorkflowNodeCategory } from "@/modules/workflows/catalog";
+import { WORKFLOW_NODE_CATALOG, workflowNodeCatalogItem, type WorkflowNodeCategory } from "@/modules/workflows/catalog";
 import type { WorkflowNodeType } from "@/modules/workflows/contracts";
 
-import type { WorkflowDetail,WorkflowRun,WorkflowRunDetail } from "./types";
-import { AgentOption,canvasEdges,canvasNodes,workflowDefinition } from "./workflow-builder.node-types";
+import type { WorkflowDetail, WorkflowRun } from "./types";
+import { AgentOption, canvasEdges, canvasNodes } from "./workflow-builder.node-types";
+import { useWorkflowActions } from "./workflow-builder.use-actions";
+import { useWorkflowRunDetail } from "./workflow-builder.use-run-detail";
 import { useWorkflowAgenticEditor } from "./workflow-builder.use-agentic-editor";
 import { WorkflowBuilderView } from "./workflow-builder.workflow-builder.view";
 import { type WorkflowCanvasNodeType } from "./workflow-canvas-node";
@@ -22,11 +24,6 @@ export function useWorkflowBuilderController({ workspaceId, initialWorkflow, age
   const [edges, setEdges, onEdgesChange] = useEdgesState(canvasEdges(initialWorkflow.definition));
   const [flow, setFlow] = useState<ReactFlowInstance<WorkflowCanvasNodeType> | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [publishing, setPublishing] = useState(false);
-  const [runSheetOpen, setRunSheetOpen] = useState(false);
-  const [runInput, setRunInput] = useState('{\n  "message": "Bonjour"\n}');
-  const [running, setRunning] = useState(false);
   const [runs, setRuns] = useState<WorkflowRun[]>([]);
   const [runsLoading, setRunsLoading] = useState(false);
   const [runsLoaded, setRunsLoaded] = useState(false);
@@ -37,9 +34,6 @@ export function useWorkflowBuilderController({ workspaceId, initialWorkflow, age
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [paletteSearch, setPaletteSearch] = useState("");
   const [paletteCategory, setPaletteCategory] = useState<WorkflowNodeCategory>("all");
-  const [runDetail, setRunDetail] = useState<WorkflowRunDetail | null>(null);
-  const [runDetailLoading, setRunDetailLoading] = useState(false);
-  const [runDetailOpen, setRunDetailOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
   const [editorMode, setEditorMode] = useState<"visual" | "agentic">("visual");
 
@@ -71,7 +65,21 @@ export function useWorkflowBuilderController({ workspaceId, initialWorkflow, age
     }
   }, [t, workflow.id, workspaceId]);
 
-  const { agenticMessages, agenticPendingRequests, agenticRunRequests, agenticTodoList, agenticHistoryLoading, submittingAgenticRequestId, decidingAgenticRunRequestId, agenticActivities, agenticInput, setAgenticInput, agenticRunning, agenticAgentName, agenticAbortRef, runAgenticBuilder, submitAgenticRequest, decideAgenticRunRequest } = useWorkflowAgenticEditor({ workspaceId, workflow, setWorkflow, nodes, edges, setNodes, setEdges, setSelectedNodeId, flow, loadRuns, loadRunDetail });
+  const { publish, publishing, runInput, runInputDirty, runInputValid, runSheetOpen, runWorkflow, running, save, saving, setRunInput, setRunSheetOpen } = useWorkflowActions({ workspaceId, workflow, setWorkflow, nodes, edges, loadRuns });
+  const { loadRunDetail, runDetail, runDetailLoading, runDetailOpen, setRunDetail, setRunDetailOpen } = useWorkflowRunDetail({ workspaceId, loadRuns });
+  const { agenticMessages, agenticPendingRequests, agenticRunRequests, agenticTodoList, agenticHistoryLoading, submittingAgenticRequestId, decidingAgenticRunRequestId, agenticActivities, agenticInput, setAgenticInput, agenticRunning, agenticAgentName, agenticAbortRef, runAgenticBuilder, submitAgenticRequest, decideAgenticRunRequest } = useWorkflowAgenticEditor({
+    workspaceId,
+    workflow,
+    setWorkflow,
+    nodes,
+    edges,
+    setNodes,
+    setEdges,
+    setSelectedNodeId,
+    flow,
+    loadRuns,
+    loadRunDetail,
+  });
   const actionBusy = saving || publishing || running || agenticRunning;
 
   useEffect(() => {
@@ -179,115 +187,89 @@ export function useWorkflowBuilderController({ workspaceId, initialWorkflow, age
     });
   }
 
-  async function save(): Promise<WorkflowDetail | null> {
-    setSaving(true);
-    try {
-      const payload = await fetchJson<{ workflow: WorkflowDetail }>(`/api/workspace/workflows/${workflow.id}`, {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          workspaceId,
-          name: workflow.name,
-          description: workflow.description,
-          definition: workflowDefinition(nodes, edges),
-        }),
-      });
-      setWorkflow(payload.workflow);
-      toast.success(t("saved"));
-      return payload.workflow;
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t("saveFailed"));
-      return null;
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function publish() {
-    setPublishing(true);
-    try {
-      const saved = await save();
-      if (!saved) return;
-      const payload = await fetchJson<{ workflow: WorkflowDetail }>(`/api/workspace/workflows/${workflow.id}/publish`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ workspaceId }),
-      });
-      setWorkflow((current) => ({ ...current, ...payload.workflow }));
-      toast.success(t("published"));
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t("publishFailed"));
-    } finally {
-      setPublishing(false);
-    }
-  }
-
-  async function runWorkflow() {
-    let input: unknown;
-    try {
-      input = JSON.parse(runInput);
-    } catch {
-      toast.error(t("invalidJson"));
-      return;
-    }
-    setRunning(true);
-    try {
-      const saved = await save();
-      if (!saved) return;
-      await fetchJson(`/api/workspace/workflows/${workflow.id}/runs`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ workspaceId, input, useLatestDraft: true }),
-      });
-      setRunSheetOpen(false);
-      toast.success(t("runStarted"));
-      await loadRuns();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t("runFailed"));
-    } finally {
-      setRunning(false);
-    }
-  }
-
-  async function loadRunDetail(runId: string) {
-    setRunDetail(null);
-    setRunDetailOpen(true);
-    setRunDetailLoading(true);
-    try {
-      const payload = await fetchJson<{ run: WorkflowRunDetail }>(`/api/workspace/workflow-runs/${runId}?workspaceId=${workspaceId}`);
-      setRunDetail(payload.run);
-    } catch (error) {
-      setRunDetailOpen(false);
-      toast.error(error instanceof Error ? error.message : t("runDetailFailed"));
-    } finally {
-      setRunDetailLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    if (!runDetailOpen || !runDetail || (runDetail.status !== "queued" && runDetail.status !== "running")) {
-      return;
-    }
-    const interval = window.setInterval(async () => {
-      try {
-        const payload = await fetchJson<{ run: WorkflowRunDetail }>(`/api/workspace/workflow-runs/${runDetail.id}?workspaceId=${workspaceId}`);
-        setRunDetail(payload.run);
-        if (payload.run.status !== "queued" && payload.run.status !== "running") {
-          await loadRuns();
-        }
-      } catch {
-        // Keep the last visible snapshot; the user can retry from the runs tab.
-      }
-    }, 1_500);
-    return () => window.clearInterval(interval);
-  }, [loadRuns, runDetail, runDetailOpen, workspaceId]);
   function removeSelectedNode() {
     if (!selectedNode || selectedNode.data.workflowType === "trigger.manual") return;
     setNodes((current) => current.filter((node) => node.id !== selectedNode.id));
     setEdges((current) => current.filter((edge) => edge.source !== selectedNode.id && edge.target !== selectedNode.id));
     setSelectedNodeId(null);
   }
-  return { kind: "ready", actionBusy, addNode, removeSelectedNode, agenticAbortRef, agenticActivities, agenticAgentName, agenticHistoryLoading, agenticInput, agenticMessages, agenticPendingRequests, agenticRunRequests, agenticRunning, agenticTodoList, agents, decideAgenticRunRequest, decidingAgenticRunRequestId, edges, editorMode, filteredCatalog, inspectorOpen, isDesktop, isFullscreen, loadRunDetail, loadRuns, manualTriggerExists, nodes, onConnect, onEdgesChange, onNodesChange, paletteCategory, paletteOpen, paletteSearch, publish, publishing, runAgenticBuilder, runDetail, runDetailLoading, runDetailOpen, runInput, runSheetOpen, runWorkflow, running, runs, runsLoadError, runsLoaded, runsLoading, save, saving, selectedNode, selectedNodeId, setAgenticInput, setEdges, setEditorMode, setFlow, setInspectorOpen, setIsFullscreen, setNodes, setPaletteCategory, setPaletteOpen, setPaletteSearch, setRunDetail, setRunDetailOpen, setRunInput, setRunSheetOpen, setSelectedNodeId, setWorkflow, submitAgenticRequest, submittingAgenticRequestId, t, updateParameters, updateSelectedNode, workflow } as const;
+  return {
+    kind: "ready",
+    actionBusy,
+    addNode,
+    removeSelectedNode,
+    agenticAbortRef,
+    agenticActivities,
+    agenticAgentName,
+    agenticHistoryLoading,
+    agenticInput,
+    agenticMessages,
+    agenticPendingRequests,
+    agenticRunRequests,
+    agenticRunning,
+    agenticTodoList,
+    agents,
+    decideAgenticRunRequest,
+    decidingAgenticRunRequestId,
+    edges,
+    editorMode,
+    filteredCatalog,
+    inspectorOpen,
+    isDesktop,
+    isFullscreen,
+    loadRunDetail,
+    loadRuns,
+    manualTriggerExists,
+    nodes,
+    onConnect,
+    onEdgesChange,
+    onNodesChange,
+    paletteCategory,
+    paletteOpen,
+    paletteSearch,
+    publish,
+    publishing,
+    runAgenticBuilder,
+    runDetail,
+    runDetailLoading,
+    runDetailOpen,
+    runInput,
+    runInputDirty,
+    runInputValid,
+    runSheetOpen,
+    runWorkflow,
+    running,
+    runs,
+    runsLoadError,
+    runsLoaded,
+    runsLoading,
+    save,
+    saving,
+    selectedNode,
+    selectedNodeId,
+    setAgenticInput,
+    setEdges,
+    setEditorMode,
+    setFlow,
+    setInspectorOpen,
+    setIsFullscreen,
+    setNodes,
+    setPaletteCategory,
+    setPaletteOpen,
+    setPaletteSearch,
+    setRunDetail,
+    setRunDetailOpen,
+    setRunInput,
+    setRunSheetOpen,
+    setSelectedNodeId,
+    setWorkflow,
+    submitAgenticRequest,
+    submittingAgenticRequestId,
+    t,
+    updateParameters,
+    updateSelectedNode,
+    workflow,
+  } as const;
 }
 
 export function WorkflowBuilder(...args: Parameters<typeof useWorkflowBuilderController>) {

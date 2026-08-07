@@ -116,15 +116,16 @@ export function ChatAgentSelector(props: ChatAgentSelectorProps) {
     ));
 
   return (
-    <div className="relative z-10 flex min-w-0 flex-1 items-center gap-1.5 sm:gap-2">
+    <div className="relative z-10 flex min-w-0 flex-1 flex-wrap items-center gap-1.5 sm:gap-2">
       <DropdownMenu onOpenChange={(open) => !open && setSearch("")}>
         <DropdownMenuTrigger asChild>
           <Button
             type="button"
             variant="outline"
             size="sm"
-            className="min-h-10 min-w-0 flex-1 justify-between gap-2 rounded-xl border-border/65 bg-background/72 px-2.5 text-xs font-medium shadow-[0_1px_2px_rgba(9,30,36,0.035)] transition-[background-color,border-color,box-shadow,scale] hover:border-primary/20 hover:bg-primary/5 active:scale-[0.98] sm:max-w-64"
+            className="min-h-10 min-w-0 flex-[1_1_14rem] justify-between gap-2 rounded-xl border-border/65 bg-background/72 px-2.5 text-xs font-medium shadow-[0_1px_2px_rgba(9,30,36,0.035)] transition-[background-color,border-color,box-shadow,scale] hover:border-primary/20 hover:bg-primary/5 active:scale-[0.98]"
             aria-label={t("currentAssistant")}
+            title={selectedLabel}
           >
             <span className="flex min-w-0 items-center gap-2">
               {props.selectedAgent ? (
@@ -136,8 +137,10 @@ export function ChatAgentSelector(props: ChatAgentSelectorProps) {
                   className="rounded-full"
                 />
               ) : null}
-              <span className="min-w-0 truncate text-left">
-                <span className="truncate">{selectedLabel}</span>
+              <span className="min-w-0 text-left leading-4">
+                <span className="whitespace-normal break-words">
+                  {selectedLabel}
+                </span>
                 {props.selectedAgent?.modelDisplayName ? (
                   <span className="hidden text-muted-foreground md:inline">
                     {" · "}

@@ -1,18 +1,18 @@
-import { logger,logHandledError } from "@/lib/logger";
+import { logger, logHandledError } from "@/lib/logger";
 import { requireResourcePermissionAsync } from "@/lib/route-handler";
 import { canUseAgent } from "@/modules/agent/use-cases";
 import { runWithRequestAuth } from "@/modules/auth/request-auth-context";
-import { getActorUserId,resolveAuthContext } from "@/modules/auth/resolve-auth";
-import { getChatAttachment,publicChatAttachment,type ChatAttachment } from "@/modules/chat/attachments";
+import { getActorUserId, resolveAuthContext } from "@/modules/auth/resolve-auth";
+import { getChatAttachment, publicChatAttachment, type ChatAttachment } from "@/modules/chat/attachments";
 import { publishChatStreamEvent } from "@/modules/chat/stream-bus";
-import { codeWorkspaceArtifact,getCodeWorkspace } from "@/modules/code-workspace/storage";
+import { codeWorkspaceArtifact, getCodeWorkspace } from "@/modules/code-workspace/storage";
 import { assertWorkspaceWithinTokenQuota } from "@/modules/usage/quota";
 import { db } from "@/server/infrastructure/db";
-import { agents,messages } from "@/server/infrastructure/db/schema";
+import { agents, messages } from "@/server/infrastructure/db/schema";
 import { getAdapter } from "@/server/infrastructure/providers";
-import { extractReasoningMiddleware,wrapLanguageModel } from "ai";
+import { extractReasoningMiddleware, wrapLanguageModel } from "ai";
 import { eq } from "drizzle-orm";
-import { NextRequest,NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { loadConversationHistory } from "./route-history";
 import { chatRequestSchema } from "./route-support";
 import { runOrchestratorChat } from "./route.orchestrator";
@@ -53,7 +53,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ age
       return rejectChatRequest(400, "invalid_input", { error: "Invalid input", details: parsed.error.issues }, { agentId, userId: actorUserId, issues: parsed.error.issues.length });
     }
 
-    const { content, conversationId: existingConversationId, resendFromMessageId, continueFromMessageId, codeWorkspaceId, attachmentIds = [], imageAttachmentIds = [], capabilityOverrides } = parsed.data;
+    const {
+      content,
+      conversationId: existingConversationId,
+      resendFromMessageId,
+      continueFromMessageId,
+      codeWorkspaceId,
+      attachmentIds = [],
+      imageAttachmentIds = [],
+      capabilityOverrides,
+    } = parsed.data;
     const streamProtocol = req.headers.get("X-AI-Hub-Stream-Protocol") ?? req.nextUrl.searchParams.get("streamProtocol");
     const useAiSdkUIStream = streamProtocol === "ai-sdk-ui";
     if (resendFromMessageId && continueFromMessageId) {
@@ -143,7 +152,18 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ age
       messageAttachments.push(publicChatAttachment(metadata));
     }
 
-    const preparedConversation = await prepareChatConversation({ agent, actorUserId, agentId, content, existingConversationId, resendFromMessageId, continueFromMessageId, codeWorkspaceAttachment, messageAttachments, rejectChatRequest });
+    const preparedConversation = await prepareChatConversation({
+      agent,
+      actorUserId,
+      agentId,
+      content,
+      existingConversationId,
+      resendFromMessageId,
+      continueFromMessageId,
+      codeWorkspaceAttachment,
+      messageAttachments,
+      rejectChatRequest,
+    });
     if (preparedConversation instanceof Response) return preparedConversation;
     const { conversation, createdConversation, version, providerConfig, continuationClaim, userMessage, assistantMessage, shouldRegenerateConversationTitle } = preparedConversation;
     userMessageId = preparedConversation.userMessageId;
@@ -156,17 +176,42 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ age
     });
     const memoryPolicy = version.memoryPolicyJson as {
       enabled?: boolean;
-      maxMessages?: number;
+      summaryThresholdTokens?: number;
     } | null;
-    const history = await loadConversationHistory(conversation.id, { workspaceId: agent.workspaceId, userId: actorUserId }, memoryPolicy?.enabled ? memoryPolicy.maxMessages : undefined);
+    const history = await loadConversationHistory(conversation.id, { workspaceId: agent.workspaceId, userId: actorUserId }, memoryPolicy?.enabled ?? false);
     const generationHistory = continueFromMessageId ? [...history, { role: "user" as const, content }] : history;
 
     const enqueueEvent = (event: Record<string, unknown>) => publishChatStreamEvent(assistantMessage.id, event);
 
-    const executionContext = { requestId, agentId, actorUserId, agent, version, providerConfig, conversation, userMessage, assistantMessage, continuationClaim, content, history, generationHistory, useAiSdkUIStream, shouldRegenerateConversationTitle, capabilityOverrides };
+    const executionContext = {
+      requestId,
+      agentId,
+      actorUserId,
+      agent,
+      version,
+      providerConfig,
+      conversation,
+      userMessage,
+      assistantMessage,
+      continuationClaim,
+      content,
+      history,
+      generationHistory,
+      useAiSdkUIStream,
+      shouldRegenerateConversationTitle,
+      capabilityOverrides,
+    };
     if (agent.kind === "orchestrator") return runOrchestratorChat(executionContext);
 
-    return runStandardChat({ context: executionContext, model, messageAttachments, createdConversation, codeWorkspaceAttachment, requestStartedAt, enqueueEvent });
+    return runStandardChat({
+      context: executionContext,
+      model,
+      messageAttachments,
+      createdConversation,
+      codeWorkspaceAttachment,
+      requestStartedAt,
+      enqueueEvent,
+    });
   } catch (error) {
     // Chat request failed — messages marked failed below
 

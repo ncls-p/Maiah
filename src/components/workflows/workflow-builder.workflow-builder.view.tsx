@@ -1,13 +1,10 @@
-import { Background,BackgroundVariant,Controls,MiniMap,ReactFlow } from "@xyflow/react";
-import { PlayIcon,RefreshCwIcon } from "lucide-react";
+import { Background, BackgroundVariant, Controls, MiniMap, ReactFlow } from "@xyflow/react";
+import { createPortal } from "react-dom";
 
-import { Button } from "@/components/ui/button";
-import { Field,FieldGroup,FieldLabel } from "@/components/ui/field";
-import { ResizableHandle,ResizablePanel,ResizablePanelGroup } from "@/components/ui/resizable";
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Sheet,SheetContent,SheetDescription,SheetHeader,SheetTitle } from "@/components/ui/sheet";
-import { Tabs,TabsContent,TabsList,TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 
 import { WorkflowAgenticPanel } from "./workflow-agentic-panel";
@@ -18,11 +15,45 @@ import { useWorkflowPaletteRenderer } from "./workflow-builder.workflow-builder.
 import { useWorkflowRunsRenderer } from "./workflow-builder.workflow-builder.view.runs-renderer";
 import { WorkflowBuilderSection1 } from "./workflow-builder.workflow-builder.view.section-1";
 import { WorkflowBuilderSection2 } from "./workflow-builder.workflow-builder.view.section-2";
+import { WorkflowBuilderRunSheet } from "./workflow-builder.run-sheet";
 import { type WorkflowCanvasNodeType } from "./workflow-canvas-node";
 
 export type WorkflowBuilderViewModel = Extract<ReturnType<typeof useWorkflowBuilderController>, { kind: "ready" }>;
 export function WorkflowBuilderView({ model }: { model: WorkflowBuilderViewModel }) {
-  const { actionBusy, agenticAbortRef, agenticActivities, agenticAgentName, agenticHistoryLoading, agenticInput, agenticMessages, agenticPendingRequests, agenticRunRequests, agenticRunning, agenticTodoList, decideAgenticRunRequest, decidingAgenticRunRequestId, edges, editorMode, inspectorOpen, isDesktop, isFullscreen, nodes, onConnect, onEdgesChange, onNodesChange, paletteOpen, runAgenticBuilder, runInput, runSheetOpen, runWorkflow, running, selectedNodeId, setAgenticInput, setFlow, setInspectorOpen, setPaletteOpen, setRunInput, setRunSheetOpen, setSelectedNodeId, submitAgenticRequest, submittingAgenticRequestId, t } = model;
+  const {
+    agenticAbortRef,
+    agenticActivities,
+    agenticAgentName,
+    agenticHistoryLoading,
+    agenticInput,
+    agenticMessages,
+    agenticPendingRequests,
+    agenticRunRequests,
+    agenticRunning,
+    agenticTodoList,
+    decideAgenticRunRequest,
+    decidingAgenticRunRequestId,
+    edges,
+    editorMode,
+    inspectorOpen,
+    isDesktop,
+    isFullscreen,
+    nodes,
+    onConnect,
+    onEdgesChange,
+    onNodesChange,
+    paletteOpen,
+    runAgenticBuilder,
+    selectedNodeId,
+    setAgenticInput,
+    setFlow,
+    setInspectorOpen,
+    setPaletteOpen,
+    setSelectedNodeId,
+    submitAgenticRequest,
+    submittingAgenticRequestId,
+    t,
+  } = model;
 
   const renderPalette = useWorkflowPaletteRenderer(model);
   const renderConfiguration = useWorkflowConfigurationRenderer(model);
@@ -83,12 +114,20 @@ export function WorkflowBuilderView({ model }: { model: WorkflowBuilderViewModel
         <Controls position="bottom-left" />
         <MiniMap pannable zoomable className="!border !border-border/70 !bg-card max-sm:!hidden" nodeColor="var(--foreground)" maskColor="color-mix(in oklab, var(--background) 75%, transparent)" />
       </ReactFlow>
-      <div className="pointer-events-none absolute top-3 left-1/2 hidden -translate-x-1/2 rounded-full border border-border/70 bg-background/90 px-3 py-1.5 text-[11px] text-muted-foreground shadow-sm backdrop-blur sm:block">{editorMode === "agentic" ? t("agentic.canvasEditHint") : t("canvasHint")}</div>
+      <div className="pointer-events-none absolute top-3 left-1/2 hidden -translate-x-1/2 rounded-full border border-border/70 bg-background/90 px-3 py-1.5 text-[11px] text-muted-foreground shadow-sm backdrop-blur sm:block">
+        {editorMode === "agentic" ? t("agentic.canvasEditHint") : t("canvasHint")}
+      </div>
     </main>
   );
 
   const builder = (
-    <div data-workflow-builder className={cn("flex h-[calc(100dvh-10rem)] min-h-[36rem] flex-col overflow-hidden rounded-2xl border border-border/75 bg-card shadow-[var(--surface-shadow)]", isFullscreen && "fixed inset-0 z-50 h-dvh min-h-0 rounded-none border-0")}>
+    <div
+      data-workflow-builder
+      className={cn(
+        "flex h-[calc(100dvh-10rem)] min-h-[36rem] flex-col overflow-hidden rounded-2xl border border-border/75 bg-card shadow-[var(--surface-shadow)]",
+        isFullscreen && "fixed inset-0 z-50 h-dvh min-h-0 rounded-none border-0",
+      )}
+    >
       <WorkflowBuilderSection2 model={model} />
 
       {editorMode === "agentic" ? (
@@ -96,7 +135,24 @@ export function WorkflowBuilderView({ model }: { model: WorkflowBuilderViewModel
           <div className="min-h-0 flex-1">
             <ResizablePanelGroup orientation="horizontal">
               <ResizablePanel id="workflow-agentic-chat" defaultSize="36%" minSize="28%" maxSize="48%">
-                <WorkflowAgenticPanel messages={agenticMessages} activities={agenticActivities} pendingRequests={agenticPendingRequests} runRequests={agenticRunRequests} todoList={agenticTodoList} input={agenticInput} running={agenticRunning} historyLoading={agenticHistoryLoading} submittingRequestId={submittingAgenticRequestId} decidingRunRequestId={decidingAgenticRunRequestId} agentName={agenticAgentName} onInputChange={setAgenticInput} onSubmit={(prompt) => void runAgenticBuilder(prompt)} onSubmitRequest={(request, values) => void submitAgenticRequest(request, values)} onDecideRunRequest={(request, decision) => void decideAgenticRunRequest(request, decision)} onStop={() => agenticAbortRef.current?.abort()} />
+                <WorkflowAgenticPanel
+                  messages={agenticMessages}
+                  activities={agenticActivities}
+                  pendingRequests={agenticPendingRequests}
+                  runRequests={agenticRunRequests}
+                  todoList={agenticTodoList}
+                  input={agenticInput}
+                  running={agenticRunning}
+                  historyLoading={agenticHistoryLoading}
+                  submittingRequestId={submittingAgenticRequestId}
+                  decidingRunRequestId={decidingAgenticRunRequestId}
+                  agentName={agenticAgentName}
+                  onInputChange={setAgenticInput}
+                  onSubmit={(prompt) => void runAgenticBuilder(prompt)}
+                  onSubmitRequest={(request, values) => void submitAgenticRequest(request, values)}
+                  onDecideRunRequest={(request, decision) => void decideAgenticRunRequest(request, decision)}
+                  onStop={() => agenticAbortRef.current?.abort()}
+                />
               </ResizablePanel>
               <ResizableHandle withHandle />
               <ResizablePanel id="workflow-agentic-canvas" defaultSize="64%" minSize="40%">
@@ -108,7 +164,24 @@ export function WorkflowBuilderView({ model }: { model: WorkflowBuilderViewModel
           <div className="flex min-h-0 flex-1 flex-col">
             <div className="h-[34%] min-h-36 border-b border-border/70">{canvas}</div>
             <div className="min-h-0 flex-1">
-              <WorkflowAgenticPanel messages={agenticMessages} activities={agenticActivities} pendingRequests={agenticPendingRequests} runRequests={agenticRunRequests} todoList={agenticTodoList} input={agenticInput} running={agenticRunning} historyLoading={agenticHistoryLoading} submittingRequestId={submittingAgenticRequestId} decidingRunRequestId={decidingAgenticRunRequestId} agentName={agenticAgentName} onInputChange={setAgenticInput} onSubmit={(prompt) => void runAgenticBuilder(prompt)} onSubmitRequest={(request, values) => void submitAgenticRequest(request, values)} onDecideRunRequest={(request, decision) => void decideAgenticRunRequest(request, decision)} onStop={() => agenticAbortRef.current?.abort()} />
+              <WorkflowAgenticPanel
+                messages={agenticMessages}
+                activities={agenticActivities}
+                pendingRequests={agenticPendingRequests}
+                runRequests={agenticRunRequests}
+                todoList={agenticTodoList}
+                input={agenticInput}
+                running={agenticRunning}
+                historyLoading={agenticHistoryLoading}
+                submittingRequestId={submittingAgenticRequestId}
+                decidingRunRequestId={decidingAgenticRunRequestId}
+                agentName={agenticAgentName}
+                onInputChange={setAgenticInput}
+                onSubmit={(prompt) => void runAgenticBuilder(prompt)}
+                onSubmitRequest={(request, values) => void submitAgenticRequest(request, values)}
+                onDecideRunRequest={(request, decision) => void decideAgenticRunRequest(request, decision)}
+                onStop={() => agenticAbortRef.current?.abort()}
+              />
             </div>
           </div>
         )
@@ -152,29 +225,10 @@ export function WorkflowBuilderView({ model }: { model: WorkflowBuilderViewModel
         </SheetContent>
       </Sheet>
 
-      <Sheet open={runSheetOpen} onOpenChange={setRunSheetOpen}>
-        <SheetContent className="sm:max-w-lg">
-          <SheetHeader>
-            <SheetTitle>{t("runTitle")}</SheetTitle>
-            <SheetDescription className="leading-6">{t("runDescription")}</SheetDescription>
-          </SheetHeader>
-          <div className="flex flex-1 flex-col gap-4 px-5 pb-5">
-            <FieldGroup>
-              <Field>
-                <FieldLabel htmlFor="workflow-run-input">{t("runInput")}</FieldLabel>
-                <Textarea id="workflow-run-input" value={runInput} onChange={(event) => setRunInput(event.target.value)} className="min-h-72 font-mono text-xs" spellCheck={false} />
-              </Field>
-            </FieldGroup>
-            <Button onClick={() => void runWorkflow()} disabled={actionBusy} className="mt-auto">
-              {running ? <RefreshCwIcon data-icon="inline-start" className="animate-spin" /> : <PlayIcon data-icon="inline-start" />}
-              {t("runNow")}
-            </Button>
-          </div>
-        </SheetContent>
-      </Sheet>
+      <WorkflowBuilderRunSheet model={model} />
 
       <WorkflowBuilderSection1 model={model} />
     </div>
   );
-  return builder;
+  return isFullscreen ? createPortal(builder, document.body) : builder;
 }

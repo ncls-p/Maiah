@@ -1,5 +1,11 @@
-import { ChatCitation,ChatMessage,ChatMessagePart,ChatUsageImpact,CodeWorkspaceArtifact } from "./chat-types.chat-agent";
-import { getToolStatus,parseToolPart } from "./chat-types.work-phase-outcome";
+import {
+  ChatCitation,
+  ChatMessage,
+  ChatMessagePart,
+  ChatUsageImpact,
+  CodeWorkspaceArtifact,
+} from "./chat-types.chat-agent";
+import { getToolStatus, parseToolPart } from "./chat-types.work-phase-outcome";
 
 export type ChatStreamEvent =
   | { type: "text" | "reasoning"; delta: string }
@@ -10,6 +16,7 @@ export type ChatStreamEvent =
   | { type: "conversation_title"; title: string }
   | { type: "suggestions"; suggestions: string[] }
   | { type: "impact"; impact: ChatUsageImpact }
+  | { type: "summary"; summary: string; inputTokens: number | null }
   | {
       type: "tool_approval_required";
       invocationId: string;
@@ -60,20 +67,32 @@ export function textFromMessage(message: ChatMessage) {
     .join("\n");
 }
 
-export function canContinueAssistantMessage(message: ChatMessage, lastAssistantMessageId: string | null | undefined) {
-  return message.role === "assistant" && message.id === lastAssistantMessageId && message.status !== "streaming" && textFromMessage(message).trim().length > 0;
+export function canContinueAssistantMessage(
+  message: ChatMessage,
+  lastAssistantMessageId: string | null | undefined,
+) {
+  return (
+    message.role === "assistant" &&
+    message.id === lastAssistantMessageId &&
+    message.status !== "streaming" &&
+    textFromMessage(message).trim().length > 0
+  );
 }
 
 export function prepareAssistantMessageContinuation(message: ChatMessage) {
   return {
     ...message,
     status: "streaming",
-    parts: message.parts.filter((part) => part.type !== "suggestions" && part.type !== "impact"),
+    parts: message.parts.filter(
+      (part) => part.type !== "suggestions" && part.type !== "impact",
+    ),
   };
 }
 
 export function preserveAssistantFailureParts(parts: ChatMessagePart[]) {
-  return parts.length > 0 ? parts : [{ type: "text", content: "The assistant failed to respond." }];
+  return parts.length > 0
+    ? parts
+    : [{ type: "text", content: "The assistant failed to respond." }];
 }
 
 function parseToolPartRecord(part: ChatMessagePart) {
@@ -132,11 +151,25 @@ function mergeToolParts(parts: ChatMessagePart[]): ChatMessagePart[] {
 }
 
 export function renderablePartsFromMessage(message: ChatMessage) {
-  return mergeToolParts(message.parts).filter((part) => ["text", "file", "reasoning", "tool-call", "tool-result", "suggestions", "impact"].includes(part.type));
+  return mergeToolParts(message.parts).filter((part) =>
+    [
+      "text",
+      "file",
+      "reasoning",
+      "tool-call",
+      "tool-result",
+      "suggestions",
+      "impact",
+      "summary",
+    ].includes(part.type),
+  );
 }
 
 export function reasoningPartHasDetails(part: ChatMessagePart) {
-  return part.type === "reasoning" && (part.state === "streaming" || part.content.trim().length > 0);
+  return (
+    part.type === "reasoning" &&
+    (part.state === "streaming" || part.content.trim().length > 0)
+  );
 }
 
 export type IndexedChatMessagePart = {
@@ -160,19 +193,34 @@ export function isMeaningfulTextPart(part: ChatMessagePart) {
   return part.type === "text" && part.content.trim().length > 0;
 }
 
-export function workPhaseHasPendingWork(parts: ChatMessagePart[], messageStatus: ChatMessage["status"]) {
+export function workPhaseHasPendingWork(
+  parts: ChatMessagePart[],
+  messageStatus: ChatMessage["status"],
+) {
   if (messageStatus !== "streaming") return false;
-  return parts.some((part) => (part.type === "reasoning" && part.state === "streaming") || ((part.type === "tool-call" || part.type === "tool-result") && getToolStatus(parseToolPart(part.content)) === "pending"));
+  return parts.some(
+    (part) =>
+      (part.type === "reasoning" && part.state === "streaming") ||
+      ((part.type === "tool-call" || part.type === "tool-result") &&
+        getToolStatus(parseToolPart(part.content)) === "pending"),
+  );
 }
 
-function agentStatusFromToolPart(parsed: ReturnType<typeof parseToolPart>): "running" | "success" | "error" | undefined {
+function agentStatusFromToolPart(
+  parsed: ReturnType<typeof parseToolPart>,
+): "running" | "success" | "error" | undefined {
   const context = parsed.agentContext;
   if (typeof context !== "object" || context === null) return undefined;
   const status = (context as { status?: unknown }).status;
-  return status === "running" || status === "success" || status === "error" ? status : undefined;
+  return status === "running" || status === "success" || status === "error"
+    ? status
+    : undefined;
 }
 
-export function resolveToolDisplayStatus(parsed: ReturnType<typeof parseToolPart>, messageStatus?: ChatMessage["status"]): "pending" | "completed" | "error" {
+export function resolveToolDisplayStatus(
+  parsed: ReturnType<typeof parseToolPart>,
+  messageStatus?: ChatMessage["status"],
+): "pending" | "completed" | "error" {
   const toolStatus = getToolStatus(parsed);
   const agentStatus = agentStatusFromToolPart(parsed);
   if (agentStatus === "error" || toolStatus === "error") return "error";

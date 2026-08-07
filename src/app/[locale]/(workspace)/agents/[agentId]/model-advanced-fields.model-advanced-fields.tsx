@@ -3,10 +3,22 @@
 import { useTranslations } from "next-intl";
 
 import { ModelAdvancedFieldsView } from "./model-advanced-fields.model-advanced-fields.view";
-import type { AgentForm } from "./types";
+import type { AgentForm, AgentToolPolicyOption, Model } from "./types";
 import { defaultGenParams } from "./types";
 
-export function useModelAdvancedFieldsController({ form, setFormAction: setForm, onResetAction: onReset }: { form: AgentForm; setFormAction: (fn: (prev: AgentForm) => AgentForm) => void; onResetAction?: () => void }) {
+export function useModelAdvancedFieldsController({
+  form,
+  setFormAction: setForm,
+  toolOptions = [],
+  selectedModel,
+  onResetAction: onReset,
+}: {
+  form: AgentForm;
+  setFormAction: (fn: (prev: AgentForm) => AgentForm) => void;
+  toolOptions?: AgentToolPolicyOption[];
+  selectedModel?: Model;
+  onResetAction?: () => void;
+}) {
   const t = useTranslations("agents.model");
 
   function updateApprovalPolicy(patch: Partial<AgentForm["approvalPolicy"]>) {
@@ -40,10 +52,21 @@ export function useModelAdvancedFieldsController({ form, setFormAction: setForm,
     onReset?.();
   }
 
-  return { kind: "ready", form, resetGenParams, setForm, t, updateApprovalPolicy } as const;
+  return {
+    kind: "ready",
+    form,
+    resetGenParams,
+    selectedModel,
+    setForm,
+    t,
+    toolOptions,
+    updateApprovalPolicy,
+  } as const;
 }
 
-export function ModelAdvancedFields(...args: Parameters<typeof useModelAdvancedFieldsController>) {
+export function ModelAdvancedFields(
+  ...args: Parameters<typeof useModelAdvancedFieldsController>
+) {
   const model = useModelAdvancedFieldsController(...args);
   if (!("kind" in model)) return model;
   return <ModelAdvancedFieldsView model={model} />;

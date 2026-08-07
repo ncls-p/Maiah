@@ -1,6 +1,28 @@
 import { z } from "zod";
 
-export const workflowNodeTypeSchema = z.enum(["trigger.manual", "data.set", "data.pick", "data.remove", "data.rename", "data.template", "data.parseJson", "data.stringifyJson", "text.transform", "number.calculate", "list.filter", "list.sort", "list.slice", "logic.condition", "logic.delay", "logic.stop", "debug.snapshot", "date.now", "http.request", "code.execute", "agent.run"]);
+export const workflowNodeTypeSchema = z.enum([
+  "trigger.manual",
+  "data.set",
+  "data.pick",
+  "data.remove",
+  "data.rename",
+  "data.template",
+  "data.parseJson",
+  "data.stringifyJson",
+  "text.transform",
+  "number.calculate",
+  "list.filter",
+  "list.sort",
+  "list.slice",
+  "logic.condition",
+  "logic.delay",
+  "logic.stop",
+  "debug.snapshot",
+  "date.now",
+  "http.request",
+  "code.execute",
+  "agent.run",
+]);
 
 export type WorkflowNodeType = z.infer<typeof workflowNodeTypeSchema>;
 
@@ -39,6 +61,7 @@ export const workflowEdgeSchema = z.object({
 export const workflowDefinitionSchema = z
   .object({
     schemaVersion: z.literal(1),
+    defaultInput: z.json().default({ message: "Bonjour" }),
     nodes: z.array(workflowNodeSchema).min(1).max(100),
     edges: z.array(workflowEdgeSchema).max(300),
   })
@@ -55,7 +78,9 @@ export const workflowDefinitionSchema = z
       ids.add(node.id);
     }
 
-    const triggers = definition.nodes.filter((node) => node.type === "trigger.manual");
+    const triggers = definition.nodes.filter(
+      (node) => node.type === "trigger.manual",
+    );
     if (triggers.length !== 1) {
       context.addIssue({
         code: "custom",
@@ -116,6 +141,7 @@ export const executeWorkflowSchema = z.object({
 export function createStarterDefinition(): WorkflowDefinition {
   return {
     schemaVersion: 1,
+    defaultInput: { message: "Bonjour" },
     nodes: [
       {
         id: "trigger",

@@ -1,10 +1,17 @@
 import { type AgentToolPreset } from "@/modules/agent/onboarding-tools";
-import { type DelegationBindingInput,type OrchestrationPolicy } from "@/modules/agent/orchestration-policy";
+import {
+  type DelegationBindingInput,
+  type OrchestrationPolicy,
+} from "@/modules/agent/orchestration-policy";
 import type { AiHubToolApprovalPolicy } from "@/modules/tool/approval-policy";
 import { type ToolBindingInput } from "@/modules/tool/use-cases";
 import { db } from "@/server/infrastructure/db";
-import { agents,agentVersions,users } from "@/server/infrastructure/db/schema";
-import { and,eq } from "drizzle-orm";
+import {
+  agents,
+  agentVersions,
+  users,
+} from "@/server/infrastructure/db/schema";
+import { and, eq } from "drizzle-orm";
 
 // ─── Types ─────────────────────────────────────────────────────────────
 
@@ -12,7 +19,10 @@ export type AgentRow = typeof agents.$inferSelect;
 export type AgentVersionRow = typeof agentVersions.$inferSelect;
 type AgentSharingMode = "personal" | "marketplace" | "specific_user";
 type AgentKind = "assistant" | "orchestrator";
-export type AgentCurationLabel = "recommended" | "organization_created" | "none";
+export type AgentCurationLabel =
+  | "recommended"
+  | "organization_created"
+  | "none";
 
 export interface CreateAgentInput {
   workspaceId: string;
@@ -67,7 +77,7 @@ interface AgentGenerationSettings {
 
 interface AgentMemoryPolicy {
   enabled?: boolean;
-  maxMessages?: number;
+  summaryThresholdTokens?: number;
 }
 
 interface AgentGuardrails {
@@ -128,21 +138,32 @@ export interface AgentDefaultPreferences {
   effectiveDefaultAgentId: string | null;
 }
 
-async function resolveShareTargetUserId(email: string | null | undefined): Promise<string | null> {
+async function resolveShareTargetUserId(
+  email: string | null | undefined,
+): Promise<string | null> {
   if (!email) return null;
 
-  const [target] = await db.select({ id: users.id }).from(users).where(eq(users.email, email.trim().toLowerCase())).limit(1);
+  const [target] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.email, email.trim().toLowerCase()))
+    .limit(1);
 
   if (!target) throw new Error("Share target user not found");
   return target.id;
 }
 
-export async function requireShareTargetUserId(email: string | null | undefined) {
+export async function requireShareTargetUserId(
+  email: string | null | undefined,
+) {
   if (!email?.trim()) throw new Error("Share target user is required");
   return await resolveShareTargetUserId(email);
 }
 
-export function normalizeCurationLabel(label: AgentCurationLabel | undefined, isRecommended?: boolean) {
+export function normalizeCurationLabel(
+  label: AgentCurationLabel | undefined,
+  isRecommended?: boolean,
+) {
   if (label === "none") return null;
   if (label === "organization_created") return label;
   if (isRecommended || label === "recommended") return "recommended";
@@ -171,7 +192,9 @@ export function normalizePromptSuggestions(input: unknown): string[] {
 }
 
 export function preparePromptSuggestions(input: string[] | undefined) {
-  return normalizePromptSuggestions(input).map((suggestion) => suggestion.slice(0, 240));
+  return normalizePromptSuggestions(input).map((suggestion) =>
+    suggestion.slice(0, 240),
+  );
 }
 
 export async function agentSlugExists(workspaceId: string, slug: string) {

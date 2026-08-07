@@ -1,8 +1,18 @@
-import { handleRoute,requireResourcePermissionAsync } from "@/lib/route-handler";
+import {
+  handleRoute,
+  requireResourcePermissionAsync,
+} from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
-import { delegationBindingInputSchema,orchestrationPolicySchema } from "@/modules/agent/orchestration-policy";
+import {
+  delegationBindingInputSchema,
+  orchestrationPolicySchema,
+} from "@/modules/agent/orchestration-policy";
 import { agentRuntimePolicy } from "@/modules/agent/runtime-policy";
-import { canEditAgent,getVisibleAgentById,normalizePromptSuggestions } from "@/modules/agent/use-cases";
+import {
+  canEditAgent,
+  getVisibleAgentById,
+  normalizePromptSuggestions,
+} from "@/modules/agent/use-cases";
 import { hasWorkspacePermissionForRequest } from "@/modules/auth/workspace-access";
 import { withResourceProvenance } from "@/modules/iam/resource-provenance";
 import { toolBindingInputSchema } from "@/modules/tool/use-cases";
@@ -10,7 +20,7 @@ import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
 import { users } from "@/server/infrastructure/db/schema";
 import { eq } from "drizzle-orm";
-import { NextRequest,NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 export const routeParamsSchema = z.object({ agentId: z.uuid() });
@@ -24,10 +34,14 @@ const slugSchema = z
 const agentLogoUrlSchema = z
   .string()
   .max(350_000)
-  .regex(/^data:image\/(?!svg\+xml)[A-Za-z0-9.+-]+;base64,[A-Za-z0-9+/]+={0,2}$/)
+  .regex(
+    /^data:image\/(?!svg\+xml)[A-Za-z0-9.+-]+;base64,[A-Za-z0-9+/]+={0,2}$/,
+  )
   .nullable();
 
-const promptSuggestionsSchema = z.array(z.string().trim().min(1).max(240)).max(12);
+const promptSuggestionsSchema = z
+  .array(z.string().trim().min(1).max(240))
+  .max(12);
 
 export const updateAgentSchema = z.object({
   workspaceId: z.uuid(),
@@ -42,13 +56,25 @@ export const updateAgentSchema = z.object({
   modelId: z.uuid().optional(),
   temperature: z.string().optional(),
   topP: z.string().optional(),
-  maxOutputTokens: z.number().int().positive().max(agentRuntimePolicy.maxOutputTokens).optional(),
-  maxToolCalls: z.number().int().min(0).max(agentRuntimePolicy.maxToolCalls).optional(),
+  maxOutputTokens: z
+    .number()
+    .int()
+    .positive()
+    .max(agentRuntimePolicy.maxOutputTokens)
+    .optional(),
+  maxToolCalls: z
+    .number()
+    .int()
+    .min(0)
+    .max(agentRuntimePolicy.maxToolCalls)
+    .optional(),
   sharingMode: z.enum(["personal", "marketplace", "specific_user"]).optional(),
   shareTargetEmail: z.email().optional().or(z.literal("")),
   isGlobal: z.boolean().optional(),
   isRecommended: z.boolean().optional(),
-  curationLabel: z.enum(["none", "recommended", "organization_created"]).optional(),
+  curationLabel: z
+    .enum(["none", "recommended", "organization_created"])
+    .optional(),
   toolBindings: z.array(toolBindingInputSchema).optional(),
   knowledgeBindings: z.array(z.uuid()).optional(),
   skillBindings: z.array(z.uuid()).optional(),
@@ -69,7 +95,7 @@ export const updateAgentSchema = z.object({
   memoryPolicy: z
     .object({
       enabled: z.boolean().optional(),
-      maxMessages: z.number().int().positive().optional(),
+      summaryThresholdTokens: z.number().int().min(1_000).optional(),
     })
     .optional(),
   guardrails: z
@@ -82,19 +108,32 @@ export const updateAgentSchema = z.object({
     .object({
       requireApprovalForAllTools: z.boolean().optional(),
       defaultDecision: z.enum(["allow", "deny", "require_approval"]).optional(),
-      requireApprovalRiskLevels: z.array(z.enum(["low", "medium", "high", "critical"])).optional(),
+      requireApprovalRiskLevels: z
+        .array(z.enum(["low", "medium", "high", "critical"]))
+        .optional(),
       requireApprovalToolNames: z.array(z.string().min(1)).optional(),
       denyToolNames: z.array(z.string().min(1)).optional(),
-      requireApprovalSources: z.enum(["builtin", "custom", "mcp"]).array().optional(),
+      requireApprovalSources: z
+        .enum(["builtin", "custom", "mcp"])
+        .array()
+        .optional(),
     })
     .optional(),
 });
 
 export function isUniqueConstraintError(error: unknown) {
-  return typeof error === "object" && error !== null && "code" in error && error.code === "23505";
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    error.code === "23505"
+  );
 }
 
-export async function GET(req: NextRequest, { params }: { params: Promise<{ agentId: string }> }) {
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ agentId: string }> },
+) {
   return handleRoute(
     req,
     async ({ session }) => {
@@ -108,26 +147,67 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ agen
       }
       const { agentId } = parsedParams.data;
       const { workspaceId } = parsedQuery.data;
-      const forbidden = await requireResourcePermissionAsync(session.user.id, workspaceId, "agents.get", "agent", (await params).agentId);
+      const forbidden = await requireResourcePermissionAsync(
+        session.user.id,
+        workspaceId,
+        "agents.get",
+        "agent",
+        (await params).agentId,
+      );
       if (forbidden) return forbidden;
       const canAdminCurate = await canManageTenantGlobals(session, workspaceId);
-      const agent = await getVisibleAgentById(agentId, workspaceId, session.user.id, canAdminCurate);
+      const agent = await getVisibleAgentById(
+        agentId,
+        workspaceId,
+        session.user.id,
+        canAdminCurate,
+      );
       if (!agent) {
         return NextResponse.json({ error: "Agent not found" }, { status: 404 });
       }
       let shareTargetEmail: string | null = null;
       if (agent.shareTargetUserId) {
-        const [target] = await db.select({ email: users.email }).from(users).where(eq(users.id, agent.shareTargetUserId)).limit(1);
+        const [target] = await db
+          .select({ email: users.email })
+          .from(users)
+          .where(eq(users.id, agent.shareTargetUserId))
+          .limit(1);
         shareTargetEmail = target?.email ?? null;
       }
-      const [canCreateAgent, canUpdateAgents] = await Promise.all([hasWorkspacePermissionForRequest(session.user.id, workspaceId, "agents.create"), hasWorkspacePermissionForRequest(session.user.id, workspaceId, "agents.update")]);
-      const canDirectlyUpdate = await authorization.hasDirectPermission({ principalType: "user", principalId: session.user.id }, "agents.update", "agent", agent.id, workspaceId);
-      const [agentWithProvenance] = await withResourceProvenance([agent], workspaceId, session.user.id);
+      const [canCreateAgent, canUpdateAgents] = await Promise.all([
+        hasWorkspacePermissionForRequest(
+          session.user.id,
+          workspaceId,
+          "agents.create",
+        ),
+        hasWorkspacePermissionForRequest(
+          session.user.id,
+          workspaceId,
+          "agents.update",
+        ),
+      ]);
+      const canDirectlyUpdate = await authorization.hasDirectPermission(
+        { principalType: "user", principalId: session.user.id },
+        "agents.update",
+        "agent",
+        agent.id,
+        workspaceId,
+      );
+      const [agentWithProvenance] = await withResourceProvenance(
+        [agent],
+        workspaceId,
+        session.user.id,
+      );
       return NextResponse.json({
         ...agentWithProvenance,
-        promptSuggestions: normalizePromptSuggestions(agent.promptSuggestionsJson),
+        promptSuggestions: normalizePromptSuggestions(
+          agent.promptSuggestionsJson,
+        ),
         canAdminCurate,
-        canEdit: (canUpdateAgents && canEditAgent(agent, session.user.id, canAdminCurate)) || canDirectlyUpdate,
+        canEdit:
+          (canUpdateAgents &&
+            canEditAgent(agent, session.user.id, canAdminCurate)) ||
+          canDirectlyUpdate,
         canClone: canCreateAgent,
         shareTargetEmail,
       });

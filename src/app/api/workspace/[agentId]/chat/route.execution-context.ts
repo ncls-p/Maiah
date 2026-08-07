@@ -29,6 +29,9 @@ export type ChatExecutionContext = {
   capabilityOverrides?: {
     disabledTools: Array<{ source: "builtin" | "mcp" | "custom"; id: string }>;
     disabledSkillIds: string[];
+    enabledTools: Array<{ source: "builtin" | "mcp" | "custom"; id: string }>;
+    enabledSkillIds: string[];
+    enabledKnowledgeIds: string[];
   };
 };
 

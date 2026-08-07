@@ -30,6 +30,8 @@ export type Model = {
   modelId: string;
   displayName: string | null;
   logoUrl?: string | null;
+  contextWindow?: number | null;
+  maxOutputTokens?: number | null;
 };
 export type BuiltinTool = {
   id: string;
@@ -133,8 +135,14 @@ interface AgentGenerationSettings {
 
 interface AgentMemoryPolicy {
   enabled: boolean;
-  maxMessages: number;
+  summaryThresholdTokens: number;
 }
+
+export type AgentToolPolicyOption = {
+  name: string;
+  label: string;
+  source: "builtin" | "custom" | "mcp";
+};
 
 interface AgentGuardrails {
   enabled: boolean;
@@ -176,7 +184,10 @@ export type AgentForm = {
   curationLabel: string;
 };
 
-export type ToolBindingState = Record<string, { enabled: boolean; requireApproval: boolean }>;
+export type ToolBindingState = Record<
+  string,
+  { enabled: boolean; requireApproval: boolean }
+>;
 
 /* ─── Constants ─────────────────────────────────────────────────────── */
 
@@ -210,7 +221,7 @@ export function createEmptyForm(): AgentForm {
       stopSequences: "",
     },
     responseFormat: "text",
-    memoryPolicy: { enabled: false, maxMessages: 50 },
+    memoryPolicy: { enabled: false, summaryThresholdTokens: 24_000 },
     guardrails: { enabled: false, blockedTopics: [] },
     approvalPolicy: { requireApprovalForAllTools: false },
     sharingMode: "personal",

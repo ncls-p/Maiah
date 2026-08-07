@@ -27,6 +27,9 @@ describe("chat capability overrides", () => {
         { source: "mcp", id: "github" },
       ],
       disabledSkillIds: ["frontend-design"],
+      enabledTools: [{ source: "custom", id: "calculator" }],
+      enabledSkillIds: ["accessibility"],
+      enabledKnowledgeIds: ["product-docs"],
     });
 
     expect(readChatCapabilityOverrides("agent-1", "conversation-1")).toEqual({
@@ -35,14 +38,20 @@ describe("chat capability overrides", () => {
         { source: "mcp", id: "github" },
       ],
       disabledSkillIds: ["frontend-design"],
+      enabledTools: [{ source: "custom", id: "calculator" }],
+      enabledSkillIds: ["accessibility"],
+      enabledKnowledgeIds: ["product-docs"],
     });
-    expect(readChatCapabilityOverrides("agent-1", "conversation-2")).toEqual({ disabledTools: [], disabledSkillIds: [] });
+    expect(readChatCapabilityOverrides("agent-1", "conversation-2")).toEqual({ disabledTools: [], disabledSkillIds: [], enabledTools: [], enabledSkillIds: [], enabledKnowledgeIds: [] });
   });
 
   it("migrates the full capability selection to a newly created chat", () => {
     writeChatCapabilityOverrides("agent-1", null, {
       disabledTools: [{ source: "mcp", id: "notion" }],
       disabledSkillIds: ["research"],
+      enabledTools: [],
+      enabledSkillIds: [],
+      enabledKnowledgeIds: [],
     });
 
     migrateDraftCapabilityOverrides("agent-1", "conversation-1");
@@ -50,10 +59,16 @@ describe("chat capability overrides", () => {
     expect(readChatCapabilityOverrides("agent-1", "conversation-1")).toEqual({
       disabledTools: [{ source: "mcp", id: "notion" }],
       disabledSkillIds: ["research"],
+      enabledTools: [],
+      enabledSkillIds: [],
+      enabledKnowledgeIds: [],
     });
     expect(readChatCapabilityOverrides("agent-1", null)).toEqual({
       disabledTools: [],
       disabledSkillIds: [],
+      enabledTools: [],
+      enabledSkillIds: [],
+      enabledKnowledgeIds: [],
     });
   });
 });

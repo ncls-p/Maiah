@@ -253,6 +253,13 @@ export function applyStreamEvent(
     }));
     return;
   }
+  if (parsed.type === "summary") {
+    handlers.updateAssistant((message) => ({
+      ...message,
+      parts: [...message.parts.filter((part) => part.type !== "summary"), { type: "summary", content: parsed.summary }],
+    }));
+    return;
+  }
   if (parsed.type === "citations") {
     const citationList = "citations" in parsed ? parsed.citations : "sources" in parsed ? (parsed as { sources: ChatCitation[] }).sources : [];
     handlers.setCitations(citationList);

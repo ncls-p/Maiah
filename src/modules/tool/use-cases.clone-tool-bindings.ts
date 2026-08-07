@@ -2,7 +2,7 @@ import { db } from "@/server/infrastructure/db";
 import { agentToolBindings,customTools,mcpServers,mcpTools } from "@/server/infrastructure/db/schema";
 import { and,eq,isNull,or } from "drizzle-orm";
 import { insertToolBindingsForVersion } from "./use-cases.insert-tool-bindings-for-version";
-import { BindingDb,ToolBindingInput,getToolBindingsForVersion } from "./use-cases.tool-binding-input-schema";
+import { BindingDb,ToolBindingInput,canViewCustomTool,canViewMcpServer,getToolBindingsForVersion } from "./use-cases.tool-binding-input-schema";
 
 export async function cloneToolBindings(fromAgentVersionId: string | null, toAgentVersionId: string, workspaceId?: string, options?: { userId?: string }, executor: BindingDb = db) {
   if (!fromAgentVersionId) return;
@@ -59,6 +59,11 @@ export async function getCustomBindingContext(agentVersionId: string, toolId: st
   return tool ? { binding, tool } : null;
 }
 
+export async function getAvailableCustomToolContext(toolId: string, userId: string, workspaceId: string) {
+  const [tool] = await db.select().from(customTools).where(and(eq(customTools.id, toolId), eq(customTools.workspaceId, workspaceId), eq(customTools.status, "active"), isNull(customTools.archivedAt))).limit(1);
+  return tool && await canViewCustomTool(tool, userId) ? { tool } : null;
+}
+
 export async function getMcpBindingContext(agentVersionId: string, toolId: string, userId?: string, workspaceId?: string) {
   const [binding] = await db
     .select()
@@ -79,4 +84,11 @@ export async function getMcpBindingContext(agentVersionId: string, toolId: strin
     .limit(1);
 
   return server ? { binding, tool, server } : null;
+}
+
+export async function getAvailableMcpToolContext(toolId: string, userId: string, workspaceId: string) {
+  const [tool] = await db.select().from(mcpTools).where(and(eq(mcpTools.id, toolId), eq(mcpTools.enabled, true))).limit(1);
+  if (!tool) return null;
+  const [server] = await db.select().from(mcpServers).where(and(eq(mcpServers.id, tool.mcpServerId), eq(mcpServers.workspaceId, workspaceId), eq(mcpServers.enabled, true), isNull(mcpServers.archivedAt))).limit(1);
+  return server && await canViewMcpServer(server, userId) ? { tool, server } : null;
 }

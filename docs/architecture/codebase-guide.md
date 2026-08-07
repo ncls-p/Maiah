@@ -87,6 +87,8 @@ Le type `assistant` ou `orchestrator` est immuable. Toute configuration exécuta
 - `attachments.ts` valide les fichiers et produit les métadonnées publiques.
 - `automation.ts` génère titres et suggestions avec la configuration admin.
 - La route de chat persiste message, conversation et usage de façon cohérente ; un orchestrateur passe par l’exécuteur durable partagé.
+- Les capacités de chat combinent les bindings de la version avec des ajouts temporaires propres à la conversation. Les identifiants reçus du client ne sont jamais considérés comme autorisés : outils, MCP, skills et bases de connaissances sont rechargés et filtrés côté serveur selon le workspace, la visibilité et les politiques d’approbation.
+- La mémoire de conversation est bornée par un seuil de tokens configuré sur la version. Lorsque ce seuil est atteint, le runtime chiffre et persiste un résumé, marque le dernier message couvert et émet une part `summary` visible dans le chat ; les tours suivants repartent du résumé et des messages plus récents.
 
 ### Outils et approbations
 
@@ -141,6 +143,7 @@ Les migrations SQL sont ordonnées dans `src/server/infrastructure/db/migrations
 3. Résoudre modèle, connaissances, skills et outils autorisés.
 4. Diffuser les événements et persister les parties sûres.
 5. Finaliser message, conversation et usage ; l’échec laisse un état explicite récupérable.
+6. Si le seuil de mémoire est atteint, générer puis persister le résumé sans faire échouer la réponse déjà produite.
 
 ### Run orchestrateur
 

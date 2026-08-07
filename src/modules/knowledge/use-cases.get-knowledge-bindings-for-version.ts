@@ -3,7 +3,7 @@ import { agentKnowledgeBindings,knowledgeBases } from "@/server/infrastructure/d
 import { and,eq,inArray,isNull } from "drizzle-orm";
 import { canViewKnowledgeBase } from "./use-cases.create-knowledge-base-input";
 
-export async function getKnowledgeBindingsForVersion(agentVersionId: string, visibility?: { workspaceId: string; userId: string }) {
+export async function getKnowledgeBindingsForVersion(agentVersionId: string, visibility?: { workspaceId: string; userId: string; additionalKnowledgeBaseIds?: string[] }) {
   const rows = await db
     .select({
       id: agentKnowledgeBindings.id,
@@ -17,12 +17,17 @@ export async function getKnowledgeBindingsForVersion(agentVersionId: string, vis
     .innerJoin(knowledgeBases, eq(agentKnowledgeBindings.knowledgeBaseId, knowledgeBases.id))
     .where(visibility ? and(eq(agentKnowledgeBindings.agentVersionId, agentVersionId), eq(knowledgeBases.workspaceId, visibility.workspaceId), isNull(knowledgeBases.archivedAt)) : eq(agentKnowledgeBindings.agentVersionId, agentVersionId));
   const visibleRows = visibility ? (await Promise.all(rows.map(async (row) => ((await canViewKnowledgeBase(row, visibility.userId)) ? row : null)))).filter((row) => row !== null) : rows;
-  return visibleRows.map(({ id, knowledgeBaseId, name, description }) => ({
+  const result = visibleRows.map(({ id, knowledgeBaseId, name, description }) => ({
     id,
     knowledgeBaseId,
     name,
     description,
   }));
+  const additionalIds = visibility?.additionalKnowledgeBaseIds?.filter((id) => !result.some((item) => item.knowledgeBaseId === id)) ?? [];
+  if (!visibility || additionalIds.length === 0) return result;
+  const extraRows = await db.select({ id: knowledgeBases.id, name: knowledgeBases.name, description: knowledgeBases.description, createdById: knowledgeBases.createdById, isGlobal: knowledgeBases.isGlobal }).from(knowledgeBases).where(and(eq(knowledgeBases.workspaceId, visibility.workspaceId), isNull(knowledgeBases.archivedAt), inArray(knowledgeBases.id, additionalIds)));
+  const visibleExtraRows = (await Promise.all(extraRows.map(async (row) => (await canViewKnowledgeBase(row, visibility.userId)) ? row : null))).filter((row) => row !== null);
+  return [...result, ...visibleExtraRows.map((row) => ({ id: `chat:${row.id}`, knowledgeBaseId: row.id, name: row.name, description: row.description }))];
 }
 
 type BindingDb = Pick<typeof db, "select" | "insert" | "delete">;

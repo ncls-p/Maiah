@@ -38,6 +38,7 @@ describe("workflow agentic mode", () => {
   it("validates generated graphs and restricts assistant references", () => {
     const definition: WorkflowDefinition = {
       schemaVersion: 1,
+      defaultInput: { message: "Bonjour" },
       nodes: [
         ...createStarterDefinition().nodes,
         {

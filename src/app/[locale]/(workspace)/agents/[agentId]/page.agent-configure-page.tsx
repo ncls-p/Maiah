@@ -11,13 +11,13 @@ import { PageLoading } from "@/components/page-loading";
 import { useWorkspace } from "@/hooks/use-workspace";
 
 import { mergeAgentEditorState } from "./agent-editor-state";
-import { buildAgentFormFromVersion,type AgentVersionPayload } from "./agent-form-from-version";
+import { buildAgentFormFromVersion, type AgentVersionPayload } from "./agent-form-from-version";
 import { AgentConfigureLoadError } from "./page.agent-configure-load-error";
 import { AgentConfigurePageView } from "./page.agent-configure-page.view";
 import { agentSaveError } from "./page.build-tool-binding-map";
+import { buildCapabilityBindings, buildEssentialPayload } from "./page.agent-save-payloads";
 import { useAgentConfigurationData } from "./page.use-agent-configuration-data";
-import type { Agent,DelegationConfig } from "./types";
-import { isMcpToolApprovalForced } from "./utils";
+import type { Agent, DelegationConfig } from "./types";
 
 export function useAgentConfigurePageController() {
   const params = useParams<{ agentId: string }>();
@@ -27,7 +27,7 @@ export function useAgentConfigurePageController() {
   const { permissions } = useWorkspaceShell();
   const t = useTranslations("agents");
 
-  const { agent, setAgent, providers, models, builtinTools, mcpServers, mcpTools, customTools, knowledgeBases, skills, loading, loadError, saving, setSaving, activeTab, setActiveTab, form, setForm, builtinBindings, setBuiltinBindings, mcpBindings, setMcpBindings, customBindings, selectedKnowledgeIds, setSelectedKnowledgeIds, selectedSkillIds, setSelectedSkillIds, delegationConfig, setDelegationConfig, delegationCandidates, showDeleteDialog, setShowDeleteDialog, deleting, setDeleting, showCopyableError, retryLoad } = useAgentConfigurationData(agentId, workspaceId);
+  const { agent, setAgent, providers, models, builtinTools, mcpServers, mcpTools, customTools, knowledgeBases, skills, loading, loadError, saving, setSaving, activeTab, setActiveTab, form, setForm, builtinBindings, setBuiltinBindings, mcpBindings, setMcpBindings, customBindings, setCustomBindings, selectedKnowledgeIds, setSelectedKnowledgeIds, selectedSkillIds, setSelectedSkillIds, delegationConfig, setDelegationConfig, delegationCandidates, showDeleteDialog, setShowDeleteDialog, deleting, setDeleting, showCopyableError, retryLoad } = useAgentConfigurationData(agentId, workspaceId);
 
   async function saveEssential(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -38,56 +38,13 @@ export function useAgentConfigurePageController() {
     if (!agentId || !workspaceId) return;
     setSaving(true);
     try {
-      const generationSettings = {
-        topK: Number(form.generationSettings.topK) || undefined,
-        presencePenalty: form.generationSettings.presencePenalty === "" ? undefined : Number(form.generationSettings.presencePenalty),
-        frequencyPenalty: form.generationSettings.frequencyPenalty === "" ? undefined : Number(form.generationSettings.frequencyPenalty),
-        seed: form.generationSettings.seed === "" ? undefined : Number(form.generationSettings.seed),
-        maxRetries: form.generationSettings.maxRetries === "" ? undefined : Number(form.generationSettings.maxRetries),
-        stopSequences: form.generationSettings.stopSequences
-          .split(/\n|,/)
-          .map((sequence) => sequence.trim())
-          .filter(Boolean),
-      };
+      const availableToolNames = new Set([...builtinTools.filter((tool) => builtinBindings[tool.id]?.enabled).map((tool) => tool.name), ...mcpTools.filter((tool) => tool.enabled && mcpBindings[tool.id]?.enabled).map((tool) => tool.name), ...customTools.filter((tool) => customBindings[tool.id]?.enabled).map((tool) => tool.name)]);
       const res = await fetch(`/api/workspace/agents/${agentId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           workspaceId,
-          baseVersionId: agent?.activeVersionId ?? null,
-          name: form.name,
-          slug: form.slug,
-          description: form.description,
-          systemPrompt: form.systemPrompt,
-          providerId: form.providerId || undefined,
-          modelId: form.modelId || undefined,
-          promptSuggestions: form.promptSuggestions
-            .split(/\n/)
-            .map((suggestion) => suggestion.trim())
-            .filter(Boolean),
-          temperature: form.temperature,
-          topP: form.topP,
-          maxOutputTokens: Number(form.maxOutputTokens) || undefined,
-          maxToolCalls: Number(form.maxToolCalls),
-          toolChoice: form.toolChoice,
-          generationSettings,
-          responseFormat: form.responseFormat,
-          memoryPolicy: form.memoryPolicy,
-          guardrails: form.guardrails,
-          approvalPolicy: form.approvalPolicy,
-          ...(form.sharingMode !== form.originalSharingMode || form.shareTargetEmail.trim()
-            ? {
-                sharingMode: form.sharingMode,
-                shareTargetEmail: form.sharingMode === "specific_user" ? form.shareTargetEmail.trim() : undefined,
-              }
-            : {}),
-          ...(agent?.canAdminCurate
-            ? {
-                isGlobal: form.isGlobal,
-                isRecommended: form.isRecommended,
-                curationLabel: form.curationLabel,
-              }
-            : {}),
+          ...buildEssentialPayload(form, agent, availableToolNames),
         }),
       });
       if (!res.ok) {
@@ -129,30 +86,7 @@ export function useAgentConfigurePageController() {
     if (!agentId || !workspaceId) return;
     setSaving(true);
     try {
-      const bindings = [
-        ...builtinTools
-          .filter((tool) => builtinBindings[tool.id]?.enabled)
-          .map((tool) => ({
-            toolSource: "builtin" as const,
-            toolId: tool.id,
-            requireApproval: builtinBindings[tool.id]?.requireApproval,
-          })),
-        ...mcpTools
-          .filter((tool) => tool.enabled && mcpBindings[tool.id]?.enabled)
-          .map((tool) => ({
-            toolSource: "mcp" as const,
-            toolId: tool.id,
-            mcpServerId: tool.mcpServerId,
-            requireApproval: isMcpToolApprovalForced(tool, mcpServers) || mcpBindings[tool.id]?.requireApproval,
-          })),
-        ...customTools
-          .filter((tool) => customBindings[tool.id]?.enabled)
-          .map((tool) => ({
-            toolSource: "custom" as const,
-            toolId: tool.id,
-            requireApproval: customBindings[tool.id]?.requireApproval ?? true,
-          })),
-      ];
+      const bindings = buildCapabilityBindings({ builtinTools, builtinBindings, mcpTools, mcpServers, mcpBindings, customTools, customBindings });
       const res = await fetch(`/api/workspace/agents/${agentId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -286,14 +220,63 @@ export function useAgentConfigurePageController() {
   if (workspaceLoading || !workspaceId || loading) return <PageLoading label={t("configure")} />;
   if (loadError || !agent) return <AgentConfigureLoadError message={loadError} onRetry={retryLoad} />;
 
-  const enabledBuiltinCount = builtinTools.filter((tool) => builtinBindings[tool.id]?.enabled).length; const enabledMcpCount = mcpTools.filter((tool) => tool.enabled && mcpBindings[tool.id]?.enabled).length;
-  const totalEnabledTools = enabledBuiltinCount + enabledMcpCount;
+  const enabledBuiltinCount = builtinTools.filter((tool) => builtinBindings[tool.id]?.enabled).length;
+  const enabledMcpCount = mcpTools.filter((tool) => tool.enabled && mcpBindings[tool.id]?.enabled).length;
+  const enabledCustomCount = customTools.filter((tool) => customBindings[tool.id]?.enabled).length;
+  const totalEnabledTools = enabledBuiltinCount + enabledMcpCount + enabledCustomCount;
   const capabilitiesCount = totalEnabledTools + selectedKnowledgeIds.length + selectedSkillIds.length;
   const delegationCount = delegationConfig.bindings.length;
   const canEdit = agent?.canEdit ?? false;
   const hasModel = Boolean(form.providerId && form.modelId);
 
-  return { kind: "ready", activeTab, agent, builtinBindings, builtinTools, canEdit, capabilitiesCount, delegationCandidates, delegationConfig, delegationCount, deleting, form, handleClone, handleDelete, handleLogoChange, hasModel, knowledgeBases, mcpBindings, mcpServers, mcpTools, models, permissions, providers, saveCapabilities, saveEssential, saveOrchestration, saving, selectedKnowledgeIds, selectedSkillIds, setActiveTab, setBuiltinBindings, setDelegationConfig, setForm, setMcpBindings, setSelectedKnowledgeIds, setSelectedSkillIds, setShowDeleteDialog, showDeleteDialog, skills, t } as const;
+  return {
+    kind: "ready",
+    activeTab,
+    agent,
+    builtinBindings,
+    builtinTools,
+    canEdit,
+    capabilitiesCount,
+    customBindings,
+    customTools,
+    delegationCandidates,
+    delegationConfig,
+    delegationCount,
+    deleting,
+    form,
+    handleClone,
+    handleDelete,
+    handleLogoChange,
+    hasModel,
+    knowledgeBases,
+    mcpBindings,
+    mcpServers,
+    mcpTools,
+    models,
+    permissions,
+    providers,
+    saveCapabilities,
+    saveEssential,
+    saveOrchestration,
+    saving,
+    selectedKnowledgeIds,
+    selectedSkillIds,
+    setActiveTab,
+    setBuiltinBindings,
+    setCustomBindings,
+    setDelegationConfig,
+    setForm,
+    setMcpBindings,
+    setSelectedKnowledgeIds,
+    setSelectedSkillIds,
+    setShowDeleteDialog,
+    showDeleteDialog,
+    skills,
+    t,
+  } as const;
 }
 
-export default function AgentConfigurePage(...args: Parameters<typeof useAgentConfigurePageController>) { const model = useAgentConfigurePageController(...args); return !("kind" in model) ? model : <AgentConfigurePageView model={model} />; }
+export default function AgentConfigurePage(...args: Parameters<typeof useAgentConfigurePageController>) {
+  const model = useAgentConfigurePageController(...args);
+  return !("kind" in model) ? model : <AgentConfigurePageView model={model} />;
+}

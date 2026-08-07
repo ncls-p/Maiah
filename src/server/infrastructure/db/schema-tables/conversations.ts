@@ -1,5 +1,16 @@
-import { boolean,index,integer,jsonb,pgEnum,pgTable,text,timestamp,uuid,varchar } from "drizzle-orm/pg-core";
-import { agents,agentVersions } from "./agents";
+import {
+  boolean,
+  index,
+  integer,
+  jsonb,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+  varchar,
+} from "drizzle-orm/pg-core";
+import { agents, agentVersions } from "./agents";
 import { users } from "./auth";
 import { workspaces } from "./workspace";
 
@@ -13,7 +24,11 @@ const STATUS_COLUMN = "status";
 
 // ─── Conversations & Messages ──────────────────────────────────────────
 
-export const conversationStatusEnum = pgEnum("conversation_status", ["active", "archived", "deleted"]);
+export const conversationStatusEnum = pgEnum("conversation_status", [
+  "active",
+  "archived",
+  "deleted",
+]);
 
 export const conversationFolders = pgTable(
   "conversation_folders",
@@ -27,11 +42,24 @@ export const conversationFolders = pgTable(
       .references(() => users.id, { onDelete: CASCADE_ACTION }),
     name: varchar("name", { length: 160 }).notNull(),
     sortOrder: integer("sort_order").notNull().default(0),
-    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true })
+      .notNull()
+      .defaultNow(),
     archivedAt: timestamp("archived_at", { withTimezone: true }),
   },
-  (t) => [index("conversation_folders_user_workspace_order").on(t.userId, t.workspaceId, t.archivedAt, t.sortOrder, t.createdAt, t.id)],
+  (t) => [
+    index("conversation_folders_user_workspace_order").on(
+      t.userId,
+      t.workspaceId,
+      t.archivedAt,
+      t.sortOrder,
+      t.createdAt,
+      t.id,
+    ),
+  ],
 );
 
 export const conversations = pgTable(
@@ -57,19 +85,66 @@ export const conversations = pgTable(
     sidebarOrder: integer("sidebar_order"),
     parentConversationId: uuid("parent_conversation_id"),
     branchFromMessageId: uuid("branch_from_message_id"),
-    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
+    summaryEncrypted: text("summary_encrypted"),
+    summaryThroughMessageId: uuid("summary_through_message_id"),
+    summaryTokenCount: integer("summary_token_count"),
+    summaryUpdatedAt: timestamp("summary_updated_at", { withTimezone: true }),
+    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true })
+      .notNull()
+      .defaultNow(),
     archivedAt: timestamp("archived_at", { withTimezone: true }),
   },
-  (t) => [index("conversations_workspace_agent").on(t.workspaceId, t.agentId), index("conversations_user").on(t.userId), index("conversations_user_workspace_updated").on(t.userId, t.workspaceId, t.status, t.archivedAt, t.updatedAt, t.id), index("conversations_sidebar_order").on(t.userId, t.workspaceId, t.folderId, t.pinnedAt, t.sidebarOrder, t.updatedAt, t.id)],
+  (t) => [
+    index("conversations_workspace_agent").on(t.workspaceId, t.agentId),
+    index("conversations_user").on(t.userId),
+    index("conversations_user_workspace_updated").on(
+      t.userId,
+      t.workspaceId,
+      t.status,
+      t.archivedAt,
+      t.updatedAt,
+      t.id,
+    ),
+    index("conversations_sidebar_order").on(
+      t.userId,
+      t.workspaceId,
+      t.folderId,
+      t.pinnedAt,
+      t.sidebarOrder,
+      t.updatedAt,
+      t.id,
+    ),
+  ],
 );
 
-export const messageRoleEnum = pgEnum("message_role", ["user", "assistant", "system", "tool"]);
-export const messageStatusEnum = pgEnum("message_status", ["pending", "streaming", "completed", "failed", "cancelled"]);
+export const messageRoleEnum = pgEnum("message_role", [
+  "user",
+  "assistant",
+  "system",
+  "tool",
+]);
+export const messageStatusEnum = pgEnum("message_status", [
+  "pending",
+  "streaming",
+  "completed",
+  "failed",
+  "cancelled",
+]);
 
-export const scheduledTaskFrequencyEnum = pgEnum("scheduled_task_frequency", ["daily", "interval"]);
+export const scheduledTaskFrequencyEnum = pgEnum("scheduled_task_frequency", [
+  "daily",
+  "interval",
+]);
 
-export const scheduledTaskStatusEnum = pgEnum("scheduled_task_status", ["idle", "running", "success", "failed"]);
+export const scheduledTaskStatusEnum = pgEnum("scheduled_task_status", [
+  "idle",
+  "running",
+  "success",
+  "failed",
+]);
 
 export const messages = pgTable(
   "messages",
@@ -83,13 +158,30 @@ export const messages = pgTable(
     costUsd: text("cost_usd"),
     modelId: varchar("model_id", { length: 255 }),
     providerId: uuid("provider_id"),
-    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
+      .notNull()
+      .defaultNow(),
     completedAt: timestamp("completed_at", { withTimezone: true }),
   },
-  (t) => [index("messages_conversation").on(t.conversationId), index("messages_conversation_created").on(t.conversationId, t.createdAt)],
+  (t) => [
+    index("messages_conversation").on(t.conversationId),
+    index("messages_conversation_created").on(t.conversationId, t.createdAt),
+  ],
 );
 
-export const messagePartTypeEnum = pgEnum("message_part_type", ["text", "file", "tool-call", "tool-result", "reasoning", "error", "citation", "citations", "suggestions", "impact"]);
+export const messagePartTypeEnum = pgEnum("message_part_type", [
+  "text",
+  "file",
+  "tool-call",
+  "tool-result",
+  "reasoning",
+  "error",
+  "citation",
+  "citations",
+  "suggestions",
+  "impact",
+  "summary",
+]);
 
 export const scheduledTasks = pgTable(
   "scheduled_tasks",
@@ -116,12 +208,21 @@ export const scheduledTasks = pgTable(
     enabled: boolean("enabled").notNull().default(true),
     nextRunAt: timestamp("next_run_at", { withTimezone: true }).notNull(),
     lastRunAt: timestamp("last_run_at", { withTimezone: true }),
-    lastStatus: scheduledTaskStatusEnum("last_status").notNull().default("idle"),
+    lastStatus: scheduledTaskStatusEnum("last_status")
+      .notNull()
+      .default("idle"),
     lastError: text("last_error"),
-    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
-  (t) => [index("scheduled_tasks_due").on(t.enabled, t.nextRunAt), index("scheduled_tasks_workspace_user").on(t.workspaceId, t.userId)],
+  (t) => [
+    index("scheduled_tasks_due").on(t.enabled, t.nextRunAt),
+    index("scheduled_tasks_workspace_user").on(t.workspaceId, t.userId),
+  ],
 );
 
 export const messageParts = pgTable(
@@ -135,7 +236,9 @@ export const messageParts = pgTable(
     contentEncrypted: text("content_encrypted"),
     metadataJson: jsonb("metadata_json"),
     sortOrder: integer("sort_order").notNull().default(0),
-    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
   (t) => [index("message_parts_message").on(t.messageId, t.sortOrder)],
 );
