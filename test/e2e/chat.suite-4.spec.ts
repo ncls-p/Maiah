@@ -37,6 +37,13 @@ test.describe("chat composer", () => {
       '[data-slot="chat-composer-primary-controls"]',
     );
     await expect(controls).toBeVisible({ timeout: 15_000 });
+    const dock = page.locator(".composer-dock");
+    const composerBox = page.locator(".composer-box");
+    const mobileNavigation = page.locator(
+      '[data-slot="mobile-app-navigation"]',
+    );
+    await expect(dock).toBeVisible();
+    await expect(mobileNavigation).toBeVisible();
     expect(
       await controls.evaluate(
         (element) => element.scrollWidth <= element.clientWidth,
@@ -45,6 +52,21 @@ test.describe("chat composer", () => {
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+    const [dockBox, composerBounds, navigationBox] = await Promise.all([
+      dock.boundingBox(),
+      composerBox.boundingBox(),
+      mobileNavigation.boundingBox(),
+    ]);
+    expect(dockBox).not.toBeNull();
+    expect(composerBounds).not.toBeNull();
+    expect(navigationBox).not.toBeNull();
+    expect(Math.abs(dockBox!.y + dockBox!.height - navigationBox!.y)).toBeLessThanOrEqual(1);
+    expect(navigationBox!.y - (composerBounds!.y + composerBounds!.height)).toBeLessThanOrEqual(16);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollHeight <= window.innerHeight,
       ),
     ).toBe(true);
   });

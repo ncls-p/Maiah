@@ -151,7 +151,7 @@
     will-change: transform;
   }
   .composer-dock[data-centered="true"] {
-    transform: translateY(clamp(-11rem, -18vh, -7rem));
+    transform: translateY(0);
   }
   @media (min-width: 640px) {
     .composer-dock[data-centered="true"] {
@@ -194,7 +194,7 @@
       font-size: clamp(1.8rem, min(3.8vw, 5.2vh), 3rem);
     }
   }
-  @media (max-height: 620px) {
+  @media (min-width: 640px) and (max-height: 620px) {
     .composer-dock[data-centered="true"] {
       transform: translateY(-12vh);
     }

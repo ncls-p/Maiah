@@ -195,8 +195,8 @@ export function ChatComposerBody(props: ChatComposerBodyProps) {
           ))}
         </div>
       ) : null}
-      <div className="mt-1.5 min-h-5 px-1">
-        {!props.canChat ? (
+      {!props.canChat ? (
+        <div className="mt-1.5 min-h-5 px-1">
           <p className="text-xs text-muted-foreground animate-in-fade">
             {t("needsSetup")}{" "}
             <Link
@@ -206,8 +206,8 @@ export function ChatComposerBody(props: ChatComposerBodyProps) {
               {t("configureAssistant")}
             </Link>
           </p>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
     </div>
   );
 }
