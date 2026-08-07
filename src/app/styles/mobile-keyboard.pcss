@@ -1,0 +1,16 @@
+@layer components {
+  @media (max-width: 767px) {
+    .app-shell {
+      height: 100dvh;
+      min-height: 100dvh;
+    }
+
+    .composer-dock textarea {
+      scroll-margin: 0;
+    }
+
+    .app-shell:has(.composer-dock textarea:focus) .mobile-app-navigation {
+      display: none;
+    }
+  }
+}

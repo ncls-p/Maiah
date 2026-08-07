@@ -46,6 +46,9 @@ test.describe("chat composer", () => {
     await expect(dock).toBeVisible();
     await expect(textarea).toBeVisible();
     await expect(mobileNavigation).toBeVisible();
+    await expect(
+      page.locator('meta[name="viewport"]'),
+    ).toHaveAttribute("content", /interactive-widget=resizes-content/);
     const initialTextarea = await textarea.evaluate((element) => ({
       clientHeight: element.clientHeight,
       overflowY: getComputedStyle(element).overflowY,
@@ -75,6 +78,27 @@ test.describe("chat composer", () => {
     expect(navigationBox).not.toBeNull();
     expect(Math.abs(dockBox!.y + dockBox!.height - navigationBox!.y)).toBeLessThanOrEqual(1);
     expect(navigationBox!.y - (composerBounds!.y + composerBounds!.height)).toBeLessThanOrEqual(16);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollHeight <= window.innerHeight,
+      ),
+    ).toBe(true);
+
+    const header = page.locator(".app-shell__header");
+    const headerBeforeKeyboard = await header.boundingBox();
+    await textarea.focus();
+    await expect(mobileNavigation).toBeHidden();
+    await page.setViewportSize({ width: 390, height: 500 });
+    const [headerWithKeyboard, dockWithKeyboard] = await Promise.all([
+      header.boundingBox(),
+      dock.boundingBox(),
+    ]);
+    expect(headerWithKeyboard?.y).toBe(headerBeforeKeyboard?.y);
+    expect(dockWithKeyboard).not.toBeNull();
+    expect(dockWithKeyboard!.y + dockWithKeyboard!.height).toBeLessThanOrEqual(
+      501,
+    );
+    expect(await page.evaluate(() => window.scrollY)).toBe(0);
     expect(
       await page.evaluate(
         () => document.documentElement.scrollHeight <= window.innerHeight,
