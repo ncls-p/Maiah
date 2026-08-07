@@ -58,6 +58,7 @@ test.describe("scheduled tasks page", () => {
     const suffix = Date.now();
     const title = `Editable task ${suffix}`;
     const updatedTitle = `Updated task ${suffix}`;
+    await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/en/scheduled-tasks");
 
     await page.getByRole("button", { name: "Create task" }).click();
@@ -73,6 +74,57 @@ test.describe("scheduled tasks page", () => {
     const editDialog = page.getByRole("dialog", { name: "Task details" });
     await expect(editDialog.getByText("Next run")).toBeVisible();
     await expect(editDialog.getByText("Time zone")).toBeVisible();
+    const scheduleFields = editDialog.locator(
+      '[data-slot="scheduled-task-schedule-fields"]',
+    );
+    const assistant = editDialog.getByLabel("Assistant");
+    const frequency = editDialog.getByLabel("Frequency");
+    const time = editDialog.getByLabel("Time");
+    const [assistantDesktop, frequencyDesktop, timeDesktop] =
+      await Promise.all([
+        assistant.boundingBox(),
+        frequency.boundingBox(),
+        time.boundingBox(),
+      ]);
+    expect(assistantDesktop).not.toBeNull();
+    expect(frequencyDesktop).not.toBeNull();
+    expect(timeDesktop).not.toBeNull();
+    expect(assistantDesktop!.y + assistantDesktop!.height).toBeLessThan(
+      frequencyDesktop!.y,
+    );
+    expect(frequencyDesktop!.x + frequencyDesktop!.width).toBeLessThanOrEqual(
+      timeDesktop!.x,
+    );
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    const [dialogMobile, assistantMobile, frequencyMobile, timeMobile] =
+      await Promise.all([
+        editDialog.boundingBox(),
+        assistant.boundingBox(),
+        frequency.boundingBox(),
+        time.boundingBox(),
+      ]);
+    expect(dialogMobile).not.toBeNull();
+    expect(dialogMobile!.x).toBeGreaterThanOrEqual(0);
+    expect(dialogMobile!.y).toBeGreaterThanOrEqual(0);
+    expect(dialogMobile!.x + dialogMobile!.width).toBeLessThanOrEqual(390);
+    expect(dialogMobile!.y + dialogMobile!.height).toBeLessThanOrEqual(844);
+    expect(assistantMobile!.y + assistantMobile!.height).toBeLessThan(
+      frequencyMobile!.y,
+    );
+    expect(frequencyMobile!.y + frequencyMobile!.height).toBeLessThan(
+      timeMobile!.y,
+    );
+    await expect
+      .poll(() =>
+        scheduleFields.evaluate(
+          (element) => element.scrollWidth <= element.clientWidth + 1,
+        ),
+      )
+      .toBe(true);
+    await expect(
+      editDialog.getByRole("button", { name: "Save changes" }),
+    ).toBeInViewport();
     await editDialog.getByLabel("Title").fill(updatedTitle);
     await editDialog.getByRole("button", { name: "Save changes" }).click();
 
