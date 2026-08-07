@@ -205,8 +205,6 @@
       "stopGeneration": "Stop generation",
       "needsSetup": "This assistant needs a provider and model.",
       "configureAssistant": "Configure assistant",
-      "queueHint": "Enter queues · Shift+Enter adds a line",
-      "sendHint": "Enter sends · Shift+Enter adds a line · paste or drop files",
       "codeFiles": "ZIP/code",
       "images": "Images",
       "documents": "PDF/Word/PPTX/MD"
@@ -2091,6 +2089,21 @@
       "customHint": "Customize every platform color independently for light and dark mode.",
       "light": "Light palette",
       "dark": "Dark palette",
+      "hero": {
+        "title": "Chat welcome message",
+        "description": "Customize the empty-chat headline for your organization in both supported languages.",
+        "locales": {
+          "en": "English",
+          "fr": "French"
+        },
+        "fields": {
+          "kicker": "Eyebrow",
+          "lineOne": "First line",
+          "lineTwoPrefix": "Second-line prefix",
+          "accent": "Highlighted words",
+          "lineTwoSuffix": "Second-line ending"
+        }
+      },
       "scopeHint": "Changes apply to every project in this organization.",
       "readOnly": "Only organization administrators can change branding.",
       "reset": "Reset",

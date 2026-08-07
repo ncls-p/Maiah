@@ -1,5 +1,17 @@
 import type { OrganizationThemeConfig } from "@/modules/organization/themes";
-import { boolean,index,jsonb,pgEnum,pgTable,text,timestamp,uniqueIndex,uuid,varchar } from "drizzle-orm/pg-core";
+import type { OrganizationHeroConfig } from "@/modules/organization/hero-branding";
+import {
+  boolean,
+  index,
+  jsonb,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+  varchar,
+} from "drizzle-orm/pg-core";
 import { users } from "./auth";
 
 const CREATED_AT_COLUMN = "created_at";
@@ -19,11 +31,19 @@ export const organizations = pgTable("organizations", {
   logoUrl: text("logo_url"),
   theme: varchar("theme", { length: 32 }).notNull().default("ocean"),
   themeConfigJson: jsonb("theme_config_json").$type<OrganizationThemeConfig>(),
-  createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
+  heroConfigJson: jsonb("hero_config_json").$type<OrganizationHeroConfig>(),
+  createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
-export const organizationMemberStatusEnum = pgEnum("organization_member_status", ["active", "suspended", "removed"]);
+export const organizationMemberStatusEnum = pgEnum(
+  "organization_member_status",
+  ["active", "suspended", "removed"],
+);
 
 export const organizationMembers = pgTable(
   "organization_members",
@@ -35,11 +55,23 @@ export const organizationMembers = pgTable(
     userId: uuid(USER_ID_COLUMN)
       .notNull()
       .references(() => users.id, { onDelete: CASCADE_ACTION }),
-    status: organizationMemberStatusEnum(STATUS_COLUMN).notNull().default("active"),
-    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
+    status: organizationMemberStatusEnum(STATUS_COLUMN)
+      .notNull()
+      .default("active"),
+    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
-  (t) => [uniqueIndex("organization_members_org_user_unique").on(t.organizationId, t.userId), index("organization_members_user_status_idx").on(t.userId, t.status)],
+  (t) => [
+    uniqueIndex("organization_members_org_user_unique").on(
+      t.organizationId,
+      t.userId,
+    ),
+    index("organization_members_user_status_idx").on(t.userId, t.status),
+  ],
 );
 
 export const teams = pgTable(
@@ -56,10 +88,17 @@ export const teams = pgTable(
     createdById: uuid(CREATED_BY_USER_ID_COLUMN)
       .notNull()
       .references(() => users.id),
-    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
-  (t) => [uniqueIndex("teams_org_slug_unique").on(t.organizationId, t.slug), index("teams_organization_idx").on(t.organizationId)],
+  (t) => [
+    uniqueIndex("teams_org_slug_unique").on(t.organizationId, t.slug),
+    index("teams_organization_idx").on(t.organizationId),
+  ],
 );
 
 export const teamMembers = pgTable(
@@ -72,9 +111,14 @@ export const teamMembers = pgTable(
     userId: uuid(USER_ID_COLUMN)
       .notNull()
       .references(() => users.id, { onDelete: CASCADE_ACTION }),
-    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
-  (t) => [uniqueIndex("team_members_team_user_unique").on(t.teamId, t.userId), index("team_members_user_idx").on(t.userId)],
+  (t) => [
+    uniqueIndex("team_members_team_user_unique").on(t.teamId, t.userId),
+    index("team_members_user_idx").on(t.userId),
+  ],
 );
 
 export const workspaces = pgTable(
@@ -89,14 +133,24 @@ export const workspaces = pgTable(
     createdById: uuid(CREATED_BY_USER_ID_COLUMN)
       .notNull()
       .references(() => users.id),
-    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true })
+      .notNull()
+      .defaultNow(),
     archivedAt: timestamp("archived_at", { withTimezone: true }),
   },
-  (t) => [uniqueIndex("workspaces_org_slug_unique").on(t.organizationId, t.slug)],
+  (t) => [
+    uniqueIndex("workspaces_org_slug_unique").on(t.organizationId, t.slug),
+  ],
 );
 
-export const workspaceMemberStatusEnum = pgEnum("workspace_member_status", ["active", "suspended", "removed"]);
+export const workspaceMemberStatusEnum = pgEnum("workspace_member_status", [
+  "active",
+  "suspended",
+  "removed",
+]);
 
 export const workspaceMembers = pgTable(
   "workspace_members",
@@ -108,11 +162,19 @@ export const workspaceMembers = pgTable(
     userId: uuid(USER_ID_COLUMN)
       .notNull()
       .references(() => users.id, { onDelete: CASCADE_ACTION }),
-    status: workspaceMemberStatusEnum(STATUS_COLUMN).notNull().default("active"),
-    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
+    status: workspaceMemberStatusEnum(STATUS_COLUMN)
+      .notNull()
+      .default("active"),
+    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
-  (t) => [uniqueIndex("workspace_members_ws_user_unique").on(t.workspaceId, t.userId)],
+  (t) => [
+    uniqueIndex("workspace_members_ws_user_unique").on(t.workspaceId, t.userId),
+  ],
 );
 
 export const workspaceInvitations = pgTable("workspace_invitations", {
@@ -129,5 +191,7 @@ export const workspaceInvitations = pgTable("workspace_invitations", {
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   acceptedAt: timestamp("accepted_at", { withTimezone: true }),
   revokedAt: timestamp("revoked_at", { withTimezone: true }),
-  createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });

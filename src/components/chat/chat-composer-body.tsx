@@ -78,7 +78,7 @@ export function ChatComposerBody(props: ChatComposerBodyProps) {
         </div>
       ) : null}
       <div className="composer-box overflow-hidden rounded-3xl">
-        <div className="px-3 pt-2.5 sm:px-4 sm:pt-3">
+        <div className="px-3 pt-2 sm:px-4 sm:pt-2.5">
           <input
             ref={fileInputRef}
             type="file"
@@ -109,10 +109,10 @@ export function ChatComposerBody(props: ChatComposerBodyProps) {
             }
             disabled={!props.canChat}
             rows={1}
-            className="max-h-40 min-h-14 w-full resize-none border-0 bg-transparent px-1 py-2 text-base shadow-none hover:border-transparent focus-visible:bg-transparent focus-visible:ring-0 sm:min-h-16 sm:py-2.5 sm:text-sm placeholder:text-muted-foreground"
+            className="max-h-40 min-h-12 w-full resize-none border-0 bg-transparent px-1 py-1.5 text-base shadow-none hover:border-transparent focus-visible:bg-transparent focus-visible:ring-0 sm:text-sm placeholder:text-muted-foreground"
           />
         </div>
-        <div className="flex min-h-14 min-w-0 items-center gap-1.5 border-t border-border/55 px-2 py-1.5 sm:gap-2 sm:px-3">
+        <div className="flex min-h-12 min-w-0 items-center gap-1.5 border-t border-border/55 px-2 py-1 sm:gap-2 sm:px-3">
           <Button
             type="button"
             size="icon"
@@ -136,9 +136,6 @@ export function ChatComposerBody(props: ChatComposerBodyProps) {
           >
             {props.controls.primary}
           </div>
-          <span className="hidden shrink-0 text-[0.65rem] text-muted-foreground lg:inline">
-            {props.sending ? t("queueHint") : t("sendHint")}
-          </span>
           <Button
             type="submit"
             size="icon"
@@ -175,7 +172,7 @@ export function ChatComposerBody(props: ChatComposerBodyProps) {
         {props.controls.secondary ? (
           <div
             data-slot="chat-composer-usage"
-            className="border-t border-border/55 px-2 py-1.5 sm:px-3"
+            className="border-t border-border/55 px-2 py-1 sm:px-3"
           >
             {props.controls.secondary}
           </div>

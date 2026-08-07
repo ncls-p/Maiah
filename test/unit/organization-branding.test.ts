@@ -1,4 +1,4 @@
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => {
   const organization = {
@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => {
     logoUrl: null,
     theme: "ocean",
     themeConfigJson: null,
+    heroConfigJson: null,
   };
   const chain = {
     from: vi.fn(),
@@ -35,7 +36,10 @@ vi.mock("@/server/domain/services/authorization", () => ({
   authorization: { checkPermission: mocks.checkPermission },
 }));
 
-import { getOrganizationBranding,updateOrganizationBranding } from "@/modules/organization/branding";
+import {
+  getOrganizationBranding,
+  updateOrganizationBranding,
+} from "@/modules/organization/branding";
 
 describe("organization branding authorization", () => {
   beforeEach(() => {
@@ -47,21 +51,34 @@ describe("organization branding authorization", () => {
   it("does not expose another organization without read access", async () => {
     mocks.checkPermission.mockResolvedValue({ granted: false });
 
-    await expect(getOrganizationBranding({ workspaceId: "workspace-1", userId: "user-1" })).resolves.toBeNull();
-    expect(mocks.checkPermission).toHaveBeenCalledWith(expect.objectContaining({ principalId: "user-1" }), "organization.get", "organization", "org-1");
+    await expect(
+      getOrganizationBranding({ workspaceId: "workspace-1", userId: "user-1" }),
+    ).resolves.toBeNull();
+    expect(mocks.checkPermission).toHaveBeenCalledWith(
+      expect.objectContaining({ principalId: "user-1" }),
+      "organization.get",
+      "organization",
+      "org-1",
+    );
   });
 
   it("returns read-only branding to a non-admin organization member", async () => {
-    mocks.checkPermission.mockResolvedValueOnce({ granted: true }).mockResolvedValueOnce({ granted: false });
+    mocks.checkPermission
+      .mockResolvedValueOnce({ granted: true })
+      .mockResolvedValueOnce({ granted: false });
 
-    await expect(getOrganizationBranding({ workspaceId: "workspace-1", userId: "user-1" })).resolves.toMatchObject({
+    await expect(
+      getOrganizationBranding({ workspaceId: "workspace-1", userId: "user-1" }),
+    ).resolves.toMatchObject({
       organizationId: "org-1",
       canManage: false,
     });
   });
 
   it("rejects updates without organization administration permission", async () => {
-    mocks.checkPermission.mockResolvedValueOnce({ granted: true }).mockResolvedValueOnce({ granted: false });
+    mocks.checkPermission
+      .mockResolvedValueOnce({ granted: true })
+      .mockResolvedValueOnce({ granted: false });
 
     await expect(
       updateOrganizationBranding({
@@ -70,6 +87,7 @@ describe("organization branding authorization", () => {
         logoUrl: null,
         theme: "forest",
         themeConfig: null,
+        heroConfig: null,
       }),
     ).resolves.toEqual({ status: "forbidden" });
     expect(mocks.update).not.toHaveBeenCalled();
@@ -85,9 +103,16 @@ describe("organization branding authorization", () => {
         logoUrl: null,
         theme: "violet",
         themeConfig: null,
+        heroConfig: null,
       }),
     ).resolves.toMatchObject({ status: "updated" });
     expect(mocks.chain.where).toHaveBeenLastCalledWith(expect.anything());
-    expect(mocks.chain.set).toHaveBeenCalledWith(expect.objectContaining({ theme: "violet", themeConfigJson: null }));
+    expect(mocks.chain.set).toHaveBeenCalledWith(
+      expect.objectContaining({
+        theme: "violet",
+        themeConfigJson: null,
+        heroConfigJson: null,
+      }),
+    );
   });
 });

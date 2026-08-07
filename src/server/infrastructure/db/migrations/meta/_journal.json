@@ -323,6 +323,13 @@
       "when": 1786086367111,
       "tag": "0045_elite_vindicator",
       "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1786093811740,
+      "tag": "0046_gray_mandroid",
+      "breakpoints": true
     }
   ]
 }

@@ -18,6 +18,22 @@ describe("chat composer layout", () => {
     expect(source).toContain("props.controls.secondary");
   });
 
+  it("keeps the primary composer controls compact without an inline hint", () => {
+    const bodySource = fs.readFileSync(
+      path.join(process.cwd(), "src/components/chat/chat-composer-body.tsx"),
+      "utf8",
+    );
+    const selectorSource = fs.readFileSync(
+      path.join(process.cwd(), "src/components/chat/chat-agent-selector.tsx"),
+      "utf8",
+    );
+
+    expect(bodySource).toContain("min-h-12 min-w-0 items-center");
+    expect(bodySource).not.toContain('t("sendHint")');
+    expect(bodySource).not.toContain('t("queueHint")');
+    expect(selectorSource).toContain("sm:flex-nowrap");
+  });
+
   it("keeps the capability catalog bounded and independently scrollable", () => {
     const menuSource = fs.readFileSync(
       path.join(

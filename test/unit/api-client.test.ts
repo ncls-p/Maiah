@@ -46,6 +46,7 @@ describe("api-client", () => {
         organizationLogoUrl: "data:image/png;base64,logo",
         organizationTheme: "forest",
         organizationThemeConfig: null,
+        organizationHeroConfig: null,
       });
     });
 
@@ -101,6 +102,7 @@ describe("api-client", () => {
         organizationLogoUrl: null,
         organizationTheme: "ocean",
         organizationThemeConfig: null,
+        organizationHeroConfig: null,
       });
     });
 

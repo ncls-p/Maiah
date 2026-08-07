@@ -116,14 +116,14 @@ export function ChatAgentSelector(props: ChatAgentSelectorProps) {
     ));
 
   return (
-    <div className="relative z-10 flex min-w-0 flex-1 flex-wrap items-center gap-1.5 sm:gap-2">
+    <div className="relative z-10 flex min-w-0 flex-1 flex-wrap items-center gap-1.5 sm:flex-nowrap sm:gap-2">
       <DropdownMenu onOpenChange={(open) => !open && setSearch("")}>
         <DropdownMenuTrigger asChild>
           <Button
             type="button"
             variant="outline"
             size="sm"
-            className="h-auto min-h-11 min-w-0 flex-[1_1_13rem] justify-between gap-2 rounded-xl border-border/65 bg-background/72 px-2.5 py-1.5 text-xs font-medium shadow-[0_1px_2px_rgba(9,30,36,0.035)] transition-[background-color,border-color,box-shadow,scale] hover:border-primary/20 hover:bg-primary/5 active:scale-[0.98] sm:max-w-80 sm:flex-[0_1_20rem]"
+            className="h-10 min-w-0 flex-[1_1_13rem] justify-between gap-2 rounded-xl border-border/65 bg-background/72 px-2.5 text-xs font-medium shadow-[0_1px_2px_rgba(9,30,36,0.035)] transition-[background-color,border-color,box-shadow,scale] hover:border-primary/20 hover:bg-primary/5 active:scale-[0.98] sm:max-w-80 sm:flex-[0_1_20rem]"
             aria-label={t("currentAssistant")}
             title={selectedLabel}
           >

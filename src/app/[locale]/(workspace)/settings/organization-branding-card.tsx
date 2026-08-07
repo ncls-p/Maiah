@@ -1,16 +1,32 @@
 "use client";
 
-import { ImageIcon,PaletteIcon,RotateCcwIcon,UploadIcon } from "lucide-react";
+import {
+  ImageIcon,
+  PaletteIcon,
+  RotateCcwIcon,
+  UploadIcon,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import Image from "next/image";
-import { useEffect,useRef,useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useWorkspace } from "@/hooks/use-workspace";
-import { resolveOrganizationTheme,themeCss,type OrganizationTheme,type OrganizationThemeConfig } from "@/modules/organization/themes";
+import {
+  resolveOrganizationTheme,
+  themeCss,
+  type OrganizationTheme,
+  type OrganizationThemeConfig,
+} from "@/modules/organization/themes";
+import {
+  copyOrganizationHero,
+  DEFAULT_ORGANIZATION_HERO,
+  type OrganizationHeroConfig,
+} from "@/modules/organization/hero-branding";
+import { OrganizationHeroEditor } from "./organization-hero-editor";
 import { OrganizationThemeEditor } from "./organization-theme-editor";
 
 type Branding = {
@@ -18,6 +34,7 @@ type Branding = {
   logoUrl: string | null;
   theme: OrganizationTheme;
   themeConfig: OrganizationThemeConfig | null;
+  heroConfig: OrganizationHeroConfig | null;
   canManage: boolean;
 };
 
@@ -41,7 +58,11 @@ export function OrganizationBrandingCard() {
   const [branding, setBranding] = useState<Branding | null>(null);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [theme, setTheme] = useState<OrganizationTheme>("ocean");
-  const [themeConfig, setThemeConfig] = useState<OrganizationThemeConfig | null>(null);
+  const [themeConfig, setThemeConfig] =
+    useState<OrganizationThemeConfig | null>(null);
+  const [heroConfig, setHeroConfig] = useState<OrganizationHeroConfig>(() =>
+    copyOrganizationHero(),
+  );
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -59,6 +80,9 @@ export function OrganizationBrandingCard() {
         setLogoUrl(data.logoUrl);
         setTheme(data.theme);
         setThemeConfig(data.themeConfig);
+        setHeroConfig(
+          copyOrganizationHero(data.heroConfig ?? DEFAULT_ORGANIZATION_HERO),
+        );
       })
       .catch((error: Error) => {
         if (error.name !== "AbortError") toast.error(t("loadFailed"));
@@ -72,7 +96,15 @@ export function OrganizationBrandingCard() {
       setLogoUrl(await readLogo(file));
     } catch (error) {
       const code = error instanceof Error ? error.message : "read_failed";
-      toast.error(t(code === "too_large" ? "logoTooLarge" : code === "invalid_type" ? "logoInvalid" : "logoReadFailed"));
+      toast.error(
+        t(
+          code === "too_large"
+            ? "logoTooLarge"
+            : code === "invalid_type"
+              ? "logoInvalid"
+              : "logoReadFailed",
+        ),
+      );
     }
   }
 
@@ -83,16 +115,26 @@ export function OrganizationBrandingCard() {
       const response = await fetch("/api/workspace/branding", {
         method: "PUT",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ workspaceId, logoUrl, theme, themeConfig }),
+        body: JSON.stringify({
+          workspaceId,
+          logoUrl,
+          theme,
+          themeConfig,
+          heroConfig,
+        }),
       });
       if (!response.ok) throw new Error("save_failed");
       document.documentElement.dataset.brandTheme = theme;
-      const style = document.querySelector<HTMLStyleElement>("style[data-organization-theme]");
+      const style = document.querySelector<HTMLStyleElement>(
+        "style[data-organization-theme]",
+      );
       if (style) {
-        style.textContent = themeCss(resolveOrganizationTheme(theme, themeConfig));
+        style.textContent = themeCss(
+          resolveOrganizationTheme(theme, themeConfig),
+        );
       }
       await refresh();
-      setBranding({ ...branding, logoUrl, theme, themeConfig });
+      setBranding({ ...branding, logoUrl, theme, themeConfig, heroConfig });
       toast.success(t("saved"));
     } catch {
       toast.error(t("saveFailed"));
@@ -102,7 +144,12 @@ export function OrganizationBrandingCard() {
   }
 
   if (!branding) return <Skeleton className="h-80 rounded-2xl" />;
-  const dirty = logoUrl !== branding.logoUrl || theme !== branding.theme || JSON.stringify(themeConfig) !== JSON.stringify(branding.themeConfig);
+  const savedHero = branding.heroConfig ?? DEFAULT_ORGANIZATION_HERO;
+  const dirty =
+    logoUrl !== branding.logoUrl ||
+    theme !== branding.theme ||
+    JSON.stringify(themeConfig) !== JSON.stringify(branding.themeConfig) ||
+    JSON.stringify(heroConfig) !== JSON.stringify(savedHero);
   return (
     <section className="overflow-hidden rounded-2xl border bg-card shadow-[var(--surface-shadow)]">
       <div className="border-b px-5 py-5 sm:px-6">
@@ -110,14 +157,28 @@ export function OrganizationBrandingCard() {
           <PaletteIcon className="size-4 text-primary" aria-hidden="true" />
           {t("title")}
         </h2>
-        <p className="mt-2 text-sm text-muted-foreground">{t("description", { organization: branding.organizationName })}</p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          {t("description", { organization: branding.organizationName })}
+        </p>
       </div>
       <div className="grid gap-6 p-5 sm:p-6 lg:grid-cols-[14rem_1fr]">
         <div>
           <Label>{t("logo")}</Label>
-          <button type="button" disabled={!branding.canManage} onClick={() => inputRef.current?.click()} className="mt-2 grid h-28 w-full place-items-center overflow-hidden rounded-xl border border-dashed bg-muted/25 transition-colors hover:border-primary/50 disabled:cursor-not-allowed disabled:opacity-60">
+          <button
+            type="button"
+            disabled={!branding.canManage}
+            onClick={() => inputRef.current?.click()}
+            className="mt-2 grid h-28 w-full place-items-center overflow-hidden rounded-xl border border-dashed bg-muted/25 transition-colors hover:border-primary/50 disabled:cursor-not-allowed disabled:opacity-60"
+          >
             {logoUrl ? (
-              <Image src={logoUrl} alt={branding.organizationName} width={180} height={72} unoptimized className="max-h-16 w-auto max-w-[11rem] object-contain" />
+              <Image
+                src={logoUrl}
+                alt={branding.organizationName}
+                width={180}
+                height={72}
+                unoptimized
+                className="max-h-16 w-auto max-w-[11rem] object-contain"
+              />
             ) : (
               <span className="flex flex-col items-center gap-2 text-xs text-muted-foreground">
                 <ImageIcon className="size-6" aria-hidden="true" />
@@ -125,25 +186,52 @@ export function OrganizationBrandingCard() {
               </span>
             )}
           </button>
-          <input ref={inputRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif" className="sr-only" onChange={(event) => void onFile(event.target.files?.[0])} />
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/gif,image/avif"
+            className="sr-only"
+            onChange={(event) => void onFile(event.target.files?.[0])}
+          />
           {branding.canManage ? (
             <div className="mt-2 flex gap-2">
-              <Button size="sm" variant="outline" onClick={() => inputRef.current?.click()}>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => inputRef.current?.click()}
+              >
                 <UploadIcon className="size-4" aria-hidden="true" />
                 {t("chooseLogo")}
               </Button>
               {logoUrl ? (
-                <Button size="sm" variant="ghost" onClick={() => setLogoUrl(null)}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setLogoUrl(null)}
+                >
                   {t("removeLogo")}
                 </Button>
               ) : null}
             </div>
           ) : null}
         </div>
-        <OrganizationThemeEditor theme={theme} themeConfig={themeConfig} disabled={!branding.canManage} onThemeChange={setTheme} onThemeConfigChange={setThemeConfig} />
+        <OrganizationThemeEditor
+          theme={theme}
+          themeConfig={themeConfig}
+          disabled={!branding.canManage}
+          onThemeChange={setTheme}
+          onThemeConfigChange={setThemeConfig}
+        />
       </div>
+      <OrganizationHeroEditor
+        value={heroConfig}
+        disabled={!branding.canManage}
+        onChange={setHeroConfig}
+      />
       <div className="flex items-center justify-between gap-3 border-t bg-muted/20 px-5 py-4 sm:px-6">
-        <p className="text-xs text-muted-foreground">{branding.canManage ? t("scopeHint") : t("readOnly")}</p>
+        <p className="text-xs text-muted-foreground">
+          {branding.canManage ? t("scopeHint") : t("readOnly")}
+        </p>
         {branding.canManage ? (
           <div className="flex gap-2">
             <Button
@@ -153,6 +241,7 @@ export function OrganizationBrandingCard() {
                 setLogoUrl(branding.logoUrl);
                 setTheme(branding.theme);
                 setThemeConfig(branding.themeConfig);
+                setHeroConfig(copyOrganizationHero(savedHero));
               }}
             >
               <RotateCcwIcon className="size-4" aria-hidden="true" />

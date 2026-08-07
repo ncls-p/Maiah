@@ -1,7 +1,8 @@
 "use client";
 
 import type { OrganizationThemeConfig } from "@/modules/organization/themes";
-import { createContext,useContext } from "react";
+import type { OrganizationHeroConfig } from "@/modules/organization/hero-branding";
+import { createContext, useContext } from "react";
 
 export type WorkspaceSummary = {
   id: string;
@@ -12,6 +13,7 @@ export type WorkspaceSummary = {
   organizationLogoUrl: string | null;
   organizationTheme: string;
   organizationThemeConfig: OrganizationThemeConfig | null;
+  organizationHeroConfig: OrganizationHeroConfig | null;
 };
 
 export type WorkspaceContextValue = {
@@ -21,13 +23,16 @@ export type WorkspaceContextValue = {
   organizationLogoUrl: string | null;
   organizationTheme: string;
   organizationThemeConfig: OrganizationThemeConfig | null;
+  organizationHeroConfig: OrganizationHeroConfig | null;
   isLoading: boolean;
   error: string | null;
   setWorkspaceId: (workspaceId: string) => void;
   refresh: () => Promise<void>;
 };
 
-export const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
+export const WorkspaceContext = createContext<WorkspaceContextValue | null>(
+  null,
+);
 
 export function useWorkspace(): WorkspaceContextValue {
   const context = useContext(WorkspaceContext);

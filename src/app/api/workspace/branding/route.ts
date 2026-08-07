@@ -1,21 +1,45 @@
-import { NextRequest,NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { handleRoute } from "@/lib/route-handler";
-import { getOrganizationBranding,ORGANIZATION_THEMES,updateOrganizationBranding } from "@/modules/organization/branding";
+import {
+  getOrganizationBranding,
+  ORGANIZATION_THEMES,
+  updateOrganizationBranding,
+} from "@/modules/organization/branding";
 import { THEME_TOKEN_KEYS } from "@/modules/organization/themes";
+import { ORGANIZATION_HERO_LOCALES } from "@/modules/organization/hero-branding";
 
 const querySchema = z.object({ workspaceId: z.uuid() });
-const paletteSchema = z.record(z.enum(THEME_TOKEN_KEYS), z.string().regex(/^#[0-9a-fA-F]{6}$/));
+const paletteSchema = z.record(
+  z.enum(THEME_TOKEN_KEYS),
+  z.string().regex(/^#[0-9a-fA-F]{6}$/),
+);
 const themeConfigSchema = z.strictObject({
   light: paletteSchema,
   dark: paletteSchema,
 });
+const heroCopySchema = z.strictObject({
+  kicker: z.string().trim().min(1).max(80),
+  lineOne: z.string().trim().min(1).max(100),
+  lineTwoPrefix: z.string().trim().min(1).max(60),
+  accent: z.string().trim().min(1).max(60),
+  lineTwoSuffix: z.string().trim().min(1).max(100),
+});
+const heroConfigSchema = z.object(
+  Object.fromEntries(
+    ORGANIZATION_HERO_LOCALES.map((locale) => [locale, heroCopySchema]),
+  ) as Record<
+    (typeof ORGANIZATION_HERO_LOCALES)[number],
+    typeof heroCopySchema
+  >,
+);
 const updateSchema = z
   .strictObject({
     workspaceId: z.uuid(),
     theme: z.enum(ORGANIZATION_THEMES),
     themeConfig: themeConfigSchema.nullable().optional().default(null),
+    heroConfig: heroConfigSchema.nullable().optional().default(null),
     logoUrl: z.union([
       z
         .string()
@@ -43,7 +67,9 @@ export async function GET(request: NextRequest) {
         workspaceId: parsed.data.workspaceId,
         userId: session.user.id,
       });
-      return branding ? NextResponse.json(branding) : NextResponse.json({ error: "Not found" }, { status: 404 });
+      return branding
+        ? NextResponse.json(branding)
+        : NextResponse.json({ error: "Not found" }, { status: 404 });
     },
     { allowApiKey: false, logLabel: "Failed to load organization branding" },
   );
@@ -55,7 +81,10 @@ export async function PUT(request: NextRequest) {
     async ({ session }) => {
       const parsed = updateSchema.safeParse(await request.json());
       if (!parsed.success) {
-        return NextResponse.json({ error: "Invalid input", details: parsed.error.issues }, { status: 400 });
+        return NextResponse.json(
+          { error: "Invalid input", details: parsed.error.issues },
+          { status: 400 },
+        );
       }
       const result = await updateOrganizationBranding({
         ...parsed.data,
@@ -71,6 +100,7 @@ export async function PUT(request: NextRequest) {
         logoUrl: result.organization.logoUrl,
         theme: result.organization.theme,
         themeConfig: result.organization.themeConfigJson,
+        heroConfig: result.organization.heroConfigJson,
       });
     },
     { allowApiKey: false, logLabel: "Failed to update organization branding" },

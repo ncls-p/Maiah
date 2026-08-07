@@ -205,8 +205,6 @@
       "stopGeneration": "Arrêter la génération",
       "needsSetup": "Cet assistant a besoin d’un fournisseur et d’un modèle.",
       "configureAssistant": "Configurer l’assistant",
-      "queueHint": "Entrée met en attente · Maj+Entrée ajoute une ligne",
-      "sendHint": "Entrée envoie · Maj+Entrée ajoute une ligne · collez ou déposez des fichiers",
       "codeFiles": "ZIP/code",
       "images": "Images",
       "documents": "PDF/Word/PPTX/MD"
@@ -2090,6 +2088,21 @@
       "customHint": "Personnalisez chaque couleur de la plateforme séparément pour les modes clair et sombre.",
       "light": "Palette claire",
       "dark": "Palette sombre",
+      "hero": {
+        "title": "Message d’accueil du chat",
+        "description": "Personnalisez le titre du nouveau chat pour votre organisation dans les deux langues prises en charge.",
+        "locales": {
+          "en": "Anglais",
+          "fr": "Français"
+        },
+        "fields": {
+          "kicker": "Surtitre",
+          "lineOne": "Première ligne",
+          "lineTwoPrefix": "Début de la seconde ligne",
+          "accent": "Mots mis en valeur",
+          "lineTwoSuffix": "Fin de la seconde ligne"
+        }
+      },
       "scopeHint": "Les changements s’appliquent à tous les projets de cette organisation.",
       "readOnly": "Seuls les administrateurs de l’organisation peuvent modifier son identité.",
       "reset": "Réinitialiser",

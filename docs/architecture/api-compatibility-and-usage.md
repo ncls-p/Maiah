@@ -62,5 +62,12 @@ of only tinting the header. The logo is limited to 256 KB and common browser
 image formats. The active workspace applies the branding of its own
 organization throughout the platform.
 
+The organization can also customize the chat welcome hero independently in
+English and French. Its eyebrow, first line, second-line prefix, emphasized
+wording, and suffix are stored with the organization and rendered for every
+workspace belonging to it. Missing localized values fall back to the standard
+Maiah copy, so partial configurations remain safe.
+
 Only principals with `organization.update` may change branding. All members
-can read it so the same identity is rendered consistently across projects.
+can read the logo, semantic light/dark palettes, and welcome copy so the same
+identity is rendered consistently across projects.
