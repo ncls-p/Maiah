@@ -3,7 +3,13 @@
 import { BookMarkedIcon, ServerIcon, WrenchIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { McpServerManager } from "@/components/mcp/mcp-server-manager";
 import { PageLoading } from "@/components/page-loading";
@@ -12,7 +18,6 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { WorkspacePage } from "@/components/workspace-page";
 import { useWorkspace } from "@/hooks/use-workspace";
-import { useRouter } from "@/i18n/navigation";
 import { fetchWorkspacePermissions } from "@/lib/api-client";
 import {
   DEFAULT_WORKSPACE_PERMISSIONS,
@@ -22,6 +27,10 @@ import {
 import { BuiltinToolsPanel } from "./builtin-tools-panel";
 
 type ToolsTab = "builtin" | "mcp" | "skills";
+
+function isToolsTab(value: string | null): value is ToolsTab {
+  return value === "builtin" || value === "mcp" || value === "skills";
+}
 
 const TOOL_TAB_CONFIG = [
   {
@@ -57,9 +66,18 @@ function allowedToolTabs(permissions: WorkspacePermissions) {
   return TOOL_TAB_CONFIG.filter((item) => item.canView(permissions));
 }
 
+function replaceToolsTab(tab: string) {
+  const url = new URL(window.location.href);
+  url.searchParams.set("tab", tab);
+  window.history.replaceState(
+    null,
+    "",
+    `${url.pathname}${url.search}${url.hash}`,
+  );
+}
+
 export function ToolsHub() {
   const t = useTranslations("tools");
-  const router = useRouter();
   const searchParams = useSearchParams();
   const { workspaceId, isLoading: workspaceLoading } = useWorkspace();
   const [permissions, setPermissions] = useState<WorkspacePermissions>(
@@ -67,15 +85,19 @@ export function ToolsHub() {
   );
   const [permissionsLoading, setPermissionsLoading] = useState(true);
   const [permissionsError, setPermissionsError] = useState(false);
+  const hasResolvedInitialTab = useRef(false);
+  const [activeTab, setActiveTab] = useState<ToolsTab>(() => {
+    const requestedTab = searchParams.get("tab");
+    return isToolsTab(requestedTab) ? requestedTab : "builtin";
+  });
   const allowedTabs = useMemo(
     () => allowedToolTabs(permissions),
     [permissions],
   );
   const allowedTabValues = allowedTabs.map((item) => item.value);
   const requestedTab = searchParams.get("tab") ?? "builtin";
-  const tab = allowedTabValues.includes(requestedTab as ToolsTab)
-    ? requestedTab
-    : (allowedTabValues[0] ?? "builtin");
+  const fallbackTab = allowedTabValues[0] ?? "builtin";
+  const tab = allowedTabValues.includes(activeTab) ? activeTab : fallbackTab;
 
   const loadPermissions = useCallback(async () => {
     if (!workspaceId) return;
@@ -104,16 +126,22 @@ export function ToolsHub() {
 
   useEffect(() => {
     if (
-      !permissionsLoading &&
-      allowedTabValues.length > 0 &&
-      requestedTab !== tab
+      permissionsLoading ||
+      allowedTabValues.length === 0 ||
+      hasResolvedInitialTab.current
     ) {
-      router.replace(`/tools?tab=${tab}`);
+      return;
     }
-  }, [allowedTabValues.length, permissionsLoading, requestedTab, router, tab]);
+    hasResolvedInitialTab.current = true;
+    const initialTab = allowedTabValues.includes(activeTab)
+      ? activeTab
+      : fallbackTab;
+    if (requestedTab !== initialTab) replaceToolsTab(initialTab);
+  }, [activeTab, allowedTabValues, fallbackTab, permissionsLoading, requestedTab]);
 
   function setTab(value: string) {
-    router.replace(`/tools?tab=${value}`);
+    if (!isToolsTab(value)) return;
+    setActiveTab(value);
   }
 
   if (workspaceLoading || !workspaceId || permissionsLoading) {
