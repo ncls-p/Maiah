@@ -123,7 +123,7 @@ export function ChatAgentSelector(props: ChatAgentSelectorProps) {
             type="button"
             variant="outline"
             size="sm"
-            className="min-h-10 min-w-0 flex-[1_1_14rem] justify-between gap-2 rounded-xl border-border/65 bg-background/72 px-2.5 text-xs font-medium shadow-[0_1px_2px_rgba(9,30,36,0.035)] transition-[background-color,border-color,box-shadow,scale] hover:border-primary/20 hover:bg-primary/5 active:scale-[0.98]"
+            className="h-auto min-h-11 min-w-0 flex-[1_1_13rem] justify-between gap-2 rounded-xl border-border/65 bg-background/72 px-2.5 py-1.5 text-xs font-medium shadow-[0_1px_2px_rgba(9,30,36,0.035)] transition-[background-color,border-color,box-shadow,scale] hover:border-primary/20 hover:bg-primary/5 active:scale-[0.98] sm:max-w-80 sm:flex-[0_1_20rem]"
             aria-label={t("currentAssistant")}
             title={selectedLabel}
           >
@@ -137,13 +137,12 @@ export function ChatAgentSelector(props: ChatAgentSelectorProps) {
                   className="rounded-full"
                 />
               ) : null}
-              <span className="min-w-0 text-left leading-4">
-                <span className="whitespace-normal break-words">
+              <span className="min-w-0 flex-1 text-left leading-tight">
+                <span className="line-clamp-2 font-medium">
                   {selectedLabel}
                 </span>
                 {props.selectedAgent?.modelDisplayName ? (
-                  <span className="hidden text-muted-foreground md:inline">
-                    {" · "}
+                  <span className="mt-0.5 block truncate text-[11px] font-normal text-muted-foreground">
                     {props.selectedAgent.modelDisplayName}
                   </span>
                 ) : null}

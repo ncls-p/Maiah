@@ -1087,7 +1087,11 @@
       "filterKnowledge": "Connaissances",
       "filterSkills": "Skills",
       "searchPlaceholder": "Rechercher un outil, MCP, savoir ou skill…",
-      "noSearchResults": "Aucune capacité ne correspond à « {query} »."
+      "noSearchResults": "Aucune capacité ne correspond à « {query} ».",
+      "active": "Actif",
+      "selectedCount": "{selected} sur {total} visibles sélectionnés",
+      "enableVisible": "Tout activer",
+      "disableVisible": "Tout désactiver"
     }
   },
   "providers": {

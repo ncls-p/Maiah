@@ -136,7 +136,6 @@ export function ChatComposerBody(props: ChatComposerBodyProps) {
           >
             {props.controls.primary}
           </div>
-          <span className="hidden min-w-0 flex-1 sm:block" />
           <span className="hidden shrink-0 text-[0.65rem] text-muted-foreground lg:inline">
             {props.sending ? t("queueHint") : t("sendHint")}
           </span>

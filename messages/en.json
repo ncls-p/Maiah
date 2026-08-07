@@ -1088,7 +1088,11 @@
       "filterKnowledge": "Knowledge",
       "filterSkills": "Skills",
       "searchPlaceholder": "Search tools, MCP, knowledge, or skills…",
-      "noSearchResults": "No capability matches “{query}”."
+      "noSearchResults": "No capability matches “{query}”.",
+      "active": "Active",
+      "selectedCount": "{selected} of {total} visible selected",
+      "enableVisible": "Enable visible",
+      "disableVisible": "Disable visible"
     }
   },
   "providers": {

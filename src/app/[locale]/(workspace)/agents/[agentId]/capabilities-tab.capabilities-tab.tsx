@@ -17,26 +17,12 @@ import { ConfigSection } from "./config-section";
 import type { AgentSkill, BuiltinTool, CustomTool, KnowledgeBase, McpServer, McpTool, ToolBindingState } from "./types";
 
 type Props = {
-  builtinTools: BuiltinTool[];
-  builtinBindings: ToolBindingState;
-  setBuiltinBindingsAction: (fn: (prev: ToolBindingState) => ToolBindingState) => void;
-  mcpServers: McpServer[];
-  mcpTools: McpTool[];
-  mcpBindings: ToolBindingState;
-  setMcpBindingsAction: (fn: (prev: ToolBindingState) => ToolBindingState) => void;
-  customTools: CustomTool[];
-  customBindings: ToolBindingState;
-  setCustomBindingsAction: (fn: (prev: ToolBindingState) => ToolBindingState) => void;
-  knowledgeBases: KnowledgeBase[];
-  selectedKnowledgeIds: string[];
-  setSelectedKnowledgeIdsAction: (fn: (prev: string[]) => string[]) => void;
-  skills: AgentSkill[];
-  selectedSkillIds: string[];
-  setSelectedSkillIdsAction: (fn: (prev: string[]) => string[]) => void;
-  saving: boolean;
-  readOnly?: boolean;
-  canConfigureBuiltinApproval?: boolean;
-  onSaveAction: () => void;
+  builtinTools: BuiltinTool[]; builtinBindings: ToolBindingState; setBuiltinBindingsAction: (fn: (prev: ToolBindingState) => ToolBindingState) => void;
+  mcpServers: McpServer[]; mcpTools: McpTool[]; mcpBindings: ToolBindingState; setMcpBindingsAction: (fn: (prev: ToolBindingState) => ToolBindingState) => void;
+  customTools: CustomTool[]; customBindings: ToolBindingState; setCustomBindingsAction: (fn: (prev: ToolBindingState) => ToolBindingState) => void;
+  knowledgeBases: KnowledgeBase[]; selectedKnowledgeIds: string[]; setSelectedKnowledgeIdsAction: (fn: (prev: string[]) => string[]) => void;
+  skills: AgentSkill[]; selectedSkillIds: string[]; setSelectedSkillIdsAction: (fn: (prev: string[]) => string[]) => void;
+  saving: boolean; readOnly?: boolean; canConfigureBuiltinApproval?: boolean; onSaveAction: () => void;
 };
 
 export function CapabilitiesTab(props: Props) {
@@ -73,45 +59,46 @@ export function CapabilitiesTab(props: Props) {
 
   return (
     <div className={cn("space-y-3", readOnly && "pointer-events-none opacity-75")}>
-      <CapabilityCatalogControls filter={filter} setFilter={setFilter} query={query} setQuery={setQuery} displayMode={displayMode} setDisplayMode={changeDisplayMode} counts={{ all: builtinTools.length + customTools.length + mcpTools.length + knowledgeBases.length + skills.length, tools: builtinTools.length + customTools.length, mcp: mcpTools.length, knowledge: knowledgeBases.length, skills: skills.length }} labels={{ all: tCap("filterAll"), tools: tCap("filterTools"), mcp: tCap("filterMcp"), knowledge: tCap("filterKnowledge"), skills: tCap("filterSkills"), search: tCap("searchPlaceholder"), grid: tList("showAsGrid"), list: tList("showAsList") }} />
-      {visibleCount === 0 ? <div className="rounded-2xl border border-dashed p-8 text-center text-sm text-muted-foreground">{tCap("noSearchResults", { query })}</div> : null}
+      <CapabilityCatalogControls filter={filter} setFilter={setFilter} query={query} setQuery={setQuery} displayMode={displayMode} setDisplayMode={changeDisplayMode} counts={{ all: builtinTools.length + customTools.length + mcpTools.length + knowledgeBases.length + skills.length, tools: builtinTools.length + customTools.length, mcp: mcpTools.length, knowledge: knowledgeBases.length, skills: skills.length }} labels={{ all: tCap("filterAll"), tools: tCap("filterTools"), mcp: tCap("filterMcp"), knowledge: tCap("filterKnowledge"), skills: tCap("filterSkills"), search: tCap("searchPlaceholder"), grid: tList("showAsGrid"), list: tList("showAsList") }}>
+        {visibleCount === 0 ? <div className="rounded-2xl border border-dashed p-8 text-center text-sm text-muted-foreground">{tCap("noSearchResults", { query })}</div> : null}
 
-      {show("tools") && packages.length > 0 ? (
-        <ConfigSection title={t("builtinTools")} description={t("builtinToolsHint")} icon={WrenchIcon} stagger="3">
-          <p className="mb-3 text-sm text-muted-foreground">{t("toolPackagesHint")}</p>
-          <div className={cn("grid gap-3", displayMode === "grid" && "xl:grid-cols-2")}>
-            {packages.map((toolPackage) => (
-              <BuiltinToolPackageCard key={toolPackage.id} toolPackage={toolPackage} bindings={builtinBindings} setBindings={setBuiltinBindingsAction} packageLabel={t(`toolPackages.${toolPackage.id}.title`)} description={t(`toolPackages.${toolPackage.id}.description`)} countLabel={t("toolPackageCount", { enabled: toolPackage.tools.filter((tool) => builtinBindings[tool.id]?.enabled).length, total: toolPackage.tools.length })} allToolsLabel={t("allTools")} extraApprovalLabel={t("extraApproval")} detailsLabel={t("customizePackage")} partialLabel={t("partial")} mixedApprovalLabel={t("mixedApproval")} approvalLabel={t("approval")} canConfigureApproval={canConfigureBuiltinApproval} />
-            ))}
-          </div>
-        </ConfigSection>
-      ) : null}
+        {show("tools") && packages.length > 0 ? (
+          <ConfigSection title={t("builtinTools")} description={t("builtinToolsHint")} icon={WrenchIcon} className="bg-background/55 shadow-none" stagger="3">
+            <p className="mb-3 text-sm text-muted-foreground">{t("toolPackagesHint")}</p>
+            <div className={cn("grid gap-3", displayMode === "grid" && "xl:grid-cols-2")}>
+              {packages.map((toolPackage) => (
+                <BuiltinToolPackageCard key={toolPackage.id} toolPackage={toolPackage} bindings={builtinBindings} setBindings={setBuiltinBindingsAction} packageLabel={t(`toolPackages.${toolPackage.id}.title`)} description={t(`toolPackages.${toolPackage.id}.description`)} countLabel={t("toolPackageCount", { enabled: toolPackage.tools.filter((tool) => builtinBindings[tool.id]?.enabled).length, total: toolPackage.tools.length })} allToolsLabel={t("allTools")} extraApprovalLabel={t("extraApproval")} detailsLabel={t("customizePackage")} partialLabel={t("partial")} mixedApprovalLabel={t("mixedApproval")} approvalLabel={t("approval")} canConfigureApproval={canConfigureBuiltinApproval} />
+              ))}
+            </div>
+          </ConfigSection>
+        ) : null}
 
-      {show("tools") && custom.length > 0 ? (
-        <ConfigSection title={tCap("customToolsTitle")} description={tCap("customToolsHint")} icon={WrenchIcon} stagger="4">
-          <CapabilityResourceGrid resources={custom} selectedIds={selectedCustomIds} setSelectedIds={setSelectedCustomIds} icon={WrenchIcon} displayMode={displayMode} toggleLabel={(name) => tCap("toggleTool", { name })} />
-        </ConfigSection>
-      ) : null}
+        {show("tools") && custom.length > 0 ? (
+          <ConfigSection title={tCap("customToolsTitle")} description={tCap("customToolsHint")} icon={WrenchIcon} className="bg-background/55 shadow-none" stagger="4">
+            <CapabilityResourceGrid resources={custom} selectedIds={selectedCustomIds} setSelectedIds={setSelectedCustomIds} icon={WrenchIcon} displayMode={displayMode} toggleLabel={(name) => tCap("toggleTool", { name })} labels={{ active: tCap("active"), selected: tCap("selectedCount", { selected: selectedCustomIds.filter((id) => custom.some((item) => item.id === id)).length, total: custom.length }), enableAll: tCap("enableVisible"), disableAll: tCap("disableVisible") }} />
+          </ConfigSection>
+        ) : null}
 
-      {show("mcp") && servers.length > 0 ? (
-        <ConfigSection title={t("mcpTools")} description={t("mcpToolsHint")} icon={ServerIcon} stagger="4">
-          <div className={cn("grid gap-3", displayMode === "grid" && "xl:grid-cols-2")}>
-            {servers.map((server) => <McpServerCollapsible key={server.id} server={server} mcpTools={mcpTools.filter((tool) => matches(tool.name, tool.description))} mcpServers={mcpServers} mcpBindings={mcpBindings} setMcpBindings={setMcpBindingsAction} noMcpToolsSyncedLabel={t("noMcpToolsSynced")} disabledInMcpLabel={t("disabledInMcp")} allToolsLabel={t("allTools")} extraApprovalLabel={t("extraApproval")} approvalLabel={t("approval")} partialLabel={t("partial")} mixedApprovalLabel={t("mixedApproval")} forcedLabel={t("forced")} />)}
-          </div>
-        </ConfigSection>
-      ) : null}
+        {show("mcp") && servers.length > 0 ? (
+          <ConfigSection title={t("mcpTools")} description={t("mcpToolsHint")} icon={ServerIcon} className="bg-background/55 shadow-none" stagger="4">
+            <div className={cn("grid gap-3", displayMode === "grid" && "xl:grid-cols-2")}>
+              {servers.map((server) => <McpServerCollapsible key={server.id} server={server} mcpTools={mcpTools.filter((tool) => matches(tool.name, tool.description))} mcpServers={mcpServers} mcpBindings={mcpBindings} setMcpBindings={setMcpBindingsAction} noMcpToolsSyncedLabel={t("noMcpToolsSynced")} disabledInMcpLabel={t("disabledInMcp")} allToolsLabel={t("allTools")} extraApprovalLabel={t("extraApproval")} approvalLabel={t("approval")} partialLabel={t("partial")} mixedApprovalLabel={t("mixedApproval")} forcedLabel={t("forced")} />)}
+            </div>
+          </ConfigSection>
+        ) : null}
 
-      {show("skills") && filteredSkills.length > 0 ? (
-        <ConfigSection title={tCap("skillsTitle")} description={tCap("skillsHint")} icon={BookMarkedIcon} stagger="5">
-          <CapabilityResourceGrid resources={filteredSkills} selectedIds={selectedSkillIds} setSelectedIds={setSelectedSkillIdsAction} icon={BookMarkedIcon} displayMode={displayMode} toggleLabel={(name) => tCap("toggleSkill", { name })} />
-        </ConfigSection>
-      ) : null}
+        {show("skills") && filteredSkills.length > 0 ? (
+          <ConfigSection title={tCap("skillsTitle")} description={tCap("skillsHint")} icon={BookMarkedIcon} className="bg-background/55 shadow-none" stagger="5">
+            <CapabilityResourceGrid resources={filteredSkills} selectedIds={selectedSkillIds} setSelectedIds={setSelectedSkillIdsAction} icon={BookMarkedIcon} displayMode={displayMode} toggleLabel={(name) => tCap("toggleSkill", { name })} labels={{ active: tCap("active"), selected: tCap("selectedCount", { selected: selectedSkillIds.filter((id) => filteredSkills.some((item) => item.id === id)).length, total: filteredSkills.length }), enableAll: tCap("enableVisible"), disableAll: tCap("disableVisible") }} />
+          </ConfigSection>
+        ) : null}
 
-      {show("knowledge") && knowledge.length > 0 ? (
-        <ConfigSection title={t("knowledge")} description={t("knowledgeHint")} icon={BookOpenIcon} stagger="5">
-          <CapabilityResourceGrid resources={knowledge} selectedIds={selectedKnowledgeIds} setSelectedIds={setSelectedKnowledgeIdsAction} icon={BookOpenIcon} displayMode={displayMode} toggleLabel={(name) => tCap("toggleKnowledge", { name })} />
-        </ConfigSection>
-      ) : null}
+        {show("knowledge") && knowledge.length > 0 ? (
+          <ConfigSection title={t("knowledge")} description={t("knowledgeHint")} icon={BookOpenIcon} className="bg-background/55 shadow-none" stagger="5">
+            <CapabilityResourceGrid resources={knowledge} selectedIds={selectedKnowledgeIds} setSelectedIds={setSelectedKnowledgeIdsAction} icon={BookOpenIcon} displayMode={displayMode} toggleLabel={(name) => tCap("toggleKnowledge", { name })} labels={{ active: tCap("active"), selected: tCap("selectedCount", { selected: selectedKnowledgeIds.filter((id) => knowledge.some((item) => item.id === id)).length, total: knowledge.length }), enableAll: tCap("enableVisible"), disableAll: tCap("disableVisible") }} />
+          </ConfigSection>
+        ) : null}
+      </CapabilityCatalogControls>
 
       {readOnly ? null : <div className="flex justify-end rounded-2xl border border-border/60 bg-card/75 p-3 shadow-[var(--surface-shadow)]"><Button type="button" disabled={saving} onClick={onSaveAction}>{saving ? <Spinner data-icon="inline-start" /> : <SaveIcon data-icon="inline-start" aria-hidden="true" />}{tCommon("save")}</Button></div>}
     </div>
