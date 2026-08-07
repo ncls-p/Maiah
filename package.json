@@ -121,7 +121,8 @@
   "knip": {
     "entry": [
       "scripts/migrate-standalone.mjs",
-      "scripts/sandbox-runner.mjs"
+      "scripts/sandbox-runner.mjs",
+      "public/sw.js"
     ]
   }
 }

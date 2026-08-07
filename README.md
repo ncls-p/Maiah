@@ -19,6 +19,7 @@ Maiah provides a full stack — from authentication and workspace isolation to a
 | **Sandbox**    | Custom sandbox runner (Unix-socket code execution)           |
 | **MCP**        | Model Context Protocol client and server registry            |
 | **Search**     | SearXNG-backed web search tool                               |
+| **Client**     | Responsive installable PWA with native App Router manifest   |
 
 ---
 

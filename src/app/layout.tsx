@@ -1,11 +1,12 @@
-import type { Metadata } from "next";
-import { Geist_Mono,Instrument_Sans,Newsreader } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import { Geist_Mono, Instrument_Sans, Newsreader } from "next/font/google";
 import { cookies } from "next/headers";
 
 import { ThemeProvider } from "@/components/theme-provider";
+import { PwaRegistration } from "@/components/pwa-registration";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { defaultLocale,locales } from "@/i18n/routing";
+import { defaultLocale, locales } from "@/i18n/routing";
 import { cn } from "@/lib/utils";
 import "./globals.css";
 
@@ -28,11 +29,25 @@ const fontHeading = Newsreader({
 });
 
 export const metadata: Metadata = {
+  applicationName: "Maiah",
   title: {
     default: "Maiah",
     template: "%s · Maiah",
   },
-  description: "Build, configure, and run AI agents with multi-provider support and team collaboration.",
+  description:
+    "Build, configure, and run AI agents with multi-provider support and team collaboration.",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Maiah",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f4fafc" },
+    { media: "(prefers-color-scheme: dark)", color: "#101a22" },
+  ],
 };
 
 export default async function RootLayout({
@@ -41,12 +56,24 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const localeCookie = (await cookies()).get("NEXT_LOCALE")?.value;
-  const documentLanguage = locales.find((locale) => locale === localeCookie) ?? defaultLocale;
+  const documentLanguage =
+    locales.find((locale) => locale === localeCookie) ?? defaultLocale;
 
   return (
-    <html lang={documentLanguage} data-scroll-behavior="smooth" suppressHydrationWarning className={cn("min-h-full bg-background text-foreground antialiased", fontMono.variable, fontBody.variable, fontHeading.variable)}>
+    <html
+      lang={documentLanguage}
+      data-scroll-behavior="smooth"
+      suppressHydrationWarning
+      className={cn(
+        "min-h-full bg-background text-foreground antialiased",
+        fontMono.variable,
+        fontBody.variable,
+        fontHeading.variable,
+      )}
+    >
       <body className="min-h-svh" suppressHydrationWarning>
         <ThemeProvider>
+          <PwaRegistration />
           <TooltipProvider>
             {children}
             <Toaster />

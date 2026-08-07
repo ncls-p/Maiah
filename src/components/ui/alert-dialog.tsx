@@ -38,7 +38,7 @@ function AlertDialogHeader({ className, ...props }: React.ComponentProps<"div">)
 }
 
 function AlertDialogFooter({ className, ...props }: React.ComponentProps<"div">) {
-  return <div data-slot="alert-dialog-footer" className={cn("-mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-2xl border-t bg-muted/40 p-4 group-data-[size=sm]/alert-dialog-content:grid group-data-[size=sm]/alert-dialog-content:grid-cols-2 sm:flex-row sm:justify-end", className)} {...props} />;
+  return <div data-slot="alert-dialog-footer" className={cn("-mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-2xl border-t bg-muted/40 p-4 sm:grid sm:grid-cols-2 [&>*]:h-auto [&>*]:min-h-11 [&>*]:min-w-0 [&>*]:w-full [&>*]:whitespace-normal [&>*]:px-3 [&>*]:py-2", className)} {...props} />;
 }
 
 function AlertDialogTitle({ className, ...props }: React.ComponentProps<typeof AlertDialogPrimitive.Title>) {

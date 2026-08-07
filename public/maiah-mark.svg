@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">Maiah</title>
+  <rect width="512" height="512" fill="#f4fafc"/>
+  <circle cx="256" cy="256" r="138" fill="none" stroke="#8fc8d1" stroke-width="12"/>
+  <circle cx="256" cy="256" r="176" fill="none" stroke="#b8dfe5" stroke-width="7" stroke-dasharray="13 14"/>
+  <path d="M104 321c76-76 228-158 304-130" fill="none" stroke="#69b6c2" stroke-width="11" stroke-linecap="round"/>
+  <circle cx="111" cy="313" r="17" fill="#0d879b"/>
+  <circle cx="407" cy="191" r="17" fill="#0d879b"/>
+  <circle cx="161" cy="401" r="17" fill="#0d879b"/>
+  <path d="M226 216v80m60-80v80m-91-53h122m-122 27h122" fill="none" stroke="#0d879b" stroke-width="14" stroke-linecap="round"/>
+</svg>
