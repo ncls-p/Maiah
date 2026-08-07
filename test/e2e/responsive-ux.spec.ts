@@ -79,6 +79,8 @@ test("mobile workspace uses an app navigation instead of the desktop shell", asy
   await expect(navigation).toBeVisible({ timeout: 15_000 });
   await expect(navigation.getByRole("link")).toHaveCount(5);
   await expect(page.locator('[data-slot="workspace-history-sidebar"]')).toBeHidden();
+  await expect(page.locator('link[rel="icon"][href="/maiah-mark.svg"]')).toHaveCount(1);
+  await expect(page.locator('link[rel="apple-touch-icon"][href="/maiah-icon-192.png"]')).toHaveCount(1);
 
   const bounds = await navigation.boundingBox();
   expect(bounds).not.toBeNull();

@@ -36,6 +36,16 @@ export const metadata: Metadata = {
   },
   description:
     "Build, configure, and run AI agents with multi-provider support and team collaboration.",
+  icons: {
+    icon: [
+      { url: "/maiah-mark.svg", type: "image/svg+xml" },
+      { url: "/maiah-icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    shortcut: "/maiah-icon-192.png",
+    apple: [
+      { url: "/maiah-icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
