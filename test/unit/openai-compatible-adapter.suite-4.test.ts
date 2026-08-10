@@ -1,3 +1,4 @@
+import { streamText } from "ai";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -237,17 +238,6 @@ describe("openaiCompatibleAdapter.createChatModel", () => {
         response: { id: "resp_1", status: "in_progress" },
       },
       {
-        type: "response.output_item.added",
-        item: {
-          id: "rs_1",
-          type: "reasoning",
-          content: null,
-          summary: null,
-          encrypted_content: "",
-          status: "in_progress",
-        },
-      },
-      {
         type: "response.reasoning_text.delta",
         item_id: "rs_1",
         delta: "Inspect the request",
@@ -308,13 +298,13 @@ describe("openaiCompatibleAdapter.createChatModel", () => {
       "llama-model",
     );
 
-    const result = await model.doStream(generationCall);
+    const result = streamText({
+      model,
+      messages: [{ role: "user", content: "Hello" }],
+    });
     const chunks: Array<{ type: string }> = [];
-    const reader = result.stream.getReader();
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      chunks.push(value);
+    for await (const chunk of result.stream) {
+      chunks.push(chunk);
     }
 
     expect(chunks.map((chunk) => chunk.type)).toEqual(
