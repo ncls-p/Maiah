@@ -339,11 +339,17 @@ export function createResponsesFetch(config: ProviderRuntimeConfig) {
     const profile = normalizeOpenAICompatibilityProfile(
       config.openaiCompatibilityProfile,
     );
+    const compatibilityInputOptions = {
+      convertAssistantMessagesToUser: profile === "llama.cpp",
+    };
     const requestInit: RequestInit = {
       ...init,
       method: init?.method ?? request?.method,
       body: shouldNormalizeResponsesInputBeforeRequest(profile)
-        ? normalizeResponsesInputForCompatibleProvider(originalBody)
+        ? normalizeResponsesInputForCompatibleProvider(
+            originalBody,
+            compatibilityInputOptions,
+          )
         : originalBody,
       signal: init?.signal ?? request?.signal,
       headers,
@@ -356,6 +362,7 @@ export function createResponsesFetch(config: ProviderRuntimeConfig) {
 
     const fallbackBody = normalizeResponsesInputForCompatibleProvider(
       requestInit.body,
+      { convertAssistantMessagesToUser: true },
     );
     if (fallbackBody === requestInit.body) return response;
 
