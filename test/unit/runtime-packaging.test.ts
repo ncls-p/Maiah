@@ -29,6 +29,15 @@ describe("runtime packaging guardrails", () => {
     expect(workflow).toContain('NEXT_DEPLOYMENT_ID = "${GITHUB_SHA}"');
   });
 
+  it("always rebuilds app images for main pushes", () => {
+    const workflow = projectFile(".github/workflows/coolify.yml");
+
+    expect(workflow).toContain('if [[ "${EVENT_NAME}" == "push" ]]; then');
+    expect(workflow).toMatch(
+      /if \[\[ "\$\{EVENT_NAME\}" == "push" \]\]; then\s+app_changed=true/,
+    );
+  });
+
   it("ships the document-search command used by the sandbox instructions", () => {
     const dockerfile = projectFile("Dockerfile");
     const sandboxStage = dockerfile.slice(

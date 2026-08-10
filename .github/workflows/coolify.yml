@@ -340,11 +340,14 @@ jobs:
             grep -E "${pattern}" "${changed_files}" >/dev/null
           }
 
-          # Build images only when their build context changes. Unchanged images
-          # reuse main-latest, avoiding large pulls on the Coolify host for PRs
-          # that only touch tests, docs, CI, or another independent service.
+          # Always publish app images for main pushes. A newer push can cancel a
+          # previous run before its images are published; diffing only against
+          # github.event.before would then incorrectly reuse a stale main-latest.
+          # Pull requests retain selective builds to avoid unnecessary previews.
           app_changed=false
-          if changes_match '^(Dockerfile$|package\.json$|package-lock\.json$|\.npmrc$|next\.config\.ts$|tsconfig\.json$|postcss\.config\.mjs$|components\.json$|drizzle\.config\.ts$|src/|public/|messages/|scripts/migrate)'; then
+          if [[ "${EVENT_NAME}" == "push" ]]; then
+            app_changed=true
+          elif changes_match '^(Dockerfile$|package\.json$|package-lock\.json$|\.npmrc$|next\.config\.ts$|tsconfig\.json$|postcss\.config\.mjs$|components\.json$|drizzle\.config\.ts$|src/|public/|messages/|scripts/migrate)'; then
             app_changed=true
           fi
 
