@@ -58,8 +58,12 @@ function isInteger(value: unknown): value is number {
  * clients such as `@ai-sdk/openai`. Keep their item lifecycle correlated while
  * preserving valid provider fields and unrelated SSE lines.
  */
-export function createResponsesSseLineNormalizer(modelId?: string) {
+export function createResponsesSseLineNormalizer(
+  modelId?: string,
+  synthesizeMissingStarts = true,
+) {
   const outputIndexes = new Map<string, number>();
+  const startedItemIds = new Set<string>();
   let nextOutputIndex = 0;
 
   function resolveOutputIndex(itemId: unknown, explicitIndex: unknown) {
@@ -103,6 +107,7 @@ export function createResponsesSseLineNormalizer(modelId?: string) {
         RESPONSES_REASONING_EVENT_ALIASES[
           type as keyof typeof RESPONSES_REASONING_EVENT_ALIASES
         ];
+      const effectiveType = normalizedType ?? type;
       let normalizedPayload: Record<string, unknown> = normalizedType
         ? {
             ...payload,
@@ -114,6 +119,7 @@ export function createResponsesSseLineNormalizer(modelId?: string) {
                 : 0,
           }
         : payload;
+      let syntheticStart: Record<string, unknown> | undefined;
 
       if (type === "response.created") {
         const response = payload.response;
@@ -164,28 +170,84 @@ export function createResponsesSseLineNormalizer(modelId?: string) {
           ) {
             normalizedItem.summary = [];
           }
+          const outputIndex = resolveOutputIndex(
+            normalizedItem.id,
+            payload.output_index,
+          );
+          if (
+            type === "response.output_item.added" &&
+            typeof normalizedItem.id === "string"
+          ) {
+            startedItemIds.add(normalizedItem.id);
+          }
           normalizedPayload = {
             ...normalizedPayload,
-            output_index: resolveOutputIndex(
-              normalizedItem.id,
-              payload.output_index,
-            ),
+            output_index: outputIndex,
             item: normalizedItem,
           };
         }
       } else if (RESPONSES_INDEXED_ITEM_EVENTS.has(type)) {
+        const outputIndex = resolveOutputIndex(
+          payload.item_id,
+          payload.output_index,
+        );
         normalizedPayload = {
           ...normalizedPayload,
-          output_index: resolveOutputIndex(
-            payload.item_id,
-            payload.output_index,
-          ),
+          output_index: outputIndex,
+        };
+        if (
+          synthesizeMissingStarts &&
+          type === "response.output_text.delta" &&
+          typeof payload.item_id === "string" &&
+          !startedItemIds.has(payload.item_id)
+        ) {
+          startedItemIds.add(payload.item_id);
+          syntheticStart = {
+            type: "response.output_item.added",
+            output_index: outputIndex,
+            item: {
+              type: "message",
+              id: payload.item_id,
+              role: "assistant",
+              status: "in_progress",
+              content: [],
+            },
+          };
+        }
+      }
+
+      if (
+        synthesizeMissingStarts &&
+        effectiveType === "response.reasoning_summary_text.delta" &&
+        typeof payload.item_id === "string" &&
+        !startedItemIds.has(payload.item_id)
+      ) {
+        const outputIndex = resolveOutputIndex(
+          payload.item_id,
+          payload.output_index,
+        );
+        startedItemIds.add(payload.item_id);
+        syntheticStart = {
+          type: "response.output_item.added",
+          output_index: outputIndex,
+          item: {
+            type: "reasoning",
+            id: payload.item_id,
+            encrypted_content: null,
+            content: [],
+            summary: [],
+            status: "in_progress",
+          },
         };
       }
 
-      return normalizedPayload === payload
-        ? line
-        : `data: ${JSON.stringify(normalizedPayload)}`;
+      const normalizedLine =
+        normalizedPayload === payload
+          ? line
+          : `data: ${JSON.stringify(normalizedPayload)}`;
+      return syntheticStart
+        ? `data: ${JSON.stringify(syntheticStart)}\n\nevent: ${effectiveType}\n${normalizedLine}`
+        : normalizedLine;
     } catch {
       return line;
     }
@@ -193,7 +255,7 @@ export function createResponsesSseLineNormalizer(modelId?: string) {
 }
 
 export function normalizeResponsesReasoningSseLine(line: string) {
-  return createResponsesSseLineNormalizer()(line);
+  return createResponsesSseLineNormalizer(undefined, false)(line);
 }
 
 function normalizeResponsesReasoningStream(

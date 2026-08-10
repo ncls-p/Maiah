@@ -230,7 +230,7 @@ describe("openaiCompatibleAdapter.createChatModel", () => {
     ).toMatchObject({ output_index: 2 });
   });
 
-  it("streams malformed llama.cpp reasoning through AI SDK without losing its start", async () => {
+  it("synthesizes missing reasoning and text starts for malformed streams", async () => {
     const events = [
       {
         type: "response.created",
@@ -260,6 +260,21 @@ describe("openaiCompatibleAdapter.createChatModel", () => {
           content: [],
           summary: [],
           encrypted_content: "",
+        },
+      },
+      {
+        type: "response.output_text.delta",
+        item_id: "msg_without_added_event",
+        delta: "Hello",
+      },
+      {
+        type: "response.output_item.done",
+        item: {
+          id: "msg_without_added_event",
+          type: "message",
+          role: "assistant",
+          status: "completed",
+          content: [],
         },
       },
       {
@@ -307,6 +322,9 @@ describe("openaiCompatibleAdapter.createChatModel", () => {
         "reasoning-start",
         "reasoning-delta",
         "reasoning-end",
+        "text-start",
+        "text-delta",
+        "text-end",
         "finish",
       ]),
     );
