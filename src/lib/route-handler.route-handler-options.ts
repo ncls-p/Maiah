@@ -20,8 +20,12 @@ export function requestIdFrom(req: NextRequest) {
 
 export function routePathFrom(req: NextRequest) {
   if (req.nextUrl?.pathname) return req.nextUrl.pathname;
-  if (req.url) return new URL(req.url).pathname;
-  return "unknown";
+  if (!req.url) return "unknown";
+  try {
+    return new URL(req.url).pathname;
+  } catch {
+    return "unknown";
+  }
 }
 
 export function attachRequestId(response: Response, requestId: string) {

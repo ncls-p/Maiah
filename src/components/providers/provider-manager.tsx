@@ -8,6 +8,10 @@ import {
   DEFAULT_OPENAI_COMPATIBLE_API_ROUTE,
   type OpenAICompatibleApiRoute,
 } from "@/lib/openai-compatible-api";
+import {
+  DEFAULT_OPENAI_COMPATIBILITY_PROFILE,
+  type OpenAICompatibilityProfile,
+} from "@/lib/openai-compatibility-profile";
 
 import { ProviderManagerView } from "./provider-manager.view";
 import { KIND_LABELS } from "./provider-manager/constants";
@@ -57,6 +61,8 @@ export function useProviderManagerController({
   const [addApiRoute, setAddApiRoute] = useState<OpenAICompatibleApiRoute>(
     DEFAULT_OPENAI_COMPATIBLE_API_ROUTE,
   );
+  const [addCompatibilityProfile, setAddCompatibilityProfile] =
+    useState<OpenAICompatibilityProfile>(DEFAULT_OPENAI_COMPATIBILITY_PROFILE);
   const [addAdvanced, setAddAdvanced] = useState(false);
   const [editingProvider, setEditingProvider] = useState<SafeProvider | null>(
     null,
@@ -67,6 +73,8 @@ export function useProviderManagerController({
   const [editApiRoute, setEditApiRoute] = useState<OpenAICompatibleApiRoute>(
     DEFAULT_OPENAI_COMPATIBLE_API_ROUTE,
   );
+  const [editCompatibilityProfile, setEditCompatibilityProfile] =
+    useState<OpenAICompatibilityProfile>(DEFAULT_OPENAI_COMPATIBILITY_PROFILE);
   const [deleteProviderId, setDeleteProviderId] = useState<string | null>(null);
   const [deleteModelId, setDeleteModelId] = useState<string | null>(null);
   const [manualModelId, setManualModelId] = useState("");
@@ -158,6 +166,7 @@ export function useProviderManagerController({
     setAddCustomHeaders("");
     setAddQueryParams("");
     setAddApiRoute(DEFAULT_OPENAI_COMPATIBLE_API_ROUTE);
+    setAddCompatibilityProfile(DEFAULT_OPENAI_COMPATIBILITY_PROFILE);
     setAddKind("openai-compatible");
     setAddAuthType(defaultAuthType("openai-compatible"));
     setAddAdvanced(false);
@@ -169,6 +178,7 @@ export function useProviderManagerController({
     setEditBaseUrl(provider.baseUrl ?? "");
     setEditApiKey("");
     setEditApiRoute(provider.openaiCompatibleApiRoute);
+    setEditCompatibilityProfile(provider.openaiCompatibilityProfile);
   }
 
   async function createNewProvider() {
@@ -187,7 +197,10 @@ export function useProviderManagerController({
           headersJson: parsePairs(addCustomHeaders),
           queryParamsJson: parsePairs(addQueryParams),
           ...(addKind === "openai-compatible"
-            ? { openaiCompatibleApiRoute: addApiRoute }
+            ? {
+                openaiCompatibleApiRoute: addApiRoute,
+                openaiCompatibilityProfile: addCompatibilityProfile,
+              }
             : {}),
         }),
       });
@@ -222,7 +235,8 @@ export function useProviderManagerController({
         `/api/workspace/providers/${providerId}/models?workspaceId=${workspaceId}&action=discover`,
       );
       const data = (await res.json().catch(() => ({}))) as
-        DiscoveredModel[] | { error?: string };
+        | DiscoveredModel[]
+        | { error?: string };
       if (!res.ok || !Array.isArray(data)) {
         const errorMessage = Array.isArray(data) ? undefined : data.error;
         throw new Error(errorMessage || t("errorDiscoverModels"));
@@ -270,7 +284,10 @@ export function useProviderManagerController({
             baseUrl: editBaseUrl.trim() || "",
             ...(editApiKey.trim() ? { apiKey: editApiKey.trim() } : {}),
             ...(editingProvider.kind === "openai-compatible"
-              ? { openaiCompatibleApiRoute: editApiRoute }
+              ? {
+                  openaiCompatibleApiRoute: editApiRoute,
+                  openaiCompatibilityProfile: editCompatibilityProfile,
+                }
               : {}),
           }),
         },
@@ -339,6 +356,7 @@ export function useProviderManagerController({
     addApiKey,
     addApiRoute,
     addAuthType,
+    addCompatibilityProfile,
     addBaseUrl,
     addCustomHeaders,
     addKind,
@@ -357,6 +375,7 @@ export function useProviderManagerController({
     editApiKey,
     editApiRoute,
     editBaseUrl,
+    editCompatibilityProfile,
     editName,
     editingProvider,
     filteredModels,
@@ -380,6 +399,7 @@ export function useProviderManagerController({
     setAddApiKey,
     setAddApiRoute,
     setAddAuthType,
+    setAddCompatibilityProfile,
     setAddBaseUrl,
     setAddCustomHeaders,
     setAddKind,
@@ -390,6 +410,7 @@ export function useProviderManagerController({
     setEditApiKey,
     setEditApiRoute,
     setEditBaseUrl,
+    setEditCompatibilityProfile,
     setEditName,
     setEditingProvider,
     setManualModelId,

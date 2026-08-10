@@ -10,6 +10,7 @@ export function getProviderKindIcon(kind: string): ReactNode {
     case "openai":
       return <ServerIcon className="size-4" aria-hidden="true" />;
     case "anthropic":
+    case "anthropic-compatible":
       return <BrainIcon className="size-4" aria-hidden="true" />;
     case "google":
     case "gemini":

@@ -351,6 +351,13 @@
       "when": 1786355378612,
       "tag": "0049_glorious_aqueduct",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1786389231911,
+      "tag": "0050_milky_silver_samurai",
+      "breakpoints": true
     }
   ]
 }

@@ -31,6 +31,8 @@ import {
 } from "@/components/ui/select";
 
 import type { OpenAICompatibleApiRoute } from "@/lib/openai-compatible-api";
+import type { OpenAICompatibilityProfile } from "@/lib/openai-compatibility-profile";
+import { OPENAI_COMPATIBILITY_PROFILE_LABELS } from "./constants";
 import { EditProviderDialogProps } from "./provider-dialogs.add-provider-advanced-fields";
 import { FIELD_STACK_CLASS } from "./provider-dialogs.field-stack-class";
 
@@ -41,11 +43,13 @@ export function EditProviderDialog({
   editBaseUrl,
   editApiKey,
   editApiRoute,
+  editCompatibilityProfile,
   onClose,
   onNameChange,
   onBaseUrlChange,
   onApiKeyChange,
   onApiRouteChange,
+  onCompatibilityProfileChange,
   onSave,
 }: EditProviderDialogProps) {
   const t = useTranslations("providers.manager");
@@ -114,6 +118,42 @@ export function EditProviderDialog({
               </Select>
               <p className="text-xs text-muted-foreground">
                 {t("apiRouteHint")}
+              </p>
+            </div>
+          ) : null}
+          {editingProvider?.kind === "openai-compatible" ? (
+            <div className={FIELD_STACK_CLASS}>
+              <Label
+                htmlFor="edit-provider-compatibility-profile"
+                help={t("compatibilityProfileHint")}
+              >
+                {t("compatibilityProfile")}
+              </Label>
+              <Select
+                value={editCompatibilityProfile}
+                onValueChange={(value) =>
+                  onCompatibilityProfileChange(
+                    value as OpenAICompatibilityProfile,
+                  )
+                }
+              >
+                <SelectTrigger id="edit-provider-compatibility-profile">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {Object.entries(OPENAI_COMPATIBILITY_PROFILE_LABELS).map(
+                      ([value, label]) => (
+                        <SelectItem key={value} value={value}>
+                          {label}
+                        </SelectItem>
+                      ),
+                    )}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {t("compatibilityProfileHint")}
               </p>
             </div>
           ) : null}

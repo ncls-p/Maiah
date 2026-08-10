@@ -5,6 +5,11 @@ import {
   normalizeOpenAICompatibleApiRoute,
   type OpenAICompatibleApiRoute,
 } from "@/lib/openai-compatible-api";
+import {
+  DEFAULT_OPENAI_COMPATIBILITY_PROFILE,
+  normalizeOpenAICompatibilityProfile,
+  type OpenAICompatibilityProfile,
+} from "@/lib/openai-compatibility-profile";
 import { audit } from "@/server/domain/services/audit";
 import { db } from "@/server/infrastructure/db";
 import {
@@ -31,6 +36,9 @@ export function toSafeProvider(provider: ProviderRow) {
     openaiCompatibleApiRoute: normalizeOpenAICompatibleApiRoute(
       provider.openaiCompatibleApiRoute,
     ),
+    openaiCompatibilityProfile: normalizeOpenAICompatibilityProfile(
+      provider.openaiCompatibilityProfile,
+    ),
     enabled: provider.enabled,
     healthStatus: provider.healthStatus,
     lastCheckedAt: provider.lastCheckedAt,
@@ -54,6 +62,7 @@ export interface CreateProviderInput {
   headersJson?: Record<string, string>;
   queryParamsJson?: Record<string, string>;
   openaiCompatibleApiRoute?: OpenAICompatibleApiRoute;
+  openaiCompatibilityProfile?: OpenAICompatibilityProfile;
 }
 
 export async function createProvider(input: CreateProviderInput) {
@@ -68,6 +77,7 @@ export async function createProvider(input: CreateProviderInput) {
     headersJson,
     queryParamsJson,
     openaiCompatibleApiRoute = DEFAULT_OPENAI_COMPATIBLE_API_ROUTE,
+    openaiCompatibilityProfile = DEFAULT_OPENAI_COMPATIBILITY_PROFILE,
   } = input;
 
   const encryptedApiKey = apiKey ? await encryptValue(apiKey) : null;
@@ -93,6 +103,7 @@ export async function createProvider(input: CreateProviderInput) {
       encryptedHeadersJson,
       queryParamsJson: queryParamsJson || null,
       openaiCompatibleApiRoute,
+      openaiCompatibilityProfile,
       enabled: true,
     })
     .returning();
@@ -122,5 +133,6 @@ export interface UpdateProviderInput {
   headersJson?: Record<string, string>;
   queryParamsJson?: Record<string, string>;
   openaiCompatibleApiRoute?: OpenAICompatibleApiRoute;
+  openaiCompatibilityProfile?: OpenAICompatibilityProfile;
   enabled?: boolean;
 }

@@ -1,0 +1,2 @@
+ALTER TYPE "public"."provider_kind" ADD VALUE 'anthropic-compatible' BEFORE 'dragonfly';--> statement-breakpoint
+ALTER TABLE "ai_providers" ADD COLUMN "openai_compatibility_profile" varchar(32) DEFAULT 'auto' NOT NULL;

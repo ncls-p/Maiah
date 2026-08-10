@@ -1299,6 +1299,8 @@
       "apiRouteHint": "Responses API est recommandé. Utilisez Chat Completions si le service compatible n’expose pas /responses.",
       "apiRouteResponses": "Responses API (/responses) — par défaut",
       "apiRouteChatCompletions": "Chat Completions (/chat/completions)",
+      "compatibilityProfile": "Profil de compatibilité",
+      "compatibilityProfileHint": "La détection automatique est recommandée. Forcez un profil serveur uniquement si son dialecte OpenAI exige un comportement connu.",
       "authentication": "Authentification",
       "authenticationHelp": "Choisissez la manière dont Maiah présente le secret au serveur. Les valeurs sensibles restent chiffrées.",
       "customHeaders": "En-têtes personnalisés",

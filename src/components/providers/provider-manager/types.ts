@@ -1,10 +1,18 @@
 import type { OpenAICompatibleApiRoute } from "@/lib/openai-compatible-api";
+import type { OpenAICompatibilityProfile } from "@/lib/openai-compatibility-profile";
 
 export type ProviderKind =
-  "openai-compatible" | "dragonfly" | "vercel-ai-gateway" | "native";
+  | "openai-compatible"
+  | "anthropic-compatible"
+  | "dragonfly"
+  | "vercel-ai-gateway"
+  | "native";
 
 export type ProviderAuthType =
-  "bearer" | "x-api-key" | "custom-header" | "gateway";
+  | "bearer"
+  | "x-api-key"
+  | "custom-header"
+  | "gateway";
 
 export type SafeProvider = {
   id: string;
@@ -14,6 +22,7 @@ export type SafeProvider = {
   baseUrl: string | null;
   authType: ProviderAuthType;
   openaiCompatibleApiRoute: OpenAICompatibleApiRoute;
+  openaiCompatibilityProfile: OpenAICompatibilityProfile;
   enabled: boolean;
   healthStatus: string | null;
   lastCheckedAt: string | null;

@@ -127,6 +127,7 @@ export const fakeProvider = {
   encryptedHeadersJson: null,
   queryParamsJson: null,
   openaiCompatibleApiRoute: "chat-completions",
+  openaiCompatibilityProfile: "vllm",
   enabled: true,
   healthStatus: "healthy",
   lastCheckedAt: null,
@@ -161,6 +162,7 @@ describe("toSafeProvider", () => {
     expect(safe.hasApiKey).toBe(true);
     expect(safe.hasCustomHeaders).toBe(false);
     expect(safe.openaiCompatibleApiRoute).toBe("chat-completions");
+    expect(safe.openaiCompatibilityProfile).toBe("vllm");
   });
 
   it("hasApiKey is false when no encrypted key", () => {

@@ -1,4 +1,5 @@
 import { OPENAI_COMPATIBLE_API_ROUTES } from "@/lib/openai-compatible-api";
+import { OPENAI_COMPATIBILITY_PROFILES } from "@/lib/openai-compatibility-profile";
 import {
   handleRoute,
   requireResourcePermissionAsync,
@@ -28,6 +29,7 @@ const updateProviderSchema = z.object({
   headersJson: z.record(z.string(), z.string()).optional(),
   queryParamsJson: z.record(z.string(), z.string()).optional(),
   openaiCompatibleApiRoute: z.enum(OPENAI_COMPATIBLE_API_ROUTES).optional(),
+  openaiCompatibilityProfile: z.enum(OPENAI_COMPATIBILITY_PROFILES).optional(),
   enabled: z.boolean().optional(),
 });
 

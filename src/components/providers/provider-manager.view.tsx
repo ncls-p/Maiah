@@ -25,6 +25,7 @@ export function ProviderManagerView({ model }: { model: Model }) {
     addApiRoute,
     addAuthType,
     addBaseUrl,
+    addCompatibilityProfile,
     addCustomHeaders,
     addKind,
     addName,
@@ -42,6 +43,7 @@ export function ProviderManagerView({ model }: { model: Model }) {
     editApiKey,
     editApiRoute,
     editBaseUrl,
+    editCompatibilityProfile,
     editName,
     editingProvider,
     filteredModels,
@@ -66,6 +68,7 @@ export function ProviderManagerView({ model }: { model: Model }) {
     setAddApiRoute,
     setAddAuthType,
     setAddBaseUrl,
+    setAddCompatibilityProfile,
     setAddCustomHeaders,
     setAddKind,
     setAddName,
@@ -75,6 +78,7 @@ export function ProviderManagerView({ model }: { model: Model }) {
     setEditApiKey,
     setEditApiRoute,
     setEditBaseUrl,
+    setEditCompatibilityProfile,
     setEditName,
     setEditingProvider,
     setManualModelId,
@@ -162,6 +166,7 @@ export function ProviderManagerView({ model }: { model: Model }) {
         addCustomHeaders={addCustomHeaders}
         addQueryParams={addQueryParams}
         addApiRoute={addApiRoute}
+        addCompatibilityProfile={addCompatibilityProfile}
         addAdvanced={addAdvanced}
         onOpenChange={(open) => {
           setShowAddDialog(open);
@@ -175,6 +180,7 @@ export function ProviderManagerView({ model }: { model: Model }) {
         onCustomHeadersChange={setAddCustomHeaders}
         onQueryParamsChange={setAddQueryParams}
         onApiRouteChange={setAddApiRoute}
+        onCompatibilityProfileChange={setAddCompatibilityProfile}
         onAdvancedChange={setAddAdvanced}
         onCreateProvider={() => void createNewProvider()}
       />
@@ -185,11 +191,13 @@ export function ProviderManagerView({ model }: { model: Model }) {
         editBaseUrl={editBaseUrl}
         editApiKey={editApiKey}
         editApiRoute={editApiRoute}
+        editCompatibilityProfile={editCompatibilityProfile}
         onClose={() => setEditingProvider(null)}
         onNameChange={setEditName}
         onBaseUrlChange={setEditBaseUrl}
         onApiKeyChange={setEditApiKey}
         onApiRouteChange={setEditApiRoute}
+        onCompatibilityProfileChange={setEditCompatibilityProfile}
         onSave={() => void saveProviderEdit()}
       />
       <DeleteProviderDialog

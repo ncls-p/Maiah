@@ -133,6 +133,33 @@ describe("openaiCompatibleAdapter.createChatModel", () => {
     });
   });
 
+  it("applies the llama.cpp profile before sending unsupported references", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(apiErrorResponse());
+    vi.stubGlobal("fetch", fetchMock);
+    const model = openaiCompatibleAdapter.createChatModel(
+      {
+        kind: "openai-compatible",
+        name: "llama.cpp",
+        baseUrl: "http://localhost:8081/v1",
+        authType: "custom-header",
+        openaiCompatibilityProfile: "llama.cpp",
+      },
+      "test-model",
+    );
+
+    await expect(
+      model.doGenerate(referencedContinuationCall),
+    ).rejects.toThrow();
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const requestBody = JSON.parse(
+      String((fetchMock.mock.calls[0]?.[1] as RequestInit).body),
+    ) as { input: Array<{ type?: string }> };
+    expect(requestBody.input).not.toContainEqual(
+      expect.objectContaining({ type: "item_reference" }),
+    );
+  });
+
   it("normalizes assistant output text only in the compatibility fallback", () => {
     const body = JSON.stringify({
       model: "test-model",

@@ -3,6 +3,10 @@ import {
   OPENAI_COMPATIBLE_API_ROUTES,
 } from "@/lib/openai-compatible-api";
 import {
+  DEFAULT_OPENAI_COMPATIBILITY_PROFILE,
+  OPENAI_COMPATIBILITY_PROFILES,
+} from "@/lib/openai-compatibility-profile";
+import {
   handleRoute,
   requireRequestPermissionScopeAsync,
   requireWorkspaceMemberAsync,
@@ -18,11 +22,16 @@ import {
   listProviders,
   toSafeProvider,
 } from "@/modules/provider/use-cases";
+import type {
+  aiModels,
+  aiProviders,
+} from "@/server/infrastructure/db/schema";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 const providerKindSchema = z.enum([
   "openai-compatible",
+  "anthropic-compatible",
   "dragonfly",
   "vercel-ai-gateway",
   "native",
@@ -46,6 +55,9 @@ const createProviderSchema = z.object({
   openaiCompatibleApiRoute: z
     .enum(OPENAI_COMPATIBLE_API_ROUTES)
     .default(DEFAULT_OPENAI_COMPATIBLE_API_ROUTE),
+  openaiCompatibilityProfile: z
+    .enum(OPENAI_COMPATIBILITY_PROFILES)
+    .default(DEFAULT_OPENAI_COMPATIBILITY_PROFILE),
   workspaceId: z.uuid(),
 });
 
@@ -53,6 +65,12 @@ const listProvidersSchema = z.object({
   workspaceId: z.uuid(),
   includeModels: z.enum(["true", "false"]).optional(),
 });
+
+type ProviderModelRow = typeof aiModels.$inferSelect;
+type ProviderCatalogItem = {
+  provider: ReturnType<typeof toSafeProvider> | null;
+  models: ProviderModelRow[];
+};
 
 export async function GET(req: NextRequest) {
   return handleRoute(
@@ -97,9 +115,9 @@ export async function GET(req: NextRequest) {
           ),
         ]);
 
-      const catalog = await Promise.all(
-        providers.map(async (provider) => {
-          const models = await listModels(provider.id);
+      const catalog: ProviderCatalogItem[] = await Promise.all(
+        providers.map(async (provider: typeof aiProviders.$inferSelect) => {
+          const models = (await listModels(provider.id)) as ProviderModelRow[];
           const [canViewProvider, visibleModels] = await Promise.all([
             canViewAllProviders
               ? Promise.resolve(true)

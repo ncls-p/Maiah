@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 import type { OpenAICompatibleApiRoute } from "@/lib/openai-compatible-api";
+import type { OpenAICompatibilityProfile } from "@/lib/openai-compatibility-profile";
 import { CLOUD_TEMPLE_BASE_URL } from "@/modules/provider/cloud-temple-catalog";
 import { AddProviderAdvancedFields } from "./provider-dialogs.add-provider-advanced-fields";
 import type { ProviderAuthType, ProviderKind } from "./types";
@@ -33,6 +34,7 @@ export type AddProviderDialogProps = {
   addCustomHeaders: string;
   addQueryParams: string;
   addApiRoute: OpenAICompatibleApiRoute;
+  addCompatibilityProfile: OpenAICompatibilityProfile;
   addAdvanced: boolean;
   onOpenChange: (open: boolean) => void;
   onKindChange: (kind: ProviderKind) => void;
@@ -43,6 +45,7 @@ export type AddProviderDialogProps = {
   onCustomHeadersChange: (value: string) => void;
   onQueryParamsChange: (value: string) => void;
   onApiRouteChange: (value: OpenAICompatibleApiRoute) => void;
+  onCompatibilityProfileChange: (value: OpenAICompatibilityProfile) => void;
   onAdvancedChange: (value: boolean) => void;
   onCreateProvider: () => void;
 };

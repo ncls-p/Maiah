@@ -1,4 +1,5 @@
 import type { OpenAICompatibleApiRoute } from "@/lib/openai-compatible-api";
+import type { OpenAICompatibilityProfile } from "@/lib/openai-compatibility-profile";
 import type {
   ImageGenerationConfig,
   SustainabilityConfig,
@@ -11,7 +12,11 @@ import type {
 } from "@ai-sdk/provider";
 
 export type ProviderKind =
-  "openai-compatible" | "dragonfly" | "vercel-ai-gateway" | "native";
+  | "openai-compatible"
+  | "anthropic-compatible"
+  | "dragonfly"
+  | "vercel-ai-gateway"
+  | "native";
 
 type ProviderAuthType = "bearer" | "x-api-key" | "custom-header" | "gateway";
 
@@ -54,6 +59,7 @@ export interface ProviderRuntimeConfig {
   headers?: Record<string, string>;
   queryParams?: Record<string, string>;
   openaiCompatibleApiRoute?: OpenAICompatibleApiRoute;
+  openaiCompatibilityProfile?: OpenAICompatibilityProfile;
 }
 
 export interface ProviderAdapter {

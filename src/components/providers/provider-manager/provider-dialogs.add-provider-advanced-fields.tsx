@@ -12,7 +12,12 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 
 import type { OpenAICompatibleApiRoute } from "@/lib/openai-compatible-api";
-import { AUTH_TYPE_LABELS, KIND_LABELS } from "./constants";
+import type { OpenAICompatibilityProfile } from "@/lib/openai-compatibility-profile";
+import {
+  AUTH_TYPE_LABELS,
+  KIND_LABELS,
+  OPENAI_COMPATIBILITY_PROFILE_LABELS,
+} from "./constants";
 import {
   AddProviderDialogProps,
   FIELD_STACK_CLASS,
@@ -73,31 +78,66 @@ export function AddProviderAdvancedFields(props: AddProviderDialogProps) {
         </div>
       </div>
       {props.addKind === "openai-compatible" ? (
-        <div className={FIELD_STACK_CLASS}>
-          <Label htmlFor="add-provider-api-route" help={t("apiRouteHint")}>
-            {t("apiRoute")}
-          </Label>
-          <Select
-            value={props.addApiRoute}
-            onValueChange={(value) =>
-              props.onApiRouteChange(value as OpenAICompatibleApiRoute)
-            }
-          >
-            <SelectTrigger id="add-provider-api-route">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectItem value="responses">
-                  {t("apiRouteResponses")}
-                </SelectItem>
-                <SelectItem value="chat-completions">
-                  {t("apiRouteChatCompletions")}
-                </SelectItem>
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-muted-foreground">{t("apiRouteHint")}</p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className={FIELD_STACK_CLASS}>
+            <Label htmlFor="add-provider-api-route" help={t("apiRouteHint")}>
+              {t("apiRoute")}
+            </Label>
+            <Select
+              value={props.addApiRoute}
+              onValueChange={(value) =>
+                props.onApiRouteChange(value as OpenAICompatibleApiRoute)
+              }
+            >
+              <SelectTrigger id="add-provider-api-route">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value="responses">
+                    {t("apiRouteResponses")}
+                  </SelectItem>
+                  <SelectItem value="chat-completions">
+                    {t("apiRouteChatCompletions")}
+                  </SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className={FIELD_STACK_CLASS}>
+            <Label
+              htmlFor="add-provider-compatibility-profile"
+              help={t("compatibilityProfileHint")}
+            >
+              {t("compatibilityProfile")}
+            </Label>
+            <Select
+              value={props.addCompatibilityProfile}
+              onValueChange={(value) =>
+                props.onCompatibilityProfileChange(
+                  value as OpenAICompatibilityProfile,
+                )
+              }
+            >
+              <SelectTrigger id="add-provider-compatibility-profile">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {Object.entries(OPENAI_COMPATIBILITY_PROFILE_LABELS).map(
+                    ([value, label]) => (
+                      <SelectItem key={value} value={value}>
+                        {label}
+                      </SelectItem>
+                    ),
+                  )}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </div>
+          <p className="text-xs text-muted-foreground sm:col-span-2">
+            {t("apiRouteHint")} {t("compatibilityProfileHint")}
+          </p>
         </div>
       ) : null}
       <div className="grid gap-3 sm:grid-cols-2">
@@ -137,10 +177,12 @@ export type EditProviderDialogProps = {
   editBaseUrl: string;
   editApiKey: string;
   editApiRoute: OpenAICompatibleApiRoute;
+  editCompatibilityProfile: OpenAICompatibilityProfile;
   onClose: () => void;
   onNameChange: (value: string) => void;
   onBaseUrlChange: (value: string) => void;
   onApiKeyChange: (value: string) => void;
   onApiRouteChange: (value: OpenAICompatibleApiRoute) => void;
+  onCompatibilityProfileChange: (value: OpenAICompatibilityProfile) => void;
   onSave: () => void;
 };

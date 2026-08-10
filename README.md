@@ -216,7 +216,7 @@ Upload documents to workspace knowledge bases and enable RAG (Retrieval-Augmente
 
 ### Provider Management
 
-Register AI providers (OpenAI-compatible) with encrypted API key storage using AES-GCM.
+Register OpenAI-compatible and Anthropic-compatible providers with encrypted API key storage using AES-GCM. OpenAI connections support selectable `auto`, generic, llama.cpp, vLLM, and Open WebUI compatibility profiles alongside Responses and Chat Completions protocols.
 
 ### Scheduled Tasks
 

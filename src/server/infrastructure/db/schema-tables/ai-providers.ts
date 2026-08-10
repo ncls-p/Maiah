@@ -24,6 +24,7 @@ const WORKSPACE_ID_COLUMN = "workspace_id";
 
 export const providerKindEnum = pgEnum("provider_kind", [
   "openai-compatible",
+  "anthropic-compatible",
   "dragonfly",
   "vercel-ai-gateway",
   "native",
@@ -54,6 +55,11 @@ export const aiProviders = pgTable(
     })
       .notNull()
       .default("responses"),
+    openaiCompatibilityProfile: varchar("openai_compatibility_profile", {
+      length: 32,
+    })
+      .notNull()
+      .default("auto"),
     enabled: boolean("enabled").notNull().default(true),
     healthStatus: varchar("health_status", { length: 16 }),
     lastCheckedAt: timestamp("last_checked_at", { withTimezone: true }),

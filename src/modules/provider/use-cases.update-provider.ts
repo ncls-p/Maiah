@@ -17,6 +17,7 @@ export async function updateProvider(input: UpdateProviderInput) {
     headersJson,
     queryParamsJson,
     openaiCompatibleApiRoute,
+    openaiCompatibilityProfile,
     enabled,
   } = input;
 
@@ -45,6 +46,9 @@ export async function updateProvider(input: UpdateProviderInput) {
   }
   if (openaiCompatibleApiRoute !== undefined) {
     updates.openaiCompatibleApiRoute = openaiCompatibleApiRoute;
+  }
+  if (openaiCompatibilityProfile !== undefined) {
+    updates.openaiCompatibilityProfile = openaiCompatibilityProfile;
   }
 
   // Encrypt new API key if provided

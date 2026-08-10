@@ -1,5 +1,6 @@
 import { decryptValue } from "@/lib/crypto";
 import { normalizeOpenAICompatibleApiRoute } from "@/lib/openai-compatible-api";
+import { normalizeOpenAICompatibilityProfile } from "@/lib/openai-compatibility-profile";
 import type { aiProviders } from "@/server/infrastructure/db/schema";
 import type { ProviderRuntimeConfig } from "@/server/infrastructure/providers";
 
@@ -26,6 +27,9 @@ export async function buildProviderRuntimeConfig(
       (provider.queryParamsJson as Record<string, string> | null) ?? undefined,
     openaiCompatibleApiRoute: normalizeOpenAICompatibleApiRoute(
       provider.openaiCompatibleApiRoute,
+    ),
+    openaiCompatibilityProfile: normalizeOpenAICompatibilityProfile(
+      provider.openaiCompatibilityProfile,
     ),
   };
 }

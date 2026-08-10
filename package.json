@@ -41,6 +41,7 @@
     "quality": "npm run quality:file-length && npm run quality:dead-code && npm run quality:duplicates"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^4.0.36",
     "@ai-sdk/devtools": "^1.0.0",
     "@ai-sdk/openai": "^4.0.15",
     "@ai-sdk/openai-compatible": "^3.0.1",

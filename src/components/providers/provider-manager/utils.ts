@@ -1,7 +1,9 @@
 import type { ProviderAuthType, ProviderKind } from "./types";
 
 export function defaultAuthType(kind: ProviderKind): ProviderAuthType {
-  if (kind === "dragonfly") return "x-api-key";
+  if (kind === "anthropic-compatible" || kind === "dragonfly") {
+    return "x-api-key";
+  }
   if (kind === "vercel-ai-gateway") return "gateway";
   return "bearer";
 }

@@ -1,3 +1,7 @@
+import {
+  normalizeOpenAICompatibilityProfile,
+  shouldNormalizeResponsesInputBeforeRequest,
+} from "@/lib/openai-compatibility-profile";
 import type { ProviderRuntimeConfig } from "./adapter";
 import {
   normalizeResponsesInputForCompatibleProvider,
@@ -331,10 +335,16 @@ export function createResponsesFetch(config: ProviderRuntimeConfig) {
       headers.delete("authorization");
     }
 
+    const originalBody = init?.body ?? request?.body;
+    const profile = normalizeOpenAICompatibilityProfile(
+      config.openaiCompatibilityProfile,
+    );
     const requestInit: RequestInit = {
       ...init,
       method: init?.method ?? request?.method,
-      body: init?.body ?? request?.body,
+      body: shouldNormalizeResponsesInputBeforeRequest(profile)
+        ? normalizeResponsesInputForCompatibleProvider(originalBody)
+        : originalBody,
       signal: init?.signal ?? request?.signal,
       headers,
     };
