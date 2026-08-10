@@ -106,17 +106,21 @@ export function ChatPageView({ model }: { model: Model }) {
       onSetupComplete={() => void reloadAgentContext()}
     >
       <ChatContextBar quota={quota} />
-      <ConversationRetentionBanner
-        temporary={effectiveEphemeral}
-        ttlMinutes={effectiveEphemeralTtlMinutes}
-        expiresAt={ephemeralExpiresAt}
-        hasConversation={Boolean(activeConversationId)}
-        canConvert={conversationIsOwner}
-        converting={convertingTemporaryConversation}
-        extending={extendingTemporaryConversation}
-        onConvert={() => void makeConversationPersistent()}
-        onExtend={(ttlMinutes) => void extendTemporaryConversation(ttlMinutes)}
-      />
+      {effectiveEphemeral ? (
+        <ConversationRetentionBanner
+          temporary
+          ttlMinutes={effectiveEphemeralTtlMinutes}
+          expiresAt={ephemeralExpiresAt}
+          hasConversation={Boolean(activeConversationId)}
+          canConvert={conversationIsOwner}
+          converting={convertingTemporaryConversation}
+          extending={extendingTemporaryConversation}
+          onConvert={() => void makeConversationPersistent()}
+          onExtend={(ttlMinutes) =>
+            void extendTemporaryConversation(ttlMinutes)
+          }
+        />
+      ) : null}
       {conversationReadOnly ? (
         <div className="border-b bg-muted/40 px-4 py-2 text-center text-xs text-muted-foreground">
           {t("share.readOnlyNotice")}

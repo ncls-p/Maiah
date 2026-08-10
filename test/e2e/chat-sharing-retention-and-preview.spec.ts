@@ -64,6 +64,9 @@ test("starts a temporary chat from the compact sidebar timer with every retentio
   page,
 }) => {
   await page.goto("/en/chat");
+  await expect(
+    page.getByText("Saved conversation", { exact: true }),
+  ).toHaveCount(0);
   const temporaryButton = page.getByRole("button", {
     name: "New temporary conversation",
   });
