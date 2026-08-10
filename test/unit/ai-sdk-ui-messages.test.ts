@@ -1,9 +1,13 @@
-import { describe,expect,it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import type { ChatMessage } from "@/components/chat/chat-types";
 import { toAiSdkUIMessages } from "@/modules/chat/ai-sdk-ui-messages";
 
-function makeChatMessage(role: "user" | "assistant" | "system", parts: Array<{ type: string; content: string }>, id = "msg-1"): ChatMessage {
+function makeChatMessage(
+  role: "user" | "assistant" | "system",
+  parts: Array<{ type: string; content: string }>,
+  id = "msg-1",
+): ChatMessage {
   return {
     id,
     role,
@@ -15,7 +19,9 @@ function makeChatMessage(role: "user" | "assistant" | "system", parts: Array<{ t
 
 describe("toAiSdkUIMessages", () => {
   it("maps user messages", () => {
-    const messages = [makeChatMessage("user", [{ type: "text", content: "Hello" }])];
+    const messages = [
+      makeChatMessage("user", [{ type: "text", content: "Hello" }]),
+    ];
     const result = toAiSdkUIMessages(messages);
 
     expect(result).toHaveLength(1);
@@ -24,14 +30,18 @@ describe("toAiSdkUIMessages", () => {
   });
 
   it("maps assistant messages", () => {
-    const messages = [makeChatMessage("assistant", [{ type: "text", content: "Hi there" }])];
+    const messages = [
+      makeChatMessage("assistant", [{ type: "text", content: "Hi there" }]),
+    ];
     const result = toAiSdkUIMessages(messages);
 
     expect(result[0].role).toBe("assistant");
   });
 
   it("maps system messages", () => {
-    const messages = [makeChatMessage("system", [{ type: "text", content: "You are an AI" }])];
+    const messages = [
+      makeChatMessage("system", [{ type: "text", content: "You are an AI" }]),
+    ];
     const result = toAiSdkUIMessages(messages);
 
     expect(result[0].role).toBe("system");
@@ -46,15 +56,23 @@ describe("toAiSdkUIMessages", () => {
     ];
     const result = toAiSdkUIMessages(messages);
 
-    const textParts = result[0].parts.filter((p) => (p as { type: string }).type === "text");
+    const textParts = result[0].parts.filter(
+      (p) => (p as { type: string }).type === "text",
+    );
     expect(textParts).toHaveLength(2);
   });
 
   it("converts reasoning parts", () => {
-    const messages = [makeChatMessage("assistant", [{ type: "reasoning", content: "Let me think..." }])];
+    const messages = [
+      makeChatMessage("assistant", [
+        { type: "reasoning", content: "Let me think..." },
+      ]),
+    ];
     const result = toAiSdkUIMessages(messages);
 
-    const reasoningParts = result[0].parts.filter((p) => (p as { type: string }).type === "reasoning");
+    const reasoningParts = result[0].parts.filter(
+      (p) => (p as { type: string }).type === "reasoning",
+    );
     expect(reasoningParts).toHaveLength(1);
     expect(reasoningParts[0]).toHaveProperty("state", "done");
   });
@@ -74,7 +92,9 @@ describe("toAiSdkUIMessages", () => {
     ];
     const result = toAiSdkUIMessages(messages);
 
-    const toolParts = result[0].parts.filter((p) => (p as { type: string }).type === "dynamic-tool");
+    const toolParts = result[0].parts.filter(
+      (p) => (p as { type: string }).type === "dynamic-tool",
+    );
     expect(toolParts).toHaveLength(1);
     expect(toolParts[0]).toHaveProperty("state", "input-available");
   });
@@ -94,7 +114,9 @@ describe("toAiSdkUIMessages", () => {
     ];
     const result = toAiSdkUIMessages(messages);
 
-    const toolParts = result[0].parts.filter((p) => (p as { type: string }).type === "dynamic-tool");
+    const toolParts = result[0].parts.filter(
+      (p) => (p as { type: string }).type === "dynamic-tool",
+    );
     expect(toolParts[0]).toHaveProperty("state", "input-streaming");
   });
 
@@ -113,7 +135,9 @@ describe("toAiSdkUIMessages", () => {
     ];
     const result = toAiSdkUIMessages(messages);
 
-    const toolParts = result[0].parts.filter((p) => (p as { type: string }).type === "dynamic-tool");
+    const toolParts = result[0].parts.filter(
+      (p) => (p as { type: string }).type === "dynamic-tool",
+    );
     expect(toolParts).toHaveLength(1);
     expect(toolParts[0]).toHaveProperty("state", "output-available");
   });
@@ -135,7 +159,9 @@ describe("toAiSdkUIMessages", () => {
     ];
     const result = toAiSdkUIMessages(messages);
 
-    const toolParts = result[0].parts.filter((p) => (p as { type: string }).type === "dynamic-tool");
+    const toolParts = result[0].parts.filter(
+      (p) => (p as { type: string }).type === "dynamic-tool",
+    );
     expect(toolParts[0]).toHaveProperty("state", "output-denied");
   });
 
@@ -150,15 +176,23 @@ describe("toAiSdkUIMessages", () => {
     ];
     const result = toAiSdkUIMessages(messages);
 
-    const suggestionParts = result[0].parts.filter((p) => (p as { type: string }).type === "data-suggestions");
+    const suggestionParts = result[0].parts.filter(
+      (p) => (p as { type: string }).type === "data-suggestions",
+    );
     expect(suggestionParts).toHaveLength(1);
   });
 
   it("ignores invalid suggestions content", () => {
-    const messages = [makeChatMessage("assistant", [{ type: "suggestions", content: "not json" }])];
+    const messages = [
+      makeChatMessage("assistant", [
+        { type: "suggestions", content: "not json" },
+      ]),
+    ];
     const result = toAiSdkUIMessages(messages);
 
-    const suggestionParts = result[0].parts.filter((p) => (p as { type: string }).type === "data-suggestions");
+    const suggestionParts = result[0].parts.filter(
+      (p) => (p as { type: string }).type === "data-suggestions",
+    );
     expect(suggestionParts).toHaveLength(0);
   });
 });

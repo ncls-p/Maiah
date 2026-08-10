@@ -1,4 +1,4 @@
-import { beforeEach,describe,expect,it,type Mock,vi } from "vitest";
+import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   createCodeWorkspaceFromFiles: vi.fn(),
@@ -42,7 +42,10 @@ vi.mock("@/modules/github/publishing", () => ({
 }));
 
 vi.mock("@/modules/tool/builtin-tool-primitives", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/modules/tool/builtin-tool-primitives")>();
+  const actual =
+    await importOriginal<
+      typeof import("@/modules/tool/builtin-tool-primitives")
+    >();
   return {
     ...actual,
     searchWebWithSearxng: mocks.searchWebWithSearxng,
@@ -100,7 +103,10 @@ function tool(name: string) {
 }
 
 function runTool(name: string, input: unknown, context?: unknown) {
-  return (tool(name).execute as (input: unknown, context?: unknown) => unknown)(input, context);
+  return (tool(name).execute as (input: unknown, context?: unknown) => unknown)(
+    input,
+    context,
+  );
 }
 
 const context = {
@@ -128,11 +134,13 @@ beforeEach(() => {
   mockFn(mocks.deleteCodeWorkspaceFile).mockResolvedValue({ ok: "deleted" });
   mockFn(mocks.getUserGitHubStatus).mockResolvedValue({ connected: true });
   mockFn(mocks.publishCodeWorkspaceToGitHub).mockResolvedValue({ ok: true });
-  mockFn(mocks.searchWebWithSearxng).mockImplementation(async (input: { query: string }) => ({
-    ok: true,
-    query: input.query,
-    results: [],
-  }));
+  mockFn(mocks.searchWebWithSearxng).mockImplementation(
+    async (input: { query: string }) => ({
+      ok: true,
+      query: input.query,
+      results: [],
+    }),
+  );
   mockFn(mocks.executeCodeSandbox).mockResolvedValue({
     kind: "code_sandbox_result",
     ok: true,
@@ -162,11 +170,17 @@ describe("builtInTools", () => {
           headers: { "content-type": "text/plain" },
         }),
     ) as typeof fetch;
-    await expect(runTool("http_fetch", { url: "https://example.test", method: "GET" })).resolves.toMatchObject({ status: 201, bodyPreview: "body" });
-    await expect(runTool("http_fetch", { url: "https://example.test", method: "HEAD" })).resolves.toMatchObject({ bodyPreview: "" });
+    await expect(
+      runTool("http_fetch", { url: "https://example.test", method: "GET" }),
+    ).resolves.toMatchObject({ status: 201, bodyPreview: "body" });
+    await expect(
+      runTool("http_fetch", { url: "https://example.test", method: "HEAD" }),
+    ).resolves.toMatchObject({ bodyPreview: "" });
     globalThis.fetch = originalFetch;
 
-    await expect(runTool("web_search", { query: "news" })).resolves.toMatchObject({ query: "news", results: [] });
+    await expect(
+      runTool("web_search", { query: "news" }),
+    ).resolves.toMatchObject({ query: "news", results: [] });
     expect(
       runTool("render_html_artifact", {
         title: "Demo",
@@ -176,14 +190,36 @@ describe("builtInTools", () => {
         height: 300,
       }),
     ).toMatchObject({ kind: "html_artifact", title: "Demo" });
-    await expect(runTool("run_code_sandbox", { language: "node", code: "1" }, context)).resolves.toMatchObject({ kind: "code_sandbox_result" });
+    await expect(
+      runTool("run_code_sandbox", { language: "node", code: "1" }, context),
+    ).resolves.toMatchObject({ kind: "code_sandbox_result" });
   });
 
   it("delegates code workspace tools and enforces workspace context", async () => {
-    await expect(runTool("code_workspace_create_project", { title: "App", rootFile: "index.html", files: [] }, context)).resolves.toEqual({ ok: "created" });
-    await expect(runTool("code_workspace_list_files", { projectId: "p1" }, context)).resolves.toEqual({ files: [] });
-    await expect(runTool("code_workspace_read_file", { projectId: "p1", path: "index.html" }, context)).resolves.toMatchObject({ content: "one two one" });
-    await expect(runTool("code_workspace_write_file", { projectId: "p1", path: "index.html", content: "next" }, context)).resolves.toEqual({ ok: "written" });
+    await expect(
+      runTool(
+        "code_workspace_create_project",
+        { title: "App", rootFile: "index.html", files: [] },
+        context,
+      ),
+    ).resolves.toEqual({ ok: "created" });
+    await expect(
+      runTool("code_workspace_list_files", { projectId: "p1" }, context),
+    ).resolves.toEqual({ files: [] });
+    await expect(
+      runTool(
+        "code_workspace_read_file",
+        { projectId: "p1", path: "index.html" },
+        context,
+      ),
+    ).resolves.toMatchObject({ content: "one two one" });
+    await expect(
+      runTool(
+        "code_workspace_write_file",
+        { projectId: "p1", path: "index.html", content: "next" },
+        context,
+      ),
+    ).resolves.toEqual({ ok: "written" });
     await expect(
       runTool(
         "code_workspace_write_file",
@@ -202,8 +238,18 @@ describe("builtInTools", () => {
         bytes: new Uint8Array([1, 2, 3]),
       }),
     );
-    await expect(runTool("code_workspace_delete_file", { projectId: "p1", path: "old.html" }, context)).resolves.toEqual({ ok: "deleted" });
-    await expect(runTool("code_workspace_list_files", { projectId: "p1" }, undefined)).rejects.toThrow("Code workspace tools require chat workspace context");
-    expect(mocks.createCodeWorkspaceFromFiles).toHaveBeenCalledWith(expect.objectContaining({ workspaceId: "ws-1", userId: "user-1" }));
+    await expect(
+      runTool(
+        "code_workspace_delete_file",
+        { projectId: "p1", path: "old.html" },
+        context,
+      ),
+    ).resolves.toEqual({ ok: "deleted" });
+    await expect(
+      runTool("code_workspace_list_files", { projectId: "p1" }, undefined),
+    ).rejects.toThrow("Code workspace tools require chat workspace context");
+    expect(mocks.createCodeWorkspaceFromFiles).toHaveBeenCalledWith(
+      expect.objectContaining({ workspaceId: "ws-1", userId: "user-1" }),
+    );
   });
 });

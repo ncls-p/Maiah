@@ -1,14 +1,26 @@
-import { describe,expect,it,vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { listRemoteMcpTools } from "@/modules/mcp/client";
-import { archiveMcpServer,listMcpTools,syncMcpTools,testMcpConnection } from "@/modules/mcp/use-cases";
-import { dbModule,fakeSseServer,fakeStdioServer,fakeTool } from "./mcp-use-cases.test.db-module";
+import {
+  archiveMcpServer,
+  listMcpTools,
+  syncMcpTools,
+  testMcpConnection,
+} from "@/modules/mcp/use-cases";
+import {
+  dbModule,
+  fakeSseServer,
+  fakeStdioServer,
+  fakeTool,
+} from "./mcp-use-cases.test.db-module";
 
 // ─── archiveMcpServer ─────────────────────────────────────────────────
 
 describe("archiveMcpServer", () => {
   it("throws when server not found", async () => {
-    await expect(archiveMcpServer("srv-1", "ws-1", "user-1")).rejects.toThrow("MCP server not found");
+    await expect(archiveMcpServer("srv-1", "ws-1", "user-1")).rejects.toThrow(
+      "MCP server not found",
+    );
   });
 
   it("sets archivedAt and disables server", async () => {
@@ -24,7 +36,9 @@ describe("archiveMcpServer", () => {
 
 describe("listMcpTools", () => {
   it("throws when server not found", async () => {
-    await expect(listMcpTools("srv-1", "ws-1")).rejects.toThrow("MCP server not found");
+    await expect(listMcpTools("srv-1", "ws-1")).rejects.toThrow(
+      "MCP server not found",
+    );
   });
 
   it("returns tools ordered by name", async () => {
@@ -41,7 +55,9 @@ describe("listMcpTools", () => {
 
 describe("syncMcpTools", () => {
   it("throws when server not found", async () => {
-    await expect(syncMcpTools("srv-1", "ws-1", "user-1")).rejects.toThrow("MCP server not found");
+    await expect(syncMcpTools("srv-1", "ws-1", "user-1")).rejects.toThrow(
+      "MCP server not found",
+    );
   });
 
   it("returns manual status for stdio transport", async () => {
@@ -59,7 +75,9 @@ describe("syncMcpTools", () => {
       .mockReturnValueOnce(dbModule._c) // Q1: keep chain for .limit()
       .mockResolvedValueOnce([]); // Q2: existing tools
     dbModule._c.limit.mockResolvedValueOnce([fakeSseServer]);
-    vi.mocked(listRemoteMcpTools).mockResolvedValueOnce([{ name: "search", description: "Search" }] as never);
+    vi.mocked(listRemoteMcpTools).mockResolvedValueOnce([
+      { name: "search", description: "Search" },
+    ] as never);
 
     const result = await syncMcpTools("srv-1", "ws-1", "user-1");
     expect(result.discovered).toBe(1);
@@ -67,9 +85,13 @@ describe("syncMcpTools", () => {
   });
 
   it("returns unhealthy status when remote call fails", async () => {
-    dbModule._c.where.mockReturnValueOnce(dbModule._c).mockResolvedValueOnce([]);
+    dbModule._c.where
+      .mockReturnValueOnce(dbModule._c)
+      .mockResolvedValueOnce([]);
     dbModule._c.limit.mockResolvedValueOnce([fakeSseServer]);
-    vi.mocked(listRemoteMcpTools).mockRejectedValueOnce(new Error("Connection refused"));
+    vi.mocked(listRemoteMcpTools).mockRejectedValueOnce(
+      new Error("Connection refused"),
+    );
 
     const result = await syncMcpTools("srv-1", "ws-1", "user-1");
     expect(result.status).toBe("unhealthy");
@@ -78,7 +100,9 @@ describe("syncMcpTools", () => {
   });
 
   it("removes stale tools when a healthy server returns an empty catalog", async () => {
-    dbModule._c.where.mockReturnValueOnce(dbModule._c).mockResolvedValueOnce([{ name: "old-tool", requireApproval: false }]);
+    dbModule._c.where
+      .mockReturnValueOnce(dbModule._c)
+      .mockResolvedValueOnce([{ name: "old-tool", requireApproval: false }]);
     dbModule._c.limit.mockResolvedValueOnce([fakeSseServer]);
     vi.mocked(listRemoteMcpTools).mockResolvedValueOnce([]);
 
@@ -94,14 +118,18 @@ describe("syncMcpTools", () => {
       .mockReturnValueOnce(dbModule._c) // Q1: getMcpServer where
       .mockResolvedValueOnce([{ name: "search", requireApproval: true }]); // Q2: existing tools
     dbModule._c.limit.mockResolvedValueOnce([fakeSseServer]);
-    vi.mocked(listRemoteMcpTools).mockResolvedValueOnce([{ name: "search", description: "Search" }] as never);
+    vi.mocked(listRemoteMcpTools).mockResolvedValueOnce([
+      { name: "search", description: "Search" },
+    ] as never);
 
     await syncMcpTools("srv-1", "ws-1", "user-1");
 
     // Check the insert values included requireApproval=true for "search"
     expect(dbModule._tx.values).toHaveBeenCalled();
     const insertedTools = dbModule._tx.values.mock.calls[0][0];
-    const searchTool = (insertedTools as Array<{ name: string; requireApproval: boolean }>).find((t) => t.name === "search");
+    const searchTool = (
+      insertedTools as Array<{ name: string; requireApproval: boolean }>
+    ).find((t) => t.name === "search");
     expect(searchTool?.requireApproval).toBe(true);
   });
 });
@@ -110,7 +138,9 @@ describe("syncMcpTools", () => {
 
 describe("testMcpConnection", () => {
   it("throws when server not found", async () => {
-    await expect(testMcpConnection("srv-1", "ws-1", "user-1")).rejects.toThrow("MCP server not found");
+    await expect(testMcpConnection("srv-1", "ws-1", "user-1")).rejects.toThrow(
+      "MCP server not found",
+    );
   });
 
   it("returns manual status for stdio transport", async () => {
@@ -122,7 +152,9 @@ describe("testMcpConnection", () => {
 
   it("returns healthy with tool count message", async () => {
     dbModule._c.limit.mockResolvedValueOnce([fakeSseServer]);
-    vi.mocked(listRemoteMcpTools).mockResolvedValueOnce([{ name: "search" }] as never);
+    vi.mocked(listRemoteMcpTools).mockResolvedValueOnce([
+      { name: "search" },
+    ] as never);
 
     const result = await testMcpConnection("srv-1", "ws-1", "user-1");
     expect(result.status).toBe("healthy");

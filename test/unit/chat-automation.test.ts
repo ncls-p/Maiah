@@ -1,6 +1,12 @@
-import { describe,expect,it } from "vitest";
+import { describe, expect, it } from "vitest";
 
-import { createFallbackArtifacts,ensureThreeSuggestions,parseArtifacts,parseArtifactsFromModelOutput,validateChatAutomationConfigShape } from "@/modules/chat/automation";
+import {
+  createFallbackArtifacts,
+  ensureThreeSuggestions,
+  parseArtifacts,
+  parseArtifactsFromModelOutput,
+  validateChatAutomationConfigShape,
+} from "@/modules/chat/automation";
 
 describe("validateChatAutomationConfigShape", () => {
   it("requires provider and model when automation is enabled", () => {
@@ -83,14 +89,20 @@ describe("parseArtifactsFromModelOutput", () => {
 
 describe("parseArtifacts", () => {
   it("parses valid JSON artifacts", () => {
-    expect(parseArtifacts('{"title":"Budget review","suggestions":["A","B","C"]}')).toEqual({
+    expect(
+      parseArtifacts('{"title":"Budget review","suggestions":["A","B","C"]}'),
+    ).toEqual({
       title: "Budget review",
       suggestions: ["A", "B", "C"],
     });
   });
 
   it("extracts artifacts from fenced JSON", () => {
-    expect(parseArtifacts('```json\n{"title":"Roadmap","suggestions":["Next","Later","Maybe"]}\n```')).toEqual({
+    expect(
+      parseArtifacts(
+        '```json\n{"title":"Roadmap","suggestions":["Next","Later","Maybe"]}\n```',
+      ),
+    ).toEqual({
       title: "Roadmap",
       suggestions: ["Next", "Later", "Maybe"],
     });
@@ -99,7 +111,9 @@ describe("parseArtifacts", () => {
 
 describe("ensureThreeSuggestions", () => {
   it("pads suggestions with fallback values", () => {
-    expect(ensureThreeSuggestions(["Only one"], ["Fallback A", "Fallback B"])).toEqual(["Only one", "Fallback A", "Fallback B"]);
+    expect(
+      ensureThreeSuggestions(["Only one"], ["Fallback A", "Fallback B"]),
+    ).toEqual(["Only one", "Fallback A", "Fallback B"]);
   });
 });
 
@@ -124,6 +138,10 @@ describe("createFallbackArtifacts", () => {
     });
 
     expect(artifacts.title).toContain("Can you");
-    expect(artifacts.suggestions).toEqual(["Can you break that into steps?", "Show me a concrete example", "What are the alternatives?"]);
+    expect(artifacts.suggestions).toEqual([
+      "Can you break that into steps?",
+      "Show me a concrete example",
+      "What are the alternatives?",
+    ]);
   });
 });

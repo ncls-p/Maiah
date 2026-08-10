@@ -1,4 +1,4 @@
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/server/domain/services/audit", () => ({
   audit: { emit: vi.fn().mockResolvedValue(undefined) },
@@ -33,7 +33,18 @@ type Chain = {
 
 function makeChain(): Chain {
   const c = {} as Chain;
-  for (const key of ["select", "insert", "update", "delete", "from", "innerJoin", "where", "orderBy", "values", "set"] as const) {
+  for (const key of [
+    "select",
+    "insert",
+    "update",
+    "delete",
+    "from",
+    "innerJoin",
+    "where",
+    "orderBy",
+    "values",
+    "set",
+  ] as const) {
     c[key] = vi.fn().mockReturnThis();
   }
   c.limit = vi.fn().mockResolvedValue([]);
@@ -64,7 +75,12 @@ vi.mock("@/server/infrastructure/db", () => {
   };
 });
 
-import { archiveAgentSkill,cloneSkillBindings,replaceSkillBindingsForVersion,updateSkillManually } from "@/modules/skills/use-cases";
+import {
+  archiveAgentSkill,
+  cloneSkillBindings,
+  replaceSkillBindingsForVersion,
+  updateSkillManually,
+} from "@/modules/skills/use-cases";
 import * as _dbModule from "@/server/infrastructure/db";
 
 const dbModule = _dbModule as unknown as DbModule;
@@ -74,7 +90,18 @@ function resetDb() {
   dbModule.db.insert.mockReset().mockReturnValue(dbModule._c);
   dbModule.db.update.mockReset().mockReturnValue(dbModule._c);
   dbModule.db.delete.mockReset().mockReturnValue(dbModule._c);
-  for (const key of ["select", "insert", "update", "delete", "from", "innerJoin", "where", "orderBy", "values", "set"] as const) {
+  for (const key of [
+    "select",
+    "insert",
+    "update",
+    "delete",
+    "from",
+    "innerJoin",
+    "where",
+    "orderBy",
+    "values",
+    "set",
+  ] as const) {
     dbModule._c[key].mockReset().mockReturnThis();
   }
   dbModule._c.limit.mockReset().mockResolvedValue([]);
@@ -98,23 +125,33 @@ const ownSkill = {
 };
 
 describe("skill bindings", () => {
-
   it("replaces, clears, validates, and clones bindings", async () => {
     await replaceSkillBindingsForVersion("version-1", "ws-1", []);
     expect(dbModule.db.delete).toHaveBeenCalled();
 
     resetDb();
-    dbModule._c.where.mockResolvedValueOnce([{ id: "skill-1", createdById: "user-1", isGlobal: false }]);
+    dbModule._c.where.mockResolvedValueOnce([
+      { id: "skill-1", createdById: "user-1", isGlobal: false },
+    ]);
     await expect(
-      replaceSkillBindingsForVersion("version-1", "ws-1", ["skill-1", "skill-1"], {
-        userId: "user-1",
-      }),
+      replaceSkillBindingsForVersion(
+        "version-1",
+        "ws-1",
+        ["skill-1", "skill-1"],
+        {
+          userId: "user-1",
+        },
+      ),
     ).resolves.toBeUndefined();
-    expect(dbModule._c.values).toHaveBeenCalledWith([{ agentVersionId: "version-1", skillId: "skill-1" }]);
+    expect(dbModule._c.values).toHaveBeenCalledWith([
+      { agentVersionId: "version-1", skillId: "skill-1" },
+    ]);
 
     resetDb();
     dbModule._c.where.mockResolvedValueOnce([{ id: "skill-1" }]);
-    await expect(replaceSkillBindingsForVersion("version-1", "ws-1", ["missing"])).rejects.toThrow("Skill not found");
+    await expect(
+      replaceSkillBindingsForVersion("version-1", "ws-1", ["missing"]),
+    ).rejects.toThrow("Skill not found");
 
     resetDb();
     await cloneSkillBindings(null, "version-2");
@@ -146,9 +183,10 @@ describe("skill bindings", () => {
 });
 
 describe("manual skill management", () => {
-
   it("updates manageable skills and rejects unauthorized global changes", async () => {
-    dbModule._c.limit.mockResolvedValueOnce([{ ...ownSkill, createdById: "other", isGlobal: false }]);
+    dbModule._c.limit.mockResolvedValueOnce([
+      { ...ownSkill, createdById: "other", isGlobal: false },
+    ]);
     await expect(
       updateSkillManually({
         workspaceId: "ws-1",
@@ -176,7 +214,9 @@ describe("manual skill management", () => {
 
     resetDb();
     dbModule._c.limit.mockResolvedValueOnce([ownSkill]);
-    dbModule._c.returning.mockResolvedValueOnce([{ ...ownSkill, description: "Updated" }]);
+    dbModule._c.returning.mockResolvedValueOnce([
+      { ...ownSkill, description: "Updated" },
+    ]);
     await expect(
       updateSkillManually({
         workspaceId: "ws-1",
@@ -202,7 +242,9 @@ describe("skill listing and archiving", () => {
     ).rejects.toThrow("Skill not found");
 
     resetDb();
-    dbModule._c.limit.mockResolvedValueOnce([{ ...ownSkill, createdById: "other", isGlobal: false }]);
+    dbModule._c.limit.mockResolvedValueOnce([
+      { ...ownSkill, createdById: "other", isGlobal: false },
+    ]);
     await expect(
       archiveAgentSkill({
         workspaceId: "ws-1",

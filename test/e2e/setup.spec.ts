@@ -1,5 +1,5 @@
-import { expect,test } from "@playwright/test";
-import { ensureE2EUser,login } from "./fixtures";
+import { expect, test } from "@playwright/test";
+import { ensureE2EUser, login } from "./fixtures";
 
 test.beforeAll(async () => {
   await ensureE2EUser();
@@ -12,9 +12,15 @@ test.beforeEach(async ({ page }) => {
 test.describe("setup wizard", () => {
   test("shows welcome copy on the setup page", async ({ page }) => {
     await page.goto("/en/setup");
-    await expect(page.getByRole("heading", { name: /Get started/i })).toBeVisible();
-    await expect(page.getByText("Connect AI", { exact: true }).first()).toBeVisible();
-    await expect(page.getByText("Pick a model", { exact: true }).first()).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /Get started/i }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Connect AI", { exact: true }).first(),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Pick a model", { exact: true }).first(),
+    ).toBeVisible();
   });
 
   test("setup wizard has 3 steps", async ({ page }) => {
@@ -22,7 +28,9 @@ test.describe("setup wizard", () => {
     await page.waitForTimeout(2000);
 
     // Step indicators should be visible
-    await expect(page.getByText(/Connect AI|Pick a model|Start chatting/i).first()).toBeVisible({ timeout: 10_000 });
+    await expect(
+      page.getByText(/Connect AI|Pick a model|Start chatting/i).first(),
+    ).toBeVisible({ timeout: 10_000 });
   });
 
   test("setup page exposes its current navigation action", async ({ page }) => {
@@ -30,7 +38,9 @@ test.describe("setup wizard", () => {
     await page.waitForTimeout(2000);
 
     // Continue or navigation buttons should be present
-    const navBtn = page.getByRole("button", { name: /Continue|Back|Skip|Start/i }).first();
+    const navBtn = page
+      .getByRole("button", { name: /Continue|Back|Skip|Start/i })
+      .first();
 
     await expect(navBtn).toBeVisible();
   });
@@ -40,7 +50,9 @@ test.describe("setup wizard", () => {
     await page.waitForTimeout(2000);
 
     // Provider configuration should be visible
-    await expect(page.getByText(/Provider|Connection|API key|Service URL/i).first()).toBeVisible({ timeout: 10_000 });
+    await expect(
+      page.getByText(/Provider|Connection|API key|Service URL/i).first(),
+    ).toBeVisible({ timeout: 10_000 });
   });
 });
 
@@ -81,40 +93,59 @@ test.describe("setup wizard provider step", () => {
         ]),
       }),
     );
-    await page.route("**/api/workspace/providers/setup-provider/models**", async (route) => {
-      const request = route.request();
-      const url = new URL(request.url());
-      if (request.method() === "POST") {
+    await page.route(
+      "**/api/workspace/providers/setup-provider/models**",
+      async (route) => {
+        const request = route.request();
+        const url = new URL(request.url());
+        if (request.method() === "POST") {
+          await route.fulfill({
+            contentType: "application/json",
+            body: JSON.stringify({
+              id: "registered-model",
+              modelId: "first-model",
+              displayName: "First model",
+            }),
+          });
+          return;
+        }
         await route.fulfill({
           contentType: "application/json",
-          body: JSON.stringify({
-            id: "registered-model",
-            modelId: "first-model",
-            displayName: "First model",
-          }),
+          body: JSON.stringify(
+            url.searchParams.get("action") === "discover"
+              ? [{ modelId: "first-model", displayName: "First model" }]
+              : [],
+          ),
         });
-        return;
-      }
-      await route.fulfill({
-        contentType: "application/json",
-        body: JSON.stringify(url.searchParams.get("action") === "discover" ? [{ modelId: "first-model", displayName: "First model" }] : []),
-      });
-    });
+      },
+    );
 
     await page.goto("/en/setup");
-    await page.getByRole("combobox", { name: "Model for this assistant" }).click();
-    await expect(page.getByRole("option", { name: "First model" })).toBeVisible();
+    await page
+      .getByRole("combobox", { name: "Model for this assistant" })
+      .click();
+    await expect(
+      page.getByRole("option", { name: "First model" }),
+    ).toBeVisible();
     await page.getByRole("option", { name: "First model" }).click();
 
-    await expect(page.getByRole("button", { name: "Continue", exact: true })).toBeEnabled();
+    await expect(
+      page.getByRole("button", { name: "Continue", exact: true }),
+    ).toBeEnabled();
   });
 });
 
 test.describe("access page", () => {
-  test("manages accounts and organization access in one interface", async ({ page }) => {
+  test("manages accounts and organization access in one interface", async ({
+    page,
+  }) => {
     await page.goto("/en/members");
     await expect(page.getByText("Who has access")).toBeVisible();
-    await expect(page.getByRole("tab", { name: "Platform accounts" })).toHaveCount(0);
-    await expect(page.getByRole("tab", { name: "Organization access" })).toHaveCount(0);
+    await expect(
+      page.getByRole("tab", { name: "Platform accounts" }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("tab", { name: "Organization access" }),
+    ).toHaveCount(0);
   });
 });

@@ -1,5 +1,12 @@
-import { aggregateChatUsageImpact,appendMessagePart,canContinueAssistantMessage,prepareAssistantMessageContinuation,preserveAssistantFailureParts,type ChatMessage } from "@/components/chat/chat-types";
-import { describe,expect,it } from "vitest";
+import {
+  aggregateChatUsageImpact,
+  appendMessagePart,
+  canContinueAssistantMessage,
+  prepareAssistantMessageContinuation,
+  preserveAssistantFailureParts,
+  type ChatMessage,
+} from "@/components/chat/chat-types";
+import { describe, expect, it } from "vitest";
 
 describe("chat message parts", () => {
   it("aggregates usage impact across assistant messages", () => {
@@ -82,11 +89,30 @@ describe("chat message parts", () => {
       parts: [{ type: "text", content: "Partial response" }],
     };
 
-    expect(canContinueAssistantMessage(completedAssistant, "assistant-latest")).toBe(true);
-    expect(canContinueAssistantMessage({ ...completedAssistant, status: "streaming" }, "assistant-latest")).toBe(false);
-    expect(canContinueAssistantMessage(completedAssistant, "assistant-older")).toBe(false);
-    expect(canContinueAssistantMessage({ ...completedAssistant, parts: [{ type: "text", content: "  " }] }, "assistant-latest")).toBe(false);
-    expect(canContinueAssistantMessage({ ...completedAssistant, role: "user" }, "assistant-latest")).toBe(false);
+    expect(
+      canContinueAssistantMessage(completedAssistant, "assistant-latest"),
+    ).toBe(true);
+    expect(
+      canContinueAssistantMessage(
+        { ...completedAssistant, status: "streaming" },
+        "assistant-latest",
+      ),
+    ).toBe(false);
+    expect(
+      canContinueAssistantMessage(completedAssistant, "assistant-older"),
+    ).toBe(false);
+    expect(
+      canContinueAssistantMessage(
+        { ...completedAssistant, parts: [{ type: "text", content: "  " }] },
+        "assistant-latest",
+      ),
+    ).toBe(false);
+    expect(
+      canContinueAssistantMessage(
+        { ...completedAssistant, role: "user" },
+        "assistant-latest",
+      ),
+    ).toBe(false);
   });
 
   it("continues the existing assistant message without creating a new row", () => {
@@ -121,7 +147,9 @@ describe("chat message parts", () => {
     ];
 
     expect(preserveAssistantFailureParts(parts)).toBe(parts);
-    expect(preserveAssistantFailureParts([])).toEqual([{ type: "text", content: "The assistant failed to respond." }]);
+    expect(preserveAssistantFailureParts([])).toEqual([
+      { type: "text", content: "The assistant failed to respond." },
+    ]);
   });
 
   it("keeps reasoning blocks split across tool calls", () => {
@@ -153,6 +181,8 @@ describe("chat message parts", () => {
     parts = appendMessagePart(parts, "reasoning", "first ");
     parts = appendMessagePart(parts, "reasoning", "second");
 
-    expect(parts).toEqual([{ type: "reasoning", content: "first second", state: "streaming" }]);
+    expect(parts).toEqual([
+      { type: "reasoning", content: "first second", state: "streaming" },
+    ]);
   });
 });

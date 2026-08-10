@@ -55,7 +55,17 @@ type Chain = {
 
 function makeChain(): Chain {
   const c = {} as Chain;
-  for (const k of ["select", "insert", "update", "delete", "from", "where", "orderBy", "values", "set"] as const) {
+  for (const k of [
+    "select",
+    "insert",
+    "update",
+    "delete",
+    "from",
+    "where",
+    "orderBy",
+    "values",
+    "set",
+  ] as const) {
     c[k] = vi.fn().mockReturnThis();
   }
   c.limit = vi.fn().mockResolvedValue([]);
@@ -96,7 +106,17 @@ export const dbModule = _dbModule as unknown as DbModule;
 
 export function resetDb() {
   for (const chain of [dbModule._c, dbModule._tx]) {
-    for (const k of ["select", "insert", "update", "delete", "from", "where", "orderBy", "values", "set"] as const) {
+    for (const k of [
+      "select",
+      "insert",
+      "update",
+      "delete",
+      "from",
+      "where",
+      "orderBy",
+      "values",
+      "set",
+    ] as const) {
       chain[k].mockReset().mockReturnThis();
     }
     chain.limit.mockReset().mockResolvedValue([]);

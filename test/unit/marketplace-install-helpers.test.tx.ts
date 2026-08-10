@@ -1,5 +1,8 @@
-import { installCustomTool,installMcpPreset } from "@/modules/marketplace/install-helpers";
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import {
+  installCustomTool,
+  installMcpPreset,
+} from "@/modules/marketplace/install-helpers";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 type TxChain = {
   select: ReturnType<typeof vi.fn>;
@@ -15,7 +18,15 @@ type TxChain = {
 
 function makeTx(): TxChain {
   const tx = {} as TxChain;
-  for (const key of ["select", "insert", "update", "from", "where", "values", "set"] as const) {
+  for (const key of [
+    "select",
+    "insert",
+    "update",
+    "from",
+    "where",
+    "values",
+    "set",
+  ] as const) {
     tx[key] = vi.fn().mockReturnThis();
   }
   tx.limit = vi.fn().mockResolvedValue([]);
@@ -79,7 +90,9 @@ export const customToolManifest = {
 
 describe("installMcpPreset", () => {
   it("installs a server and its tools, flagging missing credentials", async () => {
-    tx.returning.mockResolvedValueOnce([{ id: "server-1", name: "Search MCP" }]);
+    tx.returning.mockResolvedValueOnce([
+      { id: "server-1", name: "Search MCP" },
+    ]);
 
     const result = await installMcpPreset(tx as never, {
       workspaceId: "ws-1",
@@ -106,7 +119,9 @@ describe("installMcpPreset", () => {
   });
 
   it("uses the marketplace item name when installing a single tool preset", async () => {
-    tx.returning.mockResolvedValueOnce([{ id: "server-2", name: "Single tool" }]);
+    tx.returning.mockResolvedValueOnce([
+      { id: "server-2", name: "Single tool" },
+    ]);
 
     await installMcpPreset(tx as never, {
       workspaceId: "ws-1",
@@ -118,14 +133,18 @@ describe("installMcpPreset", () => {
       },
     });
 
-    expect(tx.values).toHaveBeenCalledWith(expect.objectContaining({ name: "Single tool" }));
+    expect(tx.values).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "Single tool" }),
+    );
     expect(tx.insert).toHaveBeenCalledTimes(1);
   });
 });
 
 describe("installCustomTool", () => {
   it("installs custom tools without transferring credentials", async () => {
-    tx.returning.mockResolvedValueOnce([{ id: "custom-1", name: "Discord notifier" }]);
+    tx.returning.mockResolvedValueOnce([
+      { id: "custom-1", name: "Discord notifier" },
+    ]);
 
     const result = await installCustomTool(tx as never, {
       workspaceId: "ws-1",

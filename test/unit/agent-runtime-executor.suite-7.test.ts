@@ -1,4 +1,4 @@
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   generateText: vi.fn(),
@@ -149,7 +149,9 @@ describe("agent runtime executor", () => {
         resultMaxChars: 12_000,
       },
     };
-    mocks.getVisibleAgent.mockResolvedValueOnce(orchestrator).mockResolvedValueOnce(childAgent);
+    mocks.getVisibleAgent
+      .mockResolvedValueOnce(orchestrator)
+      .mockResolvedValueOnce(childAgent);
     mocks.getActiveVersion.mockResolvedValueOnce(orchestratorVersion);
     mocks.getVersion.mockResolvedValueOnce(childVersion);
     mocks.getDelegationBindings.mockResolvedValueOnce([
@@ -159,16 +161,18 @@ describe("agent runtime executor", () => {
         instructions: "Research ServiceNow release notes",
       },
     ]);
-    mocks.buildBoundTools.mockResolvedValueOnce({ tools: {}, toolApproval: undefined }).mockResolvedValueOnce({
-      tools: {
-        deepwiki: {
-          execute: vi.fn(async () => ({
-            result: "Australia became generally available on May 5, 2026.",
-          })),
+    mocks.buildBoundTools
+      .mockResolvedValueOnce({ tools: {}, toolApproval: undefined })
+      .mockResolvedValueOnce({
+        tools: {
+          deepwiki: {
+            execute: vi.fn(async () => ({
+              result: "Australia became generally available on May 5, 2026.",
+            })),
+          },
         },
-      },
-      toolApproval: undefined,
-    });
+        toolApproval: undefined,
+      });
     mocks.createRun
       .mockResolvedValueOnce({
         run: {
@@ -186,7 +190,9 @@ describe("agent runtime executor", () => {
       });
     mocks.generateText.mockImplementation(async (options) => {
       const toolEntries = Object.entries(options.tools ?? {});
-      const delegation = toolEntries.find(([name]) => name.startsWith("delegate_"));
+      const delegation = toolEntries.find(([name]) =>
+        name.startsWith("delegate_"),
+      );
       if (delegation) {
         const delegate = delegation[1] as {
           execute: (input: { task: string }) => Promise<{
@@ -196,7 +202,9 @@ describe("agent runtime executor", () => {
         const delegated = await delegate.execute({
           task: "Cherche les dernières mises à jour ServiceNow",
         });
-        expect(delegated.result).toBe("Australia became generally available on May 5, 2026.");
+        expect(delegated.result).toBe(
+          "Australia became generally available on May 5, 2026.",
+        );
         return {
           text: `Synthèse: ${delegated.result}`,
           usage: { inputTokens: 5, outputTokens: 6 },

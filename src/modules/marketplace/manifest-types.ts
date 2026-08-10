@@ -6,7 +6,7 @@ export interface CredentialFieldSchema {
   description?: string | null;
 }
 
-interface AgentVersionManifest {
+export interface AgentVersionManifest {
   systemPrompt?: string | null;
   providerId?: string | null;
   modelId?: string | null;
@@ -22,6 +22,12 @@ interface AgentVersionManifest {
   memoryPolicy?: Record<string, unknown> | null;
   guardrails?: Record<string, unknown> | null;
   approvalPolicy?: Record<string, unknown> | null;
+  orchestrationPolicy?: Record<string, unknown> | null;
+}
+
+export interface PortableSpecialistManifest {
+  instructions?: string | null;
+  manifest: AgentMarketplaceManifest;
 }
 
 export interface PortableToolBinding {
@@ -56,7 +62,9 @@ export interface AgentMarketplaceManifest {
   type: "agent";
   name: string;
   description?: string;
+  kind?: "assistant" | "orchestrator";
   agent: AgentVersionManifest;
+  specialists?: PortableSpecialistManifest[];
   toolBindings?: PortableToolBinding[];
   skillBindings?: PortableSkillBinding[];
   knowledgeBindings?: PortableKnowledgeBinding[];

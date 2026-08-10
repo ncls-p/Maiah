@@ -1,5 +1,9 @@
-import { CLOUD_TEMPLE_BASE_URL,enrichCloudTempleModel,isCloudTempleBaseUrl } from "@/modules/provider/cloud-temple-catalog";
-import { describe,expect,it } from "vitest";
+import {
+  CLOUD_TEMPLE_BASE_URL,
+  enrichCloudTempleModel,
+  isCloudTempleBaseUrl,
+} from "@/modules/provider/cloud-temple-catalog";
+import { describe, expect, it } from "vitest";
 
 const baseCapabilities = {
   text: true,

@@ -1,6 +1,9 @@
-import { describe,expect,it,vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import { normalizeResponsesReasoningSseLine,openaiCompatibleAdapter } from "@/server/infrastructure/providers/openai-compatible-adapter";
+import {
+  normalizeResponsesReasoningSseLine,
+  openaiCompatibleAdapter,
+} from "@/server/infrastructure/providers/openai-compatible-adapter";
 
 const generationCall = {
   prompt: [
@@ -71,13 +74,19 @@ describe("openaiCompatibleAdapter.createChatModel", () => {
       "test-model",
     );
 
-    await expect(model.doGenerate(referencedContinuationCall)).rejects.toThrow();
+    await expect(
+      model.doGenerate(referencedContinuationCall),
+    ).rejects.toThrow();
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("maps preserved reasoning text events to the Responses summary protocol", () => {
-    expect(normalizeResponsesReasoningSseLine("event: response.reasoning_text.delta")).toBe("event: response.reasoning_summary_text.delta");
+    expect(
+      normalizeResponsesReasoningSseLine(
+        "event: response.reasoning_text.delta",
+      ),
+    ).toBe("event: response.reasoning_summary_text.delta");
 
     const normalizedLine = normalizeResponsesReasoningSseLine(
       `data: ${JSON.stringify({
@@ -135,9 +144,17 @@ describe("openaiCompatibleAdapter.createChatModel", () => {
 
     await expect(model.doGenerate(generationCall)).rejects.toThrow();
 
-    const [input, init] = fetchMock.mock.calls[0] as [RequestInfo | URL, RequestInit];
-    expect(String(input)).toBe("http://localhost:8081/v1/chat/completions?tenant=deodis");
-    const requestBody = JSON.parse(String(init.body)) as Record<string, unknown>;
+    const [input, init] = fetchMock.mock.calls[0] as [
+      RequestInfo | URL,
+      RequestInit,
+    ];
+    expect(String(input)).toBe(
+      "http://localhost:8081/v1/chat/completions?tenant=deodis",
+    );
+    const requestBody = JSON.parse(String(init.body)) as Record<
+      string,
+      unknown
+    >;
     expect(requestBody).toMatchObject({ model: "test-model" });
     expect(requestBody).toHaveProperty("messages");
     expect(requestBody).not.toHaveProperty("input");
@@ -159,7 +176,10 @@ describe("openaiCompatibleAdapter.createChatModel", () => {
 
     await expect(model.doGenerate(generationCall)).rejects.toThrow();
 
-    const [, init] = fetchMock.mock.calls[0] as [RequestInfo | URL, RequestInit];
+    const [, init] = fetchMock.mock.calls[0] as [
+      RequestInfo | URL,
+      RequestInit,
+    ];
     const headers = new Headers(init.headers);
     expect(headers.get("authorization")).toBeNull();
     expect(headers.get("x-api-key")).toBe("secret-key");
@@ -181,7 +201,12 @@ describe("openaiCompatibleAdapter.createChatModel", () => {
 
     await expect(model.doGenerate(generationCall)).rejects.toThrow();
 
-    const [, init] = fetchMock.mock.calls[0] as [RequestInfo | URL, RequestInit];
-    expect(new Headers(init.headers).get("authorization")).toBe("Token custom-secret");
+    const [, init] = fetchMock.mock.calls[0] as [
+      RequestInfo | URL,
+      RequestInit,
+    ];
+    expect(new Headers(init.headers).get("authorization")).toBe(
+      "Token custom-secret",
+    );
   });
 });

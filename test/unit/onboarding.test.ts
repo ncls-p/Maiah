@@ -1,4 +1,4 @@
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // ─── Mocks ────────────────────────────────────────────────────────────
 
@@ -44,7 +44,10 @@ vi.mock("@/server/infrastructure/db", () => {
   };
 });
 
-import { isOnboardingComplete,markOnboardingComplete } from "@/modules/onboarding/use-cases";
+import {
+  isOnboardingComplete,
+  markOnboardingComplete,
+} from "@/modules/onboarding/use-cases";
 import * as _dbModule from "@/server/infrastructure/db";
 const dbModule = _dbModule as unknown as DbModule;
 
@@ -75,14 +78,18 @@ describe("isOnboardingComplete", () => {
   });
 
   it("returns false when completed is false", async () => {
-    dbModule._sc.limit.mockResolvedValueOnce([{ valueJson: { completed: false } }]);
+    dbModule._sc.limit.mockResolvedValueOnce([
+      { valueJson: { completed: false } },
+    ]);
 
     const result = await isOnboardingComplete("user-1");
     expect(result).toBeFalsy();
   });
 
   it("returns true when completed is true", async () => {
-    dbModule._sc.limit.mockResolvedValueOnce([{ valueJson: { completed: true } }]);
+    dbModule._sc.limit.mockResolvedValueOnce([
+      { valueJson: { completed: true } },
+    ]);
 
     const result = await isOnboardingComplete("user-1");
     expect(result).toBeTruthy();

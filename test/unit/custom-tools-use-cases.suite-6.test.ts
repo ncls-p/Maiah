@@ -3,7 +3,7 @@ import { runCustomToolBuilder } from "@/modules/custom-tools/use-cases";
 import { callRemoteMcpTool } from "@/modules/mcp/client";
 import * as _dbModule from "@/server/infrastructure/db";
 import { generateText } from "ai";
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/server/infrastructure/ai-sdk/devtools", () => ({
   registerAiSdkDevTools: vi.fn(),
 }));
@@ -56,7 +56,18 @@ type Chain = {
 };
 function makeChain(): Chain {
   const c = {} as Chain;
-  for (const key of ["select", "insert", "update", "delete", "from", "where", "orderBy", "values", "set", "onConflictDoUpdate"] as const) {
+  for (const key of [
+    "select",
+    "insert",
+    "update",
+    "delete",
+    "from",
+    "where",
+    "orderBy",
+    "values",
+    "set",
+    "onConflictDoUpdate",
+  ] as const) {
     c[key] = vi.fn().mockReturnThis();
   }
   c.limit = vi.fn().mockResolvedValue([]);
@@ -86,7 +97,18 @@ vi.mock("@/server/infrastructure/db", () => {
 });
 const dbModule = _dbModule as unknown as DbModule;
 function resetDb() {
-  for (const key of ["select", "insert", "update", "delete", "from", "where", "orderBy", "values", "set", "onConflictDoUpdate"] as const) {
+  for (const key of [
+    "select",
+    "insert",
+    "update",
+    "delete",
+    "from",
+    "where",
+    "orderBy",
+    "values",
+    "set",
+    "onConflictDoUpdate",
+  ] as const) {
     dbModule._c[key].mockReset().mockReturnThis();
   }
   dbModule._c.limit.mockReset().mockResolvedValue([]);
@@ -143,7 +165,9 @@ describe("runCustomToolBuilder", () => {
     vi.mocked(decryptValue)
       .mockResolvedValueOnce("api-key")
       .mockResolvedValueOnce("header-value")
-      .mockResolvedValueOnce(JSON.stringify({ webhookUrl: "https://discord.test/webhook" }))
+      .mockResolvedValueOnce(
+        JSON.stringify({ webhookUrl: "https://discord.test/webhook" }),
+      )
       .mockResolvedValueOnce(JSON.stringify({ token: "secret-token" }));
     vi.mocked(callRemoteMcpTool)
       .mockResolvedValueOnce({
@@ -155,7 +179,9 @@ describe("runCustomToolBuilder", () => {
         structuredContent: { id: "n8n-cred-1" },
         content: [],
       } as never);
-    vi.mocked(generateText).mockImplementationOnce((async (options: unknown) => {
+    vi.mocked(generateText).mockImplementationOnce((async (
+      options: unknown,
+    ) => {
       const opts = options as {
         tools: Record<string, { execute: (input: never) => Promise<unknown> }>;
       };
@@ -205,11 +231,17 @@ describe("runCustomToolBuilder", () => {
       return { text: "Registered." } as never;
     }) as never);
     dbModule._c.limit
-      .mockResolvedValueOnce([{ valueJson: { ...enabledConfig, allowWorkflowActivation: true } }])
+      .mockResolvedValueOnce([
+        { valueJson: { ...enabledConfig, allowWorkflowActivation: true } },
+      ])
       .mockResolvedValueOnce([providerRow])
       .mockResolvedValueOnce([modelRow])
-      .mockResolvedValueOnce([{ id: credentialRef, encryptedPayload: "enc-payload" }])
-      .mockResolvedValueOnce([{ id: credentialRef, encryptedPayload: "enc-payload" }]);
+      .mockResolvedValueOnce([
+        { id: credentialRef, encryptedPayload: "enc-payload" },
+      ])
+      .mockResolvedValueOnce([
+        { id: credentialRef, encryptedPayload: "enc-payload" },
+      ]);
     dbModule._c.where
       .mockReturnValueOnce(dbModule._c)
       .mockReturnValueOnce(dbModule._c)
@@ -230,7 +262,9 @@ describe("runCustomToolBuilder", () => {
           expiresAt: new Date(Date.now() + 1000),
         },
       ])
-      .mockResolvedValueOnce([{ id: "tool-1", name: "Discord notifier", status: "workflow_created" }]);
+      .mockResolvedValueOnce([
+        { id: "tool-1", name: "Discord notifier", status: "workflow_created" },
+      ]);
     const result = await runCustomToolBuilder({
       workspaceId: "ws-1",
       userId: "user-1",
@@ -242,8 +276,16 @@ describe("runCustomToolBuilder", () => {
     expect(result.secretRequests).toHaveLength(1);
     expect(result.createdWorkflows).toHaveLength(1);
     expect(result.workflowPreviews).toHaveLength(1);
-    expect(result.registeredTools).toEqual([{ id: "tool-1", name: "Discord notifier", status: "workflow_created" }]);
-    expect(result.progressEvents.map((event) => event.label)).toContain("Tool enregistré");
-    expect(callRemoteMcpTool).toHaveBeenCalledWith(expect.any(Object), "server__n8n_create_workflow", expect.objectContaining({ name: "Discord notifier" }));
+    expect(result.registeredTools).toEqual([
+      { id: "tool-1", name: "Discord notifier", status: "workflow_created" },
+    ]);
+    expect(result.progressEvents.map((event) => event.label)).toContain(
+      "Tool enregistré",
+    );
+    expect(callRemoteMcpTool).toHaveBeenCalledWith(
+      expect.any(Object),
+      "server__n8n_create_workflow",
+      expect.objectContaining({ name: "Discord notifier" }),
+    );
   });
 });

@@ -1,8 +1,22 @@
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const database = vi.hoisted(() => {
   const chain: Record<string, ReturnType<typeof vi.fn>> = {};
-  for (const method of ["select", "insert", "update", "from", "where", "orderBy", "limit", "values", "set", "returning", "innerJoin", "onConflictDoUpdate", "onConflictDoNothing"]) {
+  for (const method of [
+    "select",
+    "insert",
+    "update",
+    "from",
+    "where",
+    "orderBy",
+    "limit",
+    "values",
+    "set",
+    "returning",
+    "innerJoin",
+    "onConflictDoUpdate",
+    "onConflictDoNothing",
+  ]) {
     chain[method] = vi.fn();
   }
   const db = {
@@ -35,7 +49,12 @@ vi.mock("@/modules/workflows/runtime", () => ({
 
 import type { WorkflowDefinition } from "@/modules/workflows/contracts";
 import { createStarterDefinition } from "@/modules/workflows/contracts";
-import { WorkflowConflictError,createWorkflowRun,getWorkflowDetail,listWorkflows } from "@/modules/workflows/use-cases";
+import {
+  WorkflowConflictError,
+  createWorkflowRun,
+  getWorkflowDetail,
+  listWorkflows,
+} from "@/modules/workflows/use-cases";
 
 const definition = createStarterDefinition();
 const workflow = {
@@ -68,7 +87,9 @@ function resetDatabase() {
   for (const method of ["select", "insert", "update"] as const) {
     database.db[method].mockReset().mockReturnValue(database.chain);
   }
-  database.db.transaction.mockReset().mockImplementation(async (callback) => callback(database.db));
+  database.db.transaction
+    .mockReset()
+    .mockImplementation(async (callback) => callback(database.db));
   for (const [method, mock] of Object.entries(database.chain)) {
     mock.mockReset();
     if (method === "limit" || method === "returning") {
@@ -95,12 +116,17 @@ beforeEach(() => {
       errors: [],
     }),
   });
-  workflowMocks.nodeById.mockImplementation((currentDefinition: WorkflowDefinition, nodeId: string) => currentDefinition.nodes.find((item) => item.id === nodeId));
+  workflowMocks.nodeById.mockImplementation(
+    (currentDefinition: WorkflowDefinition, nodeId: string) =>
+      currentDefinition.nodes.find((item) => item.id === nodeId),
+  );
 });
 
 describe("workflow run use cases", () => {
   it("requires a published version for API runs", async () => {
-    database.chain.limit.mockResolvedValueOnce([{ ...workflow, activeVersion: null }]);
+    database.chain.limit.mockResolvedValueOnce([
+      { ...workflow, activeVersion: null },
+    ]);
     await expect(
       createWorkflowRun({
         workflowId: workflow.id,
@@ -111,7 +137,9 @@ describe("workflow run use cases", () => {
   });
 
   it("returns an idempotent run without enqueueing again", async () => {
-    database.chain.limit.mockResolvedValueOnce([workflow]).mockResolvedValueOnce([run]);
+    database.chain.limit
+      .mockResolvedValueOnce([workflow])
+      .mockResolvedValueOnce([run]);
     await expect(
       createWorkflowRun({
         workflowId: workflow.id,
@@ -125,7 +153,11 @@ describe("workflow run use cases", () => {
 
   it("recovers a concurrent idempotent run insert without enqueueing twice", async () => {
     const concurrentRun = { ...run, idempotencyKey: "same-request" };
-    database.chain.limit.mockResolvedValueOnce([workflow]).mockResolvedValueOnce([]).mockResolvedValueOnce([version]).mockResolvedValueOnce([concurrentRun]);
+    database.chain.limit
+      .mockResolvedValueOnce([workflow])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([version])
+      .mockResolvedValueOnce([concurrentRun]);
     database.chain.returning.mockResolvedValueOnce([]);
 
     await expect(
@@ -140,7 +172,9 @@ describe("workflow run use cases", () => {
   });
 
   it("creates and enqueues published and draft runs", async () => {
-    database.chain.limit.mockResolvedValueOnce([workflow]).mockResolvedValueOnce([version]);
+    database.chain.limit
+      .mockResolvedValueOnce([workflow])
+      .mockResolvedValueOnce([version]);
     database.chain.returning.mockResolvedValueOnce([run]);
     await expect(
       createWorkflowRun({
@@ -167,7 +201,10 @@ describe("workflow run use cases", () => {
       workflowVersionId: testedVersion.id,
       trigger: "agent",
     };
-    database.chain.limit.mockResolvedValueOnce([workflow]).mockResolvedValueOnce([]).mockResolvedValueOnce([testedVersion]);
+    database.chain.limit
+      .mockResolvedValueOnce([workflow])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([testedVersion]);
     database.chain.returning.mockResolvedValueOnce([agentRun]);
 
     await expect(
@@ -195,8 +232,12 @@ describe("workflow CRUD use cases", () => {
     database.chain.orderBy.mockResolvedValueOnce([workflow]);
     await expect(listWorkflows("workspace-1")).resolves.toEqual([workflow]);
 
-    database.chain.limit.mockResolvedValueOnce([workflow]).mockResolvedValueOnce([version]);
-    await expect(getWorkflowDetail("workflow-1", "workspace-1")).resolves.toMatchObject({
+    database.chain.limit
+      .mockResolvedValueOnce([workflow])
+      .mockResolvedValueOnce([version]);
+    await expect(
+      getWorkflowDetail("workflow-1", "workspace-1"),
+    ).resolves.toMatchObject({
       id: "workflow-1",
       version: 2,
       definition,

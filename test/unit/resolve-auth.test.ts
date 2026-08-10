@@ -1,5 +1,5 @@
 import type { AuthContext } from "@/modules/auth/resolve-auth";
-import { describe,expect,it,vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 const createMockSession = () => ({
   session: {
@@ -38,13 +38,22 @@ vi.mock("next/headers", () => ({
 }));
 
 import * as apiKeyMod from "@/modules/api-keys/use-cases";
-import { getActorUserId,resolveAuthContext } from "@/modules/auth/resolve-auth";
+import {
+  getActorUserId,
+  resolveAuthContext,
+} from "@/modules/auth/resolve-auth";
 import * as sessionMod from "@/modules/auth/session";
 import * as headersMod from "next/headers";
 
 describe("resolveAuthContext", () => {
   it("returns user context when session exists", async () => {
-    vi.mocked(sessionMod.getSession).mockResolvedValue(createMockSession() as ReturnType<typeof sessionMod.getSession> extends Promise<infer T> ? T : never);
+    vi.mocked(sessionMod.getSession).mockResolvedValue(
+      createMockSession() as ReturnType<
+        typeof sessionMod.getSession
+      > extends Promise<infer T>
+        ? T
+        : never,
+    );
     vi.mocked(headersMod.headers).mockResolvedValue(new Headers());
 
     const ctx = await resolveAuthContext();
@@ -89,7 +98,9 @@ describe("resolveAuthContext", () => {
   });
 
   it("uses an explicit Bearer token instead of an ambient browser session", async () => {
-    vi.mocked(sessionMod.getSession).mockResolvedValue(createMockSession() as never);
+    vi.mocked(sessionMod.getSession).mockResolvedValue(
+      createMockSession() as never,
+    );
     vi.mocked(sessionMod.getSession).mockClear();
     const hdrs = new Headers({ authorization: "Bearer my-api-key" });
     vi.mocked(headersMod.headers).mockResolvedValue(hdrs);
@@ -109,7 +120,9 @@ describe("resolveAuthContext", () => {
 
   it("accepts the Anthropic x-api-key header", async () => {
     vi.mocked(sessionMod.getSession).mockResolvedValue(null);
-    vi.mocked(headersMod.headers).mockResolvedValue(new Headers({ "x-api-key": "anthropic-compatible-key" }));
+    vi.mocked(headersMod.headers).mockResolvedValue(
+      new Headers({ "x-api-key": "anthropic-compatible-key" }),
+    );
     vi.mocked(apiKeyMod.verifyWorkspaceApiKey).mockResolvedValue({
       id: "key-anthropic",
       workspaceId: "ws-123",
@@ -123,7 +136,9 @@ describe("resolveAuthContext", () => {
       apiKeyId: "key-anthropic",
       workspaceId: "ws-123",
     });
-    expect(apiKeyMod.verifyWorkspaceApiKey).toHaveBeenCalledWith("anthropic-compatible-key");
+    expect(apiKeyMod.verifyWorkspaceApiKey).toHaveBeenCalledWith(
+      "anthropic-compatible-key",
+    );
   });
 
   it("returns null when Bearer token is empty", async () => {

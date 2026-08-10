@@ -1,5 +1,8 @@
-import { deleteMarketplaceItem,updateMarketplaceItem } from "@/modules/marketplace/use-cases";
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import {
+  deleteMarketplaceItem,
+  updateMarketplaceItem,
+} from "@/modules/marketplace/use-cases";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // ─── Mocks ─────────────────────────────────────────────────────────────
 
@@ -196,7 +199,9 @@ describe("marketplace use-cases", () => {
     it("should throw when not authorized", async () => {
       const item = { id: "1", publisherUserId: "other_user" };
       givenSelectLimit([item]);
-      await expect(deleteMarketplaceItem("1", "user1")).rejects.toThrow("Not authorized to delete this item");
+      await expect(deleteMarketplaceItem("1", "user1")).rejects.toThrow(
+        "Not authorized to delete this item",
+      );
     });
   });
 });

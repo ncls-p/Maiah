@@ -71,7 +71,10 @@ export function useTemporaryConversationPersistence(input: {
         input.setEphemeralExpiresAt(null);
         removeTemporaryRouteState();
       }
-      toast.success(input.translate("temporaryConverted"));
+      toast.success(input.translate("persistentIndicator"), {
+        description: input.translate("persistentDescription"),
+        duration: 2_000,
+      });
     } catch (error) {
       toast.error(
         error instanceof Error

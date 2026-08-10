@@ -1,4 +1,4 @@
-import { beforeEach,describe,expect,it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { z } from "zod";
 
 const knowledgeBindingPutSchema = z.object({
@@ -9,7 +9,8 @@ const knowledgeBindingPutSchema = z.object({
 
 describe("knowledge bindings", () => {
   beforeEach(() => {
-    process.env.APP_ENCRYPTION_KEY = "0000000000000000000000000000000000000000000000000000000000000000";
+    process.env.APP_ENCRYPTION_KEY =
+      "0000000000000000000000000000000000000000000000000000000000000000";
     process.env.APP_ENCRYPTION_KEY_ID = "default";
     process.env.BETTER_AUTH_SECRET = "test-secret-min-32-chars-long";
     process.env.BETTER_AUTH_URL = "http://localhost:3000";
@@ -42,7 +43,10 @@ describe("knowledge bindings", () => {
   });
 
   it("cloneKnowledgeBindings no-ops without a source version", async () => {
-    const { cloneKnowledgeBindings } = await import("@/modules/knowledge/use-cases");
-    await expect(cloneKnowledgeBindings(null, crypto.randomUUID())).resolves.toBeUndefined();
+    const { cloneKnowledgeBindings } =
+      await import("@/modules/knowledge/use-cases");
+    await expect(
+      cloneKnowledgeBindings(null, crypto.randomUUID()),
+    ).resolves.toBeUndefined();
   });
 });

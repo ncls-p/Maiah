@@ -1,4 +1,4 @@
-import { describe,expect,it,vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { authorization } from "@/server/domain/services/authorization";
 import { cache } from "@/server/infrastructure/cache";
@@ -15,7 +15,10 @@ describe("authorization.checkPermission", () => {
     dbModule._c.limit.mockResolvedValueOnce([]);
 
     const context = { principalType: "user" as const, principalId: "user-1" };
-    const [first, second] = await Promise.all([authorization.listPermissions(context, "workspace", "ws-shared"), authorization.listPermissions(context, "workspace", "ws-shared")]);
+    const [first, second] = await Promise.all([
+      authorization.listPermissions(context, "workspace", "ws-shared"),
+      authorization.listPermissions(context, "workspace", "ws-shared"),
+    ]);
 
     expect(first).toEqual([]);
     expect(second).toEqual([]);
@@ -31,7 +34,12 @@ describe("authorization.checkPermission", () => {
     dbModule._c.innerJoin.mockReturnValue(dbModule._c);
     dbModule._c.limit.mockResolvedValueOnce([]);
 
-    const result = await authorization.checkPermission({ principalType: "user", principalId: "user-1" }, "agents.create", "workspace", "ws-1");
+    const result = await authorization.checkPermission(
+      { principalType: "user", principalId: "user-1" },
+      "agents.create",
+      "workspace",
+      "ws-1",
+    );
 
     expect(result.granted).toBe(false);
     expect(result.reason).toContain("Missing permission");
@@ -40,7 +48,12 @@ describe("authorization.checkPermission", () => {
   it("returns granted=true when permission matches", async () => {
     vi.mocked(cache.get).mockResolvedValue(["agents.create"]);
 
-    const result = await authorization.checkPermission({ principalType: "user", principalId: "user-1" }, "agents.create", "workspace", "ws-1");
+    const result = await authorization.checkPermission(
+      { principalType: "user", principalId: "user-1" },
+      "agents.create",
+      "workspace",
+      "ws-1",
+    );
 
     expect(result.granted).toBe(true);
     expect(result.reason).toBeUndefined();
@@ -49,7 +62,12 @@ describe("authorization.checkPermission", () => {
   it("returns granted=true when wildcard matches", async () => {
     vi.mocked(cache.get).mockResolvedValue(["agents.*"]);
 
-    const result = await authorization.checkPermission({ principalType: "user", principalId: "user-1" }, "agents.delete", "workspace", "ws-1");
+    const result = await authorization.checkPermission(
+      { principalType: "user", principalId: "user-1" },
+      "agents.delete",
+      "workspace",
+      "ws-1",
+    );
 
     expect(result.granted).toBe(true);
   });
@@ -80,16 +98,34 @@ describe("authorization.checkPermission", () => {
       .mockResolvedValueOnce([{ id: "member-1", status: "active" }])
       .mockResolvedValueOnce([{ organizationId: "org-1" }]);
 
-    const result = await authorization.checkPermission({ principalType: "user", principalId: "user-1" }, "tools.executeRestricted", "workspace", "ws-1");
+    const result = await authorization.checkPermission(
+      { principalType: "user", principalId: "user-1" },
+      "tools.executeRestricted",
+      "workspace",
+      "ws-1",
+    );
 
     expect(result.granted).toBe(true);
-    expect(cache.set).toHaveBeenCalledWith("perm:user:user-1:workspace:ws-1", expect.arrayContaining(["agents.create", "tools.executeRestricted", "custom.do"]), 60);
+    expect(cache.set).toHaveBeenCalledWith(
+      "perm:user:user-1:workspace:ws-1",
+      expect.arrayContaining([
+        "agents.create",
+        "tools.executeRestricted",
+        "custom.do",
+      ]),
+      60,
+    );
   });
 
   it("returns granted=true when manage matches", async () => {
     vi.mocked(cache.get).mockResolvedValue(["agents.manage"]);
 
-    const result = await authorization.checkPermission({ principalType: "user", principalId: "user-1" }, "agents.delete", "workspace", "ws-1");
+    const result = await authorization.checkPermission(
+      { principalType: "user", principalId: "user-1" },
+      "agents.delete",
+      "workspace",
+      "ws-1",
+    );
 
     expect(result.granted).toBe(true);
   });
@@ -101,7 +137,12 @@ describe("authorization.requirePermission", () => {
   it("returns granted result when permission is granted", async () => {
     vi.mocked(cache.get).mockResolvedValue(["agents.create"]);
 
-    const result = await authorization.requirePermission({ principalType: "user", principalId: "user-1" }, "agents.create", "workspace", "ws-1");
+    const result = await authorization.requirePermission(
+      { principalType: "user", principalId: "user-1" },
+      "agents.create",
+      "workspace",
+      "ws-1",
+    );
 
     expect(result.granted).toBe(true);
   });
@@ -113,7 +154,12 @@ describe("authorization.requirePermission", () => {
     dbModule._c.where.mockReturnValue(dbModule._c);
     dbModule._c.innerJoin.mockReturnValue(dbModule._c);
 
-    const result = await authorization.requirePermission({ principalType: "user", principalId: "user-1" }, "agents.create", "workspace", "ws-1");
+    const result = await authorization.requirePermission(
+      { principalType: "user", principalId: "user-1" },
+      "agents.create",
+      "workspace",
+      "ws-1",
+    );
 
     expect(result.granted).toBe(false);
   });
@@ -125,7 +171,12 @@ describe("authorization.hasPermission", () => {
   it("returns true when cached permission matches", async () => {
     vi.mocked(cache.get).mockResolvedValue(["agents.create"]);
 
-    const result = await authorization.hasPermission({ principalType: "user", principalId: "user-1" }, "agents.create", "workspace", "ws-1");
+    const result = await authorization.hasPermission(
+      { principalType: "user", principalId: "user-1" },
+      "agents.create",
+      "workspace",
+      "ws-1",
+    );
 
     expect(result).toBe(true);
   });
@@ -137,7 +188,12 @@ describe("authorization.hasPermission", () => {
     dbModule._c.where.mockReturnValue(dbModule._c);
     dbModule._c.innerJoin.mockReturnValue(dbModule._c);
 
-    const result = await authorization.hasPermission({ principalType: "user", principalId: "user-1" }, "agents.create", "workspace", "ws-1");
+    const result = await authorization.hasPermission(
+      { principalType: "user", principalId: "user-1" },
+      "agents.create",
+      "workspace",
+      "ws-1",
+    );
 
     expect(result).toBe(false);
   });

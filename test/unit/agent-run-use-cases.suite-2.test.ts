@@ -1,4 +1,4 @@
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 type Chain = {
   select: ReturnType<typeof vi.fn>;
@@ -15,7 +15,16 @@ type Chain = {
 
 const dbMock = vi.hoisted(() => {
   const chain = {} as Chain;
-  for (const method of ["select", "insert", "update", "from", "where", "values", "set", "orderBy"] as const) {
+  for (const method of [
+    "select",
+    "insert",
+    "update",
+    "from",
+    "where",
+    "values",
+    "set",
+    "orderBy",
+  ] as const) {
     chain[method] = vi.fn().mockReturnValue(chain);
   }
   chain.limit = vi.fn().mockResolvedValue([]);
@@ -49,7 +58,14 @@ vi.mock("@/modules/usage/quota-reservations", () => ({
   expireWorkspaceTokenReservations: quotaMocks.expire,
 }));
 
-import { appendAgentRunStep,completeAgentRun,consumeAgentRunDelegationBudget,failAgentRun,getAgentRun,requestAgentRunCancellation } from "@/modules/agent/run-use-cases";
+import {
+  appendAgentRunStep,
+  completeAgentRun,
+  consumeAgentRunDelegationBudget,
+  failAgentRun,
+  getAgentRun,
+  requestAgentRunCancellation,
+} from "@/modules/agent/run-use-cases";
 
 const run = {
   id: "11111111-1111-4111-8111-111111111111",
@@ -60,7 +76,16 @@ const run = {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  for (const method of ["select", "insert", "update", "from", "where", "values", "set", "orderBy"] as const) {
+  for (const method of [
+    "select",
+    "insert",
+    "update",
+    "from",
+    "where",
+    "values",
+    "set",
+    "orderBy",
+  ] as const) {
     dbMock.chain[method].mockReset().mockReturnValue(dbMock.chain);
   }
   dbMock.chain.limit.mockReset().mockResolvedValue([]);
@@ -114,7 +139,9 @@ describe("agent run lifecycle", () => {
   });
 
   it("settles successful usage and redacts terminal errors", async () => {
-    dbMock.chain.returning.mockResolvedValueOnce([{ ...run, status: "success" }]).mockResolvedValueOnce([{ ...run, status: "failed" }]);
+    dbMock.chain.returning
+      .mockResolvedValueOnce([{ ...run, status: "success" }])
+      .mockResolvedValueOnce([{ ...run, status: "failed" }]);
 
     await completeAgentRun({
       runId: run.id,
@@ -149,11 +176,15 @@ describe("agent run lifecycle", () => {
         status: "success",
       }),
     );
-    expect(dbMock.chain.set).toHaveBeenCalledWith(expect.objectContaining({ errorMessage: "Agent run failed" }));
+    expect(dbMock.chain.set).toHaveBeenCalledWith(
+      expect.objectContaining({ errorMessage: "Agent run failed" }),
+    );
   });
 
   it("rejects duplicate completion and records terminal failure usage", async () => {
-    dbMock.chain.returning.mockResolvedValueOnce([]).mockResolvedValueOnce([{ ...run, status: "timed_out" }]);
+    dbMock.chain.returning
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ ...run, status: "timed_out" }]);
 
     await expect(
       completeAgentRun({
@@ -191,28 +222,40 @@ describe("agent run lifecycle", () => {
   it("returns null when a failure races with another terminal transition", async () => {
     dbMock.chain.returning.mockResolvedValueOnce([]);
 
-    await expect(failAgentRun({ runId: run.id, error: new Error("late") })).resolves.toBeNull();
+    await expect(
+      failAgentRun({ runId: run.id, error: new Error("late") }),
+    ).resolves.toBeNull();
   });
 
   it("cancels queued work and releases its reservation atomically", async () => {
-    dbMock.chain.returning.mockResolvedValueOnce([{ ...run, status: "cancelled" }]);
+    dbMock.chain.returning.mockResolvedValueOnce([
+      { ...run, status: "cancelled" },
+    ]);
 
     await expect(requestAgentRunCancellation(run.id)).resolves.toMatchObject({
       status: "cancelled",
     });
 
     expect(dbMock.db.transaction).toHaveBeenCalledOnce();
-    expect(dbMock.chain.set).toHaveBeenCalledWith(expect.objectContaining({ status: "cancelled", reservedTokens: 0 }));
-    expect(dbMock.chain.set).toHaveBeenCalledWith(expect.objectContaining({ status: "released" }));
+    expect(dbMock.chain.set).toHaveBeenCalledWith(
+      expect.objectContaining({ status: "cancelled", reservedTokens: 0 }),
+    );
+    expect(dbMock.chain.set).toHaveBeenCalledWith(
+      expect.objectContaining({ status: "released" }),
+    );
   });
 
   it("marks running work for cooperative cancellation", async () => {
-    dbMock.chain.returning.mockResolvedValueOnce([]).mockResolvedValueOnce([{ ...run, status: "running" }]);
+    dbMock.chain.returning
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ ...run, status: "running" }]);
 
     await expect(requestAgentRunCancellation(run.id)).resolves.toMatchObject({
       status: "running",
     });
-    expect(dbMock.chain.set).toHaveBeenCalledWith(expect.objectContaining({ cancelRequestedAt: expect.any(Date) }));
+    expect(dbMock.chain.set).toHaveBeenCalledWith(
+      expect.objectContaining({ cancelRequestedAt: expect.any(Date) }),
+    );
   });
 
   it("projects run details without exposing encrypted payloads", async () => {

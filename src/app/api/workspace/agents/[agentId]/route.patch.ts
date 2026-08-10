@@ -124,7 +124,6 @@ export async function PATCH(
             "Share target user not found",
             "Share target user is required",
             "Only orchestrators can configure delegation",
-            "Orchestrators cannot be published to the marketplace yet",
           ].includes(error.message)
         ) {
           return NextResponse.json({ error: error.message }, { status: 400 });

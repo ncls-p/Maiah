@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { expect } from "vitest";
 
 import {
@@ -14,7 +14,13 @@ import {
 } from "@/modules/iam/use-cases";
 import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
-import { agents, roleBindings, roles } from "@/server/infrastructure/db/schema";
+import {
+  agentDelegationBindings,
+  agents,
+  agentVersions,
+  roleBindings,
+  roles,
+} from "@/server/infrastructure/db/schema";
 import type { IamDatabaseScenarioContext } from "./iam-use-cases-db.context";
 
 export async function runIamDatabaseScenario9(
@@ -54,15 +60,52 @@ export async function runIamDatabaseScenario9(
     }),
   ).rejects.toMatchObject({ status: 403 });
 
-  const [agent] = await db
+  const [agent, specialist] = await db
     .insert(agents)
-    .values({
-      workspaceId: secondProjectId,
-      name: "Team scoped assistant",
-      slug: `team-scoped-${suffix}`,
-      createdById: ownerId,
-    })
+    .values([
+      {
+        workspaceId: secondProjectId,
+        name: "Team scoped orchestrator",
+        slug: `team-scoped-${suffix}`,
+        kind: "orchestrator" as const,
+        createdById: ownerId,
+      },
+      {
+        workspaceId: secondProjectId,
+        name: "Team scoped specialist",
+        slug: `team-specialist-${suffix}`,
+        createdById: ownerId,
+      },
+    ])
     .returning();
+  const [rootVersion, specialistVersion] = await db
+    .insert(agentVersions)
+    .values([
+      {
+        agentId: agent.id,
+        versionNumber: 1,
+        createdById: ownerId,
+      },
+      {
+        agentId: specialist.id,
+        versionNumber: 1,
+        createdById: ownerId,
+      },
+    ])
+    .returning();
+  await db
+    .update(agents)
+    .set({ activeVersionId: rootVersion.id })
+    .where(eq(agents.id, agent.id));
+  await db
+    .update(agents)
+    .set({ activeVersionId: specialistVersion.id })
+    .where(eq(agents.id, specialist.id));
+  await db.insert(agentDelegationBindings).values({
+    agentVersionId: rootVersion.id,
+    childAgentId: specialist.id,
+    childAgentVersionId: specialistVersion.id,
+  });
 
   await validateAgentAccessSelection({
     userId: ownerId,
@@ -77,7 +120,7 @@ export async function runIamDatabaseScenario9(
 
   expect(
     (await listAgents(secondProjectId, memberId, false)).map(({ id }) => id),
-  ).toContain(agent.id);
+  ).toEqual(expect.arrayContaining([agent.id, specialist.id]));
   await authorization.invalidatePermissionCache(memberId, "agent", agent.id);
   expect(
     await authorization.hasPermission(
@@ -85,6 +128,19 @@ export async function runIamDatabaseScenario9(
       "agents.chat",
       "agent",
       agent.id,
+    ),
+  ).toBe(true);
+  await authorization.invalidatePermissionCache(
+    memberId,
+    "agent",
+    specialist.id,
+  );
+  expect(
+    await authorization.hasPermission(
+      { principalType: "user", principalId: memberId },
+      "agents.chat",
+      "agent",
+      specialist.id,
     ),
   ).toBe(true);
   expect(
@@ -102,9 +158,16 @@ export async function runIamDatabaseScenario9(
     selection: { scope: "private" },
   });
   await authorization.invalidatePermissionCache(memberId, "agent", agent.id);
-  expect(
-    (await listAgents(secondProjectId, memberId, false)).map(({ id }) => id),
-  ).not.toContain(agent.id);
+  await authorization.invalidatePermissionCache(
+    memberId,
+    "agent",
+    specialist.id,
+  );
+  const privateAgentIds = (
+    await listAgents(secondProjectId, memberId, false)
+  ).map(({ id }) => id);
+  expect(privateAgentIds).not.toContain(agent.id);
+  expect(privateAgentIds).not.toContain(specialist.id);
   const [remainingBinding] = await db
     .select({ id: roleBindings.id })
     .from(roleBindings)
@@ -117,4 +180,12 @@ export async function runIamDatabaseScenario9(
     )
     .limit(1);
   expect(remainingBinding).toBeUndefined();
+  await db
+    .update(agents)
+    .set({ activeVersionId: null })
+    .where(inArray(agents.id, [agent.id, specialist.id]));
+  await db
+    .delete(agentVersions)
+    .where(inArray(agentVersions.id, [rootVersion.id, specialistVersion.id]));
+  await db.delete(agents).where(inArray(agents.id, [agent.id, specialist.id]));
 }

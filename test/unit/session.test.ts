@@ -1,5 +1,5 @@
 import { headers } from "next/headers";
-import { describe,expect,it,vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 vi.mock("next/headers", () => ({
   headers: vi.fn().mockResolvedValue(new Headers({ cookie: "session=test" })),
@@ -7,13 +7,30 @@ vi.mock("next/headers", () => ({
 
 // Use vi.doMock to mock auth after the module is loaded
 vi.mock("@/lib/auth", async () => {
-  const actual = await vi.importActual<typeof import("@/lib/auth")>("@/lib/auth");
+  const actual =
+    await vi.importActual<typeof import("@/lib/auth")>("@/lib/auth");
   const mockAuth = {
     ...(actual?.auth ?? {}),
     api: {
       getSession: vi.fn().mockResolvedValue({
-        user: { id: "u1", name: "test", email: "t@t.com", emailVerified: false, image: null, banned: null, createdAt: new Date(), updatedAt: new Date() },
-        session: { id: "s1", userId: "u1", expiresAt: new Date(), token: "t", createdAt: new Date(), updatedAt: new Date() },
+        user: {
+          id: "u1",
+          name: "test",
+          email: "t@t.com",
+          emailVerified: false,
+          image: null,
+          banned: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        session: {
+          id: "s1",
+          userId: "u1",
+          expiresAt: new Date(),
+          token: "t",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
       }),
     },
   };

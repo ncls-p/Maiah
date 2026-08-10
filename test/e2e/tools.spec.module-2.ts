@@ -80,12 +80,9 @@ test.describe("scheduled tasks page", () => {
     const assistant = editDialog.getByLabel("Assistant");
     const frequency = editDialog.getByLabel("Frequency");
     const time = editDialog.getByLabel("Time");
-    const [assistantDesktop, frequencyDesktop, timeDesktop] =
-      await Promise.all([
-        assistant.boundingBox(),
-        frequency.boundingBox(),
-        time.boundingBox(),
-      ]);
+    const [assistantDesktop, frequencyDesktop, timeDesktop] = await Promise.all(
+      [assistant.boundingBox(), frequency.boundingBox(), time.boundingBox()],
+    );
     expect(assistantDesktop).not.toBeNull();
     expect(frequencyDesktop).not.toBeNull();
     expect(timeDesktop).not.toBeNull();

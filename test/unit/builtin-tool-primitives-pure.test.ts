@@ -1,17 +1,34 @@
-import { base64Tool,calculateExpression,codeWorkspaceWriteFileInputSchema,colorConverter,dateMath,jsonTool,markdownTable,randomNumbers,searchWebWithSearxng,slugifyText,textStats,unitConverter } from "@/modules/tool/builtin-tool-primitives";
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import {
+  base64Tool,
+  calculateExpression,
+  codeWorkspaceWriteFileInputSchema,
+  colorConverter,
+  dateMath,
+  jsonTool,
+  markdownTable,
+  randomNumbers,
+  searchWebWithSearxng,
+  slugifyText,
+  textStats,
+  unitConverter,
+} from "@/modules/tool/builtin-tool-primitives";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("calculateExpression", () => {
   it("evaluates arithmetic, precedence, unary operators, exponents, and functions", () => {
     expect(calculateExpression("1 + 2 * 3")).toBe(7);
     expect(calculateExpression("2^3^2")).toBe(512);
-    expect(calculateExpression("sqrt(9) + abs(-4) + floor(1.9) + ceil(1.1)")).toBe(10);
+    expect(
+      calculateExpression("sqrt(9) + abs(-4) + floor(1.9) + ceil(1.1)"),
+    ).toBe(10);
     expect(calculateExpression("round(cos(0)) + +5 - -2")).toBe(8);
   });
 
   it("rejects invalid expressions", () => {
     expect(() => calculateExpression("foo")).toThrow("Unknown identifier");
-    expect(() => calculateExpression("(1 + 2")).toThrow("Missing closing parenthesis");
+    expect(() => calculateExpression("(1 + 2")).toThrow(
+      "Missing closing parenthesis",
+    );
     expect(() => calculateExpression("1 / 0")).toThrow("finite number");
     expect(() => calculateExpression("unknown(1)")).toThrow("Unknown function");
   });
@@ -86,8 +103,13 @@ describe("utility primitives", () => {
         attachmentId: "00000000-0000-4000-8000-000000000002",
       }).success,
     ).toBe(true);
-    expect(codeWorkspaceWriteFileInputSchema.safeParse({ ...base, content: "text" }).success).toBe(true);
-    expect(codeWorkspaceWriteFileInputSchema.safeParse(base).success).toBe(false);
+    expect(
+      codeWorkspaceWriteFileInputSchema.safeParse({ ...base, content: "text" })
+        .success,
+    ).toBe(true);
+    expect(codeWorkspaceWriteFileInputSchema.safeParse(base).success).toBe(
+      false,
+    );
     expect(
       codeWorkspaceWriteFileInputSchema.safeParse({
         ...base,
@@ -115,8 +137,12 @@ describe("utility primitives", () => {
       integer: true,
     });
     expect(integers.values.every(Number.isInteger)).toBe(true);
-    expect(() => randomNumbers({ min: 5, max: 5, count: 1, integer: false })).toThrow("max must be greater");
-    expect(() => randomNumbers({ min: 1.1, max: 1.2, count: 1, integer: true })).toThrow("No integer exists");
+    expect(() =>
+      randomNumbers({ min: 5, max: 5, count: 1, integer: false }),
+    ).toThrow("max must be greater");
+    expect(() =>
+      randomNumbers({ min: 1.1, max: 1.2, count: 1, integer: true }),
+    ).toThrow("No integer exists");
   });
 
   it("does date math for add, subtract, and difference", () => {
@@ -145,7 +171,9 @@ describe("utility primitives", () => {
         unit: "days",
       }),
     ).toMatchObject({ days: 2 });
-    expect(() => dateMath({ date: "bad", operation: "add", amount: 1, unit: "days" })).toThrow("Invalid date");
+    expect(() =>
+      dateMath({ date: "bad", operation: "add", amount: 1, unit: "days" }),
+    ).toThrow("Invalid date");
     expect(() =>
       dateMath({
         date: "2025-01-01",
@@ -170,7 +198,9 @@ describe("utility primitives", () => {
     });
     expect(jsonTool({ action: "format", json: "bad" }).valid).toBe(false);
 
-    expect(textStats({ text: "Hello world\n\nAgain", wordsPerMinute: 200 })).toMatchObject({
+    expect(
+      textStats({ text: "Hello world\n\nAgain", wordsPerMinute: 200 }),
+    ).toMatchObject({
       words: 3,
       lines: 3,
       paragraphs: 2,
@@ -184,13 +214,20 @@ describe("utility primitives", () => {
     ).toEqual({ result: "héllo" });
     expect(unitConverter({ value: 0, from: "c", to: "f" }).result).toBe(32);
     expect(unitConverter({ value: 1, from: "km", to: "m" }).result).toBe(1000);
-    expect(() => unitConverter({ value: 1, from: "km", to: "kg" })).toThrow("Cannot convert");
-    expect(slugifyText({ text: " À bientôt, Maiah! ", separator: "-" })).toEqual({ slug: "a-bientot-maiah" });
+    expect(() => unitConverter({ value: 1, from: "km", to: "kg" })).toThrow(
+      "Cannot convert",
+    );
+    expect(
+      slugifyText({ text: " À bientôt, Maiah! ", separator: "-" }),
+    ).toEqual({ slug: "a-bientot-maiah" });
     expect(colorConverter({ hex: "#336699" })).toEqual({
       hex: "#336699",
       rgb: { r: 51, g: 102, b: 153 },
       hsl: { h: 210, s: 50, l: 40 },
     });
-    expect(markdownTable({ columns: ["A|B", "C"], rows: [["x\ny", "z|q"]] }).markdown).toContain("A\\|B");
+    expect(
+      markdownTable({ columns: ["A|B", "C"], rows: [["x\ny", "z|q"]] })
+        .markdown,
+    ).toContain("A\\|B");
   });
 });

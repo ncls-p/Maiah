@@ -34,7 +34,9 @@ const helperMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/modules/marketplace/draft-helpers", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/modules/marketplace/draft-helpers")>()),
+  ...(await importOriginal<
+    typeof import("@/modules/marketplace/draft-helpers")
+  >()),
   upsertMarketplaceDraft: helperMocks.upsertMarketplaceDraft,
 }));
 vi.mock("@/modules/marketplace/manifest-builders", () => ({
@@ -76,7 +78,19 @@ type Chain = {
 };
 function makeChain(): Chain {
   const c = {} as Chain;
-  for (const key of ["select", "insert", "update", "delete", "from", "innerJoin", "where", "orderBy", "values", "set"] as const) c[key] = vi.fn().mockReturnThis();
+  for (const key of [
+    "select",
+    "insert",
+    "update",
+    "delete",
+    "from",
+    "innerJoin",
+    "where",
+    "orderBy",
+    "values",
+    "set",
+  ] as const)
+    c[key] = vi.fn().mockReturnThis();
   c.limit = vi.fn().mockResolvedValue([]);
   c.returning = vi.fn().mockResolvedValue([]);
   return c;
@@ -108,7 +122,14 @@ vi.mock("@/server/infrastructure/db", () => {
   };
 });
 import { logHandledError } from "@/lib/logger";
-import { createCustomToolMarketplaceDraft, createMcpServerMarketplaceDraft, createMcpToolMarketplaceDraft, createSkillMarketplaceDraft, getMarketplaceItemDetail, installMarketplaceItem } from "@/modules/marketplace/use-cases";
+import {
+  createCustomToolMarketplaceDraft,
+  createMcpServerMarketplaceDraft,
+  createMcpToolMarketplaceDraft,
+  createSkillMarketplaceDraft,
+  getMarketplaceItemDetail,
+  installMarketplaceItem,
+} from "@/modules/marketplace/use-cases";
 import * as _dbModule from "@/server/infrastructure/db";
 
 const dbModule = _dbModule as unknown as DbModule;
@@ -125,7 +146,19 @@ const item = {
 };
 const published = { ...item, status: "published", visibility: "public" };
 function resetChain(chain: Chain) {
-  for (const key of ["select", "insert", "update", "delete", "from", "innerJoin", "where", "orderBy", "values", "set"] as const) chain[key].mockReset().mockReturnThis();
+  for (const key of [
+    "select",
+    "insert",
+    "update",
+    "delete",
+    "from",
+    "innerJoin",
+    "where",
+    "orderBy",
+    "values",
+    "set",
+  ] as const)
+    chain[key].mockReset().mockReturnThis();
   chain.limit.mockReset().mockResolvedValue([]);
   chain.returning.mockReset().mockResolvedValue([]);
 }
@@ -138,7 +171,11 @@ beforeEach(() => {
   dbModule.db.insert.mockReset().mockReturnValue(dbModule._c);
   dbModule.db.update.mockReset().mockReturnValue(dbModule._c);
   dbModule.db.delete.mockReset().mockReturnValue(dbModule._c);
-  dbModule.db.transaction.mockReset().mockImplementation((cb: (tx: Chain) => Promise<unknown>) => cb(dbModule._tx));
+  dbModule.db.transaction
+    .mockReset()
+    .mockImplementation((cb: (tx: Chain) => Promise<unknown>) =>
+      cb(dbModule._tx),
+    );
   helperMocks.installPostInstallFlags.mockReturnValue({
     requiresCredentials: false,
   });
@@ -155,7 +192,9 @@ describe("marketplace item management", () => {
           createdAt: new Date(),
         },
       ])
-      .mockResolvedValueOnce([{ id: ids.userId, name: "Owner", email: "owner@test" }]);
+      .mockResolvedValueOnce([
+        { id: ids.userId, name: "Owner", email: "owner@test" },
+      ]);
     dbModule._c.where
       .mockReturnValueOnce(dbModule._c)
       .mockResolvedValueOnce([{ id: "share-1" }])
@@ -194,7 +233,9 @@ describe("marketplace installation", () => {
 
     resetChain(dbModule._c);
     dbModule.db.select.mockReturnValue(dbModule._c);
-    dbModule._c.limit.mockResolvedValueOnce([{ ...published, status: "suspended" }]);
+    dbModule._c.limit.mockResolvedValueOnce([
+      { ...published, status: "suspended" },
+    ]);
     await expect(
       installMarketplaceItem({
         workspaceId: ids.workspaceId,
@@ -205,7 +246,9 @@ describe("marketplace installation", () => {
 
     resetChain(dbModule._c);
     dbModule.db.select.mockReturnValue(dbModule._c);
-    dbModule._c.limit.mockResolvedValueOnce([published]).mockResolvedValueOnce([]);
+    dbModule._c.limit
+      .mockResolvedValueOnce([published])
+      .mockResolvedValueOnce([]);
     await expect(
       installMarketplaceItem({
         workspaceId: ids.workspaceId,
@@ -217,8 +260,14 @@ describe("marketplace installation", () => {
     resetChain(dbModule._c);
     resetChain(dbModule._tx);
     dbModule.db.select.mockReturnValue(dbModule._c);
-    dbModule.db.transaction.mockImplementation((cb: (tx: Chain) => Promise<unknown>) => cb(dbModule._tx));
-    dbModule._c.limit.mockResolvedValueOnce([published]).mockResolvedValueOnce([{ id: "version-1", version: "1", manifestJson: { type: "weird" } }]);
+    dbModule.db.transaction.mockImplementation(
+      (cb: (tx: Chain) => Promise<unknown>) => cb(dbModule._tx),
+    );
+    dbModule._c.limit
+      .mockResolvedValueOnce([published])
+      .mockResolvedValueOnce([
+        { id: "version-1", version: "1", manifestJson: { type: "weird" } },
+      ]);
     await expect(
       installMarketplaceItem({
         workspaceId: ids.workspaceId,
@@ -266,15 +315,25 @@ describe("marketplace draft creation", () => {
 
     resetChain(dbModule._c);
     dbModule.db.select.mockReturnValue(dbModule._c);
-    dbModule._c.limit.mockResolvedValueOnce([{ id: "server-1", name: "Server", createdById: ids.userId }]);
-    dbModule._c.where.mockReturnValueOnce(dbModule._c).mockResolvedValueOnce([{ id: "mcp-tool-1", name: "search" }]);
+    dbModule._c.limit.mockResolvedValueOnce([
+      { id: "server-1", name: "Server", createdById: ids.userId },
+    ]);
+    dbModule._c.where
+      .mockReturnValueOnce(dbModule._c)
+      .mockResolvedValueOnce([{ id: "mcp-tool-1", name: "search" }]);
     await createMcpServerMarketplaceDraft({
       workspaceId: ids.workspaceId,
       userId: ids.userId,
       mcpServerId: "server-1",
       version: "1",
     });
-    expect(helperMocks.buildMcpPresetManifest).toHaveBeenCalledWith("Server", undefined, expect.any(Object), [{ id: "mcp-tool-1", name: "search" }], "server");
+    expect(helperMocks.buildMcpPresetManifest).toHaveBeenCalledWith(
+      "Server",
+      undefined,
+      expect.any(Object),
+      [{ id: "mcp-tool-1", name: "search" }],
+      "server",
+    );
 
     resetChain(dbModule._c);
     dbModule.db.select.mockReturnValue(dbModule._c);
@@ -287,13 +346,21 @@ describe("marketplace draft creation", () => {
           mcpServerId: "server-1",
         },
       ])
-      .mockResolvedValueOnce([{ id: "server-1", name: "Server", createdById: ids.userId }]);
+      .mockResolvedValueOnce([
+        { id: "server-1", name: "Server", createdById: ids.userId },
+      ]);
     await createMcpToolMarketplaceDraft({
       workspaceId: ids.workspaceId,
       userId: ids.userId,
       mcpToolId: "mcp-tool-1",
       version: "1",
     });
-    expect(helperMocks.buildMcpPresetManifest).toHaveBeenLastCalledWith("Server — search", "Search", expect.any(Object), [expect.objectContaining({ name: "search" })], "tool");
+    expect(helperMocks.buildMcpPresetManifest).toHaveBeenLastCalledWith(
+      "Server — search",
+      "Search",
+      expect.any(Object),
+      [expect.objectContaining({ name: "search" })],
+      "tool",
+    );
   });
 });

@@ -1,6 +1,11 @@
-import { describe,expect,it } from "vitest";
+import { describe, expect, it } from "vitest";
 
-import { DEFAULT_RAG_CONFIG,hasSameRagModelSelection,parseRagConfig,ragConfigSchema } from "@/modules/knowledge/rag-config";
+import {
+  DEFAULT_RAG_CONFIG,
+  hasSameRagModelSelection,
+  parseRagConfig,
+  ragConfigSchema,
+} from "@/modules/knowledge/rag-config";
 import { chunkText } from "@/modules/knowledge/use-cases";
 
 describe("knowledge RAG configuration", () => {
@@ -51,7 +56,9 @@ describe("knowledge RAG configuration", () => {
       },
       reranking: { ...DEFAULT_RAG_CONFIG.reranking },
     };
-    expect(hasSameRagModelSelection(retrievalOverride, DEFAULT_RAG_CONFIG)).toBe(true);
+    expect(
+      hasSameRagModelSelection(retrievalOverride, DEFAULT_RAG_CONFIG),
+    ).toBe(true);
 
     const modelOverride = {
       ...retrievalOverride,
@@ -60,7 +67,9 @@ describe("knowledge RAG configuration", () => {
         modelId: "qwen3-embedding:4b",
       },
     };
-    expect(hasSameRagModelSelection(modelOverride, DEFAULT_RAG_CONFIG)).toBe(false);
+    expect(hasSameRagModelSelection(modelOverride, DEFAULT_RAG_CONFIG)).toBe(
+      false,
+    );
   });
 });
 
@@ -77,6 +86,8 @@ describe("knowledge chunking", () => {
   });
 
   it("returns no chunks for empty documents", () => {
-    expect(chunkText("  \n", { maxCharacters: 1_200, overlapCharacters: 160 })).toEqual([]);
+    expect(
+      chunkText("  \n", { maxCharacters: 1_200, overlapCharacters: 160 }),
+    ).toEqual([]);
   });
 });

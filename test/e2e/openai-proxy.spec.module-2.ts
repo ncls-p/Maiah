@@ -1,10 +1,15 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { expect,test } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import OpenAI from "openai";
 
-import { upstreamBaseUrl,upstreamBodies } from "./openai-proxy.spec.upstream-base-url";
+import {
+  upstreamBaseUrl,
+  upstreamBodies,
+} from "./openai-proxy.spec.upstream-base-url";
 
-test("official OpenAI and Anthropic SDKs use Maiah as a scoped model proxy", async ({ page }) => {
+test("official OpenAI and Anthropic SDKs use Maiah as a scoped model proxy", async ({
+  page,
+}) => {
   const workspacesResponse = await page.request.get("/api/workspaces");
   expect(workspacesResponse.ok()).toBe(true);
   const workspaces = (await workspacesResponse.json()) as Array<{
@@ -17,31 +22,37 @@ test("official OpenAI and Anthropic SDKs use Maiah as a scoped model proxy", asy
   let providerId: string | undefined;
   let tokenId: string | undefined;
   try {
-    const providerResponse = await page.request.post("/api/workspace/providers", {
-      data: {
-        workspaceId,
-        kind: "openai-compatible",
-        name: "OpenAI proxy E2E upstream",
-        baseUrl: `${upstreamBaseUrl}/v1`,
-        authType: "custom-header",
-        openaiCompatibleApiRoute: "chat-completions",
+    const providerResponse = await page.request.post(
+      "/api/workspace/providers",
+      {
+        data: {
+          workspaceId,
+          kind: "openai-compatible",
+          name: "OpenAI proxy E2E upstream",
+          baseUrl: `${upstreamBaseUrl}/v1`,
+          authType: "custom-header",
+          openaiCompatibleApiRoute: "chat-completions",
+        },
       },
-    });
+    );
     expect(providerResponse.status()).toBe(201);
     providerId = ((await providerResponse.json()) as { id: string }).id;
 
-    const modelResponse = await page.request.post(`/api/workspace/providers/${providerId}/models`, {
-      data: {
-        workspaceId,
-        modelId: modelName,
-        displayName: "Proxy E2E model",
-        capabilitiesJson: { text: true, tools: true, vision: true },
-        contextWindow: 32_000,
-        maxOutputTokens: 4_096,
-        inputTokenCost: "1",
-        outputTokenCost: "2",
+    const modelResponse = await page.request.post(
+      `/api/workspace/providers/${providerId}/models`,
+      {
+        data: {
+          workspaceId,
+          modelId: modelName,
+          displayName: "Proxy E2E model",
+          capabilitiesJson: { text: true, tools: true, vision: true },
+          contextWindow: 32_000,
+          maxOutputTokens: 4_096,
+          inputTokenCost: "1",
+          outputTokenCost: "2",
+        },
       },
-    });
+    );
     expect(modelResponse.status()).toBe(201);
 
     const tokenResponse = await page.request.post("/api/workspace/api-keys", {
@@ -58,7 +69,8 @@ test("official OpenAI and Anthropic SDKs use Maiah as a scoped model proxy", asy
     };
     tokenId = token.apiKey.id;
 
-    const appBaseUrl = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000";
+    const appBaseUrl =
+      process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000";
     const client = new OpenAI({
       apiKey: token.rawKey,
       baseURL: `${appBaseUrl}/api/v1`,
@@ -195,13 +207,18 @@ test("official OpenAI and Anthropic SDKs use Maiah as a scoped model proxy", asy
     });
     let anthropicText = "";
     for await (const event of anthropicStream) {
-      if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+      if (
+        event.type === "content_block_delta" &&
+        event.delta.type === "text_delta"
+      ) {
         anthropicText += event.delta.text;
       }
     }
     expect(anthropicText).toBe("proxy-stream");
 
-    const usageResponse = await page.request.get(`/api/workspace/usage?workspaceId=${workspaceId}&operation=anthropic.messages`);
+    const usageResponse = await page.request.get(
+      `/api/workspace/usage?workspaceId=${workspaceId}&operation=anthropic.messages`,
+    );
     expect(usageResponse.ok()).toBe(true);
     const usage = (await usageResponse.json()) as {
       totals: {
@@ -220,13 +237,19 @@ test("official OpenAI and Anthropic SDKs use Maiah as a scoped model proxy", asy
       ]),
     );
     expect(usage.totals.costs[0]?.amount).toBeGreaterThan(0);
-    expect(usage.operations).toContainEqual(expect.objectContaining({ operation: "anthropic.messages" }));
+    expect(usage.operations).toContainEqual(
+      expect.objectContaining({ operation: "anthropic.messages" }),
+    );
   } finally {
     if (tokenId) {
-      await page.request.delete(`/api/workspace/api-keys/${tokenId}?workspaceId=${workspaceId}`);
+      await page.request.delete(
+        `/api/workspace/api-keys/${tokenId}?workspaceId=${workspaceId}`,
+      );
     }
     if (providerId) {
-      await page.request.delete(`/api/workspace/providers/${providerId}?workspaceId=${workspaceId}`);
+      await page.request.delete(
+        `/api/workspace/providers/${providerId}?workspaceId=${workspaceId}`,
+      );
     }
   }
 });

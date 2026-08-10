@@ -1,24 +1,35 @@
-import { canAttemptGitHubRepositoryPublish,createGitHubState,describeGitHubRepositoryAccess,describeGitHubRepositoryRelationship,normalizeGitHubPrivateKey,parseGitHubState } from "@/modules/github/publishing";
-import { beforeEach,describe,expect,it } from "vitest";
+import {
+  canAttemptGitHubRepositoryPublish,
+  createGitHubState,
+  describeGitHubRepositoryAccess,
+  describeGitHubRepositoryRelationship,
+  normalizeGitHubPrivateKey,
+  parseGitHubState,
+} from "@/modules/github/publishing";
+import { beforeEach, describe, expect, it } from "vitest";
 
 // Set required env vars for github publishing
 beforeEach(() => {
   process.env.GITHUB_APP_ID = "12345";
   process.env.GITHUB_APP_SLUG = "test-app";
-  process.env.GITHUB_APP_PRIVATE_KEY = "-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAKCAQEA0Z3VS5JJcds3xfn/ygWyF8PbnGy0AHB7MaU8xKwwKU9M\nY1MnBhMaT2xhK4k5L6s0Tq7H3f0x0Y3VS5JJcds3xfn/ygWyF8PbnGy0AHB7\n-----END RSA PRIVATE KEY-----";
-  process.env.APP_ENCRYPTION_KEY = "0000000000000000000000000000000000000000000000000000000000000000";
+  process.env.GITHUB_APP_PRIVATE_KEY =
+    "-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAKCAQEA0Z3VS5JJcds3xfn/ygWyF8PbnGy0AHB7MaU8xKwwKU9M\nY1MnBhMaT2xhK4k5L6s0Tq7H3f0x0Y3VS5JJcds3xfn/ygWyF8PbnGy0AHB7\n-----END RSA PRIVATE KEY-----";
+  process.env.APP_ENCRYPTION_KEY =
+    "0000000000000000000000000000000000000000000000000000000000000000";
 });
 
 describe("normalizeGitHubPrivateKey", () => {
   it("returns clean PEM when already clean", () => {
-    const pem = "-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAKCAQEA\n-----END RSA PRIVATE KEY-----";
+    const pem =
+      "-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAKCAQEA\n-----END RSA PRIVATE KEY-----";
     const result = normalizeGitHubPrivateKey(pem);
     expect(result).toContain("-----BEGIN RSA PRIVATE KEY-----");
     expect(result).toContain("-----END RSA PRIVATE KEY-----");
   });
 
   it("strips export prefix", () => {
-    const raw = "export GITHUB_APP_PRIVATE_KEY='-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAKCAQEA\n-----END RSA PRIVATE KEY-----'";
+    const raw =
+      "export GITHUB_APP_PRIVATE_KEY='-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAKCAQEA\n-----END RSA PRIVATE KEY-----'";
     const result = normalizeGitHubPrivateKey(raw);
     expect(result).toContain("-----BEGIN RSA PRIVATE KEY-----");
     expect(result).not.toContain("export");
@@ -26,38 +37,44 @@ describe("normalizeGitHubPrivateKey", () => {
   });
 
   it("strips variable prefix", () => {
-    const raw = "GITHUB_APP_PRIVATE_KEY=-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAKCAQEA\n-----END RSA PRIVATE KEY-----";
+    const raw =
+      "GITHUB_APP_PRIVATE_KEY=-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAKCAQEA\n-----END RSA PRIVATE KEY-----";
     const result = normalizeGitHubPrivateKey(raw);
     expect(result).toContain("-----BEGIN RSA PRIVATE KEY-----");
     expect(result).not.toContain("GITHUB_APP_PRIVATE_KEY");
   });
 
   it("handles escaped newlines", () => {
-    const raw = "-----BEGIN RSA PRIVATE KEY-----\\nMIIEpAIBAAKCAQEA\\n-----END RSA PRIVATE KEY-----";
+    const raw =
+      "-----BEGIN RSA PRIVATE KEY-----\\nMIIEpAIBAAKCAQEA\\n-----END RSA PRIVATE KEY-----";
     const result = normalizeGitHubPrivateKey(raw);
     expect(result).toContain("-----BEGIN RSA PRIVATE KEY-----");
   });
 
   it("strips trailing percent sign", () => {
-    const raw = "-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAKCAQEA\n-----END RSA PRIVATE KEY-----%";
+    const raw =
+      "-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAKCAQEA\n-----END RSA PRIVATE KEY-----%";
     const result = normalizeGitHubPrivateKey(raw);
     expect(result).not.toContain("%");
   });
 
   it("unwraps single quotes", () => {
-    const raw = "'-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAKCAQEA\n-----END RSA PRIVATE KEY-----'";
+    const raw =
+      "'-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAKCAQEA\n-----END RSA PRIVATE KEY-----'";
     const result = normalizeGitHubPrivateKey(raw);
     expect(result).not.toContain("'");
   });
 
   it("unwraps double quotes", () => {
-    const raw = '"-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAKCAQEA\n-----END RSA PRIVATE KEY-----"';
+    const raw =
+      '"-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAKCAQEA\n-----END RSA PRIVATE KEY-----"';
     const result = normalizeGitHubPrivateKey(raw);
     expect(result).not.toContain('"');
   });
 
   it("re-wraps body to 64-char lines", () => {
-    const raw = "-----BEGIN RSA PRIVATE KEY-----\nABCD\n-----END RSA PRIVATE KEY-----";
+    const raw =
+      "-----BEGIN RSA PRIVATE KEY-----\nABCD\n-----END RSA PRIVATE KEY-----";
     const result = normalizeGitHubPrivateKey(raw);
     expect(result).toContain("-----BEGIN RSA PRIVATE KEY-----");
     expect(result).toContain("\nABCD\n");
@@ -85,7 +102,9 @@ describe("parseGitHubState", () => {
       workspaceId: "ws-456",
     });
     const tampered = state.split(".")[0] + ".badsignature";
-    expect(() => parseGitHubState(tampered)).toThrow("Invalid GitHub state signature");
+    expect(() => parseGitHubState(tampered)).toThrow(
+      "Invalid GitHub state signature",
+    );
   });
 });
 

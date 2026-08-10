@@ -1,6 +1,7 @@
 import { db } from "@/server/infrastructure/db";
 import {
   agentKnowledgeBindings,
+  agentDelegationBindings,
   agentSkillBindings,
   agentSkills,
   agentToolBindings,
@@ -25,6 +26,7 @@ import type {
   McpPresetMarketplaceManifest,
   PortableKnowledgeBinding,
   PortableSkillBinding,
+  PortableSpecialistManifest,
   PortableToolBinding,
   ToolMarketplaceManifest,
 } from "./manifest-types";
@@ -34,15 +36,48 @@ export async function buildAgentManifest(
   workspaceId: string,
   name: string,
   description?: string | null,
+  pinnedVersionId?: string,
+  ancestry: ReadonlySet<string> = new Set(),
 ): Promise<AgentMarketplaceManifest> {
-  const resolved = await resolveAgentVersion(agentId);
+  if (ancestry.has(agentId)) {
+    throw new Error("Delegation cycle detected while packaging orchestrator");
+  }
+  if (ancestry.size >= 256) {
+    throw new Error("Delegation graph is too large to publish safely");
+  }
+  const resolved = await resolveAgentVersion(agentId, pinnedVersionId);
   if (!resolved) throw new Error("Agent not found");
   const { agent, agentVersion, providerName, modelName } = resolved;
   if (agent.workspaceId !== workspaceId) throw new Error("Agent not found");
-  if (agent.kind === "orchestrator") {
-    throw new Error("Orchestrators cannot be published to the marketplace yet");
-  }
   if (!agentVersion) throw new Error("Agent has no version");
+
+  const delegationBindings =
+    agent.kind === "orchestrator"
+      ? await db
+          .select({
+            childAgentId: agentDelegationBindings.childAgentId,
+            childAgentVersionId: agentDelegationBindings.childAgentVersionId,
+            instructions: agentDelegationBindings.instructions,
+          })
+          .from(agentDelegationBindings)
+          .where(eq(agentDelegationBindings.agentVersionId, agentVersion.id))
+      : [];
+  const nextAncestry = new Set(ancestry).add(agentId);
+  const specialists: PortableSpecialistManifest[] = [];
+  for (const binding of delegationBindings) {
+    const child = await buildAgentManifest(
+      binding.childAgentId,
+      workspaceId,
+      "",
+      null,
+      binding.childAgentVersionId,
+      nextAncestry,
+    );
+    specialists.push({
+      instructions: binding.instructions,
+      manifest: child,
+    });
+  }
 
   const toolBindings = await db
     .select()
@@ -164,8 +199,9 @@ export async function buildAgentManifest(
 
   return {
     type: "agent",
-    name,
+    name: name || agent.name,
     description: description ?? agent.description ?? undefined,
+    kind: agent.kind,
     agent: {
       systemPrompt: agentVersion.systemPrompt,
       providerId: agentVersion.providerId,
@@ -182,7 +218,9 @@ export async function buildAgentManifest(
       memoryPolicy: jsonRecord(agentVersion.memoryPolicyJson),
       guardrails: jsonRecord(agentVersion.guardrailsJson),
       approvalPolicy: jsonRecord(agentVersion.approvalPolicyJson),
+      orchestrationPolicy: jsonRecord(agentVersion.orchestrationPolicyJson),
     },
+    specialists,
     toolBindings: portableToolBindings,
     skillBindings,
     knowledgeBindings,

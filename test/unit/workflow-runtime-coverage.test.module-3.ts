@@ -1,4 +1,4 @@
-import { describe,expect,it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { invokeNode } from "./workflow-runtime-coverage.test.dependencies";
 

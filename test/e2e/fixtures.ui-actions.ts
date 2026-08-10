@@ -1,11 +1,14 @@
-import { expect,type Locator } from "@playwright/test";
+import { expect, type Locator } from "@playwright/test";
 
 async function expectHydrated(locator: Locator) {
   await expect(locator).toBeVisible();
   await expect
     .poll(() =>
       locator.evaluate((element) =>
-        Object.keys(element).some((key) => key.startsWith("__reactProps$") || key.startsWith("__reactFiber$")),
+        Object.keys(element).some(
+          (key) =>
+            key.startsWith("__reactProps$") || key.startsWith("__reactFiber$"),
+        ),
       ),
     )
     .toBe(true);
@@ -41,8 +44,14 @@ export async function fillControlled(locator: Locator, value: string) {
   await expect(locator).toBeEditable();
   await locator.evaluate((element, nextValue) => {
     const input = element as HTMLInputElement | HTMLTextAreaElement;
-    const prototype = input instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
-    Object.getOwnPropertyDescriptor(prototype, "value")?.set?.call(input, nextValue);
+    const prototype =
+      input instanceof HTMLTextAreaElement
+        ? HTMLTextAreaElement.prototype
+        : HTMLInputElement.prototype;
+    Object.getOwnPropertyDescriptor(prototype, "value")?.set?.call(
+      input,
+      nextValue,
+    );
     input.dispatchEvent(new Event("input", { bubbles: true }));
   }, value);
   await expect(locator).toHaveValue(value);

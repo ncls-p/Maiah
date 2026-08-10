@@ -1,8 +1,8 @@
-import { mkdtempSync,rmSync } from "node:fs";
-import http,{ type Server } from "node:http";
+import { mkdtempSync, rmSync } from "node:fs";
+import http, { type Server } from "node:http";
 import os from "node:os";
 import path from "node:path";
-import { afterEach,beforeEach,describe,expect,it,vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/modules/chat/attachments", () => ({
   createChatAttachment: vi.fn(async (input: { fileName: string }) => ({
     kind: "chat_file",
@@ -34,9 +34,12 @@ vi.mock("@/modules/chat/attachments", () => ({
   getChatAttachmentExtractedText: vi.fn(async () => ({
     text: "## Page 1\n\nFirst page\n\n## Page 2\n\nSecond page",
   })),
-  isChatFileAttachment: vi.fn((value: { kind?: string }) => value.kind === "chat_file"),
+  isChatFileAttachment: vi.fn(
+    (value: { kind?: string }) => value.kind === "chat_file",
+  ),
 }));
-type ExecuteCodeSandbox = (typeof import("@/modules/tool/code-sandbox"))["executeCodeSandbox"];
+type ExecuteCodeSandbox =
+  (typeof import("@/modules/tool/code-sandbox"))["executeCodeSandbox"];
 type RunnerRequest = {
   language: "python" | "node" | "bash";
   code: string;
@@ -57,7 +60,8 @@ const validEnv = {
   BETTER_AUTH_URL: "http://localhost:3000",
   BETTER_AUTH_TRUSTED_ORIGINS: "http://localhost:3000",
   DATABASE_URL: "postgres://localhost/test",
-  APP_ENCRYPTION_KEY: "0000000000000000000000000000000000000000000000000000000000000000",
+  APP_ENCRYPTION_KEY:
+    "0000000000000000000000000000000000000000000000000000000000000000",
   OBJECT_STORAGE_BUCKET: "test",
   OBJECT_STORAGE_ACCESS_KEY_ID: "test",
   OBJECT_STORAGE_SECRET_ACCESS_KEY: "test",
@@ -94,7 +98,9 @@ async function startFakeRunner(handler: RunnerHandler) {
     const chunks: Buffer[] = [];
     request.on("data", (chunk: Buffer) => chunks.push(chunk));
     request.on("end", () => {
-      const payload = JSON.parse(Buffer.concat(chunks).toString("utf8")) as RunnerRequest;
+      const payload = JSON.parse(
+        Buffer.concat(chunks).toString("utf8"),
+      ) as RunnerRequest;
       requests.push(payload);
       const body = JSON.stringify(handler(payload));
       response.writeHead(200, {
@@ -150,21 +156,34 @@ describe("code sandbox runner client", () => {
           }),
           expect.objectContaining({
             path: "attachments/Source File.document/pages/001-page-1.md",
-            contentBase64: Buffer.from("## Page 1\n\nFirst page").toString("base64"),
+            contentBase64: Buffer.from("## Page 1\n\nFirst page").toString(
+              "base64",
+            ),
           }),
           expect.objectContaining({
             path: "attachments/Source File.document/pages/002-page-2.md",
-            contentBase64: Buffer.from("## Page 2\n\nSecond page").toString("base64"),
+            contentBase64: Buffer.from("## Page 2\n\nSecond page").toString(
+              "base64",
+            ),
           }),
         ]),
       );
-      const manifestFile = request.files?.find((file) => file.path.endsWith(".document/manifest.json"));
-      const manifest = JSON.parse(Buffer.from(manifestFile?.contentBase64 ?? "", "base64").toString("utf8")) as {
+      const manifestFile = request.files?.find((file) =>
+        file.path.endsWith(".document/manifest.json"),
+      );
+      const manifest = JSON.parse(
+        Buffer.from(manifestFile?.contentBase64 ?? "", "base64").toString(
+          "utf8",
+        ),
+      ) as {
         complete: boolean;
         chunks: Array<{ path: string; pages?: { start: number; end: number } }>;
       };
       expect(manifest.complete).toBe(true);
-      expect(manifest.chunks).toEqual([expect.objectContaining({ pages: { start: 1, end: 1 } }), expect.objectContaining({ pages: { start: 2, end: 2 } })]);
+      expect(manifest.chunks).toEqual([
+        expect.objectContaining({ pages: { start: 1, end: 1 } }),
+        expect.objectContaining({ pages: { start: 2, end: 2 } }),
+      ]);
       return {
         ok: true,
         language: "python",
@@ -264,13 +283,17 @@ describe("code sandbox runner client", () => {
     expect(result.ok).toBe(false);
     expect(result.timedOut).toBe(true);
     expect(result.exitCode).toBeNull();
-    expect(result.files).toContainEqual(expect.objectContaining({ path: "big.txt", skipped: "too_large" }));
+    expect(result.files).toContainEqual(
+      expect.objectContaining({ path: "big.txt", skipped: "too_large" }),
+    );
     expect(result.files).toContainEqual(
       expect.objectContaining({
         path: "image.bin",
         mimeType: "application/octet-stream",
       }),
     );
-    expect(result.files.find((file) => file.path === "image.bin")).not.toHaveProperty("contentBase64");
+    expect(
+      result.files.find((file) => file.path === "image.bin"),
+    ).not.toHaveProperty("contentBase64");
   });
 });

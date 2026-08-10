@@ -1,8 +1,12 @@
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import * as _dbModule from "@/server/infrastructure/db";
 
-import { countWorkspaces,getWorkspaceBySlug,getWorkspacesByUserId } from "@/modules/workspace/use-cases";
+import {
+  countWorkspaces,
+  getWorkspaceBySlug,
+  getWorkspacesByUserId,
+} from "@/modules/workspace/use-cases";
 
 // ─── Mocks ────────────────────────────────────────────────────────────
 
@@ -23,7 +27,20 @@ vi.mock("@/lib/logger", () => ({
   logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() },
 }));
 
-const CHAIN_KEYS = ["select", "insert", "update", "delete", "from", "where", "innerJoin", "leftJoin", "orderBy", "values", "set", "onConflictDoNothing"] as const;
+const CHAIN_KEYS = [
+  "select",
+  "insert",
+  "update",
+  "delete",
+  "from",
+  "where",
+  "innerJoin",
+  "leftJoin",
+  "orderBy",
+  "values",
+  "set",
+  "onConflictDoNothing",
+] as const;
 
 type ChainFn = ReturnType<typeof vi.fn>;
 
@@ -52,7 +69,20 @@ type DbModule = {
 vi.mock("@/server/infrastructure/db", () => {
   const buildChain = (): ChainMock => {
     const c = {} as Record<string, ChainFn>;
-    const keys = ["select", "insert", "update", "delete", "from", "where", "innerJoin", "leftJoin", "orderBy", "values", "set", "onConflictDoNothing"] as const;
+    const keys = [
+      "select",
+      "insert",
+      "update",
+      "delete",
+      "from",
+      "where",
+      "innerJoin",
+      "leftJoin",
+      "orderBy",
+      "values",
+      "set",
+      "onConflictDoNothing",
+    ] as const;
     for (const k of keys) {
       c[k] = vi.fn().mockReturnThis();
     }
@@ -94,7 +124,9 @@ beforeEach(() => {
   dbModule.db.insert.mockReturnValue(dbModule._chain);
   dbModule.db.update.mockReturnValue(dbModule._chain);
   dbModule.db.delete.mockReturnValue(dbModule._chain);
-  dbModule.db.transaction.mockImplementation((cb: (tx: ChainMock) => Promise<unknown>) => cb(dbModule._tx));
+  dbModule.db.transaction.mockImplementation(
+    (cb: (tx: ChainMock) => Promise<unknown>) => cb(dbModule._tx),
+  );
 });
 
 // ─── Fixtures ────────────────────────────────────────────────────────

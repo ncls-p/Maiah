@@ -1,4 +1,4 @@
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
@@ -22,7 +22,11 @@ vi.mock("@/server/infrastructure/db", () => ({
 }));
 
 import { defaultSidebarNavConfig } from "@/modules/navigation/sidebar-config";
-import { deleteSidebarNavConfig,getSidebarNavConfig,setSidebarNavConfig } from "@/modules/navigation/sidebar-config.server";
+import {
+  deleteSidebarNavConfig,
+  getSidebarNavConfig,
+  setSidebarNavConfig,
+} from "@/modules/navigation/sidebar-config.server";
 
 describe("sidebar config server persistence", () => {
   beforeEach(() => {
@@ -41,7 +45,9 @@ describe("sidebar config server persistence", () => {
     await expect(getSidebarNavConfig()).resolves.toBeNull();
 
     chain.limit.mockResolvedValueOnce([{ valueJson: { bad: true } }]);
-    await expect(getSidebarNavConfig()).resolves.toEqual(defaultSidebarNavConfig());
+    await expect(getSidebarNavConfig()).resolves.toEqual(
+      defaultSidebarNavConfig(),
+    );
   });
 
   it("upserts and deletes sidebar navigation settings", async () => {

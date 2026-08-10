@@ -1,4 +1,4 @@
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/server/infrastructure/ai-sdk/devtools", () => ({
   registerAiSdkDevTools: vi.fn(),
@@ -61,7 +61,18 @@ type Chain = {
 
 function makeChain(): Chain {
   const c = {} as Chain;
-  for (const key of ["select", "insert", "update", "delete", "from", "where", "orderBy", "values", "set", "onConflictDoUpdate"] as const) {
+  for (const key of [
+    "select",
+    "insert",
+    "update",
+    "delete",
+    "from",
+    "where",
+    "orderBy",
+    "values",
+    "set",
+    "onConflictDoUpdate",
+  ] as const) {
     c[key] = vi.fn().mockReturnThis();
   }
   c.limit = vi.fn().mockResolvedValue([]);
@@ -101,7 +112,18 @@ import { generateText } from "ai";
 const dbModule = _dbModule as unknown as DbModule;
 
 function resetDb() {
-  for (const key of ["select", "insert", "update", "delete", "from", "where", "orderBy", "values", "set", "onConflictDoUpdate"] as const) {
+  for (const key of [
+    "select",
+    "insert",
+    "update",
+    "delete",
+    "from",
+    "where",
+    "orderBy",
+    "values",
+    "set",
+    "onConflictDoUpdate",
+  ] as const) {
     dbModule._c[key].mockReset().mockReturnThis();
   }
   dbModule._c.limit.mockReset().mockResolvedValue([]);
@@ -212,7 +234,9 @@ describe("submitSecretRequest", () => {
         title: "Token",
         status: "pending",
         expiresAt: new Date(Date.now() + 1000),
-        fieldsJson: [{ name: "token", label: "Token", type: "secret", required: true }],
+        fieldsJson: [
+          { name: "token", label: "Token", type: "secret", required: true },
+        ],
       },
     ]);
 

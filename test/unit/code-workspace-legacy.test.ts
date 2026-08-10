@@ -1,18 +1,26 @@
-import { mkdir,mkdtemp,stat,writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { afterEach,beforeEach,describe,expect,it,vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const storageMock = vi.hoisted(() => {
-  const objects = new Map<string, { bytes: Uint8Array; contentType?: string }>();
+  const objects = new Map<
+    string,
+    { bytes: Uint8Array; contentType?: string }
+  >();
   return {
     objects,
-    upload: vi.fn(async (key: string, value: Uint8Array | string, contentType?: string) => {
-      objects.set(key, {
-        bytes: typeof value === "string" ? new TextEncoder().encode(value) : new Uint8Array(value),
-        contentType,
-      });
-    }),
+    upload: vi.fn(
+      async (key: string, value: Uint8Array | string, contentType?: string) => {
+        objects.set(key, {
+          bytes:
+            typeof value === "string"
+              ? new TextEncoder().encode(value)
+              : new Uint8Array(value),
+          contentType,
+        });
+      },
+    ),
     download: vi.fn(async (key: string) => {
       const object = objects.get(key);
       if (!object) throw new Error(`missing ${key}`);
@@ -49,7 +57,10 @@ describe("legacy code workspace migration", () => {
     const filesDir = path.join(projectDir, "files");
     await mkdir(path.join(filesDir, "assets"), { recursive: true });
     await writeFile(path.join(filesDir, "index.html"), "<h1>Legacy</h1>");
-    await writeFile(path.join(filesDir, "assets", "app.js"), "console.log('legacy')");
+    await writeFile(
+      path.join(filesDir, "assets", "app.js"),
+      "console.log('legacy')",
+    );
     await writeFile(
       path.join(projectDir, "metadata.json"),
       JSON.stringify({
@@ -93,9 +104,16 @@ describe("legacy code workspace migration", () => {
     ).resolves.toMatchObject({
       title: "Legacy App",
       rootFile: "index.html",
-      files: [expect.objectContaining({ path: "assets/app.js" }), expect.objectContaining({ path: "index.html" })],
+      files: [
+        expect.objectContaining({ path: "assets/app.js" }),
+        expect.objectContaining({ path: "index.html" }),
+      ],
     });
-    expect(storageMock.upload).toHaveBeenCalledWith(`code-workspaces/${projectId}/files/index.html`, expect.any(Uint8Array), "text/html; charset=utf-8");
+    expect(storageMock.upload).toHaveBeenCalledWith(
+      `code-workspaces/${projectId}/files/index.html`,
+      expect.any(Uint8Array),
+      "text/html; charset=utf-8",
+    );
     await expect(stat(projectDir)).rejects.toThrow();
     await expect(
       storage.readCodeWorkspaceFile({
@@ -114,9 +132,16 @@ describe("legacy code workspace migration", () => {
     process.env.CODE_WORKSPACE_DIR = legacyRoot;
     const projectId = "123e4567-e89b-42d3-a456-426614174001";
     await mkdir(path.join(legacyRoot, projectId), { recursive: true });
-    await writeFile(path.join(legacyRoot, projectId, "metadata.json"), "not json");
+    await writeFile(
+      path.join(legacyRoot, projectId, "metadata.json"),
+      "not json",
+    );
     const storage = await import("@/modules/code-workspace/storage");
-    await expect(storage.getCodeWorkspace(projectId)).rejects.toThrow("Code workspace not found");
-    await expect(storage.getCodeWorkspace("bad-id")).rejects.toThrow("Invalid code workspace id");
+    await expect(storage.getCodeWorkspace(projectId)).rejects.toThrow(
+      "Code workspace not found",
+    );
+    await expect(storage.getCodeWorkspace("bad-id")).rejects.toThrow(
+      "Invalid code workspace id",
+    );
   });
 });

@@ -1,30 +1,69 @@
-import { assertSkillMetadata,normalizePackageAndSkill,parseFrontmatter,parseSkillsInstallCommand,tokenizeInstallCommand } from "@/modules/skills/use-cases";
-import { describe,expect,it } from "vitest";
+import {
+  assertSkillMetadata,
+  normalizePackageAndSkill,
+  parseFrontmatter,
+  parseSkillsInstallCommand,
+  tokenizeInstallCommand,
+} from "@/modules/skills/use-cases";
+import { describe, expect, it } from "vitest";
 
 describe("skills – install command parsing", () => {
   describe("tokenizeInstallCommand", () => {
     it("splits space-separated tokens", () => {
-      const tokens = tokenizeInstallCommand("npx skills add owner/repo --skill my-skill");
-      expect(tokens).toEqual(["npx", "skills", "add", "owner/repo", "--skill", "my-skill"]);
+      const tokens = tokenizeInstallCommand(
+        "npx skills add owner/repo --skill my-skill",
+      );
+      expect(tokens).toEqual([
+        "npx",
+        "skills",
+        "add",
+        "owner/repo",
+        "--skill",
+        "my-skill",
+      ]);
     });
 
     it("handles quoted strings", () => {
-      const tokens = tokenizeInstallCommand('npx skills add owner/repo --skill "my-skill"');
-      expect(tokens).toEqual(["npx", "skills", "add", "owner/repo", "--skill", "my-skill"]);
+      const tokens = tokenizeInstallCommand(
+        'npx skills add owner/repo --skill "my-skill"',
+      );
+      expect(tokens).toEqual([
+        "npx",
+        "skills",
+        "add",
+        "owner/repo",
+        "--skill",
+        "my-skill",
+      ]);
     });
 
     it("handles single-quoted strings", () => {
-      const tokens = tokenizeInstallCommand("npx skills add owner/repo --skill 'my-skill'");
-      expect(tokens).toEqual(["npx", "skills", "add", "owner/repo", "--skill", "my-skill"]);
+      const tokens = tokenizeInstallCommand(
+        "npx skills add owner/repo --skill 'my-skill'",
+      );
+      expect(tokens).toEqual([
+        "npx",
+        "skills",
+        "add",
+        "owner/repo",
+        "--skill",
+        "my-skill",
+      ]);
     });
 
     it("consumes backslash escape for next character", () => {
-      const tokens = tokenizeInstallCommand('npx skills add owner/repo --skill "my\\-skill"');
+      const tokens = tokenizeInstallCommand(
+        'npx skills add owner/repo --skill "my\\-skill"',
+      );
       expect(tokens).toContain("my-skill");
     });
 
     it("throws on unterminated quote", () => {
-      expect(() => tokenizeInstallCommand('npx skills add owner/repo --skill "unterminated')).toThrow("unterminated quote");
+      expect(() =>
+        tokenizeInstallCommand(
+          'npx skills add owner/repo --skill "unterminated',
+        ),
+      ).toThrow("unterminated quote");
     });
 
     it("strips leading/trailing whitespace", () => {
@@ -55,34 +94,46 @@ describe("skills – install command parsing", () => {
 
   describe("parseSkillsInstallCommand", () => {
     it("parses a full command", () => {
-      const result = parseSkillsInstallCommand("npx skills add owner/repo --skill my-skill");
+      const result = parseSkillsInstallCommand(
+        "npx skills add owner/repo --skill my-skill",
+      );
       expect(result.sourcePackage).toBe("owner/repo");
       expect(result.skillNames).toEqual(["my-skill"]);
     });
 
     it("parses with @skill syntax", () => {
-      const result = parseSkillsInstallCommand("npx skills add owner/repo@my-skill");
+      const result = parseSkillsInstallCommand(
+        "npx skills add owner/repo@my-skill",
+      );
       expect(result.sourcePackage).toBe("owner/repo");
       expect(result.skillNames).toEqual(["my-skill"]);
     });
 
     it("strips GitHub URL prefix", () => {
-      const result = parseSkillsInstallCommand("npx skills add https://github.com/owner/repo --skill my-skill");
+      const result = parseSkillsInstallCommand(
+        "npx skills add https://github.com/owner/repo --skill my-skill",
+      );
       expect(result.sourcePackage).toBe("owner/repo");
     });
 
     it("accepts --copy flag", () => {
-      const result = parseSkillsInstallCommand("npx skills add owner/repo --skill my-skill --copy");
+      const result = parseSkillsInstallCommand(
+        "npx skills add owner/repo --skill my-skill --copy",
+      );
       expect(result.skillNames).toEqual(["my-skill"]);
     });
 
     it("accepts --yes flag", () => {
-      const result = parseSkillsInstallCommand("npx skills add owner/repo --skill my-skill -y");
+      const result = parseSkillsInstallCommand(
+        "npx skills add owner/repo --skill my-skill -y",
+      );
       expect(result.skillNames).toEqual(["my-skill"]);
     });
 
     it("accepts --agent flag", () => {
-      const result = parseSkillsInstallCommand("npx skills add owner/repo --skill my-skill --agent claude-code");
+      const result = parseSkillsInstallCommand(
+        "npx skills add owner/repo --skill my-skill --agent claude-code",
+      );
       expect(result.skillNames).toEqual(["my-skill"]);
     });
 
@@ -96,11 +147,15 @@ describe("skills – install command parsing", () => {
     });
 
     it("throws on non-skills command", () => {
-      expect(() => parseSkillsInstallCommand("npm install something")).toThrow();
+      expect(() =>
+        parseSkillsInstallCommand("npm install something"),
+      ).toThrow();
     });
 
     it("throws on skillsadd (no space)", () => {
-      expect(() => parseSkillsInstallCommand("npx skillsadd owner/repo")).toThrow();
+      expect(() =>
+        parseSkillsInstallCommand("npx skillsadd owner/repo"),
+      ).toThrow();
     });
 
     it("throws on missing package", () => {
@@ -108,19 +163,29 @@ describe("skills – install command parsing", () => {
     });
 
     it("throws on non-GitHub package", () => {
-      expect(() => parseSkillsInstallCommand("npx skills add not-a-valid-package")).toThrow();
+      expect(() =>
+        parseSkillsInstallCommand("npx skills add not-a-valid-package"),
+      ).toThrow();
     });
 
     it("throws on wildcard skill name", () => {
-      expect(() => parseSkillsInstallCommand("npx skills add owner/repo@*")).toThrow();
+      expect(() =>
+        parseSkillsInstallCommand("npx skills add owner/repo@*"),
+      ).toThrow();
     });
 
     it("throws on unsupported option", () => {
-      expect(() => parseSkillsInstallCommand("npx skills add owner/repo --skill my-skill --unknown")).toThrow();
+      expect(() =>
+        parseSkillsInstallCommand(
+          "npx skills add owner/repo --skill my-skill --unknown",
+        ),
+      ).toThrow();
     });
 
     it("strips leading dollar sign", () => {
-      const result = parseSkillsInstallCommand("$ npx skills add owner/repo --skill my-skill");
+      const result = parseSkillsInstallCommand(
+        "$ npx skills add owner/repo --skill my-skill",
+      );
       expect(result.sourcePackage).toBe("owner/repo");
     });
   });
@@ -128,7 +193,8 @@ describe("skills – install command parsing", () => {
 
 describe("skills – frontmatter parsing", () => {
   it("parses simple frontmatter", () => {
-    const md = "---\nname: my-skill\ndescription: A test skill\n---\nContent here";
+    const md =
+      "---\nname: my-skill\ndescription: A test skill\n---\nContent here";
     const result = parseFrontmatter(md);
     expect(result.name).toBe("my-skill");
     expect(result.description).toBe("A test skill");
@@ -140,7 +206,8 @@ describe("skills – frontmatter parsing", () => {
   });
 
   it("handles quoted values", () => {
-    const md = "---\nname: 'my-skill'\ndescription: \"A test skill\"\n---\nContent";
+    const md =
+      "---\nname: 'my-skill'\ndescription: \"A test skill\"\n---\nContent";
     const result = parseFrontmatter(md);
     expect(result.name).toBe("my-skill");
     expect(result.description).toBe("A test skill");
@@ -164,11 +231,15 @@ describe("skills – metadata validation", () => {
   });
 
   it("rejects name with reserved words – anthropic", () => {
-    expect(() => assertSkillMetadata("anthropic-skill", "desc")).toThrow("reserved words");
+    expect(() => assertSkillMetadata("anthropic-skill", "desc")).toThrow(
+      "reserved words",
+    );
   });
 
   it("rejects name with reserved words – claude", () => {
-    expect(() => assertSkillMetadata("claude-skill", "desc")).toThrow("reserved words");
+    expect(() => assertSkillMetadata("claude-skill", "desc")).toThrow(
+      "reserved words",
+    );
   });
 
   it("rejects invalid characters in name", () => {
@@ -188,7 +259,9 @@ describe("skills – metadata validation", () => {
   });
 
   it("rejects description too long", () => {
-    expect(() => assertSkillMetadata("skill", "a".repeat(1025))).toThrow("1024 characters");
+    expect(() => assertSkillMetadata("skill", "a".repeat(1025))).toThrow(
+      "1024 characters",
+    );
   });
 
   it("rejects name too long", () => {

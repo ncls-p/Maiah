@@ -1,4 +1,4 @@
-import { describe,expect,it,vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 describe("suggestion-skip", () => {
   it("requests and consumes skip for a conversation", async () => {

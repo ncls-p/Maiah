@@ -1,7 +1,11 @@
-import { describe,expect,it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { updateMcpTool } from "@/modules/mcp/use-cases";
-import { dbModule,fakeSseServer,fakeTool } from "./mcp-use-cases.test.db-module";
+import {
+  dbModule,
+  fakeSseServer,
+  fakeTool,
+} from "./mcp-use-cases.test.db-module";
 
 // ─── updateMcpTool ────────────────────────────────────────────────────
 
@@ -49,7 +53,9 @@ describe("updateMcpTool", () => {
 
   it("returns updated tool", async () => {
     dbModule._c.limit.mockResolvedValueOnce([fakeSseServer]);
-    dbModule._c.returning.mockResolvedValueOnce([{ ...fakeTool, enabled: false }]);
+    dbModule._c.returning.mockResolvedValueOnce([
+      { ...fakeTool, enabled: false },
+    ]);
 
     const result = await updateMcpTool({
       toolId: "tool-1",

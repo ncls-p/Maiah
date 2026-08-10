@@ -1,8 +1,14 @@
-import { describe,expect,it } from "vitest";
+import { describe, expect, it } from "vitest";
 
-import { chatCompletionRequestSchema,responsesRequestSchema } from "@/modules/openai-proxy/contracts";
+import {
+  chatCompletionRequestSchema,
+  responsesRequestSchema,
+} from "@/modules/openai-proxy/contracts";
 import { OpenAIProxyError } from "@/modules/openai-proxy/errors";
-import { prepareChatCompletion,prepareResponsesRequest } from "@/modules/openai-proxy/request-mapper";
+import {
+  prepareChatCompletion,
+  prepareResponsesRequest,
+} from "@/modules/openai-proxy/request-mapper";
 
 function chat(body: Record<string, unknown>) {
   return chatCompletionRequestSchema.parse({
@@ -23,12 +29,20 @@ function responses(body: Record<string, unknown>) {
 describe("OpenAI proxy protocol mapping", () => {
   it("rejects malformed messages and tool round trips", () => {
     const cases = [
-      () => prepareChatCompletion(chat({ messages: [{ role: "system", content: {} }] })),
-      () => prepareChatCompletion(chat({ messages: [{ role: "user", content: {} }] })),
+      () =>
+        prepareChatCompletion(
+          chat({ messages: [{ role: "system", content: {} }] }),
+        ),
+      () =>
+        prepareChatCompletion(
+          chat({ messages: [{ role: "user", content: {} }] }),
+        ),
       () =>
         prepareChatCompletion(
           chat({
-            messages: [{ role: "user", content: [{ type: "audio", data: "x" }] }],
+            messages: [
+              { role: "user", content: [{ type: "audio", data: "x" }] },
+            ],
           }),
         ),
       () =>
@@ -37,7 +51,9 @@ describe("OpenAI proxy protocol mapping", () => {
             messages: [
               {
                 role: "user",
-                content: [{ type: "image_url", image_url: { url: "not-a-url" } }],
+                content: [
+                  { type: "image_url", image_url: { url: "not-a-url" } },
+                ],
               },
             ],
           }),
@@ -79,10 +95,13 @@ describe("OpenAI proxy protocol mapping", () => {
       () =>
         prepareResponsesRequest(
           responses({
-            input: [{ type: "function_call_output", call_id: "missing", output: "x" }],
+            input: [
+              { type: "function_call_output", call_id: "missing", output: "x" },
+            ],
           }),
         ),
-      () => prepareResponsesRequest(responses({ input: [{ type: "unknown" }] })),
+      () =>
+        prepareResponsesRequest(responses({ input: [{ type: "unknown" }] })),
     ];
 
     for (const execute of cases) expect(execute).toThrow(OpenAIProxyError);
@@ -136,7 +155,17 @@ describe("OpenAI proxy protocol mapping", () => {
   });
 
   it("rejects every explicitly unsupported Chat parameter", () => {
-    const cases = [chat({ n: 2 }), chat({ logprobs: true }), chat({ top_logprobs: 2 }), chat({ modalities: ["audio"] }), chat({ audio: { format: "wav" } }), chat({ store: true }), chat({ web_search_options: {} }), chat({ prediction: {} }), chat({ verbosity: "high" })];
+    const cases = [
+      chat({ n: 2 }),
+      chat({ logprobs: true }),
+      chat({ top_logprobs: 2 }),
+      chat({ modalities: ["audio"] }),
+      chat({ audio: { format: "wav" } }),
+      chat({ store: true }),
+      chat({ web_search_options: {} }),
+      chat({ prediction: {} }),
+      chat({ verbosity: "high" }),
+    ];
 
     for (const request of cases) {
       expect(() => prepareChatCompletion(request)).toThrow(OpenAIProxyError);
@@ -144,7 +173,18 @@ describe("OpenAI proxy protocol mapping", () => {
   });
 
   it("rejects every explicitly unsupported Responses parameter", () => {
-    const cases = [responses({ previous_response_id: "resp_1" }), responses({ store: true }), responses({ background: true }), responses({ include: ["reasoning.encrypted_content"] }), responses({ reasoning: { summary: "auto" } }), responses({ prompt: {} }), responses({ conversation: "conv_1" }), responses({ context_management: [] }), responses({ max_tool_calls: 3 }), responses({ top_logprobs: 2 })];
+    const cases = [
+      responses({ previous_response_id: "resp_1" }),
+      responses({ store: true }),
+      responses({ background: true }),
+      responses({ include: ["reasoning.encrypted_content"] }),
+      responses({ reasoning: { summary: "auto" } }),
+      responses({ prompt: {} }),
+      responses({ conversation: "conv_1" }),
+      responses({ context_management: [] }),
+      responses({ max_tool_calls: 3 }),
+      responses({ top_logprobs: 2 }),
+    ];
 
     for (const request of cases) {
       expect(() => prepareResponsesRequest(request)).toThrow(OpenAIProxyError);

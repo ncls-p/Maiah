@@ -1,4 +1,4 @@
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const sdkMocks = vi.hoisted(() => ({
   connect: vi.fn(),
@@ -59,7 +59,10 @@ vi.mock("@/lib/crypto", () => ({
   decryptValue: cryptoMocks.decryptValue,
 }));
 
-import { callRemoteMcpTool,listRemoteMcpTools } from "../../src/modules/mcp/client";
+import {
+  callRemoteMcpTool,
+  listRemoteMcpTools,
+} from "../../src/modules/mcp/client";
 
 function server(overrides: Record<string, unknown> = {}) {
   return {
@@ -91,7 +94,9 @@ beforeEach(() => {
   sdkMocks.connect.mockResolvedValue(undefined);
   sdkMocks.transportClose.mockResolvedValue(undefined);
   sdkMocks.request.mockResolvedValue({ tools: [] });
-  cryptoMocks.decryptValue.mockImplementation(async (value: string) => `decrypted:${value}`);
+  cryptoMocks.decryptValue.mockImplementation(
+    async (value: string) => `decrypted:${value}`,
+  );
 });
 
 describe("listRemoteMcpTools", () => {
@@ -104,7 +109,10 @@ describe("listRemoteMcpTools", () => {
 
     expect(result).toEqual([{ name: "search", description: "Search" }]);
     expect(sdkMocks.connect).toHaveBeenCalledTimes(1);
-    expect(sdkMocks.request).toHaveBeenCalledWith({ method: "tools/list", params: {} }, { schema: "list" });
+    expect(sdkMocks.request).toHaveBeenCalledWith(
+      { method: "tools/list", params: {} },
+      { schema: "list" },
+    );
     expect(sdkMocks.transportClose).toHaveBeenCalledTimes(1);
     expect(sdkMocks.transports[0]).toMatchObject({
       kind: "sse",
@@ -148,26 +156,41 @@ describe("listRemoteMcpTools", () => {
   });
 
   it("falls back from streamable HTTP to SSE when the primary transport fails", async () => {
-    sdkMocks.connect.mockRejectedValueOnce(new Error("stream failed")).mockResolvedValueOnce(undefined);
+    sdkMocks.connect
+      .mockRejectedValueOnce(new Error("stream failed"))
+      .mockResolvedValueOnce(undefined);
     sdkMocks.request.mockResolvedValueOnce({ tools: [{ name: "fallback" }] });
 
-    const result = await listRemoteMcpTools(server({ transport: "streamable-http" }) as never);
+    const result = await listRemoteMcpTools(
+      server({ transport: "streamable-http" }) as never,
+    );
 
     expect(result).toEqual([{ name: "fallback" }]);
-    expect(sdkMocks.transports.map((item) => item.kind)).toEqual(["streamable-http", "sse"]);
+    expect(sdkMocks.transports.map((item) => item.kind)).toEqual([
+      "streamable-http",
+      "sse",
+    ]);
     expect(sdkMocks.transportClose).toHaveBeenCalledTimes(2);
   });
 
   it("throws the last transport error when all connection attempts fail", async () => {
-    sdkMocks.connect.mockRejectedValueOnce(new Error("stream failed")).mockRejectedValueOnce(new Error("sse failed"));
+    sdkMocks.connect
+      .mockRejectedValueOnce(new Error("stream failed"))
+      .mockRejectedValueOnce(new Error("sse failed"));
 
-    await expect(listRemoteMcpTools(server({ transport: "streamable-http" }) as never)).rejects.toThrow("sse failed");
+    await expect(
+      listRemoteMcpTools(server({ transport: "streamable-http" }) as never),
+    ).rejects.toThrow("sse failed");
     expect(sdkMocks.transportClose).toHaveBeenCalledTimes(2);
   });
 
   it("throws for missing or invalid URLs", async () => {
-    await expect(listRemoteMcpTools(server({ url: null }) as never)).rejects.toThrow("MCP server URL is not configured");
-    await expect(listRemoteMcpTools(server({ url: "not a url" }) as never)).rejects.toThrow("Invalid MCP server URL: not a url");
+    await expect(
+      listRemoteMcpTools(server({ url: null }) as never),
+    ).rejects.toThrow("MCP server URL is not configured");
+    await expect(
+      listRemoteMcpTools(server({ url: "not a url" }) as never),
+    ).rejects.toThrow("Invalid MCP server URL: not a url");
   });
 });
 
@@ -195,7 +218,15 @@ describe("callRemoteMcpTool", () => {
     await callRemoteMcpTool(server() as never, "search", null);
     await callRemoteMcpTool(server() as never, "search", "plain text");
 
-    expect(sdkMocks.request).toHaveBeenNthCalledWith(1, expect.objectContaining({ params: { name: "search", arguments: {} } }), expect.any(Object));
-    expect(sdkMocks.request).toHaveBeenNthCalledWith(2, expect.objectContaining({ params: { name: "search", arguments: {} } }), expect.any(Object));
+    expect(sdkMocks.request).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ params: { name: "search", arguments: {} } }),
+      expect.any(Object),
+    );
+    expect(sdkMocks.request).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ params: { name: "search", arguments: {} } }),
+      expect.any(Object),
+    );
   });
 });

@@ -15,7 +15,6 @@ import {
 import { cn } from "@/lib/utils";
 import { EPHEMERAL_TTL_OPTIONS } from "@/modules/chat/ephemeral-retention";
 import {
-  CheckCircle2Icon,
   ChevronDownIcon,
   Clock3Icon,
   LoaderCircleIcon,
@@ -109,28 +108,7 @@ export function ConversationRetentionBanner({
   );
 
   if (!temporary) {
-    return (
-      <section
-        className="shrink-0 border-b border-border/35 bg-background/45 px-3 py-1.5 backdrop-blur-md"
-        aria-label={t("persistentIndicator")}
-      >
-        <div className="mx-auto flex min-h-7 max-w-4xl items-center gap-2 px-1 text-xs">
-          <CheckCircle2Icon
-            className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400"
-            aria-hidden="true"
-          />
-          <span className="font-medium text-foreground">
-            {t("persistentIndicator")}
-          </span>
-          <span className="hidden text-muted-foreground sm:inline">
-            ·{" "}
-            {hasConversation
-              ? t("persistentDescription")
-              : t("persistentPendingDescription")}
-          </span>
-        </div>
-      </section>
-    );
+    return null;
   }
 
   return (

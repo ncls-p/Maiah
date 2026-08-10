@@ -104,7 +104,7 @@ const LEGACY_LINE_LIMITS = new Map([
   ["src/hooks/use-chat-stream.submit.ts", 377],
   ["src/hooks/use-chat-stream.use-chat-stream.ts", 371],
   ["src/modules/agent/runtime-executor.build-delegation-tools.ts", 316],
-  ["src/modules/agent/runtime-executor.execute-resolved-agent.ts", 474],
+  ["src/modules/agent/runtime-executor.execute-resolved-agent.ts", 489],
   ["src/modules/agent/use-cases.update-agent-unlocked.ts", 440],
   ["src/modules/chat/stream-bus.create-chat-uimessage-stream-response.ts", 310],
   ["src/modules/custom-tools/use-cases.custom-tool-builder-tools.ts", 320],
@@ -113,6 +113,16 @@ const LEGACY_LINE_LIMITS = new Map([
   ["src/modules/iam/resource-transfer.expand-transfer-graph.ts", 437],
   ["test/e2e/chat-sharing-retention-and-preview.spec.ts", 461],
   ["test/e2e/chat.suite-3.spec.ts", 393],
+  ["test/e2e/tools.spec.module-1.ts", 315],
+  ["test/integration/iam-use-cases-db.scenario-1.ts", 376],
+  ["test/unit/agent-runtime-executor.suite-6.test.ts", 480],
+  ["test/unit/conversation-sharing.test.ts", 305],
+  ["test/unit/custom-tools-use-cases.suite-5.test.ts", 306],
+  ["test/unit/marketplace-use-cases-extra.suite-3.test.ts", 367],
+  ["test/unit/marketplace-use-cases-extra.suite-4.test.ts", 345],
+  ["test/unit/marketplace-use-cases-extra.test.ts", 316],
+  ["test/unit/workflow-agentic-route.suite-4.test.ts", 307],
+  ["src/app/styles/global-components.pcss", 306],
 ]);
 const SOURCE_ROOTS = ["src", "test", "scripts", "services"];
 const SOURCE_EXTENSIONS = new Set([

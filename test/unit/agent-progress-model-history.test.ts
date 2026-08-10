@@ -1,6 +1,9 @@
-import { describe,expect,it } from "vitest";
+import { describe, expect, it } from "vitest";
 
-import { delegationFinalTextFromOutput,projectAgentProgressForModelHistory } from "@/modules/agent/progress-model-history";
+import {
+  delegationFinalTextFromOutput,
+  projectAgentProgressForModelHistory,
+} from "@/modules/agent/progress-model-history";
 
 const rootContext = {
   agentId: "root-agent",
@@ -112,7 +115,9 @@ describe("agent progress model-history projection", () => {
   });
 
   it("extracts final text only from the delegation result field", () => {
-    expect(delegationFinalTextFromOutput({ result: "Final", trace: "Private" })).toBe("Final");
+    expect(
+      delegationFinalTextFromOutput({ result: "Final", trace: "Private" }),
+    ).toBe("Final");
     expect(delegationFinalTextFromOutput("Final")).toBeNull();
     expect(delegationFinalTextFromOutput({ result: 42 })).toBeNull();
   });

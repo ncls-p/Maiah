@@ -1,4 +1,4 @@
-import { describe,expect,it,vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/modules/agent/runtime-executor", () => ({
   executeAgent: vi.fn(async () => ({
@@ -20,7 +20,10 @@ vi.mock("@/modules/tool/code-sandbox", () => ({
 }));
 
 import { createStarterDefinition } from "@/modules/workflows/contracts";
-import { compileWorkflowDefinition,createWorkflowRuntime } from "@/modules/workflows/runtime";
+import {
+  compileWorkflowDefinition,
+  createWorkflowRuntime,
+} from "@/modules/workflows/runtime";
 
 const settings = {
   timeoutMs: 30_000,
@@ -109,7 +112,11 @@ describe("workflow runtime", () => {
   });
 
   it("executes no-code text, number, list, date, delay, and terminal nodes", async () => {
-    const node = (id: string, type: string, parameters: Record<string, unknown>) => ({
+    const node = (
+      id: string,
+      type: string,
+      parameters: Record<string, unknown>,
+    ) => ({
       id,
       type,
       label: id,
@@ -195,6 +202,8 @@ describe("workflow runtime", () => {
       top: [{ active: true, score: 12 }],
       workflowResult: "Fini pour Ada",
     });
-    expect((result.context.stop as { today: string }).today).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect((result.context.stop as { today: string }).today).toMatch(
+      /^\d{4}-\d{2}-\d{2}$/,
+    );
   });
 });

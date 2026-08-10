@@ -1,7 +1,12 @@
-import { describe,expect,it } from "vitest";
+import { describe, expect, it } from "vitest";
 
-import { canUseAgent,getAgentById,getVisibleAgentById,listAgents } from "@/modules/agent/use-cases";
-import { dbModule,fakeAgent } from "./agent-use-cases.test.chain";
+import {
+  canUseAgent,
+  getAgentById,
+  getVisibleAgentById,
+  listAgents,
+} from "@/modules/agent/use-cases";
+import { dbModule, fakeAgent } from "./agent-use-cases.test.chain";
 
 export const fakeProvider = {
   id: "prov-1",
@@ -32,11 +37,18 @@ describe("canUseAgent", () => {
   });
 
   it("allows global agents", () => {
-    expect(canUseAgent({ ...fakeAgent, isGlobal: true } as never, "other")).toBe(true);
+    expect(
+      canUseAgent({ ...fakeAgent, isGlobal: true } as never, "other"),
+    ).toBe(true);
   });
 
   it("allows marketplace agents", () => {
-    expect(canUseAgent({ ...fakeAgent, sharingMode: "marketplace" } as never, "other")).toBe(true);
+    expect(
+      canUseAgent(
+        { ...fakeAgent, sharingMode: "marketplace" } as never,
+        "other",
+      ),
+    ).toBe(true);
   });
 
   it("allows specific_user target", () => {
@@ -89,13 +101,23 @@ describe("getAgentById", () => {
 
 describe("getVisibleAgentById", () => {
   it("returns null when agent not found", async () => {
-    const result = await getVisibleAgentById("nonexistent", "ws-1", "user-1", false);
+    const result = await getVisibleAgentById(
+      "nonexistent",
+      "ws-1",
+      "user-1",
+      false,
+    );
     expect(result).toBeNull();
   });
 
   it("returns agent for creator", async () => {
     dbModule._c.limit.mockResolvedValueOnce([fakeAgent]);
-    const result = await getVisibleAgentById("agent-1", "ws-1", "user-1", false);
+    const result = await getVisibleAgentById(
+      "agent-1",
+      "ws-1",
+      "user-1",
+      false,
+    );
     expect(result).toEqual(fakeAgent);
   });
 

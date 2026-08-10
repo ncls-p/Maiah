@@ -136,7 +136,6 @@ export async function GET(req: NextRequest) {
         eq(conversations.workspaceId, workspaceId),
         visibleConversationCondition,
         eq(conversations.status, "active"),
-        eq(conversations.isEphemeral, false),
         isNull(conversations.archivedAt),
       ];
       if (agentId) {
@@ -163,6 +162,7 @@ export async function GET(req: NextRequest) {
         folderId: conversations.folderId,
         pinnedAt: conversations.pinnedAt,
         sidebarOrder: conversations.sidebarOrder,
+        isEphemeral: conversations.isEphemeral,
         createdAt: conversations.createdAt,
         updatedAt: conversations.updatedAt,
         isOwner: sql<boolean>`${conversations.userId} = ${session.user.id}`,

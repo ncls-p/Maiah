@@ -1,5 +1,5 @@
 import JSZip from "jszip";
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { textPdfBytes } from "../fixtures/pdf";
 
@@ -8,7 +8,10 @@ const objectStore = new Map<string, Uint8Array>();
 vi.mock("@/server/infrastructure/storage", () => ({
   storage: {
     upload: vi.fn(async (key: string, body: Buffer | Uint8Array | string) => {
-      const bytes = typeof body === "string" ? new TextEncoder().encode(body) : new Uint8Array(body);
+      const bytes =
+        typeof body === "string"
+          ? new TextEncoder().encode(body)
+          : new Uint8Array(body);
       objectStore.set(key, bytes);
       return key;
     }),
@@ -37,16 +40,20 @@ beforeEach(() => {
 
 describe("upload security", () => {
   it("rejects unsafe workspace paths", async () => {
-    const { normalizeWorkspacePath } = await import("@/modules/code-workspace/storage");
+    const { normalizeWorkspacePath } =
+      await import("@/modules/code-workspace/storage");
 
-    expect(() => normalizeWorkspacePath("../index.html")).toThrow(/Path traversal/);
+    expect(() => normalizeWorkspacePath("../index.html")).toThrow(
+      /Path traversal/,
+    );
     expect(() => normalizeWorkspacePath("/index.html")).toThrow(/Absolute/);
     expect(() => normalizeWorkspacePath("C:/index.html")).toThrow(/Absolute/);
     expect(normalizeWorkspacePath("./src/../index.html")).toBe("index.html");
   });
 
   it("rejects ZIP entries that JSZip sanitized from unsafe names", async () => {
-    const { createCodeWorkspaceFromZip } = await import("@/modules/code-workspace/storage");
+    const { createCodeWorkspaceFromZip } =
+      await import("@/modules/code-workspace/storage");
 
     await expect(
       createCodeWorkspaceFromZip({
@@ -59,7 +66,8 @@ describe("upload security", () => {
   });
 
   it("creates a workspace from direct HTML/CSS/JS files", async () => {
-    const { createCodeWorkspaceFromFiles, readCodeWorkspaceFile } = await import("@/modules/code-workspace/storage");
+    const { createCodeWorkspaceFromFiles, readCodeWorkspaceFile } =
+      await import("@/modules/code-workspace/storage");
 
     const artifact = await createCodeWorkspaceFromFiles({
       workspaceId: "11111111-1111-4111-8111-111111111111",
@@ -73,7 +81,11 @@ describe("upload security", () => {
     });
 
     expect(artifact.rootFile).toBe("index.html");
-    expect(artifact.files.map((file) => file.path)).toEqual(["index.html", "script.js", "style.css"]);
+    expect(artifact.files.map((file) => file.path)).toEqual([
+      "index.html",
+      "script.js",
+      "style.css",
+    ]);
     await expect(
       readCodeWorkspaceFile({
         projectId: artifact.projectId,
@@ -85,7 +97,8 @@ describe("upload security", () => {
   });
 
   it("scopes code workspace file access to the creating user", async () => {
-    const { createCodeWorkspaceFromZip, readCodeWorkspaceFile } = await import("@/modules/code-workspace/storage");
+    const { createCodeWorkspaceFromZip, readCodeWorkspaceFile } =
+      await import("@/modules/code-workspace/storage");
 
     const metadata = await createCodeWorkspaceFromZip({
       workspaceId: "11111111-1111-4111-8111-111111111111",
@@ -114,7 +127,8 @@ describe("upload security", () => {
   });
 
   it("rejects chat image uploads whose bytes do not match an allowed image type", async () => {
-    const { createChatImageAttachment } = await import("@/modules/chat/attachments");
+    const { createChatImageAttachment } =
+      await import("@/modules/chat/attachments");
 
     await expect(
       createChatImageAttachment({
@@ -134,7 +148,9 @@ describe("upload security", () => {
       userId: "user-1",
       fileName: "screenshot.png",
       mimeType: "application/octet-stream",
-      bytes: new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00]),
+      bytes: new Uint8Array([
+        0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00,
+      ]),
     });
 
     expect(attachment).toMatchObject({
@@ -145,7 +161,8 @@ describe("upload security", () => {
   });
 
   it("extracts readable text from markdown chat attachments", async () => {
-    const { createChatAttachment, getChatAttachmentExtractedText } = await import("@/modules/chat/attachments");
+    const { createChatAttachment, getChatAttachmentExtractedText } =
+      await import("@/modules/chat/attachments");
 
     const attachment = await createChatAttachment({
       workspaceId: "11111111-1111-4111-8111-111111111111",
@@ -170,7 +187,8 @@ describe("upload security", () => {
   });
 
   it("extracts readable text from Word and PowerPoint chat attachments", async () => {
-    const { createChatAttachment, getChatAttachmentExtractedText } = await import("@/modules/chat/attachments");
+    const { createChatAttachment, getChatAttachmentExtractedText } =
+      await import("@/modules/chat/attachments");
     const workspaceId = "11111111-1111-4111-8111-111111111111";
     const userId = "user-1";
 
@@ -179,7 +197,8 @@ describe("upload security", () => {
       userId,
       fileName: "brief.docx",
       bytes: await zipBytes({
-        "word/document.xml": '<w:document xmlns:w="w"><w:body><w:p><w:r><w:t>Hello Word</w:t></w:r></w:p></w:body></w:document>',
+        "word/document.xml":
+          '<w:document xmlns:w="w"><w:body><w:p><w:r><w:t>Hello Word</w:t></w:r></w:p></w:body></w:document>',
       }),
     });
     const pptx = await createChatAttachment({
@@ -187,7 +206,8 @@ describe("upload security", () => {
       userId,
       fileName: "deck.pptx",
       bytes: await zipBytes({
-        "ppt/slides/slide1.xml": '<p:sld xmlns:a="a" xmlns:p="p"><a:t>Hello Slide</a:t></p:sld>',
+        "ppt/slides/slide1.xml":
+          '<p:sld xmlns:a="a" xmlns:p="p"><a:t>Hello Slide</a:t></p:sld>',
       }),
     });
 
@@ -208,7 +228,8 @@ describe("upload security", () => {
   });
 
   it("extracts best-effort text from PDF chat attachments", async () => {
-    const { createChatAttachment, getChatAttachmentExtractedText } = await import("@/modules/chat/attachments");
+    const { createChatAttachment, getChatAttachmentExtractedText } =
+      await import("@/modules/chat/attachments");
     const attachment = await createChatAttachment({
       workspaceId: "11111111-1111-4111-8111-111111111111",
       userId: "user-1",

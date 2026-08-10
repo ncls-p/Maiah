@@ -71,9 +71,6 @@ export async function createAgent(input: CreateAgentInput) {
   ) {
     throw new Error("Only orchestrators can configure delegation");
   }
-  if (kind === "orchestrator" && sharingMode === "marketplace") {
-    throw new Error("Orchestrators cannot be published to the marketplace yet");
-  }
   const normalizedOrchestrationPolicy =
     kind === "orchestrator"
       ? normalizeOrchestrationPolicy(orchestrationPolicy)
@@ -188,17 +185,6 @@ export async function createAgent(input: CreateAgentInput) {
         .set({ activeVersionId: version.id })
         .where(eq(agents.id, agent.id));
 
-      const accessAffectedUserIds = accessScope
-        ? await applyAgentAccessSelection(
-            {
-              agentId: agent.id,
-              userId,
-              selection: { scope: accessScope, teamId: accessTeamId },
-            },
-            tx,
-          )
-        : [];
-
       await insertToolBindingsForVersion(
         version.id,
         normalizedToolBindings ?? [],
@@ -231,6 +217,17 @@ export async function createAgent(input: CreateAgentInput) {
           executor: tx,
         });
       }
+
+      const accessAffectedUserIds = accessScope
+        ? await applyAgentAccessSelection(
+            {
+              agentId: agent.id,
+              userId,
+              selection: { scope: accessScope, teamId: accessTeamId },
+            },
+            tx,
+          )
+        : [];
 
       const savedAgent = accessScope
         ? (

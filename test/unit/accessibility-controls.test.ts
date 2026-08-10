@@ -1,11 +1,17 @@
-import { readdirSync,readFileSync,statSync } from "node:fs";
+import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
-import { describe,expect,it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 const projectRoot = process.cwd();
 const sourceRoot = path.join(projectRoot, "src");
 
-const customControls = ["Input", "Textarea", "SelectTrigger", "Switch", "Checkbox"] as const;
+const customControls = [
+  "Input",
+  "Textarea",
+  "SelectTrigger",
+  "Switch",
+  "Checkbox",
+] as const;
 const accessibleNameAttributes = ["id=", "aria-label", "aria-labelledby"];
 
 function listTsxFiles(dir: string): string[] {
@@ -33,11 +39,21 @@ describe("accessibility guardrails", () => {
           const start = match.index ?? 0;
           const tagEnd = source.indexOf(">", start);
           const selfClosingEnd = source.indexOf("/>", start);
-          const end = selfClosingEnd >= 0 && (tag !== "SelectTrigger" || selfClosingEnd < tagEnd) ? selfClosingEnd + 2 : tagEnd >= 0 ? tagEnd + 1 : start;
+          const end =
+            selfClosingEnd >= 0 &&
+            (tag !== "SelectTrigger" || selfClosingEnd < tagEnd)
+              ? selfClosingEnd + 2
+              : tagEnd >= 0
+                ? tagEnd + 1
+                : start;
           const openingTag = source.slice(start, end);
-          const hasAccessibleName = accessibleNameAttributes.some((attr) => openingTag.includes(attr));
+          const hasAccessibleName = accessibleNameAttributes.some((attr) =>
+            openingTag.includes(attr),
+          );
           if (!hasAccessibleName) {
-            failures.push(`${path.relative(projectRoot, file)}:${lineNumber(source, start)} <${tag}>`);
+            failures.push(
+              `${path.relative(projectRoot, file)}:${lineNumber(source, start)} <${tag}>`,
+            );
           }
         }
       }

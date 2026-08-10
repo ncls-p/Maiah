@@ -1,8 +1,12 @@
-import { expect,test } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import OpenAI from "openai";
 
-test("proxy enforces authentication, invocation scope and model visibility", async ({ page }) => {
-  const workspaces = (await (await page.request.get("/api/workspaces")).json()) as Array<{ workspace: { id: string } }>;
+test("proxy enforces authentication, invocation scope and model visibility", async ({
+  page,
+}) => {
+  const workspaces = (await (
+    await page.request.get("/api/workspaces")
+  ).json()) as Array<{ workspace: { id: string } }>;
   const workspaceId = workspaces[0]?.workspace.id;
   if (!workspaceId) throw new Error("E2E workspace is missing");
 
@@ -20,7 +24,8 @@ test("proxy enforces authentication, invocation scope and model visibility", asy
   };
 
   try {
-    const appBaseUrl = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000";
+    const appBaseUrl =
+      process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000";
     const readOnlyClient = new OpenAI({
       apiKey: token.rawKey,
       baseURL: `${appBaseUrl}/api/v1`,
@@ -44,6 +49,8 @@ test("proxy enforces authentication, invocation scope and model visibility", asy
       code: "invalid_api_key",
     });
   } finally {
-    await page.request.delete(`/api/workspace/api-keys/${token.apiKey.id}?workspaceId=${workspaceId}`);
+    await page.request.delete(
+      `/api/workspace/api-keys/${token.apiKey.id}?workspaceId=${workspaceId}`,
+    );
   }
 });

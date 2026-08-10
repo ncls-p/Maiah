@@ -1,5 +1,9 @@
-import { calculateImageUsageImpact,calculateTokenUsageImpact,parseImageGenerationConfig } from "@/modules/provider/model-runtime-config";
-import { describe,expect,it } from "vitest";
+import {
+  calculateImageUsageImpact,
+  calculateTokenUsageImpact,
+  parseImageGenerationConfig,
+} from "@/modules/provider/model-runtime-config";
+import { describe, expect, it } from "vitest";
 
 describe("model runtime configuration", () => {
   it("calculates price, energy and carbon impact from token usage", () => {

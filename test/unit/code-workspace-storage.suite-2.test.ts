@@ -1,16 +1,28 @@
 import JSZip from "jszip";
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const storageMock = vi.hoisted(() => {
-  const objects = new Map<string, { bytes: Uint8Array; contentType?: string }>();
+  const objects = new Map<
+    string,
+    { bytes: Uint8Array; contentType?: string }
+  >();
   return {
     objects,
-    upload: vi.fn(async (key: string, bytes: Uint8Array | Buffer | string, contentType?: string) => {
-      objects.set(key, {
-        bytes: typeof bytes === "string" ? new TextEncoder().encode(bytes) : new Uint8Array(bytes),
-        contentType,
-      });
-    }),
+    upload: vi.fn(
+      async (
+        key: string,
+        bytes: Uint8Array | Buffer | string,
+        contentType?: string,
+      ) => {
+        objects.set(key, {
+          bytes:
+            typeof bytes === "string"
+              ? new TextEncoder().encode(bytes)
+              : new Uint8Array(bytes),
+          contentType,
+        });
+      },
+    ),
     download: vi.fn(async (key: string) => {
       const object = objects.get(key);
       if (!object) throw new Error(`missing ${key}`);
@@ -30,7 +42,18 @@ vi.mock("@/lib/logger", () => ({
   logHandledError: vi.fn(),
 }));
 
-import { codeWorkspaceArtifact,createCodeWorkspaceFromFiles,createCodeWorkspaceZip,deleteCodeWorkspaceFile,getCodeWorkspaceFileBytes,getCodeWorkspaceFilesForPublish,importCodeWorkspaceFile,listCodeWorkspaceFiles,readCodeWorkspaceFile,writeCodeWorkspaceFile } from "@/modules/code-workspace/storage";
+import {
+  codeWorkspaceArtifact,
+  createCodeWorkspaceFromFiles,
+  createCodeWorkspaceZip,
+  deleteCodeWorkspaceFile,
+  getCodeWorkspaceFileBytes,
+  getCodeWorkspaceFilesForPublish,
+  importCodeWorkspaceFile,
+  listCodeWorkspaceFiles,
+  readCodeWorkspaceFile,
+  writeCodeWorkspaceFile,
+} from "@/modules/code-workspace/storage";
 
 const workspaceId = "ws-1";
 const userId = "user-1";
@@ -40,7 +63,11 @@ function metadataKey(projectId: string) {
 }
 
 async function loadMetadata(projectId: string) {
-  return JSON.parse(Buffer.from(await storageMock.download(metadataKey(projectId))).toString("utf8"));
+  return JSON.parse(
+    Buffer.from(await storageMock.download(metadataKey(projectId))).toString(
+      "utf8",
+    ),
+  );
 }
 
 beforeEach(() => {
@@ -61,7 +88,9 @@ describe("code workspace storage", () => {
     });
     const projectId = created.projectId;
 
-    await expect(listCodeWorkspaceFiles({ projectId, workspaceId, userId })).resolves.toMatchObject({ projectId });
+    await expect(
+      listCodeWorkspaceFiles({ projectId, workspaceId, userId }),
+    ).resolves.toMatchObject({ projectId });
     await expect(
       readCodeWorkspaceFile({
         projectId,
@@ -120,8 +149,14 @@ describe("code workspace storage", () => {
       workspaceId,
       userId,
     });
-    expect(publish.files.map((file) => file.path)).toEqual(["about.html", "assets/logo.png", "style.css"]);
-    expect(Buffer.from(publish.files[0].bytes).toString("utf8")).toBe("<h1>About</h1>");
+    expect(publish.files.map((file) => file.path)).toEqual([
+      "about.html",
+      "assets/logo.png",
+      "style.css",
+    ]);
+    expect(Buffer.from(publish.files[0].bytes).toString("utf8")).toBe(
+      "<h1>About</h1>",
+    );
 
     const zipped = await createCodeWorkspaceZip({
       projectId,
@@ -130,7 +165,12 @@ describe("code workspace storage", () => {
     });
     expect(zipped.fileName).toBe("Demo-App.zip");
     const reopened = await JSZip.loadAsync(zipped.bytes);
-    expect(Object.keys(reopened.files).sort()).toEqual(["about.html", "assets/", "assets/logo.png", "style.css"]);
+    expect(Object.keys(reopened.files).sort()).toEqual([
+      "about.html",
+      "assets/",
+      "assets/logo.png",
+      "style.css",
+    ]);
 
     const metadata = await loadMetadata(projectId);
     expect(codeWorkspaceArtifact(metadata, "ok").message).toBe("ok");

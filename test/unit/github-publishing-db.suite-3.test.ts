@@ -1,10 +1,14 @@
 import { generateKeyPairSync } from "node:crypto";
-import { beforeAll,beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/modules/code-workspace/storage", () => ({
   getCodeWorkspaceFilesForPublish: vi.fn(),
-  isTextWorkspacePath: vi.fn((filePath: string) => /\.(?:txt|md|js|json|html|css)$/i.test(filePath)),
-  normalizeWorkspacePath: vi.fn((value: string) => value.replace(/^\/+|\/+$/g, "")),
+  isTextWorkspacePath: vi.fn((filePath: string) =>
+    /\.(?:txt|md|js|json|html|css)$/i.test(filePath),
+  ),
+  normalizeWorkspacePath: vi.fn((value: string) =>
+    value.replace(/^\/+|\/+$/g, ""),
+  ),
 }));
 
 type Chain = {
@@ -22,7 +26,16 @@ type Chain = {
 
 function makeChain(): Chain {
   const c = {} as Chain;
-  for (const key of ["select", "insert", "delete", "from", "where", "orderBy", "values", "onConflictDoUpdate"] as const) {
+  for (const key of [
+    "select",
+    "insert",
+    "delete",
+    "from",
+    "where",
+    "orderBy",
+    "values",
+    "onConflictDoUpdate",
+  ] as const) {
     c[key] = vi.fn().mockReturnThis();
   }
   c.limit = vi.fn().mockResolvedValue([]);
@@ -61,14 +74,26 @@ function resetDb() {
   dbModule.db.select.mockReset().mockReturnValue(dbModule._c);
   dbModule.db.insert.mockReset().mockReturnValue(dbModule._c);
   dbModule.db.delete.mockReset().mockReturnValue(dbModule._c);
-  for (const key of ["select", "insert", "delete", "from", "where", "orderBy", "values", "onConflictDoUpdate"] as const) {
+  for (const key of [
+    "select",
+    "insert",
+    "delete",
+    "from",
+    "where",
+    "orderBy",
+    "values",
+    "onConflictDoUpdate",
+  ] as const) {
     dbModule._c[key].mockReset().mockReturnThis();
   }
   dbModule._c.limit.mockReset().mockResolvedValue([]);
   dbModule._c.returning.mockReset().mockResolvedValue([]);
 }
 
-function jsonResponse(body: unknown, init: { ok?: boolean; status?: number; statusText?: string } = {}) {
+function jsonResponse(
+  body: unknown,
+  init: { ok?: boolean; status?: number; statusText?: string } = {},
+) {
   return {
     ok: init.ok ?? true,
     status: init.status ?? 200,
@@ -109,7 +134,9 @@ const connectionRow = {
 };
 
 beforeAll(async () => {
-  const privateKey = generateKeyPairSync("rsa", { modulusLength: 2048 }).privateKey.export({ format: "pem", type: "pkcs1" }).toString();
+  const privateKey = generateKeyPairSync("rsa", { modulusLength: 2048 })
+    .privateKey.export({ format: "pem", type: "pkcs1" })
+    .toString();
   process.env.GITHUB_APP_ID = "12345";
   process.env.GITHUB_APP_SLUG = "ai-hub-test";
   process.env.GITHUB_APP_PRIVATE_KEY = privateKey;
@@ -152,7 +179,9 @@ describe("GitHub publishing DB/API flows", () => {
     ).rejects.toThrow("Direct push requires explicit user confirmation");
 
     resetDb();
-    dbModule._c.limit.mockResolvedValueOnce([{ ...repoRow, permissionsJson: { pull: true } }]).mockResolvedValueOnce([connectionRow]);
+    dbModule._c.limit
+      .mockResolvedValueOnce([{ ...repoRow, permissionsJson: { pull: true } }])
+      .mockResolvedValueOnce([connectionRow]);
     await expect(
       publishing.publishCodeWorkspaceToGitHub({
         workspaceId: ids.workspaceId,
@@ -169,9 +198,13 @@ describe("GitHub publishing DB/API flows", () => {
     resetDb();
     vi.mocked(storage.getCodeWorkspaceFilesForPublish).mockResolvedValueOnce({
       metadata: { id: ids.projectId },
-      files: [{ path: ".env", bytes: new TextEncoder().encode("SECRET=1"), size: 8 }],
+      files: [
+        { path: ".env", bytes: new TextEncoder().encode("SECRET=1"), size: 8 },
+      ],
     } as never);
-    dbModule._c.limit.mockResolvedValueOnce([repoRow]).mockResolvedValueOnce([connectionRow]);
+    dbModule._c.limit
+      .mockResolvedValueOnce([repoRow])
+      .mockResolvedValueOnce([connectionRow]);
     await expect(
       publishing.publishCodeWorkspaceToGitHub({
         workspaceId: ids.workspaceId,
@@ -186,13 +219,26 @@ describe("GitHub publishing DB/API flows", () => {
     ).rejects.toThrow("Publishing this path is blocked");
 
     resetDb();
-    dbModule._c.limit.mockResolvedValueOnce([repoRow]).mockResolvedValueOnce([connectionRow]);
+    dbModule._c.limit
+      .mockResolvedValueOnce([repoRow])
+      .mockResolvedValueOnce([connectionRow]);
     dbModule._c.returning.mockResolvedValueOnce([{ id: "event-empty" }]);
     vi.mocked(globalThis.fetch)
-      .mockResolvedValueOnce(jsonResponse({ token: "installation-token" }) as never)
-      .mockResolvedValueOnce(jsonResponse({ message: "Git Repository is empty" }, { ok: false, status: 409, statusText: "Conflict" }) as never)
-      .mockResolvedValueOnce(jsonResponse({ commit: { sha: "commit-a" } }) as never)
-      .mockResolvedValueOnce(jsonResponse({ commit: { sha: "commit-b" } }) as never);
+      .mockResolvedValueOnce(
+        jsonResponse({ token: "installation-token" }) as never,
+      )
+      .mockResolvedValueOnce(
+        jsonResponse(
+          { message: "Git Repository is empty" },
+          { ok: false, status: 409, statusText: "Conflict" },
+        ) as never,
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({ commit: { sha: "commit-a" } }) as never,
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({ commit: { sha: "commit-b" } }) as never,
+      );
     await expect(
       publishing.publishCodeWorkspaceToGitHub({
         workspaceId: ids.workspaceId,
@@ -211,12 +257,25 @@ describe("GitHub publishing DB/API flows", () => {
     });
 
     resetDb();
-    dbModule._c.limit.mockResolvedValueOnce([repoRow]).mockResolvedValueOnce([connectionRow]);
+    dbModule._c.limit
+      .mockResolvedValueOnce([repoRow])
+      .mockResolvedValueOnce([connectionRow]);
     vi.mocked(globalThis.fetch)
-      .mockResolvedValueOnce(jsonResponse({ token: "installation-token" }) as never)
-      .mockResolvedValueOnce(jsonResponse({ object: { sha: "base", type: "commit" } }) as never)
-      .mockResolvedValueOnce(jsonResponse({ tree: { sha: "tree-base" } }) as never)
-      .mockResolvedValueOnce(jsonResponse({ message: "boom" }, { ok: false, status: 500, statusText: "Boom" }) as never);
+      .mockResolvedValueOnce(
+        jsonResponse({ token: "installation-token" }) as never,
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({ object: { sha: "base", type: "commit" } }) as never,
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({ tree: { sha: "tree-base" } }) as never,
+      )
+      .mockResolvedValueOnce(
+        jsonResponse(
+          { message: "boom" },
+          { ok: false, status: 500, statusText: "Boom" },
+        ) as never,
+      );
     await expect(
       publishing.publishCodeWorkspaceToGitHub({
         workspaceId: ids.workspaceId,
@@ -229,6 +288,8 @@ describe("GitHub publishing DB/API flows", () => {
         confirmDirectPush: true,
       }),
     ).rejects.toThrow("GitHub API error (500): boom");
-    expect(dbModule._c.values).toHaveBeenCalledWith(expect.objectContaining({ status: "failed" }));
+    expect(dbModule._c.values).toHaveBeenCalledWith(
+      expect.objectContaining({ status: "failed" }),
+    );
   });
 });

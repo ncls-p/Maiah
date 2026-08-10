@@ -1,7 +1,7 @@
 import { rmSync } from "node:fs";
 import { type Server } from "node:http";
 
-import { afterEach,beforeEach,describe,expect,it,vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/modules/chat/attachments", () => ({
   createChatAttachment: vi.fn(async (input: { fileName: string }) => ({
@@ -34,10 +34,13 @@ vi.mock("@/modules/chat/attachments", () => ({
   getChatAttachmentExtractedText: vi.fn(async () => ({
     text: "## Page 1\n\nFirst page\n\n## Page 2\n\nSecond page",
   })),
-  isChatFileAttachment: vi.fn((value: { kind?: string }) => value.kind === "chat_file"),
+  isChatFileAttachment: vi.fn(
+    (value: { kind?: string }) => value.kind === "chat_file",
+  ),
 }));
 
-type ExecuteCodeSandbox = (typeof import("@/modules/tool/code-sandbox"))["executeCodeSandbox"];
+type ExecuteCodeSandbox =
+  (typeof import("@/modules/tool/code-sandbox"))["executeCodeSandbox"];
 
 type RunnerRequest = {
   language: "python" | "node" | "bash";
@@ -58,7 +61,8 @@ const validEnv = {
   BETTER_AUTH_URL: "http://localhost:3000",
   BETTER_AUTH_TRUSTED_ORIGINS: "http://localhost:3000",
   DATABASE_URL: "postgres://localhost/test",
-  APP_ENCRYPTION_KEY: "0000000000000000000000000000000000000000000000000000000000000000",
+  APP_ENCRYPTION_KEY:
+    "0000000000000000000000000000000000000000000000000000000000000000",
   OBJECT_STORAGE_BUCKET: "test",
   OBJECT_STORAGE_ACCESS_KEY_ID: "test",
   OBJECT_STORAGE_SECRET_ACCESS_KEY: "test",

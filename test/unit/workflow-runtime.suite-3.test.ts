@@ -1,4 +1,4 @@
-import { describe,expect,it,vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/modules/agent/runtime-executor", () => ({
   executeAgent: vi.fn(async () => ({
@@ -19,8 +19,14 @@ vi.mock("@/modules/tool/code-sandbox", () => ({
   })),
 }));
 
-import { createStarterDefinition,workflowDefinitionSchema } from "@/modules/workflows/contracts";
-import { compileWorkflowDefinition,createWorkflowRuntime } from "@/modules/workflows/runtime";
+import {
+  createStarterDefinition,
+  workflowDefinitionSchema,
+} from "@/modules/workflows/contracts";
+import {
+  compileWorkflowDefinition,
+  createWorkflowRuntime,
+} from "@/modules/workflows/runtime";
 
 const settings = {
   timeoutMs: 30_000,
@@ -123,8 +129,13 @@ describe("workflow runtime", () => {
         settings,
       },
     );
-    definition.edges.push({ id: "trigger-stop", source: "trigger", target: "stop" }, { id: "stop-after", source: "stop", target: "after" });
+    definition.edges.push(
+      { id: "trigger-stop", source: "trigger", target: "stop" },
+      { id: "stop-after", source: "stop", target: "after" },
+    );
 
-    expect(() => workflowDefinitionSchema.parse(definition)).toThrow("cannot have outgoing edges");
+    expect(() => workflowDefinitionSchema.parse(definition)).toThrow(
+      "cannot have outgoing edges",
+    );
   });
 });

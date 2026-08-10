@@ -1,4 +1,4 @@
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 type Chain = {
   select: ReturnType<typeof vi.fn>;
@@ -15,7 +15,16 @@ type Chain = {
 
 const dbMock = vi.hoisted(() => {
   const chain = {} as Chain;
-  for (const method of ["select", "insert", "update", "from", "where", "values", "set", "orderBy"] as const) {
+  for (const method of [
+    "select",
+    "insert",
+    "update",
+    "from",
+    "where",
+    "values",
+    "set",
+    "orderBy",
+  ] as const) {
     chain[method] = vi.fn().mockReturnValue(chain);
   }
   chain.limit = vi.fn().mockResolvedValue([]);
@@ -49,7 +58,12 @@ vi.mock("@/modules/usage/quota-reservations", () => ({
   expireWorkspaceTokenReservations: quotaMocks.expire,
 }));
 
-import { getAgentRun,listAgentRuns,readAgentRunPayload,reapExpiredAgentRuns } from "@/modules/agent/run-use-cases";
+import {
+  getAgentRun,
+  listAgentRuns,
+  readAgentRunPayload,
+  reapExpiredAgentRuns,
+} from "@/modules/agent/run-use-cases";
 
 const run = {
   id: "11111111-1111-4111-8111-111111111111",
@@ -60,7 +74,16 @@ const run = {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  for (const method of ["select", "insert", "update", "from", "where", "values", "set", "orderBy"] as const) {
+  for (const method of [
+    "select",
+    "insert",
+    "update",
+    "from",
+    "where",
+    "values",
+    "set",
+    "orderBy",
+  ] as const) {
     dbMock.chain[method].mockReset().mockReturnValue(dbMock.chain);
   }
   dbMock.chain.limit.mockReset().mockResolvedValue([]);
@@ -89,7 +112,9 @@ describe("agent run lifecycle", () => {
         limit: 500,
       }),
     ).resolves.toEqual([{ id: run.id }]);
-    await expect(listAgentRuns({ workspaceId: run.workspaceId, limit: 0 })).resolves.toEqual([]);
+    await expect(
+      listAgentRuns({ workspaceId: run.workspaceId, limit: 0 }),
+    ).resolves.toEqual([]);
     expect(dbMock.chain.limit).toHaveBeenCalledWith(100);
     expect(dbMock.chain.limit).toHaveBeenCalledWith(1);
   });
@@ -97,7 +122,9 @@ describe("agent run lifecycle", () => {
   it("decrypts stored run payloads and handles missing output", async () => {
     dbMock.chain.limit
       .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([{ inputEncrypted: 'enc:{"prompt":"hello"}', outputEncrypted: null }])
+      .mockResolvedValueOnce([
+        { inputEncrypted: 'enc:{"prompt":"hello"}', outputEncrypted: null },
+      ])
       .mockResolvedValueOnce([
         {
           inputEncrypted: 'enc:{"prompt":"hello"}',
@@ -128,7 +155,9 @@ describe("agent run lifecycle", () => {
     });
 
     expect(dbMock.db.transaction).toHaveBeenCalledOnce();
-    expect(dbMock.chain.set).toHaveBeenCalledWith(expect.objectContaining({ status: "timed_out", reservedTokens: 0 }));
+    expect(dbMock.chain.set).toHaveBeenCalledWith(
+      expect.objectContaining({ status: "timed_out", reservedTokens: 0 }),
+    );
     expect(dbMock.chain.set).toHaveBeenCalledWith(
       expect.objectContaining({
         status: "failed",
@@ -138,7 +167,10 @@ describe("agent run lifecycle", () => {
   });
 
   it("reaps cleanly when no run or reservation is stale", async () => {
-    dbMock.chain.returning.mockResolvedValueOnce([]).mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+    dbMock.chain.returning
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
 
     await expect(reapExpiredAgentRuns()).resolves.toEqual({
       timedOut: 0,

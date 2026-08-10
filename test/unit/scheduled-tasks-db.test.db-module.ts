@@ -1,7 +1,7 @@
-import { beforeEach,vi } from "vitest";
+import { beforeEach, vi } from "vitest";
 
 import { executeAgent } from "@/modules/agent/runtime-executor";
-import { getActiveVersion,getAgentById } from "@/modules/agent/use-cases";
+import { getActiveVersion, getAgentById } from "@/modules/agent/use-cases";
 import { getBuiltInToolByName } from "@/modules/tool/builtin-tools";
 import * as _dbModule from "@/server/infrastructure/db";
 
@@ -51,7 +51,17 @@ type Chain = {
 
 function makeChain(): Chain {
   const c = {} as Chain;
-  for (const key of ["select", "insert", "update", "delete", "from", "where", "orderBy", "values", "set"] as const) {
+  for (const key of [
+    "select",
+    "insert",
+    "update",
+    "delete",
+    "from",
+    "where",
+    "orderBy",
+    "values",
+    "set",
+  ] as const) {
     c[key] = vi.fn().mockReturnThis();
   }
   c.limit = vi.fn().mockResolvedValue([]);
@@ -89,7 +99,17 @@ function resetDb() {
   dbModule.db.insert.mockReset().mockReturnValue(dbModule._c);
   dbModule.db.update.mockReset().mockReturnValue(dbModule._c);
   dbModule.db.delete.mockReset().mockReturnValue(dbModule._c);
-  for (const key of ["select", "insert", "update", "delete", "from", "where", "orderBy", "values", "set"] as const) {
+  for (const key of [
+    "select",
+    "insert",
+    "update",
+    "delete",
+    "from",
+    "where",
+    "orderBy",
+    "values",
+    "set",
+  ] as const) {
     dbModule._c[key].mockReset().mockReturnThis();
   }
   dbModule._c.limit.mockReset().mockResolvedValue([]);
@@ -122,6 +142,8 @@ beforeEach(() => {
   } as never);
   vi.mocked(getBuiltInToolByName).mockReturnValue({
     inputSchema: { parse: vi.fn((value) => value) },
-    execute: vi.fn().mockResolvedValue([{ title: "Source", url: "https://example.test" }]),
+    execute: vi
+      .fn()
+      .mockResolvedValue([{ title: "Source", url: "https://example.test" }]),
   } as never);
 });

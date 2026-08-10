@@ -1,4 +1,4 @@
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   generateText: vi.fn(),
@@ -180,7 +180,9 @@ describe("agent runtime executor", () => {
       outputTokens: 20,
       totalTreeTokens: 30,
     });
-    expect(mocks.completeRun).toHaveBeenCalledWith(expect.objectContaining({ reservationTokens: 30 }));
+    expect(mocks.completeRun).toHaveBeenCalledWith(
+      expect.objectContaining({ reservationTokens: 30 }),
+    );
     expect(mocks.completeRun).toHaveBeenCalledWith(
       expect.objectContaining({
         usage: expect.objectContaining({ operation: "api" }),
@@ -204,6 +206,8 @@ describe("agent runtime executor", () => {
       }),
     ).rejects.toMatchObject({ code: "AGENT_EMPTY_RESPONSE" });
     expect(mocks.completeRun).not.toHaveBeenCalled();
-    expect(mocks.failRun).toHaveBeenCalledWith(expect.objectContaining({ errorCode: "AGENT_EMPTY_RESPONSE" }));
+    expect(mocks.failRun).toHaveBeenCalledWith(
+      expect.objectContaining({ errorCode: "AGENT_EMPTY_RESPONSE" }),
+    );
   });
 });

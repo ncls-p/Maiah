@@ -1,5 +1,5 @@
 import type { BuiltInToolDefinition } from "@/modules/tool/builtin-tools";
-import { afterEach,beforeAll,describe,expect,it,vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 let listBuiltInTools: () => unknown[];
 let getBuiltInTool: (id: string) => BuiltInToolDefinition | null;
@@ -7,10 +7,16 @@ let getBuiltInToolByName: (name: string) => BuiltInToolDefinition | null;
 let requiresApproval: (riskLevel: string | null | undefined) => boolean;
 
 beforeAll(async () => {
-  process.env.APP_ENCRYPTION_KEY = "0000000000000000000000000000000000000000000000000000000000000000";
+  process.env.APP_ENCRYPTION_KEY =
+    "0000000000000000000000000000000000000000000000000000000000000000";
   process.env.APP_ENCRYPTION_KEY_ID = "default";
 
-  ({ listBuiltInTools, getBuiltInTool, getBuiltInToolByName, requiresApproval } = await import("@/modules/tool/builtin-tools"));
+  ({
+    listBuiltInTools,
+    getBuiltInTool,
+    getBuiltInToolByName,
+    requiresApproval,
+  } = await import("@/modules/tool/builtin-tools"));
 });
 
 afterEach(() => {
@@ -124,7 +130,9 @@ describe("calculator tool", () => {
 
   it("rejects non-finite results", () => {
     const tool = getBuiltInToolByName("calculator");
-    expect(() => tool!.execute({ expression: "1 / 0" })).toThrow("Expression did not evaluate to a finite number");
+    expect(() => tool!.execute({ expression: "1 / 0" })).toThrow(
+      "Expression did not evaluate to a finite number",
+    );
   });
 });
 
@@ -259,8 +267,12 @@ describe("web_search tool", () => {
     };
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(new URL(String(fetchMock.mock.calls[0]?.[0])).searchParams.get("q")).toBe(result.searchedQuery);
-    expect(new URL(String(fetchMock.mock.calls[1]?.[0])).searchParams.get("q")).toBe("maiah");
+    expect(
+      new URL(String(fetchMock.mock.calls[0]?.[0])).searchParams.get("q"),
+    ).toBe(result.searchedQuery);
+    expect(
+      new URL(String(fetchMock.mock.calls[1]?.[0])).searchParams.get("q"),
+    ).toBe("maiah");
     expect(result.ok).toBe(true);
     expect(result.successfulQuery).toBe("maiah");
     expect(result.resultCount).toBe(1);

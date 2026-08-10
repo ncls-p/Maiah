@@ -1,7 +1,13 @@
-import { describe,expect,it } from "vitest";
+import { describe, expect, it } from "vitest";
 
-import { chatCompletionRequestSchema,responsesRequestSchema } from "@/modules/openai-proxy/contracts";
-import { prepareChatCompletion,prepareResponsesRequest } from "@/modules/openai-proxy/request-mapper";
+import {
+  chatCompletionRequestSchema,
+  responsesRequestSchema,
+} from "@/modules/openai-proxy/contracts";
+import {
+  prepareChatCompletion,
+  prepareResponsesRequest,
+} from "@/modules/openai-proxy/request-mapper";
 
 function chat(body: Record<string, unknown>) {
   return chatCompletionRequestSchema.parse({
@@ -54,7 +60,12 @@ describe("OpenAI proxy protocol mapping", () => {
       }),
     );
 
-    expect(prepared.messages.map((message) => message.role)).toEqual(["system", "user", "assistant", "tool"]);
+    expect(prepared.messages.map((message) => message.role)).toEqual([
+      "system",
+      "user",
+      "assistant",
+      "tool",
+    ]);
     expect(prepared.toolChoice).toEqual({ type: "tool", toolName: "lookup" });
     expect(prepared.maxOutputTokens).toBe(50);
     expect(prepared.stopSequences).toEqual(["END"]);
@@ -116,7 +127,14 @@ describe("OpenAI proxy protocol mapping", () => {
       }),
     );
 
-    expect(prepared.messages.map((message) => message.role)).toEqual(["system", "system", "user", "assistant", "assistant", "tool"]);
+    expect(prepared.messages.map((message) => message.role)).toEqual([
+      "system",
+      "system",
+      "user",
+      "assistant",
+      "assistant",
+      "tool",
+    ]);
     expect(prepared.responseFormat).toEqual({ type: "json_object" });
     expect(prepared.providerOptions).toMatchObject({
       parallelToolCalls: false,

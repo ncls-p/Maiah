@@ -1,5 +1,5 @@
 import { inferMcpAuthHint } from "@/modules/mcp/auth-hint";
-import { describe,expect,it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 describe("inferMcpAuthHint", () => {
   it("returns 'none' for stdio with no env or headers", () => {
@@ -12,7 +12,11 @@ describe("inferMcpAuthHint", () => {
       transport: "stdio",
       encryptedEnvJson: { PATH: "val" },
     });
-    expect(result).toEqual({ mode: "env", envKeyName: "PATH", envKeys: ["PATH"] });
+    expect(result).toEqual({
+      mode: "env",
+      envKeyName: "PATH",
+      envKeys: ["PATH"],
+    });
   });
 
   it("returns 'custom' for stdio with multiple env keys", () => {
@@ -44,7 +48,11 @@ describe("inferMcpAuthHint", () => {
       transport: "http",
       encryptedHeadersJson: { X_Api_Key: "v" },
     });
-    expect(result).toEqual({ mode: "api-key", apiKeyHeader: "X_Api_Key", headerKeys: ["X_Api_Key"] });
+    expect(result).toEqual({
+      mode: "api-key",
+      apiKeyHeader: "X_Api_Key",
+      headerKeys: ["X_Api_Key"],
+    });
   });
 
   it("returns 'custom' for http with multiple headers", () => {

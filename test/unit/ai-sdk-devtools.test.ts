@@ -1,4 +1,4 @@
-import { afterEach,beforeEach,describe,expect,it,vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   registerTelemetry: vi.fn(),
@@ -34,7 +34,8 @@ afterEach(() => {
 describe("AI SDK DevTools registration", () => {
   it("does not capture model payloads by default", async () => {
     vi.stubEnv("NODE_ENV", "development");
-    const { registerAiSdkDevTools } = await import("@/server/infrastructure/ai-sdk/devtools");
+    const { registerAiSdkDevTools } =
+      await import("@/server/infrastructure/ai-sdk/devtools");
 
     registerAiSdkDevTools();
 
@@ -44,7 +45,8 @@ describe("AI SDK DevTools registration", () => {
   it("allows an explicit local opt-in", async () => {
     vi.stubEnv("NODE_ENV", "development");
     vi.stubEnv("AI_SDK_DEVTOOLS", "true");
-    const { registerAiSdkDevTools } = await import("@/server/infrastructure/ai-sdk/devtools");
+    const { registerAiSdkDevTools } =
+      await import("@/server/infrastructure/ai-sdk/devtools");
 
     registerAiSdkDevTools();
 
@@ -54,7 +56,8 @@ describe("AI SDK DevTools registration", () => {
   it("never registers raw-payload telemetry in production", async () => {
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("AI_SDK_DEVTOOLS", "true");
-    const { registerAiSdkDevTools } = await import("@/server/infrastructure/ai-sdk/devtools");
+    const { registerAiSdkDevTools } =
+      await import("@/server/infrastructure/ai-sdk/devtools");
 
     registerAiSdkDevTools();
 

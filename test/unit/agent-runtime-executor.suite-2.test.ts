@@ -1,4 +1,4 @@
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   generateText: vi.fn(),
@@ -205,7 +205,9 @@ describe("agent runtime executor", () => {
     expect(recoveryCall).not.toHaveProperty("messages");
     expect(recoveryCall).not.toHaveProperty("tools");
     expect(recoveryCall.prompt).toContain("[REDACTED]");
-    expect(recoveryCall.prompt).not.toContain("must-not-cross-the-recovery-boundary");
+    expect(recoveryCall.prompt).not.toContain(
+      "must-not-cross-the-recovery-boundary",
+    );
     expect(mocks.completeRun).toHaveBeenCalledWith(
       expect.objectContaining({
         inputTokens: 30,

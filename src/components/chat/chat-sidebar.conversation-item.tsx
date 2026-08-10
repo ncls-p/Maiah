@@ -14,6 +14,7 @@ import {
   ArrowDownIcon,
   ArrowUpIcon,
   CheckIcon,
+  Clock3Icon,
   MoreHorizontalIcon,
   PencilIcon,
   PinIcon,
@@ -78,6 +79,8 @@ export function ConversationItem({
   const pinned = Boolean(conversation.pinnedAt);
   return (
     <div
+      data-slot="chat-conversation-item"
+      data-ephemeral={conversation.isEphemeral || undefined}
       draggable={!readOnly && !isEditing && !searchMatch}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
@@ -171,6 +174,15 @@ export function ConversationItem({
               </span>
             ) : null}
             <span className="mt-1 flex items-center gap-1 text-[10px] leading-none text-muted-foreground/70">
+              {conversation.isEphemeral ? (
+                <span
+                  className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-amber-500/10 px-1.5 py-0.5 font-semibold text-amber-700 dark:text-amber-300"
+                  title={t("temporaryConversation")}
+                >
+                  <Clock3Icon className="size-2.5" aria-hidden="true" />
+                  {t("temporary")}
+                </span>
+              ) : null}
               <span className="truncate">{agentName}</span>
               <span className="shrink-0 text-muted-foreground/25">·</span>
               <span className="shrink-0">

@@ -4,6 +4,7 @@ import {
   AgentExecutionError,
   executeAgent,
 } from "@/modules/agent/runtime-executor";
+import { calculateOrchestrationUsageImpact } from "@/modules/agent/orchestration-usage-impact";
 import {
   completeChatStream,
   createChatStreamResponse,
@@ -12,6 +13,7 @@ import {
   registerChatStreamAbortController,
 } from "@/modules/chat/stream-bus";
 import { safeToolErrorMessage } from "@/modules/tool/safe-payload";
+import { getUsageImpactSetting } from "@/modules/provider/usage-impact-settings";
 import { db } from "@/server/infrastructure/db";
 import {
   conversations,
@@ -78,6 +80,17 @@ export function runOrchestratorChat(context: ChatExecutionContext) {
       });
       completedRun = result;
       await progress.flush();
+      const usageImpactSetting = await getUsageImpactSetting();
+      const usageImpact = await calculateOrchestrationUsageImpact(
+        result.usageBreakdown ?? [
+          {
+            modelId: version.modelId,
+            inputTokens: result.inputTokens,
+            outputTokens: result.outputTokens,
+          },
+        ],
+        usageImpactSetting.co2GramsPerKwh,
+      );
       const completedAt = new Date();
       const encryptedText = result.text
         ? await encryptValue(result.text)
@@ -126,17 +139,26 @@ export function runOrchestratorChat(context: ChatExecutionContext) {
             sortOrder: progress.allocateSortOrder(),
           });
         }
+        if (usageImpactSetting.enabled) {
+          await tx.insert(messageParts).values({
+            messageId: assistantMessage.id,
+            type: "impact",
+            contentEncrypted: await encryptValue(JSON.stringify(usageImpact)),
+            metadataJson: usageImpact,
+            sortOrder: progress.allocateSortOrder(),
+          });
+        }
         await tx
           .update(messages)
           .set({
             status: "completed",
             tokenInput: accumulateTokenCount(
               continuationClaim?.message.tokenInput ?? null,
-              result.inputTokens,
+              usageImpact.inputTokens,
             ),
             tokenOutput: accumulateTokenCount(
               continuationClaim?.message.tokenOutput ?? null,
-              result.outputTokens,
+              usageImpact.outputTokens,
             ),
             completedAt,
           })
@@ -152,6 +174,8 @@ export function runOrchestratorChat(context: ChatExecutionContext) {
           .where(eq(conversations.id, conversation.id));
       });
       if (result.text) enqueueEvent({ type: "text", delta: result.text });
+      if (usageImpactSetting.enabled)
+        enqueueEvent({ type: "impact", impact: usageImpact });
       enqueueEvent({ type: "done" });
     } catch (error) {
       const aborted = streamAbortController.signal.aborted;

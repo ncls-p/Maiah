@@ -1,6 +1,9 @@
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { canDelegatePermissionSet,matchesPermission } from "@/server/domain/services/authorization";
+import {
+  canDelegatePermissionSet,
+  matchesPermission,
+} from "@/server/domain/services/authorization";
 import { cache } from "@/server/infrastructure/cache";
 import * as _dbModule from "@/server/infrastructure/db";
 
@@ -34,7 +37,18 @@ type Chain = {
 
 function makeChain(): Chain {
   const c = {} as Chain;
-  for (const k of ["select", "insert", "update", "delete", "from", "where", "orderBy", "values", "set", "innerJoin"] as const) {
+  for (const k of [
+    "select",
+    "insert",
+    "update",
+    "delete",
+    "from",
+    "where",
+    "orderBy",
+    "values",
+    "set",
+    "innerJoin",
+  ] as const) {
     c[k] = vi.fn().mockReturnThis();
   }
   c.limit = vi.fn().mockResolvedValue([]);
@@ -79,7 +93,18 @@ vi.mock("@/server/infrastructure/cache", () => ({
 export const dbModule = _dbModule as unknown as DbModule;
 
 function resetDb() {
-  for (const k of ["select", "insert", "update", "delete", "from", "where", "orderBy", "values", "set", "innerJoin"] as const) {
+  for (const k of [
+    "select",
+    "insert",
+    "update",
+    "delete",
+    "from",
+    "where",
+    "orderBy",
+    "values",
+    "set",
+    "innerJoin",
+  ] as const) {
     dbModule._c[k].mockReset().mockReturnThis();
   }
   dbModule._c.limit.mockReset().mockResolvedValue([]);
@@ -138,12 +163,26 @@ describe("matchesPermission", () => {
 
 describe("canDelegatePermissionSet", () => {
   it("allows only permissions held by the actor", () => {
-    expect(canDelegatePermissionSet(["workspaces.get", "roles.manage"], ["workspaces.get"])).toBe(true);
-    expect(canDelegatePermissionSet(["workspaces.get", "roles.manage"], ["workspaces.get", "agents.manage"])).toBe(false);
+    expect(
+      canDelegatePermissionSet(
+        ["workspaces.get", "roles.manage"],
+        ["workspaces.get"],
+      ),
+    ).toBe(true);
+    expect(
+      canDelegatePermissionSet(
+        ["workspaces.get", "roles.manage"],
+        ["workspaces.get", "agents.manage"],
+      ),
+    ).toBe(false);
   });
 
   it("honors wildcard and manage grants without crossing domains", () => {
-    expect(canDelegatePermissionSet(["agents.manage"], ["agents.get"])).toBe(true);
-    expect(canDelegatePermissionSet(["agents.manage"], ["providers.manage"])).toBe(false);
+    expect(canDelegatePermissionSet(["agents.manage"], ["agents.get"])).toBe(
+      true,
+    );
+    expect(
+      canDelegatePermissionSet(["agents.manage"], ["providers.manage"]),
+    ).toBe(false);
   });
 });

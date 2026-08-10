@@ -1,5 +1,11 @@
-import { expect,test } from "@playwright/test";
-import { e2eMember,ensureE2EMember,ensureE2EUser,login,loginWithCredentials } from "./fixtures";
+import { expect, test } from "@playwright/test";
+import {
+  e2eMember,
+  ensureE2EMember,
+  ensureE2EUser,
+  login,
+  loginWithCredentials,
+} from "./fixtures";
 
 test.beforeAll(async () => {
   await ensureE2EUser();
@@ -14,14 +20,18 @@ test.describe("api keys page", () => {
     await page.goto("/en/api-keys");
     await expect(page).toHaveURL(/\/en\/api-keys/);
 
-    await expect(page.getByRole("heading", { name: /API keys/i }).first()).toBeVisible({ timeout: 10_000 });
+    await expect(
+      page.getByRole("heading", { name: /API keys/i }).first(),
+    ).toBeVisible({ timeout: 10_000 });
   });
 
   test("shows empty state when no keys", async ({ page }) => {
     await page.goto("/en/api-keys");
     await page.waitForTimeout(2000);
 
-    await expect(page.getByText(/No API keys|Create|API key/i).first()).toBeVisible({ timeout: 10_000 });
+    await expect(
+      page.getByText(/No API keys|Create|API key/i).first(),
+    ).toBeVisible({ timeout: 10_000 });
   });
 
   test("create api key flow", async ({ page }) => {
@@ -44,7 +54,9 @@ test.describe("api keys page", () => {
     });
   });
 
-  test("token scopes allow, deny, and stay within one workspace", async ({ page }) => {
+  test("token scopes allow, deny, and stay within one workspace", async ({
+    page,
+  }) => {
     const workspacesResponse = await page.request.get("/api/workspaces");
     expect(workspacesResponse.ok()).toBeTruthy();
     const workspaces = (await workspacesResponse.json()) as Array<{
@@ -67,27 +79,43 @@ test.describe("api keys page", () => {
     };
     const bearerHeaders = { Authorization: `Bearer ${created.rawKey}` };
 
-    const allowed = await page.request.get(`/api/workspace/agents?workspaceId=${workspaceId}`, { headers: bearerHeaders });
+    const allowed = await page.request.get(
+      `/api/workspace/agents?workspaceId=${workspaceId}`,
+      { headers: bearerHeaders },
+    );
     expect(allowed.status()).toBe(200);
 
-    const missingScope = await page.request.get(`/api/workspace/providers?workspaceId=${workspaceId}`, { headers: bearerHeaders });
+    const missingScope = await page.request.get(
+      `/api/workspace/providers?workspaceId=${workspaceId}`,
+      { headers: bearerHeaders },
+    );
     expect(missingScope.status()).toBe(403);
     expect(await missingScope.json()).toMatchObject({
       reason: "API token scope missing: providers.viewMetadata",
     });
 
     const otherWorkspace = "00000000-0000-4000-8000-000000000001";
-    const crossWorkspace = await page.request.get(`/api/workspace/agents?workspaceId=${otherWorkspace}`, { headers: bearerHeaders });
+    const crossWorkspace = await page.request.get(
+      `/api/workspace/agents?workspaceId=${otherWorkspace}`,
+      { headers: bearerHeaders },
+    );
     expect(crossWorkspace.status()).toBe(403);
 
-    const invalidBearer = await page.request.get(`/api/workspace/agents?workspaceId=${workspaceId}`, { headers: { Authorization: "Bearer ahub_invalid" } });
+    const invalidBearer = await page.request.get(
+      `/api/workspace/agents?workspaceId=${workspaceId}`,
+      { headers: { Authorization: "Bearer ahub_invalid" } },
+    );
     expect(invalidBearer.status()).toBe(401);
 
-    const revokeResponse = await page.request.delete(`/api/workspace/api-keys/${created.apiKey.id}?workspaceId=${workspaceId}`);
+    const revokeResponse = await page.request.delete(
+      `/api/workspace/api-keys/${created.apiKey.id}?workspaceId=${workspaceId}`,
+    );
     expect(revokeResponse.ok()).toBeTruthy();
   });
 
-  test("a member cannot grant admin scopes or escalate from a child token", async ({ browser }) => {
+  test("a member cannot grant admin scopes or escalate from a child token", async ({
+    browser,
+  }) => {
     await ensureE2EMember();
     const context = await browser.newContext();
     const page = await context.newPage();
@@ -100,12 +128,16 @@ test.describe("api keys page", () => {
     const workspaceId = workspaces[0]?.workspace.id;
     expect(workspaceId).toBeTruthy();
 
-    const scopeResponse = await page.request.get(`/api/workspace/api-keys?workspaceId=${workspaceId}`);
+    const scopeResponse = await page.request.get(
+      `/api/workspace/api-keys?workspaceId=${workspaceId}`,
+    );
     expect(scopeResponse.ok()).toBeTruthy();
     const scopeData = (await scopeResponse.json()) as {
       availableScopes: Array<{ permission: string }>;
     };
-    const grantable = scopeData.availableScopes.map(({ permission }) => permission);
+    const grantable = scopeData.availableScopes.map(
+      ({ permission }) => permission,
+    );
     expect(grantable).toContain("agents.list");
     expect(grantable).not.toContain("roles.manage");
     expect(grantable).not.toContain("providers.delete");
@@ -132,7 +164,10 @@ test.describe("api keys page", () => {
       apiKey: { id: string };
     };
 
-    const allowed = await page.request.get(`/api/workspace/agents?workspaceId=${workspaceId}`, { headers: { Authorization: `Bearer ${created.rawKey}` } });
+    const allowed = await page.request.get(
+      `/api/workspace/agents?workspaceId=${workspaceId}`,
+      { headers: { Authorization: `Bearer ${created.rawKey}` } },
+    );
     expect(allowed.status()).toBe(200);
 
     const childEscalation = await page.request.post("/api/workspace/api-keys", {
@@ -145,7 +180,9 @@ test.describe("api keys page", () => {
     });
     expect(childEscalation.status()).toBe(403);
 
-    const revokeResponse = await page.request.delete(`/api/workspace/api-keys/${created.apiKey.id}?workspaceId=${workspaceId}`);
+    const revokeResponse = await page.request.delete(
+      `/api/workspace/api-keys/${created.apiKey.id}?workspaceId=${workspaceId}`,
+    );
     expect(revokeResponse.ok()).toBeTruthy();
     await context.close();
   });
@@ -155,11 +192,15 @@ test.describe("api keys page", () => {
     await page.waitForTimeout(2000);
 
     // Look for an existing key to revoke
-    const revokeBtn = page.getByRole("button", { name: /Revoke E2E Key/i }).first();
+    const revokeBtn = page
+      .getByRole("button", { name: /Revoke E2E Key/i })
+      .first();
 
     await expect(revokeBtn).toBeVisible({ timeout: 15_000 });
     await revokeBtn.click();
-    await expect(page.getByRole("alertdialog").getByText(/stop working immediately/i)).toBeVisible();
+    await expect(
+      page.getByRole("alertdialog").getByText(/stop working immediately/i),
+    ).toBeVisible();
     await page.getByRole("button", { name: /Revoke key/i }).click();
     await expect(revokeBtn).not.toBeVisible({ timeout: 10_000 });
   });

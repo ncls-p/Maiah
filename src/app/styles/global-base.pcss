@@ -14,7 +14,15 @@
     scroll-margin-block: 5rem;
   }
 
-  :where(a, button, input, textarea, select, summary, [tabindex]:not([tabindex="-1"])):focus-visible {
+  :where(
+    a,
+    button,
+    input,
+    textarea,
+    select,
+    summary,
+    [tabindex]:not([tabindex="-1"])
+  ):focus-visible {
     outline: 2px solid var(--ring);
     outline-offset: 2px;
   }
@@ -50,7 +58,17 @@
   }
 
   [data-page="auth"] {
-    background-image: radial-gradient(circle at 92% 6%, color-mix(in oklch, var(--brand-azur) 11%, transparent), transparent 24rem), linear-gradient(145deg, color-mix(in oklch, var(--background) 96%, white), var(--background));
+    background-image:
+      radial-gradient(
+        circle at 92% 6%,
+        color-mix(in oklch, var(--brand-azur) 11%, transparent),
+        transparent 24rem
+      ),
+      linear-gradient(
+        145deg,
+        color-mix(in oklch, var(--background) 96%, white),
+        var(--background)
+      );
   }
 
   ::selection {

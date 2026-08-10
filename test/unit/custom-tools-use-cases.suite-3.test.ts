@@ -1,4 +1,4 @@
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/server/infrastructure/ai-sdk/devtools", () => ({
   registerAiSdkDevTools: vi.fn(),
@@ -61,7 +61,18 @@ type Chain = {
 
 function makeChain(): Chain {
   const c = {} as Chain;
-  for (const key of ["select", "insert", "update", "delete", "from", "where", "orderBy", "values", "set", "onConflictDoUpdate"] as const) {
+  for (const key of [
+    "select",
+    "insert",
+    "update",
+    "delete",
+    "from",
+    "where",
+    "orderBy",
+    "values",
+    "set",
+    "onConflictDoUpdate",
+  ] as const) {
     c[key] = vi.fn().mockReturnThis();
   }
   c.limit = vi.fn().mockResolvedValue([]);
@@ -93,7 +104,10 @@ vi.mock("@/server/infrastructure/db", () => {
 });
 
 import { decryptValue } from "@/lib/crypto";
-import { deleteCustomTool,listCustomTools } from "@/modules/custom-tools/use-cases";
+import {
+  deleteCustomTool,
+  listCustomTools,
+} from "@/modules/custom-tools/use-cases";
 import { callRemoteMcpTool } from "@/modules/mcp/client";
 import * as _dbModule from "@/server/infrastructure/db";
 import { generateText } from "ai";
@@ -101,7 +115,18 @@ import { generateText } from "ai";
 const dbModule = _dbModule as unknown as DbModule;
 
 function resetDb() {
-  for (const key of ["select", "insert", "update", "delete", "from", "where", "orderBy", "values", "set", "onConflictDoUpdate"] as const) {
+  for (const key of [
+    "select",
+    "insert",
+    "update",
+    "delete",
+    "from",
+    "where",
+    "orderBy",
+    "values",
+    "set",
+    "onConflictDoUpdate",
+  ] as const) {
     dbModule._c[key].mockReset().mockReturnThis();
   }
   dbModule._c.limit.mockReset().mockResolvedValue([]);
@@ -150,7 +175,9 @@ describe("custom tool listing and deletion", () => {
   });
 
   it("throws when deleting an absent or unauthorized custom tool", async () => {
-    dbModule._c.limit.mockResolvedValueOnce([{ valueJson: enabledConfig }]).mockResolvedValueOnce([]);
+    dbModule._c.limit
+      .mockResolvedValueOnce([{ valueJson: enabledConfig }])
+      .mockResolvedValueOnce([]);
 
     await expect(
       deleteCustomTool({
@@ -161,7 +188,11 @@ describe("custom tool listing and deletion", () => {
     ).rejects.toThrow("Custom tool not found");
 
     resetDb();
-    dbModule._c.limit.mockResolvedValueOnce([{ valueJson: enabledConfig }]).mockResolvedValueOnce([{ id: "tool-1", createdById: "other", isGlobal: false }]);
+    dbModule._c.limit
+      .mockResolvedValueOnce([{ valueJson: enabledConfig }])
+      .mockResolvedValueOnce([
+        { id: "tool-1", createdById: "other", isGlobal: false },
+      ]);
     await expect(
       deleteCustomTool({
         workspaceId: "ws-1",
@@ -172,19 +203,23 @@ describe("custom tool listing and deletion", () => {
   });
 
   it("archives editable tools and reports workflow deletion failures", async () => {
-    dbModule._c.limit.mockResolvedValueOnce([{ valueJson: enabledConfig }]).mockResolvedValueOnce([
-      {
-        id: "tool-1",
-        createdById: "user-1",
-        isGlobal: false,
-        n8nWorkflowId: "wf-1",
-      },
-    ]);
+    dbModule._c.limit
+      .mockResolvedValueOnce([{ valueJson: enabledConfig }])
+      .mockResolvedValueOnce([
+        {
+          id: "tool-1",
+          createdById: "user-1",
+          isGlobal: false,
+          n8nWorkflowId: "wf-1",
+        },
+      ]);
     dbModule._c.where
       .mockReturnValueOnce(dbModule._c)
       .mockReturnValueOnce(dbModule._c)
       .mockResolvedValueOnce([{ name: "n8n_delete_workflow" }]);
-    vi.mocked(callRemoteMcpTool).mockRejectedValueOnce(new Error("remote down"));
+    vi.mocked(callRemoteMcpTool).mockRejectedValueOnce(
+      new Error("remote down"),
+    );
 
     const result = await deleteCustomTool({
       workspaceId: "ws-1",

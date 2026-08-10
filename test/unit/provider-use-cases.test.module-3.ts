@@ -1,7 +1,20 @@
-import { describe,expect,it,vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import { createModel,deleteModel,discoverModels,getModelById,listModels,testProviderConnection,updateModel } from "@/modules/provider/use-cases";
-import { dbModule,fakeModel,fakeProvider,getMockAdapter } from "./provider-use-cases.test.mock-adapter";
+import {
+  createModel,
+  deleteModel,
+  discoverModels,
+  getModelById,
+  listModels,
+  testProviderConnection,
+  updateModel,
+} from "@/modules/provider/use-cases";
+import {
+  dbModule,
+  fakeModel,
+  fakeProvider,
+  getMockAdapter,
+} from "./provider-use-cases.test.mock-adapter";
 
 const mockAdapter = getMockAdapter();
 
@@ -9,7 +22,9 @@ const mockAdapter = getMockAdapter();
 
 describe("testProviderConnection", () => {
   it("throws when provider not found", async () => {
-    await expect(testProviderConnection("prov-1", "ws-1")).rejects.toThrow("Provider not found");
+    await expect(testProviderConnection("prov-1", "ws-1")).rejects.toThrow(
+      "Provider not found",
+    );
   });
 
   it("returns health status and updates DB", async () => {
@@ -22,7 +37,9 @@ describe("testProviderConnection", () => {
   });
 
   it("decrypts API key before calling adapter", async () => {
-    dbModule._c.limit.mockResolvedValueOnce([{ ...fakeProvider, encryptedApiKey: "enc:key" }]);
+    dbModule._c.limit.mockResolvedValueOnce([
+      { ...fakeProvider, encryptedApiKey: "enc:key" },
+    ]);
     const { decryptValue } = await import("@/lib/crypto");
 
     await testProviderConnection("prov-1", "ws-1");
@@ -31,7 +48,9 @@ describe("testProviderConnection", () => {
   });
 
   it("decrypts headers when encryptedHeadersJson is present", async () => {
-    dbModule._c.limit.mockResolvedValueOnce([{ ...fakeProvider, encryptedHeadersJson: { "X-Key": "enc:header" } }]);
+    dbModule._c.limit.mockResolvedValueOnce([
+      { ...fakeProvider, encryptedHeadersJson: { "X-Key": "enc:header" } },
+    ]);
     const { decryptValue } = await import("@/lib/crypto");
 
     await testProviderConnection("prov-1", "ws-1");
@@ -157,7 +176,9 @@ describe("deleteModel", () => {
 
 describe("discoverModels", () => {
   it("throws when provider not found", async () => {
-    await expect(discoverModels("prov-1", "ws-1")).rejects.toThrow("Provider not found");
+    await expect(discoverModels("prov-1", "ws-1")).rejects.toThrow(
+      "Provider not found",
+    );
   });
 
   it("returns list of discovered models", async () => {
@@ -176,6 +197,8 @@ describe("discoverModels", () => {
     } as never);
     dbModule._c.limit.mockResolvedValueOnce([fakeProvider]);
 
-    await expect(discoverModels("prov-1", "ws-1")).rejects.toThrow("Model discovery not supported");
+    await expect(discoverModels("prov-1", "ws-1")).rejects.toThrow(
+      "Model discovery not supported",
+    );
   });
 });

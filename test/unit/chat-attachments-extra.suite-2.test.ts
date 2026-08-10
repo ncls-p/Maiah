@@ -1,18 +1,26 @@
 import JSZip from "jszip";
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { textPdfBytes } from "../fixtures/pdf";
 
 const storageMock = vi.hoisted(() => {
-  const objects = new Map<string, { bytes: Uint8Array; contentType?: string }>();
+  const objects = new Map<
+    string,
+    { bytes: Uint8Array; contentType?: string }
+  >();
   return {
     objects,
-    upload: vi.fn(async (key: string, value: Uint8Array | string, contentType?: string) => {
-      objects.set(key, {
-        bytes: typeof value === "string" ? new TextEncoder().encode(value) : new Uint8Array(value),
-        contentType,
-      });
-    }),
+    upload: vi.fn(
+      async (key: string, value: Uint8Array | string, contentType?: string) => {
+        objects.set(key, {
+          bytes:
+            typeof value === "string"
+              ? new TextEncoder().encode(value)
+              : new Uint8Array(value),
+          contentType,
+        });
+      },
+    ),
     download: vi.fn(async (key: string) => {
       const object = objects.get(key);
       if (!object) throw new Error(`missing ${key}`);
@@ -26,17 +34,27 @@ const storageMock = vi.hoisted(() => {
 
 vi.mock("@/server/infrastructure/storage", () => ({ storage: storageMock }));
 
-import { createChatAttachment,getChatAttachmentExtractedText } from "@/modules/chat/attachments";
+import {
+  createChatAttachment,
+  getChatAttachmentExtractedText,
+} from "@/modules/chat/attachments";
 
 const workspaceId = "ws-1";
 const userId = "user-1";
 
 async function officeBytes(kind: "pptx" | "xlsx") {
   const zip = new JSZip();
-  if (kind === "pptx") zip.file("ppt/slides/slide2.xml", "<a:t>Slide &lt;Two&gt;</a:t>");
+  if (kind === "pptx")
+    zip.file("ppt/slides/slide2.xml", "<a:t>Slide &lt;Two&gt;</a:t>");
   else {
-    zip.file("xl/sharedStrings.xml", "<sst><si><t>Name</t></si><si><t>Value</t></si><si><t>Alpha</t></si></sst>");
-    zip.file("xl/worksheets/sheet1.xml", '<worksheet><row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1" t="s"><v>1</v></c></row><row r="2"><c r="A2" t="s"><v>2</v></c><c r="B2"><v>42</v></c></row></worksheet>');
+    zip.file(
+      "xl/sharedStrings.xml",
+      "<sst><si><t>Name</t></si><si><t>Value</t></si><si><t>Alpha</t></si></sst>",
+    );
+    zip.file(
+      "xl/worksheets/sheet1.xml",
+      '<worksheet><row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1" t="s"><v>1</v></c></row><row r="2"><c r="A2" t="s"><v>2</v></c><c r="B2"><v>42</v></c></row></worksheet>',
+    );
   }
   return zip.generateAsync({ type: "uint8array" });
 }
@@ -52,7 +70,8 @@ describe("chat attachments", () => {
       workspaceId,
       userId,
       fileName: "slides.pptx",
-      mimeType: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      mimeType:
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
       bytes: await officeBytes("pptx"),
     });
     expect(pptx).toMatchObject({
@@ -73,7 +92,8 @@ describe("chat attachments", () => {
       workspaceId,
       userId,
       fileName: "sheet.xlsx",
-      mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      mimeType:
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       bytes: await officeBytes("xlsx"),
     });
     expect(xlsx).toMatchObject({
@@ -123,7 +143,13 @@ describe("chat attachments", () => {
       workspaceId,
       userId,
       fileName: "binary-stream.pdf",
-      bytes: textPdfBytes("Visible PDF text", Buffer.concat([new Uint8Array([0x00, 0xff, 0x8e, 0x1f, 0x03]), Buffer.from("(BINARY GARBAGE) endstream <deadbeef>", "latin1")])),
+      bytes: textPdfBytes(
+        "Visible PDF text",
+        Buffer.concat([
+          new Uint8Array([0x00, 0xff, 0x8e, 0x1f, 0x03]),
+          Buffer.from("(BINARY GARBAGE) endstream <deadbeef>", "latin1"),
+        ]),
+      ),
     });
     const binaryPdfText = await getChatAttachmentExtractedText({
       attachmentId: pdfWithBinaryStream.id,
@@ -140,7 +166,9 @@ describe("chat attachments", () => {
       workspaceId,
       userId,
       fileName: "article.html",
-      bytes: new TextEncoder().encode("<h1>Title</h1><p>Hello <strong>world</strong>.</p>"),
+      bytes: new TextEncoder().encode(
+        "<h1>Title</h1><p>Hello <strong>world</strong>.</p>",
+      ),
     });
     const csv = await createChatAttachment({
       workspaceId,

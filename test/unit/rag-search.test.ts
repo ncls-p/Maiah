@@ -1,8 +1,9 @@
-import { beforeEach,describe,expect,it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
 describe("RAG keyword scoring", () => {
   beforeEach(() => {
-    process.env.APP_ENCRYPTION_KEY = "0000000000000000000000000000000000000000000000000000000000000000";
+    process.env.APP_ENCRYPTION_KEY =
+      "0000000000000000000000000000000000000000000000000000000000000000";
     process.env.APP_ENCRYPTION_KEY_ID = "default";
     process.env.BETTER_AUTH_SECRET = "test-secret-min-32-chars-long";
     process.env.BETTER_AUTH_URL = "http://localhost:3000";
@@ -15,7 +16,9 @@ describe("RAG keyword scoring", () => {
 
   it("scores content by matching query terms", async () => {
     const { scoreContent } = await import("@/modules/knowledge/use-cases");
-    expect(scoreContent("The capital of France is Paris.", "capital France")).toBe(2);
+    expect(
+      scoreContent("The capital of France is Paris.", "capital France"),
+    ).toBe(2);
     expect(scoreContent("Nothing relevant here.", "capital France")).toBe(0);
   });
 

@@ -13,7 +13,10 @@ import {
 import { and, desc, eq } from "drizzle-orm";
 import type { PortableToolBinding } from "./manifest-types";
 
-export async function resolveAgentVersion(agentId: string) {
+export async function resolveAgentVersion(
+  agentId: string,
+  pinnedVersionId?: string,
+) {
   const [agent] = await db
     .select()
     .from(agents)
@@ -21,18 +24,29 @@ export async function resolveAgentVersion(agentId: string) {
     .limit(1);
   if (!agent) return null;
 
-  const versionQuery = agent.activeVersionId
+  const versionQuery = pinnedVersionId
     ? db
         .select()
         .from(agentVersions)
-        .where(eq(agentVersions.id, agent.activeVersionId))
+        .where(
+          and(
+            eq(agentVersions.id, pinnedVersionId),
+            eq(agentVersions.agentId, agentId),
+          ),
+        )
         .limit(1)
-    : db
-        .select()
-        .from(agentVersions)
-        .where(eq(agentVersions.agentId, agentId))
-        .orderBy(desc(agentVersions.versionNumber))
-        .limit(1);
+    : agent.activeVersionId
+      ? db
+          .select()
+          .from(agentVersions)
+          .where(eq(agentVersions.id, agent.activeVersionId))
+          .limit(1)
+      : db
+          .select()
+          .from(agentVersions)
+          .where(eq(agentVersions.agentId, agentId))
+          .orderBy(desc(agentVersions.versionNumber))
+          .limit(1);
 
   const [agentVersion] = await versionQuery;
   if (!agentVersion) return { agent, agentVersion: null };

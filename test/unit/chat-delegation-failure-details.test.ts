@@ -1,4 +1,4 @@
-import { describe,expect,it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { delegationFailureDetails } from "@/components/chat/chat-message-rendering-utils";
 
@@ -16,6 +16,8 @@ describe("delegation failure display details", () => {
   });
 
   it("ignores malformed failure details", () => {
-    expect(delegationFailureDetails({ errorCode: 42, error: { secret: true } })).toEqual({ errorCode: null, reason: null });
+    expect(
+      delegationFailureDetails({ errorCode: 42, error: { secret: true } }),
+    ).toEqual({ errorCode: null, reason: null });
   });
 });

@@ -1,15 +1,23 @@
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const storageMock = vi.hoisted(() => {
-  const objects = new Map<string, { bytes: Uint8Array; contentType?: string }>();
+  const objects = new Map<
+    string,
+    { bytes: Uint8Array; contentType?: string }
+  >();
   return {
     objects,
-    upload: vi.fn(async (key: string, value: Uint8Array | string, contentType?: string) => {
-      objects.set(key, {
-        bytes: typeof value === "string" ? new TextEncoder().encode(value) : new Uint8Array(value),
-        contentType,
-      });
-    }),
+    upload: vi.fn(
+      async (key: string, value: Uint8Array | string, contentType?: string) => {
+        objects.set(key, {
+          bytes:
+            typeof value === "string"
+              ? new TextEncoder().encode(value)
+              : new Uint8Array(value),
+          contentType,
+        });
+      },
+    ),
     download: vi.fn(async (key: string) => {
       const object = objects.get(key);
       if (!object) throw new Error(`missing ${key}`);
@@ -23,7 +31,13 @@ const storageMock = vi.hoisted(() => {
 
 vi.mock("@/server/infrastructure/storage", () => ({ storage: storageMock }));
 
-import { createChatAttachment,getChatAttachment,getChatAttachmentBytes,getChatAttachmentExtractedText,getChatImageAttachmentBytes } from "@/modules/chat/attachments";
+import {
+  createChatAttachment,
+  getChatAttachment,
+  getChatAttachmentBytes,
+  getChatAttachmentExtractedText,
+  getChatImageAttachmentBytes,
+} from "@/modules/chat/attachments";
 
 const workspaceId = "ws-1";
 const userId = "user-1";
@@ -82,8 +96,12 @@ describe("chat attachments", () => {
     storageMock.objects.set(`chat-attachments/${badId}/metadata.json`, {
       bytes: new TextEncoder().encode("not json"),
     });
-    await expect(getChatAttachment(badId)).rejects.toThrow("Failed to parse attachment metadata");
-    await expect(getChatAttachment("../bad")).rejects.toThrow("Invalid attachment id");
+    await expect(getChatAttachment(badId)).rejects.toThrow(
+      "Failed to parse attachment metadata",
+    );
+    await expect(getChatAttachment("../bad")).rejects.toThrow(
+      "Invalid attachment id",
+    );
 
     storageMock.upload.mockRejectedValueOnce(new Error("upload failed"));
     await expect(

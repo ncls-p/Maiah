@@ -1,21 +1,29 @@
-import { describe,expect,it,vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { insertDelegationBindingsForVersion } from "@/modules/agent/delegation-use-cases";
-import { archiveAgent,getAgentVersionById,updateAgent } from "@/modules/agent/use-cases";
+import {
+  archiveAgent,
+  getAgentVersionById,
+  updateAgent,
+} from "@/modules/agent/use-cases";
 import { cloneToolBindings } from "@/modules/tool/use-cases";
-import { dbModule,fakeAgent,fakeVersion } from "./agent-use-cases.test.chain";
+import { dbModule, fakeAgent, fakeVersion } from "./agent-use-cases.test.chain";
 
 // ─── archiveAgent ─────────────────────────────────────────────────────
 
 describe("archiveAgent", () => {
   it("throws when agent not found", async () => {
-    await expect(archiveAgent("nonexistent", "ws-1", "user-1")).rejects.toThrow("Agent not found");
+    await expect(archiveAgent("nonexistent", "ws-1", "user-1")).rejects.toThrow(
+      "Agent not found",
+    );
   });
 
   it("throws when non-creator tries to archive without admin", async () => {
     dbModule._c.limit.mockResolvedValueOnce([fakeAgent]);
 
-    await expect(archiveAgent("agent-1", "ws-1", "other", false)).rejects.toThrow("Only the creator or an admin can delete this agent");
+    await expect(
+      archiveAgent("agent-1", "ws-1", "other", false),
+    ).rejects.toThrow("Only the creator or an admin can delete this agent");
   });
 
   it("archives agent when creator", async () => {
@@ -81,9 +89,13 @@ describe("updateAgent", () => {
 
   it("rechecks the base version after acquiring the database row lock", async () => {
     dbModule._c.limit.mockResolvedValueOnce([fakeAgent]);
-    dbModule._tx.where.mockReturnValueOnce(dbModule._tx).mockReturnValueOnce(dbModule._tx);
+    dbModule._tx.where
+      .mockReturnValueOnce(dbModule._tx)
+      .mockReturnValueOnce(dbModule._tx);
     dbModule._tx.returning.mockResolvedValueOnce([]);
-    dbModule._tx.limit.mockResolvedValueOnce([{ activeVersionId: "00000000-0000-4000-8000-000000000002" }]);
+    dbModule._tx.limit.mockResolvedValueOnce([
+      { activeVersionId: "00000000-0000-4000-8000-000000000002" },
+    ]);
 
     await expect(
       updateAgent({
@@ -125,7 +137,9 @@ describe("updateAgent", () => {
       .mockResolvedValueOnce([versionNoProvider]) // Q2 getActiveVersionConfig
       .mockResolvedValueOnce([updatedAgent]); // Q8 updatedAgent
 
-    dbModule._tx.returning.mockResolvedValueOnce([fakeAgent]).mockResolvedValueOnce([newVersion]);
+    dbModule._tx.returning
+      .mockResolvedValueOnce([fakeAgent])
+      .mockResolvedValueOnce([newVersion]);
 
     const result = await updateAgent({
       agentId: "agent-1",
@@ -136,7 +150,13 @@ describe("updateAgent", () => {
 
     expect(result.agent).toBeDefined();
     expect(dbModule.db.transaction).toHaveBeenCalledOnce();
-    expect(vi.mocked(cloneToolBindings)).toHaveBeenCalledWith("v1", "v2", "ws-1", { userId: "user-1" }, dbModule._tx);
+    expect(vi.mocked(cloneToolBindings)).toHaveBeenCalledWith(
+      "v1",
+      "v2",
+      "ws-1",
+      { userId: "user-1" },
+      dbModule._tx,
+    );
   });
 
   it("versions orchestrator policy and replacement bindings atomically", async () => {
@@ -155,8 +175,12 @@ describe("updateAgent", () => {
       .mockResolvedValueOnce([{ maxVersion: 1 }])
       .mockReturnValueOnce(dbModule._tx)
       .mockReturnValueOnce(dbModule._tx);
-    dbModule._tx.limit.mockResolvedValueOnce([activeVersion]).mockResolvedValueOnce([orchestrator]);
-    dbModule._tx.returning.mockResolvedValueOnce([orchestrator]).mockResolvedValueOnce([newVersion]);
+    dbModule._tx.limit
+      .mockResolvedValueOnce([activeVersion])
+      .mockResolvedValueOnce([orchestrator]);
+    dbModule._tx.returning
+      .mockResolvedValueOnce([orchestrator])
+      .mockResolvedValueOnce([newVersion]);
 
     await updateAgent({
       agentId: orchestrator.id,

@@ -1,5 +1,5 @@
-import { expect,test } from "@playwright/test";
-import { e2eUser,ensureE2EUser,login } from "./fixtures";
+import { expect, test } from "@playwright/test";
+import { e2eUser, ensureE2EUser, login } from "./fixtures";
 
 test.beforeAll(async () => {
   await ensureE2EUser();
@@ -14,13 +14,17 @@ test.describe("settings page", () => {
     await page.goto("/en/settings");
     await expect(page).toHaveURL(/\/en\/settings/);
 
-    await expect(page.getByRole("heading", { name: /Settings/i }).first()).toBeVisible({ timeout: 10_000 });
+    await expect(
+      page.getByRole("heading", { name: /Settings/i }).first(),
+    ).toBeVisible({ timeout: 10_000 });
   });
 
   test("shows language preference in the account menu", async ({ page }) => {
     await page.goto("/en/settings");
     await page.getByRole("button", { name: e2eUser.name, exact: true }).click();
-    await expect(page.getByRole("menuitem", { name: /Language.*English/i })).toBeVisible({ timeout: 10_000 });
+    await expect(
+      page.getByRole("menuitem", { name: /Language.*English/i }),
+    ).toBeVisible({ timeout: 10_000 });
   });
 
   test("admin settings link exists for admins", async ({ page }) => {
@@ -28,7 +32,9 @@ test.describe("settings page", () => {
     await page.waitForTimeout(2000);
 
     // Admin link should be visible for admin users
-    const adminLink = page.getByRole("link", { name: /platform settings|admin/i }).first();
+    const adminLink = page
+      .getByRole("link", { name: /platform settings|admin/i })
+      .first();
 
     if (await adminLink.isVisible()) {
       await expect(adminLink).toBeVisible();
@@ -36,7 +42,9 @@ test.describe("settings page", () => {
   });
 
   test("persists organization logo and preset theme", async ({ page }) => {
-    const workspaces = (await (await page.request.get("/api/workspaces")).json()) as Array<{ workspace: { id: string } }>;
+    const workspaces = (await (
+      await page.request.get("/api/workspaces")
+    ).json()) as Array<{ workspace: { id: string } }>;
     const workspaceId = workspaces[0]?.workspace.id;
     if (!workspaceId) throw new Error("E2E workspace is missing");
 
@@ -59,11 +67,18 @@ test.describe("settings page", () => {
 
       await branding.getByRole("button", { name: "Forest" }).click();
       await branding.getByRole("button", { name: "Save branding" }).click();
-      await expect(page.locator("html")).toHaveAttribute("data-brand-theme", "forest");
+      await expect(page.locator("html")).toHaveAttribute(
+        "data-brand-theme",
+        "forest",
+      );
       await page.reload({ waitUntil: "domcontentloaded", timeout: 15_000 });
-      await expect(branding.getByRole("button", { name: "Forest" })).toHaveAttribute("aria-pressed", "true");
+      await expect(
+        branding.getByRole("button", { name: "Forest" }),
+      ).toHaveAttribute("aria-pressed", "true");
 
-      await branding.locator('input[type="file"]').setInputFiles("public/deodis-logo.png");
+      await branding
+        .locator('input[type="file"]')
+        .setInputFiles("public/deodis-logo.png");
       await branding.getByRole("button", { name: "Save branding" }).click();
       await page.reload();
       await expect(branding.locator('img[src^="data:image/"]')).toBeVisible();
@@ -72,9 +87,13 @@ test.describe("settings page", () => {
     }
   });
 
-  test("persists a custom light and dark organization palette", async ({ page }) => {
+  test("persists a custom light and dark organization palette", async ({
+    page,
+  }) => {
     test.setTimeout(120_000);
-    const workspaces = (await (await page.request.get("/api/workspaces")).json()) as Array<{ workspace: { id: string } }>;
+    const workspaces = (await (
+      await page.request.get("/api/workspaces")
+    ).json()) as Array<{ workspace: { id: string } }>;
     const workspaceId = workspaces[0]?.workspace.id;
     if (!workspaceId) throw new Error("E2E workspace is missing");
 
@@ -84,17 +103,44 @@ test.describe("settings page", () => {
         has: page.getByRole("heading", { name: "Organization branding" }),
       });
       await branding.getByRole("button", { name: "Custom" }).click();
-      await branding.getByLabel("light primary", { exact: true }).fill("#123456");
+      await branding
+        .getByLabel("light primary", { exact: true })
+        .fill("#123456");
       await branding.locator("summary").filter({ hasText: "Dark" }).click();
-      await branding.getByLabel("dark primary", { exact: true }).fill("#abcdef");
+      await branding
+        .getByLabel("dark primary", { exact: true })
+        .fill("#abcdef");
       await branding.getByRole("button", { name: "Save branding" }).click();
 
-      await expect(page.locator("html")).toHaveAttribute("data-brand-theme", "custom");
-      await expect.poll(() => page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--primary").trim())).toBe("#123456");
-      await page.locator("html").evaluate((element) => element.classList.add("dark"));
-      await expect.poll(() => page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--primary").trim())).toBe("#abcdef");
+      await expect(page.locator("html")).toHaveAttribute(
+        "data-brand-theme",
+        "custom",
+      );
+      await expect
+        .poll(() =>
+          page.evaluate(() =>
+            getComputedStyle(document.documentElement)
+              .getPropertyValue("--primary")
+              .trim(),
+          ),
+        )
+        .toBe("#123456");
+      await page
+        .locator("html")
+        .evaluate((element) => element.classList.add("dark"));
+      await expect
+        .poll(() =>
+          page.evaluate(() =>
+            getComputedStyle(document.documentElement)
+              .getPropertyValue("--primary")
+              .trim(),
+          ),
+        )
+        .toBe("#abcdef");
       await page.reload();
-      await expect(branding.getByRole("button", { name: "Custom" })).toHaveAttribute("aria-pressed", "true");
+      await expect(
+        branding.getByRole("button", { name: "Custom" }),
+      ).toHaveAttribute("aria-pressed", "true");
     } finally {
       await page.request.put("/api/workspace/branding", {
         data: {

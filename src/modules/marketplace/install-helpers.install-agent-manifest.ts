@@ -11,6 +11,8 @@ import {
   mcpTools,
 } from "@/server/infrastructure/db/schema";
 import { and, eq, isNull, or } from "drizzle-orm";
+import { randomUUID } from "node:crypto";
+import { installAgentSpecialists } from "./install-helpers.install-agent-specialists";
 import {
   installCustomTool,
   installMcpPreset,
@@ -95,13 +97,14 @@ export async function installAgentManifest(
     .values({
       workspaceId: input.workspaceId,
       name: input.manifest.name,
-      slug: `${slugify(input.manifest.name)}-${Date.now().toString(36)}`,
+      slug: `${slugify(input.manifest.name)}-${Date.now().toString(36)}-${randomUUID().slice(0, 8)}`,
       description: input.manifest.description ?? input.itemDescription,
       visibility: "workspace",
       sourceType: "marketplace_install",
       marketplaceItemId: input.itemId,
       marketplaceVersionId: input.versionId,
       createdById: input.userId,
+      kind: input.manifest.kind ?? "assistant",
     })
     .returning();
 
@@ -137,6 +140,7 @@ export async function installAgentManifest(
       memoryPolicyJson: input.manifest.agent.memoryPolicy ?? null,
       guardrailsJson: input.manifest.agent.guardrails ?? null,
       approvalPolicyJson: input.manifest.agent.approvalPolicy ?? null,
+      orchestrationPolicyJson: input.manifest.agent.orchestrationPolicy ?? null,
       createdById: input.userId,
     })
     .returning();
@@ -279,6 +283,17 @@ export async function installAgentManifest(
       knowledgeBaseId: kb.id,
     });
   }
+  await installAgentSpecialists({
+    tx,
+    agentVersionId: agentVersion.id,
+    specialists: input.manifest.specialists ?? [],
+    install: (manifest) =>
+      installAgentManifest(tx, {
+        ...input,
+        manifest,
+        itemDescription: manifest.description,
+      }),
+  });
 
   return installedAgent;
 }

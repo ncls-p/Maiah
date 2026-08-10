@@ -81,8 +81,7 @@ export async function GET(req: NextRequest) {
               error instanceof Error && error.message.includes("not found")
                 ? 404
                 : error instanceof Error &&
-                    error.message ===
-                      "Orchestrators cannot be published to the marketplace yet"
+                    error.message.includes("Delegation graph")
                   ? 400
                   : 500,
           },

@@ -1,4 +1,4 @@
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   generateText: vi.fn(),
@@ -62,7 +62,10 @@ vi.mock("@/lib/logger", () => ({
   logger: { warn: mocks.logWarning },
 }));
 
-import { abortActiveAgentRun,executeAgent } from "@/modules/agent/runtime-executor";
+import {
+  abortActiveAgentRun,
+  executeAgent,
+} from "@/modules/agent/runtime-executor";
 
 const rootAgent = {
   id: "11111111-1111-4111-8111-111111111111",

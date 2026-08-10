@@ -1,5 +1,8 @@
-import type { McpPresetMarketplaceManifest,ToolMarketplaceManifest } from "@/modules/marketplace/manifest-types";
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import type {
+  McpPresetMarketplaceManifest,
+  ToolMarketplaceManifest,
+} from "@/modules/marketplace/manifest-types";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // ─── DB mock ────────────────────────────────────────────────────────────
 
@@ -50,7 +53,9 @@ import * as _dbModule from "@/server/infrastructure/db";
 const dbModule = _dbModule as unknown as DbModule;
 const mockBuildTool = vi.mocked(manifestBuilders.buildCustomToolManifest);
 const mockBuildMcp = vi.mocked(manifestBuilders.buildMcpPresetManifest);
-const mockFindDraft = vi.mocked(draftHelpers.findExistingDraft) as ReturnType<typeof vi.fn<() => Promise<unknown>>>;
+const mockFindDraft = vi.mocked(draftHelpers.findExistingDraft) as ReturnType<
+  typeof vi.fn<() => Promise<unknown>>
+>;
 
 function resetChains() {
   dbModule._selectChain.from.mockReset().mockReturnThis();
@@ -88,7 +93,9 @@ const mcpManifest: McpPresetMarketplaceManifest = {
     enabled: true,
     requireApproval: true,
     requiresCredentials: true,
-    credentialSchema: [{ key: "GH_TOKEN", label: "GitHub Token", required: true }],
+    credentialSchema: [
+      { key: "GH_TOKEN", label: "GitHub Token", required: true },
+    ],
     tools: [{ name: "list_repos", requireApproval: false, enabled: true }],
   },
 };
@@ -163,7 +170,9 @@ describe("getPublishPreview", () => {
       // Second query: mcpTools — uses .where() as terminal (no .limit())
       dbModule._selectChain.where
         .mockReturnValueOnce(dbModule._selectChain) // server where → keeps chain for limit
-        .mockResolvedValueOnce([{ id: "tool-1", name: "list_repos", mcpServerId: serverId }]);
+        .mockResolvedValueOnce([
+          { id: "tool-1", name: "list_repos", mcpServerId: serverId },
+        ]);
       mockBuildMcp.mockReturnValueOnce(mcpManifest);
 
       const preview = await getPublishPreview({
@@ -196,7 +205,11 @@ describe("getPublishPreview", () => {
     });
 
     it("throws when MCP server not found for tool", async () => {
-      dbModule._selectChain.limit.mockResolvedValueOnce([{ id: "tool-1", name: "list_repos", mcpServerId: "srv-1" }]).mockResolvedValueOnce([]);
+      dbModule._selectChain.limit
+        .mockResolvedValueOnce([
+          { id: "tool-1", name: "list_repos", mcpServerId: "srv-1" },
+        ])
+        .mockResolvedValueOnce([]);
 
       await expect(
         getPublishPreview({

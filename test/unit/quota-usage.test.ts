@@ -1,4 +1,4 @@
-import { afterEach,beforeEach,describe,expect,it,vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // ─── DB mock ────────────────────────────────────────────────────────────
 
@@ -29,7 +29,10 @@ vi.mock("@/server/infrastructure/db", () => {
   };
 });
 
-import { assertWorkspaceWithinTokenQuota,getWorkspaceMonthlyTokenUsage } from "@/modules/usage/quota";
+import {
+  assertWorkspaceWithinTokenQuota,
+  getWorkspaceMonthlyTokenUsage,
+} from "@/modules/usage/quota";
 import * as _dbModule from "@/server/infrastructure/db";
 const dbModule = _dbModule as unknown as DbModule;
 
@@ -112,7 +115,9 @@ describe("assertWorkspaceWithinTokenQuota", () => {
       used: 1000000,
       limit: 1000000,
     });
-    expect((result as { message: string }).message).toContain("Monthly token limit reached");
+    expect((result as { message: string }).message).toContain(
+      "Monthly token limit reached",
+    );
   });
 
   it("denies when usage exceeds the limit", async () => {

@@ -1,9 +1,16 @@
-import { normalizeOrchestrationPolicy,orchestrationPolicyCaps,orchestrationPolicyDefaults,orchestrationPolicySchema } from "@/modules/agent/orchestration-policy";
-import { describe,expect,it } from "vitest";
+import {
+  normalizeOrchestrationPolicy,
+  orchestrationPolicyCaps,
+  orchestrationPolicyDefaults,
+  orchestrationPolicySchema,
+} from "@/modules/agent/orchestration-policy";
+import { describe, expect, it } from "vitest";
 
 describe("orchestration policy", () => {
   it("uses conservative defaults", () => {
-    expect(normalizeOrchestrationPolicy(null)).toEqual(orchestrationPolicyDefaults);
+    expect(normalizeOrchestrationPolicy(null)).toEqual(
+      orchestrationPolicyDefaults,
+    );
   });
 
   it("rejects values above hard runtime caps", () => {
@@ -16,7 +23,9 @@ describe("orchestration policy", () => {
   });
 
   it("accepts an explicit bounded policy", () => {
-    expect(normalizeOrchestrationPolicy({ maxParallel: 1, timeoutMs: 30_000 })).toMatchObject({ maxParallel: 1, timeoutMs: 30_000 });
+    expect(
+      normalizeOrchestrationPolicy({ maxParallel: 1, timeoutMs: 30_000 }),
+    ).toMatchObject({ maxParallel: 1, timeoutMs: 30_000 });
   });
 
   it("upgrades legacy one-step specialists and rejects new unsafe policies", () => {

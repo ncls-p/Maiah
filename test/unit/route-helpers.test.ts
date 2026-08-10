@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { describe,expect,it,vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
 const getSessionMock = vi.hoisted(() => vi.fn());
@@ -18,7 +18,18 @@ vi.mock("@/modules/auth/session", () => ({
 
 describe("route-helpers", async () => {
   // Dynamic import to avoid module-level env validation
-  const { unauthorizedResponse, forbiddenResponse, notFoundResponse, badRequestResponse, conflictResponse, isUniqueConstraintError, handleRouteError, parseSearchParams, parseJsonBody, requireAuthSession } = await import("@/lib/route-helpers");
+  const {
+    unauthorizedResponse,
+    forbiddenResponse,
+    notFoundResponse,
+    badRequestResponse,
+    conflictResponse,
+    isUniqueConstraintError,
+    handleRouteError,
+    parseSearchParams,
+    parseJsonBody,
+    requireAuthSession,
+  } = await import("@/lib/route-helpers");
 
   describe("response helpers", () => {
     it("unauthorizedResponse returns 401", () => {
@@ -60,7 +71,9 @@ describe("route-helpers", async () => {
 
   describe("isUniqueConstraintError", () => {
     it("detects PostgreSQL unique constraint error", () => {
-      expect(isUniqueConstraintError({ code: "23505", detail: "duplicate" })).toBe(true);
+      expect(
+        isUniqueConstraintError({ code: "23505", detail: "duplicate" }),
+      ).toBe(true);
     });
 
     it("returns false for non-unique errors", () => {

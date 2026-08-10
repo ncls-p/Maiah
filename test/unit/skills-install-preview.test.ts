@@ -1,6 +1,6 @@
-import { mkdirSync,writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const execMocks = vi.hoisted(() => ({ execFile: vi.fn() }));
 
@@ -48,7 +48,13 @@ vi.mock("@/server/infrastructure/db", () => {
 });
 
 import { logHandledError } from "@/lib/logger";
-import { createSkillInstallPreviewToken,installSkillsFromCommand,previewSkillInstall,SkillPreviewConflictError,verifySkillInstallPreviewToken } from "@/modules/skills/use-cases";
+import {
+  createSkillInstallPreviewToken,
+  installSkillsFromCommand,
+  previewSkillInstall,
+  SkillPreviewConflictError,
+  verifySkillInstallPreviewToken,
+} from "@/modules/skills/use-cases";
 import * as _dbModule from "@/server/infrastructure/db";
 
 const dbModule = _dbModule as unknown as DbModule;
@@ -56,7 +62,10 @@ const dbModule = _dbModule as unknown as DbModule;
 function createInstalledSkillTree(tempDir: string, suffix = "") {
   const skillDir = path.join(tempDir, ".claude", "skills", "research-skill");
   mkdirSync(path.join(skillDir, "docs"), { recursive: true });
-  writeFileSync(path.join(skillDir, "SKILL.md"), `---\nname: research-skill\ndescription: Research things\n---\n\n# Research\nUse sources.${suffix}`);
+  writeFileSync(
+    path.join(skillDir, "SKILL.md"),
+    `---\nname: research-skill\ndescription: Research things\n---\n\n# Research\nUse sources.${suffix}`,
+  );
   writeFileSync(path.join(skillDir, "docs", "guide.md"), "# Guide\nDetails");
   writeFileSync(path.join(skillDir, "ignored.txt"), "ignore");
 }
@@ -64,10 +73,16 @@ function createInstalledSkillTree(tempDir: string, suffix = "") {
 beforeEach(() => {
   vi.clearAllMocks();
   dbModule.db.insert.mockReset().mockReturnValue(dbModule._c);
-  dbModule.db.transaction.mockReset().mockImplementation(async (callback) => callback({ insert: dbModule.db.insert }));
+  dbModule.db.transaction
+    .mockReset()
+    .mockImplementation(async (callback) =>
+      callback({ insert: dbModule.db.insert }),
+    );
   dbModule._c.insert.mockReset().mockReturnThis();
   dbModule._c.values.mockReset().mockReturnThis();
-  dbModule._c.returning.mockReset().mockResolvedValue([{ id: "skill-1", name: "research-skill" }]);
+  dbModule._c.returning
+    .mockReset()
+    .mockResolvedValue([{ id: "skill-1", name: "research-skill" }]);
   execMocks.execFile.mockImplementation((_cmd, _args, options, callback) => {
     createInstalledSkillTree(options.cwd);
     callback(null, { stdout: "\u001b[32minstalled\u001b[0m", stderr: "" });
@@ -76,19 +91,30 @@ beforeEach(() => {
 
 describe("skills install and preview", () => {
   it("previews installed skills from copied markdown", async () => {
-    const result = await previewSkillInstall("npx skills add owner/repo --skill research-skill");
+    const result = await previewSkillInstall(
+      "npx skills add owner/repo --skill research-skill",
+    );
 
     expect(result).toEqual([
       expect.objectContaining({
         name: "research-skill",
         description: "Research things",
         sourcePackage: "owner/repo",
-        markdownFiles: [expect.objectContaining({ path: "SKILL.md" }), expect.objectContaining({ path: "docs/guide.md" })],
+        markdownFiles: [
+          expect.objectContaining({ path: "SKILL.md" }),
+          expect.objectContaining({ path: "docs/guide.md" }),
+        ],
       }),
     ]);
     expect(execMocks.execFile).toHaveBeenCalledWith(
       "npx",
-      expect.arrayContaining(["skills", "add", "owner/repo", "--skill", "research-skill"]),
+      expect.arrayContaining([
+        "skills",
+        "add",
+        "owner/repo",
+        "--skill",
+        "research-skill",
+      ]),
       expect.objectContaining({
         env: expect.objectContaining({ GIT_TERMINAL_PROMPT: "0" }),
       }),
@@ -136,10 +162,12 @@ describe("skills install and preview", () => {
       installCommand,
       skills,
     });
-    execMocks.execFile.mockImplementationOnce((_cmd, _args, options, callback) => {
-      createInstalledSkillTree(options.cwd, " Changed after review.");
-      callback(null, { stdout: "installed", stderr: "" });
-    });
+    execMocks.execFile.mockImplementationOnce(
+      (_cmd, _args, options, callback) => {
+        createInstalledSkillTree(options.cwd, " Changed after review.");
+        callback(null, { stdout: "installed", stderr: "" });
+      },
+    );
 
     await expect(
       installSkillsFromCommand({
@@ -194,19 +222,27 @@ describe("skills install and preview", () => {
   });
 
   it("logs and rethrows CLI failures", async () => {
-    execMocks.execFile.mockImplementationOnce((_cmd, _args, _options, callback) => {
-      const error = new Error("failed") as Error & {
-        code: number;
-        stdout: Buffer;
-        stderr: string;
-      };
-      error.code = 1;
-      error.stdout = Buffer.from("out");
-      error.stderr = "err";
-      callback(error);
-    });
+    execMocks.execFile.mockImplementationOnce(
+      (_cmd, _args, _options, callback) => {
+        const error = new Error("failed") as Error & {
+          code: number;
+          stdout: Buffer;
+          stderr: string;
+        };
+        error.code = 1;
+        error.stdout = Buffer.from("out");
+        error.stderr = "err";
+        callback(error);
+      },
+    );
 
-    await expect(previewSkillInstall("npx skills add owner/repo --skill bad")).rejects.toThrow("Skill CLI failed (exit 1): out\nerr");
-    expect(logHandledError).toHaveBeenCalledWith("Failed to preview skill install", expect.objectContaining({ sourcePackage: "owner/repo" }), expect.any(Error));
+    await expect(
+      previewSkillInstall("npx skills add owner/repo --skill bad"),
+    ).rejects.toThrow("Skill CLI failed (exit 1): out\nerr");
+    expect(logHandledError).toHaveBeenCalledWith(
+      "Failed to preview skill install",
+      expect.objectContaining({ sourcePackage: "owner/repo" }),
+      expect.any(Error),
+    );
   });
 });

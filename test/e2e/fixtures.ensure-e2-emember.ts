@@ -3,7 +3,13 @@ import { cache } from "@/server/infrastructure/cache";
 import { hashPassword } from "better-auth/crypto";
 import { randomUUID } from "node:crypto";
 import { Client } from "pg";
-import { databaseUrl,e2eAccessManager,e2eMember,e2eOrganizationAdmin,e2eOrganizationProjectEditor } from "./fixtures.e2e-user";
+import {
+  databaseUrl,
+  e2eAccessManager,
+  e2eMember,
+  e2eOrganizationAdmin,
+  e2eOrganizationProjectEditor,
+} from "./fixtures.e2e-user";
 
 export async function ensureE2EMember() {
   const client = new Client({ connectionString: databaseUrl() });
@@ -41,8 +47,14 @@ export async function ensureE2EMember() {
     }
 
     const password = await hashPassword(e2eMember.password);
-    await client.query("delete from account where account_id = $1 and provider_id = 'credential'", [userId]);
-    await client.query("insert into account (account_id, provider_id, user_id, password, created_at, updated_at) values ($1, 'credential', $2, $3, now(), now())", [userId, userId, password]);
+    await client.query(
+      "delete from account where account_id = $1 and provider_id = 'credential'",
+      [userId],
+    );
+    await client.query(
+      "insert into account (account_id, provider_id, user_id, password, created_at, updated_at) values ($1, 'credential', $2, $3, now(), now())",
+      [userId, userId, password],
+    );
     await client.query(
       `insert into organization_members
        (organization_id, user_id, status, created_at, updated_at)
@@ -51,7 +63,10 @@ export async function ensureE2EMember() {
        set status = 'active', updated_at = now()`,
       [organizationId, userId],
     );
-    await client.query(`delete from workspace_members where workspace_id = $1 and user_id = $2`, [workspaceId, userId]);
+    await client.query(
+      `delete from workspace_members where workspace_id = $1 and user_id = $2`,
+      [workspaceId, userId],
+    );
     await client.query(
       `delete from role_bindings
        where principal_type = 'user' and principal_id = $1
@@ -69,7 +84,11 @@ export async function ensureE2EMember() {
        values ($1, $2::jsonb, $3, now())
        on conflict (key) do update
        set value_json = excluded.value_json, updated_at = now()`,
-      [`onboarding.complete:${userId}`, JSON.stringify({ completed: true, source: "playwright" }), userId],
+      [
+        `onboarding.complete:${userId}`,
+        JSON.stringify({ completed: true, source: "playwright" }),
+        userId,
+      ],
     );
     await cache.delByPrefix(`perm:${userId}:`);
   } finally {
@@ -77,7 +96,13 @@ export async function ensureE2EMember() {
   }
 }
 
-export async function ensureE2EPermissionUser(input: { user: { name: string; email: string; password: string }; roleName: string; roleDisplayName?: string; roleScope: "organization" | "workspace"; permissions?: string[] }) {
+export async function ensureE2EPermissionUser(input: {
+  user: { name: string; email: string; password: string };
+  roleName: string;
+  roleDisplayName?: string;
+  roleScope: "organization" | "workspace";
+  permissions?: string[];
+}) {
   const client = new Client({ connectionString: databaseUrl() });
   await client.connect();
   try {
@@ -107,8 +132,14 @@ export async function ensureE2EPermissionUser(input: { user: { name: string; ema
     }
 
     const password = await hashPassword(input.user.password);
-    await client.query("delete from account where account_id = $1 and provider_id = 'credential'", [userId]);
-    await client.query("insert into account (account_id, provider_id, user_id, password, created_at, updated_at) values ($1, 'credential', $2, $3, now(), now())", [userId, userId, password]);
+    await client.query(
+      "delete from account where account_id = $1 and provider_id = 'credential'",
+      [userId],
+    );
+    await client.query(
+      "insert into account (account_id, provider_id, user_id, password, created_at, updated_at) values ($1, 'credential', $2, $3, now(), now())",
+      [userId, userId, password],
+    );
     await client.query(
       `insert into organization_members
        (organization_id, user_id, status, created_at, updated_at)
@@ -117,7 +148,10 @@ export async function ensureE2EPermissionUser(input: { user: { name: string; ema
        set status = 'active', updated_at = now()`,
       [organizationId, userId],
     );
-    await client.query(`delete from workspace_members where workspace_id = $1 and user_id = $2`, [workspaceId, userId]);
+    await client.query(
+      `delete from workspace_members where workspace_id = $1 and user_id = $2`,
+      [workspaceId, userId],
+    );
 
     let roleId: string | undefined;
     if (input.permissions) {
@@ -134,16 +168,30 @@ export async function ensureE2EPermissionUser(input: { user: { name: string; ema
              permissions_json = excluded.permissions_json,
              updated_at = now()
          returning id`,
-        [randomUUID(), input.roleScope, input.roleScope, input.roleScope === "organization" ? organizationId : workspaceId, input.roleName, input.roleDisplayName ?? input.roleName, "E2E restricted permission manager", JSON.stringify(input.permissions), userId],
+        [
+          randomUUID(),
+          input.roleScope,
+          input.roleScope,
+          input.roleScope === "organization" ? organizationId : workspaceId,
+          input.roleName,
+          input.roleDisplayName ?? input.roleName,
+          "E2E restricted permission manager",
+          JSON.stringify(input.permissions),
+          userId,
+        ],
       );
       roleId = role.rows[0]?.id;
     } else {
-      const role = await client.query<{ id: string }>(`select id from roles where name = $1 and is_system = true limit 1`, [input.roleName]);
+      const role = await client.query<{ id: string }>(
+        `select id from roles where name = $1 and is_system = true limit 1`,
+        [input.roleName],
+      );
       roleId = role.rows[0]?.id;
     }
     if (!roleId) throw new Error("E2E permission role is not initialized");
 
-    const resourceId = input.roleScope === "organization" ? organizationId : workspaceId;
+    const resourceId =
+      input.roleScope === "organization" ? organizationId : workspaceId;
     await client.query(
       `delete from role_bindings
        where principal_type = 'user' and principal_id = $1
@@ -162,7 +210,11 @@ export async function ensureE2EPermissionUser(input: { user: { name: string; ema
        values ($1, $2::jsonb, $3, now())
        on conflict (key) do update
        set value_json = excluded.value_json, updated_at = now()`,
-      [`onboarding.complete:${userId}`, JSON.stringify({ completed: true, source: "playwright" }), userId],
+      [
+        `onboarding.complete:${userId}`,
+        JSON.stringify({ completed: true, source: "playwright" }),
+        userId,
+      ],
     );
   } finally {
     await client.end();

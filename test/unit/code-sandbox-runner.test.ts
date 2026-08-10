@@ -1,11 +1,11 @@
-import { spawn,type ChildProcessByStdio } from "node:child_process";
-import { existsSync,mkdtempSync,readdirSync,rmSync } from "node:fs";
+import { spawn, type ChildProcessByStdio } from "node:child_process";
+import { existsSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
 import http from "node:http";
 import os from "node:os";
 import path from "node:path";
 import type { Readable } from "node:stream";
 
-import { afterAll,beforeAll,describe,expect,it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 type SandboxResponse = {
   ok?: boolean;
@@ -47,34 +47,36 @@ function waitForSocket() {
 }
 
 function requestRun(payload: unknown) {
-  return new Promise<{ status: number | undefined; body: SandboxResponse }>((resolve, reject) => {
-    const body = JSON.stringify(payload);
-    const request = http.request(
-      {
-        socketPath,
-        path: "/run",
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Content-Length": Buffer.byteLength(body),
+  return new Promise<{ status: number | undefined; body: SandboxResponse }>(
+    (resolve, reject) => {
+      const body = JSON.stringify(payload);
+      const request = http.request(
+        {
+          socketPath,
+          path: "/run",
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Content-Length": Buffer.byteLength(body),
+          },
         },
-      },
-      (response) => {
-        let responseBody = "";
-        response.on("data", (chunk: Buffer) => {
-          responseBody += chunk.toString("utf8");
-        });
-        response.on("end", () => {
-          resolve({
-            status: response.statusCode,
-            body: JSON.parse(responseBody) as SandboxResponse,
+        (response) => {
+          let responseBody = "";
+          response.on("data", (chunk: Buffer) => {
+            responseBody += chunk.toString("utf8");
           });
-        });
-      },
-    );
-    request.on("error", reject);
-    request.end(body);
-  });
+          response.on("end", () => {
+            resolve({
+              status: response.statusCode,
+              body: JSON.parse(responseBody) as SandboxResponse,
+            });
+          });
+        },
+      );
+      request.on("error", reject);
+      request.end(body);
+    },
+  );
 }
 
 describe("sandbox-runner", () => {
@@ -108,7 +110,11 @@ describe("sandbox-runner", () => {
   it("runs Node.js code, returns stdout, and previews generated files", async () => {
     const result = await requestRun({
       language: "node",
-      code: ['const fs = require("node:fs");', 'console.log([1, 2, 3].map((value) => value * value).join(","));', 'fs.writeFileSync("result.txt", "squares=1,4,9");'].join("\n"),
+      code: [
+        'const fs = require("node:fs");',
+        'console.log([1, 2, 3].map((value) => value * value).join(","));',
+        'fs.writeFileSync("result.txt", "squares=1,4,9");',
+      ].join("\n"),
     });
 
     expect(result.status).toBe(200);
@@ -127,7 +133,9 @@ describe("sandbox-runner", () => {
   it("runs Bash commands with binary input files", async () => {
     const result = await requestRun({
       language: "bash",
-      code: ["wc -c < data/input.bin", "printf 'bash-ok' > output.txt"].join("\n"),
+      code: ["wc -c < data/input.bin", "printf 'bash-ok' > output.txt"].join(
+        "\n",
+      ),
       files: [
         {
           path: "data/input.bin",
@@ -174,14 +182,21 @@ describe("sandbox-runner", () => {
     const largeInput = JSON.stringify({ body: "x".repeat(150_000) });
     const result = await requestRun({
       language: "node",
-      code: ["const chunks = [];", "for await (const chunk of process.stdin) chunks.push(chunk);", "const input = JSON.parse(Buffer.concat(chunks).toString());", "console.log(JSON.stringify({ size: input.body.length }));"].join("\n"),
+      code: [
+        "const chunks = [];",
+        "for await (const chunk of process.stdin) chunks.push(chunk);",
+        "const input = JSON.parse(Buffer.concat(chunks).toString());",
+        "console.log(JSON.stringify({ size: input.body.length }));",
+      ].join("\n"),
       stdinFileBase64: Buffer.from(largeInput).toString("base64"),
     });
 
     expect(result.status).toBe(200);
     expect(result.body.ok).toBe(true);
     expect(result.body.stdout?.trim()).toBe('{"size":150000}');
-    expect(result.body.files).not.toContainEqual(expect.objectContaining({ path: ".stdin" }));
+    expect(result.body.files).not.toContainEqual(
+      expect.objectContaining({ path: ".stdin" }),
+    );
     expect(readdirSync(runRoot)).toEqual([]);
   });
 
@@ -194,8 +209,12 @@ describe("sandbox-runner", () => {
     expect(result.status).toBe(200);
     expect(result.body.ok).toBe(true);
     expect(result.body.truncated).toBe(false);
-    expect((JSON.parse(result.body.stdout ?? "{}") as { body?: string }).body).toHaveLength(150_000);
-    expect(result.body.files).not.toContainEqual(expect.objectContaining({ path: ".stdout" }));
+    expect(
+      (JSON.parse(result.body.stdout ?? "{}") as { body?: string }).body,
+    ).toHaveLength(150_000);
+    expect(result.body.files).not.toContainEqual(
+      expect.objectContaining({ path: ".stdout" }),
+    );
     expect(readdirSync(runRoot)).toEqual([]);
   });
 
@@ -208,7 +227,9 @@ describe("sandbox-runner", () => {
     expect(result.status).toBe(200);
     expect(result.body.ok).toBe(false);
     expect(result.body.truncated).toBe(true);
-    expect(result.body.error).toContain("standard output exceeded 1500000 bytes");
+    expect(result.body.error).toContain(
+      "standard output exceeded 1500000 bytes",
+    );
     expect(readdirSync(runRoot)).toEqual([]);
   });
 
@@ -228,7 +249,10 @@ describe("sandbox-runner", () => {
   it("keeps the actual exception when stderr exceeds its limit", async () => {
     const result = await requestRun({
       language: "node",
-      code: ["require('node:fs').writeSync(2, 'x'.repeat(70_000));", "throw new TypeError('real sandbox failure');"].join("\n"),
+      code: [
+        "require('node:fs').writeSync(2, 'x'.repeat(70_000));",
+        "throw new TypeError('real sandbox failure');",
+      ].join("\n"),
     });
 
     expect(result.status).toBe(200);

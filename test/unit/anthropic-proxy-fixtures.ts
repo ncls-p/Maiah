@@ -1,4 +1,4 @@
-import type { LanguageModelUsage,TextStreamPart,ToolSet } from "ai";
+import type { LanguageModelUsage, TextStreamPart, ToolSet } from "ai";
 
 import { anthropicMessagesRequestSchema } from "@/modules/anthropic-proxy/contracts";
 
@@ -32,6 +32,8 @@ export function anthropicRequest(overrides: Record<string, unknown> = {}) {
   });
 }
 
-export async function* anthropicStreamParts(values: Array<TextStreamPart<ToolSet>>) {
+export async function* anthropicStreamParts(
+  values: Array<TextStreamPart<ToolSet>>,
+) {
   for (const value of values) yield value;
 }

@@ -1,8 +1,20 @@
-import { describe,expect,it,vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { listRemoteMcpTools } from "@/modules/mcp/client";
-import { createMcpServer,createMcpServerWithDiscovery,getMcpServer,hasMcpConnectionChanges,listMcpServers,updateMcpServer,updateMcpServerWithDiscovery } from "@/modules/mcp/use-cases";
-import { dbModule,fakeSseServer,fakeStdioServer } from "./mcp-use-cases.test.db-module";
+import {
+  createMcpServer,
+  createMcpServerWithDiscovery,
+  getMcpServer,
+  hasMcpConnectionChanges,
+  listMcpServers,
+  updateMcpServer,
+  updateMcpServerWithDiscovery,
+} from "@/modules/mcp/use-cases";
+import {
+  dbModule,
+  fakeSseServer,
+  fakeStdioServer,
+} from "./mcp-use-cases.test.db-module";
 
 // ─── getMcpServer ─────────────────────────────────────────────────────
 
@@ -92,9 +104,13 @@ describe("createMcpServer", () => {
 describe("automatic MCP tool discovery", () => {
   it("discovers tools as part of server creation", async () => {
     dbModule._c.returning.mockResolvedValueOnce([fakeSseServer]);
-    dbModule._c.where.mockReturnValueOnce(dbModule._c).mockResolvedValueOnce([]);
+    dbModule._c.where
+      .mockReturnValueOnce(dbModule._c)
+      .mockResolvedValueOnce([]);
     dbModule._c.limit.mockResolvedValueOnce([fakeSseServer]);
-    vi.mocked(listRemoteMcpTools).mockResolvedValueOnce([{ name: "search", description: "Search" }] as never);
+    vi.mocked(listRemoteMcpTools).mockResolvedValueOnce([
+      { name: "search", description: "Search" },
+    ] as never);
 
     const result = await createMcpServerWithDiscovery({
       workspaceId: "ws-1",
@@ -116,13 +132,17 @@ describe("automatic MCP tool discovery", () => {
 
     expect(hasMcpConnectionChanges({ ...base, name: "Renamed" })).toBe(false);
     expect(hasMcpConnectionChanges({ ...base, enabled: false })).toBe(false);
-    expect(hasMcpConnectionChanges({ ...base, url: "https://new.test" })).toBe(true);
+    expect(hasMcpConnectionChanges({ ...base, url: "https://new.test" })).toBe(
+      true,
+    );
     expect(hasMcpConnectionChanges({ ...base, headers: {} })).toBe(true);
   });
 
   it("does not rediscover tools for approval-only updates", async () => {
     dbModule._c.limit.mockResolvedValueOnce([fakeSseServer]);
-    dbModule._c.returning.mockResolvedValueOnce([{ ...fakeSseServer, requireApproval: true }]);
+    dbModule._c.returning.mockResolvedValueOnce([
+      { ...fakeSseServer, requireApproval: true },
+    ]);
 
     const result = await updateMcpServerWithDiscovery({
       serverId: "srv-1",
@@ -180,7 +200,9 @@ describe("updateMcpServer", () => {
 
   it("updates server fields and returns updated server", async () => {
     dbModule._c.limit.mockResolvedValueOnce([fakeSseServer]);
-    dbModule._c.returning.mockResolvedValueOnce([{ ...fakeSseServer, name: "Updated" }]);
+    dbModule._c.returning.mockResolvedValueOnce([
+      { ...fakeSseServer, name: "Updated" },
+    ]);
 
     const result = await updateMcpServer({
       serverId: "srv-1",
@@ -193,7 +215,9 @@ describe("updateMcpServer", () => {
   });
 
   it("merges encrypted headers when updating existing headers", async () => {
-    dbModule._c.limit.mockResolvedValueOnce([{ ...fakeSseServer, encryptedHeadersJson: { Authorization: "enc:old" } }]);
+    dbModule._c.limit.mockResolvedValueOnce([
+      { ...fakeSseServer, encryptedHeadersJson: { Authorization: "enc:old" } },
+    ]);
     dbModule._c.returning.mockResolvedValueOnce([fakeSseServer]);
     const { decryptValue, encryptValue } = await import("@/lib/crypto");
 

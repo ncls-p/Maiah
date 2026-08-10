@@ -1,10 +1,16 @@
-import { describe,expect,it,vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { encryptValue } from "@/lib/crypto";
-import { logHandledError,logHandledWarning } from "@/lib/logger";
+import { logHandledError, logHandledWarning } from "@/lib/logger";
 import { executeAgent } from "@/modules/agent/runtime-executor";
 import { getAgentById } from "@/modules/agent/use-cases";
-import { createScheduledTask,deleteScheduledTask,listScheduledTasks,processDueScheduledTasks,updateScheduledTask } from "@/modules/scheduled-tasks/use-cases";
+import {
+  createScheduledTask,
+  deleteScheduledTask,
+  listScheduledTasks,
+  processDueScheduledTasks,
+  updateScheduledTask,
+} from "@/modules/scheduled-tasks/use-cases";
 import { getBuiltInToolByName } from "@/modules/tool/builtin-tools";
 import { dbModule } from "./scheduled-tasks-db.test.db-module";
 
@@ -12,11 +18,15 @@ describe("scheduled task CRUD", () => {
   it("lists tasks ordered by next run", async () => {
     dbModule._c.orderBy.mockResolvedValueOnce([{ id: "task-1" }]);
 
-    await expect(listScheduledTasks("ws-1", "user-1")).resolves.toEqual([{ id: "task-1" }]);
+    await expect(listScheduledTasks("ws-1", "user-1")).resolves.toEqual([
+      { id: "task-1" },
+    ]);
   });
 
   it("creates normalized tasks after checking agent access", async () => {
-    dbModule._c.returning.mockResolvedValueOnce([{ id: "task-1", title: "Daily" }]);
+    dbModule._c.returning.mockResolvedValueOnce([
+      { id: "task-1", title: "Daily" },
+    ]);
 
     const task = await createScheduledTask({
       workspaceId: "ws-1",
@@ -54,7 +64,9 @@ describe("scheduled task CRUD", () => {
         enabled: true,
       },
     ]);
-    dbModule._c.returning.mockResolvedValueOnce([{ id: "task-1", title: "New" }]);
+    dbModule._c.returning.mockResolvedValueOnce([
+      { id: "task-1", title: "New" },
+    ]);
 
     const result = await updateScheduledTask("task-1", "ws-1", "user-1", {
       title: " New ",
@@ -77,7 +89,9 @@ describe("scheduled task CRUD", () => {
 
   it("throws when updating an unknown task and deletes by scope", async () => {
     dbModule._c.limit.mockResolvedValueOnce([]);
-    await expect(updateScheduledTask("missing", "ws-1", "user-1", {})).rejects.toThrow("Scheduled task not found");
+    await expect(
+      updateScheduledTask("missing", "ws-1", "user-1", {}),
+    ).rejects.toThrow("Scheduled task not found");
 
     await deleteScheduledTask("task-1", "ws-1", "user-1");
     expect(dbModule.db.delete).toHaveBeenCalled();
@@ -100,10 +114,16 @@ describe("processDueScheduledTasks", () => {
       intervalMinutes: 30,
       nextRunAt: new Date("2025-01-01T00:00:00Z"),
     };
-    dbModule._c.limit.mockResolvedValueOnce([task]).mockResolvedValueOnce([{ id: "conv-1" }]);
-    dbModule._c.returning.mockResolvedValueOnce([{ id: "message-user" }]).mockResolvedValueOnce([{ id: "message-assistant" }]);
+    dbModule._c.limit
+      .mockResolvedValueOnce([task])
+      .mockResolvedValueOnce([{ id: "conv-1" }]);
+    dbModule._c.returning
+      .mockResolvedValueOnce([{ id: "message-user" }])
+      .mockResolvedValueOnce([{ id: "message-assistant" }]);
 
-    const count = await processDueScheduledTasks(new Date("2025-01-01T00:00:00Z"));
+    const count = await processDueScheduledTasks(
+      new Date("2025-01-01T00:00:00Z"),
+    );
 
     expect(count).toBe(1);
     expect(executeAgent).toHaveBeenCalledWith(
@@ -114,9 +134,13 @@ describe("processDueScheduledTasks", () => {
         idempotencyKey: "task-1:2025-01-01T00:00:00.000Z",
       }),
     );
-    expect(encryptValue).toHaveBeenCalledWith(expect.stringContaining("Tâche planifiée"));
+    expect(encryptValue).toHaveBeenCalledWith(
+      expect.stringContaining("Tâche planifiée"),
+    );
     expect(encryptValue).toHaveBeenCalledWith("Generated answer");
-    expect(dbModule._c.set).toHaveBeenCalledWith(expect.objectContaining({ lastStatus: "success" }));
+    expect(dbModule._c.set).toHaveBeenCalledWith(
+      expect.objectContaining({ lastStatus: "success" }),
+    );
   });
 
   it("creates a conversation when the existing one is missing", async () => {
@@ -142,8 +166,12 @@ describe("processDueScheduledTasks", () => {
 
     await processDueScheduledTasks(new Date("2025-01-01T00:00:00Z"));
 
-    expect(dbModule._c.values).toHaveBeenCalledWith(expect.objectContaining({ title: "Daily research", status: "active" }));
-    expect(dbModule._c.set).toHaveBeenCalledWith(expect.objectContaining({ conversationId: "conv-new" }));
+    expect(dbModule._c.values).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Daily research", status: "active" }),
+    );
+    expect(dbModule._c.set).toHaveBeenCalledWith(
+      expect.objectContaining({ conversationId: "conv-new" }),
+    );
   });
 
   it("marks due tasks failed when execution throws and logs search failures", async () => {
@@ -161,7 +189,9 @@ describe("processDueScheduledTasks", () => {
       intervalMinutes: 30,
       nextRunAt: new Date("2025-01-01T00:00:00Z"),
     };
-    dbModule._c.limit.mockResolvedValueOnce([task]).mockResolvedValueOnce([{ id: "conv-1" }]);
+    dbModule._c.limit
+      .mockResolvedValueOnce([task])
+      .mockResolvedValueOnce([{ id: "conv-1" }]);
     dbModule._c.returning.mockResolvedValueOnce([{ id: "message-user" }]);
     vi.mocked(getBuiltInToolByName).mockReturnValueOnce({
       inputSchema: {
@@ -173,11 +203,19 @@ describe("processDueScheduledTasks", () => {
     } as never);
     vi.mocked(executeAgent).mockRejectedValueOnce(new Error("model down"));
 
-    const count = await processDueScheduledTasks(new Date("2025-01-01T00:00:00Z"));
+    const count = await processDueScheduledTasks(
+      new Date("2025-01-01T00:00:00Z"),
+    );
 
     expect(count).toBe(1);
-    expect(logHandledWarning).toHaveBeenCalledWith("Scheduled task web search failed", expect.objectContaining({ error: "bad input" }));
-    expect(logHandledError).toHaveBeenCalledWith("Scheduled task failed", expect.objectContaining({ taskId: "task-3", error: "model down" }));
+    expect(logHandledWarning).toHaveBeenCalledWith(
+      "Scheduled task web search failed",
+      expect.objectContaining({ error: "bad input" }),
+    );
+    expect(logHandledError).toHaveBeenCalledWith(
+      "Scheduled task failed",
+      expect.objectContaining({ taskId: "task-3", error: "model down" }),
+    );
     expect(dbModule._c.set).toHaveBeenCalledWith(
       expect.objectContaining({
         lastStatus: "failed",

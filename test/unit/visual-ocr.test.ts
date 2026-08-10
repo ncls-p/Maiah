@@ -1,4 +1,4 @@
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   destroy: vi.fn(),
@@ -27,7 +27,12 @@ vi.mock("@/modules/knowledge/rag-config", () => ({
   resolveOcrModel: mocks.resolveOcrModel,
 }));
 
-import { inspectPdfVisualCandidates,isSupportedOcrImage,runVisualOcr,visualRegionsMarkdown } from "@/modules/document-extraction/visual-ocr";
+import {
+  inspectPdfVisualCandidates,
+  isSupportedOcrImage,
+  runVisualOcr,
+  visualRegionsMarkdown,
+} from "@/modules/document-extraction/visual-ocr";
 import { DEFAULT_RAG_CONFIG } from "@/modules/knowledge/rag-config-schema";
 
 const ocrConfig = {
@@ -75,8 +80,13 @@ describe("visual OCR", () => {
       maxVisualPages: 2,
     });
 
-    expect(mocks.getScreenshot).toHaveBeenCalledWith(expect.objectContaining({ partial: [1, 2] }));
-    expect(candidates.map((candidate) => candidate.sourceRef)).toEqual(["page:1", "page:2"]);
+    expect(mocks.getScreenshot).toHaveBeenCalledWith(
+      expect.objectContaining({ partial: [1, 2] }),
+    );
+    expect(candidates.map((candidate) => candidate.sourceRef)).toEqual([
+      "page:1",
+      "page:2",
+    ]);
     expect(mocks.destroy).toHaveBeenCalledOnce();
   });
 

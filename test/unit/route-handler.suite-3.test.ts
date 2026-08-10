@@ -1,4 +1,4 @@
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock dependencies
 vi.mock("@/modules/auth/session", () => ({
@@ -14,7 +14,8 @@ vi.mock("@/modules/admin/auth", () => ({
 }));
 
 vi.mock("@/server/domain/services/authorization", () => ({
-  matchesPermission: (granted: string, required: string) => granted === required,
+  matchesPermission: (granted: string, required: string) =>
+    granted === required,
   authorization: {
     checkPermission: vi.fn(),
     listPermissions: vi.fn(),
@@ -54,7 +55,8 @@ vi.mock("next/server", () => ({
 import * as authz from "@/server/domain/services/authorization";
 
 describe("route-handler – requireResourcePermissionAsync", async () => {
-  const { requireResourcePermissionAsync } = await import("@/lib/route-handler");
+  const { requireResourcePermissionAsync } =
+    await import("@/lib/route-handler");
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -72,10 +74,21 @@ describe("route-handler – requireResourcePermissionAsync", async () => {
       granted: true,
     });
 
-    const result = await requireResourcePermissionAsync("user-1", "ws-1", "agents.get", "agent", "agent-1");
+    const result = await requireResourcePermissionAsync(
+      "user-1",
+      "ws-1",
+      "agents.get",
+      "agent",
+      "agent-1",
+    );
 
     expect(result).toBeNull();
-    expect(authz.authorization.checkPermission).toHaveBeenCalledWith({ principalType: "user", principalId: "user-1" }, "agents.get", "agent", "agent-1");
+    expect(authz.authorization.checkPermission).toHaveBeenCalledWith(
+      { principalType: "user", principalId: "user-1" },
+      "agents.get",
+      "agent",
+      "agent-1",
+    );
   });
 
   it("returns 403 when the exact resource permission is denied", async () => {
@@ -84,7 +97,13 @@ describe("route-handler – requireResourcePermissionAsync", async () => {
       reason: "Missing permission: agents.get",
     });
 
-    const result = await requireResourcePermissionAsync("user-1", "ws-1", "agents.get", "agent", "agent-1");
+    const result = await requireResourcePermissionAsync(
+      "user-1",
+      "ws-1",
+      "agents.get",
+      "agent",
+      "agent-1",
+    );
 
     expect(result!.status).toBe(403);
     expect(result!.body).toEqual({

@@ -15,8 +15,12 @@ The versioned policy and bindings can be read or replaced through
 Bindings are accepted only when every child is currently visible to the editor,
 belongs to the same workspace, and the pinned version belongs to that child.
 Duplicate children, direct self-delegation and indirect cycles through pinned
-versions are rejected before activation. Agent marketplace manifests reject
-orchestrators in V1 so a package cannot silently omit its delegation graph.
+versions are rejected before activation. Publishing an orchestrator produces a
+graph-complete marketplace package: every direct specialist is embedded at its
+pinned version, nested orchestrators recursively embed their own specialists,
+and installation recreates the agents, immutable versions, policies and
+delegation bindings in one transaction. Packaging fails closed on a cycle, a
+cross-workspace specialist or an excessively large graph.
 
 ## Durable run tree
 
@@ -88,6 +92,13 @@ accounting cannot silently lag behind a persisted success. Queued cancellation
 and deadline/lease reaping update the terminal run and reservation atomically as
 well.
 
+The chat impact part covers the whole run tree. Each successful model call adds
+its model record and input/output tokens to a shared in-memory breakdown. The
+chat route prices and estimates sustainability for every entry with that
+entry's own model configuration, then publishes one aggregate impact part.
+Mixed currencies deliberately suppress the combined price instead of displaying
+a misleading partial total.
+
 Workers claim only queued runs and renew a short lease while executing. A lost
 lease is terminal: the reaper marks the run failed and releases its reservation
 instead of replaying it automatically. This deliberately avoids presenting
@@ -130,6 +141,12 @@ Every child call requires `agents.delegate` at runtime, in addition to normal
 visibility and agent-use checks. Current built-in workspace roles include this
 permission. Custom roles and API keys do not gain it implicitly, preserving
 default-deny behavior for existing delegated credentials.
+
+Sharing an orchestrator with a project, organization or team applies the same
+access selection to every owned agent reachable through its pinned delegation
+graph. Already-global specialists remain global. A private specialist owned by
+someone else makes the share fail rather than exposing another user's resource
+or leaving the shared orchestrator unusable.
 
 Migration `0028_orchestrator_run_foundation.sql` adds database checks, pinned
 version foreign keys, idempotency uniqueness, self-referential run constraints,

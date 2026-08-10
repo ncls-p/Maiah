@@ -1,9 +1,18 @@
-import { describe,expect,it } from "vitest";
+import { describe, expect, it } from "vitest";
 
-import { chatTodoListFromToolPart,latestChatTodoListFromMessages } from "@/components/chat/chat-message-rendering-utils";
-import type { ChatMessage,ChatMessagePart } from "@/components/chat/chat-types";
+import {
+  chatTodoListFromToolPart,
+  latestChatTodoListFromMessages,
+} from "@/components/chat/chat-message-rendering-utils";
+import type {
+  ChatMessage,
+  ChatMessagePart,
+} from "@/components/chat/chat-types";
 
-function todoPart(completedCount: number, activeStatus: "pending" | "in_progress" | "completed"): ChatMessagePart {
+function todoPart(
+  completedCount: number,
+  activeStatus: "pending" | "in_progress" | "completed",
+): ChatMessagePart {
   return {
     type: "tool-call",
     content: JSON.stringify({
@@ -50,7 +59,10 @@ describe("chat todo list rendering state", () => {
       {
         id: "assistant-2",
         role: "assistant",
-        parts: [{ type: "text", content: "I am checking the result." }, todoPart(2, "completed")],
+        parts: [
+          { type: "text", content: "I am checking the result." },
+          todoPart(2, "completed"),
+        ],
       },
     ];
 

@@ -1,16 +1,28 @@
 import JSZip from "jszip";
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const storageMock = vi.hoisted(() => {
-  const objects = new Map<string, { bytes: Uint8Array; contentType?: string }>();
+  const objects = new Map<
+    string,
+    { bytes: Uint8Array; contentType?: string }
+  >();
   return {
     objects,
-    upload: vi.fn(async (key: string, bytes: Uint8Array | Buffer | string, contentType?: string) => {
-      objects.set(key, {
-        bytes: typeof bytes === "string" ? new TextEncoder().encode(bytes) : new Uint8Array(bytes),
-        contentType,
-      });
-    }),
+    upload: vi.fn(
+      async (
+        key: string,
+        bytes: Uint8Array | Buffer | string,
+        contentType?: string,
+      ) => {
+        objects.set(key, {
+          bytes:
+            typeof bytes === "string"
+              ? new TextEncoder().encode(bytes)
+              : new Uint8Array(bytes),
+          contentType,
+        });
+      },
+    ),
     download: vi.fn(async (key: string) => {
       const object = objects.get(key);
       if (!object) throw new Error(`missing ${key}`);
@@ -30,7 +42,13 @@ vi.mock("@/lib/logger", () => ({
   logHandledError: vi.fn(),
 }));
 
-import { createCodeWorkspaceFromFiles,createCodeWorkspaceFromZip,getCodeWorkspace,isTextWorkspacePath,normalizeWorkspacePath } from "@/modules/code-workspace/storage";
+import {
+  createCodeWorkspaceFromFiles,
+  createCodeWorkspaceFromZip,
+  getCodeWorkspace,
+  isTextWorkspacePath,
+  normalizeWorkspacePath,
+} from "@/modules/code-workspace/storage";
 
 const workspaceId = "ws-1";
 const userId = "user-1";
@@ -42,12 +60,18 @@ beforeEach(() => {
 
 describe("code workspace storage", () => {
   it("normalizes paths and classifies text extensions", () => {
-    expect(normalizeWorkspacePath(" ./src\\index.html ")).toBe("src/index.html");
+    expect(normalizeWorkspacePath(" ./src\\index.html ")).toBe(
+      "src/index.html",
+    );
     expect(isTextWorkspacePath("index.html")).toBe(true);
     expect(isTextWorkspacePath("image.png")).toBe(false);
     expect(() => normalizeWorkspacePath("/abs/path")).toThrow("Absolute paths");
-    expect(() => normalizeWorkspacePath("../secret.txt")).toThrow("Path traversal");
-    expect(() => normalizeWorkspacePath("a/".repeat(20) + "x.txt")).toThrow("too deep");
+    expect(() => normalizeWorkspacePath("../secret.txt")).toThrow(
+      "Path traversal",
+    );
+    expect(() => normalizeWorkspacePath("a/".repeat(20) + "x.txt")).toThrow(
+      "too deep",
+    );
   });
 
   it("creates workspaces from files, saves metadata, and reports sorted artifact files", async () => {
@@ -66,8 +90,15 @@ describe("code workspace storage", () => {
     expect(artifact.title).toBe("Demo App");
     expect(artifact.rootFile).toBe("index.html");
     expect(artifact.previewUrl).toContain("/preview/");
-    expect(artifact.files.map((file) => file.path)).toEqual(["index.html", "src/app.js"]);
-    expect(storageMock.upload).toHaveBeenCalledWith(expect.stringContaining("files/index.html"), expect.any(Uint8Array), "text/html; charset=utf-8");
+    expect(artifact.files.map((file) => file.path)).toEqual([
+      "index.html",
+      "src/app.js",
+    ]);
+    expect(storageMock.upload).toHaveBeenCalledWith(
+      expect.stringContaining("files/index.html"),
+      expect.any(Uint8Array),
+      "text/html; charset=utf-8",
+    );
     expect(await getCodeWorkspace(artifact.projectId)).toMatchObject({
       id: artifact.projectId,
       version: 1,

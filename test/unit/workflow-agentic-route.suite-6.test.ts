@@ -1,4 +1,4 @@
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createStarterDefinition } from "@/modules/workflows/contracts";
 
@@ -26,14 +26,24 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/lib/route-handler", () => ({
   requireWorkspacePermissionAsync: mocks.requirePermission,
   requireResourcePermissionAsync: mocks.requirePermission,
-  handleRoute: async (request: Request, handler: (context: { session: { user: { id: string } }; request: Request }) => Promise<Response>, options?: { expectedError?: (error: unknown) => Response | null }) => {
+  handleRoute: async (
+    request: Request,
+    handler: (context: {
+      session: { user: { id: string } };
+      request: Request;
+    }) => Promise<Response>,
+    options?: { expectedError?: (error: unknown) => Response | null },
+  ) => {
     try {
       return await handler({
         session: { user: { id: userId } },
         request,
       });
     } catch (error) {
-      return options?.expectedError?.(error) ?? Response.json({ error: "Internal server error" }, { status: 500 });
+      return (
+        options?.expectedError?.(error) ??
+        Response.json({ error: "Internal server error" }, { status: 500 })
+      );
     }
   },
 }));
@@ -47,7 +57,8 @@ vi.mock("@/modules/agent/use-cases", () => ({
 }));
 
 vi.mock("@/modules/workflows/builder-settings", () => ({
-  getConfiguredWorkflowBuilderAgentId: mocks.getConfiguredWorkflowBuilderAgentId,
+  getConfiguredWorkflowBuilderAgentId:
+    mocks.getConfiguredWorkflowBuilderAgentId,
 }));
 
 vi.mock("@/modules/agent/runtime-policy", () => ({
@@ -63,7 +74,10 @@ vi.mock("@/modules/workflows/use-cases", () => ({
 }));
 
 vi.mock("@/modules/workflows/agentic-history", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/modules/workflows/agentic-history")>();
+  const actual =
+    await importOriginal<
+      typeof import("@/modules/workflows/agentic-history")
+    >();
   return {
     ...actual,
     getWorkflowAgentHistory: mocks.getWorkflowAgentHistory,
@@ -72,7 +86,10 @@ vi.mock("@/modules/workflows/agentic-history", async (importOriginal) => {
 });
 
 vi.mock("@/modules/tool/builtin-tool-primitives", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/modules/tool/builtin-tool-primitives")>();
+  const actual =
+    await importOriginal<
+      typeof import("@/modules/tool/builtin-tool-primitives")
+    >();
   return {
     ...actual,
     searchWebWithSearxng: mocks.searchWebWithSearxng,
@@ -98,7 +115,10 @@ vi.mock("@/server/infrastructure/providers", () => ({
 }));
 
 import { POST } from "@/app/api/workspace/workflows/[workflowId]/agentic/route";
-import { createWorkflowAgenticModelFixture,request } from "./workflow-agentic-route.suite-3.fixture";
+import {
+  createWorkflowAgenticModelFixture,
+  request,
+} from "./workflow-agentic-route.suite-3.fixture";
 
 const userId = "11111111-1111-4111-8111-111111111111";
 const workspaceId = "22222222-2222-4222-8222-222222222222";
@@ -119,7 +139,9 @@ describe("workflow agentic route", () => {
       version: 1,
       definition: createStarterDefinition(),
     });
-    mocks.listAgents.mockResolvedValue([{ id: agentId, name: "Workflow assistant" }]);
+    mocks.listAgents.mockResolvedValue([
+      { id: agentId, name: "Workflow assistant" },
+    ]);
     mocks.getAgentById.mockResolvedValue(null);
     mocks.getConfiguredWorkflowBuilderAgentId.mockResolvedValue(null);
     mocks.getWorkflowAgentHistory.mockResolvedValue({
@@ -132,7 +154,9 @@ describe("workflow agentic route", () => {
       kind: "chat_todo_list",
       title: input.todoList.title,
       items: input.todoList.items,
-      completedCount: input.todoList.items.filter((item: { status: string }) => item.status === "completed").length,
+      completedCount: input.todoList.items.filter(
+        (item: { status: string }) => item.status === "completed",
+      ).length,
       totalCount: input.todoList.items.length,
     }));
     mocks.createWorkflowAgentRunRequest.mockImplementation(async (input) => ({

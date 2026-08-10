@@ -1,4 +1,4 @@
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => {
   const selectChain = {
@@ -8,7 +8,12 @@ const mocks = vi.hoisted(() => {
     orderBy: vi.fn(),
     limit: vi.fn(),
   };
-  for (const method of [selectChain.from, selectChain.innerJoin, selectChain.where, selectChain.orderBy]) {
+  for (const method of [
+    selectChain.from,
+    selectChain.innerJoin,
+    selectChain.where,
+    selectChain.orderBy,
+  ]) {
     method.mockReturnValue(selectChain);
   }
   return {
@@ -67,7 +72,13 @@ vi.mock("@/lib/logger", () => ({
 
 vi.mock("@/lib/route-handler", () => ({
   requireWorkspacePermissionAsync: mocks.requirePermission,
-  handleRoute: async (request: Request, handler: (context: { session: { user: { id: string } }; request: Request }) => Promise<Response>) =>
+  handleRoute: async (
+    request: Request,
+    handler: (context: {
+      session: { user: { id: string } };
+      request: Request;
+    }) => Promise<Response>,
+  ) =>
     handler({
       session: { user: { id: "user-1" } },
       request,
@@ -99,17 +110,27 @@ const invocation = {
 };
 
 function request() {
-  return new Request(`http://localhost/api/workspace/tool-invocations/${invocation.id}`, { method: "POST" });
+  return new Request(
+    `http://localhost/api/workspace/tool-invocations/${invocation.id}`,
+    { method: "POST" },
+  );
 }
 
 const params = { params: Promise.resolve({ invocationId: invocation.id }) };
 
 beforeEach(() => {
   vi.clearAllMocks();
-  for (const method of [mocks.selectChain.from, mocks.selectChain.innerJoin, mocks.selectChain.where, mocks.selectChain.orderBy]) {
+  for (const method of [
+    mocks.selectChain.from,
+    mocks.selectChain.innerJoin,
+    mocks.selectChain.where,
+    mocks.selectChain.orderBy,
+  ]) {
     method.mockReturnValue(mocks.selectChain);
   }
-  mocks.selectChain.limit.mockResolvedValue([{ invocation, conversation: { id: invocation.conversationId } }]);
+  mocks.selectChain.limit.mockResolvedValue([
+    { invocation, conversation: { id: invocation.conversationId } },
+  ]);
   mocks.dbSelect.mockReturnValue(mocks.selectChain);
   mocks.hasPermission.mockResolvedValue(true);
   mocks.requirePermission.mockResolvedValue(null);
@@ -179,7 +200,11 @@ describe("tool invocation approval routes", () => {
         inputJsonEncrypted: "encrypted-input",
       },
     ]);
-    const response = await listInvocations(new NextRequest(`http://localhost/api/workspace/tool-invocations?workspaceId=${invocation.workspaceId}`));
+    const response = await listInvocations(
+      new NextRequest(
+        `http://localhost/api/workspace/tool-invocations?workspaceId=${invocation.workspaceId}`,
+      ),
+    );
 
     expect(response.status).toBe(200);
     const [payload] = (await response.json()) as Array<{

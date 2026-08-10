@@ -9284,7 +9284,23 @@
     "public.role_binding_resource_type": {
       "name": "role_binding_resource_type",
       "schema": "public",
-      "values": ["organization", "workspace", "agent", "provider", "model", "mcp_server", "tool_connector", "tool_connection", "custom_tool", "knowledge_base", "skill", "workflow", "scheduled_task", "conversation", "marketplace_item"]
+      "values": [
+        "organization",
+        "workspace",
+        "agent",
+        "provider",
+        "model",
+        "mcp_server",
+        "tool_connector",
+        "tool_connection",
+        "custom_tool",
+        "knowledge_base",
+        "skill",
+        "workflow",
+        "scheduled_task",
+        "conversation",
+        "marketplace_item"
+      ]
     },
     "public.role_owner_resource_type": {
       "name": "role_owner_resource_type",
@@ -9304,7 +9320,12 @@
     "public.provider_kind": {
       "name": "provider_kind",
       "schema": "public",
-      "values": ["openai-compatible", "dragonfly", "vercel-ai-gateway", "native"]
+      "values": [
+        "openai-compatible",
+        "dragonfly",
+        "vercel-ai-gateway",
+        "native"
+      ]
     },
     "public.agent_kind": {
       "name": "agent_kind",
@@ -9329,7 +9350,18 @@
     "public.message_part_type": {
       "name": "message_part_type",
       "schema": "public",
-      "values": ["text", "file", "tool-call", "tool-result", "reasoning", "error", "citation", "citations", "suggestions", "impact"]
+      "values": [
+        "text",
+        "file",
+        "tool-call",
+        "tool-result",
+        "reasoning",
+        "error",
+        "citation",
+        "citations",
+        "suggestions",
+        "impact"
+      ]
     },
     "public.message_role": {
       "name": "message_role",
@@ -9354,7 +9386,15 @@
     "public.agent_run_status": {
       "name": "agent_run_status",
       "schema": "public",
-      "values": ["queued", "running", "waiting_approval", "success", "failed", "cancelled", "timed_out"]
+      "values": [
+        "queued",
+        "running",
+        "waiting_approval",
+        "success",
+        "failed",
+        "cancelled",
+        "timed_out"
+      ]
     },
     "public.agent_run_step_kind": {
       "name": "agent_run_step_kind",
@@ -9389,12 +9429,29 @@
     "public.marketplace_item_status": {
       "name": "marketplace_item_status",
       "schema": "public",
-      "values": ["draft", "pending_review", "published", "rejected", "suspended", "archived"]
+      "values": [
+        "draft",
+        "pending_review",
+        "published",
+        "rejected",
+        "suspended",
+        "archived"
+      ]
     },
     "public.marketplace_item_type": {
       "name": "marketplace_item_type",
       "schema": "public",
-      "values": ["agent", "prompt_template", "tool_pack", "mcp_preset", "workflow_template", "knowledge_template", "provider_preset", "skill", "custom_tool"]
+      "values": [
+        "agent",
+        "prompt_template",
+        "tool_pack",
+        "mcp_preset",
+        "workflow_template",
+        "knowledge_template",
+        "provider_preset",
+        "skill",
+        "custom_tool"
+      ]
     },
     "public.marketplace_item_visibility": {
       "name": "marketplace_item_visibility",
@@ -9409,7 +9466,14 @@
     "public.custom_tool_status": {
       "name": "custom_tool_status",
       "schema": "public",
-      "values": ["draft", "awaiting_secrets", "workflow_created", "active", "failed", "disabled"]
+      "values": [
+        "draft",
+        "awaiting_secrets",
+        "workflow_created",
+        "active",
+        "failed",
+        "disabled"
+      ]
     },
     "public.tool_connection_owner_type": {
       "name": "tool_connection_owner_type",

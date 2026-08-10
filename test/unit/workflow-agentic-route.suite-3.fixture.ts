@@ -1,6 +1,9 @@
-import { createStarterDefinition,type WorkflowDefinition } from "@/modules/workflows/contracts";
+import {
+  createStarterDefinition,
+  type WorkflowDefinition,
+} from "@/modules/workflows/contracts";
 import type { LanguageModelV4Usage } from "@ai-sdk/provider";
-import { MockLanguageModelV4,simulateReadableStream } from "ai/test";
+import { MockLanguageModelV4, simulateReadableStream } from "ai/test";
 import { NextRequest } from "next/server";
 
 const workspaceId = "22222222-2222-4222-8222-222222222222";
@@ -80,19 +83,22 @@ const incompleteDefinition = {
 };
 
 export function request(definition: WorkflowDefinition = incompleteDefinition) {
-  return new NextRequest(`http://localhost/api/workspace/workflows/${workflowId}/agentic`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      workspaceId,
-      message: "Build a summary workflow",
-      draft: {
-        name: "Summary workflow",
-        description: null,
-        definition,
-      },
-    }),
-  });
+  return new NextRequest(
+    `http://localhost/api/workspace/workflows/${workflowId}/agentic`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        workspaceId,
+        message: "Build a summary workflow",
+        draft: {
+          name: "Summary workflow",
+          description: null,
+          definition,
+        },
+      }),
+    },
+  );
 }
 export function createWorkflowAgenticModelFixture() {
   return new MockLanguageModelV4({

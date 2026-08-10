@@ -1,10 +1,17 @@
-import { createPrivateKey,generateKeyPairSync } from "node:crypto";
-import { describe,expect,it } from "vitest";
+import { createPrivateKey, generateKeyPairSync } from "node:crypto";
+import { describe, expect, it } from "vitest";
 
-import { canAttemptGitHubRepositoryPublish,describeGitHubRepositoryAccess,describeGitHubRepositoryRelationship,normalizeGitHubPrivateKey } from "@/modules/github/publishing";
+import {
+  canAttemptGitHubRepositoryPublish,
+  describeGitHubRepositoryAccess,
+  describeGitHubRepositoryRelationship,
+  normalizeGitHubPrivateKey,
+} from "@/modules/github/publishing";
 
 function privateKeyPem() {
-  return generateKeyPairSync("rsa", { modulusLength: 2048 }).privateKey.export({ format: "pem", type: "pkcs1" }).toString();
+  return generateKeyPairSync("rsa", { modulusLength: 2048 })
+    .privateKey.export({ format: "pem", type: "pkcs1" })
+    .toString();
 }
 
 describe("GitHub publishing", () => {
@@ -19,7 +26,9 @@ describe("GitHub publishing", () => {
 
   it("normalizes base64 encoded PEM private keys", () => {
     const pem = privateKeyPem();
-    const normalized = normalizeGitHubPrivateKey(Buffer.from(pem, "utf8").toString("base64"));
+    const normalized = normalizeGitHubPrivateKey(
+      Buffer.from(pem, "utf8").toString("base64"),
+    );
 
     expect(normalized).toContain("-----BEGIN RSA PRIVATE KEY-----");
     expect(() => createPrivateKey(normalized)).not.toThrow();
@@ -27,8 +36,12 @@ describe("GitHub publishing", () => {
 
   it("normalizes copied env assignment lines and trailing shell prompts", () => {
     const pem = privateKeyPem();
-    const normalizedPem = normalizeGitHubPrivateKey(`GITHUB_APP_PRIVATE_KEY=${pem.replace(/\n/g, "\\n")}%`);
-    const normalizedBase64 = normalizeGitHubPrivateKey(`export GITHUB_APP_PRIVATE_KEY=${Buffer.from(pem, "utf8").toString("base64")}%`);
+    const normalizedPem = normalizeGitHubPrivateKey(
+      `GITHUB_APP_PRIVATE_KEY=${pem.replace(/\n/g, "\\n")}%`,
+    );
+    const normalizedBase64 = normalizeGitHubPrivateKey(
+      `export GITHUB_APP_PRIVATE_KEY=${Buffer.from(pem, "utf8").toString("base64")}%`,
+    );
 
     expect(() => createPrivateKey(normalizedPem)).not.toThrow();
     expect(() => createPrivateKey(normalizedBase64)).not.toThrow();

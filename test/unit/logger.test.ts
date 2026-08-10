@@ -1,4 +1,4 @@
-import { afterEach,beforeEach,describe,expect,it,vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock env with importActual to preserve V8 coverage
 vi.mock("@/lib/env", async () => {
@@ -13,7 +13,8 @@ vi.mock("@/lib/env", async () => {
 });
 
 describe("logger", async () => {
-  const { logger, logHandledWarning, logHandledError } = await import("@/lib/logger");
+  const { logger, logHandledWarning, logHandledError } =
+    await import("@/lib/logger");
 
   beforeEach(() => {
     vi.spyOn(process.stdout, "write").mockImplementation(() => true);
@@ -26,7 +27,9 @@ describe("logger", async () => {
 
   it("debug writes to stdout in test mode", () => {
     logger.debug("test debug msg");
-    expect(process.stdout.write).toHaveBeenCalledWith("debug: test debug msg\n");
+    expect(process.stdout.write).toHaveBeenCalledWith(
+      "debug: test debug msg\n",
+    );
   });
 
   it("info writes to stdout", () => {
@@ -41,7 +44,9 @@ describe("logger", async () => {
 
   it("error writes to stderr", () => {
     logger.error("test error msg");
-    expect(process.stderr.write).toHaveBeenCalledWith("error: test error msg\n");
+    expect(process.stderr.write).toHaveBeenCalledWith(
+      "error: test error msg\n",
+    );
   });
 
   it("error includes error details", () => {

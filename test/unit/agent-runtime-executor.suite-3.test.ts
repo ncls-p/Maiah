@@ -1,4 +1,4 @@
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   generateText: vi.fn(),
@@ -137,7 +137,10 @@ describe("agent runtime executor", () => {
     });
     mocks.generateText.mockImplementationOnce(async (options) => {
       expect(options.toolChoice).toBe("required");
-      const tools = options.tools as Record<string, { execute: (input: unknown) => Promise<unknown> }>;
+      const tools = options.tools as Record<
+        string,
+        { execute: (input: unknown) => Promise<unknown> }
+      >;
       await tools.deepwiki.execute({
         repoName: "ServiceNow/ServiceNowDocs",
         question: "Latest ServiceNow updates",
@@ -173,7 +176,9 @@ describe("agent runtime executor", () => {
         reservationTokens: 13,
       }),
     );
-    const modelStep = mocks.appendStep.mock.calls.find(([step]) => step.kind === "model");
+    const modelStep = mocks.appendStep.mock.calls.find(
+      ([step]) => step.kind === "model",
+    );
     expect(JSON.stringify(modelStep)).not.toContain("must-remain-redacted");
     expect(mocks.appendStep).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -201,7 +206,10 @@ describe("agent runtime executor", () => {
       toolApproval: undefined,
     });
     mocks.generateText.mockImplementationOnce(async (options) => {
-      const tools = options.tools as Record<string, { execute: (input: unknown) => Promise<unknown> }>;
+      const tools = options.tools as Record<
+        string,
+        { execute: (input: unknown) => Promise<unknown> }
+      >;
       await tools.lookup.execute({ query: "value" });
       controller.abort("Cancelled by user");
       const timeout = new Error("The operation was aborted due to timeout");
@@ -229,7 +237,9 @@ describe("agent runtime executor", () => {
   });
 
   it("preserves a redacted provider detail for operational logs", async () => {
-    mocks.generateText.mockRejectedValueOnce(new Error("Provider rejected Bearer super-secret"));
+    mocks.generateText.mockRejectedValueOnce(
+      new Error("Provider rejected Bearer super-secret"),
+    );
 
     await expect(
       executeAgent({

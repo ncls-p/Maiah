@@ -102,7 +102,7 @@ Une exécution non interactive ne doit jamais attendre une approbation humaine :
 
 ### Marketplace et skills
 
-Le Marketplace publie un manifeste nettoyé, jamais les credentials du workspace source. Les helpers de draft, preview, installation et sanitization vivent dans `src/modules/marketplace`. L’installation d’un skill est liée au contenu prévisualisé par checksum ; une modification entre revue et installation invalide l’opération.
+Le Marketplace publie un manifeste nettoyé, jamais les credentials du workspace source. Pour un orchestrateur, le manifeste embarque récursivement les versions épinglées des spécialistes et l’installation reconstruit le graphe complet dans la transaction d’installation. Les helpers de draft, preview, installation et sanitization vivent dans `src/modules/marketplace`. L’installation d’un skill est liée au contenu prévisualisé par checksum ; une modification entre revue et installation invalide l’opération.
 
 ### Usage
 
@@ -152,7 +152,7 @@ Les migrations SQL sont ordonnées dans `src/server/infrastructure/db/migrations
 3. Charger la version et les spécialistes épinglés.
 4. Revérifier `agents.delegate`, visibilité, ancestry et budgets à chaque enfant.
 5. Persister des étapes expurgées et propager annulation/deadline.
-6. Finaliser statut, usage et réservation dans une transaction.
+6. Finaliser statut, usage et réservation dans une transaction, puis agréger l’impact du chat modèle par modèle sur tout l’arbre.
 
 Voir [le modèle de run](orchestrator-run-model.md), [le versioning agent](agent-configuration-versioning.md), [les limites runtime](agent-runtime-bounds.md) et [le cycle d’approbation](tool-approval-lifecycle.md).
 

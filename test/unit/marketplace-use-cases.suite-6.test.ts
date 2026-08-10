@@ -1,5 +1,5 @@
 import { canUserInstallMarketplaceItem } from "@/modules/marketplace/use-cases";
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // ─── Mocks ─────────────────────────────────────────────────────────────
 
@@ -142,7 +142,9 @@ describe("marketplace use-cases", () => {
         status: "draft",
         visibility: "private",
       };
-      await expect(canUserInstallMarketplaceItem(item as never, "user1")).resolves.toBe(true);
+      await expect(
+        canUserInstallMarketplaceItem(item as never, "user1"),
+      ).resolves.toBe(true);
     });
 
     it("allows install of public published items", async () => {
@@ -152,7 +154,9 @@ describe("marketplace use-cases", () => {
         status: "published",
         visibility: "public",
       };
-      await expect(canUserInstallMarketplaceItem(item as never, "user2")).resolves.toBe(true);
+      await expect(
+        canUserInstallMarketplaceItem(item as never, "user2"),
+      ).resolves.toBe(true);
     });
 
     it("allows install when item is shared with user", async () => {
@@ -165,7 +169,9 @@ describe("marketplace use-cases", () => {
       const sc = dbModule._selectChain;
       sc.where.mockImplementationOnce(() => sc);
       givenSelectLimitOnce([{ id: "share-1" }]);
-      await expect(canUserInstallMarketplaceItem(item as never, "user2")).resolves.toBe(true);
+      await expect(
+        canUserInstallMarketplaceItem(item as never, "user2"),
+      ).resolves.toBe(true);
     });
 
     it("denies install for private draft without access", async () => {
@@ -176,7 +182,9 @@ describe("marketplace use-cases", () => {
         visibility: "private",
       };
       givenSelectLimit([]);
-      await expect(canUserInstallMarketplaceItem(item as never, "user2")).resolves.toBe(false);
+      await expect(
+        canUserInstallMarketplaceItem(item as never, "user2"),
+      ).resolves.toBe(false);
     });
 
     it("denies install for suspended items", async () => {
@@ -186,7 +194,9 @@ describe("marketplace use-cases", () => {
         status: "suspended",
         visibility: "public",
       };
-      await expect(canUserInstallMarketplaceItem(item as never, "user1")).resolves.toBe(false);
+      await expect(
+        canUserInstallMarketplaceItem(item as never, "user1"),
+      ).resolves.toBe(false);
     });
   });
 });

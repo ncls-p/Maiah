@@ -1,7 +1,18 @@
-import { describe,expect,it } from "vitest";
+import { describe, expect, it } from "vitest";
 
-import { archiveDocument,archiveKnowledgeBase,ingestTextDocument,listDocuments,scoreContent,updateKnowledgeBase } from "@/modules/knowledge/use-cases";
-import { dbModule,fakeDoc,fakeKb } from "./knowledge-use-cases.test.db-module";
+import {
+  archiveDocument,
+  archiveKnowledgeBase,
+  ingestTextDocument,
+  listDocuments,
+  scoreContent,
+  updateKnowledgeBase,
+} from "@/modules/knowledge/use-cases";
+import {
+  dbModule,
+  fakeDoc,
+  fakeKb,
+} from "./knowledge-use-cases.test.db-module";
 
 // ─── updateKnowledgeBase ──────────────────────────────────────────────
 
@@ -18,7 +29,9 @@ describe("updateKnowledgeBase", () => {
 
   it("updates and returns knowledge base", async () => {
     dbModule._c.limit.mockResolvedValueOnce([fakeKb]);
-    dbModule._c.returning.mockResolvedValueOnce([{ ...fakeKb, name: "Updated" }]);
+    dbModule._c.returning.mockResolvedValueOnce([
+      { ...fakeKb, name: "Updated" },
+    ]);
 
     const result = await updateKnowledgeBase({
       knowledgeBaseId: "kb-1",
@@ -35,7 +48,9 @@ describe("updateKnowledgeBase", () => {
 
 describe("archiveKnowledgeBase", () => {
   it("throws when knowledge base not found", async () => {
-    await expect(archiveKnowledgeBase("nonexistent", "ws-1", "user-1")).rejects.toThrow("Knowledge base not found");
+    await expect(
+      archiveKnowledgeBase("nonexistent", "ws-1", "user-1"),
+    ).rejects.toThrow("Knowledge base not found");
   });
 
   it("archives knowledge base", async () => {
@@ -111,12 +126,16 @@ describe("ingestTextDocument", () => {
 
 describe("listDocuments", () => {
   it("throws when knowledge base not found", async () => {
-    await expect(listDocuments("nonexistent", "ws-1")).rejects.toThrow("Knowledge base not found");
+    await expect(listDocuments("nonexistent", "ws-1")).rejects.toThrow(
+      "Knowledge base not found",
+    );
   });
 
   it("returns documents ordered by createdAt", async () => {
     dbModule._c.limit.mockResolvedValueOnce([fakeKb]);
-    dbModule._c.orderBy.mockResolvedValueOnce([{ document: fakeDoc, chunkCount: 2, embeddingCount: 1 }]);
+    dbModule._c.orderBy.mockResolvedValueOnce([
+      { document: fakeDoc, chunkCount: 2, embeddingCount: 1 },
+    ]);
 
     const result = await listDocuments("kb-1", "ws-1");
     expect(result).toHaveLength(1);
@@ -152,7 +171,9 @@ describe("archiveDocument", () => {
   });
 
   it("deletes document when found", async () => {
-    dbModule._c.limit.mockResolvedValueOnce([fakeKb]).mockResolvedValueOnce([fakeDoc]);
+    dbModule._c.limit
+      .mockResolvedValueOnce([fakeKb])
+      .mockResolvedValueOnce([fakeDoc]);
 
     await archiveDocument({
       documentId: "doc-1",

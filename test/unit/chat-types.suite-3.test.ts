@@ -1,5 +1,13 @@
-import { getToolStatus,groupWorkPhaseParts,parseToolPart,resolveToolDisplayStatus,resolveWorkPhaseOutcome,workPhaseHasPendingWork,type ChatMessage } from "@/components/chat/chat-types";
-import { describe,expect,it } from "vitest";
+import {
+  getToolStatus,
+  groupWorkPhaseParts,
+  parseToolPart,
+  resolveToolDisplayStatus,
+  resolveWorkPhaseOutcome,
+  workPhaseHasPendingWork,
+  type ChatMessage,
+} from "@/components/chat/chat-types";
+import { describe, expect, it } from "vitest";
 
 describe("chat message parts", () => {
   it("keeps standalone visual outputs outside work phases", () => {
@@ -106,7 +114,9 @@ describe("chat message parts", () => {
         hasVisibleResponseAfter: true,
       }),
     ).toBe("interrupted");
-    expect(resolveToolDisplayStatus(parseToolPart(parts[0].content), "failed")).toBe("completed");
+    expect(
+      resolveToolDisplayStatus(parseToolPart(parts[0].content), "failed"),
+    ).toBe("completed");
   });
 
   it("reports recovered tool failures as completed with warnings", () => {

@@ -29,6 +29,7 @@ export function manifestSummary(
         toolBindings: manifest.toolBindings?.length ?? 0,
         skillBindings: manifest.skillBindings?.length ?? 0,
         knowledgeBindings: manifest.knowledgeBindings?.length ?? 0,
+        specialists: manifest.specialists?.length ?? 0,
         bundledSkills: manifest.bundledResources?.skills.length ?? 0,
         bundledMcp: manifest.bundledResources?.mcpPresets.length ?? 0,
         bundledCustomTools: manifest.bundledResources?.customTools.length ?? 0,
@@ -84,26 +85,32 @@ export function extractCredentialFields(
   }
   if (manifest.type === "agent") {
     const fields: PublishPreviewResult["credentialFields"] = [];
-    for (const preset of manifest.bundledResources?.mcpPresets ?? []) {
-      for (const f of preset.preset.credentialSchema ?? []) {
-        fields.push({
-          key: `${preset.preset.serverName}:${f.key}`,
-          label: `${preset.preset.serverName} — ${f.label}`,
-          required: f.required,
-          description: f.description,
-        });
+    const visit = (agent: typeof manifest, path = "") => {
+      for (const preset of agent.bundledResources?.mcpPresets ?? []) {
+        for (const f of preset.preset.credentialSchema ?? []) {
+          fields.push({
+            key: `${path}${preset.preset.serverName}:${f.key}`,
+            label: `${path}${preset.preset.serverName} — ${f.label}`,
+            required: f.required,
+            description: f.description,
+          });
+        }
       }
-    }
-    for (const tool of manifest.bundledResources?.customTools ?? []) {
-      for (const f of tool.tool.credentialSchema ?? []) {
-        fields.push({
-          key: `${tool.name}:${f.key}`,
-          label: `${tool.name} — ${f.label}`,
-          required: f.required,
-          description: f.description,
-        });
+      for (const tool of agent.bundledResources?.customTools ?? []) {
+        for (const f of tool.tool.credentialSchema ?? []) {
+          fields.push({
+            key: `${path}${tool.name}:${f.key}`,
+            label: `${path}${tool.name} — ${f.label}`,
+            required: f.required,
+            description: f.description,
+          });
+        }
       }
-    }
+      for (const specialist of agent.specialists ?? []) {
+        visit(specialist.manifest, `${path}${specialist.manifest.name} / `);
+      }
+    };
+    visit(manifest);
     return fields;
   }
   return [];

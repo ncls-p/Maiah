@@ -1,6 +1,6 @@
-import { describe,expect,it } from "vitest";
+import { describe, expect, it } from "vitest";
 
-import { listAdminUsers,updateManagedUser } from "@/modules/admin/use-cases";
+import { listAdminUsers, updateManagedUser } from "@/modules/admin/use-cases";
 import { dbModule } from "./admin-use-cases.test.db-module";
 
 describe("listAdminUsers", () => {
@@ -49,7 +49,9 @@ describe("updateManagedUser", () => {
   });
 
   it("throws when actor tries to remove own admin access", async () => {
-    dbModule._sc.limit.mockResolvedValueOnce([{ ...targetUser, id: "admin-1", role: "admin" }]);
+    dbModule._sc.limit.mockResolvedValueOnce([
+      { ...targetUser, id: "admin-1", role: "admin" },
+    ]);
 
     await expect(
       updateManagedUser({
@@ -61,7 +63,9 @@ describe("updateManagedUser", () => {
   });
 
   it("throws when actor tries to suspend own account", async () => {
-    dbModule._sc.limit.mockResolvedValueOnce([{ ...targetUser, id: "admin-1", role: "admin" }]);
+    dbModule._sc.limit.mockResolvedValueOnce([
+      { ...targetUser, id: "admin-1", role: "admin" },
+    ]);
 
     await expect(
       updateManagedUser({
@@ -80,7 +84,9 @@ describe("updateManagedUser", () => {
     dbModule._sc.where
       .mockReturnValueOnce(dbModule._sc) // Q1: keep chain for limit
       .mockResolvedValueOnce([{ value: 0 }]); // Q2: getActiveAdminCount → 0 remaining admins
-    dbModule._sc.limit.mockResolvedValueOnce([{ ...targetUser, id: "user-2", role: "admin", banned: false }]);
+    dbModule._sc.limit.mockResolvedValueOnce([
+      { ...targetUser, id: "user-2", role: "admin", banned: false },
+    ]);
 
     await expect(
       updateManagedUser({
@@ -93,7 +99,9 @@ describe("updateManagedUser", () => {
 
   it("updates user role when valid", async () => {
     dbModule._sc.limit.mockResolvedValueOnce([targetUser]);
-    dbModule._uc.returning.mockResolvedValueOnce([{ ...targetUser, role: "admin" }]);
+    dbModule._uc.returning.mockResolvedValueOnce([
+      { ...targetUser, role: "admin" },
+    ]);
 
     const result = await updateManagedUser({
       actorUserId: "admin-1",
@@ -105,7 +113,9 @@ describe("updateManagedUser", () => {
 
   it("sets ban reason when banning", async () => {
     dbModule._sc.limit.mockResolvedValueOnce([targetUser]);
-    dbModule._uc.returning.mockResolvedValueOnce([{ ...targetUser, banned: true, banReason: "Violated policy" }]);
+    dbModule._uc.returning.mockResolvedValueOnce([
+      { ...targetUser, banned: true, banReason: "Violated policy" },
+    ]);
 
     const result = await updateManagedUser({
       actorUserId: "admin-1",

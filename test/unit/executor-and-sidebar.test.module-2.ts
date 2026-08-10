@@ -1,9 +1,9 @@
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { callRemoteMcpTool } from "@/modules/mcp/client";
 import { getMcpServer } from "@/modules/mcp/use-cases";
 import { resolveToolExecutionHeaders } from "@/modules/tool-connections/use-cases";
-import { dbModule,resetDb } from "./executor-and-sidebar.test.db-module";
+import { dbModule, resetDb } from "./executor-and-sidebar.test.db-module";
 
 // ─── MCP Executor ─────────────────────────────────────────────────────
 
@@ -38,7 +38,9 @@ describe("mcp/executor", async () => {
   });
 
   it("throws when server not found", async () => {
-    (vi.mocked(getMcpServer) as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    (vi.mocked(getMcpServer) as ReturnType<typeof vi.fn>).mockResolvedValue(
+      null,
+    );
 
     const { executeMcpTool } = await import("../../src/modules/mcp/executor");
     await expect(
@@ -114,7 +116,9 @@ describe("mcp/executor", async () => {
     dbModule.db.select.mockReturnValue(dbModule._c);
     dbModule._c.from.mockReturnValue(dbModule._c);
     dbModule._c.where.mockReturnValue(dbModule._c);
-    dbModule._c.limit.mockResolvedValueOnce([{ id: "tool-1", name: "search", enabled: true }]);
+    dbModule._c.limit.mockResolvedValueOnce([
+      { id: "tool-1", name: "search", enabled: true },
+    ]);
 
     const { executeMcpTool } = await import("../../src/modules/mcp/executor");
     const result = await executeMcpTool({
@@ -140,7 +144,9 @@ describe("mcp/executor", async () => {
     dbModule.db.select.mockReturnValue(dbModule._c);
     dbModule._c.from.mockReturnValue(dbModule._c);
     dbModule._c.where.mockReturnValue(dbModule._c);
-    dbModule._c.limit.mockResolvedValueOnce([{ id: "tool-1", name: "search", enabled: true }]);
+    dbModule._c.limit.mockResolvedValueOnce([
+      { id: "tool-1", name: "search", enabled: true },
+    ]);
 
     const { executeMcpTool } = await import("../../src/modules/mcp/executor");
     await executeMcpTool({
@@ -180,7 +186,9 @@ describe("mcp/executor", async () => {
     dbModule.db.select.mockReturnValue(dbModule._c);
     dbModule._c.from.mockReturnValue(dbModule._c);
     dbModule._c.where.mockReturnValue(dbModule._c);
-    dbModule._c.limit.mockResolvedValueOnce([{ id: "tool-1", name: "search", enabled: true }]);
+    dbModule._c.limit.mockResolvedValueOnce([
+      { id: "tool-1", name: "search", enabled: true },
+    ]);
 
     const { executeMcpTool } = await import("../../src/modules/mcp/executor");
     const result = await executeMcpTool({
@@ -206,7 +214,9 @@ describe("mcp/executor", async () => {
     dbModule.db.select.mockReturnValue(dbModule._c);
     dbModule._c.from.mockReturnValue(dbModule._c);
     dbModule._c.where.mockReturnValue(dbModule._c);
-    dbModule._c.limit.mockResolvedValueOnce([{ id: "tool-1", name: "search", enabled: true }]);
+    dbModule._c.limit.mockResolvedValueOnce([
+      { id: "tool-1", name: "search", enabled: true },
+    ]);
 
     const { executeMcpTool } = await import("../../src/modules/mcp/executor");
     const error = await executeMcpTool({
@@ -216,7 +226,9 @@ describe("mcp/executor", async () => {
       toolInput: {},
     }).catch((cause: unknown) => cause);
     expect(error).toBeInstanceOf(Error);
-    expect((error as Error).message).toBe("MCP tool failed: Invalid repoName format");
+    expect((error as Error).message).toBe(
+      "MCP tool failed: Invalid repoName format",
+    );
     expect((error as Error).message).not.toContain("must-not-leak");
   });
 
@@ -232,7 +244,9 @@ describe("mcp/executor", async () => {
     dbModule.db.select.mockReturnValue(dbModule._c);
     dbModule._c.from.mockReturnValue(dbModule._c);
     dbModule._c.where.mockReturnValue(dbModule._c);
-    dbModule._c.limit.mockResolvedValueOnce([{ id: "tool-1", name: "search", enabled: true }]);
+    dbModule._c.limit.mockResolvedValueOnce([
+      { id: "tool-1", name: "search", enabled: true },
+    ]);
 
     const { executeMcpTool } = await import("../../src/modules/mcp/executor");
     const result = await executeMcpTool({

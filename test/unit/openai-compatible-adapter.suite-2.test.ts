@@ -1,5 +1,5 @@
-import { embed,rerank } from "ai";
-import { afterEach,describe,expect,it,vi } from "vitest";
+import { embed, rerank } from "ai";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { openaiCompatibleAdapter } from "@/server/infrastructure/providers/openai-compatible-adapter";
 
@@ -30,7 +30,9 @@ describe("openaiCompatibleAdapter RAG models", () => {
     await expect(embed({ model, value: "hello" })).resolves.toMatchObject({
       embedding: [0.1, 0.2, 0.3],
     });
-    expect(String(fetchMock.mock.calls[0]?.[0])).toBe("https://embedding.example/v1/embeddings");
+    expect(String(fetchMock.mock.calls[0]?.[0])).toBe(
+      "https://embedding.example/v1/embeddings",
+    );
   });
 
   it("normalizes compatible reranking responses through AI SDK", async () => {

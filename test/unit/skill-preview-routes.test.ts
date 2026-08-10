@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   requirePermission: vi.fn(),
@@ -11,14 +11,24 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/route-handler", () => ({
   requireWorkspacePermissionAsync: mocks.requirePermission,
-  handleRoute: async (request: Request, handler: (context: { session: { user: { id: string } }; request: Request }) => Promise<Response>, options?: { expectedError?: (error: unknown) => Response | null }) => {
+  handleRoute: async (
+    request: Request,
+    handler: (context: {
+      session: { user: { id: string } };
+      request: Request;
+    }) => Promise<Response>,
+    options?: { expectedError?: (error: unknown) => Response | null },
+  ) => {
     try {
       return await handler({
         session: { user: { id: "11111111-1111-4111-8111-111111111111" } },
         request,
       });
     } catch (error) {
-      return options?.expectedError?.(error) ?? Response.json({ error: "Internal server error" }, { status: 500 });
+      return (
+        options?.expectedError?.(error) ??
+        Response.json({ error: "Internal server error" }, { status: 500 })
+      );
     }
   },
 }));
@@ -28,7 +38,8 @@ vi.mock("@/modules/admin/auth", () => ({
 }));
 
 vi.mock("@/modules/skills/use-cases", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/modules/skills/use-cases")>();
+  const actual =
+    await importOriginal<typeof import("@/modules/skills/use-cases")>();
   return {
     ...actual,
     previewSkillInstall: mocks.preview,
@@ -83,7 +94,11 @@ describe("skill preview routes", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(mocks.requirePermission).toHaveBeenCalledWith("11111111-1111-4111-8111-111111111111", workspaceId, "tools.configure");
+    expect(mocks.requirePermission).toHaveBeenCalledWith(
+      "11111111-1111-4111-8111-111111111111",
+      workspaceId,
+      "tools.configure",
+    );
     await expect(response.json()).resolves.toMatchObject({
       previewToken: "signed-preview",
       contentChecksum: "a".repeat(64),
@@ -108,7 +123,9 @@ describe("skill preview routes", () => {
   });
 
   it("does not accept installation without a preview attestation", async () => {
-    const response = await installSkill(post("/api/workspace/skills", { workspaceId, installCommand }));
+    const response = await installSkill(
+      post("/api/workspace/skills", { workspaceId, installCommand }),
+    );
 
     expect(response.status).toBe(400);
     expect(mocks.install).not.toHaveBeenCalled();

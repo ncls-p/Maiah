@@ -1,12 +1,17 @@
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getToolBindingsForVersion,toolBindingInputSchema } from "@/modules/tool/use-cases";
+import {
+  getToolBindingsForVersion,
+  toolBindingInputSchema,
+} from "@/modules/tool/use-cases";
 import * as _dbModule from "@/server/infrastructure/db";
 
 // ─── Mocks ────────────────────────────────────────────────────────────
 
 vi.mock("@/lib/crypto", () => ({
-  encryptValue: vi.fn().mockResolvedValue('{"ct":"enc","iv":"iv","kid":"default"}'),
+  encryptValue: vi
+    .fn()
+    .mockResolvedValue('{"ct":"enc","iv":"iv","kid":"default"}'),
 }));
 
 vi.mock("@/server/domain/services/authorization", () => ({
@@ -143,7 +148,9 @@ describe("toolBindingInputSchema", () => {
 
 describe("getToolBindingsForVersion", () => {
   it("queries bindings for a version", async () => {
-    const mockBindings = [{ toolSource: "builtin", toolId: "tool-1", agentVersionId: "v1" }];
+    const mockBindings = [
+      { toolSource: "builtin", toolId: "tool-1", agentVersionId: "v1" },
+    ];
     dbModule._sc.where.mockResolvedValueOnce(mockBindings);
 
     const result = await getToolBindingsForVersion("v1");

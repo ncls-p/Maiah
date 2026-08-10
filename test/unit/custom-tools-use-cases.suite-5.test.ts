@@ -3,7 +3,7 @@ import { runCustomToolBuilder } from "@/modules/custom-tools/use-cases";
 import { callRemoteMcpTool } from "@/modules/mcp/client";
 import * as _dbModule from "@/server/infrastructure/db";
 import { generateText } from "ai";
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/server/infrastructure/ai-sdk/devtools", () => ({
   registerAiSdkDevTools: vi.fn(),
 }));
@@ -56,7 +56,18 @@ type Chain = {
 };
 function makeChain(): Chain {
   const c = {} as Chain;
-  for (const key of ["select", "insert", "update", "delete", "from", "where", "orderBy", "values", "set", "onConflictDoUpdate"] as const) {
+  for (const key of [
+    "select",
+    "insert",
+    "update",
+    "delete",
+    "from",
+    "where",
+    "orderBy",
+    "values",
+    "set",
+    "onConflictDoUpdate",
+  ] as const) {
     c[key] = vi.fn().mockReturnThis();
   }
   c.limit = vi.fn().mockResolvedValue([]);
@@ -86,7 +97,18 @@ vi.mock("@/server/infrastructure/db", () => {
 });
 const dbModule = _dbModule as unknown as DbModule;
 function resetDb() {
-  for (const key of ["select", "insert", "update", "delete", "from", "where", "orderBy", "values", "set", "onConflictDoUpdate"] as const) {
+  for (const key of [
+    "select",
+    "insert",
+    "update",
+    "delete",
+    "from",
+    "where",
+    "orderBy",
+    "values",
+    "set",
+    "onConflictDoUpdate",
+  ] as const) {
     dbModule._c[key].mockReset().mockReturnThis();
   }
   dbModule._c.limit.mockReset().mockResolvedValue([]);
@@ -139,7 +161,9 @@ beforeEach(() => {
 });
 describe("runCustomToolBuilder", () => {
   it("rejects disabled builder, wrong workspace, and missing LLM config", async () => {
-    dbModule._c.limit.mockResolvedValueOnce([{ valueJson: { enabled: false } }]);
+    dbModule._c.limit.mockResolvedValueOnce([
+      { valueJson: { enabled: false } },
+    ]);
     await expect(
       runCustomToolBuilder({
         workspaceId: "ws-1",
@@ -178,7 +202,11 @@ describe("runCustomToolBuilder", () => {
       .mockResolvedValueOnce([{ valueJson: enabledConfig }])
       .mockResolvedValueOnce([providerRow])
       .mockResolvedValueOnce([modelRow]);
-    dbModule._c.where.mockReturnValueOnce(dbModule._c).mockReturnValueOnce(dbModule._c).mockReturnValueOnce(dbModule._c).mockResolvedValueOnce([]);
+    dbModule._c.where
+      .mockReturnValueOnce(dbModule._c)
+      .mockReturnValueOnce(dbModule._c)
+      .mockReturnValueOnce(dbModule._c)
+      .mockResolvedValueOnce([]);
     const result = await runCustomToolBuilder({
       workspaceId: "ws-1",
       userId: "user-1",
@@ -205,7 +233,9 @@ describe("runCustomToolBuilder", () => {
     expect(decryptValue).toHaveBeenCalledWith("enc-header");
   });
   it("stops builder side effects at the action budget", async () => {
-    vi.mocked(generateText).mockImplementationOnce((async (options: unknown) => {
+    vi.mocked(generateText).mockImplementationOnce((async (
+      options: unknown,
+    ) => {
       const previewTool = (
         options as {
           tools: {
@@ -229,7 +259,11 @@ describe("runCustomToolBuilder", () => {
       .mockResolvedValueOnce([{ valueJson: enabledConfig }])
       .mockResolvedValueOnce([providerRow])
       .mockResolvedValueOnce([modelRow]);
-    dbModule._c.where.mockReturnValueOnce(dbModule._c).mockReturnValueOnce(dbModule._c).mockReturnValueOnce(dbModule._c).mockResolvedValueOnce([]);
+    dbModule._c.where
+      .mockReturnValueOnce(dbModule._c)
+      .mockReturnValueOnce(dbModule._c)
+      .mockReturnValueOnce(dbModule._c)
+      .mockResolvedValueOnce([]);
     await expect(
       runCustomToolBuilder({
         workspaceId: "ws-1",
@@ -246,7 +280,11 @@ describe("runCustomToolBuilder", () => {
       .mockResolvedValueOnce([{ valueJson: enabledConfig }])
       .mockResolvedValueOnce([providerRow])
       .mockResolvedValueOnce([modelRow]);
-    dbModule._c.where.mockReturnValueOnce(dbModule._c).mockReturnValueOnce(dbModule._c).mockReturnValueOnce(dbModule._c).mockResolvedValueOnce([]);
+    dbModule._c.where
+      .mockReturnValueOnce(dbModule._c)
+      .mockReturnValueOnce(dbModule._c)
+      .mockReturnValueOnce(dbModule._c)
+      .mockResolvedValueOnce([]);
     dbModule._c.returning.mockResolvedValueOnce([
       {
         id: "secret-req-1",

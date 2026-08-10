@@ -782,7 +782,10 @@ export interface ProviderAdapter {
   kind: ProviderKind;
   validateConnection(config: ProviderRuntimeConfig): Promise<ProviderHealth>;
   listModels?(config: ProviderRuntimeConfig): Promise<ModelDescriptor[]>;
-  createChatModel(config: ProviderRuntimeConfig, modelId: string): LanguageModel;
+  createChatModel(
+    config: ProviderRuntimeConfig,
+    modelId: string,
+  ): LanguageModel;
   stream?(options: ProviderStreamOptions): Promise<ProviderStreamResult>;
   generate?(options: ProviderGenerateOptions): Promise<ProviderGenerateResult>;
 }
@@ -1208,7 +1211,10 @@ marketplace_reports
   "description": "Reviews code for bugs, security, and maintainability.",
   "agent": {
     "systemPrompt": "You are a senior software engineer...",
-    "recommendedModels": ["openai-compatible/gpt-4o", "dragonfly/chatgpt-4o-latest"],
+    "recommendedModels": [
+      "openai-compatible/gpt-4o",
+      "dragonfly/chatgpt-4o-latest"
+    ],
     "tools": ["github.read", "files.read"],
     "mcpRequirements": []
   },

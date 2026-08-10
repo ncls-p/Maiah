@@ -1,8 +1,22 @@
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const database = vi.hoisted(() => {
   const chain: Record<string, ReturnType<typeof vi.fn>> = {};
-  for (const method of ["select", "insert", "update", "from", "where", "orderBy", "limit", "values", "set", "returning", "innerJoin", "onConflictDoUpdate", "onConflictDoNothing"]) {
+  for (const method of [
+    "select",
+    "insert",
+    "update",
+    "from",
+    "where",
+    "orderBy",
+    "limit",
+    "values",
+    "set",
+    "returning",
+    "innerJoin",
+    "onConflictDoUpdate",
+    "onConflictDoNothing",
+  ]) {
     chain[method] = vi.fn();
   }
   const db = {
@@ -35,7 +49,11 @@ vi.mock("@/modules/workflows/runtime", () => ({
 
 import type { WorkflowDefinition } from "@/modules/workflows/contracts";
 import { createStarterDefinition } from "@/modules/workflows/contracts";
-import { WorkflowNotFoundError,processWorkflowRun,updateWorkflow } from "@/modules/workflows/use-cases";
+import {
+  WorkflowNotFoundError,
+  processWorkflowRun,
+  updateWorkflow,
+} from "@/modules/workflows/use-cases";
 
 const definition = createStarterDefinition();
 const workflow = {
@@ -68,7 +86,9 @@ function resetDatabase() {
   for (const method of ["select", "insert", "update"] as const) {
     database.db[method].mockReset().mockReturnValue(database.chain);
   }
-  database.db.transaction.mockReset().mockImplementation(async (callback) => callback(database.db));
+  database.db.transaction
+    .mockReset()
+    .mockImplementation(async (callback) => callback(database.db));
   for (const [method, mock] of Object.entries(database.chain)) {
     mock.mockReset();
     if (method === "limit" || method === "returning") {
@@ -95,7 +115,10 @@ beforeEach(() => {
       errors: [],
     }),
   });
-  workflowMocks.nodeById.mockImplementation((currentDefinition: WorkflowDefinition, nodeId: string) => currentDefinition.nodes.find((item) => item.id === nodeId));
+  workflowMocks.nodeById.mockImplementation(
+    (currentDefinition: WorkflowDefinition, nodeId: string) =>
+      currentDefinition.nodes.find((item) => item.id === nodeId),
+  );
 });
 
 describe("workflow worker processing", () => {
@@ -108,8 +131,12 @@ describe("workflow worker processing", () => {
 
   it("persists the underlying node error instead of only the runtime wrapper", async () => {
     database.chain.limit.mockResolvedValueOnce([record()]);
-    database.chain.returning.mockResolvedValueOnce([{ ...run, status: "failed" }]);
-    const sandboxError = new Error("Sandbox execution failed (exit code 1): SyntaxError: Unexpected token");
+    database.chain.returning.mockResolvedValueOnce([
+      { ...run, status: "failed" },
+    ]);
+    const sandboxError = new Error(
+      "Sandbox execution failed (exit code 1): SyntaxError: Unexpected token",
+    );
     const wrappedError = new Error("Node 'trigger' execution failed", {
       cause: sandboxError,
     });
@@ -134,9 +161,19 @@ describe("workflow worker processing", () => {
     await expect(processWorkflowRun(run.id)).resolves.toMatchObject({
       status: "failed",
     });
-    const storedErrors = database.chain.set.mock.calls.map(([value]) => (value as { error?: string }).error).filter(Boolean);
-    expect(storedErrors).toEqual(expect.arrayContaining([expect.stringContaining("SyntaxError: Unexpected token")]));
-    expect(storedErrors).toEqual(expect.arrayContaining([expect.stringContaining("Node 'trigger' execution failed")]));
+    const storedErrors = database.chain.set.mock.calls
+      .map(([value]) => (value as { error?: string }).error)
+      .filter(Boolean);
+    expect(storedErrors).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("SyntaxError: Unexpected token"),
+      ]),
+    );
+    expect(storedErrors).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("Node 'trigger' execution failed"),
+      ]),
+    );
   });
 });
 describe("workflow CRUD use cases", () => {
@@ -158,7 +195,9 @@ describe("workflow CRUD use cases", () => {
       version: 3,
       definition,
     });
-    expect(database.db.update.mock.invocationCallOrder[0]).toBeLessThan(database.db.insert.mock.invocationCallOrder[0]!);
+    expect(database.db.update.mock.invocationCallOrder[0]).toBeLessThan(
+      database.db.insert.mock.invocationCallOrder[0]!,
+    );
     expect(database.chain.set).toHaveBeenCalledWith(
       expect.objectContaining({
         name: "Updated",
@@ -168,7 +207,9 @@ describe("workflow CRUD use cases", () => {
       }),
     );
 
-    database.chain.limit.mockResolvedValueOnce([workflow]).mockResolvedValueOnce([{ definitionJson: version.definitionJson }]);
+    database.chain.limit
+      .mockResolvedValueOnce([workflow])
+      .mockResolvedValueOnce([{ definitionJson: version.definitionJson }]);
     database.chain.returning.mockResolvedValueOnce([workflow]);
     await expect(
       updateWorkflow({

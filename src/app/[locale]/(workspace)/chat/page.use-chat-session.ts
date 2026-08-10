@@ -143,7 +143,7 @@ export function useChatSession(c: SessionContext) {
         };
       }
       setActiveConversationId(conversationId);
-      if (selectedAgentId && !createdEphemeral) {
+      if (selectedAgentId) {
         setConversations((current) =>
           upsertConversation(current, {
             id: conversationId,
@@ -152,6 +152,10 @@ export function useChatSession(c: SessionContext) {
             folderId: null,
             pinnedAt: null,
             sidebarOrder: null,
+            isEphemeral: createdEphemeral,
+            ephemeralTtlMinutes: createdEphemeral
+              ? createdEphemeralTtlMinutes
+              : undefined,
             updatedAt: new Date().toISOString(),
           }),
         );
@@ -162,7 +166,7 @@ export function useChatSession(c: SessionContext) {
         createdEphemeral,
         createdEphemeralTtlMinutes,
       );
-      if (!createdEphemeral) notifyWorkspaceHistoryChanged();
+      notifyWorkspaceHistoryChanged();
     },
     onConversationTitle: (conversationId, title) => {
       setConversations((current) => {
@@ -203,7 +207,6 @@ export function useChatSession(c: SessionContext) {
     () => aggregateChatUsageImpact(messages),
     [messages],
   );
-
   useEffect(() => {
     ephemeralRef.current = ephemeral;
     ephemeralTtlMinutesRef.current = ephemeralTtlMinutes;
@@ -369,11 +372,9 @@ export function useChatSession(c: SessionContext) {
           if (data.conversation.ephemeralTtlMinutes) {
             setEphemeralTtlMinutes(data.conversation.ephemeralTtlMinutes);
           }
-          if (!data.conversation.isEphemeral) {
-            setConversations((current) =>
-              upsertConversation(current, data.conversation!),
-            );
-          }
+          setConversations((current) =>
+            upsertConversation(current, data.conversation!),
+          );
         }
         const loaded = data.messages ?? [];
         setMessages(loaded);
@@ -404,7 +405,6 @@ export function useChatSession(c: SessionContext) {
     setSelectedAgentId,
     setMessages,
   ]);
-
   return {
     ...stream,
     activeVersion,

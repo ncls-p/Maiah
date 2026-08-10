@@ -1,4 +1,4 @@
-import { afterEach,describe,expect,it,vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { openaiCompatibleAdapter } from "@/server/infrastructure/providers/openai-compatible-adapter";
 
@@ -46,9 +46,16 @@ describe("openaiCompatibleAdapter.createImageModel", () => {
       } as never),
     ).rejects.toThrow();
 
-    const [input, init] = fetchMock.mock.calls[0] as [RequestInfo | URL, RequestInit];
-    expect(String(input)).toBe("https://api.ai.cloud-temple.com/v1/images/generations");
-    expect(new Headers(init.headers).get("authorization")).toBe("Bearer secret-key");
+    const [input, init] = fetchMock.mock.calls[0] as [
+      RequestInfo | URL,
+      RequestInit,
+    ];
+    expect(String(input)).toBe(
+      "https://api.ai.cloud-temple.com/v1/images/generations",
+    );
+    expect(new Headers(init.headers).get("authorization")).toBe(
+      "Bearer secret-key",
+    );
     expect(JSON.parse(String(init.body))).toMatchObject({
       model: "z-image:16b",
       prompt: "A mountain lake",

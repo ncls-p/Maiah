@@ -1,4 +1,4 @@
-import { beforeAll,describe,expect,it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 
 let generateRandomHex: (bytes: number) => string;
 let hashWithSalt: (value: string) => Promise<{ hash: string; salt: string }>;
@@ -8,7 +8,8 @@ let decryptValue: (encryptedJson: string) => Promise<string>;
 // crypto.ts imports env.ts which validates at module load time.
 // Set all required env vars before any imports.
 beforeAll(async () => {
-  process.env.APP_ENCRYPTION_KEY = "0000000000000000000000000000000000000000000000000000000000000000";
+  process.env.APP_ENCRYPTION_KEY =
+    "0000000000000000000000000000000000000000000000000000000000000000";
   process.env.APP_ENCRYPTION_KEY_ID = "default";
   process.env.BETTER_AUTH_SECRET = "test-secret-min-32-chars-long";
   process.env.BETTER_AUTH_URL = "http://localhost:3000";
@@ -18,7 +19,8 @@ beforeAll(async () => {
   process.env.OBJECT_STORAGE_ACCESS_KEY_ID = "test";
   process.env.OBJECT_STORAGE_SECRET_ACCESS_KEY = "test";
 
-  ({ generateRandomHex, hashWithSalt, encryptValue, decryptValue } = await import("@/lib/crypto"));
+  ({ generateRandomHex, hashWithSalt, encryptValue, decryptValue } =
+    await import("@/lib/crypto"));
 });
 
 describe("crypto utilities", () => {
@@ -85,6 +87,8 @@ describe("crypto utilities", () => {
       iv: "def",
       kid: "wrong-key-id",
     });
-    await expect(decryptValue(encrypted)).rejects.toThrow("Encryption key ID mismatch");
+    await expect(decryptValue(encrypted)).rejects.toThrow(
+      "Encryption key ID mismatch",
+    );
   });
 });

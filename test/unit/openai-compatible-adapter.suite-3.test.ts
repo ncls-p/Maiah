@@ -1,6 +1,10 @@
-import { afterEach,describe,expect,it,vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { normalizeResponsesInputForCompatibleProvider,openaiCompatibleAdapter,stripUnsupportedResponsesItemReferences } from "@/server/infrastructure/providers/openai-compatible-adapter";
+import {
+  normalizeResponsesInputForCompatibleProvider,
+  openaiCompatibleAdapter,
+  stripUnsupportedResponsesItemReferences,
+} from "@/server/infrastructure/providers/openai-compatible-adapter";
 
 const generationCall = {
   prompt: [
@@ -69,10 +73,20 @@ describe("openaiCompatibleAdapter.createChatModel", () => {
 
     await expect(model.doGenerate(generationCall)).rejects.toThrow();
 
-    const [input, init] = fetchMock.mock.calls[0] as [RequestInfo | URL, RequestInit];
-    expect(String(input)).toBe("http://localhost:8081/v1/responses?tenant=deodis");
-    expect(new Headers(init.headers).get("authorization")).toBe("Bearer sk-test");
-    const requestBody = JSON.parse(String(init.body)) as Record<string, unknown>;
+    const [input, init] = fetchMock.mock.calls[0] as [
+      RequestInfo | URL,
+      RequestInit,
+    ];
+    expect(String(input)).toBe(
+      "http://localhost:8081/v1/responses?tenant=deodis",
+    );
+    expect(new Headers(init.headers).get("authorization")).toBe(
+      "Bearer sk-test",
+    );
+    const requestBody = JSON.parse(String(init.body)) as Record<
+      string,
+      unknown
+    >;
     expect(requestBody).toMatchObject({ model: "test-model" });
     expect(requestBody).toHaveProperty("input");
     expect(requestBody).not.toHaveProperty("messages");
@@ -98,7 +112,9 @@ describe("openaiCompatibleAdapter.createChatModel", () => {
       ],
     });
 
-    expect(JSON.parse(String(stripUnsupportedResponsesItemReferences(body)))).toEqual({
+    expect(
+      JSON.parse(String(stripUnsupportedResponsesItemReferences(body))),
+    ).toEqual({
       model: "test-model",
       input: [
         { role: "user", content: "Create a project" },
@@ -141,7 +157,9 @@ describe("openaiCompatibleAdapter.createChatModel", () => {
       ],
     });
 
-    expect(JSON.parse(String(normalizeResponsesInputForCompatibleProvider(body)))).toEqual({
+    expect(
+      JSON.parse(String(normalizeResponsesInputForCompatibleProvider(body))),
+    ).toEqual({
       model: "test-model",
       input: [
         { role: "system", content: "Be concise." },
@@ -191,15 +209,23 @@ describe("openaiCompatibleAdapter.createChatModel", () => {
       "test-model",
     );
 
-    await expect(model.doGenerate(referencedContinuationCall)).rejects.toThrow();
+    await expect(
+      model.doGenerate(referencedContinuationCall),
+    ).rejects.toThrow();
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    const firstBody = JSON.parse(String((fetchMock.mock.calls[0]?.[1] as RequestInit).body)) as { input: Array<{ type?: string }> };
-    const secondBody = JSON.parse(String((fetchMock.mock.calls[1]?.[1] as RequestInit).body)) as { input: Array<{ type?: string }> };
+    const firstBody = JSON.parse(
+      String((fetchMock.mock.calls[0]?.[1] as RequestInit).body),
+    ) as { input: Array<{ type?: string }> };
+    const secondBody = JSON.parse(
+      String((fetchMock.mock.calls[1]?.[1] as RequestInit).body),
+    ) as { input: Array<{ type?: string }> };
     expect(firstBody.input).toContainEqual({
       type: "item_reference",
       id: "msg_previous_response",
     });
-    expect(secondBody.input).not.toContainEqual(expect.objectContaining({ type: "item_reference" }));
+    expect(secondBody.input).not.toContainEqual(
+      expect.objectContaining({ type: "item_reference" }),
+    );
   });
 });

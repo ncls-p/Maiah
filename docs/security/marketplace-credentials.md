@@ -17,6 +17,12 @@ values from the publisher's workspace, even when those values are encrypted.
   installer to provide credentials in their own workspace.
 - The publish API and UI expose no `includeSecrets` option.
 
+Orchestrator manifests apply the same rule recursively. Every embedded
+specialist, its tools, MCP presets and nested specialists pass through the same
+deep sanitizer. Credential discovery and post-install warnings also walk the
+entire embedded graph, while only credential schemas and reconnect instructions
+cross the workspace boundary.
+
 Migration `0026_marketplace_manifest_secret_redaction.sql` recursively removes
 known encrypted payload containers and secret-like keys from every historical
 `marketplace_item_versions.manifest_json` document. The migration is

@@ -199,14 +199,14 @@ Chaque ressource distante doit distinguer :
 
 ## Fournisseurs, tâches, clés API et Marketplace
 
-| Surface           | Scénarios critiques                                                                                      | Couverture                     |
-| ----------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------ |
-| Fournisseurs      | erreur initiale, modèles périmés après changement, découverte, test, archive                             | Code + tests providers         |
+| Surface           | Scénarios critiques                                                                                        | Couverture                                  |
+| ----------------- | ---------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| Fournisseurs      | erreur initiale, modèles périmés après changement, découverte, test, archive                               | Code + tests providers                      |
 | Tâches planifiées | erreur assistants/tâches, création bloquée si état inconnu, détail et édition persistée, run orchestrateur | Code + Playwright + tests scheduler/runtime |
-| Clés API          | erreur liste, clé affichée une fois, copie en échec, confirmation d’impact avant révocation, permissions | Code + tests API keys          |
-| Marketplace       | erreur initiale, fiche indisponible sans redirection, preflight credentials, installation et partage     | Code + tests marketplace       |
-| Usage             | erreur initiale/refresh, filtres date locale, quota concurrent                                           | Code + tests quota             |
-| Audit             | erreur initiale/refresh, dates locales, export, filtres                                                  | Code + tests audit             |
+| Clés API          | erreur liste, clé affichée une fois, copie en échec, confirmation d’impact avant révocation, permissions   | Code + tests API keys                       |
+| Marketplace       | erreur initiale, fiche indisponible sans redirection, preflight credentials, installation et partage       | Code + tests marketplace                    |
+| Usage             | erreur initiale/refresh, filtres date locale, quota concurrent                                             | Code + tests quota                          |
+| Audit             | erreur initiale/refresh, dates locales, export, filtres                                                    | Code + tests audit                          |
 
 ## Paramètres et administration
 

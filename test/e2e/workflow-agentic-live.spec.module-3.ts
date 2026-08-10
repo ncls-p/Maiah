@@ -1,11 +1,22 @@
-import { expect,test } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
-import { generatedDefinition,upstreamState } from "./workflow-agentic-live.spec.upstream";
+import {
+  generatedDefinition,
+  upstreamState,
+} from "./workflow-agentic-live.spec.upstream";
 
-test("builds, saves, and runs a workflow through the real agentic provider stream", async ({ page }) => {
-  const workspaces = (await (await page.request.get("/api/workspaces")).json()) as Array<{ workspace: { id: string } }>;
+test("builds, saves, and runs a workflow through the real agentic provider stream", async ({
+  page,
+}) => {
+  const workspaces = (await (
+    await page.request.get("/api/workspaces")
+  ).json()) as Array<{ workspace: { id: string } }>;
   const workspaceId = workspaces[0]!.workspace.id;
-  const previousBuilderState = (await (await page.request.get(`/api/admin/workflow-builder?workspaceId=${workspaceId}`)).json()) as {
+  const previousBuilderState = (await (
+    await page.request.get(
+      `/api/admin/workflow-builder?workspaceId=${workspaceId}`,
+    )
+  ).json()) as {
     config: { agentId: string | null };
   };
 
@@ -14,29 +25,35 @@ test("builds, saves, and runs a workflow through the real agentic provider strea
   let workflowId: string | undefined;
 
   try {
-    const providerResponse = await page.request.post("/api/workspace/providers", {
-      data: {
-        workspaceId,
-        kind: "openai-compatible",
-        name: "Workflow agentic E2E upstream",
-        baseUrl: `${upstreamState.baseUrl}/v1`,
-        authType: "custom-header",
-        openaiCompatibleApiRoute: "chat-completions",
+    const providerResponse = await page.request.post(
+      "/api/workspace/providers",
+      {
+        data: {
+          workspaceId,
+          kind: "openai-compatible",
+          name: "Workflow agentic E2E upstream",
+          baseUrl: `${upstreamState.baseUrl}/v1`,
+          authType: "custom-header",
+          openaiCompatibleApiRoute: "chat-completions",
+        },
       },
-    });
+    );
     expect(providerResponse.status()).toBe(201);
     providerId = ((await providerResponse.json()) as { id: string }).id;
 
-    const modelResponse = await page.request.post(`/api/workspace/providers/${providerId}/models`, {
-      data: {
-        workspaceId,
-        modelId: `workflow-agentic-e2e-${Date.now()}`,
-        displayName: "Workflow agentic E2E model",
-        capabilitiesJson: { text: true, tools: true },
-        contextWindow: 32_000,
-        maxOutputTokens: 4_096,
+    const modelResponse = await page.request.post(
+      `/api/workspace/providers/${providerId}/models`,
+      {
+        data: {
+          workspaceId,
+          modelId: `workflow-agentic-e2e-${Date.now()}`,
+          displayName: "Workflow agentic E2E model",
+          capabilitiesJson: { text: true, tools: true },
+          contextWindow: 32_000,
+          maxOutputTokens: 4_096,
+        },
       },
-    });
+    );
     expect(modelResponse.status()).toBe(201);
     const modelId = ((await modelResponse.json()) as { id: string }).id;
 
@@ -58,20 +75,26 @@ test("builds, saves, and runs a workflow through the real agentic provider strea
       }
     ).agent.id;
 
-    const builderSettingsResponse = await page.request.patch("/api/admin/workflow-builder", {
-      data: {
-        workspaceId,
-        agentId,
+    const builderSettingsResponse = await page.request.patch(
+      "/api/admin/workflow-builder",
+      {
+        data: {
+          workspaceId,
+          agentId,
+        },
       },
-    });
+    );
     expect(builderSettingsResponse.ok()).toBe(true);
 
-    const workflowResponse = await page.request.post("/api/workspace/workflows", {
-      data: {
-        workspaceId,
-        name: `Agentic live E2E ${Date.now()}`,
+    const workflowResponse = await page.request.post(
+      "/api/workspace/workflows",
+      {
+        data: {
+          workspaceId,
+          name: `Agentic live E2E ${Date.now()}`,
+        },
       },
-    });
+    );
     expect(workflowResponse.status()).toBe(201);
     workflowId = (
       (await workflowResponse.json()) as {
@@ -91,21 +114,33 @@ test("builds, saves, and runs a workflow through the real agentic provider strea
     await expect(page.getByText("Using Workflow builder E2E")).toBeVisible();
     await expect(page.getByText("Updating workflow steps")).toBeVisible();
     await expect(page.getByText("Connecting workflow steps")).toBeVisible();
-    await expect(page.getByText("The summary workflow is ready.")).toBeVisible();
-    await expect(page.getByText("Prepare summary", { exact: true })).toBeVisible();
+    await expect(
+      page.getByText("The summary workflow is ready."),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Prepare summary", { exact: true }),
+    ).toBeVisible();
 
     await page.reload();
     await page.getByRole("button", { name: "Agentic" }).click();
-    await expect(page.getByText("The summary workflow is ready.")).toBeVisible();
+    await expect(
+      page.getByText("The summary workflow is ready."),
+    ).toBeVisible();
 
-    const persisted = (await (await page.request.get(`/api/workspace/workflows/${workflowId}?workspaceId=${workspaceId}`)).json()) as {
+    const persisted = (await (
+      await page.request.get(
+        `/api/workspace/workflows/${workflowId}?workspaceId=${workspaceId}`,
+      )
+    ).json()) as {
       workflow: {
         latestVersion: number;
         definition: typeof generatedDefinition;
       };
     };
     expect(persisted.workflow.latestVersion).toBe(2);
-    expect(persisted.workflow.definition.nodes.some((node) => node.id === "summary")).toBe(true);
+    expect(
+      persisted.workflow.definition.nodes.some((node) => node.id === "summary"),
+    ).toBe(true);
     expect(persisted.workflow.definition.edges).toHaveLength(1);
     expect(persisted.workflow.definition.edges[0]).toMatchObject({
       source: "trigger",
@@ -113,13 +148,16 @@ test("builds, saves, and runs a workflow through the real agentic provider strea
       sourceHandle: null,
     });
 
-    const runResponse = await page.request.post(`/api/workspace/workflows/${workflowId}/runs`, {
-      data: {
-        workspaceId,
-        input: { message: "Bonjour" },
-        useLatestDraft: true,
+    const runResponse = await page.request.post(
+      `/api/workspace/workflows/${workflowId}/runs`,
+      {
+        data: {
+          workspaceId,
+          input: { message: "Bonjour" },
+          useLatestDraft: true,
+        },
       },
-    });
+    );
     expect(runResponse.status()).toBe(202);
     const runId = (
       (await runResponse.json()) as {
@@ -130,7 +168,9 @@ test("builds, saves, and runs a workflow through the real agentic provider strea
     await expect
       .poll(
         async () => {
-          const detailResponse = await page.request.get(`/api/workspace/workflow-runs/${runId}?workspaceId=${workspaceId}`);
+          const detailResponse = await page.request.get(
+            `/api/workspace/workflow-runs/${runId}?workspaceId=${workspaceId}`,
+          );
           expect(detailResponse.status()).toBe(200);
           return (
             (await detailResponse.json()) as {
@@ -155,13 +195,19 @@ test("builds, saves, and runs a workflow through the real agentic provider strea
       },
     });
     if (workflowId) {
-      await page.request.delete(`/api/workspace/workflows/${workflowId}?workspaceId=${workspaceId}`);
+      await page.request.delete(
+        `/api/workspace/workflows/${workflowId}?workspaceId=${workspaceId}`,
+      );
     }
     if (agentId) {
-      await page.request.delete(`/api/workspace/agents/${agentId}?workspaceId=${workspaceId}`);
+      await page.request.delete(
+        `/api/workspace/agents/${agentId}?workspaceId=${workspaceId}`,
+      );
     }
     if (providerId) {
-      await page.request.delete(`/api/workspace/providers/${providerId}?workspaceId=${workspaceId}`);
+      await page.request.delete(
+        `/api/workspace/providers/${providerId}?workspaceId=${workspaceId}`,
+      );
     }
   }
 });

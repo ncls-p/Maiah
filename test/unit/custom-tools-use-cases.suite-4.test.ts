@@ -1,4 +1,4 @@
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/server/infrastructure/ai-sdk/devtools", () => ({
   registerAiSdkDevTools: vi.fn(),
@@ -61,7 +61,18 @@ type Chain = {
 
 function makeChain(): Chain {
   const c = {} as Chain;
-  for (const key of ["select", "insert", "update", "delete", "from", "where", "orderBy", "values", "set", "onConflictDoUpdate"] as const) {
+  for (const key of [
+    "select",
+    "insert",
+    "update",
+    "delete",
+    "from",
+    "where",
+    "orderBy",
+    "values",
+    "set",
+    "onConflictDoUpdate",
+  ] as const) {
     c[key] = vi.fn().mockReturnThis();
   }
   c.limit = vi.fn().mockResolvedValue([]);
@@ -101,7 +112,18 @@ import { generateText } from "ai";
 const dbModule = _dbModule as unknown as DbModule;
 
 function resetDb() {
-  for (const key of ["select", "insert", "update", "delete", "from", "where", "orderBy", "values", "set", "onConflictDoUpdate"] as const) {
+  for (const key of [
+    "select",
+    "insert",
+    "update",
+    "delete",
+    "from",
+    "where",
+    "orderBy",
+    "values",
+    "set",
+    "onConflictDoUpdate",
+  ] as const) {
     dbModule._c[key].mockReset().mockReturnThis();
   }
   dbModule._c.limit.mockReset().mockResolvedValue([]);
@@ -138,7 +160,9 @@ beforeEach(() => {
 
 describe("executeCustomToolWorkflow", () => {
   it("rejects absent, private, and workflow-less tools", async () => {
-    dbModule._c.limit.mockResolvedValueOnce([{ valueJson: enabledConfig }]).mockResolvedValueOnce([]);
+    dbModule._c.limit
+      .mockResolvedValueOnce([{ valueJson: enabledConfig }])
+      .mockResolvedValueOnce([]);
     await expect(
       executeCustomToolWorkflow({
         workspaceId: "ws-1",
@@ -149,7 +173,11 @@ describe("executeCustomToolWorkflow", () => {
     ).rejects.toThrow("Custom tool not found");
 
     resetDb();
-    dbModule._c.limit.mockResolvedValueOnce([{ valueJson: enabledConfig }]).mockResolvedValueOnce([{ createdById: "other", isGlobal: false, n8nWorkflowId: "wf-1" }]);
+    dbModule._c.limit
+      .mockResolvedValueOnce([{ valueJson: enabledConfig }])
+      .mockResolvedValueOnce([
+        { createdById: "other", isGlobal: false, n8nWorkflowId: "wf-1" },
+      ]);
     await expect(
       executeCustomToolWorkflow({
         workspaceId: "ws-1",
@@ -160,7 +188,11 @@ describe("executeCustomToolWorkflow", () => {
     ).rejects.toThrow("Custom tool not found");
 
     resetDb();
-    dbModule._c.limit.mockResolvedValueOnce([{ valueJson: enabledConfig }]).mockResolvedValueOnce([{ createdById: "user-1", isGlobal: false, n8nWorkflowId: null }]);
+    dbModule._c.limit
+      .mockResolvedValueOnce([{ valueJson: enabledConfig }])
+      .mockResolvedValueOnce([
+        { createdById: "user-1", isGlobal: false, n8nWorkflowId: null },
+      ]);
     await expect(
       executeCustomToolWorkflow({
         workspaceId: "ws-1",
@@ -172,7 +204,11 @@ describe("executeCustomToolWorkflow", () => {
   });
 
   it("runs the configured workflow with object input only", async () => {
-    dbModule._c.limit.mockResolvedValueOnce([{ valueJson: enabledConfig }]).mockResolvedValueOnce([{ createdById: "user-1", isGlobal: false, n8nWorkflowId: "wf-1" }]);
+    dbModule._c.limit
+      .mockResolvedValueOnce([{ valueJson: enabledConfig }])
+      .mockResolvedValueOnce([
+        { createdById: "user-1", isGlobal: false, n8nWorkflowId: "wf-1" },
+      ]);
     dbModule._c.where
       .mockReturnValueOnce(dbModule._c)
       .mockReturnValueOnce(dbModule._c)

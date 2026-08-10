@@ -10,6 +10,14 @@ import {
   workspaces,
 } from "@/server/infrastructure/db/schema";
 import { and, asc, eq, inArray } from "drizzle-orm";
+import {
+  AgentAccessError,
+  loadAgentGraphIds,
+  loadOwnedAgentGraph,
+  type AccessExecutor,
+} from "./access-scope.agent-graph";
+
+export { AgentAccessError } from "./access-scope.agent-graph";
 
 export const AGENT_ACCESS_SCOPES = [
   "private",
@@ -30,16 +38,6 @@ export type AgentAccessOptions = {
   projectName: string;
   organizationName: string;
 };
-
-export class AgentAccessError extends Error {
-  constructor(
-    message: string,
-    readonly status = 403,
-  ) {
-    super(message);
-    this.name = "AgentAccessError";
-  }
-}
 
 async function workspaceScope(workspaceId: string) {
   const [scope] = await db
@@ -116,11 +114,6 @@ export async function validateAgentAccessSelection(input: {
   }
 }
 
-type AccessExecutor = Pick<
-  typeof db,
-  "delete" | "insert" | "select" | "update"
->;
-
 export async function applyAgentAccessSelection(
   input: {
     agentId: string;
@@ -128,6 +121,31 @@ export async function applyAgentAccessSelection(
     selection: AgentAccessSelection;
   },
   executor: AccessExecutor = db,
+) {
+  const agentIds = await loadOwnedAgentGraph(
+    input.agentId,
+    input.userId,
+    executor,
+  );
+  const affectedUserIds: string[] = [];
+  for (const agentId of agentIds) {
+    affectedUserIds.push(
+      ...(await applySingleAgentAccessSelection(
+        { ...input, agentId },
+        executor,
+      )),
+    );
+  }
+  return [...new Set(affectedUserIds)];
+}
+
+async function applySingleAgentAccessSelection(
+  input: {
+    agentId: string;
+    userId: string;
+    selection: AgentAccessSelection;
+  },
+  executor: AccessExecutor,
 ) {
   const [useRole] = await executor
     .select({ id: roles.id })
@@ -217,9 +235,12 @@ export async function invalidateAgentAccessCache(
   agentId: string,
   userIds: string[],
 ) {
+  const agentIds = await loadAgentGraphIds(agentId, db);
   await Promise.all(
-    userIds.map((userId) =>
-      authorization.invalidatePermissionCache(userId, "agent", agentId),
+    agentIds.flatMap((resourceId) =>
+      userIds.map((userId) =>
+        authorization.invalidatePermissionCache(userId, "agent", resourceId),
+      ),
     ),
   );
 }

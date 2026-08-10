@@ -1,4 +1,4 @@
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const queueMocks = vi.hoisted(() => ({
   add: vi.fn(),
@@ -23,14 +23,33 @@ vi.mock("bullmq", () => ({
 
 vi.mock("@/lib/env", () => ({ env: queueMocks.env }));
 
-import { WORKFLOW_NODE_CATALOG,WORKFLOW_NODE_CATEGORIES,workflowNodeCatalogItem } from "@/modules/workflows/catalog";
-import { WORKFLOW_QUEUE_NAME,enqueueWorkflowRun,recoverWorkflowRunJob,workflowQueueConnection } from "@/modules/workflows/queue";
+import {
+  WORKFLOW_NODE_CATALOG,
+  WORKFLOW_NODE_CATEGORIES,
+  workflowNodeCatalogItem,
+} from "@/modules/workflows/catalog";
+import {
+  WORKFLOW_QUEUE_NAME,
+  enqueueWorkflowRun,
+  recoverWorkflowRunJob,
+  workflowQueueConnection,
+} from "@/modules/workflows/queue";
 
 describe("workflow no-code catalog", () => {
   it("declares one complete, unique entry for every supported node", () => {
     expect(WORKFLOW_NODE_CATALOG).toHaveLength(21);
-    expect(new Set(WORKFLOW_NODE_CATALOG.map((item) => item.type)).size).toBe(WORKFLOW_NODE_CATALOG.length);
-    expect(WORKFLOW_NODE_CATEGORIES).toEqual(["all", "trigger", "ai", "integration", "data", "logic", "code"]);
+    expect(new Set(WORKFLOW_NODE_CATALOG.map((item) => item.type)).size).toBe(
+      WORKFLOW_NODE_CATALOG.length,
+    );
+    expect(WORKFLOW_NODE_CATEGORIES).toEqual([
+      "all",
+      "trigger",
+      "ai",
+      "integration",
+      "data",
+      "logic",
+      "code",
+    ]);
 
     for (const item of WORKFLOW_NODE_CATALOG) {
       expect(workflowNodeCatalogItem(item.type)).toBe(item);
@@ -42,7 +61,9 @@ describe("workflow no-code catalog", () => {
   });
 
   it("rejects unknown node types", () => {
-    expect(() => workflowNodeCatalogItem("unknown.node" as never)).toThrow("Unknown workflow node type");
+    expect(() => workflowNodeCatalogItem("unknown.node" as never)).toThrow(
+      "Unknown workflow node type",
+    );
   });
 });
 
@@ -66,7 +87,8 @@ describe("workflow BullMQ queue", () => {
       maxRetriesPerRequest: null,
     });
 
-    queueMocks.env.DRAGONFLY_URL = "rediss://queue-user:url-password@secure.example.test:6380/4";
+    queueMocks.env.DRAGONFLY_URL =
+      "rediss://queue-user:url-password@secure.example.test:6380/4";
     queueMocks.env.DRAGONFLY_PASSWORD = "configured-password";
 
     expect(workflowQueueConnection()).toEqual({
@@ -94,13 +116,27 @@ describe("workflow BullMQ queue", () => {
         }),
       }),
     );
-    expect(queueMocks.add).toHaveBeenNthCalledWith(1, "execute", { runId: "run-1" }, { jobId: "run-1" });
-    expect(queueMocks.add).toHaveBeenNthCalledWith(2, "execute", { runId: "run-2" }, { jobId: "run-2" });
+    expect(queueMocks.add).toHaveBeenNthCalledWith(
+      1,
+      "execute",
+      { runId: "run-1" },
+      { jobId: "run-1" },
+    );
+    expect(queueMocks.add).toHaveBeenNthCalledWith(
+      2,
+      "execute",
+      { runId: "run-2" },
+      { jobId: "run-2" },
+    );
   });
 
   it("recovers missing and failed jobs without duplicating scheduled work", async () => {
     await expect(recoverWorkflowRunJob("missing")).resolves.toBe("enqueued");
-    expect(queueMocks.add).toHaveBeenCalledWith("execute", { runId: "missing" }, { jobId: "missing" });
+    expect(queueMocks.add).toHaveBeenCalledWith(
+      "execute",
+      { runId: "missing" },
+      { jobId: "missing" },
+    );
 
     const retry = vi.fn().mockResolvedValue(undefined);
     const getState = vi.fn().mockResolvedValue("failed");

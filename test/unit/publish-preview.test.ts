@@ -1,9 +1,12 @@
 import * as draftHelpers from "@/modules/marketplace/draft-helpers";
 import * as manifestBuilders from "@/modules/marketplace/manifest-builders";
-import type { AgentMarketplaceManifest,SkillMarketplaceManifest } from "@/modules/marketplace/manifest-types";
+import type {
+  AgentMarketplaceManifest,
+  SkillMarketplaceManifest,
+} from "@/modules/marketplace/manifest-types";
 import { getPublishPreview } from "@/modules/marketplace/publish-preview";
 import * as _dbModule from "@/server/infrastructure/db";
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 // ─── DB mock ────────────────────────────────────────────────────────────
 type SelectChain = {
   from: ReturnType<typeof vi.fn>;
@@ -42,7 +45,9 @@ vi.mock("@/modules/marketplace/draft-helpers", () => ({
 const dbModule = _dbModule as unknown as DbModule;
 const mockBuildAgent = vi.mocked(manifestBuilders.buildAgentManifest);
 const mockBuildSkill = vi.mocked(manifestBuilders.buildSkillManifest);
-const mockFindDraft = vi.mocked(draftHelpers.findExistingDraft) as ReturnType<typeof vi.fn<() => Promise<unknown>>>;
+const mockFindDraft = vi.mocked(draftHelpers.findExistingDraft) as ReturnType<
+  typeof vi.fn<() => Promise<unknown>>
+>;
 function resetChains() {
   dbModule._selectChain.from.mockReset().mockReturnThis();
   dbModule._selectChain.where.mockReset().mockReturnThis();
@@ -66,7 +71,9 @@ const agentManifest: AgentMarketplaceManifest = {
     providerName: "OpenAI",
     modelName: "gpt-4",
   },
-  toolBindings: [{ source: "builtin", ref: "web_search", requireApproval: false }],
+  toolBindings: [
+    { source: "builtin", ref: "web_search", requireApproval: false },
+  ],
   skillBindings: [{ ref: "my-skill" }],
   knowledgeBindings: [{ name: "kb-1" }],
   bundledResources: { skills: [], mcpPresets: [], customTools: [] },

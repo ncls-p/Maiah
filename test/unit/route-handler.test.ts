@@ -1,4 +1,4 @@
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock dependencies
 vi.mock("@/modules/auth/session", () => ({
@@ -14,7 +14,8 @@ vi.mock("@/modules/admin/auth", () => ({
 }));
 
 vi.mock("@/server/domain/services/authorization", () => ({
-  matchesPermission: (granted: string, required: string) => granted === required,
+  matchesPermission: (granted: string, required: string) =>
+    granted === required,
   authorization: {
     checkPermission: vi.fn(),
     listPermissions: vi.fn(),
@@ -180,7 +181,10 @@ describe("route-handler – handleRoute", async () => {
       } as NextRequest,
       handler,
     );
-    await handleRoute({ headers: new Headers(), method: "GET" } as NextRequest, handler);
+    await handleRoute(
+      { headers: new Headers(), method: "GET" } as NextRequest,
+      handler,
+    );
 
     expect(handler).toHaveBeenCalledTimes(2);
   });

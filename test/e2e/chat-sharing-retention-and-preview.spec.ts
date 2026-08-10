@@ -12,6 +12,7 @@ import {
   ensureE2EUser,
   login,
 } from "./fixtures";
+import * as temporaryChat from "./temporary-chat-assertions";
 
 const { loadEnvConfig } = nextEnv;
 loadEnvConfig(process.cwd());
@@ -211,6 +212,8 @@ test("creates a temporary chat with the retention selected from the timer", asyn
       })
       .toMatchObject({ ttl: 5, seconds: 300 });
 
+    await temporaryChat.expectTemporaryConversationInHistory(page, title);
+
     await expect(page.getByText(/^Deletes in /)).toBeVisible();
     await activate(
       page.getByRole("button", { name: "Show temporary conversation details" }),
@@ -241,9 +244,7 @@ test("creates a temporary chat with the retention selected from the timer", asyn
     await expect(
       page.getByRole("button", { name: "Show temporary conversation details" }),
     ).toHaveCount(0);
-    await expect(
-      page.getByText("Saved conversation", { exact: true }),
-    ).toBeVisible();
+    await temporaryChat.expectTransientPersistenceConfirmation(page);
     await expect
       .poll(async () => {
         const client = new Client({ connectionString: databaseUrl() });
@@ -438,13 +439,11 @@ test("previews an uploaded PDF natively without requesting parsed text", async (
   await expect(
     page.getByRole("textbox", { name: "Message", exact: true }),
   ).toBeEnabled();
-  await page
-    .locator('input[type="file"]')
-    .setInputFiles({
-      name: "native-preview.pdf",
-      mimeType: "application/pdf",
-      buffer: Buffer.from("%PDF-1.4\n%%EOF"),
-    });
+  await page.locator('input[type="file"]').setInputFiles({
+    name: "native-preview.pdf",
+    mimeType: "application/pdf",
+    buffer: Buffer.from("%PDF-1.4\n%%EOF"),
+  });
   const preview = page.getByRole("button", {
     name: "View extracted text for native-preview.pdf",
   });

@@ -1,4 +1,4 @@
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/server/infrastructure/ai-sdk/devtools", () => ({
   registerAiSdkDevTools: vi.fn(),
@@ -61,7 +61,18 @@ type Chain = {
 
 function makeChain(): Chain {
   const c = {} as Chain;
-  for (const key of ["select", "insert", "update", "delete", "from", "where", "orderBy", "values", "set", "onConflictDoUpdate"] as const) {
+  for (const key of [
+    "select",
+    "insert",
+    "update",
+    "delete",
+    "from",
+    "where",
+    "orderBy",
+    "values",
+    "set",
+    "onConflictDoUpdate",
+  ] as const) {
     c[key] = vi.fn().mockReturnThis();
   }
   c.limit = vi.fn().mockResolvedValue([]);
@@ -93,7 +104,10 @@ vi.mock("@/server/infrastructure/db", () => {
 });
 
 import { decryptValue } from "@/lib/crypto";
-import { getCustomToolBuilderAdminState,setCustomToolBuilderConfig } from "@/modules/custom-tools/use-cases";
+import {
+  getCustomToolBuilderAdminState,
+  setCustomToolBuilderConfig,
+} from "@/modules/custom-tools/use-cases";
 import { callRemoteMcpTool } from "@/modules/mcp/client";
 import * as _dbModule from "@/server/infrastructure/db";
 import { generateText } from "ai";
@@ -101,7 +115,18 @@ import { generateText } from "ai";
 const dbModule = _dbModule as unknown as DbModule;
 
 function resetDb() {
-  for (const key of ["select", "insert", "update", "delete", "from", "where", "orderBy", "values", "set", "onConflictDoUpdate"] as const) {
+  for (const key of [
+    "select",
+    "insert",
+    "update",
+    "delete",
+    "from",
+    "where",
+    "orderBy",
+    "values",
+    "set",
+    "onConflictDoUpdate",
+  ] as const) {
     dbModule._c[key].mockReset().mockReturnThis();
   }
   dbModule._c.limit.mockReset().mockResolvedValue([]);

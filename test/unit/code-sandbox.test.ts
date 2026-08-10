@@ -1,9 +1,9 @@
-import { mkdtempSync,rmSync } from "node:fs";
-import http,{ type Server } from "node:http";
+import { mkdtempSync, rmSync } from "node:fs";
+import http, { type Server } from "node:http";
 import os from "node:os";
 import path from "node:path";
 
-import { afterEach,beforeEach,describe,expect,it,vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/modules/chat/attachments", () => ({
   createChatAttachment: vi.fn(async (input: { fileName: string }) => ({
@@ -36,10 +36,13 @@ vi.mock("@/modules/chat/attachments", () => ({
   getChatAttachmentExtractedText: vi.fn(async () => ({
     text: "## Page 1\n\nFirst page\n\n## Page 2\n\nSecond page",
   })),
-  isChatFileAttachment: vi.fn((value: { kind?: string }) => value.kind === "chat_file"),
+  isChatFileAttachment: vi.fn(
+    (value: { kind?: string }) => value.kind === "chat_file",
+  ),
 }));
 
-type ExecuteCodeSandbox = (typeof import("@/modules/tool/code-sandbox"))["executeCodeSandbox"];
+type ExecuteCodeSandbox =
+  (typeof import("@/modules/tool/code-sandbox"))["executeCodeSandbox"];
 
 type RunnerRequest = {
   language: "python" | "node" | "bash";
@@ -65,7 +68,8 @@ const validEnv = {
   BETTER_AUTH_URL: "http://localhost:3000",
   BETTER_AUTH_TRUSTED_ORIGINS: "http://localhost:3000",
   DATABASE_URL: "postgres://localhost/test",
-  APP_ENCRYPTION_KEY: "0000000000000000000000000000000000000000000000000000000000000000",
+  APP_ENCRYPTION_KEY:
+    "0000000000000000000000000000000000000000000000000000000000000000",
   OBJECT_STORAGE_BUCKET: "test",
   OBJECT_STORAGE_ACCESS_KEY_ID: "test",
   OBJECT_STORAGE_SECRET_ACCESS_KEY: "test",
@@ -105,7 +109,9 @@ async function startFakeRunner(handler: RunnerHandler) {
     const chunks: Buffer[] = [];
     request.on("data", (chunk: Buffer) => chunks.push(chunk));
     request.on("end", () => {
-      const payload = JSON.parse(Buffer.concat(chunks).toString("utf8")) as RunnerRequest;
+      const payload = JSON.parse(
+        Buffer.concat(chunks).toString("utf8"),
+      ) as RunnerRequest;
       requests.push(payload);
       const body = JSON.stringify(handler(payload));
       response.writeHead(200, {
@@ -169,7 +175,11 @@ describe("code sandbox runner client", () => {
 
     const result = await (executeCodeSandbox as ExecuteCodeSandbox)({
       language: "node",
-      code: ['const fs = require("node:fs");', 'console.log([1, 2, 3].map((value) => value * value).join(","));', 'fs.writeFileSync("result.txt", "squares=1,4,9");'].join("\n"),
+      code: [
+        'const fs = require("node:fs");',
+        'console.log([1, 2, 3].map((value) => value * value).join(","));',
+        'fs.writeFileSync("result.txt", "squares=1,4,9");',
+      ].join("\n"),
       files: [{ path: "data/input.txt", content: "hello" }],
     });
 
@@ -212,7 +222,9 @@ describe("code sandbox runner client", () => {
     const largeInput = JSON.stringify({ body: "x".repeat(150_000) });
     await startFakeRunner((request) => {
       expect(request.stdin).toBeUndefined();
-      expect(Buffer.from(request.stdinFileBase64 ?? "", "base64").toString("utf8")).toBe(largeInput);
+      expect(
+        Buffer.from(request.stdinFileBase64 ?? "", "base64").toString("utf8"),
+      ).toBe(largeInput);
       return {
         ok: true,
         language: "node",
@@ -239,8 +251,13 @@ describe("code sandbox runner client", () => {
   });
 
   it("returns an actionable error when the sandbox runner is unavailable", async () => {
-    const missingSocketDir = mkdtempSync(path.join(os.tmpdir(), "ai-hub-missing-runner-"));
-    process.env.SANDBOX_RUNNER_SOCKET = path.join(missingSocketDir, "missing.sock");
+    const missingSocketDir = mkdtempSync(
+      path.join(os.tmpdir(), "ai-hub-missing-runner-"),
+    );
+    process.env.SANDBOX_RUNNER_SOCKET = path.join(
+      missingSocketDir,
+      "missing.sock",
+    );
     const { executeCodeSandbox } = await loadSandboxModule();
 
     const result = await (executeCodeSandbox as ExecuteCodeSandbox)({

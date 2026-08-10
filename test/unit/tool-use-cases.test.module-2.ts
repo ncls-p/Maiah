@@ -1,6 +1,10 @@
-import { describe,expect,it } from "vitest";
+import { describe, expect, it } from "vitest";
 
-import { cloneToolBindings,insertToolBindingsForVersion,replaceToolBindingsForVersion } from "@/modules/tool/use-cases";
+import {
+  cloneToolBindings,
+  insertToolBindingsForVersion,
+  replaceToolBindingsForVersion,
+} from "@/modules/tool/use-cases";
 import { dbModule } from "./tool-use-cases.test.db-module";
 
 describe("insertToolBindingsForVersion", () => {
@@ -14,7 +18,11 @@ describe("insertToolBindingsForVersion", () => {
   it("throws when custom tool not found", async () => {
     dbModule._sc.limit.mockResolvedValueOnce([]);
 
-    await expect(insertToolBindingsForVersion("v1", [{ toolSource: "custom", toolId: crypto.randomUUID() }])).rejects.toThrow("Custom tool not found");
+    await expect(
+      insertToolBindingsForVersion("v1", [
+        { toolSource: "custom", toolId: crypto.randomUUID() },
+      ]),
+    ).rejects.toThrow("Custom tool not found");
   });
 
   it("throws when mcp tool not found", async () => {
@@ -32,14 +40,20 @@ describe("insertToolBindingsForVersion", () => {
   });
 
   it("throws when builtin tool not found", async () => {
-    await expect(insertToolBindingsForVersion("v1", [{ toolSource: "builtin", toolId: "nonexistent-tool-id" }])).rejects.toThrow("Tool not found");
+    await expect(
+      insertToolBindingsForVersion("v1", [
+        { toolSource: "builtin", toolId: "nonexistent-tool-id" },
+      ]),
+    ).rejects.toThrow("Tool not found");
   });
 
   it("inserts custom and MCP tool bindings with workspace visibility", async () => {
     const customId = crypto.randomUUID();
     const mcpId = crypto.randomUUID();
     const serverId = crypto.randomUUID();
-    dbModule._sc.limit.mockResolvedValueOnce([{ id: customId }]).mockResolvedValueOnce([{ requireApproval: false }]);
+    dbModule._sc.limit
+      .mockResolvedValueOnce([{ id: customId }])
+      .mockResolvedValueOnce([{ requireApproval: false }]);
 
     await insertToolBindingsForVersion(
       "v1",
@@ -68,7 +82,9 @@ describe("insertToolBindingsForVersion", () => {
   it("inserts builtin tool binding", async () => {
     // Use a real builtin tool ID from the catalog
     const CALCULATOR_ID = "00000000-0000-4000-8000-000000000001";
-    await insertToolBindingsForVersion("v1", [{ toolSource: "builtin", toolId: CALCULATOR_ID }]);
+    await insertToolBindingsForVersion("v1", [
+      { toolSource: "builtin", toolId: CALCULATOR_ID },
+    ]);
 
     expect(dbModule.db.insert).toHaveBeenCalled();
     expect(dbModule._ic.onConflictDoNothing).toHaveBeenCalled();
@@ -78,7 +94,9 @@ describe("insertToolBindingsForVersion", () => {
 describe("replaceToolBindingsForVersion", () => {
   it("deletes existing bindings then inserts new ones", async () => {
     const CALCULATOR_ID = "00000000-0000-4000-8000-000000000001";
-    await replaceToolBindingsForVersion("v1", [{ toolSource: "builtin", toolId: CALCULATOR_ID }]);
+    await replaceToolBindingsForVersion("v1", [
+      { toolSource: "builtin", toolId: CALCULATOR_ID },
+    ]);
 
     expect(dbModule.db.delete).toHaveBeenCalled();
     expect(dbModule.db.insert).toHaveBeenCalled();
@@ -101,7 +119,9 @@ describe("cloneToolBindings", () => {
 
   it("skips mcp bindings where tool not found", async () => {
     // Get existing bindings: one mcp
-    dbModule._sc.where.mockResolvedValueOnce([{ toolSource: "mcp", toolId: "mcp-tool-1", requireApproval: false }]);
+    dbModule._sc.where.mockResolvedValueOnce([
+      { toolSource: "mcp", toolId: "mcp-tool-1", requireApproval: false },
+    ]);
     // Tool lookup returns empty
     dbModule._sc.limit.mockResolvedValueOnce([]);
 
@@ -145,7 +165,9 @@ describe("cloneToolBindings", () => {
 
   it("clones builtin bindings", async () => {
     const CALCULATOR_ID = "00000000-0000-4000-8000-000000000001";
-    dbModule._sc.where.mockResolvedValueOnce([{ toolSource: "builtin", toolId: CALCULATOR_ID, requireApproval: false }]);
+    dbModule._sc.where.mockResolvedValueOnce([
+      { toolSource: "builtin", toolId: CALCULATOR_ID, requireApproval: false },
+    ]);
 
     await cloneToolBindings("v1", "v2");
 

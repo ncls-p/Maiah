@@ -1,8 +1,14 @@
 import { installPostInstallFlags } from "@/modules/marketplace/install-helpers";
-import { buildMcpPresetManifest,buildSkillManifest } from "@/modules/marketplace/manifest-builders";
-import { containsMarketplaceSecretMaterial,sanitizeMarketplaceManifest } from "@/modules/marketplace/manifest-sanitizer";
+import {
+  buildMcpPresetManifest,
+  buildSkillManifest,
+} from "@/modules/marketplace/manifest-builders";
+import {
+  containsMarketplaceSecretMaterial,
+  sanitizeMarketplaceManifest,
+} from "@/modules/marketplace/manifest-sanitizer";
 import { skillFileStats } from "@/modules/marketplace/manifest-types";
-import { describe,expect,it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 const baseServer = {
   id: "srv-1",
@@ -79,11 +85,19 @@ describe("buildSkillManifest", () => {
 
 describe("buildMcpPresetManifest", () => {
   it("exports credential schema without credential values", () => {
-    const manifest = buildMcpPresetManifest("Test Server", null, baseServer, [baseTool], "server");
+    const manifest = buildMcpPresetManifest(
+      "Test Server",
+      null,
+      baseServer,
+      [baseTool],
+      "server",
+    );
     expect(manifest.preset.requiresCredentials).toBe(true);
     expect(manifest.preset).not.toHaveProperty("secretsIncluded");
     expect(manifest.preset).not.toHaveProperty("encryptedHeadersJson");
-    expect(manifest.preset.credentialSchema).toEqual([expect.objectContaining({ key: "header:Authorization" })]);
+    expect(manifest.preset.credentialSchema).toEqual([
+      expect.objectContaining({ key: "header:Authorization" }),
+    ]);
     expect(manifest.preset.tools[0].name).toBe("search");
     expect(manifest.preset.enabled).toBe(true);
   });
@@ -117,11 +131,21 @@ describe("sanitizeMarketplaceManifest", () => {
           },
         ],
       },
+      specialists: [
+        {
+          manifest: {
+            type: "agent",
+            name: "nested",
+            agent: { apiKey: "nested-plaintext" },
+          },
+        },
+      ],
     });
 
     expect(containsMarketplaceSecretMaterial(sanitized)).toBe(false);
     expect(JSON.stringify(sanitized)).not.toContain("ciphertext");
     expect(JSON.stringify(sanitized)).not.toContain("plaintext");
+    expect(JSON.stringify(sanitized)).not.toContain("nested-plaintext");
     expect(JSON.stringify(sanitized)).toContain("credentialSchema");
     expect(
       sanitizeMarketplaceManifest({
@@ -160,6 +184,44 @@ describe("installPostInstallFlags", () => {
         secretsIncluded: true,
       },
     } as never);
+    expect(flags.requiresCredentials).toBe(true);
+  });
+
+  it("reports credentials required by a nested specialist", () => {
+    const flags = installPostInstallFlags({
+      type: "agent",
+      name: "Coordinator",
+      kind: "orchestrator",
+      agent: {},
+      specialists: [
+        {
+          manifest: {
+            type: "agent",
+            name: "Researcher",
+            agent: {},
+            bundledResources: {
+              skills: [],
+              customTools: [],
+              mcpPresets: [
+                {
+                  type: "mcp_preset",
+                  name: "Search",
+                  preset: {
+                    scope: "server",
+                    serverName: "Search",
+                    transport: "sse",
+                    enabled: true,
+                    requireApproval: false,
+                    requiresCredentials: true,
+                    tools: [],
+                  },
+                },
+              ],
+            },
+          },
+        },
+      ],
+    });
     expect(flags.requiresCredentials).toBe(true);
   });
 });

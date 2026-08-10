@@ -46,7 +46,10 @@ export const authenticationState: { cookies: Cookie[] | null } = {
 };
 
 export function databaseUrl() {
-  return process.env.DATABASE_URL ?? "postgres://postgres:postgres@localhost:15432/ai_hub";
+  return (
+    process.env.DATABASE_URL ??
+    "postgres://postgres:postgres@localhost:15432/ai_hub"
+  );
 }
 
 export async function ensureE2EUser() {
@@ -64,8 +67,14 @@ export async function ensureE2EUser() {
     const userId = upserted.rows[0].id;
 
     const password = await hashPassword(e2eUser.password);
-    await client.query("delete from account where account_id = $1 and provider_id = 'credential'", [userId]);
-    await client.query("insert into account (account_id, provider_id, user_id, password, created_at, updated_at) values ($1, 'credential', $2, $3, now(), now())", [userId, userId, password]);
+    await client.query(
+      "delete from account where account_id = $1 and provider_id = 'credential'",
+      [userId],
+    );
+    await client.query(
+      "insert into account (account_id, provider_id, user_id, password, created_at, updated_at) values ($1, 'credential', $2, $3, now(), now())",
+      [userId, userId, password],
+    );
     await client.query(
       `insert into app_settings (key, value_json, updated_by_user_id, updated_at)
 			 values ($1, $2::jsonb, $3, now())
@@ -73,7 +82,11 @@ export async function ensureE2EUser() {
 			 set value_json = excluded.value_json,
 			     updated_by_user_id = excluded.updated_by_user_id,
 			     updated_at = now()`,
-      [`onboarding.complete:${userId}`, JSON.stringify({ completed: true, source: "playwright" }), userId],
+      [
+        `onboarding.complete:${userId}`,
+        JSON.stringify({ completed: true, source: "playwright" }),
+        userId,
+      ],
     );
     await cache.delByPrefix(`perm:${userId}:`);
   } finally {
@@ -89,7 +102,10 @@ export async function ensureE2EAssistant() {
   try {
     const providerId = "10000000-0000-4000-8000-000000000001";
     const modelId = "10000000-0000-4000-8000-000000000002";
-    const user = await client.query<{ id: string }>(`select id from "user" where email = $1 limit 1`, [e2eUser.email]);
+    const user = await client.query<{ id: string }>(
+      `select id from "user" where email = $1 limit 1`,
+      [e2eUser.email],
+    );
     const workspace = await client.query<{ id: string }>(
       `select w.id
        from workspaces w

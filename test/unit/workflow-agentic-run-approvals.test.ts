@@ -1,4 +1,4 @@
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => {
   const chain = {
@@ -44,7 +44,13 @@ vi.mock("@/modules/workflows/use-cases", () => ({
   createWorkflowRun: mocks.createWorkflowRun,
 }));
 
-import { approveWorkflowAgentRunRequest,createWorkflowAgentRunRequest,getPendingWorkflowAgentRunRequests,rejectWorkflowAgentRunRequest,WorkflowAgentRunDecisionError } from "@/modules/workflows/agentic-run-approvals";
+import {
+  approveWorkflowAgentRunRequest,
+  createWorkflowAgentRunRequest,
+  getPendingWorkflowAgentRunRequests,
+  rejectWorkflowAgentRunRequest,
+  WorkflowAgentRunDecisionError,
+} from "@/modules/workflows/agentic-run-approvals";
 
 const workflowId = "11111111-1111-4111-8111-111111111111";
 const workspaceId = "22222222-2222-4222-8222-222222222222";
@@ -52,7 +58,15 @@ const userId = "33333333-3333-4333-8333-333333333333";
 const requestId = "44444444-4444-4444-8444-444444444444";
 const now = new Date("2026-07-23T10:00:00.000Z");
 
-function requestRow(status: "pending" | "approving" | "approved" | "rejected" | "expired" | "failed" = "pending") {
+function requestRow(
+  status:
+    | "pending"
+    | "approving"
+    | "approved"
+    | "rejected"
+    | "expired"
+    | "failed" = "pending",
+) {
   return {
     id: requestId,
     workflowId,
@@ -121,7 +135,9 @@ describe("workflow agent run approvals", () => {
         expectedVersion: 3,
       }),
     );
-    expect(mocks.auditEmit).toHaveBeenCalledWith(expect.objectContaining({ action: "workflow.agentRunRequested" }));
+    expect(mocks.auditEmit).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "workflow.agentRunRequested" }),
+    );
   });
 
   it("returns only unexpired pending requests in the current scope", async () => {
@@ -145,7 +161,9 @@ describe("workflow agent run approvals", () => {
 
   it("claims once and launches the exact tested version after approval", async () => {
     mocks.chain.limit.mockResolvedValueOnce([requestRow()]);
-    mocks.chain.returning.mockResolvedValueOnce([{ ...requestRow(), status: "approving" }]);
+    mocks.chain.returning.mockResolvedValueOnce([
+      { ...requestRow(), status: "approving" },
+    ]);
 
     await expect(
       approveWorkflowAgentRunRequest({
@@ -169,7 +187,9 @@ describe("workflow agent run approvals", () => {
       idempotencyKey: `workflow-agent-run:${requestId}`,
       trigger: "agent",
     });
-    expect(mocks.auditEmit).toHaveBeenCalledWith(expect.objectContaining({ action: "workflow.agentRunApproved" }));
+    expect(mocks.auditEmit).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "workflow.agentRunApproved" }),
+    );
   });
 
   it("is idempotent after approval and never creates a second run", async () => {
@@ -203,7 +223,9 @@ describe("workflow agent run approvals", () => {
       }),
     ).resolves.toEqual({ requestId, status: "rejected" });
     expect(mocks.createWorkflowRun).not.toHaveBeenCalled();
-    expect(mocks.auditEmit).toHaveBeenCalledWith(expect.objectContaining({ action: "workflow.agentRunRejected" }));
+    expect(mocks.auditEmit).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "workflow.agentRunRejected" }),
+    );
 
     mocks.chain.limit.mockResolvedValueOnce([requestRow("rejected")]);
     await expect(

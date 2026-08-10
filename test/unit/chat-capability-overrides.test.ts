@@ -1,6 +1,10 @@
-import { afterEach,beforeEach,describe,expect,it,vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { migrateDraftCapabilityOverrides,readChatCapabilityOverrides,writeChatCapabilityOverrides } from "@/components/chat/chat-capability-overrides";
+import {
+  migrateDraftCapabilityOverrides,
+  readChatCapabilityOverrides,
+  writeChatCapabilityOverrides,
+} from "@/components/chat/chat-capability-overrides";
 
 function memoryStorage() {
   const values = new Map<string, string>();
@@ -42,7 +46,13 @@ describe("chat capability overrides", () => {
       enabledSkillIds: ["accessibility"],
       enabledKnowledgeIds: ["product-docs"],
     });
-    expect(readChatCapabilityOverrides("agent-1", "conversation-2")).toEqual({ disabledTools: [], disabledSkillIds: [], enabledTools: [], enabledSkillIds: [], enabledKnowledgeIds: [] });
+    expect(readChatCapabilityOverrides("agent-1", "conversation-2")).toEqual({
+      disabledTools: [],
+      disabledSkillIds: [],
+      enabledTools: [],
+      enabledSkillIds: [],
+      enabledKnowledgeIds: [],
+    });
   });
 
   it("migrates the full capability selection to a newly created chat", () => {

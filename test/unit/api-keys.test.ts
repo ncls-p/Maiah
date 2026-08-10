@@ -1,4 +1,4 @@
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // ─── Mocks ────────────────────────────────────────────────────────────
 
@@ -7,7 +7,11 @@ vi.mock("@/server/domain/services/audit", () => ({
 }));
 
 vi.mock("@/modules/api-keys/permissions", () => ({
-  getAvailableApiKeyScopes: vi.fn().mockResolvedValue([{ permission: "agents.chat", group: "agents", risk: "write" }]),
+  getAvailableApiKeyScopes: vi
+    .fn()
+    .mockResolvedValue([
+      { permission: "agents.chat", group: "agents", risk: "write" },
+    ]),
 }));
 
 type SelectChain = {
@@ -66,7 +70,12 @@ vi.mock("@/server/infrastructure/db", () => {
 });
 
 import * as apiKeyPermissions from "@/modules/api-keys/permissions";
-import { createWorkspaceApiKey,listWorkspaceApiKeys,revokeWorkspaceApiKey,verifyWorkspaceApiKey } from "@/modules/api-keys/use-cases";
+import {
+  createWorkspaceApiKey,
+  listWorkspaceApiKeys,
+  revokeWorkspaceApiKey,
+  verifyWorkspaceApiKey,
+} from "@/modules/api-keys/use-cases";
 import * as _dbModule from "@/server/infrastructure/db";
 const dbModule = _dbModule as unknown as DbModule;
 
@@ -159,7 +168,9 @@ describe("createWorkspaceApiKey", () => {
   });
 
   it("rejects scopes beyond the caller's effective permissions", async () => {
-    vi.mocked(apiKeyPermissions.getAvailableApiKeyScopes).mockResolvedValueOnce([]);
+    vi.mocked(apiKeyPermissions.getAvailableApiKeyScopes).mockResolvedValueOnce(
+      [],
+    );
 
     await expect(
       createWorkspaceApiKey({
@@ -259,14 +270,18 @@ describe("verifyWorkspaceApiKey", () => {
   });
 
   it("returns null for expired keys", async () => {
-    dbModule._sc.limit.mockResolvedValueOnce([{ ...fakeKey, expiresAt: new Date(Date.now() - 1000) }]);
+    dbModule._sc.limit.mockResolvedValueOnce([
+      { ...fakeKey, expiresAt: new Date(Date.now() - 1000) },
+    ]);
 
     const result = await verifyWorkspaceApiKey("ahub_abc123456789012345678");
     expect(result).toBeNull();
   });
 
   it("returns key info for valid non-expired key", async () => {
-    dbModule._sc.limit.mockResolvedValueOnce([{ ...fakeKey, expiresAt: new Date(Date.now() + 100000) }]);
+    dbModule._sc.limit.mockResolvedValueOnce([
+      { ...fakeKey, expiresAt: new Date(Date.now() + 100000) },
+    ]);
 
     const result = await verifyWorkspaceApiKey("ahub_abc123456789012345678");
     expect(result).not.toBeNull();

@@ -1,12 +1,23 @@
-import { agentDelegationBindings,agentRuns,agentRunSteps,agents,agentVersions,workspaceTokenReservations } from "@/server/infrastructure/db/schema";
+import {
+  agentDelegationBindings,
+  agentRuns,
+  agentRunSteps,
+  agents,
+  agentVersions,
+  workspaceTokenReservations,
+} from "@/server/infrastructure/db/schema";
 import { getTableColumns } from "drizzle-orm";
-import { describe,expect,it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 describe("orchestrator persistence schema", () => {
   it("versions agent kind and orchestration policy independently", () => {
     expect(getTableColumns(agents).kind).toBeDefined();
-    expect(getTableColumns(agentVersions).orchestrationPolicyJson).toBeDefined();
-    expect(getTableColumns(agentDelegationBindings).childAgentVersionId).toBeDefined();
+    expect(
+      getTableColumns(agentVersions).orchestrationPolicyJson,
+    ).toBeDefined();
+    expect(
+      getTableColumns(agentDelegationBindings).childAgentVersionId,
+    ).toBeDefined();
   });
 
   it("persists durable run trees and safe trace steps", () => {

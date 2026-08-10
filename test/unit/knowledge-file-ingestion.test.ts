@@ -1,5 +1,5 @@
 import JSZip from "jszip";
-import { describe,expect,it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { extractKnowledgeUploads } from "@/modules/knowledge/file-ingestion";
 
@@ -36,17 +36,25 @@ describe("knowledge file ingestion", () => {
     zip.file("handbook/contacts.csv", "team,email\nIT,it@example.test");
     const bytes = await zip.generateAsync({ type: "uint8array" });
 
-    const result = await extractKnowledgeUploads([{ fileName: "handbook.zip", mimeType: "application/zip", bytes }]);
+    const result = await extractKnowledgeUploads([
+      { fileName: "handbook.zip", mimeType: "application/zip", bytes },
+    ]);
 
     expect(result.rejected).toEqual([]);
-    expect(result.files.map((file) => file.title)).toEqual(["handbook/policy.txt", "handbook/contacts.csv"]);
+    expect(result.files.map((file) => file.title)).toEqual([
+      "handbook/policy.txt",
+      "handbook/contacts.csv",
+    ]);
   });
 
   it("rejects nested ZIP archives", async () => {
     const nested = new JSZip();
     nested.file("inside.txt", "content");
     const outer = new JSZip();
-    outer.file("nested.zip", await nested.generateAsync({ type: "uint8array" }));
+    outer.file(
+      "nested.zip",
+      await nested.generateAsync({ type: "uint8array" }),
+    );
 
     await expect(
       extractKnowledgeUploads([

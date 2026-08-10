@@ -1,4 +1,4 @@
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 type Chain = {
   from: ReturnType<typeof vi.fn>;
@@ -32,7 +32,12 @@ const dbMock = vi.hoisted(() => {
 
 vi.mock("@/server/infrastructure/db", () => ({ db: dbMock.db }));
 
-import { claimToolInvocationForExecution,completeToolInvocationFailure,completeToolInvocationSuccess,rejectPendingToolInvocation } from "@/modules/tool/invocation-approval";
+import {
+  claimToolInvocationForExecution,
+  completeToolInvocationFailure,
+  completeToolInvocationSuccess,
+  rejectPendingToolInvocation,
+} from "@/modules/tool/invocation-approval";
 
 const awaitingInvocation = {
   id: "invocation-1",
@@ -42,7 +47,11 @@ const awaitingInvocation = {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  for (const method of [dbMock.chain.from, dbMock.chain.set, dbMock.chain.where]) {
+  for (const method of [
+    dbMock.chain.from,
+    dbMock.chain.set,
+    dbMock.chain.where,
+  ]) {
     method.mockReturnValue(dbMock.chain);
   }
   dbMock.chain.limit.mockResolvedValue([]);
@@ -53,11 +62,19 @@ beforeEach(() => {
 
 describe("tool invocation approval transitions", () => {
   it("allows only one approver to claim an awaiting invocation", async () => {
-    dbMock.chain.returning.mockResolvedValueOnce([{ ...awaitingInvocation, status: "running" }]).mockResolvedValueOnce([]);
-    dbMock.chain.limit.mockResolvedValueOnce([{ ...awaitingInvocation, status: "running" }]);
+    dbMock.chain.returning
+      .mockResolvedValueOnce([{ ...awaitingInvocation, status: "running" }])
+      .mockResolvedValueOnce([]);
+    dbMock.chain.limit.mockResolvedValueOnce([
+      { ...awaitingInvocation, status: "running" },
+    ]);
 
-    await expect(claimToolInvocationForExecution("invocation-1", "user-1")).resolves.toMatchObject({ kind: "claimed" });
-    await expect(claimToolInvocationForExecution("invocation-1", "user-1")).resolves.toMatchObject({
+    await expect(
+      claimToolInvocationForExecution("invocation-1", "user-1"),
+    ).resolves.toMatchObject({ kind: "claimed" });
+    await expect(
+      claimToolInvocationForExecution("invocation-1", "user-1"),
+    ).resolves.toMatchObject({
       kind: "unchanged",
       invocation: { status: "running" },
     });
@@ -66,17 +83,25 @@ describe("tool invocation approval transitions", () => {
 
   it("makes repeated rejection idempotently observable", async () => {
     dbMock.chain.returning.mockResolvedValueOnce([]);
-    dbMock.chain.limit.mockResolvedValueOnce([{ ...awaitingInvocation, status: "rejected" }]);
+    dbMock.chain.limit.mockResolvedValueOnce([
+      { ...awaitingInvocation, status: "rejected" },
+    ]);
 
-    await expect(rejectPendingToolInvocation("invocation-1", "user-1")).resolves.toMatchObject({
+    await expect(
+      rejectPendingToolInvocation("invocation-1", "user-1"),
+    ).resolves.toMatchObject({
       kind: "unchanged",
       invocation: { status: "rejected" },
     });
-    expect(dbMock.chain.set).toHaveBeenCalledWith(expect.objectContaining({ status: "rejected" }));
+    expect(dbMock.chain.set).toHaveBeenCalledWith(
+      expect.objectContaining({ status: "rejected" }),
+    );
   });
 
   it("finalizes only a claimed running invocation", async () => {
-    dbMock.chain.returning.mockResolvedValueOnce([{ id: "invocation-1" }]).mockResolvedValueOnce([]);
+    dbMock.chain.returning
+      .mockResolvedValueOnce([{ id: "invocation-1" }])
+      .mockResolvedValueOnce([]);
 
     await expect(
       completeToolInvocationSuccess("invocation-1", {
@@ -90,7 +115,13 @@ describe("tool invocation approval transitions", () => {
         latencyMs: 15,
       }),
     ).resolves.toBe(false);
-    expect(dbMock.chain.set).toHaveBeenNthCalledWith(1, expect.objectContaining({ status: "success", latencyMs: 12 }));
-    expect(dbMock.chain.set).toHaveBeenNthCalledWith(2, expect.objectContaining({ status: "failed", latencyMs: 15 }));
+    expect(dbMock.chain.set).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ status: "success", latencyMs: 12 }),
+    );
+    expect(dbMock.chain.set).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ status: "failed", latencyMs: 15 }),
+    );
   });
 });

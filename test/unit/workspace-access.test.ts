@@ -1,14 +1,18 @@
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { checkPermission, findAccessResource, requireWorkspaceMember } = vi.hoisted(() => ({
-  checkPermission: vi.fn(),
-  findAccessResource: vi.fn(),
-  requireWorkspaceMember: vi.fn(),
-}));
+const { checkPermission, findAccessResource, requireWorkspaceMember } =
+  vi.hoisted(() => ({
+    checkPermission: vi.fn(),
+    findAccessResource: vi.fn(),
+    requireWorkspaceMember: vi.fn(),
+  }));
 
 vi.mock("@/server/domain/services/authorization", () => ({
   authorization: { checkPermission, requireWorkspaceMember },
-  matchesPermission: (granted: string, required: string) => granted === required || granted === `${required.split(".")[0]}.manage` || granted === `${required.split(".")[0]}.*`,
+  matchesPermission: (granted: string, required: string) =>
+    granted === required ||
+    granted === `${required.split(".")[0]}.manage` ||
+    granted === `${required.split(".")[0]}.*`,
 }));
 
 vi.mock("@/server/infrastructure/db/access-resource-repository", () => ({
@@ -16,7 +20,13 @@ vi.mock("@/server/infrastructure/db/access-resource-repository", () => ({
 }));
 
 import { runWithRequestAuth } from "@/modules/auth/request-auth-context";
-import { checkRequestPermissionScope,checkResourcePermissionForRequest,checkWorkspacePermissionForRequest,hasResourcePermissionForRequest,isWorkspaceMemberForRequest } from "@/modules/auth/workspace-access";
+import {
+  checkRequestPermissionScope,
+  checkResourcePermissionForRequest,
+  checkWorkspacePermissionForRequest,
+  hasResourcePermissionForRequest,
+  isWorkspaceMemberForRequest,
+} from "@/modules/auth/workspace-access";
 
 const apiKeyAuth = {
   type: "api_key" as const,
@@ -36,14 +46,26 @@ describe("workspace API token access", () => {
   it("grants only when token scope and current user permission both grant", async () => {
     checkPermission.mockResolvedValue({ granted: true });
 
-    const result = await runWithRequestAuth(apiKeyAuth, () => checkWorkspacePermissionForRequest("user-1", "workspace-1", "agents.chat"));
+    const result = await runWithRequestAuth(apiKeyAuth, () =>
+      checkWorkspacePermissionForRequest(
+        "user-1",
+        "workspace-1",
+        "agents.chat",
+      ),
+    );
 
     expect(result).toEqual({ granted: true });
     expect(checkPermission).toHaveBeenCalledOnce();
   });
 
   it("denies a permission outside the token scope before consulting RBAC", async () => {
-    const result = await runWithRequestAuth(apiKeyAuth, () => checkWorkspacePermissionForRequest("user-1", "workspace-1", "agents.delete"));
+    const result = await runWithRequestAuth(apiKeyAuth, () =>
+      checkWorkspacePermissionForRequest(
+        "user-1",
+        "workspace-1",
+        "agents.delete",
+      ),
+    );
 
     expect(result).toEqual({
       granted: false,
@@ -53,7 +75,13 @@ describe("workspace API token access", () => {
   });
 
   it("exposes scope-only checks for resource-filtered collections", async () => {
-    const result = await runWithRequestAuth(apiKeyAuth, () => checkRequestPermissionScope("user-1", "workspace-1", "providers.viewMetadata"));
+    const result = await runWithRequestAuth(apiKeyAuth, () =>
+      checkRequestPermissionScope(
+        "user-1",
+        "workspace-1",
+        "providers.viewMetadata",
+      ),
+    );
 
     expect(result).toEqual({
       granted: false,
@@ -62,7 +90,13 @@ describe("workspace API token access", () => {
   });
 
   it("denies use by a different actor before consulting RBAC", async () => {
-    const result = await runWithRequestAuth(apiKeyAuth, () => checkWorkspacePermissionForRequest("user-2", "workspace-1", "agents.chat"));
+    const result = await runWithRequestAuth(apiKeyAuth, () =>
+      checkWorkspacePermissionForRequest(
+        "user-2",
+        "workspace-1",
+        "agents.chat",
+      ),
+    );
 
     expect(result).toEqual({
       granted: false,
@@ -72,7 +106,13 @@ describe("workspace API token access", () => {
   });
 
   it("denies cross-workspace use even when the scope matches", async () => {
-    const result = await runWithRequestAuth(apiKeyAuth, () => checkWorkspacePermissionForRequest("user-1", "workspace-2", "agents.chat"));
+    const result = await runWithRequestAuth(apiKeyAuth, () =>
+      checkWorkspacePermissionForRequest(
+        "user-1",
+        "workspace-2",
+        "agents.chat",
+      ),
+    );
 
     expect(result.granted).toBe(false);
     expect(result.reason).toMatch(/another workspace/i);
@@ -85,7 +125,13 @@ describe("workspace API token access", () => {
       reason: "Missing permission: agents.chat",
     });
 
-    const result = await runWithRequestAuth(apiKeyAuth, () => checkWorkspacePermissionForRequest("user-1", "workspace-1", "agents.chat"));
+    const result = await runWithRequestAuth(apiKeyAuth, () =>
+      checkWorkspacePermissionForRequest(
+        "user-1",
+        "workspace-1",
+        "agents.chat",
+      ),
+    );
 
     expect(result.granted).toBe(false);
     expect(result.reason).toBe("Missing permission: agents.chat");
@@ -94,7 +140,9 @@ describe("workspace API token access", () => {
   it("denies membership checks outside the token workspace", async () => {
     requireWorkspaceMember.mockResolvedValue(true);
 
-    const member = await runWithRequestAuth(apiKeyAuth, () => isWorkspaceMemberForRequest("user-1", "workspace-2"));
+    const member = await runWithRequestAuth(apiKeyAuth, () =>
+      isWorkspaceMemberForRequest("user-1", "workspace-2"),
+    );
 
     expect(member).toBe(false);
     expect(requireWorkspaceMember).not.toHaveBeenCalled();
@@ -110,10 +158,21 @@ describe("workspace API token access", () => {
     });
     checkPermission.mockResolvedValue({ granted: true });
 
-    const result = await checkResourcePermissionForRequest("user-1", "workspace-1", "agents.get", "agent", "agent-1");
+    const result = await checkResourcePermissionForRequest(
+      "user-1",
+      "workspace-1",
+      "agents.get",
+      "agent",
+      "agent-1",
+    );
 
     expect(result.granted).toBe(true);
-    expect(checkPermission).toHaveBeenCalledWith({ principalType: "user", principalId: "user-1" }, "agents.get", "agent", "agent-1");
+    expect(checkPermission).toHaveBeenCalledWith(
+      { principalType: "user", principalId: "user-1" },
+      "agents.get",
+      "agent",
+      "agent-1",
+    );
   });
 
   it("returns the boolean form of a fine-grained resource check", async () => {
@@ -126,7 +185,15 @@ describe("workspace API token access", () => {
     });
     checkPermission.mockResolvedValue({ granted: true });
 
-    await expect(hasResourcePermissionForRequest("user-1", "workspace-1", "agents.get", "agent", "agent-1")).resolves.toBe(true);
+    await expect(
+      hasResourcePermissionForRequest(
+        "user-1",
+        "workspace-1",
+        "agents.get",
+        "agent",
+        "agent-1",
+      ),
+    ).resolves.toBe(true);
   });
 
   it("rejects a resource from another project before RBAC", async () => {
@@ -138,7 +205,13 @@ describe("workspace API token access", () => {
       organizationId: "organization-1",
     });
 
-    const result = await checkResourcePermissionForRequest("user-1", "workspace-1", "models.invoke", "model", "model-1");
+    const result = await checkResourcePermissionForRequest(
+      "user-1",
+      "workspace-1",
+      "models.invoke",
+      "model",
+      "model-1",
+    );
 
     expect(result).toEqual({
       granted: false,

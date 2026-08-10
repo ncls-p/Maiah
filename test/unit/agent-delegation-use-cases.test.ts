@@ -1,8 +1,14 @@
-import { findDelegationCycle,insertDelegationBindingsForVersion,validateDelegationBindings } from "@/modules/agent/delegation-use-cases";
+import {
+  findDelegationCycle,
+  insertDelegationBindingsForVersion,
+  validateDelegationBindings,
+} from "@/modules/agent/delegation-use-cases";
 import { orchestrationPolicyDefaults } from "@/modules/agent/orchestration-policy";
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-type BindingExecutor = Parameters<typeof validateDelegationBindings>[0]["executor"];
+type BindingExecutor = Parameters<
+  typeof validateDelegationBindings
+>[0]["executor"];
 
 function createExecutor(responses: unknown[][]) {
   const queue = [...responses];
@@ -54,11 +60,19 @@ describe("agent delegation bindings", () => {
         bindings: [binding],
         loadBindings,
       }),
-    ).resolves.toEqual([parentAgentId, childAgentId, middleAgentId, parentAgentId]);
+    ).resolves.toEqual([
+      parentAgentId,
+      childAgentId,
+      middleAgentId,
+      parentAgentId,
+    ]);
   });
 
   it("rejects child versions that do not belong to the selected agent", async () => {
-    const { executor } = createExecutor([[{ id: childAgentId }], [{ id: childVersionId, agentId: parentAgentId }]]);
+    const { executor } = createExecutor([
+      [{ id: childAgentId }],
+      [{ id: childVersionId, agentId: parentAgentId }],
+    ]);
 
     await expect(
       validateDelegationBindings({
@@ -88,7 +102,11 @@ describe("agent delegation bindings", () => {
   });
 
   it("validates and inserts a pinned binding", async () => {
-    const { executor, chain } = createExecutor([[{ id: childAgentId }], [{ id: childVersionId, agentId: childAgentId }], []]);
+    const { executor, chain } = createExecutor([
+      [{ id: childAgentId }],
+      [{ id: childVersionId, agentId: childAgentId }],
+      [],
+    ]);
 
     await insertDelegationBindingsForVersion({
       parentAgentId,
@@ -110,16 +128,22 @@ describe("agent delegation bindings", () => {
   });
 
   it("allows more configured specialists than the per-run delegation budget", async () => {
-    const bindings = Array.from({ length: orchestrationPolicyDefaults.maxDelegations + 1 }, (_, index) => {
-      const suffix = String(index + 10).padStart(12, "0");
-      return {
-        childAgentId: `22222222-2222-4222-8222-${suffix}`,
-        childAgentVersionId: `33333333-3333-4333-8333-${suffix}`,
-      };
-    });
+    const bindings = Array.from(
+      { length: orchestrationPolicyDefaults.maxDelegations + 1 },
+      (_, index) => {
+        const suffix = String(index + 10).padStart(12, "0");
+        return {
+          childAgentId: `22222222-2222-4222-8222-${suffix}`,
+          childAgentVersionId: `33333333-3333-4333-8333-${suffix}`,
+        };
+      },
+    );
     const { executor } = createExecutor([
       bindings.map(({ childAgentId: id }) => ({ id })),
-      bindings.map(({ childAgentId: agentId, childAgentVersionId: id }) => ({ id, agentId })),
+      bindings.map(({ childAgentId: agentId, childAgentVersionId: id }) => ({
+        id,
+        agentId,
+      })),
       ...bindings.map(() => []),
     ]);
 

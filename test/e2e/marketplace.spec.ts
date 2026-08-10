@@ -1,5 +1,5 @@
-import { expect,test } from "@playwright/test";
-import { ensureE2EUser,login } from "./fixtures";
+import { expect, test } from "@playwright/test";
+import { ensureE2EUser, login } from "./fixtures";
 
 test.beforeAll(async () => {
   await ensureE2EUser();
@@ -14,7 +14,9 @@ test.describe("marketplace page", () => {
     await page.goto("/en/marketplace");
     await expect(page).toHaveURL(/\/en\/marketplace/);
 
-    await expect(page.getByRole("heading", { name: /Marketplace/i }).first()).toBeVisible({ timeout: 10_000 });
+    await expect(
+      page.getByRole("heading", { name: /Marketplace/i }).first(),
+    ).toBeVisible({ timeout: 10_000 });
   });
 
   test("shows marketplace tabs", async ({ page }) => {
@@ -22,7 +24,9 @@ test.describe("marketplace page", () => {
     await page.waitForTimeout(2000);
 
     // Marketplace tabs or fallback content should be visible
-    await expect(page.getByText(/Marketplace|No listings|Discover/i).first()).toBeVisible({ timeout: 10_000 });
+    await expect(
+      page.getByText(/Marketplace|No listings|Discover/i).first(),
+    ).toBeVisible({ timeout: 10_000 });
   });
 
   test("shows empty state when no listings", async ({ page }) => {
@@ -30,7 +34,9 @@ test.describe("marketplace page", () => {
     await page.waitForTimeout(2000);
 
     // Empty state should be visible
-    await expect(page.getByText(/No listings|Discover|Marketplace/i).first()).toBeVisible({ timeout: 10_000 });
+    await expect(
+      page.getByText(/No listings|Discover|Marketplace/i).first(),
+    ).toBeVisible({ timeout: 10_000 });
   });
 
   test("marketplace search exists", async ({ page }) => {
@@ -50,7 +56,9 @@ test.describe("marketplace item detail", () => {
     await page.waitForTimeout(2000);
 
     // If any listing links exist, click one
-    const listingLink = page.getByRole("link", { name: /View details|Install/i }).first();
+    const listingLink = page
+      .getByRole("link", { name: /View details|Install/i })
+      .first();
 
     if (await listingLink.isVisible()) {
       await listingLink.click();

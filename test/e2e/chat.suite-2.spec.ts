@@ -1,6 +1,13 @@
 import nextEnv from "@next/env";
-import { expect,test } from "@playwright/test";
-import { activate,ensureE2EAssistant,ensureE2EUser,fillControlled,login,openDropdown } from "./fixtures";
+import { expect, test } from "@playwright/test";
+import {
+  activate,
+  ensureE2EAssistant,
+  ensureE2EUser,
+  fillControlled,
+  login,
+  openDropdown,
+} from "./fixtures";
 
 const { loadEnvConfig } = nextEnv;
 
@@ -15,7 +22,9 @@ test.beforeEach(async ({ page }) => {
 });
 
 test.describe("chat page", () => {
-  test("keeps chat history collapse available across workspace pages", async ({ page }) => {
+  test("keeps chat history collapse available across workspace pages", async ({
+    page,
+  }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto("/en/members");
 
@@ -29,11 +38,15 @@ test.describe("chat page", () => {
     );
 
     await expect(membersSidebar).toBeHidden();
-    await expect(page.getByRole("button", { name: "Open conversations", exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Open conversations", exact: true }),
+    ).toBeVisible();
 
     await page.goto("/en/chat");
     await expect(page.getByRole("complementary")).toBeHidden();
-    await activate(page.getByRole("button", { name: "Open conversations", exact: true }));
+    await activate(
+      page.getByRole("button", { name: "Open conversations", exact: true }),
+    );
     await expect(page.getByRole("complementary").first()).toBeVisible();
 
     await page.goto("/en/agents");
@@ -45,24 +58,39 @@ test.describe("chat page", () => {
     ).toBeVisible();
   });
 
-  test("enabled tools menu opens and links to assistant customization", async ({ page }) => {
+  test("enabled tools menu opens and links to assistant customization", async ({
+    page,
+  }) => {
     await page.goto("/en/chat");
 
-    const toolsTrigger = page.getByRole("button", { name: /chat capabilities/i }).first();
+    const toolsTrigger = page
+      .getByRole("button", { name: /chat capabilities/i })
+      .first();
     await expect(toolsTrigger).toBeVisible({ timeout: 15_000 });
     await openDropdown(toolsTrigger);
 
-    await expect(page.getByRole("heading", { name: "Chat capabilities" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Chat capabilities" }),
+    ).toBeVisible();
     const capabilitiesMenu = page.getByRole("menu", {
       name: /Chat capabilities/i,
     });
-    await expect(capabilitiesMenu.getByRole("listitem", { name: /^Tools/ })).toBeVisible({ timeout: 15_000 });
-    await expect(capabilitiesMenu.getByRole("listitem", { name: /^Skills/ })).toBeVisible();
-    await expect(capabilitiesMenu.getByRole("listitem", { name: /^MCP/ })).toBeVisible();
+    await expect(
+      capabilitiesMenu.getByRole("listitem", { name: /^Tools/ }),
+    ).toBeVisible({ timeout: 15_000 });
+    await expect(
+      capabilitiesMenu.getByRole("listitem", { name: /^Skills/ }),
+    ).toBeVisible();
+    await expect(
+      capabilitiesMenu.getByRole("listitem", { name: /^MCP/ }),
+    ).toBeVisible();
     const customizeLink = page.getByRole("menuitem", {
       name: "Customize",
     });
-    await expect(customizeLink).toHaveAttribute("href", /\/en\/agents\/[0-9a-f-]+$/);
+    await expect(customizeLink).toHaveAttribute(
+      "href",
+      /\/en\/agents\/[0-9a-f-]+$/,
+    );
   });
 
   test("agent selector is present when agents exist", async ({ page }) => {
@@ -70,47 +98,61 @@ test.describe("chat page", () => {
     await page.waitForTimeout(2000);
 
     // Agent selector should be present in the chat sidebar
-    const agentSelector = page.getByRole("button", { name: /Current assistant/i }).first();
+    const agentSelector = page
+      .getByRole("button", { name: /Current assistant/i })
+      .first();
     if (await agentSelector.isVisible()) {
       await expect(agentSelector).toBeVisible();
     }
   });
 
-  test("keeps every queued attachment visible in a responsive grid", async ({ page }) => {
+  test("keeps every queued attachment visible in a responsive grid", async ({
+    page,
+  }) => {
     await ensureE2EAssistant();
     let uploadIndex = 0;
-    await page.route("**/api/workspace/chat-attachments/upload?*", async (route) => {
-      if (new URL(route.request().url()).searchParams.get("phase") === "chunk") {
-        await route.fulfill({ status: 202, json: { accepted: true } });
-        return;
-      }
-      uploadIndex += 1;
-      const fileNumber = String(uploadIndex).padStart(2, "0");
-      await route.fulfill({
-        json: {
-          attachment: {
-            kind: "chat_file",
-            id: `20000000-0000-4000-8000-${String(uploadIndex).padStart(12, "0")}`,
-            fileName: `Reference document ${fileNumber}.txt`,
-            mimeType: "text/plain",
-            size: 128,
-            hash: `hash-${fileNumber}`,
-            url: `/api/workspace/chat-attachments/mock-${fileNumber}`,
-            category: "text",
-            extractionStatus: "readable",
-            extractedTextChars: 128,
+    await page.route(
+      "**/api/workspace/chat-attachments/upload?*",
+      async (route) => {
+        if (
+          new URL(route.request().url()).searchParams.get("phase") === "chunk"
+        ) {
+          await route.fulfill({ status: 202, json: { accepted: true } });
+          return;
+        }
+        uploadIndex += 1;
+        const fileNumber = String(uploadIndex).padStart(2, "0");
+        await route.fulfill({
+          json: {
+            attachment: {
+              kind: "chat_file",
+              id: `20000000-0000-4000-8000-${String(uploadIndex).padStart(12, "0")}`,
+              fileName: `Reference document ${fileNumber}.txt`,
+              mimeType: "text/plain",
+              size: 128,
+              hash: `hash-${fileNumber}`,
+              url: `/api/workspace/chat-attachments/mock-${fileNumber}`,
+              category: "text",
+              extractionStatus: "readable",
+              extractedTextChars: 128,
+            },
           },
-        },
-      });
-    });
+        });
+      },
+    );
 
     await page.goto("/en/chat");
-    await expect(page.getByRole("textbox", { name: "Message", exact: true })).toBeEnabled({ timeout: 15_000 });
+    await expect(
+      page.getByRole("textbox", { name: "Message", exact: true }),
+    ).toBeEnabled({ timeout: 15_000 });
     const messageInput = page.getByRole("textbox", {
       name: "Message",
       exact: true,
     });
-    await fillControlled(messageInput, "Keep this unsent draft with every attachment.");
+    await fillControlled(
+      messageInput,
+      "Keep this unsent draft with every attachment.",
+    );
     const fileInput = page.locator('input[type="file"]');
     await expect(fileInput).toHaveCount(1);
     await fileInput.setInputFiles(
@@ -121,21 +163,36 @@ test.describe("chat page", () => {
       })),
     );
 
-    await expect(page.getByText("12 attached files", { exact: true })).toBeVisible({ timeout: 15_000 });
+    await expect(
+      page.getByText("12 attached files", { exact: true }),
+    ).toBeVisible({ timeout: 15_000 });
     const attachmentTray = page.locator('[data-slot="attachment-group"]');
-    await expect(attachmentTray.locator('[data-slot="attachment"]')).toHaveCount(12);
+    await expect(
+      attachmentTray.locator('[data-slot="attachment"]'),
+    ).toHaveCount(12);
     await expect(
       page.getByRole("button", {
         name: "Remove Reference document 12.txt",
         exact: true,
       }),
     ).toBeVisible();
-    expect(await attachmentTray.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+    expect(
+      await attachmentTray.evaluate(
+        (element) => element.scrollWidth <= element.clientWidth,
+      ),
+    ).toBe(true);
 
     await page.reload();
-    await expect(messageInput).toHaveValue("Keep this unsent draft with every attachment.", { timeout: 15_000 });
-    await expect(page.getByText("8 attached files", { exact: true })).toBeVisible();
-    await expect(page.locator('[data-slot="attachment-group"] [data-slot="attachment"]')).toHaveCount(8);
+    await expect(messageInput).toHaveValue(
+      "Keep this unsent draft with every attachment.",
+      { timeout: 15_000 },
+    );
+    await expect(
+      page.getByText("8 attached files", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.locator('[data-slot="attachment-group"] [data-slot="attachment"]'),
+    ).toHaveCount(8);
   });
 
   test("navigate between chat and other pages", async ({ page }) => {

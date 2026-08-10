@@ -1,6 +1,10 @@
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createKnowledgeBase,getKnowledgeBase,listKnowledgeBases } from "@/modules/knowledge/use-cases";
+import {
+  createKnowledgeBase,
+  getKnowledgeBase,
+  listKnowledgeBases,
+} from "@/modules/knowledge/use-cases";
 import * as _dbModule from "@/server/infrastructure/db";
 
 // ─── Mocks ────────────────────────────────────────────────────────────
@@ -37,7 +41,20 @@ type Chain = {
 
 function makeChain(): Chain {
   const c = {} as Chain;
-  for (const k of ["select", "insert", "update", "delete", "from", "where", "orderBy", "innerJoin", "leftJoin", "groupBy", "values", "set"] as const) {
+  for (const k of [
+    "select",
+    "insert",
+    "update",
+    "delete",
+    "from",
+    "where",
+    "orderBy",
+    "innerJoin",
+    "leftJoin",
+    "groupBy",
+    "values",
+    "set",
+  ] as const) {
     c[k] = vi.fn().mockReturnThis();
   }
   c.limit = vi.fn().mockResolvedValue([]);
@@ -78,7 +95,20 @@ export const dbModule = _dbModule as unknown as DbModule;
 
 function reset() {
   for (const chain of [dbModule._c, dbModule._tx]) {
-    for (const k of ["select", "insert", "update", "delete", "from", "where", "orderBy", "innerJoin", "leftJoin", "groupBy", "values", "set"] as const) {
+    for (const k of [
+      "select",
+      "insert",
+      "update",
+      "delete",
+      "from",
+      "where",
+      "orderBy",
+      "innerJoin",
+      "leftJoin",
+      "groupBy",
+      "values",
+      "set",
+    ] as const) {
       chain[k].mockReset().mockReturnThis();
     }
     chain.limit.mockReset().mockResolvedValue([]);
@@ -93,7 +123,9 @@ beforeEach(() => {
   dbModule.db.insert.mockReturnValue(dbModule._c);
   dbModule.db.update.mockReturnValue(dbModule._c);
   dbModule.db.delete.mockReturnValue(dbModule._c);
-  dbModule.db.transaction.mockImplementation((cb: (tx: Chain) => Promise<unknown>) => cb(dbModule._tx));
+  dbModule.db.transaction.mockImplementation(
+    (cb: (tx: Chain) => Promise<unknown>) => cb(dbModule._tx),
+  );
 });
 
 // ─── Fixtures ────────────────────────────────────────────────────────

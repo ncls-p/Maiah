@@ -1,4 +1,4 @@
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock dependencies
 vi.mock("@/modules/auth/session", () => ({
@@ -14,7 +14,8 @@ vi.mock("@/modules/admin/auth", () => ({
 }));
 
 vi.mock("@/server/domain/services/authorization", () => ({
-  matchesPermission: (granted: string, required: string) => granted === required,
+  matchesPermission: (granted: string, required: string) =>
+    granted === required,
   authorization: {
     checkPermission: vi.fn(),
     listPermissions: vi.fn(),
@@ -70,7 +71,10 @@ describe("route-handler – handleAdminRoute", async () => {
 
   it("returns 401 when no session", async () => {
     vi.mocked(getSession).mockResolvedValue(null);
-    const response = await handleAdminRoute(mockReq, async () => new Response("ok"));
+    const response = await handleAdminRoute(
+      mockReq,
+      async () => new Response("ok"),
+    );
     expect(response.status).toBe(401);
   });
 
@@ -80,7 +84,10 @@ describe("route-handler – handleAdminRoute", async () => {
       user: { id: "u" },
     } as never);
     vi.mocked(isPlatformAdminSession).mockResolvedValue(false);
-    const response = await handleAdminRoute(mockReq, async () => new Response("ok"));
+    const response = await handleAdminRoute(
+      mockReq,
+      async () => new Response("ok"),
+    );
     expect(response.status).toBe(403);
     expect(response.body).toEqual({ error: "Forbidden" });
   });
@@ -100,7 +107,10 @@ describe("route-handler – handleAdminRoute", async () => {
 
   it("returns 500 on unhandled error", async () => {
     vi.mocked(getSession).mockRejectedValue(new Error("boom"));
-    const response = await handleAdminRoute(mockReq, async () => new Response("ok"));
+    const response = await handleAdminRoute(
+      mockReq,
+      async () => new Response("ok"),
+    );
     expect(response.status).toBe(500);
   });
 
@@ -116,7 +126,10 @@ describe("route-handler – handleAdminRoute", async () => {
         throw new Error("conflict");
       },
       {
-        expectedError: (error) => (error instanceof Error && error.message === "conflict" ? (customResponse as never) : null),
+        expectedError: (error) =>
+          error instanceof Error && error.message === "conflict"
+            ? (customResponse as never)
+            : null,
       },
     );
 

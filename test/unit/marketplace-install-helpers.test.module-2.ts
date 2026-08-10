@@ -1,6 +1,13 @@
-import { installAgentManifest,installPostInstallFlags } from "@/modules/marketplace/install-helpers";
-import { describe,expect,it } from "vitest";
-import { customToolManifest,mcpManifest,tx } from "./marketplace-install-helpers.test.tx";
+import {
+  installAgentManifest,
+  installPostInstallFlags,
+} from "@/modules/marketplace/install-helpers";
+import { describe, expect, it } from "vitest";
+import {
+  customToolManifest,
+  mcpManifest,
+  tx,
+} from "./marketplace-install-helpers.test.tx";
 
 describe("installAgentManifest", () => {
   it("installs bundled resources, resolves provider/model IDs, and creates bindings", async () => {
@@ -118,7 +125,9 @@ describe("installAgentManifest", () => {
   });
 
   it("resolves existing referenced MCP tools, custom tools, and skills when resources are not bundled", async () => {
-    tx.returning.mockResolvedValueOnce([{ id: "agent-2", name: "Reference Agent" }]).mockResolvedValueOnce([{ id: "version-2" }]);
+    tx.returning
+      .mockResolvedValueOnce([{ id: "agent-2", name: "Reference Agent" }])
+      .mockResolvedValueOnce([{ id: "version-2" }]);
     tx.limit
       .mockResolvedValueOnce([{ id: "server-existing" }])
       .mockResolvedValueOnce([{ id: "mcp-tool-existing" }])
@@ -178,11 +187,63 @@ describe("installAgentManifest", () => {
       }),
     );
   });
+
+  it("installs an orchestrator and reconnects its bundled specialists", async () => {
+    tx.returning
+      .mockResolvedValueOnce([{ id: "root-agent", name: "Coordinator" }])
+      .mockResolvedValueOnce([{ id: "root-version" }])
+      .mockResolvedValueOnce([{ id: "child-agent", name: "Researcher" }])
+      .mockResolvedValueOnce([{ id: "child-version" }]);
+    tx.limit.mockResolvedValueOnce([{ activeVersionId: "child-version" }]);
+
+    await installAgentManifest(tx as never, {
+      workspaceId: "ws-1",
+      userId: "user-1",
+      itemId: "item-1",
+      versionId: "market-version-1",
+      versionLabel: "1.0.0",
+      manifest: {
+        type: "agent",
+        name: "Coordinator",
+        kind: "orchestrator",
+        agent: { orchestrationPolicy: { maxDepth: 3 } },
+        specialists: [
+          {
+            instructions: "Investigate the sources",
+            manifest: {
+              type: "agent",
+              name: "Researcher",
+              kind: "assistant",
+              agent: {},
+            },
+          },
+        ],
+      },
+    });
+
+    expect(tx.values).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: "orchestrator" }),
+    );
+    expect(tx.values).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agentId: "root-agent",
+        orchestrationPolicyJson: { maxDepth: 3 },
+      }),
+    );
+    expect(tx.values).toHaveBeenCalledWith({
+      agentVersionId: "root-version",
+      childAgentId: "child-agent",
+      childAgentVersionId: "child-version",
+      instructions: "Investigate the sources",
+    });
+  });
 });
 
 describe("installPostInstallFlags", () => {
   it("returns false for agents and custom tools without missing credentials", () => {
-    expect(installPostInstallFlags({ type: "agent", name: "Agent", agent: {} })).toEqual({
+    expect(
+      installPostInstallFlags({ type: "agent", name: "Agent", agent: {} }),
+    ).toEqual({
       requiresCredentials: false,
     });
     expect(

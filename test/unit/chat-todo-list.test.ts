@@ -1,6 +1,9 @@
-import { describe,expect,it } from "vitest";
+import { describe, expect, it } from "vitest";
 
-import { chatTodoListFromUnknown,createChatTodoList } from "@/modules/chat/todo-list";
+import {
+  chatTodoListFromUnknown,
+  createChatTodoList,
+} from "@/modules/chat/todo-list";
 
 describe("chat to-do lists", () => {
   it("creates a bounded progress snapshot that can be restored from history", () => {
@@ -18,7 +21,9 @@ describe("chat to-do lists", () => {
       completedCount: 1,
       totalCount: 3,
     });
-    expect(chatTodoListFromUnknown(JSON.parse(JSON.stringify(todoList)))).toEqual(todoList);
+    expect(
+      chatTodoListFromUnknown(JSON.parse(JSON.stringify(todoList))),
+    ).toEqual(todoList);
   });
 
   it("rejects empty or malformed task lists", () => {

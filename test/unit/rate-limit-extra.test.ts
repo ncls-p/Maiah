@@ -1,4 +1,4 @@
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const cacheMock = vi.hoisted(() => ({ incr: vi.fn() }));
 
@@ -54,7 +54,10 @@ describe("rate limiting helpers", () => {
   it("wraps handlers and appends rate-limit headers", async () => {
     const mod = await import("@/lib/rate-limit");
     cacheMock.incr.mockResolvedValueOnce(1);
-    const handler = vi.fn(async () => new Response("ok", { status: 202, headers: { "x-app": "yes" } })) as never;
+    const handler = vi.fn(
+      async () =>
+        new Response("ok", { status: 202, headers: { "x-app": "yes" } }),
+    ) as never;
     const wrapped = mod.withRateLimit(handler, { limit: 2, windowSeconds: 20 });
     const response = await wrapped(new Request("https://app.test"));
     expect(response.status).toBe(202);

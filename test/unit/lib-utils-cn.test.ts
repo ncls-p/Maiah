@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { describe,expect,it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 describe("cn utility", () => {
   it("merges class strings", () => {
@@ -29,7 +29,9 @@ describe("cn utility", () => {
 
   it("handles mixed input – twMerge resolves conflicts", () => {
     // text-sm and text-lg conflict; text-lg wins
-    expect(cn("bg-red", ["text-sm", "text-lg"], { bold: true }, null)).toBe("bg-red text-lg bold");
+    expect(cn("bg-red", ["text-sm", "text-lg"], { bold: true }, null)).toBe(
+      "bg-red text-lg bold",
+    );
   });
 
   it("returns empty string for no inputs", () => {

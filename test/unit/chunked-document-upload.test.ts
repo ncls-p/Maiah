@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { afterEach,beforeEach,describe,expect,it,vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const storageMock = vi.hoisted(() => ({
   upload: vi.fn(),
@@ -9,8 +9,17 @@ const storageMock = vi.hoisted(() => ({
 
 vi.mock("@/server/infrastructure/storage", () => ({ storage: storageMock }));
 
-import { documentUploadChunkBytes,documentUploadChunkCount,uploadDocumentInChunks } from "@/modules/document-upload/chunked-upload";
-import { assembleDocumentUpload,parseChunkMetadata,parseCompletionMetadata,storeDocumentUploadChunk } from "@/modules/document-upload/server";
+import {
+  documentUploadChunkBytes,
+  documentUploadChunkCount,
+  uploadDocumentInChunks,
+} from "@/modules/document-upload/chunked-upload";
+import {
+  assembleDocumentUpload,
+  parseChunkMetadata,
+  parseCompletionMetadata,
+  storeDocumentUploadChunk,
+} from "@/modules/document-upload/server";
 
 describe("chunked document upload", () => {
   beforeEach(() => {
@@ -29,24 +38,32 @@ describe("chunked document upload", () => {
       .fn<typeof fetch>()
       .mockResolvedValueOnce(new Response("{}", { status: 202 }))
       .mockResolvedValueOnce(new Response("{}", { status: 202 }))
-      .mockResolvedValueOnce(Response.json({ attachment: { id: "attachment" } }));
+      .mockResolvedValueOnce(
+        Response.json({ attachment: { id: "attachment" } }),
+      );
     vi.stubGlobal("fetch", fetchMock);
 
-    const result = await uploadDocumentInChunks<{ attachment: { id: string } }>({
-      file,
-      workspaceId: "workspace",
-      chunkUrl: "/chunks",
-      completeUrl: "/complete",
-      onProgress: (value) => progress.push(value),
-    });
+    const result = await uploadDocumentInChunks<{ attachment: { id: string } }>(
+      {
+        file,
+        workspaceId: "workspace",
+        chunkUrl: "/chunks",
+        completeUrl: "/complete",
+        onProgress: (value) => progress.push(value),
+      },
+    );
 
     expect(documentUploadChunkCount(file.size)).toBe(2);
     expect(result.attachment.id).toBe("attachment");
     expect(progress).toEqual([45, 90, 100]);
     expect(fetchMock).toHaveBeenCalledTimes(3);
     const firstForm = fetchMock.mock.calls[0]?.[1]?.body as FormData;
-    expect((firstForm.get("chunk") as File).size).toBe(documentUploadChunkBytes);
-    const completion = JSON.parse(String(fetchMock.mock.calls[2]?.[1]?.body)) as Record<string, unknown>;
+    expect((firstForm.get("chunk") as File).size).toBe(
+      documentUploadChunkBytes,
+    );
+    const completion = JSON.parse(
+      String(fetchMock.mock.calls[2]?.[1]?.body),
+    ) as Record<string, unknown>;
     expect(completion).toMatchObject({
       totalChunks: 2,
       fileName: "large.pdf",
@@ -59,7 +76,9 @@ describe("chunked document upload", () => {
       .fn<typeof fetch>()
       .mockRejectedValueOnce(new Error("offline"))
       .mockResolvedValueOnce(new Response("{}", { status: 202 }))
-      .mockResolvedValueOnce(Response.json({ error: "Extraction failed" }, { status: 400 }));
+      .mockResolvedValueOnce(
+        Response.json({ error: "Extraction failed" }, { status: 400 }),
+      );
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(
@@ -85,7 +104,11 @@ describe("chunked document upload", () => {
 
     vi.stubGlobal(
       "fetch",
-      vi.fn<typeof fetch>().mockImplementation(async () => Response.json({ error: "Chunk refused" }, { status: 500 })),
+      vi
+        .fn<typeof fetch>()
+        .mockImplementation(async () =>
+          Response.json({ error: "Chunk refused" }, { status: 500 }),
+        ),
     );
     await expect(
       uploadDocumentInChunks({
@@ -125,17 +148,27 @@ describe("chunked document upload", () => {
       chunkIndex: 0,
       bytes: new TextEncoder().encode("hello "),
     });
-    expect(storageMock.upload).toHaveBeenCalledWith(expect.stringContaining(`${uploadId}/parts/0000000000.part`), expect.any(Uint8Array), "application/octet-stream");
+    expect(storageMock.upload).toHaveBeenCalledWith(
+      expect.stringContaining(`${uploadId}/parts/0000000000.part`),
+      expect.any(Uint8Array),
+      "application/octet-stream",
+    );
 
-    storageMock.download.mockResolvedValueOnce(new TextEncoder().encode("hello ")).mockResolvedValueOnce(new TextEncoder().encode("world"));
+    storageMock.download
+      .mockResolvedValueOnce(new TextEncoder().encode("hello "))
+      .mockResolvedValueOnce(new TextEncoder().encode("world"));
     const assembled = await assembleDocumentUpload({
       workspaceId: "workspace",
       userId: "user",
       uploadId,
       totalChunks: 2,
     });
-    expect(Buffer.from(await assembled.readBytes()).toString()).toBe("hello world");
-    expect(Buffer.from(await readFile(assembled.filePath)).toString()).toBe("hello world");
+    expect(Buffer.from(await assembled.readBytes()).toString()).toBe(
+      "hello world",
+    );
+    expect(Buffer.from(await readFile(assembled.filePath)).toString()).toBe(
+      "hello world",
+    );
     await assembled.cleanup(true);
     expect(storageMock.delete).toHaveBeenCalledTimes(2);
   });
@@ -174,7 +207,8 @@ describe("chunked document upload", () => {
         uploadId: "123e4567-e89b-42d3-a456-426614174000",
         totalChunks: 2,
         fileName: "manual.docx",
-        mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        mimeType:
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       }),
     ).toMatchObject({ fileName: "manual.docx", totalChunks: 2 });
   });

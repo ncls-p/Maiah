@@ -35,6 +35,7 @@ import {
 } from "./runtime-executor.instrument-tools";
 import { startResolvedAgentRun } from "./runtime-executor.start-run";
 import { collectAgentVisualOutputs } from "./runtime-executor.visual-outputs";
+import { recordAgentExecutionUsage } from "./runtime-executor.usage";
 
 export async function executeResolvedAgent(
   input: InternalExecutionInput,
@@ -43,6 +44,7 @@ export async function executeResolvedAgent(
 
   let inputTokens = 0;
   let outputTokens = 0;
+  let usageRecorded = false;
   let usageProvider:
     Awaited<ReturnType<typeof resolveProviderForVersion>> | undefined;
   const startedAt = Date.now();
@@ -413,17 +415,30 @@ export async function executeResolvedAgent(
         latencyMs: Date.now() - startedAt,
       },
     });
+    const usageBreakdown = recordAgentExecutionUsage(input.budget, {
+      modelId: provider.modelRecordId ?? null,
+      inputTokens,
+      outputTokens,
+    });
+    usageRecorded = true;
     return {
       runId,
       text,
       inputTokens,
       outputTokens,
       totalTreeTokens: input.budget.tokensUsed,
+      usageBreakdown: [...usageBreakdown],
       reused: false,
       visualOutputs: collectAgentVisualOutputs(successfulToolResults),
     };
   } catch (error) {
     const aborted = input.budget.controller.signal.aborted;
+    if (!usageRecorded && inputTokens + outputTokens > 0)
+      recordAgentExecutionUsage(input.budget, {
+        modelId: usageProvider?.modelRecordId ?? null,
+        inputTokens,
+        outputTokens,
+      });
     await failAgentRun({
       runId,
       status: aborted ? "cancelled" : "failed",

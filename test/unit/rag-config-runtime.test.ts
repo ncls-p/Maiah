@@ -1,4 +1,4 @@
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   createChatModel: vi.fn((runtime, modelId) => ({ runtime, modelId })),
@@ -8,7 +8,9 @@ const mocks = vi.hoisted(() => ({
   defaultWhere: vi.fn(),
   getAdapter: vi.fn(),
   insertValues: vi.fn(),
-  isCloudTempleBaseUrl: vi.fn((value?: string | null) => Boolean(value?.includes("cloud-temple"))),
+  isCloudTempleBaseUrl: vi.fn((value?: string | null) =>
+    Boolean(value?.includes("cloud-temple")),
+  ),
   onConflictDoUpdate: vi.fn(),
   providerWhere: vi.fn(),
   select: vi.fn(),
@@ -41,7 +43,14 @@ vi.mock("@/server/infrastructure/db", () => ({
   },
 }));
 
-import { DEFAULT_RAG_CONFIG,getDefaultRagConfig,resolveEmbeddingModel,resolveOcrModel,resolveRerankingModel,setDefaultRagConfig } from "@/modules/knowledge/rag-config";
+import {
+  DEFAULT_RAG_CONFIG,
+  getDefaultRagConfig,
+  resolveEmbeddingModel,
+  resolveOcrModel,
+  resolveRerankingModel,
+  setDefaultRagConfig,
+} from "@/modules/knowledge/rag-config";
 
 const provider = {
   id: "11111111-1111-4111-8111-111111111111",
@@ -80,14 +89,18 @@ describe("RAG runtime configuration", () => {
       onConflictDoUpdate: mocks.onConflictDoUpdate,
     });
     mocks.getAdapter.mockReturnValue(adapter);
-    mocks.providerWhere.mockResolvedValue([{ provider, model: { modelId: "model" } }]);
+    mocks.providerWhere.mockResolvedValue([
+      { provider, model: { modelId: "model" } },
+    ]);
   });
 
   it("loads lexical defaults and persists validated platform settings", async () => {
     mocks.defaultWhere.mockResolvedValueOnce([]);
     await expect(getDefaultRagConfig()).resolves.toEqual(DEFAULT_RAG_CONFIG);
 
-    await expect(setDefaultRagConfig(DEFAULT_RAG_CONFIG, "admin-user")).resolves.toEqual(DEFAULT_RAG_CONFIG);
+    await expect(
+      setDefaultRagConfig(DEFAULT_RAG_CONFIG, "admin-user"),
+    ).resolves.toEqual(DEFAULT_RAG_CONFIG);
     expect(mocks.insertValues).toHaveBeenCalledWith(
       expect.objectContaining({
         key: "rag-defaults",
@@ -105,7 +118,10 @@ describe("RAG runtime configuration", () => {
         modelId: "qwen3-embedding:4b",
       },
     };
-    const embedding = await resolveEmbeddingModel(provider.workspaceId, embeddingConfig);
+    const embedding = await resolveEmbeddingModel(
+      provider.workspaceId,
+      embeddingConfig,
+    );
     expect(embedding).toMatchObject({ providerId: provider.id });
     expect(mocks.createEmbeddingModel).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -128,13 +144,22 @@ describe("RAG runtime configuration", () => {
       },
     });
     expect(ocr).toMatchObject({ providerId: provider.id });
-    expect(mocks.createChatModel).toHaveBeenCalledWith(expect.any(Object), "qwen-vl");
+    expect(mocks.createChatModel).toHaveBeenCalledWith(
+      expect.any(Object),
+      "qwen-vl",
+    );
   });
 
   it("resolves reranking and handles disabled or unavailable models", async () => {
-    expect(await resolveEmbeddingModel(provider.workspaceId, DEFAULT_RAG_CONFIG)).toBeNull();
-    expect(await resolveRerankingModel(provider.workspaceId, DEFAULT_RAG_CONFIG)).toBeNull();
-    expect(await resolveOcrModel(provider.workspaceId, DEFAULT_RAG_CONFIG)).toBeNull();
+    expect(
+      await resolveEmbeddingModel(provider.workspaceId, DEFAULT_RAG_CONFIG),
+    ).toBeNull();
+    expect(
+      await resolveRerankingModel(provider.workspaceId, DEFAULT_RAG_CONFIG),
+    ).toBeNull();
+    expect(
+      await resolveOcrModel(provider.workspaceId, DEFAULT_RAG_CONFIG),
+    ).toBeNull();
 
     const rerankingConfig = {
       ...DEFAULT_RAG_CONFIG,
@@ -144,7 +169,9 @@ describe("RAG runtime configuration", () => {
         modelId: "nemotron-rerank",
       },
     };
-    await expect(resolveRerankingModel(provider.workspaceId, rerankingConfig)).resolves.toMatchObject({ modelId: "nemotron-rerank" });
+    await expect(
+      resolveRerankingModel(provider.workspaceId, rerankingConfig),
+    ).resolves.toMatchObject({ modelId: "nemotron-rerank" });
 
     mocks.providerWhere.mockResolvedValueOnce([]);
     await expect(
@@ -158,6 +185,8 @@ describe("RAG runtime configuration", () => {
       createChatModel: mocks.createChatModel,
       createEmbeddingModel: mocks.createEmbeddingModel,
     });
-    await expect(resolveRerankingModel(provider.workspaceId, rerankingConfig)).resolves.toBeNull();
+    await expect(
+      resolveRerankingModel(provider.workspaceId, rerankingConfig),
+    ).resolves.toBeNull();
   });
 });

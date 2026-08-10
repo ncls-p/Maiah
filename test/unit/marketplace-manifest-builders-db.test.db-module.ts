@@ -1,4 +1,4 @@
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { buildCustomToolManifest } from "@/modules/marketplace/manifest-builders";
 import * as _dbModule from "@/server/infrastructure/db";
@@ -82,7 +82,11 @@ describe("buildCustomToolManifest", () => {
       },
     ]);
 
-    const manifest = await buildCustomToolManifest(customToolRow as never, "Discord", null);
+    const manifest = await buildCustomToolManifest(
+      customToolRow as never,
+      "Discord",
+      null,
+    );
 
     expect(manifest.type).toBe("custom_tool");
     expect(manifest.description).toBe("Send alerts");
@@ -108,9 +112,15 @@ describe("buildCustomToolManifest", () => {
   });
 
   it("never queries or exports encrypted credential references", async () => {
-    dbModule._c.where.mockResolvedValueOnce([{ fieldsJson: [{ key: "apiKey", label: "API key" }] }]);
+    dbModule._c.where.mockResolvedValueOnce([
+      { fieldsJson: [{ key: "apiKey", label: "API key" }] },
+    ]);
 
-    const manifest = await buildCustomToolManifest(customToolRow as never, "Discord", "Override");
+    const manifest = await buildCustomToolManifest(
+      customToolRow as never,
+      "Discord",
+      "Override",
+    );
 
     expect(manifest.description).toBe("Override");
     expect(manifest.tool).not.toHaveProperty("secretsIncluded");

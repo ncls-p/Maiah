@@ -102,12 +102,6 @@ export async function updateAgentUnlocked(input: UpdateAgentInput) {
   ) {
     throw new Error("Only orchestrators can configure delegation");
   }
-  if (
-    existing.kind === "orchestrator" &&
-    (sharingMode ?? existing.sharingMode) === "marketplace"
-  ) {
-    throw new Error("Orchestrators cannot be published to the marketplace yet");
-  }
   if (accessScope) {
     await validateAgentAccessSelection({
       userId,

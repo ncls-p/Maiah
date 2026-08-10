@@ -1,10 +1,20 @@
-import { describe,expect,it,vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { decryptValue } from "@/lib/crypto";
 import { logHandledWarning } from "@/lib/logger";
-import { generateChatAutomationArtifacts,testChatAutomationConnection,validateChatAutomationConfig } from "@/modules/chat/automation";
+import {
+  generateChatAutomationArtifacts,
+  testChatAutomationConnection,
+  validateChatAutomationConfig,
+} from "@/modules/chat/automation";
 import { generateText } from "ai";
-import { dbModule,enabledConfig,model,provider,resetDb } from "./chat-automation-db.test.db-module";
+import {
+  dbModule,
+  enabledConfig,
+  model,
+  provider,
+  resetDb,
+} from "./chat-automation-db.test.db-module";
 
 describe("chat automation runtime validation", () => {
   it("rejects missing provider/model and unavailable runtime rows", async () => {
@@ -22,19 +32,23 @@ describe("chat automation runtime validation", () => {
       issues: [
         {
           code: "runtime_unavailable",
-          message: "Selected provider was not found, is disabled, or is archived.",
+          message:
+            "Selected provider was not found, is disabled, or is archived.",
         },
       ],
     });
 
     resetDb();
-    dbModule._c.limit.mockResolvedValueOnce([provider]).mockResolvedValueOnce([]);
+    dbModule._c.limit
+      .mockResolvedValueOnce([provider])
+      .mockResolvedValueOnce([]);
     await expect(validateChatAutomationConfig(enabledConfig)).resolves.toEqual({
       ok: false,
       issues: [
         {
           code: "runtime_unavailable",
-          message: "Selected model was not found, is disabled, or does not belong to the provider.",
+          message:
+            "Selected model was not found, is disabled, or does not belong to the provider.",
         },
       ],
     });
@@ -85,7 +99,9 @@ describe("chat automation runtime validation", () => {
 
 describe("generateChatAutomationArtifacts", () => {
   it("uses fallback when automation is disabled or runtime is unavailable", async () => {
-    dbModule._c.limit.mockResolvedValueOnce([{ valueJson: { enabled: false } }]);
+    dbModule._c.limit.mockResolvedValueOnce([
+      { valueJson: { enabled: false } },
+    ]);
     await expect(
       generateChatAutomationArtifacts({
         userMessage: "Bonjour aide moi",
@@ -95,7 +111,9 @@ describe("generateChatAutomationArtifacts", () => {
     ).resolves.toEqual({ title: "Fallback", suggestions: [] });
 
     resetDb();
-    dbModule._c.limit.mockResolvedValueOnce([{ valueJson: enabledConfig }]).mockResolvedValueOnce([]);
+    dbModule._c.limit
+      .mockResolvedValueOnce([{ valueJson: enabledConfig }])
+      .mockResolvedValueOnce([]);
     const result = await generateChatAutomationArtifacts({
       userMessage: "Bonjour aide moi",
       assistantText: "Bien sûr",
@@ -103,7 +121,10 @@ describe("generateChatAutomationArtifacts", () => {
     });
     expect(result.title).toBe("Bonjour aide moi");
     expect(result.suggestions).toHaveLength(3);
-    expect(logHandledWarning).toHaveBeenCalledWith("Chat automation runtime unavailable, using local fallback", expect.any(Object));
+    expect(logHandledWarning).toHaveBeenCalledWith(
+      "Chat automation runtime unavailable, using local fallback",
+      expect.any(Object),
+    );
   });
 
   it("generates artifacts with retries, sanitizes title, and pads suggestions", async () => {
@@ -128,7 +149,11 @@ describe("generateChatAutomationArtifacts", () => {
     });
 
     expect(result.title).toBe("Planned roadmap");
-    expect(result.suggestions).toEqual(["Next step", "Another angle", "Third option"]);
+    expect(result.suggestions).toEqual([
+      "Next step",
+      "Another angle",
+      "Third option",
+    ]);
   });
 
   it("falls back when generation throws and honors suggestion opt-out", async () => {
@@ -146,6 +171,9 @@ describe("generateChatAutomationArtifacts", () => {
     });
 
     expect(result).toEqual({ title: "Build a roadmap", suggestions: [] });
-    expect(logHandledWarning).toHaveBeenCalledWith("Failed to generate chat automation artifacts", expect.objectContaining({ error: "bad model" }));
+    expect(logHandledWarning).toHaveBeenCalledWith(
+      "Failed to generate chat automation artifacts",
+      expect.objectContaining({ error: "bad model" }),
+    );
   });
 });

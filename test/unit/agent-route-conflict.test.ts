@@ -1,4 +1,4 @@
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const routeMocks = vi.hoisted(() => ({
   updateAgent: vi.fn(),
@@ -8,7 +8,11 @@ const routeMocks = vi.hoisted(() => ({
 vi.mock("@/lib/route-handler", () => ({
   requireWorkspacePermissionAsync: routeMocks.requireWorkspacePermissionAsync,
   requireResourcePermissionAsync: routeMocks.requireWorkspacePermissionAsync,
-  handleRoute: async (request: Request, handler: (context: unknown) => Promise<Response>, options?: { expectedError?: (error: unknown) => Response | null }) => {
+  handleRoute: async (
+    request: Request,
+    handler: (context: unknown) => Promise<Response>,
+    options?: { expectedError?: (error: unknown) => Response | null },
+  ) => {
     try {
       return await handler({
         session: { user: { id: "11111111-1111-4111-8111-111111111111" } },
@@ -16,7 +20,10 @@ vi.mock("@/lib/route-handler", () => ({
         requestId: "request-1",
       });
     } catch (error) {
-      return options?.expectedError?.(error) ?? Response.json({ error: "Internal server error" }, { status: 500 });
+      return (
+        options?.expectedError?.(error) ??
+        Response.json({ error: "Internal server error" }, { status: 500 })
+      );
     }
   },
 }));
@@ -26,12 +33,16 @@ vi.mock("@/modules/admin/auth", () => ({
 }));
 
 vi.mock("@/modules/agent/use-cases", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/modules/agent/use-cases")>();
+  const actual =
+    await importOriginal<typeof import("@/modules/agent/use-cases")>();
   return { ...actual, updateAgent: routeMocks.updateAgent };
 });
 
 import { PATCH } from "@/app/api/workspace/agents/[agentId]/route";
-import { AgentVersionConflictError,updateAgent } from "@/modules/agent/use-cases";
+import {
+  AgentVersionConflictError,
+  updateAgent,
+} from "@/modules/agent/use-cases";
 
 const agentId = "22222222-2222-4222-8222-222222222222";
 const workspaceId = "33333333-3333-4333-8333-333333333333";
@@ -53,9 +64,14 @@ describe("agent configuration route conflicts", () => {
   });
 
   it("returns a machine-readable 409 for a stale base version", async () => {
-    vi.mocked(updateAgent).mockRejectedValueOnce(new AgentVersionConflictError(currentVersionId));
+    vi.mocked(updateAgent).mockRejectedValueOnce(
+      new AgentVersionConflictError(currentVersionId),
+    );
 
-    const response = await PATCH(patchRequest({ workspaceId, baseVersionId }) as never, { params: Promise.resolve({ agentId }) });
+    const response = await PATCH(
+      patchRequest({ workspaceId, baseVersionId }) as never,
+      { params: Promise.resolve({ agentId }) },
+    );
 
     expect(response.status).toBe(409);
     await expect(response.json()).resolves.toEqual({
@@ -66,7 +82,10 @@ describe("agent configuration route conflicts", () => {
   });
 
   it("rejects mutation requests that omit the observed base version", async () => {
-    const response = await PATCH(patchRequest({ workspaceId, name: "Stale client" }) as never, { params: Promise.resolve({ agentId }) });
+    const response = await PATCH(
+      patchRequest({ workspaceId, name: "Stale client" }) as never,
+      { params: Promise.resolve({ agentId }) },
+    );
 
     expect(response.status).toBe(400);
     expect(updateAgent).not.toHaveBeenCalled();
@@ -77,10 +96,20 @@ describe("agent configuration route conflicts", () => {
       agent: { id: agentId, promptSuggestionsJson: [] },
       version: { id: currentVersionId },
     });
-    const response = await PATCH(patchRequest({ workspaceId, baseVersionId, maxToolCalls: 100, maxOutputTokens: 500_000 }) as never, { params: Promise.resolve({ agentId }) });
+    const response = await PATCH(
+      patchRequest({
+        workspaceId,
+        baseVersionId,
+        maxToolCalls: 100,
+        maxOutputTokens: 500_000,
+      }) as never,
+      { params: Promise.resolve({ agentId }) },
+    );
 
     expect(response.status).toBe(200);
-    expect(updateAgent).toHaveBeenCalledWith(expect.objectContaining({ maxToolCalls: 100, maxOutputTokens: 500_000 }));
+    expect(updateAgent).toHaveBeenCalledWith(
+      expect.objectContaining({ maxToolCalls: 100, maxOutputTokens: 500_000 }),
+    );
   });
 
   it("returns a useful error when a skill is no longer accessible", async () => {

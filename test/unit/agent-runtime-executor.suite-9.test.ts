@@ -1,4 +1,4 @@
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   generateText: vi.fn(),
@@ -129,7 +129,9 @@ describe("agent runtime executor", () => {
       id: "99999999-9999-4999-8999-999999999999",
       agentId: childAgent.id,
     };
-    mocks.getVisibleAgent.mockResolvedValueOnce({ ...rootAgent, kind: "orchestrator" }).mockResolvedValueOnce(childAgent);
+    mocks.getVisibleAgent
+      .mockResolvedValueOnce({ ...rootAgent, kind: "orchestrator" })
+      .mockResolvedValueOnce(childAgent);
     mocks.getActiveVersion.mockResolvedValueOnce({
       ...rootVersion,
       maxToolCalls: 2,
@@ -169,10 +171,14 @@ describe("agent runtime executor", () => {
     mocks.generateText.mockImplementation(async (options) => {
       call += 1;
       if (call === 1) {
-        const delegate = Object.entries(options.tools).find(([name]) => name.startsWith("delegate_"))?.[1] as {
+        const delegate = Object.entries(options.tools).find(([name]) =>
+          name.startsWith("delegate_"),
+        )?.[1] as {
           execute: (input: { task: string }) => Promise<unknown>;
         };
-        await expect(delegate.execute({ task: "Research" })).rejects.toMatchObject({ code: "AGENT_TOKEN_BUDGET_EXCEEDED" });
+        await expect(
+          delegate.execute({ task: "Research" }),
+        ).rejects.toMatchObject({ code: "AGENT_TOKEN_BUDGET_EXCEEDED" });
         return {
           text: "The specialist exceeded its budget; retry with a narrower task.",
           usage: { inputTokens: 10, outputTokens: 12 },

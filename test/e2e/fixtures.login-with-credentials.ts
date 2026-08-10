@@ -1,8 +1,11 @@
 // Shared fixtures and helpers for all e2e tests
 import type { Page } from "@playwright/test";
-import { authenticationState,e2eUser } from "./fixtures.e2e-user";
+import { authenticationState, e2eUser } from "./fixtures.e2e-user";
 
-export async function loginWithCredentials(page: Page, credentials: { email: string; password: string }) {
+export async function loginWithCredentials(
+  page: Page,
+  credentials: { email: string; password: string },
+) {
   await page.goto("/en/auth/signin");
   await page.getByLabel("Email").fill(credentials.email);
   await page.getByLabel("Password").fill(credentials.password);

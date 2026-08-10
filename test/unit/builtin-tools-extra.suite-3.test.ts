@@ -1,4 +1,4 @@
-import { beforeEach,describe,expect,it,type Mock,vi } from "vitest";
+import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   createCodeWorkspaceFromFiles: vi.fn(),
@@ -42,7 +42,10 @@ vi.mock("@/modules/github/publishing", () => ({
 }));
 
 vi.mock("@/modules/tool/builtin-tool-primitives", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/modules/tool/builtin-tool-primitives")>();
+  const actual =
+    await importOriginal<
+      typeof import("@/modules/tool/builtin-tool-primitives")
+    >();
   return {
     ...actual,
     searchWebWithSearxng: mocks.searchWebWithSearxng,
@@ -100,7 +103,10 @@ function tool(name: string) {
 }
 
 function runTool(name: string, input: unknown, context?: unknown) {
-  return (tool(name).execute as (input: unknown, context?: unknown) => unknown)(input, context);
+  return (tool(name).execute as (input: unknown, context?: unknown) => unknown)(
+    input,
+    context,
+  );
 }
 
 const context = {
@@ -128,11 +134,13 @@ beforeEach(() => {
   mockFn(mocks.deleteCodeWorkspaceFile).mockResolvedValue({ ok: "deleted" });
   mockFn(mocks.getUserGitHubStatus).mockResolvedValue({ connected: true });
   mockFn(mocks.publishCodeWorkspaceToGitHub).mockResolvedValue({ ok: true });
-  mockFn(mocks.searchWebWithSearxng).mockImplementation(async (input: { query: string }) => ({
-    ok: true,
-    query: input.query,
-    results: [],
-  }));
+  mockFn(mocks.searchWebWithSearxng).mockImplementation(
+    async (input: { query: string }) => ({
+      ok: true,
+      query: input.query,
+      results: [],
+    }),
+  );
   mockFn(mocks.executeCodeSandbox).mockResolvedValue({
     kind: "code_sandbox_result",
     ok: true,
@@ -146,10 +154,18 @@ beforeEach(() => {
 });
 describe("builtInTools", () => {
   it("replaces code workspace text safely and delegates GitHub publishing", async () => {
-    await expect(runTool("code_workspace_replace_text", { projectId: "p1", path: "index.html", oldText: "two", newText: "2" }, context)).resolves.toEqual({
+    await expect(
+      runTool(
+        "code_workspace_replace_text",
+        { projectId: "p1", path: "index.html", oldText: "two", newText: "2" },
+        context,
+      ),
+    ).resolves.toEqual({
       ok: "written",
     });
-    expect(mocks.writeCodeWorkspaceFile).toHaveBeenLastCalledWith(expect.objectContaining({ content: "one 2 one" }));
+    expect(mocks.writeCodeWorkspaceFile).toHaveBeenLastCalledWith(
+      expect.objectContaining({ content: "one 2 one" }),
+    );
     await expect(
       runTool(
         "code_workspace_replace_text",
@@ -163,7 +179,9 @@ describe("builtInTools", () => {
         context,
       ),
     ).resolves.toEqual({ ok: "written" });
-    expect(mocks.writeCodeWorkspaceFile).toHaveBeenLastCalledWith(expect.objectContaining({ content: "1 two 1" }));
+    expect(mocks.writeCodeWorkspaceFile).toHaveBeenLastCalledWith(
+      expect.objectContaining({ content: "1 two 1" }),
+    );
     await expect(
       runTool(
         "code_workspace_replace_text",
@@ -176,9 +194,17 @@ describe("builtInTools", () => {
         context,
       ),
     ).rejects.toThrow("oldText was not found");
-    await expect(runTool("code_workspace_replace_text", { projectId: "p1", path: "index.html", oldText: "one", newText: "x" }, context)).rejects.toThrow("appears multiple times");
+    await expect(
+      runTool(
+        "code_workspace_replace_text",
+        { projectId: "p1", path: "index.html", oldText: "one", newText: "x" },
+        context,
+      ),
+    ).rejects.toThrow("appears multiple times");
 
-    await expect(runTool("github_get_publish_status", {}, context)).resolves.toEqual({ connected: true });
+    await expect(
+      runTool("github_get_publish_status", {}, context),
+    ).resolves.toEqual({ connected: true });
     await expect(
       runTool(
         "github_publish_code_workspace",

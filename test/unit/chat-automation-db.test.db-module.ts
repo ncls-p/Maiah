@@ -1,7 +1,10 @@
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { decryptValue } from "@/lib/crypto";
-import { getChatAutomationAdminState,setChatAutomationConfig } from "@/modules/chat/automation";
+import {
+  getChatAutomationAdminState,
+  setChatAutomationConfig,
+} from "@/modules/chat/automation";
 import * as _dbModule from "@/server/infrastructure/db";
 import { generateText } from "ai";
 
@@ -18,7 +21,9 @@ vi.mock("@/lib/logger", () => ({
 }));
 
 vi.mock("ai", () => ({
-  generateText: vi.fn().mockResolvedValue({ text: '{"ok":true}', finalStep: { reasoning: [] } }),
+  generateText: vi
+    .fn()
+    .mockResolvedValue({ text: '{"ok":true}', finalStep: { reasoning: [] } }),
 }));
 
 vi.mock("@/server/infrastructure/providers", () => ({
@@ -40,7 +45,15 @@ type Chain = {
 
 function makeChain(): Chain {
   const c = {} as Chain;
-  for (const key of ["select", "insert", "from", "where", "orderBy", "values", "onConflictDoUpdate"] as const) {
+  for (const key of [
+    "select",
+    "insert",
+    "from",
+    "where",
+    "orderBy",
+    "values",
+    "onConflictDoUpdate",
+  ] as const) {
     c[key] = vi.fn().mockReturnThis();
   }
   c.limit = vi.fn().mockResolvedValue([]);
@@ -62,7 +75,15 @@ export const dbModule = _dbModule as unknown as DbModule;
 export function resetDb() {
   dbModule.db.select.mockReset().mockReturnValue(dbModule._c);
   dbModule.db.insert.mockReset().mockReturnValue(dbModule._c);
-  for (const key of ["select", "insert", "from", "where", "orderBy", "values", "onConflictDoUpdate"] as const) {
+  for (const key of [
+    "select",
+    "insert",
+    "from",
+    "where",
+    "orderBy",
+    "values",
+    "onConflictDoUpdate",
+  ] as const) {
     dbModule._c[key].mockReset().mockReturnThis();
   }
   dbModule._c.limit.mockReset().mockResolvedValue([]);
@@ -110,9 +131,14 @@ beforeEach(() => {
 
 describe("chat automation config", () => {
   it("persists config and returns parsed defaults", async () => {
-    dbModule._c.limit.mockResolvedValueOnce([{ valueJson: { enabled: false } }]);
+    dbModule._c.limit.mockResolvedValueOnce([
+      { valueJson: { enabled: false } },
+    ]);
 
-    const result = await setChatAutomationConfig({ enabled: false, generateTitles: true, generateSuggestions: false }, "user-1");
+    const result = await setChatAutomationConfig(
+      { enabled: false, generateTitles: true, generateSuggestions: false },
+      "user-1",
+    );
 
     expect(dbModule.db.insert).toHaveBeenCalled();
     expect(dbModule._c.onConflictDoUpdate).toHaveBeenCalled();
@@ -125,7 +151,9 @@ describe("chat automation config", () => {
 
   it("returns admin config, providers, and models", async () => {
     dbModule._c.limit.mockResolvedValueOnce([{ valueJson: enabledConfig }]);
-    dbModule._c.orderBy.mockResolvedValueOnce([{ id: providerId, name: "OpenAI" }]).mockResolvedValueOnce([{ id: modelId, modelId: "gpt" }]);
+    dbModule._c.orderBy
+      .mockResolvedValueOnce([{ id: providerId, name: "OpenAI" }])
+      .mockResolvedValueOnce([{ id: modelId, modelId: "gpt" }]);
 
     const result = await getChatAutomationAdminState();
 

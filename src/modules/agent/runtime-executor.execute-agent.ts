@@ -63,6 +63,13 @@ export async function executeAgent(
         outputTokens: created.run.outputTokens ?? 0,
         totalTreeTokens:
           (created.run.inputTokens ?? 0) + (created.run.outputTokens ?? 0),
+        usageBreakdown: [
+          {
+            modelId: resolved.version.modelId,
+            inputTokens: created.run.inputTokens ?? 0,
+            outputTokens: created.run.outputTokens ?? 0,
+          },
+        ],
         reused: true,
         visualOutputs: [],
       };
@@ -98,6 +105,7 @@ export async function executeAgent(
       controller,
       tokensUsed: 0,
       activeDelegations: 0,
+      usageBreakdown: [],
     },
     deadlineAt,
     depth: 0,

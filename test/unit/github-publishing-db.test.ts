@@ -1,11 +1,15 @@
 import * as storage from "@/modules/code-workspace/storage";
 import * as _dbModule from "@/server/infrastructure/db";
 import { generateKeyPairSync } from "node:crypto";
-import { beforeAll,beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/modules/code-workspace/storage", () => ({
   getCodeWorkspaceFilesForPublish: vi.fn(),
-  isTextWorkspacePath: vi.fn((filePath: string) => /\.(?:txt|md|js|json|html|css)$/i.test(filePath)),
-  normalizeWorkspacePath: vi.fn((value: string) => value.replace(/^\/+|\/+$/g, "")),
+  isTextWorkspacePath: vi.fn((filePath: string) =>
+    /\.(?:txt|md|js|json|html|css)$/i.test(filePath),
+  ),
+  normalizeWorkspacePath: vi.fn((value: string) =>
+    value.replace(/^\/+|\/+$/g, ""),
+  ),
 }));
 type Chain = {
   select: ReturnType<typeof vi.fn>;
@@ -21,7 +25,16 @@ type Chain = {
 };
 function makeChain(): Chain {
   const c = {} as Chain;
-  for (const key of ["select", "insert", "delete", "from", "where", "orderBy", "values", "onConflictDoUpdate"] as const) {
+  for (const key of [
+    "select",
+    "insert",
+    "delete",
+    "from",
+    "where",
+    "orderBy",
+    "values",
+    "onConflictDoUpdate",
+  ] as const) {
     c[key] = vi.fn().mockReturnThis();
   }
   c.limit = vi.fn().mockResolvedValue([]);
@@ -53,13 +66,25 @@ function resetDb() {
   dbModule.db.select.mockReset().mockReturnValue(dbModule._c);
   dbModule.db.insert.mockReset().mockReturnValue(dbModule._c);
   dbModule.db.delete.mockReset().mockReturnValue(dbModule._c);
-  for (const key of ["select", "insert", "delete", "from", "where", "orderBy", "values", "onConflictDoUpdate"] as const) {
+  for (const key of [
+    "select",
+    "insert",
+    "delete",
+    "from",
+    "where",
+    "orderBy",
+    "values",
+    "onConflictDoUpdate",
+  ] as const) {
     dbModule._c[key].mockReset().mockReturnThis();
   }
   dbModule._c.limit.mockReset().mockResolvedValue([]);
   dbModule._c.returning.mockReset().mockResolvedValue([]);
 }
-function jsonResponse(body: unknown, init: { ok?: boolean; status?: number; statusText?: string } = {}) {
+function jsonResponse(
+  body: unknown,
+  init: { ok?: boolean; status?: number; statusText?: string } = {},
+) {
   return {
     ok: init.ok ?? true,
     status: init.status ?? 200,
@@ -97,7 +122,9 @@ const connectionRow = {
   updatedAt: new Date("2025-01-01T00:00:00Z"),
 };
 beforeAll(async () => {
-  const privateKey = generateKeyPairSync("rsa", { modulusLength: 2048 }).privateKey.export({ format: "pem", type: "pkcs1" }).toString();
+  const privateKey = generateKeyPairSync("rsa", { modulusLength: 2048 })
+    .privateKey.export({ format: "pem", type: "pkcs1" })
+    .toString();
   process.env.GITHUB_APP_ID = "12345";
   process.env.GITHUB_APP_SLUG = "ai-hub-test";
   process.env.GITHUB_APP_PRIVATE_KEY = privateKey;
@@ -130,7 +157,9 @@ describe("GitHub publishing DB/API flows", () => {
       workspaceId: ids.workspaceId,
       userId: ids.userId,
     });
-    expect(connectUrl).toContain("https://github.com/apps/ai-hub-test/installations/new");
+    expect(connectUrl).toContain(
+      "https://github.com/apps/ai-hub-test/installations/new",
+    );
     expect(connectUrl).toContain("state=");
     dbModule._c.orderBy.mockResolvedValueOnce([connectionRow]);
     dbModule._c.where.mockReturnValueOnce(dbModule._c).mockResolvedValueOnce([
@@ -149,7 +178,9 @@ describe("GitHub publishing DB/API flows", () => {
       workspaceId: ids.workspaceId,
     });
     expect(status.configured).toBe(true);
-    expect(status.connectUrl).toContain("https://app.test/api/workspace/github/connect");
+    expect(status.connectUrl).toContain(
+      "https://app.test/api/workspace/github/connect",
+    );
     expect(status.connections[0]).toMatchObject({
       id: "conn-1",
       installationId: "123",
@@ -173,7 +204,8 @@ describe("GitHub publishing DB/API flows", () => {
         jsonResponse({
           id: 123,
           account: { id: 10, login: "octo", type: "Organization" },
-          html_url: "https://github.com/organizations/octo/settings/installations/123",
+          html_url:
+            "https://github.com/organizations/octo/settings/installations/123",
           repository_selection: "selected",
         }) as never,
       )
@@ -200,12 +232,18 @@ describe("GitHub publishing DB/API flows", () => {
       );
     dbModule._c.returning.mockResolvedValueOnce([connectionRow]);
     dbModule._c.orderBy.mockResolvedValueOnce([connectionRow]);
-    dbModule._c.where.mockReturnValueOnce(dbModule._c).mockReturnValueOnce(dbModule._c).mockResolvedValueOnce([repoRow]);
+    dbModule._c.where
+      .mockReturnValueOnce(dbModule._c)
+      .mockReturnValueOnce(dbModule._c)
+      .mockResolvedValueOnce([repoRow]);
     const status = await publishing.syncGitHubInstallation({
       userId: ids.userId,
       installationId: "123",
     });
-    expect(globalThis.fetch).toHaveBeenCalledWith(expect.stringContaining("/app/installations/123"), expect.any(Object));
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      expect.stringContaining("/app/installations/123"),
+      expect.any(Object),
+    );
     expect(dbModule.db.delete).toHaveBeenCalled();
     expect(dbModule._c.values).toHaveBeenCalledWith(
       expect.arrayContaining([
@@ -221,15 +259,26 @@ describe("GitHub publishing DB/API flows", () => {
     });
   });
   it("lists branches for a repository", async () => {
-    dbModule._c.limit.mockResolvedValueOnce([repoRow]).mockResolvedValueOnce([connectionRow]);
+    dbModule._c.limit
+      .mockResolvedValueOnce([repoRow])
+      .mockResolvedValueOnce([connectionRow]);
     vi.mocked(globalThis.fetch)
-      .mockResolvedValueOnce(jsonResponse({ token: "installation-token" }) as never)
-      .mockResolvedValueOnce(jsonResponse([{ name: "main", protected: true, commit: { sha: "abc" } }]) as never);
+      .mockResolvedValueOnce(
+        jsonResponse({ token: "installation-token" }) as never,
+      )
+      .mockResolvedValueOnce(
+        jsonResponse([
+          { name: "main", protected: true, commit: { sha: "abc" } },
+        ]) as never,
+      );
     const branches = await publishing.listGitHubBranches({
       userId: ids.userId,
       repositoryId: ids.repositoryId,
     });
     expect(branches).toEqual([{ name: "main", protected: true, sha: "abc" }]);
-    expect(globalThis.fetch).toHaveBeenLastCalledWith(expect.stringContaining("/branches?per_page=100"), expect.any(Object));
+    expect(globalThis.fetch).toHaveBeenLastCalledWith(
+      expect.stringContaining("/branches?per_page=100"),
+      expect.any(Object),
+    );
   });
 });

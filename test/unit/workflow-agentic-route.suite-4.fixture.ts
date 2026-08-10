@@ -1,8 +1,12 @@
 import { createStarterDefinition } from "@/modules/workflows/contracts";
-import { MockLanguageModelV4,simulateReadableStream } from "ai/test";
+import { MockLanguageModelV4, simulateReadableStream } from "ai/test";
 import { modelUsage } from "./workflow-agentic-route.suite-3.fixture";
 
-export function toolCallStream(toolCallId: string, toolName: string, input: unknown) {
+export function toolCallStream(
+  toolCallId: string,
+  toolName: string,
+  input: unknown,
+) {
   return {
     stream: simulateReadableStream({
       chunks: [

@@ -1,7 +1,18 @@
-import { describe,expect,it } from "vitest";
+import { describe, expect, it } from "vitest";
 
-import { archiveProvider,createProvider,getProviderById,listProviders,refreshProviderModels,updateProvider } from "@/modules/provider/use-cases";
-import { dbModule,fakeModel,fakeProvider } from "./provider-use-cases.test.mock-adapter";
+import {
+  archiveProvider,
+  createProvider,
+  getProviderById,
+  listProviders,
+  refreshProviderModels,
+  updateProvider,
+} from "@/modules/provider/use-cases";
+import {
+  dbModule,
+  fakeModel,
+  fakeProvider,
+} from "./provider-use-cases.test.mock-adapter";
 
 // ─── createProvider ───────────────────────────────────────────────────
 
@@ -66,14 +77,18 @@ describe("createProvider", () => {
       authType: "bearer",
     });
 
-    expect(dbModule._c.values).toHaveBeenCalledWith(expect.objectContaining({ openaiCompatibleApiRoute: "responses" }));
+    expect(dbModule._c.values).toHaveBeenCalledWith(
+      expect.objectContaining({ openaiCompatibleApiRoute: "responses" }),
+    );
   });
 });
 
 describe("registered provider model synchronization", () => {
   it("updates metadata only for models that were already added", async () => {
     dbModule._c.limit.mockResolvedValueOnce([fakeProvider]);
-    dbModule._c.orderBy.mockResolvedValueOnce([{ ...fakeModel, modelId: "model-1" }]);
+    dbModule._c.orderBy.mockResolvedValueOnce([
+      { ...fakeModel, modelId: "model-1" },
+    ]);
 
     const result = await refreshProviderModels("prov-1", "ws-1");
 
@@ -191,7 +206,9 @@ describe("updateProvider", () => {
       openaiCompatibleApiRoute: "responses",
     });
 
-    expect(dbModule._c.set).toHaveBeenCalledWith(expect.objectContaining({ openaiCompatibleApiRoute: "responses" }));
+    expect(dbModule._c.set).toHaveBeenCalledWith(
+      expect.objectContaining({ openaiCompatibleApiRoute: "responses" }),
+    );
   });
 });
 
@@ -199,7 +216,9 @@ describe("updateProvider", () => {
 
 describe("archiveProvider", () => {
   it("throws when provider not found", async () => {
-    await expect(archiveProvider("prov-1", "ws-1", "user-1")).rejects.toThrow("Provider not found");
+    await expect(archiveProvider("prov-1", "ws-1", "user-1")).rejects.toThrow(
+      "Provider not found",
+    );
   });
 
   it("sets archivedAt when found", async () => {

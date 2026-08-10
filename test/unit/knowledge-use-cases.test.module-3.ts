@@ -1,7 +1,19 @@
-import { describe,expect,it,vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import { cloneKnowledgeBindings,getKnowledgeBindingsForVersion,listProcessingDocuments,processDocumentIngestion,replaceKnowledgeBindingsForVersion,searchBoundKnowledgeBases,searchKnowledgeBase } from "@/modules/knowledge/use-cases";
-import { dbModule,fakeDoc,fakeKb } from "./knowledge-use-cases.test.db-module";
+import {
+  cloneKnowledgeBindings,
+  getKnowledgeBindingsForVersion,
+  listProcessingDocuments,
+  processDocumentIngestion,
+  replaceKnowledgeBindingsForVersion,
+  searchBoundKnowledgeBases,
+  searchKnowledgeBase,
+} from "@/modules/knowledge/use-cases";
+import {
+  dbModule,
+  fakeDoc,
+  fakeKb,
+} from "./knowledge-use-cases.test.db-module";
 
 // ─── searchKnowledgeBase ──────────────────────────────────────────────
 

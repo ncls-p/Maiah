@@ -14,12 +14,36 @@ export const rootVersion = {
   orchestrationPolicyJson: null,
   approvalPolicyJson: null,
 };
-export const provider = { providerId: "55555555-5555-4555-8555-555555555555", modelRecordId: "66666666-6666-4666-8666-666666666666", modelId: "model-api-id", providerKind: "openai", runtimeConfig: {} };
-export const childAgent = { ...rootAgent, id: "88888888-8888-4888-8888-888888888888", name: "Research specialist", kind: "assistant" };
-export const childVersion = { ...rootVersion, id: "99999999-9999-4999-8999-999999999999", agentId: childAgent.id, maxToolCalls: 4 };
+export const provider = {
+  providerId: "55555555-5555-4555-8555-555555555555",
+  modelRecordId: "66666666-6666-4666-8666-666666666666",
+  modelId: "model-api-id",
+  providerKind: "openai",
+  runtimeConfig: {},
+};
+export const childAgent = {
+  ...rootAgent,
+  id: "88888888-8888-4888-8888-888888888888",
+  name: "Research specialist",
+  kind: "assistant",
+};
+export const childVersion = {
+  ...rootVersion,
+  id: "99999999-9999-4999-8999-999999999999",
+  agentId: childAgent.id,
+  maxToolCalls: 4,
+};
 export const orchestrator = { ...rootAgent, kind: "orchestrator" };
 export const orchestratorVersion = {
   ...rootVersion,
   maxToolCalls: 4,
-  orchestrationPolicyJson: { maxDepth: 2, maxDelegations: 4, maxParallel: 2, maxChildSteps: 4, maxTotalTokens: 10_000, timeoutMs: 30_000, resultMaxChars: 4_000 },
+  orchestrationPolicyJson: {
+    maxDepth: 2,
+    maxDelegations: 4,
+    maxParallel: 2,
+    maxChildSteps: 4,
+    maxTotalTokens: 10_000,
+    timeoutMs: 30_000,
+    resultMaxChars: 4_000,
+  },
 };

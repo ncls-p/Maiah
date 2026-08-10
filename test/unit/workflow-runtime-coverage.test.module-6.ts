@@ -1,11 +1,22 @@
-import { describe,expect,it,vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import { compileWorkflowDefinition,createWorkflowEventBus,createWorkflowRuntime,workflowNodeById } from "@/modules/workflows/runtime";
-import { definitionWith,dependencies,node } from "./workflow-runtime-coverage.test.dependencies";
+import {
+  compileWorkflowDefinition,
+  createWorkflowEventBus,
+  createWorkflowRuntime,
+  workflowNodeById,
+} from "@/modules/workflows/runtime";
+import {
+  definitionWith,
+  dependencies,
+  node,
+} from "./workflow-runtime-coverage.test.dependencies";
 
 describe("workflow compilation validation and utilities", () => {
   it("builds blueprint configuration and exposes runtime helpers", async () => {
-    const definition = definitionWith(node("data.set", { values: { done: true } }));
+    const definition = definitionWith(
+      node("data.set", { values: { done: true } }),
+    );
     definition.edges[0]!.sourceHandle = "true";
     const compiled = compileWorkflowDefinition({
       workflowId: "workflow-1",
@@ -24,7 +35,9 @@ describe("workflow compilation validation and utilities", () => {
       ]),
     });
     expect(createWorkflowRuntime({ dependencies })).toBeDefined();
-    expect(workflowNodeById(definition, "node-data-set")?.type).toBe("data.set");
+    expect(workflowNodeById(definition, "node-data-set")?.type).toBe(
+      "data.set",
+    );
     expect(workflowNodeById(definition, "missing")).toBeUndefined();
     const emit = vi.fn();
     await createWorkflowEventBus(emit).emit({
@@ -36,7 +49,11 @@ describe("workflow compilation validation and utilities", () => {
 
   it.each([
     ["agent.run", { agentId: "invalid", prompt: "Do it" }, "valid agent"],
-    ["agent.run", { agentId: "11111111-1111-4111-8111-111111111111", prompt: "" }, "instruction"],
+    [
+      "agent.run",
+      { agentId: "11111111-1111-4111-8111-111111111111", prompt: "" },
+      "instruction",
+    ],
     ["http.request", { url: "not-a-url" }, "valid HTTPS URL"],
     ["http.request", { url: "http://example.test" }, "valid HTTPS URL"],
     ["code.execute", { language: "ruby", code: "puts 1" }, "code language"],
@@ -65,7 +82,9 @@ describe("workflow compilation validation and utilities", () => {
         definition: definitionWith(
           node("http.request", {
             url: "https://example.test",
-            headers: Object.fromEntries(Array.from({ length: 51 }, (_, index) => [`x-${index}`, "value"])),
+            headers: Object.fromEntries(
+              Array.from({ length: 51 }, (_, index) => [`x-${index}`, "value"]),
+            ),
           }),
         ),
       }),
@@ -88,7 +107,12 @@ describe("workflow compilation validation and utilities", () => {
         version: 1,
         definition: definitionWith(
           node("data.set", {
-            values: Object.fromEntries(Array.from({ length: 201 }, (_, index) => [`field-${index}`, index])),
+            values: Object.fromEntries(
+              Array.from({ length: 201 }, (_, index) => [
+                `field-${index}`,
+                index,
+              ]),
+            ),
           }),
         ),
       }),

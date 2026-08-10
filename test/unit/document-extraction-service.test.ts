@@ -1,10 +1,12 @@
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   extractWithAnydoc: vi.fn(),
   getDefaultRagConfig: vi.fn(),
   inspectPdfVisualCandidates: vi.fn(),
-  isSupportedOcrImage: vi.fn((mimeType: string) => ["image/png", "image/jpeg"].includes(mimeType)),
+  isSupportedOcrImage: vi.fn((mimeType: string) =>
+    ["image/png", "image/jpeg"].includes(mimeType),
+  ),
   runVisualOcr: vi.fn(),
   visualRegionsMarkdown: vi.fn(),
 }));
@@ -96,7 +98,9 @@ describe("document extraction orchestration", () => {
     });
 
     expect(mocks.inspectPdfVisualCandidates).toHaveBeenCalledOnce();
-    expect(mocks.runVisualOcr).toHaveBeenCalledWith(expect.objectContaining({ candidates }));
+    expect(mocks.runVisualOcr).toHaveBeenCalledWith(
+      expect.objectContaining({ candidates }),
+    );
     expect(result).toMatchObject({
       markdown: "Deterministic PDF text\n\nVisual Markdown",
       engine: "anydoc",
@@ -140,7 +144,10 @@ describe("document extraction orchestration", () => {
 
     expect(mocks.runVisualOcr).toHaveBeenCalledWith(
       expect.objectContaining({
-        candidates: [expect.objectContaining({ sourceRef: "word/media/image1.png" }), expect.objectContaining({ sourceRef: "asset:3" })],
+        candidates: [
+          expect.objectContaining({ sourceRef: "word/media/image1.png" }),
+          expect.objectContaining({ sourceRef: "asset:3" }),
+        ],
       }),
     );
   });

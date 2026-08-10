@@ -1,7 +1,12 @@
-import { describe,expect,it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { updateWorkspaceMemberRole } from "@/modules/workspace/use-cases";
-import { dbModule,fakeMember,fakeRole,fakeWorkspace } from "./workspace-use-cases.test.db-module";
+import {
+  dbModule,
+  fakeMember,
+  fakeRole,
+  fakeWorkspace,
+} from "./workspace-use-cases.test.db-module";
 
 describe("updateWorkspaceMemberRole", () => {
   it("throws when workspace not found", async () => {
@@ -16,7 +21,9 @@ describe("updateWorkspaceMemberRole", () => {
   });
 
   it("throws when role not found", async () => {
-    dbModule._chain.limit.mockResolvedValueOnce([fakeWorkspace]).mockResolvedValueOnce([]); // getSystemWorkspaceRole → not found
+    dbModule._chain.limit
+      .mockResolvedValueOnce([fakeWorkspace])
+      .mockResolvedValueOnce([]); // getSystemWorkspaceRole → not found
 
     await expect(
       updateWorkspaceMemberRole({
@@ -29,7 +36,10 @@ describe("updateWorkspaceMemberRole", () => {
   });
 
   it("throws when member not found", async () => {
-    dbModule._chain.limit.mockResolvedValueOnce([fakeWorkspace]).mockResolvedValueOnce([fakeRole]).mockResolvedValueOnce([]);
+    dbModule._chain.limit
+      .mockResolvedValueOnce([fakeWorkspace])
+      .mockResolvedValueOnce([fakeRole])
+      .mockResolvedValueOnce([]);
 
     await expect(
       updateWorkspaceMemberRole({
@@ -42,7 +52,10 @@ describe("updateWorkspaceMemberRole", () => {
   });
 
   it("deletes old binding and inserts new one via transaction", async () => {
-    dbModule._chain.limit.mockResolvedValueOnce([fakeWorkspace]).mockResolvedValueOnce([fakeRole]).mockResolvedValueOnce([fakeMember]);
+    dbModule._chain.limit
+      .mockResolvedValueOnce([fakeWorkspace])
+      .mockResolvedValueOnce([fakeRole])
+      .mockResolvedValueOnce([fakeMember]);
 
     await updateWorkspaceMemberRole({
       workspaceId: "ws-1",

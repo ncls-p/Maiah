@@ -1,4 +1,4 @@
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { toSafeProvider } from "@/modules/provider/use-cases";
 import * as _dbModule from "@/server/infrastructure/db";
@@ -21,7 +21,9 @@ vi.mock("@/lib/crypto", () => ({
 }));
 
 const mockAdapter = vi.hoisted(() => ({
-  validateConnection: vi.fn().mockResolvedValue({ status: "healthy", latencyMs: 50 }),
+  validateConnection: vi
+    .fn()
+    .mockResolvedValue({ status: "healthy", latencyMs: 50 }),
   listModels: vi.fn().mockResolvedValue([
     {
       modelId: "model-1",

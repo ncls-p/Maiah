@@ -1,7 +1,9 @@
-import { expect,test } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 test.describe("OpenAPI documentation", () => {
-  test("publishes the complete contract and interactive Swagger UI", async ({ page }) => {
+  test("publishes the complete contract and interactive Swagger UI", async ({
+    page,
+  }) => {
     const pageErrors: string[] = [];
     page.on("pageerror", (error) => pageErrors.push(error.message));
     const response = await page.request.get("/api/openapi");
@@ -30,7 +32,10 @@ test.describe("OpenAPI documentation", () => {
     await expect(page.getByRole("heading", { name: "Maiah API" })).toBeVisible({
       timeout: 20_000,
     });
-    await expect(page.locator("#swagger-ui")).toHaveAttribute("data-ready", "true");
+    await expect(page.locator("#swagger-ui")).toHaveAttribute(
+      "data-ready",
+      "true",
+    );
     await expect(page.getByText("Authorize").first()).toBeVisible();
     expect(pageErrors).toEqual([]);
   });

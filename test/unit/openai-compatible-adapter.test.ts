@@ -1,4 +1,4 @@
-import { afterEach,describe,expect,it,vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { openaiCompatibleAdapter } from "@/server/infrastructure/providers/openai-compatible-adapter";
 
@@ -35,8 +35,14 @@ describe("openaiCompatibleAdapter.listModels", () => {
       authType: "custom-header",
     });
 
-    expect(fetchMock).toHaveBeenCalledWith("http://localhost:8081/v1/models", expect.any(Object));
-    expect(models?.map((model) => model.modelId)).toEqual(["nvidia/Qwen3.6-27B-NVFP4", "RedHatAI/gemma-4-31B-it-NVFP4"]);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:8081/v1/models",
+      expect.any(Object),
+    );
+    expect(models?.map((model) => model.modelId)).toEqual([
+      "nvidia/Qwen3.6-27B-NVFP4",
+      "RedHatAI/gemma-4-31B-it-NVFP4",
+    ]);
   });
 
   it("preserves the exact API prefix when listing models", async () => {
@@ -51,7 +57,10 @@ describe("openaiCompatibleAdapter.listModels", () => {
       apiKey: "sk-test",
     });
 
-    expect(fetchMock).toHaveBeenCalledWith("https://gateway.example.com/openai/models", expect.any(Object));
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://gateway.example.com/openai/models",
+      expect.any(Object),
+    );
   });
 
   it("keeps every model with an id, including embedding models", async () => {
@@ -75,7 +84,10 @@ describe("openaiCompatibleAdapter.listModels", () => {
       authType: "custom-header",
     });
 
-    expect(models?.map((model) => model.modelId)).toEqual(["chat-model", "embedding-model"]);
+    expect(models?.map((model) => model.modelId)).toEqual([
+      "chat-model",
+      "embedding-model",
+    ]);
   });
 
   it("prefers explicit API pricing and sustainability metadata", async () => {

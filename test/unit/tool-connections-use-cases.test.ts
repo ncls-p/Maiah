@@ -1,4 +1,4 @@
-import { describe,expect,it,vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/server/infrastructure/db", () => ({
   db: {},
@@ -12,7 +12,12 @@ vi.mock("@/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 
-import { buildSignedToolContextHeaders,toSafeToolConnection,toSafeToolConnector,toolContextHeaderNames } from "@/modules/tool-connections/use-cases";
+import {
+  buildSignedToolContextHeaders,
+  toSafeToolConnection,
+  toSafeToolConnector,
+  toolContextHeaderNames,
+} from "@/modules/tool-connections/use-cases";
 
 describe("tool connection DTOs", () => {
   it("omits encrypted connector/connection internals from safe DTOs", () => {
@@ -66,7 +71,9 @@ describe("signed tool context headers", () => {
     });
     const names = toolContextHeaderNames();
     const encoded = headers[names.context];
-    const envelope = JSON.parse(Buffer.from(encoded, "base64url").toString("utf8")) as { alg: string; iv: string; ciphertext: string; tag: string };
+    const envelope = JSON.parse(
+      Buffer.from(encoded, "base64url").toString("utf8"),
+    ) as { alg: string; iv: string; ciphertext: string; tag: string };
 
     expect(envelope.alg).toBe("A256GCM");
     expect(envelope.iv).toEqual(expect.any(String));

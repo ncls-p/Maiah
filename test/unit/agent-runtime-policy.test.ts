@@ -1,5 +1,9 @@
-import { agentRuntimePolicy,createRuntimeDeadline,resolveAgentRuntimeLimits } from "@/modules/agent/runtime-policy";
-import { describe,expect,it } from "vitest";
+import {
+  agentRuntimePolicy,
+  createRuntimeDeadline,
+  resolveAgentRuntimeLimits,
+} from "@/modules/agent/runtime-policy";
+import { describe, expect, it } from "vitest";
 
 describe("agent runtime policy", () => {
   it("keeps configured tool calls and output tokens without application caps", () => {
@@ -16,7 +20,9 @@ describe("agent runtime policy", () => {
   });
 
   it("keeps a tool-free run to one model step", () => {
-    expect(resolveAgentRuntimeLimits({ maxToolCalls: 0, maxOutputTokens: 0 })).toEqual({ maxToolCalls: 0, maxSteps: 1, maxOutputTokens: 1 });
+    expect(
+      resolveAgentRuntimeLimits({ maxToolCalls: 0, maxOutputTokens: 0 }),
+    ).toEqual({ maxToolCalls: 0, maxSteps: 1, maxOutputTokens: 1 });
   });
 
   it("combines a parent cancellation with a deadline", () => {

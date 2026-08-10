@@ -1,7 +1,33 @@
-import { actionPlanInputSchema,businessDocumentInputSchema,competitiveBattlecardInputSchema,createActionPlanArtifact,createBusinessDocumentArtifact,createCompetitiveBattlecardArtifact,createCustomerAccountPlanArtifact,createDecisionMatrixArtifact,createEmailPackArtifact,createMeetingBriefArtifact,createProjectStatusReportArtifact,createRaciMatrixArtifact,createRiskRegisterArtifact,createSpreadsheetArtifact,customerAccountPlanInputSchema,decisionMatrixInputSchema,emailPackInputSchema,meetingBriefInputSchema,projectStatusReportInputSchema,raciMatrixInputSchema,riskRegisterInputSchema,spreadsheetInputSchema } from "@/modules/tool/business-artifact-tools";
-import { describe,expect,it } from "vitest";
+import {
+  actionPlanInputSchema,
+  businessDocumentInputSchema,
+  competitiveBattlecardInputSchema,
+  createActionPlanArtifact,
+  createBusinessDocumentArtifact,
+  createCompetitiveBattlecardArtifact,
+  createCustomerAccountPlanArtifact,
+  createDecisionMatrixArtifact,
+  createEmailPackArtifact,
+  createMeetingBriefArtifact,
+  createProjectStatusReportArtifact,
+  createRaciMatrixArtifact,
+  createRiskRegisterArtifact,
+  createSpreadsheetArtifact,
+  customerAccountPlanInputSchema,
+  decisionMatrixInputSchema,
+  emailPackInputSchema,
+  meetingBriefInputSchema,
+  projectStatusReportInputSchema,
+  raciMatrixInputSchema,
+  riskRegisterInputSchema,
+  spreadsheetInputSchema,
+} from "@/modules/tool/business-artifact-tools";
+import { describe, expect, it } from "vitest";
 
-function expectArtifact(artifact: ReturnType<typeof createBusinessDocumentArtifact>, type: string) {
+function expectArtifact(
+  artifact: ReturnType<typeof createBusinessDocumentArtifact>,
+  type: string,
+) {
   expect(artifact.kind).toBe("html_artifact");
   expect(artifact.artifactType).toBe(type);
   expect(artifact.html).toContain(`data-artifact-type="${type}"`);
@@ -45,7 +71,9 @@ describe("business artifact tools", () => {
       }),
     );
     expectArtifact(spreadsheet, "spreadsheet");
-    expect(spreadsheet.html).toContain("&quot;He said &quot;&quot;yes&quot;&quot;&quot;");
+    expect(spreadsheet.html).toContain(
+      "&quot;He said &quot;&quot;yes&quot;&quot;&quot;",
+    );
 
     expectArtifact(
       createMeetingBriefArtifact(
@@ -135,8 +163,12 @@ describe("business artifact tools", () => {
           reportingPeriod: "January",
           overallStatus: "yellow",
           executiveSummary: "At risk",
-          metrics: [{ label: "Velocity", value: "12", target: "10", trend: "up" }],
-          milestones: [{ name: "Beta", status: "green", dueDate: "Feb", note: "Ready" }],
+          metrics: [
+            { label: "Velocity", value: "12", target: "10", trend: "up" },
+          ],
+          milestones: [
+            { name: "Beta", status: "green", dueDate: "Feb", note: "Ready" },
+          ],
           blockers: ["Dependency"],
           decisionsNeeded: ["Budget"],
           nextSteps: [{ task: "Resolve dependency", owner: "PM" }],
@@ -171,7 +203,9 @@ describe("business artifact tools", () => {
           title: "RACI",
           context: "Delivery",
           roles: ["PM", "Eng"],
-          activities: [{ name: "Build", assignments: ["A", "R"], notes: "Core" }],
+          activities: [
+            { name: "Build", assignments: ["A", "R"], notes: "Core" },
+          ],
         }),
       ),
       "raci_matrix",
@@ -216,7 +250,9 @@ describe("business artifact tools", () => {
           landmines: ["Ask about uptime"],
           strengths: ["Brand"],
           weaknesses: ["Slow"],
-          objectionHandling: [{ objection: "Too expensive", response: "Lower TCO" }],
+          objectionHandling: [
+            { objection: "Too expensive", response: "Lower TCO" },
+          ],
           discoveryQuestions: ["What matters most?"],
         }),
       ),

@@ -1,8 +1,13 @@
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import * as _dbModule from "@/server/infrastructure/db";
 
-import { ensureBootstrapAdmin,getRegistrationSetting,isAdminRole,setRegistrationEnabled } from "@/modules/admin/use-cases";
+import {
+  ensureBootstrapAdmin,
+  getRegistrationSetting,
+  isAdminRole,
+  setRegistrationEnabled,
+} from "@/modules/admin/use-cases";
 
 // ─── Mocks ────────────────────────────────────────────────────────────
 
@@ -153,7 +158,9 @@ describe("getRegistrationSetting", () => {
   it("returns enabled=true and userCount when no setting", async () => {
     dbModule._sc.limit.mockResolvedValueOnce([]);
     // Q2: second .from() call resolves directly
-    dbModule._sc.from.mockReturnValueOnce(dbModule._sc).mockResolvedValueOnce([{ value: 5 }]);
+    dbModule._sc.from
+      .mockReturnValueOnce(dbModule._sc)
+      .mockResolvedValueOnce([{ value: 5 }]);
 
     const result = await getRegistrationSetting();
     expect(result.registrationEnabled).toBe(true);
@@ -162,8 +169,12 @@ describe("getRegistrationSetting", () => {
   });
 
   it("returns disabled registration when setting says so", async () => {
-    dbModule._sc.limit.mockResolvedValueOnce([{ valueJson: { enabled: false } }]);
-    dbModule._sc.from.mockReturnValueOnce(dbModule._sc).mockResolvedValueOnce([{ value: 3 }]);
+    dbModule._sc.limit.mockResolvedValueOnce([
+      { valueJson: { enabled: false } },
+    ]);
+    dbModule._sc.from
+      .mockReturnValueOnce(dbModule._sc)
+      .mockResolvedValueOnce([{ value: 3 }]);
 
     const result = await getRegistrationSetting();
     expect(result.registrationEnabled).toBe(false);
@@ -171,8 +182,12 @@ describe("getRegistrationSetting", () => {
   });
 
   it("canPublicSignUp is true when user count is 0 even if disabled", async () => {
-    dbModule._sc.limit.mockResolvedValueOnce([{ valueJson: { enabled: false } }]);
-    dbModule._sc.from.mockReturnValueOnce(dbModule._sc).mockResolvedValueOnce([{ value: 0 }]);
+    dbModule._sc.limit.mockResolvedValueOnce([
+      { valueJson: { enabled: false } },
+    ]);
+    dbModule._sc.from
+      .mockReturnValueOnce(dbModule._sc)
+      .mockResolvedValueOnce([{ value: 0 }]);
 
     const result = await getRegistrationSetting();
     expect(result.canPublicSignUp).toBe(true);
@@ -182,8 +197,12 @@ describe("getRegistrationSetting", () => {
 describe("setRegistrationEnabled", () => {
   it("upserts the registration setting", async () => {
     // setRegistrationEnabled calls getRegistrationSetting afterwards
-    dbModule._sc.limit.mockResolvedValueOnce([{ valueJson: { enabled: true } }]);
-    dbModule._sc.from.mockReturnValueOnce(dbModule._sc).mockResolvedValueOnce([{ value: 2 }]);
+    dbModule._sc.limit.mockResolvedValueOnce([
+      { valueJson: { enabled: true } },
+    ]);
+    dbModule._sc.from
+      .mockReturnValueOnce(dbModule._sc)
+      .mockResolvedValueOnce([{ value: 2 }]);
 
     const result = await setRegistrationEnabled(true, "user-1");
     expect(dbModule.db.insert).toHaveBeenCalled();

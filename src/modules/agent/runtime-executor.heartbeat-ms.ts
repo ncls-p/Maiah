@@ -63,6 +63,13 @@ type ExecutionBudget = {
   controller: AbortController;
   tokensUsed: number;
   activeDelegations: number;
+  usageBreakdown?: AgentExecutionUsage[];
+};
+
+export type AgentExecutionUsage = {
+  modelId: string | null;
+  inputTokens: number;
+  outputTokens: number;
 };
 
 export type ResolvedAgent = { agent: AgentRow; version: AgentVersionRow };
@@ -146,6 +153,7 @@ export type AgentExecutionResult = {
   inputTokens: number;
   outputTokens: number;
   totalTreeTokens: number;
+  usageBreakdown?: AgentExecutionUsage[];
   reused: boolean;
   visualOutputs: AgentVisualOutput[];
 };

@@ -1,5 +1,5 @@
 import { formatManifestPreview } from "@/components/marketplace/marketplace-i18n-helpers";
-import { describe,expect,it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 const t = (key: string, values?: Record<string, string | number>) => {
   if (values) {
@@ -24,7 +24,13 @@ describe("formatManifestPreview", () => {
       t,
     );
 
-    expect(bullets.map((b) => b.label)).toEqual(['preview.agentProvider:{"provider":"OpenAI"}', 'preview.agentModel:{"model":"gpt-4"}', 'preview.agentTools:{"count":3}', 'preview.agentSkills:{"count":1}', "preview.agentPrompt"]);
+    expect(bullets.map((b) => b.label)).toEqual([
+      'preview.agentProvider:{"provider":"OpenAI"}',
+      'preview.agentModel:{"model":"gpt-4"}',
+      'preview.agentTools:{"count":3}',
+      'preview.agentSkills:{"count":1}',
+      "preview.agentPrompt",
+    ]);
   });
 
   it("formats mcp preset preview bullets", () => {
@@ -39,7 +45,12 @@ describe("formatManifestPreview", () => {
       t,
     );
 
-    expect(bullets.map((b) => b.label)).toEqual(['preview.mcpTransport:{"transport":"sse"}', 'preview.mcpTools:{"count":4}', "preview.mcpEnabled", "preview.mcpCredentials"]);
+    expect(bullets.map((b) => b.label)).toEqual([
+      'preview.mcpTransport:{"transport":"sse"}',
+      'preview.mcpTools:{"count":4}',
+      "preview.mcpEnabled",
+      "preview.mcpCredentials",
+    ]);
   });
 
   it("returns empty list for unknown type", () => {

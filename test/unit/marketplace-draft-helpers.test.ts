@@ -1,4 +1,4 @@
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/server/domain/services/audit", () => ({
   audit: { emit: vi.fn().mockResolvedValue(undefined) },
@@ -22,7 +22,15 @@ type Chain = {
 
 function makeChain(): Chain {
   const c = {} as Chain;
-  for (const key of ["select", "insert", "update", "from", "where", "values", "set"] as const) {
+  for (const key of [
+    "select",
+    "insert",
+    "update",
+    "from",
+    "where",
+    "values",
+    "set",
+  ] as const) {
     c[key] = vi.fn().mockReturnThis();
   }
   c.limit = vi.fn().mockResolvedValue([]);
@@ -57,13 +65,24 @@ vi.mock("@/server/infrastructure/db", () => {
 });
 
 import { logHandledError } from "@/lib/logger";
-import { findExistingDraft,upsertMarketplaceDraft } from "@/modules/marketplace/draft-helpers";
+import {
+  findExistingDraft,
+  upsertMarketplaceDraft,
+} from "@/modules/marketplace/draft-helpers";
 import * as _dbModule from "@/server/infrastructure/db";
 
 const dbModule = _dbModule as unknown as DbModule;
 
 function resetChain(chain: Chain) {
-  for (const key of ["select", "insert", "update", "from", "where", "values", "set"] as const) {
+  for (const key of [
+    "select",
+    "insert",
+    "update",
+    "from",
+    "where",
+    "values",
+    "set",
+  ] as const) {
     chain[key].mockReset().mockReturnThis();
   }
   chain.limit.mockReset().mockResolvedValue([]);
@@ -77,7 +96,11 @@ beforeEach(() => {
   dbModule.db.select.mockReset().mockReturnValue(dbModule._c);
   dbModule.db.insert.mockReset().mockReturnValue(dbModule._c);
   dbModule.db.update.mockReset().mockReturnValue(dbModule._c);
-  dbModule.db.transaction.mockReset().mockImplementation((cb: (tx: Chain) => Promise<unknown>) => cb(dbModule._tx));
+  dbModule.db.transaction
+    .mockReset()
+    .mockImplementation((cb: (tx: Chain) => Promise<unknown>) =>
+      cb(dbModule._tx),
+    );
 });
 
 const baseInput = {
@@ -102,19 +125,25 @@ const baseInput = {
 describe("findExistingDraft", () => {
   it("returns a matching draft or null", async () => {
     dbModule._c.limit.mockResolvedValueOnce([{ id: "item-1" }]);
-    await expect(findExistingDraft("skill", "skill-1", "user-1")).resolves.toEqual({ id: "item-1" });
+    await expect(
+      findExistingDraft("skill", "skill-1", "user-1"),
+    ).resolves.toEqual({ id: "item-1" });
 
     resetChain(dbModule._c);
     dbModule.db.select.mockReturnValue(dbModule._c);
     dbModule._c.limit.mockResolvedValueOnce([]);
-    await expect(findExistingDraft("skill", "skill-1", "user-1")).resolves.toBeNull();
+    await expect(
+      findExistingDraft("skill", "skill-1", "user-1"),
+    ).resolves.toBeNull();
   });
 });
 
 describe("upsertMarketplaceDraft", () => {
   it("creates a new draft item and initial version inside a transaction", async () => {
     dbModule._c.limit.mockResolvedValueOnce([]);
-    dbModule._tx.returning.mockResolvedValueOnce([{ id: "item-1", name: "Research Skill" }]).mockResolvedValueOnce([{ id: "version-1", version: "1.0.0" }]);
+    dbModule._tx.returning
+      .mockResolvedValueOnce([{ id: "item-1", name: "Research Skill" }])
+      .mockResolvedValueOnce([{ id: "version-1", version: "1.0.0" }]);
 
     const result = await upsertMarketplaceDraft(baseInput);
 
@@ -143,7 +172,9 @@ describe("upsertMarketplaceDraft", () => {
         publishedAt: null,
       },
     ]);
-    dbModule._c.returning.mockResolvedValueOnce([{ id: "version-2", version: "1.0.1" }]).mockResolvedValueOnce([{ id: "item-1", status: "published" }]);
+    dbModule._c.returning
+      .mockResolvedValueOnce([{ id: "version-2", version: "1.0.1" }])
+      .mockResolvedValueOnce([{ id: "item-1", status: "published" }]);
     const publishedAt = new Date("2025-01-01T00:00:00Z");
 
     const result = await upsertMarketplaceDraft({
@@ -168,6 +199,10 @@ describe("upsertMarketplaceDraft", () => {
     dbModule._c.limit.mockRejectedValueOnce(new Error("db down"));
 
     await expect(upsertMarketplaceDraft(baseInput)).rejects.toThrow("db down");
-    expect(logHandledError).toHaveBeenCalledWith("Failed to upsert marketplace draft", {}, expect.any(Error));
+    expect(logHandledError).toHaveBeenCalledWith(
+      "Failed to upsert marketplace draft",
+      {},
+      expect.any(Error),
+    );
   });
 });

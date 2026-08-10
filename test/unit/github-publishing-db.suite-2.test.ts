@@ -1,10 +1,14 @@
 import { generateKeyPairSync } from "node:crypto";
-import { beforeAll,beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/modules/code-workspace/storage", () => ({
   getCodeWorkspaceFilesForPublish: vi.fn(),
-  isTextWorkspacePath: vi.fn((filePath: string) => /\.(?:txt|md|js|json|html|css)$/i.test(filePath)),
-  normalizeWorkspacePath: vi.fn((value: string) => value.replace(/^\/+|\/+$/g, "")),
+  isTextWorkspacePath: vi.fn((filePath: string) =>
+    /\.(?:txt|md|js|json|html|css)$/i.test(filePath),
+  ),
+  normalizeWorkspacePath: vi.fn((value: string) =>
+    value.replace(/^\/+|\/+$/g, ""),
+  ),
 }));
 
 type Chain = {
@@ -22,7 +26,16 @@ type Chain = {
 
 function makeChain(): Chain {
   const c = {} as Chain;
-  for (const key of ["select", "insert", "delete", "from", "where", "orderBy", "values", "onConflictDoUpdate"] as const) {
+  for (const key of [
+    "select",
+    "insert",
+    "delete",
+    "from",
+    "where",
+    "orderBy",
+    "values",
+    "onConflictDoUpdate",
+  ] as const) {
     c[key] = vi.fn().mockReturnThis();
   }
   c.limit = vi.fn().mockResolvedValue([]);
@@ -61,14 +74,26 @@ function resetDb() {
   dbModule.db.select.mockReset().mockReturnValue(dbModule._c);
   dbModule.db.insert.mockReset().mockReturnValue(dbModule._c);
   dbModule.db.delete.mockReset().mockReturnValue(dbModule._c);
-  for (const key of ["select", "insert", "delete", "from", "where", "orderBy", "values", "onConflictDoUpdate"] as const) {
+  for (const key of [
+    "select",
+    "insert",
+    "delete",
+    "from",
+    "where",
+    "orderBy",
+    "values",
+    "onConflictDoUpdate",
+  ] as const) {
     dbModule._c[key].mockReset().mockReturnThis();
   }
   dbModule._c.limit.mockReset().mockResolvedValue([]);
   dbModule._c.returning.mockReset().mockResolvedValue([]);
 }
 
-function jsonResponse(body: unknown, init: { ok?: boolean; status?: number; statusText?: string } = {}) {
+function jsonResponse(
+  body: unknown,
+  init: { ok?: boolean; status?: number; statusText?: string } = {},
+) {
   return {
     ok: init.ok ?? true,
     status: init.status ?? 200,
@@ -109,7 +134,9 @@ const connectionRow = {
 };
 
 beforeAll(async () => {
-  const privateKey = generateKeyPairSync("rsa", { modulusLength: 2048 }).privateKey.export({ format: "pem", type: "pkcs1" }).toString();
+  const privateKey = generateKeyPairSync("rsa", { modulusLength: 2048 })
+    .privateKey.export({ format: "pem", type: "pkcs1" })
+    .toString();
   process.env.GITHUB_APP_ID = "12345";
   process.env.GITHUB_APP_SLUG = "ai-hub-test";
   process.env.GITHUB_APP_PRIVATE_KEY = privateKey;
@@ -139,13 +166,26 @@ beforeEach(() => {
 
 describe("GitHub publishing DB/API flows", () => {
   it("publishes a pull request with blobs, tree, commit, ref update, audit event, and prefixed files", async () => {
-    dbModule._c.limit.mockResolvedValueOnce([repoRow]).mockResolvedValueOnce([connectionRow]);
+    dbModule._c.limit
+      .mockResolvedValueOnce([repoRow])
+      .mockResolvedValueOnce([connectionRow]);
     dbModule._c.returning.mockResolvedValueOnce([{ id: "event-1" }]);
     vi.mocked(globalThis.fetch)
-      .mockResolvedValueOnce(jsonResponse({ token: "installation-token" }) as never)
-      .mockResolvedValueOnce(jsonResponse({ object: { sha: "base", type: "commit" } }) as never)
-      .mockResolvedValueOnce(jsonResponse({ tree: { sha: "tree-base" } }) as never)
-      .mockResolvedValueOnce(jsonResponse({ message: "Not Found" }, { ok: false, status: 404, statusText: "Not Found" }) as never)
+      .mockResolvedValueOnce(
+        jsonResponse({ token: "installation-token" }) as never,
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({ object: { sha: "base", type: "commit" } }) as never,
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({ tree: { sha: "tree-base" } }) as never,
+      )
+      .mockResolvedValueOnce(
+        jsonResponse(
+          { message: "Not Found" },
+          { ok: false, status: 404, statusText: "Not Found" },
+        ) as never,
+      )
       .mockResolvedValueOnce(jsonResponse({}) as never)
       .mockResolvedValueOnce(jsonResponse({ sha: "blob-1" }) as never)
       .mockResolvedValueOnce(jsonResponse({ sha: "blob-2" }) as never)
@@ -179,7 +219,10 @@ describe("GitHub publishing DB/API flows", () => {
       commitSha: "commit-new",
       pullRequestUrl: "https://github.com/octo/repo/pull/1",
     });
-    expect(result.files.map((file) => file.path)).toEqual(["packages/app/src/index.js", "packages/app/README.md"]);
+    expect(result.files.map((file) => file.path)).toEqual([
+      "packages/app/src/index.js",
+      "packages/app/README.md",
+    ]);
     expect(dbModule._c.values).toHaveBeenCalledWith(
       expect.objectContaining({
         status: "success",
@@ -205,12 +248,20 @@ describe("GitHub publishing DB/API flows", () => {
         },
       ],
     } as never);
-    dbModule._c.limit.mockResolvedValueOnce([repoRow]).mockResolvedValueOnce([connectionRow]);
+    dbModule._c.limit
+      .mockResolvedValueOnce([repoRow])
+      .mockResolvedValueOnce([connectionRow]);
     dbModule._c.returning.mockResolvedValueOnce([{ id: "event-root" }]);
     vi.mocked(globalThis.fetch)
-      .mockResolvedValueOnce(jsonResponse({ token: "installation-token" }) as never)
-      .mockResolvedValueOnce(jsonResponse({ object: { sha: "base", type: "commit" } }) as never)
-      .mockResolvedValueOnce(jsonResponse({ tree: { sha: "tree-base" } }) as never)
+      .mockResolvedValueOnce(
+        jsonResponse({ token: "installation-token" }) as never,
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({ object: { sha: "base", type: "commit" } }) as never,
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({ tree: { sha: "tree-base" } }) as never,
+      )
       .mockResolvedValueOnce(jsonResponse({ sha: "blob-1" }) as never)
       .mockResolvedValueOnce(jsonResponse({ sha: "blob-2" }) as never)
       .mockResolvedValueOnce(jsonResponse({ sha: "tree-new" }) as never)
@@ -228,8 +279,17 @@ describe("GitHub publishing DB/API flows", () => {
       confirmDirectPush: true,
     });
 
-    expect(result.files.map((file) => file.path)).toEqual(["index.html", "assets/app.js"]);
-    const treeRequest = vi.mocked(globalThis.fetch).mock.calls.find(([url]) => String(url).endsWith("/git/trees"));
-    expect(JSON.parse(String(treeRequest?.[1]?.body)).tree.map((file: { path: string }) => file.path)).toEqual(["index.html", "assets/app.js"]);
+    expect(result.files.map((file) => file.path)).toEqual([
+      "index.html",
+      "assets/app.js",
+    ]);
+    const treeRequest = vi
+      .mocked(globalThis.fetch)
+      .mock.calls.find(([url]) => String(url).endsWith("/git/trees"));
+    expect(
+      JSON.parse(String(treeRequest?.[1]?.body)).tree.map(
+        (file: { path: string }) => file.path,
+      ),
+    ).toEqual(["index.html", "assets/app.js"]);
   });
 });

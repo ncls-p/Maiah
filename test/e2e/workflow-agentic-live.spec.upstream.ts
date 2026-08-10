@@ -1,4 +1,4 @@
-import { type IncomingMessage,type Server } from "node:http";
+import { type IncomingMessage, type Server } from "node:http";
 
 export const upstreamState: {
   server: Server | null;
@@ -68,7 +68,10 @@ export async function requestBody(request: IncomingMessage) {
   };
 }
 
-export function writeStream(response: import("node:http").ServerResponse, chunks: unknown[]) {
+export function writeStream(
+  response: import("node:http").ServerResponse,
+  chunks: unknown[],
+) {
   response.writeHead(200, {
     "content-type": "text/event-stream; charset=utf-8",
     "cache-control": "no-cache",
