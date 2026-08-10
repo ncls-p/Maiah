@@ -96,8 +96,14 @@ test("hides an assistant from the chat selector after SPA navigation", async ({ 
     if (wasVisible) await activate(hideAction);
     await activate(page.getByRole("link", { name: "Chat", exact: true }));
     await expect(page).toHaveURL(/\/en\/chat/);
-    await activate(page.getByRole("button", { name: "Current assistant" }));
-    await expect(page.getByRole("menuitem", { name: /E2E menu assistant/ })).toHaveCount(0);
+    const assistantSelector = page.getByRole("button", { name: "Current assistant" });
+    if (await assistantSelector.count()) {
+      await activate(assistantSelector);
+      await expect(page.getByRole("menuitem", { name: /E2E menu assistant/ })).toHaveCount(0);
+    } else {
+      await expect(page.getByText("No assistants yet")).toBeVisible();
+      await expect(page.getByText("E2E menu assistant")).toHaveCount(0);
+    }
     await expect(page.getByRole("complementary")).toBeVisible();
   } finally {
     await ensureE2EAssistant();
