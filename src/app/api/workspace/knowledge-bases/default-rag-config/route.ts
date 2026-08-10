@@ -1,7 +1,11 @@
-import { NextRequest,NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
-import { handleRoute,requireRequestPermissionScopeAsync,requireWorkspaceMemberAsync } from "@/lib/route-handler";
+import {
+  handleRoute,
+  requireRequestPermissionScopeAsync,
+  requireWorkspaceMemberAsync,
+} from "@/lib/route-handler";
 import { getDefaultRagConfig } from "@/modules/knowledge/rag-config";
 
 const querySchema = z.object({ workspaceId: z.uuid() });
@@ -14,11 +18,21 @@ export async function GET(req: NextRequest) {
         workspaceId: req.nextUrl.searchParams.get("workspaceId"),
       });
       if (!parsed.success) {
-        return NextResponse.json({ error: "workspaceId must be a valid UUID" }, { status: 400 });
+        return NextResponse.json(
+          { error: "workspaceId must be a valid UUID" },
+          { status: 400 },
+        );
       }
-      const scopeForbidden = await requireRequestPermissionScopeAsync(session.user.id, parsed.data.workspaceId, "knowledgeBases.viewAllowed");
+      const scopeForbidden = await requireRequestPermissionScopeAsync(
+        session.user.id,
+        parsed.data.workspaceId,
+        "knowledgeBases.viewAllowed",
+      );
       if (scopeForbidden) return scopeForbidden;
-      const memberForbidden = await requireWorkspaceMemberAsync(session.user.id, parsed.data.workspaceId);
+      const memberForbidden = await requireWorkspaceMemberAsync(
+        session.user.id,
+        parsed.data.workspaceId,
+      );
       if (memberForbidden) return memberForbidden;
 
       return NextResponse.json(await getDefaultRagConfig());

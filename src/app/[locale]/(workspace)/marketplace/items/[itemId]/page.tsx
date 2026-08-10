@@ -1,20 +1,42 @@
 "use client";
-import { formatMarketplaceDate,getVisibilityLabel } from "@/components/marketplace/marketplace-i18n-helpers";
-import { MarketplaceItemDetailSections,type MarketplaceItemDetailData } from "@/components/marketplace/marketplace-item-detail";
-import { ItemIcon,getItemLabel } from "@/components/marketplace/marketplace-shared";
-import { ResourceShareDialog,type ShareableResource } from "@/components/marketplace/resource-share-dialog";
+import {
+  formatMarketplaceDate,
+  getVisibilityLabel,
+} from "@/components/marketplace/marketplace-i18n-helpers";
+import {
+  MarketplaceItemDetailSections,
+  type MarketplaceItemDetailData,
+} from "@/components/marketplace/marketplace-item-detail";
+import {
+  ItemIcon,
+  getItemLabel,
+} from "@/components/marketplace/marketplace-shared";
+import {
+  ResourceShareDialog,
+  type ShareableResource,
+} from "@/components/marketplace/resource-share-dialog";
 import { PageLoading } from "@/components/page-loading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card,CardContent,CardDescription,CardHeader,CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { WorkspacePage } from "@/components/workspace-page";
 import { useWorkspace } from "@/hooks/use-workspace";
-import { Link,useRouter } from "@/i18n/navigation";
-import { ArrowLeft,PackagePlus,Share2,Star,Tag } from "lucide-react";
-import { useLocale,useTranslations } from "next-intl";
-import { useCallback,useEffect,useState } from "react";
+import { Link, useRouter } from "@/i18n/navigation";
+import { ArrowLeft, PackagePlus, Share2, Star, Tag } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-export default function MarketplaceItemPage({ params }: { params: Promise<{ itemId: string }> }) {
+export default function MarketplaceItemPage({
+  params,
+}: {
+  params: Promise<{ itemId: string }>;
+}) {
   const router = useRouter();
   const locale = useLocale();
   const t = useTranslations("marketplace");
@@ -24,7 +46,9 @@ export default function MarketplaceItemPage({ params }: { params: Promise<{ item
   const [loadError, setLoadError] = useState(false);
   const [resolvedItemId, setResolvedItemId] = useState<string | null>(null);
   const [item, setItem] = useState<MarketplaceItemDetailData | null>(null);
-  const [shareResource, setShareResource] = useState<ShareableResource | null>(null);
+  const [shareResource, setShareResource] = useState<ShareableResource | null>(
+    null,
+  );
   const loadItem = useCallback(
     async (itemId: string) => {
       const res = await fetch(`/api/marketplace/items/${itemId}`);
@@ -89,7 +113,10 @@ export default function MarketplaceItemPage({ params }: { params: Promise<{ item
           router.push("/tools?tab=mcp");
         }
       } else {
-        toast.error((await res.json().catch(() => ({}))).error || tDetail("toast.installFailed"));
+        toast.error(
+          (await res.json().catch(() => ({}))).error ||
+            tDetail("toast.installFailed"),
+        );
       }
     } catch {
       toast.error(tDetail("toast.installFailed"));
@@ -98,7 +125,10 @@ export default function MarketplaceItemPage({ params }: { params: Promise<{ item
   };
   const handleUnshare = async (targetUserId: string) => {
     if (!item) return;
-    const res = await fetch(`/api/marketplace/items/${item.id}/share?targetUserId=${targetUserId}`, { method: "DELETE" });
+    const res = await fetch(
+      `/api/marketplace/items/${item.id}/share?targetUserId=${targetUserId}`,
+      { method: "DELETE" },
+    );
     if (res.ok) {
       toast.success(tDetail("toast.shareRemoved"));
       setItem(await loadItem(item.id));
@@ -109,8 +139,14 @@ export default function MarketplaceItemPage({ params }: { params: Promise<{ item
   if (loading) return <PageLoading />;
   if (loadError || !item) {
     return (
-      <WorkspacePage title={tDetail("loadErrorTitle")} description={tDetail("loadErrorDescription")}>
-        <div className="rounded-2xl border border-destructive/25 bg-destructive/5 p-5" role="alert">
+      <WorkspacePage
+        title={tDetail("loadErrorTitle")}
+        description={tDetail("loadErrorDescription")}
+      >
+        <div
+          className="rounded-2xl border border-destructive/25 bg-destructive/5 p-5"
+          role="alert"
+        >
           <div className="flex flex-wrap gap-2">
             <Button type="button" size="sm" onClick={() => void retryLoad()}>
               {tDetail("retry")}
@@ -123,8 +159,12 @@ export default function MarketplaceItemPage({ params }: { params: Promise<{ item
       </WorkspacePage>
     );
   }
-  const itemTypeLabel = getItemLabel(item.type, (key) => t(key as "itemTypes.agent"));
-  const visibilityLabel = getVisibilityLabel(item.visibility, (key) => t(key as "visibility.public"));
+  const itemTypeLabel = getItemLabel(item.type, (key) =>
+    t(key as "itemTypes.agent"),
+  );
+  const visibilityLabel = getVisibilityLabel(item.visibility, (key) =>
+    t(key as "visibility.public"),
+  );
   return (
     <WorkspacePage title={item.name}>
       <div className="mx-auto max-w-4xl space-y-6">
@@ -138,22 +178,37 @@ export default function MarketplaceItemPage({ params }: { params: Promise<{ item
           <CardHeader>
             <div className="flex items-start gap-3">
               <div className="flex size-14 items-center justify-center rounded-xl bg-muted">
-                <ItemIcon type={item.type} className="size-7 text-muted-foreground" />
+                <ItemIcon
+                  type={item.type}
+                  className="size-7 text-muted-foreground"
+                />
               </div>
               <div className="flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <CardTitle className="text-2xl">{item.name}</CardTitle>
                   {item.isFeatured ? (
-                    <Badge variant="default" className="bg-yellow-500 text-black">
-                      <Star className="size-3 mr-1 fill-current" /> {t("list.featured")}
+                    <Badge
+                      variant="default"
+                      className="bg-yellow-500 text-black"
+                    >
+                      <Star className="size-3 mr-1 fill-current" />{" "}
+                      {t("list.featured")}
                     </Badge>
                   ) : null}
                 </div>
                 <CardDescription className="mt-1 flex flex-wrap items-center gap-2">
                   <Badge variant="secondary">{itemTypeLabel}</Badge>
-                  <Badge variant="outline">{item.status === "published" ? tDetail("status.published") : tDetail("status.draft")}</Badge>
+                  <Badge variant="outline">
+                    {item.status === "published"
+                      ? tDetail("status.published")
+                      : tDetail("status.draft")}
+                  </Badge>
                   <Badge variant="outline">{visibilityLabel}</Badge>
-                  {item.latestVersion ? <Badge variant="outline">v{item.latestVersion.version}</Badge> : null}
+                  {item.latestVersion ? (
+                    <Badge variant="outline">
+                      v{item.latestVersion.version}
+                    </Badge>
+                  ) : null}
                 </CardDescription>
               </div>
             </div>
@@ -161,7 +216,9 @@ export default function MarketplaceItemPage({ params }: { params: Promise<{ item
           <CardContent className="space-y-6">
             {item.description ? (
               <div>
-                <h3 className="mb-2 text-sm font-medium text-muted-foreground">{tDetail("description")}</h3>
+                <h3 className="mb-2 text-sm font-medium text-muted-foreground">
+                  {tDetail("description")}
+                </h3>
                 <p className="text-base leading-relaxed">{item.description}</p>
               </div>
             ) : null}
@@ -183,19 +240,31 @@ export default function MarketplaceItemPage({ params }: { params: Promise<{ item
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
               <div className="rounded-lg bg-muted p-3 text-center">
                 <p className="text-2xl font-bold">{item.totalDownloads}</p>
-                <p className="text-xs text-muted-foreground">{tDetail("downloads")}</p>
+                <p className="text-xs text-muted-foreground">
+                  {tDetail("downloads")}
+                </p>
               </div>
               <div className="rounded-lg bg-muted p-3 text-center">
                 <p className="text-2xl font-bold">{item.shareCount ?? 0}</p>
-                <p className="text-xs text-muted-foreground">{tDetail("shares")}</p>
+                <p className="text-xs text-muted-foreground">
+                  {tDetail("shares")}
+                </p>
               </div>
               <div className="rounded-lg bg-muted p-3 text-center">
-                <p className="text-sm font-medium">{formatMarketplaceDate(item.publishedAt, locale, "long")}</p>
-                <p className="text-xs text-muted-foreground">{tDetail("publishedOn")}</p>
+                <p className="text-sm font-medium">
+                  {formatMarketplaceDate(item.publishedAt, locale, "long")}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {tDetail("publishedOn")}
+                </p>
               </div>
               <div className="rounded-lg bg-muted p-3 text-center">
-                <p className="text-sm font-medium">{formatMarketplaceDate(item.createdAt, locale, "long")}</p>
-                <p className="text-xs text-muted-foreground">{tDetail("createdOn")}</p>
+                <p className="text-sm font-medium">
+                  {formatMarketplaceDate(item.createdAt, locale, "long")}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {tDetail("createdOn")}
+                </p>
               </div>
             </div>
             <div className="flex flex-wrap gap-3 border-t pt-4">
@@ -225,9 +294,18 @@ export default function MarketplaceItemPage({ params }: { params: Promise<{ item
             </div>
           </CardContent>
         </Card>
-        <MarketplaceItemDetailSections item={item} onUnshareAction={item.isOwner ? handleUnshare : undefined} />
+        <MarketplaceItemDetailSections
+          item={item}
+          onUnshareAction={item.isOwner ? handleUnshare : undefined}
+        />
       </div>
-      <ResourceShareDialog resource={shareResource} workspaceId={workspaceId} open={shareResource !== null} onCloseAction={() => setShareResource(null)} onSuccessAction={() => void loadItem(item.id).then(setItem)} />
+      <ResourceShareDialog
+        resource={shareResource}
+        workspaceId={workspaceId}
+        open={shareResource !== null}
+        onCloseAction={() => setShareResource(null)}
+        onSuccessAction={() => void loadItem(item.id).then(setItem)}
+      />
     </WorkspacePage>
   );
 }

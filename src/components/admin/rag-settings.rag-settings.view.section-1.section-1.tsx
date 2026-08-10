@@ -1,10 +1,30 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select,SelectContent,SelectGroup,SelectItem,SelectTrigger,SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import type { RagSettingsViewModel } from "./rag-settings.rag-settings.view";
-export function RagSettingsFieldsSection1({ model }: { model: RagSettingsViewModel }) {
-  const { discovering, modelValue, numberValue, selectModel, setSettings, settings, t, visionModels } = model;
+export function RagSettingsFieldsSection1({
+  model,
+}: {
+  model: RagSettingsViewModel;
+}) {
+  const {
+    discovering,
+    modelValue,
+    numberValue,
+    selectModel,
+    setSettings,
+    settings,
+    t,
+    visionModels,
+  } = model;
   return (
     <div className="rounded-xl border bg-background p-4">
       <div className="flex items-center justify-between gap-4">
@@ -37,13 +57,23 @@ export function RagSettingsFieldsSection1({ model }: { model: RagSettingsViewMod
             </Label>
             <Select onValueChange={(value) => selectModel(value, "ocr")}>
               <SelectTrigger id="rag-discovered-ocr-model">
-                <SelectValue placeholder={discovering ? t("discoveringModels") : t("selectVisionModel")} />
+                <SelectValue
+                  placeholder={
+                    discovering
+                      ? t("discoveringModels")
+                      : t("selectVisionModel")
+                  }
+                />
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
                   {visionModels.map((model) => (
-                    <SelectItem key={`ocr-${modelValue(model)}`} value={modelValue(model)}>
-                      {model.providerName} · {model.displayName || model.modelId}
+                    <SelectItem
+                      key={`ocr-${modelValue(model)}`}
+                      value={modelValue(model)}
+                    >
+                      {model.providerName} ·{" "}
+                      {model.displayName || model.modelId}
                     </SelectItem>
                   ))}
                 </SelectGroup>
@@ -72,7 +102,10 @@ export function RagSettingsFieldsSection1({ model }: { model: RagSettingsViewMod
             />
           </div>
           <div className="grid gap-1.5">
-            <Label htmlFor="rag-ocr-minimum-text" help={t("ocrMinimumTextHelp")}>
+            <Label
+              htmlFor="rag-ocr-minimum-text"
+              help={t("ocrMinimumTextHelp")}
+            >
               {t("ocrMinimumText")}
             </Label>
             <Input
@@ -88,7 +121,10 @@ export function RagSettingsFieldsSection1({ model }: { model: RagSettingsViewMod
                     ...settings.extraction,
                     ocr: {
                       ...settings.extraction.ocr,
-                      minimumTextCharactersPerPage: numberValue(event.target.value, settings.extraction.ocr.minimumTextCharactersPerPage),
+                      minimumTextCharactersPerPage: numberValue(
+                        event.target.value,
+                        settings.extraction.ocr.minimumTextCharactersPerPage,
+                      ),
                     },
                   },
                 })
@@ -112,7 +148,10 @@ export function RagSettingsFieldsSection1({ model }: { model: RagSettingsViewMod
                     ...settings.extraction,
                     ocr: {
                       ...settings.extraction.ocr,
-                      maxVisualPages: numberValue(event.target.value, settings.extraction.ocr.maxVisualPages),
+                      maxVisualPages: numberValue(
+                        event.target.value,
+                        settings.extraction.ocr.maxVisualPages,
+                      ),
                     },
                   },
                 })
@@ -120,7 +159,10 @@ export function RagSettingsFieldsSection1({ model }: { model: RagSettingsViewMod
             />
           </div>
           <div className="flex items-center justify-between gap-4 rounded-lg border p-3 sm:col-span-2">
-            <Label htmlFor="rag-ocr-diagrams" help={t("ocrDescribeDiagramsHelp")}>
+            <Label
+              htmlFor="rag-ocr-diagrams"
+              help={t("ocrDescribeDiagramsHelp")}
+            >
               {t("ocrDescribeDiagrams")}
             </Label>
             <Switch

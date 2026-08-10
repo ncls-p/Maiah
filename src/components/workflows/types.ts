@@ -1,4 +1,7 @@
-import type { WorkflowDefinition,WorkflowNode } from "@/modules/workflows/contracts";
+import type {
+  WorkflowDefinition,
+  WorkflowNode,
+} from "@/modules/workflows/contracts";
 
 export type WorkflowSummary = {
   id: string;

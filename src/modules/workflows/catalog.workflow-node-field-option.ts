@@ -7,7 +7,16 @@ export type WorkflowNodeFieldOption = {
 
 export type WorkflowNodeField = {
   key: string;
-  control: "text" | "textarea" | "number" | "select" | "json" | "keyValue" | "stringList" | "agent" | "code";
+  control:
+    | "text"
+    | "textarea"
+    | "number"
+    | "select"
+    | "json"
+    | "keyValue"
+    | "stringList"
+    | "agent"
+    | "code";
   label: string;
   description?: string;
   placeholder?: string;

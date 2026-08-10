@@ -1,4 +1,16 @@
-import { boolean,index,integer,jsonb,pgEnum,pgTable,text,timestamp,uniqueIndex,uuid,varchar } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  index,
+  integer,
+  jsonb,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+  varchar,
+} from "drizzle-orm/pg-core";
 import { users } from "./auth";
 import { workspaces } from "./workspace";
 
@@ -10,8 +22,18 @@ const WORKSPACE_ID_COLUMN = "workspace_id";
 
 // ─── AI Providers ──────────────────────────────────────────────────────
 
-export const providerKindEnum = pgEnum("provider_kind", ["openai-compatible", "dragonfly", "vercel-ai-gateway", "native"]);
-export const providerAuthTypeEnum = pgEnum("provider_auth_type", ["bearer", "x-api-key", "custom-header", "gateway"]);
+export const providerKindEnum = pgEnum("provider_kind", [
+  "openai-compatible",
+  "dragonfly",
+  "vercel-ai-gateway",
+  "native",
+]);
+export const providerAuthTypeEnum = pgEnum("provider_auth_type", [
+  "bearer",
+  "x-api-key",
+  "custom-header",
+  "gateway",
+]);
 
 export const aiProviders = pgTable(
   "ai_providers",
@@ -38,8 +60,12 @@ export const aiProviders = pgTable(
     createdById: uuid(CREATED_BY_USER_ID_COLUMN)
       .notNull()
       .references(() => users.id),
-    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true })
+      .notNull()
+      .defaultNow(),
     archivedAt: timestamp("archived_at", { withTimezone: true }),
   },
   (t) => [index("ai_providers_workspace").on(t.workspaceId)],
@@ -63,8 +89,14 @@ export const aiModels = pgTable(
     imageGenerationConfigJson: jsonb("image_generation_config_json"),
     sustainabilityConfigJson: jsonb("sustainability_config_json"),
     enabled: boolean("enabled").notNull().default(true),
-    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
-  (t) => [uniqueIndex("ai_models_provider_model_unique").on(t.providerId, t.modelId)],
+  (t) => [
+    uniqueIndex("ai_models_provider_model_unique").on(t.providerId, t.modelId),
+  ],
 );

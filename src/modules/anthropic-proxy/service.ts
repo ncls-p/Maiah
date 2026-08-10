@@ -1,11 +1,15 @@
-import { generateText,streamText } from "ai";
+import { generateText, streamText } from "ai";
 
 import type { AnthropicMessagesRequest } from "@/modules/anthropic-proxy/contracts";
 import { prepareAnthropicMessages } from "@/modules/anthropic-proxy/request-mapper";
 import { buildAnthropicMessageResponse } from "@/modules/anthropic-proxy/response-builders";
 import { createAnthropicMessagesStream } from "@/modules/anthropic-proxy/streams";
 import { providerError } from "@/modules/openai-proxy/errors";
-import { generationOptions,prepareExecution,usageRecorder } from "@/modules/openai-proxy/service";
+import {
+  generationOptions,
+  prepareExecution,
+  usageRecorder,
+} from "@/modules/openai-proxy/service";
 
 type AnthropicExecutionContext = {
   workspaceId: string;
@@ -13,7 +17,11 @@ type AnthropicExecutionContext = {
   requestId: string;
 };
 
-export async function executeAnthropicMessages(input: { context: AnthropicExecutionContext; request: AnthropicMessagesRequest; signal: AbortSignal }) {
+export async function executeAnthropicMessages(input: {
+  context: AnthropicExecutionContext;
+  request: AnthropicMessagesRequest;
+  signal: AbortSignal;
+}) {
   const startedAt = Date.now();
   const prepared = prepareAnthropicMessages(input.request);
   const model = await prepareExecution(input.context, input.request.model);
@@ -45,7 +53,9 @@ export async function executeAnthropicMessages(input: { context: AnthropicExecut
   try {
     const result = await generateText(options);
     await recorder.success(result.usage);
-    return Response.json(buildAnthropicMessageResponse({ request: input.request, result }));
+    return Response.json(
+      buildAnthropicMessageResponse({ request: input.request, result }),
+    );
   } catch (error) {
     await recorder.failure();
     throw providerError(error);

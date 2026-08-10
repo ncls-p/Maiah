@@ -1,14 +1,55 @@
-import { PlusIcon,UsersIcon } from "lucide-react";
+import { PlusIcon, UsersIcon } from "lucide-react";
 
-import { Alert,AlertDescription,AlertTitle } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Dialog,DialogContent,DialogDescription,DialogFooter,DialogHeader,DialogTitle,DialogTrigger } from "@/components/ui/dialog";
-import { Field,FieldDescription,FieldGroup,FieldLabel } from "@/components/ui/field";
-import { Select,SelectContent,SelectGroup,SelectItem,SelectTrigger,SelectValue } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Field,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { AccessConsoleViewModel } from "./access-console.access-console.view";
 import { MutatingButton } from "./access-console.scope-path";
-export function AccessPeopleTransferBranch1({ model }: { model: AccessConsoleViewModel }) {
-  const { assignment, assignmentOpen, bulkAssignmentIds, canManageOrganizationAccess, mutate, pendingAction, principalOptions, roleLabel, scopedRoles, selectedAssignmentRole, setAssignment, setAssignmentOpen, setBulkAssignmentIds, setSelectedPeople, t, workspaceId } = model;
+export function AccessPeopleTransferBranch1({
+  model,
+}: {
+  model: AccessConsoleViewModel;
+}) {
+  const {
+    assignment,
+    assignmentOpen,
+    bulkAssignmentIds,
+    canManageOrganizationAccess,
+    mutate,
+    pendingAction,
+    principalOptions,
+    roleLabel,
+    scopedRoles,
+    selectedAssignmentRole,
+    setAssignment,
+    setAssignmentOpen,
+    setBulkAssignmentIds,
+    setSelectedPeople,
+    t,
+    workspaceId,
+  } = model;
   return (
     <Dialog
       open={assignmentOpen}
@@ -99,15 +140,23 @@ export function AccessPeopleTransferBranch1({ model }: { model: AccessConsoleVie
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
-                    <SelectItem value="workspace">{t("projectOnly")}</SelectItem>
-                    {canManageOrganizationAccess ? <SelectItem value="organization">{t("wholeOrganization")}</SelectItem> : null}
+                    <SelectItem value="workspace">
+                      {t("projectOnly")}
+                    </SelectItem>
+                    {canManageOrganizationAccess ? (
+                      <SelectItem value="organization">
+                        {t("wholeOrganization")}
+                      </SelectItem>
+                    ) : null}
                   </SelectGroup>
                 </SelectContent>
               </Select>
             </Field>
             {bulkAssignmentIds.length === 0 ? (
               <Field>
-                <FieldLabel htmlFor="assignment-principal-type">{t("principalType")}</FieldLabel>
+                <FieldLabel htmlFor="assignment-principal-type">
+                  {t("principalType")}
+                </FieldLabel>
                 <Select
                   value={assignment.principalType}
                   onValueChange={(value) =>
@@ -118,7 +167,10 @@ export function AccessPeopleTransferBranch1({ model }: { model: AccessConsoleVie
                     })
                   }
                 >
-                  <SelectTrigger id="assignment-principal-type" className="w-full">
+                  <SelectTrigger
+                    id="assignment-principal-type"
+                    className="w-full"
+                  >
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -142,7 +194,9 @@ export function AccessPeopleTransferBranch1({ model }: { model: AccessConsoleVie
             )}
             {bulkAssignmentIds.length === 0 ? (
               <Field>
-                <FieldLabel htmlFor="assignment-principal">{t("principal")}</FieldLabel>
+                <FieldLabel htmlFor="assignment-principal">
+                  {t("principal")}
+                </FieldLabel>
                 <Select
                   required
                   value={assignment.principalId}
@@ -159,7 +213,18 @@ export function AccessPeopleTransferBranch1({ model }: { model: AccessConsoleVie
                   <SelectContent>
                     <SelectGroup>
                       {principalOptions.map((principal) => (
-                        <SelectItem key={"userId" in principal ? principal.userId : principal.id} value={"userId" in principal ? principal.userId : principal.id}>
+                        <SelectItem
+                          key={
+                            "userId" in principal
+                              ? principal.userId
+                              : principal.id
+                          }
+                          value={
+                            "userId" in principal
+                              ? principal.userId
+                              : principal.id
+                          }
+                        >
                           {principal.name}
                         </SelectItem>
                       ))}
@@ -204,7 +269,9 @@ export function AccessPeopleTransferBranch1({ model }: { model: AccessConsoleVie
             </Field>
           </FieldGroup>
           <DialogFooter>
-            <MutatingButton pending={pendingAction === "assignRole"}>{t("saveAssignment")}</MutatingButton>
+            <MutatingButton pending={pendingAction === "assignRole"}>
+              {t("saveAssignment")}
+            </MutatingButton>
           </DialogFooter>
         </form>
       </DialogContent>

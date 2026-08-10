@@ -1,24 +1,46 @@
 import { decryptValue } from "@/lib/crypto";
 import { resolveEmbeddingModel } from "@/modules/knowledge/rag-config";
 import { db } from "@/server/infrastructure/db";
-import { documentChunks,documentEmbeddings,documents,knowledgeBases } from "@/server/infrastructure/db/schema";
+import {
+  documentChunks,
+  documentEmbeddings,
+  documents,
+  knowledgeBases,
+} from "@/server/infrastructure/db/schema";
 import { embedMany } from "ai";
-import { eq,inArray } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { effectiveRagConfig } from "./use-cases.create-knowledge-base-input";
 
 export async function processDocumentIngestion(documentId: string) {
-  const [document] = await db.select().from(documents).where(eq(documents.id, documentId)).limit(1);
+  const [document] = await db
+    .select()
+    .from(documents)
+    .where(eq(documents.id, documentId))
+    .limit(1);
 
   if (!document || document.status !== "processing") return;
 
-  const chunks = await db.select().from(documentChunks).where(eq(documentChunks.documentId, documentId));
+  const chunks = await db
+    .select()
+    .from(documentChunks)
+    .where(eq(documentChunks.documentId, documentId));
 
-  const [knowledgeBase] = await db.select().from(knowledgeBases).where(eq(knowledgeBases.id, document.knowledgeBaseId)).limit(1);
+  const [knowledgeBase] = await db
+    .select()
+    .from(knowledgeBases)
+    .where(eq(knowledgeBases.id, document.knowledgeBaseId))
+    .limit(1);
   const config = await effectiveRagConfig(knowledgeBase?.ragConfigJson);
-  const embeddingSelection = await resolveEmbeddingModel(document.workspaceId, config);
+  const embeddingSelection = await resolveEmbeddingModel(
+    document.workspaceId,
+    config,
+  );
 
   if (chunks.length > 0 && embeddingSelection) {
-    await db.update(documents).set({ processingStage: "embedding", processingProgress: 20 }).where(eq(documents.id, documentId));
+    await db
+      .update(documents)
+      .set({ processingStage: "embedding", processingProgress: 20 })
+      .where(eq(documents.id, documentId));
     await db.delete(documentEmbeddings).where(
       inArray(
         documentEmbeddings.chunkId,
@@ -29,7 +51,13 @@ export async function processDocumentIngestion(documentId: string) {
     const batchSize = 16;
     for (let offset = 0; offset < chunks.length; offset += batchSize) {
       const batch = chunks.slice(offset, offset + batchSize);
-      const values = await Promise.all(batch.map((chunk) => (chunk.contentEncrypted ? decryptValue(chunk.contentEncrypted) : Promise.resolve(""))));
+      const values = await Promise.all(
+        batch.map((chunk) =>
+          chunk.contentEncrypted
+            ? decryptValue(chunk.contentEncrypted)
+            : Promise.resolve(""),
+        ),
+      );
       const result = await embedMany({
         model: embeddingSelection.model,
         values,

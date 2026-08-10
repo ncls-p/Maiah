@@ -28,6 +28,7 @@ export interface ChatConversation {
   continuationMode?: "shared" | "fork";
   isEphemeral?: boolean;
   ephemeralTtlMinutes?: number;
+  expiresAt?: string | null;
   publicShareId?: string | null;
   searchMatch?: {
     kind: "title" | "message";
@@ -136,7 +137,9 @@ export type ChatUsageImpact = {
   co2Grams: number | null;
 };
 
-export function aggregateChatUsageImpact(messages: ChatMessage[]): ChatUsageImpact | null {
+export function aggregateChatUsageImpact(
+  messages: ChatMessage[],
+): ChatUsageImpact | null {
   let found = false;
   let inputTokens = 0;
   let outputTokens = 0;
@@ -171,11 +174,17 @@ export function aggregateChatUsageImpact(messages: ChatMessage[]): ChatUsageImpa
           cost += impact.cost;
           hasCost = true;
         }
-        if (typeof impact.energyKwh === "number" && Number.isFinite(impact.energyKwh)) {
+        if (
+          typeof impact.energyKwh === "number" &&
+          Number.isFinite(impact.energyKwh)
+        ) {
           energyKwh += impact.energyKwh;
           hasEnergy = true;
         }
-        if (typeof impact.co2Grams === "number" && Number.isFinite(impact.co2Grams)) {
+        if (
+          typeof impact.co2Grams === "number" &&
+          Number.isFinite(impact.co2Grams)
+        ) {
           co2Grams += impact.co2Grams;
           hasCo2 = true;
         }
@@ -200,9 +209,15 @@ function sanitizeToolName(name: string) {
   return name.replace(/[^a-zA-Z0-9_]/g, "_").replace(/^_+|_+$/g, "");
 }
 
-export function toolNameMatches(toolCallName: string | undefined, approvalName: string) {
+export function toolNameMatches(
+  toolCallName: string | undefined,
+  approvalName: string,
+) {
   if (!toolCallName) return false;
   if (toolCallName === approvalName) return true;
   const sanitizedApprovalName = sanitizeToolName(approvalName);
-  return toolCallName === sanitizedApprovalName || toolCallName.endsWith(`_${sanitizedApprovalName}`);
+  return (
+    toolCallName === sanitizedApprovalName ||
+    toolCallName.endsWith(`_${sanitizedApprovalName}`)
+  );
 }

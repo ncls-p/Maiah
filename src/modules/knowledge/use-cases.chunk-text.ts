@@ -6,10 +6,16 @@ import { db } from "@/server/infrastructure/db";
 import { documentChunks, documents } from "@/server/infrastructure/db/schema";
 import { eq } from "drizzle-orm";
 import { storage } from "@/server/infrastructure/storage";
-import { assertCanManageKnowledgeBase, effectiveRagConfig } from "./use-cases.create-knowledge-base-input";
+import {
+  assertCanManageKnowledgeBase,
+  effectiveRagConfig,
+} from "./use-cases.create-knowledge-base-input";
 import { getKnowledgeBase } from "./use-cases.list-knowledge-bases";
 
-export function chunkText(text: string, options: { maxCharacters: number; overlapCharacters: number }) {
+export function chunkText(
+  text: string,
+  options: { maxCharacters: number; overlapCharacters: number },
+) {
   const maxChars = options.maxCharacters;
   const overlap = Math.min(options.overlapCharacters, maxChars - 1);
   const normalized = text.replace(/\r\n/g, "\n").trim();
@@ -21,7 +27,11 @@ export function chunkText(text: string, options: { maxCharacters: number; overla
     if (end < normalized.length) {
       const window = normalized.slice(start, end);
       const paragraphBreak = window.lastIndexOf("\n\n");
-      const sentenceBreak = Math.max(window.lastIndexOf(". "), window.lastIndexOf("! "), window.lastIndexOf("? "));
+      const sentenceBreak = Math.max(
+        window.lastIndexOf(". "),
+        window.lastIndexOf("! "),
+        window.lastIndexOf("? "),
+      );
       const naturalBreak = Math.max(paragraphBreak, sentenceBreak);
       if (naturalBreak >= Math.floor(maxChars * 0.55)) {
         end = start + naturalBreak + (naturalBreak === paragraphBreak ? 2 : 1);
@@ -35,10 +45,28 @@ export function chunkText(text: string, options: { maxCharacters: number; overla
   return chunks;
 }
 
-export async function ingestTextDocument(input: { workspaceId: string; knowledgeBaseId: string; userId: string; title: string; content: string; sourceType?: "text" | "url" | "upload"; mimeType?: string; originalBytes?: Uint8Array; originalMimeType?: string; canManageGlobal?: boolean }) {
-  const knowledgeBase = await getKnowledgeBase(input.knowledgeBaseId, input.workspaceId);
+export async function ingestTextDocument(input: {
+  workspaceId: string;
+  knowledgeBaseId: string;
+  userId: string;
+  title: string;
+  content: string;
+  sourceType?: "text" | "url" | "upload";
+  mimeType?: string;
+  originalBytes?: Uint8Array;
+  originalMimeType?: string;
+  canManageGlobal?: boolean;
+}) {
+  const knowledgeBase = await getKnowledgeBase(
+    input.knowledgeBaseId,
+    input.workspaceId,
+  );
   if (!knowledgeBase) throw new Error("Knowledge base not found");
-  await assertCanManageKnowledgeBase(knowledgeBase, input.userId, input.canManageGlobal);
+  await assertCanManageKnowledgeBase(
+    knowledgeBase,
+    input.userId,
+    input.canManageGlobal,
+  );
 
   const config = await effectiveRagConfig(knowledgeBase.ragConfigJson);
   const chunks = chunkText(input.content, config.chunking);
@@ -90,10 +118,18 @@ export async function ingestTextDocument(input: { workspaceId: string; knowledge
     return document;
   });
 
-  if (input.originalBytes && (input.originalMimeType === "application/pdf" || input.title.toLowerCase().endsWith(".pdf"))) {
+  if (
+    input.originalBytes &&
+    (input.originalMimeType === "application/pdf" ||
+      input.title.toLowerCase().endsWith(".pdf"))
+  ) {
     try {
       const objectStorageKey = `knowledge/${input.workspaceId}/${document.id}/source.pdf`;
-      await storage.upload(objectStorageKey, input.originalBytes, "application/pdf");
+      await storage.upload(
+        objectStorageKey,
+        input.originalBytes,
+        "application/pdf",
+      );
       await db
         .update(documents)
         .set({
@@ -103,10 +139,13 @@ export async function ingestTextDocument(input: { workspaceId: string; knowledge
         })
         .where(eq(documents.id, document.id));
     } catch (error) {
-      logger.warn("Knowledge PDF source could not be stored for native preview", {
-        documentId: document.id,
-        error: error instanceof Error ? error.message : String(error),
-      });
+      logger.warn(
+        "Knowledge PDF source could not be stored for native preview",
+        {
+          documentId: document.id,
+          error: error instanceof Error ? error.message : String(error),
+        },
+      );
     }
   }
 

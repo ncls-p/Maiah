@@ -1,15 +1,45 @@
 import { logger } from "@/lib/logger";
 import { audit } from "@/server/domain/services/audit";
 import { db } from "@/server/infrastructure/db";
-import { toolConnections,toolConnectors } from "@/server/infrastructure/db/schema";
-import { and,eq,isNull } from "drizzle-orm";
-import { CreateToolConnectorInput,ToolConnection,ToolConnector,jsonRecord,normalizeConnectorKey,visibleConnectorCondition } from "./use-cases.mcp-tool-source";
+import {
+  toolConnections,
+  toolConnectors,
+} from "@/server/infrastructure/db/schema";
+import { and, eq, isNull } from "drizzle-orm";
+import {
+  CreateToolConnectorInput,
+  ToolConnection,
+  ToolConnector,
+  jsonRecord,
+  normalizeConnectorKey,
+  visibleConnectorCondition,
+} from "./use-cases.mcp-tool-source";
 
-export async function clearDefaultConnections(client: Pick<typeof db, "update">, connection: Pick<ToolConnection, "workspaceId" | "connectorId" | "ownerType" | "ownerUserId">) {
+export async function clearDefaultConnections(
+  client: Pick<typeof db, "update">,
+  connection: Pick<
+    ToolConnection,
+    "workspaceId" | "connectorId" | "ownerType" | "ownerUserId"
+  >,
+) {
   await client
     .update(toolConnections)
     .set({ isDefault: false, updatedAt: new Date() })
-    .where(and(eq(toolConnections.workspaceId, connection.workspaceId), eq(toolConnections.connectorId, connection.connectorId), connection.ownerType === "workspace" ? and(eq(toolConnections.ownerType, "workspace"), isNull(toolConnections.ownerUserId)) : and(eq(toolConnections.ownerType, "user"), eq(toolConnections.ownerUserId, connection.ownerUserId ?? ""))));
+    .where(
+      and(
+        eq(toolConnections.workspaceId, connection.workspaceId),
+        eq(toolConnections.connectorId, connection.connectorId),
+        connection.ownerType === "workspace"
+          ? and(
+              eq(toolConnections.ownerType, "workspace"),
+              isNull(toolConnections.ownerUserId),
+            )
+          : and(
+              eq(toolConnections.ownerType, "user"),
+              eq(toolConnections.ownerUserId, connection.ownerUserId ?? ""),
+            ),
+      ),
+    );
 }
 
 export function toSafeToolConnector(connector: ToolConnector) {
@@ -41,7 +71,9 @@ export function toSafeToolConnection(connection: ToolConnection) {
     ownerUserId: connection.ownerUserId,
     label: connection.label,
     config: connection.configJson,
-    hasSecrets: Boolean(connection.encryptedSecretsJson) && Object.keys(jsonRecord(connection.encryptedSecretsJson)).length > 0,
+    hasSecrets:
+      Boolean(connection.encryptedSecretsJson) &&
+      Object.keys(jsonRecord(connection.encryptedSecretsJson)).length > 0,
     isDefault: connection.isDefault,
     status: connection.status,
     lastValidatedAt: connection.lastValidatedAt,
@@ -94,7 +126,11 @@ export async function createToolConnector(input: CreateToolConnectorInput) {
   return connector;
 }
 
-export async function listToolConnectors(workspaceId: string, userId: string, canManageGlobal = false) {
+export async function listToolConnectors(
+  workspaceId: string,
+  userId: string,
+  canManageGlobal = false,
+) {
   const connectors = await db
     .select()
     .from(toolConnectors)
@@ -103,11 +139,21 @@ export async function listToolConnectors(workspaceId: string, userId: string, ca
   return connectors.map(toSafeToolConnector);
 }
 
-export async function getToolConnector(connectorId: string, workspaceId: string, userId: string, canManageGlobal = false) {
+export async function getToolConnector(
+  connectorId: string,
+  workspaceId: string,
+  userId: string,
+  canManageGlobal = false,
+) {
   const [connector] = await db
     .select()
     .from(toolConnectors)
-    .where(and(eq(toolConnectors.id, connectorId), visibleConnectorCondition(workspaceId, userId, canManageGlobal)))
+    .where(
+      and(
+        eq(toolConnectors.id, connectorId),
+        visibleConnectorCondition(workspaceId, userId, canManageGlobal),
+      ),
+    )
     .limit(1);
   return connector ?? null;
 }

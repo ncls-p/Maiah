@@ -9,7 +9,8 @@ export const commonSchemasPart2 = {
       attachmentId: {
         type: "string",
         format: "uuid",
-        description: "Chat attachment ID to copy byte-for-byte into the workspace. Use this for uploaded images, fonts, media, or other assets.",
+        description:
+          "Chat attachment ID to copy byte-for-byte into the workspace. Use this for uploaded images, fonts, media, or other assets.",
       },
     },
     required: ["projectId", "path"],
@@ -50,16 +51,19 @@ export const commonSchemasPart2 = {
       repositoryId: {
         type: "string",
         format: "uuid",
-        description: "User-scoped GitHub repository id returned by github_get_publish_status.",
+        description:
+          "User-scoped GitHub repository id returned by github_get_publish_status.",
       },
       mode: {
         type: "string",
         enum: ["pull_request", "direct_push"],
-        description: "Use pull_request unless the user explicitly asks for direct push.",
+        description:
+          "Use pull_request unless the user explicitly asks for direct push.",
       },
       targetBranch: {
         type: "string",
-        description: "Target branch chosen by the user, including main if requested.",
+        description:
+          "Target branch chosen by the user, including main if requested.",
       },
       sourceBranch: {
         type: "string",
@@ -74,11 +78,18 @@ export const commonSchemasPart2 = {
       pullRequestBody: { type: "string" },
       confirmDirectPush: {
         type: "boolean",
-        description: "Must be true only after the user explicitly confirmed direct push.",
+        description:
+          "Must be true only after the user explicitly confirmed direct push.",
         default: false,
       },
     },
-    required: ["projectId", "repositoryId", "mode", "targetBranch", "commitMessage"],
+    required: [
+      "projectId",
+      "repositoryId",
+      "mode",
+      "targetBranch",
+      "commitMessage",
+    ],
   },
   create_slide_deck: {
     type: "object",
@@ -108,7 +119,14 @@ export const commonSchemasPart2 = {
           properties: {
             layout: {
               type: "string",
-              enum: [TITLE_FIELD, "section", "bullets", "two_column", "quote", "closing"],
+              enum: [
+                TITLE_FIELD,
+                "section",
+                "bullets",
+                "two_column",
+                "quote",
+                "closing",
+              ],
               default: "bullets",
             },
             kicker: { type: "string" },

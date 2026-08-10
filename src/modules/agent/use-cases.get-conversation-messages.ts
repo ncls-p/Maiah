@@ -2,15 +2,26 @@ import { decryptValue } from "@/lib/crypto";
 import { logHandledError } from "@/lib/logger";
 import { projectToolMessagePayload } from "@/modules/tool/safe-payload";
 import { db } from "@/server/infrastructure/db";
-import { messageParts,messages,usageEvents } from "@/server/infrastructure/db/schema";
-import { eq,inArray } from "drizzle-orm";
+import {
+  messageParts,
+  messages,
+  usageEvents,
+} from "@/server/infrastructure/db/schema";
+import { eq, inArray } from "drizzle-orm";
 
 export async function getConversationMessages(conversationId: string) {
-  const messageRows = await db.select().from(messages).where(eq(messages.conversationId, conversationId)).orderBy(messages.createdAt);
+  const messageRows = await db
+    .select()
+    .from(messages)
+    .where(eq(messages.conversationId, conversationId))
+    .orderBy(messages.createdAt);
 
   if (messageRows.length === 0) return [];
 
-  const partsByMessageId = new Map<string, Array<typeof messageParts.$inferSelect>>();
+  const partsByMessageId = new Map<
+    string,
+    Array<typeof messageParts.$inferSelect>
+  >();
   const parts = await db
     .select()
     .from(messageParts)
@@ -31,8 +42,17 @@ export async function getConversationMessages(conversationId: string) {
     }
   }
 
-  async function renderMessagePart(part: typeof messageParts.$inferSelect): Promise<{ type: string; content: string }> {
-    if ((part.type === "text" || part.type === "reasoning" || part.type === "suggestions" || part.type === "citations" || part.type === "error") && part.contentEncrypted) {
+  async function renderMessagePart(
+    part: typeof messageParts.$inferSelect,
+  ): Promise<{ type: string; content: string }> {
+    if (
+      (part.type === "text" ||
+        part.type === "reasoning" ||
+        part.type === "suggestions" ||
+        part.type === "citations" ||
+        part.type === "error") &&
+      part.contentEncrypted
+    ) {
       try {
         const content = await decryptValue(part.contentEncrypted);
         return { type: part.type, content };
@@ -52,7 +72,9 @@ export async function getConversationMessages(conversationId: string) {
 
     return {
       type: part.type,
-      content: part.metadataJson ? JSON.stringify(part.metadataJson) : (part.contentEncrypted ?? ""),
+      content: part.metadataJson
+        ? JSON.stringify(part.metadataJson)
+        : (part.contentEncrypted ?? ""),
     };
   }
 
@@ -61,7 +83,9 @@ export async function getConversationMessages(conversationId: string) {
       id: msg.id,
       role: msg.role,
       status: msg.status,
-      parts: await Promise.all((partsByMessageId.get(msg.id) ?? []).map(renderMessagePart)),
+      parts: await Promise.all(
+        (partsByMessageId.get(msg.id) ?? []).map(renderMessagePart),
+      ),
       createdAt: msg.createdAt.toISOString(),
     })),
   );
@@ -69,7 +93,21 @@ export async function getConversationMessages(conversationId: string) {
 
 // ─── Usage Tracking ────────────────────────────────────────────────────
 
-export async function recordUsageEvent(input: { workspaceId: string; userId: string; providerId?: string; modelId?: string; agentId?: string; conversationId?: string; operation: string; inputTokens?: number; outputTokens?: number; costUsd?: string; latencyMs?: number; status?: string; metadataJson?: Record<string, unknown> }) {
+export async function recordUsageEvent(input: {
+  workspaceId: string;
+  userId: string;
+  providerId?: string;
+  modelId?: string;
+  agentId?: string;
+  conversationId?: string;
+  operation: string;
+  inputTokens?: number;
+  outputTokens?: number;
+  costUsd?: string;
+  latencyMs?: number;
+  status?: string;
+  metadataJson?: Record<string, unknown>;
+}) {
   try {
     await db.insert(usageEvents).values({
       workspaceId: input.workspaceId,

@@ -1,10 +1,19 @@
 import { randomUUID } from "node:crypto";
 
-import { and,eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 import { audit } from "@/server/domain/services/audit";
 import { db } from "@/server/infrastructure/db";
-import { organizationBuiltinToolPolicies,organizationMembers,roleBindings,roles,teamMembers,teams,workspaceMembers,workspaces } from "@/server/infrastructure/db/schema";
+import {
+  organizationBuiltinToolPolicies,
+  organizationMembers,
+  roleBindings,
+  roles,
+  teamMembers,
+  teams,
+  workspaceMembers,
+  workspaces,
+} from "@/server/infrastructure/db/schema";
 
 import { previewOrganizationClone } from "./organization-transfer.preview-organization-clone";
 import { IamOperationError } from "./use-cases";
@@ -17,26 +26,56 @@ export async function executeOrganizationClone(
 ) {
   const preview = await previewOrganizationClone(input);
   if (preview.confirmationToken !== input.confirmationToken) {
-    throw new IamOperationError("The clone changed. Review it again before confirming.", 409);
+    throw new IamOperationError(
+      "The clone changed. Review it again before confirming.",
+      409,
+    );
   }
   const sourceOrganizationId = preview.source.organizationId;
   const targetOrganizationId = preview.destination.organizationId;
   const suffix = `copy-${randomUUID().slice(0, 8)}`;
-  const sourceProjects = await db.select().from(workspaces).where(eq(workspaces.organizationId, sourceOrganizationId));
+  const sourceProjects = await db
+    .select()
+    .from(workspaces)
+    .where(eq(workspaces.organizationId, sourceOrganizationId));
   const sourceMembers = await db
     .select()
     .from(organizationMembers)
-    .where(and(eq(organizationMembers.organizationId, sourceOrganizationId), eq(organizationMembers.status, "active")));
-  const sourceTeams = await db.select().from(teams).where(eq(teams.organizationId, sourceOrganizationId));
+    .where(
+      and(
+        eq(organizationMembers.organizationId, sourceOrganizationId),
+        eq(organizationMembers.status, "active"),
+      ),
+    );
+  const sourceTeams = await db
+    .select()
+    .from(teams)
+    .where(eq(teams.organizationId, sourceOrganizationId));
   const sourceCustomRoles = await db
     .select()
     .from(roles)
-    .where(and(eq(roles.isSystem, false), eq(roles.ownerResourceType, "organization"), eq(roles.ownerResourceId, sourceOrganizationId)));
+    .where(
+      and(
+        eq(roles.isSystem, false),
+        eq(roles.ownerResourceType, "organization"),
+        eq(roles.ownerResourceId, sourceOrganizationId),
+      ),
+    );
   const sourceBindings = await db
     .select()
     .from(roleBindings)
-    .where(and(eq(roleBindings.resourceType, "organization"), eq(roleBindings.resourceId, sourceOrganizationId)));
-  const sourcePolicies = await db.select().from(organizationBuiltinToolPolicies).where(eq(organizationBuiltinToolPolicies.organizationId, sourceOrganizationId));
+    .where(
+      and(
+        eq(roleBindings.resourceType, "organization"),
+        eq(roleBindings.resourceId, sourceOrganizationId),
+      ),
+    );
+  const sourcePolicies = await db
+    .select()
+    .from(organizationBuiltinToolPolicies)
+    .where(
+      eq(organizationBuiltinToolPolicies.organizationId, sourceOrganizationId),
+    );
 
   const clonedProjects = await db.transaction(async (tx) => {
     const teamMap = new Map<string, string>();
@@ -50,7 +89,10 @@ export async function executeOrganizationClone(
           status: "active",
         })
         .onConflictDoUpdate({
-          target: [organizationMembers.organizationId, organizationMembers.userId],
+          target: [
+            organizationMembers.organizationId,
+            organizationMembers.userId,
+          ],
           set: { status: "active", updatedAt: new Date() },
         });
     }
@@ -67,7 +109,10 @@ export async function executeOrganizationClone(
         createdAt: new Date(),
         updatedAt: new Date(),
       });
-      const members = await tx.select().from(teamMembers).where(eq(teamMembers.teamId, source.id));
+      const members = await tx
+        .select()
+        .from(teamMembers)
+        .where(eq(teamMembers.teamId, source.id));
       if (members.length > 0) {
         await tx.insert(teamMembers).values(
           members.map((member) => ({
@@ -93,7 +138,10 @@ export async function executeOrganizationClone(
       });
     }
     for (const source of sourceBindings) {
-      const principalId = source.principalType === "group" ? teamMap.get(source.principalId) : source.principalId;
+      const principalId =
+        source.principalType === "group"
+          ? teamMap.get(source.principalId)
+          : source.principalId;
       if (!principalId) continue;
       await tx
         .insert(roleBindings)

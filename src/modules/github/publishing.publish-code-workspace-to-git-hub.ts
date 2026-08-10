@@ -1,13 +1,38 @@
 import { db } from "@/server/infrastructure/db";
 import { githubPublishEvents } from "@/server/infrastructure/db/schema";
-import { createGitRef,getCommitTreeSha,getGitRef,gitRefExists,initializeEmptyRepository,isEmptyGitRepositoryError } from "./publishing.common-workspace-directory";
-import { GitHubPublishResult,PublishCodeWorkspaceInput,githubPublishLog,githubRequest } from "./publishing.git-hub-repository-summary";
+import {
+  createGitRef,
+  getCommitTreeSha,
+  getGitRef,
+  gitRefExists,
+  initializeEmptyRepository,
+  isEmptyGitRepositoryError,
+} from "./publishing.common-workspace-directory";
+import {
+  GitHubPublishResult,
+  PublishCodeWorkspaceInput,
+  githubPublishLog,
+  githubRequest,
+} from "./publishing.git-hub-repository-summary";
 import { prepareCodeWorkspacePublish } from "./publishing.prepare-code-workspace-publish";
 import { publishEmptyRepositoryDirectPush } from "./publishing.publish-empty-repository-direct-push";
 import { encodeRefPath } from "./publishing.sync-git-hub-installation";
 
-export async function publishCodeWorkspaceToGitHub(input: PublishCodeWorkspaceInput): Promise<GitHubPublishResult> {
-  const { parsed, targetBranch, targetDirectory, repo, connection, workspace, repositoryPath, token, sourceBranch, logContext } = await prepareCodeWorkspacePublish(input);
+export async function publishCodeWorkspaceToGitHub(
+  input: PublishCodeWorkspaceInput,
+): Promise<GitHubPublishResult> {
+  const {
+    parsed,
+    targetBranch,
+    targetDirectory,
+    repo,
+    connection,
+    workspace,
+    repositoryPath,
+    token,
+    sourceBranch,
+    logContext,
+  } = await prepareCodeWorkspacePublish(input);
   let eventId: string | null = null;
 
   try {
@@ -94,8 +119,16 @@ export async function publishCodeWorkspaceToGitHub(input: PublishCodeWorkspaceIn
           message: `Changes pushed to ${repo.fullName}:${targetBranch}.`,
         };
       }
-      const initialPath = parsed.mode === "pull_request" ? "README.md" : repositoryPath(firstFile.path);
-      const initialBytes = parsed.mode === "pull_request" ? Buffer.from("# Maiah publishing\n\nInitialized to enable publishing from Maiah.\n") : firstFile.bytes;
+      const initialPath =
+        parsed.mode === "pull_request"
+          ? "README.md"
+          : repositoryPath(firstFile.path);
+      const initialBytes =
+        parsed.mode === "pull_request"
+          ? Buffer.from(
+              "# Maiah publishing\n\nInitialized to enable publishing from Maiah.\n",
+            )
+          : firstFile.bytes;
       const emptyBase = await initializeEmptyRepository({
         token,
         owner: repo.owner,
@@ -138,13 +171,17 @@ export async function publishCodeWorkspaceToGitHub(input: PublishCodeWorkspaceIn
     githubPublishLog("blobs-create-start", logContext);
     const treeItems = await Promise.all(
       workspace.files.map(async (file) => {
-        const blob = await githubRequest<{ sha: string }>(`/repos/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.name)}/git/blobs`, token, {
-          method: "POST",
-          body: JSON.stringify({
-            content: Buffer.from(file.bytes).toString("base64"),
-            encoding: "base64",
-          }),
-        });
+        const blob = await githubRequest<{ sha: string }>(
+          `/repos/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.name)}/git/blobs`,
+          token,
+          {
+            method: "POST",
+            body: JSON.stringify({
+              content: Buffer.from(file.bytes).toString("base64"),
+              encoding: "base64",
+            }),
+          },
+        );
         return {
           path: repositoryPath(file.path),
           mode: "100644",
@@ -155,36 +192,48 @@ export async function publishCodeWorkspaceToGitHub(input: PublishCodeWorkspaceIn
     );
     githubPublishLog("blobs-create-success", logContext);
     githubPublishLog("tree-create-start", logContext);
-    const tree = await githubRequest<{ sha: string }>(`/repos/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.name)}/git/trees`, token, {
-      method: "POST",
-      body: JSON.stringify({
-        ...(baseTreeSha ? { base_tree: baseTreeSha } : {}),
-        tree: treeItems,
-      }),
-    });
+    const tree = await githubRequest<{ sha: string }>(
+      `/repos/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.name)}/git/trees`,
+      token,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          ...(baseTreeSha ? { base_tree: baseTreeSha } : {}),
+          tree: treeItems,
+        }),
+      },
+    );
     githubPublishLog("tree-create-success", {
       ...logContext,
       treeSha: tree.sha,
     });
     githubPublishLog("commit-create-start", logContext);
-    const commit = await githubRequest<{ sha: string; html_url?: string }>(`/repos/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.name)}/git/commits`, token, {
-      method: "POST",
-      body: JSON.stringify({
-        message: parsed.commitMessage,
-        tree: tree.sha,
-        parents: baseCommitSha ? [baseCommitSha] : [],
-      }),
-    });
+    const commit = await githubRequest<{ sha: string; html_url?: string }>(
+      `/repos/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.name)}/git/commits`,
+      token,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          message: parsed.commitMessage,
+          tree: tree.sha,
+          parents: baseCommitSha ? [baseCommitSha] : [],
+        }),
+      },
+    );
     githubPublishLog("commit-create-success", {
       ...logContext,
       commitSha: commit.sha,
     });
     if (baseCommitSha) {
       githubPublishLog("ref-update-start", logContext);
-      await githubRequest(`/repos/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.name)}/git/refs/heads/${encodeRefPath(sourceBranch)}`, token, {
-        method: "PATCH",
-        body: JSON.stringify({ sha: commit.sha, force: false }),
-      });
+      await githubRequest(
+        `/repos/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.name)}/git/refs/heads/${encodeRefPath(sourceBranch)}`,
+        token,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ sha: commit.sha, force: false }),
+        },
+      );
       githubPublishLog("ref-update-success", logContext);
     } else {
       githubPublishLog("ref-create-start", logContext);
@@ -201,15 +250,21 @@ export async function publishCodeWorkspaceToGitHub(input: PublishCodeWorkspaceIn
     let pullRequestUrl: string | null = null;
     if (parsed.mode === "pull_request") {
       githubPublishLog("pull-request-create-start", logContext);
-      const pr = await githubRequest<{ html_url: string }>(`/repos/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.name)}/pulls`, token, {
-        method: "POST",
-        body: JSON.stringify({
-          title: parsed.pullRequestTitle || parsed.commitMessage,
-          head: sourceBranch,
-          base: targetBranch,
-          body: parsed.pullRequestBody || `Created by Maiah from code workspace ${workspace.metadata.id}.`,
-        }),
-      });
+      const pr = await githubRequest<{ html_url: string }>(
+        `/repos/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.name)}/pulls`,
+        token,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            title: parsed.pullRequestTitle || parsed.commitMessage,
+            head: sourceBranch,
+            base: targetBranch,
+            body:
+              parsed.pullRequestBody ||
+              `Created by Maiah from code workspace ${workspace.metadata.id}.`,
+          }),
+        },
+      );
       pullRequestUrl = pr.html_url;
       githubPublishLog("pull-request-create-success", {
         ...logContext,
@@ -260,7 +315,10 @@ export async function publishCodeWorkspaceToGitHub(input: PublishCodeWorkspaceIn
         path: repositoryPath(file.path),
         size: file.size,
       })),
-      message: parsed.mode === "pull_request" ? `Pull request created for ${repo.fullName}.` : `Changes pushed to ${repo.fullName}:${targetBranch}.`,
+      message:
+        parsed.mode === "pull_request"
+          ? `Pull request created for ${repo.fullName}.`
+          : `Changes pushed to ${repo.fullName}:${targetBranch}.`,
     };
   } catch (error) {
     githubPublishLog(

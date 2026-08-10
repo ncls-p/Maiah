@@ -1,7 +1,20 @@
-import { BookMarked,BookOpen,MessageCircle,Package,Plug,Puzzle,Settings,Workflow,Wrench } from "lucide-react";
+import {
+  BookMarked,
+  BookOpen,
+  MessageCircle,
+  Package,
+  Plug,
+  Puzzle,
+  Settings,
+  Workflow,
+  Wrench,
+} from "lucide-react";
 import { getItemTypeLabel } from "./marketplace-i18n-helpers";
 
-const itemIconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+const itemIconMap: Record<
+  string,
+  React.ComponentType<{ className?: string }>
+> = {
   agent: MessageCircle,
   skill: Package,
   custom_tool: Wrench,
@@ -13,7 +26,13 @@ const itemIconMap: Record<string, React.ComponentType<{ className?: string }>> =
   provider_preset: Settings,
 };
 
-export function ItemIcon({ type, className }: { type: string; className?: string }) {
+export function ItemIcon({
+  type,
+  className,
+}: {
+  type: string;
+  className?: string;
+}) {
   const Icon = itemIconMap[type] ?? Package;
   return <Icon className={className} />;
 }

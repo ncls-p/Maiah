@@ -1,7 +1,16 @@
 import { db } from "@/server/infrastructure/db";
-import { aiModels,aiProviders,customTools,mcpServers,mcpTools } from "@/server/infrastructure/db/schema";
-import { and,eq,or } from "drizzle-orm";
-import type { McpPresetMarketplaceManifest,ToolMarketplaceManifest } from "./manifest-types";
+import {
+  aiModels,
+  aiProviders,
+  customTools,
+  mcpServers,
+  mcpTools,
+} from "@/server/infrastructure/db/schema";
+import { and, eq, or } from "drizzle-orm";
+import type {
+  McpPresetMarketplaceManifest,
+  ToolMarketplaceManifest,
+} from "./manifest-types";
 
 export type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -14,12 +23,22 @@ export function slugify(value: string) {
     .slice(0, 80);
 }
 
-export async function resolveProviderId(tx: Tx, workspaceId: string, providerId: string | null | undefined, providerName: string | null | undefined) {
+export async function resolveProviderId(
+  tx: Tx,
+  workspaceId: string,
+  providerId: string | null | undefined,
+  providerName: string | null | undefined,
+) {
   if (providerId) {
     const [byId] = await tx
       .select({ id: aiProviders.id })
       .from(aiProviders)
-      .where(and(eq(aiProviders.id, providerId), eq(aiProviders.workspaceId, workspaceId)))
+      .where(
+        and(
+          eq(aiProviders.id, providerId),
+          eq(aiProviders.workspaceId, workspaceId),
+        ),
+      )
       .limit(1);
     if (byId) return byId.id;
   }
@@ -27,14 +46,24 @@ export async function resolveProviderId(tx: Tx, workspaceId: string, providerId:
     const [byName] = await tx
       .select({ id: aiProviders.id })
       .from(aiProviders)
-      .where(and(eq(aiProviders.name, providerName), eq(aiProviders.workspaceId, workspaceId)))
+      .where(
+        and(
+          eq(aiProviders.name, providerName),
+          eq(aiProviders.workspaceId, workspaceId),
+        ),
+      )
       .limit(1);
     if (byName) return byName.id;
   }
   return providerId ?? null;
 }
 
-export async function resolveModelId(tx: Tx, providerId: string | null, modelId: string | null | undefined, modelName: string | null | undefined) {
+export async function resolveModelId(
+  tx: Tx,
+  providerId: string | null,
+  modelId: string | null | undefined,
+  modelName: string | null | undefined,
+) {
   if (!providerId) return modelId ?? null;
   if (modelId) {
     const [byId] = await tx
@@ -48,7 +77,15 @@ export async function resolveModelId(tx: Tx, providerId: string | null, modelId:
     const [byName] = await tx
       .select({ id: aiModels.id })
       .from(aiModels)
-      .where(and(eq(aiModels.providerId, providerId), or(eq(aiModels.displayName, modelName), eq(aiModels.modelId, modelName))))
+      .where(
+        and(
+          eq(aiModels.providerId, providerId),
+          or(
+            eq(aiModels.displayName, modelName),
+            eq(aiModels.modelId, modelName),
+          ),
+        ),
+      )
       .limit(1);
     if (byName) return byName.id;
   }
@@ -65,7 +102,8 @@ export async function installMcpPreset(
   },
 ) {
   const { preset } = input.manifest;
-  const serverName = preset.scope === "tool" ? input.manifest.name : preset.serverName;
+  const serverName =
+    preset.scope === "tool" ? input.manifest.name : preset.serverName;
 
   const [installedServer] = await tx
     .insert(mcpServers)
@@ -81,7 +119,9 @@ export async function installMcpPreset(
       requireApproval: preset.requireApproval,
       encryptedHeadersJson: null,
       encryptedEnvJson: null,
-      healthStatus: preset.requiresCredentials ? "unknown" : (preset.healthStatus ?? "healthy"),
+      healthStatus: preset.requiresCredentials
+        ? "unknown"
+        : (preset.healthStatus ?? "healthy"),
     })
     .returning();
 
@@ -124,7 +164,13 @@ export async function installCustomTool(
       description: input.manifest.description ?? input.itemDescription,
       n8nWorkflowId: tool.n8nWorkflowId ?? null,
       n8nWorkflowUrl: tool.n8nWorkflowUrl ?? null,
-      status: (tool.status ?? "active") as "active" | "draft" | "failed" | "awaiting_secrets" | "workflow_created" | "disabled",
+      status: (tool.status ?? "active") as
+        | "active"
+        | "draft"
+        | "failed"
+        | "awaiting_secrets"
+        | "workflow_created"
+        | "disabled",
       inputSchemaJson: tool.inputSchema ?? null,
       outputSchemaJson: tool.outputSchema ?? null,
       metadataJson: tool.metadata ?? null,

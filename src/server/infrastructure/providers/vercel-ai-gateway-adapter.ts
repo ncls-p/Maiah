@@ -1,7 +1,13 @@
 import { logger } from "@/lib/logger";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-import type { EmbeddingModelV4,LanguageModelV4 } from "@ai-sdk/provider";
-import type { ModelCapability,ModelDescriptor,ProviderAdapter,ProviderHealth,ProviderRuntimeConfig } from "./adapter";
+import type { EmbeddingModelV4, LanguageModelV4 } from "@ai-sdk/provider";
+import type {
+  ModelCapability,
+  ModelDescriptor,
+  ProviderAdapter,
+  ProviderHealth,
+  ProviderRuntimeConfig,
+} from "./adapter";
 import { validateModelsEndpoint } from "./adapter-health";
 
 const DEFAULT_CAPABILITIES: ModelCapability = {
@@ -35,8 +41,14 @@ function gatewayHeaders(config: ProviderRuntimeConfig) {
 export const vercelAiGatewayAdapter: ProviderAdapter = {
   kind: "vercel-ai-gateway",
 
-  async validateConnection(config: ProviderRuntimeConfig): Promise<ProviderHealth> {
-    return validateModelsEndpoint(config, normalizeBaseUrl(config.baseUrl), gatewayHeaders(config));
+  async validateConnection(
+    config: ProviderRuntimeConfig,
+  ): Promise<ProviderHealth> {
+    return validateModelsEndpoint(
+      config,
+      normalizeBaseUrl(config.baseUrl),
+      gatewayHeaders(config),
+    );
   },
 
   async listModels(config: ProviderRuntimeConfig): Promise<ModelDescriptor[]> {
@@ -62,12 +74,19 @@ export const vercelAiGatewayAdapter: ProviderAdapter = {
         })) ?? []
       );
     } catch (error) {
-      logger.error("Failed to list Vercel AI Gateway models", {}, error as Error);
+      logger.error(
+        "Failed to list Vercel AI Gateway models",
+        {},
+        error as Error,
+      );
       throw error;
     }
   },
 
-  createChatModel(config: ProviderRuntimeConfig, modelId: string): LanguageModelV4 {
+  createChatModel(
+    config: ProviderRuntimeConfig,
+    modelId: string,
+  ): LanguageModelV4 {
     const headers: Record<string, string> = { ...config.headers };
 
     if (config.authType === "gateway" && config.apiKey) {
@@ -89,7 +108,10 @@ export const vercelAiGatewayAdapter: ProviderAdapter = {
     return provider.chatModel(modelId);
   },
 
-  createEmbeddingModel(config: ProviderRuntimeConfig, modelId: string): EmbeddingModelV4 {
+  createEmbeddingModel(
+    config: ProviderRuntimeConfig,
+    modelId: string,
+  ): EmbeddingModelV4 {
     const provider = createOpenAICompatible({
       name: "vercel-ai-gateway",
       apiKey: config.apiKey,

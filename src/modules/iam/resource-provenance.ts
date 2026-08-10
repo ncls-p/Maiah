@@ -1,7 +1,11 @@
-import { eq,inArray } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 
 import { db } from "@/server/infrastructure/db";
-import { organizations,users,workspaces } from "@/server/infrastructure/db/schema";
+import {
+  organizations,
+  users,
+  workspaces,
+} from "@/server/infrastructure/db/schema";
 
 export type ResourceProvenance = {
   scope: "user" | "workspace" | "organization";
@@ -21,8 +25,12 @@ type ProvenanceContext = {
   ownerNames: ReadonlyMap<string, string>;
 };
 
-export function buildResourceProvenance(resource: OwnedResource, context: ProvenanceContext): ResourceProvenance {
-  const ownerName = context.ownerNames.get(resource.createdById) ?? "Unknown user";
+export function buildResourceProvenance(
+  resource: OwnedResource,
+  context: ProvenanceContext,
+): ResourceProvenance {
+  const ownerName =
+    context.ownerNames.get(resource.createdById) ?? "Unknown user";
   if (resource.isGlobal) {
     return {
       scope: "organization",
@@ -40,7 +48,11 @@ export function buildResourceProvenance(resource: OwnedResource, context: Proven
   };
 }
 
-export async function withResourceProvenance<T extends OwnedResource>(resources: T[], workspaceId: string, currentUserId: string) {
+export async function withResourceProvenance<T extends OwnedResource>(
+  resources: T[],
+  workspaceId: string,
+  currentUserId: string,
+) {
   if (resources.length === 0) {
     return [] as Array<T & { provenance: ResourceProvenance }>;
   }
@@ -54,8 +66,13 @@ export async function withResourceProvenance<T extends OwnedResource>(resources:
     .innerJoin(organizations, eq(workspaces.organizationId, organizations.id))
     .where(eq(workspaces.id, workspaceId))
     .limit(1);
-  const creatorIds = [...new Set(resources.map(({ createdById }) => createdById))];
-  const creators = await db.select({ id: users.id, name: users.name }).from(users).where(inArray(users.id, creatorIds));
+  const creatorIds = [
+    ...new Set(resources.map(({ createdById }) => createdById)),
+  ];
+  const creators = await db
+    .select({ id: users.id, name: users.name })
+    .from(users)
+    .where(inArray(users.id, creatorIds));
   const context: ProvenanceContext = {
     currentUserId,
     workspaceName: workspace?.name ?? "Project",

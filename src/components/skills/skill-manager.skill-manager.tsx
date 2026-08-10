@@ -5,20 +5,31 @@ import { useTranslations } from "next-intl";
 import { type ShareableResource } from "@/components/marketplace/resource-share-dialog";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { fetchWorkspacePermissions } from "@/lib/api-client";
-import { useCallback,useEffect,useMemo,useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { AgentSkill,SKILLS_PAGE_SIZE,SkillPreview,isManual } from "./skill-manager.button-type";
+import {
+  AgentSkill,
+  SKILLS_PAGE_SIZE,
+  SkillPreview,
+  isManual,
+} from "./skill-manager.button-type";
 import { SkillManagerView } from "./skill-manager.skill-manager.view";
 
 export function useSkillManagerController() {
   const t = useTranslations("tools.skills");
   const tShare = useTranslations("marketplace.share");
   const { workspaceId } = useWorkspace();
-  const [shareResource, setShareResource] = useState<ShareableResource | null>(null);
+  const [shareResource, setShareResource] = useState<ShareableResource | null>(
+    null,
+  );
   const [skills, setSkills] = useState<AgentSkill[]>([]);
   const [query, setQuery] = useState("");
-  const [scopeFilter, setScopeFilter] = useState<"all" | "organization" | "private">("all");
-  const [sourceFilter, setSourceFilter] = useState<"all" | "imported" | "manual">("all");
+  const [scopeFilter, setScopeFilter] = useState<
+    "all" | "organization" | "private"
+  >("all");
+  const [sourceFilter, setSourceFilter] = useState<
+    "all" | "imported" | "manual"
+  >("all");
   const [visibleCount, setVisibleCount] = useState(SKILLS_PAGE_SIZE);
   const [installOpen, setInstallOpen] = useState(false);
   const [editorState, setEditorState] = useState<{
@@ -32,16 +43,29 @@ export function useSkillManagerController() {
   const [previewing, setPreviewing] = useState(false);
   const [preview, setPreview] = useState<SkillPreview[] | null>(null);
   const [previewToken, setPreviewToken] = useState<string | null>(null);
-  const [previewWorkspaceId, setPreviewWorkspaceId] = useState<string | null>(null);
+  const [previewWorkspaceId, setPreviewWorkspaceId] = useState<string | null>(
+    null,
+  );
   const [canManageTenantGlobals, setCanManageTenantGlobals] = useState(false);
-  const [pendingDeleteSkill, setPendingDeleteSkill] = useState<AgentSkill | null>(null);
+  const [pendingDeleteSkill, setPendingDeleteSkill] =
+    useState<AgentSkill | null>(null);
   const [deletingSkillId, setDeletingSkillId] = useState<string | null>(null);
   const filteredSkills = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase();
     return skills.filter((skill) => {
-      const matchesQuery = !normalizedQuery || [skill.name, skill.description, skill.sourcePackage].filter(Boolean).some((value) => String(value).toLocaleLowerCase().includes(normalizedQuery));
-      const matchesScope = scopeFilter === "all" || (scopeFilter === "organization" ? skill.isGlobal : !skill.isGlobal);
-      const matchesSource = sourceFilter === "all" || (sourceFilter === "manual" ? isManual(skill) : !isManual(skill));
+      const matchesQuery =
+        !normalizedQuery ||
+        [skill.name, skill.description, skill.sourcePackage]
+          .filter(Boolean)
+          .some((value) =>
+            String(value).toLocaleLowerCase().includes(normalizedQuery),
+          );
+      const matchesScope =
+        scopeFilter === "all" ||
+        (scopeFilter === "organization" ? skill.isGlobal : !skill.isGlobal);
+      const matchesSource =
+        sourceFilter === "all" ||
+        (sourceFilter === "manual" ? isManual(skill) : !isManual(skill));
       return matchesQuery && matchesScope && matchesSource;
     });
   }, [query, scopeFilter, skills, sourceFilter]);
@@ -65,7 +89,9 @@ export function useSkillManagerController() {
         .catch((error) => {
           if (!cancelled) {
             setLoadError(true);
-            toast.error(error instanceof Error ? error.message : t("loadFailed"));
+            toast.error(
+              error instanceof Error ? error.message : t("loadFailed"),
+            );
           }
           return;
         })
@@ -93,7 +119,13 @@ export function useSkillManagerController() {
   }
 
   async function installSkill() {
-    if (!workspaceId || !installCommand.trim() || !previewToken || previewWorkspaceId !== workspaceId) return;
+    if (
+      !workspaceId ||
+      !installCommand.trim() ||
+      !previewToken ||
+      previewWorkspaceId !== workspaceId
+    )
+      return;
     setInstalling(true);
     try {
       const res = await fetch("/api/workspace/skills", {
@@ -148,7 +180,9 @@ export function useSkillManagerController() {
         body: JSON.stringify({ workspaceId, installCommand }),
       });
       if (!res.ok) {
-        throw new Error((await res.json().catch(() => null))?.error || t("previewFailed"));
+        throw new Error(
+          (await res.json().catch(() => null))?.error || t("previewFailed"),
+        );
       }
       const data = (await res.json()) as {
         skills: SkillPreview[];
@@ -169,9 +203,14 @@ export function useSkillManagerController() {
     if (!workspaceId || deletingSkillId) return;
     setDeletingSkillId(skill.id);
     try {
-      const res = await fetch(`/api/workspace/skills/${skill.id}?workspaceId=${workspaceId}`, { method: "DELETE" });
+      const res = await fetch(
+        `/api/workspace/skills/${skill.id}?workspaceId=${workspaceId}`,
+        { method: "DELETE" },
+      );
       if (!res.ok) {
-        throw new Error((await res.json().catch(() => null))?.error || t("deleteFailed"));
+        throw new Error(
+          (await res.json().catch(() => null))?.error || t("deleteFailed"),
+        );
       }
       setPendingDeleteSkill(null);
       toast.success(t("deleted"));
@@ -230,7 +269,9 @@ export function useSkillManagerController() {
   } as const;
 }
 
-export function SkillManager(...args: Parameters<typeof useSkillManagerController>) {
+export function SkillManager(
+  ...args: Parameters<typeof useSkillManagerController>
+) {
   const model = useSkillManagerController(...args);
   if (!("kind" in model)) return model;
   return <SkillManagerView model={model} />;

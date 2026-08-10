@@ -1,20 +1,23 @@
-import { NextRequest,NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-import { logger,logHandledError } from "@/lib/logger";
+import { logger, logHandledError } from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { anthropicErrorBody } from "@/modules/anthropic-proxy/errors";
 import { runWithRequestAuth } from "@/modules/auth/request-auth-context";
 import { resolveAuthContext } from "@/modules/auth/resolve-auth";
 import { checkWorkspacePermissionForRequest } from "@/modules/auth/workspace-access";
 import type { OpenAIProxyContext } from "@/modules/openai-proxy/auth";
-import { OpenAIProxyError,providerError } from "@/modules/openai-proxy/errors";
+import { OpenAIProxyError, providerError } from "@/modules/openai-proxy/errors";
 
 function requestIdFrom(request: NextRequest) {
   return request.headers.get("request-id") ?? crypto.randomUUID();
 }
 
 function requestsPerMinute() {
-  const configured = Number.parseInt(process.env.ANTHROPIC_PROXY_RPM ?? process.env.OPENAI_PROXY_RPM ?? "120", 10);
+  const configured = Number.parseInt(
+    process.env.ANTHROPIC_PROXY_RPM ?? process.env.OPENAI_PROXY_RPM ?? "120",
+    10,
+  );
   return Number.isFinite(configured) && configured > 0 ? configured : 120;
 }
 
@@ -27,13 +30,25 @@ function errorResponse(error: OpenAIProxyError, requestId: string) {
   return response;
 }
 
-export async function handleAnthropicProxyRoute(request: NextRequest, permission: "models.view" | "models.invoke", handler: (context: OpenAIProxyContext) => Promise<Response>) {
+export async function handleAnthropicProxyRoute(
+  request: NextRequest,
+  permission: "models.view" | "models.invoke",
+  handler: (context: OpenAIProxyContext) => Promise<Response>,
+) {
   const requestId = requestIdFrom(request);
   const startedAt = Date.now();
   try {
     const auth = await resolveAuthContext(request);
     if (!auth || auth.type !== "api_key") {
-      return errorResponse(new OpenAIProxyError("Invalid API key. Create a scoped workspace API token and send it with x-api-key or Authorization: Bearer.", 401, "authentication_error", "invalid_api_key"), requestId);
+      return errorResponse(
+        new OpenAIProxyError(
+          "Invalid API key. Create a scoped workspace API token and send it with x-api-key or Authorization: Bearer.",
+          401,
+          "authentication_error",
+          "invalid_api_key",
+        ),
+        requestId,
+      );
     }
     return await runWithRequestAuth(auth, async () => {
       const rateLimit = await checkRateLimit(request, {
@@ -42,13 +57,36 @@ export async function handleAnthropicProxyRoute(request: NextRequest, permission
         windowSeconds: 60,
       });
       if (!rateLimit.allowed) {
-        const response = errorResponse(new OpenAIProxyError("Rate limit reached for this workspace API token.", 429, "rate_limit_error", "rate_limit_exceeded"), requestId);
-        response.headers.set("retry-after", String(Math.max(0, rateLimit.reset - Math.floor(Date.now() / 1000))));
+        const response = errorResponse(
+          new OpenAIProxyError(
+            "Rate limit reached for this workspace API token.",
+            429,
+            "rate_limit_error",
+            "rate_limit_exceeded",
+          ),
+          requestId,
+        );
+        response.headers.set(
+          "retry-after",
+          String(Math.max(0, rateLimit.reset - Math.floor(Date.now() / 1000))),
+        );
         return response;
       }
-      const access = await checkWorkspacePermissionForRequest(auth.userId, auth.workspaceId, permission);
+      const access = await checkWorkspacePermissionForRequest(
+        auth.userId,
+        auth.workspaceId,
+        permission,
+      );
       if (!access.granted) {
-        return errorResponse(new OpenAIProxyError(access.reason ?? `Missing permission: ${permission}`, 403, "permission_error", "insufficient_permissions"), requestId);
+        return errorResponse(
+          new OpenAIProxyError(
+            access.reason ?? `Missing permission: ${permission}`,
+            403,
+            "permission_error",
+            "insufficient_permissions",
+          ),
+          requestId,
+        );
       }
       const response = await handler({
         workspaceId: auth.workspaceId,
@@ -72,7 +110,11 @@ export async function handleAnthropicProxyRoute(request: NextRequest, permission
     });
   } catch (error) {
     const normalized = providerError(error);
-    logHandledError("Anthropic-compatible proxy request failed", { requestId, path: request.nextUrl.pathname, status: normalized.status }, error as Error);
+    logHandledError(
+      "Anthropic-compatible proxy request failed",
+      { requestId, path: request.nextUrl.pathname, status: normalized.status },
+      error as Error,
+    );
     return errorResponse(normalized, requestId);
   }
 }

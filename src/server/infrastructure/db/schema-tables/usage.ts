@@ -1,4 +1,13 @@
-import { index,integer,jsonb,pgTable,text,timestamp,uuid,varchar } from "drizzle-orm/pg-core";
+import {
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+  varchar,
+} from "drizzle-orm/pg-core";
 
 const CREATED_AT_COLUMN = "created_at";
 const WORKSPACE_ID_COLUMN = "workspace_id";
@@ -24,7 +33,12 @@ export const usageEvents = pgTable(
     latencyMs: integer("latency_ms"),
     status: varchar(STATUS_COLUMN, { length: 16 }),
     metadataJson: jsonb("metadata_json"),
-    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
-  (t) => [index("usage_events_workspace").on(t.workspaceId), index("usage_events_user").on(t.userId)],
+  (t) => [
+    index("usage_events_workspace").on(t.workspaceId),
+    index("usage_events_user").on(t.userId),
+  ],
 );

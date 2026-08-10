@@ -3,9 +3,22 @@ import type { useScheduledTaskManagerController } from "./scheduled-task-manager
 import { ScheduledTaskManagerSection1 } from "./scheduled-task-manager.scheduled-task-manager.view.section-1";
 import { ScheduledTaskManagerSection2 } from "./scheduled-task-manager.scheduled-task-manager.view.section-2";
 
-export type ScheduledTaskManagerViewModel = Extract<ReturnType<typeof useScheduledTaskManagerController>, { kind: "ready" }>;
-export function ScheduledTaskManagerView({ model }: { model: ScheduledTaskManagerViewModel }) {
-  const { deleteTask, deletingTaskId, pendingDeleteTask, setPendingDeleteTask, t } = model;
+export type ScheduledTaskManagerViewModel = Extract<
+  ReturnType<typeof useScheduledTaskManagerController>,
+  { kind: "ready" }
+>;
+export function ScheduledTaskManagerView({
+  model,
+}: {
+  model: ScheduledTaskManagerViewModel;
+}) {
+  const {
+    deleteTask,
+    deletingTaskId,
+    pendingDeleteTask,
+    setPendingDeleteTask,
+    t,
+  } = model;
   return (
     <>
       <ScheduledTaskManagerSection2 model={model} />

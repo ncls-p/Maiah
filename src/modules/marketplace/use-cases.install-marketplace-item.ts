@@ -1,20 +1,37 @@
 import { logHandledError } from "@/lib/logger";
 import { audit } from "@/server/domain/services/audit";
 import { db } from "@/server/infrastructure/db";
-import { agentSkills,marketplaceInstalls,marketplaceItems } from "@/server/infrastructure/db/schema";
-import { eq,sql } from "drizzle-orm";
-import { installAgentManifest,installCustomTool,installMcpPreset,installPostInstallFlags } from "./install-helpers";
+import {
+  agentSkills,
+  marketplaceInstalls,
+  marketplaceItems,
+} from "@/server/infrastructure/db/schema";
+import { eq, sql } from "drizzle-orm";
+import {
+  installAgentManifest,
+  installCustomTool,
+  installMcpPreset,
+  installPostInstallFlags,
+} from "./install-helpers";
 import { sanitizeMarketplaceManifest } from "./manifest-sanitizer";
-import { canUserInstallMarketplaceItem,getLatestVersion } from "./use-cases.get-marketplace-item-detail";
+import {
+  canUserInstallMarketplaceItem,
+  getLatestVersion,
+} from "./use-cases.get-marketplace-item-detail";
 import { getMarketplaceItem } from "./use-cases.marketplace-visibility";
 
 // ─── Install ───────────────────────────────────────────────────────────
 
-export async function installMarketplaceItem(input: { workspaceId: string; userId: string; itemId: string }) {
+export async function installMarketplaceItem(input: {
+  workspaceId: string;
+  userId: string;
+  itemId: string;
+}) {
   try {
     const item = await getMarketplaceItem(input.itemId);
     if (!item) throw new Error("Marketplace item not found");
-    if (!(await canUserInstallMarketplaceItem(item, input.userId))) throw new Error("Marketplace item not available");
+    if (!(await canUserInstallMarketplaceItem(item, input.userId)))
+      throw new Error("Marketplace item not available");
     const version = await getLatestVersion(item.id);
     if (!version) throw new Error("Marketplace item has no version");
 
@@ -86,7 +103,9 @@ export async function installMarketplaceItem(input: { workspaceId: string; userI
         }
 
         default:
-          throw new Error(`Unsupported marketplace type: ${(manifest as { type: string }).type}`);
+          throw new Error(
+            `Unsupported marketplace type: ${(manifest as { type: string }).type}`,
+          );
       }
 
       const [install] = await tx

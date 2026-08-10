@@ -2,10 +2,36 @@ import { createHash } from "node:crypto";
 import path from "node:path";
 import "pdf-parse/worker";
 
-import { AttachmentDetection,chatAttachmentStoragePrefix,imageTypes } from "./attachments.chat-image-attachment";
+import {
+  AttachmentDetection,
+  chatAttachmentStoragePrefix,
+  imageTypes,
+} from "./attachments.chat-image-attachment";
 import { mimeTypesByExtension } from "./attachments.mime-types-by-extension";
 
-export const codeTextExtensions = new Set([".c", ".cpp", ".cs", ".css", ".go", ".java", ".js", ".jsx", ".kt", ".mjs", ".php", ".py", ".rb", ".rs", ".sh", ".sql", ".svelte", ".swift", ".tsx", ".ts", ".vue"]);
+export const codeTextExtensions = new Set([
+  ".c",
+  ".cpp",
+  ".cs",
+  ".css",
+  ".go",
+  ".java",
+  ".js",
+  ".jsx",
+  ".kt",
+  ".mjs",
+  ".php",
+  ".py",
+  ".rb",
+  ".rs",
+  ".sh",
+  ".sql",
+  ".svelte",
+  ".swift",
+  ".tsx",
+  ".ts",
+  ".vue",
+]);
 
 export function chatAttachmentObjectKey(attachmentId: string, segment: string) {
   assertSafeAttachmentId(attachmentId);
@@ -24,7 +50,11 @@ export function extractedTextObjectKey(attachmentId: string) {
 }
 
 export function assertSafeAttachmentId(attachmentId: string) {
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(attachmentId)) {
+  if (
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      attachmentId,
+    )
+  ) {
     throw new Error("Invalid attachment id.");
   }
 }
@@ -39,7 +69,11 @@ export function safeExtension(extension: string, fallbackExtension: string) {
   return fallbackExtension;
 }
 
-export function sanitizeFileName(fileName: string, fallbackBase: string, fallbackExtension: string) {
+export function sanitizeFileName(
+  fileName: string,
+  fallbackBase: string,
+  fallbackExtension: string,
+) {
   const parsed = path.parse(fileName.trim());
   const extension = safeExtension(parsed.ext, fallbackExtension);
   const base = (parsed.name || fallbackBase)
@@ -57,11 +91,24 @@ export function detectImageMimeType(bytes: Uint8Array) {
 }
 
 function hasPdfSignature(bytes: Uint8Array) {
-  return bytes.length >= 5 && bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46 && bytes[4] === 0x2d;
+  return (
+    bytes.length >= 5 &&
+    bytes[0] === 0x25 &&
+    bytes[1] === 0x50 &&
+    bytes[2] === 0x44 &&
+    bytes[3] === 0x46 &&
+    bytes[4] === 0x2d
+  );
 }
 
 export function hasZipSignature(bytes: Uint8Array) {
-  return bytes.length >= 4 && bytes[0] === 0x50 && bytes[1] === 0x4b && (bytes[2] === 0x03 || bytes[2] === 0x05 || bytes[2] === 0x07) && (bytes[3] === 0x04 || bytes[3] === 0x06 || bytes[3] === 0x08);
+  return (
+    bytes.length >= 4 &&
+    bytes[0] === 0x50 &&
+    bytes[1] === 0x4b &&
+    (bytes[2] === 0x03 || bytes[2] === 0x05 || bytes[2] === 0x07) &&
+    (bytes[3] === 0x04 || bytes[3] === 0x06 || bytes[3] === 0x08)
+  );
 }
 
 export function normalizedDeclaredMimeType(mimeType?: string) {
@@ -69,7 +116,10 @@ export function normalizedDeclaredMimeType(mimeType?: string) {
   return normalized || null;
 }
 
-export function detectOfficeAttachment(declaredMimeType: string | null, isZipArchive: boolean): AttachmentDetection | null {
+export function detectOfficeAttachment(
+  declaredMimeType: string | null,
+  isZipArchive: boolean,
+): AttachmentDetection | null {
   if (!isZipArchive) return null;
 
   switch (declaredMimeType) {
@@ -103,11 +153,17 @@ function isZipBackedOfficeDetection(detection: AttachmentDetection) {
   return ["docx", "pptx", "xlsx"].includes(detection.textKind);
 }
 
-function canTrustExtensionDetection(detection: AttachmentDetection, isZipArchive: boolean) {
+function canTrustExtensionDetection(
+  detection: AttachmentDetection,
+  isZipArchive: boolean,
+) {
   return !isZipBackedOfficeDetection(detection) || isZipArchive;
 }
 
-export function detectPdfAttachment(bytes: Uint8Array, declaredMimeType: string | null): AttachmentDetection | null {
+export function detectPdfAttachment(
+  bytes: Uint8Array,
+  declaredMimeType: string | null,
+): AttachmentDetection | null {
   if (!hasPdfSignature(bytes) && declaredMimeType !== "application/pdf") {
     return null;
   }
@@ -120,7 +176,10 @@ export function detectPdfAttachment(bytes: Uint8Array, declaredMimeType: string 
   };
 }
 
-export function detectByExtension(extension: string, isZipArchive: boolean): AttachmentDetection | null {
+export function detectByExtension(
+  extension: string,
+  isZipArchive: boolean,
+): AttachmentDetection | null {
   const detection = mimeTypesByExtension.get(extension);
   if (!detection || !canTrustExtensionDetection(detection, isZipArchive)) {
     return null;

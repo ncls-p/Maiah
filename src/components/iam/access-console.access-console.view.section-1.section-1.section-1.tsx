@@ -1,18 +1,55 @@
-import { LockKeyholeIcon,PencilIcon,SearchIcon,ShieldIcon } from "lucide-react";
+import {
+  LockKeyholeIcon,
+  PencilIcon,
+  SearchIcon,
+  ShieldIcon,
+} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
-import { Empty,EmptyDescription,EmptyHeader,EmptyMedia,EmptyTitle } from "@/components/ui/empty";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
 import type { AccessConsoleViewModel } from "./access-console.access-console.view";
 import { ConfirmRemovalButton } from "./access-console.scope-path";
-export function AccessRolesSection1({ model }: { model: AccessConsoleViewModel }) {
-  const { canManageOrganizationAccess, canManageProjectAccess, filteredRoles, mutate, pendingAction, roleLabel, roleQuery, setEditingRoleId, setPermissionQuery, setRoleEditorReadOnly, setRoleForm, setRoleOpen, setRoleQuery, setVisibleRoleCount, snapshot, t, visibleRoleCount, workspaceId } = model;
+export function AccessRolesSection1({
+  model,
+}: {
+  model: AccessConsoleViewModel;
+}) {
+  const {
+    canManageOrganizationAccess,
+    canManageProjectAccess,
+    filteredRoles,
+    mutate,
+    pendingAction,
+    roleLabel,
+    roleQuery,
+    setEditingRoleId,
+    setPermissionQuery,
+    setRoleEditorReadOnly,
+    setRoleForm,
+    setRoleOpen,
+    setRoleQuery,
+    setVisibleRoleCount,
+    snapshot,
+    t,
+    visibleRoleCount,
+    workspaceId,
+  } = model;
   return (
     <CardContent className="flex flex-col gap-4 px-0">
       <div className="relative mx-6 max-w-md">
-        <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+        <SearchIcon
+          className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+          aria-hidden="true"
+        />
         <Input
           id="role-search"
           className="pl-9"
@@ -32,7 +69,9 @@ export function AccessRolesSection1({ model }: { model: AccessConsoleViewModel }
               <ShieldIcon aria-hidden="true" />
             </EmptyMedia>
             <EmptyTitle>{t("noSearchResults")}</EmptyTitle>
-            <EmptyDescription>{t("noSearchResultsDescription")}</EmptyDescription>
+            <EmptyDescription>
+              {t("noSearchResultsDescription")}
+            </EmptyDescription>
           </EmptyHeader>
         </Empty>
       ) : (
@@ -49,14 +88,26 @@ export function AccessRolesSection1({ model }: { model: AccessConsoleViewModel }
             </thead>
             <tbody className="divide-y divide-border/60">
               {filteredRoles.slice(0, visibleRoleCount).map((role) => {
-                const assignmentCount = snapshot.assignments.filter((item) => item.roleId === role.id).length;
-                const canManageRole = !role.isSystem && snapshot.assignableRoleIds.includes(role.id) && (role.scopeType === "organization" ? canManageOrganizationAccess : canManageProjectAccess);
+                const assignmentCount = snapshot.assignments.filter(
+                  (item) => item.roleId === role.id,
+                ).length;
+                const canManageRole =
+                  !role.isSystem &&
+                  snapshot.assignableRoleIds.includes(role.id) &&
+                  (role.scopeType === "organization"
+                    ? canManageOrganizationAccess
+                    : canManageProjectAccess);
                 return (
-                  <tr key={role.id} className="align-top transition-colors hover:bg-muted/20">
+                  <tr
+                    key={role.id}
+                    className="align-top transition-colors hover:bg-muted/20"
+                  >
                     <td className="px-6 py-4">
                       <div className="min-w-64">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-medium">{roleLabel(role.name, role.displayName)}</span>
+                          <span className="font-medium">
+                            {roleLabel(role.name, role.displayName)}
+                          </span>
                           {role.isSystem ? (
                             <Badge variant="secondary">
                               <LockKeyholeIcon aria-hidden="true" />
@@ -66,11 +117,17 @@ export function AccessRolesSection1({ model }: { model: AccessConsoleViewModel }
                             <Badge variant="outline">{t("custom")}</Badge>
                           )}
                         </div>
-                        <p className="mt-1 max-w-lg text-xs text-muted-foreground">{role.description || t("noRoleDescription")}</p>
+                        <p className="mt-1 max-w-lg text-xs text-muted-foreground">
+                          {role.description || t("noRoleDescription")}
+                        </p>
                       </div>
                     </td>
                     <td className="px-3 py-4">
-                      <Badge variant="outline">{role.scopeType === "organization" ? t("organizationScope") : t("projectScope")}</Badge>
+                      <Badge variant="outline">
+                        {role.scopeType === "organization"
+                          ? t("organizationScope")
+                          : t("projectScope")}
+                      </Badge>
                     </td>
                     <td className="px-3 py-4">
                       <button
@@ -82,7 +139,10 @@ export function AccessRolesSection1({ model }: { model: AccessConsoleViewModel }
                           setRoleForm({
                             displayName: roleLabel(role.name, role.displayName),
                             description: role.description ?? "",
-                            scopeType: role.scopeType === "organization" ? "organization" : "workspace",
+                            scopeType:
+                              role.scopeType === "organization"
+                                ? "organization"
+                                : "workspace",
                             permissions: [...role.permissions],
                           });
                           setPermissionQuery("");
@@ -109,16 +169,27 @@ export function AccessRolesSection1({ model }: { model: AccessConsoleViewModel }
                             setEditingRoleId(role.id);
                             setRoleEditorReadOnly(role.isSystem);
                             setRoleForm({
-                              displayName: roleLabel(role.name, role.displayName),
+                              displayName: roleLabel(
+                                role.name,
+                                role.displayName,
+                              ),
                               description: role.description ?? "",
-                              scopeType: role.scopeType === "organization" ? "organization" : "workspace",
+                              scopeType:
+                                role.scopeType === "organization"
+                                  ? "organization"
+                                  : "workspace",
                               permissions: [...role.permissions],
                             });
                             setPermissionQuery("");
                             setRoleOpen(true);
                           }}
                         >
-                          {canManageRole ? <PencilIcon data-icon="inline-start" aria-hidden="true" /> : null}
+                          {canManageRole ? (
+                            <PencilIcon
+                              data-icon="inline-start"
+                              aria-hidden="true"
+                            />
+                          ) : null}
                           {canManageRole ? t("edit") : t("view")}
                         </Button>
                         {canManageRole ? (
@@ -155,7 +226,11 @@ export function AccessRolesSection1({ model }: { model: AccessConsoleViewModel }
       )}
       {filteredRoles.length > visibleRoleCount ? (
         <div className="flex justify-center px-6">
-          <Button type="button" variant="outline" onClick={() => setVisibleRoleCount((count) => count + 25)}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setVisibleRoleCount((count) => count + 25)}
+          >
             {t("showMore", {
               count: Math.min(25, filteredRoles.length - visibleRoleCount),
             })}

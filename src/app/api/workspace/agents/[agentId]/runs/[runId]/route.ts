@@ -1,23 +1,43 @@
-import { handleRoute,requireResourcePermissionAsync } from "@/lib/route-handler";
+import {
+  handleRoute,
+  requireResourcePermissionAsync,
+} from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
-import { getAgentRun,requestAgentRunCancellation } from "@/modules/agent/run-use-cases";
+import {
+  getAgentRun,
+  requestAgentRunCancellation,
+} from "@/modules/agent/run-use-cases";
 import { abortActiveAgentRun } from "@/modules/agent/runtime-executor";
 import { getVisibleAgentById } from "@/modules/agent/use-cases";
-import { NextRequest,NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 const paramsSchema = z.object({ agentId: z.uuid(), runId: z.uuid() });
 const querySchema = z.object({ workspaceId: z.uuid() });
 
-async function resolveVisibleRun(input: { agentId: string; runId: string; workspaceId: string; userId: string; canAdminCurate: boolean }) {
-  const agent = await getVisibleAgentById(input.agentId, input.workspaceId, input.userId, input.canAdminCurate);
+async function resolveVisibleRun(input: {
+  agentId: string;
+  runId: string;
+  workspaceId: string;
+  userId: string;
+  canAdminCurate: boolean;
+}) {
+  const agent = await getVisibleAgentById(
+    input.agentId,
+    input.workspaceId,
+    input.userId,
+    input.canAdminCurate,
+  );
   if (!agent) return null;
   const run = await getAgentRun(input.runId, input.workspaceId);
   if (!run || run.agentId !== agent.id) return null;
   return run;
 }
 
-async function parseRequest(req: NextRequest, params: Promise<{ agentId: string; runId: string }>) {
+async function parseRequest(
+  req: NextRequest,
+  params: Promise<{ agentId: string; runId: string }>,
+) {
   const parsedParams = paramsSchema.safeParse(await params);
   const parsedQuery = querySchema.safeParse({
     workspaceId: req.nextUrl.searchParams.get("workspaceId"),
@@ -26,7 +46,10 @@ async function parseRequest(req: NextRequest, params: Promise<{ agentId: string;
   return { ...parsedParams.data, ...parsedQuery.data };
 }
 
-export async function GET(req: NextRequest, { params }: { params: Promise<{ agentId: string; runId: string }> }) {
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ agentId: string; runId: string }> },
+) {
   return handleRoute(
     req,
     async ({ session }) => {
@@ -34,12 +57,21 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ agen
       if (!request) {
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
       }
-      const forbidden = await requireResourcePermissionAsync(session.user.id, request.workspaceId, "agents.get", "agent", (await params).agentId);
+      const forbidden = await requireResourcePermissionAsync(
+        session.user.id,
+        request.workspaceId,
+        "agents.get",
+        "agent",
+        (await params).agentId,
+      );
       if (forbidden) return forbidden;
       const run = await resolveVisibleRun({
         ...request,
         userId: session.user.id,
-        canAdminCurate: await canManageTenantGlobals(session, request.workspaceId),
+        canAdminCurate: await canManageTenantGlobals(
+          session,
+          request.workspaceId,
+        ),
       });
       if (!run) {
         return NextResponse.json({ error: "Run not found" }, { status: 404 });
@@ -50,7 +82,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ agen
   );
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: Promise<{ agentId: string; runId: string }> }) {
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ agentId: string; runId: string }> },
+) {
   return handleRoute(
     req,
     async ({ session }) => {
@@ -58,19 +93,31 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ a
       if (!request) {
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
       }
-      const forbidden = await requireResourcePermissionAsync(session.user.id, request.workspaceId, "agents.chat", "agent", (await params).agentId);
+      const forbidden = await requireResourcePermissionAsync(
+        session.user.id,
+        request.workspaceId,
+        "agents.chat",
+        "agent",
+        (await params).agentId,
+      );
       if (forbidden) return forbidden;
       const run = await resolveVisibleRun({
         ...request,
         userId: session.user.id,
-        canAdminCurate: await canManageTenantGlobals(session, request.workspaceId),
+        canAdminCurate: await canManageTenantGlobals(
+          session,
+          request.workspaceId,
+        ),
       });
       if (!run) {
         return NextResponse.json({ error: "Run not found" }, { status: 404 });
       }
       const cancelled = await requestAgentRunCancellation(run.id);
       if (!cancelled) {
-        return NextResponse.json({ error: `Run is already ${run.status}`, status: run.status }, { status: 409 });
+        return NextResponse.json(
+          { error: `Run is already ${run.status}`, status: run.status },
+          { status: 409 },
+        );
       }
       const abortedLocally = abortActiveAgentRun(run.id);
       return NextResponse.json({

@@ -1,28 +1,59 @@
 import { normalizeOpenAICompatibleApiRoute } from "@/lib/openai-compatible-api";
-import { enrichCloudTempleModel,isCloudTempleBaseUrl } from "@/modules/provider/cloud-temple-catalog";
+import {
+  enrichCloudTempleModel,
+  isCloudTempleBaseUrl,
+} from "@/modules/provider/cloud-temple-catalog";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-import type { EmbeddingModelV4,LanguageModelV4 } from "@ai-sdk/provider";
-import type { ModelDescriptor,ProviderAdapter,ProviderHealth,ProviderRuntimeConfig } from "./adapter";
-import { buildHeaders,createCompatibleRerankingModel,normalizeBaseUrl } from "./openai-compatible-adapter.default-capabilities";
+import type { EmbeddingModelV4, LanguageModelV4 } from "@ai-sdk/provider";
+import type {
+  ModelDescriptor,
+  ProviderAdapter,
+  ProviderHealth,
+  ProviderRuntimeConfig,
+} from "./adapter";
+import {
+  buildHeaders,
+  createCompatibleRerankingModel,
+  normalizeBaseUrl,
+} from "./openai-compatible-adapter.default-capabilities";
 import { createResponsesFetch } from "./openai-compatible-adapter.normalize-responses-reasoning-sse-line";
 import { parseModels } from "./openai-compatible-adapter.parse-models";
-import { fetchModelCatalog,validateModelsEndpoint } from "./adapter-health";
+import { fetchModelCatalog, validateModelsEndpoint } from "./adapter-health";
 
 export const openaiCompatibleAdapter: ProviderAdapter = {
   kind: "openai-compatible",
 
-  async validateConnection(config: ProviderRuntimeConfig): Promise<ProviderHealth> {
-    return validateModelsEndpoint(config, normalizeBaseUrl(config.baseUrl), buildHeaders(config));
+  async validateConnection(
+    config: ProviderRuntimeConfig,
+  ): Promise<ProviderHealth> {
+    return validateModelsEndpoint(
+      config,
+      normalizeBaseUrl(config.baseUrl),
+      buildHeaders(config),
+    );
   },
 
   async listModels(config: ProviderRuntimeConfig): Promise<ModelDescriptor[]> {
-    const models = parseModels(await fetchModelCatalog(normalizeBaseUrl(config.baseUrl), buildHeaders(config)));
-    return isCloudTempleBaseUrl(config.baseUrl) ? models.map(enrichCloudTempleModel) : models;
+    const models = parseModels(
+      await fetchModelCatalog(
+        normalizeBaseUrl(config.baseUrl),
+        buildHeaders(config),
+      ),
+    );
+    return isCloudTempleBaseUrl(config.baseUrl)
+      ? models.map(enrichCloudTempleModel)
+      : models;
   },
 
-  createChatModel(config: ProviderRuntimeConfig, modelId: string): LanguageModelV4 {
-    if (normalizeOpenAICompatibleApiRoute(config.openaiCompatibleApiRoute) === "responses") {
+  createChatModel(
+    config: ProviderRuntimeConfig,
+    modelId: string,
+  ): LanguageModelV4 {
+    if (
+      normalizeOpenAICompatibleApiRoute(config.openaiCompatibleApiRoute) ===
+      "responses"
+    ) {
       const provider = createOpenAI({
         name: config.name || "openai-compatible",
         apiKey: config.apiKey || "openai-compatible-no-api-key",
@@ -60,7 +91,10 @@ export const openaiCompatibleAdapter: ProviderAdapter = {
     return provider.imageModel(modelId);
   },
 
-  createEmbeddingModel(config: ProviderRuntimeConfig, modelId: string): EmbeddingModelV4 {
+  createEmbeddingModel(
+    config: ProviderRuntimeConfig,
+    modelId: string,
+  ): EmbeddingModelV4 {
     const provider = createOpenAICompatible({
       name: config.name,
       apiKey: config.apiKey,

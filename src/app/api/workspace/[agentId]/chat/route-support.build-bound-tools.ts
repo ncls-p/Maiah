@@ -1,15 +1,39 @@
-import { chatTodoListInputSchema,createChatTodoList } from "@/modules/chat/todo-list";
+import {
+  chatTodoListInputSchema,
+  createChatTodoList,
+} from "@/modules/chat/todo-list";
 import { getKnowledgeBindingsForVersion } from "@/modules/knowledge/use-cases";
 import { loadBoundSkillContent } from "@/modules/skills/use-cases";
-import { decideToolApproval,type AiHubToolApprovalPolicy } from "@/modules/tool/approval-policy";
-import { getBuiltInTool,getBuiltInToolByName,requiresApproval } from "@/modules/tool/builtin-tools";
+import {
+  decideToolApproval,
+  type AiHubToolApprovalPolicy,
+} from "@/modules/tool/approval-policy";
+import {
+  getBuiltInTool,
+  getBuiltInToolByName,
+  requiresApproval,
+} from "@/modules/tool/builtin-tools";
 import { evaluateOpaToolApprovalPolicy } from "@/modules/tool/opa-approval-policy";
 import { getOrganizationBuiltInToolPolicyMap } from "@/modules/tool/organization-builtin-tool-policies";
-import { canExecuteRestrictedTool,getAvailableCustomToolContext,getAvailableMcpToolContext,getCustomBindingContext,getMcpBindingContext,getToolBindingsForVersion } from "@/modules/tool/use-cases";
-import { jsonSchema,type ToolApprovalConfiguration,type ToolSet } from "ai";
+import {
+  canExecuteRestrictedTool,
+  getAvailableCustomToolContext,
+  getAvailableMcpToolContext,
+  getCustomBindingContext,
+  getMcpBindingContext,
+  getToolBindingsForVersion,
+} from "@/modules/tool/use-cases";
+import { jsonSchema, type ToolApprovalConfiguration, type ToolSet } from "ai";
 import { z } from "zod";
-import { buildExternalToolKey,createCustomToolExecute } from "./route-support.build-external-tool-key";
-import { BUILTIN_TOOL_SOURCE,BoundToolApprovalMetadata,ToolApprovalRequiredEvent } from "./route-support.chat-request-schema";
+import {
+  buildExternalToolKey,
+  createCustomToolExecute,
+} from "./route-support.build-external-tool-key";
+import {
+  BUILTIN_TOOL_SOURCE,
+  BoundToolApprovalMetadata,
+  ToolApprovalRequiredEvent,
+} from "./route-support.chat-request-schema";
 import { createBuiltinToolExecute } from "./route-support.create-builtin-tool-execute";
 import { createMcpToolExecute } from "./route-support.create-mcp-tool-execute";
 import { registerKnowledgeTools } from "./route-support.knowledge-tools";
@@ -45,19 +69,35 @@ export async function buildBoundTools(input: BuildBoundToolsInput) {
       additionalKnowledgeBaseIds: input.enabledKnowledgeIds,
     }),
   ]);
-  const enabledToolKeys = new Set(input.enabledTools?.map((tool) => `${tool.source}:${tool.id}`) ?? []);
-  const boundKeys = new Set(bindings.map((binding) => `${binding.toolSource}:${binding.toolId}`));
+  const enabledToolKeys = new Set(
+    input.enabledTools?.map((tool) => `${tool.source}:${tool.id}`) ?? [],
+  );
+  const boundKeys = new Set(
+    bindings.map((binding) => `${binding.toolSource}:${binding.toolId}`),
+  );
   const runtimeBindings = [...bindings];
   for (const tool of input.enabledTools ?? []) {
     if (boundKeys.has(`${tool.source}:${tool.id}`)) continue;
-    runtimeBindings.push({ id: crypto.randomUUID(), agentVersionId: input.agentVersionId, toolSource: tool.source, toolId: tool.id, requireApproval: true, riskLevel: null, createdAt: new Date() });
+    runtimeBindings.push({
+      id: crypto.randomUUID(),
+      agentVersionId: input.agentVersionId,
+      toolSource: tool.source,
+      toolId: tool.id,
+      requireApproval: true,
+      riskLevel: null,
+      createdAt: new Date(),
+    });
   }
   const tools: ToolSet = {};
   const usedToolKeys = new Set<string>();
   const toolApprovalMetadata = new Map<string, BoundToolApprovalMetadata>();
-  const { reserveToolCall, toolLimitReachedResult, gateToolExecution } = createToolExecutionContext(input);
+  const { reserveToolCall, toolLimitReachedResult, gateToolExecution } =
+    createToolExecutionContext(input);
 
-  function registerToolApprovalMetadata(toolKey: string, metadata: BoundToolApprovalMetadata) {
+  function registerToolApprovalMetadata(
+    toolKey: string,
+    metadata: BoundToolApprovalMetadata,
+  ) {
     toolApprovalMetadata.set(toolKey, metadata);
   }
 
@@ -79,7 +119,8 @@ export async function buildBoundTools(input: BuildBoundToolsInput) {
     });
     usedToolKeys.add("load_skill");
     tools.load_skill = {
-      description: "Load the full Markdown instructions for an enabled agent skill by exact skill name. Use this when a listed skill is relevant before applying its workflow.",
+      description:
+        "Load the full Markdown instructions for an enabled agent skill by exact skill name. Use this when a listed skill is relevant before applying its workflow.",
       inputSchema: jsonSchema({
         type: "object",
         properties: {
@@ -93,7 +134,9 @@ export async function buildBoundTools(input: BuildBoundToolsInput) {
       }),
       execute: async (toolInput: unknown) => {
         if (!reserveToolCall()) return toolLimitReachedResult();
-        const parsed = z.object({ skillName: z.string().trim().min(1) }).safeParse(toolInput);
+        const parsed = z
+          .object({ skillName: z.string().trim().min(1) })
+          .safeParse(toolInput);
         if (!parsed.success) {
           return { found: false, message: "skillName is required." };
         }
@@ -110,11 +153,26 @@ export async function buildBoundTools(input: BuildBoundToolsInput) {
   }
 
   for (const binding of runtimeBindings) {
-    if (input.disabledToolKeys?.has(`${binding.toolSource}:${binding.toolId}`)) {
+    if (
+      input.disabledToolKeys?.has(`${binding.toolSource}:${binding.toolId}`)
+    ) {
       continue;
     }
     if (binding.toolSource === "custom") {
-      const customContext = enabledToolKeys.has(`custom:${binding.toolId}`) && !boundKeys.has(`custom:${binding.toolId}`) ? await getAvailableCustomToolContext(binding.toolId, input.userId, input.workspaceId) : await getCustomBindingContext(input.agentVersionId, binding.toolId, input.userId, input.workspaceId);
+      const customContext =
+        enabledToolKeys.has(`custom:${binding.toolId}`) &&
+        !boundKeys.has(`custom:${binding.toolId}`)
+          ? await getAvailableCustomToolContext(
+              binding.toolId,
+              input.userId,
+              input.workspaceId,
+            )
+          : await getCustomBindingContext(
+              input.agentVersionId,
+              binding.toolId,
+              input.userId,
+              input.workspaceId,
+            );
       if (!customContext) continue;
       const customTool = customContext.tool;
       const toolKey = buildExternalToolKey({
@@ -123,7 +181,10 @@ export async function buildBoundTools(input: BuildBoundToolsInput) {
         toolName: customTool.name,
         usedKeys: usedToolKeys,
       });
-      const schema = (customTool.inputSchemaJson as Record<string, unknown> | null) ?? { type: "object", properties: {} };
+      const schema = (customTool.inputSchemaJson as Record<
+        string,
+        unknown
+      > | null) ?? { type: "object", properties: {} };
       registerToolApprovalMetadata(toolKey, {
         toolSource: "custom",
         toolName: customTool.name,
@@ -132,15 +193,37 @@ export async function buildBoundTools(input: BuildBoundToolsInput) {
       });
 
       tools[toolKey] = {
-        description: customTool.description ?? `Custom tool ${customTool.name} created by the current user.`,
+        description:
+          customTool.description ??
+          `Custom tool ${customTool.name} created by the current user.`,
         inputSchema: jsonSchema(schema),
-        execute: createCustomToolExecute(input, customTool, binding, reserveToolCall, toolLimitReachedResult, gateToolExecution),
+        execute: createCustomToolExecute(
+          input,
+          customTool,
+          binding,
+          reserveToolCall,
+          toolLimitReachedResult,
+          gateToolExecution,
+        ),
       };
       continue;
     }
 
     if (binding.toolSource === "mcp") {
-      const mcpContext = enabledToolKeys.has(`mcp:${binding.toolId}`) && !boundKeys.has(`mcp:${binding.toolId}`) ? await getAvailableMcpToolContext(binding.toolId, input.userId, input.workspaceId) : await getMcpBindingContext(input.agentVersionId, binding.toolId, input.userId, input.workspaceId);
+      const mcpContext =
+        enabledToolKeys.has(`mcp:${binding.toolId}`) &&
+        !boundKeys.has(`mcp:${binding.toolId}`)
+          ? await getAvailableMcpToolContext(
+              binding.toolId,
+              input.userId,
+              input.workspaceId,
+            )
+          : await getMcpBindingContext(
+              input.agentVersionId,
+              binding.toolId,
+              input.userId,
+              input.workspaceId,
+            );
       if (!mcpContext) continue;
       const mcpTool = mcpContext.tool;
 
@@ -150,7 +233,10 @@ export async function buildBoundTools(input: BuildBoundToolsInput) {
         toolName: mcpTool.name,
         usedKeys: usedToolKeys,
       });
-      const schema = (mcpTool.inputSchemaJson as Record<string, unknown> | null) ?? {
+      const schema = (mcpTool.inputSchemaJson as Record<
+        string,
+        unknown
+      > | null) ?? {
         type: "object",
         properties: {},
       };
@@ -164,7 +250,9 @@ export async function buildBoundTools(input: BuildBoundToolsInput) {
       });
 
       tools[toolKey] = {
-        description: mcpTool.description ?? `MCP tool ${mcpTool.name} from connected server.`,
+        description:
+          mcpTool.description ??
+          `MCP tool ${mcpTool.name} from connected server.`,
         inputSchema: jsonSchema(schema),
         execute: createMcpToolExecute(
           input,
@@ -189,7 +277,9 @@ export async function buildBoundTools(input: BuildBoundToolsInput) {
     if (organizationPolicy?.enabled === false) continue;
     const effectiveBinding = {
       ...binding,
-      requireApproval: organizationPolicy?.requireApproval ?? requiresApproval(definition.riskLevel),
+      requireApproval:
+        organizationPolicy?.requireApproval ??
+        requiresApproval(definition.riskLevel),
     };
     registerToolApprovalMetadata(definition.name, {
       toolSource: BUILTIN_TOOL_SOURCE,
@@ -203,15 +293,29 @@ export async function buildBoundTools(input: BuildBoundToolsInput) {
     tools[definition.name] = {
       description: `${definition.description} Risk level: ${definition.riskLevel}.`,
       inputSchema: definition.inputSchema,
-      execute: createBuiltinToolExecute(input, definition, effectiveBinding, reserveToolCall, toolLimitReachedResult, gateToolExecution, canExecuteRestrictedTool),
+      execute: createBuiltinToolExecute(
+        input,
+        definition,
+        effectiveBinding,
+        reserveToolCall,
+        toolLimitReachedResult,
+        gateToolExecution,
+        canExecuteRestrictedTool,
+      ),
     };
   }
 
   if (input.enableDocumentExplorer && !tools.run_code_sandbox) {
     const definition = getBuiltInToolByName("run_code_sandbox");
     const organizationPolicy = builtInPolicies.get("run_code_sandbox");
-    if (definition && organizationPolicy?.enabled !== false && !input.disabledToolKeys?.has(`${BUILTIN_TOOL_SOURCE}:${definition.id}`)) {
-      const requireApproval = organizationPolicy?.requireApproval ?? requiresApproval(definition.riskLevel);
+    if (
+      definition &&
+      organizationPolicy?.enabled !== false &&
+      !input.disabledToolKeys?.has(`${BUILTIN_TOOL_SOURCE}:${definition.id}`)
+    ) {
+      const requireApproval =
+        organizationPolicy?.requireApproval ??
+        requiresApproval(definition.riskLevel);
       registerToolApprovalMetadata(definition.name, {
         toolSource: BUILTIN_TOOL_SOURCE,
         toolName: definition.name,
@@ -223,13 +327,22 @@ export async function buildBoundTools(input: BuildBoundToolsInput) {
       tools[definition.name] = {
         description: `${definition.description} Automatically enabled for embedding-free document exploration. Risk level: ${definition.riskLevel}.`,
         inputSchema: definition.inputSchema,
-        execute: createBuiltinToolExecute(input, definition, { riskLevel: definition.riskLevel, requireApproval }, reserveToolCall, toolLimitReachedResult, gateToolExecution, canExecuteRestrictedTool),
+        execute: createBuiltinToolExecute(
+          input,
+          definition,
+          { riskLevel: definition.riskLevel, requireApproval },
+          reserveToolCall,
+          toolLimitReachedResult,
+          gateToolExecution,
+          canExecuteRestrictedTool,
+        ),
       };
     }
   }
 
   tools.update_todo_list = {
-    description: "Create or replace the visible to-do list for this task. Use stable item IDs and call this tool again whenever an item starts or completes so the user can follow progress live.",
+    description:
+      "Create or replace the visible to-do list for this task. Use stable item IDs and call this tool again whenever an item starts or completes so the user can follow progress live.",
     inputSchema: chatTodoListInputSchema,
     execute: async (toolInput: unknown) => {
       if (!reserveToolCall()) return toolLimitReachedResult();
@@ -237,7 +350,10 @@ export async function buildBoundTools(input: BuildBoundToolsInput) {
     },
   };
 
-  const toolApproval: ToolApprovalConfiguration<ToolSet, Record<string, unknown>> = async ({ toolCall }) => {
+  const toolApproval: ToolApprovalConfiguration<
+    ToolSet,
+    Record<string, unknown>
+  > = async ({ toolCall }) => {
     const metadata = toolApprovalMetadata.get(toolCall.toolName);
     if (!metadata) return undefined;
     const decision =

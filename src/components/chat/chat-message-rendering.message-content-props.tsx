@@ -1,6 +1,9 @@
 "use client";
 
-import { type ChatMessage,type PendingToolApproval } from "@/components/chat/chat-types";
+import {
+  type ChatMessage,
+  type PendingToolApproval,
+} from "@/components/chat/chat-types";
 import { type WorkspaceArtifactDisplay } from "@/components/chat/code-workspace-artifact-card";
 
 export type MessageContentProps = {

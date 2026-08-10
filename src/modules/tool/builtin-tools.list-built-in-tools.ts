@@ -23,7 +23,9 @@ export function getBuiltInToolByName(name: string) {
   return builtInTools.find((tool) => tool.name === name) ?? null;
 }
 
-export function requiresApproval(riskLevel: ToolRiskLevel | string | null | undefined) {
+export function requiresApproval(
+  riskLevel: ToolRiskLevel | string | null | undefined,
+) {
   return riskLevel === "high" || riskLevel === "critical";
 }
 

@@ -1,31 +1,56 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useCallback,useEffect,useMemo,useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { useWorkspace } from "@/hooks/use-workspace";
 import { fetchJson } from "@/lib/api-client";
 import { buildAccessPeople } from "@/modules/iam/access-view-model";
 import { AccessConsoleView } from "./access-console.access-console.view";
-import { AccessSnapshot,PlatformAccessUser } from "./access-console.access-member";
-import { AccessConsoleSkeleton,INITIAL_ACCOUNT_FORM,INITIAL_ORGANIZATION_FORM,INITIAL_PROJECT_FORM,INITIAL_ROLE_FORM,INITIAL_TEAM_FORM,InitialError,MutationPayload,builtInRoleKey } from "./access-console.resource-transfer-preview";
+import {
+  AccessSnapshot,
+  PlatformAccessUser,
+} from "./access-console.access-member";
+import {
+  AccessConsoleSkeleton,
+  INITIAL_ACCOUNT_FORM,
+  INITIAL_ORGANIZATION_FORM,
+  INITIAL_PROJECT_FORM,
+  INITIAL_ROLE_FORM,
+  INITIAL_TEAM_FORM,
+  InitialError,
+  MutationPayload,
+  builtInRoleKey,
+} from "./access-console.resource-transfer-preview";
 import { useAccessMemberTransfer } from "./access-console.use-member-transfer";
 
-export function useAccessConsoleController({ platformUsers, currentUserId }: { platformUsers?: PlatformAccessUser[]; currentUserId?: string }) {
+export function useAccessConsoleController({
+  platformUsers,
+  currentUserId,
+}: {
+  platformUsers?: PlatformAccessUser[];
+  currentUserId?: string;
+}) {
   const t = useTranslations("access");
   const roleLabel = (name: string, fallback: string) => {
     const key = builtInRoleKey(name);
     return key ? t(`builtInRoles.${key}`) : fallback;
   };
-  const { workspaceId, setWorkspaceId, refresh: refreshWorkspaces } = useWorkspace();
+  const {
+    workspaceId,
+    setWorkspaceId,
+    refresh: refreshWorkspaces,
+  } = useWorkspace();
   const [snapshot, setSnapshot] = useState<AccessSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshError, setRefreshError] = useState<string | null>(null);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
 
   const [organizationOpen, setOrganizationOpen] = useState(false);
-  const [organizationForm, setOrganizationForm] = useState(INITIAL_ORGANIZATION_FORM);
+  const [organizationForm, setOrganizationForm] = useState(
+    INITIAL_ORGANIZATION_FORM,
+  );
   const [projectOpen, setProjectOpen] = useState(false);
   const [projectForm, setProjectForm] = useState(INITIAL_PROJECT_FORM);
   const [memberOpen, setMemberOpen] = useState(false);
@@ -52,10 +77,14 @@ export function useAccessConsoleController({ platformUsers, currentUserId }: { p
   const [visibleRoleCount, setVisibleRoleCount] = useState(25);
   const [editingRoleId, setEditingRoleId] = useState<string | null>(null);
   const [roleEditorReadOnly, setRoleEditorReadOnly] = useState(false);
-  const [accountMode, setAccountMode] = useState<"existing" | "create">("existing");
+  const [accountMode, setAccountMode] = useState<"existing" | "create">(
+    "existing",
+  );
   const [accountForm, setAccountForm] = useState(INITIAL_ACCOUNT_FORM);
   const [platformAccounts, setPlatformAccounts] = useState(platformUsers ?? []);
-  const [busyPlatformUserId, setBusyPlatformUserId] = useState<string | null>(null);
+  const [busyPlatformUserId, setBusyPlatformUserId] = useState<string | null>(
+    null,
+  );
 
   const load = useCallback(
     async (options?: { preserveData?: boolean }) => {
@@ -63,7 +92,9 @@ export function useAccessConsoleController({ platformUsers, currentUserId }: { p
       if (!options?.preserveData) setLoading(true);
       setRefreshError(null);
       try {
-        const data = await fetchJson<AccessSnapshot>(`/api/workspace/iam?workspaceId=${workspaceId}`);
+        const data = await fetchJson<AccessSnapshot>(
+          `/api/workspace/iam?workspaceId=${workspaceId}`,
+        );
         setSnapshot(data);
       } catch (error) {
         const message = error instanceof Error ? error.message : t("loadError");
@@ -80,14 +111,22 @@ export function useAccessConsoleController({ platformUsers, currentUserId }: { p
     void load();
   }, [load]);
 
-  async function mutate(key: string, payload: MutationPayload, successMessage: string, options?: { close?: () => void; nextWorkspaceId?: string }) {
+  async function mutate(
+    key: string,
+    payload: MutationPayload,
+    successMessage: string,
+    options?: { close?: () => void; nextWorkspaceId?: string },
+  ) {
     setPendingAction(key);
     try {
-      const result = await fetchJson<{ project?: { id: string } }>("/api/workspace/iam", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      const result = await fetchJson<{ project?: { id: string } }>(
+        "/api/workspace/iam",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        },
+      );
       toast.success(successMessage);
       options?.close?.();
       await refreshWorkspaces();
@@ -106,20 +145,67 @@ export function useAccessConsoleController({ platformUsers, currentUserId }: { p
     }
   }
 
-  const { memberTransferOpen, setMemberTransferOpen, memberTransferDestinations, memberTransferLoading, memberTransferQuery, setMemberTransferQuery, memberTransferTargetId, setMemberTransferTargetId, memberTransferRoleId, setMemberTransferRoleId, memberTransferMode, setMemberTransferMode, memberTransferPreview, setMemberTransferPreview, openMemberTransfer, previewSelectedMemberTransfer, confirmSelectedMemberTransfer } = useAccessMemberTransfer({ workspaceId, selectedPeople, setSelectedPeople, setPendingAction, load, refreshWorkspaces });
+  const {
+    memberTransferOpen,
+    setMemberTransferOpen,
+    memberTransferDestinations,
+    memberTransferLoading,
+    memberTransferQuery,
+    setMemberTransferQuery,
+    memberTransferTargetId,
+    setMemberTransferTargetId,
+    memberTransferRoleId,
+    setMemberTransferRoleId,
+    memberTransferMode,
+    setMemberTransferMode,
+    memberTransferPreview,
+    setMemberTransferPreview,
+    openMemberTransfer,
+    previewSelectedMemberTransfer,
+    confirmSelectedMemberTransfer,
+  } = useAccessMemberTransfer({
+    workspaceId,
+    selectedPeople,
+    setSelectedPeople,
+    setPendingAction,
+    load,
+    refreshWorkspaces,
+  });
 
-  const activeMembers = useMemo(() => snapshot?.members.filter((member) => member.status === "active") ?? [], [snapshot]);
-  const scopedRoles = useMemo(() => snapshot?.roles.filter((role) => role.scopeType === assignment.scopeType && snapshot.assignableRoleIds.includes(role.id)) ?? [], [assignment.scopeType, snapshot]);
-  const principalOptions = assignment.principalType === "user" ? activeMembers : (snapshot?.teams ?? []);
-  const selectedAssignmentRole = snapshot?.roles.find((role) => role.id === assignment.roleId);
+  const activeMembers = useMemo(
+    () =>
+      snapshot?.members.filter((member) => member.status === "active") ?? [],
+    [snapshot],
+  );
+  const scopedRoles = useMemo(
+    () =>
+      snapshot?.roles.filter(
+        (role) =>
+          role.scopeType === assignment.scopeType &&
+          snapshot.assignableRoleIds.includes(role.id),
+      ) ?? [],
+    [assignment.scopeType, snapshot],
+  );
+  const principalOptions =
+    assignment.principalType === "user"
+      ? activeMembers
+      : (snapshot?.teams ?? []);
+  const selectedAssignmentRole = snapshot?.roles.find(
+    (role) => role.id === assignment.roleId,
+  );
 
   async function refreshPlatformAccounts() {
     if (!platformUsers) return;
-    const result = await fetchJson<{ users: PlatformAccessUser[] }>("/api/admin/users");
+    const result = await fetchJson<{ users: PlatformAccessUser[] }>(
+      "/api/admin/users",
+    );
     setPlatformAccounts(result.users);
   }
 
-  async function updatePlatformAccount(userId: string, payload: { role?: "user" | "admin"; banned?: boolean }) {
+  async function updatePlatformAccount(
+    userId: string,
+    payload: { role?: "user" | "admin"; banned?: boolean },
+  ) {
     setBusyPlatformUserId(userId);
     try {
       await fetchJson(`/api/admin/users/${userId}`, {
@@ -141,35 +227,111 @@ export function useAccessConsoleController({ platformUsers, currentUserId }: { p
     return <AccessConsoleSkeleton />;
   }
   if (!snapshot || !snapshotIsCurrent) {
-    return <InitialError message={refreshError ?? t("loadError")} onRetry={() => void load()} />;
+    return (
+      <InitialError
+        message={refreshError ?? t("loadError")}
+        onRetry={() => void load()}
+      />
+    );
   }
 
-  const { canManageProjectAccess, canManageOrganizationAccess, canCreateProjects, canManageProjectLifecycle, canManageOrganizationLifecycle, canManageMembers, canManageTeams } = snapshot.capabilities;
-  const canManageAnything = snapshot.canManageAccess || canCreateProjects || canManageProjectLifecycle || canManageOrganizationLifecycle || canManageMembers || canManageTeams;
-  const canCustomizeViewedRole = roleForm.scopeType === "organization" ? canManageOrganizationAccess : canManageProjectAccess;
-  const canDelegateViewedRole = !editingRoleId || snapshot.assignableRoleIds.includes(editingRoleId);
-  const grantablePermissionSet = new Set(snapshot.grantablePermissions[roleForm.scopeType]);
+  const {
+    canManageProjectAccess,
+    canManageOrganizationAccess,
+    canCreateProjects,
+    canManageProjectLifecycle,
+    canManageOrganizationLifecycle,
+    canManageMembers,
+    canManageTeams,
+  } = snapshot.capabilities;
+  const canManageAnything =
+    snapshot.canManageAccess ||
+    canCreateProjects ||
+    canManageProjectLifecycle ||
+    canManageOrganizationLifecycle ||
+    canManageMembers ||
+    canManageTeams;
+  const canCustomizeViewedRole =
+    roleForm.scopeType === "organization"
+      ? canManageOrganizationAccess
+      : canManageProjectAccess;
+  const canDelegateViewedRole =
+    !editingRoleId || snapshot.assignableRoleIds.includes(editingRoleId);
+  const grantablePermissionSet = new Set(
+    snapshot.grantablePermissions[roleForm.scopeType],
+  );
   const accessPeople = buildAccessPeople({
     members: activeMembers,
-    accounts: platformAccounts.filter((account) => activeMembers.some((member) => member.userId === account.id)),
+    accounts: platformAccounts.filter((account) =>
+      activeMembers.some((member) => member.userId === account.id),
+    ),
     assignments: snapshot.assignments,
     teams: snapshot.teams,
   });
   const normalizedPeopleQuery = peopleQuery.trim().toLocaleLowerCase();
   const people = accessPeople.filter((person) => {
     if (!normalizedPeopleQuery) return true;
-    return [person.name, person.email, person.platformRole, ...person.assignments.flatMap((access) => [roleLabel(access.roleKey, access.roleName), access.scope]), ...person.teams.map((team) => team.name)].some((value) => value?.toLocaleLowerCase().includes(normalizedPeopleQuery));
+    return [
+      person.name,
+      person.email,
+      person.platformRole,
+      ...person.assignments.flatMap((access) => [
+        roleLabel(access.roleKey, access.roleName),
+        access.scope,
+      ]),
+      ...person.teams.map((team) => team.name),
+    ].some((value) =>
+      value?.toLocaleLowerCase().includes(normalizedPeopleQuery),
+    );
   });
   const visiblePeople = people.slice(0, visiblePeopleCount);
-  const selectedVisiblePeople = visiblePeople.filter((person) => person.memberStatus === "active");
-  const allVisiblePeopleSelected = selectedVisiblePeople.length > 0 && selectedVisiblePeople.every((person) => selectedPeople.includes(person.userId));
-  const selectedMemberTransferDestination = memberTransferDestinations.find((destination) => destination.workspaceId === memberTransferTargetId);
-  const filteredMemberTransferDestinations = memberTransferDestinations.filter((destination) => [destination.organizationName, destination.workspaceName, ...destination.roles.flatMap((role) => [role.displayName, role.name])].some((value) => value.toLocaleLowerCase().includes(memberTransferQuery.trim().toLocaleLowerCase())));
+  const selectedVisiblePeople = visiblePeople.filter(
+    (person) => person.memberStatus === "active",
+  );
+  const allVisiblePeopleSelected =
+    selectedVisiblePeople.length > 0 &&
+    selectedVisiblePeople.every((person) =>
+      selectedPeople.includes(person.userId),
+    );
+  const selectedMemberTransferDestination = memberTransferDestinations.find(
+    (destination) => destination.workspaceId === memberTransferTargetId,
+  );
+  const filteredMemberTransferDestinations = memberTransferDestinations.filter(
+    (destination) =>
+      [
+        destination.organizationName,
+        destination.workspaceName,
+        ...destination.roles.flatMap((role) => [role.displayName, role.name]),
+      ].some((value) =>
+        value
+          .toLocaleLowerCase()
+          .includes(memberTransferQuery.trim().toLocaleLowerCase()),
+      ),
+  );
 
   const normalizedTeamQuery = teamQuery.trim().toLocaleLowerCase();
-  const filteredTeams = snapshot.teams.filter((team) => [team.name, team.description, ...team.members.map((member) => member.name)].filter(Boolean).some((value) => value?.toLocaleLowerCase().includes(normalizedTeamQuery)));
+  const filteredTeams = snapshot.teams.filter((team) =>
+    [team.name, team.description, ...team.members.map((member) => member.name)]
+      .filter(Boolean)
+      .some((value) =>
+        value?.toLocaleLowerCase().includes(normalizedTeamQuery),
+      ),
+  );
   const normalizedRoleQuery = roleQuery.trim().toLocaleLowerCase();
-  const filteredRoles = snapshot.roles.filter((role) => role.scopeType !== "system").filter((role) => [roleLabel(role.name, role.displayName), role.description, role.scopeType, ...role.permissions].filter(Boolean).some((value) => value?.toLocaleLowerCase().includes(normalizedRoleQuery)));
+  const filteredRoles = snapshot.roles
+    .filter((role) => role.scopeType !== "system")
+    .filter((role) =>
+      [
+        roleLabel(role.name, role.displayName),
+        role.description,
+        role.scopeType,
+        ...role.permissions,
+      ]
+        .filter(Boolean)
+        .some((value) =>
+          value?.toLocaleLowerCase().includes(normalizedRoleQuery),
+        ),
+    );
   return {
     kind: "ready",
     accountForm,
@@ -280,7 +442,9 @@ export function useAccessConsoleController({ platformUsers, currentUserId }: { p
   } as const;
 }
 
-export function AccessConsole(...args: Parameters<typeof useAccessConsoleController>) {
+export function AccessConsole(
+  ...args: Parameters<typeof useAccessConsoleController>
+) {
   const model = useAccessConsoleController(...args);
   if (!("kind" in model)) return model;
   return <AccessConsoleView model={model} />;

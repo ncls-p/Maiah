@@ -3,7 +3,13 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 
 import type { QueuedChatMessage } from "@/components/chat/chat-composer";
-import type { AgentVersion, ChatAttachment, ChatConversation, ChatMessage, CodeWorkspaceArtifact } from "@/components/chat/chat-types";
+import type {
+  AgentVersion,
+  ChatAttachment,
+  ChatConversation,
+  ChatMessage,
+  CodeWorkspaceArtifact,
+} from "@/components/chat/chat-types";
 
 type Setter<T> = Dispatch<SetStateAction<T>>;
 
@@ -20,7 +26,10 @@ type ConversationActionsContext = {
   setCodeWorkspaceArtifact: Setter<CodeWorkspaceArtifact | null>;
   setAttachments: Setter<ChatAttachment[]>;
   detachActiveStream: () => void;
-  restoreComposerDraft: (agentId: string, conversationId: string | null) => void;
+  restoreComposerDraft: (
+    agentId: string,
+    conversationId: string | null,
+  ) => void;
   resetInterfaceMode: () => void;
 };
 
@@ -32,7 +41,8 @@ export function useConversationActions(context: ConversationActionsContext) {
     c.setSelectedAgentId(agentId);
     c.setActiveVersion(null);
     const params = new URLSearchParams({ agentId });
-    if (c.activeConversationId) params.set("conversationId", c.activeConversationId);
+    if (c.activeConversationId)
+      params.set("conversationId", c.activeConversationId);
     else {
       c.newConversationAgentIdRef.current = agentId;
       c.restoreComposerDraft(agentId, null);
@@ -43,7 +53,10 @@ export function useConversationActions(context: ConversationActionsContext) {
     window.history.replaceState(null, "", `/chat?${params.toString()}`);
   }
 
-  function selectConversation(conversationId: string, conversationAgentId?: string | null) {
+  function selectConversation(
+    conversationId: string,
+    conversationAgentId?: string | null,
+  ) {
     if (conversationId === c.activeConversationId) return;
     c.detachActiveStream();
     c.setQueuedMessages([]);
@@ -51,8 +64,13 @@ export function useConversationActions(context: ConversationActionsContext) {
     c.setCodeWorkspaceArtifact(null);
     c.setAttachments([]);
     c.resetInterfaceMode();
-    const nextAgentId = c.conversations.find((item) => item.id === conversationId)?.agentId ?? conversationAgentId;
-    c.restoreComposerDraft(nextAgentId ?? c.selectedAgentId ?? "", conversationId);
+    const nextAgentId =
+      c.conversations.find((item) => item.id === conversationId)?.agentId ??
+      conversationAgentId;
+    c.restoreComposerDraft(
+      nextAgentId ?? c.selectedAgentId ?? "",
+      conversationId,
+    );
     if (nextAgentId) c.setSelectedAgentId(nextAgentId);
     c.setActiveConversationId(conversationId);
     const params = new URLSearchParams();
@@ -62,7 +80,8 @@ export function useConversationActions(context: ConversationActionsContext) {
   }
 
   function startNewConversation() {
-    const nextAgentId = c.newConversationAgentIdRef.current ?? c.selectedAgentId;
+    const nextAgentId =
+      c.newConversationAgentIdRef.current ?? c.selectedAgentId;
     c.detachActiveStream();
     c.setQueuedMessages([]);
     c.setActiveConversationId(null);
@@ -74,7 +93,11 @@ export function useConversationActions(context: ConversationActionsContext) {
     c.setCodeWorkspaceArtifact(null);
     if (nextAgentId) c.restoreComposerDraft(nextAgentId, null);
     c.resetInterfaceMode();
-    window.history.replaceState(null, "", nextAgentId ? `/chat?agentId=${nextAgentId}` : "/chat");
+    window.history.replaceState(
+      null,
+      "",
+      nextAgentId ? `/chat?agentId=${nextAgentId}` : "/chat",
+    );
   }
 
   return { selectAgent, selectConversation, startNewConversation };

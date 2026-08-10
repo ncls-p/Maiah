@@ -211,9 +211,7 @@ export function ScheduledTaskManagerSection1({
                   type={frequency === DAILY_FREQUENCY ? "time" : "number"}
                   min={frequency === DAILY_FREQUENCY ? undefined : 5}
                   value={
-                    frequency === DAILY_FREQUENCY
-                      ? timeOfDay
-                      : intervalMinutes
+                    frequency === DAILY_FREQUENCY ? timeOfDay : intervalMinutes
                   }
                   onChange={(event) =>
                     frequency === DAILY_FREQUENCY

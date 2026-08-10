@@ -1,10 +1,13 @@
-import { NextRequest,NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 import { handleRoute } from "@/lib/route-handler";
 import { requestSkipNextChatSuggestions } from "@/modules/chat/suggestion-skip";
 import { getAuthorizedConversation } from "../conversation-route-access";
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ conversationId: string }> }) {
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ conversationId: string }> },
+) {
   return handleRoute(
     req,
     async ({ session }) => {

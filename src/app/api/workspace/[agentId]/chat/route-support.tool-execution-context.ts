@@ -5,9 +5,23 @@ import { projectToolPayloadForDisplay } from "@/modules/tool/safe-payload";
 import { logToolInvocation } from "@/modules/tool/use-cases";
 
 import type { BuildBoundToolsInput } from "./route-support.build-bound-tools";
-import { BUILTIN_TOOL_SOURCE,TOOL_GATE_RETURN,type ToolGateResult } from "./route-support.chat-request-schema";
+import {
+  BUILTIN_TOOL_SOURCE,
+  TOOL_GATE_RETURN,
+  type ToolGateResult,
+} from "./route-support.chat-request-schema";
 
-export type GateToolExecution = (input: { startedAt: number; toolSource: typeof BUILTIN_TOOL_SOURCE | "custom" | "mcp"; toolId: string; toolName: string; riskLevel?: string | null; toolInput: unknown; bindingRequiresApproval?: boolean; serverRequiresApproval?: boolean; toolRequiresApproval?: boolean }) => Promise<ToolGateResult>;
+export type GateToolExecution = (input: {
+  startedAt: number;
+  toolSource: typeof BUILTIN_TOOL_SOURCE | "custom" | "mcp";
+  toolId: string;
+  toolName: string;
+  riskLevel?: string | null;
+  toolInput: unknown;
+  bindingRequiresApproval?: boolean;
+  serverRequiresApproval?: boolean;
+  toolRequiresApproval?: boolean;
+}) => Promise<ToolGateResult>;
 
 export function createToolExecutionContext(input: BuildBoundToolsInput) {
   let executedToolCallCount = 0;
@@ -19,7 +33,11 @@ export function createToolExecutionContext(input: BuildBoundToolsInput) {
   }
 
   function toolLimitReachedResult() {
-    return { denied: true, message: "Tool call limit reached. Answer the user now using the information already gathered." };
+    return {
+      denied: true,
+      message:
+        "Tool call limit reached. Answer the user now using the information already gathered.",
+    };
   }
 
   const gateToolExecution: GateToolExecution = async (tool) => {
@@ -62,7 +80,13 @@ export function createToolExecutionContext(input: BuildBoundToolsInput) {
         latencyMs: Date.now() - tool.startedAt,
         errorMessage: decision.reason ?? "Tool denied by approval policy",
       });
-      return { status: TOOL_GATE_RETURN, output: { denied: true, message: decision.reason ?? "Tool denied by approval policy." } };
+      return {
+        status: TOOL_GATE_RETURN,
+        output: {
+          denied: true,
+          message: decision.reason ?? "Tool denied by approval policy.",
+        },
+      };
     }
 
     if (input.nonInteractive) {
@@ -81,7 +105,11 @@ export function createToolExecutionContext(input: BuildBoundToolsInput) {
       });
       return {
         status: TOOL_GATE_RETURN,
-        output: { denied: true, message: "This tool requires human approval and cannot run in a delegated, scheduled, or API execution." },
+        output: {
+          denied: true,
+          message:
+            "This tool requires human approval and cannot run in a delegated, scheduled, or API execution.",
+        },
       };
     }
 
@@ -104,10 +132,15 @@ export function createToolExecutionContext(input: BuildBoundToolsInput) {
     });
 
     const result = await waitForApproval(invocation.id);
-    if (result.status === "success") return { status: TOOL_GATE_RETURN, output: result.output };
+    if (result.status === "success")
+      return { status: TOOL_GATE_RETURN, output: result.output };
     return {
       status: TOOL_GATE_RETURN,
-      output: { denied: true, invocationId: invocation.id, message: result.error ?? "Tool invocation was not approved." },
+      output: {
+        denied: true,
+        invocationId: invocation.id,
+        message: result.error ?? "Tool invocation was not approved.",
+      },
     };
   };
 

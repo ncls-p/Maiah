@@ -2,13 +2,35 @@
 
 import { useTranslations } from "next-intl";
 import type * as React from "react";
-import { useLayoutEffect,useMemo,useState } from "react";
+import { useLayoutEffect, useMemo, useState } from "react";
 
-import { useMessageScroller,useMessageScrollerVisibility } from "@/components/ui/message-scroller";
+import {
+  useMessageScroller,
+  useMessageScrollerVisibility,
+} from "@/components/ui/message-scroller";
 import { cn } from "@/lib/utils";
-import { MESSAGE_JUMP_SCROLL_MARGIN,UserMessageShortcut,preferredScrollBehavior,rememberUserMessageAnchor } from "./chat-message-list.initial-visible-messages";
+import {
+  MESSAGE_JUMP_SCROLL_MARGIN,
+  UserMessageShortcut,
+  preferredScrollBehavior,
+  rememberUserMessageAnchor,
+} from "./chat-message-list.initial-visible-messages";
 
-export function UserMessageRail({ shortcuts, hiddenMessageCount, totalMessageCount, conversationId, messageIndexById, setVisibleMessageCount }: { shortcuts: UserMessageShortcut[]; hiddenMessageCount: number; totalMessageCount: number; conversationId?: string | null; messageIndexById: ReadonlyMap<string, number>; setVisibleMessageCount: React.Dispatch<React.SetStateAction<number>> }) {
+export function UserMessageRail({
+  shortcuts,
+  hiddenMessageCount,
+  totalMessageCount,
+  conversationId,
+  messageIndexById,
+  setVisibleMessageCount,
+}: {
+  shortcuts: UserMessageShortcut[];
+  hiddenMessageCount: number;
+  totalMessageCount: number;
+  conversationId?: string | null;
+  messageIndexById: ReadonlyMap<string, number>;
+  setVisibleMessageCount: React.Dispatch<React.SetStateAction<number>>;
+}) {
   const t = useTranslations("chat.messageList");
   const { scrollToMessage } = useMessageScroller();
   const { currentAnchorId } = useMessageScrollerVisibility();
@@ -32,7 +54,9 @@ export function UserMessageRail({ shortcuts, hiddenMessageCount, totalMessageCou
   useLayoutEffect(() => {
     if (!pendingMessageId) return;
 
-    const pendingShortcut = shortcuts.find((shortcut) => shortcut.id === pendingMessageId);
+    const pendingShortcut = shortcuts.find(
+      (shortcut) => shortcut.id === pendingMessageId,
+    );
     if (!pendingShortcut) return;
     if (pendingShortcut.messageIndex < hiddenMessageCount) return;
 
@@ -47,7 +71,13 @@ export function UserMessageRail({ shortcuts, hiddenMessageCount, totalMessageCou
     });
 
     return () => window.cancelAnimationFrame(frame);
-  }, [conversationId, hiddenMessageCount, pendingMessageId, scrollToMessage, shortcuts]);
+  }, [
+    conversationId,
+    hiddenMessageCount,
+    pendingMessageId,
+    scrollToMessage,
+    shortcuts,
+  ]);
 
   if (shortcuts.length === 0) return null;
 
@@ -80,13 +110,19 @@ export function UserMessageRail({ shortcuts, hiddenMessageCount, totalMessageCou
       onMouseLeave={closePanel}
       onBlur={(event) => {
         const nextFocusedElement = event.relatedTarget as Node | null;
-        if (!nextFocusedElement || !event.currentTarget.contains(nextFocusedElement)) {
+        if (
+          !nextFocusedElement ||
+          !event.currentTarget.contains(nextFocusedElement)
+        ) {
           closePanel();
         }
       }}
     >
       {isPanelOpen ? (
-        <div className="w-60 max-w-[calc(100vw-4rem)] rounded-xl bg-popover/95 p-1 text-left text-popover-foreground shadow-[0_10px_26px_rgba(15,23,42,0.12)] ring-1 ring-border/55 backdrop-blur-md transition-[opacity,transform] duration-150 ease-out" onWheelCapture={(event) => event.stopPropagation()}>
+        <div
+          className="w-60 max-w-[calc(100vw-4rem)] rounded-xl bg-popover/95 p-1 text-left text-popover-foreground shadow-[0_10px_26px_rgba(15,23,42,0.12)] ring-1 ring-border/55 backdrop-blur-md transition-[opacity,transform] duration-150 ease-out"
+          onWheelCapture={(event) => event.stopPropagation()}
+        >
           <div className="flex max-h-[42vh] min-h-0 flex-col gap-0.5 overflow-y-auto overscroll-contain pr-1 scrollbar-thin">
             {shortcuts.map((shortcut) => {
               const isCurrent = currentShortcutId === shortcut.id;
@@ -100,7 +136,11 @@ export function UserMessageRail({ shortcuts, hiddenMessageCount, totalMessageCou
                     count: shortcut.ordinal,
                     preview: shortcut.preview,
                   })}
-                  className={cn("rounded-lg px-2 py-1 text-left outline-none transition-[background-color,box-shadow,transform] duration-150 ease-out hover:bg-muted focus-visible:bg-muted focus-visible:ring-2 focus-visible:ring-ring/35 active:scale-[0.96]", (isActive || isCurrent) && "bg-muted shadow-[0_6px_14px_rgba(15,23,42,0.07)]")}
+                  className={cn(
+                    "rounded-lg px-2 py-1 text-left outline-none transition-[background-color,box-shadow,transform] duration-150 ease-out hover:bg-muted focus-visible:bg-muted focus-visible:ring-2 focus-visible:ring-ring/35 active:scale-[0.96]",
+                    (isActive || isCurrent) &&
+                      "bg-muted shadow-[0_6px_14px_rgba(15,23,42,0.07)]",
+                  )}
                   onMouseEnter={() => setActiveShortcutId(shortcut.id)}
                   onFocus={() => {
                     setIsPanelOpen(true);
@@ -108,17 +148,39 @@ export function UserMessageRail({ shortcuts, hiddenMessageCount, totalMessageCou
                   }}
                   onClick={() => jumpToShortcut(shortcut)}
                 >
-                  <span className="text-[8px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("messageNumber", { count: shortcut.ordinal })}</span>
-                  <span className={cn("mt-0.5 block text-[11px] leading-4 text-foreground transition-[color] duration-150", isActive ? "whitespace-pre-wrap" : "line-clamp-1 text-muted-foreground")}>{isActive ? shortcut.fullText : shortcut.preview}</span>
+                  <span className="text-[8px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                    {t("messageNumber", { count: shortcut.ordinal })}
+                  </span>
+                  <span
+                    className={cn(
+                      "mt-0.5 block text-[11px] leading-4 text-foreground transition-[color] duration-150",
+                      isActive
+                        ? "whitespace-pre-wrap"
+                        : "line-clamp-1 text-muted-foreground",
+                    )}
+                  >
+                    {isActive ? shortcut.fullText : shortcut.preview}
+                  </span>
                 </button>
               );
             })}
           </div>
         </div>
       ) : null}
-      <button type="button" aria-expanded={isPanelOpen} aria-label={t("showUserMessages", { count: shortcuts.length })} className="flex flex-col items-center gap-0.5 rounded-full bg-background/50 px-1.5 py-1.5 shadow-[0_8px_22px_rgba(15,23,42,0.08)] outline-none ring-1 ring-border/45 backdrop-blur-md transition-[background-color,box-shadow,transform] duration-150 ease-out hover:bg-background/80 focus-visible:ring-2 focus-visible:ring-ring/35 active:scale-[0.96]" onFocus={() => setIsPanelOpen(true)} onClick={() => setIsPanelOpen((open) => !open)}>
+      <button
+        type="button"
+        aria-expanded={isPanelOpen}
+        aria-label={t("showUserMessages", { count: shortcuts.length })}
+        className="flex flex-col items-center gap-0.5 rounded-full bg-background/50 px-1.5 py-1.5 shadow-[0_8px_22px_rgba(15,23,42,0.08)] outline-none ring-1 ring-border/45 backdrop-blur-md transition-[background-color,box-shadow,transform] duration-150 ease-out hover:bg-background/80 focus-visible:ring-2 focus-visible:ring-ring/35 active:scale-[0.96]"
+        onFocus={() => setIsPanelOpen(true)}
+        onClick={() => setIsPanelOpen((open) => !open)}
+      >
         {[0, 1, 2].map((index) => (
-          <span key={index} aria-hidden="true" className="size-1 rounded-full bg-neutral-950/75 shadow-sm ring-1 ring-background/80 dark:bg-neutral-50/75" />
+          <span
+            key={index}
+            aria-hidden="true"
+            className="size-1 rounded-full bg-neutral-950/75 shadow-sm ring-1 ring-background/80 dark:bg-neutral-50/75"
+          />
         ))}
       </button>
     </nav>

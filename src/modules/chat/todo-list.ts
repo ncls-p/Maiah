@@ -25,7 +25,8 @@ export function createChatTodoList(input: unknown): ChatTodoList {
     kind: "chat_todo_list",
     title: parsed.title,
     items: parsed.items,
-    completedCount: parsed.items.filter((item) => item.status === "completed").length,
+    completedCount: parsed.items.filter((item) => item.status === "completed")
+      .length,
     totalCount: parsed.items.length,
   };
 }

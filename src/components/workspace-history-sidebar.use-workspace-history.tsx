@@ -1,14 +1,22 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useEffect,useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
-import type { ChatAgent,ChatConversation,ChatConversationFolder } from "@/components/chat/chat-types";
+import type {
+  ChatAgent,
+  ChatConversation,
+  ChatConversationFolder,
+} from "@/components/chat/chat-types";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { fetchJson } from "@/lib/api-client";
 import { WORKSPACE_HISTORY_REFRESH_EVENT } from "@/lib/workspace-history-events";
-import { AgentPayload,ConversationPayload,normalizeConversations } from "./workspace-history-sidebar.conversation-payload";
+import {
+  AgentPayload,
+  ConversationPayload,
+  normalizeConversations,
+} from "./workspace-history-sidebar.conversation-payload";
 
 export function useWorkspaceHistory() {
   const { workspaceId } = useWorkspace();
@@ -18,7 +26,9 @@ export function useWorkspaceHistory() {
   const [agents, setAgents] = useState<ChatAgent[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
-  const [resolvedWorkspaceId, setResolvedWorkspaceId] = useState<string | null>(null);
+  const [resolvedWorkspaceId, setResolvedWorkspaceId] = useState<string | null>(
+    null,
+  );
   const [query, setQuery] = useState("");
   const [searchResults, setSearchResults] = useState<ChatConversation[]>([]);
   const [searching, setSearching] = useState(false);
@@ -28,7 +38,8 @@ export function useWorkspaceHistory() {
   useEffect(() => {
     const refresh = () => setRevision((current) => current + 1);
     window.addEventListener(WORKSPACE_HISTORY_REFRESH_EVENT, refresh);
-    return () => window.removeEventListener(WORKSPACE_HISTORY_REFRESH_EVENT, refresh);
+    return () =>
+      window.removeEventListener(WORKSPACE_HISTORY_REFRESH_EVENT, refresh);
   }, []);
 
   useEffect(() => {
@@ -45,13 +56,26 @@ export function useWorkspaceHistory() {
       includeModelMeta: "true",
     });
 
-    void Promise.all([fetchJson<ConversationPayload>(`/api/workspace/conversations?${params.toString()}`, { signal: controller.signal }), fetchJson<AgentPayload>(`/api/workspace/agents?${agentParams.toString()}`, { signal: controller.signal })])
+    void Promise.all([
+      fetchJson<ConversationPayload>(
+        `/api/workspace/conversations?${params.toString()}`,
+        { signal: controller.signal },
+      ),
+      fetchJson<AgentPayload>(
+        `/api/workspace/agents?${agentParams.toString()}`,
+        { signal: controller.signal },
+      ),
+    ])
       .then(([conversationPayload, agentPayload]) => {
         if (!active) return;
         const normalized = normalizeConversations(conversationPayload);
         setConversations(normalized.conversations);
         setFolders(normalized.folders);
-        setAgents(Array.isArray(agentPayload) ? agentPayload : (agentPayload.agents ?? []));
+        setAgents(
+          Array.isArray(agentPayload)
+            ? agentPayload
+            : (agentPayload.agents ?? []),
+        );
         setResolvedWorkspaceId(workspaceId);
       })
       .catch((error: unknown) => {
@@ -90,7 +114,10 @@ export function useWorkspaceHistory() {
       });
       setSearching(true);
       setSearchError(false);
-      void fetchJson<ConversationPayload>(`/api/workspace/conversations?${params.toString()}`, { signal: controller.signal })
+      void fetchJson<ConversationPayload>(
+        `/api/workspace/conversations?${params.toString()}`,
+        { signal: controller.signal },
+      )
         .then((payload) => {
           if (!active) return;
           setSearchResults(normalizeConversations(payload).conversations);
@@ -115,11 +142,14 @@ export function useWorkspaceHistory() {
 
   async function renameConversation(conversationId: string, title: string) {
     try {
-      const data = await fetchJson<{ conversation: ChatConversation }>(`/api/workspace/conversations/${conversationId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title }),
-      });
+      const data = await fetchJson<{ conversation: ChatConversation }>(
+        `/api/workspace/conversations/${conversationId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title }),
+        },
+      );
       const applyRename = (current: ChatConversation[]) =>
         current.map((conversation) =>
           conversation.id === conversationId
@@ -133,7 +163,11 @@ export function useWorkspaceHistory() {
       setConversations(applyRename);
       setSearchResults(applyRename);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : tErrors("renameConversationFailed"));
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : tErrors("renameConversationFailed"),
+      );
     }
   }
 
@@ -142,12 +176,17 @@ export function useWorkspaceHistory() {
       await fetchJson(`/api/workspace/conversations/${conversationId}`, {
         method: "DELETE",
       });
-      const removeConversation = (current: ChatConversation[]) => current.filter((conversation) => conversation.id !== conversationId);
+      const removeConversation = (current: ChatConversation[]) =>
+        current.filter((conversation) => conversation.id !== conversationId);
       setConversations(removeConversation);
       setSearchResults(removeConversation);
       return true;
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : tErrors("deleteConversationFailed"));
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : tErrors("deleteConversationFailed"),
+      );
       return false;
     }
   }
@@ -155,27 +194,41 @@ export function useWorkspaceHistory() {
   async function createFolder(name: string) {
     if (!workspaceId) return;
     try {
-      const data = await fetchJson<{ folder: ChatConversationFolder }>("/api/workspace/conversation-folders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ workspaceId, name }),
-      });
+      const data = await fetchJson<{ folder: ChatConversationFolder }>(
+        "/api/workspace/conversation-folders",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ workspaceId, name }),
+        },
+      );
       setFolders((current) => [...current, data.folder]);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : tErrors("createFolderFailed"));
+      toast.error(
+        error instanceof Error ? error.message : tErrors("createFolderFailed"),
+      );
     }
   }
 
   async function renameFolder(folderId: string, name: string) {
     try {
-      const data = await fetchJson<{ folder: ChatConversationFolder }>(`/api/workspace/conversation-folders/${folderId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
-      });
-      setFolders((current) => current.map((folder) => (folder.id === folderId ? data.folder : folder)));
+      const data = await fetchJson<{ folder: ChatConversationFolder }>(
+        `/api/workspace/conversation-folders/${folderId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name }),
+        },
+      );
+      setFolders((current) =>
+        current.map((folder) =>
+          folder.id === folderId ? data.folder : folder,
+        ),
+      );
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : tErrors("renameFolderFailed"));
+      toast.error(
+        error instanceof Error ? error.message : tErrors("renameFolderFailed"),
+      );
     }
   }
 
@@ -184,31 +237,55 @@ export function useWorkspaceHistory() {
       await fetchJson(`/api/workspace/conversation-folders/${folderId}`, {
         method: "DELETE",
       });
-      setFolders((current) => current.filter((folder) => folder.id !== folderId));
-      setConversations((current) => current.map((conversation) => (conversation.folderId === folderId ? { ...conversation, folderId: null } : conversation)));
+      setFolders((current) =>
+        current.filter((folder) => folder.id !== folderId),
+      );
+      setConversations((current) =>
+        current.map((conversation) =>
+          conversation.folderId === folderId
+            ? { ...conversation, folderId: null }
+            : conversation,
+        ),
+      );
       return true;
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : tErrors("deleteFolderFailed"));
+      toast.error(
+        error instanceof Error ? error.message : tErrors("deleteFolderFailed"),
+      );
       return false;
     }
   }
 
   async function togglePin(conversationId: string, pinned: boolean) {
     try {
-      const data = await fetchJson<{ conversation: ChatConversation }>(`/api/workspace/conversations/${conversationId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pinned }),
-      });
-      const applyPin = (current: ChatConversation[]) => current.map((conversation) => (conversation.id === conversationId ? { ...conversation, ...data.conversation } : conversation));
+      const data = await fetchJson<{ conversation: ChatConversation }>(
+        `/api/workspace/conversations/${conversationId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pinned }),
+        },
+      );
+      const applyPin = (current: ChatConversation[]) =>
+        current.map((conversation) =>
+          conversation.id === conversationId
+            ? { ...conversation, ...data.conversation }
+            : conversation,
+        );
       setConversations(applyPin);
       setSearchResults(applyPin);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : tErrors("updatePinFailed"));
+      toast.error(
+        error instanceof Error ? error.message : tErrors("updatePinFailed"),
+      );
     }
   }
 
-  async function reorderConversations(input: { conversationIds: string[]; folderId: string | null; pinned?: boolean }) {
+  async function reorderConversations(input: {
+    conversationIds: string[];
+    folderId: string | null;
+    pinned?: boolean;
+  }) {
     if (!workspaceId) return;
     const now = new Date().toISOString();
     setConversations((current) =>
@@ -218,7 +295,12 @@ export function useWorkspaceHistory() {
         return {
           ...conversation,
           folderId: input.folderId,
-          pinnedAt: input.pinned === undefined ? conversation.pinnedAt : input.pinned ? (conversation.pinnedAt ?? now) : null,
+          pinnedAt:
+            input.pinned === undefined
+              ? conversation.pinnedAt
+              : input.pinned
+                ? (conversation.pinnedAt ?? now)
+                : null,
           sidebarOrder: (index + 1) * 1000,
         };
       }),
@@ -230,7 +312,9 @@ export function useWorkspaceHistory() {
         body: JSON.stringify({ workspaceId, ...input }),
       });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : tErrors("moveFailed"));
+      toast.error(
+        error instanceof Error ? error.message : tErrors("moveFailed"),
+      );
       setRevision((current) => current + 1);
     }
   }

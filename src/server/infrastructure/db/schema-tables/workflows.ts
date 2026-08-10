@@ -1,4 +1,15 @@
-import { index,integer,jsonb,pgEnum,pgTable,text,timestamp,uniqueIndex,uuid,varchar } from "drizzle-orm/pg-core";
+import {
+  index,
+  integer,
+  jsonb,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+  varchar,
+} from "drizzle-orm/pg-core";
 
 import { users } from "./auth";
 import { workspaces } from "./workspace";
@@ -6,11 +17,27 @@ import { workspaces } from "./workspace";
 const CASCADE = "cascade";
 const SET_NULL = "set null";
 
-export const workflowStatusEnum = pgEnum("workflow_status", ["draft", "active", "archived"]);
+export const workflowStatusEnum = pgEnum("workflow_status", [
+  "draft",
+  "active",
+  "archived",
+]);
 
-export const workflowRunStatusEnum = pgEnum("workflow_run_status", ["queued", "running", "completed", "failed", "cancelled"]);
+export const workflowRunStatusEnum = pgEnum("workflow_run_status", [
+  "queued",
+  "running",
+  "completed",
+  "failed",
+  "cancelled",
+]);
 
-export const workflowStepStatusEnum = pgEnum("workflow_step_status", ["pending", "running", "completed", "failed", "skipped"]);
+export const workflowStepStatusEnum = pgEnum("workflow_step_status", [
+  "pending",
+  "running",
+  "completed",
+  "failed",
+  "skipped",
+]);
 
 export const workflows = pgTable(
   "workflows",
@@ -27,11 +54,17 @@ export const workflows = pgTable(
     status: workflowStatusEnum("status").notNull().default("draft"),
     latestVersion: integer("latest_version").notNull().default(1),
     activeVersion: integer("active_version"),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
     archivedAt: timestamp("archived_at", { withTimezone: true }),
   },
-  (table) => [index("workflows_workspace_status_idx").on(table.workspaceId, table.status)],
+  (table) => [
+    index("workflows_workspace_status_idx").on(table.workspaceId, table.status),
+  ],
 );
 
 export const workflowVersions = pgTable(
@@ -46,9 +79,16 @@ export const workflowVersions = pgTable(
     createdById: uuid("created_by_user_id")
       .notNull()
       .references(() => users.id),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
-  (table) => [uniqueIndex("workflow_versions_workflow_version_unique").on(table.workflowId, table.version)],
+  (table) => [
+    uniqueIndex("workflow_versions_workflow_version_unique").on(
+      table.workflowId,
+      table.version,
+    ),
+  ],
 );
 
 export const workflowRuns = pgTable(
@@ -73,11 +113,26 @@ export const workflowRuns = pgTable(
     outputJson: jsonb("output_json"),
     error: text("error"),
     idempotencyKey: varchar("idempotency_key", { length: 255 }),
-    queuedAt: timestamp("queued_at", { withTimezone: true }).notNull().defaultNow(),
+    queuedAt: timestamp("queued_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
     startedAt: timestamp("started_at", { withTimezone: true }),
     completedAt: timestamp("completed_at", { withTimezone: true }),
   },
-  (table) => [index("workflow_runs_workflow_created_idx").on(table.workflowId, table.queuedAt), index("workflow_runs_workspace_status_idx").on(table.workspaceId, table.status), uniqueIndex("workflow_runs_idempotency_unique").on(table.workflowId, table.idempotencyKey)],
+  (table) => [
+    index("workflow_runs_workflow_created_idx").on(
+      table.workflowId,
+      table.queuedAt,
+    ),
+    index("workflow_runs_workspace_status_idx").on(
+      table.workspaceId,
+      table.status,
+    ),
+    uniqueIndex("workflow_runs_idempotency_unique").on(
+      table.workflowId,
+      table.idempotencyKey,
+    ),
+  ],
 );
 
 export const workflowRunSteps = pgTable(
@@ -97,7 +152,13 @@ export const workflowRunSteps = pgTable(
     startedAt: timestamp("started_at", { withTimezone: true }),
     completedAt: timestamp("completed_at", { withTimezone: true }),
   },
-  (table) => [uniqueIndex("workflow_run_steps_run_node_unique").on(table.runId, table.nodeId), index("workflow_run_steps_run_idx").on(table.runId)],
+  (table) => [
+    uniqueIndex("workflow_run_steps_run_node_unique").on(
+      table.runId,
+      table.nodeId,
+    ),
+    index("workflow_run_steps_run_idx").on(table.runId),
+  ],
 );
 
 export const workflowAgentMessages = pgTable(
@@ -113,12 +174,22 @@ export const workflowAgentMessages = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: CASCADE }),
-    role: varchar("role", { length: 16 }).$type<"user" | "assistant">().notNull(),
+    role: varchar("role", { length: 16 })
+      .$type<"user" | "assistant">()
+      .notNull(),
     contentEncrypted: text("content_encrypted").notNull(),
     modelContentEncrypted: text("model_content_encrypted"),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
-  (table) => [index("workflow_agent_messages_history_idx").on(table.workflowId, table.userId, table.createdAt)],
+  (table) => [
+    index("workflow_agent_messages_history_idx").on(
+      table.workflowId,
+      table.userId,
+      table.createdAt,
+    ),
+  ],
 );
 
 export const workflowAgentInputRequests = pgTable(
@@ -140,11 +211,21 @@ export const workflowAgentInputRequests = pgTable(
     status: varchar("status", { length: 24 }).notNull().default("pending"),
     valuesEncrypted: text("values_encrypted"),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
     submittedAt: timestamp("submitted_at", { withTimezone: true }),
     consumedAt: timestamp("consumed_at", { withTimezone: true }),
   },
-  (table) => [index("workflow_agent_input_requests_pending_idx").on(table.workflowId, table.userId, table.status, table.createdAt), index("workflow_agent_input_requests_workspace_idx").on(table.workspaceId)],
+  (table) => [
+    index("workflow_agent_input_requests_pending_idx").on(
+      table.workflowId,
+      table.userId,
+      table.status,
+      table.createdAt,
+    ),
+    index("workflow_agent_input_requests_workspace_idx").on(table.workspaceId),
+  ],
 );
 
 export const workflowAgentRunRequests = pgTable(
@@ -171,10 +252,21 @@ export const workflowAgentRunRequests = pgTable(
     }),
     error: text("error"),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
     decidedAt: timestamp("decided_at", { withTimezone: true }),
   },
-  (table) => [index("workflow_agent_run_requests_pending_idx").on(table.workflowId, table.userId, table.status, table.createdAt), index("workflow_agent_run_requests_workspace_idx").on(table.workspaceId), uniqueIndex("workflow_agent_run_requests_run_unique").on(table.runId)],
+  (table) => [
+    index("workflow_agent_run_requests_pending_idx").on(
+      table.workflowId,
+      table.userId,
+      table.status,
+      table.createdAt,
+    ),
+    index("workflow_agent_run_requests_workspace_idx").on(table.workspaceId),
+    uniqueIndex("workflow_agent_run_requests_run_unique").on(table.runId),
+  ],
 );
 
 export const workflowAgentTodoLists = pgTable(
@@ -191,7 +283,15 @@ export const workflowAgentTodoLists = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: CASCADE }),
     todoListJson: jsonb("todo_list_json").notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
-  (table) => [uniqueIndex("workflow_agent_todo_lists_workflow_user_unique").on(table.workflowId, table.userId), index("workflow_agent_todo_lists_workspace_idx").on(table.workspaceId)],
+  (table) => [
+    uniqueIndex("workflow_agent_todo_lists_workflow_user_unique").on(
+      table.workflowId,
+      table.userId,
+    ),
+    index("workflow_agent_todo_lists_workspace_idx").on(table.workspaceId),
+  ],
 );

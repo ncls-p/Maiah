@@ -14,9 +14,21 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
+import {
+  Field,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 
 type ShareRow = {
@@ -33,7 +45,11 @@ type SharePayload = {
   isEphemeral: boolean;
 };
 
-export function ConversationShareDialog({ conversationId }: { conversationId: string }) {
+export function ConversationShareDialog({
+  conversationId,
+}: {
+  conversationId: string;
+}) {
   const t = useTranslations("chat.share");
   const locale = useLocale();
   const [open, setOpen] = useState(false);

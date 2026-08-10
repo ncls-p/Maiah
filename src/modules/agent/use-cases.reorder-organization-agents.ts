@@ -6,28 +6,42 @@ import { cloneSkillBindings } from "@/modules/skills/use-cases";
 import { cloneToolBindings } from "@/modules/tool/use-cases";
 import { audit } from "@/server/domain/services/audit";
 import { db } from "@/server/infrastructure/db";
-import { agents,agentVersions } from "@/server/infrastructure/db/schema";
-import { and,eq,inArray,isNull,or } from "drizzle-orm";
-import { CloneAgentInput,UpdateAgentInput } from "./use-cases.agent-row";
+import { agents, agentVersions } from "@/server/infrastructure/db/schema";
+import { and, eq, inArray, isNull, or } from "drizzle-orm";
+import { CloneAgentInput, UpdateAgentInput } from "./use-cases.agent-row";
 import { createAvailableAgentSlug } from "./use-cases.create-available-agent-slug";
 import { getVisibleAgentById } from "./use-cases.get-visible-agent-by-id";
 import { updateAgentUnlocked } from "./use-cases.update-agent-unlocked";
 
-export async function reorderOrganizationAgents(input: { workspaceId: string; userId: string; agentIds: string[] }) {
+export async function reorderOrganizationAgents(input: {
+  workspaceId: string;
+  userId: string;
+  agentIds: string[];
+}) {
   const agentIds = Array.from(new Set(input.agentIds));
   if (agentIds.length === 0) return;
 
   const rows = await db
     .select({ id: agents.id })
     .from(agents)
-    .where(and(eq(agents.workspaceId, input.workspaceId), isNull(agents.archivedAt), inArray(agents.id, agentIds), or(eq(agents.isGlobal, true), eq(agents.isRecommended, true))));
+    .where(
+      and(
+        eq(agents.workspaceId, input.workspaceId),
+        isNull(agents.archivedAt),
+        inArray(agents.id, agentIds),
+        or(eq(agents.isGlobal, true), eq(agents.isRecommended, true)),
+      ),
+    );
   if (rows.length !== agentIds.length) {
     throw new Error("Organization assistant not found");
   }
 
   await db.transaction(async (tx) => {
     for (const [index, agentId] of agentIds.entries()) {
-      await tx.update(agents).set({ organizationDisplayOrder: index, updatedAt: new Date() }).where(eq(agents.id, agentId));
+      await tx
+        .update(agents)
+        .set({ organizationDisplayOrder: index, updatedAt: new Date() })
+        .where(eq(agents.id, agentId));
     }
   });
 
@@ -43,22 +57,42 @@ export async function reorderOrganizationAgents(input: { workspaceId: string; us
   });
 }
 
-export async function getActiveVersionConfig(tx: Parameters<Parameters<typeof db.transaction>[0]>[0], activeVersionId: string | null) {
+export async function getActiveVersionConfig(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  activeVersionId: string | null,
+) {
   if (!activeVersionId) return null;
-  const [v] = await tx.select().from(agentVersions).where(eq(agentVersions.id, activeVersionId)).limit(1);
+  const [v] = await tx
+    .select()
+    .from(agentVersions)
+    .where(eq(agentVersions.id, activeVersionId))
+    .limit(1);
   return v || null;
 }
 
 export async function cloneAgent(input: CloneAgentInput) {
-  const source = await getVisibleAgentById(input.agentId, input.workspaceId, input.userId, Boolean(input.canAdminCurate));
+  const source = await getVisibleAgentById(
+    input.agentId,
+    input.workspaceId,
+    input.userId,
+    Boolean(input.canAdminCurate),
+  );
   if (!source) throw new Error("Agent not found");
 
   const name = input.name?.trim() || `Copy of ${source.name}`;
-  const slug = input.slug?.trim() ? await createAvailableAgentSlug(input.workspaceId, input.slug) : await createAvailableAgentSlug(input.workspaceId, name);
+  const slug = input.slug?.trim()
+    ? await createAvailableAgentSlug(input.workspaceId, input.slug)
+    : await createAvailableAgentSlug(input.workspaceId, name);
 
   const { agent, version } = await db.transaction(async (tx) => {
-    const sourceVersion = await getActiveVersionConfig(tx, source.activeVersionId);
-    const sourceOrchestrationPolicy = source.kind === "orchestrator" ? normalizeOrchestrationPolicy(sourceVersion?.orchestrationPolicyJson) : null;
+    const sourceVersion = await getActiveVersionConfig(
+      tx,
+      source.activeVersionId,
+    );
+    const sourceOrchestrationPolicy =
+      source.kind === "orchestrator"
+        ? normalizeOrchestrationPolicy(sourceVersion?.orchestrationPolicyJson)
+        : null;
     const [agent] = await tx
       .insert(agents)
       .values({
@@ -105,11 +139,32 @@ export async function cloneAgent(input: CloneAgentInput) {
       })
       .returning();
 
-    await tx.update(agents).set({ activeVersionId: version.id }).where(eq(agents.id, agent.id));
+    await tx
+      .update(agents)
+      .set({ activeVersionId: version.id })
+      .where(eq(agents.id, agent.id));
 
-    await cloneToolBindings(source.activeVersionId, version.id, input.workspaceId, { userId: input.userId }, tx);
-    await cloneKnowledgeBindings(source.activeVersionId, version.id, input.workspaceId, { userId: input.userId }, tx);
-    await cloneSkillBindings(source.activeVersionId, version.id, input.workspaceId, { userId: input.userId }, tx);
+    await cloneToolBindings(
+      source.activeVersionId,
+      version.id,
+      input.workspaceId,
+      { userId: input.userId },
+      tx,
+    );
+    await cloneKnowledgeBindings(
+      source.activeVersionId,
+      version.id,
+      input.workspaceId,
+      { userId: input.userId },
+      tx,
+    );
+    await cloneSkillBindings(
+      source.activeVersionId,
+      version.id,
+      input.workspaceId,
+      { userId: input.userId },
+      tx,
+    );
     if (sourceOrchestrationPolicy) {
       await cloneDelegationBindings({
         fromAgentVersionId: source.activeVersionId,
@@ -146,7 +201,10 @@ export async function cloneAgent(input: CloneAgentInput) {
 
 const agentUpdateLocks = new Map<string, Promise<void>>();
 
-async function withAgentUpdateLock<T>(agentId: string, operation: () => Promise<T>) {
+async function withAgentUpdateLock<T>(
+  agentId: string,
+  operation: () => Promise<T>,
+) {
   const previous = agentUpdateLocks.get(agentId) ?? Promise.resolve();
   let release!: () => void;
   const current = new Promise<void>((resolve) => {

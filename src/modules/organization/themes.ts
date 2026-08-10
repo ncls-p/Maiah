@@ -1,8 +1,51 @@
-export const ORGANIZATION_THEMES = ["ocean", "forest", "ember", "violet", "slate", "custom"] as const;
+export const ORGANIZATION_THEMES = [
+  "ocean",
+  "forest",
+  "ember",
+  "violet",
+  "slate",
+  "custom",
+] as const;
 
 export type OrganizationTheme = (typeof ORGANIZATION_THEMES)[number];
 
-export const THEME_TOKEN_KEYS = ["background", "foreground", "card", "card-foreground", "popover", "popover-foreground", "primary", "primary-foreground", "secondary", "secondary-foreground", "muted", "muted-foreground", "accent", "accent-foreground", "destructive", "destructive-foreground", "success", "warning", "info", "border", "input", "ring", "chart-1", "chart-2", "chart-3", "chart-4", "chart-5", "sidebar", "sidebar-foreground", "sidebar-primary", "sidebar-primary-foreground", "sidebar-accent", "sidebar-accent-foreground", "sidebar-border", "sidebar-ring"] as const;
+export const THEME_TOKEN_KEYS = [
+  "background",
+  "foreground",
+  "card",
+  "card-foreground",
+  "popover",
+  "popover-foreground",
+  "primary",
+  "primary-foreground",
+  "secondary",
+  "secondary-foreground",
+  "muted",
+  "muted-foreground",
+  "accent",
+  "accent-foreground",
+  "destructive",
+  "destructive-foreground",
+  "success",
+  "warning",
+  "info",
+  "border",
+  "input",
+  "ring",
+  "chart-1",
+  "chart-2",
+  "chart-3",
+  "chart-4",
+  "chart-5",
+  "sidebar",
+  "sidebar-foreground",
+  "sidebar-primary",
+  "sidebar-primary-foreground",
+  "sidebar-accent",
+  "sidebar-accent-foreground",
+  "sidebar-border",
+  "sidebar-ring",
+] as const;
 
 export type ThemeToken = (typeof THEME_TOKEN_KEYS)[number];
 export type ThemePalette = Record<ThemeToken, string>;
@@ -90,7 +133,10 @@ function theme(light: PaletteSeed, dark: PaletteSeed): OrganizationThemeConfig {
   return { light: palette(light), dark: palette(dark) };
 }
 
-export const ORGANIZATION_THEME_PRESETS: Record<Exclude<OrganizationTheme, "custom">, OrganizationThemeConfig> = {
+export const ORGANIZATION_THEME_PRESETS: Record<
+  Exclude<OrganizationTheme, "custom">,
+  OrganizationThemeConfig
+> = {
   ocean: theme(
     {
       ...lightBase,
@@ -223,11 +269,17 @@ export const ORGANIZATION_THEME_PRESETS: Record<Exclude<OrganizationTheme, "cust
   ),
 };
 
-export function resolveOrganizationTheme(themeName: OrganizationTheme, customTheme: OrganizationThemeConfig | null | undefined) {
-  return themeName === "custom" && customTheme ? customTheme : ORGANIZATION_THEME_PRESETS[themeName === "custom" ? "ocean" : themeName];
+export function resolveOrganizationTheme(
+  themeName: OrganizationTheme,
+  customTheme: OrganizationThemeConfig | null | undefined,
+) {
+  return themeName === "custom" && customTheme
+    ? customTheme
+    : ORGANIZATION_THEME_PRESETS[themeName === "custom" ? "ocean" : themeName];
 }
 
 export function themeCss(config: OrganizationThemeConfig) {
-  const declarations = (colors: ThemePalette) => THEME_TOKEN_KEYS.map((key) => `--${key}:${colors[key]}`).join(";");
+  const declarations = (colors: ThemePalette) =>
+    THEME_TOKEN_KEYS.map((key) => `--${key}:${colors[key]}`).join(";");
   return `:root[data-brand-theme]{${declarations(config.light)}}.dark[data-brand-theme]{${declarations(config.dark)}}`;
 }

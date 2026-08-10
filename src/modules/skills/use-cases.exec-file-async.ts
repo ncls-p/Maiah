@@ -55,22 +55,52 @@ export type SkillPreviewAttestation = {
 export class SkillPreviewConflictError extends Error {
   readonly code = "SKILL_PREVIEW_STALE";
 
-  constructor(message = "Skill source changed since preview. Review it again before installing.") {
+  constructor(
+    message = "Skill source changed since preview. Review it again before installing.",
+  ) {
     super(message);
     this.name = "SkillPreviewConflictError";
   }
 }
 
-export function canManageSkill(skill: AgentSkillRow, userId: string, canManageGlobal = false) {
+export function canManageSkill(
+  skill: AgentSkillRow,
+  userId: string,
+  canManageGlobal = false,
+) {
   return skill.createdById === userId || (skill.isGlobal && canManageGlobal);
 }
 
-export async function canViewSkill(skill: Pick<AgentSkillRow, "id" | "createdById" | "isGlobal">, userId: string) {
-  return skill.createdById === userId || skill.isGlobal || authorization.hasPermission({ principalType: "user", principalId: userId }, "tools.view", "skill", skill.id);
+export async function canViewSkill(
+  skill: Pick<AgentSkillRow, "id" | "createdById" | "isGlobal">,
+  userId: string,
+) {
+  return (
+    skill.createdById === userId ||
+    skill.isGlobal ||
+    authorization.hasPermission(
+      { principalType: "user", principalId: userId },
+      "tools.view",
+      "skill",
+      skill.id,
+    )
+  );
 }
 
-export async function assertCanManageSkill(skill: AgentSkillRow, userId: string, canManageGlobal = false) {
-  if (!canManageSkill(skill, userId, canManageGlobal) && !(await authorization.hasPermission({ principalType: "user", principalId: userId }, "tools.configure", "skill", skill.id))) {
+export async function assertCanManageSkill(
+  skill: AgentSkillRow,
+  userId: string,
+  canManageGlobal = false,
+) {
+  if (
+    !canManageSkill(skill, userId, canManageGlobal) &&
+    !(await authorization.hasPermission(
+      { principalType: "user", principalId: userId },
+      "tools.configure",
+      "skill",
+      skill.id,
+    ))
+  ) {
     throw new Error("Skill not found");
   }
 }
@@ -129,6 +159,14 @@ export function normalizePackageAndSkill(value: string): ParsedInstallCommand {
   return { sourcePackage: value, skillNames: [] };
 }
 
-export const SKILLS_CLI_FLAGS = new Set(["--copy", "-y", "--yes", "--full-depth", "-g", "--global"]);
+export const SKILLS_CLI_FLAGS = new Set([
+  "--copy",
+  "-y",
+  "--yes",
+  "--full-depth",
+  "-g",
+  "--global",
+]);
 export const SKILLS_CLI_VALUE_FLAGS = new Set(["--agent", "-a"]);
-export const GITHUB_PACKAGE_PATTERN = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+(?:\.git)?$/;
+export const GITHUB_PACKAGE_PATTERN =
+  /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+(?:\.git)?$/;

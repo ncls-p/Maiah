@@ -1,8 +1,11 @@
-import { NextRequest,NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { handleRoute } from "@/lib/route-handler";
-import { getAccessConsoleSnapshot,IamOperationError } from "@/modules/iam/use-cases";
+import {
+  getAccessConsoleSnapshot,
+  IamOperationError,
+} from "@/modules/iam/use-cases";
 import { ACCESS_RESOURCE_TYPES } from "@/server/domain/entities/access-resource";
 
 const workspaceQuerySchema = z.object({
@@ -132,7 +135,10 @@ export const mutationSchema = z.discriminatedUnion("action", [
 
 export function expectedIamError(error: unknown) {
   if (error instanceof IamOperationError) {
-    return NextResponse.json({ error: error.message }, { status: error.status });
+    return NextResponse.json(
+      { error: error.message },
+      { status: error.status },
+    );
   }
   return null;
 }
@@ -145,7 +151,10 @@ export async function GET(req: NextRequest) {
         workspaceId: req.nextUrl.searchParams.get("workspaceId"),
       });
       if (!parsed.success) {
-        return NextResponse.json({ error: "Invalid project", details: parsed.error.issues }, { status: 400 });
+        return NextResponse.json(
+          { error: "Invalid project", details: parsed.error.issues },
+          { status: 400 },
+        );
       }
 
       const snapshot = await getAccessConsoleSnapshot({

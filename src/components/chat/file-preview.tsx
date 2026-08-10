@@ -6,7 +6,12 @@ import { useState, type ReactNode } from "react";
 import { Streamdown } from "streamdown";
 
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CopyIcon, DownloadIcon } from "lucide-react";
 
@@ -19,7 +24,9 @@ interface FilePreviewOptions {
 }
 
 async function requestPreviewText(attachmentId: string) {
-  const response = await fetch(`/api/workspace/chat-attachments/${attachmentId}/extracted`);
+  const response = await fetch(
+    `/api/workspace/chat-attachments/${attachmentId}/extracted`,
+  );
   const data = (await response.json().catch(() => null)) as {
     text?: string;
     error?: string;
@@ -38,13 +45,18 @@ export function useFilePreview(options: FilePreviewOptions) {
   const [loadingPreview, setLoadingPreview] = useState(false);
 
   async function loadPreviewText() {
-    if (!canPreview || nativePreview || previewText !== null || loadingPreview) return;
+    if (!canPreview || nativePreview || previewText !== null || loadingPreview)
+      return;
     setLoadingPreview(true);
     setPreviewError(null);
     try {
       setPreviewText(await requestPreviewText(attachmentId));
     } catch (error) {
-      setPreviewError(error instanceof Error ? error.message : "Failed to load extracted file text");
+      setPreviewError(
+        error instanceof Error
+          ? error.message
+          : "Failed to load extracted file text",
+      );
     } finally {
       setLoadingPreview(false);
     }
@@ -82,16 +94,30 @@ interface FilePreviewDialogProps {
   mimeType?: string | null;
 }
 
-export function FilePreviewDialog({ open, onOpenChange, fileName, url, subtitle, previewText, previewError, loadingPreview, mimeType }: FilePreviewDialogProps) {
+export function FilePreviewDialog({
+  open,
+  onOpenChange,
+  fileName,
+  url,
+  subtitle,
+  previewText,
+  previewError,
+  loadingPreview,
+  mimeType,
+}: FilePreviewDialogProps) {
   const t = useTranslations("chat.artifacts");
-  const isPdf = mimeType?.split(";", 1)[0]?.toLowerCase() === "application/pdf" || fileName.toLowerCase().endsWith(".pdf");
+  const isPdf =
+    mimeType?.split(";", 1)[0]?.toLowerCase() === "application/pdf" ||
+    fileName.toLowerCase().endsWith(".pdf");
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[85dvh] max-w-3xl flex-col overflow-hidden">
         <div className="flex min-w-0 items-start justify-between gap-3 border-b pb-3">
           <div className="min-w-0">
             <DialogTitle className="truncate text-base">{fileName}</DialogTitle>
-            <DialogDescription className="mt-1 text-xs text-muted-foreground">{subtitle}</DialogDescription>
+            <DialogDescription className="mt-1 text-xs text-muted-foreground">
+              {subtitle}
+            </DialogDescription>
           </div>
           <div className="flex shrink-0 items-center gap-1 pr-8">
             <Button
@@ -108,7 +134,12 @@ export function FilePreviewDialog({ open, onOpenChange, fileName, url, subtitle,
               <CopyIcon className="size-3" aria-hidden="true" />
               {t("copy")}
             </Button>
-            <Button asChild variant="ghost" size="sm" className="h-8 gap-1.5 px-2 text-xs">
+            <Button
+              asChild
+              variant="ghost"
+              size="sm"
+              className="h-8 gap-1.5 px-2 text-xs"
+            >
               <a href={url} target="_blank" rel="noreferrer">
                 <DownloadIcon className="size-3" aria-hidden="true" />
                 {t("download")}
@@ -118,13 +149,26 @@ export function FilePreviewDialog({ open, onOpenChange, fileName, url, subtitle,
         </div>
         <div className="min-h-0 flex-1 overflow-auto px-1 py-4">
           {isPdf ? (
-            <iframe src={url} title={fileName} className="h-[min(68dvh,52rem)] w-full rounded-xl border bg-background" />
+            <iframe
+              src={url}
+              title={fileName}
+              className="h-[min(68dvh,52rem)] w-full rounded-xl border bg-background"
+            />
           ) : loadingPreview ? (
             <Skeleton className="h-64 w-full rounded-xl" />
           ) : previewError ? (
-            <p className="rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">{previewError}</p>
+            <p className="rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">
+              {previewError}
+            </p>
           ) : (
-            <Streamdown mode="static" plugins={MARKDOWN_PLUGINS} controls={false} skipHtml disallowedElements={["img"]} className="min-h-0 flex-1 rounded-xl border bg-muted/20 p-4 text-sm leading-6 text-foreground">
+            <Streamdown
+              mode="static"
+              plugins={MARKDOWN_PLUGINS}
+              controls={false}
+              skipHtml
+              disallowedElements={["img"]}
+              className="min-h-0 flex-1 rounded-xl border bg-muted/20 p-4 text-sm leading-6 text-foreground"
+            >
               {previewText || t("noExtractedText")}
             </Streamdown>
           )}

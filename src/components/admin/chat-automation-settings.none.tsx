@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckIcon,CircleIcon } from "lucide-react";
+import { CheckIcon, CircleIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -25,11 +25,29 @@ export type ChatAutomationState = {
   }>;
 };
 
-export function ChecklistItem({ done, label }: { done: boolean; label: string }) {
+export function ChecklistItem({
+  done,
+  label,
+}: {
+  done: boolean;
+  label: string;
+}) {
   return (
     <li className="flex items-center gap-2 text-sm">
-      {done ? <CheckIcon className="size-4 shrink-0 text-emerald-600" aria-hidden="true" /> : <CircleIcon className="size-4 shrink-0 text-muted-foreground/70" aria-hidden="true" />}
-      <span className={cn(done ? "text-foreground" : "text-muted-foreground")}>{label}</span>
+      {done ? (
+        <CheckIcon
+          className="size-4 shrink-0 text-emerald-600"
+          aria-hidden="true"
+        />
+      ) : (
+        <CircleIcon
+          className="size-4 shrink-0 text-muted-foreground/70"
+          aria-hidden="true"
+        />
+      )}
+      <span className={cn(done ? "text-foreground" : "text-muted-foreground")}>
+        {label}
+      </span>
     </li>
   );
 }

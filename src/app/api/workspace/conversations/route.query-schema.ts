@@ -9,11 +9,21 @@ export const querySchema = z.object({
   before: z.string().optional(),
   q: z.string().trim().min(1).max(200).optional(),
   includeMeta: z.enum(["true", "false"]).optional(),
-  limit: z.coerce.number().int().min(1).max(MAX_CONVERSATION_LIMIT).default(DEFAULT_CONVERSATION_LIMIT),
+  limit: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(MAX_CONVERSATION_LIMIT)
+    .default(DEFAULT_CONVERSATION_LIMIT),
 });
 
-export function createConversationCursor(conversation: { id: string; updatedAt: Date | string } | undefined) {
+export function createConversationCursor(
+  conversation: { id: string; updatedAt: Date | string } | undefined,
+) {
   if (!conversation) return null;
-  const updatedAt = conversation.updatedAt instanceof Date ? conversation.updatedAt.toISOString() : conversation.updatedAt;
+  const updatedAt =
+    conversation.updatedAt instanceof Date
+      ? conversation.updatedAt.toISOString()
+      : conversation.updatedAt;
   return `${updatedAt}|${conversation.id}`;
 }

@@ -14,20 +14,35 @@ function boundedInteger(value: number | null | undefined, fallback: number) {
   return Math.max(0, Math.floor(value as number));
 }
 
-export function resolveAgentRuntimeLimits(input: { maxToolCalls?: number | null; maxOutputTokens?: number | null }) {
+export function resolveAgentRuntimeLimits(input: {
+  maxToolCalls?: number | null;
+  maxOutputTokens?: number | null;
+}) {
   const maxToolCalls = boundedInteger(input.maxToolCalls, 20);
-  const maxOutputTokens = Math.max(1, boundedInteger(input.maxOutputTokens, agentRuntimePolicy.defaultMaxOutputTokens));
+  const maxOutputTokens = Math.max(
+    1,
+    boundedInteger(
+      input.maxOutputTokens,
+      agentRuntimePolicy.defaultMaxOutputTokens,
+    ),
+  );
   return {
     maxToolCalls,
     maxOutputTokens,
-    maxSteps: maxToolCalls === 0 ? 1 : maxToolCalls + agentRuntimePolicy.stepOverhead,
+    maxSteps:
+      maxToolCalls === 0 ? 1 : maxToolCalls + agentRuntimePolicy.stepOverhead,
   };
 }
 
-export function createRuntimeDeadline(timeoutMs: number, parentSignal?: AbortSignal) {
+export function createRuntimeDeadline(
+  timeoutMs: number,
+  parentSignal?: AbortSignal,
+) {
   const timeoutSignal = AbortSignal.timeout(timeoutMs);
   return {
     timeoutSignal,
-    signal: parentSignal ? AbortSignal.any([parentSignal, timeoutSignal]) : timeoutSignal,
+    signal: parentSignal
+      ? AbortSignal.any([parentSignal, timeoutSignal])
+      : timeoutSignal,
   };
 }

@@ -1,8 +1,18 @@
-import { Field,FieldContent,FieldLabel } from "@/components/ui/field";
-import { Select,SelectContent,SelectItem,SelectTrigger,SelectValue } from "@/components/ui/select";
+import { Field, FieldContent, FieldLabel } from "@/components/ui/field";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 import type { ModelAdvancedFieldsViewModel } from "./model-advanced-fields.model-advanced-fields.view";
-export function ModelAdvancedMainSection3({ model }: { model: ModelAdvancedFieldsViewModel }) {
+export function ModelAdvancedMainSection3({
+  model,
+}: {
+  model: ModelAdvancedFieldsViewModel;
+}) {
   const { form, setForm, t } = model;
   return (
     <Field>

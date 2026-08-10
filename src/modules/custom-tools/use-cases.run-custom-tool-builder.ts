@@ -1,16 +1,33 @@
-import { generateText,stepCountIs } from "ai";
-import { eq,sql } from "drizzle-orm";
+import { generateText, stepCountIs } from "ai";
+import { eq, sql } from "drizzle-orm";
 
 import { logger } from "@/lib/logger";
-import { agentRuntimePolicy,createRuntimeDeadline } from "@/modules/agent/runtime-policy";
+import {
+  agentRuntimePolicy,
+  createRuntimeDeadline,
+} from "@/modules/agent/runtime-policy";
 import { db } from "@/server/infrastructure/db";
 import { mcpTools } from "@/server/infrastructure/db/schema";
 import { getAdapter } from "@/server/infrastructure/providers";
-import { createSecretRequest,inferSecretRequestFromAssistantText } from "./use-cases.call-configured-n8n-tool";
+import {
+  createSecretRequest,
+  inferSecretRequestFromAssistantText,
+} from "./use-cases.call-configured-n8n-tool";
 import { createCustomToolBuilderTools } from "./use-cases.custom-tool-builder-tools";
-import { BuilderMessage,SecretField,getCustomToolBuilderConfig,resolveRuntimeProvider } from "./use-cases.custom-tool-row";
+import {
+  BuilderMessage,
+  SecretField,
+  getCustomToolBuilderConfig,
+  resolveRuntimeProvider,
+} from "./use-cases.custom-tool-row";
 
-export type CustomToolBuilderInput = { workspaceId: string; userId: string; messages: BuilderMessage[]; credentialRefs?: Array<{ requestId: string; credentialRef: string }>; isGlobal?: boolean };
+export type CustomToolBuilderInput = {
+  workspaceId: string;
+  userId: string;
+  messages: BuilderMessage[];
+  credentialRefs?: Array<{ requestId: string; credentialRef: string }>;
+  isGlobal?: boolean;
+};
 
 export async function runCustomToolBuilder(input: CustomToolBuilderInput) {
   const config = await getCustomToolBuilderConfig();
@@ -25,7 +42,10 @@ export async function runCustomToolBuilder(input: CustomToolBuilderInput) {
   if (!provider) throw new Error("Custom tool builder LLM is not configured");
 
   const adapter = getAdapter(provider.kind);
-  const model = adapter.createChatModel(provider.runtimeConfig, provider.modelId);
+  const model = adapter.createChatModel(
+    provider.runtimeConfig,
+    provider.modelId,
+  );
   const secretRequests: Array<{
     id: string;
     title: string;
@@ -42,8 +62,10 @@ export async function runCustomToolBuilder(input: CustomToolBuilderInput) {
     outputs?: string[];
     status: "draft" | "needs_secrets" | "ready" | "created";
   }> = [];
-  const registeredTools: Array<{ id: string; name: string; status: string }> = [];
-  const progressEvents: Array<{ label: string; status: "done" | "pending" }> = [];
+  const registeredTools: Array<{ id: string; name: string; status: string }> =
+    [];
+  const progressEvents: Array<{ label: string; status: "done" | "pending" }> =
+    [];
   let builderActionCount = 0;
   function reserveBuilderAction() {
     if (builderActionCount >= agentRuntimePolicy.customToolBuilderMaxActions) {
@@ -55,7 +77,11 @@ export async function runCustomToolBuilder(input: CustomToolBuilderInput) {
   const n8nTools = await db
     .select({ name: mcpTools.name, description: mcpTools.description })
     .from(mcpTools)
-    .where(config.n8nMcpServerId ? eq(mcpTools.mcpServerId, config.n8nMcpServerId) : sql`false`);
+    .where(
+      config.n8nMcpServerId
+        ? eq(mcpTools.mcpServerId, config.n8nMcpServerId)
+        : sql`false`,
+    );
 
   const system = [
     "You are a custom-tool builder assistant for an AI assistant platform.",
@@ -71,13 +97,19 @@ export async function runCustomToolBuilder(input: CustomToolBuilderInput) {
     "You may also stop to ask concise clarification questions when the user's request is ambiguous. In that case, do not call creation tools yet.",
     "After creating a workflow, register it as a custom tool with a clear name, description, and JSON input schema.",
     `Configured n8n MCP tool names: create=${config.createWorkflowToolName}, validate=${config.validateWorkflowToolName}, activate=${config.activateWorkflowToolName}, credentials=${config.credentialToolName}.`,
-    n8nTools.length ? `Discovered n8n MCP tools include: ${n8nTools.map((item) => item.name).join(", ")}.` : "No n8n MCP tools have been synced yet; use the configured tool names if needed.",
-    input.credentialRefs?.length ? `Opaque credential refs already submitted for this turn: ${JSON.stringify(input.credentialRefs)}.` : null,
+    n8nTools.length
+      ? `Discovered n8n MCP tools include: ${n8nTools.map((item) => item.name).join(", ")}.`
+      : "No n8n MCP tools have been synced yet; use the configured tool names if needed.",
+    input.credentialRefs?.length
+      ? `Opaque credential refs already submitted for this turn: ${JSON.stringify(input.credentialRefs)}.`
+      : null,
   ]
     .filter(Boolean)
     .join("\n\n");
 
-  const runtimeDeadline = createRuntimeDeadline(agentRuntimePolicy.customToolBuilderTimeoutMs);
+  const runtimeDeadline = createRuntimeDeadline(
+    agentRuntimePolicy.customToolBuilderTimeoutMs,
+  );
   const result = await generateText({
     model,
     system,
@@ -88,7 +120,16 @@ export async function runCustomToolBuilder(input: CustomToolBuilderInput) {
     stopWhen: stepCountIs(agentRuntimePolicy.customToolBuilderMaxSteps),
     maxOutputTokens: agentRuntimePolicy.customToolBuilderMaxOutputTokens,
     abortSignal: runtimeDeadline.signal,
-    tools: createCustomToolBuilderTools({ input, config, reserveBuilderAction, secretRequests, createdWorkflows, workflowPreviews, registeredTools, progressEvents }),
+    tools: createCustomToolBuilderTools({
+      input,
+      config,
+      reserveBuilderAction,
+      secretRequests,
+      createdWorkflows,
+      workflowPreviews,
+      registeredTools,
+      progressEvents,
+    }),
   });
 
   if (secretRequests.length === 0) {
@@ -121,7 +162,11 @@ export async function runCustomToolBuilder(input: CustomToolBuilderInput) {
 
   return {
     message: result.text,
-    actionCount: secretRequests.length + createdWorkflows.length + workflowPreviews.length + registeredTools.length,
+    actionCount:
+      secretRequests.length +
+      createdWorkflows.length +
+      workflowPreviews.length +
+      registeredTools.length,
     secretRequests,
     createdWorkflows,
     workflowPreviews,

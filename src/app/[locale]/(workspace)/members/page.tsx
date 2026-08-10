@@ -13,7 +13,11 @@ export default async function MembersPage() {
   const users = isPlatformAdmin ? await listAdminUsers() : [];
 
   return (
-    <WorkspacePage title={t("title")} description={t("description")} width="wide">
+    <WorkspacePage
+      title={t("title")}
+      description={t("description")}
+      width="wide"
+    >
       <AccessConsole
         platformUsers={
           isPlatformAdmin

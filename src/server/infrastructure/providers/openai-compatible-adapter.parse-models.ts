@@ -1,4 +1,4 @@
-import type { ModelCapability,ModelDescriptor } from "./adapter";
+import type { ModelCapability, ModelDescriptor } from "./adapter";
 import { DEFAULT_CAPABILITIES } from "./openai-compatible-adapter.default-capabilities";
 
 type OpenAICompatibleModel = {
@@ -44,7 +44,9 @@ function toPositiveNumber(value: number | string | null | undefined) {
 
 function toNonNegativeCost(value: number | string | null | undefined) {
   const parsed = typeof value === "string" ? Number(value) : value;
-  return typeof parsed === "number" && Number.isFinite(parsed) && parsed >= 0 ? String(parsed) : undefined;
+  return typeof parsed === "number" && Number.isFinite(parsed) && parsed >= 0
+    ? String(parsed)
+    : undefined;
 }
 
 function normalizeModalities(values: string[] | undefined) {
@@ -53,8 +55,12 @@ function normalizeModalities(values: string[] | undefined) {
 
 function capabilitiesFromModel(model: OpenAICompatibleModel): ModelCapability {
   const capabilities = { ...DEFAULT_CAPABILITIES };
-  const inputModalities = normalizeModalities(model.architecture?.input_modalities);
-  const outputModalities = normalizeModalities(model.architecture?.output_modalities);
+  const inputModalities = normalizeModalities(
+    model.architecture?.input_modalities,
+  );
+  const outputModalities = normalizeModalities(
+    model.architecture?.output_modalities,
+  );
   const task = model.task?.toLowerCase();
 
   if (inputModalities.has("image")) capabilities.vision = true;
@@ -69,17 +75,37 @@ function capabilitiesFromModel(model: OpenAICompatibleModel): ModelCapability {
 }
 
 function sustainabilityFromModel(model: OpenAICompatibleModel) {
-  const energyKwhPerMillionTokens = toPositiveNumber(model.energy_kwh_per_million_tokens ?? model.sustainability?.energy_kwh_per_million_tokens);
-  const co2GramsPerMillionTokens = toPositiveNumber(model.co2_grams_per_million_tokens ?? model.sustainability?.co2_grams_per_million_tokens);
-  const hasApiPricing = toNonNegativeCost(model.input_token_cost_per_million ?? model.pricing?.input_per_million) !== undefined || toNonNegativeCost(model.output_token_cost_per_million ?? model.pricing?.output_per_million) !== undefined;
-  if (energyKwhPerMillionTokens === undefined && co2GramsPerMillionTokens === undefined && !hasApiPricing) {
+  const energyKwhPerMillionTokens = toPositiveNumber(
+    model.energy_kwh_per_million_tokens ??
+      model.sustainability?.energy_kwh_per_million_tokens,
+  );
+  const co2GramsPerMillionTokens = toPositiveNumber(
+    model.co2_grams_per_million_tokens ??
+      model.sustainability?.co2_grams_per_million_tokens,
+  );
+  const hasApiPricing =
+    toNonNegativeCost(
+      model.input_token_cost_per_million ?? model.pricing?.input_per_million,
+    ) !== undefined ||
+    toNonNegativeCost(
+      model.output_token_cost_per_million ?? model.pricing?.output_per_million,
+    ) !== undefined;
+  if (
+    energyKwhPerMillionTokens === undefined &&
+    co2GramsPerMillionTokens === undefined &&
+    !hasApiPricing
+  ) {
     return undefined;
   }
   return {
     energyKwhPerMillionTokens,
     co2GramsPerMillionTokens,
     source: "Provider API model metadata",
-    currency: model.pricing?.currency ?? model.sustainability?.currency ?? model.currency ?? "EUR",
+    currency:
+      model.pricing?.currency ??
+      model.sustainability?.currency ??
+      model.currency ??
+      "EUR",
   };
 }
 
@@ -95,9 +121,16 @@ export function parseModels(data: unknown): ModelDescriptor[] {
       modelId: model.id,
       displayName: model.id,
       capabilities: capabilitiesFromModel(model),
-      contextWindow: toPositiveNumber(model.max_model_len ?? model.meta?.n_ctx ?? model.meta?.n_ctx_train),
-      inputTokenCost: toNonNegativeCost(model.input_token_cost_per_million ?? model.pricing?.input_per_million),
-      outputTokenCost: toNonNegativeCost(model.output_token_cost_per_million ?? model.pricing?.output_per_million),
+      contextWindow: toPositiveNumber(
+        model.max_model_len ?? model.meta?.n_ctx ?? model.meta?.n_ctx_train,
+      ),
+      inputTokenCost: toNonNegativeCost(
+        model.input_token_cost_per_million ?? model.pricing?.input_per_million,
+      ),
+      outputTokenCost: toNonNegativeCost(
+        model.output_token_cost_per_million ??
+          model.pricing?.output_per_million,
+      ),
       sustainability: sustainabilityFromModel(model),
     }));
 }

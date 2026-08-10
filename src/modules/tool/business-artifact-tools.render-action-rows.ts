@@ -1,13 +1,30 @@
 import { z } from "zod";
-import { createArtifact,escapeHtml,raciMatrixInputSchema,renderList } from "./business-artifact-tools.raci-matrix-input-schema";
-import { actionItemSchema,actionPlanInputSchema,decisionMatrixInputSchema,emailPackInputSchema,impactSchema,meetingBriefInputSchema,projectStatusReportInputSchema,riskRegisterInputSchema,statusSchema } from "./business-artifact-tools.short-text";
+import {
+  createArtifact,
+  escapeHtml,
+  raciMatrixInputSchema,
+  renderList,
+} from "./business-artifact-tools.raci-matrix-input-schema";
+import {
+  actionItemSchema,
+  actionPlanInputSchema,
+  decisionMatrixInputSchema,
+  emailPackInputSchema,
+  impactSchema,
+  meetingBriefInputSchema,
+  projectStatusReportInputSchema,
+  riskRegisterInputSchema,
+  statusSchema,
+} from "./business-artifact-tools.short-text";
 
 export function renderActionRows(items: z.infer<typeof actionItemSchema>[]) {
   if (items.length === 0) return "";
   return `<div class="table-wrap"><table><thead><tr><th>Task</th><th>Owner</th><th>Due</th><th>Status</th></tr></thead><tbody>${items.map((item) => `<tr><td>${escapeHtml(item.task)}</td><td>${escapeHtml(item.owner ?? "—")}</td><td>${escapeHtml(item.dueDate ?? "—")}</td><td>${escapeHtml(item.status ?? item.priority ?? "—")}</td></tr>`).join("")}</tbody></table></div>`;
 }
 
-export function createMeetingBriefArtifact(input: z.infer<typeof meetingBriefInputSchema>) {
+export function createMeetingBriefArtifact(
+  input: z.infer<typeof meetingBriefInputSchema>,
+) {
   const body = `<header class="artifact-hero compact">
 		<p class="artifact-kicker">Meeting brief${input.date ? ` · ${escapeHtml(input.date)}` : ""}</p>
 		<h1>${escapeHtml(input.title)}</h1>
@@ -22,7 +39,9 @@ export function createMeetingBriefArtifact(input: z.infer<typeof meetingBriefInp
   return createArtifact(input.title, body, input.height, "meeting_brief");
 }
 
-export function createActionPlanArtifact(input: z.infer<typeof actionPlanInputSchema>) {
+export function createActionPlanArtifact(
+  input: z.infer<typeof actionPlanInputSchema>,
+) {
   const phases = input.phases
     .map(
       (phase, index) => `<article class="timeline-item">
@@ -38,24 +57,43 @@ export function createActionPlanArtifact(input: z.infer<typeof actionPlanInputSc
   return createArtifact(input.title, body, input.height, "action_plan");
 }
 
-export function createDecisionMatrixArtifact(input: z.infer<typeof decisionMatrixInputSchema>) {
-  const totalWeight = input.criteria.reduce((sum, item) => sum + item.weight, 0) || 1;
+export function createDecisionMatrixArtifact(
+  input: z.infer<typeof decisionMatrixInputSchema>,
+) {
+  const totalWeight =
+    input.criteria.reduce((sum, item) => sum + item.weight, 0) || 1;
   const scoredOptions = input.options
     .map((option) => {
-      const score = input.criteria.reduce((sum, criterion, index) => sum + (option.scores[index] ?? 0) * criterion.weight, 0);
+      const score = input.criteria.reduce(
+        (sum, criterion, index) =>
+          sum + (option.scores[index] ?? 0) * criterion.weight,
+        0,
+      );
       return { ...option, total: score / totalWeight };
     })
     .sort((a, b) => b.total - a.total);
   const header = `<th>Option</th>${input.criteria.map((criterion) => `<th>${escapeHtml(criterion.name)}<small>×${criterion.weight}</small></th>`).join("")}<th>Total</th>`;
-  const rows = scoredOptions.map((option) => `<tr><td><strong>${escapeHtml(option.name)}</strong>${option.description ? `<small>${escapeHtml(option.description)}</small>` : ""}</td>${input.criteria.map((_, index) => `<td>${option.scores[index] ?? "—"}</td>`).join("")}<td><strong>${option.total.toFixed(1)}</strong></td></tr>`).join("");
+  const rows = scoredOptions
+    .map(
+      (option) =>
+        `<tr><td><strong>${escapeHtml(option.name)}</strong>${option.description ? `<small>${escapeHtml(option.description)}</small>` : ""}</td>${input.criteria.map((_, index) => `<td>${option.scores[index] ?? "—"}</td>`).join("")}<td><strong>${option.total.toFixed(1)}</strong></td></tr>`,
+    )
+    .join("");
   const body = `<header class="artifact-hero compact"><p class="artifact-kicker">Decision matrix</p><h1>${escapeHtml(input.title)}</h1>${input.context ? `<p class="artifact-summary">${escapeHtml(input.context)}</p>` : ""}</header>
 	<div class="table-wrap"><table><thead><tr>${header}</tr></thead><tbody>${rows}</tbody></table></div>
 	<section class="artifact-card"><h2>Recommendation</h2><p>${escapeHtml(input.recommendation ?? scoredOptions[0]?.name ?? "Review the highest-scoring option.")}</p></section>`;
   return createArtifact(input.title, body, input.height, "decision_matrix");
 }
 
-export function createEmailPackArtifact(input: z.infer<typeof emailPackInputSchema>) {
-  const emails = input.emails.map((email) => `<article class="artifact-section email-card"><p class="artifact-kicker">${escapeHtml(email.label)} · ${escapeHtml(input.tone)}</p><h2>${escapeHtml(email.subject)}</h2><pre>${escapeHtml(email.body)}</pre>${email.cta ? `<p class="artifact-meta">CTA: ${escapeHtml(email.cta)}</p>` : ""}</article>`).join("");
+export function createEmailPackArtifact(
+  input: z.infer<typeof emailPackInputSchema>,
+) {
+  const emails = input.emails
+    .map(
+      (email) =>
+        `<article class="artifact-section email-card"><p class="artifact-kicker">${escapeHtml(email.label)} · ${escapeHtml(input.tone)}</p><h2>${escapeHtml(email.subject)}</h2><pre>${escapeHtml(email.body)}</pre>${email.cta ? `<p class="artifact-meta">CTA: ${escapeHtml(email.cta)}</p>` : ""}</article>`,
+    )
+    .join("");
   const body = `<header class="artifact-hero compact"><p class="artifact-kicker">Email pack${input.audience ? ` · ${escapeHtml(input.audience)}` : ""}</p><h1>${escapeHtml(input.title)}</h1>${input.goal ? `<p class="artifact-summary">${escapeHtml(input.goal)}</p>` : ""}</header>${emails}`;
   return createArtifact(input.title, body, input.height, "email_pack");
 }
@@ -74,7 +112,9 @@ function renderStatusBadge(status: z.infer<typeof statusSchema>) {
   return `<span class="status-badge status-${status}">${statusLabel(status)}</span>`;
 }
 
-function renderMetricCards(metrics: z.infer<typeof projectStatusReportInputSchema>["metrics"]) {
+function renderMetricCards(
+  metrics: z.infer<typeof projectStatusReportInputSchema>["metrics"],
+) {
   if (metrics.length === 0) return "";
   return `<section class="artifact-grid metrics-grid">${metrics
     .map(
@@ -88,8 +128,15 @@ function renderMetricCards(metrics: z.infer<typeof projectStatusReportInputSchem
     .join("")}</section>`;
 }
 
-export function createProjectStatusReportArtifact(input: z.infer<typeof projectStatusReportInputSchema>) {
-  const milestones = input.milestones.map((milestone) => `<tr><td><strong>${escapeHtml(milestone.name)}</strong>${milestone.note ? `<small>${escapeHtml(milestone.note)}</small>` : ""}</td><td>${renderStatusBadge(milestone.status)}</td><td>${escapeHtml(milestone.dueDate ?? "—")}</td></tr>`).join("");
+export function createProjectStatusReportArtifact(
+  input: z.infer<typeof projectStatusReportInputSchema>,
+) {
+  const milestones = input.milestones
+    .map(
+      (milestone) =>
+        `<tr><td><strong>${escapeHtml(milestone.name)}</strong>${milestone.note ? `<small>${escapeHtml(milestone.note)}</small>` : ""}</td><td>${renderStatusBadge(milestone.status)}</td><td>${escapeHtml(milestone.dueDate ?? "—")}</td></tr>`,
+    )
+    .join("");
   const body = `<header class="artifact-hero compact">
 		<p class="artifact-kicker">Project status${input.reportingPeriod ? ` · ${escapeHtml(input.reportingPeriod)}` : ""}</p>
 		<div class="hero-row"><h1>${escapeHtml(input.title)}</h1>${renderStatusBadge(input.overallStatus)}</div>
@@ -102,7 +149,12 @@ export function createProjectStatusReportArtifact(input: z.infer<typeof projectS
 		<section class="artifact-card"><h2>Decisions needed</h2>${renderList(input.decisionsNeeded)}</section>
 	</div>
 	<section class="artifact-card"><h2>Next actions</h2>${renderActionRows(input.nextSteps)}</section>`;
-  return createArtifact(input.title, body, input.height, "project_status_report");
+  return createArtifact(
+    input.title,
+    body,
+    input.height,
+    "project_status_report",
+  );
 }
 
 function riskScore(value: z.infer<typeof impactSchema>) {
@@ -110,7 +162,9 @@ function riskScore(value: z.infer<typeof impactSchema>) {
   return scores[value];
 }
 
-export function createRiskRegisterArtifact(input: z.infer<typeof riskRegisterInputSchema>) {
+export function createRiskRegisterArtifact(
+  input: z.infer<typeof riskRegisterInputSchema>,
+) {
   const rows = input.risks
     .map((risk) => {
       const score = riskScore(risk.likelihood) * riskScore(risk.impact);
@@ -122,7 +176,9 @@ export function createRiskRegisterArtifact(input: z.infer<typeof riskRegisterInp
   return createArtifact(input.title, body, input.height, "risk_register");
 }
 
-export function createRaciMatrixArtifact(input: z.infer<typeof raciMatrixInputSchema>) {
+export function createRaciMatrixArtifact(
+  input: z.infer<typeof raciMatrixInputSchema>,
+) {
   const header = `<th>Activity</th>${input.roles.map((role) => `<th>${escapeHtml(role)}</th>`).join("")}<th>Notes</th>`;
   const rows = input.activities
     .map(

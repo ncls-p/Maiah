@@ -1,5 +1,9 @@
-import type { RerankingModelV4,RerankingModelV4CallOptions,RerankingModelV4Result } from "@ai-sdk/provider";
-import type { ModelCapability,ProviderRuntimeConfig } from "./adapter";
+import type {
+  RerankingModelV4,
+  RerankingModelV4CallOptions,
+  RerankingModelV4Result,
+} from "@ai-sdk/provider";
+import type { ModelCapability, ProviderRuntimeConfig } from "./adapter";
 
 export const DEFAULT_CAPABILITIES: ModelCapability = {
   text: true,
@@ -32,7 +36,9 @@ export function parseRequestUrl(input: RequestInfo | URL): URL | undefined {
   }
 }
 
-export function buildHeaders(config: ProviderRuntimeConfig): Record<string, string> {
+export function buildHeaders(
+  config: ProviderRuntimeConfig,
+): Record<string, string> {
   const headers: Record<string, string> = { ...config.headers };
 
   switch (config.authType) {
@@ -56,27 +62,35 @@ export function buildHeaders(config: ProviderRuntimeConfig): Record<string, stri
   return headers;
 }
 
-export function createCompatibleRerankingModel(config: ProviderRuntimeConfig, modelId: string): RerankingModelV4 {
+export function createCompatibleRerankingModel(
+  config: ProviderRuntimeConfig,
+  modelId: string,
+): RerankingModelV4 {
   return {
     specificationVersion: "v4",
     provider: config.name,
     modelId,
-    async doRerank(options: RerankingModelV4CallOptions): Promise<RerankingModelV4Result> {
-      const response = await fetch(`${normalizeBaseUrl(config.baseUrl)}/rerank`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...buildHeaders(config),
-          ...options.headers,
+    async doRerank(
+      options: RerankingModelV4CallOptions,
+    ): Promise<RerankingModelV4Result> {
+      const response = await fetch(
+        `${normalizeBaseUrl(config.baseUrl)}/rerank`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...buildHeaders(config),
+            ...options.headers,
+          },
+          body: JSON.stringify({
+            model: modelId,
+            query: options.query,
+            documents: options.documents.values,
+            top_n: options.topN,
+          }),
+          signal: options.abortSignal,
         },
-        body: JSON.stringify({
-          model: modelId,
-          query: options.query,
-          documents: options.documents.values,
-          top_n: options.topN,
-        }),
-        signal: options.abortSignal,
-      });
+      );
       const body = (await response.json()) as {
         id?: string;
         results?: Array<{
@@ -92,8 +106,11 @@ export function createCompatibleRerankingModel(config: ProviderRuntimeConfig, mo
         error?: { message?: string } | string;
       };
       if (!response.ok) {
-        const message = typeof body.error === "string" ? body.error : body.error?.message;
-        throw new Error(message || `Reranking failed with HTTP ${response.status}`);
+        const message =
+          typeof body.error === "string" ? body.error : body.error?.message;
+        throw new Error(
+          message || `Reranking failed with HTTP ${response.status}`,
+        );
       }
       const results = body.results ?? body.data ?? [];
       return {
@@ -117,22 +134,38 @@ function compatibleResponsesMessage(item: unknown) {
   if (typeof item !== "object" || item === null) return item;
   const record = item as Record<string, unknown>;
   if (record.type === "item_reference") return null;
-  if (record.role !== "assistant" || !Array.isArray(record.content) || !record.content.every((part) => typeof part === "object" && part !== null && (part as { type?: unknown }).type === "output_text" && typeof (part as { text?: unknown }).text === "string")) {
+  if (
+    record.role !== "assistant" ||
+    !Array.isArray(record.content) ||
+    !record.content.every(
+      (part) =>
+        typeof part === "object" &&
+        part !== null &&
+        (part as { type?: unknown }).type === "output_text" &&
+        typeof (part as { text?: unknown }).text === "string",
+    )
+  ) {
     return item;
   }
 
   return {
     ...record,
-    content: record.content.map((part) => (part as { text: string }).text).join(""),
+    content: record.content
+      .map((part) => (part as { text: string }).text)
+      .join(""),
   };
 }
 
-export function normalizeResponsesInputForCompatibleProvider(body: BodyInit | null | undefined) {
+export function normalizeResponsesInputForCompatibleProvider(
+  body: BodyInit | null | undefined,
+) {
   if (typeof body !== "string") return body;
   try {
     const payload = JSON.parse(body) as Record<string, unknown>;
     if (!Array.isArray(payload.input)) return body;
-    const input = payload.input.map(compatibleResponsesMessage).filter((item) => item !== null);
+    const input = payload.input
+      .map(compatibleResponsesMessage)
+      .filter((item) => item !== null);
     if (JSON.stringify(input) === JSON.stringify(payload.input)) return body;
     return JSON.stringify({ ...payload, input });
   } catch {
@@ -140,4 +173,5 @@ export function normalizeResponsesInputForCompatibleProvider(body: BodyInit | nu
   }
 }
 
-export const stripUnsupportedResponsesItemReferences = normalizeResponsesInputForCompatibleProvider;
+export const stripUnsupportedResponsesItemReferences =
+  normalizeResponsesInputForCompatibleProvider;

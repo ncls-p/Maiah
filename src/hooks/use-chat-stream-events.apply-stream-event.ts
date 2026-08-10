@@ -1,5 +1,13 @@
 "use client";
-import { appendMessagePart, completeReasoningParts, startReasoningPart, type ChatCitation, type ChatMessage, type ChatStreamEvent, type PendingToolApproval } from "@/components/chat/chat-types";
+import {
+  appendMessagePart,
+  completeReasoningParts,
+  startReasoningPart,
+  type ChatCitation,
+  type ChatMessage,
+  type ChatStreamEvent,
+  type PendingToolApproval,
+} from "@/components/chat/chat-types";
 import { TOOL_CALL_PART_TYPE } from "./use-chat-stream-events.stored-chat-stream-draft";
 export function applyStreamEvent(
   parsed: ChatStreamEvent,
@@ -70,7 +78,10 @@ export function applyStreamEvent(
       for (let i = nextParts.length - 1; i >= 0; i--) {
         if (nextParts[i].type !== TOOL_CALL_PART_TYPE) continue;
         try {
-          const parsedPart = JSON.parse(nextParts[i].content) as Record<string, unknown>;
+          const parsedPart = JSON.parse(nextParts[i].content) as Record<
+            string,
+            unknown
+          >;
           if (parsedPart.toolCallId === parsed.toolCallId) {
             nextParts[i] = {
               type: TOOL_CALL_PART_TYPE,
@@ -96,7 +107,10 @@ export function applyStreamEvent(
       for (let i = nextParts.length - 1; i >= 0; i--) {
         if (nextParts[i].type !== TOOL_CALL_PART_TYPE) continue;
         try {
-          const parsedPart = JSON.parse(nextParts[i].content) as Record<string, unknown>;
+          const parsedPart = JSON.parse(nextParts[i].content) as Record<
+            string,
+            unknown
+          >;
           if (parsedPart.toolCallId === parsed.toolCallId) {
             nextParts[i] = {
               type: TOOL_CALL_PART_TYPE,
@@ -137,7 +151,10 @@ export function applyStreamEvent(
       for (let i = nextParts.length - 1; i >= 0; i--) {
         if (nextParts[i].type !== TOOL_CALL_PART_TYPE) continue;
         try {
-          const parsedPart = JSON.parse(nextParts[i].content) as Record<string, unknown>;
+          const parsedPart = JSON.parse(nextParts[i].content) as Record<
+            string,
+            unknown
+          >;
           if (parsedPart.toolCallId === parsed.toolCallId) {
             nextParts[i] = {
               type: TOOL_CALL_PART_TYPE,
@@ -168,7 +185,10 @@ export function applyStreamEvent(
       for (let i = nextParts.length - 1; i >= 0; i--) {
         if (nextParts[i].type !== TOOL_CALL_PART_TYPE) continue;
         try {
-          const parsedPart = JSON.parse(nextParts[i].content) as Record<string, unknown>;
+          const parsedPart = JSON.parse(nextParts[i].content) as Record<
+            string,
+            unknown
+          >;
           if (parsedPart.toolCallId === parsed.toolCallId) {
             nextParts[i] = { type: TOOL_CALL_PART_TYPE, content };
             return { ...message, parts: nextParts };
@@ -187,7 +207,10 @@ export function applyStreamEvent(
   if (parsed.type === "file") {
     handlers.updateAssistant((message) => ({
       ...message,
-      parts: [...message.parts, { type: "file", content: JSON.stringify(parsed.artifact) }],
+      parts: [
+        ...message.parts,
+        { type: "file", content: JSON.stringify(parsed.artifact) },
+      ],
     }));
     return;
   }
@@ -200,7 +223,10 @@ export function applyStreamEvent(
       for (let i = 0; i < nextParts.length; i++) {
         if (nextParts[i].type !== TOOL_CALL_PART_TYPE) continue;
         try {
-          const parsedPart = JSON.parse(nextParts[i].content) as Record<string, unknown>;
+          const parsedPart = JSON.parse(nextParts[i].content) as Record<
+            string,
+            unknown
+          >;
           if (parsedPart.toolCallId === parsed.toolCallId) {
             nextParts[i] = {
               type: TOOL_CALL_PART_TYPE,
@@ -249,19 +275,30 @@ export function applyStreamEvent(
   if (parsed.type === "impact") {
     handlers.updateAssistant((message) => ({
       ...message,
-      parts: [...message.parts.filter((part) => part.type !== "impact"), { type: "impact", content: JSON.stringify(parsed.impact) }],
+      parts: [
+        ...message.parts.filter((part) => part.type !== "impact"),
+        { type: "impact", content: JSON.stringify(parsed.impact) },
+      ],
     }));
     return;
   }
   if (parsed.type === "summary") {
     handlers.updateAssistant((message) => ({
       ...message,
-      parts: [...message.parts.filter((part) => part.type !== "summary"), { type: "summary", content: parsed.summary }],
+      parts: [
+        ...message.parts.filter((part) => part.type !== "summary"),
+        { type: "summary", content: parsed.summary },
+      ],
     }));
     return;
   }
   if (parsed.type === "citations") {
-    const citationList = "citations" in parsed ? parsed.citations : "sources" in parsed ? (parsed as { sources: ChatCitation[] }).sources : [];
+    const citationList =
+      "citations" in parsed
+        ? parsed.citations
+        : "sources" in parsed
+          ? (parsed as { sources: ChatCitation[] }).sources
+          : [];
     handlers.setCitations(citationList);
     handlers.updateAssistant((message) => ({
       ...message,

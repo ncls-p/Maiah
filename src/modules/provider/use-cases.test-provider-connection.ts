@@ -1,17 +1,25 @@
 import { db } from "@/server/infrastructure/db";
-import { aiModels,aiProviders } from "@/server/infrastructure/db/schema";
+import { aiModels, aiProviders } from "@/server/infrastructure/db/schema";
 import type { ProviderHealth } from "@/server/infrastructure/providers";
 import { getAdapter } from "@/server/infrastructure/providers";
-import { and,eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { buildProviderRuntimeConfig } from "./provider-runtime-config";
 
 // ─── Provider connection test ──────────────────────────────────────────
 
-export async function testProviderConnection(providerId: string, workspaceId: string): Promise<ProviderHealth> {
+export async function testProviderConnection(
+  providerId: string,
+  workspaceId: string,
+): Promise<ProviderHealth> {
   const [provider] = await db
     .select()
     .from(aiProviders)
-    .where(and(eq(aiProviders.id, providerId), eq(aiProviders.workspaceId, workspaceId)))
+    .where(
+      and(
+        eq(aiProviders.id, providerId),
+        eq(aiProviders.workspaceId, workspaceId),
+      ),
+    )
     .limit(1);
 
   if (!provider) {
@@ -19,7 +27,9 @@ export async function testProviderConnection(providerId: string, workspaceId: st
   }
 
   const adapter = getAdapter(provider.kind);
-  const health = await adapter.validateConnection(await buildProviderRuntimeConfig(provider));
+  const health = await adapter.validateConnection(
+    await buildProviderRuntimeConfig(provider),
+  );
 
   // Update health status in DB
   await db
@@ -51,7 +61,18 @@ export interface CreateModelInput {
 }
 
 export async function createModel(providerId: string, input: CreateModelInput) {
-  const { modelId, displayName, logoUrl, capabilitiesJson, contextWindow, maxOutputTokens, inputTokenCost, outputTokenCost, imageGenerationConfigJson, sustainabilityConfigJson } = input;
+  const {
+    modelId,
+    displayName,
+    logoUrl,
+    capabilitiesJson,
+    contextWindow,
+    maxOutputTokens,
+    inputTokenCost,
+    outputTokenCost,
+    imageGenerationConfigJson,
+    sustainabilityConfigJson,
+  } = input;
 
   const [model] = await db
     .insert(aiModels)

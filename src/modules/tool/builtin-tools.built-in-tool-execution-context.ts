@@ -1,6 +1,9 @@
 import { z } from "zod";
 
-import { readCodeWorkspaceFile,writeCodeWorkspaceFile } from "@/modules/code-workspace/storage";
+import {
+  readCodeWorkspaceFile,
+  writeCodeWorkspaceFile,
+} from "@/modules/code-workspace/storage";
 import { codeWorkspaceReplaceTextInputSchema } from "./builtin-tool-primitives";
 import type { ToolRiskLevel } from "./builtin-tools-catalog";
 
@@ -20,17 +23,25 @@ export interface BuiltInToolDefinition<Input = unknown, Output = unknown> {
   riskLevel: ToolRiskLevel;
   category: string;
   inputSchema: z.ZodType<Input>;
-  execute(input: Input, context?: BuiltInToolExecutionContext): Promise<Output> | Output;
+  execute(
+    input: Input,
+    context?: BuiltInToolExecutionContext,
+  ): Promise<Output> | Output;
 }
 
-export function requireCodeWorkspaceContext(context: BuiltInToolExecutionContext | undefined) {
+export function requireCodeWorkspaceContext(
+  context: BuiltInToolExecutionContext | undefined,
+) {
   if (!context?.workspaceId) {
     throw new Error("Code workspace tools require chat workspace context.");
   }
   return context;
 }
 
-export async function replaceCodeWorkspaceText(input: z.infer<typeof codeWorkspaceReplaceTextInputSchema>, context: BuiltInToolExecutionContext) {
+export async function replaceCodeWorkspaceText(
+  input: z.infer<typeof codeWorkspaceReplaceTextInputSchema>,
+  context: BuiltInToolExecutionContext,
+) {
   const existing = await readCodeWorkspaceFile({
     projectId: input.projectId,
     workspaceId: context.workspaceId,
@@ -42,9 +53,13 @@ export async function replaceCodeWorkspaceText(input: z.infer<typeof codeWorkspa
     throw new Error("oldText was not found in the target file.");
   }
   if (!input.replaceAll && occurrences > 1) {
-    throw new Error("oldText appears multiple times. Set replaceAll to true or provide a more specific oldText.");
+    throw new Error(
+      "oldText appears multiple times. Set replaceAll to true or provide a more specific oldText.",
+    );
   }
-  const nextContent = input.replaceAll ? existing.content.split(input.oldText).join(input.newText) : existing.content.replace(input.oldText, input.newText);
+  const nextContent = input.replaceAll
+    ? existing.content.split(input.oldText).join(input.newText)
+    : existing.content.replace(input.oldText, input.newText);
   return writeCodeWorkspaceFile({
     projectId: input.projectId,
     workspaceId: context.workspaceId,

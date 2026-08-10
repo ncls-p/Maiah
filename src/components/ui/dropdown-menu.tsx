@@ -12,12 +12,18 @@ const DropdownOpenContext = React.createContext<{
 
 function dropdownOrigin(side: string | undefined, align: string | undefined) {
   const verticalOrigin = side === "top" ? "bottom" : "top";
-  const horizontalOrigin = align === "end" ? "right" : align === "center" ? "center" : "left";
+  const horizontalOrigin =
+    align === "end" ? "right" : align === "center" ? "center" : "left";
 
   return `${verticalOrigin}-${horizontalOrigin}`;
 }
 
-function DropdownMenu({ open, defaultOpen, onOpenChange, ...props }: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
+function DropdownMenu({
+  open,
+  defaultOpen,
+  onOpenChange,
+  ...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
   const [internalOpen, setInternalOpen] = React.useState(defaultOpen ?? false);
   const resolvedOpen = open ?? internalOpen;
   const setOpen = React.useCallback(
@@ -30,7 +36,13 @@ function DropdownMenu({ open, defaultOpen, onOpenChange, ...props }: React.Compo
 
   return (
     <DropdownOpenContext value={{ open: resolvedOpen, setOpen }}>
-      <DropdownMenuPrimitive.Root data-slot="dropdown-menu" modal={false} open={resolvedOpen} onOpenChange={setOpen} {...props} />
+      <DropdownMenuPrimitive.Root
+        data-slot="dropdown-menu"
+        modal={false}
+        open={resolvedOpen}
+        onOpenChange={setOpen}
+        {...props}
+      />
     </DropdownOpenContext>
   );
 }
@@ -40,7 +52,11 @@ function assignRef<T>(ref: React.Ref<T> | undefined, value: T | null) {
   else if (ref) (ref as React.MutableRefObject<T | null>).current = value;
 }
 
-function DropdownMenuTrigger({ onClick, ref, ...props }: React.ComponentProps<typeof DropdownMenuPrimitive.Trigger>) {
+function DropdownMenuTrigger({
+  onClick,
+  ref,
+  ...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.Trigger>) {
   const menu = React.useContext(DropdownOpenContext);
   const composedRef = React.useCallback(
     (node: HTMLElement | null) => {
@@ -51,7 +67,8 @@ function DropdownMenuTrigger({ onClick, ref, ...props }: React.ComponentProps<ty
         event.stopPropagation();
       };
       node.addEventListener("pointerdown", preventPrimitivePointerToggle);
-      return () => node.removeEventListener("pointerdown", preventPrimitivePointerToggle);
+      return () =>
+        node.removeEventListener("pointerdown", preventPrimitivePointerToggle);
     },
     [ref],
   );
@@ -68,16 +85,37 @@ function DropdownMenuTrigger({ onClick, ref, ...props }: React.ComponentProps<ty
   );
 }
 
-function DropdownMenuContent({ className, align = "start", side = "bottom", sideOffset = 4, ...props }: React.ComponentProps<typeof DropdownMenuPrimitive.Content>) {
+function DropdownMenuContent({
+  className,
+  align = "start",
+  side = "bottom",
+  sideOffset = 4,
+  ...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.Content>) {
   return (
     <DropdownMenuPrimitive.Portal>
-      <DropdownMenuPrimitive.Content data-slot="dropdown-menu-content" sideOffset={sideOffset} align={align} side={side} data-origin={dropdownOrigin(side, align)} className={cn("t-dropdown z-50 max-h-(--radix-dropdown-menu-content-available-height) w-(--radix-dropdown-menu-trigger-width) min-w-36 origin-(--radix-dropdown-menu-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-2xl border border-transparent bg-popover p-1.5 text-popover-foreground shadow-[var(--floating-shadow)] duration-150 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-[state=closed]:overflow-hidden data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95", className)} {...props} />
+      <DropdownMenuPrimitive.Content
+        data-slot="dropdown-menu-content"
+        sideOffset={sideOffset}
+        align={align}
+        side={side}
+        data-origin={dropdownOrigin(side, align)}
+        className={cn(
+          "t-dropdown z-50 max-h-(--radix-dropdown-menu-content-available-height) w-(--radix-dropdown-menu-trigger-width) min-w-36 origin-(--radix-dropdown-menu-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-2xl border border-transparent bg-popover p-1.5 text-popover-foreground shadow-[var(--floating-shadow)] duration-150 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-[state=closed]:overflow-hidden data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          className,
+        )}
+        {...props}
+      />
     </DropdownMenuPrimitive.Portal>
   );
 }
 
-function DropdownMenuGroup({ ...props }: React.ComponentProps<typeof DropdownMenuPrimitive.Group>) {
-  return <DropdownMenuPrimitive.Group data-slot="dropdown-menu-group" {...props} />;
+function DropdownMenuGroup({
+  ...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.Group>) {
+  return (
+    <DropdownMenuPrimitive.Group data-slot="dropdown-menu-group" {...props} />
+  );
 }
 
 function DropdownMenuItem({
@@ -89,7 +127,18 @@ function DropdownMenuItem({
   inset?: boolean;
   variant?: "default" | "destructive";
 }) {
-  return <DropdownMenuPrimitive.Item data-slot="dropdown-menu-item" data-inset={inset} data-variant={variant} className={cn("group/dropdown-menu-item relative flex min-h-9 cursor-default items-center gap-2 rounded-xl px-2.5 py-1.5 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground data-inset:pl-7 data-[variant=destructive]:text-destructive data-[variant=destructive]:focus:bg-destructive/10 data-[variant=destructive]:focus:text-destructive data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 data-[variant=destructive]:*:[svg]:text-destructive", className)} {...props} />;
+  return (
+    <DropdownMenuPrimitive.Item
+      data-slot="dropdown-menu-item"
+      data-inset={inset}
+      data-variant={variant}
+      className={cn(
+        "group/dropdown-menu-item relative flex min-h-9 cursor-default items-center gap-2 rounded-xl px-2.5 py-1.5 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground data-inset:pl-7 data-[variant=destructive]:text-destructive data-[variant=destructive]:focus:bg-destructive/10 data-[variant=destructive]:focus:text-destructive data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 data-[variant=destructive]:*:[svg]:text-destructive",
+        className,
+      )}
+      {...props}
+    />
+  );
 }
 
 function DropdownMenuLabel({
@@ -99,11 +148,38 @@ function DropdownMenuLabel({
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Label> & {
   inset?: boolean;
 }) {
-  return <DropdownMenuPrimitive.Label data-slot="dropdown-menu-label" data-inset={inset} className={cn("px-2 py-1 text-xs font-medium text-muted-foreground data-inset:pl-7", className)} {...props} />;
+  return (
+    <DropdownMenuPrimitive.Label
+      data-slot="dropdown-menu-label"
+      data-inset={inset}
+      className={cn(
+        "px-2 py-1 text-xs font-medium text-muted-foreground data-inset:pl-7",
+        className,
+      )}
+      {...props}
+    />
+  );
 }
 
-function DropdownMenuSeparator({ className, ...props }: React.ComponentProps<typeof DropdownMenuPrimitive.Separator>) {
-  return <DropdownMenuPrimitive.Separator data-slot="dropdown-menu-separator" className={cn("-mx-1 my-1 h-px bg-border", className)} {...props} />;
+function DropdownMenuSeparator({
+  className,
+  ...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.Separator>) {
+  return (
+    <DropdownMenuPrimitive.Separator
+      data-slot="dropdown-menu-separator"
+      className={cn("-mx-1 my-1 h-px bg-border", className)}
+      {...props}
+    />
+  );
 }
 
-export { DropdownMenu,DropdownMenuContent,DropdownMenuGroup,DropdownMenuItem,DropdownMenuLabel,DropdownMenuSeparator,DropdownMenuTrigger };
+export {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+};

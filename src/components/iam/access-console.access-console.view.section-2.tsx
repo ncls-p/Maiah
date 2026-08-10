@@ -1,16 +1,57 @@
-import { Building2Icon,PlusIcon } from "lucide-react";
+import { Building2Icon, PlusIcon } from "lucide-react";
 
 import { ScopeLifecycleDialog } from "@/components/iam/scope-lifecycle-dialog";
 import { Button } from "@/components/ui/button";
-import { Dialog,DialogContent,DialogDescription,DialogFooter,DialogHeader,DialogTitle,DialogTrigger } from "@/components/ui/dialog";
-import { Field,FieldGroup,FieldLabel } from "@/components/ui/field";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Select,SelectContent,SelectGroup,SelectItem,SelectTrigger,SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { AccessConsoleViewModel } from "./access-console.access-console.view";
-import { INITIAL_ORGANIZATION_FORM,INITIAL_PROJECT_FORM } from "./access-console.resource-transfer-preview";
+import {
+  INITIAL_ORGANIZATION_FORM,
+  INITIAL_PROJECT_FORM,
+} from "./access-console.resource-transfer-preview";
 import { MutatingButton } from "./access-console.scope-path";
-export function AccessConsoleSection2({ model }: { model: AccessConsoleViewModel }) {
-  const { canCreateProjects, canManageOrganizationLifecycle, canManageProjectLifecycle, load, mutate, organizationForm, organizationOpen, pendingAction, projectForm, projectOpen, setOrganizationForm, setOrganizationOpen, setProjectForm, setProjectOpen, setWorkspaceId, snapshot, t, workspaceId } = model;
+export function AccessConsoleSection2({
+  model,
+}: {
+  model: AccessConsoleViewModel;
+}) {
+  const {
+    canCreateProjects,
+    canManageOrganizationLifecycle,
+    canManageProjectLifecycle,
+    load,
+    mutate,
+    organizationForm,
+    organizationOpen,
+    pendingAction,
+    projectForm,
+    projectOpen,
+    setOrganizationForm,
+    setOrganizationOpen,
+    setProjectForm,
+    setProjectOpen,
+    setWorkspaceId,
+    snapshot,
+    t,
+    workspaceId,
+  } = model;
   return (
     <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
       <div className="w-full max-w-md">
@@ -34,7 +75,15 @@ export function AccessConsoleSection2({ model }: { model: AccessConsoleViewModel
       </div>
 
       <div className="flex flex-col gap-2 sm:flex-row">
-        {canManageProjectLifecycle || canManageOrganizationLifecycle ? <ScopeLifecycleDialog organization={snapshot.organization} project={snapshot.activeProject} canManageProject={canManageProjectLifecycle} canManageOrganization={canManageOrganizationLifecycle} onRenamed={() => load({ preserveData: true })} /> : null}
+        {canManageProjectLifecycle || canManageOrganizationLifecycle ? (
+          <ScopeLifecycleDialog
+            organization={snapshot.organization}
+            project={snapshot.activeProject}
+            canManageProject={canManageProjectLifecycle}
+            canManageOrganization={canManageOrganizationLifecycle}
+            onRenamed={() => load({ preserveData: true })}
+          />
+        ) : null}
         <Dialog open={organizationOpen} onOpenChange={setOrganizationOpen}>
           <DialogTrigger asChild>
             <Button type="button" variant="outline">
@@ -45,7 +94,9 @@ export function AccessConsoleSection2({ model }: { model: AccessConsoleViewModel
           <DialogContent>
             <DialogHeader>
               <DialogTitle>{t("createOrganizationTitle")}</DialogTitle>
-              <DialogDescription>{t("createOrganizationDescription")}</DialogDescription>
+              <DialogDescription>
+                {t("createOrganizationDescription")}
+              </DialogDescription>
             </DialogHeader>
             <form
               className="contents"
@@ -65,7 +116,9 @@ export function AccessConsoleSection2({ model }: { model: AccessConsoleViewModel
             >
               <FieldGroup>
                 <Field>
-                  <FieldLabel htmlFor="organization-name">{t("organizationName")}</FieldLabel>
+                  <FieldLabel htmlFor="organization-name">
+                    {t("organizationName")}
+                  </FieldLabel>
                   <Input
                     id="organization-name"
                     required
@@ -80,7 +133,9 @@ export function AccessConsoleSection2({ model }: { model: AccessConsoleViewModel
                   />
                 </Field>
                 <Field>
-                  <FieldLabel htmlFor="first-project-name">{t("firstProjectName")}</FieldLabel>
+                  <FieldLabel htmlFor="first-project-name">
+                    {t("firstProjectName")}
+                  </FieldLabel>
                   <Input
                     id="first-project-name"
                     required
@@ -96,7 +151,11 @@ export function AccessConsoleSection2({ model }: { model: AccessConsoleViewModel
                 </Field>
               </FieldGroup>
               <DialogFooter>
-                <MutatingButton pending={pendingAction === "createOrganization"}>{t("createOrganization")}</MutatingButton>
+                <MutatingButton
+                  pending={pendingAction === "createOrganization"}
+                >
+                  {t("createOrganization")}
+                </MutatingButton>
               </DialogFooter>
             </form>
           </DialogContent>
@@ -137,11 +196,23 @@ export function AccessConsoleSection2({ model }: { model: AccessConsoleViewModel
                 }}
               >
                 <Field>
-                  <FieldLabel htmlFor="project-name">{t("projectName")}</FieldLabel>
-                  <Input id="project-name" required minLength={2} value={projectForm.name} onChange={(event) => setProjectForm({ name: event.target.value })} />
+                  <FieldLabel htmlFor="project-name">
+                    {t("projectName")}
+                  </FieldLabel>
+                  <Input
+                    id="project-name"
+                    required
+                    minLength={2}
+                    value={projectForm.name}
+                    onChange={(event) =>
+                      setProjectForm({ name: event.target.value })
+                    }
+                  />
                 </Field>
                 <DialogFooter>
-                  <MutatingButton pending={pendingAction === "createProject"}>{t("createProject")}</MutatingButton>
+                  <MutatingButton pending={pendingAction === "createProject"}>
+                    {t("createProject")}
+                  </MutatingButton>
                 </DialogFooter>
               </form>
             </DialogContent>

@@ -1,9 +1,12 @@
-import type { LanguageModelUsage,TextStreamPart,ToolSet } from "ai";
+import type { LanguageModelUsage, TextStreamPart, ToolSet } from "ai";
 
 import type { AnthropicMessagesRequest } from "@/modules/anthropic-proxy/contracts";
 import { anthropicErrorBody } from "@/modules/anthropic-proxy/errors";
-import { anthropicStopReason,createAnthropicMessageId } from "@/modules/anthropic-proxy/response-builders";
-import { OpenAIProxyError,providerError } from "@/modules/openai-proxy/errors";
+import {
+  anthropicStopReason,
+  createAnthropicMessageId,
+} from "@/modules/anthropic-proxy/response-builders";
+import { OpenAIProxyError, providerError } from "@/modules/openai-proxy/errors";
 
 type StreamResult = { stream: AsyncIterable<TextStreamPart<ToolSet>> };
 type StreamCallbacks = {
@@ -26,7 +29,12 @@ function streamHeaders() {
   };
 }
 
-export function createAnthropicMessagesStream(input: { request: AnthropicMessagesRequest; result: StreamResult; requestId: string; callbacks: StreamCallbacks }) {
+export function createAnthropicMessagesStream(input: {
+  request: AnthropicMessagesRequest;
+  result: StreamResult;
+  requestId: string;
+  callbacks: StreamCallbacks;
+}) {
   const messageId = createAnthropicMessageId();
   const toolIndexes = new Map<string, number>();
   let textIndex: number | undefined;
@@ -114,7 +122,12 @@ export function createAnthropicMessagesStream(input: { request: AnthropicMessage
           } else if (part.type === "error") {
             throw part.error;
           } else if (part.type === "abort") {
-            throw new OpenAIProxyError(part.reason || "The request was cancelled.", 499, "invalid_request_error", "request_cancelled");
+            throw new OpenAIProxyError(
+              part.reason || "The request was cancelled.",
+              499,
+              "invalid_request_error",
+              "request_cancelled",
+            );
           } else if (part.type === "finish") {
             if (textIndex !== undefined) {
               controller.enqueue(
@@ -152,7 +165,9 @@ export function createAnthropicMessagesStream(input: { request: AnthropicMessage
       } catch (error) {
         const normalized = providerError(error);
         await input.callbacks.onError(normalized);
-        controller.enqueue(event("error", anthropicErrorBody(normalized, input.requestId)));
+        controller.enqueue(
+          event("error", anthropicErrorBody(normalized, input.requestId)),
+        );
         controller.close();
       }
     },

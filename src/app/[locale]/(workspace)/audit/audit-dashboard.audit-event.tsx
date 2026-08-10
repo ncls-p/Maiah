@@ -1,12 +1,27 @@
 "use client";
 
-import { BanIcon,CalendarRangeIcon,CheckCircle2Icon,DownloadIcon,FilterIcon,RotateCcwIcon,ShieldAlertIcon,XCircleIcon } from "lucide-react";
+import {
+  BanIcon,
+  CalendarRangeIcon,
+  CheckCircle2Icon,
+  DownloadIcon,
+  FilterIcon,
+  RotateCcwIcon,
+  ShieldAlertIcon,
+  XCircleIcon,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select,SelectContent,SelectItem,SelectTrigger,SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export interface AuditEvent {
   id: string;
@@ -64,17 +79,57 @@ export function formatAction(action: string) {
   return { scope, verb };
 }
 
-export function AuditFilters({ actionFilter, outcomeFilter, fromDate, toDate, busy, canExport, onActionChangeAction, onOutcomeChangeAction, onFromChangeAction, onToChangeAction, onApplyAction, onResetAction, onExportAction, t }: { actionFilter: string; outcomeFilter: string; fromDate: string; toDate: string; busy: boolean; canExport: boolean; onActionChangeAction: (value: string) => void; onOutcomeChangeAction: (value: string) => void; onFromChangeAction: (value: string) => void; onToChangeAction: (value: string) => void; onApplyAction: () => void; onResetAction: () => void; onExportAction: () => void; t: ReturnType<typeof useTranslations<"admin.audit">> }) {
-  const hasFilters = Boolean(actionFilter.trim() || outcomeFilter !== "all" || fromDate || toDate);
+export function AuditFilters({
+  actionFilter,
+  outcomeFilter,
+  fromDate,
+  toDate,
+  busy,
+  canExport,
+  onActionChangeAction,
+  onOutcomeChangeAction,
+  onFromChangeAction,
+  onToChangeAction,
+  onApplyAction,
+  onResetAction,
+  onExportAction,
+  t,
+}: {
+  actionFilter: string;
+  outcomeFilter: string;
+  fromDate: string;
+  toDate: string;
+  busy: boolean;
+  canExport: boolean;
+  onActionChangeAction: (value: string) => void;
+  onOutcomeChangeAction: (value: string) => void;
+  onFromChangeAction: (value: string) => void;
+  onToChangeAction: (value: string) => void;
+  onApplyAction: () => void;
+  onResetAction: () => void;
+  onExportAction: () => void;
+  t: ReturnType<typeof useTranslations<"admin.audit">>;
+}) {
+  const hasFilters = Boolean(
+    actionFilter.trim() || outcomeFilter !== "all" || fromDate || toDate,
+  );
 
   return (
     <section className="rounded-2xl border bg-card p-4 sm:p-5 animate-in-fade stagger-2">
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-          <FilterIcon className="size-4 text-muted-foreground" aria-hidden="true" />
+          <FilterIcon
+            className="size-4 text-muted-foreground"
+            aria-hidden="true"
+          />
           {t("filters")}
         </div>
-        <Button variant="outline" size="sm" disabled={!canExport || busy} onClick={onExportAction}>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={!canExport || busy}
+          onClick={onExportAction}
+        >
           <DownloadIcon className="size-4" aria-hidden="true" />
           {t("exportCsv")}
         </Button>
@@ -111,19 +166,41 @@ export function AuditFilters({ actionFilter, outcomeFilter, fromDate, toDate, bu
         <div className="grid gap-2">
           <Label htmlFor="audit-from">{t("from")}</Label>
           <div className="relative">
-            <CalendarRangeIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-            <Input id="audit-from" type="date" className="pl-9" value={fromDate} onChange={(e) => onFromChangeAction(e.target.value)} />
+            <CalendarRangeIcon
+              className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden="true"
+            />
+            <Input
+              id="audit-from"
+              type="date"
+              className="pl-9"
+              value={fromDate}
+              onChange={(e) => onFromChangeAction(e.target.value)}
+            />
           </div>
         </div>
         <div className="grid gap-2">
           <Label htmlFor="audit-to">{t("to")}</Label>
           <div className="relative">
-            <CalendarRangeIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-            <Input id="audit-to" type="date" className="pl-9" value={toDate} onChange={(e) => onToChangeAction(e.target.value)} />
+            <CalendarRangeIcon
+              className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden="true"
+            />
+            <Input
+              id="audit-to"
+              type="date"
+              className="pl-9"
+              value={toDate}
+              onChange={(e) => onToChangeAction(e.target.value)}
+            />
           </div>
         </div>
         <div className="flex flex-wrap gap-2 lg:justify-end">
-          <Button variant="outline" disabled={!hasFilters || busy} onClick={onResetAction}>
+          <Button
+            variant="outline"
+            disabled={!hasFilters || busy}
+            onClick={onResetAction}
+          >
             <RotateCcwIcon className="size-4" aria-hidden="true" />
             {t("resetFilter")}
           </Button>

@@ -42,8 +42,16 @@ export function ChatSidebarContentSection2({
         {onNewTemporaryConversation ? (
           <TemporaryConversationButton onSelect={onNewTemporaryConversation} />
         ) : null}
-        <Button type={BUTTON_TYPE} onClick={onNewConversation} className="h-11 min-w-0 flex-1 justify-start gap-2.5 rounded-xl px-3.5 text-sm shadow-[0_8px_22px_-16px_color-mix(in_oklch,var(--primary)_70%,transparent)]" aria-label={t("newConversation")}>
-          <MessageSquarePlusIcon className="size-4 shrink-0" aria-hidden="true" />
+        <Button
+          type={BUTTON_TYPE}
+          onClick={onNewConversation}
+          className="h-11 min-w-0 flex-1 justify-start gap-2.5 rounded-xl px-3.5 text-sm shadow-[0_8px_22px_-16px_color-mix(in_oklch,var(--primary)_70%,transparent)]"
+          aria-label={t("newConversation")}
+        >
+          <MessageSquarePlusIcon
+            className="size-4 shrink-0"
+            aria-hidden="true"
+          />
           <span className="min-w-0 truncate">{t("newConversation")}</span>
         </Button>
       </div>

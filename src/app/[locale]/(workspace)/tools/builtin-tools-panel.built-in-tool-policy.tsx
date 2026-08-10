@@ -1,10 +1,36 @@
 "use client";
 
-import { BinaryIcon,BracesIcon,BriefcaseIcon,CalculatorIcon,CalendarIcon,ClockIcon,Code2Icon,DicesIcon,FileTextIcon,FingerprintIcon,GlobeIcon,HashIcon,LinkIcon,ListChecksIcon,MailIcon,PaletteIcon,PenLineIcon,PresentationIcon,SearchIcon,ShieldCheckIcon,TableIcon,WrenchIcon } from "lucide-react";
-import { type ComponentType,type SVGProps } from "react";
+import {
+  BinaryIcon,
+  BracesIcon,
+  BriefcaseIcon,
+  CalculatorIcon,
+  CalendarIcon,
+  ClockIcon,
+  Code2Icon,
+  DicesIcon,
+  FileTextIcon,
+  FingerprintIcon,
+  GlobeIcon,
+  HashIcon,
+  LinkIcon,
+  ListChecksIcon,
+  MailIcon,
+  PaletteIcon,
+  PenLineIcon,
+  PresentationIcon,
+  SearchIcon,
+  ShieldCheckIcon,
+  TableIcon,
+  WrenchIcon,
+} from "lucide-react";
+import { type ComponentType, type SVGProps } from "react";
 
 import { Badge } from "@/components/ui/badge";
-import { type BuiltInToolSummary,type ToolRiskLevel } from "@/modules/tool/builtin-tools-catalog";
+import {
+  type BuiltInToolSummary,
+  type ToolRiskLevel,
+} from "@/modules/tool/builtin-tools-catalog";
 
 export type BuiltInToolPolicy = BuiltInToolSummary & {
   enabled: boolean;
@@ -12,7 +38,17 @@ export type BuiltInToolPolicy = BuiltInToolSummary & {
   configured: boolean;
 };
 
-export const CATEGORY_ORDER = ["Think", "Time", "Web", "Create", "Work", "Data", "Code", "Write", "Design"] as const;
+export const CATEGORY_ORDER = [
+  "Think",
+  "Time",
+  "Web",
+  "Create",
+  "Work",
+  "Data",
+  "Code",
+  "Write",
+  "Design",
+] as const;
 
 type ToolCategory = (typeof CATEGORY_ORDER)[number];
 type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
@@ -90,9 +126,18 @@ function riskBadgeVariant(riskLevel: ToolRiskLevel) {
   return "outline";
 }
 
-export function RiskBadge({ riskLevel, label }: { riskLevel: ToolRiskLevel; label: string }) {
+export function RiskBadge({
+  riskLevel,
+  label,
+}: {
+  riskLevel: ToolRiskLevel;
+  label: string;
+}) {
   return (
-    <Badge variant={riskBadgeVariant(riskLevel)} className="shrink-0 rounded-full px-2 text-[10px] font-medium">
+    <Badge
+      variant={riskBadgeVariant(riskLevel)}
+      className="shrink-0 rounded-full px-2 text-[10px] font-medium"
+    >
       {label}
     </Badge>
   );

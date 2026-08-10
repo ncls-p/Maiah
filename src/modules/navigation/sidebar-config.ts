@@ -1,8 +1,33 @@
 import { z } from "zod";
 
-import { adminNavItems,advancedCapabilityNavItems,capabilitiesNavItems,configNavItems,planningNavItems,primaryNavItems,type NavGroup,type NavItem,type WorkspaceShellState } from "@/lib/workspace-nav";
+import {
+  adminNavItems,
+  advancedCapabilityNavItems,
+  capabilitiesNavItems,
+  configNavItems,
+  planningNavItems,
+  primaryNavItems,
+  type NavGroup,
+  type NavItem,
+  type WorkspaceShellState,
+} from "@/lib/workspace-nav";
 
-const DEFAULT_SIDEBAR_NAV_IDS = ["/chat", "/agents", "/knowledge", "/scheduled-tasks", "/workflows", "/tools", "/marketplace", "/providers", "/api-keys", "/settings", "/usage", "/audit", "/members", "/admin/settings"] as const;
+const DEFAULT_SIDEBAR_NAV_IDS = [
+  "/chat",
+  "/agents",
+  "/knowledge",
+  "/scheduled-tasks",
+  "/workflows",
+  "/tools",
+  "/marketplace",
+  "/providers",
+  "/api-keys",
+  "/settings",
+  "/usage",
+  "/audit",
+  "/members",
+  "/admin/settings",
+] as const;
 
 const SIDEBAR_NAV_SECTIONS = ["primary", "planning", "advanced"] as const;
 export type SidebarNavSection = (typeof SIDEBAR_NAV_SECTIONS)[number];
@@ -35,8 +60,12 @@ registerNavTemplates(advancedCapabilityNavItems);
 registerNavTemplates(configNavItems);
 registerNavTemplates(adminNavItems);
 
-const PRIMARY_SECTION_IDS = new Set<string>(primaryNavItems.map((item) => item.href));
-const PLANNING_SECTION_IDS = new Set<string>(planningNavItems.map((item) => item.href));
+const PRIMARY_SECTION_IDS = new Set<string>(
+  primaryNavItems.map((item) => item.href),
+);
+const PLANNING_SECTION_IDS = new Set<string>(
+  planningNavItems.map((item) => item.href),
+);
 
 export function getDefaultSectionForNavId(id: string): SidebarNavSection {
   if (PRIMARY_SECTION_IDS.has(id)) return "primary";
@@ -44,18 +73,27 @@ export function getDefaultSectionForNavId(id: string): SidebarNavSection {
   return "advanced";
 }
 
-function resolveNavItemSection(id: string, section: SidebarNavSection | undefined): SidebarNavSection {
+function resolveNavItemSection(
+  id: string,
+  section: SidebarNavSection | undefined,
+): SidebarNavSection {
   return section ?? getDefaultSectionForNavId(id);
 }
 
 function splitNavItemsBySection(items: NavItem[], config: SidebarNavConfig) {
-  const sectionById = new Map(config.items.map((entry) => [entry.id, resolveNavItemSection(entry.id, entry.section)]));
+  const sectionById = new Map(
+    config.items.map((entry) => [
+      entry.id,
+      resolveNavItemSection(entry.id, entry.section),
+    ]),
+  );
   const primaryItems: NavItem[] = [];
   const planningItems: NavItem[] = [];
   const advancedItems: NavItem[] = [];
 
   for (const item of items) {
-    const section = sectionById.get(item.href) ?? getDefaultSectionForNavId(item.href);
+    const section =
+      sectionById.get(item.href) ?? getDefaultSectionForNavId(item.href);
     if (section === "primary") {
       primaryItems.push(item);
     } else if (section === "planning") {
@@ -89,7 +127,9 @@ export function getSidebarNavCatalog() {
   });
 }
 
-export function normalizeSidebarNavConfig(config: SidebarNavConfig): SidebarNavConfig {
+export function normalizeSidebarNavConfig(
+  config: SidebarNavConfig,
+): SidebarNavConfig {
   const knownIds = new Set<string>(DEFAULT_SIDEBAR_NAV_IDS);
   const seen = new Set<string>();
   const items: SidebarNavConfigItem[] = [];
@@ -118,7 +158,10 @@ export function normalizeSidebarNavConfig(config: SidebarNavConfig): SidebarNavC
 
 function collectEligibleNavItems(shell: WorkspaceShellState): NavItem[] {
   const { permissions } = shell;
-  const canUseToolsHub = permissions.canConfigureTools || permissions.canViewTools || permissions.canGetMcpServers;
+  const canUseToolsHub =
+    permissions.canConfigureTools ||
+    permissions.canViewTools ||
+    permissions.canGetMcpServers;
   const toolsItem: NavItem = {
     href: "/tools",
     labelKey: "toolsHub",
@@ -134,7 +177,8 @@ function collectEligibleNavItems(shell: WorkspaceShellState): NavItem[] {
     return true;
   });
 
-  const _hrefMatch = (href: string) => (item: { href: string }) => item.href === href;
+  const _hrefMatch = (href: string) => (item: { href: string }) =>
+    item.href === href;
 
   const items: NavItem[] = [];
 
@@ -161,10 +205,17 @@ function collectEligibleNavItems(shell: WorkspaceShellState): NavItem[] {
   return items;
 }
 
-export function applySidebarNavConfig(eligibleItems: NavItem[], config: SidebarNavConfig): NavItem[] {
+export function applySidebarNavConfig(
+  eligibleItems: NavItem[],
+  config: SidebarNavConfig,
+): NavItem[] {
   const normalized = normalizeSidebarNavConfig(config);
-  const eligibleByHref = new Map(eligibleItems.map((item) => [item.href, item]));
-  const visibilityById = new Map(normalized.items.map((entry) => [entry.id, entry.visible]));
+  const eligibleByHref = new Map(
+    eligibleItems.map((item) => [item.href, item]),
+  );
+  const visibilityById = new Map(
+    normalized.items.map((entry) => [entry.id, entry.visible]),
+  );
   const seen = new Set<string>();
   const ordered: NavItem[] = [];
 
@@ -185,11 +236,17 @@ export function applySidebarNavConfig(eligibleItems: NavItem[], config: SidebarN
   return ordered;
 }
 
-export function buildSidebarMenuGroups(shell: WorkspaceShellState, config: SidebarNavConfig): NavGroup[] {
+export function buildSidebarMenuGroups(
+  shell: WorkspaceShellState,
+  config: SidebarNavConfig,
+): NavGroup[] {
   const eligibleItems = collectEligibleNavItems(shell);
   const items = applySidebarNavConfig(eligibleItems, config);
   const normalized = normalizeSidebarNavConfig(config);
-  const { primaryItems, planningItems, advancedItems } = splitNavItemsBySection(items, normalized);
+  const { primaryItems, planningItems, advancedItems } = splitNavItemsBySection(
+    items,
+    normalized,
+  );
 
   const groups: NavGroup[] = [];
   if (primaryItems.length > 0) {
@@ -205,5 +262,8 @@ export function buildSidebarMenuGroups(shell: WorkspaceShellState, config: Sideb
 }
 
 export function buildMenuGroups(shell: WorkspaceShellState): NavGroup[] {
-  return buildSidebarMenuGroups(shell, shell.sidebarNavConfig ?? defaultSidebarNavConfig());
+  return buildSidebarMenuGroups(
+    shell,
+    shell.sidebarNavConfig ?? defaultSidebarNavConfig(),
+  );
 }

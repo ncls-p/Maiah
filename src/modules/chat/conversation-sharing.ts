@@ -102,7 +102,13 @@ export async function upsertConversationShare(input: {
       ),
     )
     .limit(1);
-  if (!target || !(await authorization.requireWorkspaceMember(target.id, input.conversation.workspaceId))) {
+  if (
+    !target ||
+    !(await authorization.requireWorkspaceMember(
+      target.id,
+      input.conversation.workspaceId,
+    ))
+  ) {
     throw new Error("Workspace member not found");
   }
 

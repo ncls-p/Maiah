@@ -1,14 +1,75 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import { toast } from "sonner";
 
-import { migrateDraftCapabilityOverrides, readChatCapabilityOverrides } from "@/components/chat/chat-capability-overrides";
-import { createLocalMessage, prepareAssistantMessageContinuation, type ChatCitation, type ChatMessage, type ChatStreamEvent, type PendingToolApproval } from "@/components/chat/chat-types";
+import {
+  migrateDraftCapabilityOverrides,
+  readChatCapabilityOverrides,
+} from "@/components/chat/chat-capability-overrides";
+import {
+  createLocalMessage,
+  prepareAssistantMessageContinuation,
+  type ChatCitation,
+  type ChatMessage,
+  type ChatStreamEvent,
+  type PendingToolApproval,
+} from "@/components/chat/chat-types";
 import { streamAiSdkUIChat } from "@/hooks/ai-sdk-ui-chat-transport";
-import { STREAM_DRAFT_WRITE_BATCH_MS, STREAM_RENDER_BATCH_MS, applyStreamEvent, clearStoredChatStreamDraft, filterResolvedApprovals, storeChatStreamDraft, upsertPendingApproval } from "@/hooks/use-chat-stream-events";
-import { appendErrorPart, compactErrorMessage, type SubmitOptions, type UseChatStreamOptions } from "./use-chat-stream.compact-error-message";
+import {
+  STREAM_DRAFT_WRITE_BATCH_MS,
+  STREAM_RENDER_BATCH_MS,
+  applyStreamEvent,
+  clearStoredChatStreamDraft,
+  filterResolvedApprovals,
+  storeChatStreamDraft,
+  upsertPendingApproval,
+} from "@/hooks/use-chat-stream-events";
+import {
+  appendErrorPart,
+  compactErrorMessage,
+  type SubmitOptions,
+  type UseChatStreamOptions,
+} from "./use-chat-stream.compact-error-message";
 
-export function useChatSubmitHandler(input: { agentId: string | null; conversationId: string | null; canChat: boolean; sending: boolean; messages: ChatMessage[]; onConversationCreated: UseChatStreamOptions["onConversationCreated"]; onConversationTitle: UseChatStreamOptions["onConversationTitle"]; onConversationsRefresh: UseChatStreamOptions["onConversationsRefresh"]; setMessages: Dispatch<SetStateAction<ChatMessage[]>>; setSending: Dispatch<SetStateAction<boolean>>; setPendingApprovals: Dispatch<SetStateAction<PendingToolApproval[]>>; setCitations: Dispatch<SetStateAction<ChatCitation[]>>; activeRequestControllerRef: MutableRefObject<AbortController | null>; activeConversationIdRef: MutableRefObject<string | null>; detachedRequestControllersRef: MutableRefObject<WeakSet<AbortController>>; stopRequestedRef: MutableRefObject<boolean>; resolvedApprovalIdsRef: MutableRefObject<Set<string>> }) {
-  const { agentId, conversationId, canChat, sending, messages, onConversationCreated, onConversationTitle, onConversationsRefresh, setMessages, setSending, setPendingApprovals, setCitations, activeRequestControllerRef, activeConversationIdRef, detachedRequestControllersRef, stopRequestedRef, resolvedApprovalIdsRef } = input;
+export function useChatSubmitHandler(input: {
+  agentId: string | null;
+  conversationId: string | null;
+  canChat: boolean;
+  sending: boolean;
+  messages: ChatMessage[];
+  onConversationCreated: UseChatStreamOptions["onConversationCreated"];
+  onConversationTitle: UseChatStreamOptions["onConversationTitle"];
+  onConversationMetadata: UseChatStreamOptions["onConversationMetadata"];
+  onConversationsRefresh: UseChatStreamOptions["onConversationsRefresh"];
+  setMessages: Dispatch<SetStateAction<ChatMessage[]>>;
+  setSending: Dispatch<SetStateAction<boolean>>;
+  setPendingApprovals: Dispatch<SetStateAction<PendingToolApproval[]>>;
+  setCitations: Dispatch<SetStateAction<ChatCitation[]>>;
+  activeRequestControllerRef: MutableRefObject<AbortController | null>;
+  activeConversationIdRef: MutableRefObject<string | null>;
+  detachedRequestControllersRef: MutableRefObject<WeakSet<AbortController>>;
+  stopRequestedRef: MutableRefObject<boolean>;
+  resolvedApprovalIdsRef: MutableRefObject<Set<string>>;
+}) {
+  const {
+    agentId,
+    conversationId,
+    canChat,
+    sending,
+    messages,
+    onConversationCreated,
+    onConversationTitle,
+    onConversationMetadata,
+    onConversationsRefresh,
+    setMessages,
+    setSending,
+    setPendingApprovals,
+    setCitations,
+    activeRequestControllerRef,
+    activeConversationIdRef,
+    detachedRequestControllersRef,
+    stopRequestedRef,
+    resolvedApprovalIdsRef,
+  } = input;
   async function handleSubmit(content: string, options: SubmitOptions = {}) {
     if (!content) return;
     if (!agentId) return;
@@ -29,10 +90,22 @@ export function useChatSubmitHandler(input: { agentId: string | null; conversati
         content: JSON.stringify(attachment),
       })),
     ];
-    const userMessage = createLocalMessage("user", content, userMessageFileParts);
-    const continuedAssistantMessage = options.continueFromMessageId ? messages.find((message) => message.id === options.continueFromMessageId && message.role === "assistant") : null;
+    const userMessage = createLocalMessage(
+      "user",
+      content,
+      userMessageFileParts,
+    );
+    const continuedAssistantMessage = options.continueFromMessageId
+      ? messages.find(
+          (message) =>
+            message.id === options.continueFromMessageId &&
+            message.role === "assistant",
+        )
+      : null;
     if (options.continueFromMessageId && !continuedAssistantMessage) return;
-    const assistantMessage = continuedAssistantMessage ? prepareAssistantMessageContinuation(continuedAssistantMessage) : createLocalMessage("assistant", "");
+    const assistantMessage = continuedAssistantMessage
+      ? prepareAssistantMessageContinuation(continuedAssistantMessage)
+      : createLocalMessage("assistant", "");
     let activeConversationId = conversationId;
     let assistantMessageId = assistantMessage.id;
     let assistantDraft = assistantMessage;
@@ -41,7 +114,14 @@ export function useChatSubmitHandler(input: { agentId: string | null; conversati
     let draftWriteTimeout: number | null = null;
 
     function commitAssistantDraft() {
-      setMessages((current) => current.map((message) => (message.id === assistantMessage.id || message.id === assistantMessageId ? assistantDraft : message)));
+      setMessages((current) =>
+        current.map((message) =>
+          message.id === assistantMessage.id ||
+          message.id === assistantMessageId
+            ? assistantDraft
+            : message,
+        ),
+      );
     }
 
     function cancelScheduledRender() {
@@ -72,7 +152,10 @@ export function useChatSubmitHandler(input: { agentId: string | null; conversati
 
     function writeDraft() {
       if (!activeConversationId) return;
-      const visibleApprovals = filterResolvedApprovals(pendingApprovalsDraft, resolvedApprovalIdsRef.current);
+      const visibleApprovals = filterResolvedApprovals(
+        pendingApprovalsDraft,
+        resolvedApprovalIdsRef.current,
+      );
       storeChatStreamDraft(
         {
           conversationId: activeConversationId,
@@ -98,22 +181,31 @@ export function useChatSubmitHandler(input: { agentId: string | null; conversati
       }, STREAM_DRAFT_WRITE_BATCH_MS);
     }
 
-    function updatePendingApprovals(updater: (approvals: PendingToolApproval[]) => PendingToolApproval[]) {
-      pendingApprovalsDraft = filterResolvedApprovals(updater(pendingApprovalsDraft), resolvedApprovalIdsRef.current);
+    function updatePendingApprovals(
+      updater: (approvals: PendingToolApproval[]) => PendingToolApproval[],
+    ) {
+      pendingApprovalsDraft = filterResolvedApprovals(
+        updater(pendingApprovalsDraft),
+        resolvedApprovalIdsRef.current,
+      );
       setPendingApprovals(pendingApprovalsDraft);
       persistDraft({ immediate: true });
     }
 
     function addPendingApproval(approval: PendingToolApproval) {
       if (resolvedApprovalIdsRef.current.has(approval.invocationId)) return;
-      updatePendingApprovals((approvals) => upsertPendingApproval(approvals, approval));
+      updatePendingApprovals((approvals) =>
+        upsertPendingApproval(approvals, approval),
+      );
     }
 
     function clearPendingApprovals() {
       updatePendingApprovals(() => []);
     }
 
-    function updateAssistantDraft(updater: (message: ChatMessage) => ChatMessage) {
+    function updateAssistantDraft(
+      updater: (message: ChatMessage) => ChatMessage,
+    ) {
       assistantDraft = updater(assistantDraft);
       scheduleAssistantRender();
       persistDraft();
@@ -122,10 +214,16 @@ export function useChatSubmitHandler(input: { agentId: string | null; conversati
     stopRequestedRef.current = false;
     setMessages((current) => {
       if (options.continueFromMessageId) {
-        return current.map((message) => (message.id === options.continueFromMessageId ? assistantMessage : message));
+        return current.map((message) =>
+          message.id === options.continueFromMessageId
+            ? assistantMessage
+            : message,
+        );
       }
       if (options.reuseUserMessage && options.resendFromMessageId) {
-        const messageIndex = current.findIndex((message) => message.id === options.resendFromMessageId);
+        const messageIndex = current.findIndex(
+          (message) => message.id === options.resendFromMessageId,
+        );
         if (messageIndex >= 0) {
           return [...current.slice(0, messageIndex + 1), assistantMessage];
         }
@@ -171,13 +269,22 @@ export function useChatSubmitHandler(input: { agentId: string | null; conversati
           ephemeralTtlMinutes: options.ephemeralTtlMinutes,
           resendFromMessageId: options.resendFromMessageId,
           continueFromMessageId: options.continueFromMessageId,
-          codeWorkspaceId: options.codeWorkspaceId ?? options.codeWorkspaceArtifact?.projectId,
-          attachmentIds: attachmentsToSend.flatMap((attachment) => (attachment.kind === "chat_file" ? [attachment.id] : [])),
-          imageAttachmentIds: attachmentsToSend.flatMap((attachment) => (attachment.kind === "chat_image" ? [attachment.id] : [])),
-          capabilityOverrides: readChatCapabilityOverrides(agentId, conversationId),
+          codeWorkspaceId:
+            options.codeWorkspaceId ?? options.codeWorkspaceArtifact?.projectId,
+          attachmentIds: attachmentsToSend.flatMap((attachment) =>
+            attachment.kind === "chat_file" ? [attachment.id] : [],
+          ),
+          imageAttachmentIds: attachmentsToSend.flatMap((attachment) =>
+            attachment.kind === "chat_image" ? [attachment.id] : [],
+          ),
+          capabilityOverrides: readChatCapabilityOverrides(
+            agentId,
+            conversationId,
+          ),
         },
         abortSignal: controller.signal,
         onStart: (metadata) => {
+          onConversationMetadata?.(metadata);
           if (metadata.conversationId) {
             activeConversationId = metadata.conversationId;
             activeConversationIdRef.current = metadata.conversationId;
@@ -185,13 +292,26 @@ export function useChatSubmitHandler(input: { agentId: string | null; conversati
           if (metadata.messageId) {
             assistantMessageId = metadata.messageId;
             assistantDraft = { ...assistantDraft, id: metadata.messageId };
-            setMessages((current) => current.map((message) => (message.id === assistantMessage.id ? assistantDraft : message)));
+            setMessages((current) =>
+              current.map((message) =>
+                message.id === assistantMessage.id ? assistantDraft : message,
+              ),
+            );
             persistDraft({ immediate: true });
           }
           if (metadata.userMessageId) {
-            setMessages((current) => current.map((message) => (message.id === userMessage.id ? { ...message, id: metadata.userMessageId! } : message)));
+            setMessages((current) =>
+              current.map((message) =>
+                message.id === userMessage.id
+                  ? { ...message, id: metadata.userMessageId! }
+                  : message,
+              ),
+            );
           }
-          if (metadata.conversationId && metadata.conversationId !== conversationId) {
+          if (
+            metadata.conversationId &&
+            metadata.conversationId !== conversationId
+          ) {
             migrateDraftCapabilityOverrides(agentId, metadata.conversationId);
             onConversationCreated(metadata.conversationId, content);
           }
@@ -202,11 +322,13 @@ export function useChatSubmitHandler(input: { agentId: string | null; conversati
       updateAssistantDraft((message) => ({ ...message, status: "completed" }));
       flushAssistantRender();
       clearPendingApprovals();
-      if (activeConversationId) clearStoredChatStreamDraft(activeConversationId);
+      if (activeConversationId)
+        clearStoredChatStreamDraft(activeConversationId);
 
       await onConversationsRefresh();
     } catch (err) {
-      const requestWasDetached = detachedRequestControllersRef.current.has(controller);
+      const requestWasDetached =
+        detachedRequestControllersRef.current.has(controller);
       if (err instanceof Error && err.name === "AbortError") {
         if (requestWasDetached) {
           persistDraft({ immediate: true });
@@ -218,17 +340,25 @@ export function useChatSubmitHandler(input: { agentId: string | null; conversati
         }));
         flushAssistantRender();
         clearPendingApprovals();
-        if (activeConversationId) clearStoredChatStreamDraft(activeConversationId);
+        if (activeConversationId)
+          clearStoredChatStreamDraft(activeConversationId);
         return;
       }
-      const errorMessage = err instanceof Error ? err.message : "Chat request failed";
+      const errorMessage =
+        err instanceof Error ? err.message : "Chat request failed";
       toast.error(compactErrorMessage(errorMessage));
-      updateAssistantDraft((message) => (options.continueFromMessageId ? { ...message, status: "completed" } : appendErrorPart(message, errorMessage)));
+      updateAssistantDraft((message) =>
+        options.continueFromMessageId
+          ? { ...message, status: "completed" }
+          : appendErrorPart(message, errorMessage),
+      );
       flushAssistantRender();
       clearPendingApprovals();
-      if (activeConversationId) clearStoredChatStreamDraft(activeConversationId);
+      if (activeConversationId)
+        clearStoredChatStreamDraft(activeConversationId);
     } finally {
-      const requestWasDetached = detachedRequestControllersRef.current.has(controller);
+      const requestWasDetached =
+        detachedRequestControllersRef.current.has(controller);
       if (!requestWasDetached) flushAssistantRender();
       cancelScheduledDraftWrite();
       cancelScheduledRender();

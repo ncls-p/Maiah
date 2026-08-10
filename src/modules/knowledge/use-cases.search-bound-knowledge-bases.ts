@@ -1,21 +1,42 @@
 import { decryptValue } from "@/lib/crypto";
 import { db } from "@/server/infrastructure/db";
-import { documentChunks,documents,knowledgeBases } from "@/server/infrastructure/db/schema";
-import { and,asc,eq,gte,inArray,isNull,lte } from "drizzle-orm";
+import {
+  documentChunks,
+  documents,
+  knowledgeBases,
+} from "@/server/infrastructure/db/schema";
+import { and, asc, eq, gte, inArray, isNull, lte } from "drizzle-orm";
 import { getKnowledgeBindingsForVersion } from "./use-cases.get-knowledge-bindings-for-version";
 import { searchKnowledgeBase } from "./use-cases.search-knowledge-base";
 
-export async function searchBoundKnowledgeBases(input: { agentVersionId: string; workspaceId: string; knowledgeBaseIds: string[]; query: string; limit?: number; userId?: string }) {
-  const bindings = await getKnowledgeBindingsForVersion(input.agentVersionId, input.userId ? { workspaceId: input.workspaceId, userId: input.userId } : undefined);
+export async function searchBoundKnowledgeBases(input: {
+  agentVersionId: string;
+  workspaceId: string;
+  knowledgeBaseIds: string[];
+  query: string;
+  limit?: number;
+  userId?: string;
+}) {
+  const bindings = await getKnowledgeBindingsForVersion(
+    input.agentVersionId,
+    input.userId
+      ? { workspaceId: input.workspaceId, userId: input.userId }
+      : undefined,
+  );
   if (bindings.length === 0) return [];
 
   const requestedIds = new Set(input.knowledgeBaseIds);
-  const selectedBindings = bindings.filter((binding) => requestedIds.has(binding.knowledgeBaseId));
+  const selectedBindings = bindings.filter((binding) =>
+    requestedIds.has(binding.knowledgeBaseId),
+  );
   if (selectedBindings.length !== requestedIds.size) {
     throw new Error("One or more selected data sources are not available");
   }
 
-  const perBaseLimit = Math.max(1, Math.ceil((input.limit ?? 5) / selectedBindings.length));
+  const perBaseLimit = Math.max(
+    1,
+    Math.ceil((input.limit ?? 5) / selectedBindings.length),
+  );
   const allResults: Array<{
     documentId: string;
     documentTitle: string;
@@ -44,7 +65,9 @@ export async function searchBoundKnowledgeBases(input: { agentVersionId: string;
     }
   }
 
-  return allResults.sort((a, b) => b.score - a.score).slice(0, input.limit ?? 5);
+  return allResults
+    .sort((a, b) => b.score - a.score)
+    .slice(0, input.limit ?? 5);
 }
 
 const MAX_BOUND_CONTEXT_CHARS = 40_000;
@@ -54,7 +77,14 @@ const MAX_BOUND_CONTEXT_CHARS = 40_000;
  * The active version binding and the initiating user's visibility are checked
  * again at execution time so a stale chunk id cannot bypass knowledge access.
  */
-export async function readBoundKnowledgeChunkWindow(input: { agentVersionId: string; workspaceId: string; userId: string; chunkId: string; before?: number; after?: number }) {
+export async function readBoundKnowledgeChunkWindow(input: {
+  agentVersionId: string;
+  workspaceId: string;
+  userId: string;
+  chunkId: string;
+  before?: number;
+  after?: number;
+}) {
   const bindings = await getKnowledgeBindingsForVersion(input.agentVersionId, {
     workspaceId: input.workspaceId,
     userId: input.userId,
@@ -97,7 +127,13 @@ export async function readBoundKnowledgeChunkWindow(input: { agentVersionId: str
       contentEncrypted: documentChunks.contentEncrypted,
     })
     .from(documentChunks)
-    .where(and(eq(documentChunks.documentId, anchor.documentId), gte(documentChunks.chunkIndex, Math.max(0, anchor.chunkIndex - before)), lte(documentChunks.chunkIndex, anchor.chunkIndex + after)))
+    .where(
+      and(
+        eq(documentChunks.documentId, anchor.documentId),
+        gte(documentChunks.chunkIndex, Math.max(0, anchor.chunkIndex - before)),
+        lte(documentChunks.chunkIndex, anchor.chunkIndex + after),
+      ),
+    )
     .orderBy(asc(documentChunks.chunkIndex));
 
   let remainingCharacters = MAX_BOUND_CONTEXT_CHARS;

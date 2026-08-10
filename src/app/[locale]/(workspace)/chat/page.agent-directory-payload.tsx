@@ -1,6 +1,6 @@
 "use client";
 
-import type { ChatAgent,ChatConversation } from "@/components/chat/chat-types";
+import type { ChatAgent, ChatConversation } from "@/components/chat/chat-types";
 
 export type AgentDirectoryPayload = {
   agents?: ChatAgent[];

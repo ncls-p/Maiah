@@ -5,19 +5,28 @@ import { resolveToolExecutionHeaders } from "@/modules/tool-connections/use-case
 import { projectToolPayloadForDisplay } from "@/modules/tool/safe-payload";
 import { db } from "@/server/infrastructure/db";
 import { mcpTools } from "@/server/infrastructure/db/schema";
-import { and,eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
-function mcpApplicationErrorMessage(result: Awaited<ReturnType<typeof callRemoteMcpTool>>) {
-  const payload = projectToolPayloadForDisplay(result.structuredContent ?? result.content, {
-    maxArrayItems: 10,
-    maxDepth: 4,
-    maxObjectKeys: 20,
-    maxStringLength: 1_000,
-  });
+function mcpApplicationErrorMessage(
+  result: Awaited<ReturnType<typeof callRemoteMcpTool>>,
+) {
+  const payload = projectToolPayloadForDisplay(
+    result.structuredContent ?? result.content,
+    {
+      maxArrayItems: 10,
+      maxDepth: 4,
+      maxObjectKeys: 20,
+      maxStringLength: 1_000,
+    },
+  );
 
   if (Array.isArray(payload)) {
     const text = payload
-      .flatMap((item) => (item && typeof item === "object" && "text" in item ? [String(item.text)] : []))
+      .flatMap((item) =>
+        item && typeof item === "object" && "text" in item
+          ? [String(item.text)]
+          : [],
+      )
       .filter(Boolean)
       .join("\n");
     if (text) return `MCP tool failed: ${text}`;
@@ -39,8 +48,18 @@ function mcpApplicationErrorMessage(result: Awaited<ReturnType<typeof callRemote
   return "MCP tool failed";
 }
 
-export async function executeMcpTool(input: { serverId: string; toolId: string; workspaceId: string; toolInput: unknown; userId?: string }) {
-  const server = await getMcpServer(input.serverId, input.workspaceId, input.userId);
+export async function executeMcpTool(input: {
+  serverId: string;
+  toolId: string;
+  workspaceId: string;
+  toolInput: unknown;
+  userId?: string;
+}) {
+  const server = await getMcpServer(
+    input.serverId,
+    input.workspaceId,
+    input.userId,
+  );
   if (!server) throw new Error("MCP server not found");
   if (!server.enabled) throw new Error("MCP server is disabled");
   if (!server.url) throw new Error("MCP server URL is not configured");
@@ -48,7 +67,13 @@ export async function executeMcpTool(input: { serverId: string; toolId: string; 
   const [tool] = await db
     .select()
     .from(mcpTools)
-    .where(and(eq(mcpTools.id, input.toolId), eq(mcpTools.mcpServerId, input.serverId), eq(mcpTools.enabled, true)))
+    .where(
+      and(
+        eq(mcpTools.id, input.toolId),
+        eq(mcpTools.mcpServerId, input.serverId),
+        eq(mcpTools.enabled, true),
+      ),
+    )
     .limit(1);
 
   if (!tool) throw new Error("MCP tool not found");

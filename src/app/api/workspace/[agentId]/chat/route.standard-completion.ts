@@ -175,53 +175,47 @@ export async function completeStandardChat(input: {
           : {}),
       })
       .where(eq(conversations.id, conversation.id));
-    await tx
-      .insert(usageEvents)
-      .values({
-        workspaceId: agent.workspaceId,
-        userId: actorUserId,
-        providerId: providerConfig.providerId,
-        modelId: providerConfig.modelRecordId,
-        agentId,
-        conversationId: conversation.id,
-        operation: "chat",
-        inputTokens: totalUsage.inputTokens || null,
-        outputTokens: totalUsage.outputTokens || null,
-        costUsd:
-          eventUsageImpact.cost === null || eventUsageImpact.currency !== "USD"
-            ? null
-            : String(eventUsageImpact.cost),
-        latencyMs: Date.now() - input.startedAt,
-        status: "success",
-        metadataJson: {
-          currency: eventUsageImpact.currency,
-          cost: eventUsageImpact.cost,
-          energyKwh: eventUsageImpact.energyKwh,
-          co2Grams: eventUsageImpact.co2Grams,
-        },
-      });
+    await tx.insert(usageEvents).values({
+      workspaceId: agent.workspaceId,
+      userId: actorUserId,
+      providerId: providerConfig.providerId,
+      modelId: providerConfig.modelRecordId,
+      agentId,
+      conversationId: conversation.id,
+      operation: "chat",
+      inputTokens: totalUsage.inputTokens || null,
+      outputTokens: totalUsage.outputTokens || null,
+      costUsd:
+        eventUsageImpact.cost === null || eventUsageImpact.currency !== "USD"
+          ? null
+          : String(eventUsageImpact.cost),
+      latencyMs: Date.now() - input.startedAt,
+      status: "success",
+      metadataJson: {
+        currency: eventUsageImpact.currency,
+        cost: eventUsageImpact.cost,
+        energyKwh: eventUsageImpact.energyKwh,
+        co2Grams: eventUsageImpact.co2Grams,
+      },
+    });
     if (usageImpactSetting.enabled)
-      await tx
-        .insert(messageParts)
-        .values({
-          messageId: assistantMessage.id,
-          type: "impact",
-          contentEncrypted: await encryptValue(
-            JSON.stringify(displayedUsageImpact),
-          ),
-          metadataJson: displayedUsageImpact,
-          sortOrder: partWriter.nextSortOrder,
-        });
+      await tx.insert(messageParts).values({
+        messageId: assistantMessage.id,
+        type: "impact",
+        contentEncrypted: await encryptValue(
+          JSON.stringify(displayedUsageImpact),
+        ),
+        metadataJson: displayedUsageImpact,
+        sortOrder: partWriter.nextSortOrder,
+      });
     if (conversationSummary)
-      await tx
-        .insert(messageParts)
-        .values({
-          messageId: assistantMessage.id,
-          type: "summary",
-          contentEncrypted: await encryptValue(conversationSummary),
-          metadataJson: { inputTokens: totalUsage.inputTokens ?? null },
-          sortOrder: partWriter.nextSortOrder + 1,
-        });
+      await tx.insert(messageParts).values({
+        messageId: assistantMessage.id,
+        type: "summary",
+        contentEncrypted: await encryptValue(conversationSummary),
+        metadataJson: { inputTokens: totalUsage.inputTokens ?? null },
+        sortOrder: partWriter.nextSortOrder + 1,
+      });
   });
   logger.info("Chat stream completed", {
     requestId,

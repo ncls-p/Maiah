@@ -1,6 +1,6 @@
 import nextEnv from "@next/env";
 import { expect, test } from "@playwright/test";
-import { ensureE2EUser, login } from "./fixtures";
+import { ensureE2EAssistant, ensureE2EUser, login } from "./fixtures";
 
 const { loadEnvConfig } = nextEnv;
 
@@ -8,6 +8,7 @@ loadEnvConfig(process.cwd());
 
 test.beforeAll(async () => {
   await ensureE2EUser();
+  await ensureE2EAssistant();
 });
 
 test.beforeEach(async ({ page }) => {
@@ -46,9 +47,10 @@ test.describe("chat composer", () => {
     await expect(dock).toBeVisible();
     await expect(textarea).toBeVisible();
     await expect(mobileNavigation).toBeVisible();
-    await expect(
-      page.locator('meta[name="viewport"]'),
-    ).toHaveAttribute("content", /interactive-widget=resizes-content/);
+    await expect(page.locator('meta[name="viewport"]')).toHaveAttribute(
+      "content",
+      /interactive-widget=resizes-content/,
+    );
     const initialTextarea = await textarea.evaluate((element) => ({
       clientHeight: element.clientHeight,
       overflowY: getComputedStyle(element).overflowY,
@@ -76,8 +78,12 @@ test.describe("chat composer", () => {
     expect(dockBox).not.toBeNull();
     expect(composerBounds).not.toBeNull();
     expect(navigationBox).not.toBeNull();
-    expect(Math.abs(dockBox!.y + dockBox!.height - navigationBox!.y)).toBeLessThanOrEqual(1);
-    expect(navigationBox!.y - (composerBounds!.y + composerBounds!.height)).toBeLessThanOrEqual(16);
+    expect(
+      Math.abs(dockBox!.y + dockBox!.height - navigationBox!.y),
+    ).toBeLessThanOrEqual(1);
+    expect(
+      navigationBox!.y - (composerBounds!.y + composerBounds!.height),
+    ).toBeLessThanOrEqual(16);
     expect(
       await page.evaluate(
         () => document.documentElement.scrollHeight <= window.innerHeight,
@@ -121,5 +127,45 @@ test.describe("chat composer", () => {
         () => document.documentElement.scrollHeight <= window.innerHeight,
       ),
     ).toBe(true);
+  });
+
+  test("uses a stable composer action hierarchy at each responsive mode", async ({
+    page,
+  }) => {
+    for (const viewport of [
+      { width: 390, height: 844 },
+      { width: 600, height: 844 },
+      { width: 1440, height: 900 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await page.goto("/en/chat");
+      const primary = page.locator(
+        '[data-slot="chat-composer-primary-controls"]',
+      );
+      const upload = page.getByRole("button", { name: "Upload files" });
+      const send = page.getByRole("button", { name: "Send message" });
+      await expect(primary).toBeVisible({ timeout: 15_000 });
+      await expect(upload).toBeVisible();
+      await expect(send).toBeVisible();
+      const [primaryBox, uploadBox, sendBox] = await Promise.all([
+        primary.boundingBox(),
+        upload.boundingBox(),
+        send.boundingBox(),
+      ]);
+      expect(primaryBox).not.toBeNull();
+      expect(uploadBox).not.toBeNull();
+      expect(sendBox).not.toBeNull();
+      expect(Math.abs(uploadBox!.y - sendBox!.y)).toBeLessThanOrEqual(1);
+      expect(Math.abs(primaryBox!.y - uploadBox!.y)).toBeLessThanOrEqual(1);
+      expect(primaryBox!.x).toBeGreaterThan(uploadBox!.x);
+      expect(primaryBox!.x + primaryBox!.width).toBeLessThanOrEqual(
+        sendBox!.x + 1,
+      );
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= window.innerWidth,
+        ),
+      ).toBe(true);
+    }
   });
 });

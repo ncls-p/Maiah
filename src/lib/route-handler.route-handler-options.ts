@@ -1,7 +1,7 @@
 import { logger } from "@/lib/logger";
 import { type AuthContext } from "@/modules/auth/resolve-auth";
 import { getSession } from "@/modules/auth/session";
-import { NextRequest,NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 /** Wrap an async handler with session authentication and consistent error handling. */
 export type RouteHandlerOptions = {
@@ -33,7 +33,15 @@ export function attachRequestId(response: Response, requestId: string) {
   return response;
 }
 
-export function routeLogData(req: NextRequest, requestId: string, startedAt: number, scope: RouteLogScope, status: number, session?: AuthSession, auth?: AuthContext) {
+export function routeLogData(
+  req: NextRequest,
+  requestId: string,
+  startedAt: number,
+  scope: RouteLogScope,
+  status: number,
+  session?: AuthSession,
+  auth?: AuthContext,
+) {
   return {
     requestId,
     method: req.method ?? "UNKNOWN",
@@ -47,12 +55,40 @@ export function routeLogData(req: NextRequest, requestId: string, startedAt: num
   };
 }
 
-export function logRouteCompleted(req: NextRequest, requestId: string, startedAt: number, scope: RouteLogScope, response: Response, session?: AuthSession, auth?: AuthContext) {
-  logger.info("API request completed", routeLogData(req, requestId, startedAt, scope, response.status, session, auth));
+export function logRouteCompleted(
+  req: NextRequest,
+  requestId: string,
+  startedAt: number,
+  scope: RouteLogScope,
+  response: Response,
+  session?: AuthSession,
+  auth?: AuthContext,
+) {
+  logger.info(
+    "API request completed",
+    routeLogData(
+      req,
+      requestId,
+      startedAt,
+      scope,
+      response.status,
+      session,
+      auth,
+    ),
+  );
   return attachRequestId(response, requestId);
 }
 
-export function logRouteRejected(req: NextRequest, requestId: string, startedAt: number, scope: RouteLogScope, status: number, reason: string, session?: AuthSession, auth?: AuthContext) {
+export function logRouteRejected(
+  req: NextRequest,
+  requestId: string,
+  startedAt: number,
+  scope: RouteLogScope,
+  status: number,
+  reason: string,
+  session?: AuthSession,
+  auth?: AuthContext,
+) {
   logger.warn("API request rejected", {
     ...routeLogData(req, requestId, startedAt, scope, status, session, auth),
     reason,

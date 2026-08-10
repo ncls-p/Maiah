@@ -1,23 +1,48 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { type FormEvent,useCallback,useEffect,useMemo,useState } from "react";
+import {
+  type FormEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { toast } from "sonner";
 
 import { fetchJson } from "@/lib/api-client";
-import { AccessAssignment,AccessResource,AccessResourceDefinition,ResourceAccessSnapshot } from "./access-console.access-member";
+import {
+  AccessAssignment,
+  AccessResource,
+  AccessResourceDefinition,
+  ResourceAccessSnapshot,
+} from "./access-console.access-member";
 import { ResourceAccessPanelView } from "./access-console.resource-access-panel.view";
 import { ResourceTransferPreview } from "./access-console.resource-transfer-preview";
 import { useResourceTransfer } from "./access-console.use-resource-transfer";
 
-export function useResourceAccessPanelController({ workspaceId, organizationId, definitions, canManageResources }: { workspaceId: string; organizationId: string; definitions: AccessResourceDefinition[]; canManageResources: boolean }) {
+export function useResourceAccessPanelController({
+  workspaceId,
+  organizationId,
+  definitions,
+  canManageResources,
+}: {
+  workspaceId: string;
+  organizationId: string;
+  definitions: AccessResourceDefinition[];
+  canManageResources: boolean;
+}) {
   const t = useTranslations("access");
-  const [resourceType, setResourceType] = useState(definitions[0]?.type ?? "agent");
+  const [resourceType, setResourceType] = useState(
+    definitions[0]?.type ?? "agent",
+  );
   const [query, setQuery] = useState("");
   const [resources, setResources] = useState<AccessResource[]>([]);
   const [loadingResources, setLoadingResources] = useState(true);
   const [loadingMoreResources, setLoadingMoreResources] = useState(false);
-  const [nextResourceOffset, setNextResourceOffset] = useState<number | null>(null);
+  const [nextResourceOffset, setNextResourceOffset] = useState<number | null>(
+    null,
+  );
   const [selected, setSelected] = useState<AccessResource | null>(null);
   const [details, setDetails] = useState<ResourceAccessSnapshot | null>(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
@@ -27,7 +52,8 @@ export function useResourceAccessPanelController({ workspaceId, organizationId, 
   const [roleId, setRoleId] = useState("");
   const [principalQuery, setPrincipalQuery] = useState("");
   const [assignmentQuery, setAssignmentQuery] = useState("");
-  const [deletingResource, setDeletingResource] = useState<AccessResource | null>(null);
+  const [deletingResource, setDeletingResource] =
+    useState<AccessResource | null>(null);
   const [deletionPending, setDeletionPending] = useState(false);
 
   const loadResources = useCallback(
@@ -49,10 +75,14 @@ export function useResourceAccessPanelController({ workspaceId, organizationId, 
           resources: AccessResource[];
           nextOffset: number | null;
         }>(`/api/workspace/iam/resources?${params}`);
-        setResources((current) => (offset === 0 ? result.resources : [...current, ...result.resources]));
+        setResources((current) =>
+          offset === 0 ? result.resources : [...current, ...result.resources],
+        );
         setNextResourceOffset(result.nextOffset);
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : t("resourcesLoadFailed"));
+        toast.error(
+          error instanceof Error ? error.message : t("resourcesLoadFailed"),
+        );
       } finally {
         setLoadingResources(false);
         setLoadingMoreResources(false);
@@ -70,9 +100,15 @@ export function useResourceAccessPanelController({ workspaceId, organizationId, 
           resourceType: resource.type,
           resourceId: resource.id,
         });
-        setDetails(await fetchJson<ResourceAccessSnapshot>(`/api/workspace/iam/resources?${params}`));
+        setDetails(
+          await fetchJson<ResourceAccessSnapshot>(
+            `/api/workspace/iam/resources?${params}`,
+          ),
+        );
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : t("resourcesLoadFailed"));
+        toast.error(
+          error instanceof Error ? error.message : t("resourcesLoadFailed"),
+        );
       } finally {
         setDetailsLoading(false);
       }
@@ -85,8 +121,18 @@ export function useResourceAccessPanelController({ workspaceId, organizationId, 
     return () => window.clearTimeout(timeout);
   }, [loadResources]);
 
-  const principals = principalType === "user" ? (details?.members ?? []) : (details?.teams ?? []);
-  const filteredPrincipals = principals.filter((principal) => [principal.name, "email" in principal ? principal.email : ""].some((value) => value.toLocaleLowerCase().includes(principalQuery.trim().toLocaleLowerCase())));
+  const principals =
+    principalType === "user"
+      ? (details?.members ?? [])
+      : (details?.teams ?? []);
+  const filteredPrincipals = principals.filter((principal) =>
+    [principal.name, "email" in principal ? principal.email : ""].some(
+      (value) =>
+        value
+          .toLocaleLowerCase()
+          .includes(principalQuery.trim().toLocaleLowerCase()),
+    ),
+  );
   const groupedAssignments = useMemo(() => {
     const groups = new Map<
       string,
@@ -114,14 +160,45 @@ export function useResourceAccessPanelController({ workspaceId, organizationId, 
   const filteredGroupedAssignments = useMemo(() => {
     const normalizedQuery = assignmentQuery.trim().toLocaleLowerCase();
     if (!normalizedQuery) return groupedAssignments;
-    return groupedAssignments.filter(([, group]) => [group.principalName, group.principalDetail ?? "", ...group.assignments.flatMap((assignment) => [assignment.roleName, assignment.scope])].some((value) => value.toLocaleLowerCase().includes(normalizedQuery)));
+    return groupedAssignments.filter(([, group]) =>
+      [
+        group.principalName,
+        group.principalDetail ?? "",
+        ...group.assignments.flatMap((assignment) => [
+          assignment.roleName,
+          assignment.scope,
+        ]),
+      ].some((value) => value.toLocaleLowerCase().includes(normalizedQuery)),
+    );
   }, [assignmentQuery, groupedAssignments]);
-  const { transferResource, setTransferResource, transferDestinations, destinationQuery, setDestinationQuery, targetWorkspaceId, setTargetWorkspaceId, transferOptions, setTransferOptions, transferPreview, setTransferPreview, transferLoading, advancedTransfer, setAdvancedTransfer, openTransfer, previewTransfer, executeTransfer } = useResourceTransfer({ workspaceId, loadResources });
+  const {
+    transferResource,
+    setTransferResource,
+    transferDestinations,
+    destinationQuery,
+    setDestinationQuery,
+    targetWorkspaceId,
+    setTargetWorkspaceId,
+    transferOptions,
+    setTransferOptions,
+    transferPreview,
+    setTransferPreview,
+    transferLoading,
+    advancedTransfer,
+    setAdvancedTransfer,
+    openTransfer,
+    previewTransfer,
+    executeTransfer,
+  } = useResourceTransfer({ workspaceId, loadResources });
 
   const filteredDestinations = useMemo(() => {
     const normalizedQuery = destinationQuery.trim().toLocaleLowerCase();
     if (!normalizedQuery) return transferDestinations;
-    return transferDestinations.filter((destination) => [destination.organizationName, destination.workspaceName].some((value) => value.toLocaleLowerCase().includes(normalizedQuery)));
+    return transferDestinations.filter((destination) =>
+      [destination.organizationName, destination.workspaceName].some((value) =>
+        value.toLocaleLowerCase().includes(normalizedQuery),
+      ),
+    );
   }, [destinationQuery, transferDestinations]);
   const transferItemsByType = useMemo(() => {
     const groups = new Map<string, ResourceTransferPreview["items"]>();
@@ -199,7 +276,9 @@ export function useResourceAccessPanelController({ workspaceId, organizationId, 
           name: deletingResource.name,
         }),
       );
-      setResources((current) => current.filter(({ id }) => id !== deletingResource.id));
+      setResources((current) =>
+        current.filter(({ id }) => id !== deletingResource.id),
+      );
       if (selected?.id === deletingResource.id) {
         setSelected(null);
         setDetails(null);
@@ -210,7 +289,9 @@ export function useResourceAccessPanelController({ workspaceId, organizationId, 
       }
       setDeletingResource(null);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t("resourceDeleteFailed"));
+      toast.error(
+        error instanceof Error ? error.message : t("resourceDeleteFailed"),
+      );
     } finally {
       setDeletionPending(false);
     }
@@ -281,7 +362,9 @@ export function useResourceAccessPanelController({ workspaceId, organizationId, 
   } as const;
 }
 
-export function ResourceAccessPanel(...args: Parameters<typeof useResourceAccessPanelController>) {
+export function ResourceAccessPanel(
+  ...args: Parameters<typeof useResourceAccessPanelController>
+) {
   const model = useResourceAccessPanelController(...args);
   if (!("kind" in model)) return model;
   return <ResourceAccessPanelView model={model} />;

@@ -1,12 +1,18 @@
-import { handleRoute,requireResourcePermissionAsync } from "@/lib/route-handler";
+import {
+  handleRoute,
+  requireResourcePermissionAsync,
+} from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
 import { testMcpConnection } from "@/modules/mcp/use-cases";
-import { NextRequest,NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 const querySchema = z.object({ workspaceId: z.uuid() });
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ serverId: string }> }) {
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ serverId: string }> },
+) {
   return handleRoute(
     req,
     async ({ session }) => {
@@ -16,17 +22,32 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ser
       if (!parsed.success) {
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
       }
-      const forbidden = await requireResourcePermissionAsync(session.user.id, parsed.data.workspaceId, "mcpServers.manage", "mcp_server", (await params).serverId);
+      const forbidden = await requireResourcePermissionAsync(
+        session.user.id,
+        parsed.data.workspaceId,
+        "mcpServers.manage",
+        "mcp_server",
+        (await params).serverId,
+      );
       if (forbidden) return forbidden;
       const { serverId } = await params;
-      const canManageGlobal = await canManageTenantGlobals(session, parsed.data.workspaceId);
-      const result = await testMcpConnection(serverId, parsed.data.workspaceId, session.user.id, canManageGlobal);
+      const canManageGlobal = await canManageTenantGlobals(
+        session,
+        parsed.data.workspaceId,
+      );
+      const result = await testMcpConnection(
+        serverId,
+        parsed.data.workspaceId,
+        session.user.id,
+        canManageGlobal,
+      );
       return NextResponse.json(result);
     },
     {
       logLabel: "Failed to test MCP server",
       expectedError: (error) => {
-        const msg = error instanceof Error ? error.message : "Internal server error";
+        const msg =
+          error instanceof Error ? error.message : "Internal server error";
         return NextResponse.json({ error: msg }, { status: 400 });
       },
     },

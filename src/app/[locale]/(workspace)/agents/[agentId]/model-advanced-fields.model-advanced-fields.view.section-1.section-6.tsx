@@ -1,8 +1,12 @@
-import { Field,FieldContent,FieldLabel } from "@/components/ui/field";
+import { Field, FieldContent, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 
 import type { ModelAdvancedFieldsViewModel } from "./model-advanced-fields.model-advanced-fields.view";
-export function ModelAdvancedMainSection6({ model }: { model: ModelAdvancedFieldsViewModel }) {
+export function ModelAdvancedMainSection6({
+  model,
+}: {
+  model: ModelAdvancedFieldsViewModel;
+}) {
   const { form, setForm, t } = model;
   return (
     <Field>

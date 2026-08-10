@@ -1,13 +1,23 @@
 import { decryptValue } from "@/lib/crypto";
 import { db } from "@/server/infrastructure/db";
-import { messageParts,messages } from "@/server/infrastructure/db/schema";
-import { and,desc,eq } from "drizzle-orm";
+import { messageParts, messages } from "@/server/infrastructure/db/schema";
+import { and, desc, eq } from "drizzle-orm";
 
-export async function findUserMessageForResend(input: { conversationId: string; messageId: string; content: string }) {
+export async function findUserMessageForResend(input: {
+  conversationId: string;
+  messageId: string;
+  content: string;
+}) {
   const [exactMatch] = await db
     .select()
     .from(messages)
-    .where(and(eq(messages.id, input.messageId), eq(messages.conversationId, input.conversationId), eq(messages.role, "user")))
+    .where(
+      and(
+        eq(messages.id, input.messageId),
+        eq(messages.conversationId, input.conversationId),
+        eq(messages.role, "user"),
+      ),
+    )
     .limit(1);
 
   if (exactMatch) return exactMatch;
@@ -19,7 +29,12 @@ export async function findUserMessageForResend(input: { conversationId: string; 
   const userMessages = await db
     .select()
     .from(messages)
-    .where(and(eq(messages.conversationId, input.conversationId), eq(messages.role, "user")))
+    .where(
+      and(
+        eq(messages.conversationId, input.conversationId),
+        eq(messages.role, "user"),
+      ),
+    )
     .orderBy(desc(messages.createdAt));
 
   for (const message of userMessages) {
@@ -47,11 +62,19 @@ export async function findUserMessageForResend(input: { conversationId: string; 
   return null;
 }
 
-export async function isFirstUserMessageInConversation(conversationId: string, userMessageId: string) {
+export async function isFirstUserMessageInConversation(
+  conversationId: string,
+  userMessageId: string,
+) {
   const [firstUserMessage] = await db
     .select({ id: messages.id })
     .from(messages)
-    .where(and(eq(messages.conversationId, conversationId), eq(messages.role, "user")))
+    .where(
+      and(
+        eq(messages.conversationId, conversationId),
+        eq(messages.role, "user"),
+      ),
+    )
     .orderBy(messages.createdAt)
     .limit(1);
 

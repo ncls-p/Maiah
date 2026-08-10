@@ -1,6 +1,11 @@
-import { listOpenAIProxyModels,resolveOpenAIProxyModel } from "@/modules/openai-proxy/model-catalog";
+import {
+  listOpenAIProxyModels,
+  resolveOpenAIProxyModel,
+} from "@/modules/openai-proxy/model-catalog";
 
-function toAnthropicModel(model: Awaited<ReturnType<typeof listOpenAIProxyModels>>[number]) {
+function toAnthropicModel(
+  model: Awaited<ReturnType<typeof listOpenAIProxyModels>>[number],
+) {
   return {
     id: model.id,
     created_at: new Date(model.created * 1000).toISOString(),
@@ -10,7 +15,9 @@ function toAnthropicModel(model: Awaited<ReturnType<typeof listOpenAIProxyModels
 }
 
 export async function listAnthropicProxyModels(workspaceId: string) {
-  const models = (await listOpenAIProxyModels(workspaceId)).map(toAnthropicModel);
+  const models = (await listOpenAIProxyModels(workspaceId)).map(
+    toAnthropicModel,
+  );
   return {
     data: models,
     has_more: false,
@@ -19,7 +26,10 @@ export async function listAnthropicProxyModels(workspaceId: string) {
   };
 }
 
-export async function retrieveAnthropicProxyModel(workspaceId: string, modelId: string) {
+export async function retrieveAnthropicProxyModel(
+  workspaceId: string,
+  modelId: string,
+) {
   const model = await resolveOpenAIProxyModel(workspaceId, modelId);
   return toAnthropicModel(model.publicModel);
 }

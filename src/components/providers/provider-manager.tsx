@@ -1,23 +1,44 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useCallback,useMemo,useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
-import { DEFAULT_OPENAI_COMPATIBLE_API_ROUTE,type OpenAICompatibleApiRoute } from "@/lib/openai-compatible-api";
+import {
+  DEFAULT_OPENAI_COMPATIBLE_API_ROUTE,
+  type OpenAICompatibleApiRoute,
+} from "@/lib/openai-compatible-api";
 
 import { ProviderManagerView } from "./provider-manager.view";
 import { KIND_LABELS } from "./provider-manager/constants";
-import type { DiscoveredModel,ProviderAuthType,ProviderKind,ProviderModel,SafeProvider } from "./provider-manager/types";
+import type {
+  DiscoveredModel,
+  ProviderAuthType,
+  ProviderKind,
+  ProviderModel,
+  SafeProvider,
+} from "./provider-manager/types";
 import { useProviderModelActions } from "./provider-manager/use-provider-model-actions";
-import { defaultAuthType,parsePairs } from "./provider-manager/utils";
+import { defaultAuthType, parsePairs } from "./provider-manager/utils";
 
-export function useProviderManagerController({ workspaceId, initialProviders, initialModels }: { workspaceId: string; initialProviders: SafeProvider[]; initialModels: ProviderModel[] }) {
+export function useProviderManagerController({
+  workspaceId,
+  initialProviders,
+  initialModels,
+}: {
+  workspaceId: string;
+  initialProviders: SafeProvider[];
+  initialModels: ProviderModel[];
+}) {
   const t = useTranslations("providers.manager");
   const [providers, setProviders] = useState<SafeProvider[]>(initialProviders);
-  const [selectedProviderId, setSelectedProviderId] = useState<string | null>(initialProviders[0]?.id ?? null);
+  const [selectedProviderId, setSelectedProviderId] = useState<string | null>(
+    initialProviders[0]?.id ?? null,
+  );
   const [models, setModels] = useState<ProviderModel[]>(initialModels);
-  const [discoveredModels, setDiscoveredModels] = useState<DiscoveredModel[]>([]);
+  const [discoveredModels, setDiscoveredModels] = useState<DiscoveredModel[]>(
+    [],
+  );
   const [loadingProviders, setLoadingProviders] = useState(false);
   const [loadingModels, setLoadingModels] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -25,41 +46,63 @@ export function useProviderManagerController({ workspaceId, initialProviders, in
   const [modelSearch, setModelSearch] = useState("");
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [addKind, setAddKind] = useState<ProviderKind>("openai-compatible");
-  const [addAuthType, setAddAuthType] = useState<ProviderAuthType>(defaultAuthType("openai-compatible"));
+  const [addAuthType, setAddAuthType] = useState<ProviderAuthType>(
+    defaultAuthType("openai-compatible"),
+  );
   const [addName, setAddName] = useState("");
   const [addBaseUrl, setAddBaseUrl] = useState("");
   const [addApiKey, setAddApiKey] = useState("");
   const [addCustomHeaders, setAddCustomHeaders] = useState("");
   const [addQueryParams, setAddQueryParams] = useState("");
-  const [addApiRoute, setAddApiRoute] = useState<OpenAICompatibleApiRoute>(DEFAULT_OPENAI_COMPATIBLE_API_ROUTE);
+  const [addApiRoute, setAddApiRoute] = useState<OpenAICompatibleApiRoute>(
+    DEFAULT_OPENAI_COMPATIBLE_API_ROUTE,
+  );
   const [addAdvanced, setAddAdvanced] = useState(false);
-  const [editingProvider, setEditingProvider] = useState<SafeProvider | null>(null);
+  const [editingProvider, setEditingProvider] = useState<SafeProvider | null>(
+    null,
+  );
   const [editName, setEditName] = useState("");
   const [editBaseUrl, setEditBaseUrl] = useState("");
   const [editApiKey, setEditApiKey] = useState("");
-  const [editApiRoute, setEditApiRoute] = useState<OpenAICompatibleApiRoute>(DEFAULT_OPENAI_COMPATIBLE_API_ROUTE);
+  const [editApiRoute, setEditApiRoute] = useState<OpenAICompatibleApiRoute>(
+    DEFAULT_OPENAI_COMPATIBLE_API_ROUTE,
+  );
   const [deleteProviderId, setDeleteProviderId] = useState<string | null>(null);
   const [deleteModelId, setDeleteModelId] = useState<string | null>(null);
   const [manualModelId, setManualModelId] = useState("");
   const [manualModelName, setManualModelName] = useState("");
 
-  const selectedProvider = useMemo(() => providers.find((p) => p.id === selectedProviderId) ?? null, [providers, selectedProviderId]);
+  const selectedProvider = useMemo(
+    () => providers.find((p) => p.id === selectedProviderId) ?? null,
+    [providers, selectedProviderId],
+  );
 
   const filteredProviders = useMemo(() => {
     if (!providerSearch.trim()) return providers;
     const q = providerSearch.toLowerCase();
-    return providers.filter((p) => p.name.toLowerCase().includes(q) || KIND_LABELS[p.kind].toLowerCase().includes(q) || (p.baseUrl ?? "").toLowerCase().includes(q));
+    return providers.filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        KIND_LABELS[p.kind].toLowerCase().includes(q) ||
+        (p.baseUrl ?? "").toLowerCase().includes(q),
+    );
   }, [providers, providerSearch]);
 
   const filteredModels = useMemo(() => {
     if (!modelSearch.trim()) return models;
     const q = modelSearch.toLowerCase();
-    return models.filter((m) => m.modelId.toLowerCase().includes(q) || (m.displayName ?? "").toLowerCase().includes(q));
+    return models.filter(
+      (m) =>
+        m.modelId.toLowerCase().includes(q) ||
+        (m.displayName ?? "").toLowerCase().includes(q),
+    );
   }, [models, modelSearch]);
   const loadProviders = useCallback(async () => {
     setLoadingProviders(true);
     try {
-      const res = await fetch(`/api/workspace/providers?workspaceId=${workspaceId}`);
+      const res = await fetch(
+        `/api/workspace/providers?workspaceId=${workspaceId}`,
+      );
       if (!res.ok) throw new Error(t("errorLoadProviders"));
       const data = (await res.json()) as SafeProvider[];
       setProviders(data);
@@ -80,7 +123,9 @@ export function useProviderManagerController({ workspaceId, initialProviders, in
       }
       setLoadingModels(true);
       try {
-        const res = await fetch(`/api/workspace/providers/${providerId}/models?workspaceId=${workspaceId}`);
+        const res = await fetch(
+          `/api/workspace/providers/${providerId}/models?workspaceId=${workspaceId}`,
+        );
         if (!res.ok) throw new Error(t("errorLoadModels"));
         setModels((await res.json()) as ProviderModel[]);
       } catch (error) {
@@ -141,7 +186,9 @@ export function useProviderManagerController({ workspaceId, initialProviders, in
           apiKey: addApiKey,
           headersJson: parsePairs(addCustomHeaders),
           queryParamsJson: parsePairs(addQueryParams),
-          ...(addKind === "openai-compatible" ? { openaiCompatibleApiRoute: addApiRoute } : {}),
+          ...(addKind === "openai-compatible"
+            ? { openaiCompatibleApiRoute: addApiRoute }
+            : {}),
         }),
       });
       if (!res.ok) {
@@ -163,14 +210,19 @@ export function useProviderManagerController({ workspaceId, initialProviders, in
     }
   }
 
-  async function discoverProviderModels(providerId: string | null = selectedProviderId) {
+  async function discoverProviderModels(
+    providerId: string | null = selectedProviderId,
+  ) {
     if (!providerId) return;
     setBusy(true);
     try {
       setSelectedProviderId(providerId);
       await loadModelsForProvider(providerId);
-      const res = await fetch(`/api/workspace/providers/${providerId}/models?workspaceId=${workspaceId}&action=discover`);
-      const data = (await res.json().catch(() => ({}))) as DiscoveredModel[] | { error?: string };
+      const res = await fetch(
+        `/api/workspace/providers/${providerId}/models?workspaceId=${workspaceId}&action=discover`,
+      );
+      const data = (await res.json().catch(() => ({}))) as
+        DiscoveredModel[] | { error?: string };
       if (!res.ok || !Array.isArray(data)) {
         const errorMessage = Array.isArray(data) ? undefined : data.error;
         throw new Error(errorMessage || t("errorDiscoverModels"));
@@ -207,17 +259,22 @@ export function useProviderManagerController({ workspaceId, initialProviders, in
     if (!editingProvider) return;
     setBusy(true);
     try {
-      const res = await fetch(`/api/workspace/providers/${editingProvider.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          workspaceId,
-          name: editName.trim(),
-          baseUrl: editBaseUrl.trim() || "",
-          ...(editApiKey.trim() ? { apiKey: editApiKey.trim() } : {}),
-          ...(editingProvider.kind === "openai-compatible" ? { openaiCompatibleApiRoute: editApiRoute } : {}),
-        }),
-      });
+      const res = await fetch(
+        `/api/workspace/providers/${editingProvider.id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            workspaceId,
+            name: editName.trim(),
+            baseUrl: editBaseUrl.trim() || "",
+            ...(editApiKey.trim() ? { apiKey: editApiKey.trim() } : {}),
+            ...(editingProvider.kind === "openai-compatible"
+              ? { openaiCompatibleApiRoute: editApiRoute }
+              : {}),
+          }),
+        },
+      );
       const data = (await res.json().catch(() => ({}))) as SafeProvider & {
         error?: string;
       };
@@ -238,7 +295,10 @@ export function useProviderManagerController({ workspaceId, initialProviders, in
   async function deleteProvider(id: string) {
     setBusy(true);
     try {
-      const res = await fetch(`/api/workspace/providers/${id}?workspaceId=${workspaceId}`, { method: "DELETE" });
+      const res = await fetch(
+        `/api/workspace/providers/${id}?workspaceId=${workspaceId}`,
+        { method: "DELETE" },
+      );
       if (!res.ok) throw new Error(t("errorArchiveProvider"));
       setProviders((prev) => prev.filter((p) => p.id !== id));
       if (selectedProviderId === id) {
@@ -255,12 +315,99 @@ export function useProviderManagerController({ workspaceId, initialProviders, in
     }
   }
 
-  const { createManualModel, createDiscoveredModels, updateModelLogo, updateModel, deleteModel } = useProviderModelActions({ workspaceId, selectedProviderId, manualModelId, manualModelName, setManualModelId, setManualModelName, setBusy, setDeleteModelId, loadModelsForProvider });
+  const {
+    createManualModel,
+    createDiscoveredModels,
+    updateModelLogo,
+    updateModel,
+    deleteModel,
+  } = useProviderModelActions({
+    workspaceId,
+    selectedProviderId,
+    manualModelId,
+    manualModelName,
+    setManualModelId,
+    setManualModelName,
+    setBusy,
+    setDeleteModelId,
+    loadModelsForProvider,
+  });
 
-  return { kind: "ready", addAdvanced, addApiKey, addApiRoute, addAuthType, addBaseUrl, addCustomHeaders, addKind, addName, addQueryParams, busy, createDiscoveredModels, createManualModel, createNewProvider, deleteModel, deleteModelId, deleteProvider, deleteProviderId, discoverProviderModels, discoveredModels, editApiKey, editApiRoute, editBaseUrl, editName, editingProvider, filteredModels, filteredProviders, loadingModels, loadingProviders, manualModelId, manualModelName, modelSearch, models, openAddDialog, openEditDialog, providerSearch, providers, resetAddForm, saveProviderEdit, selectProvider, selectedProvider, selectedProviderId, setAddAdvanced, setAddApiKey, setAddApiRoute, setAddAuthType, setAddBaseUrl, setAddCustomHeaders, setAddKind, setAddName, setAddQueryParams, setDeleteModelId, setDeleteProviderId, setEditApiKey, setEditApiRoute, setEditBaseUrl, setEditName, setEditingProvider, setManualModelId, setManualModelName, setModelSearch, setProviderSearch, setShowAddDialog, showAddDialog, t, toggleProvider, updateModel, updateModelLogo } as const;
+  return {
+    kind: "ready",
+    addAdvanced,
+    addApiKey,
+    addApiRoute,
+    addAuthType,
+    addBaseUrl,
+    addCustomHeaders,
+    addKind,
+    addName,
+    addQueryParams,
+    busy,
+    createDiscoveredModels,
+    createManualModel,
+    createNewProvider,
+    deleteModel,
+    deleteModelId,
+    deleteProvider,
+    deleteProviderId,
+    discoverProviderModels,
+    discoveredModels,
+    editApiKey,
+    editApiRoute,
+    editBaseUrl,
+    editName,
+    editingProvider,
+    filteredModels,
+    filteredProviders,
+    loadingModels,
+    loadingProviders,
+    manualModelId,
+    manualModelName,
+    modelSearch,
+    models,
+    openAddDialog,
+    openEditDialog,
+    providerSearch,
+    providers,
+    resetAddForm,
+    saveProviderEdit,
+    selectProvider,
+    selectedProvider,
+    selectedProviderId,
+    setAddAdvanced,
+    setAddApiKey,
+    setAddApiRoute,
+    setAddAuthType,
+    setAddBaseUrl,
+    setAddCustomHeaders,
+    setAddKind,
+    setAddName,
+    setAddQueryParams,
+    setDeleteModelId,
+    setDeleteProviderId,
+    setEditApiKey,
+    setEditApiRoute,
+    setEditBaseUrl,
+    setEditName,
+    setEditingProvider,
+    setManualModelId,
+    setManualModelName,
+    setModelSearch,
+    setProviderSearch,
+    setShowAddDialog,
+    showAddDialog,
+    t,
+    toggleProvider,
+    updateModel,
+    updateModelLogo,
+  } as const;
 }
 
-export function ProviderManager(...args: Parameters<typeof useProviderManagerController>) {
+export function ProviderManager(
+  ...args: Parameters<typeof useProviderManagerController>
+) {
   const model = useProviderManagerController(...args);
   if (!("kind" in model)) return model;
   return <ProviderManagerView model={model} />;

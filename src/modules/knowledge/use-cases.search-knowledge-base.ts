@@ -1,20 +1,39 @@
 import { decryptValue } from "@/lib/crypto";
 import { logger } from "@/lib/logger";
-import { resolveEmbeddingModel,resolveRerankingModel,type RagConfig } from "@/modules/knowledge/rag-config";
+import {
+  resolveEmbeddingModel,
+  resolveRerankingModel,
+  type RagConfig,
+} from "@/modules/knowledge/rag-config";
 import { db } from "@/server/infrastructure/db";
-import { documentChunks,documentEmbeddings,documents } from "@/server/infrastructure/db/schema";
-import { cosineSimilarity,embed,rerank } from "ai";
-import { and,eq } from "drizzle-orm";
+import {
+  documentChunks,
+  documentEmbeddings,
+  documents,
+} from "@/server/infrastructure/db/schema";
+import { cosineSimilarity, embed, rerank } from "ai";
+import { and, eq } from "drizzle-orm";
 import { effectiveRagConfig } from "./use-cases.create-knowledge-base-input";
-import { KnowledgeSearchHit,scoreContent } from "./use-cases.list-documents";
+import { KnowledgeSearchHit, scoreContent } from "./use-cases.list-documents";
 import { getKnowledgeBase } from "./use-cases.list-knowledge-bases";
 
-async function searchKnowledgeBaseByKeyword(input: { workspaceId: string; knowledgeBaseId: string; query: string; limit?: number }): Promise<KnowledgeSearchHit[]> {
+async function searchKnowledgeBaseByKeyword(input: {
+  workspaceId: string;
+  knowledgeBaseId: string;
+  query: string;
+  limit?: number;
+}): Promise<KnowledgeSearchHit[]> {
   const rows = await db
     .select({ chunk: documentChunks, document: documents })
     .from(documentChunks)
     .innerJoin(documents, eq(documentChunks.documentId, documents.id))
-    .where(and(eq(documents.knowledgeBaseId, input.knowledgeBaseId), eq(documents.workspaceId, input.workspaceId), eq(documents.status, "ready")));
+    .where(
+      and(
+        eq(documents.knowledgeBaseId, input.knowledgeBaseId),
+        eq(documents.workspaceId, input.workspaceId),
+        eq(documents.status, "ready"),
+      ),
+    );
 
   const results: KnowledgeSearchHit[] = [];
   for (const row of rows) {
@@ -36,9 +55,18 @@ async function searchKnowledgeBaseByKeyword(input: { workspaceId: string; knowle
   return results.sort((a, b) => b.score - a.score).slice(0, input.limit ?? 5);
 }
 
-async function searchKnowledgeBaseByVector(input: { workspaceId: string; knowledgeBaseId: string; query: string; limit?: number; config: RagConfig }): Promise<KnowledgeSearchHit[] | null> {
+async function searchKnowledgeBaseByVector(input: {
+  workspaceId: string;
+  knowledgeBaseId: string;
+  query: string;
+  limit?: number;
+  config: RagConfig;
+}): Promise<KnowledgeSearchHit[] | null> {
   const config = input.config;
-  const embeddingSelection = await resolveEmbeddingModel(input.workspaceId, config);
+  const embeddingSelection = await resolveEmbeddingModel(
+    input.workspaceId,
+    config,
+  );
   if (!embeddingSelection) return null;
   const queryResult = await embed({
     model: embeddingSelection.model,
@@ -60,9 +88,19 @@ async function searchKnowledgeBaseByVector(input: { workspaceId: string; knowled
       embedding: documentEmbeddings,
     })
     .from(documentEmbeddings)
-    .innerJoin(documentChunks, eq(documentEmbeddings.chunkId, documentChunks.id))
+    .innerJoin(
+      documentChunks,
+      eq(documentEmbeddings.chunkId, documentChunks.id),
+    )
     .innerJoin(documents, eq(documentChunks.documentId, documents.id))
-    .where(and(eq(documents.knowledgeBaseId, input.knowledgeBaseId), eq(documents.workspaceId, input.workspaceId), eq(documents.status, "ready"), eq(documentEmbeddings.embeddingModelId, config.embedding.modelId)));
+    .where(
+      and(
+        eq(documents.knowledgeBaseId, input.knowledgeBaseId),
+        eq(documents.workspaceId, input.workspaceId),
+        eq(documents.status, "ready"),
+        eq(documentEmbeddings.embeddingModelId, config.embedding.modelId),
+      ),
+    );
 
   if (rows.length === 0) return null;
 
@@ -79,7 +117,10 @@ async function searchKnowledgeBaseByVector(input: { workspaceId: string; knowled
       chunkId: row.chunk.id,
       chunkIndex: row.chunk.chunkIndex,
       content,
-      score: cosineSimilarity(queryResult.embedding, row.embedding.embeddingJson),
+      score: cosineSimilarity(
+        queryResult.embedding,
+        row.embedding.embeddingJson,
+      ),
     });
   }
   let ranked = results
@@ -92,7 +133,10 @@ async function searchKnowledgeBaseByVector(input: { workspaceId: string; knowled
       model: rerankingModel,
       query: input.query,
       documents: ranked.map((hit) => hit.content),
-      topN: Math.min(input.limit ?? config.retrieval.resultCount, ranked.length),
+      topN: Math.min(
+        input.limit ?? config.retrieval.resultCount,
+        ranked.length,
+      ),
       maxRetries: 1,
       abortSignal: AbortSignal.timeout(30_000),
     });
@@ -101,11 +145,23 @@ async function searchKnowledgeBaseByVector(input: { workspaceId: string; knowled
       score: entry.score,
     }));
   }
-  return ranked.length > 0 ? ranked.slice(0, input.limit ?? config.retrieval.resultCount) : null;
+  return ranked.length > 0
+    ? ranked.slice(0, input.limit ?? config.retrieval.resultCount)
+    : null;
 }
 
-export async function searchKnowledgeBase(input: { workspaceId: string; knowledgeBaseId: string; query: string; limit?: number; userId?: string }) {
-  const knowledgeBase = await getKnowledgeBase(input.knowledgeBaseId, input.workspaceId, input.userId);
+export async function searchKnowledgeBase(input: {
+  workspaceId: string;
+  knowledgeBaseId: string;
+  query: string;
+  limit?: number;
+  userId?: string;
+}) {
+  const knowledgeBase = await getKnowledgeBase(
+    input.knowledgeBaseId,
+    input.workspaceId,
+    input.userId,
+  );
   if (!knowledgeBase) throw new Error("Knowledge base not found");
 
   let vectorHits: KnowledgeSearchHit[] | null = null;

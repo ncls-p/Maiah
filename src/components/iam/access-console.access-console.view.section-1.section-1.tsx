@@ -4,7 +4,11 @@ import type { AccessConsoleViewModel } from "./access-console.access-console.vie
 import { AccessRolesSection1 } from "./access-console.access-console.view.section-1.section-1.section-1";
 import { AccessRolesSection2 } from "./access-console.access-console.view.section-1.section-1.section-2";
 
-export function AccessMainSection1({ model }: { model: AccessConsoleViewModel }) {
+export function AccessMainSection1({
+  model,
+}: {
+  model: AccessConsoleViewModel;
+}) {
   const {} = model;
   return (
     <TabsContent value="roles">

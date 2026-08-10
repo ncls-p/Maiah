@@ -1,12 +1,29 @@
-import { and,count,eq,inArray,or } from "drizzle-orm";
+import { and, count, eq, inArray, or } from "drizzle-orm";
 
 import { logger } from "@/lib/logger";
 import { audit } from "@/server/domain/services/audit";
 import { db } from "@/server/infrastructure/db";
-import { organizationMembers,roleBindings,teamMembers,teams,workspaceMembers,workspaces } from "@/server/infrastructure/db/schema";
-import { findSystemRole,getWorkspaceScope,IamOperationError,invalidateUserOrganizationAccess,requirePermission } from "./use-cases.iam-operation-error";
+import {
+  organizationMembers,
+  roleBindings,
+  teamMembers,
+  teams,
+  workspaceMembers,
+  workspaces,
+} from "@/server/infrastructure/db/schema";
+import {
+  findSystemRole,
+  getWorkspaceScope,
+  IamOperationError,
+  invalidateUserOrganizationAccess,
+  requirePermission,
+} from "./use-cases.iam-operation-error";
 
-export async function removeOrganizationMember(input: { actorUserId: string; workspaceId: string; userId: string }) {
+export async function removeOrganizationMember(input: {
+  actorUserId: string;
+  workspaceId: string;
+  userId: string;
+}) {
   const { organization } = await getWorkspaceScope(input.workspaceId);
   await requirePermission({
     userId: input.actorUserId,
@@ -16,21 +33,42 @@ export async function removeOrganizationMember(input: { actorUserId: string; wor
     errorMessage: "You do not have permission to manage organization members",
   });
   if (input.userId === input.actorUserId) {
-    throw new IamOperationError("You cannot remove your own organization access", 409);
+    throw new IamOperationError(
+      "You cannot remove your own organization access",
+      409,
+    );
   }
   const ownerRole = await findSystemRole("organization.owner");
   const [ownerBinding] = await db
     .select({ id: roleBindings.id })
     .from(roleBindings)
-    .where(and(eq(roleBindings.principalType, "user"), eq(roleBindings.principalId, input.userId), eq(roleBindings.roleId, ownerRole.id), eq(roleBindings.resourceType, "organization"), eq(roleBindings.resourceId, organization.id)))
+    .where(
+      and(
+        eq(roleBindings.principalType, "user"),
+        eq(roleBindings.principalId, input.userId),
+        eq(roleBindings.roleId, ownerRole.id),
+        eq(roleBindings.resourceType, "organization"),
+        eq(roleBindings.resourceId, organization.id),
+      ),
+    )
     .limit(1);
   if (ownerBinding) {
     const [{ value }] = await db
       .select({ value: count() })
       .from(roleBindings)
-      .where(and(eq(roleBindings.roleId, ownerRole.id), eq(roleBindings.principalType, "user"), eq(roleBindings.resourceType, "organization"), eq(roleBindings.resourceId, organization.id)));
+      .where(
+        and(
+          eq(roleBindings.roleId, ownerRole.id),
+          eq(roleBindings.principalType, "user"),
+          eq(roleBindings.resourceType, "organization"),
+          eq(roleBindings.resourceId, organization.id),
+        ),
+      );
     if (value <= 1) {
-      throw new IamOperationError("Assign another organization owner before removing this member", 409);
+      throw new IamOperationError(
+        "Assign another organization owner before removing this member",
+        409,
+      );
     }
   }
 
@@ -38,7 +76,12 @@ export async function removeOrganizationMember(input: { actorUserId: string; wor
     .select({ id: teams.id })
     .from(teamMembers)
     .innerJoin(teams, eq(teamMembers.teamId, teams.id))
-    .where(and(eq(teamMembers.userId, input.userId), eq(teams.organizationId, organization.id)));
+    .where(
+      and(
+        eq(teamMembers.userId, input.userId),
+        eq(teams.organizationId, organization.id),
+      ),
+    );
 
   await db.transaction(async (tx) => {
     if (memberTeams.length > 0) {
@@ -57,7 +100,12 @@ export async function removeOrganizationMember(input: { actorUserId: string; wor
         eq(workspaceMembers.userId, input.userId),
         inArray(
           workspaceMembers.workspaceId,
-          (await tx.select({ id: workspaces.id }).from(workspaces).where(eq(workspaces.organizationId, organization.id))).map(({ id }) => id),
+          (
+            await tx
+              .select({ id: workspaces.id })
+              .from(workspaces)
+              .where(eq(workspaces.organizationId, organization.id))
+          ).map(({ id }) => id),
         ),
       ),
     );
@@ -66,12 +114,20 @@ export async function removeOrganizationMember(input: { actorUserId: string; wor
         eq(roleBindings.principalType, "user"),
         eq(roleBindings.principalId, input.userId),
         or(
-          and(eq(roleBindings.resourceType, "organization"), eq(roleBindings.resourceId, organization.id)),
+          and(
+            eq(roleBindings.resourceType, "organization"),
+            eq(roleBindings.resourceId, organization.id),
+          ),
           and(
             eq(roleBindings.resourceType, "workspace"),
             inArray(
               roleBindings.resourceId,
-              (await tx.select({ id: workspaces.id }).from(workspaces).where(eq(workspaces.organizationId, organization.id))).map(({ id }) => id),
+              (
+                await tx
+                  .select({ id: workspaces.id })
+                  .from(workspaces)
+                  .where(eq(workspaces.organizationId, organization.id))
+              ).map(({ id }) => id),
             ),
           ),
         ),
@@ -80,7 +136,12 @@ export async function removeOrganizationMember(input: { actorUserId: string; wor
     await tx
       .update(organizationMembers)
       .set({ status: "removed", updatedAt: new Date() })
-      .where(and(eq(organizationMembers.organizationId, organization.id), eq(organizationMembers.userId, input.userId)));
+      .where(
+        and(
+          eq(organizationMembers.organizationId, organization.id),
+          eq(organizationMembers.userId, input.userId),
+        ),
+      );
   });
 
   await invalidateUserOrganizationAccess(input.userId, organization.id);

@@ -1,13 +1,49 @@
-import { afterEach,describe,expect,it,vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { streamAiSdkUIChat } from "@/hooks/ai-sdk-ui-chat-transport";
-import { completeChatStream,createChatUIMessageStreamResponse,publishChatStreamEvent } from "@/modules/chat/stream-bus";
+import {
+  completeChatStream,
+  createChatUIMessageStreamResponse,
+  publishChatStreamEvent,
+} from "@/modules/chat/stream-bus";
 
 afterEach(() => {
   vi.unstubAllGlobals();
 });
 
 describe("AI SDK UI chat transport", () => {
+  it("delivers the server-owned temporary expiration metadata", async () => {
+    const messageId = crypto.randomUUID();
+    publishChatStreamEvent(messageId, { type: "done" });
+    completeChatStream(messageId);
+    const onStart = vi.fn();
+    const response = createChatUIMessageStreamResponse(messageId, {
+      "X-Conversation-Id": "conversation-1",
+      "X-Conversation-Ephemeral": "true",
+      "X-Conversation-Expires-At": "2026-08-10T12:05:00.000Z",
+    });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response));
+
+    await streamAiSdkUIChat({
+      api: "/api/chat",
+      chatId: "chat-1",
+      content: "Question",
+      localUserMessageId: "user-message-1",
+      body: {},
+      abortSignal: new AbortController().signal,
+      onStart,
+      onEvent: vi.fn(),
+    });
+
+    expect(onStart).toHaveBeenCalledWith(
+      expect.objectContaining({
+        conversationId: "conversation-1",
+        isEphemeral: true,
+        expiresAt: "2026-08-10T12:05:00.000Z",
+      }),
+    );
+  });
+
   it("ends reasoning while the assistant response keeps streaming", async () => {
     const messageId = crypto.randomUUID();
 
@@ -36,7 +72,13 @@ describe("AI SDK UI chat transport", () => {
       onEvent: (event) => events.push(event),
     });
 
-    expect(events.map((event) => event.type)).toEqual(["reasoning_start", "reasoning", "reasoning_end", "text", "done"]);
+    expect(events.map((event) => event.type)).toEqual([
+      "reasoning_start",
+      "reasoning",
+      "reasoning_end",
+      "text",
+      "done",
+    ]);
   });
 
   it("preserves server-owned agent attribution across tool lifecycle chunks", async () => {
@@ -147,7 +189,9 @@ describe("AI SDK UI chat transport", () => {
     publishChatStreamEvent(messageId, { type: "done" });
     completeChatStream(messageId);
 
-    const fetchMock = vi.fn().mockResolvedValue(createChatUIMessageStreamResponse(messageId));
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(createChatUIMessageStreamResponse(messageId));
     vi.stubGlobal("fetch", fetchMock);
 
     await streamAiSdkUIChat({

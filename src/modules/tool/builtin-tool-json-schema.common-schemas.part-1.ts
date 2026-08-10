@@ -24,7 +24,8 @@ export const commonSchemasPart1 = {
     properties: {
       query: {
         type: "string",
-        description: "Search query. The tool automatically appends today's date to keep results current.",
+        description:
+          "Search query. The tool automatically appends today's date to keep results current.",
       },
       limit: { type: "number", default: 5, minimum: 1, maximum: 10 },
       language: {
@@ -57,7 +58,8 @@ export const commonSchemasPart1 = {
       },
       size: {
         type: "string",
-        description: "Optional size such as 1024x1024. Omit it to use the administrator default.",
+        description:
+          "Optional size such as 1024x1024. Omit it to use the administrator default.",
         pattern: "^\\d{2,5}x\\d{2,5}$",
       },
     },
@@ -73,7 +75,8 @@ export const commonSchemasPart1 = {
       },
       code: {
         type: "string",
-        description: "Python, Node.js, or Bash code to run. Print values you want in stdout.",
+        description:
+          "Python, Node.js, or Bash code to run. Print values you want in stdout.",
       },
       stdin: {
         type: "string",
@@ -82,7 +85,8 @@ export const commonSchemasPart1 = {
       files: {
         type: "array",
         maxItems: 25,
-        description: "Optional text files to make available before execution. Each run is wiped after completion.",
+        description:
+          "Optional text files to make available before execution. Each run is wiped after completion.",
         items: {
           type: "object",
           properties: {
@@ -96,19 +100,22 @@ export const commonSchemasPart1 = {
       attachments: {
         type: "array",
         maxItems: 8,
-        description: "Uploaded chat attachment IDs to expose in the sandbox. Use IDs shown in the conversation context when analyzing uploaded documents or images. Readable documents get an embedding-free .document directory with README.md, manifest.json, and page/section Markdown chunks unless includeExtractedText is false.",
+        description:
+          "Uploaded chat attachment IDs to expose in the sandbox. Use IDs shown in the conversation context when analyzing uploaded documents or images. Readable documents get an embedding-free .document directory with README.md, manifest.json, and page/section Markdown chunks unless includeExtractedText is false.",
         items: {
           type: "object",
           properties: {
             id: { type: "string", format: "uuid" },
             path: {
               type: "string",
-              description: "Optional relative path inside the sandbox, for example attachments/report.pdf.",
+              description:
+                "Optional relative path inside the sandbox, for example attachments/report.pdf.",
             },
             includeExtractedText: {
               type: "boolean",
               default: true,
-              description: "Also add a navigable Markdown document explorer beside the requested path when available.",
+              description:
+                "Also add a navigable Markdown document explorer beside the requested path when available.",
             },
           },
           required: ["id"],
@@ -146,7 +153,8 @@ export const commonSchemasPart1 = {
             },
             content: {
               type: "string",
-              description: "Optional initial content. Prefer omitting this and filling files with code_workspace_write_file.",
+              description:
+                "Optional initial content. Prefer omitting this and filling files with code_workspace_write_file.",
             },
           },
           required: ["path"],

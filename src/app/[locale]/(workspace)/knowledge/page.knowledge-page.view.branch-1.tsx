@@ -5,7 +5,11 @@ import { KnowledgeMainSection3 } from "./page.knowledge-page.view.branch-1.secti
 import { KnowledgeMainSection4 } from "./page.knowledge-page.view.branch-1.section-4";
 import { KnowledgeMainSection5 } from "./page.knowledge-page.view.branch-1.section-5";
 
-export function KnowledgePageBranch1({ model }: { model: KnowledgePageViewModel }) {
+export function KnowledgePageBranch1({
+  model,
+}: {
+  model: KnowledgePageViewModel;
+}) {
   const {} = model;
   return (
     <div className="grid gap-3 lg:grid-cols-[16rem_1fr]">

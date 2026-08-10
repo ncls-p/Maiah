@@ -1,7 +1,10 @@
-import { NextRequest,NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
-import { handleRoute,requireResourcePermissionAsync } from "@/lib/route-handler";
+import {
+  handleRoute,
+  requireResourcePermissionAsync,
+} from "@/lib/route-handler";
 import { type WorkflowAgenticStreamEvent } from "@/modules/workflows/agentic";
 import { getWorkflowAgentHistory } from "@/modules/workflows/agentic-history";
 import { getPendingWorkflowAgentRunRequests } from "@/modules/workflows/agentic-run-approvals";
@@ -21,24 +24,44 @@ export function errorMessage(error: unknown) {
   if (error instanceof z.ZodError) {
     return error.issues[0]?.message ?? "The workflow is invalid.";
   }
-  if (error instanceof Error && ["The workflow editing action limit was reached.", "The manual trigger cannot be removed."].includes(error.message)) {
+  if (
+    error instanceof Error &&
+    [
+      "The workflow editing action limit was reached.",
+      "The manual trigger cannot be removed.",
+    ].includes(error.message)
+  ) {
     return error.message;
   }
   return "The workflow assistant stopped before saving.";
 }
 
-export async function GET(req: NextRequest, { params }: { params: Promise<{ workflowId: string }> }) {
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ workflowId: string }> },
+) {
   return handleRoute(
     req,
     async ({ session }) => {
       const parsedParams = paramsSchema.safeParse(await params);
-      const parsedWorkspaceId = z.uuid().safeParse(req.nextUrl.searchParams.get("workspaceId"));
+      const parsedWorkspaceId = z
+        .uuid()
+        .safeParse(req.nextUrl.searchParams.get("workspaceId"));
       if (!parsedParams.success || !parsedWorkspaceId.success) {
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
       }
-      const forbidden = await requireResourcePermissionAsync(session.user.id, parsedWorkspaceId.data, "workflows.view", "workflow", (await params).workflowId);
+      const forbidden = await requireResourcePermissionAsync(
+        session.user.id,
+        parsedWorkspaceId.data,
+        "workflows.view",
+        "workflow",
+        (await params).workflowId,
+      );
       if (forbidden) return forbidden;
-      await getWorkflowDetail(parsedParams.data.workflowId, parsedWorkspaceId.data);
+      await getWorkflowDetail(
+        parsedParams.data.workflowId,
+        parsedWorkspaceId.data,
+      );
       const [history, runRequests, todoList] = await Promise.all([
         getWorkflowAgentHistory({
           workflowId: parsedParams.data.workflowId,

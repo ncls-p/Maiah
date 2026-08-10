@@ -1,6 +1,17 @@
 import { z } from "zod";
-import { createBusinessArtifactCss,createBusinessArtifactJs } from "./business-artifact-tools.create-customer-account-plan-artifact";
-import { actionItemSchema,artifactHeight,businessDocumentInputSchema,optionalText,raciRoleSchema,shortText,spreadsheetInputSchema } from "./business-artifact-tools.short-text";
+import {
+  createBusinessArtifactCss,
+  createBusinessArtifactJs,
+} from "./business-artifact-tools.create-customer-account-plan-artifact";
+import {
+  actionItemSchema,
+  artifactHeight,
+  businessDocumentInputSchema,
+  optionalText,
+  raciRoleSchema,
+  shortText,
+  spreadsheetInputSchema,
+} from "./business-artifact-tools.short-text";
 
 export const raciMatrixInputSchema = z.object({
   title: shortText,
@@ -29,7 +40,9 @@ export const customerAccountPlanInputSchema = z.object({
         name: shortText,
         role: z.string().trim().max(120).optional(),
         influence: z.enum(["low", "medium", "high"]).default("medium"),
-        stance: z.enum(["supporter", "neutral", "skeptic", "unknown"]).default("unknown"),
+        stance: z
+          .enum(["supporter", "neutral", "skeptic", "unknown"])
+          .default("unknown"),
       }),
     )
     .max(20)
@@ -67,7 +80,10 @@ export const competitiveBattlecardInputSchema = z.object({
     )
     .max(10)
     .default([]),
-  discoveryQuestions: z.array(z.string().trim().min(1).max(260)).max(10).default([]),
+  discoveryQuestions: z
+    .array(z.string().trim().min(1).max(260))
+    .max(10)
+    .default([]),
   height: artifactHeight,
 });
 
@@ -90,7 +106,12 @@ function renderPrintToolbar(label = "Print / PDF") {
   return `<div class="artifact-toolbar"><button type="button" data-print>${label}</button></div>`;
 }
 
-export function createArtifact(title: string, body: string, height: number, artifactType: string) {
+export function createArtifact(
+  title: string,
+  body: string,
+  height: number,
+  artifactType: string,
+) {
   return {
     kind: "html_artifact" as const,
     title,
@@ -102,7 +123,9 @@ export function createArtifact(title: string, body: string, height: number, arti
   };
 }
 
-function documentTypeLabel(type: z.infer<typeof businessDocumentInputSchema>["documentType"]) {
+function documentTypeLabel(
+  type: z.infer<typeof businessDocumentInputSchema>["documentType"],
+) {
   const labels = {
     brief: "Brief",
     memo: "Memo",
@@ -114,7 +137,9 @@ function documentTypeLabel(type: z.infer<typeof businessDocumentInputSchema>["do
   return labels[type];
 }
 
-export function createBusinessDocumentArtifact(input: z.infer<typeof businessDocumentInputSchema>) {
+export function createBusinessDocumentArtifact(
+  input: z.infer<typeof businessDocumentInputSchema>,
+) {
   const body = `<header class="artifact-hero">
 		<p class="artifact-kicker">${documentTypeLabel(input.documentType)}${input.audience ? ` · ${escapeHtml(input.audience)}` : ""}</p>
 		<h1>${escapeHtml(input.title)}</h1>
@@ -140,12 +165,25 @@ function csvEscape(value: string) {
 }
 
 function toCsv(columns: string[], rows: string[][]) {
-  return [columns, ...rows].map((row) => columns.map((_, index) => csvEscape(row[index] ?? "")).join(",")).join("\n");
+  return [columns, ...rows]
+    .map((row) =>
+      columns.map((_, index) => csvEscape(row[index] ?? "")).join(","),
+    )
+    .join("\n");
 }
 
-export function createSpreadsheetArtifact(input: z.infer<typeof spreadsheetInputSchema>) {
-  const normalizedRows = input.rows.map((row) => input.columns.map((_, index) => row[index] ?? ""));
-  const tableRows = normalizedRows.map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`).join("");
+export function createSpreadsheetArtifact(
+  input: z.infer<typeof spreadsheetInputSchema>,
+) {
+  const normalizedRows = input.rows.map((row) =>
+    input.columns.map((_, index) => row[index] ?? ""),
+  );
+  const tableRows = normalizedRows
+    .map(
+      (row) =>
+        `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`,
+    )
+    .join("");
   const body = `<header class="artifact-hero compact">
 		<p class="artifact-kicker">Spreadsheet</p>
 		<h1>${escapeHtml(input.title)}</h1>

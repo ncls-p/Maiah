@@ -1,9 +1,16 @@
-import { and,eq,inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 
 import { audit } from "@/server/domain/services/audit";
 import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
-import { organizationBuiltinToolPolicies,organizationMembers,roleBindings,roles,teams,workspaces } from "@/server/infrastructure/db/schema";
+import {
+  organizationBuiltinToolPolicies,
+  organizationMembers,
+  roleBindings,
+  roles,
+  teams,
+  workspaces,
+} from "@/server/infrastructure/db/schema";
 
 import { previewOrganizationTransfer } from "./organization-transfer.preview-organization-transfer";
 import { IamOperationError } from "./use-cases";
@@ -18,7 +25,10 @@ export async function executeOrganizationTransfer(
     throw new IamOperationError(preview.blockers.join(". "), 409);
   }
   if (preview.confirmationToken !== input.confirmationToken) {
-    throw new IamOperationError("The migration changed. Review it again before confirming.", 409);
+    throw new IamOperationError(
+      "The migration changed. Review it again before confirming.",
+      409,
+    );
   }
   const now = new Date();
   const sourceOrganizationId = preview.source.organizationId;
@@ -26,21 +36,45 @@ export async function executeOrganizationTransfer(
   const memberRows = await db
     .select({ userId: organizationMembers.userId })
     .from(organizationMembers)
-    .where(and(eq(organizationMembers.organizationId, sourceOrganizationId), eq(organizationMembers.status, "active")));
+    .where(
+      and(
+        eq(organizationMembers.organizationId, sourceOrganizationId),
+        eq(organizationMembers.status, "active"),
+      ),
+    );
   const sourceBindings = await db
     .select()
     .from(roleBindings)
-    .where(and(eq(roleBindings.resourceType, "organization"), eq(roleBindings.resourceId, sourceOrganizationId)));
-  const sourcePolicies = await db.select().from(organizationBuiltinToolPolicies).where(eq(organizationBuiltinToolPolicies.organizationId, sourceOrganizationId));
+    .where(
+      and(
+        eq(roleBindings.resourceType, "organization"),
+        eq(roleBindings.resourceId, sourceOrganizationId),
+      ),
+    );
+  const sourcePolicies = await db
+    .select()
+    .from(organizationBuiltinToolPolicies)
+    .where(
+      eq(organizationBuiltinToolPolicies.organizationId, sourceOrganizationId),
+    );
 
   await db.transaction(async (tx) => {
     for (const resolution of preview.conflictResolutions) {
       if (resolution.resourceType === "project") {
-        await tx.update(workspaces).set({ slug: resolution.to, updatedAt: now }).where(eq(workspaces.id, resolution.resourceId));
+        await tx
+          .update(workspaces)
+          .set({ slug: resolution.to, updatedAt: now })
+          .where(eq(workspaces.id, resolution.resourceId));
       } else if (resolution.resourceType === "team") {
-        await tx.update(teams).set({ slug: resolution.to, updatedAt: now }).where(eq(teams.id, resolution.resourceId));
+        await tx
+          .update(teams)
+          .set({ slug: resolution.to, updatedAt: now })
+          .where(eq(teams.id, resolution.resourceId));
       } else {
-        await tx.update(roles).set({ name: resolution.to, updatedAt: now }).where(eq(roles.id, resolution.resourceId));
+        await tx
+          .update(roles)
+          .set({ name: resolution.to, updatedAt: now })
+          .where(eq(roles.id, resolution.resourceId));
       }
     }
     for (const { userId } of memberRows) {
@@ -52,7 +86,10 @@ export async function executeOrganizationTransfer(
           status: "active",
         })
         .onConflictDoUpdate({
-          target: [organizationMembers.organizationId, organizationMembers.userId],
+          target: [
+            organizationMembers.organizationId,
+            organizationMembers.userId,
+          ],
           set: { status: "active", updatedAt: now },
         });
     }
@@ -82,9 +119,21 @@ export async function executeOrganizationTransfer(
     await tx
       .update(roles)
       .set({ ownerResourceId: targetOrganizationId, updatedAt: now })
-      .where(and(eq(roles.isSystem, false), eq(roles.ownerResourceType, "organization"), eq(roles.ownerResourceId, sourceOrganizationId)));
-    await tx.update(teams).set({ organizationId: targetOrganizationId, updatedAt: now }).where(eq(teams.organizationId, sourceOrganizationId));
-    await tx.update(workspaces).set({ organizationId: targetOrganizationId, updatedAt: now }).where(eq(workspaces.organizationId, sourceOrganizationId));
+      .where(
+        and(
+          eq(roles.isSystem, false),
+          eq(roles.ownerResourceType, "organization"),
+          eq(roles.ownerResourceId, sourceOrganizationId),
+        ),
+      );
+    await tx
+      .update(teams)
+      .set({ organizationId: targetOrganizationId, updatedAt: now })
+      .where(eq(teams.organizationId, sourceOrganizationId));
+    await tx
+      .update(workspaces)
+      .set({ organizationId: targetOrganizationId, updatedAt: now })
+      .where(eq(workspaces.organizationId, sourceOrganizationId));
     for (const policy of sourcePolicies) {
       await tx
         .insert(organizationBuiltinToolPolicies)
@@ -121,7 +170,11 @@ export async function executeOrganizationTransfer(
     }
   });
 
-  await Promise.all(memberRows.map(({ userId }) => authorization.invalidatePrincipalPermissionCache(userId)));
+  await Promise.all(
+    memberRows.map(({ userId }) =>
+      authorization.invalidatePrincipalPermissionCache(userId),
+    ),
+  );
   await audit.emit({
     organizationId: targetOrganizationId,
     workspaceId: preview.destination.workspaceId,

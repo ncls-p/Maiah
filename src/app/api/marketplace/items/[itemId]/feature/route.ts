@@ -1,7 +1,10 @@
 import { handleRoute } from "@/lib/route-handler";
 import { isAdminRole } from "@/modules/admin/use-cases";
-import { featureMarketplaceItem,unfeatureMarketplaceItem } from "@/modules/marketplace/use-cases";
-import { NextRequest,NextResponse } from "next/server";
+import {
+  featureMarketplaceItem,
+  unfeatureMarketplaceItem,
+} from "@/modules/marketplace/use-cases";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 const featureSchema = z.object({
@@ -9,12 +12,17 @@ const featureSchema = z.object({
 });
 
 function handleFeatureError(error: unknown): NextResponse {
-  const message = error instanceof Error ? error.message : "Internal server error";
-  const status = error instanceof Error && error.message.includes("not found") ? 404 : 500;
+  const message =
+    error instanceof Error ? error.message : "Internal server error";
+  const status =
+    error instanceof Error && error.message.includes("not found") ? 404 : 500;
   return NextResponse.json({ error: message }, { status });
 }
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ itemId: string }> }) {
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ itemId: string }> },
+) {
   return handleRoute(
     req,
     async ({ session }) => {
@@ -24,7 +32,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ite
       const { itemId } = await params;
       const parsed = featureSchema.safeParse(await req.json());
       if (!parsed.success) {
-        return NextResponse.json({ error: "Invalid input", details: parsed.error.issues }, { status: 400 });
+        return NextResponse.json(
+          { error: "Invalid input", details: parsed.error.issues },
+          { status: 400 },
+        );
       }
       const featured = await featureMarketplaceItem({
         itemId,
@@ -41,7 +52,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ite
   );
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ itemId: string }> }) {
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ itemId: string }> },
+) {
   return handleRoute(
     _req,
     async ({ session }) => {

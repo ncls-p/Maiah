@@ -1,9 +1,19 @@
-import { Field,FieldContent,FieldLabel } from "@/components/ui/field";
-import { Select,SelectContent,SelectItem,SelectTrigger,SelectValue } from "@/components/ui/select";
+import { Field, FieldContent, FieldLabel } from "@/components/ui/field";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 import type { ModelAdvancedFieldsViewModel } from "./model-advanced-fields.model-advanced-fields.view";
 import type { AgentForm } from "./types";
-export function ModelAdvancedMainSection13({ model }: { model: ModelAdvancedFieldsViewModel }) {
+export function ModelAdvancedMainSection13({
+  model,
+}: {
+  model: ModelAdvancedFieldsViewModel;
+}) {
   const { form, setForm, t } = model;
   return (
     <Field>

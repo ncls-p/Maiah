@@ -11,17 +11,58 @@ const widthClass: Record<WorkspacePageWidth, string> = {
   full: "max-w-[90rem]",
 };
 
-export function WorkspacePage({ title, accentTitle, eyebrow, description, width = "default", actions, children, className, headerVariant = "editorial" }: { title: string; accentTitle?: string; eyebrow?: string; description?: string; width?: WorkspacePageWidth; actions?: ReactNode; children: ReactNode; className?: string; headerVariant?: "editorial" | "compact" }) {
+export function WorkspacePage({
+  title,
+  accentTitle,
+  eyebrow,
+  description,
+  width = "default",
+  actions,
+  children,
+  className,
+  headerVariant = "editorial",
+}: {
+  title: string;
+  accentTitle?: string;
+  eyebrow?: string;
+  description?: string;
+  width?: WorkspacePageWidth;
+  actions?: ReactNode;
+  children: ReactNode;
+  className?: string;
+  headerVariant?: "editorial" | "compact";
+}) {
   const compact = headerVariant === "compact";
 
   return (
-    <div className={cn("page-content mx-auto flex min-h-full w-full flex-col px-4 sm:px-7 lg:px-10", compact ? "gap-4 py-4 sm:gap-5 sm:py-7 lg:py-8" : "gap-5 py-5 sm:gap-8 sm:py-10 lg:py-12", widthClass[width], className)}>
-      <header className={cn("flex flex-col sm:flex-row sm:justify-between", compact ? "gap-3 sm:items-center" : "gap-5 sm:items-end")}>
+    <div
+      className={cn(
+        "page-content mx-auto flex min-h-full w-full flex-col px-4 sm:px-7 lg:px-10",
+        compact
+          ? "gap-4 py-4 sm:gap-5 sm:py-7 lg:py-8"
+          : "gap-5 py-5 sm:gap-8 sm:py-10 lg:py-12",
+        widthClass[width],
+        className,
+      )}
+    >
+      <header
+        className={cn(
+          "flex flex-col sm:flex-row sm:justify-between",
+          compact ? "gap-3 sm:items-center" : "gap-5 sm:items-end",
+        )}
+      >
         <div className="flex min-w-0 flex-1 flex-col gap-2">
           <span className="workspace-page-kicker" aria-hidden="true">
             {eyebrow ?? `Maiah / ${title}`}
           </span>
-          <h1 className={cn("workspace-page-heading text-pretty text-foreground", compact ? "text-[1.8rem] leading-none sm:text-[2.4rem]" : "text-[2rem] leading-[0.98] sm:text-[3.15rem]")}>
+          <h1
+            className={cn(
+              "workspace-page-heading text-pretty text-foreground",
+              compact
+                ? "text-[1.8rem] leading-none sm:text-[2.4rem]"
+                : "text-[2rem] leading-[0.98] sm:text-[3.15rem]",
+            )}
+          >
             {title}
             {accentTitle ? (
               <>
@@ -30,10 +71,17 @@ export function WorkspacePage({ title, accentTitle, eyebrow, description, width 
               </>
             ) : null}
           </h1>
-          {description ? <p className="max-w-2xl text-pretty text-sm leading-6 text-muted-foreground sm:text-[0.95rem]">{description}</p> : null}
+          {description ? (
+            <p className="max-w-2xl text-pretty text-sm leading-6 text-muted-foreground sm:text-[0.95rem]">
+              {description}
+            </p>
+          ) : null}
         </div>
         {actions ? (
-          <div data-slot="workspace-page-actions" className="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center [&>[data-slot=button]]:w-full sm:[&>[data-slot=button]]:w-auto">
+          <div
+            data-slot="workspace-page-actions"
+            className="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center [&>[data-slot=button]]:w-full sm:[&>[data-slot=button]]:w-auto"
+          >
             {actions}
           </div>
         ) : null}

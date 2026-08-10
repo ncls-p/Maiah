@@ -21,7 +21,30 @@ function normalizedKey(key: string) {
 
 function isSecretKey(key: string) {
   const normalized = normalizedKey(key);
-  return ["authorization", "cookie", "cookies", "credential", "credentials", "password", "passwd", "sig", "signature", "secret", "token"].includes(normalized) || normalized.endsWith("apikey") || normalized.endsWith("accesstoken") || normalized.endsWith("refreshtoken") || normalized.endsWith("idtoken") || normalized.endsWith("clientsecret") || normalized.endsWith("privatekey") || normalized.endsWith("signingkey") || normalized.endsWith("webhooksecret") || normalized.endsWith("connectionstring");
+  return (
+    [
+      "authorization",
+      "cookie",
+      "cookies",
+      "credential",
+      "credentials",
+      "password",
+      "passwd",
+      "sig",
+      "signature",
+      "secret",
+      "token",
+    ].includes(normalized) ||
+    normalized.endsWith("apikey") ||
+    normalized.endsWith("accesstoken") ||
+    normalized.endsWith("refreshtoken") ||
+    normalized.endsWith("idtoken") ||
+    normalized.endsWith("clientsecret") ||
+    normalized.endsWith("privatekey") ||
+    normalized.endsWith("signingkey") ||
+    normalized.endsWith("webhooksecret") ||
+    normalized.endsWith("connectionstring")
+  );
 }
 
 function isEnvironmentContainer(key: string | undefined) {
@@ -32,7 +55,12 @@ function isEnvironmentContainer(key: string | undefined) {
 
 function isObviouslySecretString(value: string) {
   const trimmed = value.trim();
-  return /^bearer\s+\S+/i.test(trimmed) || /^basic\s+\S+/i.test(trimmed) || /^-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/.test(trimmed) || /^eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(trimmed);
+  return (
+    /^bearer\s+\S+/i.test(trimmed) ||
+    /^basic\s+\S+/i.test(trimmed) ||
+    /^-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/.test(trimmed) ||
+    /^eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(trimmed)
+  );
 }
 
 function redactInlineSecrets(value: string) {
@@ -41,8 +69,14 @@ function redactInlineSecrets(value: string) {
   }
   return value
     .replace(/\b(bearer|basic)\s+[^\s"'<>]+/gi, "$1 [REDACTED]")
-    .replace(/\b(api[_-]?key|access[_-]?token|refresh[_-]?token|client[_-]?secret|password|webhook[_-]?secret)\s*[:=]\s*[^\s,;"'<>]+/gi, "$1=[REDACTED]")
-    .replace(/\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g, REDACTED_VALUE)
+    .replace(
+      /\b(api[_-]?key|access[_-]?token|refresh[_-]?token|client[_-]?secret|password|webhook[_-]?secret)\s*[:=]\s*[^\s,;"'<>]+/gi,
+      "$1=[REDACTED]",
+    )
+    .replace(
+      /\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g,
+      REDACTED_VALUE,
+    )
     .replace(/https?:\/\/[^\s"'<>]+/gi, (url) => projectUrl(url));
 }
 
@@ -75,7 +109,10 @@ function projectString(value: string, maxLength: number) {
  * telemetry boundary. The encrypted invocation payload remains the execution
  * source of truth; this projection must never be used to run a tool.
  */
-export function projectToolPayloadForDisplay(value: unknown, limits: ProjectionLimits = {}) {
+export function projectToolPayloadForDisplay(
+  value: unknown,
+  limits: ProjectionLimits = {},
+) {
   const resolvedLimits = { ...DEFAULT_LIMITS, ...limits };
   const seen = new WeakSet<object>();
 
@@ -94,7 +131,13 @@ export function projectToolPayloadForDisplay(value: unknown, limits: ProjectionL
     seen.add(current);
 
     if (Array.isArray(current)) {
-      const projected = current.slice(0, resolvedLimits.maxArrayItems).map((item) => (isEnvironmentContainer(parentKey) ? REDACTED_VALUE : visit(item, depth + 1, parentKey)));
+      const projected = current
+        .slice(0, resolvedLimits.maxArrayItems)
+        .map((item) =>
+          isEnvironmentContainer(parentKey)
+            ? REDACTED_VALUE
+            : visit(item, depth + 1, parentKey),
+        );
       if (current.length > resolvedLimits.maxArrayItems) {
         projected.push(TRUNCATED_VALUE);
       }
@@ -104,7 +147,10 @@ export function projectToolPayloadForDisplay(value: unknown, limits: ProjectionL
     const output: Record<string, unknown> = {};
     const entries = Object.entries(current as Record<string, unknown>);
     for (const [key, child] of entries.slice(0, resolvedLimits.maxObjectKeys)) {
-      output[key] = isSecretKey(key) || isEnvironmentContainer(parentKey) ? REDACTED_VALUE : visit(child, depth + 1, key);
+      output[key] =
+        isSecretKey(key) || isEnvironmentContainer(parentKey)
+          ? REDACTED_VALUE
+          : visit(child, depth + 1, key);
     }
     if (entries.length > resolvedLimits.maxObjectKeys) {
       output.__truncated__ = `${entries.length - resolvedLimits.maxObjectKeys} additional fields`;
@@ -117,14 +163,20 @@ export function projectToolPayloadForDisplay(value: unknown, limits: ProjectionL
 
 export function safeToolErrorMessage(error: unknown, fallback: string) {
   const message = error instanceof Error ? error.message : fallback;
-  const withSafeUrls = (message || fallback).replace(/https?:\/\/[^\s"'<>]+/gi, (url) => projectUrl(url));
+  const withSafeUrls = (message || fallback).replace(
+    /https?:\/\/[^\s"'<>]+/gi,
+    (url) => projectUrl(url),
+  );
   const projected = projectString(withSafeUrls, 500);
   return projected === REDACTED_VALUE ? fallback : projected;
 }
 
 export function safeChatErrorMessage(error: unknown, fallback: string) {
   const message = error instanceof Error ? error.message : String(error ?? "");
-  const projected = projectString(message || fallback, Number.POSITIVE_INFINITY);
+  const projected = projectString(
+    message || fallback,
+    Number.POSITIVE_INFINITY,
+  );
   return projected === REDACTED_VALUE ? fallback : projected;
 }
 

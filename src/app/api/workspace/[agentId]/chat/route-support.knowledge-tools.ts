@@ -1,17 +1,58 @@
-import { readBoundKnowledgeChunkWindow,searchBoundKnowledgeBases } from "@/modules/knowledge/use-cases";
+import {
+  readBoundKnowledgeChunkWindow,
+  searchBoundKnowledgeBases,
+} from "@/modules/knowledge/use-cases";
 import { logToolInvocation } from "@/modules/tool/use-cases";
-import { jsonSchema,type ToolSet } from "ai";
+import { jsonSchema, type ToolSet } from "ai";
 import { z } from "zod";
 
 import type { BuildBoundToolsInput } from "./route-support.build-bound-tools";
-import { BUILTIN_TOOL_SOURCE,KNOWLEDGE_CONTEXT_TOOL_ID,KNOWLEDGE_CONTEXT_TOOL_NAME,KNOWLEDGE_SEARCH_TOOL_ID,KNOWLEDGE_SEARCH_TOOL_NAME,TOOL_GATE_RETURN,type BoundToolApprovalMetadata } from "./route-support.chat-request-schema";
+import {
+  BUILTIN_TOOL_SOURCE,
+  KNOWLEDGE_CONTEXT_TOOL_ID,
+  KNOWLEDGE_CONTEXT_TOOL_NAME,
+  KNOWLEDGE_SEARCH_TOOL_ID,
+  KNOWLEDGE_SEARCH_TOOL_NAME,
+  TOOL_GATE_RETURN,
+  type BoundToolApprovalMetadata,
+} from "./route-support.chat-request-schema";
 import type { GateToolExecution } from "./route-support.tool-execution-context";
 
-type KnowledgeBinding = Awaited<ReturnType<typeof import("@/modules/knowledge/use-cases").getKnowledgeBindingsForVersion>>[number];
+type KnowledgeBinding = Awaited<
+  ReturnType<
+    typeof import("@/modules/knowledge/use-cases").getKnowledgeBindingsForVersion
+  >
+>[number];
 
-export function registerKnowledgeTools(context: { input: BuildBoundToolsInput; knowledgeBindings: KnowledgeBinding[]; tools: ToolSet; usedToolKeys: Set<string>; registerToolApprovalMetadata: (toolKey: string, metadata: BoundToolApprovalMetadata) => void; reserveToolCall: () => boolean; toolLimitReachedResult: () => { denied: boolean; message: string }; gateToolExecution: GateToolExecution }) {
-  const { input, knowledgeBindings, tools, usedToolKeys, registerToolApprovalMetadata, reserveToolCall, toolLimitReachedResult, gateToolExecution } = context;
-  async function executeKnowledgeTool(inputArgs: { toolId: string; toolName: string; toolInput: unknown; execute: () => Promise<unknown> }) {
+export function registerKnowledgeTools(context: {
+  input: BuildBoundToolsInput;
+  knowledgeBindings: KnowledgeBinding[];
+  tools: ToolSet;
+  usedToolKeys: Set<string>;
+  registerToolApprovalMetadata: (
+    toolKey: string,
+    metadata: BoundToolApprovalMetadata,
+  ) => void;
+  reserveToolCall: () => boolean;
+  toolLimitReachedResult: () => { denied: boolean; message: string };
+  gateToolExecution: GateToolExecution;
+}) {
+  const {
+    input,
+    knowledgeBindings,
+    tools,
+    usedToolKeys,
+    registerToolApprovalMetadata,
+    reserveToolCall,
+    toolLimitReachedResult,
+    gateToolExecution,
+  } = context;
+  async function executeKnowledgeTool(inputArgs: {
+    toolId: string;
+    toolName: string;
+    toolInput: unknown;
+    execute: () => Promise<unknown>;
+  }) {
     const startedAt = Date.now();
     if (!reserveToolCall()) {
       await logToolInvocation({
@@ -77,10 +118,21 @@ export function registerKnowledgeTools(context: { input: BuildBoundToolsInput; k
   usedToolKeys.add("update_todo_list");
 
   if (knowledgeBindings.length > 0) {
-    const sourceIds = new Set(knowledgeBindings.map((binding) => binding.knowledgeBaseId));
-    const sourceCatalog = knowledgeBindings.map((binding) => `- ${binding.name} (${binding.knowledgeBaseId}): ${binding.description?.trim().slice(0, 400) || "No description provided."}`).join("\n");
+    const sourceIds = new Set(
+      knowledgeBindings.map((binding) => binding.knowledgeBaseId),
+    );
+    const sourceCatalog = knowledgeBindings
+      .map(
+        (binding) =>
+          `- ${binding.name} (${binding.knowledgeBaseId}): ${binding.description?.trim().slice(0, 400) || "No description provided."}`,
+      )
+      .join("\n");
 
-    if (!input.disabledToolKeys?.has(`${BUILTIN_TOOL_SOURCE}:${KNOWLEDGE_SEARCH_TOOL_ID}`)) {
+    if (
+      !input.disabledToolKeys?.has(
+        `${BUILTIN_TOOL_SOURCE}:${KNOWLEDGE_SEARCH_TOOL_ID}`,
+      )
+    ) {
       registerToolApprovalMetadata(KNOWLEDGE_SEARCH_TOOL_NAME, {
         toolSource: BUILTIN_TOOL_SOURCE,
         toolName: KNOWLEDGE_SEARCH_TOOL_NAME,
@@ -96,7 +148,8 @@ export function registerKnowledgeTools(context: { input: BuildBoundToolsInput; k
           properties: {
             query: {
               type: "string",
-              description: "A focused semantic search query for the connected data sources.",
+              description:
+                "A focused semantic search query for the connected data sources.",
             },
             knowledgeBaseIds: {
               type: "array",
@@ -105,9 +158,12 @@ export function registerKnowledgeTools(context: { input: BuildBoundToolsInput; k
               items: {
                 type: "string",
                 format: "uuid",
-                enum: knowledgeBindings.map((binding) => binding.knowledgeBaseId),
+                enum: knowledgeBindings.map(
+                  (binding) => binding.knowledgeBaseId,
+                ),
               },
-              description: "One or more data source IDs explicitly selected from the catalog in this tool description.",
+              description:
+                "One or more data source IDs explicitly selected from the catalog in this tool description.",
             },
             limit: {
               type: "integer",
@@ -127,11 +183,15 @@ export function registerKnowledgeTools(context: { input: BuildBoundToolsInput; k
               limit: z.number().int().min(1).max(10).default(5),
             })
             .safeParse(toolInput);
-          if (!parsed.success || parsed.data.knowledgeBaseIds.some((id) => !sourceIds.has(id))) {
+          if (
+            !parsed.success ||
+            parsed.data.knowledgeBaseIds.some((id) => !sourceIds.has(id))
+          ) {
             return {
               kind: "knowledge_search_results",
               results: [],
-              error: "A non-empty query, one or more available knowledgeBaseIds, and an optional limit from 1 to 10 are required.",
+              error:
+                "A non-empty query, one or more available knowledgeBaseIds, and an optional limit from 1 to 10 are required.",
             };
           }
           return executeKnowledgeTool({
@@ -155,7 +215,11 @@ export function registerKnowledgeTools(context: { input: BuildBoundToolsInput; k
       };
     }
 
-    if (!input.disabledToolKeys?.has(`${BUILTIN_TOOL_SOURCE}:${KNOWLEDGE_CONTEXT_TOOL_ID}`)) {
+    if (
+      !input.disabledToolKeys?.has(
+        `${BUILTIN_TOOL_SOURCE}:${KNOWLEDGE_CONTEXT_TOOL_ID}`,
+      )
+    ) {
       registerToolApprovalMetadata(KNOWLEDGE_CONTEXT_TOOL_NAME, {
         toolSource: BUILTIN_TOOL_SOURCE,
         toolName: KNOWLEDGE_CONTEXT_TOOL_NAME,
@@ -202,7 +266,8 @@ export function registerKnowledgeTools(context: { input: BuildBoundToolsInput; k
             return {
               kind: "knowledge_context",
               found: false,
-              error: "A valid chunkId and before/after values from 0 to 5 are required.",
+              error:
+                "A valid chunkId and before/after values from 0 to 5 are required.",
             };
           }
           return executeKnowledgeTool({
@@ -221,7 +286,8 @@ export function registerKnowledgeTools(context: { input: BuildBoundToolsInput; k
                 : {
                     kind: "knowledge_context",
                     found: false,
-                    error: "The chunk is unavailable or is no longer accessible through this agent.",
+                    error:
+                      "The chunk is unavailable or is no longer accessible through this agent.",
                   };
             },
           });

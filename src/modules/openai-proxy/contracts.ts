@@ -35,7 +35,14 @@ const chatToolSchema = z
 
 const chatMessageSchema = z
   .object({
-    role: z.enum(["system", "developer", "user", "assistant", "tool", "function"]),
+    role: z.enum([
+      "system",
+      "developer",
+      "user",
+      "assistant",
+      "tool",
+      "function",
+    ]),
     content: z.unknown().optional(),
     name: z.string().optional(),
     tool_call_id: z.string().optional(),
@@ -67,7 +74,10 @@ export const chatCompletionRequestSchema = z
     model: z.string().trim().min(1),
     messages: z.array(chatMessageSchema).min(1),
     stream: z.boolean().default(false),
-    stream_options: z.object({ include_usage: z.boolean().optional() }).loose().optional(),
+    stream_options: z
+      .object({ include_usage: z.boolean().optional() })
+      .loose()
+      .optional(),
     max_completion_tokens: z.number().int().positive().optional(),
     max_tokens: z.number().int().positive().optional(),
     temperature: z.number().min(0).max(2).optional(),
@@ -79,7 +89,12 @@ export const chatCompletionRequestSchema = z
     tools: z.array(chatToolSchema).optional(),
     tool_choice: toolChoiceSchema.optional(),
     functions: z.array(functionDefinitionSchema).optional(),
-    function_call: z.union([z.enum(["none", "auto"]), z.object({ name: z.string().min(1) }).strict()]).optional(),
+    function_call: z
+      .union([
+        z.enum(["none", "auto"]),
+        z.object({ name: z.string().min(1) }).strict(),
+      ])
+      .optional(),
     parallel_tool_calls: z.boolean().optional(),
     response_format: responseFormatSchema.optional(),
     n: z.number().int().positive().optional(),
@@ -126,7 +141,10 @@ const responsesFunctionToolSchema = z
 export const responsesRequestSchema = z
   .object({
     model: z.string().trim().min(1),
-    input: z.union([z.string(), z.array(z.record(z.string(), z.unknown())).min(1)]),
+    input: z.union([
+      z.string(),
+      z.array(z.record(z.string(), z.unknown())).min(1),
+    ]),
     instructions: z.string().optional(),
     stream: z.boolean().default(false),
     max_output_tokens: z.number().int().positive().optional(),
@@ -135,14 +153,20 @@ export const responsesRequestSchema = z
     tools: z.array(responsesFunctionToolSchema).optional(),
     tool_choice: toolChoiceSchema.optional(),
     parallel_tool_calls: z.boolean().optional(),
-    text: z.object({ format: responsesTextFormatSchema.optional() }).loose().optional(),
+    text: z
+      .object({ format: responsesTextFormatSchema.optional() })
+      .loose()
+      .optional(),
     metadata: z.record(z.string(), z.string()).optional(),
     store: z.boolean().optional(),
     truncation: z.enum(["auto", "disabled"]).optional(),
     previous_response_id: z.string().nullable().optional(),
     background: z.boolean().optional(),
     include: z.array(z.string()).optional(),
-    reasoning: z.object({ effort: z.string().optional(), summary: z.string().optional() }).loose().optional(),
+    reasoning: z
+      .object({ effort: z.string().optional(), summary: z.string().optional() })
+      .loose()
+      .optional(),
     service_tier: z.string().optional(),
     safety_identifier: z.string().optional(),
     prompt_cache_key: z.string().optional(),

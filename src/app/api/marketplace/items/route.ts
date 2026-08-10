@@ -1,8 +1,21 @@
-import { handleRoute,requireWorkspacePermissionAsync } from "@/lib/route-handler";
+import {
+  handleRoute,
+  requireWorkspacePermissionAsync,
+} from "@/lib/route-handler";
 import { isPlatformAdminSession } from "@/modules/admin/auth";
 import { getSession } from "@/modules/auth/session";
-import { createCustomToolMarketplaceDraft,createMarketplaceDraft,createMcpServerMarketplaceDraft,createMcpToolMarketplaceDraft,createSkillMarketplaceDraft,getMyMarketplaceItems,getSharedWithMe,listMarketplaceItems,publishAgentDraft } from "@/modules/marketplace/use-cases";
-import { NextRequest,NextResponse } from "next/server";
+import {
+  createCustomToolMarketplaceDraft,
+  createMarketplaceDraft,
+  createMcpServerMarketplaceDraft,
+  createMcpToolMarketplaceDraft,
+  createSkillMarketplaceDraft,
+  getMyMarketplaceItems,
+  getSharedWithMe,
+  listMarketplaceItems,
+  publishAgentDraft,
+} from "@/modules/marketplace/use-cases";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 const createSchema = z
@@ -23,11 +36,18 @@ const createSchema = z
   })
   .refine(
     (data) => {
-      const resourceIds = [data.agentId, data.skillId, data.customToolId, data.mcpServerId, data.mcpToolId].filter(Boolean);
+      const resourceIds = [
+        data.agentId,
+        data.skillId,
+        data.customToolId,
+        data.mcpServerId,
+        data.mcpToolId,
+      ].filter(Boolean);
       return resourceIds.length === 1;
     },
     {
-      message: "Exactly one of agentId, skillId, customToolId, mcpServerId, or mcpToolId is required",
+      message:
+        "Exactly one of agentId, skillId, customToolId, mcpServerId, or mcpToolId is required",
     },
   );
 
@@ -43,9 +63,13 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(await getSharedWithMe(session.user.id));
     }
     const search = searchParams.get("search") || undefined;
-    const type = searchParams.get("type") ? searchParams.get("type")!.split(",") : undefined;
-    const featuredOnly = searchParams.get("featuredOnly") === "true" || undefined;
-    const sortBy = searchParams.get("sortBy") as "featured" | "newest" | "downloads" | "rating" | undefined;
+    const type = searchParams.get("type")
+      ? searchParams.get("type")!.split(",")
+      : undefined;
+    const featuredOnly =
+      searchParams.get("featuredOnly") === "true" || undefined;
+    const sortBy = searchParams.get("sortBy") as
+      "featured" | "newest" | "downloads" | "rating" | undefined;
     const status = searchParams.get("status") || undefined;
     if (status && !(await isPlatformAdminSession(session))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -61,7 +85,10 @@ export async function GET(req: NextRequest) {
       }),
     );
   } catch {
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
   }
 }
 
@@ -70,8 +97,16 @@ export async function POST(req: NextRequest) {
     req,
     async ({ session }) => {
       const parsed = createSchema.safeParse(await req.json());
-      if (!parsed.success) return NextResponse.json({ error: "Invalid input", details: parsed.error.issues }, { status: 400 });
-      const forbidden = await requireWorkspacePermissionAsync(session.user.id, parsed.data.workspaceId, "marketplaceItems.publish");
+      if (!parsed.success)
+        return NextResponse.json(
+          { error: "Invalid input", details: parsed.error.issues },
+          { status: 400 },
+        );
+      const forbidden = await requireWorkspacePermissionAsync(
+        session.user.id,
+        parsed.data.workspaceId,
+        "marketplaceItems.publish",
+      );
       if (forbidden) return forbidden;
       const baseInput = {
         workspaceId: parsed.data.workspaceId,
@@ -121,7 +156,8 @@ export async function POST(req: NextRequest) {
       if (!parsed.data.agentId) {
         return NextResponse.json(
           {
-            error: "Only agents can be published directly. Use draftOnly for skills, custom tools, and MCP presets.",
+            error:
+              "Only agents can be published directly. Use draftOnly for skills, custom tools, and MCP presets.",
           },
           { status: 400 },
         );
@@ -135,11 +171,19 @@ export async function POST(req: NextRequest) {
     {
       logLabel: "Failed to create marketplace item",
       expectedError: (error) => {
-        const message = error instanceof Error ? error.message : "Internal server error";
+        const message =
+          error instanceof Error ? error.message : "Internal server error";
         return NextResponse.json(
           { error: message },
           {
-            status: error instanceof Error && error.message.includes("not found") ? 404 : error instanceof Error && error.message === "Orchestrators cannot be published to the marketplace yet" ? 400 : 500,
+            status:
+              error instanceof Error && error.message.includes("not found")
+                ? 404
+                : error instanceof Error &&
+                    error.message ===
+                      "Orchestrators cannot be published to the marketplace yet"
+                  ? 400
+                  : 500,
           },
         );
       },

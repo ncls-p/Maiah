@@ -1,11 +1,31 @@
 import { useTranslations } from "next-intl";
-import type { Dispatch,SetStateAction } from "react";
+import type { Dispatch, SetStateAction } from "react";
 import { toast } from "sonner";
 
-import type { DiscoveredModel,ProviderModelUpdate } from "./types";
+import type { DiscoveredModel, ProviderModelUpdate } from "./types";
 
-export function useProviderModelActions(input: { workspaceId: string; selectedProviderId: string | null; manualModelId: string; manualModelName: string; setManualModelId: Dispatch<SetStateAction<string>>; setManualModelName: Dispatch<SetStateAction<string>>; setBusy: Dispatch<SetStateAction<boolean>>; setDeleteModelId: Dispatch<SetStateAction<string | null>>; loadModelsForProvider: (providerId: string) => Promise<void> }) {
-  const { workspaceId, selectedProviderId, manualModelId, manualModelName, setManualModelId, setManualModelName, setBusy, setDeleteModelId, loadModelsForProvider } = input;
+export function useProviderModelActions(input: {
+  workspaceId: string;
+  selectedProviderId: string | null;
+  manualModelId: string;
+  manualModelName: string;
+  setManualModelId: Dispatch<SetStateAction<string>>;
+  setManualModelName: Dispatch<SetStateAction<string>>;
+  setBusy: Dispatch<SetStateAction<boolean>>;
+  setDeleteModelId: Dispatch<SetStateAction<string | null>>;
+  loadModelsForProvider: (providerId: string) => Promise<void>;
+}) {
+  const {
+    workspaceId,
+    selectedProviderId,
+    manualModelId,
+    manualModelName,
+    setManualModelId,
+    setManualModelName,
+    setBusy,
+    setDeleteModelId,
+    loadModelsForProvider,
+  } = input;
   const t = useTranslations("providers.manager");
   async function registerModel(model?: DiscoveredModel) {
     if (!selectedProviderId) return;
@@ -13,29 +33,32 @@ export function useProviderModelActions(input: { workspaceId: string; selectedPr
     const displayName = model?.displayName ?? (manualModelName || id);
     if (!id) return;
 
-    const res = await fetch(`/api/workspace/providers/${selectedProviderId}/models`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        workspaceId,
-        modelId: id,
-        displayName,
-        capabilitiesJson: model?.capabilities ?? {
-          text: true,
-          vision: false,
-          tools: false,
-          reasoning: false,
-          embeddings: false,
-          audio: false,
-        },
-        contextWindow: model?.contextWindow,
-        maxOutputTokens: model?.maxOutputTokens,
-        inputTokenCost: model?.inputTokenCost,
-        outputTokenCost: model?.outputTokenCost,
-        imageGenerationConfigJson: model?.imageGeneration,
-        sustainabilityConfigJson: model?.sustainability,
-      }),
-    });
+    const res = await fetch(
+      `/api/workspace/providers/${selectedProviderId}/models`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          workspaceId,
+          modelId: id,
+          displayName,
+          capabilitiesJson: model?.capabilities ?? {
+            text: true,
+            vision: false,
+            tools: false,
+            reasoning: false,
+            embeddings: false,
+            audio: false,
+          },
+          contextWindow: model?.contextWindow,
+          maxOutputTokens: model?.maxOutputTokens,
+          inputTokenCost: model?.inputTokenCost,
+          outputTokenCost: model?.outputTokenCost,
+          imageGenerationConfigJson: model?.imageGeneration,
+          sustainabilityConfigJson: model?.sustainability,
+        }),
+      },
+    );
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       throw new Error(data.error || t("errorCreateModel"));
@@ -81,11 +104,14 @@ export function useProviderModelActions(input: { workspaceId: string; selectedPr
     if (!selectedProviderId) return;
     setBusy(true);
     try {
-      const res = await fetch(`/api/workspace/providers/${selectedProviderId}/models/${modelId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ workspaceId, logoUrl }),
-      });
+      const res = await fetch(
+        `/api/workspace/providers/${selectedProviderId}/models/${modelId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ workspaceId, logoUrl }),
+        },
+      );
       if (!res.ok) throw new Error(t("errorUpdateModelLogo"));
       toast.success(logoUrl ? t("toastLogoAssigned") : t("toastLogoRemoved"));
       await loadModelsForProvider(selectedProviderId);
@@ -101,11 +127,14 @@ export function useProviderModelActions(input: { workspaceId: string; selectedPr
     if (!selectedProviderId) return;
     setBusy(true);
     try {
-      const res = await fetch(`/api/workspace/providers/${selectedProviderId}/models/${modelId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ workspaceId, ...update }),
-      });
+      const res = await fetch(
+        `/api/workspace/providers/${selectedProviderId}/models/${modelId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ workspaceId, ...update }),
+        },
+      );
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || t("errorUpdateModel"));
       toast.success(t("toastModelUpdated"));
@@ -121,7 +150,10 @@ export function useProviderModelActions(input: { workspaceId: string; selectedPr
     if (!selectedProviderId) return;
     setBusy(true);
     try {
-      const res = await fetch(`/api/workspace/providers/${selectedProviderId}/models/${modelId}?workspaceId=${workspaceId}`, { method: "DELETE" });
+      const res = await fetch(
+        `/api/workspace/providers/${selectedProviderId}/models/${modelId}?workspaceId=${workspaceId}`,
+        { method: "DELETE" },
+      );
       if (!res.ok) throw new Error(t("errorDeleteModel"));
       setDeleteModelId(null);
       toast.success(t("toastModelRemoved"));
@@ -133,5 +165,11 @@ export function useProviderModelActions(input: { workspaceId: string; selectedPr
       setBusy(false);
     }
   }
-  return { createManualModel, createDiscoveredModels, updateModelLogo, updateModel, deleteModel };
+  return {
+    createManualModel,
+    createDiscoveredModels,
+    updateModelLogo,
+    updateModel,
+    deleteModel,
+  };
 }

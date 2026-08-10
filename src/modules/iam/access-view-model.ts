@@ -26,7 +26,10 @@ export type AccessViewTeam = {
   members: Array<{ userId: string }>;
 };
 
-export type AccessViewPerson<TAssignment extends AccessViewAssignment, TTeam extends AccessViewTeam> = {
+export type AccessViewPerson<
+  TAssignment extends AccessViewAssignment,
+  TTeam extends AccessViewTeam,
+> = {
   userId: string;
   memberId?: string;
   name: string;
@@ -38,11 +41,23 @@ export type AccessViewPerson<TAssignment extends AccessViewAssignment, TTeam ext
   teams: TTeam[];
 };
 
-export function buildAccessPeople<TAssignment extends AccessViewAssignment, TTeam extends AccessViewTeam>(input: { members: AccessViewMember[]; accounts: AccessViewAccount[]; assignments: TAssignment[]; teams: TTeam[] }) {
-  const accountById = new Map(input.accounts.map((account) => [account.id, account]));
+export function buildAccessPeople<
+  TAssignment extends AccessViewAssignment,
+  TTeam extends AccessViewTeam,
+>(input: {
+  members: AccessViewMember[];
+  accounts: AccessViewAccount[];
+  assignments: TAssignment[];
+  teams: TTeam[];
+}) {
+  const accountById = new Map(
+    input.accounts.map((account) => [account.id, account]),
+  );
   const peopleById = new Map<string, AccessViewPerson<TAssignment, TTeam>>();
 
-  for (const member of input.members.filter(({ status }) => status === "active")) {
+  for (const member of input.members.filter(
+    ({ status }) => status === "active",
+  )) {
     const account = accountById.get(member.userId);
     peopleById.set(member.userId, {
       userId: member.userId,
@@ -82,5 +97,7 @@ export function buildAccessPeople<TAssignment extends AccessViewAssignment, TTea
     }
   }
 
-  return [...peopleById.values()].sort((left, right) => left.name.localeCompare(right.name));
+  return [...peopleById.values()].sort((left, right) =>
+    left.name.localeCompare(right.name),
+  );
 }

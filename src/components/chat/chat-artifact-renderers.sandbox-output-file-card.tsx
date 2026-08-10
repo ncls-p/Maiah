@@ -10,11 +10,22 @@ import { Button } from "@/components/ui/button";
 import { FilePreviewDialog } from "@/components/chat/file-preview";
 import { OUTLINE_VARIANT } from "./chat-artifact-renderers.max-live-tool-input-chars";
 
-export function SandboxOutputFileCard({ file }: { file: CodeSandboxFileOutput }) {
+export function SandboxOutputFileCard({
+  file,
+}: {
+  file: CodeSandboxFileOutput;
+}) {
   const t = useTranslations("chat.artifacts");
-  const omittedLabel = file.contentOmitted === "too_large" ? t("fileTooLarge") : file.contentOmitted === "total_limit" ? t("attachmentLimitReached") : null;
+  const omittedLabel =
+    file.contentOmitted === "too_large"
+      ? t("fileTooLarge")
+      : file.contentOmitted === "total_limit"
+        ? t("attachmentLimitReached")
+        : null;
   const [previewOpen, setPreviewOpen] = useState(false);
-  const isPdf = file.mimeType === "application/pdf" || file.path.toLowerCase().endsWith(".pdf");
+  const isPdf =
+    file.mimeType === "application/pdf" ||
+    file.path.toLowerCase().endsWith(".pdf");
 
   return (
     <>
@@ -29,12 +40,23 @@ export function SandboxOutputFileCard({ file }: { file: CodeSandboxFileOutput })
           {file.downloadUrl ? (
             <div className="flex items-center gap-1">
               {isPdf ? (
-                <Button type="button" variant={OUTLINE_VARIANT} size="sm" className="h-10 shrink-0 rounded-xl px-3 text-[11px]" onClick={() => setPreviewOpen(true)}>
+                <Button
+                  type="button"
+                  variant={OUTLINE_VARIANT}
+                  size="sm"
+                  className="h-10 shrink-0 rounded-xl px-3 text-[11px]"
+                  onClick={() => setPreviewOpen(true)}
+                >
                   <Maximize2Icon data-icon="inline-start" aria-hidden="true" />
                   {t("view")}
                 </Button>
               ) : null}
-              <Button asChild variant={OUTLINE_VARIANT} size="sm" className="h-10 shrink-0 rounded-xl px-3 text-[11px]">
+              <Button
+                asChild
+                variant={OUTLINE_VARIANT}
+                size="sm"
+                className="h-10 shrink-0 rounded-xl px-3 text-[11px]"
+              >
                 <a href={file.downloadUrl} target="_blank" rel="noreferrer">
                   <DownloadIcon data-icon="inline-start" aria-hidden="true" />
                   {t("download")}
@@ -43,8 +65,16 @@ export function SandboxOutputFileCard({ file }: { file: CodeSandboxFileOutput })
             </div>
           ) : null}
         </div>
-        {file.downloadError ? <p className="mt-2 text-[11px] text-destructive">{file.downloadError}</p> : null}
-        {omittedLabel ? <p className="mt-2 text-[11px] text-muted-foreground">{omittedLabel}</p> : null}
+        {file.downloadError ? (
+          <p className="mt-2 text-[11px] text-destructive">
+            {file.downloadError}
+          </p>
+        ) : null}
+        {omittedLabel ? (
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            {omittedLabel}
+          </p>
+        ) : null}
         {file.textPreview ? (
           <pre className="mt-2 max-h-32 overflow-auto rounded-md bg-muted/30 p-2 whitespace-pre-wrap font-mono text-[10px] leading-4 text-muted-foreground">
             {file.textPreview}
@@ -52,7 +82,19 @@ export function SandboxOutputFileCard({ file }: { file: CodeSandboxFileOutput })
           </pre>
         ) : null}
       </div>
-      {file.downloadUrl && isPdf ? <FilePreviewDialog open={previewOpen} onOpenChange={setPreviewOpen} fileName={file.path} url={file.downloadUrl} mimeType="application/pdf" subtitle={`${file.mimeType} · ${formatBytes(file.size)}`} previewText={null} previewError={null} loadingPreview={false} /> : null}
+      {file.downloadUrl && isPdf ? (
+        <FilePreviewDialog
+          open={previewOpen}
+          onOpenChange={setPreviewOpen}
+          fileName={file.path}
+          url={file.downloadUrl}
+          mimeType="application/pdf"
+          subtitle={`${file.mimeType} · ${formatBytes(file.size)}`}
+          previewText={null}
+          previewError={null}
+          loadingPreview={false}
+        />
+      ) : null}
     </>
   );
 }

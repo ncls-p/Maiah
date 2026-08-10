@@ -1,20 +1,44 @@
 "use client";
 
-import { ArrowDownIcon,ArrowUpIcon,BotOffIcon,CheckCircle2Icon,ExternalLinkIcon,Settings2Icon,StarIcon } from "lucide-react";
+import {
+  ArrowDownIcon,
+  ArrowUpIcon,
+  BotOffIcon,
+  CheckCircle2Icon,
+  ExternalLinkIcon,
+  Settings2Icon,
+  StarIcon,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useCallback,useEffect,useMemo,useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
-import { SettingsDisabledNotice,SettingsLoadError,SettingsSection,SettingsSectionSkeleton,SettingsStatusBadge } from "@/components/admin/settings-panel";
+import {
+  SettingsDisabledNotice,
+  SettingsLoadError,
+  SettingsSection,
+  SettingsSectionSkeleton,
+  SettingsStatusBadge,
+} from "@/components/admin/settings-panel";
 import { ModelLogo } from "@/components/providers/model-logo";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Select,SelectContent,SelectItem,SelectTrigger,SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
-import { Agent,NONE,isOrganizationAgent } from "./assistant-governance-settings.none";
+import {
+  Agent,
+  NONE,
+  isOrganizationAgent,
+} from "./assistant-governance-settings.none";
 
 export function AssistantGovernanceSettings() {
   const t = useTranslations("admin.settingsPage.assistantGovernance");
@@ -22,22 +46,31 @@ export function AssistantGovernanceSettings() {
   const tAgents = useTranslations("agents");
   const { workspaceId } = useWorkspace();
   const [agents, setAgents] = useState<Agent[]>([]);
-  const [organizationDefaultAgentId, setOrganizationDefaultAgentId] = useState<string | null>(null);
+  const [organizationDefaultAgentId, setOrganizationDefaultAgentId] = useState<
+    string | null
+  >(null);
   const [canAdminCurate, setCanAdminCurate] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [savingDefault, setSavingDefault] = useState(false);
   const [movingAgentId, setMovingAgentId] = useState<string | null>(null);
 
-  const organizationAgents = useMemo(() => agents.filter(isOrganizationAgent), [agents]);
-  const readyOrganizationAgents = organizationAgents.filter((agent) => Boolean(agent.activeVersionId && agent.modelDisplayName));
+  const organizationAgents = useMemo(
+    () => agents.filter(isOrganizationAgent),
+    [agents],
+  );
+  const readyOrganizationAgents = organizationAgents.filter((agent) =>
+    Boolean(agent.activeVersionId && agent.modelDisplayName),
+  );
   const selectedDefaultId = organizationDefaultAgentId ?? NONE;
 
   const loadAgents = useCallback(async () => {
     if (!workspaceId) return;
     setLoadError(false);
     try {
-      const res = await fetch(`/api/workspace/agents?workspaceId=${workspaceId}&includeModelMeta=true`);
+      const res = await fetch(
+        `/api/workspace/agents?workspaceId=${workspaceId}&includeModelMeta=true`,
+      );
       if (!res.ok) throw new Error(t("loadFailed"));
       const data = await res.json();
       const nextAgents = Array.isArray(data) ? data : data.agents;
@@ -98,9 +131,15 @@ export function AssistantGovernanceSettings() {
 
   async function moveOrganizationAgent(agentId: string, direction: -1 | 1) {
     if (!workspaceId || !canAdminCurate) return;
-    const currentIndex = organizationAgents.findIndex((agent) => agent.id === agentId);
+    const currentIndex = organizationAgents.findIndex(
+      (agent) => agent.id === agentId,
+    );
     const nextIndex = currentIndex + direction;
-    if (currentIndex < 0 || nextIndex < 0 || nextIndex >= organizationAgents.length) {
+    if (
+      currentIndex < 0 ||
+      nextIndex < 0 ||
+      nextIndex >= organizationAgents.length
+    ) {
       return;
     }
 
@@ -143,23 +182,52 @@ export function AssistantGovernanceSettings() {
   }
 
   if (loadError) {
-    return <SettingsLoadError title={t("loadFailed")} description={tPage("loadErrorDescription")} retryLabel={tPage("retry")} onRetry={() => void loadAgents()} />;
+    return (
+      <SettingsLoadError
+        title={t("loadFailed")}
+        description={tPage("loadErrorDescription")}
+        retryLabel={tPage("retry")}
+        onRetry={() => void loadAgents()}
+      />
+    );
   }
 
   const badgeTone = organizationDefaultAgentId ? "success" : "warning";
 
   return (
-    <SettingsSection icon={Settings2Icon} title={t("title")} description={t("description")} stagger="stagger-3" badge={<SettingsStatusBadge label={t("status", { count: organizationAgents.length })} tone={badgeTone} />}>
+    <SettingsSection
+      icon={Settings2Icon}
+      title={t("title")}
+      description={t("description")}
+      stagger="stagger-3"
+      badge={
+        <SettingsStatusBadge
+          label={t("status", { count: organizationAgents.length })}
+          tone={badgeTone}
+        />
+      }
+    >
       <div className="space-y-5">
-        <SettingsDisabledNotice title={t("policyTitle")} description={t("policyDescription")} />
+        <SettingsDisabledNotice
+          title={t("policyTitle")}
+          description={t("policyDescription")}
+        />
 
         {!canAdminCurate ? (
-          <SettingsDisabledNotice title={t("adminOnlyTitle")} description={t("adminOnlyDescription")} />
+          <SettingsDisabledNotice
+            title={t("adminOnlyTitle")}
+            description={t("adminOnlyDescription")}
+          />
         ) : organizationAgents.length === 0 ? (
           <div className="rounded-xl border border-dashed bg-background p-5 text-center">
-            <BotOffIcon className="mx-auto size-6 text-muted-foreground" aria-hidden="true" />
+            <BotOffIcon
+              className="mx-auto size-6 text-muted-foreground"
+              aria-hidden="true"
+            />
             <p className="mt-3 text-sm font-medium">{t("emptyTitle")}</p>
-            <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">{t("emptyDescription")}</p>
+            <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
+              {t("emptyDescription")}
+            </p>
             <Button className="mt-4" size="sm" asChild>
               <Link href="/agents">{t("emptyAction")}</Link>
             </Button>
@@ -169,7 +237,13 @@ export function AssistantGovernanceSettings() {
             <div className="grid gap-4 rounded-xl border bg-background p-4 md:grid-cols-[1fr_auto] md:items-end">
               <div className="space-y-2">
                 <p className="text-sm font-medium">{t("defaultLabel")}</p>
-                <Select value={selectedDefaultId} onValueChange={(value) => void setOrganizationDefault(value === NONE ? null : value)} disabled={savingDefault}>
+                <Select
+                  value={selectedDefaultId}
+                  onValueChange={(value) =>
+                    void setOrganizationDefault(value === NONE ? null : value)
+                  }
+                  disabled={savingDefault}
+                >
                   <SelectTrigger aria-label={t("defaultLabel")}>
                     <SelectValue placeholder={t("defaultPlaceholder")} />
                   </SelectTrigger>
@@ -182,9 +256,16 @@ export function AssistantGovernanceSettings() {
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-muted-foreground">{t("defaultHint")}</p>
+                <p className="text-xs text-muted-foreground">
+                  {t("defaultHint")}
+                </p>
               </div>
-              <Button type="button" variant="outline" disabled={savingDefault || !organizationDefaultAgentId} onClick={() => void setOrganizationDefault(null)}>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={savingDefault || !organizationDefaultAgentId}
+                onClick={() => void setOrganizationDefault(null)}
+              >
                 {savingDefault ? <Spinner data-icon="inline-start" /> : null}
                 {t("clearDefault")}
               </Button>
@@ -194,7 +275,9 @@ export function AssistantGovernanceSettings() {
               <div className="flex flex-col gap-1 border-b px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-sm font-medium">{t("orderTitle")}</p>
-                  <p className="text-xs text-muted-foreground">{t("orderDescription")}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {t("orderDescription")}
+                  </p>
                 </div>
                 <Badge variant="outline" className="w-fit">
                   {t("readyCount", { count: readyOrganizationAgents.length })}
@@ -204,19 +287,43 @@ export function AssistantGovernanceSettings() {
               <div className="divide-y">
                 {organizationAgents.map((agent, index) => {
                   const isDefault = agent.id === organizationDefaultAgentId;
-                  const isReady = Boolean(agent.activeVersionId && agent.modelDisplayName);
+                  const isReady = Boolean(
+                    agent.activeVersionId && agent.modelDisplayName,
+                  );
 
                   return (
-                    <div key={agent.id} className={cn("flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center", !isReady && "opacity-70")}>
+                    <div
+                      key={agent.id}
+                      className={cn(
+                        "flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center",
+                        !isReady && "opacity-70",
+                      )}
+                    >
                       <div className="flex min-w-0 flex-1 items-center gap-3">
-                        <span className="w-6 text-center text-xs font-medium text-muted-foreground">{index + 1}</span>
-                        <ModelLogo logoUrl={agent.logoUrl} label={agent.name} size="md" imageFit="cover" className="rounded-full" />
+                        <span className="w-6 text-center text-xs font-medium text-muted-foreground">
+                          {index + 1}
+                        </span>
+                        <ModelLogo
+                          logoUrl={agent.logoUrl}
+                          label={agent.name}
+                          size="md"
+                          imageFit="cover"
+                          className="rounded-full"
+                        />
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
-                            <p className="truncate text-sm font-medium">{agent.name}</p>
+                            <p className="truncate text-sm font-medium">
+                              {agent.name}
+                            </p>
                             {isDefault ? (
-                              <Badge variant="secondary" className="gap-1 text-xs">
-                                <StarIcon className="size-3" aria-hidden="true" />
+                              <Badge
+                                variant="secondary"
+                                className="gap-1 text-xs"
+                              >
+                                <StarIcon
+                                  className="size-3"
+                                  aria-hidden="true"
+                                />
                                 {t("defaultBadge")}
                               </Badge>
                             ) : null}
@@ -231,9 +338,16 @@ export function AssistantGovernanceSettings() {
                               </Badge>
                             ) : null}
                           </div>
-                          <p className="truncate text-xs text-muted-foreground">{agent.description || agent.slug}</p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            {agent.description || agent.slug}
+                          </p>
                           <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
-                            {isReady ? <CheckCircle2Icon className="size-3 text-success" aria-hidden="true" /> : null}
+                            {isReady ? (
+                              <CheckCircle2Icon
+                                className="size-3 text-success"
+                                aria-hidden="true"
+                              />
+                            ) : null}
                             {isReady
                               ? t("modelReady", {
                                   model: agent.modelDisplayName ?? "—",
@@ -244,15 +358,45 @@ export function AssistantGovernanceSettings() {
                       </div>
 
                       <div className="flex shrink-0 items-center justify-end gap-1">
-                        <Button type="button" variant="ghost" size="icon-sm" disabled={index <= 0 || movingAgentId === agent.id} onClick={() => void moveOrganizationAgent(agent.id, -1)} aria-label={t("moveUp")}>
-                          <ArrowUpIcon className="size-3.5" aria-hidden="true" />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          disabled={index <= 0 || movingAgentId === agent.id}
+                          onClick={() =>
+                            void moveOrganizationAgent(agent.id, -1)
+                          }
+                          aria-label={t("moveUp")}
+                        >
+                          <ArrowUpIcon
+                            className="size-3.5"
+                            aria-hidden="true"
+                          />
                         </Button>
-                        <Button type="button" variant="ghost" size="icon-sm" disabled={index === organizationAgents.length - 1 || movingAgentId === agent.id} onClick={() => void moveOrganizationAgent(agent.id, 1)} aria-label={t("moveDown")}>
-                          <ArrowDownIcon className="size-3.5" aria-hidden="true" />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          disabled={
+                            index === organizationAgents.length - 1 ||
+                            movingAgentId === agent.id
+                          }
+                          onClick={() =>
+                            void moveOrganizationAgent(agent.id, 1)
+                          }
+                          aria-label={t("moveDown")}
+                        >
+                          <ArrowDownIcon
+                            className="size-3.5"
+                            aria-hidden="true"
+                          />
                         </Button>
                         <Button variant="ghost" size="sm" asChild>
                           <Link href={`/agents/${agent.id}`}>
-                            <ExternalLinkIcon className="size-3.5" aria-hidden="true" />
+                            <ExternalLinkIcon
+                              className="size-3.5"
+                              aria-hidden="true"
+                            />
                             {agent.canEdit ? t("edit") : tAgents("configure")}
                           </Link>
                         </Button>

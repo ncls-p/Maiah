@@ -1,14 +1,22 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { RagSettingsViewModel } from "./rag-settings.rag-settings.view";
-export function RagSettingsFieldsSection3({ model }: { model: RagSettingsViewModel }) {
+export function RagSettingsFieldsSection3({
+  model,
+}: {
+  model: RagSettingsViewModel;
+}) {
   const { numberValue, setSettings, settings, t } = model;
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {(
         [
           ["chunkSize", "maxCharacters", settings.chunking.maxCharacters],
-          ["chunkOverlap", "overlapCharacters", settings.chunking.overlapCharacters],
+          [
+            "chunkOverlap",
+            "overlapCharacters",
+            settings.chunking.overlapCharacters,
+          ],
           ["candidates", "candidateCount", settings.retrieval.candidateCount],
           ["results", "resultCount", settings.retrieval.resultCount],
         ] as const

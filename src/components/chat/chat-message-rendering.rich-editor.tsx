@@ -1,23 +1,39 @@
 "use client";
 
 import { formatToolName } from "@/components/chat/chat-message-rendering-utils";
-import { type ChatMessagePart,type PendingToolApproval } from "@/components/chat/chat-types";
+import {
+  type ChatMessagePart,
+  type PendingToolApproval,
+} from "@/components/chat/chat-types";
 import type { RichEditorProps } from "@/components/chat/rich-editor";
 import { summarizeToolInput } from "@/components/chat/tool-approval-banner";
 import { Button } from "@/components/ui/button";
-import { Collapsible,CollapsibleContent,CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { AlertTriangleIcon,CheckIcon,ChevronDownIcon,CopyIcon,XIcon } from "lucide-react";
+import {
+  AlertTriangleIcon,
+  CheckIcon,
+  ChevronDownIcon,
+  CopyIcon,
+  XIcon,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import dynamic from "next/dynamic";
 import { useState } from "react";
 import { ToolCardHeader } from "./chat-message-rendering.tool-part-card-props";
 
-export const RichEditor = dynamic<RichEditorProps>(() => import("@/components/chat/rich-editor").then((mod) => mod.RichEditor), {
-  ssr: false,
-  loading: () => <Skeleton className="h-32 w-full rounded-xl" />,
-});
+export const RichEditor = dynamic<RichEditorProps>(
+  () => import("@/components/chat/rich-editor").then((mod) => mod.RichEditor),
+  {
+    ssr: false,
+    loading: () => <Skeleton className="h-32 w-full rounded-xl" />,
+  },
+);
 
 export const BUTTON_TYPE = "button";
 export const OUTLINE_VARIANT = "outline";
@@ -58,28 +74,51 @@ export function ErrorPart({ part }: { part: ChatMessagePart }) {
   }
 
   return (
-    <Collapsible open={open} onOpenChange={setOpen} className="overflow-hidden rounded-2xl border border-destructive/20 bg-destructive/[0.035]">
+    <Collapsible
+      open={open}
+      onOpenChange={setOpen}
+      className="overflow-hidden rounded-2xl border border-destructive/20 bg-destructive/[0.035]"
+    >
       <div className="flex min-w-0 items-center gap-3 px-4 py-3">
         <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-destructive/10 text-destructive">
           <AlertTriangleIcon className="size-4" aria-hidden="true" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium text-foreground">{t("errorTitle")}</p>
+          <p className="text-sm font-medium text-foreground">
+            {t("errorTitle")}
+          </p>
           <p className="truncate text-xs text-muted-foreground">{summary}</p>
         </div>
         <CollapsibleTrigger asChild>
           <Button type={BUTTON_TYPE} size="sm" variant={GHOST_VARIANT}>
             {open ? t("errorHide") : t("errorView")}
-            <ChevronDownIcon className={cn("size-3.5 transition-transform duration-200", open && "rotate-180")} aria-hidden="true" />
+            <ChevronDownIcon
+              className={cn(
+                "size-3.5 transition-transform duration-200",
+                open && "rotate-180",
+              )}
+              aria-hidden="true"
+            />
           </Button>
         </CollapsibleTrigger>
-        <Button type={BUTTON_TYPE} size="sm" variant={OUTLINE_VARIANT} onClick={() => void copyError()}>
-          {copied ? <CheckIcon className="size-3.5 text-success" aria-hidden="true" /> : <CopyIcon className="size-3.5" aria-hidden="true" />}
+        <Button
+          type={BUTTON_TYPE}
+          size="sm"
+          variant={OUTLINE_VARIANT}
+          onClick={() => void copyError()}
+        >
+          {copied ? (
+            <CheckIcon className="size-3.5 text-success" aria-hidden="true" />
+          ) : (
+            <CopyIcon className="size-3.5" aria-hidden="true" />
+          )}
           {copied ? t("errorCopied") : t("errorCopy")}
         </Button>
       </div>
       <CollapsibleContent>
-        <pre className="max-h-72 overflow-auto border-t border-destructive/10 px-4 py-3 font-mono text-[11px] leading-relaxed whitespace-pre-wrap break-words text-muted-foreground">{part.content}</pre>
+        <pre className="max-h-72 overflow-auto border-t border-destructive/10 px-4 py-3 font-mono text-[11px] leading-relaxed whitespace-pre-wrap break-words text-muted-foreground">
+          {part.content}
+        </pre>
       </CollapsibleContent>
     </Collapsible>
   );
@@ -98,7 +137,17 @@ export function StreamingStatus() {
   );
 }
 
-export function PendingApprovalCard({ pendingApproval, sequence, onApprove, onReject }: { pendingApproval: PendingToolApproval; sequence: number; onApprove?: (approval: PendingToolApproval) => void; onReject?: (approval: PendingToolApproval) => void }) {
+export function PendingApprovalCard({
+  pendingApproval,
+  sequence,
+  onApprove,
+  onReject,
+}: {
+  pendingApproval: PendingToolApproval;
+  sequence: number;
+  onApprove?: (approval: PendingToolApproval) => void;
+  onReject?: (approval: PendingToolApproval) => void;
+}) {
   const t = useTranslations("chat.rendering");
   const friendlyName = formatToolName(pendingApproval.toolName);
   const summary = summarizeToolInput(friendlyName, pendingApproval.input);
@@ -120,15 +169,30 @@ export function PendingApprovalCard({ pendingApproval, sequence, onApprove, onRe
       <div className="bg-warning/[0.035] px-3 py-3">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
-            <p className="line-clamp-2 text-[11px] text-muted-foreground">{summary}</p>
-            <p className="mt-1 text-xs text-foreground">{t("approvalWaiting")}</p>
+            <p className="line-clamp-2 text-[11px] text-muted-foreground">
+              {summary}
+            </p>
+            <p className="mt-1 text-xs text-foreground">
+              {t("approvalWaiting")}
+            </p>
           </div>
           <div className="flex shrink-0 justify-end gap-2">
-            <Button type={BUTTON_TYPE} size="sm" variant={OUTLINE_VARIANT} className="h-10 rounded-xl px-3 text-xs" onClick={() => onReject?.(pendingApproval)}>
+            <Button
+              type={BUTTON_TYPE}
+              size="sm"
+              variant={OUTLINE_VARIANT}
+              className="h-10 rounded-xl px-3 text-xs"
+              onClick={() => onReject?.(pendingApproval)}
+            >
               <XIcon data-icon="inline-start" aria-hidden="true" />
               {t("reject")}
             </Button>
-            <Button type={BUTTON_TYPE} size="sm" className="h-10 rounded-xl px-3 text-xs" onClick={() => onApprove?.(pendingApproval)}>
+            <Button
+              type={BUTTON_TYPE}
+              size="sm"
+              className="h-10 rounded-xl px-3 text-xs"
+              onClick={() => onApprove?.(pendingApproval)}
+            >
               <CheckIcon data-icon="inline-start" aria-hidden="true" />
               {t("approve")}
             </Button>

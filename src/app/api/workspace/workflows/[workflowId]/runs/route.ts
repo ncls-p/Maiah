@@ -1,16 +1,25 @@
-import { NextRequest,NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
-import { handleRoute,requireResourcePermissionAsync } from "@/lib/route-handler";
+import {
+  handleRoute,
+  requireResourcePermissionAsync,
+} from "@/lib/route-handler";
 import { executeWorkflowSchema } from "@/modules/workflows/contracts";
-import { createWorkflowRun,listWorkflowRuns } from "@/modules/workflows/use-cases";
+import {
+  createWorkflowRun,
+  listWorkflowRuns,
+} from "@/modules/workflows/use-cases";
 
 import { workflowErrorResponse } from "../../route-support";
 
 const paramsSchema = z.object({ workflowId: z.uuid() });
 const querySchema = z.object({ workspaceId: z.uuid() });
 
-export async function GET(req: NextRequest, { params }: { params: Promise<{ workflowId: string }> }) {
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ workflowId: string }> },
+) {
   return handleRoute(
     req,
     async ({ session }) => {
@@ -21,10 +30,19 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ work
       if (!parsedParams.success || !parsedQuery.success) {
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
       }
-      const forbidden = await requireResourcePermissionAsync(session.user.id, parsedQuery.data.workspaceId, "workflows.view", "workflow", (await params).workflowId);
+      const forbidden = await requireResourcePermissionAsync(
+        session.user.id,
+        parsedQuery.data.workspaceId,
+        "workflows.view",
+        "workflow",
+        (await params).workflowId,
+      );
       if (forbidden) return forbidden;
       return NextResponse.json({
-        runs: await listWorkflowRuns(parsedParams.data.workflowId, parsedQuery.data.workspaceId),
+        runs: await listWorkflowRuns(
+          parsedParams.data.workflowId,
+          parsedQuery.data.workspaceId,
+        ),
       });
     },
     {
@@ -34,7 +52,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ work
   );
 }
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ workflowId: string }> }) {
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ workflowId: string }> },
+) {
   return handleRoute(
     req,
     async ({ session }) => {
@@ -49,7 +70,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ wor
           { status: 400 },
         );
       }
-      const forbidden = await requireResourcePermissionAsync(session.user.id, parsedBody.data.workspaceId, "workflows.execute", "workflow", (await params).workflowId);
+      const forbidden = await requireResourcePermissionAsync(
+        session.user.id,
+        parsedBody.data.workspaceId,
+        "workflows.execute",
+        "workflow",
+        (await params).workflowId,
+      );
       if (forbidden) return forbidden;
       const run = await createWorkflowRun({
         workflowId: parsedParams.data.workflowId,

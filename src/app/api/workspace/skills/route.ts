@@ -1,8 +1,18 @@
-import { handleRoute,requireRequestPermissionScopeAsync,requireWorkspaceMemberAsync,requireWorkspacePermissionAsync } from "@/lib/route-handler";
+import {
+  handleRoute,
+  requireRequestPermissionScopeAsync,
+  requireWorkspaceMemberAsync,
+  requireWorkspacePermissionAsync,
+} from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
 import { withResourceProvenance } from "@/modules/iam/resource-provenance";
-import { createSkillManually,installSkillsFromCommand,listAgentSkills,SkillPreviewConflictError } from "@/modules/skills/use-cases";
-import { NextRequest,NextResponse } from "next/server";
+import {
+  createSkillManually,
+  installSkillsFromCommand,
+  listAgentSkills,
+  SkillPreviewConflictError,
+} from "@/modules/skills/use-cases";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 const workspaceQuerySchema = z.object({ workspaceId: z.uuid() });
@@ -27,16 +37,42 @@ const createSkillSchema = z.object({
   isGlobal: z.boolean().optional(),
 });
 
-const installErrorMessages = ["Install command is required", "Install command is too long", "Install command contains an unterminated quote", "Only `npx skills add ...` commands are supported", "Use `npx skills add ...` with a space between skills and add", "Only `skills add` install commands are supported", "Install command must include a skill package", "Only GitHub owner/repository skill packages are supported", "Choose a specific skill with `--skill <name>` or `owner/repo@skill`", "Skill names must be explicit and contain only letters, numbers, dot, dash or underscore", "The install command did not produce any skill directory", "No Markdown files were found in the installed skill"];
+const installErrorMessages = [
+  "Install command is required",
+  "Install command is too long",
+  "Install command contains an unterminated quote",
+  "Only `npx skills add ...` commands are supported",
+  "Use `npx skills add ...` with a space between skills and add",
+  "Only `skills add` install commands are supported",
+  "Install command must include a skill package",
+  "Only GitHub owner/repository skill packages are supported",
+  "Choose a specific skill with `--skill <name>` or `owner/repo@skill`",
+  "Skill names must be explicit and contain only letters, numbers, dot, dash or underscore",
+  "The install command did not produce any skill directory",
+  "No Markdown files were found in the installed skill",
+];
 
 function isExpectedInstallError(error: unknown): boolean {
   if (error instanceof Error) {
-    return installErrorMessages.includes(error.message) || error.message.startsWith("Unsupported install option") || error.message.startsWith("Missing skill name");
+    return (
+      installErrorMessages.includes(error.message) ||
+      error.message.startsWith("Unsupported install option") ||
+      error.message.startsWith("Missing skill name")
+    );
   }
   return false;
 }
 
-const createErrorMessages = ["At least one Markdown file is required", "All files must be .md files", "Total Markdown content exceeds size limit", "Skill name must be 1-64 chars and contain only lowercase letters, numbers, and hyphens", "Skill name cannot contain reserved words", "Skill description is required", "Skill description must be 1024 characters or less", "Skill metadata cannot contain XML or HTML tags"];
+const createErrorMessages = [
+  "At least one Markdown file is required",
+  "All files must be .md files",
+  "Total Markdown content exceeds size limit",
+  "Skill name must be 1-64 chars and contain only lowercase letters, numbers, and hyphens",
+  "Skill name cannot contain reserved words",
+  "Skill description is required",
+  "Skill description must be 1024 characters or less",
+  "Skill metadata cannot contain XML or HTML tags",
+];
 
 function isExpectedCreateError(error: unknown): boolean {
   return error instanceof Error && createErrorMessages.includes(error.message);
@@ -51,15 +87,38 @@ export async function GET(req: NextRequest) {
         workspaceId: searchParams.get("workspaceId"),
       });
       if (!parsed.success) {
-        return NextResponse.json({ error: "workspaceId must be a valid UUID" }, { status: 400 });
+        return NextResponse.json(
+          { error: "workspaceId must be a valid UUID" },
+          { status: 400 },
+        );
       }
-      const scopeForbidden = await requireRequestPermissionScopeAsync(session.user.id, parsed.data.workspaceId, "agents.get");
+      const scopeForbidden = await requireRequestPermissionScopeAsync(
+        session.user.id,
+        parsed.data.workspaceId,
+        "agents.get",
+      );
       if (scopeForbidden) return scopeForbidden;
-      const forbidden = await requireWorkspaceMemberAsync(session.user.id, parsed.data.workspaceId);
+      const forbidden = await requireWorkspaceMemberAsync(
+        session.user.id,
+        parsed.data.workspaceId,
+      );
       if (forbidden) return forbidden;
-      const canManageGlobal = await canManageTenantGlobals(session, parsed.data.workspaceId);
-      const skills = await listAgentSkills(parsed.data.workspaceId, session.user.id, canManageGlobal);
-      return NextResponse.json(await withResourceProvenance(skills, parsed.data.workspaceId, session.user.id));
+      const canManageGlobal = await canManageTenantGlobals(
+        session,
+        parsed.data.workspaceId,
+      );
+      const skills = await listAgentSkills(
+        parsed.data.workspaceId,
+        session.user.id,
+        canManageGlobal,
+      );
+      return NextResponse.json(
+        await withResourceProvenance(
+          skills,
+          parsed.data.workspaceId,
+          session.user.id,
+        ),
+      );
     },
     { logLabel: "Failed to list skills" },
   );
@@ -71,13 +130,26 @@ export async function POST(req: NextRequest) {
     async ({ session }) => {
       const parsed = installSkillSchema.safeParse(await req.json());
       if (!parsed.success) {
-        return NextResponse.json({ error: "Invalid input", details: parsed.error.issues }, { status: 400 });
+        return NextResponse.json(
+          { error: "Invalid input", details: parsed.error.issues },
+          { status: 400 },
+        );
       }
-      const forbidden = await requireWorkspacePermissionAsync(session.user.id, parsed.data.workspaceId, "tools.configure");
+      const forbidden = await requireWorkspacePermissionAsync(
+        session.user.id,
+        parsed.data.workspaceId,
+        "tools.configure",
+      );
       if (forbidden) return forbidden;
-      const canManageGlobal = await canManageTenantGlobals(session, parsed.data.workspaceId);
+      const canManageGlobal = await canManageTenantGlobals(
+        session,
+        parsed.data.workspaceId,
+      );
       if (parsed.data.isGlobal && !canManageGlobal) {
-        return NextResponse.json({ error: "Only admins can make skills global" }, { status: 403 });
+        return NextResponse.json(
+          { error: "Only admins can make skills global" },
+          { status: 403 },
+        );
       }
       const skills = await installSkillsFromCommand({
         workspaceId: parsed.data.workspaceId,
@@ -88,7 +160,11 @@ export async function POST(req: NextRequest) {
       });
       return NextResponse.json(
         {
-          skills: await withResourceProvenance(skills, parsed.data.workspaceId, session.user.id),
+          skills: await withResourceProvenance(
+            skills,
+            parsed.data.workspaceId,
+            session.user.id,
+          ),
         },
         { status: 201 },
       );
@@ -97,10 +173,16 @@ export async function POST(req: NextRequest) {
       logLabel: "Failed to install skill",
       expectedError: (error) => {
         if (error instanceof SkillPreviewConflictError) {
-          return NextResponse.json({ error: error.message, code: error.code }, { status: 409 });
+          return NextResponse.json(
+            { error: error.message, code: error.code },
+            { status: 409 },
+          );
         }
         if (isExpectedInstallError(error)) {
-          return NextResponse.json({ error: (error as Error).message }, { status: 400 });
+          return NextResponse.json(
+            { error: (error as Error).message },
+            { status: 400 },
+          );
         }
         return null;
       },
@@ -114,13 +196,26 @@ export async function PUT(req: NextRequest) {
     async ({ session }) => {
       const parsed = createSkillSchema.safeParse(await req.json());
       if (!parsed.success) {
-        return NextResponse.json({ error: "Invalid input", details: parsed.error.issues }, { status: 400 });
+        return NextResponse.json(
+          { error: "Invalid input", details: parsed.error.issues },
+          { status: 400 },
+        );
       }
-      const forbidden = await requireWorkspacePermissionAsync(session.user.id, parsed.data.workspaceId, "tools.configure");
+      const forbidden = await requireWorkspacePermissionAsync(
+        session.user.id,
+        parsed.data.workspaceId,
+        "tools.configure",
+      );
       if (forbidden) return forbidden;
-      const canManageGlobal = await canManageTenantGlobals(session, parsed.data.workspaceId);
+      const canManageGlobal = await canManageTenantGlobals(
+        session,
+        parsed.data.workspaceId,
+      );
       if (parsed.data.isGlobal && !canManageGlobal) {
-        return NextResponse.json({ error: "Only admins can make skills global" }, { status: 403 });
+        return NextResponse.json(
+          { error: "Only admins can make skills global" },
+          { status: 403 },
+        );
       }
       const skill = await createSkillManually({
         workspaceId: parsed.data.workspaceId,
@@ -130,14 +225,21 @@ export async function PUT(req: NextRequest) {
         markdownFiles: parsed.data.markdownFiles,
         isGlobal: parsed.data.isGlobal && canManageGlobal,
       });
-      const [skillWithProvenance] = await withResourceProvenance([skill], parsed.data.workspaceId, session.user.id);
+      const [skillWithProvenance] = await withResourceProvenance(
+        [skill],
+        parsed.data.workspaceId,
+        session.user.id,
+      );
       return NextResponse.json({ skill: skillWithProvenance }, { status: 201 });
     },
     {
       logLabel: "Failed to create skill",
       expectedError: (error) => {
         if (isExpectedCreateError(error)) {
-          return NextResponse.json({ error: (error as Error).message }, { status: 400 });
+          return NextResponse.json(
+            { error: (error as Error).message },
+            { status: 400 },
+          );
         }
         return null;
       },

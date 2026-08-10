@@ -2,17 +2,53 @@ import { UserPlusIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { Dialog,DialogContent,DialogDescription,DialogFooter,DialogHeader,DialogTitle,DialogTrigger } from "@/components/ui/dialog";
-import { Field,FieldGroup,FieldLabel } from "@/components/ui/field";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Select,SelectContent,SelectItem,SelectTrigger,SelectValue } from "@/components/ui/select";
-import { Tabs,TabsContent,TabsList,TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { fetchJson } from "@/lib/api-client";
 import type { AccessConsoleViewModel } from "./access-console.access-console.view";
 import { INITIAL_ACCOUNT_FORM } from "./access-console.resource-transfer-preview";
 import { MutatingButton } from "./access-console.scope-path";
-export function AccessPeopleTransferBranch2({ model }: { model: AccessConsoleViewModel }) {
-  const { accountForm, accountMode, load, memberEmail, memberOpen, mutate, pendingAction, platformUsers, refreshPlatformAccounts, refreshWorkspaces, setAccountForm, setAccountMode, setMemberEmail, setMemberOpen, setPendingAction, t, workspaceId } = model;
+export function AccessPeopleTransferBranch2({
+  model,
+}: {
+  model: AccessConsoleViewModel;
+}) {
+  const {
+    accountForm,
+    accountMode,
+    load,
+    memberEmail,
+    memberOpen,
+    mutate,
+    pendingAction,
+    platformUsers,
+    refreshPlatformAccounts,
+    refreshWorkspaces,
+    setAccountForm,
+    setAccountMode,
+    setMemberEmail,
+    setMemberOpen,
+    setPendingAction,
+    t,
+    workspaceId,
+  } = model;
   return (
     <Dialog open={memberOpen} onOpenChange={setMemberOpen}>
       <DialogTrigger asChild>
@@ -27,7 +63,12 @@ export function AccessPeopleTransferBranch2({ model }: { model: AccessConsoleVie
           <DialogDescription>{t("addPersonDescription")}</DialogDescription>
         </DialogHeader>
         {platformUsers ? (
-          <Tabs value={accountMode} onValueChange={(value) => setAccountMode(value as "existing" | "create")}>
+          <Tabs
+            value={accountMode}
+            onValueChange={(value) =>
+              setAccountMode(value as "existing" | "create")
+            }
+          >
             <TabsList className="w-full">
               <TabsTrigger value="existing">{t("existingAccount")}</TabsTrigger>
               <TabsTrigger value="create">{t("createAccount")}</TabsTrigger>
@@ -54,10 +95,19 @@ export function AccessPeopleTransferBranch2({ model }: { model: AccessConsoleVie
               >
                 <Field>
                   <FieldLabel htmlFor="member-email">{t("email")}</FieldLabel>
-                  <Input id="member-email" type="email" autoComplete="email" required value={memberEmail} onChange={(event) => setMemberEmail(event.target.value)} />
+                  <Input
+                    id="member-email"
+                    type="email"
+                    autoComplete="email"
+                    required
+                    value={memberEmail}
+                    onChange={(event) => setMemberEmail(event.target.value)}
+                  />
                 </Field>
                 <DialogFooter>
-                  <MutatingButton pending={pendingAction === "addMember"}>{t("addToOrganization")}</MutatingButton>
+                  <MutatingButton pending={pendingAction === "addMember"}>
+                    {t("addToOrganization")}
+                  </MutatingButton>
                 </DialogFooter>
               </form>
             </TabsContent>
@@ -86,12 +136,20 @@ export function AccessPeopleTransferBranch2({ model }: { model: AccessConsoleVie
                         email: accountForm.email,
                       }),
                     });
-                    await Promise.all([refreshPlatformAccounts(), load({ preserveData: true }), refreshWorkspaces()]);
+                    await Promise.all([
+                      refreshPlatformAccounts(),
+                      load({ preserveData: true }),
+                      refreshWorkspaces(),
+                    ]);
                     setAccountForm(INITIAL_ACCOUNT_FORM);
                     setMemberOpen(false);
                     toast.success(t("accountAndMemberCreated"));
                   } catch (error) {
-                    toast.error(error instanceof Error ? error.message : t("mutationError"));
+                    toast.error(
+                      error instanceof Error
+                        ? error.message
+                        : t("mutationError"),
+                    );
                   } finally {
                     setPendingAction(null);
                   }
@@ -114,7 +172,9 @@ export function AccessPeopleTransferBranch2({ model }: { model: AccessConsoleVie
                     />
                   </Field>
                   <Field>
-                    <FieldLabel htmlFor="account-email">{t("email")}</FieldLabel>
+                    <FieldLabel htmlFor="account-email">
+                      {t("email")}
+                    </FieldLabel>
                     <Input
                       id="account-email"
                       type="email"
@@ -130,7 +190,9 @@ export function AccessPeopleTransferBranch2({ model }: { model: AccessConsoleVie
                     />
                   </Field>
                   <Field>
-                    <FieldLabel htmlFor="account-password">{t("temporaryPassword")}</FieldLabel>
+                    <FieldLabel htmlFor="account-password">
+                      {t("temporaryPassword")}
+                    </FieldLabel>
                     <Input
                       id="account-password"
                       type="password"
@@ -147,7 +209,9 @@ export function AccessPeopleTransferBranch2({ model }: { model: AccessConsoleVie
                     />
                   </Field>
                   <Field>
-                    <FieldLabel htmlFor="account-role">{t("appRole")}</FieldLabel>
+                    <FieldLabel htmlFor="account-role">
+                      {t("appRole")}
+                    </FieldLabel>
                     <Select
                       value={accountForm.role}
                       onValueChange={(value) =>
@@ -161,14 +225,20 @@ export function AccessPeopleTransferBranch2({ model }: { model: AccessConsoleVie
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="user">{t("standardAccount")}</SelectItem>
-                        <SelectItem value="admin">{t("appAdministrator")}</SelectItem>
+                        <SelectItem value="user">
+                          {t("standardAccount")}
+                        </SelectItem>
+                        <SelectItem value="admin">
+                          {t("appAdministrator")}
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </Field>
                 </FieldGroup>
                 <DialogFooter>
-                  <MutatingButton pending={pendingAction === "createAccount"}>{t("createAndAdd")}</MutatingButton>
+                  <MutatingButton pending={pendingAction === "createAccount"}>
+                    {t("createAndAdd")}
+                  </MutatingButton>
                 </DialogFooter>
               </form>
             </TabsContent>
@@ -193,10 +263,19 @@ export function AccessPeopleTransferBranch2({ model }: { model: AccessConsoleVie
           >
             <Field>
               <FieldLabel htmlFor="member-email">{t("email")}</FieldLabel>
-              <Input id="member-email" type="email" autoComplete="email" required value={memberEmail} onChange={(event) => setMemberEmail(event.target.value)} />
+              <Input
+                id="member-email"
+                type="email"
+                autoComplete="email"
+                required
+                value={memberEmail}
+                onChange={(event) => setMemberEmail(event.target.value)}
+              />
             </Field>
             <DialogFooter>
-              <MutatingButton pending={pendingAction === "addMember"}>{t("addToOrganization")}</MutatingButton>
+              <MutatingButton pending={pendingAction === "addMember"}>
+                {t("addToOrganization")}
+              </MutatingButton>
             </DialogFooter>
           </form>
         )}

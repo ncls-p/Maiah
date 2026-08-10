@@ -1,12 +1,21 @@
 import { projectToolMessagePayload } from "@/modules/tool/safe-payload";
-import { createUIMessageStream,createUIMessageStreamResponse } from "ai";
-import { metadataFromHeaders,outputIsDenied,stringValue,subscribeToChatStream } from "./stream-bus.ai-hub-chat-uimessage-metadata";
+import { createUIMessageStream, createUIMessageStreamResponse } from "ai";
+import {
+  metadataFromHeaders,
+  outputIsDenied,
+  stringValue,
+  subscribeToChatStream,
+} from "./stream-bus.ai-hub-chat-uimessage-metadata";
 /**
  * AI SDK UI-compatible view of the existing Maiah stream bus. This lets the
  * current chat runtime keep its audited custom events while clients can consume
  * the standard UIMessage stream protocol through DefaultChatTransport/useChat.
  */
-export function createChatUIMessageStreamResponse(messageId: string, headers: Record<string, string> = {}, options: { replay?: boolean } = {}) {
+export function createChatUIMessageStreamResponse(
+  messageId: string,
+  headers: Record<string, string> = {},
+  options: { replay?: boolean } = {},
+) {
   const stream = createUIMessageStream({
     execute: ({ writer }) =>
       new Promise<void>((resolve) => {
@@ -210,12 +219,21 @@ export function createChatUIMessageStreamResponse(messageId: string, headers: Re
                   data: event.citations,
                 });
                 for (const citation of event.citations) {
-                  if (typeof citation === "object" && citation !== null && typeof (citation as { chunkId?: unknown }).chunkId === "string") {
+                  if (
+                    typeof citation === "object" &&
+                    citation !== null &&
+                    typeof (citation as { chunkId?: unknown }).chunkId ===
+                      "string"
+                  ) {
                     writer.write({
                       type: "source-document",
                       sourceId: (citation as { chunkId: string }).chunkId,
                       mediaType: "text/plain",
-                      title: stringValue((citation as { documentTitle?: unknown }).documentTitle) ?? "Knowledge source",
+                      title:
+                        stringValue(
+                          (citation as { documentTitle?: unknown })
+                            .documentTitle,
+                        ) ?? "Knowledge source",
                     });
                   }
                 }
@@ -232,7 +250,9 @@ export function createChatUIMessageStreamResponse(messageId: string, headers: Re
               if (type === "file") {
                 writer.write({
                   type: "data-code-workspace-artifact",
-                  id: stringValue((event.artifact as { projectId?: unknown })?.projectId),
+                  id: stringValue(
+                    (event.artifact as { projectId?: unknown })?.projectId,
+                  ),
                   data: event.artifact,
                 });
                 return;
@@ -275,7 +295,8 @@ export function createChatUIMessageStreamResponse(messageId: string, headers: Re
           options,
         );
       }),
-    onError: (error) => (error instanceof Error ? error.message : "Chat stream failed"),
+    onError: (error) =>
+      error instanceof Error ? error.message : "Chat stream failed",
   });
   return createUIMessageStreamResponse({
     stream,

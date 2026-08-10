@@ -1,5 +1,18 @@
 import type { LucideIcon } from "lucide-react";
-import { ActivityIcon,BookOpenIcon,CalendarClockIcon,KeyRoundIcon,MessageSquareIcon,PlugZapIcon,ScrollTextIcon,SettingsIcon,StoreIcon,UsersIcon,WorkflowIcon,WrenchIcon } from "lucide-react";
+import {
+  ActivityIcon,
+  BookOpenIcon,
+  CalendarClockIcon,
+  KeyRoundIcon,
+  MessageSquareIcon,
+  PlugZapIcon,
+  ScrollTextIcon,
+  SettingsIcon,
+  StoreIcon,
+  UsersIcon,
+  WorkflowIcon,
+  WrenchIcon,
+} from "lucide-react";
 
 export type NavItem = {
   href: string;
@@ -87,9 +100,13 @@ export const planningNavItems: NavItem[] = [
   },
 ];
 
-export const capabilitiesNavItems: NavItem[] = [{ href: "/tools", labelKey: "toolsHub", icon: WrenchIcon }];
+export const capabilitiesNavItems: NavItem[] = [
+  { href: "/tools", labelKey: "toolsHub", icon: WrenchIcon },
+];
 
-export const advancedCapabilityNavItems: NavItem[] = [{ href: "/marketplace", labelKey: "marketplace", icon: StoreIcon }];
+export const advancedCapabilityNavItems: NavItem[] = [
+  { href: "/marketplace", labelKey: "marketplace", icon: StoreIcon },
+];
 
 export const configNavItems: NavItem[] = [
   { href: "/providers", labelKey: "aiConnections", icon: PlugZapIcon },
@@ -152,13 +169,21 @@ export type RouteBreadcrumb = {
   href?: string;
 };
 
-export function getRouteBreadcrumbs(pathname: string): RouteBreadcrumb[] | undefined {
+export function getRouteBreadcrumbs(
+  pathname: string,
+): RouteBreadcrumb[] | undefined {
   const agentMatch = pathname.match(/^\/agents\/([^/]+)$/);
   if (agentMatch) {
-    return [{ labelKey: "assistants", href: "/agents" }, { labelKey: "assistantConfig" }];
+    return [
+      { labelKey: "assistants", href: "/agents" },
+      { labelKey: "assistantConfig" },
+    ];
   }
   if (/^\/workflows\/[^/]+$/.test(pathname)) {
-    return [{ labelKey: "workflows", href: "/workflows" }, { labelKey: "workflowEditor" }];
+    return [
+      { labelKey: "workflows", href: "/workflows" },
+      { labelKey: "workflowEditor" },
+    ];
   }
   return undefined;
 }

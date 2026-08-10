@@ -2,17 +2,27 @@
 
 import { PlugZapIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useCallback,useEffect,useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { PageLoading } from "@/components/page-loading";
 import { ProviderManager } from "@/components/providers/provider-manager";
 import { Button } from "@/components/ui/button";
-import { Empty,EmptyDescription,EmptyHeader,EmptyMedia,EmptyTitle } from "@/components/ui/empty";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { WorkspacePage } from "@/components/workspace-page";
 import { useWorkspace } from "@/hooks/use-workspace";
 
-type SafeProvider = Parameters<typeof ProviderManager>[0]["initialProviders"][number];
-type ProviderModel = Parameters<typeof ProviderManager>[0]["initialModels"][number];
+type SafeProvider = Parameters<
+  typeof ProviderManager
+>[0]["initialProviders"][number];
+type ProviderModel = Parameters<
+  typeof ProviderManager
+>[0]["initialModels"][number];
 
 export function ProvidersPageClient() {
   const t = useTranslations("providers");
@@ -31,14 +41,18 @@ export function ProvidersPageClient() {
     setLoading(true);
     setLoadError(false);
     try {
-      const providerRes = await fetch(`/api/workspace/providers?workspaceId=${workspaceId}`);
+      const providerRes = await fetch(
+        `/api/workspace/providers?workspaceId=${workspaceId}`,
+      );
       if (!providerRes.ok) throw new Error(t("loadFailed"));
       const providerRows = (await providerRes.json()) as SafeProvider[];
       setProviders(providerRows);
 
       const first = providerRows[0];
       if (first) {
-        const modelRes = await fetch(`/api/workspace/providers/${first.id}/models?workspaceId=${workspaceId}`);
+        const modelRes = await fetch(
+          `/api/workspace/providers/${first.id}/models?workspaceId=${workspaceId}`,
+        );
         if (!modelRes.ok) throw new Error(t("loadFailed"));
         setModels(await modelRes.json());
       } else {
@@ -78,19 +92,42 @@ export function ProvidersPageClient() {
   }
 
   return (
-    <WorkspacePage title={t("title")} description={t("description")} width="default">
+    <WorkspacePage
+      title={t("title")}
+      description={t("description")}
+      width="default"
+    >
       {loading ? (
-        <PageLoading className="min-h-64" label={tShell("loadingConnections")} />
+        <PageLoading
+          className="min-h-64"
+          label={tShell("loadingConnections")}
+        />
       ) : loadError ? (
-        <div className="rounded-2xl border border-destructive/25 bg-destructive/5 p-5" role="alert">
+        <div
+          className="rounded-2xl border border-destructive/25 bg-destructive/5 p-5"
+          role="alert"
+        >
           <h2 className="text-base font-semibold">{t("loadFailed")}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{t("loadFailedDescription")}</p>
-          <Button type="button" variant="outline" size="sm" className="mt-4" onClick={() => void load()}>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {t("loadFailedDescription")}
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="mt-4"
+            onClick={() => void load()}
+          >
             {t("retry")}
           </Button>
         </div>
       ) : (
-        <ProviderManager key={workspaceId} workspaceId={workspaceId} initialProviders={providers} initialModels={models} />
+        <ProviderManager
+          key={workspaceId}
+          workspaceId={workspaceId}
+          initialProviders={providers}
+          initialModels={models}
+        />
       )}
     </WorkspacePage>
   );

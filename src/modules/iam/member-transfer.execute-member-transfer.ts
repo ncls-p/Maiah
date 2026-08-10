@@ -1,9 +1,17 @@
-import { and,eq,inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 
 import { audit } from "@/server/domain/services/audit";
 import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
-import { organizationMembers,roleBindings,roles,teamMembers,teams,workspaceMembers,workspaces } from "@/server/infrastructure/db/schema";
+import {
+  organizationMembers,
+  roleBindings,
+  roles,
+  teamMembers,
+  teams,
+  workspaceMembers,
+  workspaces,
+} from "@/server/infrastructure/db/schema";
 import { listSourceBindings } from "./member-transfer.list-member-transfer-destinations";
 import { previewMemberTransfer } from "./member-transfer.preview-member-transfer";
 import { IamOperationError } from "./use-cases";
@@ -18,7 +26,10 @@ export async function executeMemberTransfer(
     throw new IamOperationError(preview.blockers.join(" "), 409);
   }
   if (preview.confirmationToken !== input.confirmationToken) {
-    throw new IamOperationError("Access changed since the preview. Review the transfer again.", 409);
+    throw new IamOperationError(
+      "Access changed since the preview. Review the transfer again.",
+      409,
+    );
   }
   const userIds = preview.members.map(({ userId }) => userId);
   const crossOrganization = preview.destination.crossOrganization;
@@ -26,14 +37,28 @@ export async function executeMemberTransfer(
     ? await db
         .select({ id: roles.id })
         .from(roles)
-        .where(and(eq(roles.name, "organization.user"), eq(roles.isSystem, true)))
+        .where(
+          and(eq(roles.name, "organization.user"), eq(roles.isSystem, true)),
+        )
         .limit(1)
     : [{ id: "" }];
   if (crossOrganization && !memberRole) {
     throw new IamOperationError("Destination member role is unavailable");
   }
-  const sourceOrganizationWorkspaces = crossOrganization && input.mode === "move" ? await db.select({ id: workspaces.id }).from(workspaces).where(eq(workspaces.organizationId, preview.source.organizationId)) : [];
-  const sourceOrganizationTeams = crossOrganization && input.mode === "move" ? await db.select({ id: teams.id }).from(teams).where(eq(teams.organizationId, preview.source.organizationId)) : [];
+  const sourceOrganizationWorkspaces =
+    crossOrganization && input.mode === "move"
+      ? await db
+          .select({ id: workspaces.id })
+          .from(workspaces)
+          .where(eq(workspaces.organizationId, preview.source.organizationId))
+      : [];
+  const sourceOrganizationTeams =
+    crossOrganization && input.mode === "move"
+      ? await db
+          .select({ id: teams.id })
+          .from(teams)
+          .where(eq(teams.organizationId, preview.source.organizationId))
+      : [];
   const sourceBindings =
     input.mode === "move"
       ? await listSourceBindings({
@@ -55,7 +80,10 @@ export async function executeMemberTransfer(
             status: "active",
           })
           .onConflictDoUpdate({
-            target: [organizationMembers.organizationId, organizationMembers.userId],
+            target: [
+              organizationMembers.organizationId,
+              organizationMembers.userId,
+            ],
             set: { status: "active", updatedAt: new Date() },
           });
         await tx
@@ -120,18 +148,33 @@ export async function executeMemberTransfer(
         await tx
           .update(organizationMembers)
           .set({ status: "removed", updatedAt: new Date() })
-          .where(and(eq(organizationMembers.organizationId, preview.source.organizationId), inArray(organizationMembers.userId, userIds)));
+          .where(
+            and(
+              eq(
+                organizationMembers.organizationId,
+                preview.source.organizationId,
+              ),
+              inArray(organizationMembers.userId, userIds),
+            ),
+          );
       }
     }
   });
 
-  await Promise.all(userIds.map((userId) => authorization.invalidatePrincipalPermissionCache(userId)));
+  await Promise.all(
+    userIds.map((userId) =>
+      authorization.invalidatePrincipalPermissionCache(userId),
+    ),
+  );
   await audit.emit({
     organizationId: preview.destination.organizationId,
     workspaceId: input.targetWorkspaceId,
     actorPrincipalType: "user",
     actorPrincipalId: input.actorUserId,
-    action: input.mode === "move" ? "organization.members.moved" : "organization.members.added_to_project",
+    action:
+      input.mode === "move"
+        ? "organization.members.moved"
+        : "organization.members.added_to_project",
     resourceType: "workspace",
     resourceId: input.targetWorkspaceId,
     outcome: "success",

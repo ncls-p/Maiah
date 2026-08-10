@@ -1,4 +1,4 @@
-import { and,desc,eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { encryptValue } from "@/lib/crypto";
@@ -30,7 +30,9 @@ export type WorkflowAgentRunRequest = {
   expiresAt: string;
 };
 
-function publicRequest(request: typeof workflowAgentRunRequests.$inferSelect): WorkflowAgentRunRequest {
+function publicRequest(
+  request: typeof workflowAgentRunRequests.$inferSelect,
+): WorkflowAgentRunRequest {
   return {
     id: request.id,
     title: request.title,
@@ -47,15 +49,29 @@ function serializeRunInput(value: unknown) {
   try {
     serialized = JSON.stringify(value ?? {});
   } catch {
-    throw new WorkflowAgentRunDecisionError("Workflow run input must be valid JSON.", 400);
+    throw new WorkflowAgentRunDecisionError(
+      "Workflow run input must be valid JSON.",
+      400,
+    );
   }
   if (serialized.length > MAX_RUN_INPUT_CHARS) {
-    throw new WorkflowAgentRunDecisionError("Workflow run input is too large.", 400);
+    throw new WorkflowAgentRunDecisionError(
+      "Workflow run input is too large.",
+      400,
+    );
   }
   return serialized;
 }
 
-export async function createWorkflowAgentRunRequest(input: { workflowId: string; workspaceId: string; userId: string; title: string; reason?: string; payload?: unknown; expectedVersion: number }) {
+export async function createWorkflowAgentRunRequest(input: {
+  workflowId: string;
+  workspaceId: string;
+  userId: string;
+  title: string;
+  reason?: string;
+  payload?: unknown;
+  expectedVersion: number;
+}) {
   const title = z.string().trim().min(1).max(255).parse(input.title);
   const reason = input.reason?.trim().slice(0, 1_000) || null;
   const serialized = serializeRunInput(input.payload);
@@ -91,23 +107,51 @@ export async function createWorkflowAgentRunRequest(input: { workflowId: string;
   return publicRequest(request);
 }
 
-export async function getPendingWorkflowAgentRunRequests(input: { workflowId: string; workspaceId: string; userId: string }) {
+export async function getPendingWorkflowAgentRunRequests(input: {
+  workflowId: string;
+  workspaceId: string;
+  userId: string;
+}) {
   const rows = await db
     .select()
     .from(workflowAgentRunRequests)
-    .where(and(eq(workflowAgentRunRequests.workflowId, input.workflowId), eq(workflowAgentRunRequests.workspaceId, input.workspaceId), eq(workflowAgentRunRequests.userId, input.userId), eq(workflowAgentRunRequests.status, "pending")))
+    .where(
+      and(
+        eq(workflowAgentRunRequests.workflowId, input.workflowId),
+        eq(workflowAgentRunRequests.workspaceId, input.workspaceId),
+        eq(workflowAgentRunRequests.userId, input.userId),
+        eq(workflowAgentRunRequests.status, "pending"),
+      ),
+    )
     .orderBy(desc(workflowAgentRunRequests.createdAt));
-  return rows.filter((request) => request.expiresAt.getTime() > Date.now()).map(publicRequest);
+  return rows
+    .filter((request) => request.expiresAt.getTime() > Date.now())
+    .map(publicRequest);
 }
 
-export async function loadRunRequest(input: { requestId: string; workflowId: string; workspaceId: string; userId: string }) {
+export async function loadRunRequest(input: {
+  requestId: string;
+  workflowId: string;
+  workspaceId: string;
+  userId: string;
+}) {
   const [request] = await db
     .select()
     .from(workflowAgentRunRequests)
-    .where(and(eq(workflowAgentRunRequests.id, input.requestId), eq(workflowAgentRunRequests.workflowId, input.workflowId), eq(workflowAgentRunRequests.workspaceId, input.workspaceId), eq(workflowAgentRunRequests.userId, input.userId)))
+    .where(
+      and(
+        eq(workflowAgentRunRequests.id, input.requestId),
+        eq(workflowAgentRunRequests.workflowId, input.workflowId),
+        eq(workflowAgentRunRequests.workspaceId, input.workspaceId),
+        eq(workflowAgentRunRequests.userId, input.userId),
+      ),
+    )
     .limit(1);
   if (!request) {
-    throw new WorkflowAgentRunDecisionError("Workflow run request not found.", 404);
+    throw new WorkflowAgentRunDecisionError(
+      "Workflow run request not found.",
+      404,
+    );
   }
   return request;
 }

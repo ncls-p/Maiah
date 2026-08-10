@@ -5,8 +5,16 @@ import { eq } from "drizzle-orm";
 
 // ─── Admin moderation ──────────────────────────────────────────────────
 
-export async function adminModerateItem(input: { itemId: string; adminUserId: string; action: "suspend" | "unsuspend" | "archive" | "unarchive" }) {
-  const [item] = await db.select().from(marketplaceItems).where(eq(marketplaceItems.id, input.itemId)).limit(1);
+export async function adminModerateItem(input: {
+  itemId: string;
+  adminUserId: string;
+  action: "suspend" | "unsuspend" | "archive" | "unarchive";
+}) {
+  const [item] = await db
+    .select()
+    .from(marketplaceItems)
+    .where(eq(marketplaceItems.id, input.itemId))
+    .limit(1);
   if (!item) throw new Error("Marketplace item not found");
 
   let newStatus: string;

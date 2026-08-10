@@ -1,24 +1,82 @@
 import { encryptValue } from "@/lib/crypto";
 import { logger, logHandledError, logHandledWarning } from "@/lib/logger";
-import { agentRuntimePolicy, createRuntimeDeadline } from "@/modules/agent/runtime-policy";
+import {
+  agentRuntimePolicy,
+  createRuntimeDeadline,
+} from "@/modules/agent/runtime-policy";
 import { recordUsageEvent } from "@/modules/agent/use-cases";
 import type { ChatAttachment } from "@/modules/chat/attachments";
-import { completeChatStream, createChatStreamResponse, createChatUIMessageStreamResponse, registerChatStreamAbortController } from "@/modules/chat/stream-bus";
-import { projectToolMessagePayload, safeChatErrorMessage } from "@/modules/tool/safe-payload";
+import {
+  completeChatStream,
+  createChatStreamResponse,
+  createChatUIMessageStreamResponse,
+  registerChatStreamAbortController,
+} from "@/modules/chat/stream-bus";
+import {
+  projectToolMessagePayload,
+  safeChatErrorMessage,
+} from "@/modules/tool/safe-payload";
 import { db } from "@/server/infrastructure/db";
 import { messageParts, messages } from "@/server/infrastructure/db/schema";
 import { stepCountIs, ToolLoopAgent, type LanguageModel } from "ai";
 import { eq } from "drizzle-orm";
 import { after } from "next/server";
-import { knowledgeCitationsFromToolOutput, KNOWLEDGE_SEARCH_TOOL_NAME, projectStreamedToolInput, streamToolCallId, streamToolErrorOutput, streamToolInputDelta } from "./route-support";
+import {
+  knowledgeCitationsFromToolOutput,
+  KNOWLEDGE_SEARCH_TOOL_NAME,
+  projectStreamedToolInput,
+  streamToolCallId,
+  streamToolErrorOutput,
+  streamToolInputDelta,
+} from "./route-support";
 import { completeStandardChat } from "./route.standard-completion";
 import { prepareStandardChatConfig } from "./route.standard-config";
-import type { ChatExecutionContext } from "./route.execution-context";
+import {
+  chatStreamHeaders,
+  type ChatExecutionContext,
+} from "./route.execution-context";
 import { createStreamedPartWriter } from "./route.streamed-parts";
-export async function runStandardChat(input: { context: ChatExecutionContext; model: LanguageModel; messageAttachments: ChatAttachment[]; createdConversation: boolean; codeWorkspaceAttachment: unknown; requestStartedAt: number; enqueueEvent: (event: Record<string, unknown>) => void }) {
-  const { context: executionContext, model, messageAttachments, createdConversation, codeWorkspaceAttachment, requestStartedAt, enqueueEvent } = input;
-  const { requestId, agentId, actorUserId, agent, version, providerConfig, conversation, userMessage, assistantMessage, continuationClaim, generationHistory, useAiSdkUIStream } = executionContext;
-  const { maxToolCalls, maxOutputTokens, maxSteps, boundToolConfig, tools, availableToolNames, configuredToolChoice, systemPrompt } = await prepareStandardChatConfig({
+export async function runStandardChat(input: {
+  context: ChatExecutionContext;
+  model: LanguageModel;
+  messageAttachments: ChatAttachment[];
+  createdConversation: boolean;
+  codeWorkspaceAttachment: unknown;
+  requestStartedAt: number;
+  enqueueEvent: (event: Record<string, unknown>) => void;
+}) {
+  const {
+    context: executionContext,
+    model,
+    messageAttachments,
+    createdConversation,
+    codeWorkspaceAttachment,
+    requestStartedAt,
+    enqueueEvent,
+  } = input;
+  const {
+    requestId,
+    agentId,
+    actorUserId,
+    agent,
+    version,
+    providerConfig,
+    conversation,
+    assistantMessage,
+    continuationClaim,
+    generationHistory,
+    useAiSdkUIStream,
+  } = executionContext;
+  const {
+    maxToolCalls,
+    maxOutputTokens,
+    maxSteps,
+    boundToolConfig,
+    tools,
+    availableToolNames,
+    configuredToolChoice,
+    systemPrompt,
+  } = await prepareStandardChatConfig({
     context: executionContext,
     messageAttachments,
     createdConversation,
@@ -26,9 +84,13 @@ export async function runStandardChat(input: { context: ChatExecutionContext; mo
     requestStartedAt,
     enqueueEvent,
   });
-  const toolLimitFinalAnswerPrompt = "Tool call limit reached. Do not call another tool. Answer the user now using the available conversation context and tool results. If the available information is incomplete, clearly say what is known and what is uncertain.";
+  const toolLimitFinalAnswerPrompt =
+    "Tool call limit reached. Do not call another tool. Answer the user now using the available conversation context and tool results. If the available information is incomplete, clearly say what is known and what is uncertain.";
   const startedAt = Date.now();
-  const partWriter = createStreamedPartWriter(assistantMessage.id, continuationClaim);
+  const partWriter = createStreamedPartWriter(
+    assistantMessage.id,
+    continuationClaim,
+  );
   const postCompletionAutomationRef: {
     current: (() => Promise<void>) | null;
   } = { current: null };
@@ -57,14 +119,18 @@ export async function runStandardChat(input: { context: ChatExecutionContext; mo
     id: version.id,
     model,
     instructions: systemPrompt,
-    temperature: version.temperature ? Number.parseFloat(version.temperature) : undefined,
+    temperature: version.temperature
+      ? Number.parseFloat(version.temperature)
+      : undefined,
     topP: version.topP ? Number.parseFloat(version.topP) : undefined,
     topK: generationSettings?.topK,
     presencePenalty: generationSettings?.presencePenalty,
     frequencyPenalty: generationSettings?.frequencyPenalty,
     seed: generationSettings?.seed,
     maxRetries: generationSettings?.maxRetries,
-    stopSequences: generationSettings?.stopSequences?.length ? generationSettings.stopSequences : undefined,
+    stopSequences: generationSettings?.stopSequences?.length
+      ? generationSettings.stopSequences
+      : undefined,
     maxOutputTokens,
     tools,
     toolChoice: configuredToolChoice,
@@ -93,7 +159,10 @@ export async function runStandardChat(input: { context: ChatExecutionContext; mo
     prepareStep:
       availableToolNames.length > 0
         ? ({ steps }) => {
-            const usedToolCalls = steps.reduce((total, step) => total + step.toolCalls.length, 0);
+            const usedToolCalls = steps.reduce(
+              (total, step) => total + step.toolCalls.length,
+              0,
+            );
             if (usedToolCalls < maxToolCalls) return undefined;
 
             return {
@@ -104,7 +173,10 @@ export async function runStandardChat(input: { context: ChatExecutionContext; mo
           }
         : undefined,
   });
-  const runtimeDeadline = createRuntimeDeadline(agentRuntimePolicy.chatTimeoutMs, streamAbortController.signal);
+  const runtimeDeadline = createRuntimeDeadline(
+    agentRuntimePolicy.chatTimeoutMs,
+    streamAbortController.signal,
+  );
   const result = await runtimeAgent.stream({
     abortSignal: runtimeDeadline.signal,
     messages: generationHistory,
@@ -184,7 +256,9 @@ export async function runStandardChat(input: { context: ChatExecutionContext; mo
             output: projectToolMessagePayload(part.output),
           });
           if (part.toolName === KNOWLEDGE_SEARCH_TOOL_NAME) {
-            const knowledgeCitations = knowledgeCitationsFromToolOutput(part.output);
+            const knowledgeCitations = knowledgeCitationsFromToolOutput(
+              part.output,
+            );
             if (knowledgeCitations.length > 0) {
               await partWriter.appendCitations(knowledgeCitations);
               enqueueEvent({
@@ -194,7 +268,10 @@ export async function runStandardChat(input: { context: ChatExecutionContext; mo
             }
           }
         } else if (part.type === "tool-error") {
-          const output = streamToolErrorOutput(part, invalidToolCallErrors.get(part.toolCallId));
+          const output = streamToolErrorOutput(
+            part,
+            invalidToolCallErrors.get(part.toolCallId),
+          );
           invalidToolCallErrors.delete(part.toolCallId);
           const toolResult = {
             type: "tool-result" as const,
@@ -211,8 +288,14 @@ export async function runStandardChat(input: { context: ChatExecutionContext; mo
             output,
           });
         } else if (part.type === "error") {
-          const error = part.error instanceof Error ? part.error : new Error(String(part.error));
-          const errorMessage = safeChatErrorMessage(error, "Assistant generation failed");
+          const error =
+            part.error instanceof Error
+              ? part.error
+              : new Error(String(part.error));
+          const errorMessage = safeChatErrorMessage(
+            error,
+            "Assistant generation failed",
+          );
           throw new Error(errorMessage);
         }
       }
@@ -229,7 +312,10 @@ export async function runStandardChat(input: { context: ChatExecutionContext; mo
       });
     } catch (error) {
       if (streamAbortController.signal.aborted) {
-        await db.update(messages).set({ status: "completed", completedAt: new Date() }).where(eq(messages.id, assistantMessage.id));
+        await db
+          .update(messages)
+          .set({ status: "completed", completedAt: new Date() })
+          .where(eq(messages.id, assistantMessage.id));
         logger.info("Chat stream aborted by client", {
           requestId,
           agentId,
@@ -242,10 +328,20 @@ export async function runStandardChat(input: { context: ChatExecutionContext; mo
         });
         enqueueEvent({ type: "done", stopped: true });
       } else {
-        const streamError = runtimeDeadline.timeoutSignal.aborted ? new Error("Assistant run timed out before it could finish. Try again with a narrower request.") : error;
-        const errorMessage = safeChatErrorMessage(streamError, "Assistant generation failed");
+        const streamError = runtimeDeadline.timeoutSignal.aborted
+          ? new Error(
+              "Assistant run timed out before it could finish. Try again with a narrower request.",
+            )
+          : error;
+        const errorMessage = safeChatErrorMessage(
+          streamError,
+          "Assistant generation failed",
+        );
         // Chat stream failed — message already marked failed below
-        await db.update(messages).set({ status: "failed", completedAt: new Date() }).where(eq(messages.id, assistantMessage.id));
+        await db
+          .update(messages)
+          .set({ status: "failed", completedAt: new Date() })
+          .where(eq(messages.id, assistantMessage.id));
         await db.insert(messageParts).values({
           messageId: assistantMessage.id,
           type: "error",
@@ -288,12 +384,9 @@ export async function runStandardChat(input: { context: ChatExecutionContext; mo
     }
   })();
 
-  const streamHeaders = {
-    "X-Conversation-Id": conversation.id,
-    "X-Message-Id": assistantMessage.id,
-    ...(userMessage ? { "X-User-Message-Id": userMessage.id } : {}),
-    "X-Request-Id": requestId,
-  };
+  const streamHeaders = chatStreamHeaders(executionContext);
 
-  return useAiSdkUIStream ? createChatUIMessageStreamResponse(assistantMessage.id, streamHeaders) : createChatStreamResponse(assistantMessage.id, streamHeaders);
+  return useAiSdkUIStream
+    ? createChatUIMessageStreamResponse(assistantMessage.id, streamHeaders)
+    : createChatStreamResponse(assistantMessage.id, streamHeaders);
 }

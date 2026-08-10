@@ -5,7 +5,11 @@ import { fileObjectKey } from "./storage.code-workspace-file-summary";
 import { getCodeWorkspace } from "./storage.content-type-for-path";
 import { assertCodeWorkspaceAccess } from "./storage.create-code-workspace-from-zip";
 
-export async function createCodeWorkspaceZip(input: { projectId: string; workspaceId: string; userId?: string }) {
+export async function createCodeWorkspaceZip(input: {
+  projectId: string;
+  workspaceId: string;
+  userId?: string;
+}) {
   const metadata = await getCodeWorkspace(input.projectId);
   assertCodeWorkspaceAccess(metadata, input.workspaceId, input.userId);
   const zip = new JSZip();

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef,type SVGProps } from "react";
+import { useRef, type SVGProps } from "react";
 
 import type { CodeWorkspaceArtifact } from "@/components/chat/chat-types";
 import { CODE_WORKSPACE_RESIZE_STEP } from "@/components/chat/code-workspace-layout";
@@ -9,9 +9,24 @@ export const BUTTON_TYPE = "button";
 export const OUTLINE_VARIANT = "outline";
 export const GHOST_VARIANT = "ghost";
 export const COMPACT_ICON_CLASS = "size-3";
-export const CODE_WORKSPACE_LAYOUT_STORAGE_KEY = "maiah-code-workspace-layout-v1";
+export const CODE_WORKSPACE_LAYOUT_STORAGE_KEY =
+  "maiah-code-workspace-layout-v1";
 
-export function CodeWorkspaceResizeHandle({ controls, label, maximum, minimum, onResize, value }: { controls: string; label: string; maximum: number; minimum: number; onResize: (width: number) => void; value: number }) {
+export function CodeWorkspaceResizeHandle({
+  controls,
+  label,
+  maximum,
+  minimum,
+  onResize,
+  value,
+}: {
+  controls: string;
+  label: string;
+  maximum: number;
+  minimum: number;
+  onResize: (width: number) => void;
+  value: number;
+}) {
   const pointerState = useRef<{
     pointerId: number;
     startWidth: number;
@@ -67,7 +82,10 @@ export function CodeWorkspaceResizeHandle({ controls, label, maximum, minimum, o
       role="separator"
       tabIndex={0}
     >
-      <span aria-hidden="true" className="h-full w-px bg-border/60 transition-[background-color,box-shadow] duration-150 group-hover:bg-primary/55 group-focus-visible:bg-primary group-focus-visible:shadow-[0_0_0_3px_color-mix(in_oklab,var(--primary)_18%,transparent)]" />
+      <span
+        aria-hidden="true"
+        className="h-full w-px bg-border/60 transition-[background-color,box-shadow] duration-150 group-hover:bg-primary/55 group-focus-visible:bg-primary group-focus-visible:shadow-[0_0_0_3px_color-mix(in_oklab,var(--primary)_18%,transparent)]"
+      />
     </div>
   );
 }
@@ -80,10 +98,18 @@ export function GithubIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
-export function isCodeWorkspaceArtifactOutput(value: unknown): value is CodeWorkspaceArtifact {
+export function isCodeWorkspaceArtifactOutput(
+  value: unknown,
+): value is CodeWorkspaceArtifact {
   if (typeof value !== "object" || value === null) return false;
   const record = value as Record<string, unknown>;
-  return record.kind === "code_workspace_artifact" && typeof record.projectId === "string" && typeof record.title === "string" && typeof record.version === "number" && Array.isArray(record.files);
+  return (
+    record.kind === "code_workspace_artifact" &&
+    typeof record.projectId === "string" &&
+    typeof record.title === "string" &&
+    typeof record.version === "number" &&
+    Array.isArray(record.files)
+  );
 }
 
 export const CODE_WORKSPACE_ARTIFACT_EVENT = "code-workspace-artifact-updated";
@@ -93,23 +119,43 @@ type CodeWorkspaceFilePayload = {
   error?: string;
 };
 
-async function requestCodeWorkspaceJson<T>(url: string, init: RequestInit | undefined, fallbackError: string) {
+async function requestCodeWorkspaceJson<T>(
+  url: string,
+  init: RequestInit | undefined,
+  fallbackError: string,
+) {
   const response = await fetch(url, init);
-  const data = (await response.json().catch(() => null)) as (T & { error?: string }) | null;
+  const data = (await response.json().catch(() => null)) as
+    (T & { error?: string }) | null;
   if (!response.ok) throw new Error(data?.error || fallbackError);
   return data as T | null;
 }
 
-export async function loadCodeWorkspaceFileContent(projectId: string, path: string, fallbackError: string) {
-  const data = await requestCodeWorkspaceJson<CodeWorkspaceFilePayload>(`/api/workspace/code-projects/${projectId}/files?path=${encodeURIComponent(path)}`, undefined, fallbackError);
+export async function loadCodeWorkspaceFileContent(
+  projectId: string,
+  path: string,
+  fallbackError: string,
+) {
+  const data = await requestCodeWorkspaceJson<CodeWorkspaceFilePayload>(
+    `/api/workspace/code-projects/${projectId}/files?path=${encodeURIComponent(path)}`,
+    undefined,
+    fallbackError,
+  );
   if (typeof data?.content !== "string") {
     throw new Error(data?.error || fallbackError);
   }
   return data.content;
 }
 
-export async function requestUpdatedCodeWorkspaceArtifact(projectId: string, method: "PUT" | "DELETE", payload: { path: string; content?: string }, fallbackError: string) {
-  const nextArtifact = await requestCodeWorkspaceJson<CodeWorkspaceArtifact | { error?: string }>(
+export async function requestUpdatedCodeWorkspaceArtifact(
+  projectId: string,
+  method: "PUT" | "DELETE",
+  payload: { path: string; content?: string },
+  fallbackError: string,
+) {
+  const nextArtifact = await requestCodeWorkspaceJson<
+    CodeWorkspaceArtifact | { error?: string }
+  >(
     `/api/workspace/code-projects/${projectId}/files`,
     {
       method,
@@ -119,7 +165,9 @@ export async function requestUpdatedCodeWorkspaceArtifact(projectId: string, met
     fallbackError,
   );
   if (!isCodeWorkspaceArtifactOutput(nextArtifact)) {
-    throw new Error((nextArtifact as { error?: string } | null)?.error || fallbackError);
+    throw new Error(
+      (nextArtifact as { error?: string } | null)?.error || fallbackError,
+    );
   }
   return nextArtifact;
 }

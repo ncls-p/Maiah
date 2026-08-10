@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
-import { handleRoute, requireWorkspacePermissionAsync } from "@/lib/route-handler";
+import {
+  handleRoute,
+  requireWorkspacePermissionAsync,
+} from "@/lib/route-handler";
 import { getChatAttachmentBytes } from "@/modules/chat/attachments";
 
 const paramsSchema = z.object({ attachmentId: z.uuid() });
@@ -12,13 +15,23 @@ function arrayBufferFromBytes(bytes: Uint8Array) {
   return buffer;
 }
 
-function contentDisposition(kind: "chat_image" | "chat_file", fileName: string, mimeType: string) {
+function contentDisposition(
+  kind: "chat_image" | "chat_file",
+  fileName: string,
+  mimeType: string,
+) {
   const safeFileName = fileName.replace(/["\r\n]/g, "_");
-  const disposition = kind === "chat_image" || mimeType === "application/pdf" ? "inline" : "attachment";
+  const disposition =
+    kind === "chat_image" || mimeType === "application/pdf"
+      ? "inline"
+      : "attachment";
   return `${disposition}; filename="${safeFileName}"; filename*=UTF-8''${encodeURIComponent(fileName)}`;
 }
 
-export async function GET(req: NextRequest, { params }: { params: Promise<{ attachmentId: string }> }) {
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ attachmentId: string }> },
+) {
   return handleRoute(
     req,
     async ({ session }) => {
@@ -30,13 +43,21 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ atta
         attachmentId: parsed.data.attachmentId,
         userId: session.user.id,
       });
-      const forbidden = await requireWorkspacePermissionAsync(session.user.id, attachment.metadata.workspaceId, "agents.chat");
+      const forbidden = await requireWorkspacePermissionAsync(
+        session.user.id,
+        attachment.metadata.workspaceId,
+        "agents.chat",
+      );
       if (forbidden) return forbidden;
       return new Response(arrayBufferFromBytes(attachment.bytes), {
         headers: {
           "Content-Type": attachment.metadata.mimeType,
           "Content-Length": String(attachment.metadata.size),
-          "Content-Disposition": contentDisposition(attachment.metadata.kind, attachment.metadata.fileName, attachment.metadata.mimeType),
+          "Content-Disposition": contentDisposition(
+            attachment.metadata.kind,
+            attachment.metadata.fileName,
+            attachment.metadata.mimeType,
+          ),
           "Cache-Control": "private, max-age=300",
           "Content-Security-Policy": "default-src 'none'; sandbox",
           "X-Content-Type-Options": "nosniff",
@@ -50,7 +71,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ atta
         if (/not found|attachment|invalid/i.test(message)) {
           return NextResponse.json({ error: "Not found" }, { status: 404 });
         }
-        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+        return NextResponse.json(
+          { error: "Internal server error" },
+          { status: 500 },
+        );
       },
     },
   );

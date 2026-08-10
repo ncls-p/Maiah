@@ -1,11 +1,28 @@
-import { and,eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 import { audit } from "@/server/domain/services/audit";
 import { db } from "@/server/infrastructure/db";
-import { organizationMembers,roleBindings,teamMembers,teams,users } from "@/server/infrastructure/db/schema";
-import { findSystemRole,getWorkspaceScope,IamOperationError,invalidateUserOrganizationAccess,normalizedSlug,requirePermission } from "./use-cases.iam-operation-error";
+import {
+  organizationMembers,
+  roleBindings,
+  teamMembers,
+  teams,
+  users,
+} from "@/server/infrastructure/db/schema";
+import {
+  findSystemRole,
+  getWorkspaceScope,
+  IamOperationError,
+  invalidateUserOrganizationAccess,
+  normalizedSlug,
+  requirePermission,
+} from "./use-cases.iam-operation-error";
 
-export async function addOrganizationMember(input: { actorUserId: string; workspaceId: string; email: string }) {
+export async function addOrganizationMember(input: {
+  actorUserId: string;
+  workspaceId: string;
+  email: string;
+}) {
   const { organization } = await getWorkspaceScope(input.workspaceId);
   await requirePermission({
     userId: input.actorUserId,
@@ -14,21 +31,36 @@ export async function addOrganizationMember(input: { actorUserId: string; worksp
     resourceId: organization.id,
     errorMessage: "You do not have permission to manage organization members",
   });
-  const [user] = await db.select({ id: users.id, email: users.email }).from(users).where(eq(users.email, input.email.trim().toLocaleLowerCase())).limit(1);
+  const [user] = await db
+    .select({ id: users.id, email: users.email })
+    .from(users)
+    .where(eq(users.email, input.email.trim().toLocaleLowerCase()))
+    .limit(1);
   if (!user) {
-    throw new IamOperationError("No account matches this email. Create the account first.", 404);
+    throw new IamOperationError(
+      "No account matches this email. Create the account first.",
+      404,
+    );
   }
 
   const [existing] = await db
     .select()
     .from(organizationMembers)
-    .where(and(eq(organizationMembers.organizationId, organization.id), eq(organizationMembers.userId, user.id)))
+    .where(
+      and(
+        eq(organizationMembers.organizationId, organization.id),
+        eq(organizationMembers.userId, user.id),
+      ),
+    )
     .limit(1);
   const memberRole = await findSystemRole("organization.user");
 
   await db.transaction(async (tx) => {
     if (existing) {
-      await tx.update(organizationMembers).set({ status: "active", updatedAt: new Date() }).where(eq(organizationMembers.id, existing.id));
+      await tx
+        .update(organizationMembers)
+        .set({ status: "active", updatedAt: new Date() })
+        .where(eq(organizationMembers.id, existing.id));
     } else {
       await tx.insert(organizationMembers).values({
         organizationId: organization.id,
@@ -64,7 +96,12 @@ export async function addOrganizationMember(input: { actorUserId: string; worksp
   });
 }
 
-export async function createTeam(input: { actorUserId: string; workspaceId: string; name: string; description?: string }) {
+export async function createTeam(input: {
+  actorUserId: string;
+  workspaceId: string;
+  name: string;
+  description?: string;
+}) {
   const { organization } = await getWorkspaceScope(input.workspaceId);
   await requirePermission({
     userId: input.actorUserId,
@@ -80,7 +117,10 @@ export async function createTeam(input: { actorUserId: string; workspaceId: stri
     .where(and(eq(teams.organizationId, organization.id), eq(teams.slug, slug)))
     .limit(1);
   if (existingTeam) {
-    throw new IamOperationError("A team with this name already exists in the organization", 409);
+    throw new IamOperationError(
+      "A team with this name already exists in the organization",
+      409,
+    );
   }
 
   const [team] = await db
@@ -108,7 +148,12 @@ export async function createTeam(input: { actorUserId: string; workspaceId: stri
   return team;
 }
 
-export async function addTeamMember(input: { actorUserId: string; workspaceId: string; teamId: string; userId: string }) {
+export async function addTeamMember(input: {
+  actorUserId: string;
+  workspaceId: string;
+  teamId: string;
+  userId: string;
+}) {
   const { organization } = await getWorkspaceScope(input.workspaceId);
   await requirePermission({
     userId: input.actorUserId,
@@ -120,18 +165,35 @@ export async function addTeamMember(input: { actorUserId: string; workspaceId: s
   const [team] = await db
     .select({ id: teams.id })
     .from(teams)
-    .where(and(eq(teams.id, input.teamId), eq(teams.organizationId, organization.id)))
+    .where(
+      and(
+        eq(teams.id, input.teamId),
+        eq(teams.organizationId, organization.id),
+      ),
+    )
     .limit(1);
   const [member] = await db
     .select({ id: organizationMembers.id })
     .from(organizationMembers)
-    .where(and(eq(organizationMembers.organizationId, organization.id), eq(organizationMembers.userId, input.userId), eq(organizationMembers.status, "active")))
+    .where(
+      and(
+        eq(organizationMembers.organizationId, organization.id),
+        eq(organizationMembers.userId, input.userId),
+        eq(organizationMembers.status, "active"),
+      ),
+    )
     .limit(1);
   if (!team || !member) {
-    throw new IamOperationError("The team and member must belong to this organization", 404);
+    throw new IamOperationError(
+      "The team and member must belong to this organization",
+      404,
+    );
   }
 
-  await db.insert(teamMembers).values({ teamId: team.id, userId: input.userId }).onConflictDoNothing();
+  await db
+    .insert(teamMembers)
+    .values({ teamId: team.id, userId: input.userId })
+    .onConflictDoNothing();
   await invalidateUserOrganizationAccess(input.userId, organization.id);
   await audit.emit({
     organizationId: organization.id,

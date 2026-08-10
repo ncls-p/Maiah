@@ -5,36 +5,73 @@ import { callRemoteMcpTool } from "@/modules/mcp/client";
 import { getMcpServer } from "@/modules/mcp/use-cases";
 import { audit } from "@/server/domain/services/audit";
 import { db } from "@/server/infrastructure/db";
-import { customToolSecretRequests,mcpTools } from "@/server/infrastructure/db/schema";
+import {
+  customToolSecretRequests,
+  mcpTools,
+} from "@/server/infrastructure/db/schema";
 import { compactMcpResult } from "./use-cases.compact-mcp-result";
-import { CustomToolBuilderConfig,SecretField,secretFieldSchema } from "./use-cases.custom-tool-row";
+import {
+  CustomToolBuilderConfig,
+  SecretField,
+  secretFieldSchema,
+} from "./use-cases.custom-tool-row";
 
-async function resolveConfiguredMcpToolName(serverId: string, toolName: string) {
-  const tools = await db.select({ name: mcpTools.name }).from(mcpTools).where(eq(mcpTools.mcpServerId, serverId));
+async function resolveConfiguredMcpToolName(
+  serverId: string,
+  toolName: string,
+) {
+  const tools = await db
+    .select({ name: mcpTools.name })
+    .from(mcpTools)
+    .where(eq(mcpTools.mcpServerId, serverId));
   const names = tools.map((item) => item.name);
   if (names.includes(toolName)) return toolName;
   const suffixMatch = names.find((name) => name.endsWith(`__${toolName}`));
   if (suffixMatch) return suffixMatch;
   const compactName = toolName.replace(/^n8n_/, "");
-  const compactMatch = names.find((name) => name.endsWith(`__${compactName}`) || name.endsWith(`__n8n_${compactName}`));
+  const compactMatch = names.find(
+    (name) =>
+      name.endsWith(`__${compactName}`) ||
+      name.endsWith(`__n8n_${compactName}`),
+  );
   if (compactMatch) return compactMatch;
   return toolName;
 }
 
-export async function callConfiguredN8nTool(input: { config: CustomToolBuilderConfig; workspaceId: string; toolName: string; arguments: Record<string, unknown> }) {
+export async function callConfiguredN8nTool(input: {
+  config: CustomToolBuilderConfig;
+  workspaceId: string;
+  toolName: string;
+  arguments: Record<string, unknown>;
+}) {
   if (!input.config.n8nMcpServerId) {
     throw new Error("n8n MCP server is not configured");
   }
-  const server = await getMcpServer(input.config.n8nMcpServerId, input.workspaceId);
-  if (!server) throw new Error("Configured n8n MCP server was not found in this workspace");
+  const server = await getMcpServer(
+    input.config.n8nMcpServerId,
+    input.workspaceId,
+  );
+  if (!server)
+    throw new Error(
+      "Configured n8n MCP server was not found in this workspace",
+    );
   if (!server.enabled) throw new Error("Configured n8n MCP server is disabled");
-  if (!server.url) throw new Error("Configured n8n MCP server must expose an SSE or streamable HTTP URL for web usage");
-  const toolName = await resolveConfiguredMcpToolName(server.id, input.toolName);
+  if (!server.url)
+    throw new Error(
+      "Configured n8n MCP server must expose an SSE or streamable HTTP URL for web usage",
+    );
+  const toolName = await resolveConfiguredMcpToolName(
+    server.id,
+    input.toolName,
+  );
   const result = await callRemoteMcpTool(server, toolName, input.arguments);
   return compactMcpResult(result);
 }
 
-export function safeCredentialSummary(fields: SecretField[], credentialRefId: string) {
+export function safeCredentialSummary(
+  fields: SecretField[],
+  credentialRefId: string,
+) {
   return {
     credentialRef: credentialRefId,
     fields: fields.map((field) => ({
@@ -46,18 +83,33 @@ export function safeCredentialSummary(fields: SecretField[], credentialRefId: st
   };
 }
 
-export function inferSecretRequestFromAssistantText(text: string): { title: string; description: string; fields: SecretField[] } | null {
+export function inferSecretRequestFromAssistantText(
+  text: string,
+): { title: string; description: string; fields: SecretField[] } | null {
   const normalized = text.toLowerCase();
-  const saysSecretIsAlreadyHandled = normalized.includes("aucun secret") || normalized.includes("secret n’a été exposé") || normalized.includes("secret n'a été exposé") || normalized.includes("secrets reçus") || normalized.includes("connexion sécurisée reçue") || normalized.includes("connexion sécurisée a bien été reçue");
+  const saysSecretIsAlreadyHandled =
+    normalized.includes("aucun secret") ||
+    normalized.includes("secret n’a été exposé") ||
+    normalized.includes("secret n'a été exposé") ||
+    normalized.includes("secrets reçus") ||
+    normalized.includes("connexion sécurisée reçue") ||
+    normalized.includes("connexion sécurisée a bien été reçue");
   if (saysSecretIsAlreadyHandled) return null;
 
-  const asksForSecureInput = /(il me manque|j'ai besoin|j’ai besoin|fournir|renseigner|ajoute|clique|ne la colle pas|webhook discord|url du webhook|connexion .*cible)/.test(normalized) && /(secret|token|api key|clé api|webhook|credential|connexion sécurisée|gestionnaire sécurisé)/.test(normalized);
+  const asksForSecureInput =
+    /(il me manque|j'ai besoin|j’ai besoin|fournir|renseigner|ajoute|clique|ne la colle pas|webhook discord|url du webhook|connexion .*cible)/.test(
+      normalized,
+    ) &&
+    /(secret|token|api key|clé api|webhook|credential|connexion sécurisée|gestionnaire sécurisé)/.test(
+      normalized,
+    );
   if (!asksForSecureInput) return null;
 
   if (normalized.includes("discord") && normalized.includes("webhook")) {
     return {
       title: "Connexion Discord",
-      description: "Ajoute l’URL du webhook Discord. Elle sera chiffrée et masquée à l’assistant.",
+      description:
+        "Ajoute l’URL du webhook Discord. Elle sera chiffrée et masquée à l’assistant.",
       fields: [
         {
           name: "discord_webhook_url",
@@ -73,7 +125,8 @@ export function inferSecretRequestFromAssistantText(text: string): { title: stri
   if (normalized.includes("webhook")) {
     return {
       title: "Connexion webhook",
-      description: "Ajoute l’URL du webhook. Elle sera chiffrée et masquée à l’assistant.",
+      description:
+        "Ajoute l’URL du webhook. Elle sera chiffrée et masquée à l’assistant.",
       fields: [
         {
           name: "webhook_url",
@@ -87,7 +140,8 @@ export function inferSecretRequestFromAssistantText(text: string): { title: stri
 
   return {
     title: "Connexion sécurisée",
-    description: "Ajoute le secret requis. Il sera chiffré et masqué à l’assistant.",
+    description:
+      "Ajoute le secret requis. Il sera chiffré et masqué à l’assistant.",
     fields: [
       {
         name: "secret_value",
@@ -99,7 +153,14 @@ export function inferSecretRequestFromAssistantText(text: string): { title: stri
   };
 }
 
-export async function createSecretRequest(input: { workspaceId: string; userId: string; title: string; description?: string; fields: SecretField[]; customToolId?: string }) {
+export async function createSecretRequest(input: {
+  workspaceId: string;
+  userId: string;
+  title: string;
+  description?: string;
+  fields: SecretField[];
+  customToolId?: string;
+}) {
   const fields = z.array(secretFieldSchema).min(1).max(12).parse(input.fields);
   const [request] = await db
     .insert(customToolSecretRequests)

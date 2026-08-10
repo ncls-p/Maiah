@@ -13,7 +13,11 @@ function getRecordKeys(value: unknown): string[] {
   return Object.keys(value as Record<string, unknown>);
 }
 
-export function inferMcpAuthHint(server: { transport: string; encryptedHeadersJson?: unknown; encryptedEnvJson?: unknown }): McpAuthHint {
+export function inferMcpAuthHint(server: {
+  transport: string;
+  encryptedHeadersJson?: unknown;
+  encryptedEnvJson?: unknown;
+}): McpAuthHint {
   const headerKeys = getRecordKeys(server.encryptedHeadersJson);
   const envKeys = getRecordKeys(server.encryptedEnvJson);
 

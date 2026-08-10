@@ -2,10 +2,29 @@ import { logHandledError } from "@/lib/logger";
 import { timingSafeEqual } from "node:crypto";
 import { readdir } from "node:fs/promises";
 import path from "node:path";
-import { execFileAsync,SkillFrontmatter,SkillPreviewAttestation,SkillPreviewConflictError,SkillPreviewResult,skillPreviewTokenVersion,skillPreviewTtlMs,stripAnsi } from "./use-cases.exec-file-async";
-import { checksumSkillPreview,installCommandHash,signSkillPreviewPayload } from "./use-cases.parse-skills-install-command";
+import {
+  execFileAsync,
+  SkillFrontmatter,
+  SkillPreviewAttestation,
+  SkillPreviewConflictError,
+  SkillPreviewResult,
+  skillPreviewTokenVersion,
+  skillPreviewTtlMs,
+  stripAnsi,
+} from "./use-cases.exec-file-async";
+import {
+  checksumSkillPreview,
+  installCommandHash,
+  signSkillPreviewPayload,
+} from "./use-cases.parse-skills-install-command";
 
-export function createSkillInstallPreviewToken(input: { workspaceId: string; userId: string; installCommand: string; skills: SkillPreviewResult[]; now?: number }) {
+export function createSkillInstallPreviewToken(input: {
+  workspaceId: string;
+  userId: string;
+  installCommand: string;
+  skills: SkillPreviewResult[];
+  now?: number;
+}) {
   const expiresAt = (input.now ?? Date.now()) + skillPreviewTtlMs;
   const attestation: SkillPreviewAttestation = {
     version: skillPreviewTokenVersion,
@@ -15,7 +34,9 @@ export function createSkillInstallPreviewToken(input: { workspaceId: string; use
     contentChecksum: checksumSkillPreview(input.skills),
     expiresAt,
   };
-  const payload = Buffer.from(JSON.stringify(attestation)).toString("base64url");
+  const payload = Buffer.from(JSON.stringify(attestation)).toString(
+    "base64url",
+  );
   return {
     previewToken: `${payload}.${signSkillPreviewPayload(payload)}`,
     expiresAt: new Date(expiresAt).toISOString(),
@@ -24,28 +45,49 @@ export function createSkillInstallPreviewToken(input: { workspaceId: string; use
 }
 
 function invalidSkillPreview(): never {
-  throw new SkillPreviewConflictError("Skill preview is invalid or expired. Preview the source again before installing.");
+  throw new SkillPreviewConflictError(
+    "Skill preview is invalid or expired. Preview the source again before installing.",
+  );
 }
 
-export function verifySkillInstallPreviewToken(input: { previewToken: string; workspaceId: string; userId: string; installCommand: string; now?: number }) {
+export function verifySkillInstallPreviewToken(input: {
+  previewToken: string;
+  workspaceId: string;
+  userId: string;
+  installCommand: string;
+  now?: number;
+}) {
   const [payload, signature, extra] = input.previewToken.split(".");
   if (!payload || !signature || extra) invalidSkillPreview();
 
   const expectedSignature = signSkillPreviewPayload(payload);
   const actualBytes = Buffer.from(signature, "utf8");
   const expectedBytes = Buffer.from(expectedSignature, "utf8");
-  if (actualBytes.length !== expectedBytes.length || !timingSafeEqual(actualBytes, expectedBytes)) {
+  if (
+    actualBytes.length !== expectedBytes.length ||
+    !timingSafeEqual(actualBytes, expectedBytes)
+  ) {
     invalidSkillPreview();
   }
 
   let attestation: SkillPreviewAttestation;
   try {
-    attestation = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as SkillPreviewAttestation;
+    attestation = JSON.parse(
+      Buffer.from(payload, "base64url").toString("utf8"),
+    ) as SkillPreviewAttestation;
   } catch {
     invalidSkillPreview();
   }
 
-  if (attestation.version !== skillPreviewTokenVersion || attestation.workspaceId !== input.workspaceId || attestation.userId !== input.userId || attestation.commandHash !== installCommandHash(input.installCommand) || !Number.isFinite(attestation.expiresAt) || attestation.expiresAt <= (input.now ?? Date.now()) || !/^([a-f0-9]{64})$/.test(attestation.contentChecksum)) {
+  if (
+    attestation.version !== skillPreviewTokenVersion ||
+    attestation.workspaceId !== input.workspaceId ||
+    attestation.userId !== input.userId ||
+    attestation.commandHash !== installCommandHash(input.installCommand) ||
+    !Number.isFinite(attestation.expiresAt) ||
+    attestation.expiresAt <= (input.now ?? Date.now()) ||
+    !/^([a-f0-9]{64})$/.test(attestation.contentChecksum)
+  ) {
     invalidSkillPreview();
   }
 
@@ -57,7 +99,11 @@ function processOutputToString(value: unknown) {
   return Buffer.isBuffer(value) ? value.toString("utf8") : String(value);
 }
 
-export async function runSkillsCli(args: string[], tempDir: string, tempHome: string) {
+export async function runSkillsCli(
+  args: string[],
+  tempDir: string,
+  tempHome: string,
+) {
   try {
     return await execFileAsync("npx", args, {
       cwd: tempDir,
@@ -78,7 +124,14 @@ export async function runSkillsCli(args: string[], tempDir: string, tempHome: st
       stderr?: unknown;
       stdout?: unknown;
     };
-    const output = stripAnsi([processOutputToString(execError.stdout), processOutputToString(execError.stderr)].filter(Boolean).join("\n")).trim();
+    const output = stripAnsi(
+      [
+        processOutputToString(execError.stdout),
+        processOutputToString(execError.stderr),
+      ]
+        .filter(Boolean)
+        .join("\n"),
+    ).trim();
     const exit = execError.code ? ` (exit ${String(execError.code)})` : "";
     const reason = (output || execError.message).slice(0, 4_000);
     throw new Error(`Skill CLI failed${exit}: ${reason}`, { cause: error });

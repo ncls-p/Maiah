@@ -2,12 +2,29 @@
 
 import type { PublishPreviewResult } from "@/modules/marketplace/use-cases";
 import { useTranslations } from "next-intl";
-import { useCallback,useEffect,useMemo,useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { ResourceShareDialogView } from "./resource-share-dialog.resource-share-dialog.view";
-import { PlatformUser,ShareStep,ShareableResource,previewQueryParams } from "./resource-share-dialog.share-step";
+import {
+  PlatformUser,
+  ShareStep,
+  ShareableResource,
+  previewQueryParams,
+} from "./resource-share-dialog.share-step";
 
-export function useResourceShareDialogController({ resource, workspaceId, open, onCloseAction, onSuccessAction }: { resource: ShareableResource | null; workspaceId: string | null; open: boolean; onCloseAction: () => void; onSuccessAction?: () => void }) {
+export function useResourceShareDialogController({
+  resource,
+  workspaceId,
+  open,
+  onCloseAction,
+  onSuccessAction,
+}: {
+  resource: ShareableResource | null;
+  workspaceId: string | null;
+  open: boolean;
+  onCloseAction: () => void;
+  onSuccessAction?: () => void;
+}) {
   const t = useTranslations("marketplace.share");
   const tVisibility = useTranslations("marketplace");
   const tCommon = useTranslations("common");
@@ -42,7 +59,9 @@ export function useResourceShareDialogController({ resource, workspaceId, open, 
       setVersion(data.suggestedVersion);
       setTagsInput(data.tags.join(", "));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t("toast.loadFailed"));
+      toast.error(
+        error instanceof Error ? error.message : t("toast.loadFailed"),
+      );
       return;
     } finally {
       setPreviewLoading(false);
@@ -63,9 +82,19 @@ export function useResourceShareDialogController({ resource, workspaceId, open, 
     }
   }, [open, resource, workspaceId, loadPreview]);
 
-  const publisherUserId = resource?.kind === "marketplace_item" ? resource.publisherUserId : null;
+  const publisherUserId =
+    resource?.kind === "marketplace_item" ? resource.publisherUserId : null;
 
-  const filteredUsers = useMemo(() => users.filter((u) => u.id !== publisherUserId && (u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase()))), [users, search, publisherUserId]);
+  const filteredUsers = useMemo(
+    () =>
+      users.filter(
+        (u) =>
+          u.id !== publisherUserId &&
+          (u.name.toLowerCase().includes(search.toLowerCase()) ||
+            u.email.toLowerCase().includes(search.toLowerCase())),
+      ),
+    [users, search, publisherUserId],
+  );
 
   const tags = useMemo(
     () =>
@@ -124,7 +153,17 @@ export function useResourceShareDialogController({ resource, workspaceId, open, 
     const data = await res.json();
     if (!data.item?.id) throw new Error(t("toast.publishFailed"));
     return data.item.id as string;
-  }, [resource, workspaceId, version, name, description, changelog, visibility, tags, t]);
+  }, [
+    resource,
+    workspaceId,
+    version,
+    name,
+    description,
+    changelog,
+    visibility,
+    tags,
+    t,
+  ]);
 
   const publishToMarketplace = useCallback(async () => {
     if (!resource) throw new Error("missing resource");
@@ -188,7 +227,17 @@ export function useResourceShareDialogController({ resource, workspaceId, open, 
       throw new Error(err.error || t("toast.publishFailed"));
     }
     return itemId;
-  }, [resource, workspaceId, version, name, description, changelog, visibility, tags, t]);
+  }, [
+    resource,
+    workspaceId,
+    version,
+    name,
+    description,
+    changelog,
+    visibility,
+    tags,
+    t,
+  ]);
 
   const loadUsers = useCallback(async () => {
     if (users.length > 0) return;
@@ -211,7 +260,9 @@ export function useResourceShareDialogController({ resource, workspaceId, open, 
       toast.success(t("toast.published", { name }));
       finish();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t("toast.publishFailed"));
+      toast.error(
+        error instanceof Error ? error.message : t("toast.publishFailed"),
+      );
       return;
     } finally {
       setBusy(false);
@@ -235,7 +286,9 @@ export function useResourceShareDialogController({ resource, workspaceId, open, 
       toast.success(t("toast.shared", { name }));
       finish();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t("toast.shareFailed"));
+      toast.error(
+        error instanceof Error ? error.message : t("toast.shareFailed"),
+      );
       return;
     } finally {
       setBusy(false);
@@ -244,7 +297,8 @@ export function useResourceShareDialogController({ resource, workspaceId, open, 
 
   if (!resource) return null;
 
-  const resourceSubjectKey = resource.kind === "marketplace_item" ? "marketplace_item" : resource.kind;
+  const resourceSubjectKey =
+    resource.kind === "marketplace_item" ? "marketplace_item" : resource.kind;
 
   return {
     kind: "ready",
@@ -279,7 +333,9 @@ export function useResourceShareDialogController({ resource, workspaceId, open, 
   } as const;
 }
 
-export function ResourceShareDialog(...args: Parameters<typeof useResourceShareDialogController>) {
+export function ResourceShareDialog(
+  ...args: Parameters<typeof useResourceShareDialogController>
+) {
   const model = useResourceShareDialogController(...args);
   if (model === null) return null;
   if (!("kind" in model)) return model;

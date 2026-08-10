@@ -1,15 +1,26 @@
 import { logger } from "@/lib/logger";
 import { db } from "@/server/infrastructure/db";
-import { aiModels,aiProviders } from "@/server/infrastructure/db/schema";
-import { and,eq,isNull,sql } from "drizzle-orm";
-import { ProviderModelRefreshResult,discoverModels,listModels } from "./use-cases.update-model";
+import { aiModels, aiProviders } from "@/server/infrastructure/db/schema";
+import { and, eq, isNull, sql } from "drizzle-orm";
+import {
+  ProviderModelRefreshResult,
+  discoverModels,
+  listModels,
+} from "./use-cases.update-model";
 
-export async function refreshProviderModels(providerId: string, workspaceId: string): Promise<ProviderModelRefreshResult> {
+export async function refreshProviderModels(
+  providerId: string,
+  workspaceId: string,
+): Promise<ProviderModelRefreshResult> {
   try {
     const models = await discoverModels(providerId, workspaceId);
     const registeredModels = await listModels(providerId);
-    const registeredModelIds = new Set(registeredModels.map((model) => model.modelId));
-    const modelsToSync = models.filter((model) => registeredModelIds.has(model.modelId));
+    const registeredModelIds = new Set(
+      registeredModels.map((model) => model.modelId),
+    );
+    const modelsToSync = models.filter((model) =>
+      registeredModelIds.has(model.modelId),
+    );
     if (modelsToSync.length > 0) {
       await db
         .insert(aiModels)
@@ -85,13 +96,26 @@ export async function refreshAllProviderModels() {
   const results: ProviderModelRefreshResult[] = [];
   const concurrency = 4;
   for (let index = 0; index < providers.length; index += concurrency) {
-    results.push(...(await Promise.all(providers.slice(index, index + concurrency).map((provider) => refreshProviderModels(provider.id, provider.workspaceId)))));
+    results.push(
+      ...(await Promise.all(
+        providers
+          .slice(index, index + concurrency)
+          .map((provider) =>
+            refreshProviderModels(provider.id, provider.workspaceId),
+          ),
+      )),
+    );
   }
 
   return {
     totalProviders: providers.length,
-    refreshedProviders: results.filter((result) => result.status === "healthy").length,
-    failedProviders: results.filter((result) => result.status !== "healthy").length,
-    importedModels: results.reduce((total, result) => total + result.imported, 0),
+    refreshedProviders: results.filter((result) => result.status === "healthy")
+      .length,
+    failedProviders: results.filter((result) => result.status !== "healthy")
+      .length,
+    importedModels: results.reduce(
+      (total, result) => total + result.imported,
+      0,
+    ),
   };
 }

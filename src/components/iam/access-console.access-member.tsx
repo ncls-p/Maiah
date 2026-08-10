@@ -139,7 +139,9 @@ export type MemberTransferPreview = {
     sourceAssignmentsRemoved: number;
     sourceTeamMembershipsRemoved: number;
   };
-  warnings: Array<"crossOrganizationMove" | "crossOrganizationAdd" | "sameOrganizationMove">;
+  warnings: Array<
+    "crossOrganizationMove" | "crossOrganizationAdd" | "sameOrganizationMove"
+  >;
   blockers: string[];
   confirmationToken: string;
 };

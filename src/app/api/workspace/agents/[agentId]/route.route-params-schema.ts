@@ -35,12 +35,10 @@ export async function parseAgentRouteQuery(
   params: Promise<{ agentId: string }>,
 ) {
   const { searchParams } = req.nextUrl;
-  return z
-    .object({ agentId: z.uuid(), workspaceId: z.uuid() })
-    .safeParse({
-      ...(await params),
-      workspaceId: searchParams.get("workspaceId"),
-    });
+  return z.object({ agentId: z.uuid(), workspaceId: z.uuid() }).safeParse({
+    ...(await params),
+    workspaceId: searchParams.get("workspaceId"),
+  });
 }
 
 const slugSchema = z
@@ -73,16 +71,8 @@ export const updateAgentSchema = z.object({
   modelId: z.uuid().optional(),
   temperature: z.string().optional(),
   topP: z.string().optional(),
-  maxOutputTokens: z
-    .number()
-    .int()
-    .positive()
-    .optional(),
-  maxToolCalls: z
-    .number()
-    .int()
-    .min(0)
-    .optional(),
+  maxOutputTokens: z.number().int().positive().optional(),
+  maxToolCalls: z.number().int().min(0).optional(),
   sharingMode: z.enum(["personal", "marketplace", "specific_user"]).optional(),
   shareTargetEmail: z.email().optional().or(z.literal("")),
   accessScope: z.enum(AGENT_ACCESS_SCOPES).optional(),

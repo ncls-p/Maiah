@@ -3,7 +3,7 @@
 import { Link } from "@/i18n/navigation";
 import { CalendarClockIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useCallback,useEffect,useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import type { ChatAgent } from "@/components/chat/chat-types";
 import { PageEmptyState } from "@/components/page-empty-state";
@@ -32,7 +32,9 @@ export default function ScheduledTasksPage() {
     setLoadingAgents(true);
     setLoadError(false);
     try {
-      const data = await fetchJson<AgentsPayload>(`/api/workspace/agents?workspaceId=${workspaceId}`);
+      const data = await fetchJson<AgentsPayload>(
+        `/api/workspace/agents?workspaceId=${workspaceId}`,
+      );
       setAgents(normalizeAgents(data));
     } catch {
       setLoadError(true);
@@ -51,19 +53,40 @@ export default function ScheduledTasksPage() {
   const loading = workspaceLoading || loadingAgents;
 
   return (
-    <WorkspacePage title={t("orbitTitle")} accentTitle={t("orbitAccent")} eyebrow={t("orbitEyebrow")} description={t("orbitDescription")} width="wide">
+    <WorkspacePage
+      title={t("orbitTitle")}
+      accentTitle={t("orbitAccent")}
+      eyebrow={t("orbitEyebrow")}
+      description={t("orbitDescription")}
+      width="wide"
+    >
       {loading ? (
         <PageLoading label={t("loadingAgents")} />
       ) : loadError ? (
-        <div className="rounded-2xl border border-destructive/25 bg-destructive/5 p-5" role="alert">
+        <div
+          className="rounded-2xl border border-destructive/25 bg-destructive/5 p-5"
+          role="alert"
+        >
           <h2 className="text-base font-semibold">{t("loadErrorTitle")}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{t("loadErrorDescription")}</p>
-          <Button type="button" variant="outline" size="sm" className="mt-4" onClick={() => void loadAgents()}>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {t("loadErrorDescription")}
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="mt-4"
+            onClick={() => void loadAgents()}
+          >
             {t("retry")}
           </Button>
         </div>
       ) : agents.length === 0 ? (
-        <PageEmptyState icon={CalendarClockIcon} title={t("noAssistants.title")} description={t("noAssistants.description")}>
+        <PageEmptyState
+          icon={CalendarClockIcon}
+          title={t("noAssistants.title")}
+          description={t("noAssistants.description")}
+        >
           <Button asChild>
             <Link href="/agents">{t("noAssistants.cta")}</Link>
           </Button>

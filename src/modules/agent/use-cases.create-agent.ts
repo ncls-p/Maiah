@@ -7,30 +7,89 @@ import { replaceSkillBindingsForVersion } from "@/modules/skills/use-cases";
 import { insertToolBindingsForVersion } from "@/modules/tool/use-cases";
 import { audit } from "@/server/domain/services/audit";
 import { db } from "@/server/infrastructure/db";
-import { agents, agentVersions, aiModels, aiProviders } from "@/server/infrastructure/db/schema";
+import {
+  agents,
+  agentVersions,
+  aiModels,
+  aiProviders,
+} from "@/server/infrastructure/db/schema";
 import { and, eq, isNull } from "drizzle-orm";
-import { CreateAgentInput, normalizeCurationLabel, preparePromptSuggestions, requireShareTargetUserId } from "./use-cases.agent-row";
-import { applyAgentAccessSelection, invalidateAgentAccessCache, validateAgentAccessSelection } from "./access-scope";
-import { getOnboardingToolBindings, stripBuiltinApprovalOverrides } from "./use-cases.create-available-agent-slug";
+import {
+  CreateAgentInput,
+  normalizeCurationLabel,
+  preparePromptSuggestions,
+  requireShareTargetUserId,
+} from "./use-cases.agent-row";
+import {
+  applyAgentAccessSelection,
+  invalidateAgentAccessCache,
+  validateAgentAccessSelection,
+} from "./access-scope";
+import {
+  getOnboardingToolBindings,
+  stripBuiltinApprovalOverrides,
+} from "./use-cases.create-available-agent-slug";
 
 // ─── Agent CRUD ────────────────────────────────────────────────────────
 
 export async function createAgent(input: CreateAgentInput) {
-  const { workspaceId, userId, name, slug, kind = "assistant", description, logoUrl, systemPrompt, providerId, modelId, temperature, topP, maxOutputTokens, maxToolCalls, toolPreset, toolBindings, knowledgeBindings, skillBindings, orchestrationPolicy, delegationBindings, promptSuggestions, sharingMode = "personal", shareTargetEmail, accessScope, accessTeamId, isGlobal, isRecommended, curationLabel, canAdminCurate } = input;
+  const {
+    workspaceId,
+    userId,
+    name,
+    slug,
+    kind = "assistant",
+    description,
+    logoUrl,
+    systemPrompt,
+    providerId,
+    modelId,
+    temperature,
+    topP,
+    maxOutputTokens,
+    maxToolCalls,
+    toolPreset,
+    toolBindings,
+    knowledgeBindings,
+    skillBindings,
+    orchestrationPolicy,
+    delegationBindings,
+    promptSuggestions,
+    sharingMode = "personal",
+    shareTargetEmail,
+    accessScope,
+    accessTeamId,
+    isGlobal,
+    isRecommended,
+    curationLabel,
+    canAdminCurate,
+  } = input;
 
-  if (kind === "assistant" && (orchestrationPolicy !== undefined || (delegationBindings?.length ?? 0) > 0)) {
+  if (
+    kind === "assistant" &&
+    (orchestrationPolicy !== undefined || (delegationBindings?.length ?? 0) > 0)
+  ) {
     throw new Error("Only orchestrators can configure delegation");
   }
   if (kind === "orchestrator" && sharingMode === "marketplace") {
     throw new Error("Orchestrators cannot be published to the marketplace yet");
   }
-  const normalizedOrchestrationPolicy = kind === "orchestrator" ? normalizeOrchestrationPolicy(orchestrationPolicy) : null;
+  const normalizedOrchestrationPolicy =
+    kind === "orchestrator"
+      ? normalizeOrchestrationPolicy(orchestrationPolicy)
+      : null;
 
   if (providerId) {
     const [provider] = await db
       .select({ id: aiProviders.id })
       .from(aiProviders)
-      .where(and(eq(aiProviders.id, providerId), eq(aiProviders.workspaceId, workspaceId), isNull(aiProviders.archivedAt)))
+      .where(
+        and(
+          eq(aiProviders.id, providerId),
+          eq(aiProviders.workspaceId, workspaceId),
+          isNull(aiProviders.archivedAt),
+        ),
+      )
       .limit(1);
     if (!provider) throw new Error("Provider not found");
   }
@@ -40,12 +99,21 @@ export async function createAgent(input: CreateAgentInput) {
     const [model] = await db
       .select({ id: aiModels.id })
       .from(aiModels)
-      .where(and(eq(aiModels.id, modelId), eq(aiModels.providerId, providerId), eq(aiModels.enabled, true)))
+      .where(
+        and(
+          eq(aiModels.id, modelId),
+          eq(aiModels.providerId, providerId),
+          eq(aiModels.enabled, true),
+        ),
+      )
       .limit(1);
     if (!model) throw new Error("Model not found");
   }
 
-  const shareTargetUserId = sharingMode === "specific_user" ? await requireShareTargetUserId(shareTargetEmail) : null;
+  const shareTargetUserId =
+    sharingMode === "specific_user"
+      ? await requireShareTargetUserId(shareTargetEmail)
+      : null;
   if (accessScope) {
     await validateAgentAccessSelection({
       userId,
@@ -57,7 +125,12 @@ export async function createAgent(input: CreateAgentInput) {
   if (toolPreset && toolBindings !== undefined) {
     throw new Error("toolPreset cannot be combined with toolBindings");
   }
-  const normalizedToolBindings = toolPreset === ONBOARDING_TOOL_PRESET ? getOnboardingToolBindings() : canAdminCurate ? toolBindings : stripBuiltinApprovalOverrides(toolBindings);
+  const normalizedToolBindings =
+    toolPreset === ONBOARDING_TOOL_PRESET
+      ? getOnboardingToolBindings()
+      : canAdminCurate
+        ? toolBindings
+        : stripBuiltinApprovalOverrides(toolBindings);
 
   const curated = canAdminCurate
     ? {
@@ -71,75 +144,106 @@ export async function createAgent(input: CreateAgentInput) {
         curationLabel: null,
       };
 
-  const { agent, version, accessAffectedUserIds } = await db.transaction(async (tx) => {
-    const [agent] = await tx
-      .insert(agents)
-      .values({
+  const { agent, version, accessAffectedUserIds } = await db.transaction(
+    async (tx) => {
+      const [agent] = await tx
+        .insert(agents)
+        .values({
+          workspaceId,
+          name,
+          slug,
+          description: description || null,
+          logoUrl: logoUrl ?? null,
+          promptSuggestionsJson: preparePromptSuggestions(promptSuggestions),
+          createdById: userId,
+          visibility: sharingMode === "marketplace" ? "public" : "private",
+          sourceType: "custom",
+          kind,
+          sharingMode,
+          shareTargetUserId,
+          ...curated,
+        })
+        .returning();
+
+      const [version] = await tx
+        .insert(agentVersions)
+        .values({
+          agentId: agent.id,
+          versionNumber: 1,
+          name: "Initial version",
+          systemPrompt: systemPrompt || null,
+          providerId: providerId || null,
+          modelId: modelId || null,
+          temperature: temperature || null,
+          topP: topP || null,
+          maxOutputTokens: maxOutputTokens ?? 30_000,
+          maxToolCalls: maxToolCalls ?? 20,
+          orchestrationPolicyJson: normalizedOrchestrationPolicy,
+          createdById: userId,
+        })
+        .returning();
+
+      await tx
+        .update(agents)
+        .set({ activeVersionId: version.id })
+        .where(eq(agents.id, agent.id));
+
+      const accessAffectedUserIds = accessScope
+        ? await applyAgentAccessSelection(
+            {
+              agentId: agent.id,
+              userId,
+              selection: { scope: accessScope, teamId: accessTeamId },
+            },
+            tx,
+          )
+        : [];
+
+      await insertToolBindingsForVersion(
+        version.id,
+        normalizedToolBindings ?? [],
         workspaceId,
-        name,
-        slug,
-        description: description || null,
-        logoUrl: logoUrl ?? null,
-        promptSuggestionsJson: preparePromptSuggestions(promptSuggestions),
-        createdById: userId,
-        visibility: sharingMode === "marketplace" ? "public" : "private",
-        sourceType: "custom",
-        kind,
-        sharingMode,
-        shareTargetUserId,
-        ...curated,
-      })
-      .returning();
-
-    const [version] = await tx
-      .insert(agentVersions)
-      .values({
-        agentId: agent.id,
-        versionNumber: 1,
-        name: "Initial version",
-        systemPrompt: systemPrompt || null,
-        providerId: providerId || null,
-        modelId: modelId || null,
-        temperature: temperature || null,
-        topP: topP || null,
-        maxOutputTokens: maxOutputTokens ?? 30_000,
-        maxToolCalls: maxToolCalls ?? 20,
-        orchestrationPolicyJson: normalizedOrchestrationPolicy,
-        createdById: userId,
-      })
-      .returning();
-
-    await tx.update(agents).set({ activeVersionId: version.id }).where(eq(agents.id, agent.id));
-
-    const accessAffectedUserIds = accessScope
-      ? await applyAgentAccessSelection(
-          {
-            agentId: agent.id,
-            userId,
-            selection: { scope: accessScope, teamId: accessTeamId },
-          },
-          tx,
-        )
-      : [];
-
-    await insertToolBindingsForVersion(version.id, normalizedToolBindings ?? [], workspaceId, { userId }, tx);
-    await replaceKnowledgeBindingsForVersion(version.id, knowledgeBindings ?? [], workspaceId, { userId }, tx);
-    await replaceSkillBindingsForVersion(version.id, workspaceId, skillBindings ?? [], { userId }, tx);
-    if (normalizedOrchestrationPolicy) {
-      await insertDelegationBindingsForVersion({
-        parentAgentId: agent.id,
-        agentVersionId: version.id,
+        { userId },
+        tx,
+      );
+      await replaceKnowledgeBindingsForVersion(
+        version.id,
+        knowledgeBindings ?? [],
         workspaceId,
-        userId,
-        bindings: delegationBindings ?? [],
-        policy: normalizedOrchestrationPolicy,
-        executor: tx,
-      });
-    }
+        { userId },
+        tx,
+      );
+      await replaceSkillBindingsForVersion(
+        version.id,
+        workspaceId,
+        skillBindings ?? [],
+        { userId },
+        tx,
+      );
+      if (normalizedOrchestrationPolicy) {
+        await insertDelegationBindingsForVersion({
+          parentAgentId: agent.id,
+          agentVersionId: version.id,
+          workspaceId,
+          userId,
+          bindings: delegationBindings ?? [],
+          policy: normalizedOrchestrationPolicy,
+          executor: tx,
+        });
+      }
 
-    const savedAgent = accessScope ? (await tx.select().from(agents).where(eq(agents.id, agent.id)).limit(1))[0] : { ...agent, activeVersionId: version.id };
-    return { agent: savedAgent, version, accessAffectedUserIds };
-  });
+      const savedAgent = accessScope
+        ? (
+            await tx
+              .select()
+              .from(agents)
+              .where(eq(agents.id, agent.id))
+              .limit(1)
+          )[0]
+        : { ...agent, activeVersionId: version.id };
+      return { agent: savedAgent, version, accessAffectedUserIds };
+    },
+  );
 
   await invalidateAgentAccessCache(agent.id, accessAffectedUserIds);
 
@@ -158,11 +262,20 @@ export async function createAgent(input: CreateAgentInput) {
   return { agent, version };
 }
 
-export async function getAgentById(agentId: string, workspaceId: string): Promise<typeof agents.$inferSelect | null> {
+export async function getAgentById(
+  agentId: string,
+  workspaceId: string,
+): Promise<typeof agents.$inferSelect | null> {
   const [agent] = await db
     .select()
     .from(agents)
-    .where(and(eq(agents.id, agentId), eq(agents.workspaceId, workspaceId), isNull(agents.archivedAt)))
+    .where(
+      and(
+        eq(agents.id, agentId),
+        eq(agents.workspaceId, workspaceId),
+        isNull(agents.archivedAt),
+      ),
+    )
     .limit(1);
 
   return agent || null;

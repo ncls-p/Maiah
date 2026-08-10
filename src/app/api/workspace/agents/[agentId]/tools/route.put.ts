@@ -1,13 +1,26 @@
-import { handleRoute,requireResourcePermissionAsync } from "@/lib/route-handler";
+import {
+  handleRoute,
+  requireResourcePermissionAsync,
+} from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
-import { AgentVersionConflictError,getVisibleAgentById,updateAgent } from "@/modules/agent/use-cases";
-import { getToolBindingsForVersion,toolBindingInputSchema } from "@/modules/tool/use-cases";
+import {
+  AgentVersionConflictError,
+  getVisibleAgentById,
+  updateAgent,
+} from "@/modules/agent/use-cases";
+import {
+  getToolBindingsForVersion,
+  toolBindingInputSchema,
+} from "@/modules/tool/use-cases";
 import { audit } from "@/server/domain/services/audit";
-import { NextRequest,NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { querySchema,routeParamsSchema } from "./route.route-params-schema";
+import { querySchema, routeParamsSchema } from "./route.route-params-schema";
 
-export async function PUT(req: NextRequest, { params }: { params: Promise<{ agentId: string }> }) {
+export async function PUT(
+  req: NextRequest,
+  { params }: { params: Promise<{ agentId: string }> },
+) {
   return handleRoute(
     req,
     async ({ session }) => {
@@ -22,15 +35,29 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ agen
       }
       const { agentId } = parsedParams.data;
       const { workspaceId } = parsedQuery.data;
-      const forbidden = await requireResourcePermissionAsync(session.user.id, workspaceId, "agents.update", "agent", (await params).agentId);
+      const forbidden = await requireResourcePermissionAsync(
+        session.user.id,
+        workspaceId,
+        "agents.update",
+        "agent",
+        (await params).agentId,
+      );
       if (forbidden) return forbidden;
       const canAdminCurate = await canManageTenantGlobals(session, workspaceId);
-      const agent = await getVisibleAgentById(agentId, workspaceId, session.user.id, canAdminCurate);
+      const agent = await getVisibleAgentById(
+        agentId,
+        workspaceId,
+        session.user.id,
+        canAdminCurate,
+      );
       if (!agent) {
         return NextResponse.json({ error: "Agent not found" }, { status: 404 });
       }
       if (!agent.activeVersionId) {
-        return NextResponse.json({ error: "No active version to bind tools to" }, { status: 400 });
+        return NextResponse.json(
+          { error: "No active version to bind tools to" },
+          { status: 400 },
+        );
       }
       const body = await req.json();
       const parsedBody = z
@@ -40,7 +67,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ agen
         })
         .safeParse(body);
       if (!parsedBody.success) {
-        return NextResponse.json({ error: "Invalid request body", details: parsedBody.error.issues }, { status: 400 });
+        return NextResponse.json(
+          { error: "Invalid request body", details: parsedBody.error.issues },
+          { status: 400 },
+        );
       }
       const { version } = await updateAgent({
         agentId,
@@ -81,15 +111,31 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ agen
           );
         }
         if (error instanceof Error && error.message === "Agent not found") {
-          return NextResponse.json({ error: "Agent not found" }, { status: 404 });
+          return NextResponse.json(
+            { error: "Agent not found" },
+            { status: 404 },
+          );
         }
-        if (error instanceof Error && ["Tool not found", "Custom tool not found", "MCP tool not found"].includes(error.message)) {
+        if (
+          error instanceof Error &&
+          [
+            "Tool not found",
+            "Custom tool not found",
+            "MCP tool not found",
+          ].includes(error.message)
+        ) {
           return NextResponse.json({ error: error.message }, { status: 400 });
         }
-        if (error instanceof Error && error.message === "Only the creator or an admin can update this agent") {
+        if (
+          error instanceof Error &&
+          error.message === "Only the creator or an admin can update this agent"
+        ) {
           return NextResponse.json({ error: error.message }, { status: 403 });
         }
-        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+        return NextResponse.json(
+          { error: "Internal server error" },
+          { status: 500 },
+        );
       },
     },
   );

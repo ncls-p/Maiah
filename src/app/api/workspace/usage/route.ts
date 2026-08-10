@@ -1,7 +1,13 @@
-import { handleRoute,requireWorkspacePermissionAsync } from "@/lib/route-handler";
+import {
+  handleRoute,
+  requireWorkspacePermissionAsync,
+} from "@/lib/route-handler";
 import { getWorkspaceUsageAnalytics } from "@/modules/usage/analytics";
-import { getWorkspaceMonthlyTokenLimit,getWorkspaceMonthlyTokenUsage } from "@/modules/usage/quota";
-import { NextRequest,NextResponse } from "next/server";
+import {
+  getWorkspaceMonthlyTokenLimit,
+  getWorkspaceMonthlyTokenUsage,
+} from "@/modules/usage/quota";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 const querySchema = z.object({
@@ -24,9 +30,17 @@ export async function GET(req: NextRequest) {
         from: searchParams.get("from") ?? undefined,
         to: searchParams.get("to") ?? undefined,
       });
-      if (!parsed.success) return NextResponse.json({ error: "Invalid input", details: parsed.error.issues }, { status: 400 });
+      if (!parsed.success)
+        return NextResponse.json(
+          { error: "Invalid input", details: parsed.error.issues },
+          { status: 400 },
+        );
 
-      const forbidden = await requireWorkspacePermissionAsync(session.user.id, parsed.data.workspaceId, "usage.view");
+      const forbidden = await requireWorkspacePermissionAsync(
+        session.user.id,
+        parsed.data.workspaceId,
+        "usage.view",
+      );
       if (forbidden) return forbidden;
 
       const [analytics, monthlyUsed] = await Promise.all([

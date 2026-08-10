@@ -1,4 +1,4 @@
-import { NextRequest,NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { handleRoute } from "@/lib/route-handler";
 import { getAuthorizedGitHubStatus } from "../github-route-status";
 

@@ -1,15 +1,36 @@
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
-import type { DocumentPreview,KnowledgeBase } from "./page.knowledge-base";
+import type { DocumentPreview, KnowledgeBase } from "./page.knowledge-base";
 
-export function useKnowledgeDocumentActions(input: { workspaceId: string | null; selectedId: string | null; selectedBaseCanEdit: boolean; canManageKnowledgeBases: boolean; bases: KnowledgeBase[]; loadBases: () => Promise<void>; loadDocuments: () => Promise<void> }) {
-  const { workspaceId, selectedId, selectedBaseCanEdit, canManageKnowledgeBases, bases, loadBases, loadDocuments } = input;
+export function useKnowledgeDocumentActions(input: {
+  workspaceId: string | null;
+  selectedId: string | null;
+  selectedBaseCanEdit: boolean;
+  canManageKnowledgeBases: boolean;
+  bases: KnowledgeBase[];
+  loadBases: () => Promise<void>;
+  loadDocuments: () => Promise<void>;
+}) {
+  const {
+    workspaceId,
+    selectedId,
+    selectedBaseCanEdit,
+    canManageKnowledgeBases,
+    bases,
+    loadBases,
+    loadDocuments,
+  } = input;
   const t = useTranslations("knowledge");
-  const [previewDocument, setPreviewDocument] = useState<DocumentPreview | null>(null);
+  const [previewDocument, setPreviewDocument] =
+    useState<DocumentPreview | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState(false);
-  const [pendingDelete, setPendingDelete] = useState<{ kind: "base"; id: string; name: string } | { kind: "document"; id: string; name: string } | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<
+    | { kind: "base"; id: string; name: string }
+    | { kind: "document"; id: string; name: string }
+    | null
+  >(null);
   const [deleting, setDeleting] = useState(false);
   async function deleteBase(baseId: string) {
     if (!workspaceId) return;
@@ -17,7 +38,10 @@ export function useKnowledgeDocumentActions(input: { workspaceId: string | null;
     if (!canManageKnowledgeBases || !base?.canEdit) return;
     setDeleting(true);
     try {
-      const res = await fetch(`/api/workspace/knowledge-bases/${baseId}?workspaceId=${workspaceId}`, { method: "DELETE" });
+      const res = await fetch(
+        `/api/workspace/knowledge-bases/${baseId}?workspaceId=${workspaceId}`,
+        { method: "DELETE" },
+      );
       if (!res.ok) return toast.error(t("errorDeleteBase"));
       setPendingDelete(null);
       await loadBases();
@@ -31,11 +55,16 @@ export function useKnowledgeDocumentActions(input: { workspaceId: string | null;
   }
 
   async function deleteDocument(documentId: string) {
-    const canDeleteDocument = Boolean(selectedBaseCanEdit && workspaceId && selectedId);
+    const canDeleteDocument = Boolean(
+      selectedBaseCanEdit && workspaceId && selectedId,
+    );
     if (!canDeleteDocument) return;
     setDeleting(true);
     try {
-      const res = await fetch(`/api/workspace/knowledge-bases/${selectedId}/documents/${documentId}?workspaceId=${workspaceId}`, { method: "DELETE" });
+      const res = await fetch(
+        `/api/workspace/knowledge-bases/${selectedId}/documents/${documentId}?workspaceId=${workspaceId}`,
+        { method: "DELETE" },
+      );
       if (!res.ok) return toast.error(t("errorDeleteDocument"));
       setPendingDelete(null);
       await loadDocuments();
@@ -51,7 +80,10 @@ export function useKnowledgeDocumentActions(input: { workspaceId: string | null;
   async function retryDocument(documentId: string) {
     if (!selectedBaseCanEdit || !workspaceId || !selectedId) return;
     try {
-      const res = await fetch(`/api/workspace/knowledge-bases/${selectedId}/documents/${documentId}?workspaceId=${workspaceId}`, { method: "PATCH" });
+      const res = await fetch(
+        `/api/workspace/knowledge-bases/${selectedId}/documents/${documentId}?workspaceId=${workspaceId}`,
+        { method: "PATCH" },
+      );
       if (!res.ok) return toast.error(t("errorRetryDocument"));
       await loadDocuments();
       toast.success(t("toastDocumentRetried"));
@@ -66,7 +98,9 @@ export function useKnowledgeDocumentActions(input: { workspaceId: string | null;
     setPreviewError(false);
     setPreviewLoading(true);
     try {
-      const res = await fetch(`/api/workspace/knowledge-bases/${selectedId}/documents/${documentId}?workspaceId=${workspaceId}`);
+      const res = await fetch(
+        `/api/workspace/knowledge-bases/${selectedId}/documents/${documentId}?workspaceId=${workspaceId}`,
+      );
       if (!res.ok) throw new Error("Failed to load document preview");
       const payload = (await res.json()) as { document: DocumentPreview };
       setPreviewDocument(payload.document);
@@ -76,5 +110,19 @@ export function useKnowledgeDocumentActions(input: { workspaceId: string | null;
       setPreviewLoading(false);
     }
   }
-  return { previewDocument, setPreviewDocument, previewLoading, setPreviewLoading, previewError, setPreviewError, pendingDelete, setPendingDelete, deleting, deleteBase, deleteDocument, retryDocument, openDocumentPreview };
+  return {
+    previewDocument,
+    setPreviewDocument,
+    previewLoading,
+    setPreviewLoading,
+    previewError,
+    setPreviewError,
+    pendingDelete,
+    setPendingDelete,
+    deleting,
+    deleteBase,
+    deleteDocument,
+    retryDocument,
+    openDocumentPreview,
+  };
 }

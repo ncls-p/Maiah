@@ -12,21 +12,54 @@ export type AppHeaderBreadcrumb = {
   href?: string;
 };
 
-export function AppHeader({ title, subtitle, breadcrumbs, leading, center, actions, className }: { title?: string; subtitle?: string; breadcrumbs?: AppHeaderBreadcrumb[]; leading?: ReactNode; center?: ReactNode; actions?: ReactNode; className?: string }) {
+export function AppHeader({
+  title,
+  subtitle,
+  breadcrumbs,
+  leading,
+  center,
+  actions,
+  className,
+}: {
+  title?: string;
+  subtitle?: string;
+  breadcrumbs?: AppHeaderBreadcrumb[];
+  leading?: ReactNode;
+  center?: ReactNode;
+  actions?: ReactNode;
+  className?: string;
+}) {
   const t = useTranslations("common");
   return (
-    <header className={cn("app-shell__header gap-4", className)} data-slot="app-header">
+    <header
+      className={cn("app-shell__header gap-4", className)}
+      data-slot="app-header"
+    >
       <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden sm:gap-3">
         {leading}
         {title || (breadcrumbs && breadcrumbs.length > 0) ? (
           <div className="hidden min-w-0 flex-col gap-0.5 sm:flex">
             {breadcrumbs && breadcrumbs.length > 0 ? (
-              <nav aria-label={t("breadcrumb")} className="flex min-w-0 flex-wrap items-center gap-1 font-mono text-[0.62rem] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+              <nav
+                aria-label={t("breadcrumb")}
+                className="flex min-w-0 flex-wrap items-center gap-1 font-mono text-[0.62rem] font-medium uppercase tracking-[0.12em] text-muted-foreground"
+              >
                 {breadcrumbs.map((crumb, index) => (
-                  <span key={`${crumb.label}-${index}`} className="flex items-center gap-1">
-                    {index > 0 ? <ChevronRightIcon className="size-3 shrink-0 opacity-60" aria-hidden="true" /> : null}
+                  <span
+                    key={`${crumb.label}-${index}`}
+                    className="flex items-center gap-1"
+                  >
+                    {index > 0 ? (
+                      <ChevronRightIcon
+                        className="size-3 shrink-0 opacity-60"
+                        aria-hidden="true"
+                      />
+                    ) : null}
                     {crumb.href ? (
-                      <Link href={crumb.href} className="truncate transition-colors hover:text-foreground">
+                      <Link
+                        href={crumb.href}
+                        className="truncate transition-colors hover:text-foreground"
+                      >
                         {crumb.label}
                       </Link>
                     ) : (
@@ -38,15 +71,27 @@ export function AppHeader({ title, subtitle, breadcrumbs, leading, center, actio
             ) : null}
             {title ? (
               <div className="min-w-0">
-                <p className="truncate text-sm font-medium tracking-[-0.01em]">{title}</p>
-                {subtitle ? <p className="truncate text-xs text-muted-foreground">{subtitle}</p> : null}
+                <p className="truncate text-sm font-medium tracking-[-0.01em]">
+                  {title}
+                </p>
+                {subtitle ? (
+                  <p className="truncate text-xs text-muted-foreground">
+                    {subtitle}
+                  </p>
+                ) : null}
               </div>
             ) : null}
           </div>
         ) : null}
-        {center ? <div className="flex min-w-0 flex-1 items-center gap-2">{center}</div> : null}
+        {center ? (
+          <div className="flex min-w-0 flex-1 items-center gap-2">{center}</div>
+        ) : null}
       </div>
-      {actions ? <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">{actions}</div> : null}
+      {actions ? (
+        <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
+          {actions}
+        </div>
+      ) : null}
     </header>
   );
 }

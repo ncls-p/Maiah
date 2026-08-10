@@ -3,11 +3,20 @@
 import { PageLoading } from "@/components/page-loading";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { fetchWorkspacePermissions } from "@/lib/api-client";
-import { DEFAULT_RAG_CONFIG,type RagConfig } from "@/modules/knowledge/rag-config-schema";
+import {
+  DEFAULT_RAG_CONFIG,
+  type RagConfig,
+} from "@/modules/knowledge/rag-config-schema";
 import { useTranslations } from "next-intl";
-import { useCallback,useEffect,useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { DocumentRow,KnowledgeBase,RagModelOption,SearchResult,cloneRagConfig } from "./page.knowledge-base";
+import {
+  DocumentRow,
+  KnowledgeBase,
+  RagModelOption,
+  SearchResult,
+  cloneRagConfig,
+} from "./page.knowledge-base";
 import { KnowledgeLoadError } from "./page.knowledge-load-error";
 import { KnowledgePageView } from "./page.knowledge-page.view";
 import { useKnowledgeAgentAttachment } from "./page.use-agent-attachment";
@@ -25,7 +34,9 @@ export function useKnowledgePageController() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [documentsError, setDocumentsError] = useState(false);
-  const [documentFilter, setDocumentFilter] = useState<"all" | "ready" | "processing" | "failed">("all");
+  const [documentFilter, setDocumentFilter] = useState<
+    "all" | "ready" | "processing" | "failed"
+  >("all");
   const [documentSearch, setDocumentSearch] = useState("");
   const [documentPage, setDocumentPage] = useState(1);
   const [baseForm, setBaseForm] = useState({
@@ -35,7 +46,9 @@ export function useKnowledgePageController() {
     customizeRag: false,
     ragConfig: cloneRagConfig(DEFAULT_RAG_CONFIG),
   });
-  const [defaultRagConfig, setDefaultRagConfig] = useState(() => cloneRagConfig(DEFAULT_RAG_CONFIG));
+  const [defaultRagConfig, setDefaultRagConfig] = useState(() =>
+    cloneRagConfig(DEFAULT_RAG_CONFIG),
+  );
   const [ragModels, setRagModels] = useState<RagModelOption[]>([]);
   const [discoveringRagModels, setDiscoveringRagModels] = useState(true);
   const [query, setQuery] = useState("");
@@ -52,26 +65,38 @@ export function useKnowledgePageController() {
   const [canManageModels, setCanManageModels] = useState(false);
   const [canManageTenantGlobals, setCanManageTenantGlobals] = useState(false);
   const selectedBase = bases.find((base) => base.id === selectedId) ?? null;
-  const selectedBaseCanEdit = Boolean(canManageKnowledgeBases && selectedBase?.canEdit);
+  const selectedBaseCanEdit = Boolean(
+    canManageKnowledgeBases && selectedBase?.canEdit,
+  );
 
   const loadBases = useCallback(async () => {
     if (!workspaceId) return;
-    const res = await fetch(`/api/workspace/knowledge-bases?workspaceId=${workspaceId}`);
+    const res = await fetch(
+      `/api/workspace/knowledge-bases?workspaceId=${workspaceId}`,
+    );
     if (!res.ok) throw new Error("Failed to load knowledge bases");
     const data = (await res.json()) as KnowledgeBase[];
     setBases(data);
-    setSelectedId((current) => (current && data.some((base) => base.id === current) ? current : (data[0]?.id ?? null)));
+    setSelectedId((current) =>
+      current && data.some((base) => base.id === current)
+        ? current
+        : (data[0]?.id ?? null),
+    );
   }, [workspaceId]);
 
   const loadDefaultRagConfig = useCallback(async () => {
     if (!workspaceId) return;
-    const res = await fetch(`/api/workspace/knowledge-bases/default-rag-config?workspaceId=${workspaceId}`);
+    const res = await fetch(
+      `/api/workspace/knowledge-bases/default-rag-config?workspaceId=${workspaceId}`,
+    );
     if (!res.ok) throw new Error("Failed to load default RAG configuration");
     const config = (await res.json()) as RagConfig;
     setDefaultRagConfig(config);
     setBaseForm((current) => ({
       ...current,
-      ragConfig: current.customizeRag ? current.ragConfig : cloneRagConfig(config),
+      ragConfig: current.customizeRag
+        ? current.ragConfig
+        : cloneRagConfig(config),
     }));
   }, [workspaceId]);
 
@@ -80,15 +105,69 @@ export function useKnowledgePageController() {
       setDocuments([]);
       return;
     }
-    const res = await fetch(`/api/workspace/knowledge-bases/${selectedId}/documents?workspaceId=${workspaceId}`);
+    const res = await fetch(
+      `/api/workspace/knowledge-bases/${selectedId}/documents?workspaceId=${workspaceId}`,
+    );
     if (!res.ok) throw new Error("Failed to load documents");
     setDocuments(await res.json());
   }, [workspaceId, selectedId]);
 
-  const { docForm, setDocForm, dragActive, setDragActive, documentInputRef, folderInputRef, uploadingCount, lastUpload, ingestFromContent, handleFileDrop, ingestSelectedFiles } = useKnowledgeDocumentIngestion({ workspaceId, selectedId, selectedBaseCanEdit, loadDocuments });
-  const { previewDocument, setPreviewDocument, previewLoading, setPreviewLoading, previewError, setPreviewError, pendingDelete, setPendingDelete, deleting, deleteBase, deleteDocument, retryDocument, openDocumentPreview } = useKnowledgeDocumentActions({ workspaceId, selectedId, selectedBaseCanEdit, canManageKnowledgeBases, bases, loadBases, loadDocuments });
+  const {
+    docForm,
+    setDocForm,
+    dragActive,
+    setDragActive,
+    documentInputRef,
+    folderInputRef,
+    uploadingCount,
+    lastUpload,
+    ingestFromContent,
+    handleFileDrop,
+    ingestSelectedFiles,
+  } = useKnowledgeDocumentIngestion({
+    workspaceId,
+    selectedId,
+    selectedBaseCanEdit,
+    loadDocuments,
+  });
+  const {
+    previewDocument,
+    setPreviewDocument,
+    previewLoading,
+    setPreviewLoading,
+    previewError,
+    setPreviewError,
+    pendingDelete,
+    setPendingDelete,
+    deleting,
+    deleteBase,
+    deleteDocument,
+    retryDocument,
+    openDocumentPreview,
+  } = useKnowledgeDocumentActions({
+    workspaceId,
+    selectedId,
+    selectedBaseCanEdit,
+    canManageKnowledgeBases,
+    bases,
+    loadBases,
+    loadDocuments,
+  });
 
-  const { attachOpen, setAttachOpen, attachAgents, loadingAttachAgents, attachAgentsError, attachingAgentId, openAttachDialog, attachBaseToAgent } = useKnowledgeAgentAttachment({ workspaceId, selectedId, selectedBaseCanEdit });
+  const {
+    attachOpen,
+    setAttachOpen,
+    attachAgents,
+    loadingAttachAgents,
+    attachAgentsError,
+    attachingAgentId,
+    openAttachDialog,
+    attachBaseToAgent,
+  } = useKnowledgeAgentAttachment({
+    workspaceId,
+    selectedId,
+    selectedBaseCanEdit,
+  });
 
   useEffect(() => {
     if (!workspaceId) return;
@@ -232,11 +311,14 @@ export function useKnowledgePageController() {
     const hasSearchQuery = Boolean(query.trim());
     const canSearchKnowledge = Boolean(workspaceId && selectedId);
     if (!canSearchKnowledge || !hasSearchQuery) return;
-    const res = await fetch(`/api/workspace/knowledge-bases/${selectedId}/search`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ workspaceId, query }),
-    });
+    const res = await fetch(
+      `/api/workspace/knowledge-bases/${selectedId}/search`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workspaceId, query }),
+      },
+    );
     if (!res.ok) return toast.error(t("errorSearch"));
     setResults(await res.json());
   }
@@ -246,17 +328,24 @@ export function useKnowledgePageController() {
     if (!workspaceId) return;
     if (!editingBase?.canEdit) return;
     try {
-      const res = await fetch(`/api/workspace/knowledge-bases/${editingBase.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          workspaceId,
-          name: editBaseForm.name.trim(),
-          description: editBaseForm.description.trim() || undefined,
-          isGlobal: canManageTenantGlobals ? editBaseForm.isGlobal : undefined,
-          ragConfig: editBaseForm.customizeRag ? editBaseForm.ragConfig : null,
-        }),
-      });
+      const res = await fetch(
+        `/api/workspace/knowledge-bases/${editingBase.id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            workspaceId,
+            name: editBaseForm.name.trim(),
+            description: editBaseForm.description.trim() || undefined,
+            isGlobal: canManageTenantGlobals
+              ? editBaseForm.isGlobal
+              : undefined,
+            ragConfig: editBaseForm.customizeRag
+              ? editBaseForm.ragConfig
+              : null,
+          }),
+        },
+      );
       if (!res.ok) return toast.error(t("errorUpdate"));
       setEditingBase(null);
       await loadBases();
@@ -281,18 +370,107 @@ export function useKnowledgePageController() {
     { ready: 0, processing: 0, failed: 0 },
   );
   const normalizedDocumentSearch = documentSearch.trim().toLocaleLowerCase();
-  const filteredDocuments = documents.filter((document) => (documentFilter === "all" || document.status === documentFilter) && (!normalizedDocumentSearch || document.title.toLocaleLowerCase().includes(normalizedDocumentSearch)));
+  const filteredDocuments = documents.filter(
+    (document) =>
+      (documentFilter === "all" || document.status === documentFilter) &&
+      (!normalizedDocumentSearch ||
+        document.title.toLocaleLowerCase().includes(normalizedDocumentSearch)),
+  );
   const documentsPerPage = 12;
-  const documentPageCount = Math.max(1, Math.ceil(filteredDocuments.length / documentsPerPage));
+  const documentPageCount = Math.max(
+    1,
+    Math.ceil(filteredDocuments.length / documentsPerPage),
+  );
   const safeDocumentPage = Math.min(documentPage, documentPageCount);
-  const visibleDocuments = filteredDocuments.slice((safeDocumentPage - 1) * documentsPerPage, safeDocumentPage * documentsPerPage);
+  const visibleDocuments = filteredDocuments.slice(
+    (safeDocumentPage - 1) * documentsPerPage,
+    safeDocumentPage * documentsPerPage,
+  );
 
   if (loadError) return <KnowledgeLoadError />;
 
-  return { kind: "ready", attachAgents, attachAgentsError, attachBaseToAgent, attachOpen, attachingAgentId, baseForm, bases, canManageKnowledgeBases, canManageModels, canManageTenantGlobals, createBase, defaultRagConfig, deleteBase, deleteDocument, deleting, discoveringRagModels, docForm, documentCounts, documentFilter, documentInputRef, documentPageCount, documentSearch, documents, documentsError, dragActive, editBaseForm, editingBase, filteredDocuments, folderInputRef, handleFileDrop, ingestDocument, ingestSelectedFiles, lastUpload, loadDocuments, loading, loadingAttachAgents, openAttachDialog, openDocumentPreview, pendingDelete, previewDocument, previewError, previewLoading, query, ragModels, results, retryDocument, safeDocumentPage, search, selectedBase, selectedBaseCanEdit, selectedId, setAttachOpen, setBaseForm, setDocForm, setDocumentFilter, setDocumentPage, setDocumentSearch, setDocumentsError, setDragActive, setEditBaseForm, setEditingBase, setPendingDelete, setPreviewDocument, setPreviewError, setPreviewLoading, setQuery, setSelectedId, setShowCreateDialog, showCreateDialog, t, tCommon, updateBase, uploadingCount, visibleDocuments } as const;
+  return {
+    kind: "ready",
+    attachAgents,
+    attachAgentsError,
+    attachBaseToAgent,
+    attachOpen,
+    attachingAgentId,
+    baseForm,
+    bases,
+    canManageKnowledgeBases,
+    canManageModels,
+    canManageTenantGlobals,
+    createBase,
+    defaultRagConfig,
+    deleteBase,
+    deleteDocument,
+    deleting,
+    discoveringRagModels,
+    docForm,
+    documentCounts,
+    documentFilter,
+    documentInputRef,
+    documentPageCount,
+    documentSearch,
+    documents,
+    documentsError,
+    dragActive,
+    editBaseForm,
+    editingBase,
+    filteredDocuments,
+    folderInputRef,
+    handleFileDrop,
+    ingestDocument,
+    ingestSelectedFiles,
+    lastUpload,
+    loadDocuments,
+    loading,
+    loadingAttachAgents,
+    openAttachDialog,
+    openDocumentPreview,
+    pendingDelete,
+    previewDocument,
+    previewError,
+    previewLoading,
+    query,
+    ragModels,
+    results,
+    retryDocument,
+    safeDocumentPage,
+    search,
+    selectedBase,
+    selectedBaseCanEdit,
+    selectedId,
+    setAttachOpen,
+    setBaseForm,
+    setDocForm,
+    setDocumentFilter,
+    setDocumentPage,
+    setDocumentSearch,
+    setDocumentsError,
+    setDragActive,
+    setEditBaseForm,
+    setEditingBase,
+    setPendingDelete,
+    setPreviewDocument,
+    setPreviewError,
+    setPreviewLoading,
+    setQuery,
+    setSelectedId,
+    setShowCreateDialog,
+    showCreateDialog,
+    t,
+    tCommon,
+    updateBase,
+    uploadingCount,
+    visibleDocuments,
+  } as const;
 }
 
-export default function KnowledgePage(...args: Parameters<typeof useKnowledgePageController>) {
+export default function KnowledgePage(
+  ...args: Parameters<typeof useKnowledgePageController>
+) {
   const model = useKnowledgePageController(...args);
   if (!("kind" in model)) return model;
   return <KnowledgePageView model={model} />;

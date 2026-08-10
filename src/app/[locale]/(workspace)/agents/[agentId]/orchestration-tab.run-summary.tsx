@@ -27,7 +27,16 @@ export const statusTone: Record<string, string> = {
   queued: "border-info/30 bg-info/10 text-info",
 };
 
-export function policyField(policy: OrchestrationPolicy, setPolicy: (policy: OrchestrationPolicy) => void, key: keyof OrchestrationPolicy, label: string, min: number, max: number, step = 1, description?: string) {
+export function policyField(
+  policy: OrchestrationPolicy,
+  setPolicy: (policy: OrchestrationPolicy) => void,
+  key: keyof OrchestrationPolicy,
+  label: string,
+  min: number,
+  max: number,
+  step = 1,
+  description?: string,
+) {
   return (
     <div className="flex flex-col gap-2">
       <Label htmlFor={`orchestration-${key}`}>{label}</Label>
@@ -47,7 +56,9 @@ export function policyField(policy: OrchestrationPolicy, setPolicy: (policy: Orc
           })
         }
       />
-      {description ? <p className="text-xs text-muted-foreground">{description}</p> : null}
+      {description ? (
+        <p className="text-xs text-muted-foreground">{description}</p>
+      ) : null}
     </div>
   );
 }

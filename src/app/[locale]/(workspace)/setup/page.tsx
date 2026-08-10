@@ -20,7 +20,11 @@ export default function SetupPage() {
 
   return (
     <RequireWorkspaceAccess required={["canManageProviders", "canCreateAgent"]}>
-      <WorkspacePage title={t("title")} description={t("description")} width="narrow">
+      <WorkspacePage
+        title={t("title")}
+        description={t("description")}
+        width="narrow"
+      >
         <SetupWizard
           mode="page"
           onCompleteAction={(agentId) => {

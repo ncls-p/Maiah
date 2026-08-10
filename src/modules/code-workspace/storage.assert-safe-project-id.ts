@@ -1,13 +1,32 @@
 import JSZip from "jszip";
-import { readFile,rm,stat } from "node:fs/promises";
+import { readFile, rm, stat } from "node:fs/promises";
 import path from "node:path";
 
 import { isPathTraversal } from "@/lib/path-utils";
 import { storage } from "@/server/infrastructure/storage";
-import { CodeWorkspaceFileSummary,CodeWorkspaceMetadata,binaryExtensions,fileObjectKey,ignoredFileNames,ignoredPathPrefixes,legacyCodeWorkspaceRoots,legacyMetadataPath,legacyProjectDirectory,legacyProjectFilesDirectory,maxPathLength,maxPathSegments,metadataObjectKey,textExtensions } from "./storage.code-workspace-file-summary";
+import {
+  CodeWorkspaceFileSummary,
+  CodeWorkspaceMetadata,
+  binaryExtensions,
+  fileObjectKey,
+  ignoredFileNames,
+  ignoredPathPrefixes,
+  legacyCodeWorkspaceRoots,
+  legacyMetadataPath,
+  legacyProjectDirectory,
+  legacyProjectFilesDirectory,
+  maxPathLength,
+  maxPathSegments,
+  metadataObjectKey,
+  textExtensions,
+} from "./storage.code-workspace-file-summary";
 
 export function assertSafeProjectId(projectId: string) {
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(projectId)) {
+  if (
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      projectId,
+    )
+  ) {
     throw new Error("Invalid code workspace id.");
   }
 }
@@ -21,12 +40,19 @@ async function pathExists(filePath: string) {
   }
 }
 
-function safeLegacyStoragePath(root: string, projectId: string, projectPath: string) {
+function safeLegacyStoragePath(
+  root: string,
+  projectId: string,
+  projectPath: string,
+) {
   assertSafeProjectId(projectId);
   const filesRoot = legacyProjectFilesDirectory(projectId, root);
   const fullPath = path.resolve(filesRoot, projectPath);
   const resolvedRoot = path.resolve(filesRoot);
-  if (fullPath !== resolvedRoot && !fullPath.startsWith(`${resolvedRoot}${path.sep}`)) {
+  if (
+    fullPath !== resolvedRoot &&
+    !fullPath.startsWith(`${resolvedRoot}${path.sep}`)
+  ) {
     throw new Error("Path traversal is not allowed.");
   }
   return fullPath;
@@ -45,10 +71,20 @@ export async function migrateLegacyProjectToObjectStorage(projectId: string) {
       continue;
     }
     for (const file of metadata.files) {
-      const bytes = await readFile(safeLegacyStoragePath(root, projectId, file.path));
-      await storage.upload(fileObjectKey(projectId, file.path), bytes, file.mimeType);
+      const bytes = await readFile(
+        safeLegacyStoragePath(root, projectId, file.path),
+      );
+      await storage.upload(
+        fileObjectKey(projectId, file.path),
+        bytes,
+        file.mimeType,
+      );
     }
-    await storage.upload(metadataObjectKey(projectId), JSON.stringify(metadata, null, 2), "application/json; charset=utf-8");
+    await storage.upload(
+      metadataObjectKey(projectId),
+      JSON.stringify(metadata, null, 2),
+      "application/json; charset=utf-8",
+    );
     try {
       await rm(legacyProjectDirectory(projectId, root), {
         recursive: true,
@@ -62,7 +98,10 @@ export async function migrateLegacyProjectToObjectStorage(projectId: string) {
   return null;
 }
 
-export async function deleteUploadedProject(projectId: string, filePaths: string[]) {
+export async function deleteUploadedProject(
+  projectId: string,
+  filePaths: string[],
+) {
   await Promise.all(
     Array.from(new Set(filePaths))
       .map((filePath) => fileObjectKey(projectId, filePath))
@@ -94,7 +133,11 @@ export function normalizeWorkspacePath(rawPath: string) {
 
 export function isIgnoredPath(projectPath: string) {
   const lowerPath = projectPath.toLowerCase();
-  if (ignoredPathPrefixes.some((prefix) => lowerPath.startsWith(prefix.toLowerCase()))) {
+  if (
+    ignoredPathPrefixes.some((prefix) =>
+      lowerPath.startsWith(prefix.toLowerCase()),
+    )
+  ) {
     return true;
   }
   return ignoredFileNames.has(path.posix.basename(projectPath));

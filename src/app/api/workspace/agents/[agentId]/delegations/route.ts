@@ -1,11 +1,28 @@
-import { handleRoute,requireResourcePermissionAsync } from "@/lib/route-handler";
+import {
+  handleRoute,
+  requireResourcePermissionAsync,
+} from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
-import { DelegationBindingValidationError,getDelegationBindingsForVersion } from "@/modules/agent/delegation-use-cases";
-import { delegationBindingInputSchema,normalizeOrchestrationPolicy,orchestrationPolicySchema } from "@/modules/agent/orchestration-policy";
-import { AgentVersionConflictError,getActiveVersion,getAgentVersionById,getVisibleAgentById,listAgents,updateAgent } from "@/modules/agent/use-cases";
+import {
+  DelegationBindingValidationError,
+  getDelegationBindingsForVersion,
+} from "@/modules/agent/delegation-use-cases";
+import {
+  delegationBindingInputSchema,
+  normalizeOrchestrationPolicy,
+  orchestrationPolicySchema,
+} from "@/modules/agent/orchestration-policy";
+import {
+  AgentVersionConflictError,
+  getActiveVersion,
+  getAgentVersionById,
+  getVisibleAgentById,
+  listAgents,
+  updateAgent,
+} from "@/modules/agent/use-cases";
 import { audit } from "@/server/domain/services/audit";
 import { db } from "@/server/infrastructure/db";
-import { NextRequest,NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 const routeParamsSchema = z.object({ agentId: z.uuid() });
@@ -29,18 +46,37 @@ async function resolveRequest(req: NextRequest, rawParams: unknown) {
   return { ...parsedParams.data, ...parsedQuery.data };
 }
 
-async function serializeDelegationConfig(input: { agentId: string; workspaceId: string; userId: string; canAdminCurate: boolean; versionId?: string }) {
-  const version = input.versionId ? await getAgentVersionById(input.versionId) : await getActiveVersion(input.agentId);
+async function serializeDelegationConfig(input: {
+  agentId: string;
+  workspaceId: string;
+  userId: string;
+  canAdminCurate: boolean;
+  versionId?: string;
+}) {
+  const version = input.versionId
+    ? await getAgentVersionById(input.versionId)
+    : await getActiveVersion(input.agentId);
   if (version && version.agentId !== input.agentId) return null;
   if (!version) return { version: null, policy: null, bindings: [] };
 
-  const [bindings, visibleAgents] = await Promise.all([getDelegationBindingsForVersion(version.id, db), listAgents(input.workspaceId, input.userId, input.canAdminCurate)]);
-  const pinnedVersions = await Promise.all(bindings.map((binding) => getAgentVersionById(binding.childAgentVersionId)));
-  const pinnedVersionById = new Map(pinnedVersions.flatMap((childVersion) => (childVersion ? [[childVersion.id, childVersion] as const] : [])));
+  const [bindings, visibleAgents] = await Promise.all([
+    getDelegationBindingsForVersion(version.id, db),
+    listAgents(input.workspaceId, input.userId, input.canAdminCurate),
+  ]);
+  const pinnedVersions = await Promise.all(
+    bindings.map((binding) => getAgentVersionById(binding.childAgentVersionId)),
+  );
+  const pinnedVersionById = new Map(
+    pinnedVersions.flatMap((childVersion) =>
+      childVersion ? [[childVersion.id, childVersion] as const] : [],
+    ),
+  );
   const visibleById = new Map(visibleAgents.map((agent) => [agent.id, agent]));
   return {
     version: { id: version.id, versionNumber: version.versionNumber },
-    policy: version.orchestrationPolicyJson ? normalizeOrchestrationPolicy(version.orchestrationPolicyJson) : null,
+    policy: version.orchestrationPolicyJson
+      ? normalizeOrchestrationPolicy(version.orchestrationPolicyJson)
+      : null,
     bindings: bindings.map((binding) => {
       const child = visibleById.get(binding.childAgentId);
       const childVersion = pinnedVersionById.get(binding.childAgentVersionId);
@@ -68,7 +104,10 @@ async function serializeDelegationConfig(input: { agentId: string; workspaceId: 
   };
 }
 
-export async function GET(req: NextRequest, { params }: { params: Promise<{ agentId: string }> }) {
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ agentId: string }> },
+) {
   return handleRoute(
     req,
     async ({ session }) => {
@@ -76,10 +115,24 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ agen
       if (!request) {
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
       }
-      const forbidden = await requireResourcePermissionAsync(session.user.id, request.workspaceId, "agents.get", "agent", (await params).agentId);
+      const forbidden = await requireResourcePermissionAsync(
+        session.user.id,
+        request.workspaceId,
+        "agents.get",
+        "agent",
+        (await params).agentId,
+      );
       if (forbidden) return forbidden;
-      const canAdminCurate = await canManageTenantGlobals(session, request.workspaceId);
-      const agent = await getVisibleAgentById(request.agentId, request.workspaceId, session.user.id, canAdminCurate);
+      const canAdminCurate = await canManageTenantGlobals(
+        session,
+        request.workspaceId,
+      );
+      const agent = await getVisibleAgentById(
+        request.agentId,
+        request.workspaceId,
+        session.user.id,
+        canAdminCurate,
+      );
       if (!agent) {
         return NextResponse.json({ error: "Agent not found" }, { status: 404 });
       }
@@ -89,7 +142,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ agen
         canAdminCurate,
       });
       if (!config) {
-        return NextResponse.json({ error: "Version not found" }, { status: 404 });
+        return NextResponse.json(
+          { error: "Version not found" },
+          { status: 404 },
+        );
       }
       return NextResponse.json({ kind: agent.kind, ...config });
     },
@@ -97,7 +153,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ agen
   );
 }
 
-export async function PUT(req: NextRequest, { params }: { params: Promise<{ agentId: string }> }) {
+export async function PUT(
+  req: NextRequest,
+  { params }: { params: Promise<{ agentId: string }> },
+) {
   return handleRoute(
     req,
     async ({ session }) => {
@@ -112,15 +171,32 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ agen
           { status: 400 },
         );
       }
-      const forbidden = await requireResourcePermissionAsync(session.user.id, request.workspaceId, "agents.update", "agent", (await params).agentId);
+      const forbidden = await requireResourcePermissionAsync(
+        session.user.id,
+        request.workspaceId,
+        "agents.update",
+        "agent",
+        (await params).agentId,
+      );
       if (forbidden) return forbidden;
-      const canAdminCurate = await canManageTenantGlobals(session, request.workspaceId);
-      const agent = await getVisibleAgentById(request.agentId, request.workspaceId, session.user.id, canAdminCurate);
+      const canAdminCurate = await canManageTenantGlobals(
+        session,
+        request.workspaceId,
+      );
+      const agent = await getVisibleAgentById(
+        request.agentId,
+        request.workspaceId,
+        session.user.id,
+        canAdminCurate,
+      );
       if (!agent) {
         return NextResponse.json({ error: "Agent not found" }, { status: 404 });
       }
       if (agent.kind !== "orchestrator") {
-        return NextResponse.json({ error: "Only orchestrators can configure delegation" }, { status: 400 });
+        return NextResponse.json(
+          { error: "Only orchestrators can configure delegation" },
+          { status: 400 },
+        );
       }
 
       const { version } = await updateAgent({
@@ -169,15 +245,24 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ agen
           );
         }
         if (error instanceof DelegationBindingValidationError) {
-          return NextResponse.json({ error: error.message, code: error.code }, { status: 400 });
+          return NextResponse.json(
+            { error: error.message, code: error.code },
+            { status: 400 },
+          );
         }
         if (error instanceof Error && error.message === "Agent not found") {
           return NextResponse.json({ error: error.message }, { status: 404 });
         }
-        if (error instanceof Error && error.message === "Only the creator or an admin can update this agent") {
+        if (
+          error instanceof Error &&
+          error.message === "Only the creator or an admin can update this agent"
+        ) {
           return NextResponse.json({ error: error.message }, { status: 403 });
         }
-        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+        return NextResponse.json(
+          { error: "Internal server error" },
+          { status: 500 },
+        );
       },
     },
   );

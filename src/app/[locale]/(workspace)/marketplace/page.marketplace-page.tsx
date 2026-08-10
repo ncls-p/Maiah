@@ -7,10 +7,14 @@ import { Button } from "@/components/ui/button";
 import { WorkspacePage } from "@/components/workspace-page";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { useRouter } from "@/i18n/navigation";
-import { useLocale,useTranslations } from "next-intl";
-import { useCallback,useEffect,useMemo,useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { MarketplaceFilters,MarketplaceItem,filterAndSortMarketplaceItems } from "./page.marketplace-item";
+import {
+  MarketplaceFilters,
+  MarketplaceItem,
+  filterAndSortMarketplaceItems,
+} from "./page.marketplace-item";
 import { MarketplacePageView } from "./page.marketplace-page.view";
 
 export function useMarketplacePageController() {
@@ -30,7 +34,9 @@ export function useMarketplacePageController() {
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("featured");
 
-  const [shareResource, setShareResource] = useState<ShareableResource | null>(null);
+  const [shareResource, setShareResource] = useState<ShareableResource | null>(
+    null,
+  );
   const [pendingDelete, setPendingDelete] = useState<{
     id: string;
     name: string;
@@ -53,7 +59,11 @@ export function useMarketplacePageController() {
     owned: MarketplaceItem[];
     shared: MarketplaceItem[];
   }> => {
-    const [publishedRes, mineRes, sharedRes] = await Promise.all([fetch("/api/marketplace/items"), fetch("/api/marketplace/items?_path=my-items"), fetch("/api/marketplace/items?_path=shared-with-me")]);
+    const [publishedRes, mineRes, sharedRes] = await Promise.all([
+      fetch("/api/marketplace/items"),
+      fetch("/api/marketplace/items?_path=my-items"),
+      fetch("/api/marketplace/items?_path=shared-with-me"),
+    ]);
 
     const marketplaceRequestsOk = publishedRes.ok && mineRes.ok && sharedRes.ok;
     if (!marketplaceRequestsOk) {
@@ -63,8 +73,11 @@ export function useMarketplacePageController() {
     const published = (await publishedRes.json()) as MarketplaceItem[];
     const mine = (await mineRes.json()) as MarketplaceItem[];
     const sharedData = await sharedRes.json();
-    const shared = Array.isArray(sharedData) ? sharedData.map((s: { item: MarketplaceItem }) => s.item) : [];
-    const withoutCustomTools = (items: MarketplaceItem[]) => items.filter((item) => item.type !== "custom_tool");
+    const shared = Array.isArray(sharedData)
+      ? sharedData.map((s: { item: MarketplaceItem }) => s.item)
+      : [];
+    const withoutCustomTools = (items: MarketplaceItem[]) =>
+      items.filter((item) => item.type !== "custom_tool");
     return {
       published: withoutCustomTools(published),
       owned: withoutCustomTools(mine),
@@ -85,7 +98,9 @@ export function useMarketplacePageController() {
       .catch((error) => {
         if (!cancelled) {
           setLoadError(true);
-          toast.error(error instanceof Error ? error.message : t("toast.loadFailed"));
+          toast.error(
+            error instanceof Error ? error.message : t("toast.loadFailed"),
+          );
         }
         return;
       })
@@ -97,15 +112,30 @@ export function useMarketplacePageController() {
     };
   }, [fetchMarketplaceData, t]);
 
-  const filters = useMemo<MarketplaceFilters>(() => ({ search, typeFilter, sortBy }), [search, typeFilter, sortBy]);
+  const filters = useMemo<MarketplaceFilters>(
+    () => ({ search, typeFilter, sortBy }),
+    [search, typeFilter, sortBy],
+  );
 
-  const myItems = useMemo(() => ownedItems.filter((item) => item.publisherUserId === currentUserId), [ownedItems, currentUserId]);
+  const myItems = useMemo(
+    () => ownedItems.filter((item) => item.publisherUserId === currentUserId),
+    [ownedItems, currentUserId],
+  );
 
-  const filteredPublished = useMemo(() => filterAndSortMarketplaceItems(publishedItems, filters), [publishedItems, filters]);
+  const filteredPublished = useMemo(
+    () => filterAndSortMarketplaceItems(publishedItems, filters),
+    [publishedItems, filters],
+  );
 
-  const filteredMyItems = useMemo(() => filterAndSortMarketplaceItems(myItems, filters), [myItems, filters]);
+  const filteredMyItems = useMemo(
+    () => filterAndSortMarketplaceItems(myItems, filters),
+    [myItems, filters],
+  );
 
-  const filteredShared = useMemo(() => filterAndSortMarketplaceItems(sharedItems, filters), [sharedItems, filters]);
+  const filteredShared = useMemo(
+    () => filterAndSortMarketplaceItems(sharedItems, filters),
+    [sharedItems, filters],
+  );
 
   const handleInstall = useCallback(
     async (itemId: string) => {
@@ -132,7 +162,10 @@ export function useMarketplacePageController() {
             router.push("/tools?tab=mcp");
           }
         } else {
-          toast.error((await res.json().catch(() => ({}))).error || t("toast.installFailed"));
+          toast.error(
+            (await res.json().catch(() => ({}))).error ||
+              t("toast.installFailed"),
+          );
         }
       } catch {
         toast.error(t("toast.installFailed"));
@@ -150,7 +183,9 @@ export function useMarketplacePageController() {
         setSharedItems(data.shared);
       })
       .catch((error) => {
-        toast.error(error instanceof Error ? error.message : t("toast.loadFailed"));
+        toast.error(
+          error instanceof Error ? error.message : t("toast.loadFailed"),
+        );
         return;
       });
   }, [fetchMarketplaceData, t]);
@@ -181,7 +216,9 @@ export function useMarketplacePageController() {
 
   const requestDelete = useCallback(
     (itemId: string) => {
-      const item = [...publishedItems, ...ownedItems, ...sharedItems].find((candidate) => candidate.id === itemId);
+      const item = [...publishedItems, ...ownedItems, ...sharedItems].find(
+        (candidate) => candidate.id === itemId,
+      );
       if (item) setPendingDelete({ id: item.id, name: item.name });
     },
     [ownedItems, publishedItems, sharedItems],
@@ -230,18 +267,35 @@ export function useMarketplacePageController() {
 
   if (loading) {
     return (
-      <WorkspacePage title={tMarketplace("title")} description={tMarketplace("description")}>
+      <WorkspacePage
+        title={tMarketplace("title")}
+        description={tMarketplace("description")}
+      >
         <PageLoading label={t("loading")} />
       </WorkspacePage>
     );
   }
   if (loadError) {
     return (
-      <WorkspacePage title={tMarketplace("title")} description={tMarketplace("description")}>
-        <div className="rounded-2xl border border-destructive/25 bg-destructive/5 p-5" role="alert">
+      <WorkspacePage
+        title={tMarketplace("title")}
+        description={tMarketplace("description")}
+      >
+        <div
+          className="rounded-2xl border border-destructive/25 bg-destructive/5 p-5"
+          role="alert"
+        >
           <h2 className="text-base font-semibold">{t("toast.loadFailed")}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{t("loadFailedDescription")}</p>
-          <Button type="button" variant="outline" size="sm" className="mt-4" onClick={() => window.location.reload()}>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {t("loadFailedDescription")}
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="mt-4"
+            onClick={() => window.location.reload()}
+          >
             {t("retry")}
           </Button>
         </div>
@@ -249,7 +303,8 @@ export function useMarketplacePageController() {
     );
   }
 
-  const hasMarketplaceItems = publishedItems.length + myItems.length + sharedItems.length > 0;
+  const hasMarketplaceItems =
+    publishedItems.length + myItems.length + sharedItems.length > 0;
 
   return {
     kind: "ready",
@@ -285,7 +340,9 @@ export function useMarketplacePageController() {
   } as const;
 }
 
-export default function MarketplacePage(...args: Parameters<typeof useMarketplacePageController>) {
+export default function MarketplacePage(
+  ...args: Parameters<typeof useMarketplacePageController>
+) {
   const model = useMarketplacePageController(...args);
   if (!("kind" in model)) return model;
   return <MarketplacePageView model={model} />;

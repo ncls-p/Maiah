@@ -8,9 +8,21 @@ import { AgentsPageSection1 } from "./page.agents-page.view.section-1";
 import { AgentsPageSection2 } from "./page.agents-page.view.section-2";
 import { ICON_SIZE_CLASS } from "./page.icon-size-class";
 
-export type AgentsPageViewModel = Extract<ReturnType<typeof useAgentsPageController>, { kind: "ready" }>;
+export type AgentsPageViewModel = Extract<
+  ReturnType<typeof useAgentsPageController>,
+  { kind: "ready" }
+>;
 export function AgentsPageView({ model }: { model: AgentsPageViewModel }) {
-  const { agents, canCreateAgent, loading, setShareResource, setShowCreateDialog, shareResource, t, workspaceId } = model;
+  const {
+    agents,
+    canCreateAgent,
+    loading,
+    setShareResource,
+    setShowCreateDialog,
+    shareResource,
+    t,
+    workspaceId,
+  } = model;
   return (
     <WorkspacePage
       title={t("orbitTitle")}
@@ -32,7 +44,12 @@ export function AgentsPageView({ model }: { model: AgentsPageViewModel }) {
       {/* Create dialog */}
       <AgentsPageSection1 model={model} />
 
-      <ResourceShareDialog resource={shareResource} workspaceId={workspaceId} open={shareResource !== null} onCloseAction={() => setShareResource(null)} />
+      <ResourceShareDialog
+        resource={shareResource}
+        workspaceId={workspaceId}
+        open={shareResource !== null}
+        onCloseAction={() => setShareResource(null)}
+      />
     </WorkspacePage>
   );
 }

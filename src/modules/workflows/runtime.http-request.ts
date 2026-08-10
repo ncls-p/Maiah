@@ -8,12 +8,33 @@ import { executeCodeSandbox } from "@/modules/tool/code-sandbox";
 
 import { resolveWorkflowSecretReferences } from "./agentic-history";
 import { isPrivateIpv4 } from "./runtime.calculate-number";
-import { RuntimeContext,WorkflowRuntimeDependencies,configuredEntries,inputAsText,interpolateTemplate,nodeAbortSignal,resolveTemplates,sandboxFailureMessage } from "./runtime.workflow-runtime-dependencies";
+import {
+  RuntimeContext,
+  WorkflowRuntimeDependencies,
+  configuredEntries,
+  inputAsText,
+  interpolateTemplate,
+  nodeAbortSignal,
+  resolveTemplates,
+  sandboxFailureMessage,
+} from "./runtime.workflow-runtime-dependencies";
 
 function isPrivateAddress(address: string) {
   if (isIP(address) === 4) return isPrivateIpv4(address);
   const normalized = address.toLowerCase();
-  return normalized === "::" || normalized === "::1" || normalized.startsWith("fc") || normalized.startsWith("fd") || normalized.startsWith("fe8") || normalized.startsWith("fe9") || normalized.startsWith("fea") || normalized.startsWith("feb") || normalized.startsWith("::ffff:127.") || normalized.startsWith("::ffff:10.") || normalized.startsWith("::ffff:192.168.");
+  return (
+    normalized === "::" ||
+    normalized === "::1" ||
+    normalized.startsWith("fc") ||
+    normalized.startsWith("fd") ||
+    normalized.startsWith("fe8") ||
+    normalized.startsWith("fe9") ||
+    normalized.startsWith("fea") ||
+    normalized.startsWith("feb") ||
+    normalized.startsWith("::ffff:127.") ||
+    normalized.startsWith("::ffff:10.") ||
+    normalized.startsWith("::ffff:192.168.")
+  );
 }
 
 async function assertSafeHttpUrl(rawUrl: unknown) {
@@ -25,13 +46,21 @@ async function assertSafeHttpUrl(rawUrl: unknown) {
     throw new Error("Credentials are not allowed in workflow URLs.");
   }
   const addresses = await lookup(url.hostname, { all: true, verbatim: true });
-  if (addresses.length === 0 || addresses.some(({ address }) => isPrivateAddress(address))) {
-    throw new Error("The workflow URL resolves to a private or reserved address.");
+  if (
+    addresses.length === 0 ||
+    addresses.some(({ address }) => isPrivateAddress(address))
+  ) {
+    throw new Error(
+      "The workflow URL resolves to a private or reserved address.",
+    );
   }
   return url;
 }
 
-export const httpRequest: NodeFunction<RuntimeContext, WorkflowRuntimeDependencies> = async ({ input, params, signal, dependencies }) => {
+export const httpRequest: NodeFunction<
+  RuntimeContext,
+  WorkflowRuntimeDependencies
+> = async ({ input, params, signal, dependencies }) => {
   const resolvedParams = (await resolveWorkflowSecretReferences(params, {
     workflowId: dependencies.workflowId,
     workspaceId: dependencies.workspaceId,
@@ -47,9 +76,17 @@ export const httpRequest: NodeFunction<RuntimeContext, WorkflowRuntimeDependenci
   if (!["GET", "POST", "PUT", "PATCH", "DELETE"].includes(method)) {
     throw new Error(`Unsupported HTTP method: ${method}`);
   }
-  const headers = Object.fromEntries(configuredEntries(resolvedParams.headers).map(([key, value]) => [key, String(resolveTemplates(value, input))]));
+  const headers = Object.fromEntries(
+    configuredEntries(resolvedParams.headers).map(([key, value]) => [
+      key,
+      String(resolveTemplates(value, input)),
+    ]),
+  );
   const hasBody = !["GET", "DELETE"].includes(method);
-  const bodyValue = resolvedParams.body === undefined ? input : resolveTemplates(resolvedParams.body, input);
+  const bodyValue =
+    resolvedParams.body === undefined
+      ? input
+      : resolveTemplates(resolvedParams.body, input);
   if (hasBody && !headers["content-type"] && !headers["Content-Type"]) {
     headers["content-type"] = "application/json";
   }
@@ -82,14 +119,18 @@ export const httpRequest: NodeFunction<RuntimeContext, WorkflowRuntimeDependenci
   };
 };
 
-export const executeCode: NodeFunction<RuntimeContext, WorkflowRuntimeDependencies> = async ({ input, params, dependencies }) => {
+export const executeCode: NodeFunction<
+  RuntimeContext,
+  WorkflowRuntimeDependencies
+> = async ({ input, params, dependencies }) => {
   const language = params.language === "python" ? "python" : "node";
   const result = await executeCodeSandbox(
     {
       language,
       code: String(params.code ?? ""),
       stdin: inputAsText(input),
-      timeoutMs: typeof params.__timeoutMs === "number" ? params.__timeoutMs : undefined,
+      timeoutMs:
+        typeof params.__timeoutMs === "number" ? params.__timeoutMs : undefined,
     },
     {
       workspaceId: dependencies.workspaceId,
@@ -107,11 +148,18 @@ export const executeCode: NodeFunction<RuntimeContext, WorkflowRuntimeDependenci
   }
 };
 
-export const runAgent: NodeFunction<RuntimeContext, WorkflowRuntimeDependencies> = async ({ input, params, dependencies, signal }) => {
+export const runAgent: NodeFunction<
+  RuntimeContext,
+  WorkflowRuntimeDependencies
+> = async ({ input, params, dependencies, signal }) => {
   const agentId = String(params.agentId ?? "");
   if (!agentId) throw new Error("An agent must be selected.");
-  const promptValue = interpolateTemplate(String(params.prompt ?? "{{input}}"), input);
-  const prompt = typeof promptValue === "string" ? promptValue : inputAsText(promptValue);
+  const promptValue = interpolateTemplate(
+    String(params.prompt ?? "{{input}}"),
+    input,
+  );
+  const prompt =
+    typeof promptValue === "string" ? promptValue : inputAsText(promptValue);
   const result = await executeAgent({
     workspaceId: dependencies.workspaceId,
     userId: dependencies.userId,
@@ -124,6 +172,8 @@ export const runAgent: NodeFunction<RuntimeContext, WorkflowRuntimeDependencies>
   return { output: { text: result.text, agentRunId: result.runId } };
 };
 
-export const debugSnapshot: NodeFunction<RuntimeContext> = async ({ input }) => ({
+export const debugSnapshot: NodeFunction<RuntimeContext> = async ({
+  input,
+}) => ({
   output: input,
 });

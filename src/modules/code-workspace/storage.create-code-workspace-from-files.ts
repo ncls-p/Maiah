@@ -1,11 +1,36 @@
 import { randomUUID } from "node:crypto";
 
 import { storage } from "@/server/infrastructure/storage";
-import { deleteUploadedProject,isAllowedPath,isTextWorkspacePath,normalizeWorkspacePath } from "./storage.assert-safe-project-id";
-import { CodeWorkspaceCreateFileInput,CodeWorkspaceFileSummary,CodeWorkspaceMetadata,fileObjectKey,maxExtractedBytes,maxFiles,maxTextFileBytes } from "./storage.code-workspace-file-summary";
-import { codeWorkspaceArtifact,contentTypeForPath,findRootFile,hashBytes,saveMetadata } from "./storage.content-type-for-path";
+import {
+  deleteUploadedProject,
+  isAllowedPath,
+  isTextWorkspacePath,
+  normalizeWorkspacePath,
+} from "./storage.assert-safe-project-id";
+import {
+  CodeWorkspaceCreateFileInput,
+  CodeWorkspaceFileSummary,
+  CodeWorkspaceMetadata,
+  fileObjectKey,
+  maxExtractedBytes,
+  maxFiles,
+  maxTextFileBytes,
+} from "./storage.code-workspace-file-summary";
+import {
+  codeWorkspaceArtifact,
+  contentTypeForPath,
+  findRootFile,
+  hashBytes,
+  saveMetadata,
+} from "./storage.content-type-for-path";
 
-export async function createCodeWorkspaceFromFiles(input: { workspaceId: string; userId: string; title: string; rootFile?: string | null; files: CodeWorkspaceCreateFileInput[] }) {
+export async function createCodeWorkspaceFromFiles(input: {
+  workspaceId: string;
+  userId: string;
+  title: string;
+  rootFile?: string | null;
+  files: CodeWorkspaceCreateFileInput[];
+}) {
   if (input.files.length === 0) {
     throw new Error("Create at least one file in the code workspace.");
   }
@@ -36,10 +61,16 @@ export async function createCodeWorkspaceFromFiles(input: { workspaceId: string;
       }
       totalBytes += bytes.byteLength;
       if (totalBytes > maxExtractedBytes) {
-        throw new Error("Code workspace contents are too large. Maximum is 50 MB.");
+        throw new Error(
+          "Code workspace contents are too large. Maximum is 50 MB.",
+        );
       }
 
-      await storage.upload(fileObjectKey(projectId, projectPath), bytes, contentTypeForPath(projectPath));
+      await storage.upload(
+        fileObjectKey(projectId, projectPath),
+        bytes,
+        contentTypeForPath(projectPath),
+      );
       writtenPaths.push(projectPath);
       summaries.push({
         path: projectPath,
@@ -51,8 +82,13 @@ export async function createCodeWorkspaceFromFiles(input: { workspaceId: string;
       });
     }
 
-    const requestedRootFile = input.rootFile ? normalizeWorkspacePath(input.rootFile) : null;
-    if (requestedRootFile && !summaries.some((file) => file.path === requestedRootFile)) {
+    const requestedRootFile = input.rootFile
+      ? normalizeWorkspacePath(input.rootFile)
+      : null;
+    if (
+      requestedRootFile &&
+      !summaries.some((file) => file.path === requestedRootFile)
+    ) {
       throw new Error("rootFile must reference one of the created files.");
     }
     const rootFile = requestedRootFile ?? findRootFile(summaries);

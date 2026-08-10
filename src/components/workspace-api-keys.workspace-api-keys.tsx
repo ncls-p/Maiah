@@ -1,21 +1,54 @@
 "use client";
 
-import { ChevronDownIcon,CopyIcon,KeyRoundIcon,Loader2,PlusIcon } from "lucide-react";
-import { useLocale,useTranslations } from "next-intl";
-import { useCallback,useEffect,useState } from "react";
+import {
+  ChevronDownIcon,
+  CopyIcon,
+  KeyRoundIcon,
+  Loader2,
+  PlusIcon,
+} from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
-import { AlertDialog,AlertDialogAction,AlertDialogCancel,AlertDialogContent,AlertDialogDescription,AlertDialogFooter,AlertDialogHeader,AlertDialogTitle } from "@/components/ui/alert-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card,CardContent,CardDescription,CardHeader,CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Collapsible,CollapsibleContent,CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Field,FieldContent,FieldLabel } from "@/components/ui/field";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { Field, FieldContent, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useWorkspace } from "@/hooks/use-workspace";
-import { ApiKeyListItem,ApiKeyResponse,ApiKeyRow,ApiKeyScope,createApiKey,fetchApiKeys,revokeApiKey } from "./workspace-api-keys.api-key-row";
+import {
+  ApiKeyListItem,
+  ApiKeyResponse,
+  ApiKeyRow,
+  ApiKeyScope,
+  createApiKey,
+  fetchApiKeys,
+  revokeApiKey,
+} from "./workspace-api-keys.api-key-row";
 
 export function WorkspaceApiKeys() {
   const t = useTranslations("admin.apiKeys");
@@ -46,11 +79,17 @@ export function WorkspaceApiKeys() {
       setAvailableScopes(response.availableScopes);
       setPresets(response.presets);
       setSelectedScopes((current) => {
-        const available = new Set(response.availableScopes.map(({ permission }) => permission));
+        const available = new Set(
+          response.availableScopes.map(({ permission }) => permission),
+        );
         const stillAvailable = current.filter((scope) => available.has(scope));
         if (stillAvailable.length > 0) return stillAvailable;
-        const recommended = response.presets.agentRuntime.filter((scope) => available.has(scope));
-        return recommended.length > 0 ? recommended : response.presets.readOnly.filter((scope) => available.has(scope));
+        const recommended = response.presets.agentRuntime.filter((scope) =>
+          available.has(scope),
+        );
+        return recommended.length > 0
+          ? recommended
+          : response.presets.readOnly.filter((scope) => available.has(scope));
       });
     } catch {
       setLoadError(true);
@@ -82,12 +121,18 @@ export function WorkspaceApiKeys() {
   }
 
   function applyScopes(scopes: readonly string[]) {
-    const available = new Set(availableScopes.map(({ permission }) => permission));
+    const available = new Set(
+      availableScopes.map(({ permission }) => permission),
+    );
     setSelectedScopes(scopes.filter((scope) => available.has(scope)));
   }
 
   function toggleScope(permission: string, checked: boolean) {
-    setSelectedScopes((current) => (checked ? [...new Set([...current, permission])] : current.filter((scope) => scope !== permission)));
+    setSelectedScopes((current) =>
+      checked
+        ? [...new Set([...current, permission])]
+        : current.filter((scope) => scope !== permission),
+    );
   }
 
   const groupedScopes = Object.groupBy(availableScopes, ({ group }) => group);
@@ -121,7 +166,12 @@ export function WorkspaceApiKeys() {
             {t.rich("cardDescription", {
               code: (chunks) => <code className="text-xs">{chunks}</code>,
               link: (chunks) => (
-                <a href="/api/docs" className="underline underline-offset-4" target="_blank" rel="noreferrer">
+                <a
+                  href="/api/docs"
+                  className="underline underline-offset-4"
+                  target="_blank"
+                  rel="noreferrer"
+                >
                   {chunks}
                 </a>
               ),
@@ -132,23 +182,63 @@ export function WorkspaceApiKeys() {
           <div className="flex flex-col gap-4" suppressHydrationWarning>
             <div className="flex flex-col gap-2">
               <Label htmlFor="api-key-name">{t("nameLabel")}</Label>
-              <Input id="api-key-name" name="api-key-name" autoComplete="off" data-1p-ignore data-bwignore data-form-type="other" data-lpignore="true" data-protonpass-ignore placeholder="CI pipeline…" value={name} onChange={(event) => setName(event.target.value)} />
+              <Input
+                id="api-key-name"
+                name="api-key-name"
+                autoComplete="off"
+                data-1p-ignore
+                data-bwignore
+                data-form-type="other"
+                data-lpignore="true"
+                data-protonpass-ignore
+                placeholder="CI pipeline…"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+              />
             </div>
 
             <fieldset className="flex flex-col gap-3">
-              <legend className="text-sm font-medium">{t("scopesTitle")}</legend>
-              <p className="text-sm text-muted-foreground">{t("scopesDescription")}</p>
+              <legend className="text-sm font-medium">
+                {t("scopesTitle")}
+              </legend>
+              <p className="text-sm text-muted-foreground">
+                {t("scopesDescription")}
+              </p>
               <div className="flex flex-wrap gap-2">
-                <Button type="button" size="sm" variant="outline" onClick={() => applyScopes(presets.agentRuntime)}>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => applyScopes(presets.agentRuntime)}
+                >
                   {t("presetAgentRuntime")}
                 </Button>
-                <Button type="button" size="sm" variant="outline" onClick={() => applyScopes(presets.readOnly)}>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => applyScopes(presets.readOnly)}
+                >
                   {t("presetReadOnly")}
                 </Button>
-                <Button type="button" size="sm" variant="outline" onClick={() => applyScopes(availableScopes.map(({ permission }) => permission))}>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() =>
+                    applyScopes(
+                      availableScopes.map(({ permission }) => permission),
+                    )
+                  }
+                >
                   {t("presetFullAccess")}
                 </Button>
-                <Button type="button" size="sm" variant="ghost" onClick={() => setSelectedScopes([])}>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setSelectedScopes([])}
+                >
                   {t("clearScopes")}
                 </Button>
               </div>
@@ -159,17 +249,30 @@ export function WorkspaceApiKeys() {
                 })}
               </p>
               {availableScopes.length === 0 ? (
-                <p className="text-sm text-muted-foreground">{t("noAvailableScopes")}</p>
+                <p className="text-sm text-muted-foreground">
+                  {t("noAvailableScopes")}
+                </p>
               ) : (
                 <div className="grid gap-2 lg:grid-cols-2">
                   {Object.entries(groupedScopes).map(([group, scopes]) => (
-                    <Collapsible key={group} defaultOpen={group === "agents"} className="rounded-xl border">
+                    <Collapsible
+                      key={group}
+                      defaultOpen={group === "agents"}
+                      className="rounded-xl border"
+                    >
                       <CollapsibleTrigger asChild>
-                        <Button type="button" variant="ghost" className="w-full justify-between">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className="w-full justify-between"
+                        >
                           <span>
                             {t(`scopeGroups.${group}`)} · {scopes?.length ?? 0}
                           </span>
-                          <ChevronDownIcon data-icon="inline-end" aria-hidden="true" />
+                          <ChevronDownIcon
+                            data-icon="inline-end"
+                            aria-hidden="true"
+                          />
                         </Button>
                       </CollapsibleTrigger>
                       <CollapsibleContent className="border-t p-3">
@@ -177,11 +280,27 @@ export function WorkspaceApiKeys() {
                           {(scopes ?? []).map((scope) => {
                             const checkboxId = `api-scope-${scope.permission}`;
                             return (
-                              <Field key={scope.permission} orientation="horizontal">
-                                <Checkbox id={checkboxId} checked={selectedScopes.includes(scope.permission)} onCheckedChange={(checked) => toggleScope(scope.permission, checked === true)} />
+                              <Field
+                                key={scope.permission}
+                                orientation="horizontal"
+                              >
+                                <Checkbox
+                                  id={checkboxId}
+                                  checked={selectedScopes.includes(
+                                    scope.permission,
+                                  )}
+                                  onCheckedChange={(checked) =>
+                                    toggleScope(
+                                      scope.permission,
+                                      checked === true,
+                                    )
+                                  }
+                                />
                                 <FieldContent>
                                   <FieldLabel htmlFor={checkboxId}>
-                                    <code className="text-xs">{scope.permission}</code>
+                                    <code className="text-xs">
+                                      {scope.permission}
+                                    </code>
                                   </FieldLabel>
                                   {scope.risk === "admin" ? (
                                     <Badge variant="outline" className="w-fit">
@@ -206,8 +325,21 @@ export function WorkspaceApiKeys() {
               </p>
             ) : null}
 
-            <Button className="self-start" disabled={creating || loadError || !name.trim() || selectedScopes.length === 0} onClick={() => void createKey()}>
-              {creating ? <Loader2 className="animate-spin" aria-hidden="true" /> : <PlusIcon data-icon="inline-start" aria-hidden="true" />}
+            <Button
+              className="self-start"
+              disabled={
+                creating ||
+                loadError ||
+                !name.trim() ||
+                selectedScopes.length === 0
+              }
+              onClick={() => void createKey()}
+            >
+              {creating ? (
+                <Loader2 className="animate-spin" aria-hidden="true" />
+              ) : (
+                <PlusIcon data-icon="inline-start" aria-hidden="true" />
+              )}
               {t("createButton")}
             </Button>
           </div>
@@ -216,7 +348,9 @@ export function WorkspaceApiKeys() {
             <div className="rounded-xl border border-warning/35 bg-warning/10 p-3 text-sm">
               <p className="font-medium">{t("copyTitle")}</p>
               <div className="mt-2 flex items-center gap-2">
-                <code className="flex-1 truncate rounded bg-background px-2 py-1 text-xs">{revealedKey}</code>
+                <code className="flex-1 truncate rounded bg-background px-2 py-1 text-xs">
+                  {revealedKey}
+                </code>
                 <Button
                   size="sm"
                   variant="outline"
@@ -235,12 +369,26 @@ export function WorkspaceApiKeys() {
           ) : null}
 
           {loading ? (
-            <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" aria-hidden="true" />
+            <Loader2
+              className="mx-auto size-5 animate-spin text-muted-foreground"
+              aria-hidden="true"
+            />
           ) : loadError ? (
-            <div className="rounded-xl border border-destructive/25 bg-destructive/5 p-4" role="alert">
+            <div
+              className="rounded-xl border border-destructive/25 bg-destructive/5 p-4"
+              role="alert"
+            >
               <p className="text-sm font-medium">{t("loadFailed")}</p>
-              <p className="mt-1 text-sm text-muted-foreground">{t("loadFailedDescription")}</p>
-              <Button type="button" variant="outline" size="sm" className="mt-3" onClick={() => void load()}>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {t("loadFailedDescription")}
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-3"
+                onClick={() => void load()}
+              >
                 {t("retry")}
               </Button>
             </div>
@@ -249,7 +397,13 @@ export function WorkspaceApiKeys() {
           ) : (
             <ul className="divide-y divide-border/70 rounded-xl border">
               {keys.map((key) => (
-                <ApiKeyListItem key={key.id} apiKey={key} locale={locale} t={t} onRevokeAction={setPendingRevoke} />
+                <ApiKeyListItem
+                  key={key.id}
+                  apiKey={key}
+                  locale={locale}
+                  t={t}
+                  onRevokeAction={setPendingRevoke}
+                />
               ))}
             </ul>
           )}
@@ -271,7 +425,9 @@ export function WorkspaceApiKeys() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={revoking}>{t("cancelRevoke")}</AlertDialogCancel>
+            <AlertDialogCancel disabled={revoking}>
+              {t("cancelRevoke")}
+            </AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
               disabled={revoking || !pendingRevoke}
