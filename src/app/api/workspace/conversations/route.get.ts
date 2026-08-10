@@ -1,13 +1,13 @@
 import { decryptValue } from "@/lib/crypto";
-import { handleRoute,requireRequestPermissionScopeAsync } from "@/lib/route-handler";
-import { hasResourcePermissionForRequest,isWorkspaceMemberForRequest } from "@/modules/auth/workspace-access";
-import { conversationSearchSnippet,conversationTextMatches } from "@/modules/chat/conversation-search";
+import { handleRoute, requireRequestPermissionScopeAsync } from "@/lib/route-handler";
+import { hasResourcePermissionForRequest, isWorkspaceMemberForRequest } from "@/modules/auth/workspace-access";
+import { conversationSearchSnippet, conversationTextMatches } from "@/modules/chat/conversation-search";
 import { db } from "@/server/infrastructure/db";
 import { listDirectlyBoundResourceIds } from "@/server/infrastructure/db/access-resource-repository";
-import { agents,conversationFolders,conversations,messageParts,messages } from "@/server/infrastructure/db/schema";
-import { and,asc,desc,eq,inArray,isNotNull,isNull,lt,or,sql } from "drizzle-orm";
-import { NextRequest,NextResponse } from "next/server";
-import { createConversationCursor,querySchema } from "./route.query-schema";
+import { agents, conversationFolders, conversationShares, conversations, messageParts, messages } from "@/server/infrastructure/db/schema";
+import { and, asc, desc, eq, inArray, isNotNull, isNull, lt, or, sql } from "drizzle-orm";
+import { NextRequest, NextResponse } from "next/server";
+import { createConversationCursor, querySchema } from "./route.query-schema";
 export async function GET(req: NextRequest) {
   return handleRoute(
     req,
@@ -62,8 +62,10 @@ export async function GET(req: NextRequest) {
       )
         .filter(({ granted }) => granted)
         .map(({ conversationId }) => conversationId);
-      const visibleConversationCondition = directlyAccessibleIds.length ? or(eq(conversations.userId, session.user.id), inArray(conversations.id, directlyAccessibleIds)) : eq(conversations.userId, session.user.id);
-      const scopeConditions = [eq(conversations.workspaceId, workspaceId), visibleConversationCondition, eq(conversations.status, "active"), isNull(conversations.archivedAt)];
+      const sharedRows = await db.select({ conversationId: conversationShares.conversationId }).from(conversationShares).where(eq(conversationShares.sharedWithUserId, session.user.id));
+      const accessibleIds = [...new Set([...directlyAccessibleIds, ...sharedRows.map((row) => row.conversationId)])];
+      const visibleConversationCondition = accessibleIds.length ? or(eq(conversations.userId, session.user.id), inArray(conversations.id, accessibleIds)) : eq(conversations.userId, session.user.id);
+      const scopeConditions = [eq(conversations.workspaceId, workspaceId), visibleConversationCondition, eq(conversations.status, "active"), eq(conversations.isEphemeral, false), isNull(conversations.archivedAt)];
       if (agentId) {
         scopeConditions.push(eq(conversations.agentId, agentId));
       }
@@ -82,6 +84,7 @@ export async function GET(req: NextRequest) {
         sidebarOrder: conversations.sidebarOrder,
         createdAt: conversations.createdAt,
         updatedAt: conversations.updatedAt,
+        isOwner: sql<boolean>`${conversations.userId} = ${session.user.id}`,
       };
       let list;
       let hasMore;

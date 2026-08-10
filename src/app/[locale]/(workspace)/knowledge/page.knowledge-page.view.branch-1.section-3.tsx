@@ -1,4 +1,4 @@
-import { Dialog,DialogContent,DialogDescription,DialogHeader,DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
 import type { KnowledgePageViewModel } from "./page.knowledge-page.view";
 export function KnowledgeMainSection3({ model }: { model: KnowledgePageViewModel }) {
@@ -19,9 +19,11 @@ export function KnowledgeMainSection3({ model }: { model: KnowledgePageViewModel
           <DialogTitle className="truncate pr-8">{previewDocument?.documentTitle ?? t("documentPreviewTitle")}</DialogTitle>
           <DialogDescription>
             {previewDocument
-              ? t("documentPreviewDescription", {
-                  chunks: previewDocument.chunks.length,
-                })
+              ? previewDocument.originalUrl
+                ? t("documentPdfPreviewDescription")
+                : t("documentPreviewDescription", {
+                    chunks: previewDocument.chunks.length,
+                  })
               : t("documentPreviewLoading")}
           </DialogDescription>
         </DialogHeader>
@@ -36,6 +38,8 @@ export function KnowledgeMainSection3({ model }: { model: KnowledgePageViewModel
               <p className="text-sm font-medium">{t("documentPreviewError")}</p>
               <p className="mt-1 max-w-md text-xs text-muted-foreground">{t("documentPreviewErrorHint")}</p>
             </div>
+          ) : previewDocument?.originalUrl ? (
+            <iframe src={previewDocument.originalUrl} title={previewDocument.documentTitle} className="h-[min(72dvh,58rem)] w-full rounded-xl border bg-background" />
           ) : previewDocument ? (
             <article className="mx-auto max-w-2xl space-y-2">
               {previewDocument.chunks.map((chunk) => (

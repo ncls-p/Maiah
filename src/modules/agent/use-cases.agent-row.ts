@@ -141,6 +141,7 @@ export interface AgentDefaultPreferences {
   organizationDefaultAgentId: string | null;
   userDefaultAgentId: string | null;
   effectiveDefaultAgentId: string | null;
+  hiddenAgentIds: string[];
 }
 
 async function resolveShareTargetUserId(

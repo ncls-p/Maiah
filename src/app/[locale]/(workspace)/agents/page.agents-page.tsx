@@ -208,6 +208,27 @@ export function useAgentsPageController() {
     }
   }
 
+  async function setAgentHiddenInChat(agentId: string, hidden: boolean) {
+    if (!workspaceId) return;
+    try {
+      const res = await fetch("/api/workspace/agents/preferences", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "set_hidden",
+          workspaceId,
+          agentId,
+          hidden,
+        }),
+      });
+      if (!res.ok) throw new Error(tList("toastVisibilityFailed"));
+      setAgents((current) => current.map((agent) => (agent.id === agentId ? { ...agent, hiddenInChat: hidden } : agent)));
+      toast.success(tList(hidden ? "toastHiddenFromChat" : "toastShownInChat"));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : tList("toastVisibilityFailed"));
+    }
+  }
+
   const filteredAgents = agents.filter((agent) => {
     if (agentKindFilter === "assistant" && agent.kind === "orchestrator") {
       return false;
@@ -245,6 +266,7 @@ export function useAgentsPageController() {
     searchQuery,
     setAgentKindFilter,
     setDefaultAgent,
+    setAgentHiddenInChat,
     setDisplayMode,
     setForm,
     setSearchQuery,

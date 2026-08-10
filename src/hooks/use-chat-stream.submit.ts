@@ -167,6 +167,7 @@ export function useChatSubmitHandler(input: { agentId: string | null; conversati
         body: {
           content,
           conversationId: conversationId ?? undefined,
+          ephemeral: options.ephemeral,
           resendFromMessageId: options.resendFromMessageId,
           continueFromMessageId: options.continueFromMessageId,
           codeWorkspaceId: options.codeWorkspaceId ?? options.codeWorkspaceArtifact?.projectId,
@@ -189,7 +190,7 @@ export function useChatSubmitHandler(input: { agentId: string | null; conversati
           if (metadata.userMessageId) {
             setMessages((current) => current.map((message) => (message.id === userMessage.id ? { ...message, id: metadata.userMessageId! } : message)));
           }
-          if (metadata.conversationId && !conversationId) {
+          if (metadata.conversationId && metadata.conversationId !== conversationId) {
             migrateDraftCapabilityOverrides(agentId, metadata.conversationId);
             onConversationCreated(metadata.conversationId, content);
           }

@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { boolean,index,integer,jsonb,pgEnum,pgTable,text,timestamp,uniqueIndex,uuid,varchar } from "drizzle-orm/pg-core";
+import { boolean, index, integer, jsonb, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid, varchar } from "drizzle-orm/pg-core";
 import { aiProviders } from "./ai-providers";
 import { users } from "./auth";
 import { workspaces } from "./workspace";
@@ -71,6 +71,10 @@ export const userAgentPreferences = pgTable(
     defaultAgentId: uuid("default_agent_id").references(() => agents.id, {
       onDelete: SET_NULL_ACTION,
     }),
+    hiddenAgentIdsJson: jsonb("hidden_agent_ids_json")
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
     createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
   },

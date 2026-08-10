@@ -1,10 +1,11 @@
 import { logger, logHandledError } from "@/lib/logger";
-import { requireResourcePermissionAsync } from "@/lib/route-handler";
+import { requireResourcePermissionAsync, requireWorkspacePermissionAsync } from "@/lib/route-handler";
 import { canUseAgent } from "@/modules/agent/use-cases";
 import { runWithRequestAuth } from "@/modules/auth/request-auth-context";
 import { getActorUserId, resolveAuthContext } from "@/modules/auth/resolve-auth";
 import { getChatAttachment, publicChatAttachment, type ChatAttachment } from "@/modules/chat/attachments";
 import { publishChatStreamEvent } from "@/modules/chat/stream-bus";
+import { getConversationAccess } from "@/modules/chat/conversation-sharing";
 import { codeWorkspaceArtifact, getCodeWorkspace } from "@/modules/code-workspace/storage";
 import { assertWorkspaceWithinTokenQuota } from "@/modules/usage/quota";
 import { db } from "@/server/infrastructure/db";
@@ -54,7 +55,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ age
       return rejectChatRequest(400, "invalid_input", { error: "Invalid input", details: parsed.error.issues }, { agentId, userId: actorUserId, issues: parsed.error.issues.length });
     }
 
-    const { content, conversationId: existingConversationId, resendFromMessageId, continueFromMessageId, codeWorkspaceId, attachmentIds = [], imageAttachmentIds = [], capabilityOverrides } = parsed.data;
+    const { content, conversationId: existingConversationId, ephemeral = false, resendFromMessageId, continueFromMessageId, codeWorkspaceId, attachmentIds = [], imageAttachmentIds = [], capabilityOverrides } = parsed.data;
     const streamProtocol = req.headers.get("X-AI-Hub-Stream-Protocol") ?? req.nextUrl.searchParams.get("streamProtocol");
     const useAiSdkUIStream = streamProtocol === "ai-sdk-ui";
     if (resendFromMessageId && continueFromMessageId) {
@@ -69,15 +70,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ age
     if (!agent) {
       return rejectChatRequest(404, "agent_not_found", { error: "Agent not found" }, { agentId, userId: actorUserId });
     }
+    const conversationAccess = existingConversationId ? await getConversationAccess(existingConversationId, actorUserId) : null;
+    const canContinueSharedConversation = Boolean(conversationAccess?.role === "recipient" && conversationAccess.canContinue && conversationAccess.conversation.agentId === agentId);
     const directlyShared = await authorization.hasDirectPermission({ principalType: "user", principalId: actorUserId }, "agents.get", "agent", agent.id, agent.workspaceId);
-    if (!canUseAgent(agent, actorUserId) && !directlyShared) {
+    if (!canUseAgent(agent, actorUserId) && !directlyShared && !canContinueSharedConversation) {
       return rejectChatRequest(404, "agent_not_available_for_user", { error: "Agent not found" }, { agentId, userId: actorUserId, workspaceId: agent.workspaceId });
     }
     if (auth.type === "api_key" && auth.workspaceId !== agent.workspaceId) {
       return rejectChatRequest(403, "api_key_workspace_mismatch", { error: "Forbidden" }, { agentId, userId: actorUserId, workspaceId: agent.workspaceId });
     }
 
-    const forbidden = await runWithRequestAuth(auth, () => requireResourcePermissionAsync(actorUserId, agent.workspaceId, "agents.chat", "agent", agentId));
+    const forbidden = await runWithRequestAuth(auth, () => (canContinueSharedConversation ? requireWorkspacePermissionAsync(actorUserId, agent.workspaceId, "agents.chat") : requireResourcePermissionAsync(actorUserId, agent.workspaceId, "agents.chat", "agent", agentId)));
     if (forbidden) {
       logger.warn("Chat request rejected", {
         requestId,
@@ -151,6 +154,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ age
       agentId,
       content,
       existingConversationId,
+      ephemeral,
       resendFromMessageId,
       continueFromMessageId,
       codeWorkspaceAttachment,

@@ -1,11 +1,11 @@
-import { handleRoute,requireResourcePermissionAsync } from "@/lib/route-handler";
+import { handleRoute, requireResourcePermissionAsync } from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
-import { assembleDocumentUpload,parseChunkMetadata,parseCompletionMetadata,storeDocumentUploadChunk } from "@/modules/document-upload/server";
+import { assembleDocumentUpload, parseChunkMetadata, parseCompletionMetadata, storeDocumentUploadChunk } from "@/modules/document-upload/server";
 import { extractKnowledgeUploads } from "@/modules/knowledge/file-ingestion";
 import { getDefaultRagConfig } from "@/modules/knowledge/rag-config";
 import { parseRagConfig } from "@/modules/knowledge/rag-config-schema";
-import { getKnowledgeBase,ingestTextDocument } from "@/modules/knowledge/use-cases";
-import { NextRequest,NextResponse } from "next/server";
+import { getKnowledgeBase, ingestTextDocument } from "@/modules/knowledge/use-cases";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createSchema } from "./route.create-schema";
 
@@ -136,6 +136,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ kno
               content: file.content,
               sourceType: "upload",
               mimeType: file.mimeType,
+              originalBytes: file.originalBytes,
+              originalMimeType: file.originalMimeType,
             }),
           );
         }

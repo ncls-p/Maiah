@@ -6,12 +6,14 @@ import {
   SearchIcon,
   Settings2Icon,
   StarIcon,
+  TimerIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { Link } from "@/i18n/navigation";
 import { ChatToolsMenu } from "@/components/chat/chat-tools-menu";
+import { ConversationShareDialog } from "@/components/chat/conversation-share-dialog";
 import type { ChatAgent } from "@/components/chat/chat-types";
 import { ModelLogo } from "@/components/providers/model-logo";
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +32,7 @@ interface ChatAgentSelectorProps {
   agents: ChatAgent[];
   selectedAgent: ChatAgent | null;
   activeConversationId: string | null;
+  conversationIsOwner: boolean;
   workspaceId: string | null;
   organizationDefaultAgentId?: string | null;
   userDefaultAgentId?: string | null;
@@ -37,6 +40,8 @@ interface ChatAgentSelectorProps {
   canCreateAgent: boolean;
   onSelectAgent: (agentId: string) => void;
   onSetUserDefaultAgent?: (agentId: string | null) => void;
+  ephemeral: boolean;
+  onEphemeralChange?: (ephemeral: boolean) => void;
 }
 
 function AgentOption({
@@ -246,6 +251,21 @@ export function ChatAgentSelector(props: ChatAgentSelectorProps) {
           ) : null}
         </DropdownMenuContent>
       </DropdownMenu>
+      <Button
+        type="button"
+        variant={props.ephemeral ? "secondary" : "ghost"}
+        size="icon"
+        className="size-10 shrink-0 rounded-xl"
+        disabled={Boolean(props.activeConversationId)}
+        aria-pressed={props.ephemeral}
+        aria-label={t(
+          props.ephemeral ? "disableEphemeralChat" : "enableEphemeralChat",
+        )}
+        title={t(props.ephemeral ? "ephemeralChatEnabled" : "ephemeralChat")}
+        onClick={() => props.onEphemeralChange?.(!props.ephemeral)}
+      >
+        <TimerIcon aria-hidden="true" />
+      </Button>
       {props.selectedAgent ? (
         <ChatToolsMenu
           key={`${props.selectedAgent.id}:${props.activeConversationId ?? "draft"}`}
@@ -253,6 +273,9 @@ export function ChatAgentSelector(props: ChatAgentSelectorProps) {
           workspaceId={props.workspaceId}
           conversationId={props.activeConversationId}
         />
+      ) : null}
+      {props.activeConversationId && props.conversationIsOwner ? (
+        <ConversationShareDialog conversationId={props.activeConversationId} />
       ) : null}
       {!props.canChat ? (
         <Badge

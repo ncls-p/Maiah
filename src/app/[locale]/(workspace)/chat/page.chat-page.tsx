@@ -2,21 +2,21 @@
 
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
-import { useCallback,useEffect,useMemo,useRef,useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { type QueuedChatMessage } from "@/components/chat/chat-composer";
-import { chatComposerDraftKey,readChatComposerDraft,writeChatComposerDraft } from "@/components/chat/chat-composer-draft";
-import { CODE_WORKSPACE_ARTIFACT_EVENT } from "@/components/chat/chat-message-list";
-import type { ChatAttachment,CodeWorkspaceArtifact } from "@/components/chat/chat-types";
-import { CODE_WORKSPACE_CHAT_WIDTH_STORAGE_KEY,DEFAULT_CHAT_WIDTH,normalizeCodeWorkspaceChatWidth } from "@/components/chat/code-workspace-layout";
+import { chatComposerDraftKey, readChatComposerDraft, writeChatComposerDraft } from "@/components/chat/chat-composer-draft";
+import type { ChatAttachment, CodeWorkspaceArtifact } from "@/components/chat/chat-types";
+import { CODE_WORKSPACE_CHAT_WIDTH_STORAGE_KEY, DEFAULT_CHAT_WIDTH, normalizeCodeWorkspaceChatWidth } from "@/components/chat/code-workspace-layout";
 import { useWorkspace } from "@/hooks/use-workspace";
-import { CHAT_INTERFACE_MODE,CODING_INTERFACE_MODE,type InterfaceMode } from "./chat-interface-mode";
+import { CHAT_INTERFACE_MODE, type InterfaceMode } from "./chat-interface-mode";
 import { rotatePromptSuggestions } from "./chat-page-helpers";
 import { useChatDirectory } from "./page.use-chat-directory";
 import { useConversationActions } from "./page.use-conversation-actions";
 import { useComposerActions } from "./page.use-composer-actions";
 import { useMessageActions } from "./page.use-message-actions";
 import { useChatSession } from "./page.use-chat-session";
+import { useCodeWorkspaceArtifactEvent } from "./page.use-code-workspace-artifact-event";
 import { ChatPageView } from "./page.chat-page.view";
 import { ChatPageBoundary } from "./page.chat-page-boundary";
 
@@ -25,6 +25,7 @@ export function useChatPageController() {
   const searchParams = useSearchParams();
   const { workspaceId, isLoading: workspaceLoading } = useWorkspace();
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [ephemeral, setEphemeral] = useState(false);
   const [input, setInput] = useState("");
   const [queuedMessages, setQueuedMessages] = useState<QueuedChatMessage[]>([]);
   const [codeWorkspaceArtifact, setCodeWorkspaceArtifact] = useState<CodeWorkspaceArtifact | null>(null);
@@ -116,38 +117,47 @@ export function useChatPageController() {
   const selectedAgent = useMemo(() => agents.find((agent) => agent.id === selectedAgentId) ?? null, [agents, selectedAgentId]);
   const emptyPromptSuggestions = useMemo(() => (selectedAgent ? rotatePromptSuggestions(selectedAgent.promptSuggestions ?? [], `${selectedAgent.id}-${new Date().toISOString().slice(0, 10)}`) : []), [selectedAgent]);
 
-  useEffect(() => {
-    function handleCodeWorkspaceArtifact(event: Event) {
-      const detail = (
-        event as CustomEvent<{
-          artifact?: CodeWorkspaceArtifact;
-          activate?: boolean;
-        }>
-      ).detail;
-      const artifact = detail?.artifact;
-      if (!artifact?.projectId) return;
-      setCodeWorkspaceArtifact((current) => {
-        if (current?.projectId === artifact.projectId && artifact.version <= current.version) {
-          return current;
-        }
-        return artifact;
-      });
-      if (!detail.activate) return;
-      const artifactKey = `${artifact.projectId}:${artifact.version}`;
-      if (lastAutoOpenedWorkspaceRef.current === artifactKey) return;
-      lastAutoOpenedWorkspaceRef.current = artifactKey;
-      userSelectedInterfaceModeRef.current = CODING_INTERFACE_MODE;
-      setInterfaceMode(CODING_INTERFACE_MODE);
-    }
-    window.addEventListener(CODE_WORKSPACE_ARTIFACT_EVENT, handleCodeWorkspaceArtifact);
-    return () => {
-      window.removeEventListener(CODE_WORKSPACE_ARTIFACT_EVENT, handleCodeWorkspaceArtifact);
-    };
-  }, []);
+  useCodeWorkspaceArtifactEvent({ lastAutoOpenedWorkspaceRef, userSelectedInterfaceModeRef, setCodeWorkspaceArtifact, setInterfaceMode });
 
-  const { messages, setMessages, sending, pendingApprovals, handleSubmit, resolveApproval, stopGeneration, detachActiveStream, setActiveVersion, loadingMessages, quota, canChat, latestTodoList, conversationImpact } = useChatSession({ workspaceId, selectedAgentId, activeConversationId, queuedMessages, interfaceMode, codeWorkspaceArtifact, lastAutoOpenedWorkspaceRef, userSelectedInterfaceModeRef, composerDraftScopeRef, saveCurrentComposerDraft, resetInterfaceMode, refreshConversations, setActiveConversationId, setSelectedAgentId, setConversations, setQueuedMessages, setCodeWorkspaceArtifact, setInterfaceMode, setLoadingContext });
+  const { messages, setMessages, sending, pendingApprovals, handleSubmit, resolveApproval, stopGeneration, detachActiveStream, setActiveVersion, loadingMessages, quota, canChat, conversationIsOwner, conversationReadOnly, latestTodoList, conversationImpact } = useChatSession({
+    workspaceId,
+    selectedAgentId,
+    activeConversationId,
+    ephemeral,
+    queuedMessages,
+    interfaceMode,
+    codeWorkspaceArtifact,
+    lastAutoOpenedWorkspaceRef,
+    userSelectedInterfaceModeRef,
+    composerDraftScopeRef,
+    saveCurrentComposerDraft,
+    resetInterfaceMode,
+    refreshConversations,
+    setActiveConversationId,
+    setSelectedAgentId,
+    setConversations,
+    setQueuedMessages,
+    setCodeWorkspaceArtifact,
+    setInterfaceMode,
+    setLoadingContext,
+  });
 
-  const { selectAgent, selectConversation, startNewConversation } = useConversationActions({ selectedAgentId, activeConversationId, conversations, newConversationAgentIdRef, setSelectedAgentId, setActiveConversationId, setActiveVersion, setQueuedMessages, setMessages, setCodeWorkspaceArtifact, setAttachments, detachActiveStream, restoreComposerDraft, resetInterfaceMode });
+  const { selectAgent, selectConversation, startNewConversation } = useConversationActions({
+    selectedAgentId,
+    activeConversationId,
+    conversations,
+    newConversationAgentIdRef,
+    setSelectedAgentId,
+    setActiveConversationId,
+    setActiveVersion,
+    setQueuedMessages,
+    setMessages,
+    setCodeWorkspaceArtifact,
+    setAttachments,
+    detachActiveStream,
+    restoreComposerDraft,
+    resetInterfaceMode,
+  });
 
   const routeConversationId = searchParams.get("conversationId");
   const routeAgentId = searchParams.get("agentId");
@@ -166,11 +176,60 @@ export function useChatPageController() {
     }
   }, [activeConversationId, loadingAgents, routeAgentId, routeConversationId, selectAgent, selectConversation, selectedAgentId, startNewConversation]);
 
-  const { submitMessage, uploadCodeWorkspace, uploadChatAttachment, submitSuggestion, setUserDefaultAgent, updateQueuedMessage, cancelQueuedMessage } = useComposerActions({ workspaceId, activeConversationId, input, attachments, canChat, sending, interfaceMode, codeWorkspaceArtifact, handleSubmit, setInput, setAttachments, setQueuedMessages, setCodeWorkspaceArtifact, setInterfaceMode, setOrganizationDefaultAgentId, setUserDefaultAgentId, userSelectedInterfaceModeRef, lastAutoOpenedWorkspaceRef, t });
+  const { submitMessage, uploadCodeWorkspace, uploadChatAttachment, submitSuggestion, setUserDefaultAgent, updateQueuedMessage, cancelQueuedMessage } = useComposerActions({
+    workspaceId,
+    activeConversationId,
+    ephemeral,
+    input,
+    attachments,
+    canChat,
+    sending,
+    interfaceMode,
+    codeWorkspaceArtifact,
+    handleSubmit,
+    setInput,
+    setAttachments,
+    setQueuedMessages,
+    setCodeWorkspaceArtifact,
+    setInterfaceMode,
+    setOrganizationDefaultAgentId,
+    setUserDefaultAgentId,
+    userSelectedInterfaceModeRef,
+    lastAutoOpenedWorkspaceRef,
+    t,
+  });
 
-  const { editMessage, deleteMessage, resendMessage, continueAssistantResponse, reloadActualLatestMessages, reloadAgentContext, approveToolInvocation, rejectToolInvocation } = useMessageActions({ activeConversationId, workspaceId, selectedAgentId, messages, sending, setMessages, handleSubmit, resolveApproval, refreshConversations, loadAgentDirectory, setCodeWorkspaceArtifact, setActiveVersion, setLoadingContext, t });
+  const { editMessage, deleteMessage, resendMessage, continueAssistantResponse, reloadActualLatestMessages, reloadAgentContext, approveToolInvocation, rejectToolInvocation } = useMessageActions({
+    activeConversationId,
+    workspaceId,
+    selectedAgentId,
+    messages,
+    sending,
+    setMessages,
+    handleSubmit,
+    resolveApproval,
+    refreshConversations,
+    loadAgentDirectory,
+    setCodeWorkspaceArtifact,
+    setActiveVersion,
+    setLoadingContext,
+    t,
+  });
 
-  const boundaryLayoutProps = { agents, selectedAgent, selectedAgentId, activeConversationId, organizationDefaultAgentId, userDefaultAgentId, canChat, canCreateAgent, canRunSetup, onSelectAgent: selectAgent, onSetUserDefaultAgent: (agentId: string | null) => void setUserDefaultAgent(agentId), onSetupComplete: () => void reloadAgentContext() };
+  const boundaryLayoutProps = {
+    agents,
+    selectedAgent,
+    selectedAgentId,
+    activeConversationId,
+    organizationDefaultAgentId,
+    userDefaultAgentId,
+    canChat,
+    canCreateAgent,
+    canRunSetup,
+    onSelectAgent: selectAgent,
+    onSetUserDefaultAgent: (agentId: string | null) => void setUserDefaultAgent(agentId),
+    onSetupComplete: () => void reloadAgentContext(),
+  };
   if (workspaceLoading || loadingAgents || agents.length === 0) return <ChatPageBoundary state={workspaceLoading || loadingAgents ? "loading" : "empty"} layoutProps={boundaryLayoutProps} emptyStateProps={{ canCreateAgent, canRunSetup, t }} loadingStateProps={{ t }} />;
 
   return {
@@ -189,9 +248,12 @@ export function useChatPageController() {
     codingChatWidth,
     continueAssistantResponse,
     conversationImpact,
+    conversationIsOwner,
+    conversationReadOnly,
     deleteMessage,
     editMessage,
     emptyPromptSuggestions,
+    ephemeral,
     input,
     interfaceMode,
     latestTodoList,
@@ -210,6 +272,7 @@ export function useChatPageController() {
     selectedAgentId,
     sending,
     setAttachments,
+    setEphemeral,
     setInput,
     setUserDefaultAgent,
     stopGeneration,

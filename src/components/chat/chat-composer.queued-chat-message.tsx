@@ -1,12 +1,12 @@
 "use client";
 
-import { FileIcon,Maximize2Icon,XIcon } from "lucide-react";
-import { useLocale,useTranslations } from "next-intl";
+import { FileIcon, Maximize2Icon, XIcon } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 
-import { FilePreviewDialog,useFilePreview } from "@/components/chat/file-preview";
+import { FilePreviewDialog, useFilePreview } from "@/components/chat/file-preview";
 
 import type { ChatAttachment } from "@/components/chat/chat-types";
-import { Attachment,AttachmentAction,AttachmentActions,AttachmentContent,AttachmentDescription,AttachmentMedia,AttachmentTitle } from "@/components/ui/attachment";
+import { Attachment, AttachmentAction, AttachmentActions, AttachmentContent, AttachmentDescription, AttachmentMedia, AttachmentTitle } from "@/components/ui/attachment";
 import type { ChatTodoList } from "@/modules/chat/todo-list";
 
 export interface QueuedChatMessage {
@@ -101,10 +101,12 @@ export function AttachmentPreview({ attachment, onRemove }: { attachment: ChatAt
   const locale = useLocale();
   const t = useTranslations("chat.composer");
   const subtitle = attachmentSubtitle(attachment, locale, t);
-  const canPreview = attachment.kind === "chat_file" && attachment.extractedTextChars > 0;
+  const isPdf = attachment.kind === "chat_file" && (attachment.mimeType === "application/pdf" || attachment.fileName.toLowerCase().endsWith(".pdf"));
+  const canPreview = attachment.kind === "chat_file" && (isPdf || attachment.extractedTextChars > 0);
   const preview = useFilePreview({
     attachmentId: attachment.id,
     canPreview,
+    nativePreview: isPdf,
   });
 
   if (attachment.kind === "chat_image") {
@@ -154,7 +156,7 @@ export function AttachmentPreview({ attachment, onRemove }: { attachment: ChatAt
           </AttachmentAction>
         </AttachmentActions>
       </Attachment>
-      <FilePreviewDialog open={preview.previewOpen} onOpenChange={preview.setPreviewOpen} fileName={attachment.fileName} url={attachment.url} subtitle={subtitle} previewText={preview.previewText} previewError={preview.previewError} loadingPreview={preview.loadingPreview} />
+      <FilePreviewDialog open={preview.previewOpen} onOpenChange={preview.setPreviewOpen} fileName={attachment.fileName} url={attachment.url} mimeType={attachment.mimeType} subtitle={subtitle} previewText={preview.previewText} previewError={preview.previewError} loadingPreview={preview.loadingPreview} />
     </>
   );
 }

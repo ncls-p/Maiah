@@ -1,4 +1,4 @@
-import { ArrowRightIcon,BotIcon,Grid2X2Icon,ListIcon,MoreHorizontal,PencilIcon,PlusIcon,SearchIcon,Share2,StarIcon,XIcon } from "lucide-react";
+import { ArrowRightIcon, BotIcon, EyeIcon, EyeOffIcon, Grid2X2Icon, ListIcon, MoreHorizontal, PencilIcon, PlusIcon, SearchIcon, Share2, StarIcon, XIcon } from "lucide-react";
 
 import { PageEmptyState } from "@/components/page-empty-state";
 import { PageLoading } from "@/components/page-loading";
@@ -6,13 +6,13 @@ import { ModelLogo } from "@/components/providers/model-logo";
 import { ResourceProvenanceBadge } from "@/components/resource-provenance-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu,DropdownMenuContent,DropdownMenuItem,DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import type { AgentsPageViewModel } from "./page.agents-page.view";
 import { ICON_SIZE_CLASS } from "./page.icon-size-class";
 export function AgentsPageSection2({ model }: { model: AgentsPageViewModel }) {
-  const { agentKindFilter, agents, canCreateAgent, displayMode, filteredAgents, loadError, loading, organizationDefaultAgentId, refreshAgents, router, searchQuery, setAgentKindFilter, setDefaultAgent, setDisplayMode, setSearchQuery, setShareResource, setShowCreateDialog, t, tCommon, tList, tShare, updatingDefaultAgentId, userDefaultAgentId } = model;
+  const { agentKindFilter, agents, canCreateAgent, displayMode, filteredAgents, loadError, loading, organizationDefaultAgentId, refreshAgents, router, searchQuery, setAgentHiddenInChat, setAgentKindFilter, setDefaultAgent, setDisplayMode, setSearchQuery, setShareResource, setShowCreateDialog, t, tCommon, tList, tShare, updatingDefaultAgentId, userDefaultAgentId } = model;
   return (
     <div className="flex flex-col gap-6">
       {/* Agents list card */}
@@ -126,6 +126,10 @@ export function AgentsPageSection2({ model }: { model: AgentsPageViewModel }) {
                           <StarIcon className={cn(ICON_SIZE_CLASS, isUserDefault && "fill-current text-primary")} aria-hidden="true" />
                           {isUserDefault ? tList("clearMyDefault") : tList("setMyDefault")}
                         </DropdownMenuItem>
+                        <DropdownMenuItem className="min-h-10" onClick={() => void setAgentHiddenInChat(agent.id, !agent.hiddenInChat)}>
+                          {agent.hiddenInChat ? <EyeIcon className={ICON_SIZE_CLASS} aria-hidden="true" /> : <EyeOffIcon className={ICON_SIZE_CLASS} aria-hidden="true" />}
+                          {agent.hiddenInChat ? tList("showInChatSelector") : tList("hideFromChatSelector")}
+                        </DropdownMenuItem>
                         {agent.canEdit && agent.kind !== "orchestrator" ? (
                           <DropdownMenuItem
                             className="min-h-10"
@@ -170,6 +174,7 @@ export function AgentsPageSection2({ model }: { model: AgentsPageViewModel }) {
                         {isUserDefault ? tList("badgeMyDefault") : tList("badgeOrganizationDefault")}
                       </Badge>
                     ) : null}
+                    {agent.hiddenInChat ? <Badge variant="secondary">{tList("hiddenFromChat")}</Badge> : null}
                   </div>
 
                   <div className="mt-auto flex items-center border-t border-border/60 pt-3">

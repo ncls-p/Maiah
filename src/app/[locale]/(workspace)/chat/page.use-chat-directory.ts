@@ -28,9 +28,29 @@ export function useChatDirectory(workspaceId: string | null | undefined, transla
   const [loadingContext, setLoadingContext] = useState(false);
 
   const fetchConversationPage = useCallback(
-    async ({ before, query, signal }: { before?: string | null; query?: string; signal?: AbortSignal } = {}) => {
-      if (!workspaceId) return { conversations: [], folders: [], latestConversationId: null, latestConversationAgentId: null, hasMore: false, nextCursor: null };
-      const params = new URLSearchParams({ workspaceId, limit: String(CONVERSATION_PAGE_SIZE), includeMeta: "true" });
+    async ({
+      before,
+      query,
+      signal,
+    }: {
+      before?: string | null;
+      query?: string;
+      signal?: AbortSignal;
+    } = {}) => {
+      if (!workspaceId)
+        return {
+          conversations: [],
+          folders: [],
+          latestConversationId: null,
+          latestConversationAgentId: null,
+          hasMore: false,
+          nextCursor: null,
+        };
+      const params = new URLSearchParams({
+        workspaceId,
+        limit: String(CONVERSATION_PAGE_SIZE),
+        includeMeta: "true",
+      });
       if (before) params.set("before", before);
       if (query?.trim()) params.set("q", query.trim());
       return normalizeConversationList(await fetchJson<ConversationListPayload>(`/api/workspace/conversations?${params.toString()}`, { signal }));
@@ -41,20 +61,33 @@ export function useChatDirectory(workspaceId: string | null | undefined, transla
   const loadAgentDirectory = useCallback(
     async ({ preferredAgentId, signal }: { preferredAgentId?: string | null; signal?: AbortSignal } = {}) => {
       if (!workspaceId) return null;
-      const params = new URLSearchParams({ workspaceId, includeModelMeta: "true" });
+      const params = new URLSearchParams({
+        workspaceId,
+        includeModelMeta: "true",
+      });
       const response = await fetchJson<AgentDirectoryPayload | ChatAgent[]>(`/api/workspace/agents?${params.toString()}`, { signal });
-      const data = (Array.isArray(response) ? response : (response.agents ?? [])) as ChatAgent[];
-      const defaults = Array.isArray(response) ? { organizationDefaultAgentId: null, userDefaultAgentId: null, effectiveDefaultAgentId: null, canCreateAgent: false, canManageProviders: false } : response;
+      const allAgents = (Array.isArray(response) ? response : (response.agents ?? [])) as ChatAgent[];
+      const requestedAgentId = new URL(window.location.href).searchParams.get("agentId");
+      const data = allAgents.filter((agent) => !agent.hiddenInChat || agent.id === requestedAgentId);
+      const defaults = Array.isArray(response)
+        ? {
+            organizationDefaultAgentId: null,
+            userDefaultAgentId: null,
+            effectiveDefaultAgentId: null,
+            canCreateAgent: false,
+            canManageProviders: false,
+          }
+        : response;
       setAgents(data);
       setOrganizationDefaultAgentId(defaults.organizationDefaultAgentId ?? null);
       setCanCreateAgent(Boolean(defaults.canCreateAgent));
       setCanRunSetup(Boolean(defaults.canCreateAgent && defaults.canManageProviders));
       setUserDefaultAgentId(defaults.userDefaultAgentId ?? null);
       const urlParams = new URL(window.location.href).searchParams;
-      const requestedAgentId = urlParams.get("agentId");
+      const requestedAgentIdFromUrl = urlParams.get("agentId");
       const requestedConversationId = urlParams.get("conversationId");
       const exists = (id: string | null | undefined) => Boolean(id && data.some((agent) => agent.id === id));
-      const nextAgentId = (exists(requestedAgentId) ? requestedAgentId : null) ?? (exists(preferredAgentId) ? preferredAgentId : null) ?? (exists(defaults.effectiveDefaultAgentId) ? defaults.effectiveDefaultAgentId : null) ?? data[0]?.id ?? null;
+      const nextAgentId = (exists(requestedAgentIdFromUrl) ? requestedAgentIdFromUrl : null) ?? (exists(preferredAgentId) ? preferredAgentId : null) ?? (exists(defaults.effectiveDefaultAgentId) ? defaults.effectiveDefaultAgentId : null) ?? data[0]?.id ?? null;
       setSelectedAgentId(nextAgentId);
       if (requestedConversationId) setActiveConversationId(requestedConversationId);
       return nextAgentId;
@@ -92,12 +125,38 @@ export function useChatDirectory(workspaceId: string | null | undefined, transla
     if (!workspaceId || !query) return;
     const controller = new AbortController();
     const timeoutId = window.setTimeout(() => {
-      setConversationSearchState({ query, conversations: [], hasMore: false, nextCursor: null, loading: true, loadingMore: false, error: false });
+      setConversationSearchState({
+        query,
+        conversations: [],
+        hasMore: false,
+        nextCursor: null,
+        loading: true,
+        loadingMore: false,
+        error: false,
+      });
       void fetchConversationPage({ query, signal: controller.signal })
-        .then((data) => setConversationSearchState({ query, conversations: data.conversations, hasMore: data.hasMore, nextCursor: data.nextCursor, loading: false, loadingMore: false, error: false }))
+        .then((data) =>
+          setConversationSearchState({
+            query,
+            conversations: data.conversations,
+            hasMore: data.hasMore,
+            nextCursor: data.nextCursor,
+            loading: false,
+            loadingMore: false,
+            error: false,
+          }),
+        )
         .catch((error: unknown) => {
           if (error instanceof Error && error.name === "AbortError") return;
-          setConversationSearchState({ query, conversations: [], hasMore: false, nextCursor: null, loading: false, loadingMore: false, error: true });
+          setConversationSearchState({
+            query,
+            conversations: [],
+            hasMore: false,
+            nextCursor: null,
+            loading: false,
+            loadingMore: false,
+            error: true,
+          });
         });
     }, 300);
     return () => {
@@ -109,10 +168,27 @@ export function useChatDirectory(workspaceId: string | null | undefined, transla
   const loadMoreConversationSearchResults = useCallback(async () => {
     const query = conversationSearchQuery.trim();
     if (!query || conversationSearchState.query !== query || !conversationSearchState.hasMore || conversationSearchState.loadingMore || !conversationSearchState.nextCursor) return;
-    setConversationSearchState((current) => ({ ...current, loadingMore: true, error: false }));
+    setConversationSearchState((current) => ({
+      ...current,
+      loadingMore: true,
+      error: false,
+    }));
     try {
-      const data = await fetchConversationPage({ query, before: conversationSearchState.nextCursor });
-      setConversationSearchState((current) => (current.query === query ? { ...current, conversations: mergeConversationPages(current.conversations, data.conversations), hasMore: data.hasMore, nextCursor: data.nextCursor, loadingMore: false } : current));
+      const data = await fetchConversationPage({
+        query,
+        before: conversationSearchState.nextCursor,
+      });
+      setConversationSearchState((current) =>
+        current.query === query
+          ? {
+              ...current,
+              conversations: mergeConversationPages(current.conversations, data.conversations),
+              hasMore: data.hasMore,
+              nextCursor: data.nextCursor,
+              loadingMore: false,
+            }
+          : current,
+      );
     } catch {
       setConversationSearchState((current) => (current.query === query ? { ...current, loadingMore: false, error: true } : current));
     }
@@ -162,5 +238,38 @@ export function useChatDirectory(workspaceId: string | null | undefined, transla
     };
   }, [fetchConversationPage, workspaceId]);
 
-  return { agents, setAgents, selectedAgentId, setSelectedAgentId, organizationDefaultAgentId, setOrganizationDefaultAgentId, canCreateAgent, canRunSetup, userDefaultAgentId, setUserDefaultAgentId, conversations, setConversations, conversationFolders, setConversationFolders, hasMoreConversations, setHasMoreConversations, conversationCursor, setConversationCursor, conversationSearchQuery, setConversationSearchQuery, conversationSearchState, setConversationSearchState, setConversationSearchRevision, loadingMoreConversations, loadingAgents, loadingContext, setLoadingContext, fetchConversationPage, loadAgentDirectory, refreshConversations, loadMoreConversations, loadMoreConversationSearchResults };
+  return {
+    agents,
+    setAgents,
+    selectedAgentId,
+    setSelectedAgentId,
+    organizationDefaultAgentId,
+    setOrganizationDefaultAgentId,
+    canCreateAgent,
+    canRunSetup,
+    userDefaultAgentId,
+    setUserDefaultAgentId,
+    conversations,
+    setConversations,
+    conversationFolders,
+    setConversationFolders,
+    hasMoreConversations,
+    setHasMoreConversations,
+    conversationCursor,
+    setConversationCursor,
+    conversationSearchQuery,
+    setConversationSearchQuery,
+    conversationSearchState,
+    setConversationSearchState,
+    setConversationSearchRevision,
+    loadingMoreConversations,
+    loadingAgents,
+    loadingContext,
+    setLoadingContext,
+    fetchConversationPage,
+    loadAgentDirectory,
+    refreshConversations,
+    loadMoreConversations,
+    loadMoreConversationSearchResults,
+  };
 }

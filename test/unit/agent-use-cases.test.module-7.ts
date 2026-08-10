@@ -1,11 +1,11 @@
-import { describe,expect,it,vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { cloneDelegationBindings } from "@/modules/agent/delegation-use-cases";
-import { cloneAgent,getAgentDefaultPreferences,reorderOrganizationAgents,setOrganizationDefaultAgent,setUserDefaultAgent } from "@/modules/agent/use-cases";
+import { cloneAgent, getAgentDefaultPreferences, reorderOrganizationAgents, setOrganizationDefaultAgent, setUserDefaultAgent } from "@/modules/agent/use-cases";
 import { cloneKnowledgeBindings } from "@/modules/knowledge/use-cases";
 import { cloneSkillBindings } from "@/modules/skills/use-cases";
 import { cloneToolBindings } from "@/modules/tool/use-cases";
-import { Chain,dbModule,fakeAgent,fakeVersion,reset } from "./agent-use-cases.test.chain";
+import { Chain, dbModule, fakeAgent, fakeVersion, reset } from "./agent-use-cases.test.chain";
 
 // ─── defaults, ordering, cloning ───────────────────────────────────────
 
@@ -17,6 +17,7 @@ describe("agent defaults, ordering, and cloning", () => {
       organizationDefaultAgentId: "org-agent",
       userDefaultAgentId: null,
       effectiveDefaultAgentId: "org-agent",
+      hiddenAgentIds: [],
     });
   });
 
@@ -32,8 +33,9 @@ describe("agent defaults, ordering, and cloning", () => {
       organizationDefaultAgentId: null,
       userDefaultAgentId: null,
       effectiveDefaultAgentId: null,
+      hiddenAgentIds: [],
     });
-    expect(dbModule.db.delete).toHaveBeenCalled();
+    expect(dbModule.db.insert).toHaveBeenCalled();
 
     reset();
     dbModule.db.select.mockReturnValue(dbModule._c);

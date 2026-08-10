@@ -49,6 +49,8 @@ export async function extractKnowledgeUploads(uploads: KnowledgeUpload[], contex
     title: string;
     content: string;
     mimeType: string;
+    originalBytes: Uint8Array;
+    originalMimeType: string | undefined;
   }> = [];
   const rejected: Array<{ title: string; error: string }> = [];
   for (const upload of expanded) {
@@ -71,6 +73,8 @@ export async function extractKnowledgeUploads(uploads: KnowledgeUpload[], contex
           title,
           content: extracted.text,
           mimeType: extracted.mimeType,
+          originalBytes: upload.bytes,
+          originalMimeType: upload.mimeType,
         });
       }
     } catch (error) {

@@ -12,6 +12,7 @@ export interface ChatAgent {
   promptSuggestions?: string[];
   modelLogoUrl?: string | null;
   toolCount?: number;
+  hiddenInChat?: boolean;
 }
 
 export interface ChatConversation {
@@ -22,6 +23,11 @@ export interface ChatConversation {
   pinnedAt?: string | null;
   sidebarOrder?: number | null;
   updatedAt: string;
+  isOwner?: boolean;
+  canContinue?: boolean;
+  continuationMode?: "shared" | "fork";
+  isEphemeral?: boolean;
+  publicShareId?: string | null;
   searchMatch?: {
     kind: "title" | "message";
     snippet: string;

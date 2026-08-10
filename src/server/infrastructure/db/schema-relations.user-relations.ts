@@ -1,7 +1,7 @@
 import { relations } from "drizzle-orm";
 import * as schema from "./schema-tables";
 
-export const { accounts, agentKnowledgeBindings, agentSkillBindings, agentSkills, agentToolBindings, agentVersions, agents, aiProviders, conversationFolders, conversations, knowledgeBases, mcpServers, messageParts, messages, organizations, organizationMembers, sessions, teamMembers, teams, toolConnectionRequirements, toolConnections, toolConnectors, userAgentPreferences, userToolSettings, users, workspaceMembers, workspaces } = schema;
+export const { accounts, agentKnowledgeBindings, agentSkillBindings, agentSkills, agentToolBindings, agentVersions, agents, aiProviders, conversationFolders, conversationShares, conversations, knowledgeBases, mcpServers, messageParts, messages, organizations, organizationMembers, sessions, teamMembers, teams, toolConnectionRequirements, toolConnections, toolConnectors, userAgentPreferences, userToolSettings, users, workspaceMembers, workspaces } = schema;
 
 // ─── Relations ─────────────────────────────────────────────────────────
 
@@ -12,6 +12,7 @@ export const userRelations = relations(users, ({ many }) => ({
   organizationMembers: many(organizationMembers),
   teamMembers: many(teamMembers),
   agentPreferences: many(userAgentPreferences),
+  conversationShares: many(conversationShares),
 }));
 
 export const organizationRelations = relations(organizations, ({ many }) => ({

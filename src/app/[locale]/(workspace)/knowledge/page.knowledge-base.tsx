@@ -33,6 +33,7 @@ export interface DocumentPreview {
   documentId: string;
   documentTitle: string;
   mimeType: string | null;
+  originalUrl: string | null;
   chunks: Array<{ chunkId: string; chunkIndex: number; content: string }>;
 }
 export interface KnowledgeAgent {

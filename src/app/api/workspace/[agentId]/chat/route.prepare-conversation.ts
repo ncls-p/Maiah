@@ -3,6 +3,7 @@ import { getActiveVersion, resolveProviderForVersion } from "@/modules/agent/use
 import type { AssistantContinuationClaim } from "@/modules/chat/continuation";
 import { claimAssistantContinuation } from "@/modules/chat/continuation";
 import type { ChatAttachment } from "@/modules/chat/attachments";
+import { forkSharedConversation, getConversationAccess } from "@/modules/chat/conversation-sharing";
 import { db } from "@/server/infrastructure/db";
 import { conversations, messageParts, messages, toolInvocations } from "@/server/infrastructure/db/schema";
 import { and, eq, gt, inArray, ne } from "drizzle-orm";
@@ -12,17 +13,26 @@ import type { ChatAgentRow } from "./route.execution-context";
 
 type RejectRequest = (status: number, reason: string, body: unknown, context?: Record<string, unknown>) => Response;
 
-export async function prepareChatConversation(input: { agent: ChatAgentRow; actorUserId: string; agentId: string; content: string; existingConversationId?: string | null; resendFromMessageId?: string | null; continueFromMessageId?: string | null; codeWorkspaceAttachment: unknown; messageAttachments: ChatAttachment[]; rejectChatRequest: RejectRequest }) {
-  const { agent, actorUserId, agentId, content, existingConversationId, resendFromMessageId, continueFromMessageId, codeWorkspaceAttachment, messageAttachments, rejectChatRequest } = input;
+export async function prepareChatConversation(input: { agent: ChatAgentRow; actorUserId: string; agentId: string; content: string; existingConversationId?: string | null; ephemeral?: boolean; resendFromMessageId?: string | null; continueFromMessageId?: string | null; codeWorkspaceAttachment: unknown; messageAttachments: ChatAttachment[]; rejectChatRequest: RejectRequest }) {
+  const { agent, actorUserId, agentId, content, existingConversationId, ephemeral = false, resendFromMessageId, continueFromMessageId, codeWorkspaceAttachment, messageAttachments, rejectChatRequest } = input;
   let conversation: typeof conversations.$inferSelect | null = null;
   let createdConversation = false;
   if (existingConversationId) {
-    const [existing] = await db
-      .select()
-      .from(conversations)
-      .where(and(eq(conversations.id, existingConversationId), eq(conversations.workspaceId, agent.workspaceId), eq(conversations.userId, actorUserId), eq(conversations.status, "active")))
-      .limit(1);
-    conversation = existing ?? null;
+    const access = await getConversationAccess(existingConversationId, actorUserId);
+    const existing = access?.conversation;
+    if (existing && existing.workspaceId === agent.workspaceId && existing.agentId === agentId && (!existing.expiresAt || existing.expiresAt > new Date())) {
+      if (access.role === "recipient") {
+        if (!access.canContinue || resendFromMessageId || continueFromMessageId) {
+          return rejectChatRequest(403, "conversation_read_only", {
+            error: "This shared conversation is read-only",
+          });
+        }
+        conversation = access.continuationMode === "fork" ? await forkSharedConversation(existing, actorUserId) : existing;
+        createdConversation = access.continuationMode === "fork";
+      } else {
+        conversation = existing;
+      }
+    }
 
     if (!conversation && (resendFromMessageId || continueFromMessageId)) {
       return rejectChatRequest(
@@ -87,6 +97,8 @@ export async function prepareChatConversation(input: { agent: ChatAgentRow; acto
         userId: actorUserId,
         title: content.slice(0, 100),
         status: "active",
+        isEphemeral: ephemeral,
+        expiresAt: ephemeral ? new Date(Date.now() + 24 * 60 * 60 * 1000) : null,
       })
       .returning();
     conversation = newConversation;
@@ -251,5 +263,16 @@ export async function prepareChatConversation(input: { agent: ChatAgentRow; acto
       )[0];
   const assistantMessageId = assistantMessage.id;
 
-  return { conversation, createdConversation, version, providerConfig, continuationClaim, userMessage, assistantMessage, shouldRegenerateConversationTitle, userMessageId, assistantMessageId };
+  return {
+    conversation,
+    createdConversation,
+    version,
+    providerConfig,
+    continuationClaim,
+    userMessage,
+    assistantMessage,
+    shouldRegenerateConversationTitle,
+    userMessageId,
+    assistantMessageId,
+  };
 }

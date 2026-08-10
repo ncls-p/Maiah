@@ -24,6 +24,7 @@ export function useChatLayoutController(props: ChatLayoutProps) {
         agents={props.agents}
         selectedAgent={props.selectedAgent}
         activeConversationId={props.activeConversationId}
+        conversationIsOwner={props.conversationIsOwner ?? true}
         workspaceId={workspaceId}
         organizationDefaultAgentId={props.organizationDefaultAgentId}
         userDefaultAgentId={props.userDefaultAgentId}
@@ -31,6 +32,8 @@ export function useChatLayoutController(props: ChatLayoutProps) {
         canCreateAgent={props.canCreateAgent ?? false}
         onSelectAgent={props.onSelectAgent}
         onSetUserDefaultAgent={props.onSetUserDefaultAgent}
+        ephemeral={props.ephemeral ?? false}
+        onEphemeralChange={props.onEphemeralChange}
       />
     ),
     secondary:

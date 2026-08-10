@@ -17,6 +17,7 @@ type SubmitChat = ReturnType<typeof useChatStream>["handleSubmit"];
 type ComposerActionsContext = {
   workspaceId: string | null | undefined;
   activeConversationId: string | null;
+  ephemeral: boolean;
   input: string;
   attachments: ChatAttachment[];
   canChat: boolean;
@@ -57,7 +58,11 @@ export function useComposerActions(c: ComposerActionsContext) {
     c.setInput("");
     c.setAttachments([]);
     if (c.sending) return queueMessage(content);
-    void c.handleSubmit(content, { codeWorkspaceId: c.interfaceMode === CODING_INTERFACE_MODE ? c.codeWorkspaceArtifact?.projectId : undefined, attachments });
+    void c.handleSubmit(content, {
+      codeWorkspaceId: c.interfaceMode === CODING_INTERFACE_MODE ? c.codeWorkspaceArtifact?.projectId : undefined,
+      attachments,
+      ephemeral: !c.activeConversationId && c.ephemeral,
+    });
   }
 
   async function uploadCodeWorkspace(files: File[]) {
@@ -78,8 +83,15 @@ export function useComposerActions(c: ComposerActionsContext) {
       formData.set("workspaceId", c.workspaceId);
       if (zipFiles.length === 1) formData.set("file", zipFiles[0]);
       else for (const file of uploadedFiles) formData.append("files", file, uploadPathForFile(file));
-      const response = await fetch("/api/workspace/code-projects/upload", { method: "POST", body: formData });
-      const data = (await response.json().catch(() => null)) as { artifact?: CodeWorkspaceArtifact; prompt?: string; error?: string } | null;
+      const response = await fetch("/api/workspace/code-projects/upload", {
+        method: "POST",
+        body: formData,
+      });
+      const data = (await response.json().catch(() => null)) as {
+        artifact?: CodeWorkspaceArtifact;
+        prompt?: string;
+        error?: string;
+      } | null;
       if (!response.ok || !data?.artifact || !data.prompt) throw new Error(data?.error || c.t("attachments.codeUploadFailed"));
       c.setAttachments([]);
       c.setCodeWorkspaceArtifact(data.artifact);
@@ -87,7 +99,9 @@ export function useComposerActions(c: ComposerActionsContext) {
       c.setInterfaceMode(CODING_INTERFACE_MODE);
       c.lastAutoOpenedWorkspaceRef.current = `${data.artifact.projectId}:${data.artifact.version}`;
       toast.success(c.t("attachments.codeUploaded"));
-      await c.handleSubmit(data.prompt, { codeWorkspaceArtifact: data.artifact });
+      await c.handleSubmit(data.prompt, {
+        codeWorkspaceArtifact: data.artifact,
+      });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : c.t("attachments.codeUploadFailed"));
     }
@@ -96,7 +110,15 @@ export function useComposerActions(c: ComposerActionsContext) {
   async function uploadChatAttachment(file: File) {
     if (!c.workspaceId || !c.canChat) return;
     try {
-      const data = await uploadDocumentInChunks<{ attachment?: ChatAttachment; error?: string }>({ workspaceId: c.workspaceId, file, chunkUrl: "/api/workspace/chat-attachments/upload?phase=chunk", completeUrl: "/api/workspace/chat-attachments/upload?phase=complete" });
+      const data = await uploadDocumentInChunks<{
+        attachment?: ChatAttachment;
+        error?: string;
+      }>({
+        workspaceId: c.workspaceId,
+        file,
+        chunkUrl: "/api/workspace/chat-attachments/upload?phase=chunk",
+        completeUrl: "/api/workspace/chat-attachments/upload?phase=complete",
+      });
       if (!data.attachment) throw new Error(data.error || c.t("attachments.uploadFailed"));
       c.setAttachments((current) => [...current, data.attachment!]);
       toast.success(data.attachment.kind === "chat_image" ? c.t("attachments.imageAttached") : c.t("attachments.fileAttached"));
@@ -109,13 +131,27 @@ export function useComposerActions(c: ComposerActionsContext) {
     if (!trimmed || !c.canChat) return;
     c.setInput("");
     if (c.sending) return queueMessage(trimmed);
-    void c.handleSubmit(trimmed);
+    void c.handleSubmit(trimmed, {
+      ephemeral: !c.activeConversationId && c.ephemeral,
+    });
   }
   async function setUserDefaultAgent(agentId: string | null) {
     if (!c.workspaceId) return;
     try {
-      const response = await fetch("/api/workspace/agents/preferences", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ workspaceId: c.workspaceId, scope: "user", defaultAgentId: agentId }) });
-      const data = (await response.json().catch(() => null)) as { error?: string; organizationDefaultAgentId?: string | null; userDefaultAgentId?: string | null } | null;
+      const response = await fetch("/api/workspace/agents/preferences", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          workspaceId: c.workspaceId,
+          scope: "user",
+          defaultAgentId: agentId,
+        }),
+      });
+      const data = (await response.json().catch(() => null)) as {
+        error?: string;
+        organizationDefaultAgentId?: string | null;
+        userDefaultAgentId?: string | null;
+      } | null;
       if (!response.ok) throw new Error(data?.error || c.t("defaultSaveFailed"));
       c.setOrganizationDefaultAgentId(data?.organizationDefaultAgentId ?? null);
       c.setUserDefaultAgentId(data?.userDefaultAgentId ?? null);
@@ -126,5 +162,13 @@ export function useComposerActions(c: ComposerActionsContext) {
   }
   const updateQueuedMessage = (id: string, content: string) => c.setQueuedMessages((current) => current.map((message) => (message.id === id ? { ...message, content } : message)));
   const cancelQueuedMessage = (id: string) => c.setQueuedMessages((current) => current.filter((message) => message.id !== id));
-  return { submitMessage, uploadCodeWorkspace, uploadChatAttachment, submitSuggestion, setUserDefaultAgent, updateQueuedMessage, cancelQueuedMessage };
+  return {
+    submitMessage,
+    uploadCodeWorkspace,
+    uploadChatAttachment,
+    submitSuggestion,
+    setUserDefaultAgent,
+    updateQueuedMessage,
+    cancelQueuedMessage,
+  };
 }

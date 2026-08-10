@@ -1,19 +1,19 @@
 "use client";
 
-import { FolderPlusIcon,MessageSquareIcon,PanelLeftOpenIcon,PlusIcon } from "lucide-react";
+import { FolderPlusIcon, MessageSquareIcon, PanelLeftOpenIcon, PlusIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useMemo,useState } from "react";
+import { useMemo, useState } from "react";
 
 import type { ChatConversation } from "@/components/chat/chat-types";
-import { SidebarFooter,SidebarHeader } from "@/components/sidebar-chrome";
+import { SidebarFooter, SidebarHeader } from "@/components/sidebar-chrome";
 import { Button } from "@/components/ui/button";
-import { Tooltip,TooltipContent,TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useConversationFolderVisibility } from "@/hooks/use-conversation-folder-visibility";
 import { cn } from "@/lib/utils";
 import { buildMenuGroups } from "@/modules/navigation/sidebar-config";
 import { ChatSidebarView } from "./chat-sidebar.chat-sidebar.view";
 import { ConversationItem } from "./chat-sidebar.conversation-item";
-import { BUTTON_TYPE,ChatSidebarProps,GHOST_VARIANT } from "./chat-sidebar.default-workspace-nav-open";
+import { BUTTON_TYPE, ChatSidebarProps, GHOST_VARIANT } from "./chat-sidebar.default-workspace-nav-open";
 
 export function useChatSidebarController({ agents, conversations, conversationFolders, activeConversationId, loading, searchQuery = "", searchResults = [], searching = false, searchError = false, hasMoreSearchResults = false, loadingMoreSearchResults = false, onSearchQueryChange, onRetrySearch, onLoadMoreSearchResults, onSelectConversation, onNewConversation, onRenameConversation, onDeleteConversation, onCreateConversationFolder, onRenameConversationFolder, onDeleteConversationFolder, onToggleConversationPin, onReorderConversations, hasMoreConversations, loadingMoreConversations, onLoadMoreConversations, collapsed, onCollapsedChange, className, shell, workspaceId, readOnly = false, showWorkspaceNavigation = true, footerContent }: ChatSidebarProps) {
   const t = useTranslations("chat.sidebar");
@@ -184,7 +184,7 @@ export function useChatSidebarController({ agents, conversations, conversationFo
         onDropBefore={(event) => handleConversationDrop(event, conversation)}
         isDragging={draggingConversationId === conversation.id}
         searchMatch={options?.searchResult ? conversation.searchMatch : undefined}
-        readOnly={readOnly}
+        readOnly={readOnly || conversation.isOwner === false}
       />
     );
   }

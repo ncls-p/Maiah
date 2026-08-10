@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { agentSkillBindings,agentSkills,agentVersions,agents,conversationFolders,conversations,mcpServers,messageParts,messages,toolConnectionRequirements,toolConnections,toolConnectors,userToolSettings,users,workspaces } from "./schema-relations.user-relations";
+import { agentSkillBindings, agentSkills, agentVersions, agents, conversationFolders, conversationShares, conversations, mcpServers, messageParts, messages, toolConnectionRequirements, toolConnections, toolConnectors, userToolSettings, users, workspaces } from "./schema-relations.user-relations";
 
 export const conversationRelations = relations(conversations, ({ one, many }) => ({
   workspace: one(workspaces, {
@@ -23,6 +23,24 @@ export const conversationRelations = relations(conversations, ({ one, many }) =>
     references: [conversationFolders.id],
   }),
   messages: many(messages),
+  shares: many(conversationShares),
+}));
+
+export const conversationShareRelations = relations(conversationShares, ({ one }) => ({
+  conversation: one(conversations, {
+    fields: [conversationShares.conversationId],
+    references: [conversations.id],
+  }),
+  sharedBy: one(users, {
+    fields: [conversationShares.sharedByUserId],
+    references: [users.id],
+    relationName: "conversationSharedBy",
+  }),
+  sharedWith: one(users, {
+    fields: [conversationShares.sharedWithUserId],
+    references: [users.id],
+    relationName: "conversationSharedWith",
+  }),
 }));
 
 export const messageRelations = relations(messages, ({ one, many }) => ({

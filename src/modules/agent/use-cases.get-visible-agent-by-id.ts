@@ -1,9 +1,9 @@
 import { audit } from "@/server/domain/services/audit";
 import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
-import { agents,userAgentPreferences } from "@/server/infrastructure/db/schema";
-import { and,eq,isNull,sql } from "drizzle-orm";
-import { AgentDefaultPreferences,AgentRow } from "./use-cases.agent-row";
+import { agents, userAgentPreferences } from "@/server/infrastructure/db/schema";
+import { and, eq, isNull, sql } from "drizzle-orm";
+import { AgentDefaultPreferences, AgentRow } from "./use-cases.agent-row";
 import { getAgentById } from "./use-cases.create-agent";
 
 export async function getVisibleAgentById(agentId: string, workspaceId: string, userId: string, canAdminCurate: boolean) {
@@ -51,7 +51,10 @@ export async function getAgentDefaultPreferences(workspaceId: string, userId: st
     .where(and(eq(agents.workspaceId, workspaceId), eq(agents.isOrganizationDefault, true), isNull(agents.archivedAt)))
     .limit(1);
   const [userPreference] = await db
-    .select({ defaultAgentId: userAgentPreferences.defaultAgentId })
+    .select({
+      defaultAgentId: userAgentPreferences.defaultAgentId,
+      hiddenAgentIdsJson: userAgentPreferences.hiddenAgentIdsJson,
+    })
     .from(userAgentPreferences)
     .where(and(eq(userAgentPreferences.workspaceId, workspaceId), eq(userAgentPreferences.userId, userId)))
     .limit(1);
@@ -65,12 +68,53 @@ export async function getAgentDefaultPreferences(workspaceId: string, userId: st
     organizationDefaultAgentId: usableOrganizationDefault,
     userDefaultAgentId: usableUserDefault,
     effectiveDefaultAgentId: usableUserDefault ?? usableOrganizationDefault,
+    hiddenAgentIds: (userPreference?.hiddenAgentIdsJson ?? []).filter((id) => !availableAgentIds || availableAgentIds.has(id)),
   };
+}
+
+export async function setAgentHiddenInChat(input: { workspaceId: string; userId: string; agentId: string; hidden: boolean; canAdminCurate?: boolean }) {
+  const agent = await getVisibleAgentById(input.agentId, input.workspaceId, input.userId, Boolean(input.canAdminCurate));
+  if (!agent) throw new Error("Agent not found");
+
+  const [preference] = await db
+    .select({ hiddenAgentIdsJson: userAgentPreferences.hiddenAgentIdsJson })
+    .from(userAgentPreferences)
+    .where(and(eq(userAgentPreferences.workspaceId, input.workspaceId), eq(userAgentPreferences.userId, input.userId)))
+    .limit(1);
+  const hiddenIds = new Set(preference?.hiddenAgentIdsJson ?? []);
+  if (input.hidden) hiddenIds.add(input.agentId);
+  else hiddenIds.delete(input.agentId);
+
+  await db
+    .insert(userAgentPreferences)
+    .values({
+      workspaceId: input.workspaceId,
+      userId: input.userId,
+      hiddenAgentIdsJson: [...hiddenIds],
+      updatedAt: new Date(),
+    })
+    .onConflictDoUpdate({
+      target: [userAgentPreferences.workspaceId, userAgentPreferences.userId],
+      set: { hiddenAgentIdsJson: [...hiddenIds], updatedAt: new Date() },
+    });
+
+  return getAgentDefaultPreferences(input.workspaceId, input.userId);
 }
 
 export async function setUserDefaultAgent(input: { workspaceId: string; userId: string; agentId: string | null; canAdminCurate?: boolean }) {
   if (!input.agentId) {
-    await db.delete(userAgentPreferences).where(and(eq(userAgentPreferences.workspaceId, input.workspaceId), eq(userAgentPreferences.userId, input.userId)));
+    await db
+      .insert(userAgentPreferences)
+      .values({
+        workspaceId: input.workspaceId,
+        userId: input.userId,
+        defaultAgentId: null,
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: [userAgentPreferences.workspaceId, userAgentPreferences.userId],
+        set: { defaultAgentId: null, updatedAt: new Date() },
+      });
     return getAgentDefaultPreferences(input.workspaceId, input.userId);
   }
 

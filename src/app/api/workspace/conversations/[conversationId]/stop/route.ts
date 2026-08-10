@@ -13,6 +13,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ con
     async ({ session }) => {
       const access = await getAuthorizedConversation(session.user.id, params);
       if (!access.ok) return access.response;
+      if (
+        access.access.role === "recipient" &&
+        (!access.access.canContinue ||
+          access.access.continuationMode !== "shared")
+      ) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
       const { conversationId } = access;
 
       const [streamingMessage] = await db

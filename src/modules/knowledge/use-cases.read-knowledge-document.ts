@@ -1,7 +1,7 @@
 import { decryptValue } from "@/lib/crypto";
 import { db } from "@/server/infrastructure/db";
-import { documentChunks,documents } from "@/server/infrastructure/db/schema";
-import { and,asc,eq } from "drizzle-orm";
+import { documentChunks, documents } from "@/server/infrastructure/db/schema";
+import { and, asc, eq } from "drizzle-orm";
 import { getKnowledgeBase } from "./use-cases.list-knowledge-bases";
 
 export async function readKnowledgeDocument(input: { documentId: string; knowledgeBaseId: string; workspaceId: string; userId: string }) {
@@ -13,6 +13,7 @@ export async function readKnowledgeDocument(input: { documentId: string; knowled
       id: documents.id,
       title: documents.title,
       mimeType: documents.mimeType,
+      objectStorageKey: documents.objectStorageKey,
     })
     .from(documents)
     .where(and(eq(documents.id, input.documentId), eq(documents.knowledgeBaseId, input.knowledgeBaseId), eq(documents.workspaceId, input.workspaceId), eq(documents.status, "ready")))
@@ -41,6 +42,7 @@ export async function readKnowledgeDocument(input: { documentId: string; knowled
     documentId: document.id,
     documentTitle: document.title,
     mimeType: document.mimeType,
+    originalUrl: document.mimeType === "application/pdf" && document.objectStorageKey ? `/api/workspace/knowledge-bases/${input.knowledgeBaseId}/documents/${document.id}/raw?workspaceId=${input.workspaceId}` : null,
     knowledgeBaseId: knowledgeBase.id,
     knowledgeBaseName: knowledgeBase.name,
     chunks,

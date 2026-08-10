@@ -2,19 +2,20 @@
 
 import { code } from "@streamdown/code";
 import { useTranslations } from "next-intl";
-import { useState,type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Streamdown } from "streamdown";
 
 import { Button } from "@/components/ui/button";
-import { Dialog,DialogContent,DialogDescription,DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CopyIcon,DownloadIcon } from "lucide-react";
+import { CopyIcon, DownloadIcon } from "lucide-react";
 
 const MARKDOWN_PLUGINS = { code };
 
 interface FilePreviewOptions {
   attachmentId: string;
   canPreview: boolean;
+  nativePreview?: boolean;
 }
 
 async function requestPreviewText(attachmentId: string) {
@@ -30,14 +31,14 @@ async function requestPreviewText(attachmentId: string) {
 }
 
 export function useFilePreview(options: FilePreviewOptions) {
-  const { attachmentId, canPreview } = options;
+  const { attachmentId, canPreview, nativePreview = false } = options;
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewText, setPreviewText] = useState<string | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
 
   async function loadPreviewText() {
-    if (!canPreview || previewText !== null || loadingPreview) return;
+    if (!canPreview || nativePreview || previewText !== null || loadingPreview) return;
     setLoadingPreview(true);
     setPreviewError(null);
     try {
@@ -78,10 +79,12 @@ interface FilePreviewDialogProps {
   previewText: string | null;
   previewError: string | null;
   loadingPreview: boolean;
+  mimeType?: string | null;
 }
 
-export function FilePreviewDialog({ open, onOpenChange, fileName, url, subtitle, previewText, previewError, loadingPreview }: FilePreviewDialogProps) {
+export function FilePreviewDialog({ open, onOpenChange, fileName, url, subtitle, previewText, previewError, loadingPreview, mimeType }: FilePreviewDialogProps) {
   const t = useTranslations("chat.artifacts");
+  const isPdf = mimeType?.split(";", 1)[0]?.toLowerCase() === "application/pdf" || fileName.toLowerCase().endsWith(".pdf");
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[85dvh] max-w-3xl flex-col overflow-hidden">
@@ -96,7 +99,7 @@ export function FilePreviewDialog({ open, onOpenChange, fileName, url, subtitle,
               variant="outline"
               size="sm"
               className="h-8 gap-1.5 px-2 text-xs"
-              disabled={!previewText}
+              disabled={isPdf || !previewText}
               onClick={() => {
                 if (!previewText) return;
                 void navigator.clipboard.writeText(previewText);
@@ -114,7 +117,9 @@ export function FilePreviewDialog({ open, onOpenChange, fileName, url, subtitle,
           </div>
         </div>
         <div className="min-h-0 flex-1 overflow-auto px-1 py-4">
-          {loadingPreview ? (
+          {isPdf ? (
+            <iframe src={url} title={fileName} className="h-[min(68dvh,52rem)] w-full rounded-xl border bg-background" />
+          ) : loadingPreview ? (
             <Skeleton className="h-64 w-full rounded-xl" />
           ) : previewError ? (
             <p className="rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">{previewError}</p>

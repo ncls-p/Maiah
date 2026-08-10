@@ -1,16 +1,25 @@
-import { NextRequest,NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
-import { handleRoute,requireWorkspacePermissionAsync } from "@/lib/route-handler";
+import { handleRoute, requireWorkspacePermissionAsync } from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
-import { getAgentDefaultPreferences,setOrganizationDefaultAgent,setUserDefaultAgent } from "@/modules/agent/use-cases";
+import { getAgentDefaultPreferences, setAgentHiddenInChat, setOrganizationDefaultAgent, setUserDefaultAgent } from "@/modules/agent/use-cases";
 
 const querySchema = z.object({ workspaceId: z.uuid() });
-const patchSchema = z.object({
-  workspaceId: z.uuid(),
-  scope: z.enum(["organization", "user"]),
-  defaultAgentId: z.uuid().nullable(),
-});
+const patchSchema = z.union([
+  z.object({
+    action: z.literal("set_default").optional(),
+    workspaceId: z.uuid(),
+    scope: z.enum(["organization", "user"]),
+    defaultAgentId: z.uuid().nullable(),
+  }),
+  z.object({
+    action: z.literal("set_hidden"),
+    workspaceId: z.uuid(),
+    agentId: z.uuid(),
+    hidden: z.boolean(),
+  }),
+]);
 
 export async function GET(req: NextRequest) {
   return handleRoute(
@@ -40,7 +49,21 @@ export async function PATCH(req: NextRequest) {
       if (!parsed.success) {
         return NextResponse.json({ error: "Invalid input", details: parsed.error.issues }, { status: 400 });
       }
-      const { workspaceId, scope, defaultAgentId } = parsed.data;
+      const { workspaceId } = parsed.data;
+      if (parsed.data.action === "set_hidden") {
+        const forbidden = await requireWorkspacePermissionAsync(session.user.id, workspaceId, "agents.list");
+        if (forbidden) return forbidden;
+        return NextResponse.json(
+          await setAgentHiddenInChat({
+            workspaceId,
+            userId: session.user.id,
+            agentId: parsed.data.agentId,
+            hidden: parsed.data.hidden,
+            canAdminCurate: await canManageTenantGlobals(session, workspaceId),
+          }),
+        );
+      }
+      const { scope, defaultAgentId } = parsed.data;
       const forbidden = await requireWorkspacePermissionAsync(session.user.id, workspaceId, scope === "organization" ? "agents.update" : "agents.list");
       if (forbidden) return forbidden;
       const canAdminCurate = await canManageTenantGlobals(session, workspaceId);

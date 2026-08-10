@@ -1,4 +1,4 @@
-import { projectToolMessagePayload,safeToolErrorMessage } from "@/modules/tool/safe-payload";
+import { projectToolMessagePayload, safeToolErrorMessage } from "@/modules/tool/safe-payload";
 import { registerAiSdkDevTools } from "@/server/infrastructure/ai-sdk/devtools";
 import { parsePartialJson } from "ai";
 import { z } from "zod";
@@ -8,6 +8,7 @@ registerAiSdkDevTools();
 export const chatRequestSchema = z.object({
   content: z.string().trim().min(1).max(32_000),
   conversationId: z.uuid().nullable().optional(),
+  ephemeral: z.boolean().optional(),
   resendFromMessageId: z.uuid().nullable().optional(),
   continueFromMessageId: z.uuid().nullable().optional(),
   codeWorkspaceId: z.uuid().optional(),
@@ -24,7 +25,15 @@ export const chatRequestSchema = z.object({
         )
         .max(256),
       disabledSkillIds: z.array(z.uuid()).max(128),
-      enabledTools: z.array(z.object({ source: z.enum(["builtin", "mcp", "custom"]), id: z.uuid() })).max(256).default([]),
+      enabledTools: z
+        .array(
+          z.object({
+            source: z.enum(["builtin", "mcp", "custom"]),
+            id: z.uuid(),
+          }),
+        )
+        .max(256)
+        .default([]),
       enabledSkillIds: z.array(z.uuid()).max(128).default([]),
       enabledKnowledgeIds: z.array(z.uuid()).max(128).default([]),
     })

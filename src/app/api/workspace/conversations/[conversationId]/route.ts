@@ -3,9 +3,9 @@ import { getConversationMessages } from "@/modules/agent/use-cases";
 import { toAiSdkUIMessages } from "@/modules/chat/ai-sdk-ui-messages";
 import { getUsageImpactSetting } from "@/modules/provider/usage-impact-settings";
 import { db } from "@/server/infrastructure/db";
-import { conversationFolders,conversations } from "@/server/infrastructure/db/schema";
-import { and,eq,isNull } from "drizzle-orm";
-import { NextRequest,NextResponse } from "next/server";
+import { conversationFolders, conversations } from "@/server/infrastructure/db/schema";
+import { and, eq, isNull } from "drizzle-orm";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getAuthorizedConversation } from "./conversation-route-access";
@@ -46,6 +46,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ conv
           sidebarOrder: conversation.sidebarOrder,
           createdAt: conversation.createdAt,
           updatedAt: conversation.updatedAt,
+          isOwner: access.access.role === "owner",
+          canContinue: access.access.canContinue,
+          continuationMode: access.access.continuationMode,
+          isEphemeral: conversation.isEphemeral,
+          publicShareId: access.access.role === "owner" ? conversation.publicShareId : null,
         },
         messages,
         uiMessages,
@@ -69,6 +74,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ co
       const access = await getAuthorizedConversation(session.user.id, Promise.resolve({ conversationId }));
       if (!access.ok) return access.response;
       const { conversation } = access;
+      if (access.access.role !== "owner") {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
 
       if (parsedBody.data.folderId) {
         const [folder] = await db
@@ -111,6 +119,9 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ c
       const access = await getAuthorizedConversation(session.user.id, params);
       if (!access.ok) return access.response;
       const { conversationId } = access;
+      if (access.access.role !== "owner") {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
 
       await db
         .update(conversations)

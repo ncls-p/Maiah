@@ -30,6 +30,7 @@ export interface UseChatStreamOptions {
 }
 
 export type SubmitOptions = {
+  ephemeral?: boolean;
   resendFromMessageId?: string;
   reuseUserMessage?: boolean;
   continueFromMessageId?: string;
