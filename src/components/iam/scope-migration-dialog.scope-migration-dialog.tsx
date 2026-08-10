@@ -1,18 +1,30 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useMemo,useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
-import { Destination,Mode,Preview,Scope,fetchJson } from "./scope-migration-dialog.scope";
+import {
+  Destination,
+  Mode,
+  Preview,
+  Scope,
+  fetchJson,
+} from "./scope-migration-dialog.scope";
 import { ScopeMigrationDialogView } from "./scope-migration-dialog.scope-migration-dialog.view";
 
-export function useScopeMigrationDialogController({ workspaceId }: { workspaceId: string }) {
+export function useScopeMigrationDialogController({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
   const t = useTranslations("access");
   const [open, setOpen] = useState(false);
   const [scope, setScope] = useState<Scope>("project");
   const [mode, setMode] = useState<Mode>("move");
-  const [secretPolicy, setSecretPolicy] = useState<"keep" | "disable">("disable");
+  const [secretPolicy, setSecretPolicy] = useState<"keep" | "disable">(
+    "disable",
+  );
   const [destinations, setDestinations] = useState<Destination[]>([]);
   const [destinationId, setDestinationId] = useState("");
   const [query, setQuery] = useState("");
@@ -22,7 +34,11 @@ export function useScopeMigrationDialogController({ workspaceId }: { workspaceId
   const filteredDestinations = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase();
     if (!normalized) return destinations;
-    return destinations.filter((destination) => [destination.organizationName, destination.workspaceName].some((value) => value.toLocaleLowerCase().includes(normalized)));
+    return destinations.filter((destination) =>
+      [destination.organizationName, destination.workspaceName].some((value) =>
+        value.toLocaleLowerCase().includes(normalized),
+      ),
+    );
   }, [destinations, query]);
 
   async function loadDestinations(nextScope: Scope = scope) {
@@ -30,12 +46,19 @@ export function useScopeMigrationDialogController({ workspaceId }: { workspaceId
     setPreview(null);
     setDestinationId("");
     try {
-      const endpoint = nextScope === "project" ? "/api/workspace/iam/resources/transfer" : "/api/workspace/iam/organizations/transfer";
+      const endpoint =
+        nextScope === "project"
+          ? "/api/workspace/iam/resources/transfer"
+          : "/api/workspace/iam/organizations/transfer";
       const params = new URLSearchParams({ sourceWorkspaceId: workspaceId });
-      const result = await fetchJson<{ destinations: Destination[] }>(`${endpoint}?${params}`);
+      const result = await fetchJson<{ destinations: Destination[] }>(
+        `${endpoint}?${params}`,
+      );
       setDestinations(result.destinations);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t("scopeMigrationLoadFailed"));
+      toast.error(
+        error instanceof Error ? error.message : t("scopeMigrationLoadFailed"),
+      );
     } finally {
       setPending(false);
     }
@@ -47,12 +70,19 @@ export function useScopeMigrationDialogController({ workspaceId }: { workspaceId
   }
 
   async function requestPreview() {
-    const destination = destinations.find((item) => (scope === "project" ? item.workspaceId === destinationId : item.organizationId === destinationId));
+    const destination = destinations.find((item) =>
+      scope === "project"
+        ? item.workspaceId === destinationId
+        : item.organizationId === destinationId,
+    );
     if (!destination) return;
     setPending(true);
     setPreview(null);
     try {
-      const endpoint = scope === "project" ? "/api/workspace/iam/resources/transfer" : "/api/workspace/iam/organizations/transfer";
+      const endpoint =
+        scope === "project"
+          ? "/api/workspace/iam/resources/transfer"
+          : "/api/workspace/iam/organizations/transfer";
       const body =
         scope === "project"
           ? {
@@ -84,7 +114,11 @@ export function useScopeMigrationDialogController({ workspaceId }: { workspaceId
         }),
       );
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t("scopeMigrationPreviewFailed"));
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : t("scopeMigrationPreviewFailed"),
+      );
     } finally {
       setPending(false);
     }
@@ -94,7 +128,10 @@ export function useScopeMigrationDialogController({ workspaceId }: { workspaceId
     if (!preview) return;
     setPending(true);
     try {
-      const endpoint = scope === "project" ? "/api/workspace/iam/resources/transfer" : "/api/workspace/iam/organizations/transfer";
+      const endpoint =
+        scope === "project"
+          ? "/api/workspace/iam/resources/transfer"
+          : "/api/workspace/iam/organizations/transfer";
       const body =
         scope === "project"
           ? {
@@ -128,14 +165,20 @@ export function useScopeMigrationDialogController({ workspaceId }: { workspaceId
       toast.success(t("scopeMigrationCompleted"));
       setOpen(false);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t("scopeMigrationFailed"));
+      toast.error(
+        error instanceof Error ? error.message : t("scopeMigrationFailed"),
+      );
       setPreview(null);
     } finally {
       setPending(false);
     }
   }
 
-  const selectedDestination = destinations.find((destination) => (scope === "project" ? destination.workspaceId === destinationId : destination.organizationId === destinationId));
+  const selectedDestination = destinations.find((destination) =>
+    scope === "project"
+      ? destination.workspaceId === destinationId
+      : destination.organizationId === destinationId,
+  );
   const summaryEntries = preview?.counts
     ? Object.entries(preview.counts).filter(([, count]) => count > 0)
     : [
@@ -171,7 +214,9 @@ export function useScopeMigrationDialogController({ workspaceId }: { workspaceId
   } as const;
 }
 
-export function ScopeMigrationDialog(...args: Parameters<typeof useScopeMigrationDialogController>) {
+export function ScopeMigrationDialog(
+  ...args: Parameters<typeof useScopeMigrationDialogController>
+) {
   const model = useScopeMigrationDialogController(...args);
   if (!("kind" in model)) return model;
   return <ScopeMigrationDialogView model={model} />;

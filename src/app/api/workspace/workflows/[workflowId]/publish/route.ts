@@ -1,7 +1,10 @@
-import { NextRequest,NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
-import { handleRoute,requireResourcePermissionAsync } from "@/lib/route-handler";
+import {
+  handleRoute,
+  requireResourcePermissionAsync,
+} from "@/lib/route-handler";
 import { publishWorkflow } from "@/modules/workflows/use-cases";
 
 import { workflowErrorResponse } from "../../route-support";
@@ -9,7 +12,10 @@ import { workflowErrorResponse } from "../../route-support";
 const paramsSchema = z.object({ workflowId: z.uuid() });
 const bodySchema = z.object({ workspaceId: z.uuid() });
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ workflowId: string }> }) {
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ workflowId: string }> },
+) {
   return handleRoute(
     req,
     async ({ session }) => {
@@ -18,10 +24,19 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ wor
       if (!parsedParams.success || !parsedBody.success) {
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
       }
-      const forbidden = await requireResourcePermissionAsync(session.user.id, parsedBody.data.workspaceId, "workflows.update", "workflow", (await params).workflowId);
+      const forbidden = await requireResourcePermissionAsync(
+        session.user.id,
+        parsedBody.data.workspaceId,
+        "workflows.update",
+        "workflow",
+        (await params).workflowId,
+      );
       if (forbidden) return forbidden;
       return NextResponse.json({
-        workflow: await publishWorkflow(parsedParams.data.workflowId, parsedBody.data.workspaceId),
+        workflow: await publishWorkflow(
+          parsedParams.data.workflowId,
+          parsedBody.data.workspaceId,
+        ),
       });
     },
     {

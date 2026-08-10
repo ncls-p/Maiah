@@ -3,18 +3,59 @@ import { ResourceShareDialog } from "@/components/marketplace/resource-share-dia
 import { ResourceProvenanceBadge } from "@/components/resource-provenance-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu,DropdownMenuContent,DropdownMenuItem,DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BookMarkedIcon,MoreHorizontalIcon,PencilIcon,Share2,Trash2Icon } from "lucide-react";
-import { BUTTON_TYPE,SKILLS_PAGE_SIZE,SkillDetailDialog,fileCount } from "./skill-manager.button-type";
+import {
+  BookMarkedIcon,
+  MoreHorizontalIcon,
+  PencilIcon,
+  Share2,
+  Trash2Icon,
+} from "lucide-react";
+import {
+  BUTTON_TYPE,
+  SKILLS_PAGE_SIZE,
+  SkillDetailDialog,
+  fileCount,
+} from "./skill-manager.button-type";
 import { SkillEditorDialog } from "./skill-manager.skill-editor-dialog";
 import type { useSkillManagerController } from "./skill-manager.skill-manager";
 import { SkillManagerSection1 } from "./skill-manager.skill-manager.view.section-1";
 import { SkillManagerSection2 } from "./skill-manager.skill-manager.view.section-2";
 
-export type SkillManagerViewModel = Extract<ReturnType<typeof useSkillManagerController>, { kind: "ready" }>;
+export type SkillManagerViewModel = Extract<
+  ReturnType<typeof useSkillManagerController>,
+  { kind: "ready" }
+>;
 export function SkillManagerView({ model }: { model: SkillManagerViewModel }) {
-  const { canManageTenantGlobals, deleteSkill, deletingSkillId, editorState, filteredSkills, loadError, loadSkills, loading, pendingDeleteSkill, retryLoadSkills, setEditorState, setPendingDeleteSkill, setShareResource, setVisibleCount, shareResource, skills, t, tShare, visibleCount, visibleSkills, workspaceId } = model;
+  const {
+    canManageTenantGlobals,
+    deleteSkill,
+    deletingSkillId,
+    editorState,
+    filteredSkills,
+    loadError,
+    loadSkills,
+    loading,
+    pendingDeleteSkill,
+    retryLoadSkills,
+    setEditorState,
+    setPendingDeleteSkill,
+    setShareResource,
+    setVisibleCount,
+    shareResource,
+    skills,
+    t,
+    tShare,
+    visibleCount,
+    visibleSkills,
+    workspaceId,
+  } = model;
   return (
     <div className="space-y-3">
       <SkillManagerSection2 model={model} />
@@ -24,7 +65,10 @@ export function SkillManagerView({ model }: { model: SkillManagerViewModel }) {
       {loading ? (
         <div className="overflow-hidden rounded-2xl border border-border/65 bg-card">
           {Array.from({ length: 6 }).map((_, index) => (
-            <div key={index} className="flex items-center gap-3 border-b border-border/55 p-4 last:border-b-0">
+            <div
+              key={index}
+              className="flex items-center gap-3 border-b border-border/55 p-4 last:border-b-0"
+            >
               <Skeleton className="size-9 rounded-xl" />
               <div className="min-w-0 flex-1 space-y-2">
                 <Skeleton className="h-3 w-40" />
@@ -35,10 +79,21 @@ export function SkillManagerView({ model }: { model: SkillManagerViewModel }) {
           ))}
         </div>
       ) : loadError ? (
-        <div className="rounded-2xl border border-destructive/25 bg-destructive/5 p-6 text-center" role="alert">
+        <div
+          className="rounded-2xl border border-destructive/25 bg-destructive/5 p-6 text-center"
+          role="alert"
+        >
           <p className="text-sm font-medium">{t("loadFailed")}</p>
-          <p className="mx-auto mt-1 max-w-lg text-sm text-muted-foreground">{t("loadFailedDescription")}</p>
-          <Button type="button" variant="outline" size="sm" className="mt-4" onClick={() => void retryLoadSkills()}>
+          <p className="mx-auto mt-1 max-w-lg text-sm text-muted-foreground">
+            {t("loadFailedDescription")}
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="mt-4"
+            onClick={() => void retryLoadSkills()}
+          >
             {t("retry")}
           </Button>
         </div>
@@ -54,21 +109,36 @@ export function SkillManagerView({ model }: { model: SkillManagerViewModel }) {
         </div>
       ) : (
         <>
-          <div role="list" className="overflow-hidden rounded-2xl border border-border/65 bg-card/85 shadow-[var(--surface-shadow)]">
+          <div
+            role="list"
+            className="overflow-hidden rounded-2xl border border-border/65 bg-card/85 shadow-[var(--surface-shadow)]"
+          >
             {visibleSkills.map((skill) => (
-              <article key={skill.id} role="listitem" className="group/skill flex flex-col gap-3 border-b border-border/55 p-3.5 last:border-b-0 sm:flex-row sm:items-center">
+              <article
+                key={skill.id}
+                role="listitem"
+                className="group/skill flex flex-col gap-3 border-b border-border/55 p-3.5 last:border-b-0 sm:flex-row sm:items-center"
+              >
                 <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/8 text-primary">
                   <BookMarkedIcon className="size-4" aria-hidden="true" />
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="truncate text-sm font-semibold">{skill.name}</h3>
+                    <h3 className="truncate text-sm font-semibold">
+                      {skill.name}
+                    </h3>
                     <ResourceProvenanceBadge provenance={skill.provenance} />
                   </div>
-                  <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{skill.description || t("noDescription")}</p>
+                  <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+                    {skill.description || t("noDescription")}
+                  </p>
                 </div>
                 <div className="flex min-w-0 flex-wrap items-center gap-1.5 sm:max-w-[42%] sm:justify-end">
-                  <Badge variant={skill.isGlobal ? "secondary" : "outline"}>{skill.isGlobal ? t("scopeOrganization") : t("scopePrivate")}</Badge>
+                  <Badge variant={skill.isGlobal ? "secondary" : "outline"}>
+                    {skill.isGlobal
+                      ? t("scopeOrganization")
+                      : t("scopePrivate")}
+                  </Badge>
                   <Badge variant="outline" className="max-w-44 truncate">
                     {skill.sourcePackage || t("manual")}
                   </Badge>
@@ -83,12 +153,24 @@ export function SkillManagerView({ model }: { model: SkillManagerViewModel }) {
                   {skill.canEdit ? (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button type={BUTTON_TYPE} variant="ghost" size="icon" className="size-10" aria-label={t("actionsAria", { name: skill.name })}>
+                        <Button
+                          type={BUTTON_TYPE}
+                          variant="ghost"
+                          size="icon"
+                          className="size-10"
+                          aria-label={t("actionsAria", { name: skill.name })}
+                        >
                           <MoreHorizontalIcon aria-hidden="true" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onSelect={() => window.requestAnimationFrame(() => setEditorState({ skill }))}>
+                        <DropdownMenuItem
+                          onSelect={() =>
+                            window.requestAnimationFrame(() =>
+                              setEditorState({ skill }),
+                            )
+                          }
+                        >
                           <PencilIcon aria-hidden="true" />
                           {t("edit")}
                         </DropdownMenuItem>
@@ -105,7 +187,10 @@ export function SkillManagerView({ model }: { model: SkillManagerViewModel }) {
                           <Share2 aria-hidden="true" />
                           {tShare("action")}
                         </DropdownMenuItem>
-                        <DropdownMenuItem variant="destructive" onSelect={() => setPendingDeleteSkill(skill)}>
+                        <DropdownMenuItem
+                          variant="destructive"
+                          onSelect={() => setPendingDeleteSkill(skill)}
+                        >
                           <Trash2Icon aria-hidden="true" />
                           {t("deleteConfirm")}
                         </DropdownMenuItem>
@@ -118,9 +203,18 @@ export function SkillManagerView({ model }: { model: SkillManagerViewModel }) {
           </div>
           {visibleCount < filteredSkills.length ? (
             <div className="flex justify-center pt-1">
-              <Button type={BUTTON_TYPE} variant="outline" onClick={() => setVisibleCount((current) => current + SKILLS_PAGE_SIZE)}>
+              <Button
+                type={BUTTON_TYPE}
+                variant="outline"
+                onClick={() =>
+                  setVisibleCount((current) => current + SKILLS_PAGE_SIZE)
+                }
+              >
                 {t("showMore", {
-                  count: Math.min(SKILLS_PAGE_SIZE, filteredSkills.length - visibleCount),
+                  count: Math.min(
+                    SKILLS_PAGE_SIZE,
+                    filteredSkills.length - visibleCount,
+                  ),
                 })}
               </Button>
             </div>
@@ -140,7 +234,12 @@ export function SkillManagerView({ model }: { model: SkillManagerViewModel }) {
           canManageGlobal={canManageTenantGlobals}
         />
       ) : null}
-      <ResourceShareDialog resource={shareResource} workspaceId={workspaceId} open={shareResource !== null} onCloseAction={() => setShareResource(null)} />
+      <ResourceShareDialog
+        resource={shareResource}
+        workspaceId={workspaceId}
+        open={shareResource !== null}
+        onCloseAction={() => setShareResource(null)}
+      />
       <DestructiveConfirmationDialog
         open={pendingDeleteSkill !== null}
         title={t("deleteTitle")}

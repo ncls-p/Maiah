@@ -1,8 +1,14 @@
 import nextEnv from "@next/env";
-import { expect,test } from "@playwright/test";
-import { randomUUID,webcrypto } from "node:crypto";
+import { expect, test } from "@playwright/test";
+import { randomUUID, webcrypto } from "node:crypto";
 import { Client } from "pg";
-import { activate,databaseUrl,e2eUser,ensureE2EUser,login } from "./fixtures";
+import {
+  activate,
+  databaseUrl,
+  e2eUser,
+  ensureE2EUser,
+  login,
+} from "./fixtures";
 
 const { loadEnvConfig } = nextEnv;
 
@@ -15,9 +21,19 @@ async function encryptFixtureText(plaintext: string) {
     throw new Error("Chat E2E encryption configuration is missing");
   }
 
-  const key = await webcrypto.subtle.importKey("raw", Buffer.from(keyHex, "hex"), { name: "AES-GCM" }, false, ["encrypt"]);
+  const key = await webcrypto.subtle.importKey(
+    "raw",
+    Buffer.from(keyHex, "hex"),
+    { name: "AES-GCM" },
+    false,
+    ["encrypt"],
+  );
   const iv = webcrypto.getRandomValues(new Uint8Array(12));
-  const ciphertext = await webcrypto.subtle.encrypt({ name: "AES-GCM", iv }, key, new TextEncoder().encode(plaintext));
+  const ciphertext = await webcrypto.subtle.encrypt(
+    { name: "AES-GCM", iv },
+    key,
+    new TextEncoder().encode(plaintext),
+  );
   return JSON.stringify({
     ct: Buffer.from(ciphertext).toString("base64"),
     iv: Buffer.from(iv).toString("base64"),
@@ -51,7 +67,8 @@ async function createRecoveredToolConversation() {
     let agentId: string;
     let agentVersionId: string;
     let createdAgent = false;
-    const finalText = "The first query failed, the corrected query succeeded, and the workflow completed.";
+    const finalText =
+      "The first query failed, the corrected query succeeded, and the workflow completed.";
 
     await client.query("begin");
 
@@ -88,14 +105,24 @@ async function createRecoveredToolConversation() {
          values ($1, $2, 1, 'Recovered tool fixture', 'E2E fixture', $3, now())`,
         [agentVersionId, agentId, row.user_id],
       );
-      await client.query("update agents set active_version_id = $1 where id = $2", [agentVersionId, agentId]);
+      await client.query(
+        "update agents set active_version_id = $1 where id = $2",
+        [agentVersionId, agentId],
+      );
     }
 
     await client.query(
       `insert into conversations
          (id, workspace_id, agent_id, agent_version_id, user_id, title, status, created_at, updated_at)
        values ($1, $2, $3, $4, $5, $6, 'active', now(), now())`,
-      [conversationId, row.workspace_id, agentId, agentVersionId, row.user_id, "Recovered tool failure E2E"],
+      [
+        conversationId,
+        row.workspace_id,
+        agentId,
+        agentVersionId,
+        row.user_id,
+        "Recovered tool failure E2E",
+      ],
     );
     await client.query(
       `insert into messages
@@ -109,13 +136,23 @@ async function createRecoveredToolConversation() {
       `insert into message_parts
          (id, message_id, type, content_encrypted, metadata_json, sort_order, created_at)
        values ($1, $2, 'text', $3, null, 0, now() - interval '1 second')`,
-      [randomUUID(), userMessageId, await encryptFixtureText("Investigate and summarize the failure.")],
+      [
+        randomUUID(),
+        userMessageId,
+        await encryptFixtureText("Investigate and summarize the failure."),
+      ],
     );
     await client.query(
       `insert into message_parts
          (id, message_id, type, content_encrypted, metadata_json, sort_order, created_at)
        values ($1, $2, 'reasoning', $3, null, 0, now())`,
-      [randomUUID(), assistantMessageId, await encryptFixtureText("Inspect the failed query before preparing a corrected retry.")],
+      [
+        randomUUID(),
+        assistantMessageId,
+        await encryptFixtureText(
+          "Inspect the failed query before preparing a corrected retry.",
+        ),
+      ],
     );
     await client.query(
       `insert into message_parts
@@ -186,12 +223,25 @@ async function createRecoveredToolConversation() {
       conversationId,
       cleanup: async () => {
         try {
-          await client.query("delete from message_parts where message_id = any($1::uuid[])", [[userMessageId, assistantMessageId]]);
-          await client.query("delete from messages where id = any($1::uuid[])", [[userMessageId, assistantMessageId]]);
-          await client.query("delete from conversations where id = $1", [conversationId]);
+          await client.query(
+            "delete from message_parts where message_id = any($1::uuid[])",
+            [[userMessageId, assistantMessageId]],
+          );
+          await client.query(
+            "delete from messages where id = any($1::uuid[])",
+            [[userMessageId, assistantMessageId]],
+          );
+          await client.query("delete from conversations where id = $1", [
+            conversationId,
+          ]);
           if (createdAgent) {
-            await client.query("update agents set active_version_id = null where id = $1", [agentId]);
-            await client.query("delete from agent_versions where id = $1", [agentVersionId]);
+            await client.query(
+              "update agents set active_version_id = null where id = $1",
+              [agentId],
+            );
+            await client.query("delete from agent_versions where id = $1", [
+              agentVersionId,
+            ]);
             await client.query("delete from agents where id = $1", [agentId]);
           }
         } finally {
@@ -215,29 +265,66 @@ test.beforeEach(async ({ page }) => {
 });
 
 test.describe("chat page", () => {
-  test("shows recovered tool failures as completed with warnings", async ({ page }) => {
+  test("shows recovered tool failures as completed with warnings", async ({
+    page,
+  }) => {
     const fixture = await createRecoveredToolConversation();
     try {
-      await page.goto(`/en/chat?agentId=${fixture.agentId}&conversationId=${fixture.conversationId}`);
+      await page.goto(
+        `/en/chat?agentId=${fixture.agentId}&conversationId=${fixture.conversationId}`,
+      );
 
       const transcript = page.getByRole("region", { name: "Chat transcript" });
-      await expect(transcript.getByText("Work completed with warnings", { exact: true })).toBeVisible({ timeout: 15_000 });
-      await expect(transcript.getByText("Work interrupted", { exact: true })).toHaveCount(0);
-      await expect(transcript.getByRole("button", { name: "Regenerate response" })).toBeVisible();
-      await expect(transcript.getByRole("button", { name: "Continue this response" })).toBeVisible();
-      await expect(transcript.locator('button[aria-label="Regenerate response"] + button[aria-label="Continue this response"]')).toHaveCount(1);
+      await expect(
+        transcript.getByText("Work completed with warnings", { exact: true }),
+      ).toBeVisible({ timeout: 15_000 });
+      await expect(
+        transcript.getByText("Work interrupted", { exact: true }),
+      ).toHaveCount(0);
+      await expect(
+        transcript.getByRole("button", { name: "Regenerate response" }),
+      ).toBeVisible();
+      await expect(
+        transcript.getByRole("button", { name: "Continue this response" }),
+      ).toBeVisible();
+      await expect(
+        transcript.locator(
+          'button[aria-label="Regenerate response"] + button[aria-label="Continue this response"]',
+        ),
+      ).toHaveCount(1);
 
-      await activate(transcript.getByRole("button", { name: "Show work phase" }));
-      await expect(transcript.getByText("Failed", { exact: true })).toBeVisible();
-      await expect(transcript.getByText("Completed", { exact: true })).toBeVisible();
-      const detailedReasoning = transcript.locator('[data-reasoning-details="available"]');
+      await activate(
+        transcript.getByRole("button", { name: "Show work phase" }),
+      );
+      await expect(
+        transcript.getByText("Failed", { exact: true }),
+      ).toBeVisible();
+      await expect(
+        transcript.getByText("Completed", { exact: true }),
+      ).toBeVisible();
+      const detailedReasoning = transcript.locator(
+        '[data-reasoning-details="available"]',
+      );
       await expect(detailedReasoning).toBeVisible();
-      await activate(detailedReasoning.getByRole("button", { name: "View", exact: true }));
-      await expect(detailedReasoning.getByText("Inspect the failed query before preparing a corrected retry.", { exact: true })).toBeVisible();
-      const compactReasoning = transcript.locator('[data-reasoning-details="unavailable"]');
+      await activate(
+        detailedReasoning.getByRole("button", { name: "View", exact: true }),
+      );
+      await expect(
+        detailedReasoning.getByText(
+          "Inspect the failed query before preparing a corrected retry.",
+          { exact: true },
+        ),
+      ).toBeVisible();
+      const compactReasoning = transcript.locator(
+        '[data-reasoning-details="unavailable"]',
+      );
       await expect(compactReasoning).toBeVisible();
-      await expect(compactReasoning.getByText("Reasoning complete", { exact: true })).toBeVisible();
-      await expect(compactReasoning.getByRole("button", { name: "View", exact: true })).toHaveCount(0);
+      await expect(
+        compactReasoning.getByText("Reasoning complete", { exact: true }),
+      ).toBeVisible();
+      await expect(
+        compactReasoning.getByRole("button", { name: "View", exact: true }),
+      ).toHaveCount(0);
       await expect(
         transcript.getByRole("region", {
           name: "Investigation",
@@ -258,18 +345,39 @@ test.describe("chat page", () => {
       await expect(todoDock.getByText("Verify the fix")).toBeVisible();
 
       const composer = page.getByRole("textbox", { name: "Message" });
-      const [dockBox, composerBox] = await Promise.all([todoDock.boundingBox(), composer.boundingBox()]);
+      const [dockBox, composerBox] = await Promise.all([
+        todoDock.boundingBox(),
+        composer.boundingBox(),
+      ]);
       expect(dockBox).not.toBeNull();
       expect(composerBox).not.toBeNull();
       expect(dockBox!.y + dockBox!.height).toBeLessThanOrEqual(composerBox!.y);
 
       await todoDock.getByRole("button", { name: "Show task details" }).click();
-      await expect(todoDock.getByText("1/2 tasks completed", { exact: true })).toBeVisible();
+      await expect(
+        todoDock.getByText("1/2 tasks completed", { exact: true }),
+      ).toBeVisible();
       const currentTask = todoDock.locator('[aria-current="step"]');
       await expect(currentTask).toContainText("Verify the fix");
       await expect(currentTask).toContainText("In progress");
 
       await todoDock.getByRole("button", { name: "Hide task details" }).click();
+      await todoDock.getByRole("button", { name: "Hide plan" }).click();
+      await expect(todoDock).toBeHidden();
+      const showPlan = page.getByRole("button", { name: "Show plan" });
+      await expect(showPlan).toBeVisible();
+      await showPlan.click();
+      await expect(todoDock).toBeVisible();
+
+      const transcriptViewport = page.locator(
+        '[data-slot="message-scroller-viewport"]',
+      );
+      await transcriptViewport.hover();
+      await page.mouse.wheel(0, -200);
+      await expect(todoDock).toBeHidden();
+      await expect(showPlan).toBeVisible();
+      await showPlan.click();
+
       await page.setViewportSize({ width: 390, height: 844 });
       await expect(todoDock).toBeVisible();
       await expect(composer).toBeVisible();

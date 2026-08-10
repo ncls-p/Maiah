@@ -1,29 +1,57 @@
-import { and,desc,eq,isNull } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 
 import { encryptValue } from "@/lib/crypto";
 import { audit } from "@/server/domain/services/audit";
 import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
-import { customToolCredentialRefs,customToolSecretRequests,customTools } from "@/server/infrastructure/db/schema";
-import { callConfiguredN8nTool,safeCredentialSummary } from "./use-cases.call-configured-n8n-tool";
-import { CustomToolRow,canManageCustomTool,getCustomToolBuilderConfig,secretFieldSchema } from "./use-cases.custom-tool-row";
+import {
+  customToolCredentialRefs,
+  customToolSecretRequests,
+  customTools,
+} from "@/server/infrastructure/db/schema";
+import {
+  callConfiguredN8nTool,
+  safeCredentialSummary,
+} from "./use-cases.call-configured-n8n-tool";
+import {
+  CustomToolRow,
+  canManageCustomTool,
+  getCustomToolBuilderConfig,
+  secretFieldSchema,
+} from "./use-cases.custom-tool-row";
 
-export async function submitSecretRequest(input: { workspaceId: string; userId: string; requestId: string; values: Record<string, string>; provider?: string; label?: string }) {
+export async function submitSecretRequest(input: {
+  workspaceId: string;
+  userId: string;
+  requestId: string;
+  values: Record<string, string>;
+  provider?: string;
+  label?: string;
+}) {
   const [request] = await db
     .select()
     .from(customToolSecretRequests)
-    .where(and(eq(customToolSecretRequests.id, input.requestId), eq(customToolSecretRequests.workspaceId, input.workspaceId), eq(customToolSecretRequests.userId, input.userId)))
+    .where(
+      and(
+        eq(customToolSecretRequests.id, input.requestId),
+        eq(customToolSecretRequests.workspaceId, input.workspaceId),
+        eq(customToolSecretRequests.userId, input.userId),
+      ),
+    )
     .limit(1);
   if (!request) throw new Error("Secret request not found");
-  if (request.status !== "pending") throw new Error("Secret request is no longer pending");
-  if (request.expiresAt.getTime() < Date.now()) throw new Error("Secret request expired");
+  if (request.status !== "pending")
+    throw new Error("Secret request is no longer pending");
+  if (request.expiresAt.getTime() < Date.now())
+    throw new Error("Secret request expired");
 
   const fields = z.array(secretFieldSchema).parse(request.fieldsJson);
   const sanitizedValues: Record<string, string> = {};
   for (const field of fields) {
     const value = input.values[field.name]?.trim() ?? "";
-    if (field.required && !value) throw new Error(`Missing value for ${field.label}`);
+    if (field.required && !value)
+      throw new Error(`Missing value for ${field.label}`);
     sanitizedValues[field.name] = value;
   }
 
@@ -68,7 +96,11 @@ export async function submitSecretRequest(input: { workspaceId: string; userId: 
   return safeCredentialSummary(fields, credentialRef.id);
 }
 
-export async function listCustomTools(workspaceId: string, userId: string, canManageGlobal = false) {
+export async function listCustomTools(
+  workspaceId: string,
+  userId: string,
+  canManageGlobal = false,
+) {
   const tools = await db
     .select({
       id: customTools.id,
@@ -84,31 +116,65 @@ export async function listCustomTools(workspaceId: string, userId: string, canMa
       updatedAt: customTools.updatedAt,
     })
     .from(customTools)
-    .where(and(eq(customTools.workspaceId, workspaceId), isNull(customTools.archivedAt)))
+    .where(
+      and(
+        eq(customTools.workspaceId, workspaceId),
+        isNull(customTools.archivedAt),
+      ),
+    )
     .orderBy(desc(customTools.isGlobal), desc(customTools.createdAt));
   return (
     await Promise.all(
       tools.map(async (tool) => {
-        const visible = tool.createdById === userId || tool.isGlobal || (await authorization.hasPermission({ principalType: "user", principalId: userId }, "tools.view", "custom_tool", tool.id));
+        const visible =
+          tool.createdById === userId ||
+          tool.isGlobal ||
+          (await authorization.hasPermission(
+            { principalType: "user", principalId: userId },
+            "tools.view",
+            "custom_tool",
+            tool.id,
+          ));
         if (!visible) return null;
         return {
           ...tool,
-          canEdit: await canManageCustomTool(tool as CustomToolRow, userId, canManageGlobal),
+          canEdit: await canManageCustomTool(
+            tool as CustomToolRow,
+            userId,
+            canManageGlobal,
+          ),
         };
       }),
     )
   ).filter((tool) => tool !== null);
 }
 
-export async function deleteCustomTool(input: { workspaceId: string; userId: string; customToolId: string; canManageGlobal?: boolean }) {
+export async function deleteCustomTool(input: {
+  workspaceId: string;
+  userId: string;
+  customToolId: string;
+  canManageGlobal?: boolean;
+}) {
   const config = await getCustomToolBuilderConfig();
   const [customTool] = await db
     .select()
     .from(customTools)
-    .where(and(eq(customTools.id, input.customToolId), eq(customTools.workspaceId, input.workspaceId), isNull(customTools.archivedAt)))
+    .where(
+      and(
+        eq(customTools.id, input.customToolId),
+        eq(customTools.workspaceId, input.workspaceId),
+        isNull(customTools.archivedAt),
+      ),
+    )
     .limit(1);
   if (!customTool) throw new Error("Custom tool not found");
-  if (!(await canManageCustomTool(customTool, input.userId, input.canManageGlobal))) {
+  if (
+    !(await canManageCustomTool(
+      customTool,
+      input.userId,
+      input.canManageGlobal,
+    ))
+  ) {
     throw new Error("Custom tool not found");
   }
 
@@ -124,11 +190,15 @@ export async function deleteCustomTool(input: { workspaceId: string; userId: str
       });
       workflowDeleted = true;
     } catch (error) {
-      workflowDeleteError = error instanceof Error ? error.message : String(error);
+      workflowDeleteError =
+        error instanceof Error ? error.message : String(error);
     }
   }
 
-  await db.update(customTools).set({ archivedAt: new Date(), updatedAt: new Date(), status: "disabled" }).where(eq(customTools.id, customTool.id));
+  await db
+    .update(customTools)
+    .set({ archivedAt: new Date(), updatedAt: new Date(), status: "disabled" })
+    .where(eq(customTools.id, customTool.id));
 
   await audit.emit({
     workspaceId: input.workspaceId,
@@ -148,12 +218,23 @@ export async function deleteCustomTool(input: { workspaceId: string; userId: str
   return { deleted: true, workflowDeleted, workflowDeleteError };
 }
 
-export async function executeCustomToolWorkflow(input: { workspaceId: string; userId: string; customToolId: string; toolInput: unknown }) {
+export async function executeCustomToolWorkflow(input: {
+  workspaceId: string;
+  userId: string;
+  customToolId: string;
+  toolInput: unknown;
+}) {
   const config = await getCustomToolBuilderConfig();
   const [customTool] = await db
     .select()
     .from(customTools)
-    .where(and(eq(customTools.id, input.customToolId), eq(customTools.workspaceId, input.workspaceId), isNull(customTools.archivedAt)))
+    .where(
+      and(
+        eq(customTools.id, input.customToolId),
+        eq(customTools.workspaceId, input.workspaceId),
+        isNull(customTools.archivedAt),
+      ),
+    )
     .limit(1);
   if (!customTool) throw new Error("Custom tool not found");
   if (customTool.createdById !== input.userId && !customTool.isGlobal) {
@@ -169,7 +250,10 @@ export async function executeCustomToolWorkflow(input: { workspaceId: string; us
     toolName: "n8n_test_workflow",
     arguments: {
       workflowId: customTool.n8nWorkflowId,
-      data: input.toolInput && typeof input.toolInput === "object" ? (input.toolInput as Record<string, unknown>) : {},
+      data:
+        input.toolInput && typeof input.toolInput === "object"
+          ? (input.toolInput as Record<string, unknown>)
+          : {},
       timeout: 120000,
     },
   });

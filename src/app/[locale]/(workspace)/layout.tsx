@@ -18,7 +18,11 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export default async function WorkspaceLayout({ children }: { children: React.ReactNode }) {
+export default async function WorkspaceLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const session = await getSession();
   if (!session?.user) {
     const locale = await getLocale();
@@ -36,7 +40,12 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
   return (
     <WorkspaceProvider>
       <OnboardingRedirect />
-      <AppShell displayName={displayName} currentUserId={user.id} isAdmin={isAdmin} sidebarNavConfig={sidebarNavConfig ?? undefined}>
+      <AppShell
+        displayName={displayName}
+        currentUserId={user.id}
+        isAdmin={isAdmin}
+        sidebarNavConfig={sidebarNavConfig ?? undefined}
+      >
         <div className="page-content h-full">{children}</div>
       </AppShell>
     </WorkspaceProvider>

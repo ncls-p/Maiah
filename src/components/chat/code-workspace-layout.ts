@@ -16,7 +16,8 @@ export const MIN_CHAT_WIDTH = 300;
 export const MAX_CHAT_WIDTH = 720;
 export const DEFAULT_CHAT_WIDTH = 360;
 export const CODE_WORKSPACE_RESIZE_STEP = 24;
-export const CODE_WORKSPACE_CHAT_WIDTH_STORAGE_KEY = "maiah-code-workspace-chat-width-v1";
+export const CODE_WORKSPACE_CHAT_WIDTH_STORAGE_KEY =
+  "maiah-code-workspace-chat-width-v1";
 
 export const DEFAULT_CODE_WORKSPACE_LAYOUT: CodeWorkspaceLayout = {
   visible: { files: true, code: true, preview: true },
@@ -32,20 +33,37 @@ function finiteNumber(value: unknown, fallback: number) {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 }
 
-export function normalizeCodeWorkspaceLayout(value: unknown): CodeWorkspaceLayout {
+export function normalizeCodeWorkspaceLayout(
+  value: unknown,
+): CodeWorkspaceLayout {
   if (typeof value !== "object" || value === null) {
     return DEFAULT_CODE_WORKSPACE_LAYOUT;
   }
   const record = value as Record<string, unknown>;
-  const visibleRecord = typeof record.visible === "object" && record.visible !== null ? (record.visible as Record<string, unknown>) : {};
+  const visibleRecord =
+    typeof record.visible === "object" && record.visible !== null
+      ? (record.visible as Record<string, unknown>)
+      : {};
   return {
     visible: {
-      files: typeof visibleRecord.files === "boolean" ? visibleRecord.files : true,
+      files:
+        typeof visibleRecord.files === "boolean" ? visibleRecord.files : true,
       code: typeof visibleRecord.code === "boolean" ? visibleRecord.code : true,
-      preview: typeof visibleRecord.preview === "boolean" ? visibleRecord.preview : true,
+      preview:
+        typeof visibleRecord.preview === "boolean"
+          ? visibleRecord.preview
+          : true,
     },
-    filesWidth: clamp(finiteNumber(record.filesWidth, DEFAULT_CODE_WORKSPACE_LAYOUT.filesWidth), MIN_FILES_WIDTH, MAX_FILES_WIDTH),
-    codeWidth: clamp(finiteNumber(record.codeWidth, DEFAULT_CODE_WORKSPACE_LAYOUT.codeWidth), MIN_CODE_WIDTH, MAX_CODE_WIDTH),
+    filesWidth: clamp(
+      finiteNumber(record.filesWidth, DEFAULT_CODE_WORKSPACE_LAYOUT.filesWidth),
+      MIN_FILES_WIDTH,
+      MAX_FILES_WIDTH,
+    ),
+    codeWidth: clamp(
+      finiteNumber(record.codeWidth, DEFAULT_CODE_WORKSPACE_LAYOUT.codeWidth),
+      MIN_CODE_WIDTH,
+      MAX_CODE_WIDTH,
+    ),
   };
 }
 
@@ -60,13 +78,23 @@ export function codeWorkspaceGridTemplate(layout: CodeWorkspaceLayout) {
   return visiblePanes
     .flatMap((pane, index) => {
       const isLast = index === visiblePanes.length - 1;
-      const column = isLast ? "minmax(0, 1fr)" : pane === "files" ? `${layout.filesWidth}px` : pane === "code" ? `minmax(${MIN_CODE_WIDTH}px, ${layout.codeWidth}px)` : "minmax(0, 1fr)";
+      const column = isLast
+        ? "minmax(0, 1fr)"
+        : pane === "files"
+          ? `${layout.filesWidth}px`
+          : pane === "code"
+            ? `minmax(${MIN_CODE_WIDTH}px, ${layout.codeWidth}px)`
+            : "minmax(0, 1fr)";
       return index === 0 ? [column] : ["0.75rem", column];
     })
     .join(" ");
 }
 
-export function resizeCodeWorkspacePane(layout: CodeWorkspaceLayout, pane: "files" | "code", nextWidth: number): CodeWorkspaceLayout {
+export function resizeCodeWorkspacePane(
+  layout: CodeWorkspaceLayout,
+  pane: "files" | "code",
+  nextWidth: number,
+): CodeWorkspaceLayout {
   return pane === "files"
     ? {
         ...layout,
@@ -79,10 +107,17 @@ export function resizeCodeWorkspacePane(layout: CodeWorkspaceLayout, pane: "file
 }
 
 export function normalizeCodeWorkspaceChatWidth(value: unknown) {
-  return clamp(finiteNumber(value, DEFAULT_CHAT_WIDTH), MIN_CHAT_WIDTH, MAX_CHAT_WIDTH);
+  return clamp(
+    finiteNumber(value, DEFAULT_CHAT_WIDTH),
+    MIN_CHAT_WIDTH,
+    MAX_CHAT_WIDTH,
+  );
 }
 
-export function toggleCodeWorkspacePane(layout: CodeWorkspaceLayout, pane: CodeWorkspacePane): CodeWorkspaceLayout {
+export function toggleCodeWorkspacePane(
+  layout: CodeWorkspaceLayout,
+  pane: CodeWorkspacePane,
+): CodeWorkspaceLayout {
   return {
     ...layout,
     visible: { ...layout.visible, [pane]: !layout.visible[pane] },

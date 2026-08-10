@@ -14,7 +14,8 @@ export function GithubIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
-type GitHubRepositoryAccess = "admin" | "maintain" | "write" | "triage" | "read" | "unknown";
+type GitHubRepositoryAccess =
+  "admin" | "maintain" | "write" | "triage" | "read" | "unknown";
 
 export type GitHubConnectionOption = {
   id: string;
@@ -62,14 +63,23 @@ export type GitHubStatusPayload = {
 };
 
 export function canAttemptPublishToRepository(access: GitHubRepositoryAccess) {
-  return access === "unknown" || access === "admin" || access === "maintain" || access === "write";
+  return (
+    access === "unknown" ||
+    access === "admin" ||
+    access === "maintain" ||
+    access === "write"
+  );
 }
 
 export function hasLimitedRepositoryAccess(access: GitHubRepositoryAccess) {
   return access === "read" || access === "triage";
 }
 
-export function formatLastSynced(value: string | null, locale: string, t: ReturnType<typeof useTranslations<"chat.github">>) {
+export function formatLastSynced(
+  value: string | null,
+  locale: string,
+  t: ReturnType<typeof useTranslations<"chat.github">>,
+) {
   if (!value) return t("neverSynced");
   return t("syncedAt", {
     date: new Intl.DateTimeFormat(locale, {
@@ -79,9 +89,14 @@ export function formatLastSynced(value: string | null, locale: string, t: Return
   });
 }
 
-export async function requestGitHubJson<T>(url: string, init: RequestInit | undefined, fallbackError: string) {
+export async function requestGitHubJson<T>(
+  url: string,
+  init: RequestInit | undefined,
+  fallbackError: string,
+) {
   const response = await fetch(url, init);
-  const data = (await response.json().catch(() => null)) as (T & { error?: string }) | null;
+  const data = (await response.json().catch(() => null)) as
+    (T & { error?: string }) | null;
   if (!response.ok) throw new Error(data?.error || fallbackError);
   return data as T | null;
 }

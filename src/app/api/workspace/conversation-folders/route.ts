@@ -1,8 +1,11 @@
-import { and,asc,eq,isNull } from "drizzle-orm";
-import { NextRequest,NextResponse } from "next/server";
+import { and, asc, eq, isNull } from "drizzle-orm";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
-import { handleRoute,requireWorkspacePermissionAsync } from "@/lib/route-handler";
+import {
+  handleRoute,
+  requireWorkspacePermissionAsync,
+} from "@/lib/route-handler";
 import { db } from "@/server/infrastructure/db";
 import { conversationFolders } from "@/server/infrastructure/db/schema";
 
@@ -28,15 +31,32 @@ export async function GET(req: NextRequest) {
       const workspaceId = req.nextUrl.searchParams.get("workspaceId");
       const parsed = z.uuid().safeParse(workspaceId);
       if (!parsed.success) {
-        return NextResponse.json({ error: "Invalid workspace" }, { status: 400 });
+        return NextResponse.json(
+          { error: "Invalid workspace" },
+          { status: 400 },
+        );
       }
-      const forbidden = await requireWorkspacePermissionAsync(session.user.id, parsed.data, "conversations.viewOwn");
+      const forbidden = await requireWorkspacePermissionAsync(
+        session.user.id,
+        parsed.data,
+        "conversations.viewOwn",
+      );
       if (forbidden) return forbidden;
       const folders = await db
         .select()
         .from(conversationFolders)
-        .where(and(eq(conversationFolders.workspaceId, parsed.data), eq(conversationFolders.userId, session.user.id), isNull(conversationFolders.archivedAt)))
-        .orderBy(asc(conversationFolders.sortOrder), asc(conversationFolders.createdAt), asc(conversationFolders.id));
+        .where(
+          and(
+            eq(conversationFolders.workspaceId, parsed.data),
+            eq(conversationFolders.userId, session.user.id),
+            isNull(conversationFolders.archivedAt),
+          ),
+        )
+        .orderBy(
+          asc(conversationFolders.sortOrder),
+          asc(conversationFolders.createdAt),
+          asc(conversationFolders.id),
+        );
       return NextResponse.json({ folders: folders.map(folderResponse) });
     },
     { logLabel: "Failed to list conversation folders" },
@@ -51,7 +71,11 @@ export async function POST(req: NextRequest) {
       if (!parsed.success) {
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
       }
-      const forbidden = await requireWorkspacePermissionAsync(session.user.id, parsed.data.workspaceId, "conversations.viewOwn");
+      const forbidden = await requireWorkspacePermissionAsync(
+        session.user.id,
+        parsed.data.workspaceId,
+        "conversations.viewOwn",
+      );
       if (forbidden) return forbidden;
       const [folder] = await db
         .insert(conversationFolders)

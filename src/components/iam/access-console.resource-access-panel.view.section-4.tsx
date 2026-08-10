@@ -1,15 +1,61 @@
-import { ArrowRightLeftIcon,BoxesIcon,SearchIcon,ShieldCheckIcon,Trash2Icon } from "lucide-react";
+import {
+  ArrowRightLeftIcon,
+  BoxesIcon,
+  SearchIcon,
+  ShieldCheckIcon,
+  Trash2Icon,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
-import { Empty,EmptyDescription,EmptyHeader,EmptyMedia,EmptyTitle } from "@/components/ui/empty";
-import { Field,FieldLabel } from "@/components/ui/field";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Select,SelectContent,SelectGroup,SelectItem,SelectTrigger,SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import type { ResourceAccessPanelViewModel } from "./access-console.resource-access-panel.view";
-export function ResourceAccessPanelSection4({ model }: { model: ResourceAccessPanelViewModel }) {
-  const { canManageResources, definitions, loadDetails, loadResources, loadingMoreResources, loadingResources, nextResourceOffset, openTransfer, query, resourceType, resources, setAssignmentQuery, setDeletingResource, setDetails, setNextResourceOffset, setPrincipalId, setQuery, setResourceType, setResources, setRoleId, setSelected, t } = model;
+export function ResourceAccessPanelSection4({
+  model,
+}: {
+  model: ResourceAccessPanelViewModel;
+}) {
+  const {
+    canManageResources,
+    definitions,
+    loadDetails,
+    loadResources,
+    loadingMoreResources,
+    loadingResources,
+    nextResourceOffset,
+    openTransfer,
+    query,
+    resourceType,
+    resources,
+    setAssignmentQuery,
+    setDeletingResource,
+    setDetails,
+    setNextResourceOffset,
+    setPrincipalId,
+    setQuery,
+    setResourceType,
+    setResources,
+    setRoleId,
+    setSelected,
+    t,
+  } = model;
   return (
     <CardContent className="flex flex-col gap-4">
       <div className="grid gap-3 sm:grid-cols-[15rem_minmax(16rem,1fr)]">
@@ -38,10 +84,21 @@ export function ResourceAccessPanelSection4({ model }: { model: ResourceAccessPa
           </Select>
         </Field>
         <Field>
-          <FieldLabel htmlFor="resource-search">{t("searchResources")}</FieldLabel>
+          <FieldLabel htmlFor="resource-search">
+            {t("searchResources")}
+          </FieldLabel>
           <div className="relative">
-            <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-            <Input id="resource-search" className="pl-9" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("searchResourcesPlaceholder")} />
+            <SearchIcon
+              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden="true"
+            />
+            <Input
+              id="resource-search"
+              className="pl-9"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder={t("searchResourcesPlaceholder")}
+            />
           </div>
         </Field>
       </div>
@@ -67,7 +124,9 @@ export function ResourceAccessPanelSection4({ model }: { model: ResourceAccessPa
             <thead className="bg-muted/45 text-xs text-muted-foreground">
               <tr>
                 <th className="px-4 py-3 font-medium">{t("resource")}</th>
-                <th className="px-4 py-3 text-right font-medium">{t("actions")}</th>
+                <th className="px-4 py-3 text-right font-medium">
+                  {t("actions")}
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -79,8 +138,16 @@ export function ResourceAccessPanelSection4({ model }: { model: ResourceAccessPa
                   <td className="px-4 py-3 text-right">
                     <div className="flex justify-end gap-2">
                       {canManageResources ? (
-                        <Button type="button" size="sm" variant="ghost" onClick={() => void openTransfer(resource)}>
-                          <ArrowRightLeftIcon data-icon="inline-start" aria-hidden="true" />
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => void openTransfer(resource)}
+                        >
+                          <ArrowRightLeftIcon
+                            data-icon="inline-start"
+                            aria-hidden="true"
+                          />
                           {t("transfer")}
                         </Button>
                       ) : null}
@@ -97,7 +164,10 @@ export function ResourceAccessPanelSection4({ model }: { model: ResourceAccessPa
                           void loadDetails(resource);
                         }}
                       >
-                        <ShieldCheckIcon data-icon="inline-start" aria-hidden="true" />
+                        <ShieldCheckIcon
+                          data-icon="inline-start"
+                          aria-hidden="true"
+                        />
                         {t("manageResourceAccess")}
                       </Button>
                       {canManageResources ? (
@@ -122,8 +192,15 @@ export function ResourceAccessPanelSection4({ model }: { model: ResourceAccessPa
           </table>
           {nextResourceOffset !== null ? (
             <div className="flex justify-center border-t bg-muted/15 p-3">
-              <Button type="button" variant="outline" disabled={loadingMoreResources} onClick={() => void loadResources(nextResourceOffset)}>
-                {loadingMoreResources ? <Spinner data-icon="inline-start" /> : null}
+              <Button
+                type="button"
+                variant="outline"
+                disabled={loadingMoreResources}
+                onClick={() => void loadResources(nextResourceOffset)}
+              >
+                {loadingMoreResources ? (
+                  <Spinner data-icon="inline-start" />
+                ) : null}
                 {t("loadMoreResources")}
               </Button>
             </div>

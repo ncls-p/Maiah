@@ -1,11 +1,20 @@
-import { CodeSandboxInputPreview,CodeSandboxLanguage } from "./chat-message-rendering-utils.latest-chat-todo-list-from-messages";
+import {
+  CodeSandboxInputPreview,
+  CodeSandboxLanguage,
+} from "./chat-message-rendering-utils.latest-chat-todo-list-from-messages";
 import { HtmlArtifactOutput } from "./chat-message-rendering-utils.stringify-for-match";
 
-function normalizeCodeSandboxLanguage(value: unknown): CodeSandboxLanguage | null {
-  return value === "python" || value === "node" || value === "bash" ? value : null;
+function normalizeCodeSandboxLanguage(
+  value: unknown,
+): CodeSandboxLanguage | null {
+  return value === "python" || value === "node" || value === "bash"
+    ? value
+    : null;
 }
 
-export function codeSandboxInputFromUnknown(value: unknown): CodeSandboxInputPreview | null {
+export function codeSandboxInputFromUnknown(
+  value: unknown,
+): CodeSandboxInputPreview | null {
   if (typeof value !== "object" || value === null) return null;
   const record = value as Record<string, unknown>;
   if (typeof record.code !== "string") return null;
@@ -13,7 +22,9 @@ export function codeSandboxInputFromUnknown(value: unknown): CodeSandboxInputPre
     ? record.files.flatMap((file) => {
         if (typeof file !== "object" || file === null) return [];
         const fileRecord = file as Record<string, unknown>;
-        return typeof fileRecord.path === "string" ? [{ path: fileRecord.path }] : [];
+        return typeof fileRecord.path === "string"
+          ? [{ path: fileRecord.path }]
+          : [];
       })
     : [];
   const attachments = Array.isArray(record.attachments)
@@ -24,7 +35,9 @@ export function codeSandboxInputFromUnknown(value: unknown): CodeSandboxInputPre
           ? [
               {
                 id: attachmentRecord.id,
-                ...(typeof attachmentRecord.path === "string" ? { path: attachmentRecord.path } : {}),
+                ...(typeof attachmentRecord.path === "string"
+                  ? { path: attachmentRecord.path }
+                  : {}),
               },
             ]
           : [];
@@ -39,16 +52,22 @@ export function codeSandboxInputFromUnknown(value: unknown): CodeSandboxInputPre
 }
 
 export function isCodeSandboxToolName(toolName: string | undefined) {
-  return toolName === "run_code_sandbox" || Boolean(toolName?.endsWith("_run_code_sandbox"));
+  return (
+    toolName === "run_code_sandbox" ||
+    Boolean(toolName?.endsWith("_run_code_sandbox"))
+  );
 }
 
-export function htmlArtifactFromToolInput(value: unknown): HtmlArtifactOutput | null {
+export function htmlArtifactFromToolInput(
+  value: unknown,
+): HtmlArtifactOutput | null {
   if (typeof value !== "object" || value === null) return null;
   const record = value as Record<string, unknown>;
   if (typeof record.html !== "string") return null;
   return {
     kind: "html_artifact",
-    title: typeof record.title === "string" ? record.title : "Interactive preview",
+    title:
+      typeof record.title === "string" ? record.title : "Interactive preview",
     html: record.html,
     css: typeof record.css === "string" ? record.css : "",
     js: typeof record.js === "string" ? record.js : "",
@@ -61,7 +80,11 @@ function decodeJsonStringFragment(raw: string) {
   try {
     return JSON.parse(`"${safeRaw}"`) as string;
   } catch {
-    return safeRaw.replace(/\\n/g, "\n").replace(/\\t/g, "\t").replace(/\\"/g, '"').replace(/\\\\/g, "\\");
+    return safeRaw
+      .replace(/\\n/g, "\n")
+      .replace(/\\t/g, "\t")
+      .replace(/\\"/g, '"')
+      .replace(/\\\\/g, "\\");
   }
 }
 
@@ -101,7 +124,9 @@ export function codeSandboxInputFromInputText(inputText: string | undefined) {
     const code = extractJsonStringField(inputText, "code");
     if (!code) return null;
     return {
-      language: normalizeCodeSandboxLanguage(extractJsonStringField(inputText, "language")),
+      language: normalizeCodeSandboxLanguage(
+        extractJsonStringField(inputText, "language"),
+      ),
       code,
       files: [],
       attachments: [],
@@ -119,7 +144,8 @@ export function htmlArtifactFromInputText(inputText: string | undefined) {
     const heightMatch = inputText.match(/"height"\s*:\s*(\d+)/);
     return {
       kind: "html_artifact" as const,
-      title: extractJsonStringField(inputText, "title") ?? "Generating preview…",
+      title:
+        extractJsonStringField(inputText, "title") ?? "Generating preview…",
       html,
       css: extractJsonStringField(inputText, "css") ?? "",
       js: extractJsonStringField(inputText, "js") ?? "",
@@ -132,7 +158,10 @@ function escapeClosingTags(value: string) {
   return value.replace(/<\/(script|style)/gi, "<\\/$1");
 }
 
-export function artifactSourceDocument(artifact: HtmlArtifactOutput, options: { fullscreen?: boolean } = {}) {
+export function artifactSourceDocument(
+  artifact: HtmlArtifactOutput,
+  options: { fullscreen?: boolean } = {},
+) {
   const fullscreenCss = options.fullscreen
     ? `
 html, body { width: 100%; min-height: 100%; }

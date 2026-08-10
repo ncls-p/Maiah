@@ -1,41 +1,74 @@
 import { generateImage } from "ai";
-import { and,eq,isNull } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 
 import { createChatImageAttachment } from "@/modules/chat/attachments";
-import { calculateImageUsageImpact,parseImageGenerationConfig } from "@/modules/provider/model-runtime-config";
+import {
+  calculateImageUsageImpact,
+  parseImageGenerationConfig,
+} from "@/modules/provider/model-runtime-config";
 import { getUsageImpactSetting } from "@/modules/provider/usage-impact-settings";
 import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
-import { aiModels,aiProviders,usageEvents } from "@/server/infrastructure/db/schema";
+import {
+  aiModels,
+  aiProviders,
+  usageEvents,
+} from "@/server/infrastructure/db/schema";
 import { getAdapter } from "@/server/infrastructure/providers";
 import { buildProviderRuntimeConfig } from "./provider-runtime-config";
 
-export async function generateWorkspaceImage(input: { workspaceId: string; userId: string; conversationId?: string; prompt: string; size?: string }) {
+export async function generateWorkspaceImage(input: {
+  workspaceId: string;
+  userId: string;
+  conversationId?: string;
+  prompt: string;
+  size?: string;
+}) {
   const rows = await db
     .select({ model: aiModels, provider: aiProviders })
     .from(aiModels)
     .innerJoin(aiProviders, eq(aiModels.providerId, aiProviders.id))
-    .where(and(eq(aiProviders.workspaceId, input.workspaceId), eq(aiProviders.enabled, true), eq(aiModels.enabled, true), isNull(aiProviders.archivedAt)));
+    .where(
+      and(
+        eq(aiProviders.workspaceId, input.workspaceId),
+        eq(aiProviders.enabled, true),
+        eq(aiModels.enabled, true),
+        isNull(aiProviders.archivedAt),
+      ),
+    );
 
   const candidates = rows
     .map((row) => ({
       ...row,
       config: parseImageGenerationConfig(row.model.imageGenerationConfigJson),
-      capabilities: (row.model.capabilitiesJson as Record<string, boolean> | null) ?? {},
+      capabilities:
+        (row.model.capabilitiesJson as Record<string, boolean> | null) ?? {},
     }))
-    .filter((row) => row.config.enabled || row.capabilities.imageGeneration === true)
-    .sort((left, right) => Number(right.config.isDefault) - Number(left.config.isDefault));
+    .filter(
+      (row) => row.config.enabled || row.capabilities.imageGeneration === true,
+    )
+    .sort(
+      (left, right) =>
+        Number(right.config.isDefault) - Number(left.config.isDefault),
+    );
 
   let selected: (typeof candidates)[number] | undefined;
   for (const candidate of candidates) {
-    const permission = await authorization.checkPermission({ principalType: "user", principalId: input.userId }, "models.invoke", "model", candidate.model.id);
+    const permission = await authorization.checkPermission(
+      { principalType: "user", principalId: input.userId },
+      "models.invoke",
+      "model",
+      candidate.model.id,
+    );
     if (permission.granted) {
       selected = candidate;
       break;
     }
   }
   if (!selected) {
-    throw new Error("No image model is configured or accessible in this project. Ask an administrator to enable one.");
+    throw new Error(
+      "No image model is configured or accessible in this project. Ask an administrator to enable one.",
+    );
   }
 
   const adapter = getAdapter(selected.provider.kind);
@@ -44,12 +77,17 @@ export async function generateWorkspaceImage(input: { workspaceId: string; userI
   }
   const requestedSize = input.size ?? selected.config.defaultSize;
   if (!selected.config.allowedSizes.includes(requestedSize)) {
-    throw new Error(`Unsupported image size. Allowed sizes: ${selected.config.allowedSizes.join(", ")}.`);
+    throw new Error(
+      `Unsupported image size. Allowed sizes: ${selected.config.allowedSizes.join(", ")}.`,
+    );
   }
 
   const startedAt = Date.now();
   const result = await generateImage({
-    model: adapter.createImageModel(await buildProviderRuntimeConfig(selected.provider), selected.model.modelId),
+    model: adapter.createImageModel(
+      await buildProviderRuntimeConfig(selected.provider),
+      selected.model.modelId,
+    ),
     prompt: input.prompt,
     size: requestedSize as `${number}x${number}`,
     n: 1,
@@ -62,7 +100,10 @@ export async function generateWorkspaceImage(input: { workspaceId: string; userI
     bytes: result.image.uint8Array,
   });
   const usageImpactSetting = await getUsageImpactSetting();
-  const calculatedImpact = calculateImageUsageImpact(selected.model.imageGenerationConfigJson, usageImpactSetting.co2GramsPerKwh);
+  const calculatedImpact = calculateImageUsageImpact(
+    selected.model.imageGenerationConfigJson,
+    usageImpactSetting.co2GramsPerKwh,
+  );
   const impact = usageImpactSetting.enabled
     ? calculatedImpact
     : {
@@ -79,7 +120,10 @@ export async function generateWorkspaceImage(input: { workspaceId: string; userI
     modelId: selected.model.id,
     conversationId: input.conversationId ?? null,
     operation: "image_generation",
-    costUsd: impact.cost === null || impact.currency !== "USD" ? null : String(impact.cost),
+    costUsd:
+      impact.cost === null || impact.currency !== "USD"
+        ? null
+        : String(impact.cost),
     latencyMs: Date.now() - startedAt,
     status: "success",
     metadataJson: {

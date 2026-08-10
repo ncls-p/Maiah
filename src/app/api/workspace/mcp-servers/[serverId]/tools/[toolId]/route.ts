@@ -1,7 +1,10 @@
-import { handleRoute,requireResourcePermissionAsync } from "@/lib/route-handler";
+import {
+  handleRoute,
+  requireResourcePermissionAsync,
+} from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
 import { updateMcpTool } from "@/modules/mcp/use-cases";
-import { NextRequest,NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 const updateSchema = z.object({
@@ -10,18 +13,33 @@ const updateSchema = z.object({
   requireApproval: z.boolean().optional(),
 });
 
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ serverId: string; toolId: string }> }) {
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ serverId: string; toolId: string }> },
+) {
   return handleRoute(
     req,
     async ({ session }) => {
       const parsed = updateSchema.safeParse(await req.json());
       if (!parsed.success) {
-        return NextResponse.json({ error: "Invalid input", details: parsed.error.issues }, { status: 400 });
+        return NextResponse.json(
+          { error: "Invalid input", details: parsed.error.issues },
+          { status: 400 },
+        );
       }
-      const forbidden = await requireResourcePermissionAsync(session.user.id, parsed.data.workspaceId, "mcpServers.manage", "mcp_server", (await params).serverId);
+      const forbidden = await requireResourcePermissionAsync(
+        session.user.id,
+        parsed.data.workspaceId,
+        "mcpServers.manage",
+        "mcp_server",
+        (await params).serverId,
+      );
       if (forbidden) return forbidden;
       const { serverId, toolId } = await params;
-      const canManageGlobal = await canManageTenantGlobals(session, parsed.data.workspaceId);
+      const canManageGlobal = await canManageTenantGlobals(
+        session,
+        parsed.data.workspaceId,
+      );
       const tool = await updateMcpTool({
         toolId,
         serverId,
@@ -36,7 +54,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ se
     {
       logLabel: "Failed to update MCP tool",
       expectedError: (error) => {
-        const msg = error instanceof Error ? error.message : "Internal server error";
+        const msg =
+          error instanceof Error ? error.message : "Internal server error";
         return NextResponse.json({ error: msg }, { status: 400 });
       },
     },

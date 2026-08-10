@@ -1,13 +1,14 @@
 "use client";
 
-import type { McpServer,McpTool } from "./types";
+import type { McpServer, McpTool } from "./types";
 
 export type JsonRecord = Record<string, unknown>;
 export type FieldValue = string | boolean;
 
 type ToolConnectorKind = "mcp" | "builtin" | "custom";
 export type ToolConnectionOwnerType = "user" | "workspace";
-export type ToolConnectionStatus = "active" | "invalid" | "expired" | "disabled";
+export type ToolConnectionStatus =
+  "active" | "invalid" | "expired" | "disabled";
 
 export interface SchemaProperty {
   type?: string;

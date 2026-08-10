@@ -1,31 +1,69 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useEffect,useId,useMemo,useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 
 import type { CodeWorkspaceArtifact } from "@/components/chat/chat-types";
-import { DEFAULT_CODE_WORKSPACE_LAYOUT,codeWorkspaceGridTemplate,normalizeCodeWorkspaceLayout,visibleCodeWorkspacePanes,type CodeWorkspaceLayout,type CodeWorkspacePane } from "@/components/chat/code-workspace-layout";
-import { CODE_WORKSPACE_ARTIFACT_EVENT,CODE_WORKSPACE_LAYOUT_STORAGE_KEY,loadCodeWorkspaceFileContent,requestUpdatedCodeWorkspaceArtifact } from "./code-workspace-artifact-card.button-type";
+import {
+  DEFAULT_CODE_WORKSPACE_LAYOUT,
+  codeWorkspaceGridTemplate,
+  normalizeCodeWorkspaceLayout,
+  visibleCodeWorkspacePanes,
+  type CodeWorkspaceLayout,
+  type CodeWorkspacePane,
+} from "@/components/chat/code-workspace-layout";
+import {
+  CODE_WORKSPACE_ARTIFACT_EVENT,
+  CODE_WORKSPACE_LAYOUT_STORAGE_KEY,
+  loadCodeWorkspaceFileContent,
+  requestUpdatedCodeWorkspaceArtifact,
+} from "./code-workspace-artifact-card.button-type";
 import { CodeWorkspaceArtifactCardView } from "./code-workspace-artifact-card.code-workspace-artifact-card.view";
-import { codeWorkspaceArtifactFromEvent,dispatchCodeWorkspaceArtifact } from "./code-workspace-artifact-card.code-workspace-file-tree";
+import {
+  codeWorkspaceArtifactFromEvent,
+  dispatchCodeWorkspaceArtifact,
+} from "./code-workspace-artifact-card.code-workspace-file-tree";
 import { buildCodeWorkspaceTree } from "./code-workspace-artifact-card.highlight-code";
 
-export function useCodeWorkspaceArtifactCardController({ artifact, workspaceId, variant = "card", activateOnMount = false }: { artifact: CodeWorkspaceArtifact; workspaceId?: string; variant?: "card" | "workbench"; activateOnMount?: boolean }) {
+export function useCodeWorkspaceArtifactCardController({
+  artifact,
+  workspaceId,
+  variant = "card",
+  activateOnMount = false,
+}: {
+  artifact: CodeWorkspaceArtifact;
+  workspaceId?: string;
+  variant?: "card" | "workbench";
+  activateOnMount?: boolean;
+}) {
   const t = useTranslations("chat.artifacts");
   const [currentArtifact, setCurrentArtifact] = useState(artifact);
-  const [selectedPath, setSelectedPath] = useState<string | null>(artifact.rootFile ?? artifact.files.find((file) => !file.binary)?.path ?? null);
+  const [selectedPath, setSelectedPath] = useState<string | null>(
+    artifact.rootFile ??
+      artifact.files.find((file) => !file.binary)?.path ??
+      null,
+  );
   const [content, setContent] = useState("");
   const [fileReloadKey, setFileReloadKey] = useState(0);
   const [loadingFile, setLoadingFile] = useState(false);
   const [savingFile, setSavingFile] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [fullscreenPane, setFullscreenPane] = useState<"code" | "preview" | null>(null);
+  const [fullscreenPane, setFullscreenPane] = useState<
+    "code" | "preview" | null
+  >(null);
   const [publishOpen, setPublishOpen] = useState(false);
   const [deletePath, setDeletePath] = useState<string | null>(null);
-  const [workspaceLayout, setWorkspaceLayout] = useState<CodeWorkspaceLayout>(DEFAULT_CODE_WORKSPACE_LAYOUT);
+  const [workspaceLayout, setWorkspaceLayout] = useState<CodeWorkspaceLayout>(
+    DEFAULT_CODE_WORKSPACE_LAYOUT,
+  );
   const paneIdPrefix = useId();
-  const selectedFile = currentArtifact.files.find((file) => file.path === selectedPath);
-  const fileTree = useMemo(() => buildCodeWorkspaceTree(currentArtifact.files), [currentArtifact.files]);
+  const selectedFile = currentArtifact.files.find(
+    (file) => file.path === selectedPath,
+  );
+  const fileTree = useMemo(
+    () => buildCodeWorkspaceTree(currentArtifact.files),
+    [currentArtifact.files],
+  );
   const visiblePanes = visibleCodeWorkspacePanes(workspaceLayout);
   const workspaceGridTemplate = codeWorkspaceGridTemplate(workspaceLayout);
 
@@ -33,11 +71,16 @@ export function useCodeWorkspaceArtifactCardController({ artifact, workspaceId, 
     return `${paneIdPrefix}-${pane}`;
   }
 
-  function updateWorkspaceLayout(updater: (current: CodeWorkspaceLayout) => CodeWorkspaceLayout) {
+  function updateWorkspaceLayout(
+    updater: (current: CodeWorkspaceLayout) => CodeWorkspaceLayout,
+  ) {
     setWorkspaceLayout((current) => {
       const next = updater(current);
       try {
-        window.localStorage.setItem(CODE_WORKSPACE_LAYOUT_STORAGE_KEY, JSON.stringify(next));
+        window.localStorage.setItem(
+          CODE_WORKSPACE_LAYOUT_STORAGE_KEY,
+          JSON.stringify(next),
+        );
       } catch {
         // The layout still works for this session when storage is unavailable.
       }
@@ -48,7 +91,9 @@ export function useCodeWorkspaceArtifactCardController({ artifact, workspaceId, 
   useEffect(() => {
     if (variant !== "workbench") return;
     try {
-      const persisted = window.localStorage.getItem(CODE_WORKSPACE_LAYOUT_STORAGE_KEY);
+      const persisted = window.localStorage.getItem(
+        CODE_WORKSPACE_LAYOUT_STORAGE_KEY,
+      );
       if (!persisted) return;
       const next = normalizeCodeWorkspaceLayout(JSON.parse(persisted));
       queueMicrotask(() => setWorkspaceLayout(next));
@@ -66,20 +111,35 @@ export function useCodeWorkspaceArtifactCardController({ artifact, workspaceId, 
     function handleWorkspaceUpdate(event: Event) {
       const nextArtifact = codeWorkspaceArtifactFromEvent(event);
       if (nextArtifact?.projectId !== artifact.projectId) return;
-      setCurrentArtifact((current) => (nextArtifact.version >= current.version ? nextArtifact : current));
+      setCurrentArtifact((current) =>
+        nextArtifact.version >= current.version ? nextArtifact : current,
+      );
     }
-    window.addEventListener(CODE_WORKSPACE_ARTIFACT_EVENT, handleWorkspaceUpdate);
+    window.addEventListener(
+      CODE_WORKSPACE_ARTIFACT_EVENT,
+      handleWorkspaceUpdate,
+    );
     return () => {
-      window.removeEventListener(CODE_WORKSPACE_ARTIFACT_EVENT, handleWorkspaceUpdate);
+      window.removeEventListener(
+        CODE_WORKSPACE_ARTIFACT_EVENT,
+        handleWorkspaceUpdate,
+      );
     };
   }, [artifact.projectId]);
 
   useEffect(() => {
-    if (selectedPath && currentArtifact.files.some((file) => file.path === selectedPath)) {
+    if (
+      selectedPath &&
+      currentArtifact.files.some((file) => file.path === selectedPath)
+    ) {
       return;
     }
     queueMicrotask(() => {
-      setSelectedPath(currentArtifact.rootFile ?? currentArtifact.files.find((file) => !file.binary)?.path ?? null);
+      setSelectedPath(
+        currentArtifact.rootFile ??
+          currentArtifact.files.find((file) => !file.binary)?.path ??
+          null,
+      );
     });
   }, [currentArtifact, selectedPath]);
 
@@ -94,11 +154,19 @@ export function useCodeWorkspaceArtifactCardController({ artifact, workspaceId, 
       setLoadingFile(true);
       setError(null);
       try {
-        const fileContent = await loadCodeWorkspaceFileContent(currentArtifact.projectId, filePath, t("loadFileFailed"));
+        const fileContent = await loadCodeWorkspaceFileContent(
+          currentArtifact.projectId,
+          filePath,
+          t("loadFileFailed"),
+        );
         if (!cancelled) setContent(fileContent);
       } catch (loadError) {
         if (!cancelled) {
-          setError(loadError instanceof Error ? loadError.message : t("loadFileFailed"));
+          setError(
+            loadError instanceof Error
+              ? loadError.message
+              : t("loadFileFailed"),
+          );
         }
       } finally {
         if (!cancelled) setLoadingFile(false);
@@ -108,18 +176,31 @@ export function useCodeWorkspaceArtifactCardController({ artifact, workspaceId, 
     return () => {
       cancelled = true;
     };
-  }, [currentArtifact.projectId, fileReloadKey, selectedFile?.binary, selectedPath, t]);
+  }, [
+    currentArtifact.projectId,
+    fileReloadKey,
+    selectedFile?.binary,
+    selectedPath,
+    t,
+  ]);
 
   async function saveSelectedFile() {
     if (!selectedPath || selectedFile?.binary) return;
     setSavingFile(true);
     setError(null);
     try {
-      const nextArtifact = await requestUpdatedCodeWorkspaceArtifact(currentArtifact.projectId, "PUT", { path: selectedPath, content }, t("saveFileFailed"));
+      const nextArtifact = await requestUpdatedCodeWorkspaceArtifact(
+        currentArtifact.projectId,
+        "PUT",
+        { path: selectedPath, content },
+        t("saveFileFailed"),
+      );
       setCurrentArtifact(nextArtifact);
       dispatchCodeWorkspaceArtifact(nextArtifact, { activate: true });
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : t("saveFileFailed"));
+      setError(
+        saveError instanceof Error ? saveError.message : t("saveFileFailed"),
+      );
     } finally {
       setSavingFile(false);
     }
@@ -130,12 +211,21 @@ export function useCodeWorkspaceArtifactCardController({ artifact, workspaceId, 
     setSavingFile(true);
     setError(null);
     try {
-      const nextArtifact = await requestUpdatedCodeWorkspaceArtifact(currentArtifact.projectId, "DELETE", { path: deletePath }, t("deleteFileFailed"));
+      const nextArtifact = await requestUpdatedCodeWorkspaceArtifact(
+        currentArtifact.projectId,
+        "DELETE",
+        { path: deletePath },
+        t("deleteFileFailed"),
+      );
       setCurrentArtifact(nextArtifact);
       dispatchCodeWorkspaceArtifact(nextArtifact, { activate: true });
       setDeletePath(null);
     } catch (deleteError) {
-      setError(deleteError instanceof Error ? deleteError.message : t("deleteFileFailed"));
+      setError(
+        deleteError instanceof Error
+          ? deleteError.message
+          : t("deleteFileFailed"),
+      );
     } finally {
       setSavingFile(false);
     }
@@ -173,7 +263,9 @@ export function useCodeWorkspaceArtifactCardController({ artifact, workspaceId, 
   } as const;
 }
 
-export function CodeWorkspaceArtifactCard(...args: Parameters<typeof useCodeWorkspaceArtifactCardController>) {
+export function CodeWorkspaceArtifactCard(
+  ...args: Parameters<typeof useCodeWorkspaceArtifactCardController>
+) {
   const model = useCodeWorkspaceArtifactCardController(...args);
   if (!("kind" in model)) return model;
   return <CodeWorkspaceArtifactCardView model={model} />;

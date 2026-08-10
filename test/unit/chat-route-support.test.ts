@@ -1,4 +1,4 @@
-import { beforeEach,describe,expect,it,vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const toolUseCasesMock = vi.hoisted(() => ({
   canExecuteRestrictedTool: vi.fn(),
@@ -55,6 +55,7 @@ async function loadModules() {
     streamToolErrorOutput: routeSupport.streamToolErrorOutput,
     mergeUserFilePartMetadata: routeSupport.mergeUserFilePartMetadata,
     knowledgeCitationsFromToolOutput: routeSupport.knowledgeCitationsFromToolOutput,
+    chatRequestSchema: routeSupport.chatRequestSchema,
     getBuiltInToolByName: builtinTools.getBuiltInToolByName as BuiltInToolLookup,
     waitForApproval: invocationStateMock.waitForApproval,
   };
@@ -79,6 +80,17 @@ describe("chat route tool gating", () => {
     knowledgeUseCasesMock.getKnowledgeBindingsForVersion.mockResolvedValue([]);
     knowledgeUseCasesMock.searchBoundKnowledgeBases.mockResolvedValue([]);
     knowledgeUseCasesMock.readBoundKnowledgeChunkWindow.mockResolvedValue(null);
+  });
+
+  it("accepts temporary-chat creation only as an explicit boolean", async () => {
+    const { chatRequestSchema } = await loadModules();
+    expect(chatRequestSchema.parse({ content: "Hello", ephemeral: true, ephemeralTtlMinutes: 5 })).toMatchObject({
+      content: "Hello",
+      ephemeral: true,
+      ephemeralTtlMinutes: 5,
+    });
+    expect(chatRequestSchema.safeParse({ content: "Hello", ephemeral: "yes" }).success).toBe(false);
+    expect(chatRequestSchema.safeParse({ content: "Hello", ephemeral: true, ephemeralTtlMinutes: 30 }).success).toBe(false);
   });
 
   it("does not auto-enable code workspace tools without explicit bindings", async () => {

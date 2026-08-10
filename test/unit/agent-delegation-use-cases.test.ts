@@ -109,6 +109,32 @@ describe("agent delegation bindings", () => {
     ]);
   });
 
+  it("allows more configured specialists than the per-run delegation budget", async () => {
+    const bindings = Array.from({ length: orchestrationPolicyDefaults.maxDelegations + 1 }, (_, index) => {
+      const suffix = String(index + 10).padStart(12, "0");
+      return {
+        childAgentId: `22222222-2222-4222-8222-${suffix}`,
+        childAgentVersionId: `33333333-3333-4333-8333-${suffix}`,
+      };
+    });
+    const { executor } = createExecutor([
+      bindings.map(({ childAgentId: id }) => ({ id })),
+      bindings.map(({ childAgentId: agentId, childAgentVersionId: id }) => ({ id, agentId })),
+      ...bindings.map(() => []),
+    ]);
+
+    await expect(
+      validateDelegationBindings({
+        parentAgentId,
+        workspaceId,
+        userId,
+        bindings,
+        policy: orchestrationPolicyDefaults,
+        executor,
+      }),
+    ).resolves.toEqual(bindings);
+  });
+
   it("rejects duplicate children and direct self-delegation without querying", async () => {
     const { executor } = createExecutor([]);
     await expect(

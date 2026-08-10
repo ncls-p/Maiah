@@ -1,19 +1,77 @@
-import { and,eq,inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 
 import type { AccessResourceType } from "@/server/domain/entities/access-resource";
 import { db } from "@/server/infrastructure/db";
-import { agentRuns,agentSkills,agents,aiProviders,conversations,customToolCredentialRefs,customToolSecretRequests,customTools,documents,knowledgeBases,marketplaceItems,mcpServers,organizationMembers,roleBindings,roles,scheduledTasks,toolConnectionRequirements,toolConnections,toolConnectors,toolInvocations,userAgentPreferences,userToolSettings,workflowAgentInputRequests,workflowAgentMessages,workflowAgentRunRequests,workflowAgentTodoLists,workflowRuns,workflows,workspaceMembers } from "@/server/infrastructure/db/schema";
+import {
+  agentRuns,
+  agentSkills,
+  agents,
+  aiProviders,
+  conversations,
+  customToolCredentialRefs,
+  customToolSecretRequests,
+  customTools,
+  documents,
+  knowledgeBases,
+  marketplaceItems,
+  mcpServers,
+  organizationMembers,
+  roleBindings,
+  roles,
+  scheduledTasks,
+  toolConnectionRequirements,
+  toolConnections,
+  toolConnectors,
+  toolInvocations,
+  userAgentPreferences,
+  userToolSettings,
+  workflowAgentInputRequests,
+  workflowAgentMessages,
+  workflowAgentRunRequests,
+  workflowAgentTodoLists,
+  workflowRuns,
+  workflows,
+  workspaceMembers,
+} from "@/server/infrastructure/db/schema";
 
 import type { ResourceTransferExecutionInput } from "./resource-transfer.execute-resource-transfer";
 import type { previewResourceTransfer } from "./resource-transfer.preview-resource-transfer";
 
 type TransferPreview = Awaited<ReturnType<typeof previewResourceTransfer>>;
 
-export async function applyResourceTransferTransaction(context: { input: ResourceTransferExecutionInput; preview: TransferPreview; assignmentIdsToRemove: string[]; now: Date; targetWorkspaceId: string; crossOrganization: boolean; byType: (type: AccessResourceType) => string[]; workspaceBindings: Array<typeof roleBindings.$inferSelect>; transferableWorkspaceBindings: Array<typeof roleBindings.$inferSelect>; projectMemberRows: Array<{ userId: string }>; organizationMemberRole?: { id: string }; workspaceMemberRole?: { id: string } }) {
-  const { input, preview, assignmentIdsToRemove, now, targetWorkspaceId, crossOrganization, byType, workspaceBindings, transferableWorkspaceBindings, projectMemberRows, organizationMemberRole, workspaceMemberRole } = context;
+export async function applyResourceTransferTransaction(context: {
+  input: ResourceTransferExecutionInput;
+  preview: TransferPreview;
+  assignmentIdsToRemove: string[];
+  now: Date;
+  targetWorkspaceId: string;
+  crossOrganization: boolean;
+  byType: (type: AccessResourceType) => string[];
+  workspaceBindings: Array<typeof roleBindings.$inferSelect>;
+  transferableWorkspaceBindings: Array<typeof roleBindings.$inferSelect>;
+  projectMemberRows: Array<{ userId: string }>;
+  organizationMemberRole?: { id: string };
+  workspaceMemberRole?: { id: string };
+}) {
+  const {
+    input,
+    preview,
+    assignmentIdsToRemove,
+    now,
+    targetWorkspaceId,
+    crossOrganization,
+    byType,
+    workspaceBindings,
+    transferableWorkspaceBindings,
+    projectMemberRows,
+    organizationMemberRole,
+    workspaceMemberRole,
+  } = context;
   await db.transaction(async (tx) => {
     if (assignmentIdsToRemove.length > 0) {
-      await tx.delete(roleBindings).where(inArray(roleBindings.id, assignmentIdsToRemove));
+      await tx
+        .delete(roleBindings)
+        .where(inArray(roleBindings.id, assignmentIdsToRemove));
     }
     const agentIds = byType("agent");
     const providerIds = byType("provider");
@@ -32,7 +90,13 @@ export async function applyResourceTransferTransaction(context: { input: Resourc
       await tx
         .update(roles)
         .set({ ownerResourceId: targetWorkspaceId, updatedAt: now })
-        .where(and(eq(roles.isSystem, false), eq(roles.ownerResourceType, "workspace"), eq(roles.ownerResourceId, input.sourceWorkspaceId)));
+        .where(
+          and(
+            eq(roles.isSystem, false),
+            eq(roles.ownerResourceType, "workspace"),
+            eq(roles.ownerResourceId, input.sourceWorkspaceId),
+          ),
+        );
       if (transferableWorkspaceBindings.length > 0) {
         await tx
           .insert(roleBindings)
@@ -68,7 +132,10 @@ export async function applyResourceTransferTransaction(context: { input: Resourc
               status: "active",
             })
             .onConflictDoUpdate({
-              target: [organizationMembers.organizationId, organizationMembers.userId],
+              target: [
+                organizationMembers.organizationId,
+                organizationMembers.userId,
+              ],
               set: { status: "active", updatedAt: now },
             });
           await tx
@@ -125,10 +192,15 @@ export async function applyResourceTransferTransaction(context: { input: Resourc
           workspaceId: targetWorkspaceId,
           folderId: null,
           updatedAt: now,
-          ...(crossOrganization && input.options.ownershipPolicy === "actor" ? { userId: input.actorUserId } : {}),
+          ...(crossOrganization && input.options.ownershipPolicy === "actor"
+            ? { userId: input.actorUserId }
+            : {}),
         })
         .where(inArray(conversations.id, conversationIds));
-      await tx.update(toolInvocations).set({ workspaceId: targetWorkspaceId }).where(inArray(toolInvocations.conversationId, conversationIds));
+      await tx
+        .update(toolInvocations)
+        .set({ workspaceId: targetWorkspaceId })
+        .where(inArray(toolInvocations.conversationId, conversationIds));
     }
     if (agentIds.length > 0) {
       await tx
@@ -136,11 +208,18 @@ export async function applyResourceTransferTransaction(context: { input: Resourc
         .set({
           workspaceId: targetWorkspaceId,
           updatedAt: now,
-          ...(crossOrganization && input.options.ownershipPolicy === "actor" ? { createdById: input.actorUserId } : {}),
+          ...(crossOrganization && input.options.ownershipPolicy === "actor"
+            ? { createdById: input.actorUserId }
+            : {}),
         })
         .where(inArray(agents.id, agentIds));
-      await tx.update(agentRuns).set({ workspaceId: targetWorkspaceId, updatedAt: now }).where(inArray(agentRuns.agentId, agentIds));
-      await tx.delete(userAgentPreferences).where(inArray(userAgentPreferences.defaultAgentId, agentIds));
+      await tx
+        .update(agentRuns)
+        .set({ workspaceId: targetWorkspaceId, updatedAt: now })
+        .where(inArray(agentRuns.agentId, agentIds));
+      await tx
+        .delete(userAgentPreferences)
+        .where(inArray(userAgentPreferences.defaultAgentId, agentIds));
     }
     if (providerIds.length > 0) {
       await tx
@@ -148,7 +227,9 @@ export async function applyResourceTransferTransaction(context: { input: Resourc
         .set({
           workspaceId: targetWorkspaceId,
           updatedAt: now,
-          ...(crossOrganization && input.options.ownershipPolicy === "actor" ? { createdById: input.actorUserId } : {}),
+          ...(crossOrganization && input.options.ownershipPolicy === "actor"
+            ? { createdById: input.actorUserId }
+            : {}),
           ...(input.options.secretPolicy === "disable"
             ? {
                 enabled: false,
@@ -166,7 +247,9 @@ export async function applyResourceTransferTransaction(context: { input: Resourc
         .set({
           workspaceId: targetWorkspaceId,
           updatedAt: now,
-          ...(crossOrganization && input.options.ownershipPolicy === "actor" ? { createdById: input.actorUserId } : {}),
+          ...(crossOrganization && input.options.ownershipPolicy === "actor"
+            ? { createdById: input.actorUserId }
+            : {}),
           ...(input.options.secretPolicy === "disable"
             ? {
                 enabled: false,
@@ -184,10 +267,15 @@ export async function applyResourceTransferTransaction(context: { input: Resourc
         .set({
           workspaceId: targetWorkspaceId,
           updatedAt: now,
-          ...(crossOrganization && input.options.ownershipPolicy === "actor" ? { createdById: input.actorUserId } : {}),
+          ...(crossOrganization && input.options.ownershipPolicy === "actor"
+            ? { createdById: input.actorUserId }
+            : {}),
         })
         .where(inArray(toolConnectors.id, connectorIds));
-      await tx.update(toolConnectionRequirements).set({ workspaceId: targetWorkspaceId, updatedAt: now }).where(inArray(toolConnectionRequirements.connectorId, connectorIds));
+      await tx
+        .update(toolConnectionRequirements)
+        .set({ workspaceId: targetWorkspaceId, updatedAt: now })
+        .where(inArray(toolConnectionRequirements.connectorId, connectorIds));
     }
     if (connectionIds.length > 0) {
       await tx
@@ -195,7 +283,9 @@ export async function applyResourceTransferTransaction(context: { input: Resourc
         .set({
           workspaceId: targetWorkspaceId,
           updatedAt: now,
-          ...(crossOrganization && input.options.ownershipPolicy === "actor" ? { ownerType: "workspace", ownerUserId: null } : {}),
+          ...(crossOrganization && input.options.ownershipPolicy === "actor"
+            ? { ownerType: "workspace", ownerUserId: null }
+            : {}),
           ...(input.options.secretPolicy === "disable"
             ? {
                 encryptedSecretsJson: null,
@@ -205,7 +295,10 @@ export async function applyResourceTransferTransaction(context: { input: Resourc
             : {}),
         })
         .where(inArray(toolConnections.id, connectionIds));
-      await tx.update(userToolSettings).set({ workspaceId: targetWorkspaceId, updatedAt: now }).where(inArray(userToolSettings.connectionId, connectionIds));
+      await tx
+        .update(userToolSettings)
+        .set({ workspaceId: targetWorkspaceId, updatedAt: now })
+        .where(inArray(userToolSettings.connectionId, connectionIds));
     }
     if (customIds.length > 0) {
       await tx
@@ -213,24 +306,35 @@ export async function applyResourceTransferTransaction(context: { input: Resourc
         .set({
           workspaceId: targetWorkspaceId,
           updatedAt: now,
-          ...(crossOrganization && input.options.ownershipPolicy === "actor" ? { createdById: input.actorUserId } : {}),
+          ...(crossOrganization && input.options.ownershipPolicy === "actor"
+            ? { createdById: input.actorUserId }
+            : {}),
         })
         .where(inArray(customTools.id, customIds));
-      const secretRequests = await tx.select({ credentialId: customToolSecretRequests.credentialRefId }).from(customToolSecretRequests).where(inArray(customToolSecretRequests.customToolId, customIds));
+      const secretRequests = await tx
+        .select({ credentialId: customToolSecretRequests.credentialRefId })
+        .from(customToolSecretRequests)
+        .where(inArray(customToolSecretRequests.customToolId, customIds));
       await tx
         .update(customToolSecretRequests)
         .set({
           workspaceId: targetWorkspaceId,
-          ...(crossOrganization && input.options.ownershipPolicy === "actor" ? { userId: input.actorUserId } : {}),
+          ...(crossOrganization && input.options.ownershipPolicy === "actor"
+            ? { userId: input.actorUserId }
+            : {}),
         })
         .where(inArray(customToolSecretRequests.customToolId, customIds));
-      const credentialIds = secretRequests.map(({ credentialId }) => credentialId).filter((id): id is string => Boolean(id));
+      const credentialIds = secretRequests
+        .map(({ credentialId }) => credentialId)
+        .filter((id): id is string => Boolean(id));
       if (credentialIds.length > 0) {
         await tx
           .update(customToolCredentialRefs)
           .set({
             workspaceId: targetWorkspaceId,
-            ...(crossOrganization && input.options.ownershipPolicy === "actor" ? { userId: input.actorUserId } : {}),
+            ...(crossOrganization && input.options.ownershipPolicy === "actor"
+              ? { userId: input.actorUserId }
+              : {}),
           })
           .where(inArray(customToolCredentialRefs.id, credentialIds));
       }
@@ -241,7 +345,9 @@ export async function applyResourceTransferTransaction(context: { input: Resourc
         .set({
           workspaceId: targetWorkspaceId,
           updatedAt: now,
-          ...(crossOrganization && input.options.ownershipPolicy === "actor" ? { createdById: input.actorUserId } : {}),
+          ...(crossOrganization && input.options.ownershipPolicy === "actor"
+            ? { createdById: input.actorUserId }
+            : {}),
         })
         .where(inArray(knowledgeBases.id, knowledgeIds));
       await tx
@@ -249,7 +355,9 @@ export async function applyResourceTransferTransaction(context: { input: Resourc
         .set({
           workspaceId: targetWorkspaceId,
           updatedAt: now,
-          ...(crossOrganization && input.options.ownershipPolicy === "actor" ? { createdById: input.actorUserId } : {}),
+          ...(crossOrganization && input.options.ownershipPolicy === "actor"
+            ? { createdById: input.actorUserId }
+            : {}),
         })
         .where(inArray(documents.knowledgeBaseId, knowledgeIds));
     }
@@ -259,7 +367,9 @@ export async function applyResourceTransferTransaction(context: { input: Resourc
         .set({
           workspaceId: targetWorkspaceId,
           updatedAt: now,
-          ...(crossOrganization && input.options.ownershipPolicy === "actor" ? { createdById: input.actorUserId } : {}),
+          ...(crossOrganization && input.options.ownershipPolicy === "actor"
+            ? { createdById: input.actorUserId }
+            : {}),
         })
         .where(inArray(agentSkills.id, skillIds));
     }
@@ -269,12 +379,25 @@ export async function applyResourceTransferTransaction(context: { input: Resourc
         .set({
           workspaceId: targetWorkspaceId,
           updatedAt: now,
-          ...(crossOrganization && input.options.ownershipPolicy === "actor" ? { createdById: input.actorUserId } : {}),
+          ...(crossOrganization && input.options.ownershipPolicy === "actor"
+            ? { createdById: input.actorUserId }
+            : {}),
         })
         .where(inArray(workflows.id, workflowIds));
-      await tx.update(workflowRuns).set({ workspaceId: targetWorkspaceId }).where(inArray(workflowRuns.workflowId, workflowIds));
-      for (const table of [workflowAgentMessages, workflowAgentInputRequests, workflowAgentRunRequests, workflowAgentTodoLists]) {
-        await tx.update(table).set({ workspaceId: targetWorkspaceId }).where(inArray(table.workflowId, workflowIds));
+      await tx
+        .update(workflowRuns)
+        .set({ workspaceId: targetWorkspaceId })
+        .where(inArray(workflowRuns.workflowId, workflowIds));
+      for (const table of [
+        workflowAgentMessages,
+        workflowAgentInputRequests,
+        workflowAgentRunRequests,
+        workflowAgentTodoLists,
+      ]) {
+        await tx
+          .update(table)
+          .set({ workspaceId: targetWorkspaceId })
+          .where(inArray(table.workflowId, workflowIds));
       }
     }
     if (taskIds.length > 0) {
@@ -283,12 +406,17 @@ export async function applyResourceTransferTransaction(context: { input: Resourc
         .set({
           workspaceId: targetWorkspaceId,
           updatedAt: now,
-          ...(crossOrganization && input.options.ownershipPolicy === "actor" ? { userId: input.actorUserId } : {}),
+          ...(crossOrganization && input.options.ownershipPolicy === "actor"
+            ? { userId: input.actorUserId }
+            : {}),
         })
         .where(inArray(scheduledTasks.id, taskIds));
     }
     if (marketplaceIds.length > 0) {
-      await tx.update(marketplaceItems).set({ publisherWorkspaceId: targetWorkspaceId, updatedAt: now }).where(inArray(marketplaceItems.id, marketplaceIds));
+      await tx
+        .update(marketplaceItems)
+        .set({ publisherWorkspaceId: targetWorkspaceId, updatedAt: now })
+        .where(inArray(marketplaceItems.id, marketplaceIds));
     }
   });
 }

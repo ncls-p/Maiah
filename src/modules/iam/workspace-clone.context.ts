@@ -15,7 +15,10 @@ export type WorkspaceCloneInput = {
   preserveGroupPrincipals?: boolean;
 };
 
-export function createWorkspaceCloneContext(tx: Executor, input: WorkspaceCloneInput) {
+export function createWorkspaceCloneContext(
+  tx: Executor,
+  input: WorkspaceCloneInput,
+) {
   return {
     tx,
     input,
@@ -36,8 +39,12 @@ export function createWorkspaceCloneContext(tx: Executor, input: WorkspaceCloneI
     workflowMap: new Map<string, string>(),
     scheduledTaskMap: new Map<string, string>(),
     roleMap: new Map<string, string>(),
-    pendingRequirements: [] as Array<typeof toolConnectionRequirements.$inferSelect>,
+    pendingRequirements: [] as Array<
+      typeof toolConnectionRequirements.$inferSelect
+    >,
   };
 }
 
-export type WorkspaceCloneContext = ReturnType<typeof createWorkspaceCloneContext>;
+export type WorkspaceCloneContext = ReturnType<
+  typeof createWorkspaceCloneContext
+>;

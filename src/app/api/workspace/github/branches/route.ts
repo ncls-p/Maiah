@@ -1,6 +1,9 @@
-import { handleRoute,requireWorkspacePermissionAsync } from "@/lib/route-handler";
+import {
+  handleRoute,
+  requireWorkspacePermissionAsync,
+} from "@/lib/route-handler";
 import { listGitHubBranches } from "@/modules/github/publishing";
-import { NextRequest,NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 const querySchema = z.object({
@@ -19,7 +22,11 @@ export async function GET(req: NextRequest) {
       if (!parsed.success) {
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
       }
-      const forbidden = await requireWorkspacePermissionAsync(session.user.id, parsed.data.workspaceId, "agents.chat");
+      const forbidden = await requireWorkspacePermissionAsync(
+        session.user.id,
+        parsed.data.workspaceId,
+        "agents.chat",
+      );
       if (forbidden) return forbidden;
       return NextResponse.json({
         branches: await listGitHubBranches({

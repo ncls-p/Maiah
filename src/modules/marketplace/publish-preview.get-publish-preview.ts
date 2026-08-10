@@ -1,19 +1,57 @@
 import { db } from "@/server/infrastructure/db";
-import { agentSkills,agents,customTools,marketplaceItemVersions,marketplaceItems,mcpServers,mcpTools } from "@/server/infrastructure/db/schema";
-import { and,eq } from "drizzle-orm";
+import {
+  agentSkills,
+  agents,
+  customTools,
+  marketplaceItemVersions,
+  marketplaceItems,
+  mcpServers,
+  mcpTools,
+} from "@/server/infrastructure/db/schema";
+import { and, eq } from "drizzle-orm";
 import { findExistingDraft } from "./draft-helpers";
-import { buildAgentManifest,buildCustomToolManifest,buildMcpPresetManifest,buildSkillManifest } from "./manifest-builders";
+import {
+  buildAgentManifest,
+  buildCustomToolManifest,
+  buildMcpPresetManifest,
+  buildSkillManifest,
+} from "./manifest-builders";
 import { sanitizeMarketplaceManifest } from "./manifest-sanitizer";
-import type { MarketplaceManifest,SourceResourceType } from "./manifest-types";
-import { PublishPreviewResult,extractCredentialFields,manifestSummary } from "./publish-preview.publish-preview-result";
+import type { MarketplaceManifest, SourceResourceType } from "./manifest-types";
+import {
+  PublishPreviewResult,
+  extractCredentialFields,
+  manifestSummary,
+} from "./publish-preview.publish-preview-result";
 
-export async function getPublishPreview(input: { workspaceId: string; userId: string; agentId?: string; skillId?: string; customToolId?: string; mcpServerId?: string; mcpToolId?: string; itemId?: string }): Promise<PublishPreviewResult> {
+export async function getPublishPreview(input: {
+  workspaceId: string;
+  userId: string;
+  agentId?: string;
+  skillId?: string;
+  customToolId?: string;
+  mcpServerId?: string;
+  mcpToolId?: string;
+  itemId?: string;
+}): Promise<PublishPreviewResult> {
   if (input.itemId) {
-    const [item] = await db.select().from(marketplaceItems).where(eq(marketplaceItems.id, input.itemId)).limit(1);
+    const [item] = await db
+      .select()
+      .from(marketplaceItems)
+      .where(eq(marketplaceItems.id, input.itemId))
+      .limit(1);
     if (!item) throw new Error("Marketplace item not found");
-    const [versionRow] = item.latestVersionId ? await db.select().from(marketplaceItemVersions).where(eq(marketplaceItemVersions.id, item.latestVersionId)).limit(1) : [null];
+    const [versionRow] = item.latestVersionId
+      ? await db
+          .select()
+          .from(marketplaceItemVersions)
+          .where(eq(marketplaceItemVersions.id, item.latestVersionId))
+          .limit(1)
+      : [null];
 
-    const manifest = sanitizeMarketplaceManifest(versionRow?.manifestJson ?? {});
+    const manifest = sanitizeMarketplaceManifest(
+      versionRow?.manifestJson ?? {},
+    );
     return {
       name: item.name,
       description: item.description,
@@ -37,12 +75,22 @@ export async function getPublishPreview(input: { workspaceId: string; userId: st
     const [agent] = await db
       .select()
       .from(agents)
-      .where(and(eq(agents.id, input.agentId), eq(agents.workspaceId, input.workspaceId)))
+      .where(
+        and(
+          eq(agents.id, input.agentId),
+          eq(agents.workspaceId, input.workspaceId),
+        ),
+      )
       .limit(1);
     if (!agent || agent.createdById !== input.userId) {
       throw new Error("Agent not found");
     }
-    manifest = await buildAgentManifest(input.agentId, input.workspaceId, agent.name, agent.description);
+    manifest = await buildAgentManifest(
+      input.agentId,
+      input.workspaceId,
+      agent.name,
+      agent.description,
+    );
     name = agent.name;
     description = agent.description;
     resourceType = "agent";
@@ -51,7 +99,12 @@ export async function getPublishPreview(input: { workspaceId: string; userId: st
     const [skill] = await db
       .select()
       .from(agentSkills)
-      .where(and(eq(agentSkills.id, input.skillId), eq(agentSkills.workspaceId, input.workspaceId)))
+      .where(
+        and(
+          eq(agentSkills.id, input.skillId),
+          eq(agentSkills.workspaceId, input.workspaceId),
+        ),
+      )
       .limit(1);
     if (!skill || skill.createdById !== input.userId) {
       throw new Error("Skill not found");
@@ -65,7 +118,12 @@ export async function getPublishPreview(input: { workspaceId: string; userId: st
     const [tool] = await db
       .select()
       .from(customTools)
-      .where(and(eq(customTools.id, input.customToolId), eq(customTools.workspaceId, input.workspaceId)))
+      .where(
+        and(
+          eq(customTools.id, input.customToolId),
+          eq(customTools.workspaceId, input.workspaceId),
+        ),
+      )
       .limit(1);
     if (!tool || tool.createdById !== input.userId) {
       throw new Error("Custom tool not found");
@@ -79,29 +137,58 @@ export async function getPublishPreview(input: { workspaceId: string; userId: st
     const [server] = await db
       .select()
       .from(mcpServers)
-      .where(and(eq(mcpServers.id, input.mcpServerId), eq(mcpServers.workspaceId, input.workspaceId)))
+      .where(
+        and(
+          eq(mcpServers.id, input.mcpServerId),
+          eq(mcpServers.workspaceId, input.workspaceId),
+        ),
+      )
       .limit(1);
     if (!server || server.createdById !== input.userId) {
       throw new Error("MCP server not found");
     }
-    const tools = await db.select().from(mcpTools).where(eq(mcpTools.mcpServerId, server.id));
-    manifest = buildMcpPresetManifest(server.name, null, server, tools, "server");
+    const tools = await db
+      .select()
+      .from(mcpTools)
+      .where(eq(mcpTools.mcpServerId, server.id));
+    manifest = buildMcpPresetManifest(
+      server.name,
+      null,
+      server,
+      tools,
+      "server",
+    );
     name = server.name;
     description = null;
     resourceType = "mcp_server";
     resourceId = input.mcpServerId;
   } else if (input.mcpToolId) {
-    const [tool] = await db.select().from(mcpTools).where(eq(mcpTools.id, input.mcpToolId)).limit(1);
+    const [tool] = await db
+      .select()
+      .from(mcpTools)
+      .where(eq(mcpTools.id, input.mcpToolId))
+      .limit(1);
     if (!tool) throw new Error("MCP tool not found");
     const [server] = await db
       .select()
       .from(mcpServers)
-      .where(and(eq(mcpServers.id, tool.mcpServerId), eq(mcpServers.workspaceId, input.workspaceId)))
+      .where(
+        and(
+          eq(mcpServers.id, tool.mcpServerId),
+          eq(mcpServers.workspaceId, input.workspaceId),
+        ),
+      )
       .limit(1);
     if (!server || server.createdById !== input.userId) {
       throw new Error("MCP server not found");
     }
-    manifest = buildMcpPresetManifest(`${server.name} — ${tool.name}`, tool.description, server, [tool], "tool");
+    manifest = buildMcpPresetManifest(
+      `${server.name} — ${tool.name}`,
+      tool.description,
+      server,
+      [tool],
+      "tool",
+    );
     name = `${server.name} — ${tool.name}`;
     description = tool.description;
     resourceType = "mcp_tool";
@@ -110,7 +197,11 @@ export async function getPublishPreview(input: { workspaceId: string; userId: st
     throw new Error("No resource id provided");
   }
 
-  const existing = await findExistingDraft(resourceType, resourceId, input.userId);
+  const existing = await findExistingDraft(
+    resourceType,
+    resourceId,
+    input.userId,
+  );
 
   return {
     name,

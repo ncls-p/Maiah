@@ -1,8 +1,12 @@
-import { Field,FieldContent,FieldLabel } from "@/components/ui/field";
+import { Field, FieldContent, FieldLabel } from "@/components/ui/field";
 import { Textarea } from "@/components/ui/textarea";
 
 import type { ModelAdvancedFieldsViewModel } from "./model-advanced-fields.model-advanced-fields.view";
-export function ModelAdvancedMainSection1({ model }: { model: ModelAdvancedFieldsViewModel }) {
+export function ModelAdvancedMainSection1({
+  model,
+}: {
+  model: ModelAdvancedFieldsViewModel;
+}) {
   const { form, setForm, t } = model;
   return (
     <Field className="sm:col-span-2">

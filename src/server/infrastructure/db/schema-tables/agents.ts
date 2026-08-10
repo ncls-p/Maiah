@@ -1,5 +1,17 @@
 import { sql } from "drizzle-orm";
-import { boolean,index,integer,jsonb,pgEnum,pgTable,text,timestamp,uniqueIndex,uuid,varchar } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  index,
+  integer,
+  jsonb,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+  varchar,
+} from "drizzle-orm/pg-core";
 import { aiProviders } from "./ai-providers";
 import { users } from "./auth";
 import { workspaces } from "./workspace";
@@ -14,9 +26,21 @@ const USER_ID_COLUMN = "user_id";
 
 // ─── Agents ────────────────────────────────────────────────────────────
 
-export const agentVisibilityEnum = pgEnum("agent_visibility", ["private", "workspace", "organization", "public"]);
-export const agentSourceTypeEnum = pgEnum("agent_source_type", ["custom", "marketplace_install", "fork"]);
-export const agentKindEnum = pgEnum("agent_kind", ["assistant", "orchestrator"]);
+export const agentVisibilityEnum = pgEnum("agent_visibility", [
+  "private",
+  "workspace",
+  "organization",
+  "public",
+]);
+export const agentSourceTypeEnum = pgEnum("agent_source_type", [
+  "custom",
+  "marketplace_install",
+  "fork",
+]);
+export const agentKindEnum = pgEnum("agent_kind", [
+  "assistant",
+  "orchestrator",
+]);
 
 export const agents = pgTable(
   "agents",
@@ -32,14 +56,20 @@ export const agents = pgTable(
     visibility: agentVisibilityEnum("visibility").notNull().default("private"),
     sourceType: agentSourceTypeEnum("source_type").notNull().default("custom"),
     kind: agentKindEnum("kind").notNull().default("assistant"),
-    sharingMode: varchar("sharing_mode", { length: 32 }).notNull().default("personal"),
+    sharingMode: varchar("sharing_mode", { length: 32 })
+      .notNull()
+      .default("personal"),
     shareTargetUserId: uuid("share_target_user_id").references(() => users.id, {
       onDelete: SET_NULL_ACTION,
     }),
     isGlobal: boolean("is_global").notNull().default(false),
     isRecommended: boolean("is_recommended").notNull().default(false),
-    isOrganizationDefault: boolean("is_organization_default").notNull().default(false),
-    organizationDisplayOrder: integer("organization_display_order").notNull().default(0),
+    isOrganizationDefault: boolean("is_organization_default")
+      .notNull()
+      .default(false),
+    organizationDisplayOrder: integer("organization_display_order")
+      .notNull()
+      .default(0),
     curationLabel: varchar("curation_label", { length: 64 }),
     promptSuggestionsJson: jsonb("prompt_suggestions_json")
       .notNull()
@@ -51,11 +81,17 @@ export const agents = pgTable(
       .notNull()
       .references(() => users.id),
     activeVersionId: uuid("active_version_id"),
-    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true })
+      .notNull()
+      .defaultNow(),
     archivedAt: timestamp("archived_at", { withTimezone: true }),
   },
-  (t) => [uniqueIndex("agents_workspace_slug_unique").on(t.workspaceId, t.slug)],
+  (t) => [
+    uniqueIndex("agents_workspace_slug_unique").on(t.workspaceId, t.slug),
+  ],
 );
 
 export const userAgentPreferences = pgTable(
@@ -71,10 +107,23 @@ export const userAgentPreferences = pgTable(
     defaultAgentId: uuid("default_agent_id").references(() => agents.id, {
       onDelete: SET_NULL_ACTION,
     }),
-    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
+    hiddenAgentIdsJson: jsonb("hidden_agent_ids_json")
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
-  (t) => [uniqueIndex("user_agent_preferences_workspace_user_unique").on(t.workspaceId, t.userId)],
+  (t) => [
+    uniqueIndex("user_agent_preferences_workspace_user_unique").on(
+      t.workspaceId,
+      t.userId,
+    ),
+  ],
 );
 
 export const agentVersions = pgTable(
@@ -101,9 +150,16 @@ export const agentVersions = pgTable(
     createdById: uuid(CREATED_BY_USER_ID_COLUMN)
       .notNull()
       .references(() => users.id),
-    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
-  (t) => [uniqueIndex("agent_versions_agent_version_unique").on(t.agentId, t.versionNumber)],
+  (t) => [
+    uniqueIndex("agent_versions_agent_version_unique").on(
+      t.agentId,
+      t.versionNumber,
+    ),
+  ],
 );
 
 export const agentDelegationBindings = pgTable(
@@ -120,7 +176,15 @@ export const agentDelegationBindings = pgTable(
       .notNull()
       .references(() => agentVersions.id, { onDelete: CASCADE_ACTION }),
     instructions: text("instructions"),
-    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
-  (t) => [uniqueIndex("agent_delegation_bindings_version_child_unique").on(t.agentVersionId, t.childAgentId), index("agent_delegation_bindings_child_version").on(t.childAgentVersionId)],
+  (t) => [
+    uniqueIndex("agent_delegation_bindings_version_child_unique").on(
+      t.agentVersionId,
+      t.childAgentId,
+    ),
+    index("agent_delegation_bindings_child_version").on(t.childAgentVersionId),
+  ],
 );

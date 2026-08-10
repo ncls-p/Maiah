@@ -28,10 +28,17 @@ describe("chat composer layout", () => {
       "utf8",
     );
 
-    expect(bodySource).toContain("min-h-12 min-w-0 items-center");
+    expect(bodySource).toContain(
+      "grid min-h-12 min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center",
+    );
+    expect(bodySource).toContain('data-slot="chat-composer-primary-action"');
+    expect(bodySource).toContain("props.sending ? (");
+    expect(bodySource).toContain('aria-label={t("stopGeneration")}');
+    expect(bodySource).toContain('aria-label={t("sendMessage")}');
     expect(bodySource).not.toContain('t("sendHint")');
     expect(bodySource).not.toContain('t("queueHint")');
-    expect(selectorSource).toContain("sm:flex-nowrap");
+    expect(selectorSource).toContain("grid-cols-[minmax(0,1fr)_auto_auto]");
+    expect(selectorSource).toContain("min-[480px]:flex-nowrap");
   });
 
   it("keeps the capability catalog bounded and independently scrollable", () => {
@@ -50,13 +57,14 @@ describe("chat composer layout", () => {
       "utf8",
     );
 
+    expect(menuSource).toContain('data-slot="chat-capability-results"');
     expect(menuSource).toContain(
-      'data-slot="chat-capability-results" className="min-h-0 min-w-0 overflow-x-hidden overflow-y-auto',
+      'className="min-h-0 min-w-0 overflow-x-hidden overflow-y-auto',
     );
     expect(menuSource).toContain("grid min-h-0 min-w-0 flex-1");
     expect(menuSource).toContain('className="min-w-0 overflow-hidden"');
     expect(menuSource).toContain('className="min-w-0 flex-1 overflow-hidden"');
-    expect(menuSource).toContain('title={capability.description}');
+    expect(menuSource).toContain("title={capability.description}");
     expect(navigationSource).toContain("overflow-x-auto");
     expect(navigationSource).toContain("sm:flex-col");
   });

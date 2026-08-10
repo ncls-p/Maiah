@@ -1,4 +1,4 @@
-import type { FinishReason,LanguageModelUsage } from "ai";
+import type { FinishReason, LanguageModelUsage } from "ai";
 
 import type { AnthropicMessagesRequest } from "@/modules/anthropic-proxy/contracts";
 import type { ProxyGenerationResult } from "@/modules/openai-proxy/response-builders";
@@ -23,7 +23,11 @@ export function anthropicUsage(usage: LanguageModelUsage) {
   };
 }
 
-export function buildAnthropicMessageResponse(input: { request: AnthropicMessagesRequest; result: ProxyGenerationResult; id?: string }) {
+export function buildAnthropicMessageResponse(input: {
+  request: AnthropicMessagesRequest;
+  result: ProxyGenerationResult;
+  id?: string;
+}) {
   const content: Array<Record<string, unknown>> = [];
   if (input.result.text) {
     content.push({ type: "text", text: input.result.text });

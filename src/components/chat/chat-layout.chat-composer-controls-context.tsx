@@ -1,15 +1,8 @@
 "use client";
 
-import {
-  createContext,
-  useContext,
-  type ReactNode,
-} from "react";
+import { createContext, useContext, type ReactNode } from "react";
 
-import type {
-  ChatAgent,
-  ChatUsageImpact,
-} from "@/components/chat/chat-types";
+import type { ChatAgent, ChatUsageImpact } from "@/components/chat/chat-types";
 
 export interface ChatComposerControls {
   primary: ReactNode;
@@ -34,6 +27,7 @@ export interface ChatLayoutProps {
   selectedAgent: ChatAgent | null;
   selectedAgentId: string | null;
   activeConversationId: string | null;
+  conversationIsOwner?: boolean;
   conversationImpact?: ChatUsageImpact | null;
   organizationDefaultAgentId?: string | null;
   userDefaultAgentId?: string | null;

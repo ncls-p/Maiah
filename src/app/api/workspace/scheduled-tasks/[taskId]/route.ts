@@ -1,6 +1,12 @@
-import { handleRoute,requireResourcePermissionAsync } from "@/lib/route-handler";
-import { deleteScheduledTask,updateScheduledTask } from "@/modules/scheduled-tasks/use-cases";
-import { NextRequest,NextResponse } from "next/server";
+import {
+  handleRoute,
+  requireResourcePermissionAsync,
+} from "@/lib/route-handler";
+import {
+  deleteScheduledTask,
+  updateScheduledTask,
+} from "@/modules/scheduled-tasks/use-cases";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 const paramsSchema = z.object({ taskId: z.uuid() });
@@ -22,12 +28,25 @@ const updateSchema = z.object({
   enabled: z.boolean().optional(),
 });
 
-async function requireChatPermission(userId: string, workspaceId: string, taskId: string) {
-  const forbidden = await requireResourcePermissionAsync(userId, workspaceId, "agents.chat", "scheduled_task", taskId);
+async function requireChatPermission(
+  userId: string,
+  workspaceId: string,
+  taskId: string,
+) {
+  const forbidden = await requireResourcePermissionAsync(
+    userId,
+    workspaceId,
+    "agents.chat",
+    "scheduled_task",
+    taskId,
+  );
   return forbidden === null;
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ taskId: string }> }) {
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ taskId: string }> },
+) {
   return handleRoute(
     req,
     async ({ session }) => {
@@ -36,17 +55,32 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ ta
       if (!parsedParams.success || !parsed.success) {
         return NextResponse.json({ error: "Invalid input" }, { status: 400 });
       }
-      if (!(await requireChatPermission(session.user.id, parsed.data.workspaceId, parsedParams.data.taskId))) {
+      if (
+        !(await requireChatPermission(
+          session.user.id,
+          parsed.data.workspaceId,
+          parsedParams.data.taskId,
+        ))
+      ) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
-      const task = await updateScheduledTask(parsedParams.data.taskId, parsed.data.workspaceId, session.user.id, parsed.data, { allowShared: true });
+      const task = await updateScheduledTask(
+        parsedParams.data.taskId,
+        parsed.data.workspaceId,
+        session.user.id,
+        parsed.data,
+        { allowShared: true },
+      );
       return NextResponse.json({ task });
     },
     { logLabel: "Failed to update scheduled task" },
   );
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: Promise<{ taskId: string }> }) {
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ taskId: string }> },
+) {
   return handleRoute(
     req,
     async ({ session }) => {
@@ -57,10 +91,21 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ t
       if (!parsedParams.success || !parsedQuery.success) {
         return NextResponse.json({ error: "Invalid input" }, { status: 400 });
       }
-      if (!(await requireChatPermission(session.user.id, parsedQuery.data.workspaceId, parsedParams.data.taskId))) {
+      if (
+        !(await requireChatPermission(
+          session.user.id,
+          parsedQuery.data.workspaceId,
+          parsedParams.data.taskId,
+        ))
+      ) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
-      await deleteScheduledTask(parsedParams.data.taskId, parsedQuery.data.workspaceId, session.user.id, { allowShared: true });
+      await deleteScheduledTask(
+        parsedParams.data.taskId,
+        parsedQuery.data.workspaceId,
+        session.user.id,
+        { allowShared: true },
+      );
       return NextResponse.json({ ok: true });
     },
     { logLabel: "Failed to delete scheduled task" },

@@ -2,12 +2,55 @@ import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import { useEffect } from "react";
 import { toast } from "sonner";
 
-import type { ChatCitation, ChatMessage, PendingToolApproval } from "@/components/chat/chat-types";
-import { STREAM_DRAFT_WRITE_BATCH_MS, applyStreamEvent, approvalsFromDraft, clearStoredChatStreamDraft, filterResolvedApprovals, getStoredChatStreamDraft, parseStreamEventText, storeChatStreamDraft, upsertPendingApproval } from "@/hooks/use-chat-stream-events";
-import { appendErrorPart, compactErrorMessage } from "./use-chat-stream.compact-error-message";
+import type {
+  ChatCitation,
+  ChatMessage,
+  PendingToolApproval,
+} from "@/components/chat/chat-types";
+import {
+  STREAM_DRAFT_WRITE_BATCH_MS,
+  applyStreamEvent,
+  approvalsFromDraft,
+  clearStoredChatStreamDraft,
+  filterResolvedApprovals,
+  getStoredChatStreamDraft,
+  parseStreamEventText,
+  storeChatStreamDraft,
+  upsertPendingApproval,
+} from "@/hooks/use-chat-stream-events";
+import {
+  appendErrorPart,
+  compactErrorMessage,
+} from "./use-chat-stream.compact-error-message";
 
-export function useChatStreamResume(input: { conversationId: string | null; streamingMessageId: string | null; sending: boolean; reloadConversationMessages: () => Promise<void>; onConversationsRefresh: () => Promise<void>; setMessages: Dispatch<SetStateAction<ChatMessage[]>>; setPendingApprovals: Dispatch<SetStateAction<PendingToolApproval[]>>; setCitations: Dispatch<SetStateAction<ChatCitation[]>>; setResuming: Dispatch<SetStateAction<boolean>>; activeRequestControllerRef: MutableRefObject<AbortController | null>; activeConversationIdRef: MutableRefObject<string | null>; resolvedApprovalIdsRef: MutableRefObject<Set<string>> }) {
-  const { conversationId, streamingMessageId, sending, reloadConversationMessages, onConversationsRefresh, setMessages, setPendingApprovals, setCitations, setResuming, activeRequestControllerRef, activeConversationIdRef, resolvedApprovalIdsRef } = input;
+export function useChatStreamResume(input: {
+  conversationId: string | null;
+  streamingMessageId: string | null;
+  sending: boolean;
+  reloadConversationMessages: () => Promise<void>;
+  onConversationsRefresh: () => Promise<void>;
+  setMessages: Dispatch<SetStateAction<ChatMessage[]>>;
+  setPendingApprovals: Dispatch<SetStateAction<PendingToolApproval[]>>;
+  setCitations: Dispatch<SetStateAction<ChatCitation[]>>;
+  setResuming: Dispatch<SetStateAction<boolean>>;
+  activeRequestControllerRef: MutableRefObject<AbortController | null>;
+  activeConversationIdRef: MutableRefObject<string | null>;
+  resolvedApprovalIdsRef: MutableRefObject<Set<string>>;
+}) {
+  const {
+    conversationId,
+    streamingMessageId,
+    sending,
+    reloadConversationMessages,
+    onConversationsRefresh,
+    setMessages,
+    setPendingApprovals,
+    setCitations,
+    setResuming,
+    activeRequestControllerRef,
+    activeConversationIdRef,
+    resolvedApprovalIdsRef,
+  } = input;
   useEffect(() => {
     if (!conversationId || !streamingMessageId || sending) return;
 
@@ -46,7 +89,11 @@ export function useChatStreamResume(input: { conversationId: string | null; stre
     }
 
     function updateAssistant(updater: (message: ChatMessage) => ChatMessage) {
-      setMessages((current) => current.map((message) => (message.id === activeStreamingMessageId ? updater(message) : message)));
+      setMessages((current) =>
+        current.map((message) =>
+          message.id === activeStreamingMessageId ? updater(message) : message,
+        ),
+      );
       if (resumeDraft?.assistantMessage.id === activeStreamingMessageId) {
         resumeDraft = {
           ...resumeDraft,
@@ -57,10 +104,20 @@ export function useChatStreamResume(input: { conversationId: string | null; stre
       }
     }
 
-    function updatePendingApprovals(updater: (approvals: PendingToolApproval[]) => PendingToolApproval[]) {
-      setPendingApprovals((current) => filterResolvedApprovals(updater(current), resolvedApprovalIdsRef.current));
+    function updatePendingApprovals(
+      updater: (approvals: PendingToolApproval[]) => PendingToolApproval[],
+    ) {
+      setPendingApprovals((current) =>
+        filterResolvedApprovals(
+          updater(current),
+          resolvedApprovalIdsRef.current,
+        ),
+      );
       if (resumeDraft?.assistantMessage.id === activeStreamingMessageId) {
-        const nextApprovals = filterResolvedApprovals(updater(approvalsFromDraft(resumeDraft)), resolvedApprovalIdsRef.current);
+        const nextApprovals = filterResolvedApprovals(
+          updater(approvalsFromDraft(resumeDraft)),
+          resolvedApprovalIdsRef.current,
+        );
         resumeDraft = {
           ...resumeDraft,
           pendingApprovals: nextApprovals,
@@ -73,7 +130,9 @@ export function useChatStreamResume(input: { conversationId: string | null; stre
 
     function addPendingApproval(approval: PendingToolApproval) {
       if (resolvedApprovalIdsRef.current.has(approval.invocationId)) return;
-      updatePendingApprovals((approvals) => upsertPendingApproval(approvals, approval));
+      updatePendingApprovals((approvals) =>
+        upsertPendingApproval(approvals, approval),
+      );
     }
 
     function clearPendingApprovals() {
@@ -82,7 +141,10 @@ export function useChatStreamResume(input: { conversationId: string | null; stre
 
     async function resumeStream() {
       try {
-        const res = await fetch(`/api/workspace/conversations/${activeConversationId}/stream`, { signal: controller.signal });
+        const res = await fetch(
+          `/api/workspace/conversations/${activeConversationId}/stream`,
+          { signal: controller.signal },
+        );
         if (res.status === 404 || res.status === 409) {
           clearStoredChatStreamDraft(activeConversationId);
           await reloadConversationMessages();
@@ -141,7 +203,8 @@ export function useChatStreamResume(input: { conversationId: string | null; stre
         }
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") return;
-        const errorMessage = err instanceof Error ? err.message : "Chat stream failed";
+        const errorMessage =
+          err instanceof Error ? err.message : "Chat stream failed";
         toast.error(compactErrorMessage(errorMessage));
         updateAssistant((message) => appendErrorPart(message, errorMessage));
         clearPendingApprovals();
@@ -165,5 +228,18 @@ export function useChatStreamResume(input: { conversationId: string | null; stre
       }
       queueMicrotask(() => setResuming(false));
     };
-  }, [conversationId, streamingMessageId, sending, reloadConversationMessages, onConversationsRefresh, activeConversationIdRef, activeRequestControllerRef, resolvedApprovalIdsRef, setCitations, setMessages, setPendingApprovals, setResuming]);
+  }, [
+    conversationId,
+    streamingMessageId,
+    sending,
+    reloadConversationMessages,
+    onConversationsRefresh,
+    activeConversationIdRef,
+    activeRequestControllerRef,
+    resolvedApprovalIdsRef,
+    setCitations,
+    setMessages,
+    setPendingApprovals,
+    setResuming,
+  ]);
 }

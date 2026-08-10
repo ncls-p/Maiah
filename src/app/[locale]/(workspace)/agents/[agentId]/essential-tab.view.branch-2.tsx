@@ -2,7 +2,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { FieldGroup } from "@/components/ui/field";
 
 import type { EssentialTabViewModel } from "./essential-tab.view";
-export function EssentialTabBranch2({ model }: { model: EssentialTabViewModel }) {
+export function EssentialTabBranch2({
+  model,
+}: {
+  model: EssentialTabViewModel;
+}) {
   const { form, setForm, t } = model;
   return (
     <FieldGroup className="gap-3 border-t border-border/50 pt-4">

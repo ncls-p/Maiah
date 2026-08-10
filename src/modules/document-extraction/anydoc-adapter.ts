@@ -1,6 +1,13 @@
 import path from "node:path";
 
-import { formatFromBytes,formatFromExtension,toDocument,toMarkdownBytes,type Asset,type Format } from "@firecrawl/anydoc";
+import {
+  formatFromBytes,
+  formatFromExtension,
+  toDocument,
+  toMarkdownBytes,
+  type Asset,
+  type Format,
+} from "@firecrawl/anydoc";
 
 export type AnydocExtraction = {
   markdown: string;
@@ -22,16 +29,25 @@ function normalizeAnydocMarkdown(markdown: string, format: Format) {
 }
 
 function detectAnydocFormat(fileName: string, bytes: Uint8Array) {
-  return formatFromBytes(bytes) ?? formatFromExtension(path.extname(fileName).toLowerCase());
+  return (
+    formatFromBytes(bytes) ??
+    formatFromExtension(path.extname(fileName).toLowerCase())
+  );
 }
 
-export async function extractWithAnydoc(fileName: string, bytes: Uint8Array): Promise<AnydocExtraction | null> {
+export async function extractWithAnydoc(
+  fileName: string,
+  bytes: Uint8Array,
+): Promise<AnydocExtraction | null> {
   const format = detectAnydocFormat(fileName, bytes);
   if (!format) return null;
 
   let markdown = "";
   try {
-    markdown = normalizeAnydocMarkdown(await toMarkdownBytes(bytes, format), format);
+    markdown = normalizeAnydocMarkdown(
+      await toMarkdownBytes(bytes, format),
+      format,
+    );
   } catch (error) {
     // Image-only PDFs are explicitly unsupported by AnyDoc. They continue to
     // the coordinate-aware visual path instead of failing the whole upload.
@@ -46,6 +62,8 @@ export async function extractWithAnydoc(fileName: string, bytes: Uint8Array): Pr
   return {
     markdown,
     format,
-    imageAssets: document.assets.filter((asset) => asset.mediaType.toLowerCase().startsWith("image/")),
+    imageAssets: document.assets.filter((asset) =>
+      asset.mediaType.toLowerCase().startsWith("image/"),
+    ),
   };
 }

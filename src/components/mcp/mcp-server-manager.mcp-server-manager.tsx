@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useCallback,useEffect,useMemo,useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { useWorkspace } from "@/hooks/use-workspace";
@@ -11,14 +11,26 @@ import { type ShareableResource } from "@/components/marketplace/resource-share-
 import { linesFromTextarea } from "./mcp-server-manager.lines-from-textarea";
 import { McpServerManagerView } from "./mcp-server-manager.mcp-server-manager.view";
 import { SERVERS_PAGE_SIZE } from "./mcp-server-manager.servers-page-size";
-import { buildEnv,buildHeaders,emptyForm,serverFormFromServer,type McpServerForm } from "./mcp-server-manager/form";
-import type { McpServer,McpTool,ServerStatusFilter } from "./mcp-server-manager/types";
+import {
+  buildEnv,
+  buildHeaders,
+  emptyForm,
+  serverFormFromServer,
+  type McpServerForm,
+} from "./mcp-server-manager/form";
+import type {
+  McpServer,
+  McpTool,
+  ServerStatusFilter,
+} from "./mcp-server-manager/types";
 
 export function useMcpServerManagerController() {
   const t = useTranslations("mcp.serverManager");
   const { workspaceId } = useWorkspace();
   const [servers, setServers] = useState<McpServer[]>([]);
-  const [toolsByServer, setToolsByServer] = useState<Record<string, McpTool[]>>({});
+  const [toolsByServer, setToolsByServer] = useState<Record<string, McpTool[]>>(
+    {},
+  );
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -34,8 +46,12 @@ export function useMcpServerManagerController() {
   const [editForm, setEditForm] = useState<McpServerForm>(emptyForm);
   const [editLoading, setEditLoading] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [shareResource, setShareResource] = useState<ShareableResource | null>(null);
-  const [expandedServers, setExpandedServers] = useState<Record<string, boolean>>({});
+  const [shareResource, setShareResource] = useState<ShareableResource | null>(
+    null,
+  );
+  const [expandedServers, setExpandedServers] = useState<
+    Record<string, boolean>
+  >({});
   const [toolSearch, setToolSearch] = useState<Record<string, string>>({});
   const [canManageTenantGlobals, setCanManageTenantGlobals] = useState(false);
   const [canManageMcpServers, setCanManageMcpServers] = useState(false);
@@ -48,13 +64,32 @@ export function useMcpServerManagerController() {
       const permissions = await fetchWorkspacePermissions(workspaceId);
       setCanManageTenantGlobals(permissions.canManageTenantGlobals);
       setCanManageMcpServers(permissions.canManageMcpServers);
-      const res = await fetch(`/api/workspace/mcp-servers?workspaceId=${workspaceId}`);
+      const res = await fetch(
+        `/api/workspace/mcp-servers?workspaceId=${workspaceId}`,
+      );
       if (!res.ok) throw new Error(t("loadFailed"));
       let data = (await res.json()) as McpServer[];
-      const serversPendingInitialDiscovery = data.filter((server) => server.canEdit && server.transport !== "stdio" && (!server.healthStatus || server.healthStatus === "unknown"));
-      if (permissions.canManageMcpServers && serversPendingInitialDiscovery.length > 0) {
-        await Promise.all(serversPendingInitialDiscovery.map((server) => fetch(`/api/workspace/mcp-servers/${server.id}/tools?workspaceId=${workspaceId}`, { method: "POST" })));
-        const refreshedRes = await fetch(`/api/workspace/mcp-servers?workspaceId=${workspaceId}`);
+      const serversPendingInitialDiscovery = data.filter(
+        (server) =>
+          server.canEdit &&
+          server.transport !== "stdio" &&
+          (!server.healthStatus || server.healthStatus === "unknown"),
+      );
+      if (
+        permissions.canManageMcpServers &&
+        serversPendingInitialDiscovery.length > 0
+      ) {
+        await Promise.all(
+          serversPendingInitialDiscovery.map((server) =>
+            fetch(
+              `/api/workspace/mcp-servers/${server.id}/tools?workspaceId=${workspaceId}`,
+              { method: "POST" },
+            ),
+          ),
+        );
+        const refreshedRes = await fetch(
+          `/api/workspace/mcp-servers?workspaceId=${workspaceId}`,
+        );
         if (refreshedRes.ok) {
           data = (await refreshedRes.json()) as McpServer[];
         }
@@ -62,7 +97,9 @@ export function useMcpServerManagerController() {
       setServers(data);
       const entries = await Promise.all(
         data.map(async (server) => {
-          const toolRes = await fetch(`/api/workspace/mcp-servers/${server.id}/tools?workspaceId=${workspaceId}`);
+          const toolRes = await fetch(
+            `/api/workspace/mcp-servers/${server.id}/tools?workspaceId=${workspaceId}`,
+          );
           if (!toolRes.ok) throw new Error(t("loadFailed"));
           return [server.id, await toolRes.json()] as const;
         }),
@@ -86,7 +123,13 @@ export function useMcpServerManagerController() {
     let result = servers;
     if (search.trim()) {
       const q = search.toLowerCase();
-      result = result.filter((s) => s.name.toLowerCase().includes(q) || s.transport.toLowerCase().includes(q) || (s.url ?? "").toLowerCase().includes(q) || (s.command ?? "").toLowerCase().includes(q));
+      result = result.filter(
+        (s) =>
+          s.name.toLowerCase().includes(q) ||
+          s.transport.toLowerCase().includes(q) ||
+          (s.url ?? "").toLowerCase().includes(q) ||
+          (s.command ?? "").toLowerCase().includes(q),
+      );
     }
     if (filterStatus === "enabled") result = result.filter((s) => s.enabled);
     if (filterStatus === "disabled") result = result.filter((s) => !s.enabled);
@@ -101,16 +144,23 @@ export function useMcpServerManagerController() {
     setEditLoading(true);
     setShowAdvancedEdit(false);
     try {
-      const res = await fetch(`/api/workspace/mcp-servers/${server.id}?workspaceId=${workspaceId}`);
+      const res = await fetch(
+        `/api/workspace/mcp-servers/${server.id}?workspaceId=${workspaceId}`,
+      );
       if (!res.ok) {
-        throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error || t("loadServerFailed"));
+        throw new Error(
+          ((await res.json().catch(() => ({}))) as { error?: string }).error ||
+            t("loadServerFailed"),
+        );
       }
       const data = (await res.json()) as McpServer;
       setEditServer(data);
       setEditForm(serverFormFromServer(data, data.authHint));
     } catch (error) {
       setEditServer(null);
-      toast.error(error instanceof Error ? error.message : t("loadServerFailed"));
+      toast.error(
+        error instanceof Error ? error.message : t("loadServerFailed"),
+      );
       return;
     } finally {
       setEditLoading(false);
@@ -201,7 +251,10 @@ export function useMcpServerManagerController() {
     if (!workspaceId) return;
     setBusy(true);
     try {
-      const res = await fetch(`/api/workspace/mcp-servers/${serverId}?workspaceId=${workspaceId}`, { method: "DELETE" });
+      const res = await fetch(
+        `/api/workspace/mcp-servers/${serverId}?workspaceId=${workspaceId}`,
+        { method: "DELETE" },
+      );
       if (!res.ok) throw new Error(t("removeFailed"));
       setDeleteId(null);
       toast.success(t("removed"));
@@ -218,26 +271,38 @@ export function useMcpServerManagerController() {
     if (!workspaceId) return;
     setBusy(true);
     try {
-      const res = await fetch(`/api/workspace/mcp-servers/${serverId}/tools?workspaceId=${workspaceId}`, { method: "POST" });
+      const res = await fetch(
+        `/api/workspace/mcp-servers/${serverId}/tools?workspaceId=${workspaceId}`,
+        { method: "POST" },
+      );
       const data = (await res.json().catch(() => ({}))) as {
         discovered?: number;
         status?: string;
         error?: string;
       };
       if (res.ok) {
-        toast.success(data.discovered ? t("discoverySuccess", { count: data.discovered }) : t("discoveryEmpty"));
+        toast.success(
+          data.discovered
+            ? t("discoverySuccess", { count: data.discovered })
+            : t("discoveryEmpty"),
+        );
         await load();
       } else {
         toast.error(data.error || t("discoveryFailed"));
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t("discoveryFailed"));
+      toast.error(
+        error instanceof Error ? error.message : t("discoveryFailed"),
+      );
     } finally {
       setBusy(false);
     }
   }
 
-  function notifyDiscoveryResult(discovery: McpServer["discovery"], fallback: "created" | "updated") {
+  function notifyDiscoveryResult(
+    discovery: McpServer["discovery"],
+    fallback: "created" | "updated",
+  ) {
     if (!discovery || discovery.status === "manual") {
       toast.success(t(fallback));
     } else if (discovery.status === "unhealthy") {
@@ -264,25 +329,86 @@ export function useMcpServerManagerController() {
     }
   }
 
-  async function patchTool(serverId: string, toolId: string, body: Record<string, unknown>) {
+  async function patchTool(
+    serverId: string,
+    toolId: string,
+    body: Record<string, unknown>,
+  ) {
     if (!workspaceId) return;
     try {
-      const res = await fetch(`/api/workspace/mcp-servers/${serverId}/tools/${toolId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ workspaceId, ...body }),
-      });
+      const res = await fetch(
+        `/api/workspace/mcp-servers/${serverId}/tools/${toolId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ workspaceId, ...body }),
+        },
+      );
       if (!res.ok) throw new Error(t("updateToolFailed"));
       await load();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t("updateToolFailed"));
+      toast.error(
+        error instanceof Error ? error.message : t("updateToolFailed"),
+      );
     }
   }
 
-  return { kind: "ready", busy, canManageMcpServers, canManageTenantGlobals, closeEdit, createServer, deleteId, editForm, editLoading, editServer, expandedServers, filterStatus, filteredServers, form, load, loadError, loading, openEdit, patchServer, patchTool, removeServer, retryDiscovery, saveEdit, search, servers, setDeleteId, setEditForm, setExpandedServers, setFilterStatus, setForm, setSearch, setShareResource, setShowAdvancedCreate, setShowAdvancedEdit, setShowConnections, setShowCreate, setToolSearch, setVisibleCount, shareResource, showAdvancedCreate, showAdvancedEdit, showConnections, showCreate, t, toolSearch, toolsByServer, visibleCount, visibleServers, workspaceId } as const;
+  return {
+    kind: "ready",
+    busy,
+    canManageMcpServers,
+    canManageTenantGlobals,
+    closeEdit,
+    createServer,
+    deleteId,
+    editForm,
+    editLoading,
+    editServer,
+    expandedServers,
+    filterStatus,
+    filteredServers,
+    form,
+    load,
+    loadError,
+    loading,
+    openEdit,
+    patchServer,
+    patchTool,
+    removeServer,
+    retryDiscovery,
+    saveEdit,
+    search,
+    servers,
+    setDeleteId,
+    setEditForm,
+    setExpandedServers,
+    setFilterStatus,
+    setForm,
+    setSearch,
+    setShareResource,
+    setShowAdvancedCreate,
+    setShowAdvancedEdit,
+    setShowConnections,
+    setShowCreate,
+    setToolSearch,
+    setVisibleCount,
+    shareResource,
+    showAdvancedCreate,
+    showAdvancedEdit,
+    showConnections,
+    showCreate,
+    t,
+    toolSearch,
+    toolsByServer,
+    visibleCount,
+    visibleServers,
+    workspaceId,
+  } as const;
 }
 
-export function McpServerManager(...args: Parameters<typeof useMcpServerManagerController>) {
+export function McpServerManager(
+  ...args: Parameters<typeof useMcpServerManagerController>
+) {
   const model = useMcpServerManagerController(...args);
   if (!("kind" in model)) return model;
   return <McpServerManagerView model={model} />;

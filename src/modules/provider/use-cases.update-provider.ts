@@ -3,16 +3,32 @@ import { logger } from "@/lib/logger";
 import { audit } from "@/server/domain/services/audit";
 import { db } from "@/server/infrastructure/db";
 import { aiProviders } from "@/server/infrastructure/db/schema";
-import { and,eq,isNull,sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { UpdateProviderInput } from "./use-cases.to-safe-provider";
 
 export async function updateProvider(input: UpdateProviderInput) {
-  const { providerId, workspaceId, userId, name, baseUrl, apiKey, headersJson, queryParamsJson, openaiCompatibleApiRoute, enabled } = input;
+  const {
+    providerId,
+    workspaceId,
+    userId,
+    name,
+    baseUrl,
+    apiKey,
+    headersJson,
+    queryParamsJson,
+    openaiCompatibleApiRoute,
+    enabled,
+  } = input;
 
   const [existing] = await db
     .select()
     .from(aiProviders)
-    .where(and(eq(aiProviders.id, providerId), eq(aiProviders.workspaceId, workspaceId)))
+    .where(
+      and(
+        eq(aiProviders.id, providerId),
+        eq(aiProviders.workspaceId, workspaceId),
+      ),
+    )
     .limit(1);
 
   if (!existing) {
@@ -64,18 +80,30 @@ export async function updateProvider(input: UpdateProviderInput) {
   logger.info("Provider updated", { providerId, userId });
 }
 
-export async function archiveProvider(providerId: string, workspaceId: string, userId: string) {
+export async function archiveProvider(
+  providerId: string,
+  workspaceId: string,
+  userId: string,
+) {
   const [existing] = await db
     .select()
     .from(aiProviders)
-    .where(and(eq(aiProviders.id, providerId), eq(aiProviders.workspaceId, workspaceId)))
+    .where(
+      and(
+        eq(aiProviders.id, providerId),
+        eq(aiProviders.workspaceId, workspaceId),
+      ),
+    )
     .limit(1);
 
   if (!existing) {
     throw new Error("Provider not found");
   }
 
-  await db.update(aiProviders).set({ archivedAt: new Date(), updatedAt: new Date() }).where(eq(aiProviders.id, providerId));
+  await db
+    .update(aiProviders)
+    .set({ archivedAt: new Date(), updatedAt: new Date() })
+    .where(eq(aiProviders.id, providerId));
 
   await audit.emit({
     workspaceId,
@@ -94,7 +122,13 @@ export async function getProviderById(providerId: string, workspaceId: string) {
   const [provider] = await db
     .select()
     .from(aiProviders)
-    .where(and(eq(aiProviders.id, providerId), eq(aiProviders.workspaceId, workspaceId), isNull(aiProviders.archivedAt)))
+    .where(
+      and(
+        eq(aiProviders.id, providerId),
+        eq(aiProviders.workspaceId, workspaceId),
+        isNull(aiProviders.archivedAt),
+      ),
+    )
     .limit(1);
 
   return provider || null;
@@ -104,6 +138,11 @@ export async function listProviders(workspaceId: string) {
   return db
     .select()
     .from(aiProviders)
-    .where(and(eq(aiProviders.workspaceId, workspaceId), isNull(aiProviders.archivedAt)))
+    .where(
+      and(
+        eq(aiProviders.workspaceId, workspaceId),
+        isNull(aiProviders.archivedAt),
+      ),
+    )
     .orderBy(sql`${aiProviders.createdAt} DESC`);
 }

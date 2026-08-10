@@ -1,7 +1,10 @@
-import { handleRoute,requireResourcePermissionAsync } from "@/lib/route-handler";
+import {
+  handleRoute,
+  requireResourcePermissionAsync,
+} from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
 import { cloneAgent } from "@/modules/agent/use-cases";
-import { NextRequest,NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 const routeParamsSchema = z.object({ agentId: z.uuid() });
@@ -17,7 +20,10 @@ const cloneAgentSchema = z.object({
     .optional(),
 });
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ agentId: string }> }) {
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ agentId: string }> },
+) {
   return handleRoute(
     req,
     async ({ session }) => {
@@ -26,13 +32,22 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ age
       if (!parsedParams.success || !parsedBody.success) {
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
       }
-      const forbidden = await requireResourcePermissionAsync(session.user.id, parsedBody.data.workspaceId, "agents.create", "agent", (await params).agentId);
+      const forbidden = await requireResourcePermissionAsync(
+        session.user.id,
+        parsedBody.data.workspaceId,
+        "agents.create",
+        "agent",
+        (await params).agentId,
+      );
       if (forbidden) return forbidden;
       const result = await cloneAgent({
         agentId: parsedParams.data.agentId,
         workspaceId: parsedBody.data.workspaceId,
         userId: session.user.id,
-        canAdminCurate: await canManageTenantGlobals(session, parsedBody.data.workspaceId),
+        canAdminCurate: await canManageTenantGlobals(
+          session,
+          parsedBody.data.workspaceId,
+        ),
         name: parsedBody.data.name,
         slug: parsedBody.data.slug,
       });
@@ -42,9 +57,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ age
       logLabel: "Failed to clone agent",
       expectedError: (error) => {
         if (error instanceof Error && error.message === "Agent not found") {
-          return NextResponse.json({ error: "Agent not found" }, { status: 404 });
+          return NextResponse.json(
+            { error: "Agent not found" },
+            { status: 404 },
+          );
         }
-        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+        return NextResponse.json(
+          { error: "Internal server error" },
+          { status: 500 },
+        );
       },
     },
   );

@@ -1,10 +1,28 @@
 import { z } from "zod";
-import { competitiveBattlecardInputSchema,createArtifact,customerAccountPlanInputSchema,escapeHtml,renderList } from "./business-artifact-tools.raci-matrix-input-schema";
+import {
+  competitiveBattlecardInputSchema,
+  createArtifact,
+  customerAccountPlanInputSchema,
+  escapeHtml,
+  renderList,
+} from "./business-artifact-tools.raci-matrix-input-schema";
 import { renderActionRows } from "./business-artifact-tools.render-action-rows";
 
-export function createCustomerAccountPlanArtifact(input: z.infer<typeof customerAccountPlanInputSchema>) {
-  const stakeholders = input.stakeholders.map((person) => `<tr><td><strong>${escapeHtml(person.name)}</strong>${person.role ? `<small>${escapeHtml(person.role)}</small>` : ""}</td><td>${escapeHtml(person.influence)}</td><td>${escapeHtml(person.stance)}</td></tr>`).join("");
-  const opportunities = input.opportunities.map((opportunity) => `<tr><td><strong>${escapeHtml(opportunity.name)}</strong>${opportunity.nextStep ? `<small>${escapeHtml(opportunity.nextStep)}</small>` : ""}</td><td>${escapeHtml(opportunity.value ?? "—")}</td><td>${escapeHtml(opportunity.stage ?? "—")}</td></tr>`).join("");
+export function createCustomerAccountPlanArtifact(
+  input: z.infer<typeof customerAccountPlanInputSchema>,
+) {
+  const stakeholders = input.stakeholders
+    .map(
+      (person) =>
+        `<tr><td><strong>${escapeHtml(person.name)}</strong>${person.role ? `<small>${escapeHtml(person.role)}</small>` : ""}</td><td>${escapeHtml(person.influence)}</td><td>${escapeHtml(person.stance)}</td></tr>`,
+    )
+    .join("");
+  const opportunities = input.opportunities
+    .map(
+      (opportunity) =>
+        `<tr><td><strong>${escapeHtml(opportunity.name)}</strong>${opportunity.nextStep ? `<small>${escapeHtml(opportunity.nextStep)}</small>` : ""}</td><td>${escapeHtml(opportunity.value ?? "—")}</td><td>${escapeHtml(opportunity.stage ?? "—")}</td></tr>`,
+    )
+    .join("");
   const body = `<header class="artifact-hero compact"><p class="artifact-kicker">Account plan · ${escapeHtml(input.accountName)}</p><h1>${escapeHtml(input.title)}</h1>${input.objective ? `<p class="artifact-summary">${escapeHtml(input.objective)}</p>` : ""}</header>
 	<div class="artifact-grid two">
 		<section class="artifact-card"><h2>Stakeholder map</h2><div class="table-wrap"><table><thead><tr><th>Name</th><th>Influence</th><th>Stance</th></tr></thead><tbody>${stakeholders}</tbody></table></div></section>
@@ -12,11 +30,23 @@ export function createCustomerAccountPlanArtifact(input: z.infer<typeof customer
 	</div>
 	${input.risks.length ? `<section class="artifact-card"><h2>Account risks</h2>${renderList(input.risks)}</section>` : ""}
 	<section class="artifact-card"><h2>Mutual action plan</h2>${renderActionRows(input.nextActions)}</section>`;
-  return createArtifact(input.title, body, input.height, "customer_account_plan");
+  return createArtifact(
+    input.title,
+    body,
+    input.height,
+    "customer_account_plan",
+  );
 }
 
-export function createCompetitiveBattlecardArtifact(input: z.infer<typeof competitiveBattlecardInputSchema>) {
-  const objections = input.objectionHandling.map((item) => `<article class="artifact-section"><h2>${escapeHtml(item.objection)}</h2><p>${escapeHtml(item.response)}</p></article>`).join("");
+export function createCompetitiveBattlecardArtifact(
+  input: z.infer<typeof competitiveBattlecardInputSchema>,
+) {
+  const objections = input.objectionHandling
+    .map(
+      (item) =>
+        `<article class="artifact-section"><h2>${escapeHtml(item.objection)}</h2><p>${escapeHtml(item.response)}</p></article>`,
+    )
+    .join("");
   const body = `<header class="artifact-hero compact"><p class="artifact-kicker">Competitive battlecard · ${escapeHtml(input.competitor)}</p><h1>${escapeHtml(input.title)}</h1>${input.positioning ? `<p class="artifact-summary">${escapeHtml(input.positioning)}</p>` : ""}</header>
 	<div class="artifact-grid two">
 		<section class="artifact-card"><h2>Win themes</h2>${renderList(input.winThemes)}</section>
@@ -26,7 +56,12 @@ export function createCompetitiveBattlecardArtifact(input: z.infer<typeof compet
 	</div>
 	${objections ? `<section class="artifact-card"><h2>Objection handling</h2>${objections}</section>` : ""}
 	${input.discoveryQuestions.length ? `<section class="artifact-card"><h2>Discovery questions</h2>${renderList(input.discoveryQuestions)}</section>` : ""}`;
-  return createArtifact(input.title, body, input.height, "competitive_battlecard");
+  return createArtifact(
+    input.title,
+    body,
+    input.height,
+    "competitive_battlecard",
+  );
 }
 
 export function createBusinessArtifactCss() {

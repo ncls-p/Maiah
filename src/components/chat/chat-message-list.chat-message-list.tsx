@@ -1,24 +1,60 @@
 "use client";
 
-import { useLocale,useTranslations } from "next-intl";
-import { useLayoutEffect,useMemo,useRef,useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 
-import { cancelsChatStreamFollow,getChatStreamFollowKey,isChatViewportAtEnd } from "@/components/chat/chat-scroll";
+import {
+  cancelsChatStreamFollow,
+  getChatStreamFollowKey,
+  isChatViewportAtEnd,
+} from "@/components/chat/chat-scroll";
 import { type ChatMessage } from "@/components/chat/chat-types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChatMessageListView } from "./chat-message-list.chat-message-list.view";
-import { ChatMessageListProps,INITIAL_VISIBLE_MESSAGES,userMessageFullText,userMessagePreview } from "./chat-message-list.initial-visible-messages";
+import {
+  ChatMessageListProps,
+  INITIAL_VISIBLE_MESSAGES,
+  userMessageFullText,
+  userMessagePreview,
+} from "./chat-message-list.initial-visible-messages";
 
-export function useChatMessageListController({ messages, sending, loading, workspaceId, workspaceArtifactDisplay = "full", conversationId, bottomRef, onEditMessage, onDeleteMessage, onResendMessage, onRegenerateAssistant, onContinueAssistant, onJumpLatest, pendingApprovals = [], onApproveTool, onRejectTool, onSuggestionClick }: ChatMessageListProps) {
+export function useChatMessageListController({
+  messages,
+  sending,
+  loading,
+  workspaceId,
+  workspaceArtifactDisplay = "full",
+  conversationId,
+  bottomRef,
+  onEditMessage,
+  onDeleteMessage,
+  onResendMessage,
+  onRegenerateAssistant,
+  onContinueAssistant,
+  onJumpLatest,
+  pendingApprovals = [],
+  onApproveTool,
+  onRejectTool,
+  onSuggestionClick,
+}: ChatMessageListProps) {
   const locale = useLocale();
   const t = useTranslations("chat.messageList");
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState("");
   const [savingMessageId, setSavingMessageId] = useState<string | null>(null);
-  const [visibleMessageCount, setVisibleMessageCount] = useState(INITIAL_VISIBLE_MESSAGES);
+  const [visibleMessageCount, setVisibleMessageCount] = useState(
+    INITIAL_VISIBLE_MESSAGES,
+  );
   const hiddenMessageCount = Math.max(0, messages.length - visibleMessageCount);
-  const visibleMessages = useMemo(() => (hiddenMessageCount > 0 ? messages.slice(hiddenMessageCount) : messages), [hiddenMessageCount, messages]);
-  const messageIndexById = useMemo(() => new Map(messages.map((message, index) => [message.id, index])), [messages]);
+  const visibleMessages = useMemo(
+    () =>
+      hiddenMessageCount > 0 ? messages.slice(hiddenMessageCount) : messages,
+    [hiddenMessageCount, messages],
+  );
+  const messageIndexById = useMemo(
+    () => new Map(messages.map((message, index) => [message.id, index])),
+    [messages],
+  );
   const userMessageShortcuts = useMemo(
     () =>
       messages
@@ -52,7 +88,10 @@ export function useChatMessageListController({ messages, sending, loading, works
   const lastMessage = messages[messages.length - 1] ?? null;
   const lastMessageId = lastMessage?.id ?? null;
   const hasTranscript = !loading && messages.length > 0;
-  const scrollFollowKey = useMemo(() => getChatStreamFollowKey(messages), [messages]);
+  const scrollFollowKey = useMemo(
+    () => getChatStreamFollowKey(messages),
+    [messages],
+  );
 
   // Follow every streamed layout change while the reader remains at the end.
   // Scrolling up opts out immediately and preserves the reader's position.
@@ -162,7 +201,10 @@ export function useChatMessageListController({ messages, sending, loading, works
 
   const { lastAssistantMessageId, precedingUserByMessageId } = messageListMeta;
 
-  const viewportClassName = workspaceArtifactDisplay === "summary" ? "px-2 py-3" : "px-3 py-4 sm:px-4 sm:py-8";
+  const viewportClassName =
+    workspaceArtifactDisplay === "summary"
+      ? "px-2 py-3"
+      : "px-3 py-4 sm:px-4 sm:py-8";
 
   return {
     kind: "ready",
@@ -204,7 +246,9 @@ export function useChatMessageListController({ messages, sending, loading, works
   } as const;
 }
 
-export function ChatMessageList(...args: Parameters<typeof useChatMessageListController>) {
+export function ChatMessageList(
+  ...args: Parameters<typeof useChatMessageListController>
+) {
   const model = useChatMessageListController(...args);
   if (!("kind" in model)) return model;
   return <ChatMessageListView model={model} />;

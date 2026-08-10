@@ -11,7 +11,6 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { agentRuntimePolicy } from "@/modules/agent/runtime-policy";
 
 import { ToolPolicyPicker } from "./model-advanced-fields.tool-policy-picker";
 import type { ModelAdvancedFieldsViewModel } from "./model-advanced-fields.model-advanced-fields.view";
@@ -60,8 +59,6 @@ export function ModelAdvancedFieldsSection1({
               <Input
                 id="agent-temperature"
                 type="number"
-                min={0}
-                max={2}
                 step={0.1}
                 value={form.temperature}
                 onChange={(e) =>
@@ -78,8 +75,6 @@ export function ModelAdvancedFieldsSection1({
               <Input
                 id="agent-top-p"
                 type="number"
-                min={0}
-                max={1}
                 step={0.1}
                 value={form.topP}
                 onChange={(e) =>
@@ -99,8 +94,6 @@ export function ModelAdvancedFieldsSection1({
               <Input
                 id="agent-max-output"
                 type="number"
-                min={1}
-                max={selectedModel?.maxOutputTokens ?? undefined}
                 value={form.maxOutputTokens}
                 onChange={(e) =>
                   setForm((prev) => ({
@@ -129,8 +122,6 @@ export function ModelAdvancedFieldsSection1({
               <Input
                 id="agent-max-tool-calls"
                 type="number"
-                min={0}
-                max={agentRuntimePolicy.maxToolCalls}
                 value={form.maxToolCalls}
                 onChange={(e) =>
                   setForm((prev) => ({

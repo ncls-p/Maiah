@@ -9,7 +9,13 @@ import { PageLoading } from "@/components/page-loading";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { toast } from "sonner";
 import { AgentsPageView } from "./page.agents-page.view";
-import { AGENT_TEMPLATES, Agent, AgentAccessForm, AgentAccessOptions, slugifyAgentName } from "./page.icon-size-class";
+import {
+  AGENT_TEMPLATES,
+  Agent,
+  AgentAccessForm,
+  AgentAccessOptions,
+  slugifyAgentName,
+} from "./page.icon-size-class";
 
 export function useAgentsPageController() {
   const t = useTranslations("agents");
@@ -29,12 +35,18 @@ export function useAgentsPageController() {
     projectName: "",
     organizationName: "",
   });
-  const [organizationDefaultAgentId, setOrganizationDefaultAgentId] = useState<string | null>(null);
-  const [userDefaultAgentId, setUserDefaultAgentId] = useState<string | null>(null);
+  const [organizationDefaultAgentId, setOrganizationDefaultAgentId] = useState<
+    string | null
+  >(null);
+  const [userDefaultAgentId, setUserDefaultAgentId] = useState<string | null>(
+    null,
+  );
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [creating, setCreating] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [agentKindFilter, setAgentKindFilter] = useState<"all" | "assistant" | "orchestrator">("all");
+  const [agentKindFilter, setAgentKindFilter] = useState<
+    "all" | "assistant" | "orchestrator"
+  >("all");
   const [displayMode, setDisplayMode] = useState<"grid" | "list">("grid");
   const [form, setForm] = useState({
     kind: "assistant" as Agent["kind"],
@@ -52,8 +64,12 @@ export function useAgentsPageController() {
     isRecommended: false,
     curationLabel: "none",
   });
-  const [shareResource, setShareResource] = useState<ShareableResource | null>(null);
-  const [updatingDefaultAgentId, setUpdatingDefaultAgentId] = useState<string | null>(null);
+  const [shareResource, setShareResource] = useState<ShareableResource | null>(
+    null,
+  );
+  const [updatingDefaultAgentId, setUpdatingDefaultAgentId] = useState<
+    string | null
+  >(null);
   const abortRef = useRef<AbortController | null>(null);
 
   const refreshAgents = useCallback(async () => {
@@ -64,9 +80,12 @@ export function useAgentsPageController() {
     setLoadError(null);
     setLoading(true);
     try {
-      const res = await fetch(`/api/workspace/agents?workspaceId=${workspaceId}&includeModelMeta=true`, {
-        signal: controller.signal,
-      });
+      const res = await fetch(
+        `/api/workspace/agents?workspaceId=${workspaceId}&includeModelMeta=true`,
+        {
+          signal: controller.signal,
+        },
+      );
       if (!res.ok) throw new Error("Failed to fetch agents");
       const data = await res.json();
       if (abortRef.current !== controller) return;
@@ -104,7 +123,9 @@ export function useAgentsPageController() {
       slug: slugifyAgentName(name),
       description: tList(template.descriptionKey),
       systemPrompt: tList(template.promptKey),
-      promptSuggestions: template.suggestionKeys.map((key) => tList(key)).join("\n"),
+      promptSuggestions: template.suggestionKeys
+        .map((key) => tList(key))
+        .join("\n"),
     }));
   }
 
@@ -128,9 +149,13 @@ export function useAgentsPageController() {
             .filter(Boolean),
           workspaceId,
           sharingMode: form.sharingMode,
-          shareTargetEmail: form.sharingMode === "specific_user" ? form.shareTargetEmail.trim() : undefined,
+          shareTargetEmail:
+            form.sharingMode === "specific_user"
+              ? form.shareTargetEmail.trim()
+              : undefined,
           accessScope: form.accessScope,
-          accessTeamId: form.accessScope === "team" ? form.accessTeamId : undefined,
+          accessTeamId:
+            form.accessScope === "team" ? form.accessTeamId : undefined,
           isGlobal: canAdminCurate ? form.isGlobal : undefined,
           isRecommended: canAdminCurate ? form.isRecommended : undefined,
           curationLabel: canAdminCurate ? form.curationLabel : undefined,
@@ -167,14 +192,20 @@ export function useAgentsPageController() {
       }
       await refreshAgents();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : tList("toastCreateFailed"));
+      toast.error(
+        err instanceof Error ? err.message : tList("toastCreateFailed"),
+      );
       return;
     } finally {
       setCreating(false);
     }
   };
 
-  async function setDefaultAgent(scope: "organization" | "user", agentId: string | null, actionAgentId: string) {
+  async function setDefaultAgent(
+    scope: "organization" | "user",
+    agentId: string | null,
+    actionAgentId: string,
+  ) {
     if (!workspaceId || updatingDefaultAgentId) return;
     setUpdatingDefaultAgentId(actionAgentId);
     try {
@@ -199,12 +230,45 @@ export function useAgentsPageController() {
           isOrganizationDefault: agent.id === data.organizationDefaultAgentId,
         })),
       );
-      toast.success(scope === "organization" ? tList("toastOrganizationDefaultSaved") : tList("toastUserDefaultSaved"));
+      toast.success(
+        scope === "organization"
+          ? tList("toastOrganizationDefaultSaved")
+          : tList("toastUserDefaultSaved"),
+      );
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : tList("toastDefaultFailed"));
+      toast.error(
+        err instanceof Error ? err.message : tList("toastDefaultFailed"),
+      );
       return;
     } finally {
       setUpdatingDefaultAgentId(null);
+    }
+  }
+
+  async function setAgentHiddenInChat(agentId: string, hidden: boolean) {
+    if (!workspaceId) return;
+    try {
+      const res = await fetch("/api/workspace/agents/preferences", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "set_hidden",
+          workspaceId,
+          agentId,
+          hidden,
+        }),
+      });
+      if (!res.ok) throw new Error(tList("toastVisibilityFailed"));
+      setAgents((current) =>
+        current.map((agent) =>
+          agent.id === agentId ? { ...agent, hiddenInChat: hidden } : agent,
+        ),
+      );
+      toast.success(tList(hidden ? "toastHiddenFromChat" : "toastShownInChat"));
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : tList("toastVisibilityFailed"),
+      );
     }
   }
 
@@ -217,7 +281,11 @@ export function useAgentsPageController() {
     }
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
-    return agent.name.toLowerCase().includes(q) || (agent.description ?? "").toLowerCase().includes(q) || agent.slug.toLowerCase().includes(q);
+    return (
+      agent.name.toLowerCase().includes(q) ||
+      (agent.description ?? "").toLowerCase().includes(q) ||
+      agent.slug.toLowerCase().includes(q)
+    );
   });
 
   if (workspaceLoading || !workspaceId) {
@@ -245,6 +313,7 @@ export function useAgentsPageController() {
     searchQuery,
     setAgentKindFilter,
     setDefaultAgent,
+    setAgentHiddenInChat,
     setDisplayMode,
     setForm,
     setSearchQuery,
@@ -262,7 +331,9 @@ export function useAgentsPageController() {
   } as const;
 }
 
-export default function AgentsPage(...args: Parameters<typeof useAgentsPageController>) {
+export default function AgentsPage(
+  ...args: Parameters<typeof useAgentsPageController>
+) {
   const model = useAgentsPageController(...args);
   if (!("kind" in model)) return model;
   return <AgentsPageView model={model} />;

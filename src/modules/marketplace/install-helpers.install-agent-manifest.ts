@@ -1,6 +1,24 @@
-import { agentKnowledgeBindings,agents,agentSkillBindings,agentSkills,agentToolBindings,agentVersions,customTools,knowledgeBases,mcpServers,mcpTools } from "@/server/infrastructure/db/schema";
-import { and,eq,isNull,or } from "drizzle-orm";
-import { installCustomTool,installMcpPreset,resolveModelId,resolveProviderId,slugify,Tx } from "./install-helpers.tx";
+import {
+  agentKnowledgeBindings,
+  agents,
+  agentSkillBindings,
+  agentSkills,
+  agentToolBindings,
+  agentVersions,
+  customTools,
+  knowledgeBases,
+  mcpServers,
+  mcpTools,
+} from "@/server/infrastructure/db/schema";
+import { and, eq, isNull, or } from "drizzle-orm";
+import {
+  installCustomTool,
+  installMcpPreset,
+  resolveModelId,
+  resolveProviderId,
+  slugify,
+  Tx,
+} from "./install-helpers.tx";
 import type { AgentMarketplaceManifest } from "./manifest-types";
 
 export async function installAgentManifest(
@@ -47,10 +65,18 @@ export async function installAgentManifest(
         const [row] = await tx
           .select({ id: mcpTools.id })
           .from(mcpTools)
-          .where(and(eq(mcpTools.mcpServerId, server.id), eq(mcpTools.name, tool.name)))
+          .where(
+            and(
+              eq(mcpTools.mcpServerId, server.id),
+              eq(mcpTools.name, tool.name),
+            ),
+          )
           .limit(1);
         if (row) {
-          mcpRefToToolId.set(`${preset.preset.serverName}/${tool.name}`, row.id);
+          mcpRefToToolId.set(
+            `${preset.preset.serverName}/${tool.name}`,
+            row.id,
+          );
         }
       }
     }
@@ -79,8 +105,18 @@ export async function installAgentManifest(
     })
     .returning();
 
-  const providerId = await resolveProviderId(tx, input.workspaceId, input.manifest.agent.providerId, input.manifest.agent.providerName);
-  const modelId = await resolveModelId(tx, providerId, input.manifest.agent.modelId, input.manifest.agent.modelName);
+  const providerId = await resolveProviderId(
+    tx,
+    input.workspaceId,
+    input.manifest.agent.providerId,
+    input.manifest.agent.providerName,
+  );
+  const modelId = await resolveModelId(
+    tx,
+    providerId,
+    input.manifest.agent.modelId,
+    input.manifest.agent.modelName,
+  );
 
   const [agentVersion] = await tx
     .insert(agentVersions)
@@ -105,7 +141,10 @@ export async function installAgentManifest(
     })
     .returning();
 
-  await tx.update(agents).set({ activeVersionId: agentVersion.id }).where(eq(agents.id, installedAgent.id));
+  await tx
+    .update(agents)
+    .set({ activeVersionId: agentVersion.id })
+    .where(eq(agents.id, installedAgent.id));
 
   for (const binding of input.manifest.toolBindings ?? []) {
     let toolId: string | null = null;
@@ -118,13 +157,28 @@ export async function installAgentManifest(
         const [server] = await tx
           .select({ id: mcpServers.id })
           .from(mcpServers)
-          .where(and(eq(mcpServers.workspaceId, input.workspaceId), eq(mcpServers.name, serverName), isNull(mcpServers.archivedAt), or(eq(mcpServers.createdById, input.userId), eq(mcpServers.isGlobal, true))))
+          .where(
+            and(
+              eq(mcpServers.workspaceId, input.workspaceId),
+              eq(mcpServers.name, serverName),
+              isNull(mcpServers.archivedAt),
+              or(
+                eq(mcpServers.createdById, input.userId),
+                eq(mcpServers.isGlobal, true),
+              ),
+            ),
+          )
           .limit(1);
         if (server) {
           const [tool] = await tx
             .select({ id: mcpTools.id })
             .from(mcpTools)
-            .where(and(eq(mcpTools.mcpServerId, server.id), eq(mcpTools.name, toolName)))
+            .where(
+              and(
+                eq(mcpTools.mcpServerId, server.id),
+                eq(mcpTools.name, toolName),
+              ),
+            )
             .limit(1);
           toolId = tool?.id ?? null;
         }
@@ -135,7 +189,17 @@ export async function installAgentManifest(
         const [tool] = await tx
           .select({ id: customTools.id })
           .from(customTools)
-          .where(and(eq(customTools.workspaceId, input.workspaceId), eq(customTools.name, binding.ref), isNull(customTools.archivedAt), or(eq(customTools.createdById, input.userId), eq(customTools.isGlobal, true))))
+          .where(
+            and(
+              eq(customTools.workspaceId, input.workspaceId),
+              eq(customTools.name, binding.ref),
+              isNull(customTools.archivedAt),
+              or(
+                eq(customTools.createdById, input.userId),
+                eq(customTools.isGlobal, true),
+              ),
+            ),
+          )
           .limit(1);
         toolId = tool?.id ?? null;
       }
@@ -156,7 +220,17 @@ export async function installAgentManifest(
       const [skill] = await tx
         .select({ id: agentSkills.id })
         .from(agentSkills)
-        .where(and(eq(agentSkills.workspaceId, input.workspaceId), eq(agentSkills.name, binding.ref), isNull(agentSkills.archivedAt), or(eq(agentSkills.createdById, input.userId), eq(agentSkills.isGlobal, true))))
+        .where(
+          and(
+            eq(agentSkills.workspaceId, input.workspaceId),
+            eq(agentSkills.name, binding.ref),
+            isNull(agentSkills.archivedAt),
+            or(
+              eq(agentSkills.createdById, input.userId),
+              eq(agentSkills.isGlobal, true),
+            ),
+          ),
+        )
         .limit(1);
       skillId = skill?.id;
     }
@@ -187,7 +261,17 @@ export async function installAgentManifest(
     const [kb] = await tx
       .select({ id: knowledgeBases.id })
       .from(knowledgeBases)
-      .where(and(eq(knowledgeBases.workspaceId, input.workspaceId), eq(knowledgeBases.name, kbBinding.name), isNull(knowledgeBases.archivedAt), or(eq(knowledgeBases.createdById, input.userId), eq(knowledgeBases.isGlobal, true))))
+      .where(
+        and(
+          eq(knowledgeBases.workspaceId, input.workspaceId),
+          eq(knowledgeBases.name, kbBinding.name),
+          isNull(knowledgeBases.archivedAt),
+          or(
+            eq(knowledgeBases.createdById, input.userId),
+            eq(knowledgeBases.isGlobal, true),
+          ),
+        ),
+      )
       .limit(1);
     if (!kb) continue;
     await tx.insert(agentKnowledgeBindings).values({

@@ -6,9 +6,23 @@ import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { AuditEvent,formatAction,outcomeMeta } from "./audit-dashboard.audit-event";
+import {
+  AuditEvent,
+  formatAction,
+  outcomeMeta,
+} from "./audit-dashboard.audit-event";
 
-export function AuditEventRow({ event, isLast, locale, t }: { event: AuditEvent; isLast: boolean; locale: string; t: ReturnType<typeof useTranslations<"admin.audit">> }) {
+export function AuditEventRow({
+  event,
+  isLast,
+  locale,
+  t,
+}: {
+  event: AuditEvent;
+  isLast: boolean;
+  locale: string;
+  t: ReturnType<typeof useTranslations<"admin.audit">>;
+}) {
   const meta = outcomeMeta(event.outcome);
   const OutcomeIcon = meta.icon;
   const parsed = formatAction(event.action);
@@ -18,25 +32,55 @@ export function AuditEventRow({ event, isLast, locale, t }: { event: AuditEvent;
     dateStyle: "medium",
     timeStyle: "short",
   }).format(createdAt);
-  const outcomeLabel = event.outcome === "success" ? t("outcomeSuccess") : event.outcome === "failed" ? t("outcomeFailed") : event.outcome === "denied" ? t("outcomeDenied") : meta.label;
+  const outcomeLabel =
+    event.outcome === "success"
+      ? t("outcomeSuccess")
+      : event.outcome === "failed"
+        ? t("outcomeFailed")
+        : event.outcome === "denied"
+          ? t("outcomeDenied")
+          : meta.label;
 
   return (
     <div className="relative flex gap-4">
       <div className="flex flex-col items-center">
-        <div className={cn("mt-1.5 size-2.5 shrink-0 rounded-full ring-4 ring-background", meta.dot, meta.ring)} />
-        {!isLast ? <div className="my-1 w-px flex-1 bg-border/70" aria-hidden="true" /> : null}
+        <div
+          className={cn(
+            "mt-1.5 size-2.5 shrink-0 rounded-full ring-4 ring-background",
+            meta.dot,
+            meta.ring,
+          )}
+        />
+        {!isLast ? (
+          <div className="my-1 w-px flex-1 bg-border/70" aria-hidden="true" />
+        ) : null}
       </div>
 
-      <article className={cn("min-w-0 flex-1 rounded-xl border border-border/60 bg-background/80 px-4 py-3 transition-colors hover:border-primary/25 hover:bg-muted/20", !isLast && "mb-3")}>
+      <article
+        className={cn(
+          "min-w-0 flex-1 rounded-xl border border-border/60 bg-background/80 px-4 py-3 transition-colors hover:border-primary/25 hover:bg-muted/20",
+          !isLast && "mb-3",
+        )}
+      >
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 flex-1 space-y-2">
             <div className="flex flex-wrap items-center gap-2">
-              <Badge variant={meta.badge} className={cn("rounded-md capitalize", event.outcome === "denied" && "border-warning/30 bg-warning/10 text-warning")}>
+              <Badge
+                variant={meta.badge}
+                className={cn(
+                  "rounded-md capitalize",
+                  event.outcome === "denied" &&
+                    "border-warning/30 bg-warning/10 text-warning",
+                )}
+              >
                 <OutcomeIcon aria-hidden="true" />
                 {outcomeLabel}
               </Badge>
               {event.resourceType ? (
-                <Badge variant="outline" className="rounded-md font-mono text-[11px]">
+                <Badge
+                  variant="outline"
+                  className="rounded-md font-mono text-[11px]"
+                >
                   {event.resourceType}
                 </Badge>
               ) : null}
@@ -52,18 +96,27 @@ export function AuditEventRow({ event, isLast, locale, t }: { event: AuditEvent;
               ) : (
                 <p className="font-medium leading-snug">{parsed}</p>
               )}
-              <p className="font-mono text-xs text-muted-foreground">{event.action}</p>
+              <p className="font-mono text-xs text-muted-foreground">
+                {event.action}
+              </p>
             </div>
 
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <UserIcon className="size-3.5 shrink-0" aria-hidden="true" />
-              <span className="truncate" title={event.actorPrincipalId ?? undefined}>
+              <span
+                className="truncate"
+                title={event.actorPrincipalId ?? undefined}
+              >
                 {actorLabel}
               </span>
             </div>
           </div>
 
-          <time className="shrink-0 text-xs text-muted-foreground sm:text-right" dateTime={event.createdAt} title={createdAtLabel}>
+          <time
+            className="shrink-0 text-xs text-muted-foreground sm:text-right"
+            dateTime={event.createdAt}
+            title={createdAtLabel}
+          >
             {createdAtLabel}
           </time>
         </div>

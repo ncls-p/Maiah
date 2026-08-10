@@ -1,9 +1,25 @@
-import { Background, BackgroundVariant, Controls, MiniMap, ReactFlow } from "@xyflow/react";
+import {
+  Background,
+  BackgroundVariant,
+  Controls,
+  MiniMap,
+  ReactFlow,
+} from "@xyflow/react";
 import { createPortal } from "react-dom";
 
-import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@/components/ui/resizable";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 
@@ -18,8 +34,15 @@ import { WorkflowBuilderSection2 } from "./workflow-builder.workflow-builder.vie
 import { WorkflowBuilderRunSheet } from "./workflow-builder.run-sheet";
 import { type WorkflowCanvasNodeType } from "./workflow-canvas-node";
 
-export type WorkflowBuilderViewModel = Extract<ReturnType<typeof useWorkflowBuilderController>, { kind: "ready" }>;
-export function WorkflowBuilderView({ model }: { model: WorkflowBuilderViewModel }) {
+export type WorkflowBuilderViewModel = Extract<
+  ReturnType<typeof useWorkflowBuilderController>,
+  { kind: "ready" }
+>;
+export function WorkflowBuilderView({
+  model,
+}: {
+  model: WorkflowBuilderViewModel;
+}) {
   const {
     agenticAbortRef,
     agenticActivities,
@@ -67,7 +90,9 @@ export function WorkflowBuilderView({ model }: { model: WorkflowBuilderViewModel
           <TabsTrigger value="runs">{t("runs")}</TabsTrigger>
         </TabsList>
         <TabsContent value="configuration" className="min-h-0 flex-1">
-          <ScrollArea className="h-full">{renderConfiguration(suffix)}</ScrollArea>
+          <ScrollArea className="h-full">
+            {renderConfiguration(suffix)}
+          </ScrollArea>
         </TabsContent>
         <TabsContent value="runs" className="min-h-0 flex-1">
           <ScrollArea className="h-full">{renderRuns()}</ScrollArea>
@@ -77,7 +102,12 @@ export function WorkflowBuilderView({ model }: { model: WorkflowBuilderViewModel
   }
 
   const canvas = (
-    <main className={cn("relative h-full bg-muted/10", editorMode === "visual" ? "min-h-[28rem] sm:min-h-[34rem]" : "min-h-0")}>
+    <main
+      className={cn(
+        "relative h-full bg-muted/10",
+        editorMode === "visual" ? "min-h-[28rem] sm:min-h-[34rem]" : "min-h-0",
+      )}
+    >
       <ReactFlow<WorkflowCanvasNodeType>
         nodes={nodes}
         edges={edges}
@@ -88,12 +118,16 @@ export function WorkflowBuilderView({ model }: { model: WorkflowBuilderViewModel
         onConnect={onConnect}
         onNodeClick={(_, node) => {
           setSelectedNodeId(node.id);
-          if (editorMode === "agentic" || !window.matchMedia("(min-width: 1024px)").matches) {
+          if (
+            editorMode === "agentic" ||
+            !window.matchMedia("(min-width: 1024px)").matches
+          ) {
             setInspectorOpen(true);
           }
         }}
         onNodesDelete={(deleted) => {
-          if (deleted.some((node) => node.id === selectedNodeId)) setSelectedNodeId(null);
+          if (deleted.some((node) => node.id === selectedNodeId))
+            setSelectedNodeId(null);
         }}
         onPaneClick={() => setSelectedNodeId(null)}
         fitView
@@ -112,10 +146,18 @@ export function WorkflowBuilderView({ model }: { model: WorkflowBuilderViewModel
       >
         <Background variant={BackgroundVariant.Dots} gap={22} size={1.2} />
         <Controls position="bottom-left" />
-        <MiniMap pannable zoomable className="!border !border-border/70 !bg-card max-sm:!hidden" nodeColor="var(--foreground)" maskColor="color-mix(in oklab, var(--background) 75%, transparent)" />
+        <MiniMap
+          pannable
+          zoomable
+          className="!border !border-border/70 !bg-card max-sm:!hidden"
+          nodeColor="var(--foreground)"
+          maskColor="color-mix(in oklab, var(--background) 75%, transparent)"
+        />
       </ReactFlow>
       <div className="pointer-events-none absolute top-3 left-1/2 hidden -translate-x-1/2 rounded-full border border-border/70 bg-background/90 px-3 py-1.5 text-[11px] text-muted-foreground shadow-sm backdrop-blur sm:block">
-        {editorMode === "agentic" ? t("agentic.canvasEditHint") : t("canvasHint")}
+        {editorMode === "agentic"
+          ? t("agentic.canvasEditHint")
+          : t("canvasHint")}
       </div>
     </main>
   );
@@ -125,7 +167,8 @@ export function WorkflowBuilderView({ model }: { model: WorkflowBuilderViewModel
       data-workflow-builder
       className={cn(
         "flex h-[calc(100dvh-10rem)] min-h-[36rem] flex-col overflow-hidden rounded-2xl border border-border/75 bg-card shadow-[var(--surface-shadow)]",
-        isFullscreen && "fixed inset-0 z-50 h-dvh min-h-0 rounded-none border-0",
+        isFullscreen &&
+          "fixed inset-0 z-50 h-dvh min-h-0 rounded-none border-0",
       )}
     >
       <WorkflowBuilderSection2 model={model} />
@@ -134,7 +177,12 @@ export function WorkflowBuilderView({ model }: { model: WorkflowBuilderViewModel
         isDesktop ? (
           <div className="min-h-0 flex-1">
             <ResizablePanelGroup orientation="horizontal">
-              <ResizablePanel id="workflow-agentic-chat" defaultSize="36%" minSize="28%" maxSize="48%">
+              <ResizablePanel
+                id="workflow-agentic-chat"
+                defaultSize="36%"
+                minSize="28%"
+                maxSize="48%"
+              >
                 <WorkflowAgenticPanel
                   messages={agenticMessages}
                   activities={agenticActivities}
@@ -149,20 +197,30 @@ export function WorkflowBuilderView({ model }: { model: WorkflowBuilderViewModel
                   agentName={agenticAgentName}
                   onInputChange={setAgenticInput}
                   onSubmit={(prompt) => void runAgenticBuilder(prompt)}
-                  onSubmitRequest={(request, values) => void submitAgenticRequest(request, values)}
-                  onDecideRunRequest={(request, decision) => void decideAgenticRunRequest(request, decision)}
+                  onSubmitRequest={(request, values) =>
+                    void submitAgenticRequest(request, values)
+                  }
+                  onDecideRunRequest={(request, decision) =>
+                    void decideAgenticRunRequest(request, decision)
+                  }
                   onStop={() => agenticAbortRef.current?.abort()}
                 />
               </ResizablePanel>
               <ResizableHandle withHandle />
-              <ResizablePanel id="workflow-agentic-canvas" defaultSize="64%" minSize="40%">
+              <ResizablePanel
+                id="workflow-agentic-canvas"
+                defaultSize="64%"
+                minSize="40%"
+              >
                 {canvas}
               </ResizablePanel>
             </ResizablePanelGroup>
           </div>
         ) : (
           <div className="flex min-h-0 flex-1 flex-col">
-            <div className="h-[34%] min-h-36 border-b border-border/70">{canvas}</div>
+            <div className="h-[34%] min-h-36 border-b border-border/70">
+              {canvas}
+            </div>
             <div className="min-h-0 flex-1">
               <WorkflowAgenticPanel
                 messages={agenticMessages}
@@ -178,8 +236,12 @@ export function WorkflowBuilderView({ model }: { model: WorkflowBuilderViewModel
                 agentName={agenticAgentName}
                 onInputChange={setAgenticInput}
                 onSubmit={(prompt) => void runAgenticBuilder(prompt)}
-                onSubmitRequest={(request, values) => void submitAgenticRequest(request, values)}
-                onDecideRunRequest={(request, decision) => void decideAgenticRunRequest(request, decision)}
+                onSubmitRequest={(request, values) =>
+                  void submitAgenticRequest(request, values)
+                }
+                onDecideRunRequest={(request, decision) =>
+                  void decideAgenticRunRequest(request, decision)
+                }
                 onStop={() => agenticAbortRef.current?.abort()}
               />
             </div>
@@ -188,16 +250,32 @@ export function WorkflowBuilderView({ model }: { model: WorkflowBuilderViewModel
       ) : isDesktop ? (
         <div className="min-h-0 flex-1">
           <ResizablePanelGroup orientation="horizontal">
-            <ResizablePanel id="workflow-palette" defaultSize="18%" minSize="14%" maxSize="30%">
+            <ResizablePanel
+              id="workflow-palette"
+              defaultSize="18%"
+              minSize="14%"
+              maxSize="30%"
+            >
               {renderPalette("desktop")}
             </ResizablePanel>
             <ResizableHandle withHandle />
-            <ResizablePanel id="workflow-canvas" defaultSize="57%" minSize="35%">
+            <ResizablePanel
+              id="workflow-canvas"
+              defaultSize="57%"
+              minSize="35%"
+            >
               {canvas}
             </ResizablePanel>
             <ResizableHandle withHandle />
-            <ResizablePanel id="workflow-inspector" defaultSize="25%" minSize="20%" maxSize="38%">
-              <aside className="h-full min-h-0 bg-background">{renderInspector("desktop")}</aside>
+            <ResizablePanel
+              id="workflow-inspector"
+              defaultSize="25%"
+              minSize="20%"
+              maxSize="38%"
+            >
+              <aside className="h-full min-h-0 bg-background">
+                {renderInspector("desktop")}
+              </aside>
             </ResizablePanel>
           </ResizablePanelGroup>
         </div>
@@ -216,7 +294,10 @@ export function WorkflowBuilderView({ model }: { model: WorkflowBuilderViewModel
       </Sheet>
 
       <Sheet open={inspectorOpen} onOpenChange={setInspectorOpen}>
-        <SheetContent side="right" className="w-[min(94vw,30rem)] p-0 sm:max-w-xl">
+        <SheetContent
+          side="right"
+          className="w-[min(94vw,30rem)] p-0 sm:max-w-xl"
+        >
           <SheetHeader className="sr-only">
             <SheetTitle>{t("configuration")}</SheetTitle>
             <SheetDescription>{t("configurationHint")}</SheetDescription>

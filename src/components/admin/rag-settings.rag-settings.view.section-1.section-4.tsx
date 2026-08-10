@@ -1,18 +1,45 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select,SelectContent,SelectGroup,SelectItem,SelectTrigger,SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { RagSettingsViewModel } from "./rag-settings.rag-settings.view";
-export function RagSettingsFieldsSection4({ model }: { model: RagSettingsViewModel }) {
-  const { discovering, embeddingModels, modelValue, numberValue, selectModel, setSettings, settings, t } = model;
+export function RagSettingsFieldsSection4({
+  model,
+}: {
+  model: RagSettingsViewModel;
+}) {
+  const {
+    discovering,
+    embeddingModels,
+    modelValue,
+    numberValue,
+    selectModel,
+    setSettings,
+    settings,
+    t,
+  } = model;
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <div className="grid gap-1.5">
-        <Label htmlFor="rag-discovered-embedding-model" help={t("discoveredEmbeddingModelHelp")}>
+        <Label
+          htmlFor="rag-discovered-embedding-model"
+          help={t("discoveredEmbeddingModelHelp")}
+        >
           {t("discoveredEmbeddingModel")}
         </Label>
         <Select onValueChange={(value) => selectModel(value, "embedding")}>
           <SelectTrigger id="rag-discovered-embedding-model">
-            <SelectValue placeholder={discovering ? t("discoveringModels") : t("selectModel")} />
+            <SelectValue
+              placeholder={
+                discovering ? t("discoveringModels") : t("selectModel")
+              }
+            />
           </SelectTrigger>
           <SelectContent>
             <SelectGroup>
@@ -57,7 +84,9 @@ export function RagSettingsFieldsSection4({ model }: { model: RagSettingsViewMod
               ...settings,
               embedding: {
                 ...settings.embedding,
-                dimensions: event.target.value ? numberValue(event.target.value, 1) : null,
+                dimensions: event.target.value
+                  ? numberValue(event.target.value, 1)
+                  : null,
               },
             })
           }

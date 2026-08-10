@@ -8,9 +8,10 @@
 import { decryptValue } from "@/lib/crypto";
 import { db } from "@/server/infrastructure/db";
 import { toolInvocations } from "@/server/infrastructure/db/schema";
-import { and,eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
-const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+const sleep = (ms: number) =>
+  new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 export async function waitForApproval(
   invocationId: string,
@@ -27,7 +28,11 @@ export async function waitForApproval(
   while (Date.now() < deadline) {
     await sleep(pollIntervalMs);
 
-    const [row] = await db.select().from(toolInvocations).where(eq(toolInvocations.id, invocationId)).limit(1);
+    const [row] = await db
+      .select()
+      .from(toolInvocations)
+      .where(eq(toolInvocations.id, invocationId))
+      .limit(1);
 
     if (!row) {
       return { status: "failed", error: "Invocation record disappeared" };
@@ -64,7 +69,12 @@ export async function waitForApproval(
       errorMessage: "Approval timed out",
       completedAt: new Date(),
     })
-    .where(and(eq(toolInvocations.id, invocationId), eq(toolInvocations.status, "awaiting_approval")));
+    .where(
+      and(
+        eq(toolInvocations.id, invocationId),
+        eq(toolInvocations.status, "awaiting_approval"),
+      ),
+    );
 
   return { status: "failed", error: "Approval timed out" };
 }

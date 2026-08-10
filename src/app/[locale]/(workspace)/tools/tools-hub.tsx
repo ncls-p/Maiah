@@ -3,13 +3,7 @@
 import { BookMarkedIcon, ServerIcon, WrenchIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { McpServerManager } from "@/components/mcp/mcp-server-manager";
 import { PageLoading } from "@/components/page-loading";
@@ -137,7 +131,13 @@ export function ToolsHub() {
       ? activeTab
       : fallbackTab;
     if (requestedTab !== initialTab) replaceToolsTab(initialTab);
-  }, [activeTab, allowedTabValues, fallbackTab, permissionsLoading, requestedTab]);
+  }, [
+    activeTab,
+    allowedTabValues,
+    fallbackTab,
+    permissionsLoading,
+    requestedTab,
+  ]);
 
   function setTab(value: string) {
     if (!isToolsTab(value)) return;

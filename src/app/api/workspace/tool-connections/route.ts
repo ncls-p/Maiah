@@ -1,9 +1,18 @@
-import { NextRequest,NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
-import { handleRoute,requireRequestPermissionScopeAsync,requireWorkspaceMemberAsync,requireWorkspacePermissionAsync } from "@/lib/route-handler";
+import {
+  handleRoute,
+  requireRequestPermissionScopeAsync,
+  requireWorkspaceMemberAsync,
+  requireWorkspacePermissionAsync,
+} from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
-import { createToolConnection,listToolConnections,toSafeToolConnection } from "@/modules/tool-connections/use-cases";
+import {
+  createToolConnection,
+  listToolConnections,
+  toSafeToolConnection,
+} from "@/modules/tool-connections/use-cases";
 
 const jsonRecordSchema = z.record(z.string(), z.unknown());
 const secretRecordSchema = z.record(z.string(), z.string());
@@ -26,16 +35,35 @@ export async function GET(req: NextRequest) {
         workspaceId: req.nextUrl.searchParams.get("workspaceId"),
       });
       if (!parsed.success) {
-        return NextResponse.json({ error: "workspaceId must be a valid UUID" }, { status: 400 });
+        return NextResponse.json(
+          { error: "workspaceId must be a valid UUID" },
+          { status: 400 },
+        );
       }
 
-      const scopeForbidden = await requireRequestPermissionScopeAsync(session.user.id, parsed.data.workspaceId, "tools.configure");
+      const scopeForbidden = await requireRequestPermissionScopeAsync(
+        session.user.id,
+        parsed.data.workspaceId,
+        "tools.configure",
+      );
       if (scopeForbidden) return scopeForbidden;
-      const forbidden = await requireWorkspaceMemberAsync(session.user.id, parsed.data.workspaceId);
+      const forbidden = await requireWorkspaceMemberAsync(
+        session.user.id,
+        parsed.data.workspaceId,
+      );
       if (forbidden) return forbidden;
 
-      const canManageWorkspaceConnections = await canManageTenantGlobals(session, parsed.data.workspaceId);
-      return NextResponse.json(await listToolConnections(parsed.data.workspaceId, session.user.id, canManageWorkspaceConnections));
+      const canManageWorkspaceConnections = await canManageTenantGlobals(
+        session,
+        parsed.data.workspaceId,
+      );
+      return NextResponse.json(
+        await listToolConnections(
+          parsed.data.workspaceId,
+          session.user.id,
+          canManageWorkspaceConnections,
+        ),
+      );
     },
     { logLabel: "Failed to list tool connections" },
   );
@@ -47,13 +75,23 @@ export async function POST(req: NextRequest) {
     async ({ session }) => {
       const parsed = createSchema.safeParse(await req.json());
       if (!parsed.success) {
-        return NextResponse.json({ error: "Invalid input", details: parsed.error.issues }, { status: 400 });
+        return NextResponse.json(
+          { error: "Invalid input", details: parsed.error.issues },
+          { status: 400 },
+        );
       }
 
-      const forbidden = await requireWorkspacePermissionAsync(session.user.id, parsed.data.workspaceId, "tools.configure");
+      const forbidden = await requireWorkspacePermissionAsync(
+        session.user.id,
+        parsed.data.workspaceId,
+        "tools.configure",
+      );
       if (forbidden) return forbidden;
 
-      const canManageWorkspaceConnections = await canManageTenantGlobals(session, parsed.data.workspaceId);
+      const canManageWorkspaceConnections = await canManageTenantGlobals(
+        session,
+        parsed.data.workspaceId,
+      );
       const connection = await createToolConnection({
         ...parsed.data,
         userId: session.user.id,
@@ -66,8 +104,13 @@ export async function POST(req: NextRequest) {
     {
       logLabel: "Failed to create tool connection",
       expectedError: (error) => {
-        const msg = error instanceof Error ? error.message : "Internal server error";
-        const status = msg.includes("not found") ? 404 : msg.includes("Only admins") ? 403 : 500;
+        const msg =
+          error instanceof Error ? error.message : "Internal server error";
+        const status = msg.includes("not found")
+          ? 404
+          : msg.includes("Only admins")
+            ? 403
+            : 500;
         return NextResponse.json({ error: msg }, { status });
       },
     },

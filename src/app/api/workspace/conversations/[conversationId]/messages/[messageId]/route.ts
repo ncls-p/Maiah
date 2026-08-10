@@ -1,9 +1,16 @@
 import { encryptValue } from "@/lib/crypto";
-import { handleRoute,requireResourcePermissionAsync } from "@/lib/route-handler";
+import {
+  handleRoute,
+  requireResourcePermissionAsync,
+} from "@/lib/route-handler";
 import { db } from "@/server/infrastructure/db";
-import { conversations,messageParts,messages } from "@/server/infrastructure/db/schema";
-import { and,eq,isNull } from "drizzle-orm";
-import { NextRequest,NextResponse } from "next/server";
+import {
+  conversations,
+  messageParts,
+  messages,
+} from "@/server/infrastructure/db/schema";
+import { and, eq, isNull } from "drizzle-orm";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 const paramsSchema = z.object({
@@ -15,29 +22,55 @@ const updateMessageSchema = z.object({
   content: z.string().trim().min(1).max(32_000),
 });
 
-async function getAuthorizedConversation(input: { conversationId: string; userId: string }) {
+async function getAuthorizedConversation(input: {
+  conversationId: string;
+  userId: string;
+}) {
   const [conversation] = await db
     .select()
     .from(conversations)
-    .where(and(eq(conversations.id, input.conversationId), eq(conversations.status, "active"), isNull(conversations.archivedAt)))
+    .where(
+      and(
+        eq(conversations.id, input.conversationId),
+        eq(conversations.status, "active"),
+        isNull(conversations.archivedAt),
+      ),
+    )
     .limit(1);
   if (!conversation) return null;
-  const permission = await requireResourcePermissionAsync(input.userId, conversation.workspaceId, "conversations.viewOwn", "conversation", input.conversationId);
+  const permission = await requireResourcePermissionAsync(
+    input.userId,
+    conversation.workspaceId,
+    "conversations.viewOwn",
+    "conversation",
+    input.conversationId,
+  );
   if (permission) return null;
   return conversation;
 }
 
-async function replaceMessageTextContent(input: { messageId: string; conversationId: string; content: string }) {
+async function replaceMessageTextContent(input: {
+  messageId: string;
+  conversationId: string;
+  content: string;
+}) {
   try {
     const encryptedContent = await encryptValue(input.content);
     await db.transaction(async (tx) => {
       const fileParts = await tx
         .select({ metadataJson: messageParts.metadataJson })
         .from(messageParts)
-        .where(and(eq(messageParts.messageId, input.messageId), eq(messageParts.type, "file")))
+        .where(
+          and(
+            eq(messageParts.messageId, input.messageId),
+            eq(messageParts.type, "file"),
+          ),
+        )
         .orderBy(messageParts.sortOrder);
 
-      await tx.delete(messageParts).where(eq(messageParts.messageId, input.messageId));
+      await tx
+        .delete(messageParts)
+        .where(eq(messageParts.messageId, input.messageId));
       await tx.insert(messageParts).values([
         {
           messageId: input.messageId,
@@ -53,14 +86,25 @@ async function replaceMessageTextContent(input: { messageId: string; conversatio
         })),
       ]);
     });
-    await db.update(messages).set({ status: "completed", completedAt: new Date() }).where(eq(messages.id, input.messageId));
-    await db.update(conversations).set({ updatedAt: new Date() }).where(eq(conversations.id, input.conversationId));
+    await db
+      .update(messages)
+      .set({ status: "completed", completedAt: new Date() })
+      .where(eq(messages.id, input.messageId));
+    await db
+      .update(conversations)
+      .set({ updatedAt: new Date() })
+      .where(eq(conversations.id, input.conversationId));
   } catch (error) {
     throw new Error("Unable to update message content", { cause: error });
   }
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ conversationId: string; messageId: string }> }) {
+export async function PATCH(
+  req: NextRequest,
+  {
+    params,
+  }: { params: Promise<{ conversationId: string; messageId: string }> },
+) {
   return handleRoute(
     req,
     async ({ session }) => {
@@ -75,15 +119,26 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ co
         userId: session.user.id,
       });
       if (!conversation) {
-        return NextResponse.json({ error: "Conversation not found" }, { status: 404 });
+        return NextResponse.json(
+          { error: "Conversation not found" },
+          { status: 404 },
+        );
       }
       const [message] = await db
         .select()
         .from(messages)
-        .where(and(eq(messages.id, messageId), eq(messages.conversationId, conversation.id)))
+        .where(
+          and(
+            eq(messages.id, messageId),
+            eq(messages.conversationId, conversation.id),
+          ),
+        )
         .limit(1);
       if (!message || !["user", "assistant"].includes(message.role)) {
-        return NextResponse.json({ error: "Message not found" }, { status: 404 });
+        return NextResponse.json(
+          { error: "Message not found" },
+          { status: 404 },
+        );
       }
       await replaceMessageTextContent({
         messageId,
@@ -96,7 +151,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ co
   );
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: Promise<{ conversationId: string; messageId: string }> }) {
+export async function DELETE(
+  req: NextRequest,
+  {
+    params,
+  }: { params: Promise<{ conversationId: string; messageId: string }> },
+) {
   return handleRoute(
     req,
     async ({ session }) => {
@@ -110,18 +170,32 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ c
         userId: session.user.id,
       });
       if (!conversation) {
-        return NextResponse.json({ error: "Conversation not found" }, { status: 404 });
+        return NextResponse.json(
+          { error: "Conversation not found" },
+          { status: 404 },
+        );
       }
       const [message] = await db
         .select({ id: messages.id })
         .from(messages)
-        .where(and(eq(messages.id, messageId), eq(messages.conversationId, conversation.id)))
+        .where(
+          and(
+            eq(messages.id, messageId),
+            eq(messages.conversationId, conversation.id),
+          ),
+        )
         .limit(1);
       if (!message) {
-        return NextResponse.json({ error: "Message not found" }, { status: 404 });
+        return NextResponse.json(
+          { error: "Message not found" },
+          { status: 404 },
+        );
       }
       await db.delete(messages).where(eq(messages.id, messageId));
-      await db.update(conversations).set({ updatedAt: new Date() }).where(eq(conversations.id, conversation.id));
+      await db
+        .update(conversations)
+        .set({ updatedAt: new Date() })
+        .where(eq(conversations.id, conversation.id));
       return NextResponse.json({ ok: true });
     },
     { logLabel: "Failed to delete message" },

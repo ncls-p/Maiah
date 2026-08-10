@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useEffect,useMemo,useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { useWorkspace } from "@/hooks/use-workspace";
@@ -9,7 +9,11 @@ import type { RagConfig } from "@/modules/knowledge/rag-config";
 import { DiscoveredModel } from "./rag-settings.discovered-model";
 import { RagSettingsView } from "./rag-settings.rag-settings.view";
 
-export function useRagSettingsController({ initialState }: { initialState: RagConfig }) {
+export function useRagSettingsController({
+  initialState,
+}: {
+  initialState: RagConfig;
+}) {
   const t = useTranslations("admin.settingsPage.rag");
   const { workspaceId } = useWorkspace();
   const [settings, setSettings] = useState(initialState);
@@ -66,7 +70,9 @@ export function useRagSettingsController({ initialState }: { initialState: RagCo
     return explicitlySupported.length > 0 ? explicitlySupported : models;
   }, [models]);
   const rerankingModels = useMemo(() => {
-    const likelyRerankers = models.filter((model) => model.modelId.toLowerCase().includes("rerank"));
+    const likelyRerankers = models.filter((model) =>
+      model.modelId.toLowerCase().includes("rerank"),
+    );
     return likelyRerankers.length > 0 ? likelyRerankers : models;
   }, [models]);
   const visionModels = useMemo(() => {
@@ -78,7 +84,10 @@ export function useRagSettingsController({ initialState }: { initialState: RagCo
     return `${model.providerId}:${model.modelId}`;
   }
 
-  function selectModel(value: string, target: "embedding" | "reranking" | "ocr") {
+  function selectModel(
+    value: string,
+    target: "embedding" | "reranking" | "ocr",
+  ) {
     const model = models.find((candidate) => modelValue(candidate) === value);
     if (!model) return;
     setSettings(
@@ -129,8 +138,10 @@ export function useRagSettingsController({ initialState }: { initialState: RagCo
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(settings),
       });
-      const data = (await response.json().catch(() => null)) as (RagConfig & { error?: string }) | null;
-      if (!response.ok || !data) throw new Error(data?.error || t("saveFailed"));
+      const data = (await response.json().catch(() => null)) as
+        (RagConfig & { error?: string }) | null;
+      if (!response.ok || !data)
+        throw new Error(data?.error || t("saveFailed"));
       setSettings(data);
       toast.success(t("saved"));
     } catch (error) {
@@ -158,7 +169,9 @@ export function useRagSettingsController({ initialState }: { initialState: RagCo
   } as const;
 }
 
-export function RagSettings(...args: Parameters<typeof useRagSettingsController>) {
+export function RagSettings(
+  ...args: Parameters<typeof useRagSettingsController>
+) {
   const model = useRagSettingsController(...args);
   if (!("kind" in model)) return model;
   return <RagSettingsView model={model} />;

@@ -1,13 +1,17 @@
 import { requireMarketplaceItemMutationPermission } from "@/app/api/marketplace/items/marketplace-route-auth";
 import { handleRoute } from "@/lib/route-handler";
-import { shareMarketplaceItem,unshareMarketplaceItem } from "@/modules/marketplace/use-cases";
-import { NextRequest,NextResponse } from "next/server";
+import {
+  shareMarketplaceItem,
+  unshareMarketplaceItem,
+} from "@/modules/marketplace/use-cases";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 const shareSchema = z.object({ targetUserId: z.uuid() });
 
 function marketplaceErrorHandler(error: unknown) {
-  const message = error instanceof Error ? error.message : "Internal server error";
+  const message =
+    error instanceof Error ? error.message : "Internal server error";
   let status = 500;
   if (error instanceof Error) {
     if (error.message.includes("not found")) status = 404;
@@ -16,15 +20,25 @@ function marketplaceErrorHandler(error: unknown) {
   return NextResponse.json({ error: message }, { status });
 }
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ itemId: string }> }) {
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ itemId: string }> },
+) {
   return handleRoute(
     req,
     async ({ session }) => {
       const { itemId } = await params;
-      const forbidden = await requireMarketplaceItemMutationPermission(session.user.id, itemId);
+      const forbidden = await requireMarketplaceItemMutationPermission(
+        session.user.id,
+        itemId,
+      );
       if (forbidden) return forbidden;
       const parsed = shareSchema.safeParse(await req.json());
-      if (!parsed.success) return NextResponse.json({ error: "Invalid input", details: parsed.error.issues }, { status: 400 });
+      if (!parsed.success)
+        return NextResponse.json(
+          { error: "Invalid input", details: parsed.error.issues },
+          { status: 400 },
+        );
 
       const share = await shareMarketplaceItem({
         itemId,
@@ -40,16 +54,26 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ite
   );
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: Promise<{ itemId: string }> }) {
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ itemId: string }> },
+) {
   return handleRoute(
     req,
     async ({ session }) => {
       const { itemId } = await params;
-      const forbidden = await requireMarketplaceItemMutationPermission(session.user.id, itemId);
+      const forbidden = await requireMarketplaceItemMutationPermission(
+        session.user.id,
+        itemId,
+      );
       if (forbidden) return forbidden;
       const { searchParams } = req.nextUrl;
       const targetUserId = searchParams.get("targetUserId");
-      if (!targetUserId) return NextResponse.json({ error: "targetUserId query param required" }, { status: 400 });
+      if (!targetUserId)
+        return NextResponse.json(
+          { error: "targetUserId query param required" },
+          { status: 400 },
+        );
 
       await unshareMarketplaceItem({
         itemId,

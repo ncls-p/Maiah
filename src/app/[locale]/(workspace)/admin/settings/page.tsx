@@ -9,7 +9,13 @@ import { SidebarNavigationSettings } from "@/components/admin/sidebar-navigation
 import { SystemHealthCard } from "@/components/admin/system-health-card";
 import { UsageImpactSettings } from "@/components/admin/usage-impact-settings";
 import { WorkflowBuilderSettings } from "@/components/admin/workflow-builder-settings";
-import { Empty,EmptyDescription,EmptyHeader,EmptyMedia,EmptyTitle } from "@/components/ui/empty";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { WorkspacePage } from "@/components/workspace-page";
 import { isPlatformAdminSession } from "@/modules/admin/auth";
 import { getRegistrationSetting } from "@/modules/admin/use-cases";
@@ -38,10 +44,18 @@ export default async function AdminSettingsPage() {
     );
   }
 
-  const [registration, usageImpact, ragDefaults] = await Promise.all([getRegistrationSetting(), getUsageImpactSetting(), getDefaultRagConfig()]);
+  const [registration, usageImpact, ragDefaults] = await Promise.all([
+    getRegistrationSetting(),
+    getUsageImpactSetting(),
+    getDefaultRagConfig(),
+  ]);
 
   return (
-    <WorkspacePage title={t("platformSettingsTitle")} description={t("platformSettingsDescription")} width="default">
+    <WorkspacePage
+      title={t("platformSettingsTitle")}
+      description={t("platformSettingsDescription")}
+      width="default"
+    >
       <div className="flex flex-col gap-6">
         <div className="grid gap-6 lg:grid-cols-2">
           <RegistrationSettings initialState={registration} />

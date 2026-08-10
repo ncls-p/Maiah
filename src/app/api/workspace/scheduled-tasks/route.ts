@@ -1,8 +1,18 @@
-import { handleRoute,requireRequestPermissionScopeAsync,requireWorkspacePermissionAsync } from "@/lib/route-handler";
-import { hasResourcePermissionForRequest,isWorkspaceMemberForRequest } from "@/modules/auth/workspace-access";
-import { createScheduledTask,listScheduledTasks } from "@/modules/scheduled-tasks/use-cases";
+import {
+  handleRoute,
+  requireRequestPermissionScopeAsync,
+  requireWorkspacePermissionAsync,
+} from "@/lib/route-handler";
+import {
+  hasResourcePermissionForRequest,
+  isWorkspaceMemberForRequest,
+} from "@/modules/auth/workspace-access";
+import {
+  createScheduledTask,
+  listScheduledTasks,
+} from "@/modules/scheduled-tasks/use-cases";
 import { listDirectlyBoundResourceIds } from "@/server/infrastructure/db/access-resource-repository";
-import { NextRequest,NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 const querySchema = z.object({ workspaceId: z.uuid() });
@@ -25,7 +35,11 @@ const createSchema = z.object({
 });
 
 async function requireChatPermission(userId: string, workspaceId: string) {
-  const forbidden = await requireWorkspacePermissionAsync(userId, workspaceId, "agents.chat");
+  const forbidden = await requireWorkspacePermissionAsync(
+    userId,
+    workspaceId,
+    "agents.chat",
+  );
   return forbidden === null;
 }
 
@@ -39,24 +53,46 @@ export async function GET(req: NextRequest) {
       if (!parsed.success) {
         return NextResponse.json({ error: "Invalid input" }, { status: 400 });
       }
-      const scopeForbidden = await requireRequestPermissionScopeAsync(session.user.id, parsed.data.workspaceId, "agents.chat");
+      const scopeForbidden = await requireRequestPermissionScopeAsync(
+        session.user.id,
+        parsed.data.workspaceId,
+        "agents.chat",
+      );
       if (scopeForbidden) return scopeForbidden;
-      if (!(await isWorkspaceMemberForRequest(session.user.id, parsed.data.workspaceId))) {
+      if (
+        !(await isWorkspaceMemberForRequest(
+          session.user.id,
+          parsed.data.workspaceId,
+        ))
+      ) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
-      const directlyBoundIds = await listDirectlyBoundResourceIds(session.user.id, "scheduled_task");
+      const directlyBoundIds = await listDirectlyBoundResourceIds(
+        session.user.id,
+        "scheduled_task",
+      );
       const directlyAccessibleIds = (
         await Promise.all(
           directlyBoundIds.map(async (taskId) => ({
             taskId,
-            granted: await hasResourcePermissionForRequest(session.user.id, parsed.data.workspaceId, "agents.chat", "scheduled_task", taskId),
+            granted: await hasResourcePermissionForRequest(
+              session.user.id,
+              parsed.data.workspaceId,
+              "agents.chat",
+              "scheduled_task",
+              taskId,
+            ),
           })),
         )
       )
         .filter(({ granted }) => granted)
         .map(({ taskId }) => taskId);
       return NextResponse.json({
-        tasks: await listScheduledTasks(parsed.data.workspaceId, session.user.id, directlyAccessibleIds),
+        tasks: await listScheduledTasks(
+          parsed.data.workspaceId,
+          session.user.id,
+          directlyAccessibleIds,
+        ),
       });
     },
     { logLabel: "Failed to list scheduled tasks" },
@@ -69,9 +105,14 @@ export async function POST(req: NextRequest) {
     async ({ session }) => {
       const parsed = createSchema.safeParse(await req.json());
       if (!parsed.success) {
-        return NextResponse.json({ error: "Invalid input", details: parsed.error.issues }, { status: 400 });
+        return NextResponse.json(
+          { error: "Invalid input", details: parsed.error.issues },
+          { status: 400 },
+        );
       }
-      if (!(await requireChatPermission(session.user.id, parsed.data.workspaceId))) {
+      if (
+        !(await requireChatPermission(session.user.id, parsed.data.workspaceId))
+      ) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
       const task = await createScheduledTask({

@@ -1,11 +1,20 @@
 import { decryptValue } from "@/lib/crypto";
 import { db } from "@/server/infrastructure/db";
-import { documentChunks,documents } from "@/server/infrastructure/db/schema";
-import { and,asc,eq } from "drizzle-orm";
+import { documentChunks, documents } from "@/server/infrastructure/db/schema";
+import { and, asc, eq } from "drizzle-orm";
 import { getKnowledgeBase } from "./use-cases.list-knowledge-bases";
 
-export async function readKnowledgeDocument(input: { documentId: string; knowledgeBaseId: string; workspaceId: string; userId: string }) {
-  const knowledgeBase = await getKnowledgeBase(input.knowledgeBaseId, input.workspaceId, input.userId);
+export async function readKnowledgeDocument(input: {
+  documentId: string;
+  knowledgeBaseId: string;
+  workspaceId: string;
+  userId: string;
+}) {
+  const knowledgeBase = await getKnowledgeBase(
+    input.knowledgeBaseId,
+    input.workspaceId,
+    input.userId,
+  );
   if (!knowledgeBase) return null;
 
   const [document] = await db
@@ -13,9 +22,17 @@ export async function readKnowledgeDocument(input: { documentId: string; knowled
       id: documents.id,
       title: documents.title,
       mimeType: documents.mimeType,
+      objectStorageKey: documents.objectStorageKey,
     })
     .from(documents)
-    .where(and(eq(documents.id, input.documentId), eq(documents.knowledgeBaseId, input.knowledgeBaseId), eq(documents.workspaceId, input.workspaceId), eq(documents.status, "ready")))
+    .where(
+      and(
+        eq(documents.id, input.documentId),
+        eq(documents.knowledgeBaseId, input.knowledgeBaseId),
+        eq(documents.workspaceId, input.workspaceId),
+        eq(documents.status, "ready"),
+      ),
+    )
     .limit(1);
   if (!document) return null;
 
@@ -33,7 +50,9 @@ export async function readKnowledgeDocument(input: { documentId: string; knowled
     rows.map(async (row) => ({
       chunkId: row.chunkId,
       chunkIndex: row.chunkIndex,
-      content: row.contentEncrypted ? await decryptValue(row.contentEncrypted) : "",
+      content: row.contentEncrypted
+        ? await decryptValue(row.contentEncrypted)
+        : "",
     })),
   );
 
@@ -41,6 +60,10 @@ export async function readKnowledgeDocument(input: { documentId: string; knowled
     documentId: document.id,
     documentTitle: document.title,
     mimeType: document.mimeType,
+    originalUrl:
+      document.mimeType === "application/pdf" && document.objectStorageKey
+        ? `/api/workspace/knowledge-bases/${input.knowledgeBaseId}/documents/${document.id}/raw?workspaceId=${input.workspaceId}`
+        : null,
     knowledgeBaseId: knowledgeBase.id,
     knowledgeBaseName: knowledgeBase.name,
     chunks,
@@ -60,7 +83,10 @@ export async function listProcessingDocuments(limit = 5) {
   return processingDocuments;
 }
 
-export async function recordDocumentIngestionAttemptFailure(documentId: string, error: unknown) {
+export async function recordDocumentIngestionAttemptFailure(
+  documentId: string,
+  error: unknown,
+) {
   const message = error instanceof Error ? error.message : String(error);
   await db
     .update(documents)
@@ -69,10 +95,15 @@ export async function recordDocumentIngestionAttemptFailure(documentId: string, 
       errorMessage: message.slice(0, 4_000),
       updatedAt: new Date(),
     })
-    .where(and(eq(documents.id, documentId), eq(documents.status, "processing")));
+    .where(
+      and(eq(documents.id, documentId), eq(documents.status, "processing")),
+    );
 }
 
-export async function markDocumentIngestionFailed(documentId: string, error: unknown) {
+export async function markDocumentIngestionFailed(
+  documentId: string,
+  error: unknown,
+) {
   const message = error instanceof Error ? error.message : String(error);
   await db
     .update(documents)
@@ -83,5 +114,7 @@ export async function markDocumentIngestionFailed(documentId: string, error: unk
       errorMessage: message.slice(0, 4_000),
       updatedAt: new Date(),
     })
-    .where(and(eq(documents.id, documentId), eq(documents.status, "processing")));
+    .where(
+      and(eq(documents.id, documentId), eq(documents.status, "processing")),
+    );
 }

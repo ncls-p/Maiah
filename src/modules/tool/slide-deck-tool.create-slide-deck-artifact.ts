@@ -1,4 +1,7 @@
-import { createSlideDeckCss,createSlideDeckHtml } from "./slide-deck-tool.create-slide-deck-html";
+import {
+  createSlideDeckCss,
+  createSlideDeckHtml,
+} from "./slide-deck-tool.create-slide-deck-html";
 import { SlideDeckInput } from "./slide-deck-tool.slide-deck-input-schema";
 
 function createSlideDeckJs() {
@@ -111,6 +114,7 @@ export function createSlideDeckArtifact(input: SlideDeckInput) {
     js: createSlideDeckJs(),
     height: input.height,
     deck: input,
-    exportNotes: "Use the PDF button or browser print dialog to export a static PDF. Click animations stay interactive in the HTML artifact; PDF viewers generally do not preserve JavaScript slide-step animations.",
+    exportNotes:
+      "Use the PDF button or browser print dialog to export a static PDF. Click animations stay interactive in the HTML artifact; PDF viewers generally do not preserve JavaScript slide-step animations.",
   };
 }

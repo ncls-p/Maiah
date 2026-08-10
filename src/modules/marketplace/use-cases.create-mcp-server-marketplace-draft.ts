@@ -1,6 +1,6 @@
 import { db } from "@/server/infrastructure/db";
-import { mcpServers,mcpTools } from "@/server/infrastructure/db/schema";
-import { and,eq } from "drizzle-orm";
+import { mcpServers, mcpTools } from "@/server/infrastructure/db/schema";
+import { and, eq } from "drizzle-orm";
 import { upsertMarketplaceDraft } from "./draft-helpers";
 import { buildMcpPresetManifest } from "./manifest-builders";
 import { DraftInputExtras } from "./use-cases.get-marketplace-item-detail";
@@ -20,16 +20,30 @@ export async function createMcpServerMarketplaceDraft(
   const [server] = await db
     .select()
     .from(mcpServers)
-    .where(and(eq(mcpServers.id, input.mcpServerId), eq(mcpServers.workspaceId, input.workspaceId)))
+    .where(
+      and(
+        eq(mcpServers.id, input.mcpServerId),
+        eq(mcpServers.workspaceId, input.workspaceId),
+      ),
+    )
     .limit(1);
   if (!server || server.createdById !== input.userId) {
     throw new Error("MCP server not found");
   }
 
-  const tools = await db.select().from(mcpTools).where(eq(mcpTools.mcpServerId, server.id));
+  const tools = await db
+    .select()
+    .from(mcpTools)
+    .where(eq(mcpTools.mcpServerId, server.id));
 
   const name = input.name || server.name;
-  const manifest = buildMcpPresetManifest(name, input.description, server, tools, "server");
+  const manifest = buildMcpPresetManifest(
+    name,
+    input.description,
+    server,
+    tools,
+    "server",
+  );
 
   return upsertMarketplaceDraft({
     workspaceId: input.workspaceId,
@@ -59,20 +73,35 @@ export async function createMcpToolMarketplaceDraft(
     visibility?: MarketplaceVisibility;
   } & DraftInputExtras,
 ) {
-  const [tool] = await db.select().from(mcpTools).where(eq(mcpTools.id, input.mcpToolId)).limit(1);
+  const [tool] = await db
+    .select()
+    .from(mcpTools)
+    .where(eq(mcpTools.id, input.mcpToolId))
+    .limit(1);
   if (!tool) throw new Error("MCP tool not found");
 
   const [server] = await db
     .select()
     .from(mcpServers)
-    .where(and(eq(mcpServers.id, tool.mcpServerId), eq(mcpServers.workspaceId, input.workspaceId)))
+    .where(
+      and(
+        eq(mcpServers.id, tool.mcpServerId),
+        eq(mcpServers.workspaceId, input.workspaceId),
+      ),
+    )
     .limit(1);
   if (!server || server.createdById !== input.userId) {
     throw new Error("MCP server not found");
   }
 
   const name = input.name || `${server.name} — ${tool.name}`;
-  const manifest = buildMcpPresetManifest(name, input.description ?? tool.description, server, [tool], "tool");
+  const manifest = buildMcpPresetManifest(
+    name,
+    input.description ?? tool.description,
+    server,
+    [tool],
+    "tool",
+  );
 
   return upsertMarketplaceDraft({
     workspaceId: input.workspaceId,

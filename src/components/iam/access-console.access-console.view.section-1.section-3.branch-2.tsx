@@ -1,14 +1,52 @@
-import { EllipsisIcon,LockKeyholeIcon,ShieldCheckIcon,Trash2Icon,UserPlusIcon } from "lucide-react";
+import {
+  EllipsisIcon,
+  LockKeyholeIcon,
+  ShieldCheckIcon,
+  Trash2Icon,
+  UserPlusIcon,
+} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { DropdownMenu,DropdownMenuContent,DropdownMenuItem,DropdownMenuLabel,DropdownMenuSeparator,DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Spinner } from "@/components/ui/spinner";
 import type { AccessConsoleViewModel } from "./access-console.access-console.view";
 import { ConfirmRemovalButton } from "./access-console.scope-path";
-export function AccessPeopleBranch2({ model }: { model: AccessConsoleViewModel }) {
-  const { allVisiblePeopleSelected, busyPlatformUserId, canManageMembers, canManageOrganizationAccess, canManageProjectAccess, currentUserId, mutate, pendingAction, platformUsers, roleLabel, selectedPeople, selectedVisiblePeople, setAssignment, setAssignmentOpen, setBulkAssignmentIds, setSelectedPeople, t, updatePlatformAccount, visiblePeople, workspaceId } = model;
+export function AccessPeopleBranch2({
+  model,
+}: {
+  model: AccessConsoleViewModel;
+}) {
+  const {
+    allVisiblePeopleSelected,
+    busyPlatformUserId,
+    canManageMembers,
+    canManageOrganizationAccess,
+    canManageProjectAccess,
+    currentUserId,
+    mutate,
+    pendingAction,
+    platformUsers,
+    roleLabel,
+    selectedPeople,
+    selectedVisiblePeople,
+    setAssignment,
+    setAssignmentOpen,
+    setBulkAssignmentIds,
+    setSelectedPeople,
+    t,
+    updatePlatformAccount,
+    visiblePeople,
+    workspaceId,
+  } = model;
   return (
     <div className="border-y border-border/60">
       <table className="w-full text-left max-md:block">
@@ -21,8 +59,12 @@ export function AccessPeopleBranch2({ model }: { model: AccessConsoleViewModel }
                 checked={allVisiblePeopleSelected}
                 onCheckedChange={(checked) =>
                   setSelectedPeople((current) => {
-                    const visibleIds = selectedVisiblePeople.map((person) => person.userId);
-                    return checked ? [...new Set([...current, ...visibleIds])] : current.filter((id) => !visibleIds.includes(id));
+                    const visibleIds = selectedVisiblePeople.map(
+                      (person) => person.userId,
+                    );
+                    return checked
+                      ? [...new Set([...current, ...visibleIds])]
+                      : current.filter((id) => !visibleIds.includes(id));
                   })
                 }
               />
@@ -40,7 +82,10 @@ export function AccessPeopleBranch2({ model }: { model: AccessConsoleViewModel }
             const isMember = person.memberStatus === "active";
             const isCurrentUser = person.userId === currentUserId;
             return (
-              <tr key={person.userId} className="align-top transition-colors hover:bg-muted/20 max-md:grid max-md:grid-cols-[auto_minmax(0,1fr)_auto] max-md:overflow-hidden max-md:rounded-2xl max-md:border max-md:border-border/70 max-md:bg-background max-md:shadow-sm">
+              <tr
+                key={person.userId}
+                className="align-top transition-colors hover:bg-muted/20 max-md:grid max-md:grid-cols-[auto_minmax(0,1fr)_auto] max-md:overflow-hidden max-md:rounded-2xl max-md:border max-md:border-border/70 max-md:bg-background max-md:shadow-sm"
+              >
                 <td className="px-6 py-4 max-md:px-3">
                   <Checkbox
                     id={`select-person-${person.userId}`}
@@ -49,7 +94,13 @@ export function AccessPeopleBranch2({ model }: { model: AccessConsoleViewModel }
                     })}
                     disabled={!isMember}
                     checked={selectedPeople.includes(person.userId)}
-                    onCheckedChange={(checked) => setSelectedPeople((current) => (checked ? [...new Set([...current, person.userId])] : current.filter((id) => id !== person.userId)))}
+                    onCheckedChange={(checked) =>
+                      setSelectedPeople((current) =>
+                        checked
+                          ? [...new Set([...current, person.userId])]
+                          : current.filter((id) => id !== person.userId),
+                      )
+                    }
                   />
                 </td>
                 <td className="px-3 py-4 max-md:px-0">
@@ -65,15 +116,25 @@ export function AccessPeopleBranch2({ model }: { model: AccessConsoleViewModel }
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-1.5">
                         <span className="font-medium">{person.name}</span>
-                        {isCurrentUser ? <Badge variant="outline">{t("you")}</Badge> : null}
-                        {person.banned ? <Badge variant="destructive">{t("suspended")}</Badge> : !isMember ? <Badge variant="secondary">{t("accountOnly")}</Badge> : null}
+                        {isCurrentUser ? (
+                          <Badge variant="outline">{t("you")}</Badge>
+                        ) : null}
+                        {person.banned ? (
+                          <Badge variant="destructive">{t("suspended")}</Badge>
+                        ) : !isMember ? (
+                          <Badge variant="secondary">{t("accountOnly")}</Badge>
+                        ) : null}
                       </div>
-                      <p className="mt-1 text-xs text-muted-foreground">{person.email}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {person.email}
+                      </p>
                     </div>
                   </div>
                 </td>
                 <td className="px-3 py-4 max-md:col-span-3 max-md:border-t max-md:border-border/60 max-md:px-4 max-md:py-3">
-                  <span className="mb-2 hidden text-xs font-medium text-muted-foreground max-md:block">{t("accessColumn")}</span>
+                  <span className="mb-2 hidden text-xs font-medium text-muted-foreground max-md:block">
+                    {t("accessColumn")}
+                  </span>
                   <div className="flex max-w-xl flex-wrap gap-1.5">
                     {person.platformRole === "admin" ? (
                       <Badge>
@@ -83,11 +144,23 @@ export function AccessPeopleBranch2({ model }: { model: AccessConsoleViewModel }
                     ) : null}
                     {person.assignments.map((item) => (
                       <span key={item.id} className="inline-flex items-center">
-                        <Badge variant={item.inherited ? "secondary" : "outline"} className="rounded-r-none border-r-0">
+                        <Badge
+                          variant={item.inherited ? "secondary" : "outline"}
+                          className="rounded-r-none border-r-0"
+                        >
                           {roleLabel(item.roleKey, item.roleName)}
-                          <span className="text-[10px] opacity-70">· {item.scope === "organization" ? t("organizationShort") : t("projectShort")}</span>
+                          <span className="text-[10px] opacity-70">
+                            ·{" "}
+                            {item.scope === "organization"
+                              ? t("organizationShort")
+                              : t("projectShort")}
+                          </span>
                         </Badge>
-                        {(item.scope === "organization" ? canManageOrganizationAccess : canManageProjectAccess) ? (
+                        {(
+                          item.scope === "organization"
+                            ? canManageOrganizationAccess
+                            : canManageProjectAccess
+                        ) ? (
                           <ConfirmRemovalButton
                             pending={pendingAction === item.id}
                             label={t("removeAssignment", {
@@ -98,7 +171,10 @@ export function AccessPeopleBranch2({ model }: { model: AccessConsoleViewModel }
                             })}
                             description={t("removeAssignmentDescription", {
                               role: roleLabel(item.roleKey, item.roleName),
-                              scope: item.scope === "organization" ? t("organizationScope") : t("projectScope"),
+                              scope:
+                                item.scope === "organization"
+                                  ? t("organizationScope")
+                                  : t("projectScope"),
                             })}
                             onConfirm={() =>
                               void mutate(
@@ -115,11 +191,20 @@ export function AccessPeopleBranch2({ model }: { model: AccessConsoleViewModel }
                         ) : null}
                       </span>
                     ))}
-                    {person.assignments.length === 0 && person.platformRole !== "admin" ? <span className="text-xs text-muted-foreground">{isMember ? t("noExplicitAccess") : t("notInOrganization")}</span> : null}
+                    {person.assignments.length === 0 &&
+                    person.platformRole !== "admin" ? (
+                      <span className="text-xs text-muted-foreground">
+                        {isMember
+                          ? t("noExplicitAccess")
+                          : t("notInOrganization")}
+                      </span>
+                    ) : null}
                   </div>
                 </td>
                 <td className="px-3 py-4 max-md:col-span-3 max-md:border-t max-md:border-border/60 max-md:px-4 max-md:py-3">
-                  <span className="mb-2 hidden text-xs font-medium text-muted-foreground max-md:block">{t("teamsColumn")}</span>
+                  <span className="mb-2 hidden text-xs font-medium text-muted-foreground max-md:block">
+                    {t("teamsColumn")}
+                  </span>
                   <div className="flex max-w-xs flex-wrap gap-1">
                     {person.teams.length === 0 ? (
                       <span className="text-xs text-muted-foreground">—</span>
@@ -130,7 +215,11 @@ export function AccessPeopleBranch2({ model }: { model: AccessConsoleViewModel }
                         </Badge>
                       ))
                     )}
-                    {person.teams.length > 3 ? <Badge variant="secondary">+{person.teams.length - 3}</Badge> : null}
+                    {person.teams.length > 3 ? (
+                      <Badge variant="secondary">
+                        +{person.teams.length - 3}
+                      </Badge>
+                    ) : null}
                   </div>
                 </td>
                 <td className="px-6 py-4 text-right max-md:col-start-3 max-md:row-start-1 max-md:px-3">
@@ -145,12 +234,18 @@ export function AccessPeopleBranch2({ model }: { model: AccessConsoleViewModel }
                         })}
                         disabled={busyPlatformUserId === person.userId}
                       >
-                        {busyPlatformUserId === person.userId ? <Spinner /> : <EllipsisIcon aria-hidden="true" />}
+                        {busyPlatformUserId === person.userId ? (
+                          <Spinner />
+                        ) : (
+                          <EllipsisIcon aria-hidden="true" />
+                        )}
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-64">
                       <DropdownMenuLabel>{person.name}</DropdownMenuLabel>
-                      {isMember && (canManageProjectAccess || canManageOrganizationAccess) ? (
+                      {isMember &&
+                      (canManageProjectAccess ||
+                        canManageOrganizationAccess) ? (
                         <DropdownMenuItem
                           onSelect={() => {
                             setBulkAssignmentIds([]);
@@ -192,15 +287,30 @@ export function AccessPeopleBranch2({ model }: { model: AccessConsoleViewModel }
                             disabled={isCurrentUser}
                             onSelect={() =>
                               void updatePlatformAccount(person.userId, {
-                                role: person.platformRole === "admin" ? "user" : "admin",
+                                role:
+                                  person.platformRole === "admin"
+                                    ? "user"
+                                    : "admin",
                               })
                             }
                           >
                             <LockKeyholeIcon aria-hidden="true" />
-                            {person.platformRole === "admin" ? t("removeAppAdmin") : t("makeAppAdmin")}
+                            {person.platformRole === "admin"
+                              ? t("removeAppAdmin")
+                              : t("makeAppAdmin")}
                           </DropdownMenuItem>
-                          <DropdownMenuItem variant={person.banned ? "default" : "destructive"} disabled={isCurrentUser} onSelect={() => void updatePlatformAccount(person.userId, { banned: !person.banned })}>
-                            {person.banned ? t("restoreAccount") : t("suspendAccount")}
+                          <DropdownMenuItem
+                            variant={person.banned ? "default" : "destructive"}
+                            disabled={isCurrentUser}
+                            onSelect={() =>
+                              void updatePlatformAccount(person.userId, {
+                                banned: !person.banned,
+                              })
+                            }
+                          >
+                            {person.banned
+                              ? t("restoreAccount")
+                              : t("suspendAccount")}
                           </DropdownMenuItem>
                         </>
                       ) : null}

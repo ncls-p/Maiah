@@ -39,7 +39,11 @@ export const imageGenerationInputSchema = z.object({
     .optional(),
 });
 
-function runtimeLimitedString(maxChars: number, label: string, options: { min?: number; trim?: boolean } = {}) {
+function runtimeLimitedString(
+  maxChars: number,
+  label: string,
+  options: { min?: number; trim?: boolean } = {},
+) {
   let schema = options.trim ? z.string().trim() : z.string();
   if (options.min !== undefined) schema = schema.min(options.min);
   return schema.superRefine((value, ctx) => {

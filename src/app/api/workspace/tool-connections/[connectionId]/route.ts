@@ -1,9 +1,16 @@
-import { NextRequest,NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
-import { handleRoute,requireResourcePermissionAsync } from "@/lib/route-handler";
+import {
+  handleRoute,
+  requireResourcePermissionAsync,
+} from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
-import { archiveToolConnection,toSafeToolConnection,updateToolConnection } from "@/modules/tool-connections/use-cases";
+import {
+  archiveToolConnection,
+  toSafeToolConnection,
+  updateToolConnection,
+} from "@/modules/tool-connections/use-cases";
 
 const jsonRecordSchema = z.record(z.string(), z.unknown());
 const secretRecordSchema = z.record(z.string(), z.string());
@@ -17,20 +24,35 @@ const updateSchema = z.object({
 });
 const deleteSchema = z.object({ workspaceId: z.uuid() });
 
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ connectionId: string }> }) {
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ connectionId: string }> },
+) {
   return handleRoute(
     req,
     async ({ session }) => {
       const parsed = updateSchema.safeParse(await req.json());
       if (!parsed.success) {
-        return NextResponse.json({ error: "Invalid input", details: parsed.error.issues }, { status: 400 });
+        return NextResponse.json(
+          { error: "Invalid input", details: parsed.error.issues },
+          { status: 400 },
+        );
       }
 
-      const forbidden = await requireResourcePermissionAsync(session.user.id, parsed.data.workspaceId, "tools.configure", "tool_connection", (await params).connectionId);
+      const forbidden = await requireResourcePermissionAsync(
+        session.user.id,
+        parsed.data.workspaceId,
+        "tools.configure",
+        "tool_connection",
+        (await params).connectionId,
+      );
       if (forbidden) return forbidden;
 
       const { connectionId } = await params;
-      const canManageWorkspaceConnections = await canManageTenantGlobals(session, parsed.data.workspaceId);
+      const canManageWorkspaceConnections = await canManageTenantGlobals(
+        session,
+        parsed.data.workspaceId,
+      );
       const connection = await updateToolConnection({
         connectionId,
         userId: session.user.id,
@@ -42,15 +64,23 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ co
     {
       logLabel: "Failed to update tool connection",
       expectedError: (error) => {
-        const msg = error instanceof Error ? error.message : "Internal server error";
-        const status = msg.includes("not found") ? 404 : msg.includes("Not allowed") ? 403 : 500;
+        const msg =
+          error instanceof Error ? error.message : "Internal server error";
+        const status = msg.includes("not found")
+          ? 404
+          : msg.includes("Not allowed")
+            ? 403
+            : 500;
         return NextResponse.json({ error: msg }, { status });
       },
     },
   );
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: Promise<{ connectionId: string }> }) {
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ connectionId: string }> },
+) {
   return handleRoute(
     req,
     async ({ session }) => {
@@ -58,21 +88,45 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ c
         workspaceId: req.nextUrl.searchParams.get("workspaceId"),
       });
       if (!parsed.success) {
-        return NextResponse.json({ error: "workspaceId must be a valid UUID" }, { status: 400 });
+        return NextResponse.json(
+          { error: "workspaceId must be a valid UUID" },
+          { status: 400 },
+        );
       }
 
-      const forbidden = await requireResourcePermissionAsync(session.user.id, parsed.data.workspaceId, "tools.configure", "tool_connection", (await params).connectionId);
+      const forbidden = await requireResourcePermissionAsync(
+        session.user.id,
+        parsed.data.workspaceId,
+        "tools.configure",
+        "tool_connection",
+        (await params).connectionId,
+      );
       if (forbidden) return forbidden;
 
       const { connectionId } = await params;
-      const canManageWorkspaceConnections = await canManageTenantGlobals(session, parsed.data.workspaceId);
-      return NextResponse.json(await archiveToolConnection(connectionId, parsed.data.workspaceId, session.user.id, canManageWorkspaceConnections));
+      const canManageWorkspaceConnections = await canManageTenantGlobals(
+        session,
+        parsed.data.workspaceId,
+      );
+      return NextResponse.json(
+        await archiveToolConnection(
+          connectionId,
+          parsed.data.workspaceId,
+          session.user.id,
+          canManageWorkspaceConnections,
+        ),
+      );
     },
     {
       logLabel: "Failed to archive tool connection",
       expectedError: (error) => {
-        const msg = error instanceof Error ? error.message : "Internal server error";
-        const status = msg.includes("not found") ? 404 : msg.includes("Not allowed") ? 403 : 500;
+        const msg =
+          error instanceof Error ? error.message : "Internal server error";
+        const status = msg.includes("not found")
+          ? 404
+          : msg.includes("Not allowed")
+            ? 403
+            : 500;
         return NextResponse.json({ error: msg }, { status });
       },
     },

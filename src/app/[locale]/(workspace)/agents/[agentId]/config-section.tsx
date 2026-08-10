@@ -19,7 +19,12 @@ export function ConfigSection({
   stagger?: string;
 }) {
   return (
-    <section className={cn("overflow-hidden rounded-[1.125rem] border border-border/65 bg-card/85 shadow-[var(--surface-shadow)]", className)}>
+    <section
+      className={cn(
+        "overflow-hidden rounded-[1.125rem] border border-border/65 bg-card/85 shadow-[var(--surface-shadow)]",
+        className,
+      )}
+    >
       <header className="flex items-start gap-3 border-b border-border/55 px-4 py-3.5 sm:px-5">
         {Icon ? (
           <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/8 text-primary">
@@ -28,7 +33,11 @@ export function ConfigSection({
         ) : null}
         <div className="min-w-0 pt-0.5">
           <h2 className="text-sm font-semibold text-foreground">{title}</h2>
-          {description ? <p className="mt-0.5 text-xs leading-5 text-muted-foreground">{description}</p> : null}
+          {description ? (
+            <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
+              {description}
+            </p>
+          ) : null}
         </div>
       </header>
       <div className="p-4 sm:p-5">{children}</div>

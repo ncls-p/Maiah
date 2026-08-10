@@ -2,8 +2,52 @@ import { z } from "zod";
 
 export const unitConverterInputSchema = z.object({
   value: z.number(),
-  from: z.enum(["mm", "cm", "m", "km", "in", "ft", "yd", "mi", "mg", "g", "kg", "oz", "lb", "b", "kb", "mb", "gb", "tb", "c", "f", "k"]),
-  to: z.enum(["mm", "cm", "m", "km", "in", "ft", "yd", "mi", "mg", "g", "kg", "oz", "lb", "b", "kb", "mb", "gb", "tb", "c", "f", "k"]),
+  from: z.enum([
+    "mm",
+    "cm",
+    "m",
+    "km",
+    "in",
+    "ft",
+    "yd",
+    "mi",
+    "mg",
+    "g",
+    "kg",
+    "oz",
+    "lb",
+    "b",
+    "kb",
+    "mb",
+    "gb",
+    "tb",
+    "c",
+    "f",
+    "k",
+  ]),
+  to: z.enum([
+    "mm",
+    "cm",
+    "m",
+    "km",
+    "in",
+    "ft",
+    "yd",
+    "mi",
+    "mg",
+    "g",
+    "kg",
+    "oz",
+    "lb",
+    "b",
+    "kb",
+    "mb",
+    "gb",
+    "tb",
+    "c",
+    "f",
+    "k",
+  ]),
 });
 
 export const slugifyTextInputSchema = z.object({
@@ -105,15 +149,26 @@ export class MathExprTokenizer {
       } else if (ch && "+-*/^".includes(ch)) {
         this.tokens.push(new MathExprToken("op", ch));
         this.advance();
-      } else if (ch && (ch === "." || (ch.charCodeAt(0) >= 48 && ch.charCodeAt(0) <= 57))) {
+      } else if (
+        ch &&
+        (ch === "." || (ch.charCodeAt(0) >= 48 && ch.charCodeAt(0) <= 57))
+      ) {
         let num = "";
-        while (this.pos < this.input.length && ((this.input[this.pos].charCodeAt(0) >= 48 && this.input[this.pos].charCodeAt(0) <= 57) || this.input[this.pos] === ".")) {
+        while (
+          this.pos < this.input.length &&
+          ((this.input[this.pos].charCodeAt(0) >= 48 &&
+            this.input[this.pos].charCodeAt(0) <= 57) ||
+            this.input[this.pos] === ".")
+        ) {
           num += this.input[this.pos++];
         }
         this.tokens.push(new MathExprToken("num", num));
       } else {
         let id = "";
-        while (this.pos < this.input.length && this.input[this.pos].match(/[a-zA-Z_]/)) {
+        while (
+          this.pos < this.input.length &&
+          this.input[this.pos].match(/[a-zA-Z_]/)
+        ) {
           id += this.input[this.pos++];
         }
         const ch2 = this.peek();

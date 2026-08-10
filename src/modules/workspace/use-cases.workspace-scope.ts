@@ -2,8 +2,15 @@ import { logger } from "@/lib/logger";
 import { SYSTEM_ROLES } from "@/server/domain/entities/iam";
 import { audit } from "@/server/domain/services/audit";
 import { db } from "@/server/infrastructure/db";
-import { organizationMembers,organizations,roleBindings,roles,workspaceMembers,workspaces } from "@/server/infrastructure/db/schema";
-import { and,eq,isNull } from "drizzle-orm";
+import {
+  organizationMembers,
+  organizations,
+  roleBindings,
+  roles,
+  workspaceMembers,
+  workspaces,
+} from "@/server/infrastructure/db/schema";
+import { and, eq, isNull } from "drizzle-orm";
 
 export const WORKSPACE_SCOPE = "workspace";
 
@@ -22,7 +29,10 @@ export const PRIMARY_ORGANIZATION_SLUG = "deodis";
 export const PRIMARY_WORKSPACE_NAME = "Maiah";
 export const PRIMARY_WORKSPACE_SLUG = "main";
 
-async function seedSystemRoles(tx: Parameters<Parameters<typeof db.transaction>[0]>[0], createdById: string) {
+async function seedSystemRoles(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  createdById: string,
+) {
   const seededRoles = new Map<string, typeof roles.$inferSelect>();
 
   for (const systemRole of SYSTEM_ROLES) {
@@ -48,7 +58,13 @@ async function seedSystemRoles(tx: Parameters<Parameters<typeof db.transaction>[
         await tx
           .select()
           .from(roles)
-          .where(and(eq(roles.scopeType, systemRole.scopeType), eq(roles.name, systemRole.name), eq(roles.isSystem, true)))
+          .where(
+            and(
+              eq(roles.scopeType, systemRole.scopeType),
+              eq(roles.name, systemRole.name),
+              eq(roles.isSystem, true),
+            ),
+          )
           .limit(1)
       )[0];
 
@@ -63,10 +79,20 @@ async function seedSystemRoles(tx: Parameters<Parameters<typeof db.transaction>[
 }
 
 export async function createWorkspace(input: CreateWorkspaceInput) {
-  const { userId, organizationName, organizationSlug, workspaceName, workspaceSlug } = input;
+  const {
+    userId,
+    organizationName,
+    organizationSlug,
+    workspaceName,
+    workspaceSlug,
+  } = input;
 
   const { workspace, organization } = await db.transaction(async (tx) => {
-    let [organization] = await tx.select().from(organizations).where(eq(organizations.slug, organizationSlug)).limit(1);
+    let [organization] = await tx
+      .select()
+      .from(organizations)
+      .where(eq(organizations.slug, organizationSlug))
+      .limit(1);
 
     const organizationWasCreated = !organization;
     if (organizationWasCreated) {

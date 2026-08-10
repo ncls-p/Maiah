@@ -1,14 +1,21 @@
-import { NextRequest,NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 import { env } from "@/lib/env";
-import { logger,logHandledError } from "@/lib/logger";
+import { logger, logHandledError } from "@/lib/logger";
 import { getSession } from "@/modules/auth/session";
-import { parseGitHubState,syncGitHubInstallation } from "@/modules/github/publishing";
+import {
+  parseGitHubState,
+  syncGitHubInstallation,
+} from "@/modules/github/publishing";
 import { authorization } from "@/server/domain/services/authorization";
 
 function publicOrigin(req: NextRequest) {
-  const forwardedHost = req.headers.get("x-forwarded-host")?.split(",")[0]?.trim();
-  const forwardedProto = req.headers.get("x-forwarded-proto")?.split(",")[0]?.trim() ?? "https";
+  const forwardedHost = req.headers
+    .get("x-forwarded-host")
+    ?.split(",")[0]
+    ?.trim();
+  const forwardedProto =
+    req.headers.get("x-forwarded-proto")?.split(",")[0]?.trim() ?? "https";
   if (forwardedHost && forwardedHost !== "0.0.0.0") {
     return `${forwardedProto}://${forwardedHost}`;
   }
@@ -58,7 +65,12 @@ export async function GET(req: NextRequest) {
       });
       return chatRedirect(req, { github: "forbidden" });
     }
-    const permission = await authorization.checkPermission({ principalType: "user", principalId: session.user.id }, "agents.chat", "workspace", parsedState.workspaceId);
+    const permission = await authorization.checkPermission(
+      { principalType: "user", principalId: session.user.id },
+      "agents.chat",
+      "workspace",
+      parsedState.workspaceId,
+    );
     if (!permission.granted) {
       logger.warn("GitHub callback rejected", {
         requestId,
@@ -82,7 +94,11 @@ export async function GET(req: NextRequest) {
     });
     return chatRedirect(req, { github: "connected" });
   } catch (error) {
-    logHandledError("GitHub callback failed", { requestId, durationMs: Date.now() - startedAt }, error as Error);
+    logHandledError(
+      "GitHub callback failed",
+      { requestId, durationMs: Date.now() - startedAt },
+      error as Error,
+    );
     return chatRedirect(req, {
       github: "error",
       message: error instanceof Error ? error.message.slice(0, 160) : "failed",

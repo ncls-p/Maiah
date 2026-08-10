@@ -1,9 +1,12 @@
-import { NextRequest,NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { handleRoute } from "@/lib/route-handler";
 import { requireAdminApiSession } from "@/modules/admin/auth";
-import { getUsageImpactSetting,setUsageImpactSetting } from "@/modules/provider/usage-impact-settings";
+import {
+  getUsageImpactSetting,
+  setUsageImpactSetting,
+} from "@/modules/provider/usage-impact-settings";
 import { refreshAllProviderModels } from "@/modules/provider/use-cases";
 
 const updateSchema = z.object({
@@ -25,7 +28,10 @@ export async function PATCH(req: NextRequest) {
       if (!auth.ok) return auth.response;
       const parsed = updateSchema.safeParse(await req.json());
       if (!parsed.success) {
-        return NextResponse.json({ error: "Invalid input", details: parsed.error.issues }, { status: 400 });
+        return NextResponse.json(
+          { error: "Invalid input", details: parsed.error.issues },
+          { status: 400 },
+        );
       }
 
       const setting = await setUsageImpactSetting(parsed.data, session.user.id);

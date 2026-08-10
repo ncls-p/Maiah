@@ -1,11 +1,32 @@
-import { and,eq,isNull,ne } from "drizzle-orm";
+import { and, eq, isNull, ne } from "drizzle-orm";
 
 import type { AccessResourceType } from "@/server/domain/entities/access-resource";
 import { db } from "@/server/infrastructure/db";
-import { agentSkills,agents,aiModels,aiProviders,conversations,customTools,knowledgeBases,marketplaceItems,mcpServers,scheduledTasks,toolConnections,toolConnectors,workflows } from "@/server/infrastructure/db/schema";
-import { AccessResourceScope,ResourceRow,withOrganization } from "./access-resource-repository.access-resource-scope";
+import {
+  agentSkills,
+  agents,
+  aiModels,
+  aiProviders,
+  conversations,
+  customTools,
+  knowledgeBases,
+  marketplaceItems,
+  mcpServers,
+  scheduledTasks,
+  toolConnections,
+  toolConnectors,
+  workflows,
+} from "@/server/infrastructure/db/schema";
+import {
+  AccessResourceScope,
+  ResourceRow,
+  withOrganization,
+} from "./access-resource-repository.access-resource-scope";
 
-export async function findAccessResource(type: AccessResourceType, resourceId: string): Promise<AccessResourceScope | null> {
+export async function findAccessResource(
+  type: AccessResourceType,
+  resourceId: string,
+): Promise<AccessResourceScope | null> {
   let row: ResourceRow | undefined;
 
   switch (type) {
@@ -28,7 +49,9 @@ export async function findAccessResource(type: AccessResourceType, resourceId: s
           workspaceId: aiProviders.workspaceId,
         })
         .from(aiProviders)
-        .where(and(eq(aiProviders.id, resourceId), isNull(aiProviders.archivedAt)))
+        .where(
+          and(eq(aiProviders.id, resourceId), isNull(aiProviders.archivedAt)),
+        )
         .limit(1);
       break;
     case "model":
@@ -60,7 +83,9 @@ export async function findAccessResource(type: AccessResourceType, resourceId: s
           workspaceId: mcpServers.workspaceId,
         })
         .from(mcpServers)
-        .where(and(eq(mcpServers.id, resourceId), isNull(mcpServers.archivedAt)))
+        .where(
+          and(eq(mcpServers.id, resourceId), isNull(mcpServers.archivedAt)),
+        )
         .limit(1);
       break;
     case "tool_connector":
@@ -71,7 +96,12 @@ export async function findAccessResource(type: AccessResourceType, resourceId: s
           workspaceId: toolConnectors.workspaceId,
         })
         .from(toolConnectors)
-        .where(and(eq(toolConnectors.id, resourceId), isNull(toolConnectors.archivedAt)))
+        .where(
+          and(
+            eq(toolConnectors.id, resourceId),
+            isNull(toolConnectors.archivedAt),
+          ),
+        )
         .limit(1);
       break;
     case "tool_connection":
@@ -83,7 +113,12 @@ export async function findAccessResource(type: AccessResourceType, resourceId: s
           connectorId: toolConnections.connectorId,
         })
         .from(toolConnections)
-        .where(and(eq(toolConnections.id, resourceId), isNull(toolConnections.archivedAt)))
+        .where(
+          and(
+            eq(toolConnections.id, resourceId),
+            isNull(toolConnections.archivedAt),
+          ),
+        )
         .limit(1)
         .then((rows) =>
           rows.map(({ connectorId, ...connection }) => ({
@@ -100,7 +135,9 @@ export async function findAccessResource(type: AccessResourceType, resourceId: s
           workspaceId: customTools.workspaceId,
         })
         .from(customTools)
-        .where(and(eq(customTools.id, resourceId), isNull(customTools.archivedAt)))
+        .where(
+          and(eq(customTools.id, resourceId), isNull(customTools.archivedAt)),
+        )
         .limit(1);
       break;
     case "knowledge_base":
@@ -111,7 +148,12 @@ export async function findAccessResource(type: AccessResourceType, resourceId: s
           workspaceId: knowledgeBases.workspaceId,
         })
         .from(knowledgeBases)
-        .where(and(eq(knowledgeBases.id, resourceId), isNull(knowledgeBases.archivedAt)))
+        .where(
+          and(
+            eq(knowledgeBases.id, resourceId),
+            isNull(knowledgeBases.archivedAt),
+          ),
+        )
         .limit(1);
       break;
     case "skill":
@@ -122,7 +164,9 @@ export async function findAccessResource(type: AccessResourceType, resourceId: s
           workspaceId: agentSkills.workspaceId,
         })
         .from(agentSkills)
-        .where(and(eq(agentSkills.id, resourceId), isNull(agentSkills.archivedAt)))
+        .where(
+          and(eq(agentSkills.id, resourceId), isNull(agentSkills.archivedAt)),
+        )
         .limit(1);
       break;
     case "workflow":
@@ -155,7 +199,12 @@ export async function findAccessResource(type: AccessResourceType, resourceId: s
           workspaceId: conversations.workspaceId,
         })
         .from(conversations)
-        .where(and(eq(conversations.id, resourceId), isNull(conversations.archivedAt)))
+        .where(
+          and(
+            eq(conversations.id, resourceId),
+            isNull(conversations.archivedAt),
+          ),
+        )
         .limit(1);
       break;
     case "marketplace_item":
@@ -166,9 +215,20 @@ export async function findAccessResource(type: AccessResourceType, resourceId: s
           workspaceId: marketplaceItems.publisherWorkspaceId,
         })
         .from(marketplaceItems)
-        .where(and(eq(marketplaceItems.id, resourceId), ne(marketplaceItems.status, "archived")))
+        .where(
+          and(
+            eq(marketplaceItems.id, resourceId),
+            ne(marketplaceItems.status, "archived"),
+          ),
+        )
         .limit(1)
-        .then((rows) => rows.flatMap((item) => (item.workspaceId ? [{ ...item, workspaceId: item.workspaceId }] : [])));
+        .then((rows) =>
+          rows.flatMap((item) =>
+            item.workspaceId
+              ? [{ ...item, workspaceId: item.workspaceId }]
+              : [],
+          ),
+        );
       break;
   }
 

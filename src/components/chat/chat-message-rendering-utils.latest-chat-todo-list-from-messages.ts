@@ -1,9 +1,15 @@
-import { type ChatFileAttachment,type ChatImageAttachment,type ChatMessage } from "@/components/chat/chat-types";
+import {
+  type ChatFileAttachment,
+  type ChatImageAttachment,
+  type ChatMessage,
+} from "@/components/chat/chat-types";
 import { isCodeWorkspaceArtifactOutput } from "@/components/chat/code-workspace-artifact-card";
 import { type ChatTodoList } from "@/modules/chat/todo-list";
 import { chatTodoListFromToolPart } from "./chat-message-rendering-utils.stringify-for-match";
 
-export function latestChatTodoListFromMessages(messages: ChatMessage[]): ChatTodoList | null {
+export function latestChatTodoListFromMessages(
+  messages: ChatMessage[],
+): ChatTodoList | null {
   let latestTodoList: ChatTodoList | null = null;
 
   for (const message of messages) {
@@ -25,10 +31,18 @@ export function codeWorkspaceArtifactFromPartContent(content: string) {
   }
 }
 
-export function isChatImageAttachmentOutput(value: unknown): value is ChatImageAttachment {
+export function isChatImageAttachmentOutput(
+  value: unknown,
+): value is ChatImageAttachment {
   if (typeof value !== "object" || value === null) return false;
   const record = value as Record<string, unknown>;
-  return record.kind === "chat_image" && typeof record.id === "string" && typeof record.fileName === "string" && typeof record.mimeType === "string" && typeof record.url === "string";
+  return (
+    record.kind === "chat_image" &&
+    typeof record.id === "string" &&
+    typeof record.fileName === "string" &&
+    typeof record.mimeType === "string" &&
+    typeof record.url === "string"
+  );
 }
 
 export function chatImageAttachmentFromPartContent(content: string) {
@@ -40,10 +54,20 @@ export function chatImageAttachmentFromPartContent(content: string) {
   }
 }
 
-function isChatFileAttachmentOutput(value: unknown): value is ChatFileAttachment {
+function isChatFileAttachmentOutput(
+  value: unknown,
+): value is ChatFileAttachment {
   if (typeof value !== "object" || value === null) return false;
   const record = value as Record<string, unknown>;
-  return record.kind === "chat_file" && typeof record.id === "string" && typeof record.fileName === "string" && typeof record.mimeType === "string" && typeof record.url === "string" && typeof record.extractionStatus === "string" && typeof record.extractedTextChars === "number";
+  return (
+    record.kind === "chat_file" &&
+    typeof record.id === "string" &&
+    typeof record.fileName === "string" &&
+    typeof record.mimeType === "string" &&
+    typeof record.url === "string" &&
+    typeof record.extractionStatus === "string" &&
+    typeof record.extractedTextChars === "number"
+  );
 }
 
 export function chatFileAttachmentFromPartContent(content: string) {
@@ -90,34 +114,61 @@ export type CodeSandboxInputPreview = {
   attachments: Array<{ id: string; path?: string }>;
 };
 
-function isCodeSandboxFileOutput(value: unknown): value is CodeSandboxFileOutput {
+function isCodeSandboxFileOutput(
+  value: unknown,
+): value is CodeSandboxFileOutput {
   if (typeof value !== "object" || value === null) return false;
   const record = value as Record<string, unknown>;
-  return typeof record.path === "string" && typeof record.size === "number" && typeof record.mimeType === "string";
+  return (
+    typeof record.path === "string" &&
+    typeof record.size === "number" &&
+    typeof record.mimeType === "string"
+  );
 }
 
-function normalizeSandboxAttachment(value: unknown): ChatFileAttachment | ChatImageAttachment | undefined {
+function normalizeSandboxAttachment(
+  value: unknown,
+): ChatFileAttachment | ChatImageAttachment | undefined {
   if (isChatFileAttachmentOutput(value) || isChatImageAttachmentOutput(value)) {
     return value;
   }
   return undefined;
 }
 
-function normalizeSandboxFileOutput(value: unknown): CodeSandboxFileOutput | null {
+function normalizeSandboxFileOutput(
+  value: unknown,
+): CodeSandboxFileOutput | null {
   if (!isCodeSandboxFileOutput(value)) return null;
   const record = value as Record<string, unknown>;
   return {
     path: value.path,
     size: value.size,
     mimeType: value.mimeType,
-    ...(typeof record.textPreview === "string" ? { textPreview: record.textPreview } : {}),
-    ...(typeof record.truncated === "boolean" ? { truncated: record.truncated } : {}),
-    ...(record.contentOmitted === "too_large" || record.contentOmitted === "total_limit" ? { contentOmitted: record.contentOmitted } : {}),
-    ...(typeof record.downloadUrl === "string" ? { downloadUrl: record.downloadUrl } : {}),
-    ...(typeof record.downloadError === "string" ? { downloadError: record.downloadError } : {}),
-    ...(normalizeSandboxAttachment(record.attachment) ? { attachment: normalizeSandboxAttachment(record.attachment) } : {}),
-    ...(typeof record.fromInput === "boolean" ? { fromInput: record.fromInput } : {}),
-    ...(typeof record.modified === "boolean" ? { modified: record.modified } : {}),
+    ...(typeof record.textPreview === "string"
+      ? { textPreview: record.textPreview }
+      : {}),
+    ...(typeof record.truncated === "boolean"
+      ? { truncated: record.truncated }
+      : {}),
+    ...(record.contentOmitted === "too_large" ||
+    record.contentOmitted === "total_limit"
+      ? { contentOmitted: record.contentOmitted }
+      : {}),
+    ...(typeof record.downloadUrl === "string"
+      ? { downloadUrl: record.downloadUrl }
+      : {}),
+    ...(typeof record.downloadError === "string"
+      ? { downloadError: record.downloadError }
+      : {}),
+    ...(normalizeSandboxAttachment(record.attachment)
+      ? { attachment: normalizeSandboxAttachment(record.attachment) }
+      : {}),
+    ...(typeof record.fromInput === "boolean"
+      ? { fromInput: record.fromInput }
+      : {}),
+    ...(typeof record.modified === "boolean"
+      ? { modified: record.modified }
+      : {}),
   };
 }
 
@@ -136,10 +187,19 @@ export function partitionCodeSandboxFiles(files: CodeSandboxFileOutput[]) {
 function isCodeSandboxOutput(value: unknown): value is CodeSandboxOutput {
   if (typeof value !== "object" || value === null) return false;
   const record = value as Record<string, unknown>;
-  return record.kind === "code_sandbox_result" && typeof record.ok === "boolean" && (record.language === "python" || record.language === "node" || record.language === "bash") && Array.isArray(record.files);
+  return (
+    record.kind === "code_sandbox_result" &&
+    typeof record.ok === "boolean" &&
+    (record.language === "python" ||
+      record.language === "node" ||
+      record.language === "bash") &&
+    Array.isArray(record.files)
+  );
 }
 
-export function codeSandboxOutputFromUnknown(value: unknown): CodeSandboxOutput | null {
+export function codeSandboxOutputFromUnknown(
+  value: unknown,
+): CodeSandboxOutput | null {
   if (!isCodeSandboxOutput(value)) return null;
   const record = value as Record<string, unknown>;
   return {
@@ -156,4 +216,13 @@ export function codeSandboxOutputFromUnknown(value: unknown): CodeSandboxOutput 
       return normalized ? [normalized] : [];
     }),
   };
+}
+
+export function codeSandboxToolVisualState(
+  output: unknown,
+  status: "pending" | "completed" | "error",
+) {
+  return status === "error" && codeSandboxOutputFromUnknown(output)
+    ? "completed"
+    : status;
 }

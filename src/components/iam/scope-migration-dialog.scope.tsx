@@ -29,7 +29,10 @@ export type Preview = {
   confirmationToken: string;
 };
 
-export async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
+export async function fetchJson<T>(
+  url: string,
+  init?: RequestInit,
+): Promise<T> {
   const response = await fetch(url, init);
   const data = (await response.json().catch(() => ({}))) as {
     error?: string;

@@ -3,26 +3,62 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { toolNameMatches, type ChatCitation, type ChatMessage, type PendingToolApproval } from "@/components/chat/chat-types";
+import {
+  toolNameMatches,
+  type ChatCitation,
+  type ChatMessage,
+  type PendingToolApproval,
+} from "@/components/chat/chat-types";
 
-import { STREAM_DRAFT_EVENT, TOOL_CALL_PART_TYPE, approvalsFromDraft, clearStoredChatStreamDraft, filterResolvedApprovals, getStoredChatStreamDraft, mergeStoredDraft, removePendingApproval, storeChatStreamDraft, type StoredChatStreamDraft } from "@/hooks/use-chat-stream-events";
+import {
+  STREAM_DRAFT_EVENT,
+  TOOL_CALL_PART_TYPE,
+  approvalsFromDraft,
+  clearStoredChatStreamDraft,
+  filterResolvedApprovals,
+  getStoredChatStreamDraft,
+  mergeStoredDraft,
+  removePendingApproval,
+  storeChatStreamDraft,
+  type StoredChatStreamDraft,
+} from "@/hooks/use-chat-stream-events";
 import { UseChatStreamOptions } from "./use-chat-stream.compact-error-message";
 import { useChatStreamResume } from "./use-chat-stream.resume";
 import { useChatSubmitHandler } from "./use-chat-stream.submit";
 
-export function useChatStream({ agentId, conversationId, workspaceId, canChat, onConversationCreated, onConversationTitle, onConversationsRefresh }: UseChatStreamOptions) {
+export function useChatStream({
+  agentId,
+  conversationId,
+  workspaceId,
+  canChat,
+  onConversationCreated,
+  onConversationTitle,
+  onConversationMetadata,
+  onConversationsRefresh,
+}: UseChatStreamOptions) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [sending, setSending] = useState(false);
   const [resuming, setResuming] = useState(false);
-  const [pendingApprovals, setPendingApprovals] = useState<PendingToolApproval[]>([]);
+  const [pendingApprovals, setPendingApprovals] = useState<
+    PendingToolApproval[]
+  >([]);
   const [citations, setCitations] = useState<ChatCitation[]>([]);
   const activeRequestControllerRef = useRef<AbortController | null>(null);
   const activeConversationIdRef = useRef<string | null>(null);
-  const detachedRequestControllersRef = useRef<WeakSet<AbortController>>(new WeakSet());
+  const detachedRequestControllersRef = useRef<WeakSet<AbortController>>(
+    new WeakSet(),
+  );
   const stopRequestedRef = useRef(false);
   const resolvedApprovalIdsRef = useRef(new Set<string>());
   const streamingMessageId = useMemo(() => {
-    return [...messages].reverse().find((message) => message.role === "assistant" && message.status === "streaming")?.id ?? null;
+    return (
+      [...messages]
+        .reverse()
+        .find(
+          (message) =>
+            message.role === "assistant" && message.status === "streaming",
+        )?.id ?? null
+    );
   }, [messages]);
 
   const detachActiveStream = useCallback(() => {
@@ -51,7 +87,12 @@ export function useChatStream({ agentId, conversationId, workspaceId, canChat, o
       const draft = getStoredChatStreamDraft(conversationId);
       setMessages(mergeStoredDraft(next, draft));
       setCitations([]);
-      setPendingApprovals(filterResolvedApprovals(approvalsFromDraft(draft), resolvedApprovalIdsRef.current));
+      setPendingApprovals(
+        filterResolvedApprovals(
+          approvalsFromDraft(draft),
+          resolvedApprovalIdsRef.current,
+        ),
+      );
     },
     [conversationId],
   );
@@ -81,7 +122,12 @@ export function useChatStream({ agentId, conversationId, workspaceId, canChat, o
       }
 
       setMessages((current) => mergeStoredDraft(current, detail.draft ?? null));
-      setPendingApprovals(filterResolvedApprovals(approvalsFromDraft(detail.draft), resolvedApprovalIdsRef.current));
+      setPendingApprovals(
+        filterResolvedApprovals(
+          approvalsFromDraft(detail.draft),
+          resolvedApprovalIdsRef.current,
+        ),
+      );
     }
 
     window.addEventListener(STREAM_DRAFT_EVENT, handleDraftEvent);
@@ -93,7 +139,10 @@ export function useChatStream({ agentId, conversationId, workspaceId, canChat, o
   useEffect(() => {
     if (!workspaceId || !conversationId) return;
     const draft = getStoredChatStreamDraft(conversationId);
-    const draftApprovals = filterResolvedApprovals(approvalsFromDraft(draft), resolvedApprovalIdsRef.current);
+    const draftApprovals = filterResolvedApprovals(
+      approvalsFromDraft(draft),
+      resolvedApprovalIdsRef.current,
+    );
     if (draftApprovals.length > 0) {
       queueMicrotask(() => setPendingApprovals(draftApprovals));
       return;
@@ -107,7 +156,9 @@ export function useChatStream({ agentId, conversationId, workspaceId, canChat, o
         limit: "10",
         conversationId: conversationId ?? "",
       });
-      const res = await fetch(`/api/workspace/tool-invocations?${params.toString()}`);
+      const res = await fetch(
+        `/api/workspace/tool-invocations?${params.toString()}`,
+      );
       if (!res.ok) return;
       const invocations = (await res.json()) as Array<{
         id: string;
@@ -141,28 +192,72 @@ export function useChatStream({ agentId, conversationId, workspaceId, canChat, o
     setMessages(data.messages ?? []);
   }, [conversationId]);
 
-  useChatStreamResume({ conversationId, streamingMessageId, sending, reloadConversationMessages, onConversationsRefresh, setMessages, setPendingApprovals, setCitations, setResuming, activeRequestControllerRef, activeConversationIdRef, resolvedApprovalIdsRef });
+  useChatStreamResume({
+    conversationId,
+    streamingMessageId,
+    sending,
+    reloadConversationMessages,
+    onConversationsRefresh,
+    setMessages,
+    setPendingApprovals,
+    setCitations,
+    setResuming,
+    activeRequestControllerRef,
+    activeConversationIdRef,
+    resolvedApprovalIdsRef,
+  });
 
-  const handleSubmit = useChatSubmitHandler({ agentId, conversationId, canChat, sending, messages, onConversationCreated, onConversationTitle, onConversationsRefresh, setMessages, setSending, setPendingApprovals, setCitations, activeRequestControllerRef, activeConversationIdRef, detachedRequestControllersRef, stopRequestedRef, resolvedApprovalIdsRef });
+  const handleSubmit = useChatSubmitHandler({
+    agentId,
+    conversationId,
+    canChat,
+    sending,
+    messages,
+    onConversationCreated,
+    onConversationTitle,
+    onConversationMetadata,
+    onConversationsRefresh,
+    setMessages,
+    setSending,
+    setPendingApprovals,
+    setCitations,
+    activeRequestControllerRef,
+    activeConversationIdRef,
+    detachedRequestControllersRef,
+    stopRequestedRef,
+    resolvedApprovalIdsRef,
+  });
 
   const stopGeneration = useCallback(async () => {
     if (stopRequestedRef.current) return;
     stopRequestedRef.current = true;
     activeRequestControllerRef.current?.abort();
 
-    const targetConversationId = activeConversationIdRef.current ?? conversationId;
+    const targetConversationId =
+      activeConversationIdRef.current ?? conversationId;
     if (targetConversationId) {
       try {
-        await fetch(`/api/workspace/conversations/${targetConversationId}/stop`, {
-          method: "POST",
-        });
+        await fetch(
+          `/api/workspace/conversations/${targetConversationId}/stop`,
+          {
+            method: "POST",
+          },
+        );
       } catch {
-        toast.error("Stopped locally, but the server did not acknowledge the stop request.");
+        toast.error(
+          "Stopped locally, but the server did not acknowledge the stop request.",
+        );
       }
       clearStoredChatStreamDraft(targetConversationId);
     }
 
-    setMessages((current) => current.map((message) => (message.role === "assistant" && message.status === "streaming" ? { ...message, status: "completed" } : message)));
+    setMessages((current) =>
+      current.map((message) =>
+        message.role === "assistant" && message.status === "streaming"
+          ? { ...message, status: "completed" }
+          : message,
+      ),
+    );
     setPendingApprovals([]);
     setSending(false);
     setResuming(false);
@@ -171,9 +266,14 @@ export function useChatStream({ agentId, conversationId, workspaceId, canChat, o
 
   const resolveApproval = useCallback(
     async (action: "approve" | "reject", invocationId: string) => {
-      const approval = pendingApprovals.find((item) => item.invocationId === invocationId);
+      const approval = pendingApprovals.find(
+        (item) => item.invocationId === invocationId,
+      );
       if (!approval) return;
-      const endpoint = action === "approve" ? `/api/workspace/tool-invocations/${approval.invocationId}/approve` : `/api/workspace/tool-invocations/${approval.invocationId}/reject`;
+      const endpoint =
+        action === "approve"
+          ? `/api/workspace/tool-invocations/${approval.invocationId}/approve`
+          : `/api/workspace/tool-invocations/${approval.invocationId}/reject`;
 
       let res: Response;
       try {
@@ -188,7 +288,9 @@ export function useChatStream({ agentId, conversationId, workspaceId, canChat, o
         return;
       }
       resolvedApprovalIdsRef.current.add(approval.invocationId);
-      setPendingApprovals((current) => removePendingApproval(current, approval.invocationId));
+      setPendingApprovals((current) =>
+        removePendingApproval(current, approval.invocationId),
+      );
 
       // When rejecting, mark only the matching tool-call part as denied so it
       // displays in red while avoiding unrelated calls with the same name.
@@ -198,9 +300,21 @@ export function useChatStream({ agentId, conversationId, workspaceId, canChat, o
             const nextParts = message.parts.map((part) => {
               if (part.type !== TOOL_CALL_PART_TYPE) return part;
               try {
-                const parsed = JSON.parse(part.content) as Record<string, unknown>;
-                const inputMatches = parsed.input === undefined || JSON.stringify(parsed.input) === JSON.stringify(approval.input);
-                if (inputMatches && toolNameMatches(parsed.toolName as string | undefined, approval.toolName)) {
+                const parsed = JSON.parse(part.content) as Record<
+                  string,
+                  unknown
+                >;
+                const inputMatches =
+                  parsed.input === undefined ||
+                  JSON.stringify(parsed.input) ===
+                    JSON.stringify(approval.input);
+                if (
+                  inputMatches &&
+                  toolNameMatches(
+                    parsed.toolName as string | undefined,
+                    approval.toolName,
+                  )
+                ) {
                   return {
                     type: part.type,
                     content: JSON.stringify({ ...parsed, denied: true }),
@@ -219,7 +333,10 @@ export function useChatStream({ agentId, conversationId, workspaceId, canChat, o
       if (conversationId) {
         const draft = getStoredChatStreamDraft(conversationId);
         if (draft) {
-          const nextApprovals = removePendingApproval(approvalsFromDraft(draft), approval.invocationId);
+          const nextApprovals = removePendingApproval(
+            approvalsFromDraft(draft),
+            approval.invocationId,
+          );
           storeChatStreamDraft(
             {
               ...draft,
@@ -231,7 +348,9 @@ export function useChatStream({ agentId, conversationId, workspaceId, canChat, o
           );
         }
       }
-      toast.success(action === "approve" ? "Tool approved" : "Tool invocation rejected");
+      toast.success(
+        action === "approve" ? "Tool approved" : "Tool invocation rejected",
+      );
     },
     [conversationId, pendingApprovals],
   );

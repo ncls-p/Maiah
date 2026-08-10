@@ -1,8 +1,14 @@
-import { NextRequest,NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { handleRoute } from "@/lib/route-handler";
-import { executeOrganizationClone,executeOrganizationTransfer,listOrganizationTransferDestinations,previewOrganizationClone,previewOrganizationTransfer } from "@/modules/iam/organization-transfer";
+import {
+  executeOrganizationClone,
+  executeOrganizationTransfer,
+  listOrganizationTransferDestinations,
+  previewOrganizationClone,
+  previewOrganizationTransfer,
+} from "@/modules/iam/organization-transfer";
 import { TRANSFER_SECRET_POLICIES } from "@/modules/iam/resource-transfer";
 import { expectedIamError } from "../../transfer-route-support";
 
@@ -32,7 +38,10 @@ export async function GET(req: NextRequest) {
         sourceWorkspaceId: req.nextUrl.searchParams.get("sourceWorkspaceId"),
       });
       if (!parsed.success) {
-        return NextResponse.json({ error: "Invalid source project" }, { status: 400 });
+        return NextResponse.json(
+          { error: "Invalid source project" },
+          { status: 400 },
+        );
       }
       return NextResponse.json({
         destinations: await listOrganizationTransferDestinations({
@@ -55,7 +64,10 @@ export async function POST(req: NextRequest) {
     async ({ session }) => {
       const parsed = requestSchema.safeParse(await req.json());
       if (!parsed.success) {
-        return NextResponse.json({ error: "Invalid organization migration request" }, { status: 400 });
+        return NextResponse.json(
+          { error: "Invalid organization migration request" },
+          { status: 400 },
+        );
       }
       const common = {
         actorUserId: session.user.id,

@@ -1,4 +1,9 @@
-import { MathExprToken,MathExprTokenizer,NormalizedSearxngResult,SearxngResult } from "./builtin-tool-primitives.unit-converter-input-schema";
+import {
+  MathExprToken,
+  MathExprTokenizer,
+  NormalizedSearxngResult,
+  SearxngResult,
+} from "./builtin-tool-primitives.unit-converter-input-schema";
 
 class MathExprParser {
   private pos = 0;
@@ -148,21 +153,30 @@ export async function fetchSearxngResults(url: URL) {
     signal: AbortSignal.timeout(15_000),
   });
   if (!response.ok) {
-    throw new Error(`SearXNG search failed with ${response.status} ${response.statusText}`);
+    throw new Error(
+      `SearXNG search failed with ${response.status} ${response.statusText}`,
+    );
   }
 
   const payload = (await response.json()) as { results?: SearxngResult[] };
   return Array.isArray(payload.results) ? payload.results : [];
 }
 
-export function normalizeSearxngResults(results: SearxngResult[], limit: number): NormalizedSearxngResult[] {
+export function normalizeSearxngResults(
+  results: SearxngResult[],
+  limit: number,
+): NormalizedSearxngResult[] {
   return results
-    .filter((result) => typeof result.title === "string" && typeof result.url === "string")
+    .filter(
+      (result) =>
+        typeof result.title === "string" && typeof result.url === "string",
+    )
     .slice(0, limit)
     .map((result) => ({
       title: result.title as string,
       url: result.url as string,
-      snippet: typeof result.content === "string" ? result.content.slice(0, 800) : "",
+      snippet:
+        typeof result.content === "string" ? result.content.slice(0, 800) : "",
       score: typeof result.score === "number" ? result.score : null,
       engines: normalizeSearxngEngines(result),
     }));

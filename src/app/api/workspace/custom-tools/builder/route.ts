@@ -1,7 +1,10 @@
-import { NextRequest,NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
-import { handleRoute,requireWorkspacePermissionAsync } from "@/lib/route-handler";
+import {
+  handleRoute,
+  requireWorkspacePermissionAsync,
+} from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
 import { runCustomToolBuilder } from "@/modules/custom-tools/use-cases";
 
@@ -34,13 +37,26 @@ export async function POST(req: NextRequest) {
     async ({ session }) => {
       const parsed = messageSchema.safeParse(await req.json());
       if (!parsed.success) {
-        return NextResponse.json({ error: "Invalid input", details: parsed.error.issues }, { status: 400 });
+        return NextResponse.json(
+          { error: "Invalid input", details: parsed.error.issues },
+          { status: 400 },
+        );
       }
-      const forbidden = await requireWorkspacePermissionAsync(session.user.id, parsed.data.workspaceId, "tools.configure");
+      const forbidden = await requireWorkspacePermissionAsync(
+        session.user.id,
+        parsed.data.workspaceId,
+        "tools.configure",
+      );
       if (forbidden) return forbidden;
-      const canManageGlobal = await canManageTenantGlobals(session, parsed.data.workspaceId);
+      const canManageGlobal = await canManageTenantGlobals(
+        session,
+        parsed.data.workspaceId,
+      );
       if (parsed.data.isGlobal && !canManageGlobal) {
-        return NextResponse.json({ error: "Only admins can make custom tools global" }, { status: 403 });
+        return NextResponse.json(
+          { error: "Only admins can make custom tools global" },
+          { status: 403 },
+        );
       }
       return NextResponse.json(
         await runCustomToolBuilder({
@@ -55,7 +71,8 @@ export async function POST(req: NextRequest) {
     {
       logLabel: "Custom tool builder failed",
       expectedError: (error) => {
-        const message = error instanceof Error ? error.message : "Unable to run builder";
+        const message =
+          error instanceof Error ? error.message : "Unable to run builder";
         return NextResponse.json({ error: message }, { status: 500 });
       },
     },

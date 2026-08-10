@@ -1,4 +1,15 @@
-import { boolean,index,jsonb,pgEnum,pgTable,text,timestamp,uniqueIndex,uuid,varchar } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  index,
+  jsonb,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+  varchar,
+} from "drizzle-orm/pg-core";
 import { agents } from "./agents";
 import { users } from "./auth";
 import { conversations } from "./conversations";
@@ -15,7 +26,14 @@ const STATUS_COLUMN = "status";
 
 // ─── Custom Tool Builder ───────────────────────────────────────────────
 
-export const customToolStatusEnum = pgEnum("custom_tool_status", ["draft", "awaiting_secrets", "workflow_created", "active", "failed", "disabled"]);
+export const customToolStatusEnum = pgEnum("custom_tool_status", [
+  "draft",
+  "awaiting_secrets",
+  "workflow_created",
+  "active",
+  "failed",
+  "disabled",
+]);
 
 export const customTools = pgTable(
   "custom_tools",
@@ -36,8 +54,12 @@ export const customTools = pgTable(
     inputSchemaJson: jsonb("input_schema_json"),
     outputSchemaJson: jsonb("output_schema_json"),
     metadataJson: jsonb("metadata_json"),
-    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true })
+      .notNull()
+      .defaultNow(),
     archivedAt: timestamp("archived_at", { withTimezone: true }),
   },
   (t) => [index("custom_tools_workspace").on(t.workspaceId)],
@@ -62,10 +84,15 @@ export const customToolSecretRequests = pgTable(
     status: varchar(STATUS_COLUMN, { length: 24 }).notNull().default("pending"),
     credentialRefId: uuid("credential_ref_id"),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
-    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
+      .notNull()
+      .defaultNow(),
     submittedAt: timestamp("submitted_at", { withTimezone: true }),
   },
-  (t) => [index("custom_tool_secret_requests_workspace").on(t.workspaceId), index("custom_tool_secret_requests_user").on(t.userId)],
+  (t) => [
+    index("custom_tool_secret_requests_workspace").on(t.workspaceId),
+    index("custom_tool_secret_requests_user").on(t.userId),
+  ],
 );
 
 export const customToolCredentialRefs = pgTable(
@@ -83,9 +110,14 @@ export const customToolCredentialRefs = pgTable(
     n8nCredentialId: varchar("n8n_credential_id", { length: 255 }),
     encryptedPayload: text("encrypted_payload").notNull(),
     metadataJson: jsonb("metadata_json"),
-    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
-  (t) => [index("custom_tool_credential_refs_workspace").on(t.workspaceId), index("custom_tool_credential_refs_user").on(t.userId)],
+  (t) => [
+    index("custom_tool_credential_refs_workspace").on(t.workspaceId),
+    index("custom_tool_credential_refs_user").on(t.userId),
+  ],
 );
 
 export const userGithubConnections = pgTable(
@@ -101,11 +133,23 @@ export const userGithubConnections = pgTable(
     accountType: varchar("account_type", { length: 32 }),
     repositorySelection: varchar("repository_selection", { length: 32 }),
     settingsUrl: text("settings_url"),
-    lastSyncedAt: timestamp("last_synced_at", { withTimezone: true }).notNull().defaultNow(),
-    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
+    lastSyncedAt: timestamp("last_synced_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
-  (t) => [index("user_github_connections_user").on(t.userId), uniqueIndex("user_github_connections_user_installation_unique").on(t.userId, t.installationId)],
+  (t) => [
+    index("user_github_connections_user").on(t.userId),
+    uniqueIndex("user_github_connections_user_installation_unique").on(
+      t.userId,
+      t.installationId,
+    ),
+  ],
 );
 
 export const userGithubRepositories = pgTable(
@@ -127,9 +171,20 @@ export const userGithubRepositories = pgTable(
     private: boolean("private").notNull().default(false),
     defaultBranch: varchar("default_branch", { length: 255 }).notNull(),
     permissionsJson: jsonb("permissions_json"),
-    lastSyncedAt: timestamp("last_synced_at", { withTimezone: true }).notNull().defaultNow(),
+    lastSyncedAt: timestamp("last_synced_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
-  (t) => [index("user_github_repositories_user").on(t.userId), index("user_github_repositories_connection").on(t.connectionId), uniqueIndex("user_github_repositories_user_repo_unique").on(t.userId, t.owner, t.name), index("user_github_repositories_github_repo").on(t.githubRepositoryId)],
+  (t) => [
+    index("user_github_repositories_user").on(t.userId),
+    index("user_github_repositories_connection").on(t.connectionId),
+    uniqueIndex("user_github_repositories_user_repo_unique").on(
+      t.userId,
+      t.owner,
+      t.name,
+    ),
+    index("user_github_repositories_github_repo").on(t.githubRepositoryId),
+  ],
 );
 
 export const githubPublishEvents = pgTable(
@@ -142,8 +197,14 @@ export const githubPublishEvents = pgTable(
     userId: uuid(USER_ID_COLUMN)
       .notNull()
       .references(() => users.id),
-    connectionId: uuid("connection_id").references(() => userGithubConnections.id, { onDelete: SET_NULL_ACTION }),
-    repositoryId: uuid("repository_id").references(() => userGithubRepositories.id, { onDelete: SET_NULL_ACTION }),
+    connectionId: uuid("connection_id").references(
+      () => userGithubConnections.id,
+      { onDelete: SET_NULL_ACTION },
+    ),
+    repositoryId: uuid("repository_id").references(
+      () => userGithubRepositories.id,
+      { onDelete: SET_NULL_ACTION },
+    ),
     codeWorkspaceId: uuid("code_workspace_id").notNull(),
     conversationId: uuid("conversation_id").references(() => conversations.id, {
       onDelete: SET_NULL_ACTION,
@@ -158,7 +219,13 @@ export const githubPublishEvents = pgTable(
     pullRequestUrl: text("pull_request_url"),
     status: varchar(STATUS_COLUMN, { length: 24 }).notNull(),
     metadataJson: jsonb("metadata_json"),
-    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
-  (t) => [index("github_publish_events_workspace").on(t.workspaceId), index("github_publish_events_user").on(t.userId), index("github_publish_events_repository").on(t.repositoryId)],
+  (t) => [
+    index("github_publish_events_workspace").on(t.workspaceId),
+    index("github_publish_events_user").on(t.userId),
+    index("github_publish_events_repository").on(t.repositoryId),
+  ],
 );

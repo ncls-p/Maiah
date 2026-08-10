@@ -3,18 +3,33 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { fetchJson } from "@/lib/api-client";
-import type { AccessResource,TransferDestination } from "./access-console.access-member";
-import { INITIAL_TRANSFER_OPTIONS,type ResourceTransferOptions,type ResourceTransferPreview } from "./access-console.resource-transfer-preview";
+import type {
+  AccessResource,
+  TransferDestination,
+} from "./access-console.access-member";
+import {
+  INITIAL_TRANSFER_OPTIONS,
+  type ResourceTransferOptions,
+  type ResourceTransferPreview,
+} from "./access-console.resource-transfer-preview";
 
-export function useResourceTransfer(input: { workspaceId: string; loadResources: () => Promise<void> }) {
+export function useResourceTransfer(input: {
+  workspaceId: string;
+  loadResources: () => Promise<void>;
+}) {
   const { workspaceId, loadResources } = input;
   const t = useTranslations("access");
-  const [transferResource, setTransferResource] = useState<AccessResource | null>(null);
-  const [transferDestinations, setTransferDestinations] = useState<TransferDestination[]>([]);
+  const [transferResource, setTransferResource] =
+    useState<AccessResource | null>(null);
+  const [transferDestinations, setTransferDestinations] = useState<
+    TransferDestination[]
+  >([]);
   const [destinationQuery, setDestinationQuery] = useState("");
   const [targetWorkspaceId, setTargetWorkspaceId] = useState("");
-  const [transferOptions, setTransferOptions] = useState<ResourceTransferOptions>(INITIAL_TRANSFER_OPTIONS);
-  const [transferPreview, setTransferPreview] = useState<ResourceTransferPreview | null>(null);
+  const [transferOptions, setTransferOptions] =
+    useState<ResourceTransferOptions>(INITIAL_TRANSFER_OPTIONS);
+  const [transferPreview, setTransferPreview] =
+    useState<ResourceTransferPreview | null>(null);
   const [transferLoading, setTransferLoading] = useState(false);
   const [advancedTransfer, setAdvancedTransfer] = useState(false);
   async function openTransfer(resource: AccessResource) {
@@ -32,7 +47,9 @@ export function useResourceTransfer(input: { workspaceId: string; loadResources:
       }>(`/api/workspace/iam/resources/transfer?${params}`);
       setTransferDestinations(result.destinations);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t("transferLoadFailed"));
+      toast.error(
+        error instanceof Error ? error.message : t("transferLoadFailed"),
+      );
       setTransferResource(null);
     } finally {
       setTransferLoading(false);
@@ -45,21 +62,26 @@ export function useResourceTransfer(input: { workspaceId: string; loadResources:
     setTransferPreview(null);
     try {
       setTransferPreview(
-        await fetchJson<ResourceTransferPreview>("/api/workspace/iam/resources/transfer", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "preview",
-            sourceWorkspaceId: workspaceId,
-            targetWorkspaceId,
-            resourceType: transferResource.type,
-            resourceId: transferResource.id,
-            options: transferOptions,
-          }),
-        }),
+        await fetchJson<ResourceTransferPreview>(
+          "/api/workspace/iam/resources/transfer",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "preview",
+              sourceWorkspaceId: workspaceId,
+              targetWorkspaceId,
+              resourceType: transferResource.type,
+              resourceId: transferResource.id,
+              options: transferOptions,
+            }),
+          },
+        ),
       );
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t("transferPreviewFailed"));
+      toast.error(
+        error instanceof Error ? error.message : t("transferPreviewFailed"),
+      );
     } finally {
       setTransferLoading(false);
     }
@@ -98,5 +120,23 @@ export function useResourceTransfer(input: { workspaceId: string; loadResources:
       setTransferLoading(false);
     }
   }
-  return { transferResource, setTransferResource, transferDestinations, destinationQuery, setDestinationQuery, targetWorkspaceId, setTargetWorkspaceId, transferOptions, setTransferOptions, transferPreview, setTransferPreview, transferLoading, advancedTransfer, setAdvancedTransfer, openTransfer, previewTransfer, executeTransfer };
+  return {
+    transferResource,
+    setTransferResource,
+    transferDestinations,
+    destinationQuery,
+    setDestinationQuery,
+    targetWorkspaceId,
+    setTargetWorkspaceId,
+    transferOptions,
+    setTransferOptions,
+    transferPreview,
+    setTransferPreview,
+    transferLoading,
+    advancedTransfer,
+    setAdvancedTransfer,
+    openTransfer,
+    previewTransfer,
+    executeTransfer,
+  };
 }

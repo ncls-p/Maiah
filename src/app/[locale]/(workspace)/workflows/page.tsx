@@ -1,15 +1,23 @@
 "use client";
 
-import { ArrowRightIcon,PlusIcon,WorkflowIcon } from "lucide-react";
+import { ArrowRightIcon, PlusIcon, WorkflowIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useCallback,useEffect,useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { PageEmptyState } from "@/components/page-empty-state";
 import { PageLoading } from "@/components/page-loading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card,CardAction,CardContent,CardDescription,CardFooter,CardHeader,CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import type { WorkflowSummary } from "@/components/workflows/types";
 import { WorkspacePage } from "@/components/workspace-page";
 import { useWorkspace } from "@/hooks/use-workspace";
@@ -30,7 +38,9 @@ export default function WorkflowsPage() {
     setLoading(true);
     setLoadError(false);
     try {
-      const payload = await fetchJson<{ workflows: WorkflowSummary[] }>(`/api/workspace/workflows?workspaceId=${workspaceId}`);
+      const payload = await fetchJson<{ workflows: WorkflowSummary[] }>(
+        `/api/workspace/workflows?workspaceId=${workspaceId}`,
+      );
       setWorkflows(payload.workflows);
     } catch {
       setLoadError(true);
@@ -48,11 +58,14 @@ export default function WorkflowsPage() {
     if (!workspaceId || creating) return;
     setCreating(true);
     try {
-      const payload = await fetchJson<{ workflow: WorkflowSummary }>("/api/workspace/workflows", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ workspaceId, name: t("defaultName") }),
-      });
+      const payload = await fetchJson<{ workflow: WorkflowSummary }>(
+        "/api/workspace/workflows",
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ workspaceId, name: t("defaultName") }),
+        },
+      );
       router.push(`/workflows/${payload.workflow.id}`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t("loadFailed"));
@@ -69,7 +82,11 @@ export default function WorkflowsPage() {
       description={t("description")}
       width="wide"
       actions={
-        <Button type="button" onClick={() => void createWorkflow()} disabled={creating}>
+        <Button
+          type="button"
+          onClick={() => void createWorkflow()}
+          disabled={creating}
+        >
           <PlusIcon data-icon="inline-start" aria-hidden="true" />
           {creating ? t("creating") : t("create")}
         </Button>
@@ -78,13 +95,22 @@ export default function WorkflowsPage() {
       {isLoading ? (
         <PageLoading label={t("loading")} />
       ) : loadError ? (
-        <PageEmptyState icon={WorkflowIcon} title={t("loadFailed")} description={t("description")}>
+        <PageEmptyState
+          icon={WorkflowIcon}
+          title={t("loadFailed")}
+          description={t("description")}
+        >
           <Button variant="outline" onClick={() => void loadWorkflows()}>
             {t("refreshRuns")}
           </Button>
         </PageEmptyState>
       ) : workflows.length === 0 ? (
-        <PageEmptyState icon={WorkflowIcon} title={t("emptyTitle")} description={t("emptyDescription")} className="min-h-[24rem] border border-dashed border-border/80 bg-muted/20">
+        <PageEmptyState
+          icon={WorkflowIcon}
+          title={t("emptyTitle")}
+          description={t("emptyDescription")}
+          className="min-h-[24rem] border border-dashed border-border/80 bg-muted/20"
+        >
           <Button type="button" onClick={() => void createWorkflow()}>
             <PlusIcon data-icon="inline-start" aria-hidden="true" />
             {t("create")}
@@ -96,17 +122,31 @@ export default function WorkflowsPage() {
             <Card key={workflow.id} className="min-h-56">
               <CardHeader>
                 <CardTitle>{workflow.name}</CardTitle>
-                <CardDescription className="line-clamp-2">{workflow.description || t("editorDescription")}</CardDescription>
+                <CardDescription className="line-clamp-2">
+                  {workflow.description || t("editorDescription")}
+                </CardDescription>
                 <CardAction>
-                  <Badge variant={workflow.status === "active" ? "default" : "secondary"}>{workflow.status === "active" ? t("active") : t("draft")}</Badge>
+                  <Badge
+                    variant={
+                      workflow.status === "active" ? "default" : "secondary"
+                    }
+                  >
+                    {workflow.status === "active" ? t("active") : t("draft")}
+                  </Badge>
                 </CardAction>
               </CardHeader>
               <CardContent className="mt-auto flex items-center gap-2 text-xs text-muted-foreground">
                 <span>{t("version", { version: workflow.latestVersion })}</span>
-                {workflow.activeVersion ? <span>· API v{workflow.activeVersion}</span> : null}
+                {workflow.activeVersion ? (
+                  <span>· API v{workflow.activeVersion}</span>
+                ) : null}
               </CardContent>
               <CardFooter className="justify-end">
-                <Button type="button" variant="ghost" onClick={() => router.push(`/workflows/${workflow.id}`)}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => router.push(`/workflows/${workflow.id}`)}
+                >
                   {t("open")}
                   <ArrowRightIcon data-icon="inline-end" aria-hidden="true" />
                 </Button>

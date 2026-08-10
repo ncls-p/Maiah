@@ -14,7 +14,13 @@ export async function isOnboardingComplete(userId: string) {
     .where(eq(appSettings.key, onboardingKey(userId)))
     .limit(1);
 
-  return setting?.valueJson && typeof setting.valueJson === "object" && setting.valueJson !== null && "completed" in setting.valueJson && setting.valueJson.completed === true;
+  return (
+    setting?.valueJson &&
+    typeof setting.valueJson === "object" &&
+    setting.valueJson !== null &&
+    "completed" in setting.valueJson &&
+    setting.valueJson.completed === true
+  );
 }
 
 export async function markOnboardingComplete(userId: string) {

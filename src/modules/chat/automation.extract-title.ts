@@ -23,11 +23,30 @@ export function sanitizeTitle(value: string, fallback: string) {
   return (title || fallback).slice(0, 100);
 }
 
-export function createFallbackArtifacts(input: { userMessage: string; assistantText: string; fallbackTitle: string }) {
+export function createFallbackArtifacts(input: {
+  userMessage: string;
+  assistantText: string;
+  fallbackTitle: string;
+}) {
   const french = looksFrench(`${input.userMessage}\n${input.assistantText}`);
   return {
-    title: buildLocalTitle(input.userMessage) || sanitizeTitle(input.fallbackTitle, french ? "Nouvelle discussion" : "New chat"),
-    suggestions: french ? ["Peux-tu détailler les étapes ?", "Propose un cas pratique", "Quelles sont les alternatives ?"] : ["Can you break that into steps?", "Show me a concrete example", "What are the alternatives?"],
+    title:
+      buildLocalTitle(input.userMessage) ||
+      sanitizeTitle(
+        input.fallbackTitle,
+        french ? "Nouvelle discussion" : "New chat",
+      ),
+    suggestions: french
+      ? [
+          "Peux-tu détailler les étapes ?",
+          "Propose un cas pratique",
+          "Quelles sont les alternatives ?",
+        ]
+      : [
+          "Can you break that into steps?",
+          "Show me a concrete example",
+          "What are the alternatives?",
+        ],
   };
 }
 
@@ -43,7 +62,8 @@ function buildLocalTitle(value: string) {
   return words.join(" ").slice(0, 100);
 }
 
-const FRENCH_LANGUAGE_SIGNAL = /[àâçéèêëîïôùûüÿœæ]|\b(le|la|les|un|une|des|du|de|ce|cette|ces|pour|avec|sans|est|sont|peux|peut|comment|quoi|quel|quelle)\b/i;
+const FRENCH_LANGUAGE_SIGNAL =
+  /[àâçéèêëîïôùûüÿœæ]|\b(le|la|les|un|une|des|du|de|ce|cette|ces|pour|avec|sans|est|sont|peux|peut|comment|quoi|quel|quelle)\b/i;
 
 function looksFrench(value: string) {
   const candidate = value.trim();
@@ -60,7 +80,9 @@ export function ensureThreeSuggestions(values: unknown[], fallback: string[]) {
 }
 
 function looksLikeArtifactSuggestion(value: string) {
-  return !/^(?:input|constraint|task|goal|format|json schema|context|required shape)\b/i.test(value.trim());
+  return !/^(?:input|constraint|task|goal|format|json schema|context|required shape)\b/i.test(
+    value.trim(),
+  );
 }
 
 function sanitizeSuggestions(values: unknown[]) {

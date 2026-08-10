@@ -1,28 +1,103 @@
 import { encryptValue } from "@/lib/crypto";
-import { getActiveVersion, resolveProviderForVersion } from "@/modules/agent/use-cases";
+import {
+  getActiveVersion,
+  resolveProviderForVersion,
+} from "@/modules/agent/use-cases";
 import type { AssistantContinuationClaim } from "@/modules/chat/continuation";
 import { claimAssistantContinuation } from "@/modules/chat/continuation";
 import type { ChatAttachment } from "@/modules/chat/attachments";
+import {
+  forkSharedConversation,
+  getConversationAccess,
+} from "@/modules/chat/conversation-sharing";
+import {
+  DEFAULT_EPHEMERAL_TTL_MINUTES,
+  ephemeralExpiresAt,
+} from "@/modules/chat/ephemeral-retention";
 import { db } from "@/server/infrastructure/db";
-import { conversations, messageParts, messages, toolInvocations } from "@/server/infrastructure/db/schema";
+import {
+  conversations,
+  messageParts,
+  messages,
+  toolInvocations,
+} from "@/server/infrastructure/db/schema";
 import { and, eq, gt, inArray, ne } from "drizzle-orm";
 
-import { findUserMessageForResend, isFirstUserMessageInConversation, mergeUserFilePartMetadata } from "./route-support";
+import {
+  findUserMessageForResend,
+  isFirstUserMessageInConversation,
+  mergeUserFilePartMetadata,
+} from "./route-support";
 import type { ChatAgentRow } from "./route.execution-context";
 
-type RejectRequest = (status: number, reason: string, body: unknown, context?: Record<string, unknown>) => Response;
+type RejectRequest = (
+  status: number,
+  reason: string,
+  body: unknown,
+  context?: Record<string, unknown>,
+) => Response;
 
-export async function prepareChatConversation(input: { agent: ChatAgentRow; actorUserId: string; agentId: string; content: string; existingConversationId?: string | null; resendFromMessageId?: string | null; continueFromMessageId?: string | null; codeWorkspaceAttachment: unknown; messageAttachments: ChatAttachment[]; rejectChatRequest: RejectRequest }) {
-  const { agent, actorUserId, agentId, content, existingConversationId, resendFromMessageId, continueFromMessageId, codeWorkspaceAttachment, messageAttachments, rejectChatRequest } = input;
+export async function prepareChatConversation(input: {
+  agent: ChatAgentRow;
+  actorUserId: string;
+  agentId: string;
+  content: string;
+  existingConversationId?: string | null;
+  ephemeral?: boolean;
+  ephemeralTtlMinutes?: number;
+  resendFromMessageId?: string | null;
+  continueFromMessageId?: string | null;
+  codeWorkspaceAttachment: unknown;
+  messageAttachments: ChatAttachment[];
+  rejectChatRequest: RejectRequest;
+}) {
+  const {
+    agent,
+    actorUserId,
+    agentId,
+    content,
+    existingConversationId,
+    ephemeral = false,
+    ephemeralTtlMinutes,
+    resendFromMessageId,
+    continueFromMessageId,
+    codeWorkspaceAttachment,
+    messageAttachments,
+    rejectChatRequest,
+  } = input;
   let conversation: typeof conversations.$inferSelect | null = null;
   let createdConversation = false;
   if (existingConversationId) {
-    const [existing] = await db
-      .select()
-      .from(conversations)
-      .where(and(eq(conversations.id, existingConversationId), eq(conversations.workspaceId, agent.workspaceId), eq(conversations.userId, actorUserId), eq(conversations.status, "active")))
-      .limit(1);
-    conversation = existing ?? null;
+    const access = await getConversationAccess(
+      existingConversationId,
+      actorUserId,
+    );
+    const existing = access?.conversation;
+    if (
+      existing &&
+      existing.workspaceId === agent.workspaceId &&
+      existing.agentId === agentId &&
+      (!existing.expiresAt || existing.expiresAt > new Date())
+    ) {
+      if (access.role === "recipient") {
+        if (
+          !access.canContinue ||
+          resendFromMessageId ||
+          continueFromMessageId
+        ) {
+          return rejectChatRequest(403, "conversation_read_only", {
+            error: "This shared conversation is read-only",
+          });
+        }
+        conversation =
+          access.continuationMode === "fork"
+            ? await forkSharedConversation(existing, actorUserId)
+            : existing;
+        createdConversation = access.continuationMode === "fork";
+      } else {
+        conversation = existing;
+      }
+    }
 
     if (!conversation && (resendFromMessageId || continueFromMessageId)) {
       return rejectChatRequest(
@@ -59,7 +134,12 @@ export async function prepareChatConversation(input: { agent: ChatAgentRow; acto
   const version = await getActiveVersion(agentId);
 
   if (!version) {
-    return rejectChatRequest(400, "no_active_agent_version", { error: "No active agent version configured" }, { agentId, workspaceId: agent.workspaceId, userId: actorUserId });
+    return rejectChatRequest(
+      400,
+      "no_active_agent_version",
+      { error: "No active agent version configured" },
+      { agentId, workspaceId: agent.workspaceId, userId: actorUserId },
+    );
   }
 
   const providerConfig = await resolveProviderForVersion(version);
@@ -78,6 +158,8 @@ export async function prepareChatConversation(input: { agent: ChatAgentRow; acto
   }
 
   if (!conversation) {
+    const retentionMinutes =
+      ephemeralTtlMinutes ?? DEFAULT_EPHEMERAL_TTL_MINUTES;
     const [newConversation] = await db
       .insert(conversations)
       .values({
@@ -87,10 +169,26 @@ export async function prepareChatConversation(input: { agent: ChatAgentRow; acto
         userId: actorUserId,
         title: content.slice(0, 100),
         status: "active",
+        isEphemeral: ephemeral,
+        ephemeralTtlMinutes: retentionMinutes,
+        expiresAt: ephemeral ? ephemeralExpiresAt(retentionMinutes) : null,
       })
       .returning();
     conversation = newConversation;
     createdConversation = true;
+  } else if (conversation.isEphemeral) {
+    const retentionMinutes =
+      ephemeralTtlMinutes ?? conversation.ephemeralTtlMinutes;
+    const [refreshedConversation] = await db
+      .update(conversations)
+      .set({
+        ephemeralTtlMinutes: retentionMinutes,
+        expiresAt: ephemeralExpiresAt(retentionMinutes),
+        updatedAt: new Date(),
+      })
+      .where(eq(conversations.id, conversation.id))
+      .returning();
+    conversation = refreshedConversation;
   }
 
   // Existing conversations can reference archived/deleted versions; fail safely.
@@ -109,7 +207,10 @@ export async function prepareChatConversation(input: { agent: ChatAgentRow; acto
     );
   }
 
-  let continuationClaim: Extract<AssistantContinuationClaim, { status: "claimed" }> | null = null;
+  let continuationClaim: Extract<
+    AssistantContinuationClaim,
+    { status: "claimed" }
+  > | null = null;
   if (continueFromMessageId) {
     const claim = await claimAssistantContinuation({
       conversationId: conversation.id,
@@ -123,7 +224,10 @@ export async function prepareChatConversation(input: { agent: ChatAgentRow; acto
         status,
         `continuation_${claim.status}`,
         {
-          error: claim.status === "already_streaming" ? "This response is already streaming" : "Only the latest assistant response can be continued",
+          error:
+            claim.status === "already_streaming"
+              ? "This response is already streaming"
+              : "Only the latest assistant response can be continued",
         },
         {
           agentId,
@@ -168,25 +272,47 @@ export async function prepareChatConversation(input: { agent: ChatAgentRow; acto
       const existingFileParts = await tx
         .select({ metadataJson: messageParts.metadataJson })
         .from(messageParts)
-        .where(and(eq(messageParts.messageId, existingUserMessage.id), eq(messageParts.type, "file")))
+        .where(
+          and(
+            eq(messageParts.messageId, existingUserMessage.id),
+            eq(messageParts.type, "file"),
+          ),
+        )
         .orderBy(messageParts.sortOrder);
       const messagesToReplace = await tx
         .select({ id: messages.id })
         .from(messages)
-        .where(and(eq(messages.conversationId, conversation.id), ne(messages.id, existingUserMessage.id), gt(messages.createdAt, existingUserMessage.createdAt)));
-      const messageIdsToReplace = messagesToReplace.map((message) => message.id);
+        .where(
+          and(
+            eq(messages.conversationId, conversation.id),
+            ne(messages.id, existingUserMessage.id),
+            gt(messages.createdAt, existingUserMessage.createdAt),
+          ),
+        );
+      const messageIdsToReplace = messagesToReplace.map(
+        (message) => message.id,
+      );
       if (messageIdsToReplace.length > 0) {
-        await tx.delete(toolInvocations).where(inArray(toolInvocations.messageId, messageIdsToReplace));
-        await tx.delete(messages).where(inArray(messages.id, messageIdsToReplace));
+        await tx
+          .delete(toolInvocations)
+          .where(inArray(toolInvocations.messageId, messageIdsToReplace));
+        await tx
+          .delete(messages)
+          .where(inArray(messages.id, messageIdsToReplace));
       }
-      await tx.delete(messageParts).where(eq(messageParts.messageId, existingUserMessage.id));
+      await tx
+        .delete(messageParts)
+        .where(eq(messageParts.messageId, existingUserMessage.id));
       await tx.insert(messageParts).values({
         messageId: existingUserMessage.id,
         type: "text",
         contentEncrypted: encryptedContent,
         sortOrder: 0,
       });
-      const requestedFileParts = [...(codeWorkspaceAttachment ? [codeWorkspaceAttachment] : []), ...messageAttachments];
+      const requestedFileParts = [
+        ...(codeWorkspaceAttachment ? [codeWorkspaceAttachment] : []),
+        ...messageAttachments,
+      ];
       const userFileParts = mergeUserFilePartMetadata(
         existingFileParts.map((part) => part.metadataJson),
         requestedFileParts,
@@ -221,7 +347,10 @@ export async function prepareChatConversation(input: { agent: ChatAgentRow; acto
       sortOrder: 0,
     });
     const chatAttachments = messageAttachments;
-    const userFileParts = [...(codeWorkspaceAttachment ? [codeWorkspaceAttachment] : []), ...chatAttachments];
+    const userFileParts = [
+      ...(codeWorkspaceAttachment ? [codeWorkspaceAttachment] : []),
+      ...chatAttachments,
+    ];
     for (const [index, metadata] of userFileParts.entries()) {
       await db.insert(messageParts).values({
         messageId: newUserMessage.id,
@@ -232,8 +361,15 @@ export async function prepareChatConversation(input: { agent: ChatAgentRow; acto
     }
   }
   const userMessageId = userMessage?.id;
-  await db.update(conversations).set({ updatedAt: new Date(), sidebarOrder: null }).where(eq(conversations.id, conversation.id));
-  const shouldRegenerateConversationTitle = createdConversation || (!continueFromMessageId && resendFromMessageId ? await isFirstUserMessageInConversation(conversation.id, userMessage!.id) : false);
+  await db
+    .update(conversations)
+    .set({ updatedAt: new Date(), sidebarOrder: null })
+    .where(eq(conversations.id, conversation.id));
+  const shouldRegenerateConversationTitle =
+    createdConversation ||
+    (!continueFromMessageId && resendFromMessageId
+      ? await isFirstUserMessageInConversation(conversation.id, userMessage!.id)
+      : false);
 
   const assistantMessage = continuationClaim
     ? continuationClaim.message
@@ -251,5 +387,16 @@ export async function prepareChatConversation(input: { agent: ChatAgentRow; acto
       )[0];
   const assistantMessageId = assistantMessage.id;
 
-  return { conversation, createdConversation, version, providerConfig, continuationClaim, userMessage, assistantMessage, shouldRegenerateConversationTitle, userMessageId, assistantMessageId };
+  return {
+    conversation,
+    createdConversation,
+    version,
+    providerConfig,
+    continuationClaim,
+    userMessage,
+    assistantMessage,
+    shouldRegenerateConversationTitle,
+    userMessageId,
+    assistantMessageId,
+  };
 }

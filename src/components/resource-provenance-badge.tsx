@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2Icon,FolderKanbanIcon,UserIcon } from "lucide-react";
+import { Building2Icon, FolderKanbanIcon, UserIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Badge } from "@/components/ui/badge";
@@ -11,9 +11,20 @@ export type ResourceProvenance = {
   ownerName: string;
 };
 
-export function ResourceProvenanceBadge({ provenance, className }: { provenance: ResourceProvenance; className?: string }) {
+export function ResourceProvenanceBadge({
+  provenance,
+  className,
+}: {
+  provenance: ResourceProvenance;
+  className?: string;
+}) {
   const t = useTranslations("resourceProvenance");
-  const Icon = provenance.scope === "user" ? UserIcon : provenance.scope === "organization" ? Building2Icon : FolderKanbanIcon;
+  const Icon =
+    provenance.scope === "user"
+      ? UserIcon
+      : provenance.scope === "organization"
+        ? Building2Icon
+        : FolderKanbanIcon;
   const scopeLabel = t(provenance.scope);
 
   return (

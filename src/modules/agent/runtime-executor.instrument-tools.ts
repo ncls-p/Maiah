@@ -1,10 +1,22 @@
 import { type AgentProgressModelHistoryKind } from "@/modules/agent/progress-model-history";
 import { appendAgentRunStep } from "@/modules/agent/run-use-cases";
-import { projectToolPayloadForDisplay,safeToolErrorMessage } from "@/modules/tool/safe-payload";
+import {
+  projectToolPayloadForDisplay,
+  safeToolErrorMessage,
+} from "@/modules/tool/safe-payload";
 import { type ToolSet } from "ai";
-import { AgentExecutionError,SuccessfulToolResult,delegationFailureModelMessage } from "./runtime-executor.heartbeat-ms";
+import {
+  AgentExecutionError,
+  SuccessfulToolResult,
+  delegationFailureModelMessage,
+} from "./runtime-executor.heartbeat-ms";
 
-export function instrumentTools(tools: ToolSet, runId: string, allocateSequence: () => number, onToolSuccess?: (result: SuccessfulToolResult) => void) {
+export function instrumentTools(
+  tools: ToolSet,
+  runId: string,
+  allocateSequence: () => number,
+  onToolSuccess?: (result: SuccessfulToolResult) => void,
+) {
   const instrumented: ToolSet = {};
   for (const [name, definition] of Object.entries(tools)) {
     const executable = definition as typeof definition & {
@@ -41,7 +53,8 @@ export function instrumentTools(tools: ToolSet, runId: string, allocateSequence:
             status: "failed",
             name,
             inputPreview: args[0],
-            errorMessage: error instanceof Error ? error.message : String(error),
+            errorMessage:
+              error instanceof Error ? error.message : String(error),
             completedAt: new Date(),
           });
           throw error;
@@ -57,7 +70,10 @@ export function truncateDelegationResult(value: string, maxChars: number) {
   return `${value.slice(0, maxChars)}\n\n[Delegated result truncated]`;
 }
 
-export function toolResultRecoveryContext(toolResults: SuccessfulToolResult[], maxChars: number) {
+export function toolResultRecoveryContext(
+  toolResults: SuccessfulToolResult[],
+  maxChars: number,
+) {
   const context = toolResults
     .map((toolResult, index) => {
       const projected = projectToolPayloadForDisplay(toolResult.output, {
@@ -66,7 +82,10 @@ export function toolResultRecoveryContext(toolResults: SuccessfulToolResult[], m
         maxObjectKeys: 200,
         maxStringLength: maxChars,
       });
-      return [`Result ${index + 1} (${toolResult.toolName}):`, typeof projected === "string" ? projected : JSON.stringify(projected)].join("\n");
+      return [
+        `Result ${index + 1} (${toolResult.toolName}):`,
+        typeof projected === "string" ? projected : JSON.stringify(projected),
+      ].join("\n");
     })
     .join("\n\n");
   if (context.length <= maxChars) return context;
@@ -92,7 +111,10 @@ function projectedToolOutputText(value: unknown): string {
   return JSON.stringify(record);
 }
 
-export function deterministicToolResultFallback(toolResults: SuccessfulToolResult[], maxChars: number) {
+export function deterministicToolResultFallback(
+  toolResults: SuccessfulToolResult[],
+  maxChars: number,
+) {
   const text = toolResults
     .map((toolResult) =>
       projectedToolOutputText(
@@ -113,7 +135,12 @@ export function isTimeoutFailure(error: unknown) {
   let current = error;
   for (let depth = 0; depth < 5 && current; depth += 1) {
     if (current instanceof Error) {
-      if (current.name === "TimeoutError" || /(?:aborted|failed|exceeded|timed? out).*timeout|timeout.*(?:aborted|failed|exceeded)/i.test(current.message)) {
+      if (
+        current.name === "TimeoutError" ||
+        /(?:aborted|failed|exceeded|timed? out).*timeout|timeout.*(?:aborted|failed|exceeded)/i.test(
+          current.message,
+        )
+      ) {
         return true;
       }
       current = current.cause;
@@ -132,15 +159,29 @@ export function safeAgentExecutionDetail(error: unknown, fallback: string) {
 }
 
 export function modelSafeDelegationError(error: unknown, childRunId?: string) {
-  return new AgentExecutionError(delegationFailureModelMessage, error instanceof AgentExecutionError ? error.code : "AGENT_DELEGATION_FAILED", error instanceof AgentExecutionError ? (error.runId ?? childRunId) : childRunId, safeAgentExecutionDetail(error, "Delegated task failed"));
+  return new AgentExecutionError(
+    delegationFailureModelMessage,
+    error instanceof AgentExecutionError
+      ? error.code
+      : "AGENT_DELEGATION_FAILED",
+    error instanceof AgentExecutionError
+      ? (error.runId ?? childRunId)
+      : childRunId,
+    safeAgentExecutionDetail(error, "Delegated task failed"),
+  );
 }
 
-export function progressModelHistoryMetadata(input: { depth: number; isDelegation: boolean; phase: "start" | "success" | "error" }): {
+export function progressModelHistoryMetadata(input: {
+  depth: number;
+  isDelegation: boolean;
+  phase: "start" | "success" | "error";
+}): {
   modelHistoryKind?: AgentProgressModelHistoryKind;
 } {
   if (input.depth > 0) return { modelHistoryKind: "visual-only" };
   if (!input.isDelegation) return {};
   return {
-    modelHistoryKind: input.phase === "success" ? "delegation-result" : "visual-only",
+    modelHistoryKind:
+      input.phase === "success" ? "delegation-result" : "visual-only",
   };
 }

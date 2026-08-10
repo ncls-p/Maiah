@@ -1,8 +1,10 @@
 import type { OpenAICompatibleApiRoute } from "@/lib/openai-compatible-api";
 
-export type ProviderKind = "openai-compatible" | "dragonfly" | "vercel-ai-gateway" | "native";
+export type ProviderKind =
+  "openai-compatible" | "dragonfly" | "vercel-ai-gateway" | "native";
 
-export type ProviderAuthType = "bearer" | "x-api-key" | "custom-header" | "gateway";
+export type ProviderAuthType =
+  "bearer" | "x-api-key" | "custom-header" | "gateway";
 
 export type SafeProvider = {
   id: string;
@@ -51,7 +53,18 @@ export type ProviderModel = {
   enabled: boolean;
 };
 
-export type ProviderModelUpdate = Partial<Pick<ProviderModel, "displayName" | "capabilitiesJson" | "inputTokenCost" | "outputTokenCost" | "imageGenerationConfigJson" | "sustainabilityConfigJson" | "enabled">>;
+export type ProviderModelUpdate = Partial<
+  Pick<
+    ProviderModel,
+    | "displayName"
+    | "capabilitiesJson"
+    | "inputTokenCost"
+    | "outputTokenCost"
+    | "imageGenerationConfigJson"
+    | "sustainabilityConfigJson"
+    | "enabled"
+  >
+>;
 
 export type DiscoveredModel = {
   modelId: string;

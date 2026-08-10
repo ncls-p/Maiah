@@ -2,8 +2,16 @@ import { createHash } from "node:crypto";
 import path from "node:path";
 
 import { storage } from "@/server/infrastructure/storage";
-import { assertSafeProjectId,migrateLegacyProjectToObjectStorage } from "./storage.assert-safe-project-id";
-import { CodeWorkspaceArtifact,CodeWorkspaceFileSummary,CodeWorkspaceMetadata,metadataObjectKey } from "./storage.code-workspace-file-summary";
+import {
+  assertSafeProjectId,
+  migrateLegacyProjectToObjectStorage,
+} from "./storage.assert-safe-project-id";
+import {
+  CodeWorkspaceArtifact,
+  CodeWorkspaceFileSummary,
+  CodeWorkspaceMetadata,
+  metadataObjectKey,
+} from "./storage.code-workspace-file-summary";
 
 const CONTENT_TYPES_BY_EXTENSION = new Map<string, string>([
   [".html", "text/html; charset=utf-8"],
@@ -73,7 +81,11 @@ const CONTENT_TYPES_BY_EXTENSION = new Map<string, string>([
 ]);
 
 export function contentTypeForPath(projectPath: string) {
-  return CONTENT_TYPES_BY_EXTENSION.get(path.posix.extname(projectPath).toLowerCase()) ?? "application/octet-stream";
+  return (
+    CONTENT_TYPES_BY_EXTENSION.get(
+      path.posix.extname(projectPath).toLowerCase(),
+    ) ?? "application/octet-stream"
+  );
 }
 
 export function hashBytes(bytes: Uint8Array) {
@@ -99,14 +111,20 @@ export function findRootFile(files: CodeWorkspaceFileSummary[]) {
 }
 
 export async function saveMetadata(metadata: CodeWorkspaceMetadata) {
-  await storage.upload(metadataObjectKey(metadata.id), JSON.stringify(metadata, null, 2), "application/json; charset=utf-8");
+  await storage.upload(
+    metadataObjectKey(metadata.id),
+    JSON.stringify(metadata, null, 2),
+    "application/json; charset=utf-8",
+  );
 }
 
 export async function getCodeWorkspace(projectId: string) {
   assertSafeProjectId(projectId);
   try {
     const bytes = await storage.download(metadataObjectKey(projectId));
-    return JSON.parse(Buffer.from(bytes).toString("utf8")) as CodeWorkspaceMetadata;
+    return JSON.parse(
+      Buffer.from(bytes).toString("utf8"),
+    ) as CodeWorkspaceMetadata;
   } catch {
     const migrated = await migrateLegacyProjectToObjectStorage(projectId);
     if (migrated) return migrated;
@@ -114,7 +132,10 @@ export async function getCodeWorkspace(projectId: string) {
   }
 }
 
-export function codeWorkspaceArtifact(metadata: CodeWorkspaceMetadata, message?: string): CodeWorkspaceArtifact {
+export function codeWorkspaceArtifact(
+  metadata: CodeWorkspaceMetadata,
+  message?: string,
+): CodeWorkspaceArtifact {
   const rootFile = metadata.rootFile;
   return {
     kind: "code_workspace_artifact",
@@ -122,7 +143,9 @@ export function codeWorkspaceArtifact(metadata: CodeWorkspaceMetadata, message?:
     title: metadata.title,
     rootFile,
     version: metadata.version,
-    previewUrl: rootFile ? `/api/workspace/code-projects/${metadata.id}/preview/${metadata.previewToken}/${rootFile}` : null,
+    previewUrl: rootFile
+      ? `/api/workspace/code-projects/${metadata.id}/preview/${metadata.previewToken}/${rootFile}`
+      : null,
     downloadUrl: `/api/workspace/code-projects/${metadata.id}/download`,
     files: [...metadata.files].sort((a, b) => a.path.localeCompare(b.path)),
     message,

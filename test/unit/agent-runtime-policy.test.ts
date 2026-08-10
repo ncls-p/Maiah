@@ -2,16 +2,16 @@ import { agentRuntimePolicy,createRuntimeDeadline,resolveAgentRuntimeLimits } fr
 import { describe,expect,it } from "vitest";
 
 describe("agent runtime policy", () => {
-  it("bounds tool calls, steps, and output tokens", () => {
+  it("keeps configured tool calls and output tokens without application caps", () => {
     expect(
       resolveAgentRuntimeLimits({
         maxToolCalls: 9_999,
         maxOutputTokens: 9_999_999,
       }),
     ).toEqual({
-      maxToolCalls: agentRuntimePolicy.maxToolCalls,
-      maxSteps: agentRuntimePolicy.maxToolCalls + agentRuntimePolicy.stepOverhead,
-      maxOutputTokens: agentRuntimePolicy.maxOutputTokens,
+      maxToolCalls: 9_999,
+      maxSteps: 9_999 + agentRuntimePolicy.stepOverhead,
+      maxOutputTokens: 9_999_999,
     });
   });
 

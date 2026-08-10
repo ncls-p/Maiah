@@ -1,17 +1,48 @@
 import { Button } from "@/components/ui/button";
-import { DropdownMenu,DropdownMenuContent,DropdownMenuItem,DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { Select,SelectContent,SelectItem,SelectTrigger,SelectValue } from "@/components/ui/select";
-import { BookMarkedIcon,PencilIcon,PlusIcon,SearchIcon } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { BookMarkedIcon, PencilIcon, PlusIcon, SearchIcon } from "lucide-react";
 import { SKILLS_PAGE_SIZE } from "./skill-manager.button-type";
 import type { SkillManagerViewModel } from "./skill-manager.skill-manager.view";
-export function SkillManagerSection2({ model }: { model: SkillManagerViewModel }) {
-  const { filteredSkills, query, scopeFilter, setEditorState, setInstallOpen, setQuery, setScopeFilter, setSourceFilter, setVisibleCount, sourceFilter, t, visibleCount } = model;
+export function SkillManagerSection2({
+  model,
+}: {
+  model: SkillManagerViewModel;
+}) {
+  const {
+    filteredSkills,
+    query,
+    scopeFilter,
+    setEditorState,
+    setInstallOpen,
+    setQuery,
+    setScopeFilter,
+    setSourceFilter,
+    setVisibleCount,
+    sourceFilter,
+    t,
+    visibleCount,
+  } = model;
   return (
     <div className="rounded-2xl border border-border/65 bg-card/85 p-3 shadow-[var(--surface-shadow)]">
       <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
         <div className="relative min-w-0 flex-1">
-          <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+          <SearchIcon
+            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+            aria-hidden="true"
+          />
           <Input
             type="search"
             value={query}
@@ -32,12 +63,17 @@ export function SkillManagerSection2({ model }: { model: SkillManagerViewModel }
               setVisibleCount(SKILLS_PAGE_SIZE);
             }}
           >
-            <SelectTrigger className="h-10 w-full sm:w-40" aria-label={t("scopeFilter")}>
+            <SelectTrigger
+              className="h-10 w-full sm:w-40"
+              aria-label={t("scopeFilter")}
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">{t("scopeAll")}</SelectItem>
-              <SelectItem value="organization">{t("scopeOrganization")}</SelectItem>
+              <SelectItem value="organization">
+                {t("scopeOrganization")}
+              </SelectItem>
               <SelectItem value="private">{t("scopePrivate")}</SelectItem>
             </SelectContent>
           </Select>
@@ -48,7 +84,10 @@ export function SkillManagerSection2({ model }: { model: SkillManagerViewModel }
               setVisibleCount(SKILLS_PAGE_SIZE);
             }}
           >
-            <SelectTrigger className="h-10 w-full sm:w-40" aria-label={t("sourceFilter")}>
+            <SelectTrigger
+              className="h-10 w-full sm:w-40"
+              aria-label={t("sourceFilter")}
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -66,11 +105,19 @@ export function SkillManagerSection2({ model }: { model: SkillManagerViewModel }
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuItem onSelect={() => window.requestAnimationFrame(() => setInstallOpen(true))}>
+            <DropdownMenuItem
+              onSelect={() =>
+                window.requestAnimationFrame(() => setInstallOpen(true))
+              }
+            >
               <BookMarkedIcon aria-hidden="true" />
               {t("installTitle")}
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => window.requestAnimationFrame(() => setEditorState({}))}>
+            <DropdownMenuItem
+              onSelect={() =>
+                window.requestAnimationFrame(() => setEditorState({}))
+              }
+            >
               <PencilIcon aria-hidden="true" />
               {t("createFromScratch")}
             </DropdownMenuItem>

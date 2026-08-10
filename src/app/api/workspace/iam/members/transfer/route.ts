@@ -1,8 +1,13 @@
-import { NextRequest,NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { handleRoute } from "@/lib/route-handler";
-import { executeMemberTransfer,listMemberTransferDestinations,MEMBER_TRANSFER_MODES,previewMemberTransfer } from "@/modules/iam/member-transfer";
+import {
+  executeMemberTransfer,
+  listMemberTransferDestinations,
+  MEMBER_TRANSFER_MODES,
+  previewMemberTransfer,
+} from "@/modules/iam/member-transfer";
 import { expectedIamError } from "../../transfer-route-support";
 
 const transferSchema = z.discriminatedUnion("action", [
@@ -33,7 +38,10 @@ export async function GET(req: NextRequest) {
         sourceWorkspaceId: req.nextUrl.searchParams.get("sourceWorkspaceId"),
       });
       if (!parsed.success) {
-        return NextResponse.json({ error: "Invalid source project" }, { status: 400 });
+        return NextResponse.json(
+          { error: "Invalid source project" },
+          { status: 400 },
+        );
       }
       return NextResponse.json({
         destinations: await listMemberTransferDestinations({
@@ -56,7 +64,10 @@ export async function POST(req: NextRequest) {
     async ({ session }) => {
       const parsed = transferSchema.safeParse(await req.json());
       if (!parsed.success) {
-        return NextResponse.json({ error: "Invalid member transfer", details: parsed.error.issues }, { status: 400 });
+        return NextResponse.json(
+          { error: "Invalid member transfer", details: parsed.error.issues },
+          { status: 400 },
+        );
       }
       if (parsed.data.action === "preview") {
         return NextResponse.json(

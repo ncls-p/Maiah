@@ -1,4 +1,7 @@
-import { API_KEY_SCOPE_CATALOG,API_KEY_SCOPE_PERMISSIONS } from "@/modules/api-keys/scopes";
+import {
+  API_KEY_SCOPE_CATALOG,
+  API_KEY_SCOPE_PERMISSIONS,
+} from "@/modules/api-keys/scopes";
 export const openApiSchemasPart1 = {
   Error: {
     type: "object",
@@ -12,11 +15,21 @@ export const openApiSchemasPart1 = {
   ApiTokenScope: {
     type: "string",
     enum: API_KEY_SCOPE_PERMISSIONS,
-    description: API_KEY_SCOPE_CATALOG.map(({ permission, risk }) => `${permission} (${risk})`).join(", "),
+    description: API_KEY_SCOPE_CATALOG.map(
+      ({ permission, risk }) => `${permission} (${risk})`,
+    ).join(", "),
   },
   ApiToken: {
     type: "object",
-    required: ["id", "workspaceId", "name", "keyPrefix", "scopes", "createdById", "createdAt"],
+    required: [
+      "id",
+      "workspaceId",
+      "name",
+      "keyPrefix",
+      "scopes",
+      "createdById",
+      "createdAt",
+    ],
     properties: {
       id: { type: "string", format: "uuid" },
       workspaceId: { type: "string", format: "uuid" },
@@ -70,7 +83,13 @@ export const openApiSchemasPart1 = {
           message: { type: "string" },
           type: {
             type: "string",
-            enum: ["invalid_request_error", "authentication_error", "permission_error", "rate_limit_error", "server_error"],
+            enum: [
+              "invalid_request_error",
+              "authentication_error",
+              "permission_error",
+              "rate_limit_error",
+              "server_error",
+            ],
           },
           param: { type: ["string", "null"] },
           code: { type: ["string", "null"] },

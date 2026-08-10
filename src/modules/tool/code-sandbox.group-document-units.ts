@@ -1,4 +1,8 @@
-import { DocumentExplorerUnit,maxDocumentExplorerChunkChars,minDocumentExplorerChunkChars } from "./code-sandbox.failed-sandbox-result";
+import {
+  DocumentExplorerUnit,
+  maxDocumentExplorerChunkChars,
+  minDocumentExplorerChunkChars,
+} from "./code-sandbox.failed-sandbox-result";
 
 function markdownHeadingUnits(markdown: string): DocumentExplorerUnit[] {
   const headings = Array.from(markdown.matchAll(/^#{1,3}\s+(.+)$/gm));
@@ -24,7 +28,10 @@ function markdownHeadingUnits(markdown: string): DocumentExplorerUnit[] {
   return units;
 }
 
-function splitDocumentUnit(unit: DocumentExplorerUnit, targetChars: number): DocumentExplorerUnit[] {
+function splitDocumentUnit(
+  unit: DocumentExplorerUnit,
+  targetChars: number,
+): DocumentExplorerUnit[] {
   if (unit.text.length <= targetChars) return [unit];
   const parts: DocumentExplorerUnit[] = [];
   let remaining = unit.text;
@@ -51,8 +58,13 @@ function splitDocumentUnit(unit: DocumentExplorerUnit, targetChars: number): Doc
   return parts;
 }
 
-export function groupDocumentUnits(markdown: string, maxChunks: number): { groups: DocumentExplorerUnit[][]; complete: boolean } {
-  const independentlyBrowsableUnits = markdownHeadingUnits(markdown).flatMap((unit) => splitDocumentUnit(unit, maxDocumentExplorerChunkChars));
+export function groupDocumentUnits(
+  markdown: string,
+  maxChunks: number,
+): { groups: DocumentExplorerUnit[][]; complete: boolean } {
+  const independentlyBrowsableUnits = markdownHeadingUnits(markdown).flatMap(
+    (unit) => splitDocumentUnit(unit, maxDocumentExplorerChunkChars),
+  );
   if (independentlyBrowsableUnits.length <= maxChunks) {
     return {
       groups: independentlyBrowsableUnits.map((unit) => [unit]),
@@ -60,8 +72,16 @@ export function groupDocumentUnits(markdown: string, maxChunks: number): { group
     };
   }
 
-  const targetChars = Math.min(maxDocumentExplorerChunkChars, Math.max(minDocumentExplorerChunkChars, Math.ceil((markdown.length * 1.15) / Math.max(maxChunks, 1))));
-  const units = markdownHeadingUnits(markdown).flatMap((unit) => splitDocumentUnit(unit, targetChars));
+  const targetChars = Math.min(
+    maxDocumentExplorerChunkChars,
+    Math.max(
+      minDocumentExplorerChunkChars,
+      Math.ceil((markdown.length * 1.15) / Math.max(maxChunks, 1)),
+    ),
+  );
+  const units = markdownHeadingUnits(markdown).flatMap((unit) =>
+    splitDocumentUnit(unit, targetChars),
+  );
   const groups: DocumentExplorerUnit[][] = [];
   let current: DocumentExplorerUnit[] = [];
   let currentChars = 0;

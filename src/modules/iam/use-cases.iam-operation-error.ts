@@ -1,9 +1,16 @@
-import { and,eq,isNull } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 
 import { createWorkspace } from "@/modules/workspace/use-cases";
-import { authorization,canDelegatePermissionSet } from "@/server/domain/services/authorization";
+import {
+  authorization,
+  canDelegatePermissionSet,
+} from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
-import { organizations,roles,workspaces } from "@/server/infrastructure/db/schema";
+import {
+  organizations,
+  roles,
+  workspaces,
+} from "@/server/infrastructure/db/schema";
 
 export class IamOperationError extends Error {
   constructor(
@@ -35,13 +42,27 @@ export function customRoleName(displayName: string) {
 }
 
 export function rolePermissions(role: { permissionsJson: unknown }) {
-  return Array.isArray(role.permissionsJson) ? (role.permissionsJson as string[]) : [];
+  return Array.isArray(role.permissionsJson)
+    ? (role.permissionsJson as string[])
+    : [];
 }
 
-export async function requireDelegablePermissions(input: { actorUserId: string; resourceType: ScopeType; resourceId: string; permissions: string[] }) {
-  const actorPermissions = await authorization.listPermissions({ principalType: "user", principalId: input.actorUserId }, input.resourceType, input.resourceId);
+export async function requireDelegablePermissions(input: {
+  actorUserId: string;
+  resourceType: ScopeType;
+  resourceId: string;
+  permissions: string[];
+}) {
+  const actorPermissions = await authorization.listPermissions(
+    { principalType: "user", principalId: input.actorUserId },
+    input.resourceType,
+    input.resourceId,
+  );
   if (!canDelegatePermissionSet(actorPermissions, input.permissions)) {
-    throw new IamOperationError("You cannot grant permissions that you do not hold at this scope", 403);
+    throw new IamOperationError(
+      "You cannot grant permissions that you do not hold at this scope",
+      403,
+    );
   }
 }
 
@@ -57,14 +78,28 @@ export async function getWorkspaceScope(workspaceId: string) {
   return row;
 }
 
-export async function requirePermission(input: { userId: string; permission: string; resourceType: ScopeType; resourceId: string; errorMessage: string }) {
-  const result = await authorization.checkPermission({ principalType: "user", principalId: input.userId }, input.permission, input.resourceType, input.resourceId);
+export async function requirePermission(input: {
+  userId: string;
+  permission: string;
+  resourceType: ScopeType;
+  resourceId: string;
+  errorMessage: string;
+}) {
+  const result = await authorization.checkPermission(
+    { principalType: "user", principalId: input.userId },
+    input.permission,
+    input.resourceType,
+    input.resourceId,
+  );
   if (!result.granted) {
     throw new IamOperationError(input.errorMessage, 403);
   }
 }
 
-export async function invalidateUserOrganizationAccess(userId: string, organizationId: string) {
+export async function invalidateUserOrganizationAccess(
+  userId: string,
+  organizationId: string,
+) {
   void organizationId;
   await authorization.invalidatePrincipalPermissionCache(userId);
 }
@@ -79,11 +114,24 @@ export async function findSystemRole(name: string) {
   return role;
 }
 
-export async function createOrganizationWithProject(input: { userId: string; organizationName: string; organizationSlug?: string; projectName: string; projectSlug?: string }) {
-  const organizationSlug = normalizedSlug(input.organizationSlug ?? input.organizationName) || crypto.randomUUID().slice(0, 8);
-  const projectSlug = normalizedSlug(input.projectSlug ?? input.projectName) || "main";
+export async function createOrganizationWithProject(input: {
+  userId: string;
+  organizationName: string;
+  organizationSlug?: string;
+  projectName: string;
+  projectSlug?: string;
+}) {
+  const organizationSlug =
+    normalizedSlug(input.organizationSlug ?? input.organizationName) ||
+    crypto.randomUUID().slice(0, 8);
+  const projectSlug =
+    normalizedSlug(input.projectSlug ?? input.projectName) || "main";
 
-  const existing = await db.select({ id: organizations.id }).from(organizations).where(eq(organizations.slug, organizationSlug)).limit(1);
+  const existing = await db
+    .select({ id: organizations.id })
+    .from(organizations)
+    .where(eq(organizations.slug, organizationSlug))
+    .limit(1);
   if (existing.length > 0) {
     throw new IamOperationError("This organization URL is already in use", 409);
   }
@@ -97,21 +145,43 @@ export async function createOrganizationWithProject(input: { userId: string; org
   });
 }
 
-export async function createProject(input: { userId: string; workspaceId: string; name: string; slug?: string }) {
+export async function createProject(input: {
+  userId: string;
+  workspaceId: string;
+  name: string;
+  slug?: string;
+}) {
   const { organization } = await getWorkspaceScope(input.workspaceId);
-  const permission = await authorization.checkPermission({ principalType: "user", principalId: input.userId }, "workspaces.create", "organization", organization.id);
+  const permission = await authorization.checkPermission(
+    { principalType: "user", principalId: input.userId },
+    "workspaces.create",
+    "organization",
+    organization.id,
+  );
   if (!permission.granted) {
-    throw new IamOperationError("You do not have permission to create projects in this organization", 403);
+    throw new IamOperationError(
+      "You do not have permission to create projects in this organization",
+      403,
+    );
   }
 
-  const slug = normalizedSlug(input.slug ?? input.name) || crypto.randomUUID().slice(0, 8);
+  const slug =
+    normalizedSlug(input.slug ?? input.name) || crypto.randomUUID().slice(0, 8);
   const [existingProject] = await db
     .select({ id: workspaces.id })
     .from(workspaces)
-    .where(and(eq(workspaces.organizationId, organization.id), eq(workspaces.slug, slug)))
+    .where(
+      and(
+        eq(workspaces.organizationId, organization.id),
+        eq(workspaces.slug, slug),
+      ),
+    )
     .limit(1);
   if (existingProject) {
-    throw new IamOperationError("A project with this URL already exists in the organization", 409);
+    throw new IamOperationError(
+      "A project with this URL already exists in the organization",
+      409,
+    );
   }
 
   return createWorkspace({

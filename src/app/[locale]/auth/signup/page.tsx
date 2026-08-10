@@ -1,14 +1,14 @@
 "use client";
 
-import { Link,useRouter } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { UserPlusIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { type SyntheticEvent,useEffect,useRef,useState } from "react";
+import { type SyntheticEvent, useEffect, useRef, useState } from "react";
 
 import { AuthShell } from "@/components/auth/auth-shell";
-import { Alert,AlertDescription,AlertTitle } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Field,FieldContent,FieldLabel } from "@/components/ui/field";
+import { Field, FieldContent, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 
@@ -22,7 +22,9 @@ export default function SignUpPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [registrationStatus, setRegistrationStatus] = useState<"checking" | "open" | "closed" | "error">("checking");
+  const [registrationStatus, setRegistrationStatus] = useState<
+    "checking" | "open" | "closed" | "error"
+  >("checking");
   const errorId = "signup-error";
   const passwordRequirementsId = "signup-password-requirements";
 
@@ -78,24 +80,47 @@ export default function SignUpPage() {
 
   return (
     <AuthShell
-      title={registrationStatus === "closed" ? t("registrationClosed") : registrationStatus === "error" ? t("registrationCheckFailed") : t("signUpTitle")}
-      description={registrationStatus === "closed" ? t("registrationClosedDescription") : registrationStatus === "error" ? t("registrationCheckFailedDescription") : t("signUpDescription")}
+      title={
+        registrationStatus === "closed"
+          ? t("registrationClosed")
+          : registrationStatus === "error"
+            ? t("registrationCheckFailed")
+            : t("signUpTitle")
+      }
+      description={
+        registrationStatus === "closed"
+          ? t("registrationClosedDescription")
+          : registrationStatus === "error"
+            ? t("registrationCheckFailedDescription")
+            : t("signUpDescription")
+      }
       footer={
         <>
           {t("haveAccount")}{" "}
-          <Link href="/auth/signin" className="font-medium text-primary underline-offset-4 hover:underline">
+          <Link
+            href="/auth/signin"
+            className="font-medium text-primary underline-offset-4 hover:underline"
+          >
             {t("signIn")}
           </Link>
         </>
       }
     >
       {registrationStatus === "checking" ? (
-        <div className="flex min-h-28 items-center justify-center gap-2 text-sm text-muted-foreground" role="status">
+        <div
+          className="flex min-h-28 items-center justify-center gap-2 text-sm text-muted-foreground"
+          role="status"
+        >
           <Spinner aria-hidden="true" />
           {t("checkingRegistration")}
         </div>
       ) : registrationStatus === "error" ? (
-        <Button type="button" className="w-full" size="lg" onClick={() => void checkRegistration()}>
+        <Button
+          type="button"
+          className="w-full"
+          size="lg"
+          onClick={() => void checkRegistration()}
+        >
           {t("retryRegistration")}
         </Button>
       ) : registrationStatus === "closed" ? (
@@ -103,9 +128,18 @@ export default function SignUpPage() {
           <Link href="/auth/signin">{t("goToSignIn")}</Link>
         </Button>
       ) : (
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4" aria-busy={loading}>
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-col gap-4"
+          aria-busy={loading}
+        >
           {error ? (
-            <Alert ref={errorRef} id={errorId} variant="destructive" tabIndex={-1}>
+            <Alert
+              ref={errorRef}
+              id={errorId}
+              variant="destructive"
+              tabIndex={-1}
+            >
               <AlertTitle>{t("signUpErrorTitle")}</AlertTitle>
               <AlertDescription>{error}</AlertDescription>
             </Alert>
@@ -114,29 +148,82 @@ export default function SignUpPage() {
           <Field>
             <FieldLabel htmlFor="name">{t("fullName")}</FieldLabel>
             <FieldContent>
-              <Input ref={nameRef} id="name" name="name" type="text" autoComplete="name" required aria-invalid={error ? true : undefined} aria-describedby={error ? errorId : undefined} value={name} onChange={(event) => setName(event.target.value)} placeholder={t("namePlaceholder")} />
+              <Input
+                ref={nameRef}
+                id="name"
+                name="name"
+                type="text"
+                autoComplete="name"
+                required
+                aria-invalid={error ? true : undefined}
+                aria-describedby={error ? errorId : undefined}
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                placeholder={t("namePlaceholder")}
+              />
             </FieldContent>
           </Field>
 
           <Field>
             <FieldLabel htmlFor="email">{t("email")}</FieldLabel>
             <FieldContent>
-              <Input id="email" name="email" type="email" autoComplete="email" spellCheck={false} required aria-invalid={error ? true : undefined} aria-describedby={error ? errorId : undefined} value={email} onChange={(event) => setEmail(event.target.value)} placeholder={t("emailPlaceholder")} />
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                spellCheck={false}
+                required
+                aria-invalid={error ? true : undefined}
+                aria-describedby={error ? errorId : undefined}
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder={t("emailPlaceholder")}
+              />
             </FieldContent>
           </Field>
 
           <Field>
             <FieldLabel htmlFor="password">{t("password")}</FieldLabel>
             <FieldContent>
-              <Input id="password" name="password" type="password" autoComplete="new-password" required minLength={8} aria-invalid={error ? true : undefined} aria-describedby={error ? `${passwordRequirementsId} ${errorId}` : passwordRequirementsId} value={password} onChange={(event) => setPassword(event.target.value)} placeholder={t("newPasswordPlaceholder")} />
-              <p id={passwordRequirementsId} className="text-xs text-muted-foreground">
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                autoComplete="new-password"
+                required
+                minLength={8}
+                aria-invalid={error ? true : undefined}
+                aria-describedby={
+                  error
+                    ? `${passwordRequirementsId} ${errorId}`
+                    : passwordRequirementsId
+                }
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder={t("newPasswordPlaceholder")}
+              />
+              <p
+                id={passwordRequirementsId}
+                className="text-xs text-muted-foreground"
+              >
                 {t("passwordRequirements")}
               </p>
             </FieldContent>
           </Field>
 
-          <Button type="submit" size="lg" className="w-full" disabled={loading} aria-busy={loading}>
-            {loading ? <Spinner data-icon="inline-start" /> : <UserPlusIcon data-icon="inline-start" aria-hidden="true" />}
+          <Button
+            type="submit"
+            size="lg"
+            className="w-full"
+            disabled={loading}
+            aria-busy={loading}
+          >
+            {loading ? (
+              <Spinner data-icon="inline-start" />
+            ) : (
+              <UserPlusIcon data-icon="inline-start" aria-hidden="true" />
+            )}
             {loading ? t("creatingAccount") : t("createAccount")}
           </Button>
         </form>

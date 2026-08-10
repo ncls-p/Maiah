@@ -7,30 +7,59 @@ import { toast } from "sonner";
 import type { QueuedChatMessage } from "@/components/chat/chat-composer";
 import { migrateNewChatComposerDraft } from "@/components/chat/chat-composer-draft";
 import { latestChatTodoListFromMessages } from "@/components/chat/chat-message-rendering-utils";
-import type { AgentVersion, ChatConversation, ChatMessage, CodeWorkspaceArtifact } from "@/components/chat/chat-types";
+import type {
+  AgentVersion,
+  ChatConversation,
+  ChatMessage,
+  CodeWorkspaceArtifact,
+} from "@/components/chat/chat-types";
 import { aggregateChatUsageImpact } from "@/components/chat/chat-types";
 import { useChatStream } from "@/hooks/use-chat-stream";
 import { fetchJson } from "@/lib/api-client";
 import { notifyWorkspaceHistoryChanged } from "@/lib/workspace-history-events";
 
-import { CHAT_INTERFACE_MODE, CODING_INTERFACE_MODE, shouldAutoActivateCoding, type InterfaceMode } from "./chat-interface-mode";
-import { conversationTitleFromFirstMessage, latestCodeWorkspaceArtifact, upsertConversation } from "./chat-page-helpers";
+import {
+  CHAT_INTERFACE_MODE,
+  CODING_INTERFACE_MODE,
+  shouldAutoActivateCoding,
+  type InterfaceMode,
+} from "./chat-interface-mode";
+import {
+  conversationTitleFromFirstMessage,
+  latestCodeWorkspaceArtifact,
+  upsertConversation,
+} from "./chat-page-helpers";
 
 type Setter<T> = Dispatch<SetStateAction<T>>;
 type SessionContext = {
   workspaceId: string | null;
   selectedAgentId: string | null;
   activeConversationId: string | null;
+  ephemeral: boolean;
+  ephemeralTtlMinutes: number;
   queuedMessages: QueuedChatMessage[];
   interfaceMode: InterfaceMode;
   codeWorkspaceArtifact: CodeWorkspaceArtifact | null;
   lastAutoOpenedWorkspaceRef: MutableRefObject<string | null>;
   userSelectedInterfaceModeRef: MutableRefObject<InterfaceMode | null>;
-  composerDraftScopeRef: MutableRefObject<{ workspaceId: string; agentId: string; conversationId: string | null } | null>;
+  composerDraftScopeRef: MutableRefObject<{
+    workspaceId: string;
+    agentId: string;
+    conversationId: string | null;
+  } | null>;
   saveCurrentComposerDraft: () => void;
   resetInterfaceMode: () => void;
   refreshConversations: () => Promise<void>;
+  replaceConversationRoute: (
+    conversationId: string,
+    agentId: string | null,
+    ephemeral: boolean,
+    ttlMinutes: number,
+  ) => void;
   setActiveConversationId: Setter<string | null>;
+  setEphemeral: Setter<boolean>;
+  setEphemeralTtlMinutes: Setter<number>;
+  setEphemeralExpiresAt: Setter<string | null>;
   setSelectedAgentId: Setter<string | null>;
   setConversations: Setter<ChatConversation[]>;
   setQueuedMessages: Setter<QueuedChatMessage[]>;
@@ -40,13 +69,49 @@ type SessionContext = {
 };
 
 export function useChatSession(c: SessionContext) {
-  const { workspaceId, selectedAgentId, activeConversationId, queuedMessages, interfaceMode, codeWorkspaceArtifact, lastAutoOpenedWorkspaceRef, userSelectedInterfaceModeRef, composerDraftScopeRef, saveCurrentComposerDraft, resetInterfaceMode, refreshConversations, setActiveConversationId, setSelectedAgentId, setConversations, setQueuedMessages, setCodeWorkspaceArtifact, setInterfaceMode, setLoadingContext } = c;
+  const {
+    workspaceId,
+    selectedAgentId,
+    activeConversationId,
+    ephemeral,
+    ephemeralTtlMinutes,
+    queuedMessages,
+    interfaceMode,
+    codeWorkspaceArtifact,
+    lastAutoOpenedWorkspaceRef,
+    userSelectedInterfaceModeRef,
+    composerDraftScopeRef,
+    saveCurrentComposerDraft,
+    resetInterfaceMode,
+    refreshConversations,
+    replaceConversationRoute,
+    setActiveConversationId,
+    setEphemeral,
+    setEphemeralTtlMinutes,
+    setEphemeralExpiresAt,
+    setSelectedAgentId,
+    setConversations,
+    setQueuedMessages,
+    setCodeWorkspaceArtifact,
+    setInterfaceMode,
+    setLoadingContext,
+  } = c;
   const [activeVersion, setActiveVersion] = useState<AgentVersion | null>(null);
   const [loadingMessages, setLoadingMessages] = useState(false);
-  const [quota, setQuota] = useState<{ used: number; limit: number } | null>(null);
+  const [quota, setQuota] = useState<{ used: number; limit: number } | null>(
+    null,
+  );
+  const [conversationCanContinue, setConversationCanContinue] = useState(true);
+  const [conversationIsOwner, setConversationIsOwner] = useState(true);
+  const ephemeralRef = useRef(ephemeral);
+  const ephemeralTtlMinutesRef = useRef(ephemeralTtlMinutes);
   const processingQueuedMessageRef = useRef(false);
   const skipNextMessageLoadRef = useRef(false);
-  const canChat = Boolean(activeVersion?.providerId && activeVersion?.modelId);
+  const canChat = Boolean(
+    activeVersion?.providerId &&
+    activeVersion?.modelId &&
+    conversationCanContinue,
+  );
   const stream = useChatStream({
     agentId: selectedAgentId,
     conversationId: activeConversationId,
@@ -54,20 +119,50 @@ export function useChatSession(c: SessionContext) {
     canChat,
     onConversationCreated: (conversationId, firstMessage) => {
       skipNextMessageLoadRef.current = true;
+      const currentParams = new URLSearchParams(window.location.search);
+      const createdEphemeral =
+        ephemeralRef.current || currentParams.get("temporary") === "true";
+      const requestedTtl = Number(currentParams.get("ttl"));
+      const createdEphemeralTtlMinutes =
+        Number.isInteger(requestedTtl) && requestedTtl > 0
+          ? requestedTtl
+          : ephemeralTtlMinutesRef.current;
+      setEphemeral(createdEphemeral);
+      setEphemeralTtlMinutes(createdEphemeralTtlMinutes);
       if (workspaceId && selectedAgentId) {
         saveCurrentComposerDraft();
-        migrateNewChatComposerDraft(workspaceId, selectedAgentId, conversationId);
-        composerDraftScopeRef.current = { workspaceId: workspaceId, agentId: selectedAgentId, conversationId };
+        migrateNewChatComposerDraft(
+          workspaceId,
+          selectedAgentId,
+          conversationId,
+        );
+        composerDraftScopeRef.current = {
+          workspaceId: workspaceId,
+          agentId: selectedAgentId,
+          conversationId,
+        };
       }
       setActiveConversationId(conversationId);
-      if (selectedAgentId) {
-        setConversations((current) => upsertConversation(current, { id: conversationId, title: conversationTitleFromFirstMessage(firstMessage), agentId: selectedAgentId!, folderId: null, pinnedAt: null, sidebarOrder: null, updatedAt: new Date().toISOString() }));
+      if (selectedAgentId && !createdEphemeral) {
+        setConversations((current) =>
+          upsertConversation(current, {
+            id: conversationId,
+            title: conversationTitleFromFirstMessage(firstMessage),
+            agentId: selectedAgentId!,
+            folderId: null,
+            pinnedAt: null,
+            sidebarOrder: null,
+            updatedAt: new Date().toISOString(),
+          }),
+        );
       }
-      const params = new URLSearchParams();
-      if (selectedAgentId) params.set("agentId", selectedAgentId);
-      params.set("conversationId", conversationId);
-      window.history.replaceState(null, "", `/chat?${params.toString()}`);
-      notifyWorkspaceHistoryChanged();
+      replaceConversationRoute(
+        conversationId,
+        selectedAgentId,
+        createdEphemeral,
+        createdEphemeralTtlMinutes,
+      );
+      if (!createdEphemeral) notifyWorkspaceHistoryChanged();
     },
     onConversationTitle: (conversationId, title) => {
       setConversations((current) => {
@@ -77,53 +172,130 @@ export function useChatSession(c: SessionContext) {
           found = true;
           return { ...conversation, title };
         });
-        return found || !selectedAgentId ? next : [{ id: conversationId, title, agentId: selectedAgentId, updatedAt: new Date().toISOString() }, ...next];
+        return found || !selectedAgentId
+          ? next
+          : [
+              {
+                id: conversationId,
+                title,
+                agentId: selectedAgentId,
+                updatedAt: new Date().toISOString(),
+              },
+              ...next,
+            ];
       });
       notifyWorkspaceHistoryChanged();
+    },
+    onConversationMetadata: (metadata) => {
+      setEphemeral(metadata.isEphemeral === true);
+      setEphemeralExpiresAt(
+        metadata.isEphemeral ? (metadata.expiresAt ?? null) : null,
+      );
     },
     onConversationsRefresh: refreshConversations,
   });
   const { messages, setMessages, sending, handleSubmit } = stream;
-  const latestTodoList = useMemo(() => latestChatTodoListFromMessages(messages), [messages]);
-  const conversationImpact = useMemo(() => aggregateChatUsageImpact(messages), [messages]);
+  const latestTodoList = useMemo(
+    () => latestChatTodoListFromMessages(messages),
+    [messages],
+  );
+  const conversationImpact = useMemo(
+    () => aggregateChatUsageImpact(messages),
+    [messages],
+  );
+
+  useEffect(() => {
+    ephemeralRef.current = ephemeral;
+    ephemeralTtlMinutesRef.current = ephemeralTtlMinutes;
+  }, [ephemeral, ephemeralTtlMinutes]);
 
   useEffect(() => {
     const artifact = latestCodeWorkspaceArtifact(messages);
     if (!artifact) return;
     queueMicrotask(() => {
-      setCodeWorkspaceArtifact((current) => current?.projectId === artifact.projectId && artifact.version <= current.version ? current : artifact);
-      if (!sending || !shouldAutoActivateCoding(userSelectedInterfaceModeRef.current)) return;
+      setCodeWorkspaceArtifact((current) =>
+        current?.projectId === artifact.projectId &&
+        artifact.version <= current.version
+          ? current
+          : artifact,
+      );
+      if (
+        !sending ||
+        !shouldAutoActivateCoding(userSelectedInterfaceModeRef.current)
+      )
+        return;
       const key = `${artifact.projectId}:${artifact.version}`;
       if (lastAutoOpenedWorkspaceRef.current === key) return;
       lastAutoOpenedWorkspaceRef.current = key;
       setInterfaceMode(CODING_INTERFACE_MODE);
     });
-  }, [lastAutoOpenedWorkspaceRef, setCodeWorkspaceArtifact, setInterfaceMode, userSelectedInterfaceModeRef, messages, sending]);
+  }, [
+    lastAutoOpenedWorkspaceRef,
+    setCodeWorkspaceArtifact,
+    setInterfaceMode,
+    userSelectedInterfaceModeRef,
+    messages,
+    sending,
+  ]);
 
   useEffect(() => {
-    if (sending || !canChat || queuedMessages.length === 0 || processingQueuedMessageRef.current) return;
+    if (
+      sending ||
+      !canChat ||
+      queuedMessages.length === 0 ||
+      processingQueuedMessageRef.current
+    )
+      return;
     const next = queuedMessages[0];
-    if (!next?.content.trim()) return void queueMicrotask(() => setQueuedMessages((current) => current.slice(1)));
+    if (!next?.content.trim())
+      return void queueMicrotask(() =>
+        setQueuedMessages((current) => current.slice(1)),
+      );
     processingQueuedMessageRef.current = true;
     queueMicrotask(() => {
-      setQueuedMessages((current) => (current[0]?.id === next.id ? current.slice(1) : current.filter(({ id }) => id !== next.id)));
-      void handleSubmit(next.content.trim(), { codeWorkspaceId: interfaceMode === CODING_INTERFACE_MODE ? codeWorkspaceArtifact?.projectId : undefined }).finally(() => {
+      setQueuedMessages((current) =>
+        current[0]?.id === next.id
+          ? current.slice(1)
+          : current.filter(({ id }) => id !== next.id),
+      );
+      void handleSubmit(next.content.trim(), {
+        codeWorkspaceId:
+          interfaceMode === CODING_INTERFACE_MODE
+            ? codeWorkspaceArtifact?.projectId
+            : undefined,
+        ephemeral: !activeConversationId && ephemeral,
+      }).finally(() => {
         processingQueuedMessageRef.current = false;
       });
     });
-  }, [codeWorkspaceArtifact, interfaceMode, queuedMessages, setQueuedMessages, canChat, handleSubmit, sending]);
+  }, [
+    activeConversationId,
+    codeWorkspaceArtifact,
+    ephemeral,
+    interfaceMode,
+    queuedMessages,
+    setQueuedMessages,
+    canChat,
+    handleSubmit,
+    sending,
+  ]);
 
   useEffect(() => {
     if (!selectedAgentId || !workspaceId) return;
     const controller = new AbortController();
     let cancelled = false;
     queueMicrotask(() => setLoadingContext(true));
-    void fetchJson<AgentVersion[]>(`/api/workspace/agents/${selectedAgentId}/versions?workspaceId=${workspaceId}`, { signal: controller.signal })
+    void fetchJson<AgentVersion[]>(
+      `/api/workspace/agents/${selectedAgentId}/versions?workspaceId=${workspaceId}`,
+      { signal: controller.signal },
+    )
       .then((versions) => {
-        if (!cancelled) setActiveVersion(versions.find(({ isActive }) => isActive) ?? null);
+        if (!cancelled)
+          setActiveVersion(versions.find(({ isActive }) => isActive) ?? null);
       })
       .catch((error: unknown) => {
-        if (error instanceof Error && error.name !== "AbortError") toast.error(error.message);
+        if (error instanceof Error && error.name !== "AbortError")
+          toast.error(error.message);
       })
       .finally(() => {
         if (!cancelled) setLoadingContext(false);
@@ -137,7 +309,9 @@ export function useChatSession(c: SessionContext) {
   useEffect(() => {
     if (!workspaceId) return;
     let cancelled = false;
-    void fetchJson<{ quota: { used: number; limit: number } | null }>(`/api/workspace/usage?workspaceId=${workspaceId}&limit=1`)
+    void fetchJson<{ quota: { used: number; limit: number } | null }>(
+      `/api/workspace/usage?workspaceId=${workspaceId}&limit=1`,
+    )
       .then((data) => {
         if (!cancelled && data.quota) setQuota(data.quota);
       })
@@ -153,6 +327,9 @@ export function useChatSession(c: SessionContext) {
     if (!activeConversationId) {
       skipNextMessageLoadRef.current = false;
       queueMicrotask(() => {
+        setConversationCanContinue(true);
+        setConversationIsOwner(true);
+        setEphemeralExpiresAt(null);
         setMessages([]);
         setCodeWorkspaceArtifact(null);
         resetInterfaceMode();
@@ -167,11 +344,37 @@ export function useChatSession(c: SessionContext) {
     const controller = new AbortController();
     let cancelled = false;
     queueMicrotask(() => setLoadingMessages(true));
-    void fetchJson<{ conversation?: ChatConversation; messages?: ChatMessage[] }>(`/api/workspace/conversations/${activeConversationId}`, { signal: controller.signal })
+    void fetchJson<{
+      conversation?: ChatConversation;
+      messages?: ChatMessage[];
+    }>(`/api/workspace/conversations/${activeConversationId}`, {
+      signal: controller.signal,
+    })
       .then((data) => {
         if (cancelled) return;
-        if (data.conversation?.agentId && !new URL(window.location.href).searchParams.get("agentId")) setSelectedAgentId(data.conversation.agentId);
-        if (data.conversation) setConversations((current) => upsertConversation(current, data.conversation!));
+        if (
+          data.conversation?.agentId &&
+          !new URL(window.location.href).searchParams.get("agentId")
+        )
+          setSelectedAgentId(data.conversation.agentId);
+        if (data.conversation) {
+          setConversationCanContinue(data.conversation.canContinue !== false);
+          setConversationIsOwner(data.conversation.isOwner !== false);
+          setEphemeral(data.conversation.isEphemeral === true);
+          setEphemeralExpiresAt(
+            data.conversation.isEphemeral
+              ? (data.conversation.expiresAt ?? null)
+              : null,
+          );
+          if (data.conversation.ephemeralTtlMinutes) {
+            setEphemeralTtlMinutes(data.conversation.ephemeralTtlMinutes);
+          }
+          if (!data.conversation.isEphemeral) {
+            setConversations((current) =>
+              upsertConversation(current, data.conversation!),
+            );
+          }
+        }
         const loaded = data.messages ?? [];
         setMessages(loaded);
         const artifact = latestCodeWorkspaceArtifact(loaded);
@@ -179,7 +382,8 @@ export function useChatSession(c: SessionContext) {
         if (!artifact) setInterfaceMode(CHAT_INTERFACE_MODE);
       })
       .catch((error: unknown) => {
-        if (error instanceof Error && error.name !== "AbortError") toast.error(error.message);
+        if (error instanceof Error && error.name !== "AbortError")
+          toast.error(error.message);
       })
       .finally(() => {
         if (!cancelled) setLoadingMessages(false);
@@ -188,7 +392,31 @@ export function useChatSession(c: SessionContext) {
       cancelled = true;
       controller.abort();
     };
-  }, [activeConversationId, resetInterfaceMode, setCodeWorkspaceArtifact, setConversations, setInterfaceMode, setSelectedAgentId, setMessages]);
+  }, [
+    activeConversationId,
+    resetInterfaceMode,
+    setCodeWorkspaceArtifact,
+    setConversations,
+    setEphemeral,
+    setEphemeralTtlMinutes,
+    setEphemeralExpiresAt,
+    setInterfaceMode,
+    setSelectedAgentId,
+    setMessages,
+  ]);
 
-  return { ...stream, activeVersion, setActiveVersion, loadingMessages, quota, canChat, latestTodoList, conversationImpact };
+  return {
+    ...stream,
+    activeVersion,
+    setActiveVersion,
+    loadingMessages,
+    quota,
+    canChat,
+    conversationIsOwner,
+    conversationReadOnly: Boolean(
+      activeConversationId && !conversationCanContinue,
+    ),
+    latestTodoList,
+    conversationImpact,
+  };
 }

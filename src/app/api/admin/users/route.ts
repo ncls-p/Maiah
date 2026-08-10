@@ -1,8 +1,11 @@
 import { handleRoute } from "@/lib/route-handler";
 import { requireAdminApiSession } from "@/modules/admin/auth";
-import { createAdminManagedUser,listAdminUsers } from "@/modules/admin/use-cases";
+import {
+  createAdminManagedUser,
+  listAdminUsers,
+} from "@/modules/admin/use-cases";
 import { ensurePrimaryWorkspaceForUser } from "@/modules/workspace/use-cases";
-import { NextRequest,NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 const createUserSchema = z.object({
@@ -31,7 +34,11 @@ export async function POST(req: NextRequest) {
       const auth = await requireAdminApiSession();
       if (!auth.ok) return auth.response;
       const parsed = createUserSchema.safeParse(await req.json());
-      if (!parsed.success) return NextResponse.json({ error: "Invalid input", details: parsed.error.issues }, { status: 400 });
+      if (!parsed.success)
+        return NextResponse.json(
+          { error: "Invalid input", details: parsed.error.issues },
+          { status: 400 },
+        );
       const user = await createAdminManagedUser({
         name: parsed.data.name,
         email: parsed.data.email,
@@ -49,7 +56,8 @@ export async function POST(req: NextRequest) {
     {
       logLabel: "Failed to create user",
       expectedError: (error) => {
-        const message = error instanceof Error ? error.message : "Internal server error";
+        const message =
+          error instanceof Error ? error.message : "Internal server error";
         return NextResponse.json({ error: message }, { status: 400 });
       },
     },

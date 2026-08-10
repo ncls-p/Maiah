@@ -1,4 +1,4 @@
-import { and,eq,isNull,ne } from "drizzle-orm";
+import { and, eq, isNull, ne } from "drizzle-orm";
 
 import { getWorkspacesByUserId } from "@/modules/workspace/use-cases";
 import { ACCESS_RESOURCE_TYPES } from "@/server/domain/entities/access-resource";
@@ -6,7 +6,11 @@ import { audit } from "@/server/domain/services/audit";
 import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
 import { listAccessResources } from "@/server/infrastructure/db/access-resource-repository";
-import { organizationMembers,organizations,workspaces } from "@/server/infrastructure/db/schema";
+import {
+  organizationMembers,
+  organizations,
+  workspaces,
+} from "@/server/infrastructure/db/schema";
 
 import { IamOperationError } from "./use-cases";
 
@@ -32,10 +36,23 @@ export async function scopeForWorkspace(workspaceId: string) {
   return scope;
 }
 
-export async function requirePermission(input: { actorUserId: string; permission: "organization.update" | "workspaces.update"; resourceType: "organization" | "workspace"; resourceId: string }) {
-  const allowed = await authorization.hasPermission({ principalType: "user", principalId: input.actorUserId }, input.permission, input.resourceType, input.resourceId);
+export async function requirePermission(input: {
+  actorUserId: string;
+  permission: "organization.update" | "workspaces.update";
+  resourceType: "organization" | "workspace";
+  resourceId: string;
+}) {
+  const allowed = await authorization.hasPermission(
+    { principalType: "user", principalId: input.actorUserId },
+    input.permission,
+    input.resourceType,
+    input.resourceId,
+  );
   if (!allowed) {
-    throw new IamOperationError("You do not have permission to manage this scope", 403);
+    throw new IamOperationError(
+      "You do not have permission to manage this scope",
+      403,
+    );
   }
 }
 
@@ -60,18 +77,39 @@ export async function listAllResourceIds(workspaceIds: string[]) {
   return ids;
 }
 
-export async function nextWorkspaceOutsideOrganization(actorUserId: string, organizationId: string) {
+export async function nextWorkspaceOutsideOrganization(
+  actorUserId: string,
+  organizationId: string,
+) {
   const candidates = await getWorkspacesByUserId(actorUserId);
-  return candidates.find(({ workspace }) => workspace.organizationId !== organizationId)?.workspace.id ?? null;
+  return (
+    candidates.find(
+      ({ workspace }) => workspace.organizationId !== organizationId,
+    )?.workspace.id ?? null
+  );
 }
 
 export async function invalidateOrganizationMembers(organizationId: string) {
-  const members = await db.select({ userId: organizationMembers.userId }).from(organizationMembers).where(eq(organizationMembers.organizationId, organizationId));
-  await Promise.all(members.map(({ userId }) => authorization.invalidatePrincipalPermissionCache(userId)));
+  const members = await db
+    .select({ userId: organizationMembers.userId })
+    .from(organizationMembers)
+    .where(eq(organizationMembers.organizationId, organizationId));
+  await Promise.all(
+    members.map(({ userId }) =>
+      authorization.invalidatePrincipalPermissionCache(userId),
+    ),
+  );
 }
 
-export async function renameProject(input: { actorUserId: string; workspaceId: string; name: string; slug?: string }) {
-  const { workspace, organization } = await scopeForWorkspace(input.workspaceId);
+export async function renameProject(input: {
+  actorUserId: string;
+  workspaceId: string;
+  name: string;
+  slug?: string;
+}) {
+  const { workspace, organization } = await scopeForWorkspace(
+    input.workspaceId,
+  );
   await requirePermission({
     actorUserId: input.actorUserId,
     permission: "workspaces.update",
@@ -83,12 +121,26 @@ export async function renameProject(input: { actorUserId: string; workspaceId: s
   const [conflict] = await db
     .select({ id: workspaces.id })
     .from(workspaces)
-    .where(and(eq(workspaces.organizationId, organization.id), eq(workspaces.slug, slug), ne(workspaces.id, workspace.id), isNull(workspaces.archivedAt)))
+    .where(
+      and(
+        eq(workspaces.organizationId, organization.id),
+        eq(workspaces.slug, slug),
+        ne(workspaces.id, workspace.id),
+        isNull(workspaces.archivedAt),
+      ),
+    )
     .limit(1);
   if (conflict) {
-    throw new IamOperationError("A project with this URL already exists in the organization", 409);
+    throw new IamOperationError(
+      "A project with this URL already exists in the organization",
+      409,
+    );
   }
-  const [updated] = await db.update(workspaces).set({ name: input.name.trim(), slug, updatedAt: new Date() }).where(eq(workspaces.id, workspace.id)).returning();
+  const [updated] = await db
+    .update(workspaces)
+    .set({ name: input.name.trim(), slug, updatedAt: new Date() })
+    .where(eq(workspaces.id, workspace.id))
+    .returning();
   await audit.emit({
     organizationId: organization.id,
     workspaceId: workspace.id,

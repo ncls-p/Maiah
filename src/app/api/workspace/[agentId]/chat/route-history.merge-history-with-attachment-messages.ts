@@ -1,5 +1,8 @@
 import { decryptValue } from "@/lib/crypto";
-import { isChatFileAttachment,isChatImageAttachment } from "@/modules/chat/attachments";
+import {
+  isChatFileAttachment,
+  isChatImageAttachment,
+} from "@/modules/chat/attachments";
 
 const previousToolTextContextChars = 4_000;
 
@@ -9,12 +12,19 @@ type HistoryMessageRow = {
   createdAt: Date;
 };
 
-export function mergeHistoryWithAttachmentMessages(recentMessages: HistoryMessageRow[], attachmentMessages: HistoryMessageRow[]) {
+export function mergeHistoryWithAttachmentMessages(
+  recentMessages: HistoryMessageRow[],
+  attachmentMessages: HistoryMessageRow[],
+) {
   const messagesById = new Map<string, HistoryMessageRow>();
   for (const message of [...attachmentMessages, ...recentMessages]) {
     messagesById.set(message.id, message);
   }
-  return [...messagesById.values()].sort((left, right) => left.createdAt.getTime() - right.createdAt.getTime() || left.id.localeCompare(right.id));
+  return [...messagesById.values()].sort(
+    (left, right) =>
+      left.createdAt.getTime() - right.createdAt.getTime() ||
+      left.id.localeCompare(right.id),
+  );
 }
 
 function htmlArtifactCodeFromValue(value: unknown) {
@@ -31,18 +41,30 @@ function htmlArtifactCodeFromValue(value: unknown) {
     deck: record.deck,
   };
 
-  const sections = [`Title: ${typeof source.title === "string" ? source.title : "Interactive preview"}`];
+  const sections = [
+    `Title: ${typeof source.title === "string" ? source.title : "Interactive preview"}`,
+  ];
   if (source.deck && typeof source.deck === "object") {
     sections.push("Deck JSON:", JSON.stringify(source.deck, null, 2));
   }
-  sections.push("HTML:", source.html, "CSS:", typeof source.css === "string" ? source.css : "", "JavaScript:", typeof source.js === "string" ? source.js : "");
+  sections.push(
+    "HTML:",
+    source.html,
+    "CSS:",
+    typeof source.css === "string" ? source.css : "",
+    "JavaScript:",
+    typeof source.js === "string" ? source.js : "",
+  );
   return sections.join("\n");
 }
 
 export function htmlArtifactCodeFromToolMetadata(metadata: unknown) {
   if (typeof metadata !== "object" || metadata === null) return null;
   const record = metadata as Record<string, unknown>;
-  return htmlArtifactCodeFromValue(record.input) ?? htmlArtifactCodeFromValue(record.output);
+  return (
+    htmlArtifactCodeFromValue(record.input) ??
+    htmlArtifactCodeFromValue(record.output)
+  );
 }
 
 export function sandboxAttachmentPathHint(fileName: string) {
@@ -64,7 +86,8 @@ export function sandboxAttachmentExplorerPathHint(fileName: string) {
   const directory = originalPath.slice(0, slashIndex + 1);
   const baseName = originalPath.slice(slashIndex + 1);
   const extensionIndex = baseName.lastIndexOf(".");
-  const stem = extensionIndex > 0 ? baseName.slice(0, extensionIndex) : baseName;
+  const stem =
+    extensionIndex > 0 ? baseName.slice(0, extensionIndex) : baseName;
   return `${directory}${stem}.document/README.md`;
 }
 
@@ -78,7 +101,11 @@ function sandboxAttachmentContext(attachment: unknown) {
   if (!isChatFileAttachment(attachment) && !isChatImageAttachment(attachment)) {
     return null;
   }
-  return [`Attachment ID: ${attachment.id}`, `file name: ${attachment.fileName}`, `sandbox path hint: ${sandboxAttachmentPathHint(attachment.fileName)}`].join("; ");
+  return [
+    `Attachment ID: ${attachment.id}`,
+    `file name: ${attachment.fileName}`,
+    `sandbox path hint: ${sandboxAttachmentPathHint(attachment.fileName)}`,
+  ].join("; ");
 }
 
 function sandboxTextContext(label: string, value: unknown) {
@@ -91,7 +118,12 @@ function codeSandboxFileContextLine(file: unknown) {
   if (typeof file !== "object" || file === null) return null;
   const fileRecord = file as Record<string, unknown>;
   if (typeof fileRecord.path !== "string") return null;
-  const details = [typeof fileRecord.mimeType === "string" ? fileRecord.mimeType : null, typeof fileRecord.size === "number" ? `${fileRecord.size} bytes` : null].filter(Boolean).join(", ");
+  const details = [
+    typeof fileRecord.mimeType === "string" ? fileRecord.mimeType : null,
+    typeof fileRecord.size === "number" ? `${fileRecord.size} bytes` : null,
+  ]
+    .filter(Boolean)
+    .join(", ");
   const attachmentContext = sandboxAttachmentContext(fileRecord.attachment);
   return `- ${fileRecord.path}${details ? ` (${details})` : ""}${attachmentContext ? ` — ${attachmentContext}` : ""}`;
 }
@@ -111,7 +143,13 @@ function codeSandboxContextFromValue(value: unknown) {
   const record = value as Record<string, unknown>;
   if (record.kind !== "code_sandbox_result") return null;
 
-  const lines = [`Previous code sandbox result (${typeof record.language === "string" ? record.language : "unknown"}, ${record.ok === false ? "failed" : "ok"}).`, "If the user asks to inspect or modify one of these generated files, call run_code_sandbox with its Attachment ID in the attachments array; do not ask the user to re-upload it.", sandboxTextContext("stdout", record.stdout), sandboxTextContext("stderr", record.stderr), ...codeSandboxFilesContext(record.files)].filter(Boolean);
+  const lines = [
+    `Previous code sandbox result (${typeof record.language === "string" ? record.language : "unknown"}, ${record.ok === false ? "failed" : "ok"}).`,
+    "If the user asks to inspect or modify one of these generated files, call run_code_sandbox with its Attachment ID in the attachments array; do not ask the user to re-upload it.",
+    sandboxTextContext("stdout", record.stdout),
+    sandboxTextContext("stderr", record.stderr),
+    ...codeSandboxFilesContext(record.files),
+  ].filter(Boolean);
 
   return lines.join("\n");
 }
@@ -119,7 +157,10 @@ function codeSandboxContextFromValue(value: unknown) {
 export function codeSandboxContextFromToolMetadata(metadata: unknown) {
   if (typeof metadata !== "object" || metadata === null) return null;
   const record = metadata as Record<string, unknown>;
-  return codeSandboxContextFromValue(record.output) ?? codeSandboxContextFromValue(record);
+  return (
+    codeSandboxContextFromValue(record.output) ??
+    codeSandboxContextFromValue(record)
+  );
 }
 
 function codeWorkspaceContextFromValue(value: unknown) {
@@ -132,22 +173,42 @@ function codeWorkspaceContextFromValue(value: unknown) {
         .map((file) => {
           if (typeof file !== "object" || file === null) return null;
           const fileRecord = file as Record<string, unknown>;
-          return typeof fileRecord.path === "string" ? `- ${fileRecord.path}${fileRecord.binary ? " (asset)" : ""}` : null;
+          return typeof fileRecord.path === "string"
+            ? `- ${fileRecord.path}${fileRecord.binary ? " (asset)" : ""}`
+            : null;
         })
         .filter(Boolean)
         .join("\n")
     : "";
-  return [`Code workspace ID: ${record.projectId}`, `Title: ${typeof record.title === "string" ? record.title : "Code workspace"}`, `Preview entry: ${typeof record.rootFile === "string" ? record.rootFile : "none"}`, files ? `Files:\n${files}` : null].filter(Boolean).join("\n");
+  return [
+    `Code workspace ID: ${record.projectId}`,
+    `Title: ${typeof record.title === "string" ? record.title : "Code workspace"}`,
+    `Preview entry: ${typeof record.rootFile === "string" ? record.rootFile : "none"}`,
+    files ? `Files:\n${files}` : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 export function codeWorkspaceContextFromToolMetadata(metadata: unknown) {
   if (typeof metadata !== "object" || metadata === null) return null;
   const record = metadata as Record<string, unknown>;
-  return codeWorkspaceContextFromValue(record) ?? codeWorkspaceContextFromValue(record.input) ?? codeWorkspaceContextFromValue(record.output);
+  return (
+    codeWorkspaceContextFromValue(record) ??
+    codeWorkspaceContextFromValue(record.input) ??
+    codeWorkspaceContextFromValue(record.output)
+  );
 }
 
-export async function toolMetadataForModelHistory(part: { type: string; contentEncrypted: string | null; metadataJson: unknown }) {
-  if ((part.type === "tool-call" || part.type === "tool-result") && part.contentEncrypted) {
+export async function toolMetadataForModelHistory(part: {
+  type: string;
+  contentEncrypted: string | null;
+  metadataJson: unknown;
+}) {
+  if (
+    (part.type === "tool-call" || part.type === "tool-result") &&
+    part.contentEncrypted
+  ) {
     try {
       return JSON.parse(await decryptValue(part.contentEncrypted)) as unknown;
     } catch {

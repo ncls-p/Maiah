@@ -9,6 +9,7 @@ import {
   timestamp,
   uuid,
   varchar,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { agents, agentVersions } from "./agents";
 import { users } from "./auth";
@@ -29,6 +30,11 @@ export const conversationStatusEnum = pgEnum("conversation_status", [
   "archived",
   "deleted",
 ]);
+
+export const conversationShareContinuationModeEnum = pgEnum(
+  "conversation_share_continuation_mode",
+  ["shared", "fork"],
+);
 
 export const conversationFolders = pgTable(
   "conversation_folders",
@@ -89,6 +95,13 @@ export const conversations = pgTable(
     summaryThroughMessageId: uuid("summary_through_message_id"),
     summaryTokenCount: integer("summary_token_count"),
     summaryUpdatedAt: timestamp("summary_updated_at", { withTimezone: true }),
+    isEphemeral: boolean("is_ephemeral").notNull().default(false),
+    ephemeralTtlMinutes: integer("ephemeral_ttl_minutes")
+      .notNull()
+      .default(24 * 60),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    publicShareId: uuid("public_share_id"),
+    publicSharedAt: timestamp("public_shared_at", { withTimezone: true }),
     createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -116,6 +129,44 @@ export const conversations = pgTable(
       t.sidebarOrder,
       t.updatedAt,
       t.id,
+    ),
+    uniqueIndex("conversations_public_share_id_unique").on(t.publicShareId),
+    index("conversations_ephemeral_expiry").on(t.isEphemeral, t.expiresAt),
+  ],
+);
+
+export const conversationShares = pgTable(
+  "conversation_shares",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    conversationId: uuid("conversation_id")
+      .notNull()
+      .references(() => conversations.id, { onDelete: CASCADE_ACTION }),
+    sharedByUserId: uuid("shared_by_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: CASCADE_ACTION }),
+    sharedWithUserId: uuid("shared_with_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: CASCADE_ACTION }),
+    canContinue: boolean("can_continue").notNull().default(false),
+    continuationMode: conversationShareContinuationModeEnum("continuation_mode")
+      .notNull()
+      .default("fork"),
+    createdAt: timestamp(CREATED_AT_COLUMN, { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp(UPDATED_AT_COLUMN, { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("conversation_shares_conversation_user_unique").on(
+      t.conversationId,
+      t.sharedWithUserId,
+    ),
+    index("conversation_shares_recipient").on(
+      t.sharedWithUserId,
+      t.conversationId,
     ),
   ],
 );

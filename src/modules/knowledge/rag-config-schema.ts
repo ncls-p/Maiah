@@ -5,7 +5,13 @@ export const ragConfigSchema = z
     embedding: z.object({
       providerId: z.uuid().nullable().default(null),
       modelId: z.string().trim().max(255).default(""),
-      dimensions: z.number().int().positive().max(65_535).nullable().default(null),
+      dimensions: z
+        .number()
+        .int()
+        .positive()
+        .max(65_535)
+        .nullable()
+        .default(null),
     }),
     chunking: z.object({
       maxCharacters: z.number().int().min(200).max(20_000).default(1_200),
@@ -29,7 +35,12 @@ export const ragConfigSchema = z
             enabled: z.boolean().default(false),
             providerId: z.uuid().nullable().default(null),
             modelId: z.string().trim().max(255).default(""),
-            minimumTextCharactersPerPage: z.number().int().min(0).max(10_000).default(80),
+            minimumTextCharactersPerPage: z
+              .number()
+              .int()
+              .min(0)
+              .max(10_000)
+              .default(80),
             maxVisualPages: z.number().int().min(1).max(500).default(50),
             describeDiagrams: z.boolean().default(true),
           })
@@ -73,7 +84,8 @@ export const ragConfigSchema = z
       context.addIssue({
         code: "custom",
         path: ["extraction", "ocr", "modelId"],
-        message: "An OCR/VLM model is required when visual extraction is enabled",
+        message:
+          "An OCR/VLM model is required when visual extraction is enabled",
       });
     }
   });
@@ -93,5 +105,13 @@ export function parseRagConfig(value: unknown): RagConfig {
 }
 
 export function hasSameRagModelSelection(left: RagConfig, right: RagConfig) {
-  return left.embedding.providerId === right.embedding.providerId && left.embedding.modelId === right.embedding.modelId && left.embedding.dimensions === right.embedding.dimensions && left.reranking.providerId === right.reranking.providerId && left.reranking.modelId === right.reranking.modelId && left.extraction.ocr.providerId === right.extraction.ocr.providerId && left.extraction.ocr.modelId === right.extraction.ocr.modelId;
+  return (
+    left.embedding.providerId === right.embedding.providerId &&
+    left.embedding.modelId === right.embedding.modelId &&
+    left.embedding.dimensions === right.embedding.dimensions &&
+    left.reranking.providerId === right.reranking.providerId &&
+    left.reranking.modelId === right.reranking.modelId &&
+    left.extraction.ocr.providerId === right.extraction.ocr.providerId &&
+    left.extraction.ocr.modelId === right.extraction.ocr.modelId
+  );
 }

@@ -1,11 +1,26 @@
 import { db } from "@/server/infrastructure/db";
-import { marketplaceItemShares,marketplaceItemVersions,users } from "@/server/infrastructure/db/schema";
-import { and,desc,eq } from "drizzle-orm";
-import { prepareAgentMarketplaceDraft,upsertMarketplaceDraft } from "./draft-helpers";
+import {
+  marketplaceItemShares,
+  marketplaceItemVersions,
+  users,
+} from "@/server/infrastructure/db/schema";
+import { and, desc, eq } from "drizzle-orm";
+import {
+  prepareAgentMarketplaceDraft,
+  upsertMarketplaceDraft,
+} from "./draft-helpers";
 import { sanitizeMarketplaceManifest } from "./manifest-sanitizer";
-import { canManageMarketplaceItem,getMarketplaceItem,getMarketplaceItemWithShares,MarketplaceVisibility } from "./use-cases.marketplace-visibility";
+import {
+  canManageMarketplaceItem,
+  getMarketplaceItem,
+  getMarketplaceItemWithShares,
+  MarketplaceVisibility,
+} from "./use-cases.marketplace-visibility";
 
-export async function getMarketplaceItemDetail(itemId: string, userId?: string) {
+export async function getMarketplaceItemDetail(
+  itemId: string,
+  userId?: string,
+) {
   const item = await getMarketplaceItemWithShares(itemId);
   if (!item) return null;
 
@@ -33,7 +48,9 @@ export async function getMarketplaceItemDetail(itemId: string, userId?: string) 
     .where(eq(marketplaceItemShares.itemId, itemId));
 
   const isOwner = userId ? await canManageMarketplaceItem(item, userId) : false;
-  const canInstall = userId ? await canUserInstallMarketplaceItem(item, userId) : item.status === "published" && item.visibility === "public";
+  const canInstall = userId
+    ? await canUserInstallMarketplaceItem(item, userId)
+    : item.status === "published" && item.visibility === "public";
 
   return {
     ...item,
@@ -62,7 +79,12 @@ export async function getMarketplaceItemDetail(itemId: string, userId?: string) 
 }
 
 export async function getLatestVersion(itemId: string) {
-  const [version] = await db.select().from(marketplaceItemVersions).where(eq(marketplaceItemVersions.itemId, itemId)).orderBy(desc(marketplaceItemVersions.createdAt)).limit(1);
+  const [version] = await db
+    .select()
+    .from(marketplaceItemVersions)
+    .where(eq(marketplaceItemVersions.itemId, itemId))
+    .orderBy(desc(marketplaceItemVersions.createdAt))
+    .limit(1);
   return version ?? null;
 }
 
@@ -70,12 +92,20 @@ async function userHasMarketplaceShare(itemId: string, userId: string) {
   const [share] = await db
     .select({ id: marketplaceItemShares.id })
     .from(marketplaceItemShares)
-    .where(and(eq(marketplaceItemShares.itemId, itemId), eq(marketplaceItemShares.sharedWithUserId, userId)))
+    .where(
+      and(
+        eq(marketplaceItemShares.itemId, itemId),
+        eq(marketplaceItemShares.sharedWithUserId, userId),
+      ),
+    )
     .limit(1);
   return Boolean(share);
 }
 
-export async function canUserInstallMarketplaceItem(item: NonNullable<Awaited<ReturnType<typeof getMarketplaceItem>>>, userId: string) {
+export async function canUserInstallMarketplaceItem(
+  item: NonNullable<Awaited<ReturnType<typeof getMarketplaceItem>>>,
+  userId: string,
+) {
   const blockedStatuses = new Set(["suspended", "archived", "rejected"]);
   if (blockedStatuses.has(item.status)) return false;
 
@@ -110,7 +140,8 @@ export async function publishAgentDraft(
     visibility?: MarketplaceVisibility;
   } & DraftInputExtras,
 ) {
-  const { description, manifest, name } = await prepareAgentMarketplaceDraft(input);
+  const { description, manifest, name } =
+    await prepareAgentMarketplaceDraft(input);
 
   return upsertMarketplaceDraft({
     workspaceId: input.workspaceId,

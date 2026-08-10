@@ -3,13 +3,37 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { Loader2,UploadIcon } from "lucide-react";
+import { Loader2, UploadIcon } from "lucide-react";
 import type { KnowledgePageViewModel } from "./page.knowledge-page.view";
-export function KnowledgeDocumentTableBranch4({ model }: { model: KnowledgePageViewModel }) {
-  const { docForm, documentInputRef, documents, dragActive, folderInputRef, handleFileDrop, ingestDocument, ingestSelectedFiles, lastUpload, selectedId, setDocForm, setDragActive, t, uploadingCount } = model;
+export function KnowledgeDocumentTableBranch4({
+  model,
+}: {
+  model: KnowledgePageViewModel;
+}) {
+  const {
+    docForm,
+    documentInputRef,
+    documents,
+    dragActive,
+    folderInputRef,
+    handleFileDrop,
+    ingestDocument,
+    ingestSelectedFiles,
+    lastUpload,
+    selectedId,
+    setDocForm,
+    setDragActive,
+    t,
+    uploadingCount,
+  } = model;
   return (
     <div className="p-3">
-      <AdvancedSection key={`${selectedId}:${documents.length === 0 ? "empty" : "populated"}`} label={t("addDocuments")} hint={t("addDocumentsHint")} defaultOpen={documents.length === 0}>
+      <AdvancedSection
+        key={`${selectedId}:${documents.length === 0 ? "empty" : "populated"}`}
+        label={t("addDocuments")}
+        hint={t("addDocumentsHint")}
+        defaultOpen={documents.length === 0}
+      >
         <input
           id="knowledge-file-upload"
           ref={documentInputRef}
@@ -37,7 +61,12 @@ export function KnowledgeDocumentTableBranch4({ model }: { model: KnowledgePageV
           }}
         />
         <div
-          className={cn("flex min-h-32 flex-col items-center justify-center rounded-xl border border-dashed px-5 py-5 text-center transition-colors", dragActive ? "border-primary bg-primary/6" : "border-primary/20 bg-primary/[0.025]")}
+          className={cn(
+            "flex min-h-32 flex-col items-center justify-center rounded-xl border border-dashed px-5 py-5 text-center transition-colors",
+            dragActive
+              ? "border-primary bg-primary/6"
+              : "border-primary/20 bg-primary/[0.025]",
+          )}
           onDragOver={(event) => {
             event.preventDefault();
             setDragActive(true);
@@ -47,12 +76,28 @@ export function KnowledgeDocumentTableBranch4({ model }: { model: KnowledgePageV
         >
           <UploadIcon className="size-5 text-primary" aria-hidden="true" />
           <p className="mt-2 text-xs font-semibold">{t("dropTitle")}</p>
-          <p className="mt-1 text-[0.7rem] text-muted-foreground">{t("dropFormats")}</p>
+          <p className="mt-1 text-[0.7rem] text-muted-foreground">
+            {t("dropFormats")}
+          </p>
           <div className="mt-3 flex flex-wrap justify-center gap-2">
-            <Button type="button" size="sm" variant="outline" className="h-8" disabled={uploadingCount > 0} onClick={() => documentInputRef.current?.click()}>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-8"
+              disabled={uploadingCount > 0}
+              onClick={() => documentInputRef.current?.click()}
+            >
               {t("browseFiles")}
             </Button>
-            <Button type="button" size="sm" variant="outline" className="h-8" disabled={uploadingCount > 0} onClick={() => folderInputRef.current?.click()}>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-8"
+              disabled={uploadingCount > 0}
+              onClick={() => folderInputRef.current?.click()}
+            >
               {t("browseFolder")}
             </Button>
           </div>
@@ -87,7 +132,12 @@ export function KnowledgeDocumentTableBranch4({ model }: { model: KnowledgePageV
             ) : null}
           </div>
         ) : null}
-        <AdvancedSection label={t("pasteContent")} hint={t("pasteContentHint")} storageKey="advanced:knowledge-paste-content" className="mt-3">
+        <AdvancedSection
+          label={t("pasteContent")}
+          hint={t("pasteContentHint")}
+          storageKey="advanced:knowledge-paste-content"
+          className="mt-3"
+        >
           <div className="grid gap-3">
             <Input
               aria-label={t("documentTitle")}
@@ -116,7 +166,11 @@ export function KnowledgeDocumentTableBranch4({ model }: { model: KnowledgePageV
                 })
               }
             />
-            <Button className="justify-self-end" onClick={() => void ingestDocument()} disabled={!docForm.title.trim() || !docForm.content.trim()}>
+            <Button
+              className="justify-self-end"
+              onClick={() => void ingestDocument()}
+              disabled={!docForm.title.trim() || !docForm.content.trim()}
+            >
               {t("ingestDocument")}
             </Button>
           </div>

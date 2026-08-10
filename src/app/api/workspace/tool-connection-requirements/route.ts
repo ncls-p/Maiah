@@ -1,7 +1,10 @@
-import { NextRequest,NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
-import { handleRoute,requireWorkspacePermissionAsync } from "@/lib/route-handler";
+import {
+  handleRoute,
+  requireWorkspacePermissionAsync,
+} from "@/lib/route-handler";
 import { upsertToolConnectionRequirement } from "@/modules/tool-connections/use-cases";
 
 const jsonRecordSchema = z.record(z.string(), z.unknown());
@@ -20,13 +23,22 @@ export async function PUT(req: NextRequest) {
     async ({ session }) => {
       const parsed = upsertSchema.safeParse(await req.json());
       if (!parsed.success) {
-        return NextResponse.json({ error: "Invalid input", details: parsed.error.issues }, { status: 400 });
+        return NextResponse.json(
+          { error: "Invalid input", details: parsed.error.issues },
+          { status: 400 },
+        );
       }
 
-      const forbidden = await requireWorkspacePermissionAsync(session.user.id, parsed.data.workspaceId, "mcpServers.manage");
+      const forbidden = await requireWorkspacePermissionAsync(
+        session.user.id,
+        parsed.data.workspaceId,
+        "mcpServers.manage",
+      );
       if (forbidden) return forbidden;
 
-      return NextResponse.json(await upsertToolConnectionRequirement(parsed.data));
+      return NextResponse.json(
+        await upsertToolConnectionRequirement(parsed.data),
+      );
     },
     { logLabel: "Failed to upsert tool connection requirement" },
   );

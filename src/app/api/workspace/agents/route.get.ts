@@ -123,6 +123,7 @@ export async function GET(req: NextRequest) {
       const agentsWithAccess = await Promise.all(
         list.map(async (agent) => ({
           ...agent,
+          hiddenInChat: defaultPreferences.hiddenAgentIds.includes(agent.id),
           promptSuggestions: normalizePromptSuggestions(
             agent.promptSuggestionsJson,
           ),

@@ -1,8 +1,14 @@
 import { eq } from "drizzle-orm";
 
-import { listBuiltInToolSummaries,type BuiltInToolSummary } from "@/modules/tool/builtin-tools-catalog";
+import {
+  listBuiltInToolSummaries,
+  type BuiltInToolSummary,
+} from "@/modules/tool/builtin-tools-catalog";
 import { db } from "@/server/infrastructure/db";
-import { organizationBuiltinToolPolicies,workspaces } from "@/server/infrastructure/db/schema";
+import {
+  organizationBuiltinToolPolicies,
+  workspaces,
+} from "@/server/infrastructure/db/schema";
 
 export type OrganizationBuiltInToolPolicy = BuiltInToolSummary & {
   enabled: boolean;
@@ -10,9 +16,14 @@ export type OrganizationBuiltInToolPolicy = BuiltInToolSummary & {
   configured: boolean;
 };
 
-export type EffectiveBuiltInToolPolicy = Pick<OrganizationBuiltInToolPolicy, "enabled" | "requireApproval">;
+export type EffectiveBuiltInToolPolicy = Pick<
+  OrganizationBuiltInToolPolicy,
+  "enabled" | "requireApproval"
+>;
 
-export function builtInToolRequiresApprovalByDefault(riskLevel: BuiltInToolSummary["riskLevel"]) {
+export function builtInToolRequiresApprovalByDefault(
+  riskLevel: BuiltInToolSummary["riskLevel"],
+) {
   return riskLevel === "high" || riskLevel === "critical";
 }
 
@@ -23,25 +34,35 @@ export function resolveOrganizationBuiltInToolPolicies(
     requireApproval: boolean;
   }>,
 ): OrganizationBuiltInToolPolicy[] {
-  const configuredByName = new Map(configuredRows.map((row) => [row.toolName, row]));
+  const configuredByName = new Map(
+    configuredRows.map((row) => [row.toolName, row]),
+  );
 
   return listBuiltInToolSummaries().map((tool) => {
     const configured = configuredByName.get(tool.name);
     return {
       ...tool,
       enabled: configured?.enabled ?? true,
-      requireApproval: configured?.requireApproval ?? builtInToolRequiresApprovalByDefault(tool.riskLevel),
+      requireApproval:
+        configured?.requireApproval ??
+        builtInToolRequiresApprovalByDefault(tool.riskLevel),
       configured: Boolean(configured),
     };
   });
 }
 
 async function organizationIdForWorkspace(workspaceId: string) {
-  const [workspace] = await db.select({ organizationId: workspaces.organizationId }).from(workspaces).where(eq(workspaces.id, workspaceId)).limit(1);
+  const [workspace] = await db
+    .select({ organizationId: workspaces.organizationId })
+    .from(workspaces)
+    .where(eq(workspaces.id, workspaceId))
+    .limit(1);
   return workspace?.organizationId ?? null;
 }
 
-export async function listOrganizationBuiltInToolPolicies(workspaceId: string): Promise<OrganizationBuiltInToolPolicy[]> {
+export async function listOrganizationBuiltInToolPolicies(
+  workspaceId: string,
+): Promise<OrganizationBuiltInToolPolicy[]> {
   const organizationId = await organizationIdForWorkspace(workspaceId);
   if (!organizationId) return [];
 
@@ -57,7 +78,9 @@ export async function listOrganizationBuiltInToolPolicies(workspaceId: string): 
   return resolveOrganizationBuiltInToolPolicies(rows);
 }
 
-export async function getOrganizationBuiltInToolPolicyMap(workspaceId: string): Promise<Map<string, EffectiveBuiltInToolPolicy>> {
+export async function getOrganizationBuiltInToolPolicyMap(
+  workspaceId: string,
+): Promise<Map<string, EffectiveBuiltInToolPolicy>> {
   const policies = await listOrganizationBuiltInToolPolicies(workspaceId);
   return new Map(
     policies.map((policy) => [
@@ -70,15 +93,27 @@ export async function getOrganizationBuiltInToolPolicyMap(workspaceId: string): 
   );
 }
 
-export async function updateOrganizationBuiltInToolPolicy(input: { workspaceId: string; toolName: string; enabled?: boolean; requireApproval?: boolean; updatedById: string }): Promise<OrganizationBuiltInToolPolicy | null> {
+export async function updateOrganizationBuiltInToolPolicy(input: {
+  workspaceId: string;
+  toolName: string;
+  enabled?: boolean;
+  requireApproval?: boolean;
+  updatedById: string;
+}): Promise<OrganizationBuiltInToolPolicy | null> {
   const organizationId = await organizationIdForWorkspace(input.workspaceId);
   if (!organizationId) return null;
 
-  const tool = listBuiltInToolSummaries().find((candidate) => candidate.name === input.toolName);
+  const tool = listBuiltInToolSummaries().find(
+    (candidate) => candidate.name === input.toolName,
+  );
   if (!tool) return null;
 
-  const currentPolicies = await listOrganizationBuiltInToolPolicies(input.workspaceId);
-  const current = currentPolicies.find((policy) => policy.name === input.toolName);
+  const currentPolicies = await listOrganizationBuiltInToolPolicies(
+    input.workspaceId,
+  );
+  const current = currentPolicies.find(
+    (policy) => policy.name === input.toolName,
+  );
   if (!current) return null;
 
   const enabled = input.enabled ?? current.enabled;
@@ -95,7 +130,10 @@ export async function updateOrganizationBuiltInToolPolicy(input: { workspaceId: 
       updatedAt: new Date(),
     })
     .onConflictDoUpdate({
-      target: [organizationBuiltinToolPolicies.organizationId, organizationBuiltinToolPolicies.toolName],
+      target: [
+        organizationBuiltinToolPolicies.organizationId,
+        organizationBuiltinToolPolicies.toolName,
+      ],
       set: {
         enabled,
         requireApproval,

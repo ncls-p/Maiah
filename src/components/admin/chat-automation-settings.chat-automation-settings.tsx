@@ -1,15 +1,34 @@
 "use client";
-import { SettingsDisabledNotice,SettingsFeatureToggle,SettingsLoadError,SettingsSection,SettingsSectionSkeleton,SettingsStatusBadge,SettingsToggleRow } from "@/components/admin/settings-panel";
+import {
+  SettingsDisabledNotice,
+  SettingsFeatureToggle,
+  SettingsLoadError,
+  SettingsSection,
+  SettingsSectionSkeleton,
+  SettingsStatusBadge,
+  SettingsToggleRow,
+} from "@/components/admin/settings-panel";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Select,SelectContent,SelectItem,SelectTrigger,SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { Link } from "@/i18n/navigation";
-import { MessageSquareTextIcon,PlugZapIcon } from "lucide-react";
+import { MessageSquareTextIcon, PlugZapIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useCallback,useEffect,useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { ChatAutomationConfig,ChatAutomationState,ChecklistItem,NONE } from "./chat-automation-settings.none";
+import {
+  ChatAutomationConfig,
+  ChatAutomationState,
+  ChecklistItem,
+  NONE,
+} from "./chat-automation-settings.none";
 export function ChatAutomationSettings() {
   const t = useTranslations("admin.settingsPage.chatAutomation");
   const tPage = useTranslations("admin.settingsPage");
@@ -33,7 +52,9 @@ export function ChatAutomationSettings() {
       } catch (error) {
         if (signal?.aborted) return;
         setLoadError(true);
-        toast.error(error instanceof Error ? error.message : tPage("loadFailed"));
+        toast.error(
+          error instanceof Error ? error.message : tPage("loadFailed"),
+        );
       } finally {
         if (!signal?.aborted) setLoading(false);
       }
@@ -48,7 +69,10 @@ export function ChatAutomationSettings() {
       controller.abort();
     };
   }, [loadSettings]);
-  const filteredModels = state && config?.providerId ? state.models.filter((model) => model.providerId === config.providerId) : [];
+  const filteredModels =
+    state && config?.providerId
+      ? state.models.filter((model) => model.providerId === config.providerId)
+      : [];
   function canSaveCurrentConfig(current: ChatAutomationConfig) {
     return !current.enabled || Boolean(current.providerId && current.modelId);
   }
@@ -105,23 +129,60 @@ export function ChatAutomationSettings() {
     return <SettingsSectionSkeleton rows={4} />;
   }
   if (loadError || !state || !config) {
-    return <SettingsLoadError title={tPage("loadFailed")} description={tPage("loadErrorDescription")} retryLabel={tPage("retry")} onRetry={() => void loadSettings()} />;
+    return (
+      <SettingsLoadError
+        title={tPage("loadFailed")}
+        description={tPage("loadErrorDescription")}
+        retryLabel={tPage("retry")}
+        onRetry={() => void loadSettings()}
+      />
+    );
   }
   const ready = Boolean(config.enabled && config.providerId && config.modelId);
-  const savedReady = Boolean(state.config.enabled && state.config.providerId && state.config.modelId);
-  const statusLabel = !config.enabled ? t("statusDisabled") : ready ? t("statusReady") : t("statusIncomplete");
+  const savedReady = Boolean(
+    state.config.enabled && state.config.providerId && state.config.modelId,
+  );
+  const statusLabel = !config.enabled
+    ? t("statusDisabled")
+    : ready
+      ? t("statusReady")
+      : t("statusIncomplete");
   const statusTone = !config.enabled ? "muted" : ready ? "success" : "warning";
   return (
-    <SettingsSection icon={MessageSquareTextIcon} title={t("title")} description={t("description")} stagger="stagger-3" badge={<SettingsStatusBadge label={statusLabel} tone={statusTone} />}>
+    <SettingsSection
+      icon={MessageSquareTextIcon}
+      title={t("title")}
+      description={t("description")}
+      stagger="stagger-3"
+      badge={<SettingsStatusBadge label={statusLabel} tone={statusTone} />}
+    >
       <div className="space-y-5">
-        <SettingsToggleRow id="chat-automation-enabled" label={t("enable")} description={t("enableDescription")} checked={config.enabled} onCheckedChange={(enabled) => setConfig({ ...config, enabled })} />
-        {!config.enabled ? <SettingsDisabledNotice title={t("disabledTitle")} description={t("disabledDescription")} /> : null}
+        <SettingsToggleRow
+          id="chat-automation-enabled"
+          label={t("enable")}
+          description={t("enableDescription")}
+          checked={config.enabled}
+          onCheckedChange={(enabled) => setConfig({ ...config, enabled })}
+        />
+        {!config.enabled ? (
+          <SettingsDisabledNotice
+            title={t("disabledTitle")}
+            description={t("disabledDescription")}
+          />
+        ) : null}
         {config.enabled && state.providers.length === 0 ? (
           <div className="flex gap-3 rounded-xl border border-amber-500/25 bg-amber-500/5 px-4 py-3 text-sm">
-            <PlugZapIcon className="mt-0.5 size-4 shrink-0 text-amber-600" aria-hidden="true" />
+            <PlugZapIcon
+              className="mt-0.5 size-4 shrink-0 text-amber-600"
+              aria-hidden="true"
+            />
             <div className="space-y-2">
-              <p className="font-medium text-foreground">{t("noProvidersTitle")}</p>
-              <p className="text-muted-foreground">{t("noProvidersDescription")}</p>
+              <p className="font-medium text-foreground">
+                {t("noProvidersTitle")}
+              </p>
+              <p className="text-muted-foreground">
+                {t("noProvidersDescription")}
+              </p>
               <Button variant="outline" size="sm" asChild>
                 <Link href="/providers">{t("noProvidersAction")}</Link>
               </Button>
@@ -132,9 +193,18 @@ export function ChatAutomationSettings() {
           <div className="rounded-xl border border-border/60 bg-muted/20 px-4 py-3">
             <p className="mb-2 text-sm font-medium">{t("checklistTitle")}</p>
             <ul className="space-y-1.5">
-              <ChecklistItem done={config.enabled} label={t("checklistEnable")} />
-              <ChecklistItem done={Boolean(config.providerId)} label={t("checklistProvider")} />
-              <ChecklistItem done={Boolean(config.modelId)} label={t("checklistModel")} />
+              <ChecklistItem
+                done={config.enabled}
+                label={t("checklistEnable")}
+              />
+              <ChecklistItem
+                done={Boolean(config.providerId)}
+                label={t("checklistProvider")}
+              />
+              <ChecklistItem
+                done={Boolean(config.modelId)}
+                label={t("checklistModel")}
+              />
               <ChecklistItem done={savedReady} label={t("checklistSave")} />
             </ul>
           </div>
@@ -195,19 +265,43 @@ export function ChatAutomationSettings() {
               </div>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
-              <SettingsFeatureToggle icon={MessageSquareTextIcon} label={t("titles")} description={t("titlesDescription")} checked={config.generateTitles} onCheckedChange={(generateTitles) => setConfig({ ...config, generateTitles })} />
-              <SettingsFeatureToggle icon={MessageSquareTextIcon} label={t("suggestions")} description={t("suggestionsDescription")} checked={config.generateSuggestions} onCheckedChange={(generateSuggestions) => setConfig({ ...config, generateSuggestions })} />
+              <SettingsFeatureToggle
+                icon={MessageSquareTextIcon}
+                label={t("titles")}
+                description={t("titlesDescription")}
+                checked={config.generateTitles}
+                onCheckedChange={(generateTitles) =>
+                  setConfig({ ...config, generateTitles })
+                }
+              />
+              <SettingsFeatureToggle
+                icon={MessageSquareTextIcon}
+                label={t("suggestions")}
+                description={t("suggestionsDescription")}
+                checked={config.generateSuggestions}
+                onCheckedChange={(generateSuggestions) =>
+                  setConfig({ ...config, generateSuggestions })
+                }
+              />
             </div>
           </>
         ) : null}
         <div className="flex flex-wrap justify-end gap-2 border-t border-border/60 pt-4">
           {ready ? (
-            <Button type="button" variant="outline" onClick={() => void testConnection()} disabled={testing || saving}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void testConnection()}
+              disabled={testing || saving}
+            >
               {testing ? <Spinner data-icon="inline-start" /> : null}
               {t("testConnection")}
             </Button>
           ) : null}
-          <Button onClick={() => void save()} disabled={saving || testing || !canSaveCurrentConfig(config)}>
+          <Button
+            onClick={() => void save()}
+            disabled={saving || testing || !canSaveCurrentConfig(config)}
+          >
             {saving ? <Spinner data-icon="inline-start" /> : null}
             {t("save")}
           </Button>

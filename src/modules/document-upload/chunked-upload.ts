@@ -13,9 +13,19 @@ async function responseError(response: Response, fallback: string) {
   return payload?.error ?? fallback;
 }
 
-async function uploadChunk(input: { chunkUrl: string; file: File; uploadId: string; workspaceId: string; chunkIndex: number; totalChunks: number }) {
+async function uploadChunk(input: {
+  chunkUrl: string;
+  file: File;
+  uploadId: string;
+  workspaceId: string;
+  chunkIndex: number;
+  totalChunks: number;
+}) {
   const start = input.chunkIndex * documentUploadChunkBytes;
-  const chunk = input.file.slice(start, Math.min(start + documentUploadChunkBytes, input.file.size));
+  const chunk = input.file.slice(
+    start,
+    Math.min(start + documentUploadChunkBytes, input.file.size),
+  );
   let lastError: Error | null = null;
 
   for (let attempt = 1; attempt <= maxChunkAttempts; attempt += 1) {
@@ -36,16 +46,28 @@ async function uploadChunk(input: { chunkUrl: string; file: File; uploadId: stri
         body: form,
       });
       if (response.ok) return;
-      lastError = new Error(await responseError(response, "Document chunk upload failed."));
+      lastError = new Error(
+        await responseError(response, "Document chunk upload failed."),
+      );
     } catch (error) {
-      lastError = error instanceof Error ? error : new Error("Document chunk upload failed.");
+      lastError =
+        error instanceof Error
+          ? error
+          : new Error("Document chunk upload failed.");
     }
   }
 
   throw lastError ?? new Error("Document chunk upload failed.");
 }
 
-export async function uploadDocumentInChunks<TResult>(input: { file: File; workspaceId: string; chunkUrl: string; completeUrl: string; completeMetadata?: Record<string, unknown>; onProgress?: (percentage: number) => void }): Promise<TResult> {
+export async function uploadDocumentInChunks<TResult>(input: {
+  file: File;
+  workspaceId: string;
+  chunkUrl: string;
+  completeUrl: string;
+  completeMetadata?: Record<string, unknown>;
+  onProgress?: (percentage: number) => void;
+}): Promise<TResult> {
   if (input.file.size === 0) throw new Error("Document file is empty.");
   const uploadId = crypto.randomUUID();
   const totalChunks = documentUploadChunkCount(input.file.size);
@@ -75,7 +97,9 @@ export async function uploadDocumentInChunks<TResult>(input: { file: File; works
     }),
   });
   if (!response.ok) {
-    throw new Error(await responseError(response, "Document upload could not be completed."));
+    throw new Error(
+      await responseError(response, "Document upload could not be completed."),
+    );
   }
   input.onProgress?.(100);
   return (await response.json()) as TResult;

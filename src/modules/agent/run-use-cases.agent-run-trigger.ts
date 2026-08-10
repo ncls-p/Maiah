@@ -1,12 +1,17 @@
 import { encryptValue } from "@/lib/crypto";
-import { projectToolMessagePayload,safeToolErrorMessage } from "@/modules/tool/safe-payload";
+import {
+  projectToolMessagePayload,
+  safeToolErrorMessage,
+} from "@/modules/tool/safe-payload";
 import { reserveWorkspaceTokens } from "@/modules/usage/quota-reservations";
 import { db } from "@/server/infrastructure/db";
 import { agentRuns } from "@/server/infrastructure/db/schema";
-import { and,eq,gt,isNull } from "drizzle-orm";
+import { and, eq, gt, isNull } from "drizzle-orm";
 
-export type AgentRunTrigger = "chat" | "scheduled" | "api" | "delegation" | "dry_run";
-export type AgentRunTerminalStatus = "success" | "failed" | "cancelled" | "timed_out";
+export type AgentRunTrigger =
+  "chat" | "scheduled" | "api" | "delegation" | "dry_run";
+export type AgentRunTerminalStatus =
+  "success" | "failed" | "cancelled" | "timed_out";
 
 export type AgentRunUsageEvent = {
   workspaceId: string;
@@ -24,20 +29,52 @@ export class AgentRunConflictError extends Error {
 }
 
 function isUniqueConstraintError(error: unknown) {
-  return typeof error === "object" && error !== null && "code" in error && error.code === "23505";
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    error.code === "23505"
+  );
 }
 
-async function findIdempotentRun(input: { workspaceId: string; trigger: AgentRunTrigger; idempotencyKey?: string | null }) {
+async function findIdempotentRun(input: {
+  workspaceId: string;
+  trigger: AgentRunTrigger;
+  idempotencyKey?: string | null;
+}) {
   if (!input.idempotencyKey) return null;
   const [run] = await db
     .select()
     .from(agentRuns)
-    .where(and(eq(agentRuns.workspaceId, input.workspaceId), eq(agentRuns.trigger, input.trigger), eq(agentRuns.idempotencyKey, input.idempotencyKey)))
+    .where(
+      and(
+        eq(agentRuns.workspaceId, input.workspaceId),
+        eq(agentRuns.trigger, input.trigger),
+        eq(agentRuns.idempotencyKey, input.idempotencyKey),
+      ),
+    )
     .limit(1);
   return run ?? null;
 }
 
-export async function createAgentRun(input: { workspaceId: string; agentId: string; agentVersionId: string; actorPrincipalType: string; actorPrincipalId: string; trigger: AgentRunTrigger; payload: unknown; requestedTokens: number; deadlineAt: Date; idempotencyKey?: string | null; rootRunId?: string; parentRunId?: string; conversationId?: string | null; messageId?: string | null; scheduledTaskId?: string | null; depth?: number }) {
+export async function createAgentRun(input: {
+  workspaceId: string;
+  agentId: string;
+  agentVersionId: string;
+  actorPrincipalType: string;
+  actorPrincipalId: string;
+  trigger: AgentRunTrigger;
+  payload: unknown;
+  requestedTokens: number;
+  deadlineAt: Date;
+  idempotencyKey?: string | null;
+  rootRunId?: string;
+  parentRunId?: string;
+  conversationId?: string | null;
+  messageId?: string | null;
+  scheduledTaskId?: string | null;
+  depth?: number;
+}) {
   const existing = await findIdempotentRun(input);
   if (existing) return { run: existing, reused: true as const };
 
@@ -61,7 +98,9 @@ export async function createAgentRun(input: { workspaceId: string; agentId: stri
         actorPrincipalType: input.actorPrincipalType,
         actorPrincipalId: input.actorPrincipalId,
         idempotencyKey: input.idempotencyKey ?? null,
-        inputEncrypted: await encryptValue(JSON.stringify(input.payload ?? null)),
+        inputEncrypted: await encryptValue(
+          JSON.stringify(input.payload ?? null),
+        ),
         inputPreviewJson: projectToolMessagePayload(input.payload),
         depth: input.depth ?? 0,
         deadlineAt: input.deadlineAt,
@@ -89,7 +128,10 @@ export async function createAgentRun(input: { workspaceId: string; agentId: stri
         .update(agentRuns)
         .set({
           status: "failed",
-          errorCode: typeof error === "object" && error !== null && "code" in error ? String(error.code) : "QUOTA_RESERVATION_FAILED",
+          errorCode:
+            typeof error === "object" && error !== null && "code" in error
+              ? String(error.code)
+              : "QUOTA_RESERVATION_FAILED",
           errorMessage: safeToolErrorMessage(error, "Token reservation failed"),
           completedAt: new Date(),
           updatedAt: new Date(),
@@ -102,7 +144,12 @@ export async function createAgentRun(input: { workspaceId: string; agentId: stri
   return { run, reused: false as const };
 }
 
-export async function claimAgentRun(input: { runId: string; leaseOwner: string; leaseMs?: number; now?: Date }) {
+export async function claimAgentRun(input: {
+  runId: string;
+  leaseOwner: string;
+  leaseMs?: number;
+  now?: Date;
+}) {
   const now = input.now ?? new Date();
   const leaseExpiresAt = new Date(now.getTime() + (input.leaseMs ?? 30_000));
   const [run] = await db
@@ -114,7 +161,14 @@ export async function claimAgentRun(input: { runId: string; leaseOwner: string; 
       startedAt: now,
       updatedAt: now,
     })
-    .where(and(eq(agentRuns.id, input.runId), isNull(agentRuns.cancelRequestedAt), gt(agentRuns.deadlineAt, now), eq(agentRuns.status, "queued")))
+    .where(
+      and(
+        eq(agentRuns.id, input.runId),
+        isNull(agentRuns.cancelRequestedAt),
+        gt(agentRuns.deadlineAt, now),
+        eq(agentRuns.status, "queued"),
+      ),
+    )
     .returning();
   return run ?? null;
 }

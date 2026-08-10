@@ -1,14 +1,26 @@
 "use client";
 
-import { ChevronDownIcon,CircleDotDashedIcon } from "lucide-react";
+import { ChevronDownIcon, CircleDotDashedIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
-import { Marker,MarkerContent,MarkerIcon } from "@/components/ui/marker";
-import { MessageScrollerButton,useMessageScroller,useMessageScrollerScrollable } from "@/components/ui/message-scroller";
+import { Marker, MarkerContent, MarkerIcon } from "@/components/ui/marker";
+import {
+  MessageScrollerButton,
+  useMessageScroller,
+  useMessageScrollerScrollable,
+} from "@/components/ui/message-scroller";
 import { chatAnchorStorageKey } from "./chat-message-list.initial-visible-messages";
 
-export function ChatScrollControls({ sending, conversationId, onJumpLatest }: { sending: boolean; conversationId?: string | null; onJumpLatest?: () => Promise<void> | void }) {
+export function ChatScrollControls({
+  sending,
+  conversationId,
+  onJumpLatest,
+}: {
+  sending: boolean;
+  conversationId?: string | null;
+  onJumpLatest?: () => Promise<void> | void;
+}) {
   const t = useTranslations("chat.messageList");
   const scrollable = useMessageScrollerScrollable();
   const { scrollToEnd } = useMessageScroller();

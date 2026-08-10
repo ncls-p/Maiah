@@ -1,10 +1,16 @@
 import { logHandledError } from "@/lib/logger";
 import { db } from "@/server/infrastructure/db";
-import { aiModels,aiProviders } from "@/server/infrastructure/db/schema";
-import type { ModelDescriptor,ProviderRuntimeConfig } from "@/server/infrastructure/providers";
+import { aiModels, aiProviders } from "@/server/infrastructure/db/schema";
+import type {
+  ModelDescriptor,
+  ProviderRuntimeConfig,
+} from "@/server/infrastructure/providers";
 import { getAdapter } from "@/server/infrastructure/providers";
-import { and,eq,sql } from "drizzle-orm";
-import { MODEL_UPDATE_RULES,UpdateModelInput } from "./use-cases.test-provider-connection";
+import { and, eq, sql } from "drizzle-orm";
+import {
+  MODEL_UPDATE_RULES,
+  UpdateModelInput,
+} from "./use-cases.test-provider-connection";
 import { listProviders } from "./use-cases.update-provider";
 import { buildProviderRuntimeConfig } from "./provider-runtime-config";
 
@@ -23,7 +29,10 @@ function buildModelUpdates(input: UpdateModelInput) {
 
 export async function updateModel(modelId: string, input: UpdateModelInput) {
   try {
-    await db.update(aiModels).set(buildModelUpdates(input)).where(eq(aiModels.id, modelId));
+    await db
+      .update(aiModels)
+      .set(buildModelUpdates(input))
+      .where(eq(aiModels.id, modelId));
   } catch (error) {
     logHandledError("Failed to update model", { modelId }, error as Error);
     throw error;
@@ -43,18 +52,30 @@ export async function listModels(providerId: string) {
 }
 
 export async function getModelById(modelId: string) {
-  const [model] = await db.select().from(aiModels).where(eq(aiModels.id, modelId)).limit(1);
+  const [model] = await db
+    .select()
+    .from(aiModels)
+    .where(eq(aiModels.id, modelId))
+    .limit(1);
 
   return model || null;
 }
 
 // ─── Discover models from provider ─────────────────────────────────────
 
-export async function discoverModels(providerId: string, workspaceId: string): Promise<ModelDescriptor[]> {
+export async function discoverModels(
+  providerId: string,
+  workspaceId: string,
+): Promise<ModelDescriptor[]> {
   const [provider] = await db
     .select()
     .from(aiProviders)
-    .where(and(eq(aiProviders.id, providerId), eq(aiProviders.workspaceId, workspaceId)))
+    .where(
+      and(
+        eq(aiProviders.id, providerId),
+        eq(aiProviders.workspaceId, workspaceId),
+      ),
+    )
     .limit(1);
 
   if (!provider) {
@@ -66,7 +87,9 @@ export async function discoverModels(providerId: string, workspaceId: string): P
     throw new Error(`Model discovery not supported for kind: ${provider.kind}`);
   }
 
-  const models = await adapter.listModels(await buildProviderRuntimeConfig(provider));
+  const models = await adapter.listModels(
+    await buildProviderRuntimeConfig(provider),
+  );
   return models;
 }
 
@@ -85,8 +108,12 @@ export type DiscoveredProviderModels = {
  * compatible adapters implement this through GET /models; one unavailable
  * provider must not prevent the other catalogs from being used.
  */
-export async function discoverWorkspaceModels(workspaceId: string): Promise<DiscoveredProviderModels[]> {
-  const providers = (await listProviders(workspaceId)).filter((provider) => provider.enabled);
+export async function discoverWorkspaceModels(
+  workspaceId: string,
+): Promise<DiscoveredProviderModels[]> {
+  const providers = (await listProviders(workspaceId)).filter(
+    (provider) => provider.enabled,
+  );
 
   return Promise.all(
     providers.map(async (provider) => {
@@ -108,7 +135,8 @@ export async function discoverWorkspaceModels(workspaceId: string): Promise<Disc
             kind: provider.kind,
           },
           models: [],
-          error: error instanceof Error ? error.message : "Model discovery failed",
+          error:
+            error instanceof Error ? error.message : "Model discovery failed",
         };
       }
     }),

@@ -39,7 +39,6 @@ export function ModelAdvancedMainSection14({
           <Input
             id="agent-max-retries"
             type="number"
-            min={0}
             step={1}
             placeholder={t("providerDefault")}
             value={form.generationSettings.maxRetries}

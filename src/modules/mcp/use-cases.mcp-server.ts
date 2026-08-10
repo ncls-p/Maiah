@@ -1,4 +1,4 @@
-import { decryptValue,encryptValue } from "@/lib/crypto";
+import { decryptValue, encryptValue } from "@/lib/crypto";
 import { inferMcpAuthHint } from "@/modules/mcp/auth-hint";
 import { authorization } from "@/server/domain/services/authorization";
 import { mcpServers } from "@/server/infrastructure/db/schema";
@@ -52,7 +52,14 @@ export type McpToolDiscoveryResult = {
 };
 
 export function hasMcpConnectionChanges(input: UpdateMcpServerInput) {
-  return input.transport !== undefined || input.url !== undefined || input.command !== undefined || input.args !== undefined || input.headers !== undefined || input.env !== undefined;
+  return (
+    input.transport !== undefined ||
+    input.url !== undefined ||
+    input.command !== undefined ||
+    input.args !== undefined ||
+    input.headers !== undefined ||
+    input.env !== undefined
+  );
 }
 
 export function toSafeMcpServer(server: McpServer) {
@@ -93,7 +100,9 @@ export async function encryptRecord(record?: Record<string, string>) {
   return encrypted;
 }
 
-async function decryptRecord(encrypted?: Record<string, string> | null): Promise<Record<string, string>> {
+async function decryptRecord(
+  encrypted?: Record<string, string> | null,
+): Promise<Record<string, string>> {
   if (!encrypted) return {};
   const decrypted: Record<string, string> = {};
   for (const [key, value] of Object.entries(encrypted)) {
@@ -102,7 +111,10 @@ async function decryptRecord(encrypted?: Record<string, string> | null): Promise
   return decrypted;
 }
 
-export async function mergeEncryptedRecord(existing: Record<string, string> | null | undefined, incoming: Record<string, string>) {
+export async function mergeEncryptedRecord(
+  existing: Record<string, string> | null | undefined,
+  incoming: Record<string, string>,
+) {
   const merged = await decryptRecord(existing ?? null);
   for (const [key, value] of Object.entries(incoming)) {
     if (value.trim()) {
@@ -112,21 +124,44 @@ export async function mergeEncryptedRecord(existing: Record<string, string> | nu
   return encryptRecord(merged);
 }
 
-export function validateTransportConfig(transport: McpTransport, url: string | null, command: string | null) {
+export function validateTransportConfig(
+  transport: McpTransport,
+  url: string | null,
+  command: string | null,
+) {
   if (transport === "stdio" && !command?.trim()) {
     throw new Error("Command is required for stdio transport");
   }
-  if ((transport === "sse" || transport === "streamable-http") && !url?.trim()) {
+  if (
+    (transport === "sse" || transport === "streamable-http") &&
+    !url?.trim()
+  ) {
     throw new Error("URL is required for remote transport");
   }
 }
 
-export function canManageMcpServer(server: McpServer, userId: string, canManageGlobal = false) {
+export function canManageMcpServer(
+  server: McpServer,
+  userId: string,
+  canManageGlobal = false,
+) {
   return server.createdById === userId || (server.isGlobal && canManageGlobal);
 }
 
-export async function assertCanManageMcpServer(server: McpServer, userId: string, canManageGlobal = false) {
-  if (!canManageMcpServer(server, userId, canManageGlobal) && !(await authorization.hasPermission({ principalType: "user", principalId: userId }, "mcpServers.manage", "mcp_server", server.id))) {
+export async function assertCanManageMcpServer(
+  server: McpServer,
+  userId: string,
+  canManageGlobal = false,
+) {
+  if (
+    !canManageMcpServer(server, userId, canManageGlobal) &&
+    !(await authorization.hasPermission(
+      { principalType: "user", principalId: userId },
+      "mcpServers.manage",
+      "mcp_server",
+      server.id,
+    ))
+  ) {
     throw new Error("MCP server not found");
   }
 }

@@ -1,11 +1,27 @@
 import { encryptValue } from "@/lib/crypto";
-import { projectToolMessagePayload,safeToolErrorMessage } from "@/modules/tool/safe-payload";
+import {
+  projectToolMessagePayload,
+  safeToolErrorMessage,
+} from "@/modules/tool/safe-payload";
 import { db } from "@/server/infrastructure/db";
-import { agentRuns,agentRunSteps,usageEvents,workspaceTokenReservations } from "@/server/infrastructure/db/schema";
-import { and,eq,inArray,isNull,lt,sql } from "drizzle-orm";
-import { AgentRunConflictError,AgentRunUsageEvent } from "./run-use-cases.agent-run-trigger";
+import {
+  agentRuns,
+  agentRunSteps,
+  usageEvents,
+  workspaceTokenReservations,
+} from "@/server/infrastructure/db/schema";
+import { and, eq, inArray, isNull, lt, sql } from "drizzle-orm";
+import {
+  AgentRunConflictError,
+  AgentRunUsageEvent,
+} from "./run-use-cases.agent-run-trigger";
 
-export async function heartbeatAgentRun(input: { runId: string; leaseOwner: string; leaseMs?: number; now?: Date }) {
+export async function heartbeatAgentRun(input: {
+  runId: string;
+  leaseOwner: string;
+  leaseMs?: number;
+  now?: Date;
+}) {
   const now = input.now ?? new Date();
   const [run] = await db
     .update(agentRuns)
@@ -13,12 +29,30 @@ export async function heartbeatAgentRun(input: { runId: string; leaseOwner: stri
       leaseExpiresAt: new Date(now.getTime() + (input.leaseMs ?? 30_000)),
       updatedAt: now,
     })
-    .where(and(eq(agentRuns.id, input.runId), eq(agentRuns.status, "running"), eq(agentRuns.leaseOwner, input.leaseOwner), isNull(agentRuns.cancelRequestedAt)))
+    .where(
+      and(
+        eq(agentRuns.id, input.runId),
+        eq(agentRuns.status, "running"),
+        eq(agentRuns.leaseOwner, input.leaseOwner),
+        isNull(agentRuns.cancelRequestedAt),
+      ),
+    )
     .returning({ id: agentRuns.id });
   return Boolean(run);
 }
 
-export async function appendAgentRunStep(input: { runId: string; sequence: number; kind: "model" | "tool" | "delegation" | "approval"; status: typeof agentRuns.$inferSelect.status; name?: string | null; childRunId?: string | null; inputPreview?: unknown; outputPreview?: unknown; errorMessage?: string | null; completedAt?: Date | null }) {
+export async function appendAgentRunStep(input: {
+  runId: string;
+  sequence: number;
+  kind: "model" | "tool" | "delegation" | "approval";
+  status: typeof agentRuns.$inferSelect.status;
+  name?: string | null;
+  childRunId?: string | null;
+  inputPreview?: unknown;
+  outputPreview?: unknown;
+  errorMessage?: string | null;
+  completedAt?: Date | null;
+}) {
   const [step] = await db
     .insert(agentRunSteps)
     .values({
@@ -30,19 +64,34 @@ export async function appendAgentRunStep(input: { runId: string; sequence: numbe
       childRunId: input.childRunId ?? null,
       inputPreviewJson: projectToolMessagePayload(input.inputPreview),
       outputPreviewJson: projectToolMessagePayload(input.outputPreview),
-      errorMessage: input.errorMessage ? safeToolErrorMessage(new Error(input.errorMessage), "Run step failed") : null,
+      errorMessage: input.errorMessage
+        ? safeToolErrorMessage(new Error(input.errorMessage), "Run step failed")
+        : null,
       completedAt: input.completedAt ?? null,
     })
     .returning();
   return step;
 }
 
-export async function completeAgentRun(input: { runId: string; output: unknown; inputTokens: number; outputTokens: number; reservationTokens?: number; usage?: AgentRunUsageEvent; now?: Date }) {
+export async function completeAgentRun(input: {
+  runId: string;
+  output: unknown;
+  inputTokens: number;
+  outputTokens: number;
+  reservationTokens?: number;
+  usage?: AgentRunUsageEvent;
+  now?: Date;
+}) {
   const now = input.now ?? new Date();
-  const outputEncrypted = await encryptValue(JSON.stringify(input.output ?? null));
+  const outputEncrypted = await encryptValue(
+    JSON.stringify(input.output ?? null),
+  );
   const inputTokens = Math.max(0, input.inputTokens);
   const outputTokens = Math.max(0, input.outputTokens);
-  const actualTokens = Math.max(0, Math.floor(input.reservationTokens ?? inputTokens + outputTokens));
+  const actualTokens = Math.max(
+    0,
+    Math.floor(input.reservationTokens ?? inputTokens + outputTokens),
+  );
 
   return db.transaction(async (tx) => {
     const [run] = await tx
@@ -59,14 +108,21 @@ export async function completeAgentRun(input: { runId: string; output: unknown; 
         completedAt: now,
         updatedAt: now,
       })
-      .where(and(eq(agentRuns.id, input.runId), eq(agentRuns.status, "running")))
+      .where(
+        and(eq(agentRuns.id, input.runId), eq(agentRuns.status, "running")),
+      )
       .returning();
     if (!run) throw new AgentRunConflictError("Run is no longer executing");
 
     await tx
       .update(workspaceTokenReservations)
       .set({ status: "settled", actualTokens, updatedAt: now })
-      .where(and(eq(workspaceTokenReservations.runId, input.runId), eq(workspaceTokenReservations.status, "active")));
+      .where(
+        and(
+          eq(workspaceTokenReservations.runId, input.runId),
+          eq(workspaceTokenReservations.status, "active"),
+        ),
+      );
 
     if (input.usage) {
       await tx.insert(usageEvents).values({
@@ -88,14 +144,24 @@ export async function completeAgentRun(input: { runId: string; output: unknown; 
   });
 }
 
-export async function consumeAgentRunDelegationBudget(input: { rootRunId: string; maxDelegations: number; now?: Date }) {
+export async function consumeAgentRunDelegationBudget(input: {
+  rootRunId: string;
+  maxDelegations: number;
+  now?: Date;
+}) {
   const [root] = await db
     .update(agentRuns)
     .set({
       delegationCount: sql`${agentRuns.delegationCount} + 1`,
       updatedAt: input.now ?? new Date(),
     })
-    .where(and(eq(agentRuns.id, input.rootRunId), inArray(agentRuns.status, ["queued", "running"]), lt(agentRuns.delegationCount, Math.max(1, input.maxDelegations))))
+    .where(
+      and(
+        eq(agentRuns.id, input.rootRunId),
+        inArray(agentRuns.status, ["queued", "running"]),
+        lt(agentRuns.delegationCount, Math.max(1, input.maxDelegations)),
+      ),
+    )
     .returning({ delegationCount: agentRuns.delegationCount });
   return root?.delegationCount ?? null;
 }

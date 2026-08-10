@@ -1,7 +1,7 @@
 "use client";
 
 import { useTheme } from "@teispace/next-themes";
-import { MoonStarIcon,SunIcon } from "lucide-react";
+import { MoonStarIcon, SunIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { ComponentProps } from "react";
 
@@ -28,7 +28,15 @@ export function ThemeToggleButton({
       type="button"
       variant={menu ? "ghost" : "outline"}
       size={iconOnly ? "icon" : "sm"}
-      className={cn("text-muted-foreground transition-colors hover:text-foreground", iconOnly ? "rounded-lg" : menu ? "h-10 w-full justify-start rounded-lg px-2.5 font-normal" : "rounded-full", className)}
+      className={cn(
+        "text-muted-foreground transition-colors hover:text-foreground",
+        iconOnly
+          ? "rounded-lg"
+          : menu
+            ? "h-10 w-full justify-start rounded-lg px-2.5 font-normal"
+            : "rounded-full",
+        className,
+      )}
       aria-label={t("toggleTheme")}
       onClick={(event) => {
         onClick?.(event);
@@ -36,7 +44,12 @@ export function ThemeToggleButton({
       }}
       {...buttonProps}
     >
-      <span data-icon={iconOnly ? undefined : "inline-start"} data-state={isDark ? "b" : "a"} className="t-icon-swap" aria-hidden="true">
+      <span
+        data-icon={iconOnly ? undefined : "inline-start"}
+        data-state={isDark ? "b" : "a"}
+        className="t-icon-swap"
+        aria-hidden="true"
+      >
         <MoonStarIcon data-icon="a" className="t-icon size-4" />
         <SunIcon data-icon="b" className="t-icon size-4" />
       </span>

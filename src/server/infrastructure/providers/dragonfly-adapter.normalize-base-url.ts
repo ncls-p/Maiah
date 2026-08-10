@@ -1,4 +1,8 @@
-import type { ModelCapability,ModelDescriptor,ProviderRuntimeConfig } from "./adapter";
+import type {
+  ModelCapability,
+  ModelDescriptor,
+  ProviderRuntimeConfig,
+} from "./adapter";
 
 const DEFAULT_CAPABILITIES: ModelCapability = {
   text: true,
@@ -15,7 +19,9 @@ export function normalizeBaseUrl(baseUrl?: string): string {
   return base.endsWith("/api/v1") ? base : `${base}/api/v1`;
 }
 
-export function buildHeaders(config: ProviderRuntimeConfig): Record<string, string> {
+export function buildHeaders(
+  config: ProviderRuntimeConfig,
+): Record<string, string> {
   const headers: Record<string, string> = { ...config.headers };
 
   switch (config.authType) {
@@ -94,7 +100,9 @@ function parseDragonflyModels(data: unknown): ModelDescriptor[] {
 
   return (data as DragonflyModelGroup[]).flatMap((group) =>
     (group.models ?? [])
-      .filter((model) => typeof model.name === "string" && model.name.length > 0)
+      .filter(
+        (model) => typeof model.name === "string" && model.name.length > 0,
+      )
       .map((model) => ({
         modelId: model.name as string,
         displayName: model.displayName ?? model.name,
@@ -108,8 +116,14 @@ function parseDragonflyModels(data: unknown): ModelDescriptor[] {
         },
         contextWindow: toPositiveNumber(model.context_window),
         maxOutputTokens: toPositiveNumber(model.max_token),
-        inputTokenCost: model.inputTokenPrice == null ? undefined : String(model.inputTokenPrice),
-        outputTokenCost: model.outputTokenPrice == null ? undefined : String(model.outputTokenPrice),
+        inputTokenCost:
+          model.inputTokenPrice == null
+            ? undefined
+            : String(model.inputTokenPrice),
+        outputTokenCost:
+          model.outputTokenPrice == null
+            ? undefined
+            : String(model.outputTokenPrice),
       })),
   );
 }
@@ -124,7 +138,9 @@ export function parseModels(data: unknown): ModelDescriptor[] {
 }
 
 export function getBearerApiKey(config: ProviderRuntimeConfig) {
-  return ["bearer", "gateway"].includes(config.authType) ? config.apiKey : undefined;
+  return ["bearer", "gateway"].includes(config.authType)
+    ? config.apiKey
+    : undefined;
 }
 
 export function createRequestNonce() {

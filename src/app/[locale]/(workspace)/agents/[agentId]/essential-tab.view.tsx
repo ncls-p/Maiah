@@ -3,9 +3,20 @@ import { MessageSquareIcon, SettingsIcon, UsersIcon } from "lucide-react";
 import { AgentAccessScopePicker } from "@/components/agent-access-scope-picker";
 import { ModelLogo } from "@/components/providers/model-logo";
 import { AdvancedSection } from "@/components/ui/advanced-section";
-import { Field, FieldContent, FieldGroup, FieldLabel } from "@/components/ui/field";
+import {
+  Field,
+  FieldContent,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
 import { ConfigSection } from "./config-section";
@@ -17,22 +28,58 @@ import { EssentialTabBranch6 } from "./essential-tab.view.branch-6";
 import { ModelAdvancedFields } from "./model-advanced-fields";
 import { getProviderKindIcon } from "./utils";
 
-export type EssentialTabViewModel = Extract<ReturnType<typeof useEssentialTabController>, { kind: "ready" }>;
+export type EssentialTabViewModel = Extract<
+  ReturnType<typeof useEssentialTabController>,
+  { kind: "ready" }
+>;
 export function EssentialTabView({ model }: { model: EssentialTabViewModel }) {
-  const { accessOptions, canAdminCurate, filteredModels, form, hasProviders, onSave, providers, readOnly, selectedModel, selectedProviderHasModels, setForm, t, tCommon, tModel, toolOptions } = model;
+  const {
+    accessOptions,
+    canAdminCurate,
+    filteredModels,
+    form,
+    hasProviders,
+    onSave,
+    providers,
+    readOnly,
+    selectedModel,
+    selectedProviderHasModels,
+    setForm,
+    t,
+    tCommon,
+    tModel,
+    toolOptions,
+  } = model;
   return (
-    <form onSubmit={readOnly ? (event) => event.preventDefault() : onSave} className="flex flex-col gap-3">
+    <form
+      onSubmit={readOnly ? (event) => event.preventDefault() : onSave}
+      className="flex flex-col gap-3"
+    >
       <fieldset disabled={readOnly} className="contents">
-        <ConfigSection title={t("name")} description={t("configurePage.identityHint")} icon={SettingsIcon} stagger="3">
+        <ConfigSection
+          title={t("name")}
+          description={t("configurePage.identityHint")}
+          icon={SettingsIcon}
+          stagger="3"
+        >
           <FieldGroup className="gap-4">
             <Field>
               <FieldLabel htmlFor="agent-name">{t("name")}</FieldLabel>
               <FieldContent>
-                <Input id="agent-name" required value={form.name} onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))} />
+                <Input
+                  id="agent-name"
+                  required
+                  value={form.name}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, name: e.target.value }))
+                  }
+                />
               </FieldContent>
             </Field>
             <Field>
-              <FieldLabel htmlFor="agent-description">{t("descriptionLabel")}</FieldLabel>
+              <FieldLabel htmlFor="agent-description">
+                {t("descriptionLabel")}
+              </FieldLabel>
               <FieldContent>
                 <Textarea
                   id="agent-description"
@@ -51,7 +98,12 @@ export function EssentialTabView({ model }: { model: EssentialTabViewModel }) {
           </FieldGroup>
         </ConfigSection>
 
-        <ConfigSection title={t("accessScope.label")} description={t("accessScope.hint")} icon={UsersIcon} stagger="4">
+        <ConfigSection
+          title={t("accessScope.label")}
+          description={t("accessScope.hint")}
+          icon={UsersIcon}
+          stagger="4"
+        >
           <AgentAccessScopePicker
             value={form.accessScope}
             teamId={form.accessTeamId}
@@ -67,11 +119,18 @@ export function EssentialTabView({ model }: { model: EssentialTabViewModel }) {
           />
         </ConfigSection>
 
-        <ConfigSection title={tModel("modelLabel")} description={t("configurePage.modelHint")} icon={MessageSquareIcon} stagger="5">
+        <ConfigSection
+          title={tModel("modelLabel")}
+          description={t("configurePage.modelHint")}
+          icon={MessageSquareIcon}
+          stagger="5"
+        >
           <FieldGroup className="gap-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <Field>
-                <FieldLabel htmlFor="agent-provider">{tModel("provider")}</FieldLabel>
+                <FieldLabel htmlFor="agent-provider">
+                  {tModel("provider")}
+                </FieldLabel>
                 <FieldContent>
                   <Select
                     value={form.providerId || "__none__"}
@@ -102,7 +161,9 @@ export function EssentialTabView({ model }: { model: EssentialTabViewModel }) {
                 </FieldContent>
               </Field>
               <Field>
-                <FieldLabel htmlFor="agent-model">{tModel("modelLabel")}</FieldLabel>
+                <FieldLabel htmlFor="agent-model">
+                  {tModel("modelLabel")}
+                </FieldLabel>
                 <FieldContent>
                   <Select
                     value={form.modelId || "__none__"}
@@ -124,7 +185,11 @@ export function EssentialTabView({ model }: { model: EssentialTabViewModel }) {
                         return (
                           <SelectItem key={model.id} value={model.id}>
                             <span className="flex items-center gap-2">
-                              <ModelLogo logoUrl={model.logoUrl} label={modelLabel} size="sm" />
+                              <ModelLogo
+                                logoUrl={model.logoUrl}
+                                label={modelLabel}
+                                size="sm"
+                              />
                               {modelLabel}
                             </span>
                           </SelectItem>
@@ -135,9 +200,15 @@ export function EssentialTabView({ model }: { model: EssentialTabViewModel }) {
                 </FieldContent>
               </Field>
             </div>
-            {!hasProviders ? <EssentialTabBranch6 model={model} /> : !selectedProviderHasModels ? <EssentialTabBranch5 model={model} /> : null}
+            {!hasProviders ? (
+              <EssentialTabBranch6 model={model} />
+            ) : !selectedProviderHasModels ? (
+              <EssentialTabBranch5 model={model} />
+            ) : null}
             <Field>
-              <FieldLabel htmlFor="agent-prompt">{tModel("systemPrompt")}</FieldLabel>
+              <FieldLabel htmlFor="agent-prompt">
+                {tModel("systemPrompt")}
+              </FieldLabel>
               <FieldContent>
                 <Textarea
                   id="agent-prompt"
@@ -154,7 +225,9 @@ export function EssentialTabView({ model }: { model: EssentialTabViewModel }) {
               </FieldContent>
             </Field>
             <Field>
-              <FieldLabel htmlFor="agent-prompt-suggestions">{tModel("promptSuggestions")}</FieldLabel>
+              <FieldLabel htmlFor="agent-prompt-suggestions">
+                {tModel("promptSuggestions")}
+              </FieldLabel>
               <FieldContent>
                 <Textarea
                   id="agent-prompt-suggestions"
@@ -168,17 +241,26 @@ export function EssentialTabView({ model }: { model: EssentialTabViewModel }) {
                     }))
                   }
                 />
-                <p className="mt-1 text-xs text-muted-foreground">{tModel("promptSuggestionsHint")}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {tModel("promptSuggestionsHint")}
+                </p>
               </FieldContent>
             </Field>
           </FieldGroup>
         </ConfigSection>
 
-        <AdvancedSection label={tCommon("advanced")} hint={t("advancedHint")} storageKey="advanced:agent-settings" className="animate-in-up stagger-5">
+        <AdvancedSection
+          label={tCommon("advanced")}
+          hint={t("advancedHint")}
+          storageKey="advanced:agent-settings"
+          className="animate-in-up stagger-5"
+        >
           <div className="space-y-6">
             <FieldGroup className="gap-4">
               <Field>
-                <FieldLabel htmlFor="agent-slug">{t("configurePage.technicalId")}</FieldLabel>
+                <FieldLabel htmlFor="agent-slug">
+                  {t("configurePage.technicalId")}
+                </FieldLabel>
                 <FieldContent>
                   <Input
                     id="agent-slug"
@@ -192,7 +274,9 @@ export function EssentialTabView({ model }: { model: EssentialTabViewModel }) {
                       }))
                     }
                   />
-                  <p className="mt-1 text-xs text-muted-foreground">{t("configurePage.technicalIdHint")}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {t("configurePage.technicalIdHint")}
+                  </p>
                 </FieldContent>
               </Field>
             </FieldGroup>
@@ -201,10 +285,18 @@ export function EssentialTabView({ model }: { model: EssentialTabViewModel }) {
 
             <div className="border-t border-border/50 pt-4">
               <p className="mb-3 flex items-center gap-2 text-sm font-medium">
-                <MessageSquareIcon className="size-4 text-muted-foreground" aria-hidden="true" />
+                <MessageSquareIcon
+                  className="size-4 text-muted-foreground"
+                  aria-hidden="true"
+                />
                 {tModel("advancedHint")}
               </p>
-              <ModelAdvancedFields form={form} setFormAction={setForm} selectedModel={selectedModel} toolOptions={toolOptions} />
+              <ModelAdvancedFields
+                form={form}
+                setFormAction={setForm}
+                selectedModel={selectedModel}
+                toolOptions={toolOptions}
+              />
             </div>
           </div>
         </AdvancedSection>

@@ -15,7 +15,8 @@ export const mimeTypesByExtension = new Map<string, AttachmentDetection>([
   [
     ".docx",
     {
-      mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      mimeType:
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       extension: ".docx",
       category: "document",
       textKind: "docx",
@@ -87,7 +88,8 @@ export const mimeTypesByExtension = new Map<string, AttachmentDetection>([
   [
     ".pptx",
     {
-      mimeType: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      mimeType:
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
       extension: ".pptx",
       category: "presentation",
       textKind: "pptx",
@@ -159,7 +161,8 @@ export const mimeTypesByExtension = new Map<string, AttachmentDetection>([
   [
     ".xlsx",
     {
-      mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      mimeType:
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       extension: ".xlsx",
       category: "spreadsheet",
       textKind: "xlsx",

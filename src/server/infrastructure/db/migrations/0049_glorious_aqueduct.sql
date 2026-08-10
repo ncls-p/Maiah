@@ -1,0 +1,1 @@
+ALTER TABLE "conversations" ADD COLUMN "ephemeral_ttl_minutes" integer DEFAULT 1440 NOT NULL;

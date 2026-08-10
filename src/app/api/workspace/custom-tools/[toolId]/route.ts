@@ -1,14 +1,20 @@
-import { NextRequest,NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
-import { handleRoute,requireResourcePermissionAsync } from "@/lib/route-handler";
+import {
+  handleRoute,
+  requireResourcePermissionAsync,
+} from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
 import { deleteCustomTool } from "@/modules/custom-tools/use-cases";
 
 const paramsSchema = z.object({ toolId: z.uuid() });
 const querySchema = z.object({ workspaceId: z.uuid() });
 
-export async function DELETE(req: NextRequest, { params }: { params: Promise<{ toolId: string }> }) {
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ toolId: string }> },
+) {
   return handleRoute(
     req,
     async ({ session }) => {
@@ -19,9 +25,18 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ t
       if (!parsedParams.success || !parsedQuery.success) {
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
       }
-      const forbidden = await requireResourcePermissionAsync(session.user.id, parsedQuery.data.workspaceId, "tools.configure", "custom_tool", (await params).toolId);
+      const forbidden = await requireResourcePermissionAsync(
+        session.user.id,
+        parsedQuery.data.workspaceId,
+        "tools.configure",
+        "custom_tool",
+        (await params).toolId,
+      );
       if (forbidden) return forbidden;
-      const canManageGlobal = await canManageTenantGlobals(session, parsedQuery.data.workspaceId);
+      const canManageGlobal = await canManageTenantGlobals(
+        session,
+        parsedQuery.data.workspaceId,
+      );
       return NextResponse.json(
         await deleteCustomTool({
           workspaceId: parsedQuery.data.workspaceId,
@@ -34,7 +49,10 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ t
     {
       logLabel: "Failed to delete custom tool",
       expectedError: (error) => {
-        const message = error instanceof Error ? error.message : "Unable to delete custom tool";
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Unable to delete custom tool";
         return NextResponse.json({ error: message }, { status: 500 });
       },
     },

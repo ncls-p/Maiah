@@ -1,17 +1,42 @@
-import { and,count,eq,inArray } from "drizzle-orm";
+import { and, count, eq, inArray } from "drizzle-orm";
 
 import { db } from "@/server/infrastructure/db";
-import { organizationMembers,roleBindings,roles,teamMembers,teams,users } from "@/server/infrastructure/db/schema";
-import { fingerprint,listSourceBindings } from "./member-transfer.list-member-transfer-destinations";
-import { MemberTransferMode,MemberTransferPreview,getProjectScope,requireTransferPermissions } from "./member-transfer.member-transfer-modes";
+import {
+  organizationMembers,
+  roleBindings,
+  roles,
+  teamMembers,
+  teams,
+  users,
+} from "@/server/infrastructure/db/schema";
+import {
+  fingerprint,
+  listSourceBindings,
+} from "./member-transfer.list-member-transfer-destinations";
+import {
+  MemberTransferMode,
+  MemberTransferPreview,
+  getProjectScope,
+  requireTransferPermissions,
+} from "./member-transfer.member-transfer-modes";
 import { IamOperationError } from "./use-cases";
 
-export async function previewMemberTransfer(input: { actorUserId: string; sourceWorkspaceId: string; targetWorkspaceId: string; userIds: string[]; roleId: string; mode: MemberTransferMode }): Promise<MemberTransferPreview> {
+export async function previewMemberTransfer(input: {
+  actorUserId: string;
+  sourceWorkspaceId: string;
+  targetWorkspaceId: string;
+  userIds: string[];
+  roleId: string;
+  mode: MemberTransferMode;
+}): Promise<MemberTransferPreview> {
   if (input.sourceWorkspaceId === input.targetWorkspaceId) {
     throw new IamOperationError("Choose a different destination project");
   }
   const userIds = [...new Set(input.userIds)];
-  const [source, target] = await Promise.all([getProjectScope(input.sourceWorkspaceId), getProjectScope(input.targetWorkspaceId)]);
+  const [source, target] = await Promise.all([
+    getProjectScope(input.sourceWorkspaceId),
+    getProjectScope(input.targetWorkspaceId),
+  ]);
   await requireTransferPermissions({
     actorUserId: input.actorUserId,
     sourceWorkspaceId: input.sourceWorkspaceId,
@@ -22,70 +47,122 @@ export async function previewMemberTransfer(input: { actorUserId: string; source
   });
   const crossOrganization = source.organization.id !== target.organization.id;
 
-  const [destinationRole] = await db.select().from(roles).where(eq(roles.id, input.roleId)).limit(1);
-  const roleIsCompatible = destinationRole?.scopeType === "workspace" && (destinationRole.isSystem || (destinationRole.ownerResourceType === "workspace" && destinationRole.ownerResourceId === target.workspace.id) || (destinationRole.ownerResourceType === "organization" && destinationRole.ownerResourceId === target.organization.id));
+  const [destinationRole] = await db
+    .select()
+    .from(roles)
+    .where(eq(roles.id, input.roleId))
+    .limit(1);
+  const roleIsCompatible =
+    destinationRole?.scopeType === "workspace" &&
+    (destinationRole.isSystem ||
+      (destinationRole.ownerResourceType === "workspace" &&
+        destinationRole.ownerResourceId === target.workspace.id) ||
+      (destinationRole.ownerResourceType === "organization" &&
+        destinationRole.ownerResourceId === target.organization.id));
   if (!roleIsCompatible) {
-    throw new IamOperationError("The selected role cannot be used in the destination project");
+    throw new IamOperationError(
+      "The selected role cannot be used in the destination project",
+    );
   }
 
   const members = await db
     .select({ userId: users.id, name: users.name, email: users.email })
     .from(organizationMembers)
     .innerJoin(users, eq(users.id, organizationMembers.userId))
-    .where(and(eq(organizationMembers.organizationId, source.organization.id), eq(organizationMembers.status, "active"), inArray(organizationMembers.userId, userIds)));
+    .where(
+      and(
+        eq(organizationMembers.organizationId, source.organization.id),
+        eq(organizationMembers.status, "active"),
+        inArray(organizationMembers.userId, userIds),
+      ),
+    );
   const blockers: string[] = [];
   if (members.length !== userIds.length) {
-    blockers.push("At least one selected person is no longer an active member of the source organization.");
+    blockers.push(
+      "At least one selected person is no longer an active member of the source organization.",
+    );
   }
-  if (crossOrganization && input.mode === "move" && userIds.includes(input.actorUserId)) {
+  if (
+    crossOrganization &&
+    input.mode === "move" &&
+    userIds.includes(input.actorUserId)
+  ) {
     blockers.push("You cannot move your own account out of this organization.");
   }
 
-  const [sourceBindings, sourceTeams, destinationMemberships] = await Promise.all([
-    listSourceBindings({
-      userIds,
-      sourceWorkspaceId: source.workspace.id,
-      sourceOrganizationId: source.organization.id,
-      includeWholeOrganization: crossOrganization && input.mode === "move",
-    }),
-    crossOrganization && input.mode === "move"
-      ? db
-          .select({ id: teamMembers.id })
-          .from(teamMembers)
-          .innerJoin(teams, eq(teams.id, teamMembers.teamId))
-          .where(and(eq(teams.organizationId, source.organization.id), inArray(teamMembers.userId, userIds)))
-      : Promise.resolve([]),
-    crossOrganization
-      ? db
-          .select({
-            id: organizationMembers.id,
-            userId: organizationMembers.userId,
-            status: organizationMembers.status,
-          })
-          .from(organizationMembers)
-          .where(and(eq(organizationMembers.organizationId, target.organization.id), inArray(organizationMembers.userId, userIds)))
-      : Promise.resolve([]),
-  ]);
+  const [sourceBindings, sourceTeams, destinationMemberships] =
+    await Promise.all([
+      listSourceBindings({
+        userIds,
+        sourceWorkspaceId: source.workspace.id,
+        sourceOrganizationId: source.organization.id,
+        includeWholeOrganization: crossOrganization && input.mode === "move",
+      }),
+      crossOrganization && input.mode === "move"
+        ? db
+            .select({ id: teamMembers.id })
+            .from(teamMembers)
+            .innerJoin(teams, eq(teams.id, teamMembers.teamId))
+            .where(
+              and(
+                eq(teams.organizationId, source.organization.id),
+                inArray(teamMembers.userId, userIds),
+              ),
+            )
+        : Promise.resolve([]),
+      crossOrganization
+        ? db
+            .select({
+              id: organizationMembers.id,
+              userId: organizationMembers.userId,
+              status: organizationMembers.status,
+            })
+            .from(organizationMembers)
+            .where(
+              and(
+                eq(organizationMembers.organizationId, target.organization.id),
+                inArray(organizationMembers.userId, userIds),
+              ),
+            )
+        : Promise.resolve([]),
+    ]);
 
   if (crossOrganization && input.mode === "move") {
     const [ownerRole] = await db
       .select({ id: roles.id })
       .from(roles)
-      .where(and(eq(roles.name, "organization.owner"), eq(roles.isSystem, true)))
+      .where(
+        and(eq(roles.name, "organization.owner"), eq(roles.isSystem, true)),
+      )
       .limit(1);
     if (ownerRole) {
       const [{ value: ownerCount }] = await db
         .select({ value: count() })
         .from(roleBindings)
-        .where(and(eq(roleBindings.roleId, ownerRole.id), eq(roleBindings.principalType, "user"), eq(roleBindings.resourceType, "organization"), eq(roleBindings.resourceId, source.organization.id)));
-      const selectedOwners = sourceBindings.filter((binding) => binding.roleId === ownerRole.id).length;
+        .where(
+          and(
+            eq(roleBindings.roleId, ownerRole.id),
+            eq(roleBindings.principalType, "user"),
+            eq(roleBindings.resourceType, "organization"),
+            eq(roleBindings.resourceId, source.organization.id),
+          ),
+        );
+      const selectedOwners = sourceBindings.filter(
+        (binding) => binding.roleId === ownerRole.id,
+      ).length;
       if (ownerCount - selectedOwners < 1) {
-        blockers.push("Assign another organization owner before moving the last owner.");
+        blockers.push(
+          "Assign another organization owner before moving the last owner.",
+        );
       }
     }
   }
 
-  const activeDestinationMembers = new Set(destinationMemberships.filter(({ status }) => status === "active").map(({ userId }) => userId));
+  const activeDestinationMembers = new Set(
+    destinationMemberships
+      .filter(({ status }) => status === "active")
+      .map(({ userId }) => userId),
+  );
   const warnings: MemberTransferPreview["warnings"] = [];
   if (crossOrganization && input.mode === "move") {
     warnings.push("crossOrganizationMove");
@@ -112,17 +189,25 @@ export async function previewMemberTransfer(input: { actorUserId: string; source
     mode: input.mode,
     members,
     changes: {
-      destinationMembershipsAdded: crossOrganization ? userIds.filter((id) => !activeDestinationMembers.has(id)).length : 0,
+      destinationMembershipsAdded: crossOrganization
+        ? userIds.filter((id) => !activeDestinationMembers.has(id)).length
+        : 0,
       destinationAssignmentsAdded: userIds.length,
-      sourceAssignmentsRemoved: input.mode === "move" ? sourceBindings.length : 0,
-      sourceTeamMembershipsRemoved: input.mode === "move" ? sourceTeams.length : 0,
+      sourceAssignmentsRemoved:
+        input.mode === "move" ? sourceBindings.length : 0,
+      sourceTeamMembershipsRemoved:
+        input.mode === "move" ? sourceTeams.length : 0,
     },
     warnings,
     blockers,
     confirmationToken: fingerprint({
       ...input,
       userIds,
-      stateIds: [...sourceBindings.map(({ id }) => id), ...sourceTeams.map(({ id }) => id), ...destinationMemberships.map(({ id, status }) => `${id}:${status}`)],
+      stateIds: [
+        ...sourceBindings.map(({ id }) => id),
+        ...sourceTeams.map(({ id }) => id),
+        ...destinationMemberships.map(({ id, status }) => `${id}:${status}`),
+      ],
     }),
   };
 }

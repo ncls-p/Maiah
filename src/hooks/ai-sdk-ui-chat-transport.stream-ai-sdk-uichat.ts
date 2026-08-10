@@ -1,6 +1,16 @@
-import { DefaultChatTransport,type UIMessage } from "ai";
+import { DefaultChatTransport, type UIMessage } from "ai";
 
-import { StreamAiSdkUIChatOptions,agentToolContextFromData,isCitationArray,isCodeWorkspaceArtifact,iterateChunks,readMetadata,titleFromData,toolApprovalFromData,toolInputProgressFromData } from "./ai-sdk-ui-chat-transport.ai-sdk-uichat-start-metadata";
+import {
+  StreamAiSdkUIChatOptions,
+  agentToolContextFromData,
+  isCitationArray,
+  isCodeWorkspaceArtifact,
+  iterateChunks,
+  readMetadata,
+  titleFromData,
+  toolApprovalFromData,
+  toolInputProgressFromData,
+} from "./ai-sdk-ui-chat-transport.ai-sdk-uichat-start-metadata";
 
 export async function streamAiSdkUIChat(options: StreamAiSdkUIChatOptions) {
   const toolNamesByCallId = new Map<string, string>();
@@ -17,7 +27,9 @@ export async function streamAiSdkUIChat(options: StreamAiSdkUIChatOptions) {
   });
 
   const stream = await transport.sendMessages({
-    trigger: options.resendFromMessageId ? "regenerate-message" : "submit-message",
+    trigger: options.resendFromMessageId
+      ? "regenerate-message"
+      : "submit-message",
     chatId: options.chatId,
     messageId: options.resendFromMessageId,
     messages: [
@@ -38,7 +50,8 @@ export async function streamAiSdkUIChat(options: StreamAiSdkUIChatOptions) {
       case "start":
         options.onStart({
           ...readMetadata(chunk.messageMetadata),
-          messageId: chunk.messageId ?? readMetadata(chunk.messageMetadata).messageId,
+          messageId:
+            chunk.messageId ?? readMetadata(chunk.messageMetadata).messageId,
         });
         break;
       case "text-delta":
@@ -144,7 +157,8 @@ export async function streamAiSdkUIChat(options: StreamAiSdkUIChatOptions) {
         if (typeof chunk.data === "object" && chunk.data !== null) {
           options.onEvent({
             type: "impact",
-            impact: chunk.data as import("@/components/chat/chat-types").ChatUsageImpact,
+            impact:
+              chunk.data as import("@/components/chat/chat-types").ChatUsageImpact,
           });
         }
         break;

@@ -1,15 +1,22 @@
-import { Loader2,PlusIcon } from "lucide-react";
+import { Loader2, PlusIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog,DialogContent,DialogDescription,DialogFooter,DialogHeader,DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
-import { emptyForm,type McpServerForm } from "./form";
-import { AdvancedSection,AuthSection } from "./form-sections";
+import { emptyForm, type McpServerForm } from "./form";
+import { AdvancedSection, AuthSection } from "./form-sections";
 
 export type ServerDialogProps = {
   busy: boolean;
@@ -55,15 +62,33 @@ export function CreateServerDialog({
           <DialogDescription>{t("addDescription")}</DialogDescription>
         </DialogHeader>
         <ServerFormFields form={form} setForm={setForm} />
-        {canManageGlobal ? <GlobalScopeField form={form} setForm={setForm} prefix="mcp-create" /> : null}
-        <AuthSection form={form} setForm={setForm} transport={form.transport} prefix="mcp-create" />
-        <AdvancedSection open={showAdvanced} onOpenChange={onAdvancedChange} form={form} setForm={setForm} prefix="mcp-create" placeholder={t("advancedCreatePlaceholder")} />
+        {canManageGlobal ? (
+          <GlobalScopeField form={form} setForm={setForm} prefix="mcp-create" />
+        ) : null}
+        <AuthSection
+          form={form}
+          setForm={setForm}
+          transport={form.transport}
+          prefix="mcp-create"
+        />
+        <AdvancedSection
+          open={showAdvanced}
+          onOpenChange={onAdvancedChange}
+          form={form}
+          setForm={setForm}
+          prefix="mcp-create"
+          placeholder={t("advancedCreatePlaceholder")}
+        />
         <DialogFooter>
           <Button variant="outline" onClick={close}>
             {t("cancel")}
           </Button>
           <Button disabled={busy || !form.name.trim()} onClick={onCreate}>
-            {busy ? <Loader2 className="animate-spin" aria-hidden="true" /> : <PlusIcon className="size-4" aria-hidden="true" />}
+            {busy ? (
+              <Loader2 className="animate-spin" aria-hidden="true" />
+            ) : (
+              <PlusIcon className="size-4" aria-hidden="true" />
+            )}
             {t("addAction")}
           </Button>
         </DialogFooter>
@@ -78,38 +103,78 @@ function ServerFormFields({ form, setForm }: Omit<ServerDialogProps, "busy">) {
     <div className="grid gap-4">
       <div className="grid gap-2">
         <Label htmlFor="mcp-name">{t("name")}</Label>
-        <Input id="mcp-name" autoComplete="off" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder={t("namePlaceholder")} />
+        <Input
+          id="mcp-name"
+          autoComplete="off"
+          value={form.name}
+          onChange={(e) => setForm({ ...form, name: e.target.value })}
+          placeholder={t("namePlaceholder")}
+        />
       </div>
-      {form.transport === "stdio" ? <div className="rounded-lg border border-border/70 bg-muted/20 p-3 text-xs text-muted-foreground">{t("localModeHint")}</div> : <TransportTargetFields form={form} setForm={setForm} prefix="mcp" />}
+      {form.transport === "stdio" ? (
+        <div className="rounded-lg border border-border/70 bg-muted/20 p-3 text-xs text-muted-foreground">
+          {t("localModeHint")}
+        </div>
+      ) : (
+        <TransportTargetFields form={form} setForm={setForm} prefix="mcp" />
+      )}
     </div>
   );
 }
 
-export function GlobalScopeField({ form, setForm, prefix }: Omit<ServerDialogProps, "busy"> & { prefix: string }) {
+export function GlobalScopeField({
+  form,
+  setForm,
+  prefix,
+}: Omit<ServerDialogProps, "busy"> & { prefix: string }) {
   const t = useTranslations("mcp.serverManager");
   return (
     <div className="flex items-start gap-3 rounded-lg border border-border/70 bg-muted/20 p-3">
-      <Checkbox id={`${prefix}-global`} checked={form.isGlobal} onCheckedChange={(checked) => setForm({ ...form, isGlobal: checked === true })} />
+      <Checkbox
+        id={`${prefix}-global`}
+        checked={form.isGlobal}
+        onCheckedChange={(checked) =>
+          setForm({ ...form, isGlobal: checked === true })
+        }
+      />
       <div className="grid gap-1.5 leading-none">
         <Label htmlFor={`${prefix}-global`}>{t("globalLabel")}</Label>
-        <p className="text-xs text-muted-foreground">{t("globalDescription")}</p>
+        <p className="text-xs text-muted-foreground">
+          {t("globalDescription")}
+        </p>
       </div>
     </div>
   );
 }
 
-export function TransportTargetFields({ form, setForm, prefix }: Omit<ServerDialogProps, "busy"> & { prefix: string }) {
+export function TransportTargetFields({
+  form,
+  setForm,
+  prefix,
+}: Omit<ServerDialogProps, "busy"> & { prefix: string }) {
   const t = useTranslations("mcp.serverManager");
   if (form.transport === "stdio") {
     return (
       <>
         <div className="grid gap-2">
           <Label htmlFor={`${prefix}-command`}>{t("command")}</Label>
-          <Input id={`${prefix}-command`} autoComplete="off" value={form.command} onChange={(e) => setForm({ ...form, command: e.target.value })} placeholder="npx…" />
+          <Input
+            id={`${prefix}-command`}
+            autoComplete="off"
+            value={form.command}
+            onChange={(e) => setForm({ ...form, command: e.target.value })}
+            placeholder="npx…"
+          />
         </div>
         <div className="grid gap-2">
           <Label htmlFor={`${prefix}-args`}>{t("argsOnePerLine")}</Label>
-          <Textarea id={`${prefix}-args`} autoComplete="off" value={form.args} onChange={(e) => setForm({ ...form, args: e.target.value })} placeholder={"-y\n@modelcontextprotocol/server-filesystem…"} />
+          <Textarea
+            id={`${prefix}-args`}
+            autoComplete="off"
+            value={form.args}
+            onChange={(e) => setForm({ ...form, args: e.target.value })}
+            placeholder={"-y\n@modelcontextprotocol/server-filesystem…"}
+          />
         </div>
       </>
     );
@@ -118,7 +183,14 @@ export function TransportTargetFields({ form, setForm, prefix }: Omit<ServerDial
   return (
     <div className="grid gap-2">
       <Label htmlFor={`${prefix}-url`}>{t("serverUrl")}</Label>
-      <Input id={`${prefix}-url`} type="url" autoComplete="off" value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} placeholder="https://mcp.example.com…" />
+      <Input
+        id={`${prefix}-url`}
+        type="url"
+        autoComplete="off"
+        value={form.url}
+        onChange={(e) => setForm({ ...form, url: e.target.value })}
+        placeholder="https://mcp.example.com…"
+      />
     </div>
   );
 }

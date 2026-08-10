@@ -1,7 +1,11 @@
-import { decryptValue,encryptValue } from "@/lib/crypto";
+import { decryptValue, encryptValue } from "@/lib/crypto";
 import { authorization } from "@/server/domain/services/authorization";
-import { toolConnections,toolConnectors,userToolSettings } from "@/server/infrastructure/db/schema";
-import { and,eq,isNull,or } from "drizzle-orm";
+import {
+  toolConnections,
+  toolConnectors,
+  userToolSettings,
+} from "@/server/infrastructure/db/schema";
+import { and, eq, isNull, or } from "drizzle-orm";
 
 export const MCP_TOOL_SOURCE = "mcp";
 export const CONTEXT_HEADER = "x-maiah-tool-context";
@@ -92,11 +96,18 @@ export function normalizeConnectorKey(key: string) {
 }
 
 export function jsonRecord(value: unknown): JsonRecord {
-  return value && typeof value === "object" && !Array.isArray(value) ? (value as JsonRecord) : {};
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as JsonRecord)
+    : {};
 }
 
 function isSecretRecord(value: unknown): value is SecretRecord {
-  return value !== null && typeof value === "object" && !Array.isArray(value) && Object.values(value).every((item) => typeof item === "string");
+  return (
+    value !== null &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    Object.values(value).every((item) => typeof item === "string")
+  );
 }
 
 export async function encryptRecord(record?: SecretRecord | null) {
@@ -118,13 +129,38 @@ export async function decryptRecord(encrypted?: unknown) {
   return decrypted;
 }
 
-export function visibleConnectorCondition(workspaceId: string, userId: string, canManageGlobal = false) {
-  return and(eq(toolConnectors.workspaceId, workspaceId), isNull(toolConnectors.archivedAt), canManageGlobal ? undefined : or(eq(toolConnectors.createdById, userId), eq(toolConnectors.isGlobal, true)));
+export function visibleConnectorCondition(
+  workspaceId: string,
+  userId: string,
+  canManageGlobal = false,
+) {
+  return and(
+    eq(toolConnectors.workspaceId, workspaceId),
+    isNull(toolConnectors.archivedAt),
+    canManageGlobal
+      ? undefined
+      : or(
+          eq(toolConnectors.createdById, userId),
+          eq(toolConnectors.isGlobal, true),
+        ),
+  );
 }
 
-export async function canManageConnection(connection: ToolConnection, userId: string, canManageWorkspaceConnections = false) {
-  if ((connection.ownerType === "user" && connection.ownerUserId === userId) || (connection.ownerType === "workspace" && canManageWorkspaceConnections)) {
+export async function canManageConnection(
+  connection: ToolConnection,
+  userId: string,
+  canManageWorkspaceConnections = false,
+) {
+  if (
+    (connection.ownerType === "user" && connection.ownerUserId === userId) ||
+    (connection.ownerType === "workspace" && canManageWorkspaceConnections)
+  ) {
     return true;
   }
-  return authorization.hasPermission({ principalType: "user", principalId: userId }, "tools.configure", "tool_connection", connection.id);
+  return authorization.hasPermission(
+    { principalType: "user", principalId: userId },
+    "tools.configure",
+    "tool_connection",
+    connection.id,
+  );
 }

@@ -1,11 +1,29 @@
 import { env } from "@/lib/env";
-import { logger,logHandledError } from "@/lib/logger";
-import { DOCUMENT_INGESTION_QUEUE_NAME,recoverDocumentIngestionJob,type DocumentIngestionJob } from "@/modules/knowledge/queue";
-import { listProcessingDocuments,markDocumentIngestionFailed,processDocumentIngestion,recordDocumentIngestionAttemptFailure } from "@/modules/knowledge/use-cases";
+import { logger, logHandledError } from "@/lib/logger";
+import { purgeExpiredEphemeralConversations } from "@/modules/chat/ephemeral-cleanup";
+import {
+  DOCUMENT_INGESTION_QUEUE_NAME,
+  recoverDocumentIngestionJob,
+  type DocumentIngestionJob,
+} from "@/modules/knowledge/queue";
+import {
+  listProcessingDocuments,
+  markDocumentIngestionFailed,
+  processDocumentIngestion,
+  recordDocumentIngestionAttemptFailure,
+} from "@/modules/knowledge/use-cases";
 import { syncMcpTools } from "@/modules/mcp/use-cases";
 import { processDueScheduledTasks } from "@/modules/scheduled-tasks/use-cases";
-import { recoverWorkflowRunJob,WORKFLOW_QUEUE_NAME,workflowQueueConnection } from "@/modules/workflows/queue";
-import { failQueuedWorkflowRun,listQueuedWorkflowRunIds,processWorkflowRun } from "@/modules/workflows/use-cases";
+import {
+  recoverWorkflowRunJob,
+  WORKFLOW_QUEUE_NAME,
+  workflowQueueConnection,
+} from "@/modules/workflows/queue";
+import {
+  failQueuedWorkflowRun,
+  listQueuedWorkflowRunIds,
+  processWorkflowRun,
+} from "@/modules/workflows/use-cases";
 import { Worker } from "bullmq";
 import http from "node:http";
 
@@ -100,7 +118,10 @@ async function recoverQueuedWorkflowRuns() {
     try {
       const recovery = await recoverWorkflowRunJob(runId);
       if (recovery === "completed") {
-        await failQueuedWorkflowRun(runId, "Workflow queue job completed without finalizing the run");
+        await failQueuedWorkflowRun(
+          runId,
+          "Workflow queue job completed without finalizing the run",
+        );
       }
     } catch (error) {
       logHandledError("Failed to recover queued workflow run", {
@@ -111,13 +132,27 @@ async function recoverQueuedWorkflowRuns() {
   }
 }
 
+async function purgeExpiredChats() {
+  try {
+    await purgeExpiredEphemeralConversations();
+  } catch (error) {
+    logHandledError("Expired temporary conversation purge failed", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
 async function main() {
   logger.info("Worker starting...", { env: env.NODE_ENV });
 
-  const workflowWorker = new Worker<{ runId: string }>(WORKFLOW_QUEUE_NAME, async (job) => processWorkflowRun(job.data.runId), {
-    connection: workflowQueueConnection(),
-    concurrency: 4,
-  });
+  const workflowWorker = new Worker<{ runId: string }>(
+    WORKFLOW_QUEUE_NAME,
+    async (job) => processWorkflowRun(job.data.runId),
+    {
+      connection: workflowQueueConnection(),
+      concurrency: 4,
+    },
+  );
   const documentWorker = new Worker<DocumentIngestionJob>(
     DOCUMENT_INGESTION_QUEUE_NAME,
     async (job) => {
@@ -129,7 +164,10 @@ async function main() {
         if (isFinalAttempt) {
           await markDocumentIngestionFailed(job.data.documentId, error);
         } else {
-          await recordDocumentIngestionAttemptFailure(job.data.documentId, error);
+          await recordDocumentIngestionAttemptFailure(
+            job.data.documentId,
+            error,
+          );
         }
         throw error;
       }
@@ -143,12 +181,17 @@ async function main() {
   documentWorker.on("failed", (job, error) => {
     const maxAttempts = job?.opts.attempts ?? 1;
     if (job && job.attemptsMade >= maxAttempts) {
-      void markDocumentIngestionFailed(job.data.documentId, error).catch((updateError) => {
-        logHandledError("Failed to persist document ingestion failure", {
-          documentId: job.data.documentId,
-          error: updateError instanceof Error ? updateError.message : String(updateError),
-        });
-      });
+      void markDocumentIngestionFailed(job.data.documentId, error).catch(
+        (updateError) => {
+          logHandledError("Failed to persist document ingestion failure", {
+            documentId: job.data.documentId,
+            error:
+              updateError instanceof Error
+                ? updateError.message
+                : String(updateError),
+          });
+        },
+      );
     }
     logHandledError("Document ingestion attempt failed", {
       documentId: job?.data.documentId,
@@ -175,6 +218,7 @@ async function main() {
 
   await recoverQueuedWorkflowRuns();
   await recoverDocumentIngestionJobs();
+  await purgeExpiredChats();
 
   const server = http.createServer((req, res) => {
     if (req.url === "/health") {
@@ -199,14 +243,21 @@ async function main() {
   const documentRecoveryInterval = setInterval(() => {
     void recoverDocumentIngestionJobs();
   }, 30_000);
+  const ephemeralConversationPurgeInterval = setInterval(() => {
+    void purgeExpiredChats();
+  }, 60_000);
 
   process.on("SIGTERM", () => {
     logger.info("Worker received SIGTERM, shutting down gracefully...");
     clearInterval(interval);
     clearInterval(workflowRecoveryInterval);
     clearInterval(documentRecoveryInterval);
+    clearInterval(ephemeralConversationPurgeInterval);
     server.close(() => {
-      void Promise.all([workflowWorker.close(), documentWorker.close()]).finally(() => process.exit(0));
+      void Promise.all([
+        workflowWorker.close(),
+        documentWorker.close(),
+      ]).finally(() => process.exit(0));
     });
   });
 
@@ -215,8 +266,12 @@ async function main() {
     clearInterval(interval);
     clearInterval(workflowRecoveryInterval);
     clearInterval(documentRecoveryInterval);
+    clearInterval(ephemeralConversationPurgeInterval);
     server.close(() => {
-      void Promise.all([workflowWorker.close(), documentWorker.close()]).finally(() => process.exit(0));
+      void Promise.all([
+        workflowWorker.close(),
+        documentWorker.close(),
+      ]).finally(() => process.exit(0));
     });
   });
 }

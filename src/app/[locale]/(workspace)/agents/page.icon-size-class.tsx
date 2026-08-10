@@ -96,6 +96,7 @@ export interface Agent {
   curationLabel: string | null;
   canEdit?: boolean;
   canClone?: boolean;
+  hiddenInChat?: boolean;
   createdAt: string;
   updatedAt: string;
   provenance: ResourceProvenance;

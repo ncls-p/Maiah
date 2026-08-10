@@ -21,12 +21,20 @@ function safeUploadName(value: string) {
 }
 
 function isZipUpload(file: KnowledgeUpload) {
-  return path.extname(file.fileName).toLowerCase() === ".zip" || file.mimeType?.split(";", 1)[0]?.toLowerCase() === "application/zip";
+  return (
+    path.extname(file.fileName).toLowerCase() === ".zip" ||
+    file.mimeType?.split(";", 1)[0]?.toLowerCase() === "application/zip"
+  );
 }
 
 async function expandZip(upload: KnowledgeUpload): Promise<KnowledgeUpload[]> {
   const archive = await JSZip.loadAsync(upload.bytes, { checkCRC32: true });
-  const entries = Object.values(archive.files).filter((entry) => !entry.dir && !entry.name.startsWith("__MACOSX/") && !entry.name.endsWith(".DS_Store"));
+  const entries = Object.values(archive.files).filter(
+    (entry) =>
+      !entry.dir &&
+      !entry.name.startsWith("__MACOSX/") &&
+      !entry.name.endsWith(".DS_Store"),
+  );
   const files: KnowledgeUpload[] = [];
   for (const entry of entries) {
     if (path.extname(entry.name).toLowerCase() === ".zip") {
@@ -38,17 +46,24 @@ async function expandZip(upload: KnowledgeUpload): Promise<KnowledgeUpload[]> {
   return files;
 }
 
-export async function extractKnowledgeUploads(uploads: KnowledgeUpload[], context?: { workspaceId: string; config: RagConfig }) {
+export async function extractKnowledgeUploads(
+  uploads: KnowledgeUpload[],
+  context?: { workspaceId: string; config: RagConfig },
+) {
   if (uploads.length === 0) throw new Error("Select at least one file.");
   const expanded: KnowledgeUpload[] = [];
   for (const upload of uploads) {
-    expanded.push(...(isZipUpload(upload) ? await expandZip(upload) : [upload]));
+    expanded.push(
+      ...(isZipUpload(upload) ? await expandZip(upload) : [upload]),
+    );
   }
 
   const files: Array<{
     title: string;
     content: string;
     mimeType: string;
+    originalBytes: Uint8Array;
+    originalMimeType: string | undefined;
   }> = [];
   const rejected: Array<{ title: string; error: string }> = [];
   for (const upload of expanded) {
@@ -71,12 +86,15 @@ export async function extractKnowledgeUploads(uploads: KnowledgeUpload[], contex
           title,
           content: extracted.text,
           mimeType: extracted.mimeType,
+          originalBytes: upload.bytes,
+          originalMimeType: upload.mimeType,
         });
       }
     } catch (error) {
       rejected.push({
         title,
-        error: error instanceof Error ? error.message : "File extraction failed.",
+        error:
+          error instanceof Error ? error.message : "File extraction failed.",
       });
     }
   }

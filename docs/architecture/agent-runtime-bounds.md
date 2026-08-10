@@ -30,6 +30,9 @@ treated as a safety boundary.
   delegation are available: one action step and one final synthesis step.
 - The active agent version's `toolChoice` (`auto`, `required`, or `none`) is
   honored on action steps. The final synthesis step still disables tools.
+- Configuring specialists is not capped by `maxDelegations`: every visible
+  specialist may be pinned to an orchestrator version. `maxDelegations` only
+  limits delegation calls consumed during one root run.
 - `maxChildSteps` bounds the complete specialist loop. On its last permitted
   step, tools and delegation are disabled so the model must answer from the
   results already collected.

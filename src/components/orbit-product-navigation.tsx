@@ -113,6 +113,7 @@ export function OrbitMobileNavigation({
             <span className="max-w-full truncate">
               {productLabelForMobile(t, item.href, item.labelKey)}
             </span>
+            <NavigationLinkFeedback />
           </Link>
         );
       })}

@@ -72,11 +72,15 @@ describe("agent configuration route conflicts", () => {
     expect(updateAgent).not.toHaveBeenCalled();
   });
 
-  it("rejects runtime budgets above the executable policy", async () => {
-    const response = await PATCH(patchRequest({ workspaceId, baseVersionId, maxToolCalls: 51 }) as never, { params: Promise.resolve({ agentId }) });
+  it("accepts runtime budgets without an application-level upper cap", async () => {
+    routeMocks.updateAgent.mockResolvedValueOnce({
+      agent: { id: agentId, promptSuggestionsJson: [] },
+      version: { id: currentVersionId },
+    });
+    const response = await PATCH(patchRequest({ workspaceId, baseVersionId, maxToolCalls: 100, maxOutputTokens: 500_000 }) as never, { params: Promise.resolve({ agentId }) });
 
-    expect(response.status).toBe(400);
-    expect(updateAgent).not.toHaveBeenCalled();
+    expect(response.status).toBe(200);
+    expect(updateAgent).toHaveBeenCalledWith(expect.objectContaining({ maxToolCalls: 100, maxOutputTokens: 500_000 }));
   });
 
   it("returns a useful error when a skill is no longer accessible", async () => {

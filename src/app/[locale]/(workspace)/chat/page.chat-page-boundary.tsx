@@ -13,6 +13,11 @@ export function ChatPageBoundary(props: {
   emptyStateProps: ComponentProps<typeof NoAssistantsState>;
   loadingStateProps: ComponentProps<typeof ChatPageLoading>;
 }) {
-  const child = props.state === "loading" ? <ChatPageLoading {...props.loadingStateProps} /> : <NoAssistantsState {...props.emptyStateProps} />;
+  const child =
+    props.state === "loading" ? (
+      <ChatPageLoading {...props.loadingStateProps} />
+    ) : (
+      <NoAssistantsState {...props.emptyStateProps} />
+    );
   return <ChatLayout {...props.layoutProps}>{child}</ChatLayout>;
 }

@@ -20,12 +20,44 @@ function initialsFromLabel(label: string) {
     .join("");
 }
 
-export function ModelLogo({ logoUrl, label, size = "md", className, imageFit = "contain" }: { logoUrl?: string | null; label: string; size?: keyof typeof LOGO_SIZES; className?: string; imageFit?: "contain" | "cover" }) {
+export function ModelLogo({
+  logoUrl,
+  label,
+  size = "md",
+  className,
+  imageFit = "contain",
+}: {
+  logoUrl?: string | null;
+  label: string;
+  size?: keyof typeof LOGO_SIZES;
+  className?: string;
+  imageFit?: "contain" | "cover";
+}) {
   const dimension = LOGO_SIZES[size];
 
   return (
-    <span className={cn("inline-flex shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-background text-[0.62rem] font-semibold text-muted-foreground", className)} style={{ width: dimension, height: dimension }}>
-      {logoUrl ? <Image src={logoUrl} alt={`${label} logo`} width={dimension} height={dimension} unoptimized className={cn("h-full w-full", imageFit === "cover" ? "object-cover" : "object-contain p-1")} /> : <span aria-hidden="true">{initialsFromLabel(label)}</span>}
+    <span
+      className={cn(
+        "inline-flex shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-background text-[0.62rem] font-semibold text-muted-foreground",
+        className,
+      )}
+      style={{ width: dimension, height: dimension }}
+    >
+      {logoUrl ? (
+        <Image
+          src={logoUrl}
+          alt={`${label} logo`}
+          width={dimension}
+          height={dimension}
+          unoptimized
+          className={cn(
+            "h-full w-full",
+            imageFit === "cover" ? "object-cover" : "object-contain p-1",
+          )}
+        />
+      ) : (
+        <span aria-hidden="true">{initialsFromLabel(label)}</span>
+      )}
     </span>
   );
 }

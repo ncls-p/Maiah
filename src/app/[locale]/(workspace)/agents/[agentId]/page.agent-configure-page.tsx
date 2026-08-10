@@ -11,11 +11,17 @@ import { PageLoading } from "@/components/page-loading";
 import { useWorkspace } from "@/hooks/use-workspace";
 
 import { mergeAgentEditorState } from "./agent-editor-state";
-import { buildAgentFormFromVersion, type AgentVersionPayload } from "./agent-form-from-version";
+import {
+  buildAgentFormFromVersion,
+  type AgentVersionPayload,
+} from "./agent-form-from-version";
 import { AgentConfigureLoadError } from "./page.agent-configure-load-error";
 import { AgentConfigurePageView } from "./page.agent-configure-page.view";
 import { agentSaveError } from "./page.build-tool-binding-map";
-import { buildCapabilityBindings, buildEssentialPayload } from "./page.agent-save-payloads";
+import {
+  buildCapabilityBindings,
+  buildEssentialPayload,
+} from "./page.agent-save-payloads";
 import { useAgentConfigurationData } from "./page.use-agent-configuration-data";
 import type { Agent, DelegationConfig } from "./types";
 
@@ -27,7 +33,45 @@ export function useAgentConfigurePageController() {
   const { permissions } = useWorkspaceShell();
   const t = useTranslations("agents");
 
-  const { agent, setAgent, providers, models, builtinTools, mcpServers, mcpTools, customTools, knowledgeBases, skills, loading, loadError, saving, setSaving, activeTab, setActiveTab, form, setForm, builtinBindings, setBuiltinBindings, mcpBindings, setMcpBindings, customBindings, setCustomBindings, selectedKnowledgeIds, setSelectedKnowledgeIds, selectedSkillIds, setSelectedSkillIds, delegationConfig, setDelegationConfig, delegationCandidates, showDeleteDialog, setShowDeleteDialog, deleting, setDeleting, showCopyableError, retryLoad } = useAgentConfigurationData(agentId, workspaceId);
+  const {
+    agent,
+    setAgent,
+    providers,
+    models,
+    builtinTools,
+    mcpServers,
+    mcpTools,
+    customTools,
+    knowledgeBases,
+    skills,
+    loading,
+    loadError,
+    saving,
+    setSaving,
+    activeTab,
+    setActiveTab,
+    form,
+    setForm,
+    builtinBindings,
+    setBuiltinBindings,
+    mcpBindings,
+    setMcpBindings,
+    customBindings,
+    setCustomBindings,
+    selectedKnowledgeIds,
+    setSelectedKnowledgeIds,
+    selectedSkillIds,
+    setSelectedSkillIds,
+    delegationConfig,
+    setDelegationConfig,
+    delegationCandidates,
+    showDeleteDialog,
+    setShowDeleteDialog,
+    deleting,
+    setDeleting,
+    showCopyableError,
+    retryLoad,
+  } = useAgentConfigurationData(agentId, workspaceId);
 
   async function saveEssential(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -38,7 +82,17 @@ export function useAgentConfigurePageController() {
     if (!agentId || !workspaceId) return;
     setSaving(true);
     try {
-      const availableToolNames = new Set([...builtinTools.filter((tool) => builtinBindings[tool.id]?.enabled).map((tool) => tool.name), ...mcpTools.filter((tool) => tool.enabled && mcpBindings[tool.id]?.enabled).map((tool) => tool.name), ...customTools.filter((tool) => customBindings[tool.id]?.enabled).map((tool) => tool.name)]);
+      const availableToolNames = new Set([
+        ...builtinTools
+          .filter((tool) => builtinBindings[tool.id]?.enabled)
+          .map((tool) => tool.name),
+        ...mcpTools
+          .filter((tool) => tool.enabled && mcpBindings[tool.id]?.enabled)
+          .map((tool) => tool.name),
+        ...customTools
+          .filter((tool) => customBindings[tool.id]?.enabled)
+          .map((tool) => tool.name),
+      ]);
       const res = await fetch(`/api/workspace/agents/${agentId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -48,7 +102,13 @@ export function useAgentConfigurePageController() {
         }),
       });
       if (!res.ok) {
-        throw new Error(await agentSaveError(res, "Unable to save agent", t("configurePage.conflictReload")));
+        throw new Error(
+          await agentSaveError(
+            res,
+            "Unable to save agent",
+            t("configurePage.conflictReload"),
+          ),
+        );
       }
       const data = (await res.json()) as {
         agent?: Agent;
@@ -56,7 +116,10 @@ export function useAgentConfigurePageController() {
       };
       if (data.agent) {
         const updatedAgent = mergeAgentEditorState(agent, data.agent, {
-          shareTargetEmail: data.agent.sharingMode === "specific_user" ? form.shareTargetEmail.trim() : null,
+          shareTargetEmail:
+            data.agent.sharingMode === "specific_user"
+              ? form.shareTargetEmail.trim()
+              : null,
           access: {
             scope: form.accessScope,
             teamId: form.accessScope === "team" ? form.accessTeamId : null,
@@ -64,7 +127,13 @@ export function useAgentConfigurePageController() {
         });
         setAgent(updatedAgent);
         if (data.version) {
-          setForm(buildAgentFormFromVersion(updatedAgent, data.version, updatedAgent.shareTargetEmail));
+          setForm(
+            buildAgentFormFromVersion(
+              updatedAgent,
+              data.version,
+              updatedAgent.shareTargetEmail,
+            ),
+          );
         } else {
           setForm((current) => ({
             ...current,
@@ -111,11 +180,19 @@ export function useAgentConfigurePageController() {
         }),
       });
       if (!res.ok) {
-        throw new Error(await agentSaveError(res, "Unable to save capabilities", t("configurePage.conflictReload")));
+        throw new Error(
+          await agentSaveError(
+            res,
+            "Unable to save capabilities",
+            t("configurePage.conflictReload"),
+          ),
+        );
       }
       const data = (await res.json()) as { agent?: Agent };
       if (data.agent) {
-        setAgent((current) => (current ? mergeAgentEditorState(current, data.agent!) : current));
+        setAgent((current) =>
+          current ? mergeAgentEditorState(current, data.agent!) : current,
+        );
       }
       toast.success(t("configurePage.capabilitiesSaved"));
     } catch (error) {
@@ -131,26 +208,39 @@ export function useAgentConfigurePageController() {
     if (!agentId || !workspaceId) return;
     setSaving(true);
     try {
-      const response = await fetch(`/api/workspace/agents/${agentId}/delegations?workspaceId=${workspaceId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          baseVersionId: agent.activeVersionId ?? null,
-          policy: delegationConfig.policy,
-          bindings: delegationConfig.bindings.map((binding) => ({
-            childAgentId: binding.childAgentId,
-            childAgentVersionId: binding.childAgentVersionId,
-            instructions: binding.instructions?.trim() || null,
-          })),
-        }),
-      });
+      const response = await fetch(
+        `/api/workspace/agents/${agentId}/delegations?workspaceId=${workspaceId}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            baseVersionId: agent.activeVersionId ?? null,
+            policy: delegationConfig.policy,
+            bindings: delegationConfig.bindings.map((binding) => ({
+              childAgentId: binding.childAgentId,
+              childAgentVersionId: binding.childAgentVersionId,
+              instructions: binding.instructions?.trim() || null,
+            })),
+          }),
+        },
+      );
       if (!response.ok) {
-        throw new Error(await agentSaveError(response, t("orchestration.saveFailed"), t("configurePage.conflictReload")));
+        throw new Error(
+          await agentSaveError(
+            response,
+            t("orchestration.saveFailed"),
+            t("configurePage.conflictReload"),
+          ),
+        );
       }
       const payload = (await response.json()) as DelegationConfig;
       setDelegationConfig(payload);
       if (payload.version?.id) {
-        setAgent((current) => (current ? { ...current, activeVersionId: payload.version!.id } : current));
+        setAgent((current) =>
+          current
+            ? { ...current, activeVersionId: payload.version!.id }
+            : current,
+        );
       }
       toast.success(t("orchestration.saved"));
     } catch (error) {
@@ -174,13 +264,23 @@ export function useAgentConfigurePageController() {
         }),
       });
       if (!res.ok) {
-        throw new Error(await agentSaveError(res, "Unable to update assistant logo", t("configurePage.conflictReload")));
+        throw new Error(
+          await agentSaveError(
+            res,
+            "Unable to update assistant logo",
+            t("configurePage.conflictReload"),
+          ),
+        );
       }
       const data = (await res.json()) as { agent?: Agent };
       if (data.agent) {
-        setAgent((current) => (current ? mergeAgentEditorState(current, data.agent!) : current));
+        setAgent((current) =>
+          current ? mergeAgentEditorState(current, data.agent!) : current,
+        );
       }
-      toast.success(logoUrl ? "Assistant logo updated" : "Assistant logo removed");
+      toast.success(
+        logoUrl ? "Assistant logo updated" : "Assistant logo removed",
+      );
     } catch (error) {
       showCopyableError(error, "Unable to update assistant logo");
       return;
@@ -196,7 +296,10 @@ export function useAgentConfigurePageController() {
         body: JSON.stringify({ workspaceId }),
       });
       if (!res.ok) {
-        throw new Error((await res.json().catch(() => null))?.error || t("list.toastCloneFailed"));
+        throw new Error(
+          (await res.json().catch(() => null))?.error ||
+            t("list.toastCloneFailed"),
+        );
       }
       const data = (await res.json()) as { agent?: Agent };
       toast.success(t("list.toastCloned"));
@@ -214,9 +317,15 @@ export function useAgentConfigurePageController() {
     if (!canDeleteAgent) return;
     setDeleting(true);
     try {
-      const res = await fetch(`/api/workspace/agents/${agentId}?workspaceId=${workspaceId}`, { method: "DELETE" });
+      const res = await fetch(
+        `/api/workspace/agents/${agentId}?workspaceId=${workspaceId}`,
+        { method: "DELETE" },
+      );
       if (!res.ok) {
-        throw new Error((await res.json().catch(() => null))?.error || t("configurePage.deleteFailed"));
+        throw new Error(
+          (await res.json().catch(() => null))?.error ||
+            t("configurePage.deleteFailed"),
+        );
       }
       toast.success(t("configurePage.deleted"));
       router.push("/agents");
@@ -229,14 +338,24 @@ export function useAgentConfigurePageController() {
     }
   }
 
-  if (workspaceLoading || !workspaceId || loading) return <PageLoading label={t("configure")} />;
-  if (loadError || !agent) return <AgentConfigureLoadError message={loadError} onRetry={retryLoad} />;
+  if (workspaceLoading || !workspaceId || loading)
+    return <PageLoading label={t("configure")} />;
+  if (loadError || !agent)
+    return <AgentConfigureLoadError message={loadError} onRetry={retryLoad} />;
 
-  const enabledBuiltinCount = builtinTools.filter((tool) => builtinBindings[tool.id]?.enabled).length;
-  const enabledMcpCount = mcpTools.filter((tool) => tool.enabled && mcpBindings[tool.id]?.enabled).length;
-  const enabledCustomCount = customTools.filter((tool) => customBindings[tool.id]?.enabled).length;
-  const totalEnabledTools = enabledBuiltinCount + enabledMcpCount + enabledCustomCount;
-  const capabilitiesCount = totalEnabledTools + selectedKnowledgeIds.length + selectedSkillIds.length;
+  const enabledBuiltinCount = builtinTools.filter(
+    (tool) => builtinBindings[tool.id]?.enabled,
+  ).length;
+  const enabledMcpCount = mcpTools.filter(
+    (tool) => tool.enabled && mcpBindings[tool.id]?.enabled,
+  ).length;
+  const enabledCustomCount = customTools.filter(
+    (tool) => customBindings[tool.id]?.enabled,
+  ).length;
+  const totalEnabledTools =
+    enabledBuiltinCount + enabledMcpCount + enabledCustomCount;
+  const capabilitiesCount =
+    totalEnabledTools + selectedKnowledgeIds.length + selectedSkillIds.length;
   const delegationCount = delegationConfig.bindings.length;
   const canEdit = agent?.canEdit ?? false;
   const hasModel = Boolean(form.providerId && form.modelId);
@@ -288,7 +407,9 @@ export function useAgentConfigurePageController() {
   } as const;
 }
 
-export default function AgentConfigurePage(...args: Parameters<typeof useAgentConfigurePageController>) {
+export default function AgentConfigurePage(
+  ...args: Parameters<typeof useAgentConfigurePageController>
+) {
   const model = useAgentConfigurePageController(...args);
   return !("kind" in model) ? model : <AgentConfigurePageView model={model} />;
 }

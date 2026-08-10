@@ -1,6 +1,8 @@
 import { z } from "zod";
 
-const textBlockSchema = z.object({ type: z.literal("text"), text: z.string() }).loose();
+const textBlockSchema = z
+  .object({ type: z.literal("text"), text: z.string() })
+  .loose();
 
 const imageBlockSchema = z
   .object({
@@ -8,7 +10,12 @@ const imageBlockSchema = z
     source: z.discriminatedUnion("type", [
       z.object({
         type: z.literal("base64"),
-        media_type: z.enum(["image/jpeg", "image/png", "image/gif", "image/webp"]),
+        media_type: z.enum([
+          "image/jpeg",
+          "image/png",
+          "image/gif",
+          "image/webp",
+        ]),
         data: z.string().min(1),
       }),
       z.object({ type: z.literal("url"), url: z.url() }),
@@ -34,7 +41,12 @@ const toolResultBlockSchema = z
   })
   .loose();
 
-const contentBlockSchema = z.discriminatedUnion("type", [textBlockSchema, imageBlockSchema, toolUseBlockSchema, toolResultBlockSchema]);
+const contentBlockSchema = z.discriminatedUnion("type", [
+  textBlockSchema,
+  imageBlockSchema,
+  toolUseBlockSchema,
+  toolResultBlockSchema,
+]);
 
 const messageSchema = z
   .object({
@@ -88,4 +100,6 @@ export const anthropicMessagesRequestSchema = z
   })
   .strict();
 
-export type AnthropicMessagesRequest = z.infer<typeof anthropicMessagesRequestSchema>;
+export type AnthropicMessagesRequest = z.infer<
+  typeof anthropicMessagesRequestSchema
+>;
