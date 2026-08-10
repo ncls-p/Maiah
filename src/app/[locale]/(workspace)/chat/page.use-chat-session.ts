@@ -22,19 +22,17 @@ type SessionContext = {
   selectedAgentId: string | null;
   activeConversationId: string | null;
   ephemeral: boolean;
+  ephemeralTtlMinutes: number;
   queuedMessages: QueuedChatMessage[];
   interfaceMode: InterfaceMode;
   codeWorkspaceArtifact: CodeWorkspaceArtifact | null;
   lastAutoOpenedWorkspaceRef: MutableRefObject<string | null>;
   userSelectedInterfaceModeRef: MutableRefObject<InterfaceMode | null>;
-  composerDraftScopeRef: MutableRefObject<{
-    workspaceId: string;
-    agentId: string;
-    conversationId: string | null;
-  } | null>;
+  composerDraftScopeRef: MutableRefObject<{ workspaceId: string; agentId: string; conversationId: string | null } | null>;
   saveCurrentComposerDraft: () => void;
   resetInterfaceMode: () => void;
   refreshConversations: () => Promise<void>;
+  replaceConversationRoute: (conversationId: string, agentId: string | null, ephemeral: boolean, ttlMinutes: number) => void;
   setActiveConversationId: Setter<string | null>;
   setEphemeral: Setter<boolean>;
   setEphemeralTtlMinutes: Setter<number>;
@@ -47,12 +45,14 @@ type SessionContext = {
 };
 
 export function useChatSession(c: SessionContext) {
-  const { workspaceId, selectedAgentId, activeConversationId, ephemeral, queuedMessages, interfaceMode, codeWorkspaceArtifact, lastAutoOpenedWorkspaceRef, userSelectedInterfaceModeRef, composerDraftScopeRef, saveCurrentComposerDraft, resetInterfaceMode, refreshConversations, setActiveConversationId, setEphemeral, setEphemeralTtlMinutes, setSelectedAgentId, setConversations, setQueuedMessages, setCodeWorkspaceArtifact, setInterfaceMode, setLoadingContext } = c;
+  const { workspaceId, selectedAgentId, activeConversationId, ephemeral, ephemeralTtlMinutes, queuedMessages, interfaceMode, codeWorkspaceArtifact, lastAutoOpenedWorkspaceRef, userSelectedInterfaceModeRef, composerDraftScopeRef, saveCurrentComposerDraft, resetInterfaceMode, refreshConversations, replaceConversationRoute, setActiveConversationId, setEphemeral, setEphemeralTtlMinutes, setSelectedAgentId, setConversations, setQueuedMessages, setCodeWorkspaceArtifact, setInterfaceMode, setLoadingContext } = c;
   const [activeVersion, setActiveVersion] = useState<AgentVersion | null>(null);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [quota, setQuota] = useState<{ used: number; limit: number } | null>(null);
   const [conversationCanContinue, setConversationCanContinue] = useState(true);
   const [conversationIsOwner, setConversationIsOwner] = useState(true);
+  const ephemeralRef = useRef(ephemeral);
+  const ephemeralTtlMinutesRef = useRef(ephemeralTtlMinutes);
   const processingQueuedMessageRef = useRef(false);
   const skipNextMessageLoadRef = useRef(false);
   const canChat = Boolean(activeVersion?.providerId && activeVersion?.modelId && conversationCanContinue);
@@ -63,34 +63,23 @@ export function useChatSession(c: SessionContext) {
     canChat,
     onConversationCreated: (conversationId, firstMessage) => {
       skipNextMessageLoadRef.current = true;
+      const currentParams = new URLSearchParams(window.location.search);
+      const createdEphemeral = ephemeralRef.current || currentParams.get("temporary") === "true";
+      const requestedTtl = Number(currentParams.get("ttl"));
+      const createdEphemeralTtlMinutes = Number.isInteger(requestedTtl) && requestedTtl > 0 ? requestedTtl : ephemeralTtlMinutesRef.current;
+      setEphemeral(createdEphemeral);
+      setEphemeralTtlMinutes(createdEphemeralTtlMinutes);
       if (workspaceId && selectedAgentId) {
         saveCurrentComposerDraft();
         migrateNewChatComposerDraft(workspaceId, selectedAgentId, conversationId);
-        composerDraftScopeRef.current = {
-          workspaceId: workspaceId,
-          agentId: selectedAgentId,
-          conversationId,
-        };
+        composerDraftScopeRef.current = { workspaceId: workspaceId, agentId: selectedAgentId, conversationId };
       }
       setActiveConversationId(conversationId);
-      if (selectedAgentId && !ephemeral) {
-        setConversations((current) =>
-          upsertConversation(current, {
-            id: conversationId,
-            title: conversationTitleFromFirstMessage(firstMessage),
-            agentId: selectedAgentId!,
-            folderId: null,
-            pinnedAt: null,
-            sidebarOrder: null,
-            updatedAt: new Date().toISOString(),
-          }),
-        );
+      if (selectedAgentId && !createdEphemeral) {
+        setConversations((current) => upsertConversation(current, { id: conversationId, title: conversationTitleFromFirstMessage(firstMessage), agentId: selectedAgentId!, folderId: null, pinnedAt: null, sidebarOrder: null, updatedAt: new Date().toISOString() }));
       }
-      const params = new URLSearchParams();
-      if (selectedAgentId) params.set("agentId", selectedAgentId);
-      params.set("conversationId", conversationId);
-      window.history.replaceState(null, "", `/chat?${params.toString()}`);
-      if (!ephemeral) notifyWorkspaceHistoryChanged();
+      replaceConversationRoute(conversationId, selectedAgentId, createdEphemeral, createdEphemeralTtlMinutes);
+      if (!createdEphemeral) notifyWorkspaceHistoryChanged();
     },
     onConversationTitle: (conversationId, title) => {
       setConversations((current) => {
@@ -100,17 +89,7 @@ export function useChatSession(c: SessionContext) {
           found = true;
           return { ...conversation, title };
         });
-        return found || !selectedAgentId
-          ? next
-          : [
-              {
-                id: conversationId,
-                title,
-                agentId: selectedAgentId,
-                updatedAt: new Date().toISOString(),
-              },
-              ...next,
-            ];
+        return found || !selectedAgentId ? next : [{ id: conversationId, title, agentId: selectedAgentId, updatedAt: new Date().toISOString() }, ...next];
       });
       notifyWorkspaceHistoryChanged();
     },
@@ -119,6 +98,11 @@ export function useChatSession(c: SessionContext) {
   const { messages, setMessages, sending, handleSubmit } = stream;
   const latestTodoList = useMemo(() => latestChatTodoListFromMessages(messages), [messages]);
   const conversationImpact = useMemo(() => aggregateChatUsageImpact(messages), [messages]);
+
+  useEffect(() => {
+    ephemeralRef.current = ephemeral;
+    ephemeralTtlMinutesRef.current = ephemeralTtlMinutes;
+  }, [ephemeral, ephemeralTtlMinutes]);
 
   useEffect(() => {
     const artifact = latestCodeWorkspaceArtifact(messages);
@@ -140,10 +124,7 @@ export function useChatSession(c: SessionContext) {
     processingQueuedMessageRef.current = true;
     queueMicrotask(() => {
       setQueuedMessages((current) => (current[0]?.id === next.id ? current.slice(1) : current.filter(({ id }) => id !== next.id)));
-      void handleSubmit(next.content.trim(), {
-        codeWorkspaceId: interfaceMode === CODING_INTERFACE_MODE ? codeWorkspaceArtifact?.projectId : undefined,
-        ephemeral: !activeConversationId && ephemeral,
-      }).finally(() => {
+      void handleSubmit(next.content.trim(), { codeWorkspaceId: interfaceMode === CODING_INTERFACE_MODE ? codeWorkspaceArtifact?.projectId : undefined, ephemeral: !activeConversationId && ephemeral }).finally(() => {
         processingQueuedMessageRef.current = false;
       });
     });
@@ -205,12 +186,7 @@ export function useChatSession(c: SessionContext) {
     const controller = new AbortController();
     let cancelled = false;
     queueMicrotask(() => setLoadingMessages(true));
-    void fetchJson<{
-      conversation?: ChatConversation;
-      messages?: ChatMessage[];
-    }>(`/api/workspace/conversations/${activeConversationId}`, {
-      signal: controller.signal,
-    })
+    void fetchJson<{ conversation?: ChatConversation; messages?: ChatMessage[] }>(`/api/workspace/conversations/${activeConversationId}`, { signal: controller.signal })
       .then((data) => {
         if (cancelled) return;
         if (data.conversation?.agentId && !new URL(window.location.href).searchParams.get("agentId")) setSelectedAgentId(data.conversation.agentId);
@@ -243,16 +219,5 @@ export function useChatSession(c: SessionContext) {
     };
   }, [activeConversationId, resetInterfaceMode, setCodeWorkspaceArtifact, setConversations, setEphemeral, setEphemeralTtlMinutes, setInterfaceMode, setSelectedAgentId, setMessages]);
 
-  return {
-    ...stream,
-    activeVersion,
-    setActiveVersion,
-    loadingMessages,
-    quota,
-    canChat,
-    conversationIsOwner,
-    conversationReadOnly: Boolean(activeConversationId && !conversationCanContinue),
-    latestTodoList,
-    conversationImpact,
-  };
+  return { ...stream, activeVersion, setActiveVersion, loadingMessages, quota, canChat, conversationIsOwner, conversationReadOnly: Boolean(activeConversationId && !conversationCanContinue), latestTodoList, conversationImpact };
 }

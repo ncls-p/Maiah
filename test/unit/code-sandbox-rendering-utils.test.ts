@@ -1,6 +1,6 @@
-import { describe,expect,it } from "vitest";
+import { describe, expect, it } from "vitest";
 
-import { codeSandboxOutputFromUnknown,codeSandboxToolVisualState,partitionCodeSandboxFiles,summarizeToolBody,toolPartHasStandaloneRendering } from "@/components/chat/chat-message-rendering-utils";
+import { codeSandboxOutputFromUnknown, codeSandboxToolVisualState, partitionCodeSandboxFiles, summarizeToolBody, toolPartHasStandaloneRendering } from "@/components/chat/chat-message-rendering-utils";
 
 describe("code sandbox result rendering", () => {
   it("previews a structured result instead of its object key", () => {
@@ -8,48 +8,16 @@ describe("code sandbox result rendering", () => {
   });
 
   it("keeps input provenance while normalizing a sandbox result", () => {
-    const result = codeSandboxOutputFromUnknown({
-      kind: "code_sandbox_result",
-      ok: true,
-      language: "python",
-      files: [
-        {
-          path: "attachments/report.document/pages/001-page-1.md",
-          size: 1200,
-          mimeType: "text/markdown",
-          fromInput: true,
-          modified: false,
-        },
-      ],
-    });
+    const result = codeSandboxOutputFromUnknown({ kind: "code_sandbox_result", ok: true, language: "python", files: [{ path: "attachments/report.document/pages/001-page-1.md", size: 1200, mimeType: "text/markdown", fromInput: true, modified: false }] });
 
-    expect(result?.files[0]).toMatchObject({
-      fromInput: true,
-      modified: false,
-    });
+    expect(result?.files[0]).toMatchObject({ fromInput: true, modified: false });
   });
 
   it("separates unchanged inputs from created or modified files", () => {
     const files = [
-      {
-        path: "attachments/report.document/pages/001-page-1.md",
-        size: 1200,
-        mimeType: "text/markdown",
-        fromInput: true,
-        modified: false,
-      },
-      {
-        path: "summary.md",
-        size: 420,
-        mimeType: "text/markdown",
-      },
-      {
-        path: "attachments/report.document/README.md",
-        size: 700,
-        mimeType: "text/markdown",
-        fromInput: true,
-        modified: true,
-      },
+      { path: "attachments/report.document/pages/001-page-1.md", size: 1200, mimeType: "text/markdown", fromInput: true, modified: false },
+      { path: "summary.md", size: 420, mimeType: "text/markdown" },
+      { path: "attachments/report.document/README.md", size: 700, mimeType: "text/markdown", fromInput: true, modified: true },
     ];
 
     const partitioned = partitionCodeSandboxFiles(files);
@@ -59,17 +27,7 @@ describe("code sandbox result rendering", () => {
   });
 
   it("keeps code execution failures visually neutral at the tool level", () => {
-    const failedExecution = {
-      kind: "code_sandbox_result",
-      ok: false,
-      language: "python",
-      exitCode: 1,
-      timedOut: false,
-      durationMs: 12,
-      stdout: "",
-      stderr: "SyntaxError",
-      files: [],
-    };
+    const failedExecution = { kind: "code_sandbox_result", ok: false, language: "python", exitCode: 1, timedOut: false, durationMs: 12, stdout: "", stderr: "SyntaxError", files: [] };
 
     expect(codeSandboxToolVisualState(failedExecution, "error")).toBe("completed");
     expect(codeSandboxToolVisualState({ error: "Sandbox unavailable" }, "error")).toBe("error");
@@ -77,19 +35,15 @@ describe("code sandbox result rendering", () => {
 
   it("keeps visual tools outside the collapsible work trace for their whole lifecycle", () => {
     for (const toolName of ["render_html_artifact", "generate_image", "run_code_sandbox", "code_workspace_write_file", "github_publish_code_workspace"]) {
-      expect(
-        toolPartHasStandaloneRendering({
-          type: "tool-call",
-          content: JSON.stringify({ toolName }),
-        }),
-      ).toBe(true);
+      expect(toolPartHasStandaloneRendering({ type: "tool-call", content: JSON.stringify({ toolName }) })).toBe(true);
     }
 
-    expect(
-      toolPartHasStandaloneRendering({
-        type: "tool-call",
-        content: JSON.stringify({ toolName: "web_search" }),
-      }),
-    ).toBe(false);
+    expect(toolPartHasStandaloneRendering({ type: "tool-call", content: JSON.stringify({ toolName: "web_search" }) })).toBe(false);
+  });
+
+  it("keeps every child-agent visual tool inside the specialist trace", () => {
+    for (const toolName of ["run_code_sandbox", "render_html_artifact", "generate_image", "code_workspace_write_file"]) {
+      expect(toolPartHasStandaloneRendering({ type: "tool-call", content: JSON.stringify({ toolName, agentContext: { agentId: "child-agent", agentName: "Research specialist", runId: "child-run", parentRunId: "root-run", depth: 1, status: "success" } }) })).toBe(false);
+    }
   });
 });

@@ -1,9 +1,10 @@
-import { parseToolPart,type ChatImageAttachment,type ChatMessagePart } from "@/components/chat/chat-types";
+import { parseToolPart, type ChatImageAttachment, type ChatMessagePart } from "@/components/chat/chat-types";
 import { isCodeWorkspaceArtifactOutput } from "@/components/chat/code-workspace-artifact-card";
 import { summarizeToolInput } from "@/components/chat/tool-approval-banner";
-import { chatTodoListFromUnknown,type ChatTodoList } from "@/modules/chat/todo-list";
-import { htmlArtifactFromInputText,htmlArtifactFromToolInput } from "./chat-message-rendering-utils.code-sandbox-input-from-unknown";
-import { codeSandboxOutputFromUnknown,isChatImageAttachmentOutput } from "./chat-message-rendering-utils.latest-chat-todo-list-from-messages";
+import { chatTodoListFromUnknown, type ChatTodoList } from "@/modules/chat/todo-list";
+import { parseAgentToolDisplayContext } from "@/modules/agent/tool-progress-payload";
+import { htmlArtifactFromInputText, htmlArtifactFromToolInput } from "./chat-message-rendering-utils.code-sandbox-input-from-unknown";
+import { codeSandboxOutputFromUnknown, isChatImageAttachmentOutput } from "./chat-message-rendering-utils.latest-chat-todo-list-from-messages";
 
 export function stringifyForMatch(value: unknown) {
   try {
@@ -38,14 +39,7 @@ export function summarizeToolBody(toolName: string | undefined, body: unknown, i
   return String(body).slice(0, 180);
 }
 
-export type KnowledgeSearchResult = {
-  chunkId: string;
-  documentId: string;
-  documentTitle: string;
-  content: string;
-  knowledgeBaseName: string;
-  score: number;
-};
+export type KnowledgeSearchResult = { chunkId: string; documentId: string; documentTitle: string; content: string; knowledgeBaseName: string; score: number };
 
 export function knowledgeSearchResultsFromUnknown(value: unknown): KnowledgeSearchResult[] | null {
   if (typeof value !== "object" || value === null) return null;
@@ -69,43 +63,17 @@ export function knowledgeContextChunkCount(value: unknown) {
   return Array.isArray(record.chunks) ? record.chunks.length : 0;
 }
 
-export function delegationFailureDetails(output: unknown): {
-  errorCode: string | null;
-  reason: string | null;
-} {
+export function delegationFailureDetails(output: unknown): { errorCode: string | null; reason: string | null } {
   if (typeof output !== "object" || output === null) {
     return { errorCode: null, reason: null };
   }
   const record = output as Record<string, unknown>;
-  return {
-    errorCode: typeof record.errorCode === "string" ? record.errorCode : null,
-    reason: typeof record.error === "string" ? record.error : null,
-  };
+  return { errorCode: typeof record.errorCode === "string" ? record.errorCode : null, reason: typeof record.error === "string" ? record.error : null };
 }
 
-export type HtmlArtifactOutput = {
-  kind: "html_artifact";
-  title: string;
-  html: string;
-  css: string;
-  js: string;
-  height: number;
-};
+export type HtmlArtifactOutput = { kind: "html_artifact"; title: string; html: string; css: string; js: string; height: number };
 
-export type GeneratedImageOutput = {
-  kind: "generated_image";
-  attachment: ChatImageAttachment;
-  prompt: string;
-  size: string;
-  provider: string;
-  model: string;
-  impact: {
-    cost: number | null;
-    currency: string;
-    energyKwh: number | null;
-    co2Grams: number | null;
-  };
-};
+export type GeneratedImageOutput = { kind: "generated_image"; attachment: ChatImageAttachment; prompt: string; size: string; provider: string; model: string; impact: { cost: number | null; currency: string; energyKwh: number | null; co2Grams: number | null } };
 
 export function isGeneratedImageOutput(value: unknown): value is GeneratedImageOutput {
   if (typeof value !== "object" || value === null) return false;
@@ -119,16 +87,7 @@ export function isHtmlArtifactOutput(value: unknown): value is HtmlArtifactOutpu
   return record.kind === "html_artifact" && typeof record.title === "string" && typeof record.html === "string" && typeof record.css === "string" && typeof record.js === "string" && typeof record.height === "number";
 }
 
-export type GitHubPublishOutput = {
-  kind: "github_publish_result";
-  mode: "pull_request" | "direct_push";
-  repository: string;
-  targetBranch: string;
-  sourceBranch: string | null;
-  commitSha: string;
-  pullRequestUrl: string | null;
-  message: string;
-};
+export type GitHubPublishOutput = { kind: "github_publish_result"; mode: "pull_request" | "direct_push"; repository: string; targetBranch: string; sourceBranch: string | null; commitSha: string; pullRequestUrl: string | null; message: string };
 
 export function isGitHubPublishOutput(value: unknown): value is GitHubPublishOutput {
   if (typeof value !== "object" || value === null) return false;
@@ -139,6 +98,8 @@ export function isGitHubPublishOutput(value: unknown): value is GitHubPublishOut
 export function toolPartHasStandaloneRendering(part: ChatMessagePart) {
   if (part.type !== "tool-call" && part.type !== "tool-result") return false;
   const parsed = parseToolPart(part.content);
+  const agentContext = parseAgentToolDisplayContext(parsed.agentContext);
+  if (agentContext && agentContext.depth > 0) return false;
   const visualToolName = parsed.toolName ?? "";
   return Boolean(visualToolName === "render_html_artifact" || visualToolName === "generate_image" || visualToolName === "run_code_sandbox" || visualToolName === "github_publish_code_workspace" || visualToolName.startsWith("code_workspace_") || codeSandboxOutputFromUnknown(parsed.output) || isHtmlArtifactOutput(parsed.output) || isGeneratedImageOutput(parsed.output) || isCodeWorkspaceArtifactOutput(parsed.output) || isGitHubPublishOutput(parsed.output) || htmlArtifactFromToolInput(parsed.input) || htmlArtifactFromInputText(parsed.inputText));
 }

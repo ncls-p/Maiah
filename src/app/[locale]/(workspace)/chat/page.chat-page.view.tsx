@@ -5,6 +5,7 @@ import { ChatLayout } from "@/components/chat/chat-layout";
 import { ChatMessageList, CodeWorkspaceArtifactCard } from "@/components/chat/chat-message-list";
 import { CodeWorkspaceResizeHandle } from "@/components/chat/code-workspace-artifact-card";
 import { MAX_CHAT_WIDTH, MIN_CHAT_WIDTH } from "@/components/chat/code-workspace-layout";
+import { TemporaryConversationBanner } from "@/components/chat/temporary-conversation-banner";
 import { CODING_INTERFACE_MODE } from "./chat-interface-mode";
 import { ChatContextBar } from "./chat-page-helpers";
 import { CodeWorkspaceModeBar, EmptyConversationState } from "./chat-page-view";
@@ -12,24 +13,18 @@ import type { useChatPageController } from "./page.chat-page";
 
 type Model = Extract<ReturnType<typeof useChatPageController>, { kind: "ready" }>;
 export function ChatPageView({ model }: { model: Model }) {
-  const { activeConversationId, agents, approveToolInvocation, attachments, bottomRef, canChat, canCreateAgent, canRunSetup, cancelQueuedMessage, chooseInterfaceMode, codeWorkspaceArtifact, codingChatWidth, continueAssistantResponse, conversationImpact, conversationIsOwner, conversationReadOnly } = model;
+  const { activeConversationId, agents, approveToolInvocation, attachments, bottomRef, canChat, canCreateAgent, canRunSetup, cancelQueuedMessage, chooseInterfaceMode, codeWorkspaceArtifact, codingChatWidth, continueAssistantResponse, conversationImpact, conversationIsOwner, conversationReadOnly, convertingTemporaryConversation, effectiveEphemeral, effectiveEphemeralTtlMinutes, makeConversationPersistent } = model;
   const { deleteMessage, editMessage, emptyPromptSuggestions, input, interfaceMode, latestTodoList, loadingMessages, messages, organizationDefaultAgentId, pendingApprovals } = model;
   const { queuedMessages, quota, rejectToolInvocation, reloadActualLatestMessages, reloadAgentContext, resendMessage, selectAgent, selectedAgent, selectedAgentId, sending, setAttachments } = model;
   const { setInput, setUserDefaultAgent, stopGeneration, submitMessage, submitSuggestion, t, updateCodingChatWidth, updateQueuedMessage, uploadChatAttachment, uploadCodeWorkspace, userDefaultAgentId, workspaceId } = model;
   return (
     <ChatLayout agents={agents} selectedAgent={selectedAgent} selectedAgentId={selectedAgentId} activeConversationId={activeConversationId} conversationImpact={conversationImpact} conversationIsOwner={conversationIsOwner} organizationDefaultAgentId={organizationDefaultAgentId} userDefaultAgentId={userDefaultAgentId} canChat={canChat} canCreateAgent={canCreateAgent} canRunSetup={canRunSetup} onSelectAgent={selectAgent} onSetUserDefaultAgent={(agentId: string | null) => void setUserDefaultAgent(agentId)} onSetupComplete={() => void reloadAgentContext()}>
       <ChatContextBar quota={quota} />
+      {effectiveEphemeral ? <TemporaryConversationBanner ttlMinutes={effectiveEphemeralTtlMinutes} canConvert={conversationIsOwner} converting={convertingTemporaryConversation} onConvert={() => void makeConversationPersistent()} /> : null}
       {conversationReadOnly ? <div className="border-b bg-muted/40 px-4 py-2 text-center text-xs text-muted-foreground">{t("share.readOnlyNotice")}</div> : null}
       {codeWorkspaceArtifact ? <CodeWorkspaceModeBar artifact={codeWorkspaceArtifact} interfaceMode={interfaceMode} onModeChange={chooseInterfaceMode} /> : null}
       {interfaceMode === CODING_INTERFACE_MODE && codeWorkspaceArtifact ? (
-        <section
-          className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden bg-background lg:[grid-template-columns:var(--coding-chat-width)_0.75rem_minmax(0,1fr)]"
-          style={
-            {
-              "--coding-chat-width": `${codingChatWidth}px`,
-            } as CSSProperties
-          }
-        >
+        <section className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden bg-background lg:[grid-template-columns:var(--coding-chat-width)_0.75rem_minmax(0,1fr)]" style={{ "--coding-chat-width": `${codingChatWidth}px` } as CSSProperties}>
           <aside className="flex min-h-0 flex-col bg-muted/10" id="coding-chat-panel">
             <div className="border-b border-border/50 px-3 py-2">
               <p className="text-xs font-medium text-foreground">{t("codingPanelTitle")}</p>

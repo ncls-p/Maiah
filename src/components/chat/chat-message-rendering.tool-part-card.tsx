@@ -1,21 +1,21 @@
 "use client";
 
-import { CodeSandboxResultCard,HtmlArtifactCard,LiveToolInputCard } from "@/components/chat/chat-artifact-renderers";
-import { chatFileAttachmentFromPartContent,chatImageAttachmentFromPartContent,codeSandboxInputFromInputText,codeSandboxInputFromUnknown,codeSandboxOutputFromUnknown,codeSandboxToolVisualState,codeWorkspaceArtifactFromPartContent,delegationFailureDetails,formatToolName,htmlArtifactFromInputText,htmlArtifactFromToolInput,isCodeSandboxToolName,isGeneratedImageOutput,isGitHubPublishOutput,isHtmlArtifactOutput,knowledgeContextChunkCount,knowledgeSearchResultsFromUnknown,summarizeToolBody } from "@/components/chat/chat-message-rendering-utils";
-import { parseToolPart,resolveToolDisplayStatus } from "@/components/chat/chat-types";
-import { ChatFileAttachmentCard,ChatImageAttachmentCard,CodeWorkspaceArtifactCard,CodeWorkspaceArtifactSummary,GitHubPublishResultCard,isCodeWorkspaceArtifactOutput } from "@/components/chat/code-workspace-artifact-card";
+import { CodeSandboxResultCard, HtmlArtifactCard, LiveToolInputCard } from "@/components/chat/chat-artifact-renderers";
+import { chatFileAttachmentFromPartContent, chatImageAttachmentFromPartContent, codeSandboxInputFromInputText, codeSandboxInputFromUnknown, codeSandboxOutputFromUnknown, codeSandboxToolVisualState, codeWorkspaceArtifactFromPartContent, delegationFailureDetails, formatToolName, htmlArtifactFromInputText, htmlArtifactFromToolInput, isCodeSandboxToolName, isGeneratedImageOutput, isGitHubPublishOutput, isHtmlArtifactOutput, knowledgeContextChunkCount, knowledgeSearchResultsFromUnknown, summarizeToolBody } from "@/components/chat/chat-message-rendering-utils";
+import { parseToolPart, resolveToolDisplayStatus } from "@/components/chat/chat-types";
+import { ChatFileAttachmentCard, ChatImageAttachmentCard, CodeWorkspaceArtifactCard, CodeWorkspaceArtifactSummary, GitHubPublishResultCard, isCodeWorkspaceArtifactOutput } from "@/components/chat/code-workspace-artifact-card";
 import { summarizeToolInput } from "@/components/chat/tool-approval-banner";
 import { Button } from "@/components/ui/button";
-import { Collapsible,CollapsibleContent,CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import { parseAgentToolDisplayContext } from "@/modules/agent/tool-progress-payload";
-import { CheckIcon,ChevronDownIcon,XIcon } from "lucide-react";
+import { CheckIcon, ChevronDownIcon, XIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type * as React from "react";
-import { memo,useMemo,useState } from "react";
+import { memo, useMemo, useState } from "react";
 import { areToolPartCardPropsEqual } from "./chat-message-rendering.are-tool-part-card-props-equal";
-import { BUTTON_TYPE,COMPACT_ICON_CLASS,GHOST_VARIANT,OUTLINE_VARIANT,formatExpandedToolValue } from "./chat-message-rendering.rich-editor";
-import { ToolCardHeader,ToolPartCardProps } from "./chat-message-rendering.tool-part-card-props";
+import { BUTTON_TYPE, COMPACT_ICON_CLASS, GHOST_VARIANT, OUTLINE_VARIANT, formatExpandedToolValue } from "./chat-message-rendering.rich-editor";
+import { ToolCardHeader, ToolPartCardProps } from "./chat-message-rendering.tool-part-card-props";
 
 export const ToolPartCard = memo(function ToolPartCard({ part, sequence, messageStatus, approval, workspaceId, workspaceArtifactDisplay = "full", onApprove, onReject }: ToolPartCardProps) {
   const t = useTranslations("chat.rendering");
@@ -56,6 +56,7 @@ export const ToolPartCard = memo(function ToolPartCard({ part, sequence, message
           case "AGENT_TOKEN_BUDGET_EXCEEDED":
             return t("delegationFailureTokenBudget");
           case "AGENT_DELEGATION_FORBIDDEN":
+          case "AGENT_DELEGATION_ATTACHMENT_FORBIDDEN":
           case "AGENT_RUN_FORBIDDEN":
             return t("delegationFailurePermission");
           case "AGENT_DELEGATION_DEPTH_EXCEEDED":

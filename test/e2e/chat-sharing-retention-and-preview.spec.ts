@@ -3,15 +3,7 @@ import { expect, test } from "@playwright/test";
 import { randomUUID } from "node:crypto";
 import { Client } from "pg";
 
-import {
-  activate,
-  databaseUrl,
-  e2eMember,
-  ensureE2EAssistant,
-  ensureE2EMember,
-  ensureE2EUser,
-  login,
-} from "./fixtures";
+import { activate, databaseUrl, e2eMember, ensureE2EAssistant, ensureE2EMember, ensureE2EUser, login } from "./fixtures";
 
 const { loadEnvConfig } = nextEnv;
 loadEnvConfig(process.cwd());
@@ -97,11 +89,13 @@ test("hides an assistant from the chat selector after SPA navigation", async ({ 
     await activate(page.getByRole("link", { name: "Chat", exact: true }));
     await expect(page).toHaveURL(/\/en\/chat/);
     const assistantSelector = page.getByRole("button", { name: "Current assistant" });
+    const emptyAssistantState = page.getByText("No assistants yet");
+    await expect(assistantSelector.or(emptyAssistantState)).toBeVisible({ timeout: 15_000 });
     if (await assistantSelector.count()) {
       await activate(assistantSelector);
       await expect(page.getByRole("menuitem", { name: /E2E menu assistant/ })).toHaveCount(0);
     } else {
-      await expect(page.getByText("No assistants yet")).toBeVisible();
+      await expect(emptyAssistantState).toBeVisible();
       await expect(page.getByText("E2E menu assistant")).toHaveCount(0);
     }
     await expect(page.getByRole("complementary")).toBeVisible();
@@ -116,12 +110,15 @@ test("creates a temporary chat with the retention selected from the timer", asyn
   let conversationId: string | undefined;
   try {
     await page.goto("/en/chat");
+    await expect(page.getByRole("button", { name: "Current assistant" })).toBeVisible({ timeout: 15_000 });
     await activate(page.getByRole("button", { name: "Current assistant" }));
     await activate(page.getByRole("menuitem", { name: /E2E menu assistant/ }));
     await expect(page.getByRole("textbox", { name: "Message", exact: true })).toBeEnabled();
     await activate(page.getByRole("button", { name: "New temporary conversation" }));
     await activate(page.getByRole("menuitem", { name: "After 5 minutes" }));
     await expect(page).toHaveURL(/\/en\/chat\?temporary=true&ttl=5$/);
+    await expect(page.getByText("Temporary conversation", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Keep this conversation" })).toBeVisible();
     await page.getByRole("textbox", { name: "Message", exact: true }).fill(title);
     await activate(page.getByRole("button", { name: "Send message" }));
 
@@ -144,6 +141,25 @@ test("creates a temporary chat with the retention selected from the timer", asyn
         }
       })
       .toMatchObject({ ttl: 5, seconds: 300 });
+
+    await activate(page.getByRole("button", { name: "Keep this conversation" }));
+    await expect(page.getByText("Temporary conversation", { exact: true })).toHaveCount(0);
+    await expect
+      .poll(async () => {
+        const client = new Client({ connectionString: databaseUrl() });
+        await client.connect();
+        try {
+          const result = await client.query<{ isEphemeral: boolean; expiresAt: Date | null }>(
+            `select is_ephemeral as "isEphemeral", expires_at as "expiresAt"
+             from conversations where id = $1`,
+            [conversationId],
+          );
+          return result.rows[0];
+        } finally {
+          await client.end();
+        }
+      })
+      .toEqual({ isEphemeral: false, expiresAt: null });
   } finally {
     if (conversationId) await deleteConversation(conversationId);
   }
@@ -179,22 +195,7 @@ test("previews an uploaded PDF natively without requesting parsed text", async (
       await route.fulfill({ status: 202, json: { accepted: true } });
       return;
     }
-    await route.fulfill({
-      json: {
-        attachment: {
-          kind: "chat_file",
-          id: "20000000-0000-4000-8000-000000000099",
-          fileName: "native-preview.pdf",
-          mimeType: "application/pdf",
-          size: 45,
-          hash: "pdf-hash",
-          url: "/api/workspace/chat-attachments/mock-pdf",
-          category: "document",
-          extractionStatus: "readable",
-          extractedTextChars: 120,
-        },
-      },
-    });
+    await route.fulfill({ json: { attachment: { kind: "chat_file", id: "20000000-0000-4000-8000-000000000099", fileName: "native-preview.pdf", mimeType: "application/pdf", size: 45, hash: "pdf-hash", url: "/api/workspace/chat-attachments/mock-pdf", category: "document", extractionStatus: "readable", extractedTextChars: 120 } } });
   });
   await page.route("**/api/workspace/chat-attachments/*/extracted", async (route) => {
     extractedPreviewRequests += 1;
@@ -208,18 +209,11 @@ test("previews an uploaded PDF natively without requesting parsed text", async (
   await activate(page.getByRole("button", { name: "Current assistant" }));
   await activate(page.getByRole("menuitem", { name: /E2E menu assistant/ }));
   await expect(page.getByRole("textbox", { name: "Message", exact: true })).toBeEnabled();
-  await page.locator('input[type="file"]').setInputFiles({
-    name: "native-preview.pdf",
-    mimeType: "application/pdf",
-    buffer: Buffer.from("%PDF-1.4\n%%EOF"),
-  });
+  await page.locator('input[type="file"]').setInputFiles({ name: "native-preview.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.4\n%%EOF") });
   const preview = page.getByRole("button", { name: "View extracted text for native-preview.pdf" });
   await expect(preview).toBeVisible({ timeout: 15_000 });
   await activate(preview);
   await expect(page.getByRole("dialog", { name: "native-preview.pdf" })).toBeVisible();
-  await expect(page.locator('iframe[title="native-preview.pdf"]')).toHaveAttribute(
-    "src",
-    "/api/workspace/chat-attachments/mock-pdf",
-  );
+  await expect(page.locator('iframe[title="native-preview.pdf"]')).toHaveAttribute("src", "/api/workspace/chat-attachments/mock-pdf");
   expect(extractedPreviewRequests).toBe(0);
 });

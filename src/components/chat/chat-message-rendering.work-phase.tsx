@@ -1,32 +1,38 @@
 "use client";
 
-import { formatToolName,knowledgeSearchResultsFromUnknown } from "@/components/chat/chat-message-rendering-utils";
-import { parseToolPart,resolveWorkPhaseOutcome,type ChatMessage,type ChatMessagePart } from "@/components/chat/chat-types";
+import { formatToolName, knowledgeSearchResultsFromUnknown } from "@/components/chat/chat-message-rendering-utils";
+import { parseToolPart, resolveWorkPhaseOutcome, type ChatMessage, type ChatMessagePart } from "@/components/chat/chat-types";
 import type { ToolVisualState } from "@/components/chat/tool-state-icon";
 import { Button } from "@/components/ui/button";
-import { Collapsible,CollapsibleContent,CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import { parseAgentToolDisplayContext } from "@/modules/agent/tool-progress-payload";
 import { ChevronDownIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type * as React from "react";
 import { useState } from "react";
-import { BUTTON_TYPE,GHOST_VARIANT } from "./chat-message-rendering.rich-editor";
-import { ToolSequenceBadge,ToolStatusDot } from "./chat-message-rendering.tool-part-card-props";
+import { BUTTON_TYPE, GHOST_VARIANT } from "./chat-message-rendering.rich-editor";
+import { ToolSequenceBadge, ToolStatusDot } from "./chat-message-rendering.tool-part-card-props";
 
 export function WorkPhase({ parts, sequence, hasVisibleResponseAfter, hasPendingApproval, messageStatus, children }: { parts: Array<{ part: ChatMessagePart; partIndex: number }>; sequence: number; hasVisibleResponseAfter: boolean; hasPendingApproval: boolean; messageStatus?: ChatMessage["status"]; children: React.ReactNode }) {
   const t = useTranslations("chat.rendering");
   const [manualOpen, setManualOpen] = useState<boolean | null>(null);
-  const outcome = resolveWorkPhaseOutcome({
-    parts: parts.map(({ part }) => part),
-    messageStatus,
-    hasVisibleResponseAfter,
-  });
+  const outcome = resolveWorkPhaseOutcome({ parts: parts.map(({ part }) => part), messageStatus, hasVisibleResponseAfter });
   const visualState: ToolVisualState = hasPendingApproval ? "approval" : outcome === "pending" ? "pending" : outcome === "interrupted" ? "error" : outcome === "completed-with-issues" ? "warning" : "completed";
-  const autoOpen = hasPendingApproval || outcome === "pending" || outcome === "interrupted" || (messageStatus === "streaming" && !hasVisibleResponseAfter);
+  const specialistNames = Array.from(
+    new Set(
+      parts.flatMap(({ part }) => {
+        if (part.type !== "tool-call" && part.type !== "tool-result") return [];
+        const context = parseAgentToolDisplayContext(parseToolPart(part.content).agentContext);
+        return context && context.depth > 0 ? [context.agentName] : [];
+      }),
+    ),
+  );
+  const hasSpecialistActivity = specialistNames.length > 0 || parts.some(({ part }) => (part.type === "tool-call" || part.type === "tool-result") && (parseToolPart(part.content).toolName?.startsWith("delegate_specialist_") ?? false));
+  const autoOpen = hasPendingApproval || (!hasSpecialistActivity && (outcome === "pending" || outcome === "interrupted" || (messageStatus === "streaming" && !hasVisibleResponseAfter)));
   const open = manualOpen ?? autoOpen;
 
-  const activityLabels = Array.from(
+  const detailedActivityLabels = Array.from(
     new Set(
       parts.map(({ part }) => {
         if (part.type === "reasoning") return t("workPhaseReasoning");
@@ -40,15 +46,11 @@ export function WorkPhase({ parts, sequence, hasVisibleResponseAfter, hasPending
         }
         const toolName = parsed.toolName ? formatToolName(parsed.toolName) : t("workPhaseTool");
         const context = parseAgentToolDisplayContext(parsed.agentContext);
-        return context && context.depth > 0
-          ? t("specialistActivity", {
-              name: context.agentName,
-              action: toolName,
-            })
-          : toolName;
+        return context && context.depth > 0 ? t("specialistActivity", { name: context.agentName, action: toolName }) : toolName;
       }),
     ),
   );
+  const activityLabels = hasSpecialistActivity ? [t("specialistWork"), ...specialistNames] : detailedActivityLabels;
   const visibleActivities = activityLabels.slice(0, 3);
   const hiddenActivityCount = activityLabels.length - visibleActivities.length;
   const statusLabel =
@@ -68,7 +70,7 @@ export function WorkPhase({ parts, sequence, hasVisibleResponseAfter, hasPending
       if (visualState !== "completed") return null;
       const documentCount = new Set(knowledgeResults.map((result) => result.documentId)).size;
       return documentCount > 0 ? t("knowledgeSearchedDocuments", { count: documentCount }) : t("knowledgeNoResults");
-    })() ?? (visualState === "approval" ? t("actionApproval") : visualState === "pending" ? t("workPhaseActive") : visualState === "error" ? t("workPhaseFailed") : visualState === "warning" ? t("workPhaseCompleteWithIssues") : t("workPhaseComplete"));
+    })() ?? (hasSpecialistActivity ? (visualState === "pending" ? t("specialistWorkActive") : visualState === "error" ? t("specialistWorkFailed") : visualState === "warning" ? t("specialistWorkCompleteWithIssues") : t("specialistWorkComplete")) : visualState === "approval" ? t("actionApproval") : visualState === "pending" ? t("workPhaseActive") : visualState === "error" ? t("workPhaseFailed") : visualState === "warning" ? t("workPhaseCompleteWithIssues") : t("workPhaseComplete"));
 
   return (
     <Collapsible open={open} onOpenChange={setManualOpen} data-open={String(open)} className={cn("t-acc group/work-phase w-full overflow-hidden rounded-[15px] border border-border/60 bg-card/75 text-xs shadow-[0_12px_35px_-24px_color-mix(in_oklch,var(--foreground)_35%,transparent)] transition-[background-color,border-color,box-shadow] duration-200 ease-out", visualState === "approval" && "border-warning/25 bg-warning/[0.025]", visualState === "pending" && "border-primary/20 bg-primary/[0.025]", visualState === "warning" && "border-warning/25 bg-warning/[0.02]", visualState === "error" && "border-destructive/25 bg-destructive/[0.02]")}>
@@ -103,7 +105,7 @@ export function WorkPhase({ parts, sequence, hasVisibleResponseAfter, hasPending
           </div>
         </div>
         <CollapsibleTrigger asChild>
-          <Button type={BUTTON_TYPE} variant={GHOST_VARIANT} size="sm" className="h-10 shrink-0 rounded-xl pl-3 pr-2.5 text-xs text-muted-foreground hover:text-foreground" aria-label={open ? t("workPhaseHide") : t("workPhaseView")}>
+          <Button type={BUTTON_TYPE} variant={GHOST_VARIANT} size="sm" className="h-10 shrink-0 rounded-xl pl-3 pr-2.5 text-xs text-muted-foreground transition-transform hover:text-foreground active:scale-[0.96]" aria-label={hasSpecialistActivity ? (open ? t("specialistDetailsHide") : t("specialistDetailsView")) : open ? t("workPhaseHide") : t("workPhaseView")}>
             <span className="t-acc-chevron">
               <ChevronDownIcon className="size-3" aria-hidden="true" />
             </span>
@@ -112,7 +114,7 @@ export function WorkPhase({ parts, sequence, hasVisibleResponseAfter, hasPending
         </CollapsibleTrigger>
         <ToolStatusDot state={visualState} />
       </div>
-      <CollapsibleContent forceMount className="t-acc-panel" aria-hidden={!open} inert={!open ? true : undefined}>
+      <CollapsibleContent forceMount className="t-acc-panel" hidden={!open} aria-hidden={!open} inert={!open ? true : undefined}>
         <div className="t-acc-panel-inner">
           <div className="space-y-2 bg-background/20 p-2.5">{children}</div>
         </div>

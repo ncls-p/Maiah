@@ -1,9 +1,11 @@
-import { normalizeOrchestrationPolicy,orchestrationPolicyDefaults,type OrchestrationPolicy } from "@/modules/agent/orchestration-policy";
+import { normalizeOrchestrationPolicy, orchestrationPolicyDefaults, type OrchestrationPolicy } from "@/modules/agent/orchestration-policy";
 import { type AgentProgressModelHistoryKind } from "@/modules/agent/progress-model-history";
 import { type AgentRunTrigger } from "@/modules/agent/run-use-cases";
-import { agentRuntimePolicy,resolveAgentRuntimeLimits } from "@/modules/agent/runtime-policy";
-import { getActiveVersion,getAgentVersionById,getVisibleAgentById,type AgentRow,type AgentVersionRow } from "@/modules/agent/use-cases";
+import { agentRuntimePolicy, resolveAgentRuntimeLimits } from "@/modules/agent/runtime-policy";
+import { getActiveVersion, getAgentVersionById, getVisibleAgentById, type AgentRow, type AgentVersionRow } from "@/modules/agent/use-cases";
 import { type ModelMessage } from "ai";
+import type { ChatAttachment } from "@/modules/chat/attachments";
+import type { AgentVisualOutput } from "./runtime-executor.visual-outputs";
 
 export const HEARTBEAT_MS = 10_000;
 export const delegationFailureModelMessage = "The specialist could not complete the delegated task.";
@@ -38,115 +40,30 @@ export class AgentRunStateError extends AgentExecutionError {
   }
 }
 
-type ExecutionBudget = {
-  policy: OrchestrationPolicy;
-  rootRunId: string;
-  deadlineAt: Date;
-  controller: AbortController;
-  tokensUsed: number;
-  activeDelegations: number;
-};
+type ExecutionBudget = { policy: OrchestrationPolicy; rootRunId: string; deadlineAt: Date; controller: AbortController; tokensUsed: number; activeDelegations: number };
 
 export type ResolvedAgent = { agent: AgentRow; version: AgentVersionRow };
 
-export type AgentToolProgressContext = {
-  id: string;
-  toolCallId: string;
-  toolName: string;
-  agentName: string;
-  agentId: string;
-  runId: string;
-  parentRunId: string | null;
-  depth: number;
-  modelHistoryKind?: AgentProgressModelHistoryKind;
-};
+export type AgentToolProgressContext = { id: string; toolCallId: string; toolName: string; agentName: string; agentId: string; runId: string; parentRunId: string | null; depth: number; modelHistoryKind?: AgentProgressModelHistoryKind };
 
-export type AgentToolProgressEvent =
-  | (AgentToolProgressContext & {
-      type: "tool-start";
-      input: unknown;
-    })
-  | (AgentToolProgressContext & {
-      type: "tool-end";
-      durationMs: number;
-      output: unknown;
-    })
-  | (AgentToolProgressContext & {
-      type: "tool-end";
-      durationMs: number;
-      error: string;
-      errorCode?: string;
-    });
+export type AgentToolProgressEvent = (AgentToolProgressContext & { type: "tool-start"; input: unknown }) | (AgentToolProgressContext & { type: "tool-end"; durationMs: number; output: unknown }) | (AgentToolProgressContext & { type: "tool-end"; durationMs: number; error: string; errorCode?: string });
 
 type AgentToolProgressCallback = (event: AgentToolProgressEvent) => void | Promise<void>;
 
 export type SuccessfulToolResult = { toolName: string; output: unknown };
 
-export type InternalExecutionInput = {
-  resolved: ResolvedAgent;
-  workspaceId: string;
-  userId: string;
-  prompt: string;
-  messages?: ModelMessage[];
-  systemContext?: string;
-  trigger: AgentRunTrigger;
-  budget: ExecutionBudget;
-  deadlineAt: Date;
-  depth: number;
-  ancestry: string[];
-  parentRunId?: string;
-  existingRunId?: string;
-  conversationId?: string | null;
-  messageId?: string | null;
-  scheduledTaskId?: string | null;
-  idempotencyKey?: string | null;
-  dryRun?: boolean;
-  onProgress?: AgentToolProgressCallback;
-};
+export type InternalExecutionInput = { resolved: ResolvedAgent; workspaceId: string; userId: string; prompt: string; messages?: ModelMessage[]; systemContext?: string; availableAttachments?: ChatAttachment[]; trigger: AgentRunTrigger; budget: ExecutionBudget; deadlineAt: Date; depth: number; ancestry: string[]; parentRunId?: string; existingRunId?: string; conversationId?: string | null; messageId?: string | null; scheduledTaskId?: string | null; idempotencyKey?: string | null; dryRun?: boolean; onProgress?: AgentToolProgressCallback };
 
-export type ExecuteAgentInput = {
-  workspaceId: string;
-  userId: string;
-  agentId: string;
-  agentVersionId?: string;
-  prompt: string;
-  messages?: ModelMessage[];
-  systemContext?: string;
-  trigger: Exclude<AgentRunTrigger, "delegation">;
-  conversationId?: string | null;
-  messageId?: string | null;
-  scheduledTaskId?: string | null;
-  idempotencyKey?: string | null;
-  abortSignal?: AbortSignal;
-  onProgress?: AgentToolProgressCallback;
-};
+export type ExecuteAgentInput = { workspaceId: string; userId: string; agentId: string; agentVersionId?: string; prompt: string; messages?: ModelMessage[]; systemContext?: string; availableAttachments?: ChatAttachment[]; trigger: Exclude<AgentRunTrigger, "delegation">; conversationId?: string | null; messageId?: string | null; scheduledTaskId?: string | null; idempotencyKey?: string | null; abortSignal?: AbortSignal; onProgress?: AgentToolProgressCallback };
 
-export type AgentExecutionResult = {
-  runId: string;
-  text: string;
-  inputTokens: number;
-  outputTokens: number;
-  totalTreeTokens: number;
-  reused: boolean;
-};
+export type AgentExecutionResult = { runId: string; text: string; inputTokens: number; outputTokens: number; totalTreeTokens: number; reused: boolean; visualOutputs: AgentVisualOutput[] };
 
 export function executionPolicy(resolved: ResolvedAgent) {
   if (resolved.agent.kind === "orchestrator") {
     return normalizeOrchestrationPolicy(resolved.version.orchestrationPolicyJson);
   }
-  const limits = resolveAgentRuntimeLimits({
-    maxOutputTokens: resolved.version.maxOutputTokens,
-    maxToolCalls: resolved.version.maxToolCalls,
-  });
-  return {
-    ...orchestrationPolicyDefaults,
-    maxDepth: 1,
-    maxDelegations: 1,
-    maxParallel: 1,
-    maxChildSteps: 1,
-    maxTotalTokens: Math.min(100_000, Math.max(1_000, limits.maxOutputTokens)),
-    timeoutMs: Math.min(orchestrationPolicyDefaults.timeoutMs, agentRuntimePolicy.chatTimeoutMs),
-  } satisfies OrchestrationPolicy;
+  const limits = resolveAgentRuntimeLimits({ maxOutputTokens: resolved.version.maxOutputTokens, maxToolCalls: resolved.version.maxToolCalls });
+  return { ...orchestrationPolicyDefaults, maxDepth: 1, maxDelegations: 1, maxParallel: 1, maxChildSteps: 1, maxTotalTokens: Math.min(100_000, Math.max(1_000, limits.maxOutputTokens)), timeoutMs: Math.min(orchestrationPolicyDefaults.timeoutMs, agentRuntimePolicy.chatTimeoutMs) } satisfies OrchestrationPolicy;
 }
 
 export async function resolveAgent(input: { agentId: string; agentVersionId?: string; workspaceId: string; userId: string }): Promise<ResolvedAgent> {

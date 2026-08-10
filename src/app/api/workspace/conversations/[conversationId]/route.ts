@@ -11,20 +11,9 @@ import { z } from "zod";
 
 import { getAuthorizedConversation } from "./conversation-route-access";
 const updateConversationSchema = z
-  .object({
-    title: z.string().trim().min(1).max(512).optional(),
-    folderId: z.uuid().nullable().optional(),
-    pinned: z.boolean().optional(),
-    sidebarOrder: z.number().int().nullable().optional(),
-    ephemeralTtlMinutes: z
-      .number()
-      .int()
-      .refine(isEphemeralTtlMinutes)
-      .optional(),
-  })
-  .refine((value) => value.title !== undefined || value.folderId !== undefined || value.pinned !== undefined || value.sidebarOrder !== undefined || value.ephemeralTtlMinutes !== undefined, {
-    message: "At least one field is required",
-  });
+  .object({ title: z.string().trim().min(1).max(512).optional(), folderId: z.uuid().nullable().optional(), pinned: z.boolean().optional(), sidebarOrder: z.number().int().nullable().optional(), ephemeralTtlMinutes: z.number().int().refine(isEphemeralTtlMinutes).optional(), makePersistent: z.literal(true).optional() })
+  .refine((value) => value.ephemeralTtlMinutes === undefined || value.makePersistent === undefined, { message: "A conversation cannot be made persistent while changing its temporary retention" })
+  .refine((value) => value.title !== undefined || value.folderId !== undefined || value.pinned !== undefined || value.sidebarOrder !== undefined || value.ephemeralTtlMinutes !== undefined || value.makePersistent !== undefined, { message: "At least one field is required" });
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ conversationId: string }> }) {
   return handleRoute(
@@ -35,33 +24,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ conv
       const { conversation, conversationId } = access;
 
       const [storedMessages, usageImpactSetting] = await Promise.all([getConversationMessages(conversationId), getUsageImpactSetting()]);
-      const messages = storedMessages.map((message) => ({
-        ...message,
-        parts: usageImpactSetting.enabled ? message.parts : message.parts.filter((part) => part.type !== "impact"),
-        createdAt: new Date(message.createdAt).toISOString(),
-      }));
+      const messages = storedMessages.map((message) => ({ ...message, parts: usageImpactSetting.enabled ? message.parts : message.parts.filter((part) => part.type !== "impact"), createdAt: new Date(message.createdAt).toISOString() }));
       const uiMessages = toAiSdkUIMessages(messages);
 
-      return NextResponse.json({
-        conversation: {
-          id: conversation.id,
-          agentId: conversation.agentId,
-          title: conversation.title,
-          folderId: conversation.folderId,
-          pinnedAt: conversation.pinnedAt,
-          sidebarOrder: conversation.sidebarOrder,
-          createdAt: conversation.createdAt,
-          updatedAt: conversation.updatedAt,
-          isOwner: access.access.role === "owner",
-          canContinue: access.access.canContinue,
-          continuationMode: access.access.continuationMode,
-          isEphemeral: conversation.isEphemeral,
-          ephemeralTtlMinutes: conversation.ephemeralTtlMinutes,
-          publicShareId: access.access.role === "owner" ? conversation.publicShareId : null,
-        },
-        messages,
-        uiMessages,
-      });
+      return NextResponse.json({ conversation: { id: conversation.id, agentId: conversation.agentId, title: conversation.title, folderId: conversation.folderId, pinnedAt: conversation.pinnedAt, sidebarOrder: conversation.sidebarOrder, createdAt: conversation.createdAt, updatedAt: conversation.updatedAt, isOwner: access.access.role === "owner", canContinue: access.access.canContinue, continuationMode: access.access.continuationMode, isEphemeral: conversation.isEphemeral, ephemeralTtlMinutes: conversation.ephemeralTtlMinutes, publicShareId: access.access.role === "owner" ? conversation.publicShareId : null }, messages, uiMessages });
     },
     { logLabel: "Failed to get conversation" },
   );
@@ -98,6 +64,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ co
       if (parsedBody.data.ephemeralTtlMinutes !== undefined && !conversation.isEphemeral) {
         return NextResponse.json({ error: "Only temporary conversations have a retention period" }, { status: 409 });
       }
+      if (parsedBody.data.makePersistent && !conversation.isEphemeral) {
+        return NextResponse.json({ error: "Conversation is already persistent" }, { status: 409 });
+      }
 
       const patch: Partial<typeof conversations.$inferInsert> = {};
       if (parsedBody.data.title !== undefined) {
@@ -116,6 +85,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ co
       if (parsedBody.data.ephemeralTtlMinutes !== undefined) {
         patch.ephemeralTtlMinutes = parsedBody.data.ephemeralTtlMinutes;
         patch.expiresAt = ephemeralExpiresAt(parsedBody.data.ephemeralTtlMinutes);
+        patch.updatedAt = new Date();
+      }
+      if (parsedBody.data.makePersistent) {
+        patch.isEphemeral = false;
+        patch.expiresAt = null;
         patch.updatedAt = new Date();
       }
 
@@ -138,14 +112,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ c
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
 
-      await db
-        .update(conversations)
-        .set({
-          status: "archived",
-          archivedAt: new Date(),
-          updatedAt: new Date(),
-        })
-        .where(eq(conversations.id, conversationId));
+      await db.update(conversations).set({ status: "archived", archivedAt: new Date(), updatedAt: new Date() }).where(eq(conversations.id, conversationId));
 
       return NextResponse.json({ ok: true });
     },
