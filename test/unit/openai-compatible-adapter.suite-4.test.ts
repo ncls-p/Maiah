@@ -1,6 +1,7 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  createResponsesSseLineNormalizer,
   normalizeResponsesReasoningSseLine,
   openaiCompatibleAdapter,
 } from "@/server/infrastructure/providers/openai-compatible-adapter";
@@ -51,6 +52,10 @@ function apiErrorResponse() {
 }
 
 describe("openaiCompatibleAdapter.createChatModel", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it("keeps the OpenAI Responses payload unchanged for unrelated errors", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       Response.json(
@@ -81,6 +86,45 @@ describe("openaiCompatibleAdapter.createChatModel", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it("retries llama.cpp item type errors without unsupported item references", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        Response.json(
+          {
+            error: {
+              message: "Cannot determine type of 'item'",
+              type: "invalid_request_error",
+            },
+          },
+          { status: 400 },
+        ),
+      )
+      .mockResolvedValueOnce(apiErrorResponse());
+    vi.stubGlobal("fetch", fetchMock);
+    const model = openaiCompatibleAdapter.createChatModel(
+      {
+        kind: "openai-compatible",
+        name: "llama.cpp",
+        baseUrl: "http://localhost:8081/v1",
+        authType: "custom-header",
+      },
+      "test-model",
+    );
+
+    await expect(
+      model.doGenerate(referencedContinuationCall),
+    ).rejects.toThrow();
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const fallbackBody = JSON.parse(
+      String((fetchMock.mock.calls[1]?.[1] as RequestInit).body),
+    ) as { input: Array<{ type?: string }> };
+    expect(fallbackBody.input).not.toContainEqual(
+      expect.objectContaining({ type: "item_reference" }),
+    );
+  });
+
   it("maps preserved reasoning text events to the Responses summary protocol", () => {
     expect(
       normalizeResponsesReasoningSseLine(
@@ -103,6 +147,169 @@ describe("openaiCompatibleAdapter.createChatModel", () => {
       summary_index: 2,
       delta: "Inspect the request",
     });
+  });
+
+  it("repairs missing Responses lifecycle fields for strict AI SDK clients", () => {
+    const normalizeLine = createResponsesSseLineNormalizer("llama-model");
+    const normalizePayload = (payload: Record<string, unknown>) =>
+      JSON.parse(
+        normalizeLine(`data: ${JSON.stringify(payload)}`).slice(
+          "data: ".length,
+        ),
+      ) as Record<string, unknown>;
+
+    const created = normalizePayload({
+      type: "response.created",
+      response: { id: "resp_1", status: "in_progress" },
+    });
+    expect(created.response).toMatchObject({
+      id: "resp_1",
+      model: "llama-model",
+      created_at: expect.any(Number),
+    });
+
+    expect(
+      normalizePayload({
+        type: "response.output_item.added",
+        item: {
+          id: "rs_1",
+          type: "reasoning",
+          content: null,
+          summary: null,
+        },
+      }),
+    ).toMatchObject({
+      output_index: 0,
+      item: { id: "rs_1", content: [], summary: [] },
+    });
+    expect(
+      normalizePayload({
+        type: "response.output_item.added",
+        item: { id: "msg_1", type: "message", content: [] },
+      }),
+    ).toMatchObject({ output_index: 1 });
+    expect(
+      normalizePayload({
+        type: "response.output_text.delta",
+        item_id: "msg_1",
+        delta: "Hello",
+      }),
+    ).toMatchObject({ output_index: 1 });
+    expect(
+      normalizePayload({
+        type: "response.output_item.added",
+        item: {
+          type: "function_call",
+          call_id: "call_1",
+          name: "search",
+          arguments: "",
+        },
+      }),
+    ).toMatchObject({
+      output_index: 2,
+      item: { id: "call_1" },
+    });
+    expect(
+      normalizePayload({
+        type: "response.function_call_arguments.delta",
+        item_id: "call_1",
+        delta: "{}",
+      }),
+    ).toMatchObject({ output_index: 2 });
+    expect(
+      normalizePayload({
+        type: "response.output_item.done",
+        item: {
+          id: "call_1",
+          type: "function_call",
+          call_id: "call_1",
+          name: "search",
+          arguments: "{}",
+        },
+      }),
+    ).toMatchObject({ output_index: 2 });
+  });
+
+  it("streams malformed llama.cpp reasoning through AI SDK without losing its start", async () => {
+    const events = [
+      {
+        type: "response.created",
+        response: { id: "resp_1", status: "in_progress" },
+      },
+      {
+        type: "response.output_item.added",
+        item: {
+          id: "rs_1",
+          type: "reasoning",
+          content: null,
+          summary: null,
+          encrypted_content: "",
+          status: "in_progress",
+        },
+      },
+      {
+        type: "response.reasoning_text.delta",
+        item_id: "rs_1",
+        delta: "Inspect the request",
+      },
+      {
+        type: "response.output_item.done",
+        item: {
+          id: "rs_1",
+          type: "reasoning",
+          content: [],
+          summary: [],
+          encrypted_content: "",
+        },
+      },
+      {
+        type: "response.completed",
+        response: {
+          usage: { input_tokens: 1, output_tokens: 1 },
+        },
+      },
+    ];
+    const streamBody = events
+      .map(
+        (event) => `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`,
+      )
+      .join("");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(streamBody, {
+          headers: { "Content-Type": "text/event-stream" },
+        }),
+      ),
+    );
+    const model = openaiCompatibleAdapter.createChatModel(
+      {
+        kind: "openai-compatible",
+        name: "llama.cpp",
+        baseUrl: "http://localhost:8081/v1",
+        authType: "custom-header",
+        openaiCompatibleApiRoute: "responses",
+      },
+      "llama-model",
+    );
+
+    const result = await model.doStream(generationCall);
+    const chunks: Array<{ type: string }> = [];
+    const reader = result.stream.getReader();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+    }
+
+    expect(chunks.map((chunk) => chunk.type)).toEqual(
+      expect.arrayContaining([
+        "reasoning-start",
+        "reasoning-delta",
+        "reasoning-end",
+        "finish",
+      ]),
+    );
   });
 
   it("preserves the exact API base URL prefix", async () => {

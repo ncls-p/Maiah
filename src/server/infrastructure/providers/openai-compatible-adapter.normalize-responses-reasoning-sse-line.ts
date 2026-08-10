@@ -4,7 +4,7 @@ import {
   parseRequestUrl,
 } from "./openai-compatible-adapter.default-capabilities";
 
-function isUnsupportedItemReferenceResponse(
+function shouldRetryWithCompatibleResponsesInput(
   response: Response,
   errorBody: string,
 ) {
@@ -14,7 +14,9 @@ function isUnsupportedItemReferenceResponse(
     normalizedError.includes("item_reference") ||
     (normalizedError.includes("input should be a valid string") &&
       normalizedError.includes("string_type")) ||
-    normalizedError.includes("'role'")
+    normalizedError.includes("'role'") ||
+    (normalizedError.includes("cannot determine type") &&
+      normalizedError.includes("item"))
   );
 }
 
@@ -24,38 +26,180 @@ const RESPONSES_REASONING_EVENT_ALIASES = {
   "response.reasoning_part.done": "response.reasoning_summary_part.done",
 } as const;
 
-export function normalizeResponsesReasoningSseLine(line: string) {
-  if (line.startsWith("event:")) {
-    const eventName = line.slice("event:".length).trim();
-    const normalizedEvent =
-      RESPONSES_REASONING_EVENT_ALIASES[
-        eventName as keyof typeof RESPONSES_REASONING_EVENT_ALIASES
-      ];
-    return normalizedEvent ? `event: ${normalizedEvent}` : line;
-  }
-  if (!line.startsWith("data:")) return line;
+const RESPONSES_INDEXED_ITEM_EVENTS = new Set([
+  "response.output_text.delta",
+  "response.output_text.done",
+  "response.content_part.added",
+  "response.content_part.done",
+  "response.function_call_arguments.delta",
+  "response.function_call_arguments.done",
+]);
 
-  const data = line.slice("data:".length).trim();
+function requestModelFromBody(body: BodyInit | null | undefined) {
+  if (typeof body !== "string") return undefined;
   try {
-    const payload = JSON.parse(data) as Record<string, unknown>;
-    const type = typeof payload.type === "string" ? payload.type : "";
-    const normalizedType =
-      RESPONSES_REASONING_EVENT_ALIASES[
-        type as keyof typeof RESPONSES_REASONING_EVENT_ALIASES
-      ];
-    if (!normalizedType) return line;
-    return `data: ${JSON.stringify({
-      ...payload,
-      type: normalizedType,
-      summary_index:
-        typeof payload.content_index === "number" ? payload.content_index : 0,
-    })}`;
+    const payload = JSON.parse(body) as Record<string, unknown>;
+    return typeof payload.model === "string" && payload.model
+      ? payload.model
+      : undefined;
   } catch {
-    return line;
+    return undefined;
   }
 }
 
-function normalizeResponsesReasoningStream(response: Response) {
+function isInteger(value: unknown): value is number {
+  return typeof value === "number" && Number.isInteger(value);
+}
+
+/**
+ * Build a stateful line normalizer for OpenAI-compatible Responses streams.
+ *
+ * Several otherwise-compatible providers omit fields required by strict
+ * clients such as `@ai-sdk/openai`. Keep their item lifecycle correlated while
+ * preserving valid provider fields and unrelated SSE lines.
+ */
+export function createResponsesSseLineNormalizer(modelId?: string) {
+  const outputIndexes = new Map<string, number>();
+  let nextOutputIndex = 0;
+
+  function resolveOutputIndex(itemId: unknown, explicitIndex: unknown) {
+    if (isInteger(explicitIndex)) {
+      if (typeof itemId === "string" && itemId) {
+        outputIndexes.set(itemId, explicitIndex);
+      }
+      nextOutputIndex = Math.max(nextOutputIndex, explicitIndex + 1);
+      return explicitIndex;
+    }
+    if (typeof itemId === "string" && itemId) {
+      const existingIndex = outputIndexes.get(itemId);
+      if (existingIndex !== undefined) return existingIndex;
+    }
+    const outputIndex = nextOutputIndex;
+    nextOutputIndex += 1;
+    if (typeof itemId === "string" && itemId) {
+      outputIndexes.set(itemId, outputIndex);
+    }
+    return outputIndex;
+  }
+
+  return (line: string) => {
+    if (line.startsWith("event:")) {
+      const eventName = line.slice("event:".length).trim();
+      const normalizedEvent =
+        RESPONSES_REASONING_EVENT_ALIASES[
+          eventName as keyof typeof RESPONSES_REASONING_EVENT_ALIASES
+        ];
+      return normalizedEvent ? `event: ${normalizedEvent}` : line;
+    }
+    if (!line.startsWith("data:")) return line;
+
+    const data = line.slice("data:".length).trim();
+    if (!data || data === "[DONE]") return line;
+
+    try {
+      const payload = JSON.parse(data) as Record<string, unknown>;
+      const type = typeof payload.type === "string" ? payload.type : "";
+      const normalizedType =
+        RESPONSES_REASONING_EVENT_ALIASES[
+          type as keyof typeof RESPONSES_REASONING_EVENT_ALIASES
+        ];
+      let normalizedPayload: Record<string, unknown> = normalizedType
+        ? {
+            ...payload,
+            type: normalizedType,
+            summary_index: isInteger(payload.summary_index)
+              ? payload.summary_index
+              : isInteger(payload.content_index)
+                ? payload.content_index
+                : 0,
+          }
+        : payload;
+
+      if (type === "response.created") {
+        const response = payload.response;
+        if (response && typeof response === "object") {
+          const responseRecord = response as Record<string, unknown>;
+          normalizedPayload = {
+            ...normalizedPayload,
+            response: {
+              ...responseRecord,
+              created_at: isInteger(responseRecord.created_at)
+                ? responseRecord.created_at
+                : Math.floor(Date.now() / 1000),
+              model:
+                typeof responseRecord.model === "string" && responseRecord.model
+                  ? responseRecord.model
+                  : modelId || "unknown",
+            },
+          };
+        }
+      } else if (
+        type === "response.output_item.added" ||
+        type === "response.output_item.done"
+      ) {
+        const item = payload.item;
+        if (item && typeof item === "object") {
+          const itemRecord = item as Record<string, unknown>;
+          const normalizedItem = { ...itemRecord };
+          if (
+            itemRecord.type === "function_call" &&
+            (typeof itemRecord.id !== "string" || !itemRecord.id) &&
+            typeof itemRecord.call_id === "string" &&
+            itemRecord.call_id
+          ) {
+            normalizedItem.id = itemRecord.call_id;
+          }
+          if (
+            type === "response.output_item.added" &&
+            (itemRecord.type === "message" ||
+              itemRecord.type === "reasoning") &&
+            itemRecord.content === null
+          ) {
+            normalizedItem.content = [];
+          }
+          if (
+            type === "response.output_item.added" &&
+            itemRecord.type === "reasoning" &&
+            itemRecord.summary === null
+          ) {
+            normalizedItem.summary = [];
+          }
+          normalizedPayload = {
+            ...normalizedPayload,
+            output_index: resolveOutputIndex(
+              normalizedItem.id,
+              payload.output_index,
+            ),
+            item: normalizedItem,
+          };
+        }
+      } else if (RESPONSES_INDEXED_ITEM_EVENTS.has(type)) {
+        normalizedPayload = {
+          ...normalizedPayload,
+          output_index: resolveOutputIndex(
+            payload.item_id,
+            payload.output_index,
+          ),
+        };
+      }
+
+      return normalizedPayload === payload
+        ? line
+        : `data: ${JSON.stringify(normalizedPayload)}`;
+    } catch {
+      return line;
+    }
+  };
+}
+
+export function normalizeResponsesReasoningSseLine(line: string) {
+  return createResponsesSseLineNormalizer()(line);
+}
+
+function normalizeResponsesReasoningStream(
+  response: Response,
+  requestModel?: string,
+) {
   if (
     !response.body ||
     !response.headers.get("content-type")?.includes("text/event-stream")
@@ -65,6 +209,7 @@ function normalizeResponsesReasoningStream(response: Response) {
 
   const decoder = new TextDecoder();
   const encoder = new TextEncoder();
+  const normalizeLine = createResponsesSseLineNormalizer(requestModel);
   let buffer = "";
   const body = response.body.pipeThrough(
     new TransformStream<Uint8Array, Uint8Array>({
@@ -73,17 +218,13 @@ function normalizeResponsesReasoningStream(response: Response) {
         const lines = buffer.split("\n");
         buffer = lines.pop() ?? "";
         for (const line of lines) {
-          controller.enqueue(
-            encoder.encode(`${normalizeResponsesReasoningSseLine(line)}\n`),
-          );
+          controller.enqueue(encoder.encode(`${normalizeLine(line)}\n`));
         }
       },
       flush(controller) {
         buffer += decoder.decode();
         if (buffer) {
-          controller.enqueue(
-            encoder.encode(normalizeResponsesReasoningSseLine(buffer)),
-          );
+          controller.enqueue(encoder.encode(normalizeLine(buffer)));
         }
       },
     }),
@@ -135,9 +276,10 @@ export function createResponsesFetch(config: ProviderRuntimeConfig) {
       signal: init?.signal ?? request?.signal,
       headers,
     };
+    const requestModel = requestModelFromBody(requestInit.body);
     const response = await fetchImplementation(url, requestInit);
     if (response.ok) {
-      return normalizeResponsesReasoningStream(response);
+      return normalizeResponsesReasoningStream(response, requestModel);
     }
 
     const fallbackBody = normalizeResponsesInputForCompatibleProvider(
@@ -146,7 +288,7 @@ export function createResponsesFetch(config: ProviderRuntimeConfig) {
     if (fallbackBody === requestInit.body) return response;
 
     const errorBody = await response.clone().text();
-    if (!isUnsupportedItemReferenceResponse(response, errorBody)) {
+    if (!shouldRetryWithCompatibleResponsesInput(response, errorBody)) {
       return response;
     }
 
@@ -154,6 +296,6 @@ export function createResponsesFetch(config: ProviderRuntimeConfig) {
       ...requestInit,
       body: fallbackBody,
     });
-    return normalizeResponsesReasoningStream(fallbackResponse);
+    return normalizeResponsesReasoningStream(fallbackResponse, requestModel);
   };
 }
