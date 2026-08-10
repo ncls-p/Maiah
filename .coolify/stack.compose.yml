@@ -1,6 +1,7 @@
 services:
   migrate:
     image: ${AI_HUB_MIGRATOR_IMAGE:?set AI_HUB_MIGRATOR_IMAGE}
+    pull_policy: always
     environment: &app-environment
       - APP_ENV=production
       - NODE_ENV=production
@@ -42,6 +43,7 @@ services:
 
   app:
     image: ${AI_HUB_APP_IMAGE:?set AI_HUB_APP_IMAGE}
+    pull_policy: always
     environment: *app-environment
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -83,6 +85,7 @@ services:
 
   worker:
     image: ${AI_HUB_WORKER_IMAGE:?set AI_HUB_WORKER_IMAGE}
+    pull_policy: always
     environment: *app-environment
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -124,6 +127,7 @@ services:
 
   sandbox-runner:
     image: ${AI_HUB_SANDBOX_IMAGE:?set AI_HUB_SANDBOX_IMAGE}
+    pull_policy: always
     restart: unless-stopped
     network_mode: none
     read_only: true
@@ -169,6 +173,7 @@ services:
 
   servicenow-mcp-gateway:
     image: ${AI_HUB_SERVICENOW_MCP_GATEWAY_IMAGE:?set AI_HUB_SERVICENOW_MCP_GATEWAY_IMAGE}
+    pull_policy: always
     restart: unless-stopped
     environment:
       - MAIAH_MCP_GATEWAY_SHARED_SECRET=${MCP_GATEWAY_SHARED_SECRET:?set MCP_GATEWAY_SHARED_SECRET}
@@ -314,6 +319,7 @@ services:
 
   searxng:
     image: ${AI_HUB_SEARXNG_IMAGE:?set AI_HUB_SEARXNG_IMAGE}
+    pull_policy: always
     restart: unless-stopped
     environment:
       - SEARXNG_BASE_URL=${SEARXNG_BASE_URL:-http://searxng:8080/}
