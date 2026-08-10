@@ -13,7 +13,6 @@ export function ModelAdvancedMainSection6({ model }: { model: ModelAdvancedField
         <Input
           id="agent-top-k"
           type="number"
-          min={1}
           placeholder={t("providerDefault")}
           value={form.generationSettings.topK}
           onChange={(e) =>

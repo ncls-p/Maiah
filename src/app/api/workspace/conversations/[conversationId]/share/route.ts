@@ -139,19 +139,16 @@ export async function PATCH(
     const publicShareId = parsedBody.data.public
       ? (conversation.publicShareId ?? crypto.randomUUID())
       : null;
-    const [updated] = await db
+    const publicSharedAt = parsedBody.data.public ? new Date() : null;
+    await db
       .update(conversations)
       .set({
         publicShareId,
-        publicSharedAt: parsedBody.data.public ? new Date() : null,
+        publicSharedAt,
         updatedAt: new Date(),
       })
-      .where(eq(conversations.id, conversation.id))
-      .returning({
-        publicShareId: conversations.publicShareId,
-        publicSharedAt: conversations.publicSharedAt,
-      });
-    return NextResponse.json(updated);
+      .where(eq(conversations.id, conversation.id));
+    return NextResponse.json({ publicShareId, publicSharedAt });
   });
 }
 

@@ -13,8 +13,6 @@ export function ModelAdvancedMainSection4({ model }: { model: ModelAdvancedField
         <Input
           id="agent-frequency-penalty"
           type="number"
-          min={-1}
-          max={1}
           step={0.1}
           placeholder={t("providerDefault")}
           value={form.generationSettings.frequencyPenalty}

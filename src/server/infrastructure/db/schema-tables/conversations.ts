@@ -96,6 +96,9 @@ export const conversations = pgTable(
     summaryTokenCount: integer("summary_token_count"),
     summaryUpdatedAt: timestamp("summary_updated_at", { withTimezone: true }),
     isEphemeral: boolean("is_ephemeral").notNull().default(false),
+    ephemeralTtlMinutes: integer("ephemeral_ttl_minutes")
+      .notNull()
+      .default(24 * 60),
     expiresAt: timestamp("expires_at", { withTimezone: true }),
     publicShareId: uuid("public_share_id"),
     publicSharedAt: timestamp("public_shared_at", { withTimezone: true }),

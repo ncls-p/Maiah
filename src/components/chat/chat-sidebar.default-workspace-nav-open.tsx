@@ -52,6 +52,7 @@ export interface ChatSidebarProps {
   onLoadMoreSearchResults?: () => void;
   onSelectConversation: (conversationId: string, conversationAgentId?: string | null) => void;
   onNewConversation: () => void;
+  onNewTemporaryConversation?: (ttlMinutes: number) => void;
   onRenameConversation?: (conversationId: string, title: string) => void;
   onDeleteConversation?: (conversationId: string) => void;
   onCreateConversationFolder?: (name: string) => void;

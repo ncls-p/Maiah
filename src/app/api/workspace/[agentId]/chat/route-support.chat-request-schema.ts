@@ -1,3 +1,4 @@
+import { isEphemeralTtlMinutes } from "@/modules/chat/ephemeral-retention";
 import { projectToolMessagePayload, safeToolErrorMessage } from "@/modules/tool/safe-payload";
 import { registerAiSdkDevTools } from "@/server/infrastructure/ai-sdk/devtools";
 import { parsePartialJson } from "ai";
@@ -9,6 +10,11 @@ export const chatRequestSchema = z.object({
   content: z.string().trim().min(1).max(32_000),
   conversationId: z.uuid().nullable().optional(),
   ephemeral: z.boolean().optional(),
+  ephemeralTtlMinutes: z
+    .number()
+    .int()
+    .refine(isEphemeralTtlMinutes)
+    .optional(),
   resendFromMessageId: z.uuid().nullable().optional(),
   continueFromMessageId: z.uuid().nullable().optional(),
   codeWorkspaceId: z.uuid().optional(),

@@ -103,6 +103,10 @@ export function WorkspaceHistoryContent({ shell, onNavigate, onCollapsedChange }
           router.push("/chat");
           onNavigate?.();
         }}
+        onNewTemporaryConversation={(ttlMinutes) => {
+          router.push(`/chat?temporary=true&ttl=${ttlMinutes}`);
+          onNavigate?.();
+        }}
         onRenameConversation={(conversationId, title) => void history.renameConversation(conversationId, title)}
         onDeleteConversation={(conversationId) => {
           const conversation = history.conversations.find((item) => item.id === conversationId);

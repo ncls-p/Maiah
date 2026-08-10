@@ -20,7 +20,6 @@ export function ModelAdvancedMainSection7({
         <Input
           id="agent-memory-summary-threshold"
           type="number"
-          min={1000}
           step={1000}
           value={form.memoryPolicy.summaryThresholdTokens}
           onChange={(e) =>

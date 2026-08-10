@@ -28,7 +28,6 @@ export interface ChatLayoutProps {
   selectedAgentId: string | null;
   activeConversationId: string | null;
   conversationIsOwner?: boolean;
-  ephemeral?: boolean;
   conversationImpact?: ChatUsageImpact | null;
   organizationDefaultAgentId?: string | null;
   userDefaultAgentId?: string | null;
@@ -37,7 +36,6 @@ export interface ChatLayoutProps {
   canRunSetup?: boolean;
   onSelectAgent: (agentId: string) => void;
   onSetUserDefaultAgent?: (agentId: string | null) => void;
-  onEphemeralChange?: (ephemeral: boolean) => void;
   onSetupComplete?: () => void;
   children: React.ReactNode;
 }

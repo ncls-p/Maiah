@@ -168,6 +168,7 @@ export function useChatSubmitHandler(input: { agentId: string | null; conversati
           content,
           conversationId: conversationId ?? undefined,
           ephemeral: options.ephemeral,
+          ephemeralTtlMinutes: options.ephemeralTtlMinutes,
           resendFromMessageId: options.resendFromMessageId,
           continueFromMessageId: options.continueFromMessageId,
           codeWorkspaceId: options.codeWorkspaceId ?? options.codeWorkspaceArtifact?.projectId,

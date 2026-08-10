@@ -20,10 +20,10 @@ export function CodeSandboxResultCard({ result, input, embedded = false }: { res
   const language = input?.language ?? result.language;
   const { inputFiles, outputFiles } = useMemo(() => partitionCodeSandboxFiles(result.files), [result.files]);
   return (
-    <Collapsible open={sourceOpen} onOpenChange={setSourceOpen} data-open={String(sourceOpen)} className={cn("t-acc overflow-hidden rounded-2xl text-xs transition-[background-color,box-shadow] duration-200 ease-out", embedded ? "rounded-xl border border-border/55 bg-background/45" : result.ok ? "bg-card shadow-[var(--surface-shadow)]" : "bg-destructive/[0.045] shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--destructive)_22%,transparent),0_14px_28px_-24px_color-mix(in_oklch,var(--destructive)_45%,transparent)]")}>
+    <Collapsible open={sourceOpen} onOpenChange={setSourceOpen} data-open={String(sourceOpen)} className={cn("t-acc overflow-hidden rounded-2xl text-xs transition-[background-color,box-shadow] duration-200 ease-out", embedded ? "rounded-xl border border-border/55 bg-background/45" : "bg-card shadow-[var(--surface-shadow)]")}>
       <div className="flex items-center justify-between gap-3 border-b border-border/40 px-2.5 py-1.5">
         <div className="flex min-w-0 items-center gap-2.5">
-          {!embedded ? <ToolStateIcon state={result.ok ? "completed" : "error"} /> : null}
+          {!embedded ? <ToolStateIcon state="completed" /> : null}
           <div className="min-w-0">
             <p className="font-medium text-foreground">{t("codeSandbox")}</p>
             <p className="truncate text-[11px] text-muted-foreground tabular-nums">

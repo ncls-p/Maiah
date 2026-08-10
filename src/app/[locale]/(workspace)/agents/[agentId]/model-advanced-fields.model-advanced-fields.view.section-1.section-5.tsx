@@ -13,8 +13,6 @@ export function ModelAdvancedMainSection5({ model }: { model: ModelAdvancedField
         <Input
           id="agent-presence-penalty"
           type="number"
-          min={-1}
-          max={1}
           step={0.1}
           placeholder={t("providerDefault")}
           value={form.generationSettings.presencePenalty}

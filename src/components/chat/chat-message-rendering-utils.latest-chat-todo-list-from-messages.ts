@@ -157,3 +157,12 @@ export function codeSandboxOutputFromUnknown(value: unknown): CodeSandboxOutput 
     }),
   };
 }
+
+export function codeSandboxToolVisualState(
+  output: unknown,
+  status: "pending" | "completed" | "error",
+) {
+  return status === "error" && codeSandboxOutputFromUnknown(output)
+    ? "completed"
+    : status;
+}

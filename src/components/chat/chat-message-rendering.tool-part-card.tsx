@@ -1,7 +1,7 @@
 "use client";
 
 import { CodeSandboxResultCard,HtmlArtifactCard,LiveToolInputCard } from "@/components/chat/chat-artifact-renderers";
-import { chatFileAttachmentFromPartContent,chatImageAttachmentFromPartContent,codeSandboxInputFromInputText,codeSandboxInputFromUnknown,codeSandboxOutputFromUnknown,codeWorkspaceArtifactFromPartContent,delegationFailureDetails,formatToolName,htmlArtifactFromInputText,htmlArtifactFromToolInput,isCodeSandboxToolName,isGeneratedImageOutput,isGitHubPublishOutput,isHtmlArtifactOutput,knowledgeContextChunkCount,knowledgeSearchResultsFromUnknown,summarizeToolBody } from "@/components/chat/chat-message-rendering-utils";
+import { chatFileAttachmentFromPartContent,chatImageAttachmentFromPartContent,codeSandboxInputFromInputText,codeSandboxInputFromUnknown,codeSandboxOutputFromUnknown,codeSandboxToolVisualState,codeWorkspaceArtifactFromPartContent,delegationFailureDetails,formatToolName,htmlArtifactFromInputText,htmlArtifactFromToolInput,isCodeSandboxToolName,isGeneratedImageOutput,isGitHubPublishOutput,isHtmlArtifactOutput,knowledgeContextChunkCount,knowledgeSearchResultsFromUnknown,summarizeToolBody } from "@/components/chat/chat-message-rendering-utils";
 import { parseToolPart,resolveToolDisplayStatus } from "@/components/chat/chat-types";
 import { ChatFileAttachmentCard,ChatImageAttachmentCard,CodeWorkspaceArtifactCard,CodeWorkspaceArtifactSummary,GitHubPublishResultCard,isCodeWorkspaceArtifactOutput } from "@/components/chat/code-workspace-artifact-card";
 import { summarizeToolInput } from "@/components/chat/tool-approval-banner";
@@ -34,7 +34,7 @@ export const ToolPartCard = memo(function ToolPartCard({ part, sequence, message
   }, [messageStatus, parsed]);
   const hasResult = parsed.output !== undefined;
   const approvalMatches = Boolean(approval);
-  const visualState = approvalMatches ? "approval" : status;
+  const visualState = approvalMatches ? "approval" : codeSandboxToolVisualState(parsed.output, status);
   const statusLabel = visualState === "approval" ? t("actionApproval") : visualState === "pending" ? t("actionRunning") : visualState === "error" ? t("actionFailed") : t("actionCompleted");
   const displayInput = approvalMatches ? approval?.input : parsed.input;
   const delegationFailure = useMemo(() => delegationFailureDetails(parsed.output), [parsed.output]);

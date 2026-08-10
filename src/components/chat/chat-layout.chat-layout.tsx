@@ -32,8 +32,6 @@ export function useChatLayoutController(props: ChatLayoutProps) {
         canCreateAgent={props.canCreateAgent ?? false}
         onSelectAgent={props.onSelectAgent}
         onSetUserDefaultAgent={props.onSetUserDefaultAgent}
-        ephemeral={props.ephemeral ?? false}
-        onEphemeralChange={props.onEphemeralChange}
       />
     ),
     secondary:

@@ -64,9 +64,6 @@ export async function validateDelegationBindings(input: { parentAgentId: string;
   if (uniqueChildIds.length !== input.bindings.length) {
     throw new DelegationBindingValidationError("Each delegated agent can only be added once");
   }
-  if (input.bindings.length > input.policy.maxDelegations) {
-    throw new DelegationBindingValidationError(`Delegation policy allows at most ${input.policy.maxDelegations} agents`);
-  }
   if (input.bindings.some((binding) => binding.childAgentId === input.parentAgentId)) {
     throw new DelegationBindingValidationError("An orchestrator cannot delegate to itself");
   }

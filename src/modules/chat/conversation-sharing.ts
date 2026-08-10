@@ -5,8 +5,8 @@ import {
   messageParts,
   messages,
   users,
-  workspaceMembers,
 } from "@/server/infrastructure/db/schema";
+import { authorization } from "@/server/domain/services/authorization";
 import { and, asc, eq, isNull, ne } from "drizzle-orm";
 
 export type ConversationAccess = {
@@ -95,14 +95,6 @@ export async function upsertConversationShare(input: {
   const [target] = await db
     .select({ id: users.id, name: users.name, email: users.email })
     .from(users)
-    .innerJoin(
-      workspaceMembers,
-      and(
-        eq(workspaceMembers.userId, users.id),
-        eq(workspaceMembers.workspaceId, input.conversation.workspaceId),
-        eq(workspaceMembers.status, "active"),
-      ),
-    )
     .where(
       and(
         eq(users.email, input.targetEmail.trim().toLowerCase()),
@@ -110,7 +102,9 @@ export async function upsertConversationShare(input: {
       ),
     )
     .limit(1);
-  if (!target) throw new Error("Workspace member not found");
+  if (!target || !(await authorization.requireWorkspaceMember(target.id, input.conversation.workspaceId))) {
+    throw new Error("Workspace member not found");
+  }
 
   const [share] = await db
     .insert(conversationShares)

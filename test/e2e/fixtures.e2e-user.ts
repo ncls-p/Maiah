@@ -164,6 +164,12 @@ export async function ensureE2EAssistant() {
        where id = $2`,
       [version.rows[0].id, agentId],
     );
+    await client.query(
+      `update user_agent_preferences
+       set hidden_agent_ids_json = hidden_agent_ids_json - $1, updated_at = now()
+       where workspace_id = $2 and user_id = $3`,
+      [agentId, workspaceId, userId],
+    );
     return { agentId, workspaceId };
   } finally {
     await client.end();

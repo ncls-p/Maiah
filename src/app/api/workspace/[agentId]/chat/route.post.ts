@@ -55,7 +55,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ age
       return rejectChatRequest(400, "invalid_input", { error: "Invalid input", details: parsed.error.issues }, { agentId, userId: actorUserId, issues: parsed.error.issues.length });
     }
 
-    const { content, conversationId: existingConversationId, ephemeral = false, resendFromMessageId, continueFromMessageId, codeWorkspaceId, attachmentIds = [], imageAttachmentIds = [], capabilityOverrides } = parsed.data;
+    const { content, conversationId: existingConversationId, ephemeral = false, ephemeralTtlMinutes, resendFromMessageId, continueFromMessageId, codeWorkspaceId, attachmentIds = [], imageAttachmentIds = [], capabilityOverrides } = parsed.data;
     const streamProtocol = req.headers.get("X-AI-Hub-Stream-Protocol") ?? req.nextUrl.searchParams.get("streamProtocol");
     const useAiSdkUIStream = streamProtocol === "ai-sdk-ui";
     if (resendFromMessageId && continueFromMessageId) {
@@ -155,6 +155,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ age
       content,
       existingConversationId,
       ephemeral,
+      ephemeralTtlMinutes,
       resendFromMessageId,
       continueFromMessageId,
       codeWorkspaceAttachment,

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import type { ChatSidebarViewModel } from "./chat-sidebar.chat-sidebar.view";
+import { TemporaryConversationButton } from "./temporary-conversation-button";
 import {
   BUTTON_TYPE,
   GHOST_VARIANT,
@@ -22,6 +23,7 @@ export function ChatSidebarContentSection2({
     creatingFolder,
     newFolderName,
     onNewConversation,
+    onNewTemporaryConversation,
     onSearchQueryChange,
     readOnly,
     saveNewFolder,
@@ -36,15 +38,15 @@ export function ChatSidebarContentSection2({
   } = model;
   return (
     <div className="flex shrink-0 flex-col gap-2 px-3 pb-2 pt-3">
-      <Button
-        type={BUTTON_TYPE}
-        onClick={onNewConversation}
-        className="h-11 w-full justify-start gap-2.5 rounded-xl px-3.5 text-sm shadow-[0_8px_22px_-16px_color-mix(in_oklch,var(--primary)_70%,transparent)]"
-        aria-label={t("newConversation")}
-      >
-        <MessageSquarePlusIcon className="size-4 shrink-0" aria-hidden="true" />
-        <span className="min-w-0 truncate">{t("newConversation")}</span>
-      </Button>
+      <div className="flex items-center gap-2">
+        {onNewTemporaryConversation ? (
+          <TemporaryConversationButton onSelect={onNewTemporaryConversation} />
+        ) : null}
+        <Button type={BUTTON_TYPE} onClick={onNewConversation} className="h-11 min-w-0 flex-1 justify-start gap-2.5 rounded-xl px-3.5 text-sm shadow-[0_8px_22px_-16px_color-mix(in_oklch,var(--primary)_70%,transparent)]" aria-label={t("newConversation")}>
+          <MessageSquarePlusIcon className="size-4 shrink-0" aria-hidden="true" />
+          <span className="min-w-0 truncate">{t("newConversation")}</span>
+        </Button>
+      </div>
 
       <div className="relative flex items-center">
         <SearchIcon

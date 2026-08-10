@@ -4,7 +4,6 @@ import {
   delegationBindingInputSchema,
   orchestrationPolicySchema,
 } from "@/modules/agent/orchestration-policy";
-import { agentRuntimePolicy } from "@/modules/agent/runtime-policy";
 import { db } from "@/server/infrastructure/db";
 import { agentVersions, aiModels } from "@/server/infrastructure/db/schema";
 import { inArray } from "drizzle-orm";
@@ -45,13 +44,11 @@ export const createAgentSchema = z
       .number()
       .int()
       .positive()
-      .max(agentRuntimePolicy.maxOutputTokens)
       .optional(),
     maxToolCalls: z
       .number()
       .int()
       .min(0)
-      .max(agentRuntimePolicy.maxToolCalls)
       .optional(),
     sharingMode: z
       .enum(["personal", "marketplace", "specific_user"])

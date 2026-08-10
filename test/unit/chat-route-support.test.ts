@@ -84,11 +84,13 @@ describe("chat route tool gating", () => {
 
   it("accepts temporary-chat creation only as an explicit boolean", async () => {
     const { chatRequestSchema } = await loadModules();
-    expect(chatRequestSchema.parse({ content: "Hello", ephemeral: true })).toMatchObject({
+    expect(chatRequestSchema.parse({ content: "Hello", ephemeral: true, ephemeralTtlMinutes: 5 })).toMatchObject({
       content: "Hello",
       ephemeral: true,
+      ephemeralTtlMinutes: 5,
     });
     expect(chatRequestSchema.safeParse({ content: "Hello", ephemeral: "yes" }).success).toBe(false);
+    expect(chatRequestSchema.safeParse({ content: "Hello", ephemeral: true, ephemeralTtlMinutes: 30 }).success).toBe(false);
   });
 
   it("does not auto-enable code workspace tools without explicit bindings", async () => {

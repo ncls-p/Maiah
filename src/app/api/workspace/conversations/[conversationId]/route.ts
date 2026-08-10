@@ -1,6 +1,7 @@
 import { handleRoute } from "@/lib/route-handler";
 import { getConversationMessages } from "@/modules/agent/use-cases";
 import { toAiSdkUIMessages } from "@/modules/chat/ai-sdk-ui-messages";
+import { ephemeralExpiresAt, isEphemeralTtlMinutes } from "@/modules/chat/ephemeral-retention";
 import { getUsageImpactSetting } from "@/modules/provider/usage-impact-settings";
 import { db } from "@/server/infrastructure/db";
 import { conversationFolders, conversations } from "@/server/infrastructure/db/schema";
@@ -15,8 +16,13 @@ const updateConversationSchema = z
     folderId: z.uuid().nullable().optional(),
     pinned: z.boolean().optional(),
     sidebarOrder: z.number().int().nullable().optional(),
+    ephemeralTtlMinutes: z
+      .number()
+      .int()
+      .refine(isEphemeralTtlMinutes)
+      .optional(),
   })
-  .refine((value) => value.title !== undefined || value.folderId !== undefined || value.pinned !== undefined || value.sidebarOrder !== undefined, {
+  .refine((value) => value.title !== undefined || value.folderId !== undefined || value.pinned !== undefined || value.sidebarOrder !== undefined || value.ephemeralTtlMinutes !== undefined, {
     message: "At least one field is required",
   });
 
@@ -50,6 +56,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ conv
           canContinue: access.access.canContinue,
           continuationMode: access.access.continuationMode,
           isEphemeral: conversation.isEphemeral,
+          ephemeralTtlMinutes: conversation.ephemeralTtlMinutes,
           publicShareId: access.access.role === "owner" ? conversation.publicShareId : null,
         },
         messages,
@@ -88,6 +95,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ co
           return NextResponse.json({ error: "Folder not found" }, { status: 404 });
         }
       }
+      if (parsedBody.data.ephemeralTtlMinutes !== undefined && !conversation.isEphemeral) {
+        return NextResponse.json({ error: "Only temporary conversations have a retention period" }, { status: 409 });
+      }
 
       const patch: Partial<typeof conversations.$inferInsert> = {};
       if (parsedBody.data.title !== undefined) {
@@ -102,6 +112,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ co
       }
       if (parsedBody.data.sidebarOrder !== undefined) {
         patch.sidebarOrder = parsedBody.data.sidebarOrder;
+      }
+      if (parsedBody.data.ephemeralTtlMinutes !== undefined) {
+        patch.ephemeralTtlMinutes = parsedBody.data.ephemeralTtlMinutes;
+        patch.expiresAt = ephemeralExpiresAt(parsedBody.data.ephemeralTtlMinutes);
+        patch.updatedAt = new Date();
       }
 
       const [updated] = await db.update(conversations).set(patch).where(eq(conversations.id, conversationId)).returning();

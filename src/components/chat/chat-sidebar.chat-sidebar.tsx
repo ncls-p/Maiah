@@ -14,8 +14,9 @@ import { buildMenuGroups } from "@/modules/navigation/sidebar-config";
 import { ChatSidebarView } from "./chat-sidebar.chat-sidebar.view";
 import { ConversationItem } from "./chat-sidebar.conversation-item";
 import { BUTTON_TYPE, ChatSidebarProps, GHOST_VARIANT } from "./chat-sidebar.default-workspace-nav-open";
+import { TemporaryConversationButton } from "./temporary-conversation-button";
 
-export function useChatSidebarController({ agents, conversations, conversationFolders, activeConversationId, loading, searchQuery = "", searchResults = [], searching = false, searchError = false, hasMoreSearchResults = false, loadingMoreSearchResults = false, onSearchQueryChange, onRetrySearch, onLoadMoreSearchResults, onSelectConversation, onNewConversation, onRenameConversation, onDeleteConversation, onCreateConversationFolder, onRenameConversationFolder, onDeleteConversationFolder, onToggleConversationPin, onReorderConversations, hasMoreConversations, loadingMoreConversations, onLoadMoreConversations, collapsed, onCollapsedChange, className, shell, workspaceId, readOnly = false, showWorkspaceNavigation = true, footerContent }: ChatSidebarProps) {
+export function useChatSidebarController({ agents, conversations, conversationFolders, activeConversationId, loading, searchQuery = "", searchResults = [], searching = false, searchError = false, hasMoreSearchResults = false, loadingMoreSearchResults = false, onSearchQueryChange, onRetrySearch, onLoadMoreSearchResults, onSelectConversation, onNewConversation, onNewTemporaryConversation, onRenameConversation, onDeleteConversation, onCreateConversationFolder, onRenameConversationFolder, onDeleteConversationFolder, onToggleConversationPin, onReorderConversations, hasMoreConversations, loadingMoreConversations, onLoadMoreConversations, collapsed, onCollapsedChange, className, shell, workspaceId, readOnly = false, showWorkspaceNavigation = true, footerContent }: ChatSidebarProps) {
   const t = useTranslations("chat.sidebar");
   const [editingConversationId, setEditingConversationId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
@@ -65,7 +66,6 @@ export function useChatSidebarController({ agents, conversations, conversationFo
     ids.splice(insertionIndex >= 0 ? insertionIndex : ids.length, 0, draggedId);
     return ids;
   }
-
   function reorderDraggedConversation({ folderId, pinned, beforeId }: { folderId: string | null; pinned: boolean; beforeId?: string }) {
     if (!draggingConversationId || !onReorderConversations) return;
     if (beforeId === draggingConversationId) {
@@ -206,6 +206,7 @@ export function useChatSidebarController({ agents, conversations, conversationFo
             </Tooltip>
           }
         />
+        {onNewTemporaryConversation ? <TemporaryConversationButton onSelect={onNewTemporaryConversation} tooltipSide="right" /> : null}
         <Tooltip>
           <TooltipTrigger asChild>
             <Button type={BUTTON_TYPE} size="icon" variant={GHOST_VARIANT} aria-label={t("newConversation")} onClick={onNewConversation} className="size-10 rounded-xl">
@@ -253,6 +254,7 @@ export function useChatSidebarController({ agents, conversations, conversationFo
     onLoadMoreConversations,
     onLoadMoreSearchResults,
     onNewConversation,
+    onNewTemporaryConversation,
     onRenameConversationFolder,
     onRetrySearch,
     onSearchQueryChange,

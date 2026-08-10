@@ -7,7 +7,6 @@ import {
   delegationBindingInputSchema,
   orchestrationPolicySchema,
 } from "@/modules/agent/orchestration-policy";
-import { agentRuntimePolicy } from "@/modules/agent/runtime-policy";
 import {
   canEditAgent,
   getVisibleAgentById,
@@ -78,13 +77,11 @@ export const updateAgentSchema = z.object({
     .number()
     .int()
     .positive()
-    .max(agentRuntimePolicy.maxOutputTokens)
     .optional(),
   maxToolCalls: z
     .number()
     .int()
     .min(0)
-    .max(agentRuntimePolicy.maxToolCalls)
     .optional(),
   sharingMode: z.enum(["personal", "marketplace", "specific_user"]).optional(),
   shareTargetEmail: z.email().optional().or(z.literal("")),
@@ -104,8 +101,8 @@ export const updateAgentSchema = z.object({
   generationSettings: z
     .object({
       topK: z.number().int().positive().optional(),
-      presencePenalty: z.number().min(-1).max(1).optional(),
-      frequencyPenalty: z.number().min(-1).max(1).optional(),
+      presencePenalty: z.number().optional(),
+      frequencyPenalty: z.number().optional(),
       seed: z.number().int().optional(),
       maxRetries: z.number().int().min(0).optional(),
       stopSequences: z.array(z.string()).optional(),
@@ -115,7 +112,7 @@ export const updateAgentSchema = z.object({
   memoryPolicy: z
     .object({
       enabled: z.boolean().optional(),
-      summaryThresholdTokens: z.number().int().min(1_000).optional(),
+      summaryThresholdTokens: z.number().int().positive().optional(),
     })
     .optional(),
   guardrails: z

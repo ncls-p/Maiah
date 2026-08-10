@@ -1,7 +1,5 @@
 export const agentRuntimePolicy = {
   defaultMaxOutputTokens: 30_000,
-  maxOutputTokens: 100_000,
-  maxToolCalls: 50,
   stepOverhead: 2,
   chatTimeoutMs: 120_000,
   automationTimeoutMs: 30_000,
@@ -17,8 +15,8 @@ function boundedInteger(value: number | null | undefined, fallback: number) {
 }
 
 export function resolveAgentRuntimeLimits(input: { maxToolCalls?: number | null; maxOutputTokens?: number | null }) {
-  const maxToolCalls = Math.min(boundedInteger(input.maxToolCalls, 20), agentRuntimePolicy.maxToolCalls);
-  const maxOutputTokens = Math.max(1, Math.min(boundedInteger(input.maxOutputTokens, agentRuntimePolicy.defaultMaxOutputTokens), agentRuntimePolicy.maxOutputTokens));
+  const maxToolCalls = boundedInteger(input.maxToolCalls, 20);
+  const maxOutputTokens = Math.max(1, boundedInteger(input.maxOutputTokens, agentRuntimePolicy.defaultMaxOutputTokens));
   return {
     maxToolCalls,
     maxOutputTokens,

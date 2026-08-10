@@ -1,6 +1,6 @@
 import { describe,expect,it } from "vitest";
 
-import { codeSandboxOutputFromUnknown,partitionCodeSandboxFiles,summarizeToolBody,toolPartHasStandaloneRendering } from "@/components/chat/chat-message-rendering-utils";
+import { codeSandboxOutputFromUnknown,codeSandboxToolVisualState,partitionCodeSandboxFiles,summarizeToolBody,toolPartHasStandaloneRendering } from "@/components/chat/chat-message-rendering-utils";
 
 describe("code sandbox result rendering", () => {
   it("previews a structured result instead of its object key", () => {
@@ -56,6 +56,23 @@ describe("code sandbox result rendering", () => {
 
     expect(partitioned.inputFiles.map((file) => file.path)).toEqual(["attachments/report.document/pages/001-page-1.md"]);
     expect(partitioned.outputFiles.map((file) => file.path)).toEqual(["summary.md", "attachments/report.document/README.md"]);
+  });
+
+  it("keeps code execution failures visually neutral at the tool level", () => {
+    const failedExecution = {
+      kind: "code_sandbox_result",
+      ok: false,
+      language: "python",
+      exitCode: 1,
+      timedOut: false,
+      durationMs: 12,
+      stdout: "",
+      stderr: "SyntaxError",
+      files: [],
+    };
+
+    expect(codeSandboxToolVisualState(failedExecution, "error")).toBe("completed");
+    expect(codeSandboxToolVisualState({ error: "Sandbox unavailable" }, "error")).toBe("error");
   });
 
   it("keeps visual tools outside the collapsible work trace for their whole lifecycle", () => {

@@ -18,6 +18,7 @@ type ComposerActionsContext = {
   workspaceId: string | null | undefined;
   activeConversationId: string | null;
   ephemeral: boolean;
+  ephemeralTtlMinutes: number;
   input: string;
   attachments: ChatAttachment[];
   canChat: boolean;
@@ -62,6 +63,7 @@ export function useComposerActions(c: ComposerActionsContext) {
       codeWorkspaceId: c.interfaceMode === CODING_INTERFACE_MODE ? c.codeWorkspaceArtifact?.projectId : undefined,
       attachments,
       ephemeral: !c.activeConversationId && c.ephemeral,
+      ephemeralTtlMinutes: c.ephemeral ? c.ephemeralTtlMinutes : undefined,
     });
   }
 
@@ -133,6 +135,7 @@ export function useComposerActions(c: ComposerActionsContext) {
     if (c.sending) return queueMessage(trimmed);
     void c.handleSubmit(trimmed, {
       ephemeral: !c.activeConversationId && c.ephemeral,
+      ephemeralTtlMinutes: c.ephemeral ? c.ephemeralTtlMinutes : undefined,
     });
   }
   async function setUserDefaultAgent(agentId: string | null) {

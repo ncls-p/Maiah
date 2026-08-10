@@ -27,6 +27,7 @@ export interface ChatConversation {
   canContinue?: boolean;
   continuationMode?: "shared" | "fork";
   isEphemeral?: boolean;
+  ephemeralTtlMinutes?: number;
   publicShareId?: string | null;
   searchMatch?: {
     kind: "title" | "message";

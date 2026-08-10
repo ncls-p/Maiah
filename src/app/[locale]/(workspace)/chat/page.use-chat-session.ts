@@ -36,6 +36,8 @@ type SessionContext = {
   resetInterfaceMode: () => void;
   refreshConversations: () => Promise<void>;
   setActiveConversationId: Setter<string | null>;
+  setEphemeral: Setter<boolean>;
+  setEphemeralTtlMinutes: Setter<number>;
   setSelectedAgentId: Setter<string | null>;
   setConversations: Setter<ChatConversation[]>;
   setQueuedMessages: Setter<QueuedChatMessage[]>;
@@ -45,7 +47,7 @@ type SessionContext = {
 };
 
 export function useChatSession(c: SessionContext) {
-  const { workspaceId, selectedAgentId, activeConversationId, ephemeral, queuedMessages, interfaceMode, codeWorkspaceArtifact, lastAutoOpenedWorkspaceRef, userSelectedInterfaceModeRef, composerDraftScopeRef, saveCurrentComposerDraft, resetInterfaceMode, refreshConversations, setActiveConversationId, setSelectedAgentId, setConversations, setQueuedMessages, setCodeWorkspaceArtifact, setInterfaceMode, setLoadingContext } = c;
+  const { workspaceId, selectedAgentId, activeConversationId, ephemeral, queuedMessages, interfaceMode, codeWorkspaceArtifact, lastAutoOpenedWorkspaceRef, userSelectedInterfaceModeRef, composerDraftScopeRef, saveCurrentComposerDraft, resetInterfaceMode, refreshConversations, setActiveConversationId, setEphemeral, setEphemeralTtlMinutes, setSelectedAgentId, setConversations, setQueuedMessages, setCodeWorkspaceArtifact, setInterfaceMode, setLoadingContext } = c;
   const [activeVersion, setActiveVersion] = useState<AgentVersion | null>(null);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [quota, setQuota] = useState<{ used: number; limit: number } | null>(null);
@@ -215,6 +217,10 @@ export function useChatSession(c: SessionContext) {
         if (data.conversation) {
           setConversationCanContinue(data.conversation.canContinue !== false);
           setConversationIsOwner(data.conversation.isOwner !== false);
+          setEphemeral(data.conversation.isEphemeral === true);
+          if (data.conversation.ephemeralTtlMinutes) {
+            setEphemeralTtlMinutes(data.conversation.ephemeralTtlMinutes);
+          }
           if (!data.conversation.isEphemeral) {
             setConversations((current) => upsertConversation(current, data.conversation!));
           }
@@ -235,7 +241,7 @@ export function useChatSession(c: SessionContext) {
       cancelled = true;
       controller.abort();
     };
-  }, [activeConversationId, resetInterfaceMode, setCodeWorkspaceArtifact, setConversations, setInterfaceMode, setSelectedAgentId, setMessages]);
+  }, [activeConversationId, resetInterfaceMode, setCodeWorkspaceArtifact, setConversations, setEphemeral, setEphemeralTtlMinutes, setInterfaceMode, setSelectedAgentId, setMessages]);
 
   return {
     ...stream,

@@ -6,7 +6,6 @@ import {
   SearchIcon,
   Settings2Icon,
   StarIcon,
-  TimerIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -40,8 +39,6 @@ interface ChatAgentSelectorProps {
   canCreateAgent: boolean;
   onSelectAgent: (agentId: string) => void;
   onSetUserDefaultAgent?: (agentId: string | null) => void;
-  ephemeral: boolean;
-  onEphemeralChange?: (ephemeral: boolean) => void;
 }
 
 function AgentOption({
@@ -225,10 +222,7 @@ export function ChatAgentSelector(props: ChatAgentSelectorProps) {
             <>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild className="min-h-10">
-                <Link
-                  href={`/agents/${props.selectedAgent.id}`}
-                  className="gap-2"
-                >
+                <Link href={`/agents/${props.selectedAgent.id}`} className="gap-2">
                   <Settings2Icon className="size-4" aria-hidden="true" />
                   {t("configureAssistant")}
                 </Link>
@@ -240,10 +234,7 @@ export function ChatAgentSelector(props: ChatAgentSelectorProps) {
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild className="min-h-10">
                 <Link href="/agents" className="gap-2">
-                  <MessageSquarePlusIcon
-                    className="size-4"
-                    aria-hidden="true"
-                  />
+                  <MessageSquarePlusIcon className="size-4" aria-hidden="true" />
                   {t("createAgent")}
                 </Link>
               </DropdownMenuItem>
@@ -251,21 +242,6 @@ export function ChatAgentSelector(props: ChatAgentSelectorProps) {
           ) : null}
         </DropdownMenuContent>
       </DropdownMenu>
-      <Button
-        type="button"
-        variant={props.ephemeral ? "secondary" : "ghost"}
-        size="icon"
-        className="size-10 shrink-0 rounded-xl"
-        disabled={Boolean(props.activeConversationId)}
-        aria-pressed={props.ephemeral}
-        aria-label={t(
-          props.ephemeral ? "disableEphemeralChat" : "enableEphemeralChat",
-        )}
-        title={t(props.ephemeral ? "ephemeralChatEnabled" : "ephemeralChat")}
-        onClick={() => props.onEphemeralChange?.(!props.ephemeral)}
-      >
-        <TimerIcon aria-hidden="true" />
-      </Button>
       {props.selectedAgent ? (
         <ChatToolsMenu
           key={`${props.selectedAgent.id}:${props.activeConversationId ?? "draft"}`}

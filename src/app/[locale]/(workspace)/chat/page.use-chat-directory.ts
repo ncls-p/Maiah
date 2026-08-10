@@ -9,7 +9,7 @@ import { fetchJson } from "@/lib/api-client";
 import { CONVERSATION_PAGE_SIZE, mergeConversationPages, normalizeConversationList, type ConversationListPayload } from "./chat-page-helpers";
 import { type AgentDirectoryPayload, type ConversationSearchState, EMPTY_CONVERSATION_SEARCH_STATE } from "./page.agent-directory-payload";
 
-export function useChatDirectory(workspaceId: string | null | undefined, translate: (key: string) => string, setActiveConversationId: (id: string) => void) {
+export function useChatDirectory(workspaceId: string | null | undefined, translate: (key: string) => string, setActiveConversationId: (id: string) => void, routeRefreshKey: string) {
   const [agents, setAgents] = useState<ChatAgent[]>([]);
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   const [organizationDefaultAgentId, setOrganizationDefaultAgentId] = useState<string | null>(null);
@@ -211,7 +211,7 @@ export function useChatDirectory(workspaceId: string | null | undefined, transla
       cancelled = true;
       controller.abort();
     };
-  }, [loadAgentDirectory, workspaceId]);
+  }, [loadAgentDirectory, routeRefreshKey, workspaceId]);
 
   useEffect(() => {
     if (!workspaceId) return;

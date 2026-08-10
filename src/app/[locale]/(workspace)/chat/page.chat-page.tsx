@@ -1,14 +1,13 @@
 "use client";
-
 import { useTranslations } from "next-intl";
-import { useSearchParams } from "next/navigation";
+import { usePathname,useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-
 import { type QueuedChatMessage } from "@/components/chat/chat-composer";
 import { chatComposerDraftKey, readChatComposerDraft, writeChatComposerDraft } from "@/components/chat/chat-composer-draft";
 import type { ChatAttachment, CodeWorkspaceArtifact } from "@/components/chat/chat-types";
 import { CODE_WORKSPACE_CHAT_WIDTH_STORAGE_KEY, DEFAULT_CHAT_WIDTH, normalizeCodeWorkspaceChatWidth } from "@/components/chat/code-workspace-layout";
 import { useWorkspace } from "@/hooks/use-workspace";
+import { DEFAULT_EPHEMERAL_TTL_MINUTES, isEphemeralTtlMinutes } from "@/modules/chat/ephemeral-retention";
 import { CHAT_INTERFACE_MODE, type InterfaceMode } from "./chat-interface-mode";
 import { rotatePromptSuggestions } from "./chat-page-helpers";
 import { useChatDirectory } from "./page.use-chat-directory";
@@ -19,13 +18,19 @@ import { useChatSession } from "./page.use-chat-session";
 import { useCodeWorkspaceArtifactEvent } from "./page.use-code-workspace-artifact-event";
 import { ChatPageView } from "./page.chat-page.view";
 import { ChatPageBoundary } from "./page.chat-page-boundary";
-
 export function useChatPageController() {
   const t = useTranslations(CHAT_INTERFACE_MODE);
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const { workspaceId, isLoading: workspaceLoading } = useWorkspace();
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [ephemeral, setEphemeral] = useState(false);
+  const [ephemeralTtlMinutes, setEphemeralTtlMinutes] = useState(DEFAULT_EPHEMERAL_TTL_MINUTES);
+  const routeTemporary = searchParams.get("temporary") === "true";
+  const requestedTtlMinutes = Number(searchParams.get("ttl"));
+  const routeTtlMinutes = isEphemeralTtlMinutes(requestedTtlMinutes) ? requestedTtlMinutes : DEFAULT_EPHEMERAL_TTL_MINUTES;
+  const effectiveEphemeral = activeConversationId ? ephemeral : routeTemporary;
+  const effectiveEphemeralTtlMinutes = activeConversationId ? ephemeralTtlMinutes : routeTtlMinutes;
   const [input, setInput] = useState("");
   const [queuedMessages, setQueuedMessages] = useState<QueuedChatMessage[]>([]);
   const [codeWorkspaceArtifact, setCodeWorkspaceArtifact] = useState<CodeWorkspaceArtifact | null>(null);
@@ -35,14 +40,10 @@ export function useChatPageController() {
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const lastAutoOpenedWorkspaceRef = useRef<string | null>(null);
   const userSelectedInterfaceModeRef = useRef<InterfaceMode | null>(null);
-  const composerDraftScopeRef = useRef<{
-    workspaceId: string;
-    agentId: string;
-    conversationId: string | null;
-  } | null>(null);
+  const composerDraftScopeRef = useRef<{ workspaceId: string; agentId: string; conversationId: string | null } | null>(null);
   const newConversationAgentIdRef = useRef<string | null>(null);
 
-  const { agents, selectedAgentId, setSelectedAgentId, organizationDefaultAgentId, setOrganizationDefaultAgentId, canCreateAgent, canRunSetup, userDefaultAgentId, setUserDefaultAgentId, conversations, setConversations, loadingAgents, setLoadingContext, loadAgentDirectory, refreshConversations } = useChatDirectory(workspaceId, t, setActiveConversationId);
+  const { agents, selectedAgentId, setSelectedAgentId, organizationDefaultAgentId, setOrganizationDefaultAgentId, canCreateAgent, canRunSetup, userDefaultAgentId, setUserDefaultAgentId, conversations, setConversations, loadingAgents, setLoadingContext, loadAgentDirectory, refreshConversations } = useChatDirectory(workspaceId, t, setActiveConversationId, pathname);
 
   const saveCurrentComposerDraft = useCallback(() => {
     const scope = composerDraftScopeRef.current;
@@ -123,7 +124,7 @@ export function useChatPageController() {
     workspaceId,
     selectedAgentId,
     activeConversationId,
-    ephemeral,
+    ephemeral: effectiveEphemeral,
     queuedMessages,
     interfaceMode,
     codeWorkspaceArtifact,
@@ -134,6 +135,8 @@ export function useChatPageController() {
     resetInterfaceMode,
     refreshConversations,
     setActiveConversationId,
+    setEphemeral,
+    setEphemeralTtlMinutes,
     setSelectedAgentId,
     setConversations,
     setQueuedMessages,
@@ -179,7 +182,8 @@ export function useChatPageController() {
   const { submitMessage, uploadCodeWorkspace, uploadChatAttachment, submitSuggestion, setUserDefaultAgent, updateQueuedMessage, cancelQueuedMessage } = useComposerActions({
     workspaceId,
     activeConversationId,
-    ephemeral,
+    ephemeral: effectiveEphemeral,
+    ephemeralTtlMinutes: effectiveEphemeralTtlMinutes,
     input,
     attachments,
     canChat,
@@ -253,7 +257,6 @@ export function useChatPageController() {
     deleteMessage,
     editMessage,
     emptyPromptSuggestions,
-    ephemeral,
     input,
     interfaceMode,
     latestTodoList,
@@ -272,7 +275,6 @@ export function useChatPageController() {
     selectedAgentId,
     sending,
     setAttachments,
-    setEphemeral,
     setInput,
     setUserDefaultAgent,
     stopGeneration,

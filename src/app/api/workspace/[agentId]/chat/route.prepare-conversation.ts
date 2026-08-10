@@ -4,6 +4,7 @@ import type { AssistantContinuationClaim } from "@/modules/chat/continuation";
 import { claimAssistantContinuation } from "@/modules/chat/continuation";
 import type { ChatAttachment } from "@/modules/chat/attachments";
 import { forkSharedConversation, getConversationAccess } from "@/modules/chat/conversation-sharing";
+import { DEFAULT_EPHEMERAL_TTL_MINUTES, ephemeralExpiresAt } from "@/modules/chat/ephemeral-retention";
 import { db } from "@/server/infrastructure/db";
 import { conversations, messageParts, messages, toolInvocations } from "@/server/infrastructure/db/schema";
 import { and, eq, gt, inArray, ne } from "drizzle-orm";
@@ -13,8 +14,8 @@ import type { ChatAgentRow } from "./route.execution-context";
 
 type RejectRequest = (status: number, reason: string, body: unknown, context?: Record<string, unknown>) => Response;
 
-export async function prepareChatConversation(input: { agent: ChatAgentRow; actorUserId: string; agentId: string; content: string; existingConversationId?: string | null; ephemeral?: boolean; resendFromMessageId?: string | null; continueFromMessageId?: string | null; codeWorkspaceAttachment: unknown; messageAttachments: ChatAttachment[]; rejectChatRequest: RejectRequest }) {
-  const { agent, actorUserId, agentId, content, existingConversationId, ephemeral = false, resendFromMessageId, continueFromMessageId, codeWorkspaceAttachment, messageAttachments, rejectChatRequest } = input;
+export async function prepareChatConversation(input: { agent: ChatAgentRow; actorUserId: string; agentId: string; content: string; existingConversationId?: string | null; ephemeral?: boolean; ephemeralTtlMinutes?: number; resendFromMessageId?: string | null; continueFromMessageId?: string | null; codeWorkspaceAttachment: unknown; messageAttachments: ChatAttachment[]; rejectChatRequest: RejectRequest }) {
+  const { agent, actorUserId, agentId, content, existingConversationId, ephemeral = false, ephemeralTtlMinutes, resendFromMessageId, continueFromMessageId, codeWorkspaceAttachment, messageAttachments, rejectChatRequest } = input;
   let conversation: typeof conversations.$inferSelect | null = null;
   let createdConversation = false;
   if (existingConversationId) {
@@ -88,6 +89,7 @@ export async function prepareChatConversation(input: { agent: ChatAgentRow; acto
   }
 
   if (!conversation) {
+    const retentionMinutes = ephemeralTtlMinutes ?? DEFAULT_EPHEMERAL_TTL_MINUTES;
     const [newConversation] = await db
       .insert(conversations)
       .values({
@@ -98,11 +100,24 @@ export async function prepareChatConversation(input: { agent: ChatAgentRow; acto
         title: content.slice(0, 100),
         status: "active",
         isEphemeral: ephemeral,
-        expiresAt: ephemeral ? new Date(Date.now() + 24 * 60 * 60 * 1000) : null,
+        ephemeralTtlMinutes: retentionMinutes,
+        expiresAt: ephemeral ? ephemeralExpiresAt(retentionMinutes) : null,
       })
       .returning();
     conversation = newConversation;
     createdConversation = true;
+  } else if (conversation.isEphemeral) {
+    const retentionMinutes = ephemeralTtlMinutes ?? conversation.ephemeralTtlMinutes;
+    const [refreshedConversation] = await db
+      .update(conversations)
+      .set({
+        ephemeralTtlMinutes: retentionMinutes,
+        expiresAt: ephemeralExpiresAt(retentionMinutes),
+        updatedAt: new Date(),
+      })
+      .where(eq(conversations.id, conversation.id))
+      .returning();
+    conversation = refreshedConversation;
   }
 
   // Existing conversations can reference archived/deleted versions; fail safely.

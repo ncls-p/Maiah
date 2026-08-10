@@ -105,7 +105,12 @@ test.describe("agents list page", () => {
         name: /preferred assistant/i,
       }),
     ).toBeVisible();
-    expect(await menu.getByRole("menuitem").count()).toBeLessThanOrEqual(3);
+    await expect(
+      menu.getByRole("menuitem", {
+        name: /(?:Hide from|Show in) chat selector/i,
+      }),
+    ).toBeVisible();
+    expect(await menu.getByRole("menuitem").count()).toBeLessThanOrEqual(4);
     await expect(menu.getByRole("menuitem", { name: /Duplicate|Delete|Publish/i })).toHaveCount(0);
   });
 
