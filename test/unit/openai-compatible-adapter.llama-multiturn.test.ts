@@ -56,13 +56,17 @@ describe("llama.cpp Responses multi-turn compatibility", () => {
     await expect(model.doGenerate(multiTurnCall)).rejects.toThrow();
 
     expect(requestInput(fetchMock, 0)).toContainEqual({
-      role: "user",
+      type: "message",
+      role: "assistant",
       content: [
         {
-          type: "input_text",
-          text: "Previous assistant response:\nFirst answer",
+          type: "output_text",
+          text: "First answer",
+          annotations: [],
         },
       ],
+      status: "completed",
+      id: "msg_maiah_1",
     });
   });
 
@@ -88,13 +92,17 @@ describe("llama.cpp Responses multi-turn compatibility", () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(requestInput(fetchMock, 1)).toContainEqual({
-      role: "user",
+      type: "message",
+      role: "assistant",
       content: [
         {
-          type: "input_text",
-          text: "Previous assistant response:\nFirst answer",
+          type: "output_text",
+          text: "First answer",
+          annotations: [],
         },
       ],
+      status: "completed",
+      id: "msg_maiah_1",
     });
   });
 });

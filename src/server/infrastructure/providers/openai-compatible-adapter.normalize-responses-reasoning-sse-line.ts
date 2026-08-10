@@ -340,7 +340,7 @@ export function createResponsesFetch(config: ProviderRuntimeConfig) {
       config.openaiCompatibilityProfile,
     );
     const compatibilityInputOptions = {
-      convertAssistantMessagesToUser: profile === "llama.cpp",
+      convertAssistantMessagesToItems: profile === "llama.cpp",
     };
     const requestInit: RequestInit = {
       ...init,
@@ -362,7 +362,7 @@ export function createResponsesFetch(config: ProviderRuntimeConfig) {
 
     const fallbackBody = normalizeResponsesInputForCompatibleProvider(
       requestInit.body,
-      { convertAssistantMessagesToUser: true },
+      { convertAssistantMessagesToItems: true },
     );
     if (fallbackBody === requestInit.body) return response;
 

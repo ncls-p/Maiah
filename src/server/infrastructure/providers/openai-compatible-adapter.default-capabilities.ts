@@ -131,11 +131,12 @@ export function createCompatibleRerankingModel(
 }
 
 type CompatibleResponsesInputOptions = {
-  convertAssistantMessagesToUser?: boolean;
+  convertAssistantMessagesToItems?: boolean;
 };
 
 function compatibleResponsesMessage(
   item: unknown,
+  itemIndex: number,
   options: CompatibleResponsesInputOptions,
 ) {
   if (typeof item !== "object" || item === null) return item;
@@ -155,22 +156,28 @@ function compatibleResponsesMessage(
     return item;
   }
 
-  const text = record.content
-    .map((part) => (part as { text: string }).text)
-    .join("");
-  if (options.convertAssistantMessagesToUser) {
+  if (options.convertAssistantMessagesToItems) {
     return {
-      role: "user",
-      content: [
-        {
-          type: "input_text",
-          text: `Previous assistant response:\n${text}`,
-        },
-      ],
+      type: "message",
+      role: "assistant",
+      content: record.content.map((part) => ({
+        ...(part as { type: "output_text"; text: string }),
+        annotations: [],
+      })),
+      status: "completed",
+      id:
+        typeof record.id === "string" && record.id
+          ? record.id
+          : `msg_maiah_${itemIndex}`,
     };
   }
 
-  return { ...record, content: text };
+  return {
+    ...record,
+    content: record.content
+      .map((part) => (part as { text: string }).text)
+      .join(""),
+  };
 }
 
 export function normalizeResponsesInputForCompatibleProvider(
@@ -182,7 +189,7 @@ export function normalizeResponsesInputForCompatibleProvider(
     const payload = JSON.parse(body) as Record<string, unknown>;
     if (!Array.isArray(payload.input)) return body;
     const input = payload.input
-      .map((item) => compatibleResponsesMessage(item, options))
+      .map((item, index) => compatibleResponsesMessage(item, index, options))
       .filter((item) => item !== null);
     if (JSON.stringify(input) === JSON.stringify(payload.input)) return body;
     return JSON.stringify({ ...payload, input });
