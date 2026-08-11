@@ -127,7 +127,10 @@ export async function runVisualOcr(input: {
               },
               {
                 type: "file",
-                data: candidate.data,
+                // PDF screenshots can be backed by worker-specific typed arrays.
+                // Cross the provider boundary with plain base64 so runtimes never
+                // attempt to transfer the worker-owned object itself.
+                data: Buffer.from(candidate.data).toString("base64"),
                 mediaType: candidate.mediaType,
                 filename: candidate.sourceRef,
               },

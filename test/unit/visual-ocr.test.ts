@@ -175,6 +175,21 @@ describe("visual OCR", () => {
       }),
     ]);
     expect(mocks.generateText).toHaveBeenCalledOnce();
+    expect(mocks.generateText).toHaveBeenCalledWith(
+      expect.objectContaining({
+        messages: [
+          expect.objectContaining({
+            content: expect.arrayContaining([
+              expect.objectContaining({
+                type: "file",
+                data: "AQI=",
+                mediaType: "image/png",
+              }),
+            ]),
+          }),
+        ],
+      }),
+    );
   });
 
   it("reports missing models and per-candidate provider failures", async () => {
