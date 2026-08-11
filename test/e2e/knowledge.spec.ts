@@ -57,9 +57,9 @@ test.describe("knowledge bases", () => {
     await createDialog.getByLabel(/^Name$/i).fill(testBaseName);
     await createDialog.getByRole("button", { name: /^Create$/i }).click();
 
-    const baseButton = page.getByRole("button", {
-      name: new RegExp(`${testBaseName} Private$`),
-    });
+    const baseButton = page
+      .getByRole("button")
+      .filter({ hasText: testBaseName });
     await expect(baseButton).toBeVisible({ timeout: 15_000 });
 
     await baseButton.hover();
@@ -113,9 +113,9 @@ test.describe("knowledge bases", () => {
       }),
     ).toHaveAttribute("aria-valuenow", /(?:20|[3-9]\d|100)/);
 
-    const baseButton = page.getByRole("button", {
-      name: new RegExp(`${testBaseName} Private$`),
-    });
+    const baseButton = page
+      .getByRole("button")
+      .filter({ hasText: testBaseName });
     await baseButton.hover();
     await page.getByRole("button", { name: `Delete ${testBaseName}` }).click();
     await page

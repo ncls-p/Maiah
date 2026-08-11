@@ -172,10 +172,25 @@ describe("builtInTools", () => {
     ) as typeof fetch;
     await expect(
       runTool("http_fetch", { url: "https://example.test", method: "GET" }),
-    ).resolves.toMatchObject({ status: 201, bodyPreview: "body" });
+    ).resolves.toMatchObject({
+      status: 201,
+      bodyPreview: "body",
+      bodyBytes: 4,
+      bodyTruncated: false,
+      redirected: false,
+      url: "https://example.test",
+    });
     await expect(
       runTool("http_fetch", { url: "https://example.test", method: "HEAD" }),
     ).resolves.toMatchObject({ bodyPreview: "" });
+    await expect(
+      runTool("http_fetch", {
+        url: "https://example.test/api/docs",
+        method: "GET",
+      }),
+    ).resolves.toMatchObject({
+      openApiUrl: "https://example.test/api/openapi",
+    });
     globalThis.fetch = originalFetch;
 
     await expect(

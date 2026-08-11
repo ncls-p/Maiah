@@ -71,6 +71,13 @@ export function executeProcess(input, workdir) {
         NUMEXPR_NUM_THREADS: "1",
         NODE_PATH: "/opt/sandbox/node_modules",
         npm_config_cache: path.join(workdir, "tmp", "npm"),
+        HTTP_PROXY: process.env.HTTP_PROXY ?? "",
+        HTTPS_PROXY: process.env.HTTPS_PROXY ?? "",
+        http_proxy: process.env.http_proxy ?? process.env.HTTP_PROXY ?? "",
+        https_proxy: process.env.https_proxy ?? process.env.HTTPS_PROXY ?? "",
+        NO_PROXY: "",
+        no_proxy: "",
+        NODE_USE_ENV_PROXY: "1",
       },
     });
     const stdinStream = input.stdinFile ? createReadStream(path.join(workdir, ".stdin")) : null;

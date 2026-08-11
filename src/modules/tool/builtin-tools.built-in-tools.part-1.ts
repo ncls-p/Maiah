@@ -67,7 +67,8 @@ export const builtInToolsPart1 = [
     id: "00000000-0000-4000-8000-000000000003",
     name: "http_fetch",
     displayName: "HTTP fetch",
-    description: "Fetch a remote URL after approval.",
+    description:
+      "Fetch a remote URL after approval. Returns a bounded response preview; for Swagger UI pages, fetch their OpenAPI JSON endpoint (commonly /api/openapi) instead.",
     riskLevel: "high",
     category: "Web",
     inputSchema: httpFetchInputSchema,
@@ -77,11 +78,22 @@ export const builtInToolsPart1 = [
         signal: AbortSignal.timeout(10_000),
       });
       const text = method === "HEAD" ? "" : await response.text();
+      const previewLimit = 4_000;
       return {
         status: response.status,
         statusText: response.statusText,
+        url: response.url || url,
+        redirected: response.redirected,
         contentType: response.headers.get("content-type"),
-        bodyPreview: text.slice(0, 4_000),
+        contentLength: response.headers.get("content-length"),
+        bodyBytes: Buffer.byteLength(text),
+        bodyPreview: text.slice(0, previewLimit),
+        bodyTruncated: text.length > previewLimit,
+        ...(["/api/docs", "/api-docs"].includes(
+          new URL(response.url || url).pathname.replace(/\/$/, ""),
+        )
+          ? { openApiUrl: new URL("/api/openapi", response.url || url).href }
+          : {}),
       };
     },
   },
