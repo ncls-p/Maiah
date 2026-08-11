@@ -41,6 +41,27 @@
       "empty": "Aucune équipe n’est disponible dans cette organisation."
     }
   },
+  "resourceSharing": {
+    "title": "Gérer l’accès à « {name} »",
+    "description": "Modifiez la portée de la ressource ou donnez accès à des personnes précises.",
+    "scopeTitle": "Accès général",
+    "scopeDescription": "Détermine la visibilité pour le projet, l’organisation ou l’équipe sélectionnée.",
+    "saveScope": "Enregistrer l’accès général",
+    "scopeSaved": "Accès général mis à jour",
+    "peopleTitle": "Personnes spécifiques",
+    "peopleDescription": "Les personnes sélectionnées reçoivent un accès en lecture même si la ressource reste privée.",
+    "peopleAgentDescription": "Les personnes sélectionnées reçoivent un accès en lecture à cet assistant et à ses dépendances actives. Les identifiants de connexion restent personnels.",
+    "searchPlaceholder": "Rechercher des personnes…",
+    "searchLabel": "Rechercher des personnes",
+    "loading": "Chargement des personnes…",
+    "noMembers": "Aucun autre membre actif n’est disponible.",
+    "noResults": "Aucune personne ne correspond à cette recherche.",
+    "savePeople": "Enregistrer les personnes",
+    "usersSaved": "Personnes autorisées mises à jour",
+    "loadFailed": "Impossible de charger le partage de la ressource",
+    "saveFailed": "Impossible de modifier l’accès à la ressource",
+    "close": "Fermer"
+  },
   "resourceProvenance": {
     "user": "Personnel",
     "workspace": "Projet",
@@ -858,6 +879,7 @@
         "empty": "Aucune équipe n’est disponible dans cette organisation."
       }
     },
+    "manageSpecificPeople": "Gérer l’accès de personnes spécifiques",
     "tabs": {
       "essential": "Essentiel",
       "capabilities": "Capacités",
@@ -1558,6 +1580,7 @@
     "searchAriaLabel": "Rechercher dans le texte indexé",
     "editBase": "Modifier la base",
     "editAria": "Modifier {name}",
+    "shareAria": "Gérer l’accès à {name}",
     "previewAria": "Prévisualiser {name}",
     "deleteAria": "Supprimer {name}",
     "retryAria": "Relancer {name}"

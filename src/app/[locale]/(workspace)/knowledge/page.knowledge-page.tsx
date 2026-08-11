@@ -6,6 +6,7 @@ import { fetchWorkspacePermissions } from "@/lib/api-client";
 import type {
   ResourceAccessOptions,
   ResourceAccessScope,
+  ResourceAccessSelection,
 } from "@/modules/iam/resource-access-scope";
 import {
   DEFAULT_RAG_CONFIG,
@@ -60,6 +61,7 @@ export function useKnowledgePageController() {
   const [query, setQuery] = useState("");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editingBase, setEditingBase] = useState<KnowledgeBase | null>(null);
+  const [accessBase, setAccessBase] = useState<KnowledgeBase | null>(null);
   const [editBaseForm, setEditBaseForm] = useState({
     name: "",
     description: "",
@@ -336,6 +338,46 @@ export function useKnowledgePageController() {
     setResults(await res.json());
   }
 
+  async function openBaseAccess(base: KnowledgeBase) {
+    if (!workspaceId || !base.canEdit) return;
+    try {
+      const response = await fetch(
+        `/api/workspace/knowledge-bases/${base.id}?workspaceId=${workspaceId}`,
+      );
+      const data = (await response
+        .json()
+        .catch(() => ({}))) as KnowledgeBase & {
+        error?: string;
+      };
+      if (!response.ok) throw new Error(data.error || t("errorUpdate"));
+      setAccessBase(data);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("errorUpdate"));
+    }
+  }
+
+  async function saveBaseAccess(selection: ResourceAccessSelection) {
+    if (!workspaceId || !accessBase) return;
+    const response = await fetch(
+      `/api/workspace/knowledge-bases/${accessBase.id}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          workspaceId,
+          accessScope: selection.scope,
+          accessTeamId:
+            selection.scope === "team" ? selection.teamId : undefined,
+        }),
+      },
+    );
+    const data = (await response.json().catch(() => ({}))) as KnowledgeBase & {
+      error?: string;
+    };
+    if (!response.ok) throw new Error(data.error || t("errorUpdate"));
+    setAccessBase({ ...accessBase, ...data, access: selection });
+  }
+
   async function updateBase() {
     if (!canManageKnowledgeBases) return;
     if (!workspaceId) return;
@@ -404,6 +446,7 @@ export function useKnowledgePageController() {
 
   return {
     kind: "ready",
+    accessBase,
     attachAgents,
     attachAgentsError,
     attachBaseToAgent,
@@ -437,10 +480,12 @@ export function useKnowledgePageController() {
     ingestDocument,
     ingestSelectedFiles,
     lastUpload,
+    loadBases,
     loadDocuments,
     loading,
     loadingAttachAgents,
     openAttachDialog,
+    openBaseAccess,
     openDocumentPreview,
     pendingDelete,
     previewDocument,
@@ -452,10 +497,12 @@ export function useKnowledgePageController() {
     results,
     retryDocument,
     safeDocumentPage,
+    saveBaseAccess,
     search,
     selectedBase,
     selectedBaseCanEdit,
     selectedId,
+    setAccessBase,
     setAttachOpen,
     setBaseForm,
     setDocForm,
@@ -479,6 +526,7 @@ export function useKnowledgePageController() {
     updateBase,
     uploadingCount,
     visibleDocuments,
+    workspaceId,
   } as const;
 }
 

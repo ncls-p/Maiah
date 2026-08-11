@@ -363,6 +363,7 @@ export function useAgentConfigurePageController() {
   return {
     kind: "ready",
     activeTab,
+    agentId,
     agent,
     builtinBindings,
     builtinTools,
@@ -404,6 +405,7 @@ export function useAgentConfigurePageController() {
     showDeleteDialog,
     skills,
     t,
+    workspaceId,
   } as const;
 }
 

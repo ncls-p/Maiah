@@ -1,3 +1,4 @@
+import { ResourceAccessDialog } from "@/components/resource-access-dialog";
 import { AdvancedSection } from "@/components/ui/advanced-section";
 import {
   AlertDialog,
@@ -41,6 +42,7 @@ export function KnowledgePageView({
   model: KnowledgePageViewModel;
 }) {
   const {
+    accessBase,
     baseForm,
     bases,
     canManageKnowledgeBases,
@@ -52,6 +54,9 @@ export function KnowledgePageView({
     deleting,
     loading,
     pendingDelete,
+    resourceAccessOptions,
+    saveBaseAccess,
+    setAccessBase,
     setBaseForm,
     setPendingDelete,
     setShowCreateDialog,
@@ -165,6 +170,28 @@ export function KnowledgePageView({
       ) : (
         <KnowledgePageBranch1 model={model} />
       )}
+      {resourceAccessOptions ? (
+        <ResourceAccessDialog
+          open={accessBase !== null}
+          workspaceId={model.workspaceId}
+          resource={
+            accessBase
+              ? {
+                  id: accessBase.id,
+                  name: accessBase.name,
+                  type: "knowledge_base",
+                }
+              : null
+          }
+          selection={accessBase?.access ?? { scope: "private" }}
+          options={resourceAccessOptions}
+          onOpenChangeAction={(open) => {
+            if (!open) setAccessBase(null);
+          }}
+          onScopeSaveAction={saveBaseAccess}
+          onSavedAction={model.loadBases}
+        />
+      ) : null}
       <AlertDialog
         open={pendingDelete !== null}
         onOpenChange={(open) => {

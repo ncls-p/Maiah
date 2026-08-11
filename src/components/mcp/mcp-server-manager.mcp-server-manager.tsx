@@ -6,7 +6,10 @@ import { toast } from "sonner";
 
 import { useWorkspace } from "@/hooks/use-workspace";
 import { fetchWorkspacePermissions } from "@/lib/api-client";
-import type { ResourceAccessOptions } from "@/modules/iam/resource-access-scope";
+import type {
+  ResourceAccessOptions,
+  ResourceAccessSelection,
+} from "@/modules/iam/resource-access-scope";
 
 import { type ShareableResource } from "@/components/marketplace/resource-share-dialog";
 import { linesFromTextarea } from "./mcp-server-manager.lines-from-textarea";
@@ -44,6 +47,7 @@ export function useMcpServerManagerController() {
   const [showAdvancedEdit, setShowAdvancedEdit] = useState(false);
   const [form, setForm] = useState<McpServerForm>(emptyForm);
   const [editServer, setEditServer] = useState<McpServer | null>(null);
+  const [accessServer, setAccessServer] = useState<McpServer | null>(null);
   const [editForm, setEditForm] = useState<McpServerForm>(emptyForm);
   const [editLoading, setEditLoading] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -175,6 +179,47 @@ export function useMcpServerManagerController() {
     setEditServer(null);
     setEditLoading(false);
     setShowAdvancedEdit(false);
+  }
+
+  async function openAccess(server: McpServer) {
+    if (!workspaceId || !server.canEdit) return;
+    try {
+      const response = await fetch(
+        `/api/workspace/mcp-servers/${server.id}?workspaceId=${workspaceId}`,
+      );
+      const data = (await response.json().catch(() => ({}))) as McpServer & {
+        error?: string;
+      };
+      if (!response.ok) {
+        throw new Error(data.error || t("loadServerFailed"));
+      }
+      setAccessServer(data);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : t("loadServerFailed"),
+      );
+    }
+  }
+
+  async function saveServerAccess(
+    server: McpServer,
+    selection: ResourceAccessSelection,
+  ) {
+    if (!workspaceId) return;
+    const response = await fetch(`/api/workspace/mcp-servers/${server.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        workspaceId,
+        accessScope: selection.scope,
+        accessTeamId: selection.scope === "team" ? selection.teamId : undefined,
+      }),
+    });
+    const data = (await response.json().catch(() => ({}))) as McpServer & {
+      error?: string;
+    };
+    if (!response.ok) throw new Error(data.error || t("updateFailed"));
+    setAccessServer({ ...server, ...data, access: selection });
   }
 
   async function createServer() {
@@ -363,6 +408,7 @@ export function useMcpServerManagerController() {
 
   return {
     kind: "ready",
+    accessServer,
     busy,
     canManageMcpServers,
     canManageTenantGlobals,
@@ -379,6 +425,7 @@ export function useMcpServerManagerController() {
     load,
     loadError,
     loading,
+    openAccess,
     openEdit,
     patchServer,
     patchTool,
@@ -386,6 +433,7 @@ export function useMcpServerManagerController() {
     resourceAccessOptions,
     retryDiscovery,
     saveEdit,
+    saveServerAccess,
     search,
     servers,
     setDeleteId,
@@ -393,6 +441,7 @@ export function useMcpServerManagerController() {
     setExpandedServers,
     setFilterStatus,
     setForm,
+    setAccessServer,
     setSearch,
     setShareResource,
     setShowAdvancedCreate,

@@ -18,6 +18,7 @@ export function AgentConfigurePageView({ model }: { model: ViewModel }) {
   const {
     activeTab,
     agent,
+    agentId,
     builtinBindings,
     builtinTools,
     canEdit,
@@ -58,6 +59,7 @@ export function AgentConfigurePageView({ model }: { model: ViewModel }) {
     showDeleteDialog,
     skills,
     t,
+    workspaceId,
   } = model;
   const toolOptions = [
     ...builtinTools
@@ -184,6 +186,9 @@ export function AgentConfigurePageView({ model }: { model: ViewModel }) {
 
               <TabsContent value="essential">
                 <EssentialTab
+                  agentId={agentId}
+                  agentName={agent.name}
+                  workspaceId={workspaceId}
                   form={form}
                   setFormAction={setForm}
                   providers={providers}

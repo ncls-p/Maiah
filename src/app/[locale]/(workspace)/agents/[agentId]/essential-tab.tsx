@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import type { SyntheticEvent } from "react";
+import { useState, type SyntheticEvent } from "react";
 
 import { EssentialTabView } from "./essential-tab.view";
 import type {
@@ -13,6 +13,9 @@ import type {
 } from "./types";
 
 export function useEssentialTabController({
+  agentId,
+  agentName,
+  workspaceId,
   form,
   setFormAction: setForm,
   providers,
@@ -26,6 +29,9 @@ export function useEssentialTabController({
   readOnly = false,
   onSaveAction: onSave,
 }: {
+  agentId: string;
+  agentName: string;
+  workspaceId: string;
   form: AgentForm;
   setFormAction: (fn: (prev: AgentForm) => AgentForm) => void;
   providers: Provider[];
@@ -40,6 +46,7 @@ export function useEssentialTabController({
   onSaveAction: (e: SyntheticEvent<HTMLFormElement>) => void;
 }) {
   const t = useTranslations("agents");
+  const [showPeopleAccess, setShowPeopleAccess] = useState(false);
   const tModel = useTranslations("agents.model");
   const tCommon = useTranslations("common");
   const filteredModels = models.filter((m) => m.providerId === form.providerId);
@@ -50,7 +57,9 @@ export function useEssentialTabController({
 
   return {
     kind: "ready",
+    agentId,
     agentKind,
+    agentName,
     accessOptions,
     canAdminCurate,
     canManageProviders,
@@ -64,10 +73,13 @@ export function useEssentialTabController({
     selectedModel,
     selectedProviderHasModels,
     setForm,
+    setShowPeopleAccess,
+    showPeopleAccess,
     t,
     tCommon,
     tModel,
     toolOptions,
+    workspaceId,
   } as const;
 }
 

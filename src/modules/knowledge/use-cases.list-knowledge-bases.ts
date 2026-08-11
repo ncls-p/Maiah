@@ -1,3 +1,4 @@
+import { applyResourceAccessSelection } from "@/modules/iam/resource-access-scope";
 import {
   getDefaultRagConfig,
   hasSameRagModelSelection,
@@ -119,6 +120,8 @@ export async function updateKnowledgeBase(input: {
   name?: string;
   description?: string;
   isGlobal?: boolean;
+  accessScope?: "private" | "project" | "organization" | "team";
+  accessTeamId?: string;
   ragConfig?: RagConfig | null;
   canManageModels?: boolean;
 }) {
@@ -140,6 +143,15 @@ export async function updateKnowledgeBase(input: {
     if (!hasSameRagModelSelection(input.ragConfig, currentConfig)) {
       throw new RagModelConfigurationPermissionError();
     }
+  }
+
+  if (input.accessScope) {
+    await applyResourceAccessSelection({
+      resourceType: "knowledge_base",
+      resourceId: input.knowledgeBaseId,
+      userId: input.userId,
+      selection: { scope: input.accessScope, teamId: input.accessTeamId },
+    });
   }
 
   const updates: Record<string, unknown> = { updatedAt: new Date() };

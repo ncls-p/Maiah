@@ -41,6 +41,27 @@
       "empty": "No team is available in this organization."
     }
   },
+  "resourceSharing": {
+    "title": "Manage access to “{name}”",
+    "description": "Change the resource scope or grant access to specific people.",
+    "scopeTitle": "General access",
+    "scopeDescription": "This controls discovery for the selected project, organization, or team.",
+    "saveScope": "Save general access",
+    "scopeSaved": "General access updated",
+    "peopleTitle": "Specific people",
+    "peopleDescription": "Selected people receive read access even when the resource remains private.",
+    "peopleAgentDescription": "Selected people receive read access to this assistant and its active dependencies. Connector credentials remain personal.",
+    "searchPlaceholder": "Search people…",
+    "searchLabel": "Search people",
+    "loading": "Loading people…",
+    "noMembers": "No other active member is available.",
+    "noResults": "No person matches this search.",
+    "savePeople": "Save people",
+    "usersSaved": "People with access updated",
+    "loadFailed": "Unable to load resource sharing",
+    "saveFailed": "Unable to update resource access",
+    "close": "Close"
+  },
   "resourceProvenance": {
     "user": "Personal",
     "workspace": "Project",
@@ -858,6 +879,7 @@
         "empty": "No team is available in this organization."
       }
     },
+    "manageSpecificPeople": "Manage access for specific people",
     "tabs": {
       "essential": "Essentials",
       "capabilities": "Capabilities",
@@ -1559,6 +1581,7 @@
     "searchAriaLabel": "Search indexed text",
     "editBase": "Edit collection",
     "editAria": "Edit {name}",
+    "shareAria": "Manage access to {name}",
     "previewAria": "Preview {name}",
     "deleteAria": "Delete {name}",
     "retryAria": "Retry {name}"

@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 
 import { ResourceShareDialog } from "@/components/marketplace/resource-share-dialog";
+import { ResourceAccessDialog } from "@/components/resource-access-dialog";
 import type { useMcpServerManagerController } from "./mcp-server-manager.mcp-server-manager";
 import { SERVERS_PAGE_SIZE } from "./mcp-server-manager.servers-page-size";
 import {
@@ -25,6 +26,7 @@ type Model = Extract<
 >;
 export function McpServerManagerView({ model }: { model: Model }) {
   const {
+    accessServer,
     busy,
     canManageMcpServers,
     canManageTenantGlobals,
@@ -41,6 +43,7 @@ export function McpServerManagerView({ model }: { model: Model }) {
     load,
     loadError,
     loading,
+    openAccess,
     openEdit,
     patchServer,
     patchTool,
@@ -48,8 +51,10 @@ export function McpServerManagerView({ model }: { model: Model }) {
     resourceAccessOptions,
     retryDiscovery,
     saveEdit,
+    saveServerAccess,
     search,
     servers,
+    setAccessServer,
     setDeleteId,
     setEditForm,
     setExpandedServers,
@@ -126,14 +131,7 @@ export function McpServerManagerView({ model }: { model: Model }) {
           onEditServerAction={(server) => void openEdit(server)}
           onDeleteServerAction={setDeleteId}
           onRetryDiscoveryAction={(serverId) => void retryDiscovery(serverId)}
-          onShareServerAction={(server) =>
-            setShareResource({
-              kind: "mcp_server",
-              id: server.id,
-              name: server.name,
-              description: null,
-            })
-          }
+          onShareServerAction={(server) => void openAccess(server)}
           onShareToolAction={(server, tool) =>
             setShareResource({
               kind: "mcp_tool",
@@ -215,6 +213,32 @@ export function McpServerManagerView({ model }: { model: Model }) {
         onClose={() => setDeleteId(null)}
         onDelete={(id) => void removeServer(id)}
       />
+      {resourceAccessOptions && workspaceId ? (
+        <ResourceAccessDialog
+          open={accessServer !== null}
+          workspaceId={workspaceId}
+          resource={
+            accessServer
+              ? {
+                  id: accessServer.id,
+                  name: accessServer.name,
+                  type: "mcp_server",
+                }
+              : null
+          }
+          selection={accessServer?.access ?? { scope: "private" }}
+          options={resourceAccessOptions}
+          onOpenChangeAction={(open) => {
+            if (!open) setAccessServer(null);
+          }}
+          onScopeSaveAction={(selection) =>
+            accessServer
+              ? saveServerAccess(accessServer, selection)
+              : Promise.resolve()
+          }
+          onSavedAction={load}
+        />
+      ) : null}
       <ResourceShareDialog
         resource={shareResource}
         workspaceId={workspaceId}

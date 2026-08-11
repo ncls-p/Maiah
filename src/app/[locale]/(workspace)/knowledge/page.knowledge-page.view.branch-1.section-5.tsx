@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { PencilIcon, Trash2Icon } from "lucide-react";
+import { PencilIcon, Share2Icon, Trash2Icon } from "lucide-react";
 import type { KnowledgePageViewModel } from "./page.knowledge-page.view";
 export function KnowledgeMainSection5({
   model,
@@ -10,6 +10,7 @@ export function KnowledgeMainSection5({
   const {
     bases,
     canManageKnowledgeBases,
+    openBaseAccess,
     selectedId,
     setEditBaseForm,
     setEditingBase,
@@ -59,6 +60,16 @@ export function KnowledgeMainSection5({
             </button>
             {canManageKnowledgeBases ? (
               <div className="flex shrink-0 gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100">
+                <Button
+                  type="button"
+                  size="icon-sm"
+                  variant="ghost"
+                  aria-label={t("shareAria", { name: base.name })}
+                  disabled={!base.canEdit}
+                  onClick={() => void openBaseAccess(base)}
+                >
+                  <Share2Icon aria-hidden="true" />
+                </Button>
                 <Button
                   type="button"
                   size="icon-sm"

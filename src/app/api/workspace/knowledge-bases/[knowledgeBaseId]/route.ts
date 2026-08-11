@@ -4,6 +4,10 @@ import {
 } from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
 import { hasWorkspacePermissionForRequest } from "@/modules/auth/workspace-access";
+import {
+  getResourceAccessSelection,
+  validateResourceAccessSelection,
+} from "@/modules/iam/resource-access-scope";
 import { ragConfigSchema } from "@/modules/knowledge/rag-config";
 import {
   archiveKnowledgeBase,
@@ -20,6 +24,10 @@ const updateSchema = z.object({
   name: z.string().min(1).max(255).optional(),
   description: z.string().max(2048).optional(),
   isGlobal: z.boolean().optional(),
+  accessScope: z
+    .enum(["private", "project", "organization", "team"])
+    .optional(),
+  accessTeamId: z.uuid().optional(),
   ragConfig: ragConfigSchema.nullable().optional(),
 });
 
@@ -57,7 +65,15 @@ export async function GET(
           { error: "Knowledge base not found" },
           { status: 404 },
         );
-      return NextResponse.json(knowledgeBase);
+      return NextResponse.json({
+        ...knowledgeBase,
+        access: await getResourceAccessSelection({
+          resourceType: "knowledge_base",
+          resourceId: knowledgeBase.id,
+          visibility: knowledgeBase.visibility,
+          isGlobal: knowledgeBase.isGlobal,
+        }),
+      });
     },
     { logLabel: "Failed to get knowledge base" },
   );
@@ -94,6 +110,16 @@ export async function PATCH(
         parsed.data.workspaceId,
         "models.manage",
       );
+      if (parsed.data.accessScope) {
+        await validateResourceAccessSelection({
+          userId: session.user.id,
+          workspaceId: parsed.data.workspaceId,
+          selection: {
+            scope: parsed.data.accessScope,
+            teamId: parsed.data.accessTeamId,
+          },
+        });
+      }
       if (parsed.data.isGlobal && !canManageGlobal) {
         return NextResponse.json(
           { error: "Only admins can make knowledge bases global" },

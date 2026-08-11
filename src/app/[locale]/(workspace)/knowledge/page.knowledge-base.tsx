@@ -1,6 +1,7 @@
 "use client";
 
 import { type ResourceProvenance } from "@/components/resource-provenance-badge";
+import { type ResourceAccessSelection } from "@/modules/iam/resource-access-scope";
 import { type RagConfig } from "@/modules/knowledge/rag-config-schema";
 
 export interface KnowledgeBase {
@@ -11,6 +12,7 @@ export interface KnowledgeBase {
   canEdit: boolean;
   createdAt: string;
   provenance: ResourceProvenance;
+  access?: ResourceAccessSelection;
   effectiveRagConfig: RagConfig;
   usesDefaultRagConfig: boolean;
 }

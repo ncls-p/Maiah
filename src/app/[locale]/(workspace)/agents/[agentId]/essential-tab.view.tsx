@@ -2,7 +2,9 @@ import { MessageSquareIcon, SettingsIcon, UsersIcon } from "lucide-react";
 
 import { AgentAccessScopePicker } from "@/components/agent-access-scope-picker";
 import { ModelLogo } from "@/components/providers/model-logo";
+import { ResourceAccessDialog } from "@/components/resource-access-dialog";
 import { AdvancedSection } from "@/components/ui/advanced-section";
+import { Button } from "@/components/ui/button";
 import {
   Field,
   FieldContent,
@@ -35,6 +37,8 @@ export type EssentialTabViewModel = Extract<
 export function EssentialTabView({ model }: { model: EssentialTabViewModel }) {
   const {
     accessOptions,
+    agentId,
+    agentName,
     canAdminCurate,
     filteredModels,
     form,
@@ -45,10 +49,13 @@ export function EssentialTabView({ model }: { model: EssentialTabViewModel }) {
     selectedModel,
     selectedProviderHasModels,
     setForm,
+    setShowPeopleAccess,
+    showPeopleAccess,
     t,
     tCommon,
     tModel,
     toolOptions,
+    workspaceId,
   } = model;
   return (
     <form
@@ -117,6 +124,14 @@ export function EssentialTabView({ model }: { model: EssentialTabViewModel }) {
               }))
             }
           />
+          <Button
+            type="button"
+            variant="outline"
+            disabled={readOnly}
+            onClick={() => setShowPeopleAccess(true)}
+          >
+            {t("manageSpecificPeople")}
+          </Button>
         </ConfigSection>
 
         <ConfigSection
@@ -303,6 +318,16 @@ export function EssentialTabView({ model }: { model: EssentialTabViewModel }) {
       </fieldset>
 
       {readOnly ? null : <EssentialTabBranch1 model={model} />}
+      <ResourceAccessDialog
+        open={showPeopleAccess}
+        workspaceId={workspaceId}
+        resource={{ id: agentId, name: agentName, type: "agent" }}
+        selection={{ scope: form.accessScope, teamId: form.accessTeamId }}
+        options={accessOptions}
+        includeDependencies
+        showScope={false}
+        onOpenChangeAction={setShowPeopleAccess}
+      />
     </form>
   );
 }
