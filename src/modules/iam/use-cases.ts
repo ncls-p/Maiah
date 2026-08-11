@@ -3,7 +3,10 @@ export {
   addTeamMember,
   createTeam,
 } from "./use-cases.add-organization-member";
-export { assignResourceRole } from "./use-cases.assign-resource-role";
+export {
+  assignResourceRole,
+  assignResourceRoleToPrincipals,
+} from "./use-cases.assign-resource-role";
 export { createCustomRole } from "./use-cases.create-custom-role";
 export { getAccessConsoleSnapshot } from "./use-cases.get-access-console-snapshot";
 export {

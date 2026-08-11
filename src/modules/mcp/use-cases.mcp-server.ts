@@ -1,4 +1,5 @@
 import { decryptValue, encryptValue } from "@/lib/crypto";
+import type { ResourceAccessScope } from "@/modules/iam/resource-access-scope";
 import { inferMcpAuthHint } from "@/modules/mcp/auth-hint";
 import { authorization } from "@/server/domain/services/authorization";
 import { mcpServers } from "@/server/infrastructure/db/schema";
@@ -25,6 +26,8 @@ export interface CreateMcpServerInput {
   url?: string;
   requireApproval?: boolean;
   isGlobal?: boolean;
+  accessScope?: ResourceAccessScope;
+  accessTeamId?: string;
   headers?: Record<string, string>;
   env?: Record<string, string>;
 }
@@ -42,6 +45,8 @@ export interface UpdateMcpServerInput {
   enabled?: boolean;
   requireApproval?: boolean;
   isGlobal?: boolean;
+  accessScope?: ResourceAccessScope;
+  accessTeamId?: string;
   headers?: Record<string, string>;
   env?: Record<string, string>;
 }
@@ -74,6 +79,7 @@ export function toSafeMcpServer(server: McpServer) {
     enabled: server.enabled,
     requireApproval: server.requireApproval,
     isGlobal: server.isGlobal,
+    visibility: server.visibility,
     createdById: server.createdById,
     healthStatus: server.healthStatus,
     lastCheckedAt: server.lastCheckedAt,
@@ -155,11 +161,12 @@ export async function assertCanManageMcpServer(
 ) {
   if (
     !canManageMcpServer(server, userId, canManageGlobal) &&
-    !(await authorization.hasPermission(
+    !(await authorization.hasDirectPermission(
       { principalType: "user", principalId: userId },
       "mcpServers.manage",
       "mcp_server",
       server.id,
+      server.workspaceId,
     ))
   ) {
     throw new Error("MCP server not found");

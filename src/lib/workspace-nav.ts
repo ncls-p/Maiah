@@ -1,3 +1,4 @@
+import type { ResourceAccessOptions } from "@/modules/iam/resource-access-scope";
 import type { LucideIcon } from "lucide-react";
 import {
   ActivityIcon,
@@ -44,6 +45,7 @@ export type WorkspacePermissions = {
   canManageTenantGlobals: boolean;
   canManageAccess: boolean;
   canViewWorkflows: boolean;
+  resourceAccessOptions?: ResourceAccessOptions;
 };
 
 export const DEFAULT_WORKSPACE_PERMISSIONS: WorkspacePermissions = {

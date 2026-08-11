@@ -129,11 +129,12 @@ export async function listCustomTools(
         const visible =
           tool.createdById === userId ||
           tool.isGlobal ||
-          (await authorization.hasPermission(
+          (await authorization.hasDirectPermission(
             { principalType: "user", principalId: userId },
             "tools.view",
             "custom_tool",
             tool.id,
+            workspaceId,
           ));
         if (!visible) return null;
         return {
@@ -237,7 +238,17 @@ export async function executeCustomToolWorkflow(input: {
     )
     .limit(1);
   if (!customTool) throw new Error("Custom tool not found");
-  if (customTool.createdById !== input.userId && !customTool.isGlobal) {
+  if (
+    customTool.createdById !== input.userId &&
+    !customTool.isGlobal &&
+    !(await authorization.hasDirectPermission(
+      { principalType: "user", principalId: input.userId },
+      "tools.view",
+      "custom_tool",
+      customTool.id,
+      input.workspaceId,
+    ))
+  ) {
     throw new Error("Custom tool not found");
   }
   if (!customTool.n8nWorkflowId) {

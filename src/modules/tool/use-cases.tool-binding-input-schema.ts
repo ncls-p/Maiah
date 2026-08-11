@@ -39,7 +39,7 @@ export async function canViewCustomTool(
   return (
     tool.createdById === userId ||
     tool.isGlobal ||
-    authorization.hasPermission(
+    authorization.hasDirectPermission(
       { principalType: "user", principalId: userId },
       "tools.view",
       "custom_tool",
@@ -55,7 +55,7 @@ export async function canViewMcpServer(
   return (
     server.createdById === userId ||
     server.isGlobal ||
-    authorization.hasPermission(
+    authorization.hasDirectPermission(
       { principalType: "user", principalId: userId },
       "mcpServers.get",
       "mcp_server",

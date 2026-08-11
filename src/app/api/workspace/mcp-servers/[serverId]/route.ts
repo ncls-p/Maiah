@@ -4,6 +4,10 @@ import {
 } from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
 import {
+  getResourceAccessSelection,
+  validateResourceAccessSelection,
+} from "@/modules/iam/resource-access-scope";
+import {
   archiveMcpServer,
   getMcpServer,
   toMcpServerForEdit,
@@ -24,6 +28,10 @@ const updateSchema = z.object({
   enabled: z.boolean().optional(),
   requireApproval: z.boolean().optional(),
   isGlobal: z.boolean().optional(),
+  accessScope: z
+    .enum(["private", "project", "organization", "team"])
+    .optional(),
+  accessTeamId: z.uuid().optional(),
   headers: z.record(z.string(), z.string()).optional(),
   env: z.record(z.string(), z.string()).optional(),
 });
@@ -62,7 +70,15 @@ export async function GET(
           { error: "MCP server not found" },
           { status: 404 },
         );
-      return NextResponse.json(toMcpServerForEdit(server));
+      return NextResponse.json({
+        ...toMcpServerForEdit(server),
+        access: await getResourceAccessSelection({
+          resourceType: "mcp_server",
+          resourceId: server.id,
+          visibility: server.visibility,
+          isGlobal: server.isGlobal,
+        }),
+      });
     },
     { logLabel: "Failed to get MCP server" },
   );
@@ -94,6 +110,16 @@ export async function PATCH(
         session,
         parsed.data.workspaceId,
       );
+      if (parsed.data.accessScope) {
+        await validateResourceAccessSelection({
+          userId: session.user.id,
+          workspaceId: parsed.data.workspaceId,
+          selection: {
+            scope: parsed.data.accessScope,
+            teamId: parsed.data.accessTeamId,
+          },
+        });
+      }
       if (parsed.data.isGlobal && !canManageGlobal) {
         return NextResponse.json(
           { error: "Only admins can make MCP servers global" },

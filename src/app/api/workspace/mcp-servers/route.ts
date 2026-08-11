@@ -5,6 +5,7 @@ import {
   requireWorkspacePermissionAsync,
 } from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
+import { validateResourceAccessSelection } from "@/modules/iam/resource-access-scope";
 import { withResourceProvenance } from "@/modules/iam/resource-provenance";
 import {
   createMcpServerWithDiscovery,
@@ -24,6 +25,10 @@ const createSchema = z.object({
   url: z.url().optional(),
   requireApproval: z.boolean().optional(),
   isGlobal: z.boolean().optional(),
+  accessScope: z
+    .enum(["private", "project", "organization", "team"])
+    .optional(),
+  accessTeamId: z.uuid().optional(),
   headers: z.record(z.string(), z.string()).optional(),
   env: z.record(z.string(), z.string()).optional(),
 });
@@ -92,16 +97,33 @@ export async function POST(req: NextRequest) {
         session,
         parsed.data.workspaceId,
       );
+      if (parsed.data.accessScope) {
+        await validateResourceAccessSelection({
+          userId: session.user.id,
+          workspaceId: parsed.data.workspaceId,
+          selection: {
+            scope: parsed.data.accessScope,
+            teamId: parsed.data.accessTeamId,
+          },
+        });
+      }
       if (parsed.data.isGlobal && !canManageGlobal) {
         return NextResponse.json(
           { error: "Only admins can make MCP servers global" },
           { status: 403 },
         );
       }
+      const accessSelection = {
+        accessScope: parsed.data.accessScope,
+        accessTeamId: parsed.data.accessTeamId,
+      };
       const { server, discovery } = await createMcpServerWithDiscovery(
         {
           ...parsed.data,
-          isGlobal: parsed.data.isGlobal && canManageGlobal,
+          ...accessSelection,
+          isGlobal: parsed.data.accessScope
+            ? ["project", "organization"].includes(parsed.data.accessScope)
+            : parsed.data.isGlobal && canManageGlobal,
           userId: session.user.id,
         },
         canManageGlobal,

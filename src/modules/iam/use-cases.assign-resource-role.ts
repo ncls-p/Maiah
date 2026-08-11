@@ -10,6 +10,7 @@ import {
   roles,
   teamMembers,
 } from "@/server/infrastructure/db/schema";
+import { listResourceShareTargets } from "./resource-sharing";
 import {
   AssignmentPrincipalType,
   getWorkspaceScope,
@@ -28,21 +29,37 @@ export async function assignResourceRole(input: {
   roleId: string;
   resourceType: AccessResourceType;
   resourceId: string;
+  includeDependencies?: boolean;
 }) {
+  return assignResourceRoleToPrincipals({
+    ...input,
+    principalIds: [input.principalId],
+  });
+}
+
+export async function assignResourceRoleToPrincipals(input: {
+  actorUserId: string;
+  workspaceId: string;
+  principalType: AssignmentPrincipalType;
+  principalIds: string[];
+  roleId: string;
+  resourceType: AccessResourceType;
+  resourceId: string;
+  includeDependencies?: boolean;
+}) {
+  const principalIds = [...new Set(input.principalIds)];
+  if (principalIds.length === 0) {
+    throw new IamOperationError("Select at least one member or team");
+  }
+
   const { organization } = await getWorkspaceScope(input.workspaceId);
-  const resource = await findAccessResource(
-    input.resourceType,
-    input.resourceId,
-  );
+  const [resource, role] = await Promise.all([
+    findAccessResource(input.resourceType, input.resourceId),
+    db.select().from(roles).where(eq(roles.id, input.roleId)).limit(1),
+  ]).then(([foundResource, roleRows]) => [foundResource, roleRows[0]] as const);
   if (!resource || resource.workspaceId !== input.workspaceId) {
     throw new IamOperationError("Resource not found in this project", 404);
   }
-
-  const [role] = await db
-    .select()
-    .from(roles)
-    .where(eq(roles.id, input.roleId))
-    .limit(1);
   if (
     !role ||
     role.scopeType !== "workspace" ||
@@ -70,45 +87,109 @@ export async function assignResourceRole(input: {
     resourceId: input.workspaceId,
     permissions: rolePermissions(role),
   });
+
+  const validPrincipals = await Promise.all(
+    principalIds.map((principalId) =>
+      validateAssignmentPrincipal({
+        organizationId: organization.id,
+        principalType: input.principalType,
+        principalId,
+      }),
+    ),
+  );
+  if (validPrincipals.some((valid) => !valid)) {
+    throw new IamOperationError(
+      "A selected member or team is outside this organization",
+    );
+  }
+
+  const targets = await listResourceShareTargets({
+    resourceType: input.resourceType,
+    resourceId: input.resourceId,
+    includeDependencies: input.includeDependencies,
+  });
+  let dependencyRole = role;
+  if (targets.length > 1) {
+    const [viewerRole] = await db
+      .select()
+      .from(roles)
+      .where(eq(roles.name, "workspace.viewer"))
+      .limit(1);
+    if (
+      !viewerRole ||
+      !viewerRole.isSystem ||
+      viewerRole.scopeType !== "workspace"
+    ) {
+      throw new IamOperationError(
+        "The project viewer role required for dependency sharing is missing",
+        409,
+      );
+    }
+    await requireDelegablePermissions({
+      actorUserId: input.actorUserId,
+      resourceType: "workspace",
+      resourceId: input.workspaceId,
+      permissions: rolePermissions(viewerRole),
+    });
+    dependencyRole = viewerRole;
+  }
+
+  const targetScopes = await Promise.all(
+    targets.map(async (target) => ({
+      target,
+      resource: await findAccessResource(target.type, target.id),
+    })),
+  );
   if (
-    !(await validateAssignmentPrincipal({
-      organizationId: organization.id,
-      principalType: input.principalType,
-      principalId: input.principalId,
-    }))
+    targetScopes.some(
+      ({ resource: targetResource }) =>
+        !targetResource || targetResource.workspaceId !== input.workspaceId,
+    )
   ) {
     throw new IamOperationError(
-      "The selected member or team is outside this organization",
+      "A resource dependency is outside this project",
+      409,
     );
   }
 
   await db
     .insert(roleBindings)
-    .values({
-      principalType: input.principalType,
-      principalId: input.principalId,
-      roleId: role.id,
-      resourceType: input.resourceType,
-      resourceId: input.resourceId,
-      createdById: input.actorUserId,
-    })
+    .values(
+      principalIds.flatMap((principalId) =>
+        targets.map((target) => ({
+          principalType: input.principalType,
+          principalId,
+          roleId:
+            target.type === input.resourceType && target.id === input.resourceId
+              ? role.id
+              : dependencyRole.id,
+          resourceType: target.type,
+          resourceId: target.id,
+          createdById: input.actorUserId,
+        })),
+      ),
+    )
     .onConflictDoNothing();
 
   const affectedUserIds =
     input.principalType === "user"
-      ? [input.principalId]
+      ? principalIds
       : (
-          await db
-            .select({ userId: teamMembers.userId })
-            .from(teamMembers)
-            .where(eq(teamMembers.teamId, input.principalId))
-        ).map(({ userId }) => userId);
+          await Promise.all(
+            principalIds.map((teamId) =>
+              db
+                .select({ userId: teamMembers.userId })
+                .from(teamMembers)
+                .where(eq(teamMembers.teamId, teamId)),
+            ),
+          )
+        )
+          .flat()
+          .map(({ userId }) => userId);
   await Promise.all(
-    affectedUserIds.map((userId) =>
-      authorization.invalidatePermissionCache(
-        userId,
-        input.resourceType,
-        input.resourceId,
+    [...new Set(affectedUserIds)].flatMap((userId) =>
+      targets.map((target) =>
+        authorization.invalidatePermissionCache(userId, target.type, target.id),
       ),
     ),
   );
@@ -123,8 +204,13 @@ export async function assignResourceRole(input: {
     outcome: "success",
     metadata: {
       roleId: role.id,
+      dependencyRoleId: targets.length > 1 ? dependencyRole.id : undefined,
       principalType: input.principalType,
-      principalId: input.principalId,
+      principalIds,
+      includeDependencies: Boolean(input.includeDependencies),
+      sharedResourceCount: targets.length,
     },
   });
+
+  return { principalCount: principalIds.length, resourceCount: targets.length };
 }

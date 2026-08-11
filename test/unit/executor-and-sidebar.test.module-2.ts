@@ -21,6 +21,7 @@ describe("mcp/executor", async () => {
     enabled: true,
     requireApproval: false,
     isGlobal: false,
+    visibility: "private",
     healthStatus: "healthy",
     lastCheckedAt: null,
     createdById: "user-1",

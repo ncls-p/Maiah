@@ -36,6 +36,9 @@ export const knowledgeBases = pgTable(
     description: text("description"),
     ragConfigJson: jsonb("rag_config_json"),
     isGlobal: boolean("is_global").notNull().default(false),
+    visibility: varchar("visibility", { length: 32 })
+      .notNull()
+      .default("private"),
     createdById: uuid(CREATED_BY_USER_ID_COLUMN)
       .notNull()
       .references(() => users.id),

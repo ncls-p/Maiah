@@ -1,8 +1,8 @@
 import { Loader2, PlusIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { ResourceAccessScopePicker } from "@/components/agent-access-scope-picker";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
+import type { ResourceAccessOptions } from "@/modules/iam/resource-access-scope";
 import { emptyForm, type McpServerForm } from "./form";
 import { AdvancedSection, AuthSection } from "./form-sections";
 
@@ -23,6 +24,7 @@ export type ServerDialogProps = {
   form: McpServerForm;
   setForm: (form: McpServerForm) => void;
   canManageGlobal?: boolean;
+  resourceAccessOptions?: ResourceAccessOptions | null;
 };
 
 export function CreateServerDialog({
@@ -30,7 +32,7 @@ export function CreateServerDialog({
   busy,
   form,
   setForm,
-  canManageGlobal,
+  resourceAccessOptions,
   showAdvanced,
   onAdvancedChange,
   onOpenChange,
@@ -62,8 +64,13 @@ export function CreateServerDialog({
           <DialogDescription>{t("addDescription")}</DialogDescription>
         </DialogHeader>
         <ServerFormFields form={form} setForm={setForm} />
-        {canManageGlobal ? (
-          <GlobalScopeField form={form} setForm={setForm} prefix="mcp-create" />
+        {resourceAccessOptions ? (
+          <GlobalScopeField
+            form={form}
+            setForm={setForm}
+            resourceAccessOptions={resourceAccessOptions}
+            prefix="mcp-create"
+          />
         ) : null}
         <AuthSection
           form={form}
@@ -125,25 +132,23 @@ function ServerFormFields({ form, setForm }: Omit<ServerDialogProps, "busy">) {
 export function GlobalScopeField({
   form,
   setForm,
-  prefix,
+  resourceAccessOptions,
 }: Omit<ServerDialogProps, "busy"> & { prefix: string }) {
-  const t = useTranslations("mcp.serverManager");
+  if (!resourceAccessOptions) return null;
   return (
-    <div className="flex items-start gap-3 rounded-lg border border-border/70 bg-muted/20 p-3">
-      <Checkbox
-        id={`${prefix}-global`}
-        checked={form.isGlobal}
-        onCheckedChange={(checked) =>
-          setForm({ ...form, isGlobal: checked === true })
-        }
-      />
-      <div className="grid gap-1.5 leading-none">
-        <Label htmlFor={`${prefix}-global`}>{t("globalLabel")}</Label>
-        <p className="text-xs text-muted-foreground">
-          {t("globalDescription")}
-        </p>
-      </div>
-    </div>
+    <ResourceAccessScopePicker
+      value={form.accessScope}
+      teamId={form.accessTeamId}
+      options={resourceAccessOptions}
+      copyNamespace="resourceAccessScope"
+      onChangeAction={(accessScope, accessTeamId) =>
+        setForm({
+          ...form,
+          accessScope,
+          accessTeamId: accessTeamId ?? "",
+        })
+      }
+    />
   );
 }
 

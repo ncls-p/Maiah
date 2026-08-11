@@ -3,6 +3,7 @@ import {
   requireWorkspacePermissionAsync,
 } from "@/lib/route-handler";
 import { isPermissionAllowedByRequestScope } from "@/modules/auth/workspace-access";
+import { getResourceAccessOptions } from "@/modules/iam/resource-access-scope";
 import {
   authorization,
   matchesPermission,
@@ -57,11 +58,14 @@ export async function GET(req: NextRequest) {
       );
       if (forbidden) return forbidden;
 
-      const permissions = await authorization.listPermissions(
-        { principalType: "user", principalId: session.user.id },
-        "workspace",
-        workspaceId,
-      );
+      const [permissions, resourceAccessOptions] = await Promise.all([
+        authorization.listPermissions(
+          { principalType: "user", principalId: session.user.id },
+          "workspace",
+          workspaceId,
+        ),
+        getResourceAccessOptions(session.user.id, workspaceId),
+      ]);
       const results = permissionNames.map(
         (name) =>
           isPermissionAllowedByRequestScope(workspaceId, name) &&
@@ -113,6 +117,7 @@ export async function GET(req: NextRequest) {
           canManageTeams ||
           canCreateProjects,
         canViewWorkflows,
+        resourceAccessOptions,
       });
     },
     { logLabel: "Failed to read workspace permissions" },

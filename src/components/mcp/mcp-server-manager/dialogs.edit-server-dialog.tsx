@@ -80,7 +80,7 @@ export function EditServerDialog({
   server,
   busy,
   loading,
-  canManageGlobal,
+  resourceAccessOptions,
   form,
   setForm,
   showAdvanced,
@@ -140,10 +140,11 @@ export function EditServerDialog({
               prefix="mcp-edit"
               showTransportSelector
             />
-            {canManageGlobal ? (
+            {resourceAccessOptions ? (
               <GlobalScopeField
                 form={form}
                 setForm={setForm}
+                resourceAccessOptions={resourceAccessOptions}
                 prefix="mcp-edit"
               />
             ) : null}

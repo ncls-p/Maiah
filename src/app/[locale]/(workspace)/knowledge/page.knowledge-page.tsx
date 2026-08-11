@@ -3,6 +3,10 @@
 import { PageLoading } from "@/components/page-loading";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { fetchWorkspacePermissions } from "@/lib/api-client";
+import type {
+  ResourceAccessOptions,
+  ResourceAccessScope,
+} from "@/modules/iam/resource-access-scope";
 import {
   DEFAULT_RAG_CONFIG,
   type RagConfig,
@@ -43,6 +47,8 @@ export function useKnowledgePageController() {
     name: "",
     description: "",
     isGlobal: false,
+    accessScope: "private" as ResourceAccessScope,
+    accessTeamId: "",
     customizeRag: false,
     ragConfig: cloneRagConfig(DEFAULT_RAG_CONFIG),
   });
@@ -61,6 +67,8 @@ export function useKnowledgePageController() {
     customizeRag: false,
     ragConfig: null as RagConfig | null,
   });
+  const [resourceAccessOptions, setResourceAccessOptions] =
+    useState<ResourceAccessOptions | null>(null);
   const [canManageKnowledgeBases, setCanManageKnowledgeBases] = useState(false);
   const [canManageModels, setCanManageModels] = useState(false);
   const [canManageTenantGlobals, setCanManageTenantGlobals] = useState(false);
@@ -180,6 +188,7 @@ export function useKnowledgePageController() {
           setCanManageKnowledgeBases(permissions.canManageKnowledgeBases);
           setCanManageTenantGlobals(permissions.canManageTenantGlobals);
           setCanManageModels(permissions.canManageModels);
+          setResourceAccessOptions(permissions.resourceAccessOptions ?? null);
         }
         await Promise.all([loadBases(), loadDefaultRagConfig()]);
       } catch {
@@ -280,7 +289,9 @@ export function useKnowledgePageController() {
           workspaceId,
           name: baseForm.name.trim(),
           description: baseForm.description.trim() || undefined,
-          isGlobal: canManageTenantGlobals ? baseForm.isGlobal : undefined,
+          accessScope: baseForm.accessScope,
+          accessTeamId:
+            baseForm.accessScope === "team" ? baseForm.accessTeamId : undefined,
           ragConfig: baseForm.customizeRag ? baseForm.ragConfig : undefined,
         }),
       });
@@ -290,6 +301,8 @@ export function useKnowledgePageController() {
         name: "",
         description: "",
         isGlobal: false,
+        accessScope: "private",
+        accessTeamId: "",
         customizeRag: false,
         ragConfig: cloneRagConfig(defaultRagConfig),
       });
@@ -435,6 +448,7 @@ export function useKnowledgePageController() {
     previewLoading,
     query,
     ragModels,
+    resourceAccessOptions,
     results,
     retryDocument,
     safeDocumentPage,

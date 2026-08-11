@@ -1,4 +1,5 @@
 import type { ResourceProvenance } from "@/components/resource-provenance-badge";
+import type { ResourceAccessSelection } from "@/modules/iam/resource-access-scope";
 
 type McpAuthHintMode = "none" | "bearer" | "api-key" | "env" | "custom";
 
@@ -20,11 +21,13 @@ export interface McpServer {
   enabled: boolean;
   requireApproval: boolean;
   isGlobal: boolean;
+  visibility?: string;
   canEdit: boolean;
   argsJson?: string[] | null;
   hasHeaders: boolean;
   hasEnv: boolean;
   authHint?: McpAuthHint;
+  access?: ResourceAccessSelection;
   discovery?: {
     status: "healthy" | "unhealthy" | "manual";
     discovered: number;

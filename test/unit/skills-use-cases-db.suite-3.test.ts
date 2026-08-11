@@ -9,11 +9,13 @@ vi.mock("@/lib/logger", () => ({
 }));
 
 const authorizationMocks = vi.hoisted(() => ({
-  hasPermission: vi.fn().mockResolvedValue(false),
+  hasDirectPermission: vi.fn().mockResolvedValue(false),
 }));
 
 vi.mock("@/server/domain/services/authorization", () => ({
-  authorization: { hasPermission: authorizationMocks.hasPermission },
+  authorization: {
+    hasDirectPermission: authorizationMocks.hasDirectPermission,
+  },
 }));
 
 type Chain = {
@@ -110,7 +112,7 @@ function resetDb() {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  authorizationMocks.hasPermission.mockResolvedValue(false);
+  authorizationMocks.hasDirectPermission.mockResolvedValue(false);
   resetDb();
 });
 

@@ -23,6 +23,7 @@ const baseServer = {
   encryptedEnvJson: null,
   enabled: true,
   isGlobal: false,
+  visibility: "private",
   requireApproval: false,
   healthStatus: "healthy",
   lastCheckedAt: null,

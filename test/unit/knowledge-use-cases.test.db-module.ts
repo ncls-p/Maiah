@@ -5,6 +5,7 @@ import {
   getKnowledgeBase,
   listKnowledgeBases,
 } from "@/modules/knowledge/use-cases";
+import { authorization } from "@/server/domain/services/authorization";
 import * as _dbModule from "@/server/infrastructure/db";
 
 // ─── Mocks ────────────────────────────────────────────────────────────
@@ -189,6 +190,35 @@ describe("listKnowledgeBases", () => {
 
     const result = await listKnowledgeBases("ws-1");
     expect(result).toHaveLength(0);
+  });
+
+  it("hides another member's private data source without a direct share", async () => {
+    dbModule._c.orderBy.mockResolvedValueOnce([{ ...fakeKb, isGlobal: false }]);
+    const directPermission = vi
+      .spyOn(authorization, "hasDirectPermission")
+      .mockResolvedValueOnce(false);
+
+    const result = await listKnowledgeBases("ws-1", "user-2");
+
+    expect(result).toEqual([]);
+    expect(directPermission).toHaveBeenCalledWith(
+      { principalType: "user", principalId: "user-2" },
+      "knowledgeBases.viewAllowed",
+      "knowledge_base",
+      "kb-1",
+    );
+  });
+
+  it("shows a private data source to a directly shared recipient", async () => {
+    dbModule._c.orderBy.mockResolvedValueOnce([{ ...fakeKb, isGlobal: false }]);
+    vi.spyOn(authorization, "hasDirectPermission")
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(false);
+
+    const result = await listKnowledgeBases("ws-1", "user-2");
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.canEdit).toBe(false);
   });
 });
 

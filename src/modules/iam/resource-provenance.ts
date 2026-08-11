@@ -16,6 +16,7 @@ export type ResourceProvenance = {
 type OwnedResource = {
   createdById: string;
   isGlobal?: boolean;
+  visibility?: string | null;
 };
 
 type ProvenanceContext = {
@@ -31,7 +32,14 @@ export function buildResourceProvenance(
 ): ResourceProvenance {
   const ownerName =
     context.ownerNames.get(resource.createdById) ?? "Unknown user";
-  if (resource.isGlobal) {
+  if (resource.visibility === "workspace") {
+    return {
+      scope: "workspace",
+      scopeName: context.workspaceName,
+      ownerName,
+    };
+  }
+  if (resource.visibility === "organization" || resource.isGlobal) {
     return {
       scope: "organization",
       scopeName: context.organizationName,

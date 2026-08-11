@@ -1,4 +1,5 @@
 import { logger } from "@/lib/logger";
+import { applyResourceAccessSelection } from "@/modules/iam/resource-access-scope";
 import { audit } from "@/server/domain/services/audit";
 import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
@@ -30,10 +31,25 @@ export async function createMcpServer(input: CreateMcpServerInput) {
       enabled: true,
       requireApproval: input.requireApproval ?? false,
       isGlobal: input.isGlobal ?? false,
+      visibility:
+        input.accessScope === "project"
+          ? "workspace"
+          : input.accessScope === "organization"
+            ? "organization"
+            : "private",
       healthStatus: "unknown",
       createdById: input.userId,
     })
     .returning();
+
+  if (input.accessScope) {
+    await applyResourceAccessSelection({
+      resourceType: "mcp_server",
+      resourceId: server.id,
+      userId: input.userId,
+      selection: { scope: input.accessScope, teamId: input.accessTeamId },
+    });
+  }
 
   await audit.emit({
     workspaceId: input.workspaceId,
@@ -78,20 +94,22 @@ export async function listMcpServers(
             const visible =
               server.createdById === userId ||
               server.isGlobal ||
-              (await authorization.hasPermission(
+              (await authorization.hasDirectPermission(
                 { principalType: "user", principalId: userId },
                 "mcpServers.get",
                 "mcp_server",
                 server.id,
+                workspaceId,
               ));
             if (!visible) return null;
             const canEdit =
               canManageMcpServer(server, userId, canManageGlobal) ||
-              (await authorization.hasPermission(
+              (await authorization.hasDirectPermission(
                 { principalType: "user", principalId: userId },
                 "mcpServers.manage",
                 "mcp_server",
                 server.id,
+                workspaceId,
               ));
             return { ...toSafeMcpServer(server), canEdit };
           }),
@@ -122,11 +140,12 @@ export async function getMcpServer(
     userId &&
     server.createdById !== userId &&
     !server.isGlobal &&
-    !(await authorization.hasPermission(
+    !(await authorization.hasDirectPermission(
       { principalType: "user", principalId: userId },
       "mcpServers.get",
       "mcp_server",
       server.id,
+      workspaceId,
     ))
   ) {
     return null;

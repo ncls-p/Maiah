@@ -48,7 +48,7 @@ export function ResourceAccessPanelSection4({
     setDeletingResource,
     setDetails,
     setNextResourceOffset,
-    setPrincipalId,
+    setPrincipalIds,
     setQuery,
     setResourceType,
     setResources,
@@ -158,7 +158,7 @@ export function ResourceAccessPanelSection4({
                         onClick={() => {
                           setSelected(resource);
                           setDetails(null);
-                          setPrincipalId("");
+                          setPrincipalIds([]);
                           setRoleId("");
                           setAssignmentQuery("");
                           void loadDetails(resource);

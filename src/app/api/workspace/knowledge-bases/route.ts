@@ -6,6 +6,10 @@ import {
 } from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
 import { hasWorkspacePermissionForRequest } from "@/modules/auth/workspace-access";
+import {
+  validateResourceAccessSelection,
+  type ResourceAccessScope,
+} from "@/modules/iam/resource-access-scope";
 import { withResourceProvenance } from "@/modules/iam/resource-provenance";
 import { ragConfigSchema } from "@/modules/knowledge/rag-config";
 import {
@@ -22,6 +26,10 @@ const createSchema = z.object({
   name: z.string().min(1).max(255),
   description: z.string().max(2048).optional(),
   isGlobal: z.boolean().optional(),
+  accessScope: z
+    .enum(["private", "project", "organization", "team"])
+    .optional(),
+  accessTeamId: z.uuid().optional(),
   ragConfig: ragConfigSchema.optional(),
 });
 
@@ -94,15 +102,32 @@ export async function POST(req: NextRequest) {
         parsed.data.workspaceId,
         "models.manage",
       );
+      if (parsed.data.accessScope) {
+        await validateResourceAccessSelection({
+          userId: session.user.id,
+          workspaceId: parsed.data.workspaceId,
+          selection: {
+            scope: parsed.data.accessScope as ResourceAccessScope,
+            teamId: parsed.data.accessTeamId,
+          },
+        });
+      }
       if (parsed.data.isGlobal && !canManageGlobal) {
         return NextResponse.json(
           { error: "Only admins can make knowledge bases global" },
           { status: 403 },
         );
       }
+      const accessSelection = {
+        accessScope: parsed.data.accessScope,
+        accessTeamId: parsed.data.accessTeamId,
+      };
       const knowledgeBase = await createKnowledgeBase({
         ...parsed.data,
-        isGlobal: parsed.data.isGlobal && canManageGlobal,
+        ...accessSelection,
+        isGlobal: parsed.data.accessScope
+          ? ["project", "organization"].includes(parsed.data.accessScope)
+          : parsed.data.isGlobal && canManageGlobal,
         canManageModels,
         userId: session.user.id,
       });

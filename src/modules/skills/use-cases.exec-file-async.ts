@@ -78,7 +78,7 @@ export async function canViewSkill(
   return (
     skill.createdById === userId ||
     skill.isGlobal ||
-    authorization.hasPermission(
+    authorization.hasDirectPermission(
       { principalType: "user", principalId: userId },
       "tools.view",
       "skill",
@@ -94,7 +94,7 @@ export async function assertCanManageSkill(
 ) {
   if (
     !canManageSkill(skill, userId, canManageGlobal) &&
-    !(await authorization.hasPermission(
+    !(await authorization.hasDirectPermission(
       { principalType: "user", principalId: userId },
       "tools.configure",
       "skill",

@@ -11,6 +11,7 @@ import {
   CreateToolConnectionInput,
   UpdateToolConnectionInput,
   canManageConnection,
+  canViewConnection,
   encryptRecord,
 } from "./use-cases.mcp-tool-source";
 
@@ -86,7 +87,7 @@ export async function listToolConnections(
     .orderBy(desc(toolConnections.isDefault), desc(toolConnections.createdAt));
   const visibleConnections = await Promise.all(
     connections.map(async (connection) =>
-      (await canManageConnection(
+      (await canViewConnection(
         connection,
         userId,
         canManageWorkspaceConnections,

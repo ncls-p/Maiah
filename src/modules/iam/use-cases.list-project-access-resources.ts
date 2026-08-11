@@ -24,13 +24,13 @@ export async function listProjectAccessResources(input: {
 }) {
   const access = await authorization.checkPermission(
     { principalType: "user", principalId: input.userId },
-    "workspaces.get",
+    "roles.manage",
     "workspace",
     input.workspaceId,
   );
   if (!access.granted) {
     throw new IamOperationError(
-      "You cannot view resources in this project",
+      "You cannot manage resource access in this project",
       403,
     );
   }

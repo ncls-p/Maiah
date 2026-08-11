@@ -2,6 +2,7 @@ import { PlusIcon, SearchIcon, Trash2Icon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -32,8 +33,9 @@ export function ResourceAccessPanelSection2({
     detailsLoading,
     filteredGroupedAssignments,
     filteredPrincipals,
+    includeDependencies,
     pending,
-    principalId,
+    principalIds,
     principalQuery,
     principalType,
     removeResourceAssignment,
@@ -41,7 +43,8 @@ export function ResourceAccessPanelSection2({
     selected,
     setAssignmentQuery,
     setDetails,
-    setPrincipalId,
+    setIncludeDependencies,
+    setPrincipalIds,
     setPrincipalQuery,
     setPrincipalType,
     setRoleId,
@@ -89,7 +92,7 @@ export function ResourceAccessPanelSection2({
                     value={principalType}
                     onValueChange={(value) => {
                       setPrincipalType(value as "user" | "group");
-                      setPrincipalId("");
+                      setPrincipalIds([]);
                     }}
                   >
                     <SelectTrigger
@@ -115,25 +118,43 @@ export function ResourceAccessPanelSection2({
                     aria-label={t("searchPrincipal")}
                     className="mb-2"
                   />
-                  <Select value={principalId} onValueChange={setPrincipalId}>
-                    <SelectTrigger id="resource-principal" className="w-full">
-                      <SelectValue placeholder={t("choose")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {filteredPrincipals.map((principal) => (
-                        <SelectItem
+                  <div
+                    id="resource-principal"
+                    className="max-h-40 space-y-1 overflow-y-auto rounded-md border p-2"
+                  >
+                    {filteredPrincipals.map((principal) => {
+                      const id =
+                        "userId" in principal ? principal.userId : principal.id;
+                      return (
+                        <label
                           key={principal.id}
-                          value={
-                            "userId" in principal
-                              ? principal.userId
-                              : principal.id
-                          }
+                          className="flex cursor-pointer items-start gap-2 rounded-sm px-2 py-1.5 hover:bg-muted"
                         >
-                          {principal.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                          <Checkbox
+                            aria-label={principal.name}
+                            checked={principalIds.includes(id)}
+                            onCheckedChange={(checked) =>
+                              setPrincipalIds((current) =>
+                                checked
+                                  ? [...new Set([...current, id])]
+                                  : current.filter((value) => value !== id),
+                              )
+                            }
+                          />
+                          <span className="min-w-0 text-sm">
+                            <span className="block truncate font-medium">
+                              {principal.name}
+                            </span>
+                            {"email" in principal ? (
+                              <span className="block truncate text-muted-foreground">
+                                {principal.email}
+                              </span>
+                            ) : null}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
                 </Field>
                 <Field>
                   <FieldLabel htmlFor="resource-role">{t("role")}</FieldLabel>
@@ -150,10 +171,31 @@ export function ResourceAccessPanelSection2({
                     </SelectContent>
                   </Select>
                 </Field>
+                {selected?.type === "agent" ? (
+                  <label className="flex items-start gap-2 md:col-span-3">
+                    <Checkbox
+                      aria-label={t("shareAgentDependencies")}
+                      checked={includeDependencies}
+                      onCheckedChange={(checked) =>
+                        setIncludeDependencies(Boolean(checked))
+                      }
+                    />
+                    <span className="text-sm">
+                      <span className="block font-medium">
+                        {t("shareAgentDependencies")}
+                      </span>
+                      <span className="block text-muted-foreground">
+                        {t("shareAgentDependenciesDescription")}
+                      </span>
+                    </span>
+                  </label>
+                ) : null}
                 <Button
                   className="md:col-span-3 md:justify-self-end"
                   type="submit"
-                  disabled={!principalId || !roleId || pending === "assign"}
+                  disabled={
+                    principalIds.length === 0 || !roleId || pending === "assign"
+                  }
                 >
                   {pending === "assign" ? (
                     <Spinner data-icon="inline-start" />

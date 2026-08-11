@@ -5,7 +5,6 @@ import {
   toolConnectors,
   userToolSettings,
 } from "@/server/infrastructure/db/schema";
-import { and, eq, isNull, or } from "drizzle-orm";
 
 export const MCP_TOOL_SOURCE = "mcp";
 export const CONTEXT_HEADER = "x-maiah-tool-context";
@@ -129,23 +128,6 @@ export async function decryptRecord(encrypted?: unknown) {
   return decrypted;
 }
 
-export function visibleConnectorCondition(
-  workspaceId: string,
-  userId: string,
-  canManageGlobal = false,
-) {
-  return and(
-    eq(toolConnectors.workspaceId, workspaceId),
-    isNull(toolConnectors.archivedAt),
-    canManageGlobal
-      ? undefined
-      : or(
-          eq(toolConnectors.createdById, userId),
-          eq(toolConnectors.isGlobal, true),
-        ),
-  );
-}
-
 export async function canManageConnection(
   connection: ToolConnection,
   userId: string,
@@ -157,10 +139,32 @@ export async function canManageConnection(
   ) {
     return true;
   }
-  return authorization.hasPermission(
+  return authorization.hasDirectPermission(
     { principalType: "user", principalId: userId },
     "tools.configure",
     "tool_connection",
     connection.id,
+    connection.workspaceId,
+  );
+}
+
+export async function canViewConnection(
+  connection: ToolConnection,
+  userId: string,
+  canManageWorkspaceConnections = false,
+) {
+  return (
+    (await canManageConnection(
+      connection,
+      userId,
+      canManageWorkspaceConnections,
+    )) ||
+    authorization.hasDirectPermission(
+      { principalType: "user", principalId: userId },
+      "tools.view",
+      "tool_connection",
+      connection.id,
+      connection.workspaceId,
+    )
   );
 }

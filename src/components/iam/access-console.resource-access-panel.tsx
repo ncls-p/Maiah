@@ -48,8 +48,9 @@ export function useResourceAccessPanelController({
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
   const [principalType, setPrincipalType] = useState<"user" | "group">("user");
-  const [principalId, setPrincipalId] = useState("");
+  const [principalIds, setPrincipalIds] = useState<string[]>([]);
   const [roleId, setRoleId] = useState("");
+  const [includeDependencies, setIncludeDependencies] = useState(true);
   const [principalQuery, setPrincipalQuery] = useState("");
   const [assignmentQuery, setAssignmentQuery] = useState("");
   const [deletingResource, setDeletingResource] =
@@ -210,24 +211,25 @@ export function useResourceAccessPanelController({
 
   async function assignResourceRole(event: FormEvent) {
     event.preventDefault();
-    if (!selected || !principalId || !roleId) return;
+    if (!selected || principalIds.length === 0 || !roleId) return;
     setPending("assign");
     try {
       await fetchJson("/api/workspace/iam", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: "assignResourceRole",
+          action: "assignResourceRoleBulk",
           workspaceId,
           principalType,
-          principalId,
+          principalIds,
           roleId,
           resourceType: selected.type,
           resourceId: selected.id,
+          includeDependencies: selected.type === "agent" && includeDependencies,
         }),
       });
       toast.success(t("resourceAccessGranted"));
-      setPrincipalId("");
+      setPrincipalIds([]);
       setRoleId("");
       await loadDetails(selected);
     } catch (error) {
@@ -320,10 +322,11 @@ export function useResourceAccessPanelController({
     loadingResources,
     nextResourceOffset,
     openTransfer,
+    includeDependencies,
     organizationId,
     pending,
     previewTransfer,
-    principalId,
+    principalIds,
     principalQuery,
     principalType,
     query,
@@ -337,8 +340,9 @@ export function useResourceAccessPanelController({
     setDeletingResource,
     setDestinationQuery,
     setDetails,
+    setIncludeDependencies,
     setNextResourceOffset,
-    setPrincipalId,
+    setPrincipalIds,
     setPrincipalQuery,
     setPrincipalType,
     setQuery,

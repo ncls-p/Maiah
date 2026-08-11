@@ -45,6 +45,7 @@ export function McpServerManagerView({ model }: { model: Model }) {
     patchServer,
     patchTool,
     removeServer,
+    resourceAccessOptions,
     retryDiscovery,
     saveEdit,
     search,
@@ -187,6 +188,7 @@ export function McpServerManagerView({ model }: { model: Model }) {
         open={showCreate}
         busy={busy}
         canManageGlobal={canManageTenantGlobals}
+        resourceAccessOptions={resourceAccessOptions}
         form={form}
         setForm={setForm}
         showAdvanced={showAdvancedCreate}
@@ -198,6 +200,7 @@ export function McpServerManagerView({ model }: { model: Model }) {
         server={editServer}
         busy={busy}
         canManageGlobal={canManageTenantGlobals}
+        resourceAccessOptions={resourceAccessOptions}
         loading={editLoading}
         form={editForm}
         setForm={setEditForm}

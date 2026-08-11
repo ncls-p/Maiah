@@ -1,3 +1,4 @@
+import { applyResourceAccessSelection } from "@/modules/iam/resource-access-scope";
 import { listRemoteMcpTools } from "@/modules/mcp/client";
 import { audit } from "@/server/domain/services/audit";
 import { db } from "@/server/infrastructure/db";
@@ -24,6 +25,14 @@ export async function updateMcpServer(input: UpdateMcpServerInput) {
   }
 
   validateMcpServerUpdate(input, existing);
+  if (input.accessScope) {
+    await applyResourceAccessSelection({
+      resourceType: "mcp_server",
+      resourceId: input.serverId,
+      userId: input.userId,
+      selection: { scope: input.accessScope, teamId: input.accessTeamId },
+    });
+  }
   const updates = await buildMcpServerUpdates(input, existing);
 
   const [server] = await db

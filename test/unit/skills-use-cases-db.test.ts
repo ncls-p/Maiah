@@ -9,11 +9,13 @@ vi.mock("@/lib/logger", () => ({
 }));
 
 const authorizationMocks = vi.hoisted(() => ({
-  hasPermission: vi.fn().mockResolvedValue(false),
+  hasDirectPermission: vi.fn().mockResolvedValue(false),
 }));
 
 vi.mock("@/server/domain/services/authorization", () => ({
-  authorization: { hasPermission: authorizationMocks.hasPermission },
+  authorization: {
+    hasDirectPermission: authorizationMocks.hasDirectPermission,
+  },
 }));
 
 type Chain = {
@@ -112,7 +114,7 @@ function resetDb() {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  authorizationMocks.hasPermission.mockResolvedValue(false);
+  authorizationMocks.hasDirectPermission.mockResolvedValue(false);
   resetDb();
 });
 
@@ -156,7 +158,7 @@ describe("skill bindings", () => {
   });
 
   it("binds a skill shared through IAM", async () => {
-    authorizationMocks.hasPermission.mockResolvedValue(true);
+    authorizationMocks.hasDirectPermission.mockResolvedValue(true);
     dbModule._c.where.mockResolvedValueOnce([
       {
         id: "skill-shared",
@@ -170,7 +172,7 @@ describe("skill bindings", () => {
         userId: "existing-user",
       }),
     ).resolves.toBeUndefined();
-    expect(authorizationMocks.hasPermission).toHaveBeenCalledWith(
+    expect(authorizationMocks.hasDirectPermission).toHaveBeenCalledWith(
       { principalType: "user", principalId: "existing-user" },
       "tools.view",
       "skill",

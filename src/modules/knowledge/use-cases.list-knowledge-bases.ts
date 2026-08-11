@@ -64,11 +64,12 @@ export async function listKnowledgeBases(
         if (!visible) return null;
         const canEdit =
           canManageKnowledgeBase(knowledgeBase, userId, canManageGlobal) ||
-          (await authorization.hasPermission(
+          (await authorization.hasDirectPermission(
             { principalType: "user", principalId: userId },
             "knowledgeBases.manage",
             "knowledge_base",
             knowledgeBase.id,
+            workspaceId,
           ));
         return { ...withRagConfig(knowledgeBase), canEdit };
       }),
@@ -97,11 +98,12 @@ export async function getKnowledgeBase(
     userId &&
     knowledgeBase.createdById !== userId &&
     !knowledgeBase.isGlobal &&
-    !(await authorization.hasPermission(
+    !(await authorization.hasDirectPermission(
       { principalType: "user", principalId: userId },
       "knowledgeBases.viewAllowed",
       "knowledge_base",
       knowledgeBase.id,
+      workspaceId,
     ))
   ) {
     return null;
@@ -144,7 +146,10 @@ export async function updateKnowledgeBase(input: {
   if (input.name !== undefined) updates.name = input.name;
   if (input.description !== undefined)
     updates.description = input.description || null;
-  if (input.isGlobal !== undefined) updates.isGlobal = input.isGlobal;
+  if (input.isGlobal !== undefined) {
+    updates.isGlobal = input.isGlobal;
+    updates.visibility = input.isGlobal ? "organization" : "private";
+  }
   if (input.ragConfig !== undefined) {
     updates.ragConfigJson = input.ragConfig
       ? ragConfigSchema.parse(input.ragConfig)

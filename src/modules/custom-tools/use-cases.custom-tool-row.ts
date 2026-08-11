@@ -32,11 +32,12 @@ export async function canManageCustomTool(
   return (
     customTool.createdById === userId ||
     (customTool.isGlobal && canManageGlobal) ||
-    (await authorization.hasPermission(
+    (await authorization.hasDirectPermission(
       { principalType: "user", principalId: userId },
       "tools.configure",
       "custom_tool",
       customTool.id,
+      customTool.workspaceId,
     ))
   );
 }

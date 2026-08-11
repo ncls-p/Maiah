@@ -172,7 +172,7 @@ export function AgentsPageSection1({ model }: { model: AgentsPageViewModel }) {
             teamId={form.accessTeamId}
             options={accessOptions}
             disabled={creating}
-            onChange={(accessScope, accessTeamId) =>
+            onChangeAction={(accessScope, accessTeamId) =>
               setForm((current) => ({
                 ...current,
                 accessScope,

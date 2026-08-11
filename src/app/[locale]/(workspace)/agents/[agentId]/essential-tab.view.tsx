@@ -109,7 +109,7 @@ export function EssentialTabView({ model }: { model: EssentialTabViewModel }) {
             teamId={form.accessTeamId}
             options={accessOptions}
             disabled={readOnly}
-            onChange={(accessScope, accessTeamId) =>
+            onChangeAction={(accessScope, accessTeamId) =>
               setForm((current) => ({
                 ...current,
                 accessScope,

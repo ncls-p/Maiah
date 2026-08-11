@@ -42,11 +42,12 @@ export async function listAgentSkills(
           ...skill,
           canEdit:
             canManageSkill(skill, userId, canManageGlobal) ||
-            (await authorization.hasPermission(
+            (await authorization.hasDirectPermission(
               { principalType: "user", principalId: userId },
               "tools.configure",
               "skill",
               skill.id,
+              workspaceId,
             )),
         };
       }),

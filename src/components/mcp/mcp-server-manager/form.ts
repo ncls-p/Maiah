@@ -1,3 +1,4 @@
+import type { ResourceAccessScope } from "@/modules/iam/resource-access-scope";
 import type { McpAuthHint, SimpleAuthMode } from "./types";
 
 export const emptyForm = {
@@ -14,6 +15,8 @@ export const emptyForm = {
   envKeyValue: "",
   requireApproval: false,
   isGlobal: false,
+  accessScope: "private" as ResourceAccessScope,
+  accessTeamId: "",
   headers: "",
   env: "",
 };
@@ -98,6 +101,8 @@ export function serverFormFromServer(
     argsJson?: string[] | null;
     requireApproval: boolean;
     isGlobal?: boolean;
+    visibility?: string;
+    access?: { scope: ResourceAccessScope; teamId?: string | null };
   },
   authHint?: McpAuthHint,
 ): McpServerForm {
@@ -115,6 +120,14 @@ export function serverFormFromServer(
     envKeyValue: "",
     requireApproval: server.requireApproval,
     isGlobal: server.isGlobal ?? false,
+    accessScope:
+      server.access?.scope ??
+      (server.visibility === "organization"
+        ? "organization"
+        : server.visibility === "workspace" || server.isGlobal
+          ? "project"
+          : "private"),
+    accessTeamId: server.access?.teamId ?? "",
     headers: "",
     env: "",
   };

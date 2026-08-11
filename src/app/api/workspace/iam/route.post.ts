@@ -11,6 +11,7 @@ import {
   addOrganizationMember,
   addTeamMember,
   assignResourceRole,
+  assignResourceRoleToPrincipals,
   assignRole,
   createCustomRole,
   createOrganizationWithProject,
@@ -178,6 +179,19 @@ export async function POST(req: NextRequest) {
             roleId: input.roleId,
             resourceType: input.resourceType,
             resourceId: input.resourceId,
+            includeDependencies: input.includeDependencies,
+          });
+          break;
+        case "assignResourceRoleBulk":
+          await assignResourceRoleToPrincipals({
+            actorUserId: session.user.id,
+            workspaceId: input.workspaceId,
+            principalType: input.principalType,
+            principalIds: input.principalIds,
+            roleId: input.roleId,
+            resourceType: input.resourceType,
+            resourceId: input.resourceId,
+            includeDependencies: input.includeDependencies,
           });
           break;
         case "removeAssignment":

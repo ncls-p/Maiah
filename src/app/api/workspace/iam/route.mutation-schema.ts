@@ -112,6 +112,17 @@ export const mutationSchema = z.discriminatedUnion("action", [
     roleId: z.uuid(),
     resourceType: z.enum(ACCESS_RESOURCE_TYPES),
     resourceId: z.uuid(),
+    includeDependencies: z.boolean().optional(),
+  }),
+  z.object({
+    action: z.literal("assignResourceRoleBulk"),
+    workspaceId: z.uuid(),
+    principalType: z.enum(["user", "group"]),
+    principalIds: z.array(z.uuid()).min(1).max(100),
+    roleId: z.uuid(),
+    resourceType: z.enum(ACCESS_RESOURCE_TYPES),
+    resourceId: z.uuid(),
+    includeDependencies: z.boolean().optional(),
   }),
   z.object({
     action: z.literal("removeAssignment"),

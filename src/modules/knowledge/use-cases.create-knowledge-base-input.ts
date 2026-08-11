@@ -4,6 +4,10 @@ import {
   parseRagConfig,
   type RagConfig,
 } from "@/modules/knowledge/rag-config";
+import {
+  applyResourceAccessSelection,
+  type ResourceAccessScope,
+} from "@/modules/iam/resource-access-scope";
 import { audit } from "@/server/domain/services/audit";
 import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
@@ -16,6 +20,8 @@ export interface CreateKnowledgeBaseInput {
   name: string;
   description?: string;
   isGlobal?: boolean;
+  accessScope?: ResourceAccessScope;
+  accessTeamId?: string;
   ragConfig?: RagConfig;
   canManageModels?: boolean;
 }
@@ -51,7 +57,7 @@ export async function canViewKnowledgeBase(
   return (
     knowledgeBase.createdById === userId ||
     knowledgeBase.isGlobal ||
-    authorization.hasPermission(
+    authorization.hasDirectPermission(
       { principalType: "user", principalId: userId },
       "knowledgeBases.viewAllowed",
       "knowledge_base",
@@ -67,7 +73,7 @@ export async function assertCanManageKnowledgeBase(
 ) {
   if (
     !canManageKnowledgeBase(knowledgeBase, userId, canManageGlobal) &&
-    !(await authorization.hasPermission(
+    !(await authorization.hasDirectPermission(
       { principalType: "user", principalId: userId },
       "knowledgeBases.manage",
       "knowledge_base",
@@ -93,9 +99,24 @@ export async function createKnowledgeBase(input: CreateKnowledgeBaseInput) {
       description: input.description || null,
       ragConfigJson: input.ragConfig ?? null,
       isGlobal: input.isGlobal ?? false,
+      visibility:
+        input.accessScope === "project"
+          ? "workspace"
+          : input.accessScope === "organization"
+            ? "organization"
+            : "private",
       createdById: input.userId,
     })
     .returning();
+
+  if (input.accessScope) {
+    await applyResourceAccessSelection({
+      resourceType: "knowledge_base",
+      resourceId: knowledgeBase.id,
+      userId: input.userId,
+      selection: { scope: input.accessScope, teamId: input.accessTeamId },
+    });
+  }
 
   await audit.emit({
     workspaceId: input.workspaceId,

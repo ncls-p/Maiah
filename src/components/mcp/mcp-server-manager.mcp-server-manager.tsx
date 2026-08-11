@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { useWorkspace } from "@/hooks/use-workspace";
 import { fetchWorkspacePermissions } from "@/lib/api-client";
+import type { ResourceAccessOptions } from "@/modules/iam/resource-access-scope";
 
 import { type ShareableResource } from "@/components/marketplace/resource-share-dialog";
 import { linesFromTextarea } from "./mcp-server-manager.lines-from-textarea";
@@ -53,6 +54,8 @@ export function useMcpServerManagerController() {
     Record<string, boolean>
   >({});
   const [toolSearch, setToolSearch] = useState<Record<string, string>>({});
+  const [resourceAccessOptions, setResourceAccessOptions] =
+    useState<ResourceAccessOptions | null>(null);
   const [canManageTenantGlobals, setCanManageTenantGlobals] = useState(false);
   const [canManageMcpServers, setCanManageMcpServers] = useState(false);
 
@@ -64,6 +67,7 @@ export function useMcpServerManagerController() {
       const permissions = await fetchWorkspacePermissions(workspaceId);
       setCanManageTenantGlobals(permissions.canManageTenantGlobals);
       setCanManageMcpServers(permissions.canManageMcpServers);
+      setResourceAccessOptions(permissions.resourceAccessOptions ?? null);
       const res = await fetch(
         `/api/workspace/mcp-servers?workspaceId=${workspaceId}`,
       );
@@ -188,7 +192,9 @@ export function useMcpServerManagerController() {
           command: form.command.trim() || undefined,
           args: linesFromTextarea(form.args),
           requireApproval: form.requireApproval,
-          isGlobal: canManageTenantGlobals ? form.isGlobal : undefined,
+          accessScope: form.accessScope,
+          accessTeamId:
+            form.accessScope === "team" ? form.accessTeamId : undefined,
           headers: buildHeaders(form),
           env: buildEnv(form),
         }),
@@ -227,7 +233,9 @@ export function useMcpServerManagerController() {
           args: linesFromTextarea(editForm.args),
           enabled: editServer.enabled,
           requireApproval: editForm.requireApproval,
-          isGlobal: canManageTenantGlobals ? editForm.isGlobal : undefined,
+          accessScope: editForm.accessScope,
+          accessTeamId:
+            editForm.accessScope === "team" ? editForm.accessTeamId : undefined,
           headers: buildHeaders(editForm),
           env: buildEnv(editForm),
         }),
@@ -375,6 +383,7 @@ export function useMcpServerManagerController() {
     patchServer,
     patchTool,
     removeServer,
+    resourceAccessOptions,
     retryDiscovery,
     saveEdit,
     search,

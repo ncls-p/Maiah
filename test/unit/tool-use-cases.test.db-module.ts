@@ -18,6 +18,7 @@ vi.mock("@/server/domain/services/authorization", () => ({
   authorization: {
     requirePermission: vi.fn().mockResolvedValue({ granted: true }),
     hasPermission: vi.fn().mockResolvedValue(true),
+    hasDirectPermission: vi.fn().mockResolvedValue(true),
   },
 }));
 

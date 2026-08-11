@@ -29,20 +29,22 @@ const SCOPE_ICONS = {
   team: UsersIcon,
 } as const;
 
-export function AgentAccessScopePicker({
+export function ResourceAccessScopePicker({
   value,
   teamId,
   options,
   disabled,
-  onChange,
+  copyNamespace = "agents.accessScope",
+  onChangeAction,
 }: {
   value: AgentAccessScope;
   teamId: string;
   options: AgentAccessOptions;
   disabled?: boolean;
-  onChange: (scope: AgentAccessScope, teamId?: string) => void;
+  copyNamespace?: "agents.accessScope" | "resourceAccessScope";
+  onChangeAction: (scope: AgentAccessScope, teamId?: string) => void;
 }) {
-  const t = useTranslations("agents.accessScope");
+  const t = useTranslations(copyNamespace);
   return (
     <div className="space-y-3" data-slot="agent-access-scope-picker">
       <div>
@@ -64,7 +66,7 @@ export function AgentAccessScopePicker({
                 selected && "border-primary/50 bg-primary/5",
               )}
               onClick={() =>
-                onChange(scope, scope === "team" ? teamId : undefined)
+                onChangeAction(scope, scope === "team" ? teamId : undefined)
               }
             >
               <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
@@ -91,7 +93,7 @@ export function AgentAccessScopePicker({
           <Select
             value={teamId}
             disabled={disabled}
-            onValueChange={(nextTeamId) => onChange("team", nextTeamId)}
+            onValueChange={(nextTeamId) => onChangeAction("team", nextTeamId)}
           >
             <SelectTrigger id="agent-access-team" className="w-full">
               <SelectValue placeholder={t("team.placeholder")} />
@@ -112,3 +114,5 @@ export function AgentAccessScopePicker({
     </div>
   );
 }
+
+export const AgentAccessScopePicker = ResourceAccessScopePicker;

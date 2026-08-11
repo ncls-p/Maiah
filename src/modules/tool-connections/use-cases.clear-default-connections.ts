@@ -1,5 +1,6 @@
 import { logger } from "@/lib/logger";
 import { audit } from "@/server/domain/services/audit";
+import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
 import {
   toolConnections,
@@ -12,7 +13,6 @@ import {
   ToolConnector,
   jsonRecord,
   normalizeConnectorKey,
-  visibleConnectorCondition,
 } from "./use-cases.mcp-tool-source";
 
 export async function clearDefaultConnections(
@@ -134,9 +134,30 @@ export async function listToolConnectors(
   const connectors = await db
     .select()
     .from(toolConnectors)
-    .where(visibleConnectorCondition(workspaceId, userId, canManageGlobal))
+    .where(
+      and(
+        eq(toolConnectors.workspaceId, workspaceId),
+        isNull(toolConnectors.archivedAt),
+      ),
+    )
     .orderBy(toolConnectors.name);
-  return connectors.map(toSafeToolConnector);
+  const visibleConnectors = await Promise.all(
+    connectors.map(async (connector) =>
+      connector.createdById === userId ||
+      connector.isGlobal ||
+      canManageGlobal ||
+      (await authorization.hasDirectPermission(
+        { principalType: "user", principalId: userId },
+        "tools.view",
+        "tool_connector",
+        connector.id,
+        workspaceId,
+      ))
+        ? toSafeToolConnector(connector)
+        : null,
+    ),
+  );
+  return visibleConnectors.filter((connector) => connector !== null);
 }
 
 export async function getToolConnector(
@@ -151,9 +172,22 @@ export async function getToolConnector(
     .where(
       and(
         eq(toolConnectors.id, connectorId),
-        visibleConnectorCondition(workspaceId, userId, canManageGlobal),
+        eq(toolConnectors.workspaceId, workspaceId),
+        isNull(toolConnectors.archivedAt),
       ),
     )
     .limit(1);
-  return connector ?? null;
+  if (!connector) return null;
+  const visible =
+    connector.createdById === userId ||
+    connector.isGlobal ||
+    canManageGlobal ||
+    (await authorization.hasDirectPermission(
+      { principalType: "user", principalId: userId },
+      "tools.view",
+      "tool_connector",
+      connector.id,
+      workspaceId,
+    ));
+  return visible ? connector : null;
 }

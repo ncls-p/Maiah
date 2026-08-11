@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { listRemoteMcpTools } from "@/modules/mcp/client";
+import { authorization } from "@/server/domain/services/authorization";
 import {
   createMcpServer,
   createMcpServerWithDiscovery,
@@ -45,6 +46,26 @@ describe("listMcpServers", () => {
     dbModule._c.orderBy.mockResolvedValueOnce([]);
     const result = await listMcpServers("ws-1");
     expect(result).toHaveLength(0);
+  });
+
+  it("hides another member's personal MCP without a direct share", async () => {
+    dbModule._c.orderBy.mockResolvedValueOnce([
+      { ...fakeSseServer, createdById: "user-1", isGlobal: false },
+    ]);
+    const directPermission = vi
+      .spyOn(authorization, "hasDirectPermission")
+      .mockResolvedValueOnce(false);
+
+    const result = await listMcpServers("ws-1", "user-2");
+
+    expect(result).toEqual([]);
+    expect(directPermission).toHaveBeenCalledWith(
+      { principalType: "user", principalId: "user-2" },
+      "mcpServers.get",
+      "mcp_server",
+      "srv-1",
+      "ws-1",
+    );
   });
 });
 

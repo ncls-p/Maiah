@@ -18,6 +18,29 @@
     "english": "Anglais",
     "french": "Français"
   },
+  "resourceAccessScope": {
+    "label": "Accès",
+    "hint": "Choisissez qui peut trouver et utiliser cette ressource. La modification reste limitée à son propriétaire et aux administrateurs autorisés.",
+    "private": {
+      "title": "Moi uniquement",
+      "description": "Gardez cette ressource privée pour votre compte."
+    },
+    "project": {
+      "title": "Ce projet",
+      "description": "Partagez-la avec les membres qui accèdent à {project}."
+    },
+    "organization": {
+      "title": "Organisation",
+      "description": "Partagez-la avec les membres autorisés de {organization} qui accèdent à ce projet."
+    },
+    "team": {
+      "title": "Une équipe",
+      "description": "Donnez le droit d’utilisation à une équipe de l’organisation.",
+      "select": "Équipe",
+      "placeholder": "Choisir une équipe",
+      "empty": "Aucune équipe n’est disponible dans cette organisation."
+    }
+  },
   "resourceProvenance": {
     "user": "Personnel",
     "workspace": "Projet",
@@ -1396,7 +1419,7 @@
     "documentChunk": "Chunk {number}",
     "retry": "Réessayer",
     "scopeGlobal": "Organisation",
-    "scopePrivate": "Privée",
+    "scopePrivate": "Moi uniquement",
     "globalLabel": "Rendre visible dans l’organisation",
     "globalDescription": "Laissez décoché pour réserver cette collection à votre compte.",
     "guideEyebrow": "Chemin simple",
@@ -3062,7 +3085,9 @@
     "confirmTransfer": "Transférer maintenant",
     "resourceAccess": "Accès à la ressource",
     "resourceAccessTitle": "Accès à {name}",
-    "resourceAccessDescription": "Les accès de l’organisation et du projet sont hérités. Un accès direct ne s’applique qu’à cette ressource.",
+    "resourceAccessDescription": "Sélectionnez un ou plusieurs membres ou équipes. Une ressource privée reste visible uniquement par son propriétaire et les destinataires d’un accès direct.",
+    "shareAgentDependencies": "Partager aussi les dépendances de l’assistant",
+    "shareAgentDependenciesDescription": "Accorde aussi un accès en lecture à ses sources de données actives, serveurs MCP, compétences, outils personnalisés, assistants délégués, fournisseur et modèle. Chaque destinataire conserve ses propres identifiants de connexion.",
     "searchResourceAccess": "Rechercher dans les accès effectifs…",
     "noResourceAccessResults": "Aucun membre, équipe, rôle ou niveau correspondant.",
     "grantResourceAccess": "Donner un accès direct",

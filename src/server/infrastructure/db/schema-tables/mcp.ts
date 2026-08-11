@@ -48,6 +48,9 @@ export const mcpServers = pgTable(
     enabled: boolean("enabled").notNull().default(true),
     requireApproval: boolean("require_approval").notNull().default(false),
     isGlobal: boolean("is_global").notNull().default(false),
+    visibility: varchar("visibility", { length: 32 })
+      .notNull()
+      .default("private"),
     healthStatus: varchar("health_status", { length: 16 }),
     lastCheckedAt: timestamp("last_checked_at", { withTimezone: true }),
     createdById: uuid(CREATED_BY_USER_ID_COLUMN)

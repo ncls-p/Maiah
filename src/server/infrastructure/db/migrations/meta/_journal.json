@@ -358,6 +358,13 @@
       "when": 1786389231911,
       "tag": "0050_milky_silver_samurai",
       "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1786425805747,
+      "tag": "0051_nappy_the_hunter",
+      "breakpoints": true
     }
   ]
 }
