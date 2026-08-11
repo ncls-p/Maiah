@@ -9,7 +9,7 @@ import {
 import { PDFParse } from "pdf-parse";
 import { z } from "zod";
 
-import { logHandledWarning } from "@/lib/logger";
+import { logger, logHandledWarning } from "@/lib/logger";
 import type { VisualRegion } from "@/modules/document-extraction/types";
 import { resolveOcrModel } from "@/modules/knowledge/rag-config";
 import type { RagConfig } from "@/modules/knowledge/rag-config-schema";
@@ -38,6 +38,37 @@ const visualRegionsSchema = z.object({
   ),
 });
 
+type VisualOcrLogContext = {
+  providerId: string;
+  modelId: string;
+  sourceKind: VisualCandidate["sourceKind"];
+  sourceRef: string;
+  mediaType: string;
+  imageBytes: number;
+};
+
+function safeAiErrorDetails(error: unknown) {
+  if (!(error instanceof Error)) return { error: String(error) };
+  const details = error as Error & {
+    statusCode?: unknown;
+    responseBody?: unknown;
+    isRetryable?: unknown;
+  };
+  return {
+    errorName: error.name,
+    error: error.message,
+    ...(typeof details.statusCode === "number" && {
+      statusCode: details.statusCode,
+    }),
+    ...(typeof details.isRetryable === "boolean" && {
+      isRetryable: details.isRetryable,
+    }),
+    ...(typeof details.responseBody === "string" && {
+      responseBody: details.responseBody.slice(0, 2_000),
+    }),
+  };
+}
+
 function visualOcrMessages(
   candidate: VisualCandidate,
   describeDiagrams: boolean,
@@ -57,6 +88,9 @@ function visualOcrMessages(
               : "Do not describe diagrams unless they contain otherwise unreadable text.",
             "Coordinates use a 0..1000 plane relative to this image. Tight boxes are preferred.",
             "Return a JSON object with a regions array and no surrounding prose or Markdown.",
+            'Use exactly this shape for every item: {"kind":"text","boundingBox":{"x":0,"y":0,"width":1000,"height":1000},"text":"visible text","description":"","confidence":0.9}.',
+            'Allowed kind values are exactly "text", "diagram", "table", and "image-description".',
+            "Every region must include kind, boundingBox, text, description, and confidence, even when text or description is empty.",
             "Return an empty regions array when the image adds no useful information.",
           ].join("\n"),
         },
@@ -91,23 +125,45 @@ function parseVisualRegionsJson(value: string) {
 async function generateVisualRegions(
   model: LanguageModel,
   messages: ModelMessage[],
+  context: VisualOcrLogContext,
 ) {
+  const startedAt = Date.now();
   try {
     const structured = await generateText({
       model,
       output: Output.object({ schema: visualRegionsSchema }),
       messages,
     });
+    logger.info("Visual OCR structured extraction completed", {
+      ...context,
+      regionCount: structured.output.regions.length,
+      durationMs: Date.now() - startedAt,
+    });
     return structured.output.regions;
-  } catch {
+  } catch (error) {
     // Some OpenAI-compatible servers return 5xx for response_format schemas.
     // Fall back to plain text while preserving local schema validation.
+    logger.warn(
+      "Visual OCR structured extraction failed; retrying as JSON text",
+      {
+        ...context,
+        durationMs: Date.now() - startedAt,
+        ...safeAiErrorDetails(error),
+      },
+    );
+    const fallbackStartedAt = Date.now();
     const plain = await generateText({
       model,
       output: Output.text(),
       messages,
     });
-    return parseVisualRegionsJson(plain.output).regions;
+    const parsed = parseVisualRegionsJson(plain.output);
+    logger.info("Visual OCR JSON text fallback completed", {
+      ...context,
+      regionCount: parsed.regions.length,
+      durationMs: Date.now() - fallbackStartedAt,
+    });
+    return parsed.regions;
   }
 }
 
@@ -122,6 +178,7 @@ export async function inspectPdfVisualCandidates(input: {
   minimumTextCharactersPerPage: number;
   maxVisualPages: number;
 }) {
+  const startedAt = Date.now();
   const parser = new PDFParse({ data: Buffer.from(input.bytes) });
   try {
     // PDFParse shares a worker-backed document between these operations. Running
@@ -145,19 +202,40 @@ export async function inspectPdfVisualCandidates(input: {
       )
       .slice(0, input.maxVisualPages)
       .map((page) => page.num);
-    if (selectedPages.length === 0) return [];
+    if (selectedPages.length === 0) {
+      logger.info("PDF visual candidate inspection completed", {
+        pdfBytes: input.bytes.byteLength,
+        inspectedPageCount: text.pages.length,
+        selectedPageCount: 0,
+        durationMs: Date.now() - startedAt,
+      });
+      return [];
+    }
     const screenshots = await parser.getScreenshot({
       partial: selectedPages,
       desiredWidth: 1600,
       imageBuffer: true,
       imageDataUrl: false,
     });
-    return screenshots.pages.map((page): VisualCandidate => ({
+    const candidates = screenshots.pages.map((page): VisualCandidate => ({
       sourceKind: "page",
       sourceRef: `page:${page.pageNumber}`,
       mediaType: "image/png",
       data: page.data,
     }));
+    logger.info("PDF visual candidate inspection completed", {
+      pdfBytes: input.bytes.byteLength,
+      inspectedPageCount: text.pages.length,
+      pagesWithImagesCount: pagesWithImages.size,
+      selectedPageCount: candidates.length,
+      selectedPages,
+      renderedBytes: candidates.reduce(
+        (total, candidate) => total + candidate.data.byteLength,
+        0,
+      ),
+      durationMs: Date.now() - startedAt,
+    });
+    return candidates;
   } finally {
     await parser.destroy();
   }
@@ -189,6 +267,14 @@ export async function runVisualOcr(input: {
           candidate,
           input.config.extraction.ocr.describeDiagrams,
         ),
+        {
+          providerId: resolved.providerId,
+          modelId: input.config.extraction.ocr.modelId,
+          sourceKind: candidate.sourceKind,
+          sourceRef: candidate.sourceRef,
+          mediaType: candidate.mediaType,
+          imageBytes: candidate.data.byteLength,
+        },
       );
       for (const region of generatedRegions) {
         regions.push({
@@ -203,9 +289,13 @@ export async function runVisualOcr(input: {
         `Visual extraction failed for ${candidate.sourceRef}: ${message}`,
       );
       logHandledWarning("Visual OCR region extraction failed", {
+        providerId: resolved.providerId,
+        modelId: input.config.extraction.ocr.modelId,
         sourceKind: candidate.sourceKind,
         sourceRef: candidate.sourceRef,
-        error: message,
+        mediaType: candidate.mediaType,
+        imageBytes: candidate.data.byteLength,
+        ...safeAiErrorDetails(error),
       });
     }
   }

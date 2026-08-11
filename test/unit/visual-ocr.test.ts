@@ -36,6 +36,7 @@ import {
   runVisualOcr,
   visualRegionsMarkdown,
 } from "@/modules/document-extraction/visual-ocr";
+import { logger } from "@/lib/logger";
 import { DEFAULT_RAG_CONFIG } from "@/modules/knowledge/rag-config-schema";
 
 const ocrConfig = {
@@ -275,9 +276,64 @@ describe("visual OCR", () => {
     expect(failed.warnings[0]).toContain("provider unavailable");
   });
 
-  it("recognizes supported images and renders empty provenance safely", () => {
+  it("logs safe provider diagnostics without request payloads", async () => {
+    const providerError = Object.assign(new Error("provider failed"), {
+      statusCode: 500,
+      isRetryable: true,
+      responseBody: "upstream failure",
+    });
+    const warnSpy = vi
+      .spyOn(logger, "warn")
+      .mockImplementation(() => undefined);
+    mocks.resolveOcrModel.mockResolvedValue({ model: {}, providerId: "p1" });
+    mocks.generateText
+      .mockRejectedValueOnce(providerError)
+      .mockRejectedValueOnce(providerError);
+
+    await runVisualOcr({
+      workspaceId: "22222222-2222-4222-8222-222222222222",
+      config: ocrConfig,
+      candidates: [
+        {
+          sourceKind: "page",
+          sourceRef: "page:2",
+          mediaType: "image/png",
+          data: new Uint8Array([1, 2, 3]),
+        },
+      ],
+    });
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        providerId: "p1",
+        modelId: "qwen-vision",
+        sourceRef: "page:2",
+        imageBytes: 3,
+        statusCode: 500,
+        isRetryable: true,
+        responseBody: "upstream failure",
+      }),
+    );
+    warnSpy.mockRestore();
+  });
+
+  it("recognizes supported images and renders visual provenance", () => {
     expect(isSupportedOcrImage("image/jpeg; charset=binary")).toBe(true);
     expect(isSupportedOcrImage("image/svg+xml")).toBe(false);
     expect(visualRegionsMarkdown([])).toBe("");
+    expect(
+      visualRegionsMarkdown([
+        {
+          kind: "text",
+          sourceKind: "page",
+          sourceRef: "page:1",
+          boundingBox: { x: 10, y: 20, width: 300, height: 100 },
+          text: "Scanned text",
+          description: "Visible caption",
+          confidence: 0.95,
+        },
+      ]),
+    ).toContain("Scanned text\n\nVisible caption");
   });
 });
