@@ -33,7 +33,7 @@ import {
   UpdateAgentInput,
 } from "./use-cases.agent-row";
 import { preserveBuiltinApprovalOverrides } from "./use-cases.create-available-agent-slug";
-import { canEditAgent } from "./use-cases.get-visible-agent-by-id";
+import { canEditAgentForScope } from "./use-cases.get-visible-agent-by-id";
 import { getActiveVersionConfig } from "./use-cases.reorder-organization-agents";
 import {
   applyAgentAccessSelection,
@@ -90,7 +90,9 @@ export async function updateAgentUnlocked(input: UpdateAgentInput) {
     throw new Error("Agent not found");
   }
 
-  if (!canEditAgent(existing, userId, Boolean(canAdminCurate))) {
+  if (
+    !(await canEditAgentForScope(existing, userId, Boolean(canAdminCurate)))
+  ) {
     throw new Error("Only the creator or an admin can update this agent");
   }
   if (existing.activeVersionId !== baseVersionId) {

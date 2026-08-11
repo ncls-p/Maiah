@@ -11,6 +11,7 @@ import {
   applyResourceAccessSelection,
   getResourceAccessSelection,
 } from "@/modules/iam/resource-access-scope";
+import { canEditAgentForScope } from "@/modules/agent/use-cases.get-visible-agent-by-id";
 import {
   buildResourceProvenance,
   withResourceProvenance,
@@ -26,11 +27,20 @@ type Chain = {
   orderBy: ReturnType<typeof vi.fn>;
   set: ReturnType<typeof vi.fn>;
   values: ReturnType<typeof vi.fn>;
+  onConflictDoNothing: ReturnType<typeof vi.fn>;
   then: Promise<unknown[]>["then"];
 };
 
 const selectResults: unknown[][] = [];
 const mutationSets: unknown[] = [];
+
+vi.mock("@/modules/iam/resource-sharing", () => ({
+  listResourceShareTargets: vi.fn().mockResolvedValue([
+    { type: "agent", id: "agent-1" },
+    { type: "agent", id: "agent-2" },
+    { type: "knowledge_base", id: "kb-1" },
+  ]),
+}));
 
 vi.mock("@/modules/agent/access-scope.agent-graph", () => ({
   AgentAccessError: class AgentAccessError extends Error {
@@ -89,6 +99,7 @@ function chain(result: unknown[] = []): Chain {
     return query;
   });
   query.values = vi.fn(() => query);
+  query.onConflictDoNothing = vi.fn(() => query);
   query.then = promise.then.bind(promise);
   return query;
 }
@@ -204,9 +215,15 @@ describe("assistant access scope primitives", () => {
 
   it("applies assistant team access and invalidates graph caches", async () => {
     selectResults.push(
+      [{ workspaceId: "workspace-1", organizationId: "organization-1" }],
+      [],
       [{ id: "agent-user-role" }],
       [{ teamId: "old-team" }],
       [{ userId: "member-1" }, { userId: "member-1" }],
+      [
+        { id: "agent-user-role", name: "workspace.agent_user" },
+        { id: "viewer-role", name: "workspace.viewer" },
+      ],
     );
     await expect(
       applyAgentAccessSelection({
@@ -215,7 +232,7 @@ describe("assistant access scope primitives", () => {
         selection: { scope: "team", teamId: "team-1" },
       }),
     ).resolves.toEqual(["member-1"]);
-    expect(dbModule.db.insert).toHaveBeenCalledOnce();
+    expect(dbModule.db.insert).toHaveBeenCalledTimes(2);
 
     await invalidateAgentAccessCache("agent-1", ["member-1"]);
     expect(
@@ -233,7 +250,22 @@ describe("assistant access scope primitives", () => {
   ] as const)(
     "applies assistant %s visibility",
     async (scope, visibility, isGlobal) => {
-      selectResults.push([{ id: "agent-user-role" }], []);
+      selectResults.push(
+        [{ workspaceId: "workspace-1", organizationId: "organization-1" }],
+        [],
+        [{ id: "agent-user-role" }],
+        [],
+      );
+      if (scope !== "private") {
+        selectResults.push(
+          [
+            { id: "agent-user-role", name: "workspace.agent_user" },
+            { id: "viewer-role", name: "workspace.viewer" },
+          ],
+          [{ userId: "member-1" }],
+          [],
+        );
+      }
       await applyAgentAccessSelection({
         agentId: "agent-1",
         userId: "owner-1",
@@ -250,7 +282,11 @@ describe("assistant access scope primitives", () => {
   );
 
   it("rejects assistant changes without the system role", async () => {
-    selectResults.push([]);
+    selectResults.push(
+      [{ workspaceId: "workspace-1", organizationId: "organization-1" }],
+      [],
+      [],
+    );
     await expect(
       applyAgentAccessSelection({
         agentId: "agent-1",
@@ -284,6 +320,68 @@ describe("assistant access scope primitives", () => {
       ).resolves.toEqual(expected);
     },
   );
+});
+
+describe("scope-aware assistant administration", () => {
+  const agent = {
+    id: "agent-1",
+    workspaceId: "workspace-1",
+    createdById: "owner-1",
+    visibility: "private",
+    isGlobal: false,
+  };
+
+  it("always lets the creator edit", async () => {
+    await expect(canEditAgentForScope(agent as never, "owner-1")).resolves.toBe(
+      true,
+    );
+    expect(
+      authorizationModule.authorization.hasPermission,
+    ).not.toHaveBeenCalled();
+  });
+
+  it("lets project admins edit project-scoped assistants", async () => {
+    authorizationModule.authorization.hasPermission.mockResolvedValue(true);
+    await expect(
+      canEditAgentForScope(
+        { ...agent, visibility: "workspace", isGlobal: true } as never,
+        "project-admin",
+      ),
+    ).resolves.toBe(true);
+    expect(
+      authorizationModule.authorization.hasPermission,
+    ).toHaveBeenCalledWith(
+      { principalType: "user", principalId: "project-admin" },
+      "roles.manage",
+      "workspace",
+      "workspace-1",
+    );
+  });
+
+  it("requires organization administration for organization scope", async () => {
+    selectResults.push([{ organizationId: "organization-1" }]);
+    authorizationModule.authorization.hasPermission.mockResolvedValue(true);
+    await expect(
+      canEditAgentForScope(
+        { ...agent, visibility: "organization", isGlobal: true } as never,
+        "organization-admin",
+      ),
+    ).resolves.toBe(true);
+    expect(
+      authorizationModule.authorization.hasPermission,
+    ).toHaveBeenCalledWith(
+      { principalType: "user", principalId: "organization-admin" },
+      "roles.manage",
+      "organization",
+      "organization-1",
+    );
+  });
+
+  it("does not let an unrelated admin edit a private assistant", async () => {
+    await expect(
+      canEditAgentForScope(agent as never, "other-user", true),
+    ).resolves.toBe(false);
+  });
 });
 
 describe("resource access scopes", () => {

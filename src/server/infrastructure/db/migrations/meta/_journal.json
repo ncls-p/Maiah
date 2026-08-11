@@ -365,6 +365,13 @@
       "when": 1786425805747,
       "tag": "0051_nappy_the_hunter",
       "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1786433105447,
+      "tag": "0052_bundle_agent_dependencies",
+      "breakpoints": true
     }
   ]
 }

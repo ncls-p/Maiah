@@ -1099,6 +1099,8 @@
       "badgeOrganizationDefault": "Organization choice",
       "badgeMyDefault": "My preferred assistant",
       "hideFromChatSelector": "Hide from chat selector",
+      "removeSharedAssistant": "Remove from my assistants",
+      "manageAccess": "Manage access",
       "showInChatSelector": "Show in chat selector",
       "hiddenFromChat": "Hidden from chat",
       "toastHiddenFromChat": "Assistant hidden from your chat selector",

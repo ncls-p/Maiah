@@ -4,6 +4,7 @@ import { db } from "@/server/infrastructure/db";
 import {
   agents,
   userAgentPreferences,
+  workspaces,
 } from "@/server/infrastructure/db/schema";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { AgentDefaultPreferences, AgentRow } from "./use-cases.agent-row";
@@ -80,6 +81,39 @@ export function canEditAgent(
   canAdminCurate = false,
 ) {
   return agent.createdById === userId || (agent.isGlobal && canAdminCurate);
+}
+
+export async function canEditAgentForScope(
+  agent: AgentRow,
+  userId: string,
+  canAdminCurate = false,
+) {
+  if (agent.createdById === userId) return true;
+  if (agent.visibility === "workspace") {
+    return authorization.hasPermission(
+      { principalType: "user", principalId: userId },
+      "roles.manage",
+      "workspace",
+      agent.workspaceId,
+    );
+  }
+  if (agent.visibility === "organization") {
+    const [workspace] = await db
+      .select({ organizationId: workspaces.organizationId })
+      .from(workspaces)
+      .where(eq(workspaces.id, agent.workspaceId))
+      .limit(1);
+    return Boolean(
+      workspace &&
+      (await authorization.hasPermission(
+        { principalType: "user", principalId: userId },
+        "roles.manage",
+        "organization",
+        workspace.organizationId,
+      )),
+    );
+  }
+  return agent.isGlobal && canAdminCurate;
 }
 
 export async function getAgentDefaultPreferences(

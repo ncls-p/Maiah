@@ -1099,6 +1099,8 @@
       "badgeOrganizationDefault": "Choix de l’organisation",
       "badgeMyDefault": "Mon assistant préféré",
       "hideFromChatSelector": "Masquer du sélecteur de chat",
+      "removeSharedAssistant": "Retirer de mes assistants",
+      "manageAccess": "Gérer les accès",
       "showInChatSelector": "Afficher dans le sélecteur de chat",
       "hiddenFromChat": "Masqué du chat",
       "toastHiddenFromChat": "Assistant masqué de votre sélecteur de chat",

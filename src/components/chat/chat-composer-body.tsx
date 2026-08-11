@@ -66,10 +66,7 @@ export function ChatComposerBody(props: ChatComposerBodyProps) {
     <div className="relative mx-auto w-full min-w-0 max-w-4xl">
       {props.todoList ? (
         <div className="mb-2">
-          <ChatTodoListDock
-            key={`${props.todoList.title}:${props.todoList.items.map((item) => item.id).join(":")}`}
-            todoList={props.todoList}
-          />
+          <ChatTodoListDock todoList={props.todoList} />
         </div>
       ) : null}
       {props.attachments.length > 0 ? (

@@ -41,17 +41,14 @@ export function ChatTodoListDock({ todoList }: { todoList: ChatTodoList }) {
     if (!viewport) return;
 
     let previousScrollTop = viewport.scrollTop;
-    const hidePlan = () => {
-      setOpen(false);
-      setHidden(true);
-    };
+    const collapsePlan = () => setOpen(false);
     const handleScroll = () => {
       const currentScrollTop = viewport.scrollTop;
-      if (currentScrollTop < previousScrollTop - 4) hidePlan();
+      if (currentScrollTop < previousScrollTop - 4) collapsePlan();
       previousScrollTop = currentScrollTop;
     };
     const handleWheel = (event: WheelEvent) => {
-      if (event.deltaY < 0) hidePlan();
+      if (event.deltaY < 0) collapsePlan();
     };
 
     viewport.addEventListener("scroll", handleScroll, { passive: true });

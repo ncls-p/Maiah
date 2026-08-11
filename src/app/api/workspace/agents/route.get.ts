@@ -5,7 +5,7 @@ import {
 } from "@/lib/route-handler";
 import { canManageTenantGlobals } from "@/modules/admin/auth";
 import {
-  canEditAgent,
+  canEditAgentForScope,
   getAgentDefaultPreferences,
   listAgents,
   normalizePromptSuggestions,
@@ -139,7 +139,11 @@ export async function GET(req: NextRequest) {
             : {}),
           canEdit:
             (canUpdateAgents &&
-              canEditAgent(agent, session.user.id, canAdminCurate)) ||
+              (await canEditAgentForScope(
+                agent,
+                session.user.id,
+                canAdminCurate,
+              ))) ||
             directlyEditableAgentIds.has(agent.id),
           canClone: canCreateAgent,
         })),

@@ -59,6 +59,38 @@ describe("authorization.requireWorkspaceMember", () => {
   });
 });
 
+describe("authorization.hasDirectPermission", () => {
+  it("resolves scope and team group grants for an active project member", async () => {
+    dbModule.db.select.mockReturnValue(dbModule._c);
+    dbModule._c.from.mockReturnValue(dbModule._c);
+    dbModule._c.innerJoin.mockReturnValue(dbModule._c);
+    dbModule._c.where
+      .mockReturnValueOnce(dbModule._c)
+      .mockReturnValueOnce(dbModule._c)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          resourceId: "kb-1",
+          roleName: "workspace.viewer",
+          permissionsJson: ["knowledgeBases.viewAllowed"],
+        },
+      ]);
+    dbModule._c.limit
+      .mockResolvedValueOnce([{ organizationId: "org-1" }])
+      .mockResolvedValueOnce([{ id: "member-1", status: "active" }]);
+
+    await expect(
+      authorization.hasDirectPermission(
+        { principalType: "user", principalId: "user-1" },
+        "knowledgeBases.viewAllowed",
+        "knowledge_base",
+        "kb-1",
+        "workspace-1",
+      ),
+    ).resolves.toBe(true);
+  });
+});
+
 // ─── authorization.invalidatePermissionCache ─────────────────────────
 
 describe("authorization.invalidatePermissionCache", () => {

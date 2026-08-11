@@ -4,6 +4,7 @@ import { type ResourceProvenance } from "@/components/resource-provenance-badge"
 import type {
   AgentAccessOptions,
   AgentAccessScope,
+  AgentAccessSelection,
 } from "@/modules/agent/access-scope";
 
 export const ICON_SIZE_CLASS = "size-4";
@@ -97,6 +98,7 @@ export interface Agent {
   canEdit?: boolean;
   canClone?: boolean;
   hiddenInChat?: boolean;
+  access?: AgentAccessSelection;
   createdAt: string;
   updatedAt: string;
   provenance: ResourceProvenance;

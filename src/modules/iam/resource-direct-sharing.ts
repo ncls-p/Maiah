@@ -57,25 +57,29 @@ async function sharingContext(input: {
   return { organization, resource };
 }
 
-async function viewerRole() {
-  const [role] = await db
+async function sharingRoles(resourceType: DirectlyShareableResourceType) {
+  const roleRows = await db
     .select()
     .from(roles)
     .where(
       and(
-        eq(roles.name, "workspace.viewer"),
+        inArray(roles.name, ["workspace.agent_user", "workspace.viewer"]),
         eq(roles.scopeType, "workspace"),
         eq(roles.isSystem, true),
       ),
-    )
-    .limit(1);
-  if (!role) {
+    );
+  const viewerRole = roleRows.find(({ name }) => name === "workspace.viewer");
+  const rootRole =
+    resourceType === "agent"
+      ? roleRows.find(({ name }) => name === "workspace.agent_user")
+      : viewerRole;
+  if (!rootRole || !viewerRole) {
     throw new IamOperationError(
-      "The project viewer role required for sharing is missing",
+      "The project roles required for sharing are missing",
       409,
     );
   }
-  return role;
+  return { rootRole, viewerRole };
 }
 
 export async function getDirectResourceSharing(input: {
@@ -84,9 +88,9 @@ export async function getDirectResourceSharing(input: {
   resourceType: DirectlyShareableResourceType;
   resourceId: string;
 }) {
-  const [{ organization }, role] = await Promise.all([
+  const [{ organization }, { rootRole, viewerRole }] = await Promise.all([
     sharingContext(input),
-    viewerRole(),
+    sharingRoles(input.resourceType),
   ]);
   const [members, bindings] = await Promise.all([
     db
@@ -108,7 +112,12 @@ export async function getDirectResourceSharing(input: {
           eq(roleBindings.resourceType, input.resourceType),
           eq(roleBindings.resourceId, input.resourceId),
           eq(roleBindings.principalType, "user"),
-          eq(roleBindings.roleId, role.id),
+          inArray(
+            roleBindings.roleId,
+            input.resourceType === "agent"
+              ? [rootRole.id, viewerRole.id]
+              : [rootRole.id],
+          ),
         ),
       ),
   ]);
@@ -140,9 +149,9 @@ export async function replaceDirectResourceSharing(input: {
   const userIds = [...new Set(input.userIds)].filter(
     (userId) => userId !== input.actorUserId,
   );
-  const [{ organization }, role] = await Promise.all([
+  const [{ organization }, { rootRole, viewerRole }] = await Promise.all([
     sharingContext(input),
-    viewerRole(),
+    sharingRoles(input.resourceType),
   ]);
   if (userIds.length > 0) {
     const validMembers = await db
@@ -187,7 +196,12 @@ export async function replaceDirectResourceSharing(input: {
         eq(roleBindings.resourceType, input.resourceType),
         eq(roleBindings.resourceId, input.resourceId),
         eq(roleBindings.principalType, "user"),
-        eq(roleBindings.roleId, role.id),
+        inArray(
+          roleBindings.roleId,
+          input.resourceType === "agent"
+            ? [rootRole.id, viewerRole.id]
+            : [rootRole.id],
+        ),
       ),
     );
   await db
@@ -197,7 +211,12 @@ export async function replaceDirectResourceSharing(input: {
         eq(roleBindings.resourceType, input.resourceType),
         eq(roleBindings.resourceId, input.resourceId),
         eq(roleBindings.principalType, "user"),
-        eq(roleBindings.roleId, role.id),
+        inArray(
+          roleBindings.roleId,
+          input.resourceType === "agent"
+            ? [rootRole.id, viewerRole.id]
+            : [rootRole.id],
+        ),
       ),
     );
 
@@ -215,7 +234,11 @@ export async function replaceDirectResourceSharing(input: {
           targets.map((target) => ({
             principalType: "user" as const,
             principalId: userId,
-            roleId: role.id,
+            roleId:
+              target.type === input.resourceType &&
+              target.id === input.resourceId
+                ? rootRole.id
+                : viewerRole.id,
             resourceType: target.type,
             resourceId: target.id,
             createdById: input.actorUserId,

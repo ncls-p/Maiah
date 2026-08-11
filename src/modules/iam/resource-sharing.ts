@@ -26,11 +26,14 @@ function targetKey(target: SharedResourceTarget) {
  * shared assistant. User-owned connector credentials are intentionally not
  * included: each recipient must configure their own tool connection.
  */
-export async function listResourceShareTargets(input: {
-  resourceType: AccessResourceType;
-  resourceId: string;
-  includeDependencies?: boolean;
-}): Promise<SharedResourceTarget[]> {
+export async function listResourceShareTargets(
+  input: {
+    resourceType: AccessResourceType;
+    resourceId: string;
+    includeDependencies?: boolean;
+  },
+  executor: Pick<typeof db, "select"> = db,
+): Promise<SharedResourceTarget[]> {
   const targets = new Map<string, SharedResourceTarget>();
   const add = (type: AccessResourceType, id: string | null | undefined) => {
     if (!id) return;
@@ -43,7 +46,7 @@ export async function listResourceShareTargets(input: {
     return [...targets.values()];
   }
 
-  const [root] = await db
+  const [root] = await executor
     .select({ activeVersionId: agents.activeVersionId })
     .from(agents)
     .where(eq(agents.id, input.resourceId));
@@ -59,29 +62,29 @@ export async function listResourceShareTargets(input: {
 
     const [versions, knowledge, skills, delegations, tools] = await Promise.all(
       [
-        db
+        executor
           .select({
             providerId: agentVersions.providerId,
             modelId: agentVersions.modelId,
           })
           .from(agentVersions)
           .where(inArray(agentVersions.id, versionIds)),
-        db
+        executor
           .select({ id: agentKnowledgeBindings.knowledgeBaseId })
           .from(agentKnowledgeBindings)
           .where(inArray(agentKnowledgeBindings.agentVersionId, versionIds)),
-        db
+        executor
           .select({ id: agentSkillBindings.skillId })
           .from(agentSkillBindings)
           .where(inArray(agentSkillBindings.agentVersionId, versionIds)),
-        db
+        executor
           .select({
             agentId: agentDelegationBindings.childAgentId,
             versionId: agentDelegationBindings.childAgentVersionId,
           })
           .from(agentDelegationBindings)
           .where(inArray(agentDelegationBindings.agentVersionId, versionIds)),
-        db
+        executor
           .select({
             source: agentToolBindings.toolSource,
             id: agentToolBindings.toolId,
@@ -106,7 +109,7 @@ export async function listResourceShareTargets(input: {
       .filter(({ source }) => source === "mcp")
       .map(({ id }) => id);
     if (mcpToolIds.length > 0) {
-      const servers = await db
+      const servers = await executor
         .select({ id: mcpTools.mcpServerId })
         .from(mcpTools)
         .where(inArray(mcpTools.id, mcpToolIds));

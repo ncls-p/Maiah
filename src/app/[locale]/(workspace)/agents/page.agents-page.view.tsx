@@ -1,6 +1,6 @@
 import { PlusIcon } from "lucide-react";
 
-import { ResourceShareDialog } from "@/components/marketplace/resource-share-dialog";
+import { ResourceAccessDialog } from "@/components/resource-access-dialog";
 import { Button } from "@/components/ui/button";
 import { WorkspacePage } from "@/components/workspace-page";
 import type { useAgentsPageController } from "./page.agents-page";
@@ -14,12 +14,15 @@ export type AgentsPageViewModel = Extract<
 >;
 export function AgentsPageView({ model }: { model: AgentsPageViewModel }) {
   const {
+    accessAgent,
+    accessOptions,
     agents,
     canCreateAgent,
     loading,
-    setShareResource,
+    refreshAgents,
+    saveAgentAccess,
+    setAccessAgent,
     setShowCreateDialog,
-    shareResource,
     t,
     workspaceId,
   } = model;
@@ -44,11 +47,22 @@ export function AgentsPageView({ model }: { model: AgentsPageViewModel }) {
       {/* Create dialog */}
       <AgentsPageSection1 model={model} />
 
-      <ResourceShareDialog
-        resource={shareResource}
+      <ResourceAccessDialog
+        open={accessAgent !== null}
         workspaceId={workspaceId}
-        open={shareResource !== null}
-        onCloseAction={() => setShareResource(null)}
+        resource={
+          accessAgent
+            ? { id: accessAgent.id, name: accessAgent.name, type: "agent" }
+            : null
+        }
+        selection={accessAgent?.access ?? { scope: "private" }}
+        options={accessOptions}
+        includeDependencies
+        onOpenChangeAction={(open) => {
+          if (!open) setAccessAgent(null);
+        }}
+        onScopeSaveAction={saveAgentAccess}
+        onSavedAction={refreshAgents}
       />
     </WorkspacePage>
   );

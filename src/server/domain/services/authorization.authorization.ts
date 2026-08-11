@@ -7,6 +7,7 @@ import {
   roleBindings,
   roles,
   teamMembers,
+  workspaces,
 } from "@/server/infrastructure/db/schema";
 import { and, eq, gte, inArray, isNull, or } from "drizzle-orm";
 import {
@@ -32,15 +33,25 @@ export const authorization = {
     const uniqueResourceIds = [...new Set(resourceIds)];
     if (uniqueResourceIds.length === 0) return new Set();
 
-    let teamIds: string[] = [];
+    let groupIds: string[] = [];
     if (ctx.principalType === "user") {
       const resolvedWorkspaceId =
         workspaceId ??
         (await findAccessResource(resourceType, uniqueResourceIds[0]))
           ?.workspaceId;
+      if (!resolvedWorkspaceId) return new Set();
+      const [workspace] = await db
+        .select({ organizationId: workspaces.organizationId })
+        .from(workspaces)
+        .where(eq(workspaces.id, resolvedWorkspaceId))
+        .limit(1);
       if (
-        !resolvedWorkspaceId ||
-        !(await isActiveWorkspaceMember(ctx.principalId, resolvedWorkspaceId))
+        !workspace ||
+        !(await isActiveWorkspaceMember(
+          ctx.principalId,
+          resolvedWorkspaceId,
+          workspace.organizationId,
+        ))
       ) {
         return new Set();
       }
@@ -48,11 +59,15 @@ export const authorization = {
         .select({ teamId: teamMembers.teamId })
         .from(teamMembers)
         .where(eq(teamMembers.userId, ctx.principalId));
-      teamIds = memberships.map(({ teamId }) => teamId);
+      groupIds = [
+        ...memberships.map(({ teamId }) => teamId),
+        resolvedWorkspaceId,
+        workspace.organizationId,
+      ];
     }
 
     const principalFilter =
-      ctx.principalType === "user" && teamIds.length > 0
+      ctx.principalType === "user" && groupIds.length > 0
         ? or(
             and(
               eq(roleBindings.principalType, "user"),
@@ -60,7 +75,7 @@ export const authorization = {
             ),
             and(
               eq(roleBindings.principalType, "group"),
-              inArray(roleBindings.principalId, teamIds),
+              inArray(roleBindings.principalId, groupIds),
             ),
           )
         : and(

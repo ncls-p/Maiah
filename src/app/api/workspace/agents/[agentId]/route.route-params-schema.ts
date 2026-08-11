@@ -8,7 +8,7 @@ import {
   orchestrationPolicySchema,
 } from "@/modules/agent/orchestration-policy";
 import {
-  canEditAgent,
+  canEditAgentForScope,
   getVisibleAgentById,
   normalizePromptSuggestions,
 } from "@/modules/agent/use-cases";
@@ -215,7 +215,11 @@ export async function GET(
         canAdminCurate,
         canEdit:
           (canUpdateAgents &&
-            canEditAgent(agent, session.user.id, canAdminCurate)) ||
+            (await canEditAgentForScope(
+              agent,
+              session.user.id,
+              canAdminCurate,
+            ))) ||
           canDirectlyUpdate,
         canClone: canCreateAgent,
         shareTargetEmail,

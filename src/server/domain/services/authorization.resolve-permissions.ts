@@ -71,7 +71,7 @@ async function resolvePermissionsUncached(
     return [];
   }
 
-  let teamIds: string[] = [];
+  let groupIds: string[] = [];
   if (ctx.principalType === "user" && organizationId) {
     const memberships = await db
       .select({ teamId: teamMembers.teamId })
@@ -83,11 +83,15 @@ async function resolvePermissionsUncached(
           eq(teams.organizationId, organizationId),
         ),
       );
-    teamIds = memberships.map(({ teamId }) => teamId);
+    groupIds = [
+      ...memberships.map(({ teamId }) => teamId),
+      organizationId,
+      ...(workspaceId ? [workspaceId] : []),
+    ];
   }
 
   const principalFilter =
-    ctx.principalType === "user" && teamIds.length > 0
+    ctx.principalType === "user" && groupIds.length > 0
       ? or(
           and(
             eq(roleBindings.principalType, "user"),
@@ -95,7 +99,7 @@ async function resolvePermissionsUncached(
           ),
           and(
             eq(roleBindings.principalType, "group"),
-            inArray(roleBindings.principalId, teamIds),
+            inArray(roleBindings.principalId, groupIds),
           ),
         )
       : and(

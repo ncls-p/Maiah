@@ -16,7 +16,7 @@ import type {
 } from "@/server/infrastructure/providers";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { AgentVersionRow } from "./use-cases.agent-row";
-import { canEditAgent } from "./use-cases.get-visible-agent-by-id";
+import { canEditAgentForScope } from "./use-cases.get-visible-agent-by-id";
 
 export async function archiveAgent(
   agentId: string,
@@ -34,7 +34,7 @@ export async function archiveAgent(
     throw new Error("Agent not found");
   }
 
-  if (!canEditAgent(existing, userId, canAdminCurate)) {
+  if (!(await canEditAgentForScope(existing, userId, canAdminCurate))) {
     throw new Error("Only the creator or an admin can delete this agent");
   }
 
@@ -167,7 +167,8 @@ export async function resolveProviderForVersion(
       apiKey,
       headers,
       queryParams: provider.queryParamsJson as
-        Record<string, string> | undefined,
+        | Record<string, string>
+        | undefined,
       openaiCompatibleApiRoute: normalizeOpenAICompatibleApiRoute(
         provider.openaiCompatibleApiRoute,
       ),

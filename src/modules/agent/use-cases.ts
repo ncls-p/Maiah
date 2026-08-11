@@ -27,6 +27,7 @@ export {
 } from "./use-cases.get-conversation-messages";
 export {
   canEditAgent,
+  canEditAgentForScope,
   canUseAgent,
   getAgentDefaultPreferences,
   getVisibleAgentById,

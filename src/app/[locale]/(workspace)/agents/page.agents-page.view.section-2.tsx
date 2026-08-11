@@ -39,6 +39,7 @@ export function AgentsPageSection2({ model }: { model: AgentsPageViewModel }) {
     filteredAgents,
     loadError,
     loading,
+    openAgentAccess,
     organizationDefaultAgentId,
     refreshAgents,
     router,
@@ -48,12 +49,10 @@ export function AgentsPageSection2({ model }: { model: AgentsPageViewModel }) {
     setDefaultAgent,
     setDisplayMode,
     setSearchQuery,
-    setShareResource,
     setShowCreateDialog,
     t,
     tCommon,
     tList,
-    tShare,
     updatingDefaultAgentId,
     userDefaultAgentId,
   } = model;
@@ -328,25 +327,20 @@ export function AgentsPageSection2({ model }: { model: AgentsPageViewModel }) {
                           )}
                           {agent.hiddenInChat
                             ? tList("showInChatSelector")
-                            : tList("hideFromChatSelector")}
+                            : agent.canEdit
+                              ? tList("hideFromChatSelector")
+                              : tList("removeSharedAssistant")}
                         </DropdownMenuItem>
                         {agent.canEdit && agent.kind !== "orchestrator" ? (
                           <DropdownMenuItem
                             className="min-h-10"
-                            onClick={() =>
-                              setShareResource({
-                                kind: "agent",
-                                id: agent.id,
-                                name: agent.name,
-                                description: agent.description,
-                              })
-                            }
+                            onClick={() => void openAgentAccess(agent)}
                           >
                             <Share2
                               className={ICON_SIZE_CLASS}
                               aria-hidden="true"
                             />
-                            {tShare("action")}
+                            {tList("manageAccess")}
                           </DropdownMenuItem>
                         ) : null}
                       </DropdownMenuContent>

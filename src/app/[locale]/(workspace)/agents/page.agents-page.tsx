@@ -4,9 +4,9 @@ import { useRouter } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { type ShareableResource } from "@/components/marketplace/resource-share-dialog";
 import { PageLoading } from "@/components/page-loading";
 import { useWorkspace } from "@/hooks/use-workspace";
+import type { AgentAccessSelection } from "@/modules/agent/access-scope";
 import { toast } from "sonner";
 import { AgentsPageView } from "./page.agents-page.view";
 import {
@@ -21,7 +21,6 @@ export function useAgentsPageController() {
   const t = useTranslations("agents");
   const tList = useTranslations("agents.list");
   const tCommon = useTranslations("common");
-  const tShare = useTranslations("marketplace.share");
   const router = useRouter();
   const { workspaceId, isLoading: workspaceLoading } = useWorkspace();
   const [agents, setAgents] = useState<Agent[]>([]);
@@ -64,9 +63,7 @@ export function useAgentsPageController() {
     isRecommended: false,
     curationLabel: "none",
   });
-  const [shareResource, setShareResource] = useState<ShareableResource | null>(
-    null,
-  );
+  const [accessAgent, setAccessAgent] = useState<Agent | null>(null);
   const [updatingDefaultAgentId, setUpdatingDefaultAgentId] = useState<
     string | null
   >(null);
@@ -201,6 +198,56 @@ export function useAgentsPageController() {
     }
   };
 
+  async function openAgentAccess(agent: Agent) {
+    if (!workspaceId || !agent.canEdit) return;
+    try {
+      const response = await fetch(
+        `/api/workspace/agents/${agent.id}?workspaceId=${workspaceId}`,
+      );
+      const data = (await response.json().catch(() => ({}))) as Agent & {
+        error?: string;
+      };
+      if (!response.ok) {
+        throw new Error(data.error || tList("toastVisibilityFailed"));
+      }
+      setAccessAgent(data);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : tList("toastVisibilityFailed"),
+      );
+    }
+  }
+
+  async function saveAgentAccess(selection: AgentAccessSelection) {
+    if (!workspaceId || !accessAgent) return;
+    const response = await fetch(`/api/workspace/agents/${accessAgent.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        workspaceId,
+        baseVersionId: accessAgent.activeVersionId,
+        accessScope: selection.scope,
+        accessTeamId: selection.scope === "team" ? selection.teamId : undefined,
+      }),
+    });
+    const data = (await response.json().catch(() => ({}))) as {
+      agent?: Agent;
+      error?: string;
+    };
+    if (!response.ok) {
+      throw new Error(data.error || tList("toastVisibilityFailed"));
+    }
+    setAccessAgent((current) =>
+      current
+        ? {
+            ...current,
+            ...(data.agent ?? {}),
+            access: selection,
+          }
+        : null,
+    );
+  }
+
   async function setDefaultAgent(
     scope: "organization" | "user",
     agentId: string | null,
@@ -273,6 +320,7 @@ export function useAgentsPageController() {
   }
 
   const filteredAgents = agents.filter((agent) => {
+    if (agent.hiddenInChat && !agent.canEdit) return false;
     if (agentKindFilter === "assistant" && agent.kind === "orchestrator") {
       return false;
     }
@@ -294,6 +342,7 @@ export function useAgentsPageController() {
 
   return {
     kind: "ready",
+    accessAgent,
     accessOptions,
     agentKindFilter,
     agents,
@@ -307,24 +356,24 @@ export function useAgentsPageController() {
     handleCreate,
     loadError,
     loading,
+    openAgentAccess,
     organizationDefaultAgentId,
     refreshAgents,
     router,
+    saveAgentAccess,
     searchQuery,
+    setAccessAgent,
     setAgentKindFilter,
     setDefaultAgent,
     setAgentHiddenInChat,
     setDisplayMode,
     setForm,
     setSearchQuery,
-    setShareResource,
     setShowCreateDialog,
-    shareResource,
     showCreateDialog,
     t,
     tCommon,
     tList,
-    tShare,
     updatingDefaultAgentId,
     userDefaultAgentId,
     workspaceId,

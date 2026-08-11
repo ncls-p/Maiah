@@ -1,19 +1,20 @@
+import { listResourceShareTargets } from "@/modules/iam/resource-sharing";
 import { authorization } from "@/server/domain/services/authorization";
 import { db } from "@/server/infrastructure/db";
 import {
   agents,
+  organizationMembers,
   organizations,
   roleBindings,
   roles,
   teamMembers,
   teams,
+  workspaceMembers,
   workspaces,
 } from "@/server/infrastructure/db/schema";
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import {
   AgentAccessError,
-  loadAgentGraphIds,
-  loadOwnedAgentGraph,
   type AccessExecutor,
 } from "./access-scope.agent-graph";
 
@@ -122,18 +123,127 @@ export async function applyAgentAccessSelection(
   },
   executor: AccessExecutor = db,
 ) {
-  const agentIds = await loadOwnedAgentGraph(
-    input.agentId,
-    input.userId,
+  const [scope] = await executor
+    .select({
+      workspaceId: agents.workspaceId,
+      organizationId: workspaces.organizationId,
+    })
+    .from(agents)
+    .innerJoin(workspaces, eq(agents.workspaceId, workspaces.id))
+    .where(eq(agents.id, input.agentId))
+    .limit(1);
+  if (!scope) throw new AgentAccessError("Assistant not found", 404);
+
+  const generatedBindings = await executor
+    .select({ principalId: roleBindings.principalId })
+    .from(roleBindings)
+    .where(
+      and(
+        eq(roleBindings.principalType, "group"),
+        sql`${roleBindings.conditionJson}->>'source' = 'agent_scope'`,
+        sql`${roleBindings.conditionJson}->>'rootAgentId' = ${input.agentId}`,
+      ),
+    );
+  await executor
+    .delete(roleBindings)
+    .where(
+      and(
+        eq(roleBindings.principalType, "group"),
+        sql`${roleBindings.conditionJson}->>'source' = 'agent_scope'`,
+        sql`${roleBindings.conditionJson}->>'rootAgentId' = ${input.agentId}`,
+      ),
+    );
+
+  const affectedUserIds = await applySingleAgentAccessSelection(
+    input,
     executor,
   );
-  const affectedUserIds: string[] = [];
-  for (const agentId of agentIds) {
+  const targets = await listResourceShareTargets(
+    {
+      resourceType: "agent",
+      resourceId: input.agentId,
+      includeDependencies: true,
+    },
+    executor,
+  );
+  const groupId =
+    input.selection.scope === "project"
+      ? scope.workspaceId
+      : input.selection.scope === "organization"
+        ? scope.organizationId
+        : input.selection.scope === "team"
+          ? input.selection.teamId
+          : undefined;
+
+  if (groupId) {
+    const roleRows = await executor
+      .select({ id: roles.id, name: roles.name })
+      .from(roles)
+      .where(inArray(roles.name, ["workspace.agent_user", "workspace.viewer"]));
+    const agentUserRole = roleRows.find(
+      ({ name }) => name === "workspace.agent_user",
+    );
+    const viewerRole = roleRows.find(({ name }) => name === "workspace.viewer");
+    if (!agentUserRole || !viewerRole) {
+      throw new AgentAccessError(
+        "Assistant dependency roles are unavailable",
+        500,
+      );
+    }
+    const generatedTargets =
+      input.selection.scope === "team"
+        ? targets.filter(({ type }) => type !== "agent")
+        : targets;
+    if (generatedTargets.length > 0) {
+      await executor
+        .insert(roleBindings)
+        .values(
+          generatedTargets.map((target) => ({
+            principalType: "group" as const,
+            principalId: groupId,
+            roleId: target.type === "agent" ? agentUserRole.id : viewerRole.id,
+            resourceType: target.type,
+            resourceId: target.id,
+            conditionJson: {
+              source: "agent_scope",
+              rootAgentId: input.agentId,
+            },
+            createdById: input.userId,
+          })),
+        )
+        .onConflictDoNothing();
+    }
+  }
+
+  const affectsWholeScope = [scope.workspaceId, scope.organizationId].some(
+    (scopeId) =>
+      groupId === scopeId ||
+      generatedBindings.some(({ principalId }) => principalId === scopeId),
+  );
+  if (affectsWholeScope) {
+    const [organizationUsers, workspaceUsers] = await Promise.all([
+      executor
+        .select({ userId: organizationMembers.userId })
+        .from(organizationMembers)
+        .where(
+          and(
+            eq(organizationMembers.organizationId, scope.organizationId),
+            eq(organizationMembers.status, "active"),
+          ),
+        ),
+      executor
+        .select({ userId: workspaceMembers.userId })
+        .from(workspaceMembers)
+        .where(
+          and(
+            eq(workspaceMembers.workspaceId, scope.workspaceId),
+            eq(workspaceMembers.status, "active"),
+          ),
+        ),
+    ]);
     affectedUserIds.push(
-      ...(await applySingleAgentAccessSelection(
-        { ...input, agentId },
-        executor,
-      )),
+      ...organizationUsers.map(({ userId }) => userId),
+      ...workspaceUsers.map(({ userId }) => userId),
     );
   }
   return [...new Set(affectedUserIds)];
@@ -235,11 +345,15 @@ export async function invalidateAgentAccessCache(
   agentId: string,
   userIds: string[],
 ) {
-  const agentIds = await loadAgentGraphIds(agentId, db);
+  const targets = await listResourceShareTargets({
+    resourceType: "agent",
+    resourceId: agentId,
+    includeDependencies: true,
+  });
   await Promise.all(
-    agentIds.flatMap((resourceId) =>
+    targets.flatMap((target) =>
       userIds.map((userId) =>
-        authorization.invalidatePermissionCache(userId, "agent", resourceId),
+        authorization.invalidatePermissionCache(userId, target.type, target.id),
       ),
     ),
   );
